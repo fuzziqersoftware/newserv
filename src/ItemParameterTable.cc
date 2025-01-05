@@ -739,6 +739,38 @@ pair<uint8_t, uint8_t> ItemParameterTable::find_tool_by_id(uint32_t item_id) con
   }
 }
 
+variant<
+    const ItemParameterTable::WeaponV4*,
+    const ItemParameterTable::ArmorOrShieldV4*,
+    const ItemParameterTable::UnitV4*,
+    const ItemParameterTable::MagV4*,
+    const ItemParameterTable::ToolV4*>
+ItemParameterTable::definition_for_primary_identifier(uint32_t primary_identifier) const {
+  uint8_t data1_0 = (primary_identifier >> 24) & 0xFF;
+  uint8_t data1_1 = (primary_identifier >> 16) & 0xFF;
+  uint8_t data1_2 = (primary_identifier >> 8) & 0xFF;
+  switch (data1_0) {
+    case 0:
+      return &this->get_weapon(data1_1, data1_2);
+    case 1:
+      switch (data1_1) {
+        case 1:
+        case 2:
+          return &this->get_armor_or_shield(data1_1, data1_2);
+        case 3:
+          return &this->get_unit(data1_2);
+        default:
+          throw runtime_error("invalid primary identifier");
+      }
+    case 2:
+      return &this->get_mag(data1_1);
+    case 3:
+      return &this->get_tool(data1_1, data1_2);
+    default:
+      throw runtime_error("invalid primary identifier");
+  }
+}
+
 template <bool BE, typename OffsetsT>
 float ItemParameterTable::get_sale_divisor_t(const OffsetsT* offsets, uint8_t data1_0, uint8_t data1_1) const {
   switch (data1_0) {

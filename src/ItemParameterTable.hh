@@ -2,16 +2,19 @@
 
 #include <stdint.h>
 
+#include <array>
 #include <map>
 #include <memory>
 #include <phosg/Encoding.hh>
 #include <set>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include "ItemData.hh"
 #include "Text.hh"
 #include "Types.hh"
+#include "Version.hh"
 
 class ItemParameterTable {
 public:
@@ -438,7 +441,6 @@ public:
   ItemParameterTable(std::shared_ptr<const std::string> data, Version version);
   ~ItemParameterTable() = default;
 
-  void print(FILE* stream) const;
   std::set<uint32_t> compute_all_valid_primary_identifiers() const;
 
   size_t num_weapons_in_class(uint8_t data1_1) const;
@@ -452,6 +454,9 @@ public:
   size_t num_tools_in_class(uint8_t data1_1) const;
   const ToolV4& get_tool(uint8_t data1_1, uint8_t data1_2) const;
   std::pair<uint8_t, uint8_t> find_tool_by_id(uint32_t id) const;
+
+  std::variant<const WeaponV4*, const ArmorOrShieldV4*, const UnitV4*, const MagV4*, const ToolV4*>
+  definition_for_primary_identifier(uint32_t primary_identifier) const;
 
   float get_sale_divisor(uint8_t data1_0, uint8_t data1_1) const;
   const MagFeedResult& get_mag_feed_result(uint8_t table_index, uint8_t which) const;
@@ -484,7 +489,7 @@ public:
   size_t num_specials;
   size_t first_rare_mag_index;
 
-private:
+protected:
   struct TableOffsetsDCProtos {
     /* ## / NTE  / 11/2000 */
     /* 00 / 0013 / 0013 */ le_uint32_t unknown_a0;
@@ -642,7 +647,7 @@ public:
 
   uint8_t get_evolution_number(uint8_t data1_1) const;
 
-private:
+protected:
   std::shared_ptr<const std::string> data;
   phosg::StringReader r;
   const TableOffsets* offsets;

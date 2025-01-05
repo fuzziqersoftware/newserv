@@ -35,6 +35,9 @@ public:
     return this->name_index;
   }
 
+  inline bool exists(const ItemData& item) const {
+    return this->primary_identifier_index.count(item.primary_identifier());
+  }
   std::string describe_item(const ItemData& item, bool include_color_escapes = false) const;
   ItemData parse_item_description(const std::string& description) const;
 

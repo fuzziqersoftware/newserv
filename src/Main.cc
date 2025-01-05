@@ -2092,7 +2092,7 @@ Action a_name_all_items(
 
       if (args.get<bool>("list")) {
         for (uint32_t primary_identifier : all_primary_identifiers) {
-          fprintf(stderr, "%08" PRIX32 "\n", primary_identifier);
+          fprintf(stdout, "%08" PRIX32 "\n", primary_identifier);
           for (Version v : ALL_VERSIONS) {
             const auto& index = s->item_name_index_opt(v);
             if (index) {
@@ -2101,41 +2101,49 @@ Action a_name_all_items(
               string name = index->describe_item(item);
               try {
                 bool is_rare = pmt->is_item_rare(item);
-                fprintf(stderr, "  %10s: %s %s\n", phosg::name_for_enum(v), is_rare ? "+++" : "---", name.c_str());
+                fprintf(stdout, "  %10s: %s %s\n", phosg::name_for_enum(v), is_rare ? "+++" : "---", name.c_str());
               } catch (const out_of_range&) {
-                fprintf(stderr, "  %10s:     (missing)\n", phosg::name_for_enum(v));
+                fprintf(stdout, "  %10s:     (missing)\n", phosg::name_for_enum(v));
               }
             }
           }
-          fputc('\n', stderr);
+          fputc('\n', stdout);
         }
       } else {
-        fprintf(stderr, "IDENT   :");
+        bool separate_classes = args.get<bool>("separate-classes");
+
+        fprintf(stdout, "IDENT   :");
         for (Version v : ALL_VERSIONS) {
           const auto& index = s->item_name_index_opt(v);
           if (index) {
-            fprintf(stderr, " %30s    ", phosg::name_for_enum(v));
+            fprintf(stdout, " %30s    ", phosg::name_for_enum(v));
           }
         }
-        fputc('\n', stderr);
+        fputc('\n', stdout);
 
+        uint32_t prev_ident = 0;
         for (uint32_t primary_identifier : all_primary_identifiers) {
-          fprintf(stderr, "%08" PRIX32 ":", primary_identifier);
+          if (separate_classes & ((primary_identifier & 0xFFFF0000) != (prev_ident & 0xFFFF0000))) {
+            fputc('\n', stdout);
+          }
+          prev_ident = primary_identifier;
+
+          fprintf(stdout, "%08" PRIX32 ":", primary_identifier);
           for (Version v : ALL_VERSIONS) {
             const auto& index = s->item_name_index_opt(v);
             if (index) {
               auto pmt = s->item_parameter_table(v);
               ItemData item = ItemData::from_primary_identifier(*s->item_stack_limits(v), primary_identifier);
-              string name = index->describe_item(item);
-              try {
+              if (index->exists(item)) {
+                string name = index->describe_item(item);
                 bool is_rare = pmt->is_item_rare(item);
-                fprintf(stderr, " %30s%s", name.c_str(), is_rare ? " (*)" : "    ");
-              } catch (const out_of_range&) {
-                fprintf(stderr, "                                   ");
+                fprintf(stdout, " %30s%s", name.c_str(), is_rare ? " ***" : " ...");
+              } else {
+                fprintf(stdout, " ------------------------------ ---");
               }
             }
           }
-          fputc('\n', stderr);
+          fputc('\n', stdout);
         }
       }
     });
