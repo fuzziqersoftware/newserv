@@ -3377,6 +3377,7 @@ MapState::MapState(
     }
   }
 
+  this->compute_dynamic_object_base_indexes();
   this->verify();
 }
 
@@ -3396,6 +3397,7 @@ MapState::MapState(
   FloorConfig& fc = this->floor_config_entries.emplace_back();
   fc.super_map = quest_map_def;
   this->index_super_map(fc, opt_rand_crypt);
+  this->compute_dynamic_object_base_indexes();
   this->verify();
 }
 
@@ -3506,11 +3508,35 @@ void MapState::index_super_map(const FloorConfig& fc, shared_ptr<PSOLFGEncryptio
   }
 }
 
+void MapState::compute_dynamic_object_base_indexes() {
+  this->dynamic_obj_base_k_id = this->object_states.size();
+
+  // Compute the maximum object ID for each version. We can't just use the last
+  // object because that object may not exist on all versions, and we can't
+  // just look at the last floor, because that floor may be empty on some
+  // versions.
+  this->dynamic_obj_base_index_for_version.fill(0);
+  for (const auto& fc : this->floor_config_entries) {
+    for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+      if (fc.super_map) {
+        auto& last_obj_index = this->dynamic_obj_base_index_for_version[static_cast<size_t>(v)];
+        size_t base_index = fc.base_indexes_for_version(v).base_object_index;
+        last_obj_index = max<size_t>(base_index + fc.super_map->version(v).objects.size(), last_obj_index);
+      }
+    }
+  }
+}
+
 uint16_t MapState::index_for_object_state(Version version, shared_ptr<const ObjectState> obj_st) const {
-  uint16_t relative_index = obj_st->super_obj->version(version).relative_object_index;
-  return (relative_index == 0xFFFF)
-      ? 0xFFFF
-      : (relative_index + this->floor_config(obj_st->super_obj->floor).base_indexes_for_version(version).base_object_index);
+  if (obj_st->super_obj) {
+    uint16_t relative_index = obj_st->super_obj->version(version).relative_object_index;
+    return (relative_index == 0xFFFF)
+        ? 0xFFFF
+        : (relative_index + this->floor_config(obj_st->super_obj->floor).base_indexes_for_version(version).base_object_index);
+  } else {
+    size_t k_id_delta = obj_st->k_id - this->dynamic_obj_base_k_id;
+    return this->dynamic_obj_base_index_for_version.at(static_cast<size_t>(version)) + k_id_delta;
+  }
 }
 
 uint16_t MapState::index_for_enemy_state(Version version, shared_ptr<const EnemyState> ene_st) const {
@@ -3535,16 +3561,26 @@ uint16_t MapState::index_for_event_state(Version version, shared_ptr<const Event
 }
 
 shared_ptr<MapState::ObjectState> MapState::object_state_for_index(Version version, uint8_t floor, uint16_t object_index) {
-  const auto& fc = this->floor_config(floor);
-  size_t base_object_index = fc.base_indexes_for_version(version).base_object_index;
-  if (object_index < base_object_index) {
-    throw runtime_error("object is not on the specified floor");
+  size_t dynamic_obj_base_index = this->dynamic_obj_base_index_for_version.at(static_cast<size_t>(version));
+  if (object_index < dynamic_obj_base_index) {
+    const auto& fc = this->floor_config(floor);
+    size_t base_object_index = fc.base_indexes_for_version(version).base_object_index;
+    if (object_index < base_object_index) {
+      throw runtime_error("object is not on the specified floor");
+    }
+    if (!fc.super_map) {
+      throw out_of_range("there are no objects on the specified floor");
+    }
+    const auto& obj = fc.super_map->version(version).objects.at(object_index - base_object_index);
+    return this->object_states.at(fc.base_super_ids.base_object_index + obj->super_id);
+
+  } else {
+    size_t k_id_delta = object_index - dynamic_obj_base_index;
+    auto obj_st = make_shared<ObjectState>();
+    obj_st->k_id = this->dynamic_obj_base_k_id + k_id_delta;
+    obj_st->super_obj = nullptr;
+    return obj_st;
   }
-  if (!fc.super_map) {
-    throw out_of_range("there are no objects on the specified floor");
-  }
-  const auto& obj = fc.super_map->version(version).objects.at(object_index - base_object_index);
-  return this->object_states.at(fc.base_super_ids.base_object_index + obj->super_id);
 }
 
 vector<shared_ptr<MapState::ObjectState>> MapState::object_states_for_floor_section_group(

@@ -615,7 +615,8 @@ protected:
 // for every game; the others are essentially immutable data once loaded, which
 // this class refers to.
 
-struct MapState {
+class MapState {
+public:
   struct RareEnemyRates {
     uint32_t hildeblue; // HILDEBEAR -> HILDEBLUE
     uint32_t rappy; // RAG_RAPPY -> {AL_RAPPY or seasonal rappies}; SAND_RAPPY -> DEL_RAPPY
@@ -639,6 +640,12 @@ struct MapState {
   static const std::shared_ptr<const RareEnemyRates> DEFAULT_RARE_ENEMIES;
 
   struct ObjectState {
+    // WARNING: super_obj CAN BE NULL! This is not the case for enemies and
+    // events; their super entities are never null. In the case of objects,
+    // dynamic objects like player-set traps have object IDs past the end of
+    // the map's object list, and when queried, the MapState will return a
+    // temporary ObjectState with a null super_obj. (In these cases, only k_id
+    // is needed for correctness.)
     std::shared_ptr<const SuperMap::Object> super_obj;
     size_t k_id = 0;
     uint16_t game_flags = 0;
@@ -649,6 +656,12 @@ struct MapState {
       this->game_flags = 0;
       this->set_flags = 0;
       this->item_drop_checked = false;
+    }
+
+    inline const char* type_name(Version v) const {
+      return this->super_obj
+          ? MapFile::name_for_object_type(this->super_obj->version(v).set_entry->base_type)
+          : "<PLAYER TRAP>";
     }
   };
 
@@ -710,25 +723,6 @@ struct MapState {
     }
   };
 
-  struct FloorConfig {
-    struct EntityBaseIndexes {
-      size_t base_object_index = 0;
-      size_t base_enemy_index = 0;
-      size_t base_enemy_set_index = 0;
-      size_t base_event_index = 0;
-    };
-    std::shared_ptr<const SuperMap> super_map;
-    std::array<EntityBaseIndexes, NUM_VERSIONS> indexes;
-    EntityBaseIndexes base_super_ids;
-
-    EntityBaseIndexes& base_indexes_for_version(Version v) {
-      return this->indexes.at(static_cast<size_t>(v));
-    }
-    const EntityBaseIndexes& base_indexes_for_version(Version v) const {
-      return this->indexes.at(static_cast<size_t>(v));
-    }
-  };
-
   class EntityIterator {
   public:
     EntityIterator(MapState* map_state, Version version, bool at_end);
@@ -748,6 +742,25 @@ struct MapState {
     Version version;
     size_t floor;
     size_t relative_index;
+  };
+
+  struct FloorConfig {
+    struct EntityBaseIndexes {
+      size_t base_object_index = 0;
+      size_t base_enemy_index = 0;
+      size_t base_enemy_set_index = 0;
+      size_t base_event_index = 0;
+    };
+    std::shared_ptr<const SuperMap> super_map;
+    std::array<EntityBaseIndexes, NUM_VERSIONS> indexes;
+    EntityBaseIndexes base_super_ids;
+
+    EntityBaseIndexes& base_indexes_for_version(Version v) {
+      return this->indexes.at(static_cast<size_t>(v));
+    }
+    const EntityBaseIndexes& base_indexes_for_version(Version v) const {
+      return this->indexes.at(static_cast<size_t>(v));
+    }
   };
 
   class ObjectIterator : public EntityIterator {
@@ -803,15 +816,17 @@ struct MapState {
 
   phosg::PrefixedLogger log;
   std::vector<FloorConfig> floor_config_entries;
-  uint8_t difficulty;
-  uint8_t event;
-  uint32_t random_seed;
+  uint8_t difficulty = 0;
+  uint8_t event = 0;
+  uint32_t random_seed = 0;
   std::shared_ptr<const RareEnemyRates> bb_rare_rates;
   std::vector<std::shared_ptr<ObjectState>> object_states;
   std::vector<std::shared_ptr<EnemyState>> enemy_states;
   std::vector<std::shared_ptr<EnemyState>> enemy_set_states;
   std::vector<std::shared_ptr<EventState>> event_states;
   std::vector<size_t> bb_rare_enemy_indexes;
+  size_t dynamic_obj_base_k_id = 0;
+  std::array<size_t, NUM_VERSIONS> dynamic_obj_base_index_for_version = {};
 
   // Constructor for free play
   MapState(
@@ -833,13 +848,11 @@ struct MapState {
       std::shared_ptr<const SuperMap> quest_map_def);
   // Constructor for empty maps (used in challenge mode before a quest starts)
   MapState();
+
   ~MapState() = default;
 
-  // Resets states of all entities to their initial values. Used when
-  // restarting battles/challenges.
-  void reset();
-
   void index_super_map(const FloorConfig& floor_config, std::shared_ptr<PSOLFGEncryption> opt_rand_crypt);
+  void compute_dynamic_object_base_indexes();
 
   inline FloorConfig& floor_config(uint8_t floor) {
     return this->floor_config_entries[std::min<uint8_t>(floor, this->floor_config_entries.size() - 1)];
@@ -847,6 +860,9 @@ struct MapState {
   inline const FloorConfig& floor_config(uint8_t floor) const {
     return this->floor_config_entries[std::min<uint8_t>(floor, this->floor_config_entries.size() - 1)];
   }
+  // Resets states of all entities to their initial values. Used when
+  // restarting battles/challenges.
+  void reset();
 
   inline Range<ObjectIterator> iter_object_states(Version version) {
     return Range<ObjectIterator>{.map_state = this, .version = version};

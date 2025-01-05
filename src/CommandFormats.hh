@@ -5213,7 +5213,14 @@ check_struct_size(G_BattleScoresBE_6x7F, 0x24);
 struct G_TriggerTrap_6x80 {
   G_ClientIDHeader header;
   // Traps set by players are numbered according to their type and who set
-  // them. The trap number is computed as (client_id * 80) + (trap_type * 20).
+  // them. The trap number is (client_id * 80) + (trap_type * 20) + trap_index.
+  // trap_index comes from the 6x83 command, described below.
+  // Note that the trap number does not directly correspond to a specific
+  // object ID. Instead, object IDs past the end of the map data are
+  // dynamically allocated when players place traps.
+  // TODO: What happens in the case of data races, e.g. if two players set
+  // traps at the same time? Does the game just desync because they get
+  // different object IDs on different clients?
   le_uint16_t trap_number = 0;
   le_uint16_t what = 0; // Must be 0, 1, or 2
 } __packed_ws__(G_TriggerTrap_6x80, 8);
@@ -5235,7 +5242,7 @@ struct G_EnableDropWeaponOnDeath_6x82 {
 struct G_PlaceTrap_6x83 {
   G_ClientIDHeader header;
   le_uint16_t trap_type = 0;
-  le_uint16_t unknown_a2 = 0;
+  le_uint16_t trap_index = 0;
 } __packed_ws__(G_PlaceTrap_6x83, 8);
 
 // 6x84: Vol Opt boss actions (not valid on Episode 3)

@@ -363,10 +363,10 @@ void forward_subcommand_with_entity_id_transcode_t(
 
   shared_ptr<const MapState::EnemyState> ene_st;
   shared_ptr<const MapState::ObjectState> obj_st;
-  if ((cmd_entity_id >= 0x1000) && (cmd_entity_id < 0x2000)) {
-    ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd_entity_id & 0x0FFF);
-  } else if ((cmd_entity_id >= 0x4000) && (cmd_entity_id < 0x5000)) {
-    obj_st = l->map_state->object_state_for_index(c->version(), c->floor, cmd_entity_id & 0x0FFF);
+  if ((cmd_entity_id >= 0x1000) && (cmd_entity_id < 0x4000)) {
+    ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd_entity_id - 0x1000);
+  } else if ((cmd_entity_id >= 0x4000) && (cmd_entity_id < 0xFFFF)) {
+    obj_st = l->map_state->object_state_for_index(c->version(), c->floor, cmd_entity_id - 0x4000);
   }
 
   for (auto& lc : l->clients) {
@@ -424,10 +424,10 @@ void forward_subcommand_with_entity_targets_transcode_t(
   vector<TargetResolution> resolutions;
   for (size_t z = 0; z < cmd.target_count; z++) {
     auto& res = resolutions.emplace_back(TargetResolution{nullptr, nullptr, cmd.targets[z].entity_id});
-    if ((res.entity_id >= 0x1000) && (res.entity_id < 0x2000)) {
-      res.ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, res.entity_id & 0x0FFF);
-    } else if ((res.entity_id >= 0x4000) && (res.entity_id < 0x5000)) {
-      res.obj_st = l->map_state->object_state_for_index(c->version(), c->floor, res.entity_id & 0x0FFF);
+    if ((res.entity_id >= 0x1000) && (res.entity_id < 0x4000)) {
+      res.ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, res.entity_id - 0x1000);
+    } else if ((res.entity_id >= 0x4000) && (res.entity_id < 0xFFFF)) {
+      res.obj_st = l->map_state->object_state_for_index(c->version(), c->floor, res.entity_id - 0x4000);
     }
   }
 
@@ -1705,7 +1705,7 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
       (cmd.header.entity_id != 0xFFFF) &&
       (cmd.switch_flag_num < 0x100) &&
       c->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED)) {
-    auto sw_obj_st = l->map_state->object_state_for_index(c->version(), cmd.switch_flag_floor, cmd.header.entity_id & 0x0FFF);
+    auto sw_obj_st = l->map_state->object_state_for_index(c->version(), cmd.switch_flag_floor, cmd.header.entity_id - 0x4000);
     c->log.info("Switch assist triggered by K-%03zX setting SW-%02hhX-%02hX",
         sw_obj_st->k_id, cmd.switch_flag_floor, cmd.switch_flag_num.load());
     for (auto obj_st : l->map_state->door_states_for_switch_flag(c->version(), cmd.switch_flag_floor, cmd.switch_flag_num)) {
@@ -1741,9 +1741,8 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
 
   if (cmd.header.entity_id != 0xFFFF && c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
     const auto& obj_st = l->map_state->object_state_for_index(
-        c->version(), cmd.switch_flag_floor, cmd.header.entity_id & 0x0FFF);
-    send_text_message_printf(c, "$C5K-%03zX A %s",
-        obj_st->k_id, MapFile::name_for_object_type(obj_st->super_obj->version(c->version()).set_entry->base_type));
+        c->version(), cmd.switch_flag_floor, cmd.header.entity_id - 0x4000);
+    send_text_message_printf(c, "$C5K-%03zX A %s", obj_st->k_id, obj_st->type_name(c->version()));
   }
 
   if (l->switch_flags) {
@@ -2757,6 +2756,9 @@ DropReconcileResult reconcile_drop_request_with_map(
   if (is_box) {
     if (map) {
       res.obj_st = map->object_state_for_index(version, cmd.floor, cmd.entity_index);
+      if (!res.obj_st->super_obj) {
+        throw std::runtime_error("referenced object from drop request is a player trap");
+      }
       const auto* set_entry = res.obj_st->super_obj->version(version).set_entry;
       if (!set_entry) {
         throw std::runtime_error("object set entry is missing");
@@ -3476,7 +3478,7 @@ static void on_dragon_actions(shared_ptr<Client> c, uint8_t command, uint8_t, vo
     return;
   }
 
-  auto ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd.header.entity_id & 0x0FFF);
+  auto ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd.header.entity_id - 0x1000);
   if (ene_st->super_ene->type != EnemyType::DRAGON) {
     throw runtime_error("6x12 command sent for incorrect enemy type");
   }
@@ -3512,7 +3514,7 @@ static void on_gol_dragon_actions(shared_ptr<Client> c, uint8_t command, uint8_t
     return;
   }
 
-  auto ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd.header.entity_id & 0x0FFF);
+  auto ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd.header.entity_id - 0x1000);
   if (ene_st->super_ene->type != EnemyType::GOL_DRAGON) {
     throw runtime_error("6xA8 command sent for incorrect enemy type");
   }
