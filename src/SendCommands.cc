@@ -3967,10 +3967,12 @@ bool send_quest_barrier_if_all_clients_ready(shared_ptr<Lobby> l) {
     return false;
   }
 
-  send_command(l, 0xAC, 0x00);
-  for (x = 0; x < l->max_clients; x++) {
-    if (l->clients[x]) {
-      l->clients[x]->disconnect_hooks.erase(QUEST_BARRIER_DISCONNECT_HOOK_NAME);
+  for (auto& lc : l->clients) {
+    if (lc) {
+      if (!is_v1_or_v2(lc->version())) {
+        send_command(lc, 0xAC, 0x00);
+      }
+      lc->disconnect_hooks.erase(QUEST_BARRIER_DISCONNECT_HOOK_NAME);
     }
   }
   return true;
