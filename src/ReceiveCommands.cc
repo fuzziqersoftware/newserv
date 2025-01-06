@@ -250,7 +250,7 @@ void send_client_to_proxy_server(shared_ptr<Client> c) {
     string port_name = proxy_port_name_for_version(c->version());
     uint16_t local_port = s->name_to_port_config.at(port_name)->port;
 
-    s->proxy_server->delete_session(c->login->account->account_id);
+    s->proxy_server->delete_session(c->login->proxy_session_id());
     auto ses = s->proxy_server->create_logged_in_session(c->login, local_port, c->version(), c->config);
     if (!c->can_use_chat_commands()) {
       ses->config.clear_flag(Client::Flag::PROXY_CHAT_COMMANDS_ENABLED);

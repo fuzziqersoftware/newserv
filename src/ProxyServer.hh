@@ -307,6 +307,7 @@ private:
       Version version,
       const struct sockaddr_storage* default_destination);
 
-  static constexpr uint64_t MIN_UNLINKED_SESSION_ID = 0xC000000000000000;
-  static constexpr uint64_t MIN_LINKED_LOGGED_OUT_SESSION_ID = 0x1000000000000000;
+  static constexpr uint64_t FIRST_UNLINKED_SESSION_ID = 0x0000000000000001;
+  static constexpr uint64_t FIRST_LINKED_LOGGED_OUT_SESSION_ID = 0x0000000080000000;
+  static constexpr uint64_t FIRST_LINKED_LOGGED_IN_SESSION_ID = 0x00000000FFFFFFFF;
 };

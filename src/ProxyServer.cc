@@ -41,8 +41,8 @@ ProxyServer::ProxyServer(
     : base(base),
       destroy_sessions_ev(event_new(this->base.get(), -1, EV_TIMEOUT, &ProxyServer::dispatch_destroy_sessions, this), event_free),
       state(state),
-      next_unlinked_session_id(this->MIN_UNLINKED_SESSION_ID),
-      next_logged_out_session_id(this->MIN_LINKED_LOGGED_OUT_SESSION_ID) {}
+      next_unlinked_session_id(this->FIRST_UNLINKED_SESSION_ID),
+      next_logged_out_session_id(this->FIRST_LINKED_LOGGED_OUT_SESSION_ID) {}
 
 void ProxyServer::listen(const std::string& addr, uint16_t port, Version version, const struct sockaddr_storage* default_destination) {
   auto socket_obj = make_shared<ListeningSocket>(this, addr, port, version, default_destination);
@@ -148,8 +148,8 @@ void ProxyServer::on_client_connect(
   // server. This creates a direct session.
   if (default_destination && is_patch(version)) {
     uint64_t session_id = this->next_logged_out_session_id++;
-    if (this->next_logged_out_session_id == this->MIN_UNLINKED_SESSION_ID) {
-      this->next_logged_out_session_id = this->MIN_LINKED_LOGGED_OUT_SESSION_ID;
+    if (this->next_logged_out_session_id == this->FIRST_LINKED_LOGGED_OUT_SESSION_ID) {
+      this->next_logged_out_session_id = this->FIRST_LINKED_LOGGED_OUT_SESSION_ID;
     }
 
     auto emplace_ret = this->id_to_linked_session.emplace(session_id, make_shared<LinkedSession>(this->shared_from_this(), session_id, listen_port, version, *default_destination));
@@ -167,8 +167,8 @@ void ProxyServer::on_client_connect(
     // create an unlinked session - we'll have to get the destination from the
     // client's config, which we'll get via a 9E command soon.
     uint64_t session_id = this->next_unlinked_session_id++;
-    if (this->next_unlinked_session_id == 0) {
-      this->next_unlinked_session_id = this->MIN_UNLINKED_SESSION_ID;
+    if (this->next_unlinked_session_id == this->FIRST_LINKED_LOGGED_OUT_SESSION_ID) {
+      this->next_unlinked_session_id = this->FIRST_UNLINKED_SESSION_ID;
     }
 
     auto emplace_ret = this->id_to_unlinked_session.emplace(
@@ -445,7 +445,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
     // Look up the linked session for this account (if any)
     shared_ptr<LinkedSession> linked_ses;
     try {
-      linked_ses = server->id_to_linked_session.at(ses->login->account->account_id);
+      linked_ses = server->id_to_linked_session.at(ses->login->proxy_session_id());
       linked_ses->log.info("Resuming linked session from unlinked session");
 
     } catch (const out_of_range&) {
@@ -464,7 +464,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
     }
 
     if (linked_ses.get()) {
-      server->id_to_linked_session.emplace(ses->login->account->account_id, linked_ses);
+      server->id_to_linked_session.emplace(linked_ses->id, linked_ses);
       // Resume the linked session using the unlinked session
       try {
         if (ses->version() == Version::BB_V4) {
@@ -514,7 +514,7 @@ ProxyServer::LinkedSession::LinkedSession(
     Version version)
     : server(server),
       id(id),
-      log(phosg::string_printf("[ProxyServer:LS-%" PRIX64 "] ", this->id), proxy_server_log.min_level),
+      log(phosg::string_printf("[ProxyServer:LS-%016" PRIX64 "] ", this->id), proxy_server_log.min_level),
       timeout_event(event_new(server->base.get(), -1, EV_TIMEOUT, &LinkedSession::dispatch_on_timeout, this), event_free),
       login(nullptr),
       client_channel(
@@ -523,7 +523,7 @@ ProxyServer::LinkedSession::LinkedSession(
           nullptr,
           nullptr,
           this,
-          phosg::string_printf("LS-%" PRIX64 "-C", this->id),
+          phosg::string_printf("LS-%016" PRIX64 "-C", this->id),
           phosg::TerminalFormat::FG_YELLOW,
           phosg::TerminalFormat::FG_GREEN),
       server_channel(
@@ -532,7 +532,7 @@ ProxyServer::LinkedSession::LinkedSession(
           nullptr,
           nullptr,
           this,
-          phosg::string_printf("LS-%" PRIX64 "-S", this->id),
+          phosg::string_printf("LS-%016" PRIX64 "-S", this->id),
           phosg::TerminalFormat::FG_YELLOW,
           phosg::TerminalFormat::FG_RED),
       local_port(local_port),
@@ -564,7 +564,7 @@ ProxyServer::LinkedSession::LinkedSession(
     Version version,
     shared_ptr<Login> login,
     const Client::Config& config)
-    : LinkedSession(server, login->account->account_id, local_port, version) {
+    : LinkedSession(server, login->proxy_session_id(), local_port, version) {
   this->login = login;
   this->config = config;
   memset(&this->next_destination, 0, sizeof(this->next_destination));
@@ -580,7 +580,7 @@ ProxyServer::LinkedSession::LinkedSession(
     Version version,
     std::shared_ptr<Login> login,
     const struct sockaddr_storage& next_destination)
-    : LinkedSession(server, login->account->account_id, local_port, version) {
+    : LinkedSession(server, login->proxy_session_id(), local_port, version) {
   this->login = login;
   this->next_destination = next_destination;
 }
@@ -707,8 +707,8 @@ void ProxyServer::LinkedSession::update_channel_names() {
   auto client_ip_str = s->format_address_for_channel_name(
       this->client_channel.remote_addr, this->client_channel.virtual_network_id);
   auto server_ip_str = s->format_address_for_channel_name(this->server_channel.remote_addr, 0);
-  this->client_channel.name = phosg::string_printf("LS-%08" PRIX64 "-C @ %s", this->id, client_ip_str.c_str());
-  this->server_channel.name = phosg::string_printf("LS-%08" PRIX64 "-S @ %s", this->id, server_ip_str.c_str());
+  this->client_channel.name = phosg::string_printf("LS-%016" PRIX64 "-C @ %s", this->id, client_ip_str.c_str());
+  this->server_channel.name = phosg::string_printf("LS-%016" PRIX64 "-S @ %s", this->id, server_ip_str.c_str());
 }
 
 ProxyServer::LinkedSession::SavingFile::SavingFile(
@@ -991,9 +991,9 @@ shared_ptr<ProxyServer::LinkedSession> ProxyServer::create_logged_in_session(
 }
 
 void ProxyServer::delete_session(uint64_t id) {
-  if (id < this->MIN_UNLINKED_SESSION_ID) {
+  if (id >= this->FIRST_LINKED_LOGGED_OUT_SESSION_ID) {
     if (this->id_to_linked_session.erase(id)) {
-      proxy_server_log.info("Closed LS-%08" PRIX64, id);
+      proxy_server_log.info("Closed LS-%016" PRIX64, id);
     }
   } else {
     auto it = this->id_to_unlinked_session.find(id);
