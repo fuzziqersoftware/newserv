@@ -17,7 +17,7 @@ using namespace std;
 
 struct CommandArgs {
   shared_ptr<ServerState> s;
-  shared_ptr<ServerShell> shell;
+  ServerShell* shell;
   string command;
   string args;
   string session_name;
@@ -107,17 +107,10 @@ void ServerShell::thread_fn() {
     }
 
     phosg::strip_trailing_whitespace(command);
+    phosg::strip_leading_whitespace(command);
 
     try {
-      // Find the entry in the command table and run the command
-      size_t command_end = phosg::skip_non_whitespace(command, 0);
-      size_t args_begin = phosg::skip_whitespace(command, command_end);
-      CommandArgs args;
-      args.s = this->state;
-      args.shell = this->shared_from_this();
-      args.command = command.substr(0, command_end);
-      args.args = command.substr(args_begin);
-      CommandDefinition::dispatch(args);
+      this->execute_command(command);
     } catch (const exit_shell&) {
       event_base_loopexit(this->state->base.get(), nullptr);
       return;
@@ -125,6 +118,18 @@ void ServerShell::thread_fn() {
       fprintf(stderr, "FAILED: %s\n", e.what());
     }
   }
+}
+
+void ServerShell::execute_command(const string& command) {
+  // Find the entry in the command table and run the command
+  size_t command_end = phosg::skip_non_whitespace(command, 0);
+  size_t args_begin = phosg::skip_whitespace(command, command_end);
+  CommandArgs args;
+  args.s = this->state;
+  args.shell = this;
+  args.command = command.substr(0, command_end);
+  args.args = command.substr(args_begin);
+  CommandDefinition::dispatch(args);
 }
 
 shared_ptr<ProxyServer::LinkedSession> ServerShell::get_proxy_session(const string& name) {

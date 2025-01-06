@@ -25,6 +25,8 @@ public:
 
   std::shared_ptr<ProxyServer::LinkedSession> get_proxy_session(const std::string& name);
 
+  void execute_command(const std::string& command);
+
 protected:
   std::shared_ptr<ServerState> state;
   std::thread th;

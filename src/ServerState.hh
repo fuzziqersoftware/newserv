@@ -383,7 +383,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::vector<PortConfiguration> parse_port_configuration(const phosg::JSON& json) const;
 
   template <typename T>
-  inline void call_on_event_thread(std::function<T()>&& fn) {
+  inline T call_on_event_thread(std::function<T()>&& fn) {
     return ::call_on_event_thread<T>(this->base, std::move(fn));
   }
   inline void forward_to_event_thread(std::function<void()>&& fn) {
