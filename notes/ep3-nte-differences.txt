@@ -27,7 +27,7 @@ List of differences in Ep3 NTE compared to Final:
 - - Ability Trap prevents all abnormal conditions
 - Traps
 - - Traps trigger as soon as you move into their tile; on Final, they trigger at the end of the Move phase
-- - Traps may use any assist card, and this can be configured in the map definition (TODO: verify this last part)
+- - Traps may use any assist card, and this can be configured in the map definition
 - Rules
 - - Dice Boost does not exist
 - - ATK and DEF dice ranges can be set independently, but there are only 7 options for each: 1-6, 1-1, 2-2, 3-3, 4-4, 5-5, 6-6

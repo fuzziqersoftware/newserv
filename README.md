@@ -102,22 +102,21 @@ newserv supports all known versions of PSO, including various development protot
 | DC V1           | Yes      | Yes      | Yes      |
 | DC 08/2001      | Yes      | Yes      | Yes      |
 | DC V2           | Yes      | Yes      | Yes      |
-| PC NTE          | Yes (3)  | Yes      | No       |
+| PC NTE          | Yes (1)  | Yes      | No       |
 | PC              | Yes      | Yes      | Yes      |
 | GC Ep1&2 NTE    | Yes      | Yes      | Yes      |
 | GC Ep1&2        | Yes      | Yes      | Yes      |
 | GC Ep1&2 Plus   | Yes      | Yes      | Yes      |
-| GC Ep3 NTE      | Yes      | Yes (1)  | Yes      |
+| GC Ep3 NTE      | Yes      | Yes (2)  | Yes      |
 | GC Ep3          | Yes      | Yes      | Yes      |
 | Xbox Ep1&2 Beta | Yes      | Yes      | Yes      |
 | Xbox Ep1&2      | Yes      | Yes      | Yes      |
-| BB (vanilla)    | Yes      | Yes (2)  | Yes      |
-| BB (Tethealla)  | Yes      | Yes (2)  | Yes      |
+| BB (vanilla)    | Yes      | Yes      | Yes      |
+| BB (Tethealla)  | Yes      | Yes      | Yes      |
 
 *Notes:*
-1. *Episode 3 NTE battles are not well-tested; some things may not work. See notes/ep3-nte-differences.txt for a list of known differences between NTE and the final version. NTE and non-NTE players cannot battle each other.*
-2. *Some BB-specific features are not well-tested (for example, some quests that use rare commands may not work properly). Please submit a GitHub issue if you find something that doesn't work.*
-3. *This is the only version of PSO that doesn't have any way to identify the player's account - there is no serial number or username. For this reason, AllowUnregisteredUsers must be enabled in config.json to support PC NTE, and PC NTE players receive a random Guild Card number every time they connect. To prevent abuse, PC NTE support can be disabled in config.json.*
+1. *This is the only version of PSO that doesn't have any way to identify the player's account - there is no serial number or username. For this reason, AllowUnregisteredUsers must be enabled in config.json to support PC NTE, and PC NTE players receive a random Guild Card number every time they connect. To prevent abuse, PC NTE support can be disabled in config.json.*
+2. *Episode 3 NTE battles are not well-tested; some things may not work. See notes/ep3-nte-differences.txt for a list of known differences between NTE and the final version. NTE and non-NTE players cannot battle each other.*
 
 # Setup
 
@@ -353,7 +352,7 @@ In the server drop modes, the item tables used to generate common items are in t
 
 ## Cross-version play
 
-All versions of PSO can see and interact with each other in the lobby. By default, newserv allows V1 and V2 players to play together, and allows GC and Xbox players to play together. You can change these rules with the CompatibilityGroups setting in config.json.
+All versions of PSO can see and interact with each other in the lobby. By default, newserv allows V1 and V2 players to play together, and allows GC and Xbox players to play together. You can change these rules to allow all versions to play together, or to prevent versions from playing together, with the CompatibilityGroups setting in config.json.
 
 There are several cross-version restrictions that always apply regardless of the compatibility groups setting:
 * DC V1 players cannot join DC V2 games if the game creator didn't choose to allow them.
@@ -362,7 +361,7 @@ There are several cross-version restrictions that always apply regardless of the
 * Only BB players can join games in Episode 4.
 * Episode 3 players cannot join non-Episode 3 games, and vice versa.
 
-V1/V2 compatibility and GC/Xbox compatibility are well-tested, but other situations are not. Not much attention has been given to how items should be handled across major versions; if you enable v2/GC compatibility, for example, there will likely be bugs. Please report such bugs as GitHub issues.
+V1/V2 compatibility and GC/Xbox compatibility are well-tested, but other situations are not. Not much attention has been given yet to how items should be handled across major versions; if you enable V2/GC compatibility, for example, there will likely be bugs. Please report such bugs as GitHub issues.
 
 In cross-version play, when any of the server drop modes are used, the server uses the drop tables corresponding to the leader's version and section ID. (For example, if a DC V1 player is the game leader, rare-table-v1.json will be used, even after V2 players join.) If a BB player is the leader and the `client` drop mode is used, the server generates items as if it were in `shared` mode.
 
@@ -549,13 +548,13 @@ Some commands only work on the game server and not on the proxy server. The chat
 
 * Debugging commands
     * `$debug` (game server only): Enable or disable debug. You need the DEBUG flag in your user account to use this command. Enabling debug does several things:
-        * You'll see in-game messages from the server when you take certain actions, like killing an enemy in BB.
+        * You'll see in-game messages from the server when you take some actions, like killing enemies, opening boxes, or flipping switches.
         * You'll see the rare seed value and floor variations when you join a game.
         * You'll be placed into the last available slot in lobbies and games instead of the first, unless you're joining a BB solo-mode game.
-        * You'll be able to join games with any PSO version, not only those for which crossplay is normally enabled. See the "Cross-version play" section above for details on this.
+        * You'll be able to join games with any PSO version, not only those for which cross-version play is normally enabled. See the "Cross-version play" section above for details on this.
         * The rest of the commands in this section are enabled on the game server. (They are always enabled on the proxy server.)
-    * `$readmem <address>` (game server only): Reads 4 bytes from the given address and shows you the values.
-    * `$writemem <address> <data>` (game server only): Writes data to the given address. Data is not required to be any specific size.
+    * `$readmem <address>` (game server only): Read 4 bytes from the given address and show you the values.
+    * `$writemem <address> <data>` (game server only): Write data to the given address. Data is not required to be any specific size.
     * `$quest <number>` (game server only): Load a quest by quest number. Can be used to load battle or challenge quests with only one player present. Debug is not required to be enabled if the specified quest has the AllowStartFromChatCommand field set in its metadata file.
     * `$qcall <function-id>`: Call a quest function on your client.
     * `$qcheck <flag-num>` (game server only): Show the value of a quest flag. This command can be used without debug mode enabled. If you're in a game, show the value of the flag in that game; if you're in the lobby, show the saved value of that quest flag for your character (BB only).
