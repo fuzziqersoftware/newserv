@@ -162,12 +162,18 @@ const string& HTTPServer::get_url_param(
   return range.first->second;
 }
 
-HTTPServer::HTTPServer(shared_ptr<ServerState> state)
-    : state(state),
-      base(event_base_new(), event_base_free),
-      http(evhttp_new(this->base.get()), evhttp_free),
-      th(&HTTPServer::thread_fn, this) {
+HTTPServer::HTTPServer(shared_ptr<ServerState> state, shared_ptr<struct event_base> shared_base)
+    : state(state) {
+  if (!shared_base) {
+    this->base.reset(event_base_new(), event_base_free);
+  } else {
+    this->base = shared_base;
+  }
+  this->http.reset(evhttp_new(this->base.get()), evhttp_free);
   evhttp_set_gencb(this->http.get(), this->dispatch_handle_request, this);
+  if (!shared_base) {
+    this->th = thread(&HTTPServer::thread_fn, this);
+  }
 }
 
 void HTTPServer::listen(const string& socket_path) {

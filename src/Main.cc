@@ -3114,7 +3114,8 @@ Action a_run_server_replay_log(
 
         if (!state->http_addresses.empty() || !state->http_addresses.empty()) {
           config_log.info("Starting HTTP server");
-          state->http_server = make_shared<HTTPServer>(state);
+          shared_ptr<struct event_base> shared_base = IS_WINDOWS ? state->base : nullptr;
+          state->http_server = make_shared<HTTPServer>(state, shared_base);
           for (const auto& it : state->http_addresses) {
             auto netloc = phosg::parse_netloc(it);
             state->http_server->listen(netloc.first, netloc.second);

@@ -13,7 +13,8 @@
 
 class HTTPServer {
 public:
-  HTTPServer(std::shared_ptr<ServerState> state);
+  // shared_base should be null unless
+  HTTPServer(std::shared_ptr<ServerState> state, std::shared_ptr<struct event_base> shared_base);
   HTTPServer(const HTTPServer&) = delete;
   HTTPServer(HTTPServer&&) = delete;
   HTTPServer& operator=(const HTTPServer&) = delete;
@@ -57,7 +58,7 @@ protected:
   std::shared_ptr<ServerState> state;
   std::shared_ptr<struct event_base> base;
   std::shared_ptr<struct evhttp> http;
-  std::thread th;
+  std::thread th; // Not used on Windows
 
   std::unordered_set<std::shared_ptr<WebsocketClient>> rare_drop_subscribers;
 
