@@ -515,6 +515,13 @@ struct S_UpdateClientConfig_BB_04 {
 // there was a separate command to send the block list, but it was scrapped.
 // Perhaps this was used for command A1, which is identical to 07 and A0 in all
 // versions of PSO (except DC NTE).
+
+// This command sets the interaction mode, which affects which objects can be
+// interacted with and what certain controls do. It also affects some in-game
+// behaviors; for example, if the leader's interaction mode is set incorrectly
+// in a game, the leader will not send the game state to joining players, so
+// they will wait forever and not be able to actually join.
+
 // The menu is titled "Ship Select" unless the first menu item begins with the
 // text "BLOCK" (all caps), in which case it is titled "Block Select".
 
@@ -572,7 +579,8 @@ check_struct_size(S_MenuItem_DC_V3_08_Ep3_E6, 0x1C);
 // 08 (S->C): Game list
 // Internal name: RcvGameList
 // Client responds with 09 and 10 commands (or nothing if the player cancels).
-// Command format is the same as 07.
+// Command format is the same as 07. Like 07, this command also sets the
+// interaction mode, so it should not be used within a game.
 
 // 09 (C->S): Menu item info request
 // Internal name: SndInfo

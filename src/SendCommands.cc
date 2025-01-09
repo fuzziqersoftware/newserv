@@ -1385,6 +1385,7 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
     auto& e = entries.emplace_back();
     e.menu_id = menu->menu_id;
     e.item_id = 0xFFFFFFFF;
+    e.difficulty_tag = 0x04;
     e.name.encode(menu->name, c->language());
   }
 
@@ -1442,7 +1443,6 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
       e.name.encode(item.name, c->language());
       e.difficulty_tag = 0x04;
       e.num_players = (c->version() == Version::BB_V4) ? 0x00 : 0x0F;
-      e.flags = 0xFF;
     }
   }
 
