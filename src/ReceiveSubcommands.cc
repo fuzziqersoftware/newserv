@@ -391,7 +391,6 @@ void forward_subcommand_with_entity_id_transcode_t(
         lc->log.info("Subcommand cannot be translated to client\'s version");
       }
     } else {
-      fprintf(stderr, "NOCOMMIT: same version\n");
       send_command_t(lc, command, flag, cmd);
     }
   }
@@ -2903,7 +2902,7 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
       return;
     case Lobby::DropMode::CLIENT: {
       // If the leader is BB, use SERVER_SHARED instead
-      // NOCOMMIT: We should also use server drops if any clients have incompatible object lists, since they might generate incorrect IDs for items and we can't override them
+      // TODO: We should also use server drops if any clients have incompatible object lists, since they might generate incorrect IDs for items and we can't override them
       auto leader = l->clients[l->leader_id];
       if (leader && leader->version() == Version::BB_V4) {
         drop_mode = Lobby::DropMode::SERVER_SHARED;

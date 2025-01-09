@@ -885,19 +885,15 @@ uint32_t encrypt_challenge_time(uint16_t value) {
     available_bits.erase(it);
   }
 
-  uint32_t ret = (mask << 16) | (value ^ mask);
-  fprintf(stderr, "encrypt_challenge_time %04hX => %08" PRIX32 "\n", value, ret);
-  return ret;
+  return (mask << 16) | (value ^ mask);
 }
 
 uint16_t decrypt_challenge_time(uint32_t value) {
   uint16_t mask = (value >> 0x10);
   uint8_t mask_one_bits = count_one_bits(mask);
-  uint16_t ret = ((mask_one_bits < 4) || (mask_one_bits > 12))
+  return ((mask_one_bits < 4) || (mask_one_bits > 12))
       ? 0xFFFF
       : ((mask ^ value) & 0xFFFF);
-  fprintf(stderr, "decrypt_challenge_time %08" PRIX32 " => %04hX\n", value, ret);
-  return ret;
 }
 
 string decrypt_v2_registry_value(const void* data, size_t size) {

@@ -515,50 +515,37 @@ struct S_UpdateClientConfig_BB_04 {
 // there was a separate command to send the block list, but it was scrapped.
 // Perhaps this was used for command A1, which is identical to 07 and A0 in all
 // versions of PSO (except DC NTE).
-// The menu is titles "Ship Select" unless the first menu item begins with the
+// The menu is titled "Ship Select" unless the first menu item begins with the
 // text "BLOCK" (all caps), in which case it is titled "Block Select".
 
 // Command is a list of these; header.flag is the entry count. The first entry
-// is not included in the count and does not appear on the client. The text of
-// the first entry becomes the ship name when the client joins a lobby.
-template <TextEncoding Encoding, size_t Chars>
-struct S_MenuEntryT {
+// is not included in the count and does not appear on the client. The first
+// entry's text becomes the ship name displayed in the corner of the lobby HUD,
+// unless it begins with "BLOCK", in which case it is ignored.
+template <TextEncoding Encoding>
+struct S_MenuItemT {
   le_uint32_t menu_id = 0;
   le_uint32_t item_id = 0;
-  le_uint16_t flags = 0x0F04; // Should be this value, apparently
-  pstring<Encoding, Chars> text;
-} __packed__;
-using S_MenuEntry_PC_BB_07_1F = S_MenuEntryT<TextEncoding::UTF16, 0x11>;
-using S_MenuEntry_DC_V3_07_1F = S_MenuEntryT<TextEncoding::MARKED, 0x12>;
-check_struct_size(S_MenuEntry_PC_BB_07_1F, 0x2C);
-check_struct_size(S_MenuEntry_DC_V3_07_1F, 0x1C);
 
-// 08 (C->S): Request game list
-// Internal name: SndGameList
-// No arguments
-
-// 08 (S->C): Game list
-// Internal name: RcvGameList
-// Client responds with 09 and 10 commands (or nothing if the player cancels).
-
-// Command is a list of these; header.flag is the entry count. The first entry
-// is not included in the count and does not appear on the client.
-template <TextEncoding Encoding>
-struct S_GameMenuEntryT {
-  le_uint32_t menu_id = 0;
-  le_uint32_t game_id = 0;
+  // The following two fields are only used for the game menu; for Ship Select,
+  // Block Select, and Information, they are unused.
   // difficulty_tag is 0x0A on Episode 3; on all other versions, it's
-  // difficulty + 0x22 (so 0x25 means Ultimate, for example)
+  // difficulty + 0x22 (so 0x25 means Ultimate, for example).
   uint8_t difficulty_tag = 0;
   uint8_t num_players = 0;
+
   pstring<Encoding, 0x10> name;
+
+  // The episode field is only used for the game menu; for Ship Select, Block
+  // Select, and Information, it is unused.
   // The episode field is used differently by different versions:
   // - On DCv1, PC, and GC Episode 3, the value is ignored.
   // - On DCv2, 1 means v1 players can't join the game, and 0 means they can.
   // - On GC Ep1&2, 0x40 means Episode 1, and 0x41 means Episode 2.
   // - On BB, 0x40/0x41 mean Episodes 1/2 as on GC, and 0x43 means Episode 4.
   uint8_t episode = 0;
-  // Flags:
+  // Flags (01 and 02 are used for all menus; the rest are only used for the
+  // game menu):
   // 01 = Send name? (client sends the name field in the 10 command if this
   //      item is chosen, but it's blank)
   // 02 = Locked (lock icon appears in menu; player is prompted for password if
@@ -567,16 +554,25 @@ struct S_GameMenuEntryT {
   // 04 = Disabled (BB; used for solo games)
   // 10 = Is battle mode
   // 20 = Is challenge mode
-  // 40 = Is v2 only (DCv2/PC); name renders in orange
+  // 40 = Is v2 only (DCv2/PC); game name renders in orange
   // 40 = Is Episode 1 (V3/BB)
   // 80 = Is Episode 2 (V3/BB)
   // C0 = Is Episode 4 (BB)
   uint8_t flags = 0;
 } __packed__;
-using S_GameMenuEntry_PC_BB_08 = S_GameMenuEntryT<TextEncoding::UTF16>;
-using S_GameMenuEntry_DC_V3_08_Ep3_E6 = S_GameMenuEntryT<TextEncoding::MARKED>;
-check_struct_size(S_GameMenuEntry_PC_BB_08, 0x2C);
-check_struct_size(S_GameMenuEntry_DC_V3_08_Ep3_E6, 0x1C);
+using S_MenuItem_PC_BB_08 = S_MenuItemT<TextEncoding::UTF16>;
+using S_MenuItem_DC_V3_08_Ep3_E6 = S_MenuItemT<TextEncoding::MARKED>;
+check_struct_size(S_MenuItem_PC_BB_08, 0x2C);
+check_struct_size(S_MenuItem_DC_V3_08_Ep3_E6, 0x1C);
+
+// 08 (C->S): Request game list
+// Internal name: SndGameList
+// No arguments
+
+// 08 (S->C): Game list
+// Internal name: RcvGameList
+// Client responds with 09 and 10 commands (or nothing if the player cancels).
+// Command format is the same as 07.
 
 // 09 (C->S): Menu item info request
 // Internal name: SndInfo

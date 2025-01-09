@@ -484,7 +484,7 @@ void DownloadSession::on_channel_input(uint16_t command, uint32_t flag, std::str
         this->log.info("Ship Select menu:");
         for (item_index = 1; item_index <= flag; item_index++) {
           const auto& item = items[item_index];
-          auto text = strip_color(item.text.decode());
+          auto text = strip_color(item.name.decode());
           this->log.info("%zu: (%08" PRIX32 " %08" PRIX32 ") %s", item_index, item.menu_id.load(), item.item_id.load(), text.c_str());
           if (this->ship_menu_selections.count(text)) {
             break;
@@ -506,9 +506,9 @@ void DownloadSession::on_channel_input(uint16_t command, uint32_t flag, std::str
       };
 
       if (uses_utf16(this->channel.version)) {
-        handle_command.operator()<S_MenuEntry_PC_BB_07_1F>();
+        handle_command.operator()<S_MenuItem_PC_BB_08>();
       } else {
-        handle_command.operator()<S_MenuEntry_DC_V3_07_1F>();
+        handle_command.operator()<S_MenuItem_DC_V3_08_Ep3_E6>();
       }
 
       this->channel.send(0x10, 0x00, ret);

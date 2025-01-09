@@ -1385,8 +1385,7 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
     auto& e = entries.emplace_back();
     e.menu_id = menu->menu_id;
     e.item_id = 0xFFFFFFFF;
-    e.flags = 0x0004;
-    e.text.encode(menu->name, c->language());
+    e.name.encode(menu->name, c->language());
   }
 
   for (const auto& item : menu->items) {
@@ -1440,8 +1439,10 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
       auto& e = entries.emplace_back();
       e.menu_id = menu->menu_id;
       e.item_id = item.item_id;
-      e.flags = (c->version() == Version::BB_V4) ? 0x0004 : 0x0F04;
-      e.text.encode(item.name, c->language());
+      e.name.encode(item.name, c->language());
+      e.difficulty_tag = 0x04;
+      e.num_players = (c->version() == Version::BB_V4) ? 0x00 : 0x0F;
+      e.flags = 0xFF;
     }
   }
 
@@ -1451,9 +1452,9 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
 
 void send_menu(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info_menu) {
   if (uses_utf16(c->version())) {
-    send_menu_t<S_MenuEntry_PC_BB_07_1F>(c, menu, is_info_menu);
+    send_menu_t<S_MenuItem_PC_BB_08>(c, menu, is_info_menu);
   } else {
-    send_menu_t<S_MenuEntry_DC_V3_07_1F>(c, menu, is_info_menu);
+    send_menu_t<S_MenuItem_DC_V3_08_Ep3_E6>(c, menu, is_info_menu);
   }
 }
 
@@ -1464,11 +1465,11 @@ void send_game_menu_t(
     bool show_tournaments_only) {
   auto s = c->require_server_state();
 
-  vector<S_GameMenuEntryT<Encoding>> entries;
+  vector<S_MenuItemT<Encoding>> entries;
   {
     auto& e = entries.emplace_back();
     e.menu_id = MenuID::GAME;
-    e.game_id = 0x00000000;
+    e.item_id = 0x00000000;
     e.difficulty_tag = 0x00;
     e.num_players = 0x00;
     e.name.encode(s->name, c->language());
@@ -1512,7 +1513,7 @@ void send_game_menu_t(
 
     auto& e = entries.emplace_back();
     e.menu_id = MenuID::GAME;
-    e.game_id = l->lobby_id;
+    e.item_id = l->lobby_id;
     e.difficulty_tag = (is_ep3(c->version()) ? 0x0A : (l->difficulty + 0x22));
     e.num_players = l->count_clients();
     if (is_dc(c->version())) {

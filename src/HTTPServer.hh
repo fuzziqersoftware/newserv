@@ -13,8 +13,10 @@
 
 class HTTPServer {
 public:
-  // shared_base should be null unless
+  // shared_base should be null unless the HTTP server should run on the main
+  // thread (on Windows).
   HTTPServer(std::shared_ptr<ServerState> state, std::shared_ptr<struct event_base> shared_base);
+
   HTTPServer(const HTTPServer&) = delete;
   HTTPServer(HTTPServer&&) = delete;
   HTTPServer& operator=(const HTTPServer&) = delete;
