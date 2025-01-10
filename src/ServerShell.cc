@@ -459,17 +459,19 @@ CommandDefinition c_update_account(
     "update-account", "update-account ACCOUNT-ID PARAMETERS...\n\
     Update an existing license. ACCOUNT-ID (8 hex digits) specifies which\n\
     account to update. The options are similar to the add-account command:\n\
-      flags=FLAGS: sets behaviors and permissions for the account (same as\n\
-          add-account)\n\
-      user-flags=FLAGS: sets behaviors for the account (same as add-account)\n\
+      flags=FLAGS: Sets behaviors and permissions for the account (same as\n\
+          add-account).\n\
+      user-flags=FLAGS: Sets behaviors for the account (same as add-account).\n\
       ban-duration=DURATION: bans this account for the specified duration; the\n\
-          duration should be of the form 3d, 2w, 1mo, or 1y\n\
-      unban: clears any existing ban from this account\n\
-      ep3-current-meseta=MESETA: sets Episode 3 Meseta value\n\
-      ep3-total-meseta=MESETA: sets Episode 3 total Meseta ever earned\n\
-      temporary: marks the account as temporary; it is not saved to disk and\n\
-          therefore will be deleted when the server shuts down\n\
-      permanent: if the account was temporary, makes it non-temporary",
+          duration should be of the form 3d, 2w, 1mo, or 1y. If any clients\n\
+          are connected with this account when this command is run, they will\n\
+          be disconnected.\n\
+      unban: Clears any existing ban from this account.\n\
+      ep3-current-meseta=MESETA: Sets Episode 3 Meseta value.\n\
+      ep3-total-meseta=MESETA: Sets Episode 3 total Meseta ever earned.\n\
+      temporary: Marks the account as temporary; it is not saved to disk and\n\
+          therefore will be deleted when the server shuts down.\n\
+      permanent: If the account was temporary, makes it non-temporary.",
     true,
     +[](CommandArgs& args) {
       auto tokens = phosg::split(args.args, ' ');
@@ -699,6 +701,18 @@ CommandDefinition c_delete_license(
 
       account->save();
       fprintf(stderr, "Account %08" PRIX32 " updated\n", account->account_id);
+    });
+
+CommandDefinition c_kick(
+    "kick", "kick USER\n\
+    Disconnect a user from the server. USER may be an account ID, player name,\n\
+    or client ID (beginning with \"C-\"). This does not ban the user; they are\n\
+    free to reconnect after doing this.\n",
+    true,
+    +[](CommandArgs& args) {
+      auto target = args.s->find_client(&args.args);
+      send_message_box(target, "$C6You have been kicked off the server.");
+      target->should_disconnect = true;
     });
 
 CommandDefinition c_announce(
