@@ -48,7 +48,7 @@ DownloadSession::DownloadSession(
     Version version,
     uint8_t language,
     std::shared_ptr<const PSOBBEncryption::KeyFile> bb_key_file,
-    uint32_t hardware_id,
+    uint32_t serial_number2,
     uint32_t serial_number,
     const std::string& access_key,
     const std::string& username,
@@ -63,7 +63,7 @@ DownloadSession::DownloadSession(
     bool show_command_data)
     : output_dir(output_dir),
       bb_key_file(bb_key_file),
-      hardware_id(hardware_id),
+      serial_number2(serial_number2),
       serial_number(serial_number),
       access_key(access_key),
       username(username),
@@ -86,6 +86,7 @@ DownloadSession::DownloadSession(
           phosg::render_sockaddr_storage(remote),
           show_command_data ? phosg::TerminalFormat::FG_GREEN : phosg::TerminalFormat::END,
           show_command_data ? phosg::TerminalFormat::FG_YELLOW : phosg::TerminalFormat::END),
+      hardware_id(generate_random_hardware_id(this->channel.version)),
       guild_card_number(0),
       prev_cmd_data(0),
       client_config(0),
@@ -103,7 +104,7 @@ DownloadSession::DownloadSession(
   switch (this->channel.version) {
     case Version::DC_V1:
     case Version::DC_V2:
-      if (this->hardware_id == 0 || this->serial_number == 0 || this->access_key.empty()) {
+      if (this->serial_number2 == 0 || this->serial_number == 0 || this->access_key.empty()) {
         throw runtime_error("missing credentials");
       }
       break;
@@ -163,12 +164,13 @@ void DownloadSession::send_93_9D_9E(bool extended) {
     C_LoginExtendedV1_DC_93 ret;
     ret.player_tag = this->guild_card_number ? 0xFFFF0000 : 0x00010000;
     ret.guild_card_number = this->guild_card_number;
+    ret.hardware_id = this->hardware_id;
     ret.sub_version = default_sub_version_for_version(this->channel.version);
     ret.is_extended = extended ? 1 : 0;
     ret.language = this->channel.language;
     ret.serial_number.encode(phosg::string_printf("%08" PRIX32, this->serial_number));
     ret.access_key.encode(this->access_key);
-    ret.hardware_id.encode(phosg::string_printf("%08" PRIX32, this->hardware_id));
+    ret.serial_number2.encode(phosg::string_printf("%08" PRIX32, this->serial_number2));
     ret.name.encode(this->character->disp.name.decode());
     this->channel.send(0x93, 0x01, &ret, extended ? sizeof(ret) : sizeof(C_LoginV1_DC_93));
 
@@ -176,6 +178,7 @@ void DownloadSession::send_93_9D_9E(bool extended) {
     C_LoginExtended_PC_9D ret;
     ret.player_tag = this->guild_card_number ? 0xFFFF0000 : 0x00010000;
     ret.guild_card_number = this->guild_card_number;
+    ret.hardware_id = this->hardware_id;
     ret.sub_version = default_sub_version_for_version(this->channel.version);
     ret.is_extended = extended ? 1 : 0;
     ret.language = this->channel.language;
@@ -193,6 +196,7 @@ void DownloadSession::send_93_9D_9E(bool extended) {
     C_LoginExtended_GC_9E ret;
     ret.player_tag = this->guild_card_number ? 0xFFFF0000 : 0x00010000;
     ret.guild_card_number = this->guild_card_number;
+    ret.hardware_id = this->hardware_id;
     ret.sub_version = default_sub_version_for_version(this->channel.version);
     ret.is_extended = extended ? 1 : 0;
     ret.language = this->channel.language;
@@ -208,6 +212,7 @@ void DownloadSession::send_93_9D_9E(bool extended) {
     C_LoginExtended_XB_9E ret;
     ret.player_tag = this->guild_card_number ? 0xFFFF0000 : 0x00010000;
     ret.guild_card_number = this->guild_card_number;
+    ret.hardware_id = this->hardware_id;
     ret.sub_version = default_sub_version_for_version(this->channel.version);
     ret.is_extended = extended ? 1 : 0;
     ret.language = this->channel.language;
@@ -377,13 +382,15 @@ void DownloadSession::on_channel_input(uint16_t command, uint32_t flag, std::str
       if (flag == 1) {
         if (is_v1(this->channel.version)) {
           C_RegisterV1_DC_92 ret;
+          ret.hardware_id = this->hardware_id;
           ret.sub_version = default_sub_version_for_version(this->channel.version);
           ret.language = this->channel.language;
-          ret.hardware_id.encode(phosg::string_printf("%08" PRIX32, this->hardware_id));
+          ret.serial_number2.encode(phosg::string_printf("%08" PRIX32, this->serial_number2));
           this->channel.send(0x92, 0x00, ret);
 
         } else if (!is_v4(this->channel.version)) {
           C_Register_DC_PC_V3_9C ret;
+          ret.hardware_id = this->hardware_id;
           ret.sub_version = default_sub_version_for_version(this->channel.version);
           ret.language = this->channel.language;
           if (this->channel.version == Version::XB_V3) {

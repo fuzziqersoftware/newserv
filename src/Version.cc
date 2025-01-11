@@ -382,3 +382,28 @@ const char* file_path_token_for_version(Version version) {
       throw runtime_error("invalid game version");
   }
 }
+
+uint64_t generate_random_hardware_id(Version version) {
+  switch (version) {
+    case Version::DC_NTE:
+    case Version::DC_11_2000:
+    case Version::DC_V1:
+    case Version::DC_V2:
+      return phosg::random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
+    case Version::PC_NTE:
+    case Version::PC_V2:
+      return 0x0000FFFFFFFFFFFF;
+    case Version::GC_NTE:
+      // On GC NTE, the low byte is uninitialized memory from the TProtocol
+      // constructor's stack
+      return phosg::random_object<uint8_t>();
+    case Version::GC_V3:
+    case Version::GC_EP3_NTE:
+    case Version::GC_EP3:
+    case Version::XB_V3:
+    case Version::BB_V4:
+      return 0;
+    default:
+      throw runtime_error("invalid game version");
+  }
+}

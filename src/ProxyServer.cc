@@ -306,11 +306,13 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           ses->log.info("Version changed to DC_NTE");
           ses->config.specific_version = SPECIFIC_VERSION_DC_NTE;
           const auto& cmd = check_size_t<C_Login_DCNTE_8B>(data, sizeof(C_LoginExtended_DCNTE_8B));
-          ses->set_login(s->account_index->from_dc_nte_credentials(cmd.serial_number.decode(), cmd.access_key.decode(), false));
+          ses->set_login(s->account_index->from_dc_nte_credentials(
+              cmd.serial_number.decode(), cmd.access_key.decode(), false));
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
           ses->character_name = cmd.name.decode(ses->channel.language);
-          // TODO: Parse cmd.hardware_id
+          ses->hardware_id = cmd.hardware_id;
+
         } else if (command == 0x93) { // 11/2000 proto through DC V1
           ses->channel.version = Version::DC_V1;
           ses->log.info("Version changed to DC_V1");
@@ -323,7 +325,9 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
           ses->character_name = cmd.name.decode(ses->channel.language);
-          ses->hardware_id = cmd.hardware_id.decode();
+          ses->serial_number2 = cmd.serial_number2.decode();
+          ses->hardware_id = cmd.hardware_id;
+
         } else if (command == 0x9D) {
           const auto& cmd = check_size_t<C_Login_DC_PC_GC_9D>(data, sizeof(C_LoginExtended_DC_GC_9D));
           if (cmd.sub_version >= 0x30) {
@@ -345,6 +349,8 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           ses->channel.language = cmd.language;
           ses->character_name = cmd.name.decode(ses->channel.language);
           ses->config.set_flags_for_version(ses->version(), cmd.sub_version);
+          ses->hardware_id = cmd.hardware_id;
+
         } else {
           throw runtime_error("command is not 93 or 9D");
         }
@@ -362,6 +368,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
         ses->sub_version = cmd.sub_version;
         ses->channel.language = cmd.language;
         ses->character_name = cmd.name.decode(ses->channel.language);
+        ses->hardware_id = cmd.hardware_id;
         break;
       }
 
@@ -376,6 +383,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           ses->sub_version = cmd.sub_version;
           ses->channel.language = cmd.language;
           ses->character_name = cmd.name.decode(ses->channel.language);
+          ses->hardware_id = cmd.hardware_id;
           ses->config.parse_from(cmd.client_config);
           if (cmd.sub_version >= 0x40) {
             ses->log.info("Version changed to GC_EP3");
@@ -402,6 +410,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
           ses->character_name = cmd.name.decode(ses->channel.language);
           ses->xb_netloc = cmd.netloc;
           ses->xb_9E_unknown_a1a = cmd.unknown_a1a;
+          ses->hardware_id = cmd.hardware_id;
           ses->channel.send(0x9F, 0x00);
           return;
         } else if (command == 0x9F) {
@@ -478,6 +487,7 @@ void ProxyServer::UnlinkedSession::on_input(Channel& ch, uint16_t command, uint3
               ses->detector_crypt,
               ses->sub_version,
               ses->character_name,
+              ses->serial_number2,
               ses->hardware_id,
               ses->xb_netloc,
               ses->xb_9E_unknown_a1a);
@@ -617,11 +627,13 @@ void ProxyServer::LinkedSession::resume(
     shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
     uint32_t sub_version,
     const string& character_name,
-    const string& hardware_id,
+    const string& serial_number2,
+    uint64_t hardware_id,
     const XBNetworkLocation& xb_netloc,
     const parray<le_uint32_t, 3>& xb_9E_unknown_a1a) {
   this->sub_version = sub_version;
   this->character_name = character_name;
+  this->serial_number2 = serial_number2;
   this->hardware_id = hardware_id;
   this->xb_netloc = xb_netloc;
   this->xb_9E_unknown_a1a = xb_9E_unknown_a1a;

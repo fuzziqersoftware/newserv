@@ -58,7 +58,8 @@ public:
 
     uint32_t sub_version;
     std::string character_name;
-    std::string hardware_id; // Only used for DC sessions
+    std::string serial_number2; // Only used for DC sessions
+    uint64_t hardware_id;
     std::string login_command_bb;
     XBNetworkLocation xb_netloc;
     parray<le_uint32_t, 3> xb_9E_unknown_a1a;
@@ -170,7 +171,8 @@ public:
         std::shared_ptr<PSOBBMultiKeyDetectorEncryption> detector_crypt,
         uint32_t sub_version,
         const std::string& character_name,
-        const std::string& hardware_id,
+        const std::string& serial_number2,
+        uint64_t hardware_id,
         const XBNetworkLocation& xb_netloc,
         const parray<le_uint32_t, 3>& xb_9E_unknown_a1a);
     void resume(
@@ -260,7 +262,8 @@ private:
     std::string character_name;
     Client::Config config;
     std::string login_command_bb;
-    std::string hardware_id;
+    std::string serial_number2;
+    uint64_t hardware_id;
     XBNetworkLocation xb_netloc;
     parray<le_uint32_t, 3> xb_9E_unknown_a1a;
 

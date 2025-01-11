@@ -24,7 +24,7 @@ public:
       Version version,
       uint8_t language,
       std::shared_ptr<const PSOBBEncryption::KeyFile> bb_key_file,
-      uint32_t hardware_id,
+      uint32_t serial_number2,
       uint32_t serial_number,
       const std::string& access_key,
       const std::string& username,
@@ -47,7 +47,7 @@ protected:
   // Config (must be set by caller)
   std::string output_dir;
   std::shared_ptr<const PSOBBEncryption::KeyFile> bb_key_file;
-  uint32_t hardware_id;
+  uint32_t serial_number2;
   uint32_t serial_number;
   std::string access_key;
   std::string username;
@@ -64,6 +64,7 @@ protected:
   phosg::PrefixedLogger log;
   std::shared_ptr<struct event_base> base;
   Channel channel;
+  uint64_t hardware_id;
   uint32_t guild_card_number;
   parray<uint8_t, 0x28> prev_cmd_data;
   parray<uint8_t, 0x20> client_config;

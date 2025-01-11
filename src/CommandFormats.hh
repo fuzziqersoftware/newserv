@@ -347,7 +347,7 @@ struct S_ServerInitWithAfterMessageT_DC_PC_V3_02_17_91_9B {
 // TODO: Are the DCv1 and DCv2 formats the same as this structure?
 
 struct C_LegacyLogin_PC_V3_03 {
-  /* 00 */ le_uint64_t unused = 0; // Same as unused field in 9D/9E
+  /* 00 */ be_uint64_t hardware_id;
   /* 08 */ le_uint32_t sub_version = 0;
   /* 0C */ uint8_t is_extended = 0;
   /* 0D */ uint8_t language = 0;
@@ -403,7 +403,7 @@ struct S_ServerInitWithAfterMessageT_BB_03_9B {
 // TODO: Are the DCv1 and DCv2 formats the same as this structure?
 
 struct C_LegacyLogin_PC_V3_04 {
-  /* 00 */ le_uint64_t unused1 = 0; // Same as unused field in 9D/9E
+  /* 00 */ be_uint64_t hardware_id;
   /* 08 */ le_uint32_t sub_version = 0;
   /* 0C */ uint8_t is_extended = 0;
   /* 0D */ uint8_t language = 0;
@@ -1594,7 +1594,7 @@ struct S_ArrowUpdateEntry_88 {
 // The server should respond with an 8A command.
 
 struct C_ConnectionInfo_DCNTE_8A {
-  pstring<TextEncoding::ASCII, 0x08> hardware_id;
+  be_uint64_t hardware_id;
   le_uint32_t sub_version = 0x20;
   le_uint32_t unknown_a1 = 0;
   pstring<TextEncoding::ASCII, 0x30> username;
@@ -1624,7 +1624,7 @@ struct C_ConnectionInfo_DCNTE_8A {
 struct C_Login_DCNTE_8B {
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t guild_card_number = 0;
-  parray<uint8_t, 0x08> hardware_id;
+  be_uint64_t hardware_id;
   le_uint32_t sub_version = 0x20;
   uint8_t is_extended = 0;
   uint8_t language = 0;
@@ -1685,13 +1685,13 @@ struct C_LoginV1_DC_PC_V3_90 {
 // 92 (C->S): Register (DC)
 
 struct C_RegisterV1_DC_92 {
-  parray<uint8_t, 0x08> unknown_a1;
+  be_uint64_t hardware_id;
   le_uint32_t sub_version;
   uint8_t is_extended = 0; // TODO: This is a guess
   uint8_t language = 0; // TODO: This is a guess; verify it
   parray<uint8_t, 2> unknown_a3;
-  pstring<TextEncoding::ASCII, 0x30> hardware_id;
-  pstring<TextEncoding::ASCII, 0x30> unknown_a4;
+  pstring<TextEncoding::ASCII, 0x30> serial_number2;
+  pstring<TextEncoding::ASCII, 0x30> access_key2;
   pstring<TextEncoding::ASCII, 0x30> email; // According to Sylverant documentation
 } __packed_ws__(C_RegisterV1_DC_92, 0xA0);
 
@@ -1702,20 +1702,20 @@ struct C_RegisterV1_DC_92 {
 // 93 (C->S): Log in (DCv1)
 
 struct C_LoginV1_DC_93 {
-  le_uint32_t player_tag = 0x00010000;
-  le_uint32_t guild_card_number = 0;
-  le_uint32_t unknown_a1 = 0;
-  le_uint32_t unknown_a2 = 0;
-  le_uint32_t sub_version = 0;
-  uint8_t is_extended = 0;
-  uint8_t language = 0;
-  parray<uint8_t, 2> unused1;
-  pstring<TextEncoding::ASCII, 0x11> serial_number;
-  pstring<TextEncoding::ASCII, 0x11> access_key;
-  pstring<TextEncoding::ASCII, 0x30> hardware_id;
-  pstring<TextEncoding::ASCII, 0x30> unknown_a3;
-  pstring<TextEncoding::ASCII, 0x10> name;
-  parray<uint8_t, 2> unused2;
+  /* 00 */ le_uint32_t player_tag = 0x00010000;
+  /* 04 */ le_uint32_t guild_card_number = 0;
+  /* 08 */ be_uint64_t hardware_id;
+  /* 10 */ le_uint32_t sub_version = 0;
+  /* 14 */ uint8_t is_extended = 0;
+  /* 15 */ uint8_t language = 0;
+  /* 16 */ parray<uint8_t, 2> unused1;
+  /* 18 */ pstring<TextEncoding::ASCII, 0x11> serial_number;
+  /* 29 */ pstring<TextEncoding::ASCII, 0x11> access_key;
+  /* 3A */ pstring<TextEncoding::ASCII, 0x30> serial_number2;
+  /* 6A */ pstring<TextEncoding::ASCII, 0x30> access_key2;
+  /* 9A */ pstring<TextEncoding::ASCII, 0x10> name;
+  /* AA */ parray<uint8_t, 2> unused2;
+  /* AC */
 } __packed_ws__(C_LoginV1_DC_93, 0xAC);
 
 struct C_LoginExtendedV1_DC_93 : C_LoginV1_DC_93 {
@@ -1886,14 +1886,15 @@ struct C_Login_DC_PC_V3_9A {
 // It appears PSO GC sends uninitialized data in the header.flag field here.
 
 struct C_Register_DC_PC_V3_9C {
-  le_uint64_t unused = 0;
-  le_uint32_t sub_version = 0;
-  uint8_t unused1 = 0;
-  uint8_t language = 0;
-  parray<uint8_t, 2> unused2;
-  pstring<TextEncoding::ASCII, 0x30> serial_number; // On XB, this is the XBL gamertag
-  pstring<TextEncoding::ASCII, 0x30> access_key; // On XB, this is the XBL user ID
-  pstring<TextEncoding::ASCII, 0x30> password; // On XB, this contains "xbox-pso"
+  /* 00 */ be_uint64_t hardware_id;
+  /* 08 */ le_uint32_t sub_version = 0;
+  /* 0C */ uint8_t unused1 = 0;
+  /* 0D */ uint8_t language = 0;
+  /* 0E */ parray<uint8_t, 2> unused2;
+  /* 10 */ pstring<TextEncoding::ASCII, 0x30> serial_number; // On XB, this is the XBL gamertag
+  /* 40 */ pstring<TextEncoding::ASCII, 0x30> access_key; // On XB, this is the XBL user ID
+  /* 70 */ pstring<TextEncoding::ASCII, 0x30> password; // On XB, this contains "xbox-pso"
+  /* A0 */
 } __packed_ws__(C_Register_DC_PC_V3_9C, 0xA0);
 
 struct C_Register_BB_9C {
@@ -1925,8 +1926,17 @@ struct C_Register_BB_9C {
 struct C_Login_DC_PC_GC_9D {
   /* 00 */ le_uint32_t player_tag = 0x00010000; // 0x00010000 if guild card is set (via 04)
   /* 04 */ le_uint32_t guild_card_number = 0; // 0xFFFFFFFF if not set
-  /* 08 */ le_uint32_t unused1 = 0;
-  /* 0C */ le_uint32_t unused2 = 0;
+  // The hardware ID is different for various PSO versions:
+  // - All DC versions: the hardware ID comes from the FUNC_SYSINFO_ID syscall
+  //   (as KallistiOS refers to it), which returns a 64-bit integer. PSO uses
+  //   the low 48 bits; the high 16 bits are masked out and are always zero.
+  // - PC V2: the hardware ID is always 0000FFFFFFFFFFFF
+  // - GC NTE: the last byte of the hardware ID is uninitialized memory from
+  //   the TProtocol constructor's stack; the other bytes are all zeroes.
+  // - V3: the hardware ID is all zeroes.
+  // On the client, this is actually an array of 8 bytes, but we treat it as a
+  // single integer for simplicity.
+  /* 08 */ be_uint64_t hardware_id;
   /* 10 */ le_uint32_t sub_version = 0;
   /* 14 */ uint8_t is_extended = 0; // If 1, structure has extended format
   /* 15 */ uint8_t language = 0; // 0 = JP, 1 = EN, 2 = DE, 3 = FR, 4 = ES

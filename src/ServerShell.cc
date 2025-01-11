@@ -703,11 +703,25 @@ CommandDefinition c_delete_license(
       fprintf(stderr, "Account %08" PRIX32 " updated\n", account->account_id);
     });
 
+CommandDefinition c_lookup(
+    "lookup", "lookup USER\n\
+    Find the account for a logged-in user.",
+    true,
+    +[](CommandArgs& args) {
+      auto target = args.s->find_client(&args.args);
+      if (target->login) {
+        fprintf(stderr, "Found client %s with account ID %08" PRIX32 "\n",
+            target->channel.name.c_str(), target->login->account->account_id);
+      } else {
+        // This should be impossible
+        throw std::logic_error("find_client found user who is not logged in");
+      }
+    });
 CommandDefinition c_kick(
     "kick", "kick USER\n\
     Disconnect a user from the server. USER may be an account ID, player name,\n\
     or client ID (beginning with \"C-\"). This does not ban the user; they are\n\
-    free to reconnect after doing this.\n",
+    free to reconnect after doing this.",
     true,
     +[](CommandArgs& args) {
       auto target = args.s->find_client(&args.args);

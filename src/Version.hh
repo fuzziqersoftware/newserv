@@ -235,3 +235,5 @@ template <>
 ServerBehavior phosg::enum_for_name<ServerBehavior>(const char* name);
 
 const char* file_path_token_for_version(Version version);
+
+uint64_t generate_random_hardware_id(Version version);

@@ -734,7 +734,7 @@ phosg::JSON HTTPServer::generate_proxy_client_json_st(shared_ptr<const ProxyServ
       {"Version", phosg::name_for_enum(ses->version())},
       {"SubVersion", ses->sub_version},
       {"Name", ses->character_name},
-      {"DCHardwareID", ses->hardware_id},
+      {"DCSerialNumber2", ses->serial_number2},
       {"RemoteGuildCardNumber", ses->remote_guild_card_number},
       {"RemoteClientConfigData", phosg::format_data_string(&ses->remote_client_config_data[0], ses->remote_client_config_data.size())},
       {"Config", HTTPServer::generate_client_config_json_st(ses->config)},

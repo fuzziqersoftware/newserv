@@ -167,8 +167,7 @@ static HandlerResult S_G_9A(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t
     cmd.player_tag = 0x00010000;
     cmd.guild_card_number = ses->remote_guild_card_number;
   }
-  cmd.unused1 = 0;
-  cmd.unused2 = 0;
+  cmd.hardware_id = ses->hardware_id;
   cmd.sub_version = ses->effective_sub_version();
   cmd.is_extended = (ses->remote_guild_card_number < 0) ? 1 : 0;
   cmd.language = ses->language();
@@ -277,15 +276,14 @@ static HandlerResult S_V123P_02_17(
           cmd.player_tag = 0x00010000;
           cmd.guild_card_number = ses->remote_guild_card_number;
         }
-        cmd.unknown_a1 = 0;
-        cmd.unknown_a2 = 0;
+        cmd.hardware_id = ses->hardware_id;
         cmd.sub_version = ses->effective_sub_version();
         cmd.is_extended = 0;
         cmd.language = ses->language();
         cmd.serial_number.encode(phosg::string_printf("%08" PRIX32 "", ses->login->dc_license->serial_number));
         cmd.access_key.encode(ses->login->dc_license->access_key);
         cmd.access_key.clear_after_bytes(8);
-        cmd.hardware_id.encode(ses->hardware_id);
+        cmd.serial_number2.encode(ses->serial_number2);
         cmd.name.encode(ses->character_name);
         ses->server_channel.send(0x93, 0x00, &cmd, sizeof(cmd));
         return HandlerResult::Type::SUPPRESS;
@@ -334,7 +332,7 @@ static HandlerResult S_V123P_02_17(
           cmd.access_key.clear_after_bytes(8);
         }
         if (is_dc(ses->version())) {
-          cmd.serial_number2.encode(ses->hardware_id);
+          cmd.serial_number2.encode(ses->serial_number2);
         } else {
           cmd.serial_number2 = cmd.serial_number;
         }
@@ -353,8 +351,7 @@ static HandlerResult S_V123P_02_17(
           cmd.player_tag = 0x00010000;
           cmd.guild_card_number = ses->remote_guild_card_number;
         }
-        cmd.unused1 = 0;
-        cmd.unused2 = 0;
+        cmd.hardware_id = ses->hardware_id;
         cmd.sub_version = ses->effective_sub_version();
         cmd.is_extended = 0;
         cmd.language = ses->language();
@@ -364,7 +361,7 @@ static HandlerResult S_V123P_02_17(
           cmd.access_key.clear_after_bytes(8);
         }
         if (is_dc(ses->version())) {
-          cmd.serial_number2.encode(ses->hardware_id);
+          cmd.serial_number2.encode(ses->serial_number2);
         } else {
           cmd.serial_number2 = cmd.serial_number;
         }
@@ -417,8 +414,7 @@ static HandlerResult S_V123P_02_17(
         C_LoginExtended_GC_9E cmd;
         cmd.player_tag = 0x00010000;
         cmd.guild_card_number = guild_card_number;
-        cmd.unused1 = 0;
-        cmd.unused2 = 0;
+        cmd.hardware_id = ses->hardware_id;
         cmd.sub_version = ses->effective_sub_version();
         cmd.is_extended = 0;
         cmd.language = ses->language();
@@ -453,8 +449,7 @@ static HandlerResult S_V123P_02_17(
         cmd.player_tag = 0x00010000;
         cmd.guild_card_number = ses->remote_guild_card_number;
       }
-      cmd.unused1 = 0;
-      cmd.unused2 = 0;
+      cmd.hardware_id = ses->hardware_id;
       cmd.sub_version = ses->effective_sub_version();
       cmd.is_extended = (ses->remote_guild_card_number < 0) ? 1 : 0;
       cmd.language = ses->language();
