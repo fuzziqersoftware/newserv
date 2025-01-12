@@ -160,7 +160,7 @@ public:
   void send_all_state_updates() const;
   void send_all_state_updates_on_deletion() const;
 
-  void print_bracket(FILE* stream) const;
+  std::string bracket_str() const;
 
 private:
   void create_bracket_matches();

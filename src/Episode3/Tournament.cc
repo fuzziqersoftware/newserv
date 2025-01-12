@@ -717,66 +717,71 @@ void Tournament::send_all_state_updates_on_deletion() const {
   }
 }
 
-void Tournament::print_bracket(FILE* stream) const {
-  function<void(shared_ptr<Match>, size_t)> print_match = [&](shared_ptr<Match> m, size_t indent_level) -> void {
-    for (size_t z = 0; z < indent_level; z++) {
-      fputc(' ', stream);
-      fputc(' ', stream);
+string Tournament::bracket_str() const {
+  string ret = phosg::string_printf("Tournament \"%s\"\n", this->name.c_str());
+
+  function<void(shared_ptr<Match>, size_t)> add_match = [&](shared_ptr<Match> m, size_t indent_level) -> void {
+    ret.append(2 * indent_level, ' ');
+    ret += m->str();
+    if (this->pending_matches.count(m)) {
+      ret += " (PENDING)";
     }
-    string match_str = m->str();
-    fprintf(stream, "%s%s\n", match_str.c_str(), this->pending_matches.count(m) ? " (PENDING)" : "");
+    ret.push_back('\n');
     if (m->preceding_a) {
-      print_match(m->preceding_a, indent_level + 1);
+      add_match(m->preceding_a, indent_level + 1);
     }
     if (m->preceding_b) {
-      print_match(m->preceding_b, indent_level + 1);
+      add_match(m->preceding_b, indent_level + 1);
     }
   };
-  fprintf(stream, "Tournament \"%s\"\n", this->name.c_str());
+
   auto en_vm = this->map->version(1);
   if (en_vm) {
     string map_name = en_vm->map->name.decode(en_vm->language);
-    fprintf(stream, "  Map: %08" PRIX32 " (%s)\n", this->map->map_number, map_name.c_str());
+    ret += phosg::string_printf("  Map: %08" PRIX32 " (%s)\n", this->map->map_number, map_name.c_str());
   } else {
-    fprintf(stream, "  Map: %08" PRIX32 "\n", this->map->map_number);
+    ret += phosg::string_printf("  Map: %08" PRIX32 "\n", this->map->map_number);
   }
   string rules_str = this->rules.str();
-  fprintf(stream, "  Rules: %s\n", rules_str.c_str());
-  fprintf(stream, "  Structure: %s, %zu entries\n", (this->flags & Flag::IS_2V2) ? "2v2" : "1v1", this->num_teams);
-  fprintf(stream, "  COM teams: %s\n", (this->flags & Flag::HAS_COM_TEAMS) ? "allowed" : "forbidden");
-  fprintf(stream, "  Shuffle entries: %s\n", (this->flags & Flag::SHUFFLE_ENTRIES) ? "yes" : "no");
-  fprintf(stream, "  Resize on start: %s\n", (this->flags & Flag::RESIZE_ON_START) ? "yes" : "no");
+  ret += phosg::string_printf("  Rules: %s\n", rules_str.c_str());
+  ret += phosg::string_printf("  Structure: %s, %zu entries\n", (this->flags & Flag::IS_2V2) ? "2v2" : "1v1", this->num_teams);
+  ret += phosg::string_printf("  COM teams: %s\n", (this->flags & Flag::HAS_COM_TEAMS) ? "allowed" : "forbidden");
+  ret += phosg::string_printf("  Shuffle entries: %s\n", (this->flags & Flag::SHUFFLE_ENTRIES) ? "yes" : "no");
+  ret += phosg::string_printf("  Resize on start: %s\n", (this->flags & Flag::RESIZE_ON_START) ? "yes" : "no");
   switch (this->current_state) {
     case State::REGISTRATION:
-      fprintf(stream, "  State: REGISTRATION\n");
+      ret += "  State: REGISTRATION\n";
       break;
     case State::IN_PROGRESS:
-      fprintf(stream, "  State: IN_PROGRESS\n");
+      ret += "  State: IN_PROGRESS\n";
       break;
     case State::COMPLETE:
-      fprintf(stream, "  State: COMPLETE\n");
+      ret += "  State: COMPLETE\n";
       break;
     default:
-      fprintf(stream, "  State: UNKNOWN\n");
+      ret += "  State: UNKNOWN\n";
       break;
   }
   if (this->final_match) {
-    fprintf(stream, "  Standings:\n");
-    print_match(this->final_match, 2);
+    ret += "  Standings:\n";
+    add_match(this->final_match, 2);
   }
   if (this->current_state == State::REGISTRATION) {
-    fprintf(stream, "  Teams:\n");
+    ret += "  Teams:\n";
     for (const auto& team : this->teams) {
       string team_str = team->str();
-      fprintf(stream, "    %s\n", team_str.c_str());
+      ret += phosg::string_printf("    %s\n", team_str.c_str());
     }
   } else {
-    fprintf(stream, "  Pending matches:\n");
+    ret += "  Pending matches:\n";
     for (const auto& match : this->pending_matches) {
       string match_str = match->str();
-      fprintf(stream, "    %s\n", match_str.c_str());
+      ret += phosg::string_printf("    %s\n", match_str.c_str());
     }
   }
+
+  phosg::strip_trailing_whitespace(ret);
+  return ret;
 }
 
 TournamentIndex::TournamentIndex(

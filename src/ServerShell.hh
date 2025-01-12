@@ -10,12 +10,6 @@
 
 class ServerShell : public std::enable_shared_from_this<ServerShell> {
 public:
-  class exit_shell : public std::runtime_error {
-  public:
-    exit_shell();
-    ~exit_shell() = default;
-  };
-
   explicit ServerShell(std::shared_ptr<ServerState> state);
   ServerShell(const ServerShell&) = delete;
   ServerShell(ServerShell&&) = delete;
@@ -24,8 +18,6 @@ public:
   ~ServerShell();
 
   std::shared_ptr<ProxyServer::LinkedSession> get_proxy_session(const std::string& name);
-
-  void execute_command(const std::string& command);
 
 protected:
   std::shared_ptr<ServerState> state;

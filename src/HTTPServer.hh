@@ -66,6 +66,9 @@ protected:
 
   std::unordered_map<struct bufferevent*, std::shared_ptr<WebsocketClient>> bev_to_websocket_client;
 
+  static void require_GET(struct evhttp_request* req);
+  static phosg::JSON require_POST(struct evhttp_request* req);
+
   std::shared_ptr<WebsocketClient> enable_websockets(struct evhttp_request* req);
 
   static void dispatch_on_websocket_read(struct bufferevent* bev, void* ctx);

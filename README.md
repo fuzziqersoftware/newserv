@@ -678,19 +678,20 @@ The HTTP server is disabled by default, and you have to explicitly enable it in 
 To enable the HTTP server, add a port number in the HTTPListen list in config.json. The HTTP server will listen on that port.
 
 Currently, all endpoints only provide data (and hence are GET requests); there are no methods to make changes to the server state or take actions. All returned data is JSON-encoded. The HTTP server has the following endpoints:
-* `/y/data/ep3-cards`: Returns the Episode 3 card definitions.
-* `/y/data/ep3-cards-trial`: Returns the Episode 3 Trial Edition card definitions.
-* `/y/data/common-tables`: Returns the parameters for generating common items (ItemPT files). This endpoint returns a lot of data and can be slow!
-* `/y/data/rare-tables`: Returns a list of rare table names.
-* `/y/data/rare-tables/<TABLE-NAME>` (for example, `/y/data/rare-tables/rare-table-v4`): Returns the contents of a rare item table.
-* `/y/data/config`: Returns the server's configuration file.
-* `/y/clients`: Returns information about all connected clients on the game server.
-* `/y/proxy-clients`: Returns information about all connected clients on the proxy server.
-* `/y/lobbies`: Returns information about all lobbies and games.
-* `/y/server`: Returns information about the server.
-* `/y/rare-drops/stream`: WebSocket endpoint that sends messages whenever an announceable rare item is dropped in any game. Announceable rare items are items for which an in-game or server-wide text message is sent announcing the find.
-* `/y/summary`: Returns a summary of the server's state, connected clients, active games, and proxy sessions.
-* `/y/all`: Returns everything. This endpoint can be slow!
+* `GET /y/data/ep3-cards`: Returns the Episode 3 card definitions.
+* `GET /y/data/ep3-cards-trial`: Returns the Episode 3 Trial Edition card definitions.
+* `GET /y/data/common-tables`: Returns the parameters for generating common items (ItemPT files). This endpoint returns a lot of data and can be slow!
+* `GET /y/data/rare-tables`: Returns a list of rare table names.
+* `GET /y/data/rare-tables/<TABLE-NAME>` (for example, `/y/data/rare-tables/rare-table-v4`): Returns the contents of a rare item table.
+* `GET /y/data/config`: Returns the server's configuration file.
+* `GET /y/clients`: Returns information about all connected clients on the game server.
+* `GET /y/proxy-clients`: Returns information about all connected clients on the proxy server.
+* `GET /y/lobbies`: Returns information about all lobbies and games.
+* `GET /y/server`: Returns information about the server.
+* `GET /y/rare-drops/stream`: WebSocket endpoint that sends messages whenever an announceable rare item is dropped in any game. Announceable rare items are items for which an in-game or server-wide text message is sent announcing the find.
+* `GET /y/summary`: Returns a summary of the server's state, connected clients, active games, and proxy sessions.
+* `GET /y/all`: Returns everything. This endpoint can be slow!
+* `POST /y/shell-exec`: Runs a server shell command. Input should be a JSON dict of e.g. `{"command": "announce hello"}`; response will be a JSON dict of `{"result": "<result text>"}` or an HTTP error.
 
 # Non-server features
 

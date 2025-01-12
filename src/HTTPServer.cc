@@ -14,6 +14,7 @@
 #include "Loggers.hh"
 #include "ProxyServer.hh"
 #include "Server.hh"
+#include "ShellCommands.hh"
 
 using namespace std;
 
@@ -1154,6 +1155,25 @@ phosg::JSON HTTPServer::generate_rare_table_json(const std::string& table_name) 
   }
 }
 
+void HTTPServer::require_GET(struct evhttp_request* req) {
+  if (evhttp_request_get_command(req) != EVHTTP_REQ_GET) {
+    throw HTTPServer::http_error(405, "GET method required for this endpoint");
+  }
+}
+
+phosg::JSON HTTPServer::require_POST(struct evhttp_request* req) {
+  if (evhttp_request_get_command(req) != EVHTTP_REQ_POST) {
+    throw HTTPServer::http_error(405, "POST method required for this endpoint");
+  }
+  const evkeyvalq* headers = evhttp_request_get_input_headers(req);
+  const char* content_type = evhttp_find_header(headers, "Content-Type");
+  if (!content_type || strcmp(content_type, "application/json")) {
+    throw HTTPServer::http_error(400, "POST requests must use the application/json content type");
+  }
+  struct evbuffer* in_buf = evhttp_request_get_input_buffer(req);
+  return phosg::JSON::parse(evbuffer_remove_str(in_buf));
+}
+
 void HTTPServer::handle_request(struct evhttp_request* req) {
   shared_ptr<const phosg::JSON> ret;
   uint32_t serialize_options = 0;
@@ -1177,6 +1197,7 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
     }
 
     if (uri == "/") {
+      this->require_GET(req);
       auto endpoints_json = phosg::JSON::list({
           "/y/data/ep3-cards",
           "/y/data/ep3-cards-trial",
@@ -1191,10 +1212,22 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
           "/y/rare-drops/stream",
           "/y/summary",
           "/y/all",
+          "/y/shell-exec",
       });
       ret = make_shared<phosg::JSON>(phosg::JSON::dict({{"endpoints", std::move(endpoints_json)}}));
 
+    } else if (uri == "/y/shell-exec") {
+      auto json = this->require_POST(req);
+      auto command = json.get_string("command");
+      try {
+        ret = make_shared<phosg::JSON>(phosg::JSON::dict(
+            {{"result", phosg::join(ShellCommand::dispatch_str(this->state, command), "\n")}}));
+      } catch (const exception& e) {
+        throw http_error(400, e.what());
+      }
+
     } else if (uri == "/y/rare-drops/stream") {
+      this->require_GET(req);
       auto c = this->enable_websockets(req);
       if (!c) {
         throw http_error(400, "this path requires a websocket connection");
@@ -1206,28 +1239,40 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
       }
 
     } else if (uri == "/y/data/ep3-cards") {
+      this->require_GET(req);
       ret = make_shared<phosg::JSON>(this->generate_ep3_cards_json(false));
     } else if (uri == "/y/data/ep3-cards-trial") {
+      this->require_GET(req);
       ret = make_shared<phosg::JSON>(this->generate_ep3_cards_json(true));
     } else if (uri == "/y/data/common-tables") {
+      this->require_GET(req);
       ret = make_shared<phosg::JSON>(this->generate_common_tables_json());
     } else if (uri == "/y/data/rare-tables") {
+      this->require_GET(req);
       ret = make_shared<phosg::JSON>(this->generate_rare_tables_json());
     } else if (!strncmp(uri.c_str(), "/y/data/rare-tables/", 20)) {
+      this->require_GET(req);
       ret = make_shared<phosg::JSON>(this->generate_rare_table_json(uri.substr(20)));
     } else if (uri == "/y/data/config") {
+      this->require_GET(req);
       ret = call_on_event_thread<shared_ptr<const phosg::JSON>>(this->state->base, [this]() { return this->state->config_json; });
     } else if (uri == "/y/clients") {
+      this->require_GET(req);
       ret = make_shared<phosg::JSON>(this->generate_game_server_clients_json());
     } else if (uri == "/y/proxy-clients") {
+      this->require_GET(req);
       ret = make_shared<phosg::JSON>(this->generate_proxy_server_clients_json());
     } else if (uri == "/y/lobbies") {
+      this->require_GET(req);
       ret = make_shared<phosg::JSON>(this->generate_lobbies_json());
     } else if (uri == "/y/server") {
+      this->require_GET(req);
       ret = make_shared<phosg::JSON>(this->generate_server_info_json());
     } else if (uri == "/y/summary") {
+      this->require_GET(req);
       ret = make_shared<phosg::JSON>(this->generate_summary_json());
     } else if (uri == "/y/all") {
+      this->require_GET(req);
       ret = make_shared<phosg::JSON>(this->generate_all_json());
 
     } else {
@@ -1246,6 +1291,10 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
     this->send_response(req, 500, "text/plain", out_buffer.get());
     server_log.warning("internal server error during http request: %s", e.what());
     return;
+  }
+
+  if (!ret) {
+    throw logic_error("ret was not set after HTTP handler completed");
   }
 
   uint64_t handler_end = phosg::now();

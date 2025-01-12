@@ -8,6 +8,7 @@
 #include <mutex>
 #include <optional>
 #include <stdexcept>
+#include <string>
 
 // Calls a function on the given base's event thread. This function returns
 // when the call has been enqueued, not necessarily after it returns.
@@ -40,3 +41,5 @@ T call_on_event_thread(std::shared_ptr<struct event_base> base, std::function<T(
 
 template <>
 void call_on_event_thread<void>(std::shared_ptr<struct event_base> base, std::function<void()>&& compute);
+
+std::string evbuffer_remove_str(struct evbuffer* buf, ssize_t size = -1);

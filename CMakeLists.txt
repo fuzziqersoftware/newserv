@@ -123,6 +123,7 @@ set(SOURCES
     src/Server.cc
     src/ServerShell.cc
     src/ServerState.cc
+    src/ShellCommands.cc
     src/SignalWatcher.cc
     src/StaticGameData.cc
     src/TeamIndex.cc

@@ -291,8 +291,8 @@ phosg::JSON Account::json() const {
   });
 }
 
-void Account::print(FILE* stream) const {
-  fprintf(stream, "Account: %010" PRIu32 "/%08" PRIX32 "\n", this->account_id, this->account_id);
+string Account::str() const {
+  std::string ret = phosg::string_printf("Account: %010" PRIu32 "/%08" PRIX32 "\n", this->account_id, this->account_id);
 
   if (this->flags) {
     string flags_str = "";
@@ -339,7 +339,7 @@ void Account::print(FILE* stream) const {
     } else if (phosg::ends_with(flags_str, ",")) {
       flags_str.pop_back();
     }
-    fprintf(stream, "  Flags: %08" PRIX32 " (%s)\n", this->flags, flags_str.c_str());
+    ret += phosg::string_printf("  Flags: %08" PRIX32 " (%s)\n", this->flags, flags_str.c_str());
   }
 
   if (this->user_flags) {
@@ -352,53 +352,57 @@ void Account::print(FILE* stream) const {
     } else if (phosg::ends_with(user_flags_str, ",")) {
       user_flags_str.pop_back();
     }
-    fprintf(stream, "  User flags: %08" PRIX32 " (%s)\n", this->user_flags, user_flags_str.c_str());
+    ret += phosg::string_printf("  User flags: %08" PRIX32 " (%s)\n", this->user_flags, user_flags_str.c_str());
   }
 
   if (this->ban_end_time) {
     string time_str = phosg::format_time(this->ban_end_time);
-    fprintf(stream, "  Banned until: %" PRIu64 " (%s)\n", this->ban_end_time, time_str.c_str());
+    ret += phosg::string_printf("  Banned until: %" PRIu64 " (%s)\n", this->ban_end_time, time_str.c_str());
   }
   if (this->ep3_current_meseta || this->ep3_total_meseta_earned) {
-    fprintf(stream, "  Episode 3 meseta: %" PRIu32 " (total earned: %" PRIu32 ")\n", this->ep3_current_meseta, this->ep3_total_meseta_earned);
+    ret += phosg::string_printf("  Episode 3 meseta: %" PRIu32 " (total earned: %" PRIu32 ")\n",
+        this->ep3_current_meseta, this->ep3_total_meseta_earned);
   }
   if (!this->last_player_name.empty()) {
-    fprintf(stream, "  Last player name: \"%s\"\n", this->last_player_name.c_str());
+    ret += phosg::string_printf("  Last player name: \"%s\"\n", this->last_player_name.c_str());
   }
   if (!this->auto_reply_message.empty()) {
-    fprintf(stream, "  Auto reply message: \"%s\"\n", this->auto_reply_message.c_str());
+    ret += phosg::string_printf("  Auto reply message: \"%s\"\n", this->auto_reply_message.c_str());
   }
   if (this->bb_team_id) {
-    fprintf(stream, "  BB team ID: %08" PRIX32 "\n", this->bb_team_id);
+    ret += phosg::string_printf("  BB team ID: %08" PRIX32 "\n", this->bb_team_id);
   }
   if (this->is_temporary) {
-    fprintf(stream, "  Is temporary license: true\n");
+    ret += phosg::string_printf("  Is temporary license: true\n");
   }
 
   for (const auto& it : this->dc_nte_licenses) {
-    fprintf(stream, "  DC NTE license: serial_number=%s access_key=%s\n",
+    ret += phosg::string_printf("  DC NTE license: serial_number=%s access_key=%s\n",
         it.second->serial_number.c_str(), it.second->access_key.c_str());
   }
   for (const auto& it : this->dc_licenses) {
-    fprintf(stream, "  DC license: serial_number=%" PRIX32 " access_key=%s\n",
+    ret += phosg::string_printf("  DC license: serial_number=%" PRIX32 " access_key=%s\n",
         it.second->serial_number, it.second->access_key.c_str());
   }
   for (const auto& it : this->pc_licenses) {
-    fprintf(stream, "  PC license: serial_number=%" PRIX32 " access_key=%s\n",
+    ret += phosg::string_printf("  PC license: serial_number=%" PRIX32 " access_key=%s\n",
         it.second->serial_number, it.second->access_key.c_str());
   }
   for (const auto& it : this->gc_licenses) {
-    fprintf(stream, "  GC license: serial_number=%010" PRIu32 " access_key=%s password=%s\n",
+    ret += phosg::string_printf("  GC license: serial_number=%010" PRIu32 " access_key=%s password=%s\n",
         it.second->serial_number, it.second->access_key.c_str(), it.second->password.c_str());
   }
   for (const auto& it : this->xb_licenses) {
-    fprintf(stream, "  XB license: gamertag=%s user_id=%016" PRIX64 " account_id=%016" PRIX64 "\n",
+    ret += phosg::string_printf("  XB license: gamertag=%s user_id=%016" PRIX64 " account_id=%016" PRIX64 "\n",
         it.second->gamertag.c_str(), it.second->user_id, it.second->account_id);
   }
   for (const auto& it : this->bb_licenses) {
-    fprintf(stream, "  BB license: username=%s password=%s\n",
+    ret += phosg::string_printf("  BB license: username=%s password=%s\n",
         it.second->username.c_str(), it.second->password.c_str());
   }
+
+  phosg::strip_trailing_whitespace(ret);
+  return ret;
 }
 
 void Account::save() const {

@@ -162,7 +162,7 @@ struct Account {
     this->user_flags ^= static_cast<uint32_t>(flag);
   }
 
-  void print(FILE* stream) const;
+  std::string str() const;
 };
 
 struct Login {

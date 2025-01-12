@@ -1763,7 +1763,6 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     }
 
     auto tourn = l->tournament_match->tournament.lock();
-    tourn->print_bracket(stderr);
 
     shared_ptr<Episode3::Tournament::Team> winner_team;
     shared_ptr<Episode3::Tournament::Team> loser_team;
@@ -1785,7 +1784,7 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     meseta_reward = (l->tournament_match->round_num - 1 < round_rewards.size())
         ? round_rewards[l->tournament_match->round_num - 1]
         : round_rewards.back();
-    if (l->tournament_match == tourn->get_final_match()) {
+    if (tourn && (l->tournament_match == tourn->get_final_match())) {
       meseta_reward += s->ep3_final_round_meseta_bonus;
     }
     for (const auto& player : winner_team->players) {
@@ -1803,7 +1802,9 @@ static void on_CA_Ep3(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     }
     send_ep3_tournament_match_result(l, meseta_reward);
 
-    on_tournament_bracket_updated(s, tourn);
+    if (tourn) {
+      on_tournament_bracket_updated(s, tourn);
+    }
     l->ep3_server->tournament_match_result_sent = true;
   }
 }
