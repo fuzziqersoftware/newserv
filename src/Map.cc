@@ -2041,8 +2041,9 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       if ((set_entry->num_children != 0) && (set_entry->num_children != 4)) {
         this->log.warning("POFUILLY_SLIME has an unusual num_children (0x%hX)", set_entry->num_children.load());
       }
-      default_num_children = -1; // Skip adding children (because we do it here)
-      for (size_t z = 0; z < 5; z++) {
+      default_num_children = -1; // Skip adding children later (because we do it here)
+      size_t num_children = set_entry->num_children ? set_entry->num_children.load() : 4;
+      for (size_t z = 0; z < num_children + 1; z++) {
         add(EnemyType::POFUILLY_SLIME, is_rare_v123, false);
       }
       break;
