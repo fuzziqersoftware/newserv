@@ -246,8 +246,6 @@
   // see only the log messages you care about. The log levels are, in decreasing
   // order of verbosity, "DEBUG", "INFO", "WARNING", "ERROR", and "DISABLED".
   "LogLevels": {
-    // AX messages are messages sent to the terminal with the $ax command.
-    "AXMessages": "INFO",
     // Channel exceptions are messages about clients disconnecting unexpectedly,
     // or other unexpected network-level events.
     "ChannelExceptions": "INFO",

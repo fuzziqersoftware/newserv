@@ -3538,7 +3538,7 @@ static void on_06(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
     if (text[1] == command_sentinel) {
       text = text.substr(1);
     } else {
-      on_chat_command(c, text);
+      on_chat_command(c, text, true);
       return;
     }
   }

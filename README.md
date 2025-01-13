@@ -569,9 +569,7 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$sc <data>`: Send a command to yourself.
     * `$ss <data>`: Send a command to the remote server (if in a proxy session) or to the game server.
     * `$sb <data>`: Send a command to yourself, and to the remote server or game server.
-    * `$meseta <amount>` (game server only; Episode 3 only): Add the given amount to your Meseta total.
     * `$auction` (Episode 3 only): Bring up the CARD Auction menu, regardless of how many players are in the game or if you have a VIP card.
-    * `$ep3battledebug` (game server only; Episode 3 only): Enable or disable TCard00_Select. If enabled, the game will enter the debug menu when you start a battle.
 
 * Personal state commands
     * `$arrow <color-id>`: Change your lobby arrow color.
@@ -628,7 +626,6 @@ Some commands only work on the game server and not on the proxy server. The chat
 * Administration commands (game server only)
     * `$ann <message>`: Send an announcement message. The message is sent as temporary on-screen text to all players in all games and lobbies. On BB, the message appears in the scrolling top bar.
     * `$ann!`, `$ann?`, `$ann?!`: Same as `$ann`, but with `?`, omits the sender's name, and with `!`, sends the message as a Simple Mail message instead of on-screen text.
-    * `$ax <message>`: Send a message to the server's terminal. This cannot be used to run server shell commands; it only prints text to stderr.
     * `$silence <identifier>`: Silence a player (remove their ability to chat) or unsilence a player. The identifier may be the player's name or Guild Card number.
     * `$kick <identifier>`: Disconnect a player. The identifier may be the player's name or Guild Card number.
     * `$ban <duration> <identifier>`: Ban a player. The duration should be of the form `10m` (minutes), `10h` (hours), `10d` (days), `10w` (weeks), `10M` (months), or `10y` (years). (Numbers other than 10 may be used, of course.) As with `$kick`, the identifier may be the player's name or Guild Card number.

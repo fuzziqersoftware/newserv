@@ -1214,7 +1214,6 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // 19 = View Battle waiting room
   // 1A = TCard00_Select (debug battle setup menu)
   // 1B = nothing (softlocks at black screen)
-  // TCard00_Select is accessible on newserv with the $ep3battledebug command.
   /* 000A */ uint8_t environment_number;
 
   // This field specifies how many of the camera_zone_maps are used.

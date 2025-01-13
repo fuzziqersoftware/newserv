@@ -1954,7 +1954,7 @@ static HandlerResult C_06(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
         send_chat_message_from_client(ses->server_channel, text.substr(1), private_flags);
         return HandlerResult::Type::SUPPRESS;
       } else {
-        on_chat_command(ses, text);
+        on_chat_command(ses, text, true);
         return HandlerResult::Type::SUPPRESS;
       }
 

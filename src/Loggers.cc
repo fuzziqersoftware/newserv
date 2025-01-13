@@ -4,7 +4,6 @@
 
 using namespace std;
 
-phosg::PrefixedLogger ax_messages_log("[$ax message] ", phosg::LogLevel::USE_DEFAULT);
 phosg::PrefixedLogger channel_exceptions_log("[Channel] ", phosg::LogLevel::USE_DEFAULT);
 phosg::PrefixedLogger client_log("", phosg::LogLevel::USE_DEFAULT);
 phosg::PrefixedLogger command_data_log("[Commands] ", phosg::LogLevel::USE_DEFAULT);
@@ -30,7 +29,6 @@ static void set_log_level_from_json(
 }
 
 void set_log_levels_from_json(const phosg::JSON& json) {
-  set_log_level_from_json(ax_messages_log, json, "AXMessages");
   set_log_level_from_json(channel_exceptions_log, json, "ChannelExceptions");
   set_log_level_from_json(client_log, json, "Clients");
   set_log_level_from_json(command_data_log, json, "CommandData");

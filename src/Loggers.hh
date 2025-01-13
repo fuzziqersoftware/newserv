@@ -3,7 +3,6 @@
 #include <phosg/JSON.hh>
 #include <phosg/Strings.hh>
 
-extern phosg::PrefixedLogger ax_messages_log;
 extern phosg::PrefixedLogger channel_exceptions_log;
 extern phosg::PrefixedLogger client_log;
 extern phosg::PrefixedLogger command_data_log;

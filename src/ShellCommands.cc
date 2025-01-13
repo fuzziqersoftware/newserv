@@ -908,7 +908,7 @@ ShellCommand c_cc(
       }
 
       if (ses.get()) {
-        on_chat_command(ses, args.args);
+        on_chat_command(ses, args.args, false);
       } else {
         shared_ptr<Client> c;
         if (args.session_name.empty()) {
@@ -925,7 +925,7 @@ ShellCommand c_cc(
         }
 
         if (c) {
-          on_chat_command(c, args.args);
+          on_chat_command(c, args.args, false);
         } else {
           throw runtime_error("no client available");
         }
