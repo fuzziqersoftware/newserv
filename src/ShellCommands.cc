@@ -896,9 +896,12 @@ ShellCommand c_cc(
     "cc", "cc COMMAND\n\
     Execute a chat command as if a client had sent it in-game. The command\n\
     should be specified exactly as it would be typed in-game; for example:\n\
-      cc $itemnotifs on\n\
+      cc $itemnotifs rare\n\
     This command cannot send chat messages to other players or to the server\n\
-    (in proxy sessions); it can only execute chat commands.",
+    (in proxy sessions); it can only execute chat commands. Chat commands run\n\
+    via this command are exempt from permission checks, so commands that\n\
+    require cheat mode or debug mode are always available via cc even if the\n\
+    player cannot normamlly use them.",
     true,
     +[](ShellCommand::Args& args) -> std::deque<std::string> {
       shared_ptr<ProxyServer::LinkedSession> ses;
