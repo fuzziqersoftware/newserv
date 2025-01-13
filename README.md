@@ -670,11 +670,13 @@ The remaining subcommands are only available if cheat mode is enabled on the ser
 
 newserv has an optional HTTP server that provides a way to programmatically get data from the server in realtime. This is intended for use with external integrations; for example, a web site could query this API to get the current player count to display on the home page.
 
-The HTTP server is disabled by default, and you have to explicitly enable it in config.json if you want this functionality. If you enable it, make sure that the HTTP port can't be accessed from the public Internet! The API provides a lot of internal data about players and games, and it should only be accessed by programs that you've written or that you trust.
+The HTTP server is disabled by default, and you have to explicitly enable it in config.json if you want this functionality. **If you enable it, make sure that the HTTP port can't be accessed from the public Internet.** The API provides a lot of internal data about players and games, and it should only be accessed by programs that you've written or that you trust.
 
 To enable the HTTP server, add a port number in the HTTPListen list in config.json. The HTTP server will listen on that port.
 
-Currently, all endpoints only provide data (and hence are GET requests); there are no methods to make changes to the server state or take actions. All returned data is JSON-encoded. The HTTP server has the following endpoints:
+All returned data is JSON-encoded, and all request data (for POST requests) must also be JSON-encoded with the `Content-Type: application/json` header.
+
+The HTTP server has the following endpoints:
 * `GET /y/data/ep3-cards`: Returns the Episode 3 card definitions.
 * `GET /y/data/ep3-cards-trial`: Returns the Episode 3 Trial Edition card definitions.
 * `GET /y/data/common-tables`: Returns the parameters for generating common items (ItemPT files). This endpoint returns a lot of data and can be slow!
@@ -685,10 +687,29 @@ Currently, all endpoints only provide data (and hence are GET requests); there a
 * `GET /y/proxy-clients`: Returns information about all connected clients on the proxy server.
 * `GET /y/lobbies`: Returns information about all lobbies and games.
 * `GET /y/server`: Returns information about the server.
-* `GET /y/rare-drops/stream`: WebSocket endpoint that sends messages whenever an announceable rare item is dropped in any game. Announceable rare items are items for which an in-game or server-wide text message is sent announcing the find.
+* `GET /y/all`: Returns the same information as the above four endpoints, but in a single call. This endpoint can be slow!
 * `GET /y/summary`: Returns a summary of the server's state, connected clients, active games, and proxy sessions.
-* `GET /y/all`: Returns everything. This endpoint can be slow!
+* `GET /y/rare-drops/stream`: WebSocket endpoint that sends messages whenever an announceable rare item is dropped in any game. See below.
 * `POST /y/shell-exec`: Runs a server shell command. Input should be a JSON dict of e.g. `{"command": "announce hello"}`; response will be a JSON dict of `{"result": "<result text>"}` or an HTTP error.
+
+### Rare drop stream endpoint
+
+The `/y/rare-drops/stream` endpoint provides a way to implement a drop log in e.g. Discord. For every announceable rare item, a message is sent to all connected clients on this endpoint. (Announceable rare items are items for which an in-game or server-wide text message is sent announcing the find.)
+
+Upon connecting, you'll get the message `{"ServerType": "newserv"}`. After that, when a rare item announcement is sent, you'll get a message like this:
+```
+{
+  "PlayerAccountID", 12345,
+  "PlayerName", "SONIC",
+  "PlayerVersion", "GC_V3",
+  "GameName", "ttf",
+  "GameDropMode", "SERVER_PRIVATE",
+  "ItemData", "03000000 00010000 00000000 (0021002C) 00000000",
+  "ItemDescription", "Monomate x1",
+  "NotifyGame", true,
+  "NotifyServer", false,
+}
+```
 
 # Non-server features
 
