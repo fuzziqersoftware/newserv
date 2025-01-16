@@ -677,19 +677,21 @@ To enable the HTTP server, add a port number in the HTTPListen list in config.js
 All returned data is JSON-encoded, and all request data (for POST requests) must also be JSON-encoded with the `Content-Type: application/json` header.
 
 The HTTP server has the following endpoints:
+* `GET /`: Returns the server's build date and revision.
 * `GET /y/data/ep3-cards`: Returns the Episode 3 card definitions.
 * `GET /y/data/ep3-cards-trial`: Returns the Episode 3 Trial Edition card definitions.
 * `GET /y/data/common-tables`: Returns the parameters for generating common items (ItemPT files). This endpoint returns a lot of data and can be slow!
 * `GET /y/data/rare-tables`: Returns a list of rare table names.
 * `GET /y/data/rare-tables/<TABLE-NAME>` (for example, `/y/data/rare-tables/rare-table-v4`): Returns the contents of a rare item table.
+* `GET /y/data/quests`: Returns metadata about all available quests and quest categories.
 * `GET /y/data/config`: Returns the server's configuration file.
+* `GET /y/accounts`: Returns information about all registered accounts.
 * `GET /y/clients`: Returns information about all connected clients on the game server.
 * `GET /y/proxy-clients`: Returns information about all connected clients on the proxy server.
 * `GET /y/lobbies`: Returns information about all lobbies and games.
 * `GET /y/server`: Returns information about the server.
-* `GET /y/all`: Returns the same information as the above four endpoints, but in a single call. This endpoint can be slow!
 * `GET /y/summary`: Returns a summary of the server's state, connected clients, active games, and proxy sessions.
-* `GET /y/rare-drops/stream`: WebSocket endpoint that sends messages whenever an announceable rare item is dropped in any game. See below.
+* `WS /y/rare-drops/stream`: WebSocket endpoint that sends messages whenever an announceable rare item is dropped in any game. See below.
 * `POST /y/shell-exec`: Runs a server shell command. Input should be a JSON dict of e.g. `{"command": "announce hello"}`; response will be a JSON dict of `{"result": "<result text>"}` or an HTTP error.
 
 ### Rare drop stream endpoint

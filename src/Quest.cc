@@ -397,6 +397,41 @@ Quest::Quest(shared_ptr<const VersionedQuest> initial_version)
   this->add_version(initial_version);
 }
 
+phosg::JSON Quest::json() const {
+  auto versions_json = phosg::JSON::list();
+  for (const auto& [_, vq] : this->versions) {
+    versions_json.emplace_back(phosg::JSON::dict({
+        {"Version", phosg::name_for_enum(vq->version)},
+        {"Language", name_for_language_code(vq->language)},
+        {"ShortDescription", vq->short_description},
+        {"LongDescription", vq->long_description},
+        {"BINFileSize", vq->bin_contents ? vq->bin_contents->size() : phosg::JSON(nullptr)},
+        {"DATFileSize", vq->dat_contents ? vq->dat_contents->size() : phosg::JSON(nullptr)},
+        {"PVRFileSize", vq->pvr_contents ? vq->pvr_contents->size() : phosg::JSON(nullptr)},
+    }));
+  }
+
+  auto battle_rules_json = this->battle_rules ? this->battle_rules->json() : nullptr;
+  auto challenge_template_index_json = (this->challenge_template_index >= 0)
+      ? this->challenge_template_index
+      : phosg::JSON(nullptr);
+  return phosg::JSON::dict({
+      {"Number", this->quest_number},
+      {"CategoryID", this->category_id},
+      {"Episode", name_for_episode(this->episode)},
+      {"AllowStartFromChatCommand", this->allow_start_from_chat_command},
+      {"Joinable", this->joinable},
+      {"LockStatusRegister", (this->lock_status_register >= 0) ? this->lock_status_register : phosg::JSON(nullptr)},
+      {"Name", this->name},
+      {"BattleRules", std::move(battle_rules_json)},
+      {"ChallengeTemplateIndex", std::move(challenge_template_index_json)},
+      {"DescriptionFlag", this->description_flag},
+      {"AvailableExpression", this->available_expression ? this->available_expression->str() : phosg::JSON(nullptr)},
+      {"EnabledExpression", this->available_expression ? this->available_expression->str() : phosg::JSON(nullptr)},
+      {"Versions", std::move(versions_json)},
+  });
+}
+
 uint32_t Quest::versions_key(Version v, uint8_t language) {
   return (static_cast<uint32_t>(v) << 8) | language;
 }
@@ -861,6 +896,34 @@ QuestIndex::QuestIndex(
   for (const auto& it : this->quests_by_number) {
     it.second->get_supermap(-1);
   }
+}
+
+phosg::JSON QuestIndex::json() const {
+  auto categories_json = phosg::JSON::dict();
+  for (const auto& cat : this->category_index->categories) {
+    auto dict = phosg::JSON::dict({
+        {"CategoryID", cat->category_id},
+        {"Flags", cat->enabled_flags},
+        {"DirectoryName", cat->directory_name},
+        {"Name", cat->name},
+        {"Description", cat->description},
+    });
+    categories_json.emplace(cat->name, std::move(dict));
+  }
+
+  auto quests_json = phosg::JSON::list();
+  for (const auto& [_, q] : this->quests_by_number) {
+    quests_json.emplace_back(q->json());
+  }
+
+  return phosg::JSON::dict({
+      {"Directory", this->directory},
+      {"Categories", std::move(categories_json)},
+      {"Quests", std::move(quests_json)},
+  });
+  // std::map<uint32_t, std::shared_ptr<Quest>> quests_by_number;
+  // std::map<std::string, std::shared_ptr<Quest>> quests_by_name;
+  // std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Quest>>> quests_by_category_id_and_number;
 }
 
 shared_ptr<const Quest> QuestIndex::get(uint32_t quest_number) const {

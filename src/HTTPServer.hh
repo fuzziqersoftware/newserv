@@ -100,12 +100,13 @@ protected:
       const std::string& key,
       const std::string* _default = nullptr);
 
-  static phosg::JSON generate_quest_json_st(std::shared_ptr<const Quest> q);
+  static phosg::JSON generate_server_version_st();
   static phosg::JSON generate_client_config_json_st(const Client::Config& config);
   static phosg::JSON generate_account_json_st(std::shared_ptr<const Account> a);
   static phosg::JSON generate_game_client_json_st(std::shared_ptr<const Client> c, std::shared_ptr<const ItemNameIndex> item_name_index);
   static phosg::JSON generate_proxy_client_json_st(std::shared_ptr<const ProxyServer::LinkedSession> ses);
   static phosg::JSON generate_lobby_json_st(std::shared_ptr<const Lobby> l, std::shared_ptr<const ItemNameIndex> item_name_index);
+  phosg::JSON generate_accounts_json() const;
   phosg::JSON generate_game_server_clients_json() const;
   phosg::JSON generate_proxy_server_clients_json() const;
   phosg::JSON generate_server_info_json() const;
@@ -117,4 +118,5 @@ protected:
   phosg::JSON generate_common_tables_json() const;
   phosg::JSON generate_rare_tables_json() const;
   phosg::JSON generate_rare_table_json(const std::string& table_name) const;
+  phosg::JSON generate_quest_list_json(std::shared_ptr<const QuestIndex> q);
 };

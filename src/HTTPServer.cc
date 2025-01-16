@@ -13,6 +13,7 @@
 #include "EventUtils.hh"
 #include "Loggers.hh"
 #include "ProxyServer.hh"
+#include "Revision.hh"
 #include "Server.hh"
 #include "ShellCommands.hh"
 
@@ -441,22 +442,12 @@ void HTTPServer::dispatch_handle_request(struct evhttp_request* req, void* ctx) 
   reinterpret_cast<HTTPServer*>(ctx)->handle_request(req);
 }
 
-phosg::JSON HTTPServer::generate_quest_json_st(shared_ptr<const Quest> q) {
-  if (!q) {
-    return nullptr;
-  }
-  auto battle_rules_json = q->battle_rules ? q->battle_rules->json() : nullptr;
-  auto challenge_template_index_json = (q->challenge_template_index >= 0)
-      ? q->challenge_template_index
-      : phosg::JSON(nullptr);
+phosg::JSON HTTPServer::generate_server_version_st() {
   return phosg::JSON::dict({
-      {"Number", q->quest_number},
-      {"Episode", name_for_episode(q->episode)},
-      {"Joinable", q->joinable},
-      {"LockStatusRegister", (q->lock_status_register >= 0) ? q->lock_status_register : phosg::JSON(nullptr)},
-      {"Name", q->name},
-      {"BattleRules", std::move(battle_rules_json)},
-      {"ChallengeTemplateIndex", std::move(challenge_template_index_json)},
+      {"ServerType", "newserv"},
+      {"BuildTime", BUILD_TIMESTAMP},
+      {"BuildTimeStr", phosg::format_time(BUILD_TIMESTAMP)},
+      {"Revision", GIT_REVISION_HASH},
   });
 }
 
@@ -575,7 +566,7 @@ phosg::JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c,
   if (p) {
     if (!is_ep3(c->version())) {
       if (c->version() != Version::DC_NTE) {
-        ret.emplace("InventoryLanguage", p->inventory.language);
+        ret.emplace("InventoryLanguage", name_for_language_code(p->inventory.language));
         ret.emplace("NumHPMaterialsUsed", p->get_material_usage(PSOBBCharacterFile::MaterialType::HP));
         ret.emplace("NumTPMaterialsUsed", p->get_material_usage(PSOBBCharacterFile::MaterialType::TP));
         if (!is_v1_or_v2(c->version())) {
@@ -861,7 +852,7 @@ phosg::JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared
         }
       }
       ret.emplace("FloorItems", std::move(floor_items_json));
-      ret.emplace("Quest", HTTPServer::generate_quest_json_st(l->quest));
+      ret.emplace("Quest", l->quest ? l->quest->json() : phosg::JSON(nullptr));
 
     } else {
       ret.emplace("BattleInProgress", l->check_flag(Lobby::Flag::BATTLE_IN_PROGRESS));
@@ -964,6 +955,16 @@ phosg::JSON HTTPServer::generate_lobby_json_st(shared_ptr<const Lobby> l, shared
     ret.emplace("Block", l->block);
   }
   return ret;
+}
+
+phosg::JSON HTTPServer::generate_accounts_json() const {
+  return call_on_event_thread<phosg::JSON>(this->state->base, [&]() {
+    auto res = phosg::JSON::list();
+    for (const auto& it : this->state->account_index->all()) {
+      res.emplace_back(it->json());
+    }
+    return res;
+  });
 }
 
 phosg::JSON HTTPServer::generate_game_server_clients_json() const {
@@ -1083,7 +1084,7 @@ phosg::JSON HTTPServer::generate_summary_json() const {
           game_json.emplace("SectionID", name_for_section_id(l->effective_section_id()));
           game_json.emplace("Mode", name_for_mode(l->mode));
           game_json.emplace("Difficulty", name_for_difficulty(l->difficulty));
-          game_json.emplace("Quest", this->generate_quest_json_st(l->quest));
+          game_json.emplace("Quest", l->quest ? l->quest->json() : phosg::JSON(nullptr));
         }
         games_json.emplace_back(std::move(game_json));
       }
@@ -1155,6 +1156,12 @@ phosg::JSON HTTPServer::generate_rare_table_json(const std::string& table_name) 
   }
 }
 
+phosg::JSON HTTPServer::generate_quest_list_json(std::shared_ptr<const QuestIndex> quest_index) {
+  return call_on_event_thread<phosg::JSON>(this->state->base, [&]() {
+    return quest_index->json();
+  });
+}
+
 void HTTPServer::require_GET(struct evhttp_request* req) {
   if (evhttp_request_get_command(req) != EVHTTP_REQ_GET) {
     throw HTTPServer::http_error(405, "GET method required for this endpoint");
@@ -1198,23 +1205,7 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
 
     if (uri == "/") {
       this->require_GET(req);
-      auto endpoints_json = phosg::JSON::list({
-          "/y/data/ep3-cards",
-          "/y/data/ep3-cards-trial",
-          "/y/data/common-tables",
-          "/y/data/rare-tables",
-          "/y/data/rare-tables/<TABLE-NAME>",
-          "/y/data/config",
-          "/y/clients",
-          "/y/proxy-clients",
-          "/y/lobbies",
-          "/y/server",
-          "/y/rare-drops/stream",
-          "/y/summary",
-          "/y/all",
-          "/y/shell-exec",
-      });
-      ret = make_shared<phosg::JSON>(phosg::JSON::dict({{"endpoints", std::move(endpoints_json)}}));
+      ret = make_shared<phosg::JSON>(this->generate_server_version_st());
 
     } else if (uri == "/y/shell-exec") {
       auto json = this->require_POST(req);
@@ -1233,7 +1224,7 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
         throw http_error(400, "this path requires a websocket connection");
       } else {
         this->rare_drop_subscribers.emplace(c);
-        auto version_message = phosg::JSON::dict({{"ServerType", "newserv"}});
+        auto version_message = this->generate_server_version_st();
         this->send_websocket_message(c, version_message.serialize());
         return;
       }
@@ -1253,9 +1244,15 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
     } else if (!strncmp(uri.c_str(), "/y/data/rare-tables/", 20)) {
       this->require_GET(req);
       ret = make_shared<phosg::JSON>(this->generate_rare_table_json(uri.substr(20)));
+    } else if (uri == "/y/data/quests") {
+      this->require_GET(req);
+      ret = make_shared<phosg::JSON>(this->generate_quest_list_json(this->state->quest_index(Version::GC_V3)));
     } else if (uri == "/y/data/config") {
       this->require_GET(req);
       ret = call_on_event_thread<shared_ptr<const phosg::JSON>>(this->state->base, [this]() { return this->state->config_json; });
+    } else if (uri == "/y/accounts") {
+      this->require_GET(req);
+      ret = make_shared<phosg::JSON>(this->generate_accounts_json());
     } else if (uri == "/y/clients") {
       this->require_GET(req);
       ret = make_shared<phosg::JSON>(this->generate_game_server_clients_json());
@@ -1271,9 +1268,6 @@ void HTTPServer::handle_request(struct evhttp_request* req) {
     } else if (uri == "/y/summary") {
       this->require_GET(req);
       ret = make_shared<phosg::JSON>(this->generate_summary_json());
-    } else if (uri == "/y/all") {
-      this->require_GET(req);
-      ret = make_shared<phosg::JSON>(this->generate_all_json());
 
     } else {
       throw http_error(404, "unknown action");

@@ -113,24 +113,7 @@ struct VersionedQuest {
   std::string encode_qst() const;
 };
 
-class Quest {
-public:
-  Quest() = delete;
-  explicit Quest(std::shared_ptr<const VersionedQuest> initial_version);
-  Quest(const Quest&) = default;
-  Quest(Quest&&) = default;
-  Quest& operator=(const Quest&) = default;
-  Quest& operator=(Quest&&) = default;
-
-  std::shared_ptr<const SuperMap> get_supermap(int64_t random_seed) const;
-
-  void add_version(std::shared_ptr<const VersionedQuest> vq);
-  bool has_version(Version v, uint8_t language) const;
-  bool has_version_any_language(Version v) const;
-  std::shared_ptr<const VersionedQuest> version(Version v, uint8_t language) const;
-
-  static uint32_t versions_key(Version v, uint8_t language);
-
+struct Quest {
   uint32_t quest_number;
   uint32_t category_id;
   Episode episode;
@@ -145,6 +128,24 @@ public:
   std::shared_ptr<const IntegralExpression> available_expression;
   std::shared_ptr<const IntegralExpression> enabled_expression;
   std::map<uint32_t, std::shared_ptr<const VersionedQuest>> versions;
+
+  Quest() = delete;
+  explicit Quest(std::shared_ptr<const VersionedQuest> initial_version);
+  Quest(const Quest&) = default;
+  Quest(Quest&&) = default;
+  Quest& operator=(const Quest&) = default;
+  Quest& operator=(Quest&&) = default;
+
+  phosg::JSON json() const;
+
+  std::shared_ptr<const SuperMap> get_supermap(int64_t random_seed) const;
+
+  void add_version(std::shared_ptr<const VersionedQuest> vq);
+  bool has_version(Version v, uint8_t language) const;
+  bool has_version_any_language(Version v) const;
+  std::shared_ptr<const VersionedQuest> version(Version v, uint8_t language) const;
+
+  static uint32_t versions_key(Version v, uint8_t language);
 };
 
 struct QuestIndex {
@@ -163,6 +164,7 @@ struct QuestIndex {
   std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Quest>>> quests_by_category_id_and_number;
 
   QuestIndex(const std::string& directory, std::shared_ptr<const QuestCategoryIndex> category_index, bool is_ep3);
+  phosg::JSON json() const;
 
   std::shared_ptr<const Quest> get(uint32_t quest_number) const;
   std::shared_ptr<const Quest> get(const std::string& name) const;
