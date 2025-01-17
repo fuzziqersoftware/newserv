@@ -435,6 +435,127 @@ public:
     }
   }
 
+  uint32_t find_be_to_le_data_match(
+      shared_ptr<const ResourceDASM::MemoryContext> dest_mem,
+      uint32_t src_addr,
+      uint32_t src_size) const {
+    if (src_size == 0) {
+      src_size = 4;
+    }
+
+    pair<uint32_t, uint32_t> src_section = make_pair(0, 0);
+    for (const auto& sec : this->src_mem->allocated_blocks()) {
+      if (src_addr >= sec.first && src_addr + src_size <= sec.first + sec.second) {
+        src_section = sec;
+        break;
+      }
+    }
+    if (!src_section.second) {
+      throw runtime_error("source address not within any section");
+    }
+
+    size_t src_offset = src_addr - src_section.first;
+    size_t src_bytes_available_before = src_offset;
+    size_t src_bytes_available_after = src_section.second - src_offset - 4;
+
+    size_t match_bytes_before = 0;
+    size_t match_bytes_after = 0;
+    while (match_bytes_before + match_bytes_after + 4 < 0x100) {
+      size_t num_matches = 0;
+      size_t last_match_address = 0;
+      size_t match_length = match_bytes_before + match_bytes_after + 4;
+      uint32_t src_addr = src_section.first + src_offset - match_bytes_before;
+      phosg::StringReader src_r = this->src_mem->reader(src_addr, match_length);
+      for (const auto& dest_section : dest_mem->allocated_blocks()) {
+        for (size_t dest_match_offset = 0;
+             dest_match_offset + match_length < dest_section.second;
+             dest_match_offset += 4) {
+          src_r.go(0);
+          phosg::StringReader dest_r = dest_mem->reader(dest_section.first + dest_match_offset, match_length);
+          size_t z;
+          for (z = 0; z < match_length; z += 4) {
+            uint32_t src_v = src_r.get_u32b();
+            uint32_t dest_v = dest_r.get_u32l();
+            bool src_is_addr = ((src_v & 0xFE000003) == 0x80000000);
+            bool dest_is_addr = ((dest_v >= 0x00010000) && (dest_v <= 0x00800000));
+            if (src_is_addr != dest_is_addr) {
+              break;
+            } else if (src_v != dest_v) {
+              break;
+            }
+          }
+          if (z == match_length) {
+            num_matches++;
+            last_match_address = dest_section.first + dest_match_offset + match_bytes_before;
+          }
+        }
+      }
+      this->log.info("... For match length %zX, %zu matches found", match_length, num_matches);
+      if (num_matches == 1) {
+        return last_match_address;
+      } else if (num_matches == 0) {
+        throw runtime_error("did not find exactly one match");
+      }
+      bool can_expand_backward = (src_bytes_available_before >= match_bytes_before + 4);
+      bool can_expand_forward = (src_bytes_available_after >= match_bytes_after + 4);
+      if (!can_expand_backward && !can_expand_forward) {
+        throw runtime_error("no further expansion is allowed");
+      }
+      if (can_expand_backward) {
+        match_bytes_before += 4;
+      }
+      if (can_expand_forward) {
+        match_bytes_after += 4;
+      }
+    }
+    throw runtime_error("scan field too long; too many matches");
+  }
+
+  void find_all_be_to_le_data_matches(uint32_t src_addr, uint32_t src_size) const {
+    if (!this->src_mem) {
+      throw runtime_error("no source file selected");
+    }
+
+    map<string, uint32_t> results;
+    for (const auto& it : this->mems) {
+      if (it.second == this->src_mem) {
+        log.info("(%s) %08" PRIX32 " (from source)", it.first.c_str(), src_addr);
+        results.emplace(it.first, src_addr);
+
+      } else {
+        uint32_t ret = 0;
+        try {
+          ret = this->find_be_to_le_data_match(it.second, src_addr, src_size);
+          log.info("(%s) %08" PRIX32, it.first.c_str(), ret);
+        } catch (const exception& e) {
+          log.error("(%s) failed: %s", it.first.c_str(), e.what());
+        }
+
+        if (ret == 0) {
+          log.error("(%s) no match found", it.first.c_str());
+        } else {
+          results.emplace(it.first, ret);
+        }
+      }
+    }
+    for (const auto& it : results) {
+      fprintf(stdout, "%s => %08" PRIX32 "\n", it.first.c_str(), it.second);
+    }
+  }
+
+  void find_data(const std::string& data) const {
+    for (const auto& [name, mem] : this->mems) {
+      for (const auto& [sec_addr, sec_size] : mem->allocated_blocks()) {
+        uint32_t last_addr = sec_addr + sec_size - data.size();
+        for (uint32_t addr = sec_addr; addr < last_addr; addr++) {
+          if (!mem->memcmp(addr, data.data(), data.size())) {
+            fprintf(stderr, "%s => %08" PRIX32 "\n", name.c_str(), addr);
+          }
+        }
+      }
+    }
+  }
+
   void handle_command(const string& command) {
     auto tokens = phosg::split(command, ' ');
     if (tokens.empty()) {
@@ -444,8 +565,14 @@ public:
 
     if (tokens[0] == "use") {
       this->set_source_file(tokens.at(1));
+    } else if (tokens[0] == "find") {
+      this->find_data(phosg::parse_data_string(tokens.at(1)));
     } else if (tokens[0] == "match") {
       this->find_all_matches(
+          stoul(tokens.at(1), nullptr, 16),
+          tokens.size() >= 3 ? stoul(tokens[2], nullptr, 16) : 0);
+    } else if (tokens[0] == "match-be-le") {
+      this->find_all_be_to_le_data_matches(
           stoul(tokens.at(1), nullptr, 16),
           tokens.size() >= 3 ? stoul(tokens[2], nullptr, 16) : 0);
     } else if (tokens[0] == "find-ppc-globals") {

@@ -9,69 +9,58 @@ reloc0:
   .offsetof start
 start:
   .include  WriteCodeBlocksGC
-  # region @ 8000DFA0 (64 bytes)
-  .data     0x8000DFA0  # address
-  .data     0x00000040  # size
-  .data     0xC3C2C200  # 8000DFA0 => lfs       f30, [r2 - 0x3E00]
-  .data     0xEFDE0072  # 8000DFA4 => fmuls     f30, f30, f1
-  .data     0x4E800020  # 8000DFA8 => blr
-  .data     0xC042C200  # 8000DFAC => lfs       f2, [r2 - 0x3E00]
-  .data     0xC01E001C  # 8000DFB0 => lfs       f0, [r30 + 0x001C]
-  .data     0xEC0000B2  # 8000DFB4 => fmuls     f0, f0, f2
-  .data     0x4E800020  # 8000DFB8 => blr
-  .data     0xC382C200  # 8000DFBC => lfs       f28, [r2 - 0x3E00]
-  .data     0xEF9C00B2  # 8000DFC0 => fmuls     f28, f28, f2
-  .data     0x4E800020  # 8000DFC4 => blr
-  .data     0xC002C200  # 8000DFC8 => lfs       f0, [r2 - 0x3E00]
-  .data     0xC023000C  # 8000DFCC => lfs       f1, [r3 + 0x000C]
-  .data     0xEC000072  # 8000DFD0 => fmuls     f0, f0, f1
-  .data     0xD003000C  # 8000DFD4 => stfs      [r3 + 0x000C], f0
-  .data     0x3C60804D  # 8000DFD8 => lis       r3, 0x804D
-  .data     0x4E800020  # 8000DFDC => blr
-  # region @ 80100A60 (4 bytes)
-  .data     0x80100A60  # address
-  .data     0x00000004  # size
-  .data     0x4BF0D541  # 80100A60 => bl        -0x000F2AC0 /* 8000DFA0 */
-  # region @ 801571DC (4 bytes)
-  .data     0x801571DC  # address
-  .data     0x00000004  # size
-  .data     0x4BEB6DD1  # 801571DC => bl        -0x00149230 /* 8000DFAC */
-  # region @ 801A2164 (4 bytes)
-  .data     0x801A2164  # address
-  .data     0x00000004  # size
-  .data     0x4BE6BE59  # 801A2164 => bl        -0x001941A8 /* 8000DFBC */
-  # region @ 801A2364 (4 bytes)
-  .data     0x801A2364  # address
-  .data     0x00000004  # size
-  .data     0x4BE6BC3D  # 801A2364 => bl        -0x001943C4 /* 8000DFA0 */
-  # region @ 80206728 (4 bytes)
-  .data     0x80206728  # address
-  .data     0x00000004  # size
-  .data     0x4BE078A1  # 80206728 => bl        -0x001F8760 /* 8000DFC8 */
-  # region @ 80206ECC (4 bytes)
-  .data     0x80206ECC  # address
-  .data     0x00000004  # size
-  .data     0x4BE070FD  # 80206ECC => bl        -0x001F8F04 /* 8000DFC8 */
-  # region @ 805D94F0 (4 bytes)
-  .data     0x805D94F0  # address
-  .data     0x00000004  # size
-  .data     0x47AFC800  # 805D94F0 => .invalid  sc
-  # region @ 805DA39C (4 bytes)
-  .data     0x805DA39C  # address
-  .data     0x00000004  # size
-  .data     0x47742400  # 805DA39C => .invalid  sc
-  # region @ 805DA9C4 (4 bytes)
-  .data     0x805DA9C4  # address
-  .data     0x00000004  # size
-  .data     0x491C4000  # 805DA9C4 => b         +0x011C4000 /* 8179E9C4 */
-  # region @ 805DB850 (4 bytes)
-  .data     0x805DB850  # address
-  .data     0x00000004  # size
-  .data     0x47AFC800  # 805DB850 => .invalid  sc
-  # region @ 805DBDE0 (4 bytes)
-  .data     0x805DBDE0  # address
-  .data     0x00000004  # size
-  .data     0x44AF0000  # 805DBDE0 => .invalid  sc
-  # end sentinel
-  .data     0x00000000  # address
-  .data     0x00000000  # size
+  .binary   804DD2880000000443C80000
+  .binary   804DD2A00000000443FA0000
+  .binary   804DD2B80000000443FA0000
+  .binary   804DD2D00000000443C80000
+  .binary   805D94F00000000447AFC800
+  .binary   805DA39C0000000447EF4200
+  .binary   805DA9C400000004491C4000
+  .binary   805DAA800000000443C80000
+  .binary   805DABD00000000444480000
+  .binary   805DACA80000000444480000
+  .binary   805DB1BC000000084448000044160000
+  .binary   805DB2E00000000444160000
+  .binary   805DB4100000000444480000
+  .binary   805DB4300000000444480000
+  .binary   805DB4500000000444480000
+  .binary   805DB5D00000000444160000
+  .binary   805DB6140000000444160000
+  .binary   805DB6240000000444160000
+  .binary   805DB6340000000444160000
+  .binary   805DB6440000000444160000
+  .binary   805DB69C0000000443C80000
+  .binary   805DB6F00000000444160000
+  .binary   805DB7100000000444160000
+  .binary   805DB72C0000000444160000
+  .binary   805DB74C0000000444160000
+  .binary   805DB7700000000444160000
+  .binary   805DB7940000000444160000
+  .binary   805DB8500000000447AFC800
+  .binary   805DBAB80000000444160000
+  .binary   805DBAD00000000443FA0000
+  .binary   805DBC800000000444480000
+  .binary   805DBCDC0000000444160000
+  .binary   805DBD000000000444160000
+  .binary   805DBD080000000443FA0000
+  .binary   805DBD3C0000000443C80000
+  .binary   805DBD6C0000000444160000
+  .binary   805DBDB40000000444480000
+  .binary   805DBDE00000000444480000
+  .binary   805DBE000000000444160000
+  .binary   805DBE5C0000000444160000
+  .binary   805DBE700000000444160000
+  .binary   805DBE7C00000004442F0000
+  .binary   805DBE900000000444160000
+  .binary   805DBED00000000443FA0000
+  .binary   805DBFA00000000443FA0000
+  .binary   805DBFA80000000443FA0000
+  .binary   805DBFD40000000444160000
+  .binary   805DC00C0000000444160000
+  .binary   805DC0400000000444228000
+  .binary   805DC0600000000444480000
+  .binary   805DC2D00000000444480000
+  .binary   805DC5640000000448742400
+  .binary   805DDD300000000443FA0000
+  .binary   805DEF200000000443FA0000
+  .binary   0000000000000000
