@@ -664,7 +664,7 @@ ShellCommand c_announce(
     Send an announcement message to all players.",
     true,
     +[](ShellCommand::Args& args) -> std::deque<std::string> {
-      send_text_message(args.s, args.args);
+      send_text_or_scrolling_message(args.s, args.args, args.args);
       return {};
     });
 ShellCommand c_announce_mail(
