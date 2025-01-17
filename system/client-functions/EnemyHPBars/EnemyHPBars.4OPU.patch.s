@@ -22,13 +22,13 @@ start:
   .data     0x0054ACCC
   .data     0x00000004
   .data     0x42960000
-  .data     0x0054ACD8
+  .data     0x0054ACFC
   .data     0x00000004
   .data     0x42960000
-  .data     0x0054ACE4
+  .data     0x0054AD2C
   .data     0x00000004
   .data     0x42960000
-  .data     0x0054ACF0
+  .data     0x0054AD5C
   .data     0x00000004
   .data     0x42960000
   .data     0x0054AD8C

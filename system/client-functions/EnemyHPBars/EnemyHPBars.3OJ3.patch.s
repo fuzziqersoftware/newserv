@@ -71,6 +71,12 @@ start:
   .data     0x804CE5C0  # address
   .data     0x00000004  # size
   .data     0x42960000  # 804CE5C0 => bc        20, 22, +0x00000000 /* 804CE5C0 */
+  .data     0x804CE5F0
+  .data     0x00000004
+  .data     0x42960000
+  .data     0x804CE620
+  .data     0x00000004
+  .data     0x42960000
   # region @ 804CE650 (4 bytes)
   .data     0x804CE650  # address
   .data     0x00000004  # size
