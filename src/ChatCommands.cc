@@ -307,6 +307,12 @@ ChatCommandDefinition cc_ban(
       if (target->login->account->check_flag(Account::Flag::BAN_USER)) {
         throw precondition_failed("$C6You do not have\nsufficient privileges.");
       }
+      if (a.c == target) {
+        // This shouldn't be possible because you need BAN_USER to get here,
+        // but the target can't have BAN_USER if we get here, so if a.c and
+        // target are the same, one of the preceding conditions must be false.
+        throw logic_error("client attempts to ban themself");
+      }
 
       uint64_t usecs = stoull(a.text, nullptr, 0) * 1000000;
 
@@ -330,8 +336,8 @@ ChatCommandDefinition cc_ban(
       target->login->account->ban_end_time = phosg::now() + usecs;
       target->login->account->save();
       send_message_box(target, "$C6You have been banned.");
-      target->should_disconnect = true;
       string target_name = name_for_client(target);
+      s->game_server->disconnect_client(target);
       send_text_message_printf(a.c, "$C6%s banned", target_name.c_str());
     },
     unavailable_on_proxy_server);
@@ -1134,10 +1140,16 @@ ChatCommandDefinition cc_kick(
       if (target->login->account->check_flag(Account::Flag::KICK_USER)) {
         throw precondition_failed("$C6You do not have\nsufficient privileges.");
       }
+      if (a.c == target) {
+        // This shouldn't be possible because you need KICK_USER to get here,
+        // but the target can't have KICK_USER if we get here, so if a.c and
+        // target are the same, one of the preceding conditions must be false.
+        throw logic_error("client attempts to kick themself off");
+      }
 
       send_message_box(target, "$C6You have been kicked off the server.");
-      target->should_disconnect = true;
       string target_name = name_for_client(target);
+      s->game_server->disconnect_client(target);
       send_text_message_printf(a.c, "$C6%s kicked off", target_name.c_str());
     },
     unavailable_on_proxy_server);

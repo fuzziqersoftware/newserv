@@ -655,7 +655,7 @@ ShellCommand c_kick(
     +[](ShellCommand::Args& args) -> std::deque<std::string> {
       auto target = args.s->find_client(&args.args);
       send_message_box(target, "$C6You have been kicked off the server.");
-      target->should_disconnect = true;
+      args.s->game_server->disconnect_client(target);
       return {phosg::string_printf("Client C-%" PRIX64 " disconnected from server", target->id)};
     });
 
