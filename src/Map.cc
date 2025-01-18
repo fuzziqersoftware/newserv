@@ -1919,6 +1919,10 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
     entities.enemy_for_floor_section_and_wave_number.emplace(k, ene);
   };
 
+  // The following logic was originally based on the public version of
+  // Tethealla, created by Sodaboy. I've augmented it with findings from my own
+  // research.
+
   EnemyType child_type = EnemyType::UNKNOWN;
   ssize_t default_num_children = 0;
   switch (set_entry->base_type) {
