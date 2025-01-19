@@ -1,65 +1,77 @@
 .meta name="Draw Distance"
 .meta description="Extends the draw\ndistance of many\nobjects"
 # Original code by Ralf @ GC-Forever and Aleron Ives
-# https://psopalace.sylverant.net/downloads_gamecube.html
+# https://www.gc-forever.com/forums/viewtopic.php?t=2050
+# https://www.gc-forever.com/forums/viewtopic.php?t=2049
 
 entry_ptr:
 reloc0:
   .offsetof start
 start:
   .include  WriteCodeBlocksGC
-  .binary   804DB6B00000000443C80000
-  .binary   804DB6C80000000443FA0000
-  .binary   804DB6E00000000443FA0000
-  .binary   804DB6F80000000443C80000
-  .binary   805D29A80000000447AFC800
-  .binary   805D38540000000447EF4200
-  .binary   805D3E7C00000004491C4000
-  .binary   805D3F380000000443C80000
-  .binary   805D40880000000444480000
-  .binary   805D41600000000444480000
-  .binary   805D4674000000084448000044160000
-  .binary   805D47980000000444160000
-  .binary   805D48C80000000444480000
-  .binary   805D48E80000000444480000
-  .binary   805D49080000000444480000
-  .binary   805D4A880000000444160000
-  .binary   805D4ACC0000000444160000
-  .binary   805D4ADC0000000444160000
-  .binary   805D4AEC0000000444160000
-  .binary   805D4AFC0000000444160000
-  .binary   805D4B540000000443C80000
-  .binary   805D4BA80000000444160000
-  .binary   805D4BC80000000444160000
-  .binary   805D4BE40000000444160000
-  .binary   805D4C040000000444160000
-  .binary   805D4C280000000444160000
-  .binary   805D4C4C0000000444160000
-  .binary   805D4D080000000447AFC800
-  .binary   805D4F700000000444160000
-  .binary   805D4F880000000443FA0000
-  .binary   805D51380000000444480000
-  .binary   805D51940000000444160000
-  .binary   805D51B80000000444160000
-  .binary   805D51C00000000443FA0000
-  .binary   805D51F40000000443C80000
-  .binary   805D52240000000444160000
-  .binary   805D526C0000000444480000
-  .binary   805D52980000000444480000
-  .binary   805D52B80000000444160000
-  .binary   805D53140000000444160000
-  .binary   805D53280000000444160000
-  .binary   805D533400000004442F0000
-  .binary   805D53480000000444160000
-  .binary   805D53880000000443FA0000
-  .binary   805D54580000000443FA0000
-  .binary   805D54600000000443FA0000
-  .binary   805D548C0000000444160000
-  .binary   805D54C40000000444160000
-  .binary   805D54F80000000444228000
-  .binary   805D55180000000444480000
-  .binary   805D57880000000444480000
-  .binary   805D5A1C0000000448742400
-  .binary   805D71E80000000443FA0000
-  .binary   805D83D80000000443FA0000
-  .binary   0000000000000000
+  # region @ 8000DFA0 (64 bytes)
+  .data     0x8000DFA0  # address
+  .data     0x00000040  # size
+  .data     0xC3C2C1F8  # 8000DFA0 => lfs       f30, [r2 - 0x3E08]
+  .data     0xEFDE0072  # 8000DFA4 => fmuls     f30, f30, f1
+  .data     0x4E800020  # 8000DFA8 => blr
+  .data     0xC042C1F8  # 8000DFAC => lfs       f2, [r2 - 0x3E08]
+  .data     0xC01E001C  # 8000DFB0 => lfs       f0, [r30 + 0x001C]
+  .data     0xEC0000B2  # 8000DFB4 => fmuls     f0, f0, f2
+  .data     0x4E800020  # 8000DFB8 => blr
+  .data     0xC382C1F8  # 8000DFBC => lfs       f28, [r2 - 0x3E08]
+  .data     0xEF9C00B2  # 8000DFC0 => fmuls     f28, f28, f2
+  .data     0x4E800020  # 8000DFC4 => blr
+  .data     0xC002C1F8  # 8000DFC8 => lfs       f0, [r2 - 0x3E08]
+  .data     0xC023000C  # 8000DFCC => lfs       f1, [r3 + 0x000C]
+  .data     0xEC000072  # 8000DFD0 => fmuls     f0, f0, f1
+  .data     0xD003000C  # 8000DFD4 => stfs      [r3 + 0x000C], f0
+  .data     0x3C60804C  # 8000DFD8 => lis       r3, 0x804C
+  .data     0x4E800020  # 8000DFDC => blr
+  # region @ 80100AD0 (4 bytes)
+  .data     0x80100AD0  # address
+  .data     0x00000004  # size
+  .data     0x4BF0D4D1  # 80100AD0 => bl        -0x000F2B30 /* 8000DFA0 */
+  # region @ 80156AD0 (4 bytes)
+  .data     0x80156AD0  # address
+  .data     0x00000004  # size
+  .data     0x4BEB74DD  # 80156AD0 => bl        -0x00148B24 /* 8000DFAC */
+  # region @ 801A203C (4 bytes)
+  .data     0x801A203C  # address
+  .data     0x00000004  # size
+  .data     0x4BE6BF81  # 801A203C => bl        -0x00194080 /* 8000DFBC */
+  # region @ 801A223C (4 bytes)
+  .data     0x801A223C  # address
+  .data     0x00000004  # size
+  .data     0x4BE6BD65  # 801A223C => bl        -0x0019429C /* 8000DFA0 */
+  # region @ 802058B8 (4 bytes)
+  .data     0x802058B8  # address
+  .data     0x00000004  # size
+  .data     0x4BE08711  # 802058B8 => bl        -0x001F78F0 /* 8000DFC8 */
+  # region @ 8020605C (4 bytes)
+  .data     0x8020605C  # address
+  .data     0x00000004  # size
+  .data     0x4BE07F6D  # 8020605C => bl        -0x001F8094 /* 8000DFC8 */
+  # region @ 805D29A8 (4 bytes)
+  .data     0x805D29A8  # address
+  .data     0x00000004  # size
+  .data     0x47AFC800  # 805D29A8 => .invalid  sc
+  # region @ 805D3854 (4 bytes)
+  .data     0x805D3854  # address
+  .data     0x00000004  # size
+  .data     0x47742400  # 805D3854 => .invalid  sc
+  # region @ 805D3E7C (4 bytes)
+  .data     0x805D3E7C  # address
+  .data     0x00000004  # size
+  .data     0x491C4000  # 805D3E7C => b         +0x011C4000 /* 81797E7C */
+  # region @ 805D4D08 (4 bytes)
+  .data     0x805D4D08  # address
+  .data     0x00000004  # size
+  .data     0x47AFC800  # 805D4D08 => .invalid  sc
+  # region @ 805D5298 (4 bytes)
+  .data     0x805D5298  # address
+  .data     0x00000004  # size
+  .data     0x44AF0000  # 805D5298 => .invalid  sc
+  # end sentinel
+  .data     0x00000000  # address
+  .data     0x00000000  # size

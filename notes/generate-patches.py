@@ -5,17 +5,7 @@ import sys
 from dataclasses import dataclass
 
 
-version_tokens = ("JP12", "JP13", "JP14", "JP15", "US10", "US11", "US12", "EU")
-version_to_specific_version = {
-    "JP12": "3OJ2",
-    "JP13": "3OJ3",
-    "JP14": "3OJ4",
-    "JP15": "3OJ5",
-    "US10": "3OE0",
-    "US11": "3OE1",
-    "US12": "3OE2",
-    "EU": "3OP0",
-}
+version_tokens = ("3OJ2", "3OJ3", "3OJ4", "3OJ5", "3OE0", "3OE1", "3OE2", "3OP0")
 
 
 @dataclass
@@ -60,7 +50,7 @@ def write_patches_for_code(
         if write_regions:
             filename = os.path.join(
                 out_dir,
-                f'{name.replace(" ", "")}.{version_to_specific_version[v]}.patch.s',
+                f'{name.replace(" ", "")}.{v}.patch.s',
             )
             with open(filename, "wt") as f:
                 if long_name is not None:
@@ -144,7 +134,7 @@ def main():
                     | (data[z + 2] << 8)
                     | (data[z + 3] << 0)
                 )
-        elif line.startswith("JP12------------"):
+        elif line.startswith("3OJ2------------"):
             reading_code = True
         else:
             code_name = line
