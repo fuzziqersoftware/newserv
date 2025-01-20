@@ -171,7 +171,7 @@ public:
     /* 06 */ le_uint16_t unknown_a2 = 0;
     /* 08 */ le_uint16_t entity_id = 0; // == index + 0x4000; used by PSO at runtime, unused in DAT file
     /* 0A */ le_uint16_t group = 0;
-    /* 0C */ le_uint16_t section = 0;
+    /* 0C */ le_uint16_t room = 0;
     /* 0E */ le_uint16_t unknown_a3 = 0;
     /* 10 */ VectorXYZF pos;
     /* 1C */ VectorXYZI angle;
@@ -195,7 +195,7 @@ public:
     /* 06 */ le_uint16_t num_children = 0; // If == 0, use the default child count from the constructor table (which is often also 0)
     /* 08 */ le_uint16_t floor = 0;
     /* 0A */ le_uint16_t entity_id = 0; // == index + 0x1000; used by PSO at runtime, unused in DAT file
-    /* 0C */ le_uint16_t section = 0;
+    /* 0C */ le_uint16_t room = 0;
     /* 0E */ le_uint16_t wave_number = 0;
     /* 10 */ le_uint16_t wave_number2 = 0;
     /* 12 */ le_uint16_t unknown_a1 = 0;
@@ -235,7 +235,7 @@ public:
     //   0010 = all enemies killed
     /* 04 */ le_uint16_t flags = 0; // Used by PSO at runtime, unused in DAT file
     /* 06 */ le_uint16_t event_type = 0;
-    /* 08 */ le_uint16_t section = 0;
+    /* 08 */ le_uint16_t room = 0;
     /* 0A */ le_uint16_t wave_number = 0;
     /* 0C */ le_uint32_t delay = 0;
     /* 10 */ le_uint32_t action_stream_offset = 0;
@@ -249,7 +249,7 @@ public:
     /* 00 */ le_uint32_t event_id = 0;
     /* 04 */ le_uint16_t flags = 0; // Used by PSO at runtime, unused in DAT file
     /* 06 */ le_uint16_t event_type = 0;
-    /* 08 */ le_uint16_t section = 0;
+    /* 08 */ le_uint16_t room = 0;
     /* 0A */ le_uint16_t wave_number = 0;
     /* 0C */ le_uint16_t min_delay = 0;
     /* 0E */ le_uint16_t max_delay = 0;
@@ -263,14 +263,14 @@ public:
   } __packed_ws__(Event2Entry, 0x18);
 
   struct RandomEnemyLocationsHeader { // Section type 4 (RANDOM_ENEMY_LOCATIONS)
-    /* 00 */ le_uint32_t section_table_offset; // Offset to RandomEnemyLocationSegment structs, from start of this struct
+    /* 00 */ le_uint32_t room_table_offset; // Offset to RandomEnemyLocationSegment structs, from start of this struct
     /* 04 */ le_uint32_t entries_offset; // Offset to RandomEnemyLocationEntry structs, from start of this struct
-    /* 08 */ le_uint32_t num_sections;
+    /* 08 */ le_uint32_t num_rooms;
     /* 0C */
   } __packed_ws__(RandomEnemyLocationsHeader, 0x0C);
 
   struct RandomEnemyLocationSection { // Section type 4 (RANDOM_ENEMY_LOCATIONS)
-    /* 00 */ le_uint16_t section;
+    /* 00 */ le_uint16_t room;
     /* 02 */ le_uint16_t count;
     /* 04 */ le_uint32_t offset;
     /* 08 */
@@ -333,7 +333,7 @@ public:
     RandomState(uint32_t random_seed);
     size_t rand_int_biased(size_t min_v, size_t max_v);
     uint32_t next_location_index();
-    void generate_shuffled_location_table(const RandomEnemyLocationsHeader& header, phosg::StringReader r, uint16_t section);
+    void generate_shuffled_location_table(const RandomEnemyLocationsHeader& header, phosg::StringReader r, uint16_t room);
   };
 
   struct FloorSections {
@@ -523,10 +523,10 @@ public:
     std::array<size_t, 0x12> event_floor_start_indexes = {};
 
     // Indexes
-    std::unordered_multimap<uint64_t, std::shared_ptr<Object>> object_for_floor_section_and_group;
+    std::unordered_multimap<uint64_t, std::shared_ptr<Object>> object_for_floor_room_and_group;
     std::unordered_multimap<uint64_t, std::shared_ptr<Object>> door_for_floor_and_switch_flag;
-    std::unordered_multimap<uint64_t, std::shared_ptr<Enemy>> enemy_for_floor_section_and_wave_number;
-    std::unordered_multimap<uint64_t, std::shared_ptr<Event>> event_for_floor_section_and_wave_number;
+    std::unordered_multimap<uint64_t, std::shared_ptr<Enemy>> enemy_for_floor_room_and_wave_number;
+    std::unordered_multimap<uint64_t, std::shared_ptr<Event>> event_for_floor_room_and_wave_number;
     std::multimap<uint64_t, std::shared_ptr<Event>> event_for_floor_and_event_id;
   };
 
@@ -559,20 +559,20 @@ public:
     return this->events;
   }
 
-  std::vector<std::shared_ptr<const Object>> objects_for_floor_section_group(
-      Version version, uint8_t floor, uint16_t section, uint16_t group) const;
+  std::vector<std::shared_ptr<const Object>> objects_for_floor_room_group(
+      Version version, uint8_t floor, uint16_t room, uint16_t group) const;
   std::vector<std::shared_ptr<const Object>> doors_for_switch_flag(
       Version version, uint8_t floor, uint8_t switch_flag) const;
 
   std::shared_ptr<const Enemy> enemy_for_index(Version version, uint16_t enemy_index, bool follow_alias) const;
   std::shared_ptr<const Enemy> enemy_for_floor_type(Version version, uint8_t floor, EnemyType type) const;
-  std::vector<std::shared_ptr<const Enemy>> enemies_for_floor_section_wave(
-      Version version, uint8_t floor, uint16_t section, uint16_t wave_number) const;
+  std::vector<std::shared_ptr<const Enemy>> enemies_for_floor_room_wave(
+      Version version, uint8_t floor, uint16_t room, uint16_t wave_number) const;
 
   std::vector<std::shared_ptr<const Event>> events_for_id(Version version, uint8_t floor, uint32_t event_id) const;
   std::vector<std::shared_ptr<const Event>> events_for_floor(Version version, uint8_t floor) const;
-  std::vector<std::shared_ptr<const Event>> events_for_floor_section_wave(
-      Version version, uint8_t floor, uint16_t section, uint16_t wave_number) const;
+  std::vector<std::shared_ptr<const Event>> events_for_floor_room_wave(
+      Version version, uint8_t floor, uint16_t room, uint16_t wave_number) const;
 
   void verify() const;
 
@@ -883,22 +883,22 @@ public:
   uint16_t index_for_event_state(Version version, std::shared_ptr<const EventState> evt_st) const;
 
   std::shared_ptr<ObjectState> object_state_for_index(Version version, uint8_t floor, uint16_t object_index);
-  std::vector<std::shared_ptr<ObjectState>> object_states_for_floor_section_group(
-      Version version, uint8_t floor, uint16_t section, uint16_t group);
+  std::vector<std::shared_ptr<ObjectState>> object_states_for_floor_room_group(
+      Version version, uint8_t floor, uint16_t room, uint16_t group);
   std::vector<std::shared_ptr<ObjectState>> door_states_for_switch_flag(
       Version version, uint8_t floor, uint8_t switch_flag);
 
   std::shared_ptr<EnemyState> enemy_state_for_index(Version version, uint8_t floor, uint16_t enemy_index);
   std::shared_ptr<EnemyState> enemy_state_for_set_index(Version version, uint8_t floor, uint16_t enemy_set_index);
   std::shared_ptr<EnemyState> enemy_state_for_floor_type(Version version, uint8_t floor, EnemyType type);
-  std::vector<std::shared_ptr<EnemyState>> enemy_states_for_floor_section_wave(
-      Version version, uint8_t floor, uint16_t section, uint16_t wave_number);
+  std::vector<std::shared_ptr<EnemyState>> enemy_states_for_floor_room_wave(
+      Version version, uint8_t floor, uint16_t room, uint16_t wave_number);
 
   std::shared_ptr<EventState> event_state_for_index(Version version, uint8_t floor, uint16_t event_index);
   std::vector<std::shared_ptr<EventState>> event_states_for_id(Version version, uint8_t floor, uint32_t event_id);
   std::vector<std::shared_ptr<EventState>> event_states_for_floor(Version version, uint8_t floor);
-  std::vector<std::shared_ptr<EventState>> event_states_for_floor_section_wave(
-      Version version, uint8_t floor, uint16_t section, uint16_t wave_number);
+  std::vector<std::shared_ptr<EventState>> event_states_for_floor_room_wave(
+      Version version, uint8_t floor, uint16_t room, uint16_t wave_number);
 
   void import_object_states_from_sync(Version from_version, const SyncObjectStateEntry* entries, size_t entry_count);
   void import_enemy_states_from_sync(Version from_version, const SyncEnemyStateEntry* entries, size_t entry_count);

@@ -990,7 +990,7 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
 
 string MapFile::ObjectSetEntry::str() const {
   string name_str = MapFile::name_for_object_type(this->base_type);
-  return phosg::string_printf("[ObjectEntry type=%04hX \"%s\" set_flags=%04hX index=%04hX a2=%04hX entity_id=%04hX group=%04hX section=%04hX a3=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] unused=%08" PRIX32 "]",
+  return phosg::string_printf("[ObjectEntry type=%04hX \"%s\" set_flags=%04hX index=%04hX a2=%04hX entity_id=%04hX group=%04hX room=%04hX a3=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] unused=%08" PRIX32 "]",
       this->base_type.load(),
       name_str.c_str(),
       this->set_flags.load(),
@@ -998,7 +998,7 @@ string MapFile::ObjectSetEntry::str() const {
       this->unknown_a2.load(),
       this->entity_id.load(),
       this->group.load(),
-      this->section.load(),
+      this->room.load(),
       this->unknown_a3.load(),
       this->pos.x.load(),
       this->pos.y.load(),
@@ -1018,7 +1018,7 @@ string MapFile::ObjectSetEntry::str() const {
 uint64_t MapFile::ObjectSetEntry::semantic_hash() const {
   uint64_t ret = phosg::fnv1a64(&this->base_type, sizeof(this->base_type));
   ret = phosg::fnv1a64(&this->group, sizeof(this->group), ret);
-  ret = phosg::fnv1a64(&this->section, sizeof(this->section), ret);
+  ret = phosg::fnv1a64(&this->room, sizeof(this->room), ret);
   ret = phosg::fnv1a64(&this->pos, sizeof(this->pos), ret);
   ret = phosg::fnv1a64(&this->angle, sizeof(this->angle), ret);
   ret = phosg::fnv1a64(&this->param1, sizeof(this->param1), ret);
@@ -1031,7 +1031,7 @@ uint64_t MapFile::ObjectSetEntry::semantic_hash() const {
 }
 
 string MapFile::EnemySetEntry::str() const {
-  return phosg::string_printf("[EnemyEntry type=%04hX \"%s\" set_flags=%04hX index=%04hX num_children=%04hX floor=%04hX entity_id=%04hX section=%04hX wave_number=%04hX wave_number2=%04hX a1=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %g %g %04hX %04hX] unused=%08" PRIX32 "]",
+  return phosg::string_printf("[EnemyEntry type=%04hX \"%s\" set_flags=%04hX index=%04hX num_children=%04hX floor=%04hX entity_id=%04hX room=%04hX wave_number=%04hX wave_number2=%04hX a1=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %g %g %04hX %04hX] unused=%08" PRIX32 "]",
       this->base_type.load(),
       MapFile::name_for_enemy_type(this->base_type),
       this->set_flags.load(),
@@ -1039,7 +1039,7 @@ string MapFile::EnemySetEntry::str() const {
       this->num_children.load(),
       this->floor.load(),
       this->entity_id.load(),
-      this->section.load(),
+      this->room.load(),
       this->wave_number.load(),
       this->wave_number2.load(),
       this->unknown_a1.load(),
@@ -1062,7 +1062,7 @@ string MapFile::EnemySetEntry::str() const {
 uint64_t MapFile::EnemySetEntry::semantic_hash() const {
   uint64_t ret = phosg::fnv1a64(&this->base_type, sizeof(this->base_type));
   ret = phosg::fnv1a64(&this->num_children, sizeof(this->num_children), ret);
-  ret = phosg::fnv1a64(&this->section, sizeof(this->section), ret);
+  ret = phosg::fnv1a64(&this->room, sizeof(this->room), ret);
   ret = phosg::fnv1a64(&this->wave_number, sizeof(this->wave_number), ret);
   ret = phosg::fnv1a64(&this->wave_number2, sizeof(this->wave_number2), ret);
   ret = phosg::fnv1a64(&this->pos, sizeof(this->pos), ret);
@@ -1078,11 +1078,11 @@ uint64_t MapFile::EnemySetEntry::semantic_hash() const {
 }
 
 string MapFile::Event1Entry::str() const {
-  return phosg::string_printf("[Event1Entry event_id=%08" PRIX32 " flags=%04hX event_type=%04hX section=%04hX wave_number=%04hX delay=%08" PRIX32 " action_stream_offset=%08" PRIX32 "]",
+  return phosg::string_printf("[Event1Entry event_id=%08" PRIX32 " flags=%04hX event_type=%04hX room=%04hX wave_number=%04hX delay=%08" PRIX32 " action_stream_offset=%08" PRIX32 "]",
       this->event_id.load(),
       this->flags.load(),
       this->event_type.load(),
-      this->section.load(),
+      this->room.load(),
       this->wave_number.load(),
       this->delay.load(),
       this->action_stream_offset.load());
@@ -1090,17 +1090,17 @@ string MapFile::Event1Entry::str() const {
 
 uint64_t MapFile::Event1Entry::semantic_hash() const {
   uint64_t ret = phosg::fnv1a64(&this->event_id, sizeof(this->event_id));
-  ret = phosg::fnv1a64(&this->section, sizeof(this->section), ret);
+  ret = phosg::fnv1a64(&this->room, sizeof(this->room), ret);
   ret = phosg::fnv1a64(&this->wave_number, sizeof(this->wave_number), ret);
   return ret;
 }
 
 string MapFile::Event2Entry::str() const {
-  return phosg::string_printf("[Event2Entry event_id=%08" PRIX32 " flags=%04hX event_type=%04hX section=%04hX wave_number=%04hX min_delay=%08" PRIX32 " max_delay=%08" PRIX32 " min_enemies=%02hhX max_enemies=%02hhX max_waves=%04hX action_stream_offset=%08" PRIX32 "]",
+  return phosg::string_printf("[Event2Entry event_id=%08" PRIX32 " flags=%04hX event_type=%04hX room=%04hX wave_number=%04hX min_delay=%08" PRIX32 " max_delay=%08" PRIX32 " min_enemies=%02hhX max_enemies=%02hhX max_waves=%04hX action_stream_offset=%08" PRIX32 "]",
       this->event_id.load(),
       this->flags.load(),
       this->event_type.load(),
-      this->section.load(),
+      this->room.load(),
       this->wave_number.load(),
       this->min_delay.load(),
       this->max_delay.load(),
@@ -1170,26 +1170,26 @@ uint32_t MapFile::RandomState::next_location_index() {
 }
 
 void MapFile::RandomState::generate_shuffled_location_table(
-    const RandomEnemyLocationsHeader& header, phosg::StringReader r, uint16_t section) {
-  if (header.num_sections == 0) {
+    const RandomEnemyLocationsHeader& header, phosg::StringReader r, uint16_t room) {
+  if (header.num_rooms == 0) {
     throw runtime_error("no locations defined");
   }
 
-  phosg::StringReader sections_r = r.sub(header.section_table_offset, header.num_sections * sizeof(RandomEnemyLocationSection));
+  phosg::StringReader rooms_r = r.sub(header.room_table_offset, header.num_rooms * sizeof(RandomEnemyLocationSection));
 
   size_t bs_min = 0;
-  size_t bs_max = header.num_sections - 1;
+  size_t bs_max = header.num_rooms - 1;
   do {
     size_t bs_mid = (bs_min + bs_max) / 2;
-    if (sections_r.pget<RandomEnemyLocationSection>(bs_mid * sizeof(RandomEnemyLocationSection)).section < section) {
+    if (rooms_r.pget<RandomEnemyLocationSection>(bs_mid * sizeof(RandomEnemyLocationSection)).room < room) {
       bs_min = bs_mid + 1;
     } else {
       bs_max = bs_mid;
     }
   } while (bs_min < bs_max);
 
-  const auto& sec = sections_r.pget<RandomEnemyLocationSection>(bs_min * sizeof(RandomEnemyLocationSection));
-  if (section != sec.section) {
+  const auto& sec = rooms_r.pget<RandomEnemyLocationSection>(bs_min * sizeof(RandomEnemyLocationSection));
+  if (room != sec.room) {
     return;
   }
 
@@ -1432,7 +1432,7 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
           size_t remaining_enemies = random_state.rand_int_biased(source_event2.min_enemies, source_event2.max_enemies);
           // Trace: at 0080E208 EDI is enemy count
 
-          random_state.generate_shuffled_location_table(locations_header, locations_sec_r, source_event2.section);
+          random_state.generate_shuffled_location_table(locations_header, locations_sec_r, source_event2.room);
           // Trace: at 0080EBB0 *(EBP + 4) points to table (0x20 uint32_ts)
 
           while (remaining_enemies) {
@@ -1457,7 +1457,7 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
                   EnemySetEntry e;
                   e.base_type = rand_enemy_base_types.at(weight_entry.base_type_index);
                   e.wave_number = wave_number;
-                  e.section = source_event2.section;
+                  e.room = source_event2.room;
                   e.floor = floor;
 
                   size_t bs_min = 0;
@@ -1507,7 +1507,7 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
             event.event_id = wave_next_event_id;
             event.flags = source_event2.flags;
             event.event_type = source_event2.event_type;
-            event.section = source_event2.section;
+            event.room = source_event2.room;
             event.wave_number = wave_number;
             event.delay = random_state.rand_int_biased(source_event2.min_delay, source_event2.max_delay);
             event.action_stream_offset = action_stream_w.size();
@@ -1526,7 +1526,7 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
         event.event_id = wave_next_event_id;
         event.flags = source_event2.flags;
         event.event_type = source_event2.event_type;
-        event.section = source_event2.section;
+        event.room = source_event2.room;
         event.wave_number = wave_number;
         event.delay = random_state.rand_int_biased(source_event2.min_delay, source_event2.max_delay);
         event.action_stream_offset = source_event2.action_stream_offset;
@@ -1619,17 +1619,17 @@ string MapFile::disassemble_action_stream(const void* data, size_t size) {
         r.go(r.size());
         break;
       case 0x08: {
-        uint16_t section = r.get_u16l();
+        uint16_t room = r.get_u16l();
         uint16_t group = r.get_u16l();
-        ret.emplace_back(phosg::string_printf("  08 %04hX %04hX  construct_objects       section=%04hX group=%04hX",
-            section, group, section, group));
+        ret.emplace_back(phosg::string_printf("  08 %04hX %04hX  construct_objects       room=%04hX group=%04hX",
+            room, group, room, group));
         break;
       }
       case 0x09: {
-        uint16_t section = r.get_u16l();
+        uint16_t room = r.get_u16l();
         uint16_t wave_number = r.get_u16l();
-        ret.emplace_back(phosg::string_printf("  09 %04hX %04hX  construct_enemies       section=%04hX wave_number=%04hX",
-            section, wave_number, section, wave_number));
+        ret.emplace_back(phosg::string_printf("  09 %04hX %04hX  construct_enemies       room=%04hX wave_number=%04hX",
+            room, wave_number, room, wave_number));
         break;
       }
       case 0x0A: {
@@ -1648,10 +1648,10 @@ string MapFile::disassemble_action_stream(const void* data, size_t size) {
         break;
       }
       case 0x0D: {
-        uint16_t section = r.get_u16l();
+        uint16_t room = r.get_u16l();
         uint16_t wave_number = r.get_u16l();
-        ret.emplace_back(phosg::string_printf("  0D %04hX %04hX  construct_enemies_stop  section=%04hX wave_number=%04hX",
-            section, wave_number, section, wave_number));
+        ret.emplace_back(phosg::string_printf("  0D %04hX %04hX  construct_enemies_stop  room=%04hX wave_number=%04hX",
+            room, wave_number, room, wave_number));
         r.go(r.size());
         break;
       }
@@ -1806,8 +1806,8 @@ SuperMap::SuperMap(Episode episode, const std::array<std::shared_ptr<const MapFi
   this->verify(); // TODO: Remove this when no longer needed
 }
 
-static uint64_t section_index_key(uint8_t floor, uint16_t section, uint16_t wave_number) {
-  return (static_cast<uint64_t>(floor) << 32) | (static_cast<uint64_t>(section) << 16) | static_cast<uint64_t>(wave_number);
+static uint64_t room_index_key(uint8_t floor, uint16_t room, uint16_t wave_number) {
+  return (static_cast<uint64_t>(floor) << 32) | (static_cast<uint64_t>(room) << 16) | static_cast<uint64_t>(wave_number);
 }
 
 shared_ptr<SuperMap::Object> SuperMap::add_object(
@@ -1836,9 +1836,9 @@ void SuperMap::link_object_version(std::shared_ptr<Object> obj, Version version,
 
   entities.objects.emplace_back(obj);
 
-  // Add to section/group index
-  uint64_t k = section_index_key(obj->floor, set_entry->section, set_entry->group);
-  entities.object_for_floor_section_and_group.emplace(k, obj);
+  // Add to room/group index
+  uint64_t k = room_index_key(obj->floor, set_entry->room, set_entry->group);
+  entities.object_for_floor_room_and_group.emplace(k, obj);
 
   // Add to door index
   uint32_t base_switch_flag = 0;
@@ -1914,9 +1914,9 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       entities.enemy_sets.emplace_back(ene);
     }
 
-    // Add to section/group index
-    uint64_t k = section_index_key(ene->floor, set_entry->section, set_entry->wave_number);
-    entities.enemy_for_floor_section_and_wave_number.emplace(k, ene);
+    // Add to room/group index
+    uint64_t k = room_index_key(ene->floor, set_entry->room, set_entry->wave_number);
+    entities.enemy_for_floor_room_and_wave_number.emplace(k, ene);
   };
 
   // The following logic was originally based on the public version of
@@ -2349,9 +2349,9 @@ void SuperMap::link_enemy_version_and_children(
       entities.enemy_sets.emplace_back(ene);
     }
 
-    // Add to section/group index
-    uint64_t k = section_index_key(ene->floor, set_entry->section, set_entry->wave_number);
-    entities.enemy_for_floor_section_and_wave_number.emplace(k, ene);
+    // Add to room/group index
+    uint64_t k = room_index_key(ene->floor, set_entry->room, set_entry->wave_number);
+    entities.enemy_for_floor_room_and_wave_number.emplace(k, ene);
 
     try {
       ene = this->enemies.at(ene->super_id + 1);
@@ -2372,10 +2372,10 @@ static size_t get_action_stream_size(const void* data, size_t size) {
       case 0x01: // stop()
         done = (cmd == 0x01);
         break;
-      case 0x08: // construct_objects(uint16_t section, uint16_t group)
-      case 0x09: // construct_enemies(uint16_t section, uint16_t wave_number)
+      case 0x08: // construct_objects(uint16_t room, uint16_t group)
+      case 0x09: // construct_enemies(uint16_t room, uint16_t wave_number)
       case 0x0C: // trigger_event(uint32_t event_id)
-      case 0x0D: // construct_enemies_stop(uint16_t section, uint16_t wave_number)
+      case 0x0D: // construct_enemies_stop(uint16_t room, uint16_t wave_number)
         r.skip(4);
         done = (cmd == 0x0D);
         break;
@@ -2434,8 +2434,8 @@ void SuperMap::link_event_version(
 
   entities.events.emplace_back(ev);
 
-  uint64_t k = section_index_key(ev->floor, entry->section, entry->wave_number);
-  entities.event_for_floor_section_and_wave_number.emplace(k, ev);
+  uint64_t k = room_index_key(ev->floor, entry->room, entry->wave_number);
+  entities.event_for_floor_room_and_wave_number.emplace(k, ev);
   k = (static_cast<uint64_t>(ev->floor) << 32) | entry->event_id;
   entities.event_for_floor_and_event_id.emplace(k, ev);
 }
@@ -2591,11 +2591,11 @@ static double object_set_edit_cost(const MapFile::ObjectSetEntry& prev, const Ma
   if (prev.base_type != current.base_type) {
     return 500.0;
   }
-  // Group or section changes are pretty bad, but small variances in position
+  // Group or room changes are pretty bad, but small variances in position
   // and params are tolerated
   return (
       ((prev.group != current.group) * 50.0) +
-      ((prev.section != current.section) * 50.0) +
+      ((prev.room != current.room) * 50.0) +
       (prev.pos - current.pos).norm() +
       ((prev.param1 != current.param1) * 10.0) +
       ((prev.param2 != current.param2) * 10.0) +
@@ -2617,10 +2617,10 @@ static double enemy_set_edit_cost(const MapFile::EnemySetEntry& prev, const MapF
   if ((prev.base_type != current.base_type) || (prev.num_children != current.num_children)) {
     return 500.0;
   }
-  // Section or wave_number changes are pretty bad, but small variances in
+  // Room or wave_number changes are pretty bad, but small variances in
   // position and params are tolerated
   return (
-      ((prev.section != current.section) * 50.0) +
+      ((prev.room != current.room) * 50.0) +
       ((prev.wave_number != current.wave_number) * 50.0) +
       (prev.pos - current.pos).norm() +
       ((prev.fparam1 != current.fparam1) * 10.0) +
@@ -2642,7 +2642,7 @@ static double event_edit_cost(const MapFile::Event1Entry& prev, const MapFile::E
   // Unlike object and enemy sets, event matching is essentially binary: no
   // variance is tolerated in some parameters, but others are entirely ignored.
   bool is_same = ((prev.event_id == current.event_id) &&
-      (prev.section == current.section) &&
+      (prev.room == current.room) &&
       (prev.wave_number == current.wave_number));
   return is_same ? 0.0 : 5.0;
 }
@@ -2828,12 +2828,12 @@ void SuperMap::add_map_file(Version this_v, shared_ptr<const MapFile> this_map_f
   }
 }
 
-vector<shared_ptr<const SuperMap::Object>> SuperMap::objects_for_floor_section_group(
-    Version version, uint8_t floor, uint16_t section, uint16_t group) const {
+vector<shared_ptr<const SuperMap::Object>> SuperMap::objects_for_floor_room_group(
+    Version version, uint8_t floor, uint16_t room, uint16_t group) const {
   const auto& entities = this->version(version);
-  uint64_t k = section_index_key(floor, section, group);
+  uint64_t k = room_index_key(floor, room, group);
   vector<shared_ptr<const Object>> ret;
-  for (auto its = entities.object_for_floor_section_and_group.equal_range(k); its.first != its.second; its.first++) {
+  for (auto its = entities.object_for_floor_room_and_group.equal_range(k); its.first != its.second; its.first++) {
     ret.emplace_back(its.first->second);
   }
   return ret;
@@ -2888,13 +2888,13 @@ shared_ptr<const SuperMap::Enemy> SuperMap::enemy_for_floor_type(Version version
   throw out_of_range("enemy not found");
 }
 
-vector<shared_ptr<const SuperMap::Enemy>> SuperMap::enemies_for_floor_section_wave(
-    Version version, uint8_t floor, uint16_t section, uint16_t wave_number) const {
+vector<shared_ptr<const SuperMap::Enemy>> SuperMap::enemies_for_floor_room_wave(
+    Version version, uint8_t floor, uint16_t room, uint16_t wave_number) const {
   const auto& entities = this->version(version);
 
-  uint64_t k = section_index_key(floor, section, wave_number);
+  uint64_t k = room_index_key(floor, room, wave_number);
   vector<shared_ptr<const Enemy>> ret;
-  for (auto its = entities.enemy_for_floor_section_and_wave_number.equal_range(k); its.first != its.second; its.first++) {
+  for (auto its = entities.enemy_for_floor_room_and_wave_number.equal_range(k); its.first != its.second; its.first++) {
     ret.emplace_back(its.first->second);
   }
   return ret;
@@ -2923,12 +2923,12 @@ vector<shared_ptr<const SuperMap::Event>> SuperMap::events_for_floor(Version ver
   return ret;
 }
 
-vector<shared_ptr<const SuperMap::Event>> SuperMap::events_for_floor_section_wave(
-    Version version, uint8_t floor, uint16_t section, uint16_t wave_number) const {
+vector<shared_ptr<const SuperMap::Event>> SuperMap::events_for_floor_room_wave(
+    Version version, uint8_t floor, uint16_t room, uint16_t wave_number) const {
   const auto& entities = this->version(version);
-  uint64_t k = section_index_key(floor, section, wave_number);
+  uint64_t k = room_index_key(floor, room, wave_number);
   vector<shared_ptr<const Event>> ret;
-  for (auto its = entities.event_for_floor_section_and_wave_number.equal_range(k); its.first != its.second; its.first++) {
+  for (auto its = entities.event_for_floor_room_and_wave_number.equal_range(k); its.first != its.second; its.first++) {
     ret.emplace_back(its.first->second);
   }
   return ret;
@@ -3588,12 +3588,12 @@ shared_ptr<MapState::ObjectState> MapState::object_state_for_index(Version versi
   }
 }
 
-vector<shared_ptr<MapState::ObjectState>> MapState::object_states_for_floor_section_group(
-    Version version, uint8_t floor, uint16_t section, uint16_t group) {
+vector<shared_ptr<MapState::ObjectState>> MapState::object_states_for_floor_room_group(
+    Version version, uint8_t floor, uint16_t room, uint16_t group) {
   vector<shared_ptr<ObjectState>> ret;
   auto& fc = this->floor_config(floor);
   if (fc.super_map) {
-    for (const auto& obj : fc.super_map->objects_for_floor_section_group(version, floor, section, group)) {
+    for (const auto& obj : fc.super_map->objects_for_floor_room_group(version, floor, room, group)) {
       ret.emplace_back(this->object_states.at(fc.base_super_ids.base_object_index + obj->super_id));
     }
   }
@@ -3648,12 +3648,12 @@ shared_ptr<MapState::EnemyState> MapState::enemy_state_for_floor_type(Version ve
   throw out_of_range("map definition missing for floor");
 }
 
-vector<shared_ptr<MapState::EnemyState>> MapState::enemy_states_for_floor_section_wave(
-    Version version, uint8_t floor, uint16_t section, uint16_t wave_number) {
+vector<shared_ptr<MapState::EnemyState>> MapState::enemy_states_for_floor_room_wave(
+    Version version, uint8_t floor, uint16_t room, uint16_t wave_number) {
   vector<shared_ptr<EnemyState>> ret;
   auto& fc = this->floor_config(floor);
   if (fc.super_map) {
-    for (const auto& ene : fc.super_map->enemies_for_floor_section_wave(version, floor, section, wave_number)) {
+    for (const auto& ene : fc.super_map->enemies_for_floor_room_wave(version, floor, room, wave_number)) {
       ret.emplace_back(this->enemy_states.at(fc.base_super_ids.base_enemy_index + ene->super_id));
     }
   }
@@ -3695,12 +3695,12 @@ vector<shared_ptr<MapState::EventState>> MapState::event_states_for_floor(Versio
   return ret;
 }
 
-vector<shared_ptr<MapState::EventState>> MapState::event_states_for_floor_section_wave(
-    Version version, uint8_t floor, uint16_t section, uint16_t wave_number) {
+vector<shared_ptr<MapState::EventState>> MapState::event_states_for_floor_room_wave(
+    Version version, uint8_t floor, uint16_t room, uint16_t wave_number) {
   vector<shared_ptr<EventState>> ret;
   auto& fc = this->floor_config(floor);
   if (fc.super_map) {
-    for (const auto& ev : fc.super_map->events_for_floor_section_wave(version, floor, section, wave_number)) {
+    for (const auto& ev : fc.super_map->events_for_floor_room_wave(version, floor, room, wave_number)) {
       ret.emplace_back(this->event_states.at(fc.base_super_ids.base_event_index + ev->super_id));
     }
   }

@@ -3191,7 +3191,7 @@ static void on_set_entity_set_flag(shared_ptr<Client> c, uint8_t command, uint8_
     }
 
   } else if (cmd.header.entity_id >= 0x1000) {
-    int32_t section = -1;
+    int32_t room = -1;
     int32_t wave_number = -1;
     try {
       size_t enemy_index = cmd.header.entity_id - 0x1000;
@@ -3211,7 +3211,7 @@ static void on_set_entity_set_flag(shared_ptr<Client> c, uint8_t command, uint8_
         // We should not have been able to look up this enemy if it didn't exist on this version
         throw logic_error("enemy does not exist on this game version");
       }
-      section = set_entry->section;
+      room = set_entry->room;
       wave_number = set_entry->wave_number;
       l->log.info("Client set set flags %04hX on E-%03zX (flags are now %04hX)",
           cmd.flags.load(), ene_st->e_id, cmd.flags.load());
@@ -3219,14 +3219,14 @@ static void on_set_entity_set_flag(shared_ptr<Client> c, uint8_t command, uint8_
       l->log.warning("Flag update refers to missing enemy");
     }
 
-    if ((section >= 0) && (wave_number >= 0)) {
+    if ((room >= 0) && (wave_number >= 0)) {
       // When all enemies in a wave event have (set_flags & 8), which means
       // they are defeated, set event_flags = (event_flags | 0x18) & (~4),
       // which means it is done and should not trigger
       bool all_enemies_defeated = true;
-      l->log.info("Checking for defeated enemies with section=%04" PRIX32 " wave_number=%04" PRIX32,
-          section, wave_number);
-      for (auto ene_st : l->map_state->enemy_states_for_floor_section_wave(c->version(), cmd.floor, section, wave_number)) {
+      l->log.info("Checking for defeated enemies with room=%04" PRIX32 " wave_number=%04" PRIX32,
+          room, wave_number);
+      for (auto ene_st : l->map_state->enemy_states_for_floor_room_wave(c->version(), cmd.floor, room, wave_number)) {
         if (ene_st->super_ene->child_index) {
           l->log.info("E-%03zX is a child of another enemy", ene_st->e_id);
         } else if (!(ene_st->set_flags & 8)) {
@@ -3238,9 +3238,9 @@ static void on_set_entity_set_flag(shared_ptr<Client> c, uint8_t command, uint8_
         }
       }
       if (all_enemies_defeated) {
-        l->log.info("All enemies defeated; setting events with section=%04" PRIX32 " wave_number=%04" PRIX32 " to finished state",
-            section, wave_number);
-        for (auto ev_st : l->map_state->event_states_for_floor_section_wave(c->version(), cmd.floor, section, wave_number)) {
+        l->log.info("All enemies defeated; setting events with room=%04" PRIX32 " wave_number=%04" PRIX32 " to finished state",
+            room, wave_number);
+        for (auto ev_st : l->map_state->event_states_for_floor_room_wave(c->version(), cmd.floor, room, wave_number)) {
           ev_st->flags = (ev_st->flags | 0x18) & (~4);
           l->log.info("Set flags on W-%03zX to %04hX", ev_st->w_id, ev_st->flags);
 
@@ -3257,11 +3257,11 @@ static void on_set_entity_set_flag(shared_ptr<Client> c, uint8_t command, uint8_
                 actions_r.go(actions_r.size());
                 break;
               case 0x08: { // construct_objects
-                uint16_t section = actions_r.get_u16l();
+                uint16_t room = actions_r.get_u16l();
                 uint16_t group = actions_r.get_u16l();
-                l->log.info("(W-%03zX script) construct_objects %04hX %04hX", ev_st->w_id, section, group);
-                auto obj_sts = l->map_state->object_states_for_floor_section_group(
-                    c->version(), ev_st->super_ev->floor, section, group);
+                l->log.info("(W-%03zX script) construct_objects %04hX %04hX", ev_st->w_id, room, group);
+                auto obj_sts = l->map_state->object_states_for_floor_room_group(
+                    c->version(), ev_st->super_ev->floor, room, group);
                 for (auto obj_st : obj_sts) {
                   if (!(obj_st->set_flags & 0x0A)) {
                     l->log.info("(W-%03zX script)   Setting flags 0010 on object K-%03zX", ev_st->w_id, obj_st->k_id);
@@ -3272,11 +3272,11 @@ static void on_set_entity_set_flag(shared_ptr<Client> c, uint8_t command, uint8_
               }
               case 0x09: // construct_enemies
               case 0x0D: { // construct_enemies_stop
-                uint16_t section = actions_r.get_u16l();
+                uint16_t room = actions_r.get_u16l();
                 uint16_t wave_number = actions_r.get_u16l();
-                l->log.info("(W-%03zX script) construct_enemies %04hX %04hX", ev_st->w_id, section, wave_number);
-                auto ene_sts = l->map_state->enemy_states_for_floor_section_wave(
-                    c->version(), ev_st->super_ev->floor, section, wave_number);
+                l->log.info("(W-%03zX script) construct_enemies %04hX %04hX", ev_st->w_id, room, wave_number);
+                auto ene_sts = l->map_state->enemy_states_for_floor_room_wave(
+                    c->version(), ev_st->super_ev->floor, room, wave_number);
                 for (auto ene_st : ene_sts) {
                   if (!ene_st->super_ene->child_index && !(ene_st->set_flags & 0x0A)) {
                     l->log.info("(W-%03zX script)   Setting flags 0002 on enemy set E-%zX", ev_st->w_id, ene_st->e_id);

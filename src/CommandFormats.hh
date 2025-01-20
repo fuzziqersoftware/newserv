@@ -4683,7 +4683,7 @@ struct G_StandardDropItemRequest_DC_6x60 {
   /* 05 */ uint8_t rt_index = 0;
   /* 06 */ le_uint16_t entity_index = 0;
   /* 08 */ VectorXZF pos;
-  /* 10 */ le_uint16_t section = 0;
+  /* 10 */ le_uint16_t room = 0;
   /* 12 */ le_uint16_t ignore_def = 0;
   /* 14 */
 } __packed_ws__(G_StandardDropItemRequest_DC_6x60, 0x14);
