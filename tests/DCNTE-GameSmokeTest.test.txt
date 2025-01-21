@@ -64,9 +64,6 @@ I 91446 2023-12-31 21:04:44 - [Commands] Sending to C-1 (version=DC_NTE command=
 0000 | 04 00 0C 00 00 00 01 00 F5 5D C2 1A             |         UUUU
 I 91446 2023-12-31 21:04:44 - [C-1] Client is a prototype version and the license was created during this session; converting permanent license to temporary license
 I 91446 2023-12-31 21:04:44 - [Commands] Sending to C-1 (version=DC_NTE command=07 flag=02)
-0000 | B1 00 20 00 32 30 32 34 3A 31 32 3A 32 39 3A 20 |     2024:12:29:
-0010 | 32 32 3A 35 36 3A 33 36 2E 30 30 30 00 01 00 00 | 22:56:36.000
-I 91446 2023-12-31 21:04:44 - [Commands] Sending to C-1 (version=DC_NTE command=07 flag=02)
 0000 | 07 02 58 00 11 00 00 11 FF FF FF FF 04 00 41 6C |   X           Al
 0010 | 65 78 61 6E 64 72 69 61 00 00 00 00 00 00 00 00 | exandria
 0020 | 11 00 00 11 11 22 22 11 04 0F 47 6F 20 74 6F 20 |      ""   Go to
@@ -590,9 +587,6 @@ I 91446 2023-12-31 21:05:43 - [C-3] Game version changed to DC_NTE
 I 91446 2023-12-31 21:05:43 - [Commands] Sending to C-3 (version=DC_NTE command=04 flag=00)
 0000 | 04 00 0C 00 00 00 01 00 F5 79 DE 25             |
 I 91446 2023-12-31 21:05:43 - [C-3] Client is a prototype version and the license was created during this session; converting permanent license to temporary license
-I 91446 2023-12-31 21:05:43 - [Commands] Sending to C-3 (version=DC_NTE command=07 flag=02)
-0000 | B1 00 20 00 32 30 32 34 3A 31 32 3A 32 39 3A 20 |     2024:12:29:
-0010 | 32 32 3A 35 36 3A 33 36 2E 30 30 30 00 01 00 00 | 22:56:36.000
 I 91446 2023-12-31 21:05:43 - [Commands] Sending to C-3 (version=DC_NTE command=07 flag=02)
 0000 | 07 02 58 00 11 00 00 11 FF FF FF FF 04 00 41 6C |   X           Al
 0010 | 65 78 61 6E 64 72 69 61 00 00 00 00 00 00 00 00 | exandria

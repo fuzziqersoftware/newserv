@@ -1275,7 +1275,6 @@ static void on_96(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   check_size_t<C_CharSaveInfo_DCv2_PC_V3_BB_96>(data);
   c->config.set_flag(Client::Flag::SHOULD_SEND_ENABLE_SAVE);
   send_update_client_config(c, false);
-  send_server_time(c);
 }
 
 static void on_B1(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
@@ -2232,7 +2231,7 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       item_id = cmd.basic_cmd.item_id;
     } else if (data.size() > sizeof(C_MenuSelection_DC_V3_10_Flag02)) {
       const auto& cmd = check_size_t<C_MenuSelection_DC_V3_10_Flag03>(data);
-      team_name = cmd.unknown_a1.decode(c->language());
+      team_name = cmd.name.decode(c->language());
       password = cmd.password.decode(c->language());
       menu_id = cmd.basic_cmd.menu_id;
       item_id = cmd.basic_cmd.item_id;
@@ -4327,10 +4326,14 @@ shared_ptr<Lobby> create_game_generic(
   game->difficulty = difficulty;
   game->allowed_versions = s->compatibility_groups.at(static_cast<size_t>(creator_c->version()));
   static_assert(NUM_VERSIONS == 14, "Don't forget to update the group compatibility restrictions");
-  if (!allow_v1 || (difficulty > 2) || (mode != GameMode::NORMAL)) {
+  if (!allow_v1 || (difficulty > 2) || (mode == GameMode::CHALLENGE) || (mode == GameMode::SOLO)) {
     game->forbid_version(Version::DC_NTE);
     game->forbid_version(Version::DC_11_2000);
     game->forbid_version(Version::DC_V1);
+  } else if (mode == GameMode::BATTLE) {
+    game->forbid_version(Version::DC_NTE);
+    game->forbid_version(Version::DC_11_2000);
+    // v1 supports battle mode but not battle quests
   }
   switch (game->episode) {
     case Episode::NONE:
@@ -4597,9 +4600,8 @@ static void on_0C_C1_E7_EC(shared_ptr<Client> c, uint16_t command, uint32_t, str
 
     GameMode mode = GameMode::NORMAL;
     bool spectators_forbidden = false;
-    if (cmd.battle_mode || c->config.check_flag(Client::Flag::FORCE_BATTLE_MODE_GAME)) {
+    if (cmd.battle_mode) {
       mode = GameMode::BATTLE;
-      c->config.clear_flag(Client::Flag::FORCE_BATTLE_MODE_GAME);
     }
     if (cmd.challenge_mode) {
       if (client_is_ep3) {

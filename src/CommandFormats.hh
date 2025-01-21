@@ -351,7 +351,7 @@ struct C_LegacyLogin_PC_V3_03 {
   /* 08 */ le_uint32_t sub_version = 0;
   /* 0C */ uint8_t is_extended = 0;
   /* 0D */ uint8_t language = 0;
-  /* 0E */ le_uint16_t unknown_a2 = 0;
+  /* 0E */ le_uint16_t unused = 0;
   // Note: These are suffixed with 2 since they come from the same source data
   // as the corresponding fields in 9D/9E. (Even though serial_number and
   // serial_number2 have the same contents in 9E, they do not come from the same
@@ -407,7 +407,7 @@ struct C_LegacyLogin_PC_V3_04 {
   /* 08 */ le_uint32_t sub_version = 0;
   /* 0C */ uint8_t is_extended = 0;
   /* 0D */ uint8_t language = 0;
-  /* 0E */ le_uint16_t unknown_a2 = 0;
+  /* 0E */ le_uint16_t unused = 0;
   /* 10 */ pstring<TextEncoding::ASCII, 0x10> serial_number;
   /* 20 */ pstring<TextEncoding::ASCII, 0x10> access_key;
   /* 30 */
@@ -682,7 +682,7 @@ struct C_MenuSelection_10_Flag00 {
 template <TextEncoding Encoding>
 struct C_MenuSelectionT_10_Flag01 {
   C_MenuSelection_10_Flag00 basic_cmd;
-  pstring<Encoding, 0x10> unknown_a1;
+  pstring<Encoding, 0x10> name;
 } __packed__;
 using C_MenuSelection_DC_V3_10_Flag01 = C_MenuSelectionT_10_Flag01<TextEncoding::MARKED>;
 using C_MenuSelection_PC_BB_10_Flag01 = C_MenuSelectionT_10_Flag01<TextEncoding::UTF16>;
@@ -702,7 +702,7 @@ check_struct_size(C_MenuSelection_PC_BB_10_Flag02, 0x28);
 template <TextEncoding Encoding>
 struct C_MenuSelectionT_10_Flag03 {
   C_MenuSelection_10_Flag00 basic_cmd;
-  pstring<Encoding, 0x10> unknown_a1;
+  pstring<Encoding, 0x10> name;
   pstring<Encoding, 0x10> password;
 } __packed__;
 using C_MenuSelection_DC_V3_10_Flag03 = C_MenuSelectionT_10_Flag03<TextEncoding::MARKED>;
@@ -861,8 +861,10 @@ struct S_ReconnectSplit_19 {
 
 // 20: Invalid command
 
-// 21: GameGuard control (old versions of BB)
-// Format unknown
+// 21: Invalid command
+// My old notes call this command "GameGuard control (old versions of BB)", but
+// it's not clear if this is accurate. At least, BB US v1.24.3 and later do not
+// support this command.
 
 // 0022: GameGuard check (BB)
 
@@ -891,8 +893,6 @@ struct SC_GameGuardCheck_BB_0022 {
 // failure.
 
 struct S_ExchangeSecretLotteryTicketResult_BB_24 {
-  // These fields map to unknown_a1 and unknown_a2 in the 6xDE command (but
-  // their order is swapped here).
   le_uint16_t label = 0;
   uint8_t start_index = 0;
   uint8_t unused = 0;
@@ -1316,10 +1316,14 @@ struct LobbyFlags {
   uint8_t disable_udp = 1;
   uint8_t lobby_number = 0;
   uint8_t block_number = 0;
-  uint8_t unknown_a1 = 0;
+  // When this flag is set in the lobby join commands (67/68), the client will
+  // show the Battle option in the game creation menu. This only has an effect
+  // on DCv1. On 11/2000, the option always appears but does nothing, and on
+  // DCv2 and later, the game mode option is always present.
+  uint8_t enable_battle_mode_v1 = 1;
   uint8_t event = 0;
-  uint8_t unknown_a2 = 0;
-  le_uint32_t unused = 0;
+  uint8_t unused = 0;
+  le_uint32_t random_seed = 0; // Unused for lobbies
 } __packed_ws__(LobbyFlags, 0x0C);
 
 // Header flag = entry count (always 1 for 65 and 68; up to 0x0C for 67)

@@ -2118,13 +2118,9 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
   S_JoinLobbyT<LobbyFlags, LobbyDataT, DispDataT> cmd;
   cmd.lobby_flags.client_id = c->lobby_client_id;
   cmd.lobby_flags.leader_id = l->leader_id;
-  cmd.lobby_flags.disable_udp = 0x01;
   cmd.lobby_flags.lobby_number = lobby_type;
   cmd.lobby_flags.block_number = lobby_block;
-  cmd.lobby_flags.unknown_a1 = 0;
   cmd.lobby_flags.event = l->event;
-  cmd.lobby_flags.unknown_a2 = 0;
-  cmd.lobby_flags.unused = 0;
 
   vector<shared_ptr<Client>> lobby_clients;
   if (joining_client) {
@@ -2194,13 +2190,9 @@ void send_join_lobby_xb(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cl
   S_JoinLobby_XB_65_67_68 cmd;
   cmd.lobby_flags.client_id = c->lobby_client_id;
   cmd.lobby_flags.leader_id = l->leader_id;
-  cmd.lobby_flags.disable_udp = 0x01;
   cmd.lobby_flags.lobby_number = lobby_type;
   cmd.lobby_flags.block_number = l->block;
-  cmd.lobby_flags.unknown_a1 = 0;
   cmd.lobby_flags.event = l->event;
-  cmd.lobby_flags.unknown_a2 = 0;
-  cmd.lobby_flags.unused = 0;
 
   vector<shared_ptr<Client>> lobby_clients;
   if (joining_client) {
@@ -2247,7 +2239,6 @@ void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
   S_JoinLobby_DCNTE_65_67_68 cmd;
   cmd.lobby_flags.client_id = c->lobby_client_id;
   cmd.lobby_flags.leader_id = l->leader_id;
-  cmd.lobby_flags.disable_udp = 0x01;
 
   vector<shared_ptr<Client>> lobby_clients;
   if (joining_client) {
@@ -4068,6 +4059,11 @@ void send_ep3_disband_watcher_lobbies(shared_ptr<Lobby> primary_l) {
 }
 
 void send_server_time(shared_ptr<Client> c) {
+  // DC NTE and 11/2000 don't have this command
+  if (is_pre_v1(c->version())) {
+    return;
+  }
+
   uint64_t t = phosg::now();
 
   time_t t_secs = t / 1000000;

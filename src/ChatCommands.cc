@@ -381,23 +381,6 @@ ChatCommandDefinition cc_bank(
     },
     unavailable_on_proxy_server);
 
-ChatCommandDefinition cc_battle(
-    {"$battle"},
-    +[](const ServerArgs& a) {
-      a.check_is_game(false);
-      if (!is_v1(a.c->version())) {
-        throw precondition_failed("$C6This command can\nonly be used on\nDC v1 and earlier");
-      }
-
-      a.c->config.toggle_flag(Client::Flag::FORCE_BATTLE_MODE_GAME);
-      if (a.c->config.check_flag(Client::Flag::FORCE_BATTLE_MODE_GAME)) {
-        send_text_message(a.c, "$C6Battle mode enabled\nfor next game");
-      } else {
-        send_text_message(a.c, "$C6Battle mode disabled\nfor next game");
-      }
-    },
-    unavailable_on_proxy_server);
-
 static void server_command_bbchar_savechar(const ServerArgs& a, bool is_bb_conversion) {
   auto s = a.c->require_server_state();
   auto l = a.c->require_lobby();
