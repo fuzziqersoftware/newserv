@@ -1617,7 +1617,7 @@ struct S_ArrowUpdateEntry_88 {
 struct C_ConnectionInfo_DCNTE_8A {
   be_uint64_t hardware_id;
   le_uint32_t sub_version = 0x20;
-  le_uint32_t unknown_a1 = 0;
+  le_uint32_t unused = 0;
   pstring<TextEncoding::ASCII, 0x30> username;
   pstring<TextEncoding::ASCII, 0x30> password;
   pstring<TextEncoding::ASCII, 0x30> email_address; // From Sylverant documentation
@@ -1708,9 +1708,9 @@ struct C_LoginV1_DC_PC_V3_90 {
 struct C_RegisterV1_DC_92 {
   be_uint64_t hardware_id;
   le_uint32_t sub_version;
-  uint8_t is_extended = 0; // TODO: This is a guess
+  uint8_t unused1 = 0;
   uint8_t language = 0; // TODO: This is a guess; verify it
-  parray<uint8_t, 2> unknown_a3;
+  parray<uint8_t, 2> unused2;
   pstring<TextEncoding::ASCII, 0x30> serial_number2;
   pstring<TextEncoding::ASCII, 0x30> access_key2;
   pstring<TextEncoding::ASCII, 0x30> email; // According to Sylverant documentation
@@ -2415,9 +2415,10 @@ struct S_UpdateMediaHeader_Ep3_B9 {
 // 00 = unknown
 // 01 = Initialize Meseta subsystem (C->S; always has a value of 0)
 // 02 = Spend meseta (at e.g. lobby jukebox or Pinz's shop) (C->S)
-// 03 = Spend meseta response (S->C; request_token must match the last token
+// 03 = Successful transaction (S->C; request_token must match the last token
 //      sent by client)
-// 04 = unknown (C->S; request_token must match the last token sent by client)
+// 04 = Insufficient meseta (S->C; request_token must match the last token sent
+//      by client)
 
 struct C_MesetaTransaction_Ep3_BA {
   le_uint32_t transaction_num = 0;
