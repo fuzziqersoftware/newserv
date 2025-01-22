@@ -1304,7 +1304,11 @@ struct S_JoinGame_BB_64 : S_JoinGameT_DC_PC<PlayerLobbyDataBB> {
   uint8_t episode = 0;
   uint8_t unused = 0; // Corresponds to xb_enable_voice_chat; unused on BB
   uint8_t solo_mode = 0;
-  uint8_t unused2 = 0;
+  // This flag should be nonzero if the joining client will load a quest
+  // immediately after joining. The only tangible effect of this flag being
+  // enabled is that the game won't delete all active telepipes during quest
+  // loading.
+  uint8_t is_in_quest = 0;
 } __packed_ws__(S_JoinGame_BB_64, 0x1A0);
 
 // 65 (S->C): Add player to game
