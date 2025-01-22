@@ -1284,15 +1284,25 @@ struct S_JoinGame_Ep3_64 : S_JoinGame_GC_64 {
   parray<Ep3PlayerEntry, 4> players_ep3;
 } __packed_ws__(S_JoinGame_Ep3_64, 0x1180);
 
+struct S_UnknownXBVoiceChatConfig {
+  le_uint16_t unknown_a1 = 0;
+  uint8_t unknown_a2 = 0;
+  uint8_t unknown_a3 = 0;
+  le_uint16_t unknown_a4 = 0;
+  le_uint16_t unknown_a5 = 0;
+  parray<le_uint32_t, 4> unknown_a6;
+} __packed_ws__(S_UnknownXBVoiceChatConfig, 0x18);
+
 struct S_JoinGame_XB_64 : S_JoinGameT_DC_PC<PlayerLobbyDataXB> {
   uint8_t episode = 0;
-  parray<uint8_t, 3> unused;
-  parray<le_uint32_t, 6> unknown_a1;
+  uint8_t xb_enable_voice_chat = 1;
+  parray<uint8_t, 2> unused;
+  S_UnknownXBVoiceChatConfig unknown_a1;
 } __packed_ws__(S_JoinGame_XB_64, 0x1D8);
 
 struct S_JoinGame_BB_64 : S_JoinGameT_DC_PC<PlayerLobbyDataBB> {
   uint8_t episode = 0;
-  uint8_t unused1 = 1;
+  uint8_t unused = 0; // Corresponds to xb_enable_voice_chat; unused on BB
   uint8_t solo_mode = 0;
   uint8_t unused2 = 0;
 } __packed_ws__(S_JoinGame_BB_64, 0x1A0);
@@ -1322,7 +1332,10 @@ struct LobbyFlags {
   // DCv2 and later, the game mode option is always present.
   uint8_t enable_battle_mode_v1 = 1;
   uint8_t event = 0;
-  uint8_t unused = 0;
+  // TODO: This is a partially-informed, but untested, guess based on
+  // disassembly of the Xbox client. It'd be nice if someone let me know if
+  // this is correct or not
+  uint8_t xb_enable_voice_chat = 1;
   le_uint32_t random_seed = 0; // Unused for lobbies
 } __packed_ws__(LobbyFlags, 0x0C);
 
@@ -1354,7 +1367,7 @@ check_struct_size(S_JoinLobby_BB_65_67_68, 0x3D8C);
 
 struct S_JoinLobby_XB_65_67_68 {
   LobbyFlags lobby_flags;
-  parray<le_uint32_t, 6> unknown_a4;
+  S_UnknownXBVoiceChatConfig unknown_a4;
   struct Entry {
     PlayerLobbyDataXB lobby_data;
     PlayerInventory inventory;

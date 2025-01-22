@@ -2047,7 +2047,6 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     case Version::BB_V4: {
       S_JoinGame_BB_64 cmd;
       size_t player_count = populate_v3_cmd(cmd);
-      cmd.unused1 = 0;
       cmd.solo_mode = (l->mode == GameMode::SOLO) ? 1 : 0;
       cmd.unused2 = 0;
       send_command_t(c, 0x64, player_count, cmd);
