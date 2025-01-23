@@ -1727,7 +1727,7 @@ static void on_npc_control(shared_ptr<Client> c, uint8_t command, uint8_t flag, 
 }
 
 static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
-  auto& cmd = check_size_t<G_SwitchStateChanged_6x05>(data, size);
+  auto& cmd = check_size_t<G_WriteSwitchFlag_6x05>(data, size);
 
   auto l = c->require_lobby();
   if (!l->is_game()) {
@@ -1793,7 +1793,7 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
     }
   }
 
-  forward_subcommand_with_entity_id_transcode_t<G_SwitchStateChanged_6x05, true>(c, command, flag, data, size);
+  forward_subcommand_with_entity_id_transcode_t<G_WriteSwitchFlag_6x05, true>(c, command, flag, data, size);
 }
 
 static void on_play_sound_from_player(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {

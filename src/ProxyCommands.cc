@@ -2033,7 +2033,7 @@ template <>
 HandlerResult C_6x<void>(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
   if (!data.empty()) {
     if ((data[0] == 0x05) && ses->config.check_flag(Client::Flag::SWITCH_ASSIST_ENABLED)) {
-      auto& cmd = check_size_t<G_SwitchStateChanged_6x05>(data);
+      auto& cmd = check_size_t<G_WriteSwitchFlag_6x05>(data);
       if (ses->map_state && (cmd.flags & 1) && (cmd.header.entity_id != 0xFFFF)) {
         auto door_states = ses->map_state->door_states_for_switch_flag(
             ses->version(), cmd.switch_flag_floor, cmd.switch_flag_num);

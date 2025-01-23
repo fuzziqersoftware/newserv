@@ -2458,7 +2458,7 @@ struct S_TournamentSpectatorTeamList_Ep3_BB {
     uint8_t locked = 0;
     uint8_t count = 0;
     uint8_t max_count = 0;
-    uint8_t unknown_a1 = 0; // Possibly unused
+    uint8_t unused = 0;
   } __packed_ws__(GameEntry, 0x24);
   /* 04A4 */ parray<GameEntry, 0x40> match_entries;
   /* 0DA4 */
@@ -2818,19 +2818,19 @@ struct C_VerifyAccount_BB_DB {
 // DC: Guild card data (BB)
 
 struct S_GuildCardHeader_BB_01DC {
-  le_uint32_t unknown = 1;
-  le_uint32_t filesize = 0x0000D590;
+  le_uint32_t unknown_a1 = 1;
+  le_uint32_t file_size = 0x0000D590;
   le_uint32_t checksum = 0; // CRC32 of entire guild card file (0xD590 bytes)
 } __packed_ws__(S_GuildCardHeader_BB_01DC, 0x0C);
 
 struct S_GuildCardFileChunk_02DC {
-  le_uint32_t unknown = 0; // 0
+  le_uint32_t unknown_a1 = 0; // Must NOT match unknown_a1 from 01DC
   le_uint32_t chunk_index = 0;
   parray<uint8_t, 0x6800> data; // Command may be shorter if this is the last chunk
 } __packed_ws__(S_GuildCardFileChunk_02DC, 0x6808);
 
 struct C_GuildCardDataRequest_BB_03DC {
-  le_uint32_t unknown = 0;
+  le_uint32_t unknown_a1 = 0; // Matches unknown_a1 from 01DC
   le_uint32_t chunk_index = 0;
   le_uint32_t cont = 0;
 } __packed_ws__(C_GuildCardDataRequest_BB_03DC, 0x0C);
@@ -3127,7 +3127,7 @@ struct S_CardBattleTableState_Ep3_E4 {
     // 2 = player present, confirmed
     // 3 = player present, declined
     le_uint16_t state = 0;
-    le_uint16_t unknown_a1 = 0;
+    le_uint16_t unused = 0;
     le_uint32_t guild_card_number = 0;
   } __packed_ws__(Entry, 8);
   parray<Entry, 4> entries;
@@ -3154,7 +3154,10 @@ struct S_CardBattleTableConfirmation_Ep3_E5 {
 } __packed_ws__(S_CardBattleTableConfirmation_Ep3_E5, 4);
 
 // E5 (S->C): Player preview (BB)
-// E5 (C->S): Create character (BB)
+// E5 (C->S): Create character or apply dressing room updates (BB)
+// In the C->S case, the server can know whether it's a new character or
+// dressing room updates based on the value of connection_phase from the 93
+// command.
 
 struct SC_PlayerPreview_CreateCharacter_BB_00E5 {
   le_int32_t character_index = 0;
@@ -3437,7 +3440,7 @@ struct S_TeamMemberList_BB_09EA {
 } __packed_ws__(S_TeamMemberList_BB_09EA, 4);
 
 // 0CEA (S->C): Unknown
-// The client appears to ignore this command.
+// The client ignores this command.
 
 struct S_Unknown_BB_0CEA {
   parray<uint8_t, 0x20> unknown_a1;
@@ -3894,8 +3897,8 @@ struct G_ExtendedHeaderT {
 // 6x02: Unknown
 // 6x03: Unknown
 // These subcommands are completely ignored on V3 and later.
-// On all known DC versions (NTE through V2), these commands writes their
-// contents to a global array, but nothing reads from this array.
+// On all known DC versions (NTE through V2), the contents of these commands
+// are written to a global array, but nothing reads from this array.
 
 struct G_Unknown_6x02_6x03 {
   G_ClientIDHeader header;
@@ -3906,8 +3909,11 @@ struct G_Unknown_6x02_6x03 {
   le_float unknown_a5;
 } __packed_ws__(G_Unknown_6x02_6x03, 0x14);
 
-// 6x04: Unknown
-// TODO: This does something with TObjDoorKey objects
+// 6x04: Activate switch by token (deprecated)
+// This appears to be an early version of 6x0B; it only affects TObjDoorKey
+// objects and can only activate them, not deactivate them. 6x0B is much more
+// versatile and is used instead in all known versions of the game. This
+// command is likely a relic from pre-NTE development.
 
 struct G_Unknown_6x04 {
   G_ParameterHeader header; // param = door token (NOT entity ID or index)
@@ -3915,27 +3921,27 @@ struct G_Unknown_6x04 {
   le_uint16_t unused2 = 0;
 } __packed_ws__(G_Unknown_6x04, 8);
 
-// 6x05: Switch state changed
+// 6x05: Write switch flag
 // Some things that don't look like switches are implemented as switches using
 // this subcommand. For example, when all enemies in a room are defeated, this
 // subcommand is used to unlock the doors.
 // Note: In the client, this is a subclass of 6x04, similar to how 6xA2 is a
 // subclass of 6x60.
 
-struct G_SwitchStateChanged_6x05 {
+struct G_WriteSwitchFlag_6x05 {
   // Note: header.object_id is 0xFFFF for room clear when all enemies defeated
   G_EntityIDHeader header;
   // TODO: Some of these might be big-endian on GC; it only byteswaps
   // switch_flag_num. Are the others actually uint16, or are they uint8[2]?
   le_uint16_t client_id = 0;
-  le_uint16_t unknown_a2 = 0;
+  le_uint16_t unused = 0;
   le_uint16_t switch_flag_num = 0;
   uint8_t switch_flag_floor = 0;
   // Only two bits in flags have meanings:
-  // 01 - set unlock flag (if not set, the flag is cleared instead)
+  // 01 - set switch flag (if not set, the flag is cleared instead)
   // 02 - play room unlock sound if floor matches client's floor
   uint8_t flags = 0;
-} __packed_ws__(G_SwitchStateChanged_6x05, 0x0C);
+} __packed_ws__(G_WriteSwitchFlag_6x05, 0x0C);
 
 // 6x06: Send guild card
 
@@ -3988,6 +3994,7 @@ struct G_SymbolChat_6x07 {
 // 6x08: Invalid subcommand
 
 // 6x09: Unknown
+// header.entity_id is expected to be an enemy ID.
 
 struct G_Unknown_6x09 {
   G_EntityIDHeader header;

@@ -2538,7 +2538,7 @@ static void server_command_swset_swclear(const ServerArgs& a, bool should_set) {
   }
 
   uint8_t cmd_flags = should_set ? 0x01 : 0x00;
-  G_SwitchStateChanged_6x05 cmd = {{0x05, 0x03, 0xFFFF}, 0, 0, flag_num, floor, cmd_flags};
+  G_WriteSwitchFlag_6x05 cmd = {{0x05, 0x03, 0xFFFF}, 0, 0, flag_num, floor, cmd_flags};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
@@ -2560,7 +2560,7 @@ static void proxy_command_swset_swclear(const ProxyArgs& a, bool should_set) {
   }
 
   uint8_t cmd_flags = should_set ? 0x01 : 0x00;
-  G_SwitchStateChanged_6x05 cmd = {{0x05, 0x03, 0xFFFF}, 0, 0, flag_num, floor, cmd_flags};
+  G_WriteSwitchFlag_6x05 cmd = {{0x05, 0x03, 0xFFFF}, 0, 0, flag_num, floor, cmd_flags};
   a.ses->client_channel.send(0x60, 0x00, &cmd, sizeof(cmd));
   a.ses->server_channel.send(0x60, 0x00, &cmd, sizeof(cmd));
 }
@@ -2595,7 +2595,7 @@ ChatCommandDefinition cc_swsetall(
 
       l->switch_flags->data[a.c->floor].clear(0xFF);
 
-      parray<G_SwitchStateChanged_6x05, 0x100> cmds;
+      parray<G_WriteSwitchFlag_6x05, 0x100> cmds;
       for (size_t z = 0; z < cmds.size(); z++) {
         auto& cmd = cmds[z];
         cmd.header.subcommand = 0x05;
@@ -2613,7 +2613,7 @@ ChatCommandDefinition cc_swsetall(
         throw precondition_failed("$C6This command cannot\nbe used in the lobby");
       }
 
-      parray<G_SwitchStateChanged_6x05, 0x100> cmds;
+      parray<G_WriteSwitchFlag_6x05, 0x100> cmds;
       for (size_t z = 0; z < cmds.size(); z++) {
         auto& cmd = cmds[z];
         cmd.header.subcommand = 0x05;
