@@ -1309,7 +1309,12 @@ static void on_BA_Ep3(shared_ptr<Client> c, uint16_t command, uint32_t, string& 
     total_meseta_earned = c->login->account->ep3_total_meseta_earned;
   } else {
     if (c->login->account->ep3_current_meseta < in_cmd.value) {
-      throw runtime_error("meseta overdraft not allowed");
+      S_MesetaTransaction_Ep3_BA out_cmd = {
+          c->login->account->ep3_current_meseta,
+          c->login->account->ep3_total_meseta_earned,
+          in_cmd.request_token};
+      send_command(c, command, 0x04, &out_cmd, sizeof(out_cmd));
+      return;
     }
     c->login->account->ep3_current_meseta -= in_cmd.value;
     if (!s->is_replay) {

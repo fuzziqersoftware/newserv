@@ -1297,7 +1297,7 @@ struct S_JoinGame_XB_64 : S_JoinGameT_DC_PC<PlayerLobbyDataXB> {
   uint8_t episode = 0;
   uint8_t xb_enable_voice_chat = 1;
   parray<uint8_t, 2> unused;
-  S_UnknownXBVoiceChatConfig unknown_a1;
+  S_UnknownXBVoiceChatConfig voice_chat_config;
 } __packed_ws__(S_JoinGame_XB_64, 0x1D8);
 
 struct S_JoinGame_BB_64 : S_JoinGameT_DC_PC<PlayerLobbyDataBB> {
@@ -1371,7 +1371,7 @@ check_struct_size(S_JoinLobby_BB_65_67_68, 0x3D8C);
 
 struct S_JoinLobby_XB_65_67_68 {
   LobbyFlags lobby_flags;
-  S_UnknownXBVoiceChatConfig unknown_a4;
+  S_UnknownXBVoiceChatConfig voice_chat_config;
   struct Entry {
     PlayerLobbyDataXB lobby_data;
     PlayerInventory inventory;
@@ -1998,8 +1998,10 @@ struct C_LoginExtended_GC_9E : C_Login_GC_9E {
 } __packed_ws__(C_LoginExtended_GC_9E, 0x14C);
 
 struct C_Login_XB_9E : C_Login_DC_PC_GC_9D {
-  /* 00C8 */ parray<uint8_t, 0x20> unused;
+  /* 00C8 */ parray<uint8_t, 0x20> unknown_a4;
   /* 00E8 */ XBNetworkLocation netloc;
+  // By default, this array is initialized with [0x5A2773DD, 0xD82B2345,
+  // 0x4FF904D5] on 4OEU (US TU version).
   /* 0118 */ parray<le_uint32_t, 3> unknown_a1a;
   /* 0124 */ le_uint32_t xb_user_id_high = 0;
   /* 0128 */ le_uint32_t xb_user_id_low = 0;
@@ -2412,12 +2414,11 @@ struct S_UpdateMediaHeader_Ep3_B9 {
 // BA: Meseta transaction (Episode 3)
 // This command is not valid on Episode 3 Trial Edition.
 // header.flag specifies the transaction purpose. Specific known values:
-// 00 = unknown
 // 01 = Initialize Meseta subsystem (C->S; always has a value of 0)
-// 02 = Spend meseta (at e.g. lobby jukebox or Pinz's shop) (C->S)
+// 02 = Spend Meseta (at e.g. lobby jukebox or Pinz's shop) (C->S)
 // 03 = Successful transaction (S->C; request_token must match the last token
 //      sent by client)
-// 04 = Insufficient meseta (S->C; request_token must match the last token sent
+// 04 = Insufficient Meseta (S->C; request_token must match the last token sent
 //      by client)
 
 struct C_MesetaTransaction_Ep3_BA {
@@ -2432,33 +2433,36 @@ struct S_MesetaTransaction_Ep3_BA {
   le_uint32_t request_token = 0; // Should match the token sent by the client
 } __packed_ws__(S_MesetaTransaction_Ep3_BA, 0x0C);
 
-// BB (S->C): Tournament match information (Episode 3)
-// This command is not valid on Episode 3 Trial Edition. Because of this, it
-// must have been added fairly late in development, but it seems to be unused,
-// perhaps because the E1/E3 commands are generally more useful... but the E1/E3
-// commands exist in Trial Edition! So why was this added? Was it just never
-// finished? We may never know...
-// header.flag is the number of valid match entries.
+// BB (S->C): Tournament spectator team list (Episode 3)
+// This command is not valid on Episode 3 Trial Edition.
+// This is sent in response to an 09 command when viewing the tournament list
+// for spectating. newserv doesn't implement this because tournaments work
+// differently here - there is no fixed start time, and tournament spectator
+// teams behave the same way as free-battle spectator teams.
+// header.flag is the number of game entries.
 
-struct S_TournamentMatchInformation_Ep3_BB {
-  pstring<TextEncoding::MARKED, 0x20> tournament_name;
-  struct TeamEntry {
-    le_uint16_t win_count = 0;
-    le_uint16_t is_active = 0;
-    pstring<TextEncoding::MARKED, 0x20> name;
-  } __packed_ws__(TeamEntry, 0x24);
-  parray<TeamEntry, 0x20> team_entries;
-  le_uint16_t num_teams = 0;
-  le_uint16_t unknown_a3 = 0; // Probably actually unused
-  struct MatchEntry {
+struct Ep3TournamentBracketEntry { // Also used in commands CC and E3
+  le_uint16_t win_count = 0;
+  le_uint16_t is_active = 0;
+  pstring<TextEncoding::MARKED, 0x18> team_name;
+  parray<uint8_t, 8> unused;
+} __packed_ws__(Ep3TournamentBracketEntry, 0x24);
+
+struct S_TournamentSpectatorTeamList_Ep3_BB {
+  /* 0000 */ pstring<TextEncoding::MARKED, 0x20> tournament_name;
+  /* 0020 */ parray<Ep3TournamentBracketEntry, 0x20> bracket_entries;
+  /* 04A0 */ le_uint16_t num_teams = 0;
+  /* 04A2 */ le_uint16_t players_per_team = 0;
+  struct GameEntry {
     pstring<TextEncoding::MARKED, 0x20> name;
     uint8_t locked = 0;
     uint8_t count = 0;
     uint8_t max_count = 0;
-    uint8_t unused = 0;
-  } __packed_ws__(MatchEntry, 0x24);
-  parray<MatchEntry, 0x40> match_entries;
-} __packed_ws__(S_TournamentMatchInformation_Ep3_BB, 0xDA4);
+    uint8_t unknown_a1 = 0; // Possibly unused
+  } __packed_ws__(GameEntry, 0x24);
+  /* 04A4 */ parray<GameEntry, 0x40> match_entries;
+  /* 0DA4 */
+} __packed_ws__(S_TournamentSpectatorTeamList_Ep3_BB, 0xDA4);
 
 // BC: Invalid command
 // BD: Invalid command
@@ -2646,16 +2650,11 @@ struct S_ConfirmTournamentEntry_Ep3_CC {
   pstring<TextEncoding::MARKED, 0x40> tournament_name;
   le_uint16_t num_teams = 0;
   le_uint16_t players_per_team = 0;
-  le_uint16_t unknown_a2 = 0;
-  le_uint16_t unknown_a3 = 0;
+  le_uint16_t unused1 = 0;
+  le_uint16_t unused2 = 0;
   pstring<TextEncoding::MARKED, 0x20> server_name;
   pstring<TextEncoding::MARKED, 0x20> start_time; // e.g. "15:09:30" or "13:03 PST"
-  struct TeamEntry {
-    le_uint16_t win_count = 0;
-    le_uint16_t is_active = 0;
-    pstring<TextEncoding::MARKED, 0x20> name;
-  } __packed_ws__(TeamEntry, 0x24);
-  parray<TeamEntry, 0x20> team_entries;
+  parray<Ep3TournamentBracketEntry, 0x20> bracket_entries;
 } __packed_ws__(S_ConfirmTournamentEntry_Ep3_CC, 0x508);
 
 // CD: Invalid command
@@ -2788,7 +2787,7 @@ struct C_VerifyAccount_V3_DB {
   pstring<TextEncoding::ASCII, 0x10> v1_access_key; // Unused
   pstring<TextEncoding::ASCII, 0x10> serial_number; // On XB, this is the XBL gamertag
   pstring<TextEncoding::ASCII, 0x10> access_key; // On XB, this is the XBL user ID
-  pstring<TextEncoding::ASCII, 0x08> unused2;
+  be_uint64_t hardware_id = 0;
   le_uint32_t sub_version = 0;
   pstring<TextEncoding::ASCII, 0x30> serial_number2; // On XB, this is the XBL gamertag
   pstring<TextEncoding::ASCII, 0x30> access_key2; // On XB, this is the XBL user ID
@@ -2799,10 +2798,10 @@ struct C_VerifyAccount_V3_DB {
 // all during the data server phase). All current servers use 03/93 instead.
 struct C_VerifyAccount_BB_DB {
   // Note: These four fields are likely the same as those used in BB's 9E
-  pstring<TextEncoding::ASCII, 0x10> unknown_a3; // Always blank?
-  pstring<TextEncoding::ASCII, 0x10> unknown_a4; // == "?"
-  pstring<TextEncoding::ASCII, 0x10> unknown_a5; // Always blank?
-  pstring<TextEncoding::ASCII, 0x10> unknown_a6; // Always blank?
+  pstring<TextEncoding::ASCII, 0x10> v1_serial_number; // Always blank?
+  pstring<TextEncoding::ASCII, 0x10> v1_access_key; // == "?"
+  pstring<TextEncoding::ASCII, 0x10> serial_number; // Always blank?
+  pstring<TextEncoding::ASCII, 0x10> access_key; // Always blank?
   le_uint32_t sub_version = 0;
   pstring<TextEncoding::ASCII, 0x30> username;
   pstring<TextEncoding::ASCII, 0x30> password;
@@ -3066,18 +3065,12 @@ struct S_SyncSystemFile_BB_E2 {
 template <typename RulesT>
 struct S_TournamentGameDetailsBaseT_Ep3_E3 {
   // These fields are used only if the Rules pane is shown
-  /* 0000 */ pstring<TextEncoding::MARKED, 0x20> name;
+  /* 0000 */ pstring<TextEncoding::MARKED, 0x20> tournament_name;
   /* 0020 */ pstring<TextEncoding::MARKED, 0x20> map_name;
   /* 0040 */ RulesT rules;
 
   // This field is used only if the bracket pane is shown
-  struct BracketEntry {
-    le_uint16_t win_count = 0;
-    le_uint16_t is_active = 0;
-    pstring<TextEncoding::MARKED, 0x18> team_name;
-    parray<uint8_t, 8> unused;
-  } __packed_ws__(BracketEntry, 0x24);
-  /* 0054 */ parray<BracketEntry, 0x20> bracket_entries;
+  /* 0054 */ parray<Ep3TournamentBracketEntry, 0x20> bracket_entries;
 
   // This field is used only if the Opponents pane is shown. If players_per_team
   // is 2, all fields are shown; if player_per_team is 1, team_name and

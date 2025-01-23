@@ -3296,9 +3296,11 @@ void send_ep3_confirm_tournament_entry(
     cmd.num_teams = min<size_t>(teams.size(), 0x20);
     cmd.players_per_team = (tourn->get_flags() & Episode3::Tournament::Flag::IS_2V2) ? 2 : 1;
     for (size_t z = 0; z < min<size_t>(teams.size(), 0x20); z++) {
-      cmd.team_entries[z].win_count = teams[z]->num_rounds_cleared;
-      cmd.team_entries[z].is_active = teams[z]->is_active;
-      cmd.team_entries[z].name.encode(teams[z]->name, c->language());
+      const auto& team = teams[z];
+      auto& entry = cmd.bracket_entries[z];
+      entry.win_count = team->num_rounds_cleared;
+      entry.is_active = team->is_active;
+      entry.team_name.encode(team->name, c->language());
     }
   }
   send_command_t(c, 0xCC, tourn ? 0x01 : 0x00, cmd);
@@ -3389,14 +3391,16 @@ void send_ep3_tournament_details_t(
     shared_ptr<const Episode3::Tournament> tourn) {
   S_TournamentGameDetailsBaseT_Ep3_E3<RulesT> cmd;
   auto vm = tourn->get_map()->version(c->language());
-  cmd.name.encode(tourn->get_name(), c->language());
+  cmd.tournament_name.encode(tourn->get_name(), c->language());
   cmd.map_name.encode(vm->map->name.decode(vm->language), c->language());
   cmd.rules = tourn->get_rules();
   const auto& teams = tourn->all_teams();
   for (size_t z = 0; z < min<size_t>(teams.size(), 0x20); z++) {
-    cmd.bracket_entries[z].win_count = teams[z]->num_rounds_cleared;
-    cmd.bracket_entries[z].is_active = teams[z]->is_active ? 1 : 0;
-    cmd.bracket_entries[z].team_name.encode(teams[z]->name, c->language());
+    const auto& team = teams[z];
+    auto& entry = cmd.bracket_entries[z];
+    entry.win_count = team->num_rounds_cleared;
+    entry.is_active = team->is_active ? 1 : 0;
+    entry.team_name.encode(team->name, c->language());
   }
   cmd.num_bracket_entries = teams.size();
   cmd.players_per_team = (tourn->get_flags() & Episode3::Tournament::Flag::IS_2V2) ? 2 : 1;
@@ -3440,7 +3444,7 @@ void send_ep3_game_details_t(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
   if (tourn) {
     S_TournamentGameDetailsBaseT_Ep3_E3<RulesT> cmd;
-    cmd.name.encode(l->name, c->language());
+    cmd.tournament_name.encode(l->name, c->language());
 
     auto vm = tourn->get_map()->version(c->language());
     cmd.map_name.encode(vm->map->name.decode(vm->language), c->language());
