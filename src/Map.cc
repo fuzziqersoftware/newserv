@@ -1230,21 +1230,22 @@ MapFile::MapFile(std::shared_ptr<const std::string> data) {
       throw runtime_error("section floor number too large");
     }
 
+    size_t section_offset = r.where();
     switch (header.type()) {
       case SectionHeader::Type::OBJECT_SETS:
-        this->set_object_sets_for_floor(header.floor, r.getv(header.data_size), header.data_size);
+        this->set_object_sets_for_floor(header.floor, section_offset, r.getv(header.data_size), header.data_size);
         break;
       case SectionHeader::Type::ENEMY_SETS:
-        this->set_enemy_sets_for_floor(header.floor, r.getv(header.data_size), header.data_size);
+        this->set_enemy_sets_for_floor(header.floor, section_offset, r.getv(header.data_size), header.data_size);
         break;
       case SectionHeader::Type::EVENTS:
-        this->set_events_for_floor(header.floor, r.getv(header.data_size), header.data_size, true);
+        this->set_events_for_floor(header.floor, section_offset, r.getv(header.data_size), header.data_size, true);
         break;
       case SectionHeader::Type::RANDOM_ENEMY_LOCATIONS:
-        this->set_random_enemy_locations_for_floor(header.floor, r.getv(header.data_size), header.data_size);
+        this->set_random_enemy_locations_for_floor(header.floor, section_offset, r.getv(header.data_size), header.data_size);
         break;
       case SectionHeader::Type::RANDOM_ENEMY_DEFINITIONS:
-        this->set_random_enemy_definitions_for_floor(header.floor, r.getv(header.data_size), header.data_size);
+        this->set_random_enemy_definitions_for_floor(header.floor, section_offset, r.getv(header.data_size), header.data_size);
         break;
       default:
         throw runtime_error("invalid section type");
@@ -1260,15 +1261,15 @@ MapFile::MapFile(
     std::shared_ptr<const std::string> events_data) {
   if (objects_data) {
     this->link_data(objects_data);
-    this->set_object_sets_for_floor(floor, objects_data->data(), objects_data->size());
+    this->set_object_sets_for_floor(floor, 0, objects_data->data(), objects_data->size());
   }
   if (enemies_data) {
     this->link_data(enemies_data);
-    this->set_enemy_sets_for_floor(floor, enemies_data->data(), enemies_data->size());
+    this->set_enemy_sets_for_floor(floor, 0, enemies_data->data(), enemies_data->size());
   }
   if (events_data) {
     this->link_data(events_data);
-    this->set_events_for_floor(floor, events_data->data(), events_data->size(), false);
+    this->set_events_for_floor(floor, 0, events_data->data(), events_data->size(), false);
   }
   this->compute_floor_start_indexes();
 }
@@ -1282,7 +1283,7 @@ void MapFile::link_data(std::shared_ptr<const string> data) {
   }
 }
 
-void MapFile::set_object_sets_for_floor(uint8_t floor, const void* data, size_t size) {
+void MapFile::set_object_sets_for_floor(uint8_t floor, size_t file_offset, const void* data, size_t size) {
   auto& floor_sections = this->sections_for_floor.at(floor);
   if (floor_sections.object_sets) {
     throw runtime_error("multiple object sets sections for same floor");
@@ -1292,9 +1293,11 @@ void MapFile::set_object_sets_for_floor(uint8_t floor, const void* data, size_t 
   }
   floor_sections.object_sets = reinterpret_cast<const ObjectSetEntry*>(data);
   floor_sections.object_set_count = size / sizeof(ObjectSetEntry);
+  floor_sections.object_sets_file_offset = file_offset;
+  floor_sections.object_sets_file_size = size;
 }
 
-void MapFile::set_enemy_sets_for_floor(uint8_t floor, const void* data, size_t size) {
+void MapFile::set_enemy_sets_for_floor(uint8_t floor, size_t file_offset, const void* data, size_t size) {
   auto& floor_sections = this->sections_for_floor.at(floor);
   if (floor_sections.enemy_sets) {
     throw runtime_error("multiple enemy sets sections for same floor");
@@ -1307,9 +1310,11 @@ void MapFile::set_enemy_sets_for_floor(uint8_t floor, const void* data, size_t s
   }
   floor_sections.enemy_sets = reinterpret_cast<const EnemySetEntry*>(data);
   floor_sections.enemy_set_count = size / sizeof(EnemySetEntry);
+  floor_sections.enemy_sets_file_offset = file_offset;
+  floor_sections.enemy_sets_file_size = size;
 }
 
-void MapFile::set_events_for_floor(uint8_t floor, const void* data, size_t size, bool allow_evt2) {
+void MapFile::set_events_for_floor(uint8_t floor, size_t file_offset, const void* data, size_t size, bool allow_evt2) {
   auto& floor_sections = this->sections_for_floor.at(floor);
   if (floor_sections.events_data || floor_sections.events1 || floor_sections.events2 || floor_sections.event_action_stream) {
     throw runtime_error("multiple events sections for same floor");
@@ -1317,6 +1322,9 @@ void MapFile::set_events_for_floor(uint8_t floor, const void* data, size_t size,
 
   floor_sections.events_data = data;
   floor_sections.events_data_size = size;
+  floor_sections.events_file_offset = file_offset;
+  floor_sections.events_file_size = size;
+
   phosg::StringReader r(data, size);
   const auto& events_header = r.get<EventsSectionHeader>();
   floor_sections.event_count = events_header.entry_count;
@@ -1339,7 +1347,7 @@ void MapFile::set_events_for_floor(uint8_t floor, const void* data, size_t size,
       events_header.action_stream_offset, floor_sections.event_action_stream_bytes);
 }
 
-void MapFile::set_random_enemy_locations_for_floor(uint8_t floor, const void* data, size_t size) {
+void MapFile::set_random_enemy_locations_for_floor(uint8_t floor, size_t file_offset, const void* data, size_t size) {
   auto& floor_sections = this->sections_for_floor.at(floor);
   if (floor_sections.random_enemy_locations_data) {
     throw runtime_error("multiple random enemy locations sections for same floor");
@@ -1347,10 +1355,12 @@ void MapFile::set_random_enemy_locations_for_floor(uint8_t floor, const void* da
 
   floor_sections.random_enemy_locations_data = data;
   floor_sections.random_enemy_locations_data_size = size;
+  floor_sections.random_enemy_locations_file_offset = file_offset;
+  floor_sections.random_enemy_locations_file_size = size;
   this->has_any_random_sections = true;
 }
 
-void MapFile::set_random_enemy_definitions_for_floor(uint8_t floor, const void* data, size_t size) {
+void MapFile::set_random_enemy_definitions_for_floor(uint8_t floor, size_t file_offset, const void* data, size_t size) {
   auto& floor_sections = this->sections_for_floor.at(floor);
   if (floor_sections.random_enemy_definitions_data) {
     throw runtime_error("multiple random enemy locations sections for same floor");
@@ -1358,6 +1368,8 @@ void MapFile::set_random_enemy_definitions_for_floor(uint8_t floor, const void* 
 
   floor_sections.random_enemy_definitions_data = data;
   floor_sections.random_enemy_definitions_data_size = size;
+  floor_sections.random_enemy_definitions_file_offset = file_offset;
+  floor_sections.random_enemy_definitions_file_size = size;
   this->has_any_random_sections = true;
 }
 
@@ -1383,15 +1395,15 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
     const auto& this_sf = this->sections_for_floor[floor];
 
     if (this_sf.object_sets) {
-      new_map->set_object_sets_for_floor(floor, this_sf.object_sets, this_sf.object_set_count * sizeof(ObjectSetEntry));
+      new_map->set_object_sets_for_floor(floor, 0, this_sf.object_sets, this_sf.object_set_count * sizeof(ObjectSetEntry));
     }
 
     if (this_sf.enemy_sets) {
-      new_map->set_enemy_sets_for_floor(floor, this_sf.enemy_sets, this_sf.enemy_set_count * sizeof(EnemySetEntry));
+      new_map->set_enemy_sets_for_floor(floor, 0, this_sf.enemy_sets, this_sf.enemy_set_count * sizeof(EnemySetEntry));
     }
 
     if (this_sf.events1) {
-      new_map->set_events_for_floor(floor, this_sf.events_data, this_sf.events_data_size, false);
+      new_map->set_events_for_floor(floor, 0, this_sf.events_data, this_sf.events_data_size, false);
     } else if (this_sf.events2) {
       if (!this_sf.random_enemy_locations_data || !this_sf.random_enemy_definitions_data) {
         throw runtime_error("cannot materialize random enemies; evt2 section present but one or both random data sections are missing");
@@ -1547,11 +1559,11 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
 
       auto enemy_sets_sec_data = make_shared<string>(std::move(enemy_sets_w.str()));
       new_map->link_data(enemy_sets_sec_data);
-      new_map->set_enemy_sets_for_floor(floor, enemy_sets_sec_data->data(), enemy_sets_sec_data->size());
+      new_map->set_enemy_sets_for_floor(floor, 0, enemy_sets_sec_data->data(), enemy_sets_sec_data->size());
 
       auto events1_sec_data = make_shared<string>(std::move(events1_sec_w.str()));
       new_map->link_data(events1_sec_data);
-      new_map->set_events_for_floor(floor, events1_sec_data->data(), events1_sec_data->size(), false);
+      new_map->set_events_for_floor(floor, 0, events1_sec_data->data(), events1_sec_data->size(), false);
     }
   }
 
@@ -1670,44 +1682,60 @@ string MapFile::disassemble() const {
     phosg::StringReader as_r(sf.event_action_stream, sf.event_action_stream_bytes);
 
     if (sf.object_sets) {
-      ret.emplace_back(phosg::string_printf(".object_sets %hhu", floor));
+      ret.emplace_back(phosg::string_printf(".object_sets %hhu /* 0x%zX in file; 0x%zX bytes */",
+          floor, sf.object_sets_file_offset, sf.object_sets_file_size));
       for (size_t z = 0; z < sf.object_set_count; z++) {
         size_t k_id = z + sf.first_object_set_index;
         ret.emplace_back(phosg::string_printf("/* K-%03zX */ ", k_id) + sf.object_sets[z].str());
       }
     }
     if (sf.enemy_sets) {
-      ret.emplace_back(phosg::string_printf(".enemy_sets %hhu", floor));
+      ret.emplace_back(phosg::string_printf(".enemy_sets %hhu /* 0x%zX in file; 0x%zX bytes */",
+          floor, sf.enemy_sets_file_offset, sf.enemy_sets_file_size));
       for (size_t z = 0; z < sf.enemy_set_count; z++) {
         size_t s_id = z + sf.first_enemy_set_index;
         ret.emplace_back(phosg::string_printf("/* S-%03zX */ ", s_id) + sf.enemy_sets[z].str());
       }
     }
     if (sf.events1) {
-      ret.emplace_back(phosg::string_printf(".events %hhu", floor));
+      ret.emplace_back(phosg::string_printf(".events %hhu /* 0x%zX in file; 0x%zX bytes; 0x%zX bytes in action stream */",
+          floor, sf.events_file_offset, sf.events_file_size, sf.event_action_stream_bytes));
       for (size_t z = 0; z < sf.event_count; z++) {
-        const auto& ev = sf.events2[z];
+        const auto& ev = sf.events1[z];
         size_t w_id = z + sf.first_event_set_index;
         ret.emplace_back(phosg::string_printf("/* W-%03zX */ ", w_id) + ev.str());
+        if (ev.action_stream_offset >= sf.event_action_stream_bytes) {
+          ret.emplace_back(phosg::string_printf(
+              "  // WARNING: Event action stream offset (0x%" PRIX32 ") is outside of this section",
+              ev.action_stream_offset.load()));
+        }
         size_t as_size = as_r.size() - ev.action_stream_offset;
         ret.emplace_back(this->disassemble_action_stream(as_r.pgetv(ev.action_stream_offset, as_size), as_size));
       }
     }
     if (sf.events2) {
-      ret.emplace_back(phosg::string_printf(".random_events %hhu", floor));
+      ret.emplace_back(phosg::string_printf(".random_events %hhu /* 0x%zX in file; 0x%zX bytes; 0x%zX bytes in action stream */",
+          floor, sf.events_file_offset, sf.events_file_size, sf.event_action_stream_bytes));
       for (size_t z = 0; z < sf.event_count; z++) {
         const auto& ev = sf.events2[z];
         ret.emplace_back(phosg::string_printf("/* index %zu */", z) + ev.str());
+        if (ev.action_stream_offset >= sf.event_action_stream_bytes) {
+          ret.emplace_back(phosg::string_printf(
+              "  // WARNING: Event action stream offset (0x%" PRIX32 ") is outside of this section",
+              ev.action_stream_offset.load()));
+        }
         size_t as_size = as_r.size() - ev.action_stream_offset;
         ret.emplace_back(this->disassemble_action_stream(as_r.pgetv(ev.action_stream_offset, as_size), as_size));
       }
     }
     if (sf.random_enemy_locations_data) {
-      ret.emplace_back(phosg::string_printf(".random_enemy_locations %hhu", floor));
+      ret.emplace_back(phosg::string_printf(".random_enemy_locations %hhu /* 0x%zX in file; 0x%zX bytes */",
+          floor, sf.random_enemy_locations_file_offset, sf.random_enemy_locations_file_size));
       ret.emplace_back(phosg::format_data(sf.random_enemy_locations_data, sf.random_enemy_locations_data_size));
     }
     if (sf.random_enemy_definitions_data) {
-      ret.emplace_back(phosg::string_printf(".random_enemy_definitions %hhu", floor));
+      ret.emplace_back(phosg::string_printf(".random_enemy_definitions %hhu /* 0x%zX in file; 0x%zX bytes */",
+          floor, sf.random_enemy_definitions_file_offset, sf.random_enemy_definitions_file_size));
       ret.emplace_back(phosg::format_data(sf.random_enemy_definitions_data, sf.random_enemy_definitions_data_size));
     }
   }
@@ -2415,7 +2443,10 @@ void SuperMap::link_event_version(
     const void* map_file_action_stream,
     size_t map_file_action_stream_size) {
   if (entry->action_stream_offset >= map_file_action_stream_size) {
-    throw runtime_error("event entry action stream offset is beyond end of action stream");
+    string s = entry->str();
+    throw runtime_error(phosg::string_printf(
+        "action stream offset 0x%" PRIX32 " is beyond end of action stream (0x%zX) for event %s",
+        entry->action_stream_offset.load(), map_file_action_stream_size, s.c_str()));
   }
   const void* ev_action_stream_start = reinterpret_cast<const uint8_t*>(map_file_action_stream) +
       entry->action_stream_offset;
@@ -3257,6 +3288,40 @@ uint32_t MapState::RareEnemyRates::for_enemy_type(EnemyType type) const {
 const shared_ptr<const MapState::RareEnemyRates> MapState::NO_RARE_ENEMIES = make_shared<MapState::RareEnemyRates>(0, 0);
 const shared_ptr<const MapState::RareEnemyRates> MapState::DEFAULT_RARE_ENEMIES = make_shared<MapState::RareEnemyRates>(0x0083126E, 0x1999999A);
 
+uint32_t MapState::EnemyState::convert_game_flags(uint32_t game_flags, bool to_v3) {
+  // The format of game_flags was changed significantly between v2 and v3, and
+  // not accounting for this results in odd effects like other characters not
+  // appearing when joining a game. Unfortunately, some bits were deleted on v3
+  // and other bits were added, so it doesn't suffice to simply store the most
+  // complete format of this field - we have to be able to convert between the
+  // two.
+
+  // Bits on v2: ?IHCBAzy xwvutsrq ponmlkji hgfedcba
+  // Bits on v3: ?IHGFEDC BAzyxwvu srqponkj hgfedcba
+  // The bits ilmt were removed in v3 and the bits to their left were shifted
+  // right. The bits DEFG were added in v3 and do not exist on v2.
+  // Known meanings for these bits:
+  //   o = is dead
+  //   n = should play hit animation
+  //   y = is near enemy
+  //   H = is enemy?
+  //   I = is object? (some entities have both H and I set though)
+  // It could be that the flags 0x70000000 are actually a 3-bit integer rather
+  // than individual flags. TODO: Investigate this.
+
+  if (to_v3) {
+    return (game_flags & 0xE00000FF) |
+        ((game_flags & 0x00000600) >> 1) |
+        ((game_flags & 0x0007E000) >> 3) |
+        ((game_flags & 0x1FF00000) >> 4);
+  } else {
+    return (game_flags & 0xE00000FF) |
+        ((game_flags << 1) & 0x00000600) |
+        ((game_flags << 3) & 0x0007E000) |
+        ((game_flags << 4) & 0x1FF00000);
+  }
+}
+
 MapState::EntityIterator::EntityIterator(MapState* map_state, Version version, bool at_end)
     : map_state(map_state),
       version(version),
@@ -3755,6 +3820,7 @@ void MapState::import_object_states_from_sync(
 void MapState::import_enemy_states_from_sync(Version from_version, const SyncEnemyStateEntry* entries, size_t entry_count) {
   this->log.info("Importing enemy state from sync command");
   size_t enemy_index = 0;
+  bool is_v3 = !is_v1_or_v2(from_version);
   for (const auto& fc : this->floor_config_entries) {
     if (!fc.super_map) {
       continue;
@@ -3775,10 +3841,15 @@ void MapState::import_enemy_states_from_sync(Version from_version, const SyncEne
       if (ene_st->super_ene != ene) {
         throw logic_error("super enemy link is incorrect");
       }
-      if (ene_st->game_flags != entry.flags) {
-        this->log.warning("(%04zX => E-%03zX) Flags from client (%08" PRIX32 ") do not match game flags from map (%08" PRIX32 ")",
-            enemy_index, ene_st->e_id, entry.flags.load(), ene_st->game_flags);
-        ene_st->game_flags = entry.flags;
+      if (ene_st->get_game_flags(is_v3) != entry.flags) {
+        this->log.warning("(%04zX => E-%03zX) Flags from client (%08" PRIX32 "(%s)) do not match game flags from map (%08" PRIX32 "(%s))",
+            enemy_index,
+            ene_st->e_id,
+            entry.flags.load(),
+            is_v3 ? "v3" : "v2",
+            ene_st->game_flags,
+            (ene_st->server_flags & MapState::EnemyState::Flag::GAME_FLAGS_IS_V3) ? "v3" : "v2");
+        ene_st->set_game_flags(entry.flags, !is_v1_or_v2(from_version));
       }
       if (ene_st->total_damage != entry.total_damage) {
         this->log.warning("(%04zX => E-%03zX) Total damage from client (%hu) does not match total damage from map (%hu)",
@@ -4107,8 +4178,14 @@ void MapState::print(FILE* stream) const {
       }
     }
     string ene_str = ene_st->super_ene->str();
-    fprintf(stream, " %s total_damage=%04hX rare_flags=%04hX game_flags=%08" PRIX32 " set_flags=%04hX server_flags=%02hhX\n",
-        ene_str.c_str(), ene_st->total_damage, ene_st->rare_flags, ene_st->game_flags, ene_st->set_flags, ene_st->server_flags);
+    fprintf(stream, " %s total_damage=%04hX rare_flags=%04hX game_flags=%08" PRIX32 "(%s) set_flags=%04hX server_flags=%04hX\n",
+        ene_str.c_str(),
+        ene_st->total_damage,
+        ene_st->rare_flags,
+        ene_st->game_flags,
+        (ene_st->server_flags & MapState::EnemyState::Flag::GAME_FLAGS_IS_V3) ? "v3" : "v2",
+        ene_st->set_flags,
+        ene_st->server_flags);
   }
 
   if (this->bb_rare_enemy_indexes.empty()) {

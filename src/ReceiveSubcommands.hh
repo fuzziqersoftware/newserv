@@ -50,23 +50,22 @@ public:
   uint16_t bonus_hp_from_materials = 0;
   uint16_t bonus_tp_from_materials = 0;
   parray<uint8_t, 0x10> unknown_a5_112000;
-  G_6x70_StatusEffectState permanent_status_effect;
-  G_6x70_StatusEffectState temporary_status_effect;
-  G_6x70_StatusEffectState attack_status_effect;
-  G_6x70_StatusEffectState defense_status_effect;
-  G_6x70_StatusEffectState unused_status_effect;
+  StatusEffectState permanent_status_effect;
+  StatusEffectState temporary_status_effect;
+  StatusEffectState attack_status_effect;
+  StatusEffectState defense_status_effect;
+  StatusEffectState unused_status_effect;
   uint32_t language = 0;
   uint32_t player_tag = 0;
   uint32_t guild_card_number = 0;
   uint32_t unknown_a6 = 0;
   uint32_t battle_team_number = 0;
   G_6x70_Sub_Telepipe telepipe;
-  uint32_t unknown_a8 = 0;
-  parray<uint8_t, 0x10> unknown_a9_nte_112000;
-  G_6x70_Sub_UnknownA1 unknown_a9_final;
+  uint32_t death_flags = 0;
+  NPCTalkState npc_talk_state;
   uint32_t area = 0;
-  uint32_t flags2_value = 0;
-  bool flags2_is_v3 = false;
+  uint32_t game_flags = 0;
+  bool game_flags_is_v3 = false;
   parray<uint8_t, 0x14> technique_levels_v1 = 0xFF;
   PlayerVisualConfig visual;
   std::string name;
@@ -127,7 +126,7 @@ protected:
       Version from_version,
       bool from_client_customization);
   G_6x70_Base_V1 base_v1(bool is_v3) const;
-  uint32_t get_flags2(bool is_v3) const;
+  uint32_t get_game_flags(bool is_v3) const;
 };
 
 bool validate_6xBB(G_SyncCardTradeServerState_Ep3_6xBB& cmd);

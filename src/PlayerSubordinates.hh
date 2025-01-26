@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "ChoiceSearch.hh"
+#include "CommonFileFormats.hh"
 #include "FileContentsCache.hh"
 #include "ItemData.hh"
 #include "LevelTable.hh"
@@ -777,6 +778,8 @@ inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB>(
 }
 
 struct QuestFlagsForDifficulty {
+  static const QuestFlagsForDifficulty BB_QUEST_FLAG_APPLY_MASK;
+
   parray<uint8_t, 0x80> data;
 
   inline bool get(uint16_t flag_index) const {
@@ -995,4 +998,44 @@ using SymbolChatBE = SymbolChatT<true>;
 check_struct_size(SymbolChat, 0x3C);
 check_struct_size(SymbolChatBE, 0x3C);
 
-extern const QuestFlagsForDifficulty bb_quest_flag_apply_mask;
+struct TelepipeState {
+  /* 00 */ le_uint16_t owner_client_id = 0xFFFF;
+  /* 02 */ le_uint16_t floor = 0;
+  /* 04 */ le_uint32_t room_id = 0;
+  /* 08 */ VectorXYZF pos;
+  /* 14 */ le_uint32_t angle_y = 0;
+  /* 18 */
+} __packed_ws__(TelepipeState, 0x18);
+
+struct NPCTalkState_DCProtos {
+  // This is used in all versions of this command except DCNTE and 11/2000.
+  /* 00 */ le_uint16_t unknown_a1 = 0;
+  /* 02 */ le_uint16_t unknown_a2 = 0;
+  // unknown_a3 is missing in this format, unlike the v1+ format below
+  /* 04 */ le_float unknown_a4 = 0.0f;
+  /* 08 */ le_float unknown_a5 = 0.0f;
+  /* 0C */ le_float unknown_a6 = 0.0f;
+  /* 10 */
+} __packed_ws__(NPCTalkState_DCProtos, 0x10);
+
+struct NPCTalkState {
+  // This is used in all versions of this command except DCNTE and 11/2000.
+  /* 00 */ le_uint16_t unknown_a1 = 0;
+  /* 02 */ le_uint16_t unknown_a2 = 0;
+  /* 04 */ le_uint32_t unknown_a3 = 0;
+  /* 08 */ le_float unknown_a4 = 0.0f;
+  /* 0C */ le_float unknown_a5 = 0.0f;
+  /* 10 */ le_float unknown_a6 = 0.0f;
+  /* 14 */
+
+  NPCTalkState() = default;
+  NPCTalkState(const NPCTalkState_DCProtos& proto);
+  operator NPCTalkState_DCProtos() const;
+} __packed_ws__(NPCTalkState, 0x14);
+
+struct StatusEffectState {
+  /* 00 */ le_uint32_t effect_type = 0;
+  /* 04 */ le_float multiplier = 0.0f;
+  /* 08 */ le_uint32_t remaining_frames = 0;
+  /* 0C */
+} __packed_ws__(StatusEffectState, 0x0C);

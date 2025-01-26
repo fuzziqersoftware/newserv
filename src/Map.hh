@@ -337,14 +337,20 @@ public:
   };
 
   struct FloorSections {
+    size_t object_sets_file_offset = 0;
+    size_t object_sets_file_size = 0;
     const ObjectSetEntry* object_sets = nullptr;
     size_t object_set_count = 0;
     size_t first_object_set_index = 0;
 
+    size_t enemy_sets_file_offset = 0;
+    size_t enemy_sets_file_size = 0;
     const EnemySetEntry* enemy_sets = nullptr;
     size_t enemy_set_count = 0;
     size_t first_enemy_set_index = 0;
 
+    size_t events_file_offset = 0;
+    size_t events_file_size = 0;
     const void* events_data = nullptr;
     size_t events_data_size = 0;
     const Event1Entry* events1 = nullptr;
@@ -354,9 +360,13 @@ public:
     size_t event_action_stream_bytes = 0;
     size_t first_event_set_index = 0;
 
+    size_t random_enemy_locations_file_offset = 0;
+    size_t random_enemy_locations_file_size = 0;
     const void* random_enemy_locations_data = nullptr;
     size_t random_enemy_locations_data_size = 0;
 
+    size_t random_enemy_definitions_file_offset = 0;
+    size_t random_enemy_definitions_file_size = 0;
     const void* random_enemy_definitions_data = nullptr;
     size_t random_enemy_definitions_data_size = 0;
   };
@@ -412,11 +422,11 @@ public:
 protected:
   void link_data(std::shared_ptr<const std::string> data);
 
-  void set_object_sets_for_floor(uint8_t floor, const void* data, size_t size);
-  void set_enemy_sets_for_floor(uint8_t floor, const void* data, size_t size);
-  void set_events_for_floor(uint8_t floor, const void* data, size_t size, bool allow_evt2);
-  void set_random_enemy_locations_for_floor(uint8_t floor, const void* data, size_t size);
-  void set_random_enemy_definitions_for_floor(uint8_t floor, const void* data, size_t size);
+  void set_object_sets_for_floor(uint8_t floor, size_t file_offset, const void* data, size_t size);
+  void set_enemy_sets_for_floor(uint8_t floor, size_t file_offset, const void* data, size_t size);
+  void set_events_for_floor(uint8_t floor, size_t file_offset, const void* data, size_t size, bool allow_evt2);
+  void set_random_enemy_locations_for_floor(uint8_t floor, size_t file_offset, const void* data, size_t size);
+  void set_random_enemy_definitions_for_floor(uint8_t floor, size_t file_offset, const void* data, size_t size);
 
   void compute_floor_start_indexes();
 
@@ -668,11 +678,12 @@ public:
   struct EnemyState {
     std::shared_ptr<const SuperMap::Enemy> super_ene;
     enum Flag {
-      LAST_HIT_MASK = 0x03,
-      EXP_GIVEN = 0x04,
-      ITEM_DROPPED = 0x08,
-      ALL_HITS_MASK_FIRST = 0x10,
-      ALL_HITS_MASK = 0xF0,
+      LAST_HIT_MASK = 0x0003,
+      EXP_GIVEN = 0x0004,
+      ITEM_DROPPED = 0x0008,
+      ALL_HITS_MASK_FIRST = 0x0010,
+      ALL_HITS_MASK = 0x00F0,
+      GAME_FLAGS_IS_V3 = 0x0100,
     };
     size_t e_id = 0;
     size_t set_id = 0;
@@ -680,7 +691,9 @@ public:
     uint16_t rare_flags = 0;
     uint32_t game_flags = 0; // From 6x0A
     uint16_t set_flags = 0; // Only used if super_ene->child_index == 0
-    uint8_t server_flags = 0;
+    uint16_t server_flags = 0;
+
+    static uint32_t convert_game_flags(uint32_t game_flags, bool to_v3);
 
     inline void reset() {
       this->total_damage = 0;
@@ -688,6 +701,23 @@ public:
       this->game_flags = 0;
       this->set_flags = 0;
       this->server_flags = 0;
+    }
+
+    inline void set_game_flags(uint32_t game_flags, bool is_v3) {
+      this->game_flags = game_flags;
+      if (is_v3) {
+        this->server_flags |= Flag::GAME_FLAGS_IS_V3;
+      } else {
+        this->server_flags &= ~Flag::GAME_FLAGS_IS_V3;
+      }
+    }
+    inline uint32_t get_game_flags(bool is_v3) const {
+      bool flags_is_v3 = (this->server_flags & Flag::GAME_FLAGS_IS_V3);
+      if (flags_is_v3 == is_v3) {
+        return this->game_flags;
+      } else {
+        return this->convert_game_flags(this->game_flags, is_v3);
+      }
     }
 
     inline bool is_rare(Version version) const {

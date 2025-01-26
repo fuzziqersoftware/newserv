@@ -649,7 +649,7 @@ void send_guild_card_chunk_bb(shared_ptr<Client> c, size_t chunk_index) {
   S_GuildCardFileChunk_02DC cmd;
 
   size_t data_size = min<size_t>(sizeof(PSOBBGuildCardFile) - chunk_offset, sizeof(cmd.data));
-  cmd.unknown = 0;
+  cmd.unknown_a1 = 0;
   cmd.chunk_index = chunk_index;
   cmd.data.assign_range(
       reinterpret_cast<const uint8_t*>(c->guild_card_file().get()) + chunk_offset,
@@ -2672,7 +2672,7 @@ void send_game_item_state(shared_ptr<Client> c) {
       fi.source_type = 0;
       fi.entity_index = 0xFFFF;
       fi.pos = item->pos;
-      fi.unknown_a2 = 0;
+      fi.room_id = 0;
       fi.drop_number = (floor == 0) ? 0xFFFF : (decompressed_header.next_drop_number_per_floor.at(floor - 1)++);
       fi.item = item->data;
       fi.item.encode_for_version(c->version(), s->item_parameter_table_for_encode(c->version()));
@@ -2736,9 +2736,10 @@ void send_game_enemy_state(shared_ptr<Client> c) {
   auto s = c->require_server_state();
 
   vector<SyncEnemyStateEntry> entries;
+  bool is_v3 = !is_v1_or_v2(c->version());
   for (auto ene_st : l->map_state->iter_enemy_states(c->version())) {
     auto& entry = entries.emplace_back();
-    entry.flags = ene_st->game_flags;
+    entry.flags = ene_st->get_game_flags(is_v3);
     entry.item_drop_id = (ene_st->server_flags & MapState::EnemyState::Flag::ITEM_DROPPED)
         ? 0xFFFF
         : (0xCA0 + l->map_state->index_for_enemy_state(c->version(), ene_st));
@@ -2921,11 +2922,7 @@ void send_game_player_state(shared_ptr<Client> to_c, shared_ptr<Client> from_c, 
 
   auto to_l = to_c->lobby.lock();
   if (to_l && (from_c->telepipe_lobby_id == to_l->lobby_id)) {
-    to_send.telepipe.owner_client_id = from_c->telepipe_state.client_id2;
-    to_send.telepipe.floor = from_c->telepipe_state.floor;
-    to_send.telepipe.unknown_a1 = from_c->telepipe_state.unknown_b3;
-    to_send.telepipe.pos = from_c->telepipe_state.pos;
-    to_send.telepipe.unknown_a3 = from_c->telepipe_state.unknown_a3;
+    to_send.telepipe.state = from_c->telepipe_state;
   }
 
   if (apply_overrides) {
@@ -3040,7 +3037,7 @@ void send_create_inventory_item_to_client(shared_ptr<Client> c, uint8_t client_i
     cmd.header.client_id = client_id;
     cmd.item_data = item;
     cmd.unused1 = 0;
-    cmd.unknown_a2 = 0;
+    cmd.equip_item = 0;
     cmd.unused2.clear(0);
     send_command_t(c, 0x60, 0x00, cmd);
   }

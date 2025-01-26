@@ -788,11 +788,11 @@ Parsed6x70Data::Parsed6x70Data(
       unknown_a6(0),
       battle_team_number(0),
       telepipe(cmd.telepipe),
-      unknown_a8(cmd.unknown_a8),
-      unknown_a9_nte_112000(cmd.unknown_a9),
+      death_flags(cmd.death_flags),
+      npc_talk_state(cmd.npc_talk_state),
       area(cmd.area),
-      flags2_value(cmd.flags2),
-      flags2_is_v3(false),
+      game_flags(cmd.game_flags),
+      game_flags_is_v3(false),
       visual(cmd.visual),
       stats(cmd.stats),
       num_items(cmd.num_items),
@@ -824,11 +824,11 @@ Parsed6x70Data::Parsed6x70Data(
       unknown_a6(0),
       battle_team_number(0),
       telepipe(cmd.telepipe),
-      unknown_a8(cmd.unknown_a8),
-      unknown_a9_nte_112000(cmd.unknown_a9),
+      death_flags(cmd.death_flags),
+      npc_talk_state(cmd.npc_talk_state),
       area(cmd.area),
-      flags2_value(cmd.flags2),
-      flags2_is_v3(false),
+      game_flags(cmd.game_flags),
+      game_flags_is_v3(false),
       visual(cmd.visual),
       stats(cmd.stats),
       num_items(cmd.num_items),
@@ -860,7 +860,7 @@ Parsed6x70Data::Parsed6x70Data(
     Version from_version,
     bool from_client_customization)
     : Parsed6x70Data(cmd.base, guild_card_number, from_version, from_client_customization) {
-  this->flags2_is_v3 = true;
+  this->game_flags_is_v3 = true;
   this->stats = cmd.stats;
   this->num_items = cmd.num_items;
   this->items = cmd.items;
@@ -876,7 +876,7 @@ Parsed6x70Data::Parsed6x70Data(
     Version from_version,
     bool from_client_customization)
     : Parsed6x70Data(cmd.base, guild_card_number, from_version, from_client_customization) {
-  this->flags2_is_v3 = true;
+  this->game_flags_is_v3 = true;
   this->stats = cmd.stats;
   this->num_items = cmd.num_items;
   this->items = cmd.items;
@@ -892,7 +892,7 @@ Parsed6x70Data::Parsed6x70Data(
     Version from_version,
     bool from_client_customization)
     : Parsed6x70Data(cmd.base, guild_card_number, from_version, from_client_customization) {
-  this->flags2_is_v3 = true;
+  this->game_flags_is_v3 = true;
   this->stats = cmd.stats;
   this->num_items = cmd.num_items;
   this->items = cmd.items;
@@ -909,10 +909,10 @@ G_SyncPlayerDispAndInventory_DCNTE_6x70 Parsed6x70Data::as_dc_nte(shared_ptr<Ser
   ret.unknown_a5 = this->unknown_a5_nte;
   ret.unknown_a6 = this->unknown_a6;
   ret.telepipe = this->telepipe;
-  ret.unknown_a8 = this->unknown_a8;
-  ret.unknown_a9 = this->unknown_a9_nte_112000;
+  ret.death_flags = this->death_flags;
+  ret.npc_talk_state = this->npc_talk_state;
   ret.area = this->area;
-  ret.flags2 = this->get_flags2(false);
+  ret.game_flags = this->get_game_flags(false);
   ret.visual = this->visual;
   ret.stats = this->stats;
   ret.num_items = this->num_items;
@@ -937,10 +937,10 @@ G_SyncPlayerDispAndInventory_DC112000_6x70 Parsed6x70Data::as_dc_112000(shared_p
   ret.bonus_tp_from_materials = this->bonus_tp_from_materials;
   ret.unknown_a5 = this->unknown_a5_112000;
   ret.telepipe = this->telepipe;
-  ret.unknown_a8 = this->unknown_a8;
-  ret.unknown_a9 = this->unknown_a9_nte_112000;
+  ret.death_flags = this->death_flags;
+  ret.npc_talk_state = this->npc_talk_state;
   ret.area = this->area;
-  ret.flags2 = this->get_flags2(false);
+  ret.game_flags = this->get_game_flags(false);
   ret.visual = this->visual;
   ret.stats = this->stats;
   ret.num_items = this->num_items;
@@ -1099,11 +1099,11 @@ Parsed6x70Data::Parsed6x70Data(
       unknown_a6(base.unknown_a6),
       battle_team_number(base.battle_team_number),
       telepipe(base.telepipe),
-      unknown_a8(base.unknown_a8),
-      unknown_a9_final(base.unknown_a9),
+      death_flags(base.death_flags),
+      npc_talk_state(base.npc_talk_state),
       area(base.area),
-      flags2_value(base.flags2),
-      flags2_is_v3(!is_v1_or_v2(from_version)),
+      game_flags(base.game_flags),
+      game_flags_is_v3(!is_v1_or_v2(from_version)),
       technique_levels_v1(base.technique_levels_v1),
       visual(base.visual) {}
 
@@ -1123,42 +1123,19 @@ G_6x70_Base_V1 Parsed6x70Data::base_v1(bool is_v3) const {
   ret.unknown_a6 = this->unknown_a6;
   ret.battle_team_number = this->battle_team_number;
   ret.telepipe = this->telepipe;
-  ret.unknown_a8 = this->unknown_a8;
-  ret.unknown_a9 = this->unknown_a9_final;
+  ret.death_flags = this->death_flags;
+  ret.npc_talk_state = this->npc_talk_state;
   ret.area = this->area;
-  ret.flags2 = this->get_flags2(is_v3);
+  ret.game_flags = this->get_game_flags(is_v3);
   ret.technique_levels_v1 = this->technique_levels_v1;
   ret.visual = this->visual;
   return ret;
 }
 
-uint32_t Parsed6x70Data::get_flags2(bool is_v3) const {
-  // The format of flags2 was changed significantly between v2 and v3, and not
-  // accounting for this means that sometimes other characters won't appear
-  // when joining a game. Unfortunately, some bits were deleted on v3 and other
-  // bits were added, so it doesn't suffice to simply store the most complete
-  // format of this field - we have to be able to convert between the two.
-
-  // Bits on v2: ---CBAzy xwvutsrq ponmlkji hgfedcba
-  // Bits on v3: ---GFEDC BAzyxwvu srqponkj hgfedcba
-  // The bits ilmt were removed in v3 and the bits to their left were shifted
-  // right. The bits DEFG were added in v3 and do not exist on v2.
-
-  if (is_v3 == this->flags2_is_v3) {
-    return this->flags2_value;
-  } else if (!this->flags2_is_v3) { // Convert v2 -> v3
-    return (
-        (this->flags2_value & 0x000000FF) |
-        ((this->flags2_value & 0x00000600) >> 1) |
-        ((this->flags2_value & 0x0007E000) >> 3) |
-        ((this->flags2_value & 0x1FF00000) >> 4));
-  } else { // Convert v3 -> v2
-    return (
-        (this->flags2_value & 0x000000FF) |
-        ((this->flags2_value << 1) & 0x00000600) |
-        ((this->flags2_value << 3) & 0x0007E000) |
-        ((this->flags2_value << 4) & 0x1FF00000));
-  }
+uint32_t Parsed6x70Data::get_game_flags(bool is_v3) const {
+  return (this->game_flags_is_v3 == is_v3)
+      ? this->game_flags
+      : MapState::EnemyState::convert_game_flags(this->game_flags, is_v3);
 }
 
 static void on_sync_joining_player_disp_and_inventory(
@@ -3338,16 +3315,42 @@ static void on_trigger_set_event(shared_ptr<Client> c, uint8_t command, uint8_t 
   forward_subcommand(c, command, flag, data, size);
 }
 
-static void on_update_telepipe_state(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+static inline uint32_t bswap32_high16(uint32_t v) {
+  return ((v >> 8) & 0x00FF0000) | ((v << 8) & 0xFF000000) | (v & 0x0000FFFF);
+}
+
+static void on_update_telepipe_state(shared_ptr<Client> c, uint8_t command, uint8_t, void* data, size_t size) {
+  if (c->lobby_client_id > 3) {
+    throw logic_error("client ID is above 3");
+  }
+  if (command_is_private(command)) {
+    return;
+  }
   auto l = c->require_lobby();
   if (!l->is_game()) {
     return;
   }
 
-  c->telepipe_state = check_size_t<G_SetTelepipeState_6x68>(data, size);
+  auto& cmd = check_size_t<G_SetTelepipeState_6x68>(data, size);
+  c->telepipe_state = cmd.state;
   c->telepipe_lobby_id = l->lobby_id;
 
-  forward_subcommand(c, command, flag, data, size);
+  // See the comments in G_SetTelepipeState_6x68 in CommandsFormats.hh for
+  // why we have to do this
+  if (is_big_endian(c->version())) {
+    c->telepipe_state.room_id = bswap32_high16(phosg::bswap32(c->telepipe_state.room_id));
+  }
+
+  for (auto lc : l->clients) {
+    if (lc && (lc != c)) {
+      if (is_big_endian(lc->version())) {
+        cmd.state.room_id = phosg::bswap32(bswap32_high16(c->telepipe_state.room_id));
+      } else {
+        cmd.state.room_id = c->telepipe_state.room_id;
+      }
+      send_command_t(lc, 0x60, 0x00, cmd);
+    }
+  }
 }
 
 static void on_update_enemy_state(shared_ptr<Client> c, uint8_t command, uint8_t, void* data, size_t size) {
@@ -3367,34 +3370,62 @@ static void on_update_enemy_state(shared_ptr<Client> c, uint8_t command, uint8_t
   if ((cmd.enemy_index & 0xF000) || (cmd.header.entity_id != (cmd.enemy_index | 0x1000))) {
     throw runtime_error("mismatched enemy id/index");
   }
+  bool is_v3 = !is_v1_or_v2(c->version());
   auto ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd.enemy_index);
-  ene_st->game_flags = is_big_endian(c->version()) ? bswap32(cmd.flags) : cmd.flags.load();
+  uint32_t src_flags = is_big_endian(c->version()) ? bswap32(cmd.game_flags) : cmd.game_flags.load();
+  if (l->difficulty == 3) {
+    src_flags = (src_flags & 0xFFFFFFC0) | (ene_st->get_game_flags(is_v3) & 0x0000003F);
+  }
+  ene_st->set_game_flags(src_flags, is_v3);
   ene_st->total_damage = cmd.total_damage;
   ene_st->set_last_hit_by_client_id(c->lobby_client_id);
-  l->log.info("E-%03zX updated to damage=%hu game_flags=%08" PRIX32,
-      ene_st->e_id, ene_st->total_damage, ene_st->game_flags);
+  l->log.info("E-%03zX updated to damage=%hu game_flags=%08" PRIX32 " (%s)",
+      ene_st->e_id,
+      ene_st->total_damage,
+      ene_st->game_flags,
+      (ene_st->server_flags & MapState::EnemyState::Flag::GAME_FLAGS_IS_V3) ? "v3" : "v2");
 
-  G_UpdateEnemyState_GC_6x0A sw_cmd = {
-      {cmd.header.subcommand, cmd.header.size, cmd.header.entity_id},
-      cmd.enemy_index, cmd.total_damage, cmd.flags.load()};
-  bool sender_is_be = is_big_endian(c->version());
   for (auto lc : l->clients) {
     if (lc && (lc != c)) {
-      if (is_big_endian(lc->version()) == sender_is_be) {
-        cmd.enemy_index = l->map_state->index_for_enemy_state(lc->version(), ene_st);
-        if (cmd.enemy_index != 0xFFFF) {
-          cmd.header.entity_id = 0x1000 | cmd.enemy_index;
-          send_command_t(lc, 0x60, 0x00, cmd);
-        }
-      } else {
-        sw_cmd.enemy_index = l->map_state->index_for_enemy_state(lc->version(), ene_st);
-        if (sw_cmd.enemy_index != 0xFFFF) {
-          sw_cmd.header.entity_id = 0x1000 | sw_cmd.enemy_index;
-          send_command_t(lc, 0x60, 0x00, sw_cmd);
-        }
+      cmd.enemy_index = l->map_state->index_for_enemy_state(lc->version(), ene_st);
+      if (cmd.enemy_index != 0xFFFF) {
+        cmd.header.entity_id = 0x1000 | cmd.enemy_index;
+        uint32_t game_flags = ene_st->get_game_flags(!is_v1_or_v2(lc->version()));
+        cmd.game_flags = is_big_endian(lc->version()) ? phosg::bswap32(game_flags) : game_flags;
+        send_command_t(lc, 0x60, 0x00, cmd);
       }
     }
   }
+}
+
+static void on_set_enemy_low_game_flags_ultimate(
+    shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
+  auto& cmd = check_size_t<G_SetEnemyLowGameFlagsUltimate_6x9C>(data, size);
+
+  if (command_is_private(command) ||
+      (cmd.header.entity_id < 0x1000) ||
+      (cmd.header.entity_id >= 0x4000) ||
+      (cmd.low_game_flags & 0xFFFFFFC0) ||
+      (c->lobby_client_id > 3)) {
+    return;
+  }
+  auto l = c->require_lobby();
+  if (!l->is_game() || (l->difficulty != 3)) {
+    return;
+  }
+
+  bool is_v3 = !is_v1_or_v2(c->version());
+  auto ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd.header.entity_id - 0x1000);
+  uint32_t game_flags = ene_st->get_game_flags(is_v3);
+  if (!(game_flags & cmd.low_game_flags)) {
+    ene_st->set_game_flags(game_flags | cmd.low_game_flags, is_v3);
+    l->log.info("E-%03zX updated to game_flags=%08" PRIX32 " (%s)",
+        ene_st->e_id,
+        ene_st->game_flags,
+        (ene_st->server_flags & MapState::EnemyState::Flag::GAME_FLAGS_IS_V3) ? "v3" : "v2");
+  }
+
+  forward_subcommand_with_entity_id_transcode_t<G_SetEnemyLowGameFlagsUltimate_6x9C>(c, command, flag, data, size);
 }
 
 template <typename CmdT>
@@ -3501,7 +3532,7 @@ static void on_battle_scores(shared_ptr<Client> c, uint8_t command, uint8_t, voi
   }
 }
 
-static void on_dragon_actions(shared_ptr<Client> c, uint8_t command, uint8_t, void* data, size_t size) {
+static void on_dragon_actions_6x12(shared_ptr<Client> c, uint8_t command, uint8_t, void* data, size_t size) {
   auto& cmd = check_size_t<G_DragonBossActions_DC_PC_XB_BB_6x12>(data, size);
 
   if (command_is_private(command)) {
@@ -5045,6 +5076,7 @@ static void on_write_quest_counter_bb(shared_ptr<Client> c, uint8_t, uint8_t, vo
 constexpr uint8_t NONE = 0x00;
 
 const SubcommandDefinition subcommand_definitions[0x100] = {
+    // {DC NTE, 11/2000, all other versions, handler}
     /* 6x00 */ {0x00, 0x00, 0x00, on_invalid},
     /* 6x01 */ {0x01, 0x01, 0x01, on_invalid},
     /* 6x02 */ {0x02, 0x02, 0x02, forward_subcommand_m},
@@ -5054,18 +5086,18 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x06 */ {0x06, 0x06, 0x06, on_send_guild_card},
     /* 6x07 */ {0x07, 0x07, 0x07, on_symbol_chat, SDF::ALWAYS_FORWARD_TO_WATCHERS},
     /* 6x08 */ {0x08, 0x08, 0x08, on_invalid},
-    /* 6x09 */ {0x09, 0x09, 0x09, forward_subcommand_with_entity_id_transcode_t<G_Unknown_6x09>},
+    /* 6x09 */ {0x09, 0x09, 0x09, on_invalid}, // See notes in CommandFormats.hh
     /* 6x0A */ {0x0A, 0x0A, 0x0A, on_update_enemy_state},
     /* 6x0B */ {0x0B, 0x0B, 0x0B, on_update_object_state_t<G_UpdateObjectState_6x0B>},
     /* 6x0C */ {0x0C, 0x0C, 0x0C, on_received_condition},
     /* 6x0D */ {NONE, NONE, 0x0D, on_forward_check_game},
-    /* 6x0E */ {NONE, NONE, 0x0E, on_forward_check_game},
+    /* 6x0E */ {NONE, NONE, 0x0E, forward_subcommand_with_entity_id_transcode_t<G_ClearNegativeStatusEffects_6x0E>},
     /* 6x0F */ {NONE, NONE, 0x0F, on_invalid},
-    /* 6x10 */ {0x0E, 0x0E, 0x10, forward_subcommand_with_entity_id_transcode_t<G_Unknown_6x10_6x11_6x14>},
-    /* 6x11 */ {0x0F, 0x0F, 0x11, forward_subcommand_with_entity_id_transcode_t<G_Unknown_6x10_6x11_6x14>},
-    /* 6x12 */ {0x10, 0x10, 0x12, on_dragon_actions},
+    /* 6x10 */ {0x0E, 0x0E, 0x10, forward_subcommand_with_entity_id_transcode_t<G_DragonBossActions_6x10_6x11>},
+    /* 6x11 */ {0x0F, 0x0F, 0x11, forward_subcommand_with_entity_id_transcode_t<G_DragonBossActions_6x10_6x11>},
+    /* 6x12 */ {0x10, 0x10, 0x12, on_dragon_actions_6x12},
     /* 6x13 */ {0x11, 0x11, 0x13, forward_subcommand_with_entity_id_transcode_t<G_DeRolLeBossActions_6x13>},
-    /* 6x14 */ {0x12, 0x12, 0x14, forward_subcommand_with_entity_id_transcode_t<G_Unknown_6x10_6x11_6x14>},
+    /* 6x14 */ {0x12, 0x12, 0x14, forward_subcommand_with_entity_id_transcode_t<G_DeRolLeBossActions_6x14>},
     /* 6x15 */ {0x13, 0x13, 0x15, forward_subcommand_with_entity_id_transcode_t<G_VolOptBossActions_6x15>},
     /* 6x16 */ {0x14, 0x14, 0x16, forward_subcommand_with_entity_id_transcode_t<G_VolOptBossActions_6x16>},
     /* 6x17 */ {0x15, 0x15, 0x17, forward_subcommand_with_entity_id_transcode_t<G_VolOpt2BossActions_6x17>},
@@ -5179,7 +5211,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x83 */ {NONE, NONE, 0x83, on_forward_check_game},
     /* 6x84 */ {NONE, NONE, 0x84, on_forward_check_game},
     /* 6x85 */ {NONE, NONE, 0x85, on_forward_check_game},
-    /* 6x86 */ {NONE, NONE, 0x86, forward_subcommand_with_entity_id_transcode_t<G_HitDestructibleObject_6x86>},
+    /* 6x86 */ {NONE, NONE, 0x86, on_update_object_state_t<G_HitDestructibleObject_6x86>},
     /* 6x87 */ {NONE, NONE, 0x87, on_forward_check_game},
     /* 6x88 */ {NONE, NONE, 0x88, on_forward_check_game},
     /* 6x89 */ {NONE, NONE, 0x89, forward_subcommand_with_entity_id_transcode_t<G_SetKillerEntityID_6x89, false, offsetof(G_SetKillerEntityID_6x89, killer_entity_id)>},
@@ -5201,7 +5233,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x99 */ {NONE, NONE, 0x99, on_forward_check_game},
     /* 6x9A */ {NONE, NONE, 0x9A, on_forward_check_game_client},
     /* 6x9B */ {NONE, NONE, 0x9B, on_forward_check_game},
-    /* 6x9C */ {NONE, NONE, 0x9C, forward_subcommand_with_entity_id_transcode_t<G_Unknown_6x9C>},
+    /* 6x9C */ {NONE, NONE, 0x9C, on_set_enemy_low_game_flags_ultimate},
     /* 6x9D */ {NONE, NONE, 0x9D, on_forward_check_game},
     /* 6x9E */ {NONE, NONE, 0x9E, forward_subcommand_m},
     /* 6x9F */ {NONE, NONE, 0x9F, forward_subcommand_with_entity_id_transcode_t<G_GalGryphonBossActions_6x9F>},
