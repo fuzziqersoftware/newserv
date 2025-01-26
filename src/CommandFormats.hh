@@ -6152,7 +6152,7 @@ struct G_BattleModeLevelUp_BB_6xD0 {
 struct G_ChallengeModeGraveRecoveryItemRequest_BB_6xD1 {
   G_ClientIDHeader header;
   le_uint16_t floor = 0;
-  le_uint16_t unknown_a1 = 0;
+  le_uint16_t room_id = 0;
   VectorXZF pos;
   le_uint32_t item_type = 0; // Should be < 6
 } __packed_ws__(G_ChallengeModeGraveRecoveryItemRequest_BB_6xD1, 0x14);
@@ -6213,7 +6213,7 @@ struct G_PaganiniPhotonDropExchange_BB_6xD7 {
 
 struct G_AddSRankWeaponSpecial_BB_6xD8 {
   G_ClientIDHeader header;
-  ItemData unknown_a1; // Only data1[0]-[2] are used
+  ItemData target_item; // Only data1[0]-[2] are used (newserv ignores this)
   le_uint32_t item_id = 0;
   le_uint32_t special_type = 0;
   le_uint16_t success_label = 0;
@@ -6304,7 +6304,7 @@ struct G_RequestItemDropFromQuest_BB_6xE0 {
   G_ClientIDHeader header;
   uint8_t floor = 0;
   uint8_t type = 0; // valueA
-  uint8_t unknown_a3 = 0;
+  uint8_t room_id = 0;
   uint8_t unused = 0;
   VectorXZF pos; // x = valueB, z = valueC
 } __packed_ws__(G_RequestItemDropFromQuest_BB_6xE0, 0x10);
@@ -6329,7 +6329,7 @@ struct G_GetMesetaSlotPrize_BB_6xE2 {
   G_ClientIDHeader header;
   uint8_t result_tier; // This contains the argument value from the F960 opcode
   uint8_t floor;
-  uint8_t unknown_a2;
+  uint8_t room_id;
   uint8_t unused;
   VectorXZF pos; // TODO: Verify this guess
 } __packed_ws__(G_GetMesetaSlotPrize_BB_6xE2, 0x10);
@@ -6705,8 +6705,8 @@ struct G_EndBattle_Ep3_CAx21 {
 
 // 6xB4x22: Unknown
 // This command appears to be completely unused. The client's handler for this
-// command sets a variable on some data structure if it exists, but it appears
-// that that data structure is never allocated.
+// command sets a variable on some data structure if it exists, but that data
+// structure is never allocated.
 
 struct G_Unknown_Ep3_6xB4x22 {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_Unknown_Ep3_6xB4x22) / 4, 0, 0x22, 0, 0, 0};
@@ -6732,7 +6732,7 @@ struct G_Unknown_Ep3_6xB5x27 {
   le_uint32_t unknown_a1 = 0; // Probably client ID (must be < 4)
   le_uint32_t unknown_a2 = 0; // Must be < 0x10
   le_uint32_t unknown_a3 = 0;
-  le_uint32_t unused = 0; // Curiously, this usually contains a memory address
+  le_uint32_t unused = 0; // Client sends uninitialized memory here
 } __packed_ws__(G_Unknown_Ep3_6xB5x27, 0x18);
 
 // 6xB3x28 / CAx28: End defense list
@@ -6793,7 +6793,8 @@ struct G_EnqueueAnimation_Ep3_6xB4x2C {
   /* 09 */ uint8_t client_id = 0;
   /* 0A */ parray<le_uint16_t, 3> card_refs;
   /* 10 */ Episode3::Location loc;
-  /* 14 */ parray<le_uint32_t, 2> unknown_a2;
+  /* 14 */ le_uint32_t trap_card_id = 0xFFFFFFFF;
+  /* 14 */ le_uint32_t unknown_a3 = 0xFFFFFFFF;
   /* 1C */
 } __packed_ws__(G_EnqueueAnimation_Ep3_6xB4x2C, 0x1C);
 
@@ -6825,20 +6826,20 @@ struct G_BattleEndNotification_Ep3_6xB5x2E {
 // 6xB5x2F: Set deck in battle setup menu
 
 struct Ep3CounterPlayerEntry {
-  /* 00 */ uint8_t is_valid;
-  /* 01 */ uint8_t entry_type;
-  /* 02 */ uint8_t client_id;
-  /* 03 */ uint8_t client_id2;
-  /* 04 */ pstring<TextEncoding::MARKED, 20> player_name;
+  /* 00 */ uint8_t is_valid; // Must be 0, 1, or 2
+  /* 01 */ uint8_t entry_type; // Must be 0, 1, or 2
+  /* 02 */ uint8_t client_id; // Must be 0, 1, 2, 3, or 4
+  /* 03 */ uint8_t client_id2; // Must be 0, 1, 2, 3, or 4
+  /* 04 */ pstring<TextEncoding::MARKED, 20> player_name; // Must be 16 chars or shorter
   /* 18 */ pstring<TextEncoding::MARKED, 25> deck_name;
-  /* 31 */ uint8_t deck_type;
-  /* 32 */ uint8_t unknown_a1a;
-  /* 33 */ uint8_t unknown_a1b;
+  /* 31 */ uint8_t deck_type; // Must be 0, 1, or FF
+  /* 32 */ uint8_t unknown_a1a; // Must be 0, 1, 2, or 4
+  /* 33 */ uint8_t unknown_a1b; // Must be < 0x1A
   /* 34 */ be_uint16_t unknown_a3;
-  /* 36 */ le_uint16_t unknown_a2;
-  /* 38 */ parray<le_uint16_t, 0x1F> card_ids;
+  /* 36 */ le_int16_t unknown_a2; // Must be >= 0
+  /* 38 */ parray<le_uint16_t, 0x1F> card_ids; // Must all be nonzero if and only if is_valid is 2
   /* 76 */ parray<uint8_t, 2> unused;
-  /* 78 */ le_uint32_t unknown_a5;
+  /* 78 */ le_int32_t unknown_a5; // Must be >= 0
   /* 7C */ be_uint16_t unknown_a6;
   /* 7E */ be_uint16_t unknown_a7;
   /* 80 */
@@ -6846,7 +6847,10 @@ struct Ep3CounterPlayerEntry {
 
 struct G_SetDeckInBattleSetupMenu_Ep3_6xB5x2F {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_SetDeckInBattleSetupMenu_Ep3_6xB5x2F) / 4, 0, 0x2F, 0, 0, 0};
-  parray<uint8_t, 4> unknown_a1;
+  uint8_t unknown_c1; // Must be 0 or 1
+  uint8_t menu_item_index; // Must be 1, 2, 4, or 5
+  uint8_t unknown_c3;
+  uint8_t unknown_c4;
   Ep3CounterPlayerEntry entry;
 } __packed_ws__(G_SetDeckInBattleSetupMenu_Ep3_6xB5x2F, 0x8C);
 
@@ -6869,7 +6873,7 @@ struct G_ConfirmDeckSelection_Ep3_6xB5x31 {
   uint8_t unknown_a1 = 0; // Must be 0 or 1
   uint8_t unknown_a2 = 0; // Must be < 4
   uint8_t unknown_a3 = 0; // Must be 0xFF or < 4
-  uint8_t unknown_a4 = 0; // Must be < 0x14
+  uint8_t unknown_a4 = 0; // Must be less than 0x14
   uint8_t menu_type = 0; // Not bounds-checked; should be < 0x15
   parray<uint8_t, 3> unused;
 } __packed_ws__(G_ConfirmDeckSelection_Ep3_6xB5x31, 0x10);
@@ -7092,14 +7096,15 @@ struct G_InitiateCardAuction_Ep3_6xB5x42 {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_InitiateCardAuction_Ep3_6xB5x42) / 4, 0, 0x42, 0, 0, 0};
 } __packed_ws__(G_InitiateCardAuction_Ep3_6xB5x42, 8);
 
-// 6xB5x43: Unknown
+// 6xB5x43: Unused legacy card auction
 // This command stores the card IDs and counts in a global array on the client,
-// but this array is never read from. It's likely this is a remnant of an
-// unimplemented or removed feature, or an earlier implementation of the card
-// trade window.
+// but this array is never read from. The function that handles this command is
+// remarkably similar to the function that handles the EF command, so It's
+// likely that this command is a now-unused early implementation of the card
+// auction sequence.
 
-struct G_Unknown_Ep3_6xB5x43 {
-  G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_Ep3_6xB5x43) / 4, 0, 0x43, 0, 0, 0};
+struct G_UnusedLegacyCardAuction_Ep3_6xB5x43 {
+  G_CardBattleCommandHeader header = {0xB5, sizeof(G_UnusedLegacyCardAuction_Ep3_6xB5x43) / 4, 0, 0x43, 0, 0, 0};
   struct Entry {
     // Both fields here are masked. To get the actual values used by the game,
     // XOR the values here with 0x39AB.
@@ -7107,7 +7112,7 @@ struct G_Unknown_Ep3_6xB5x43 {
     le_uint16_t masked_count = 0; // Must be in [1, 99] (when unmasked)
   } __packed_ws__(Entry, 4);
   parray<Entry, 0x14> entries;
-} __packed_ws__(G_Unknown_Ep3_6xB5x43, 0x58);
+} __packed_ws__(G_UnusedLegacyCardAuction_Ep3_6xB5x43, 0x58);
 
 // 6xB5x44: Card auction bid summary
 

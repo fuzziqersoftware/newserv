@@ -717,7 +717,7 @@ int32_t Card::move_to_location(const Location& loc) {
           G_EnqueueAnimation_Ep3_6xB4x2C cmd;
           cmd.change_type = 1;
           cmd.client_id = other_ps->client_id;
-          cmd.unknown_a2[0] = trap_card_id;
+          cmd.trap_card_id = trap_card_id;
           s->send(cmd);
         }
       }
@@ -736,7 +736,8 @@ int32_t Card::move_to_location(const Location& loc) {
         cmd.change_type = 0;
         cmd.card_refs.clear(0xFFFF);
         cmd.card_refs[0] = this->card_ref;
-        cmd.unknown_a2.clear(0xFFFFFFFF);
+        cmd.trap_card_id = 0xFFFFFFFF;
+        cmd.unknown_a3 = 0xFFFFFFFF;
         s->send(cmd);
         return 0;
       }

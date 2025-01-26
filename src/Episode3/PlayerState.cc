@@ -617,7 +617,8 @@ void PlayerState::discard_and_redraw_hand() {
     cmd.change_type = 3;
     cmd.client_id = this->client_id;
     cmd.card_refs.clear(0xFFFF);
-    cmd.unknown_a2.clear(0xFFFFFFFF);
+    cmd.trap_card_id = 0xFFFFFFFF;
+    cmd.unknown_a3 = 0xFFFFFFFF;
     s->send(cmd);
   }
 
@@ -721,7 +722,8 @@ bool PlayerState::do_mulligan() {
     cmd.change_type = 3;
     cmd.client_id = this->client_id;
     cmd.card_refs.clear(0xFFFF);
-    cmd.unknown_a2.clear(0xFFFFFFFF);
+    cmd.trap_card_id = 0xFFFFFFFF;
+    cmd.unknown_a3 = 0xFFFFFFFF;
     s->send(cmd);
   }
 

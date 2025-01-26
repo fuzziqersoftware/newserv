@@ -1164,8 +1164,8 @@ void Server::move_phase_after() {
               cmd.loc.x = trap_x;
               cmd.loc.y = trap_y;
               cmd.loc.direction = static_cast<Direction>(trap_type);
-              cmd.unknown_a2[0] = trap_card_id;
-              cmd.unknown_a2[1] = 0xFFFFFFFF;
+              cmd.trap_card_id = trap_card_id;
+              cmd.unknown_a3 = 0xFFFFFFFF;
               this->send(cmd);
             }
           }
