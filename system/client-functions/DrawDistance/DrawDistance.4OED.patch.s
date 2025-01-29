@@ -20,7 +20,7 @@ p1_1e:
   .data     0x00173A42
   .deltaof  p1_2s, p1_2e
 p1_2s:
-  fld       st0, dword [esp + 0x20]
+  fld       st0, dword [esp + 0x1C]
   fadd      st0, st0
   fchs      st0
   ret

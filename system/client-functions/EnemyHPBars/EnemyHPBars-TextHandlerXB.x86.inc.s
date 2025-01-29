@@ -1,3 +1,7 @@
+# WARNING: FlickeringStatusIcons patch starts immediately after this; if the
+# size of this is changed, that patch will have to be changed too
+
+  # Replacement for handle_0E (do nothing)
   ret
 
   # Call table: 2 functions (on_window_created, on_hp_updated)
