@@ -315,11 +315,6 @@ void Lobby::load_maps() {
         this->opt_rand_crypt,
         s->supermaps_for_variations(this->episode, this->mode, this->difficulty, this->variations));
   }
-
-  if (this->check_flag(Lobby::Flag::DEBUG)) {
-    this->log.info("Generated map state:");
-    this->map_state->print(stderr);
-  }
 }
 
 [[nodiscard]] bool Lobby::is_ep3_nte() const {
