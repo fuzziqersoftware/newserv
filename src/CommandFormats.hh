@@ -2337,6 +2337,9 @@ struct S_RankUpdate_Ep3_B7 {
 // No arguments
 // The client sends this after it receives a B8 from the server.
 
+// B8 (C->S): Unknown (BB)
+// The client accepts this command, but ignores it.
+
 // B9 (S->C): Update CARD lobby media (Episode 3)
 // This command is not valid on Episode 3 Trial Edition.
 

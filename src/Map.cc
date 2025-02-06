@@ -601,7 +601,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x001B, "TObjAreaWarpQuest"},
       {0x001C, "TObjAreaWarpEnding"},
       {0x001D, "__UNNAMED_001D__"},
-      {0x001E, "__UNNAMED_001E__"},
+      {0x001E, "__LENS_FLARE__"}, // Used in VR Temple Beta / Barba Ray
       {0x001F, "TObjRaderHideCol"},
       {0x0020, "TOSwitchItem"},
       {0x0021, "TOSymbolchatColli"},
@@ -623,7 +623,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x0047, "TObjCityDoor_Guild"},
       {0x0048, "TObjCityDoor_Warp"},
       {0x0049, "TObjCityDoor_Med"},
-      {0x004A, "__UNNAMED_004A__"},
+      {0x004A, "__ELEVATOR__"}, // Named in qedit but not in the client
       {0x004B, "TObjCity_Season_EasterEgg"},
       {0x004C, "TObjCity_Season_ValentineHeart"},
       {0x004D, "TObjCity_Season_XmasTree"},
@@ -748,7 +748,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x0180, "TObjInfoCol"},
       {0x0181, "TObjWarpLobby"},
       {0x0182, "TObjLobbyMain"},
-      {0x0183, "__TObjPathObj_subclass_0183__"},
+      {0x0183, "__LOBBY_PIGEON__"}, // Formerly __TObjPathObj_subclass_0183__
       {0x0184, "TObjButterflyLobby"},
       {0x0185, "TObjRainbowLobby"},
       {0x0186, "TObjKabochaLobby"},
@@ -770,7 +770,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x01A5, "TOVS2Wreck05"},
       {0x01A6, "TOVS2Wreck06"},
       {0x01A7, "TOVS2Wall01"},
-      {0x01A8, "__UNNAMED_01A8__"},
+      {0x01A8, "__OBJECT_MAP_DETECT_TEMPLE__"}, // Name is from qedit; object class has no name in the client
       {0x01A9, "TObjHashiVersus1"},
       {0x01AA, "TObjHashiVersus2"},
       {0x01AB, "TODoorFourLightRuins"},
@@ -787,13 +787,13 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x0209, "TOGrassJungle"},
       {0x020A, "TObjWarpJungMain"},
       {0x020B, "TBGLightningCtrl"},
-      {0x020C, "__TObjPathObj_subclass_020C__"},
-      {0x020D, "__TObjPathObj_subclass_020D__"},
+      {0x020C, "__WHITE_BIRD__"}, // Formerly __TObjPathObj_subclass_020C__
+      {0x020D, "__ORANGE_BIRD__"}, // Formerly __TObjPathObj_subclass_020D__
       {0x020E, "TObjContainerJungEnemy"},
       {0x020F, "TOTrapChainSawDamage"},
       {0x0210, "TOTrapChainSawKey"},
       {0x0211, "TOBiwaMushi"},
-      {0x0212, "__TObjPathObj_subclass_0212__"},
+      {0x0212, "__SEAGULL__"}, // Formerly __TObjPathObj_subclass_0212__
       {0x0213, "TOJungleDesign"},
       {0x0220, "TObjFish"},
       {0x0221, "TODoorFourLightSeabed"},
@@ -802,11 +802,11 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x0224, "TObjSeabedSuisoBrakable"},
       {0x0225, "TOMekaFish00"},
       {0x0226, "TOMekaFish01"},
-      {0x0227, "__TObjPathObj_subclass_0227__"},
+      {0x0227, "__DOLPHIN__"}, // Formerly __TObjPathObj_subclass_0227__
       {0x0228, "TOTrapSeabed01"},
       {0x0229, "TOCapsuleLabo"},
       {0x0240, "TObjParticle"},
-      {0x0280, "__TObjAreaWarpForest_subclass_0280__"},
+      {0x0280, "__BARBA_RAY_TELEPORTER__"}, // Formerly __TObjAreaWarpForest_subclass_0280__
       {0x02A0, "TObjLiveCamera"},
       {0x02B0, "TContainerAncient01R"},
       {0x02B1, "TObjLaboDesignBase"},
@@ -841,12 +841,12 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x038B, "__FALLING_ROCK__"},
       {0x038C, "__DESERT_PLANT_SOLID__"},
       {0x038D, "__DESERT_CRYSTALS_BOX__"},
-      {0x038E, "__UNKNOWN_038E__"},
+      {0x038E, "__EP4_TEST_DOOR__"},
       {0x038F, "__BEE_HIVE__"},
-      {0x0390, "__UNKNOWN_0390__"},
+      {0x0390, "__EP4_TEST_PARTICLE__"},
       {0x0391, "__HEAT__"},
       {0x03C0, "__EP4_BOSS_EGG__"},
-      {0x03C1, "__UNKNOWN_03C1__"},
+      {0x03C1, "__EP4_BOSS_ROCK_SPAWNER__"},
   });
   try {
     return names.at(type);
@@ -1869,26 +1869,25 @@ void SuperMap::link_object_version(std::shared_ptr<Object> obj, Version version,
   entities.object_for_floor_room_and_group.emplace(k, obj);
 
   // Add to door index
-  uint32_t base_switch_flag = 0;
+  uint32_t base_switch_flag = set_entry->param4;
   uint32_t num_switch_flags = 0;
   switch (set_entry->base_type) {
+    case 0x01AB: // TODoorFourLightRuins
+    case 0x01C0: // TODoorFourLightSpace
+    case 0x0202: // TObjDoorJung
+    case 0x0221: // TODoorFourLightSeabed
+    case 0x0222: // TODoorFourLightSeabedU
+      num_switch_flags = set_entry->param5;
+      break;
     case 0x00C1: // TODoorCave01
-      base_switch_flag = set_entry->param4;
+    case 0x0100: // TODoorMachine01
       num_switch_flags = (4 - clamp<size_t>(set_entry->param5, 0, 4));
       break;
-
-    case 0x14A: // TODoorAncient08
-    case 0x14B: // TODoorAncient09
-      base_switch_flag = set_entry->param4;
-      num_switch_flags = (set_entry->base_type == 0x14A) ? 4 : 2;
+    case 0x014A: // TODoorAncient08
+      num_switch_flags = 4;
       break;
-
-    case 0x1AB: // TODoorFourLightRuins
-    case 0x1C0: // TODoorFourLightSpace
-    case 0x221: // TODoorFourLightSeabed
-    case 0x222: // TODoorFourLightSeabedU
-      base_switch_flag = set_entry->param4;
-      num_switch_flags = set_entry->param5;
+    case 0x014B: // TODoorAncient09
+      num_switch_flags = 2;
       break;
   }
   if ((num_switch_flags > 1) && !(base_switch_flag & 0xFFFFFF00)) {
@@ -2875,8 +2874,8 @@ vector<shared_ptr<const SuperMap::Object>> SuperMap::doors_for_switch_flag(
   vector<shared_ptr<const Object>> ret;
   const auto& entities = this->version(version);
   for (auto its = entities.door_for_floor_and_switch_flag.equal_range((floor << 8) | switch_flag);
-       its.first != its.second;
-       its.first++) {
+      its.first != its.second;
+      its.first++) {
     ret.emplace_back(its.first->second);
   }
   return ret;
@@ -2947,8 +2946,8 @@ vector<shared_ptr<const SuperMap::Event>> SuperMap::events_for_floor(Version ver
   uint64_t k_end = (static_cast<uint64_t>(floor + 1) << 32);
   vector<shared_ptr<const Event>> ret;
   for (auto it = entities.event_for_floor_and_event_id.lower_bound(k_start);
-       (it != entities.event_for_floor_and_event_id.end()) && (it->first < k_end);
-       it++) {
+      (it != entities.event_for_floor_and_event_id.end()) && (it->first < k_end);
+      it++) {
     ret.emplace_back(it->second);
   }
   return ret;
