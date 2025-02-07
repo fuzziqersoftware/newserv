@@ -1527,7 +1527,12 @@ ChatCommandDefinition cc_next(
       if (!a.ses->is_in_game) {
         throw precondition_failed("$C6You must be in a\ngame to use this\ncommand");
       }
-      send_warp(a.ses->client_channel, a.ses->lobby_client_id, a.ses->floor, true);
+
+      size_t limit = floor_limit_for_episode(a.ses->lobby_episode);
+      if (limit == 0) {
+        return;
+      }
+      send_warp(a.ses->client_channel, a.ses->lobby_client_id, (a.ses->floor + 1) % limit, true);
     });
 
 ChatCommandDefinition cc_password(
