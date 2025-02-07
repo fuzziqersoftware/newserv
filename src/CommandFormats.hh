@@ -5558,24 +5558,21 @@ struct G_OlgaFlowBossActions_6xA3 {
   G_EntityIDHeader header;
   uint8_t unknown_a1 = 0;
   uint8_t unknown_a2 = 0;
-  parray<uint8_t, 2> unknown_a3;
-} __packed_ws__(G_OlgaFlowBossActions_6xA3, 8);
+  parray<uint8_t, 0x0E> unknown_a3;
+} __packed_ws__(G_OlgaFlowBossActions_6xA3, 0x14);
 
 // 6xA4: Olga Flow phase 1 boss actions (not valid on pre-V3 or Episode 3)
-
-struct G_OlgaFlowPhase1BossActions_6xA4 {
-  G_EntityIDHeader header;
-  uint8_t what = 0;
-  parray<uint8_t, 3> unknown_a3;
-} __packed_ws__(G_OlgaFlowPhase1BossActions_6xA4, 8);
-
 // 6xA5: Olga Flow phase 2 boss actions (not valid on pre-V3 or Episode 3)
 
-struct G_OlgaFlowPhase2BossActions_6xA5 {
+struct G_OlgaFlowBossActions_6xA4_6xA5 {
   G_EntityIDHeader header;
   uint8_t what = 0;
-  parray<uint8_t, 3> unknown_a3;
-} __packed_ws__(G_OlgaFlowPhase2BossActions_6xA5, 8);
+  parray<uint8_t, 3> pos_bytes;
+  parray<uint8_t, 3> state_bytes;
+  uint8_t unused1 = 0;
+  parray<uint8_t, 4> ext_state_bytes;
+  parray<uint8_t, 4> unused2;
+} __packed_ws__(G_OlgaFlowBossActions_6xA4_6xA5, 0x14);
 
 // 6xA6: Modify trade proposal (not valid on pre-V3)
 
@@ -5626,7 +5623,7 @@ struct G_BarbaRayBossActions_6xA9 {
   G_EntityIDHeader header;
   le_uint16_t unknown_a1 = 0;
   le_uint16_t unknown_a2 = 0;
-} __packed_ws__(G_BarbaRayBossActions_6xA9, 8);
+} __packed_ws__(G_BarbaRayBossActions_6xA9, 0x08);
 
 // 6xAA: Barba Ray boss actions (not valid on pre-V3 or Episode 3)
 
