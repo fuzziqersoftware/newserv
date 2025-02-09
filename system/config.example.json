@@ -1205,18 +1205,24 @@
   // all difficulties use the same rates.) If the Challenge set is not
   // specified, the default rates are used for Challenge mode, which is 1/500
   // for all enemies.
+  // The Mericarand rate applies to Mericarol enemies whose arguments specify
+  // that they may be replaced with Mericus or Merikle. (Specifically, if
+  // uparam1 > 2, this is the case.) When a Mericarol is replaced, the enemy
+  // index is used to determine whether it will be a Mericus (even enemy index)
+  // or Merikle (odd enemy index).
   "RareEnemyRates-Normal": {
     // These are probabilities out of 0xFFFFFFFF - so 0 means that rare enemy
     // will never appear, and 0xFFFFFFFF means it will always appear (until 16
     // rare enemies have been assigned).
-    "Hildeblue": 0x0083126E,
-    "Rappy": 0x0083126E,
-    "NarLily": 0x0083126E,
-    "PouillySlime": 0x0083126E,
-    "MerissaAA": 0x0083126E,
-    "Pazuzu": 0x0083126E,
-    "DorphonEclair": 0x0083126E,
-    "Kondrieu": 0x1999999A,
+    "Hildeblue": 0x0083126E, // 1/500
+    "Rappy": 0x0083126E, // 1/500
+    "NarLily": 0x0083126E, // 1/500
+    "PouillySlime": 0x0083126E, // 1/500
+    "Mericarand": 0x33333333, // 1/5
+    "MerissaAA": 0x0083126E, // 1/500
+    "Pazuzu": 0x0083126E, // 1/500
+    "DorphonEclair": 0x0083126E, // 1/500
+    "Kondrieu": 0x1999999A, // 1/10
   },
   // "RareEnemyRates-Hard": {...},
   // "RareEnemyRates-VeryHard": {...},

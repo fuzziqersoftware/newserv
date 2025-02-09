@@ -2066,12 +2066,9 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       break;
     }
     case 0x0064: { // TObjEneSlime
-      // TODO: It appears BB doesn't have a way to force slimes to be rare via
-      // constructor args. Is this true?
+      // Unlike all other versions, BB doesn't have a way to force slimes to be
+      // rare via constructor args
       bool is_rare_v123 = (set_entry->uparam2 & 1);
-      if ((set_entry->num_children != 0) && (set_entry->num_children != 4)) {
-        this->log.warning("POFUILLY_SLIME has an unusual num_children (0x%hX)", set_entry->num_children.load());
-      }
       default_num_children = -1; // Skip adding children later (because we do it here)
       size_t num_children = set_entry->num_children ? set_entry->num_children.load() : 4;
       for (size_t z = 0; z < num_children + 1; z++) {
@@ -2224,15 +2221,24 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       default_num_children = 4;
       break;
     case 0x00D5: // TObjEneMerillLia
-      add((set_entry->uparam1 & 0x01) ? EnemyType::MERILTAS : EnemyType::MERILLIA);
+      add((set_entry->uparam1 & 1) ? EnemyType::MERILTAS : EnemyType::MERILLIA);
       break;
-    case 0x00D6: // TObjEneBm9Mericarol
-      if (set_entry->uparam1 == 0) {
-        add(EnemyType::MERICAROL);
-      } else {
-        add(((set_entry->uparam1 % 3) == 2) ? EnemyType::MERICUS : EnemyType::MERIKLE);
+    case 0x00D6: { // TObjEneBm9Mericarol
+      switch (set_entry->uparam1) {
+        case 0:
+          add(EnemyType::MERICAROL);
+          break;
+        case 1:
+          add(EnemyType::MERIKLE);
+          break;
+        case 2:
+          add(EnemyType::MERICUS);
+          break;
+        default:
+          add(EnemyType::MERICARAND);
       }
       break;
+    }
     case 0x00D7: // TObjEneBm5GibonU
       add((set_entry->uparam1 & 0x01) ? EnemyType::ZOL_GIBBON : EnemyType::UL_GIBBON);
       break;
@@ -3218,29 +3224,31 @@ void SuperMap::print(FILE* stream) const {
 ////////////////////////////////////////////////////////////////////////////////
 // Map state
 
-MapState::RareEnemyRates::RareEnemyRates(uint32_t enemy_rate, uint32_t boss_rate)
+MapState::RareEnemyRates::RareEnemyRates(uint32_t enemy_rate, uint32_t mericarand_rate, uint32_t boss_rate)
     : hildeblue(enemy_rate),
       rappy(enemy_rate),
       nar_lily(enemy_rate),
       pouilly_slime(enemy_rate),
+      mericarand(mericarand_rate),
       merissa_aa(enemy_rate),
       pazuzu(enemy_rate),
       dorphon_eclair(enemy_rate),
       kondrieu(boss_rate) {}
 
 MapState::RareEnemyRates::RareEnemyRates(const phosg::JSON& json)
-    : hildeblue(json.get_int("Hildeblue")),
-      rappy(json.get_int("Rappy")),
-      nar_lily(json.get_int("NarLily")),
-      pouilly_slime(json.get_int("PouillySlime")),
-      merissa_aa(json.get_int("MerissaAA")),
-      pazuzu(json.get_int("Pazuzu")),
-      dorphon_eclair(json.get_int("DorphonEclair")),
-      kondrieu(json.get_int("Kondrieu")) {}
+    : hildeblue(json.get_int("Hildeblue", DEFAULT_RARE_ENEMY_RATE_V3)),
+      rappy(json.get_int("Rappy", DEFAULT_RARE_ENEMY_RATE_V3)),
+      nar_lily(json.get_int("NarLily", DEFAULT_RARE_ENEMY_RATE_V3)),
+      pouilly_slime(json.get_int("PouillySlime", DEFAULT_RARE_ENEMY_RATE_V3)),
+      mericarand(json.get_int("Mericarand", DEFAULT_MERICARAND_RATE_V3)),
+      merissa_aa(json.get_int("MerissaAA", DEFAULT_RARE_ENEMY_RATE_V3)),
+      pazuzu(json.get_int("Pazuzu", DEFAULT_RARE_ENEMY_RATE_V3)),
+      dorphon_eclair(json.get_int("DorphonEclair", DEFAULT_RARE_ENEMY_RATE_V3)),
+      kondrieu(json.get_int("Kondrieu", DEFAULT_RARE_BOSS_RATE_V4)) {}
 
 string MapState::RareEnemyRates::str() const {
-  return phosg::string_printf("RareEnemyRates(hildeblue=%08" PRIX32 ", rappy=%08" PRIX32 ", nar_lily=%08" PRIX32 ", pouilly_slime=%08" PRIX32 ", merissa_aa=%08" PRIX32 ", pazuzu=%08" PRIX32 ", dorphon_eclair=%08" PRIX32 ", kondrieu=%08" PRIX32 ")",
-      this->hildeblue, this->rappy, this->nar_lily, this->pouilly_slime,
+  return phosg::string_printf("RareEnemyRates(hildeblue=%08" PRIX32 ", rappy=%08" PRIX32 ", nar_lily=%08" PRIX32 ", pouilly_slime=%08" PRIX32 ", mericarand=%08" PRIX32 ", merissa_aa=%08" PRIX32 ", pazuzu=%08" PRIX32 ", dorphon_eclair=%08" PRIX32 ", kondrieu=%08" PRIX32 ")",
+      this->hildeblue, this->rappy, this->nar_lily, this->pouilly_slime, this->mericarand,
       this->merissa_aa, this->pazuzu, this->dorphon_eclair, this->kondrieu);
 }
 
@@ -3250,6 +3258,7 @@ phosg::JSON MapState::RareEnemyRates::json() const {
       {"Rappy", this->rappy},
       {"NarLily", this->nar_lily},
       {"PouillySlime", this->pouilly_slime},
+      {"Mericarand", this->mericarand},
       {"MerissaAA", this->merissa_aa},
       {"Pazuzu", this->pazuzu},
       {"DorphonEclair", this->dorphon_eclair},
@@ -3269,6 +3278,8 @@ uint32_t MapState::RareEnemyRates::for_enemy_type(EnemyType type) const {
       return this->nar_lily;
     case EnemyType::POFUILLY_SLIME:
       return this->pouilly_slime;
+    case EnemyType::MERICARAND:
+      return this->mericarand;
     case EnemyType::MERISSA_A:
       return this->merissa_aa;
     case EnemyType::ZU:
@@ -3284,8 +3295,12 @@ uint32_t MapState::RareEnemyRates::for_enemy_type(EnemyType type) const {
   }
 }
 
-const shared_ptr<const MapState::RareEnemyRates> MapState::NO_RARE_ENEMIES = make_shared<MapState::RareEnemyRates>(0, 0);
-const shared_ptr<const MapState::RareEnemyRates> MapState::DEFAULT_RARE_ENEMIES = make_shared<MapState::RareEnemyRates>(0x0083126E, 0x1999999A);
+const shared_ptr<const MapState::RareEnemyRates> MapState::NO_RARE_ENEMIES = make_shared<MapState::RareEnemyRates>(
+    0, 0, 0);
+const shared_ptr<const MapState::RareEnemyRates> MapState::DEFAULT_RARE_ENEMIES = make_shared<MapState::RareEnemyRates>(
+    MapState::RareEnemyRates::DEFAULT_RARE_ENEMY_RATE_V3,
+    MapState::RareEnemyRates::DEFAULT_MERICARAND_RATE_V3,
+    MapState::RareEnemyRates::DEFAULT_RARE_BOSS_RATE_V4);
 
 uint32_t MapState::EnemyState::convert_game_flags(uint32_t game_flags, bool to_v3) {
   // The format of game_flags was changed significantly between v2 and v3, and
@@ -3522,7 +3537,7 @@ void MapState::index_super_map(const FloorConfig& fc, shared_ptr<PSOLFGEncryptio
     }
 
     auto rare_type = rare_type_for_enemy_type(type, fc.super_map->get_episode(), this->event, ene->floor);
-    if (rare_type != type) {
+    if ((type == EnemyType::MERICARAND) || (rare_type != type)) {
       unordered_map<uint32_t, float> det_cache;
       uint32_t bb_rare_rate = this->bb_rare_rates->for_enemy_type(type);
       for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
@@ -3556,15 +3571,35 @@ void MapState::index_super_map(const FloorConfig& fc, shared_ptr<PSOLFGEncryptio
             det_cache.emplace(seed, det);
           }
 
-          // On v1 and v2 (and GC NTE), the rare rate is 0.1% instead of 0.2%.
-          if (det < (is_v1_or_v2(v) ? 0.001f : 0.002f)) {
-            ene_st->set_rare(v);
+          if (type == EnemyType::MERICARAND) {
+            // On v3, Mericarols that have uparam1 > 2 are randomized to be
+            // Mericus, Merikle, or Mericarol, but the former two are not
+            // considered rare. (We use rare_flags anyway to distinguish them
+            // from Mericarol.)
+            if (det > 0.9) { // Merikle
+              ene_st->set_rare(v);
+              ene_st->set_mericarand_variant_flag(v);
+            } else if (det > 0.8) { // Mericus
+              ene_st->set_rare(v);
+            } else {
+              // Mericarol (no flags to set)
+            }
+
+          } else {
+            // On v1 and v2 (and GC NTE), the rare rate is 0.1% instead of 0.2%.
+            if (det < (is_v1_or_v2(v) ? 0.001f : 0.002f)) {
+              ene_st->set_rare(v);
+            }
           }
+
         } else if ((bb_rare_rate > 0) &&
             (this->bb_rare_enemy_indexes.size() < 0x10) &&
             (random_from_optional_crypt(opt_rand_crypt) < bb_rare_rate)) {
           this->bb_rare_enemy_indexes.emplace_back(enemy_index);
           ene_st->set_rare(v);
+          if ((type == EnemyType::MERICARAND) && (enemy_index & 1)) {
+            ene_st->set_mericarand_variant_flag(v);
+          }
         }
       }
     }

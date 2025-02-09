@@ -158,6 +158,8 @@ const char* phosg::name_for_enum<EnemyType>(EnemyType type) {
       return "LOVE_RAPPY";
     case EnemyType::MERICAROL:
       return "MERICAROL";
+    case EnemyType::MERICARAND:
+      return "MERICARAND";
     case EnemyType::MERICUS:
       return "MERICUS";
     case EnemyType::MERIKLE:
@@ -348,6 +350,7 @@ EnemyType phosg::enum_for_name<EnemyType>(const char* name) {
       {"KONDRIEU", EnemyType::KONDRIEU},
       {"LA_DIMENIAN", EnemyType::LA_DIMENIAN},
       {"LOVE_RAPPY", EnemyType::LOVE_RAPPY},
+      {"MERICARAND", EnemyType::MERICARAND},
       {"MERICAROL", EnemyType::MERICAROL},
       {"MERICUS", EnemyType::MERICUS},
       {"MERIKLE", EnemyType::MERIKLE},
@@ -500,6 +503,7 @@ bool enemy_type_valid_for_episode(Episode episode, EnemyType enemy_type) {
         case EnemyType::LA_DIMENIAN:
         case EnemyType::LOVE_RAPPY:
         case EnemyType::MERICAROL:
+        case EnemyType::MERICARAND:
         case EnemyType::MERICUS:
         case EnemyType::MERIKLE:
         case EnemyType::MERILLIA:
@@ -744,6 +748,7 @@ uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type)
         case EnemyType::MIGIUM:
           return 0x33;
         case EnemyType::MERICAROL:
+        case EnemyType::MERICARAND:
           return 0x3A;
         case EnemyType::UL_GIBBON:
           return 0x3B;
@@ -979,6 +984,7 @@ uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
     case EnemyType::LOVE_RAPPY:
       return 0x33;
     case EnemyType::MERICAROL:
+    case EnemyType::MERICARAND:
       return 0x38;
     case EnemyType::MERICUS:
       return 0x3A;
@@ -1116,6 +1122,8 @@ bool enemy_type_is_rare(EnemyType type) {
       (type == EnemyType::AL_RAPPY) ||
       (type == EnemyType::NAR_LILY) ||
       (type == EnemyType::POUILLY_SLIME) ||
+      (type == EnemyType::MERICUS) ||
+      (type == EnemyType::MERIKLE) ||
       (type == EnemyType::MERISSA_AA) ||
       (type == EnemyType::PAZUZU_ALT) ||
       (type == EnemyType::DORPHON_ECLAIR) ||

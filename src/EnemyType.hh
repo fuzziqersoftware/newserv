@@ -80,6 +80,7 @@ enum class EnemyType {
   KONDRIEU,
   LA_DIMENIAN,
   LOVE_RAPPY,
+  MERICARAND,
   MERICAROL,
   MERICUS,
   MERIKLE,

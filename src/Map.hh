@@ -628,16 +628,22 @@ protected:
 class MapState {
 public:
   struct RareEnemyRates {
+    static constexpr uint32_t DEFAULT_RARE_ENEMY_RATE_V1_V2 = 0x00418937; // 1/1000
+    static constexpr uint32_t DEFAULT_RARE_ENEMY_RATE_V3 = 0x0083126E; // 1/500
+    static constexpr uint32_t DEFAULT_MERICARAND_RATE_V3 = 0x33333333; // 1/5
+    static constexpr uint32_t DEFAULT_RARE_BOSS_RATE_V4 = 0x1999999A; // 1/10
+
     uint32_t hildeblue; // HILDEBEAR -> HILDEBLUE
     uint32_t rappy; // RAG_RAPPY -> {AL_RAPPY or seasonal rappies}; SAND_RAPPY -> DEL_RAPPY
     uint32_t nar_lily; // POISON_LILY -> NAR_LILY
     uint32_t pouilly_slime; // POFUILLY_SLIME -> POUILLY_SLIME
+    uint32_t mericarand; // MERICARAND -> MERIKLE or MERICUS (only for those with subtype > 2)
     uint32_t merissa_aa; // MERISSA_A -> MERISSA_AA
     uint32_t pazuzu; // ZU -> PAZUZU (and _ALT variants)
     uint32_t dorphon_eclair; // DORPHON -> DORPHON_ECLAIR
     uint32_t kondrieu; // {SAINT_MILLION, SHAMBERTIN} -> KONDRIEU
 
-    RareEnemyRates(uint32_t enemy_rate, uint32_t boss_rate);
+    RareEnemyRates(uint32_t enemy_rate, uint32_t mericarand_rate, uint32_t boss_rate);
     explicit RareEnemyRates(const phosg::JSON& json);
 
     uint32_t for_enemy_type(EnemyType type) const;
@@ -687,9 +693,10 @@ public:
     };
     size_t e_id = 0;
     size_t set_id = 0;
+    uint32_t game_flags = 0; // From 6x0A
     uint16_t total_damage = 0;
     uint16_t rare_flags = 0;
-    uint32_t game_flags = 0; // From 6x0A
+    uint16_t mericarand_variant_flags = 0;
     uint16_t set_flags = 0; // Only used if super_ene->child_index == 0
     uint16_t server_flags = 0;
 
@@ -721,16 +728,29 @@ public:
     }
 
     inline bool is_rare(Version version) const {
-      return (((rare_flags >> static_cast<size_t>(version)) & 1) ||
+      return (((this->rare_flags >> static_cast<size_t>(version)) & 1) ||
           ((version == Version::BB_V4) ? this->super_ene->is_default_rare_bb : this->super_ene->is_default_rare_v123));
     }
     inline void set_rare(Version version) {
       this->rare_flags |= (1 << static_cast<size_t>(version));
     }
+    inline void set_mericarand_variant_flag(Version version) {
+      this->mericarand_variant_flags |= (1 << static_cast<size_t>(version));
+    }
     inline EnemyType type(Version version, Episode episode, uint8_t event) const {
-      return this->is_rare(version)
-          ? rare_type_for_enemy_type(this->super_ene->type, episode, event, this->super_ene->floor)
-          : this->super_ene->type;
+      if (this->super_ene->type == EnemyType::MERICARAND) {
+        if (this->is_rare(version)) {
+          return ((this->mericarand_variant_flags >> static_cast<size_t>(version)) & 1)
+              ? EnemyType::MERIKLE
+              : EnemyType::MERICUS;
+        } else {
+          return EnemyType::MERICAROL;
+        }
+      } else {
+        return this->is_rare(version)
+            ? rare_type_for_enemy_type(this->super_ene->type, episode, event, this->super_ene->floor)
+            : this->super_ene->type;
+      }
     }
     inline bool ever_hit_by_client_id(uint8_t client_id) const {
       return this->server_flags & (Flag::ALL_HITS_MASK_FIRST << client_id);
