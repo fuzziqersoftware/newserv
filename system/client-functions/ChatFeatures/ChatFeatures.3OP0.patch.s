@@ -1,6 +1,6 @@
 .meta name="Chat"
 .meta description="Enables extended\nWord Select and\nstops the Log\nWindow from\nscrolling with L+R"
-# Original code by Ralf @ GC-Forever and Aleron Ives
+# Original codes by Ralf @ GC-Forever and Aleron Ives
 # https://www.gc-forever.com/forums/viewtopic.php?t=2050
 # https://www.gc-forever.com/forums/viewtopic.php?t=2049
 
@@ -9,24 +9,39 @@ reloc0:
   .offsetof start
 start:
   .include  WriteCodeBlocksGC
-  # region @ 8000D6A0 (28 bytes)
-  .data     0x8000D6A0  # address
-  .data     0x0000001C  # size
-  .data     0x3C608051  # 8000D6A0 => lis       r3, 0x8051
-  .data     0xA063F290  # 8000D6A4 => lhz       r3, [r3 - 0x0D70]
-  .data     0x70600003  # 8000D6A8 => andi.     r0, r3, 0x0003
-  .data     0x28000003  # 8000D6AC => cmplwi    r0, 3
-  .data     0x41820008  # 8000D6B0 => beq       +0x00000008 /* 8000D6B8 */
-  .data     0xD03C0084  # 8000D6B4 => stfs      [r28 + 0x0084], f1
-  .data     0x4825BDDC  # 8000D6B8 => b         +0x0025BDDC /* 80269494 */
-  # region @ 80269490 (4 bytes)
-  .data     0x80269490  # address
-  .data     0x00000004  # size
-  .data     0x4BDA4210  # 80269490 => b         -0x0025BDF0 /* 8000D6A0 */
-  # region @ 8034627C (4 bytes)
-  .data     0x8034627C  # address
-  .data     0x00000004  # size
-  .data     0x38600000  # 8034627C => li        r3, 0x0000
-  # end sentinel
-  .data     0x00000000  # address
-  .data     0x00000000  # size
+
+  .data     0x8034627C  # Extended Word Select Menu (PSO PCv2 Style)
+  .data     0x00000004
+  .address  0x8034627C
+  li        r3, 0
+
+  .data     0x802693A4  # Chat Log Window LF/TAB Bug Fix
+  .data     0x00000004
+  .address  0x802693A4
+  nop
+
+  .data     0x802514B0  # Chat Bubble Window TAB Bug Fix
+  .data     0x00000004
+  .address  0x802514B0
+  nop
+
+  .data     0x8000D6A0  # Chat Log Window: Scroll Lock (Hold L+R)
+  .deltaof  scroll_lock_hook, scroll_lock_hook_end
+  .address  0x8000D6A0
+scroll_lock_hook:
+  lis       r3, 0x8051
+  lhz       r3, [r3 - 0x0D70]
+  andi.     r0, r3, 0x0003
+  cmplwi    r0, 3
+  beqlr
+  stfs      [r28 + 0x0084], f1
+  blr
+scroll_lock_hook_end:
+
+  .data     0x80269490  # Chat Log Window: Scroll Lock (Hold L+R)
+  .data     0x00000004
+  .address  0x80269490
+  bl        scroll_lock_hook
+
+  .data     0x00000000
+  .data     0x00000000
