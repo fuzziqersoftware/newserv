@@ -738,7 +738,7 @@ The data formats that newserv can convert to/from are:
 | Quest map (.dat)               | None                      | `disassemble-quest-map`      |
 | AFS archive                    | None                      | `extract-afs`                |
 | BML archive                    | None                      | `extract-bml`                |
-| GSL archive                    | None                      | `extract-gsl`                |
+| GSL archive                    | `generate-gsl`            | `extract-gsl`                |
 | GVM texture                    | `encode-gvm`              | None                         |
 | Text archive                   | `encode-text-archive`     | `decode-text-archive`        |
 | Unicode text set               | `encode-unicode-text-set` | `decode-unicode-text-set`    |

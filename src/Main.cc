@@ -1585,6 +1585,36 @@ Action a_assemble_all_patches(
       }
     });
 
+Action a_generate_gsl(
+    "generate-gsl", "\
+  generate-gsl INPUT-DIRECTORY [OUTPUT-FILENAME] [--big-endian]\n\
+    Generate a .gsl archive from the contents of a directory. If --big-endian\n\
+    is given, the archive header is generated in GameCube format; otherwise it\n\
+    is generated in PC/BB format.\n",
+    +[](phosg::Arguments& args) {
+      string input_directory = args.get<string>(1, true);
+      string output_filename = args.get<string>(2, false);
+      if (output_filename.empty()) {
+        output_filename = input_directory;
+        while (phosg::ends_with(output_filename, "/")) {
+          output_filename.pop_back();
+        }
+        output_filename += ".gsl";
+      }
+
+      unordered_map<string, string> files;
+      for (const auto& filename : phosg::list_directory(input_directory)) {
+        string file_path = input_directory + "/" + filename;
+        if (!phosg::isfile(file_path)) {
+          throw std::runtime_error(phosg::string_printf(
+              "input directory contains %s which is not a file", filename.c_str()));
+        }
+        files.emplace(filename, phosg::load_file(file_path));
+      }
+      string gsl_contents = GSLArchive::generate(files, args.get<bool>("big-endian"));
+      phosg::save_file(output_filename, gsl_contents);
+    });
+
 void a_extract_archive_fn(phosg::Arguments& args) {
   string output_prefix = args.get<string>(2, false);
   if (output_prefix == "-") {
