@@ -2,7 +2,7 @@
 # https://docs.google.com/document/d/1zG73l9joEqp_zB-xNgK9g8pXL0RSpmXfxPFQcdAvess/edit
 
 .meta name="Episode 3 Plus"
-.meta description="Enables Episode 3\nPlus features\n\nOriginally created\nby Gigobooma"
+.meta description="Enables Episode 3\nPlus features.\nDoes not include\ntext fixes.\n\nOriginally created\nby Gigobooma"
 
 entry_ptr:
 reloc0:
