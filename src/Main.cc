@@ -2858,10 +2858,16 @@ Action a_diff_dol_files(
     "diff-dol-files", nullptr, +[](phosg::Arguments& args) {
       const string& a_filename = args.get<string>(1);
       const string& b_filename = args.get<string>(2);
+      bool show_pre = args.get<bool>("show-pre");
       auto result = diff_dol_files(a_filename, b_filename);
       for (const auto& it : result) {
-        string data = phosg::format_data_string(it.second, nullptr, phosg::FormatDataFlags::HEX_ONLY);
-        fprintf(stdout, "%08" PRIX32 " %s\n", it.first, data.c_str());
+        string b_str = phosg::format_data_string(it.b_data, nullptr, phosg::FormatDataFlags::HEX_ONLY);
+        if (show_pre) {
+          string a_str = phosg::format_data_string(it.a_data, nullptr, phosg::FormatDataFlags::HEX_ONLY);
+          fprintf(stdout, "%08" PRIX32 ": %s => %s\n", it.address, a_str.c_str(), b_str.c_str());
+        } else {
+          fprintf(stdout, "%08" PRIX32 " %s\n", it.address, b_str.c_str());
+        }
       }
     });
 

@@ -253,8 +253,8 @@ public:
       phosg::StringReader src_r = this->src_mem->reader(src_section.first + src_offset - match_bytes_before, match_length);
       for (const auto& dest_section : dest_mem->allocated_blocks()) {
         for (size_t dest_match_offset = 0;
-             dest_match_offset + match_length < dest_section.second;
-             dest_match_offset += (is_ppc ? 4 : 1)) {
+            dest_match_offset + match_length < dest_section.second;
+            dest_match_offset += (is_ppc ? 4 : 1)) {
           src_r.go(0);
           phosg::StringReader dest_r = dest_mem->reader(dest_section.first + dest_match_offset, match_length);
           size_t z;
@@ -468,8 +468,8 @@ public:
       phosg::StringReader src_r = this->src_mem->reader(src_addr, match_length);
       for (const auto& dest_section : dest_mem->allocated_blocks()) {
         for (size_t dest_match_offset = 0;
-             dest_match_offset + match_length < dest_section.second;
-             dest_match_offset += 4) {
+            dest_match_offset + match_length < dest_section.second;
+            dest_match_offset += 4) {
           src_r.go(0);
           phosg::StringReader dest_r = dest_mem->reader(dest_section.first + dest_match_offset, match_length);
           size_t z;
@@ -623,7 +623,7 @@ void run_address_translator(const std::string& directory, const std::string& use
   }
 }
 
-vector<pair<uint32_t, string>> diff_dol_files(const string& a_filename, const string& b_filename) {
+vector<DiffEntry> diff_dol_files(const string& a_filename, const string& b_filename) {
   ResourceDASM::DOLFile a(a_filename.c_str());
   ResourceDASM::DOLFile b(b_filename.c_str());
   auto a_mem = make_shared<ResourceDASM::MemoryContext>();
@@ -642,7 +642,7 @@ vector<pair<uint32_t, string>> diff_dol_files(const string& a_filename, const st
     max_addr = max<uint32_t>(max_addr, sec.address + sec.data.size());
   }
 
-  vector<pair<uint32_t, string>> ret;
+  vector<DiffEntry> ret;
   for (uint32_t addr = min_addr; addr < max_addr; addr += 4) {
     bool a_exists = a_mem->exists(addr, 4);
     bool b_exists = b_mem->exists(addr, 4);
@@ -650,10 +650,11 @@ vector<pair<uint32_t, string>> diff_dol_files(const string& a_filename, const st
       string a_value = a_mem->read(addr, 4);
       string b_value = b_mem->read(addr, 4);
       if (a_value != b_value) {
-        if (!ret.empty() && (ret.back().first + ret.back().second.size() == addr)) {
-          ret.back().second += b_value;
+        if (!ret.empty() && (ret.back().address + ret.back().b_data.size() == addr)) {
+          ret.back().a_data += a_value;
+          ret.back().b_data += b_value;
         } else {
-          ret.emplace_back(make_pair(addr, b_value));
+          ret.emplace_back(DiffEntry{.address = addr, .a_data = a_value, .b_data = b_value});
         }
       }
     }
