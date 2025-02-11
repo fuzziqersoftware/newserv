@@ -446,7 +446,8 @@ protected:
 // responsible for all entities on all floors in a quest, or all entities on a
 // single floor in free play. Each entity is assigned a "super ID", which
 // uniquely identifies the entity on all PSO versions. (These are the IDs which
-// newserv formats as K-XXX, E-XXX, and W-XXX.)
+// newserv formats as K-XXX, E-XXX, and W-XXX, though they are offset as needed
+// for floors beyond the first.)
 // There must not be any random enemy sections in any MapFile passed to
 // SuperMap; to resolve them, materialize_random_sections must be called on all
 // MapFiles first. This generally only is of concern in Challenge mode.
@@ -469,6 +470,7 @@ public:
       return this->def_for_version.at(static_cast<size_t>(v));
     }
 
+    std::string id_str() const;
     std::string str() const;
   };
 
@@ -495,6 +497,7 @@ public:
       return this->def_for_version.at(static_cast<size_t>(v));
     }
 
+    std::string id_str() const;
     std::string str() const;
   };
 
@@ -516,6 +519,7 @@ public:
       return this->def_for_version.at(static_cast<size_t>(v));
     }
 
+    std::string id_str() const;
     std::string str() const;
   };
 
@@ -584,8 +588,19 @@ public:
   std::vector<std::shared_ptr<const Event>> events_for_floor_room_wave(
       Version version, uint8_t floor, uint16_t room, uint16_t wave_number) const;
 
-  void verify() const;
+  struct EfficiencyStats {
+    size_t filled_object_slots = 0;
+    size_t total_object_slots = 0;
+    size_t filled_enemy_set_slots = 0;
+    size_t total_enemy_set_slots = 0;
+    size_t filled_event_slots = 0;
+    size_t total_event_slots = 0;
 
+    EfficiencyStats& operator+=(const EfficiencyStats& other);
+    std::string str() const;
+  };
+  EfficiencyStats efficiency() const;
+  void verify() const;
   void print(FILE* stream) const;
 
 protected:
@@ -597,6 +612,9 @@ protected:
   std::vector<std::shared_ptr<Enemy>> enemies;
   std::vector<std::shared_ptr<Enemy>> enemy_sets;
   std::vector<std::shared_ptr<Event>> events;
+  std::unordered_map<uint64_t, std::vector<std::shared_ptr<Object>>> objects_for_semantic_hash;
+  std::unordered_map<uint64_t, std::vector<std::shared_ptr<Enemy>>> enemy_sets_for_semantic_hash;
+  std::unordered_map<uint64_t, std::vector<std::shared_ptr<Event>>> events_for_semantic_hash;
   std::array<EntitiesForVersion, NUM_VERSIONS> entities_for_version;
 
   std::shared_ptr<Object> add_object(Version version, uint8_t floor, const MapFile::ObjectSetEntry* set_entry);

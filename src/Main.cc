@@ -2639,6 +2639,7 @@ Action a_load_maps_test(
       s->load_set_data_tables(false);
       s->load_maps(false);
 
+      SuperMap::EfficiencyStats all_free_maps_eff;
       for (const auto& it : s->supermaps) {
         auto episode = static_cast<Episode>((it.first >> 28) & 7);
         auto mode = static_cast<GameMode>((it.first >> 26) & 3);
@@ -2647,12 +2648,7 @@ Action a_load_maps_test(
         uint8_t layout = (it.first >> 8) & 0xFF;
         uint8_t entities = (it.first >> 0) & 0xFF;
 
-        fprintf(stderr, "FREE MAP: %08" PRIX32 " => %s %s %c floor=%02hhX layout=%02hhX entities=%02hhX\n",
-            it.first,
-            abbreviation_for_episode(episode),
-            abbreviation_for_mode(mode),
-            abbreviation_for_difficulty(difficulty),
-            floor, layout, entities);
+        string filename_token;
         if (save_disassembly) {
           string filename = phosg::string_printf(
               "supermap_%s_%s_%c_%02hhX_%02hhx_%02hhX.txt",
@@ -2662,8 +2658,21 @@ Action a_load_maps_test(
               floor, layout, entities);
           auto f = phosg::fopen_unique(filename, "wt");
           it.second->print(f.get());
+          filename_token = " => " + filename;
         }
+
+        auto eff = it.second->efficiency();
+        all_free_maps_eff += eff;
+        auto eff_str = eff.str();
+        fprintf(stderr, "FREE MAP: %08" PRIX32 " => %s %s %c floor=%02hhX layout=%02hhX entities=%02hhX => %s%s\n",
+            it.first,
+            abbreviation_for_episode(episode),
+            abbreviation_for_mode(mode),
+            abbreviation_for_difficulty(difficulty),
+            floor, layout, entities, eff_str.c_str(), filename_token.c_str());
       }
+      string all_free_maps_eff_str = all_free_maps_eff.str();
+      fprintf(stderr, "ALL FREE MAPS: %s\n", all_free_maps_eff_str.c_str());
 
       // Generate MapStates for a few random variations
       for (size_t z = 0; z < 0x20; z++) {
@@ -2696,20 +2705,26 @@ Action a_load_maps_test(
 
       s->load_quest_index(false);
 
+      SuperMap::EfficiencyStats all_quests_eff;
       uint32_t random_seed = args.get<uint32_t>("random-seed", 0, phosg::Arguments::IntFormat::HEX);
       for (const auto& it : s->default_quest_index->quests_by_number) {
         auto supermap = it.second->get_supermap(random_seed);
         if (!supermap) {
-          fprintf(stderr, "QUEST MAP: %08" PRIX32 " => (no supermap)\n", it.first);
-        } else {
-          string filename = phosg::string_printf("supermap_quest_%" PRIu32 "_%08" PRIX32 ".txt", it.first, random_seed);
-          fprintf(stderr, "QUEST MAP: %08" PRIX32 " => %s\n", it.first, filename.c_str());
-          if (save_disassembly) {
-            auto f = phosg::fopen_unique(filename, "wt");
-            fprintf(f.get(), "QUEST %" PRIu32 " (%s)\n", it.first, it.second->name.c_str());
-            supermap->print(f.get());
-          }
+          throw logic_error("quest does not have a supermap, even with a specified random seed");
         }
+
+        string filename_token;
+        if (save_disassembly) {
+          string filename = phosg::string_printf("supermap_quest_%" PRIu32 "_%08" PRIX32 ".txt", it.first, random_seed);
+          auto f = phosg::fopen_unique(filename, "wt");
+          fprintf(f.get(), "QUEST %" PRIu32 " (%s)\n", it.first, it.second->name.c_str());
+          supermap->print(f.get());
+          filename_token = " => " + filename;
+        }
+        auto eff = supermap->efficiency();
+        all_quests_eff += eff;
+        auto eff_str = eff.str();
+        fprintf(stderr, "QUEST MAP: %08" PRIX32 " => %s%s\n", it.first, eff_str.c_str(), filename_token.c_str());
 
         auto map_state = make_shared<MapState>(
             0,
@@ -2727,6 +2742,8 @@ Action a_load_maps_test(
             map_state->enemy_set_states.size(),
             map_state->event_states.size());
       }
+      string all_quests_eff_str = all_quests_eff.str();
+      fprintf(stderr, "ALL QUEST MAPS: %s\n", all_quests_eff_str.c_str());
     });
 
 Action a_parse_object_graph(

@@ -1745,8 +1745,12 @@ string MapFile::disassemble() const {
 ////////////////////////////////////////////////////////////////////////////////
 // Super map
 
+string SuperMap::Object::id_str() const {
+  return phosg::string_printf("KS-%02hhX-%03zX", this->floor, this->super_id);
+}
+
 string SuperMap::Object::str() const {
-  string ret = phosg::string_printf("[Object KS-%02hhX-%03zX", this->floor, this->super_id);
+  string ret = "[Object " + this->id_str();
   for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
     const auto& def = this->version(v);
     if (def.relative_object_index != 0xFFFF) {
@@ -1757,6 +1761,10 @@ string SuperMap::Object::str() const {
   }
   ret += "]";
   return ret;
+}
+
+string SuperMap::Enemy::id_str() const {
+  return phosg::string_printf("ES-%02hhX-%03zX-%03zX", this->floor, this->super_set_id, this->super_id);
 }
 
 string SuperMap::Enemy::str() const {
@@ -1785,8 +1793,12 @@ string SuperMap::Enemy::str() const {
   return ret;
 }
 
+string SuperMap::Event::id_str() const {
+  return phosg::string_printf("WS-%02hhX-%03zX", this->floor, this->super_id);
+}
+
 string SuperMap::Event::str() const {
-  string ret = phosg::string_printf("[Event WS-%02hhX-%03zX", this->floor, this->super_id);
+  string ret = "[Event " + this->id_str();
   for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
     const auto& def = this->version(v);
     if (def.relative_event_index != 0xFFFF) {
@@ -1863,6 +1875,10 @@ void SuperMap::link_object_version(std::shared_ptr<Object> obj, Version version,
   obj_ver.relative_object_index = entities.objects.size();
 
   entities.objects.emplace_back(obj);
+
+  // Add to semantic hash index
+  uint64_t semantic_hash = set_entry->semantic_hash();
+  this->objects_for_semantic_hash[semantic_hash].emplace_back(obj);
 
   // Add to room/group index
   uint64_t k = room_index_key(obj->floor, set_entry->room, set_entry->group);
@@ -2380,6 +2396,10 @@ void SuperMap::link_enemy_version_and_children(
     entities.enemies.emplace_back(ene);
     if (ene->child_index == 0) {
       entities.enemy_sets.emplace_back(ene);
+
+      // Add to semantic hash index (but only for the root ene)
+      uint64_t semantic_hash = set_entry->semantic_hash();
+      this->enemy_sets_for_semantic_hash[semantic_hash].emplace_back(ene);
     }
 
     // Add to room/group index
@@ -2470,6 +2490,11 @@ void SuperMap::link_event_version(
 
   entities.events.emplace_back(ev);
 
+  // Add to semantic hash index
+  uint64_t semantic_hash = entry->semantic_hash();
+  this->events_for_semantic_hash[semantic_hash].emplace_back(ev);
+
+  // Add to room index
   uint64_t k = room_index_key(ev->floor, entry->room, entry->wave_number);
   entities.event_for_floor_room_and_wave_number.emplace(k, ev);
   k = (static_cast<uint64_t>(ev->floor) << 32) | entry->event_id;
@@ -2616,6 +2641,35 @@ vector<EditAction> compute_edit_path(
   return reverse_path;
 }
 
+template <typename EntityT>
+vector<shared_ptr<EntityT>> compute_prev_entities(
+    const vector<shared_ptr<EntityT>>& existing_prev_entities,
+    size_t prev_entities_offset,
+    const vector<EditAction>& edit_path) {
+  vector<shared_ptr<EntityT>> ret;
+  for (auto action : edit_path) {
+    switch (action) {
+      case EditAction::ADD:
+        // This object doesn't match any object from the previous version
+        ret.emplace_back(nullptr);
+        break;
+      case EditAction::DELETE:
+        // There is an object in the previous version that doesn't match any in this version; skip it
+        prev_entities_offset++;
+        break;
+      case EditAction::EDIT: {
+        // The current object in this_sf matches the current object in prev_sf; link them together
+        ret.emplace_back(existing_prev_entities.at(prev_entities_offset));
+        prev_entities_offset++;
+        break;
+      }
+      default:
+        throw logic_error("invalid edit path action");
+    }
+  }
+  return ret;
+}
+
 static double object_set_add_cost(const MapFile::ObjectSetEntry&) {
   return 100.0;
 }
@@ -2710,6 +2764,37 @@ void SuperMap::add_map_file(Version this_v, shared_ptr<const MapFile> this_map_f
   }
 
   for (uint8_t floor = 0; floor < 0x12; floor++) {
+    auto link_or_add_entities = [this_v, floor]<typename EntityT, typename EntryT>(
+                                    const EntryT* prev_sets,
+                                    size_t prev_set_count,
+                                    const EntryT* this_sets,
+                                    size_t this_set_count,
+                                    double (*add_cost)(const EntryT&),
+                                    double (*delete_cost)(const EntryT&),
+                                    double (*edit_cost)(const EntryT&, const EntryT& current),
+                                    const vector<EntityT>& prev_entities,
+                                    size_t prev_entities_start_index,
+                                    auto&& link_existing,
+                                    auto&& add_new) {
+      auto edit_path = compute_edit_path(
+          prev_sets, prev_set_count, this_sets, this_set_count, add_cost, delete_cost, edit_cost);
+
+      auto used_prev_entities = compute_prev_entities(prev_entities, prev_entities_start_index, edit_path);
+      if (used_prev_entities.size() != this_set_count) {
+        throw std::logic_error("incorrect previous entity list length");
+      }
+
+      // TODO; // Use semantic hash index to fill in the gaps
+      for (size_t z = 0; z < this_set_count; z++) {
+        auto& prev_ent = used_prev_entities[z];
+        if (prev_ent) {
+          link_existing(prev_ent, this_v, this_sets + z);
+        } else {
+          add_new(this_v, floor, this_sets + z);
+        }
+      }
+    };
+
     this_entities.object_floor_start_indexes[floor] = this_entities.objects.size();
     this_entities.enemy_floor_start_indexes[floor] = this_entities.enemies.size();
     this_entities.enemy_set_floor_start_indexes[floor] = this_entities.enemy_sets.size();
@@ -2726,42 +2811,20 @@ void SuperMap::add_map_file(Version this_v, shared_ptr<const MapFile> this_map_f
 
     } else if (this_sf.object_sets) {
       const auto& prev_sf = prev_map_file->floor(floor);
-      auto edit_path = compute_edit_path(
+      auto& prev_entities = this->version(prev_v);
+
+      link_or_add_entities(
           prev_sf.object_sets,
           prev_sf.object_set_count,
           this_sf.object_sets,
           this_sf.object_set_count,
           object_set_add_cost,
           object_set_delete_cost,
-          object_set_edit_cost);
-
-      auto& prev_entities = this->version(prev_v);
-
-      size_t prev_entities_offset = prev_entities.object_floor_start_indexes.at(floor);
-      size_t this_sf_offset = 0;
-      for (auto action : edit_path) {
-        switch (action) {
-          case EditAction::ADD:
-            // This object doesn't match any object from the previous version; create a new object
-            this->add_object(this_v, floor, this_sf.object_sets + this_sf_offset);
-            this_sf_offset++;
-            break;
-          case EditAction::DELETE:
-            // There is an object in the previous version that doesn't match any in this version; skip it
-            prev_entities_offset++;
-            break;
-          case EditAction::EDIT: {
-            // The current object in this_sf matches the current object in prev_sf; link them together
-            auto prev_obj = prev_entities.objects.at(prev_entities_offset);
-            this->link_object_version(prev_obj, this_v, this_sf.object_sets + this_sf_offset);
-            prev_entities_offset++;
-            this_sf_offset++;
-            break;
-          }
-          default:
-            throw logic_error("invalid edit path action");
-        }
-      }
+          object_set_edit_cost,
+          prev_entities.objects,
+          prev_entities.object_floor_start_indexes.at(floor),
+          bind(&SuperMap::link_object_version, this, placeholders::_1, placeholders::_2, placeholders::_3),
+          bind(&SuperMap::add_object, this, placeholders::_1, placeholders::_2, placeholders::_3));
     }
 
     if (!prev_map_file || !prev_map_file->floor(floor).enemy_sets) {
@@ -2770,42 +2833,20 @@ void SuperMap::add_map_file(Version this_v, shared_ptr<const MapFile> this_map_f
       }
     } else if (this_sf.enemy_sets) {
       const auto& prev_sf = prev_map_file->floor(floor);
-      auto edit_path = compute_edit_path(
+      auto& prev_entities = this->version(prev_v);
+
+      link_or_add_entities(
           prev_sf.enemy_sets,
           prev_sf.enemy_set_count,
           this_sf.enemy_sets,
           this_sf.enemy_set_count,
           enemy_set_add_cost,
           enemy_set_delete_cost,
-          enemy_set_edit_cost);
-
-      auto& prev_entities = this->version(prev_v);
-
-      size_t prev_entities_offset = prev_entities.enemy_set_floor_start_indexes.at(floor);
-      size_t this_sf_offset = 0;
-      for (auto action : edit_path) {
-        switch (action) {
-          case EditAction::ADD:
-            // This object doesn't match any object from the previous version; create a new object
-            this->add_enemy_and_children(this_v, floor, this_sf.enemy_sets + this_sf_offset);
-            this_sf_offset++;
-            break;
-          case EditAction::DELETE:
-            // There is an object in the previous version that doesn't match any in this version; skip it
-            prev_entities_offset++;
-            break;
-          case EditAction::EDIT: {
-            // The current object in this_sf matches the current object in prev_sf; link them together
-            auto prev_ene = prev_entities.enemy_sets.at(prev_entities_offset);
-            this->link_enemy_version_and_children(prev_ene, this_v, this_sf.enemy_sets + this_sf_offset);
-            prev_entities_offset++;
-            this_sf_offset++;
-            break;
-          }
-          default:
-            throw logic_error("invalid edit path action");
-        }
-      }
+          enemy_set_edit_cost,
+          prev_entities.enemy_sets,
+          prev_entities.enemy_set_floor_start_indexes.at(floor),
+          bind(&SuperMap::link_enemy_version_and_children, this, placeholders::_1, placeholders::_2, placeholders::_3),
+          bind(&SuperMap::add_enemy_and_children, this, placeholders::_1, placeholders::_2, placeholders::_3));
     }
 
     if (!prev_map_file || !prev_map_file->floor(floor).events1) {
@@ -2814,52 +2855,20 @@ void SuperMap::add_map_file(Version this_v, shared_ptr<const MapFile> this_map_f
       }
     } else if (this_sf.events1) {
       const auto& prev_sf = prev_map_file->floor(floor);
-      auto edit_path = compute_edit_path(
+      auto& prev_entities = this->version(prev_v);
+
+      link_or_add_entities(
           prev_sf.events1,
           prev_sf.event_count,
           this_sf.events1,
           this_sf.event_count,
           event_add_cost,
           event_delete_cost,
-          event_edit_cost);
-
-      auto& prev_entities = this->version(prev_v);
-
-      size_t prev_entities_offset = prev_entities.event_floor_start_indexes.at(floor);
-      size_t this_sf_offset = 0;
-      for (auto action : edit_path) {
-        switch (action) {
-          case EditAction::ADD:
-            // This object doesn't match any object from the previous version; try to look it up in the semantic hash index
-            this->add_event(
-                this_v,
-                floor,
-                this_sf.events1 + this_sf_offset,
-                this_sf.event_action_stream,
-                this_sf.event_action_stream_bytes);
-            this_sf_offset++;
-            break;
-          case EditAction::DELETE:
-            // There is an object in the previous version that doesn't match any in this version; skip it
-            prev_entities_offset++;
-            break;
-          case EditAction::EDIT: {
-            // The current object in this_sf matches the current object in prev_sf; link them together
-            auto prev_ev = prev_entities.events.at(prev_entities_offset);
-            this->link_event_version(
-                prev_ev,
-                this_v,
-                this_sf.events1 + this_sf_offset,
-                this_sf.event_action_stream,
-                this_sf.event_action_stream_bytes);
-            prev_entities_offset++;
-            this_sf_offset++;
-            break;
-          }
-          default:
-            throw logic_error("invalid edit path action");
-        }
-      }
+          event_edit_cost,
+          prev_entities.events,
+          prev_entities.event_floor_start_indexes.at(floor),
+          bind(&SuperMap::link_event_version, this, placeholders::_1, placeholders::_2, placeholders::_3, this_sf.event_action_stream, this_sf.event_action_stream_bytes),
+          bind(&SuperMap::add_event, this, placeholders::_1, placeholders::_2, placeholders::_3, this_sf.event_action_stream, this_sf.event_action_stream_bytes));
     }
   }
 }
@@ -2967,6 +2976,63 @@ vector<shared_ptr<const SuperMap::Event>> SuperMap::events_for_floor_room_wave(
   for (auto its = entities.event_for_floor_room_and_wave_number.equal_range(k); its.first != its.second; its.first++) {
     ret.emplace_back(its.first->second);
   }
+  return ret;
+}
+
+SuperMap::EfficiencyStats& SuperMap::EfficiencyStats::operator+=(const EfficiencyStats& other) {
+  this->filled_object_slots += other.filled_object_slots;
+  this->total_object_slots += other.total_object_slots;
+  this->filled_enemy_set_slots += other.filled_enemy_set_slots;
+  this->total_enemy_set_slots += other.total_enemy_set_slots;
+  this->filled_event_slots += other.filled_event_slots;
+  this->total_event_slots += other.total_event_slots;
+  return *this;
+}
+
+std::string SuperMap::EfficiencyStats::str() const {
+  return phosg::string_printf(
+      "EfficiencyStats[K = %zu/%zu (%lg%%), E = %zu/%zu (%lg%%), W = %zu/%zu (%g%%)]",
+      this->filled_object_slots, this->total_object_slots,
+      static_cast<double>(this->filled_object_slots * 100) / static_cast<double>(this->total_object_slots),
+      this->filled_enemy_set_slots, this->total_enemy_set_slots,
+      static_cast<double>(this->filled_enemy_set_slots * 100) / static_cast<double>(this->total_enemy_set_slots),
+      this->filled_event_slots, this->total_event_slots,
+      static_cast<double>(this->filled_event_slots * 100) / static_cast<double>(this->total_event_slots));
+}
+
+SuperMap::EfficiencyStats SuperMap::efficiency() const {
+  EfficiencyStats ret;
+
+  for (const auto& obj : this->objects) {
+    for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+      const auto& obj_ver = obj->version(v);
+      if (obj_ver.relative_object_index != 0xFFFF) {
+        ret.filled_object_slots++;
+      }
+    }
+  }
+  ret.total_object_slots = this->objects.size() * ALL_ARPG_SEMANTIC_VERSIONS.size();
+
+  for (const auto& ene : this->enemy_sets) {
+    for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+      const auto& ene_ver = ene->version(v);
+      if (ene_ver.relative_enemy_index != 0xFFFF) {
+        ret.filled_enemy_set_slots++;
+      }
+    }
+  }
+  ret.total_enemy_set_slots = this->enemy_sets.size() * ALL_ARPG_SEMANTIC_VERSIONS.size();
+
+  for (const auto& ev : this->events) {
+    for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+      const auto& ev_ver = ev->version(v);
+      if (ev_ver.relative_event_index != 0xFFFF) {
+        ret.filled_event_slots++;
+      }
+    }
+  }
+  ret.total_event_slots = this->events.size() * ALL_ARPG_SEMANTIC_VERSIONS.size();
+
   return ret;
 }
 
