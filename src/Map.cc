@@ -1015,7 +1015,7 @@ string MapFile::ObjectSetEntry::str() const {
       this->unused.load());
 }
 
-uint64_t MapFile::ObjectSetEntry::semantic_hash() const {
+uint64_t MapFile::ObjectSetEntry::semantic_hash(uint8_t floor) const {
   uint64_t ret = phosg::fnv1a64(&this->base_type, sizeof(this->base_type));
   ret = phosg::fnv1a64(&this->group, sizeof(this->group), ret);
   ret = phosg::fnv1a64(&this->room, sizeof(this->room), ret);
@@ -1027,6 +1027,7 @@ uint64_t MapFile::ObjectSetEntry::semantic_hash() const {
   ret = phosg::fnv1a64(&this->param4, sizeof(this->param4), ret);
   ret = phosg::fnv1a64(&this->param5, sizeof(this->param5), ret);
   ret = phosg::fnv1a64(&this->param6, sizeof(this->param6), ret);
+  ret = phosg::fnv1a64(&floor, sizeof(floor), ret);
   return ret;
 }
 
@@ -1059,7 +1060,7 @@ string MapFile::EnemySetEntry::str() const {
       this->unused.load());
 }
 
-uint64_t MapFile::EnemySetEntry::semantic_hash() const {
+uint64_t MapFile::EnemySetEntry::semantic_hash(uint8_t floor) const {
   uint64_t ret = phosg::fnv1a64(&this->base_type, sizeof(this->base_type));
   ret = phosg::fnv1a64(&this->num_children, sizeof(this->num_children), ret);
   ret = phosg::fnv1a64(&this->room, sizeof(this->room), ret);
@@ -1074,6 +1075,7 @@ uint64_t MapFile::EnemySetEntry::semantic_hash() const {
   ret = phosg::fnv1a64(&this->fparam5, sizeof(this->fparam5), ret);
   ret = phosg::fnv1a64(&this->uparam1, sizeof(this->uparam1), ret);
   ret = phosg::fnv1a64(&this->uparam2, sizeof(this->uparam2), ret);
+  ret = phosg::fnv1a64(&floor, sizeof(floor), ret);
   return ret;
 }
 
@@ -1088,10 +1090,11 @@ string MapFile::Event1Entry::str() const {
       this->action_stream_offset.load());
 }
 
-uint64_t MapFile::Event1Entry::semantic_hash() const {
+uint64_t MapFile::Event1Entry::semantic_hash(uint8_t floor) const {
   uint64_t ret = phosg::fnv1a64(&this->event_id, sizeof(this->event_id));
   ret = phosg::fnv1a64(&this->room, sizeof(this->room), ret);
   ret = phosg::fnv1a64(&this->wave_number, sizeof(this->wave_number), ret);
+  ret = phosg::fnv1a64(&floor, sizeof(floor), ret);
   return ret;
 }
 
@@ -1803,7 +1806,7 @@ string SuperMap::Event::str() const {
     const auto& def = this->version(v);
     if (def.relative_event_index != 0xFFFF) {
       string action_stream_str = phosg::format_data_string(def.action_stream, def.action_stream_size);
-      string args_str = def.entry->str();
+      string args_str = def.set_entry->str();
       ret += phosg::string_printf(
           " %s:[%04hX => %s+%s]",
           phosg::name_for_enum(v),
@@ -1877,7 +1880,7 @@ void SuperMap::link_object_version(std::shared_ptr<Object> obj, Version version,
   entities.objects.emplace_back(obj);
 
   // Add to semantic hash index
-  uint64_t semantic_hash = set_entry->semantic_hash();
+  uint64_t semantic_hash = set_entry->semantic_hash(obj->floor);
   this->objects_for_semantic_hash[semantic_hash].emplace_back(obj);
 
   // Add to room/group index
@@ -2398,7 +2401,7 @@ void SuperMap::link_enemy_version_and_children(
       entities.enemy_sets.emplace_back(ene);
 
       // Add to semantic hash index (but only for the root ene)
-      uint64_t semantic_hash = set_entry->semantic_hash();
+      uint64_t semantic_hash = set_entry->semantic_hash(ene->floor);
       this->enemy_sets_for_semantic_hash[semantic_hash].emplace_back(ene);
     }
 
@@ -2480,10 +2483,10 @@ void SuperMap::link_event_version(
 
   auto& entities = this->version(version);
   auto& ev_ver = ev->version(version);
-  if (ev_ver.entry) {
+  if (ev_ver.set_entry) {
     throw logic_error("event already linked to version");
   }
-  ev_ver.entry = entry;
+  ev_ver.set_entry = entry;
   ev_ver.relative_event_index = entities.events.size();
   ev_ver.action_stream = ev_action_stream_start;
   ev_ver.action_stream_size = ev_action_stream_size;
@@ -2491,7 +2494,7 @@ void SuperMap::link_event_version(
   entities.events.emplace_back(ev);
 
   // Add to semantic hash index
-  uint64_t semantic_hash = entry->semantic_hash();
+  uint64_t semantic_hash = entry->semantic_hash(ev->floor);
   this->events_for_semantic_hash[semantic_hash].emplace_back(ev);
 
   // Add to room index
@@ -2729,12 +2732,10 @@ static double event_delete_cost(const MapFile::Event1Entry&) {
   return 1.0;
 }
 static double event_edit_cost(const MapFile::Event1Entry& prev, const MapFile::Event1Entry& current) {
-  // Unlike object and enemy sets, event matching is essentially binary: no
-  // variance is tolerated in some parameters, but others are entirely ignored.
-  bool is_same = ((prev.event_id == current.event_id) &&
-      (prev.room == current.room) &&
-      (prev.wave_number == current.wave_number));
-  return is_same ? 0.0 : 5.0;
+  // Unlike objects and enemies, event matching is essentially binary
+  return ((prev.event_id != current.event_id) || (prev.room != current.room) || (prev.wave_number != current.wave_number))
+      ? 5.0
+      : 0.0;
 }
 
 void SuperMap::add_map_file(Version this_v, shared_ptr<const MapFile> this_map_file) {
@@ -2772,10 +2773,11 @@ void SuperMap::add_map_file(Version this_v, shared_ptr<const MapFile> this_map_f
                                     double (*add_cost)(const EntryT&),
                                     double (*delete_cost)(const EntryT&),
                                     double (*edit_cost)(const EntryT&, const EntryT& current),
-                                    const vector<EntityT>& prev_entities,
+                                    const vector<shared_ptr<EntityT>>& prev_entities,
                                     size_t prev_entities_start_index,
                                     auto&& link_existing,
-                                    auto&& add_new) {
+                                    auto&& add_new,
+                                    const unordered_map<uint64_t, vector<shared_ptr<EntityT>>>& semantic_hash_index) {
       auto edit_path = compute_edit_path(
           prev_sets, prev_set_count, this_sets, this_set_count, add_cost, delete_cost, edit_cost);
 
@@ -2783,10 +2785,28 @@ void SuperMap::add_map_file(Version this_v, shared_ptr<const MapFile> this_map_f
       if (used_prev_entities.size() != this_set_count) {
         throw std::logic_error("incorrect previous entity list length");
       }
+      unordered_set<const EntityT*> used_prev_entities_set;
+      for (const auto& ent : used_prev_entities) {
+        used_prev_entities_set.emplace(ent.get());
+      }
 
-      // TODO; // Use semantic hash index to fill in the gaps
+      // Fill in all entities found by edit distance
       for (size_t z = 0; z < this_set_count; z++) {
         auto& prev_ent = used_prev_entities[z];
+
+        // Use the semantic hash index to fill in gaps if possible
+        if (!prev_ent) {
+          try {
+            for (const auto& ent : semantic_hash_index.at(this_sets[z].semantic_hash(floor))) {
+              if (!ent->version(this_v).set_entry && !used_prev_entities_set.count(ent.get())) {
+                prev_ent = ent;
+                break;
+              }
+            }
+          } catch (const out_of_range&) {
+          }
+        }
+
         if (prev_ent) {
           link_existing(prev_ent, this_v, this_sets + z);
         } else {
@@ -2824,7 +2844,8 @@ void SuperMap::add_map_file(Version this_v, shared_ptr<const MapFile> this_map_f
           prev_entities.objects,
           prev_entities.object_floor_start_indexes.at(floor),
           bind(&SuperMap::link_object_version, this, placeholders::_1, placeholders::_2, placeholders::_3),
-          bind(&SuperMap::add_object, this, placeholders::_1, placeholders::_2, placeholders::_3));
+          bind(&SuperMap::add_object, this, placeholders::_1, placeholders::_2, placeholders::_3),
+          this->objects_for_semantic_hash);
     }
 
     if (!prev_map_file || !prev_map_file->floor(floor).enemy_sets) {
@@ -2846,7 +2867,8 @@ void SuperMap::add_map_file(Version this_v, shared_ptr<const MapFile> this_map_f
           prev_entities.enemy_sets,
           prev_entities.enemy_set_floor_start_indexes.at(floor),
           bind(&SuperMap::link_enemy_version_and_children, this, placeholders::_1, placeholders::_2, placeholders::_3),
-          bind(&SuperMap::add_enemy_and_children, this, placeholders::_1, placeholders::_2, placeholders::_3));
+          bind(&SuperMap::add_enemy_and_children, this, placeholders::_1, placeholders::_2, placeholders::_3),
+          this->enemy_sets_for_semantic_hash);
     }
 
     if (!prev_map_file || !prev_map_file->floor(floor).events1) {
@@ -2868,7 +2890,8 @@ void SuperMap::add_map_file(Version this_v, shared_ptr<const MapFile> this_map_f
           prev_entities.events,
           prev_entities.event_floor_start_indexes.at(floor),
           bind(&SuperMap::link_event_version, this, placeholders::_1, placeholders::_2, placeholders::_3, this_sf.event_action_stream, this_sf.event_action_stream_bytes),
-          bind(&SuperMap::add_event, this, placeholders::_1, placeholders::_2, placeholders::_3, this_sf.event_action_stream, this_sf.event_action_stream_bytes));
+          bind(&SuperMap::add_event, this, placeholders::_1, placeholders::_2, placeholders::_3, this_sf.event_action_stream, this_sf.event_action_stream_bytes),
+          this->events_for_semantic_hash);
     }
   }
 }
@@ -2990,14 +3013,20 @@ SuperMap::EfficiencyStats& SuperMap::EfficiencyStats::operator+=(const Efficienc
 }
 
 std::string SuperMap::EfficiencyStats::str() const {
+  double object_eff = this->total_object_slots
+      ? (static_cast<double>(this->filled_object_slots * 100) / static_cast<double>(this->total_object_slots))
+      : 0;
+  double enemy_set_eff = this->total_enemy_set_slots
+      ? (static_cast<double>(this->filled_enemy_set_slots * 100) / static_cast<double>(this->total_enemy_set_slots))
+      : 0;
+  double event_eff = this->total_event_slots
+      ? (static_cast<double>(this->filled_event_slots * 100) / static_cast<double>(this->total_event_slots))
+      : 0;
   return phosg::string_printf(
       "EfficiencyStats[K = %zu/%zu (%lg%%), E = %zu/%zu (%lg%%), W = %zu/%zu (%g%%)]",
-      this->filled_object_slots, this->total_object_slots,
-      static_cast<double>(this->filled_object_slots * 100) / static_cast<double>(this->total_object_slots),
-      this->filled_enemy_set_slots, this->total_enemy_set_slots,
-      static_cast<double>(this->filled_enemy_set_slots * 100) / static_cast<double>(this->total_enemy_set_slots),
-      this->filled_event_slots, this->total_event_slots,
-      static_cast<double>(this->filled_event_slots * 100) / static_cast<double>(this->total_event_slots));
+      this->filled_object_slots, this->total_object_slots, object_eff,
+      this->filled_enemy_set_slots, this->total_enemy_set_slots, enemy_set_eff,
+      this->filled_event_slots, this->total_event_slots, event_eff);
 }
 
 SuperMap::EfficiencyStats SuperMap::efficiency() const {
@@ -3181,7 +3210,7 @@ void SuperMap::verify() const {
         }
       }
       const auto& ev_ver = ev->version(v);
-      if (!ev_ver.entry) {
+      if (!ev_ver.set_entry) {
         throw logic_error("event entry is missing");
       }
       if (ev_ver.relative_event_index != event_index) {

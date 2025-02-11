@@ -184,7 +184,7 @@ public:
     /* 40 */ le_uint32_t unused = 0; // Reserved for pointer in client's memory; unused by server
     /* 44 */
 
-    uint64_t semantic_hash() const;
+    uint64_t semantic_hash(uint8_t floor) const;
     std::string str() const;
   } __packed_ws__(ObjectSetEntry, 0x44);
 
@@ -211,7 +211,7 @@ public:
     /* 44 */ le_uint32_t unused = 0; // Reserved for pointer in client's memory; unused by server
     /* 48 */
 
-    uint64_t semantic_hash() const;
+    uint64_t semantic_hash(uint8_t floor) const;
     std::string str() const;
   } __packed_ws__(EnemySetEntry, 0x48);
 
@@ -241,7 +241,7 @@ public:
     /* 10 */ le_uint32_t action_stream_offset = 0;
     /* 14 */
 
-    uint64_t semantic_hash() const;
+    uint64_t semantic_hash(uint8_t floor) const;
     std::string str() const;
   } __packed_ws__(Event1Entry, 0x14);
 
@@ -503,7 +503,7 @@ public:
 
   struct Event {
     struct EventVersion {
-      const MapFile::Event1Entry* entry = nullptr;
+      const MapFile::Event1Entry* set_entry = nullptr;
       uint16_t relative_event_index = 0xFFFF;
       const void* action_stream = nullptr;
       size_t action_stream_size = 0;
