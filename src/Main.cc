@@ -2268,10 +2268,7 @@ Action a_print_level_stats(
 Action a_print_item_parameter_tables(
     "print-item-tables", nullptr, +[](phosg::Arguments& args) {
       auto s = make_shared<ServerState>(get_config_filename(args));
-      s->load_patch_indexes(false);
-      s->load_text_index(false);
-      s->load_item_definitions(false);
-      s->load_item_name_indexes(false);
+      s->load_all();
       for (Version v : ALL_VERSIONS) {
         const auto& index = s->item_name_index_opt(v);
         if (index) {
