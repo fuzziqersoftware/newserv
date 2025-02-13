@@ -12,7 +12,7 @@ start:
   .data     2
   nop
 
-    .align    4
+  .align    4
   .data     0x8C219DF8
   .data     2
   nop
