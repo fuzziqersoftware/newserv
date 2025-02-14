@@ -628,27 +628,27 @@ protected:
 
 class MagEvolutionTable {
 public:
+  // TODO: V1 format is different! Offsets are 0438 0440 0498 0520 054C
   struct TableOffsets {
-    // num_mags = 0x53 in BB, 0x43 in V3
-    /* 00 / 0400 */ le_uint32_t unknown_a1; // -> [offset -> (0xC-byte struct)[num_mags], offset -> (same as first offset)]
-    /* 04 / 0408 */ le_uint32_t unknown_a2; // -> (2-byte struct, or single word)[num_mags]
-    /* 08 / 04AE */ le_uint32_t unknown_a3; // -> (0xA8 bytes; possibly (8-byte struct)[0x15])
-    /* 0C / 0556 */ le_uint32_t unknown_a4; // -> (uint8_t)[num_mags]
-    /* 10 / 05AC */ le_uint32_t unknown_a5; // -> (float)[0x48]
-    /* 14 / 06CC */ le_uint32_t evolution_number; // -> (uint8_t)[num_mags]
+    // num_mags = 0x3A in v2 and GC NTE, 0x43 in V3, 0x53 in BB
+    // TODO: GC NTE uses the v2 format but is big-endian
+    /* -- / V2   / V3   / BB */
+    /* 00 / 05BC / 0340 / 0400 */ le_uint32_t unknown_a1; // -> [offset -> (uint8_t[0xC])[num_mags], offset -> (same as first offset on v3; different on v2 (TODO))]
+    /* 04 / 0594 / 0348 / 0408 */ le_uint32_t unknown_a2; // -> (uint8_t[2])[num_mags]
+    /* 08 / 0608 / 03CE / 04AE */ le_uint32_t unknown_a3; // -> (8-byte struct)[0x15]
+    /* 0C / 06B0 / 0476 / 0556 */ le_uint32_t unknown_a4; // -> (uint8_t)[num_mags]
+    /* 10 / 06EC / 04BC / 05AC */ le_uint32_t unknown_a5; // -> (float)[0x48] on v3+, (float)[0x24] on v2
+    /* 14 / 077C / 05DC / 06CC */ le_uint32_t evolution_number; // -> (uint8_t)[num_mags]
   } __packed_ws__(TableOffsets, 0x18);
 
-  struct EvolutionNumberTable {
-    parray<uint8_t, 0x53> values;
-  } __packed_ws__(EvolutionNumberTable, 0x53);
-
-  MagEvolutionTable(std::shared_ptr<const std::string> data);
+  MagEvolutionTable(std::shared_ptr<const std::string> data, size_t num_mags);
   ~MagEvolutionTable() = default;
 
   uint8_t get_evolution_number(uint8_t data1_1) const;
 
 protected:
   std::shared_ptr<const std::string> data;
+  size_t num_mags;
   phosg::StringReader r;
   const TableOffsets* offsets;
 };

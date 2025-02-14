@@ -201,7 +201,9 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set;
   std::array<std::shared_ptr<const ItemParameterTable>, NUM_VERSIONS> item_parameter_tables;
   std::array<std::shared_ptr<const ItemData::StackLimits>, NUM_VERSIONS> item_stack_limits_tables;
-  std::shared_ptr<const MagEvolutionTable> mag_evolution_table;
+  std::shared_ptr<const MagEvolutionTable> mag_evolution_table_v1_v2;
+  std::shared_ptr<const MagEvolutionTable> mag_evolution_table_v3;
+  std::shared_ptr<const MagEvolutionTable> mag_evolution_table_v4;
   std::shared_ptr<const TextIndex> text_index;
   std::array<std::shared_ptr<const ItemNameIndex>, NUM_VERSIONS> item_name_indexes;
   std::shared_ptr<const WordSelectTable> word_select_table;
@@ -344,6 +346,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const LevelTable> level_table(Version version) const;
   std::shared_ptr<const ItemParameterTable> item_parameter_table(Version version) const;
   std::shared_ptr<const ItemParameterTable> item_parameter_table_for_encode(Version version) const;
+  std::shared_ptr<const MagEvolutionTable> mag_evolution_table(Version version) const;
   std::shared_ptr<const ItemData::StackLimits> item_stack_limits(Version version) const;
   std::shared_ptr<const ItemNameIndex> item_name_index_opt(Version version) const; // Returns null if missing
   std::shared_ptr<const ItemNameIndex> item_name_index(Version version) const; // Throws if missing

@@ -1286,14 +1286,17 @@ size_t ItemParameterTable::price_for_item(const ItemData& item) const {
   throw logic_error("this should be impossible");
 }
 
-MagEvolutionTable::MagEvolutionTable(shared_ptr<const string> data)
+MagEvolutionTable::MagEvolutionTable(shared_ptr<const string> data, size_t num_mags)
     : data(data),
+      num_mags(num_mags),
       r(*data) {
   size_t offset_table_offset = this->r.pget_u32l(this->data->size() - 0x10);
   this->offsets = &r.pget<TableOffsets>(offset_table_offset);
 }
 
 uint8_t MagEvolutionTable::get_evolution_number(uint8_t data1_1) const {
-  const auto& table = this->r.pget<EvolutionNumberTable>(this->offsets->evolution_number);
-  return table.values[data1_1];
+  if (data1_1 >= this->num_mags) {
+    throw runtime_error("invalid mag number");
+  }
+  return this->r.pget_u8(this->offsets->evolution_number + data1_1);
 }

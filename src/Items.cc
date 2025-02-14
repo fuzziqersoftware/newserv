@@ -135,35 +135,32 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
     item.flags &= (~8); // Unequip it
     should_delete_item = false;
 
-  } else if (primary_identifier == 0x030C0000) {
-    // Cell of MAG 502
+  } else if ((primary_identifier & 0xFFFF0000) == 0x030C0000) { // Non-combo mag cells
     auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
-    mag.data.data1[1] = (player->disp.visual.section_id & 1) ? 0x1D : 0x21;
-
-  } else if (primary_identifier == 0x030C0100) {
-    // Cell of MAG 213
-    auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
-    mag.data.data1[1] = (player->disp.visual.section_id & 1) ? 0x27 : 0x22;
-
-  } else if (primary_identifier == 0x030C0200) {
-    // Parts of RoboChao
-    auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
-    mag.data.data1[1] = 0x28;
-
-  } else if (primary_identifier == 0x030C0300) {
-    // Heart of Opa Opa
-    auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
-    mag.data.data1[1] = 0x29;
-
-  } else if (primary_identifier == 0x030C0400) {
-    // Heart of Pian
-    auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
-    mag.data.data1[1] = 0x2A;
-
-  } else if (primary_identifier == 0x030C0500) {
-    // Heart of Chao
-    auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
-    mag.data.data1[1] = 0x2B;
+    if (s->mag_evolution_table(c->version())->get_evolution_number(mag.data.data1[1]) < 4) {
+      switch (item.data.data1[2]) {
+        case 0x00: // Cell of MAG 502
+          mag.data.data1[1] = (player->disp.visual.section_id & 1) ? 0x1D : 0x21;
+          break;
+        case 0x01: // Cell of MAG 213
+          mag.data.data1[1] = (player->disp.visual.section_id & 1) ? 0x27 : 0x22;
+          break;
+        case 0x02: // Parts of RoboChao
+          mag.data.data1[1] = 0x28;
+          break;
+        case 0x03: // Heart of Opa Opa
+          mag.data.data1[1] = 0x29;
+          break;
+        case 0x04: // Heart of Pian
+          mag.data.data1[1] = 0x2A;
+          break;
+        case 0x05: // Heart of Chao
+          mag.data.data1[1] = 0x2B;
+          break;
+        default:
+          throw runtime_error("invalid mag cell used");
+      }
+    }
 
   } else if ((primary_identifier & 0xFFFF0000) == 0x03150000) {
     // Christmas Present, etc. - use unwrap_table + probabilities therein
@@ -176,6 +173,10 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
     if (sum == 0) {
       throw runtime_error("no unwrap results available for event");
     }
+    // TODO: It seems that on non-BB, clients don't synchronize this at all, so
+    // they could end up thinking the unwrapped item is something completely
+    // different. (They don't even use a fixed random seed, like for rares;
+    // they just call rand().) How does this actually work on console PSO?
     size_t det = random_from_optional_crypt(opt_rand_crypt) % sum;
     for (size_t z = 0; z < table.second; z++) {
       const auto& entry = table.first[z];
@@ -189,9 +190,6 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
         item.data.data1.clear_after(3);
         should_delete_item = false;
 
-        // TODO: It seems that on non-BB, clients don't synchronize this at all
-        // so they could end up thinking the unwrapped item is something
-        // completely different. How does this actually work on console PSO?
         auto l = c->require_lobby();
         for (const auto& lc : l->clients) {
           if (lc && (lc->version() == Version::BB_V4)) {
@@ -506,7 +504,7 @@ void player_feed_mag(std::shared_ptr<Client> c, size_t mag_item_index, size_t fe
       player->inventory.items[mag_item_index].data,
       player->inventory.items[fed_item_index].data,
       s->item_parameter_table(c->version()),
-      s->mag_evolution_table,
+      s->mag_evolution_table(c->version()),
       player->disp.visual.char_class,
       player->disp.visual.section_id,
       !is_v1_or_v2(c->version()));

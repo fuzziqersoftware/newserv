@@ -451,6 +451,16 @@ shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_encod
   return this->item_parameter_table(is_v1(version) ? Version::PC_V2 : version);
 }
 
+shared_ptr<const MagEvolutionTable> ServerState::mag_evolution_table(Version version) const {
+  if (is_v1_or_v2(version)) {
+    return this->mag_evolution_table_v1_v2;
+  } else if (!is_v4(version)) {
+    return this->mag_evolution_table_v3;
+  } else {
+    return this->mag_evolution_table_v4;
+  }
+}
+
 shared_ptr<const ItemData::StackLimits> ServerState::item_stack_limits(Version version) const {
   auto ret = this->item_stack_limits_tables.at(static_cast<size_t>(version));
   if (ret == nullptr) {
@@ -2060,15 +2070,25 @@ void ServerState::load_item_definitions(bool from_non_event_thread) {
   }
 
   // TODO: We should probably load the tables for other versions too.
-  config_log.info("Loading mag evolution table");
-  auto mag_data = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-bb-v4.prs")));
-  auto new_mag_evolution_table = make_shared<MagEvolutionTable>(mag_data);
+  config_log.info("Loading v1/v2 mag evolution table");
+  auto mag_data_v1_v2 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-dc-v2.prs")));
+  auto new_table_v1_v2 = make_shared<MagEvolutionTable>(mag_data_v1_v2, 0x3A);
+  config_log.info("Loading v3 mag evolution table");
+  auto mag_data_v3 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-xb-v3.prs")));
+  auto new_table_v3 = make_shared<MagEvolutionTable>(mag_data_v3, 0x43);
+  config_log.info("Loading v4 mag evolution table");
+  auto mag_data_v4 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-bb-v4.prs")));
+  auto new_table_v4 = make_shared<MagEvolutionTable>(mag_data_v4, 0x53);
 
   auto set = [s = this->shared_from_this(),
                  new_item_parameter_tables = std::move(new_item_parameter_tables),
-                 new_mag_evolution_table = std::move(new_mag_evolution_table)]() {
+                 new_table_v1_v2 = std::move(new_table_v1_v2),
+                 new_table_v3 = std::move(new_table_v3),
+                 new_table_v4 = std::move(new_table_v4)]() {
     s->item_parameter_tables = std::move(new_item_parameter_tables);
-    s->mag_evolution_table = std::move(new_mag_evolution_table);
+    s->mag_evolution_table_v1_v2 = std::move(new_table_v1_v2);
+    s->mag_evolution_table_v3 = std::move(new_table_v3);
+    s->mag_evolution_table_v4 = std::move(new_table_v4);
   };
   this->forward_or_call(from_non_event_thread, std::move(set));
 }
