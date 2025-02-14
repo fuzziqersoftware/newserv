@@ -123,7 +123,7 @@ set_window_state:  # (TItem* item: r3) -> void
   bl        TWindowCtrlPlayer::get_for_player
   lwz       r3, [r3 + 0x28]
   cmplwi    r3, 0
-  bne       window_should_exist  # TWindowMainMenu does not exist
+  beq       window_should_exist  # TWindowMainMenu does not exist
   lwz       r3, [r3 + 0x4C]
   rlwinm.   r3, r3, 0, 31, 31
   beq       window_should_not_exist
