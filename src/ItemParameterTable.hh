@@ -629,16 +629,73 @@ protected:
 class MagEvolutionTable {
 public:
   // TODO: V1 format is different! Offsets are 0438 0440 0498 0520 054C
+  struct MotionReference {
+    struct Side {
+      // This specifies which entry in ItemMagMotion.dat is used. The file is
+      // just a list of 0x64-byte structures. 0xFF = no TItemMagSub is created
+      uint8_t motion_table_entry = 0xFF;
+      parray<uint8_t, 5> unknown_a1;
+    } __packed_ws__(Side, 0x06);
+    parray<Side, 2> sides; // [0] = right side, [1] = left side
+  } __packed_ws__(MotionReference, 0x0C);
+
+  struct MotionReferenceTables {
+    // It seems that there are two definition tables, but only the first is
+    // used on any version of PSO. On v3 and later, the two offsets point to
+    // the same table, but on v2 they don't and the second table contains
+    // different data.
+    // TODO: Figure out what the deal is with the different v2 tables.
+    le_uint32_t ref_table; // -> MotionReference[num_mags]
+    le_uint32_t unused_ref_table; // -> MotionReference[num_mags]
+  } __packed_ws__(MotionReferenceTables, 0x08);
+
+  struct ColorEntry {
+    // Colors are specified as 4 floats, each in the range [0, 1], for each
+    // color channel. The default colors are:
+    // alpha   red     green   blue    color (see StaticGameData.cc)
+    // 1.0     1.0     0.2     0.1     red
+    // 1.0     0.2     0.2     1.0     blue
+    // 1.0     1.0     0.9     0.1     yellow
+    // 1.0     0.1     1.0     0.1     green
+    // 1.0     0.8     0.1     1.0     purple
+    // 1.0     0.1     0.1     0.2     black
+    // 1.0     0.9     1.0     1.0     white
+    // 1.0     0.1     0.9     1.0     cyan
+    // 1.0     0.5     0.3     0.2     brown
+    // 1.0     1.0     0.4     0.0     orange (v3+)
+    // 1.0     0.502   0.545   0.977   light-blue (v3+)
+    // 1.0     0.502   0.502   0.0     olive (v3+)
+    // 1.0     0.0     0.941   0.714   turquoise (v3+)
+    // 1.0     0.8     0.098   0.392   fuchsia (v3+)
+    // 1.0     0.498   0.498   0.498   grey (v3+)
+    // 1.0     0.996   0.996   0.832   cream (v3+)
+    // 1.0     0.996   0.498   0.784   pink (v3+)
+    // 1.0     0.0     0.498   0.322   dark-green (v3+)
+    le_float alpha;
+    le_float red;
+    le_float green;
+    le_float blue;
+  } __packed_ws__(ColorEntry, 0x10);
+
+  struct UnknownA3Entry {
+    uint8_t flags;
+    uint8_t unknown_a2;
+    le_uint16_t unknown_a3;
+    le_uint16_t unknown_a4;
+    le_uint16_t unknown_a5;
+  } __packed_ws__(UnknownA3Entry, 0x08);
+
   struct TableOffsets {
     // num_mags = 0x3A in v2 and GC NTE, 0x43 in V3, 0x53 in BB
+    // num_colors = 0x09 in v2 and GC NTE, 0x12 in V3/BB
     // TODO: GC NTE uses the v2 format but is big-endian
     /* -- / V2   / V3   / BB */
-    /* 00 / 05BC / 0340 / 0400 */ le_uint32_t unknown_a1; // -> [offset -> (uint8_t[0xC])[num_mags], offset -> (same as first offset on v3; different on v2 (TODO))]
-    /* 04 / 0594 / 0348 / 0408 */ le_uint32_t unknown_a2; // -> (uint8_t[2])[num_mags]
-    /* 08 / 0608 / 03CE / 04AE */ le_uint32_t unknown_a3; // -> (8-byte struct)[0x15]
+    /* 00 / 05BC / 0340 / 0400 */ le_uint32_t motion_tables; // -> MotionReferenceTables
+    /* 04 / 0594 / 0348 / 0408 */ le_uint32_t unknown_a2; // -> (uint8_t[2])[num_mags] (references into unknown_a3)
+    /* 08 / 0608 / 03CE / 04AE */ le_uint32_t unknown_a3; // -> UnknownA3Entry[max(unknown_a2) + 1]
     /* 0C / 06B0 / 0476 / 0556 */ le_uint32_t unknown_a4; // -> (uint8_t)[num_mags]
-    /* 10 / 06EC / 04BC / 05AC */ le_uint32_t unknown_a5; // -> (float)[0x48] on v3+, (float)[0x24] on v2
-    /* 14 / 077C / 05DC / 06CC */ le_uint32_t evolution_number; // -> (uint8_t)[num_mags]
+    /* 10 / 06EC / 04BC / 05AC */ le_uint32_t color_table; // -> ColorEntry[num_colors]
+    /* 14 / 077C / 05DC / 06CC */ le_uint32_t evolution_number; // -> uint8_t[num_mags]
   } __packed_ws__(TableOffsets, 0x18);
 
   MagEvolutionTable(std::shared_ptr<const std::string> data, size_t num_mags);

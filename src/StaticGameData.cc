@@ -619,12 +619,12 @@ const vector<const char*> name_for_mag_color({
     /* 09 */ "orange",
     /* 0A */ "light-blue",
     /* 0B */ "olive",
-    /* 0C */ "light-cyan",
-    /* 0D */ "dark-purple",
+    /* 0C */ "turquoise",
+    /* 0D */ "fuchsia",
     /* 0E */ "grey",
-    /* 0F */ "light-grey",
+    /* 0F */ "cream",
     /* 10 */ "pink",
-    /* 11 */ "dark-cyan",
+    /* 11 */ "dark-green",
     /* 12 */ "costume",
 });
 
@@ -641,12 +641,12 @@ const unordered_map<string, uint8_t> mag_color_for_name({
     {"orange", 0x09},
     {"light-blue", 0x0A},
     {"olive", 0x0B},
-    {"light-cyan", 0x0C},
-    {"dark-purple", 0x0D},
+    {"turquoise", 0x0C},
+    {"fuchsia", 0x0D},
     {"grey", 0x0E},
-    {"light-grey", 0x0F},
+    {"cream", 0x0F},
     {"pink", 0x10},
-    {"dark-cyan", 0x11},
+    {"dark-green", 0x11},
     {"costume-color", 0x12},
 });
 
