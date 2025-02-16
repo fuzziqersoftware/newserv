@@ -42,12 +42,13 @@ using namespace std;
 //   arg_push opcodes, which allow scripts the ability to pass values from
 //   immediate data, registers, labels, or even pointers to registers. Opcodes
 //   that use the args list are tagged with F_ARGS below.
-// - The stack. This is an array of 64 32-bit integers, which is used by the
-//   call and ret opcodes (which push and pop offsets into the quest script),
-//   but may also be used by the stack_push and stack_pop opcodes to work with
-//   arbitrary data. There is protection from stack underflows (the caller
-//   receives the value 0, or the thread terminates in case of the ret opcode),
-//   but there is no protection from overflows.
+// - The stack. This is an array of 32-bit integers (16 of them on v1/v2, 64 of
+//   them on v3/v4), which is used by the call and ret opcodes (which push and
+//   pop offsets into the quest script), but may also be used by the stack_push
+//   and stack_pop opcodes to work with arbitrary data. There is protection
+//   from stack underflows (the caller receives the value 0, or the thread
+//   terminates in case of the ret opcode), but there is no protection from
+//   overflows.
 // - Quest flags. These are a per-character array of 1024 single-bit flags
 //   saved with the character data. (On Episode 3, there are 8192 instead.)
 // - Quest counters. These are a per-character array of 16 32-bit values saved
@@ -2034,7 +2035,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8AF, "someone_has_spoken", nullptr, {REG}, F_V2_V4},
 
     // Reads a 1-byte, 2-byte, or 4-byte value from the address (regB/valueB)
-    // and places it in regA
+    // and places it in regA.
     {0xF8B0, "read1", nullptr, {REG, REG}, F_V2},
     {0xF8B0, "read1", nullptr, {REG, INT32}, F_V3_V4 | F_ARGS},
     {0xF8B1, "read2", nullptr, {REG, REG}, F_V2},
@@ -2043,7 +2044,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8B2, "read4", nullptr, {REG, INT32}, F_V3_V4 | F_ARGS},
 
     // Writes a 1-byte, 2-byte, or 4-byte value from regB/valueB to the address
-    // (regA/valueA)
+    // (regA/valueA). On v2 and GC NTE, these opcodes have a bug which makes
+    // them essentially useless: they ignore regB and instead write the value
+    // in regA to the address in regA.
     {0xF8B3, "write1", nullptr, {REG, REG}, F_V2},
     {0xF8B3, "write1", nullptr, {INT32, INT32}, F_V3_V4 | F_ARGS},
     {0xF8B4, "write2", nullptr, {REG, REG}, F_V2},
