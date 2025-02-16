@@ -7,7 +7,7 @@ reloc0:
 start:
   .include  WriteCodeBlocksBB
 
-  .data     0x007A03F7
+  .data     0x007A1233
   .data     0x00000005
   mov       eax, 0
 
