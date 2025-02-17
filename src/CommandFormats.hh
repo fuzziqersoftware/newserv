@@ -4748,7 +4748,9 @@ struct G_StandardDropItemRequest_PC_V3_BB_6x60 : G_StandardDropItemRequest_DC_6x
   /* 18 */
 } __packed_ws__(G_StandardDropItemRequest_PC_V3_BB_6x60, 0x18);
 
-// 6x61: Activate MAG effect
+// 6x61: Activate item effect
+// This is used for MAG effects like invulnerability, but is also used for some
+// weapons' specials (e.g. Heaven Punisher).
 
 struct G_ActivateMagEffect_6x61 {
   G_UnusedHeader header;
