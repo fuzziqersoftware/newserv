@@ -1373,7 +1373,7 @@ ChatCommandDefinition cc_loadchar(
         // TODO: Support extended player info on other versions
         auto s = a.c->require_server_state();
         if (!a.c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL) ||
-            a.c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
+            !a.c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE)) {
           throw precondition_failed_printf("Can\'t load character\ndata on this game\nversion");
         }
 
@@ -1588,7 +1588,7 @@ ChatCommandDefinition cc_patch(
           send_function_call(c, fn, pca.label_writes);
           c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
         } catch (const out_of_range&) {
-          throw precondition_failed("Invalid patch name");
+          send_text_message(c, "$C6Invalid patch name");
         }
       });
     },
@@ -1607,7 +1607,7 @@ ChatCommandDefinition cc_patch(
           // Don't forward the patch response to the server
           ses->function_call_return_handler_queue.emplace_back(empty_function_call_response_handler);
         } catch (const out_of_range&) {
-          throw precondition_failed("Invalid patch name");
+          send_text_message(ses->client_channel, "$C6Invalid patch name");
         }
       };
 

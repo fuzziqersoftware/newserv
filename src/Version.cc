@@ -253,7 +253,7 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
     case Version::DC_V2:
       return SPECIFIC_VERSION_DC_V2_INDETERMINATE; // 2___; need to send VersionDetectDC
     case Version::PC_V2:
-      return SPECIFIC_VERSION_PC_V2; // 2OJW
+      return SPECIFIC_VERSION_PC_V2_INDETERMINATE; // 2OJ_; need to send checksum command
     case Version::GC_NTE:
       return SPECIFIC_VERSION_GC_NTE; // 3OJT
     case Version::GC_V3:
@@ -310,7 +310,11 @@ bool specific_version_is_dc(uint32_t specific_version) {
   if (major_version < 0x31 || major_version > 0x32) {
     return false;
   }
-  return (specific_version != 0x324F4A57);
+  return (specific_version != SPECIFIC_VERSION_PC_V2_DEFAULT);
+}
+
+bool specific_version_is_pc_v2(uint32_t specific_version) {
+  return (specific_version == SPECIFIC_VERSION_PC_V2_DEFAULT);
 }
 
 bool specific_version_is_gc(uint32_t specific_version) {

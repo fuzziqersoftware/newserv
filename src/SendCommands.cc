@@ -335,6 +335,7 @@ void prepare_client_for_patches(shared_ptr<Client> c, function<void()> on_comple
     if (!c) {
       return;
     }
+
     const char* version_detect_name = nullptr;
     if (c->version() == Version::DC_V2) {
       version_detect_name = "VersionDetectDC";
@@ -447,7 +448,8 @@ void send_function_call(
     size_t suffix_size,
     uint32_t checksum_addr,
     uint32_t checksum_size,
-    uint32_t override_relocations_offset) {
+    uint32_t override_relocations_offset,
+    bool ignore_actually_runs_code_flag) {
   return send_function_call(
       c->channel,
       c->config,
@@ -457,7 +459,8 @@ void send_function_call(
       suffix_size,
       checksum_addr,
       checksum_size,
-      override_relocations_offset);
+      override_relocations_offset,
+      ignore_actually_runs_code_flag);
 }
 
 void send_function_call(
@@ -469,11 +472,14 @@ void send_function_call(
     size_t suffix_size,
     uint32_t checksum_addr,
     uint32_t checksum_size,
-    uint32_t override_relocations_offset) {
+    uint32_t override_relocations_offset,
+    bool ignore_actually_runs_code_flag) {
   if (!client_config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL)) {
     throw logic_error("client does not support function calls");
   }
-  if (code.get() && client_config.check_flag(Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
+  if (!ignore_actually_runs_code_flag &&
+      code.get() &&
+      !client_config.check_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE)) {
     throw logic_error("client only supports checksums in send_function_call");
   }
 
@@ -508,7 +514,7 @@ bool send_protected_command(std::shared_ptr<Client> c, const void* data, size_t 
       auto s = c->require_server_state();
       if (!s->enable_v3_v4_protected_subcommands ||
           !c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL) ||
-          c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
+          !c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE)) {
         return false;
       }
 
@@ -1426,8 +1432,8 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
     if (item.flags & MenuItem::Flag::REQUIRES_MESSAGE_BOXES) {
       is_visible &= !c->config.check_flag(Client::Flag::NO_D6);
     }
-    if (item.flags & MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL) {
-      is_visible &= c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL);
+    if (item.flags & MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL_RUNS_CODE) {
+      is_visible &= (c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL) && c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE));
     }
     if (item.flags & MenuItem::Flag::REQUIRES_SAVE_DISABLED) {
       is_visible &= !c->config.check_flag(Client::Flag::SAVE_ENABLED);
@@ -2402,7 +2408,7 @@ void send_get_player_info(shared_ptr<Client> c, bool request_extended) {
 
   if (request_extended &&
       c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL) &&
-      !c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_CHECKSUM_ONLY)) {
+      c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE)) {
     auto s = c->require_server_state();
     prepare_client_for_patches(c, [wc = weak_ptr<Client>(c)]() {
       auto c = wc.lock();

@@ -169,7 +169,8 @@ void send_function_call(
     size_t suffix_size = 0,
     uint32_t checksum_addr = 0,
     uint32_t checksum_size = 0,
-    uint32_t override_relocations_offset = 0);
+    uint32_t override_relocations_offset = 0,
+    bool ignore_actually_runs_code_flag = false);
 void send_function_call(
     std::shared_ptr<Client> c,
     std::shared_ptr<const CompiledFunctionCode> code,
@@ -178,7 +179,8 @@ void send_function_call(
     size_t suffix_size = 0,
     uint32_t checksum_addr = 0,
     uint32_t checksum_size = 0,
-    uint32_t override_relocations_offset = 0);
+    uint32_t override_relocations_offset = 0,
+    bool ignore_actually_runs_code_flag = false);
 bool send_protected_command(std::shared_ptr<Client> c, const void* data, size_t size, bool echo_to_lobby);
 
 void send_reconnect(std::shared_ptr<Client> c, uint32_t address, uint16_t port);

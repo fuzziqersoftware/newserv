@@ -374,13 +374,13 @@ static void send_main_menu(shared_ptr<Client> c) {
   if (!s->is_replay) {
     if (!s->function_code_index->patch_menu_empty(c->config.specific_version)) {
       main_menu->items.emplace_back(MainMenuItemID::PATCHES, "Patches",
-          "Change game\nbehaviors", MenuItem::Flag::INVISIBLE_ON_PC | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+          "Change game\nbehaviors", MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL_RUNS_CODE);
       main_menu->items.emplace_back(MainMenuItemID::PATCH_SWITCHES, "Patch switches",
-          "Automatically\napply patches every\ntime you connect", MenuItem::Flag::INVISIBLE_ON_PC | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+          "Automatically\napply patches every\ntime you connect", MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL_RUNS_CODE);
     }
     if (!s->dol_file_index->empty()) {
       main_menu->items.emplace_back(MainMenuItemID::PROGRAMS, "Programs",
-          "Run GameCube\nprograms", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL | MenuItem::Flag::REQUIRES_SAVE_DISABLED);
+          "Run GameCube\nprograms", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL_RUNS_CODE | MenuItem::Flag::REQUIRES_SAVE_DISABLED);
     }
   }
   main_menu->items.emplace_back(MainMenuItemID::DISCONNECT, "Disconnect",
@@ -427,30 +427,44 @@ void on_login_complete(shared_ptr<Client> c) {
       auto s = c->require_server_state();
 
       if (c->config.check_flag(Client::Flag::CAN_RECEIVE_ENABLE_B2_QUEST) &&
-          !c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL)) {
+          (!c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL) ||
+              !c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE))) {
         shared_ptr<const Quest> q;
         try {
           int64_t quest_num = s->enable_send_function_call_quest_numbers.at(c->config.specific_version);
           q = s->default_quest_index->get(quest_num);
         } catch (const out_of_range&) {
         }
-        if (q) {
+        if (!q) {
+          c->log.info("There is no quest to enable server function calls for specific version %08" PRIX32, c->config.specific_version);
+        } else if (q) {
           auto vq = q->version(is_ep3(c->version()) ? Version::GC_V3 : c->version(), 1);
           if (vq) {
             c->config.set_flag(Client::Flag::HAS_SEND_FUNCTION_CALL);
+            c->config.set_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE);
             c->config.set_flag(Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
             c->config.set_flag(Client::Flag::AWAITING_ENABLE_B2_QUEST);
             send_update_client_config(c, false);
 
-            c->log.info("Sending %c version of quest \"%s\"", char_for_language_code(vq->language), vq->name.c_str());
-            string bin_filename = vq->bin_filename();
-            string dat_filename = vq->dat_filename();
-            string xb_filename = vq->xb_filename();
-            send_open_quest_file(c, bin_filename, bin_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
-            send_open_quest_file(c, dat_filename, dat_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
+            // PCv2 will crash if it receives an online quest file while it's
+            // not in a game, so we have to put it into a fake game first
+            if (c->version() == Version::PC_V2) {
+              S_JoinGame_PC_64 cmd;
+              auto& lobby_data = cmd.lobby_data[0];
+              lobby_data.player_tag = 0x00010000;
+              lobby_data.guild_card_number = c->login->account->account_id;
+              send_command_t(c, 0x64, 0x01, cmd);
+            } else {
+              c->log.info("Sending %c version of quest \"%s\"", char_for_language_code(vq->language), vq->name.c_str());
+              string bin_filename = vq->bin_filename();
+              string dat_filename = vq->dat_filename();
+              string xb_filename = vq->xb_filename();
+              send_open_quest_file(c, bin_filename, bin_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
+              send_open_quest_file(c, dat_filename, dat_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
 
-            if (!is_v1_or_v2(c->version())) {
-              send_command(c, 0xAC, 0x00);
+              if (!is_v1_or_v2(c->version())) {
+                send_command(c, 0xAC, 0x00);
+              }
             }
           }
         }
@@ -1066,7 +1080,43 @@ static void on_9D_9E(shared_ptr<Client> c, uint16_t command, uint32_t, string& d
     c->should_disconnect = true;
   } else {
     send_update_client_config(c, true);
-    on_login_complete(c);
+    // On PCv2, we send a B2 command to get the client's specific_version and
+    // check whether it has patch support or not; we'll call on_login_complete
+    // once we receive the B3 response
+    if (c->version() == Version::PC_V2) {
+      try {
+        auto code = s->function_code_index->name_to_function.at("ReturnTokenX86");
+        send_function_call(c, code, {{"token", c->login->account->account_id}}, nullptr, 0, 0x00400000, 0x0000E000, 0, true);
+        c->function_call_response_queue.emplace_back([wc = weak_ptr<Client>(c)](uint32_t return_value, uint32_t checksum) -> void {
+          auto c = wc.lock();
+          if (!c) {
+            return;
+          }
+          if (!c->login) {
+            throw logic_error("received PC_V2 version detect response with no login");
+          }
+          if (return_value == c->login->account->account_id) {
+            // Client already has the patch that enables patches
+            c->config.set_flag(Client::Flag::HAS_SEND_FUNCTION_CALL);
+            c->config.set_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE);
+            c->config.set_flag(Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
+          }
+          if (checksum == 0x3677024C) {
+            c->config.specific_version = SPECIFIC_VERSION_PC_V2_DEFAULT;
+            c->log.info("Version detected as %08" PRIX32 " from PE header checksum %08" PRIX32,
+                c->config.specific_version, checksum);
+          } else {
+            c->config.specific_version = SPECIFIC_VERSION_PC_V2_INDETERMINATE;
+            c->log.info("Version cannot be determined from PE header checksum %08" PRIX32, checksum);
+          }
+          on_login_complete(c);
+        });
+      } catch (const out_of_range&) {
+        on_login_complete(c);
+      }
+    } else {
+      on_login_complete(c);
+    }
   }
 }
 
@@ -4714,15 +4764,49 @@ static void on_8A(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
 
   } else {
     check_size_v(data.size(), 0);
-    auto l = c->require_lobby();
-    send_lobby_name(c, l->name.c_str());
+    auto l = c->lobby.lock();
+    if (!l) {
+      if (c->config.check_flag(Client::Flag::AWAITING_ENABLE_B2_QUEST)) {
+        send_lobby_name(c, "");
+      } else {
+        throw std::runtime_error("received 8A command from client not in any lobby");
+      }
+    } else {
+      send_lobby_name(c, l->name.c_str());
+    }
   }
 }
 
 static void on_6F(shared_ptr<Client> c, uint16_t command, uint32_t, string& data) {
   check_size_v(data.size(), 0);
 
-  auto l = c->require_lobby();
+  auto l = c->lobby.lock();
+  if (!l) {
+    if (!c->config.check_flag(Client::Flag::AWAITING_ENABLE_B2_QUEST)) {
+      throw runtime_error("client is not in any lobby and is not awaiting a patch enabler quest");
+    }
+    auto s = c->require_server_state();
+    shared_ptr<const Quest> q;
+    try {
+      int64_t quest_num = s->enable_send_function_call_quest_numbers.at(c->config.specific_version);
+      q = s->default_quest_index->get(quest_num);
+    } catch (const out_of_range&) {
+      throw std::logic_error("cannot find patch enable quest after it was previously found during login");
+    }
+    auto vq = q->version(is_ep3(c->version()) ? Version::GC_V3 : c->version(), 1);
+    if (!vq) {
+      throw std::logic_error("cannot find patch enable quest version after it was previously found during login");
+    }
+    c->log.info("Sending %c version of quest \"%s\"", char_for_language_code(vq->language), vq->name.c_str());
+    string bin_filename = vq->bin_filename();
+    string dat_filename = vq->dat_filename();
+    string xb_filename = vq->xb_filename();
+    send_open_quest_file(c, bin_filename, bin_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
+    send_open_quest_file(c, dat_filename, dat_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
+    return;
+  }
+  // Now l is not null
+
   if (!l->is_game()) {
     throw runtime_error("client sent ready command outside of game");
   }

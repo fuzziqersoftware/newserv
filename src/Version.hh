@@ -191,7 +191,8 @@ constexpr uint32_t SPECIFIC_VERSION_DC_V1_US = 0x314F4546; // 1OEF
 constexpr uint32_t SPECIFIC_VERSION_DC_V1_EU_INDETERMINATE = 0x314F5000; // 1OP_
 constexpr uint32_t SPECIFIC_VERSION_DC_V1_INDETERMINATE = 0x31000000; // 1___
 constexpr uint32_t SPECIFIC_VERSION_DC_V2_INDETERMINATE = 0x32000000; // 2___
-constexpr uint32_t SPECIFIC_VERSION_PC_V2 = 0x324F4A57; // 2OJW
+constexpr uint32_t SPECIFIC_VERSION_PC_V2_INDETERMINATE = 0x324F4A00; // 2OJW
+constexpr uint32_t SPECIFIC_VERSION_PC_V2_DEFAULT = 0x324F4A57; // 2OJW
 constexpr uint32_t SPECIFIC_VERSION_GC_NTE = 0x334F4A54; // 3OJT
 constexpr uint32_t SPECIFIC_VERSION_GC_V3_EU = 0x334F5030; // 3OP0
 constexpr uint32_t SPECIFIC_VERSION_GC_V3_US_12 = 0x334F4532; // 3OE2
@@ -212,6 +213,7 @@ uint32_t default_sub_version_for_version(Version version);
 uint32_t default_specific_version_for_version(Version version, int64_t sub_version);
 bool specific_version_is_indeterminate(uint32_t specific_version);
 bool specific_version_is_dc(uint32_t specific_version);
+bool specific_version_is_pc_v2(uint32_t specific_version);
 bool specific_version_is_gc(uint32_t specific_version);
 bool specific_version_is_xb(uint32_t specific_version);
 bool specific_version_is_bb(uint32_t specific_version);

@@ -66,7 +66,7 @@ I 64538 2024-09-01 15:24:00 - [Commands] Sending to C-7 @ ipss:N-4: (version=GC_
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:00 - [Commands] Sending to C-7 @ ipss:N-4: (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 1E B1 05 17 32 AC 99 83 |   ,         2
-0010 | 30 45 53 33 00 91 02 40 20 00 00 00 00 00 00 00 | 0ES3   @
+0010 | 30 45 53 33 00 D1 02 40 20 00 00 00 00 00 00 00 | 0ES3   @
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:00 - [C-7] Sending E version of quest "GC Ep3 USA patch enabler"
 I 64538 2024-09-01 15:24:00 - [Commands] Sending to C-7 @ ipss:N-4: (version=GC_EP3 command=44 flag=00)
@@ -221,7 +221,7 @@ I 64538 2024-09-01 15:24:00 - [Commands] Received from C-7 @ ipss:N-4: (version=
 0000 | 96 00 0C 00 65 06 AF 2D 6F 00 00 00             |     e  -o
 I 64538 2024-09-01 15:24:00 - [Commands] Sending to C-7 @ ipss:N-4: (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 1E B1 05 17 32 AC 99 83 |   ,         2
-0010 | 30 45 53 33 00 91 02 40 20 00 04 00 00 00 00 00 | 0ES3   @
+0010 | 30 45 53 33 00 D1 02 40 20 00 04 00 00 00 00 00 | 0ES3   @
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:00 - [Commands] Received from C-7 @ ipss:N-4: (version=GC_EP3 command=44 flag=00)
 0000 | 44 00 14 00 71 75 65 73 74 38 38 35 33 32 2E 62 | D   quest88532.b
@@ -2780,7 +2780,7 @@ I 64538 2024-09-01 15:24:01 - [Commands] Sending to C-7 @ ipss:N-4: (version=GC_
 0500 | 00 00 00 00 00 00 00 00 00 00 00 00             |
 I 64538 2024-09-01 15:24:01 - [Commands] Sending to C-7 @ ipss:N-4: (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 1E B1 05 17 32 AC 99 83 |   ,         2
-0010 | 30 45 53 33 00 91 02 48 20 00 04 00 00 00 00 00 | 0ES3   X
+0010 | 30 45 53 33 00 D1 02 48 20 00 04 00 00 00 00 00 | 0ES3   X
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:02 - [Commands] Received from C-7 (Tali) @ ipss:N-4: (version=GC_EP3 command=BA flag=01)
 0000 | BA 01 10 00 02 00 00 00 00 00 00 00 00 00 64 46 |               dF
@@ -3589,7 +3589,7 @@ I 64538 2024-09-01 15:24:03 - [Commands] Sending to C-7 (Tali) @ ipss:N-4: (vers
 0000 | 97 01 04 00                                     |
 I 64538 2024-09-01 15:24:03 - [Commands] Sending to C-7 (Tali) @ ipss:N-4: (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 1E B1 05 17 32 AC 99 83 |   ,         2
-0010 | 30 45 53 33 00 91 02 4C 20 00 00 00 00 00 00 00 | 0ES3   \
+0010 | 30 45 53 33 00 D1 02 4C 20 00 00 00 00 00 00 00 | 0ES3   \
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:03 - [Commands] Received from C-7 (Tali) @ ipss:N-4: (version=GC_EP3 command=B1 flag=00)
 0000 | B1 00 04 00                                     |
@@ -3638,12 +3638,12 @@ I 64538 2024-09-01 15:24:03 - [Commands] Received from C-8 @ ipss:N-4: (version=
 00A0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 00B0 | 00 00 00 00 00 00 00 00 00 00 00 00 54 61 6C 69 |             Tali
 00C0 | 00 00 00 00 00 00 00 00 00 00 00 00 32 AC 99 83 |             2
-00D0 | 30 45 53 33 00 91 02 5C 60 00 00 00 00 00 00 00 | 0ES3   \`
+00D0 | 30 45 53 33 00 D1 02 5C 60 00 00 00 00 00 00 00 | 0ES3   \`
 00E0 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:03 - [C-8] Game version changed to GC_EP3
 I 64538 2024-09-01 15:24:03 - [Commands] Sending to C-8 @ ipss:N-4: (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 1E B1 05 17 32 AC 99 83 |   ,         2
-0010 | 30 45 53 33 00 91 02 5C 60 00 00 00 00 00 00 00 | 0ES3   \`
+0010 | 30 45 53 33 00 D1 02 5C 60 00 00 00 00 00 00 00 | 0ES3   \`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:03 - [Commands] Sending to C-8 @ ipss:N-4: (version=GC_EP3 command=B7 flag=00)
 0000 | B7 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 |
@@ -4532,7 +4532,7 @@ I 64538 2024-09-01 15:24:03 - [Commands] Sending to C-8 (Tali) @ ipss:N-4: (vers
 0440 | FF FF FF FF FF FF FF FF FF FF FF FF             |
 I 64538 2024-09-01 15:24:03 - [Commands] Sending to C-8 (Tali) @ ipss:N-4: (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 1E B1 05 17 32 AC 99 83 |   ,         2
-0010 | 30 45 53 33 00 93 02 5C 60 00 00 00 00 00 00 00 | 0ES3   \`
+0010 | 30 45 53 33 00 D3 02 5C 60 00 00 00 00 00 00 00 | 0ES3   \`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:03 - [Commands] Received from C-8 (Tali) @ ipss:N-4: (version=GC_EP3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 00 00 0F 00 FF FF | `   ?
@@ -4645,7 +4645,7 @@ I 64538 2024-09-01 15:24:43 - [Commands] Sending to C-9 @ ipss:N-6:127.0.0.1:593
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:43 - [Commands] Sending to C-9 @ ipss:N-6:127.0.0.1:59366 (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 1E B1 05 17 32 AC 99 83 |   ,         2
-0010 | 30 50 53 33 00 91 02 40 20 00 00 00 00 00 00 00 | 0PS3   @
+0010 | 30 50 53 33 00 D1 02 40 20 00 00 00 00 00 00 00 | 0PS3   @
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:43 - [C-9] Sending E version of quest "GC Ep3 EU patch enabler"
 I 64538 2024-09-01 15:24:43 - [Commands] Sending to C-9 @ ipss:N-6:127.0.0.1:59366 (version=GC_EP3 command=44 flag=00)
@@ -4800,7 +4800,7 @@ I 64538 2024-09-01 15:24:43 - [Commands] Received from C-9 @ ipss:N-6:127.0.0.1:
 0000 | 96 00 0C 00 D5 2A DD 2D 0C 00 00 00             |      * -
 I 64538 2024-09-01 15:24:43 - [Commands] Sending to C-9 @ ipss:N-6:127.0.0.1:59366 (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 1E B1 05 17 32 AC 99 83 |   ,         2
-0010 | 30 50 53 33 00 91 02 40 20 00 04 00 00 00 00 00 | 0PS3   @
+0010 | 30 50 53 33 00 D1 02 40 20 00 04 00 00 00 00 00 | 0PS3   @
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:43 - [Commands] Received from C-9 @ ipss:N-6:127.0.0.1:59366 (version=GC_EP3 command=44 flag=00)
 0000 | 44 00 14 00 71 75 65 73 74 38 38 35 33 33 2E 62 | D   quest88533.b
@@ -7359,7 +7359,7 @@ I 64538 2024-09-01 15:24:43 - [Commands] Sending to C-9 @ ipss:N-6:127.0.0.1:593
 0500 | 00 00 00 00 00 00 00 00 00 00 00 00             |
 I 64538 2024-09-01 15:24:43 - [Commands] Sending to C-9 @ ipss:N-6:127.0.0.1:59366 (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 1E B1 05 17 32 AC 99 83 |   ,         2
-0010 | 30 50 53 33 00 91 02 48 20 00 04 00 00 00 00 00 | 0PS3   X
+0010 | 30 50 53 33 00 D1 02 48 20 00 04 00 00 00 00 00 | 0PS3   X
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:44 - [Commands] Received from C-9 (Dono) @ ipss:N-6:127.0.0.1:59366 (version=GC_EP3 command=BA flag=01)
 0000 | BA 01 10 00 02 00 00 00 00 00 00 00 00 00 E2 CE |
@@ -8168,7 +8168,7 @@ I 64538 2024-09-01 15:24:44 - [Commands] Sending to C-9 (Dono) @ ipss:N-6:127.0.
 0000 | 97 01 04 00                                     |
 I 64538 2024-09-01 15:24:44 - [Commands] Sending to C-9 (Dono) @ ipss:N-6:127.0.0.1:59366 (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 1E B1 05 17 32 AC 99 83 |   ,         2
-0010 | 30 50 53 33 00 91 02 4C 20 00 00 00 00 00 00 00 | 0PS3   \
+0010 | 30 50 53 33 00 D1 02 4C 20 00 00 00 00 00 00 00 | 0PS3   \
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:44 - [Commands] Received from C-9 (Dono) @ ipss:N-6:127.0.0.1:59366 (version=GC_EP3 command=B1 flag=00)
 0000 | B1 00 04 00                                     |
@@ -8217,12 +8217,12 @@ I 64538 2024-09-01 15:24:45 - [Commands] Received from C-A @ ipss:N-6:127.0.0.1:
 00A0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 00B0 | 00 00 00 00 00 00 00 00 00 00 00 00 44 6F 6E 6F |             Dono
 00C0 | 00 00 00 00 00 00 00 00 00 00 00 00 32 AC 99 83 |             2
-00D0 | 30 50 53 33 00 91 02 5C 60 00 00 00 00 00 00 00 | 0PS3   \`
+00D0 | 30 50 53 33 00 D1 02 5C 60 00 00 00 00 00 00 00 | 0PS3   \`
 00E0 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:45 - [C-A] Game version changed to GC_EP3
 I 64538 2024-09-01 15:24:45 - [Commands] Sending to C-A @ ipss:N-6:127.0.0.1:59366 (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 1E B1 05 17 32 AC 99 83 |   ,         2
-0010 | 30 50 53 33 00 91 02 5C 60 00 00 00 00 00 00 00 | 0PS3   \`
+0010 | 30 50 53 33 00 D1 02 5C 60 00 00 00 00 00 00 00 | 0PS3   \`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:45 - [Commands] Sending to C-A @ ipss:N-6:127.0.0.1:59366 (version=GC_EP3 command=B7 flag=00)
 0000 | B7 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 |
@@ -9286,7 +9286,7 @@ I 64538 2024-09-01 15:24:45 - [Commands] Sending to C-A (Dono) @ ipss:N-6:127.0.
 0880 | FF FF FF FF FF FF FF FF                         |
 I 64538 2024-09-01 15:24:45 - [Commands] Sending to C-A (Dono) @ ipss:N-6:127.0.0.1:59366 (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 1E B1 05 17 32 AC 99 83 |   ,         2
-0010 | 30 50 53 33 00 93 02 5C 60 00 00 00 00 00 00 00 | 0PS3   \`
+0010 | 30 50 53 33 00 D3 02 5C 60 00 00 00 00 00 00 00 | 0PS3   \`
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:45 - [Commands] Received from C-A (Dono) @ ipss:N-6:127.0.0.1:59366 (version=GC_EP3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 01 00 00 00 00 00 0F 00 FF FF | `   ?
@@ -9383,7 +9383,7 @@ I 64538 2024-09-01 15:24:47 - [Commands] Received from C-B @ ipss:N-5:127.0.0.1:
 0140 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 I 64538 2024-09-01 15:24:47 - [Commands] Sending to C-B @ ipss:N-5:127.0.0.1:59362 (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 F1 CF AF 20 32 AC 99 83 |   ,         2
-0010 | 00 4A 53 33 00 B1 00 40 20 00 00 00 00 00 00 00 |  JS3   @
+0010 | 00 4A 53 33 00 F1 00 40 20 00 00 00 00 00 00 00 |  JS3   @
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:47 - [Commands] Sending to C-B @ ipss:N-5:127.0.0.1:59362 (version=GC_EP3 command=B7 flag=00)
 0000 | B1 00 20 00 32 30 32 34 3A 31 32 3A 32 39 3A 20 |     2024:12:29:
@@ -9401,7 +9401,7 @@ I 64538 2024-09-01 15:24:47 - [Commands] Received from C-B @ ipss:N-5:127.0.0.1:
 0000 | 96 00 0C 00 1C F1 65 2E 04 00 00 00             |       e.
 I 64538 2024-09-01 15:24:47 - [Commands] Sending to C-B @ ipss:N-5:127.0.0.1:59362 (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 F1 CF AF 20 32 AC 99 83 |   ,         2
-0010 | 00 4A 53 33 00 B1 00 40 20 00 04 00 00 00 00 00 |  JS3   @
+0010 | 00 4A 53 33 00 F1 00 40 20 00 04 00 00 00 00 00 |  JS3   @
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:47 - [Commands] Received from C-B @ ipss:N-5:127.0.0.1:59362 (version=GC_EP3 command=B7 flag=00)
 0000 | B7 00 04 00                                     |
@@ -11948,7 +11948,7 @@ I 64538 2024-09-01 15:24:47 - [Commands] Sending to C-B @ ipss:N-5:127.0.0.1:593
 0500 | 00 00 00 00 00 00 00 00 00 00 00 00             |
 I 64538 2024-09-01 15:24:47 - [Commands] Sending to C-B @ ipss:N-5:127.0.0.1:59362 (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 F1 CF AF 20 32 AC 99 83 |   ,         2
-0010 | 30 4A 53 33 00 B1 00 48 20 00 04 00 00 00 00 00 | 0JS3   X
+0010 | 30 4A 53 33 00 F1 00 48 20 00 04 00 00 00 00 00 | 0JS3   X
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:47 - [Commands] Received from C-B (Sona) @ ipss:N-5:127.0.0.1:59362 (version=GC_EP3 command=B8 flag=00)
 0000 | B8 00 04 00                                     |
@@ -12298,7 +12298,7 @@ I 64538 2024-09-01 15:24:55 - [Commands] Sending to C-B (Sona) @ ipss:N-5:127.0.
 0000 | 97 01 04 00                                     |
 I 64538 2024-09-01 15:24:55 - [Commands] Sending to C-B (Sona) @ ipss:N-5:127.0.0.1:59362 (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 F1 CF AF 20 32 AC 99 83 |   ,         2
-0010 | 30 4A 53 33 00 B1 00 4C 20 00 00 00 00 00 00 00 | 0JS3   \
+0010 | 30 4A 53 33 00 F1 00 4C 20 00 00 00 00 00 00 00 | 0JS3   \
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:56 - [Commands] Received from C-B (Sona) @ ipss:N-5:127.0.0.1:59362 (version=GC_EP3 command=B1 flag=00)
 0000 | B1 00 04 00                                     |
@@ -12349,12 +12349,12 @@ I 64538 2024-09-01 15:24:56 - [Commands] Received from C-C @ ipss:N-5:127.0.0.1:
 00A0 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
 00B0 | 00 00 00 00 00 00 00 00 00 00 00 00 53 6F 6E 61 |             Sona
 00C0 | 00 00 00 00 00 00 00 00 00 00 00 00 32 AC 99 83 |             2
-00D0 | 30 4A 53 33 00 B1 00 5C 20 00 00 00 00 00 00 00 | 0JS3   \
+00D0 | 30 4A 53 33 00 F1 00 5C 20 00 00 00 00 00 00 00 | 0JS3   \
 00E0 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:56 - [C-C] Game version changed to GC_EP3
 I 64538 2024-09-01 15:24:56 - [Commands] Sending to C-C @ ipss:N-5:127.0.0.1:59362 (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 F1 CF AF 20 32 AC 99 83 |   ,         2
-0010 | 30 4A 53 33 00 B1 00 5C 20 00 00 00 00 00 00 00 | 0JS3   \
+0010 | 30 4A 53 33 00 F1 00 5C 20 00 00 00 00 00 00 00 | 0JS3   \
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:56 - [Commands] Sending to C-C @ ipss:N-5:127.0.0.1:59362 (version=GC_EP3 command=B7 flag=00)
 0000 | B7 00 20 00 00 00 00 00 00 00 00 00 00 00 00 00 |
@@ -13329,7 +13329,7 @@ I 64538 2024-09-01 15:24:56 - [Commands] Sending to C-C (Sona) @ ipss:N-5:127.0.
 0880 | FF FF FF FF FF FF FF FF                         |
 I 64538 2024-09-01 15:24:56 - [Commands] Sending to C-C (Sona) @ ipss:N-5:127.0.0.1:59362 (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 F1 CF AF 20 32 AC 99 83 |   ,         2
-0010 | 30 4A 53 33 00 B3 00 5C 20 00 00 00 00 00 00 00 | 0JS3   \
+0010 | 30 4A 53 33 00 F3 00 5C 20 00 00 00 00 00 00 00 | 0JS3   \
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:24:56 - [Commands] Sending to C-A (Dono) @ ipss:N-6:127.0.0.1:59366 (version=GC_EP3 command=C5 flag=01)
 0000 | C5 01 20 01 00 00 00 00 FF 7F 00 00 00 00 00 00 |
@@ -54576,7 +54576,7 @@ I 64538 2024-09-01 15:33:27 - [Commands] Sending to C-8 (Tali) @ ipss:N-4: (vers
 0500 | 00 00 00 00 00 00 00 00 00 00 00 00             |
 I 64538 2024-09-01 15:33:27 - [Commands] Sending to C-8 (Tali) @ ipss:N-4: (version=GC_EP3 command=04 flag=00)
 0000 | 04 00 2C 00 00 00 01 00 1E B1 05 17 32 AC 99 83 |   ,         2
-0010 | 30 45 53 33 00 93 02 7C 60 00 00 00 55 55 55 55 | 0ES3   |`   UUUU
+0010 | 30 45 53 33 00 D3 02 7C 60 00 00 00 55 55 55 55 | 0ES3   |`   UUUU
 0020 | 00 00 00 00 00 00 FF FF 80 FF FF FF             |
 I 64538 2024-09-01 15:33:27 - [Game:17] Deleted
 I 64538 2024-09-01 15:33:27 - [Commands] Received from C-8 (Tali) @ ipss:N-4: (version=GC_EP3 command=BA flag=01)

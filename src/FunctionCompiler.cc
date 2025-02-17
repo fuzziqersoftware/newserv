@@ -311,7 +311,9 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
             arch = CompiledFunctionCode::Architecture::SH4;
           } else if (specific_version_is_gc(specific_version)) {
             arch = CompiledFunctionCode::Architecture::POWERPC;
-          } else if (specific_version_is_xb(specific_version) || specific_version_is_bb(specific_version)) {
+          } else if (specific_version_is_pc_v2(specific_version) ||
+              specific_version_is_xb(specific_version) ||
+              specific_version_is_bb(specific_version)) {
             arch = CompiledFunctionCode::Architecture::X86;
           } else {
             throw runtime_error("unable to determine architecture from specific_version");
@@ -370,7 +372,7 @@ shared_ptr<const Menu> FunctionCodeIndex::patch_menu(uint32_t specific_version) 
         fn->menu_item_id,
         fn->long_name.empty() ? fn->short_name : fn->long_name,
         fn->description,
-        MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+        MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL_RUNS_CODE);
   }
   return ret;
 }
@@ -389,7 +391,7 @@ shared_ptr<const Menu> FunctionCodeIndex::patch_switches_menu(
     string name;
     name.push_back(auto_patches_enabled.count(fn->short_name) ? '*' : '-');
     name += fn->long_name.empty() ? fn->short_name : fn->long_name;
-    ret->items.emplace_back(fn->menu_item_id, name, fn->description, MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+    ret->items.emplace_back(fn->menu_item_id, name, fn->description, MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL_RUNS_CODE);
   }
   return ret;
 }
@@ -479,7 +481,7 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
       this->name_to_file.emplace(dol->name, dol);
       this->item_id_to_file.emplace_back(dol);
 
-      menu->items.emplace_back(dol->menu_item_id, dol->name, description, MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL);
+      menu->items.emplace_back(dol->menu_item_id, dol->name, description, MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL_RUNS_CODE);
 
     } catch (const exception& e) {
       function_compiler_log.warning("Failed to load DOL file %s: %s", filename.c_str(), e.what());
