@@ -89,13 +89,12 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
       add_flag_option(ProxyOptionsMenuItemID::INFINITE_TP, Client::Flag::INFINITE_TP_ENABLED,
           "Infinite TP", "Enable automatic TP\nrestoration when\nyou cast any\ntechnique");
     } else {
-      // Note: This option's text is the maximum possible length for any menu item
       add_flag_option(ProxyOptionsMenuItemID::EP3_INFINITE_MESETA, Client::Flag::PROXY_EP3_INFINITE_MESETA_ENABLED,
-          "Infinite Meseta", "Fix Meseta value\nat 1,000,000");
+          "Inf Meseta", "Fix Meseta value\nat 1,000,000");
       add_flag_option(ProxyOptionsMenuItemID::EP3_INFINITE_TIME, Client::Flag::PROXY_EP3_INFINITE_TIME_ENABLED,
           "Infinite time", "Disable overall and\nper-phase time limits\nin battle");
       add_flag_option(ProxyOptionsMenuItemID::EP3_UNMASK_WHISPERS, Client::Flag::PROXY_EP3_UNMASK_WHISPERS,
-          "Unmask whispers", "Show contents of\nwhisper messages\neven if they are not\nfor you");
+          "Show whispers", "Show contents of\nwhisper messages\neven if they are not\nfor you");
     }
   }
   if (s->proxy_allow_save_files) {
@@ -103,6 +102,7 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
         "Save files", "Save local copies of\nfiles from the\nremote server\n(quests, etc.)");
   }
   if (s->proxy_enable_login_options) {
+    // Note: This option's text is the maximum possible length for any menu item
     add_flag_option(ProxyOptionsMenuItemID::VIRTUAL_CLIENT, Client::Flag::PROXY_VIRTUAL_CLIENT,
         "Virtual client", "");
     add_flag_option(ProxyOptionsMenuItemID::RED_NAME, Client::Flag::PROXY_RED_NAME_ENABLED,
