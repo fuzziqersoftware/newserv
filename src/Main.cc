@@ -2637,7 +2637,7 @@ Action a_load_maps_test(
       s->load_maps(false);
 
       SuperMap::EfficiencyStats all_free_maps_eff;
-      for (const auto& it : s->supermaps) {
+      for (const auto& it : s->supermap_for_free_play_key) {
         auto episode = static_cast<Episode>((it.first >> 28) & 7);
         auto mode = static_cast<GameMode>((it.first >> 26) & 3);
         uint8_t difficulty = (it.first >> 24) & 3;

@@ -2874,11 +2874,11 @@ opcodes_by_name_for_version(Version v) {
       if (!(def.flags & vf)) {
         continue;
       }
-      if (def.name && !index.emplace(def.name, &def).second) {
+      if (def.name && !index.emplace(phosg::tolower(def.name), &def).second) {
         throw logic_error(phosg::string_printf("duplicate definition for opcode %04hX", def.opcode));
       }
       if (def.qedit_name) {
-        string lower_qedit_name = phosg::tolower(def.qedit_name);
+        string lower_qedit_name = phosg::tolower(phosg::tolower(def.qedit_name));
         if ((lower_qedit_name != def.name) && !index.emplace(lower_qedit_name, &def).second) {
           throw logic_error(phosg::string_printf("duplicate definition for opcode %04hX", def.opcode));
         }

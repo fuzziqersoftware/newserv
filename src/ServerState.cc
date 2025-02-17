@@ -1567,8 +1567,8 @@ void ServerState::load_maps(bool from_non_event_thread) {
 
   config_log.info("Loading free play map files");
 
-  unordered_map<uint64_t, shared_ptr<const MapFile>> map_file_for_source_hash;
-  map<uint32_t, array<shared_ptr<const MapFile>, NUM_VERSIONS>> map_files;
+  unordered_map<uint64_t, shared_ptr<const MapFile>> new_map_file_for_source_hash;
+  map<uint32_t, array<shared_ptr<const MapFile>, NUM_VERSIONS>> new_map_files_for_free_play_key;
   for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
     const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
     for (Episode episode : episodes) {
@@ -1592,7 +1592,7 @@ void ServerState::load_maps(bool from_non_event_thread) {
             auto variation_maxes = sdt->num_free_play_variations_for_floor(episode, mode == GameMode::SOLO, floor);
             for (size_t var_layout = 0; var_layout < variation_maxes.layout; var_layout++) {
               for (size_t var_entities = 0; var_entities < variation_maxes.entities; var_entities++) {
-                uint32_t supermap_key = this->supermap_key(episode, mode, difficulty, floor, var_layout, var_entities);
+                uint32_t free_play_key = this->free_play_key(episode, mode, difficulty, floor, var_layout, var_entities);
 
                 auto objects_filename = sdt->map_filename_for_variation(
                     episode, mode, floor, var_layout, var_entities, SDT::FilenameType::OBJECT_SETS);
@@ -1611,13 +1611,13 @@ void ServerState::load_maps(bool from_non_event_thread) {
                       (events_data ? phosg::fnv1a64(*events_data) : 0));
                   shared_ptr<const MapFile> map_file;
                   try {
-                    map_file = map_file_for_source_hash.at(source_hash);
+                    map_file = new_map_file_for_source_hash.at(source_hash);
                   } catch (const out_of_range&) {
                     map_file = make_shared<MapFile>(floor, objects_data, enemies_data, events_data);
                     if (map_file->source_hash() != source_hash) {
                       throw logic_error("incorrect source hash");
                     }
-                    map_file_for_source_hash.emplace(map_file->source_hash(), map_file);
+                    new_map_file_for_source_hash.emplace(map_file->source_hash(), map_file);
                   }
 
                   // Uncomment for debugging
@@ -1629,7 +1629,7 @@ void ServerState::load_maps(bool from_non_event_thread) {
                   //     floor,
                   //     var_layout,
                   //     var_entities,
-                  //     supermap_key,
+                  //     free_play_key,
                   //     map_file->source_hash(),
                   //     objects_filename.empty() ? "(none)" : objects_filename.c_str(),
                   //     objects_data ? "present" : "missing",
@@ -1641,7 +1641,7 @@ void ServerState::load_maps(bool from_non_event_thread) {
                   //     events_data ? "present" : "missing",
                   //     map_file->count_events());
 
-                  map_files[supermap_key].at(static_cast<size_t>(v)) = map_file;
+                  new_map_files_for_free_play_key[free_play_key].at(static_cast<size_t>(v)) = map_file;
                 }
               }
             }
@@ -1651,74 +1651,86 @@ void ServerState::load_maps(bool from_non_event_thread) {
     }
   }
 
-  config_log.info("Constructing free play supermaps");
-
-  unordered_map<uint64_t, shared_ptr<const SuperMap>> supermap_for_source_hash_sum;
-  unordered_map<uint32_t, shared_ptr<const SuperMap>> new_supermaps;
-  for (const auto& it : map_files) {
-    uint64_t source_hash_sum = 0;
-    for (auto map_file : it.second) {
-      source_hash_sum += map_file ? map_file->source_hash() : 0;
-    }
-
-    Episode episode = static_cast<Episode>((it.first >> 28) & 7);
-    // Uncomment for debugging
-    // auto mode = static_cast<GameMode>((it.first >> 26) & 3);
-    // uint8_t difficulty = (it.first >> 24) & 3;
-    // uint8_t floor = (it.first >> 16) & 0xFF;
-    // uint8_t layout = (it.first >> 8) & 0xFF;
-    // uint8_t entities = (it.first >> 0) & 0xFF;
-    // fprintf(stderr, "SuperMap for %s %s %s %02hhX %02hhX %02hhX (%08" PRIX32 "): %016" PRIX64 " from",
-    //     name_for_episode(episode),
-    //     name_for_mode(mode),
-    //     name_for_difficulty(difficulty),
-    //     floor,
-    //     layout,
-    //     entities,
-    //     it.first,
-    //     source_hash_sum);
-    // for (const auto& map_file : it.second) {
-    //   if (map_file) {
-    //     fprintf(stderr, " %016" PRIX64, map_file->source_hash());
-    //   } else {
-    //     fprintf(stderr, " ----------------");
-    //   }
-    // }
-    // fputc('\n', stderr);
-
-    shared_ptr<const SuperMap> supermap;
-    try {
-      supermap = supermap_for_source_hash_sum.at(source_hash_sum);
-      static_game_data_log.info("Linking existing free play supermap %016" PRIX64 " for key %08" PRIX32, source_hash_sum, it.first);
-    } catch (const out_of_range&) {
-      supermap = make_shared<SuperMap>(episode, it.second);
-      supermap_for_source_hash_sum.emplace(source_hash_sum, supermap);
-      static_game_data_log.info("Constructed free play supermap %016" PRIX64 " for key %08" PRIX32, source_hash_sum, it.first);
-    }
-    new_supermaps.emplace(it.first, supermap);
-  }
-
-  auto set = [s = this->shared_from_this(), new_supermaps = std::move(new_supermaps)]() {
-    s->supermaps = std::move(new_supermaps);
+  auto set = [s = this->shared_from_this(),
+                 new_map_file_for_source_hash = std::move(new_map_file_for_source_hash),
+                 new_map_files_for_free_play_key = std::move(new_map_files_for_free_play_key)]() {
+    s->map_file_for_source_hash = std::move(new_map_file_for_source_hash);
+    s->map_files_for_free_play_key = std::move(new_map_files_for_free_play_key);
+    s->supermap_for_source_hash_sum.clear();
+    s->supermap_for_free_play_key.clear();
   };
   this->forward_or_call(from_non_event_thread, std::move(set));
+}
+
+shared_ptr<const SuperMap> ServerState::get_free_play_supermap(
+    Episode episode, GameMode mode, uint8_t difficulty, uint8_t floor, uint32_t layout, uint32_t entities) {
+  uint32_t free_play_key = this->free_play_key(episode, mode, difficulty, floor, layout, entities);
+  try {
+    return this->supermap_for_free_play_key.at(free_play_key);
+  } catch (const out_of_range&) {
+  }
+
+  const array<shared_ptr<const MapFile>, NUM_VERSIONS>* map_files;
+  try {
+    map_files = &this->map_files_for_free_play_key.at(free_play_key);
+  } catch (const out_of_range&) {
+    static_game_data_log.info("No maps exist for key %08" PRIX32 "; cannot construct supermap", free_play_key);
+    this->supermap_for_free_play_key.emplace(free_play_key, nullptr);
+    return nullptr;
+  }
+
+  uint64_t source_hash_sum = 0;
+  for (auto map_file : *map_files) {
+    source_hash_sum += map_file ? map_file->source_hash() : 0;
+  }
+
+  // Uncomment for debugging
+  // fprintf(stderr, "SuperMap for %s %s %s %02hhX %02hhX %02hhX (%08" PRIX32 "): %016" PRIX64 " from",
+  //     name_for_episode(episode),
+  //     name_for_mode(mode),
+  //     name_for_difficulty(difficulty),
+  //     floor,
+  //     layout,
+  //     entities,
+  //     free_play_key,
+  //     source_hash_sum);
+  // for (const auto& map_file : it.second) {
+  //   if (map_file) {
+  //     fprintf(stderr, " %016" PRIX64, map_file->source_hash());
+  //   } else {
+  //     fprintf(stderr, " ----------------");
+  //   }
+  // }
+  // fputc('\n', stderr);
+
+  shared_ptr<const SuperMap> supermap;
+  try {
+    supermap = this->supermap_for_source_hash_sum.at(source_hash_sum);
+    static_game_data_log.info("Linking existing free play supermap %016" PRIX64 " for key %08" PRIX32, source_hash_sum, free_play_key);
+  } catch (const out_of_range&) {
+    supermap = make_shared<SuperMap>(episode, *map_files);
+    this->supermap_for_source_hash_sum.emplace(source_hash_sum, supermap);
+    static_game_data_log.info("Constructed free play supermap %016" PRIX64 " for key %08" PRIX32, source_hash_sum, free_play_key);
+  }
+  this->supermap_for_free_play_key.emplace(free_play_key, supermap);
+  return supermap;
 }
 
 vector<shared_ptr<const SuperMap>> ServerState::supermaps_for_variations(
     Episode episode,
     GameMode mode,
     uint8_t difficulty,
-    const Variations& variations) const {
+    const Variations& variations) {
   vector<shared_ptr<const SuperMap>> ret;
   for (size_t floor = 0; floor < 0x12; floor++) {
     Variations::Entry e;
     if (floor < variations.entries.size()) {
       e = variations.entries[floor];
     }
-    ret.push_back(this->get_supermap(episode, mode, difficulty, floor, e.layout, e.entities));
+    ret.push_back(this->get_free_play_supermap(episode, mode, difficulty, floor, e.layout, e.entities));
     if (ret.back()) {
       static_game_data_log.info("Using supermap %08" PRIX32 " for floor %02zX layout %" PRIX32 " entities %" PRIX32,
-          this->supermap_key(episode, mode, difficulty, floor, e.layout, e.entities),
+          this->free_play_key(episode, mode, difficulty, floor, e.layout, e.entities),
           floor, e.layout.load(), e.entities.load());
     } else {
       static_game_data_log.info("No supermap available for floor %02zX layout %" PRIX32 " entities %" PRIX32,

@@ -172,7 +172,10 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const FunctionCodeIndex> function_code_index;
   std::shared_ptr<const PatchFileIndex> pc_patch_file_index;
   std::shared_ptr<const PatchFileIndex> bb_patch_file_index;
-  std::unordered_map<uint32_t, std::shared_ptr<const SuperMap>> supermaps; // Keyed by supermap_key
+  std::unordered_map<uint64_t, std::shared_ptr<const MapFile>> map_file_for_source_hash;
+  std::map<uint32_t, std::array<std::shared_ptr<const MapFile>, NUM_VERSIONS>> map_files_for_free_play_key;
+  std::unordered_map<uint64_t, std::shared_ptr<const SuperMap>> supermap_for_source_hash_sum;
+  std::unordered_map<uint32_t, std::shared_ptr<const SuperMap>> supermap_for_free_play_key;
   std::shared_ptr<FileContentsCache> bb_stream_files_cache;
   std::shared_ptr<FileContentsCache> bb_system_cache;
   std::shared_ptr<FileContentsCache> gba_files_cache;
@@ -403,7 +406,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<PatchServer::Config> generate_patch_server_config(bool is_bb) const;
   void update_dependent_server_configs() const;
 
-  static constexpr uint32_t supermap_key(
+  static constexpr uint32_t free_play_key(
       Episode episode, GameMode mode, uint8_t difficulty, uint8_t floor, uint32_t layout, uint32_t entities) {
     return (static_cast<uint32_t>(episode) << 28) |
         (static_cast<uint32_t>(mode) << 26) |
@@ -412,19 +415,13 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
         (static_cast<uint32_t>(layout) << 8) |
         (static_cast<uint32_t>(entities) << 0);
   }
-  inline std::shared_ptr<const SuperMap> get_supermap(
-      Episode episode, GameMode mode, uint8_t difficulty, uint8_t floor, uint32_t layout, uint32_t entities) const {
-    try {
-      return this->supermaps.at(this->supermap_key(episode, mode, difficulty, floor, layout, entities));
-    } catch (const std::out_of_range&) {
-      return nullptr;
-    }
-  }
+  std::shared_ptr<const SuperMap> get_free_play_supermap(
+      Episode episode, GameMode mode, uint8_t difficulty, uint8_t floor, uint32_t layout, uint32_t entities);
   std::vector<std::shared_ptr<const SuperMap>> supermaps_for_variations(
       Episode episode,
       GameMode mode,
       uint8_t difficulty,
-      const Variations& variations) const;
+      const Variations& variations);
 
   // The following functions may only be called from a non-event thread if they
   // take a from_non_event_thread argument; any function that does not have this

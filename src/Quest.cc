@@ -636,7 +636,7 @@ QuestIndex::QuestIndex(
         } else if (phosg::ends_with(filename, ".dlq")) {
           file_data = decode_dlq_data(phosg::load_file(file_path));
           filename.resize(filename.size() - 4);
-        } else if (phosg::ends_with(filename, ".txt")) {
+        } else if (phosg::ends_with(filename, ".bin.txt")) {
           string include_dir = phosg::dirname(file_path);
           file_data = assemble_quest_script(phosg::load_file(file_path), include_dir);
           filename.resize(filename.size() - 4);
@@ -890,11 +890,6 @@ QuestIndex::QuestIndex(
     } catch (const exception& e) {
       static_game_data_log.warning("(%s) Failed to index quest file: (%s)", basename.c_str(), e.what());
     }
-  }
-
-  // Create supermaps for all quests that need them (all non-Ep3 quests)
-  for (const auto& it : this->quests_by_number) {
-    it.second->get_supermap(-1);
   }
 }
 
