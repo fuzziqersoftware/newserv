@@ -18,3 +18,7 @@ inline void run_address_translator(const std::string&, const std::string&, const
 inline std::vector<DiffEntry> diff_dol_files(const std::string&, const std::string&) {
   throw std::runtime_error("resource_file is not available; install it and rebuild newserv");
 }
+
+inline std::vector<DiffEntry> diff_xbe_files(const std::string&, const std::string&) {
+  throw std::runtime_error("resource_file is not available; install it and rebuild newserv");
+}
