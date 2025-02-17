@@ -2868,12 +2868,23 @@ Action a_address_translator(
       run_address_translator(dir, args.get<string>(2, false), args.get<string>(3, false));
     });
 
-Action a_diff_dol_files(
-    "diff-dol-files", nullptr, +[](phosg::Arguments& args) {
+Action a_diff_executables(
+    "diff-executables", nullptr, +[](phosg::Arguments& args) {
       const string& a_filename = args.get<string>(1);
       const string& b_filename = args.get<string>(2);
       bool show_pre = args.get<bool>("show-pre");
-      auto result = diff_dol_files(a_filename, b_filename);
+      bool a_is_dol = phosg::ends_with(a_filename, ".dol");
+      bool b_is_dol = phosg::ends_with(b_filename, ".dol");
+      bool a_is_xbe = phosg::ends_with(a_filename, ".xbe");
+      bool b_is_xbe = phosg::ends_with(b_filename, ".xbe");
+      std::vector<DiffEntry> result;
+      if (a_is_dol && b_is_dol) {
+        result = diff_dol_files(a_filename, b_filename);
+      } else if (a_is_xbe && b_is_xbe) {
+        result = diff_xbe_files(a_filename, b_filename);
+      } else {
+        throw runtime_error("the two files are not the same type of executable, or are neither dol nor xbe");
+      }
       for (const auto& it : result) {
         string b_str = phosg::format_data_string(it.b_data, nullptr, phosg::FormatDataFlags::HEX_ONLY);
         if (show_pre) {

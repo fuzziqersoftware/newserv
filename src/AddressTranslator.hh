@@ -14,3 +14,4 @@ struct DiffEntry {
 
 void run_address_translator(const std::string& directory, const std::string& use_filename, const std::string& command);
 std::vector<DiffEntry> diff_dol_files(const std::string& a_filename, const std::string& b_filename);
+std::vector<DiffEntry> diff_xbe_files(const std::string& a_filename, const std::string& b_filename);

@@ -661,3 +661,46 @@ vector<DiffEntry> diff_dol_files(const string& a_filename, const string& b_filen
   }
   return ret;
 }
+
+vector<DiffEntry> diff_xbe_files(const string& a_filename, const string& b_filename) {
+  ResourceDASM::XBEFile a(a_filename.c_str());
+  ResourceDASM::XBEFile b(b_filename.c_str());
+  auto a_mem = make_shared<ResourceDASM::MemoryContext>();
+  auto b_mem = make_shared<ResourceDASM::MemoryContext>();
+  a.load_into(a_mem);
+  b.load_into(b_mem);
+
+  uint32_t min_addr = 0xFFFFFFFF;
+  uint32_t max_addr = 0x00000000;
+  for (const auto& sec : a.sections) {
+    min_addr = min<uint32_t>(min_addr, sec.addr);
+    max_addr = max<uint32_t>(max_addr, sec.addr + sec.size);
+  }
+  for (const auto& sec : b.sections) {
+    min_addr = min<uint32_t>(min_addr, sec.addr);
+    max_addr = max<uint32_t>(max_addr, sec.addr + sec.size);
+  }
+
+  vector<DiffEntry> ret;
+  for (uint32_t addr = min_addr; addr < max_addr; addr++) {
+    bool a_exists = a_mem->exists(addr, 1);
+    bool b_exists = b_mem->exists(addr, 1);
+    if (a_exists && b_exists) {
+      uint8_t a_value = a_mem->read_u8(addr);
+      uint8_t b_value = b_mem->read_u8(addr);
+      if (a_value != b_value) {
+        if (!ret.empty() && (ret.back().address + ret.back().b_data.size() == addr)) {
+          auto& entry = ret.back();
+          entry.a_data.push_back(a_value);
+          entry.b_data.push_back(b_value);
+        } else {
+          auto& entry = ret.emplace_back();
+          entry.address = addr;
+          entry.a_data.push_back(a_value);
+          entry.b_data.push_back(b_value);
+        }
+      }
+    }
+  }
+  return ret;
+}
