@@ -441,42 +441,43 @@ The VERS token in client function filenames refers to the specific version of th
 
 The specific versions are:
 
-| Game              | VERS | Architecture  |
-|-------------------|------|---------------|
-| PSO DC NTE        | 1OJ1 | Not supported |
-| PSO DC 11/2000    | 1OJ2 | Not supported |
-| PSO DC 12/2000    | 1OJ3 | Not supported |
-| PSO DC 01/2001    | 1OJ4 | Not supported |
-| PSO DC v1 JP      | 1OJF | Not supported |
-| PSO DC v1 US      | 1OEF | Not supported |
-| PSO DC v1 EU      | 1OPF | Not supported |
-| PSO DC 08/2001    | 2OJ5 | SH-4          |
-| PSO DC v2 JP      | 2OJF | SH-4          |
-| PSO DC v2 US      | 2OEF | SH-4          |
-| PSO DC v2 EU      | 2OPF | SH-4          |
-| PSO PC (v2)       | 2OJW | Not supported |
-| PSO GC NTE        | 3OJT | PowerPC       |
-| PSO GC v1.2 JP    | 3OJ2 | PowerPC       |
-| PSO GC v1.3 JP    | 3OJ3 | PowerPC       |
-| PSO GC v1.4 JP    | 3OJ4 | PowerPC       |
-| PSO GC v1.5 JP    | 3OJ5 | PowerPC (1)   |
-| PSO GC v1.0 US    | 3OE0 | PowerPC       |
-| PSO GC v1.1 US    | 3OE1 | PowerPC       |
-| PSO GC v1.2 US    | 3OE2 | PowerPC (1)   |
-| PSO GC v1.0 EU    | 3OP0 | PowerPC       |
-| PSO GC Ep3 NTE    | 3SJT | PowerPC       |
-| PSO GC Ep3 JP     | 3SJ0 | PowerPC       |
-| PSO GC Ep3 US     | 3SE0 | PowerPC (1)   |
-| PSO GC Ep3 EU     | 3SP0 | PowerPC (1)   |
-| PSO Xbox Beta     | 4OJB | x86           |
-| PSO Xbox JP Disc  | 4OJD | x86           |
-| PSO Xbox JP TU    | 4OJU | x86           |
-| PSO Xbox US Disc  | 4OED | x86           |
-| PSO Xbox US TU    | 4OEU | x86           |
-| PSO Xbox EU Disc  | 4OPD | x86           |
-| PSO Xbox EU TU    | 4OPU | x86           |
-| PSO BB JP 1.25.13 | 59NL | x86           |
-| PSO BB Tethealla  | 59NL | x86           |
+| Game                         | VERS | Architecture  |
+|------------------------------|------|---------------|
+| PSO DC Network Trial Edition | 1OJ1 | Not supported |
+| PSO DC 11/2000 prototype     | 1OJ2 | Not supported |
+| PSO DC 12/2000 prototype     | 1OJ3 | Not supported |
+| PSO DC 01/2001 prototype     | 1OJ4 | Not supported |
+| PSO DC v1 JP                 | 1OJF | Not supported |
+| PSO DC v1 US                 | 1OEF | Not supported |
+| PSO DC v1 EU                 | 1OPF | Not supported |
+| PSO DC 08/2001 prototype     | 2OJ5 | SH-4          |
+| PSO DC v2 JP                 | 2OJF | SH-4          |
+| PSO DC v2 US                 | 2OEF | SH-4          |
+| PSO DC v2 EU                 | 2OPF | SH-4          |
+| PSO PC (v2)                  | 2OJW | Not supported |
+| PSO GC Trial Edition         | 3OJT | PowerPC       |
+| PSO GC v1.2 JP               | 3OJ2 | PowerPC       |
+| PSO GC v1.3 JP               | 3OJ3 | PowerPC       |
+| PSO GC v1.4 (Plus) JP        | 3OJ4 | PowerPC       |
+| PSO GC v1.5 (Plus) JP        | 3OJ5 | PowerPC (1)   |
+| PSO GC v1.0 US               | 3OE0 | PowerPC       |
+| PSO GC v1.1 US               | 3OE1 | PowerPC       |
+| PSO GC v1.2 (Plus) US        | 3OE2 | PowerPC (1)   |
+| PSO GC v1.0 EU               | 3OP0 | PowerPC       |
+| PSO GC Ep3 Trial Edition     | 3SJT | PowerPC       |
+| PSO GC Ep3 JP                | 3SJ0 | PowerPC       |
+| PSO GC Ep3 US                | 3SE0 | PowerPC (1)   |
+| PSO GC Ep3 EU                | 3SP0 | PowerPC (1)   |
+| PSO Xbox Beta                | 4OJB | x86           |
+| PSO Xbox JP Disc             | 4OJD | x86           |
+| PSO Xbox JP TU               | 4OJU | x86           |
+| PSO Xbox US Disc             | 4OED | x86           |
+| PSO Xbox US TU               | 4OEU | x86           |
+| PSO Xbox EU Disc             | 4OPD | x86           |
+| PSO Xbox EU TU               | 4OPU | x86           |
+| PSO BB JP 1.25.11            | 59NJ | x86           |
+| PSO BB JP 1.25.13            | 59NL | x86           |
+| PSO BB Tethealla             | 59NL | x86           |
 
 *Notes:*
 1. *Client functions are only supported on these versions if EnableSendFunctionCallQuestNumbers is set in config.json. See the comments there for more information.*
