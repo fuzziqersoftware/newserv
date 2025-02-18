@@ -588,6 +588,8 @@ public:
   std::vector<std::shared_ptr<const Event>> events_for_floor_room_wave(
       Version version, uint8_t floor, uint16_t room, uint16_t wave_number) const;
 
+  std::unordered_map<EnemyType, size_t> count_enemy_sets_for_version(Version version) const;
+
   struct EfficiencyStats {
     size_t filled_object_slots = 0;
     size_t total_object_slots = 0;

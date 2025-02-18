@@ -2628,6 +2628,7 @@ Action a_show_battle_params(
 Action a_load_maps_test(
     "load-maps-test", nullptr, +[](phosg::Arguments& args) {
       bool save_disassembly = args.get<bool>("disassemble");
+      bool generate_enemy_stats = args.get<bool>("generate-enemy-stats");
 
       auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
@@ -2717,6 +2718,44 @@ Action a_load_maps_test(
           fprintf(f.get(), "QUEST %" PRIu32 " (%s)\n", it.first, it.second->name.c_str());
           supermap->print(f.get());
           filename_token = " => " + filename;
+        }
+        if (generate_enemy_stats) {
+          array<unordered_map<EnemyType, size_t>, NUM_VERSIONS> counts_for_version;
+          for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+            counts_for_version[static_cast<size_t>(v)] = supermap->count_enemy_sets_for_version(v);
+          }
+          string filename = phosg::string_printf("supermap_quest_%" PRIu32 "_%08" PRIX32 "_enemy_counts.txt", it.first, random_seed);
+          auto f = phosg::fopen_unique(filename, "wt");
+          fprintf(f.get(), "QUEST %" PRIu32 " (%s)\n", it.first, it.second->name.c_str());
+          fprintf(f.get(), "ENEMY---------------  DCNTE  11/2K  DC-V1  DC-V2  PCNTE  PC-V2  GCNTE  GC-V3 XB-V3  BB-V4\n");
+          for (size_t type_ss = 0; type_ss < static_cast<size_t>(EnemyType::MAX_ENEMY_TYPE); type_ss++) {
+            EnemyType type = static_cast<EnemyType>(type_ss);
+            bool any_count_nonzero = false;
+            array<size_t, NUM_VERSIONS> counts;
+            for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+              size_t& count = counts[static_cast<size_t>(v)];
+              try {
+                count = counts_for_version[static_cast<size_t>(v)].at(type);
+              } catch (const out_of_range&) {
+                count = 0;
+              }
+              if (count != 0) {
+                any_count_nonzero = true;
+              }
+            }
+            if (any_count_nonzero) {
+              fprintf(f.get(), "%20s", phosg::name_for_enum(type));
+              for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+                size_t count = counts[static_cast<size_t>(v)];
+                if (count > 0) {
+                  fprintf(f.get(), "  %5zu", count);
+                } else {
+                  fputs("       ", f.get());
+                }
+              }
+              fputc('\n', f.get());
+            }
+          }
         }
         auto eff = supermap->efficiency();
         all_quests_eff += eff;

@@ -3002,6 +3002,18 @@ vector<shared_ptr<const SuperMap::Event>> SuperMap::events_for_floor_room_wave(
   return ret;
 }
 
+unordered_map<EnemyType, size_t> SuperMap::count_enemy_sets_for_version(Version version) const {
+  unordered_map<EnemyType, size_t> ret;
+  for (const auto& ene : this->version(version).enemy_sets) {
+    try {
+      ret.at(ene->type) += 1;
+    } catch (const out_of_range&) {
+      ret.emplace(ene->type, 1);
+    }
+  }
+  return ret;
+}
+
 SuperMap::EfficiencyStats& SuperMap::EfficiencyStats::operator+=(const EfficiencyStats& other) {
   this->filled_object_slots += other.filled_object_slots;
   this->total_object_slots += other.total_object_slots;
