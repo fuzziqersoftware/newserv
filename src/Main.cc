@@ -2625,8 +2625,14 @@ Action a_show_battle_params(
       s->battle_params->get_table(true, Episode::EP4).print(stdout);
     });
 
-Action a_load_maps_test(
-    "load-maps-test", nullptr, +[](phosg::Arguments& args) {
+Action a_check_supermaps(
+    "check-supermaps", "\
+  check-supermaps [--disassemble] [--generate-enemy-stats]\n\
+    Checks the supermaps for all free-play areas and quests. If --disassemble\n\
+    is given, saves the contents of each supermap to text files in the current\n\
+    directory. If --generate-enemy-stats is given, saves tables of enemy\n\
+    counts for each quest to text files in the current directory.\n",
+    +[](phosg::Arguments& args) {
       bool save_disassembly = args.get<bool>("disassemble");
       bool generate_enemy_stats = args.get<bool>("generate-enemy-stats");
 
@@ -2727,7 +2733,7 @@ Action a_load_maps_test(
           string filename = phosg::string_printf("supermap_quest_%" PRIu32 "_%08" PRIX32 "_enemy_counts.txt", it.first, random_seed);
           auto f = phosg::fopen_unique(filename, "wt");
           fprintf(f.get(), "QUEST %" PRIu32 " (%s)\n", it.first, it.second->name.c_str());
-          fprintf(f.get(), "ENEMY---------------  DCNTE  11/2K  DC-V1  DC-V2  PCNTE  PC-V2  GCNTE  GC-V3 XB-V3  BB-V4\n");
+          fprintf(f.get(), "ENEMY---------------  DCNTE  11/2K  DC-V1  DC-V2  PCNTE  PC-V2  GCNTE  GC-V3  XB-V3  BB-V4\n");
           for (size_t type_ss = 0; type_ss < static_cast<size_t>(EnemyType::MAX_ENEMY_TYPE); type_ss++) {
             EnemyType type = static_cast<EnemyType>(type_ss);
             bool any_count_nonzero = false;

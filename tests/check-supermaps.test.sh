@@ -7,4 +7,4 @@ if [ -z "$EXECUTABLE" ]; then
   EXECUTABLE="./newserv"
 fi
 
-$EXECUTABLE --config=tests/config.json load-maps-test
+$EXECUTABLE --config=tests/config.json check-supermaps
