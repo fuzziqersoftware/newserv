@@ -94,6 +94,7 @@ set(SOURCES
     src/ItemData.cc
     src/ItemNameIndex.cc
     src/ItemParameterTable.cc
+    src/ItemTranslationTable.cc
     src/Items.cc
     src/LevelTable.cc
     src/Lobby.cc

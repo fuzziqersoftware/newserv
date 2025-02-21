@@ -154,6 +154,7 @@ struct ItemData {
   std::string hex() const;
   std::string short_hex() const;
   uint32_t primary_identifier() const;
+  void change_primary_identifier(uint32_t primary_identifier);
 
   bool is_wrapped(const StackLimits& limits) const;
   void wrap(const StackLimits& limits, uint8_t present_color);

@@ -2081,6 +2081,9 @@ void ServerState::load_item_definitions(bool from_non_event_thread) {
     new_item_parameter_tables[v_s] = make_shared<ItemParameterTable>(data, v);
   }
 
+  auto json = phosg::JSON::parse(phosg::load_file("system/item-tables/translation-table.json"));
+  auto new_item_translation_table = make_shared<ItemTranslationTable>(json, new_item_parameter_tables);
+
   // TODO: We should probably load the tables for other versions too.
   config_log.info("Loading v1/v2 mag evolution table");
   auto mag_data_v1_v2 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-dc-v2.prs")));
@@ -2094,10 +2097,12 @@ void ServerState::load_item_definitions(bool from_non_event_thread) {
 
   auto set = [s = this->shared_from_this(),
                  new_item_parameter_tables = std::move(new_item_parameter_tables),
+                 new_item_translation_table = std::move(new_item_translation_table),
                  new_table_v1_v2 = std::move(new_table_v1_v2),
                  new_table_v3 = std::move(new_table_v3),
                  new_table_v4 = std::move(new_table_v4)]() {
     s->item_parameter_tables = std::move(new_item_parameter_tables);
+    s->item_translation_table = std::move(new_item_translation_table);
     s->mag_evolution_table_v1_v2 = std::move(new_table_v1_v2);
     s->mag_evolution_table_v3 = std::move(new_table_v3);
     s->mag_evolution_table_v4 = std::move(new_table_v4);

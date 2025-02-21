@@ -133,6 +133,50 @@ uint32_t ItemData::primary_identifier() const {
   }
 }
 
+void ItemData::change_primary_identifier(uint32_t primary_identifier) {
+  if (((primary_identifier >> 18) & 0xFF) != this->data1[0]) {
+    throw std::runtime_error("cannot change item class via change_primary_identifier");
+  }
+  switch (this->data1[0]) {
+    case 0x00: { // Weapon
+      bool was_s_rank_weapon = this->is_s_rank_weapon();
+      // Apply data1[1], and data1[2] if it's not an ES weapon
+      this->data1[1] = (primary_identifier >> 16) & 0xFF;
+      if (!this->is_s_rank_weapon()) {
+        this->data1[2] = (primary_identifier >> 8) & 0xFF;
+      } else if (!was_s_rank_weapon) {
+        // If it wasn't an S-rank weapon before and now is, clear its special
+        this->data1[2] = 0;
+      }
+      break;
+    }
+    case 0x01: // Armor/shield/unit
+      // Apply data1[1] and data1[2]
+      this->data1[1] = (primary_identifier >> 16) & 0xFF;
+      this->data1[2] = (primary_identifier >> 8) & 0xFF;
+      break;
+    case 0x02: // Mag
+      // Apply data1[1] only
+      this->data1[1] = (primary_identifier >> 16) & 0xFF;
+      break;
+    case 0x03: // Tool
+      // Apply data1[1] and data1[2] (or data1[4] if it's a tech disk)
+      this->data1[1] = (primary_identifier >> 16) & 0xFF;
+      if (this->data1[1] == 0x02) {
+        this->data1[4] = (primary_identifier >> 8) & 0xFF;
+        this->data1[2] = primary_identifier & 0xFF;
+      } else {
+        this->data1[2] = (primary_identifier >> 8) & 0xFF;
+      }
+      break;
+    case 0x04: // Meseta
+      // Nothing to apply
+      break;
+    default:
+      throw std::runtime_error("invalid item class");
+  }
+}
+
 bool ItemData::is_wrapped(const StackLimits& limits) const {
   switch (this->data1[0]) {
     case 0:

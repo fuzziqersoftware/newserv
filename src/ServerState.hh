@@ -23,6 +23,7 @@
 #include "IPV4RangeSet.hh"
 #include "ItemNameIndex.hh"
 #include "ItemParameterTable.hh"
+#include "ItemTranslationTable.hh"
 #include "LevelTable.hh"
 #include "Lobby.hh"
 #include "Menu.hh"
@@ -203,6 +204,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::array<std::shared_ptr<const WeaponRandomSet>, 4> weapon_random_sets;
   std::shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set;
   std::array<std::shared_ptr<const ItemParameterTable>, NUM_VERSIONS> item_parameter_tables;
+  std::shared_ptr<const ItemTranslationTable> item_translation_table;
   std::array<std::shared_ptr<const ItemData::StackLimits>, NUM_VERSIONS> item_stack_limits_tables;
   std::shared_ptr<const MagEvolutionTable> mag_evolution_table_v1_v2;
   std::shared_ptr<const MagEvolutionTable> mag_evolution_table_v3;
