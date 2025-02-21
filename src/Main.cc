@@ -2142,19 +2142,23 @@ Action a_name_all_items(
       } else {
         bool separate_classes = args.get<bool>("separate-classes");
 
-        fprintf(stdout, "IDENT   :");
-        for (Version v : ALL_VERSIONS) {
-          const auto& index = s->item_name_index_opt(v);
-          if (index) {
-            fprintf(stdout, " %30s    ", phosg::name_for_enum(v));
+        auto print_header = [&]() -> void {
+          fprintf(stdout, "IDENT   :");
+          for (Version v : ALL_VERSIONS) {
+            const auto& index = s->item_name_index_opt(v);
+            if (index) {
+              fprintf(stdout, " %30s    ", phosg::name_for_enum(v));
+            }
           }
-        }
-        fputc('\n', stdout);
+          fputc('\n', stdout);
+        };
 
+        print_header();
         uint32_t prev_ident = 0;
         for (uint32_t primary_identifier : all_primary_identifiers) {
           if (separate_classes & ((primary_identifier & 0xFFFF0000) != (prev_ident & 0xFFFF0000))) {
             fputc('\n', stdout);
+            print_header();
           }
           prev_ident = primary_identifier;
 

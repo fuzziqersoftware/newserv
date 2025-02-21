@@ -400,7 +400,6 @@ void ItemData::decode_for_version(Version from_version) {
         this->data2[0] = this->data2w[1] & 0x7FFF; // Synchro
         this->data2[2] = ((this->data2[3] >> 7) & 1) | ((this->data1w[2] >> 14) & 2) | ((this->data1w[3] >> 13) & 4); // PB flags
         this->data2[3] = (this->data1w[2] & 1) | ((this->data1w[3] & 1) << 1) | ((this->data1w[4] & 1) << 2) | ((this->data1w[5] & 1) << 3); // Color
-        // 01000080
         this->data1w[2] &= 0x7FFE;
         this->data1w[3] &= 0x7FFE;
         this->data1w[4] &= 0xFFFE;

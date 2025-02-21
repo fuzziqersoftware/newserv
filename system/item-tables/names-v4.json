@@ -1,4 +1,6 @@
 {
+  // This file is not actually used by newserv; it's just a convenient
+  // reference for item codes.
   "000100": "Saber",
   "000101": "Brand",
   "000102": "Buster",

@@ -765,6 +765,8 @@ ItemParameterTable::definition_for_primary_identifier(uint32_t primary_identifie
     case 2:
       return &this->get_mag(data1_1);
     case 3:
+      // NOTE: Unlike in ItemData, the tech number comes first in primary
+      // identifiers, so we don't need to special-case 0302XXYY here
       return &this->get_tool(data1_1, data1_2);
     default:
       throw runtime_error("invalid primary identifier");

@@ -508,9 +508,9 @@ struct PSOGCNTECharacterFileCharacter {
 struct PSOGCCharacterFile {
   /* 00000 */ be_uint32_t checksum = 0;
   struct Character {
-    // This structure is internally split into two by the game. The offsets here
-    // are relative to the start of this structure (first column), and relative
-    // to the start of the second internal structure (second column).
+    // This structure is internally split into two by the game. The offsets
+    // here are relative to the start of this structure (first column), and
+    // relative to the start of the second internal structure (second column).
     /* 0000:---- */ PlayerInventoryBE inventory;
     /* 034C:---- */ PlayerDispDataDCPCV3BE disp;
     // Known bits in the validation_flags field:
@@ -520,8 +520,8 @@ struct PSOGCCharacterFile {
     //   00000004: Character has EXP out of range for their current level
     //   00000008: Character has one or more stats out of range (< 0 or > max)
     //   00000010: Character has ever possessed a hacked item, according to the
-    //     check_for_hacked_item function in DCv2 (TODO: Does this exist in V3+
-    //     also? If so, is the logic the same?)
+    //     check_for_hacked_item function in DCv2. It appears this logic was
+    //     removed in v3, so this flag is unused on v3+.
     //   00000020: Character has meseta out of range (< 0 or > 999999)
     //   00000040: Character was loaded on a client that has "important" files
     //     modified (on GC, these files are ending_normal.sfd, psogc_j.sfd,
@@ -529,8 +529,13 @@ struct PSOGCCharacterFile {
     //     ItemPMT.prs, itemrt.gsl, itempt.gsl, and PlyLevelTbl.cpt). For files
     //     larger than 1000000 bytes (decimal), the game only checks the file's
     //     size and skips checksumming its contents.
-    // It seems that v3 and BB only use flag 00000001 and ignore the rest.
+    // PSO v3 and later only use flag 00000001; all logic that checks or sets
+    // the other flags was removed in v3. Curiously, there is logic in v3 that
+    // clears flags 00000001 and 00000002 at the same time, but 00000002 is
+    // never set.
     /* 041C:0000 */ be_uint32_t validation_flags = 0;
+    // The creation timestamp is measured in seconds since midnight on 1
+    // January 2000.
     /* 0420:0004 */ be_uint32_t creation_timestamp = 0;
     // The signature field holds the value 0xA205B064, which is 2718281828 in
     // decimal - approximately e * 10^9. It's unknown why Sega chose this
