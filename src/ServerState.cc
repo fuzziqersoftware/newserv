@@ -66,7 +66,10 @@ ServerState::QuestF960Result::QuestF960Result(const phosg::JSON& json, shared_pt
 
 ServerState::ServerState(const string& config_filename)
     : creation_time(phosg::now()),
-      config_filename(config_filename) {}
+      config_filename(config_filename),
+      bb_stream_files_cache(new FileContentsCache(3600000000ULL)),
+      bb_system_cache(new FileContentsCache(3600000000ULL)),
+      gba_files_cache(new FileContentsCache(3600000000ULL)) {}
 
 ServerState::ServerState(shared_ptr<struct event_base> base, const string& config_filename, bool is_replay)
     : creation_time(phosg::now()),
