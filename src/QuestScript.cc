@@ -1623,11 +1623,10 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // for the player to choose their weapon's name. The award_item_give_to
     // opcode is used instead.
     // regA/valueA = client ID (must match local client ID)
-    // regB (v2) = item.data1[1]
-    // valueB (v3/v4) = register number of register containing item.data1[1]
+    // regB (must be a register, even on v3/v4) = item.data1[1]
     // strC = custom name
     {0xF862, "give_s_rank_weapon", nullptr, {REG32, REG32, CSTRING}, F_V2},
-    {0xF862, "give_s_rank_weapon", nullptr, {INT32, INT32, CSTRING}, F_V3_V4 | F_ARGS},
+    {0xF862, "give_s_rank_weapon", nullptr, {INT32, REG, CSTRING}, F_V3_V4 | F_ARGS},
 
     // Returns the currently-equipped mag's levels. If no mag is equipped,
     // regsA are unaffected! Make sure to initialize them before using this.
