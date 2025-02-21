@@ -33,6 +33,7 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
     this->set_flag(Flag::SAVE_ENABLED);
     this->set_flag(Flag::HAS_SEND_FUNCTION_CALL);
     this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
+    this->set_flag(Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE);
     return;
   }
 
