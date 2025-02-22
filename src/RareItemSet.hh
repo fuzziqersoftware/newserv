@@ -37,6 +37,11 @@ public:
 
   std::string serialize_afs(bool is_v1) const;
   std::string serialize_gsl(bool big_endian) const;
+  std::string serialize_html(
+      GameMode mode,
+      Episode episode,
+      uint8_t difficulty,
+      std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
   phosg::JSON json(std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
 
   void multiply_all_rates(double factor);

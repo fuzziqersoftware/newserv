@@ -417,7 +417,7 @@ public:
   size_t count_events() const;
 
   static std::string disassemble_action_stream(const void* data, size_t size);
-  std::string disassemble() const;
+  std::string disassemble(bool reassembly = false) const;
 
 protected:
   void link_data(std::shared_ptr<const std::string> data);
@@ -661,7 +661,7 @@ public:
     uint32_t merissa_aa; // MERISSA_A -> MERISSA_AA
     uint32_t pazuzu; // ZU -> PAZUZU (and _ALT variants)
     uint32_t dorphon_eclair; // DORPHON -> DORPHON_ECLAIR
-    uint32_t kondrieu; // {SAINT_MILLION, SHAMBERTIN} -> KONDRIEU
+    uint32_t kondrieu; // {SAINT_MILION, SHAMBERTIN} -> KONDRIEU
 
     RareEnemyRates(uint32_t enemy_rate, uint32_t mericarand_rate, uint32_t boss_rate);
     explicit RareEnemyRates(const phosg::JSON& json);
@@ -768,7 +768,7 @@ public:
         }
       } else {
         return this->is_rare(version)
-            ? rare_type_for_enemy_type(this->super_ene->type, episode, event, this->super_ene->floor)
+            ? type_definition_for_enemy(this->super_ene->type).rare_type(episode, event, this->super_ene->floor)
             : this->super_ene->type;
       }
     }

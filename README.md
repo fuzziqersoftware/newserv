@@ -54,11 +54,11 @@ At the time of its inception, Aeon was also called newserv, and you may find som
 
 Independently of this project, there are many other PSO servers out there. Those that I know of that are (or were) public are listed here in approximate chronological order:
 
-* (Early 2000s) **[Schtserv](https://schtserv.com/)**: The first public-access PSO server; written in Delphi by Schthack. Still active and popular as of this writing (early 2024). Schtserv is also the only other unofficial server to support all versions of PSO, including Episode 3.
+* (Early 2000s) **[Schtserv](https://schtserv.com/)**: The first public-access PSO server; written in Delphi by Schthack. Still active and popular as of early 2025. Schtserv is also the only other unofficial server to support all versions of PSO, including Episode 3. (Their implementation of Episode 3 is based on newserv's, which is itself based on Sega's.)
 * (2005) **Khyller**: An early attempt of mine to support PSO PC, GC, and BB. See above for more details.
 * (2006) **Aeon**: My second attempt. Better than Khyller, but still unreliable.
 * (2008) **Tethealla**: A fairly extensive implementation of PSOBB, written in C by Sodaboy. The public version of Tethealla has been [officially disowned](https://www.pioneer2.net/community/threads/tethealla-server-forums-removal.26365/) (as it is now more than 15 years old), but closed-source development continues. [Ephinea](https://ephinea.pioneer2.net/), currently the most popular PSOBB server, is the continuation of this project. Several other modern PSOBB servers are forks of the initial public version of Tethealla as well.
-* (2008) **[Sylverant](https://sylverant.net/)** [(source)](https://sourceforge.net/projects/sylverant/): The second public-access PSO server; written in C by BlueCrab. Still active and popular as of this writing (early 2024).
+* (2008) **[Sylverant](https://sylverant.net/)** [(source)](https://sourceforge.net/projects/sylverant/): The second public-access PSO server; written in C by BlueCrab. Still active and popular as of early 2025.
 * (2015) **[Archon](https://github.com/dcrodman/archon)**: A PSOBB server written in Go by Drew Rodman.
 * (2015) **[Idola](https://github.com/HybridEidolon/idolapsoserv)**: A PSOBB server written in Rust by HybridEidolon. Functionality status unknown; the project has been archived.
 * (2017) **[Aselia](https://github.com/Solybum/Aselia)**: A PSOBB server written written in C# by Soly. It seems this was planned to be open-source at some point, but that has not (yet) happened.
@@ -71,12 +71,14 @@ Independently of this project, there are many other PSO servers out there. Those
 
 There is a lot of code in this project that could be useful as a reference. Some of the more notable files are:
 * **src/CommandFormats.hh**: Complete listing of all network commands used in all known versions of the game, and their formats
+* **src/CommonItemSet.hh/cc**: Format of ItemPT files, shop definition files, and tekker adjustment tables
 * **src/DCSerialNumbers.hh/cc**: PSO DC serial number validation algorithm and serial number generator
 * **src/ItemData.hh**: Item format reference
 * **src/ItemCreator.hh/cc**: Reverse-engineered item generator from Episodes 1&2 (used for all versions)
 * **src/ItemParameterTable.hh**: Format of many structures in ItemPMT.prs
 * **src/Map.hh/cc**: Map file (.dat) structure and reverse-engineered Challenge Mode random enemy generation algorithm
 * **src/QuestScript.cc**: Complete listing of all quest opcodes on all versions, along with their arguments and behavior
+* **src/RareItemSet.hh/cc**: Format of ItemRT files (rare item drop tables)
 * **src/SaveFileFormats.hh**: Definitions of save file structures for all versions
 * **src/Episode3/DataIndexes.hh**: Episode 3 file structures, including card definition format and map/quest format
 * **system/item-tables/names-v4.json**: Names of all items, indexed by the first 3 bytes of data1
@@ -291,11 +293,11 @@ Within the category directories, quest files should be named like `q###-VERSION-
 
 For .dat files, the `LANGUAGE` token may be omitted. If it's present, then that .dat file will only be used for that language of the quest; if omitted, then that .dat file will be used for all languages of the quest.
 
-Some quests (mostly battle and challenge mode quests) have additional JSON metadata files that describe how the server should handle them. This includes flags that can be used to hide the quest unless a preceding quest has been cleared, or to hide the quest unless purchased as a team reward. These metadata files are generally named similarly to their .bin and .dat counterparts, except the `VERSION` token may also be omitted if the metadata applies to all languages of the quest on all PSO versions. See system/quests/battle/b88001.json for documentation on the exact format of the JSON file.
+For example, the GameCube version of Lost HEAT SWORD is in two files named `q058-gc-e.bin` and `q058-gc.dat`. newserv knows these files are quests because they're in the system/quests/ directory, it knows they're for PSO GC because the filenames contain `-gc`, it knows this is the English version of the quest because the .bin filename ends with `-e` (even though the .dat filename does not), and it puts them in the Retrieval category because the files are within the retrieval/ directory within system/quests/.
+
+Some quests (mostly battle and challenge mode quests) have additional JSON metadata files that describe how the server should handle them. These files include flags that can be used to hide the quest unless a preceding quest has been cleared, or to hide the quest unless purchased as a BB team reward. These metadata files are generally named similarly to their .bin and .dat counterparts, except the `VERSION` token may also be omitted if the metadata applies to all languages of the quest on all PSO versions. See system/quests/battle/b88001.json for documentation on the exact format of the JSON file.
 
 Some quests may also include a .pvr file, which contains an image used in the quest. These files are named similarly to their .bin and .dat counterparts.
-
-For example, the GameCube version of Lost HEAT SWORD is in two files named `q058-gc-e.bin` and `q058-gc.dat`. newserv knows these files are quests because they're in the system/quests/ directory, it knows they're for PSO GC because the filenames contain `-gc`, it knows this is the English version of the quest because the .bin filename ends with `-e` (even though the .dat filename does not), and it puts them in the Retrieval category because the files are within the retrieval/ directory within system/quests/.
 
 The GameCube and Xbox quest formats are very similar, but newserv treats them as different. If you want to use the same quest file for GameCube and Xbox clients, you can make one a symbolic link to the other.
 
@@ -574,7 +576,7 @@ Some commands only work on the game server and not on the proxy server. The chat
 
 * Personal state commands
     * `$arrow <color-id>`: Change your lobby arrow color.
-    * `$secid <section-id>`: Set your override section ID. After running this command, any games you create will use your override section ID for rare drops instead of your character's actual section ID. If you're in a game and you are the leader of the game, this also immediately changes the item tables used by the server when creating items. To revert to your actual section id, run `$secid` with no name after it. On the proxy server, this will not work if the remote server controls item drops (e.g. on BB, or on Schtserv with server drops enabled). If the server does not allow cheat mode anywhere (that is, "CheatModeBehavior" is "Off" in config.json), this command does nothing.
+    * `$secid <section-id>`: Set your override section ID. After running this command, any games you create will use your override section ID for rare drops instead of your character's actual section ID. If you're in a game and you are the leader of the game, this also immediately changes the item tables used by the server when creating items. To revert to your actual section id, run `$secid` with no name after it. On the proxy server, this will not work if the remote server controls item drops. If the server does not allow cheat mode anywhere (that is, "CheatModeBehavior" is "Off" in config.json), this command does nothing.
     * `$rand <seed>`: Set your override random seed (specified as a 32-bit hex value). This will make any games you create use the given seed for rare enemies. This also makes item drops deterministic in Blue Burst games hosted by newserv. On the proxy server, this command can cause desyncs with other players in the same game, since they will not see the overridden random seed. To remove the override, run `$rand` with no arguments. If the server does not allow cheat mode anywhere (that is, "CheatModeBehavior" is "Off" in config.json), this command does nothing.
     * `$ln [name-or-type]`: Set the lobby number. Visible only to you. This command exists because some non-lobby maps can be loaded as lobbies with invalid lobby numbers. See the "GC lobby types" and "Ep3 lobby types" entries in the information menu for acceptable values here. Note that non-lobby maps do not have a lobby counter, so there's no way to exit the lobby without using either `$ln` again or `$exit`. On the game server, `$ln` reloads the lobby immediately; on the proxy server, it doesn't take effect until you load another lobby yourself (which means you'll like have to use `$exit` to escape). Run this command with no argument to return to the default lobby.
     * `$swa`: Enable or disable switch assist. When enabled, the server will unlock two-player and four-player doors in non-quest games when you step on any of the required switches.
@@ -719,33 +721,33 @@ newserv has many CLI options, which can be used to access functionality other th
 
 The data formats that newserv can convert to/from are:
 
-| Format                         | Encode/compress action    | Decode/extract action        |
-|--------------------------------|---------------------------|------------------------------|
-| PRS compression                | `compress-prs`            | `decompress-prs`             |
-| PR2/PRC compression            | `compress-pr2`            | `decompress-pr2`             |
-| BC0 compression                | `compress-bc0`            | `decompress-bc0`             |
-| Raw encrypted data             | `encrypt-data`            | `decrypt-data`               |
-| Episode 3 command mask         | `encrypt-trivial-data`    | `decrypt-trivial-data`       |
-| Challenge Mode rank text       | `encrypt-challenge-data`  | `decrypt-challenge-data`     |
-| PSO DC quest file (.vms)       | None                      | `decode-vms`                 |
-| PSO GC quest file (.gci)       | None                      | `decode-gci`                 |
-| Download quest file (.dlq)     | None                      | `decode-dlq`                 |
-| Server quest file (.qst)       | `encode-qst`              | `decode-qst`                 |
-| PSO DC save file (.vms)        | `encrypt-vms-save`        | `decrypt-vms-save`           |
-| PSO PC save file               | `encrypt-pc-save`         | `decrypt-pc-save`            |
-| PSO GC save file (.gci)        | `encrypt-gci-save`        | `decrypt-gci-save`           |
-| PSO GC snapshot file           | None                      | `decode-gci-snapshot`        |
-| Quest script (.bin)            | `assemble-quest-script`   | `disassemble-quest-script`   |
-| Quest map (.dat)               | None                      | `disassemble-quest-map`      |
-| AFS archive                    | None                      | `extract-afs`                |
-| BML archive                    | None                      | `extract-bml`                |
-| GSL archive                    | `generate-gsl`            | `extract-gsl`                |
-| GVM texture                    | `encode-gvm`              | None                         |
-| Text archive                   | `encode-text-archive`     | `decode-text-archive`        |
-| Unicode text set               | `encode-unicode-text-set` | `decode-unicode-text-set`    |
-| Word Select data set           | None                      | `decode-word-select-set`     |
-| Set data table                 | None                      | `disassemble-set-data-table` |
-| Rare item table (AFS/GSL/JSON) | `convert-rare-item-set`   | `convert-rare-item-set`      |
+| Format                              | Encode/compress action    | Decode/extract action        |
+|-------------------------------------|---------------------------|------------------------------|
+| PRS compression                     | `compress-prs`            | `decompress-prs`             |
+| PR2/PRC compression                 | `compress-pr2`            | `decompress-pr2`             |
+| BC0 compression                     | `compress-bc0`            | `decompress-bc0`             |
+| Raw encrypted data                  | `encrypt-data`            | `decrypt-data`               |
+| Episode 3 command mask              | `encrypt-trivial-data`    | `decrypt-trivial-data`       |
+| Challenge Mode rank text            | `encrypt-challenge-data`  | `decrypt-challenge-data`     |
+| PSO DC quest file (.vms)            | None                      | `decode-vms`                 |
+| PSO GC quest file (.gci)            | None                      | `decode-gci`                 |
+| Download quest file (.dlq)          | None                      | `decode-dlq`                 |
+| Server quest file (.qst)            | `encode-qst`              | `decode-qst`                 |
+| PSO DC save file (.vms)             | `encrypt-vms-save`        | `decrypt-vms-save`           |
+| PSO PC save file                    | `encrypt-pc-save`         | `decrypt-pc-save`            |
+| PSO GC save file (.gci)             | `encrypt-gci-save`        | `decrypt-gci-save`           |
+| PSO GC snapshot file                | None                      | `decode-gci-snapshot`        |
+| Quest script (.bin)                 | `assemble-quest-script`   | `disassemble-quest-script`   |
+| Quest map (.dat)                    | None                      | `disassemble-quest-map`      |
+| AFS archive                         | None                      | `extract-afs`                |
+| BML archive                         | None                      | `extract-bml`                |
+| GSL archive                         | `generate-gsl`            | `extract-gsl`                |
+| GVM texture                         | `encode-gvm`              | None                         |
+| Text archive                        | `encode-text-archive`     | `decode-text-archive`        |
+| Unicode text set                    | `encode-unicode-text-set` | `decode-unicode-text-set`    |
+| Word Select data set                | None                      | `decode-word-select-set`     |
+| Set data table                      | None                      | `disassemble-set-data-table` |
+| Rare item table (AFS/GSL/JSON/HTML) | `convert-rare-item-set`   | `convert-rare-item-set`      |
 
 There are several actions that don't fit well into the table above, which let you do other things:
 

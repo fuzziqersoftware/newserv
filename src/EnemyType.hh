@@ -7,9 +7,9 @@
 #include "StaticGameData.hh"
 #include "Types.hh"
 
-enum class EnemyType {
-  UNKNOWN = -1,
-  NONE = 0,
+enum class EnemyType : uint8_t {
+  UNKNOWN = 0,
+  NONE,
   NON_ENEMY_NPC,
   AL_RAPPY,
   ASTARK,
@@ -40,8 +40,8 @@ enum class EnemyType {
   DE_ROL_LE_MINE,
   DEATH_GUNNER,
   DEL_LILY,
-  DEL_RAPPY,
-  DEL_RAPPY_ALT,
+  DEL_RAPPY_CRATER,
+  DEL_RAPPY_DESERT,
   DELBITER,
   DELDEPTH,
   DELSABER,
@@ -54,10 +54,10 @@ enum class EnemyType {
   DUBCHIC,
   DUBWITCH, // Has no entry in battle params
   EGG_RAPPY,
-  EPSIGUARD,
+  EPSIGARD,
   EPSILON,
   EVIL_SHARK,
-  GAEL,
+  GAEL_OR_GIEL,
   GAL_GRYPHON,
   GARANZ,
   GEE,
@@ -98,8 +98,8 @@ enum class EnemyType {
   OLGA_FLOW_2,
   PAL_SHARK,
   PAN_ARMS,
-  PAZUZU,
-  PAZUZU_ALT,
+  PAZUZU_CRATER,
+  PAZUZU_DESERT,
   PIG_RAY,
   POFUILLY_SLIME,
   POUILLY_SLIME,
@@ -108,12 +108,12 @@ enum class EnemyType {
   RAG_RAPPY,
   RECOBOX,
   RECON,
-  SAINT_MILLION,
+  SAINT_MILION,
   SAINT_RAPPY,
-  SAND_RAPPY,
-  SAND_RAPPY_ALT,
-  SATELLITE_LIZARD,
-  SATELLITE_LIZARD_ALT,
+  SAND_RAPPY_CRATER,
+  SAND_RAPPY_DESERT,
+  SATELLITE_LIZARD_CRATER,
+  SATELLITE_LIZARD_DESERT,
   SAVAGE_WOLF,
   SHAMBERTIN,
   SINOW_BEAT,
@@ -130,23 +130,53 @@ enum class EnemyType {
   VOL_OPT_CORE,
   VOL_OPT_MONITOR,
   VOL_OPT_PILLAR,
-  YOWIE,
-  YOWIE_ALT,
+  YOWIE_CRATER,
+  YOWIE_DESERT,
   ZE_BOOTA,
   ZOL_GIBBON,
-  ZU,
-  ZU_ALT,
+  ZU_CRATER,
+  ZU_DESERT,
   MAX_ENEMY_TYPE,
 };
+
+struct EnemyTypeDefinition {
+  enum Flag : uint8_t {
+    VALID_EP1 = 0x01,
+    VALID_EP2 = 0x02,
+    VALID_EP4 = 0x04,
+    IS_RARE = 0x08,
+  };
+  EnemyType type;
+  uint8_t flags;
+  uint8_t rt_index; // 0xFF if not valid (e.g. not an enemy)
+  uint8_t bp_index; // 0xFF if not valid (e.g. not an enemy)
+  const char* enum_name;
+  const char* in_game_name;
+  const char* ultimate_name; // May be null if same as in_game_name
+
+  inline bool valid_in_episode(Episode ep) const {
+    switch (ep) {
+      case Episode::EP1:
+        return (this->flags & Flag::VALID_EP1);
+      case Episode::EP2:
+        return (this->flags & Flag::VALID_EP2);
+      case Episode::EP4:
+        return (this->flags & Flag::VALID_EP4);
+      default:
+        throw std::logic_error("invalid episode number");
+    }
+  }
+  inline bool is_rare() const {
+    return (this->flags & Flag::IS_RARE);
+  }
+  EnemyType rare_type(Episode episode, uint8_t event, uint8_t floor) const;
+};
+
+const EnemyTypeDefinition& type_definition_for_enemy(EnemyType type);
 
 template <>
 const char* phosg::name_for_enum<EnemyType>(EnemyType type);
 template <>
 EnemyType phosg::enum_for_name<EnemyType>(const char* name);
 
-bool enemy_type_valid_for_episode(Episode episode, EnemyType enemy_type);
-uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type);
-uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type);
 const std::vector<EnemyType>& enemy_types_for_rare_table_index(Episode episode, uint8_t rt_index);
-bool enemy_type_is_rare(EnemyType type);
-EnemyType rare_type_for_enemy_type(EnemyType base_type, Episode episode, uint8_t event, uint8_t floor);

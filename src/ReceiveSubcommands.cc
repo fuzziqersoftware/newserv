@@ -2808,7 +2808,7 @@ DropReconcileResult reconcile_drop_request_with_map(
       res.ene_st = map->enemy_state_for_index(version, cmd.floor, cmd.entity_index);
       EnemyType type = res.ene_st->type(version, episode, event);
       log.info("Drop check for E-%03zX %s", res.ene_st->e_id, phosg::name_for_enum(type));
-      res.effective_rt_index = rare_table_index_for_enemy_type(type);
+      res.effective_rt_index = type_definition_for_enemy(type).rt_index;
       // rt_indexes in Episode 4 don't match those sent in the command; we just
       // ignore what the client sends.
       if ((episode != Episode::EP4) && (cmd.rt_index != res.effective_rt_index)) {
@@ -3106,7 +3106,7 @@ static void on_set_quest_flag(shared_ptr<Client> c, uint8_t command, uint8_t fla
             {
                 {0x60, 0x06, 0x0000},
                 static_cast<uint8_t>(c->floor),
-                rare_table_index_for_enemy_type(boss_enemy_type),
+                type_definition_for_enemy(boss_enemy_type).rt_index,
                 enemy_index == 0xFFFF ? 0x0B4F : enemy_index,
                 pos,
                 2,
@@ -3758,7 +3758,7 @@ static uint32_t base_exp_for_enemy_type(
   for (const auto& episode : episode_order) {
     try {
       const auto& bp_table = bp_index->get_table(is_solo, episode);
-      uint32_t bp_index = battle_param_index_for_enemy_type(episode, enemy_type);
+      uint32_t bp_index = type_definition_for_enemy(enemy_type).bp_index;
       return bp_table.stats[difficulty][bp_index].experience;
     } catch (const out_of_range&) {
     }

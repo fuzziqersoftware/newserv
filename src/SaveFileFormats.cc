@@ -1161,7 +1161,7 @@ PSOBBCharacterFile::operator PSOXBCharacterFileCharacter() const {
   return ret;
 }
 
-LoadedPSOCHARFile load_psochar(const string& filename, bool load_system) {
+PSOCHARFile::LoadSharedResult PSOCHARFile::load_shared(const string& filename, bool load_system) {
   auto f = phosg::fopen_unique(filename, "rb");
   auto header = phosg::freadx<PSOCommandHeaderBB>(f.get());
   if (header.size != 0x399C) {
@@ -1175,7 +1175,7 @@ LoadedPSOCHARFile load_psochar(const string& filename, bool load_system) {
   }
   static_assert(sizeof(PSOBBCharacterFile) + sizeof(PSOBBBaseSystemFile) + sizeof(PSOBBTeamMembership) == 0x3994, ".psochar size is incorrect");
 
-  LoadedPSOCHARFile ret;
+  LoadSharedResult ret;
   ret.character_file = make_shared<PSOBBCharacterFile>(phosg::freadx<PSOBBCharacterFile>(f.get()));
   if (load_system) {
     ret.system_file = make_shared<PSOBBBaseSystemFile>(phosg::freadx<PSOBBBaseSystemFile>(f.get()));
@@ -1183,7 +1183,7 @@ LoadedPSOCHARFile load_psochar(const string& filename, bool load_system) {
   return ret;
 }
 
-void save_psochar(
+void PSOCHARFile::save(
     const std::string& filename,
     std::shared_ptr<const PSOBBBaseSystemFile> system,
     std::shared_ptr<const PSOBBCharacterFile> character) {

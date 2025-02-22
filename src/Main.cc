@@ -1456,23 +1456,25 @@ Action a_disassemble_quest_map(
       if (!args.get<bool>("decompressed")) {
         *data = prs_decompress(*data);
       }
-      string result = MapFile(data).disassemble();
+      bool reassembly = args.get<bool>("reassembly");
+      string result = MapFile(data).disassemble(reassembly);
       write_output_data(args, result.data(), result.size(), "txt");
     });
 Action a_disassemble_free_map(
     "disassemble-free-map", "\
   disassemble-free-map INPUT-FILENAME [OUTPUT-FILENAME]\n\
     Disassemble the input free-play map (.dat or .evt file) into a text\n\
-    representation of the data it contains. Unlike othe disassembly actions,\n\
+    representation of the data it contains. Unlike other disassembly actions,\n\
     this action expects its input to be already decompressed. If the input is\n\
     compressed, use the --compressed option. Also unlike other options, the\n\
     input must be from a file (that is, INPUT-FILENAME is required and cannot\n\
     be \"-\").\n",
     +[](phosg::Arguments& args) {
       const string& input_filename = args.get<string>(1, true);
-      bool is_events = phosg::ends_with(input_filename, ".evt");
-      bool is_enemies = phosg::ends_with(input_filename, "e.dat") || phosg::ends_with(input_filename, "e_s.dat") || phosg::ends_with(input_filename, "e_c1.dat") || phosg::ends_with(input_filename, "e_d.dat");
-      bool is_objects = phosg::ends_with(input_filename, "o.dat") || phosg::ends_with(input_filename, "o_s.dat") || phosg::ends_with(input_filename, "o_c1.dat") || phosg::ends_with(input_filename, "o_d.dat");
+      string input_filename_lower = phosg::tolower(input_filename);
+      bool is_events = phosg::ends_with(input_filename_lower, ".evt");
+      bool is_enemies = phosg::ends_with(input_filename_lower, "e.dat") || phosg::ends_with(input_filename_lower, "e_s.dat") || phosg::ends_with(input_filename_lower, "e_c1.dat") || phosg::ends_with(input_filename_lower, "e_d.dat");
+      bool is_objects = phosg::ends_with(input_filename_lower, "o.dat") || phosg::ends_with(input_filename_lower, "o_s.dat") || phosg::ends_with(input_filename_lower, "o_c1.dat") || phosg::ends_with(input_filename_lower, "o_d.dat");
       if (!is_objects && !is_enemies && !is_events) {
         throw runtime_error("cannot determine input file type");
       }
@@ -1483,13 +1485,14 @@ Action a_disassemble_free_map(
       }
 
       uint8_t floor = args.get<uint8_t>("floor", 0);
+      bool reassembly = args.get<bool>("reassembly");
       string result;
       if (is_objects) {
-        result = MapFile(floor, data, nullptr, nullptr).disassemble();
+        result = MapFile(floor, data, nullptr, nullptr).disassemble(reassembly);
       } else if (is_enemies) {
-        result = MapFile(floor, nullptr, data, nullptr).disassemble();
+        result = MapFile(floor, nullptr, data, nullptr).disassemble(reassembly);
       } else if (is_events) {
-        result = MapFile(floor, nullptr, nullptr, data).disassemble();
+        result = MapFile(floor, nullptr, nullptr, data).disassemble(reassembly);
       } else {
         throw logic_error("unhandled input type");
       }
@@ -1867,7 +1870,7 @@ Action a_download_files(
       }
       shared_ptr<struct event_base> base(event_base_new(), event_base_free);
       auto remote = phosg::make_sockaddr_storage(phosg::parse_netloc(args.get<string>(1))).first;
-      auto character = load_psochar(args.get<string>("character", true), false).character_file;
+      auto character = PSOCHARFile::load_shared(args.get<string>("character", true), false).character_file;
       auto ship_menu_selections_str = args.get<string>("ship-menu-selections", false);
 
       unordered_set<string> ship_menu_selections;
@@ -1924,11 +1927,10 @@ Action a_convert_rare_item_set(
       .gslb (PSO GC big-endian GSL archive)\n\
       .afs (PSO V2 little-endian AFS archive)\n\
       .rel (Schtserv rare table; cannot be used in output filename)\n\
+      .html (HTML rare table; cannot be used in input filename)\n\
     If the --multiply=X option is given, multiplies all drop rates by X (given\n\
     as a decimal value).\n",
     +[](phosg::Arguments& args) {
-      auto version = get_cli_version(args);
-
       double rate_factor = args.get<double>("multiply", 1.0);
       auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
@@ -1942,17 +1944,18 @@ Action a_convert_rare_item_set(
         throw runtime_error("input filename must be given");
       }
 
+      string input_filename_lower = phosg::tolower(input_filename);
       auto data = make_shared<string>(read_input_data(args));
       shared_ptr<RareItemSet> rs;
-      if (phosg::ends_with(input_filename, ".json")) {
-        rs = make_shared<RareItemSet>(phosg::JSON::parse(*data), s->item_name_index_opt(version));
-      } else if (phosg::ends_with(input_filename, ".gsl")) {
+      if (phosg::ends_with(input_filename_lower, ".json")) {
+        rs = make_shared<RareItemSet>(phosg::JSON::parse(*data), s->item_name_index_opt(get_cli_version(args, Version::BB_V4)));
+      } else if (phosg::ends_with(input_filename_lower, ".gsl")) {
         rs = make_shared<RareItemSet>(GSLArchive(data, false), false);
-      } else if (phosg::ends_with(input_filename, ".gslb")) {
+      } else if (phosg::ends_with(input_filename_lower, ".gslb")) {
         rs = make_shared<RareItemSet>(GSLArchive(data, true), true);
-      } else if (phosg::ends_with(input_filename, ".afs")) {
-        rs = make_shared<RareItemSet>(AFSArchive(data), is_v1(version));
-      } else if (phosg::ends_with(input_filename, ".rel")) {
+      } else if (phosg::ends_with(input_filename_lower, ".afs")) {
+        rs = make_shared<RareItemSet>(AFSArchive(data), is_v1(get_cli_version(args, Version::DC_V2)));
+      } else if (phosg::ends_with(input_filename_lower, ".rel")) {
         rs = make_shared<RareItemSet>(*data, true);
       } else {
         throw runtime_error("cannot determine input format; use a filename ending with .json, .gsl, .gslb, .afs, or .rel");
@@ -1963,22 +1966,38 @@ Action a_convert_rare_item_set(
       }
 
       string output_filename = args.get<string>(2, false);
+      string output_filename_lower = phosg::tolower(output_filename);
       if (output_filename.empty() || (output_filename == "-")) {
-        rs->print_all_collections(stdout, s->item_name_index_opt(version));
-      } else if (phosg::ends_with(output_filename, ".json")) {
-        auto json = rs->json(s->item_name_index_opt(version));
+        rs->print_all_collections(stdout, s->item_name_index_opt(get_cli_version(args, Version::BB_V4)));
+      } else if (phosg::ends_with(output_filename_lower, ".json")) {
+        auto json = rs->json(s->item_name_index_opt(get_cli_version(args, Version::BB_V4)));
         string data = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::HEX_INTEGERS | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
         write_output_data(args, data.data(), data.size(), nullptr);
-      } else if (phosg::ends_with(output_filename, ".gsl")) {
+      } else if (phosg::ends_with(output_filename_lower, ".gsl")) {
         string data = rs->serialize_gsl(args.get<bool>("big-endian"));
         write_output_data(args, data.data(), data.size(), nullptr);
-      } else if (phosg::ends_with(output_filename, ".gslb")) {
+      } else if (phosg::ends_with(output_filename_lower, ".gslb")) {
         string data = rs->serialize_gsl(true);
         write_output_data(args, data.data(), data.size(), nullptr);
-      } else if (phosg::ends_with(output_filename, ".afs")) {
-        bool is_v1 = ::is_v1(get_cli_version(args, Version::GC_V3));
+      } else if (phosg::ends_with(output_filename_lower, ".afs")) {
+        bool is_v1 = ::is_v1(get_cli_version(args, Version::DC_V2));
         string data = rs->serialize_afs(is_v1);
         write_output_data(args, data.data(), data.size(), nullptr);
+      } else if (phosg::ends_with(output_filename_lower, ".html")) {
+        bool is_v1 = ::is_v1(get_cli_version(args, Version::BB_V4));
+        static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
+        for (GameMode mode : modes) {
+          static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
+          for (Episode episode : episodes) {
+            for (size_t difficulty = 0; difficulty < (is_v1 ? 3 : 4); difficulty++) {
+              auto item_name_index = s->item_name_index(get_cli_version(args, Version::BB_V4));
+              string data = rs->serialize_html(mode, episode, difficulty, item_name_index);
+              string out_filename = output_filename.substr(0, output_filename.size() - 5) + "." + name_for_mode(mode) + "." + name_for_episode(episode) + "." + name_for_difficulty(difficulty) + output_filename.substr(output_filename.size() - 5);
+              phosg::save_file(out_filename, data);
+              phosg::log_info("... %s", out_filename.c_str());
+            }
+          }
+        }
       } else {
         throw runtime_error("cannot determine output format; use a filename ending with .json, .gsl, .gslb, or .afs");
       }

@@ -784,7 +784,7 @@ void Client::load_all_files() {
     if (this->character_data) {
       player_data_log.info("Using loaded character file %s", char_filename.c_str());
     } else if (phosg::isfile(char_filename)) {
-      auto psochar = load_psochar(char_filename, !this->system_data);
+      auto psochar = PSOCHARFile::load_shared(char_filename, !this->system_data);
       this->character_data = psochar.character_file;
       files_manager->set_character(char_filename, this->character_data);
       player_data_log.info("Loaded character data from %s", char_filename.c_str());
@@ -966,7 +966,7 @@ void Client::save_character_file(
     const string& filename,
     shared_ptr<const PSOBBBaseSystemFile> system,
     shared_ptr<const PSOBBCharacterFile> character) {
-  save_psochar(filename, system, character);
+  PSOCHARFile::save(filename, system, character);
   player_data_log.info("Saved character file %s", filename.c_str());
 }
 
@@ -1008,7 +1008,7 @@ void Client::save_guild_card_file() const {
 
 void Client::load_backup_character(uint32_t account_id, size_t index) {
   string filename = this->backup_character_filename(account_id, index, false);
-  this->character_data = load_psochar(filename, false).character_file;
+  this->character_data = PSOCHARFile::load_shared(filename, false).character_file;
   this->update_character_data_after_load(this->character_data);
   this->v1_v2_last_reported_disp.reset();
 }
@@ -1096,7 +1096,7 @@ void Client::use_character_bank(int8_t index) {
       this->external_bank_character_index = index;
       player_data_log.info("Using loaded character file %s for external bank", filename.c_str());
     } else if (phosg::isfile(filename)) {
-      this->external_bank_character = load_psochar(filename, false).character_file;
+      this->external_bank_character = PSOCHARFile::load_shared(filename, false).character_file;
       this->update_character_data_after_load(this->external_bank_character);
       this->external_bank_character_index = index;
       files_manager->set_character(filename, this->external_bank_character);

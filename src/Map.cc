@@ -1678,35 +1678,59 @@ string MapFile::disassemble_action_stream(const void* data, size_t size) {
   return phosg::join(ret, "\n");
 }
 
-string MapFile::disassemble() const {
+string MapFile::disassemble(bool reassembly) const {
   deque<string> ret;
   for (uint8_t floor = 0; floor < this->sections_for_floor.size(); floor++) {
     const auto& sf = this->sections_for_floor[floor];
     phosg::StringReader as_r(sf.event_action_stream, sf.event_action_stream_bytes);
 
     if (sf.object_sets) {
-      ret.emplace_back(phosg::string_printf(".object_sets %hhu /* 0x%zX in file; 0x%zX bytes */",
-          floor, sf.object_sets_file_offset, sf.object_sets_file_size));
+      if (reassembly) {
+        ret.emplace_back(phosg::string_printf(".object_sets %hhu", floor));
+      } else {
+        ret.emplace_back(phosg::string_printf(".object_sets %hhu /* 0x%zX in file; 0x%zX bytes */",
+            floor, sf.object_sets_file_offset, sf.object_sets_file_size));
+      }
       for (size_t z = 0; z < sf.object_set_count; z++) {
-        size_t k_id = z + sf.first_object_set_index;
-        ret.emplace_back(phosg::string_printf("/* K-%03zX */ ", k_id) + sf.object_sets[z].str());
+        if (reassembly) {
+          ret.emplace_back(sf.object_sets[z].str());
+        } else {
+          size_t k_id = z + sf.first_object_set_index;
+          ret.emplace_back(phosg::string_printf("/* K-%03zX */ ", k_id) + sf.object_sets[z].str());
+        }
       }
     }
     if (sf.enemy_sets) {
-      ret.emplace_back(phosg::string_printf(".enemy_sets %hhu /* 0x%zX in file; 0x%zX bytes */",
-          floor, sf.enemy_sets_file_offset, sf.enemy_sets_file_size));
+      if (reassembly) {
+        ret.emplace_back(phosg::string_printf(".enemy_sets %hhu", floor));
+      } else {
+        ret.emplace_back(phosg::string_printf(".enemy_sets %hhu /* 0x%zX in file; 0x%zX bytes */",
+            floor, sf.enemy_sets_file_offset, sf.enemy_sets_file_size));
+      }
       for (size_t z = 0; z < sf.enemy_set_count; z++) {
-        size_t s_id = z + sf.first_enemy_set_index;
-        ret.emplace_back(phosg::string_printf("/* S-%03zX */ ", s_id) + sf.enemy_sets[z].str());
+        if (reassembly) {
+          ret.emplace_back(sf.enemy_sets[z].str());
+        } else {
+          size_t s_id = z + sf.first_enemy_set_index;
+          ret.emplace_back(phosg::string_printf("/* S-%03zX */ ", s_id) + sf.enemy_sets[z].str());
+        }
       }
     }
     if (sf.events1) {
-      ret.emplace_back(phosg::string_printf(".events %hhu /* 0x%zX in file; 0x%zX bytes; 0x%zX bytes in action stream */",
-          floor, sf.events_file_offset, sf.events_file_size, sf.event_action_stream_bytes));
+      if (reassembly) {
+        ret.emplace_back(phosg::string_printf(".events %hhu", floor));
+      } else {
+        ret.emplace_back(phosg::string_printf(".events %hhu /* 0x%zX in file; 0x%zX bytes; 0x%zX bytes in action stream */",
+            floor, sf.events_file_offset, sf.events_file_size, sf.event_action_stream_bytes));
+      }
       for (size_t z = 0; z < sf.event_count; z++) {
         const auto& ev = sf.events1[z];
-        size_t w_id = z + sf.first_event_set_index;
-        ret.emplace_back(phosg::string_printf("/* W-%03zX */ ", w_id) + ev.str());
+        if (reassembly) {
+          ret.emplace_back(ev.str());
+        } else {
+          size_t w_id = z + sf.first_event_set_index;
+          ret.emplace_back(phosg::string_printf("/* W-%03zX */ ", w_id) + ev.str());
+        }
         if (ev.action_stream_offset >= sf.event_action_stream_bytes) {
           ret.emplace_back(phosg::string_printf(
               "  // WARNING: Event action stream offset (0x%" PRIX32 ") is outside of this section",
@@ -1717,11 +1741,20 @@ string MapFile::disassemble() const {
       }
     }
     if (sf.events2) {
-      ret.emplace_back(phosg::string_printf(".random_events %hhu /* 0x%zX in file; 0x%zX bytes; 0x%zX bytes in action stream */",
-          floor, sf.events_file_offset, sf.events_file_size, sf.event_action_stream_bytes));
+      if (reassembly) {
+        ret.emplace_back(phosg::string_printf(".random_events %hhu", floor));
+      } else {
+        ret.emplace_back(phosg::string_printf(
+            ".random_events %hhu /* 0x%zX in file; 0x%zX bytes; 0x%zX bytes in action stream */",
+            floor, sf.events_file_offset, sf.events_file_size, sf.event_action_stream_bytes));
+      }
       for (size_t z = 0; z < sf.event_count; z++) {
         const auto& ev = sf.events2[z];
-        ret.emplace_back(phosg::string_printf("/* index %zu */", z) + ev.str());
+        if (reassembly) {
+          ret.emplace_back(ev.str());
+        } else {
+          ret.emplace_back(phosg::string_printf("/* index %zu */", z) + ev.str());
+        }
         if (ev.action_stream_offset >= sf.event_action_stream_bytes) {
           ret.emplace_back(phosg::string_printf(
               "  // WARNING: Event action stream offset (0x%" PRIX32 ") is outside of this section",
@@ -1732,13 +1765,21 @@ string MapFile::disassemble() const {
       }
     }
     if (sf.random_enemy_locations_data) {
-      ret.emplace_back(phosg::string_printf(".random_enemy_locations %hhu /* 0x%zX in file; 0x%zX bytes */",
-          floor, sf.random_enemy_locations_file_offset, sf.random_enemy_locations_file_size));
+      if (reassembly) {
+        ret.emplace_back(phosg::string_printf(".random_enemy_locations %hhu", floor));
+      } else {
+        ret.emplace_back(phosg::string_printf(".random_enemy_locations %hhu /* 0x%zX in file; 0x%zX bytes */",
+            floor, sf.random_enemy_locations_file_offset, sf.random_enemy_locations_file_size));
+      }
       ret.emplace_back(phosg::format_data(sf.random_enemy_locations_data, sf.random_enemy_locations_data_size));
     }
     if (sf.random_enemy_definitions_data) {
-      ret.emplace_back(phosg::string_printf(".random_enemy_definitions %hhu /* 0x%zX in file; 0x%zX bytes */",
-          floor, sf.random_enemy_definitions_file_offset, sf.random_enemy_definitions_file_size));
+      if (reassembly) {
+        ret.emplace_back(phosg::string_printf(".random_enemy_definitions %hhu", floor));
+      } else {
+        ret.emplace_back(phosg::string_printf(".random_enemy_definitions %hhu /* 0x%zX in file; 0x%zX bytes */",
+            floor, sf.random_enemy_definitions_file_offset, sf.random_enemy_definitions_file_size));
+      }
       ret.emplace_back(phosg::format_data(sf.random_enemy_definitions_data, sf.random_enemy_definitions_data_size));
     }
   }
@@ -2050,7 +2091,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
           add(EnemyType::RAG_RAPPY, is_rare_v123, is_rare_bb);
           break;
         case Episode::EP4:
-          add((floor > 0x05) ? EnemyType::SAND_RAPPY_ALT : EnemyType::SAND_RAPPY, is_rare_v123, is_rare_bb);
+          add((floor > 0x05) ? EnemyType::SAND_RAPPY_DESERT : EnemyType::SAND_RAPPY_CRATER, is_rare_v123, is_rare_bb);
           break;
         default:
           throw logic_error("invalid episode");
@@ -2290,7 +2331,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       if ((episode == Episode::EP2) && (floor > 0x0F)) {
         add(EnemyType::EPSILON);
         default_num_children = 4;
-        child_type = EnemyType::EPSIGUARD;
+        child_type = EnemyType::EPSIGARD;
       } else {
         add((set_entry->uparam1 & 0x01) ? EnemyType::SINOW_ZELE : EnemyType::SINOW_ZOA);
       }
@@ -2303,9 +2344,9 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       break;
     case 0x0111:
       if (floor > 0x05) {
-        add(set_entry->fparam2 ? EnemyType::YOWIE_ALT : EnemyType::SATELLITE_LIZARD_ALT);
+        add(set_entry->fparam2 ? EnemyType::YOWIE_DESERT : EnemyType::SATELLITE_LIZARD_DESERT);
       } else {
-        add(set_entry->fparam2 ? EnemyType::YOWIE : EnemyType::SATELLITE_LIZARD);
+        add(set_entry->fparam2 ? EnemyType::YOWIE_CRATER : EnemyType::SATELLITE_LIZARD_CRATER);
       }
       break;
     case 0x0112: {
@@ -2318,7 +2359,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       break;
     case 0x0114: {
       bool is_rare = (set_entry->uparam1 & 0x01);
-      add((floor > 0x05) ? EnemyType::ZU_ALT : EnemyType::ZU, is_rare, is_rare);
+      add((floor > 0x05) ? EnemyType::ZU_DESERT : EnemyType::ZU_CRATER, is_rare, is_rare);
       break;
     }
     case 0x0115:
@@ -2341,7 +2382,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
     case 0x0119: {
       // TODO: It appears BB doesn't have a way to force Kondrieu to appear via
       // constructor args. Is this true?
-      add((set_entry->uparam1 & 1) ? EnemyType::SHAMBERTIN : EnemyType::SAINT_MILLION);
+      add((set_entry->uparam1 & 1) ? EnemyType::SHAMBERTIN : EnemyType::SAINT_MILION);
       default_num_children = 0x18;
       break;
     }
@@ -3378,8 +3419,8 @@ uint32_t MapState::RareEnemyRates::for_enemy_type(EnemyType type) const {
     case EnemyType::HILDEBEAR:
       return this->hildeblue;
     case EnemyType::RAG_RAPPY:
-    case EnemyType::SAND_RAPPY:
-    case EnemyType::SAND_RAPPY_ALT:
+    case EnemyType::SAND_RAPPY_CRATER:
+    case EnemyType::SAND_RAPPY_DESERT:
       return this->rappy;
     case EnemyType::POISON_LILY:
       return this->nar_lily;
@@ -3389,12 +3430,12 @@ uint32_t MapState::RareEnemyRates::for_enemy_type(EnemyType type) const {
       return this->mericarand;
     case EnemyType::MERISSA_A:
       return this->merissa_aa;
-    case EnemyType::ZU:
-    case EnemyType::ZU_ALT:
+    case EnemyType::ZU_CRATER:
+    case EnemyType::ZU_DESERT:
       return this->pazuzu;
     case EnemyType::DORPHON:
       return this->dorphon_eclair;
-    case EnemyType::SAINT_MILLION:
+    case EnemyType::SAINT_MILION:
     case EnemyType::SHAMBERTIN:
       return this->kondrieu;
     default:
@@ -3643,7 +3684,7 @@ void MapState::index_super_map(const FloorConfig& fc, shared_ptr<PSOLFGEncryptio
         type = ene->type;
     }
 
-    auto rare_type = rare_type_for_enemy_type(type, fc.super_map->get_episode(), this->event, ene->floor);
+    auto rare_type = type_definition_for_enemy(type).rare_type(fc.super_map->get_episode(), this->event, ene->floor);
     if ((type == EnemyType::MERICARAND) || (rare_type != type)) {
       unordered_map<uint32_t, float> det_cache;
       uint32_t bb_rare_rate = this->bb_rare_rates->for_enemy_type(type);

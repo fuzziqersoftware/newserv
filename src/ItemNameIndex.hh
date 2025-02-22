@@ -38,7 +38,7 @@ public:
   inline bool exists(const ItemData& item) const {
     return this->primary_identifier_index.count(item.primary_identifier());
   }
-  std::string describe_item(const ItemData& item, bool include_color_escapes = false) const;
+  std::string describe_item(const ItemData& item, bool include_color_escapes = false, bool hide_mag_stats = false) const;
   ItemData parse_item_description(const std::string& description) const;
 
   void print_table(FILE* stream) const;

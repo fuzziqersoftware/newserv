@@ -9,1096 +9,175 @@
 
 using namespace std;
 
+static constexpr uint8_t EP1 = EnemyTypeDefinition::Flag::VALID_EP1;
+static constexpr uint8_t EP2 = EnemyTypeDefinition::Flag::VALID_EP2;
+static constexpr uint8_t EP4 = EnemyTypeDefinition::Flag::VALID_EP4;
+static constexpr uint8_t RARE = EnemyTypeDefinition::Flag::IS_RARE;
+
+static const vector<EnemyTypeDefinition> type_defs{
+    // clang-format off
+    {EnemyType::UNKNOWN,                 0,                      0xFF, 0xFF, "UNKNOWN",                 "__UNKNOWN__", nullptr},
+    {EnemyType::NONE,                    0,                      0xFF, 0xFF, "NONE",                    "__NONE__", nullptr},
+    {EnemyType::NON_ENEMY_NPC,           EP1 | EP2 | EP4,        0xFF, 0xFF, "NON_ENEMY_NPC",           "__NPC__", nullptr},
+    {EnemyType::AL_RAPPY,                EP1 |             RARE, 0x06, 0x19, "AL_RAPPY",                "Al Rappy", "Pal Rappy"},
+    {EnemyType::ASTARK,                              EP4,        0x41, 0x09, "ASTARK",                  "Astark", nullptr},
+    {EnemyType::BA_BOOTA,                            EP4,        0x4F, 0x03, "BA_BOOTA",                "Ba Boota", nullptr},
+    {EnemyType::BARBA_RAY,                     EP2,              0x49, 0x0F, "BARBA_RAY",               "Barba Ray", nullptr},
+    {EnemyType::BARBAROUS_WOLF,          EP1 | EP2,              0x08, 0x03, "BARBAROUS_WOLF",          "Barbarous Wolf", "Gulgus-gue"},
+    {EnemyType::BEE_L,                   EP1 | EP2,              0xFF, 0xFF, "BEE_L",                   "Bee L", "Gee L"},
+    {EnemyType::BEE_R,                   EP1 | EP2,              0xFF, 0xFF, "BEE_R",                   "Bee R", "Gee R"},
+    {EnemyType::BOOMA,                   EP1,                    0x09, 0x4B, "BOOMA",                   "Booma", "Bartle"},
+    {EnemyType::BOOTA,                               EP4,        0x4D, 0x00, "BOOTA",                   "Boota", nullptr},
+    {EnemyType::BULCLAW,                 EP1,                    0x28, 0x1F, "BULCLAW",                 "Bulclaw", nullptr},
+    {EnemyType::BULK,                    EP1,                    0x27, 0x1F, "BULK",                    "Bulk", nullptr},
+    {EnemyType::CANADINE,                EP1,                    0x1C, 0x07, "CANADINE",                "Canadine", "Canabin"},
+    {EnemyType::CANADINE_GROUP,          EP1,                    0x1C, 0x08, "CANADINE_GROUP",          "Canadine (group)", "Canabin (group)"},
+    {EnemyType::CANANE,                  EP1,                    0x1D, 0x09, "CANANE",                  "Canane", "Canune"},
+    {EnemyType::CHAOS_BRINGER,           EP1,                    0x24, 0x0D, "CHAOS_BRINGER",           "Chaos Bringer", "Dark Bringer"},
+    {EnemyType::CHAOS_SORCERER,          EP1 | EP2,              0x1F, 0x0A, "CHAOS_SORCERER",          "Chaos Sorceror", "Gran Sorceror"},
+    {EnemyType::CLAW,                    EP1,                    0x26, 0x20, "CLAW",                    "Claw", nullptr},
+    {EnemyType::DARK_BELRA,              EP1 | EP2,              0x25, 0x0E, "DARK_BELRA",              "Dark Belra", "Indi Belra"},
+    {EnemyType::DARK_FALZ_1,             EP1,                    0xFF, 0x36, "DARK_FALZ_1",             "Dark Falz (phase 1)", nullptr},
+    {EnemyType::DARK_FALZ_2,             EP1,                    0x2F, 0x37, "DARK_FALZ_2",             "Dark Falz (phase 2)", nullptr},
+    {EnemyType::DARK_FALZ_3,             EP1,                    0x2F, 0x38, "DARK_FALZ_3",             "Dark Falz (phase 3)", nullptr},
+    {EnemyType::DARK_GUNNER,             EP1,                    0x22, 0x1E, "DARK_GUNNER",             "Dark Gunner", nullptr},
+    {EnemyType::DARVANT,                 EP1,                    0xFF, 0x35, "DARVANT",                 "Darvant", nullptr},
+    {EnemyType::DARVANT_ULTIMATE,        EP1,                    0xFF, 0x39, "DARVANT_ULTIMATE",        "Darvant (ultimate)", nullptr},
+    {EnemyType::DE_ROL_LE,               EP1,                    0x2D, 0x0F, "DE_ROL_LE",               "De Rol Le", "Dal Ral Lie"},
+    {EnemyType::DE_ROL_LE_BODY,          EP1,                    0xFF, 0xFF, "DE_ROL_LE_BODY",          "De Rol Le (body)", "Dal Ral Lie (body)"},
+    {EnemyType::DE_ROL_LE_MINE,          EP1,                    0xFF, 0xFF, "DE_ROL_LE_MINE",          "De Rol Le (mine)", "Dal Ral Lie (mine)"},
+    {EnemyType::DEATH_GUNNER,            EP1,                    0x23, 0x1E, "DEATH_GUNNER",            "Death Gunner", nullptr},
+    {EnemyType::DEL_LILY,                      EP2,              0x53, 0x25, "DEL_LILY",                "Del Lily", nullptr},
+    {EnemyType::DEL_RAPPY_CRATER,                    EP4,        0x57, 0x06, "DEL_RAPPY_CRATER",        "Del Rappy (crater)", nullptr},
+    {EnemyType::DEL_RAPPY_DESERT,                    EP4,        0x58, 0x18, "DEL_RAPPY_DESERT",        "Del Rappy (desert)", nullptr},
+    {EnemyType::DELBITER,                      EP2,              0x48, 0x0D, "DELBITER",                "Delbiter", nullptr},
+    {EnemyType::DELDEPTH,                      EP2,              0x47, 0x30, "DELDEPTH",                "Deldepth", nullptr},
+    {EnemyType::DELSABER,                EP1 | EP2,              0x1E, 0x52, "DELSABER",                "Delsaber", nullptr},
+    {EnemyType::DIMENIAN,                EP1 | EP2,              0x29, 0x53, "DIMENIAN",                "Dimenian", "Arlan"},
+    {EnemyType::DOLMDARL,                      EP2,              0x41, 0x50, "DOLMDARL",                "Dolmdarl", nullptr},
+    {EnemyType::DOLMOLM,                       EP2,              0x40, 0x4F, "DOLMOLM",                 "Dolmolm", nullptr},
+    {EnemyType::DORPHON,                             EP4,        0x50, 0x0F, "DORPHON",                 "Dorphon", nullptr},
+    {EnemyType::DORPHON_ECLAIR,                      EP4 | RARE, 0x51, 0x10, "DORPHON_ECLAIR",          "Dorphon Eclair", nullptr},
+    {EnemyType::DRAGON,                  EP1,                    0x2C, 0x12, "DRAGON",                  "Dragon", "Sil Dragon"},
+    {EnemyType::DUBCHIC,                 EP1 | EP2,              0x18, 0x1B, "DUBCHIC",                 "Dubchic", "Dubchich"},
+    {EnemyType::DUBWITCH,                EP1 | EP2,              0xFF, 0xFF, "DUBWITCH",                "Dubwitch", "Duvuik"},
+    {EnemyType::EGG_RAPPY,                     EP2,              0x51, 0x19, "EGG_RAPPY",               "Egg Rappy", nullptr},
+    {EnemyType::EPSIGARD,                      EP2,              0xFF, 0xFF, "EPSIGARD",                "Episgard", nullptr},
+    {EnemyType::EPSILON,                       EP2,              0x54, 0x23, "EPSILON",                 "Epsilon", nullptr},
+    {EnemyType::EVIL_SHARK,              EP1,                    0x10, 0x4F, "EVIL_SHARK",              "Evil Shark", "Vulmer"},
+    {EnemyType::GAEL_OR_GIEL,                  EP2,              0xFF, 0x2E, "GAEL",                    "Gael/Giel", nullptr},
+    {EnemyType::GAL_GRYPHON,                   EP2,              0x4D, 0x1E, "GAL_GRYPHON",             "Gal Gryphon", nullptr},
+    {EnemyType::GARANZ,                  EP1 | EP2,              0x19, 0x1D, "GARANZ",                  "Garanz", "Baranz"},
+    {EnemyType::GEE,                           EP2,              0x36, 0x07, "GEE",                     "Gee", nullptr},
+    {EnemyType::GI_GUE,                        EP2,              0x37, 0x1A, "GI_GUE",                  "Gi Gue", nullptr},
+    {EnemyType::GIBBLES,                       EP2,              0x3D, 0x3D, "GIBBLES",                 "Gibbles", nullptr},
+    {EnemyType::GIGOBOOMA,               EP1,                    0x0B, 0x4D, "GIGOBOOMA",               "Gigobooma", "Tollaw"},
+    {EnemyType::GILLCHIC,                EP1 | EP2,              0x32, 0x1C, "GILLCHIC",                "Gillchic", "Gillchich"},
+    {EnemyType::GIRTABLULU,                          EP4,        0x48, 0x1F, "GIRTABLULU",              "Girtablulu", nullptr},
+    {EnemyType::GOBOOMA,                 EP1,                    0x0A, 0x4C, "GOBOOMA",                 "Gobooma", "Barble"},
+    {EnemyType::GOL_DRAGON,                    EP2,              0x4C, 0x12, "GOL_DRAGON",              "Gol Dragon", nullptr},
+    {EnemyType::GORAN,                               EP4,        0x52, 0x11, "GORAN",                   "Goran", nullptr},
+    {EnemyType::GORAN_DETONATOR,                     EP4,        0x53, 0x13, "GORAN_DETONATOR",         "Goran Detonator", nullptr},
+    {EnemyType::GRASS_ASSASSIN,          EP1 | EP2,              0x0C, 0x4E, "GRASS_ASSASSIN",          "Grass Assassin", "Crimson Assassin"},
+    {EnemyType::GUIL_SHARK,              EP1,                    0x12, 0x51, "GUIL_SHARK",              "Guil Shark", "Melqueek"},
+    {EnemyType::HALLO_RAPPY,                   EP2,              0x50, 0x19, "HALLO_RAPPY",             "Hallo Rappy", nullptr},
+    {EnemyType::HIDOOM,                  EP1 | EP2,              0x17, 0x32, "HIDOOM",                  "Hidoom", nullptr},
+    {EnemyType::HILDEBEAR,               EP1 | EP2,              0x01, 0x49, "HILDEBEAR",               "Hildebear", "Hildelt"},
+    {EnemyType::HILDEBLUE,               EP1 | EP2       | RARE, 0x02, 0x4A, "HILDEBLUE",               "Hildeblue", "Hildetorr"},
+    {EnemyType::ILL_GILL,                      EP2,              0x52, 0x26, "ILL_GILL",                "Ill Gill", nullptr},
+    {EnemyType::KONDRIEU,                            EP4 | RARE, 0x5B, 0x2A, "KONDRIEU",                "Kondrieu", nullptr},
+    {EnemyType::LA_DIMENIAN,             EP1 | EP2,              0x2A, 0x54, "LA_DIMENIAN",             "La Dimenian", "Merlan"},
+    {EnemyType::LOVE_RAPPY,                    EP2,              0x33, 0x19, "LOVE_RAPPY",              "Love Rappy", nullptr},
+    {EnemyType::MERICARAND,                    EP2,              0x38, 0x3A, "MERICARAND",              "Mericarand", nullptr},
+    {EnemyType::MERICAROL,                     EP2,              0x38, 0x3A, "MERICAROL",               "Mericarol", nullptr},
+    {EnemyType::MERICUS,                       EP2       | RARE, 0x3A, 0x46, "MERICUS",                 "Mericus", nullptr},
+    {EnemyType::MERIKLE,                       EP2       | RARE, 0x39, 0x45, "MERIKLE",                 "Merikle", nullptr},
+    {EnemyType::MERILLIA,                      EP2,              0x34, 0x4B, "MERILLIA",                "Merillia", nullptr},
+    {EnemyType::MERILTAS,                      EP2,              0x35, 0x4C, "MERILTAS",                "Meriltas", nullptr},
+    {EnemyType::MERISSA_A,                           EP4,        0x46, 0x19, "MERISSA_A",               "Merissa A", nullptr},
+    {EnemyType::MERISSA_AA,                          EP4 | RARE, 0x47, 0x1A, "MERISSA_AA",              "Merissa AA", nullptr},
+    {EnemyType::MIGIUM,                  EP1 | EP2,              0x16, 0x33, "MIGIUM",                  "Migium", nullptr},
+    {EnemyType::MONEST,                  EP1 | EP2,              0x04, 0x01, "MONEST",                  "Monest", "Mothvist"},
+    {EnemyType::MORFOS,                        EP2,              0x42, 0x40, "MORFOS",                  "Morfos", nullptr},
+    {EnemyType::MOTHMANT,                EP1 | EP2,              0x03, 0x00, "MOTHMANT",                "Mothmant", "Mothvert"},
+    {EnemyType::NANO_DRAGON,             EP1,                    0x0F, 0x1A, "NANO_DRAGON",             "Nano Dragon", nullptr},
+    {EnemyType::NAR_LILY,                EP1 | EP2       | RARE, 0x0E, 0x05, "NAR_LILY",                "Nar Lily", "Mil Lily"},
+    {EnemyType::OLGA_FLOW_1,                   EP2,              0xFF, 0x2B, "OLGA_FLOW_1",             "Olga Flow (phase 1)", nullptr},
+    {EnemyType::OLGA_FLOW_2,                   EP2,              0x4E, 0x2C, "OLGA_FLOW_2",             "Olga Flow (phase 2)", nullptr},
+    {EnemyType::PAL_SHARK,               EP1,                    0x11, 0x50, "PAL_SHARK",               "Pal Shark", "Govulmer"},
+    {EnemyType::PAN_ARMS,                EP1 | EP2,              0x15, 0x31, "PAN_ARMS",                "Pan Arms", nullptr},
+    {EnemyType::PAZUZU_CRATER,                       EP4 | RARE, 0x4B, 0x08, "PAZUZU_CRATER",           "Pazuzu (crater)", nullptr},
+    {EnemyType::PAZUZU_DESERT,                       EP4 | RARE, 0x4C, 0x1C, "PAZUZU_DESERT",           "Pazuzu (desert)", nullptr},
+    {EnemyType::PIG_RAY,                       EP2,              0xFF, 0xFF, "PIG_RAY",                 "Pig Ray", nullptr},
+    {EnemyType::POFUILLY_SLIME,          EP1,                    0x13, 0x30, "POFUILLY_SLIME",          "Pofuilly Slime", nullptr},
+    {EnemyType::POUILLY_SLIME,           EP1             | RARE, 0x14, 0x2F, "POUILLY_SLIME",           "Pouilly Slime", nullptr},
+    {EnemyType::POISON_LILY,             EP1 | EP2,              0x0D, 0x04, "POISON_LILY",             "Poison Lily", "Ob Lily"},
+    {EnemyType::PYRO_GORAN,                          EP4,        0x54, 0x12, "PYRO_GORAN",              "Pyro Goran", nullptr},
+    {EnemyType::RAG_RAPPY,               EP1 | EP2,              0x05, 0x18, "RAG_RAPPY",               "Rag Rappy", "El Rappy"},
+    {EnemyType::RECOBOX,                       EP2,              0x43, 0x41, "RECOBOX",                 "Recobox", nullptr},
+    {EnemyType::RECON,                         EP2,              0x44, 0x42, "RECON",                   "Recon", nullptr},
+    {EnemyType::SAINT_MILION,                        EP4,        0x59, 0x22, "SAINT_MILION",            "Saint-Milion", nullptr},
+    {EnemyType::SAINT_RAPPY,                   EP2,              0x4F, 0x19, "SAINT_RAPPY",             "Saint Rappy", nullptr},
+    {EnemyType::SAND_RAPPY_CRATER,                   EP4,        0x55, 0x05, "SAND_RAPPY_CRATER",       "Sand Rappy (crater)", nullptr},
+    {EnemyType::SAND_RAPPY_DESERT,                   EP4,        0x56, 0x17, "SAND_RAPPY_DESERT",       "Sand Rappy (desert)", nullptr},
+    {EnemyType::SATELLITE_LIZARD_CRATER,             EP4,        0x44, 0x0D, "SATELLITE_LIZARD_CRATER", "Satellite Lizard (crater)", nullptr},
+    {EnemyType::SATELLITE_LIZARD_DESERT,             EP4,        0x45, 0x1D, "SATELLITE_LIZARD_DESERT", "Satellite Lizard (desert)", nullptr},
+    {EnemyType::SAVAGE_WOLF,             EP1 | EP2,              0x07, 0x02, "SAVAGE_WOLF",             "Savage Wolf", "Gulgus"},
+    {EnemyType::SHAMBERTIN,                          EP4,        0x5A, 0x26, "SHAMBERTIN",              "Shambertin", nullptr},
+    {EnemyType::SINOW_BEAT,              EP1,                    0x1A, 0x06, "SINOW_BEAT",              "Sinow Beat", "Sinow Blue"},
+    {EnemyType::SINOW_BERILL,                  EP2,              0x3E, 0x06, "SINOW_BERILL",            "Sinow Berill", nullptr},
+    {EnemyType::SINOW_GOLD,              EP1,                    0x1B, 0x13, "SINOW_GOLD",              "Sinow Gold", "Sinow Red"},
+    {EnemyType::SINOW_SPIGELL,                 EP2,              0x3F, 0x13, "SINOW_SPIGELL",           "Sinow Spigell", nullptr},
+    {EnemyType::SINOW_ZELE,                    EP2,              0x46, 0x44, "SINOW_ZELE",              "Sinow Zele", nullptr},
+    {EnemyType::SINOW_ZOA,                     EP2,              0x45, 0x43, "SINOW_ZOA",               "Sinow Zoa", nullptr},
+    {EnemyType::SO_DIMENIAN,             EP1 | EP2,              0x2B, 0x55, "SO_DIMENIAN",             "So Dimenian", "Del-D"},
+    {EnemyType::UL_GIBBON,                     EP2,              0x3B, 0x3B, "UL_GIBBON",               "Ul Gibbon", nullptr},
+    {EnemyType::VOL_OPT_1,               EP1,                    0xFF, 0xFF, "VOL_OPT_1",               "Vol Opt (phase 1)", "Vol Opt ver.2 (phase 1)"},
+    {EnemyType::VOL_OPT_2,               EP1,                    0x2E, 0x25, "VOL_OPT_2",               "Vol Opt (phase 2)", "Vol Opt ver.2 (phase 2)"},
+    {EnemyType::VOL_OPT_AMP,             EP1,                    0xFF, 0xFF, "VOL_OPT_AMP",             "Vol Opt (amp)", "Vol Opt ver.2 (amp)"},
+    {EnemyType::VOL_OPT_CORE,            EP1,                    0xFF, 0xFF, "VOL_OPT_CORE",            "Vol Opt (core)", "Vol Opt ver.2 (core)"},
+    {EnemyType::VOL_OPT_MONITOR,         EP1,                    0xFF, 0xFF, "VOL_OPT_MONITOR",         "Vol Opt (monitor)", "Vol Opt ver.2 (monitor)"},
+    {EnemyType::VOL_OPT_PILLAR,          EP1,                    0xFF, 0xFF, "VOL_OPT_PILLAR",          "Vol Opt (pillar)", "Vol Opt ver.2 (pillar)"},
+    {EnemyType::YOWIE_CRATER,                        EP4,        0x42, 0x0E, "YOWIE_CRATER",            "Yowie (crater)", nullptr},
+    {EnemyType::YOWIE_DESERT,                        EP4,        0x43, 0x1E, "YOWIE_DESERT",            "Yowie (desert)", nullptr},
+    {EnemyType::ZE_BOOTA,                            EP4,        0x4E, 0x01, "ZE_BOOTA",                "Ze Boota", nullptr},
+    {EnemyType::ZOL_GIBBON,                    EP2,              0x3C, 0x3C, "ZOL_GIBBON",              "Zol Gibbon", nullptr},
+    {EnemyType::ZU_CRATER,                           EP4,        0x49, 0x07, "ZU_CRATER",               "Zu (crater)", nullptr},
+    {EnemyType::ZU_DESERT,                           EP4,        0x4A, 0x1B, "ZU_DESERT",               "Zu (desert)", nullptr},
+    // clang-format on
+};
+
+const EnemyTypeDefinition& type_definition_for_enemy(EnemyType type) {
+  return type_defs.at(static_cast<size_t>(type));
+}
+
 template <>
 const char* phosg::name_for_enum<EnemyType>(EnemyType type) {
-  switch (type) {
-    case EnemyType::UNKNOWN:
-      return "UNKNOWN";
-    case EnemyType::NONE:
-      return "NONE";
-    case EnemyType::NON_ENEMY_NPC:
-      return "NON_ENEMY_NPC";
-    case EnemyType::AL_RAPPY:
-      return "AL_RAPPY";
-    case EnemyType::ASTARK:
-      return "ASTARK";
-    case EnemyType::BA_BOOTA:
-      return "BA_BOOTA";
-    case EnemyType::BARBA_RAY:
-      return "BARBA_RAY";
-    case EnemyType::BARBAROUS_WOLF:
-      return "BARBAROUS_WOLF";
-    case EnemyType::BEE_L:
-      return "BEE_L";
-    case EnemyType::BEE_R:
-      return "BEE_R";
-    case EnemyType::BOOMA:
-      return "BOOMA";
-    case EnemyType::BOOTA:
-      return "BOOTA";
-    case EnemyType::BULCLAW:
-      return "BULCLAW";
-    case EnemyType::BULK:
-      return "BULK";
-    case EnemyType::CANADINE:
-      return "CANADINE";
-    case EnemyType::CANADINE_GROUP:
-      return "CANADINE_GROUP";
-    case EnemyType::CANANE:
-      return "CANANE";
-    case EnemyType::CHAOS_BRINGER:
-      return "CHAOS_BRINGER";
-    case EnemyType::CHAOS_SORCERER:
-      return "CHAOS_SORCERER";
-    case EnemyType::CLAW:
-      return "CLAW";
-    case EnemyType::DARK_BELRA:
-      return "DARK_BELRA";
-    case EnemyType::DARK_FALZ_1:
-      return "DARK_FALZ_1";
-    case EnemyType::DARK_FALZ_2:
-      return "DARK_FALZ_2";
-    case EnemyType::DARK_FALZ_3:
-      return "DARK_FALZ_3";
-    case EnemyType::DARK_GUNNER:
-      return "DARK_GUNNER";
-    case EnemyType::DARVANT:
-      return "DARVANT";
-    case EnemyType::DARVANT_ULTIMATE:
-      return "DARVANT_ULTIMATE";
-    case EnemyType::DE_ROL_LE:
-      return "DE_ROL_LE";
-    case EnemyType::DE_ROL_LE_BODY:
-      return "DE_ROL_LE_BODY";
-    case EnemyType::DE_ROL_LE_MINE:
-      return "DE_ROL_LE_MINE";
-    case EnemyType::DEATH_GUNNER:
-      return "DEATH_GUNNER";
-    case EnemyType::DEL_LILY:
-      return "DEL_LILY";
-    case EnemyType::DEL_RAPPY:
-      return "DEL_RAPPY";
-    case EnemyType::DEL_RAPPY_ALT:
-      return "DEL_RAPPY_ALT";
-    case EnemyType::DELBITER:
-      return "DELBITER";
-    case EnemyType::DELDEPTH:
-      return "DELDEPTH";
-    case EnemyType::DELSABER:
-      return "DELSABER";
-    case EnemyType::DIMENIAN:
-      return "DIMENIAN";
-    case EnemyType::DOLMDARL:
-      return "DOLMDARL";
-    case EnemyType::DOLMOLM:
-      return "DOLMOLM";
-    case EnemyType::DORPHON:
-      return "DORPHON";
-    case EnemyType::DORPHON_ECLAIR:
-      return "DORPHON_ECLAIR";
-    case EnemyType::DRAGON:
-      return "DRAGON";
-    case EnemyType::DUBCHIC:
-      return "DUBCHIC";
-    case EnemyType::DUBWITCH:
-      return "DUBWITCH";
-    case EnemyType::EGG_RAPPY:
-      return "EGG_RAPPY";
-    case EnemyType::EPSIGUARD:
-      return "EPSIGUARD";
-    case EnemyType::EPSILON:
-      return "EPSILON";
-    case EnemyType::EVIL_SHARK:
-      return "EVIL_SHARK";
-    case EnemyType::GAEL:
-      return "GAEL";
-    case EnemyType::GAL_GRYPHON:
-      return "GAL_GRYPHON";
-    case EnemyType::GARANZ:
-      return "GARANZ";
-    case EnemyType::GEE:
-      return "GEE";
-    case EnemyType::GI_GUE:
-      return "GI_GUE";
-    case EnemyType::GIBBLES:
-      return "GIBBLES";
-    case EnemyType::GIGOBOOMA:
-      return "GIGOBOOMA";
-    case EnemyType::GILLCHIC:
-      return "GILLCHIC";
-    case EnemyType::GIRTABLULU:
-      return "GIRTABLULU";
-    case EnemyType::GOBOOMA:
-      return "GOBOOMA";
-    case EnemyType::GOL_DRAGON:
-      return "GOL_DRAGON";
-    case EnemyType::GORAN:
-      return "GORAN";
-    case EnemyType::GORAN_DETONATOR:
-      return "GORAN_DETONATOR";
-    case EnemyType::GRASS_ASSASSIN:
-      return "GRASS_ASSASSIN";
-    case EnemyType::GUIL_SHARK:
-      return "GUIL_SHARK";
-    case EnemyType::HALLO_RAPPY:
-      return "HALLO_RAPPY";
-    case EnemyType::HIDOOM:
-      return "HIDOOM";
-    case EnemyType::HILDEBEAR:
-      return "HILDEBEAR";
-    case EnemyType::HILDEBLUE:
-      return "HILDEBLUE";
-    case EnemyType::ILL_GILL:
-      return "ILL_GILL";
-    case EnemyType::KONDRIEU:
-      return "KONDRIEU";
-    case EnemyType::LA_DIMENIAN:
-      return "LA_DIMENIAN";
-    case EnemyType::LOVE_RAPPY:
-      return "LOVE_RAPPY";
-    case EnemyType::MERICAROL:
-      return "MERICAROL";
-    case EnemyType::MERICARAND:
-      return "MERICARAND";
-    case EnemyType::MERICUS:
-      return "MERICUS";
-    case EnemyType::MERIKLE:
-      return "MERIKLE";
-    case EnemyType::MERILLIA:
-      return "MERILLIA";
-    case EnemyType::MERILTAS:
-      return "MERILTAS";
-    case EnemyType::MERISSA_A:
-      return "MERISSA_A";
-    case EnemyType::MERISSA_AA:
-      return "MERISSA_AA";
-    case EnemyType::MIGIUM:
-      return "MIGIUM";
-    case EnemyType::MONEST:
-      return "MONEST";
-    case EnemyType::MORFOS:
-      return "MORFOS";
-    case EnemyType::MOTHMANT:
-      return "MOTHMANT";
-    case EnemyType::NANO_DRAGON:
-      return "NANO_DRAGON";
-    case EnemyType::NAR_LILY:
-      return "NAR_LILY";
-    case EnemyType::OLGA_FLOW_1:
-      return "OLGA_FLOW_1";
-    case EnemyType::OLGA_FLOW_2:
-      return "OLGA_FLOW_2";
-    case EnemyType::PAL_SHARK:
-      return "PAL_SHARK";
-    case EnemyType::PAN_ARMS:
-      return "PAN_ARMS";
-    case EnemyType::PAZUZU:
-      return "PAZUZU";
-    case EnemyType::PAZUZU_ALT:
-      return "PAZUZU_ALT";
-    case EnemyType::PIG_RAY:
-      return "PIG_RAY";
-    case EnemyType::POFUILLY_SLIME:
-      return "POFUILLY_SLIME";
-    case EnemyType::POUILLY_SLIME:
-      return "POUILLY_SLIME";
-    case EnemyType::POISON_LILY:
-      return "POISON_LILY";
-    case EnemyType::PYRO_GORAN:
-      return "PYRO_GORAN";
-    case EnemyType::RAG_RAPPY:
-      return "RAG_RAPPY";
-    case EnemyType::RECOBOX:
-      return "RECOBOX";
-    case EnemyType::RECON:
-      return "RECON";
-    case EnemyType::SAINT_MILLION:
-      return "SAINT_MILLION";
-    case EnemyType::SAINT_RAPPY:
-      return "SAINT_RAPPY";
-    case EnemyType::SAND_RAPPY:
-      return "SAND_RAPPY";
-    case EnemyType::SAND_RAPPY_ALT:
-      return "SAND_RAPPY_ALT";
-    case EnemyType::SATELLITE_LIZARD:
-      return "SATELLITE_LIZARD";
-    case EnemyType::SATELLITE_LIZARD_ALT:
-      return "SATELLITE_LIZARD_ALT";
-    case EnemyType::SAVAGE_WOLF:
-      return "SAVAGE_WOLF";
-    case EnemyType::SHAMBERTIN:
-      return "SHAMBERTIN";
-    case EnemyType::SINOW_BEAT:
-      return "SINOW_BEAT";
-    case EnemyType::SINOW_BERILL:
-      return "SINOW_BERILL";
-    case EnemyType::SINOW_GOLD:
-      return "SINOW_GOLD";
-    case EnemyType::SINOW_SPIGELL:
-      return "SINOW_SPIGELL";
-    case EnemyType::SINOW_ZELE:
-      return "SINOW_ZELE";
-    case EnemyType::SINOW_ZOA:
-      return "SINOW_ZOA";
-    case EnemyType::SO_DIMENIAN:
-      return "SO_DIMENIAN";
-    case EnemyType::UL_GIBBON:
-      return "UL_GIBBON";
-    case EnemyType::VOL_OPT_1:
-      return "VOL_OPT_1";
-    case EnemyType::VOL_OPT_2:
-      return "VOL_OPT_2";
-    case EnemyType::VOL_OPT_AMP:
-      return "VOL_OPT_AMP";
-    case EnemyType::VOL_OPT_CORE:
-      return "VOL_OPT_CORE";
-    case EnemyType::VOL_OPT_MONITOR:
-      return "VOL_OPT_MONITOR";
-    case EnemyType::VOL_OPT_PILLAR:
-      return "VOL_OPT_PILLAR";
-    case EnemyType::YOWIE:
-      return "YOWIE";
-    case EnemyType::YOWIE_ALT:
-      return "YOWIE_ALT";
-    case EnemyType::ZE_BOOTA:
-      return "ZE_BOOTA";
-    case EnemyType::ZOL_GIBBON:
-      return "ZOL_GIBBON";
-    case EnemyType::ZU:
-      return "ZU";
-    case EnemyType::ZU_ALT:
-      return "ZU_ALT";
-    case EnemyType::MAX_ENEMY_TYPE:
-      return "MAX_ENEMY_TYPE";
-    default:
-      throw logic_error("invalid enemy type");
-  }
+  return type_definition_for_enemy(type).enum_name;
 }
 
 template <>
 EnemyType phosg::enum_for_name<EnemyType>(const char* name) {
-  static const unordered_map<string, EnemyType> names({
-      {"UNKNOWN", EnemyType::UNKNOWN},
-      {"NONE", EnemyType::NONE},
-      {"NON_ENEMY_NPC", EnemyType::NON_ENEMY_NPC},
-      {"AL_RAPPY", EnemyType::AL_RAPPY},
-      {"ASTARK", EnemyType::ASTARK},
-      {"BA_BOOTA", EnemyType::BA_BOOTA},
-      {"BARBA_RAY", EnemyType::BARBA_RAY},
-      {"BARBAROUS_WOLF", EnemyType::BARBAROUS_WOLF},
-      {"BEE_L", EnemyType::BEE_L},
-      {"BEE_R", EnemyType::BEE_R},
-      {"BOOMA", EnemyType::BOOMA},
-      {"BOOTA", EnemyType::BOOTA},
-      {"BULCLAW", EnemyType::BULCLAW},
-      {"BULK", EnemyType::BULK},
-      {"CANADINE", EnemyType::CANADINE},
-      {"CANADINE_GROUP", EnemyType::CANADINE_GROUP},
-      {"CANANE", EnemyType::CANANE},
-      {"CHAOS_BRINGER", EnemyType::CHAOS_BRINGER},
-      {"CHAOS_SORCERER", EnemyType::CHAOS_SORCERER},
-      {"CLAW", EnemyType::CLAW},
-      {"DARK_BELRA", EnemyType::DARK_BELRA},
-      {"DARK_FALZ_1", EnemyType::DARK_FALZ_1},
-      {"DARK_FALZ_2", EnemyType::DARK_FALZ_2},
-      {"DARK_FALZ_3", EnemyType::DARK_FALZ_3},
-      {"DARK_GUNNER", EnemyType::DARK_GUNNER},
-      {"DARVANT", EnemyType::DARVANT},
-      {"DARVANT_ULTIMATE", EnemyType::DARVANT_ULTIMATE},
-      {"DE_ROL_LE", EnemyType::DE_ROL_LE},
-      {"DE_ROL_LE_BODY", EnemyType::DE_ROL_LE_BODY},
-      {"DE_ROL_LE_MINE", EnemyType::DE_ROL_LE_MINE},
-      {"DEATH_GUNNER", EnemyType::DEATH_GUNNER},
-      {"DEL_LILY", EnemyType::DEL_LILY},
-      {"DEL_RAPPY", EnemyType::DEL_RAPPY},
-      {"DEL_RAPPY_ALT", EnemyType::DEL_RAPPY_ALT},
-      {"DELBITER", EnemyType::DELBITER},
-      {"DELDEPTH", EnemyType::DELDEPTH},
-      {"DELSABER", EnemyType::DELSABER},
-      {"DIMENIAN", EnemyType::DIMENIAN},
-      {"DOLMDARL", EnemyType::DOLMDARL},
-      {"DOLMOLM", EnemyType::DOLMOLM},
-      {"DORPHON", EnemyType::DORPHON},
-      {"DORPHON_ECLAIR", EnemyType::DORPHON_ECLAIR},
-      {"DRAGON", EnemyType::DRAGON},
-      {"DUBCHIC", EnemyType::DUBCHIC},
-      {"DUBWITCH", EnemyType::DUBWITCH},
-      {"EGG_RAPPY", EnemyType::EGG_RAPPY},
-      {"EPSIGUARD", EnemyType::EPSIGUARD},
-      {"EPSILON", EnemyType::EPSILON},
-      {"EVIL_SHARK", EnemyType::EVIL_SHARK},
-      {"GAEL", EnemyType::GAEL},
-      {"GAL_GRYPHON", EnemyType::GAL_GRYPHON},
-      {"GARANZ", EnemyType::GARANZ},
-      {"GEE", EnemyType::GEE},
-      {"GI_GUE", EnemyType::GI_GUE},
-      {"GIBBLES", EnemyType::GIBBLES},
-      {"GIGOBOOMA", EnemyType::GIGOBOOMA},
-      {"GILLCHIC", EnemyType::GILLCHIC},
-      {"GIRTABLULU", EnemyType::GIRTABLULU},
-      {"GOBOOMA", EnemyType::GOBOOMA},
-      {"GOL_DRAGON", EnemyType::GOL_DRAGON},
-      {"GORAN", EnemyType::GORAN},
-      {"GORAN_DETONATOR", EnemyType::GORAN_DETONATOR},
-      {"GRASS_ASSASSIN", EnemyType::GRASS_ASSASSIN},
-      {"GUIL_SHARK", EnemyType::GUIL_SHARK},
-      {"HALLO_RAPPY", EnemyType::HALLO_RAPPY},
-      {"HIDOOM", EnemyType::HIDOOM},
-      {"HILDEBEAR", EnemyType::HILDEBEAR},
-      {"HILDEBLUE", EnemyType::HILDEBLUE},
-      {"ILL_GILL", EnemyType::ILL_GILL},
-      {"KONDRIEU", EnemyType::KONDRIEU},
-      {"LA_DIMENIAN", EnemyType::LA_DIMENIAN},
-      {"LOVE_RAPPY", EnemyType::LOVE_RAPPY},
-      {"MERICARAND", EnemyType::MERICARAND},
-      {"MERICAROL", EnemyType::MERICAROL},
-      {"MERICUS", EnemyType::MERICUS},
-      {"MERIKLE", EnemyType::MERIKLE},
-      {"MERILLIA", EnemyType::MERILLIA},
-      {"MERILTAS", EnemyType::MERILTAS},
-      {"MERISSA_A", EnemyType::MERISSA_A},
-      {"MERISSA_AA", EnemyType::MERISSA_AA},
-      {"MIGIUM", EnemyType::MIGIUM},
-      {"MONEST", EnemyType::MONEST},
-      {"MORFOS", EnemyType::MORFOS},
-      {"MOTHMANT", EnemyType::MOTHMANT},
-      {"NANO_DRAGON", EnemyType::NANO_DRAGON},
-      {"NAR_LILY", EnemyType::NAR_LILY},
-      {"OLGA_FLOW_1", EnemyType::OLGA_FLOW_1},
-      {"OLGA_FLOW_2", EnemyType::OLGA_FLOW_2},
-      {"PAL_SHARK", EnemyType::PAL_SHARK},
-      {"PAN_ARMS", EnemyType::PAN_ARMS},
-      {"PAZUZU", EnemyType::PAZUZU},
-      {"PAZUZU_ALT", EnemyType::PAZUZU_ALT},
-      {"PIG_RAY", EnemyType::PIG_RAY},
-      {"POFUILLY_SLIME", EnemyType::POFUILLY_SLIME},
-      {"POUILLY_SLIME", EnemyType::POUILLY_SLIME},
-      {"POISON_LILY", EnemyType::POISON_LILY},
-      {"PYRO_GORAN", EnemyType::PYRO_GORAN},
-      {"RAG_RAPPY", EnemyType::RAG_RAPPY},
-      {"RECOBOX", EnemyType::RECOBOX},
-      {"RECON", EnemyType::RECON},
-      {"SAINT_MILLION", EnemyType::SAINT_MILLION},
-      {"SAINT_RAPPY", EnemyType::SAINT_RAPPY},
-      {"SAND_RAPPY", EnemyType::SAND_RAPPY},
-      {"SAND_RAPPY_ALT", EnemyType::SAND_RAPPY_ALT},
-      {"SATELLITE_LIZARD", EnemyType::SATELLITE_LIZARD},
-      {"SATELLITE_LIZARD_ALT", EnemyType::SATELLITE_LIZARD_ALT},
-      {"SAVAGE_WOLF", EnemyType::SAVAGE_WOLF},
-      {"SHAMBERTIN", EnemyType::SHAMBERTIN},
-      {"SINOW_BEAT", EnemyType::SINOW_BEAT},
-      {"SINOW_BERILL", EnemyType::SINOW_BERILL},
-      {"SINOW_GOLD", EnemyType::SINOW_GOLD},
-      {"SINOW_SPIGELL", EnemyType::SINOW_SPIGELL},
-      {"SINOW_ZELE", EnemyType::SINOW_ZELE},
-      {"SINOW_ZOA", EnemyType::SINOW_ZOA},
-      {"SO_DIMENIAN", EnemyType::SO_DIMENIAN},
-      {"UL_GIBBON", EnemyType::UL_GIBBON},
-      {"VOL_OPT_1", EnemyType::VOL_OPT_1},
-      {"VOL_OPT_2", EnemyType::VOL_OPT_2},
-      {"VOL_OPT_AMP", EnemyType::VOL_OPT_AMP},
-      {"VOL_OPT_CORE", EnemyType::VOL_OPT_CORE},
-      {"VOL_OPT_MONITOR", EnemyType::VOL_OPT_MONITOR},
-      {"VOL_OPT_PILLAR", EnemyType::VOL_OPT_PILLAR},
-      {"YOWIE", EnemyType::YOWIE},
-      {"YOWIE_ALT", EnemyType::YOWIE_ALT},
-      {"ZE_BOOTA", EnemyType::ZE_BOOTA},
-      {"ZOL_GIBBON", EnemyType::ZOL_GIBBON},
-      {"ZU", EnemyType::ZU},
-      {"ZU_ALT", EnemyType::ZU_ALT},
-      {"MAX_ENEMY_TYPE", EnemyType::MAX_ENEMY_TYPE},
-  });
-  return names.at(name);
-}
-
-bool enemy_type_valid_for_episode(Episode episode, EnemyType enemy_type) {
-  switch (episode) {
-    case Episode::EP1:
-      switch (enemy_type) {
-        case EnemyType::AL_RAPPY:
-        case EnemyType::BARBAROUS_WOLF:
-        case EnemyType::BOOMA:
-        case EnemyType::BULCLAW:
-        case EnemyType::BULK:
-        case EnemyType::CANADINE_GROUP:
-        case EnemyType::CANADINE:
-        case EnemyType::CANANE:
-        case EnemyType::CHAOS_BRINGER:
-        case EnemyType::CHAOS_SORCERER:
-        case EnemyType::CLAW:
-        case EnemyType::DARK_BELRA:
-        case EnemyType::DARK_FALZ_1:
-        case EnemyType::DARK_FALZ_2:
-        case EnemyType::DARK_FALZ_3:
-        case EnemyType::DARK_GUNNER:
-        case EnemyType::DARVANT_ULTIMATE:
-        case EnemyType::DARVANT:
-        case EnemyType::DE_ROL_LE:
-        case EnemyType::DEATH_GUNNER:
-        case EnemyType::DELSABER:
-        case EnemyType::DIMENIAN:
-        case EnemyType::DRAGON:
-        case EnemyType::DUBCHIC:
-        case EnemyType::EVIL_SHARK:
-        case EnemyType::GARANZ:
-        case EnemyType::GIGOBOOMA:
-        case EnemyType::GILLCHIC:
-        case EnemyType::GOBOOMA:
-        case EnemyType::GRASS_ASSASSIN:
-        case EnemyType::GUIL_SHARK:
-        case EnemyType::HIDOOM:
-        case EnemyType::HILDEBEAR:
-        case EnemyType::HILDEBLUE:
-        case EnemyType::LA_DIMENIAN:
-        case EnemyType::MIGIUM:
-        case EnemyType::MONEST:
-        case EnemyType::MOTHMANT:
-        case EnemyType::NANO_DRAGON:
-        case EnemyType::NAR_LILY:
-        case EnemyType::PAL_SHARK:
-        case EnemyType::PAN_ARMS:
-        case EnemyType::POFUILLY_SLIME:
-        case EnemyType::POISON_LILY:
-        case EnemyType::POUILLY_SLIME:
-        case EnemyType::RAG_RAPPY:
-        case EnemyType::SAVAGE_WOLF:
-        case EnemyType::SINOW_BEAT:
-        case EnemyType::SINOW_GOLD:
-        case EnemyType::SO_DIMENIAN:
-        case EnemyType::VOL_OPT_2:
-          return true;
-        default:
-          return false;
+  static unordered_map<string, EnemyType> index;
+  if (index.empty()) {
+    for (const auto& def : type_defs) {
+      if (!index.emplace(def.enum_name, def.type).second) {
+        throw logic_error(phosg::string_printf("duplicate enemy enum name: %s", def.enum_name));
       }
-    case Episode::EP2:
-      switch (enemy_type) {
-        case EnemyType::BARBA_RAY:
-        case EnemyType::BARBAROUS_WOLF:
-        case EnemyType::CHAOS_SORCERER:
-        case EnemyType::DARK_BELRA:
-        case EnemyType::DEL_LILY:
-        case EnemyType::DELBITER:
-        case EnemyType::DELDEPTH:
-        case EnemyType::DELSABER:
-        case EnemyType::DIMENIAN:
-        case EnemyType::DOLMDARL:
-        case EnemyType::DOLMOLM:
-        case EnemyType::DUBCHIC:
-        case EnemyType::EGG_RAPPY:
-        case EnemyType::EPSILON:
-        case EnemyType::GAEL:
-        case EnemyType::GAL_GRYPHON:
-        case EnemyType::GARANZ:
-        case EnemyType::GEE:
-        case EnemyType::GI_GUE:
-        case EnemyType::GIBBLES:
-        case EnemyType::GILLCHIC:
-        case EnemyType::GOL_DRAGON:
-        case EnemyType::GRASS_ASSASSIN:
-        case EnemyType::HALLO_RAPPY:
-        case EnemyType::HIDOOM:
-        case EnemyType::HILDEBEAR:
-        case EnemyType::HILDEBLUE:
-        case EnemyType::ILL_GILL:
-        case EnemyType::LA_DIMENIAN:
-        case EnemyType::LOVE_RAPPY:
-        case EnemyType::MERICAROL:
-        case EnemyType::MERICARAND:
-        case EnemyType::MERICUS:
-        case EnemyType::MERIKLE:
-        case EnemyType::MERILLIA:
-        case EnemyType::MERILTAS:
-        case EnemyType::MIGIUM:
-        case EnemyType::MONEST:
-        case EnemyType::MORFOS:
-        case EnemyType::MOTHMANT:
-        case EnemyType::NAR_LILY:
-        case EnemyType::OLGA_FLOW_1:
-        case EnemyType::OLGA_FLOW_2:
-        case EnemyType::PAN_ARMS:
-        case EnemyType::POISON_LILY:
-        case EnemyType::RAG_RAPPY:
-        case EnemyType::RECOBOX:
-        case EnemyType::RECON:
-        case EnemyType::SAINT_RAPPY:
-        case EnemyType::SAVAGE_WOLF:
-        case EnemyType::SINOW_BERILL:
-        case EnemyType::SINOW_SPIGELL:
-        case EnemyType::SINOW_ZELE:
-        case EnemyType::SINOW_ZOA:
-        case EnemyType::SO_DIMENIAN:
-        case EnemyType::UL_GIBBON:
-        case EnemyType::ZOL_GIBBON:
-          return true;
-        default:
-          return false;
-      }
-    case Episode::EP4:
-      switch (enemy_type) {
-        case EnemyType::ASTARK:
-        case EnemyType::BA_BOOTA:
-        case EnemyType::BOOTA:
-        case EnemyType::DEL_RAPPY_ALT:
-        case EnemyType::DEL_RAPPY:
-        case EnemyType::DORPHON_ECLAIR:
-        case EnemyType::DORPHON:
-        case EnemyType::GIRTABLULU:
-        case EnemyType::GORAN_DETONATOR:
-        case EnemyType::GORAN:
-        case EnemyType::KONDRIEU:
-        case EnemyType::MERISSA_A:
-        case EnemyType::MERISSA_AA:
-        case EnemyType::PAZUZU_ALT:
-        case EnemyType::PAZUZU:
-        case EnemyType::PYRO_GORAN:
-        case EnemyType::SAINT_MILLION:
-        case EnemyType::SAND_RAPPY_ALT:
-        case EnemyType::SAND_RAPPY:
-        case EnemyType::SATELLITE_LIZARD_ALT:
-        case EnemyType::SATELLITE_LIZARD:
-        case EnemyType::SHAMBERTIN:
-        case EnemyType::YOWIE_ALT:
-        case EnemyType::YOWIE:
-        case EnemyType::ZE_BOOTA:
-        case EnemyType::ZU_ALT:
-        case EnemyType::ZU:
-          return true;
-        default:
-          return false;
-      }
-    default:
-      return false;
+    }
   }
-}
-
-uint8_t battle_param_index_for_enemy_type(Episode episode, EnemyType enemy_type) {
-  switch (episode) {
-    case Episode::EP1:
-      switch (enemy_type) {
-        case EnemyType::MOTHMANT:
-          return 0x00;
-        case EnemyType::MONEST:
-          return 0x01;
-        case EnemyType::SAVAGE_WOLF:
-          return 0x02;
-        case EnemyType::BARBAROUS_WOLF:
-          return 0x03;
-        case EnemyType::POISON_LILY:
-          return 0x04;
-        case EnemyType::NAR_LILY:
-          return 0x05;
-        case EnemyType::SINOW_BEAT:
-          return 0x06;
-        case EnemyType::CANADINE:
-          return 0x07;
-        case EnemyType::CANADINE_GROUP:
-          return 0x08;
-        case EnemyType::CANANE:
-          return 0x09;
-        case EnemyType::CHAOS_SORCERER:
-          return 0x0A;
-        case EnemyType::CHAOS_BRINGER:
-          return 0x0D;
-        case EnemyType::DARK_BELRA:
-          return 0x0E;
-        case EnemyType::DE_ROL_LE:
-          return 0x0F;
-        case EnemyType::DRAGON:
-          return 0x12;
-        case EnemyType::SINOW_GOLD:
-          return 0x13;
-        case EnemyType::RAG_RAPPY:
-          return 0x18;
-        case EnemyType::AL_RAPPY:
-          return 0x19;
-        case EnemyType::NANO_DRAGON:
-          return 0x1A;
-        case EnemyType::DUBCHIC:
-          return 0x1B;
-        case EnemyType::GILLCHIC:
-          return 0x1C;
-        case EnemyType::GARANZ:
-          return 0x1D;
-        case EnemyType::DARK_GUNNER:
-        case EnemyType::DEATH_GUNNER:
-          return 0x1E;
-        case EnemyType::BULCLAW:
-        case EnemyType::BULK:
-          return 0x1F;
-        case EnemyType::CLAW:
-          return 0x20;
-        case EnemyType::VOL_OPT_2:
-          return 0x25;
-        case EnemyType::POFUILLY_SLIME:
-          return 0x30;
-        case EnemyType::POUILLY_SLIME:
-          return 0x2F;
-        case EnemyType::PAN_ARMS:
-          return 0x31;
-        case EnemyType::HIDOOM:
-          return 0x32;
-        case EnemyType::MIGIUM:
-          return 0x33;
-        case EnemyType::DARVANT:
-          return 0x35;
-        case EnemyType::DARVANT_ULTIMATE:
-          return 0x39;
-        case EnemyType::DARK_FALZ_1:
-          return 0x36;
-        case EnemyType::DARK_FALZ_2:
-          return 0x37;
-        case EnemyType::DARK_FALZ_3:
-          return 0x38;
-        case EnemyType::HILDEBEAR:
-          return 0x49;
-        case EnemyType::HILDEBLUE:
-          return 0x4A;
-        case EnemyType::BOOMA:
-          return 0x4B;
-        case EnemyType::GOBOOMA:
-          return 0x4C;
-        case EnemyType::GIGOBOOMA:
-          return 0x4D;
-        case EnemyType::GRASS_ASSASSIN:
-          return 0x4E;
-        case EnemyType::EVIL_SHARK:
-          return 0x4F;
-        case EnemyType::PAL_SHARK:
-          return 0x50;
-        case EnemyType::GUIL_SHARK:
-          return 0x51;
-        case EnemyType::DELSABER:
-          return 0x52;
-        case EnemyType::DIMENIAN:
-          return 0x53;
-        case EnemyType::LA_DIMENIAN:
-          return 0x54;
-        case EnemyType::SO_DIMENIAN:
-          return 0x55;
-        default:
-          throw out_of_range(phosg::string_printf(
-              "%s does not have battle parameters in Episode 1", phosg::name_for_enum(enemy_type)));
-      }
-      break;
-    case Episode::EP2:
-      switch (enemy_type) {
-        case EnemyType::MOTHMANT:
-          return 0x00;
-        case EnemyType::MONEST:
-          return 0x01;
-        case EnemyType::SAVAGE_WOLF:
-          return 0x02;
-        case EnemyType::BARBAROUS_WOLF:
-          return 0x03;
-        case EnemyType::POISON_LILY:
-          return 0x04;
-        case EnemyType::NAR_LILY:
-          return 0x05;
-        case EnemyType::SINOW_BERILL:
-          return 0x06;
-        case EnemyType::GEE:
-          return 0x07;
-        case EnemyType::CHAOS_SORCERER:
-          return 0x0A;
-        case EnemyType::DELBITER:
-          return 0x0D;
-        case EnemyType::DARK_BELRA:
-          return 0x0E;
-        case EnemyType::BARBA_RAY:
-          return 0x0F;
-        case EnemyType::GOL_DRAGON:
-          return 0x12;
-        case EnemyType::SINOW_SPIGELL:
-          return 0x13;
-        case EnemyType::RAG_RAPPY:
-          return 0x18;
-        case EnemyType::LOVE_RAPPY:
-        case EnemyType::SAINT_RAPPY:
-        case EnemyType::EGG_RAPPY:
-        case EnemyType::HALLO_RAPPY:
-          return 0x19;
-        case EnemyType::GI_GUE:
-          return 0x1A;
-        case EnemyType::DUBCHIC:
-          return 0x1B;
-        case EnemyType::GILLCHIC:
-          return 0x1C;
-        case EnemyType::GARANZ:
-          return 0x1D;
-        case EnemyType::GAL_GRYPHON:
-          return 0x1E;
-        case EnemyType::EPSILON:
-          return 0x23;
-        case EnemyType::DEL_LILY:
-          return 0x25;
-        case EnemyType::ILL_GILL:
-          return 0x26;
-        case EnemyType::OLGA_FLOW_1:
-          return 0x2B;
-        case EnemyType::OLGA_FLOW_2:
-          return 0x2C;
-        case EnemyType::GAEL:
-          return 0x2E;
-        case EnemyType::DELDEPTH:
-          return 0x30;
-        case EnemyType::PAN_ARMS:
-          return 0x31;
-        case EnemyType::HIDOOM:
-          return 0x32;
-        case EnemyType::MIGIUM:
-          return 0x33;
-        case EnemyType::MERICAROL:
-        case EnemyType::MERICARAND:
-          return 0x3A;
-        case EnemyType::UL_GIBBON:
-          return 0x3B;
-        case EnemyType::ZOL_GIBBON:
-          return 0x3C;
-        case EnemyType::GIBBLES:
-          return 0x3D;
-        case EnemyType::MORFOS:
-          return 0x40;
-        case EnemyType::RECOBOX:
-          return 0x41;
-        case EnemyType::RECON:
-          return 0x42;
-        case EnemyType::SINOW_ZOA:
-          return 0x43;
-        case EnemyType::SINOW_ZELE:
-          return 0x44;
-        case EnemyType::MERIKLE:
-          return 0x45;
-        case EnemyType::MERICUS:
-          return 0x46;
-        case EnemyType::HILDEBEAR:
-          return 0x49;
-        case EnemyType::HILDEBLUE:
-          return 0x4A;
-        case EnemyType::MERILLIA:
-          return 0x4B;
-        case EnemyType::MERILTAS:
-          return 0x4C;
-        case EnemyType::GRASS_ASSASSIN:
-          return 0x4E;
-        case EnemyType::DOLMOLM:
-          return 0x4F;
-        case EnemyType::DOLMDARL:
-          return 0x50;
-        case EnemyType::DELSABER:
-          return 0x52;
-        case EnemyType::DIMENIAN:
-          return 0x53;
-        case EnemyType::LA_DIMENIAN:
-          return 0x54;
-        case EnemyType::SO_DIMENIAN:
-          return 0x55;
-        default:
-          throw out_of_range(phosg::string_printf(
-              "%s does not have battle parameters in Episode 2", phosg::name_for_enum(enemy_type)));
-      }
-      break;
-    case Episode::EP4:
-      switch (enemy_type) {
-        case EnemyType::BOOTA:
-          return 0x00;
-        case EnemyType::ZE_BOOTA:
-          return 0x01;
-        case EnemyType::BA_BOOTA:
-          return 0x03;
-        case EnemyType::SAND_RAPPY:
-          return 0x05;
-        case EnemyType::DEL_RAPPY:
-          return 0x06;
-        case EnemyType::ZU:
-          return 0x07;
-        case EnemyType::PAZUZU:
-          return 0x08;
-        case EnemyType::ASTARK:
-          return 0x09;
-        case EnemyType::SATELLITE_LIZARD:
-          return 0x0D;
-        case EnemyType::YOWIE:
-          return 0x0E;
-        case EnemyType::DORPHON:
-          return 0x0F;
-        case EnemyType::DORPHON_ECLAIR:
-          return 0x10;
-        case EnemyType::GORAN:
-          return 0x11;
-        case EnemyType::PYRO_GORAN:
-          return 0x12;
-        case EnemyType::GORAN_DETONATOR:
-          return 0x13;
-        case EnemyType::SAND_RAPPY_ALT:
-          return 0x17;
-        case EnemyType::DEL_RAPPY_ALT:
-          return 0x18;
-        case EnemyType::MERISSA_A:
-          return 0x19;
-        case EnemyType::MERISSA_AA:
-          return 0x1A;
-        case EnemyType::ZU_ALT:
-          return 0x1B;
-        case EnemyType::PAZUZU_ALT:
-          return 0x1C;
-        case EnemyType::SATELLITE_LIZARD_ALT:
-          return 0x1D;
-        case EnemyType::YOWIE_ALT:
-          return 0x1E;
-        case EnemyType::GIRTABLULU:
-          return 0x1F;
-        case EnemyType::SAINT_MILLION:
-          return 0x22;
-        case EnemyType::SHAMBERTIN:
-          return 0x26;
-        case EnemyType::KONDRIEU:
-          return 0x2A;
-        default:
-          throw out_of_range(phosg::string_printf(
-              "%s does not have battle parameters in Episode 4", phosg::name_for_enum(enemy_type)));
-      }
-      break;
-    default:
-      throw logic_error("incorrect episode in battle param lookup");
-  }
-  throw logic_error("fallthrough case in battle param lookup");
-}
-
-uint8_t rare_table_index_for_enemy_type(EnemyType enemy_type) {
-  switch (enemy_type) {
-    case EnemyType::AL_RAPPY:
-      return 0x06;
-    case EnemyType::ASTARK:
-      return 0x41;
-    case EnemyType::BA_BOOTA:
-      return 0x4F;
-    case EnemyType::BARBA_RAY:
-      return 0x49;
-    case EnemyType::BARBAROUS_WOLF:
-      return 0x08;
-    case EnemyType::BOOMA:
-      return 0x09;
-    case EnemyType::BOOTA:
-      return 0x4D;
-    case EnemyType::BULK:
-      return 0x27;
-    case EnemyType::BULCLAW:
-      return 0x28;
-    case EnemyType::CANADINE:
-    case EnemyType::CANADINE_GROUP:
-      return 0x1C;
-    case EnemyType::CANANE:
-      return 0x1D;
-    case EnemyType::CHAOS_BRINGER:
-      return 0x24;
-    case EnemyType::CHAOS_SORCERER:
-      return 0x1F;
-    case EnemyType::CLAW:
-      return 0x26;
-    case EnemyType::DARK_BELRA:
-      return 0x25;
-    case EnemyType::DARK_FALZ_2:
-      return 0x2F;
-    case EnemyType::DARK_FALZ_3:
-      return 0x2F;
-    case EnemyType::DARK_GUNNER:
-      return 0x22;
-    case EnemyType::DEATH_GUNNER:
-      return 0x23;
-    case EnemyType::DE_ROL_LE:
-      return 0x2D;
-    case EnemyType::DEL_LILY:
-      return 0x53;
-    case EnemyType::DEL_RAPPY:
-      return 0x57;
-    case EnemyType::DEL_RAPPY_ALT:
-      return 0x58;
-    case EnemyType::DELBITER:
-      return 0x48;
-    case EnemyType::DELDEPTH:
-      return 0x47;
-    case EnemyType::DELSABER:
-      return 0x1E;
-    case EnemyType::DIMENIAN:
-      return 0x29;
-    case EnemyType::DOLMDARL:
-      return 0x41;
-    case EnemyType::DOLMOLM:
-      return 0x40;
-    case EnemyType::DORPHON:
-      return 0x50;
-    case EnemyType::DORPHON_ECLAIR:
-      return 0x51;
-    case EnemyType::DRAGON:
-      return 0x2C;
-    case EnemyType::DUBCHIC:
-      return 0x18;
-    case EnemyType::EGG_RAPPY:
-      return 0x51;
-    case EnemyType::EPSILON:
-      return 0x54;
-    case EnemyType::EVIL_SHARK:
-      return 0x10;
-    case EnemyType::GAL_GRYPHON:
-      return 0x4D;
-    case EnemyType::GARANZ:
-      return 0x19;
-    case EnemyType::GEE:
-      return 0x36;
-    case EnemyType::GI_GUE:
-      return 0x37;
-    case EnemyType::GIBBLES:
-      return 0x3D;
-    case EnemyType::GIGOBOOMA:
-      return 0x0B;
-    case EnemyType::GILLCHIC:
-      return 0x32;
-    case EnemyType::GIRTABLULU:
-      return 0x48;
-    case EnemyType::GOBOOMA:
-      return 0x0A;
-    case EnemyType::GOL_DRAGON:
-      return 0x4C;
-    case EnemyType::GORAN:
-      return 0x52;
-    case EnemyType::GORAN_DETONATOR:
-      return 0x53;
-    case EnemyType::GRASS_ASSASSIN:
-      return 0x0C;
-    case EnemyType::GUIL_SHARK:
-      return 0x12;
-    case EnemyType::HALLO_RAPPY:
-      return 0x50;
-    case EnemyType::HIDOOM:
-      return 0x17;
-    case EnemyType::HILDEBEAR:
-      return 0x01;
-    case EnemyType::HILDEBLUE:
-      return 0x02;
-    case EnemyType::ILL_GILL:
-      return 0x52;
-    case EnemyType::KONDRIEU:
-      return 0x5B;
-    case EnemyType::LA_DIMENIAN:
-      return 0x2A;
-    case EnemyType::LOVE_RAPPY:
-      return 0x33;
-    case EnemyType::MERICAROL:
-    case EnemyType::MERICARAND:
-      return 0x38;
-    case EnemyType::MERICUS:
-      return 0x3A;
-    case EnemyType::MERIKLE:
-      return 0x39;
-    case EnemyType::MERILLIA:
-      return 0x34;
-    case EnemyType::MERILTAS:
-      return 0x35;
-    case EnemyType::MERISSA_A:
-      return 0x46;
-    case EnemyType::MERISSA_AA:
-      return 0x47;
-    case EnemyType::MIGIUM:
-      return 0x16;
-    case EnemyType::MONEST:
-      return 0x04;
-    case EnemyType::MORFOS:
-      return 0x42;
-    case EnemyType::MOTHMANT:
-      return 0x03;
-    case EnemyType::NANO_DRAGON:
-      return 0x0F;
-    case EnemyType::NAR_LILY:
-      return 0x0E;
-    case EnemyType::OLGA_FLOW_2:
-      return 0x4E;
-    case EnemyType::PAL_SHARK:
-      return 0x11;
-    case EnemyType::PAN_ARMS:
-      return 0x15;
-    case EnemyType::PAZUZU:
-      return 0x4B;
-    case EnemyType::PAZUZU_ALT:
-      return 0x4C;
-    case EnemyType::POFUILLY_SLIME:
-      return 0x13;
-    case EnemyType::POUILLY_SLIME:
-      return 0x14;
-    case EnemyType::POISON_LILY:
-      return 0x0D;
-    case EnemyType::PYRO_GORAN:
-      return 0x54;
-    case EnemyType::RAG_RAPPY:
-      return 0x05;
-    case EnemyType::RECOBOX:
-      return 0x43;
-    case EnemyType::RECON:
-      return 0x44;
-    case EnemyType::SAINT_RAPPY:
-      return 0x4F;
-    case EnemyType::SAINT_MILLION:
-      return 0x59;
-    case EnemyType::SAND_RAPPY:
-      return 0x55;
-    case EnemyType::SAND_RAPPY_ALT:
-      return 0x56;
-    case EnemyType::SATELLITE_LIZARD:
-      return 0x44;
-    case EnemyType::SATELLITE_LIZARD_ALT:
-      return 0x45;
-    case EnemyType::SAVAGE_WOLF:
-      return 0x07;
-    case EnemyType::SHAMBERTIN:
-      return 0x5A;
-    case EnemyType::SINOW_BEAT:
-      return 0x1A;
-    case EnemyType::SINOW_BERILL:
-      return 0x3E;
-    case EnemyType::SINOW_GOLD:
-      return 0x1B;
-    case EnemyType::SINOW_SPIGELL:
-      return 0x3F;
-    case EnemyType::SINOW_ZELE:
-      return 0x46;
-    case EnemyType::SINOW_ZOA:
-      return 0x45;
-    case EnemyType::SO_DIMENIAN:
-      return 0x2B;
-    case EnemyType::UL_GIBBON:
-      return 0x3B;
-    case EnemyType::VOL_OPT_2:
-      return 0x2E;
-    case EnemyType::YOWIE:
-      return 0x42;
-    case EnemyType::YOWIE_ALT:
-      return 0x43;
-    case EnemyType::ZE_BOOTA:
-      return 0x4E;
-    case EnemyType::ZOL_GIBBON:
-      return 0x3C;
-    case EnemyType::ZU:
-      return 0x49;
-    case EnemyType::ZU_ALT:
-      return 0x4A;
-    default:
-      throw runtime_error(phosg::string_printf("%s does not have a rare table entry", phosg::name_for_enum(enemy_type)));
-  }
+  return index.at(name);
 }
 
 const vector<EnemyType>& enemy_types_for_rare_table_index(Episode episode, uint8_t rt_index) {
   const auto& generate_table = +[](Episode episode) -> vector<vector<EnemyType>> {
     vector<vector<EnemyType>> ret;
-    for (size_t z = 0; z < static_cast<size_t>(EnemyType::MAX_ENEMY_TYPE); z++) {
-      EnemyType t = static_cast<EnemyType>(z);
-      try {
-        uint8_t rt_index = rare_table_index_for_enemy_type(t);
-        if (enemy_type_valid_for_episode(episode, t)) {
-          if (rt_index >= ret.size()) {
-            ret.resize(rt_index + 1);
-          }
-          ret[rt_index].emplace_back(t);
+    for (const auto& def : type_defs) {
+      if (def.valid_in_episode(episode) && (def.rt_index != 0xFF)) {
+        if (def.rt_index >= ret.size()) {
+          ret.resize(def.rt_index + 1);
         }
-      } catch (const exception&) {
+        ret[def.rt_index].emplace_back(def.type);
       }
     }
     return ret;
@@ -1117,21 +196,8 @@ const vector<EnemyType>& enemy_types_for_rare_table_index(Episode episode, uint8
   }
 }
 
-bool enemy_type_is_rare(EnemyType type) {
-  return ((type == EnemyType::HILDEBLUE) ||
-      (type == EnemyType::AL_RAPPY) ||
-      (type == EnemyType::NAR_LILY) ||
-      (type == EnemyType::POUILLY_SLIME) ||
-      (type == EnemyType::MERICUS) ||
-      (type == EnemyType::MERIKLE) ||
-      (type == EnemyType::MERISSA_AA) ||
-      (type == EnemyType::PAZUZU_ALT) ||
-      (type == EnemyType::DORPHON_ECLAIR) ||
-      (type == EnemyType::KONDRIEU));
-}
-
-EnemyType rare_type_for_enemy_type(EnemyType base_type, Episode episode, uint8_t event, uint8_t floor) {
-  switch (base_type) {
+EnemyType EnemyTypeDefinition::rare_type(Episode episode, uint8_t event, uint8_t floor) const {
+  switch (this->type) {
     case EnemyType::HILDEBEAR:
       return EnemyType::HILDEBLUE;
     case EnemyType::RAG_RAPPY:
@@ -1150,7 +216,7 @@ EnemyType rare_type_for_enemy_type(EnemyType base_type, Episode episode, uint8_t
               return EnemyType::LOVE_RAPPY;
           }
         case Episode::EP4:
-          return (floor > 0x05) ? EnemyType::DEL_RAPPY_ALT : EnemyType::DEL_RAPPY;
+          return (floor > 0x05) ? EnemyType::DEL_RAPPY_DESERT : EnemyType::DEL_RAPPY_CRATER;
         default:
           throw logic_error("invalid episode");
       }
@@ -1158,22 +224,22 @@ EnemyType rare_type_for_enemy_type(EnemyType base_type, Episode episode, uint8_t
       return EnemyType::NAR_LILY;
     case EnemyType::POFUILLY_SLIME:
       return EnemyType::POUILLY_SLIME;
-    case EnemyType::SAND_RAPPY:
-      return EnemyType::DEL_RAPPY;
-    case EnemyType::SAND_RAPPY_ALT:
-      return EnemyType::DEL_RAPPY_ALT;
+    case EnemyType::SAND_RAPPY_CRATER:
+      return EnemyType::DEL_RAPPY_CRATER;
+    case EnemyType::SAND_RAPPY_DESERT:
+      return EnemyType::DEL_RAPPY_DESERT;
     case EnemyType::MERISSA_A:
       return EnemyType::MERISSA_AA;
-    case EnemyType::ZU:
-      return EnemyType::PAZUZU;
-    case EnemyType::ZU_ALT:
-      return EnemyType::PAZUZU_ALT;
+    case EnemyType::ZU_CRATER:
+      return EnemyType::PAZUZU_CRATER;
+    case EnemyType::ZU_DESERT:
+      return EnemyType::PAZUZU_DESERT;
     case EnemyType::DORPHON:
       return EnemyType::DORPHON_ECLAIR;
-    case EnemyType::SAINT_MILLION:
+    case EnemyType::SAINT_MILION:
     case EnemyType::SHAMBERTIN:
       return EnemyType::KONDRIEU;
     default:
-      return base_type;
+      return this->type;
   }
 }

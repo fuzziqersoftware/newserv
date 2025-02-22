@@ -97,7 +97,7 @@ const array<const char*, 0x11> name_for_s_rank_special = {
     "King\'s",
 };
 
-std::string ItemNameIndex::describe_item(const ItemData& item, bool include_color_escapes) const {
+std::string ItemNameIndex::describe_item(const ItemData& item, bool include_color_escapes, bool hide_mag_stats) const {
   if (item.data1[0] == 0x04) {
     return phosg::string_printf("%s%" PRIu32 " Meseta", include_color_escapes ? "$C7" : "", item.data2d.load());
   }
@@ -166,8 +166,8 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
     }
   }
 
-  // For weapons, add the grind and bonuses, or S-rank name if applicable
   if (item.data1[0] == 0x00) {
+    // For weapons, add the grind and bonuses, or S-rank name if applicable
     if (item.data1[3] > 0) {
       ret_tokens.emplace_back(phosg::string_printf("+%hhu", item.data1[3]));
     }
@@ -232,8 +232,8 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
       }
     }
 
-    // For armors, add the slots, unit modifiers, and/or DEF/EVP bonuses
   } else if (item.data1[0] == 0x01) {
+    // For armors, add the slots, unit modifiers, and/or DEF/EVP bonuses
     if (item.data1[1] == 0x03) { // Units
       int16_t modifier = item.data1w[3];
       if (modifier == 1 || modifier == 2) {
@@ -266,8 +266,8 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
       }
     }
 
+  } else if (!hide_mag_stats && (item.data1[0] == 0x02)) {
     // For mags, add tons of info
-  } else if (item.data1[0] == 0x02) {
     ret_tokens.emplace_back(phosg::string_printf("LV%hhu", item.data1[2]));
 
     uint16_t def = item.data1w[2];
@@ -327,8 +327,8 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
       ret_tokens.emplace_back(phosg::string_printf("(!CL:%02hhX)", item.data2[3]));
     }
 
-    // For tools, add the amount (if applicable)
   } else if (item.data1[0] == 0x03) {
+    // For tools, add the amount (if applicable)
     if (item.max_stack_size(*this->limits) > 1) {
       ret_tokens.emplace_back(phosg::string_printf("x%hhu", item.data1[5]));
     }

@@ -330,11 +330,14 @@ RareItemSet::RareItemSet(const phosg::JSON& json, shared_ptr<const ItemNameIndex
               }
               target = &collection.box_area_to_specs[area];
             } else {
-              size_t index = rare_table_index_for_enemy_type(phosg::enum_for_name<EnemyType>(item_it.first.c_str()));
-              if (collection.rt_index_to_specs.size() <= index) {
-                collection.rt_index_to_specs.resize(index + 1);
+              size_t rt_index = type_definition_for_enemy(phosg::enum_for_name<EnemyType>(item_it.first.c_str())).rt_index;
+              if (rt_index == 0xFF) {
+                throw runtime_error("enemy type " + item_it.first + " does not have an rt_index");
               }
-              target = &collection.rt_index_to_specs[index];
+              if (collection.rt_index_to_specs.size() <= rt_index) {
+                collection.rt_index_to_specs.resize(rt_index + 1);
+              }
+              target = &collection.rt_index_to_specs[rt_index];
             }
 
             for (const auto& spec_json : item_it.second->as_list()) {
@@ -422,6 +425,260 @@ std::string RareItemSet::serialize_gsl(bool big_endian) const {
   return GSLArchive::generate(files, big_endian);
 }
 
+string RareItemSet::serialize_html(
+    GameMode mode,
+    Episode episode,
+    uint8_t difficulty,
+    shared_ptr<const ItemNameIndex> name_index) const {
+
+  struct ZoneTypes {
+    const char* name;
+    vector<uint8_t> floors;
+    vector<EnemyType> types;
+  };
+
+  // clang-format off
+  static const std::map<Episode, std::vector<ZoneTypes>> zone_types_for_episode{
+    {Episode::EP1, {
+      {"Forest", {0x01, 0x02, 0x0B}, {
+        EnemyType::BOOMA, EnemyType::GOBOOMA, EnemyType::GIGOBOOMA,
+        EnemyType::SAVAGE_WOLF, EnemyType::BARBAROUS_WOLF,
+        EnemyType::RAG_RAPPY, EnemyType::AL_RAPPY,
+        EnemyType::MONEST, EnemyType::MOTHMANT,
+        EnemyType::HILDEBEAR, EnemyType::HILDEBLUE,
+        EnemyType::DRAGON,
+      }},
+      {"Caves", {0x03, 0x04, 0x05, 0x0C}, {
+        EnemyType::EVIL_SHARK, EnemyType::PAL_SHARK, EnemyType::GUIL_SHARK,
+        EnemyType::POISON_LILY, EnemyType::NAR_LILY,
+        EnemyType::POFUILLY_SLIME, EnemyType::POUILLY_SLIME,
+        EnemyType::NANO_DRAGON,
+        EnemyType::GRASS_ASSASSIN,
+        EnemyType::PAN_ARMS, EnemyType::HIDOOM, EnemyType::MIGIUM,
+        EnemyType::DE_ROL_LE_BODY, EnemyType::DE_ROL_LE_MINE, EnemyType::DE_ROL_LE,
+      }},
+      {"Mines", {0x06, 0x07, 0x0D}, {
+        EnemyType::GILLCHIC, EnemyType::DUBCHIC, EnemyType::DUBWITCH,
+        EnemyType::CANADINE, EnemyType::CANADINE_GROUP, EnemyType::CANANE,
+        EnemyType::SINOW_BEAT, EnemyType::SINOW_GOLD,
+        EnemyType::GARANZ,
+        EnemyType::VOL_OPT_AMP, EnemyType::VOL_OPT_CORE, EnemyType::VOL_OPT_MONITOR, EnemyType::VOL_OPT_PILLAR,   EnemyType::VOL_OPT_1, EnemyType::VOL_OPT_2,
+      }},
+      {"Ruins", {0x08, 0x09, 0x0A, 0x0E}, {
+        EnemyType::DIMENIAN, EnemyType::LA_DIMENIAN, EnemyType::SO_DIMENIAN,
+        EnemyType::CLAW, EnemyType::BULK, EnemyType::BULCLAW,
+        EnemyType::DELSABER,
+        EnemyType::CHAOS_SORCERER, EnemyType::BEE_L, EnemyType::BEE_R,
+        EnemyType::DARK_BELRA,
+        EnemyType::DARK_GUNNER, EnemyType::DEATH_GUNNER,
+        EnemyType::CHAOS_BRINGER,
+        EnemyType::DARVANT, EnemyType::DARVANT_ULTIMATE, EnemyType::DARK_FALZ_1, EnemyType::DARK_FALZ_2, EnemyType::DARK_FALZ_3,
+      }},
+  }},
+  {Episode::EP2, {
+      {"VR Temple", {0x01, 0x02, 0x0E}, {
+        EnemyType::RAG_RAPPY, EnemyType::LOVE_RAPPY, EnemyType::EGG_RAPPY, EnemyType::HALLO_RAPPY, EnemyType::SAINT_RAPPY,
+        EnemyType::DIMENIAN, EnemyType::LA_DIMENIAN, EnemyType::SO_DIMENIAN,
+        EnemyType::POISON_LILY, EnemyType::NAR_LILY,
+        EnemyType::MONEST, EnemyType::MOTHMANT,
+        EnemyType::GRASS_ASSASSIN,
+        EnemyType::HILDEBEAR, EnemyType::HILDEBLUE,
+        EnemyType::DARK_BELRA,
+        EnemyType::PIG_RAY, EnemyType::BARBA_RAY,
+      }},
+      {"VR Spaceship", {0x03, 0x04, 0x0F}, {
+        EnemyType::SAVAGE_WOLF, EnemyType::BARBAROUS_WOLF,
+        EnemyType::GILLCHIC, EnemyType::DUBCHIC, EnemyType::DUBWITCH,
+        EnemyType::PAN_ARMS, EnemyType::HIDOOM, EnemyType::MIGIUM,
+        EnemyType::DELSABER,
+        EnemyType::GARANZ,
+        EnemyType::CHAOS_SORCERER, EnemyType::BEE_L, EnemyType::BEE_R,
+        EnemyType::GOL_DRAGON,
+      }},
+      {"Central Control Area", {0x05, 0x06, 0x07, 0x08, 0x09, 0x0C, 0x10}, {
+        EnemyType::MERILLIA, EnemyType::MERILTAS,
+        EnemyType::GEE,
+        EnemyType::UL_GIBBON, EnemyType::ZOL_GIBBON,
+        EnemyType::SINOW_BERILL, EnemyType::SINOW_SPIGELL,
+        EnemyType::GI_GUE,
+        EnemyType::GIBBLES,
+        EnemyType::MERICARAND, EnemyType::MERICAROL, EnemyType::MERICUS, EnemyType::MERIKLE,
+        EnemyType::GAL_GRYPHON,
+      }},
+      {"Seabed", {0x0A, 0x0B, 0x0D}, {
+        EnemyType::DOLMOLM, EnemyType::DOLMDARL,
+        EnemyType::SINOW_ZOA, EnemyType::SINOW_ZELE,
+        EnemyType::RECOBOX, EnemyType::RECON,
+        EnemyType::MORFOS,
+        EnemyType::DELDEPTH,
+        EnemyType::DELBITER,
+        EnemyType::GAEL_OR_GIEL, EnemyType::OLGA_FLOW_1, EnemyType::OLGA_FLOW_2,
+      }},
+      {"Control Tower", {0x11}, {
+        EnemyType::MERICARAND, EnemyType::MERICAROL, EnemyType::MERICUS, EnemyType::MERIKLE,
+        EnemyType::GIBBLES,
+        EnemyType::GI_GUE,
+        EnemyType::DELBITER,
+        EnemyType::ILL_GILL,
+        EnemyType::DEL_LILY,
+        EnemyType::EPSILON, EnemyType::EPSIGARD,
+      }},
+  }},
+  {Episode::EP4, {
+      {"Crater", {0x01, 0x02, 0x03, 0x04, 0x05}, {
+        EnemyType::SAND_RAPPY_CRATER, EnemyType::DEL_RAPPY_CRATER,
+        EnemyType::SATELLITE_LIZARD_CRATER,
+        EnemyType::YOWIE_CRATER,
+        EnemyType::BOOTA, EnemyType::ZE_BOOTA, EnemyType::BA_BOOTA,
+        EnemyType::ZU_CRATER, EnemyType::PAZUZU_CRATER,
+        EnemyType::ASTARK,
+        EnemyType::DORPHON, EnemyType::DORPHON_ECLAIR,
+      }},
+      {"Desert", {0x06, 0x07, 0x08, 0x09}, {
+        EnemyType::SAND_RAPPY_DESERT, EnemyType::DEL_RAPPY_DESERT,
+        EnemyType::SATELLITE_LIZARD_DESERT,
+        EnemyType::YOWIE_DESERT,
+        EnemyType::GORAN, EnemyType::PYRO_GORAN, EnemyType::GORAN_DETONATOR,
+        EnemyType::MERISSA_A, EnemyType::MERISSA_AA,
+        EnemyType::ZU_DESERT, EnemyType::PAZUZU_DESERT,
+        EnemyType::GIRTABLULU,
+        EnemyType::SAINT_MILION, EnemyType::SHAMBERTIN, EnemyType::KONDRIEU,
+      }},
+  }}};
+  // clang-format on
+
+  static const std::array<uint32_t, 10> bg_colors{
+      //   Vrd       Grn       Sky       Blu       Prp       Pnk       Red       Orn       Ylw       Wht
+      0x00A562, 0x76FE43, 0x59F9F9, 0x4488FF, 0xCC00FF, 0xFF87CB, 0xF70F0F, 0xF7830F, 0xF7F715, 0xFFFFFF};
+  static const std::array<uint32_t, 10> text_colors{
+      //   Vrd       Grn       Sky       Blu       Prp       Pnk       Red       Orn       Ylw       Wht
+      0xFFFFFF, 0x000000, 0x000000, 0xFFFFFF, 0xFFFFFF, 0x000000, 0xFFFFFF, 0x000000, 0x000000, 0x000000};
+
+  deque<string> blocks;
+  blocks.emplace_back(phosg::string_printf("\
+<html>\n\
+<head>\n\
+  <title>Drop charts for %s %s</title>\n\
+  <style type=\"text/css\">\n\
+    body {\n\
+      background-color: #222222;\n\
+      color: #EEEEEE;\n\
+    }\n\
+    table {\n\
+      border: 1px #222222;\n\
+      text-align: center;\n\
+      font-family: sans-serif;\n\
+      font-size: 14px;\n\
+    }\n\
+    td th {\n\
+      border: 1px #222222;\n\
+      text-align: center;\n\
+      padding: 4px;\n\
+    }\n\
+    th {\n\
+      font-size: 18px;\n\
+    }\n\
+    th.space {\n\
+      background-color: #222222;\n\
+      height: 20px;\n\
+    }\n",
+      name_for_episode(episode),
+      name_for_difficulty(difficulty)));
+  for (size_t z = 0; z < 10; z++) {
+    blocks.emplace_back(phosg::string_printf("\
+    .sec%zu {\n\
+      background-color: #%06" PRIX32 ";\n\
+      color: #%06" PRIX32 ";\n\
+    }\n",
+        z, bg_colors[z], text_colors[z]));
+  }
+  blocks.emplace_back("\
+  </style>\n\
+</head><body>\n");
+
+  blocks.emplace_back("<table>");
+  auto add_location_header = [&](const char* location_name) -> void {
+    blocks.emplace_back("<tr><th class=\"space\" colspan=\"11\" /></tr>");
+    blocks.emplace_back("<tr><th>");
+    blocks.emplace_back(location_name);
+    blocks.emplace_back("</th>");
+    for (size_t z = 0; z < 10; z++) {
+      blocks.emplace_back(phosg::string_printf("<th class=\"sec%zu\">%s</th>", z, name_for_section_id(z)));
+    }
+    blocks.emplace_back("</tr>");
+  };
+
+  auto add_specs_row = [&](const char* loc_name, const array<vector<ExpandedDrop>, 10>& specs_lists) -> void {
+    bool any_list_nonempty = false;
+    for (const auto& specs_list : specs_lists) {
+      any_list_nonempty |= !specs_list.empty();
+    }
+    if (!any_list_nonempty) {
+      return;
+    }
+
+    blocks.emplace_back(phosg::string_printf("<tr><td class=\"loc\">%s</td>", loc_name));
+    for (uint8_t section_id = 0; section_id < 10; section_id++) {
+      blocks.emplace_back(phosg::string_printf("<td class=\"sec%hhu\">", section_id));
+      vector<string> tokens;
+      for (const auto& spec : specs_lists[section_id]) {
+        auto frac = phosg::reduce_fraction<uint64_t>(spec.probability, 0x100000000);
+
+        ItemData example_item = spec.data;
+        if (example_item.can_be_encoded_in_rel_rare_table()) {
+          if (example_item.data1[0] == 2) {
+            example_item.data1[1] = 0x00;
+            example_item.assign_mag_stats(ItemMagStats());
+          } else if (example_item.data1[0] == 3) {
+            example_item.set_tool_item_amount(ItemData::StackLimits::DEFAULT_STACK_LIMITS_V3_V4, 1);
+          }
+        }
+
+        tokens.emplace_back(name_index->describe_item(example_item, false, true));
+        float denom = static_cast<float>(frac.second) / static_cast<double>(frac.first);
+        string denom_token = (floor(denom) == denom)
+            ? phosg::string_printf("1 / %g", denom)
+            : phosg::string_printf("1 / %.02f", denom);
+        tokens.emplace_back(phosg::string_printf(
+            "<span class=\"rate\" title=\"True rate: %" PRIu64 " / %" PRIu64 "\">%s</span>",
+            frac.first, frac.second, denom_token.c_str()));
+      }
+      if (!blocks.empty()) {
+        blocks.emplace_back(phosg::join(tokens, "<br />"));
+      }
+      blocks.emplace_back("</td>");
+    }
+    blocks.emplace_back("</tr>");
+  };
+
+  const auto& zone_types = zone_types_for_episode.at(episode);
+  for (const auto& zone_type : zone_types) {
+    add_location_header(zone_type.name);
+    for (EnemyType type : zone_type.types) {
+      uint8_t rt_index = type_definition_for_enemy(type).rt_index;
+      if (rt_index == 0xFF) {
+        continue;
+      }
+      array<vector<ExpandedDrop>, 10> specs_lists;
+      for (uint8_t section_id = 0; section_id < 10; section_id++) {
+        specs_lists[section_id] = this->get_enemy_specs(mode, episode, difficulty, section_id, rt_index);
+      }
+      add_specs_row(phosg::name_for_enum(type), specs_lists);
+    }
+    for (uint8_t floor : zone_type.floors) {
+      array<vector<ExpandedDrop>, 10> specs_lists;
+      for (uint8_t section_id = 0; section_id < 10; section_id++) {
+        specs_lists[section_id] = this->get_box_specs(mode, episode, difficulty, section_id, floor);
+      }
+      auto loc_name = phosg::string_printf("%s (box)", name_for_floor(episode, floor));
+      add_specs_row(loc_name.c_str(), specs_lists);
+    }
+  }
+  blocks.emplace_back("</table></body></html>");
+
+  return phosg::join(blocks, "");
+}
+
 phosg::JSON RareItemSet::json(shared_ptr<const ItemNameIndex> name_index) const {
   auto modes_dict = phosg::JSON::dict();
   static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
@@ -455,7 +712,7 @@ phosg::JSON RareItemSet::json(shared_ptr<const ItemNameIndex> name_index) const 
                 spec_json.emplace_back(name_index->describe_item(spec.data));
               }
               for (const auto& enemy_type : enemy_types) {
-                if (enemy_type_valid_for_episode(episode, enemy_type)) {
+                if (type_definition_for_enemy(enemy_type).valid_in_episode(episode)) {
                   phosg::JSON this_spec_json = spec_json;
                   collection_dict.emplace(phosg::name_for_enum(enemy_type), phosg::JSON::list()).first->second->emplace_back(std::move(this_spec_json));
                 }

@@ -749,8 +749,9 @@ struct PSOXBCharacterFileCharacter {
 
 struct PSOBBCharacterFile {
   // Most fields have the same meanings as in PSOGCCharacterFile::Character.
-  // This is the character data used by the server for all game versions, and
-  // is also the format used in .psochar files.
+  // This is part of the .psochar file format, but it is not the first member
+  // of that structure, so add 8 to all the offsets here if you're working with
+  // a .psochar file. See PSOCHARFile below for the full file format.
 
   /* 0000 */ PlayerInventory inventory;
   /* 034C */ PlayerDispDataBB disp;
@@ -838,17 +839,28 @@ struct PSOBBCharacterFile {
   void recompute_stats(std::shared_ptr<const LevelTable> level_table);
 } __packed_ws__(PSOBBCharacterFile, 0x2EA4);
 
-struct LoadedPSOCHARFile {
-  std::shared_ptr<PSOBBBaseSystemFile> system_file; // Null if load_system is false
-  std::shared_ptr<PSOBBCharacterFile> character_file; // Never null
-  // Team membership is present in the file, but ignored by newserv
-};
+struct PSOCHARFile {
+  // This is the format of .psochar files used by newserv and Ephinea (and
+  // perhaps other servers as well). newserv doesn't actually use this
+  // structure in its logic, so it's here primarily for documentation.
 
-LoadedPSOCHARFile load_psochar(const std::string& filename, bool load_system);
-void save_psochar(
-    const std::string& filename,
-    std::shared_ptr<const PSOBBBaseSystemFile> system,
-    std::shared_ptr<const PSOBBCharacterFile> character);
+  /* 0000 */ PSOCommandHeaderBB header; // command = 0x00E7, size = 0x399C, flag = 0
+  /* 0008 */ PSOBBCharacterFile character;
+  /* 2EAC */ PSOBBBaseSystemFile system;
+  /* 3164 */ PSOBBTeamMembership team_membership;
+  /* 399C */
+
+  struct LoadSharedResult {
+    std::shared_ptr<PSOBBCharacterFile> character_file; // Never null
+    std::shared_ptr<PSOBBBaseSystemFile> system_file; // Null if load_system is false
+    // Team membership is present in the file, but newserv ignores it
+  };
+  static LoadSharedResult load_shared(const std::string& filename, bool load_system);
+  static void save(
+      const std::string& filename,
+      std::shared_ptr<const PSOBBBaseSystemFile> system,
+      std::shared_ptr<const PSOBBCharacterFile> character);
+} __packed_ws__(PSOCHARFile, 0x399C);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Guild Card files
