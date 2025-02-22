@@ -9,14 +9,14 @@
         "Bluefull": {
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -60,14 +60,14 @@
         "Greennill": {
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["3/8192", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["13/2048", 0x000703, "Beam"]
           ],
@@ -111,14 +111,14 @@
         "Oran": {
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -163,14 +163,14 @@
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BOOMA": [["1/8192", 0x000A05, "MACE OF ADAMAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["3/8192", 0x000703, "Beam"]
           ],
@@ -216,14 +216,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A05, "MACE OF ADAMAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/8192", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -267,14 +267,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A05, "MACE OF ADAMAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -319,14 +319,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A05, "MACE OF ADAMAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["13/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -370,14 +370,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A04, "CLUB OF LACONIUM"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["3/8192", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["3/8192", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -419,14 +419,14 @@
         "Whitill": {
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["13/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["13/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -472,14 +472,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A06, "CLUB OF ZUMIURAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -523,14 +523,14 @@
         "Bluefull": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["13/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["13/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["3/8192", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -567,14 +567,14 @@
         "Greennill": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["13/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["13/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -611,14 +611,14 @@
         "Oran": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["3/8192", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -655,14 +655,14 @@
         "Pinkal": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["3/8192", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["3/8192", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["13/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -699,14 +699,14 @@
         "Purplenum": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/8192", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/8192", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -743,14 +743,14 @@
         "Redria": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -787,14 +787,14 @@
         "Skyly": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -831,14 +831,14 @@
         "Viridia": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -875,14 +875,14 @@
         "Whitill": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -919,14 +919,14 @@
         "Yellowboze": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["13/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -969,11 +969,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001005, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000406, "VJAYA"]],
+          "Box-Cave2": [["9/16384", 0x001005, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000406, "VJAYA"]],
           "Box-Forest2": [["1/256", 0x000405, "BRIONAC"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000407, "GAE BOLG"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000407, "GAE BOLG"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010123, "SENSE PLATE"]],
@@ -1021,11 +1021,11 @@
           "BOOMA": [["7/2097152", 0x030C03, "Heart of Opa Opa"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["9/65536", 0x000E02, "TWIN BRAND"]],
-          "Box-Caves2": [["9/16384", 0x001003, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000706, "WALS-MK2"]],
+          "Box-Cave2": [["9/16384", 0x001003, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000706, "WALS-MK2"]],
           "Box-Forest2": [["1/256", 0x000705, "VISK-235W"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000707, "JUSTY-23ST"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000707, "JUSTY-23ST"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010124, "GRAVITON PLATE"]],
@@ -1073,11 +1073,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/512", 0x001005, "AGITO"]],
-          "Box-Caves2": [["9/16384", 0x001004, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000306, "BLOODY ART"]],
+          "Box-Cave2": [["9/16384", 0x001004, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000306, "BLOODY ART"]],
           "Box-Forest2": [["1/256", 0x000305, "BLADE DANCE"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000307, "CROSS SCAR"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000307, "CROSS SCAR"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010123, "SENSE PLATE"]],
@@ -1125,11 +1125,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001002, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000C05, "ICE STAFF:DAGON"]],
+          "Box-Cave2": [["9/16384", 0x001002, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000C05, "ICE STAFF:DAGON"]],
           "Box-Forest2": [["1/256", 0x000C04, "FIRE SCEPTER:AGNI"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000C06, "STORM WAND:INDRA"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000C06, "STORM WAND:INDRA"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010124, "GRAVITON PLATE"]],
@@ -1177,11 +1177,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001006, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000806, "H&S25 JUSTICE"]],
+          "Box-Cave2": [["9/16384", 0x001006, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000806, "H&S25 JUSTICE"]],
           "Box-Forest2": [["1/256", 0x000805, "M&A60 VISE"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000807, "L&K14 COMBAT"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000807, "L&K14 COMBAT"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010123, "SENSE PLATE"]],
@@ -1229,11 +1229,11 @@
           "BOOMA": [["7/4096", 0x010121, "PARASITE WEAR:Nelgal"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001003, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x010119, "RANGER FIELD"]],
+          "Box-Cave2": [["9/16384", 0x001003, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x010119, "RANGER FIELD"]],
           "Box-Forest2": [["1/256", 0x010118, "HUNTER FIELD"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x01011A, "FORCE FIELD"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x01011A, "FORCE FIELD"]],
           "CANADINE": [["13/524288", 0x010223, "REGENE GEAR ADV."]],
           "CANADINE_GROUP": [["13/524288", 0x010223, "REGENE GEAR ADV."]],
           "CANANE": [["7/16384", 0x010125, "ATTRIBUTE PLATE"]],
@@ -1281,11 +1281,11 @@
           "BOOMA": [["13/536870912", 0x001001, "AGITO"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/512", 0x001005, "AGITO"]],
-          "Box-Caves2": [["9/16384", 0x001004, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000206, "LAST SURVIVOR"]],
+          "Box-Cave2": [["9/16384", 0x001004, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000206, "LAST SURVIVOR"]],
           "Box-Forest2": [["1/256", 0x000205, "FLOWEN'S SWORD"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000207, "DRAGON SLAYER"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000207, "DRAGON SLAYER"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010125, "ATTRIBUTE PLATE"]],
@@ -1333,11 +1333,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x000905, "CRUSH BULLET"]],
-          "Box-Caves2": [["9/16384", 0x001002, "AGITO"]],
-          "Box-Caves3": [["7/2048", 0x000906, "METEOR SMASH"]],
+          "Box-Cave2": [["9/16384", 0x001002, "AGITO"]],
+          "Box-Cave3": [["7/2048", 0x000906, "METEOR SMASH"]],
           "Box-Forest2": [["3/1024", 0x000905, "CRUSH BULLET"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["5/1024", 0x000907, "FINAL IMPACT"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["5/1024", 0x000907, "FINAL IMPACT"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010123, "SENSE PLATE"]],
@@ -1385,11 +1385,11 @@
           "BOOMA": [["7/2097152", 0x030C03, "Heart of Opa Opa"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["9/65536", 0x002100, "CHAIN SAWD"]],
-          "Box-Caves2": [["9/16384", 0x001006, "AGITO"]],
-          "Box-Caves3": [["7/2048", 0x000506, "DISKA OF LIBERATOR"]],
+          "Box-Cave2": [["9/16384", 0x001006, "AGITO"]],
+          "Box-Cave3": [["7/2048", 0x000506, "DISKA OF LIBERATOR"]],
           "Box-Forest2": [["3/1024", 0x000505, "SLICER OF ASSASSIN"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["5/1024", 0x000507, "DISKA OF BRAVEMAN"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["5/1024", 0x000507, "DISKA OF BRAVEMAN"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010125, "ATTRIBUTE PLATE"]],
@@ -1437,11 +1437,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001005, "AGITO"]],
-          "Box-Caves3": [["3/512", 0x000605, "VARISTA"]],
+          "Box-Cave2": [["9/16384", 0x001005, "AGITO"]],
+          "Box-Cave3": [["3/512", 0x000605, "VARISTA"]],
           "Box-Forest2": [["5/1024", 0x000106, "KALADBOLG"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["1/128", 0x000A04, "CLUB OF LACONIUM"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["1/128", 0x000A04, "CLUB OF LACONIUM"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010124, "GRAVITON PLATE"]],
@@ -1504,14 +1504,14 @@
         "Bluefull": {
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -1555,14 +1555,14 @@
         "Greennill": {
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["3/8192", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["13/2048", 0x000703, "Beam"]
           ],
@@ -1606,14 +1606,14 @@
         "Oran": {
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -1658,14 +1658,14 @@
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BOOMA": [["1/8192", 0x000A05, "MACE OF ADAMAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["3/8192", 0x000703, "Beam"]
           ],
@@ -1711,14 +1711,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A05, "MACE OF ADAMAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/8192", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -1762,14 +1762,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A05, "MACE OF ADAMAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -1814,14 +1814,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A05, "MACE OF ADAMAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["13/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -1865,14 +1865,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A04, "CLUB OF LACONIUM"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["3/8192", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["3/8192", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -1914,14 +1914,14 @@
         "Whitill": {
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["13/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["13/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -1967,14 +1967,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A06, "CLUB OF ZUMIURAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -2018,14 +2018,14 @@
         "Bluefull": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["13/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["13/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["3/8192", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -2062,14 +2062,14 @@
         "Greennill": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["13/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["13/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -2106,14 +2106,14 @@
         "Oran": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["3/8192", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -2150,14 +2150,14 @@
         "Pinkal": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["3/8192", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["3/8192", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["13/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -2194,14 +2194,14 @@
         "Purplenum": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/8192", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/8192", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -2238,14 +2238,14 @@
         "Redria": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -2282,14 +2282,14 @@
         "Skyly": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -2326,14 +2326,14 @@
         "Viridia": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -2370,14 +2370,14 @@
         "Whitill": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -2414,14 +2414,14 @@
         "Yellowboze": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["13/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -2464,11 +2464,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001005, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000406, "VJAYA"]],
+          "Box-Cave2": [["9/16384", 0x001005, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000406, "VJAYA"]],
           "Box-Forest2": [["1/256", 0x000405, "BRIONAC"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000407, "GAE BOLG"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000407, "GAE BOLG"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010123, "SENSE PLATE"]],
@@ -2516,11 +2516,11 @@
           "BOOMA": [["7/2097152", 0x030C03, "Heart of Opa Opa"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["9/65536", 0x000E02, "TWIN BRAND"]],
-          "Box-Caves2": [["9/16384", 0x001003, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000706, "WALS-MK2"]],
+          "Box-Cave2": [["9/16384", 0x001003, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000706, "WALS-MK2"]],
           "Box-Forest2": [["1/256", 0x000705, "VISK-235W"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000707, "JUSTY-23ST"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000707, "JUSTY-23ST"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010124, "GRAVITON PLATE"]],
@@ -2568,11 +2568,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/512", 0x001005, "AGITO"]],
-          "Box-Caves2": [["9/16384", 0x001004, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000306, "BLOODY ART"]],
+          "Box-Cave2": [["9/16384", 0x001004, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000306, "BLOODY ART"]],
           "Box-Forest2": [["1/256", 0x000305, "BLADE DANCE"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000307, "CROSS SCAR"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000307, "CROSS SCAR"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010123, "SENSE PLATE"]],
@@ -2620,11 +2620,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001002, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000C05, "ICE STAFF:DAGON"]],
+          "Box-Cave2": [["9/16384", 0x001002, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000C05, "ICE STAFF:DAGON"]],
           "Box-Forest2": [["1/256", 0x000C04, "FIRE SCEPTER:AGNI"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000C06, "STORM WAND:INDRA"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000C06, "STORM WAND:INDRA"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010124, "GRAVITON PLATE"]],
@@ -2672,11 +2672,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001006, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000806, "H&S25 JUSTICE"]],
+          "Box-Cave2": [["9/16384", 0x001006, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000806, "H&S25 JUSTICE"]],
           "Box-Forest2": [["1/256", 0x000805, "M&A60 VISE"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000807, "L&K14 COMBAT"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000807, "L&K14 COMBAT"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010123, "SENSE PLATE"]],
@@ -2724,11 +2724,11 @@
           "BOOMA": [["7/4096", 0x010121, "PARASITE WEAR:Nelgal"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001003, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x010119, "RANGER FIELD"]],
+          "Box-Cave2": [["9/16384", 0x001003, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x010119, "RANGER FIELD"]],
           "Box-Forest2": [["1/256", 0x010118, "HUNTER FIELD"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x01011A, "FORCE FIELD"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x01011A, "FORCE FIELD"]],
           "CANADINE": [["13/524288", 0x010223, "REGENE GEAR ADV."]],
           "CANADINE_GROUP": [["13/524288", 0x010223, "REGENE GEAR ADV."]],
           "CANANE": [["7/16384", 0x010125, "ATTRIBUTE PLATE"]],
@@ -2776,11 +2776,11 @@
           "BOOMA": [["13/536870912", 0x001001, "AGITO"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/512", 0x001005, "AGITO"]],
-          "Box-Caves2": [["9/16384", 0x001004, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000206, "LAST SURVIVOR"]],
+          "Box-Cave2": [["9/16384", 0x001004, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000206, "LAST SURVIVOR"]],
           "Box-Forest2": [["1/256", 0x000205, "FLOWEN'S SWORD"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000207, "DRAGON SLAYER"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000207, "DRAGON SLAYER"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010125, "ATTRIBUTE PLATE"]],
@@ -2828,11 +2828,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x000905, "CRUSH BULLET"]],
-          "Box-Caves2": [["9/16384", 0x001002, "AGITO"]],
-          "Box-Caves3": [["7/2048", 0x000906, "METEOR SMASH"]],
+          "Box-Cave2": [["9/16384", 0x001002, "AGITO"]],
+          "Box-Cave3": [["7/2048", 0x000906, "METEOR SMASH"]],
           "Box-Forest2": [["3/1024", 0x000905, "CRUSH BULLET"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["5/1024", 0x000907, "FINAL IMPACT"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["5/1024", 0x000907, "FINAL IMPACT"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010123, "SENSE PLATE"]],
@@ -2880,11 +2880,11 @@
           "BOOMA": [["7/2097152", 0x030C03, "Heart of Opa Opa"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["9/65536", 0x002100, "CHAIN SAWD"]],
-          "Box-Caves2": [["9/16384", 0x001006, "AGITO"]],
-          "Box-Caves3": [["7/2048", 0x000506, "DISKA OF LIBERATOR"]],
+          "Box-Cave2": [["9/16384", 0x001006, "AGITO"]],
+          "Box-Cave3": [["7/2048", 0x000506, "DISKA OF LIBERATOR"]],
           "Box-Forest2": [["3/1024", 0x000505, "SLICER OF ASSASSIN"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["5/1024", 0x000507, "DISKA OF BRAVEMAN"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["5/1024", 0x000507, "DISKA OF BRAVEMAN"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010125, "ATTRIBUTE PLATE"]],
@@ -2932,11 +2932,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001005, "AGITO"]],
-          "Box-Caves3": [["3/512", 0x000605, "VARISTA"]],
+          "Box-Cave2": [["9/16384", 0x001005, "AGITO"]],
+          "Box-Cave3": [["3/512", 0x000605, "VARISTA"]],
           "Box-Forest2": [["5/1024", 0x000106, "KALADBOLG"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["1/128", 0x000A04, "CLUB OF LACONIUM"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["1/128", 0x000A04, "CLUB OF LACONIUM"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010124, "GRAVITON PLATE"]],
@@ -2999,14 +2999,14 @@
         "Bluefull": {
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -3050,14 +3050,14 @@
         "Greennill": {
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["3/8192", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["13/2048", 0x000703, "Beam"]
           ],
@@ -3101,14 +3101,14 @@
         "Oran": {
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -3153,14 +3153,14 @@
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BOOMA": [["1/8192", 0x000A05, "MACE OF ADAMAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["3/8192", 0x000703, "Beam"]
           ],
@@ -3206,14 +3206,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A05, "MACE OF ADAMAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/8192", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -3257,14 +3257,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A05, "MACE OF ADAMAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -3309,14 +3309,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A05, "MACE OF ADAMAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["13/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -3360,14 +3360,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A04, "CLUB OF LACONIUM"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["3/8192", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["3/8192", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -3409,14 +3409,14 @@
         "Whitill": {
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["13/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["13/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -3462,14 +3462,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A06, "CLUB OF ZUMIURAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -3513,14 +3513,14 @@
         "Bluefull": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["13/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["13/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["3/8192", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -3557,14 +3557,14 @@
         "Greennill": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["13/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["13/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -3601,14 +3601,14 @@
         "Oran": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["3/8192", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -3645,14 +3645,14 @@
         "Pinkal": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["3/8192", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["3/8192", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["13/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -3689,14 +3689,14 @@
         "Purplenum": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/8192", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/8192", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -3733,14 +3733,14 @@
         "Redria": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -3777,14 +3777,14 @@
         "Skyly": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -3821,14 +3821,14 @@
         "Viridia": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -3865,14 +3865,14 @@
         "Whitill": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -3909,14 +3909,14 @@
         "Yellowboze": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["13/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -3959,11 +3959,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001005, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000406, "VJAYA"]],
+          "Box-Cave2": [["9/16384", 0x001005, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000406, "VJAYA"]],
           "Box-Forest2": [["1/256", 0x000405, "BRIONAC"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000407, "GAE BOLG"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000407, "GAE BOLG"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010123, "SENSE PLATE"]],
@@ -4011,11 +4011,11 @@
           "BOOMA": [["7/2097152", 0x030C03, "Heart of Opa Opa"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["9/65536", 0x000E02, "TWIN BRAND"]],
-          "Box-Caves2": [["9/16384", 0x001003, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000706, "WALS-MK2"]],
+          "Box-Cave2": [["9/16384", 0x001003, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000706, "WALS-MK2"]],
           "Box-Forest2": [["1/256", 0x000705, "VISK-235W"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000707, "JUSTY-23ST"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000707, "JUSTY-23ST"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010124, "GRAVITON PLATE"]],
@@ -4063,11 +4063,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/512", 0x001005, "AGITO"]],
-          "Box-Caves2": [["9/16384", 0x001004, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000306, "BLOODY ART"]],
+          "Box-Cave2": [["9/16384", 0x001004, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000306, "BLOODY ART"]],
           "Box-Forest2": [["1/256", 0x000305, "BLADE DANCE"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000307, "CROSS SCAR"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000307, "CROSS SCAR"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010123, "SENSE PLATE"]],
@@ -4115,11 +4115,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001002, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000C05, "ICE STAFF:DAGON"]],
+          "Box-Cave2": [["9/16384", 0x001002, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000C05, "ICE STAFF:DAGON"]],
           "Box-Forest2": [["1/256", 0x000C04, "FIRE SCEPTER:AGNI"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000C06, "STORM WAND:INDRA"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000C06, "STORM WAND:INDRA"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010124, "GRAVITON PLATE"]],
@@ -4167,11 +4167,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001006, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000806, "H&S25 JUSTICE"]],
+          "Box-Cave2": [["9/16384", 0x001006, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000806, "H&S25 JUSTICE"]],
           "Box-Forest2": [["1/256", 0x000805, "M&A60 VISE"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000807, "L&K14 COMBAT"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000807, "L&K14 COMBAT"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010123, "SENSE PLATE"]],
@@ -4219,11 +4219,11 @@
           "BOOMA": [["7/4096", 0x010121, "PARASITE WEAR:Nelgal"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001003, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x010119, "RANGER FIELD"]],
+          "Box-Cave2": [["9/16384", 0x001003, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x010119, "RANGER FIELD"]],
           "Box-Forest2": [["1/256", 0x010118, "HUNTER FIELD"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x01011A, "FORCE FIELD"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x01011A, "FORCE FIELD"]],
           "CANADINE": [["13/524288", 0x010223, "REGENE GEAR ADV."]],
           "CANADINE_GROUP": [["13/524288", 0x010223, "REGENE GEAR ADV."]],
           "CANANE": [["7/16384", 0x010125, "ATTRIBUTE PLATE"]],
@@ -4271,11 +4271,11 @@
           "BOOMA": [["13/536870912", 0x001001, "AGITO"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/512", 0x001005, "AGITO"]],
-          "Box-Caves2": [["9/16384", 0x001004, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000206, "LAST SURVIVOR"]],
+          "Box-Cave2": [["9/16384", 0x001004, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000206, "LAST SURVIVOR"]],
           "Box-Forest2": [["1/256", 0x000205, "FLOWEN'S SWORD"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000207, "DRAGON SLAYER"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000207, "DRAGON SLAYER"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010125, "ATTRIBUTE PLATE"]],
@@ -4323,11 +4323,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x000905, "CRUSH BULLET"]],
-          "Box-Caves2": [["9/16384", 0x001002, "AGITO"]],
-          "Box-Caves3": [["7/2048", 0x000906, "METEOR SMASH"]],
+          "Box-Cave2": [["9/16384", 0x001002, "AGITO"]],
+          "Box-Cave3": [["7/2048", 0x000906, "METEOR SMASH"]],
           "Box-Forest2": [["3/1024", 0x000905, "CRUSH BULLET"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["5/1024", 0x000907, "FINAL IMPACT"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["5/1024", 0x000907, "FINAL IMPACT"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010123, "SENSE PLATE"]],
@@ -4375,11 +4375,11 @@
           "BOOMA": [["7/2097152", 0x030C03, "Heart of Opa Opa"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["9/65536", 0x002100, "CHAIN SAWD"]],
-          "Box-Caves2": [["9/16384", 0x001006, "AGITO"]],
-          "Box-Caves3": [["7/2048", 0x000506, "DISKA OF LIBERATOR"]],
+          "Box-Cave2": [["9/16384", 0x001006, "AGITO"]],
+          "Box-Cave3": [["7/2048", 0x000506, "DISKA OF LIBERATOR"]],
           "Box-Forest2": [["3/1024", 0x000505, "SLICER OF ASSASSIN"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["5/1024", 0x000507, "DISKA OF BRAVEMAN"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["5/1024", 0x000507, "DISKA OF BRAVEMAN"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010125, "ATTRIBUTE PLATE"]],
@@ -4427,11 +4427,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001005, "AGITO"]],
-          "Box-Caves3": [["3/512", 0x000605, "VARISTA"]],
+          "Box-Cave2": [["9/16384", 0x001005, "AGITO"]],
+          "Box-Cave3": [["3/512", 0x000605, "VARISTA"]],
           "Box-Forest2": [["5/1024", 0x000106, "KALADBOLG"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["1/128", 0x000A04, "CLUB OF LACONIUM"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["1/128", 0x000A04, "CLUB OF LACONIUM"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010124, "GRAVITON PLATE"]],
@@ -4494,14 +4494,14 @@
         "Bluefull": {
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -4545,14 +4545,14 @@
         "Greennill": {
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["3/8192", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["13/2048", 0x000703, "Beam"]
           ],
@@ -4596,14 +4596,14 @@
         "Oran": {
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -4648,14 +4648,14 @@
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BOOMA": [["1/8192", 0x000A05, "MACE OF ADAMAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["3/8192", 0x000703, "Beam"]
           ],
@@ -4701,14 +4701,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A05, "MACE OF ADAMAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/8192", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -4752,14 +4752,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A05, "MACE OF ADAMAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -4804,14 +4804,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A05, "MACE OF ADAMAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["13/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -4855,14 +4855,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A04, "CLUB OF LACONIUM"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["3/8192", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["3/8192", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -4904,14 +4904,14 @@
         "Whitill": {
           "AL_RAPPY": [["5/8", 0x010222, "REGENERATE GEAR"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["13/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["13/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -4957,14 +4957,14 @@
           "BARBAROUS_WOLF": [["13/8192", 0x010219, "LIGHT RELIEF"]],
           "BOOMA": [["1/8192", 0x000A06, "CLUB OF ZUMIURAN"]],
           "BULCLAW": [["1/8192", 0x01031F, "Hero/Ability"]],
-          "Box-Caves1": [["7/2048", 0x000603, "Railgun"]],
-          "Box-Caves2": [["7/2048", 0x000A02, "Mace"]],
-          "Box-Caves3": [["7/2048", 0x000502, "Cutter"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000603, "Railgun"]],
+          "Box-Cave2": [["7/2048", 0x000A02, "Mace"]],
+          "Box-Cave3": [["7/2048", 0x000502, "Cutter"]],
+          "Box-Mine1": [
             ["7/2048", 0x000203, "Claymore"],
             ["7/2048", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["5/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000703, "Beam"]
           ],
@@ -5008,14 +5008,14 @@
         "Bluefull": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["13/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["13/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["3/8192", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -5052,14 +5052,14 @@
         "Greennill": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["13/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["13/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -5096,14 +5096,14 @@
         "Oran": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["3/8192", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -5140,14 +5140,14 @@
         "Pinkal": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["3/8192", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["3/8192", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["13/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -5184,14 +5184,14 @@
         "Purplenum": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/8192", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/8192", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -5228,14 +5228,14 @@
         "Redria": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -5272,14 +5272,14 @@
         "Skyly": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -5316,14 +5316,14 @@
         "Viridia": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -5360,14 +5360,14 @@
         "Whitill": {
           "AL_RAPPY": [["7/8", 0x030900, "Scape Doll"]],
           "BULCLAW": [["5/4096", 0x01031D, "God/Luck"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["7/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -5404,14 +5404,14 @@
         "Yellowboze": {
           "AL_RAPPY": [["7/8", 0x030500, "Star Atomizer x0"]],
           "BULCLAW": [["5/4096", 0x010342, "State/Maintenance"]],
-          "Box-Caves1": [["7/2048", 0x000400, "Partisan"]],
-          "Box-Caves2": [["7/2048", 0x000700, "Rifle"]],
-          "Box-Caves3": [["7/2048", 0x000101, "Brand"]],
-          "Box-Mines1": [
+          "Box-Cave1": [["7/2048", 0x000400, "Partisan"]],
+          "Box-Cave2": [["7/2048", 0x000700, "Rifle"]],
+          "Box-Cave3": [["7/2048", 0x000101, "Brand"]],
+          "Box-Mine1": [
             ["9/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"],
             ["13/2048", 0x000B00, "Rod"]
           ],
-          "Box-Mines2": [
+          "Box-Mine2": [
             ["7/2048", 0x000C00, "Wand"],
             ["1/256", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]
           ],
@@ -5454,11 +5454,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001005, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000406, "VJAYA"]],
+          "Box-Cave2": [["9/16384", 0x001005, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000406, "VJAYA"]],
           "Box-Forest2": [["1/256", 0x000405, "BRIONAC"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000407, "GAE BOLG"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000407, "GAE BOLG"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010123, "SENSE PLATE"]],
@@ -5506,11 +5506,11 @@
           "BOOMA": [["7/2097152", 0x030C03, "Heart of Opa Opa"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["9/65536", 0x000E02, "TWIN BRAND"]],
-          "Box-Caves2": [["9/16384", 0x001003, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000706, "WALS-MK2"]],
+          "Box-Cave2": [["9/16384", 0x001003, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000706, "WALS-MK2"]],
           "Box-Forest2": [["1/256", 0x000705, "VISK-235W"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000707, "JUSTY-23ST"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000707, "JUSTY-23ST"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010124, "GRAVITON PLATE"]],
@@ -5558,11 +5558,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/512", 0x001005, "AGITO"]],
-          "Box-Caves2": [["9/16384", 0x001004, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000306, "BLOODY ART"]],
+          "Box-Cave2": [["9/16384", 0x001004, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000306, "BLOODY ART"]],
           "Box-Forest2": [["1/256", 0x000305, "BLADE DANCE"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000307, "CROSS SCAR"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000307, "CROSS SCAR"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010123, "SENSE PLATE"]],
@@ -5610,11 +5610,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001002, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000C05, "ICE STAFF:DAGON"]],
+          "Box-Cave2": [["9/16384", 0x001002, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000C05, "ICE STAFF:DAGON"]],
           "Box-Forest2": [["1/256", 0x000C04, "FIRE SCEPTER:AGNI"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000C06, "STORM WAND:INDRA"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000C06, "STORM WAND:INDRA"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010124, "GRAVITON PLATE"]],
@@ -5662,11 +5662,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001006, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000806, "H&S25 JUSTICE"]],
+          "Box-Cave2": [["9/16384", 0x001006, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000806, "H&S25 JUSTICE"]],
           "Box-Forest2": [["1/256", 0x000805, "M&A60 VISE"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000807, "L&K14 COMBAT"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000807, "L&K14 COMBAT"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010123, "SENSE PLATE"]],
@@ -5714,11 +5714,11 @@
           "BOOMA": [["7/4096", 0x010121, "PARASITE WEAR:Nelgal"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001003, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x010119, "RANGER FIELD"]],
+          "Box-Cave2": [["9/16384", 0x001003, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x010119, "RANGER FIELD"]],
           "Box-Forest2": [["1/256", 0x010118, "HUNTER FIELD"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x01011A, "FORCE FIELD"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x01011A, "FORCE FIELD"]],
           "CANADINE": [["13/524288", 0x010223, "REGENE GEAR ADV."]],
           "CANADINE_GROUP": [["13/524288", 0x010223, "REGENE GEAR ADV."]],
           "CANANE": [["7/16384", 0x010125, "ATTRIBUTE PLATE"]],
@@ -5766,11 +5766,11 @@
           "BOOMA": [["13/536870912", 0x001001, "AGITO"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/512", 0x001005, "AGITO"]],
-          "Box-Caves2": [["9/16384", 0x001004, "AGITO"]],
-          "Box-Caves3": [["5/1024", 0x000206, "LAST SURVIVOR"]],
+          "Box-Cave2": [["9/16384", 0x001004, "AGITO"]],
+          "Box-Cave3": [["5/1024", 0x000206, "LAST SURVIVOR"]],
           "Box-Forest2": [["1/256", 0x000205, "FLOWEN'S SWORD"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["7/1024", 0x000207, "DRAGON SLAYER"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["7/1024", 0x000207, "DRAGON SLAYER"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010125, "ATTRIBUTE PLATE"]],
@@ -5818,11 +5818,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x000905, "CRUSH BULLET"]],
-          "Box-Caves2": [["9/16384", 0x001002, "AGITO"]],
-          "Box-Caves3": [["7/2048", 0x000906, "METEOR SMASH"]],
+          "Box-Cave2": [["9/16384", 0x001002, "AGITO"]],
+          "Box-Cave3": [["7/2048", 0x000906, "METEOR SMASH"]],
           "Box-Forest2": [["3/1024", 0x000905, "CRUSH BULLET"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["5/1024", 0x000907, "FINAL IMPACT"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["5/1024", 0x000907, "FINAL IMPACT"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010123, "SENSE PLATE"]],
@@ -5870,11 +5870,11 @@
           "BOOMA": [["7/2097152", 0x030C03, "Heart of Opa Opa"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["9/65536", 0x002100, "CHAIN SAWD"]],
-          "Box-Caves2": [["9/16384", 0x001006, "AGITO"]],
-          "Box-Caves3": [["7/2048", 0x000506, "DISKA OF LIBERATOR"]],
+          "Box-Cave2": [["9/16384", 0x001006, "AGITO"]],
+          "Box-Cave3": [["7/2048", 0x000506, "DISKA OF LIBERATOR"]],
           "Box-Forest2": [["3/1024", 0x000505, "SLICER OF ASSASSIN"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["5/1024", 0x000507, "DISKA OF BRAVEMAN"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["5/1024", 0x000507, "DISKA OF BRAVEMAN"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010125, "ATTRIBUTE PLATE"]],
@@ -5922,11 +5922,11 @@
           "BOOMA": [["11/1024", 0x000F00, "BRAVE KNUCKLE"]],
           "BULCLAW": [["3/262144", 0x000F02, "GOD HAND"]],
           "BULK": [["5/2048", 0x002600, "SUPPRESSED GUN"]],
-          "Box-Caves2": [["9/16384", 0x001005, "AGITO"]],
-          "Box-Caves3": [["3/512", 0x000605, "VARISTA"]],
+          "Box-Cave2": [["9/16384", 0x001005, "AGITO"]],
+          "Box-Cave3": [["3/512", 0x000605, "VARISTA"]],
           "Box-Forest2": [["5/1024", 0x000106, "KALADBOLG"]],
-          "Box-Mines1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
-          "Box-Mines2": [["1/128", 0x000A04, "CLUB OF LACONIUM"]],
+          "Box-Mine1": [["7/1024", 0x020000, "Mag LV0 0/0/0/0 0% 0IQ (red)"]],
+          "Box-Mine2": [["1/128", 0x000A04, "CLUB OF LACONIUM"]],
           "CANADINE": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANADINE_GROUP": [["13/524288", 0x010222, "REGENERATE GEAR"]],
           "CANANE": [["7/16384", 0x010124, "GRAVITON PLATE"]],

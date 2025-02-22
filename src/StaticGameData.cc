@@ -650,209 +650,142 @@ const unordered_map<string, uint8_t> mag_color_for_name({
     {"costume-color", 0x12},
 });
 
-uint8_t floor_for_name(const std::string& name) {
-  static const unordered_map<string, uint8_t> floors({
-      {"pioneer2", 0x00},
-      {"p2", 0x00},
-      {"forest1", 0x01},
-      {"f1", 0x01},
-      {"forest2", 0x02},
-      {"f2", 0x02},
-      {"caves1", 0x03},
-      {"cave1", 0x03},
-      {"c1", 0x03},
-      {"caves2", 0x04},
-      {"cave2", 0x04},
-      {"c2", 0x04},
-      {"caves3", 0x05},
-      {"cave3", 0x05},
-      {"c3", 0x05},
-      {"mines1", 0x06},
-      {"mine1", 0x06},
-      {"m1", 0x06},
-      {"mines2", 0x07},
-      {"mine2", 0x07},
-      {"m2", 0x07},
-      {"ruins1", 0x08},
-      {"ruin1", 0x08},
-      {"r1", 0x08},
-      {"ruins2", 0x09},
-      {"ruin2", 0x09},
-      {"r2", 0x09},
-      {"ruins3", 0x0A},
-      {"ruin3", 0x0A},
-      {"r3", 0x0A},
-      {"dragon", 0x0B},
-      {"derolle", 0x0C},
-      {"volopt", 0x0D},
-      {"darkfalz", 0x0E},
-      {"lobby", 0x0F},
-      {"battle1", 0x10},
-      {"battle2", 0x11},
+static constexpr uint8_t F_CITY = FloorDefinition::Flag::CITY;
+static constexpr uint8_t F_LOBBY = FloorDefinition::Flag::LOBBY;
+static constexpr uint8_t F_BOSS = FloorDefinition::Flag::BOSS_ARENA;
+static constexpr uint8_t F_V1 = FloorDefinition::Flag::EXISTS_ON_V1 | FloorDefinition::Flag::EXISTS_ON_V2 | FloorDefinition::Flag::EXISTS_ON_GC_NTE | FloorDefinition::Flag::EXISTS_ON_V3 | FloorDefinition::Flag::EXISTS_ON_V4;
+static constexpr uint8_t F_V2 = FloorDefinition::Flag::EXISTS_ON_V2 | FloorDefinition::Flag::EXISTS_ON_GC_NTE | FloorDefinition::Flag::EXISTS_ON_V3 | FloorDefinition::Flag::EXISTS_ON_V4;
+static constexpr uint8_t F_GCN = FloorDefinition::Flag::EXISTS_ON_GC_NTE | FloorDefinition::Flag::EXISTS_ON_V3 | FloorDefinition::Flag::EXISTS_ON_V4;
+static constexpr uint8_t F_V3 = FloorDefinition::Flag::EXISTS_ON_V3 | FloorDefinition::Flag::EXISTS_ON_V4;
+static constexpr uint8_t F_V4 = FloorDefinition::Flag::EXISTS_ON_V4;
 
-      {"pioneer2", 0x00},
-      {"p2", 0x00},
-      {"vrtemplealpha", 0x01},
-      {"templealpha", 0x01},
-      {"vrtemplebeta", 0x02},
-      {"templebeta", 0x02},
-      {"vrspaceshipalpha", 0x03},
-      {"spaceshipalpha", 0x03},
-      {"vrspaceshipbeta", 0x04},
-      {"spaceshipbeta", 0x04},
-      {"centralcontrolarea", 0x05},
-      {"cca", 0x05},
-      {"junglenorth", 0x06},
-      {"jungleeast", 0x07},
-      {"mountain", 0x08},
-      {"seaside", 0x09},
-      {"seabedupper", 0x0A},
-      {"seabedlower", 0x0B},
-      {"galgryphon", 0x0C},
-      {"olgaflow", 0x0D},
-      {"barbaray", 0x0E},
-      {"goldragon", 0x0F},
-      {"seasidenight", 0x10},
-      {"tower", 0x11},
+static const std::vector<FloorDefinition> floor_defs{
+    // clang-format off
+    {Episode::EP1, 0x00, 0x00, 0x00, 0xFF, F_V1 | F_CITY,  "Pioneer2",            "P2",   "Pioneer 2", {"pioneer2", "p2", "city"}},
+    {Episode::EP1, 0x01, 0x01, 0x01, 0x00, F_V1,           "Forest1",             "F1",   "Forest 1", {"forest1", "f1"}},
+    {Episode::EP1, 0x02, 0x02, 0x02, 0x01, F_V1,           "Forest2",             "F2",   "Forest 2", {"forest2", "f2"}},
+    {Episode::EP1, 0x03, 0x03, 0x03, 0x02, F_V1,           "Cave1",               "C1",   "Cave 1", {"caves1", "cave1", "c1"}},
+    {Episode::EP1, 0x04, 0x04, 0x04, 0x03, F_V1,           "Cave2",               "C2",   "Cave 2", {"caves2", "cave2", "c2"}},
+    {Episode::EP1, 0x05, 0x05, 0x05, 0x04, F_V1,           "Cave3",               "C3",   "Cave 3", {"caves3", "cave3", "c3"}},
+    {Episode::EP1, 0x06, 0x06, 0x06, 0x05, F_V1,           "Mine1",               "M1",   "Mine 1", {"mines1", "mine1", "m1"}},
+    {Episode::EP1, 0x07, 0x07, 0x07, 0x06, F_V1,           "Mine2",               "M2",   "Mine 2", {"mines2", "mine2", "m2"}},
+    {Episode::EP1, 0x08, 0x08, 0x08, 0x07, F_V1,           "Ruins1",              "R1",   "Ruins 1", {"ruins1", "ruin1", "r1"}},
+    {Episode::EP1, 0x09, 0x09, 0x09, 0x08, F_V1,           "Ruins2",              "R2",   "Ruins 2", {"ruins2", "ruin2", "r2"}},
+    {Episode::EP1, 0x0A, 0x0A, 0x0A, 0x09, F_V1,           "Ruins3",              "R3",   "Ruins 3", {"ruins3", "ruin3", "r3"}},
+    {Episode::EP1, 0x0B, 0x0B, 0x0B, 0x02, F_V1 | F_BOSS,  "Dragon",              "Dgn",  "Under the Dome (Dragon)", {"dragon"}},
+    {Episode::EP1, 0x0C, 0x0C, 0x0C, 0x05, F_V1 | F_BOSS,  "DeRolLe",             "DRL",  "Underground Channel (De Rol Le)", {"derolle"}},
+    {Episode::EP1, 0x0D, 0x0D, 0x0D, 0x07, F_V1 | F_BOSS,  "VolOpt",              "VO",   "Monitor Room (Vol Opt)", {"volopt"}},
+    {Episode::EP1, 0x0E, 0x0E, 0x0E, 0x09, F_V1 | F_BOSS,  "DarkFalz",            "DF",   "???? (Dark Falz)", {"darkfalz"}},
+    {Episode::EP1, 0x0F, 0x0F, 0x0F, 0xFF, F_V1 | F_LOBBY, "Lobby",               "Lby",  "Lobby", {"lobby"}},
+    {Episode::EP1, 0x10, 0x10, 0x10, 0x09, F_V2,           "Battle1",             "B1",   "Spaceship", {"battle1"}},
+    {Episode::EP1, 0x11, 0x11, 0x11, 0x09, F_V2,           "Battle2",             "B2",   "Palace", {"battle2"}},
 
-      {"pioneer2", 0x00},
-      {"p2", 0x00},
-      {"cratereast", 0x01},
-      {"ce", 0x01},
-      {"craterwest", 0x02},
-      {"cw", 0x02},
-      {"cratersouth", 0x03},
-      {"cs", 0x03},
-      {"craternorth", 0x04},
-      {"cn", 0x04},
-      {"craterinterior", 0x05},
-      {"ci", 0x05},
-      {"desert1", 0x06},
-      {"d1", 0x06},
-      {"desert2", 0x07},
-      {"d2", 0x07},
-      {"desert3", 0x08},
-      {"d3", 0x08},
-      {"saintmillion", 0x09},
-      {"purgatory", 0x0A},
-  });
-  return floors.at(phosg::tolower(name));
+    {Episode::EP2, 0x00, 0x00, 0x12, 0xFF, F_GCN | F_CITY, "Pioneer2",            "Lab",  "Lab", {"pioneer2", "p2", "lab", "labo"}},
+    {Episode::EP2, 0x01, 0x13, 0x13, 0x00, F_GCN,          "VRTempleAlpha",       "VRTA", "VR Temple Alpha", {"vrtemplealpha", "templealpha", "vrta"}},
+    {Episode::EP2, 0x02, 0x14, 0x14, 0x01, F_GCN,          "VRTempleBeta",        "VRTB", "VR Temple Beta", {"vrtemplebeta", "templebeta", "vrtb"}},
+    {Episode::EP2, 0x03, 0x15, 0x15, 0x02, F_GCN,          "VRSpaceshipAlpha",    "VRSA", "VR Spaceship Alpha", {"vrspaceshipalpha", "spaceshipalpha", "vrsa"}},
+    {Episode::EP2, 0x04, 0x16, 0x16, 0x03, F_GCN,          "VRSpaceshipBeta",     "VRSB", "VR Spaceship Beta", {"vrspaceshipbeta", "spaceshipbeta", "vrsb"}},
+    {Episode::EP2, 0x05, 0x17, 0x17, 0x07, F_GCN,          "CentralControlArea",  "CCA",  "Central Control Area", {"centralcontrolarea", "cca"}},
+    {Episode::EP2, 0x06, 0x18, 0x18, 0x04, F_GCN,          "JungleNorth",         "JN",   "Jungle Area North", {"junglenorth"}},
+    {Episode::EP2, 0x07, 0x19, 0x19, 0x05, F_GCN,          "JungleEast",          "JE",   "Jungle Area East", {"jungleeast"}},
+    {Episode::EP2, 0x08, 0x1A, 0x1A, 0x06, F_GCN,          "Mountain",            "Mtn",  "Mountain Area", {"mountain"}},
+    {Episode::EP2, 0x09, 0x1B, 0x1B, 0x07, F_GCN,          "Seaside",             "SS",   "Seaside Area", {"seaside"}},
+    {Episode::EP2, 0x0A, 0x1C, 0x1C, 0x08, F_GCN,          "SeabedUpper",         "SU",   "Seabed Upper Levels", {"seabedupper"}},
+    {Episode::EP2, 0x0B, 0x1D, 0x1D, 0x09, F_GCN,          "SeabedLower",         "SL",   "Seabed Lower Levels", {"seabedlower"}},
+    {Episode::EP2, 0x0C, 0x1E, 0x1E, 0x08, F_GCN | F_BOSS, "GalGryphon",          "GG",   "Cliffs of Gal Da Val (Gal Gryphon)", {"galgryphon"}},
+    {Episode::EP2, 0x0D, 0x1F, 0x1F, 0x09, F_GCN | F_BOSS, "OlgaFlow",            "OF",   "Test Subject Disposal Area (Olga Flow)", {"olgaflow"}},
+    {Episode::EP2, 0x0E, 0x20, 0x20, 0x02, F_GCN | F_BOSS, "BarbaRay",            "BR",   "VR Temple Final (Barba Ray)", {"barbaray"}},
+    {Episode::EP2, 0x0F, 0x21, 0x21, 0x04, F_GCN | F_BOSS, "GolDragon",           "GD",   "VR Spaceship Final (Gol Dragon)", {"goldragon"}},
+    {Episode::EP2, 0x10, 0xFF, 0x22, 0x07, F_V3,           "SeasideNight",        "SSN",  "Seaside Area (night)", {"seasidenight"}},
+    {Episode::EP2, 0x11, 0xFF, 0x23, 0x09, F_V3,           "Tower",               "Twr",  "Control Tower", {"tower"}},
+
+    {Episode::EP4, 0x00, 0xFF, 0x2D, 0xFF, F_V4 | F_CITY,  "Pioneer2",            "P2",   "Pioneer 2", {"pioneer2", "p2", "city"}},
+    {Episode::EP4, 0x01, 0xFF, 0x24, 0x01, F_V4,           "CraterEast",          "CE",   "Crater (Eastern Route)", {"cratereast", "ce"}},
+    {Episode::EP4, 0x02, 0xFF, 0x25, 0x02, F_V4,           "CraterWest",          "CW",   "Crater (Western Route)", {"craterwest", "cw"}},
+    {Episode::EP4, 0x03, 0xFF, 0x26, 0x03, F_V4,           "CraterSouth",         "CS",   "Crater (Southern Route)", {"cratersouth", "cs"}},
+    {Episode::EP4, 0x04, 0xFF, 0x27, 0x04, F_V4,           "CraterNorth",         "CN",   "Crater (Northern Route)", {"craternorth", "cn"}},
+    {Episode::EP4, 0x05, 0xFF, 0x28, 0x05, F_V4,           "CraterInterior",      "CI",   "Crater Interior", {"craterinterior", "ci"}},
+    {Episode::EP4, 0x06, 0xFF, 0x29, 0x06, F_V4,           "Desert1",             "D1",   "Subterranean Desert 1", {"desert1", "d1"}},
+    {Episode::EP4, 0x07, 0xFF, 0x2A, 0x07, F_V4,           "Desert2",             "D2",   "Subterranean Desert 2", {"desert2", "d2"}},
+    {Episode::EP4, 0x08, 0xFF, 0x2B, 0x08, F_V4,           "Desert3",             "D3",   "Subterranean Desert 3", {"desert3", "d3"}},
+    {Episode::EP4, 0x09, 0xFF, 0x2C, 0x09, F_V4 | F_BOSS,  "SaintMilion",         "SM",   "Meteor Impact Site", {"saintmilion"}},
+    {Episode::EP4, 0x0A, 0xFF, 0x2E, 0xFF, F_V4,           "TestMap",             "TM",   "Test Map", {"purgatory"}},
+    // clang-format on
+};
+
+const FloorDefinition& FloorDefinition::get(Episode episode, uint8_t floor) {
+  if (floor >= FloorDefinition::limit_for_episode(episode)) {
+    throw runtime_error("invalid floor number");
+  }
+  switch (episode) {
+    case Episode::EP1:
+      return floor_defs.at(floor);
+    case Episode::EP2:
+      return floor_defs.at(floor + 0x12);
+    case Episode::EP4:
+      return floor_defs.at(floor + 0x24);
+    default:
+      throw logic_error("invalid episode");
+  }
 }
 
-static const array<const char*, 0x12> ep1_floor_names = {
-    "Pioneer2",
-    "Forest1",
-    "Forest2",
-    "Caves1",
-    "Caves2",
-    "Caves3",
-    "Mines1",
-    "Mines2",
-    "Ruins1",
-    "Ruins2",
-    "Ruins3",
-    "Dragon",
-    "DeRolLe",
-    "VolOpt",
-    "DarkFalz",
-    "Lobby",
-    "Battle1",
-    "Battle2",
-};
+const FloorDefinition& FloorDefinition::get_by_drop_area_norm(Episode episode, uint8_t area_norm) {
+  switch (episode) {
+    case Episode::EP1:
+      return floor_defs[area_norm + 1];
+    case Episode::EP2:
+      return floor_defs[0x13 + (area_norm >= 4) + area_norm];
+    case Episode::EP4:
+      return floor_defs[area_norm + 0x24];
+    default:
+      throw logic_error("invalid episode number");
+  }
+}
 
-static const array<const char*, 0x12> ep2_floor_names = {
-    "Pioneer2",
-    "VRTempleAlpha",
-    "VRTempleBeta",
-    "VRSpaceshipAlpha",
-    "VRSpaceshipBeta",
-    "CentralControlArea",
-    "JungleNorth",
-    "JungleEast",
-    "Mountain",
-    "Seaside",
-    "SeabedUpper",
-    "SeabedLower",
-    "GalGryphon",
-    "OlgaFlow",
-    "BarbaRay",
-    "GolDragon",
-    "SeasideNight",
-    "Tower",
-};
+const FloorDefinition& FloorDefinition::get(Episode episode, const std::string& name) {
+  static unordered_map<std::string, size_t> index_ep1;
+  static unordered_map<std::string, size_t> index_ep2;
+  static unordered_map<std::string, size_t> index_ep4;
 
-static const array<const char*, 0x0B> ep4_floor_names = {
-    "Pioneer2",
-    "CraterEast",
-    "CraterWest",
-    "CraterSouth",
-    "CraterNorth",
-    "CraterInterior",
-    "Desert1",
-    "Desert2",
-    "Desert3",
-    "SaintMillion",
-    "Purgatory",
-};
+  unordered_map<std::string, size_t>* index;
+  switch (episode) {
+    case Episode::EP1:
+      index = &index_ep1;
+      break;
+    case Episode::EP2:
+      index = &index_ep2;
+      break;
+    case Episode::EP4:
+      index = &index_ep4;
+      break;
+    default:
+      throw logic_error("invalid episode");
+  }
 
-static const array<const char*, 0x12> ep1_floor_names_short = {
-    "P2", "F1", "F2", "C1", "C2", "C3", "M1", "M2", "R1", "R2", "R3", "Dgn", "DRL", "VO", "DF", "Lby", "B1", "B2"};
+  if (index->empty()) {
+    for (size_t z = 0; z < floor_defs.size(); z++) {
+      const auto& def = floor_defs[z];
+      if (def.episode != episode) {
+        continue;
+      }
+      for (const auto& alias : def.aliases) {
+        index->emplace(alias, z);
+      }
+    }
+  }
 
-static const array<const char*, 0x12> ep2_floor_names_short = {
-    "Lab", "VRTA", "VRTB", "VRSA", "VRSB", "CCA", "JN", "JE", "Mtn", "SS", "SU", "SL", "GG", "OF", "BR", "GD", "SSN", "Twr"};
+  return floor_defs[index->at(phosg::tolower(name))];
+}
 
-static const array<const char*, 0x0B> ep4_floor_names_short = {
-    "P2", "CE", "CW", "CS", "CN", "CI", "D1", "D2", "D3", "SM", "Pg"};
-
-size_t floor_limit_for_episode(Episode ep) {
+size_t FloorDefinition::limit_for_episode(Episode ep) {
   switch (ep) {
     case Episode::EP1:
-      return ep1_floor_names.size() - 1;
     case Episode::EP2:
-      return ep2_floor_names.size() - 1;
+      return 0x11;
     case Episode::EP4:
-      return ep4_floor_names.size() - 1;
+      return 0x0B;
     default:
-      return 0;
-  }
-}
-
-const char* name_for_floor(Episode episode, uint8_t floor) {
-  switch (episode) {
-    case Episode::EP1:
-      return ep1_floor_names.at(floor);
-    case Episode::EP2:
-      return ep2_floor_names.at(floor);
-    case Episode::EP4:
-      return ep4_floor_names.at(floor);
-    default:
-      throw logic_error("invalid episode for drop floor");
-  }
-}
-
-const char* short_name_for_floor(Episode episode, uint8_t floor) {
-  switch (episode) {
-    case Episode::EP1:
-      return ep1_floor_names_short.at(floor);
-    case Episode::EP2:
-      return ep2_floor_names_short.at(floor);
-    case Episode::EP4:
-      return ep4_floor_names_short.at(floor);
-    default:
-      throw logic_error("invalid episode for floor");
-  }
-}
-
-bool floor_is_boss_arena(Episode episode, uint8_t floor) {
-  switch (episode) {
-    case Episode::EP1:
-      return (floor >= 0x0B) && (floor <= 0x0E);
-    case Episode::EP2:
-      return (floor >= 0x0C) && (floor <= 0x0F);
-    case Episode::EP4:
-      return (floor == 0x09);
-    default:
-      return false;
+      return 0x00;
   }
 }
 

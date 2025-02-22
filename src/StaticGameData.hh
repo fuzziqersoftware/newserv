@@ -74,11 +74,33 @@ uint8_t language_code_for_char(char language_char);
 extern const std::vector<const char*> name_for_mag_color;
 extern const std::unordered_map<std::string, uint8_t> mag_color_for_name;
 
-size_t floor_limit_for_episode(Episode ep);
-uint8_t floor_for_name(const std::string& name);
-const char* name_for_floor(Episode episode, uint8_t floor);
-const char* short_name_for_floor(Episode episode, uint8_t floor);
-bool floor_is_boss_arena(Episode episode, uint8_t floor);
+struct FloorDefinition {
+  enum Flag {
+    CITY = 0x01,
+    LOBBY = 0x02,
+    BOSS_ARENA = 0x04,
+    EXISTS_ON_V1 = 0x08,
+    EXISTS_ON_V2 = 0x10,
+    EXISTS_ON_GC_NTE = 0x20,
+    EXISTS_ON_V3 = 0x40,
+    EXISTS_ON_V4 = 0x80,
+  };
+  Episode episode;
+  uint8_t floor;
+  uint8_t gc_nte_area;
+  uint8_t area;
+  uint8_t drop_area_norm;
+  uint8_t flags;
+  const char* json_name;
+  const char* short_name;
+  const char* in_game_name;
+  std::vector<const char*> aliases;
+
+  static const FloorDefinition& get(Episode episode, uint8_t floor);
+  static const FloorDefinition& get(Episode episode, const std::string& name);
+  static const FloorDefinition& get_by_drop_area_norm(Episode episode, uint8_t area_norm);
+  static size_t limit_for_episode(Episode ep);
+};
 
 uint32_t class_flags_for_class(uint8_t char_class);
 

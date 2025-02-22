@@ -1990,9 +1990,12 @@ Action a_convert_rare_item_set(
           static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
           for (Episode episode : episodes) {
             for (size_t difficulty = 0; difficulty < (is_v1 ? 3 : 4); difficulty++) {
+              if (!rs->has_entries_for_game_config(mode, episode, difficulty)) {
+                continue;
+              }
               auto item_name_index = s->item_name_index(get_cli_version(args, Version::BB_V4));
               string data = rs->serialize_html(mode, episode, difficulty, item_name_index);
-              string out_filename = output_filename.substr(0, output_filename.size() - 5) + "." + name_for_mode(mode) + "." + name_for_episode(episode) + "." + name_for_difficulty(difficulty) + output_filename.substr(output_filename.size() - 5);
+              string out_filename = output_filename.substr(0, output_filename.size() - 5) + "." + name_for_mode(mode) + "." + abbreviation_for_episode(episode) + "." + abbreviation_for_difficulty(difficulty) + output_filename.substr(output_filename.size() - 5);
               phosg::save_file(out_filename, data);
               phosg::log_info("... %s", out_filename.c_str());
             }

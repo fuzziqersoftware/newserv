@@ -1515,7 +1515,7 @@ ChatCommandDefinition cc_next(
       a.check_is_game(true);
       a.check_cheats_enabled(s->cheat_flags.warp);
 
-      size_t limit = floor_limit_for_episode(l->episode);
+      size_t limit = FloorDefinition::limit_for_episode(l->episode);
       if (limit == 0) {
         return;
       }
@@ -1528,7 +1528,7 @@ ChatCommandDefinition cc_next(
         throw precondition_failed("$C6You must be in a\ngame to use this\ncommand");
       }
 
-      size_t limit = floor_limit_for_episode(a.ses->lobby_episode);
+      size_t limit = FloorDefinition::limit_for_episode(a.ses->lobby_episode);
       if (limit == 0) {
         return;
       }
@@ -2693,7 +2693,7 @@ static void server_command_warp(const ServerArgs& a, bool is_warpall) {
     return;
   }
 
-  size_t limit = floor_limit_for_episode(l->episode);
+  size_t limit = FloorDefinition::limit_for_episode(l->episode);
   if (limit == 0) {
     return;
   } else if (floor > limit) {
@@ -2777,14 +2777,14 @@ ChatCommandDefinition cc_where(
       auto l = a.c->require_lobby();
       send_text_message_printf(a.c, "$C7%01" PRIX32 ":%s X:%" PRId32 " Z:%" PRId32,
           a.c->floor,
-          short_name_for_floor(l->episode, a.c->floor),
+          FloorDefinition::get(l->episode, a.c->floor).short_name,
           static_cast<int32_t>(a.c->pos.x.load()),
           static_cast<int32_t>(a.c->pos.z.load()));
       for (auto lc : l->clients) {
         if (lc && (lc != a.c)) {
           string name = lc->character()->disp.name.decode(lc->language());
           send_text_message_printf(a.c, "$C6%s$C7 %01" PRIX32 ":%s",
-              name.c_str(), lc->floor, short_name_for_floor(l->episode, lc->floor));
+              name.c_str(), lc->floor, FloorDefinition::get(l->episode, lc->floor).short_name);
         }
       }
     },

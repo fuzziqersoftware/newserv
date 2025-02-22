@@ -807,6 +807,7 @@ string ItemData::short_hex() const {
   size_t offset = ret.find_last_not_of('0');
   if (offset != string::npos) {
     offset += (offset & 1) ? 1 : 2;
+    offset = std::max<size_t>(offset, 6);
     if (offset < ret.size()) {
       ret.resize(offset);
     }

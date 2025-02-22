@@ -299,7 +299,7 @@ ItemData ItemCreator::check_rare_specs_and_create_rare_box_item(uint8_t area_nor
   }
 
   auto rare_specs = this->rare_item_set->get_box_specs(
-      this->mode, this->episode, this->difficulty, this->section_id, area_norm + 1);
+      this->mode, this->episode, this->difficulty, this->section_id, area_norm);
   for (const auto& spec : rare_specs) {
     item = this->check_rate_and_create_rare_item(spec, area_norm);
     if (!item.empty()) {

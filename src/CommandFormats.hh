@@ -6261,13 +6261,13 @@ struct G_ExchangeItemInQuest_BB_6xDB {
   le_uint32_t amount = 0;
 } __packed_ws__(G_ExchangeItemInQuest_BB_6xDB, 0x10);
 
-// 6xDC: Saint-Million boss actions (BB)
+// 6xDC: Saint-Milion/Shambertin/Kondrieu boss actions (BB)
 
-struct G_SaintMillionBossActions_BB_6xDC {
+struct G_Episode4BossActions_BB_6xDC {
   G_UnusedHeader header;
   le_uint16_t unknown_a1 = 0;
   le_uint16_t unknown_a2 = 0;
-} __packed_ws__(G_SaintMillionBossActions_BB_6xDC, 8);
+} __packed_ws__(G_Episode4BossActions_BB_6xDC, 8);
 
 // 6xDD: Set EXP multiplier (BB)
 // header.param specifies the EXP multiplier. It is 1-based, so the value 2

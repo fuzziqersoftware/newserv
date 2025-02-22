@@ -32,8 +32,12 @@ public:
   RareItemSet(const phosg::JSON& json, std::shared_ptr<const ItemNameIndex> name_index = nullptr);
   ~RareItemSet() = default;
 
-  std::vector<ExpandedDrop> get_enemy_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const;
-  std::vector<ExpandedDrop> get_box_specs(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area) const;
+  std::vector<ExpandedDrop> get_enemy_specs(
+      GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const;
+  std::vector<ExpandedDrop> get_box_specs(
+      GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area_norm) const;
+
+  bool has_entries_for_game_config(GameMode mode, Episode episode, uint8_t difficulty) const;
 
   std::string serialize_afs(bool is_v1) const;
   std::string serialize_gsl(bool big_endian) const;
