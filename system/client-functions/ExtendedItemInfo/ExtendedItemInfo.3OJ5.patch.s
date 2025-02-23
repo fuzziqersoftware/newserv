@@ -31,10 +31,19 @@ start:
   .address  0x80263390
   bl        set_window_state_on_switch_to_enemy
 
+  .data     0x80288788
+  .data     0x00000004
+  .address  0x80288788
+  b         on_TWindowMainMenu1P_created
+
+  .data     0x802886EC
+  .data     0x00000004
+  .address  0x802886EC
+  b         on_TWindowMainMenu1P_destroyed
+
   .label    is_split_screen, 0x80019690
   .label    malloc7, 0x8022A2BC
   .label    TWindow::close, 0x802446E0
-  .label    TWindowCtrlPlayer::get_for_player, 0x8024CB0C
   .label    TWindowHelpItem::init, 0x80255A08
   .label    TWindowHelpItem::set_displayed_item_by_id, 0x8025558C
   .label    TWindowLockOn::update_for_enemy, 0x80262D50
@@ -47,8 +56,24 @@ start:
 
 code_start:
   .data     0x00000000  # Placeholder for active window pointer
+  .data     0x00000000  # Placeholder for TWindowMainMenu1P object
   .data     0x41F00000  # TWindowHelpItem x position
   .data     0x43480000  # TWindowHelpItem y position
+
+on_TWindowMainMenu1P_created:
+  lis       r4, 0x8000
+  stw       [r4 + 0x4004], r3
+  blr
+
+on_TWindowMainMenu1P_destroyed:
+  lis       r4, 0x8000
+  lwz       r0, [r4 + 0x4004]
+  cmpl      r0, r3
+  bne       on_TWindowMainMenu1P_destroyed_different_object
+  li        r0, 0
+  stw       [r4 + 0x4004], r0
+on_TWindowMainMenu1P_destroyed_different_object:
+  blr
 
 set_window_state_on_lock_on_delete:
   stwu      [r1 - 0x20], r1
@@ -118,15 +143,15 @@ set_window_state:  # (TItem* item: r3) -> void
   cmplwi    r3, 0
   bne       window_should_not_exist
 
-  # If the player's TWindowCtrlPlayer's TWindowMainMenu is visible, the
-  # TWindowHelpItem should not be visible
-  bl        TWindowCtrlPlayer::get_for_player
-  lwz       r3, [r3 + 0x28]
+  # If the TWindowMainMenu1P exists and is visible, the TWindowHelpItem should
+  # not be visible
+  lis       r3, 0x8000
+  lwz       r3, [r3 + 0x4004]
   cmplwi    r3, 0
   beq       window_should_exist  # TWindowMainMenu does not exist
   lwz       r3, [r3 + 0x4C]
   rlwinm.   r3, r3, 0, 31, 31
-  beq       window_should_not_exist
+  bne       window_should_not_exist  # TWindowMainMenu exists and is visible
 
 window_should_exist:
   # Check if the window already exists
@@ -142,7 +167,7 @@ window_should_exist:
   # Call the constructor if malloc7 succeeded
   cmplwi    r3, 0
   beq       set_window_state_return
-  ori       r3, r31, 0x4004
+  ori       r3, r31, 0x4008
   mr        r4, r3
   lwz       r3, [r31 + 0x4000]
   lwz       r5, [r13 - 0x5270]  # local_client_id
