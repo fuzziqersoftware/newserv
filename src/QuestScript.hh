@@ -91,6 +91,6 @@ std::string disassemble_quest_script(
     uint8_t override_language = 0xFF,
     bool reassembly_mode = false,
     bool use_qedit_names = false);
-std::string assemble_quest_script(const std::string& text, const std::string& include_directory);
+std::string assemble_quest_script(const std::string& text, const std::vector<std::string>& include_directories);
 
 Episode find_quest_episode_from_script(const void* data, size_t size, Version version);

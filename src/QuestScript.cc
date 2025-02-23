@@ -3989,7 +3989,7 @@ struct RegisterAssigner {
   array<shared_ptr<Register>, 0x100> numbered_regs;
 };
 
-std::string assemble_quest_script(const std::string& text, const std::string& include_directory) {
+std::string assemble_quest_script(const std::string& text, const vector<string>& include_directories) {
   auto lines = phosg::split(text, '\n');
 
   // Strip comments and whitespace
@@ -4198,6 +4198,17 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
   };
 
   // Assemble code segment
+
+  auto get_include = [&](const std::string& filename) -> std::string {
+    for (const auto& include_dir : include_directories) {
+      string path = include_dir + "/" + filename;
+      if (phosg::isfile(path)) {
+        return phosg::load_file(path);
+      }
+    }
+    throw runtime_error("data not found for include: " + filename);
+  };
+
   bool version_has_args = F_HAS_ARGS & v_flag(quest_version);
   const auto& opcodes = opcodes_by_name_for_version(quest_version);
   phosg::StringWriter code_w;
@@ -4232,12 +4243,12 @@ std::string assemble_quest_script(const std::string& text, const std::string& in
         } else if (phosg::starts_with(line, ".include_bin ")) {
           string filename = line.substr(13);
           phosg::strip_whitespace(filename);
-          code_w.write(phosg::load_file(include_directory + "/" + filename));
+          code_w.write(get_include(filename));
         } else if (phosg::starts_with(line, ".include_native ")) {
 #ifdef HAVE_RESOURCE_FILE
           string filename = line.substr(16);
           phosg::strip_whitespace(filename);
-          string native_text = phosg::load_file(include_directory + "/" + filename);
+          string native_text = get_include(filename);
           string code;
           if (is_ppc(quest_version)) {
             code = std::move(ResourceDASM::PPC32Emulator::assemble(native_text).code);
