@@ -1055,8 +1055,8 @@ string MapFile::EnemySetEntry::str() const {
       this->fparam3.load(),
       this->fparam4.load(),
       this->fparam5.load(),
-      this->uparam1.load(),
-      this->uparam2.load(),
+      this->iparam1.load(),
+      this->iparam2.load(),
       this->unused.load());
 }
 
@@ -1073,8 +1073,8 @@ uint64_t MapFile::EnemySetEntry::semantic_hash(uint8_t floor) const {
   ret = phosg::fnv1a64(&this->fparam3, sizeof(this->fparam3), ret);
   ret = phosg::fnv1a64(&this->fparam4, sizeof(this->fparam4), ret);
   ret = phosg::fnv1a64(&this->fparam5, sizeof(this->fparam5), ret);
-  ret = phosg::fnv1a64(&this->uparam1, sizeof(this->uparam1), ret);
-  ret = phosg::fnv1a64(&this->uparam2, sizeof(this->uparam2), ret);
+  ret = phosg::fnv1a64(&this->iparam1, sizeof(this->iparam1), ret);
+  ret = phosg::fnv1a64(&this->iparam2, sizeof(this->iparam2), ret);
   ret = phosg::fnv1a64(&floor, sizeof(floor), ret);
   return ret;
 }
@@ -1132,8 +1132,8 @@ string MapFile::RandomEnemyDefinition::str() const {
       this->fparam3.load(),
       this->fparam4.load(),
       this->fparam5.load(),
-      this->uparam1.load(),
-      this->uparam2.load(),
+      this->iparam1.load(),
+      this->iparam2.load(),
       this->entry_num.load(),
       this->min_children.load(),
       this->max_children.load());
@@ -1496,8 +1496,8 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
                     e.fparam3 = def.fparam3;
                     e.fparam4 = def.fparam4;
                     e.fparam5 = def.fparam5;
-                    e.uparam1 = def.uparam1;
-                    e.uparam2 = def.uparam2;
+                    e.iparam1 = def.iparam1;
+                    e.iparam2 = def.iparam2;
                     e.num_children = random_state.rand_int_biased(def.min_children, def.max_children);
                   } else {
                     throw runtime_error("random enemy definition not found");
@@ -2078,13 +2078,13 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       add(EnemyType::NON_ENEMY_NPC);
       break;
     case 0x0040: { // TObjEneMoja
-      bool is_rare = (static_cast<int16_t>(set_entry->uparam1.load()) >= 1);
+      bool is_rare = (set_entry->iparam1.load() >= 1);
       add(EnemyType::HILDEBEAR, is_rare, is_rare);
       break;
     }
     case 0x0041: { // TObjEneLappy
-      bool is_rare_v123 = (set_entry->uparam1 != 0);
-      bool is_rare_bb = (set_entry->uparam1 & 1);
+      bool is_rare_v123 = (set_entry->iparam1 != 0);
+      bool is_rare_bb = (set_entry->iparam1 & 1);
       switch (this->episode) {
         case Episode::EP1:
         case Episode::EP2:
@@ -2104,11 +2104,11 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       default_num_children = 30;
       break;
     case 0x0043: // TObjEneBm5Wolf
-      add(set_entry->fparam2 ? EnemyType::BARBAROUS_WOLF : EnemyType::SAVAGE_WOLF);
+      add((set_entry->fparam2 >= 1) ? EnemyType::BARBAROUS_WOLF : EnemyType::SAVAGE_WOLF);
       break;
     case 0x0044: { // TObjEneBeast
       static const EnemyType types[3] = {EnemyType::BOOMA, EnemyType::GOBOOMA, EnemyType::GIGOBOOMA};
-      add(types[set_entry->uparam1 % 3]);
+      add(types[clamp<int16_t>(set_entry->iparam1, 0, 2)]);
       break;
     }
     case 0x0060: // TObjGrass
@@ -2122,13 +2122,13 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       break;
     case 0x0063: { // TObjEneShark
       static const EnemyType types[3] = {EnemyType::EVIL_SHARK, EnemyType::PAL_SHARK, EnemyType::GUIL_SHARK};
-      add(types[set_entry->uparam1 % 3]);
+      add(types[clamp<int16_t>(set_entry->iparam1, 0, 2)]);
       break;
     }
     case 0x0064: { // TObjEneSlime
       // Unlike all other versions, BB doesn't have a way to force slimes to be
       // rare via constructor args
-      bool is_rare_v123 = (set_entry->uparam2 & 1);
+      bool is_rare_v123 = (set_entry->iparam2 & 1);
       default_num_children = -1; // Skip adding children later (because we do it here)
       size_t num_children = set_entry->num_children ? set_entry->num_children.load() : 4;
       for (size_t z = 0; z < num_children + 1; z++) {
@@ -2146,13 +2146,13 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       add(EnemyType::MIGIUM);
       break;
     case 0x0080: // TObjEneDubchik
-      add((set_entry->uparam1 & 0x01) ? EnemyType::GILLCHIC : EnemyType::DUBCHIC);
+      add((set_entry->iparam1 != 0) ? EnemyType::GILLCHIC : EnemyType::DUBCHIC);
       break;
     case 0x0081: // TObjEneGyaranzo
       add(EnemyType::GARANZ);
       break;
     case 0x0082: // TObjEneMe3ShinowaReal
-      add(set_entry->fparam2 ? EnemyType::SINOW_GOLD : EnemyType::SINOW_BEAT);
+      add((set_entry->fparam2 >= 1) ? EnemyType::SINOW_GOLD : EnemyType::SINOW_BEAT);
       default_num_children = 4;
       break;
     case 0x0083: // TObjEneMe1Canadin
@@ -2192,7 +2192,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       break;
     case 0x00A6: { // TObjEneDimedian
       static const EnemyType types[3] = {EnemyType::DIMENIAN, EnemyType::LA_DIMENIAN, EnemyType::SO_DIMENIAN};
-      add(types[set_entry->uparam1 % 3]);
+      add(types[clamp<int16_t>(set_entry->iparam1, 0, 2)]);
       break;
     }
     case 0x00A7: // TObjEneBalClawBody
@@ -2277,14 +2277,14 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       default_num_children = 5;
       break;
     case 0x00D4: // TObjEneMe3StelthReal
-      add((set_entry->uparam1 & 1) ? EnemyType::SINOW_SPIGELL : EnemyType::SINOW_BERILL);
+      add((set_entry->iparam1 > 0) ? EnemyType::SINOW_SPIGELL : EnemyType::SINOW_BERILL);
       default_num_children = 4;
       break;
     case 0x00D5: // TObjEneMerillLia
-      add((set_entry->uparam1 & 1) ? EnemyType::MERILTAS : EnemyType::MERILLIA);
+      add((set_entry->iparam1 > 0) ? EnemyType::MERILTAS : EnemyType::MERILLIA);
       break;
     case 0x00D6: { // TObjEneBm9Mericarol
-      switch (set_entry->uparam1) {
+      switch (set_entry->iparam1) {
         case 0:
           add(EnemyType::MERICAROL);
           break;
@@ -2300,7 +2300,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       break;
     }
     case 0x00D7: // TObjEneBm5GibonU
-      add((set_entry->uparam1 & 0x01) ? EnemyType::ZOL_GIBBON : EnemyType::UL_GIBBON);
+      add((set_entry->iparam1 > 0) ? EnemyType::ZOL_GIBBON : EnemyType::UL_GIBBON);
       break;
     case 0x00D8: // TObjEneGibbles
       add(EnemyType::GIBBLES);
@@ -2318,7 +2318,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       add(EnemyType::DELBITER);
       break;
     case 0x00DD: // TObjEneDolmOlm
-      add(set_entry->uparam1 ? EnemyType::DOLMDARL : EnemyType::DOLMOLM);
+      add((set_entry->iparam1 > 0) ? EnemyType::DOLMDARL : EnemyType::DOLMOLM);
       break;
     case 0x00DE: // TObjEneMorfos
       add(EnemyType::MORFOS);
@@ -2333,7 +2333,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
         default_num_children = 4;
         child_type = EnemyType::EPSIGARD;
       } else {
-        add((set_entry->uparam1 & 0x01) ? EnemyType::SINOW_ZELE : EnemyType::SINOW_ZOA);
+        add((set_entry->iparam1 > 0) ? EnemyType::SINOW_ZELE : EnemyType::SINOW_ZOA);
       }
       break;
     case 0x00E1: // TObjEneIllGill
@@ -2350,7 +2350,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       }
       break;
     case 0x0112: {
-      bool is_rare = (set_entry->uparam1 & 0x01);
+      bool is_rare = (set_entry->iparam1 & 1);
       add(EnemyType::MERISSA_A, is_rare, is_rare);
       break;
     }
@@ -2358,34 +2358,31 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       add(EnemyType::GIRTABLULU);
       break;
     case 0x0114: {
-      bool is_rare = (set_entry->uparam1 & 0x01);
+      bool is_rare = (set_entry->iparam1 & 1);
       add((floor > 0x05) ? EnemyType::ZU_DESERT : EnemyType::ZU_CRATER, is_rare, is_rare);
       break;
     }
-    case 0x0115:
-      if (set_entry->uparam1 & 2) {
-        add(EnemyType::BA_BOOTA);
-      } else {
-        add((set_entry->uparam1 & 1) ? EnemyType::ZE_BOOTA : EnemyType::BOOTA);
-      }
+    case 0x0115: {
+      static const EnemyType types[3] = {EnemyType::BOOTA, EnemyType::ZE_BOOTA, EnemyType::BA_BOOTA};
+      add(types[clamp<int16_t>(set_entry->iparam1, 0, 2)]);
       break;
+    }
     case 0x0116: {
-      bool is_rare = (set_entry->uparam1 & 0x01);
+      bool is_rare = (set_entry->iparam1 & 1);
       add(EnemyType::DORPHON, is_rare, is_rare);
       break;
     }
     case 0x0117: {
       static const EnemyType types[3] = {EnemyType::GORAN, EnemyType::PYRO_GORAN, EnemyType::GORAN_DETONATOR};
-      add(types[set_entry->uparam1 % 3]);
+      add(types[clamp<int16_t>(set_entry->iparam1, 0, 2)]);
       break;
     }
-    case 0x0119: {
-      // TODO: It appears BB doesn't have a way to force Kondrieu to appear via
-      // constructor args. Is this true?
-      add((set_entry->uparam1 & 1) ? EnemyType::SHAMBERTIN : EnemyType::SAINT_MILION);
+    case 0x0119:
+      // There isn't a way to force the Episode 4 boss to be rare via
+      // constructor args
+      add((set_entry->iparam1 & 1) ? EnemyType::SHAMBERTIN : EnemyType::SAINT_MILION);
       default_num_children = 0x18;
       break;
-    }
 
     case 0x00C3: // TBoss3VoloptP01
     case 0x00C4: // TBoss3VoloptCore or subclass
@@ -2762,8 +2759,8 @@ static double enemy_set_edit_cost(const MapFile::EnemySetEntry& prev, const MapF
       ((prev.fparam3 != current.fparam3) * 10.0) +
       ((prev.fparam4 != current.fparam4) * 10.0) +
       ((prev.fparam5 != current.fparam5) * 10.0) +
-      ((prev.uparam1 != current.uparam1) * 10.0) +
-      ((prev.uparam2 != current.uparam2) * 10.0));
+      ((prev.iparam1 != current.iparam1) * 10.0) +
+      ((prev.iparam2 != current.iparam2) * 10.0));
 }
 
 static double event_add_cost(const MapFile::Event1Entry&) {

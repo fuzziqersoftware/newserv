@@ -16,6 +16,7 @@ static constexpr uint8_t RARE = EnemyTypeDefinition::Flag::IS_RARE;
 
 static const vector<EnemyTypeDefinition> type_defs{
     // clang-format off
+    // TYPE                              FLAGS                   RT    BP    ENUM NAME                  IN-GAME NAME   ULTIMATE NAME
     {EnemyType::UNKNOWN,                 0,                      0xFF, 0xFF, "UNKNOWN",                 "__UNKNOWN__", nullptr},
     {EnemyType::NONE,                    0,                      0xFF, 0xFF, "NONE",                    "__NONE__", nullptr},
     {EnemyType::NON_ENEMY_NPC,           EP1 | EP2 | EP4,        0xFF, 0xFF, "NON_ENEMY_NPC",           "__NPC__", nullptr},

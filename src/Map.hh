@@ -206,8 +206,8 @@ public:
     /* 34 */ le_float fparam3 = 0.0f;
     /* 38 */ le_float fparam4 = 0.0f;
     /* 3C */ le_float fparam5 = 0.0f;
-    /* 40 */ le_uint16_t uparam1 = 0;
-    /* 42 */ le_uint16_t uparam2 = 0;
+    /* 40 */ le_int16_t iparam1 = 0;
+    /* 42 */ le_int16_t iparam2 = 0;
     /* 44 */ le_uint32_t unused = 0; // Reserved for pointer in client's memory; unused by server
     /* 48 */
 
@@ -296,14 +296,14 @@ public:
 
   struct RandomEnemyDefinition { // Section type 5 (RANDOM_ENEMY_DEFINITIONS)
     // All fields through entry_num map to the corresponding fields in
-    // EnemySetEntry. Note that the order of the uparam fields is switched!
+    // EnemySetEntry. Note that the order of the iparam fields is switched!
     /* 00 */ le_float fparam1;
     /* 04 */ le_float fparam2;
     /* 08 */ le_float fparam3;
     /* 0C */ le_float fparam4;
     /* 10 */ le_float fparam5;
-    /* 14 */ le_uint16_t uparam2;
-    /* 16 */ le_uint16_t uparam1;
+    /* 14 */ le_int16_t iparam2;
+    /* 16 */ le_int16_t iparam1;
     /* 18 */ le_uint32_t entry_num;
     /* 1C */ le_uint16_t min_children;
     /* 1E */ le_uint16_t max_children;
