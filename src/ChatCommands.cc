@@ -2830,6 +2830,56 @@ ChatCommandDefinition cc_writemem(
     },
     unavailable_on_proxy_server);
 
+ChatCommandDefinition cc_nativecall(
+    {"$nativecall"},
+    +[](const ServerArgs& a) -> void {
+      a.check_debug_enabled();
+
+      // TODO: $nativecall is not implemented on x86 (yet) because there are
+      // multiple calling conventions used within the executable (at least on
+      // Xbox and BB), so we would need a way to specify which calling
+      // convention to use, which would be annoying
+      if (is_x86(a.c->version())) {
+        throw precondition_failed("Command not supported\non x86 clients");
+      }
+
+      auto tokens = phosg::split(a.text, ' ');
+      if (tokens.size() < 1) {
+        throw precondition_failed("Incorrect arguments");
+      }
+
+      uint32_t addr = stoul(tokens[0], nullptr, 16);
+      if (!console_address_in_range(a.c->version(), addr)) {
+        throw precondition_failed("$C4Function address\nout of range");
+      }
+
+      unordered_map<string, uint32_t> label_writes{{"call_addr", addr}};
+      for (size_t z = 0; z < tokens.size() - 1; z++) {
+        label_writes.emplace(phosg::string_printf("arg%zu", z), stoull(tokens[z + 1], nullptr, 16));
+      }
+
+      prepare_client_for_patches(a.c, [wc = weak_ptr<Client>(a.c), label_writes = std::move(label_writes)]() {
+        auto c = wc.lock();
+        if (!c) {
+          return;
+        }
+        try {
+          auto s = c->require_server_state();
+          const char* function_name = is_dc(c->version())
+              ? "CallNativeFunctionDC"
+              : is_gc(c->version())
+              ? "CallNativeFunctionGC"
+              : "CallNativeFunctionX86";
+          auto fn = s->function_code_index->name_to_function.at(function_name);
+          send_function_call(c, fn, label_writes);
+          c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
+        } catch (const out_of_range&) {
+          throw precondition_failed("Invalid patch name");
+        }
+      });
+    },
+    unavailable_on_proxy_server);
+
 ////////////////////////////////////////////////////////////////////////////////
 // Dispatch methods
 

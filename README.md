@@ -558,6 +558,7 @@ Some commands only work on the game server and not on the proxy server. The chat
         * The rest of the commands in this section are enabled on the game server. (They are always enabled on the proxy server.)
     * `$readmem <address>` (game server only): Read 4 bytes from the given address and show you the values.
     * `$writemem <address> <data>` (game server only): Write data to the given address. Data is not required to be any specific size.
+    * `$nativecall <address> [arg1 ...]` (game server only, GC only): Call a native function on your client. Only arguments passed in registers are supported; calling functions that take many arguments is not supported.
     * `$quest <number>` (game server only): Load a quest by quest number. Can be used to load battle or challenge quests with only one player present. Debug is not required to be enabled if the specified quest has the AllowStartFromChatCommand field set in its metadata file.
     * `$qcall <function-id>`: Call a quest function on your client.
     * `$qcheck <flag-num>` (game server only): Show the value of a quest flag. This command can be used without debug mode enabled. If you're in a game, show the value of the flag in that game; if you're in the lobby, show the saved value of that quest flag for your character (BB only).
