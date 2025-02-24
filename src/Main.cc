@@ -1384,8 +1384,8 @@ Action a_decode_qst(
     "decode-qst", "\
   decode-gci INPUT-FILENAME [OPTIONS...]\n\
   decode-vms INPUT-FILENAME [OPTIONS...]\n\
-  decode-dlq INPUT-FILENAME\n\
-  decode-qst INPUT-FILENAME\n\
+  decode-dlq INPUT-FILENAME [OPTIONS...]\n\
+  decode-qst INPUT-FILENAME [OPTIONS...]\n\
     Decode the input quest file into a compressed, unencrypted .bin or .dat\n\
     file (or in the case of decode-qst, both a .bin and a .dat file).\n\
     INPUT-FILENAME must be specified, but there is no OUTPUT-FILENAME; the\n\
@@ -1402,9 +1402,12 @@ Action a_decode_qst(
       if (input_filename.empty() || (input_filename == "-")) {
         throw invalid_argument("an input filename is required");
       }
+      bool decompress = args.get<bool>("decompress");
       auto files = decode_qst_data(read_input_data(args));
       for (const auto& it : files) {
-        phosg::save_file(input_filename + "-" + it.first, it.second);
+        phosg::save_file(
+            input_filename + "-" + it.first + (decompress ? "d" : ""),
+            (decompress ? prs_decompress(it.second) : it.second));
       }
     });
 
