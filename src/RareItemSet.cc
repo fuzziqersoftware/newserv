@@ -224,13 +224,14 @@ RareItemSet::SpecCollection RareItemSet::ParsedRELData::as_collection() const {
     ret.rt_index_to_specs[z].emplace_back(drop);
   }
   for (const auto& drop : this->box_rares) {
-    if (drop.drop.data.empty()) {
+    if ((drop.area_norm_plus_1 == 0) || drop.drop.data.empty()) {
       continue;
     }
-    if (drop.area_norm_plus_1 - 1 >= ret.box_area_norm_to_specs.size()) {
-      ret.box_area_norm_to_specs.resize(drop.area_norm_plus_1);
+    uint8_t area_norm = drop.area_norm_plus_1 - 1;
+    if (area_norm >= ret.box_area_norm_to_specs.size()) {
+      ret.box_area_norm_to_specs.resize(area_norm + 1);
     }
-    ret.box_area_norm_to_specs[drop.area_norm_plus_1 - 1].emplace_back(drop.drop);
+    ret.box_area_norm_to_specs[area_norm].emplace_back(drop.drop);
   }
   return ret;
 }
