@@ -88,22 +88,22 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
       }
       break;
 
-    case 0x20: // DC NTE, 11/2000, possibly also DCv1 JP
+    case 0x20: // DC NTE, 11/2000, DCv1 JP
     case 0x21: // DCv1 US
-    case 0x22: // DCv1 EU, 12/2000, and 01/2001, at 50Hz (presumably)
-    case 0x23: // DCv1 EU, 12/2000, and 01/2001, at 60Hz (presumably)
+    case 0x22: // DCv1 EU, 12/2000, and 01/2001, at 50Hz
+    case 0x23: // DCv1 EU, 12/2000, and 01/2001, at 60Hz
       this->set_flag(Flag::NO_D6);
       break;
     case 0x25: // DCv2 JP
     case 0x26: // DCv2 US and 08/2001
-    case 0x27: // DCv2 EU 50Hz (presumably)
-    case 0x28: // DCv2 EU 60Hz (presumably)
+    case 0x27: // DCv2 EU 50Hz
+    case 0x28: // DCv2 EU 60Hz
       this->set_flag(Flag::NO_D6);
       this->set_flag(Flag::HAS_SEND_FUNCTION_CALL);
       this->set_flag(Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
       break;
-    case 0x29: // PC
+    case 0x29: // PCv2
       this->set_flag(Flag::NO_D6);
       this->set_flag(Flag::HAS_SEND_FUNCTION_CALL);
       // SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE not set here
@@ -137,7 +137,7 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
       this->set_flag(Flag::CAN_RECEIVE_ENABLE_B2_QUEST);
       break;
-    case 0x40: // GC Ep3 JP and Trial Edition (and BB)
+    case 0x40: // GC Ep3 JP and Trial Edition (and BB, but BB is handled above)
       this->set_flag(Flag::NO_D6_AFTER_LOBBY);
       this->set_flag(Flag::HAS_SEND_FUNCTION_CALL);
       this->set_flag(Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE);
