@@ -20,6 +20,8 @@ enum class GVRDataFormat : uint8_t {
 };
 
 std::string encode_gvm(const phosg::Image& img, GVRDataFormat data_format, const std::string& internal_name, uint32_t global_index);
+phosg::Image decode_fon(const std::string& data, size_t width);
+std::string encode_fon(const phosg::Image& img);
 
 constexpr uint16_t encode_rgb565(uint8_t r, uint8_t g, uint8_t b) {
   return ((r << 8) & 0xF800) | ((g << 3) & 0x07E0) | ((b >> 3) & 0x001F);

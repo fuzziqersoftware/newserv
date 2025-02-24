@@ -84,8 +84,8 @@ set(SOURCES
     src/FileContentsCache.cc
     src/FunctionCompiler.cc
     src/GSLArchive.cc
-    src/GVMEncoder.cc
     src/HTTPServer.cc
+    src/ImageEncoder.cc
     src/IntegralExpression.cc
     src/IPFrameInfo.cc
     src/IPStackSimulator.cc

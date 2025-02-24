@@ -30,7 +30,7 @@
 
 #include "ChatCommands.hh"
 #include "Compression.hh"
-#include "GVMEncoder.hh"
+#include "ImageEncoder.hh"
 #include "Loggers.hh"
 #include "PSOProtocol.hh"
 #include "ReceiveCommands.hh"

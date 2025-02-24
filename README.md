@@ -740,10 +740,11 @@ The data formats that newserv can convert to/from are:
 | PSO GC snapshot file                | None                      | `decode-gci-snapshot`        |
 | Quest script (.bin)                 | `assemble-quest-script`   | `disassemble-quest-script`   |
 | Quest map (.dat)                    | None                      | `disassemble-quest-map`      |
-| AFS archive                         | None                      | `extract-afs`                |
-| BML archive                         | None                      | `extract-bml`                |
-| GSL archive                         | `generate-gsl`            | `extract-gsl`                |
-| GVM texture                         | `encode-gvm`              | None                         |
+| AFS archive (.afs)                  | None                      | `extract-afs`                |
+| BML archive (.bml)                  | None                      | `extract-bml`                |
+| GSL archive (.gsl)                  | `generate-gsl`            | `extract-gsl`                |
+| GVM texture (.gvm)                  | `encode-gvm`              | None                         |
+| Bitmap font (.fon)                  | `encode-bitmap-font`      | `decode-bitmap-font`         |
 | Text archive                        | `encode-text-archive`     | `decode-text-archive`        |
 | Unicode text set                    | `encode-unicode-text-set` | `decode-unicode-text-set`    |
 | Word Select data set                | None                      | `decode-word-select-set`     |

@@ -1,5 +1,6 @@
-#include "GVMEncoder.hh"
+#include "ImageEncoder.hh"
 
+#include <array>
 #include <phosg/Encoding.hh>
 #include <phosg/Image.hh>
 #include <phosg/Strings.hh>
@@ -34,7 +35,7 @@ struct GVRHeader {
   be_uint16_t height;
 } __packed_ws__(GVRHeader, 0x10);
 
-string encode_gvm(const phosg::Image& img, GVRDataFormat data_format, const std::string& internal_name, uint32_t global_index) {
+string encode_gvm(const phosg::Image& img, GVRDataFormat data_format, const string& internal_name, uint32_t global_index) {
   int8_t dimensions_field = -2;
   {
     size_t h = img.get_height();
@@ -110,4 +111,49 @@ string encode_gvm(const phosg::Image& img, GVRDataFormat data_format, const std:
   }
 
   return std::move(w.str());
+}
+
+static const array<uint32_t, 4> fon_colors = {0x000000FF, 0x555555FF, 0xAAAAAAFF, 0xFFFFFFFF};
+
+phosg::Image decode_fon(const string& data, size_t width) {
+  size_t num_pixels = data.size() * 4;
+  size_t height = num_pixels / width;
+  phosg::Image ret(width, height);
+
+  phosg::BitReader r(data);
+  for (size_t y = 0; y < height; y++) {
+    for (size_t x = 0; x < width; x++) {
+      ret.write_pixel(x, y, fon_colors[r.read(2)]);
+    }
+  }
+  return ret;
+}
+
+constexpr size_t uabs(size_t a, size_t b) {
+  return (a > b) ? (a - b) : (b - a);
+}
+
+string encode_fon(const phosg::Image& img) {
+  phosg::BitWriter w;
+  for (size_t y = 0; y < img.get_height(); y++) {
+    for (size_t x = 0; x < img.get_width(); x++) {
+      uint32_t color = img.read_pixel(x, y);
+
+      size_t result_delta = 0x400;
+      size_t result_index = 0;
+      for (size_t z = 0; z < 4; z++) {
+        size_t delta = uabs((fon_colors[z] >> 24) & 0xFF, (color >> 24) & 0xFF) +
+            uabs((fon_colors[z] >> 16) & 0xFF, (color >> 16) & 0xFF) +
+            uabs((fon_colors[z] >> 8) & 0xFF, (color >> 8) & 0xFF) +
+            uabs(fon_colors[z] & 0xFF, color & 0xFF);
+        if (delta < result_delta) {
+          result_delta = delta;
+          result_index = z;
+        }
+      }
+      w.write(result_index & 2);
+      w.write(result_index & 1);
+    }
+  }
+  return w.str();
 }

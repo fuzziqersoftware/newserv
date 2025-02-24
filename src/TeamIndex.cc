@@ -5,7 +5,7 @@
 #include <phosg/Random.hh>
 
 #include "BattleParamsIndex.hh"
-#include "GVMEncoder.hh"
+#include "ImageEncoder.hh"
 #include "ItemData.hh"
 #include "Loggers.hh"
 #include "StaticGameData.hh"

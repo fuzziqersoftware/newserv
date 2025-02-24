@@ -29,9 +29,9 @@
 #include "DNSServer.hh"
 #include "DownloadSession.hh"
 #include "GSLArchive.hh"
-#include "GVMEncoder.hh"
 #include "HTTPServer.hh"
 #include "IPStackSimulator.hh"
+#include "ImageEncoder.hh"
 #include "Loggers.hh"
 #include "NetworkAddresses.hh"
 #include "PSOGCObjectGraph.hh"
@@ -1118,6 +1118,36 @@ Action a_encode_gvm(
       }
       string encoded = encode_gvm(img, img.get_has_alpha() ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565, "image.gvr", 0);
       write_output_data(args, encoded.data(), encoded.size(), "gvm");
+    });
+
+Action a_decode_bitmap_font(
+    "decode-bitmap-font", "\
+  decode-bitmap-font --width=WIDTH [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Decode a 2-bit bitmap font file (.fon) into a BMP image. The --width\n\
+    option is required; if the output looks wrong, try increasing or\n\
+    decreasing this number. For S18all04.fon, the width should be 20.\n",
+    +[](phosg::Arguments& args) {
+      std::string data = read_input_data(args);
+      size_t width = args.get<size_t>("width");
+      std::string bmp_data = decode_fon(data, width).save(phosg::Image::Format::WINDOWS_BITMAP);
+      write_output_data(args, bmp_data.data(), bmp_data.size(), "bmp");
+    });
+Action a_encode_bitmap_font(
+    "encode-bitmap-font", "\
+  encode-bitmap-font [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Encode an image in BMP or PPM/PNM format into a bitmap font file for use\n\
+    with the console PSO versions. The image dimensions must match the\n\
+    original fon\'s dimensions.\n",
+    +[](phosg::Arguments& args) {
+      const string& input_filename = args.get<string>(1, false);
+      phosg::Image img;
+      if (!input_filename.empty() && (input_filename != "-")) {
+        img = phosg::Image(input_filename);
+      } else {
+        img = phosg::Image(stdin);
+      }
+      string encoded = encode_fon(img);
+      write_output_data(args, encoded.data(), encoded.size(), "fon");
     });
 
 Action a_salvage_gci(
