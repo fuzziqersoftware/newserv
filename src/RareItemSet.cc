@@ -111,7 +111,7 @@ void RareItemSet::ParsedRELData::parse_t(phosg::StringReader r, bool is_v1) {
     const auto& drop = box_drops_r.get<PackedDrop>();
     if (!drop.item_code.is_filled_with(0)) {
       auto& box_rare = this->box_rares.emplace_back();
-      box_rare.area = area;
+      box_rare.area_norm_plus_1 = area;
       box_rare.drop = drop.expand();
     }
   }
@@ -134,7 +134,7 @@ std::string RareItemSet::ParsedRELData::serialize_t(bool is_v1) const {
   }
   root.box_areas_offset = w.size();
   for (const auto& drop : this->box_rares) {
-    w.put_u8(drop.area);
+    w.put_u8(drop.area_norm_plus_1);
   }
   for (size_t z = this->box_rares.size(); z < 30; z++) {
     w.put_u8(0xFF);
@@ -192,12 +192,13 @@ RareItemSet::ParsedRELData::ParsedRELData(const SpecCollection& collection) {
     this->monster_rares.emplace_back(specs.empty() ? ExpandedDrop() : specs[0]);
   }
 
-  if (collection.box_area_to_specs.size() > 0xFF) {
-    throw runtime_error("area value too high");
+  if (collection.box_area_norm_to_specs.size() > 0xFF) {
+    throw runtime_error("area_norm value too high");
   }
-  for (uint8_t area = 0; area < collection.box_area_to_specs.size(); area++) {
-    for (const auto& spec : collection.box_area_to_specs[area]) {
-      this->box_rares.emplace_back(BoxRare{.area = area, .drop = spec});
+  for (uint8_t area_norm = 0; area_norm < collection.box_area_norm_to_specs.size(); area_norm++) {
+    for (const auto& spec : collection.box_area_norm_to_specs[area_norm]) {
+      uint8_t area_norm_plus_1 = area_norm + 1;
+      this->box_rares.emplace_back(BoxRare{.area_norm_plus_1 = area_norm_plus_1, .drop = spec});
     }
   }
 }
@@ -226,10 +227,10 @@ RareItemSet::SpecCollection RareItemSet::ParsedRELData::as_collection() const {
     if (drop.drop.data.empty()) {
       continue;
     }
-    if (drop.area >= ret.box_area_to_specs.size()) {
-      ret.box_area_to_specs.resize(drop.area + 1);
+    if (drop.area_norm_plus_1 - 1 >= ret.box_area_norm_to_specs.size()) {
+      ret.box_area_norm_to_specs.resize(drop.area_norm_plus_1);
     }
-    ret.box_area_to_specs[drop.area].emplace_back(drop.drop);
+    ret.box_area_norm_to_specs[drop.area_norm_plus_1 - 1].emplace_back(drop.drop);
   }
   return ret;
 }
@@ -324,11 +325,11 @@ RareItemSet::RareItemSet(const phosg::JSON& json, shared_ptr<const ItemNameIndex
           for (const auto& item_it : section_id_it.second->as_dict()) {
             vector<ExpandedDrop>* target;
             if (phosg::starts_with(item_it.first, "Box-")) {
-              uint8_t area = FloorDefinition::get(episode, item_it.first.substr(4)).drop_area_norm;
-              if (collection.box_area_to_specs.size() <= area) {
-                collection.box_area_to_specs.resize(area + 1);
+              uint8_t area_norm = FloorDefinition::get(episode, item_it.first.substr(4)).drop_area_norm;
+              if (collection.box_area_norm_to_specs.size() <= area_norm) {
+                collection.box_area_norm_to_specs.resize(area_norm + 1);
               }
-              target = &collection.box_area_to_specs[area];
+              target = &collection.box_area_norm_to_specs[area_norm];
             } else {
               size_t rt_index = type_definition_for_enemy(phosg::enum_for_name<EnemyType>(item_it.first.c_str())).rt_index;
               if (rt_index == 0xFF) {
@@ -495,7 +496,7 @@ string RareItemSet::serialize_html(
         EnemyType::CHAOS_SORCERER, EnemyType::BEE_L, EnemyType::BEE_R,
         EnemyType::GOL_DRAGON,
       }},
-      {"Central Control Area", {0x05, 0x06, 0x07, 0x08, 0x09, 0x0C, 0x10}, {
+      {"CCA", {0x05, 0x06, 0x07, 0x08, 0x09, 0x0C, 0x10}, {
         EnemyType::MERILLIA, EnemyType::MERILTAS,
         EnemyType::GEE,
         EnemyType::UL_GIBBON, EnemyType::ZOL_GIBBON,
@@ -514,7 +515,7 @@ string RareItemSet::serialize_html(
         EnemyType::DELBITER,
         EnemyType::GAEL_OR_GIEL, EnemyType::OLGA_FLOW_1, EnemyType::OLGA_FLOW_2,
       }},
-      {"Control Tower", {0x11}, {
+      {"Tower", {0x11}, {
         EnemyType::MERICARAND, EnemyType::MERICAROL, EnemyType::MERICUS, EnemyType::MERIKLE,
         EnemyType::GIBBLES,
         EnemyType::GI_GUE,
@@ -550,9 +551,19 @@ string RareItemSet::serialize_html(
   static const std::array<uint32_t, 10> secid_colors{
       //   Vrd       Grn       Sky       Blu       Prp       Pnk       Red       Orn       Ylw       Wht
       0x00A562, 0x76FE43, 0x59F9F9, 0x4488FF, 0xCC00FF, 0xFF87CB, 0xF70F0F, 0xF7830F, 0xF7F715, 0xFFFFFF};
-  static const std::array<uint32_t, 10> secid_bg_colors{
-      //   Vrd       Grn       Sky       Blu       Prp       Pnk       Red       Orn       Ylw       Wht
-      0x002918, 0x1D3F10, 0x163E3E, 0x11223F, 0x33003F, 0x3F2132, 0x3D0303, 0x3D2003, 0x3D3D05, 0x404040};
+
+  auto enemy_bg_color_for_secid_color = +[](uint32_t color) -> uint32_t {
+    uint32_t r = (color >> 16) & 0xFF;
+    uint32_t g = (color >> 8) & 0xFF;
+    uint32_t b = color & 0xFF;
+    return ((((r * 3) / 16) & 0xFF) << 16) | ((((g * 3) / 16) & 0xFF) << 8) | (((b * 3) / 16) & 0xFF);
+  };
+  auto box_bg_color_for_secid_color = +[](uint32_t color) -> uint32_t {
+    uint32_t r = (color >> 16) & 0xFF;
+    uint32_t g = (color >> 8) & 0xFF;
+    uint32_t b = color & 0xFF;
+    return (((r / 8) & 0xFF) << 16) | (((g / 8) & 0xFF) << 8) | ((b / 8) & 0xFF);
+  };
 
   deque<string> blocks;
   blocks.emplace_back(phosg::string_printf("\
@@ -562,16 +573,19 @@ string RareItemSet::serialize_html(
   <style type=\"text/css\">\n\
     body {\n\
       background-color: #222222;\n\
-      color: #CCCCCC;\n\
+      color: #EEEEEE;\n\
+    }\n\
+    div.table-container {\n\
+      width: 100%%;\n\
     }\n\
     table {\n\
-      border: 1px #222222;\n\
       text-align: center;\n\
       font-family: sans-serif;\n\
       font-size: 14px;\n\
+      margin-left: auto;\n\
+      margin-right: auto;\n\
     }\n\
     td th {\n\
-      border: 1px #222222;\n\
       text-align: center;\n\
       padding: 10px;\n\
     }\n\
@@ -588,13 +602,20 @@ string RareItemSet::serialize_html(
       font-size: 24px;\n\
       font-weight: bold;\n\
     }\n\
-    .loc {\n\
+    .loc-enemy {\n\
       background-color: #444444;\n\
       font-weight: bold;\n\
+      font-size: 18px;\n\
+    }\n\
+    .loc-box {\n\
+      background-color: #333333;\n\
+      font-weight: bold;\n\
+      font-size: 18px;\n\
     }\n\
     .locheader {\n\
       background-color: #CCCCCC;\n\
       color: #222222;\n\
+      font-size: 24px;\n\
     }\n\
     .item {\n\
       font-weight: bold;\n\
@@ -603,7 +624,12 @@ string RareItemSet::serialize_html(
       name_for_difficulty(difficulty)));
   for (size_t z = 0; z < 10; z++) {
     blocks.emplace_back(phosg::string_printf("\
-    .sec%zu {\n\
+    .sec%zu-enemy {\n\
+      background-color: #%06" PRIX32 ";\n\
+      color: #%06" PRIX32 ";\n\
+      padding: 10px;\n\
+    }\n\
+    .sec%zu-box {\n\
       background-color: #%06" PRIX32 ";\n\
       color: #%06" PRIX32 ";\n\
       padding: 10px;\n\
@@ -613,7 +639,9 @@ string RareItemSet::serialize_html(
       color: #222222;\n\
       padding: 10px;\n\
     }\n",
-        z, secid_bg_colors[z], secid_colors[z], z, secid_colors[z]));
+        z, enemy_bg_color_for_secid_color(secid_colors[z]), secid_colors[z],
+        z, box_bg_color_for_secid_color(secid_colors[z]), secid_colors[z],
+        z, secid_colors[z]));
   }
   blocks.emplace_back("\
   </style>\n\
@@ -625,7 +653,7 @@ string RareItemSet::serialize_html(
       name_for_difficulty(difficulty),
       name_for_mode(mode)));
 
-  blocks.emplace_back("<div><table>");
+  blocks.emplace_back("<div class=\"table-container\"><table>");
   auto add_location_header = [&](const char* location_name) -> void {
     blocks.emplace_back("<tr><th class=\"space\" colspan=\"11\" /></tr>");
     blocks.emplace_back("<tr><th class=\"locheader\">");
@@ -637,7 +665,7 @@ string RareItemSet::serialize_html(
     blocks.emplace_back("</tr>");
   };
 
-  auto add_specs_row = [&](const char* loc_name, const array<vector<ExpandedDrop>, 10>& specs_lists) -> void {
+  auto add_specs_row = [&](const char* loc_name, bool is_box, const array<vector<ExpandedDrop>, 10>& specs_lists) -> void {
     bool any_list_nonempty = false;
     for (const auto& specs_list : specs_lists) {
       any_list_nonempty |= !specs_list.empty();
@@ -646,9 +674,9 @@ string RareItemSet::serialize_html(
       return;
     }
 
-    blocks.emplace_back(phosg::string_printf("<tr><td class=\"loc\">%s</td>", loc_name));
+    blocks.emplace_back(phosg::string_printf("<tr><td class=\"loc-%s\">%s</td>", is_box ? "box" : "enemy", loc_name));
     for (uint8_t section_id = 0; section_id < 10; section_id++) {
-      blocks.emplace_back(phosg::string_printf("<td class=\"sec%hhu\">", section_id));
+      blocks.emplace_back(phosg::string_printf("<td class=\"sec%hhu-%s\">", section_id, is_box ? "box" : "enemy"));
       vector<string> tokens;
       for (const auto& spec : specs_lists[section_id]) {
         if (!tokens.empty()) {
@@ -701,7 +729,7 @@ string RareItemSet::serialize_html(
       }
       const auto& type_def = type_definition_for_enemy(type);
       const char* name = (difficulty == 3 && type_def.ultimate_name) ? type_def.ultimate_name : type_def.in_game_name;
-      add_specs_row(name, specs_lists);
+      add_specs_row(name, false, specs_lists);
     }
     for (uint8_t floor : zone_type.floors) {
       const auto& floor_def = FloorDefinition::get(episode, floor);
@@ -713,7 +741,7 @@ string RareItemSet::serialize_html(
         specs_lists[section_id] = this->get_box_specs(mode, episode, difficulty, section_id, floor_def.drop_area_norm);
       }
       auto loc_name = phosg::string_printf("%s (box)", floor_def.in_game_name);
-      add_specs_row(loc_name.c_str(), specs_lists);
+      add_specs_row(loc_name.c_str(), true, specs_lists);
     }
   }
   blocks.emplace_back("</table></div></body></html>");
@@ -814,7 +842,7 @@ void RareItemSet::multiply_all_rates(double factor) {
   };
   for (auto& coll_it : this->collections) {
     multiply_rates_vec(coll_it.second.rt_index_to_specs, factor);
-    multiply_rates_vec(coll_it.second.box_area_to_specs, factor);
+    multiply_rates_vec(coll_it.second.box_area_norm_to_specs, factor);
   }
 }
 
@@ -857,10 +885,10 @@ void RareItemSet::print_collection(
   }
 
   fprintf(stream, "  Box rares:\n");
-  for (size_t area = 0; area < collection->box_area_to_specs.size(); area++) {
-    for (const auto& spec : collection->box_area_to_specs[area]) {
+  for (size_t area_norm = 0; area_norm < collection->box_area_norm_to_specs.size(); area_norm++) {
+    for (const auto& spec : collection->box_area_norm_to_specs[area_norm]) {
       string s = name_index ? spec.str(name_index) : spec.str();
-      fprintf(stream, "    (area-norm %02zX) %s\n", area, s.c_str());
+      fprintf(stream, "    (area-norm %02zX) %s\n", area_norm, s.c_str());
     }
   }
 }
@@ -895,7 +923,7 @@ std::vector<RareItemSet::ExpandedDrop> RareItemSet::get_enemy_specs(
 std::vector<RareItemSet::ExpandedDrop> RareItemSet::get_box_specs(
     GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area_norm) const {
   try {
-    return this->get_collection(mode, episode, difficulty, secid).box_area_to_specs.at(area_norm);
+    return this->get_collection(mode, episode, difficulty, secid).box_area_norm_to_specs.at(area_norm);
   } catch (const out_of_range&) {
     static const std::vector<ExpandedDrop> empty_vector;
     return empty_vector;

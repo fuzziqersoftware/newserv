@@ -62,7 +62,7 @@ public:
 protected:
   struct SpecCollection {
     std::vector<std::vector<ExpandedDrop>> rt_index_to_specs;
-    std::vector<std::vector<ExpandedDrop>> box_area_to_specs;
+    std::vector<std::vector<ExpandedDrop>> box_area_norm_to_specs;
   };
 
   struct ParsedRELData {
@@ -89,7 +89,7 @@ protected:
     check_struct_size(OffsetsBE, 0x10);
 
     struct BoxRare {
-      uint8_t area;
+      uint8_t area_norm_plus_1;
       ExpandedDrop drop;
     };
 
