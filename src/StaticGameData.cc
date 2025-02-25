@@ -781,7 +781,7 @@ size_t FloorDefinition::limit_for_episode(Episode ep) {
   switch (ep) {
     case Episode::EP1:
     case Episode::EP2:
-      return 0x11;
+      return 0x12;
     case Episode::EP4:
       return 0x0B;
     default:

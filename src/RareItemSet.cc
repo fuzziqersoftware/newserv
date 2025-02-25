@@ -386,7 +386,7 @@ RareItemSet::RareItemSet(const phosg::JSON& json, shared_ptr<const ItemNameIndex
 
 std::string RareItemSet::serialize_afs(bool is_v1) const {
   vector<string> files;
-  for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
+  for (uint8_t difficulty = 0; difficulty < (is_v1 ? 3 : 4); difficulty++) {
     for (uint8_t section_id = 0; section_id < 10; section_id++) {
       ParsedRELData rel(this->get_collection(GameMode::NORMAL, Episode::EP1, difficulty, section_id));
       files.emplace_back(rel.serialize(false, is_v1));
@@ -648,11 +648,29 @@ string RareItemSet::serialize_html(
   </style>\n\
 </head><body>\n");
 
+  string mode_token;
+  switch (mode) {
+    case GameMode::NORMAL:
+      mode_token = "";
+      break;
+    case GameMode::BATTLE:
+      mode_token = " (battle mode)";
+      break;
+    case GameMode::CHALLENGE:
+      mode_token = " (challenge mode)";
+      break;
+    case GameMode::SOLO:
+      mode_token = " (solo mode)";
+      break;
+    default:
+      throw logic_error("invalid game mode");
+  }
+
   blocks.emplace_back(phosg::string_printf(
-      "<div class=\"title\">%s %s drop chart (%s mode)</div>",
+      "<div class=\"title\">%s %s drop chart%s</div>",
       name_for_episode(episode),
       name_for_difficulty(difficulty),
-      name_for_mode(mode)));
+      mode_token.c_str()));
 
   blocks.emplace_back("<div class=\"table-container\"><table>");
   auto add_location_header = [&](const char* location_name) -> void {
