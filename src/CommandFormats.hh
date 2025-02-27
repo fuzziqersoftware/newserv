@@ -4633,9 +4633,9 @@ struct G_Unknown_6x54 {
 
 struct G_IntraMapWarp_6x55 {
   G_ClientIDHeader header;
-  le_uint32_t unknown_a1 = 0;
-  VectorXYZF pos;
-  VectorXYZF unknown_a2;
+  le_uint32_t angle_y = 0;
+  VectorXYZF from_pos;
+  VectorXYZF to_pos;
 } __packed_ws__(G_IntraMapWarp_6x55, 0x20);
 
 // 6x56: Set player position and angle (protected on V3/V4)

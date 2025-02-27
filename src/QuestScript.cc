@@ -1286,7 +1286,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF800, "debug_F800", nullptr, {}, F_V2},
 
     // Creates a region that calls a label if a specified string is said (via
-    // chat) by a player within the region.
+    // chat) by a player within the region. This is implemented by the
+    // TOChatSensor object; see that object's comments on Map.cc for details.
     // regsA[0-2] = location (x, y, z as integers)
     // regsA[3] = radius
     // regsA[4] = label index
@@ -1968,25 +1969,13 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA are the same as for set_chat_callback.
     {0xF8A5, "set_chat_callback_no_filter", "chat_detect", {{REG_SET_FIXED, 5}}, F_V2_V4},
 
-    // This opcode creates an object that triggers symbol chats when the
-    // players are nearby and certain switch flags are NOT set. If a player is
-    // within the radius, the object checks the switch flags in reverse order,
-    // and triggers the symbol chat for the latest one that is NOT set. So, for
-    // example:
-    // - If all 3 switch flags are not set, the symbol chat in regsA[7] is used
-    // - If the switch flag in regsA[5] is set, the symbol chat in regsA[9] is
-    //   used regardless of whether the switch flags in regsA[4] is set
-    // - If the switch flags in regsA[6] is set, no symbol chat appears at all
-    //   regardless of the value of the other two switch flags
+    // Creates a symbol chat collision object. See the description of
+    // TOSymbolchatColli in Map.cc for details on how this object behaves and
+    // what these arguments mean.
     // Arguments:
     // regsA[0-2] = location (x, y, z as integers)
     // regsA[3] = radius
-    // regsA[4-6] = specs 0-2; for each spec, the high 16 bits are a switch
-    //   flag number (0-255), and the low 16 bits are an entry index from
-    //   symbolchatcolli.prs; the entry index is ignored if the corresponding
-    //   data label (in the next 3 arguments) is not null. Quest scripts don't
-    //   have a good way to pass null for regsA[7-9], so the logic that looks
-    //   up entries in symbolchatcolli.prs can be ignored in quests.
+    // regsA[4-6] = specs 0-2 (see TOSymbolchatColli description)
     // regsA[7-9] = data labels for symbol chats 0-2; each points to a
     //   SymbolChat structure (see SymbolChatT in PlayerSubordinates.hh). Note
     //   that this structure is not byteswapped properly, so GameCube quests

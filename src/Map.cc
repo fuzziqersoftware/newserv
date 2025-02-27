@@ -573,57 +573,681 @@ static const vector<vector<vector<AreaMapFileInfo>>> map_file_info = {
 
 const char* MapFile::name_for_object_type(uint16_t type) {
   static const unordered_map<uint16_t, const char*> names({
+      // Defines where a player should start when entering a floor. Params:
+      //   param1 = client ID
+      //   param4 = source type:
+      //     0 = use this set when advancing from a lower floor
+      //     1 = use this set when returning from a higher floor
+      //     anything else = set is unused
       {0x0000, "TObjPlayerSet"},
+
+      // Displays a particle effect. Params:
+      //   param1 = particle type (truncated to int, clamped to nonnegative)
+      //   param3 = TODO
+      //   param4 = TODO
+      //   param5 = TODO
+      //   param6 = TODO
       {0x0001, "TObjParticle"},
+
+      // Standard (triangular) cross-floor warp object. Params:
+      //   param4 = destination floor
+      //   param6 = color (0 = blue, 1 = red); if this is 0 in Challenge mode,
+      //     the warp is destroyed immediately
       {0x0002, "TObjAreaWarpForest"},
+
+      // Standard (triangular) intra-floor warp object. Params:
+      //   param1-3 = destination coordinates (x, y, z); players are supposed to
+      //     be offset from this location in different directions depending on
+      //     their client ID, but there is a bug that causes all players to use
+      //     the same offsets: x + 10 and z + 10
+      //   param4 = destination angle (about y axis)
       {0x0003, "TObjMapWarpForest"},
+
+      // TODO: Describe this object. Params:
+      //   param1 = TODO
+      //   param2 = TODO
+      //   param3 = TODO
       {0x0004, "TObjLight"},
+
+      // Environmental sound. This object is not constructed in offline multi
+      // mode. Params:
+      //   param3 = audibility radius (if <= 0 uses default of 200)
+      //   param4 = sound ID:
+      //     Pioneer 2 / Lab (volume param is ignored on this floor):
+      //       00 = distant crowd noises (GC: 4004B200)
+      //       01 = ship passing by (GC: 4004C101)
+      //       02 = siren passing by (GC: 4004CB02)
+      //     Forest:
+      //       00 = waterfall (GC: 0004A801)
+      //       01 = stream (GC: 0004B202)
+      //       02 = birds chirping (GC: 0004BC00)
+      //       03 = light rain on ground (GC: 00043704)
+      //       04 = light rain on water (GC: 0004BC05)
+      //       05 = wind (GC: 0004AD06)
+      //     Caves:
+      //       00 = nothing? (GC: 00046400)
+      //       01 = volcano? (GC: 00042A01)
+      //       02 = lava flow (GC: 00042F02)
+      //       03 = stream (GC: 00043C03)
+      //       04 = waterfall (GC: 00043C04)
+      //       05 = echoing drips (GC: 00042D05)
+      //     Mines:
+      //       00 = mechanical whir (GC: 4004B715)
+      //       01 = rotary machine (GC: 4004BC16)
+      //     Ruins:
+      //       00 = wind/water (GC: 4004B200)
+      //       01 = swishing (GC: 4004CB01)
+      //       02 = repeating sliding? (GC: 4004BC02)
+      //       03 = repeating punching? (GC: 4004BC03)
+      //       04 = hissing (GC: 4004C604)
+      //       05 = heartbeat (GC: 4004AA05)
+      //       06 = squishing heartbeat (GC: 4004C606)
+      //     Battle 1 (Spaceship):
+      //       00 = low beeping (GC: 4004B40C)
+      //       01 = high beeping (GC: 4004B40D)
+      //       02 = robot arm movement 1 (GC: 4004C10E)
+      //       03 = robot arm movement 2 (GC: 4004C10F)
+      //     Battle 2 (Temple):
+      //       00 = waterfall (GC: 0004CB0C)
+      //       01 = waves (GC: 0004BC0D)
+      //       02 = bubbles (GC: 0004BC0E)
+      //     VR Temple:
+      //       00 = waterfall (GC: 0004CB0C)
+      //       01 = waves (GC: 0004BC0D)
+      //       02 = bubbles GC: (0004BC0E0
+      //     VR Spaceship:
+      //       00 = low beeping (GC: 4004B40C)
+      //       01 = high beeping (GC: 4004B40D)
+      //       02 = robot arm movement 1 (GC: 4004C10E)
+      //       03 = robot arm movement 2 (GC: 4004C10F)
+      //     Central Control Area:
+      //       00 = wind (GC: 0004CB05)
+      //       01 = waterfall (GC: 0004D506)
+      //       02 = stream (GC: 0004BC07)
+      //       03 = waves crashing (GC: 0004C60A)
+      //       04 = ocean wind (GC: 0004CB0B)
+      //       05 = higher wind (GC: 0004CB0C)
+      //       06 = light ocean wind (GC: 0004CB0D)
+      //       07 = ominous mechanical sound (GC: 0004BC0E)
+      //     Seabed and Olga Flow:
+      //       00 = water leak (GC: 4004BC00)
+      //       01 = water drip (GC: 4004BC01)
+      //       02 = waterfall (GC: 4004C603)
+      //       03 = light waterfall (GC: 4004D504)
+      //       04 = creaking metal 1 (GC: 4004B205)
+      //       05 = creaking metal 2 (GC: 4004B206)
+      //       06 = creaking metal 3 (GC: 4004AD07)
+      //       07 = creaking metal 4 (GC: 4004B208)
+      //       08 = creaking metal 5 (GC: 4004AD09)
+      //       09 = gas leak (GC: 4004B20A)
+      //       0A = distant metallic thud (GC: 4004B20B)
+      //     Crater:
+      //       00 = TODO (BB: 000005FD)
+      //       01 = TODO (BB: 000005FE)
+      //       02 = TODO (BB: 000005FF)
+      //       03 = TODO (BB: 00000600)
+      //       04 = TODO (BB: 00000601)
+      //       05 = TODO (BB: 00000602)
+      //       06 = TODO (BB: 00000603)
+      //       07 = TODO (BB: 00000604)
+      //       08 = TODO (BB: 00000605)
+      //       09 = TODO (BB: 00000606)
+      //       0A = TODO (BB: 00000607)
+      //     Crater Interior:
+      //       00 = TODO (BB: 00000658)
+      //       01 = TODO (BB: 00000659)
+      //       02 = TODO (BB: 0000065A)
+      //       03 = TODO (BB: 0000065B)
+      //       04 = TODO (BB: 0000065C)
+      //       05 = TODO (BB: 0000065D)
+      //       06 = TODO (BB: 0000065E)
+      //       07 = TODO (BB: 0000065F)
+      //       08 = TODO (BB: 00000660)
+      //       09 = TODO (BB: 00000661)
+      //       0A = TODO (BB: 00000662)
+      //     Desert:
+      //       00 = TODO (BB: 000006AE)
+      //       01 = TODO (BB: 000006AF)
+      //       02 = TODO (BB: 000006B0)
+      //       03 = TODO (BB: 000006B1)
+      //       04 = TODO (BB: 000006B2)
+      //       05 = TODO (BB: 000006B3)
+      //       06 = TODO (BB: 000006B4)
+      //       07 = TODO (BB: 000006B5)
+      //       08 = TODO (BB: 000006B6)
+      //       09 = TODO (BB: 000006B7)
+      //       0A = TODO (BB: 000006B8)
+      //       0B = TODO (BB: 000006B9)
+      //       0C = TODO (BB: 000006BA)
+      //       0D = TODO (BB: 000006BB)
+      //       0E = TODO (BB: 000006BC)
+      //       0F = TODO (BB: 000006BD)
+      //       10 = TODO (BB: 000006BE)
+      //   param5 = volume (in range -0x7F to 0x7F)
       {0x0006, "TObjEnvSound"},
+
+      // Fog collision object. Params:
+      //   param1 = radius
+      //   param4 = TODO
+      //   param5 = TODO (only checked for zero vs. nonzero)
       {0x0007, "TObjFogCollision"},
+
+      // Event collision object. This object triggers a wave event (W-XXX) when
+      // any local player (in split-screen play, there may be multiple) steps
+      // within its radius. The object is inactive for 3 frames after it is
+      // constructed, and will not detect any player during that time.
+      // Curiously, the frame counter does not appear to be bounded, so if the
+      // player waits approximately 828 days, the counter will overflow to a
+      // positive number and the object won't be able to trigger for another
+      // 828 days until it gets to zero again. It is unlikely this has ever
+      // happened for any player. Params:
+      //   param1 = radius
+      //   param4 = event ID
       {0x0008, "TObjEvtCollision"},
+
+      // TODO: Describe this object. Params:
+      //   param1 = TODO
+      //   param2 = TODO
+      //   param3 = TODO
       {0x0009, "TObjCollision"},
+
+      // Elemental trap. Params:
+      //   param1 = trigger radius delta (actual radius is param1 / 2 + 30)
+      //   param2 = explosion radius delta (actual radius is param2 / 2 + 60)
+      //   param3 = trap group number:
+      //     negative = trap triggers and explodes alone
+      //     00 = trap follows player who triggered it (online only; when
+      //       offline, these act as if the group number were negative, and
+      //       param6 is overwritten with 30 (1 second))
+      //     positive = trap is part of a group that all trigger and explode
+      //       simultaneously
+      //   param4 = trap power (clamped below to 0), scaled by difficulty:
+      //     Normal: power = param4 * 1
+      //     Hard: power = param4 * 3
+      //     Very Hard: power = param4 * 5
+      //     Ultimate: power = param4 * 14
+      //   param5 = damage type (clamped to [0, 5])
+      //     00 = direct damage (damage = power / 5)
+      //     01 = fire (damage = power * (100 - EFR) / 500)
+      //     02 = cold (can freeze; damage = power * (100 - EIC) / 500)
+      //       chance of freezing = ((((power - 250) / 40) + 5) / 40) clamped
+      //       to [0, 0.4], or to [0.2, 0.4] on Ultimate
+      //     03 = electric (can shock; damage = power * (100 - EIC) / 500)
+      //       chance of shock = 1/15, or 1/40 on Ultimate
+      //     04 = light (damage = power * (100 - ELT) / 500)
+      //     05 = dark (instantly kills with chance (power - EDK) / 100); if
+      //       used in a boss arena and in non-Ultimate mode, cannot kill
+      //   param6 = number of frames between trigger and explosion
       {0x000A, "TOMineIcon01"},
+
+      // Status trap. Params:
+      //   param1 = trigger radius delta (actual radius is param1 / 2 + 30)
+      //   param2 = explosion radius delta (actual radius is param2 / 2 + 60)
+      //   param3 = trap group number (same as in TOMineIcon01)
+      //   param4 = trap power (same as in TOMineIcon01)
+      //   param5 = trap type (clamped to [0x0F, 0x12])
+      //     0F = poison
+      //     10 = paralysis
+      //     11 = slow
+      //     12 = confuse
+      //   param6 = number of frames between trigger and explosion
       {0x000B, "TOMineIcon02"},
+
+      // Heal trap. Params:
+      //   param1 = trigger radius delta (actual radius is param1 / 2 + 30)
+      //   param2 = explosion radius delta (actual radius is param2 / 2 + 60)
+      //   param3 = trap group number (same as in TOMineIcon01)
+      //   param4 = trap power (same as in TOMineIcon01)
+      //   param5 = trap type (clamped to [6, 8])
+      //     06 = heal HP (amount = power)
+      //     07 = clear negative status effects
+      //     08 = does nothing? (TODO: calls player->vtable[0x40], but that
+      //       function does nothing on v3. Did this do something in v1 or v2?)
+      //   param6 = number of frames between trigger and explosion
       {0x000C, "TOMineIcon03"},
+
+      // Large elemental trap. Params:
+      //   param1 = trigger radius delta (actual radius is param1 / 2 + 60)
+      //   param2 = explosion radius delta (actual radius is param2 / 2 + 120)
+      //   param3 = trap group number (same as in TOMineIcon01)
+      //   param4 = trap power (same as in TOMineIcon01)
+      //   param5 = trap type (same as in TOMineIcon01)
+      //   param6 = number of frames between trigger and explosion
       {0x000D, "TOMineIcon04"},
+
+      // Room ID. Params:
+      //   param1 = radius (actual radius = (param1 * 10) + 30)
+      //   param2 = next room ID
+      //   param3 = previous room ID
+      //   param5 = angle
+      //   param6 = TODO (debug info calls this "BLOCK ID"; seems it only
+      //     matters whether this is 0x10000 or not)
       {0x000E, "TObjRoomId"},
+
+      // Sensor of some kind (TODO). Params:
+      //   param1 = activation radius delta (actual radius = param1 + 50)
+      //   param4 = switch flag number
+      //   param5 = update mode switch (TODO; param5 < 0 sets update_mode =
+      //     PERMANENTLY_ON, otherwise TEMPORARY; see TOSensor_vF)
       {0x000F, "TOSensorGeneral01"},
+
+      // Lens flare effect. This object is not constructed in offline multi
+      // mode. Params:
+      //   param1 = visibility radius (if negative, visible everywhere)
       {0x0011, "TEF_LensFlare"},
+
+      // Quest script trigger. Starts a quest thread at a specific label when
+      // the local player goes near the object. Params:
+      //   param1 = radius
+      //   param4 = label number to call when local player is within radius
       {0x0012, "TObjQuestCol"},
+
+      // Healing ring. Removes all negative status conditions and adds 9 HP and
+      // 9 TP per frame until max HP/TP are both reached or the player leaves
+      // the radius. The radius is a fixed size.
       {0x0013, "TOHealGeneral"},
+
+      // Invisible map collision. Params:
+      //   param1-3 = box dimensions (x, y, z; rotated by angle fields)
+      //   param4 = wall type:
+      //     00 = custom (see param5)
+      //     01 = blocks enemies only (as if param5 = 00008000)
+      //     02 = blocks enemies and players (as if param5 = 0x00008900)
+      //     03 = blocks enemies and players, but enemies can see targets
+      //       through the collision (as if param5 = 0x00000800)
+      //     04 = blocks players only (as if patam5 = 00002000)
+      //     05 = undefined behavior due to missing bounds check
+      //     anything else = same as 01
+      //   param5 = flags (bit field; used if param4 = 0) (TODO: describe bits)
       {0x0014, "TObjMapCsn"},
+
+      // Like TObjQuestCol, but requires the player to press a controller
+      // button to trigger the call. Parameters are the same as for
+      // TObjQuestCol.
       {0x0015, "TObjQuestColA"},
+
+      // TODO: Describe this object. Params:
+      //   param1 = radius
       {0x0016, "TObjItemLight"},
+
+      // Radar collision. Params:
+      //   param1 = radius
+      //   param4 = TODO
       {0x0017, "TObjRaderCol"},
+
+      // Fog collision. Params:
+      //   param1 = radius
+      //   param3 = if >= 1, fog is on when switch flag is on; otherwise, fog
+      //     is on when switch flag is off
+      //   param4 = fog entry number (TODO: the client handles this value being
+      //     >= 0x1000 by subtracting 0x1000; what is this for?)
+      //   param5 = transition type (0 = fade in, 1 = instantly switch)
+      //   param6 = switch flag number
       {0x0018, "TObjFogCollisionSwitch"},
+
+      // Boss teleporter. The destination cannot be changed; it always
+      // teleports the player to the boss arena for the current area. In
+      // Challenge mode, the game uses the current area number to determine the
+      // destination floor, but in other modes, it uses the current episode
+      // number and floor number (not area number). Assuming areas haven't been
+      // reassigned from the defaults in non-Challenge mode, the mapping is:
+      //   Challenge (indexed by area number, not floor number):
+      //     Episode 1:
+      //       Pioneer 2, boss arenas, lobby, battle areas => Pioneer 2
+      //       Forest 1 and 2 => Dragon
+      //       Cave 1, 2, and 3 => De Rol Le
+      //       Mine 1 and 2 => Vol Opt
+      //       Ruins 1, 2, and 3 => Dark Falz
+      //     Episode 2:
+      //       Lab, boss arenas, Seaside Night, Tower => Lab
+      //       VR Temple A and B => Barba Ray
+      //       VR Spaceship A and B => Gol Dragon
+      //       Central Control Area (but not Seaside Night) => Gal Gryphon
+      //       Seabed => Olga Flow
+      //     Episode 4:
+      //       Pioneer 2, boss arena => Pioneer 2
+      //       Crater, Desert, test map => Saint-Milion arena
+      // Params:
+      //   param5 = switch flag number required to activate warp (>= 0x100 = no
+      //     switch flag required; ignored if on Pioneer 2)
       {0x0019, "TObjWarpBossMulti(off)/TObjWarpBoss(on)"},
+
+      // Sign board. This shows the loaded image from a quest (via load_pvr).
+      // Params:
+      //   param1-3 = scale factors (x, y, z)
       {0x001A, "TObjSinBoard"},
+
+      // Quest floor warp. This appears similar to TObjAreaWarpForest except
+      // that the object is not destroyed immediately if it's blue and the game
+      // is Challenge mode. Params:
+      //   param1 = player set ID (TODO: what exactly does this do? Looks like it
+      //     does nothing unless it's >= 2)
+      //   param4 = destination floor
+      //   param6 = color (0 = blue, 1 = red)
       {0x001B, "TObjAreaWarpQuest"},
+
+      // Ending movie warp (used in final boss arenas after the boss is
+      // defeated). Params:
+      //   param6 = color (0 = blue, 1 = red)
       {0x001C, "TObjAreaWarpEnding"},
-      {0x001D, "__UNNAMED_001D__"},
-      {0x001E, "__LENS_FLARE__"}, // Used in VR Temple Beta / Barba Ray
+
+      // Star light effect.
+      // This object renders from -100 to 740 over x and -100 to 580 over y.
+      // Params:
+      //   param1 = TODO
+      //   param2 = TODO
+      //   param3 = TODO
+      //   param4 = TODO
+      //   param5 = TODO
+      //   param6 = TODO
+      {0x001D, "TEffStarLight2D_Base"},
+
+      // VR Temple Beta / Barba Ray lens flare effect.
+      // This object renders from -10 to 650 over x and -10 to 490 over y.
+      {0x001E, "__LENS_FLARE__"},
+
+      // Hides the area map when the player is near this object. Params:
+      //   param1 = radius
+      // TODO: Test this.
       {0x001F, "TObjRaderHideCol"},
+
+      // Item-detecting floor switch. Params:
+      //   param1 = radius
+      //   param4 = switch flag number
+      //   param5 = item type:
+      //     0 or any value not listed below = any item
+      //     1 = weapon
+      //     2 = armor
+      //     3 = shield
+      //     4 = unit
+      //     5 = mag
+      //     6 = tool
+      //     7 = meseta
+      //   param6 = item amount required minus 1 (0 = 1 item, 1 = 2 items, etc.);
+      //     for tools and meseta, each dropped item counts for its stack size
       {0x0020, "TOSwitchItem"},
+
+      // Symbol chat collision object. This object triggers symbol chats when
+      // the players are nearby and certain switch flags are NOT set. If a
+      // player is within the radius, the object checks the switch flags in
+      // reverse order, and triggers the symbol chat for the latest one that is
+      // NOT set. So, the logic is:
+      // - If all 3 switch flags are not set, the symbol chat in spec1 is used
+      // - If the switch flag in spec1 is set and those in spec2 and spec3 are
+      //   not set, the symbol chat in spec2 is used
+      // - If the switch flag in spec2 is set and the flag in spec3 is not set,
+      //   the symbol chat in spec3 is used regardless of whether the switch
+      //   flags in spec1 is set
+      // - If the switch flags in spec3 is set, no symbol chat appears at all
+      //   regardless of the values of the other two switch flags
+      // Each spec is a 32-bit integer consisting of two 16-bit fields. The
+      // high 16 bits are a switch flag number (0-255), and the low 16 bits are
+      // an entry index from symbolchatcolli.prs. The entry index is ignored if
+      // the corresponding data label from the F8A6 quest opcode is not null
+      // (and the data from the label is used instead). Quest scripts don't
+      // have a good way to pass null for regsA[7-9], so the logic that looks
+      // up entries in symbolchatcolli.prs can be ignored in quests.
+      // Default symbol chat numbers (from qedit.info):
+      //   00 = Drop Meseta
+      //   01 = Meseta has been dropped
+      //   02 = Drop 1 weapon
+      //   03 = Drop 4 weapons
+      //   04 = Drop 1 shield
+      //   05 = Drop 4 shields
+      //   06 = Drop 1 mag
+      //   07 = Drop 4 mags
+      //   08 = Drop tool item
+      //   09 = ????
+      //   0A = XXXX
+      //   0B = All circles like OK
+      //   0C = Key with Yes
+      //   0D = Key with Cool
+      //   0E = Key with ...
+      //   0F = Go right
+      //   10 = Go left
+      //   11 = Push button with gun
+      //   12 = Key icons
+      //   13 = Key has been pressed
+      //   14 = Run/go
+      //   15 = Push 1 button on
+      //   16 = Push 2 button on
+      //   17 = Clock (hurry)
+      // Params:
+      //   param1 = radius
+      //   param4 = spec1
+      //   param5 = spec2
+      //   param6 = spec3
+      // This object can also be created by the quest opcode F8A6; see the
+      // description of that opcode in QuestScript.cc for more information.
       {0x0021, "TOSymbolchatColli"},
+
+      // Invisible collision switch. Params:
+      //   param1 = radius delta (actual radius is param1 + 10)
+      //   param4 = switch flag number
+      //   param5 = sticky flag (if negative, switch flag is unset when player
+      //     leaves; if zero or positive, switch flag remains on)
       {0x0022, "TOKeyCol"},
+
+      // Attackable collision. Params:
+      //   param1 = enable switch flag (the object is only attackable if this
+      //     switch flag is enabled); any value > 0xFF disables this behavior
+      //     so the object is always attackable
+      //   param2 = if negative, no target reticle appears; if zero or
+      //     positive, a reticle appears
+      //   param3 = switch flag number to set when required number of hits is
+      //     taken (ignored if param6 is nonzero)
+      //   param4 = number of hits required to activate, minus 1 (so e.g. a
+      //     value of 4 here means 5 hits needed)
+      //   param5 = if in the range [100, 999], uses the default free play
+      //     script instead of the loaded quest? (TODO: verify this; see
+      //     TOAttackableCol_on_attack for usage)
+      //   param6 = quest label to call when required number of hits is taken
+      //     (if zero, switch flag in param3 is set instead)
       {0x0023, "TOAttackableCol"},
+
+      // Damage effect. Params:
+      //   angle.x = effect type (in range [0x00, 0x14]; TODO: list these)
+      //   param1 = damage radius
+      //   param2 = damage value, scaled by difficulty:
+      //     Normal: param2 * 2
+      //     Hard: param2 * 4
+      //     Very Hard: param2 * 6
+      //     Ultimate: param2 * 8
+      //   param3 = effect visual size
+      //   param4 = enable switch flag number (effect is off unless this flag
+      //     is set)
+      //   param5 = disable switch flag number (effect is off if this flag is
+      //     set, even if the enable switch flag is also set), or >= 0x100 if
+      //     this functionality isn't needed
+      //   param6 = persistence flag (if nonzero, effect stays on once enabled)
       {0x0024, "TOSwitchAttack"},
+
+      // Switch flag timer. This object watches for a switch flag to be
+      // activated, then once it is, waits for a specified time, then disables
+      // that switch flag and activates up to three other switch flags. Note
+      // that this object just provides the timer functionality; the trigger
+      // switch flag must be activated by some other object. Params:
+      //   angle.x = trigger mode:
+      //     0 = disable watched switch flag when timer expires
+      //     any other value = enable up to 3 other switch flags when timer
+      //       expires and don't disable watched switch flag
+      //   angle.y = if this is 1, play tick sound effect every second after
+      //     activation (if any other value, no tick sound is played)
+      //   angle.z = timer duration in frames
+      //   param4 = switch flag to watch for activation in low 16 bits, switch
+      //     flag 1 to activate when timer expires (if angle.x = 0) in high 16
+      //     bits (>= 0x100 if not needed)
+      //   param5 = switch flag 2 to activate when timer expires (if
+      //     angle.x = 0) in high 16 bits (>= 0x100 if not needed)
+      //   param6 = switch flag 3 to activate when timer expires (if
+      //     angle.x = 0) in high 16 bits (>= 0x100 if not needed)
       {0x0025, "TOSwitchTimer"},
+
+      // Chat sensor. This object watches for chat messages said by players
+      // within its radius, optionally filtering for specific words. When a
+      // message matches, it either activates a switch flag or calls a quest
+      // function. When created via the F801 quest opcode, param5 is ignored,
+      // and the string specified by the quest is always used. Params:
+      //   angle.x = activation type (0 = quest function, 1 = switch flag)
+      //   angle.y = match mode:
+      //     0 = match a specific string (defined by param5)
+      //     1 = match any string
+      //     anything else = never match anything
+      //   param1 = radius
+      //   param4 = switch flag number or quest label number
+      //   param5 = trigger string
+      //     0 = any string (TODO: Is this true?)
+      //     1 = "YES"
+      //     2 = "COOL"
+      //     3 = "NO"
       {0x0026, "TOChatSensor"},
+
+      // Radar map icon. Shows an icon on the map that is optionally locked or
+      // unlocked, depending on the values of one or more sequential switch
+      // flags. The icon is considered unlocked if all of the specified switch
+      // flags are set. There can be at most 12 switch flags used with this
+      // object and the switch flag numbers cannot wrap around from 0xFF to 0.
+      // Params:
+      //   param1 = scale (1.0 = normal size)
+      //   param4 = check switch flags for color:
+      //     positive value = ignore param6; color is red (FFFF0000) if any of
+      //       the switch flags are off, or green (FF00FF00) if all are on
+      //     zero or negative = ignore param5; always render in the color
+      //       specified by param6
+      //   param5 = switch flag spec; upper 16 bits are number of switch flags,
+      //     lower 16 bits are first switch flag number
+      //   param6 = color as ARGB8888
       {0x0027, "TObjRaderIcon"},
+
+      // Environmental sound. This object is not constructed in offline multi
+      // mode. This is essentially identical to TObjEnvSound, except the sound
+      // fades in and out instead of abruptly starting or stopping when
+      // entering or leaving its radius. Params:
+      //   param2 = volume fade speed (units per frame)
+      //   param3 = audibility radius (same as for TObjEnvSound)
+      //   param4 = sound ID (same as for TObjEnvSound)
+      //   param5 = volume (same as for TObjEnvSound)
       {0x0028, "TObjEnvSoundEx"},
+
+      // Environmental sound. This object is not constructed in offline multi
+      // mode. This is essentially identical to TObjEnvSound, except there is
+      // no radius: the sound is audible everywhere. Params:
+      //   param4 = sound ID (same as for TObjEnvSound)
+      //   param5 = volume (same as for TObjEnvSound)
       {0x0029, "TObjEnvSoundGlobal"},
+
+      // Counter sequence activator. Used for Hunter's Guild, shops, bank, etc.
+      // Params:
+      //   param4 = shop sequence number:
+      //     Episodes 1, 2, and 4:
+      //       00 = weapon shop
+      //       01 = medical center
+      //       02 = armor shop
+      //       03 = tool shop
+      //       04 = Hunter's Guild
+      //       05 = check room
+      //       06 = tekker
+      //       07 = government counter (BB only)
+      //       08 = "GIVEAWAY" (BB only)
+      //   Episode 3:
+      //       00 = unused (DUMMY0)
+      //       01 = unused (DUMMY1)
+      //       02 = unused (DUMMY2)
+      //       03 = unused (DUMMY3)
+      //       04 = unused (DUMMY4)
+      //       05 = unused (DUMMY5)
+      //       06 = unused (DUMMY6)
+      //       07 = deck edit counter
+      //       08 = entry counter
+      //       09 = left-side card trade kiosk
+      //       0A = right-side card trade kiosk
+      //       0B = auction counter
+      //       0C = hidden entry counter
+      //       0D = Pinz's Shop
       {0x0040, "TShopGenerator"},
+
+      // Telepipe city location. Params:
+      //   param4 = owner client ID (0-3)
       {0x0041, "TObjLuker"},
+
+      // BGM collision. Changes the background music when the player enters the
+      // object's radius. Params:
+      //   param1 = radius
+      //   param4 = which music to play:
+      //     00 = SHOP.adx
+      //     01 = GUILD.adx
+      //     02 = MEDICAL.adx
+      //     03 = soutoku.adx
+      //     04 = city.adx
+      //     05 = labo.adx
+      //     anything else = value is taken modulo 6 and used as above
       {0x0042, "TObjBgmCol"},
+
+      // Main warp to other floors from Pioneer 2.
+      // Certain floors are available by default, determined by checking the
+      // game's mode and quest flags. A different set of flags is checked on BB
+      // than on other versions, presumably since government quests are used to
+      // unlock areas instead of offline story progression. On later versions
+      // of BB, all floors are available by default; this table reflects the
+      // behavior before that change.
+      // Required flag for mode: Online/multi   Offline       BB flag
+      //   Episode 1:
+      //     Forest 1:           Always open   Always open   Always open
+      //     Cave 1:             0x17          0x18          0x1F9
+      //     Mine 1:             0x20          0x21          0x201
+      //     Ruins 1:            0x30          0x2A          0x207
+      //   Episode 2:
+      //     VR Temple Alpha:    Always open   Always open   Always open
+      //     VR Spaceship Alpha: 0x4C          0x4D          0x21B
+      //     CCA:                0x4F          0x50          0x225
+      //     Seabed Upper:       0x52          0x53          0x22F
+      //   Episode 4:
+      //     Crater East                                     Always open
+      //     Crater West                                     0x2BD
+      //     Crater South                                    0x2BE
+      //     Crater North                                    0x2BF
+      //     Crater Interior                                 0x2C0
+      //     Subterranean Desert 1                           0x2C1
+      // Params:
+      //   param5 = main warp type:
+      //     00 = Episode 1 / Episode 4
+      //     01 = Ep2 VR Temple / VR Spaceship (CCA and Seabed not available)
+      //     02 = Ep2 CCA (VR Temple and Spaceship not available)
       {0x0043, "TObjCityMainWarp"},
+
+      // Lobby teleporter. When used, this object immediately ends the current
+      // game and sends the player back to the lobby. If constructed offline,
+      // this object will do nothing and not render.
+      // This object takes no parameters.
       {0x0044, "TObjCityAreaWarp"},
+
+      // Warp to another location on the same map. Used for the Principal's
+      // office warp. This warp is visible in all game modes, but cannot be
+      // used in Battle or Challenge mode. Params:
+      //   param1-3 = destination (same as for TObjMapWarpForest)
+      //   param4 = destination angle (same as for TObjMapWarpForest)
+      //   param6 = destination text (clamped to [0, 2]):
+      //     00 = "The Principal"
+      //     01 = "Pioneer 2"
+      //     02 = "Lab"
       {0x0045, "TObjCityMapWarp"},
+
+      // City doors. None of these take any parameters. Respectively:
+      // - Door to the shop area
+      // - Door to the Hunter's Guild area
+      // - Door to the Ragol warp
+      // - Door to the Medical Center
       {0x0046, "TObjCityDoor_Shop"},
       {0x0047, "TObjCityDoor_Guild"},
       {0x0048, "TObjCityDoor_Warp"},
       {0x0049, "TObjCityDoor_Med"},
-      {0x004A, "__ELEVATOR__"}, // Named in qedit but not in the client
+
+      // TODO: Describe this object. There appear to be no parameters.
+      {0x004A, "__ELEVATOR__"}, // Not named in the client
+
+      // Holiday event decorations. There appear to be no parameters, except
+      // TObjCity_Season_SonicAdv2, which takes param4 = model index (clamped
+      // to [0, 3]).
       {0x004B, "TObjCity_Season_EasterEgg"},
       {0x004C, "TObjCity_Season_ValentineHeart"},
       {0x004D, "TObjCity_Season_XmasTree"},
@@ -632,221 +1256,240 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x0050, "TObjCity_Season_21_21"},
       {0x0051, "TObjCity_Season_SonicAdv2"},
       {0x0052, "TObjCity_Season_Board"},
+
+      // Fireworks effect. Params:
+      //   param1 = area width
+      //   param2 = base height
+      //   param3 = area depth
+      //   param4 = launch frequency (when a firework is launched, the game
+      //     generates a random number R in range [0, 0x7FFF] and waits
+      //     ((param4 + 60) * (r / 0x8000) * 3.0)) frames before launching the
+      //     next firework)
       {0x0053, "TObjCity_Season_FireWorkCtrl"},
+
+      // Door that blocks the lobby teleporter in offline mode. There appear to
+      // be no parameters.
       {0x0054, "TObjCityDoor_Lobby"},
+
+      // Version of the main warp for Challenge mode? TODO: This thing has a
+      // lot of code; figure out if there are any other parameters
+      //   param4 = destination floor
+      //   param5 = switch flag number
       {0x0055, "TObjCityMainWarpChallenge"},
-      {0x0056, "TODoorLabo"},
-      {0x0057, "TObjTradeCollision"},
-      {0x0080, "TObjDoor"},
-      {0x0081, "TObjDoorKey"},
-      {0x0082, "TObjLazerFenceNorm"},
-      {0x0083, "TObjLazerFence4"},
-      {0x0084, "TLazerFenceSw"},
-      {0x0085, "TKomorebi"},
-      {0x0086, "TButterfly"},
-      {0x0087, "TMotorcycle"},
-      {0x0088, "TObjContainerItem"},
-      {0x0089, "TObjTank"},
-      {0x008B, "TObjComputer"},
-      {0x008C, "TObjContainerIdo"},
-      {0x008D, "TOCapsuleAncient01"},
-      {0x008E, "TOBarrierEnergy01"},
-      {0x008F, "TObjHashi"},
-      {0x0090, "TOKeyGenericSw"},
-      {0x0091, "TObjContainerEnemy"},
-      {0x0092, "TObjContainerBase"},
-      {0x0093, "TObjContainerAbeEnemy"},
-      {0x0095, "TObjContainerNoItem"},
-      {0x0096, "TObjLazerFenceExtra"},
-      {0x00C0, "TOKeyCave01"},
-      {0x00C1, "TODoorCave01"},
-      {0x00C2, "TODoorCave02"},
-      {0x00C3, "TOHangceilingCave01Key/TOHangceilingCave01Normal/TOHangceilingCave01KeyQuick"},
-      {0x00C4, "TOSignCave01"},
-      {0x00C5, "TOSignCave02"},
-      {0x00C6, "TOSignCave03"},
-      {0x00C7, "TOAirconCave01"},
-      {0x00C8, "TOAirconCave02"},
-      {0x00C9, "TORevlightCave01"},
-      {0x00CB, "TORainbowCave01"},
-      {0x00CC, "TOKurage"},
-      {0x00CD, "TODragonflyCave01"},
-      {0x00CE, "TODoorCave03"},
-      {0x00CF, "TOBind"},
-      {0x00D0, "TOCakeshopCave01"},
-      {0x00D1, "TORockCaveS01"},
-      {0x00D2, "TORockCaveM01"},
-      {0x00D3, "TORockCaveL01"},
-      {0x00D4, "TORockCaveS02"},
-      {0x00D5, "TORockCaveM02"},
-      {0x00D6, "TORockCaveL02"},
-      {0x00D7, "TORockCaveSS02"},
-      {0x00D8, "TORockCaveSM02"},
-      {0x00D9, "TORockCaveSL02"},
-      {0x00DA, "TORockCaveS03"},
-      {0x00DB, "TORockCaveM03"},
-      {0x00DC, "TORockCaveL03"},
-      {0x00DE, "TODummyKeyCave01"},
-      {0x00DF, "TORockCaveBL01"},
-      {0x00E0, "TORockCaveBL02"},
-      {0x00E1, "TORockCaveBL03"},
-      {0x0100, "TODoorMachine01"},
-      {0x0101, "TOKeyMachine01"},
-      {0x0102, "TODoorMachine02"},
-      {0x0103, "TOCapsuleMachine01"},
-      {0x0104, "TOComputerMachine01"},
-      {0x0105, "TOMonitorMachine01"},
-      {0x0106, "TODragonflyMachine01"},
-      {0x0107, "TOLightMachine01"},
-      {0x0108, "TOExplosiveMachine01"},
-      {0x0109, "TOExplosiveMachine02"},
-      {0x010A, "TOExplosiveMachine03"},
-      {0x010B, "TOSparkMachine01"},
-      {0x010C, "TOHangerMachine01"},
-      {0x0130, "TODoorVoShip"},
-      {0x0140, "TObjGoalWarpAncient"},
-      {0x0141, "TObjMapWarpAncient"},
-      {0x0142, "TOKeyAncient02"},
-      {0x0143, "TOKeyAncient03"},
-      {0x0144, "TODoorAncient01"},
-      {0x0145, "TODoorAncient03"},
-      {0x0146, "TODoorAncient04"},
-      {0x0147, "TODoorAncient05"},
-      {0x0148, "TODoorAncient06"},
-      {0x0149, "TODoorAncient07"},
-      {0x014A, "TODoorAncient08"},
-      {0x014B, "TODoorAncient09"},
-      {0x014C, "TOSensorAncient01"},
-      {0x014D, "TOKeyAncient01"},
-      {0x014E, "TOFenceAncient01"},
-      {0x014F, "TOFenceAncient02"},
-      {0x0150, "TOFenceAncient03"},
-      {0x0151, "TOFenceAncient04"},
-      {0x0152, "TContainerAncient01"},
-      {0x0153, "TOTrapAncient01"},
-      {0x0154, "TOTrapAncient02"},
-      {0x0155, "TOMonumentAncient01"},
-      {0x0156, "TOMonumentAncient02"},
-      {0x0159, "TOWreckAncient01"},
-      {0x015A, "TOWreckAncient02"},
-      {0x015B, "TOWreckAncient03"},
-      {0x015C, "TOWreckAncient04"},
-      {0x015D, "TOWreckAncient05"},
-      {0x015E, "TOWreckAncient06"},
-      {0x015F, "TOWreckAncient07"},
-      {0x0160, "TObjFogCollisionPoison/TObjWarpBoss03"},
-      {0x0161, "TOContainerAncientItemCommon"},
-      {0x0162, "TOContainerAncientItemRare"},
-      {0x0163, "TOContainerAncientEnemyCommon"},
-      {0x0164, "TOContainerAncientEnemyRare"},
-      {0x0165, "TOContainerAncientItemNone"},
-      {0x0166, "TOWreckAncientBrakable05"},
-      {0x0167, "TOTrapAncient02R"},
-      {0x0170, "TOBoss4Bird"},
-      {0x0171, "TOBoss4Tower"},
-      {0x0172, "TOBoss4Rock"},
-      {0x0180, "TObjInfoCol"},
-      {0x0181, "TObjWarpLobby"},
-      {0x0182, "TObjLobbyMain"},
-      {0x0183, "__LOBBY_PIGEON__"}, // Formerly __TObjPathObj_subclass_0183__
-      {0x0184, "TObjButterflyLobby"},
-      {0x0185, "TObjRainbowLobby"},
-      {0x0186, "TObjKabochaLobby"},
-      {0x0187, "TObjStendGlassLobby"},
-      {0x0188, "TObjCurtainLobby"},
-      {0x0189, "TObjWeddingLobby"},
-      {0x018A, "TObjTreeLobby"},
-      {0x018B, "TObjSuisouLobby"},
-      {0x018C, "TObjParticleLobby"},
-      {0x0190, "TObjCamera"},
-      {0x0191, "TObjTuitate"},
-      {0x0192, "TObjDoaEx01"},
-      {0x0193, "TObjBigTuitate"},
-      {0x01A0, "TODoorVS2Door01"},
-      {0x01A1, "TOVS2Wreck01"},
-      {0x01A2, "TOVS2Wreck02"},
-      {0x01A3, "TOVS2Wreck03"},
-      {0x01A4, "TOVS2Wreck04"},
-      {0x01A5, "TOVS2Wreck05"},
-      {0x01A6, "TOVS2Wreck06"},
-      {0x01A7, "TOVS2Wall01"},
-      {0x01A8, "__OBJECT_MAP_DETECT_TEMPLE__"}, // Name is from qedit; object class has no name in the client
-      {0x01A9, "TObjHashiVersus1"},
-      {0x01AA, "TObjHashiVersus2"},
-      {0x01AB, "TODoorFourLightRuins"},
-      {0x01C0, "TODoorFourLightSpace"},
-      {0x0200, "TObjContainerJung"},
-      {0x0201, "TObjWarpJung"},
-      {0x0202, "TObjDoorJung"},
-      {0x0203, "TObjContainerJungEx"},
-      {0x0204, "TODoorJungleMain"},
-      {0x0205, "TOKeyJungleMain"},
-      {0x0206, "TORockJungleS01"},
-      {0x0207, "TORockJungleM01"},
-      {0x0208, "TORockJungleL01"},
-      {0x0209, "TOGrassJungle"},
-      {0x020A, "TObjWarpJungMain"},
-      {0x020B, "TBGLightningCtrl"},
-      {0x020C, "__WHITE_BIRD__"}, // Formerly __TObjPathObj_subclass_020C__
-      {0x020D, "__ORANGE_BIRD__"}, // Formerly __TObjPathObj_subclass_020D__
-      {0x020E, "TObjContainerJungEnemy"},
-      {0x020F, "TOTrapChainSawDamage"},
-      {0x0210, "TOTrapChainSawKey"},
-      {0x0211, "TOBiwaMushi"},
-      {0x0212, "__SEAGULL__"}, // Formerly __TObjPathObj_subclass_0212__
-      {0x0213, "TOJungleDesign"},
-      {0x0220, "TObjFish"},
-      {0x0221, "TODoorFourLightSeabed"},
-      {0x0222, "TODoorFourLightSeabedU"},
-      {0x0223, "TObjSeabedSuiso_CH"},
-      {0x0224, "TObjSeabedSuisoBrakable"},
-      {0x0225, "TOMekaFish00"},
-      {0x0226, "TOMekaFish01"},
-      {0x0227, "__DOLPHIN__"}, // Formerly __TObjPathObj_subclass_0227__
-      {0x0228, "TOTrapSeabed01"},
-      {0x0229, "TOCapsuleLabo"},
-      {0x0240, "TObjParticle"},
-      {0x0280, "__BARBA_RAY_TELEPORTER__"}, // Formerly __TObjAreaWarpForest_subclass_0280__
-      {0x02A0, "TObjLiveCamera"},
-      {0x02B0, "TContainerAncient01R"},
-      {0x02B1, "TObjLaboDesignBase"},
-      {0x02B2, "TObjLaboDesignBase"},
-      {0x02B3, "TObjLaboDesignBase"},
-      {0x02B4, "TObjLaboDesignBase"},
-      {0x02B5, "TObjLaboDesignBase"},
-      {0x02B6, "TObjLaboDesignBase"},
-      {0x02B7, "TObjGbAdvance"},
-      {0x02B8, "TObjQuestColALock2"},
-      {0x02B9, "TObjMapForceWarp"},
-      {0x02BA, "TObjQuestCol2"},
-      {0x02BB, "TODoorLaboNormal"},
-      {0x02BC, "TObjAreaWarpEndingJung"},
-      {0x02BD, "TObjLaboMapWarp"},
-      {0x0300, "__EP4_LIGHT__"},
-      {0x0301, "__WILDS_CRATER_CACTUS__"},
-      {0x0302, "__WILDS_CRATER_BROWN_ROCK__"},
-      {0x0303, "__WILDS_CRATER_BROWN_ROCK_DESTRUCTIBLE__"},
-      {0x0340, "__UNKNOWN_0340__"},
-      {0x0341, "__UNKNOWN_0341__"},
-      {0x0380, "__POISON_PLANT__"},
-      {0x0381, "__UNKNOWN_0381__"},
-      {0x0382, "__UNKNOWN_0382__"},
-      {0x0383, "__DESERT_OOZE_PLANT__"},
-      {0x0385, "__UNKNOWN_0385__"},
-      {0x0386, "__WILDS_CRATER_BLACK_ROCKS__"},
-      {0x0387, "__UNKNOWN_0387__"},
-      {0x0388, "__UNKNOWN_0388__"},
-      {0x0389, "__UNKNOWN_0389__"},
-      {0x038A, "__UNKNOWN_038A__"},
-      {0x038B, "__FALLING_ROCK__"},
-      {0x038C, "__DESERT_PLANT_SOLID__"},
-      {0x038D, "__DESERT_CRYSTALS_BOX__"},
-      {0x038E, "__EP4_TEST_DOOR__"},
-      {0x038F, "__BEE_HIVE__"},
-      {0x0390, "__EP4_TEST_PARTICLE__"},
-      {0x0391, "__HEAT__"},
-      {0x03C0, "__EP4_BOSS_EGG__"},
-      {0x03C1, "__EP4_BOSS_ROCK_SPAWNER__"},
+
+      // TODO: Describe the rest of the object types.
+      {0x0056, "TODoorLabo"}, // Constructor in 3OE1: 801A2684
+      {0x0057, "TObjTradeCollision"}, // Constructor in 3OE1: 802C6A7C
+      {0x0080, "TObjDoor"}, // Constructor in 3OE1: 8018F148
+      {0x0081, "TObjDoorKey"}, // Constructor in 3OE1: 80190000
+      {0x0082, "TObjLazerFenceNorm"}, // Constructor in 3OE1: 80192E44
+      {0x0083, "TObjLazerFence4"}, // Constructor in 3OE1: 801933F4
+      {0x0084, "TLazerFenceSw"}, // Constructor in 3OE1: 80193AE0
+      {0x0085, "TKomorebi"}, // Constructor in 3OE1: 80192220
+      {0x0086, "TButterfly"}, // Constructor in 3OE1: 8017F2A4
+      {0x0087, "TMotorcycle"}, // Constructor in 3OE1: 80194EE4
+      {0x0088, "TObjContainerItem"}, // Constructor in 3OE1: 801899F8
+      {0x0089, "TObjTank"}, // Constructor in 3OE1: 8019A7E4
+      {0x008B, "TObjComputer"}, // Constructor in 3OE1: 80188180
+      {0x008C, "TObjContainerIdo"}, // Constructor in 3OE1: 8018C514
+      {0x008D, "TOCapsuleAncient01"}, // Constructor in 3OE1: 8015A274
+      {0x008E, "TOBarrierEnergy01"}, // Constructor in 3OE1: 80157EA8
+      {0x008F, "TObjHashi"}, // Constructor in 3OE1: 8019157C
+      {0x0090, "TOKeyGenericSw"}, // Constructor in 3OE1: 8016CB20
+      {0x0091, "TObjContainerEnemy"}, // Constructor in 3OE1: 801895BC
+      {0x0092, "TObjContainerBase"}, // Constructor in 3OE1: 80188928
+      {0x0093, "TObjContainerAbeEnemy"}, // Constructor in 3OE1: 801A2B3C
+      {0x0095, "TObjContainerNoItem"}, // Constructor in 3OE1: 80189074
+      {0x0096, "TObjLazerFenceExtra"}, // Constructor in 3OE1: 801928C0
+      {0x00C0, "TOKeyCave01"}, // Constructor in 3OE1: 8016C2A4
+      {0x00C1, "TODoorCave01"}, // Constructor in 3OE1: 801618C4
+      {0x00C2, "TODoorCave02"}, // Constructor in 3OE1: 80161F4C
+      {0x00C3, "TOHangceilingCave01Key/TOHangceilingCave01Normal/TOHangceilingCave01KeyQuick"}, // Constructor in 3OE1: 80168848
+      {0x00C4, "TOSignCave01"}, // Constructor in 3OE1: 801765B4
+      {0x00C5, "TOSignCave02"}, // Constructor in 3OE1: 80176968
+      {0x00C6, "TOSignCave03"}, // Constructor in 3OE1: 80176DAC
+      {0x00C7, "TOAirconCave01"}, // Constructor in 3OE1: 80156DF8
+      {0x00C8, "TOAirconCave02"}, // Constructor in 3OE1: 80157034
+      {0x00C9, "TORevlightCave01"}, // Constructor in 3OE1: 80173470
+      {0x00CB, "TORainbowCave01"}, // Constructor in 3OE1: 8017318C
+      {0x00CC, "TOKurage"}, // Constructor in 3OE1: 8016E65C
+      {0x00CD, "TODragonflyCave01"}, // Constructor in 3OE1: 801642F4
+      {0x00CE, "TODoorCave03"}, // Constructor in 3OE1: 8016259C
+      {0x00CF, "TOBind"}, // Constructor in 3OE1: 80158638
+      {0x00D0, "TOCakeshopCave01"}, // Constructor in 3OE1: 80159F68
+      {0x00D1, "TORockCaveS01"}, // Constructor in 3OE1: 80174A44
+      {0x00D2, "TORockCaveM01"}, // Constructor in 3OE1: 801748E4
+      {0x00D3, "TORockCaveL01"}, // Constructor in 3OE1: 80174784
+      {0x00D4, "TORockCaveS02"}, // Constructor in 3OE1: 80174628
+      {0x00D5, "TORockCaveM02"}, // Constructor in 3OE1: 801744C8
+      {0x00D6, "TORockCaveL02"}, // Constructor in 3OE1: 80174368
+      {0x00D7, "TORockCaveSS02"}, // Constructor in 3OE1: 8017420C
+      {0x00D8, "TORockCaveSM02"}, // Constructor in 3OE1: 801740AC
+      {0x00D9, "TORockCaveSL02"}, // Constructor in 3OE1: 80173F4C
+      {0x00DA, "TORockCaveS03"}, // Constructor in 3OE1: 80173DF0
+      {0x00DB, "TORockCaveM03"}, // Constructor in 3OE1: 80173C90
+      {0x00DC, "TORockCaveL03"}, // Constructor in 3OE1: 80173B30
+      {0x00DE, "TODummyKeyCave01"}, // Constructor in 3OE1: 80165D1C
+      {0x00DF, "TORockCaveBL01"}, // Constructor in 3OE1: 801739AC
+      {0x00E0, "TORockCaveBL02"}, // Constructor in 3OE1: 80173828
+      {0x00E1, "TORockCaveBL03"}, // Constructor in 3OE1: 801736A4
+      {0x0100, "TODoorMachine01"}, // Constructor in 3OE1: 80162E38
+      {0x0101, "TOKeyMachine01"}, // Constructor in 3OE1: 8016D538
+      {0x0102, "TODoorMachine02"}, // Constructor in 3OE1: 80163440
+      {0x0103, "TOCapsuleMachine01"}, // Constructor in 3OE1: 8015A588
+      {0x0104, "TOComputerMachine01"}, // Constructor in 3OE1: 8015B37C
+      {0x0105, "TOMonitorMachine01"}, // Constructor in 3OE1: 801722A4
+      {0x0106, "TODragonflyMachine01"}, // Constructor in 3OE1: 80165294
+      {0x0107, "TOLightMachine01"}, // Constructor in 3OE1: 8016E99C
+      {0x0108, "TOExplosiveMachine01"}, // Constructor in 3OE1: 80166144
+      {0x0109, "TOExplosiveMachine02"}, // Constructor in 3OE1: 80165FD4
+      {0x010A, "TOExplosiveMachine03"}, // Constructor in 3OE1: 80165E64
+      {0x010B, "TOSparkMachine01"}, // Constructor in 3OE1: 80177190
+      {0x010C, "TOHangerMachine01"}, // Constructor in 3OE1: 80168DF4
+      {0x0130, "TODoorVoShip"}, // Constructor in 3OE1: 801639E8
+      {0x0140, "TObjGoalWarpAncient"}, // Constructor in 3OE1: 8017C9F4
+      {0x0141, "TObjMapWarpAncient"}, // Constructor in 3OE1: 8017CDB8
+      {0x0142, "TOKeyAncient02"}, // Constructor in 3OE1: 8016B3CC
+      {0x0143, "TOKeyAncient03"}, // Constructor in 3OE1: 8016BAB4
+      {0x0144, "TODoorAncient01"}, // Constructor in 3OE1: 8015DECC
+      {0x0145, "TODoorAncient03"}, // Constructor in 3OE1: 8015E378
+      {0x0146, "TODoorAncient04"}, // Constructor in 3OE1: 8015E824
+      {0x0147, "TODoorAncient05"}, // Constructor in 3OE1: 8015ECE4
+      {0x0148, "TODoorAncient06"}, // Constructor in 3OE1: 8015F24C
+      {0x0149, "TODoorAncient07"}, // Constructor in 3OE1: 8015F7C4
+      {0x014A, "TODoorAncient08"}, // Constructor in 3OE1: 801603E0
+      {0x014B, "TODoorAncient09"}, // Constructor in 3OE1: 80160F10
+      {0x014C, "TOSensorAncient01"}, // Constructor in 3OE1: 80175B24
+      {0x014D, "TOKeyAncient01"}, // Constructor in 3OE1: 8016AD90
+      {0x014E, "TOFenceAncient01"}, // Constructor in 3OE1: 80166A4C
+      {0x014F, "TOFenceAncient02"}, // Constructor in 3OE1: 80166E2C
+      {0x0150, "TOFenceAncient03"}, // Constructor in 3OE1: 801671D0
+      {0x0151, "TOFenceAncient04"}, // Constructor in 3OE1: 80167574
+      {0x0152, "TContainerAncient01"}, // Constructor in 3OE1: 8018B9B0
+      {0x0153, "TOTrapAncient01"}, // Constructor in 3OE1: 80179C90
+      {0x0154, "TOTrapAncient02"}, // Constructor in 3OE1: 8017B348
+      {0x0155, "TOMonumentAncient01"}, // Constructor in 3OE1: 801725B4
+      {0x0156, "TOMonumentAncient02"}, // Constructor in 3OE1: 80172BAC
+      {0x0159, "TOWreckAncient01"}, // Constructor in 3OE1: 8017DA9C
+      {0x015A, "TOWreckAncient02"}, // Constructor in 3OE1: 8017DDF0
+      {0x015B, "TOWreckAncient03"}, // Constructor in 3OE1: 8017DF10
+      {0x015C, "TOWreckAncient04"}, // Constructor in 3OE1: 8017D978
+      {0x015D, "TOWreckAncient05"}, // Constructor in 3OE1: 8017D854
+      {0x015E, "TOWreckAncient06"}, // Constructor in 3OE1: 8017D730
+      {0x015F, "TOWreckAncient07"}, // Constructor in 3OE1: 8017D60C
+      {0x0160, "TObjFogCollisionPoison/TObjWarpBoss03"}, // Constructor in 3OE1: 80153768 OR 801A29C8
+      {0x0161, "TOContainerAncientItemCommon"}, // Constructor in 3OE1: 8015BFE8
+      {0x0162, "TOContainerAncientItemRare"}, // Constructor in 3OE1: 801A2A14
+      {0x0163, "TOContainerAncientEnemyCommon"}, // Constructor in 3OE1: 8015B69C
+      {0x0164, "TOContainerAncientEnemyRare"}, // Constructor in 3OE1: 801A2A5C
+      {0x0165, "TOContainerAncientItemNone"}, // Constructor in 3OE1: 8015BD78
+      {0x0166, "TOWreckAncientBrakable05"}, // Constructor in 3OE1: 8017D1DC
+      {0x0167, "TOTrapAncient02R"}, // Constructor in 3OE1: 8017A96C
+      {0x0170, "TOBoss4Bird"}, // Constructor in 3OE1: 8015982C
+      {0x0171, "TOBoss4Tower"}, // Constructor in 3OE1: 801592E0
+      {0x0172, "TOBoss4Rock"}, // Constructor in 3OE1: 80158D90
+      {0x0180, "TObjInfoCol"}, // Constructor in 3OE1: 801A27B4
+      {0x0181, "TObjWarpLobby"}, // Constructor in 3OE1: 801A2800
+      {0x0182, "TObjLobbyMain"}, // Constructor in 3OE1: 80350B84
+      {0x0183, "__LOBBY_PIGEON__"}, // Formerly __TObjPathObj_subclass_0183__ // Constructor in 3OE1: 802BF420
+      {0x0184, "TObjButterflyLobby"}, // Constructor in 3OE1: 8034FA8C
+      {0x0185, "TObjRainbowLobby"}, // Constructor in 3OE1: 8034EB9C
+      {0x0186, "TObjKabochaLobby"}, // Constructor in 3OE1: 80351A18
+      {0x0187, "TObjStendGlassLobby"}, // Constructor in 3OE1: 80357CD8
+      {0x0188, "TObjCurtainLobby"}, // Constructor in 3OE1: 80359DF4
+      {0x0189, "TObjWeddingLobby"}, // Constructor in 3OE1: 8035A1E0
+      {0x018A, "TObjTreeLobby"}, // Constructor in 3OE1: 80362D44
+      {0x018B, "TObjSuisouLobby"}, // Constructor in 3OE1: 80368118
+      {0x018C, "TObjParticleLobby"}, // Constructor in 3OE1: 80367DC0
+      {0x0190, "TObjCamera"}, // Constructor in 3OE1: 8017FAC0
+      {0x0191, "TObjTuitate"}, // Constructor in 3OE1: 8019AF20
+      {0x0192, "TObjDoaEx01"}, // Constructor in 3OE1: 8018E02C
+      {0x0193, "TObjBigTuitate"}, // Constructor in 3OE1: 8019AB9C
+      {0x01A0, "TODoorVS2Door01"}, // Constructor in 3OE1: 80164084
+      {0x01A1, "TOVS2Wreck01"}, // Constructor in 3OE1: 8017C520
+      {0x01A2, "TOVS2Wreck02"}, // Constructor in 3OE1: 8017C438
+      {0x01A3, "TOVS2Wreck03"}, // Constructor in 3OE1: 8017C350
+      {0x01A4, "TOVS2Wreck04"}, // Constructor in 3OE1: 8017C268
+      {0x01A5, "TOVS2Wreck05"}, // Constructor in 3OE1: 8017C180
+      {0x01A6, "TOVS2Wreck06"}, // Constructor in 3OE1: 8017C098
+      {0x01A7, "TOVS2Wall01"}, // Constructor in 3OE1: 8017BEC8
+      {0x01A8, "__OBJECT_MAP_DETECT_TEMPLE__"}, // Name is from qedit; object class has no name in the client // Constructor in 3OE1: 80085794
+      {0x01A9, "TObjHashiVersus1"}, // Constructor in 3OE1: 80191388
+      {0x01AA, "TObjHashiVersus2"}, // Constructor in 3OE1: 8019118C
+      {0x01AB, "TODoorFourLightRuins"}, // Constructor in 3OE1: 801A271C
+      {0x01C0, "TODoorFourLightSpace"}, // Constructor in 3OE1: 801A2768
+      {0x0200, "TObjContainerJung"}, // Constructor in 3OE1: 8018D2CC
+      {0x0201, "TObjWarpJung"}, // Constructor in 3OE1: 8019FF00
+      {0x0202, "TObjDoorJung"}, // Constructor in 3OE1: 8018F2DC
+      {0x0203, "TObjContainerJungEx"}, // Constructor in 3OE1: 8018CE58
+      {0x0204, "TODoorJungleMain"}, // Constructor in 3OE1: 80299E20
+      {0x0205, "TOKeyJungleMain"}, // Constructor in 3OE1: 8029BA64
+      {0x0206, "TORockJungleS01"}, // Constructor in 3OE1: 8029B3F8
+      {0x0207, "TORockJungleM01"}, // Constructor in 3OE1: 8029AFAC
+      {0x0208, "TORockJungleL01"}, // Constructor in 3OE1: 8029AC38
+      {0x0209, "TOGrassJungle"}, // Constructor in 3OE1: 8029B764
+      {0x020A, "TObjWarpJungMain"}, // Constructor in 3OE1: 8019FA1C
+      {0x020B, "TBGLightningCtrl"}, // Constructor in 3OE1: 802A8750
+      {0x020C, "__WHITE_BIRD__"}, // Formerly __TObjPathObj_subclass_020C__ // Constructor in 3OE1: 802C0C64
+      {0x020D, "__ORANGE_BIRD__"}, // Formerly __TObjPathObj_subclass_020D__ // Constructor in 3OE1: 802C05BC
+      {0x020E, "TObjContainerJungEnemy"}, // Constructor in 3OE1: 8018CCF8
+      {0x020F, "TOTrapChainSawDamage"}, // Constructor in 3OE1: 802C7748
+      {0x0210, "TOTrapChainSawKey"}, // Constructor in 3OE1: 802C7234
+      {0x0211, "TOBiwaMushi"}, // Constructor in 3OE1: 802A8D98
+      {0x0212, "__SEAGULL__"}, // Formerly __TObjPathObj_subclass_0212__ // Constructor in 3OE1: 802BFDE8
+      {0x0213, "TOJungleDesign"}, // Constructor in 3OE1: 802FD478
+      {0x0220, "TObjFish"}, // Constructor in 3OE1: 8029D04C
+      {0x0221, "TODoorFourLightSeabed"}, // Constructor in 3OE1: 801A25EC
+      {0x0222, "TODoorFourLightSeabedU"}, // Constructor in 3OE1: 801A2638
+      {0x0223, "TObjSeabedSuiso_CH"}, // Constructor in 3OE1: 802A5290
+      {0x0224, "TObjSeabedSuisoBrakable"}, // Constructor in 3OE1: 802A507C
+      {0x0225, "TOMekaFish00"}, // Constructor in 3OE1: 802A9378
+      {0x0226, "TOMekaFish01"}, // Constructor in 3OE1: 802A9088
+      {0x0227, "__DOLPHIN__"}, // Formerly __TObjPathObj_subclass_0227__ // Constructor in 3OE1: 802C1378
+      {0x0228, "TOTrapSeabed01"}, // Constructor in 3OE1: 802C9154
+      {0x0229, "TOCapsuleLabo"}, // Constructor in 3OE1: 802ADD40
+      {0x0240, "TObjParticle"}, // Constructor in 3OE1: 801954E4
+      {0x0280, "__BARBA_RAY_TELEPORTER__"}, // Formerly __TObjAreaWarpForest_subclass_0280__ // Constructor in 3OE1: 802EF620
+      {0x02A0, "TObjLiveCamera"}, // Constructor in 3OE1: 80309D5C
+      {0x02B0, "TContainerAncient01R"}, // Constructor in 3OE1: 8018ADF8
+      {0x02B1, "TObjLaboDesignBase"}, // Constructor in 3OE1: 803631D4
+      {0x02B2, "TObjLaboDesignBase"}, // Constructor in 3OE1: 80363184
+      {0x02B3, "TObjLaboDesignBase"}, // Constructor in 3OE1: 80363134
+      {0x02B4, "TObjLaboDesignBase"}, // Constructor in 3OE1: 803630E4
+      {0x02B5, "TObjLaboDesignBase"}, // Constructor in 3OE1: 80363094
+      {0x02B6, "TObjLaboDesignBase"}, // Constructor in 3OE1: 80363044
+      {0x02B7, "TObjGbAdvance"}, // Constructor in 3OE1: 80187C10
+      {0x02B8, "TObjQuestColALock2"}, // Constructor in 3OE1: 80195824
+      {0x02B9, "TObjMapForceWarp"}, // Constructor in 3OE1: 801A297C
+      {0x02BA, "TObjQuestCol2"}, // Constructor in 3OE1: 80195680
+      {0x02BB, "TODoorLaboNormal"}, // Constructor in 3OE1: 801A26D0
+      {0x02BC, "TObjAreaWarpEndingJung"}, // Constructor in 3OE1: 8019AFF4
+      {0x02BD, "TObjLaboMapWarp"}, // Constructor in 3OE1: 80185430
+      {0x0300, "__EP4_LIGHT__"}, // Constructor in 59NL: 00661158
+      {0x0301, "__WILDS_CRATER_CACTUS__"}, // Constructor in 59NL: 0067612C
+      {0x0302, "__WILDS_CRATER_BROWN_ROCK__"}, // Constructor in 59NL: 00675748
+      {0x0303, "__WILDS_CRATER_BROWN_ROCK_DESTRUCTIBLE__"}, // Constructor in 59NL: 00675BF8
+      {0x0340, "__UNKNOWN_0340__"}, // Constructor in 59NL: 00673FB8
+      {0x0341, "__UNKNOWN_0341__"}, // Constructor in 59NL: 00674118
+      {0x0380, "__POISON_PLANT__"}, // Constructor in 59NL: 0067927C
+      {0x0381, "__UNKNOWN_0381__"}, // Constructor in 59NL: 00679678
+      {0x0382, "__UNKNOWN_0382__"}, // Constructor in 59NL: 0067A264
+      {0x0383, "__DESERT_OOZE_PLANT__"}, // Constructor in 59NL: 006781EC
+      {0x0385, "__UNKNOWN_0385__"}, // Constructor in 59NL: 006785C8
+      {0x0386, "__WILDS_CRATER_BLACK_ROCKS__"}, // Constructor in 59NL: 00677DE4
+      {0x0387, "__UNKNOWN_0387__"}, // Constructor in 59NL: 006119E4
+      {0x0388, "__UNKNOWN_0388__"}, // Constructor in 59NL: 00635D1C
+      {0x0389, "__UNKNOWN_0389__"}, // Constructor in 59NL: 0063810C
+      {0x038A, "__UNKNOWN_038A__"}, // Constructor in 59NL: 00619604
+      {0x038B, "__FALLING_ROCK__"}, // Constructor in 59NL: 00679F58
+      {0x038C, "__DESERT_PLANT_SOLID__"}, // Constructor in 59NL: 0067A548
+      {0x038D, "__DESERT_CRYSTALS_BOX__"}, // Constructor in 59NL: 00677610
+      {0x038E, "__EP4_TEST_DOOR__"}, // Constructor in 59NL: 00677A80
+      {0x038F, "__BEE_HIVE__"}, // Constructor in 59NL: 00676ADC
+      {0x0390, "__EP4_TEST_PARTICLE__"}, // Constructor in 59NL: 00678C00
+      {0x0391, "__HEAT__"}, // Constructor in 59NL: 005C2820
+      {0x03C0, "__EP4_BOSS_EGG__"}, // Constructor in 59NL: 0076FB74
+      {0x03C1, "__EP4_BOSS_ROCK_SPAWNER__"}, // Constructor in 59NL: 00770028
   });
   try {
     return names.at(type);
