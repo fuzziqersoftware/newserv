@@ -888,24 +888,29 @@ struct SC_GameGuardCheck_BB_0022 {
 
 // 24 (S->C): Secret Lottery Ticket exchange result (BB)
 // Sent in response to a 6xDE command from the client.
+// The client sets 8 sequential quest registers, starting with start_reg_num,
+// to the values specified in reg_values. Then it starts a new quest thread
+// at the specified label.
 // header.flag indicates whether the client had any Secret Lottery Tickets in
 // their inventory (and hence could participate): 0 means success, 1 means
-// failure.
+// failure. However, this value is unused by the client.
 
 struct S_ExchangeSecretLotteryTicketResult_BB_24 {
   le_uint16_t label = 0;
-  uint8_t start_index = 0;
+  uint8_t start_reg_num = 0;
   uint8_t unused = 0;
-  parray<le_uint32_t, 8> unknown_a3;
+  parray<le_uint32_t, 8> reg_values;
 } __packed_ws__(S_ExchangeSecretLotteryTicketResult_BB_24, 0x24);
 
 // 25 (S->C): Gallon's Plan result (BB)
 // Sent in response to a 6xE1 command from the client.
+// The client sets the quest registers reg_num1 to reg_value1 and reg_num2 to
+// reg_value2, then starts a new quest thread at the specified label.
 
 struct S_GallonPlanResult_BB_25 {
   le_uint16_t label = 0;
-  uint8_t offset1 = 0;
-  uint8_t offset2 = 0;
+  uint8_t reg_num1 = 0;
+  uint8_t reg_num2 = 0;
   uint8_t value1 = 0;
   uint8_t value2 = 0;
   le_uint16_t unused = 0;

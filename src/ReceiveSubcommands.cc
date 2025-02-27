@@ -4765,15 +4765,15 @@ static void on_secret_lottery_ticket_exchange_bb(shared_ptr<Client> c, uint8_t, 
   }
 
   S_ExchangeSecretLotteryTicketResult_BB_24 out_cmd;
-  out_cmd.start_index = cmd.index;
+  out_cmd.start_reg_num = cmd.index;
   out_cmd.label = cmd.success_label;
   if (s->secret_lottery_results.empty()) {
-    out_cmd.unknown_a3.clear(0);
+    out_cmd.reg_values.clear(0);
   } else if (s->secret_lottery_results.size() == 1) {
-    out_cmd.unknown_a3.clear(1);
+    out_cmd.reg_values.clear(1);
   } else {
-    for (size_t z = 0; z < out_cmd.unknown_a3.size(); z++) {
-      out_cmd.unknown_a3[z] = random_from_optional_crypt(l->opt_rand_crypt) % s->secret_lottery_results.size();
+    for (size_t z = 0; z < out_cmd.reg_values.size(); z++) {
+      out_cmd.reg_values[z] = random_from_optional_crypt(l->opt_rand_crypt) % s->secret_lottery_results.size();
     }
   }
   send_command_t(c, 0x24, (slt_index >= 0) ? 0 : 1, out_cmd);
@@ -4883,8 +4883,8 @@ static void on_quest_F95F_result_bb(shared_ptr<Client> c, uint8_t, uint8_t, void
 
   S_GallonPlanResult_BB_25 out_cmd;
   out_cmd.label = cmd.success_label;
-  out_cmd.offset1 = 0x3C;
-  out_cmd.offset2 = 0x08;
+  out_cmd.reg_num1 = 0x3C;
+  out_cmd.reg_num2 = 0x08;
   out_cmd.value1 = 0x00;
   out_cmd.value2 = cmd.result_index;
   send_command_t(c, 0x25, 0x00, out_cmd);
