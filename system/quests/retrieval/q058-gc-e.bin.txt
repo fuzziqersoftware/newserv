@@ -105,6 +105,14 @@
 //   lots_of_zeroes:
 //     .zero 0x400  // 1024 bytes of zeroes
 
+// There is also a way for quest scripts to include other files. This works by
+// simply "pasting" the contents of the file in place of the include directive,
+// so all labels in the included file will be accessible from the file that
+// included it. newserv looks for the included file in the same directory as
+// the quest file, then looks in the system/quest/includes directory. Here's
+// the syntax:
+//     .include my-function.txt
+
 // Every quest must have a start label; this is the main thread that starts when
 // the quest begins. The start label is always assigned number 0.
 start:

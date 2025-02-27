@@ -396,7 +396,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Sets regA to the memory address of regB
     {0x0C, "leta", nullptr, {REG, REG}, F_V3_V4},
 
-    // Sets regA to the address of labelB
+    // Sets regA to the address of the offset of labelB in the function table
+    // (to get the offset, use read4 after this)
     {0x0D, "leto", nullptr, {REG, SCRIPT16}, F_V3_V4},
 
     // Sets regA to 1
@@ -466,9 +467,12 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x25, "xori", nullptr, {REG, INT32}, F_V0_V4},
 
     // regA %= regB
+    // Note: This does signed division, so if the value is negative, you might
+    // get unexpected results.
     {0x26, "mod", nullptr, {REG, REG}, F_V3_V4},
 
     // regA %= valueB
+    // Note: Unlike mod, this does unsigned division.
     {0x27, "modi", nullptr, {REG, INT32}, F_V3_V4},
 
     // Jumps to labelA
@@ -1235,9 +1239,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xE8, "set_eventflag2", nullptr, {INT32, REG}, F_V1_V4 | F_ARGS},
 
     // regA %= regB
+    // This is exactly the same as the mod opcode (including its quirk).
     {0xE9, "mod2", "res", {REG, REG}, F_V1_V4},
 
     // regA %= valueB
+    // This is exactly the same as the modi opcode (including its quirk).
     {0xEA, "modi2", "unknownEA", {REG, INT32}, F_V1_V4},
 
     // Changes the background music. create_bgmctrl must be run before doing
@@ -2598,7 +2604,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF93D, "get_lang_setting", "get_lang_setting?", {REG}, F_V3_V4 | F_ARGS},
 
     // Sets some values to be sent to the server with send_statistic.
-    // valueA = stat_id (used in send_statistic)
+    // valueA = stat_id (used in send_statistic); this is set to the quest
+    //   number from the header when the quest starts, but that is overwritten
+    //   by prepare_statistic
     // labelB = label1 (used in send_statistic)
     // labelC = label2 (used in send_statistic)
     {0xF93E, "prepare_statistic", "prepare_statistic?", {INT32, LABEL32, LABEL32}, F_V3_V4 | F_ARGS},
@@ -3989,26 +3997,101 @@ struct RegisterAssigner {
   array<shared_ptr<Register>, 0x100> numbered_regs;
 };
 
-std::string assemble_quest_script(const std::string& text, const vector<string>& include_directories) {
-  auto lines = phosg::split(text, '\n');
+std::string assemble_quest_script(
+    const std::string& text,
+    const vector<string>& script_include_directories,
+    const vector<string>& native_include_directories) {
 
-  // Strip comments and whitespace
-  for (auto& line : lines) {
-    size_t comment_start = line.find("/*");
-    while (comment_start != string::npos) {
-      size_t comment_end = line.find("*/", comment_start + 2);
-      if (comment_end == string::npos) {
-        throw runtime_error("unterminated inline comment");
+  struct Line {
+    string filename; // Empty if this is the main file
+    size_t number; // 1-based (there is no line 0)
+    string text;
+    ssize_t parent_index; // -1 if it's from the root file
+  };
+
+  auto wrap_exceptions_with_line_ref = [](const Line& line, auto fn) -> void {
+    try {
+      fn();
+    } catch (const exception& e) {
+      if (line.filename.empty()) {
+        throw runtime_error(phosg::string_printf("(__main__:%zu) %s", line.number, e.what()));
+      } else {
+        throw runtime_error(phosg::string_printf("(%s:%zu) %s", line.filename.c_str(), line.number, e.what()));
       }
-      line.erase(comment_start, comment_end + 2 - comment_start);
-      comment_start = line.find("/*");
     }
-    comment_start = line.find("//");
-    if (comment_start != string::npos) {
-      line.resize(comment_start);
+  };
+
+  std::vector<Line> lines;
+  auto include_file = [&](const std::string& filename, const std::string& text, ssize_t parent_index) {
+    // Inserts the new lines after the parent line and preprocesses them. The
+    // parent line is not modified or deleted.
+    vector<Line> new_lines;
+    auto text_lines = phosg::split(text, '\n');
+    for (size_t z = 0; z < text_lines.size(); z++) {
+      auto& line = new_lines.emplace_back();
+      line.filename = filename;
+      line.number = z + 1;
+      line.text = std::move(text_lines[z]);
+      line.parent_index = parent_index;
+
+      // Strip comments and whitespace
+      size_t comment_start = line.text.find("/*");
+      while (comment_start != string::npos) {
+        size_t comment_end = line.text.find("*/", comment_start + 2);
+        if (comment_end == string::npos) {
+          throw runtime_error("unterminated inline comment");
+        }
+        line.text.erase(comment_start, comment_end + 2 - comment_start);
+        comment_start = line.text.find("/*");
+      }
+      comment_start = line.text.find("//");
+      if (comment_start != string::npos) {
+        line.text.resize(comment_start);
+      }
+      phosg::strip_trailing_whitespace(line.text);
+      phosg::strip_leading_whitespace(line.text);
     }
-    phosg::strip_trailing_whitespace(line);
-    phosg::strip_leading_whitespace(line);
+
+    if (parent_index < 0) { // Root file
+      lines = std::move(new_lines);
+    } else {
+      lines.insert(
+          lines.begin() + (parent_index + 1),
+          std::make_move_iterator(new_lines.begin()),
+          std::make_move_iterator(new_lines.end()));
+    }
+  };
+  include_file("", text, -1);
+
+  // Process all includes
+  for (size_t z = 0; z < lines.size(); z++) {
+    if (phosg::starts_with(lines[z].text, ".include ")) {
+      string filename = lines[z].text.substr(9);
+      phosg::strip_leading_whitespace(filename);
+
+      // Make sure there's not a cycle
+      unordered_set<string> seen_filenames;
+      for (ssize_t index = lines[z].parent_index; index >= 0; index = lines[index].parent_index) {
+        if (!seen_filenames.emplace(lines.at(index).filename).second) {
+          throw runtime_error(phosg::string_printf("detected cycle while including %s", filename.c_str()));
+        }
+      }
+
+      bool found = false;
+      for (const auto& include_dir : script_include_directories) {
+        string include_path = include_dir + "/" + filename;
+        if (phosg::isfile(include_path)) {
+          found = true;
+          include_file(filename, phosg::load_file(filename), z);
+          break;
+        }
+      }
+      if (!found) {
+        throw runtime_error(phosg::string_printf("included file %s not found in any include directory", filename.c_str()));
+      }
+
+      // We leave the .include line there; it will be ignored in the logic below
+    }
   }
 
   // Collect metadata directives
@@ -4022,31 +4105,36 @@ std::string assemble_quest_script(const std::string& text, const vector<string>&
   uint8_t quest_max_players = 4;
   bool quest_joinable = false;
   for (const auto& line : lines) {
-    if (line.empty()) {
+    if (line.text.empty()) {
       continue;
     }
-    if (line[0] == '.') {
-      if (phosg::starts_with(line, ".version ")) {
-        string name = line.substr(9);
-        quest_version = phosg::enum_for_name<Version>(name.c_str());
-      } else if (phosg::starts_with(line, ".name ")) {
-        quest_name = phosg::parse_data_string(line.substr(6));
-      } else if (phosg::starts_with(line, ".short_desc ")) {
-        quest_short_desc = phosg::parse_data_string(line.substr(12));
-      } else if (phosg::starts_with(line, ".long_desc ")) {
-        quest_long_desc = phosg::parse_data_string(line.substr(11));
-      } else if (phosg::starts_with(line, ".quest_num ")) {
-        quest_num = stoul(line.substr(11), nullptr, 0);
-      } else if (phosg::starts_with(line, ".language ")) {
-        quest_language = stoul(line.substr(10), nullptr, 0);
-      } else if (phosg::starts_with(line, ".episode ")) {
-        quest_episode = episode_for_token_name(line.substr(9));
-      } else if (phosg::starts_with(line, ".max_players ")) {
-        quest_max_players = stoul(line.substr(12), nullptr, 0);
-      } else if (phosg::starts_with(line, ".joinable ")) {
-        quest_joinable = true;
+    wrap_exceptions_with_line_ref(line, [&]() -> void {
+      if (line.text[0] == '.') {
+        if (phosg::starts_with(line.text, ".include ")) {
+          // Nothing to do
+        } else if (phosg::starts_with(line.text, ".version ")) {
+          string name = line.text.substr(9);
+          phosg::strip_leading_whitespace(name);
+          quest_version = phosg::enum_for_name<Version>(name.c_str());
+        } else if (phosg::starts_with(line.text, ".name ")) {
+          quest_name = phosg::parse_data_string(line.text.substr(6));
+        } else if (phosg::starts_with(line.text, ".short_desc ")) {
+          quest_short_desc = phosg::parse_data_string(line.text.substr(12));
+        } else if (phosg::starts_with(line.text, ".long_desc ")) {
+          quest_long_desc = phosg::parse_data_string(line.text.substr(11));
+        } else if (phosg::starts_with(line.text, ".quest_num ")) {
+          quest_num = stoul(line.text.substr(11), nullptr, 0);
+        } else if (phosg::starts_with(line.text, ".language ")) {
+          quest_language = stoul(line.text.substr(10), nullptr, 0);
+        } else if (phosg::starts_with(line.text, ".episode ")) {
+          quest_episode = episode_for_token_name(line.text.substr(9));
+        } else if (phosg::starts_with(line.text, ".max_players ")) {
+          quest_max_players = stoul(line.text.substr(12), nullptr, 0);
+        } else if (phosg::starts_with(line.text, ".joinable ")) {
+          quest_joinable = true;
+        }
       }
-    }
+    });
   }
   if (quest_version == Version::PC_PATCH || quest_version == Version::BB_PATCH || quest_version == Version::UNKNOWN) {
     throw runtime_error(".version directive is missing or invalid");
@@ -4066,35 +4154,38 @@ std::string assemble_quest_script(const std::string& text, const vector<string>&
   };
   map<string, shared_ptr<Label>> labels_by_name;
   map<ssize_t, shared_ptr<Label>> labels_by_index;
-  for (size_t line_num = 1; line_num <= lines.size(); line_num++) {
-    const auto& line = lines[line_num - 1];
-    if (phosg::ends_with(line, ":")) {
-      auto label = make_shared<Label>();
-      label->name = line.substr(0, line.size() - 1);
-      size_t at_offset = label->name.find('@');
-      if (at_offset != string::npos) {
-        try {
-          label->index = stoul(label->name.substr(at_offset + 1), nullptr, 0);
-        } catch (const exception& e) {
-          throw runtime_error(phosg::string_printf("(line %zu) invalid index in label (%s)", line_num, e.what()));
+  for (const auto& line : lines) {
+    wrap_exceptions_with_line_ref(line, [&]() -> void {
+      if (phosg::ends_with(line.text, ":")) {
+        auto label = make_shared<Label>();
+        label->name = line.text.substr(0, line.text.size() - 1);
+        size_t at_offset = label->name.find('@');
+        if (at_offset != string::npos) {
+          try {
+            label->index = stoul(label->name.substr(at_offset + 1), nullptr, 0);
+          } catch (const exception& e) {
+            throw runtime_error(phosg::string_printf("invalid index in label (%s)", e.what()));
+          }
+          label->name.resize(at_offset);
+          if (label->name == "start" && label->index != 0) {
+            throw runtime_error("start label cannot have a nonzero label ID");
+          }
+        } else if (label->name == "start") {
+          label->index = 0;
         }
-        label->name.resize(at_offset);
-        if (label->name == "start" && label->index != 0) {
-          throw runtime_error("start label cannot have a nonzero label ID");
+        if (!labels_by_name.emplace(label->name, label).second) {
+          throw runtime_error("duplicate label name: " + label->name);
         }
-      } else if (label->name == "start") {
-        label->index = 0;
-      }
-      if (!labels_by_name.emplace(label->name, label).second) {
-        throw runtime_error(phosg::string_printf("(line %zu) duplicate label name: %s", line_num, label->name.c_str()));
-      }
-      if (label->index >= 0) {
-        auto index_emplace_ret = labels_by_index.emplace(label->index, label);
-        if (label->index >= 0 && !index_emplace_ret.second) {
-          throw runtime_error(phosg::string_printf("(line %zu) duplicate label index: %zd (0x%zX) from %s and %s", line_num, label->index, label->index, label->name.c_str(), index_emplace_ret.first->second->name.c_str()));
+        if (label->index >= 0) {
+          auto index_emplace_ret = labels_by_index.emplace(label->index, label);
+          if (label->index >= 0 && !index_emplace_ret.second) {
+            throw runtime_error(phosg::string_printf(
+                "duplicate label index: %zd (0x%zX) from %s and %s",
+                label->index, label->index, label->name.c_str(), index_emplace_ret.first->second->name.c_str()));
+          }
         }
       }
-    }
+    });
   }
   if (!labels_by_name.count("start")) {
     throw runtime_error("start label is not defined");
@@ -4199,56 +4290,57 @@ std::string assemble_quest_script(const std::string& text, const vector<string>&
 
   // Assemble code segment
 
-  auto get_include = [&](const std::string& filename) -> std::string {
-    for (const auto& include_dir : include_directories) {
+  auto get_native_include = [&](const std::string& filename) -> std::string {
+    for (const auto& include_dir : native_include_directories) {
       string path = include_dir + "/" + filename;
       if (phosg::isfile(path)) {
         return phosg::load_file(path);
       }
     }
-    throw runtime_error("data not found for include: " + filename);
+    throw runtime_error("data not found for native include: " + filename);
   };
 
   bool version_has_args = F_HAS_ARGS & v_flag(quest_version);
   const auto& opcodes = opcodes_by_name_for_version(quest_version);
   phosg::StringWriter code_w;
-  for (size_t line_num = 1; line_num <= lines.size(); line_num++) {
-    try {
-      const auto& line = lines[line_num - 1];
-      if (line.empty()) {
-        continue;
+  for (const auto& line : lines) {
+    wrap_exceptions_with_line_ref(line, [&]() -> void {
+      if (line.text.empty()) {
+        return;
       }
 
-      if (phosg::ends_with(line, ":")) {
-        size_t at_offset = line.find('@');
-        string label_name = line.substr(0, (at_offset == string::npos) ? (line.size() - 1) : at_offset);
+      if (phosg::ends_with(line.text, ":")) {
+        size_t at_offset = line.text.find('@');
+        string label_name = line.text.substr(0, (at_offset == string::npos) ? (line.text.size() - 1) : at_offset);
         labels_by_name.at(label_name)->offset = code_w.size();
-        continue;
+        return;
       }
 
-      if (line[0] == '.') {
-        if (phosg::starts_with(line, ".data ")) {
-          code_w.write(phosg::parse_data_string(line.substr(6)));
-        } else if (phosg::starts_with(line, ".zero ")) {
-          size_t size = stoull(line.substr(6), nullptr, 0);
+      if (line.text[0] == '.') {
+        if (phosg::starts_with(line.text, ".data ")) {
+          code_w.write(phosg::parse_data_string(line.text.substr(6)));
+        } else if (phosg::starts_with(line.text, ".zero ")) {
+          size_t size = stoull(line.text.substr(6), nullptr, 0);
           code_w.extend_by(size, 0x00);
-        } else if (phosg::starts_with(line, ".zero_until ")) {
-          size_t size = stoull(line.substr(12), nullptr, 0);
+        } else if (phosg::starts_with(line.text, ".zero_until ")) {
+          size_t size = stoull(line.text.substr(12), nullptr, 0);
           code_w.extend_to(size, 0x00);
-        } else if (phosg::starts_with(line, ".align ")) {
-          size_t alignment = stoull(line.substr(7), nullptr, 0);
+        } else if (phosg::starts_with(line.text, ".align ")) {
+          size_t alignment = stoull(line.text.substr(7), nullptr, 0);
           while (code_w.size() % alignment) {
             code_w.put_u8(0);
           }
-        } else if (phosg::starts_with(line, ".include_bin ")) {
-          string filename = line.substr(13);
+        } else if (phosg::starts_with(line.text, ".include ")) {
+          // This was already handled in a previous phase
+        } else if (phosg::starts_with(line.text, ".include_bin ")) {
+          string filename = line.text.substr(13);
           phosg::strip_whitespace(filename);
-          code_w.write(get_include(filename));
-        } else if (phosg::starts_with(line, ".include_native ")) {
+          code_w.write(get_native_include(filename));
+        } else if (phosg::starts_with(line.text, ".include_native ")) {
 #ifdef HAVE_RESOURCE_FILE
-          string filename = line.substr(16);
+          string filename = line.text.substr(16);
           phosg::strip_whitespace(filename);
-          string native_text = get_include(filename);
+          string native_text = get_native_include(filename);
           string code;
           if (is_ppc(quest_version)) {
             code = std::move(ResourceDASM::PPC32Emulator::assemble(native_text).code);
@@ -4264,10 +4356,10 @@ std::string assemble_quest_script(const std::string& text, const vector<string>&
           throw runtime_error("native code cannot be compiled; rebuild newserv with libresource_file");
 #endif
         }
-        continue;
+        return;
       }
 
-      auto line_tokens = phosg::split(line, ' ', 1);
+      auto line_tokens = phosg::split(line.text, ' ', 1);
       const auto& opcode_def = opcodes.at(phosg::tolower(line_tokens.at(0)));
 
       bool use_args = version_has_args && (opcode_def->flags & F_ARGS);
@@ -4281,26 +4373,26 @@ std::string assemble_quest_script(const std::string& text, const vector<string>&
 
       if (opcode_def->args.empty()) {
         if (line_tokens.size() > 1) {
-          throw runtime_error(phosg::string_printf("(line %zu) arguments not allowed for %s", line_num, opcode_def->name));
+          throw runtime_error(phosg::string_printf("arguments not allowed for %s", opcode_def->name));
         }
-        continue;
+        return;
       }
 
       if (line_tokens.size() < 2) {
-        throw runtime_error(phosg::string_printf("(line %zu) arguments required for %s", line_num, opcode_def->name));
+        throw runtime_error(phosg::string_printf("arguments required for %s", opcode_def->name));
       }
       phosg::strip_trailing_whitespace(line_tokens[1]);
       phosg::strip_leading_whitespace(line_tokens[1]);
 
       if (phosg::starts_with(line_tokens[1], "...")) {
         if (!use_args) {
-          throw runtime_error(phosg::string_printf("(line %zu) \'...\' can only be used with F_ARGS opcodes", line_num));
+          throw runtime_error("\'...\' can only be used with F_ARGS opcodes");
         }
 
       } else { // Not "..."
         auto args = phosg::split_context(line_tokens[1], ',');
         if (args.size() != opcode_def->args.size()) {
-          throw runtime_error(phosg::string_printf("(line %zu) incorrect argument count for %s", line_num, opcode_def->name));
+          throw runtime_error("incorrect argument count");
         }
 
         for (size_t z = 0; z < args.size(); z++) {
@@ -4513,10 +4605,7 @@ std::string assemble_quest_script(const std::string& text, const vector<string>&
           code_w.put_u16b(opcode_def->opcode);
         }
       }
-
-    } catch (const exception& e) {
-      throw runtime_error(phosg::string_printf("(line %zu) %s", line_num, e.what()));
-    }
+    });
   }
   while (code_w.size() & 3) {
     code_w.put_u8(0);

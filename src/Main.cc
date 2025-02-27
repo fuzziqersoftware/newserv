@@ -1558,7 +1558,10 @@ Action a_assemble_quest_script(
           ? phosg::dirname(input_filename)
           : ".";
 
-      string result = assemble_quest_script(text, {include_dir, "system/client-functions/System"});
+      string result = assemble_quest_script(
+          text,
+          {include_dir, "system/quests/includes"},
+          {include_dir, "system/quests/includes", "system/client-functions/System"});
       bool compress = !args.get<bool>("decompressed");
       if (compress) {
         if (args.get<bool>("optimal")) {

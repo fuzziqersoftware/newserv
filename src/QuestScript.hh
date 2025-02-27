@@ -52,9 +52,10 @@ struct PSOQuestHeaderGC {
   /* 0000 */ le_uint32_t code_offset;
   /* 0004 */ le_uint32_t function_table_offset;
   /* 0008 */ le_uint32_t size;
-  /* 000C */ le_uint32_t unused;
+  /* 000C */ le_uint16_t unknown_a1;
+  /* 000E */ le_uint16_t unknown_a2;
   /* 0010 */ uint8_t language;
-  /* 0011 */ uint8_t unknown1;
+  /* 0011 */ uint8_t unknown_a3;
   /* 0012 */ uint8_t quest_number;
   /* 0013 */ uint8_t episode; // 1 = Ep2. Apparently some quests have 0xFF here, which means ep1 (?)
   /* 0014 */ pstring<TextEncoding::MARKED, 0x20> name;
@@ -91,6 +92,9 @@ std::string disassemble_quest_script(
     uint8_t override_language = 0xFF,
     bool reassembly_mode = false,
     bool use_qedit_names = false);
-std::string assemble_quest_script(const std::string& text, const std::vector<std::string>& include_directories);
+std::string assemble_quest_script(
+    const std::string& text,
+    const std::vector<std::string>& script_include_directories,
+    const std::vector<std::string>& native_include_directories);
 
 Episode find_quest_episode_from_script(const void* data, size_t size, Version version);

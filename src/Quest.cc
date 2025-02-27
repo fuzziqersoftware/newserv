@@ -637,7 +637,11 @@ QuestIndex::QuestIndex(
           file_data = decode_dlq_data(phosg::load_file(file_path));
           filename.resize(filename.size() - 4);
         } else if (phosg::ends_with(filename, ".bin.txt")) {
-          file_data = assemble_quest_script(phosg::load_file(file_path), {phosg::dirname(file_path), "system/client-functions/System"});
+          string include_dir = phosg::dirname(file_path);
+          file_data = assemble_quest_script(
+              phosg::load_file(file_path),
+              {include_dir, "system/quests/includes"},
+              {include_dir, "system/quests/includes", "system/client-functions/System"});
           filename.resize(filename.size() - 4);
           if (phosg::ends_with(filename, ".bin")) {
             filename.push_back('d');
