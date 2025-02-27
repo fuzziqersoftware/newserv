@@ -78,7 +78,7 @@ I 54825 2024-11-05 21:17:56 - [C-1] Sending quest file chunk quest88532.bin:0
 I 54825 2024-11-05 21:17:56 - [Commands] Sending to C-1 @ ipss:N-1:127.0.0.1:62373 (version=GC_EP3 command=13 flag=00)
 0000 | 13 00 18 04 71 75 65 73 74 38 38 35 33 32 2E 62 |     quest88532.b
 0010 | 69 6E 00 00 3F D4 01 00 00 8C 04 04 FC A0 FC 86 | in  ?
-0020 | FF F1 D4 FF 00 47 43 20 45 70 33 20 FF 55 53 41 |      GC Ep3  USA
+0020 | FF F1 D4 FF 59 47 43 20 45 70 33 20 FF 55 53 41 |      GC Ep3  USA
 0030 | 20 70 61 74 63 FF 68 20 65 6E 61 62 6C 65 EB 72 |  patc h enable r
 0040 | 00 F8 FF A6 F8 FF FF 09 03 FF 00 40 00 80 49 4C |            @  IL
 0050 | 2A 45 F0 FB 28 9B 10 80 4F F8 B5 49 50 F4 A7 24 | *E  (   O  IP  $
@@ -5199,7 +5199,7 @@ I 54825 2024-11-05 21:18:16 - [C-3] Sending quest file chunk quest88532.bin:0
 I 54825 2024-11-05 21:18:16 - [Commands] Sending to C-3 @ ipss:N-2: (version=GC_EP3 command=13 flag=00)
 0000 | 13 00 18 04 71 75 65 73 74 38 38 35 33 32 2E 62 |     quest88532.b
 0010 | 69 6E 00 00 3F D4 01 00 00 8C 04 04 FC A0 FC 86 | in  ?
-0020 | FF F1 D4 FF 00 47 43 20 45 70 33 20 FF 55 53 41 |      GC Ep3  USA
+0020 | FF F1 D4 FF 59 47 43 20 45 70 33 20 FF 55 53 41 |      GC Ep3  USA
 0030 | 20 70 61 74 63 FF 68 20 65 6E 61 62 6C 65 EB 72 |  patc h enable r
 0040 | 00 F8 FF A6 F8 FF FF 09 03 FF 00 40 00 80 49 4C |            @  IL
 0050 | 2A 45 F0 FB 28 9B 10 80 4F F8 B5 49 50 F4 A7 24 | *E  (   O  IP  $

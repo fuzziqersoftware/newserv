@@ -1441,7 +1441,11 @@ Action a_encode_qst(
       } catch (const phosg::cannot_open_file&) {
       }
 
-      auto vq = make_shared<VersionedQuest>(0, 0, version, 0, bin_data, dat_data, nullptr, pvr_data);
+      auto vq = make_shared<VersionedQuest>();
+      vq->version = version;
+      vq->bin_contents = bin_data;
+      vq->dat_contents = dat_data;
+      vq->pvr_contents = pvr_data;
       if (download) {
         vq = vq->create_download_quest();
       }
@@ -1558,19 +1562,20 @@ Action a_assemble_quest_script(
           ? phosg::dirname(input_filename)
           : ".";
 
-      string result = assemble_quest_script(
+      auto result = assemble_quest_script(
           text,
           {include_dir, "system/quests/includes"},
           {include_dir, "system/quests/includes", "system/client-functions/System"});
+      string result_data = std::move(result.data);
       bool compress = !args.get<bool>("decompressed");
       if (compress) {
         if (args.get<bool>("optimal")) {
-          result = prs_compress_optimal(result);
+          result_data = prs_compress_optimal(result_data);
         } else {
-          result = prs_compress(result);
+          result_data = prs_compress(result_data);
         }
       }
-      write_output_data(args, result.data(), result.size(), compress ? "bin" : "bind");
+      write_output_data(args, result_data.data(), result_data.size(), compress ? "bin" : "bind");
     });
 
 Action a_assemble_all_patches(

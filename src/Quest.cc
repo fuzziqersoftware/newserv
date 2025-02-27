@@ -192,148 +192,33 @@ struct PSODownloadQuestHeader {
   le_uint32_t encryption_seed;
 } __packed_ws__(PSODownloadQuestHeader, 8);
 
-VersionedQuest::VersionedQuest(
-    uint32_t quest_number,
-    uint32_t category_id,
-    Version version,
-    uint8_t language,
-    std::shared_ptr<const std::string> bin_contents,
-    std::shared_ptr<const std::string> dat_contents,
-    std::shared_ptr<const MapFile> map_file,
-    std::shared_ptr<const std::string> pvr_contents,
-    std::shared_ptr<const BattleRules> battle_rules,
-    ssize_t challenge_template_index,
-    uint8_t description_flag,
-    std::shared_ptr<const IntegralExpression> available_expression,
-    std::shared_ptr<const IntegralExpression> enabled_expression,
-    bool allow_start_from_chat_command,
-    bool force_joinable,
-    int16_t lock_status_register)
-    : quest_number(quest_number),
-      category_id(category_id),
-      episode(Episode::NONE),
-      allow_start_from_chat_command(allow_start_from_chat_command),
-      joinable(force_joinable),
-      lock_status_register(lock_status_register),
-      version(version),
-      language(language),
-      is_dlq_encoded(false),
-      bin_contents(bin_contents),
-      dat_contents(dat_contents),
-      map_file(map_file),
-      pvr_contents(pvr_contents),
-      battle_rules(battle_rules),
-      challenge_template_index(challenge_template_index),
-      description_flag(description_flag),
-      available_expression(available_expression),
-      enabled_expression(enabled_expression) {
-
-  auto bin_decompressed = prs_decompress(*this->bin_contents);
-
-  switch (this->version) {
-    case Version::DC_NTE: {
-      if (bin_decompressed.size() < sizeof(PSOQuestHeaderDCNTE)) {
-        throw invalid_argument("file is too small for header");
-      }
-      auto* header = reinterpret_cast<const PSOQuestHeaderDCNTE*>(bin_decompressed.data());
-      this->episode = Episode::EP1;
-      if (this->quest_number == 0xFFFFFFFF) {
-        this->quest_number = phosg::fnv1a32(header, sizeof(header)) & 0xFFFF;
-      }
-      this->name = header->name.decode(this->language);
-      break;
-    }
-
-    case Version::DC_11_2000:
-    case Version::DC_V1:
-    case Version::DC_V2: {
-      if (bin_decompressed.size() < sizeof(PSOQuestHeaderDC)) {
-        throw invalid_argument("file is too small for header");
-      }
-      auto* header = reinterpret_cast<const PSOQuestHeaderDC*>(bin_decompressed.data());
-      this->episode = Episode::EP1;
-      if (this->quest_number == 0xFFFFFFFF) {
-        this->quest_number = header->quest_number;
-      }
-      this->name = header->name.decode(this->language);
-      this->short_description = header->short_description.decode(this->language);
-      this->long_description = header->long_description.decode(this->language);
-      break;
-    }
-
-    case Version::PC_NTE:
-    case Version::PC_V2: {
-      if (bin_decompressed.size() < sizeof(PSOQuestHeaderPC)) {
-        throw invalid_argument("file is too small for header");
-      }
-      auto* header = reinterpret_cast<const PSOQuestHeaderPC*>(bin_decompressed.data());
-      this->episode = Episode::EP1;
-      if (this->quest_number == 0xFFFFFFFF) {
-        this->quest_number = header->quest_number;
-      }
-      this->name = header->name.decode(this->language);
-      this->short_description = header->short_description.decode(this->language);
-      this->long_description = header->long_description.decode(this->language);
-      break;
-    }
-
-    case Version::GC_EP3_NTE:
-    case Version::GC_EP3: {
-      // Note: This codepath handles Episode 3 download quests, which are not
-      // the same as Episode 3 quest scripts. The latter are only used offline
-      // in story mode, but can be disassembled with disassemble_quest_script.
-      // It's unfortunate that Version::GC_EP3 is used here for Episode 3
-      // download quests (maps) and there for offline story mode scripts, but
-      // it's probably not worth refactoring this logic, at least right now.
-      if (bin_decompressed.size() != sizeof(Episode3::MapDefinition)) {
-        throw invalid_argument("file is incorrect size");
-      }
-      auto* map = reinterpret_cast<const Episode3::MapDefinition*>(bin_decompressed.data());
-      this->episode = Episode::EP3;
-      if (this->quest_number == 0xFFFFFFFF) {
-        this->quest_number = map->map_number;
-      }
-      this->name = map->name.decode(this->language);
-      this->short_description = map->quest_name.decode(this->language);
-      this->long_description = map->description.decode(this->language);
-      break;
-    }
-
-    case Version::XB_V3:
-    case Version::GC_NTE:
-    case Version::GC_V3: {
-      if (bin_decompressed.size() < sizeof(PSOQuestHeaderGC)) {
-        throw invalid_argument("file is too small for header");
-      }
-      auto* header = reinterpret_cast<const PSOQuestHeaderGC*>(bin_decompressed.data());
-      this->episode = find_quest_episode_from_script(bin_decompressed.data(), bin_decompressed.size(), this->version);
-      if (this->quest_number == 0xFFFFFFFF) {
-        this->quest_number = header->quest_number;
-      }
-      this->name = header->name.decode(this->language);
-      this->short_description = header->short_description.decode(this->language);
-      this->long_description = header->long_description.decode(this->language);
-      break;
-    }
-
-    case Version::BB_V4: {
-      if (bin_decompressed.size() < sizeof(PSOQuestHeaderBB)) {
-        throw invalid_argument("file is too small for header");
-      }
-      auto* header = reinterpret_cast<const PSOQuestHeaderBB*>(bin_decompressed.data());
-      this->joinable |= header->joinable;
-      this->episode = find_quest_episode_from_script(bin_decompressed.data(), bin_decompressed.size(), this->version);
-      if (this->quest_number == 0xFFFFFFFF) {
-        this->quest_number = header->quest_number;
-      }
-      this->name = header->name.decode(this->language);
-      this->short_description = header->short_description.decode(this->language);
-      this->long_description = header->long_description.decode(this->language);
-      break;
-    }
-
-    default:
-      throw logic_error("invalid quest game version");
+void VersionedQuest::assert_valid() const {
+  if (this->category_id == 0xFFFFFFFF) {
+    throw runtime_error("category ID is not set");
+  }
+  if (this->quest_number == 0xFFFFFFFF) {
+    throw runtime_error("quest number is not set");
+  }
+  if (this->version == Version::UNKNOWN) {
+    throw runtime_error("version is not set");
+  }
+  if (this->language == 0xFF) {
+    throw runtime_error("language is not set");
+  }
+  if (this->episode == Episode::NONE) {
+    throw runtime_error("episode is not set");
+  }
+  if (this->max_players == 0) {
+    throw runtime_error("max players is not set");
+  }
+  if (!this->bin_contents) {
+    throw runtime_error("bin file is missing");
+  }
+  if (!is_ep3(this->version) && !this->dat_contents) {
+    throw runtime_error("dat file is missing");
+  }
+  if (!is_ep3(this->version) && !this->map_file) {
+    throw runtime_error("parsed map file is missing");
   }
 }
 
@@ -386,6 +271,7 @@ Quest::Quest(shared_ptr<const VersionedQuest> initial_version)
       episode(initial_version->episode),
       allow_start_from_chat_command(initial_version->allow_start_from_chat_command),
       joinable(initial_version->joinable),
+      max_players(initial_version->max_players),
       lock_status_register(initial_version->lock_status_register),
       name(initial_version->name),
       supermap(nullptr),
@@ -421,6 +307,7 @@ phosg::JSON Quest::json() const {
       {"Episode", name_for_episode(this->episode)},
       {"AllowStartFromChatCommand", this->allow_start_from_chat_command},
       {"Joinable", this->joinable},
+      {"MaxPlayers", this->max_players},
       {"LockStatusRegister", (this->lock_status_register >= 0) ? this->lock_status_register : phosg::JSON(nullptr)},
       {"Name", this->name},
       {"BattleRules", std::move(battle_rules_json)},
@@ -438,46 +325,85 @@ uint32_t Quest::versions_key(Version v, uint8_t language) {
 
 void Quest::add_version(shared_ptr<const VersionedQuest> vq) {
   if (this->quest_number != vq->quest_number) {
-    throw logic_error("incorrect versioned quest number");
+    throw logic_error(phosg::string_printf(
+        "incorrect versioned quest number (existing: %08" PRIX32 ", new: %08" PRIX32 ")",
+        this->quest_number, vq->quest_number));
   }
   if (this->category_id != vq->category_id) {
-    throw runtime_error("quest version is in a different category");
+    throw runtime_error(phosg::string_printf(
+        "quest version is in a different category (existing: %08" PRIX32 ", new: %08" PRIX32 ")",
+        this->category_id, vq->category_id));
   }
   if (this->episode != vq->episode) {
-    throw runtime_error("quest version is in a different episode");
+    throw runtime_error(phosg::string_printf(
+        "quest version is in a different episode (existing: %s, new: %s)",
+        name_for_episode(this->episode), name_for_episode(vq->episode)));
   }
   if (this->allow_start_from_chat_command != vq->allow_start_from_chat_command) {
-    throw runtime_error("quest version has a different allow_start_from_chat_command state");
+    throw runtime_error(phosg::string_printf(
+        "quest version has a different allow_start_from_chat_command state (existing: %s, new: %s)",
+        this->allow_start_from_chat_command ? "true" : "false", vq->allow_start_from_chat_command ? "true" : "false"));
   }
   if (this->joinable != vq->joinable) {
-    throw runtime_error("quest version has a different joinability state");
+    throw runtime_error(phosg::string_printf(
+        "quest version has a different joinability state (existing: %s, new: %s)",
+        this->joinable ? "true" : "false", vq->joinable ? "true" : "false"));
+  }
+  if (this->max_players != vq->max_players) {
+    throw runtime_error(phosg::string_printf(
+        "quest version has a different maximum player count (existing: %hhu, new: %hhu)",
+        this->max_players, vq->max_players));
   }
   if (this->lock_status_register != vq->lock_status_register) {
-    throw runtime_error("quest version has a different lock status register");
+    throw runtime_error(phosg::string_printf(
+        "quest version has a different lock status register (existing: %04hX, new: %04hX)",
+        this->lock_status_register, vq->lock_status_register));
   }
   if (!this->battle_rules != !vq->battle_rules) {
-    throw runtime_error("quest version has a different battle rules presence state");
+    throw runtime_error(phosg::string_printf(
+        "quest version has a different battle rules presence state (existing: %s, new: %s)",
+        this->battle_rules ? "present" : "absent", vq->battle_rules ? "present" : "absent"));
   }
   if (this->battle_rules && (*this->battle_rules != *vq->battle_rules)) {
-    throw runtime_error("quest version has different battle rules");
+    string existing_str = this->battle_rules->json().serialize();
+    string new_str = vq->battle_rules->json().serialize();
+    throw runtime_error(phosg::string_printf(
+        "quest version has different battle rules (existing: %s, new: %s)",
+        existing_str.c_str(), new_str.c_str()));
   }
   if (this->challenge_template_index != vq->challenge_template_index) {
-    throw runtime_error("quest version has different challenge template index");
+    throw runtime_error(phosg::string_printf(
+        "quest version has different challenge template index (existing: %zd, new: %zd)",
+        this->challenge_template_index, vq->challenge_template_index));
   }
   if (this->description_flag != vq->description_flag) {
-    throw runtime_error("quest version has different description flag");
+    throw runtime_error(phosg::string_printf(
+        "quest version has different description flag (existing: %02hhX, new: %02hhX)",
+        this->description_flag, vq->description_flag));
   }
   if (!this->available_expression != !vq->available_expression) {
-    throw runtime_error("quest version has available expression but root quest does not, or vice versa");
+    throw runtime_error(phosg::string_printf(
+        "quest version has available expression but root quest does not, or vice versa (existing: %s, new: %s)",
+        this->available_expression ? "present" : "absent", vq->available_expression ? "present" : "absent"));
   }
   if (this->available_expression && *this->available_expression != *vq->available_expression) {
-    throw runtime_error("quest version has a different available expression");
+    string existing_str = this->available_expression->str();
+    string new_str = vq->available_expression->str();
+    throw runtime_error(phosg::string_printf(
+        "quest version has a different available expression (existing: %s, new: %s)",
+        existing_str.c_str(), new_str.c_str()));
   }
   if (!this->enabled_expression != !vq->enabled_expression) {
-    throw runtime_error("quest version has enabled expression but root quest does not, or vice versa");
+    throw runtime_error(phosg::string_printf(
+        "quest version has enabled expression but root quest does not, or vice versa (existing: %s, new: %s)",
+        this->enabled_expression ? "present" : "absent", vq->enabled_expression ? "present" : "absent"));
   }
   if (this->enabled_expression && *this->enabled_expression != *vq->enabled_expression) {
-    throw runtime_error("quest version has a different enabled expression");
+    string existing_str = this->enabled_expression->str();
+    string new_str = vq->enabled_expression->str();
+    throw runtime_error(phosg::string_printf(
+        "quest version has a different enabled expression (existing: %s, new: %s)",
+        existing_str.c_str(), new_str.c_str()));
   }
 
   this->versions.emplace(this->versions_key(vq->version, vq->language), vq);
@@ -563,12 +489,17 @@ QuestIndex::QuestIndex(
     string filename;
     shared_ptr<const string> data;
   };
+  struct BINFileData {
+    string filename;
+    unique_ptr<QuestMetadata> metadata;
+    shared_ptr<const string> data;
+  };
   struct DATFileData {
     string filename;
     shared_ptr<const string> data;
     shared_ptr<const MapFile> map_file;
   };
-  map<string, FileData> bin_files;
+  map<string, BINFileData> bin_files;
   map<string, DATFileData> dat_files;
   map<string, FileData> pvr_files;
   map<string, FileData> json_files;
@@ -596,18 +527,34 @@ QuestIndex::QuestIndex(
       }
     };
 
-    auto add_dat_file = [&](const string& basename, const string& filename, string&& value) {
+    auto add_bin_file = [&](const string& basename, const string& filename, string&& data, const QuestMetadata* metadata) {
       if (categories.emplace(basename, cat->category_id).first->second != cat->category_id) {
-        throw runtime_error("file " + basename + " exists in multiple categories");
+        throw runtime_error("bin file " + basename + " exists in multiple categories");
       }
-      auto data_ptr = make_shared<string>(std::move(value));
+      auto data_ptr = make_shared<string>(std::move(data));
+      auto emplace_ret = bin_files.emplace(basename, BINFileData{});
+      if (!emplace_ret.second) {
+        throw runtime_error("bin file " + basename + " already exists");
+      }
+      auto& entry = emplace_ret.first->second;
+      entry.filename = filename;
+      entry.data = data_ptr;
+      if (metadata) {
+        entry.metadata = make_unique<QuestMetadata>(*metadata);
+      }
+      if (!(data_ptr->size() & 0x3FF)) {
+        data_ptr->push_back(0x00);
+      }
+    };
+    auto add_dat_file = [&](const string& basename, const string& filename, string&& data) {
+      if (categories.emplace(basename, cat->category_id).first->second != cat->category_id) {
+        throw runtime_error("dat file " + basename + " exists in multiple categories");
+      }
+      auto data_ptr = make_shared<string>(std::move(data));
       auto map_file = make_shared<MapFile>(make_shared<string>(prs_decompress(*data_ptr)));
       if (!dat_files.emplace(basename, DATFileData{filename, data_ptr, map_file}).second) {
-        throw runtime_error("file " + basename + " already exists");
+        throw runtime_error("dat file " + basename + " already exists");
       }
-      // There is a bug in the client that prevents quests from loading properly
-      // if any file's size is a multiple of 0x400. See the comments on the 13
-      // command in CommandFormats.hh for more details.
       if (!(data_ptr->size() & 0x3FF)) {
         data_ptr->push_back(0x00);
       }
@@ -624,6 +571,7 @@ QuestIndex::QuestIndex(
       }
 
       string file_path = cat_path + "/" + filename;
+      unique_ptr<AssembledQuestScript> assembled;
       try {
         string orig_filename = filename;
         string file_data;
@@ -638,10 +586,11 @@ QuestIndex::QuestIndex(
           filename.resize(filename.size() - 4);
         } else if (phosg::ends_with(filename, ".bin.txt")) {
           string include_dir = phosg::dirname(file_path);
-          file_data = assemble_quest_script(
+          assembled = make_unique<AssembledQuestScript>(assemble_quest_script(
               phosg::load_file(file_path),
               {include_dir, "system/quests/includes"},
-              {include_dir, "system/quests/includes", "system/client-functions/System"});
+              {include_dir, "system/quests/includes", "system/client-functions/System"}));
+          file_data = std::move(assembled->data);
           filename.resize(filename.size() - 4);
           if (phosg::ends_with(filename, ".bin")) {
             filename.push_back('d');
@@ -663,9 +612,9 @@ QuestIndex::QuestIndex(
         if (extension == "json") {
           add_file(json_files, file_basename, orig_filename, std::move(file_data), false);
         } else if (extension == "bin" || extension == "mnm") {
-          add_file(bin_files, file_basename, orig_filename, std::move(file_data), true);
+          add_bin_file(file_basename, orig_filename, std::move(file_data), assembled ? &assembled->metadata : nullptr);
         } else if (extension == "bind" || extension == "mnmd") {
-          add_file(bin_files, file_basename, orig_filename, prs_compress_optimal(file_data), true);
+          add_bin_file(file_basename, orig_filename, prs_compress_optimal(file_data), assembled ? &assembled->metadata : nullptr);
         } else if (extension == "dat") {
           add_dat_file(file_basename, orig_filename, std::move(file_data));
         } else if (extension == "datd") {
@@ -676,7 +625,7 @@ QuestIndex::QuestIndex(
           auto files = decode_qst_data(file_data);
           for (auto& it : files) {
             if (phosg::ends_with(it.first, ".bin")) {
-              add_file(bin_files, file_basename, orig_filename, std::move(it.second), true);
+              add_bin_file(file_basename, orig_filename, std::move(it.second), nullptr);
             } else if (phosg::ends_with(it.first, ".dat")) {
               add_dat_file(file_basename, orig_filename, std::move(it.second));
             } else if (phosg::ends_with(it.first, ".pvr")) {
@@ -696,11 +645,10 @@ QuestIndex::QuestIndex(
   // All quests have a bin file (even in Episode 3, though its format is
   // different), so we use bin_files as the primary list of all quests that
   // should be indexed
-  for (auto& bin_it : bin_files) {
-    const string& basename = bin_it.first;
-    const auto* bin_filedata = &bin_it.second;
-
+  for (auto& [basename, entry] : bin_files) {
     try {
+      auto vq = make_shared<VersionedQuest>();
+
       // Quest .bin filenames are like K###-VERS-LANG.EXT, where:
       //   K can be any character (usually it's q)
       //   # = quest number (does not have to match the internal quest number)
@@ -719,42 +667,172 @@ QuestIndex::QuestIndex(
         version_token = std::move(filename_tokens[1]);
         language_token = std::move(filename_tokens[2]);
       }
+      vq->category_id = categories.at(basename);
 
-      uint32_t category_id = categories.at(basename);
+      // Find the quest's metadata. If the quest was assembled (that is, if it
+      // came from a .bin.txt file), use the metadata from the source file;
+      // otherwise, figure it out from the already-assembled code
+      if (entry.metadata) {
+        vq->quest_number = entry.metadata->quest_number;
+        vq->version = ::is_ep3(entry.metadata->version) ? Version::GC_V3 : entry.metadata->version;
+        vq->language = entry.metadata->language;
+        vq->episode = entry.metadata->episode;
+        vq->joinable = entry.metadata->joinable;
+        vq->max_players = entry.metadata->max_players;
+        vq->name = entry.metadata->name;
+        vq->short_description = entry.metadata->short_description;
+        vq->long_description = entry.metadata->long_description;
 
-      // Get the number from the first token
-      if (quest_number_token.empty()) {
-        throw runtime_error("quest number token is missing");
+      } else {
+        // Get the number from the first token
+        if (quest_number_token.empty()) {
+          throw runtime_error("quest number token is missing");
+        }
+        vq->quest_number = strtoull(quest_number_token.c_str() + 1, nullptr, 10);
+
+        // Get the version from the second token
+        static const unordered_map<string, Version> name_to_version({
+            {"dn", Version::DC_NTE},
+            {"dp", Version::DC_11_2000},
+            {"d1", Version::DC_V1},
+            {"dc", Version::DC_V2},
+            {"pcn", Version::PC_NTE},
+            {"pc", Version::PC_V2},
+            {"gcn", Version::GC_NTE},
+            {"gc", Version::GC_V3},
+            {"gc3t", Version::GC_EP3_NTE},
+            {"gc3", Version::GC_EP3},
+            {"xb", Version::XB_V3},
+            {"bb", Version::BB_V4},
+        });
+        vq->version = name_to_version.at(version_token);
+
+        // Get the language from the last token
+        if (language_token.size() != 1) {
+          throw runtime_error("language token is not a single character");
+        }
+        vq->language = language_code_for_char(language_token[0]);
+
+        auto bin_decompressed = prs_decompress(*entry.data);
+        switch (vq->version) {
+          case Version::DC_NTE: {
+            if (bin_decompressed.size() < sizeof(PSOQuestHeaderDCNTE)) {
+              throw invalid_argument("file is too small for header");
+            }
+            auto* header = reinterpret_cast<const PSOQuestHeaderDCNTE*>(bin_decompressed.data());
+            vq->episode = Episode::EP1;
+            vq->max_players = 4;
+            vq->name = header->name.decode(vq->language);
+            if (vq->quest_number == 0xFFFFFFFF) {
+              vq->quest_number = phosg::fnv1a64(vq->name);
+            }
+            break;
+          }
+
+          case Version::DC_11_2000:
+          case Version::DC_V1:
+          case Version::DC_V2: {
+            if (bin_decompressed.size() < sizeof(PSOQuestHeaderDC)) {
+              throw invalid_argument("file is too small for header");
+            }
+            auto* header = reinterpret_cast<const PSOQuestHeaderDC*>(bin_decompressed.data());
+            vq->episode = Episode::EP1;
+            vq->max_players = 4;
+            if (vq->quest_number == 0xFFFFFFFF) {
+              vq->quest_number = header->quest_number;
+            }
+            vq->name = header->name.decode(vq->language);
+            vq->short_description = header->short_description.decode(vq->language);
+            vq->long_description = header->long_description.decode(vq->language);
+            break;
+          }
+
+          case Version::PC_NTE:
+          case Version::PC_V2: {
+            if (bin_decompressed.size() < sizeof(PSOQuestHeaderPC)) {
+              throw invalid_argument("file is too small for header");
+            }
+            auto* header = reinterpret_cast<const PSOQuestHeaderPC*>(bin_decompressed.data());
+            vq->episode = Episode::EP1;
+            vq->max_players = 4;
+            if (vq->quest_number == 0xFFFFFFFF) {
+              vq->quest_number = header->quest_number;
+            }
+            vq->name = header->name.decode(vq->language);
+            vq->short_description = header->short_description.decode(vq->language);
+            vq->long_description = header->long_description.decode(vq->language);
+            break;
+          }
+
+          case Version::GC_EP3_NTE:
+          case Version::GC_EP3: {
+            // Note: This codepath handles Episode 3 download quests, which are not
+            // the same as Episode 3 quest scripts. The latter are only used offline
+            // in story mode, but can be disassembled with disassemble_quest_script.
+            // It's unfortunate that Version::GC_EP3 is used here for Episode 3
+            // download quests (maps) and there for offline story mode scripts, but
+            // it's probably not worth refactoring this logic, at least right now.
+            if (bin_decompressed.size() != sizeof(Episode3::MapDefinition)) {
+              throw invalid_argument("file is incorrect size");
+            }
+            auto* map = reinterpret_cast<const Episode3::MapDefinition*>(bin_decompressed.data());
+            vq->episode = Episode::EP3;
+            vq->max_players = 4;
+            if (vq->quest_number == 0xFFFFFFFF) {
+              vq->quest_number = map->map_number;
+            }
+            vq->name = map->name.decode(vq->language);
+            vq->short_description = map->quest_name.decode(vq->language);
+            vq->long_description = map->description.decode(vq->language);
+            break;
+          }
+
+          case Version::XB_V3:
+          case Version::GC_NTE:
+          case Version::GC_V3: {
+            if (bin_decompressed.size() < sizeof(PSOQuestHeaderGC)) {
+              throw invalid_argument("file is too small for header");
+            }
+            auto* header = reinterpret_cast<const PSOQuestHeaderGC*>(bin_decompressed.data());
+            vq->episode = find_quest_episode_from_script(
+                bin_decompressed.data(), bin_decompressed.size(), vq->version);
+            vq->max_players = 4;
+            if (vq->quest_number == 0xFFFFFFFF) {
+              vq->quest_number = header->quest_number;
+            }
+            vq->name = header->name.decode(vq->language);
+            vq->short_description = header->short_description.decode(vq->language);
+            vq->long_description = header->long_description.decode(vq->language);
+            break;
+          }
+
+          case Version::BB_V4: {
+            if (bin_decompressed.size() < sizeof(PSOQuestHeaderBB)) {
+              throw invalid_argument("file is too small for header");
+            }
+            auto* header = reinterpret_cast<const PSOQuestHeaderBB*>(bin_decompressed.data());
+            vq->episode = find_quest_episode_from_script(
+                bin_decompressed.data(), bin_decompressed.size(), vq->version);
+            vq->joinable |= header->joinable;
+            vq->max_players = 4;
+            if (vq->quest_number == 0xFFFFFFFF) {
+              vq->quest_number = header->quest_number;
+            }
+            vq->name = header->name.decode(vq->language);
+            vq->short_description = header->short_description.decode(vq->language);
+            vq->long_description = header->long_description.decode(vq->language);
+            break;
+          }
+
+          default:
+            throw logic_error("invalid quest game version");
+        }
       }
-      uint32_t quest_number = strtoull(quest_number_token.c_str() + 1, nullptr, 10);
-
-      // Get the version from the second token
-      static const unordered_map<string, Version> name_to_version({
-          {"dn", Version::DC_NTE},
-          {"dp", Version::DC_11_2000},
-          {"d1", Version::DC_V1},
-          {"dc", Version::DC_V2},
-          {"pcn", Version::PC_NTE},
-          {"pc", Version::PC_V2},
-          {"gcn", Version::GC_NTE},
-          {"gc", Version::GC_V3},
-          {"gc3t", Version::GC_EP3_NTE},
-          {"gc3", Version::GC_EP3},
-          {"xb", Version::XB_V3},
-          {"bb", Version::BB_V4},
-      });
-      auto version = name_to_version.at(version_token);
-
-      // Get the language from the last token
-      if (language_token.size() != 1) {
-        throw runtime_error("language token is not a single character");
-      }
-      uint8_t language = language_code_for_char(language_token[0]);
 
       // Find the corresponding dat and pvr files
       const DATFileData* dat_filedata = nullptr;
       const FileData* pvr_filedata = nullptr;
-      if (!::is_ep3(version)) {
+      if (!::is_ep3(vq->version)) {
         // Look for dat and pvr files with the same basename as the bin file; if
         // not found, look for them without the language suffix
         try {
@@ -777,17 +855,17 @@ QuestIndex::QuestIndex(
           }
         }
       }
+      vq->bin_contents = entry.data;
+      if (dat_filedata) {
+        vq->dat_contents = dat_filedata->data;
+        vq->map_file = dat_filedata->map_file;
+      }
+      if (pvr_filedata) {
+        vq->pvr_contents = pvr_filedata->data;
+      }
 
-      // Load the quest's metadata phosg::JSON file, if it exists
+      // Load the quest's metadata JSON file, if it exists
       const FileData* json_filedata = nullptr;
-      shared_ptr<BattleRules> battle_rules;
-      ssize_t challenge_template_index = -1;
-      uint8_t description_flag = 0;
-      shared_ptr<const IntegralExpression> available_expression;
-      shared_ptr<const IntegralExpression> enabled_expression;
-      bool allow_start_from_chat_command = false;
-      bool force_joinable = false;
-      int16_t lock_status_register = -1;
       try {
         json_filedata = &json_files.at(basename);
       } catch (const out_of_range&) {
@@ -803,59 +881,43 @@ QuestIndex::QuestIndex(
       if (json_filedata) {
         auto metadata_json = phosg::JSON::parse(*json_filedata->data);
         try {
-          battle_rules = make_shared<BattleRules>(metadata_json.at("BattleRules"));
+          vq->battle_rules = make_shared<BattleRules>(metadata_json.at("BattleRules"));
         } catch (const out_of_range&) {
         }
         try {
-          challenge_template_index = metadata_json.at("ChallengeTemplateIndex").as_int();
+          vq->challenge_template_index = metadata_json.at("ChallengeTemplateIndex").as_int();
         } catch (const out_of_range&) {
         }
         try {
-          description_flag = metadata_json.at("DescriptionFlag").as_int();
+          vq->description_flag = metadata_json.at("DescriptionFlag").as_int();
         } catch (const out_of_range&) {
         }
         try {
-          available_expression = make_shared<IntegralExpression>(metadata_json.get_string("AvailableIf"));
+          vq->available_expression = make_shared<IntegralExpression>(metadata_json.get_string("AvailableIf"));
         } catch (const out_of_range&) {
         }
         try {
-          enabled_expression = make_shared<IntegralExpression>(metadata_json.get_string("EnabledIf"));
+          vq->enabled_expression = make_shared<IntegralExpression>(metadata_json.get_string("EnabledIf"));
         } catch (const out_of_range&) {
         }
         try {
-          allow_start_from_chat_command = metadata_json.get_bool("AllowStartFromChatCommand");
+          vq->allow_start_from_chat_command = metadata_json.get_bool("AllowStartFromChatCommand");
         } catch (const out_of_range&) {
         }
         try {
-          force_joinable = metadata_json.get_bool("Joinable");
+          vq->joinable = metadata_json.get_bool("Joinable");
         } catch (const out_of_range&) {
         }
         try {
-          lock_status_register = metadata_json.get_int("LockStatusRegister");
+          vq->lock_status_register = metadata_json.get_int("LockStatusRegister");
         } catch (const out_of_range&) {
         }
       }
 
-      auto vq = make_shared<VersionedQuest>(
-          quest_number,
-          category_id,
-          version,
-          language,
-          bin_filedata->data,
-          dat_filedata ? dat_filedata->data : nullptr,
-          dat_filedata ? dat_filedata->map_file : nullptr,
-          pvr_filedata ? pvr_filedata->data : nullptr,
-          battle_rules,
-          challenge_template_index,
-          description_flag,
-          available_expression,
-          enabled_expression,
-          allow_start_from_chat_command,
-          force_joinable,
-          lock_status_register);
+      vq->assert_valid();
 
       auto category_name = this->category_index->at(vq->category_id)->name;
-      string filenames_str = bin_filedata->filename;
+      string filenames_str = entry.filename;
       if (dat_filedata) {
         filenames_str += phosg::string_printf("/%s", dat_filedata->filename.c_str());
       }
@@ -891,7 +953,7 @@ QuestIndex::QuestIndex(
             vq->joinable ? "joinable" : "not joinable");
       }
     } catch (const exception& e) {
-      static_game_data_log.warning("(%s) Failed to index quest file: (%s)", basename.c_str(), e.what());
+      static_game_data_log.warning("(%s) Failed to index quest file: %s", basename.c_str(), e.what());
     }
   }
 }

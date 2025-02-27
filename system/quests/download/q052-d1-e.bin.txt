@@ -1,5 +1,5 @@
 .version DC_V1
-.quest_num 19
+.quest_num 52
 .language 1
 .name "The Retired Hunter"
 .short_desc "I will kill\n10000 monsters\nbefore I die!"

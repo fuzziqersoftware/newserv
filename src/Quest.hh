@@ -64,16 +64,16 @@ struct QuestCategoryIndex {
 };
 
 struct VersionedQuest {
-  uint32_t quest_number = 0;
-  uint32_t category_id = 0;
-  Episode episode = Episode::NONE;
-  bool allow_start_from_chat_command = false;
-  bool joinable = false;
-  int16_t lock_status_register = -1;
-  std::string name;
+  // Most of these default values are intentionally invalid; we use these
+  // values to check if each field was parsed during quest indexing.
+  uint32_t category_id = 0xFFFFFFFF;
+  uint32_t quest_number = 0xFFFFFFFF;
   Version version = Version::UNKNOWN;
-  uint8_t language = 1;
-  bool is_dlq_encoded = false;
+  uint8_t language = 0xFF;
+  Episode episode = Episode::NONE;
+  bool joinable = false;
+  uint8_t max_players = 0x00;
+  std::string name;
   std::string short_description;
   std::string long_description;
   std::shared_ptr<const std::string> bin_contents;
@@ -82,27 +82,14 @@ struct VersionedQuest {
   std::shared_ptr<const std::string> pvr_contents;
   std::shared_ptr<const BattleRules> battle_rules;
   ssize_t challenge_template_index = -1;
-  uint8_t description_flag = 0;
+  uint8_t description_flag = 0x00;
   std::shared_ptr<const IntegralExpression> available_expression;
   std::shared_ptr<const IntegralExpression> enabled_expression;
+  bool allow_start_from_chat_command = false;
+  int16_t lock_status_register = -1;
+  bool is_dlq_encoded = false;
 
-  VersionedQuest(
-      uint32_t quest_number,
-      uint32_t category_id,
-      Version version,
-      uint8_t language,
-      std::shared_ptr<const std::string> bin_contents,
-      std::shared_ptr<const std::string> dat_contents,
-      std::shared_ptr<const MapFile> map_file,
-      std::shared_ptr<const std::string> pvr_contents,
-      std::shared_ptr<const BattleRules> battle_rules = nullptr,
-      ssize_t challenge_template_index = -1,
-      uint8_t description_flag = 0,
-      std::shared_ptr<const IntegralExpression> available_expression = nullptr,
-      std::shared_ptr<const IntegralExpression> enabled_expression = nullptr,
-      bool allow_start_from_chat_command = false,
-      bool force_joinable = false,
-      int16_t lock_status_register = -1);
+  void assert_valid() const;
 
   std::string bin_filename() const;
   std::string dat_filename() const;
@@ -119,6 +106,7 @@ struct Quest {
   Episode episode;
   bool allow_start_from_chat_command;
   bool joinable;
+  uint8_t max_players;
   int16_t lock_status_register;
   std::string name;
   mutable std::shared_ptr<const SuperMap> supermap;

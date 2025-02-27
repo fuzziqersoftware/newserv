@@ -432,6 +432,9 @@ bool Client::can_play_quest(
   if (!q->has_version_any_language(this->version())) {
     return false;
   }
+  if (num_players >= q->max_players) {
+    return false;
+  }
   return this->evaluate_quest_availability_expression(q->enabled_expression, game, event, difficulty, num_players, v1_present);
 }
 

@@ -1043,8 +1043,8 @@ static HandlerResult SC_6x60_6xA2(shared_ptr<ProxyServer::LinkedSession> ses, co
       res = ses->item_creator->on_box_item_drop(cmd.effective_area);
     } else {
       ses->log.info("Creating item from box %04hX (area %02hX; specialized with %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 ")",
-          cmd.entity_index.load(), cmd.effective_area, cmd.param3.load(), cmd.param4.load(), cmd.param5.load(), cmd.param6.load());
-      res = ses->item_creator->on_specialized_box_item_drop(cmd.effective_area, cmd.param3, cmd.param4, cmd.param5, cmd.param6);
+          cmd.entity_index.load(), cmd.effective_area, cmd.fparam3.load(), cmd.iparam4.load(), cmd.iparam5.load(), cmd.iparam6.load());
+      res = ses->item_creator->on_specialized_box_item_drop(cmd.effective_area, cmd.fparam3, cmd.iparam4, cmd.iparam5, cmd.iparam6);
     }
   } else {
     ses->log.info("Creating item from enemy %04hX (area %02hX)", cmd.entity_index.load(), cmd.effective_area);

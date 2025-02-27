@@ -2996,9 +2996,8 @@ std::string disassemble_quest_script(
       } else {
         language = 1;
       }
-      lines.emplace_back(phosg::string_printf(".quest_num %hhu", header.quest_number));
+      lines.emplace_back(phosg::string_printf(".quest_num %hu", header.quest_number.load()));
       lines.emplace_back(phosg::string_printf(".language %hhu", header.language));
-      lines.emplace_back(phosg::string_printf(".episode %s", name_for_header_episode_number(header.episode)));
       lines.emplace_back(".name " + escape_string(header.name.decode(language)));
       lines.emplace_back(".short_desc " + escape_string(header.short_description.decode(language)));
       lines.emplace_back(".long_desc " + escape_string(header.long_description.decode(language)));
@@ -3675,7 +3674,6 @@ Episode find_quest_episode_from_script(const void* data, size_t size, Version ve
       const auto& header = r.get<PSOQuestHeaderGC>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
-      header_episode = episode_for_quest_episode_number(header.episode);
       break;
     }
     case Version::BB_V4: {
@@ -3691,7 +3689,6 @@ Episode find_quest_episode_from_script(const void* data, size_t size, Version ve
   }
 
   unordered_set<Episode> found_episodes;
-
   try {
     const auto& opcodes = opcodes_for_version(version);
     // The set_episode opcode should always be in the first function (0)
@@ -3794,8 +3791,10 @@ Episode find_quest_episode_from_script(const void* data, size_t size, Version ve
     throw runtime_error("multiple episodes found");
   } else if (found_episodes.size() == 1) {
     return *found_episodes.begin();
-  } else {
+  } else if (header_episode != Episode::NONE) {
     return header_episode;
+  } else {
+    return Episode::EP1;
   }
 }
 
@@ -3997,7 +3996,7 @@ struct RegisterAssigner {
   array<shared_ptr<Register>, 0x100> numbered_regs;
 };
 
-std::string assemble_quest_script(
+AssembledQuestScript assemble_quest_script(
     const std::string& text,
     const vector<string>& script_include_directories,
     const vector<string>& native_include_directories) {
@@ -4654,7 +4653,6 @@ std::string assemble_quest_script(
       header.code_offset = sizeof(header);
       header.function_table_offset = sizeof(header) + code_w.size();
       header.size = header.function_table_offset + function_table.size() * sizeof(function_table[0]);
-      header.unused = 0;
       header.name.encode(quest_name, 0);
       w.put(header);
       break;
@@ -4666,9 +4664,7 @@ std::string assemble_quest_script(
       header.code_offset = sizeof(header);
       header.function_table_offset = sizeof(header) + code_w.size();
       header.size = header.function_table_offset + function_table.size() * sizeof(function_table[0]);
-      header.unused = 0;
       header.language = quest_language;
-      header.unknown1 = 0;
       header.quest_number = quest_num;
       header.name.encode(quest_name, quest_language);
       header.short_description.encode(quest_short_desc, quest_language);
@@ -4682,9 +4678,7 @@ std::string assemble_quest_script(
       header.code_offset = sizeof(header);
       header.function_table_offset = sizeof(header) + code_w.size();
       header.size = header.function_table_offset + function_table.size() * sizeof(function_table[0]);
-      header.unused = 0;
       header.language = quest_language;
-      header.unknown1 = 0;
       header.quest_number = quest_num;
       header.name.encode(quest_name, quest_language);
       header.short_description.encode(quest_short_desc, quest_language);
@@ -4701,11 +4695,8 @@ std::string assemble_quest_script(
       header.code_offset = sizeof(header);
       header.function_table_offset = sizeof(header) + code_w.size();
       header.size = header.function_table_offset + function_table.size() * sizeof(function_table[0]);
-      header.unused = 0;
       header.language = quest_language;
-      header.unknown1 = 0;
       header.quest_number = quest_num;
-      header.episode = (quest_episode == Episode::EP2) ? 1 : 0;
       header.name.encode(quest_name, quest_language);
       header.short_description.encode(quest_short_desc, quest_language);
       header.long_description.encode(quest_long_desc, quest_language);
@@ -4717,9 +4708,7 @@ std::string assemble_quest_script(
       header.code_offset = sizeof(header);
       header.function_table_offset = sizeof(header) + code_w.size();
       header.size = header.function_table_offset + function_table.size() * sizeof(function_table[0]);
-      header.unused = 0;
       header.quest_number = quest_num;
-      header.unused2 = 0;
       if (quest_episode == Episode::EP4) {
         header.episode = 2;
       } else if (quest_episode == Episode::EP2) {
@@ -4729,7 +4718,6 @@ std::string assemble_quest_script(
       }
       header.max_players = quest_max_players;
       header.joinable = quest_joinable ? 1 : 0;
-      header.unknown = 0;
       header.name.encode(quest_name, quest_language);
       header.short_description.encode(quest_short_desc, quest_language);
       header.long_description.encode(quest_long_desc, quest_language);
@@ -4741,5 +4729,18 @@ std::string assemble_quest_script(
   }
   w.write(code_w.str());
   w.write(function_table.data(), function_table.size() * sizeof(function_table[0]));
-  return std::move(w.str());
+  return AssembledQuestScript{
+      .data = std::move(w.str()),
+      .metadata = QuestMetadata{
+          .episode = quest_episode,
+          .version = quest_version,
+          .language = quest_language,
+          .max_players = quest_max_players,
+          .name = quest_name,
+          .short_description = quest_short_desc,
+          .long_description = quest_long_desc,
+          .quest_number = quest_num,
+          .joinable = quest_joinable,
+      },
+  };
 }
