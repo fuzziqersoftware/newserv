@@ -990,7 +990,7 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
 
 string MapFile::ObjectSetEntry::str() const {
   string name_str = MapFile::name_for_object_type(this->base_type);
-  return phosg::string_printf("[ObjectEntry type=%04hX \"%s\" set_flags=%04hX index=%04hX a2=%04hX entity_id=%04hX group=%04hX room=%04hX a3=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] unused=%08" PRIX32 "]",
+  return phosg::string_printf("[ObjectSetEntry type=%04hX \"%s\" set_flags=%04hX index=%04hX a2=%04hX entity_id=%04hX group=%04hX room=%04hX a3=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] unused=%08" PRIX32 "]",
       this->base_type.load(),
       name_str.c_str(),
       this->set_flags.load(),
@@ -1032,7 +1032,7 @@ uint64_t MapFile::ObjectSetEntry::semantic_hash(uint8_t floor) const {
 }
 
 string MapFile::EnemySetEntry::str() const {
-  return phosg::string_printf("[EnemyEntry type=%04hX \"%s\" set_flags=%04hX index=%04hX num_children=%04hX floor=%04hX entity_id=%04hX room=%04hX wave_number=%04hX wave_number2=%04hX a1=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %g %g %04hX %04hX] unused=%08" PRIX32 "]",
+  return phosg::string_printf("[EnemySetEntry type=%04hX \"%s\" set_flags=%04hX index=%04hX num_children=%04hX floor=%04hX entity_id=%04hX room=%04hX wave_number=%04hX wave_number2=%04hX a1=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %g %g %04hX %04hX] unused=%08" PRIX32 "]",
       this->base_type.load(),
       MapFile::name_for_enemy_type(this->base_type),
       this->set_flags.load(),

@@ -1913,10 +1913,14 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Generates a random number by calling rand(). Note that the returned
     // value is not uniform! The algorithm generates a uniform random number,
-    // scales it to the range [0, max], then clamps it to [min, max]. So, if
-    // the minimum value is not 0, the minimum value is more likely than all
-    // other possible results. To get an unbiased result with a minimum not
-    // equal to zero, use this with a minimum of zero, then use add or addi.
+    // scales it to the range 0 through (max-1) inclusive, then clamps it to
+    // the range min through (max-1). So, if the minimum value is not 0, the
+    // minimum value is more likely than all other possible results. To get
+    // an unbiased result with a minimum not equal to zero, use this with a
+    // minimum of zero, then use add or addi.
+    // Note also that this is implemented by calling rand(), which returns a
+    // 15-bit random integer. If your range of values is larger than 15 bits,
+    // call this multiple times and combine the results appropriately.
     // regsA[0] = minimum value
     // regsA[1] = maximum value
     // regB = generated random value
