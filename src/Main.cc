@@ -34,6 +34,7 @@
 #include "ImageEncoder.hh"
 #include "Loggers.hh"
 #include "NetworkAddresses.hh"
+#include "PPKArchive.hh"
 #include "PSOGCObjectGraph.hh"
 #include "PSOProtocol.hh"
 #include "PatchServer.hh"
@@ -1688,7 +1689,7 @@ void a_extract_archive_fn(phosg::Arguments& args) {
     for (const auto& entry_it : arch.all_entries()) {
       auto e = arch.get(entry_it.first);
       string out_file = output_prefix + entry_it.first;
-      phosg::save_file(out_file.c_str(), e.first, e.second);
+      phosg::save_file(out_file, e.first, e.second);
       fprintf(stderr, "... %s\n", out_file.c_str());
     }
   } else if (args.get<string>(0) == "extract-bml") {
@@ -1710,6 +1711,13 @@ void a_extract_archive_fn(phosg::Arguments& args) {
         fprintf(stderr, "... %s\n", out_file.c_str());
       }
     }
+  } else if (args.get<string>(0) == "extract-ppk") {
+    auto files = decode_ppk_file(*data_shared, args.get<string>("password", true));
+    for (const auto& [filename, data] : files) {
+      string out_file = output_prefix + filename;
+      phosg::save_file(out_file, data);
+      fprintf(stderr, "... %s\n", out_file.c_str());
+    }
   } else {
     throw logic_error("unimplemented archive type");
   }
@@ -1717,16 +1725,18 @@ void a_extract_archive_fn(phosg::Arguments& args) {
 
 Action a_extract_afs("extract-afs", nullptr, a_extract_archive_fn);
 Action a_extract_gsl("extract-gsl", nullptr, a_extract_archive_fn);
-Action a_extract_bml("extract-bml", "\
+Action a_extract_bml("extract-bml", nullptr, a_extract_archive_fn);
+Action a_extract_ppk("extract-ppk", "\
   extract-afs [INPUT-FILENAME] [--big-endian]\n\
   extract-gsl [INPUT-FILENAME] [--big-endian]\n\
   extract-bml [INPUT-FILENAME] [--big-endian]\n\
-    Extract all files from an AFS, GSL, or BML archive into the current\n\
+  extract-ppk [INPUT-FILENAME] [--big-endian]\n\
+    Extract all files from an AFS, GSL, BML, or PPK archive into the current\n\
     directory. input-filename may be specified. If output-filename is\n\
     specified, then it is treated as a prefix which is prepended to the\n\
     filename of each file contained in the archive. If --big-endian is given,\n\
     the archive header is read in GameCube format; otherwise it is read in\n\
-    PC/BB format.\n",
+    PC/BB format. For PPK archives, the --password= option is required.\n",
     a_extract_archive_fn);
 
 Action a_encode_sjis(

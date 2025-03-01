@@ -107,6 +107,7 @@ set(SOURCES
     src/PatchServer.cc
     src/PlayerFilesManager.cc
     src/PlayerSubordinates.cc
+    src/PPKArchive.cc
     src/ProxyCommands.cc
     src/ProxyServer.cc
     src/PSOEncryption.cc
