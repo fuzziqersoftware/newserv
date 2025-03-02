@@ -2775,16 +2775,20 @@ ChatCommandDefinition cc_where(
     {"$where"},
     +[](const ServerArgs& a) -> void {
       auto l = a.c->require_lobby();
+      uint32_t floor = l->is_game() ? a.c->floor : 0x0F;
+      Episode episode = l->is_game() ? l->episode : Episode::EP1;
       send_text_message_printf(a.c, "$C7%01" PRIX32 ":%s X:%" PRId32 " Z:%" PRId32,
-          a.c->floor,
-          FloorDefinition::get(l->episode, a.c->floor).short_name,
+          floor,
+          FloorDefinition::get(episode, floor).short_name,
           static_cast<int32_t>(a.c->pos.x.load()),
           static_cast<int32_t>(a.c->pos.z.load()));
-      for (auto lc : l->clients) {
-        if (lc && (lc != a.c)) {
-          string name = lc->character()->disp.name.decode(lc->language());
-          send_text_message_printf(a.c, "$C6%s$C7 %01" PRIX32 ":%s",
-              name.c_str(), lc->floor, FloorDefinition::get(l->episode, lc->floor).short_name);
+      if (l->is_game()) {
+        for (auto lc : l->clients) {
+          if (lc && (lc != a.c)) {
+            string name = lc->character()->disp.name.decode(lc->language());
+            send_text_message_printf(a.c, "$C6%s$C7 %01" PRIX32 ":%s",
+                name.c_str(), lc->floor, FloorDefinition::get(l->episode, lc->floor).short_name);
+          }
         }
       }
     },
