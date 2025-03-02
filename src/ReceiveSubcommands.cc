@@ -1777,7 +1777,7 @@ static void on_play_sound_from_player(shared_ptr<Client> c, uint8_t command, uin
   const auto& cmd = check_size_t<G_PlaySoundFromPlayer_6xB2>(data, size);
   // This command can be used to play arbitrary sounds, but the client only
   // ever sends it for the camera shutter sound, so we only allow that one.
-  if (cmd.floor == c->floor && cmd.sound_id == 0x00051720) {
+  if (cmd.sound_id == 0x00051720) {
     forward_subcommand(c, command, flag, data, size);
   }
 }
@@ -3483,7 +3483,7 @@ static void on_update_attackable_col_state(shared_ptr<Client> c, uint8_t command
 }
 
 static void on_activate_timed_switch(shared_ptr<Client> c, uint8_t command, uint8_t flag, void* data, size_t size) {
-  const auto& cmd = check_size_t<G_ActivateTimedSwitch_6x93>(data, size);
+  const auto& cmd = check_size_t<G_SetSwitchFlagFromTimer_6x93>(data, size);
   auto l = c->require_lobby();
   if (!l->is_game()) {
     return;

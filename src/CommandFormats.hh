@@ -5415,15 +5415,15 @@ struct G_Unknown_6x92 {
   le_float unknown_a2 = 0.0f;
 } __packed_ws__(G_Unknown_6x92, 0x0C);
 
-// 6x93: Activate timed switch (not valid on Episode 3)
+// 6x93: Set switch flag from timer (not valid on Episode 3)
 
-struct G_ActivateTimedSwitch_6x93 {
+struct G_SetSwitchFlagFromTimer_6x93 {
   G_UnusedHeader header;
   le_uint16_t switch_flag_floor = 0;
   le_uint16_t switch_flag_num = 0;
   uint8_t should_set = 0; // The switch flag is only set if this is equal to 1; otherwise it's cleared
   parray<uint8_t, 3> unused;
-} __packed_ws__(G_ActivateTimedSwitch_6x93, 0x0C);
+} __packed_ws__(G_SetSwitchFlagFromTimer_6x93, 0x0C);
 
 // 6x94: Warp (not valid on Episode 3)
 
@@ -5727,7 +5727,7 @@ struct G_MoveLobbyChair_6xB0 {
 
 struct G_PlaySoundFromPlayer_6xB2 {
   G_UnusedHeader header;
-  uint8_t floor = 0;
+  uint8_t area = 0; // Not floor!
   uint8_t unused = 0;
   le_uint16_t client_id = 0;
   le_uint32_t sound_id = 0; // 0x00051720 = camera shutter sound
