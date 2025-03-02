@@ -4725,15 +4725,15 @@ AssembledQuestScript assemble_quest_script(
   return AssembledQuestScript{
       .data = std::move(w.str()),
       .metadata = QuestMetadata{
-          .episode = quest_episode,
+          .quest_number = quest_num,
           .version = quest_version,
           .language = quest_language,
+          .episode = quest_episode,
+          .joinable = quest_joinable,
           .max_players = quest_max_players,
           .name = quest_name,
           .short_description = quest_short_desc,
           .long_description = quest_long_desc,
-          .quest_number = quest_num,
-          .joinable = quest_joinable,
       },
   };
 }
