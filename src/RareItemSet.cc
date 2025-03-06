@@ -706,7 +706,14 @@ string RareItemSet::serialize_html(
 
         ItemData example_item = spec.data;
         if (example_item.can_be_encoded_in_rel_rare_table()) {
-          if (example_item.data1[0] == 2) {
+          // Apparently Return to Ragol has a patch that allows it to use the
+          // value 5 in data1[0] to specify a specific tech disk, so we handle
+          // that here.
+          if (example_item.data1[0] == 5) {
+            example_item.data1[4] = example_item.data1[1];
+            example_item.data1[0] = 0x03;
+            example_item.data1[1] = 0x02;
+          } else if (example_item.data1[0] == 2) {
             example_item.data1[1] = 0x00;
             example_item.assign_mag_stats(ItemMagStats());
           } else if (example_item.data1[0] == 3) {

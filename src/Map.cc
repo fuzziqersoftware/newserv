@@ -1277,30 +1277,151 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //   param5 = switch flag number
       {0x0055, "TObjCityMainWarpChallenge"},
 
+      // Episode 2 Lab door. Params:
+      //   param4 = switch flag and activation mode:
+      //     negative value = always unlocked
+      //     value in [0x00, 0x100] = unlocked by a switch flag (the bounds
+      //       check appears to be a bug; the range should be [0x00, 0xFF] but
+      //       the game has an off-by-one error)
+      //     value > 0x100 = always locked
+      //   param5 = model (green or red; clamped to [0, 1])
+      //   param6 = if negative, all switches must be active simultaneously to
+      //     unlock the door; if zero or positive, they may be activated
+      //     sequentially instead (in offline solo mode, this is ignored and
+      //     the sequential behavior is always used); this is somewhat obviated
+      //     for this door type since it can have only one switch flag, but
+      //     other door types may have multiple, for which this is relevant
+      {0x0056, "TODoorLabo"},
+
+      // Enables the Trade Window when the player is near this object. Both
+      // players must be near a TObjTradeCollision object (not necessarily the
+      // same one) to be able to use the Trade Window with each other. Params:
+      //   param1 = radius
+      {0x0057, "TObjTradeCollision"},
+
+      // Forest door. Params:
+      //   param4 = switch flag number (low byte) and number to appear on door
+      //     (second-lowest byte, modulo 0x0A)
+      //   param6 = TODO (expected to be 0 or 1)
+      {0x0080, "TObjDoor"},
+
+      // Forest switch. Params:
+      //   param4 = switch flag number
+      //   param6 = color (clamped to range [0, 9])
+      {0x0081, "TObjDoorKey"},
+
+      // Laser fence and square laser fence. Params:
+      //   param1 = color (range [0, 3])
+      //   param4 = switch flag number
+      //   param6 = model (TODO)
+      {0x0082, "TObjLazerFenceNorm"},
+      {0x0083, "TObjLazerFence4"},
+
+      // Forest laser fence switch. Params:
+      //   param4 = switch flag number
+      //   param6 = color
+      {0x0084, "TLazerFenceSw"},
+
+      // Light rays. Params:
+      //   param1-3 = scale (x, y, z)
+      {0x0085, "TKomorebi"},
+
+      // Butterfly. Params:
+      //   param1-3 = TODO
+      {0x0086, "TButterfly"},
+
+      // TODO: Describe this object. Params:
+      //   param1 = model number
+      {0x0087, "TMotorcycle"},
+
+      // Item box. Params:
+      //   param1 = if positive, box is specialized to drop a specific item or
+      //     type of item; if zero or negative, box drops any common item or
+      //     none at all (and param3-6 are all ignored)
+      //   param3 = if zero, then bonuses, grinds, etc. are applied to the item
+      //     after it's generated; if nonzero, the item is not randomized at
+      //     all and drops exactly as specified in param4-6
+      //   param4-6 = item definition. see base_item_for_specialized_box in
+      //     ItemCreator.cc for how these values are decoded
+      {0x0088, "TObjContainerBase2"},
+
+      // TODO: Describe this object. Params:
+      //   param1-3 = TODO
+      {0x0089, "TObjTank"},
+
+      // Forest console. Params:
+      //   param4 = quest label to call when activated (inherited from
+      //     TObjMesBase)
+      //   param5 = model (clamped to [0, 1])
+      //   param6 = type (clamped to [0, 1]; 0 = "QUEST", 1 = "RICO")
+      //     (inherited from TObjMesBase)
+      {0x008B, "TObjComputer"},
+
+      // Black sliding door. Params:
+      //   param1 = total distance (divided evenly by the number of switch
+      //     flags, from param4)
+      //   param2 = speed
+      //   param4 = base switch flag (the actual switch flags used are param4,
+      //     param4 + 1, param4 + 2, etc.)
+      //   param5 = number of switch flags (clamped to [1, 4])
+      //   param6 = TODO (only matters if this is zero or nonzero)
+      {0x008C, "TObjContainerIdo"},
+
+      // Rico message pod. This object immediately destroys itself in Challenge
+      // mode or split-screen mode. Params:
+      //   param4 = enable condition:
+      //     negative = enabled when player is within 70 units
+      //     range [0x00, 0xFF] = enabled by corresponding switch flag
+      //     0x100 and above = never enabled
+      //   param5 = message number (used with message quest opcode; TODO: has
+      //     the same [100, 999] check as some other objects)
+      //   param6 = quest label to call when activated
+      {0x008D, "TOCapsuleAncient01"},
+
+      // Energy barrier. Params:
+      //   param4 = switch flag and activation mode (same as for TODoorLabo)
+      {0x008E, "TOBarrierEnergy01"},
+
+      // Forest rising bridge. Once enabled (risen), this object cannot be
+      // disabled; that is, there is no way to make the bridge retract. Params:
+      //   param4 = switch flag number
+      {0x008F, "TObjHashi"},
+
+      // Generic switch. Visually, this is the type usually used for objects
+      // other than doors, such as lights, poison rooms, and the Forest 1
+      // bridge. Params:
+      //   param1 = activation mode:
+      //     negative = temporary (TODO: test this)
+      //     zero or positive = permanent (normal)
+      //   param4 = switch flag number
+      {0x0090, "TOKeyGenericSw"},
+
+      // Box that triggers a wave event when opened. Params:
+      //   param4 = event number
+      {0x0091, "TObjContainerEnemy"},
+
+      // Large box (usually used for specialized drops). See TObjContainerBase2
+      // for parameters.
+      {0x0092, "TObjContainerBase"},
+
+      // Large enemy box. See TObjContainerEnemy for parameters.
+      {0x0093, "TObjContainerAbeEnemy"},
+
+      // Always-empty box. No parameters.
+      {0x0095, "TObjContainerNoItem"},
+
+      // Laser fence. Params:
+      //   param1 = color (clamped to [0, 3])
+      //   param2 = depth of collision box (transverse to lasers)
+      //   param3 = length of collision box (parallel to lasers)
+      //   param4 = switch flag number
+      //   param6 = model:
+      //     0 = short fence
+      //     1 = long fence
+      //     anything else = invisible
+      {0x0096, "TObjLazerFenceExtra"},
+
       // TODO: Describe the rest of the object types.
-      {0x0056, "TODoorLabo"}, // Constructor in 3OE1: 801A2684
-      {0x0057, "TObjTradeCollision"}, // Constructor in 3OE1: 802C6A7C
-      {0x0080, "TObjDoor"}, // Constructor in 3OE1: 8018F148
-      {0x0081, "TObjDoorKey"}, // Constructor in 3OE1: 80190000
-      {0x0082, "TObjLazerFenceNorm"}, // Constructor in 3OE1: 80192E44
-      {0x0083, "TObjLazerFence4"}, // Constructor in 3OE1: 801933F4
-      {0x0084, "TLazerFenceSw"}, // Constructor in 3OE1: 80193AE0
-      {0x0085, "TKomorebi"}, // Constructor in 3OE1: 80192220
-      {0x0086, "TButterfly"}, // Constructor in 3OE1: 8017F2A4
-      {0x0087, "TMotorcycle"}, // Constructor in 3OE1: 80194EE4
-      {0x0088, "TObjContainerItem"}, // Constructor in 3OE1: 801899F8
-      {0x0089, "TObjTank"}, // Constructor in 3OE1: 8019A7E4
-      {0x008B, "TObjComputer"}, // Constructor in 3OE1: 80188180
-      {0x008C, "TObjContainerIdo"}, // Constructor in 3OE1: 8018C514
-      {0x008D, "TOCapsuleAncient01"}, // Constructor in 3OE1: 8015A274
-      {0x008E, "TOBarrierEnergy01"}, // Constructor in 3OE1: 80157EA8
-      {0x008F, "TObjHashi"}, // Constructor in 3OE1: 8019157C
-      {0x0090, "TOKeyGenericSw"}, // Constructor in 3OE1: 8016CB20
-      {0x0091, "TObjContainerEnemy"}, // Constructor in 3OE1: 801895BC
-      {0x0092, "TObjContainerBase"}, // Constructor in 3OE1: 80188928
-      {0x0093, "TObjContainerAbeEnemy"}, // Constructor in 3OE1: 801A2B3C
-      {0x0095, "TObjContainerNoItem"}, // Constructor in 3OE1: 80189074
-      {0x0096, "TObjLazerFenceExtra"}, // Constructor in 3OE1: 801928C0
       {0x00C0, "TOKeyCave01"}, // Constructor in 3OE1: 8016C2A4
       {0x00C1, "TODoorCave01"}, // Constructor in 3OE1: 801618C4
       {0x00C2, "TODoorCave02"}, // Constructor in 3OE1: 80161F4C
