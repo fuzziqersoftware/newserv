@@ -1421,11 +1421,49 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //     anything else = invisible
       {0x0096, "TObjLazerFenceExtra"},
 
+      // Caves floor button. The activation radius is always 10 units. Params:
+      //   param1-3 = scale factors (visual only)
+      //   param4 = switch flag number
+      //   param5 = activation mode:
+      //     negative = temporary (disables flag when player leaves)
+      //     zero or positive = permanent
+      {0x00C0, "TOKeyCave01"},
+
+      // Caves multiplayer door. Params:
+      //   param4 = base switch flag number (the actual switch flags used are
+      //     param4, param4 + 1, param4 + 2, etc.; if this is negative, the
+      //     door is always unlocked)
+      //   param5 = 4 - number of switch flags (so if e.g. door should require
+      //     only 3 switch flags, set param5 to 1)
+      //   param6 = activation mode:
+      //     negative = locks remain unlocked when their respective switch
+      //       flags are disabled
+      //     zero or positive = locks re-lock when their switch flags are
+      //       disabled, unless all locks are unlocked
+      {0x00C1, "TODoorCave01"},
+
+      // Caves standard door. Params:
+      //   param4 = switch flag number (negative = always unlocked; >0x100 =
+      //     always locked)
+      {0x00C2, "TODoorCave02"},
+
+      // Caves ceiling piston trap. There are three types of this object, which
+      // can be choseby via param6. If param6 is not 0, 1, or 2, no object is
+      // created.
+      // Params for TOHangceilingCave01Normal (param6 = 0):
+      //   param1 = TODO (radius delta? value used is param1 + 29)
+      //   param2 = TODO (value used is 1 - param2)
+      //   param3 = TODO (value used is param3 + 100)
+      // Params for TOHangceilingCave01Key (param6 = 1):
+      //   param1-3 = same as for TOHangceilingCave01Normal
+      //   param4 = switch flag number (drops when switch flag is activated;
+      //     when it has finished dropping, it disables the switch flag)
+      // Params for TOHangceilingCave01KeyQuick (param6 = 2):
+      //   param1-4 = same as for TOHangceilingCave01Key, but unlike that
+      //     object, does not disable the switch flag automatically
+      {0x00C3, "TOHangceilingCave01Normal/TOHangceilingCave01Key/TOHangceilingCave01KeyQuick"},
+
       // TODO: Describe the rest of the object types.
-      {0x00C0, "TOKeyCave01"}, // Constructor in 3OE1: 8016C2A4
-      {0x00C1, "TODoorCave01"}, // Constructor in 3OE1: 801618C4
-      {0x00C2, "TODoorCave02"}, // Constructor in 3OE1: 80161F4C
-      {0x00C3, "TOHangceilingCave01Key/TOHangceilingCave01Normal/TOHangceilingCave01KeyQuick"}, // Constructor in 3OE1: 80168848
       {0x00C4, "TOSignCave01"}, // Constructor in 3OE1: 801765B4
       {0x00C5, "TOSignCave02"}, // Constructor in 3OE1: 80176968
       {0x00C6, "TOSignCave03"}, // Constructor in 3OE1: 80176DAC
