@@ -447,7 +447,7 @@ void send_change_event(std::shared_ptr<Client> c, uint8_t new_event);
 void send_change_event(std::shared_ptr<Lobby> l, uint8_t new_event);
 void send_change_event(std::shared_ptr<ServerState> s, uint8_t new_event);
 
-void send_team_membership_info(std::shared_ptr<Client> c); // 12EA
+void send_update_team_membership(std::shared_ptr<Client> c); // 12EA
 void send_update_team_metadata_for_client(std::shared_ptr<Client> c); // 15EA (to all clients in lobby, with only c's data)
 void send_all_nearby_team_metadatas_to_client(std::shared_ptr<Client> c, bool is_13EA); // 13EA/15EA (to only c, with all lobby clients' data)
 void send_update_team_reward_flags(std::shared_ptr<Client> c); // 1DEA
@@ -461,11 +461,12 @@ enum TeamMetadataChange : uint8_t {
   FLAG_DATA = 0x02,
   REWARD_FLAGS = 0x04,
   TEAM_NAME = 0x08,
+  TEAM_MEMBER_COUNT = 0x10,
+  TEAM_CREATED = 0xFF,
   TEAM_DISBANDED = 0xFF,
 };
-
 void send_team_metadata_change_notifications(
     std::shared_ptr<ServerState> s,
     std::shared_ptr<const TeamIndex::Team> team,
+    uint32_t changed_member_account_id,
     uint8_t what);
-void send_team_membership_change_notifications(std::shared_ptr<Client> changed_c);

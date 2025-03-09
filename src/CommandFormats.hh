@@ -3488,32 +3488,24 @@ struct C_ChangeTeamMemberPrivilegeLevel_BB_11EA {
   le_uint32_t guild_card_number = 0;
 } __packed_ws__(C_ChangeTeamMemberPrivilegeLevel_BB_11EA, 4);
 
-// 12EA (S->C): Team membership information
+// 12EA (S->C): Update team membership
 // This updates the client's view of its system file.
 
-struct S_TeamMembershipInformation_BB_12EA {
+struct S_UpdateTeamMembership_BB_12EA {
   // If skip_update_system_file is not zero, the client ignores the command.
   // It's not clear why this field exists.
   le_uint32_t skip_update_system_file = 0;
   PSOBBBaseTeamMembership membership;
-} __packed_ws__(S_TeamMembershipInformation_BB_12EA, 0x38);
+} __packed_ws__(S_UpdateTeamMembership_BB_12EA, 0x38);
 
 // 13EA: Team info for lobby players
 // header.flag specifies the number of entries.
 
 struct S_TeamInfoForPlayer_BB_13EA_15EA_Entry {
-  // The client uses the first four of these to determine if the player is in a
-  // team or not - if they are all zero, the player is not in a team.
-  /* 0000 */ le_uint32_t guild_card_number = 0;
-  /* 0004 */ le_uint32_t team_id = 0;
-  /* 0008 */ le_uint32_t reward_flags = 0;
-  /* 000C */ le_uint32_t unknown_a6 = 0;
-  /* 0010 */ uint8_t privilege_level = 0;
-  /* 0011 */ uint8_t team_member_count = 0;
-  /* 0012 */ uint8_t unknown_a8 = 0;
-  /* 0013 */ uint8_t unknown_a9 = 0;
-  /* 0014 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> team_name;
-  /* 0034 */ le_uint32_t guild_card_number2 = 0;
+  // The client uses the first four fields of the membership to determine if
+  // the player is in a team: if any are nonzero, the player is in a team.
+  /* 0000 */ PSOBBBaseTeamMembership membership;
+  /* 0034 */ le_uint32_t guild_card_number = 0;
   /* 0038 */ le_uint32_t lobby_client_id = 0;
   /* 003C */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> player_name;
   /* 005C */ parray<le_uint16_t, 0x20 * 0x20> flag_data;

@@ -4118,9 +4118,9 @@ void send_change_event(shared_ptr<ServerState> s, uint8_t new_event) {
 ////////////////////////////////////////////////////////////////////////////////
 // BB teams
 
-void send_team_membership_info(shared_ptr<Client> c) {
+void send_update_team_membership(shared_ptr<Client> c) {
   auto team = c->team();
-  S_TeamMembershipInformation_BB_12EA cmd;
+  S_UpdateTeamMembership_BB_12EA cmd;
   if (team) {
     cmd.membership = team->base_membership_for_member(c->login->account->account_id);
   }
@@ -4131,14 +4131,10 @@ static S_TeamInfoForPlayer_BB_13EA_15EA_Entry team_metadata_for_client(shared_pt
   auto team = c->team();
   S_TeamInfoForPlayer_BB_13EA_15EA_Entry cmd;
   cmd.lobby_client_id = c->lobby_client_id;
-  cmd.guild_card_number2 = c->login->account->account_id;
+  cmd.guild_card_number = c->login->account->account_id;
   cmd.player_name = c->character()->disp.name;
   if (team) {
-    cmd.guild_card_number = c->login->account->account_id;
-    cmd.team_id = team->team_id;
-    cmd.privilege_level = team->members.at(c->login->account->account_id).privilege_level();
-    cmd.team_member_count = min<size_t>(team->members.size(), 100);
-    cmd.team_name.encode(team->name);
+    cmd.membership = team->base_membership_for_member(c->login->account->account_id);
     if (team->flag_data) {
       cmd.flag_data = *team->flag_data;
     }
@@ -4317,31 +4313,26 @@ void send_team_reward_list(shared_ptr<Client> c, bool show_purchased) {
 void send_team_metadata_change_notifications(
     shared_ptr<ServerState> s,
     shared_ptr<const TeamIndex::Team> team,
+    uint32_t changed_member_account_id,
     uint8_t what) {
   using TMC = TeamMetadataChange;
   for (const auto& it : team->members) {
     try {
       auto member_c = s->find_client(nullptr, it.second.account_id);
-      if (what & TMC::TEAM_MASTER) {
+      bool is_changed_client = (member_c->login && (member_c->login->account->account_id == changed_member_account_id));
+      if (is_changed_client || (what & TMC::TEAM_MASTER)) {
         send_update_lobby_data_bb(member_c);
       }
-      if (what & (TMC::TEAM_MASTER | TMC::TEAM_NAME)) {
-        send_team_membership_info(member_c);
+      if (is_changed_client || (what & (TMC::TEAM_MASTER | TMC::TEAM_NAME | TMC::TEAM_MEMBER_COUNT))) {
+        send_update_team_membership(member_c);
       }
-      if (what & (TMC::TEAM_MASTER | TMC::FLAG_DATA | TMC::TEAM_NAME)) {
+      if (is_changed_client || (what & (TMC::TEAM_MASTER | TMC::FLAG_DATA | TMC::TEAM_NAME | TMC::TEAM_MEMBER_COUNT))) {
         send_update_team_metadata_for_client(member_c);
       }
-      if (what & TMC::REWARD_FLAGS) {
+      if (is_changed_client || (what & TMC::REWARD_FLAGS)) {
         send_update_team_reward_flags(member_c);
       }
     } catch (const out_of_range&) {
     }
   }
-}
-
-void send_team_membership_change_notifications(shared_ptr<Client> changed_c) {
-  send_update_lobby_data_bb(changed_c);
-  send_update_team_metadata_for_client(changed_c);
-  send_team_membership_info(changed_c);
-  send_update_team_reward_flags(changed_c);
 }

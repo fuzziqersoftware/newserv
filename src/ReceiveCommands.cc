@@ -5237,7 +5237,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         c->login->account->save();
 
         send_command(c, 0x02EA, 0x00000000);
-        send_team_membership_change_notifications(c);
+        send_team_metadata_change_notifications(s, team, c->login->account->account_id, TeamMetadataChange::TEAM_CREATED);
       }
       break;
     }
@@ -5271,10 +5271,10 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
                 team->team_id,
                 added_c->login->account->account_id,
                 added_c->character()->disp.name.decode(added_c->language()));
-
-            send_team_membership_change_notifications(added_c);
             send_command(c, 0x04EA, 0x00000000);
             send_command(added_c, 0x04EA, 0x00000000);
+            send_team_metadata_change_notifications(
+                s, team, added_c->login->account->account_id, TeamMetadataChange::TEAM_MEMBER_COUNT);
           }
         }
       }
@@ -5302,9 +5302,8 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
             } catch (const out_of_range&) {
             }
           }
-          if (removed_c) {
-            send_team_membership_change_notifications(removed_c);
-          }
+          send_team_metadata_change_notifications(
+              s, team, removed_c->login->account->account_id, TeamMetadataChange::TEAM_MEMBER_COUNT);
         } else {
           // TODO: Figure out the right error code to use here.
           send_command(c, 0x06EA, 0x00000001);
@@ -5348,7 +5347,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       if (team && team->members.at(c->login->account->account_id).check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
         const auto& cmd = check_size_t<C_SetTeamFlag_BB_0FEA>(data);
         s->team_index->set_flag_data(team->team_id, cmd.flag_data);
-        send_team_metadata_change_notifications(s, team, TeamMetadataChange::FLAG_DATA);
+        send_team_metadata_change_notifications(s, team, 0, TeamMetadataChange::FLAG_DATA);
       }
       break;
     }
@@ -5357,7 +5356,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       if (team && team->members.at(c->login->account->account_id).check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
         s->team_index->disband(team->team_id);
         send_command(c, 0x10EA, 0x00000000);
-        send_team_metadata_change_notifications(s, team, TeamMetadataChange::TEAM_DISBANDED);
+        send_team_metadata_change_notifications(s, team, 0, TeamMetadataChange::TEAM_DISBANDED);
       }
       break;
     }
@@ -5370,14 +5369,11 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         }
 
         // The client only sends this command with flag = 0x00, 0x30, or 0x40
-        bool send_updates_for_this_m = false;
-        bool send_updates_for_other_m = false;
-        bool send_master_transfer_updates = false;
         switch (flag) {
           case 0x00: // Demote member
             if (s->team_index->demote_leader(c->login->account->account_id, cmd.guild_card_number)) {
               send_command(c, 0x11EA, 0x00000000);
-              send_updates_for_other_m = true;
+              send_team_metadata_change_notifications(s, team, cmd.guild_card_number, 0);
             } else {
               send_command(c, 0x11EA, 0x00000005);
             }
@@ -5385,7 +5381,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           case 0x30: // Promote member
             if (s->team_index->promote_leader(c->login->account->account_id, cmd.guild_card_number)) {
               send_command(c, 0x11EA, 0x00000000);
-              send_updates_for_other_m = true;
+              send_team_metadata_change_notifications(s, team, cmd.guild_card_number, 0);
             } else {
               send_command(c, 0x11EA, 0x00000005);
             }
@@ -5393,32 +5389,10 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           case 0x40: // Transfer master
             s->team_index->change_master(c->login->account->account_id, cmd.guild_card_number);
             send_command(c, 0x11EA, 0x00000000);
-            send_updates_for_this_m = true;
-            send_updates_for_other_m = true;
-            send_master_transfer_updates = true;
+            send_team_metadata_change_notifications(s, team, cmd.guild_card_number, TeamMetadataChange::TEAM_MASTER);
             break;
           default:
             throw runtime_error("invalid privilege level");
-        }
-
-        if (send_master_transfer_updates) {
-          for (const auto& it : team->members) {
-            try {
-              auto other_c = s->find_client(nullptr, it.second.account_id);
-              send_update_lobby_data_bb(other_c);
-            } catch (const out_of_range&) {
-            }
-          }
-        }
-        if (send_updates_for_this_m) {
-          send_team_membership_change_notifications(c);
-        }
-        if (send_updates_for_other_m) {
-          try {
-            auto other_c = s->find_client(nullptr, cmd.guild_card_number);
-            send_team_membership_change_notifications(other_c);
-          } catch (const out_of_range&) {
-          }
         }
       }
       break;
@@ -5454,7 +5428,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         s->team_index->buy_reward(team->team_id, reward.key, reward.team_points, reward.reward_flag);
 
         if (reward.reward_flag != TeamIndex::Team::RewardFlag::NONE) {
-          send_team_metadata_change_notifications(s, team, TeamMetadataChange::REWARD_FLAGS);
+          send_team_metadata_change_notifications(s, team, 0, TeamMetadataChange::REWARD_FLAGS);
         }
         if (!reward.reward_item.empty()) {
           c->current_bank().add_item(reward.reward_item, *s->item_stack_limits(c->version()));
@@ -5477,7 +5451,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       } else {
         s->team_index->rename(team->team_id, new_team_name);
         send_command(c, 0x1FEA, 0x00000000);
-        send_team_metadata_change_notifications(s, team, TeamMetadataChange::TEAM_NAME);
+        send_team_metadata_change_notifications(s, team, 0, TeamMetadataChange::TEAM_NAME);
       }
       break;
     }
