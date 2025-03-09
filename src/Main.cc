@@ -838,8 +838,8 @@ static void a_encrypt_decrypt_vms_save_fn(phosg::Arguments& args) {
 
 Action a_decrypt_vms_save("decrypt-vms-save", nullptr, a_encrypt_decrypt_vms_save_fn);
 Action a_encrypt_vms_save("encrypt-vms-save", "\
-  encrypt-gci-save --seed=SEED INPUT-FILENAME [OUTPUT-FILENAME]\n\
-  decrypt-gci-save [--seed=SEED] INPUT-FILENAME [OUTPUT-FILENAME]\n\
+  encrypt-vms-save --seed=SEED INPUT-FILENAME [OUTPUT-FILENAME]\n\
+  decrypt-vms-save [--seed=SEED] INPUT-FILENAME [OUTPUT-FILENAME]\n\
     Encrypt or decrypt a character or Guild Card file in VMS format. If\n\
     encrypting, the checksum is also recomputed and stored in the encrypted\n\
     file. --seed is the encryption seed (serial number) specified as a 32-bit\n\
