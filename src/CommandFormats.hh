@@ -3044,8 +3044,9 @@ struct S_TournamentEntryList_Ep3_E2 {
 // E2 (S->C): Set system file contents (BB)
 
 struct S_SyncSystemFile_BB_E2 {
-  PSOBBBaseSystemFile system_file;
-  PSOBBTeamMembership team_membership;
+  /* 0000 */ PSOBBBaseSystemFile system_file;
+  /* 02B8 */ PSOBBFullTeamMembership team_membership;
+  /* 0AF0 */
 } __packed_ws__(S_SyncSystemFile_BB_E2, 0xAF0);
 
 // E3 (S->C): Game or tournament info (Episode 3)
@@ -3244,7 +3245,7 @@ struct C_CreateSpectatorTeam_Ep3_E7 {
 struct SC_SyncSaveFiles_BB_E7 {
   /* 0000 */ PSOBBCharacterFile char_file;
   /* 2EA4 */ PSOBBBaseSystemFile system_file;
-  /* 30DC */ PSOBBTeamMembership team_membership;
+  /* 315C */ PSOBBFullTeamMembership team_membership;
   /* 3994 */
 } __packed_ws__(SC_SyncSaveFiles_BB_E7, 0x3994);
 
@@ -3488,19 +3489,13 @@ struct C_ChangeTeamMemberPrivilegeLevel_BB_11EA {
 } __packed_ws__(C_ChangeTeamMemberPrivilegeLevel_BB_11EA, 4);
 
 // 12EA (S->C): Team membership information
-// If the client is not in a team, all fields should be zero.
+// This updates the client's view of its system file.
 
 struct S_TeamMembershipInformation_BB_12EA {
-  le_uint32_t unknown_a1 = 0;
-  le_uint32_t guild_card_number = 0;
-  le_uint32_t team_id = 0;
-  le_uint32_t unknown_a4 = 0;
-  le_uint32_t unknown_a6 = 0;
-  uint8_t privilege_level = 0;
-  uint8_t team_member_count = 0;
-  uint8_t unknown_a8 = 0;
-  uint8_t unknown_a9 = 0;
-  pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> team_name;
+  // If skip_update_system_file is not zero, the client ignores the command.
+  // It's not clear why this field exists.
+  le_uint32_t skip_update_system_file = 0;
+  PSOBBBaseTeamMembership membership;
 } __packed_ws__(S_TeamMembershipInformation_BB_12EA, 0x38);
 
 // 13EA: Team info for lobby players

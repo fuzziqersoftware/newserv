@@ -79,7 +79,8 @@ public:
     void save_flag() const;
     void delete_files() const;
 
-    PSOBBTeamMembership membership_for_member(uint32_t account_id) const;
+    PSOBBBaseTeamMembership base_membership_for_member(uint32_t account_id) const;
+    PSOBBFullTeamMembership full_membership_for_member(uint32_t account_id) const;
 
     [[nodiscard]] inline bool check_reward_flag(RewardFlag flag) const {
       return !!(static_cast<uint8_t>(flag) & this->reward_flags);

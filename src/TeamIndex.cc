@@ -129,19 +129,25 @@ void TeamIndex::Team::delete_files() const {
   remove(flag_filename.c_str());
 }
 
-PSOBBTeamMembership TeamIndex::Team::membership_for_member(uint32_t account_id) const {
+PSOBBBaseTeamMembership TeamIndex::Team::base_membership_for_member(uint32_t account_id) const {
   const auto& m = this->members.at(account_id);
 
-  PSOBBTeamMembership ret;
+  PSOBBBaseTeamMembership ret;
   ret.team_master_guild_card_number = this->master_account_id;
   ret.team_id = this->team_id;
   ret.unknown_a5 = 0;
   ret.unknown_a6 = 0;
   ret.privilege_level = m.privilege_level();
-  ret.unknown_a7 = 0;
+  ret.team_member_count = this->members.size();
   ret.unknown_a8 = 0;
   ret.unknown_a9 = 0;
   ret.team_name.encode(this->name);
+  return ret;
+}
+
+PSOBBFullTeamMembership TeamIndex::Team::full_membership_for_member(uint32_t account_id) const {
+  PSOBBFullTeamMembership ret;
+  ret.base = base_membership_for_member(account_id);
   if (this->flag_data) {
     ret.flag_data = *this->flag_data;
   } else {

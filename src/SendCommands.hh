@@ -455,3 +455,17 @@ void send_team_member_list(std::shared_ptr<Client> c); // 09EA
 void send_intra_team_ranking(std::shared_ptr<Client> c); // 18EA
 void send_team_reward_list(std::shared_ptr<Client> c, bool show_purchased); // 19EA, 1AEA
 void send_cross_team_ranking(std::shared_ptr<Client> c); // 1CEA
+
+enum TeamMetadataChange : uint8_t {
+  TEAM_MASTER = 0x01,
+  FLAG_DATA = 0x02,
+  REWARD_FLAGS = 0x04,
+  TEAM_NAME = 0x08,
+  TEAM_DISBANDED = 0xFF,
+};
+
+void send_team_metadata_change_notifications(
+    std::shared_ptr<ServerState> s,
+    std::shared_ptr<const TeamIndex::Team> team,
+    uint8_t what);
+void send_team_membership_change_notifications(std::shared_ptr<Client> changed_c);

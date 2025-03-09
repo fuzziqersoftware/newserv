@@ -1173,7 +1173,7 @@ PSOCHARFile::LoadSharedResult PSOCHARFile::load_shared(const string& filename, b
   if (header.flag != 0x00000000) {
     throw runtime_error("incorrect flag in character file header");
   }
-  static_assert(sizeof(PSOBBCharacterFile) + sizeof(PSOBBBaseSystemFile) + sizeof(PSOBBTeamMembership) == 0x3994, ".psochar size is incorrect");
+  static_assert(sizeof(PSOBBCharacterFile) + sizeof(PSOBBBaseSystemFile) + sizeof(PSOBBFullTeamMembership) == 0x3994, ".psochar size is incorrect");
 
   LoadSharedResult ret;
   ret.character_file = make_shared<PSOBBCharacterFile>(phosg::freadx<PSOBBCharacterFile>(f.get()));
@@ -1188,7 +1188,7 @@ void PSOCHARFile::save(
     std::shared_ptr<const PSOBBBaseSystemFile> system,
     std::shared_ptr<const PSOBBCharacterFile> character) {
   auto f = phosg::fopen_unique(filename, "wb");
-  PSOCommandHeaderBB header = {sizeof(PSOCommandHeaderBB) + sizeof(PSOBBCharacterFile) + sizeof(PSOBBBaseSystemFile) + sizeof(PSOBBTeamMembership), 0x00E7, 0x00000000};
+  PSOCommandHeaderBB header = {sizeof(PSOCommandHeaderBB) + sizeof(PSOBBCharacterFile) + sizeof(PSOBBBaseSystemFile) + sizeof(PSOBBFullTeamMembership), 0x00E7, 0x00000000};
   phosg::fwritex(f.get(), header);
   phosg::fwritex(f.get(), *character);
   phosg::fwritex(f.get(), *system);
@@ -1202,7 +1202,7 @@ void PSOCHARFile::save(
   // be used anyway, and if it's not, then it would presumably have a different
   // set of teams with a different set of team IDs anyway, so the membership
   // struct here would be useless either way.
-  static const PSOBBTeamMembership empty_membership;
+  static const PSOBBFullTeamMembership empty_membership;
   phosg::fwritex(f.get(), empty_membership);
 }
 

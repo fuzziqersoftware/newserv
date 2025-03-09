@@ -198,22 +198,29 @@ check_struct_size(SaveFileShortcutEntryGC, 0x54);
 check_struct_size(SaveFileShortcutEntryXB, 0x54);
 check_struct_size(SaveFileShortcutEntryBB, 0xA4);
 
-struct PSOBBTeamMembership {
-  /* 0000 */ le_uint32_t team_master_guild_card_number = 0;
-  /* 0004 */ le_uint32_t team_id = 0;
-  /* 0008 */ le_uint32_t unknown_a5 = 0;
-  /* 000C */ le_uint32_t unknown_a6 = 0;
-  /* 0010 */ uint8_t privilege_level = 0;
-  /* 0011 */ uint8_t unknown_a7 = 0;
-  /* 0012 */ uint8_t unknown_a8 = 0;
-  /* 0013 */ uint8_t unknown_a9 = 0;
-  /* 0014 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> team_name;
+struct PSOBBBaseTeamMembership {
+  /* 00 */ le_uint32_t team_master_guild_card_number = 0;
+  /* 04 */ le_uint32_t team_id = 0;
+  /* 08 */ le_uint32_t unknown_a5 = 0;
+  /* 0C */ le_uint32_t unknown_a6 = 0;
+  /* 10 */ uint8_t privilege_level = 0;
+  /* 11 */ uint8_t team_member_count = 0;
+  /* 12 */ uint8_t unknown_a8 = 0;
+  /* 13 */ uint8_t unknown_a9 = 0;
+  /* 14 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> team_name;
+  /* 34 */
+
+  PSOBBBaseTeamMembership() = default;
+} __packed_ws__(PSOBBBaseTeamMembership, 0x34);
+
+struct PSOBBFullTeamMembership {
+  /* 0000 */ PSOBBBaseTeamMembership base;
   /* 0034 */ parray<le_uint16_t, 0x20 * 0x20> flag_data;
   /* 0834 */ le_uint32_t reward_flags = 0;
   /* 0838 */
 
-  PSOBBTeamMembership() = default;
-} __packed_ws__(PSOBBTeamMembership, 0x838);
+  PSOBBFullTeamMembership() = default;
+} __packed_ws__(PSOBBFullTeamMembership, 0x838);
 
 ////////////////////////////////////////////////////////////////////////////////
 // System files
@@ -847,7 +854,7 @@ struct PSOCHARFile {
   /* 0000 */ PSOCommandHeaderBB header; // command = 0x00E7, size = 0x399C, flag = 0
   /* 0008 */ PSOBBCharacterFile character;
   /* 2EAC */ PSOBBBaseSystemFile system;
-  /* 3164 */ PSOBBTeamMembership team_membership;
+  /* 3164 */ PSOBBFullTeamMembership team_membership;
   /* 399C */
 
   struct LoadSharedResult {
@@ -1010,7 +1017,7 @@ struct LegacySavedAccountDataBB { // .nsa file format
   /* 0040 */ parray<le_uint32_t, 0x001E> blocked_senders;
   /* 00B8 */ PSOBBGuildCardFile guild_card_file;
   /* D648 */ PSOBBBaseSystemFile system_file;
-  /* D880 */ PSOBBTeamMembership team_membership;
+  /* D880 */ PSOBBFullTeamMembership team_membership;
   /* E138 */ le_uint32_t unused = 0;
   /* E13C */ le_uint32_t option_flags = 0x00040058;
   /* E140 */ parray<SaveFileShortcutEntryBB, 0x10> shortcuts;

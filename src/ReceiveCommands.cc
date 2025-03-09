@@ -5237,9 +5237,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         c->login->account->save();
 
         send_command(c, 0x02EA, 0x00000000);
-        send_update_team_metadata_for_client(c);
-        send_team_membership_info(c);
-        send_update_team_reward_flags(c);
+        send_team_membership_change_notifications(c);
       }
       break;
     }
@@ -5274,8 +5272,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
                 added_c->login->account->account_id,
                 added_c->character()->disp.name.decode(added_c->language()));
 
-            send_update_team_metadata_for_client(added_c);
-            send_team_membership_info(added_c);
+            send_team_membership_change_notifications(added_c);
             send_command(c, 0x04EA, 0x00000000);
             send_command(added_c, 0x04EA, 0x00000000);
           }
@@ -5306,8 +5303,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
             }
           }
           if (removed_c) {
-            send_update_team_metadata_for_client(removed_c);
-            send_team_membership_info(removed_c);
+            send_team_membership_change_notifications(removed_c);
           }
         } else {
           // TODO: Figure out the right error code to use here.
@@ -5352,13 +5348,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       if (team && team->members.at(c->login->account->account_id).check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
         const auto& cmd = check_size_t<C_SetTeamFlag_BB_0FEA>(data);
         s->team_index->set_flag_data(team->team_id, cmd.flag_data);
-        for (const auto& it : team->members) {
-          try {
-            auto member_c = s->find_client(nullptr, it.second.account_id);
-            send_update_team_metadata_for_client(member_c);
-          } catch (const out_of_range&) {
-          }
-        }
+        send_team_metadata_change_notifications(s, team, TeamMetadataChange::FLAG_DATA);
       }
       break;
     }
@@ -5366,16 +5356,8 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       auto team = c->team();
       if (team && team->members.at(c->login->account->account_id).check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
         s->team_index->disband(team->team_id);
-
         send_command(c, 0x10EA, 0x00000000);
-        for (const auto& it : team->members) {
-          try {
-            auto member_c = s->find_client(nullptr, it.second.account_id);
-            send_update_team_metadata_for_client(member_c);
-            send_team_membership_info(member_c);
-          } catch (const out_of_range&) {
-          }
-        }
+        send_team_metadata_change_notifications(s, team, TeamMetadataChange::TEAM_DISBANDED);
       }
       break;
     }
@@ -5429,14 +5411,12 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
           }
         }
         if (send_updates_for_this_m) {
-          send_update_team_metadata_for_client(c);
-          send_team_membership_info(c);
+          send_team_membership_change_notifications(c);
         }
         if (send_updates_for_other_m) {
           try {
             auto other_c = s->find_client(nullptr, cmd.guild_card_number);
-            send_update_team_metadata_for_client(other_c);
-            send_team_membership_info(other_c);
+            send_team_membership_change_notifications(other_c);
           } catch (const out_of_range&) {
           }
         }
@@ -5474,13 +5454,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
         s->team_index->buy_reward(team->team_id, reward.key, reward.team_points, reward.reward_flag);
 
         if (reward.reward_flag != TeamIndex::Team::RewardFlag::NONE) {
-          for (const auto& it : team->members) {
-            try {
-              auto member_c = s->find_client(nullptr, it.second.account_id);
-              send_update_team_reward_flags(member_c);
-            } catch (const out_of_range&) {
-            }
-          }
+          send_team_metadata_change_notifications(s, team, TeamMetadataChange::REWARD_FLAGS);
         }
         if (!reward.reward_item.empty()) {
           c->current_bank().add_item(reward.reward_item, *s->item_stack_limits(c->version()));
@@ -5503,14 +5477,7 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
       } else {
         s->team_index->rename(team->team_id, new_team_name);
         send_command(c, 0x1FEA, 0x00000000);
-        for (const auto& it : team->members) {
-          try {
-            auto member_c = s->find_client(nullptr, it.second.account_id);
-            send_update_team_metadata_for_client(c);
-            send_team_membership_info(c);
-          } catch (const out_of_range&) {
-          }
-        }
+        send_team_metadata_change_notifications(s, team, TeamMetadataChange::TEAM_NAME);
       }
       break;
     }

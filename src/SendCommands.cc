@@ -623,7 +623,7 @@ void send_system_file_bb(shared_ptr<Client> c) {
   S_SyncSystemFile_BB_E2 cmd;
   cmd.system_file = *c->system_file();
   if (team) {
-    cmd.team_membership = team->membership_for_member(c->login->account->account_id);
+    cmd.team_membership = team->full_membership_for_member(c->login->account->account_id);
   }
   send_command_t(c, 0x00E2, 0x00000000, cmd);
 }
@@ -757,7 +757,7 @@ void send_complete_player_bb(shared_ptr<Client> c) {
   cmd.char_file = *p;
   cmd.system_file = *sys;
   if (team) {
-    cmd.team_membership = team->membership_for_member(c->login->account->account_id);
+    cmd.team_membership = team->full_membership_for_member(c->login->account->account_id);
   }
   send_command_t(c, 0x00E7, 0x00000000, cmd);
 }
@@ -2358,7 +2358,7 @@ void send_player_join_notification(shared_ptr<Client> c,
 void send_update_lobby_data_bb(std::shared_ptr<Client> c) {
   auto l = c->require_lobby();
   for (auto lc : l->clients) {
-    if (lc) {
+    if (lc && lc->version() == Version::BB_V4) {
       PlayerLobbyDataBB cmd;
       populate_lobby_data_for_client(cmd, c, lc);
       send_command_t(lc, 0x00F0, 0x00000000, cmd);
@@ -4122,11 +4122,7 @@ void send_team_membership_info(shared_ptr<Client> c) {
   auto team = c->team();
   S_TeamMembershipInformation_BB_12EA cmd;
   if (team) {
-    cmd.guild_card_number = c->login->account->account_id;
-    cmd.team_id = team->team_id;
-    cmd.privilege_level = team->members.at(c->login->account->account_id).privilege_level();
-    cmd.team_member_count = min<size_t>(team->members.size(), 100);
-    cmd.team_name.encode(team->name);
+    cmd.membership = team->base_membership_for_member(c->login->account->account_id);
   }
   send_command_t(c, 0x12EA, 0x00000000, cmd);
 }
@@ -4152,7 +4148,12 @@ static S_TeamInfoForPlayer_BB_13EA_15EA_Entry team_metadata_for_client(shared_pt
 
 void send_update_team_metadata_for_client(shared_ptr<Client> c) {
   auto l = c->require_lobby();
-  send_command_t(l, 0x15EA, 0x00000001, team_metadata_for_client(c));
+  auto metadata = team_metadata_for_client(c);
+  for (auto lc : l->clients) {
+    if (lc && lc->version() == Version::BB_V4) {
+      send_command_t(lc, 0x15EA, 0x00000001, metadata);
+    }
+  }
 }
 
 void send_all_nearby_team_metadatas_to_client(shared_ptr<Client> c, bool is_13EA) {
@@ -4311,4 +4312,36 @@ void send_team_reward_list(shared_ptr<Client> c, bool show_purchased) {
   cmd.num_entries = entries.size();
 
   send_command_t_vt(c, show_purchased ? 0x19EA : 0x1AEA, 0x00000000, cmd, entries);
+}
+
+void send_team_metadata_change_notifications(
+    shared_ptr<ServerState> s,
+    shared_ptr<const TeamIndex::Team> team,
+    uint8_t what) {
+  using TMC = TeamMetadataChange;
+  for (const auto& it : team->members) {
+    try {
+      auto member_c = s->find_client(nullptr, it.second.account_id);
+      if (what & TMC::TEAM_MASTER) {
+        send_update_lobby_data_bb(member_c);
+      }
+      if (what & (TMC::TEAM_MASTER | TMC::TEAM_NAME)) {
+        send_team_membership_info(member_c);
+      }
+      if (what & (TMC::TEAM_MASTER | TMC::FLAG_DATA | TMC::TEAM_NAME)) {
+        send_update_team_metadata_for_client(member_c);
+      }
+      if (what & TMC::REWARD_FLAGS) {
+        send_update_team_reward_flags(member_c);
+      }
+    } catch (const out_of_range&) {
+    }
+  }
+}
+
+void send_team_membership_change_notifications(shared_ptr<Client> changed_c) {
+  send_update_lobby_data_bb(changed_c);
+  send_update_team_metadata_for_client(changed_c);
+  send_team_membership_info(changed_c);
+  send_update_team_reward_flags(changed_c);
 }
