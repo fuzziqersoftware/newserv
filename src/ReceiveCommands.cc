@@ -4402,7 +4402,7 @@ shared_ptr<Lobby> create_game_generic(
       break;
     case Episode::EP2:
       for (Version v : ALL_VERSIONS) {
-        if (!is_v3(v) || is_ep3(v)) {
+        if (is_v1_or_v2(v) || is_ep3(v)) {
           game->forbid_version(v);
         }
       }
