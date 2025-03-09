@@ -212,20 +212,6 @@ uint32_t compute_psogc_timestamp(
   return second + (minute + (hour + (res_day * 24)) * 60) * 60;
 }
 
-string decrypt_gci_fixed_size_data_section_for_salvage(
-    const void* data_section,
-    size_t size,
-    uint32_t round1_seed,
-    uint64_t round2_seed,
-    size_t max_decrypt_bytes) {
-  string decrypted = decrypt_data_section<true>(data_section, size, round1_seed, max_decrypt_bytes);
-
-  PSOV2Encryption round2_crypt(round2_seed);
-  round2_crypt.encrypt_big_endian(decrypted.data(), decrypted.size());
-
-  return decrypted;
-}
-
 bool PSOGCSnapshotFile::checksum_correct() const {
   uint32_t crc = phosg::crc32("\0\0\0\0", 4);
   crc = phosg::crc32(&this->width, sizeof(*this) - sizeof(this->checksum), crc);

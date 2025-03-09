@@ -1159,6 +1159,7 @@ Action a_salvage_gci(
     (and should specify either a valid system file or the round1 seed).\n",
     +[](phosg::Arguments& args) {
       bool round2 = args.get<bool>("round2");
+      bool exhaustive = args.get<bool>("exhaustive");
       string seed = args.get<string>("seed");
       string system_filename = args.get<string>("sys");
       size_t num_threads = args.get<size_t>("threads", 0);
@@ -1195,54 +1196,102 @@ Action a_salvage_gci(
 
       const void* data_section = r.getv(header.data_size);
 
+      string round1_decrypted;
+      if (round2) {
+        round1_decrypted = decrypt_data_section<true>(data_section, header.data_size, likely_round1_seed, 0);
+        if (bytes > 0) {
+          round1_decrypted.resize(bytes);
+        }
+      }
+
       auto process_file = [&]<typename StructT>() {
         vector<multimap<size_t, uint32_t>> top_seeds_by_thread(
             num_threads ? num_threads : thread::hardware_concurrency());
-        phosg::parallel_range_blocks<uint64_t>(
-            [&](uint64_t seed, size_t thread_num) -> bool {
-              size_t zero_count;
-              if (round2) {
-                string decrypted = decrypt_gci_fixed_size_data_section_for_salvage(
-                    data_section, header.data_size, likely_round1_seed, seed, bytes);
-                zero_count = phosg::count_zeroes(
-                    decrypted.data() + offset,
-                    decrypted.size() - offset,
-                    stride);
-              } else {
+        auto add_top_seed = +[](multimap<size_t, uint32_t>& top_seeds, uint32_t seed, size_t zero_count) -> void {
+          if (top_seeds.size() < 10 || (zero_count >= top_seeds.begin()->first)) {
+            top_seeds.emplace(zero_count, seed);
+            if (top_seeds.size() > 10) {
+              top_seeds.erase(top_seeds.begin());
+            }
+          }
+        };
+        auto merge_top_seeds = +[](const vector<multimap<size_t, uint32_t>>& top_seeds_by_thread) -> multimap<size_t, uint32_t> {
+          multimap<size_t, uint32_t> ret;
+          for (const auto& thread_top_seeds : top_seeds_by_thread) {
+            for (const auto& it : thread_top_seeds) {
+              ret.emplace(it.first, it.second);
+            }
+          }
+          return ret;
+        };
+        auto print_top_seeds = [&](const multimap<size_t, uint32_t>& top_seeds) -> void {
+          for (const auto& it : top_seeds) {
+            const char* sys_seed_str = (!round2 && (it.second == likely_round1_seed))
+                ? " (this is the seed from the system file)"
+                : "";
+            phosg::log_info("Round %c seed %08" PRIX32 " resulted in %zu zero bytes%s",
+                round2 ? '2' : '1', it.second, it.first, sys_seed_str);
+          }
+        };
+
+        uint32_t round2_lower_half = 0;
+        auto try_round2_seed = [&](uint64_t seed, size_t thread_num) -> bool {
+          seed |= round2_lower_half;
+          string decrypted = round1_decrypted;
+          PSOV2Encryption(seed).encrypt_big_endian(decrypted.data(), decrypted.size());
+          size_t zero_count = phosg::count_zeroes(decrypted.data() + offset, decrypted.size() - offset, stride);
+          add_top_seed(top_seeds_by_thread[thread_num], seed, zero_count);
+          return false;
+        };
+
+        if (!round2) {
+          phosg::parallel_range_blocks<uint64_t>(
+              [&](uint64_t seed, size_t thread_num) -> bool {
                 auto decrypted = decrypt_fixed_size_data_section_t<StructT, true>(
-                    data_section,
-                    header.data_size,
-                    seed,
-                    true);
-                zero_count = phosg::count_zeroes(
+                    data_section, header.data_size, seed, true);
+                size_t zero_count = phosg::count_zeroes(
                     reinterpret_cast<const uint8_t*>(&decrypted) + offset,
                     sizeof(decrypted) - offset,
                     stride);
-              }
-              auto& top_seeds = top_seeds_by_thread[thread_num];
-              if (top_seeds.size() < 10 || (zero_count >= top_seeds.begin()->second)) {
-                top_seeds.emplace(zero_count, seed);
-                if (top_seeds.size() > 10) {
-                  top_seeds.erase(top_seeds.begin());
-                }
-              }
-              return false;
-            },
-            0, 0x100000000, 0x1000, num_threads);
+                add_top_seed(top_seeds_by_thread[thread_num], seed, zero_count);
+                return false;
+              },
+              0, 0x100000000, 0x1000, num_threads);
 
-        multimap<size_t, uint32_t> top_seeds;
-        for (const auto& thread_top_seeds : top_seeds_by_thread) {
-          for (const auto& it : thread_top_seeds) {
-            top_seeds.emplace(it.first, it.second);
+        } else if (!exhaustive) {
+          // The pseudorandom number generator used by PSO to encrypt its save
+          // files has a weakness: if the low bits of the seed are correct, the
+          // low bits of each 32-bit integer in the plaintext will also be
+          // correct, even if the high bits of the seed are wrong. Using this,
+          // we can brute-force the low half of the seed, then the high half,
+          // which is much faster than trying all possible seeds.
+          // Unfortunately, this relies on the distribution of values in the
+          // plaintext, so it only works for the round-2 seed - the decrypted
+          // data after round 1 is still essentially random.
+          phosg::parallel_range_blocks<uint64_t>(try_round2_seed, 0, 0x100000, 0x1000, num_threads);
+          auto intermediate_top_seeds = merge_top_seeds(top_seeds_by_thread);
+          if (intermediate_top_seeds.empty()) {
+            throw logic_error("no intermediate seeds were found");
           }
+          print_top_seeds(intermediate_top_seeds);
+          round2_lower_half = intermediate_top_seeds.rbegin()->second & 0xFFFF;
+          phosg::log_info("Lower half of seed is likely %04" PRIX32 " (%zu zero bytes)", round2_lower_half, intermediate_top_seeds.rbegin()->first);
+          for (auto& top_seeds : top_seeds_by_thread) {
+            top_seeds.clear();
+          }
+          phosg::parallel_range_blocks<uint64_t>(
+              [&](uint64_t seed, size_t thread_num) -> bool {
+                return try_round2_seed((seed << 16) | round2_lower_half, thread_num);
+              },
+              0, 0x10000, 0x80, num_threads);
+
+        } else {
+          // The user requested not to take any shortcuts, so burn a lot of CPU
+          // power
+          phosg::parallel_range_blocks<uint64_t>(try_round2_seed, 0, 0x100000000, 0x1000, num_threads);
         }
-        for (const auto& it : top_seeds) {
-          const char* sys_seed_str = (!round2 && (it.second == likely_round1_seed))
-              ? " (this is the seed from the system file)"
-              : "";
-          phosg::log_info("Round %c seed %08" PRIX32 " resulted in %zu zero bytes%s",
-              round2 ? '2' : '1', it.second, it.first, sys_seed_str);
-        }
+
+        print_top_seeds(merge_top_seeds(top_seeds_by_thread));
       };
 
       if (header.data_size == sizeof(PSOGCGuildCardFile)) {

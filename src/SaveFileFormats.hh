@@ -1182,13 +1182,6 @@ std::string encrypt_fixed_size_data_section_t(const StructT& s, uint32_t round1_
   return encrypt_data_section<BE>(&encrypted, sizeof(StructT), round1_seed);
 }
 
-std::string decrypt_gci_fixed_size_data_section_for_salvage(
-    const void* data_section,
-    size_t size,
-    uint32_t round1_seed,
-    uint64_t round2_seed,
-    size_t max_decrypt_bytes);
-
 uint32_t compute_psogc_timestamp(
     uint16_t year,
     uint8_t month,
