@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "EventUtils.hh"
+#include "IPStackSimulator.hh"
 #include "Loggers.hh"
 #include "ProxyServer.hh"
 #include "Revision.hh"
@@ -540,10 +541,34 @@ phosg::JSON HTTPServer::generate_account_json_st(shared_ptr<const Account> a) {
   });
 };
 
+static phosg::JSON format_remote_client_address(
+    std::shared_ptr<IPStackSimulator> ip_stack_simulator, const Channel& ch) {
+  if (!ch.virtual_network_id) {
+    if (ch.remote_addr.ss_family == 0) {
+      return nullptr;
+    } else {
+      return phosg::render_sockaddr_storage(ch.remote_addr);
+    }
+  } else if (ip_stack_simulator) {
+    auto network = ip_stack_simulator->get_network(ch.virtual_network_id);
+    int fd = bufferevent_getfd(network->bev.get());
+    if (fd < 0) {
+      return nullptr;
+    } else {
+      struct sockaddr_storage remote_ss;
+      phosg::get_socket_addresses(fd, nullptr, &remote_ss);
+      return phosg::render_sockaddr_storage(remote_ss);
+    }
+  } else {
+    return "__unknown_address__";
+  }
+}
+
 phosg::JSON HTTPServer::generate_game_client_json_st(shared_ptr<const Client> c, shared_ptr<const ItemNameIndex> item_name_index) {
+  auto s = c->require_server_state();
   auto ret = phosg::JSON::dict({
       {"ID", c->id},
-      {"RemoteAddress", phosg::render_sockaddr_storage(c->channel.remote_addr)},
+      {"RemoteAddress", format_remote_client_address(s->ip_stack_simulator, c->channel)},
       {"Version", phosg::name_for_enum(c->version())},
       {"SubVersion", c->sub_version},
       {"Config", HTTPServer::generate_client_config_json_st(c->config)},
@@ -717,9 +742,10 @@ phosg::JSON HTTPServer::generate_proxy_client_json_st(shared_ptr<const ProxyServ
     }
   }
 
+  auto s = ses->require_server_state();
   auto ret = phosg::JSON::dict({
       {"ID", ses->id},
-      {"RemoteClientAddress", phosg::render_sockaddr_storage(ses->client_channel.remote_addr)},
+      {"RemoteClientAddress", format_remote_client_address(s->ip_stack_simulator, ses->client_channel)},
       {"RemoteServerAddress", phosg::render_sockaddr_storage(ses->server_channel.remote_addr)},
       {"LocalPort", ses->local_port},
       {"NextDestination", phosg::render_sockaddr_storage(ses->next_destination)},
