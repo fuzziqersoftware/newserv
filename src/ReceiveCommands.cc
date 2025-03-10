@@ -5302,8 +5302,8 @@ static void on_EA_BB(shared_ptr<Client> c, uint16_t command, uint32_t flag, stri
             } catch (const out_of_range&) {
             }
           }
-          send_team_metadata_change_notifications(
-              s, team, removed_c->login->account->account_id, TeamMetadataChange::TEAM_MEMBER_COUNT);
+          uint32_t removed_account_id = (removed_c && removed_c->login) ? removed_c->login->account->account_id : 0;
+          send_team_metadata_change_notifications(s, team, removed_account_id, TeamMetadataChange::TEAM_MEMBER_COUNT);
         } else {
           // TODO: Figure out the right error code to use here.
           send_command(c, 0x06EA, 0x00000001);
