@@ -3,28 +3,24 @@
 
 # This is also the file I've chosen to document how to write code for newserv's
 # functions subsystem. There are three kinds of functions: includes, patches,
-# and general functions. This file, WriteMemoryGC, is a general function. It
-# writes a variable-length block of data to a specified address in the client's
-# memory.
+# and general functions.
+
+# General functions are not version-specific (usually) but are architecture-
+# specific. This file, WriteMemoryGC, is a general function for all PowerPC
+# versions of PSO, which means all GameCube versions. General functions are
+# named like NAME.ARCH.s, where ARCH is sh4, ppc, or x86.
 
 # Includes are snippets of code that are intended to be used as part of other
-# functions and patches. These files' names end with .inc.s. These can be used
-# with the .include directive; there is an example of this in the code below.
+# general functions and patches. Includes are named like NAME.ARCH.inc.s, where
+# ARCH has the same meaning as above. These can be used with the .include
+# directive; there is an example of this in the code below.
 
 # Patches are functions that are available to run upon client request. They can
 # be made available in the Patches menu or via the $patch command. Patches
-# should be named like PATCHNAME.VXLS.patch.s, where V, X, L, and S denote which
-# specific game version the patch is for. Specifically:
-#   V should be 3 for PSO GameCube, 4 for PSO Xbox, 5 for PSO BB
-#   X should be O for GC Episodes 1 & 2, S for GC Episode 3, 0 for Xbox
-#   L should be E, J, or P for USA, Japanese, or Europe
-#   S should be 0, 1, 2, etc. for the GC disc version (0 = 1.0, 1 = 1.1, etc.)
-#     On Xbox, S is B (beta), D (disc), or U (title update)
-# (For the curious, these four-character version codes directly match the
-# values returned by the VersionDetectGC or VersionDetectXB functions; see
-# those files for more details.) For example, the patch that gives the player a
-# VIP card in Episode 3 USA is in the file VIPCard.3SE0.patch.s. (If there were
-# a Japanese version of that patch, it would be in VIPCard.3SJ0.patch.s.)
+# should be named like PATCHNAME.VERS.patch.s, where VERS denotes which
+# specific game version the patch is for. These version codes are listed in
+# README.md, and directly correspond to values returned by the VersionDetect
+# functions, also in this directory.
 
 # For example, to use this function to write the bytes 38 00 00 05 to the
 # address 8010521C, send_function_call could be called like this:
@@ -93,7 +89,9 @@ copy_block__again:
   lwz     r3, [r6]      # r3 = dest ptr
   lwz     r4, [r6 + 4]  # r4 = size
   # A .include directive essentially pastes in the code from the referenced
-  # file. Here, we use the code from the file FlushCachedCode.inc.s.
+  # file. Here, we use the code from the file FlushCachedCode.inc.s. When
+  # compiling includes, newserv first looks in the same directory as the
+  # function's source, then looks in system/client-functions/System.
   .include FlushCachedCode
 
   # Return the address after the last byte written. The value returned in r3

@@ -9,7 +9,9 @@
 # in the allocated memory region. The allocated memory is never freed.
 # call_opcode_bytes specifies how many bytes at the callsite should be
 # overwritten; this value must be at least 5. The first 5 bytes are overwritten
-# with the call opcode itself; the rest are overwritten with nop opcodes.
+# with the call opcode itself; the rest are overwritten with nop opcodes. If
+# the existing data at the call address is already a call opcode, this function
+# does nothing.
 # This function pops its arguments off the stack before returning.
 
 write_call_to_code:
