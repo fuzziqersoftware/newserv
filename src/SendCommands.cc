@@ -1730,7 +1730,7 @@ void send_lobby_list(shared_ptr<Client> c) {
     auto& e = entries.emplace_back();
     e.menu_id = MenuID::LOBBY;
     e.item_id = l->lobby_id;
-    e.unused = 0;
+    e.player_count = l->count_clients();
   }
 
   send_command_vt(c, 0x83, entries.size(), entries);

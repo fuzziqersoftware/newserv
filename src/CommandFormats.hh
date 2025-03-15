@@ -1551,7 +1551,9 @@ struct SC_SimpleMail_BB_81 {
 struct S_LobbyListEntry_83 {
   le_uint32_t menu_id = 0;
   le_uint32_t item_id = 0;
-  le_uint32_t unused = 0;
+  // It appears that Sega's servers sent the number of players in each lobby in
+  // this field, but the client ignores it.
+  le_uint32_t player_count = 0;
 } __packed_ws__(S_LobbyListEntry_83, 0x0C);
 
 // 84 (C->S): Choose lobby
@@ -4458,8 +4460,10 @@ struct G_WalkToPosition_6x40 {
 
 // 6x41: Move to position (v1)
 // 6x42: Run (protected on V3/V4)
-// This subcommand is completely ignored by v2 and later.
+// Command 6x41 is completely ignored by v2 and later.
 // If UDP mode is enabled, this command is sent via UDP.
+// TODO: Should newserv translate 6x41 to 6x42? Is there any difference in how
+// v1 and pre-v1 handle 6x42 vs. 6x41?
 
 struct G_MoveToPosition_6x41_6x42 {
   G_ClientIDHeader header;
