@@ -128,11 +128,13 @@ Currently newserv works on macOS, Windows, and Ubuntu Linux. It will likely work
 
 ### Windows/macOS
 
-1. Download the latest release-windows-amd64.zip or release-macos-arm64.zip file from the [releases page](https://github.com/fuzziqersoftware/newserv/releases).
+1. Download the latest release.zip file from the [releases page](https://github.com/fuzziqersoftware/newserv/releases).
 2. Extract the contents of the archive to some location on your computer.
 3. (Optional) If you want to change any config options, go into the system/ folder, open config.json in a text editor, and edit it to your liking. There are comments in the file that describe what all the options do.
 4. (Optional) If you plan to play Blue Burst on newserv, set up the patch directory. See [client patch directories](#client-patch-directories) for details.
 5. Run the newserv executable.
+
+If you're on an older version of Windows (before Windows 10), the Cygwin libraries included with the release may be incompatible. See [this issue](https://github.com/fuzziqersoftware/newserv/issues/621) for a possible workaround.
 
 ### Linux
 
