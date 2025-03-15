@@ -71,7 +71,6 @@ struct FunctionCodeIndex {
   // Key here is e.g. "PATCHNAME-SPECIFICVERSION", with the latter in hex
   std::map<std::string, std::shared_ptr<CompiledFunctionCode>> name_and_specific_version_to_patch_function;
 
-  std::shared_ptr<const Menu> patch_menu(uint32_t specific_version) const;
   std::shared_ptr<const Menu> patch_switches_menu(uint32_t specific_version, const std::unordered_set<std::string>& auto_patches_enabled) const;
   bool patch_menu_empty(uint32_t specific_version) const;
 

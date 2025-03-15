@@ -373,10 +373,8 @@ static void send_main_menu(shared_ptr<Client> c) {
       "Download quests", MenuItem::Flag::INVISIBLE_ON_DC_PROTOS | MenuItem::Flag::INVISIBLE_ON_PC_NTE | MenuItem::Flag::INVISIBLE_ON_BB);
   if (!s->is_replay) {
     if (!s->function_code_index->patch_menu_empty(c->config.specific_version)) {
-      main_menu->items.emplace_back(MainMenuItemID::PATCHES, "Patches",
+      main_menu->items.emplace_back(MainMenuItemID::PATCH_SWITCHES, "Patches",
           "Change game\nbehaviors", MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL_RUNS_CODE);
-      main_menu->items.emplace_back(MainMenuItemID::PATCH_SWITCHES, "Patch switches",
-          "Automatically\napply patches every\ntime you connect", MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL_RUNS_CODE);
     }
     if (!s->dol_file_index->empty()) {
       main_menu->items.emplace_back(MainMenuItemID::PROGRAMS, "Programs",
@@ -2361,18 +2359,6 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
           break;
         }
 
-        case MainMenuItemID::PATCHES:
-          if (!function_compiler_available()) {
-            throw runtime_error("function compiler not available");
-          }
-          if (!c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL)) {
-            throw runtime_error("client does not support send_function_call");
-          }
-          prepare_client_for_patches(c, [c]() -> void {
-            send_menu(c, c->require_server_state()->function_code_index->patch_menu(c->config.specific_version));
-          });
-          break;
-
         case MainMenuItemID::PATCH_SWITCHES:
           if (!function_compiler_available()) {
             throw runtime_error("function compiler not available");
@@ -2745,24 +2731,6 @@ static void on_10(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       }
       break;
     }
-
-    case MenuID::PATCHES:
-      if (item_id == PatchesMenuItemID::GO_BACK) {
-        send_main_menu(c);
-
-      } else {
-        if (!c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL)) {
-          throw runtime_error("client does not support send_function_call");
-        }
-
-        auto s = c->require_server_state();
-        uint64_t key = (static_cast<uint64_t>(item_id) << 32) | c->config.specific_version;
-        send_function_call(
-            c, s->function_code_index->menu_item_id_and_specific_version_to_patch_function.at(key));
-        c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
-        send_menu(c, s->function_code_index->patch_menu(c->config.specific_version));
-      }
-      break;
 
     case MenuID::PATCH_SWITCHES:
       if (item_id == PatchesMenuItemID::GO_BACK) {
