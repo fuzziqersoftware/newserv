@@ -173,10 +173,16 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
     }
 
     if (item.is_s_rank_weapon()) {
-      // S-rank (has name instead of percent bonuses)
+      // S-rank weapons have names instead of percent bonuses. The name is
+      // encoded as 9 5-bit characters in the bytes where the bonuses usually
+      // go. The first character does not appear when the name is rendered;
+      // instead, it's used to determine if the weapon type name should appear
+      // or not. Unlike the client, we check the first character directly and
+      // don't bother decoding it.
       uint16_t be_data1w3 = phosg::bswap16(item.data1w[3]);
       uint16_t be_data1w4 = phosg::bswap16(item.data1w[4]);
       uint16_t be_data1w5 = phosg::bswap16(item.data1w[5]);
+      bool hide_type_name = ((be_data1w3 & 0x7C00) == 0x0800);
       uint8_t char_indexes[8] = {
           static_cast<uint8_t>((be_data1w3 >> 5) & 0x1F),
           static_cast<uint8_t>(be_data1w3 & 0x1F),
@@ -197,7 +203,11 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
         name += ch;
       }
       if (!name.empty()) {
-        ret_tokens.emplace_back("(" + name + ")");
+        if (hide_type_name) {
+          ret_tokens.emplace_back("\"" + name + "\"");
+        } else {
+          ret_tokens.emplace_back("(" + name + ")");
+        }
       }
 
     } else { // Not S-rank (extended name bits not set)
