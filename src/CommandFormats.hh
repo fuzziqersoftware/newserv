@@ -5459,11 +5459,11 @@ struct G_SelectChallengeModeFailureOption_6x97 {
 // 6x99: Unknown
 // This subcommand is completely ignored.
 
-// 6x9A: Update player stat (not valid on Episode 3)
+// 6x9A: Update entity stat (not valid on Episode 3)
 
-struct G_UpdatePlayerStat_6x9A {
-  G_ClientIDHeader header;
-  le_uint16_t client_id2 = 0;
+struct G_UpdateEntityStat_6x9A {
+  G_EntityIDHeader header;
+  le_uint16_t entity_index = 0;
   // Values for what:
   // 0 = subtract HP
   // 1 = subtract TP
@@ -5472,7 +5472,7 @@ struct G_UpdatePlayerStat_6x9A {
   // 4 = add TP
   uint8_t what = 0;
   uint8_t amount = 0;
-} __packed_ws__(G_UpdatePlayerStat_6x9A, 8);
+} __packed_ws__(G_UpdateEntityStat_6x9A, 8);
 
 // 6x9B: Level up all techniques (protected on V3/V4)
 // Used in battle mode if the rules specify that techniques should level up

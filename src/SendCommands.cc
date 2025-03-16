@@ -2520,17 +2520,17 @@ void send_resume_game(shared_ptr<Lobby> l, shared_ptr<Client> ready_client) {
 ////////////////////////////////////////////////////////////////////////////////
 // Game/cheat commands
 
-static vector<G_UpdatePlayerStat_6x9A> generate_stats_change_subcommands(
+static vector<G_UpdateEntityStat_6x9A> generate_stats_change_subcommands(
     uint16_t client_id, PlayerStatsChange stat, uint32_t amount) {
-  if (amount > (0x7BF8 * 0xFF) / sizeof(G_UpdatePlayerStat_6x9A)) {
+  if (amount > (0x7BF8 * 0xFF) / sizeof(G_UpdateEntityStat_6x9A)) {
     throw runtime_error("stats change command is too large");
   }
 
   uint8_t stat_ch = static_cast<uint8_t>(stat);
-  vector<G_UpdatePlayerStat_6x9A> subs;
+  vector<G_UpdateEntityStat_6x9A> subs;
   while (amount > 0) {
     uint8_t sub_amount = min<size_t>(amount, 0xFF);
-    subs.emplace_back(G_UpdatePlayerStat_6x9A{{0x9A, 0x02, client_id}, 0, stat_ch, sub_amount});
+    subs.emplace_back(G_UpdateEntityStat_6x9A{{0x9A, 0x02, client_id}, 0, stat_ch, sub_amount});
     amount -= sub_amount;
   }
   return subs;
@@ -2539,12 +2539,12 @@ static vector<G_UpdatePlayerStat_6x9A> generate_stats_change_subcommands(
 void send_player_stats_change(shared_ptr<Client> c, PlayerStatsChange stat, uint32_t amount) {
   auto l = c->require_lobby();
   auto subs = generate_stats_change_subcommands(c->lobby_client_id, stat, amount);
-  send_command_vt(l, (subs.size() > 0x400 / sizeof(G_UpdatePlayerStat_6x9A)) ? 0x6C : 0x60, 0x00, subs);
+  send_command_vt(l, (subs.size() > 0x400 / sizeof(G_UpdateEntityStat_6x9A)) ? 0x6C : 0x60, 0x00, subs);
 }
 
 void send_player_stats_change(Channel& ch, uint16_t client_id, PlayerStatsChange stat, uint32_t amount) {
   auto subs = generate_stats_change_subcommands(client_id, stat, amount);
-  send_command_vt(ch, (subs.size() > 0x400 / sizeof(G_UpdatePlayerStat_6x9A)) ? 0x6C : 0x60, 0x00, subs);
+  send_command_vt(ch, (subs.size() > 0x400 / sizeof(G_UpdateEntityStat_6x9A)) ? 0x6C : 0x60, 0x00, subs);
 }
 
 void send_remove_negative_conditions(shared_ptr<Client> c) {
