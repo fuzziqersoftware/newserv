@@ -1450,7 +1450,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF828, "go_floor", nullptr, {REG, REG}, F_V2_V4},
 
     // Returns the number of enemies killed (in regB) by the player whose
-    // client ID is regA.
+    // client ID is regA. This value is capped to 999.
     {0xF829, "get_num_kills", nullptr, {REG, REG}, F_V2_V4},
 
     // Resets the kill count for the player specified by regA.
