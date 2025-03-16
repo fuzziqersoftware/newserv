@@ -721,7 +721,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
     }
   }
 
-  fprintf(stream, "ARMOR  => ---ID--- TYPE SKIN POINTS -DFP- -EVP- BP BE FLAG LVL EFR ETH EIC EDK ELT DFR EVR SB TB -A2- ST* ---DIVISOR--- NAME\n");
+  fprintf(stream, "ARMOR  => ---ID--- TYPE SKIN POINTS -DFP- -EVP- BP BE FLAG LVL EFR ETH EIC EDK ELT DFR EVR SB TB FT A4 ST* ---DIVISOR--- NAME\n");
   for (size_t data1_1 = 1; data1_1 < 3; data1_1++) {
     float sale_divisor = pmt->get_sale_divisor(0x01, data1_1);
     string divisor_str = phosg::string_printf("%g", sale_divisor);
@@ -738,7 +738,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
       item.data1[2] = data1_2;
       string name = this->describe_item(item);
 
-      fprintf(stream, "01%02zX%02zX => %08" PRIX32 " %04hX %04hX %6" PRIu32 " %5hu %5hu %02hhX %02hhX %04hX %3hhu %3hhu %3hhu %3hhu %3hhu %3hhu %3hhu %3hhu %02hhX %02hhX %04hX %2hhu* %s %s\n",
+      fprintf(stream, "01%02zX%02zX => %08" PRIX32 " %04hX %04hX %6" PRIu32 " %5hu %5hu %02hhX %02hhX %04hX %3hhu %3hhu %3hhu %3hhu %3hhu %3hhu %3hhu %3hhu %02hhX %02hhX %02hhX %02hhX %2hhu* %s %s\n",
           data1_1,
           data1_2,
           a.base.id.load(),
@@ -760,7 +760,8 @@ void ItemNameIndex::print_table(FILE* stream) const {
           a.evp_range,
           a.stat_boost,
           a.tech_boost,
-          a.unknown_a2.load(),
+          a.flags_type,
+          a.unknown_a4,
           stars,
           divisor_str.c_str(),
           name.c_str());
@@ -799,12 +800,11 @@ void ItemNameIndex::print_table(FILE* stream) const {
     }
   }
 
-  fprintf(stream, "MAG    => ---ID--- TYPE SKIN POINTS FTBL PB AC E1 E2 E3 E4 C1 C2 C3 C4 FLAG ST* ---DIVISOR--- NAME\n");
+  fprintf(stream, "MAG    => ---ID--- TYPE SKIN POINTS FTBL PB AC E1 E2 E3 E4 C1 C2 C3 C4 FLAG ---DIVISOR--- NAME\n");
   {
     size_t data1_1_limit = pmt->num_mags();
     for (size_t data1_1 = 0; data1_1 < data1_1_limit; data1_1++) {
       const auto& m = pmt->get_mag(data1_1);
-      uint8_t stars = pmt->get_item_stars(m.base.id);
 
       float sale_divisor = pmt->get_sale_divisor(0x02, data1_1);
       string divisor_str = phosg::string_printf("%g", sale_divisor);
@@ -816,7 +816,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
       item.data1[2] = 0x00;
       string name = this->describe_item(item);
 
-      fprintf(stream, "02%02zX00 => %08" PRIX32 " %04hX %04hX %6" PRIu32 " %04hX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %04hX %2hhu* %s %s\n",
+      fprintf(stream, "02%02zX00 => %08" PRIX32 " %04hX %04hX %6" PRIu32 " %04hX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %04hX %s %s\n",
           data1_1,
           m.base.id.load(),
           m.base.type.load(),
@@ -834,13 +834,12 @@ void ItemNameIndex::print_table(FILE* stream) const {
           m.on_death_flag,
           m.on_boss_flag,
           m.class_flags.load(),
-          stars,
           divisor_str.c_str(),
           name.c_str());
     }
   }
 
-  fprintf(stream, "TOOL   => ---ID--- TYPE SKIN POINTS COUNT TECH -COST- ITEMFLAG ST* ---DIVISOR--- NAME\n");
+  fprintf(stream, "TOOL   => ---ID--- TYPE SKIN POINTS COUNT TECH -COST- ITEMFLAG ---DIVISOR--- NAME\n");
   for (size_t data1_1 = 0; data1_1 < pmt->num_tool_classes; data1_1++) {
     float sale_divisor = pmt->get_sale_divisor(0x03, data1_1);
     string divisor_str = phosg::string_printf("%g", sale_divisor);
@@ -849,7 +848,6 @@ void ItemNameIndex::print_table(FILE* stream) const {
     size_t data1_2_limit = pmt->num_tools_in_class(data1_1);
     for (size_t data1_2 = 0; data1_2 < data1_2_limit; data1_2++) {
       const auto& t = pmt->get_tool(data1_1, data1_2);
-      uint8_t stars = pmt->get_item_stars(t.base.id);
 
       ItemData item;
       item.data1[0] = 0x03;
@@ -858,7 +856,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
       item.set_tool_item_amount(*this->limits, 1);
       string name = this->describe_item(item);
 
-      fprintf(stream, "03%02zX%02zX => %08" PRIX32 " %04hX %04hX %6" PRIu32 " %5hu %04hX %6" PRId32 " %08" PRIX32 " %2hhu* %s %s\n",
+      fprintf(stream, "03%02zX%02zX => %08" PRIX32 " %04hX %04hX %6" PRIu32 " %5hu %04hX %6" PRId32 " %08" PRIX32 " %s %s\n",
           data1_1,
           data1_2,
           t.base.id.load(),
@@ -869,7 +867,6 @@ void ItemNameIndex::print_table(FILE* stream) const {
           t.tech.load(),
           t.cost.load(),
           t.item_flags.load(),
-          stars,
           divisor_str.c_str(),
           name.c_str());
     }

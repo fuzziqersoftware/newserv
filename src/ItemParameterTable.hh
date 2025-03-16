@@ -198,7 +198,11 @@ public:
   struct ArmorOrShieldFinalT : ArmorOrShieldT<BaseT, BE> {
     /* 14 */ uint8_t stat_boost = 0;
     /* 15 */ uint8_t tech_boost = 0;
-    /* 16 */ U16T<BE> unknown_a2 = 0;
+    // TODO: Figure out what this does. Only two values appear to do anything:
+    //   01 sets item->flags |= 4
+    //   03 sets item->flags |= 8
+    /* 16 */ uint8_t flags_type = 0;
+    /* 17 */ uint8_t unknown_a4 = 0;
     /* 18 */
   } __packed__;
   using ArmorOrShieldV4 = ArmorOrShieldFinalT<ItemBaseV4T<false>, false>;
@@ -403,18 +407,18 @@ public:
   } __packed_ws__(ItemCombination, 0x10);
 
   template <bool BE>
-  struct TechniqueBoostT {
-    U32T<BE> tech1 = 0;
-    F32T<BE> boost1 = 0.0f;
-    U32T<BE> tech2 = 0;
-    F32T<BE> boost2 = 0.0f;
-    U32T<BE> tech3 = 0;
-    F32T<BE> boost3 = 0.0f;
+  struct TechniqueBoostEntryT {
+    uint8_t tech_num = 0;
+    // It appears that only one bit in the flags field is used:
+    //   01 = enable piercing (for Megid)
+    uint8_t flags = 0;
+    parray<uint8_t, 2> unused;
+    F32T<BE> amount = 0.0f;
   } __packed__;
-  using TechniqueBoost = TechniqueBoostT<false>;
-  using TechniqueBoostBE = TechniqueBoostT<true>;
-  check_struct_size(TechniqueBoost, 0x18);
-  check_struct_size(TechniqueBoostBE, 0x18);
+  using TechniqueBoostEntry = TechniqueBoostEntryT<false>;
+  using TechniqueBoostEntryBE = TechniqueBoostEntryT<true>;
+  check_struct_size(TechniqueBoostEntry, 0x08);
+  check_struct_size(TechniqueBoostEntryBE, 0x08);
 
   struct EventItem {
     parray<uint8_t, 3> item;
@@ -557,7 +561,7 @@ protected:
     /* 40 / 69D8 */ be_uint32_t max_tech_level_table; // -> MaxTechniqueLevels
     /* 44 / 737C */ be_uint32_t combination_table; // -> {count, offset -> [ItemCombination]}
     /* 48 / 68B0 */ be_uint32_t unknown_a1;
-    /* 4C / 6B1C */ be_uint32_t tech_boost_table; // -> [TechniqueBoost] (always 0x2C of them? from counts struct?)
+    /* 4C / 6B1C */ be_uint32_t tech_boost_table; // -> [TechniqueBoostEntry[3]]
   } __packed_ws__(TableOffsetsGCNTE, 0x50);
 
   template <bool BE>
@@ -582,7 +586,7 @@ protected:
     /* 40 / DF88 / 12894 */ U32T<BE> max_tech_level_table; // -> MaxTechniqueLevels
     /* 44 / F5D0 / 14FF4 */ U32T<BE> combination_table; // -> {count, offset -> [ItemCombination]}
     /* 48 / DE48 / 12754 */ U32T<BE> unknown_a1;
-    /* 4C / EB8C / 14278 */ U32T<BE> tech_boost_table; // -> [TechniqueBoost] (always 0x2C of them? from counts struct?)
+    /* 4C / EB8C / 14278 */ U32T<BE> tech_boost_table; // -> [TechniqueBoost[3]]
     /* 50 / F5F0 / 15014 */ U32T<BE> unwrap_table; // -> {count, offset -> [{count, offset -> [EventItem]}]}
     /* 54 / F5F8 / 1501C */ U32T<BE> unsealable_table; // -> {count, offset -> [UnsealableItem]}
     /* 58 / F600 / 15024 */ U32T<BE> ranged_special_table; // -> {count, offset -> [4-byte structs]}

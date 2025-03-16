@@ -279,7 +279,8 @@ ItemParameterTable::ArmorOrShieldV4 ItemParameterTable::ArmorOrShieldV1V2::to_v4
   ret.evp_range = this->evp_range;
   ret.stat_boost = this->stat_boost;
   ret.tech_boost = this->tech_boost;
-  ret.unknown_a2 = this->unknown_a2;
+  ret.flags_type = this->flags_type;
+  ret.unknown_a4 = this->unknown_a4;
   return ret;
 }
 
@@ -304,7 +305,8 @@ ItemParameterTable::ArmorOrShieldV4 ItemParameterTable::ArmorOrShieldV3T<BE>::to
   ret.evp_range = this->evp_range;
   ret.stat_boost = this->stat_boost;
   ret.tech_boost = this->tech_boost;
-  ret.unknown_a2 = this->unknown_a2.load();
+  ret.flags_type = this->flags_type;
+  ret.unknown_a4 = this->unknown_a4;
   return ret;
 }
 
