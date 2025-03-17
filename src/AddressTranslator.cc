@@ -8,6 +8,9 @@
 #include <resource_file/ExecutableFormats/PEFile.hh>
 #include <resource_file/ExecutableFormats/XBEFile.hh>
 
+#include "Text.hh"
+#include "Types.hh"
+
 using namespace std;
 
 class AddressTranslator {
@@ -107,8 +110,7 @@ public:
 
   AddressTranslator(const string& directory)
       : log("[addr-trans] "),
-        directory(directory),
-        enable_ppc(false) {
+        directory(directory) {
     while (phosg::ends_with(this->directory, "/")) {
       this->directory.pop_back();
     }
@@ -124,7 +126,7 @@ public:
         auto mem = make_shared<ResourceDASM::MemoryContext>();
         dol.load_into(mem);
         this->mems.emplace(name, mem);
-        this->enable_ppc = true;
+        this->ppc_mems.emplace(mem);
         this->log.info("Loaded %s", name.c_str());
       } else if (phosg::ends_with(filename, ".xbe")) {
         ResourceDASM::XBEFile xbe(path.c_str());
@@ -207,6 +209,180 @@ public:
       } else {
         fprintf(stderr, "(%s) r13 = __MISSING__\n", it.first.c_str());
       }
+    }
+  }
+
+  template <bool BE>
+  struct DATConstructorTableEntry {
+    static constexpr bool IsBE = BE;
+
+    U16T<BE> type;
+    U16T<BE> unknown_a1;
+    U32T<BE> constructor_addr;
+    F32T<BE> unknown_a2;
+    U32T<BE> default_num_children;
+  } __attribute__((packed));
+
+  template <bool BE>
+  struct DATConstructorTableEntryWithName {
+    static constexpr bool IsBE = BE;
+
+    pstring<TextEncoding::ASCII, 0x10> debug_name;
+    U16T<BE> type;
+    U16T<BE> unknown_a1;
+    U32T<BE> constructor_addr;
+    F32T<BE> unknown_a2;
+    U32T<BE> default_num_children;
+  } __attribute__((packed));
+
+  // Returns {type: {constructor_addr: [(start_area, end_area), ...]}}
+  template <typename EntryT>
+  map<uint32_t, map<uint32_t, vector<pair<size_t, size_t>>>>
+  parse_dat_constructor_table_t(
+      shared_ptr<const ResourceDASM::MemoryContext>& mem, uint32_t address, size_t num_areas) {
+    if (!mem) {
+      throw runtime_error("no file selected");
+    }
+
+    map<uint32_t, map<uint32_t, vector<pair<size_t, size_t>>>> table;
+
+    auto index_r = mem->reader(address, num_areas * sizeof(uint32_t));
+    for (size_t area = 0; area < num_areas; area++) {
+      uint32_t entries_addr = EntryT::IsBE ? index_r.get_u32b() : index_r.get_u32l();
+      if (!entries_addr) {
+        continue;
+      }
+      auto entries_r = mem->reader(entries_addr, 0x4000); // 0x4000 is probably enough
+      while (!entries_r.eof()) {
+        const auto& entry = entries_r.get<EntryT>();
+        if (entry.type == 0xFFFF) {
+          break;
+        }
+        auto& group = table[entry.type][entry.constructor_addr];
+        if (!group.empty() && (group.back().second == (area - 1))) {
+          group.back().second = area;
+        } else {
+          group.emplace_back(make_pair(area, area));
+        }
+      }
+      if (entries_r.eof()) {
+        throw runtime_error("did not find end-of-entries marker");
+      }
+    }
+
+    return table;
+  }
+
+  void parse_dat_constructor_table(uint32_t index_addr, size_t num_areas, bool has_names) {
+    map<uint32_t, map<uint32_t, vector<pair<size_t, size_t>>>> table;
+    if (this->ppc_mems.count(this->src_mem)) {
+      table = this->parse_dat_constructor_table_t<DATConstructorTableEntry<true>>(
+          this->src_mem, index_addr, num_areas);
+    } else if (!has_names) {
+      table = this->parse_dat_constructor_table_t<DATConstructorTableEntry<false>>(
+          this->src_mem, index_addr, num_areas);
+    } else {
+      table = this->parse_dat_constructor_table_t<DATConstructorTableEntryWithName<false>>(
+          this->src_mem, index_addr, num_areas);
+    }
+
+    for (const auto& [type, constructor_to_area_ranges] : table) {
+      fprintf(stdout, "%04" PRIX32 " =>", type);
+      for (const auto& [constructor, area_ranges] : constructor_to_area_ranges) {
+        fprintf(stdout, " %08" PRIX32, constructor);
+        bool is_first = true;
+        for (const auto& [start, end] : area_ranges) {
+          fputc(is_first ? ':' : ',', stdout);
+          if (start == end) {
+            fprintf(stdout, "%02zX", start);
+          } else {
+            fprintf(stdout, "%02zX-%02zX", start, end);
+          }
+          is_first = false;
+        }
+      }
+      fputc('\n', stdout);
+    }
+  }
+
+  void parse_dat_constructor_table_multi(const vector<tuple<string, uint32_t, size_t, bool>>& specs) {
+    map<string, map<uint32_t, map<uint32_t, vector<pair<size_t, size_t>>>>> all_tables;
+    for (const auto& [src_name, index_addr, num_areas, has_names] : specs) {
+      auto src_mem = this->mems.at(src_name);
+      map<uint32_t, map<uint32_t, vector<pair<size_t, size_t>>>> table;
+      if (this->ppc_mems.count(src_mem)) {
+        table = this->parse_dat_constructor_table_t<DATConstructorTableEntry<true>>(src_mem, index_addr, num_areas);
+      } else if (!has_names) {
+        table = this->parse_dat_constructor_table_t<DATConstructorTableEntry<false>>(src_mem, index_addr, num_areas);
+      } else {
+        table = this->parse_dat_constructor_table_t<DATConstructorTableEntryWithName<false>>(src_mem, index_addr, num_areas);
+      }
+      all_tables.emplace(src_name, std::move(table));
+    }
+
+    map<string, size_t> version_widths;
+    map<uint32_t, map<string, string>> formatted_cells_for_type;
+    for (const auto& [src_name, table] : all_tables) {
+      size_t max_width = 0;
+
+      for (const auto& [type, constructor_to_area_ranges] : table) {
+        string cell_data;
+        for (const auto& [constructor, area_ranges] : constructor_to_area_ranges) {
+          if (!cell_data.empty()) {
+            cell_data.push_back(' ');
+          }
+          cell_data += phosg::string_printf("%08" PRIX32, constructor);
+          bool is_first = true;
+          for (const auto& [start, end] : area_ranges) {
+            cell_data.push_back(is_first ? ':' : ',');
+            if (start == end) {
+              cell_data += phosg::string_printf("%02zX", start);
+            } else {
+              cell_data += phosg::string_printf("%02zX-%02zX", start, end);
+            }
+            is_first = false;
+          }
+        }
+        max_width = max<size_t>(max_width, cell_data.size());
+        formatted_cells_for_type[type][src_name] = std::move(cell_data);
+      }
+      version_widths[src_name] = max_width;
+    }
+
+    vector<string> formatted_lines;
+    string header_line = "TYPE =>";
+    for (const auto& [version, width] : version_widths) {
+      header_line.push_back(' ');
+      header_line += version;
+      if (width > version.size()) {
+        header_line.resize(header_line.size() + (width - version.size()), '-');
+      }
+    }
+
+    for (const auto& [type, formatted_cells] : formatted_cells_for_type) {
+      string line = phosg::string_printf("%04" PRIX32 " =>", type);
+      for (const auto& [src_name, width] : version_widths) {
+        try {
+          const auto& cell_data = formatted_cells.at(src_name);
+          line.push_back(' ');
+          line += cell_data;
+          size_t width = version_widths[src_name];
+          if (width > cell_data.size()) {
+            line.resize(line.size() + (width - cell_data.size()), ' ');
+          }
+        } catch (const out_of_range&) {
+          line.resize(line.size() + (width + 1), ' ');
+        }
+      }
+      if ((formatted_lines.size() % 40) == 0) {
+        formatted_lines.emplace_back(header_line);
+      }
+      formatted_lines.emplace_back(std::move(line));
+    }
+
+    for (auto& line : formatted_lines) {
+      phosg::strip_trailing_whitespace(line);
+      fprintf(stdout, "%s\n", line.c_str());
     }
   }
 
@@ -404,7 +580,7 @@ public:
             ExpandMethod::RAW_BACKWARD,
             ExpandMethod::RAW_BOTH,
         };
-        const auto& methods = this->enable_ppc ? ppc_methods : raw_methods;
+        const auto& methods = this->ppc_mems.count(it.second) ? ppc_methods : raw_methods;
         for (size_t z = 0; z < methods.size(); z++) {
           futures.emplace_back(async(&AddressTranslator::find_match, this, it.second, src_addr, src_size, methods[z]));
         }
@@ -543,7 +719,7 @@ public:
     }
   }
 
-  void find_data(const std::string& data) const {
+  void find_data(const string& data) const {
     for (const auto& [name, mem] : this->mems) {
       for (const auto& [sec_addr, sec_size] : mem->allocated_blocks()) {
         uint32_t last_addr = sec_addr + sec_size - data.size();
@@ -577,6 +753,22 @@ public:
           tokens.size() >= 3 ? stoul(tokens[2], nullptr, 16) : 0);
     } else if (tokens[0] == "find-ppc-globals") {
       this->find_ppc_rtoc_global_regs();
+    } else if (tokens[0] == "parse-dat-constructor-table") {
+      this->parse_dat_constructor_table(
+          stoul(tokens.at(1), nullptr, 16),
+          stoul(tokens.at(2), nullptr, 16),
+          (tokens.size() > 3 && tokens.at(3) == "names"));
+    } else if (tokens[0] == "parse-dat-constructor-tables") {
+      vector<tuple<string, uint32_t, size_t, bool>> specs;
+      for (size_t z = 1; z < tokens.size(); z++) {
+        auto subtokens = phosg::split(tokens[z], ':');
+        specs.emplace_back(make_tuple(
+            subtokens.at(0),
+            stoul(subtokens.at(1), nullptr, 16),
+            stoul(subtokens.at(2), nullptr, 16),
+            (subtokens.size() > 3 && subtokens.at(3) == "names")));
+      }
+      this->parse_dat_constructor_table_multi(specs);
     } else if (!tokens[0].empty()) {
       throw runtime_error("unknown command");
     }
@@ -605,12 +797,12 @@ private:
   phosg::PrefixedLogger log;
   string directory;
   unordered_map<string, shared_ptr<const ResourceDASM::MemoryContext>> mems;
+  unordered_set<shared_ptr<const ResourceDASM::MemoryContext>> ppc_mems;
   string src_filename;
   shared_ptr<const ResourceDASM::MemoryContext> src_mem;
-  bool enable_ppc;
 };
 
-void run_address_translator(const std::string& directory, const std::string& use_filename, const std::string& command) {
+void run_address_translator(const string& directory, const string& use_filename, const string& command) {
   AddressTranslator trans(directory);
   if (!use_filename.empty()) {
     trans.set_source_file(use_filename);
