@@ -37,9 +37,9 @@ public:
 
   DropResult on_monster_item_drop(uint32_t enemy_type, uint8_t area);
   DropResult on_box_item_drop(uint8_t area);
-  DropResult on_specialized_box_item_drop(uint8_t area, float def_z, uint32_t def0, uint32_t def1, uint32_t def2);
-
-  ItemData base_item_for_specialized_box(uint32_t def0, uint32_t def1, uint32_t def2) const;
+  // Note: param3-6 refer to the corresponding fields of the object definition
+  DropResult on_specialized_box_item_drop(uint8_t area, float param3, uint32_t param4, uint32_t param5, uint32_t param6);
+  ItemData base_item_for_specialized_box(uint32_t param4, uint32_t param5, uint32_t param6) const;
 
   std::vector<ItemData> generate_armor_shop_contents(size_t player_level);
   std::vector<ItemData> generate_tool_shop_contents(size_t player_level);

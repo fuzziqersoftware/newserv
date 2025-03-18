@@ -609,6 +609,12 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //   param3 = TODO
       {0x0004, "TObjLight"},
 
+      // Arbitrary item. The parameters specify the item data; see
+      // ItemCreator::base_item_for_specialized_box for how the encoding works.
+      // This object is only available on v1 and v2; it is not available in v3
+      // and v4.
+      {0x0005, "TItem"},
+
       // Environmental sound. This object is not constructed in offline multi
       // mode. Params:
       //   param3 = audibility radius (if <= 0 uses default of 200)
@@ -1299,6 +1305,11 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //   param1 = radius
       {0x0057, "TObjTradeCollision"},
 
+      // TODO: Describe this object. Presumably similar to TObjTradeCollision
+      // but enables the deck edit counter? Params:
+      //   param1 = radius
+      {0x0058, "TObjDeckCollision"},
+
       // Forest door. Params:
       //   param4 = switch flag number (low byte) and number to appear on door
       //     (second-lowest byte, modulo 0x0A)
@@ -1463,18 +1474,54 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //     object, does not disable the switch flag automatically
       {0x00C3, "TOHangceilingCave01Normal/TOHangceilingCave01Key/TOHangceilingCave01KeyQuick"},
 
+      // Caves signs. There appear to be no parameters.
+      {0x00C4, "TOSignCave01"},
+      {0x00C5, "TOSignCave02"},
+      {0x00C6, "TOSignCave03"},
+
+      // Hexagonal tank. There appear to be no parameters.
+      {0x00C7, "TOAirconCave01"},
+
+      // Brown platform. There appear to be no parameters.
+      {0x00C8, "TOAirconCave02"},
+
+      // Revolving warning light. Params:
+      //   param1 = rotation speed in degrees per frame
+      {0x00C9, "TORevlightCave01"},
+
+      // Caves rainbow. Params:
+      //   param1-3 = scale factors (x, y, z)
+      //   param4 = TODO (value used is 1 / (param4 + 30))
+      //   param6 = visibility radius? (TODO; value used is param6 + 40000)
+      {0x00CB, "TORainbowCave01"},
+
+      // Floating jellyfish. Params:
+      //   param1 = visibility radius; visible when any player is within this
+      //     distance of the object
+      //   param2 = move radius (according to debug strings)
+      //   param3 = rebirth radius (according to debug strings); like param1,
+      //     checks against all players, not only the local player
+      {0x00CC, "TOKurage"},
+
+      // Floating dragonfly. Params:
+      //   param1 = TODO
+      //   param2 = TODO
+      //   param3 = max distance from home?
+      //   param4 = TODO
+      //   param5 = TODO
+      {0x00CD, "TODragonflyCave01"},
+
+      // Caves door. Params:
+      //   param4 = switch flag number
+      {0x00CE, "TODoorCave03"},
+
+      // Robot recharge station. Params:
+      //   param4 = quest register number; activates when this register
+      //     contains a nonzero value; does not deactivate if it becomes zero
+      //     again
+      {0x00CF, "TOBind"},
+
       // TODO: Describe the rest of the object types.
-      {0x00C4, "TOSignCave01"}, // Constructor in 3OE1: 801765B4
-      {0x00C5, "TOSignCave02"}, // Constructor in 3OE1: 80176968
-      {0x00C6, "TOSignCave03"}, // Constructor in 3OE1: 80176DAC
-      {0x00C7, "TOAirconCave01"}, // Constructor in 3OE1: 80156DF8
-      {0x00C8, "TOAirconCave02"}, // Constructor in 3OE1: 80157034
-      {0x00C9, "TORevlightCave01"}, // Constructor in 3OE1: 80173470
-      {0x00CB, "TORainbowCave01"}, // Constructor in 3OE1: 8017318C
-      {0x00CC, "TOKurage"}, // Constructor in 3OE1: 8016E65C
-      {0x00CD, "TODragonflyCave01"}, // Constructor in 3OE1: 801642F4
-      {0x00CE, "TODoorCave03"}, // Constructor in 3OE1: 8016259C
-      {0x00CF, "TOBind"}, // Constructor in 3OE1: 80158638
       {0x00D0, "TOCakeshopCave01"}, // Constructor in 3OE1: 80159F68
       {0x00D1, "TORockCaveS01"}, // Constructor in 3OE1: 80174A44
       {0x00D2, "TORockCaveM01"}, // Constructor in 3OE1: 801748E4
@@ -1560,6 +1607,8 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x018A, "TObjTreeLobby"}, // Constructor in 3OE1: 80362D44
       {0x018B, "TObjSuisouLobby"}, // Constructor in 3OE1: 80368118
       {0x018C, "TObjParticleLobby"}, // Constructor in 3OE1: 80367DC0
+      {0x018D, "TObjLobbyTable"}, // (Ep3 only) Constructor in 3SE0: 802C07E4
+      {0x018E, "TObjJukeBox"}, // (Ep3 only) Constructor in 3SE0: 8030D8A8
       {0x0190, "TObjCamera"}, // Constructor in 3OE1: 8017FAC0
       {0x0191, "TObjTuitate"}, // Constructor in 3OE1: 8019AF20
       {0x0192, "TObjDoaEx01"}, // Constructor in 3OE1: 8018E02C
@@ -1611,12 +1660,12 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x0280, "__BARBA_RAY_TELEPORTER__"}, // Formerly __TObjAreaWarpForest_subclass_0280__ // Constructor in 3OE1: 802EF620
       {0x02A0, "TObjLiveCamera"}, // Constructor in 3OE1: 80309D5C
       {0x02B0, "TContainerAncient01R"}, // Constructor in 3OE1: 8018ADF8
-      {0x02B1, "TObjLaboDesignBase"}, // Constructor in 3OE1: 803631D4
-      {0x02B2, "TObjLaboDesignBase"}, // Constructor in 3OE1: 80363184
-      {0x02B3, "TObjLaboDesignBase"}, // Constructor in 3OE1: 80363134
-      {0x02B4, "TObjLaboDesignBase"}, // Constructor in 3OE1: 803630E4
-      {0x02B5, "TObjLaboDesignBase"}, // Constructor in 3OE1: 80363094
-      {0x02B6, "TObjLaboDesignBase"}, // Constructor in 3OE1: 80363044
+      {0x02B1, "TObjLaboDesignBase(0)"}, // Constructor in 3OE1: 803631D4
+      {0x02B2, "TObjLaboDesignBase(1)"}, // Constructor in 3OE1: 80363184
+      {0x02B3, "TObjLaboDesignBase(2)"}, // Constructor in 3OE1: 80363134
+      {0x02B4, "TObjLaboDesignBase(3)"}, // Constructor in 3OE1: 803630E4
+      {0x02B5, "TObjLaboDesignBase(4)"}, // Constructor in 3OE1: 80363094
+      {0x02B6, "TObjLaboDesignBase(5)"}, // Constructor in 3OE1: 80363044
       {0x02B7, "TObjGbAdvance"}, // Constructor in 3OE1: 80187C10
       {0x02B8, "TObjQuestColALock2"}, // Constructor in 3OE1: 80195824
       {0x02B9, "TObjMapForceWarp"}, // Constructor in 3OE1: 801A297C
@@ -1624,6 +1673,31 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x02BB, "TODoorLaboNormal"}, // Constructor in 3OE1: 801A26D0
       {0x02BC, "TObjAreaWarpEndingJung"}, // Constructor in 3OE1: 8019AFF4
       {0x02BD, "TObjLaboMapWarp"}, // Constructor in 3OE1: 80185430
+      {0x02D0, "TObjKazariCard"}, // (Ep3 only) Constructor in 3SE0: 8026C79C; battle only
+      {0x02D1, "TObj_FloatingCardMaterial_Dark"}, // (Ep3 only) Constructor in 3SE0: 800C5F30; city only
+      {0x02D2, "TObj_FloatingCardMaterial_Hero"}, // (Ep3 only) Constructor in 3SE0: 800C5F7C; city only
+      {0x02D3, "TObjCardCityMapWarp(0)"}, // (Ep3 only) Constructor in 3SE0: 800B9528; city only
+      {0x02D4, "TObjCardCityDoor(0)"}, // (Ep3 only) Constructor in 3SE0: 800B8C40; city only
+      {0x02D5, "TObjCardCityDoor(1)"}, // (Ep3 only) Constructor in 3SE0: 800B8BF0; city only
+      {0x02D6, "TObjKazariGeyserMizu"}, // (Ep3 only) Constructor in 3SE0: 80278E08; battle only
+      {0x02D7, "TObjSetCardColi"}, // (Ep3 only) Constructor in 3SE0: 802BCE80; battle only
+      {0x02D8, "TObjCardCityDoor(2)"}, // (Ep3 only) Constructor in 3SE0: 800B8BA0; city only
+      {0x02D9, "TObjCardCityMapWarp(1)"}, // (Ep3 only) Constructor in 3SE0: 800B94D8; city only
+      {0x02DA, "TOFlyMekaHero"}, // (Ep3 only) Constructor in 3SE0: 802DFD18; city only
+      {0x02DB, "TOFlyMekaDark"}, // (Ep3 only) Constructor in 3SE0: 802DFAAC; city only
+      {0x02DC, "TObjCardCityDoor_Closed(0)"}, // (Ep3 only) Constructor in 3SE0: 800B884C; city only
+      {0x02DD, "TObjCardCityDoor_Closed(1)"}, // (Ep3 only) Constructor in 3SE0: 800B87FC; city only
+      {0x02DE, "TObjCardCityDoor_Closed(2)"}, // (Ep3 only) Constructor in 3SE0: 800B87AC; city only
+      {0x02DF, "TObjCardCityDoor(3)"}, // (Ep3 only) Constructor in 3SE0: 800B8B50; city only
+      {0x02E0, "TObjCardCityDoor(4)"}, // (Ep3 only) Constructor in 3SE0: 800B8B00; city only
+      {0x02E1, "TObjCardCityDoor_Closed(3)"}, // (Ep3 only) Constructor in 3SE0: 800B875C; city only
+      {0x02E2, "TObjCardCityDoor_Closed(4)"}, // (Ep3 only) Constructor in 3SE0: 800B870C; city only
+      {0x02E3, "TObjCardCityMapWarp(2)"}, // (Ep3 only) Constructor in 3SE0: 800B9488; city only
+      {0x02E4, "TObjSinBoardCard"}, // (Ep3 only) Constructor in 3SE0: 80309608; city/lobby only
+      {0x02E5, "TObjCityMoji"}, // (Ep3 only) Constructor in 3SE0: 8030DE8C; city only
+      {0x02E6, "TObjCityWarpOff"}, // (Ep3 only) Constructor in 3SE0: 8030DB4C; city only
+      {0x02E7, "TObjFlyCom"}, // (Ep3 only) Constructor in 3SE0: 80310BEC; city only
+      {0x02E8, "__UNKNOWN_02E8__"}, // (Ep3 only) Subclass of TObjPathObj; 3SE0: 8019A638; city only
       {0x0300, "__EP4_LIGHT__"}, // Constructor in 59NL: 00661158
       {0x0301, "__WILDS_CRATER_CACTUS__"}, // Constructor in 59NL: 0067612C
       {0x0302, "__WILDS_CRATER_BROWN_ROCK__"}, // Constructor in 59NL: 00675748
@@ -1772,9 +1846,9 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       {0x00DF, "TObjEneRecobox"},
       {0x00E0, "TObjEneMe3SinowZoaReal/TObjEneEpsilonBody"},
       {0x00E1, "TObjEneIllGill"},
-      {0x0110, "__ASTARK__"},
-      {0x0111, "__YOWIE__/__SATELLITE_LIZARD__"},
-      {0x0112, "__MERISSA_A__"},
+      {0x0110, "__ASTARK__/TObjNpcWalkingMeka_Hero"},
+      {0x0111, "__YOWIE__/__SATELLITE_LIZARD__/TObjNpcWalkingMeka_Dark"},
+      {0x0112, "__MERISSA_A__/TObjNpcHeroAide"},
       {0x0113, "__GIRTABLULU__"},
       {0x0114, "__ZU__"},
       {0x0115, "__BOOTA_FAMILY__"},

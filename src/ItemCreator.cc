@@ -1718,10 +1718,10 @@ void ItemCreator::generate_weapon_shop_item_bonus2(ItemData& item, size_t player
 }
 
 ItemCreator::DropResult ItemCreator::on_specialized_box_item_drop(
-    uint8_t area, float def_z, uint32_t def0, uint32_t def1, uint32_t def2) {
+    uint8_t area, float param3, uint32_t param4, uint32_t param5, uint32_t param6) {
   DropResult res;
-  res.item = this->base_item_for_specialized_box(def0, def1, def2);
-  if (def_z == 0.0f) {
+  res.item = this->base_item_for_specialized_box(param4, param5, param6);
+  if (param3 == 0.0f) {
     uint16_t type = res.item.data1w[0];
     res.item.clear();
     res.item.data1w[0] = type;
@@ -1730,39 +1730,39 @@ ItemCreator::DropResult ItemCreator::on_specialized_box_item_drop(
   return res;
 }
 
-ItemData ItemCreator::base_item_for_specialized_box(uint32_t def0, uint32_t def1, uint32_t def2) const {
+ItemData ItemCreator::base_item_for_specialized_box(uint32_t param4, uint32_t param5, uint32_t param6) const {
   ItemData item;
-  item.data1[0] = (def0 >> 0x18) & 0x0F;
-  item.data1[1] = (def0 >> 0x10) + ((item.data1[0] == 0x00) || (item.data1[0] == 0x01));
-  item.data1[2] = def0 >> 8;
+  item.data1[0] = (param4 >> 0x18) & 0x0F;
+  item.data1[1] = (param4 >> 0x10) + ((item.data1[0] == 0x00) || (item.data1[0] == 0x01));
+  item.data1[2] = param4 >> 8;
 
   switch (item.data1[0]) {
     case 0x00:
-      item.data1[3] = (def1 >> 0x18) & 0xFF;
-      item.data1[4] = def0 & 0xFF;
-      item.data1[6] = (def1 >> 8) & 0xFF;
-      item.data1[7] = def1 & 0xFF;
-      item.data1[8] = (def2 >> 0x18) & 0xFF;
-      item.data1[9] = (def2 >> 0x10) & 0xFF;
-      item.data1[10] = (def2 >> 8) & 0xFF;
-      item.data1[11] = def2 & 0xFF;
+      item.data1[3] = (param5 >> 0x18) & 0xFF;
+      item.data1[4] = param4 & 0xFF;
+      item.data1[6] = (param5 >> 8) & 0xFF;
+      item.data1[7] = param5 & 0xFF;
+      item.data1[8] = (param6 >> 0x18) & 0xFF;
+      item.data1[9] = (param6 >> 0x10) & 0xFF;
+      item.data1[10] = (param6 >> 8) & 0xFF;
+      item.data1[11] = param6 & 0xFF;
       break;
     case 0x01:
-      item.data1[3] = (def1 >> 0x18) & 0xFF;
-      item.data1[4] = (def1 >> 0x10) & 0xFF;
-      item.data1[5] = def0 & 0xFF;
+      item.data1[3] = (param5 >> 0x18) & 0xFF;
+      item.data1[4] = (param5 >> 0x10) & 0xFF;
+      item.data1[5] = param4 & 0xFF;
       break;
     case 0x02:
       item.assign_mag_stats(ItemMagStats());
       break;
     case 0x03:
       if (item.data1[1] == 0x02) {
-        item.data1[4] = def0 & 0xFF;
+        item.data1[4] = param4 & 0xFF;
       }
       item.set_tool_item_amount(*this->stack_limits, 1);
       break;
     case 0x04:
-      item.data2d = ((def1 >> 0x10) & 0xFFFF) * 10;
+      item.data2d = ((param5 >> 0x10) & 0xFFFF) * 10;
       break;
 
     default:
