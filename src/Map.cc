@@ -603,10 +603,15 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //   param4 = destination angle (about y axis)
       {0x0003, "TObjMapWarpForest"},
 
-      // TODO: Describe this object. Params:
-      //   param1 = TODO
-      //   param2 = TODO
+      // Light collision. Params:
+      //   param1 = TODO (in range 0-10000; if above 10000, (param1 - 10000) is
+      //     used and a flag is set)
+      //   param2 = TODO (in range 0-10000; if above 10000, (param2 - 10000) is
+      //     used and a flag is set)
       //   param3 = TODO
+      //   param4 = TODO
+      //   param5 = TODO
+      //   param6 = TODO
       {0x0004, "TObjLight"},
 
       // Arbitrary item. The parameters specify the item data; see
@@ -754,7 +759,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       // TODO: Describe this object. Params:
       //   param1 = TODO
       //   param2 = TODO
-      //   param3 = TODO
+      //   param3 = TODO (it only matters whether this is negative or not)
       {0x0009, "TObjCollision"},
 
       // Elemental trap. Params:
@@ -861,7 +866,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //     02 = blocks enemies and players (as if param5 = 0x00008900)
       //     03 = blocks enemies and players, but enemies can see targets
       //       through the collision (as if param5 = 0x00000800)
-      //     04 = blocks players only (as if patam5 = 00002000)
+      //     04 = blocks players only (as if param5 = 00002000)
       //     05 = undefined behavior due to missing bounds check
       //     anything else = same as 01
       //   param5 = flags (bit field; used if param4 = 0) (TODO: describe bits)
@@ -873,7 +878,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x0015, "TObjQuestColA"},
 
       // TODO: Describe this object. Params:
-      //   param1 = radius
+      //   param1 = radius (if negative, 30 is used)
       {0x0016, "TObjItemLight"},
 
       // Radar collision. Params:
@@ -1277,10 +1282,18 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       // be no parameters.
       {0x0054, "TObjCityDoor_Lobby"},
 
-      // Version of the main warp for Challenge mode? TODO: This thing has a
-      // lot of code; figure out if there are any other parameters
+      // Version of the main warp for Challenge mode? This object seems to
+      // behave similarly to boss teleporters; it shows the player a Yes/No
+      // confirmation menu and sends 6x6A to synchronize state. There is a
+      // global named last_set_mainwarp_value which is set to param4 when this
+      // object is constructed, but may be changed by a set_mainwarp quest
+      // opcode after that. If that happens, this object replaces its
+      // dest_floor with the floor specified in the last set_mainwarp quest
+      // opcode. Params:
       //   param4 = destination floor
       //   param5 = switch flag number
+      // TODO: This thing has a lot of code; figure out if there are any other
+      // parameters
       {0x0055, "TObjCityMainWarpChallenge"},
 
       // Episode 2 Lab door. Params:
@@ -1356,7 +1369,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //     ItemCreator.cc for how these values are decoded
       {0x0088, "TObjContainerBase2"},
 
-      // TODO: Describe this object. Params:
+      // Elevated cylindrical tank. Params:
       //   param1-3 = TODO
       {0x0089, "TObjTank"},
 
