@@ -22,11 +22,9 @@
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
 #include <phosg/Time.hh>
-#ifdef HAVE_RESOURCE_FILE
 #include <resource_file/Emulators/PPC32Emulator.hh>
 #include <resource_file/Emulators/SH4Emulator.hh>
 #include <resource_file/Emulators/X86Emulator.hh>
-#endif
 
 #include "ChatCommands.hh"
 #include "Compression.hh"
@@ -740,7 +738,6 @@ static HandlerResult S_B2(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
     phosg::save_file(output_filename, data);
     ses->log.info("Wrote code from server to file %s", output_filename.c_str());
 
-#ifdef HAVE_RESOURCE_FILE
     using FooterT = RELFileFooterT<BE>;
 
     // TODO: Support SH-4 disassembly too
@@ -807,7 +804,6 @@ static HandlerResult S_B2(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
         ses->log.info("Failed to disassemble code from server: %s", e.what());
       }
     }
-#endif
   }
 
   if (ses->config.check_flag(Client::Flag::PROXY_BLOCK_FUNCTION_CALLS)) {

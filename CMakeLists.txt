@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.22)
 set(CMAKE_POLICY_DEFAULT_CMP0110 NEW)
 
 
@@ -31,7 +31,7 @@ set (LIBEVENT_LIBRARIES
 
 find_package(phosg REQUIRED)
 find_package(Iconv REQUIRED)
-find_package(resource_file QUIET)
+find_package(resource_file REQUIRED)
 
 
 
@@ -141,14 +141,7 @@ endif()
 
 add_executable(newserv ${SOURCES})
 target_include_directories(newserv PUBLIC ${LIBEVENT_INCLUDE_DIR} ${Iconv_INCLUDE_DIRS})
-target_link_libraries(newserv phosg::phosg ${LIBEVENT_LIBRARIES} ${Iconv_LIBRARIES} pthread)
-if(resource_file_FOUND)
-    target_compile_definitions(newserv PUBLIC HAVE_RESOURCE_FILE)
-    target_link_libraries(newserv resource_file::resource_file)
-    message(STATUS "resource_file found; enabling patch support")
-else()
-    message(WARNING "resource_file not found; disabling patch support")
-endif()
+target_link_libraries(newserv phosg::phosg ${LIBEVENT_LIBRARIES} ${Iconv_LIBRARIES} pthread resource_file::resource_file)
 add_dependencies(newserv newserv-Revision-cc)
 
 # target_compile_options(newserv PRIVATE -fsanitize=address)

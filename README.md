@@ -146,8 +146,7 @@ There are currently no precompiled releases for Linux. To run newserv on Linux, 
     * If you're on Windows, install [Cygwin](https://www.cygwin.com/). While doing so, install the `cmake`, `gcc-core`, `gcc-g++`, `git`, `libevent2.1_7`, `libevent-devel`, `make`, `libiconv-devel`, and `zlib` packages. Do the rest of these steps inside a Cygwin shell (not a Windows cmd shell or PowerShell).
     * If you're on macOS, run `brew install cmake libevent libiconv`.
     * If you're on Linux, run `sudo apt-get install cmake libevent-dev` (or use your Linux distribution's package manager).
-3. Build and install [phosg](https://github.com/fuzziqersoftware/phosg).
-4. Optionally, install [resource_dasm](https://github.com/fuzziqersoftware/resource_dasm). This will enable newserv to send memory patches and load DOL files on PSO GC clients. PSO GC clients can play PSO normally on newserv without this.
+3. Build and install [phosg](https://github.com/fuzziqersoftware/phosg) and [resource_dasm](https://github.com/fuzziqersoftware/resource_dasm).
 5. Run `cmake . && make` in the newserv directory.
 
 After building newserv, edit system/config.example.json as needed **and rename it to system/config.json** (note that this step is not necessary for the precompiled releases!), set up [client patch directories](#client-patch-directories) if you're planning to play Blue Burst, then run `./newserv` in newserv's directory.
@@ -437,8 +436,6 @@ Like quests, Episode 3 card definitions, maps, and quests are cached in memory. 
 
 ## Memory patches, client functions, and DOL files
 
-*Everything in this section requires resource_dasm to be installed, so newserv can use the assemblers and disassemblers from its libresource_file library. If resource_dasm is not installed, newserv will still build and run, but these features will not be available.*
-
 You can put assembly files in the system/client-functions directory with filenames like PatchName.VERS.patch.s and they will appear in the Patches menu for clients that support client functions. Client functions are written in SH-4, PowerPC, or x86 assembly and are compiled when newserv is started. The assembly system's features are documented in the comments in system/client-functions/System/WriteMemoryGC.ppc.s.
 
 The VERS token in client function filenames refers to the specific version of the game that the client function applies to. Some versions do not support receiving client functions at all. *Note: newserv uses the shorter GameCube versioning convention, where discs labeled DOL-XXXX-0-0Y are version 1.Y. The PSO community seems to use the convention 1.0Y in some places instead, but these are the same version. For example, the version that newserv calls v1.4 is the same as v1.04, and is labeled DOL-GPOJ-0-04 on the underside of the disc.*
@@ -518,8 +515,8 @@ There are many options available when starting a proxy session. All options are 
 * **Save files**: saves copies of several kinds of files when they're sent by the remote server. The files are written to the current directory (which is usually the directory containing the system/ directory). These kinds of files can be saved:
     * Online quests and download quests (saved as .bin/.dat files)
     * GBA games (saved as .gba files)
-    * Patches (saved as .bin files, and disassembled to text files if newserv is built with patch support)
-    * Player data from BB sessions (saved as .bin files, which are not the same format as .nsc files)
+    * Patches (saved as .bin files and disassembled as .txt files)
+    * Player data from BB sessions (saved as .bin files, which are not the same format as .nsc or .psochar files)
     * Episode 3 online quests and maps (saved as .mnmd files)
     * Episode 3 download quests (saved as .mnm files)
     * Episode 3 card definitions (saved as .mnr files)

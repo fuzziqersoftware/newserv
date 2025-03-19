@@ -8,15 +8,12 @@
 #include <map>
 #include <phosg/Math.hh>
 #include <phosg/Strings.hh>
-#include <set>
-#include <unordered_map>
-#include <vector>
-
-#ifdef HAVE_RESOURCE_FILE
 #include <resource_file/Emulators/PPC32Emulator.hh>
 #include <resource_file/Emulators/SH4Emulator.hh>
 #include <resource_file/Emulators/X86Emulator.hh>
-#endif
+#include <set>
+#include <unordered_map>
+#include <vector>
 
 #include "BattleParamsIndex.hh"
 #include "CommandFormats.hh"
@@ -4329,7 +4326,6 @@ AssembledQuestScript assemble_quest_script(
           phosg::strip_whitespace(filename);
           code_w.write(get_native_include(filename));
         } else if (phosg::starts_with(line.text, ".include_native ")) {
-#ifdef HAVE_RESOURCE_FILE
           string filename = line.text.substr(16);
           phosg::strip_whitespace(filename);
           string native_text = get_native_include(filename);
@@ -4344,9 +4340,6 @@ AssembledQuestScript assemble_quest_script(
             throw runtime_error("unknown architecture");
           }
           code_w.write(code);
-#else
-          throw runtime_error("native code cannot be compiled; rebuild newserv with libresource_file");
-#endif
         }
         return;
       }

@@ -8,11 +8,9 @@
 #include <phosg/Time.hh>
 #include <stdexcept>
 
-#ifdef HAVE_RESOURCE_FILE
 #include <resource_file/Emulators/PPC32Emulator.hh>
 #include <resource_file/Emulators/SH4Emulator.hh>
 #include <resource_file/Emulators/X86Emulator.hh>
-#endif
 
 #include "CommandFormats.hh"
 #include "CommonFileFormats.hh"
@@ -24,11 +22,7 @@ using namespace std;
 static bool is_function_compiler_available = true;
 
 bool function_compiler_available() {
-#ifndef HAVE_RESOURCE_FILE
-  return false;
-#else
   return is_function_compiler_available;
-#endif
 }
 
 void set_function_compiler_available(bool is_available) {
@@ -131,15 +125,6 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
     const string& system_directory,
     const string& name,
     const string& text) {
-#ifndef HAVE_RESOURCE_FILE
-  (void)arch;
-  (void)function_directory;
-  (void)system_directory;
-  (void)name;
-  (void)text;
-  throw runtime_error("function compiler is not available");
-
-#else
   auto ret = make_shared<CompiledFunctionCode>();
   ret->arch = arch;
   ret->short_name = name;
@@ -254,7 +239,6 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
   }
 
   return ret;
-#endif
 }
 
 FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
