@@ -8,6 +8,7 @@
 #include <resource_file/ExecutableFormats/PEFile.hh>
 #include <resource_file/ExecutableFormats/XBEFile.hh>
 
+#include "Map.hh"
 #include "Text.hh"
 #include "Types.hh"
 
@@ -305,7 +306,7 @@ public:
     }
   }
 
-  void parse_dat_constructor_table_multi(const vector<tuple<string, uint32_t, size_t, bool>>& specs) {
+  void parse_dat_constructor_table_multi(const vector<tuple<string, uint32_t, size_t, bool>>& specs, bool is_enemies) {
     map<string, map<uint32_t, map<uint32_t, vector<pair<size_t, size_t>>>>> all_tables;
     for (const auto& [src_name, index_addr, num_areas, has_names] : specs) {
       auto src_mem = this->mems.at(src_name);
@@ -358,6 +359,7 @@ public:
         header_line.resize(header_line.size() + (width - version.size()), '-');
       }
     }
+    header_line += " NAME";
 
     for (const auto& [type, formatted_cells] : formatted_cells_for_type) {
       string line = phosg::string_printf("%04" PRIX32 " =>", type);
@@ -374,6 +376,11 @@ public:
           line.resize(line.size() + (width + 1), ' ');
         }
       }
+      line.push_back(' ');
+      line += is_enemies
+          ? MapFile::name_for_enemy_type(type)
+          : MapFile::name_for_object_type(type);
+
       if ((formatted_lines.size() % 40) == 0) {
         formatted_lines.emplace_back(header_line);
       }
@@ -753,12 +760,9 @@ public:
           tokens.size() >= 3 ? stoul(tokens[2], nullptr, 16) : 0);
     } else if (tokens[0] == "find-ppc-globals") {
       this->find_ppc_rtoc_global_regs();
-    } else if (tokens[0] == "parse-dat-constructor-table") {
-      this->parse_dat_constructor_table(
-          stoul(tokens.at(1), nullptr, 16),
-          stoul(tokens.at(2), nullptr, 16),
-          (tokens.size() > 3 && tokens.at(3) == "names"));
-    } else if (tokens[0] == "parse-dat-constructor-tables") {
+    } else if ((tokens[0] == "parse-dat-object-constructor-tables") ||
+        (tokens[0] == "parse-dat-enemy-constructor-tables")) {
+      bool is_enemies = (tokens[0] == "parse-dat-enemy-constructor-tables");
       vector<tuple<string, uint32_t, size_t, bool>> specs;
       for (size_t z = 1; z < tokens.size(); z++) {
         auto subtokens = phosg::split(tokens[z], ':');
@@ -768,7 +772,7 @@ public:
             stoul(subtokens.at(2), nullptr, 16),
             (subtokens.size() > 3 && subtokens.at(3) == "names")));
       }
-      this->parse_dat_constructor_table_multi(specs);
+      this->parse_dat_constructor_table_multi(specs, is_enemies);
     } else if (!tokens[0].empty()) {
       throw runtime_error("unknown command");
     }

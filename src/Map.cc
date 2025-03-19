@@ -1456,7 +1456,6 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x0096, "TObjLazerFenceExtra"},
 
       // Caves floor button. The activation radius is always 10 units. Params:
-      //   param1-3 = scale factors (visual only)
       //   param4 = switch flag number
       //   param5 = activation mode:
       //     negative = temporary (disables flag when player leaves)
@@ -1544,42 +1543,137 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //     again
       {0x00CF, "TOBind"},
 
+      // Caves cake shop. There appear to be no parameters.
+      {0x00D0, "TOCakeshopCave01"},
+
+      // Various solid rock objects used in the Cave areas. There are small,
+      // medium, and large variations of each, and for the 02 variations, there
+      // are also "Simple" variations (00D7-00D9). None of these objects take
+      // any parameters.
+      {0x00D1, "TORockCaveS01"},
+      {0x00D2, "TORockCaveM01"},
+      {0x00D3, "TORockCaveL01"},
+      {0x00D4, "TORockCaveS02"},
+      {0x00D5, "TORockCaveM02"},
+      {0x00D6, "TORockCaveL02"},
+      {0x00D7, "TORockCaveSS02"},
+      {0x00D8, "TORockCaveSM02"},
+      {0x00D9, "TORockCaveSL02"},
+      {0x00DA, "TORockCaveS03"},
+      {0x00DB, "TORockCaveM03"},
+      {0x00DC, "TORockCaveL03"},
+
+      // Caves floor button 2. Params:
+      //   param1-3 = scale factors (visual only)
+      //   param4 = switch flag number
+      //   param5 high word = sound delay in frames after activate/deactivate
+      //   param5 low word = model index for VR Temple / VR Spaceship? (there
+      //     are only two: this word may be zero or nonzero)
+      //   param6 high word = sound activation mode:
+      //     1 = play sound only when switch activated
+      //     anything else = play sound when activated and when deactivated
+      //   param6 low word = sound to play (1-6) (TODO: Describe these):
+      //     1 => 4005281F (GC)
+      //     2 => 00053F06 (GC)
+      //     3 => 00052812 (GC)
+      //     4 => 00052813 (GC)
+      //     5 => 4001C112 (GC)
+      //     6 => 4002A60B (GC)
+      //     TODO: Are there more sounds available here on BB?
+      // Availability: v2+ only
+      {0x00DE, "TODummyKeyCave01"},
+
+      // Breakable rocks, in small, medium, and large variations. All of these
+      // take the following parameter:
+      //   param4 = switch flag number
+      // Availability: v2+ only
+      {0x00DF, "TORockCaveBL01"},
+      {0x00E0, "TORockCaveBL02"},
+      {0x00E1, "TORockCaveBL03"},
+
+      // Mines multi-switch door. Params:
+      //   param4 = base switch flag number (the actual switch flags used are
+      //     param4, param4 + 1, param4 + 2, etc.; if this is negative, the
+      //     door is always unlocked)
+      //   param5 = 4 - number of switch flags (so if e.g. door should require
+      //     only 3 switch flags, set param5 to 1)
+      {0x0100, "TODoorMachine01"},
+
+      // Mines floor button. The activation radius is always 10 units. Params:
+      //   param4 = switch flag number
+      //   param5 = activation mode:
+      //     negative = temporary (disables flag when player leaves)
+      //     zero or positive = permanent
+      {0x0101, "TOKeyMachine01"},
+
+      // Mines single-switch door. Params:
+      //   param4 = switch flag number
+      {0x0102, "TODoorMachine02"},
+
+      // Large cryo-tube. There appear to be no parameters.
+      {0x0103, "TOCapsuleMachine01"},
+
+      // Computer. Same parameters as 0x008D (TOCapsuleAncient01).
+      {0x0104, "TOComputerMachine01"},
+
+      // Green monitor. Params:
+      //   param4 = initial state? (clamped to [0, 3]; appears to cycle through
+      //     those 4 values on its own)
+      {0x0105, "TOMonitorMachine01"},
+
+      // Floating robot. Same params as 0x00CD (TODragonflyCave01), though it
+      // appears that some may have different scale factors or offsets (TODO).
+      {0x0106, "TODragonflyMachine01"},
+
+      // Floating blue light. Params:
+      //   param4 = TODO
+      //   param5 = TODO
+      //   param6 = TODO
+      {0x0107, "TOLightMachine01"},
+
+      // Self-destructing objects. Params:
+      //   param1 = radius delta (actual radius is param1 + 30)
+      {0x0108, "TOExplosiveMachine01"},
+      {0x0109, "TOExplosiveMachine02"},
+      {0x010A, "TOExplosiveMachine03"},
+
+      // Spark machine. Params:
+      //   param1 = TODO (actual value used is param1 - 0.98)
+      //   param2 = TODO (seems it only matters if this is <= 0 or not)
+      {0x010B, "TOSparkMachine01"},
+
+      // Large flashing box. Params:
+      //   param2 = TODO (seems it only matters if this is < 0 or not)
+      {0x010C, "TOHangerMachine01"},
+
+      // Ruins entrance door (after Vol Opt). This object reads quest flags
+      // 0x2C, 0x2D, and 0x2E to determine the state of each seal on the door
+      // (for Forest, Caves, and Mines respectively). It then checks quest flag
+      // 0x2F; if this flag is set, then all seals are unlocked regardless of
+      // the preceding three flags' values. Curiously, it seems that these
+      // flags are checked every frame, even though it's normally impossible to
+      // change their values in the area where this object appears.
+      // No parameters.
+      {0x0130, "TODoorVoShip"},
+
+      // Ruins floor warp. Params:
+      //   param4 = destination floor
+      //   param6 = color (negative = red, zero or positive = blue); if this is
+      //     >= 0 in Challenge mode, the warp is destroyed immediately
+      {0x0140, "TObjGoalWarpAncient"},
+
+      // Ruins intra-area warp. Same parameters as 0x0003 (TObjMapWarpForest),
+      // but also:
+      //   param5 = type (negative = one-way, zero or positive = normal)
+      {0x0141, "TObjMapWarpAncient"},
+
+      // Ruins switch. Same parameters as 0x00C0 (TOKeyCave01).
+      {0x0142, "TOKeyAncient02"},
+
+      // Ruins floor button. Same parameters as 0x00C0 (TOKeyCave01).
+      {0x0143, "TOKeyAncient03"},
+
       // TODO: Describe the rest of the object types.
-      {0x00D0, "TOCakeshopCave01"}, // Constructor in 3OE1: 80159F68
-      {0x00D1, "TORockCaveS01"}, // Constructor in 3OE1: 80174A44
-      {0x00D2, "TORockCaveM01"}, // Constructor in 3OE1: 801748E4
-      {0x00D3, "TORockCaveL01"}, // Constructor in 3OE1: 80174784
-      {0x00D4, "TORockCaveS02"}, // Constructor in 3OE1: 80174628
-      {0x00D5, "TORockCaveM02"}, // Constructor in 3OE1: 801744C8
-      {0x00D6, "TORockCaveL02"}, // Constructor in 3OE1: 80174368
-      {0x00D7, "TORockCaveSS02"}, // Constructor in 3OE1: 8017420C
-      {0x00D8, "TORockCaveSM02"}, // Constructor in 3OE1: 801740AC
-      {0x00D9, "TORockCaveSL02"}, // Constructor in 3OE1: 80173F4C
-      {0x00DA, "TORockCaveS03"}, // Constructor in 3OE1: 80173DF0
-      {0x00DB, "TORockCaveM03"}, // Constructor in 3OE1: 80173C90
-      {0x00DC, "TORockCaveL03"}, // Constructor in 3OE1: 80173B30
-      {0x00DE, "TODummyKeyCave01"}, // Constructor in 3OE1: 80165D1C (v2+ only)
-      {0x00DF, "TORockCaveBL01"}, // Constructor in 3OE1: 801739AC (v2+ only)
-      {0x00E0, "TORockCaveBL02"}, // Constructor in 3OE1: 80173828 (v2+ only)
-      {0x00E1, "TORockCaveBL03"}, // Constructor in 3OE1: 801736A4 (v2+ only)
-      {0x0100, "TODoorMachine01"}, // Constructor in 3OE1: 80162E38
-      {0x0101, "TOKeyMachine01"}, // Constructor in 3OE1: 8016D538
-      {0x0102, "TODoorMachine02"}, // Constructor in 3OE1: 80163440
-      {0x0103, "TOCapsuleMachine01"}, // Constructor in 3OE1: 8015A588
-      {0x0104, "TOComputerMachine01"}, // Constructor in 3OE1: 8015B37C
-      {0x0105, "TOMonitorMachine01"}, // Constructor in 3OE1: 801722A4
-      {0x0106, "TODragonflyMachine01"}, // Constructor in 3OE1: 80165294
-      {0x0107, "TOLightMachine01"}, // Constructor in 3OE1: 8016E99C
-      {0x0108, "TOExplosiveMachine01"}, // Constructor in 3OE1: 80166144
-      {0x0109, "TOExplosiveMachine02"}, // Constructor in 3OE1: 80165FD4
-      {0x010A, "TOExplosiveMachine03"}, // Constructor in 3OE1: 80165E64
-      {0x010B, "TOSparkMachine01"}, // Constructor in 3OE1: 80177190
-      {0x010C, "TOHangerMachine01"}, // Constructor in 3OE1: 80168DF4
-      {0x0130, "TODoorVoShip"}, // Constructor in 3OE1: 801639E8
-      {0x0140, "TObjGoalWarpAncient"}, // Constructor in 3OE1: 8017C9F4
-      {0x0141, "TObjMapWarpAncient"}, // Constructor in 3OE1: 8017CDB8
-      {0x0142, "TOKeyAncient02"}, // Constructor in 3OE1: 8016B3CC
-      {0x0143, "TOKeyAncient03"}, // Constructor in 3OE1: 8016BAB4
       {0x0144, "TODoorAncient01"}, // Constructor in 3OE1: 8015DECC
       {0x0145, "TODoorAncient03"}, // Constructor in 3OE1: 8015E378
       {0x0146, "TODoorAncient04"}, // Constructor in 3OE1: 8015E824
