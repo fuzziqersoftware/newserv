@@ -836,10 +836,13 @@ static HandlerResult C_B3(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, 
   }
 }
 
-static HandlerResult S_B_E7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t, uint32_t, string& data) {
+static HandlerResult S_B_E7(shared_ptr<ProxyServer::LinkedSession> ses, uint16_t command, uint32_t flag, string& data) {
   if (ses->config.check_flag(Client::Flag::PROXY_SAVE_FILES)) {
-    string output_filename = phosg::string_printf("player.%" PRId64 ".bin", phosg::now());
-    phosg::save_file(output_filename, data);
+    string output_filename = phosg::string_printf("player.%" PRId64 ".psochar", phosg::now());
+    auto f = phosg::fopen_unique(output_filename, "wb");
+    PSOCommandHeaderBB header = {data.size() + sizeof(PSOCommandHeaderBB), command, flag};
+    phosg::fwritex(f.get(), &header, sizeof(header));
+    phosg::fwritex(f.get(), data);
     ses->log.info("Wrote player data to file %s", output_filename.c_str());
   }
   return HandlerResult::Type::FORWARD;
