@@ -616,8 +616,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
 
       // Arbitrary item. The parameters specify the item data; see
       // ItemCreator::base_item_for_specialized_box for how the encoding works.
-      // This object is only available on v1 and v2; it is not available in v3
-      // and v4.
+      // Availability: v1/v2 only
       {0x0005, "TItem"},
 
       // Environmental sound. This object is not constructed in offline multi
@@ -1292,6 +1291,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       // opcode. Params:
       //   param4 = destination floor
       //   param5 = switch flag number
+      // Availability: v2+ only
       // TODO: This thing has a lot of code; figure out if there are any other
       // parameters
       {0x0055, "TObjCityMainWarpChallenge"},
@@ -1310,17 +1310,20 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //     the sequential behavior is always used); this is somewhat obviated
       //     for this door type since it can have only one switch flag, but
       //     other door types may have multiple, for which this is relevant
+      // Availability: v3+ only
       {0x0056, "TODoorLabo"},
 
       // Enables the Trade Window when the player is near this object. Both
       // players must be near a TObjTradeCollision object (not necessarily the
       // same one) to be able to use the Trade Window with each other. Params:
       //   param1 = radius
+      // Availability: v3+ only
       {0x0057, "TObjTradeCollision"},
 
       // TODO: Describe this object. Presumably similar to TObjTradeCollision
       // but enables the deck edit counter? Params:
       //   param1 = radius
+      // Availability: Ep3 only
       {0x0058, "TObjDeckCollision"},
 
       // Forest door. Params:
@@ -1372,6 +1375,11 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       // Elevated cylindrical tank. Params:
       //   param1-3 = TODO
       {0x0089, "TObjTank"},
+
+      // TODO: Describe this object. Params:
+      //   param1-3 = TODO
+      // Availability: vv1/v2+ only
+      {0x008A, "TObjBattery"},
 
       // Forest console. Params:
       //   param4 = quest label to call when activated (inherited from
@@ -1431,10 +1439,11 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       // Large enemy box. See TObjContainerEnemy for parameters.
       {0x0093, "TObjContainerAbeEnemy"},
 
-      // Always-empty box. No parameters.
+      // Always-empty box.
+      // Availability: v2+ only
       {0x0095, "TObjContainerNoItem"},
 
-      // Laser fence. Params:
+      // Laser fence. This object is only available in v2 and later. Params:
       //   param1 = color (clamped to [0, 3])
       //   param2 = depth of collision box (transverse to lasers)
       //   param3 = length of collision box (parallel to lasers)
@@ -1443,6 +1452,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //     0 = short fence
       //     1 = long fence
       //     anything else = invisible
+      // Availability: v2+ only
       {0x0096, "TObjLazerFenceExtra"},
 
       // Caves floor button. The activation radius is always 10 units. Params:
@@ -1548,10 +1558,10 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x00DA, "TORockCaveS03"}, // Constructor in 3OE1: 80173DF0
       {0x00DB, "TORockCaveM03"}, // Constructor in 3OE1: 80173C90
       {0x00DC, "TORockCaveL03"}, // Constructor in 3OE1: 80173B30
-      {0x00DE, "TODummyKeyCave01"}, // Constructor in 3OE1: 80165D1C
-      {0x00DF, "TORockCaveBL01"}, // Constructor in 3OE1: 801739AC
-      {0x00E0, "TORockCaveBL02"}, // Constructor in 3OE1: 80173828
-      {0x00E1, "TORockCaveBL03"}, // Constructor in 3OE1: 801736A4
+      {0x00DE, "TODummyKeyCave01"}, // Constructor in 3OE1: 80165D1C (v2+ only)
+      {0x00DF, "TORockCaveBL01"}, // Constructor in 3OE1: 801739AC (v2+ only)
+      {0x00E0, "TORockCaveBL02"}, // Constructor in 3OE1: 80173828 (v2+ only)
+      {0x00E1, "TORockCaveBL03"}, // Constructor in 3OE1: 801736A4 (v2+ only)
       {0x0100, "TODoorMachine01"}, // Constructor in 3OE1: 80162E38
       {0x0101, "TOKeyMachine01"}, // Constructor in 3OE1: 8016D538
       {0x0102, "TODoorMachine02"}, // Constructor in 3OE1: 80163440
@@ -1601,141 +1611,143 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x0162, "TOContainerAncientItemRare"}, // Constructor in 3OE1: 801A2A14
       {0x0163, "TOContainerAncientEnemyCommon"}, // Constructor in 3OE1: 8015B69C
       {0x0164, "TOContainerAncientEnemyRare"}, // Constructor in 3OE1: 801A2A5C
-      {0x0165, "TOContainerAncientItemNone"}, // Constructor in 3OE1: 8015BD78
-      {0x0166, "TOWreckAncientBrakable05"}, // Constructor in 3OE1: 8017D1DC
-      {0x0167, "TOTrapAncient02R"}, // Constructor in 3OE1: 8017A96C
+      {0x0165, "TOContainerAncientItemNone"}, // Constructor in 3OE1: 8015BD78 (v2+ only)
+      {0x0166, "TOWreckAncientBrakable05"}, // Constructor in 3OE1: 8017D1DC (v2+ only)
+      {0x0167, "TOTrapAncient02R"}, // Constructor in 3OE1: 8017A96C (v2+ only)
       {0x0170, "TOBoss4Bird"}, // Constructor in 3OE1: 8015982C
       {0x0171, "TOBoss4Tower"}, // Constructor in 3OE1: 801592E0
       {0x0172, "TOBoss4Rock"}, // Constructor in 3OE1: 80158D90
+      {0x0173, "TOSoulDF"}, // Constructor in 2OEF: 8C1DBA94 (v1/v2 only)
+      {0x0174, "TOButterflyDF"}, // Constructor in 2OEF: 8C1DE660 (v1/v2 only)
       {0x0180, "TObjInfoCol"}, // Constructor in 3OE1: 801A27B4
       {0x0181, "TObjWarpLobby"}, // Constructor in 3OE1: 801A2800
-      {0x0182, "TObjLobbyMain"}, // Constructor in 3OE1: 80350B84
-      {0x0183, "__LOBBY_PIGEON__"}, // Formerly __TObjPathObj_subclass_0183__ // Constructor in 3OE1: 802BF420
-      {0x0184, "TObjButterflyLobby"}, // Constructor in 3OE1: 8034FA8C
-      {0x0185, "TObjRainbowLobby"}, // Constructor in 3OE1: 8034EB9C
-      {0x0186, "TObjKabochaLobby"}, // Constructor in 3OE1: 80351A18
-      {0x0187, "TObjStendGlassLobby"}, // Constructor in 3OE1: 80357CD8
-      {0x0188, "TObjCurtainLobby"}, // Constructor in 3OE1: 80359DF4
-      {0x0189, "TObjWeddingLobby"}, // Constructor in 3OE1: 8035A1E0
-      {0x018A, "TObjTreeLobby"}, // Constructor in 3OE1: 80362D44
-      {0x018B, "TObjSuisouLobby"}, // Constructor in 3OE1: 80368118
-      {0x018C, "TObjParticleLobby"}, // Constructor in 3OE1: 80367DC0
-      {0x018D, "TObjLobbyTable"}, // (Ep3 only) Constructor in 3SE0: 802C07E4
-      {0x018E, "TObjJukeBox"}, // (Ep3 only) Constructor in 3SE0: 8030D8A8
-      {0x0190, "TObjCamera"}, // Constructor in 3OE1: 8017FAC0
-      {0x0191, "TObjTuitate"}, // Constructor in 3OE1: 8019AF20
-      {0x0192, "TObjDoaEx01"}, // Constructor in 3OE1: 8018E02C
-      {0x0193, "TObjBigTuitate"}, // Constructor in 3OE1: 8019AB9C
-      {0x01A0, "TODoorVS2Door01"}, // Constructor in 3OE1: 80164084
-      {0x01A1, "TOVS2Wreck01"}, // Constructor in 3OE1: 8017C520
-      {0x01A2, "TOVS2Wreck02"}, // Constructor in 3OE1: 8017C438
-      {0x01A3, "TOVS2Wreck03"}, // Constructor in 3OE1: 8017C350
-      {0x01A4, "TOVS2Wreck04"}, // Constructor in 3OE1: 8017C268
-      {0x01A5, "TOVS2Wreck05"}, // Constructor in 3OE1: 8017C180
-      {0x01A6, "TOVS2Wreck06"}, // Constructor in 3OE1: 8017C098
-      {0x01A7, "TOVS2Wall01"}, // Constructor in 3OE1: 8017BEC8
-      {0x01A8, "__OBJECT_MAP_DETECT_TEMPLE__"}, // Name is from qedit; object class has no name in the client // Constructor in 3OE1: 80085794
-      {0x01A9, "TObjHashiVersus1"}, // Constructor in 3OE1: 80191388
-      {0x01AA, "TObjHashiVersus2"}, // Constructor in 3OE1: 8019118C
-      {0x01AB, "TODoorFourLightRuins"}, // Constructor in 3OE1: 801A271C
-      {0x01C0, "TODoorFourLightSpace"}, // Constructor in 3OE1: 801A2768
-      {0x0200, "TObjContainerJung"}, // Constructor in 3OE1: 8018D2CC
-      {0x0201, "TObjWarpJung"}, // Constructor in 3OE1: 8019FF00
-      {0x0202, "TObjDoorJung"}, // Constructor in 3OE1: 8018F2DC
-      {0x0203, "TObjContainerJungEx"}, // Constructor in 3OE1: 8018CE58
-      {0x0204, "TODoorJungleMain"}, // Constructor in 3OE1: 80299E20
-      {0x0205, "TOKeyJungleMain"}, // Constructor in 3OE1: 8029BA64
-      {0x0206, "TORockJungleS01"}, // Constructor in 3OE1: 8029B3F8
-      {0x0207, "TORockJungleM01"}, // Constructor in 3OE1: 8029AFAC
-      {0x0208, "TORockJungleL01"}, // Constructor in 3OE1: 8029AC38
-      {0x0209, "TOGrassJungle"}, // Constructor in 3OE1: 8029B764
-      {0x020A, "TObjWarpJungMain"}, // Constructor in 3OE1: 8019FA1C
-      {0x020B, "TBGLightningCtrl"}, // Constructor in 3OE1: 802A8750
-      {0x020C, "__WHITE_BIRD__"}, // Formerly __TObjPathObj_subclass_020C__ // Constructor in 3OE1: 802C0C64
-      {0x020D, "__ORANGE_BIRD__"}, // Formerly __TObjPathObj_subclass_020D__ // Constructor in 3OE1: 802C05BC
-      {0x020E, "TObjContainerJungEnemy"}, // Constructor in 3OE1: 8018CCF8
-      {0x020F, "TOTrapChainSawDamage"}, // Constructor in 3OE1: 802C7748
-      {0x0210, "TOTrapChainSawKey"}, // Constructor in 3OE1: 802C7234
-      {0x0211, "TOBiwaMushi"}, // Constructor in 3OE1: 802A8D98
-      {0x0212, "__SEAGULL__"}, // Formerly __TObjPathObj_subclass_0212__ // Constructor in 3OE1: 802BFDE8
-      {0x0213, "TOJungleDesign"}, // Constructor in 3OE1: 802FD478
-      {0x0220, "TObjFish"}, // Constructor in 3OE1: 8029D04C
-      {0x0221, "TODoorFourLightSeabed"}, // Constructor in 3OE1: 801A25EC
-      {0x0222, "TODoorFourLightSeabedU"}, // Constructor in 3OE1: 801A2638
-      {0x0223, "TObjSeabedSuiso_CH"}, // Constructor in 3OE1: 802A5290
-      {0x0224, "TObjSeabedSuisoBrakable"}, // Constructor in 3OE1: 802A507C
-      {0x0225, "TOMekaFish00"}, // Constructor in 3OE1: 802A9378
-      {0x0226, "TOMekaFish01"}, // Constructor in 3OE1: 802A9088
-      {0x0227, "__DOLPHIN__"}, // Formerly __TObjPathObj_subclass_0227__ // Constructor in 3OE1: 802C1378
-      {0x0228, "TOTrapSeabed01"}, // Constructor in 3OE1: 802C9154
-      {0x0229, "TOCapsuleLabo"}, // Constructor in 3OE1: 802ADD40
-      {0x0240, "TObjParticle"}, // Constructor in 3OE1: 801954E4
-      {0x0280, "__BARBA_RAY_TELEPORTER__"}, // Formerly __TObjAreaWarpForest_subclass_0280__ // Constructor in 3OE1: 802EF620
-      {0x02A0, "TObjLiveCamera"}, // Constructor in 3OE1: 80309D5C
-      {0x02B0, "TContainerAncient01R"}, // Constructor in 3OE1: 8018ADF8
-      {0x02B1, "TObjLaboDesignBase(0)"}, // Constructor in 3OE1: 803631D4
-      {0x02B2, "TObjLaboDesignBase(1)"}, // Constructor in 3OE1: 80363184
-      {0x02B3, "TObjLaboDesignBase(2)"}, // Constructor in 3OE1: 80363134
-      {0x02B4, "TObjLaboDesignBase(3)"}, // Constructor in 3OE1: 803630E4
-      {0x02B5, "TObjLaboDesignBase(4)"}, // Constructor in 3OE1: 80363094
-      {0x02B6, "TObjLaboDesignBase(5)"}, // Constructor in 3OE1: 80363044
-      {0x02B7, "TObjGbAdvance"}, // Constructor in 3OE1: 80187C10
-      {0x02B8, "TObjQuestColALock2"}, // Constructor in 3OE1: 80195824
-      {0x02B9, "TObjMapForceWarp"}, // Constructor in 3OE1: 801A297C
-      {0x02BA, "TObjQuestCol2"}, // Constructor in 3OE1: 80195680
-      {0x02BB, "TODoorLaboNormal"}, // Constructor in 3OE1: 801A26D0
-      {0x02BC, "TObjAreaWarpEndingJung"}, // Constructor in 3OE1: 8019AFF4
-      {0x02BD, "TObjLaboMapWarp"}, // Constructor in 3OE1: 80185430
-      {0x02D0, "TObjKazariCard"}, // (Ep3 only) Constructor in 3SE0: 8026C79C; battle only
-      {0x02D1, "TObj_FloatingCardMaterial_Dark"}, // (Ep3 only) Constructor in 3SE0: 800C5F30; city only
-      {0x02D2, "TObj_FloatingCardMaterial_Hero"}, // (Ep3 only) Constructor in 3SE0: 800C5F7C; city only
-      {0x02D3, "TObjCardCityMapWarp(0)"}, // (Ep3 only) Constructor in 3SE0: 800B9528; city only
-      {0x02D4, "TObjCardCityDoor(0)"}, // (Ep3 only) Constructor in 3SE0: 800B8C40; city only
-      {0x02D5, "TObjCardCityDoor(1)"}, // (Ep3 only) Constructor in 3SE0: 800B8BF0; city only
-      {0x02D6, "TObjKazariGeyserMizu"}, // (Ep3 only) Constructor in 3SE0: 80278E08; battle only
-      {0x02D7, "TObjSetCardColi"}, // (Ep3 only) Constructor in 3SE0: 802BCE80; battle only
-      {0x02D8, "TObjCardCityDoor(2)"}, // (Ep3 only) Constructor in 3SE0: 800B8BA0; city only
-      {0x02D9, "TObjCardCityMapWarp(1)"}, // (Ep3 only) Constructor in 3SE0: 800B94D8; city only
-      {0x02DA, "TOFlyMekaHero"}, // (Ep3 only) Constructor in 3SE0: 802DFD18; city only
-      {0x02DB, "TOFlyMekaDark"}, // (Ep3 only) Constructor in 3SE0: 802DFAAC; city only
-      {0x02DC, "TObjCardCityDoor_Closed(0)"}, // (Ep3 only) Constructor in 3SE0: 800B884C; city only
-      {0x02DD, "TObjCardCityDoor_Closed(1)"}, // (Ep3 only) Constructor in 3SE0: 800B87FC; city only
-      {0x02DE, "TObjCardCityDoor_Closed(2)"}, // (Ep3 only) Constructor in 3SE0: 800B87AC; city only
-      {0x02DF, "TObjCardCityDoor(3)"}, // (Ep3 only) Constructor in 3SE0: 800B8B50; city only
-      {0x02E0, "TObjCardCityDoor(4)"}, // (Ep3 only) Constructor in 3SE0: 800B8B00; city only
-      {0x02E1, "TObjCardCityDoor_Closed(3)"}, // (Ep3 only) Constructor in 3SE0: 800B875C; city only
-      {0x02E2, "TObjCardCityDoor_Closed(4)"}, // (Ep3 only) Constructor in 3SE0: 800B870C; city only
-      {0x02E3, "TObjCardCityMapWarp(2)"}, // (Ep3 only) Constructor in 3SE0: 800B9488; city only
-      {0x02E4, "TObjSinBoardCard"}, // (Ep3 only) Constructor in 3SE0: 80309608; city/lobby only
-      {0x02E5, "TObjCityMoji"}, // (Ep3 only) Constructor in 3SE0: 8030DE8C; city only
-      {0x02E6, "TObjCityWarpOff"}, // (Ep3 only) Constructor in 3SE0: 8030DB4C; city only
-      {0x02E7, "TObjFlyCom"}, // (Ep3 only) Constructor in 3SE0: 80310BEC; city only
-      {0x02E8, "__UNKNOWN_02E8__"}, // (Ep3 only) Subclass of TObjPathObj; 3SE0: 8019A638; city only
-      {0x0300, "__EP4_LIGHT__"}, // Constructor in 59NL: 00661158
-      {0x0301, "__WILDS_CRATER_CACTUS__"}, // Constructor in 59NL: 0067612C
-      {0x0302, "__WILDS_CRATER_BROWN_ROCK__"}, // Constructor in 59NL: 00675748
-      {0x0303, "__WILDS_CRATER_BROWN_ROCK_DESTRUCTIBLE__"}, // Constructor in 59NL: 00675BF8
-      {0x0340, "__UNKNOWN_0340__"}, // Constructor in 59NL: 00673FB8
-      {0x0341, "__UNKNOWN_0341__"}, // Constructor in 59NL: 00674118
-      {0x0380, "__POISON_PLANT__"}, // Constructor in 59NL: 0067927C
-      {0x0381, "__UNKNOWN_0381__"}, // Constructor in 59NL: 00679678
-      {0x0382, "__UNKNOWN_0382__"}, // Constructor in 59NL: 0067A264
-      {0x0383, "__DESERT_OOZE_PLANT__"}, // Constructor in 59NL: 006781EC
-      {0x0385, "__UNKNOWN_0385__"}, // Constructor in 59NL: 006785C8
-      {0x0386, "__WILDS_CRATER_BLACK_ROCKS__"}, // Constructor in 59NL: 00677DE4
-      {0x0387, "__UNKNOWN_0387__"}, // Constructor in 59NL: 006119E4
-      {0x0388, "__UNKNOWN_0388__"}, // Constructor in 59NL: 00635D1C
-      {0x0389, "__UNKNOWN_0389__"}, // Constructor in 59NL: 0063810C
-      {0x038A, "__UNKNOWN_038A__"}, // Constructor in 59NL: 00619604
-      {0x038B, "__FALLING_ROCK__"}, // Constructor in 59NL: 00679F58
-      {0x038C, "__DESERT_PLANT_SOLID__"}, // Constructor in 59NL: 0067A548
-      {0x038D, "__DESERT_CRYSTALS_BOX__"}, // Constructor in 59NL: 00677610
-      {0x038E, "__EP4_TEST_DOOR__"}, // Constructor in 59NL: 00677A80
-      {0x038F, "__BEE_HIVE__"}, // Constructor in 59NL: 00676ADC
-      {0x0390, "__EP4_TEST_PARTICLE__"}, // Constructor in 59NL: 00678C00
-      {0x0391, "__HEAT__"}, // Constructor in 59NL: 005C2820
-      {0x03C0, "__EP4_BOSS_EGG__"}, // Constructor in 59NL: 0076FB74
-      {0x03C1, "__EP4_BOSS_ROCK_SPAWNER__"}, // Constructor in 59NL: 00770028
+      {0x0182, "TObjLobbyMain"}, // Constructor in 3OE1: 80350B84 (v3+ only)
+      {0x0183, "__LOBBY_PIGEON__"}, // Formerly __TObjPathObj_subclass_0183__ // Constructor in 3OE1: 802BF420 (v3+ only)
+      {0x0184, "TObjButterflyLobby"}, // Constructor in 3OE1: 8034FA8C (v3+ only)
+      {0x0185, "TObjRainbowLobby"}, // Constructor in 3OE1: 8034EB9C (v3+ only)
+      {0x0186, "TObjKabochaLobby"}, // Constructor in 3OE1: 80351A18 (v3+ only)
+      {0x0187, "TObjStendGlassLobby"}, // Constructor in 3OE1: 80357CD8 (v3+ only)
+      {0x0188, "TObjCurtainLobby"}, // Constructor in 3OE1: 80359DF4 (v3+ only)
+      {0x0189, "TObjWeddingLobby"}, // Constructor in 3OE1: 8035A1E0 (v3+ only)
+      {0x018A, "TObjTreeLobby"}, // Constructor in 3OE1: 80362D44 (v3+ only)
+      {0x018B, "TObjSuisouLobby"}, // Constructor in 3OE1: 80368118 (v3+ only)
+      {0x018C, "TObjParticleLobby"}, // Constructor in 3OE1: 80367DC0 (v3+ only)
+      {0x018D, "TObjLobbyTable"}, // Constructor in 3SE0: 802C07E4 (Ep3 only)
+      {0x018E, "TObjJukeBox"}, // Constructor in 3SE0: 8030D8A8 (Ep3 only)
+      {0x0190, "TObjCamera"}, // Constructor in 3OE1: 8017FAC0 (v2+ only)
+      {0x0191, "TObjTuitate"}, // Constructor in 3OE1: 8019AF20 (v2+ only)
+      {0x0192, "TObjDoaEx01"}, // Constructor in 3OE1: 8018E02C (v2+ only)
+      {0x0193, "TObjBigTuitate"}, // Constructor in 3OE1: 8019AB9C (v2+ only)
+      {0x01A0, "TODoorVS2Door01"}, // Constructor in 3OE1: 80164084 (v2+ only)
+      {0x01A1, "TOVS2Wreck01"}, // Constructor in 3OE1: 8017C520 (v2+ only)
+      {0x01A2, "TOVS2Wreck02"}, // Constructor in 3OE1: 8017C438 (v2+ only)
+      {0x01A3, "TOVS2Wreck03"}, // Constructor in 3OE1: 8017C350 (v2+ only)
+      {0x01A4, "TOVS2Wreck04"}, // Constructor in 3OE1: 8017C268 (v2+ only)
+      {0x01A5, "TOVS2Wreck05"}, // Constructor in 3OE1: 8017C180 (v2+ only)
+      {0x01A6, "TOVS2Wreck06"}, // Constructor in 3OE1: 8017C098 (v2+ only)
+      {0x01A7, "TOVS2Wall01"}, // Constructor in 3OE1: 8017BEC8 (v2+ only)
+      {0x01A8, "__OBJECT_MAP_DETECT_TEMPLE__"}, // Name is from qedit; object class has no name in the client // Constructor in 3OE1: 80085794 (v2+ only)
+      {0x01A9, "TObjHashiVersus1"}, // Constructor in 3OE1: 80191388 (v2+ only)
+      {0x01AA, "TObjHashiVersus2"}, // Constructor in 3OE1: 8019118C (v2+ only)
+      {0x01AB, "TODoorFourLightRuins"}, // Constructor in 3OE1: 801A271C (v3+ only)
+      {0x01C0, "TODoorFourLightSpace"}, // Constructor in 3OE1: 801A2768 (v3+ only)
+      {0x0200, "TObjContainerJung"}, // Constructor in 3OE1: 8018D2CC (v3+ only)
+      {0x0201, "TObjWarpJung"}, // Constructor in 3OE1: 8019FF00 (v3+ only)
+      {0x0202, "TObjDoorJung"}, // Constructor in 3OE1: 8018F2DC (v3+ only)
+      {0x0203, "TObjContainerJungEx"}, // Constructor in 3OE1: 8018CE58 (v3+ only)
+      {0x0204, "TODoorJungleMain"}, // Constructor in 3OE1: 80299E20 (v3+ only)
+      {0x0205, "TOKeyJungleMain"}, // Constructor in 3OE1: 8029BA64 (v3+ only)
+      {0x0206, "TORockJungleS01"}, // Constructor in 3OE1: 8029B3F8 (v3+ only)
+      {0x0207, "TORockJungleM01"}, // Constructor in 3OE1: 8029AFAC (v3+ only)
+      {0x0208, "TORockJungleL01"}, // Constructor in 3OE1: 8029AC38 (v3+ only)
+      {0x0209, "TOGrassJungle"}, // Constructor in 3OE1: 8029B764 (v3+ only)
+      {0x020A, "TObjWarpJungMain"}, // Constructor in 3OE1: 8019FA1C (v3+ only)
+      {0x020B, "TBGLightningCtrl"}, // Constructor in 3OE1: 802A8750 (v3+ only)
+      {0x020C, "__WHITE_BIRD__"}, // Formerly __TObjPathObj_subclass_020C__ // Constructor in 3OE1: 802C0C64 (v3+ only)
+      {0x020D, "__ORANGE_BIRD__"}, // Formerly __TObjPathObj_subclass_020D__ // Constructor in 3OE1: 802C05BC (v3+ only)
+      {0x020E, "TObjContainerJungEnemy"}, // Constructor in 3OE1: 8018CCF8 (v3+ only)
+      {0x020F, "TOTrapChainSawDamage"}, // Constructor in 3OE1: 802C7748 (v3+ only)
+      {0x0210, "TOTrapChainSawKey"}, // Constructor in 3OE1: 802C7234 (v3+ only)
+      {0x0211, "TOBiwaMushi"}, // Constructor in 3OE1: 802A8D98 (v3+ only)
+      {0x0212, "__SEAGULL__"}, // Formerly __TObjPathObj_subclass_0212__ // Constructor in 3OE1: 802BFDE8 (v3+ only)
+      {0x0213, "TOJungleDesign"}, // Constructor in 3OE1: 802FD478 (v3+ only)
+      {0x0220, "TObjFish"}, // Constructor in 3OE1: 8029D04C (v3+ only)
+      {0x0221, "TODoorFourLightSeabed"}, // Constructor in 3OE1: 801A25EC (v3+ only)
+      {0x0222, "TODoorFourLightSeabedU"}, // Constructor in 3OE1: 801A2638 (v3+ only)
+      {0x0223, "TObjSeabedSuiso_CH"}, // Constructor in 3OE1: 802A5290 (v3+ only)
+      {0x0224, "TObjSeabedSuisoBrakable"}, // Constructor in 3OE1: 802A507C (v3+ only)
+      {0x0225, "TOMekaFish00"}, // Constructor in 3OE1: 802A9378 (v3+ only)
+      {0x0226, "TOMekaFish01"}, // Constructor in 3OE1: 802A9088 (v3+ only)
+      {0x0227, "__DOLPHIN__"}, // Formerly __TObjPathObj_subclass_0227__ // Constructor in 3OE1: 802C1378 (v3+ only)
+      {0x0228, "TOTrapSeabed01"}, // Constructor in 3OE1: 802C9154 (v3+ only)
+      {0x0229, "TOCapsuleLabo"}, // Constructor in 3OE1: 802ADD40 (v3+ only)
+      {0x0240, "TObjParticle"}, // Constructor in 3OE1: 801954E4 (v3+ only)
+      {0x0280, "__BARBA_RAY_TELEPORTER__"}, // Formerly __TObjAreaWarpForest_subclass_0280__ // Constructor in 3OE1: 802EF620 (v3+ only)
+      {0x02A0, "TObjLiveCamera"}, // Constructor in 3OE1: 80309D5C (v3+ only)
+      {0x02B0, "TContainerAncient01R"}, // Constructor in 3OE1: 8018ADF8 (v3+ only)
+      {0x02B1, "TObjLaboDesignBase(0)"}, // Constructor in 3OE1: 803631D4 (v3+ only)
+      {0x02B2, "TObjLaboDesignBase(1)"}, // Constructor in 3OE1: 80363184 (v3+ only)
+      {0x02B3, "TObjLaboDesignBase(2)"}, // Constructor in 3OE1: 80363134 (v3+ only)
+      {0x02B4, "TObjLaboDesignBase(3)"}, // Constructor in 3OE1: 803630E4 (v3+ only)
+      {0x02B5, "TObjLaboDesignBase(4)"}, // Constructor in 3OE1: 80363094 (v3+ only)
+      {0x02B6, "TObjLaboDesignBase(5)"}, // Constructor in 3OE1: 80363044 (v3+ only)
+      {0x02B7, "TObjGbAdvance"}, // Constructor in 3OE1: 80187C10 (v3+ only)
+      {0x02B8, "TObjQuestColALock2"}, // Constructor in 3OE1: 80195824 (v3+ only)
+      {0x02B9, "TObjMapForceWarp"}, // Constructor in 3OE1: 801A297C (v3+ only)
+      {0x02BA, "TObjQuestCol2"}, // Constructor in 3OE1: 80195680 (v3+ only)
+      {0x02BB, "TODoorLaboNormal"}, // Constructor in 3OE1: 801A26D0 (v3+ only)
+      {0x02BC, "TObjAreaWarpEndingJung"}, // Constructor in 3OE1: 8019AFF4 (v3+ only)
+      {0x02BD, "TObjLaboMapWarp"}, // Constructor in 3OE1: 80185430 (v3+ only)
+      {0x02D0, "TObjKazariCard"}, // Constructor in 3SE0: 8026C79C (Ep3 only; battle only)
+      {0x02D1, "TObj_FloatingCardMaterial_Dark"}, // Constructor in 3SE0: 800C5F30 (Ep3 only; city only)
+      {0x02D2, "TObj_FloatingCardMaterial_Hero"}, // Constructor in 3SE0: 800C5F7C (Ep3 only; city only)
+      {0x02D3, "TObjCardCityMapWarp(0)"}, // Constructor in 3SE0: 800B9528 (Ep3 only; city only)
+      {0x02D4, "TObjCardCityDoor(0)"}, // Constructor in 3SE0: 800B8C40 (Ep3 only; city only)
+      {0x02D5, "TObjCardCityDoor(1)"}, // Constructor in 3SE0: 800B8BF0 (Ep3 only; city only)
+      {0x02D6, "TObjKazariGeyserMizu"}, // Constructor in 3SE0: 80278E08 (Ep3 only; battle only)
+      {0x02D7, "TObjSetCardColi"}, // Constructor in 3SE0: 802BCE80 (Ep3 only; battle only)
+      {0x02D8, "TObjCardCityDoor(2)"}, // Constructor in 3SE0: 800B8BA0 (Ep3 only; city only)
+      {0x02D9, "TObjCardCityMapWarp(1)"}, // Constructor in 3SE0: 800B94D8 (Ep3 only; city only)
+      {0x02DA, "TOFlyMekaHero"}, // Constructor in 3SE0: 802DFD18 (Ep3 only; city only)
+      {0x02DB, "TOFlyMekaDark"}, // Constructor in 3SE0: 802DFAAC (Ep3 only; city only)
+      {0x02DC, "TObjCardCityDoor_Closed(0)"}, // Constructor in 3SE0: 800B884C (Ep3 only; city only)
+      {0x02DD, "TObjCardCityDoor_Closed(1)"}, // Constructor in 3SE0: 800B87FC (Ep3 only; city only)
+      {0x02DE, "TObjCardCityDoor_Closed(2)"}, // Constructor in 3SE0: 800B87AC (Ep3 only; city only)
+      {0x02DF, "TObjCardCityDoor(3)"}, // Constructor in 3SE0: 800B8B50 (Ep3 only; city only)
+      {0x02E0, "TObjCardCityDoor(4)"}, // Constructor in 3SE0: 800B8B00 (Ep3 only; city only)
+      {0x02E1, "TObjCardCityDoor_Closed(3)"}, // Constructor in 3SE0: 800B875C (Ep3 only; city only)
+      {0x02E2, "TObjCardCityDoor_Closed(4)"}, // Constructor in 3SE0: 800B870C (Ep3 only; city only)
+      {0x02E3, "TObjCardCityMapWarp(2)"}, // Constructor in 3SE0: 800B9488 (Ep3 only; city only)
+      {0x02E4, "TObjSinBoardCard"}, // Constructor in 3SE0: 80309608; cit (Ep3 only; lobby only)
+      {0x02E5, "TObjCityMoji"}, // Constructor in 3SE0: 8030DE8C (Ep3 only; city only)
+      {0x02E6, "TObjCityWarpOff"}, // Constructor in 3SE0: 8030DB4C (Ep3 only; city only)
+      {0x02E7, "TObjFlyCom"}, // Constructor in 3SE0: 80310BEC (Ep3 only; city only)
+      {0x02E8, "__UNKNOWN_02E8__"}, // Subclass of TObjPathObj; 3SE0: 8019A638 (Ep3 only; city only)
+      {0x0300, "__EP4_LIGHT__"}, // Constructor in 59NL: 00661158 (v4 only)
+      {0x0301, "__WILDS_CRATER_CACTUS__"}, // Constructor in 59NL: 0067612C (v4 only)
+      {0x0302, "__WILDS_CRATER_BROWN_ROCK__"}, // Constructor in 59NL: 00675748 (v4 only)
+      {0x0303, "__WILDS_CRATER_BROWN_ROCK_DESTRUCTIBLE__"}, // Constructor in 59NL: 00675BF8 (v4 only)
+      {0x0340, "__UNKNOWN_0340__"}, // Constructor in 59NL: 00673FB8 (v4 only)
+      {0x0341, "__UNKNOWN_0341__"}, // Constructor in 59NL: 00674118 (v4 only)
+      {0x0380, "__POISON_PLANT__"}, // Constructor in 59NL: 0067927C (v4 only)
+      {0x0381, "__UNKNOWN_0381__"}, // Constructor in 59NL: 00679678 (v4 only)
+      {0x0382, "__UNKNOWN_0382__"}, // Constructor in 59NL: 0067A264 (v4 only)
+      {0x0383, "__DESERT_OOZE_PLANT__"}, // Constructor in 59NL: 006781EC (v4 only)
+      {0x0385, "__UNKNOWN_0385__"}, // Constructor in 59NL: 006785C8 (v4 only)
+      {0x0386, "__WILDS_CRATER_BLACK_ROCKS__"}, // Constructor in 59NL: 00677DE4 (v4 only)
+      {0x0387, "__UNKNOWN_0387__"}, // Constructor in 59NL: 006119E4 (v4 only)
+      {0x0388, "__UNKNOWN_0388__"}, // Constructor in 59NL: 00635D1C (v4 only)
+      {0x0389, "__UNKNOWN_0389__"}, // Constructor in 59NL: 0063810C (v4 only)
+      {0x038A, "__UNKNOWN_038A__"}, // Constructor in 59NL: 00619604 (v4 only)
+      {0x038B, "__FALLING_ROCK__"}, // Constructor in 59NL: 00679F58 (v4 only)
+      {0x038C, "__DESERT_PLANT_SOLID__"}, // Constructor in 59NL: 0067A548 (v4 only)
+      {0x038D, "__DESERT_CRYSTALS_BOX__"}, // Constructor in 59NL: 00677610 (v4 only)
+      {0x038E, "__EP4_TEST_DOOR__"}, // Constructor in 59NL: 00677A80 (v4 only)
+      {0x038F, "__BEE_HIVE__"}, // Constructor in 59NL: 00676ADC (v4 only)
+      {0x0390, "__EP4_TEST_PARTICLE__"}, // Constructor in 59NL: 00678C00 (v4 only)
+      {0x0391, "__HEAT__"}, // Constructor in 59NL: 005C2820 (v4 only)
+      {0x03C0, "__EP4_BOSS_EGG__"}, // Constructor in 59NL: 0076FB74 (v4 only)
+      {0x03C1, "__EP4_BOSS_ROCK_SPAWNER__"}, // Constructor in 59NL: 00770028 (v4 only)
   });
   try {
     return names.at(type);
@@ -1782,36 +1794,15 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       {0x0030, "TObjNpcHFW01"},
       {0x0031, "TObjNpcNFM01"},
       {0x0032, "TObjNpcNFW01"},
-      {0x0033, "TObjNpcEnemy"},
-      {0x0045, "TObjNpcLappy"},
-      {0x0046, "TObjNpcMoja"},
-      {0x00A9, "TObjNpcBringer"},
-      {0x00D0, "TObjNpcKenkyu"},
-      {0x00D1, "TObjNpcSoutokufu"},
-      {0x00D2, "TObjNpcHosa"},
-      {0x00D3, "TObjNpcKenkyuW"},
-      {0x00F0, "TObjNpcHosa2"},
-      {0x00F1, "TObjNpcKenkyu2"},
-      {0x00F2, "TObjNpcNgcBase"},
-      {0x00F3, "TObjNpcNgcBase"},
-      {0x00F4, "TObjNpcNgcBase"},
-      {0x00F5, "TObjNpcNgcBase"},
-      {0x00F6, "TObjNpcNgcBase"},
-      {0x00F7, "TObjNpcNgcBase"},
-      {0x00F8, "TObjNpcNgcBase"},
-      {0x00F9, "TObjNpcNgcBase"},
-      {0x00FA, "TObjNpcNgcBase"},
-      {0x00FB, "TObjNpcNgcBase"},
-      {0x00FC, "TObjNpcNgcBase"},
-      {0x00FD, "TObjNpcNgcBase"},
-      {0x00FE, "TObjNpcNgcBase"},
-      {0x00FF, "TObjNpcNgcBase"},
-      {0x0100, "__UNKNOWN_NPC_0100__"},
+      {0x0033, "TObjNpcEnemy"}, // v3+ only
       {0x0040, "TObjEneMoja"},
       {0x0041, "TObjEneLappy"},
       {0x0042, "TObjEneBm3FlyNest"},
       {0x0043, "TObjEneBm5Wolf"},
       {0x0044, "TObjEneBeast"},
+      {0x0045, "TObjNpcLappy"},
+      {0x0046, "TObjNpcMoja"},
+      {0x0047, "TObjNpcRico"}, // v2 only (not v1 nor v3+)
       {0x0060, "TObjGrass"},
       {0x0061, "TObjEneRe2Flower"},
       {0x0062, "TObjEneNanoDrago"},
@@ -1833,6 +1824,7 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       {0x00A6, "TObjEneDimedian"},
       {0x00A7, "TObjEneBalClawBody"},
       {0x00A8, "__TObjEneBalClawClaw_SUBCLASS__"},
+      {0x00A9, "TObjNpcBringer"},
       {0x00C0, "TBoss1Dragon/TBoss5Gryphon"},
       {0x00C1, "TBoss2DeRolLe"},
       {0x00C2, "TBoss3Volopt"},
@@ -1842,33 +1834,54 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       {0x00C6, "TBoss3VoloptMonitor"},
       {0x00C7, "TBoss3VoloptHiraisin"},
       {0x00C8, "TBoss4DarkFalz"},
-      {0x00CA, "TBoss6PlotFalz"},
-      {0x00CB, "TBoss7DeRolLeC"},
-      {0x00CC, "TBoss8Dragon"},
-      {0x00D4, "TObjEneMe3StelthReal"},
-      {0x00D5, "TObjEneMerillLia"},
-      {0x00D6, "TObjEneBm9Mericarol"},
-      {0x00D7, "TObjEneBm5GibonU"},
-      {0x00D8, "TObjEneGibbles"},
-      {0x00D9, "TObjEneMe1Gee"},
-      {0x00DA, "TObjEneMe1GiGue"},
-      {0x00DB, "TObjEneDelDepth"},
-      {0x00DC, "TObjEneDellBiter"},
-      {0x00DD, "TObjEneDolmOlm"},
-      {0x00DE, "TObjEneMorfos"},
-      {0x00DF, "TObjEneRecobox"},
-      {0x00E0, "TObjEneMe3SinowZoaReal/TObjEneEpsilonBody"},
-      {0x00E1, "TObjEneIllGill"},
-      {0x0110, "__ASTARK__/TObjNpcWalkingMeka_Hero"},
-      {0x0111, "__YOWIE__/__SATELLITE_LIZARD__/TObjNpcWalkingMeka_Dark"},
-      {0x0112, "__MERISSA_A__/TObjNpcHeroAide"},
-      {0x0113, "__GIRTABLULU__"},
-      {0x0114, "__ZU__"},
-      {0x0115, "__BOOTA_FAMILY__"},
-      {0x0116, "__DORPHON__"},
-      {0x0117, "__GORAN_FAMILY__"},
-      {0x0118, "__UNKNOWN_0118__"},
-      {0x0119, "__EPISODE_4_BOSS__"},
+      {0x00CA, "TBoss6PlotFalz"}, // v3+ only
+      {0x00CB, "TBoss7DeRolLeC"}, // v3+ only
+      {0x00CC, "TBoss8Dragon"}, // v3+ only
+      {0x00D0, "TObjNpcKenkyu"}, // v3+ only
+      {0x00D1, "TObjNpcSoutokufu"}, // v3+ only
+      {0x00D2, "TObjNpcHosa"}, // v3+ only
+      {0x00D3, "TObjNpcKenkyuW"}, // v3+ only
+      {0x00D4, "TObjEneMe3StelthReal"}, // v3+ only
+      {0x00D5, "TObjEneMerillLia"}, // v3+ only
+      {0x00D6, "TObjEneBm9Mericarol"}, // v3+ only
+      {0x00D7, "TObjEneBm5GibonU"}, // v3+ only
+      {0x00D8, "TObjEneGibbles"}, // v3+ only
+      {0x00D9, "TObjEneMe1Gee"}, // v3+ only
+      {0x00DA, "TObjEneMe1GiGue"}, // v3+ only
+      {0x00DB, "TObjEneDelDepth"}, // v3+ only
+      {0x00DC, "TObjEneDellBiter"}, // v3+ only
+      {0x00DD, "TObjEneDolmOlm"}, // v3+ only
+      {0x00DE, "TObjEneMorfos"}, // v3+ only
+      {0x00DF, "TObjEneRecobox"}, // v3+ only
+      {0x00E0, "TObjEneMe3SinowZoaReal/TObjEneEpsilonBody"}, // v3+ only
+      {0x00E1, "TObjEneIllGill"}, // v3+ only
+      {0x00F0, "TObjNpcHosa2"}, // v3+ only
+      {0x00F1, "TObjNpcKenkyu2"}, // v3+ only
+      {0x00F2, "TObjNpcNgcBase"}, // v3+ only
+      {0x00F3, "TObjNpcNgcBase"}, // v3+ only
+      {0x00F4, "TObjNpcNgcBase"}, // v3+ only
+      {0x00F5, "TObjNpcNgcBase"}, // v3+ only
+      {0x00F6, "TObjNpcNgcBase"}, // v3+ only
+      {0x00F7, "TObjNpcNgcBase"}, // v3+ only
+      {0x00F8, "TObjNpcNgcBase"}, // v3+ only
+      {0x00F9, "TObjNpcNgcBase"}, // v3+ only
+      {0x00FA, "TObjNpcNgcBase"}, // v3+ only
+      {0x00FB, "TObjNpcNgcBase"}, // v3+ only
+      {0x00FC, "TObjNpcNgcBase"}, // v3+ only
+      {0x00FD, "TObjNpcNgcBase"}, // v3+ only
+      {0x00FE, "TObjNpcNgcBase"}, // v3+ only
+      {0x00FF, "TObjNpcNgcBase"}, // v3+ only
+      {0x0100, "__UNKNOWN_NPC_0100__"}, // v4 only
+      {0x0110, "__ASTARK__/TObjNpcWalkingMeka_Hero"}, // Ep3/v4 only
+      {0x0111, "__YOWIE__/__SATELLITE_LIZARD__/TObjNpcWalkingMeka_Dark"}, // Ep3/v4 only
+      {0x0112, "__MERISSA_A__/TObjNpcHeroAide"}, // Ep3/v4 only
+      {0x0113, "__GIRTABLULU__"}, // v4 only
+      {0x0114, "__ZU__"}, // v4 only
+      {0x0115, "__BOOTA_FAMILY__"}, // v4 only
+      {0x0116, "__DORPHON__"}, // v4 only
+      {0x0117, "__GORAN_FAMILY__"}, // v4 only
+      {0x0118, "__UNKNOWN_0118__"}, // v4 only
+      {0x0119, "__EPISODE_4_BOSS__"}, // v4 only
   });
   try {
     return names.at(type);
