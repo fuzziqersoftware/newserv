@@ -16,7 +16,6 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
-        with_resource_file: ["true", "false"]
 
     steps:
       - uses: actions/checkout@v4
@@ -47,7 +46,6 @@ jobs:
           sudo make install
 
       - name: Install resource_file
-        if: ${{ matrix.with_resource_file == 'true' }}
         run: |
           git clone https://github.com/fuzziqersoftware/resource_dasm.git
           cd resource_dasm
