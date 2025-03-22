@@ -1568,10 +1568,27 @@ void ServerState::load_patch_indexes(bool from_non_event_thread) {
 void ServerState::load_maps(bool from_non_event_thread) {
   using SDT = SetDataTable;
 
-  config_log.info("Loading free play map files");
+  config_log.info("Loading map layouts");
+  auto room_layout_index = make_shared<RoomLayoutIndex>(
+      phosg::JSON::parse(phosg::load_file("system/maps/room-layout-index.json")));
 
+  config_log.info("Loading Episode 3 Morgue maps");
   unordered_map<uint64_t, shared_ptr<const MapFile>> new_map_file_for_source_hash;
   map<uint32_t, array<shared_ptr<const MapFile>, NUM_VERSIONS>> new_map_files_for_free_play_key;
+  {
+    // TODO: Ep3 NTE loads map_city00_on, but it appears there are some
+    // variants. Figure this out and load those maps too.
+    auto objects_data = this->load_map_file(Version::GC_EP3, "system/maps/gc-ep3/map_city_on_battle_o.dat");
+    auto enemies_data = this->load_map_file(Version::GC_EP3, "system/maps/gc-ep3/map_city_on_battle_e.dat");
+    if (objects_data || enemies_data) {
+      uint32_t free_play_key = this->free_play_key(Episode::EP3, GameMode::NORMAL, 0, 0, 0, 0);
+      auto map_file = make_shared<MapFile>(0, objects_data, enemies_data, nullptr);
+      new_map_file_for_source_hash.emplace(map_file->source_hash(), map_file);
+      new_map_files_for_free_play_key[free_play_key].at(static_cast<size_t>(Version::GC_EP3)) = map_file;
+    }
+  }
+
+  config_log.info("Loading free play map files");
   for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
     const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
     for (Episode episode : episodes) {
@@ -1656,9 +1673,11 @@ void ServerState::load_maps(bool from_non_event_thread) {
 
   auto set = [s = this->shared_from_this(),
                  new_map_file_for_source_hash = std::move(new_map_file_for_source_hash),
-                 new_map_files_for_free_play_key = std::move(new_map_files_for_free_play_key)]() {
+                 new_map_files_for_free_play_key = std::move(new_map_files_for_free_play_key),
+                 new_room_layout_index = std::move(room_layout_index)]() {
     s->map_file_for_source_hash = std::move(new_map_file_for_source_hash);
     s->map_files_for_free_play_key = std::move(new_map_files_for_free_play_key);
+    s->room_layout_index = new_room_layout_index;
     s->supermap_for_source_hash_sum.clear();
     s->supermap_for_free_play_key.clear();
   };

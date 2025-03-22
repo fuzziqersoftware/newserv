@@ -554,15 +554,16 @@ Some commands only work on the game server and not on the proxy server. The chat
         * You'll see the rare seed value and floor variations when you join a game.
         * You'll be placed into the last available slot in lobbies and games instead of the first, unless you're joining a BB solo-mode game.
         * You'll be able to join games with any PSO version, not only those for which cross-version play is normally enabled. See the "Cross-version play" section above for details on this.
-        * The rest of the commands in this section are enabled on the game server. (They are always enabled on the proxy server.)
+        * Most of the commands in this section are enabled. (A few of them are always enabled and don't require `$debug`.)
+    * `$whatobj` (game server only): Tells you what the closest object is to your position, along with its coordinates and object ID. The object's full definition is also printed to the server's log. This command can be used without `$debug` enabled.
     * `$readmem <address>` (game server only): Read 4 bytes from the given address and show you the values.
     * `$writemem <address> <data>` (game server only): Write data to the given address. Data is not required to be any specific size.
     * `$nativecall <address> [arg1 ...]` (game server only, GC only): Call a native function on your client. Only arguments passed in registers are supported; calling functions that take many arguments is not supported.
-    * `$quest <number>` (game server only): Load a quest by quest number. Can be used to load battle or challenge quests with only one player present. Debug is not required to be enabled if the specified quest has the AllowStartFromChatCommand field set in its metadata file.
+    * `$quest <number>` (game server only): Load a quest by quest number. Can be used to load battle or challenge quests with only one player present. `$debug` is not required for this command if the specified quest has the AllowStartFromChatCommand field set in its metadata file.
     * `$qcall <function-id>`: Call a quest function on your client.
-    * `$qcheck <flag-num>` (game server only): Show the value of a quest flag. This command can be used without debug mode enabled. If you're in a game, show the value of the flag in that game; if you're in the lobby, show the saved value of that quest flag for your character (BB only).
+    * `$qcheck <flag-num>` (game server only): Show the value of a quest flag. This command can be used without `$debug` enabled. If you're in a game, show the value of the flag in that game; if you're in the lobby, show the saved value of that quest flag for your character (BB only).
     * `$qset <flag-num>` or `$qclear <flag-num>`: Set or clear a quest flag for everyone in the game. If you're in the lobby and on BB, set or clear the saved value of a quest flag in your character file.
-    * `$qgread <flag-num>` (game server only): Show the value of a quest counter ("global flag"). This command can be used without debug mode enabled.
+    * `$qgread <flag-num>` (game server only): Show the value of a quest counter ("global flag"). This command can be used without `$debug` enabled.
     * `$qgwrite <flag-num> <value>` (game server only): Set the value of a quest counter ("global flag") for yourself.
     * `$qsync <reg-num> <value>`: Set a quest register's value for yourself only. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.
     * `$qsyncall <reg-num> <value>`: Set a quest register's value for everyone in the game. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.

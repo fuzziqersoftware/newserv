@@ -177,6 +177,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::map<uint32_t, std::array<std::shared_ptr<const MapFile>, NUM_VERSIONS>> map_files_for_free_play_key;
   std::unordered_map<uint64_t, std::shared_ptr<const SuperMap>> supermap_for_source_hash_sum;
   std::unordered_map<uint32_t, std::shared_ptr<const SuperMap>> supermap_for_free_play_key;
+  std::shared_ptr<const RoomLayoutIndex> room_layout_index;
   std::shared_ptr<FileContentsCache> bb_stream_files_cache;
   std::shared_ptr<FileContentsCache> bb_system_cache;
   std::shared_ptr<FileContentsCache> gba_files_cache;

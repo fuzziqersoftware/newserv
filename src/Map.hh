@@ -173,7 +173,14 @@ public:
     /* 0A */ le_uint16_t group = 0;
     /* 0C */ le_uint16_t room = 0;
     /* 0E */ le_uint16_t unknown_a3 = 0;
+    // The position is relative to the room in which the object is placed; to
+    // get the actual world position, the object's position must be rotated
+    // around the room's origin by the room's angles, then translated by the
+    // room's offset. The room's angle and offset can be found in the area's
+    // n.rel file.
     /* 10 */ VectorXYZF pos;
+    // Angles are specified as 16-bit integers, where 0 is no rotation around
+    // the axis and FFFF is almost a complete counterclockwise rotation.
     /* 1C */ VectorXYZI angle;
     /* 28 */ le_float fparam1 = 0.0f; // Boxes: if <= 0, this is a specialized box, and the specialization is in param4/5/6
     /* 2C */ le_float fparam2 = 0.0f;
@@ -697,7 +704,7 @@ public:
     inline const char* type_name(Version v) const {
       return this->super_obj
           ? MapFile::name_for_object_type(this->super_obj->version(v).set_entry->base_type)
-          : "<PLAYER TRAP>";
+          : "<DYNAMIC>";
     }
   };
 
@@ -983,4 +990,15 @@ public:
 
   void verify() const;
   void print(FILE* stream) const;
+};
+
+struct RoomLayoutIndex {
+  struct Room {
+    VectorXYZF position;
+    VectorXYZI angle;
+  };
+  std::unordered_map<uint64_t, Room> rooms;
+
+  explicit RoomLayoutIndex(const phosg::JSON& json);
+  const Room& get_room(uint8_t area, uint8_t major_var, uint32_t room_id) const;
 };

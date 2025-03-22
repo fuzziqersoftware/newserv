@@ -4391,7 +4391,7 @@ shared_ptr<Lobby> create_game_generic(
       break;
   }
 
-  if (creator_c->login->account->check_flag(Account::Flag::DEBUG)) {
+  if (creator_c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
     game->set_flag(Lobby::Flag::DEBUG);
   }
   if (creator_c->config.check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION)) {

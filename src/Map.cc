@@ -5418,3 +5418,33 @@ void MapState::print(FILE* stream) const {
     fprintf(stream, " %s set_flags=%04hX\n", ev_str.c_str(), ev_st->flags);
   }
 }
+
+static constexpr uint64_t room_layout_key(uint8_t area, uint8_t major_var, uint32_t room_id) {
+  return ((static_cast<uint64_t>(area) << 40) |
+      (static_cast<uint64_t>(major_var) << 32) |
+      static_cast<uint64_t>(room_id));
+}
+
+RoomLayoutIndex::RoomLayoutIndex(const phosg::JSON& json) {
+  for (const auto& [area_and_major_var, rooms_json] : json.as_dict()) {
+    auto tokens = phosg::split(area_and_major_var, '-');
+    uint8_t area = stoul(tokens.at(0), nullptr, 16);
+    uint8_t major_var = stoul(tokens.at(1), nullptr, 16);
+    for (const auto& [room_id_str, room_json] : rooms_json->as_dict()) {
+      uint32_t room_id = stoul(room_id_str, nullptr, 16);
+      auto emplace_ret = this->rooms.emplace(room_layout_key(area, major_var, room_id), Room());
+      auto& room = emplace_ret.first->second;
+      const auto& l = room_json->as_list();
+      room.position.x = l.at(0)->as_float();
+      room.position.y = l.at(1)->as_float();
+      room.position.z = l.at(2)->as_float();
+      room.angle.x = l.at(3)->as_int();
+      room.angle.y = l.at(4)->as_int();
+      room.angle.z = l.at(5)->as_int();
+    }
+  }
+}
+
+const RoomLayoutIndex::Room& RoomLayoutIndex::get_room(uint8_t area, uint8_t major_var, uint32_t room_id) const {
+  return this->rooms.at(room_layout_key(area, major_var, room_id));
+}

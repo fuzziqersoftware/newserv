@@ -5,6 +5,10 @@
 
 #include "Text.hh"
 
+constexpr double radians_for_fixed_point_angle(uint16_t angle) {
+  return static_cast<double>(angle * 2 * M_PI) / 0x10000;
+}
+
 struct VectorXZF {
   le_float x = 0.0;
   le_float z = 0.0;
@@ -32,6 +36,12 @@ struct VectorXZF {
   }
   inline double norm2() const {
     return ((this->x * this->x) + (this->z * this->z));
+  }
+
+  inline VectorXZF rotate_y(double angle) const {
+    double s = sin(angle);
+    double c = cos(angle);
+    return VectorXZF(this->x * c - this->z * s, this->x * s + this->z * c);
   }
 
   inline std::string str() const {
@@ -71,6 +81,31 @@ struct VectorXYZF {
   }
   inline double norm2() const {
     return ((this->x * this->x) + (this->y * this->y) + (this->z * this->z));
+  }
+
+  inline VectorXYZF rotate_x(double angle) const {
+    double s = sin(angle);
+    double c = cos(angle);
+    return VectorXYZF(
+        this->x,
+        this->y * c - this->z * s,
+        this->y * s + this->z * c);
+  }
+  inline VectorXYZF rotate_y(double angle) const {
+    double s = sin(angle);
+    double c = cos(angle);
+    return VectorXYZF(
+        this->x * c + this->z * s,
+        this->y,
+        -this->x * s + this->z * c);
+  }
+  inline VectorXYZF rotate_z(double angle) const {
+    double s = sin(angle);
+    double c = cos(angle);
+    return VectorXYZF(
+        this->x * c - this->y * s,
+        this->x * s + this->y * c,
+        this->z);
   }
 
   inline std::string str() const {

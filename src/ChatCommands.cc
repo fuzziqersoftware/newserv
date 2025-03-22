@@ -2771,6 +2771,65 @@ ChatCommandDefinition cc_what(
     },
     unavailable_on_proxy_server);
 
+ChatCommandDefinition cc_whatobj(
+    {"$whatobj"},
+    +[](const ServerArgs& a) -> void {
+      auto s = a.c->require_server_state();
+      auto l = a.c->require_lobby();
+      a.check_is_game(true);
+
+      if (!l->map_state) {
+        throw precondition_failed("$C4No map loaded");
+      }
+
+      // TODO: We should use the actual area if a loaded quest has reassigned
+      // them; it's likely that the variations will be wrong if we don't
+      auto sdt = s->set_data_table(a.c->version(), l->episode, l->mode, l->difficulty);
+      uint8_t area = sdt->default_area_for_floor(l->episode, a.c->floor);
+      uint8_t layout_var = (a.c->floor < 0x10) ? l->variations.entries[a.c->floor].layout.load() : 0x00;
+
+      float min_dist2 = 0.0f;
+      VectorXYZF nearest_worldspace_pos;
+      shared_ptr<const MapState::ObjectState> nearest_obj;
+      for (const auto& it : l->map_state->iter_object_states(a.c->version())) {
+        if (!it->super_obj || (it->super_obj->floor != a.c->floor)) {
+          continue;
+        }
+        const auto& def = it->super_obj->version(a.c->version());
+        if (!def.set_entry) {
+          continue;
+        }
+        VectorXYZF worldspace_pos;
+        try {
+          const auto& room = s->room_layout_index->get_room(area, layout_var, def.set_entry->room);
+          // This is the order in which the game does the rotations; not sure why
+          worldspace_pos = def.set_entry->pos.rotate_x(room.angle.x).rotate_z(room.angle.z).rotate_y(room.angle.y) + room.position;
+        } catch (const out_of_range&) {
+          a.c->log.warning("Can't find definition for room %02hhX:%02hhX:%08hX", area, layout_var, def.set_entry->room.load());
+          worldspace_pos = def.set_entry->pos;
+        }
+        float dist2 = (VectorXZF(worldspace_pos) - a.c->pos).norm2();
+        if (!nearest_obj || (dist2 < min_dist2)) {
+          nearest_obj = it;
+          nearest_worldspace_pos = worldspace_pos;
+          min_dist2 = dist2;
+        }
+      }
+
+      if (!nearest_obj) {
+        throw precondition_failed("$C4No objects nearby");
+      } else {
+        send_text_message_printf(a.c, "$C5K-%03zX\n$C6%s\nX:%.2f Z:%.2f",
+            nearest_obj->k_id, nearest_obj->type_name(a.c->version()),
+            nearest_worldspace_pos.x.load(), nearest_worldspace_pos.z.load());
+        auto set_str = nearest_obj->super_obj->version(a.c->version()).set_entry->str();
+        a.c->log.info("Object found via $whatobj: K-%03zX %s at x=%g y=%g z=%g",
+            nearest_obj->k_id, set_str.c_str(),
+            nearest_worldspace_pos.x.load(), nearest_worldspace_pos.y.load(), nearest_worldspace_pos.z.load());
+      }
+    },
+    unavailable_on_proxy_server);
+
 ChatCommandDefinition cc_where(
     {"$where"},
     +[](const ServerArgs& a) -> void {
