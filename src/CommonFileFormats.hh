@@ -41,7 +41,7 @@ struct VectorXZF {
   inline VectorXZF rotate_y(double angle) const {
     double s = sin(angle);
     double c = cos(angle);
-    return VectorXZF(this->x * c - this->z * s, this->x * s + this->z * c);
+    return VectorXZF{this->x * c - this->z * s, this->x * s + this->z * c};
   }
 
   inline std::string str() const {
@@ -86,26 +86,26 @@ struct VectorXYZF {
   inline VectorXYZF rotate_x(double angle) const {
     double s = sin(angle);
     double c = cos(angle);
-    return VectorXYZF(
+    return VectorXYZF{
         this->x,
         this->y * c - this->z * s,
-        this->y * s + this->z * c);
+        this->y * s + this->z * c};
   }
   inline VectorXYZF rotate_y(double angle) const {
     double s = sin(angle);
     double c = cos(angle);
-    return VectorXYZF(
+    return VectorXYZF{
         this->x * c + this->z * s,
         this->y,
-        -this->x * s + this->z * c);
+        -this->x * s + this->z * c};
   }
   inline VectorXYZF rotate_z(double angle) const {
     double s = sin(angle);
     double c = cos(angle);
-    return VectorXYZF(
+    return VectorXYZF{
         this->x * c - this->y * s,
         this->x * s + this->y * c,
-        this->z);
+        this->z};
   }
 
   inline std::string str() const {
