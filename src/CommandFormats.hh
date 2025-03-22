@@ -4054,7 +4054,7 @@ struct G_AddStatusEffect_6x0C {
   // 12 = Confuse (slot 1; 10 seconds)
   // Anything else = command is ignored
   le_uint32_t effect_type = 0;
-  le_uint32_t level = 0; // Only used for Shifta/Deband/Jellen/Zalure
+  le_float amount = 0; // Only used for Shifta/Deband/Jellen/Zalure
 } __packed_ws__(G_AddStatusEffect_6x0C, 0x0C);
 
 // 6x0D: Clear status effect slot (protected on V3/V4)
@@ -4783,7 +4783,9 @@ struct G_UseStarAtomizer_6x66 {
 // 6x67: Trigger set event
 
 struct G_TriggerSetEvent_6x67 {
-  G_UnusedHeader header;
+  // If this command is sent by a box that triggers a set event, the entity ID
+  // in the header is the box's object ID.
+  G_EntityIDHeader header;
   le_uint32_t floor = 0;
   le_uint32_t event_id = 0; // NOT event index
   le_uint32_t client_id = 0;

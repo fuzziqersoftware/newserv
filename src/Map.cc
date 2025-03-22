@@ -1432,11 +1432,11 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //   param4 = event number
       {0x0091, "TObjContainerEnemy"},
 
-      // Large box (usually used for specialized drops). See TObjContainerBase2
-      // for parameters.
+      // Large box (usually used for specialized drops). Same parameters as
+      // 0x0088 (TObjContainerBase2)
       {0x0092, "TObjContainerBase"},
 
-      // Large enemy box. See TObjContainerEnemy for parameters.
+      // Large enemy box. Same parameters as 0x0091 (TObjContainerEnemy).
       {0x0093, "TObjContainerAbeEnemy"},
 
       // Always-empty box.
@@ -1710,31 +1710,126 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //   param5 = color (clamped to [0, 3])
       {0x014D, "TOKeyAncient01"},
 
+      // Ruins fence objects. Params:
+      //   param4 = switch flag number (negative = always unlocked)
+      //   param5 = color (clamped to [0, 3])
+      {0x014E, "TOFenceAncient01"}, // 4x2
+      {0x014F, "TOFenceAncient02"}, // 6x2
+      {0x0150, "TOFenceAncient03"}, // 4x4
+      {0x0151, "TOFenceAncient04"}, // 6x4
+
+      // Ruins poison-spewing blob. This object is technically an item box, and
+      // drops an item when destroyed. Unlike most other item boxes, it cannot
+      // be specialized (ignore_def is always true). Params:
+      //   param1 = TODO (value used is param1 + 299)
+      //   param2 = TODO (value used is param2 + 209)
+      //   param3 = TODO (value used is param3 + 399)
+      //   param6 = TODO (value used is param6 + 4)
+      {0x0152, "TContainerAncient01"},
+
+      // Ruins falling trap. Trap power seems to be scaled by difficulty
+      // (Normal = x1, Hard = x2, Very Hard = x3, Ultimate = x6). Params:
+      //   param1 = trigger radius delta (value used is (param1 / 2) + 30)
+      //   param2 = TODO (clamped below to 0)
+      //   param3 = TODO (clamped below to 1)
+      //   param4 = TODO (seems it only matters if this is negative or not in
+      //     the base class (TOTrap), but TOTrapAncient01 clamps it below to 0)
+      //   param5 = TODO (clamped to [0, 5]; calls player->vtable[0x19] on
+      //     explode unless this is 5)
+      //   param6 = TODO (value used is param6 + 30, multipled by 0.33 if
+      //     offline)
+      {0x0153, "TOTrapAncient01"},
+
+      // Ruins pop-up trap. Params:
+      //   param1 = trigger radius delta (value used is (param1 / 2) + 30)
+      //   param4 = delay (value used is param4 + 30; clamped below to 0)
+      //   angle.z = TODO (seems it only matters if angle.z is > 0 or not)
+      {0x0154, "TOTrapAncient02"},
+
+      // Ruins crystal monument. Same parameters as TOCapsuleAncient01.
+      {0x0155, "TOMonumentAncient01"},
+
+      // Non-Ruins monument. Sets a quest flag when activated. The quest flag
+      // depends on which area the object appears in:
+      //   Mine 2 = 0x2E
+      //   Cave 2 = 0x2D
+      //   Any other area = 0x2C
+      // When all three of the above quest flags are active, this object also
+      // sets quest flag 0x2F.
+      // There appear to be no parameters.
+      {0x0156, "TOMonumentAncient02"},
+
+      // Ruins rocks. None of these take any parameters.
+      {0x0159, "TOWreckAncient01"},
+      {0x015A, "TOWreckAncient02"},
+      {0x015B, "TOWreckAncient03"},
+      {0x015C, "TOWreckAncient04"},
+      {0x015D, "TOWreckAncient05"},
+      {0x015E, "TOWreckAncient06"},
+      {0x015F, "TOWreckAncient07"},
+
+      // This ID constructs different objects depending on where it's used. On
+      // floor 0D (Vol Opt), it constructs TObjWarpBoss03; on other floors
+      // where it's valid, it constructs TObjFogCollisionPoison.
+      // TObjFogCollisionPoison creates a switchable, foggy area that's visible
+      // and hurts the player if the switch flag isn't on. Params:
+      //   param1 = radius
+      //   param2 = poison power (scaled by difficulty: Normal = x1, Hard = x2,
+      //     Very Hard = x3, Ultimate = x6)
+      //   param3 = if >= 1, fog is on when switch flag is on; otherwise, fog
+      //     is on when switch flag is off
+      //   param4 = fog entry number (TODO: the client handles this value being
+      //     >= 0x1000 by subtracting 0x1000; what is this for?)
+      //   param5 = transition type (0 = fade in, 1 = instantly switch)
+      //   param6 = switch flag number
+      // TObjWarpBoss03 creates an invisible warp. This is used for the warp
+      // behind the door to Ruins. Params:
+      //   param4 = destination floor
+      {0x0160, "TObjFogCollisionPoison/TObjWarpBoss03"},
+
+      // Ruins specialized box. Same parameters as 0x0088 (TObjContainerBase2).
+      {0x0161, "TOContainerAncientItemCommon"},
+
+      // Ruins random box. Same parameters as 0x0088 (TObjContainerBase2).
+      {0x0162, "TOContainerAncientItemRare"},
+
+      // Ruins enemy boxes, disguised as either of the above two objects.
+      // Params:
+      //   param4 = event number
+      {0x0163, "TOContainerAncientEnemyCommon"},
+      {0x0164, "TOContainerAncientEnemyRare"},
+
+      // Ruins always-empty box. No parameters.
+      // Availability: v2+ only
+      {0x0165, "TOContainerAncientItemNone"},
+
+      // Ruins breakable rock. Params:
+      //   param4 = switch flag number (when enabled, destroys this object)
+      // Availability: v2+ only
+      {0x0166, "TOWreckAncientBrakable05"},
+
+      // Ruins pop-up trap with techs. Params:
+      //   param1 = trigger radius delta (value used is (param1 / 2) + 30)
+      //   param2 = number of hits to destroy trap (clamped to [1, 256])
+      //   param3 = tech level modifier:
+      //     Normal: level = param3 + 1 (clamped to [0, 14])
+      //     Hard: level = (param3 * 2) + 1 (clamped to [0, 14])
+      //     Very Hard: level = (param3 * 4) + 1 (clamped to [0, 14])
+      //     Ultimate: level = (param3 * 6) + 1 (clamped to [0, 29])
+      //     (Note: level is offset by 1, so a value of 0 means tech level 1)
+      //   param4 = delay (value used is param4 + 30; clamped below to 0)
+      //   param5 = switch flag number (negative = always active)
+      //   param6 = tech number:
+      //     0 = Foie
+      //     1 = Gizonde
+      //     2 = Gibarta
+      //     3 = Megid
+      //     anything else = Gifoie
+      //   angle.z = TODO (seems it only matters if angle.z is > 0 or not)
+      // Availability: v2+ only
+      {0x0167, "TOTrapAncient02R"},
+
       // TODO: Describe the rest of the object types.
-      {0x014E, "TOFenceAncient01"}, // Constructor in 3OE1: 80166A4C
-      {0x014F, "TOFenceAncient02"}, // Constructor in 3OE1: 80166E2C
-      {0x0150, "TOFenceAncient03"}, // Constructor in 3OE1: 801671D0
-      {0x0151, "TOFenceAncient04"}, // Constructor in 3OE1: 80167574
-      {0x0152, "TContainerAncient01"}, // Constructor in 3OE1: 8018B9B0
-      {0x0153, "TOTrapAncient01"}, // Constructor in 3OE1: 80179C90
-      {0x0154, "TOTrapAncient02"}, // Constructor in 3OE1: 8017B348
-      {0x0155, "TOMonumentAncient01"}, // Constructor in 3OE1: 801725B4
-      {0x0156, "TOMonumentAncient02"}, // Constructor in 3OE1: 80172BAC
-      {0x0159, "TOWreckAncient01"}, // Constructor in 3OE1: 8017DA9C
-      {0x015A, "TOWreckAncient02"}, // Constructor in 3OE1: 8017DDF0
-      {0x015B, "TOWreckAncient03"}, // Constructor in 3OE1: 8017DF10
-      {0x015C, "TOWreckAncient04"}, // Constructor in 3OE1: 8017D978
-      {0x015D, "TOWreckAncient05"}, // Constructor in 3OE1: 8017D854
-      {0x015E, "TOWreckAncient06"}, // Constructor in 3OE1: 8017D730
-      {0x015F, "TOWreckAncient07"}, // Constructor in 3OE1: 8017D60C
-      {0x0160, "TObjFogCollisionPoison/TObjWarpBoss03"}, // Constructor in 3OE1: 80153768 OR 801A29C8
-      {0x0161, "TOContainerAncientItemCommon"}, // Constructor in 3OE1: 8015BFE8
-      {0x0162, "TOContainerAncientItemRare"}, // Constructor in 3OE1: 801A2A14
-      {0x0163, "TOContainerAncientEnemyCommon"}, // Constructor in 3OE1: 8015B69C
-      {0x0164, "TOContainerAncientEnemyRare"}, // Constructor in 3OE1: 801A2A5C
-      {0x0165, "TOContainerAncientItemNone"}, // Constructor in 3OE1: 8015BD78 (v2+ only)
-      {0x0166, "TOWreckAncientBrakable05"}, // Constructor in 3OE1: 8017D1DC (v2+ only)
-      {0x0167, "TOTrapAncient02R"}, // Constructor in 3OE1: 8017A96C (v2+ only)
       {0x0170, "TOBoss4Bird"}, // Constructor in 3OE1: 8015982C
       {0x0171, "TOBoss4Tower"}, // Constructor in 3OE1: 801592E0
       {0x0172, "TOBoss4Rock"}, // Constructor in 3OE1: 80158D90
