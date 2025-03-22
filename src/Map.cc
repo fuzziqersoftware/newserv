@@ -1468,11 +1468,13 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //     door is always unlocked)
       //   param5 = 4 - number of switch flags (so if e.g. door should require
       //     only 3 switch flags, set param5 to 1)
-      //   param6 = activation mode:
-      //     negative = locks remain unlocked when their respective switch
-      //       flags are disabled
-      //     zero or positive = locks re-lock when their switch flags are
-      //       disabled, unless all locks are unlocked
+      //   param6 = synchronization mode:
+      //     negative = when all switch flags are enabled, door is permanently
+      //       unlocked via 6x0B even if some switch flags are disabled later
+      //     zero or positive = door only stays unlocked while all of the
+      //       switch flags are active and locks again when any are disabled
+      //       (no effect in single-player offline mode; the negative behavior
+      //       is used instead)
       {0x00C1, "TODoorCave01"},
 
       // Caves standard door. Params:
@@ -1673,17 +1675,42 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       // Ruins floor button. Same parameters as 0x00C0 (TOKeyCave01).
       {0x0143, "TOKeyAncient03"},
 
+      // Ruins doors. These all take the same params as 0x00C2 (TODoorCave02).
+      {0x0144, "TODoorAncient01"}, // Usually used in Ruins 1
+      {0x0145, "TODoorAncient03"}, // Usually used in Ruins 3
+      {0x0146, "TODoorAncient04"}, // Usually used in Ruins 2
+      {0x0147, "TODoorAncient05"}, // Usually used in Ruins 1
+      {0x0148, "TODoorAncient06"}, // Usually used in Ruins 2
+      {0x0149, "TODoorAncient07"}, // Usually used in Ruins 3
+
+      // Ruins 4-player door. Params:
+      //   param4 = base switch flag number (the actual switch flags used are
+      //     param4, param4 + 1, param4 + 2, and param4 + 3); param4 is clamped
+      //     to [0, 0xFC]
+      //   param6 = activation mode; same as for 0x00C1 (TODoorCave01)
+      {0x014A, "TODoorAncient08"},
+
+      // Ruins 2-player door. Params:
+      //   param4 = base switch flag number (the actual switch flags used are
+      //     param4 and param4 + 1); param4 is clamped to [0, 0xFE]
+      //   param6 = activation mode; same as for 0x00C1 (TODoorCave01)
+      {0x014B, "TODoorAncient09"},
+
+      // Ruins sensor. Params:
+      //   param1 = activation radius delta (actual radius is param1 + 50)
+      //   param4 = switch flag number
+      //   param5 = if negative, sensor is always on
+      //   param6 = TODO (clamped to [0, 1] - model index?)
+      {0x014C, "TOSensorAncient01"},
+
+      // Ruins laser fence switch. Params:
+      //   param1 = if negative, switch's effect is temporary; if zero or
+      //     positive, it's permanent
+      //   param4 = switch flag number
+      //   param5 = color (clamped to [0, 3])
+      {0x014D, "TOKeyAncient01"},
+
       // TODO: Describe the rest of the object types.
-      {0x0144, "TODoorAncient01"}, // Constructor in 3OE1: 8015DECC
-      {0x0145, "TODoorAncient03"}, // Constructor in 3OE1: 8015E378
-      {0x0146, "TODoorAncient04"}, // Constructor in 3OE1: 8015E824
-      {0x0147, "TODoorAncient05"}, // Constructor in 3OE1: 8015ECE4
-      {0x0148, "TODoorAncient06"}, // Constructor in 3OE1: 8015F24C
-      {0x0149, "TODoorAncient07"}, // Constructor in 3OE1: 8015F7C4
-      {0x014A, "TODoorAncient08"}, // Constructor in 3OE1: 801603E0
-      {0x014B, "TODoorAncient09"}, // Constructor in 3OE1: 80160F10
-      {0x014C, "TOSensorAncient01"}, // Constructor in 3OE1: 80175B24
-      {0x014D, "TOKeyAncient01"}, // Constructor in 3OE1: 8016AD90
       {0x014E, "TOFenceAncient01"}, // Constructor in 3OE1: 80166A4C
       {0x014F, "TOFenceAncient02"}, // Constructor in 3OE1: 80166E2C
       {0x0150, "TOFenceAncient03"}, // Constructor in 3OE1: 801671D0
