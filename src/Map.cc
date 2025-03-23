@@ -584,7 +584,8 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       // Displays a particle effect. Params:
       //   param1 = particle type (truncated to int, clamped to nonnegative)
       //   param3 = TODO
-      //   param4 = TODO
+      //   param4 = if equal to 1, increase draw distance from 200 to 1500; if
+      //     any other value, no effect
       //   param5 = TODO
       //   param6 = TODO
       {0x0001, "TObjParticle"},
@@ -889,8 +890,10 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //   param1 = radius
       //   param3 = if >= 1, fog is on when switch flag is on; otherwise, fog
       //     is on when switch flag is off
-      //   param4 = fog entry number (TODO: the client handles this value being
-      //     >= 0x1000 by subtracting 0x1000; what is this for?)
+      //   param4 = fog entry number; if lower than the existing fog number,
+      //     does nothing (if param4 is >= 0x1000, the game subtracts 0x1000
+      //     from it, but only after comparing it to the current fog number;
+      //     this can be used to override a later fog with an earlier fog)
       //   param5 = transition type (0 = fade in, 1 = instantly switch)
       //   param6 = switch flag number
       {0x0018, "TObjFogCollisionSwitch"},
@@ -1242,15 +1245,11 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //     02 = "Lab"
       {0x0045, "TObjCityMapWarp"},
 
-      // City doors. None of these take any parameters. Respectively:
-      // - Door to the shop area
-      // - Door to the Hunter's Guild area
-      // - Door to the Ragol warp
-      // - Door to the Medical Center
-      {0x0046, "TObjCityDoor_Shop"},
-      {0x0047, "TObjCityDoor_Guild"},
-      {0x0048, "TObjCityDoor_Warp"},
-      {0x0049, "TObjCityDoor_Med"},
+      // City doors. None of these take any parameters.
+      {0x0046, "TObjCityDoor_Shop"}, // Door to shop area
+      {0x0047, "TObjCityDoor_Guild"}, // Door to Hunter's Guild
+      {0x0048, "TObjCityDoor_Warp"}, // Door to Ragol warp
+      {0x0049, "TObjCityDoor_Med"}, // Door to Medical Center
 
       // TODO: Describe this object. There appear to be no parameters.
       {0x004A, "__ELEVATOR__"}, // Not named in the client
@@ -1415,7 +1414,10 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x008E, "TOBarrierEnergy01"},
 
       // Forest rising bridge. Once enabled (risen), this object cannot be
-      // disabled; that is, there is no way to make the bridge retract. Params:
+      // disabled; that is, there is no way to make the bridge retract. When
+      // disabled, the bridge is 30 units below its initial position; when
+      // enabled, it rises to its initial position. Params:
+      //   param2 = rise speed in units per frame
       //   param4 = switch flag number
       {0x008F, "TObjHashi"},
 
@@ -1772,18 +1774,12 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       // floor 0D (Vol Opt), it constructs TObjWarpBoss03; on other floors
       // where it's valid, it constructs TObjFogCollisionPoison.
       // TObjFogCollisionPoison creates a switchable, foggy area that's visible
-      // and hurts the player if the switch flag isn't on. Params:
-      //   param1 = radius
+      // and hurts the player if the switch flag isn't on. Params are the same
+      // as for 0x0018 (TObjFogCollisionSwitch), but there is also:
       //   param2 = poison power (scaled by difficulty: Normal = x1, Hard = x2,
       //     Very Hard = x3, Ultimate = x6)
-      //   param3 = if >= 1, fog is on when switch flag is on; otherwise, fog
-      //     is on when switch flag is off
-      //   param4 = fog entry number (TODO: the client handles this value being
-      //     >= 0x1000 by subtracting 0x1000; what is this for?)
-      //   param5 = transition type (0 = fade in, 1 = instantly switch)
-      //   param6 = switch flag number
       // TObjWarpBoss03 creates an invisible warp. This is used for the warp
-      // behind the door to Ruins. Params:
+      // behind the door to Ruins after defeating Vol Opt. Params:
       //   param4 = destination floor
       {0x0160, "TObjFogCollisionPoison/TObjWarpBoss03"},
 
@@ -1829,44 +1825,214 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       // Availability: v2+ only
       {0x0167, "TOTrapAncient02R"},
 
+      // Flying white bird. Params:
+      //   param1 = TODO (value used is param1 + 1)
+      //   param2 = TODO (value used is param2 + 50)
+      //   param3 = TODO (value used is param3 + 100)
+      //   param4 = number of birds? (value is param4 + 3, clamped to [1, 6])
+      //   param5 = TODO (value used is (param5 / 10) + 1)
+      //   param6 = TODO (value used is (param6 / 10) + 1)
+      {0x0170, "TOBoss4Bird"},
+
+      // Dark Falz obelisk. There appear to be no parameters.
+      {0x0171, "TOBoss4Tower"},
+
+      // Floating rocks. Params:
+      //   param1 = x/z range delta? (value used is param1 + 50)
+      //   param2 = TODO (value used is abs(param2))
+      //   param4 = number of rocks? (clamped to [1, 8])
+      {0x0172, "TOBoss4Rock"},
+
+      // Floating soul. Params:
+      //   param1 = TODO
+      //   param2 = TODO
+      //   param3 = TODO
+      //   param4 = TODO (seems it only matters if this is negative or not)
+      //   param5 = TODO
+      //   param6 = TODO
+      // Availability: v1/v2 only
+      {0x0173, "TOSoulDF"},
+
+      // Butterfly. This is a subclass of TODragonfly and takes the same params
+      // as 0x00CD (TODragonflyCave01), but also:
+      //   param6 = model number? (clamped to [0, 2])
+      // Availability: v1/v2 only
+      {0x0174, "TOButterflyDF"},
+
+      // Lobby information counter (game menu) collision. Params:
+      //   param1 = radius
+      {0x0180, "TObjInfoCol"},
+
+      // Warp between lobbies (not warp out of game to lobby). Params:
+      //   param5 = hide beams (beams shown if <= 0, hidden if > 0)
+      {0x0181, "TObjWarpLobby"},
+
+      // Lobby 1 event object (tree). Params:
+      //   param4 = default decorations when there is no event:
+      //     0x01 = flowers (Lobby 2)
+      //     0x02 = fountains (Lobby 4)
+      //     0x03 = very tall aquariums (Lobby 5)
+      //     0x04 = green trees (Lobby 1)
+      //     0x05 = stained glass windows (Lobby 9)
+      //     0x06 = snowy evergreen trees (Lobby 10)
+      //     0x07 = windmills (Lobby 3)
+      //     0x08 = spectral columns (Lobby 8)
+      //     0x09 = planetary models (Lobby 7)
+      //     Anything else = grass (Lobby 6)
+      // Availability: v3+ only
+      {0x0182, "TObjLobbyMain"},
+
+      // Lobby pigeon. Params:
+      //   param4 = model number? (clamped to [0, 2])
+      //   param5 = TODO (3 different behaviors: <= 0, == 1, or >= 2)
+      //   param6 = TODO (it only matters if this is > 0 or not)
+      // Visibility depends on the current season event in a complicated way:
+      //   If param5 <= 0, visible only when there's no season event
+      //   If param5 == 1 and param6 <= 0, visible during Wedding event
+      //   If param5 == 2 and param6 <= 0, visible during Valentine's Day and
+      //     White Day events
+      //   If none of the above, visible during Halloween event
+      // Availability: v3+ only
+      {0x0183, "__LOBBY_PIGEON__"}, // Formerly __TObjPathObj_subclass_0183__
+
+      // Lobby butterfly. Params:
+      //   param4 = model number (only two models; <= 0 or > 0)
+      // TODO: Is this object's visibility affected by season events? It may
+      // only be affected by the event when the object loads, and not when the
+      // season is changed via the DA command.
+      // Availability: v3+ only
+      {0x0184, "TObjButterflyLobby"},
+
+      // Lobby rainbow. Visible only when there is no season event. There are
+      // no parameters.
+      // Availability: v3+ only
+      {0x0185, "TObjRainbowLobby"},
+
+      // Lobby pumpkin. Visible only during Halloween season event. There are
+      // no parameters.
+      // Availability: v3+ only
+      {0x0186, "TObjKabochaLobby"},
+
+      // Lobby stained-glass windows. Params:
+      //   param4 = event flag:
+      //     zero or negative = visible only when no season event is active
+      //     positive = visible only during Christmas season event
+      // Availability: v3+ only
+      {0x0187, "TObjStendGlassLobby"},
+
+      // Lobby red and white striped curtain. Visible only during the spring
+      // and summer season events (12 and 13). No parameters.
+      // Availability: v3+ only
+      {0x0188, "TObjCurtainLobby"},
+
+      // Lobby wedding arch. Visible only during the wedding season event. No
+      // parameters.
+      // Availability: v3+ only
+      {0x0189, "TObjWeddingLobby"},
+
+      // Lobby snowy evergreen tree (Lobby 10). No parameters.
+      // Availability: v3+ only
+      {0x018A, "TObjTreeLobby"},
+
+      // Lobby aquarium (Lobby 5). Visible only when there is no season event.
+      // No parameters.
+      // Availability: v3+ only
+      {0x018B, "TObjSuisouLobby"},
+
+      // Lobby particles. Params:
+      //   param1 = TODO (clamped to [0, 575])
+      //   param3 = same as param3 from 0001 (TObjParticle)
+      //   param4 = particle type (0-9; any other value treated as 0)
+      //   param5 = same as param4 (not param5!) from 0001 (TObjParticle)
+      //   param6 = same as param5 (not param6!) from 0001 (TObjParticle)
+      // Availability: v3+ only
+      {0x018C, "TObjParticleLobby"},
+
+      // Episode 3 lobby battle table. Params:
+      //   param4 = player count (1-4); only 2 and 4 are used in-game
+      //   param5 = table number (used in E4 and E5 commands)
+      // Availability: Episode 3 only
+      {0x018D, "TObjLobbyTable"},
+
+      // Episode 3 lobby jukebox. No parameters.
+      // Availability: Episode 3 only
+      {0x018E, "TObjJukeBox"},
+
+      // TODO: Describe this object. There appear to be no parameters.
+      // Availability: v2+ only
+      {0x0190, "TObjCamera"},
+
+      // Short Spaceship wall. There appear to be no parameters.
+      // Availability: v2+ only
+      {0x0191, "TObjTuitate"},
+
+      // Spaceship door. Params:
+      //   param4 = switch flag number (if this is negative, the door is always
+      //     unlocked)
+      // Availability: v2+ only
+      {0x0192, "TObjDoaEx01"},
+
+      // Tall Spaceship wall. There appear to be no parameters.
+      // Availability: v2+ only
+      {0x0193, "TObjBigTuitate"},
+
+      // Temple door. Params:
+      //   param4 = switch flag number (if this is negative, the door is always
+      //     unlocked)
+      // Availability: v2+ only
+      {0x01A0, "TODoorVS2Door01"},
+
+      // Temple rubble. None of these take any parameters.
+      // Availability: v2+ only
+      {0x01A1, "TOVS2Wreck01"}, // Partly-broken wall (like breakable wall)
+      {0x01A2, "TOVS2Wreck02"}, // Broken column
+      {0x01A3, "TOVS2Wreck03"}, // Broken wall pieces lying flat
+      {0x01A4, "TOVS2Wreck04"}, // Column
+      {0x01A5, "TOVS2Wreck05"}, // Broken toppled column
+      {0x01A6, "TOVS2Wreck06"}, // Truncated conic monument
+
+      // Temple breakable wall, which looks like 0x01A1 (TOVS2Wreck01). Params:
+      //   param4 = number of hits, minus 256 for some reason (for example, for
+      //     a 6-hit wall, this should be -250, or 0xFFFFFF06)
+      // Availability: v2+ only
+      {0x01A7, "TOVS2Wall01"},
+
+      // Lens flare enable/disable switch. This object triggers when the local
+      // player is within 20 units, and sets a global which determines whether
+      // objects of type 0x001E (__LENS_FLARE__) should render anything.
+      // Params:
+      //   param1 = if > 0, enable lens flare rendering; if <= 0, disable it
+      // This object isn't constructed in split-screen mode.
+      // Availability: v2+ only
+      {0x01A8, "__LENS_FLARE_SWITCH_COLLISION__"},
+
+      // Rising bridges. Similar to 0x008F (TObjHashi). Params:
+      //   param1 = extra depth when lowered (this is added to TObjHashiBase's
+      //     30 unit displacement if the bridge is lowered when constructed)
+      //   param2 = rise speed in units per frame
+      //   param4 = switch flag number
+      // Availability: v2+ only
+      {0x01A9, "TObjHashiVersus1"}, // Small brown rising bridge
+      {0x01AA, "TObjHashiVersus2"}, // Long rising bridge
+
+      // Multiplayer Temple/Spaceship doors. Params:
+      //   param4 = base switch flag number (the actual switch flags used are
+      //     param4, param4 + 1, param4 + 2, etc.; if this is negative, the
+      //     door is always unlocked)
+      //   param5 = number of switch flags (unlike some other doors, this is
+      //     just directly the number of flags, not 4 - the number of flags)
+      //   param6 = synchronization mode:
+      //     negative = when all switch flags are enabled, door is permanently
+      //       unlocked via 6x0B even if some switch flags are disabled later
+      //     zero or positive = door only stays unlocked while all of the
+      //       switch flags are active and locks again when any are disabled
+      //       (no effect in single-player offline mode; the negative behavior
+      //       is used instead)
+      // Availability: v3+ only
+      {0x01AB, "TODoorFourLightRuins"},
+      {0x01C0, "TODoorFourLightSpace"},
+
       // TODO: Describe the rest of the object types.
-      {0x0170, "TOBoss4Bird"}, // Constructor in 3OE1: 8015982C
-      {0x0171, "TOBoss4Tower"}, // Constructor in 3OE1: 801592E0
-      {0x0172, "TOBoss4Rock"}, // Constructor in 3OE1: 80158D90
-      {0x0173, "TOSoulDF"}, // Constructor in 2OEF: 8C1DBA94 (v1/v2 only)
-      {0x0174, "TOButterflyDF"}, // Constructor in 2OEF: 8C1DE660 (v1/v2 only)
-      {0x0180, "TObjInfoCol"}, // Constructor in 3OE1: 801A27B4
-      {0x0181, "TObjWarpLobby"}, // Constructor in 3OE1: 801A2800
-      {0x0182, "TObjLobbyMain"}, // Constructor in 3OE1: 80350B84 (v3+ only)
-      {0x0183, "__LOBBY_PIGEON__"}, // Formerly __TObjPathObj_subclass_0183__ // Constructor in 3OE1: 802BF420 (v3+ only)
-      {0x0184, "TObjButterflyLobby"}, // Constructor in 3OE1: 8034FA8C (v3+ only)
-      {0x0185, "TObjRainbowLobby"}, // Constructor in 3OE1: 8034EB9C (v3+ only)
-      {0x0186, "TObjKabochaLobby"}, // Constructor in 3OE1: 80351A18 (v3+ only)
-      {0x0187, "TObjStendGlassLobby"}, // Constructor in 3OE1: 80357CD8 (v3+ only)
-      {0x0188, "TObjCurtainLobby"}, // Constructor in 3OE1: 80359DF4 (v3+ only)
-      {0x0189, "TObjWeddingLobby"}, // Constructor in 3OE1: 8035A1E0 (v3+ only)
-      {0x018A, "TObjTreeLobby"}, // Constructor in 3OE1: 80362D44 (v3+ only)
-      {0x018B, "TObjSuisouLobby"}, // Constructor in 3OE1: 80368118 (v3+ only)
-      {0x018C, "TObjParticleLobby"}, // Constructor in 3OE1: 80367DC0 (v3+ only)
-      {0x018D, "TObjLobbyTable"}, // Constructor in 3SE0: 802C07E4 (Ep3 only)
-      {0x018E, "TObjJukeBox"}, // Constructor in 3SE0: 8030D8A8 (Ep3 only)
-      {0x0190, "TObjCamera"}, // Constructor in 3OE1: 8017FAC0 (v2+ only)
-      {0x0191, "TObjTuitate"}, // Constructor in 3OE1: 8019AF20 (v2+ only)
-      {0x0192, "TObjDoaEx01"}, // Constructor in 3OE1: 8018E02C (v2+ only)
-      {0x0193, "TObjBigTuitate"}, // Constructor in 3OE1: 8019AB9C (v2+ only)
-      {0x01A0, "TODoorVS2Door01"}, // Constructor in 3OE1: 80164084 (v2+ only)
-      {0x01A1, "TOVS2Wreck01"}, // Constructor in 3OE1: 8017C520 (v2+ only)
-      {0x01A2, "TOVS2Wreck02"}, // Constructor in 3OE1: 8017C438 (v2+ only)
-      {0x01A3, "TOVS2Wreck03"}, // Constructor in 3OE1: 8017C350 (v2+ only)
-      {0x01A4, "TOVS2Wreck04"}, // Constructor in 3OE1: 8017C268 (v2+ only)
-      {0x01A5, "TOVS2Wreck05"}, // Constructor in 3OE1: 8017C180 (v2+ only)
-      {0x01A6, "TOVS2Wreck06"}, // Constructor in 3OE1: 8017C098 (v2+ only)
-      {0x01A7, "TOVS2Wall01"}, // Constructor in 3OE1: 8017BEC8 (v2+ only)
-      {0x01A8, "__OBJECT_MAP_DETECT_TEMPLE__"}, // Name is from qedit; object class has no name in the client // Constructor in 3OE1: 80085794 (v2+ only)
-      {0x01A9, "TObjHashiVersus1"}, // Constructor in 3OE1: 80191388 (v2+ only)
-      {0x01AA, "TObjHashiVersus2"}, // Constructor in 3OE1: 8019118C (v2+ only)
-      {0x01AB, "TODoorFourLightRuins"}, // Constructor in 3OE1: 801A271C (v3+ only)
-      {0x01C0, "TODoorFourLightSpace"}, // Constructor in 3OE1: 801A2768 (v3+ only)
       {0x0200, "TObjContainerJung"}, // Constructor in 3OE1: 8018D2CC (v3+ only)
       {0x0201, "TObjWarpJung"}, // Constructor in 3OE1: 8019FF00 (v3+ only)
       {0x0202, "TObjDoorJung"}, // Constructor in 3OE1: 8018F2DC (v3+ only)
@@ -1897,7 +2063,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x0227, "__DOLPHIN__"}, // Formerly __TObjPathObj_subclass_0227__ // Constructor in 3OE1: 802C1378 (v3+ only)
       {0x0228, "TOTrapSeabed01"}, // Constructor in 3OE1: 802C9154 (v3+ only)
       {0x0229, "TOCapsuleLabo"}, // Constructor in 3OE1: 802ADD40 (v3+ only)
-      {0x0240, "TObjParticle"}, // Constructor in 3OE1: 801954E4 (v3+ only)
+      {0x0240, "TObjParticle"}, // Constructor in 3OE1: 801954E4 (v3+ only) // Alias for 0001, apparently
       {0x0280, "__BARBA_RAY_TELEPORTER__"}, // Formerly __TObjAreaWarpForest_subclass_0280__ // Constructor in 3OE1: 802EF620 (v3+ only)
       {0x02A0, "TObjLiveCamera"}, // Constructor in 3OE1: 80309D5C (v3+ only)
       {0x02B0, "TContainerAncient01R"}, // Constructor in 3OE1: 8018ADF8 (v3+ only)
