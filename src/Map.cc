@@ -581,7 +581,8 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //     anything else = set is unused
       {0x0000, "TObjPlayerSet"},
 
-      // Displays a particle effect. Params:
+      // Displays a particle effect. This object is not constructed in
+      // split-screen mode. Params:
       //   param1 = particle type (truncated to int, clamped to nonnegative)
       //   param3 = TODO
       //   param4 = if equal to 1, increase draw distance from 200 to 1500; if
@@ -597,10 +598,10 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x0002, "TObjAreaWarpForest"},
 
       // Standard (triangular) intra-floor warp object. Params:
-      //   param1-3 = destination coordinates (x, y, z); players are supposed to
-      //     be offset from this location in different directions depending on
-      //     their client ID, but there is a bug that causes all players to use
-      //     the same offsets: x + 10 and z + 10
+      //   param1-3 = destination coordinates (x, y, z); players are supposed
+      //     to be offset from this location in different directions depending
+      //     on their client ID, but there is a bug that causes all players to
+      //     use the same offsets: x + 10 and z + 10
       //   param4 = destination angle (about y axis)
       {0x0003, "TObjMapWarpForest"},
 
@@ -1296,7 +1297,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x0055, "TObjCityMainWarpChallenge"},
 
       // Episode 2 Lab door. Params:
-      //   param4 = switch flag and activation mode:
+      //   param4 = switch flag number and activation mode:
       //     negative value = always unlocked
       //     value in [0x00, 0x100] = unlocked by a switch flag (the bounds
       //       check appears to be a bug; the range should be [0x00, 0xFF] but
@@ -1410,7 +1411,8 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x008D, "TOCapsuleAncient01"},
 
       // Energy barrier. Params:
-      //   param4 = switch flag and activation mode (same as for TODoorLabo)
+      //   param4 = switch flag number and activation mode (same as for
+      //     TODoorLabo)
       {0x008E, "TOBarrierEnergy01"},
 
       // Forest rising bridge. Once enabled (risen), this object cannot be
@@ -2019,8 +2021,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //   param4 = base switch flag number (the actual switch flags used are
       //     param4, param4 + 1, param4 + 2, etc.; if this is negative, the
       //     door is always unlocked)
-      //   param5 = number of switch flags (unlike some other doors, this is
-      //     just directly the number of flags, not 4 - the number of flags)
+      //   param5 = number of switch flags
       //   param6 = synchronization mode:
       //     negative = when all switch flags are enabled, door is permanently
       //       unlocked via 6x0B even if some switch flags are disabled later
@@ -2029,57 +2030,280 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //       (no effect in single-player offline mode; the negative behavior
       //       is used instead)
       // Availability: v3+ only
-      {0x01AB, "TODoorFourLightRuins"},
-      {0x01C0, "TODoorFourLightSpace"},
+      {0x01AB, "TODoorFourLightRuins"}, // Temple
+      {0x01C0, "TODoorFourLightSpace"}, // Spaceship
+
+      // CCA item box. It seems this box type cannot be specialized. There are
+      // no parameters.
+      // Availability: v3+ only
+      {0x0200, "TObjContainerJung"},
+
+      // CCA cross-floor warp. Params:
+      //   param4 = destination floor
+      //   param6 = color (0 = blue, 1 = red); if this is 0 in Challenge mode,
+      //     the warp is destroyed immediately
+      // Availability: v3+ only
+      {0x0201, "TObjWarpJung"},
+
+      // CCA door. Params:
+      //   param4 = base switch flag number (the actual switch flags used are
+      //     param4, param4 + 1, param4 + 2, etc.; if this is negative, the
+      //     door is always unlocked)
+      //   param5 = number of switch flags
+      // Availability: v3+ only
+      {0x0202, "TObjDoorJung"},
+
+      // CCA item box. Same parameters as 0x0088 (TObjContainerBase2).
+      // Availability: v3+ only
+      {0x0203, "TObjContainerJungEx"},
+
+      // CCA main door. This door checks quest flags 0x0046, 0x0047, and 0x0048
+      // and opens when all are enabled. There are no parameters.
+      // Availability: v3+ only
+      {0x0204, "TODoorJungleMain"},
+
+      // CCA main door switch. This switch sets one of the quest flags checked
+      // by 0x0204 (TODoorJungleMain). Params:
+      //   param4 = quest flag index (0 = 0x0046, 1 = 0x0047, 2 = 0x0048)
+      // Availability: v3+ only
+      {0x0205, "TOKeyJungleMain"},
+
+      // Jungle breakable rocks. Params:
+      //   param4 = switch flag number (object is passable when enabled)
+      // Availability: v3+ only
+      {0x0206, "TORockJungleS01"}, // Small rock
+      {0x0207, "TORockJungleM01"}, // Small 3-rock wall
+
+      // Jungle large 3-rock wall. Unlike the above, this takes no parameters
+      // and cannot be opened.
+      // Availability: v3+ only
+      {0x0208, "TORockJungleL01"},
+
+      // Jungle plant. Params:
+      //   param4 = model number? (clamped to [0, 1])
+      // Availability: v3+ only
+      {0x0209, "TOGrassJungle"},
+
+      // CCA warp outside main gate. Unlike other warps on Ragol, this one
+      // presents the player with a choice of areas: Jungle North (6), Mountain
+      // (8), or Seaside (9). Params:
+      //   param6 = color (0 = blue, 1 = red); if this is 0 in Challenge mode,
+      //     the warp is destroyed immediately
+      // Availability: v3+ only
+      {0x020A, "TObjWarpJungMain"},
+
+      // Background lightning generator. Each strike lasts for 11 frames and
+      // strikes at a random angle around the player. Params:
+      //   param1 = lightning distance from player
+      //   param2 = lightning height
+      //   param3 = TODO (value used is ((param3 / 32768) * 0.3) + 1)
+      //   param4 = minimum frames between strikes
+      //   param5 = interval randomness (after each strike, a random number is
+      //     chosen between param4 and (param4 + param5) to determine how many
+      //     frames to wait until the next strike)
+      // Availability: v3+ only
+      {0x020B, "TBGLightningCtrl"},
+
+      // Bird objects. Params:
+      //   param4 = model number? (clamped to [0, 2])
+      // Availability: v3+ only
+      {0x020C, "__WHITE_BIRD__"}, // Formerly __TObjPathObj_subclass_020C__
+      {0x020D, "__ORANGE_BIRD__"}, // Formerly __TObjPathObj_subclass_020D__
+
+      // Jungle box that triggers a wave event when opened. Params:
+      //   param4 = event number
+      //   param5 = model number (clamped to [0, 1])
+      // Availability: v3+ only
+      {0x020E, "TObjContainerJungEnemy"},
+
+      // Chain saw damage trap. Params:
+      //   param2 = base damage (multiplied by difficulty: Normal = x1/5, Hard
+      //     = x2/5, Very Hard = x3/5, Ultimate = x6/5)
+      //   param3 = model number (<= 0 for small saw, > 0 for large saw)
+      //   param4 = switch flag number (disabled when switch flag is enabled)
+      //   param5 high word = rotation range (16-bit angle)
+      //   param5 low word = rotation speed (angle units per frame)
+      //   param6 high word = if nonzero, ignore rotation range and rotate in a
+      //     full circle instead
+      //   param6 low word = delay between cycles (seconds)
+      // Availability: v3+ only
+      {0x020F, "TOTrapChainSawDamage"},
+
+      // Laser detector trap. Params:
+      //   param3 = model number (<= for small laser, > 0 for large laser)
+      //   param4 = switch flag number (enables this flag when triggered)
+      //   param5-6: same as 0x020F (TOTrapChainSawDamage)
+      // Availability: v3+ only
+      {0x0210, "TOTrapChainSawKey"},
+
+      // TODO: Describe this object. It's a subclass of TODragonfly and has the
+      // same params as 0x00CD (TODragonflyCave01), though it appears that some
+      // may have different scale factors or offsets.
+      // Availability: v3+ only
+      {0x0211, "TOBiwaMushi"},
+
+      // Seagull. Params:
+      //   param4 = model number? (clamped to [0, 2])
+      // Availability: v3+ only
+      {0x0212, "__SEAGULL__"}, // Formerly __TObjPathObj_subclass_0212__
+
+      // TODO: Describe this object. Params:
+      //   param4 = model number (clamped to [0, 2])
+      // Availability: v3+ only
+      {0x0213, "TOJungleDesign"},
+
+      // Fish. This object is not constructed in split-screen mode. Params:
+      //   param1-3 = TODO (Vector3F)
+      //   param4 = TODO
+      //   param5 = TODO
+      //   param6 = TODO
+      // Availability: v3+ only
+      {0x0220, "TObjFish"},
+
+      // Seabed multiplayer door. Params:
+      //   param4 = base switch flag number (the actual switch flags used are
+      //     param4, param4 + 1, param4 + 2, etc.; if this is negative, the
+      //     door is always unlocked)
+      //   param5 = number of switch flags (clamped to [0, 4])
+      //   param6 = synchronization mode:
+      //     negative = when all switch flags are enabled, door is permanently
+      //       unlocked via 6x0B even if some switch flags are disabled later
+      //     zero or positive = door only stays unlocked while all of the
+      //       switch flags are active and locks again when any are disabled
+      //       (no effect in single-player offline mode; the negative behavior
+      //       is used instead)
+      // Availability: v3+ only
+      {0x0221, "TODoorFourLightSeabed"}, // Blue edges
+      {0x0222, "TODoorFourLightSeabedU"},
+
+      // Small cryotube. Params:
+      //   param4 = model number (clamped to [0, 3])
+      // Availability: v3+ only
+      {0x0223, "TObjSeabedSuiso_CH"},
+
+      // Breakable glass wall. Params:
+      //   param4 = switch flag number
+      //   param5 = model number (clamped to [0, 2])
+      // Availability: v3+ only
+      {0x0224, "TObjSeabedSuisoBrakable"},
+
+      // Small floating robots. These are subclasses of TODragonfly and have
+      // the same params as 0x00CD (TODragonflyCave01), though it appears that
+      // some may have different scale factors or offsets (TODO).
+      // Availability: v3+ only
+      {0x0225, "TOMekaFish00"}, // Blue
+      {0x0226, "TOMekaFish01"}, // Red
+
+      // Dolphin. Params:
+      //   param4 = model number (clamped to [0, 4])
+      // Availability: v3+ only
+      {0x0227, "__DOLPHIN__"}, // Formerly __TObjPathObj_subclass_0227__
+
+      // Seabed capturing trap, similar to 0x0153 (TOTrapAncient01) in
+      // function. Triggers when a player is within 15 units. Params:
+      //   param1 = TODO (clamped to [0.1, 10])
+      //   param4 = hold time after trigger (in seconds; clamped to [1, 60])
+      //   param5 = hide in split-screen:
+      //     zero or negative = always visible
+      //     positive = invisible in split-screen mode
+      //   param6 = same as param5 from 0x0153 (TOTrapAncient01)
+      // Availability: v3+ only
+      {0x0228, "TOTrapSeabed01"},
+
+      // VR link object. This object is destroyed immediately in Challenge mode
+      // and split-screen mode. Same parameters as 0x008D (TOCapsuleAncient01).
+      // Availability: v3+ only
+      {0x0229, "TOCapsuleLabo"},
+
+      // Alias for 0x0001 (TObjParticle). The constructor function is exactly
+      // the same as for 0x0001, so this object has all the same paarameters
+      // and behavior as that object.
+      // Availability: v3+ only
+      {0x0240, "TObjParticle"},
+
+      // Teleporter after Barba Ray. This object behaves exactly the same as
+      // 0x0002 (TObjAreaWarpForest), except it's invisible until the boss is
+      // defeated.
+      // Availability: v3+ only
+      {0x0280, "__BARBA_RAY_TELEPORTER__"}, // Formerly __TObjAreaWarpForest_subclass_0280__
+
+      // TODO: Describe this object. There appear to be no parameters.
+      // Availability: v3+ only
+      {0x02A0, "TObjLiveCamera"},
+
+      // Gee nest. This object is technically an item box, and drops an item
+      // when destroyed. Unlike most other item boxes, it cannot be specialized
+      // (ignore_def is always true). Params are the same as for 0x0152
+      // (TContainerAncient01), but there is also:
+      //   angle.z = number of hits to destroy
+      // Availability: v3+ only
+      {0x02B0, "TContainerAncient01R"},
+
+      // Lab objects. None of these take any parameters.
+      // Availability: v3+ only
+      {0x02B1, "TObjLaboDesignBase(0)"}, // Computer console
+      {0x02B2, "TObjLaboDesignBase(1)"}, // Computer console (alternate colors)
+      {0x02B3, "TObjLaboDesignBase(2)"}, // Chair
+      {0x02B4, "TObjLaboDesignBase(3)"}, // Orange wall
+      {0x02B5, "TObjLaboDesignBase(4)"}, // Gray/blue wall
+      {0x02B6, "TObjLaboDesignBase(5)"}, // Long table
+
+      // Game Boy Advance. Params:
+      //   param4 = quest label to call when activated (inherited from
+      //     TObjMesBase)
+      //   param6 = type (clamped to [0, 1]; 0 = "QUEST", 1 = "RICO")
+      //     (inherited from TObjMesBase)
+      // Availability: GC only
+      {0x02B7, "TObjGbAdvance"},
+
+      // Like TObjQuestColA (TODO: In what ways is it different?). Parameters
+      // are the same as for TObjQuestCol, but also:
+      //   param2 = TODO
+      //   param5 = quest script manager to use? (TODO):
+      //     zero or negative = online
+      //     positive = offline
+      // Availability: v3+ only
+      {0x02B8, "TObjQuestColALock2"},
+
+      // Like 0x0003 (TObjMapWarpForest), but is invisible and automatically
+      // warps players when they enter its radius. This is used to simulate
+      // floor warps in the Control Tower. Has the same parameters as
+      // TObjMapWarpForest, but also:
+      //   param5 = destination "floor" number (this is an intra-map warp and
+      //     doesn't actually change floors; the "floor" number is only visual)
+      //   param6 = if <= 0, shows "floor" number (param5 formatted as "%xF")
+      //     after warp; if > 0, param5 is ignored
+      // Availability: v3+ only
+      {0x02B9, "TObjMapForceWarp"},
+
+      // Behaves like 0x0012 (TObjQuestCol), but also has the param5 behavior
+      // from 0x02B8 (TObjQuestColALock2).
+      // Availability: v3+ only
+      {0x02BA, "TObjQuestCol2"},
+
+      // Episode 2 Lab door with glass window. Same parameters as
+      // TODoorLaboNormal, except param5 is unused.
+      // Availability: v3+ only
+      {0x02BB, "TODoorLaboNormal"},
+
+      // Episode 2 ending movie warp (used in final boss arenas after the boss
+      // is defeated). Same params as 0x001C (TObjAreaWarpEnding).
+      // Availability: v3+ only
+      {0x02BC, "TObjAreaWarpEndingJung"},
+
+      // Warp to another location on the same map. Used for the Lab/city warp.
+      // This warp is visible in all game modes, but cannot be used in Episode
+      // 1, Battle mode, or Challenge mode. Params:
+      //   param1-3 = destination (same as for TObjMapWarpForest)
+      //   param4 = destination angle (same as for TObjMapWarpForest)
+      //   param6 = destination text (clamped to [0, 2]):
+      //     00 = "The Principal"
+      //     01 = "Pioneer 2"
+      //     02 = "Lab"
+      // Availability: v3+ only
+      {0x02BD, "TObjLaboMapWarp"}, // Constructor in 3OE1: 80185430 (v3+ only)
 
       // TODO: Describe the rest of the object types.
-      {0x0200, "TObjContainerJung"}, // Constructor in 3OE1: 8018D2CC (v3+ only)
-      {0x0201, "TObjWarpJung"}, // Constructor in 3OE1: 8019FF00 (v3+ only)
-      {0x0202, "TObjDoorJung"}, // Constructor in 3OE1: 8018F2DC (v3+ only)
-      {0x0203, "TObjContainerJungEx"}, // Constructor in 3OE1: 8018CE58 (v3+ only)
-      {0x0204, "TODoorJungleMain"}, // Constructor in 3OE1: 80299E20 (v3+ only)
-      {0x0205, "TOKeyJungleMain"}, // Constructor in 3OE1: 8029BA64 (v3+ only)
-      {0x0206, "TORockJungleS01"}, // Constructor in 3OE1: 8029B3F8 (v3+ only)
-      {0x0207, "TORockJungleM01"}, // Constructor in 3OE1: 8029AFAC (v3+ only)
-      {0x0208, "TORockJungleL01"}, // Constructor in 3OE1: 8029AC38 (v3+ only)
-      {0x0209, "TOGrassJungle"}, // Constructor in 3OE1: 8029B764 (v3+ only)
-      {0x020A, "TObjWarpJungMain"}, // Constructor in 3OE1: 8019FA1C (v3+ only)
-      {0x020B, "TBGLightningCtrl"}, // Constructor in 3OE1: 802A8750 (v3+ only)
-      {0x020C, "__WHITE_BIRD__"}, // Formerly __TObjPathObj_subclass_020C__ // Constructor in 3OE1: 802C0C64 (v3+ only)
-      {0x020D, "__ORANGE_BIRD__"}, // Formerly __TObjPathObj_subclass_020D__ // Constructor in 3OE1: 802C05BC (v3+ only)
-      {0x020E, "TObjContainerJungEnemy"}, // Constructor in 3OE1: 8018CCF8 (v3+ only)
-      {0x020F, "TOTrapChainSawDamage"}, // Constructor in 3OE1: 802C7748 (v3+ only)
-      {0x0210, "TOTrapChainSawKey"}, // Constructor in 3OE1: 802C7234 (v3+ only)
-      {0x0211, "TOBiwaMushi"}, // Constructor in 3OE1: 802A8D98 (v3+ only)
-      {0x0212, "__SEAGULL__"}, // Formerly __TObjPathObj_subclass_0212__ // Constructor in 3OE1: 802BFDE8 (v3+ only)
-      {0x0213, "TOJungleDesign"}, // Constructor in 3OE1: 802FD478 (v3+ only)
-      {0x0220, "TObjFish"}, // Constructor in 3OE1: 8029D04C (v3+ only)
-      {0x0221, "TODoorFourLightSeabed"}, // Constructor in 3OE1: 801A25EC (v3+ only)
-      {0x0222, "TODoorFourLightSeabedU"}, // Constructor in 3OE1: 801A2638 (v3+ only)
-      {0x0223, "TObjSeabedSuiso_CH"}, // Constructor in 3OE1: 802A5290 (v3+ only)
-      {0x0224, "TObjSeabedSuisoBrakable"}, // Constructor in 3OE1: 802A507C (v3+ only)
-      {0x0225, "TOMekaFish00"}, // Constructor in 3OE1: 802A9378 (v3+ only)
-      {0x0226, "TOMekaFish01"}, // Constructor in 3OE1: 802A9088 (v3+ only)
-      {0x0227, "__DOLPHIN__"}, // Formerly __TObjPathObj_subclass_0227__ // Constructor in 3OE1: 802C1378 (v3+ only)
-      {0x0228, "TOTrapSeabed01"}, // Constructor in 3OE1: 802C9154 (v3+ only)
-      {0x0229, "TOCapsuleLabo"}, // Constructor in 3OE1: 802ADD40 (v3+ only)
-      {0x0240, "TObjParticle"}, // Constructor in 3OE1: 801954E4 (v3+ only) // Alias for 0001, apparently
-      {0x0280, "__BARBA_RAY_TELEPORTER__"}, // Formerly __TObjAreaWarpForest_subclass_0280__ // Constructor in 3OE1: 802EF620 (v3+ only)
-      {0x02A0, "TObjLiveCamera"}, // Constructor in 3OE1: 80309D5C (v3+ only)
-      {0x02B0, "TContainerAncient01R"}, // Constructor in 3OE1: 8018ADF8 (v3+ only)
-      {0x02B1, "TObjLaboDesignBase(0)"}, // Constructor in 3OE1: 803631D4 (v3+ only)
-      {0x02B2, "TObjLaboDesignBase(1)"}, // Constructor in 3OE1: 80363184 (v3+ only)
-      {0x02B3, "TObjLaboDesignBase(2)"}, // Constructor in 3OE1: 80363134 (v3+ only)
-      {0x02B4, "TObjLaboDesignBase(3)"}, // Constructor in 3OE1: 803630E4 (v3+ only)
-      {0x02B5, "TObjLaboDesignBase(4)"}, // Constructor in 3OE1: 80363094 (v3+ only)
-      {0x02B6, "TObjLaboDesignBase(5)"}, // Constructor in 3OE1: 80363044 (v3+ only)
-      {0x02B7, "TObjGbAdvance"}, // Constructor in 3OE1: 80187C10 (v3+ only)
-      {0x02B8, "TObjQuestColALock2"}, // Constructor in 3OE1: 80195824 (v3+ only)
-      {0x02B9, "TObjMapForceWarp"}, // Constructor in 3OE1: 801A297C (v3+ only)
-      {0x02BA, "TObjQuestCol2"}, // Constructor in 3OE1: 80195680 (v3+ only)
-      {0x02BB, "TODoorLaboNormal"}, // Constructor in 3OE1: 801A26D0 (v3+ only)
-      {0x02BC, "TObjAreaWarpEndingJung"}, // Constructor in 3OE1: 8019AFF4 (v3+ only)
-      {0x02BD, "TObjLaboMapWarp"}, // Constructor in 3OE1: 80185430 (v3+ only)
       {0x02D0, "TObjKazariCard"}, // Constructor in 3SE0: 8026C79C (Ep3 only; battle only)
       {0x02D1, "TObj_FloatingCardMaterial_Dark"}, // Constructor in 3SE0: 800C5F30 (Ep3 only; city only)
       {0x02D2, "TObj_FloatingCardMaterial_Hero"}, // Constructor in 3SE0: 800C5F7C (Ep3 only; city only)
