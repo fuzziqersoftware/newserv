@@ -1578,13 +1578,16 @@ void ServerState::load_maps(bool from_non_event_thread) {
   {
     // TODO: Ep3 NTE loads map_city00_on, but it appears there are some
     // variants. Figure this out and load those maps too.
-    auto objects_data = this->load_map_file(Version::GC_EP3, "system/maps/gc-ep3/map_city_on_battle_o.dat");
-    auto enemies_data = this->load_map_file(Version::GC_EP3, "system/maps/gc-ep3/map_city_on_battle_e.dat");
+    auto objects_data = this->load_map_file(Version::GC_EP3, "map_city_on_battle_o.dat");
+    auto enemies_data = this->load_map_file(Version::GC_EP3, "map_city_on_battle_e.dat");
     if (objects_data || enemies_data) {
       uint32_t free_play_key = this->free_play_key(Episode::EP3, GameMode::NORMAL, 0, 0, 0, 0);
       auto map_file = make_shared<MapFile>(0, objects_data, enemies_data, nullptr);
       new_map_file_for_source_hash.emplace(map_file->source_hash(), map_file);
       new_map_files_for_free_play_key[free_play_key].at(static_cast<size_t>(Version::GC_EP3)) = map_file;
+      config_log.info("Episode 3 map files loaded with free play key %08" PRIX32, free_play_key);
+    } else {
+      config_log.info("Episode 3 map files not found; skipping");
     }
   }
 

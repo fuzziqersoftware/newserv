@@ -2784,9 +2784,15 @@ ChatCommandDefinition cc_whatobj(
 
       // TODO: We should use the actual area if a loaded quest has reassigned
       // them; it's likely that the variations will be wrong if we don't
-      auto sdt = s->set_data_table(a.c->version(), l->episode, l->mode, l->difficulty);
-      uint8_t area = sdt->default_area_for_floor(l->episode, a.c->floor);
-      uint8_t layout_var = (a.c->floor < 0x10) ? l->variations.entries[a.c->floor].layout.load() : 0x00;
+      uint8_t area, layout_var;
+      if (l->episode != Episode::EP3) {
+        auto sdt = s->set_data_table(a.c->version(), l->episode, l->mode, l->difficulty);
+        area = sdt->default_area_for_floor(l->episode, a.c->floor);
+        layout_var = (a.c->floor < 0x10) ? l->variations.entries[a.c->floor].layout.load() : 0x00;
+      } else {
+        area = a.c->floor;
+        layout_var = 0;
+      }
 
       float min_dist2 = 0.0f;
       VectorXYZF nearest_worldspace_pos;
@@ -2799,15 +2805,21 @@ ChatCommandDefinition cc_whatobj(
         if (!def.set_entry) {
           continue;
         }
+
         VectorXYZF worldspace_pos;
-        try {
-          const auto& room = s->room_layout_index->get_room(area, layout_var, def.set_entry->room);
-          // This is the order in which the game does the rotations; not sure why
-          worldspace_pos = def.set_entry->pos.rotate_x(room.angle.x).rotate_z(room.angle.z).rotate_y(room.angle.y) + room.position;
-        } catch (const out_of_range&) {
-          a.c->log.warning("Can't find definition for room %02hhX:%02hhX:%08hX", area, layout_var, def.set_entry->room.load());
+        if (l->episode != Episode::EP3) {
+          try {
+            const auto& room = s->room_layout_index->get_room(area, layout_var, def.set_entry->room);
+            // This is the order in which the game does the rotations; not sure why
+            worldspace_pos = def.set_entry->pos.rotate_x(room.angle.x).rotate_z(room.angle.z).rotate_y(room.angle.y) + room.position;
+          } catch (const out_of_range&) {
+            a.c->log.warning("Can't find definition for room %02hhX:%02hhX:%08hX", area, layout_var, def.set_entry->room.load());
+            worldspace_pos = def.set_entry->pos;
+          }
+        } else {
           worldspace_pos = def.set_entry->pos;
         }
+
         float dist2 = (VectorXZF(worldspace_pos) - a.c->pos).norm2();
         if (!nearest_obj || (dist2 < min_dist2)) {
           nearest_obj = it;

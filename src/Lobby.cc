@@ -293,9 +293,7 @@ uint16_t Lobby::quest_version_flags() const {
 void Lobby::load_maps() {
   auto rare_rates = this->rare_enemy_rates ? this->rare_enemy_rates : MapState::DEFAULT_RARE_ENEMIES;
 
-  if (this->episode == Episode::EP3) {
-    this->map_state = make_shared<MapState>();
-  } else if (this->quest) {
+  if (this->quest) {
     this->map_state = make_shared<MapState>(
         this->lobby_id,
         this->difficulty,

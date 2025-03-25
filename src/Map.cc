@@ -3303,7 +3303,7 @@ string SuperMap::Object::id_str() const {
 
 string SuperMap::Object::str() const {
   string ret = "[Object " + this->id_str();
-  for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+  for (Version v : ALL_NON_PATCH_VERSIONS) {
     const auto& def = this->version(v);
     if (def.relative_object_index != 0xFFFF) {
       string args_str = def.set_entry->str();
@@ -3329,7 +3329,7 @@ string SuperMap::Enemy::str() const {
       this->alias_enemy_index_delta,
       this->is_default_rare_v123 ? "true" : "false",
       this->is_default_rare_bb ? "true" : "false");
-  for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+  for (Version v : ALL_NON_PATCH_VERSIONS) {
     const auto& def = this->version(v);
     if (def.relative_enemy_index != 0xFFFF) {
       string args_str = def.set_entry->str();
@@ -3351,7 +3351,7 @@ string SuperMap::Event::id_str() const {
 
 string SuperMap::Event::str() const {
   string ret = "[Event " + this->id_str();
-  for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+  for (Version v : ALL_NON_PATCH_VERSIONS) {
     const auto& def = this->version(v);
     if (def.relative_event_index != 0xFFFF) {
       string action_stream_str = phosg::format_data_string(def.action_stream, def.action_stream_size);
@@ -3388,7 +3388,7 @@ SuperMap::SuperMap(Episode episode, const std::array<std::shared_ptr<const MapFi
     }
   }
 
-  for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+  for (Version v : ALL_NON_PATCH_VERSIONS) {
     const auto& map_file = map_files.at(static_cast<size_t>(v));
     if (map_file) {
       this->add_map_file(v, map_file);
@@ -4591,34 +4591,34 @@ SuperMap::EfficiencyStats SuperMap::efficiency() const {
   EfficiencyStats ret;
 
   for (const auto& obj : this->objects) {
-    for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+    for (Version v : ALL_NON_PATCH_VERSIONS) {
       const auto& obj_ver = obj->version(v);
       if (obj_ver.relative_object_index != 0xFFFF) {
         ret.filled_object_slots++;
       }
     }
   }
-  ret.total_object_slots = this->objects.size() * ALL_ARPG_SEMANTIC_VERSIONS.size();
+  ret.total_object_slots = this->objects.size() * ALL_NON_PATCH_VERSIONS.size();
 
   for (const auto& ene : this->enemy_sets) {
-    for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+    for (Version v : ALL_NON_PATCH_VERSIONS) {
       const auto& ene_ver = ene->version(v);
       if (ene_ver.relative_enemy_index != 0xFFFF) {
         ret.filled_enemy_set_slots++;
       }
     }
   }
-  ret.total_enemy_set_slots = this->enemy_sets.size() * ALL_ARPG_SEMANTIC_VERSIONS.size();
+  ret.total_enemy_set_slots = this->enemy_sets.size() * ALL_NON_PATCH_VERSIONS.size();
 
   for (const auto& ev : this->events) {
-    for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+    for (Version v : ALL_NON_PATCH_VERSIONS) {
       const auto& ev_ver = ev->version(v);
       if (ev_ver.relative_event_index != 0xFFFF) {
         ret.filled_event_slots++;
       }
     }
   }
-  ret.total_event_slots = this->events.size() * ALL_ARPG_SEMANTIC_VERSIONS.size();
+  ret.total_event_slots = this->events.size() * ALL_NON_PATCH_VERSIONS.size();
 
   return ret;
 }
@@ -4664,7 +4664,7 @@ void SuperMap::verify() const {
     }
   }
 
-  for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+  for (Version v : ALL_NON_PATCH_VERSIONS) {
     const auto& entities = this->version(v);
 
     if (entities.object_floor_start_indexes.at(0) != 0) {
@@ -4787,16 +4787,16 @@ void SuperMap::verify() const {
 void SuperMap::print(FILE* stream) const {
   fprintf(stream, "SuperMap %s random=%08" PRIX64 "\n", name_for_episode(this->episode), this->random_seed);
 
-  fprintf(stream, "               DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 XBV3 BBV4\n");
+  fprintf(stream, "               DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 E3TE GCE3 XBV3 BBV4\n");
   fprintf(stream, "  MAP         ");
-  for (const auto& v : ALL_ARPG_SEMANTIC_VERSIONS) {
+  for (const auto& v : ALL_NON_PATCH_VERSIONS) {
     const auto& entities = this->version(v);
     fprintf(stream, " %s", entities.map_file ? "++++" : "----");
   }
   fputc('\n', stream);
   for (uint8_t floor = 0; floor < 0x12; floor++) {
     fprintf(stream, "  KS  START %02hhX", floor);
-    for (const auto& v : ALL_ARPG_SEMANTIC_VERSIONS) {
+    for (const auto& v : ALL_NON_PATCH_VERSIONS) {
       const auto& entities = this->version(v);
       fprintf(stream, " %04zX", entities.object_floor_start_indexes[floor]);
     }
@@ -4804,7 +4804,7 @@ void SuperMap::print(FILE* stream) const {
   }
   for (uint8_t floor = 0; floor < 0x12; floor++) {
     fprintf(stream, "  ES  START %02hhX", floor);
-    for (const auto& v : ALL_ARPG_SEMANTIC_VERSIONS) {
+    for (const auto& v : ALL_NON_PATCH_VERSIONS) {
       const auto& entities = this->version(v);
       fprintf(stream, " %04zX", entities.enemy_floor_start_indexes[floor]);
     }
@@ -4812,7 +4812,7 @@ void SuperMap::print(FILE* stream) const {
   }
   for (uint8_t floor = 0; floor < 0x12; floor++) {
     fprintf(stream, "  ESS START %02hhX", floor);
-    for (const auto& v : ALL_ARPG_SEMANTIC_VERSIONS) {
+    for (const auto& v : ALL_NON_PATCH_VERSIONS) {
       const auto& entities = this->version(v);
       fprintf(stream, " %04zX", entities.enemy_set_floor_start_indexes[floor]);
     }
@@ -4820,17 +4820,17 @@ void SuperMap::print(FILE* stream) const {
   }
   for (uint8_t floor = 0; floor < 0x12; floor++) {
     fprintf(stream, "  WS  START %02hhX", floor);
-    for (const auto& v : ALL_ARPG_SEMANTIC_VERSIONS) {
+    for (const auto& v : ALL_NON_PATCH_VERSIONS) {
       const auto& entities = this->version(v);
       fprintf(stream, " %04zX", entities.event_floor_start_indexes[floor]);
     }
     fputc('\n', stream);
   }
 
-  fprintf(stream, "  KS-FL-ID  DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 XBV3 BBV4 DEFINITION\n");
+  fprintf(stream, "  KS-FL-ID  DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 E3TE GCE3 XBV3 BBV4 DEFINITION\n");
   for (const auto& obj : this->objects) {
     fprintf(stream, "  KS-%02hhX-%03zX", obj->floor, obj->super_id);
-    for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+    for (Version v : ALL_NON_PATCH_VERSIONS) {
       const auto& obj_ver = obj->version(v);
       if (obj_ver.relative_object_index == 0xFFFF) {
         fprintf(stream, " ----");
@@ -4842,10 +4842,10 @@ void SuperMap::print(FILE* stream) const {
     fprintf(stream, " %s\n", obj_str.c_str());
   }
 
-  fprintf(stream, "  ES-FL-ID  DCTE----- DCPR----- DCV1----- DCV2----- PCTE----- PCV2----- GCTE----- GCV3----- XBV3----- BBV4----- DEFINITION\n");
+  fprintf(stream, "  ES-FL-ID  DCTE----- DCPR----- DCV1----- DCV2----- PCTE----- PCV2----- GCTE----- GCV3----- EP3TE---- GCEP3---- XBV3----- BBV4----- DEFINITION\n");
   for (const auto& ene : this->enemies) {
     fprintf(stream, "  ES-%02hhX-%03zX", ene->floor, ene->super_id);
-    for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+    for (Version v : ALL_NON_PATCH_VERSIONS) {
       const auto& ene_ver = ene->version(v);
       if (ene_ver.relative_enemy_index == 0xFFFF) {
         fprintf(stream, " ----:----");
@@ -4858,10 +4858,10 @@ void SuperMap::print(FILE* stream) const {
     fprintf(stream, " %s\n", ene_str.c_str());
   }
 
-  fprintf(stream, "  WS-FL-ID  DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 XBV3 BBV4 DEFINITION\n");
+  fprintf(stream, "  WS-FL-ID  DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 E3TE GCE3 XBV3 BBV4 DEFINITION\n");
   for (const auto& ev : this->events) {
     fprintf(stream, "  WS-%02hhX-%03zX", ev->floor, ev->super_id);
-    for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+    for (Version v : ALL_NON_PATCH_VERSIONS) {
       const auto& ev_ver = ev->version(v);
       if (ev_ver.relative_event_index == 0xFFFF) {
         fprintf(stream, " ----");
@@ -5093,7 +5093,7 @@ MapState::MapState(
     if (floor < this->floor_config_entries.size() - 1) {
       auto& next_fc = this->floor_config_entries[floor + 1];
       if (this_fc.super_map) {
-        for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+        for (Version v : ALL_NON_PATCH_VERSIONS) {
           const auto& this_indexes = this_fc.base_indexes_for_version(v);
           auto& next_indexes = next_fc.base_indexes_for_version(v);
           auto& entities = this_fc.super_map->version(v);
@@ -5107,7 +5107,7 @@ MapState::MapState(
         next_fc.base_super_ids.base_enemy_set_index = this->enemy_set_states.size();
         next_fc.base_super_ids.base_event_index = this->event_states.size();
       } else {
-        for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+        for (Version v : ALL_NON_PATCH_VERSIONS) {
           next_fc.base_indexes_for_version(v) = this_fc.base_indexes_for_version(v);
         }
       }
@@ -5193,7 +5193,7 @@ void MapState::index_super_map(const FloorConfig& fc, shared_ptr<PSOLFGEncryptio
     if ((type == EnemyType::MERICARAND) || (rare_type != type)) {
       unordered_map<uint32_t, float> det_cache;
       uint32_t bb_rare_rate = this->bb_rare_rates->for_enemy_type(type);
-      for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+      for (Version v : ALL_NON_PATCH_VERSIONS) {
         // Skip this version if the enemy doesn't exist there
         uint16_t relative_enemy_index = ene->version(v).relative_enemy_index;
         if (relative_enemy_index == 0xFFFF) {
@@ -5274,7 +5274,7 @@ void MapState::compute_dynamic_object_base_indexes() {
   // versions.
   this->dynamic_obj_base_index_for_version.fill(0);
   for (const auto& fc : this->floor_config_entries) {
-    for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+    for (Version v : ALL_NON_PATCH_VERSIONS) {
       if (fc.super_map) {
         auto& last_obj_index = this->dynamic_obj_base_index_for_version[static_cast<size_t>(v)];
         size_t base_index = fc.base_indexes_for_version(v).base_object_index;
@@ -5749,7 +5749,7 @@ void MapState::verify() const {
       }
     }
 
-    for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+    for (Version v : ALL_NON_PATCH_VERSIONS) {
       FloorConfig::EntityBaseIndexes base_indexes;
       for (size_t floor = 0; floor < this->floor_config_entries.size(); floor++) {
         const auto& fc = this->floor_config_entries[floor];
@@ -5814,28 +5814,28 @@ void MapState::print(FILE* stream) const {
   fprintf(stream, "BB rare rates: %s\n", rare_rates_str.c_str());
 
   fprintf(stream, "Base indexes:\n");
-  fprintf(stream, "  FL DCTE----------- DCPR----------- DCV1----------- DCV2----------- PCTE----------- PCV2----------- GCTE----------- GCV3----------- XBV3----------- BBV4-----------\n");
-  fprintf(stream, "  FL KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT\n");
+  fprintf(stream, "  FL DCTE----------- DCPR----------- DCV1----------- DCV2----------- PCTE----------- PCV2----------- GCTE----------- GCV3----------- GCEP3TE-------- GCEP3---------- XBV3----------- BBV4-----------\n");
+  fprintf(stream, "  FL KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT\n");
   for (size_t floor = 0; floor < this->floor_config_entries.size(); floor++) {
     auto fc = this->floor_config_entries[floor];
     if (fc.super_map) {
       fprintf(stream, "  %02zX", floor);
-      for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+      for (Version v : ALL_NON_PATCH_VERSIONS) {
         const auto& indexes = fc.base_indexes_for_version(v);
         fprintf(stream, " %03zX %03zX %03zX %03zX", indexes.base_object_index, indexes.base_enemy_index, indexes.base_enemy_set_index, indexes.base_event_index);
       }
       fputc('\n', stream);
     } else {
-      fprintf(stream, "  %02zX --------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- ---------------\n", floor);
+      fprintf(stream, "  %02zX --------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- ---------------\n", floor);
     }
   }
 
   fprintf(stream, "Objects:\n");
-  fprintf(stream, "  FL OBJID DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 XBV3 BBV4 OBJECT\n");
+  fprintf(stream, "  FL OBJID DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 E3TE GCE3 XBV3 BBV4 OBJECT\n");
   for (const auto& obj_st : this->object_states) {
     fprintf(stream, "  %02hhX K-%03zX", obj_st->super_obj->floor, obj_st->k_id);
     const auto& fc = this->floor_config(obj_st->super_obj->floor);
-    for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+    for (Version v : ALL_NON_PATCH_VERSIONS) {
       const auto& obj_v = obj_st->super_obj->version(v);
       if (obj_v.relative_object_index == 0xFFFF) {
         fputs(" ----", stream);
@@ -5850,11 +5850,11 @@ void MapState::print(FILE* stream) const {
   }
 
   fprintf(stream, "Enemies:\n");
-  fprintf(stream, "  FL ENEID DCTE----- DCPR----- DCV1----- DCV2----- PCTE----- PCV2----- GCTE----- GCV3----- XBV3----- BBV4----- ENEMY\n");
+  fprintf(stream, "  FL ENEID DCTE----- DCPR----- DCV1----- DCV2----- PCTE----- PCV2----- GCTE----- GCV3----- EP3TE---- GCEP3---- XBV3----- BBV4----- ENEMY\n");
   for (const auto& ene_st : this->enemy_states) {
     fprintf(stream, "  %02hhX E-%03zX", ene_st->super_ene->floor, ene_st->e_id);
     const auto& fc = this->floor_config(ene_st->super_ene->floor);
-    for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+    for (Version v : ALL_NON_PATCH_VERSIONS) {
       const auto& ene_v = ene_st->super_ene->version(v);
       if (ene_v.relative_enemy_index == 0xFFFF) {
         fputs(" ---------", stream);
@@ -5886,11 +5886,11 @@ void MapState::print(FILE* stream) const {
   }
 
   fprintf(stream, "Events:\n");
-  fprintf(stream, "  FL EVTID DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 XBV3 BBV4 EVENT\n");
+  fprintf(stream, "  FL EVTID DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 E3TE GCE3 XBV3 BBV4 EVENT\n");
   for (const auto& ev_st : this->event_states) {
     fprintf(stream, "  %02hhX W-%03zX", ev_st->super_ev->floor, ev_st->w_id);
     const auto& fc = this->floor_config(ev_st->super_ev->floor);
-    for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+    for (Version v : ALL_NON_PATCH_VERSIONS) {
       const auto& ev_v = ev_st->super_ev->version(v);
       if (ev_v.relative_event_index == 0xFFFF) {
         fputs(" ----", stream);

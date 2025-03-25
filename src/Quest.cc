@@ -417,7 +417,7 @@ std::shared_ptr<const SuperMap> Quest::get_supermap(int64_t random_seed) const {
   bool save_to_cache = true;
   bool any_map_file_present = false;
   array<shared_ptr<const MapFile>, NUM_VERSIONS> map_files;
-  for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+  for (Version v : ALL_NON_PATCH_VERSIONS) {
     auto vq = this->version(v, 1);
     if (vq && vq->map_file) {
       auto map_file = vq->map_file;

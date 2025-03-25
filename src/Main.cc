@@ -2849,7 +2849,7 @@ Action a_check_supermaps(
         }
         if (generate_enemy_stats) {
           array<unordered_map<EnemyType, size_t>, NUM_VERSIONS> counts_for_version;
-          for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+          for (Version v : ALL_NON_PATCH_VERSIONS) {
             counts_for_version[static_cast<size_t>(v)] = supermap->count_enemy_sets_for_version(v);
           }
           string filename = phosg::string_printf("supermap_quest_%" PRIu32 "_%08" PRIX32 "_enemy_counts.txt", it.first, random_seed);
@@ -2860,7 +2860,7 @@ Action a_check_supermaps(
             EnemyType type = static_cast<EnemyType>(type_ss);
             bool any_count_nonzero = false;
             array<size_t, NUM_VERSIONS> counts;
-            for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+            for (Version v : ALL_NON_PATCH_VERSIONS) {
               size_t& count = counts[static_cast<size_t>(v)];
               try {
                 count = counts_for_version[static_cast<size_t>(v)].at(type);
@@ -2873,7 +2873,7 @@ Action a_check_supermaps(
             }
             if (any_count_nonzero) {
               fprintf(f.get(), "%20s", phosg::name_for_enum(type));
-              for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
+              for (Version v : ALL_NON_PATCH_VERSIONS) {
                 size_t count = counts[static_cast<size_t>(v)];
                 if (count > 0) {
                   fprintf(f.get(), "  %5zu", count);
