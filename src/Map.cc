@@ -2461,17 +2461,81 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       // Availability: v4 only
       {0x0341, "__UNKNOWN_0341__"}, // Constructor in 59NL: 00674118 (v4 only)
 
+      // Poison plant. Base damage is 10 (Normal), 20 (Hard), 30 (Very Hard),
+      // or 60 (Ultimate). There appear to be no parameters.
+      // Availability: v4 only
+      {0x0380, "__POISON_PLANT__"},
+
+      // TODO: Describe this object. Params:
+      //   param4 = model number (clamped to [0, 1])
+      // Availability: v4 only
+      {0x0381, "__UNKNOWN_0381__"},
+
+      // TODO: Describe this object. There appear to be no parameters.
+      // Availability: v4 only
+      {0x0382, "__UNKNOWN_0382__"},
+
+      // Desert ooze plant. Params:
+      //   param1 = animation speed?
+      //   param2 = scale factor
+      //   param4 = model number (clamped to [0, 1])
+      // Availability: v4 only
+      {0x0383, "__DESERT_OOZE_PLANT__"},
+
+      // TODO: Describe this object. Params:
+      //   param1 = animation speed?
+      //   param4 = TODO (clamped to [0, 1])
+      // Availability: v4 only
+      {0x0385, "__UNKNOWN_0385__"},
+
+      // Wilds/Crater black rocks. Params:
+      //   param4 = model number (0-2, not bounds-checked)
+      // Availability: v4 only
+      {0x0386, "__WILDS_CRATER_BLACK_ROCKS__"},
+
+      // TODO: Describe this object. Params (names come from debug strings):
+      //   angle.x = dest x
+      //   angle.y = dest y
+      //   angle.z = dest z
+      //   param1 = area radius
+      //   param2 = area power (value used is param2 * 0.8)
+      //   param4 = hole radius (value used is param4 / 100)
+      //   param5 = hole power (value used is param5 / 100)
+      // Availability: v4 only
+      {0x0387, "__UNKNOWN_0387__"},
+
+      // TODO: Describe this object. Params:
+      //   param1 = hitbox width (x; only used if param6 == 0)
+      //   param2 = hitbox radius (only used if param6 != 0)
+      //   param3 = hitbox depth (z; only used if param6 == 0)
+      //   param4 = TODO (value used is param4 / 100)
+      //   param6 = hitbox type (0 = rectangular, anything else = cylindrical)
+      // Availability: v4 only
+      {0x0388, "__UNKNOWN_0388__"},
+
+      // Game flag set/clear zone. This sets and clears game flags (the flags
+      // sent in 6x0A) when the player enters the object's hitbox. Params:
+      //   param1-3 = same as for 0x0388
+      //   param4 = game flags to set (low 8 bits only)
+      //   param5 = game flags to clear (low 8 bits only)
+      //   param6 = same as for 0x0388
+      // There appears to be a bug that causes the game to always set all 8 of
+      // the low game flags, regardless of the value of param4. The clearing
+      // logic (param5) appears to work correctly.
+      // Availability: v4 only
+      {0x0389, "__GAME_FLAG_SET_CLEAR_ZONE__"},
+
+      // HP drain zone. When a player is within this object's hitbox, it
+      // subtracts 0.66% of the player's current HP at a regular interval. The
+      // amount of damage per interval is capped below at 1 HP, so it will
+      // always do a nonzero amount of damage each time. Params:
+      //   param1-3 = same as for 0x0388
+      //   param5 = interval (in frames) between damage applications
+      //   param6 = same as for 0x0388
+      // Availability: v4 only
+      {0x038A, "__HP_DRAIN_ZONE__"},
+
       // TODO: Describe the rest of the object types.
-      {0x0380, "__POISON_PLANT__"}, // Constructor in 59NL: 0067927C (v4 only)
-      {0x0381, "__UNKNOWN_0381__"}, // Constructor in 59NL: 00679678 (v4 only)
-      {0x0382, "__UNKNOWN_0382__"}, // Constructor in 59NL: 0067A264 (v4 only)
-      {0x0383, "__DESERT_OOZE_PLANT__"}, // Constructor in 59NL: 006781EC (v4 only)
-      {0x0385, "__UNKNOWN_0385__"}, // Constructor in 59NL: 006785C8 (v4 only)
-      {0x0386, "__WILDS_CRATER_BLACK_ROCKS__"}, // Constructor in 59NL: 00677DE4 (v4 only)
-      {0x0387, "__UNKNOWN_0387__"}, // Constructor in 59NL: 006119E4 (v4 only)
-      {0x0388, "__UNKNOWN_0388__"}, // Constructor in 59NL: 00635D1C (v4 only)
-      {0x0389, "__UNKNOWN_0389__"}, // Constructor in 59NL: 0063810C (v4 only)
-      {0x038A, "__UNKNOWN_038A__"}, // Constructor in 59NL: 00619604 (v4 only)
       {0x038B, "__FALLING_ROCK__"}, // Constructor in 59NL: 00679F58 (v4 only)
       {0x038C, "__DESERT_PLANT_SOLID__"}, // Constructor in 59NL: 0067A548 (v4 only)
       {0x038D, "__DESERT_CRYSTALS_BOX__"}, // Constructor in 59NL: 00677610 (v4 only)
