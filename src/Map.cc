@@ -1350,7 +1350,9 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x0084, "TLazerFenceSw"},
 
       // Light rays. Params:
-      //   param1-3 = scale (x, y, z)
+      //   param1 = TODO
+      //   param2 = vertical scale (y)
+      //   param3 = horizontal scale (x, z)
       {0x0085, "TKomorebi"},
 
       // Butterfly. Params:
@@ -2421,13 +2423,45 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       // Availability: Ep3 Morgue only
       {0x02E8, "__UNKNOWN_02E8__"},
 
-      // TODO: Describe the rest of the object types.
-      {0x0300, "__EP4_LIGHT__"}, // Constructor in 59NL: 00661158 (v4 only)
-      {0x0301, "__WILDS_CRATER_CACTUS__"}, // Constructor in 59NL: 0067612C (v4 only)
-      {0x0302, "__WILDS_CRATER_BROWN_ROCK__"}, // Constructor in 59NL: 00675748 (v4 only)
-      {0x0303, "__WILDS_CRATER_BROWN_ROCK_DESTRUCTIBLE__"}, // Constructor in 59NL: 00675BF8 (v4 only)
+      // Episode 4 light source.
+      // TODO: Find and document this object's parameters.
+      // Availability: v4 only
+      {0x0300, "__EP4_LIGHT__"},
+
+      // Wilds/Crater cactus. Params:
+      //   param1 = horizontal scale (x, z)
+      //   param2 = vertical scale (y)
+      //   param4 = model number (0-2, not bounds-checked)
+      //   param5 = TODO
+      // Availability: v4 only
+      {0x0301, "__WILDS_CRATER_CACTUS__"},
+
+      // Wilds/Crater brown rock. Params:
+      //   param1-3 = scale factors (x, y, z); z factor also scales hitbox size
+      //   param4 = model number (0-2, not bounds-checked)
+      // Availability: v4 only
+      {0x0302, "__WILDS_CRATER_BROWN_ROCK__"},
+
+      // Wilds/Crater destructible brown rock. Params:
+      //   param4 = switch flag number
+      // Availability: v4 only
+      {0x0303, "__WILDS_CRATER_BROWN_ROCK_DESTRUCTIBLE__"},
+
+      // TODO: Construct this object and see what it is. Params:
+      //   param4 = object identifier (must be in range [0, 15]; used in 6xD4
+      //     command)
+      // Availability: v4 only
       {0x0340, "__UNKNOWN_0340__"}, // Constructor in 59NL: 00673FB8 (v4 only)
+
+      // TODO: Construct this object and see what it is. It looks like some
+      // kind of child object of 0340. Params:
+      //   param4 = object identifier (must be in range [0, 15]; used in 6xD4
+      //     command; looks like it should match an existing 0340's identifier)
+      //   param5 = child index? (must be in range [0, 3])
+      // Availability: v4 only
       {0x0341, "__UNKNOWN_0341__"}, // Constructor in 59NL: 00674118 (v4 only)
+
+      // TODO: Describe the rest of the object types.
       {0x0380, "__POISON_PLANT__"}, // Constructor in 59NL: 0067927C (v4 only)
       {0x0381, "__UNKNOWN_0381__"}, // Constructor in 59NL: 00679678 (v4 only)
       {0x0382, "__UNKNOWN_0382__"}, // Constructor in 59NL: 0067A264 (v4 only)

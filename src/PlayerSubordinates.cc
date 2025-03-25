@@ -743,20 +743,20 @@ const ChallengeTemplateDefinition& get_challenge_template_definition(Version ver
   }
 }
 
-NPCTalkState::NPCTalkState(const NPCTalkState_DCProtos& proto)
+PlayerHoldState::PlayerHoldState(const PlayerHoldState_DCProtos& proto)
     : unknown_a1(proto.unknown_a1),
       unknown_a2(proto.unknown_a2),
       unknown_a3(0),
-      unknown_a4(proto.unknown_a4),
-      unknown_a5(proto.unknown_a5),
-      unknown_a6(proto.unknown_a6) {}
+      trigger_radius2(proto.trigger_radius2),
+      x(proto.x),
+      z(proto.z) {}
 
-NPCTalkState::operator NPCTalkState_DCProtos() const {
-  NPCTalkState_DCProtos ret;
+PlayerHoldState::operator PlayerHoldState_DCProtos() const {
+  PlayerHoldState_DCProtos ret;
   ret.unknown_a1 = this->unknown_a1;
   ret.unknown_a2 = this->unknown_a2;
-  ret.unknown_a4 = this->unknown_a4;
-  ret.unknown_a5 = this->unknown_a5;
-  ret.unknown_a6 = this->unknown_a6;
+  ret.trigger_radius2 = this->trigger_radius2;
+  ret.x = this->x;
+  ret.z = this->z;
   return ret;
 }

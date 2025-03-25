@@ -789,7 +789,7 @@ Parsed6x70Data::Parsed6x70Data(
       battle_team_number(0),
       telepipe(cmd.telepipe),
       death_flags(cmd.death_flags),
-      npc_talk_state(cmd.npc_talk_state),
+      hold_state(cmd.hold_state),
       area(cmd.area),
       game_flags(cmd.game_flags),
       game_flags_is_v3(false),
@@ -825,7 +825,7 @@ Parsed6x70Data::Parsed6x70Data(
       battle_team_number(0),
       telepipe(cmd.telepipe),
       death_flags(cmd.death_flags),
-      npc_talk_state(cmd.npc_talk_state),
+      hold_state(cmd.hold_state),
       area(cmd.area),
       game_flags(cmd.game_flags),
       game_flags_is_v3(false),
@@ -910,7 +910,7 @@ G_SyncPlayerDispAndInventory_DCNTE_6x70 Parsed6x70Data::as_dc_nte(shared_ptr<Ser
   ret.unknown_a6 = this->unknown_a6;
   ret.telepipe = this->telepipe;
   ret.death_flags = this->death_flags;
-  ret.npc_talk_state = this->npc_talk_state;
+  ret.hold_state = this->hold_state;
   ret.area = this->area;
   ret.game_flags = this->get_game_flags(false);
   ret.visual = this->visual;
@@ -938,7 +938,7 @@ G_SyncPlayerDispAndInventory_DC112000_6x70 Parsed6x70Data::as_dc_112000(shared_p
   ret.unknown_a5 = this->unknown_a5_112000;
   ret.telepipe = this->telepipe;
   ret.death_flags = this->death_flags;
-  ret.npc_talk_state = this->npc_talk_state;
+  ret.hold_state = this->hold_state;
   ret.area = this->area;
   ret.game_flags = this->get_game_flags(false);
   ret.visual = this->visual;
@@ -1100,7 +1100,7 @@ Parsed6x70Data::Parsed6x70Data(
       battle_team_number(base.battle_team_number),
       telepipe(base.telepipe),
       death_flags(base.death_flags),
-      npc_talk_state(base.npc_talk_state),
+      hold_state(base.hold_state),
       area(base.area),
       game_flags(base.game_flags),
       game_flags_is_v3(!is_v1_or_v2(from_version)),
@@ -1124,7 +1124,7 @@ G_6x70_Base_V1 Parsed6x70Data::base_v1(bool is_v3) const {
   ret.battle_team_number = this->battle_team_number;
   ret.telepipe = this->telepipe;
   ret.death_flags = this->death_flags;
-  ret.npc_talk_state = this->npc_talk_state;
+  ret.hold_state = this->hold_state;
   ret.area = this->area;
   ret.game_flags = this->get_game_flags(is_v3);
   ret.technique_levels_v1 = this->technique_levels_v1;
