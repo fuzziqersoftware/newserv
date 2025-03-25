@@ -1163,7 +1163,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //       06 = tekker
       //       07 = government counter (BB only)
       //       08 = "GIVEAWAY" (BB only)
-      //   Episode 3:
+      //     Episode 3:
       //       00 = unused (DUMMY0)
       //       01 = unused (DUMMY1)
       //       02 = unused (DUMMY2)
@@ -2303,32 +2303,125 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       // Availability: v3+ only
       {0x02BD, "TObjLaboMapWarp"}, // Constructor in 3OE1: 80185430 (v3+ only)
 
+      // This object is used internally by Episode 3 during battles as the
+      // visual implementation for some overlay tiles.
+      // Params:
+      //   param1-3 = TODO
+      //   param4 = model number:
+      //     00 = TODO (iwa.bml)
+      //     01 = TODO (l_kusa.bml)
+      //     02 = TODO (s_kusa.bml)
+      //     03 = TODO (crash_car.bml)
+      //     04 = TODO (crash_warp.bml)
+      //     05 = TODO (new_marker.bml)
+      //     06 = TODO (r_guard.bml)
+      //     07 = TODO (ryuuboku.bml)
+      //     08 = TODO (ryuuboku_l.bml)
+      //     09 = Rock (overlay = 0x10; new_iwa_1.bml)
+      //     0A = TODO (new_iwa_2.bml)
+      //     0B = Purple warp (overlay = 0x30; warp_p.bml)
+      //     0C = Red warp (overlay = 0x31; warp_r.bml)
+      //     0D = Green warp (overlay = 0x32; warp_g.bml)
+      //     0E = Blue warp (overlay = 0x33; warp_b.bml)
+      //     0F = Fence (overlay = 0x20; shareobj_new_guard.bml)
+      //   param6 second-low byte = TODO
+      //   param6 low byte = TODO
+      // Availability: Ep3 in-battle only
+      {0x02D0, "TObjKazariCard"},
+
+      // TODO: Describe these objects. There appear to be no parameters.
+      // Availability: Ep3 Morgue only
+      {0x02D1, "TObj_FloatingCardMaterial_Dark"},
+      {0x02D2, "TObj_FloatingCardMaterial_Hero"},
+
+      // Morgue warps. These don't actually do anything; they just look like a
+      // warp. The actual warping is done by another object (TObjCityAreaWarp
+      // for the lobby teleporter, or TShopGenerator for the battle counter).
+      // TObjCardCityMapWarp takes no parameters.
+      // Availability: Ep3 Morgue only
+      {0x02D3, "TObjCardCityMapWarp(0)"}, // Battle counter warp (blue lines)
+      {0x02D9, "TObjCardCityMapWarp(1)"}, // TODO
+      {0x02E3, "TObjCardCityMapWarp(2)"}, // Lobby warp (yellow lines)
+
+      // Morgue doors. None of these take any parameters. Unsurprisingly, the
+      // _Closed variants don't open.
+      // Availability: Ep3 Morgue only
+      {0x02D4, "TObjCardCityDoor(0)"}, // Yellow (to deck edit room)
+      {0x02D5, "TObjCardCityDoor(1)"}, // Blue (to battle entry counter)
+      {0x02D8, "TObjCardCityDoor(2)"}, // TODO
+      {0x02DF, "TObjCardCityDoor(3)"}, // Solid (always closed in normal Morgue)
+      {0x02E0, "TObjCardCityDoor(4)"}, // Gray (to chief)
+      {0x02DC, "TObjCardCityDoor_Closed(0)"}, // TODO
+      {0x02DD, "TObjCardCityDoor_Closed(1)"}, // TODO
+      {0x02DE, "TObjCardCityDoor_Closed(2)"}, // TODO
+      {0x02E1, "TObjCardCityDoor_Closed(3)"}, // TODO
+      {0x02E2, "TObjCardCityDoor_Closed(4)"}, // TODO
+
+      // Mortis Fons geyser. Params:
+      //   param1-3 = TODO
+      //   param4 = mode (value used is param4 % 0x0B):
+      //     00 = MIZUMODE_NONE
+      //     01 = MIZUMODE_LOW
+      //     02 = MIZUMODE_MIDDLE
+      //     03 = MIZUMODE_HIGH
+      //     04 = MIZUMODE_RAIN
+      //     05 = MIZUMODE_WAVE
+      //     06 = MIZUMODE_HIGHTYNY
+      //     07 = MIZUMODE_REFLECT
+      //     08 = MIZUMODE_FOG
+      //     09 = MIZUMODE_FOG2
+      //     0A = MIZUMODE_LIGHT
+      //   param5 = TODO (value used is param5 % 7)
+      // Availability: Ep3 in-battle only
+      {0x02D6, "TObjKazariGeyserMizu"},
+
+      // TODO: Describe this object. It appears to be created by many creatures
+      // and probably SCs as well, but it's not obvious what it's used for,
+      // since the logic of tiles being blocked or free is implemented in
+      // TCardServer, which doesn't interact with this object. Further research
+      // is needed here. Params:
+      //   param1-3 = TODO
+      //   param4 = TODO (expected to be 0 or 1)
+      // Availability: Ep3 in-battle only
+      {0x02D7, "TObjSetCardColi"},
+
+      // Floating robots, presumably. These are both subclasses of 0x0106
+      // (TODragonflyMachine01) and take all the same params as that object.
+      // Availability: Ep3 Morgue only
+      {0x02DA, "TOFlyMekaHero"},
+      {0x02DB, "TOFlyMekaDark"},
+
+      // Lobby banner or model display object. This implements display of media
+      // sent with the B9 command. Params:
+      //   param1-3 = scale factors (x, y, z)
+      //   param4 = index into location bit field (0-31 where 0 is the least-
+      //     significant bit; see Episode3LobbyBanners in config.example.json
+      //     for the bits' meanings)
+      //   param5 = TODO
+      // Availability: Ep3 lobby only
+      {0x02E4, "TObjSinBoardCard"},
+
+      // TODO: Describe this object. Params:
+      //   param4 = model number (0 or 1)
+      // Availability: Ep3 Morgue only
+      {0x02E5, "TObjCityMoji"},
+
+      // Like TObjCardCityMapWarp(2) (the warp to the lobby from the Morgue)
+      // but doesn't render the circles. Used in offline mode where that warp
+      // is disabled. No parameters.
+      // Availability: Ep3 Morgue only
+      {0x02E6, "TObjCityWarpOff"},
+
+      // Small flying robot. There appear to be no parameters.
+      // Availability: Ep3 Morgue only
+      {0x02E7, "TObjFlyCom"},
+
+      // TODO: Describe this object. Params:
+      //   param4 = TODO (used in vtable[0x0E])
+      // Availability: Ep3 Morgue only
+      {0x02E8, "__UNKNOWN_02E8__"},
+
       // TODO: Describe the rest of the object types.
-      {0x02D0, "TObjKazariCard"}, // Constructor in 3SE0: 8026C79C (Ep3 only; battle only)
-      {0x02D1, "TObj_FloatingCardMaterial_Dark"}, // Constructor in 3SE0: 800C5F30 (Ep3 only; city only)
-      {0x02D2, "TObj_FloatingCardMaterial_Hero"}, // Constructor in 3SE0: 800C5F7C (Ep3 only; city only)
-      {0x02D3, "TObjCardCityMapWarp(0)"}, // Constructor in 3SE0: 800B9528 (Ep3 only; city only)
-      {0x02D4, "TObjCardCityDoor(0)"}, // Constructor in 3SE0: 800B8C40 (Ep3 only; city only)
-      {0x02D5, "TObjCardCityDoor(1)"}, // Constructor in 3SE0: 800B8BF0 (Ep3 only; city only)
-      {0x02D6, "TObjKazariGeyserMizu"}, // Constructor in 3SE0: 80278E08 (Ep3 only; battle only)
-      {0x02D7, "TObjSetCardColi"}, // Constructor in 3SE0: 802BCE80 (Ep3 only; battle only)
-      {0x02D8, "TObjCardCityDoor(2)"}, // Constructor in 3SE0: 800B8BA0 (Ep3 only; city only)
-      {0x02D9, "TObjCardCityMapWarp(1)"}, // Constructor in 3SE0: 800B94D8 (Ep3 only; city only)
-      {0x02DA, "TOFlyMekaHero"}, // Constructor in 3SE0: 802DFD18 (Ep3 only; city only)
-      {0x02DB, "TOFlyMekaDark"}, // Constructor in 3SE0: 802DFAAC (Ep3 only; city only)
-      {0x02DC, "TObjCardCityDoor_Closed(0)"}, // Constructor in 3SE0: 800B884C (Ep3 only; city only)
-      {0x02DD, "TObjCardCityDoor_Closed(1)"}, // Constructor in 3SE0: 800B87FC (Ep3 only; city only)
-      {0x02DE, "TObjCardCityDoor_Closed(2)"}, // Constructor in 3SE0: 800B87AC (Ep3 only; city only)
-      {0x02DF, "TObjCardCityDoor(3)"}, // Constructor in 3SE0: 800B8B50 (Ep3 only; city only)
-      {0x02E0, "TObjCardCityDoor(4)"}, // Constructor in 3SE0: 800B8B00 (Ep3 only; city only)
-      {0x02E1, "TObjCardCityDoor_Closed(3)"}, // Constructor in 3SE0: 800B875C (Ep3 only; city only)
-      {0x02E2, "TObjCardCityDoor_Closed(4)"}, // Constructor in 3SE0: 800B870C (Ep3 only; city only)
-      {0x02E3, "TObjCardCityMapWarp(2)"}, // Constructor in 3SE0: 800B9488 (Ep3 only; city only)
-      {0x02E4, "TObjSinBoardCard"}, // Constructor in 3SE0: 80309608; cit (Ep3 only; lobby only)
-      {0x02E5, "TObjCityMoji"}, // Constructor in 3SE0: 8030DE8C (Ep3 only; city only)
-      {0x02E6, "TObjCityWarpOff"}, // Constructor in 3SE0: 8030DB4C (Ep3 only; city only)
-      {0x02E7, "TObjFlyCom"}, // Constructor in 3SE0: 80310BEC (Ep3 only; city only)
-      {0x02E8, "__UNKNOWN_02E8__"}, // Subclass of TObjPathObj; 3SE0: 8019A638 (Ep3 only; city only)
       {0x0300, "__EP4_LIGHT__"}, // Constructor in 59NL: 00661158 (v4 only)
       {0x0301, "__WILDS_CRATER_CACTUS__"}, // Constructor in 59NL: 0067612C (v4 only)
       {0x0302, "__WILDS_CRATER_BROWN_ROCK__"}, // Constructor in 59NL: 00675748 (v4 only)
@@ -2447,10 +2540,10 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       {0x00D1, "TObjNpcSoutokufu"}, // v3+ only
       {0x00D2, "TObjNpcHosa"}, // v3+ only
       {0x00D3, "TObjNpcKenkyuW"}, // v3+ only
-      {0x00D4, "TObjEneMe3StelthReal"}, // v3+ only
-      {0x00D5, "TObjEneMerillLia"}, // v3+ only
-      {0x00D6, "TObjEneBm9Mericarol"}, // v3+ only
-      {0x00D7, "TObjEneBm5GibonU"}, // v3+ only
+      {0x00D4, "TObjEneMe3StelthReal/TObjNpcHeroScientist"}, // Ep3/v3+ only
+      {0x00D5, "TObjEneMerillLia/TObjNpcHeroScientist"}, // Ep3/v3+ only
+      {0x00D6, "TObjEneBm9Mericarol/TObjNpcHeroGovernor"}, // Ep3/v3+ only
+      {0x00D7, "TObjEneBm5GibonU/TObjNpcHeroGovernor"}, // Ep3/v3+ only
       {0x00D8, "TObjEneGibbles"}, // v3+ only
       {0x00D9, "TObjEneMe1Gee"}, // v3+ only
       {0x00DA, "TObjEneMe1GiGue"}, // v3+ only
@@ -2498,12 +2591,12 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
 
 string MapFile::ObjectSetEntry::str() const {
   string name_str = MapFile::name_for_object_type(this->base_type);
-  return phosg::string_printf("[ObjectSetEntry type=%04hX \"%s\" set_flags=%04hX index=%04hX a2=%04hX entity_id=%04hX group=%04hX room=%04hX a3=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] unused=%08" PRIX32 "]",
+  return phosg::string_printf("[ObjectSetEntry type=%04hX \"%s\" set_flags=%04hX index=%04hX floor=%04hX entity_id=%04hX group=%04hX room=%04hX a3=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] unused=%08" PRIX32 "]",
       this->base_type.load(),
       name_str.c_str(),
       this->set_flags.load(),
       this->index.load(),
-      this->unknown_a2.load(),
+      this->floor.load(),
       this->entity_id.load(),
       this->group.load(),
       this->room.load(),

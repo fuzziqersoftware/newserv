@@ -1131,9 +1131,16 @@ struct CompressedMapHeader { // .mnm file format
 struct OverlayState {
   // In the tiles array, the high 4 bits of each value are the tile type, and
   // the low 4 bits are the subtype. The types are:
-  // 10: blocked by rock (as if the corresponding map_tiles value was 00)
-  // 20: blocked by fence (as if the corresponding map_tiles value was 00)
-  // 30-34: teleporters (2 of each value may be present)
+  // 10-1F: blocked by rock (as if the corresponding map_tiles value was 00;
+  //   low 4 bits specify rotation in increments of 1/4 turn)
+  // 20-2F: blocked by fence (as if the corresponding map_tiles value was 00;
+  //   low 4 bits specify rotation in increments of 1/4 turn)
+  // 30-34: teleporters (each value should appear exactly twice or not at all):
+  //   30: purple teleporters
+  //   31: red teleporters
+  //   32: green teleporters
+  //   33: blue teleporters
+  //   34: purple teleporters (appears the same as 30 but is a distinct set)
   // 40-4F: traps on NTE
   // 40-44: traps on non-NTE (there may be up to 8 of each type, and one of
   //   each is chosen to be a real trap at battle start); the trap types are:

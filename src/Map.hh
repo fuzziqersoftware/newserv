@@ -168,7 +168,7 @@ public:
     /* 00 */ le_uint16_t base_type = 0;
     /* 02 */ le_uint16_t set_flags = 0; // Used by PSO at runtime, unused in DAT file
     /* 04 */ le_uint16_t index = 0; // Used by PSO at runtime, unused in DAT file
-    /* 06 */ le_uint16_t unknown_a2 = 0;
+    /* 06 */ le_uint16_t floor = 0;
     /* 08 */ le_uint16_t entity_id = 0; // == index + 0x4000; used by PSO at runtime, unused in DAT file
     /* 0A */ le_uint16_t group = 0;
     /* 0C */ le_uint16_t room = 0;
