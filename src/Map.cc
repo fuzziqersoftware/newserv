@@ -740,8 +740,11 @@ const char* MapFile::name_for_object_type(uint16_t type) {
 
       // Fog collision object. Params:
       //   param1 = radius
-      //   param4 = TODO
-      //   param5 = TODO (only checked for zero vs. nonzero)
+      //   param4 = fog entry number; if lower than the existing fog number,
+      //     does nothing (if param4 is >= 0x1000, the game subtracts 0x1000
+      //     from it, but only after comparing it to the current fog number;
+      //     this can be used to override a later fog with an earlier fog)
+      //   param5 = transition type (0 = fade in, 1 = instantly switch)
       {0x0007, "TObjFogCollision"},
 
       // Event collision object. This object triggers a wave event (W-XXX) when
@@ -887,15 +890,9 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //   param4 = TODO
       {0x0017, "TObjRaderCol"},
 
-      // Fog collision. Params:
-      //   param1 = radius
+      // Fog collision. Same params as 0x0007 (TObjFogCollision), but also:
       //   param3 = if >= 1, fog is on when switch flag is on; otherwise, fog
       //     is on when switch flag is off
-      //   param4 = fog entry number; if lower than the existing fog number,
-      //     does nothing (if param4 is >= 0x1000, the game subtracts 0x1000
-      //     from it, but only after comparing it to the current fog number;
-      //     this can be used to override a later fog with an earlier fog)
-      //   param5 = transition type (0 = fade in, 1 = instantly switch)
       //   param6 = switch flag number
       {0x0018, "TObjFogCollisionSwitch"},
 
@@ -1372,6 +1369,10 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //     all and drops exactly as specified in param4-6
       //   param4-6 = item definition. see base_item_for_specialized_box in
       //     ItemCreator.cc for how these values are decoded
+      // In the non-specialized case (param1 <= 0), param3-6 are still sent via
+      // the 6xA2 command when the box is opened on v3 and later, and the
+      // server may choose to use those parameters for some purpose. The client
+      // implementation ignores them when param1 <= 0, and newserv does too.
       {0x0088, "TObjContainerBase2"},
 
       // Elevated cylindrical tank. Params:
@@ -2303,7 +2304,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //     01 = "Pioneer 2"
       //     02 = "Lab"
       // Availability: v3+ only
-      {0x02BD, "TObjLaboMapWarp"}, // Constructor in 3OE1: 80185430 (v3+ only)
+      {0x02BD, "TObjLaboMapWarp"},
 
       // This object is used internally by Episode 3 during battles as the
       // visual implementation for some overlay tiles.
@@ -2451,7 +2452,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //   param4 = object identifier (must be in range [0, 15]; used in 6xD4
       //     command)
       // Availability: v4 only
-      {0x0340, "__UNKNOWN_0340__"}, // Constructor in 59NL: 00673FB8 (v4 only)
+      {0x0340, "__UNKNOWN_0340__"},
 
       // TODO: Construct this object and see what it is. It looks like some
       // kind of child object of 0340. Params:
@@ -2459,7 +2460,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //     command; looks like it should match an existing 0340's identifier)
       //   param5 = child index? (must be in range [0, 3])
       // Availability: v4 only
-      {0x0341, "__UNKNOWN_0341__"}, // Constructor in 59NL: 00674118 (v4 only)
+      {0x0341, "__UNKNOWN_0341__"},
 
       // Poison plant. Base damage is 10 (Normal), 20 (Hard), 30 (Very Hard),
       // or 60 (Ultimate). There appear to be no parameters.
@@ -2535,16 +2536,68 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       // Availability: v4 only
       {0x038A, "__HP_DRAIN_ZONE__"},
 
-      // TODO: Describe the rest of the object types.
-      {0x038B, "__FALLING_ROCK__"}, // Constructor in 59NL: 00679F58 (v4 only)
-      {0x038C, "__DESERT_PLANT_SOLID__"}, // Constructor in 59NL: 0067A548 (v4 only)
-      {0x038D, "__DESERT_CRYSTALS_BOX__"}, // Constructor in 59NL: 00677610 (v4 only)
-      {0x038E, "__EP4_TEST_DOOR__"}, // Constructor in 59NL: 00677A80 (v4 only)
-      {0x038F, "__BEE_HIVE__"}, // Constructor in 59NL: 00676ADC (v4 only)
-      {0x0390, "__EP4_TEST_PARTICLE__"}, // Constructor in 59NL: 00678C00 (v4 only)
-      {0x0391, "__HEAT__"}, // Constructor in 59NL: 005C2820 (v4 only)
-      {0x03C0, "__EP4_BOSS_EGG__"}, // Constructor in 59NL: 0076FB74 (v4 only)
-      {0x03C1, "__EP4_BOSS_ROCK_SPAWNER__"}, // Constructor in 59NL: 00770028 (v4 only)
+      // Falling stalactite. Activates when any player is within 50 units. Base
+      // damage is 100 on Normal, 200 on Hard, 300 on Very Hard, or 600 on
+      // Ultimate. There appear to be no parameters.
+      // Availability: v4 only
+      {0x038B, "__FALLING_STALACTITE__"},
+
+      // Solid desert plant. Params:
+      //   param1 = horizontal scale factor (x, z)
+      //   param2 = vertical scale factor (y)
+      // Availability: v4 only
+      {0x038C, "__DESERT_PLANT_SOLID__"},
+
+      // Desert crystals-style box. Params:
+      //   param1 = contents type:
+      //     0 = always empty
+      //     1 = standard random item (ignore_def = 1)
+      //     2 = customized item (ignore_def = 0)
+      //     3 = trigger set event
+      // If param1 is 0 or 1, no other parameters are used. (In the case of 1,
+      // param3-6 are sent to the server in the 6xA2 command; however, the
+      // standard implementation ignores them.)
+      // If param1 is 2, the other parameters have the same meanings as for
+      // 0x0088 (TObjContainerBase2).
+      // If param1 is 3, the event number is specified in param4.
+      // Availability: v4 only
+      {0x038D, "__DESERT_CRYSTALS_BOX__"},
+
+      // Episode 4 test door. param4 and param6 are the same as for 0x0056
+      // (TODoorLabo).
+      // Availability: v4 only
+      {0x038E, "__EP4_TEST_DOOR__"},
+
+      // Beehive. Params:
+      //   param1 = horizontal scale factor (x, z)
+      //   param2 = vertical scale factor (y)
+      //   param4 = model number (clamped to [0, 1])
+      // Availability: v4 only
+      {0x038F, "__BEEHIVE__"},
+
+      // Episode 4 test particles. Generates particles at a specific location
+      // (TODO) at a regular interval. Params:
+      //   angle.x = TODO
+      //   angle.y = TODO
+      //   param1 = particle distance? (TODO)
+      //   param2 = TODO
+      //   param4 = frames between effects
+      // Availability: v4 only
+      {0x0390, "__EP4_TEST_PARTICLE__"},
+
+      // Heat (implemented as a type of poison fog). Has the same parameters as
+      // TObjFogCollisionPoison.
+      // Availability: v4 only
+      {0x0391, "__HEAT__"},
+
+      // Episode 4 boss egg. There appear to be no parameters.
+      // Availability: v4 only
+      {0x03C0, "__EP4_BOSS_EGG__"},
+
+      // Episode 4 boss rock spawner. Params:
+      //   param4 = type (clamped to [0, 2])
+      // Availability: v4 only
+      {0x03C1, "__EP4_BOSS_ROCK_SPAWNER__"},
   });
   try {
     return names.at(type);
