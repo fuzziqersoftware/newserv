@@ -5546,10 +5546,12 @@ struct G_RevivePlayer_V3_BB_6xA1 {
 // server on BB)
 
 struct G_SpecializableItemDropRequest_6xA2 : G_StandardDropItemRequest_PC_V3_BB_6x60 {
-  /* 18 */ le_float fparam3 = 0.0f;
-  /* 1C */ le_int32_t iparam4 = 0;
-  /* 20 */ le_int32_t iparam5 = 0;
-  /* 24 */ le_int32_t iparam6 = 0;
+  // These fields directly map to param3-6 in the ObjectSetEntry structure from
+  // which the box was created.
+  /* 18 */ le_float param3 = 0.0f;
+  /* 1C */ le_int32_t param4 = 0;
+  /* 20 */ le_int32_t param5 = 0;
+  /* 24 */ le_int32_t param6 = 0;
   /* 28 */
 } __packed_ws__(G_SpecializableItemDropRequest_6xA2, 0x28);
 

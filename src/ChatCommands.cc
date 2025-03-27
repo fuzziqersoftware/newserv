@@ -2794,18 +2794,12 @@ ChatCommandDefinition cc_whatobj(
         layout_var = 0;
       }
 
-      float min_dist2 = 0.0f;
+      double min_dist2 = -1.0;
       VectorXYZF nearest_worldspace_pos;
       shared_ptr<const MapState::ObjectState> nearest_obj;
-      for (const auto& it : l->map_state->iter_object_states(a.c->version())) {
-        if (!it->super_obj || (it->super_obj->floor != a.c->floor)) {
-          continue;
-        }
-        const auto& def = it->super_obj->version(a.c->version());
-        if (!def.set_entry) {
-          continue;
-        }
+      shared_ptr<const MapState::EnemyState> nearest_ene;
 
+      auto check_entity = [&](auto& nearest_entity, auto entity, const auto& def) -> void {
         VectorXYZF worldspace_pos;
         if (l->episode != Episode::EP3) {
           try {
@@ -2821,23 +2815,55 @@ ChatCommandDefinition cc_whatobj(
         }
 
         float dist2 = (VectorXZF(worldspace_pos) - a.c->pos).norm2();
-        if (!nearest_obj || (dist2 < min_dist2)) {
-          nearest_obj = it;
+        if ((min_dist2 < 0.0) || (dist2 < min_dist2)) {
+          nearest_entity = entity;
           nearest_worldspace_pos = worldspace_pos;
           min_dist2 = dist2;
         }
+      };
+
+      for (const auto& it : l->map_state->iter_object_states(a.c->version())) {
+        if (it->super_obj && (it->super_obj->floor == a.c->floor)) {
+          const auto& def = it->super_obj->version(a.c->version());
+          if (def.set_entry) {
+            check_entity(nearest_obj, it, def);
+          }
+        }
+      }
+      for (const auto& it : l->map_state->iter_enemy_states(a.c->version())) {
+        if (it->super_ene && (it->super_ene->floor == a.c->floor)) {
+          const auto& def = it->super_ene->version(a.c->version());
+          if (def.set_entry) {
+            check_entity(nearest_ene, it, def);
+          }
+        }
       }
 
-      if (!nearest_obj) {
-        throw precondition_failed("$C4No objects nearby");
-      } else {
-        send_text_message_printf(a.c, "$C5K-%03zX\n$C6%s\nX:%.2f Z:%.2f",
+      // Since we check all objects first, nearest_ene will only be set if
+      // there is an enemy closer than all objects. So, we print that if it's
+      // set, and print the object if not.
+      if (nearest_ene) {
+        const auto* set_entry = nearest_ene->super_ene->version(a.c->version()).set_entry;
+        send_text_message_printf(a.c, "$C5E-%03zX\n$C6%s\n$C2%s\n$C7X:%.2f Z:%.2f",
+            nearest_ene->e_id, phosg::name_for_enum(nearest_ene->type(a.c->version(), l->episode, l->event)),
+            MapFile::name_for_enemy_type(set_entry->base_type),
+            nearest_worldspace_pos.x.load(), nearest_worldspace_pos.z.load());
+        auto set_str = set_entry->str();
+        a.c->log.info("Enemy found via $whatobj: E-%03zX %s at x=%g y=%g z=%g",
+            nearest_ene->e_id, set_str.c_str(),
+            nearest_worldspace_pos.x.load(), nearest_worldspace_pos.y.load(), nearest_worldspace_pos.z.load());
+
+      } else if (nearest_obj) {
+        send_text_message_printf(a.c, "$C5K-%03zX\n$C6%s\n$C7X:%.2f Z:%.2f",
             nearest_obj->k_id, nearest_obj->type_name(a.c->version()),
             nearest_worldspace_pos.x.load(), nearest_worldspace_pos.z.load());
         auto set_str = nearest_obj->super_obj->version(a.c->version()).set_entry->str();
         a.c->log.info("Object found via $whatobj: K-%03zX %s at x=%g y=%g z=%g",
             nearest_obj->k_id, set_str.c_str(),
             nearest_worldspace_pos.x.load(), nearest_worldspace_pos.y.load(), nearest_worldspace_pos.z.load());
+
+      } else {
+        throw precondition_failed("$C4No objects or\nenemies are nearby");
       }
     },
     unavailable_on_proxy_server);

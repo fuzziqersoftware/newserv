@@ -2785,15 +2785,15 @@ DropReconcileResult reconcile_drop_request_with_map(
       if (is_v1_or_v2(version) && (version != Version::GC_NTE)) {
         // V1 and V2 don't have 6xA2, so we can't get ignore_def or the object
         // parameters from the client on those versions
-        cmd.fparam3 = set_entry->fparam3;
-        cmd.iparam4 = set_entry->iparam4;
-        cmd.iparam5 = set_entry->iparam5;
-        cmd.iparam6 = set_entry->iparam6;
+        cmd.param3 = set_entry->param3;
+        cmd.param4 = set_entry->param4;
+        cmd.param5 = set_entry->param5;
+        cmd.param6 = set_entry->param6;
       }
-      bool object_ignore_def = (set_entry->fparam1 > 0.0);
+      bool object_ignore_def = (set_entry->param1 > 0.0);
       if (res.ignore_def != object_ignore_def) {
         log.warning("ignore_def value %s from command does not match object\'s expected ignore_def %s (from p1=%g)",
-            res.ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", set_entry->fparam1.load());
+            res.ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", set_entry->param1.load());
       }
       if (config.check_flag(Client::Flag::DEBUG_ENABLED)) {
         send_text_message_printf(client_channel, "$C5K-%03zX %c %s",
@@ -2907,9 +2907,9 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
         } else {
           l->log.info("Creating item from box %04hX => K-%03zX (area %02hX; specialized with %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 ")",
               cmd.entity_index.load(), rec.obj_st->k_id, cmd.effective_area,
-              cmd.fparam3.load(), cmd.iparam4.load(), cmd.iparam5.load(), cmd.iparam6.load());
+              cmd.param3.load(), cmd.param4.load(), cmd.param5.load(), cmd.param6.load());
           return l->item_creator->on_specialized_box_item_drop(
-              cmd.effective_area, cmd.fparam3, cmd.iparam4, cmd.iparam5, cmd.iparam6);
+              cmd.effective_area, cmd.param3, cmd.param4, cmd.param5, cmd.param6);
         }
       } else if (rec.ene_st) {
         l->log.info("Creating item from enemy %04hX => E-%03zX (area %02hX)",

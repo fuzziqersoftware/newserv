@@ -573,6 +573,18 @@ static const vector<vector<vector<AreaMapFileInfo>>> map_file_info = {
 
 const char* MapFile::name_for_object_type(uint16_t type) {
   static const unordered_map<uint16_t, const char*> names({
+      // This is newserv's canonical definition of map object types. Enemy and
+      // NPC types are documented in name_for_enemy_type instead.
+
+      // Objects defined in map files take arguments in the form of an
+      // ObjectSetEntry structure (see Map.hh). Most objects take parameters
+      // only in param1-3 (floats) and param4-6 (ints), but a few of them use
+      // the angle fields as additional int parameters. All objects are
+      // available on all versions of the game (except Episode 3) unless
+      // otherwise noted, but most objects are available only on specific
+      // floors unless an omnispawn patch is used. (TODO: Add default floor
+      // availability information in the notes here.)
+
       // Defines where a player should start when entering a floor. Params:
       //   param1 = client ID
       //   param4 = source type:
@@ -1049,9 +1061,8 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //     taken (ignored if param6 is nonzero)
       //   param4 = number of hits required to activate, minus 1 (so e.g. a
       //     value of 4 here means 5 hits needed)
-      //   param5 = if in the range [100, 999], uses the default free play
-      //     script instead of the loaded quest? (TODO: verify this; see
-      //     TOAttackableCol_on_attack for usage)
+      //   param5 = object number (if outside the range [100, 999], uses the
+      //     free play script when looking up param6 instead of the quest)
       //   param6 = quest label to call when required number of hits is taken
       //     (if zero, switch flag in param3 is set instead)
       {0x0023, "TOAttackableCol"},
@@ -2262,9 +2273,8 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       // Like TObjQuestColA (TODO: In what ways is it different?). Parameters
       // are the same as for TObjQuestCol, but also:
       //   param2 = TODO
-      //   param5 = quest script manager to use? (TODO):
-      //     zero or negative = online
-      //     positive = offline
+      //   param5 = quest script manager to use (zero or negative = quest,
+      //     positive = free play)
       // Availability: v3+ only
       {0x02B8, "TObjQuestColALock2"},
 
@@ -2608,130 +2618,235 @@ const char* MapFile::name_for_object_type(uint16_t type) {
 
 const char* MapFile::name_for_enemy_type(uint16_t type) {
   static const unordered_map<uint16_t, const char*> names({
-      {0x0001, "TObjNpcFemaleBase"},
-      {0x0002, "TObjNpcFemaleChild"},
-      {0x0003, "TObjNpcFemaleDwarf"},
-      {0x0004, "TObjNpcFemaleFat"},
-      {0x0005, "TObjNpcFemaleMacho"},
-      {0x0006, "TObjNpcFemaleOld"},
-      {0x0007, "TObjNpcFemaleTall"},
-      {0x0008, "TObjNpcMaleBase"},
-      {0x0009, "TObjNpcMaleChild"},
-      {0x000A, "TObjNpcMaleDwarf"},
-      {0x000B, "TObjNpcMaleFat"},
-      {0x000C, "TObjNpcMaleMacho"},
-      {0x000D, "TObjNpcMaleOld"},
-      {0x000E, "TObjNpcMaleTall"},
-      {0x0019, "TObjNpcSoldierBase"},
-      {0x001A, "TObjNpcSoldierMacho"},
-      {0x001B, "TObjNpcGovernorBase"},
-      {0x001C, "TObjNpcConnoisseur"},
-      {0x001D, "TObjNpcCloakroomBase"},
-      {0x001E, "TObjNpcExpertBase"},
-      {0x001F, "TObjNpcNurseBase"},
-      {0x0020, "TObjNpcSecretaryBase"},
-      {0x0021, "TObjNpcHHM00"},
-      {0x0022, "TObjNpcNHW00"},
-      {0x0024, "TObjNpcHRM00"},
-      {0x0025, "TObjNpcARM00"},
-      {0x0026, "TObjNpcARW00"},
-      {0x0027, "TObjNpcHFW00"},
-      {0x0028, "TObjNpcNFM00"},
-      {0x0029, "TObjNpcNFW00"},
-      {0x002B, "TObjNpcNHW01"},
-      {0x002C, "TObjNpcAHM01"},
-      {0x002D, "TObjNpcHRM01"},
-      {0x0030, "TObjNpcHFW01"},
-      {0x0031, "TObjNpcNFM01"},
-      {0x0032, "TObjNpcNFW01"},
-      {0x0033, "TObjNpcEnemy"}, // v3+ only
+      // This is newserv's canonical definition of map enemy and NPC types.
+      // Object types are documented in name_for_object_type instead.
+
+      // Enemies and NPCs take a similar arguments structure as objects:
+      // objects use ObjectSetEntry, enemies use EnemySetEntry. Unlike objects,
+      // some IDs are reused across game versions, so the same ID can generate
+      // a completely different entity on different game versions. Where this
+      // happens is noted in the comments below.
+
+      // TODO: Add default floor availability information in the notes here.
+
+      // NPCs. Params:
+      //   param1 = max walk distance from home (ignored if param6 == 0)
+      //   param2 = visibility register number (if this is > 0, the NPC will
+      //     only be visible when this register is nonzero; if this is >= 1000,
+      //     the effective register is param2 - 1000 and register values for
+      //     both param2 and param3 are read from the free play script
+      //     environment instead of the quest script environment)
+      //   param3 = hide override register number (if this is > 0, the NPC will
+      //     not be visible when this register is nonzero, regardless of the
+      //     state of the register specified by param2; if this is >= 1000, the
+      //     effective register is param3 - 1000 and register values for both
+      //     param2 and param3 are read from the free play script environment
+      //     instead of the quest script environment)
+      //   param4 = object number ("character ID" in qedit; if this is outside
+      //     the range [100, 999], the quest label in param5 is called in the
+      //     free play script instead of the quest script)
+      //   param5 = quest label to call when interacted with (if zero, NPC does
+      //     nothing upon interaction)
+      //   param6 = if nonzero, NPC walks around; if zero, stands still
+      // TODO: setting param4 to 0 changes something else about the NPC, figure
+      // out what this does (see TObjNpcBase_v57_set_config_from_params)
+      {0x0001, "TObjNpcFemaleBase"}, // Woman with red hair and purple outfit
+      {0x0002, "TObjNpcFemaleChild"}, // Shorter version of the above
+      {0x0003, "TObjNpcFemaleDwarf"}, // Woman wearing green outfit
+      {0x0004, "TObjNpcFemaleFat"}, // Woman outside Hunter's Guild
+      {0x0005, "TObjNpcFemaleMacho"}, // Tool shop woman
+      {0x0006, "TObjNpcFemaleOld"}, // Older woman with yellow/red outfit
+      {0x0007, "TObjNpcFemaleTall"}, // Woman walking around inside shop area
+      {0x0008, "TObjNpcMaleBase"}, // Similar appearance to weapon shop man
+      {0x0009, "TObjNpcMaleChild"}, // Kid wearing purple
+      {0x000A, "TObjNpcMaleDwarf"}, // Man outside Medical Center
+      {0x000B, "TObjNpcMaleFat"}, // Armor shop man
+      {0x000C, "TObjNpcMaleMacho"}, // Weapon shop man
+      {0x000D, "TObjNpcMaleOld"}, // Man near telepipe locations
+      {0x000E, "TObjNpcMaleTall"}, // Man wearing turquoise
+      {0x0019, "TObjNpcSoldierBase"}, // Man right of the Ragol warp door
+      {0x001A, "TObjNpcSoldierMacho"}, // Man left of the Ragol warp door
+      {0x001B, "TObjNpcGovernorBase"}, // Principal Tyrell
+      {0x001C, "TObjNpcConnoisseur"}, // Tekker
+      {0x001D, "TObjNpcCloakroomBase"}, // Bank woman
+      {0x001E, "TObjNpcExpertBase"}, // Man in front of bank
+      {0x001F, "TObjNpcNurseBase"}, // Nurses in Medical Center
+      {0x0020, "TObjNpcSecretaryBase"}, // Irene
+      {0x0021, "TObjNpcHHM00"}, // TODO
+      {0x0022, "TObjNpcNHW00"}, // TODO
+      {0x0024, "TObjNpcHRM00"}, // TODO
+      {0x0025, "TObjNpcARM00"}, // TODO
+      {0x0026, "TObjNpcARW00"}, // TODO
+      {0x0027, "TObjNpcHFW00"}, // TODO
+      {0x0028, "TObjNpcNFM00"}, // TODO
+      {0x0029, "TObjNpcNFW00"}, // TODO
+      {0x002B, "TObjNpcNHW01"}, // TODO
+      {0x002C, "TObjNpcAHM01"}, // TODO
+      {0x002D, "TObjNpcHRM01"}, // TODO
+      {0x0030, "TObjNpcHFW01"}, // TODO
+      {0x0031, "TObjNpcNFM01"}, // TODO
+      {0x0032, "TObjNpcNFW01"}, // TODO
+      {0x0045, "TObjNpcLappy"}, // Rappy
+      {0x0046, "TObjNpcMoja"}, // Small Hildebear
+      {0x0047, "TObjNpcRico"}, // Rico (v2 only; not available on v1 or v3+)
+      {0x00A9, "TObjNpcBringer"}, // Dark Bringer
+      {0x00D0, "TObjNpcKenkyu"}, // TODO (v3+ only)
+      {0x00D1, "TObjNpcSoutokufu"}, // TODO (v3+ only)
+      {0x00D2, "TObjNpcHosa"}, // TODO (v3+ only)
+      {0x00D3, "TObjNpcKenkyuW"}, // TODO (v3+ only)
+      {0x00F0, "TObjNpcHosa2"}, // TODO (v3+ only)
+      {0x00F1, "TObjNpcKenkyu2"}, // TODO (v3+ only)
+      {0x00F2, "TObjNpcNgcBase(0x00F2)"}, // TODO (v3+ only)
+      {0x00F3, "TObjNpcNgcBase(0x00F3)"}, // TODO (v3+ only)
+      {0x00F4, "TObjNpcNgcBase(0x00F4)"}, // TODO (v3+ only)
+      {0x00F5, "TObjNpcNgcBase(0x00F5)"}, // TODO (v3+ only)
+      {0x00F6, "TObjNpcNgcBase(0x00F6)"}, // TODO (v3+ only)
+      {0x00F7, "TObjNpcNgcBase(0x00F7)"}, // TODO (v3+ only)
+      {0x00F8, "TObjNpcNgcBase(0x00F8)"}, // TODO (v3+ only)
+      {0x00F9, "TObjNpcNgcBase(0x00F9)"}, // TODO (v3+ only)
+      {0x00FA, "TObjNpcNgcBase(0x00FA)"}, // TODO (v3+ only)
+      {0x00FB, "TObjNpcNgcBase(0x00FB)"}, // TODO (v3+ only)
+      {0x00FC, "TObjNpcNgcBase(0x00FC)"}, // Man in room next to Ep2 Hunter's Guild (v3+ only)
+      {0x00FD, "TObjNpcNgcBase(0x00FD)"}, // TODO (v3+ only)
+      {0x00FE, "TObjNpcNgcBase(0x00FE)"}, // TODO (v3+ only)
+      {0x00FF, "TObjNpcNgcBase(0x00FF)"}, // TODO (v3+ only)
+
+      // Enemy that behaves like an NPC. Has all the same params as the above
+      // NPC types, but also:
+      //   angle.x = definition index
+      // The definition index is an integer from 0 to 15 (decimal) specifying
+      // which model, animations, and hitbox to use. The available choices
+      // depend on which assets are loaded, which in turn depend on the area
+      // the NPC appears in.
+      // TODO: Make a list of all of the choices for each area here
+      // Availability: v3+ only
+      {0x0033, "TObjNpcEnemy"},
+
+      // Hildebear. Params:
+      //   param1 = initial location (clamped to [0, 1]; 0 = ground, 1 = sky)
+      //   param2 = TODO (value used is param2 + 0.3, clamped to [0, 1]; could
+      //     be an input to monster AI)
+      //   param3 = TODO (value used is param3 + 0.6, clamped to [0, 1]; could
+      //     be an input to monster AI)
+      //   param6 = if >= 1, always rare
       {0x0040, "TObjEneMoja"},
+
+      // Rappy. Params:
+      //   param1 = TODO (clamped to [0, 1]; overwritten with 1 if wave_number
+      //     is > 0; could be spawn location like for Hildebear?)
+      //   param6 = rare flag (on v1-v3, rappy is rare if param6 != 0; on v4,
+      //     rappy is rare if (param6 & 1) != 0)
+      //   param7 = TODO
+      // Exactly which rappy is constructed depends on param6 (or the random
+      // rare check) and the current season event:
+      //   Ep1/Ep2 non-rare = Rag Rappy
+      //   Ep4 non-rare = Sand Rappy (Crater or Desert variation)
+      //   Ep1 rare = Al Rappy
+      //   Ep2 rare, Christmas = Saint Rappy
+      //   Ep2 rare, Easter = Egg Rappy
+      //   Ep2 rare, Halloween = Hallo Rappy
+      //   Ep2 rare, any other season event (or none) = Love Rappy
+      //   Ep4 rare = Del Rappy (Crater or Desert variation)
       {0x0041, "TObjEneLappy"},
+
+      // Monest (and Mothmants). Params:
+      //   param2 = number of Mothmants to expel at start (clamped to [0, 6])
+      //   param3 = total Mothmants (clamped to [0, min(30, num_children)]
+      //     where num_children comes from the EnemySetEntry; if this is less
+      //     than param2, then param2 will take precedence but no further
+      //     Mothmants will emerge after the first group)
+      // Note: In map_forest01_02e.dat in the vanilla map files there is a
+      // Monest that has param1 = 3 and param2 = 10. This looks like just an
+      // off-by-one error on Sega's part where they accidentally shifted the
+      // parameters down by one place. As described above, this Monest expels
+      // 6 Mothmants, then no more after they are killed.
       {0x0042, "TObjEneBm3FlyNest"},
+
+      // Savage Wolf or Barbarous Wolf. Params:
+      //   param1 = group number (when a Barbarous Wolf dies, all wolves with
+      //     the same group number howl and trigger their buffs or weaknesses)
+      //   param2 = if less than 1, this is a Savage Wolf; otherwise it's a
+      //     Barbarous Wolf
       {0x0043, "TObjEneBm5Wolf"},
+
+      // Booma, Gobooma, or Gigobooma. Params:
+      //   param1 = TODO (see TObjEneBeast_v5A)
+      //   param2 = idle walk radius (when there's no target, it will walk
+      //     around its spawn location within this radius; if this is zero, it
+      //     stands still instead)
+      //   param6 = type (0 = Booma, 1 = Gobooma, 2 = Gigobooma)
+      //   param7 = TODO (see TObjEnemy_FUN_800f6f3c)
       {0x0044, "TObjEneBeast"},
-      {0x0045, "TObjNpcLappy"},
-      {0x0046, "TObjNpcMoja"},
-      {0x0047, "TObjNpcRico"}, // v2 only (not v1 nor v3+)
+
+      // Grass Assassin. Params:
+      //   param1 = TODO
+      //   param2 = TODO (some state is set based on whather this is <= 0 or
+      //     not, but the value is also used directly in some places)
+      //   param3 = TODO (see TObjGrass_update_case8)
+      //   param4 = TODO (see TObjGrass_update_case8)
+      // It seems there was support for multiple models at one point via
+      // param6, but the final game overwrites param6 with 0 before selecting
+      // the model.
       {0x0060, "TObjGrass"},
-      {0x0061, "TObjEneRe2Flower"},
-      {0x0062, "TObjEneNanoDrago"},
-      {0x0063, "TObjEneShark"},
-      {0x0064, "TObjEneSlime"},
-      {0x0065, "TObjEnePanarms"},
-      {0x0080, "TObjEneDubchik"},
-      {0x0081, "TObjEneGyaranzo"},
-      {0x0082, "TObjEneMe3ShinowaReal"},
-      {0x0083, "TObjEneMe1Canadin"},
-      {0x0084, "TObjEneMe1CanadinLeader"},
-      {0x0085, "TOCtrlDubchik"},
-      {0x00A0, "TObjEneSaver"},
-      {0x00A1, "TObjEneRe4Sorcerer"},
-      {0x00A2, "TObjEneDarkGunner"},
-      {0x00A3, "TObjEneDarkGunCenter"},
-      {0x00A4, "TObjEneDf2Bringer"},
-      {0x00A5, "TObjEneRe7Berura"},
-      {0x00A6, "TObjEneDimedian"},
-      {0x00A7, "TObjEneBalClawBody"},
-      {0x00A8, "__TObjEneBalClawClaw_SUBCLASS__"},
-      {0x00A9, "TObjNpcBringer"},
-      {0x00C0, "TBoss1Dragon/TBoss5Gryphon"},
-      {0x00C1, "TBoss2DeRolLe"},
-      {0x00C2, "TBoss3Volopt"},
-      {0x00C3, "TBoss3VoloptP01"},
-      {0x00C4, "TBoss3VoloptCore/SUBCLASS"},
-      {0x00C5, "__TObjEnemyCustom_SUBCLASS__"},
-      {0x00C6, "TBoss3VoloptMonitor"},
-      {0x00C7, "TBoss3VoloptHiraisin"},
-      {0x00C8, "TBoss4DarkFalz"},
-      {0x00CA, "TBoss6PlotFalz"}, // v3+ only
-      {0x00CB, "TBoss7DeRolLeC"}, // v3+ only
-      {0x00CC, "TBoss8Dragon"}, // v3+ only
-      {0x00D0, "TObjNpcKenkyu"}, // v3+ only
-      {0x00D1, "TObjNpcSoutokufu"}, // v3+ only
-      {0x00D2, "TObjNpcHosa"}, // v3+ only
-      {0x00D3, "TObjNpcKenkyuW"}, // v3+ only
-      {0x00D4, "TObjEneMe3StelthReal/TObjNpcHeroScientist"}, // Ep3/v3+ only
-      {0x00D5, "TObjEneMerillLia/TObjNpcHeroScientist"}, // Ep3/v3+ only
-      {0x00D6, "TObjEneBm9Mericarol/TObjNpcHeroGovernor"}, // Ep3/v3+ only
-      {0x00D7, "TObjEneBm5GibonU/TObjNpcHeroGovernor"}, // Ep3/v3+ only
-      {0x00D8, "TObjEneGibbles"}, // v3+ only
-      {0x00D9, "TObjEneMe1Gee"}, // v3+ only
-      {0x00DA, "TObjEneMe1GiGue"}, // v3+ only
-      {0x00DB, "TObjEneDelDepth"}, // v3+ only
-      {0x00DC, "TObjEneDellBiter"}, // v3+ only
-      {0x00DD, "TObjEneDolmOlm"}, // v3+ only
-      {0x00DE, "TObjEneMorfos"}, // v3+ only
-      {0x00DF, "TObjEneRecobox"}, // v3+ only
-      {0x00E0, "TObjEneMe3SinowZoaReal/TObjEneEpsilonBody"}, // v3+ only
-      {0x00E1, "TObjEneIllGill"}, // v3+ only
-      {0x00F0, "TObjNpcHosa2"}, // v3+ only
-      {0x00F1, "TObjNpcKenkyu2"}, // v3+ only
-      {0x00F2, "TObjNpcNgcBase"}, // v3+ only
-      {0x00F3, "TObjNpcNgcBase"}, // v3+ only
-      {0x00F4, "TObjNpcNgcBase"}, // v3+ only
-      {0x00F5, "TObjNpcNgcBase"}, // v3+ only
-      {0x00F6, "TObjNpcNgcBase"}, // v3+ only
-      {0x00F7, "TObjNpcNgcBase"}, // v3+ only
-      {0x00F8, "TObjNpcNgcBase"}, // v3+ only
-      {0x00F9, "TObjNpcNgcBase"}, // v3+ only
-      {0x00FA, "TObjNpcNgcBase"}, // v3+ only
-      {0x00FB, "TObjNpcNgcBase"}, // v3+ only
-      {0x00FC, "TObjNpcNgcBase"}, // v3+ only
-      {0x00FD, "TObjNpcNgcBase"}, // v3+ only
-      {0x00FE, "TObjNpcNgcBase"}, // v3+ only
-      {0x00FF, "TObjNpcNgcBase"}, // v3+ only
-      {0x0100, "__UNKNOWN_NPC_0100__"}, // v4 only
-      {0x0110, "__ASTARK__/TObjNpcWalkingMeka_Hero"}, // Ep3/v4 only
-      {0x0111, "__YOWIE__/__SATELLITE_LIZARD__/TObjNpcWalkingMeka_Dark"}, // Ep3/v4 only
-      {0x0112, "__MERISSA_A__/TObjNpcHeroAide"}, // Ep3/v4 only
-      {0x0113, "__GIRTABLULU__"}, // v4 only
-      {0x0114, "__ZU__"}, // v4 only
-      {0x0115, "__BOOTA_FAMILY__"}, // v4 only
-      {0x0116, "__DORPHON__"}, // v4 only
-      {0x0117, "__GORAN_FAMILY__"}, // v4 only
-      {0x0118, "__UNKNOWN_0118__"}, // v4 only
-      {0x0119, "__EPISODE_4_BOSS__"}, // v4 only
+
+      // TODO: Describe the rest of the enemy types.
+      {0x0061, "TObjEneRe2Flower"}, // Constructor in 3OE1: 800C42E0
+      {0x0062, "TObjEneNanoDrago"}, // Constructor in 3OE1: 800DBDF0
+      {0x0063, "TObjEneShark"}, // Constructor in 3OE1: 800AC028
+      {0x0064, "TObjEneSlime"}, // Constructor in 3OE1: 800EBC2C
+      {0x0065, "TObjEnePanarms"}, // Constructor in 3OE1: 800DF548
+      {0x0080, "TObjEneDubchik"}, // Constructor in 3OE1: 800AA4E4
+      {0x0081, "TObjEneGyaranzo"}, // Constructor in 3OE1: 800D39A0
+      {0x0082, "TObjEneMe3ShinowaReal"}, // Constructor in 3OE1: 800E79DC
+      {0x0083, "TObjEneMe1Canadin"}, // Constructor in 3OE1: 8009F360
+      {0x0084, "TObjEneMe1CanadinLeader"}, // Constructor in 3OE1: 8009B6C8
+      {0x0085, "TOCtrlDubchik"}, // Constructor in 3OE1: 8015D170
+      {0x00A0, "TObjEneSaver"}, // Constructor in 3OE1: 800A6E98
+      {0x00A1, "TObjEneRe4Sorcerer"}, // Constructor in 3OE1: 800F0280
+      {0x00A2, "TObjEneDarkGunner"}, // Constructor in 3OE1: 800A2B70
+      {0x00A3, "TObjEneDarkGunCenter"}, // Constructor in 3OE1: 800A0C70
+      {0x00A4, "TObjEneDf2Bringer"}, // Constructor in 3OE1: 800999E4
+      {0x00A5, "TObjEneRe7Berura"}, // Constructor in 3OE1: 80095814
+      {0x00A6, "TObjEneDimedian"}, // Constructor in 3OE1: 800A7E28
+      {0x00A7, "TObjEneBalClawBody"}, // Constructor in 3OE1: 8008FF78
+      {0x00A8, "__TObjEneBalClawClaw_SUBCLASS__"}, // Constructor in 3OE1: 800917D8
+      {0x00C0, "TBoss1Dragon/TBoss5Gryphon"}, // Constructor in 3OE1: 8002A434
+      {0x00C1, "TBoss2DeRolLe"}, // Constructor in 3OE1: 80035D10
+      {0x00C2, "TBoss3Volopt"}, // Constructor in 3OE1: 8003EDB0
+      {0x00C3, "TBoss3VoloptP01"}, // Constructor in 3OE1: 80043FC4
+      {0x00C4, "TBoss3VoloptCore/SUBCLASS"}, // Constructor in 3OE1: 80040818
+      {0x00C5, "__TObjEnemyCustom_SUBCLASS__"}, // Constructor in 3OE1: 80047E0C
+      {0x00C6, "TBoss3VoloptMonitor"}, // Constructor in 3OE1: 800424FC
+      {0x00C7, "TBoss3VoloptHiraisin"}, // Constructor in 3OE1: 80041854
+      {0x00C8, "TBoss4DarkFalz"}, // Constructor in 3OE1: 8004C16C
+      {0x00CA, "TBoss6PlotFalz"}, // Constructor in 3OE1: 802AB714 // v3+ only
+      {0x00CB, "TBoss7DeRolLeC"}, // Constructor in 3OE1: 802ECB38 // v3+ only
+      {0x00CC, "TBoss8Dragon"}, // Constructor in 3OE1: 802FC03C // v3+ only
+      {0x00D4, "TObjEneMe3StelthReal/TObjNpcHeroScientist"}, // Constructor in 3OE1: 800F5230 // Ep3/v3+ only
+      {0x00D5, "TObjEneMerillLia/TObjNpcHeroScientist"}, // Constructor in 3OE1: 800D6ACC // Ep3/v3+ only
+      {0x00D6, "TObjEneBm9Mericarol/TObjNpcHeroGovernor"}, // Constructor in 3OE1: 802CFABC // Ep3/v3+ only
+      {0x00D7, "TObjEneBm5GibonU/TObjNpcHeroGovernor"}, // Constructor in 3OE1: 800D17AC // Ep3/v3+ only
+      {0x00D8, "TObjEneGibbles"}, // Constructor in 3OE1: 802DA0E0 // v3+ only
+      {0x00D9, "TObjEneMe1Gee"}, // Constructor in 3OE1: 800CC768 // v3+ only
+      {0x00DA, "TObjEneMe1GiGue"}, // Constructor in 3OE1: 802CBF30 // v3+ only
+      {0x00DB, "TObjEneDelDepth"}, // Constructor in 3OE1: 803141F0 // v3+ only
+      {0x00DC, "TObjEneDellBiter"}, // Constructor in 3OE1: 80304E1C // v3+ only
+      {0x00DD, "TObjEneDolmOlm"}, // Constructor in 3OE1: 80300C5C // v3+ only
+      {0x00DE, "TObjEneMorfos"}, // Constructor in 3OE1: 80333584 // v3+ only
+      {0x00DF, "TObjEneRecobox"}, // Constructor in 3OE1: 8031E7A0 // v3+ only
+      {0x00E0, "TObjEneMe3SinowZoaReal/TObjEneEpsilonBody"}, // Constructor in 3OE1: 803197AC // v3+ only
+      {0x00E1, "TObjEneIllGill"}, // Constructor in 3OE1: 8036685C // v3+ only
+      {0x0100, "__UNKNOWN_NPC_0100__"}, // Constructor in 59NL: 0060E128 // v4 only
+      {0x0110, "__ASTARK__/TObjNpcWalkingMeka_Hero"}, // Constructor in 59NL: 005A3D60; 3SE0: 80271DB0 // Ep3/v4 only
+      {0x0111, "__YOWIE__/__SATELLITE_LIZARD__/TObjNpcWalkingMeka_Dark"}, // Constructor in 59NL: 005AE7CC; 3SE0: 80271790 // Ep3/v4 only
+      {0x0112, "__MERISSA_A__/TObjNpcHeroAide"}, // Constructor in 59NL: 005B6B24; 3SE0: 802F4888 // Ep3/v4 only
+      {0x0113, "__GIRTABLULU__"}, // Constructor in 59NL: 005AB9AC // v4 only
+      {0x0114, "__ZU__"}, // Constructor in 59NL: 005B47B8 // v4 only
+      {0x0115, "__BOOTA_FAMILY__"}, // Constructor in 59NL: 005A5C08 // v4 only
+      {0x0116, "__DORPHON__"}, // Constructor in 59NL: 005A673C // v4 only
+      {0x0117, "__GORAN_FAMILY__"}, // Constructor in 59NL: 005ADAC4 // v4 only
+      {0x0118, "__UNKNOWN_0118__"}, // Constructor in 59NL: 00602A14 // v4 only
+      {0x0119, "__EPISODE_4_BOSS__"}, // Constructor in 59NL: 0076A86C // v4 only
   });
   try {
     return names.at(type);
@@ -2758,12 +2873,12 @@ string MapFile::ObjectSetEntry::str() const {
       this->angle.x.load(),
       this->angle.y.load(),
       this->angle.z.load(),
-      this->fparam1.load(),
-      this->fparam2.load(),
-      this->fparam3.load(),
-      this->iparam4.load(),
-      this->iparam5.load(),
-      this->iparam6.load(),
+      this->param1.load(),
+      this->param2.load(),
+      this->param3.load(),
+      this->param4.load(),
+      this->param5.load(),
+      this->param6.load(),
       this->unused.load());
 }
 
@@ -2773,12 +2888,12 @@ uint64_t MapFile::ObjectSetEntry::semantic_hash(uint8_t floor) const {
   ret = phosg::fnv1a64(&this->room, sizeof(this->room), ret);
   ret = phosg::fnv1a64(&this->pos, sizeof(this->pos), ret);
   ret = phosg::fnv1a64(&this->angle, sizeof(this->angle), ret);
-  ret = phosg::fnv1a64(&this->fparam1, sizeof(this->fparam1), ret);
-  ret = phosg::fnv1a64(&this->fparam2, sizeof(this->fparam2), ret);
-  ret = phosg::fnv1a64(&this->fparam3, sizeof(this->fparam3), ret);
-  ret = phosg::fnv1a64(&this->iparam4, sizeof(this->iparam4), ret);
-  ret = phosg::fnv1a64(&this->iparam5, sizeof(this->iparam5), ret);
-  ret = phosg::fnv1a64(&this->iparam6, sizeof(this->iparam6), ret);
+  ret = phosg::fnv1a64(&this->param1, sizeof(this->param1), ret);
+  ret = phosg::fnv1a64(&this->param2, sizeof(this->param2), ret);
+  ret = phosg::fnv1a64(&this->param3, sizeof(this->param3), ret);
+  ret = phosg::fnv1a64(&this->param4, sizeof(this->param4), ret);
+  ret = phosg::fnv1a64(&this->param5, sizeof(this->param5), ret);
+  ret = phosg::fnv1a64(&this->param6, sizeof(this->param6), ret);
   ret = phosg::fnv1a64(&floor, sizeof(floor), ret);
   return ret;
 }
@@ -2802,13 +2917,13 @@ string MapFile::EnemySetEntry::str() const {
       this->angle.x.load(),
       this->angle.y.load(),
       this->angle.z.load(),
-      this->fparam1.load(),
-      this->fparam2.load(),
-      this->fparam3.load(),
-      this->fparam4.load(),
-      this->fparam5.load(),
-      this->iparam6.load(),
-      this->iparam7.load(),
+      this->param1.load(),
+      this->param2.load(),
+      this->param3.load(),
+      this->param4.load(),
+      this->param5.load(),
+      this->param6.load(),
+      this->param7.load(),
       this->unused.load());
 }
 
@@ -2820,13 +2935,13 @@ uint64_t MapFile::EnemySetEntry::semantic_hash(uint8_t floor) const {
   ret = phosg::fnv1a64(&this->wave_number2, sizeof(this->wave_number2), ret);
   ret = phosg::fnv1a64(&this->pos, sizeof(this->pos), ret);
   ret = phosg::fnv1a64(&this->angle, sizeof(this->angle), ret);
-  ret = phosg::fnv1a64(&this->fparam1, sizeof(this->fparam1), ret);
-  ret = phosg::fnv1a64(&this->fparam2, sizeof(this->fparam2), ret);
-  ret = phosg::fnv1a64(&this->fparam3, sizeof(this->fparam3), ret);
-  ret = phosg::fnv1a64(&this->fparam4, sizeof(this->fparam4), ret);
-  ret = phosg::fnv1a64(&this->fparam5, sizeof(this->fparam5), ret);
-  ret = phosg::fnv1a64(&this->iparam6, sizeof(this->iparam6), ret);
-  ret = phosg::fnv1a64(&this->iparam7, sizeof(this->iparam7), ret);
+  ret = phosg::fnv1a64(&this->param1, sizeof(this->param1), ret);
+  ret = phosg::fnv1a64(&this->param2, sizeof(this->param2), ret);
+  ret = phosg::fnv1a64(&this->param3, sizeof(this->param3), ret);
+  ret = phosg::fnv1a64(&this->param4, sizeof(this->param4), ret);
+  ret = phosg::fnv1a64(&this->param5, sizeof(this->param5), ret);
+  ret = phosg::fnv1a64(&this->param6, sizeof(this->param6), ret);
+  ret = phosg::fnv1a64(&this->param7, sizeof(this->param7), ret);
   ret = phosg::fnv1a64(&floor, sizeof(floor), ret);
   return ret;
 }
@@ -2879,13 +2994,13 @@ string MapFile::RandomEnemyLocationEntry::str() const {
 
 string MapFile::RandomEnemyDefinition::str() const {
   return phosg::string_printf("[RandomEnemyDefinition params=[%g %g %g %g %g %04hX %04hX] entry_num=%08" PRIX32 " min_children=%04hX max_children=%04hX]",
-      this->fparam1.load(),
-      this->fparam2.load(),
-      this->fparam3.load(),
-      this->fparam4.load(),
-      this->fparam5.load(),
-      this->iparam6.load(),
-      this->iparam7.load(),
+      this->param1.load(),
+      this->param2.load(),
+      this->param3.load(),
+      this->param4.load(),
+      this->param5.load(),
+      this->param6.load(),
+      this->param7.load(),
       this->entry_num.load(),
       this->min_children.load(),
       this->max_children.load());
@@ -3243,13 +3358,13 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
 
                   const auto& def = definitions_r.pget<RandomEnemyDefinition>(bs_min * sizeof(RandomEnemyDefinition));
                   if (def.entry_num == weight_entry.def_entry_num) {
-                    e.fparam1 = def.fparam1;
-                    e.fparam2 = def.fparam2;
-                    e.fparam3 = def.fparam3;
-                    e.fparam4 = def.fparam4;
-                    e.fparam5 = def.fparam5;
-                    e.iparam6 = def.iparam6;
-                    e.iparam7 = def.iparam7;
+                    e.param1 = def.param1;
+                    e.param2 = def.param2;
+                    e.param3 = def.param3;
+                    e.param4 = def.param4;
+                    e.param5 = def.param5;
+                    e.param6 = def.param6;
+                    e.param7 = def.param7;
                     e.num_children = random_state.rand_int_biased(def.min_children, def.max_children);
                   } else {
                     throw runtime_error("random enemy definition not found");
@@ -3681,7 +3796,7 @@ void SuperMap::link_object_version(std::shared_ptr<Object> obj, Version version,
   entities.object_for_floor_room_and_group.emplace(k, obj);
 
   // Add to door index
-  uint32_t base_switch_flag = set_entry->iparam4;
+  uint32_t base_switch_flag = set_entry->param4;
   uint32_t num_switch_flags = 0;
   switch (set_entry->base_type) {
     case 0x01AB: // TODoorFourLightRuins
@@ -3689,11 +3804,11 @@ void SuperMap::link_object_version(std::shared_ptr<Object> obj, Version version,
     case 0x0202: // TObjDoorJung
     case 0x0221: // TODoorFourLightSeabed
     case 0x0222: // TODoorFourLightSeabedU
-      num_switch_flags = set_entry->iparam5;
+      num_switch_flags = set_entry->param5;
       break;
     case 0x00C1: // TODoorCave01
     case 0x0100: // TODoorMachine01
-      num_switch_flags = (4 - clamp<size_t>(set_entry->iparam5, 0, 4));
+      num_switch_flags = (4 - clamp<size_t>(set_entry->param5, 0, 4));
       break;
     case 0x014A: // TODoorAncient08
       num_switch_flags = 4;
@@ -3830,13 +3945,13 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       add(EnemyType::NON_ENEMY_NPC);
       break;
     case 0x0040: { // TObjEneMoja
-      bool is_rare = (set_entry->iparam6.load() >= 1);
+      bool is_rare = (set_entry->param6.load() >= 1);
       add(EnemyType::HILDEBEAR, is_rare, is_rare);
       break;
     }
     case 0x0041: { // TObjEneLappy
-      bool is_rare_v123 = (set_entry->iparam6 != 0);
-      bool is_rare_bb = (set_entry->iparam6 & 1);
+      bool is_rare_v123 = (set_entry->param6 != 0);
+      bool is_rare_bb = (set_entry->param6 & 1);
       switch (this->episode) {
         case Episode::EP1:
         case Episode::EP2:
@@ -3856,11 +3971,11 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       default_num_children = 30;
       break;
     case 0x0043: // TObjEneBm5Wolf
-      add((set_entry->fparam2 >= 1) ? EnemyType::BARBAROUS_WOLF : EnemyType::SAVAGE_WOLF);
+      add((set_entry->param2 >= 1) ? EnemyType::BARBAROUS_WOLF : EnemyType::SAVAGE_WOLF);
       break;
     case 0x0044: { // TObjEneBeast
       static const EnemyType types[3] = {EnemyType::BOOMA, EnemyType::GOBOOMA, EnemyType::GIGOBOOMA};
-      add(types[clamp<int16_t>(set_entry->iparam6, 0, 2)]);
+      add(types[clamp<int16_t>(set_entry->param6, 0, 2)]);
       break;
     }
     case 0x0060: // TObjGrass
@@ -3874,13 +3989,13 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       break;
     case 0x0063: { // TObjEneShark
       static const EnemyType types[3] = {EnemyType::EVIL_SHARK, EnemyType::PAL_SHARK, EnemyType::GUIL_SHARK};
-      add(types[clamp<int16_t>(set_entry->iparam6, 0, 2)]);
+      add(types[clamp<int16_t>(set_entry->param6, 0, 2)]);
       break;
     }
     case 0x0064: { // TObjEneSlime
       // Unlike all other versions, BB doesn't have a way to force slimes to be
       // rare via constructor args
-      bool is_rare_v123 = (set_entry->iparam7 & 1);
+      bool is_rare_v123 = (set_entry->param7 & 1);
       default_num_children = -1; // Skip adding children later (because we do it here)
       size_t num_children = set_entry->num_children ? set_entry->num_children.load() : 4;
       for (size_t z = 0; z < num_children + 1; z++) {
@@ -3898,13 +4013,13 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       add(EnemyType::MIGIUM);
       break;
     case 0x0080: // TObjEneDubchik
-      add((set_entry->iparam6 != 0) ? EnemyType::GILLCHIC : EnemyType::DUBCHIC);
+      add((set_entry->param6 != 0) ? EnemyType::GILLCHIC : EnemyType::DUBCHIC);
       break;
     case 0x0081: // TObjEneGyaranzo
       add(EnemyType::GARANZ);
       break;
     case 0x0082: // TObjEneMe3ShinowaReal
-      add((set_entry->fparam2 >= 1) ? EnemyType::SINOW_GOLD : EnemyType::SINOW_BEAT);
+      add((set_entry->param2 >= 1) ? EnemyType::SINOW_GOLD : EnemyType::SINOW_BEAT);
       default_num_children = 4;
       break;
     case 0x0083: // TObjEneMe1Canadin
@@ -3944,7 +4059,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       break;
     case 0x00A6: { // TObjEneDimedian
       static const EnemyType types[3] = {EnemyType::DIMENIAN, EnemyType::LA_DIMENIAN, EnemyType::SO_DIMENIAN};
-      add(types[clamp<int16_t>(set_entry->iparam6, 0, 2)]);
+      add(types[clamp<int16_t>(set_entry->param6, 0, 2)]);
       break;
     }
     case 0x00A7: // TObjEneBalClawBody
@@ -4029,14 +4144,14 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       default_num_children = 5;
       break;
     case 0x00D4: // TObjEneMe3StelthReal
-      add((set_entry->iparam6 > 0) ? EnemyType::SINOW_SPIGELL : EnemyType::SINOW_BERILL);
+      add((set_entry->param6 > 0) ? EnemyType::SINOW_SPIGELL : EnemyType::SINOW_BERILL);
       default_num_children = 4;
       break;
     case 0x00D5: // TObjEneMerillLia
-      add((set_entry->iparam6 > 0) ? EnemyType::MERILTAS : EnemyType::MERILLIA);
+      add((set_entry->param6 > 0) ? EnemyType::MERILTAS : EnemyType::MERILLIA);
       break;
     case 0x00D6: { // TObjEneBm9Mericarol
-      switch (set_entry->iparam6) {
+      switch (set_entry->param6) {
         case 0:
           add(EnemyType::MERICAROL);
           break;
@@ -4052,7 +4167,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       break;
     }
     case 0x00D7: // TObjEneBm5GibonU
-      add((set_entry->iparam6 > 0) ? EnemyType::ZOL_GIBBON : EnemyType::UL_GIBBON);
+      add((set_entry->param6 > 0) ? EnemyType::ZOL_GIBBON : EnemyType::UL_GIBBON);
       break;
     case 0x00D8: // TObjEneGibbles
       add(EnemyType::GIBBLES);
@@ -4070,7 +4185,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       add(EnemyType::DELBITER);
       break;
     case 0x00DD: // TObjEneDolmOlm
-      add((set_entry->iparam6 > 0) ? EnemyType::DOLMDARL : EnemyType::DOLMOLM);
+      add((set_entry->param6 > 0) ? EnemyType::DOLMDARL : EnemyType::DOLMOLM);
       break;
     case 0x00DE: // TObjEneMorfos
       add(EnemyType::MORFOS);
@@ -4085,7 +4200,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
         default_num_children = 4;
         child_type = EnemyType::EPSIGARD;
       } else {
-        add((set_entry->iparam6 > 0) ? EnemyType::SINOW_ZELE : EnemyType::SINOW_ZOA);
+        add((set_entry->param6 > 0) ? EnemyType::SINOW_ZELE : EnemyType::SINOW_ZOA);
       }
       break;
     case 0x00E1: // TObjEneIllGill
@@ -4096,13 +4211,13 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       break;
     case 0x0111:
       if (floor > 0x05) {
-        add(set_entry->fparam2 ? EnemyType::YOWIE_DESERT : EnemyType::SATELLITE_LIZARD_DESERT);
+        add(set_entry->param2 ? EnemyType::YOWIE_DESERT : EnemyType::SATELLITE_LIZARD_DESERT);
       } else {
-        add(set_entry->fparam2 ? EnemyType::YOWIE_CRATER : EnemyType::SATELLITE_LIZARD_CRATER);
+        add(set_entry->param2 ? EnemyType::YOWIE_CRATER : EnemyType::SATELLITE_LIZARD_CRATER);
       }
       break;
     case 0x0112: {
-      bool is_rare = (set_entry->iparam6 & 1);
+      bool is_rare = (set_entry->param6 & 1);
       add(EnemyType::MERISSA_A, is_rare, is_rare);
       break;
     }
@@ -4110,29 +4225,29 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       add(EnemyType::GIRTABLULU);
       break;
     case 0x0114: {
-      bool is_rare = (set_entry->iparam6 & 1);
+      bool is_rare = (set_entry->param6 & 1);
       add((floor > 0x05) ? EnemyType::ZU_DESERT : EnemyType::ZU_CRATER, is_rare, is_rare);
       break;
     }
     case 0x0115: {
       static const EnemyType types[3] = {EnemyType::BOOTA, EnemyType::ZE_BOOTA, EnemyType::BA_BOOTA};
-      add(types[clamp<int16_t>(set_entry->iparam6, 0, 2)]);
+      add(types[clamp<int16_t>(set_entry->param6, 0, 2)]);
       break;
     }
     case 0x0116: {
-      bool is_rare = (set_entry->iparam6 & 1);
+      bool is_rare = (set_entry->param6 & 1);
       add(EnemyType::DORPHON, is_rare, is_rare);
       break;
     }
     case 0x0117: {
       static const EnemyType types[3] = {EnemyType::GORAN, EnemyType::PYRO_GORAN, EnemyType::GORAN_DETONATOR};
-      add(types[clamp<int16_t>(set_entry->iparam6, 0, 2)]);
+      add(types[clamp<int16_t>(set_entry->param6, 0, 2)]);
       break;
     }
     case 0x0119:
       // There isn't a way to force the Episode 4 boss to be rare via
       // constructor args
-      add((set_entry->iparam6 & 1) ? EnemyType::SHAMBERTIN : EnemyType::SAINT_MILION);
+      add((set_entry->param6 & 1) ? EnemyType::SHAMBERTIN : EnemyType::SAINT_MILION);
       default_num_children = 0x18;
       break;
 
@@ -4480,12 +4595,12 @@ static double object_set_edit_cost(const MapFile::ObjectSetEntry& prev, const Ma
       ((prev.group != current.group) * 50.0) +
       ((prev.room != current.room) * 50.0) +
       (prev.pos - current.pos).norm() +
-      ((prev.fparam1 != current.fparam1) * 10.0) +
-      ((prev.fparam2 != current.fparam2) * 10.0) +
-      ((prev.fparam3 != current.fparam3) * 10.0) +
-      ((prev.iparam4 != current.iparam4) * 10.0) +
-      ((prev.iparam5 != current.iparam5) * 10.0) +
-      ((prev.iparam6 != current.iparam6) * 10.0));
+      ((prev.param1 != current.param1) * 10.0) +
+      ((prev.param2 != current.param2) * 10.0) +
+      ((prev.param3 != current.param3) * 10.0) +
+      ((prev.param4 != current.param4) * 10.0) +
+      ((prev.param5 != current.param5) * 10.0) +
+      ((prev.param6 != current.param6) * 10.0));
 }
 
 static double enemy_set_add_cost(const MapFile::EnemySetEntry&) {
@@ -4506,13 +4621,13 @@ static double enemy_set_edit_cost(const MapFile::EnemySetEntry& prev, const MapF
       ((prev.room != current.room) * 50.0) +
       ((prev.wave_number != current.wave_number) * 50.0) +
       (prev.pos - current.pos).norm() +
-      ((prev.fparam1 != current.fparam1) * 10.0) +
-      ((prev.fparam2 != current.fparam2) * 10.0) +
-      ((prev.fparam3 != current.fparam3) * 10.0) +
-      ((prev.fparam4 != current.fparam4) * 10.0) +
-      ((prev.fparam5 != current.fparam5) * 10.0) +
-      ((prev.iparam6 != current.iparam6) * 10.0) +
-      ((prev.iparam7 != current.iparam7) * 10.0));
+      ((prev.param1 != current.param1) * 10.0) +
+      ((prev.param2 != current.param2) * 10.0) +
+      ((prev.param3 != current.param3) * 10.0) +
+      ((prev.param4 != current.param4) * 10.0) +
+      ((prev.param5 != current.param5) * 10.0) +
+      ((prev.param6 != current.param6) * 10.0) +
+      ((prev.param7 != current.param7) * 10.0));
 }
 
 static double event_add_cost(const MapFile::Event1Entry&) {
@@ -5469,7 +5584,7 @@ void MapState::index_super_map(const FloorConfig& fc, shared_ptr<PSOLFGEncryptio
           }
 
           if (type == EnemyType::MERICARAND) {
-            // On v3, Mericarols that have iparam6 > 2 are randomized to be
+            // On v3, Mericarols that have param6 > 2 are randomized to be
             // Mericus, Merikle, or Mericarol, but the former two are not
             // considered rare. (We use rare_flags anyway to distinguish them
             // from Mericarol.)

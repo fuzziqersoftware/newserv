@@ -76,7 +76,7 @@ There is a lot of code in this project that could be useful as a reference. Some
 * **src/ItemData.hh**: Item format reference
 * **src/ItemCreator.hh/cc**: Reverse-engineered item generator from Episodes 1&2 (used for all versions)
 * **src/ItemParameterTable.hh**: Format of many structures in ItemPMT.prs
-* **src/Map.hh/cc**: Map file (.dat) structure and reverse-engineered Challenge Mode random enemy generation algorithm
+* **src/Map.hh/cc**: Map file (.dat) structure, listing of object/enemy types and parameters, and reverse-engineered Challenge Mode random enemy generation algorithm
 * **src/QuestScript.cc**: Complete listing of all quest opcodes on all versions, along with their arguments and behavior
 * **src/RareItemSet.hh/cc**: Format of ItemRT files (rare item drop tables)
 * **src/SaveFileFormats.hh**: Definitions of save file structures for all versions
