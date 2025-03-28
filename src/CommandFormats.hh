@@ -3930,7 +3930,9 @@ struct G_Unknown_6x04 {
 // subclass of 6x60.
 
 struct G_WriteSwitchFlag_6x05 {
-  // Note: header.object_id is 0xFFFF for room clear when all enemies defeated
+  // header.entity_id may be 0xFFFF if no object is responsible for the switch
+  // flag state change - this can happen when a wave event script sets a switch
+  // flag, for example.
   G_EntityIDHeader header;
   // TODO: Some of these might be big-endian on GC; it only byteswaps
   // switch_flag_num. Are the others actually uint16, or are they uint8[2]?

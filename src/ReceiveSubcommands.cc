@@ -1756,7 +1756,11 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
     send_text_message_printf(c, "$C5K-%03zX A %s", obj_st->k_id, obj_st->type_name(c->version()));
   }
 
-  if (l->switch_flags) {
+  // Apparently sometimes 6x05 is sent with an invalid switch flag number. The
+  // client seems to just ignore the command in that case, so we go ahead and
+  // forward it (in case the client's object update function is meaningful
+  // somehow) and just don't update our view of the switch flags.
+  if (l->switch_flags && (cmd.switch_flag_num < 0x100)) {
     if (cmd.flags & 1) {
       l->switch_flags->set(cmd.switch_flag_floor, cmd.switch_flag_num);
       if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {

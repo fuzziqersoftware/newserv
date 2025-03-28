@@ -662,7 +662,7 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
 void ItemNameIndex::print_table(FILE* stream) const {
   auto pmt = this->item_parameter_table;
 
-  fprintf(stream, "WEAPON => ---ID--- TYPE SKIN POINTS FLAG ATPLO ATPHI ATPRQ MSTRQ ATARQ -MST- GND PH SP ATA SB PJ 1X 1Y 2X 2Y CL A1 A2 A3 A4 A5 TB CT V1 ST* USL ---DIVISOR--- NAME\n");
+  fprintf(stream, "WEAPON => ---ID--- TYPE SKIN POINTS FLAG ATPLO ATPHI ATPRQ MSTRQ ATARQ -MST- GND PH SP ATA SB PJ 1X 1Y 2X 2Y CL A1 A2 A3 A4 A5 TB BF V1 ST* USL ---DIVISOR--- NAME\n");
   for (size_t data1_1 = 0; data1_1 < pmt->num_weapon_classes; data1_1++) {
     uint8_t v1_replacement = pmt->get_weapon_v1_replacement(data1_1);
     float sale_divisor = pmt->get_sale_divisor(0x00, data1_1);
@@ -712,7 +712,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
           w.unknown_a4,
           w.unknown_a5,
           w.tech_boost,
-          w.combo_type,
+          w.behavior_flags,
           v1_replacement,
           stars,
           is_unsealable ? "YES" : " no",

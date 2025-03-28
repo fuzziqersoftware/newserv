@@ -238,7 +238,7 @@ ItemParameterTable::WeaponV4 ItemParameterTable::WeaponV3T<BE>::to_v4() const {
   ret.unknown_a4 = this->unknown_a4;
   ret.unknown_a5 = this->unknown_a5;
   ret.tech_boost = this->tech_boost;
-  ret.combo_type = this->combo_type;
+  ret.behavior_flags = this->behavior_flags;
   return ret;
 }
 

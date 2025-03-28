@@ -133,7 +133,12 @@ public:
     /* 24 */ uint8_t unknown_a4 = 0;
     /* 25 */ uint8_t unknown_a5 = 0;
     /* 26 */ uint8_t tech_boost = 0;
-    /* 27 */ uint8_t combo_type = 0;
+    // Flags in this field:
+    //   01 = disable combos (weapon can only be used once in a row)
+    //   02 = TODO (sets TItemWeapon flag 40000; used in TItemWeapon_v1E)
+    //   04 = TODO (sets TItemWeapon flag 80000; used in TItemWeapon_v1E)
+    //   08 = weapon cannot have attributes (they are ignored if present)
+    /* 27 */ uint8_t behavior_flags = 0;
     /* 28 */
 
     WeaponV4 to_v4() const;
@@ -170,7 +175,7 @@ public:
     /* 28 */ uint8_t unknown_a4 = 0;
     /* 29 */ uint8_t unknown_a5 = 0;
     /* 2A */ uint8_t tech_boost = 0;
-    /* 2B */ uint8_t combo_type = 0;
+    /* 2B */ uint8_t behavior_flags = 0;
     /* 2C */
   } __packed_ws__(WeaponV4, 0x2C);
 
@@ -198,9 +203,13 @@ public:
   struct ArmorOrShieldFinalT : ArmorOrShieldT<BaseT, BE> {
     /* 14 */ uint8_t stat_boost = 0;
     /* 15 */ uint8_t tech_boost = 0;
-    // TODO: Figure out what this does. Only two values appear to do anything:
-    //   01 sets item->flags |= 4
-    //   03 sets item->flags |= 8
+    // TODO: Figure out what this does. Only a few values appear to do anything:
+    // Shields:
+    //   01 sets item->flags |= 4 (used in TItemProShield_v10)
+    //   03 sets item->flags |= 8 (used in TItemProShield_v1A)
+    // Armors:
+    //   01 sets item->flags |= 1 (used in TItemProArmor_v10)
+    //   02 constructs TItemProArmorParticle instead of TItemProArmor
     /* 16 */ uint8_t flags_type = 0;
     /* 17 */ uint8_t unknown_a4 = 0;
     /* 18 */
