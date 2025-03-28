@@ -2789,11 +2789,30 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       // the model.
       {0x0060, "TObjGrass"},
 
+      // Poison Lily or Del Lily. Del Lily is constructed if the current area
+      // is 0x23 (Control Tower); otherwise, Poison Lily is constructed. There
+      // appear to be no parameters.
+      {0x0061, "TObjEneRe2Flower"},
+
+      // Nano Dragon. Params:
+      //   param1 = TODO (seems it only matters if this is 1 or not)
+      //   param2 = TODO (defaults to 50 if param2 < 1)
+      //   param7 = TODO (set in init)
+      // It seems there was support for multiple models at one point via
+      // param6, but the final game overwrites param6 with 0 before selecting
+      // the model.
+      {0x0062, "TObjEneNanoDrago"},
+
+      // Evil Shark, Pal Shark, or Guil Shark. Params:
+      //   param6 = shark type (0 = Evil Shark, 1 = Pal Shark, 2 = Guil Shark)
+      {0x0063, "TObjEneShark"},
+
+      // Pofuilly Slime. num_children is clamped to [0, 4]. Params:
+      //   param7 = rare flag (if the lowest bit is set, this is a Pouilly
+      //     Slime instead; on BB, this is ignored)
+      {0x0064, "TObjEneSlime"},
+
       // TODO: Describe the rest of the enemy types.
-      {0x0061, "TObjEneRe2Flower"}, // Constructor in 3OE1: 800C42E0
-      {0x0062, "TObjEneNanoDrago"}, // Constructor in 3OE1: 800DBDF0
-      {0x0063, "TObjEneShark"}, // Constructor in 3OE1: 800AC028
-      {0x0064, "TObjEneSlime"}, // Constructor in 3OE1: 800EBC2C
       {0x0065, "TObjEnePanarms"}, // Constructor in 3OE1: 800DF548
       {0x0080, "TObjEneDubchik"}, // Constructor in 3OE1: 800AA4E4
       {0x0081, "TObjEneGyaranzo"}, // Constructor in 3OE1: 800D39A0
