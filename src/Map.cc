@@ -2648,7 +2648,7 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       //   param5 = quest label to call when interacted with (if zero, NPC does
       //     nothing upon interaction)
       //   param6 = if nonzero, NPC walks around; if zero, stands still
-      // TODO: setting param4 to 0 changes something else about the NPC, figure
+      // TODO: setting param4 to 0 changes something else about the NPC; figure
       // out what this does (see TObjNpcBase_v57_set_config_from_params)
       {0x0001, "TObjNpcFemaleBase"}, // Woman with red hair and purple outfit
       {0x0002, "TObjNpcFemaleChild"}, // Shorter version of the above
@@ -2784,9 +2784,6 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       //     not, but the value is also used directly in some places)
       //   param3 = TODO (see TObjGrass_update_case8)
       //   param4 = TODO (see TObjGrass_update_case8)
-      // It seems there was support for multiple models at one point via
-      // param6, but the final game overwrites param6 with 0 before selecting
-      // the model.
       {0x0060, "TObjGrass"},
 
       // Poison Lily or Del Lily. Del Lily is constructed if the current area
@@ -2798,9 +2795,6 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       //   param1 = TODO (seems it only matters if this is 1 or not)
       //   param2 = TODO (defaults to 50 if param2 < 1)
       //   param7 = TODO (set in init)
-      // It seems there was support for multiple models at one point via
-      // param6, but the final game overwrites param6 with 0 before selecting
-      // the model.
       {0x0062, "TObjEneNanoDrago"},
 
       // Evil Shark, Pal Shark, or Guil Shark. Same params as 0x0044
@@ -2830,8 +2824,10 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       // Sinow Beat. Params:
       //   param1 = disable mirage effect if >= 1.0
       //   param2 = is Sinow Gold if >= 1.0
-      //   param3 = TODO (clamped to [0, 10]; see TObjEneMe3Shinowa_v76)
-      //   param4 = TODO (see TObjEneMe3Shinowa_v76)
+      // It appears that param3 (clamped to [0, 10]) and param4 are used in
+      // this enemy, but they ultimately have no effect. This may have been a
+      // debug feature, or it may have just never been implemented. (See
+      // TObjEneMe3Shinowa_v76 for the usage.)
       // Note: All params are on the base class (TObjEneMe3Shinowa).
       {0x0082, "TObjEneMe3ShinowaReal"},
 
@@ -2846,20 +2842,72 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       {0x0084, "TObjEneMe1CanadinLeader"},
 
       // Dubwitch. Destroying a Dubwitch destroys all Dubchics in the same
-      // room. THere appear to be no parameters.
+      // room. There appear to be no parameters.
       {0x0085, "TOCtrlDubchik"},
 
+      // Delsaber. Params:
+      //   param1 = jump distance delta (value used is param1 + 100)
+      //   param2 = prejudice flag (these values directly correspond to the
+      //     bits in PlayerVisualConfig::class_flags; see below for details):
+      //     0 = males
+      //     1 = females
+      //     2 = humans
+      //     3 = newmans
+      //     4 = androids
+      //     5 = hunters
+      //     6 = rangers
+      //     7 = forces
+      //     8 = no prejudice
+      // If any player is within 30 units of a Delsaber, it will target that
+      // player. Otherwise, the Delsaber will target the nearest player that
+      // matches its prejudice flag; if no player matches this flag, it will
+      // target the nearest player.
+      {0x00A0, "TObjEneSaver"},
+
+      // Chaos Sorceror. There appear to be no parameters.
+      {0x00A1, "TObjEneRe4Sorcerer"},
+
+      // Dark Gunner. Params:
+      //   param1 = group number (there should be between 1 and 16 Dark Gunners
+      //     and one control enemy with the same group number in the same room)
+      //   param2 = TODO (number within group? possibly unused?)
+      //   param7 = TODO
+      {0x00A2, "TObjEneDarkGunner"},
+
+      // Dark Gunner control enemy. This enemy doesn't actually exist in-game;
+      // it only has logic for choosing a Dark Gunner from its group to be the
+      // leader, and then changing this leader periodically. Params:
+      //   param1 = group number (see above)
+      {0x00A3, "TObjEneDarkGunCenter"},
+
+      // Dark Bringer. There seem to be no parameters, but this has param1 and
+      // param2 used in a similar way as TObjEneMe3ShinowaReal. It's unlikely
+      // that these parameters have any noticeable effect in-game.
+      {0x00A4, "TObjEneDf2Bringer"},
+
+      // Dark Belra. There seem to be no parameters, but this has param1 and
+      // param2 used in a similar way as TObjEneMe3ShinowaReal. It's unlikely
+      // that these parameters have any noticeable effect in-game.
+      {0x00A5, "TObjEneRe7Berura"},
+
+      // Dimenian / La Dimenian / So Dimenian. Same parameters as 0x0044
+      // (TObjEneBeast), except:
+      //   param6 = type (0 = Dimenian, 1 = La Dimenian, 2 = So Dimenian)
+      {0x00A6, "TObjEneDimedian"},
+
+      // Bulclaw. There appear to be no parameters.
+      {0x00A7, "TObjEneBalClawBody"},
+
+      // Claw. There appear to be no parameters.
+      {0x00A8, "TObjEneBalClawClaw"},
+
+      // Dragon (if in Episode 1) or Gal Gryphon (if in Episode 2). There seem
+      // to be no parameters, but these have param1 and param2 used in a
+      // similar way as TObjEneMe3ShinowaReal. It's unlikely that these
+      // parameters have any noticeable effect in-game.
+      {0x00C0, "TBoss1Dragon/TBoss5Gryphon"},
+
       // TODO: Describe the rest of the enemy types.
-      {0x00A0, "TObjEneSaver"}, // Constructor in 3OE1: 800A6E98
-      {0x00A1, "TObjEneRe4Sorcerer"}, // Constructor in 3OE1: 800F0280
-      {0x00A2, "TObjEneDarkGunner"}, // Constructor in 3OE1: 800A2B70
-      {0x00A3, "TObjEneDarkGunCenter"}, // Constructor in 3OE1: 800A0C70
-      {0x00A4, "TObjEneDf2Bringer"}, // Constructor in 3OE1: 800999E4
-      {0x00A5, "TObjEneRe7Berura"}, // Constructor in 3OE1: 80095814
-      {0x00A6, "TObjEneDimedian"}, // Constructor in 3OE1: 800A7E28 // Note: subclass of TObjEnemyV8048ee80
-      {0x00A7, "TObjEneBalClawBody"}, // Constructor in 3OE1: 8008FF78
-      {0x00A8, "__TObjEneBalClawClaw_SUBCLASS__"}, // Constructor in 3OE1: 800917D8
-      {0x00C0, "TBoss1Dragon/TBoss5Gryphon"}, // Constructor in 3OE1: 8002A434
       {0x00C1, "TBoss2DeRolLe"}, // Constructor in 3OE1: 80035D10
       {0x00C2, "TBoss3Volopt"}, // Constructor in 3OE1: 8003EDB0
       {0x00C3, "TBoss3VoloptP01"}, // Constructor in 3OE1: 80043FC4
@@ -2885,7 +2933,7 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       {0x00DF, "TObjEneRecobox"}, // Constructor in 3OE1: 8031E7A0 // v3+ only
       {0x00E0, "TObjEneMe3SinowZoaReal/TObjEneEpsilonBody"}, // Constructor in 3OE1: 803197AC // v3+ only
       {0x00E1, "TObjEneIllGill"}, // Constructor in 3OE1: 8036685C // v3+ only
-      {0x0100, "__UNKNOWN_NPC_0100__"}, // Constructor in 59NL: 0060E128 // v4 only
+      {0x0100, "__MOMOKA__"}, // Constructor in 59NL: 0060E128 // v4 only
       {0x0110, "__ASTARK__/TObjNpcWalkingMeka_Hero"}, // Constructor in 59NL: 005A3D60; 3SE0: 80271DB0 // Ep3/v4 only
       {0x0111, "__YOWIE__/__SATELLITE_LIZARD__/TObjNpcWalkingMeka_Dark"}, // Constructor in 59NL: 005AE7CC; 3SE0: 80271790 // Ep3/v4 only
       {0x0112, "__MERISSA_A__/TObjNpcHeroAide"}, // Constructor in 59NL: 005B6B24; 3SE0: 802F4888 // Ep3/v4 only
