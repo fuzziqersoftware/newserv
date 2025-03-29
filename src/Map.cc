@@ -2803,8 +2803,9 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       // the model.
       {0x0062, "TObjEneNanoDrago"},
 
-      // Evil Shark, Pal Shark, or Guil Shark. Params:
-      //   param6 = shark type (0 = Evil Shark, 1 = Pal Shark, 2 = Guil Shark)
+      // Evil Shark, Pal Shark, or Guil Shark. Same params as 0x0044
+      // (TObjEneBeast), except:
+      //   param6 = type (0 = Evil Shark, 1 = Pal Shark, 2 = Guil Shark)
       {0x0063, "TObjEneShark"},
 
       // Pofuilly Slime. num_children is clamped to [0, 4]. Params:
@@ -2812,21 +2813,50 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       //     Slime instead; on BB, this is ignored)
       {0x0064, "TObjEneSlime"},
 
+      // Pan Arms (Hidoom + Migium). There appear to be no parameters.
+      {0x0065, "TObjEnePanarms"},
+
+      // Gillchic or Dubchic. Params:
+      //   param1 = rapid fire count (number of lasers fired before moving
+      //     again; if this is 0, the default of 2 is used)
+      //   param6 = type (0 = Dubchic, 1 = Gillchic)
+      {0x0080, "TObjEneDubchik"},
+
+      // Garanz. There appear to be no parameters.
+      // TODO: There is some behavior difference if wave_number is 0 vs. any
+      // other value. Figure out what exactly this does.
+      {0x0081, "TObjEneGyaranzo"},
+
+      // Sinow Beat. Params:
+      //   param1 = disable mirage effect if >= 1.0
+      //   param2 = is Sinow Gold if >= 1.0
+      //   param3 = TODO (clamped to [0, 10]; see TObjEneMe3Shinowa_v76)
+      //   param4 = TODO (see TObjEneMe3Shinowa_v76)
+      // Note: All params are on the base class (TObjEneMe3Shinowa).
+      {0x0082, "TObjEneMe3ShinowaReal"},
+
+      // Canadine. Params:
+      //   param1 = behavior (0 = in fighter, 1 = out fighter; this controls
+      //     whether the Canadin will use its direct attack or stay high off
+      //     the ground instead)
+      {0x0083, "TObjEneMe1Canadin"},
+
+      // Canane. There appear to be no parameters. There are always 8 followers
+      // arranged in a ring around the Canane.
+      {0x0084, "TObjEneMe1CanadinLeader"},
+
+      // Dubwitch. Destroying a Dubwitch destroys all Dubchics in the same
+      // room. THere appear to be no parameters.
+      {0x0085, "TOCtrlDubchik"},
+
       // TODO: Describe the rest of the enemy types.
-      {0x0065, "TObjEnePanarms"}, // Constructor in 3OE1: 800DF548
-      {0x0080, "TObjEneDubchik"}, // Constructor in 3OE1: 800AA4E4
-      {0x0081, "TObjEneGyaranzo"}, // Constructor in 3OE1: 800D39A0
-      {0x0082, "TObjEneMe3ShinowaReal"}, // Constructor in 3OE1: 800E79DC
-      {0x0083, "TObjEneMe1Canadin"}, // Constructor in 3OE1: 8009F360
-      {0x0084, "TObjEneMe1CanadinLeader"}, // Constructor in 3OE1: 8009B6C8
-      {0x0085, "TOCtrlDubchik"}, // Constructor in 3OE1: 8015D170
       {0x00A0, "TObjEneSaver"}, // Constructor in 3OE1: 800A6E98
       {0x00A1, "TObjEneRe4Sorcerer"}, // Constructor in 3OE1: 800F0280
       {0x00A2, "TObjEneDarkGunner"}, // Constructor in 3OE1: 800A2B70
       {0x00A3, "TObjEneDarkGunCenter"}, // Constructor in 3OE1: 800A0C70
       {0x00A4, "TObjEneDf2Bringer"}, // Constructor in 3OE1: 800999E4
       {0x00A5, "TObjEneRe7Berura"}, // Constructor in 3OE1: 80095814
-      {0x00A6, "TObjEneDimedian"}, // Constructor in 3OE1: 800A7E28
+      {0x00A6, "TObjEneDimedian"}, // Constructor in 3OE1: 800A7E28 // Note: subclass of TObjEnemyV8048ee80
       {0x00A7, "TObjEneBalClawBody"}, // Constructor in 3OE1: 8008FF78
       {0x00A8, "__TObjEneBalClawClaw_SUBCLASS__"}, // Constructor in 3OE1: 800917D8
       {0x00C0, "TBoss1Dragon/TBoss5Gryphon"}, // Constructor in 3OE1: 8002A434
@@ -2842,7 +2872,7 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       {0x00CB, "TBoss7DeRolLeC"}, // Constructor in 3OE1: 802ECB38 // v3+ only
       {0x00CC, "TBoss8Dragon"}, // Constructor in 3OE1: 802FC03C // v3+ only
       {0x00D4, "TObjEneMe3StelthReal/TObjNpcHeroScientist"}, // Constructor in 3OE1: 800F5230 // Ep3/v3+ only
-      {0x00D5, "TObjEneMerillLia/TObjNpcHeroScientist"}, // Constructor in 3OE1: 800D6ACC // Ep3/v3+ only
+      {0x00D5, "TObjEneMerillLia/TObjNpcHeroScientist"}, // Constructor in 3OE1: 800D6ACC // Ep3/v3+ only // Note: TObjEneMerillLia is a subclass of TObjEnemyV8048ee80
       {0x00D6, "TObjEneBm9Mericarol/TObjNpcHeroGovernor"}, // Constructor in 3OE1: 802CFABC // Ep3/v3+ only
       {0x00D7, "TObjEneBm5GibonU/TObjNpcHeroGovernor"}, // Constructor in 3OE1: 800D17AC // Ep3/v3+ only
       {0x00D8, "TObjEneGibbles"}, // Constructor in 3OE1: 802DA0E0 // v3+ only
@@ -2850,7 +2880,7 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       {0x00DA, "TObjEneMe1GiGue"}, // Constructor in 3OE1: 802CBF30 // v3+ only
       {0x00DB, "TObjEneDelDepth"}, // Constructor in 3OE1: 803141F0 // v3+ only
       {0x00DC, "TObjEneDellBiter"}, // Constructor in 3OE1: 80304E1C // v3+ only
-      {0x00DD, "TObjEneDolmOlm"}, // Constructor in 3OE1: 80300C5C // v3+ only
+      {0x00DD, "TObjEneDolmOlm"}, // Constructor in 3OE1: 80300C5C // v3+ only // Note: subclass of TObjEnemyV8048ee80
       {0x00DE, "TObjEneMorfos"}, // Constructor in 3OE1: 80333584 // v3+ only
       {0x00DF, "TObjEneRecobox"}, // Constructor in 3OE1: 8031E7A0 // v3+ only
       {0x00E0, "TObjEneMe3SinowZoaReal/TObjEneEpsilonBody"}, // Constructor in 3OE1: 803197AC // v3+ only
@@ -2861,7 +2891,7 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       {0x0112, "__MERISSA_A__/TObjNpcHeroAide"}, // Constructor in 59NL: 005B6B24; 3SE0: 802F4888 // Ep3/v4 only
       {0x0113, "__GIRTABLULU__"}, // Constructor in 59NL: 005AB9AC // v4 only
       {0x0114, "__ZU__"}, // Constructor in 59NL: 005B47B8 // v4 only
-      {0x0115, "__BOOTA_FAMILY__"}, // Constructor in 59NL: 005A5C08 // v4 only
+      {0x0115, "__BOOTA_FAMILY__"}, // Constructor in 59NL: 005A5C08 // v4 only // TODO: probably a subclass of TObjEnemyV8048ee80; check if there are any others in BB
       {0x0116, "__DORPHON__"}, // Constructor in 59NL: 005A673C // v4 only
       {0x0117, "__GORAN_FAMILY__"}, // Constructor in 59NL: 005ADAC4 // v4 only
       {0x0118, "__UNKNOWN_0118__"}, // Constructor in 59NL: 00602A14 // v4 only
