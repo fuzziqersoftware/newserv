@@ -4146,7 +4146,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       add(EnemyType::DARK_GUNNER);
       break;
     case 0x00A3: // TObjEneDarkGunCenter
-      add(EnemyType::DEATH_GUNNER);
+      add(EnemyType::DARK_GUNNER_CONTROL);
       break;
     case 0x00A4: // TObjEneDf2Bringer
       add(EnemyType::CHAOS_BRINGER);
