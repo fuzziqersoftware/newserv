@@ -555,7 +555,7 @@ Some commands only work on the game server and not on the proxy server. The chat
         * You'll be placed into the last available slot in lobbies and games instead of the first, unless you're joining a BB solo-mode game.
         * You'll be able to join games with any PSO version, not only those for which cross-version play is normally enabled. See the "Cross-version play" section above for details on this.
         * Most of the commands in this section are enabled. (A few of them are always enabled and don't require `$debug`.)
-    * `$whatobj` (game server only): Tells you what the closest object is to your position, along with its coordinates and object ID. The object's full definition is also printed to the server's log. This command can be used without `$debug` enabled.
+    * `$whatobj` and `$whatene` (game server only): Tells you what the closest object or enemy spawn point is to your position, along with its coordinates and object or enemy ID. The full definition is also printed to the server's log. These commands can be used without `$debug` enabled.
     * `$readmem <address>` (game server only): Read 4 bytes from the given address and show you the values.
     * `$writemem <address> <data>` (game server only): Write data to the given address. Data is not required to be any specific size.
     * `$nativecall <address> [arg1 ...]` (game server only, GC only): Call a native function on your client. Only arguments passed in registers are supported; calling functions that take many arguments is not supported.
