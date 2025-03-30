@@ -250,7 +250,7 @@ shared_ptr<HTTPServer::WebsocketClient> HTTPServer::enable_websockets(struct evh
   // we're about to free the original
   string sec_websocket_key = sec_websocket_key_header;
   string sec_websocket_accept_data = sec_websocket_key + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
-  string sec_websocket_accept = phosg::base64_encode(phosg::sha1(sec_websocket_accept_data));
+  string sec_websocket_accept = phosg::base64_encode(phosg::SHA1(sec_websocket_accept_data).bin());
 
   // Hijack the bufferevent since it's no longer handling HTTP at all
   struct evhttp_connection* conn = evhttp_request_get_connection(req);
