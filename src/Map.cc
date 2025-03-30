@@ -2690,26 +2690,26 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       {0x0046, "TObjNpcMoja"}, // Small Hildebear
       {0x0047, "TObjNpcRico"}, // Rico (v2 only; not available on v1 or v3+)
       {0x00A9, "TObjNpcBringer"}, // Dark Bringer
-      {0x00D0, "TObjNpcKenkyu"}, // TODO (v3+ only)
-      {0x00D1, "TObjNpcSoutokufu"}, // TODO (v3+ only)
-      {0x00D2, "TObjNpcHosa"}, // TODO (v3+ only)
-      {0x00D3, "TObjNpcKenkyuW"}, // TODO (v3+ only)
-      {0x00F0, "TObjNpcHosa2"}, // TODO (v3+ only)
-      {0x00F1, "TObjNpcKenkyu2"}, // TODO (v3+ only)
+      {0x00D0, "TObjNpcKenkyu"}, // Ep2 armor shop man (v3+ only)
+      {0x00D1, "TObjNpcSoutokufu"}, // Natasha Milarose (v3+ only)
+      {0x00D2, "TObjNpcHosa"}, // Dan (v3+ only)
+      {0x00D3, "TObjNpcKenkyuW"}, // Ep2 tool shop woman (v3+ only)
+      {0x00F0, "TObjNpcHosa2"}, // Man next to room with warp to Lab (v3+ only)
+      {0x00F1, "TObjNpcKenkyu2"}, // Ep2 weapon shop man (v3+ only)
       {0x00F2, "TObjNpcNgcBase(0x00F2)"}, // TODO (v3+ only)
       {0x00F3, "TObjNpcNgcBase(0x00F3)"}, // TODO (v3+ only)
       {0x00F4, "TObjNpcNgcBase(0x00F4)"}, // TODO (v3+ only)
       {0x00F5, "TObjNpcNgcBase(0x00F5)"}, // TODO (v3+ only)
       {0x00F6, "TObjNpcNgcBase(0x00F6)"}, // TODO (v3+ only)
-      {0x00F7, "TObjNpcNgcBase(0x00F7)"}, // TODO (v3+ only)
-      {0x00F8, "TObjNpcNgcBase(0x00F8)"}, // TODO (v3+ only)
-      {0x00F9, "TObjNpcNgcBase(0x00F9)"}, // TODO (v3+ only)
-      {0x00FA, "TObjNpcNgcBase(0x00FA)"}, // TODO (v3+ only)
-      {0x00FB, "TObjNpcNgcBase(0x00FB)"}, // TODO (v3+ only)
+      {0x00F7, "TObjNpcNgcBase(0x00F7)"}, // Nol (v3+ only)
+      {0x00F8, "TObjNpcNgcBase(0x00F8)"}, // Elly (v3+ only)
+      {0x00F9, "TObjNpcNgcBase(0x00F9)"}, // Woman with cyan hair down the ramp from Ep2 Medical Center (v3+ only)
+      {0x00FA, "TObjNpcNgcBase(0x00FA)"}, // Woman with bright red hair down the ramp from Ep2 Medical Center (v3+ only)
+      {0x00FB, "TObjNpcNgcBase(0x00FB)"}, // Man with blue hair near the Ep2 Medical Center (v3+ only)
       {0x00FC, "TObjNpcNgcBase(0x00FC)"}, // Man in room next to Ep2 Hunter's Guild (v3+ only)
       {0x00FD, "TObjNpcNgcBase(0x00FD)"}, // TODO (v3+ only)
-      {0x00FE, "TObjNpcNgcBase(0x00FE)"}, // TODO (v3+ only)
-      {0x00FF, "TObjNpcNgcBase(0x00FF)"}, // TODO (v3+ only)
+      {0x00FE, "TObjNpcNgcBase(0x00FE)"}, // Episode 2 Hunter's Guild woman (v3+ only)
+      {0x00FF, "TObjNpcNgcBase(0x00FF)"}, // Woman near room with teleporter to VR areas (v3+ only)
 
       // Enemy that behaves like an NPC. Has all the same params as the above
       // NPC types, but also:
@@ -2824,10 +2824,6 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       // Sinow Beat. Params:
       //   param1 = disable mirage effect if >= 1.0
       //   param2 = is Sinow Gold if >= 1.0
-      // It appears that param3 (clamped to [0, 10]) and param4 are used in
-      // this enemy, but they ultimately have no effect. This may have been a
-      // debug feature, or it may have just never been implemented. (See
-      // TObjEneMe3Shinowa_v76 for the usage.)
       // Note: All params are on the base class (TObjEneMe3Shinowa).
       {0x0082, "TObjEneMe3ShinowaReal"},
 
@@ -2880,14 +2876,10 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       //   param1 = group number (see above)
       {0x00A3, "TObjEneDarkGunCenter"},
 
-      // Dark Bringer. There seem to be no parameters, but this has param1 and
-      // param2 used in a similar way as TObjEneMe3ShinowaReal. It's unlikely
-      // that these parameters have any noticeable effect in-game.
+      // Dark Bringer. There appear to be no parameters.
       {0x00A4, "TObjEneDf2Bringer"},
 
-      // Dark Belra. There seem to be no parameters, but this has param1 and
-      // param2 used in a similar way as TObjEneMe3ShinowaReal. It's unlikely
-      // that these parameters have any noticeable effect in-game.
+      // Dark Belra. There appear to be no parameters.
       {0x00A5, "TObjEneRe7Berura"},
 
       // Dimenian / La Dimenian / So Dimenian. Same parameters as 0x0044
@@ -2901,24 +2893,34 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       // Claw. There appear to be no parameters.
       {0x00A8, "TObjEneBalClawClaw"},
 
-      // Dragon (if in Episode 1) or Gal Gryphon (if in Episode 2). There seem
-      // to be no parameters, but these have param1 and param2 used in a
-      // similar way as TObjEneMe3ShinowaReal. It's unlikely that these
-      // parameters have any noticeable effect in-game.
+      // Dragon (if in Episode 1) or Gal Gryphon (if in Episode 2). There
+      // appear to be no parameters.
       {0x00C0, "TBoss1Dragon/TBoss5Gryphon"},
 
+      // De Rol Le. There appear to be no parameters.
+      {0x00C1, "TBoss2DeRolLe"},
+
+      // Vol Opt and various pieces thereof. Generally only TBoss3Volopt and
+      // TBoss3VoloptP02 should be specified in map files; the other enemies
+      // are automatically created by TBoss3Volopt. None of these take any
+      // parameters.
+      {0x00C2, "TBoss3Volopt"}, // Main control object
+      {0x00C3, "TBoss3VoloptP01"}, // Phase 1 (x6; one for each big monitor)
+      {0x00C4, "TBoss3VoloptCore"}, // Core
+      {0x00C5, "TBoss3VoloptP02"}, // Phase 2
+      {0x00C6, "TBoss3VoloptMonitor"}, // Monitor (x24; 4 for each wall)
+      {0x00C7, "TBoss3VoloptHiraisin"}, // Pillar (lightning rod)
+
+      // Dark Falz. There appear to be no parameters.
+      {0x00C8, "TBoss4DarkFalz"},
+
+      // Other episode 2 bosses. None of these take any parameters.
+      // Availability: v3+ onlt
+      {0x00CA, "TBoss6PlotFalz"}, // Olga Flow
+      {0x00CB, "TBoss7DeRolLeC"}, // Barba Ray
+      {0x00CC, "TBoss8Dragon"}, // Gol Dragon
+
       // TODO: Describe the rest of the enemy types.
-      {0x00C1, "TBoss2DeRolLe"}, // Constructor in 3OE1: 80035D10
-      {0x00C2, "TBoss3Volopt"}, // Constructor in 3OE1: 8003EDB0
-      {0x00C3, "TBoss3VoloptP01"}, // Constructor in 3OE1: 80043FC4
-      {0x00C4, "TBoss3VoloptCore/SUBCLASS"}, // Constructor in 3OE1: 80040818
-      {0x00C5, "__TObjEnemyCustom_SUBCLASS__"}, // Constructor in 3OE1: 80047E0C
-      {0x00C6, "TBoss3VoloptMonitor"}, // Constructor in 3OE1: 800424FC
-      {0x00C7, "TBoss3VoloptHiraisin"}, // Constructor in 3OE1: 80041854
-      {0x00C8, "TBoss4DarkFalz"}, // Constructor in 3OE1: 8004C16C
-      {0x00CA, "TBoss6PlotFalz"}, // Constructor in 3OE1: 802AB714 // v3+ only
-      {0x00CB, "TBoss7DeRolLeC"}, // Constructor in 3OE1: 802ECB38 // v3+ only
-      {0x00CC, "TBoss8Dragon"}, // Constructor in 3OE1: 802FC03C // v3+ only
       {0x00D4, "TObjEneMe3StelthReal/TObjNpcHeroScientist"}, // Constructor in 3OE1: 800F5230 // Ep3/v3+ only
       {0x00D5, "TObjEneMerillLia/TObjNpcHeroScientist"}, // Constructor in 3OE1: 800D6ACC // Ep3/v3+ only // Note: TObjEneMerillLia is a subclass of TObjEnemyV8048ee80
       {0x00D6, "TObjEneBm9Mericarol/TObjNpcHeroGovernor"}, // Constructor in 3OE1: 802CFABC // Ep3/v3+ only
