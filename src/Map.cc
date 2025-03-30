@@ -2629,8 +2629,22 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
 
       // TODO: Add default floor availability information in the notes here.
 
+      // Some enemies have params that the game's code references, but only in
+      // places where their effects can't be seen (for example, in normally-
+      // unused debug menus). These may have been used to test frame-by-frame
+      // animations for some enemies; see TObjEneMe3Shinowa_v76 for an example
+      // of this usage. The enemies with params like this are:
+      // - TObjEneMe3ShinowaReal (param3, param4)
+      // - TObjEneDf2Bringer (param1, param2)
+      // - TObjEneRe7Berura (param1, param2)
+      // - TBoss1Dragon (param1, param2)
+      // - TBoss5Gryphon (param1, param2)
+      // - TBoss2DeRolLe (param1, param2)
+      // - TBoss8Dragon (param1, param2)
+      // TODO: Add more enemies to this list as they are found
+
       // NPCs. Params:
-      //   param1 = max walk distance from home (ignored if param6 == 0)
+      //   param1 = action parameter (depends on param6; see below)
       //   param2 = visibility register number (if this is > 0, the NPC will
       //     only be visible when this register is nonzero; if this is >= 1000,
       //     the effective register is param2 - 1000 and register values for
@@ -2647,7 +2661,11 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       //     free play script instead of the quest script)
       //   param5 = quest label to call when interacted with (if zero, NPC does
       //     nothing upon interaction)
-      //   param6 = if nonzero, NPC walks around; if zero, stands still
+      //   param6 = specifies what NPC does when idle:
+      //     0 = stand still (param1 is ignored)
+      //     1 = walk around randomly (param1 = max walk distance from home)
+      //     2 = TODO (Ep3 only; appears to be unused)
+      //     3 = TODO (Ep3 only; appears to be unused)
       // TODO: setting param4 to 0 changes something else about the NPC; figure
       // out what this does (see TObjNpcBase_v57_set_config_from_params)
       {0x0001, "TObjNpcFemaleBase"}, // Woman with red hair and purple outfit
@@ -2829,7 +2847,7 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
 
       // Canadine. Params:
       //   param1 = behavior (0 = in fighter, 1 = out fighter; this controls
-      //     whether the Canadin will use its direct attack or stay high off
+      //     whether the Canadine will use its direct attack or stay high off
       //     the ground instead)
       {0x0083, "TObjEneMe1Canadin"},
 
@@ -2915,15 +2933,80 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       {0x00C8, "TBoss4DarkFalz"},
 
       // Other episode 2 bosses. None of these take any parameters.
-      // Availability: v3+ onlt
+      // Availability: v3+ only
       {0x00CA, "TBoss6PlotFalz"}, // Olga Flow
       {0x00CB, "TBoss7DeRolLeC"}, // Barba Ray
       {0x00CC, "TBoss8Dragon"}, // Gol Dragon
 
+      // Sinow Berill (Ep2) or scientist NPCs (Ep3). The Ep3 scientist NPCs
+      // take all the same params as the NPCs defined at the beginning of this
+      // list, but also:
+      //   angle.x = model number (clamped to [0, 3])
+      // Sinow Berill's params:
+      //   param1 = spawn type:
+      //     0 = invisible + ground
+      //     1 = invisible + ceiling
+      //     2 = visible + ground
+      //     3 = visible + ceiling
+      //   param2 = chance to enable stealth (value used is param2 + 0.3)
+      //   param3 = chance to cast technique (value used is param3 + 0.4)
+      //   param4 = chance to teleport (value used is param4 + 0.5)
+      //   param5 = chance to disable stealth (value used is param5 + 0.1;
+      //     applies when hit, but (TODO) also some other events)
+      //   param6 = type:
+      //     zero or negative = Sinow Berill
+      //     positive = Sinow Spigell
+      // param2, param3, and param4 are evaluated in that order after the Sinow
+      // jumps back. That is, the game first generates a random float between 0
+      // and 1, and compares it to param2 to decide whether to enable stealth.
+      // If it does, the other params are ignored. If it doesn't, the game then
+      // checks param3 in the same manner to determine whether to cast a tech;
+      // if that doesn't happen either, the game checks param4 to determine
+      // whether to teleport. If none of those happen, the Sinow just walks
+      // forward again and attacks.
+      // Availability: v3+ (Sinow Berill); Ep3 only (scientist NPCs)
+      {0x00D4, "TObjEneMe3StelthReal/TObjNpcHeroScientist"},
+
+      // Merillia / Meriltas (Ep2) or scientist NPCs (Ep3). On Ep3 this is a
+      // direct alias for 0x00D4 and not a distinct object NPC type.
+      // Merillia's params:
+      //   param1 = chance to run away after being hit (value used is param1 -
+      //     0.2, clamped below to 0)
+      //   param3 = chance to do poison attack after being hit (value used is
+      //     param3 - 0.2, clamped below to 0)
+      //   param4 = distance to run away (value used is param4 + 300)
+      //   param5 = wakeup radius delta (value used is param5 + 100, clamped
+      //     below to 15; enemy will wake up when any player is nearby)
+      //   param6 = type (0 = Merillia, 1 = Meriltas)
+      // Availability: v3+ (Merillia/Meriltas); Ep3 only (scientist NPCs)
+      {0x00D5, "TObjEneMerillLia/TObjNpcHeroScientist"},
+
+      // Mericarol (Ep2) or Morgue chief NPC (Ep3). The Ep3 Morgue chief NPC
+      // takes all the same params as the NPCs defined at the beginning of this
+      // list.
+      // Mericarol's params:
+      //   param1 = chance of doing run attack after being hit when HP is less
+      //     than half of max (value used is param1 + 0.5)
+      //   param2 = speed during run attack (units per frame; value used is
+      //     param2 + 3, clamped below to 1)
+      //   param3 = chance of doing spit attack when player is nearby (actual
+      //     probability is param3 + 0.1; if the check fails, it will do the
+      //     slash attack instead)
+      //   param6 = subtype:
+      //     0 = Mericarol
+      //     1 = Mericus
+      //     2 = Merikle
+      //     anything else = Mericarand (see below)
+      // If this is Mericarand, it is "randomly" chosen to be one of the three
+      // subtypes at construction time. On v1-v3, the client chooses randomly
+      // (but consistently, based on the entity ID) between Mericarol (80%),
+      // Mericus (10%) or Merikle (10%). On v4, if the entity ID isn't marked
+      // rare by the server, the Mericarand becomes a Mericarol; otherwise, it
+      // becomes a Mericus if its entity ID is even or a Merikle if it's odd.
+      // Availability: v3+ (Mericarol); Ep3 only (Morgue chief NPC)
+      {0x00D6, "TObjEneBm9Mericarol/TObjNpcHeroGovernor"},
+
       // TODO: Describe the rest of the enemy types.
-      {0x00D4, "TObjEneMe3StelthReal/TObjNpcHeroScientist"}, // Constructor in 3OE1: 800F5230 // Ep3/v3+ only
-      {0x00D5, "TObjEneMerillLia/TObjNpcHeroScientist"}, // Constructor in 3OE1: 800D6ACC // Ep3/v3+ only // Note: TObjEneMerillLia is a subclass of TObjEnemyV8048ee80
-      {0x00D6, "TObjEneBm9Mericarol/TObjNpcHeroGovernor"}, // Constructor in 3OE1: 802CFABC // Ep3/v3+ only
       {0x00D7, "TObjEneBm5GibonU/TObjNpcHeroGovernor"}, // Constructor in 3OE1: 800D17AC // Ep3/v3+ only
       {0x00D8, "TObjEneGibbles"}, // Constructor in 3OE1: 802DA0E0 // v3+ only
       {0x00D9, "TObjEneMe1Gee"}, // Constructor in 3OE1: 800CC768 // v3+ only
@@ -2936,9 +3019,9 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       {0x00E0, "TObjEneMe3SinowZoaReal/TObjEneEpsilonBody"}, // Constructor in 3OE1: 803197AC // v3+ only
       {0x00E1, "TObjEneIllGill"}, // Constructor in 3OE1: 8036685C // v3+ only
       {0x0100, "__MOMOKA__"}, // Constructor in 59NL: 0060E128 // v4 only
-      {0x0110, "__ASTARK__/TObjNpcWalkingMeka_Hero"}, // Constructor in 59NL: 005A3D60; 3SE0: 80271DB0 // Ep3/v4 only
-      {0x0111, "__YOWIE__/__SATELLITE_LIZARD__/TObjNpcWalkingMeka_Dark"}, // Constructor in 59NL: 005AE7CC; 3SE0: 80271790 // Ep3/v4 only
-      {0x0112, "__MERISSA_A__/TObjNpcHeroAide"}, // Constructor in 59NL: 005B6B24; 3SE0: 802F4888 // Ep3/v4 only
+      {0x0110, "__ASTARK__/TObjNpcWalkingMeka_Hero"}, // Constructor in 59NL: 005A3D60; 3SE0: 80271DB0 // Ep3/v4 only // Ep3: Small talking robot in Morgue
+      {0x0111, "__YOWIE__/__SATELLITE_LIZARD__/TObjNpcWalkingMeka_Dark"}, // Constructor in 59NL: 005AE7CC; 3SE0: 80271790 // Ep3/v4 only // Ep3: Small talking robot in Morgue
+      {0x0112, "__MERISSA_A__/TObjNpcHeroAide"}, // Constructor in 59NL: 005B6B24; 3SE0: 802F4888 // Ep3/v4 only // Ep3: multiple NPCs
       {0x0113, "__GIRTABLULU__"}, // Constructor in 59NL: 005AB9AC // v4 only
       {0x0114, "__ZU__"}, // Constructor in 59NL: 005B47B8 // v4 only
       {0x0115, "__BOOTA_FAMILY__"}, // Constructor in 59NL: 005A5C08 // v4 only // TODO: probably a subclass of TObjEnemyV8048ee80; check if there are any others in BB
