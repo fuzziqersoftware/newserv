@@ -42,6 +42,7 @@ static const vector<EnemyTypeDefinition> type_defs{
     {EnemyType::DARK_FALZ_2,             EP1,                    0x2F, 0x37, "DARK_FALZ_2",             "Dark Falz (phase 2)", nullptr},
     {EnemyType::DARK_FALZ_3,             EP1,                    0x2F, 0x38, "DARK_FALZ_3",             "Dark Falz (phase 3)", nullptr},
     {EnemyType::DARK_GUNNER,             EP1,                    0x22, 0x1E, "DARK_GUNNER",             "Dark Gunner", nullptr},
+    {EnemyType::DARK_GUNNER_CONTROL,     EP1,                    0xFF, 0xFF, "DARK_GUNNER_CONTROL",     "Dark Gunner (control)", nullptr},
     {EnemyType::DARVANT,                 EP1,                    0xFF, 0x35, "DARVANT",                 "Darvant", nullptr},
     {EnemyType::DARVANT_ULTIMATE,        EP1,                    0xFF, 0x39, "DARVANT_ULTIMATE",        "Darvant (ultimate)", nullptr},
     {EnemyType::DE_ROL_LE,               EP1,                    0x2D, 0x0F, "DE_ROL_LE",               "De Rol Le", "Dal Ral Lie"},

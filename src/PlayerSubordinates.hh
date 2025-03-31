@@ -1007,31 +1007,31 @@ struct TelepipeState {
   /* 18 */
 } __packed_ws__(TelepipeState, 0x18);
 
-struct NPCTalkState_DCProtos {
+struct PlayerHoldState_DCProtos {
   // This is used in all versions of this command except DCNTE and 11/2000.
   /* 00 */ le_uint16_t unknown_a1 = 0;
   /* 02 */ le_uint16_t unknown_a2 = 0;
   // unknown_a3 is missing in this format, unlike the v1+ format below
-  /* 04 */ le_float unknown_a4 = 0.0f;
-  /* 08 */ le_float unknown_a5 = 0.0f;
-  /* 0C */ le_float unknown_a6 = 0.0f;
+  /* 04 */ le_float trigger_radius2 = 0.0f;
+  /* 08 */ le_float x = 0.0f;
+  /* 0C */ le_float z = 0.0f;
   /* 10 */
-} __packed_ws__(NPCTalkState_DCProtos, 0x10);
+} __packed_ws__(PlayerHoldState_DCProtos, 0x10);
 
-struct NPCTalkState {
+struct PlayerHoldState {
   // This is used in all versions of this command except DCNTE and 11/2000.
   /* 00 */ le_uint16_t unknown_a1 = 0;
   /* 02 */ le_uint16_t unknown_a2 = 0;
   /* 04 */ le_uint32_t unknown_a3 = 0;
-  /* 08 */ le_float unknown_a4 = 0.0f;
-  /* 0C */ le_float unknown_a5 = 0.0f;
-  /* 10 */ le_float unknown_a6 = 0.0f;
+  /* 08 */ le_float trigger_radius2 = 0.0f;
+  /* 0C */ le_float x = 0.0f;
+  /* 10 */ le_float z = 0.0f;
   /* 14 */
 
-  NPCTalkState() = default;
-  NPCTalkState(const NPCTalkState_DCProtos& proto);
-  operator NPCTalkState_DCProtos() const;
-} __packed_ws__(NPCTalkState, 0x14);
+  PlayerHoldState() = default;
+  PlayerHoldState(const PlayerHoldState_DCProtos& proto);
+  operator PlayerHoldState_DCProtos() const;
+} __packed_ws__(PlayerHoldState, 0x14);
 
 struct StatusEffectState {
   /* 00 */ le_uint32_t effect_type = 0;

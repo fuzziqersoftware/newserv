@@ -3930,7 +3930,9 @@ struct G_Unknown_6x04 {
 // subclass of 6x60.
 
 struct G_WriteSwitchFlag_6x05 {
-  // Note: header.object_id is 0xFFFF for room clear when all enemies defeated
+  // header.entity_id may be 0xFFFF if no object is responsible for the switch
+  // flag state change - this can happen when a wave event script sets a switch
+  // flag, for example.
   G_EntityIDHeader header;
   // TODO: Some of these might be big-endian on GC; it only byteswaps
   // switch_flag_num. Are the others actually uint16, or are they uint8[2]?
@@ -4292,25 +4294,26 @@ struct G_CreateInventoryItem_PC_V3_BB_6x2B : G_CreateInventoryItem_DC_6x2B {
   parray<uint8_t, 2> unused2 = 0;
 } __packed_ws__(G_CreateInventoryItem_PC_V3_BB_6x2B, 0x1C);
 
-// 6x2C: Talk to NPC (protected on V3/V4)
-// This updates G_6x70_NPCTalkState in the TObjPlayer struct, but the format is
-// not the same. The names here match the fields in G_6x70_NPCTalkState, hence
-// the unusual numbering.
+// 6x2C: Impose hold (protected on V3/V4)
+// This updates PlayerHoldState in the TObjPlayer struct, but the format is not
+// the same. The names here match the fields in PlayerHoldState. A player hold
+// prevents the player from moving further than the trigger radius from the
+// given x/z coordinates.
 
-struct G_TalkToNPC_6x2C {
+struct G_ImposeHold_6x2C {
   G_ClientIDHeader header;
   le_uint16_t unknown_a1 = 0;
   le_uint16_t unknown_a2 = 0;
-  le_float unknown_a5 = 0.0f;
-  le_float unknown_a6 = 0.0f;
-  le_float unknown_a4 = 0.0f;
-} __packed_ws__(G_TalkToNPC_6x2C, 0x14);
+  le_float x = 0.0f;
+  le_float z = 0.0f;
+  le_float trigger_radius2 = 0.0f; // "2" here means "squared"
+} __packed_ws__(G_ImposeHold_6x2C, 0x14);
 
-// 6x2D: Done talking to NPC (protected on V3/V4)
+// 6x2D: Release hold (protected on V3/V4)
 
-struct G_EndTalkToNPC_6x2D {
+struct G_ReleaseHold_6x2D {
   G_ClientIDHeader header;
-} __packed_ws__(G_EndTalkToNPC_6x2D, 4);
+} __packed_ws__(G_ReleaseHold_6x2D, 4);
 
 // 6x2E: Set and/or clear player flags (protected on V3/V4)
 
@@ -4979,7 +4982,7 @@ struct G_SyncPlayerDispAndInventory_DCNTE_6x70 {
   /* 0034 */ le_uint32_t unknown_a6 = 0;
   /* 0038 */ G_6x70_Sub_Telepipe telepipe;
   /* 0054 */ le_uint32_t death_flags = 0;
-  /* 0058 */ NPCTalkState_DCProtos npc_talk_state;
+  /* 0058 */ PlayerHoldState_DCProtos hold_state;
   /* 0068 */ le_uint32_t area = 0;
   /* 006C */ le_uint32_t game_flags = 0;
   /* 0070 */ PlayerVisualConfig visual;
@@ -4998,7 +5001,7 @@ struct G_SyncPlayerDispAndInventory_DC112000_6x70 {
   /* 0034 */ parray<uint8_t, 0x10> unknown_a5;
   /* 0044 */ G_6x70_Sub_Telepipe telepipe;
   /* 0060 */ le_uint32_t death_flags = 0;
-  /* 0064 */ NPCTalkState_DCProtos npc_talk_state;
+  /* 0064 */ PlayerHoldState_DCProtos hold_state;
   /* 0074 */ le_uint32_t area = 0;
   /* 0078 */ le_uint32_t game_flags = 0;
   /* 007C */ PlayerVisualConfig visual;
@@ -5024,7 +5027,7 @@ struct G_6x70_Base_V1 {
   /* 0074 */ le_uint32_t battle_team_number = 0;
   /* 0078 */ G_6x70_Sub_Telepipe telepipe;
   /* 0094 */ le_uint32_t death_flags = 0; // Only a few bits are used. 4 = player is dead
-  /* 0098 */ NPCTalkState npc_talk_state;
+  /* 0098 */ PlayerHoldState hold_state;
   /* 00AC */ le_uint32_t area = 0;
   /* 00B0 */ le_uint32_t game_flags = 0;
   /* 00B4 */ parray<uint8_t, 0x14> technique_levels_v1 = 0xFF; // Last byte is uninitialized
@@ -5545,10 +5548,12 @@ struct G_RevivePlayer_V3_BB_6xA1 {
 // server on BB)
 
 struct G_SpecializableItemDropRequest_6xA2 : G_StandardDropItemRequest_PC_V3_BB_6x60 {
-  /* 18 */ le_float fparam3 = 0.0f;
-  /* 1C */ le_int32_t iparam4 = 0;
-  /* 20 */ le_int32_t iparam5 = 0;
-  /* 24 */ le_int32_t iparam6 = 0;
+  // These fields directly map to param3-6 in the ObjectSetEntry structure from
+  // which the box was created.
+  /* 18 */ le_float param3 = 0.0f;
+  /* 1C */ le_int32_t param4 = 0;
+  /* 20 */ le_int32_t param5 = 0;
+  /* 24 */ le_int32_t param6 = 0;
   /* 28 */
 } __packed_ws__(G_SpecializableItemDropRequest_6xA2, 0x28);
 
@@ -6174,7 +6179,9 @@ struct G_SetQuestCounter_BB_6xD2 {
 struct G_Unknown_BB_6xD4 {
   G_UnusedHeader header;
   le_uint16_t action = 0; // Must be in [0, 5]
-  uint8_t unknown_a1 = 0; // Must be in [0, 15]
+  // object_identifier must be in [0, 15]; it should match param4 of the
+  // relevant object.
+  uint8_t object_identifier = 0;
   uint8_t unused = 0;
 } __packed_ws__(G_Unknown_BB_6xD4, 8);
 

@@ -182,12 +182,12 @@ public:
     // Angles are specified as 16-bit integers, where 0 is no rotation around
     // the axis and FFFF is almost a complete counterclockwise rotation.
     /* 1C */ VectorXYZI angle;
-    /* 28 */ le_float fparam1 = 0.0f; // Boxes: if <= 0, this is a specialized box, and the specialization is in param4/5/6
-    /* 2C */ le_float fparam2 = 0.0f;
-    /* 30 */ le_float fparam3 = 0.0f; // Boxes: if == 0, the item should be varied by difficulty and area
-    /* 34 */ le_int32_t iparam4 = 0;
-    /* 38 */ le_int32_t iparam5 = 0;
-    /* 3C */ le_int32_t iparam6 = 0;
+    /* 28 */ le_float param1 = 0.0f; // Boxes: if <= 0, this is a specialized box, and the specialization is in param4/5/6
+    /* 2C */ le_float param2 = 0.0f;
+    /* 30 */ le_float param3 = 0.0f; // Boxes: if == 0, the item should be varied by difficulty and area
+    /* 34 */ le_int32_t param4 = 0;
+    /* 38 */ le_int32_t param5 = 0;
+    /* 3C */ le_int32_t param6 = 0;
     /* 40 */ le_uint32_t unused = 0; // Reserved for pointer in client's memory; unused by server
     /* 44 */
 
@@ -208,13 +208,13 @@ public:
     /* 12 */ le_uint16_t unknown_a1 = 0;
     /* 14 */ VectorXYZF pos;
     /* 24 */ VectorXYZI angle;
-    /* 2C */ le_float fparam1 = 0.0f;
-    /* 30 */ le_float fparam2 = 0.0f;
-    /* 34 */ le_float fparam3 = 0.0f;
-    /* 38 */ le_float fparam4 = 0.0f;
-    /* 3C */ le_float fparam5 = 0.0f;
-    /* 40 */ le_int16_t iparam6 = 0;
-    /* 42 */ le_int16_t iparam7 = 0;
+    /* 2C */ le_float param1 = 0.0f;
+    /* 30 */ le_float param2 = 0.0f;
+    /* 34 */ le_float param3 = 0.0f;
+    /* 38 */ le_float param4 = 0.0f;
+    /* 3C */ le_float param5 = 0.0f;
+    /* 40 */ le_int16_t param6 = 0;
+    /* 42 */ le_int16_t param7 = 0;
     /* 44 */ le_uint32_t unused = 0; // Reserved for pointer in client's memory; unused by server
     /* 48 */
 
@@ -303,14 +303,14 @@ public:
 
   struct RandomEnemyDefinition { // Section type 5 (RANDOM_ENEMY_DEFINITIONS)
     // All fields through entry_num map to the corresponding fields in
-    // EnemySetEntry. Note that the order of the iparam fields is switched!
-    /* 00 */ le_float fparam1;
-    /* 04 */ le_float fparam2;
-    /* 08 */ le_float fparam3;
-    /* 0C */ le_float fparam4;
-    /* 10 */ le_float fparam5;
-    /* 14 */ le_int16_t iparam7;
-    /* 16 */ le_int16_t iparam6;
+    // EnemySetEntry. Note that the order of param6 and param7 is switched!
+    /* 00 */ le_float param1;
+    /* 04 */ le_float param2;
+    /* 08 */ le_float param3;
+    /* 0C */ le_float param4;
+    /* 10 */ le_float param5;
+    /* 14 */ le_int16_t param7;
+    /* 16 */ le_int16_t param6;
     /* 18 */ le_uint32_t entry_num;
     /* 1C */ le_uint16_t min_children;
     /* 1E */ le_uint16_t max_children;

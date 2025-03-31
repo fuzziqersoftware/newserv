@@ -172,10 +172,10 @@ ShellCommand c_reload(
       all - do all of the above\n\
     Reloading will not affect items that are in use; for example, if an Episode\n\
     3 battle is in progress, it will continue to use the previous map and card\n\
-    definitions. Similarly, BB clients are not forced to disconnect or reload\n\
-    the battle parameters, so if these are changed without restarting, clients\n\
-    may see (for example) EXP messages inconsistent with the amounts of EXP\n\
-    actually received.",
+    definitions until the battle ends. Similarly, BB clients are not forced to\n\
+    disconnect or reload the battle parameters, so if these are changed without\n\
+    restarting, clients may see (for example) EXP messages inconsistent with\n\
+    the amounts of EXP actually received.",
     false,
     +[](ShellCommand::Args& args) -> std::deque<std::string> {
       auto types = phosg::split(args.args, ' ');

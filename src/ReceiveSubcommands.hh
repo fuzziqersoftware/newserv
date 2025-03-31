@@ -62,7 +62,7 @@ public:
   uint32_t battle_team_number = 0;
   G_6x70_Sub_Telepipe telepipe;
   uint32_t death_flags = 0;
-  NPCTalkState npc_talk_state;
+  PlayerHoldState hold_state;
   uint32_t area = 0;
   uint32_t game_flags = 0;
   bool game_flags_is_v3 = false;

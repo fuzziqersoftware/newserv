@@ -33,6 +33,7 @@ enum class EnemyType : uint8_t {
   DARK_FALZ_2,
   DARK_FALZ_3,
   DARK_GUNNER,
+  DARK_GUNNER_CONTROL,
   DARVANT,
   DARVANT_ULTIMATE,
   DE_ROL_LE,

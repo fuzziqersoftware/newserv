@@ -789,7 +789,7 @@ Parsed6x70Data::Parsed6x70Data(
       battle_team_number(0),
       telepipe(cmd.telepipe),
       death_flags(cmd.death_flags),
-      npc_talk_state(cmd.npc_talk_state),
+      hold_state(cmd.hold_state),
       area(cmd.area),
       game_flags(cmd.game_flags),
       game_flags_is_v3(false),
@@ -825,7 +825,7 @@ Parsed6x70Data::Parsed6x70Data(
       battle_team_number(0),
       telepipe(cmd.telepipe),
       death_flags(cmd.death_flags),
-      npc_talk_state(cmd.npc_talk_state),
+      hold_state(cmd.hold_state),
       area(cmd.area),
       game_flags(cmd.game_flags),
       game_flags_is_v3(false),
@@ -910,7 +910,7 @@ G_SyncPlayerDispAndInventory_DCNTE_6x70 Parsed6x70Data::as_dc_nte(shared_ptr<Ser
   ret.unknown_a6 = this->unknown_a6;
   ret.telepipe = this->telepipe;
   ret.death_flags = this->death_flags;
-  ret.npc_talk_state = this->npc_talk_state;
+  ret.hold_state = this->hold_state;
   ret.area = this->area;
   ret.game_flags = this->get_game_flags(false);
   ret.visual = this->visual;
@@ -938,7 +938,7 @@ G_SyncPlayerDispAndInventory_DC112000_6x70 Parsed6x70Data::as_dc_112000(shared_p
   ret.unknown_a5 = this->unknown_a5_112000;
   ret.telepipe = this->telepipe;
   ret.death_flags = this->death_flags;
-  ret.npc_talk_state = this->npc_talk_state;
+  ret.hold_state = this->hold_state;
   ret.area = this->area;
   ret.game_flags = this->get_game_flags(false);
   ret.visual = this->visual;
@@ -1100,7 +1100,7 @@ Parsed6x70Data::Parsed6x70Data(
       battle_team_number(base.battle_team_number),
       telepipe(base.telepipe),
       death_flags(base.death_flags),
-      npc_talk_state(base.npc_talk_state),
+      hold_state(base.hold_state),
       area(base.area),
       game_flags(base.game_flags),
       game_flags_is_v3(!is_v1_or_v2(from_version)),
@@ -1124,7 +1124,7 @@ G_6x70_Base_V1 Parsed6x70Data::base_v1(bool is_v3) const {
   ret.battle_team_number = this->battle_team_number;
   ret.telepipe = this->telepipe;
   ret.death_flags = this->death_flags;
-  ret.npc_talk_state = this->npc_talk_state;
+  ret.hold_state = this->hold_state;
   ret.area = this->area;
   ret.game_flags = this->get_game_flags(is_v3);
   ret.technique_levels_v1 = this->technique_levels_v1;
@@ -1756,7 +1756,11 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
     send_text_message_printf(c, "$C5K-%03zX A %s", obj_st->k_id, obj_st->type_name(c->version()));
   }
 
-  if (l->switch_flags) {
+  // Apparently sometimes 6x05 is sent with an invalid switch flag number. The
+  // client seems to just ignore the command in that case, so we go ahead and
+  // forward it (in case the client's object update function is meaningful
+  // somehow) and just don't update our view of the switch flags.
+  if (l->switch_flags && (cmd.switch_flag_num < 0x100)) {
     if (cmd.flags & 1) {
       l->switch_flags->set(cmd.switch_flag_floor, cmd.switch_flag_num);
       if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
@@ -2785,15 +2789,15 @@ DropReconcileResult reconcile_drop_request_with_map(
       if (is_v1_or_v2(version) && (version != Version::GC_NTE)) {
         // V1 and V2 don't have 6xA2, so we can't get ignore_def or the object
         // parameters from the client on those versions
-        cmd.fparam3 = set_entry->fparam3;
-        cmd.iparam4 = set_entry->iparam4;
-        cmd.iparam5 = set_entry->iparam5;
-        cmd.iparam6 = set_entry->iparam6;
+        cmd.param3 = set_entry->param3;
+        cmd.param4 = set_entry->param4;
+        cmd.param5 = set_entry->param5;
+        cmd.param6 = set_entry->param6;
       }
-      bool object_ignore_def = (set_entry->fparam1 > 0.0);
+      bool object_ignore_def = (set_entry->param1 > 0.0);
       if (res.ignore_def != object_ignore_def) {
         log.warning("ignore_def value %s from command does not match object\'s expected ignore_def %s (from p1=%g)",
-            res.ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", set_entry->fparam1.load());
+            res.ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", set_entry->param1.load());
       }
       if (config.check_flag(Client::Flag::DEBUG_ENABLED)) {
         send_text_message_printf(client_channel, "$C5K-%03zX %c %s",
@@ -2907,9 +2911,9 @@ static void on_entity_drop_item_request(shared_ptr<Client> c, uint8_t command, u
         } else {
           l->log.info("Creating item from box %04hX => K-%03zX (area %02hX; specialized with %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 ")",
               cmd.entity_index.load(), rec.obj_st->k_id, cmd.effective_area,
-              cmd.fparam3.load(), cmd.iparam4.load(), cmd.iparam5.load(), cmd.iparam6.load());
+              cmd.param3.load(), cmd.param4.load(), cmd.param5.load(), cmd.param6.load());
           return l->item_creator->on_specialized_box_item_drop(
-              cmd.effective_area, cmd.fparam3, cmd.iparam4, cmd.iparam5, cmd.iparam6);
+              cmd.effective_area, cmd.param3, cmd.param4, cmd.param5, cmd.param6);
         }
       } else if (rec.ene_st) {
         l->log.info("Creating item from enemy %04hX => E-%03zX (area %02hX)",

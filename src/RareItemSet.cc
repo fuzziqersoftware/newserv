@@ -472,7 +472,7 @@ string RareItemSet::serialize_html(
         EnemyType::DELSABER,
         EnemyType::CHAOS_SORCERER, EnemyType::BEE_L, EnemyType::BEE_R,
         EnemyType::DARK_BELRA,
-        EnemyType::DARK_GUNNER, EnemyType::DEATH_GUNNER,
+        EnemyType::DARK_GUNNER, EnemyType::DARK_GUNNER_CONTROL, EnemyType::DEATH_GUNNER,
         EnemyType::CHAOS_BRINGER,
         EnemyType::DARVANT, EnemyType::DARVANT_ULTIMATE, EnemyType::DARK_FALZ_1, EnemyType::DARK_FALZ_2, EnemyType::DARK_FALZ_3,
       }},
