@@ -19,7 +19,7 @@ patch_code:
   push      0
   push      0
   push      0
-  push      0x0576
+  push      0xAC
   mov       eax, 0x00814298
   call      eax
   add       esp, 0x10
