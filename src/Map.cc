@@ -1504,9 +1504,9 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       // can be choseby via param6. If param6 is not 0, 1, or 2, no object is
       // created.
       // Params for TOHangceilingCave01Normal (param6 = 0):
-      //   param1 = TODO (radius delta? value used is param1 + 29)
-      //   param2 = TODO (value used is 1 - param2)
-      //   param3 = TODO (value used is param3 + 100)
+      //   param1 = TODO (radius delta? value is param1 + 29)
+      //   param2 = TODO (value is 1 - param2)
+      //   param3 = TODO (value is param3 + 100)
       // Params for TOHangceilingCave01Key (param6 = 1):
       //   param1-3 = same as for TOHangceilingCave01Normal
       //   param4 = switch flag number (drops when switch flag is activated;
@@ -1533,8 +1533,8 @@ const char* MapFile::name_for_object_type(uint16_t type) {
 
       // Caves rainbow. Params:
       //   param1-3 = scale factors (x, y, z)
-      //   param4 = TODO (value used is 1 / (param4 + 30))
-      //   param6 = visibility radius? (TODO; value used is param6 + 40000)
+      //   param4 = TODO (value is 1 / (param4 + 30))
+      //   param6 = visibility radius? (TODO; value is param6 + 40000)
       {0x00CB, "TORainbowCave01"},
 
       // Floating jellyfish. Params:
@@ -1658,7 +1658,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x010A, "TOExplosiveMachine03"},
 
       // Spark machine. Params:
-      //   param1 = TODO (actual value used is param1 - 0.98)
+      //   param1 = TODO (value is param1 - 0.98)
       //   param2 = TODO (seems it only matters if this is <= 0 or not)
       {0x010B, "TOSparkMachine01"},
 
@@ -1739,28 +1739,27 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       // Ruins poison-spewing blob. This object is technically an item box, and
       // drops an item when destroyed. Unlike most other item boxes, it cannot
       // be specialized (ignore_def is always true). Params:
-      //   param1 = TODO (value used is param1 + 299)
-      //   param2 = TODO (value used is param2 + 209)
-      //   param3 = TODO (value used is param3 + 399)
-      //   param6 = TODO (value used is param6 + 4)
+      //   param1 = TODO (value is param1 + 299)
+      //   param2 = TODO (value is param2 + 209)
+      //   param3 = TODO (value is param3 + 399)
+      //   param6 = TODO (value is param6 + 4)
       {0x0152, "TContainerAncient01"},
 
       // Ruins falling trap. Trap power seems to be scaled by difficulty
       // (Normal = x1, Hard = x2, Very Hard = x3, Ultimate = x6). Params:
-      //   param1 = trigger radius delta (value used is (param1 / 2) + 30)
+      //   param1 = trigger radius delta (value is (param1 / 2) + 30)
       //   param2 = TODO (clamped below to 0)
       //   param3 = TODO (clamped below to 1)
       //   param4 = TODO (seems it only matters if this is negative or not in
       //     the base class (TOTrap), but TOTrapAncient01 clamps it below to 0)
       //   param5 = TODO (clamped to [0, 5]; calls player->vtable[0x19] on
       //     explode unless this is 5)
-      //   param6 = TODO (value used is param6 + 30, multipled by 0.33 if
-      //     offline)
+      //   param6 = TODO (value is param6 + 30, multipled by 0.33 if offline)
       {0x0153, "TOTrapAncient01"},
 
       // Ruins pop-up trap. Params:
-      //   param1 = trigger radius delta (value used is (param1 / 2) + 30)
-      //   param4 = delay (value used is param4 + 30; clamped below to 0)
+      //   param1 = trigger radius delta (value is (param1 / 2) + 30)
+      //   param4 = delay (value is param4 + 30; clamped below to 0)
       //   angle.z = TODO (seems it only matters if angle.z is > 0 or not)
       {0x0154, "TOTrapAncient02"},
 
@@ -1821,7 +1820,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x0166, "TOWreckAncientBrakable05"},
 
       // Ruins pop-up trap with techs. Params:
-      //   param1 = trigger radius delta (value used is (param1 / 2) + 30)
+      //   param1 = trigger radius delta (value is (param1 / 2) + 30)
       //   param2 = number of hits to destroy trap (clamped to [1, 256])
       //   param3 = tech level modifier:
       //     Normal: level = param3 + 1 (clamped to [0, 14])
@@ -1829,7 +1828,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //     Very Hard: level = (param3 * 4) + 1 (clamped to [0, 14])
       //     Ultimate: level = (param3 * 6) + 1 (clamped to [0, 29])
       //     (Note: level is offset by 1, so a value of 0 means tech level 1)
-      //   param4 = delay (value used is param4 + 30; clamped below to 0)
+      //   param4 = delay (value is param4 + 30; clamped below to 0)
       //   param5 = switch flag number (negative = always active)
       //   param6 = tech number:
       //     0 = Foie
@@ -1842,20 +1841,20 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       {0x0167, "TOTrapAncient02R"},
 
       // Flying white bird. Params:
-      //   param1 = TODO (value used is param1 + 1)
-      //   param2 = TODO (value used is param2 + 50)
-      //   param3 = TODO (value used is param3 + 100)
+      //   param1 = TODO (value is param1 + 1)
+      //   param2 = TODO (value is param2 + 50)
+      //   param3 = TODO (value is param3 + 100)
       //   param4 = number of birds? (value is param4 + 3, clamped to [1, 6])
-      //   param5 = TODO (value used is (param5 / 10) + 1)
-      //   param6 = TODO (value used is (param6 / 10) + 1)
+      //   param5 = TODO (value is (param5 / 10) + 1)
+      //   param6 = TODO (value is (param6 / 10) + 1)
       {0x0170, "TOBoss4Bird"},
 
       // Dark Falz obelisk. There appear to be no parameters.
       {0x0171, "TOBoss4Tower"},
 
       // Floating rocks. Params:
-      //   param1 = x/z range delta? (value used is param1 + 50)
-      //   param2 = TODO (value used is abs(param2))
+      //   param1 = x/z range delta? (value is param1 + 50)
+      //   param2 = TODO (value is abs(param2))
       //   param4 = number of rocks? (clamped to [1, 8])
       {0x0172, "TOBoss4Rock"},
 
@@ -2110,7 +2109,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       // strikes at a random angle around the player. Params:
       //   param1 = lightning distance from player
       //   param2 = lightning height
-      //   param3 = TODO (value used is ((param3 / 32768) * 0.3) + 1)
+      //   param3 = TODO (value is ((param3 / 32768) * 0.3) + 1)
       //   param4 = minimum frames between strikes
       //   param5 = interval randomness (after each strike, a random number is
       //     chosen between param4 and (param4 + param5) to determine how many
@@ -2372,7 +2371,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
 
       // Mortis Fons geyser. Params:
       //   param1-3 = TODO
-      //   param4 = mode (value used is param4 % 0x0B):
+      //   param4 = mode (value is param4 % 0x0B):
       //     00 = MIZUMODE_NONE
       //     01 = MIZUMODE_LOW
       //     02 = MIZUMODE_MIDDLE
@@ -2384,7 +2383,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //     08 = MIZUMODE_FOG
       //     09 = MIZUMODE_FOG2
       //     0A = MIZUMODE_LIGHT
-      //   param5 = TODO (value used is param5 % 7)
+      //   param5 = TODO (value is param5 % 7)
       // Availability: Ep3 in-battle only
       {0x02D6, "TObjKazariGeyserMizu"},
 
@@ -2509,9 +2508,9 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //   angle.y = dest y
       //   angle.z = dest z
       //   param1 = area radius
-      //   param2 = area power (value used is param2 * 0.8)
-      //   param4 = hole radius (value used is param4 / 100)
-      //   param5 = hole power (value used is param5 / 100)
+      //   param2 = area power (value is param2 * 0.8)
+      //   param4 = hole radius (value is param4 / 100)
+      //   param5 = hole power (value is param5 / 100)
       // Availability: v4 only
       {0x0387, "__UNKNOWN_0387__"},
 
@@ -2519,7 +2518,7 @@ const char* MapFile::name_for_object_type(uint16_t type) {
       //   param1 = hitbox width (x; only used if param6 == 0)
       //   param2 = hitbox radius (only used if param6 != 0)
       //   param3 = hitbox depth (z; only used if param6 == 0)
-      //   param4 = TODO (value used is param4 / 100)
+      //   param4 = TODO (value is param4 / 100)
       //   param6 = hitbox type (0 = rectangular, anything else = cylindrical)
       // Availability: v4 only
       {0x0388, "__UNKNOWN_0388__"},
@@ -2641,6 +2640,10 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       // - TBoss5Gryphon (param1, param2)
       // - TBoss2DeRolLe (param1, param2)
       // - TBoss8Dragon (param1, param2)
+      // - TObjEneBm5GibonU (param4, param5; these params also have non-debug
+      //     meanings)
+      // - TObjEneMorfos (oaram1, param2; these params also have non-debug
+      //     meanings)
       // TODO: Add more enemies to this list as they are found
 
       // NPCs. Params:
@@ -2728,9 +2731,18 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       {0x00FD, "TObjNpcNgcBase(0x00FD)"}, // TODO (v3+ only)
       {0x00FE, "TObjNpcNgcBase(0x00FE)"}, // Episode 2 Hunter's Guild woman (v3+ only)
       {0x00FF, "TObjNpcNgcBase(0x00FF)"}, // Woman near room with teleporter to VR areas (v3+ only)
+      {0x0100, "__MOMOKA__"}, // Momoka (v4 only)
 
-      // Enemy that behaves like an NPC. Has all the same params as the above
-      // NPC types, but also:
+      // Quest NPC. Params are the same as for the standard NPCs above, except:
+      //   param6 low byte = flags (bit field):
+      //     01 = same as param6 above (0 = stand still; 1 = walk around)
+      //     10 = TODO
+      //   param6 high byte = NPC index in npcplayerchar.dat
+      // Availability: v4 only
+      {0x0118, "__QUEST_NPC__"},
+
+      // Enemy that behaves like an NPC. Has all the same params as the
+      // standard NPC types, but also:
       //   angle.x = definition index
       // The definition index is an integer from 0 to 15 (decimal) specifying
       // which model, animations, and hitbox to use. The available choices
@@ -2742,10 +2754,10 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
 
       // Hildebear. Params:
       //   param1 = initial location (clamped to [0, 1]; 0 = ground, 1 = sky)
-      //   param2 = TODO (value used is param2 + 0.3, clamped to [0, 1]; could
-      //     be an input to monster AI)
-      //   param3 = TODO (value used is param3 + 0.6, clamped to [0, 1]; could
-      //     be an input to monster AI)
+      //   param2 = chance to use tech (value is param3 + 0.6, clamped to [0,
+      //     1]; TODO: it's not clear when exactly the decision points are)
+      //   param3 = chance to jump when more than 150 units away (value is
+      //     param2 + 0.3, clamped to [0, 1])
       //   param6 = if >= 1, always rare
       {0x0040, "TObjEneMoja"},
 
@@ -2788,12 +2800,16 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       {0x0043, "TObjEneBm5Wolf"},
 
       // Booma, Gobooma, or Gigobooma. Params:
-      //   param1 = TODO (see TObjEneBeast_v5A)
+      //   param1 = TODO (fraction of max HP; see TObjEnemyV8048ee80_v5A)
       //   param2 = idle walk radius (when there's no target, it will walk
       //     around its spawn location within this radius; if this is zero, it
       //     stands still instead)
       //   param6 = type (0 = Booma, 1 = Gobooma, 2 = Gigobooma)
-      //   param7 = TODO (see TObjEnemy_FUN_800f6f3c)
+      //   param7 = group ID (if nonzero, it looks like this is used to cause
+      //     groups of enemies to band together and all attack the same player,
+      //     chosen by the highest-ranking enemy (by param6) in the group;
+      //     TODO: this explanation is unverified and param7 was never used by
+      //     Sega; see client code at 3OE1:800F6F3C)
       {0x0044, "TObjEneBeast"},
 
       // Grass Assassin. Params:
@@ -2832,6 +2848,7 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       //   param1 = rapid fire count (number of lasers fired before moving
       //     again; if this is 0, the default of 2 is used)
       //   param6 = type (0 = Dubchic, 1 = Gillchic)
+      //   param7 = TODO
       {0x0080, "TObjEneDubchik"},
 
       // Garanz. There appear to be no parameters.
@@ -2964,7 +2981,7 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       // if that doesn't happen either, the game checks param4 to determine
       // whether to teleport. If none of those happen, the Sinow just walks
       // forward again and attacks.
-      // Availability: v3+ (Sinow Berill); Ep3 only (scientist NPCs)
+      // Availability: v3+ only (Sinow Berill); Ep3 only (scientist NPCs)
       {0x00D4, "TObjEneMe3StelthReal/TObjNpcHeroScientist"},
 
       // Merillia / Meriltas (Ep2) or scientist NPCs (Ep3). On Ep3 this is a
@@ -2978,7 +2995,7 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       //   param5 = wakeup radius delta (value used is param5 + 100, clamped
       //     below to 15; enemy will wake up when any player is nearby)
       //   param6 = type (0 = Merillia, 1 = Meriltas)
-      // Availability: v3+ (Merillia/Meriltas); Ep3 only (scientist NPCs)
+      // Availability: v3+ only (Merillia/Meriltas); Ep3 only (scientist NPCs)
       {0x00D5, "TObjEneMerillLia/TObjNpcHeroScientist"},
 
       // Mericarol (Ep2) or Morgue chief NPC (Ep3). The Ep3 Morgue chief NPC
@@ -2997,28 +3014,138 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       //     1 = Mericus
       //     2 = Merikle
       //     anything else = Mericarand (see below)
-      // If this is Mericarand, it is "randomly" chosen to be one of the three
-      // subtypes at construction time. On v1-v3, the client chooses randomly
-      // (but consistently, based on the entity ID) between Mericarol (80%),
-      // Mericus (10%) or Merikle (10%). On v4, if the entity ID isn't marked
-      // rare by the server, the Mericarand becomes a Mericarol; otherwise, it
-      // becomes a Mericus if its entity ID is even or a Merikle if it's odd.
-      // Availability: v3+ (Mericarol); Ep3 only (Morgue chief NPC)
+      // If this is a Mericarand, it is "randomly" chosen to be one of the
+      // three subtypes at construction time. On v1-v3, the client chooses
+      // randomly (but consistently, based on the entity ID) between Mericarol
+      // (80%), Mericus (10%) or Merikle (10%). On v4, if the entity ID isn't
+      // marked rare by the server, the Mericarand becomes a Mericarol;
+      // otherwise, it becomes a Mericus if its entity ID is even or a Merikle
+      // if it's odd.
+      // Availability: v3+ only (Mericarol); Ep3 only (Morgue chief NPC)
       {0x00D6, "TObjEneBm9Mericarol/TObjNpcHeroGovernor"},
 
+      // Ul Gibbon / Zol Gibbon (Ep2) or Morgue chief NPC (Ep3). On Ep3 this is
+      // a direct alias for 0x00D6 and not a distinct object NPC type.
+      // Gibbons' params:
+      //   param1 = group number
+      //   param2 = appear type (<1 = spot appear; >=1 = jump appear)
+      //   param3 = chance of jumping forward or back at each decision point
+      //     (value used is param3 + 0.4)
+      //   param4 = chance of casting a tech when not near any player (value
+      //     used is param4 + 0.3)
+      //   param5 = chance of casting a tech immediately after jumping forward
+      //     or back (value used is param5 + 0.3; does not apply after jumps
+      //     that are attacks)
+      //   param6 = type (zero or negative = Ul Gibbon, positive = Zol Gibbon)
+      // Availability: v3+ only (Gibbons); Ep3 only (Morgue chief NPC)
+      {0x00D7, "TObjEneBm5GibonU/TObjNpcHeroGovernor"},
+
+      // Gibbles. Params:
+      //   param1 = jump distance delta (value used is param1 + 100)
+      //   param2 = prejudice flag (see 0x00A0 (TObjEneSaver); the behavior
+      //     here is exactly the same)
+      //   param3 = chance to jump at each decision point (0-1)
+      //   param4 = chance to jump after being hit (0-1)
+      // Availability: v3+ only
+      {0x00D8, "TObjEneGibbles"},
+
+      // Gee. Params:
+      //   param1 = in fighter / out fighter setting (see TObjEneMe1Canadin)
+      //   param2 = appear height (0 = low, 1 = high)
+      //   param3 = appear speed (value is param3 + 1, clamped below to 1)
+      //   param4 = needle speed (value is param4 + 6, clamped below to 0.01)
+      // Note: The client's debug strings say "APPEAR SPEED(+1.f Min:0.01f)"
+      // for param3 and "NEEDLE SPEED(+6.f Min:1.f)" for param4. The "Min:"
+      // parts of those strings are incorrect; the comments above are correct.
+      // Availability: v3+ only
+      {0x00D9, "TObjEneMe1Gee"},
+
+      // Gi Gue. Params:
+      //   param1 = TODO (only matters if >= 1 or not)
+      //   param2 = TODO (only used if param1 >= 1; defaults to 50 if param2 <
+      //     1; maybe same as Nano Dragon's param2?)
+      //   param3 = TODO (value is param3 + 150)
+      //   param4 = TODO (value is param4 + 0.5)
+      //   param5 = TODO (value is param5 + 0.5)
+      //   param7 = TODO
+      // Availability: v3+ only
+      {0x00DA, "TObjEneMe1GiGue"},
+
+      // Deldepth. Params:
+      //   param1 = TODO (value is param1 + 0.6, clamped below to 0; seems to
+      //     be unused?)
+      // Availability: v3+ only
+      {0x00DB, "TObjEneDelDepth"},
+
+      // Delbiter. Params:
+      //   param1 = chance to howl (value is param1 + 0.3)
+      //   param2 = chance to cause confusion via howl (value is param2 + 0.3)
+      //   param3 = maximum distance at which howl can cause confusion (value
+      //     is param3 + 30, clamped below to 10)
+      //   param4 = chance to fire laser (value is param4 + 0.3)
+      //   param5 = chance to charge (value is param5 + 0.5)
+      //   param6 = type (0 = stand, 1 = run)
+      // Availability: v3+ only
+      {0x00DC, "TObjEneDellBiter"},
+
+      // Dolmolm / Dolmdarl. Same parameters as TObjEneBeast, but also:
+      //   param3 = TODO (value is param3 + 0.3; probability of some sort)
+      //   param4 = TODO (value is param4 + 0.3; probability of some sort)
+      //   param6 = type (zero or negative = Dolmolm; positive = Dolmdarl)
+      // Availability: v3+ only
+      {0x00DD, "TObjEneDolmOlm"},
+
+      // Morfos. Params:
+      //   param1 = TODO (value is param1 + 0.28)
+      //   param2 = TODO (value is param2 + 20)
+      //   param3 = TODO (value is param3 + 0.1; probability; used when current
+      //     HP is less than half of max)
+      //   param4 = TODO (value is param4 + 0.1; probability; used when current
+      //     HP is less than half of max)
+      //   param6 = TODO
+      // Availability: v3+ only
+      {0x00DE, "TObjEneMorfos"},
+
+      // Recobox. Params:
+      //   param1 = Recon floating height (value used for each Recon is 45 +
+      //     rand(-2, 2) + param1)
+      //   param2 = Recon target radius (distance from target; value used for
+      //     each Recon is 50 + rand(-5, 5) + param2; param2 is clamped below
+      //     to -30)
+      //   param4 = maximum number of concurrently-active Recons (clamped to
+      //     [0, min(6, num_children - 1)])
+      //   param6 = type:
+      //     zero or negative = floor (Recons exit upward)
+      //     1 = ceiling (Recons exit downward)
+      //     2 or greater = wall (Recons exit horizontally)
+      // Note: The debug strings in TObjEneRecobox_v6A seem to imply that the
+      // total Recon count in the box is (param7 + 1); however, this is not
+      // true. The total Recon count in the box is actually (num_children - 1).
+      // Availability: v3+ only
+      {0x00DF, "TObjEneRecobox"},
+
+      // Sinow Zoa / Sinow Zele, or Epsilon (depending on the current area). It
+      // appears that the Sinows take the same params as TObjEneMe3StelthReal
+      // (Sinow Berill / Sinow Spigell), except (of course):
+      //   param6 = type:
+      //     zero or negative = Sinow Zoa
+      //     positive = Sinow Zele
+      // Params for Epsilon:
+      //   param1 = TODO (value is param1 + 0.5, clamped below to 0)
+      //   param2 = TODO (value is param2 + 512; it appears this was supposed
+      //     to be clamped below to 0, but due to a copy/paste error it isn't)
+      //   param3 = TODO (value is (param3 + 20) * 5, clamped below to 150)
+      //   param4 = TODO (value is (param4 + 20) * 5, clamped below to 150)
+      // Availability: v3+ only (both Sinows and Epsilon)
+      {0x00E0, "TObjEneMe3SinowZoaReal/TObjEneEpsilonBody"},
+
+      // Ill Gill. Params:
+      //   param1 = TODO (seems it only matters if this is zero or not; are there other uses?)
+      //   param2 = TODO (used in TObjEneIllGill_update phase 3)
+      // Availability: v3+ only
+      {0x00E1, "TObjEneIllGill"},
+
       // TODO: Describe the rest of the enemy types.
-      {0x00D7, "TObjEneBm5GibonU/TObjNpcHeroGovernor"}, // Constructor in 3OE1: 800D17AC // Ep3/v3+ only
-      {0x00D8, "TObjEneGibbles"}, // Constructor in 3OE1: 802DA0E0 // v3+ only
-      {0x00D9, "TObjEneMe1Gee"}, // Constructor in 3OE1: 800CC768 // v3+ only
-      {0x00DA, "TObjEneMe1GiGue"}, // Constructor in 3OE1: 802CBF30 // v3+ only
-      {0x00DB, "TObjEneDelDepth"}, // Constructor in 3OE1: 803141F0 // v3+ only
-      {0x00DC, "TObjEneDellBiter"}, // Constructor in 3OE1: 80304E1C // v3+ only
-      {0x00DD, "TObjEneDolmOlm"}, // Constructor in 3OE1: 80300C5C // v3+ only // Note: subclass of TObjEnemyV8048ee80
-      {0x00DE, "TObjEneMorfos"}, // Constructor in 3OE1: 80333584 // v3+ only
-      {0x00DF, "TObjEneRecobox"}, // Constructor in 3OE1: 8031E7A0 // v3+ only
-      {0x00E0, "TObjEneMe3SinowZoaReal/TObjEneEpsilonBody"}, // Constructor in 3OE1: 803197AC // v3+ only
-      {0x00E1, "TObjEneIllGill"}, // Constructor in 3OE1: 8036685C // v3+ only
-      {0x0100, "__MOMOKA__"}, // Constructor in 59NL: 0060E128 // v4 only
       {0x0110, "__ASTARK__/TObjNpcWalkingMeka_Hero"}, // Constructor in 59NL: 005A3D60; 3SE0: 80271DB0 // Ep3/v4 only // Ep3: Small talking robot in Morgue
       {0x0111, "__YOWIE__/__SATELLITE_LIZARD__/TObjNpcWalkingMeka_Dark"}, // Constructor in 59NL: 005AE7CC; 3SE0: 80271790 // Ep3/v4 only // Ep3: Small talking robot in Morgue
       {0x0112, "__MERISSA_A__/TObjNpcHeroAide"}, // Constructor in 59NL: 005B6B24; 3SE0: 802F4888 // Ep3/v4 only // Ep3: multiple NPCs
@@ -3027,7 +3154,6 @@ const char* MapFile::name_for_enemy_type(uint16_t type) {
       {0x0115, "__BOOTA_FAMILY__"}, // Constructor in 59NL: 005A5C08 // v4 only // TODO: probably a subclass of TObjEnemyV8048ee80; check if there are any others in BB
       {0x0116, "__DORPHON__"}, // Constructor in 59NL: 005A673C // v4 only
       {0x0117, "__GORAN_FAMILY__"}, // Constructor in 59NL: 005ADAC4 // v4 only
-      {0x0118, "__UNKNOWN_0118__"}, // Constructor in 59NL: 00602A14 // v4 only
       {0x0119, "__EPISODE_4_BOSS__"}, // Constructor in 59NL: 0076A86C // v4 only
   });
   try {
