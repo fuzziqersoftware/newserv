@@ -28,18 +28,18 @@ public:
     // item's name in the text archive (e.g. TextEnglish) collection 0.
     /* 00 */ U32T<BE> id = 0xFFFFFFFF;
     /* 04 */
-  } __packed__;
+  } __attribute__((packed));
   template <bool BE>
   struct ItemBaseV3T : ItemBaseV2T<BE> {
     /* 04 */ U16T<BE> type = 0; // "Model" in Soly's ItemPMT editor
     /* 06 */ U16T<BE> skin = 0; // "Texture" in Soly's ItemPMT editor
     /* 08 */
-  } __packed__;
+  } __attribute__((packed));
   template <bool BE>
   struct ItemBaseV4T : ItemBaseV3T<BE> {
     /* 08 */ U32T<BE> team_points = 0;
     /* 0C */
-  } __packed__;
+  } __attribute__((packed));
 
   struct WeaponV4;
   struct WeaponDCProtos {
@@ -142,7 +142,7 @@ public:
     /* 28 */
 
     WeaponV4 to_v4() const;
-  } __packed__;
+  } __attribute__((packed));
 
   using WeaponV3 = WeaponV3T<false>;
   using WeaponV3BE = WeaponV3T<true>;
@@ -197,7 +197,7 @@ public:
     /* 12 */ uint8_t dfp_range = 0;
     /* 13 */ uint8_t evp_range = 0;
     /* 14 */
-  } __packed__;
+  } __attribute__((packed));
 
   template <typename BaseT, bool BE>
   struct ArmorOrShieldFinalT : ArmorOrShieldT<BaseT, BE> {
@@ -213,7 +213,7 @@ public:
     /* 16 */ uint8_t flags_type = 0;
     /* 17 */ uint8_t unknown_a4 = 0;
     /* 18 */
-  } __packed__;
+  } __attribute__((packed));
   using ArmorOrShieldV4 = ArmorOrShieldFinalT<ItemBaseV4T<false>, false>;
   check_struct_size(ArmorOrShieldV4, 0x20);
   struct ArmorOrShieldDCProtos : ArmorOrShieldT<ItemBaseV2T<false>, false> {
@@ -226,7 +226,7 @@ public:
   template <bool BE>
   struct ArmorOrShieldV3T : ArmorOrShieldFinalT<ItemBaseV3T<BE>, BE> {
     ArmorOrShieldV4 to_v4() const;
-  } __packed__;
+  } __attribute__((packed));
   using ArmorOrShieldV3 = ArmorOrShieldV3T<false>;
   using ArmorOrShieldV3BE = ArmorOrShieldV3T<true>;
   check_struct_size(ArmorOrShieldV3, 0x1C);
@@ -239,14 +239,14 @@ public:
     /* 04 */ U16T<BE> stat = 0;
     /* 06 */ U16T<BE> stat_amount = 0;
     /* 08 */
-  } __packed__;
+  } __attribute__((packed));
 
   template <typename BaseT, bool BE>
   struct UnitFinalT : UnitT<BaseT, BE> {
     /* 08 */ S16T<BE> modifier_amount = 0;
     /* 0A */ parray<uint8_t, 2> unused;
     /* 0C */
-  } __packed__;
+  } __attribute__((packed));
   using UnitV4 = UnitFinalT<ItemBaseV4T<false>, false>;
   check_struct_size(UnitV4, 0x14);
   struct UnitDCProtos : UnitT<ItemBaseV2T<false>, false> {
@@ -258,7 +258,7 @@ public:
   template <bool BE>
   struct UnitV3T : UnitFinalT<ItemBaseV3T<BE>, BE> {
     UnitV4 to_v4() const;
-  } __packed__;
+  } __attribute__((packed));
   using UnitV3 = UnitV3T<false>;
   using UnitV3BE = UnitV3T<true>;
   check_struct_size(UnitV3, 0x10);
@@ -295,7 +295,7 @@ public:
     /* 0E */ uint8_t on_death_flag = 0;
     /* 0F */ uint8_t on_boss_flag = 0;
     /* 10 */
-  } __packed__;
+  } __attribute__((packed));
 
   struct MagV4 : MagT<ItemBaseV4T<false>, false> {
     le_uint16_t class_flags = 0x00FF;
@@ -318,7 +318,7 @@ public:
     /* 14 */
 
     MagV4 to_v4() const;
-  } __packed__;
+  } __attribute__((packed));
   using MagV3 = MagV3T<false>;
   using MagV3BE = MagV3T<true>;
   check_struct_size(MagV3, 0x18);
@@ -342,7 +342,7 @@ public:
     //   00000080 - is rare (renders as red box; V3+)
     /* 0C */ U32T<BE> item_flags = 0;
     /* 10 */
-  } __packed__;
+  } __attribute__((packed));
 
   using ToolV4 = ToolT<ItemBaseV4T<false>, false>;
   check_struct_size(ToolV4, 0x18);
@@ -352,7 +352,7 @@ public:
   template <bool BE>
   struct ToolV3T : ToolT<ItemBaseV3T<BE>, BE> {
     ToolV4 to_v4() const;
-  } __packed__;
+  } __attribute__((packed));
   using ToolV3 = ToolV3T<false>;
   using ToolV3BE = ToolV3T<true>;
   check_struct_size(ToolV3, 0x14);
@@ -373,7 +373,7 @@ public:
   template <bool BE>
   struct MagFeedResultsListOffsetsT {
     parray<U32T<BE>, 8> offsets; // Offsets of MagFeedResultsList objects
-  } __packed__;
+  } __attribute__((packed));
   using MagFeedResultsListOffsets = MagFeedResultsListOffsetsT<false>;
   using MagFeedResultsListOffsetsBE = MagFeedResultsListOffsetsT<true>;
   check_struct_size(MagFeedResultsListOffsets, 0x20);
@@ -383,7 +383,7 @@ public:
   struct SpecialT {
     U16T<BE> type = 0xFFFF;
     U16T<BE> amount = 0;
-  } __packed__;
+  } __attribute__((packed));
   using Special = SpecialT<false>;
   using SpecialBE = SpecialT<true>;
   check_struct_size(Special, 4);
@@ -395,7 +395,7 @@ public:
     uint8_t stat2 = 0;
     U16T<BE> amount1 = 0;
     U16T<BE> amount2 = 0;
-  } __packed__;
+  } __attribute__((packed));
   using StatBoost = StatBoostT<false>;
   using StatBoostBE = StatBoostT<true>;
   check_struct_size(StatBoost, 6);
@@ -423,7 +423,7 @@ public:
     uint8_t flags = 0;
     parray<uint8_t, 2> unused;
     F32T<BE> amount = 0.0f;
-  } __packed__;
+  } __attribute__((packed));
   using TechniqueBoostEntry = TechniqueBoostEntryT<false>;
   using TechniqueBoostEntryBE = TechniqueBoostEntryT<true>;
   check_struct_size(TechniqueBoostEntry, 0x08);
@@ -445,7 +445,7 @@ public:
     F32T<BE> shield_divisor = 0.0f;
     F32T<BE> unit_divisor = 0.0f;
     F32T<BE> mag_divisor = 0.0f;
-  } __packed__;
+  } __attribute__((packed));
   using NonWeaponSaleDivisors = NonWeaponSaleDivisorsT<false>;
   using NonWeaponSaleDivisorsBE = NonWeaponSaleDivisorsT<true>;
   check_struct_size(NonWeaponSaleDivisors, 0x10);
@@ -599,7 +599,7 @@ protected:
     /* 50 / F5F0 / 15014 */ U32T<BE> unwrap_table; // -> {count, offset -> [{count, offset -> [EventItem]}]}
     /* 54 / F5F8 / 1501C */ U32T<BE> unsealable_table; // -> {count, offset -> [UnsealableItem]}
     /* 58 / F600 / 15024 */ U32T<BE> ranged_special_table; // -> {count, offset -> [4-byte structs]}
-  } __packed__;
+  } __attribute__((packed));
   using TableOffsetsV3V4 = TableOffsetsV3V4T<false>;
   using TableOffsetsV3V4BE = TableOffsetsV3V4T<true>;
   check_struct_size(TableOffsetsV3V4, 0x5C);

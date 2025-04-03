@@ -112,7 +112,7 @@ struct SaveFileSymbolChatEntryT {
   /* 04:04:04:04:04 */ pstring<Encoding, NameLength> name;
   /* 1C:34:1C:1C:2C */ SymbolChatT<BE> spec;
   /* 58:70:58:58:68 */
-} __packed__;
+} __attribute__((packed));
 using SaveFileSymbolChatEntryPC = SaveFileSymbolChatEntryT<false, TextEncoding::UTF16, 0x18>;
 using SaveFileSymbolChatEntryGC = SaveFileSymbolChatEntryT<true, TextEncoding::MARKED, 0x18>;
 using SaveFileSymbolChatEntryDCXB = SaveFileSymbolChatEntryT<false, TextEncoding::MARKED, 0x18>;
@@ -141,7 +141,7 @@ struct WordSelectMessageT {
     ret.unknown_a4 = this->unknown_a4.load();
     return ret;
   }
-} __packed__;
+} __attribute__((packed));
 using WordSelectMessage = WordSelectMessageT<false>;
 using WordSelectMessageBE = WordSelectMessageT<true>;
 check_struct_size(WordSelectMessage, 0x1C);
@@ -160,7 +160,7 @@ struct SaveFileChatShortcutEntryT {
       this->text = other.text;
       return *this;
     }
-  } __packed__;
+  } __attribute__((packed));
 
   /* DC:GC:BB */
   /* 00:00:00 */ U32T<BE> type; // 1 = text, 2 = word select, 3 = symbol chat
@@ -186,7 +186,7 @@ struct SaveFileChatShortcutEntryT {
     }
     return ret;
   }
-} __packed__;
+} __attribute__((packed));
 using SaveFileShortcutEntryDC = SaveFileChatShortcutEntryT<false, TextEncoding::MARKED, 0x3C>;
 using SaveFileShortcutEntryPC = SaveFileChatShortcutEntryT<false, TextEncoding::UTF16, 0x3C>;
 using SaveFileShortcutEntryGC = SaveFileChatShortcutEntryT<true, TextEncoding::MARKED, 0x50>;

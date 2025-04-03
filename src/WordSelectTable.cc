@@ -40,7 +40,7 @@ struct NonWindowsRootT {
   U32T<BE> table4;
   U32T<BE> article_types_table;
   U32T<BE> table6;
-} __packed__;
+} __attribute__((packed));
 
 using NonWindowsRoot = NonWindowsRootT<false>;
 using NonWindowsRootBE = NonWindowsRootT<true>;

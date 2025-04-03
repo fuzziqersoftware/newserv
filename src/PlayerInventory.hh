@@ -77,7 +77,7 @@ struct PlayerInventoryItemT {
     ret.data.id.store_raw(phosg::bswap32(ret.data.id.load_raw()));
     return ret;
   }
-} __packed__;
+} __attribute__((packed));
 using PlayerInventoryItem = PlayerInventoryItemT<false>;
 using PlayerInventoryItemBE = PlayerInventoryItemT<true>;
 check_struct_size(PlayerInventoryItem, 0x1C);
@@ -101,7 +101,7 @@ struct PlayerBankItemT {
     ret.present = this->present.load();
     return ret;
   }
-} __packed__;
+} __attribute__((packed));
 using PlayerBankItem = PlayerBankItemT<false>;
 using PlayerBankItemBE = PlayerBankItemT<true>;
 check_struct_size(PlayerBankItem, 0x18);
@@ -292,7 +292,7 @@ struct PlayerInventoryT {
     ret.items = this->items;
     return ret;
   }
-} __packed__;
+} __attribute__((packed));
 using PlayerInventory = PlayerInventoryT<false>;
 using PlayerInventoryBE = PlayerInventoryT<true>;
 check_struct_size(PlayerInventory, 0x34C);
@@ -416,7 +416,7 @@ struct PlayerBankT {
     }
     return ret;
   }
-} __packed__;
+} __attribute__((packed));
 using PlayerBank60 = PlayerBankT<60, false>;
 using PlayerBank200 = PlayerBankT<200, false>;
 using PlayerBank200BE = PlayerBankT<200, true>;

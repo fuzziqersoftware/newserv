@@ -22,7 +22,7 @@ public:
     struct Range {
       IntT min;
       IntT max;
-    } __packed__;
+    } __attribute__((packed));
 
     Episode episode;
     parray<uint8_t, 0x0C> base_weapon_type_prob_table;
@@ -254,7 +254,7 @@ public:
       /* 50 */ U32T<BE> box_item_class_prob_table_offset;
 
       // There are several unused fields here.
-    } __packed__;
+    } __attribute__((packed));
     using Offsets = OffsetsT<false>;
     using OffsetsBE = OffsetsT<true>;
     check_struct_size(Offsets, 0x54);
@@ -337,7 +337,7 @@ public:
   struct WeightTableEntry {
     ValueT value;
     WeightT weight;
-  } __packed__;
+  } __attribute__((packed));
 
   using WeightTableEntry8 = WeightTableEntry<uint8_t>;
   using WeightTableEntry32 = WeightTableEntry<be_uint32_t>;

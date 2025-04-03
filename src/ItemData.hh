@@ -127,7 +127,7 @@ struct ItemData {
     parray<be_uint16_t, 6> data1wb;
     parray<le_uint32_t, 3> data1d;
     parray<be_uint32_t, 3> data1db;
-  } __packed__;
+  } __attribute__((packed));
   le_uint32_t id;
   union {
     parray<uint8_t, 4> data2;
@@ -135,7 +135,7 @@ struct ItemData {
     parray<be_uint16_t, 2> data2wb;
     le_uint32_t data2d;
     be_uint32_t data2db;
-  } __packed__;
+  } __attribute__((packed));
 
   ItemData();
   ItemData(const ItemData& other);

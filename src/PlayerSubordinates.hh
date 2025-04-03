@@ -230,7 +230,7 @@ struct PlayerVisualConfigT {
     ret.proportion_y = this->proportion_y.load();
     return ret;
   }
-} __packed__;
+} __attribute__((packed));
 using PlayerVisualConfig = PlayerVisualConfigT<false>;
 using PlayerVisualConfigBE = PlayerVisualConfigT<true>;
 check_struct_size(PlayerVisualConfig, 0x50);
@@ -249,7 +249,7 @@ struct PlayerDispDataDCPCV3T {
   }
 
   PlayerDispDataBB to_bb(uint8_t to_language, uint8_t from_language) const;
-} __packed__;
+} __attribute__((packed));
 using PlayerDispDataDCPCV3 = PlayerDispDataDCPCV3T<false>;
 using PlayerDispDataDCPCV3BE = PlayerDispDataDCPCV3T<true>;
 check_struct_size(PlayerDispDataDCPCV3, 0xD0);
@@ -382,7 +382,7 @@ struct GuildCardGCT {
   /* 90:90 */
 
   operator GuildCardBB() const;
-} __packed__;
+} __attribute__((packed));
 using GuildCardGCNTE = GuildCardGCT<false, 0x80>;
 using GuildCardGCNTEBE = GuildCardGCT<true, 0x80>;
 using GuildCardGC = GuildCardGCT<false, 0x6C>;
@@ -530,7 +530,7 @@ struct ChallengeAwardStateT {
     ret.maximum_rank = this->maximum_rank;
     return ret;
   }
-} __packed__;
+} __attribute__((packed));
 using ChallengeAwardState = ChallengeAwardStateT<false>;
 using ChallengeAwardStateBE = ChallengeAwardStateT<true>;
 check_struct_size(ChallengeAwardState, 8);
@@ -563,7 +563,7 @@ struct PlayerRecordsChallengeDCPCT {
   /* 78:B0 */ parray<ChallengeTimeT<false>, 9> times_ep1_offline; // TODO: This might be online times
   /* 9C:D4 */ parray<uint8_t, 4> unknown_l4;
   /* A0:D8 */
-} __packed__;
+} __attribute__((packed));
 using PlayerRecordsChallengeDC = PlayerRecordsChallengeDCPCT<TextEncoding::ASCII, TextEncoding::CHALLENGE8>;
 using PlayerRecordsChallengePC = PlayerRecordsChallengeDCPCT<TextEncoding::UTF16, TextEncoding::CHALLENGE16>;
 check_struct_size(PlayerRecordsChallengeDC, 0xA0);
@@ -598,7 +598,7 @@ struct PlayerRecordsChallengeV3T {
     /* C8:E4 */ ChallengeAwardStateT<BE> ep2_online_award_state;
     /* D0:EC */ ChallengeAwardStateT<BE> ep1_offline_award_state;
     /* D8:F4 */
-  } __packed__;
+  } __attribute__((packed));
   /* 0000:001C */ Stats stats;
   // On Episode 3, there are special cases that apply to this field - if the
   // text ends with certain strings, the player will have particle effects
@@ -610,7 +610,7 @@ struct PlayerRecordsChallengeV3T {
   /* 00D8:00F4 */ pstring<TextEncoding::CHALLENGE8, 0x0C> rank_title;
   /* 00E4:0100 */ parray<uint8_t, 0x1C> unknown_l7;
   /* 0100:011C */
-} __packed__;
+} __attribute__((packed));
 using PlayerRecordsChallengeV3 = PlayerRecordsChallengeV3T<false>;
 using PlayerRecordsChallengeV3BE = PlayerRecordsChallengeV3T<true>;
 check_struct_size(PlayerRecordsChallengeV3, 0x100);
@@ -742,7 +742,7 @@ struct PlayerRecordsBattleT {
     }
     return ret;
   }
-} __packed__;
+} __attribute__((packed));
 using PlayerRecordsBattle = PlayerRecordsBattleT<false>;
 using PlayerRecordsBattleBE = PlayerRecordsBattleT<true>;
 check_struct_size(PlayerRecordsBattle, 0x18);
@@ -992,7 +992,7 @@ struct SymbolChatT {
     ret.face_parts = this->face_parts;
     return ret;
   }
-} __packed__;
+} __attribute__((packed));
 using SymbolChat = SymbolChatT<false>;
 using SymbolChatBE = SymbolChatT<true>;
 check_struct_size(SymbolChat, 0x3C);

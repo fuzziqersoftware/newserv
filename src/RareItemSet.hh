@@ -82,7 +82,7 @@ protected:
       /* 08 */ U32T<BE> box_areas_offset; // -> parray<uint8_t, 0x1E>
       /* 0C */ U32T<BE> box_rares_offset; // -> parray<PackedDrop, 0x1E>
       /* 10 */
-    } __packed__;
+    } __attribute__((packed));
     using Offsets = OffsetsT<false>;
     using OffsetsBE = OffsetsT<true>;
     check_struct_size(Offsets, 0x10);

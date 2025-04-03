@@ -40,7 +40,7 @@ struct ChoiceSearchConfigT {
     }
     return ret;
   }
-} __packed__;
+} __attribute__((packed));
 
 using ChoiceSearchConfig = ChoiceSearchConfigT<false>;
 using ChoiceSearchConfigBE = ChoiceSearchConfigT<true>;

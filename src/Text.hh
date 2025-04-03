@@ -13,13 +13,12 @@
 
 #include "Types.hh"
 
-#define __packed__ __attribute__((packed))
 #define check_struct_size(StructT, Size)                                 \
   static_assert(sizeof(StructT) >= Size, "Structure size is too small"); \
   static_assert(sizeof(StructT) <= Size, "Structure size is too large")
 
 #define __packed_ws__(StructT, Size) \
-  __packed__;                        \
+  __attribute__((packed));           \
   check_struct_size(StructT, Size)
 
 // Conversion functions
@@ -299,7 +298,7 @@ struct parray {
     }
     return true;
   }
-} __packed__;
+} __attribute__((packed));
 
 template <typename ItemT, size_t Count>
 struct bcarray {
@@ -382,6 +381,22 @@ struct bcarray {
   }
   bool operator!=(const bcarray& s) const {
     return !this->operator==(s);
+  }
+
+  void clear(ItemT v) {
+    for (size_t x = 0; x < Count; x++) {
+      this->items[x] = v;
+    }
+  }
+  void clear() {
+    for (size_t x = 0; x < Count; x++) {
+      this->items[x] = ItemT();
+    }
+  }
+  void clear_after(size_t position, ItemT v = 0) {
+    for (size_t x = position; x < Count; x++) {
+      this->items[x] = v;
+    }
   }
 };
 
@@ -704,7 +719,7 @@ struct pstring {
 
   // Note: The contents of a pstring do not have to be null-terminated, so there
   // is no .c_str() function.
-} __packed__;
+} __attribute__((packed));
 
 // Helper functions
 

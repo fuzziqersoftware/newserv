@@ -14,7 +14,7 @@ struct BMLHeaderT {
   parray<uint8_t, 0x04> unknown_a1;
   U32T<BE> num_entries;
   parray<uint8_t, 0x38> unknown_a2;
-} __packed__;
+} __attribute__((packed));
 
 using BMLHeader = BMLHeaderT<false>;
 using BMLHeaderBE = BMLHeaderT<true>;
@@ -30,7 +30,7 @@ struct BMLHeaderEntryT {
   U32T<BE> compressed_gvm_size;
   U32T<BE> decompressed_gvm_size;
   parray<uint8_t, 0x0C> unknown_a2;
-} __packed__;
+} __attribute__((packed));
 
 using BMLHeaderEntry = BMLHeaderEntryT<false>;
 using BMLHeaderEntryBE = BMLHeaderEntryT<true>;

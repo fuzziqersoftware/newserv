@@ -15,7 +15,7 @@ struct GSLHeaderEntryT {
   U32T<BE> offset; // In pages, so actual offset is this * 0x800
   U32T<BE> size;
   uint64_t unused;
-} __packed__;
+} __attribute__((packed));
 
 using GSLHeaderEntry = GSLHeaderEntryT<false>;
 using GSLHeaderEntryBE = GSLHeaderEntryT<true>;

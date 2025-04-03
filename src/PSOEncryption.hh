@@ -292,7 +292,7 @@ public:
     ret.store_raw(this->value);
     return ret;
   }
-} __packed__;
+} __attribute__((packed));
 using ChallengeTime = ChallengeTimeT<false>;
 using ChallengeTimeBE = ChallengeTimeT<true>;
 check_struct_size(ChallengeTime, 4);

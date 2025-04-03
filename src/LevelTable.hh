@@ -33,7 +33,7 @@ struct CharacterStatsT {
     ret.lck = this->lck.load();
     return ret;
   }
-} __packed__;
+} __attribute__((packed));
 using CharacterStats = CharacterStatsT<false>;
 using CharacterStatsBE = CharacterStatsT<true>;
 check_struct_size(CharacterStats, 0x0E);
@@ -61,7 +61,7 @@ struct PlayerStatsT {
     ret.meseta = this->meseta.load();
     return ret;
   }
-} __packed__;
+} __attribute__((packed));
 using PlayerStats = PlayerStatsT<false>;
 using PlayerStatsBE = PlayerStatsT<true>;
 check_struct_size(PlayerStats, 0x24);
@@ -89,7 +89,7 @@ struct LevelStatsDeltaT {
     ps.mst += this->mst;
     ps.lck += this->lck;
   }
-} __packed__;
+} __attribute__((packed));
 using LevelStatsDelta = LevelStatsDeltaT<false>;
 using LevelStatsDeltaBE = LevelStatsDeltaT<true>;
 check_struct_size(LevelStatsDelta, 0x0C);

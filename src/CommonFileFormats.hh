@@ -132,7 +132,7 @@ struct ArrayRefT {
   /* 00 */ U32T<BE> count;
   /* 04 */ U32T<BE> offset;
   /* 08 */
-} __packed__;
+} __attribute__((packed));
 using ArrayRef = ArrayRefT<false>;
 using ArrayRefBE = ArrayRefT<true>;
 check_struct_size(ArrayRef, 8);

@@ -275,7 +275,7 @@ struct S_ReconnectT {
   be_uint32_t address = 0;
   PortT port = 0;
   le_uint16_t unused = 0;
-} __packed__;
+} __attribute__((packed));
 using S_Reconnect_Patch_14 = S_ReconnectT<be_uint16_t>;
 check_struct_size(S_Reconnect_Patch_14, 0x08);
 
@@ -340,7 +340,7 @@ struct S_ServerInitWithAfterMessageT_DC_PC_V3_02_17_91_9B {
   // This field is not part of SEGA's implementation; the client ignores it.
   // newserv sends a message here disavowing the preceding copyright notice.
   pstring<TextEncoding::ASCII, AfterBytes> after_message;
-} __packed__;
+} __attribute__((packed));
 
 // 03 (C->S): Legacy register (non-BB)
 // Internal name: SndRegist
@@ -391,7 +391,7 @@ struct S_ServerInitWithAfterMessageT_BB_03_9B {
   S_ServerInitDefault_BB_03_9B basic_cmd;
   // As in 02, this field is not part of SEGA's implementation.
   pstring<TextEncoding::ASCII, AfterBytes> after_message;
-} __packed__;
+} __attribute__((packed));
 
 // 04 (C->S): Legacy login
 // Internal name: SndLogin2
@@ -566,7 +566,7 @@ struct S_MenuItemT {
   // 80 = Is Episode 2 (V3/BB)
   // C0 = Is Episode 4 (BB)
   uint8_t flags = 0;
-} __packed__;
+} __attribute__((packed));
 using S_MenuItem_PC_BB_08 = S_MenuItemT<TextEncoding::UTF16>;
 using S_MenuItem_DC_V3_08_Ep3_E6 = S_MenuItemT<TextEncoding::MARKED>;
 check_struct_size(S_MenuItem_PC_BB_08, 0x2C);
@@ -628,7 +628,7 @@ struct SC_MeetUserExtensionT {
   /* 40 */ le_uint32_t unknown_a2 = 0;
   /* 44 */ pstring<Encoding, 0x20> player_name;
   /* 64 (or 84 on UTF16 versions) */
-} __packed__;
+} __attribute__((packed));
 using SC_MeetUserExtension_DC_V3 = SC_MeetUserExtensionT<TextEncoding::MARKED>;
 using SC_MeetUserExtension_PC_BB = SC_MeetUserExtensionT<TextEncoding::UTF16>;
 check_struct_size(SC_MeetUserExtension_DC_V3, 0x64);
@@ -683,7 +683,7 @@ template <TextEncoding Encoding>
 struct C_MenuSelectionT_10_Flag01 {
   C_MenuSelection_10_Flag00 basic_cmd;
   pstring<Encoding, 0x10> name;
-} __packed__;
+} __attribute__((packed));
 using C_MenuSelection_DC_V3_10_Flag01 = C_MenuSelectionT_10_Flag01<TextEncoding::MARKED>;
 using C_MenuSelection_PC_BB_10_Flag01 = C_MenuSelectionT_10_Flag01<TextEncoding::UTF16>;
 check_struct_size(C_MenuSelection_DC_V3_10_Flag01, 0x18);
@@ -693,7 +693,7 @@ template <TextEncoding Encoding>
 struct C_MenuSelectionT_10_Flag02 {
   C_MenuSelection_10_Flag00 basic_cmd;
   pstring<Encoding, 0x10> password;
-} __packed__;
+} __attribute__((packed));
 using C_MenuSelection_DC_V3_10_Flag02 = C_MenuSelectionT_10_Flag02<TextEncoding::MARKED>;
 using C_MenuSelection_PC_BB_10_Flag02 = C_MenuSelectionT_10_Flag02<TextEncoding::UTF16>;
 check_struct_size(C_MenuSelection_DC_V3_10_Flag02, 0x18);
@@ -704,7 +704,7 @@ struct C_MenuSelectionT_10_Flag03 {
   C_MenuSelection_10_Flag00 basic_cmd;
   pstring<Encoding, 0x10> name;
   pstring<Encoding, 0x10> password;
-} __packed__;
+} __attribute__((packed));
 using C_MenuSelection_DC_V3_10_Flag03 = C_MenuSelectionT_10_Flag03<TextEncoding::MARKED>;
 using C_MenuSelection_PC_BB_10_Flag03 = C_MenuSelectionT_10_Flag03<TextEncoding::UTF16>;
 check_struct_size(C_MenuSelection_DC_V3_10_Flag03, 0x28);
@@ -978,7 +978,7 @@ struct S_GuildCardSearchResultT {
   // reconnect_command. When processing the 9D/9E, newserv uses only the
   // lobby_id field within, but it fills in all fields when sending a 41.
   SC_MeetUserExtensionT<Encoding> extension;
-} __packed__;
+} __attribute__((packed));
 using S_GuildCardSearchResult_PC_41 = S_GuildCardSearchResultT<PSOCommandHeaderPC, TextEncoding::UTF16>;
 using S_GuildCardSearchResult_DC_V3_41 = S_GuildCardSearchResultT<PSOCommandHeaderDCV3, TextEncoding::MARKED>;
 using S_GuildCardSearchResult_BB_41 = S_GuildCardSearchResultT<PSOCommandHeaderBB, TextEncoding::UTF16>;
@@ -1258,7 +1258,7 @@ struct S_JoinGameT_DC_PC {
   /* 010B */ uint8_t challenge_mode = 0;
   /* 010C */ le_uint32_t random_seed = 0;
   /* 0110 */
-} __packed__;
+} __attribute__((packed));
 
 struct S_JoinGame_DCNTE_64 {
   uint8_t client_id = 0;
@@ -1356,7 +1356,7 @@ struct S_JoinLobbyT {
     LobbyDataT lobby_data;
     PlayerInventory inventory;
     DispDataT disp;
-  } __packed__;
+  } __attribute__((packed));
   // Note: not all of these will be filled in and sent if the lobby isn't full
   // (the command size will be shorter than this struct's size)
   parray<Entry, 12> entries;
@@ -1364,7 +1364,7 @@ struct S_JoinLobbyT {
   static inline size_t size(size_t used_entries) {
     return offsetof(S_JoinLobbyT, entries) + used_entries * sizeof(Entry);
   }
-} __packed__;
+} __attribute__((packed));
 using S_JoinLobby_DCNTE_65_67_68 = S_JoinLobbyT<LobbyFlags_DCNTE, PlayerLobbyDataDCGC, PlayerDispDataDCPCV3>;
 using S_JoinLobby_PC_65_67_68 = S_JoinLobbyT<LobbyFlags, PlayerLobbyDataPC, PlayerDispDataDCPCV3>;
 using S_JoinLobby_DC_GC_65_67_68_Ep3_EB = S_JoinLobbyT<LobbyFlags, PlayerLobbyDataDCGC, PlayerDispDataDCPCV3>;
@@ -2111,7 +2111,7 @@ struct S_QuestMenuEntryT {
   le_uint32_t item_id = 0;
   pstring<Encoding, 0x20> name;
   pstring<Encoding, ShortDescLength> short_description;
-} __packed__;
+} __attribute__((packed));
 using S_QuestMenuEntry_PC_A2_A4 = S_QuestMenuEntryT<TextEncoding::UTF16, 0x70>;
 using S_QuestMenuEntry_DC_GC_A2_A4 = S_QuestMenuEntryT<TextEncoding::MARKED, 0x70>;
 using S_QuestMenuEntry_XB_A2_A4 = S_QuestMenuEntryT<TextEncoding::MARKED, 0x80>;
@@ -2495,7 +2495,7 @@ struct S_ChoiceSearchEntryT {
   le_uint16_t parent_choice_id = 0; // 0 for top-level categories
   le_uint16_t choice_id = 0;
   pstring<Encoding, 0x1C> text;
-} __packed__;
+} __attribute__((packed));
 using S_ChoiceSearchEntry_DC_V3_C0 = S_ChoiceSearchEntryT<TextEncoding::MARKED>;
 using S_ChoiceSearchEntry_PC_BB_C0 = S_ChoiceSearchEntryT<TextEncoding::UTF16>;
 check_struct_size(S_ChoiceSearchEntry_DC_V3_C0, 0x20);
@@ -2525,7 +2525,7 @@ struct C_CreateGameBaseT {
   le_uint32_t item_id = 0;
   pstring<Encoding, 0x10> name;
   pstring<Encoding, 0x10> password;
-} __packed__;
+} __attribute__((packed));
 using C_CreateGame_DCNTE = C_CreateGameBaseT<TextEncoding::SJIS>;
 check_struct_size(C_CreateGame_DCNTE, 0x28);
 
@@ -2540,7 +2540,7 @@ struct C_CreateGameT : C_CreateGameBaseT<Encoding> {
   // different meaning: if set to 0, the game can be joined by v1 and v2
   // players; if set to 1, it's v2-only.
   uint8_t episode = 0; // 1-4 on V3+ (3 on Episode 3); unused on DC/PC
-} __packed__;
+} __attribute__((packed));
 using C_CreateGame_DC_V3_0C_C1_Ep3_EC = C_CreateGameT<TextEncoding::MARKED>;
 using C_CreateGame_PC_C1 = C_CreateGameT<TextEncoding::UTF16>;
 check_struct_size(C_CreateGame_DC_V3_0C_C1_Ep3_EC, 0x2C);
@@ -2580,7 +2580,7 @@ struct S_ChoiceSearchResultEntryT_C4 {
   HeaderT reconnect_command_header; // Ignored by the client
   S_Reconnect_19 reconnect_command;
   SC_MeetUserExtensionT<NameEncoding> meet_user;
-} __packed__;
+} __attribute__((packed));
 using S_ChoiceSearchResultEntry_DC_V3_C4 = S_ChoiceSearchResultEntryT_C4<PSOCommandHeaderDCV3, TextEncoding::ASCII, TextEncoding::MARKED, TextEncoding::ASCII>;
 using S_ChoiceSearchResultEntry_PC_C4 = S_ChoiceSearchResultEntryT_C4<PSOCommandHeaderPC, TextEncoding::UTF16, TextEncoding::UTF16, TextEncoding::UTF16>;
 using S_ChoiceSearchResultEntry_BB_C4 = S_ChoiceSearchResultEntryT_C4<PSOCommandHeaderBB, TextEncoding::UTF16_ALWAYS_MARKED, TextEncoding::UTF16, TextEncoding::UTF16>;
@@ -2602,7 +2602,7 @@ check_struct_size(S_ChoiceSearchResultEntry_BB_C4, 0x158);
 template <size_t Count>
 struct C_SetBlockedSendersT_C6 {
   parray<le_uint32_t, Count> blocked_senders;
-} __packed__;
+} __attribute__((packed));
 using C_SetBlockedSenders_V3_C6 = C_SetBlockedSendersT_C6<30>;
 using C_SetBlockedSenders_BB_C6 = C_SetBlockedSendersT_C6<28>;
 check_struct_size(C_SetBlockedSenders_V3_C6, 0x78);
@@ -2775,7 +2775,7 @@ template <TextEncoding NameEncoding, TextEncoding MessageEncoding>
 struct S_InfoBoardEntryT_D8 {
   pstring<NameEncoding, 0x10> name;
   pstring<MessageEncoding, 0xAC> message;
-} __packed__;
+} __attribute__((packed));
 using S_InfoBoardEntry_V3_D8 = S_InfoBoardEntryT_D8<TextEncoding::ASCII, TextEncoding::MARKED>;
 using S_InfoBoardEntry_BB_D8 = S_InfoBoardEntryT_D8<TextEncoding::UTF16_ALWAYS_MARKED, TextEncoding::UTF16>;
 check_struct_size(S_InfoBoardEntry_V3_D8, 0xBC);
@@ -2976,7 +2976,7 @@ struct S_GameInformationBaseT_Ep3_E1 {
   /* 0100 */ RulesT rules;
   /* 0114 */ parray<PlayerEntry, 8> spectator_entries;
   /* 0294 */
-} __packed__;
+} __attribute__((packed));
 using S_GameInformation_Ep3NTE_E1 = S_GameInformationBaseT_Ep3_E1<Episode3::RulesTrial>;
 using S_GameInformation_Ep3_E1 = S_GameInformationBaseT_Ep3_E1<Episode3::Rules>;
 check_struct_size(S_GameInformation_Ep3NTE_E1, 0x28C);
@@ -3102,7 +3102,7 @@ struct S_TournamentGameDetailsBaseT_Ep3_E3 {
   /* 05BA */ le_uint16_t num_spectators = 0;
   /* 05BC */ parray<PlayerEntry, 8> spectator_entries;
   /* 073C */
-} __packed__;
+} __attribute__((packed));
 using S_TournamentGameDetails_Ep3NTE_E3 = S_TournamentGameDetailsBaseT_Ep3_E3<Episode3::RulesTrial>;
 using S_TournamentGameDetails_Ep3_E3 = S_TournamentGameDetailsBaseT_Ep3_E3<Episode3::Rules>;
 check_struct_size(S_TournamentGameDetails_Ep3NTE_E3, 0x734);
@@ -3890,7 +3890,7 @@ template <typename HeaderT>
 struct G_ExtendedHeaderT {
   HeaderT basic_header;
   le_uint32_t size = 0;
-} __packed__;
+} __attribute__((packed));
 
 // 6x00: Invalid subcommand
 // 6x01: Invalid subcommand
@@ -4018,7 +4018,7 @@ struct G_UpdateEnemyStateT_6x0A {
   le_uint16_t enemy_index = 0; // [0, 0xB50)
   le_uint16_t total_damage = 0;
   typename std::conditional_t<BE, be_uint32_t, le_uint32_t> game_flags = 0;
-} __packed__;
+} __attribute__((packed));
 using G_UpdateEnemyState_GC_6x0A = G_UpdateEnemyStateT_6x0A<true>;
 using G_UpdateEnemyState_DC_PC_XB_BB_6x0A = G_UpdateEnemyStateT_6x0A<false>;
 check_struct_size(G_UpdateEnemyState_GC_6x0A, 0x0C);
@@ -4097,7 +4097,7 @@ struct G_DragonBossActionsT_6x12 {
   le_uint32_t unknown_a4 = 0;
   F32T<BE> x = 0.0f;
   F32T<BE> z = 0.0f;
-} __packed__;
+} __attribute__((packed));
 using G_DragonBossActions_DC_PC_XB_BB_6x12 = G_DragonBossActionsT_6x12<false>;
 using G_DragonBossActions_GC_6x12 = G_DragonBossActionsT_6x12<true>;
 check_struct_size(G_DragonBossActions_DC_PC_XB_BB_6x12, 0x14);
@@ -5116,7 +5116,7 @@ struct G_WordSelectT_6x74 {
   uint8_t size = 0;
   U16T<BE> client_id = 0;
   WordSelectMessage message;
-} __packed__;
+} __attribute__((packed));
 using G_WordSelect_6x74 = G_WordSelectT_6x74<false>;
 using G_WordSelectBE_6x74 = G_WordSelectT_6x74<true>;
 check_struct_size(G_WordSelect_6x74, 0x20);
@@ -5155,7 +5155,7 @@ struct G_SyncQuestRegister_6x77 {
   union {
     le_uint32_t as_int;
     le_float as_float;
-  } __packed__ value;
+  } __attribute__((packed)) value;
 } __packed_ws__(G_SyncQuestRegister_6x77, 0x0C);
 
 // 6x78: Unknown
@@ -5244,7 +5244,7 @@ struct G_BattleScoresT_6x7F {
   } __packed_ws__(Entry, 8);
   G_UnusedHeader header;
   parray<Entry, 4> entries;
-} __packed__;
+} __attribute__((packed));
 using G_BattleScores_6x7F = G_BattleScoresT_6x7F<false>;
 using G_BattleScoresBE_6x7F = G_BattleScoresT_6x7F<true>;
 check_struct_size(G_BattleScores_6x7F, 0x24);
@@ -5616,7 +5616,7 @@ struct G_GolDragonBossActionsT_6xA8 {
   F32T<BE> z = 0.0f;
   uint8_t unknown_a5 = 0;
   parray<uint8_t, 3> unused;
-} __packed__;
+} __attribute__((packed));
 using G_GolDragonBossActions_XB_BB_6xA8 = G_GolDragonBossActionsT_6xA8<false>;
 using G_GolDragonBossActions_GC_6xA8 = G_GolDragonBossActionsT_6xA8<true>;
 check_struct_size(G_GolDragonBossActions_XB_BB_6xA8, 0x18);
@@ -7038,7 +7038,7 @@ struct G_SetTournamentPlayerDecksT_Ep3_6xB4x3D {
   /* 01C2:01CA */ uint8_t unknown_a4 = 0;
   /* 01C3:01CB */ uint8_t unknown_a5 = 0;
   /* 01C4:01CC */
-} __packed__;
+} __attribute__((packed));
 
 using G_SetTournamentPlayerDecks_Ep3NTE_6xB4x3D = G_SetTournamentPlayerDecksT_Ep3_6xB4x3D<Episode3::RulesTrial>;
 check_struct_size(G_SetTournamentPlayerDecks_Ep3NTE_6xB4x3D, 0x1C4);
