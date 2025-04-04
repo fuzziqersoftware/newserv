@@ -3054,7 +3054,7 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     //   param3 = maximum distance at which howl can cause confusion (value
     //     is param3 + 30, clamped below to 10)
     //   param4 = chance to fire laser (value is param4 + 0.3)
-    //   param5 = chance to charge (value is param5 + 0.5)
+    //   param5 = chance to charge (value is param5 + 0.05)
     //   param6 = type (0 = stand, 1 = run)
     {0x00DC, F_V3_V4, 0x0000000830000000, "TObjEneDellBiter"},
 
@@ -3111,16 +3111,61 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     //   param2 = TODO (used in TObjEneIllGill_update phase 3)
     {0x00E1, F_V3_V4, 0x0000000800000000, "TObjEneIllGill"},
 
-    // TODO: Describe the rest of the enemy types.
-    {0x0110, F_V4, 0x000041F000000000, "__ASTARK__"}, // Constructor in 59NL: 005A3D60
-    {0x0111, F_V4, 0x00004FF000000000, "__YOWIE__/__SATELLITE_LIZARD__"}, // Constructor in 59NL: 005AE7CC
-    {0x0112, F_V4, 0x00004E0000000000, "__MERISSA_A__"}, // Constructor in 59NL: 005B6B24
-    {0x0113, F_V4, 0x00004E0000000000, "__GIRTABLULU__"}, // Constructor in 59NL: 005AB9AC
-    {0x0114, F_V4, 0x00004FF000000000, "__ZU__"}, // Constructor in 59NL: 005B47B8
-    {0x0115, F_V4, 0x000041F000000000, "__BOOTA_FAMILY__"}, // Constructor in 59NL: 005A5C08 // TODO: probably a subclass of TObjEnemyV8048ee80; check if there are any others in BB
-    {0x0116, F_V4, 0x000041F000000000, "__DORPHON__"}, // Constructor in 59NL: 005A673C
-    {0x0117, F_V4, 0x00004E0000000000, "__GORAN_FAMILY__"}, // Constructor in 59NL: 005ADAC4
-    {0x0119, F_V4, 0x0000100000000000, "__EPISODE_4_BOSS__"}, // Constructor in 59NL: 0076A86C
+    // Astark. Params:
+    //   param1 = TODO (only matters if this is 1 or not)
+    //   param2 = TODO (value is param2 + 0.3, clamped to [0, 1])
+    //   param3 = TODO (value is param3 + 0.6, clamped to [0, 1])
+    {0x0110, F_V4, 0x000041F000000000, "__ASTARK__"},
+
+    // Satellite Lizard / Yowie. Params:
+    //   param1 = TODO (rounded to integer)
+    //   param2 = type (<1 = Satellite Lizard, >=1 = Yowie)
+    {0x0111, F_V4, 0x00004FF000000000, "__SATELLITE_LIZARD_YOWIE__"},
+
+    // Merissa A. Params:
+    //   param6 = flags (bit field):
+    //     0001 = always rare (Merissa AA)
+    {0x0112, F_V4, 0x00004E0000000000, "__MERISSA_A__"},
+
+    // Girtablulu. There appear to be no parameters.
+    {0x0113, F_V4, 0x00004E0000000000, "__GIRTABLULU__"},
+
+    // Zu. Params:
+    //   param6 = flags (bit field):
+    //     0001 = always rare (Pazuzu)
+    //   param7 = TODO
+    {0x0114, F_V4, 0x00004FF000000000, "__ZU__"},
+
+    // Boota / Ze Boota / Ba Boota. Same parameters as TObjEneBeast, but also:
+    //   param3 = TODO (see v20)
+    //   param6 = type (0 = Boota, 1 = Ze Boota, 2 = Ba Boota)
+    {0x0115, F_V4, 0x000041F000000000, "__BOOTA_FAMILY__"},
+
+    // Dorphon. Params:
+    //   param1 = TODO (value is param1 + 0.3)
+    //   param2 = TODO (value is param2 + 0.3)
+    //   param3 = TODO (value is param3 + 30, clamped below to 10)
+    //   param4 = TODO (value is param4 + 0.3)
+    //   param5 = TODO (value is param5 + 0.05)
+    //   param6 = flags (bit field):
+    //     0001 = always rare (Dorphon Eclair)
+    // TODO: The values above make it look like param1-5 are the same as for
+    // TObjEneDellBiter. Verify is this is the case.
+    {0x0116, F_V4, 0x000041F000000000, "__DORPHON__"},
+
+    // Goran / Pyro Goran / Goran Detonator. Same parameters as TObjEneBeast,
+    // but also:
+    //   param3 = TODO (see v58, v67)
+    //   param6 = type (0 = Goran, 1 = Pyro Goran, 2 = Goran Detonator)
+    {0x0117, F_V4, 0x00004E0000000000, "__GORAN_FAMILY__"},
+
+    // Saint-Milion / Shambertin / Kondrieu. Params:
+    //   param1 = TODO (see TObjEneV00b43ca0::set_params; seems it only matters
+    //     if this is zero or not)
+    //   param6 = flags (bit field):
+    //     0001 = type (0 = Saint-Milion, 1 = Shambertin; ignored if enemy is
+    //       set as rare by the server, in which case it's Kondrieu)
+    {0x0119, F_V4, 0x0000100000000000, "__EPISODE_4_BOSS__"},
 });
 
 static string name_for_entity_type(
@@ -4581,8 +4626,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       break;
     }
     case 0x0119:
-      // There isn't a way to force the Episode 4 boss to be rare via
-      // constructor args
+      // There isn't a way to create Kondrieu via constructor args
       add((set_entry->param6 & 1) ? EnemyType::SHAMBERTIN : EnemyType::SAINT_MILION);
       default_num_children = 0x18;
       break;

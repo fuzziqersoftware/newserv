@@ -6270,7 +6270,7 @@ struct G_ExchangeItemInQuest_BB_6xDB {
 
 struct G_Episode4BossActions_BB_6xDC {
   G_UnusedHeader header;
-  le_uint16_t unknown_a1 = 0;
+  le_uint16_t action = 0; // Must be in range [0, 4]
   le_uint16_t unknown_a2 = 0;
 } __packed_ws__(G_Episode4BossActions_BB_6xDC, 8);
 
