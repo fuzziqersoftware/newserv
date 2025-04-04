@@ -1753,7 +1753,11 @@ static void on_switch_state_changed(shared_ptr<Client> c, uint8_t command, uint8
   if (cmd.header.entity_id != 0xFFFF && c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
     const auto& obj_st = l->map_state->object_state_for_index(
         c->version(), cmd.switch_flag_floor, cmd.header.entity_id - 0x4000);
-    send_text_message_printf(c, "$C5K-%03zX A %s", obj_st->k_id, obj_st->type_name(c->version()));
+    auto s = c->require_server_state();
+    auto sdt = s->set_data_table(c->version(), l->episode, l->mode, l->difficulty);
+    uint8_t area = sdt->default_area_for_floor(l->episode, c->floor);
+    auto type_name = obj_st->type_name(c->version(), area);
+    send_text_message_printf(c, "$C5K-%03zX A %s", obj_st->k_id, type_name.c_str());
   }
 
   // Apparently sometimes 6x05 is sent with an invalid switch flag number. The
@@ -2778,10 +2782,11 @@ DropReconcileResult reconcile_drop_request_with_map(
       if (!set_entry) {
         throw std::runtime_error("object set entry is missing");
       }
+      string type_name = MapFile::name_for_object_type(set_entry->base_type, client_channel.version);
       log.info("Drop check for K-%03zX %c %s",
           res.obj_st->k_id,
           res.ignore_def ? 'G' : 'S',
-          MapFile::name_for_object_type(set_entry->base_type));
+          type_name.c_str());
       if (cmd.floor != res.obj_st->super_obj->floor) {
         log.warning("Floor %02hhX from command does not match object\'s expected floor %02hhX",
             cmd.floor, res.obj_st->super_obj->floor);
@@ -2800,10 +2805,9 @@ DropReconcileResult reconcile_drop_request_with_map(
             res.ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", set_entry->param1.load());
       }
       if (config.check_flag(Client::Flag::DEBUG_ENABLED)) {
+        string type_name = MapFile::name_for_object_type(set_entry->base_type, client_channel.version);
         send_text_message_printf(client_channel, "$C5K-%03zX %c %s",
-            res.obj_st->k_id,
-            res.ignore_def ? 'G' : 'S',
-            MapFile::name_for_object_type(set_entry->base_type));
+            res.obj_st->k_id, res.ignore_def ? 'G' : 'S', type_name.c_str());
       }
     }
 

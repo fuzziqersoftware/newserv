@@ -2846,20 +2846,21 @@ static void whatobj_whatene_fn(const ServerArgs& a, bool include_objs, bool incl
   // set, and print the object if not.
   if (nearest_ene) {
     const auto* set_entry = nearest_ene->super_ene->version(a.c->version()).set_entry;
+    string type_name = MapFile::name_for_enemy_type(set_entry->base_type, a.c->version(), area);
     send_text_message_printf(a.c, "$C5E-%03zX\n$C6%s\n$C2%s\n$C7X:%.2f Z:%.2f",
         nearest_ene->e_id, phosg::name_for_enum(nearest_ene->type(a.c->version(), l->episode, l->event)),
-        MapFile::name_for_enemy_type(set_entry->base_type),
-        nearest_worldspace_pos.x.load(), nearest_worldspace_pos.z.load());
-    auto set_str = set_entry->str();
+        type_name.c_str(), nearest_worldspace_pos.x.load(), nearest_worldspace_pos.z.load());
+    auto set_str = set_entry->str(a.c->version(), area);
     a.c->log.info("Enemy found via $whatobj: E-%03zX %s at x=%g y=%g z=%g",
         nearest_ene->e_id, set_str.c_str(),
         nearest_worldspace_pos.x.load(), nearest_worldspace_pos.y.load(), nearest_worldspace_pos.z.load());
 
   } else if (nearest_obj) {
+    const auto* set_entry = nearest_obj->super_obj->version(a.c->version()).set_entry;
+    auto type_name = nearest_obj->type_name(a.c->version());
     send_text_message_printf(a.c, "$C5K-%03zX\n$C6%s\n$C7X:%.2f Z:%.2f",
-        nearest_obj->k_id, nearest_obj->type_name(a.c->version()),
-        nearest_worldspace_pos.x.load(), nearest_worldspace_pos.z.load());
-    auto set_str = nearest_obj->super_obj->version(a.c->version()).set_entry->str();
+        nearest_obj->k_id, type_name.c_str(), nearest_worldspace_pos.x.load(), nearest_worldspace_pos.z.load());
+    auto set_str = set_entry->str(a.c->version(), area);
     a.c->log.info("Object found via $whatobj: K-%03zX %s at x=%g y=%g z=%g",
         nearest_obj->k_id, set_str.c_str(),
         nearest_worldspace_pos.x.load(), nearest_worldspace_pos.y.load(), nearest_worldspace_pos.z.load());

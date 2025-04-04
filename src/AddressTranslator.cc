@@ -4,6 +4,7 @@
 #include <future>
 #include <phosg/Filesystem.hh>
 #include <phosg/Strings.hh>
+#include <resource_file/Emulators/X86Emulator.hh>
 #include <resource_file/ExecutableFormats/DOLFile.hh>
 #include <resource_file/ExecutableFormats/PEFile.hh>
 #include <resource_file/ExecutableFormats/XBEFile.hh>
@@ -213,6 +214,32 @@ public:
     }
   }
 
+  struct ParseDATConstructorTableSpec {
+    string src_name;
+    uint32_t index_addr;
+    size_t num_areas;
+    bool has_names;
+    vector<uint32_t> x86_constructor_calls;
+
+    ParseDATConstructorTableSpec(const phosg::JSON& json) {
+      this->src_name = json.at("SourceName").as_string();
+      this->index_addr = json.at("IndexAddress").as_int();
+      this->num_areas = json.at("AreaCount").as_int();
+      this->has_names = json.at("HasNames").as_bool();
+      for (const auto& z : json.at("X86ConstructorCalls").as_list()) {
+        this->x86_constructor_calls.emplace_back(z->as_int());
+      }
+    }
+
+    static vector<ParseDATConstructorTableSpec> from_json_list(const phosg::JSON& json) {
+      vector<ParseDATConstructorTableSpec> ret;
+      for (const auto& z : json.as_list()) {
+        ret.emplace_back(*z);
+      }
+      return ret;
+    }
+  };
+
   template <bool BE>
   struct DATConstructorTableEntry {
     static constexpr bool IsBE = BE;
@@ -240,20 +267,54 @@ public:
   template <typename EntryT>
   map<uint32_t, map<uint32_t, vector<pair<size_t, size_t>>>>
   parse_dat_constructor_table_t(
-      shared_ptr<const ResourceDASM::MemoryContext>& mem, uint32_t address, size_t num_areas) {
+      shared_ptr<const ResourceDASM::MemoryContext>& mem,
+      const ParseDATConstructorTableSpec& spec) {
     if (!mem) {
       throw runtime_error("no file selected");
     }
 
+    // On some of the x86 builds of the game (PCv2 and Xbox), the constructor
+    // tables aren't entirely static in the data sections - some parts are
+    // written during static initialization instead. To handle this, we make a
+    // copy of the immutable MemoryContext and run the static initialization
+    // functions using resource_dasm's emulator before parsing the constructor
+    // table.
+    shared_ptr<const ResourceDASM::MemoryContext> effective_mem = mem;
+    if (!spec.x86_constructor_calls.empty()) {
+      auto constructed_mem = make_shared<ResourceDASM::MemoryContext>(mem->duplicate());
+      uint32_t esp = constructed_mem->allocate(0x1000) + 0x1000;
+      for (uint32_t constructor_addr : spec.x86_constructor_calls) {
+        ResourceDASM::X86Emulator emu(constructed_mem);
+
+        // Uncomment for debugging
+        // auto debugger = make_shared<ResourceDASM::EmulatorDebugger<ResourceDASM::X86Emulator>>();
+        // debugger->bind(emu);
+        // debugger->state.mode = ResourceDASM::DebuggerMode::TRACE;
+
+        auto& regs = emu.registers();
+        regs.eip = constructor_addr;
+        regs.esp().u = esp - 4;
+        constructed_mem->write_u32l(esp - 4, 0xFFFFFFFF); // Return addr
+        try {
+          emu.execute();
+        } catch (const out_of_range&) {
+          if (regs.eip != 0xFFFFFFFF) {
+            throw;
+          }
+        }
+      }
+      effective_mem = constructed_mem;
+    }
+
     map<uint32_t, map<uint32_t, vector<pair<size_t, size_t>>>> table;
 
-    auto index_r = mem->reader(address, num_areas * sizeof(uint32_t));
-    for (size_t area = 0; area < num_areas; area++) {
+    auto index_r = effective_mem->reader(spec.index_addr, spec.num_areas * sizeof(uint32_t));
+    for (size_t area = 0; area < spec.num_areas; area++) {
       uint32_t entries_addr = EntryT::IsBE ? index_r.get_u32b() : index_r.get_u32l();
       if (!entries_addr) {
         continue;
       }
-      auto entries_r = mem->reader(entries_addr, 0x4000); // 0x4000 is probably enough
+      auto entries_r = effective_mem->reader(entries_addr, 0x4000); // 0x4000 is probably enough
       while (!entries_r.eof()) {
         const auto& entry = entries_r.get<EntryT>();
         if (entry.type == 0xFFFF) {
@@ -274,17 +335,25 @@ public:
     return table;
   }
 
-  void parse_dat_constructor_table(uint32_t index_addr, size_t num_areas, bool has_names) {
+  static uint64_t area_mask_for_ranges(const vector<pair<size_t, size_t>>& ranges) {
+    uint64_t ret = 0;
+    for (const auto& [start, end] : ranges) {
+      for (size_t z = start; z <= end; z++) {
+        ret |= static_cast<uint64_t>(1ULL << z);
+      }
+    }
+    return ret;
+  }
+
+  void parse_dat_constructor_table(const ParseDATConstructorTableSpec& spec) {
     map<uint32_t, map<uint32_t, vector<pair<size_t, size_t>>>> table;
-    if (this->ppc_mems.count(this->src_mem)) {
-      table = this->parse_dat_constructor_table_t<DATConstructorTableEntry<true>>(
-          this->src_mem, index_addr, num_areas);
-    } else if (!has_names) {
-      table = this->parse_dat_constructor_table_t<DATConstructorTableEntry<false>>(
-          this->src_mem, index_addr, num_areas);
+    auto spec_mem = this->mems.at(spec.src_name);
+    if (this->ppc_mems.count(spec_mem)) {
+      table = this->parse_dat_constructor_table_t<DATConstructorTableEntry<true>>(spec_mem, spec);
+    } else if (!spec.has_names) {
+      table = this->parse_dat_constructor_table_t<DATConstructorTableEntry<false>>(spec_mem, spec);
     } else {
-      table = this->parse_dat_constructor_table_t<DATConstructorTableEntryWithName<false>>(
-          this->src_mem, index_addr, num_areas);
+      table = this->parse_dat_constructor_table_t<DATConstructorTableEntryWithName<false>>(spec_mem, spec);
     }
 
     for (const auto& [type, constructor_to_area_ranges] : table) {
@@ -306,24 +375,26 @@ public:
     }
   }
 
-  void parse_dat_constructor_table_multi(const vector<tuple<string, uint32_t, size_t, bool>>& specs, bool is_enemies) {
+  void parse_dat_constructor_table_multi(
+      const vector<ParseDATConstructorTableSpec>& specs, bool is_enemies, bool print_area_masks) {
     map<string, map<uint32_t, map<uint32_t, vector<pair<size_t, size_t>>>>> all_tables;
-    for (const auto& [src_name, index_addr, num_areas, has_names] : specs) {
-      auto src_mem = this->mems.at(src_name);
+    for (const auto& spec : specs) {
       map<uint32_t, map<uint32_t, vector<pair<size_t, size_t>>>> table;
-      if (this->ppc_mems.count(src_mem)) {
-        table = this->parse_dat_constructor_table_t<DATConstructorTableEntry<true>>(src_mem, index_addr, num_areas);
-      } else if (!has_names) {
-        table = this->parse_dat_constructor_table_t<DATConstructorTableEntry<false>>(src_mem, index_addr, num_areas);
+      auto spec_mem = this->mems.at(spec.src_name);
+      if (this->ppc_mems.count(spec_mem)) {
+        table = this->parse_dat_constructor_table_t<DATConstructorTableEntry<true>>(spec_mem, spec);
+      } else if (!spec.has_names) {
+        table = this->parse_dat_constructor_table_t<DATConstructorTableEntry<false>>(spec_mem, spec);
       } else {
-        table = this->parse_dat_constructor_table_t<DATConstructorTableEntryWithName<false>>(src_mem, index_addr, num_areas);
+        table = this->parse_dat_constructor_table_t<DATConstructorTableEntryWithName<false>>(spec_mem, spec);
       }
-      all_tables.emplace(src_name, std::move(table));
+      all_tables.emplace(spec.src_name, std::move(table));
     }
 
     map<string, size_t> version_widths;
     map<uint32_t, map<string, string>> formatted_cells_for_type;
-    for (const auto& [src_name, table] : all_tables) {
+    for (const auto& spec : specs) {
+      const auto& table = all_tables.at(spec.src_name);
       size_t max_width = 0;
 
       for (const auto& [type, constructor_to_area_ranges] : table) {
@@ -333,42 +404,47 @@ public:
             cell_data.push_back(' ');
           }
           cell_data += phosg::string_printf("%08" PRIX32, constructor);
-          bool is_first = true;
-          for (const auto& [start, end] : area_ranges) {
-            cell_data.push_back(is_first ? ':' : ',');
-            if (start == end) {
-              cell_data += phosg::string_printf("%02zX", start);
-            } else {
-              cell_data += phosg::string_printf("%02zX-%02zX", start, end);
+          if (print_area_masks) {
+            cell_data += phosg::string_printf(":%016" PRIX64, this->area_mask_for_ranges(area_ranges));
+          } else {
+            bool is_first = true;
+            for (const auto& [start, end] : area_ranges) {
+              cell_data.push_back(is_first ? ':' : ',');
+              if (start == end) {
+                cell_data += phosg::string_printf("%02zX", start);
+              } else {
+                cell_data += phosg::string_printf("%02zX-%02zX", start, end);
+              }
+              is_first = false;
             }
-            is_first = false;
           }
         }
         max_width = max<size_t>(max_width, cell_data.size());
-        formatted_cells_for_type[type][src_name] = std::move(cell_data);
+        formatted_cells_for_type[type][spec.src_name] = std::move(cell_data);
       }
-      version_widths[src_name] = max_width;
+      version_widths[spec.src_name] = max_width;
     }
 
     vector<string> formatted_lines;
     string header_line = "TYPE =>";
-    for (const auto& [version, width] : version_widths) {
+    for (const auto& spec : specs) {
+      size_t width = version_widths.at(spec.src_name);
       header_line.push_back(' ');
-      header_line += version;
-      if (width > version.size()) {
-        header_line.resize(header_line.size() + (width - version.size()), '-');
+      header_line += spec.src_name;
+      if (width > spec.src_name.size()) {
+        header_line.resize(header_line.size() + (width - spec.src_name.size()), '-');
       }
     }
     header_line += " NAME";
 
     for (const auto& [type, formatted_cells] : formatted_cells_for_type) {
       string line = phosg::string_printf("%04" PRIX32 " =>", type);
-      for (const auto& [src_name, width] : version_widths) {
+      for (const auto& spec : specs) {
+        size_t width = version_widths.at(spec.src_name);
         try {
-          const auto& cell_data = formatted_cells.at(src_name);
+          const auto& cell_data = formatted_cells.at(spec.src_name);
           line.push_back(' ');
           line += cell_data;
-          size_t width = version_widths[src_name];
           if (width > cell_data.size()) {
             line.resize(line.size() + (width - cell_data.size()), ' ');
           }
@@ -763,16 +839,8 @@ public:
     } else if ((tokens[0] == "parse-dat-object-constructor-tables") ||
         (tokens[0] == "parse-dat-enemy-constructor-tables")) {
       bool is_enemies = (tokens[0] == "parse-dat-enemy-constructor-tables");
-      vector<tuple<string, uint32_t, size_t, bool>> specs;
-      for (size_t z = 1; z < tokens.size(); z++) {
-        auto subtokens = phosg::split(tokens[z], ':');
-        specs.emplace_back(make_tuple(
-            subtokens.at(0),
-            stoul(subtokens.at(1), nullptr, 16),
-            stoul(subtokens.at(2), nullptr, 16),
-            (subtokens.size() > 3 && subtokens.at(3) == "names")));
-      }
-      this->parse_dat_constructor_table_multi(specs, is_enemies);
+      auto specs = ParseDATConstructorTableSpec::from_json_list(phosg::JSON::parse(phosg::load_file(tokens.at(1))));
+      this->parse_dat_constructor_table_multi(specs, is_enemies, true);
     } else if (!tokens[0].empty()) {
       throw runtime_error("unknown command");
     }

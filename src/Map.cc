@@ -571,2600 +571,2627 @@ static const vector<vector<vector<AreaMapFileInfo>>> map_file_info = {
 ////////////////////////////////////////////////////////////////////////////////
 // DAT file structure
 
-const char* MapFile::name_for_object_type(uint16_t type) {
-  static const unordered_map<uint16_t, const char*> names({
-      // This is newserv's canonical definition of map object types. Enemy and
-      // NPC types are documented in name_for_enemy_type instead.
-
-      // Objects defined in map files take arguments in the form of an
-      // ObjectSetEntry structure (see Map.hh). Most objects take parameters
-      // only in param1-3 (floats) and param4-6 (ints), but a few of them use
-      // the angle fields as additional int parameters. All objects are
-      // available on all versions of the game (except Episode 3) unless
-      // otherwise noted, but most objects are available only on specific
-      // floors unless an omnispawn patch is used. (TODO: Add default floor
-      // availability information in the notes here.)
-
-      // Defines where a player should start when entering a floor. Params:
-      //   param1 = client ID
-      //   param4 = source type:
-      //     0 = use this set when advancing from a lower floor
-      //     1 = use this set when returning from a higher floor
-      //     anything else = set is unused
-      {0x0000, "TObjPlayerSet"},
-
-      // Displays a particle effect. This object is not constructed in
-      // split-screen mode. Params:
-      //   param1 = particle type (truncated to int, clamped to nonnegative)
-      //   param3 = TODO
-      //   param4 = if equal to 1, increase draw distance from 200 to 1500; if
-      //     any other value, no effect
-      //   param5 = TODO
-      //   param6 = TODO
-      {0x0001, "TObjParticle"},
-
-      // Standard (triangular) cross-floor warp object. Params:
-      //   param4 = destination floor
-      //   param6 = color (0 = blue, 1 = red); if this is 0 in Challenge mode,
-      //     the warp is destroyed immediately
-      {0x0002, "TObjAreaWarpForest"},
-
-      // Standard (triangular) intra-floor warp object. Params:
-      //   param1-3 = destination coordinates (x, y, z); players are supposed
-      //     to be offset from this location in different directions depending
-      //     on their client ID, but there is a bug that causes all players to
-      //     use the same offsets: x + 10 and z + 10
-      //   param4 = destination angle (about y axis)
-      {0x0003, "TObjMapWarpForest"},
-
-      // Light collision. Params:
-      //   param1 = TODO (in range 0-10000; if above 10000, (param1 - 10000) is
-      //     used and a flag is set)
-      //   param2 = TODO (in range 0-10000; if above 10000, (param2 - 10000) is
-      //     used and a flag is set)
-      //   param3 = TODO
-      //   param4 = TODO
-      //   param5 = TODO
-      //   param6 = TODO
-      {0x0004, "TObjLight"},
-
-      // Arbitrary item. The parameters specify the item data; see
-      // ItemCreator::base_item_for_specialized_box for how the encoding works.
-      // Availability: v1/v2 only
-      {0x0005, "TItem"},
-
-      // Environmental sound. This object is not constructed in offline multi
-      // mode. Params:
-      //   param3 = audibility radius (if <= 0 uses default of 200)
-      //   param4 = sound ID:
-      //     Pioneer 2 / Lab (volume param is ignored on this floor):
-      //       00 = distant crowd noises (GC: 4004B200)
-      //       01 = ship passing by (GC: 4004C101)
-      //       02 = siren passing by (GC: 4004CB02)
-      //     Forest:
-      //       00 = waterfall (GC: 0004A801)
-      //       01 = stream (GC: 0004B202)
-      //       02 = birds chirping (GC: 0004BC00)
-      //       03 = light rain on ground (GC: 00043704)
-      //       04 = light rain on water (GC: 0004BC05)
-      //       05 = wind (GC: 0004AD06)
-      //     Caves:
-      //       00 = nothing? (GC: 00046400)
-      //       01 = volcano? (GC: 00042A01)
-      //       02 = lava flow (GC: 00042F02)
-      //       03 = stream (GC: 00043C03)
-      //       04 = waterfall (GC: 00043C04)
-      //       05 = echoing drips (GC: 00042D05)
-      //     Mines:
-      //       00 = mechanical whir (GC: 4004B715)
-      //       01 = rotary machine (GC: 4004BC16)
-      //     Ruins:
-      //       00 = wind/water (GC: 4004B200)
-      //       01 = swishing (GC: 4004CB01)
-      //       02 = repeating sliding? (GC: 4004BC02)
-      //       03 = repeating punching? (GC: 4004BC03)
-      //       04 = hissing (GC: 4004C604)
-      //       05 = heartbeat (GC: 4004AA05)
-      //       06 = squishing heartbeat (GC: 4004C606)
-      //     Battle 1 (Spaceship):
-      //       00 = low beeping (GC: 4004B40C)
-      //       01 = high beeping (GC: 4004B40D)
-      //       02 = robot arm movement 1 (GC: 4004C10E)
-      //       03 = robot arm movement 2 (GC: 4004C10F)
-      //     Battle 2 (Temple):
-      //       00 = waterfall (GC: 0004CB0C)
-      //       01 = waves (GC: 0004BC0D)
-      //       02 = bubbles (GC: 0004BC0E)
-      //     VR Temple:
-      //       00 = waterfall (GC: 0004CB0C)
-      //       01 = waves (GC: 0004BC0D)
-      //       02 = bubbles GC: (0004BC0E0
-      //     VR Spaceship:
-      //       00 = low beeping (GC: 4004B40C)
-      //       01 = high beeping (GC: 4004B40D)
-      //       02 = robot arm movement 1 (GC: 4004C10E)
-      //       03 = robot arm movement 2 (GC: 4004C10F)
-      //     Central Control Area:
-      //       00 = wind (GC: 0004CB05)
-      //       01 = waterfall (GC: 0004D506)
-      //       02 = stream (GC: 0004BC07)
-      //       03 = waves crashing (GC: 0004C60A)
-      //       04 = ocean wind (GC: 0004CB0B)
-      //       05 = higher wind (GC: 0004CB0C)
-      //       06 = light ocean wind (GC: 0004CB0D)
-      //       07 = ominous mechanical sound (GC: 0004BC0E)
-      //     Seabed and Olga Flow:
-      //       00 = water leak (GC: 4004BC00)
-      //       01 = water drip (GC: 4004BC01)
-      //       02 = waterfall (GC: 4004C603)
-      //       03 = light waterfall (GC: 4004D504)
-      //       04 = creaking metal 1 (GC: 4004B205)
-      //       05 = creaking metal 2 (GC: 4004B206)
-      //       06 = creaking metal 3 (GC: 4004AD07)
-      //       07 = creaking metal 4 (GC: 4004B208)
-      //       08 = creaking metal 5 (GC: 4004AD09)
-      //       09 = gas leak (GC: 4004B20A)
-      //       0A = distant metallic thud (GC: 4004B20B)
-      //     Crater:
-      //       00 = TODO (BB: 000005FD)
-      //       01 = TODO (BB: 000005FE)
-      //       02 = TODO (BB: 000005FF)
-      //       03 = TODO (BB: 00000600)
-      //       04 = TODO (BB: 00000601)
-      //       05 = TODO (BB: 00000602)
-      //       06 = TODO (BB: 00000603)
-      //       07 = TODO (BB: 00000604)
-      //       08 = TODO (BB: 00000605)
-      //       09 = TODO (BB: 00000606)
-      //       0A = TODO (BB: 00000607)
-      //     Crater Interior:
-      //       00 = TODO (BB: 00000658)
-      //       01 = TODO (BB: 00000659)
-      //       02 = TODO (BB: 0000065A)
-      //       03 = TODO (BB: 0000065B)
-      //       04 = TODO (BB: 0000065C)
-      //       05 = TODO (BB: 0000065D)
-      //       06 = TODO (BB: 0000065E)
-      //       07 = TODO (BB: 0000065F)
-      //       08 = TODO (BB: 00000660)
-      //       09 = TODO (BB: 00000661)
-      //       0A = TODO (BB: 00000662)
-      //     Desert:
-      //       00 = TODO (BB: 000006AE)
-      //       01 = TODO (BB: 000006AF)
-      //       02 = TODO (BB: 000006B0)
-      //       03 = TODO (BB: 000006B1)
-      //       04 = TODO (BB: 000006B2)
-      //       05 = TODO (BB: 000006B3)
-      //       06 = TODO (BB: 000006B4)
-      //       07 = TODO (BB: 000006B5)
-      //       08 = TODO (BB: 000006B6)
-      //       09 = TODO (BB: 000006B7)
-      //       0A = TODO (BB: 000006B8)
-      //       0B = TODO (BB: 000006B9)
-      //       0C = TODO (BB: 000006BA)
-      //       0D = TODO (BB: 000006BB)
-      //       0E = TODO (BB: 000006BC)
-      //       0F = TODO (BB: 000006BD)
-      //       10 = TODO (BB: 000006BE)
-      //   param5 = volume (in range -0x7F to 0x7F)
-      {0x0006, "TObjEnvSound"},
-
-      // Fog collision object. Params:
-      //   param1 = radius
-      //   param4 = fog entry number; if lower than the existing fog number,
-      //     does nothing (if param4 is >= 0x1000, the game subtracts 0x1000
-      //     from it, but only after comparing it to the current fog number;
-      //     this can be used to override a later fog with an earlier fog)
-      //   param5 = transition type (0 = fade in, 1 = instantly switch)
-      {0x0007, "TObjFogCollision"},
-
-      // Event collision object. This object triggers a wave event (W-XXX) when
-      // any local player (in split-screen play, there may be multiple) steps
-      // within its radius. The object is inactive for 3 frames after it is
-      // constructed, and will not detect any player during that time.
-      // Curiously, the frame counter does not appear to be bounded, so if the
-      // player waits approximately 828 days, the counter will overflow to a
-      // positive number and the object won't be able to trigger for another
-      // 828 days until it gets to zero again. It is unlikely this has ever
-      // happened for any player. Params:
-      //   param1 = radius
-      //   param4 = event ID
-      {0x0008, "TObjEvtCollision"},
-
-      // TODO: Describe this object. Params:
-      //   param1 = TODO
-      //   param2 = TODO
-      //   param3 = TODO (it only matters whether this is negative or not)
-      {0x0009, "TObjCollision"},
-
-      // Elemental trap. Params:
-      //   param1 = trigger radius delta (actual radius is param1 / 2 + 30)
-      //   param2 = explosion radius delta (actual radius is param2 / 2 + 60)
-      //   param3 = trap group number:
-      //     negative = trap triggers and explodes alone
-      //     00 = trap follows player who triggered it (online only; when
-      //       offline, these act as if the group number were negative, and
-      //       param6 is overwritten with 30 (1 second))
-      //     positive = trap is part of a group that all trigger and explode
-      //       simultaneously
-      //   param4 = trap power (clamped below to 0), scaled by difficulty:
-      //     Normal: power = param4 * 1
-      //     Hard: power = param4 * 3
-      //     Very Hard: power = param4 * 5
-      //     Ultimate: power = param4 * 14
-      //   param5 = damage type (clamped to [0, 5])
-      //     00 = direct damage (damage = power / 5)
-      //     01 = fire (damage = power * (100 - EFR) / 500)
-      //     02 = cold (can freeze; damage = power * (100 - EIC) / 500)
-      //       chance of freezing = ((((power - 250) / 40) + 5) / 40) clamped
-      //       to [0, 0.4], or to [0.2, 0.4] on Ultimate
-      //     03 = electric (can shock; damage = power * (100 - EIC) / 500)
-      //       chance of shock = 1/15, or 1/40 on Ultimate
-      //     04 = light (damage = power * (100 - ELT) / 500)
-      //     05 = dark (instantly kills with chance (power - EDK) / 100); if
-      //       used in a boss arena and in non-Ultimate mode, cannot kill
-      //   param6 = number of frames between trigger and explosion
-      {0x000A, "TOMineIcon01"},
-
-      // Status trap. Params:
-      //   param1 = trigger radius delta (actual radius is param1 / 2 + 30)
-      //   param2 = explosion radius delta (actual radius is param2 / 2 + 60)
-      //   param3 = trap group number (same as in TOMineIcon01)
-      //   param4 = trap power (same as in TOMineIcon01)
-      //   param5 = trap type (clamped to [0x0F, 0x12])
-      //     0F = poison
-      //     10 = paralysis
-      //     11 = slow
-      //     12 = confuse
-      //   param6 = number of frames between trigger and explosion
-      {0x000B, "TOMineIcon02"},
-
-      // Heal trap. Params:
-      //   param1 = trigger radius delta (actual radius is param1 / 2 + 30)
-      //   param2 = explosion radius delta (actual radius is param2 / 2 + 60)
-      //   param3 = trap group number (same as in TOMineIcon01)
-      //   param4 = trap power (same as in TOMineIcon01)
-      //   param5 = trap type (clamped to [6, 8])
-      //     06 = heal HP (amount = power)
-      //     07 = clear negative status effects
-      //     08 = does nothing? (TODO: calls player->vtable[0x40], but that
-      //       function does nothing on v3. Did this do something in v1 or v2?)
-      //   param6 = number of frames between trigger and explosion
-      {0x000C, "TOMineIcon03"},
-
-      // Large elemental trap. Params:
-      //   param1 = trigger radius delta (actual radius is param1 / 2 + 60)
-      //   param2 = explosion radius delta (actual radius is param2 / 2 + 120)
-      //   param3 = trap group number (same as in TOMineIcon01)
-      //   param4 = trap power (same as in TOMineIcon01)
-      //   param5 = trap type (same as in TOMineIcon01)
-      //   param6 = number of frames between trigger and explosion
-      {0x000D, "TOMineIcon04"},
-
-      // Room ID. Params:
-      //   param1 = radius (actual radius = (param1 * 10) + 30)
-      //   param2 = next room ID
-      //   param3 = previous room ID
-      //   param5 = angle
-      //   param6 = TODO (debug info calls this "BLOCK ID"; seems it only
-      //     matters whether this is 0x10000 or not)
-      {0x000E, "TObjRoomId"},
-
-      // Sensor of some kind (TODO). Params:
-      //   param1 = activation radius delta (actual radius = param1 + 50)
-      //   param4 = switch flag number
-      //   param5 = update mode switch (TODO; param5 < 0 sets update_mode =
-      //     PERMANENTLY_ON, otherwise TEMPORARY; see TOSensor_vF)
-      {0x000F, "TOSensorGeneral01"},
-
-      // Lens flare effect. This object is not constructed in offline multi
-      // mode. Params:
-      //   param1 = visibility radius (if negative, visible everywhere)
-      {0x0011, "TEF_LensFlare"},
-
-      // Quest script trigger. Starts a quest thread at a specific label when
-      // the local player goes near the object. Params:
-      //   param1 = radius
-      //   param4 = label number to call when local player is within radius
-      {0x0012, "TObjQuestCol"},
-
-      // Healing ring. Removes all negative status conditions and adds 9 HP and
-      // 9 TP per frame until max HP/TP are both reached or the player leaves
-      // the radius. The radius is a fixed size.
-      {0x0013, "TOHealGeneral"},
-
-      // Invisible map collision. Params:
-      //   param1-3 = box dimensions (x, y, z; rotated by angle fields)
-      //   param4 = wall type:
-      //     00 = custom (see param5)
-      //     01 = blocks enemies only (as if param5 = 00008000)
-      //     02 = blocks enemies and players (as if param5 = 0x00008900)
-      //     03 = blocks enemies and players, but enemies can see targets
-      //       through the collision (as if param5 = 0x00000800)
-      //     04 = blocks players only (as if param5 = 00002000)
-      //     05 = undefined behavior due to missing bounds check
-      //     anything else = same as 01
-      //   param5 = flags (bit field; used if param4 = 0) (TODO: describe bits)
-      {0x0014, "TObjMapCsn"},
-
-      // Like TObjQuestCol, but requires the player to press a controller
-      // button to trigger the call. Parameters are the same as for
-      // TObjQuestCol.
-      {0x0015, "TObjQuestColA"},
-
-      // TODO: Describe this object. Params:
-      //   param1 = radius (if negative, 30 is used)
-      {0x0016, "TObjItemLight"},
-
-      // Radar collision. Params:
-      //   param1 = radius
-      //   param4 = TODO
-      {0x0017, "TObjRaderCol"},
-
-      // Fog collision. Same params as 0x0007 (TObjFogCollision), but also:
-      //   param3 = if >= 1, fog is on when switch flag is on; otherwise, fog
-      //     is on when switch flag is off
-      //   param6 = switch flag number
-      {0x0018, "TObjFogCollisionSwitch"},
-
-      // Boss teleporter. The destination cannot be changed; it always
-      // teleports the player to the boss arena for the current area. In
-      // Challenge mode, the game uses the current area number to determine the
-      // destination floor, but in other modes, it uses the current episode
-      // number and floor number (not area number). Assuming areas haven't been
-      // reassigned from the defaults in non-Challenge mode, the mapping is:
-      //   Challenge (indexed by area number, not floor number):
-      //     Episode 1:
-      //       Pioneer 2, boss arenas, lobby, battle areas => Pioneer 2
-      //       Forest 1 and 2 => Dragon
-      //       Cave 1, 2, and 3 => De Rol Le
-      //       Mine 1 and 2 => Vol Opt
-      //       Ruins 1, 2, and 3 => Dark Falz
-      //     Episode 2:
-      //       Lab, boss arenas, Seaside Night, Tower => Lab
-      //       VR Temple A and B => Barba Ray
-      //       VR Spaceship A and B => Gol Dragon
-      //       Central Control Area (but not Seaside Night) => Gal Gryphon
-      //       Seabed => Olga Flow
-      //     Episode 4:
-      //       Pioneer 2, boss arena => Pioneer 2
-      //       Crater, Desert, test map => Saint-Milion arena
-      // Params:
-      //   param5 = switch flag number required to activate warp (>= 0x100 = no
-      //     switch flag required; ignored if on Pioneer 2)
-      {0x0019, "TObjWarpBossMulti(off)/TObjWarpBoss(on)"},
-
-      // Sign board. This shows the loaded image from a quest (via load_pvr).
-      // Params:
-      //   param1-3 = scale factors (x, y, z)
-      {0x001A, "TObjSinBoard"},
-
-      // Quest floor warp. This appears similar to TObjAreaWarpForest except
-      // that the object is not destroyed immediately if it's blue and the game
-      // is Challenge mode. Params:
-      //   param1 = player set ID (TODO: what exactly does this do? Looks like it
-      //     does nothing unless it's >= 2)
-      //   param4 = destination floor
-      //   param6 = color (0 = blue, 1 = red)
-      {0x001B, "TObjAreaWarpQuest"},
-
-      // Ending movie warp (used in final boss arenas after the boss is
-      // defeated). Params:
-      //   param6 = color (0 = blue, 1 = red)
-      {0x001C, "TObjAreaWarpEnding"},
-
-      // Star light effect.
-      // This object renders from -100 to 740 over x and -100 to 580 over y.
-      // Params:
-      //   param1 = TODO
-      //   param2 = TODO
-      //   param3 = TODO
-      //   param4 = TODO
-      //   param5 = TODO
-      //   param6 = TODO
-      {0x001D, "TEffStarLight2D_Base"},
-
-      // VR Temple Beta / Barba Ray lens flare effect.
-      // This object renders from -10 to 650 over x and -10 to 490 over y.
-      {0x001E, "__LENS_FLARE__"},
-
-      // Hides the area map when the player is near this object. Params:
-      //   param1 = radius
-      // TODO: Test this.
-      {0x001F, "TObjRaderHideCol"},
-
-      // Item-detecting floor switch. Params:
-      //   param1 = radius
-      //   param4 = switch flag number
-      //   param5 = item type:
-      //     0 or any value not listed below = any item
-      //     1 = weapon
-      //     2 = armor
-      //     3 = shield
-      //     4 = unit
-      //     5 = mag
-      //     6 = tool
-      //     7 = meseta
-      //   param6 = item amount required minus 1 (0 = 1 item, 1 = 2 items, etc.);
-      //     for tools and meseta, each dropped item counts for its stack size
-      {0x0020, "TOSwitchItem"},
-
-      // Symbol chat collision object. This object triggers symbol chats when
-      // the players are nearby and certain switch flags are NOT set. If a
-      // player is within the radius, the object checks the switch flags in
-      // reverse order, and triggers the symbol chat for the latest one that is
-      // NOT set. So, the logic is:
-      // - If all 3 switch flags are not set, the symbol chat in spec1 is used
-      // - If the switch flag in spec1 is set and those in spec2 and spec3 are
-      //   not set, the symbol chat in spec2 is used
-      // - If the switch flag in spec2 is set and the flag in spec3 is not set,
-      //   the symbol chat in spec3 is used regardless of whether the switch
-      //   flags in spec1 is set
-      // - If the switch flags in spec3 is set, no symbol chat appears at all
-      //   regardless of the values of the other two switch flags
-      // Each spec is a 32-bit integer consisting of two 16-bit fields. The
-      // high 16 bits are a switch flag number (0-255), and the low 16 bits are
-      // an entry index from symbolchatcolli.prs. The entry index is ignored if
-      // the corresponding data label from the F8A6 quest opcode is not null
-      // (and the data from the label is used instead). Quest scripts don't
-      // have a good way to pass null for regsA[7-9], so the logic that looks
-      // up entries in symbolchatcolli.prs can be ignored in quests.
-      // Default symbol chat numbers (from qedit.info):
-      //   00 = Drop Meseta
-      //   01 = Meseta has been dropped
-      //   02 = Drop 1 weapon
-      //   03 = Drop 4 weapons
-      //   04 = Drop 1 shield
-      //   05 = Drop 4 shields
-      //   06 = Drop 1 mag
-      //   07 = Drop 4 mags
-      //   08 = Drop tool item
-      //   09 = ????
-      //   0A = XXXX
-      //   0B = All circles like OK
-      //   0C = Key with Yes
-      //   0D = Key with Cool
-      //   0E = Key with ...
-      //   0F = Go right
-      //   10 = Go left
-      //   11 = Push button with gun
-      //   12 = Key icons
-      //   13 = Key has been pressed
-      //   14 = Run/go
-      //   15 = Push 1 button on
-      //   16 = Push 2 button on
-      //   17 = Clock (hurry)
-      // Params:
-      //   param1 = radius
-      //   param4 = spec1
-      //   param5 = spec2
-      //   param6 = spec3
-      // This object can also be created by the quest opcode F8A6; see the
-      // description of that opcode in QuestScript.cc for more information.
-      {0x0021, "TOSymbolchatColli"},
-
-      // Invisible collision switch. Params:
-      //   param1 = radius delta (actual radius is param1 + 10)
-      //   param4 = switch flag number
-      //   param5 = sticky flag (if negative, switch flag is unset when player
-      //     leaves; if zero or positive, switch flag remains on)
-      {0x0022, "TOKeyCol"},
-
-      // Attackable collision. Params:
-      //   param1 = enable switch flag (the object is only attackable if this
-      //     switch flag is enabled); any value > 0xFF disables this behavior
-      //     so the object is always attackable
-      //   param2 = if negative, no target reticle appears; if zero or
-      //     positive, a reticle appears
-      //   param3 = switch flag number to set when required number of hits is
-      //     taken (ignored if param6 is nonzero)
-      //   param4 = number of hits required to activate, minus 1 (so e.g. a
-      //     value of 4 here means 5 hits needed)
-      //   param5 = object number (if outside the range [100, 999], uses the
-      //     free play script when looking up param6 instead of the quest)
-      //   param6 = quest label to call when required number of hits is taken
-      //     (if zero, switch flag in param3 is set instead)
-      {0x0023, "TOAttackableCol"},
-
-      // Damage effect. Params:
-      //   angle.x = effect type (in range [0x00, 0x14]; TODO: list these)
-      //   param1 = damage radius
-      //   param2 = damage value, scaled by difficulty:
-      //     Normal: param2 * 2
-      //     Hard: param2 * 4
-      //     Very Hard: param2 * 6
-      //     Ultimate: param2 * 8
-      //   param3 = effect visual size
-      //   param4 = enable switch flag number (effect is off unless this flag
-      //     is set)
-      //   param5 = disable switch flag number (effect is off if this flag is
-      //     set, even if the enable switch flag is also set), or >= 0x100 if
-      //     this functionality isn't needed
-      //   param6 = persistence flag (if nonzero, effect stays on once enabled)
-      {0x0024, "TOSwitchAttack"},
-
-      // Switch flag timer. This object watches for a switch flag to be
-      // activated, then once it is, waits for a specified time, then disables
-      // that switch flag and activates up to three other switch flags. Note
-      // that this object just provides the timer functionality; the trigger
-      // switch flag must be activated by some other object. Params:
-      //   angle.x = trigger mode:
-      //     0 = disable watched switch flag when timer expires
-      //     any other value = enable up to 3 other switch flags when timer
-      //       expires and don't disable watched switch flag
-      //   angle.y = if this is 1, play tick sound effect every second after
-      //     activation (if any other value, no tick sound is played)
-      //   angle.z = timer duration in frames
-      //   param4 = switch flag to watch for activation in low 16 bits, switch
-      //     flag 1 to activate when timer expires (if angle.x = 0) in high 16
-      //     bits (>= 0x100 if not needed)
-      //   param5 = switch flag 2 to activate when timer expires (if
-      //     angle.x = 0) in high 16 bits (>= 0x100 if not needed)
-      //   param6 = switch flag 3 to activate when timer expires (if
-      //     angle.x = 0) in high 16 bits (>= 0x100 if not needed)
-      {0x0025, "TOSwitchTimer"},
-
-      // Chat sensor. This object watches for chat messages said by players
-      // within its radius, optionally filtering for specific words. When a
-      // message matches, it either activates a switch flag or calls a quest
-      // function. When created via the F801 quest opcode, param5 is ignored,
-      // and the string specified by the quest is always used. Params:
-      //   angle.x = activation type (0 = quest function, 1 = switch flag)
-      //   angle.y = match mode:
-      //     0 = match a specific string (defined by param5)
-      //     1 = match any string
-      //     anything else = never match anything
-      //   param1 = radius
-      //   param4 = switch flag number or quest label number
-      //   param5 = trigger string
-      //     0 = any string (TODO: Is this true?)
-      //     1 = "YES"
-      //     2 = "COOL"
-      //     3 = "NO"
-      {0x0026, "TOChatSensor"},
-
-      // Radar map icon. Shows an icon on the map that is optionally locked or
-      // unlocked, depending on the values of one or more sequential switch
-      // flags. The icon is considered unlocked if all of the specified switch
-      // flags are set. There can be at most 12 switch flags used with this
-      // object and the switch flag numbers cannot wrap around from 0xFF to 0.
-      // Params:
-      //   param1 = scale (1.0 = normal size)
-      //   param4 = check switch flags for color:
-      //     positive value = ignore param6; color is red (FFFF0000) if any of
-      //       the switch flags are off, or green (FF00FF00) if all are on
-      //     zero or negative = ignore param5; always render in the color
-      //       specified by param6
-      //   param5 = switch flag spec; upper 16 bits are number of switch flags,
-      //     lower 16 bits are first switch flag number
-      //   param6 = color as ARGB8888
-      {0x0027, "TObjRaderIcon"},
-
-      // Environmental sound. This object is not constructed in offline multi
-      // mode. This is essentially identical to TObjEnvSound, except the sound
-      // fades in and out instead of abruptly starting or stopping when
-      // entering or leaving its radius. Params:
-      //   param2 = volume fade speed (units per frame)
-      //   param3 = audibility radius (same as for TObjEnvSound)
-      //   param4 = sound ID (same as for TObjEnvSound)
-      //   param5 = volume (same as for TObjEnvSound)
-      {0x0028, "TObjEnvSoundEx"},
-
-      // Environmental sound. This object is not constructed in offline multi
-      // mode. This is essentially identical to TObjEnvSound, except there is
-      // no radius: the sound is audible everywhere. Params:
-      //   param4 = sound ID (same as for TObjEnvSound)
-      //   param5 = volume (same as for TObjEnvSound)
-      {0x0029, "TObjEnvSoundGlobal"},
-
-      // Counter sequence activator. Used for Hunter's Guild, shops, bank, etc.
-      // Params:
-      //   param4 = shop sequence number:
-      //     Episodes 1, 2, and 4:
-      //       00 = weapon shop
-      //       01 = medical center
-      //       02 = armor shop
-      //       03 = tool shop
-      //       04 = Hunter's Guild
-      //       05 = check room
-      //       06 = tekker
-      //       07 = government counter (BB only)
-      //       08 = "GIVEAWAY" (BB only)
-      //     Episode 3:
-      //       00 = unused (DUMMY0)
-      //       01 = unused (DUMMY1)
-      //       02 = unused (DUMMY2)
-      //       03 = unused (DUMMY3)
-      //       04 = unused (DUMMY4)
-      //       05 = unused (DUMMY5)
-      //       06 = unused (DUMMY6)
-      //       07 = deck edit counter
-      //       08 = entry counter
-      //       09 = left-side card trade kiosk
-      //       0A = right-side card trade kiosk
-      //       0B = auction counter
-      //       0C = hidden entry counter
-      //       0D = Pinz's Shop
-      {0x0040, "TShopGenerator"},
-
-      // Telepipe city location. Params:
-      //   param4 = owner client ID (0-3)
-      {0x0041, "TObjLuker"},
-
-      // BGM collision. Changes the background music when the player enters the
-      // object's radius. Params:
-      //   param1 = radius
-      //   param4 = which music to play:
-      //     00 = SHOP.adx
-      //     01 = GUILD.adx
-      //     02 = MEDICAL.adx
-      //     03 = soutoku.adx
-      //     04 = city.adx
-      //     05 = labo.adx
-      //     anything else = value is taken modulo 6 and used as above
-      {0x0042, "TObjBgmCol"},
-
-      // Main warp to other floors from Pioneer 2.
-      // Certain floors are available by default, determined by checking the
-      // game's mode and quest flags. A different set of flags is checked on BB
-      // than on other versions, presumably since government quests are used to
-      // unlock areas instead of offline story progression. On later versions
-      // of BB, all floors are available by default; this table reflects the
-      // behavior before that change.
-      // Required flag for mode: Online/multi   Offline       BB flag
-      //   Episode 1:
-      //     Forest 1:           Always open   Always open   Always open
-      //     Cave 1:             0x17          0x18          0x1F9
-      //     Mine 1:             0x20          0x21          0x201
-      //     Ruins 1:            0x30          0x2A          0x207
-      //   Episode 2:
-      //     VR Temple Alpha:    Always open   Always open   Always open
-      //     VR Spaceship Alpha: 0x4C          0x4D          0x21B
-      //     CCA:                0x4F          0x50          0x225
-      //     Seabed Upper:       0x52          0x53          0x22F
-      //   Episode 4:
-      //     Crater East                                     Always open
-      //     Crater West                                     0x2BD
-      //     Crater South                                    0x2BE
-      //     Crater North                                    0x2BF
-      //     Crater Interior                                 0x2C0
-      //     Subterranean Desert 1                           0x2C1
-      // Params:
-      //   param5 = main warp type:
-      //     00 = Episode 1 / Episode 4
-      //     01 = Ep2 VR Temple / VR Spaceship (CCA and Seabed not available)
-      //     02 = Ep2 CCA (VR Temple and Spaceship not available)
-      {0x0043, "TObjCityMainWarp"},
-
-      // Lobby teleporter. When used, this object immediately ends the current
-      // game and sends the player back to the lobby. If constructed offline,
-      // this object will do nothing and not render.
-      // This object takes no parameters.
-      {0x0044, "TObjCityAreaWarp"},
-
-      // Warp to another location on the same map. Used for the Principal's
-      // office warp. This warp is visible in all game modes, but cannot be
-      // used in Battle or Challenge mode. Params:
-      //   param1-3 = destination (same as for TObjMapWarpForest)
-      //   param4 = destination angle (same as for TObjMapWarpForest)
-      //   param6 = destination text (clamped to [0, 2]):
-      //     00 = "The Principal"
-      //     01 = "Pioneer 2"
-      //     02 = "Lab"
-      {0x0045, "TObjCityMapWarp"},
-
-      // City doors. None of these take any parameters.
-      {0x0046, "TObjCityDoor_Shop"}, // Door to shop area
-      {0x0047, "TObjCityDoor_Guild"}, // Door to Hunter's Guild
-      {0x0048, "TObjCityDoor_Warp"}, // Door to Ragol warp
-      {0x0049, "TObjCityDoor_Med"}, // Door to Medical Center
-
-      // TODO: Describe this object. There appear to be no parameters.
-      {0x004A, "__ELEVATOR__"}, // Not named in the client
-
-      // Holiday event decorations. There appear to be no parameters, except
-      // TObjCity_Season_SonicAdv2, which takes param4 = model index (clamped
-      // to [0, 3]).
-      {0x004B, "TObjCity_Season_EasterEgg"},
-      {0x004C, "TObjCity_Season_ValentineHeart"},
-      {0x004D, "TObjCity_Season_XmasTree"},
-      {0x004E, "TObjCity_Season_XmasWreath"},
-      {0x004F, "TObjCity_Season_HalloweenPumpkin"},
-      {0x0050, "TObjCity_Season_21_21"},
-      {0x0051, "TObjCity_Season_SonicAdv2"},
-      {0x0052, "TObjCity_Season_Board"},
-
-      // Fireworks effect. Params:
-      //   param1 = area width
-      //   param2 = base height
-      //   param3 = area depth
-      //   param4 = launch frequency (when a firework is launched, the game
-      //     generates a random number R in range [0, 0x7FFF] and waits
-      //     ((param4 + 60) * (r / 0x8000) * 3.0)) frames before launching the
-      //     next firework)
-      {0x0053, "TObjCity_Season_FireWorkCtrl"},
-
-      // Door that blocks the lobby teleporter in offline mode. There appear to
-      // be no parameters.
-      {0x0054, "TObjCityDoor_Lobby"},
-
-      // Version of the main warp for Challenge mode? This object seems to
-      // behave similarly to boss teleporters; it shows the player a Yes/No
-      // confirmation menu and sends 6x6A to synchronize state. There is a
-      // global named last_set_mainwarp_value which is set to param4 when this
-      // object is constructed, but may be changed by a set_mainwarp quest
-      // opcode after that. If that happens, this object replaces its
-      // dest_floor with the floor specified in the last set_mainwarp quest
-      // opcode. Params:
-      //   param4 = destination floor
-      //   param5 = switch flag number
-      // Availability: v2+ only
-      // TODO: This thing has a lot of code; figure out if there are any other
-      // parameters
-      {0x0055, "TObjCityMainWarpChallenge"},
-
-      // Episode 2 Lab door. Params:
-      //   param4 = switch flag number and activation mode:
-      //     negative value = always unlocked
-      //     value in [0x00, 0x100] = unlocked by a switch flag (the bounds
-      //       check appears to be a bug; the range should be [0x00, 0xFF] but
-      //       the game has an off-by-one error)
-      //     value > 0x100 = always locked
-      //   param5 = model (green or red; clamped to [0, 1])
-      //   param6 = if negative, all switches must be active simultaneously to
-      //     unlock the door; if zero or positive, they may be activated
-      //     sequentially instead (in offline solo mode, this is ignored and
-      //     the sequential behavior is always used); this is somewhat obviated
-      //     for this door type since it can have only one switch flag, but
-      //     other door types may have multiple, for which this is relevant
-      // Availability: v3+ only
-      {0x0056, "TODoorLabo"},
-
-      // Enables the Trade Window when the player is near this object. Both
-      // players must be near a TObjTradeCollision object (not necessarily the
-      // same one) to be able to use the Trade Window with each other. Params:
-      //   param1 = radius
-      // Availability: v3+ only
-      {0x0057, "TObjTradeCollision"},
-
-      // TODO: Describe this object. Presumably similar to TObjTradeCollision
-      // but enables the deck edit counter? Params:
-      //   param1 = radius
-      // Availability: Ep3 only
-      {0x0058, "TObjDeckCollision"},
-
-      // Forest door. Params:
-      //   param4 = switch flag number (low byte) and number to appear on door
-      //     (second-lowest byte, modulo 0x0A)
-      //   param6 = TODO (expected to be 0 or 1)
-      {0x0080, "TObjDoor"},
-
-      // Forest switch. Params:
-      //   param4 = switch flag number
-      //   param6 = color (clamped to range [0, 9])
-      {0x0081, "TObjDoorKey"},
-
-      // Laser fence and square laser fence. Params:
-      //   param1 = color (range [0, 3])
-      //   param4 = switch flag number
-      //   param6 = model (TODO)
-      {0x0082, "TObjLazerFenceNorm"},
-      {0x0083, "TObjLazerFence4"},
-
-      // Forest laser fence switch. Params:
-      //   param4 = switch flag number
-      //   param6 = color
-      {0x0084, "TLazerFenceSw"},
-
-      // Light rays. Params:
-      //   param1 = TODO
-      //   param2 = vertical scale (y)
-      //   param3 = horizontal scale (x, z)
-      {0x0085, "TKomorebi"},
-
-      // Butterfly. Params:
-      //   param1-3 = TODO
-      {0x0086, "TButterfly"},
-
-      // TODO: Describe this object. Params:
-      //   param1 = model number
-      {0x0087, "TMotorcycle"},
-
-      // Item box. Params:
-      //   param1 = if positive, box is specialized to drop a specific item or
-      //     type of item; if zero or negative, box drops any common item or
-      //     none at all (and param3-6 are all ignored)
-      //   param3 = if zero, then bonuses, grinds, etc. are applied to the item
-      //     after it's generated; if nonzero, the item is not randomized at
-      //     all and drops exactly as specified in param4-6
-      //   param4-6 = item definition. see base_item_for_specialized_box in
-      //     ItemCreator.cc for how these values are decoded
-      // In the non-specialized case (param1 <= 0), param3-6 are still sent via
-      // the 6xA2 command when the box is opened on v3 and later, and the
-      // server may choose to use those parameters for some purpose. The client
-      // implementation ignores them when param1 <= 0, and newserv does too.
-      {0x0088, "TObjContainerBase2"},
-
-      // Elevated cylindrical tank. Params:
-      //   param1-3 = TODO
-      {0x0089, "TObjTank"},
-
-      // TODO: Describe this object. Params:
-      //   param1-3 = TODO
-      // Availability: vv1/v2+ only
-      {0x008A, "TObjBattery"},
-
-      // Forest console. Params:
-      //   param4 = quest label to call when activated (inherited from
-      //     TObjMesBase)
-      //   param5 = model (clamped to [0, 1])
-      //   param6 = type (clamped to [0, 1]; 0 = "QUEST", 1 = "RICO")
-      //     (inherited from TObjMesBase)
-      {0x008B, "TObjComputer"},
-
-      // Black sliding door. Params:
-      //   param1 = total distance (divided evenly by the number of switch
-      //     flags, from param4)
-      //   param2 = speed
-      //   param4 = base switch flag (the actual switch flags used are param4,
-      //     param4 + 1, param4 + 2, etc.)
-      //   param5 = number of switch flags (clamped to [1, 4])
-      //   param6 = TODO (only matters if this is zero or nonzero)
-      {0x008C, "TObjContainerIdo"},
-
-      // Rico message pod. This object immediately destroys itself in Challenge
-      // mode or split-screen mode. Params:
-      //   param4 = enable condition:
-      //     negative = enabled when player is within 70 units
-      //     range [0x00, 0xFF] = enabled by corresponding switch flag
-      //     0x100 and above = never enabled
-      //   param5 = message number (used with message quest opcode; TODO: has
-      //     the same [100, 999] check as some other objects)
-      //   param6 = quest label to call when activated
-      {0x008D, "TOCapsuleAncient01"},
-
-      // Energy barrier. Params:
-      //   param4 = switch flag number and activation mode (same as for
-      //     TODoorLabo)
-      {0x008E, "TOBarrierEnergy01"},
-
-      // Forest rising bridge. Once enabled (risen), this object cannot be
-      // disabled; that is, there is no way to make the bridge retract. When
-      // disabled, the bridge is 30 units below its initial position; when
-      // enabled, it rises to its initial position. Params:
-      //   param2 = rise speed in units per frame
-      //   param4 = switch flag number
-      {0x008F, "TObjHashi"},
-
-      // Generic switch. Visually, this is the type usually used for objects
-      // other than doors, such as lights, poison rooms, and the Forest 1
-      // bridge. Params:
-      //   param1 = activation mode:
-      //     negative = temporary (TODO: test this)
-      //     zero or positive = permanent (normal)
-      //   param4 = switch flag number
-      {0x0090, "TOKeyGenericSw"},
-
-      // Box that triggers a wave event when opened. Params:
-      //   param4 = event number
-      {0x0091, "TObjContainerEnemy"},
-
-      // Large box (usually used for specialized drops). Same parameters as
-      // 0x0088 (TObjContainerBase2)
-      {0x0092, "TObjContainerBase"},
-
-      // Large enemy box. Same parameters as 0x0091 (TObjContainerEnemy).
-      {0x0093, "TObjContainerAbeEnemy"},
-
-      // Always-empty box.
-      // Availability: v2+ only
-      {0x0095, "TObjContainerNoItem"},
-
-      // Laser fence. This object is only available in v2 and later. Params:
-      //   param1 = color (clamped to [0, 3])
-      //   param2 = depth of collision box (transverse to lasers)
-      //   param3 = length of collision box (parallel to lasers)
-      //   param4 = switch flag number
-      //   param6 = model:
-      //     0 = short fence
-      //     1 = long fence
-      //     anything else = invisible
-      // Availability: v2+ only
-      {0x0096, "TObjLazerFenceExtra"},
-
-      // Caves floor button. The activation radius is always 10 units. Params:
-      //   param4 = switch flag number
-      //   param5 = activation mode:
-      //     negative = temporary (disables flag when player leaves)
-      //     zero or positive = permanent
-      {0x00C0, "TOKeyCave01"},
-
-      // Caves multiplayer door. Params:
-      //   param4 = base switch flag number (the actual switch flags used are
-      //     param4, param4 + 1, param4 + 2, etc.; if this is negative, the
-      //     door is always unlocked)
-      //   param5 = 4 - number of switch flags (so if e.g. door should require
-      //     only 3 switch flags, set param5 to 1)
-      //   param6 = synchronization mode:
-      //     negative = when all switch flags are enabled, door is permanently
-      //       unlocked via 6x0B even if some switch flags are disabled later
-      //     zero or positive = door only stays unlocked while all of the
-      //       switch flags are active and locks again when any are disabled
-      //       (no effect in single-player offline mode; the negative behavior
-      //       is used instead)
-      {0x00C1, "TODoorCave01"},
-
-      // Caves standard door. Params:
-      //   param4 = switch flag number (negative = always unlocked; >0x100 =
-      //     always locked)
-      {0x00C2, "TODoorCave02"},
-
-      // Caves ceiling piston trap. There are three types of this object, which
-      // can be choseby via param6. If param6 is not 0, 1, or 2, no object is
-      // created.
-      // Params for TOHangceilingCave01Normal (param6 = 0):
-      //   param1 = TODO (radius delta? value is param1 + 29)
-      //   param2 = TODO (value is 1 - param2)
-      //   param3 = TODO (value is param3 + 100)
-      // Params for TOHangceilingCave01Key (param6 = 1):
-      //   param1-3 = same as for TOHangceilingCave01Normal
-      //   param4 = switch flag number (drops when switch flag is activated;
-      //     when it has finished dropping, it disables the switch flag)
-      // Params for TOHangceilingCave01KeyQuick (param6 = 2):
-      //   param1-4 = same as for TOHangceilingCave01Key, but unlike that
-      //     object, does not disable the switch flag automatically
-      {0x00C3, "TOHangceilingCave01Normal/TOHangceilingCave01Key/TOHangceilingCave01KeyQuick"},
-
-      // Caves signs. There appear to be no parameters.
-      {0x00C4, "TOSignCave01"},
-      {0x00C5, "TOSignCave02"},
-      {0x00C6, "TOSignCave03"},
-
-      // Hexagonal tank. There appear to be no parameters.
-      {0x00C7, "TOAirconCave01"},
-
-      // Brown platform. There appear to be no parameters.
-      {0x00C8, "TOAirconCave02"},
-
-      // Revolving warning light. Params:
-      //   param1 = rotation speed in degrees per frame
-      {0x00C9, "TORevlightCave01"},
-
-      // Caves rainbow. Params:
-      //   param1-3 = scale factors (x, y, z)
-      //   param4 = TODO (value is 1 / (param4 + 30))
-      //   param6 = visibility radius? (TODO; value is param6 + 40000)
-      {0x00CB, "TORainbowCave01"},
-
-      // Floating jellyfish. Params:
-      //   param1 = visibility radius; visible when any player is within this
-      //     distance of the object
-      //   param2 = move radius (according to debug strings)
-      //   param3 = rebirth radius (according to debug strings); like param1,
-      //     checks against all players, not only the local player
-      {0x00CC, "TOKurage"},
-
-      // Floating dragonfly. Params:
-      //   param1 = TODO
-      //   param2 = TODO
-      //   param3 = max distance from home?
-      //   param4 = TODO
-      //   param5 = TODO
-      {0x00CD, "TODragonflyCave01"},
-
-      // Caves door. Params:
-      //   param4 = switch flag number
-      {0x00CE, "TODoorCave03"},
-
-      // Robot recharge station. Params:
-      //   param4 = quest register number; activates when this register
-      //     contains a nonzero value; does not deactivate if it becomes zero
-      //     again
-      {0x00CF, "TOBind"},
-
-      // Caves cake shop. There appear to be no parameters.
-      {0x00D0, "TOCakeshopCave01"},
-
-      // Various solid rock objects used in the Cave areas. There are small,
-      // medium, and large variations of each, and for the 02 variations, there
-      // are also "Simple" variations (00D7-00D9). None of these objects take
-      // any parameters.
-      {0x00D1, "TORockCaveS01"},
-      {0x00D2, "TORockCaveM01"},
-      {0x00D3, "TORockCaveL01"},
-      {0x00D4, "TORockCaveS02"},
-      {0x00D5, "TORockCaveM02"},
-      {0x00D6, "TORockCaveL02"},
-      {0x00D7, "TORockCaveSS02"},
-      {0x00D8, "TORockCaveSM02"},
-      {0x00D9, "TORockCaveSL02"},
-      {0x00DA, "TORockCaveS03"},
-      {0x00DB, "TORockCaveM03"},
-      {0x00DC, "TORockCaveL03"},
-
-      // Caves floor button 2. Params:
-      //   param1-3 = scale factors (visual only)
-      //   param4 = switch flag number
-      //   param5 high word = sound delay in frames after activate/deactivate
-      //   param5 low word = model index for VR Temple / VR Spaceship? (there
-      //     are only two: this word may be zero or nonzero)
-      //   param6 high word = sound activation mode:
-      //     1 = play sound only when switch activated
-      //     anything else = play sound when activated and when deactivated
-      //   param6 low word = sound to play (1-6) (TODO: Describe these):
-      //     1 => 4005281F (GC)
-      //     2 => 00053F06 (GC)
-      //     3 => 00052812 (GC)
-      //     4 => 00052813 (GC)
-      //     5 => 4001C112 (GC)
-      //     6 => 4002A60B (GC)
-      //     TODO: Are there more sounds available here on BB?
-      // Availability: v2+ only
-      {0x00DE, "TODummyKeyCave01"},
-
-      // Breakable rocks, in small, medium, and large variations. All of these
-      // take the following parameter:
-      //   param4 = switch flag number
-      // Availability: v2+ only
-      {0x00DF, "TORockCaveBL01"},
-      {0x00E0, "TORockCaveBL02"},
-      {0x00E1, "TORockCaveBL03"},
-
-      // Mines multi-switch door. Params:
-      //   param4 = base switch flag number (the actual switch flags used are
-      //     param4, param4 + 1, param4 + 2, etc.; if this is negative, the
-      //     door is always unlocked)
-      //   param5 = 4 - number of switch flags (so if e.g. door should require
-      //     only 3 switch flags, set param5 to 1)
-      {0x0100, "TODoorMachine01"},
-
-      // Mines floor button. The activation radius is always 10 units. Params:
-      //   param4 = switch flag number
-      //   param5 = activation mode:
-      //     negative = temporary (disables flag when player leaves)
-      //     zero or positive = permanent
-      {0x0101, "TOKeyMachine01"},
-
-      // Mines single-switch door. Params:
-      //   param4 = switch flag number
-      {0x0102, "TODoorMachine02"},
-
-      // Large cryo-tube. There appear to be no parameters.
-      {0x0103, "TOCapsuleMachine01"},
-
-      // Computer. Same parameters as 0x008D (TOCapsuleAncient01).
-      {0x0104, "TOComputerMachine01"},
-
-      // Green monitor. Params:
-      //   param4 = initial state? (clamped to [0, 3]; appears to cycle through
-      //     those 4 values on its own)
-      {0x0105, "TOMonitorMachine01"},
-
-      // Floating robot. Same params as 0x00CD (TODragonflyCave01), though it
-      // appears that some may have different scale factors or offsets (TODO).
-      {0x0106, "TODragonflyMachine01"},
-
-      // Floating blue light. Params:
-      //   param4 = TODO
-      //   param5 = TODO
-      //   param6 = TODO
-      {0x0107, "TOLightMachine01"},
-
-      // Self-destructing objects. Params:
-      //   param1 = radius delta (actual radius is param1 + 30)
-      {0x0108, "TOExplosiveMachine01"},
-      {0x0109, "TOExplosiveMachine02"},
-      {0x010A, "TOExplosiveMachine03"},
-
-      // Spark machine. Params:
-      //   param1 = TODO (value is param1 - 0.98)
-      //   param2 = TODO (seems it only matters if this is <= 0 or not)
-      {0x010B, "TOSparkMachine01"},
-
-      // Large flashing box. Params:
-      //   param2 = TODO (seems it only matters if this is < 0 or not)
-      {0x010C, "TOHangerMachine01"},
-
-      // Ruins entrance door (after Vol Opt). This object reads quest flags
-      // 0x2C, 0x2D, and 0x2E to determine the state of each seal on the door
-      // (for Forest, Caves, and Mines respectively). It then checks quest flag
-      // 0x2F; if this flag is set, then all seals are unlocked regardless of
-      // the preceding three flags' values. Curiously, it seems that these
-      // flags are checked every frame, even though it's normally impossible to
-      // change their values in the area where this object appears.
-      // No parameters.
-      {0x0130, "TODoorVoShip"},
-
-      // Ruins floor warp. Params:
-      //   param4 = destination floor
-      //   param6 = color (negative = red, zero or positive = blue); if this is
-      //     >= 0 in Challenge mode, the warp is destroyed immediately
-      {0x0140, "TObjGoalWarpAncient"},
-
-      // Ruins intra-area warp. Same parameters as 0x0003 (TObjMapWarpForest),
-      // but also:
-      //   param5 = type (negative = one-way, zero or positive = normal)
-      {0x0141, "TObjMapWarpAncient"},
-
-      // Ruins switch. Same parameters as 0x00C0 (TOKeyCave01).
-      {0x0142, "TOKeyAncient02"},
-
-      // Ruins floor button. Same parameters as 0x00C0 (TOKeyCave01).
-      {0x0143, "TOKeyAncient03"},
-
-      // Ruins doors. These all take the same params as 0x00C2 (TODoorCave02).
-      {0x0144, "TODoorAncient01"}, // Usually used in Ruins 1
-      {0x0145, "TODoorAncient03"}, // Usually used in Ruins 3
-      {0x0146, "TODoorAncient04"}, // Usually used in Ruins 2
-      {0x0147, "TODoorAncient05"}, // Usually used in Ruins 1
-      {0x0148, "TODoorAncient06"}, // Usually used in Ruins 2
-      {0x0149, "TODoorAncient07"}, // Usually used in Ruins 3
-
-      // Ruins 4-player door. Params:
-      //   param4 = base switch flag number (the actual switch flags used are
-      //     param4, param4 + 1, param4 + 2, and param4 + 3); param4 is clamped
-      //     to [0, 0xFC]
-      //   param6 = activation mode; same as for 0x00C1 (TODoorCave01)
-      {0x014A, "TODoorAncient08"},
-
-      // Ruins 2-player door. Params:
-      //   param4 = base switch flag number (the actual switch flags used are
-      //     param4 and param4 + 1); param4 is clamped to [0, 0xFE]
-      //   param6 = activation mode; same as for 0x00C1 (TODoorCave01)
-      {0x014B, "TODoorAncient09"},
-
-      // Ruins sensor. Params:
-      //   param1 = activation radius delta (actual radius is param1 + 50)
-      //   param4 = switch flag number
-      //   param5 = if negative, sensor is always on
-      //   param6 = TODO (clamped to [0, 1] - model index?)
-      {0x014C, "TOSensorAncient01"},
-
-      // Ruins laser fence switch. Params:
-      //   param1 = if negative, switch's effect is temporary; if zero or
-      //     positive, it's permanent
-      //   param4 = switch flag number
-      //   param5 = color (clamped to [0, 3])
-      {0x014D, "TOKeyAncient01"},
-
-      // Ruins fence objects. Params:
-      //   param4 = switch flag number (negative = always unlocked)
-      //   param5 = color (clamped to [0, 3])
-      {0x014E, "TOFenceAncient01"}, // 4x2
-      {0x014F, "TOFenceAncient02"}, // 6x2
-      {0x0150, "TOFenceAncient03"}, // 4x4
-      {0x0151, "TOFenceAncient04"}, // 6x4
-
-      // Ruins poison-spewing blob. This object is technically an item box, and
-      // drops an item when destroyed. Unlike most other item boxes, it cannot
-      // be specialized (ignore_def is always true). Params:
-      //   param1 = TODO (value is param1 + 299)
-      //   param2 = TODO (value is param2 + 209)
-      //   param3 = TODO (value is param3 + 399)
-      //   param6 = TODO (value is param6 + 4)
-      {0x0152, "TContainerAncient01"},
-
-      // Ruins falling trap. Trap power seems to be scaled by difficulty
-      // (Normal = x1, Hard = x2, Very Hard = x3, Ultimate = x6). Params:
-      //   param1 = trigger radius delta (value is (param1 / 2) + 30)
-      //   param2 = TODO (clamped below to 0)
-      //   param3 = TODO (clamped below to 1)
-      //   param4 = TODO (seems it only matters if this is negative or not in
-      //     the base class (TOTrap), but TOTrapAncient01 clamps it below to 0)
-      //   param5 = TODO (clamped to [0, 5]; calls player->vtable[0x19] on
-      //     explode unless this is 5)
-      //   param6 = TODO (value is param6 + 30, multipled by 0.33 if offline)
-      {0x0153, "TOTrapAncient01"},
-
-      // Ruins pop-up trap. Params:
-      //   param1 = trigger radius delta (value is (param1 / 2) + 30)
-      //   param4 = delay (value is param4 + 30; clamped below to 0)
-      //   angle.z = TODO (seems it only matters if angle.z is > 0 or not)
-      {0x0154, "TOTrapAncient02"},
-
-      // Ruins crystal monument. Same parameters as TOCapsuleAncient01.
-      {0x0155, "TOMonumentAncient01"},
-
-      // Non-Ruins monument. Sets a quest flag when activated. The quest flag
-      // depends on which area the object appears in:
-      //   Mine 2 = 0x2E
-      //   Cave 2 = 0x2D
-      //   Any other area = 0x2C
-      // When all three of the above quest flags are active, this object also
-      // sets quest flag 0x2F.
-      // There appear to be no parameters.
-      {0x0156, "TOMonumentAncient02"},
-
-      // Ruins rocks. None of these take any parameters.
-      {0x0159, "TOWreckAncient01"},
-      {0x015A, "TOWreckAncient02"},
-      {0x015B, "TOWreckAncient03"},
-      {0x015C, "TOWreckAncient04"},
-      {0x015D, "TOWreckAncient05"},
-      {0x015E, "TOWreckAncient06"},
-      {0x015F, "TOWreckAncient07"},
-
-      // This ID constructs different objects depending on where it's used. On
-      // floor 0D (Vol Opt), it constructs TObjWarpBoss03; on other floors
-      // where it's valid, it constructs TObjFogCollisionPoison.
-      // TObjFogCollisionPoison creates a switchable, foggy area that's visible
-      // and hurts the player if the switch flag isn't on. Params are the same
-      // as for 0x0018 (TObjFogCollisionSwitch), but there is also:
-      //   param2 = poison power (scaled by difficulty: Normal = x1, Hard = x2,
-      //     Very Hard = x3, Ultimate = x6)
-      // TObjWarpBoss03 creates an invisible warp. This is used for the warp
-      // behind the door to Ruins after defeating Vol Opt. Params:
-      //   param4 = destination floor
-      {0x0160, "TObjFogCollisionPoison/TObjWarpBoss03"},
-
-      // Ruins specialized box. Same parameters as 0x0088 (TObjContainerBase2).
-      {0x0161, "TOContainerAncientItemCommon"},
-
-      // Ruins random box. Same parameters as 0x0088 (TObjContainerBase2).
-      {0x0162, "TOContainerAncientItemRare"},
-
-      // Ruins enemy boxes, disguised as either of the above two objects.
-      // Params:
-      //   param4 = event number
-      {0x0163, "TOContainerAncientEnemyCommon"},
-      {0x0164, "TOContainerAncientEnemyRare"},
-
-      // Ruins always-empty box. No parameters.
-      // Availability: v2+ only
-      {0x0165, "TOContainerAncientItemNone"},
-
-      // Ruins breakable rock. Params:
-      //   param4 = switch flag number (when enabled, destroys this object)
-      // Availability: v2+ only
-      {0x0166, "TOWreckAncientBrakable05"},
-
-      // Ruins pop-up trap with techs. Params:
-      //   param1 = trigger radius delta (value is (param1 / 2) + 30)
-      //   param2 = number of hits to destroy trap (clamped to [1, 256])
-      //   param3 = tech level modifier:
-      //     Normal: level = param3 + 1 (clamped to [0, 14])
-      //     Hard: level = (param3 * 2) + 1 (clamped to [0, 14])
-      //     Very Hard: level = (param3 * 4) + 1 (clamped to [0, 14])
-      //     Ultimate: level = (param3 * 6) + 1 (clamped to [0, 29])
-      //     (Note: level is offset by 1, so a value of 0 means tech level 1)
-      //   param4 = delay (value is param4 + 30; clamped below to 0)
-      //   param5 = switch flag number (negative = always active)
-      //   param6 = tech number:
-      //     0 = Foie
-      //     1 = Gizonde
-      //     2 = Gibarta
-      //     3 = Megid
-      //     anything else = Gifoie
-      //   angle.z = TODO (seems it only matters if angle.z is > 0 or not)
-      // Availability: v2+ only
-      {0x0167, "TOTrapAncient02R"},
-
-      // Flying white bird. Params:
-      //   param1 = TODO (value is param1 + 1)
-      //   param2 = TODO (value is param2 + 50)
-      //   param3 = TODO (value is param3 + 100)
-      //   param4 = number of birds? (value is param4 + 3, clamped to [1, 6])
-      //   param5 = TODO (value is (param5 / 10) + 1)
-      //   param6 = TODO (value is (param6 / 10) + 1)
-      {0x0170, "TOBoss4Bird"},
-
-      // Dark Falz obelisk. There appear to be no parameters.
-      {0x0171, "TOBoss4Tower"},
-
-      // Floating rocks. Params:
-      //   param1 = x/z range delta? (value is param1 + 50)
-      //   param2 = TODO (value is abs(param2))
-      //   param4 = number of rocks? (clamped to [1, 8])
-      {0x0172, "TOBoss4Rock"},
-
-      // Floating soul. Params:
-      //   param1 = TODO
-      //   param2 = TODO
-      //   param3 = TODO
-      //   param4 = TODO (seems it only matters if this is negative or not)
-      //   param5 = TODO
-      //   param6 = TODO
-      // Availability: v1/v2 only
-      {0x0173, "TOSoulDF"},
-
-      // Butterfly. This is a subclass of TODragonfly and takes the same params
-      // as 0x00CD (TODragonflyCave01), but also:
-      //   param6 = model number? (clamped to [0, 2])
-      // Availability: v1/v2 only
-      {0x0174, "TOButterflyDF"},
-
-      // Lobby information counter (game menu) collision. Params:
-      //   param1 = radius
-      {0x0180, "TObjInfoCol"},
-
-      // Warp between lobbies (not warp out of game to lobby). Params:
-      //   param5 = hide beams (beams shown if <= 0, hidden if > 0)
-      {0x0181, "TObjWarpLobby"},
-
-      // Lobby 1 event object (tree). Params:
-      //   param4 = default decorations when there is no event:
-      //     0x01 = flowers (Lobby 2)
-      //     0x02 = fountains (Lobby 4)
-      //     0x03 = very tall aquariums (Lobby 5)
-      //     0x04 = green trees (Lobby 1)
-      //     0x05 = stained glass windows (Lobby 9)
-      //     0x06 = snowy evergreen trees (Lobby 10)
-      //     0x07 = windmills (Lobby 3)
-      //     0x08 = spectral columns (Lobby 8)
-      //     0x09 = planetary models (Lobby 7)
-      //     Anything else = grass (Lobby 6)
-      // Availability: v3+ only
-      {0x0182, "TObjLobbyMain"},
-
-      // Lobby pigeon. Params:
-      //   param4 = model number? (clamped to [0, 2])
-      //   param5 = TODO (3 different behaviors: <= 0, == 1, or >= 2)
-      //   param6 = TODO (it only matters if this is > 0 or not)
-      // Visibility depends on the current season event in a complicated way:
-      //   If param5 <= 0, visible only when there's no season event
-      //   If param5 == 1 and param6 <= 0, visible during Wedding event
-      //   If param5 == 2 and param6 <= 0, visible during Valentine's Day and
-      //     White Day events
-      //   If none of the above, visible during Halloween event
-      // Availability: v3+ only
-      {0x0183, "__LOBBY_PIGEON__"}, // Formerly __TObjPathObj_subclass_0183__
-
-      // Lobby butterfly. Params:
-      //   param4 = model number (only two models; <= 0 or > 0)
-      // TODO: Is this object's visibility affected by season events? It may
-      // only be affected by the event when the object loads, and not when the
-      // season is changed via the DA command.
-      // Availability: v3+ only
-      {0x0184, "TObjButterflyLobby"},
-
-      // Lobby rainbow. Visible only when there is no season event. There are
-      // no parameters.
-      // Availability: v3+ only
-      {0x0185, "TObjRainbowLobby"},
-
-      // Lobby pumpkin. Visible only during Halloween season event. There are
-      // no parameters.
-      // Availability: v3+ only
-      {0x0186, "TObjKabochaLobby"},
-
-      // Lobby stained-glass windows. Params:
-      //   param4 = event flag:
-      //     zero or negative = visible only when no season event is active
-      //     positive = visible only during Christmas season event
-      // Availability: v3+ only
-      {0x0187, "TObjStendGlassLobby"},
-
-      // Lobby red and white striped curtain. Visible only during the spring
-      // and summer season events (12 and 13). No parameters.
-      // Availability: v3+ only
-      {0x0188, "TObjCurtainLobby"},
-
-      // Lobby wedding arch. Visible only during the wedding season event. No
-      // parameters.
-      // Availability: v3+ only
-      {0x0189, "TObjWeddingLobby"},
-
-      // Lobby snowy evergreen tree (Lobby 10). No parameters.
-      // Availability: v3+ only
-      {0x018A, "TObjTreeLobby"},
-
-      // Lobby aquarium (Lobby 5). Visible only when there is no season event.
-      // No parameters.
-      // Availability: v3+ only
-      {0x018B, "TObjSuisouLobby"},
-
-      // Lobby particles. Params:
-      //   param1 = TODO (clamped to [0, 575])
-      //   param3 = same as param3 from 0001 (TObjParticle)
-      //   param4 = particle type (0-9; any other value treated as 0)
-      //   param5 = same as param4 (not param5!) from 0001 (TObjParticle)
-      //   param6 = same as param5 (not param6!) from 0001 (TObjParticle)
-      // Availability: v3+ only
-      {0x018C, "TObjParticleLobby"},
-
-      // Episode 3 lobby battle table. Params:
-      //   param4 = player count (1-4); only 2 and 4 are used in-game
-      //   param5 = table number (used in E4 and E5 commands)
-      // Availability: Episode 3 only
-      {0x018D, "TObjLobbyTable"},
-
-      // Episode 3 lobby jukebox. No parameters.
-      // Availability: Episode 3 only
-      {0x018E, "TObjJukeBox"},
-
-      // TODO: Describe this object. There appear to be no parameters.
-      // Availability: v2+ only
-      {0x0190, "TObjCamera"},
-
-      // Short Spaceship wall. There appear to be no parameters.
-      // Availability: v2+ only
-      {0x0191, "TObjTuitate"},
-
-      // Spaceship door. Params:
-      //   param4 = switch flag number (if this is negative, the door is always
-      //     unlocked)
-      // Availability: v2+ only
-      {0x0192, "TObjDoaEx01"},
-
-      // Tall Spaceship wall. There appear to be no parameters.
-      // Availability: v2+ only
-      {0x0193, "TObjBigTuitate"},
-
-      // Temple door. Params:
-      //   param4 = switch flag number (if this is negative, the door is always
-      //     unlocked)
-      // Availability: v2+ only
-      {0x01A0, "TODoorVS2Door01"},
-
-      // Temple rubble. None of these take any parameters.
-      // Availability: v2+ only
-      {0x01A1, "TOVS2Wreck01"}, // Partly-broken wall (like breakable wall)
-      {0x01A2, "TOVS2Wreck02"}, // Broken column
-      {0x01A3, "TOVS2Wreck03"}, // Broken wall pieces lying flat
-      {0x01A4, "TOVS2Wreck04"}, // Column
-      {0x01A5, "TOVS2Wreck05"}, // Broken toppled column
-      {0x01A6, "TOVS2Wreck06"}, // Truncated conic monument
-
-      // Temple breakable wall, which looks like 0x01A1 (TOVS2Wreck01). Params:
-      //   param4 = number of hits, minus 256 for some reason (for example, for
-      //     a 6-hit wall, this should be -250, or 0xFFFFFF06)
-      // Availability: v2+ only
-      {0x01A7, "TOVS2Wall01"},
-
-      // Lens flare enable/disable switch. This object triggers when the local
-      // player is within 20 units, and sets a global which determines whether
-      // objects of type 0x001E (__LENS_FLARE__) should render anything.
-      // Params:
-      //   param1 = if > 0, enable lens flare rendering; if <= 0, disable it
-      // This object isn't constructed in split-screen mode.
-      // Availability: v2+ only
-      {0x01A8, "__LENS_FLARE_SWITCH_COLLISION__"},
-
-      // Rising bridges. Similar to 0x008F (TObjHashi). Params:
-      //   param1 = extra depth when lowered (this is added to TObjHashiBase's
-      //     30 unit displacement if the bridge is lowered when constructed)
-      //   param2 = rise speed in units per frame
-      //   param4 = switch flag number
-      // Availability: v2+ only
-      {0x01A9, "TObjHashiVersus1"}, // Small brown rising bridge
-      {0x01AA, "TObjHashiVersus2"}, // Long rising bridge
-
-      // Multiplayer Temple/Spaceship doors. Params:
-      //   param4 = base switch flag number (the actual switch flags used are
-      //     param4, param4 + 1, param4 + 2, etc.; if this is negative, the
-      //     door is always unlocked)
-      //   param5 = number of switch flags
-      //   param6 = synchronization mode:
-      //     negative = when all switch flags are enabled, door is permanently
-      //       unlocked via 6x0B even if some switch flags are disabled later
-      //     zero or positive = door only stays unlocked while all of the
-      //       switch flags are active and locks again when any are disabled
-      //       (no effect in single-player offline mode; the negative behavior
-      //       is used instead)
-      // Availability: v3+ only
-      {0x01AB, "TODoorFourLightRuins"}, // Temple
-      {0x01C0, "TODoorFourLightSpace"}, // Spaceship
-
-      // CCA item box. It seems this box type cannot be specialized. There are
-      // no parameters.
-      // Availability: v3+ only
-      {0x0200, "TObjContainerJung"},
-
-      // CCA cross-floor warp. Params:
-      //   param4 = destination floor
-      //   param6 = color (0 = blue, 1 = red); if this is 0 in Challenge mode,
-      //     the warp is destroyed immediately
-      // Availability: v3+ only
-      {0x0201, "TObjWarpJung"},
-
-      // CCA door. Params:
-      //   param4 = base switch flag number (the actual switch flags used are
-      //     param4, param4 + 1, param4 + 2, etc.; if this is negative, the
-      //     door is always unlocked)
-      //   param5 = number of switch flags
-      // Availability: v3+ only
-      {0x0202, "TObjDoorJung"},
-
-      // CCA item box. Same parameters as 0x0088 (TObjContainerBase2).
-      // Availability: v3+ only
-      {0x0203, "TObjContainerJungEx"},
-
-      // CCA main door. This door checks quest flags 0x0046, 0x0047, and 0x0048
-      // and opens when all are enabled. There are no parameters.
-      // Availability: v3+ only
-      {0x0204, "TODoorJungleMain"},
-
-      // CCA main door switch. This switch sets one of the quest flags checked
-      // by 0x0204 (TODoorJungleMain). Params:
-      //   param4 = quest flag index (0 = 0x0046, 1 = 0x0047, 2 = 0x0048)
-      // Availability: v3+ only
-      {0x0205, "TOKeyJungleMain"},
-
-      // Jungle breakable rocks. Params:
-      //   param4 = switch flag number (object is passable when enabled)
-      // Availability: v3+ only
-      {0x0206, "TORockJungleS01"}, // Small rock
-      {0x0207, "TORockJungleM01"}, // Small 3-rock wall
-
-      // Jungle large 3-rock wall. Unlike the above, this takes no parameters
-      // and cannot be opened.
-      // Availability: v3+ only
-      {0x0208, "TORockJungleL01"},
-
-      // Jungle plant. Params:
-      //   param4 = model number? (clamped to [0, 1])
-      // Availability: v3+ only
-      {0x0209, "TOGrassJungle"},
-
-      // CCA warp outside main gate. Unlike other warps on Ragol, this one
-      // presents the player with a choice of areas: Jungle North (6), Mountain
-      // (8), or Seaside (9). Params:
-      //   param6 = color (0 = blue, 1 = red); if this is 0 in Challenge mode,
-      //     the warp is destroyed immediately
-      // Availability: v3+ only
-      {0x020A, "TObjWarpJungMain"},
-
-      // Background lightning generator. Each strike lasts for 11 frames and
-      // strikes at a random angle around the player. Params:
-      //   param1 = lightning distance from player
-      //   param2 = lightning height
-      //   param3 = TODO (value is ((param3 / 32768) * 0.3) + 1)
-      //   param4 = minimum frames between strikes
-      //   param5 = interval randomness (after each strike, a random number is
-      //     chosen between param4 and (param4 + param5) to determine how many
-      //     frames to wait until the next strike)
-      // Availability: v3+ only
-      {0x020B, "TBGLightningCtrl"},
-
-      // Bird objects. Params:
-      //   param4 = model number? (clamped to [0, 2])
-      // Availability: v3+ only
-      {0x020C, "__WHITE_BIRD__"}, // Formerly __TObjPathObj_subclass_020C__
-      {0x020D, "__ORANGE_BIRD__"}, // Formerly __TObjPathObj_subclass_020D__
-
-      // Jungle box that triggers a wave event when opened. Params:
-      //   param4 = event number
-      //   param5 = model number (clamped to [0, 1])
-      // Availability: v3+ only
-      {0x020E, "TObjContainerJungEnemy"},
-
-      // Chain saw damage trap. Params:
-      //   param2 = base damage (multiplied by difficulty: Normal = x1/5, Hard
-      //     = x2/5, Very Hard = x3/5, Ultimate = x6/5)
-      //   param3 = model number (<= 0 for small saw, > 0 for large saw)
-      //   param4 = switch flag number (disabled when switch flag is enabled)
-      //   param5 high word = rotation range (16-bit angle)
-      //   param5 low word = rotation speed (angle units per frame)
-      //   param6 high word = if nonzero, ignore rotation range and rotate in a
-      //     full circle instead
-      //   param6 low word = delay between cycles (seconds)
-      // Availability: v3+ only
-      {0x020F, "TOTrapChainSawDamage"},
-
-      // Laser detector trap. Params:
-      //   param3 = model number (<= for small laser, > 0 for large laser)
-      //   param4 = switch flag number (enables this flag when triggered)
-      //   param5-6: same as 0x020F (TOTrapChainSawDamage)
-      // Availability: v3+ only
-      {0x0210, "TOTrapChainSawKey"},
-
-      // TODO: Describe this object. It's a subclass of TODragonfly and has the
-      // same params as 0x00CD (TODragonflyCave01), though it appears that some
-      // may have different scale factors or offsets.
-      // Availability: v3+ only
-      {0x0211, "TOBiwaMushi"},
-
-      // Seagull. Params:
-      //   param4 = model number? (clamped to [0, 2])
-      // Availability: v3+ only
-      {0x0212, "__SEAGULL__"}, // Formerly __TObjPathObj_subclass_0212__
-
-      // TODO: Describe this object. Params:
-      //   param4 = model number (clamped to [0, 2])
-      // Availability: v3+ only
-      {0x0213, "TOJungleDesign"},
-
-      // Fish. This object is not constructed in split-screen mode. Params:
-      //   param1-3 = TODO (Vector3F)
-      //   param4 = TODO
-      //   param5 = TODO
-      //   param6 = TODO
-      // Availability: v3+ only
-      {0x0220, "TObjFish"},
-
-      // Seabed multiplayer door. Params:
-      //   param4 = base switch flag number (the actual switch flags used are
-      //     param4, param4 + 1, param4 + 2, etc.; if this is negative, the
-      //     door is always unlocked)
-      //   param5 = number of switch flags (clamped to [0, 4])
-      //   param6 = synchronization mode:
-      //     negative = when all switch flags are enabled, door is permanently
-      //       unlocked via 6x0B even if some switch flags are disabled later
-      //     zero or positive = door only stays unlocked while all of the
-      //       switch flags are active and locks again when any are disabled
-      //       (no effect in single-player offline mode; the negative behavior
-      //       is used instead)
-      // Availability: v3+ only
-      {0x0221, "TODoorFourLightSeabed"}, // Blue edges
-      {0x0222, "TODoorFourLightSeabedU"},
-
-      // Small cryotube. Params:
-      //   param4 = model number (clamped to [0, 3])
-      // Availability: v3+ only
-      {0x0223, "TObjSeabedSuiso_CH"},
-
-      // Breakable glass wall. Params:
-      //   param4 = switch flag number
-      //   param5 = model number (clamped to [0, 2])
-      // Availability: v3+ only
-      {0x0224, "TObjSeabedSuisoBrakable"},
-
-      // Small floating robots. These are subclasses of TODragonfly and have
-      // the same params as 0x00CD (TODragonflyCave01), though it appears that
-      // some may have different scale factors or offsets (TODO).
-      // Availability: v3+ only
-      {0x0225, "TOMekaFish00"}, // Blue
-      {0x0226, "TOMekaFish01"}, // Red
-
-      // Dolphin. Params:
-      //   param4 = model number (clamped to [0, 4])
-      // Availability: v3+ only
-      {0x0227, "__DOLPHIN__"}, // Formerly __TObjPathObj_subclass_0227__
-
-      // Seabed capturing trap, similar to 0x0153 (TOTrapAncient01) in
-      // function. Triggers when a player is within 15 units. Params:
-      //   param1 = TODO (clamped to [0.1, 10])
-      //   param4 = hold time after trigger (in seconds; clamped to [1, 60])
-      //   param5 = hide in split-screen:
-      //     zero or negative = always visible
-      //     positive = invisible in split-screen mode
-      //   param6 = same as param5 from 0x0153 (TOTrapAncient01)
-      // Availability: v3+ only
-      {0x0228, "TOTrapSeabed01"},
-
-      // VR link object. This object is destroyed immediately in Challenge mode
-      // and split-screen mode. Same parameters as 0x008D (TOCapsuleAncient01).
-      // Availability: v3+ only
-      {0x0229, "TOCapsuleLabo"},
-
-      // Alias for 0x0001 (TObjParticle). The constructor function is exactly
-      // the same as for 0x0001, so this object has all the same paarameters
-      // and behavior as that object.
-      // Availability: v3+ only
-      {0x0240, "TObjParticle"},
-
-      // Teleporter after Barba Ray. This object behaves exactly the same as
-      // 0x0002 (TObjAreaWarpForest), except it's invisible until the boss is
-      // defeated.
-      // Availability: v3+ only
-      {0x0280, "__BARBA_RAY_TELEPORTER__"}, // Formerly __TObjAreaWarpForest_subclass_0280__
-
-      // TODO: Describe this object. There appear to be no parameters.
-      // Availability: v3+ only
-      {0x02A0, "TObjLiveCamera"},
-
-      // Gee nest. This object is technically an item box, and drops an item
-      // when destroyed. Unlike most other item boxes, it cannot be specialized
-      // (ignore_def is always true). Params are the same as for 0x0152
-      // (TContainerAncient01), but there is also:
-      //   angle.z = number of hits to destroy
-      // Availability: v3+ only
-      {0x02B0, "TContainerAncient01R"},
-
-      // Lab objects. None of these take any parameters.
-      // Availability: v3+ only
-      {0x02B1, "TObjLaboDesignBase(0)"}, // Computer console
-      {0x02B2, "TObjLaboDesignBase(1)"}, // Computer console (alternate colors)
-      {0x02B3, "TObjLaboDesignBase(2)"}, // Chair
-      {0x02B4, "TObjLaboDesignBase(3)"}, // Orange wall
-      {0x02B5, "TObjLaboDesignBase(4)"}, // Gray/blue wall
-      {0x02B6, "TObjLaboDesignBase(5)"}, // Long table
-
-      // Game Boy Advance. Params:
-      //   param4 = quest label to call when activated (inherited from
-      //     TObjMesBase)
-      //   param6 = type (clamped to [0, 1]; 0 = "QUEST", 1 = "RICO")
-      //     (inherited from TObjMesBase)
-      // Availability: GC only
-      {0x02B7, "TObjGbAdvance"},
-
-      // Like TObjQuestColA (TODO: In what ways is it different?). Parameters
-      // are the same as for TObjQuestCol, but also:
-      //   param2 = TODO
-      //   param5 = quest script manager to use (zero or negative = quest,
-      //     positive = free play)
-      // Availability: v3+ only
-      {0x02B8, "TObjQuestColALock2"},
-
-      // Like 0x0003 (TObjMapWarpForest), but is invisible and automatically
-      // warps players when they enter its radius. This is used to simulate
-      // floor warps in the Control Tower. Has the same parameters as
-      // TObjMapWarpForest, but also:
-      //   param5 = destination "floor" number (this is an intra-map warp and
-      //     doesn't actually change floors; the "floor" number is only visual)
-      //   param6 = if <= 0, shows "floor" number (param5 formatted as "%xF")
-      //     after warp; if > 0, param5 is ignored
-      // Availability: v3+ only
-      {0x02B9, "TObjMapForceWarp"},
-
-      // Behaves like 0x0012 (TObjQuestCol), but also has the param5 behavior
-      // from 0x02B8 (TObjQuestColALock2).
-      // Availability: v3+ only
-      {0x02BA, "TObjQuestCol2"},
-
-      // Episode 2 Lab door with glass window. Same parameters as
-      // TODoorLaboNormal, except param5 is unused.
-      // Availability: v3+ only
-      {0x02BB, "TODoorLaboNormal"},
-
-      // Episode 2 ending movie warp (used in final boss arenas after the boss
-      // is defeated). Same params as 0x001C (TObjAreaWarpEnding).
-      // Availability: v3+ only
-      {0x02BC, "TObjAreaWarpEndingJung"},
-
-      // Warp to another location on the same map. Used for the Lab/city warp.
-      // This warp is visible in all game modes, but cannot be used in Episode
-      // 1, Battle mode, or Challenge mode. Params:
-      //   param1-3 = destination (same as for TObjMapWarpForest)
-      //   param4 = destination angle (same as for TObjMapWarpForest)
-      //   param6 = destination text (clamped to [0, 2]):
-      //     00 = "The Principal"
-      //     01 = "Pioneer 2"
-      //     02 = "Lab"
-      // Availability: v3+ only
-      {0x02BD, "TObjLaboMapWarp"},
-
-      // This object is used internally by Episode 3 during battles as the
-      // visual implementation for some overlay tiles.
-      // Params:
-      //   param1-3 = TODO
-      //   param4 = model number:
-      //     00 = TODO (iwa.bml)
-      //     01 = TODO (l_kusa.bml)
-      //     02 = TODO (s_kusa.bml)
-      //     03 = TODO (crash_car.bml)
-      //     04 = TODO (crash_warp.bml)
-      //     05 = TODO (new_marker.bml)
-      //     06 = TODO (r_guard.bml)
-      //     07 = TODO (ryuuboku.bml)
-      //     08 = TODO (ryuuboku_l.bml)
-      //     09 = Rock (overlay = 0x10; new_iwa_1.bml)
-      //     0A = TODO (new_iwa_2.bml)
-      //     0B = Purple warp (overlay = 0x30; warp_p.bml)
-      //     0C = Red warp (overlay = 0x31; warp_r.bml)
-      //     0D = Green warp (overlay = 0x32; warp_g.bml)
-      //     0E = Blue warp (overlay = 0x33; warp_b.bml)
-      //     0F = Fence (overlay = 0x20; shareobj_new_guard.bml)
-      //   param6 second-low byte = TODO
-      //   param6 low byte = TODO
-      // Availability: Ep3 in-battle only
-      {0x02D0, "TObjKazariCard"},
-
-      // TODO: Describe these objects. There appear to be no parameters.
-      // Availability: Ep3 Morgue only
-      {0x02D1, "TObj_FloatingCardMaterial_Dark"},
-      {0x02D2, "TObj_FloatingCardMaterial_Hero"},
-
-      // Morgue warps. These don't actually do anything; they just look like a
-      // warp. The actual warping is done by another object (TObjCityAreaWarp
-      // for the lobby teleporter, or TShopGenerator for the battle counter).
-      // TObjCardCityMapWarp takes no parameters.
-      // Availability: Ep3 Morgue only
-      {0x02D3, "TObjCardCityMapWarp(0)"}, // Battle counter warp (blue lines)
-      {0x02D9, "TObjCardCityMapWarp(1)"}, // TODO
-      {0x02E3, "TObjCardCityMapWarp(2)"}, // Lobby warp (yellow lines)
-
-      // Morgue doors. None of these take any parameters. Unsurprisingly, the
-      // _Closed variants don't open.
-      // Availability: Ep3 Morgue only
-      {0x02D4, "TObjCardCityDoor(0)"}, // Yellow (to deck edit room)
-      {0x02D5, "TObjCardCityDoor(1)"}, // Blue (to battle entry counter)
-      {0x02D8, "TObjCardCityDoor(2)"}, // TODO
-      {0x02DF, "TObjCardCityDoor(3)"}, // Solid (always closed in normal Morgue)
-      {0x02E0, "TObjCardCityDoor(4)"}, // Gray (to chief)
-      {0x02DC, "TObjCardCityDoor_Closed(0)"}, // TODO
-      {0x02DD, "TObjCardCityDoor_Closed(1)"}, // TODO
-      {0x02DE, "TObjCardCityDoor_Closed(2)"}, // TODO
-      {0x02E1, "TObjCardCityDoor_Closed(3)"}, // TODO
-      {0x02E2, "TObjCardCityDoor_Closed(4)"}, // TODO
-
-      // Mortis Fons geyser. Params:
-      //   param1-3 = TODO
-      //   param4 = mode (value is param4 % 0x0B):
-      //     00 = MIZUMODE_NONE
-      //     01 = MIZUMODE_LOW
-      //     02 = MIZUMODE_MIDDLE
-      //     03 = MIZUMODE_HIGH
-      //     04 = MIZUMODE_RAIN
-      //     05 = MIZUMODE_WAVE
-      //     06 = MIZUMODE_HIGHTYNY
-      //     07 = MIZUMODE_REFLECT
-      //     08 = MIZUMODE_FOG
-      //     09 = MIZUMODE_FOG2
-      //     0A = MIZUMODE_LIGHT
-      //   param5 = TODO (value is param5 % 7)
-      // Availability: Ep3 in-battle only
-      {0x02D6, "TObjKazariGeyserMizu"},
-
-      // TODO: Describe this object. It appears to be created by many creatures
-      // and probably SCs as well, but it's not obvious what it's used for,
-      // since the logic of tiles being blocked or free is implemented in
-      // TCardServer, which doesn't interact with this object. Further research
-      // is needed here. Params:
-      //   param1-3 = TODO
-      //   param4 = TODO (expected to be 0 or 1)
-      // Availability: Ep3 in-battle only
-      {0x02D7, "TObjSetCardColi"},
-
-      // Floating robots, presumably. These are both subclasses of 0x0106
-      // (TODragonflyMachine01) and take all the same params as that object.
-      // Availability: Ep3 Morgue only
-      {0x02DA, "TOFlyMekaHero"},
-      {0x02DB, "TOFlyMekaDark"},
-
-      // Lobby banner or model display object. This implements display of media
-      // sent with the B9 command. Params:
-      //   param1-3 = scale factors (x, y, z)
-      //   param4 = index into location bit field (0-31 where 0 is the least-
-      //     significant bit; see Episode3LobbyBanners in config.example.json
-      //     for the bits' meanings)
-      //   param5 = TODO
-      // Availability: Ep3 lobby only
-      {0x02E4, "TObjSinBoardCard"},
-
-      // TODO: Describe this object. Params:
-      //   param4 = model number (0 or 1)
-      // Availability: Ep3 Morgue only
-      {0x02E5, "TObjCityMoji"},
-
-      // Like TObjCardCityMapWarp(2) (the warp to the lobby from the Morgue)
-      // but doesn't render the circles. Used in offline mode where that warp
-      // is disabled. No parameters.
-      // Availability: Ep3 Morgue only
-      {0x02E6, "TObjCityWarpOff"},
-
-      // Small flying robot. There appear to be no parameters.
-      // Availability: Ep3 Morgue only
-      {0x02E7, "TObjFlyCom"},
-
-      // TODO: Describe this object. Params:
-      //   param4 = TODO (used in vtable[0x0E])
-      // Availability: Ep3 Morgue only
-      {0x02E8, "__UNKNOWN_02E8__"},
-
-      // Episode 4 light source.
-      // TODO: Find and document this object's parameters.
-      // Availability: v4 only
-      {0x0300, "__EP4_LIGHT__"},
-
-      // Wilds/Crater cactus. Params:
-      //   param1 = horizontal scale (x, z)
-      //   param2 = vertical scale (y)
-      //   param4 = model number (0-2, not bounds-checked)
-      //   param5 = TODO
-      // Availability: v4 only
-      {0x0301, "__WILDS_CRATER_CACTUS__"},
-
-      // Wilds/Crater brown rock. Params:
-      //   param1-3 = scale factors (x, y, z); z factor also scales hitbox size
-      //   param4 = model number (0-2, not bounds-checked)
-      // Availability: v4 only
-      {0x0302, "__WILDS_CRATER_BROWN_ROCK__"},
-
-      // Wilds/Crater destructible brown rock. Params:
-      //   param4 = switch flag number
-      // Availability: v4 only
-      {0x0303, "__WILDS_CRATER_BROWN_ROCK_DESTRUCTIBLE__"},
-
-      // TODO: Construct this object and see what it is. Params:
-      //   param4 = object identifier (must be in range [0, 15]; used in 6xD4
-      //     command)
-      // Availability: v4 only
-      {0x0340, "__UNKNOWN_0340__"},
-
-      // TODO: Construct this object and see what it is. It looks like some
-      // kind of child object of 0340. Params:
-      //   param4 = object identifier (must be in range [0, 15]; used in 6xD4
-      //     command; looks like it should match an existing 0340's identifier)
-      //   param5 = child index? (must be in range [0, 3])
-      // Availability: v4 only
-      {0x0341, "__UNKNOWN_0341__"},
-
-      // Poison plant. Base damage is 10 (Normal), 20 (Hard), 30 (Very Hard),
-      // or 60 (Ultimate). There appear to be no parameters.
-      // Availability: v4 only
-      {0x0380, "__POISON_PLANT__"},
-
-      // TODO: Describe this object. Params:
-      //   param4 = model number (clamped to [0, 1])
-      // Availability: v4 only
-      {0x0381, "__UNKNOWN_0381__"},
-
-      // TODO: Describe this object. There appear to be no parameters.
-      // Availability: v4 only
-      {0x0382, "__UNKNOWN_0382__"},
-
-      // Desert ooze plant. Params:
-      //   param1 = animation speed?
-      //   param2 = scale factor
-      //   param4 = model number (clamped to [0, 1])
-      // Availability: v4 only
-      {0x0383, "__DESERT_OOZE_PLANT__"},
-
-      // TODO: Describe this object. Params:
-      //   param1 = animation speed?
-      //   param4 = TODO (clamped to [0, 1])
-      // Availability: v4 only
-      {0x0385, "__UNKNOWN_0385__"},
-
-      // Wilds/Crater black rocks. Params:
-      //   param4 = model number (0-2, not bounds-checked)
-      // Availability: v4 only
-      {0x0386, "__WILDS_CRATER_BLACK_ROCKS__"},
-
-      // TODO: Describe this object. Params (names come from debug strings):
-      //   angle.x = dest x
-      //   angle.y = dest y
-      //   angle.z = dest z
-      //   param1 = area radius
-      //   param2 = area power (value is param2 * 0.8)
-      //   param4 = hole radius (value is param4 / 100)
-      //   param5 = hole power (value is param5 / 100)
-      // Availability: v4 only
-      {0x0387, "__UNKNOWN_0387__"},
-
-      // TODO: Describe this object. Params:
-      //   param1 = hitbox width (x; only used if param6 == 0)
-      //   param2 = hitbox radius (only used if param6 != 0)
-      //   param3 = hitbox depth (z; only used if param6 == 0)
-      //   param4 = TODO (value is param4 / 100)
-      //   param6 = hitbox type (0 = rectangular, anything else = cylindrical)
-      // Availability: v4 only
-      {0x0388, "__UNKNOWN_0388__"},
-
-      // Game flag set/clear zone. This sets and clears game flags (the flags
-      // sent in 6x0A) when the player enters the object's hitbox. Params:
-      //   param1-3 = same as for 0x0388
-      //   param4 = game flags to set (low 8 bits only)
-      //   param5 = game flags to clear (low 8 bits only)
-      //   param6 = same as for 0x0388
-      // There appears to be a bug that causes the game to always set all 8 of
-      // the low game flags, regardless of the value of param4. The clearing
-      // logic (param5) appears to work correctly.
-      // Availability: v4 only
-      {0x0389, "__GAME_FLAG_SET_CLEAR_ZONE__"},
-
-      // HP drain zone. When a player is within this object's hitbox, it
-      // subtracts 0.66% of the player's current HP at a regular interval. The
-      // amount of damage per interval is capped below at 1 HP, so it will
-      // always do a nonzero amount of damage each time. Params:
-      //   param1-3 = same as for 0x0388
-      //   param5 = interval (in frames) between damage applications
-      //   param6 = same as for 0x0388
-      // Availability: v4 only
-      {0x038A, "__HP_DRAIN_ZONE__"},
-
-      // Falling stalactite. Activates when any player is within 50 units. Base
-      // damage is 100 on Normal, 200 on Hard, 300 on Very Hard, or 600 on
-      // Ultimate. There appear to be no parameters.
-      // Availability: v4 only
-      {0x038B, "__FALLING_STALACTITE__"},
-
-      // Solid desert plant. Params:
-      //   param1 = horizontal scale factor (x, z)
-      //   param2 = vertical scale factor (y)
-      // Availability: v4 only
-      {0x038C, "__DESERT_PLANT_SOLID__"},
-
-      // Desert crystals-style box. Params:
-      //   param1 = contents type:
-      //     0 = always empty
-      //     1 = standard random item (ignore_def = 1)
-      //     2 = customized item (ignore_def = 0)
-      //     3 = trigger set event
-      // If param1 is 0 or 1, no other parameters are used. (In the case of 1,
-      // param3-6 are sent to the server in the 6xA2 command; however, the
-      // standard implementation ignores them.)
-      // If param1 is 2, the other parameters have the same meanings as for
-      // 0x0088 (TObjContainerBase2).
-      // If param1 is 3, the event number is specified in param4.
-      // Availability: v4 only
-      {0x038D, "__DESERT_CRYSTALS_BOX__"},
-
-      // Episode 4 test door. param4 and param6 are the same as for 0x0056
-      // (TODoorLabo).
-      // Availability: v4 only
-      {0x038E, "__EP4_TEST_DOOR__"},
-
-      // Beehive. Params:
-      //   param1 = horizontal scale factor (x, z)
-      //   param2 = vertical scale factor (y)
-      //   param4 = model number (clamped to [0, 1])
-      // Availability: v4 only
-      {0x038F, "__BEEHIVE__"},
-
-      // Episode 4 test particles. Generates particles at a specific location
-      // (TODO) at a regular interval. Params:
-      //   angle.x = TODO
-      //   angle.y = TODO
-      //   param1 = particle distance? (TODO)
-      //   param2 = TODO
-      //   param4 = frames between effects
-      // Availability: v4 only
-      {0x0390, "__EP4_TEST_PARTICLE__"},
-
-      // Heat (implemented as a type of poison fog). Has the same parameters as
-      // TObjFogCollisionPoison.
-      // Availability: v4 only
-      {0x0391, "__HEAT__"},
-
-      // Episode 4 boss egg. There appear to be no parameters.
-      // Availability: v4 only
-      {0x03C0, "__EP4_BOSS_EGG__"},
-
-      // Episode 4 boss rock spawner. Params:
-      //   param4 = type (clamped to [0, 2])
-      // Availability: v4 only
-      {0x03C1, "__EP4_BOSS_ROCK_SPAWNER__"},
-  });
-  try {
-    return names.at(type);
-  } catch (const out_of_range&) {
-    return "__UNKNOWN__";
+struct DATEntityDefinition {
+  uint16_t type;
+  uint16_t version_flags;
+  uint64_t area_flags;
+  const char* name;
+};
+
+// TODO: Figure out whether GC NTE should be included in the various groups.
+static_assert(NUM_VERSIONS == 14, "Don\'t forget to update the DATEntityDefinition tables");
+static constexpr uint16_t F_V0_V1 = 0x001C;
+static constexpr uint16_t F_V0_V2 = 0x01FC;
+static constexpr uint16_t F_V0_V4 = 0x33FC;
+static constexpr uint16_t F_V1_V4 = 0x33F0;
+static constexpr uint16_t F_V2 = 0x01E0;
+static constexpr uint16_t F_V2_V4 = 0x33E0;
+static constexpr uint16_t F_V3_V4 = 0x3200;
+static constexpr uint16_t F_V4 = 0x2000;
+static constexpr uint16_t F_GC = 0x0F00;
+static constexpr uint16_t F_EP3 = 0x0C00;
+
+static const vector<DATEntityDefinition> dat_object_definitions({
+    // This is newserv's canonical list of map object types.
+
+    // Objects defined in map files take arguments in the form of an
+    // ObjectSetEntry structure (see Map.hh). Most objects take parameters
+    // only in param1-3 (floats) and param4-6 (ints), but a few of them use
+    // the angle fields as additional int parameters. All objects are
+    // available on all versions of the game (except Episode 3) unless
+    // otherwise noted, but most objects are available only on specific
+    // floors unless an omnispawn patch is used.
+
+    // Defines where a player should start when entering a floor. Params:
+    //   param1 = client ID
+    //   param4 = source type:
+    //     0 = use this set when advancing from a lower floor
+    //     1 = use this set when returning from a higher floor
+    //     anything else = set is unused
+    {0x0000, F_V0_V4, 0x00007FFFFFFFFFFF, "TObjPlayerSet"},
+    {0x0000, F_EP3, 0x0000000000008001, "TObjPlayerSet"},
+
+    // Displays a particle effect. This object is not constructed in
+    // split-screen mode. Params:
+    //   param1 = particle type (truncated to int, clamped to nonnegative)
+    //   param3 = TODO
+    //   param4 = if equal to 1, increase draw distance from 200 to 1500; if
+    //     any other value, no effect
+    //   param5 = TODO
+    //   param6 = TODO
+    {0x0001, F_V0_V4, 0x00006FFFFFFFFFFF, "TObjParticle"},
+    {0x0001, F_EP3, 0x0000000000008003, "TObjParticle"},
+
+    // Standard (triangular) cross-floor warp object. Params:
+    //   param4 = destination floor
+    //   param6 = color (0 = blue, 1 = red); if this is 0 in Challenge mode,
+    //     the warp is destroyed immediately
+    {0x0002, F_V0_V4, 0x00007FF3C07C78FF, "TObjAreaWarpForest"},
+
+    // Standard (triangular) intra-floor warp object. Params:
+    //   param1-3 = destination coordinates (x, y, z); players are supposed
+    //     to be offset from this location in different directions depending
+    //     on their client ID, but there is a bug that causes all players to
+    //     use the same offsets: x + 10 and z + 10
+    //   param4 = destination angle (about y axis)
+    {0x0003, F_V0_V4, 0x00007FFC3FFF78FF, "TObjMapWarpForest"},
+
+    // Light collision. Params:
+    //   param1 = TODO (in range 0-10000; if above 10000, (param1 - 10000) is
+    //     used and a flag is set)
+    //   param2 = TODO (in range 0-10000; if above 10000, (param2 - 10000) is
+    //     used and a flag is set)
+    //   param3 = TODO
+    //   param4 = TODO
+    //   param5 = TODO
+    //   param6 = TODO
+    {0x0004, F_V0_V4, 0x00006FFC3FFF87FF, "TObjLight"},
+    {0x0004, F_EP3, 0x0000000000008003, "TObjLight"},
+
+    // Arbitrary item. The parameters specify the item data; see
+    // ItemCreator::base_item_for_specialized_box for how the encoding works.
+    {0x0005, F_V0_V2, 0x000000000000073F, "TItem"},
+
+    // Environmental sound. This object is not constructed in offline multi
+    // mode. Params:
+    //   param3 = audibility radius (if <= 0 uses default of 200)
+    //   param4 = sound ID:
+    //     Pioneer 2 / Lab (volume param is ignored on this floor):
+    //       00 = distant crowd noises (GC: 4004B200)
+    //       01 = ship passing by (GC: 4004C101)
+    //       02 = siren passing by (GC: 4004CB02)
+    //     Forest:
+    //       00 = waterfall (GC: 0004A801)
+    //       01 = stream (GC: 0004B202)
+    //       02 = birds chirping (GC: 0004BC00)
+    //       03 = light rain on ground (GC: 00043704)
+    //       04 = light rain on water (GC: 0004BC05)
+    //       05 = wind (GC: 0004AD06)
+    //     Caves:
+    //       00 = nothing? (GC: 00046400)
+    //       01 = volcano? (GC: 00042A01)
+    //       02 = lava flow (GC: 00042F02)
+    //       03 = stream (GC: 00043C03)
+    //       04 = waterfall (GC: 00043C04)
+    //       05 = echoing drips (GC: 00042D05)
+    //     Mines:
+    //       00 = mechanical whir (GC: 4004B715)
+    //       01 = rotary machine (GC: 4004BC16)
+    //     Ruins:
+    //       00 = wind/water (GC: 4004B200)
+    //       01 = swishing (GC: 4004CB01)
+    //       02 = repeating sliding? (GC: 4004BC02)
+    //       03 = repeating punching? (GC: 4004BC03)
+    //       04 = hissing (GC: 4004C604)
+    //       05 = heartbeat (GC: 4004AA05)
+    //       06 = squishing heartbeat (GC: 4004C606)
+    //     Battle 1 (Spaceship):
+    //       00 = low beeping (GC: 4004B40C)
+    //       01 = high beeping (GC: 4004B40D)
+    //       02 = robot arm movement 1 (GC: 4004C10E)
+    //       03 = robot arm movement 2 (GC: 4004C10F)
+    //     Battle 2 (Temple):
+    //       00 = waterfall (GC: 0004CB0C)
+    //       01 = waves (GC: 0004BC0D)
+    //       02 = bubbles (GC: 0004BC0E)
+    //     VR Temple:
+    //       00 = waterfall (GC: 0004CB0C)
+    //       01 = waves (GC: 0004BC0D)
+    //       02 = bubbles GC: (0004BC0E0
+    //     VR Spaceship:
+    //       00 = low beeping (GC: 4004B40C)
+    //       01 = high beeping (GC: 4004B40D)
+    //       02 = robot arm movement 1 (GC: 4004C10E)
+    //       03 = robot arm movement 2 (GC: 4004C10F)
+    //     Central Control Area:
+    //       00 = wind (GC: 0004CB05)
+    //       01 = waterfall (GC: 0004D506)
+    //       02 = stream (GC: 0004BC07)
+    //       03 = waves crashing (GC: 0004C60A)
+    //       04 = ocean wind (GC: 0004CB0B)
+    //       05 = higher wind (GC: 0004CB0C)
+    //       06 = light ocean wind (GC: 0004CB0D)
+    //       07 = ominous mechanical sound (GC: 0004BC0E)
+    //     Seabed and Olga Flow:
+    //       00 = water leak (GC: 4004BC00)
+    //       01 = water drip (GC: 4004BC01)
+    //       02 = waterfall (GC: 4004C603)
+    //       03 = light waterfall (GC: 4004D504)
+    //       04 = creaking metal 1 (GC: 4004B205)
+    //       05 = creaking metal 2 (GC: 4004B206)
+    //       06 = creaking metal 3 (GC: 4004AD07)
+    //       07 = creaking metal 4 (GC: 4004B208)
+    //       08 = creaking metal 5 (GC: 4004AD09)
+    //       09 = gas leak (GC: 4004B20A)
+    //       0A = distant metallic thud (GC: 4004B20B)
+    //     Crater:
+    //       00 = TODO (BB: 000005FD)
+    //       01 = TODO (BB: 000005FE)
+    //       02 = TODO (BB: 000005FF)
+    //       03 = TODO (BB: 00000600)
+    //       04 = TODO (BB: 00000601)
+    //       05 = TODO (BB: 00000602)
+    //       06 = TODO (BB: 00000603)
+    //       07 = TODO (BB: 00000604)
+    //       08 = TODO (BB: 00000605)
+    //       09 = TODO (BB: 00000606)
+    //       0A = TODO (BB: 00000607)
+    //     Crater Interior:
+    //       00 = TODO (BB: 00000658)
+    //       01 = TODO (BB: 00000659)
+    //       02 = TODO (BB: 0000065A)
+    //       03 = TODO (BB: 0000065B)
+    //       04 = TODO (BB: 0000065C)
+    //       05 = TODO (BB: 0000065D)
+    //       06 = TODO (BB: 0000065E)
+    //       07 = TODO (BB: 0000065F)
+    //       08 = TODO (BB: 00000660)
+    //       09 = TODO (BB: 00000661)
+    //       0A = TODO (BB: 00000662)
+    //     Desert:
+    //       00 = TODO (BB: 000006AE)
+    //       01 = TODO (BB: 000006AF)
+    //       02 = TODO (BB: 000006B0)
+    //       03 = TODO (BB: 000006B1)
+    //       04 = TODO (BB: 000006B2)
+    //       05 = TODO (BB: 000006B3)
+    //       06 = TODO (BB: 000006B4)
+    //       07 = TODO (BB: 000006B5)
+    //       08 = TODO (BB: 000006B6)
+    //       09 = TODO (BB: 000006B7)
+    //       0A = TODO (BB: 000006B8)
+    //       0B = TODO (BB: 000006B9)
+    //       0C = TODO (BB: 000006BA)
+    //       0D = TODO (BB: 000006BB)
+    //       0E = TODO (BB: 000006BC)
+    //       0F = TODO (BB: 000006BD)
+    //       10 = TODO (BB: 000006BE)
+    //   param5 = volume (in range -0x7F to 0x7F)
+    {0x0006, F_V0_V2, 0x0000000000037FFF, "TObjEnvSound"},
+    {0x0006, F_V3_V4, 0x00006FF0BFFF27FF, "TObjEnvSound"},
+    {0x0006, F_EP3, 0x0000000000000001, "TObjEnvSound"},
+
+    // Fog collision object. Params:
+    //   param1 = radius
+    //   param4 = fog entry number; if lower than the existing fog number,
+    //     does nothing (if param4 is >= 0x1000, the game subtracts 0x1000
+    //     from it, but only after comparing it to the current fog number;
+    //     this can be used to override a later fog with an earlier fog)
+    //   param5 = transition type (0 = fade in, 1 = instantly switch)
+    {0x0007, F_V0_V4, 0x00006FFFFFFF7FFF, "TObjFogCollision"},
+    {0x0007, F_EP3, 0x0000000000000001, "TObjFogCollision"},
+
+    // Event collision object. This object triggers a wave event (W-XXX) when
+    // any local player (in split-screen play, there may be multiple) steps
+    // within its radius. The object is inactive for 3 frames after it is
+    // constructed, and will not detect any player during that time.
+    // Curiously, the frame counter does not appear to be bounded, so if the
+    // player waits approximately 828 days, the counter will overflow to a
+    // positive number and the object won't be able to trigger for another
+    // 828 days until it gets to zero again. It is unlikely this has ever
+    // happened for any player. Params:
+    //   param1 = radius
+    //   param4 = event ID
+    {0x0008, F_V0_V4, 0x00007FFFFFFF7FFF, "TObjEvtCollision"},
+    {0x0008, F_EP3, 0x0000000000000001, "TObjEvtCollision"},
+
+    // TODO: Describe this object. Params:
+    //   param1 = TODO
+    //   param2 = TODO
+    //   param3 = TODO (it only matters whether this is negative or not)
+    {0x0009, F_V0_V4, 0x000060000004073F, "TObjCollision"},
+    {0x0009, F_EP3, 0x0000000000000001, "TObjCollision"},
+
+    // Elemental trap. Params:
+    //   param1 = trigger radius delta (actual radius is param1 / 2 + 30)
+    //   param2 = explosion radius delta (actual radius is param2 / 2 + 60)
+    //   param3 = trap group number:
+    //     negative = trap triggers and explodes alone
+    //     00 = trap follows player who triggered it (online only; when
+    //       offline, these act as if the group number were negative, and
+    //       param6 is overwritten with 30 (1 second))
+    //     positive = trap is part of a group that all trigger and explode
+    //       simultaneously
+    //   param4 = trap power (clamped below to 0), scaled by difficulty:
+    //     Normal: power = param4 * 1
+    //     Hard: power = param4 * 3
+    //     Very Hard: power = param4 * 5
+    //     Ultimate: power = param4 * 14
+    //   param5 = damage type (clamped to [0, 5])
+    //     00 = direct damage (damage = power / 5)
+    //     01 = fire (damage = power * (100 - EFR) / 500)
+    //     02 = cold (can freeze; damage = power * (100 - EIC) / 500)
+    //       chance of freezing = ((((power - 250) / 40) + 5) / 40) clamped
+    //       to [0, 0.4], or to [0.2, 0.4] on Ultimate
+    //     03 = electric (can shock; damage = power * (100 - EIC) / 500)
+    //       chance of shock = 1/15, or 1/40 on Ultimate
+    //     04 = light (damage = power * (100 - ELT) / 500)
+    //     05 = dark (instantly kills with chance (power - EDK) / 100); if
+    //       used in a boss arena and in non-Ultimate mode, cannot kill
+    //   param6 = number of frames between trigger and explosion
+    {0x000A, F_V0_V4, 0x00005FFC3FFB07FE, "TOMineIcon01"},
+
+    // Status trap. Params:
+    //   param1 = trigger radius delta (actual radius is param1 / 2 + 30)
+    //   param2 = explosion radius delta (actual radius is param2 / 2 + 60)
+    //   param3 = trap group number (same as in TOMineIcon01)
+    //   param4 = trap power (same as in TOMineIcon01)
+    //   param5 = trap type (clamped to [0x0F, 0x12])
+    //     0F = poison
+    //     10 = paralysis
+    //     11 = slow
+    //     12 = confuse
+    //   param6 = number of frames between trigger and explosion
+    {0x000B, F_V0_V4, 0x00005FFC3FFB07FE, "TOMineIcon02"},
+
+    // Heal trap. Params:
+    //   param1 = trigger radius delta (actual radius is param1 / 2 + 30)
+    //   param2 = explosion radius delta (actual radius is param2 / 2 + 60)
+    //   param3 = trap group number (same as in TOMineIcon01)
+    //   param4 = trap power (same as in TOMineIcon01)
+    //   param5 = trap type (clamped to [6, 8])
+    //     06 = heal HP (amount = power)
+    //     07 = clear negative status effects
+    //     08 = does nothing? (TODO: calls player->vtable[0x40], but that
+    //       function does nothing on v3. Did this do something in v1 or v2?)
+    //   param6 = number of frames between trigger and explosion
+    {0x000C, F_V0_V4, 0x00005FFC3FFB07FE, "TOMineIcon03"},
+
+    // Large elemental trap. Params:
+    //   param1 = trigger radius delta (actual radius is param1 / 2 + 60)
+    //   param2 = explosion radius delta (actual radius is param2 / 2 + 120)
+    //   param3 = trap group number (same as in TOMineIcon01)
+    //   param4 = trap power (same as in TOMineIcon01)
+    //   param5 = trap type (same as in TOMineIcon01)
+    //   param6 = number of frames between trigger and explosion
+    {0x000D, F_V0_V4, 0x00005FFC3FFB07FE, "TOMineIcon04"},
+
+    // Room ID. Params:
+    //   param1 = radius (actual radius = (param1 * 10) + 30)
+    //   param2 = next room ID
+    //   param3 = previous room ID
+    //   param5 = angle
+    //   param6 = TODO (debug info calls this "BLOCK ID"; seems it only
+    //     matters whether this is 0x10000 or not)
+    {0x000E, F_V0_V4, 0x00005FFFFFF83FFE, "TObjRoomId"},
+
+    // Sensor of some kind (TODO). Params:
+    //   param1 = activation radius delta (actual radius = param1 + 50)
+    //   param4 = switch flag number
+    //   param5 = update mode switch (TODO; param5 < 0 sets update_mode =
+    //     PERMANENTLY_ON, otherwise TEMPORARY; see TOSensor_vF)
+    {0x000F, F_V0_V4, 0x00004000000000F6, "TOSensorGeneral01"},
+
+    // Lens flare effect. This object is not constructed in offline multi
+    // mode. Params:
+    //   param1 = visibility radius (if negative, visible everywhere)
+    {0x0011, F_V0_V4, 0x000040000000411E, "TEF_LensFlare"},
+
+    // Quest script trigger. Starts a quest thread at a specific label when
+    // the local player goes near the object. Params:
+    //   param1 = radius
+    //   param4 = label number to call when local player is within radius
+    {0x0012, F_V0_V4, 0x00006FFFFFFC7FFF, "TObjQuestCol"},
+    {0x0012, F_EP3, 0x0000000000000001, "TObjQuestCol"},
+
+    // Healing ring. Removes all negative status conditions and adds 9 HP and
+    // 9 TP per frame until max HP/TP are both reached or the player leaves
+    // the radius. The radius is a fixed size.
+    {0x0013, F_V0_V4, 0x00004FFC3FF807FE, "TOHealGeneral"},
+
+    // Invisible map collision. Params:
+    //   param1-3 = box dimensions (x, y, z; rotated by angle fields)
+    //   param4 = wall type:
+    //     00 = custom (see param5)
+    //     01 = blocks enemies only (as if param5 = 00008000)
+    //     02 = blocks enemies and players (as if param5 = 0x00008900)
+    //     03 = blocks enemies and players, but enemies can see targets
+    //       through the collision (as if param5 = 0x00000800)
+    //     04 = blocks players only (as if param5 = 00002000)
+    //     05 = undefined behavior due to missing bounds check
+    //     anything else = same as 01
+    //   param5 = flags (bit field; used if param4 = 0) (TODO: describe bits)
+    {0x0014, F_V0_V4, 0x0000600C3F87073F, "TObjMapCsn"},
+    {0x0014, F_EP3, 0x0000000000000001, "TObjMapCsn"},
+
+    // Like TObjQuestCol, but requires the player to press a controller
+    // button to trigger the call. Parameters are the same as for
+    // TObjQuestCol.
+    {0x0015, F_V0_V4, 0x00006FFFFFFC7FFF, "TObjQuestColA"},
+    {0x0015, F_EP3, 0x0000000000000001, "TObjQuestColA"},
+
+    // TODO: Describe this object. Params:
+    //   param1 = radius (if negative, 30 is used)
+    {0x0016, F_V0_V4, 0x00006FFFFFFCFFFF, "TObjItemLight"},
+    {0x0016, F_EP3, 0x0000000000008001, "TObjItemLight"},
+
+    // Radar collision. Params:
+    //   param1 = radius
+    //   param4 = TODO
+    {0x0017, F_V0_V4, 0x00004FFFFFF8FFFE, "TObjRaderCol"},
+    {0x0017, F_EP3, 0x0000000000008000, "TObjRaderCol"},
+
+    // Fog collision. Same params as 0x0007 (TObjFogCollision), but also:
+    //   param3 = if >= 1, fog is on when switch flag is on; otherwise, fog
+    //     is on when switch flag is off
+    //   param6 = switch flag number
+    {0x0018, F_V0_V4, 0x00004FFFFFF87FFE, "TObjFogCollisionSwitch"},
+
+    // Boss teleporter. The destination cannot be changed; it always
+    // teleports the player to the boss arena for the current area. In
+    // Challenge mode, the game uses the current area number to determine the
+    // destination floor, but in other modes, it uses the current episode
+    // number and floor number (not area number). Assuming areas haven't been
+    // reassigned from the defaults in non-Challenge mode, the mapping is:
+    //   Challenge (indexed by area number, not floor number):
+    //     Episode 1:
+    //       Pioneer 2, boss arenas, lobby, battle areas => Pioneer 2
+    //       Forest 1 and 2 => Dragon
+    //       Cave 1, 2, and 3 => De Rol Le
+    //       Mine 1 and 2 => Vol Opt
+    //       Ruins 1, 2, and 3 => Dark Falz
+    //     Episode 2:
+    //       Lab, boss arenas, Seaside Night, Tower => Lab
+    //       VR Temple A and B => Barba Ray
+    //       VR Spaceship A and B => Gol Dragon
+    //       Central Control Area (but not Seaside Night) => Gal Gryphon
+    //       Seabed => Olga Flow
+    //     Episode 4:
+    //       Pioneer 2, boss arena => Pioneer 2
+    //       Crater, Desert, test map => Saint-Milion arena
+    // Params:
+    //   param5 = switch flag number required to activate warp (>= 0x100 = no
+    //     switch flag required; ignored if on Pioneer 2)
+    // In offline mode, this object constructs TObjWarpBossMulti instead.
+    {0x0019, F_V0_V4, 0x00006FFC3FFC04A5, "TObjWarpBoss"},
+
+    // Sign board. This shows the loaded image from a quest (via load_pvr).
+    // Params:
+    //   param1-3 = scale factors (x, y, z)
+    {0x001A, F_V1_V4, 0x0000600000040001, "TObjSinBoard"},
+    {0x001A, F_EP3, 0x0000000000000001, "TObjSinBoard"},
+
+    // Quest floor warp. This appears similar to TObjAreaWarpForest except
+    // that the object is not destroyed immediately if it's blue and the game
+    // is Challenge mode. Params:
+    //   param1 = player set ID (TODO: what exactly does this do? Looks like it
+    //     does nothing unless it's >= 2)
+    //   param4 = destination floor
+    //   param6 = color (0 = blue, 1 = red)
+    {0x001B, F_V1_V4, 0x00005000000078FE, "TObjAreaWarpQuest"},
+
+    // Ending movie warp (used in final boss arenas after the boss is
+    // defeated). Params:
+    //   param6 = color (0 = blue, 1 = red)
+    {0x001C, F_V1_V4, 0x0000500080004000, "TObjAreaWarpEnding"},
+
+    // Star light effect.
+    // This object renders from -100 to 740 over x and -100 to 580 over y.
+    // Params:
+    //   param1 = TODO
+    //   param2 = TODO
+    //   param3 = TODO
+    //   param4 = TODO
+    //   param5 = TODO
+    //   param6 = TODO
+    {0x001D, F_V2_V4, 0x0000400000000002, "TEffStarLight2D_Base"},
+
+    // VR Temple Beta / Barba Ray lens flare effect.
+    // This object renders from -10 to 650 over x and -10 to 490 over y.
+    {0x001E, F_V2_V4, 0x000041F1001A0006, "__LENS_FLARE__"},
+
+    // Hides the area map when the player is near this object. Params:
+    //   param1 = radius
+    // TODO: Test this.
+    {0x001F, F_V2_V4, 0x00004FFC3FFB07FE, "TObjRaderHideCol"},
+
+    // Item-detecting floor switch. Params:
+    //   param1 = radius
+    //   param4 = switch flag number
+    //   param5 = item type:
+    //     0 or any value not listed below = any item
+    //     1 = weapon
+    //     2 = armor
+    //     3 = shield
+    //     4 = unit
+    //     5 = mag
+    //     6 = tool
+    //     7 = meseta
+    //   param6 = item amount required minus 1 (0 = 1 item, 1 = 2 items, etc.);
+    //     for tools and meseta, each dropped item counts for its stack size
+    {0x0020, F_V2_V4, 0x00006FFC3FFF07FF, "TOSwitchItem"},
+
+    // Symbol chat collision object. This object triggers symbol chats when
+    // the players are nearby and certain switch flags are NOT set. If a
+    // player is within the radius, the object checks the switch flags in
+    // reverse order, and triggers the symbol chat for the latest one that is
+    // NOT set. So, the logic is:
+    // - If all 3 switch flags are not set, the symbol chat in spec1 is used
+    // - If the switch flag in spec1 is set and those in spec2 and spec3 are
+    //   not set, the symbol chat in spec2 is used
+    // - If the switch flag in spec2 is set and the flag in spec3 is not set,
+    //   the symbol chat in spec3 is used regardless of whether the switch
+    //   flags in spec1 is set
+    // - If the switch flags in spec3 is set, no symbol chat appears at all
+    //   regardless of the values of the other two switch flags
+    // Each spec is a 32-bit integer consisting of two 16-bit fields. The
+    // high 16 bits are a switch flag number (0-255), and the low 16 bits are
+    // an entry index from symbolchatcolli.prs. The entry index is ignored if
+    // the corresponding data label from the F8A6 quest opcode is not null
+    // (and the data from the label is used instead). Quest scripts don't
+    // have a good way to pass null for regsA[7-9], so the logic that looks
+    // up entries in symbolchatcolli.prs can be ignored in quests.
+    // Default symbol chat numbers (from qedit.info):
+    //   00 = Drop Meseta
+    //   01 = Meseta has been dropped
+    //   02 = Drop 1 weapon
+    //   03 = Drop 4 weapons
+    //   04 = Drop 1 shield
+    //   05 = Drop 4 shields
+    //   06 = Drop 1 mag
+    //   07 = Drop 4 mags
+    //   08 = Drop tool item
+    //   09 = ????
+    //   0A = XXXX
+    //   0B = All circles like OK
+    //   0C = Key with Yes
+    //   0D = Key with Cool
+    //   0E = Key with ...
+    //   0F = Go right
+    //   10 = Go left
+    //   11 = Push button with gun
+    //   12 = Key icons
+    //   13 = Key has been pressed
+    //   14 = Run/go
+    //   15 = Push 1 button on
+    //   16 = Push 2 button on
+    //   17 = Clock (hurry)
+    // Params:
+    //   param1 = radius
+    //   param4 = spec1
+    //   param5 = spec2
+    //   param6 = spec3
+    // This object can also be created by the quest opcode F8A6; see the
+    // description of that opcode in QuestScript.cc for more information.
+    {0x0021, F_V2_V4, 0x00006FFC3FFF07FF, "TOSymbolchatColli"},
+
+    // Invisible collision switch. Params:
+    //   param1 = radius delta (actual radius is param1 + 10)
+    //   param4 = switch flag number
+    //   param5 = sticky flag (if negative, switch flag is unset when player
+    //     leaves; if zero or positive, switch flag remains on)
+    {0x0022, F_V2_V4, 0x00004FFC3FFB07FE, "TOKeyCol"},
+
+    // Attackable collision. Params:
+    //   param1 = enable switch flag (the object is only attackable if this
+    //     switch flag is enabled); any value > 0xFF disables this behavior
+    //     so the object is always attackable
+    //   param2 = if negative, no target reticle appears; if zero or
+    //     positive, a reticle appears
+    //   param3 = switch flag number to set when required number of hits is
+    //     taken (ignored if param6 is nonzero)
+    //   param4 = number of hits required to activate, minus 1 (so e.g. a
+    //     value of 4 here means 5 hits needed)
+    //   param5 = object number (if outside the range [100, 999], uses the
+    //     free play script when looking up param6 instead of the quest)
+    //   param6 = quest label to call when required number of hits is taken
+    //     (if zero, switch flag in param3 is set instead)
+    {0x0023, F_V2_V4, 0x00004FFC3FFB07FE, "TOAttackableCol"},
+
+    // Damage effect. Params:
+    //   angle.x = effect type (in range [0x00, 0x14]; TODO: list these)
+    //   param1 = damage radius
+    //   param2 = damage value, scaled by difficulty:
+    //     Normal: param2 * 2
+    //     Hard: param2 * 4
+    //     Very Hard: param2 * 6
+    //     Ultimate: param2 * 8
+    //   param3 = effect visual size
+    //   param4 = enable switch flag number (effect is off unless this flag
+    //     is set)
+    //   param5 = disable switch flag number (effect is off if this flag is
+    //     set, even if the enable switch flag is also set), or >= 0x100 if
+    //     this functionality isn't needed
+    //   param6 = persistence flag (if nonzero, effect stays on once enabled)
+    {0x0024, F_V2_V4, 0x0000600FFF9F07FF, "TOSwitchAttack"},
+
+    // Switch flag timer. This object watches for a switch flag to be
+    // activated, then once it is, waits for a specified time, then disables
+    // that switch flag and activates up to three other switch flags. Note
+    // that this object just provides the timer functionality; the trigger
+    // switch flag must be activated by some other object. Params:
+    //   angle.x = trigger mode:
+    //     0 = disable watched switch flag when timer expires
+    //     any other value = enable up to 3 other switch flags when timer
+    //       expires and don't disable watched switch flag
+    //   angle.y = if this is 1, play tick sound effect every second after
+    //     activation (if any other value, no tick sound is played)
+    //   angle.z = timer duration in frames
+    //   param4 = switch flag to watch for activation in low 16 bits, switch
+    //     flag 1 to activate when timer expires (if angle.x = 0) in high 16
+    //     bits (>= 0x100 if not needed)
+    //   param5 = switch flag 2 to activate when timer expires (if
+    //     angle.x = 0) in high 16 bits (>= 0x100 if not needed)
+    //   param6 = switch flag 3 to activate when timer expires (if
+    //     angle.x = 0) in high 16 bits (>= 0x100 if not needed)
+    {0x0025, F_V2_V4, 0x00006FFC3FFF07FF, "TOSwitchTimer"},
+
+    // Chat sensor. This object watches for chat messages said by players
+    // within its radius, optionally filtering for specific words. When a
+    // message matches, it either activates a switch flag or calls a quest
+    // function. When created via the F801 quest opcode, param5 is ignored,
+    // and the string specified by the quest is always used. Params:
+    //   angle.x = activation type (0 = quest function, 1 = switch flag)
+    //   angle.y = match mode:
+    //     0 = match a specific string (defined by param5)
+    //     1 = match any string
+    //     anything else = never match anything
+    //   param1 = radius
+    //   param4 = switch flag number or quest label number
+    //   param5 = trigger string
+    //     0 = any string (TODO: Is this true?)
+    //     1 = "YES"
+    //     2 = "COOL"
+    //     3 = "NO"
+    {0x0026, F_V2_V4, 0x00006FFC3FFF07FF, "TOChatSensor"},
+
+    // Radar map icon. Shows an icon on the map that is optionally locked or
+    // unlocked, depending on the values of one or more sequential switch
+    // flags. The icon is considered unlocked if all of the specified switch
+    // flags are set. There can be at most 12 switch flags used with this
+    // object and the switch flag numbers cannot wrap around from 0xFF to 0.
+    // Params:
+    //   param1 = scale (1.0 = normal size)
+    //   param4 = check switch flags for color:
+    //     positive value = ignore param6; color is red (FFFF0000) if any of
+    //       the switch flags are off, or green (FF00FF00) if all are on
+    //     zero or negative = ignore param5; always render in the color
+    //       specified by param6
+    //   param5 = switch flag spec; upper 16 bits are number of switch flags,
+    //     lower 16 bits are first switch flag number
+    //   param6 = color as ARGB8888
+    {0x0027, F_V3_V4, 0x00004FFFFFFC0000, "TObjRaderIcon"},
+
+    // Environmental sound. This object is not constructed in offline multi
+    // mode. This is essentially identical to TObjEnvSound, except the sound
+    // fades in and out instead of abruptly starting or stopping when
+    // entering or leaving its radius. Params:
+    //   param2 = volume fade speed (units per frame)
+    //   param3 = audibility radius (same as for TObjEnvSound)
+    //   param4 = sound ID (same as for TObjEnvSound)
+    //   param5 = volume (same as for TObjEnvSound)
+    {0x0028, F_V3_V4, 0x00006FFCBFFF27F7, "TObjEnvSoundEx"},
+    {0x0028, F_EP3, 0x0000000000000001, "TObjEnvSoundEx"},
+
+    // Environmental sound. This object is not constructed in offline multi
+    // mode. This is essentially identical to TObjEnvSound, except there is
+    // no radius: the sound is audible everywhere. Params:
+    //   param4 = sound ID (same as for TObjEnvSound)
+    //   param5 = volume (same as for TObjEnvSound)
+    {0x0029, F_V3_V4, 0x00006FFCBFFF27F7, "TObjEnvSoundGlobal"},
+    {0x0029, F_EP3, 0x0000000000000001, "TObjEnvSoundGlobal"},
+
+    // Counter sequence activator. Used for Hunter's Guild, shops, bank, etc.
+    // Params:
+    //   param4 = shop sequence number:
+    //     Episodes 1, 2, and 4:
+    //       00 = weapon shop
+    //       01 = medical center
+    //       02 = armor shop
+    //       03 = tool shop
+    //       04 = Hunter's Guild
+    //       05 = check room
+    //       06 = tekker
+    //       07 = government counter (BB only)
+    //       08 = "GIVEAWAY" (BB only)
+    //     Episode 3:
+    //       00 = unused (DUMMY0)
+    //       01 = unused (DUMMY1)
+    //       02 = unused (DUMMY2)
+    //       03 = unused (DUMMY3)
+    //       04 = unused (DUMMY4)
+    //       05 = unused (DUMMY5)
+    //       06 = unused (DUMMY6)
+    //       07 = deck edit counter
+    //       08 = entry counter
+    //       09 = left-side card trade kiosk
+    //       0A = right-side card trade kiosk
+    //       0B = auction counter
+    //       0C = hidden entry counter
+    //       0D = Pinz's Shop
+    {0x0040, F_V0_V4, 0x0000600000040001, "TShopGenerator"},
+    {0x0040, F_EP3, 0x0000000000000001, "TShopGenerator"},
+
+    // Telepipe city location. Params:
+    //   param4 = owner client ID (0-3)
+    {0x0041, F_V0_V4, 0x0000600000040001, "TObjLuker"},
+    {0x0041, F_EP3, 0x0000000000000001, "TObjLuker"},
+
+    // BGM collision. Changes the background music when the player enters the
+    // object's radius. Params:
+    //   param1 = radius
+    //   param4 = which music to play:
+    //     00 = SHOP.adx
+    //     01 = GUILD.adx
+    //     02 = MEDICAL.adx
+    //     03 = soutoku.adx
+    //     04 = city.adx
+    //     05 = labo.adx
+    //     anything else = value is taken modulo 6 and used as above
+    {0x0042, F_V0_V4, 0x0000600000040001, "TObjBgmCol"},
+    {0x0042, F_EP3, 0x0000000000000001, "TObjBgmCol"},
+
+    // Main warp to other floors from Pioneer 2.
+    // Certain floors are available by default, determined by checking the
+    // game's mode and quest flags. A different set of flags is checked on BB
+    // than on other versions, presumably since government quests are used to
+    // unlock areas instead of offline story progression. On later versions
+    // of BB, all floors are available by default; this table reflects the
+    // behavior before that change.
+    // Required flag for mode: Online/multi   Offline       BB flag
+    //   Episode 1:
+    //     Forest 1:           Always open   Always open   Always open
+    //     Cave 1:             0x17          0x18          0x1F9
+    //     Mine 1:             0x20          0x21          0x201
+    //     Ruins 1:            0x30          0x2A          0x207
+    //   Episode 2:
+    //     VR Temple Alpha:    Always open   Always open   Always open
+    //     VR Spaceship Alpha: 0x4C          0x4D          0x21B
+    //     CCA:                0x4F          0x50          0x225
+    //     Seabed Upper:       0x52          0x53          0x22F
+    //   Episode 4:
+    //     Crater East                                     Always open
+    //     Crater West                                     0x2BD
+    //     Crater South                                    0x2BE
+    //     Crater North                                    0x2BF
+    //     Crater Interior                                 0x2C0
+    //     Subterranean Desert 1                           0x2C1
+    // Params:
+    //   param5 = main warp type:
+    //     00 = Episode 1 / Episode 4
+    //     01 = Ep2 VR Temple / VR Spaceship (CCA and Seabed not available)
+    //     02 = Ep2 CCA (VR Temple and Spaceship not available)
+    {0x0043, F_V0_V4, 0x0000600000040001, "TObjCityMainWarp"},
+
+    // Lobby teleporter. When used, this object immediately ends the current
+    // game and sends the player back to the lobby. If constructed offline,
+    // this object will do nothing and not render.
+    // This object takes no parameters.
+    {0x0044, F_V0_V4, 0x0000600000040001, "TObjCityAreaWarp"},
+    {0x0044, F_EP3, 0x0000000000000001, "TObjCityAreaWarp"},
+
+    // Warp to another location on the same map. Used for the Principal's
+    // office warp. This warp is visible in all game modes, but cannot be
+    // used in Battle or Challenge mode. Params:
+    //   param1-3 = destination (same as for TObjMapWarpForest)
+    //   param4 = destination angle (same as for TObjMapWarpForest)
+    //   param6 = destination text (clamped to [0, 2]):
+    //     00 = "The Principal"
+    //     01 = "Pioneer 2"
+    //     02 = "Lab"
+    {0x0045, F_V0_V4, 0x0000600000040001, "TObjCityMapWarp"},
+
+    // City doors. None of these take any parameters.
+    {0x0046, F_V0_V4, 0x0000600000000001, "TObjCityDoor_Shop"}, // Door to shop area
+    {0x0047, F_V0_V4, 0x0000600000000001, "TObjCityDoor_Guild"}, // Door to Hunter's Guild
+    {0x0048, F_V0_V4, 0x0000600000000001, "TObjCityDoor_Warp"}, // Door to Ragol warp
+    {0x0049, F_V0_V4, 0x0000600000000001, "TObjCityDoor_Med"}, // Door to Medical Center
+
+    // TODO: Describe this object. There appear to be no parameters.
+    {0x004A, F_V0_V4, 0x0000600000000001, "__ELEVATOR__"},
+
+    // Holiday event decorations. There appear to be no parameters, except
+    // TObjCity_Season_SonicAdv2, which takes param4 = model index (clamped
+    // to [0, 3]).
+    {0x004B, F_V0_V4, 0x0000600000040001, "TObjCity_Season_EasterEgg"},
+    {0x004C, F_V0_V4, 0x0000600000040001, "TObjCity_Season_ValentineHeart"},
+    {0x004D, F_V0_V4, 0x0000600000040001, "TObjCity_Season_XmasTree"},
+    {0x004E, F_V0_V4, 0x0000600000040001, "TObjCity_Season_XmasWreath"},
+    {0x004F, F_V0_V4, 0x0000600000040001, "TObjCity_Season_HalloweenPumpkin"},
+    {0x0050, F_V0_V4, 0x0000600000040001, "TObjCity_Season_21_21"},
+    {0x0051, F_V0_V4, 0x0000600000040001, "TObjCity_Season_SonicAdv2"},
+    {0x0052, F_V0_V4, 0x0000600000040001, "TObjCity_Season_Board"},
+
+    // Fireworks effect. Params:
+    //   param1 = area width
+    //   param2 = base height
+    //   param3 = area depth
+    //   param4 = launch frequency (when a firework is launched, the game
+    //     generates a random number R in range [0, 0x7FFF] and waits
+    //     ((param4 + 60) * (r / 0x8000) * 3.0)) frames before launching the
+    //     next firework)
+    {0x0053, F_V0_V4, 0x0000600400040001, "TObjCity_Season_FireWorkCtrl"},
+
+    // Door that blocks the lobby teleporter in offline mode. There appear to
+    // be no parameters.
+    {0x0054, F_V0_V4, 0x0000600000000001, "TObjCityDoor_Lobby"},
+
+    // Version of the main warp for Challenge mode? This object seems to
+    // behave similarly to boss teleporters; it shows the player a Yes/No
+    // confirmation menu and sends 6x6A to synchronize state. There is a
+    // global named last_set_mainwarp_value which is set to param4 when this
+    // object is constructed, but may be changed by a set_mainwarp quest
+    // opcode after that. If that happens, this object replaces its
+    // dest_floor with the floor specified in the last set_mainwarp quest
+    // opcode. Params:
+    //   param4 = destination floor
+    //   param5 = switch flag number
+    // TODO: This thing has a lot of code; figure out if there are any other
+    // parameters
+    {0x0055, F_V2_V4, 0x0000600000040001, "TObjCityMainWarpChallenge"},
+
+    // Episode 2 Lab door. Params:
+    //   param4 = switch flag number and activation mode:
+    //     negative value = always unlocked
+    //     value in [0x00, 0x100] = unlocked by a switch flag (the bounds
+    //       check appears to be a bug; the range should be [0x00, 0xFF] but
+    //       the game has an off-by-one error)
+    //     value > 0x100 = always locked
+    //   param5 = model (green or red; clamped to [0, 1])
+    //   param6 = if negative, all switches must be active simultaneously to
+    //     unlock the door; if zero or positive, they may be activated
+    //     sequentially instead (in offline solo mode, this is ignored and
+    //     the sequential behavior is always used); this is somewhat obviated
+    //     for this door type since it can have only one switch flag, but
+    //     other door types may have multiple, for which this is relevant
+    {0x0056, F_V3_V4, 0x0000400000040000, "TODoorLabo"},
+
+    // Enables the Trade Window when the player is near this object. Both
+    // players must be near a TObjTradeCollision object (not necessarily the
+    // same one) to be able to use the Trade Window with each other. Params:
+    //   param1 = radius
+    {0x0057, F_V3_V4, 0x0000600000040001, "TObjTradeCollision"},
+    {0x0057, F_EP3, 0x0000000000000001, "TObjTradeCollision"},
+
+    // TODO: Describe this object. Presumably similar to TObjTradeCollision
+    // but enables the deck edit counter? Params:
+    //   param1 = radius
+    {0x0058, F_EP3, 0x0000000000000001, "TObjDeckCollision"},
+
+    // Forest door. Params:
+    //   param4 = switch flag number (low byte) and number to appear on door
+    //     (second-lowest byte, modulo 0x0A)
+    //   param6 = TODO (expected to be 0 or 1)
+    {0x0080, F_V0_V4, 0x0000400000000006, "TObjDoor"},
+
+    // Forest switch. Params:
+    //   param4 = switch flag number
+    //   param6 = color (clamped to range [0, 9])
+    {0x0081, F_V0_V4, 0x00004FF00078003E, "TObjDoorKey"},
+
+    // Laser fence and square laser fence. Params:
+    //   param1 = color (range [0, 3])
+    //   param4 = switch flag number
+    //   param6 = model (TODO)
+    {0x0082, F_V0_V4, 0x00004FF0000300FE, "TObjLazerFenceNorm"},
+    {0x0083, F_V0_V4, 0x00004FF03FFB00FE, "TObjLazerFence4"},
+
+    // Forest laser fence switch. Params:
+    //   param4 = switch flag number
+    //   param6 = color
+    {0x0084, F_V0_V4, 0x00004FFC3FFB00FE, "TLazerFenceSw"},
+
+    // Light rays. Params:
+    //   param1 = TODO
+    //   param2 = vertical scale (y)
+    //   param3 = horizontal scale (x, z)
+    {0x0085, F_V0_V4, 0x00004E000F800006, "TKomorebi"},
+
+    // Butterfly. Params:
+    //   param1-3 = TODO
+    {0x0086, F_V0_V4, 0x00004E0000000006, "TButterfly"},
+
+    // TODO: Describe this object. Params:
+    //   param1 = model number
+    {0x0087, F_V0_V4, 0x0000400000000006, "TMotorcycle"},
+
+    // Item box. Params:
+    //   param1 = if positive, box is specialized to drop a specific item or
+    //     type of item; if zero or negative, box drops any common item or
+    //     none at all (and param3-6 are all ignored)
+    //   param3 = if zero, then bonuses, grinds, etc. are applied to the item
+    //     after it's generated; if nonzero, the item is not randomized at
+    //     all and drops exactly as specified in param4-6
+    //   param4-6 = item definition. see base_item_for_specialized_box in
+    //     ItemCreator.cc for how these values are decoded
+    // In the non-specialized case (param1 <= 0), param3-6 are still sent via
+    // the 6xA2 command when the box is opened on v3 and later, and the
+    // server may choose to use those parameters for some purpose. The client
+    // implementation ignores them when param1 <= 0, and newserv does too.
+    {0x0088, F_V0_V4, 0x00004FF0B00000FE, "TObjContainerBase2"},
+    {0x0088, F_EP3, 0x0000000000000002, "TObjContainerBase2"},
+
+    // Elevated cylindrical tank. Params:
+    //   param1-3 = TODO
+    {0x0089, F_V0_V4, 0x0000400000000006, "TObjTank"},
+
+    // TODO: Describe this object. Params:
+    //   param1-3 = TODO
+    {0x008A, F_V0_V2, 0x0000000000000006, "TObjBattery"},
+
+    // Forest console. Params:
+    //   param4 = quest label to call when activated (inherited from
+    //     TObjMesBase)
+    //   param5 = model (clamped to [0, 1])
+    //   param6 = type (clamped to [0, 1]; 0 = "QUEST", 1 = "RICO")
+    //     (inherited from TObjMesBase)
+    {0x008B, F_V0_V1, 0x0000000000000406, "TObjComputer"},
+    {0x008B, F_V2_V4, 0x00004FFC3FFB07FE, "TObjComputer"},
+
+    // Black sliding door. Params:
+    //   param1 = total distance (divided evenly by the number of switch
+    //     flags, from param4)
+    //   param2 = speed
+    //   param4 = base switch flag (the actual switch flags used are param4,
+    //     param4 + 1, param4 + 2, etc.)
+    //   param5 = number of switch flags (clamped to [1, 4])
+    //   param6 = TODO (only matters if this is zero or nonzero)
+    {0x008C, F_V0_V1, 0x0000000000000006, "TObjContainerIdo"},
+    {0x008C, F_V2_V4, 0x000040000000000E, "TObjContainerIdo"},
+
+    // Rico message pod. This object immediately destroys itself in Challenge
+    // mode or split-screen mode. Params:
+    //   param4 = enable condition:
+    //     negative = enabled when player is within 70 units
+    //     range [0x00, 0xFF] = enabled by corresponding switch flag
+    //     0x100 and above = never enabled
+    //   param5 = message number (used with message quest opcode; TODO: has
+    //     the same [100, 999] check as some other objects)
+    //   param6 = quest label to call when activated
+    {0x008D, F_V0_V4, 0x00004000000027FE, "TOCapsuleAncient01"},
+
+    // Energy barrier. Params:
+    //   param4 = switch flag number and activation mode (same as for
+    //     TODoorLabo)
+    {0x008E, F_V0_V4, 0x00004FF0000000F6, "TOBarrierEnergy01"},
+
+    // Forest rising bridge. Once enabled (risen), this object cannot be
+    // disabled; that is, there is no way to make the bridge retract. When
+    // disabled, the bridge is 30 units below its initial position; when
+    // enabled, it rises to its initial position. Params:
+    //   param2 = rise speed in units per frame
+    //   param4 = switch flag number
+    {0x008F, F_V0_V4, 0x0000400000000006, "TObjHashi"},
+
+    // Generic switch. Visually, this is the type usually used for objects
+    // other than doors, such as lights, poison rooms, and the Forest 1
+    // bridge. Params:
+    //   param1 = activation mode:
+    //     negative = temporary (TODO: test this)
+    //     zero or positive = permanent (normal)
+    //   param4 = switch flag number
+    {0x0090, F_V0_V4, 0x00004FFC3FFB00C6, "TOKeyGenericSw"},
+
+    // Box that triggers a wave event when opened. Params:
+    //   param4 = event number
+    {0x0091, F_V0_V4, 0x00004FF0300000FE, "TObjContainerEnemy"},
+
+    // Large box (usually used for specialized drops). Same parameters as
+    // 0x0088 (TObjContainerBase2)
+    {0x0092, F_V0_V4, 0x00005E00B00078FE, "TObjContainerBase"},
+
+    // Large enemy box. Same parameters as 0x0091 (TObjContainerEnemy).
+    {0x0093, F_V0_V4, 0x00004FF0300000FE, "TObjContainerAbeEnemy"},
+
+    // Always-empty box. There are no parameters.
+    {0x0095, F_V0_V4, 0x00004FF0000000FE, "TObjContainerNoItem"},
+
+    // Laser fence. This object is only available in v2 and later. Params:
+    //   param1 = color (clamped to [0, 3])
+    //   param2 = depth of collision box (transverse to lasers)
+    //   param3 = length of collision box (parallel to lasers)
+    //   param4 = switch flag number
+    //   param6 = model:
+    //     0 = short fence
+    //     1 = long fence
+    //     anything else = invisible
+    {0x0096, F_V0_V4, 0x00004FFC3FFB07FE, "TObjLazerFenceExtra"},
+
+    // Caves floor button. The activation radius is always 10 units. Params:
+    //   param4 = switch flag number
+    //   param5 = activation mode:
+    //     negative = temporary (disables flag when player leaves)
+    //     zero or positive = permanent
+    {0x00C0, F_V0_V4, 0x00004FFC3FFB0038, "TOKeyCave01"},
+
+    // Caves multiplayer door. Params:
+    //   param4 = base switch flag number (the actual switch flags used are
+    //     param4, param4 + 1, param4 + 2, etc.; if this is negative, the
+    //     door is always unlocked)
+    //   param5 = 4 - number of switch flags (so if e.g. door should require
+    //     only 3 switch flags, set param5 to 1)
+    //   param6 = synchronization mode:
+    //     negative = when all switch flags are enabled, door is permanently
+    //       unlocked via 6x0B even if some switch flags are disabled later
+    //     zero or positive = door only stays unlocked while all of the
+    //       switch flags are active and locks again when any are disabled
+    //       (no effect in single-player offline mode; the negative behavior
+    //       is used instead)
+    {0x00C1, F_V0_V4, 0x0000400000000038, "TODoorCave01"},
+
+    // Caves standard door. Params:
+    //   param4 = switch flag number (negative = always unlocked; >0x100 =
+    //     always locked)
+    {0x00C2, F_V0_V4, 0x0000400000000038, "TODoorCave02"},
+
+    // Caves ceiling piston trap. There are three types of this object, which
+    // can be chosen via param6. If param6 is not 0, 1, or 2, no object is
+    // created.
+    // Params for TOHangceilingCave01Normal (param6 = 0):
+    //   param1 = TODO (radius delta? value is param1 + 29)
+    //   param2 = TODO (value is 1 - param2)
+    //   param3 = TODO (value is param3 + 100)
+    // Params for TOHangceilingCave01Key (param6 = 1):
+    //   param1-3 = same as for TOHangceilingCave01Normal
+    //   param4 = switch flag number (drops when switch flag is activated;
+    //     when it has finished dropping, it disables the switch flag)
+    // Params for TOHangceilingCave01KeyQuick (param6 = 2):
+    //   param1-4 = same as for TOHangceilingCave01Key, but unlike that
+    //     object, does not disable the switch flag automatically
+    {0x00C3, F_V0_V4, 0x0000400800780038, "TOHangceilingCave01*"},
+
+    // Caves signs. There appear to be no parameters.
+    {0x00C4, F_V0_V4, 0x0000400000000030, "TOSignCave01"},
+    {0x00C5, F_V0_V4, 0x0000400000000030, "TOSignCave02"},
+    {0x00C6, F_V0_V4, 0x0000400000000030, "TOSignCave03"},
+
+    // Hexagonal tank. There appear to be no parameters.
+    {0x00C7, F_V0_V4, 0x0000400000000030, "TOAirconCave01"},
+
+    // Brown platform. There appear to be no parameters.
+    {0x00C8, F_V0_V4, 0x0000400000000030, "TOAirconCave02"},
+
+    // Revolving warning light. Params:
+    //   param1 = rotation speed in degrees per frame
+    {0x00C9, F_V0_V4, 0x000041F000000030, "TORevlightCave01"},
+
+    // Caves rainbow. Params:
+    //   param1-3 = scale factors (x, y, z)
+    //   param4 = TODO (value is 1 / (param4 + 30))
+    //   param6 = visibility radius? (TODO; value is param6 + 40000)
+    {0x00CB, F_V0_V4, 0x0000400000000010, "TORainbowCave01"},
+
+    // Floating jellyfish. Params:
+    //   param1 = visibility radius; visible when any player is within this
+    //     distance of the object
+    //   param2 = move radius (according to debug strings)
+    //   param3 = rebirth radius (according to debug strings); like param1,
+    //     checks against all players, not only the local player
+    {0x00CC, F_V0_V4, 0x0000400030000010, "TOKurage"},
+
+    // Floating dragonfly. Params:
+    //   param1 = TODO
+    //   param2 = TODO
+    //   param3 = max distance from home?
+    //   param4 = TODO
+    //   param5 = TODO
+    {0x00CD, F_V0_V4, 0x00004E0000610010, "TODragonflyCave01"},
+
+    // Caves door. Params:
+    //   param4 = switch flag number
+    {0x00CE, F_V0_V4, 0x0000400000000038, "TODoorCave03"},
+
+    // Robot recharge station. Params:
+    //   param4 = quest register number; activates when this register
+    //     contains a nonzero value; does not deactivate if it becomes zero
+    //     again
+    {0x00CF, F_V0_V4, 0x00004008000000F8, "TOBind"},
+
+    // Caves cake shop. There appear to be no parameters.
+    {0x00D0, F_V0_V4, 0x0000400000000020, "TOCakeshopCave01"},
+
+    // Various solid rock objects used in the Cave areas. There are small,
+    // medium, and large variations of each, and for the 02 variations, there
+    // are also "Simple" variations (00D7-00D9). None of these objects take
+    // any parameters.
+    {0x00D1, F_V0_V4, 0x0000400000000008, "TORockCaveS01"},
+    {0x00D2, F_V0_V4, 0x0000400000000008, "TORockCaveM01"},
+    {0x00D3, F_V0_V4, 0x00004FF000000008, "TORockCaveL01"},
+    {0x00D4, F_V0_V4, 0x0000000000000010, "TORockCaveS02"},
+    {0x00D5, F_V0_V4, 0x0000000000000010, "TORockCaveM02"},
+    {0x00D6, F_V0_V4, 0x0000000000000010, "TORockCaveL02"},
+    {0x00D7, F_V0_V4, 0x0000000000000010, "TORockCaveSS02"},
+    {0x00D8, F_V0_V4, 0x0000000000000010, "TORockCaveSM02"},
+    {0x00D9, F_V0_V4, 0x0000000000000010, "TORockCaveSL02"},
+    {0x00DA, F_V0_V4, 0x0000000000000020, "TORockCaveS03"},
+    {0x00DB, F_V0_V4, 0x0000000000000020, "TORockCaveM03"},
+    {0x00DC, F_V0_V4, 0x0000000000000020, "TORockCaveL03"},
+
+    // Caves floor button 2. Params:
+    //   param1-3 = scale factors (visual only)
+    //   param4 = switch flag number
+    //   param5 high word = sound delay in frames after activate/deactivate
+    //   param5 low word = model index for VR Temple / VR Spaceship? (there
+    //     are only two: this word may be zero or nonzero)
+    //   param6 high word = sound activation mode:
+    //     1 = play sound only when switch activated
+    //     anything else = play sound when activated and when deactivated
+    //   param6 low word = sound to play (1-6) (TODO: Describe these):
+    //     1 => 4005281F (GC)
+    //     2 => 00053F06 (GC)
+    //     3 => 00052812 (GC)
+    //     4 => 00052813 (GC)
+    //     5 => 4001C112 (GC)
+    //     6 => 4002A60B (GC)
+    //     TODO: Are there more sounds available here on BB?
+    {0x00DE, F_V2_V4, 0x00004FFC3FFB07FE, "TODummyKeyCave01"},
+
+    // Breakable rocks, in small, medium, and large variations. All of these
+    // take the following parameter:
+    //   param4 = switch flag number
+    {0x00DF, F_V2_V4, 0x0000400000000008, "TORockCaveBL01"},
+    {0x00E0, F_V2_V4, 0x0000400000000010, "TORockCaveBL02"},
+    {0x00E1, F_V2_V4, 0x0000400000000020, "TORockCaveBL03"},
+
+    // Mines multi-switch door. Params:
+    //   param4 = base switch flag number (the actual switch flags used are
+    //     param4, param4 + 1, param4 + 2, etc.; if this is negative, the
+    //     door is always unlocked)
+    //   param5 = 4 - number of switch flags (so if e.g. door should require
+    //     only 3 switch flags, set param5 to 1)
+    {0x0100, F_V0_V4, 0x00004000000000C0, "TODoorMachine01"},
+
+    // Mines floor button. The activation radius is always 10 units. Params:
+    //   param4 = switch flag number
+    //   param5 = activation mode:
+    //     negative = temporary (disables flag when player leaves)
+    //     zero or positive = permanent
+    {0x0101, F_V0_V1, 0x00000000000000C0, "TOKeyMachine01"},
+    {0x0101, F_V2_V4, 0x00004FF0007B00C6, "TOKeyMachine01"},
+
+    // Mines single-switch door, or Ep4 test door if in Episode 4. Params (for
+    // both object types):
+    //   param4 = switch flag number
+    {0x0102, F_V0_V4, 0x00000000000000C0, "TODoorMachine02"},
+    {0x0102, F_V4, 0x00004E0000000000, "__EP4_TEST_DOOR__"},
+
+    // Large cryo-tube. There appear to be no parameters.
+    {0x0103, F_V0_V4, 0x00004008000000C0, "TOCapsuleMachine01"},
+
+    // Computer. Same parameters as 0x008D (TOCapsuleAncient01).
+    {0x0104, F_V0_V4, 0x00004008000000C0, "TOComputerMachine01"},
+
+    // Green monitor. Params:
+    //   param4 = initial state? (clamped to [0, 3]; appears to cycle through
+    //     those 4 values on its own)
+    {0x0105, F_V0_V4, 0x00004008000000C0, "TOMonitorMachine01"},
+
+    // Floating robot. Same params as 0x00CD (TODragonflyCave01), though it
+    // appears that some may have different scale factors or offsets (TODO).
+    {0x0106, F_V0_V4, 0x00004000000000C0, "TODragonflyMachine01"},
+
+    // Floating blue light. Params:
+    //   param4 = TODO
+    //   param5 = TODO
+    //   param6 = TODO
+    {0x0107, F_V0_V4, 0x00004000000000C0, "TOLightMachine01"},
+
+    // Self-destructing objects. Params:
+    //   param1 = radius delta (actual radius is param1 + 30)
+    {0x0108, F_V0_V4, 0x00004000000000C0, "TOExplosiveMachine01"},
+    {0x0109, F_V0_V4, 0x00004000000000C0, "TOExplosiveMachine02"},
+    {0x010A, F_V0_V4, 0x00004000000000C0, "TOExplosiveMachine03"},
+
+    // Spark machine. Params:
+    //   param1 = TODO (value is param1 - 0.98)
+    //   param2 = TODO (seems it only matters if this is <= 0 or not)
+    {0x010B, F_V0_V4, 0x00004000000000C0, "TOSparkMachine01"},
+
+    // Large flashing box. Params:
+    //   param2 = TODO (seems it only matters if this is < 0 or not)
+    {0x010C, F_V0_V4, 0x00004000000000C0, "TOHangerMachine01"},
+
+    // Ruins entrance door (after Vol Opt). This object reads quest flags
+    // 0x2C, 0x2D, and 0x2E to determine the state of each seal on the door
+    // (for Forest, Caves, and Mines respectively). It then checks quest flag
+    // 0x2F; if this flag is set, then all seals are unlocked regardless of
+    // the preceding three flags' values. Curiously, it seems that these
+    // flags are checked every frame, even though it's normally impossible to
+    // change their values in the area where this object appears.
+    // No parameters.
+    {0x0130, F_V0_V4, 0x0000400000002000, "TODoorVoShip"},
+
+    // Ruins floor warp. Params:
+    //   param4 = destination floor
+    //   param6 = color (negative = red, zero or positive = blue); if this is
+    //     >= 0 in Challenge mode, the warp is destroyed immediately
+    {0x0140, F_V0_V4, 0x0000400000000700, "TObjGoalWarpAncient"},
+
+    // Ruins intra-area warp. Same parameters as 0x0003 (TObjMapWarpForest),
+    // but also:
+    //   param5 = type (negative = one-way, zero or positive = normal)
+    {0x0141, F_V0_V4, 0x0000400000000700, "TObjMapWarpAncient"},
+
+    // Ruins switch. Same parameters as 0x00C0 (TOKeyCave01).
+    {0x0142, F_V0_V4, 0x0000400000000700, "TOKeyAncient02"},
+
+    // Ruins floor button. Same parameters as 0x00C0 (TOKeyCave01).
+    {0x0143, F_V0_V4, 0x0000400000000700, "TOKeyAncient03"},
+
+    // Ruins doors. These all take the same params as 0x00C2 (TODoorCave02).
+    {0x0144, F_V0_V4, 0x0000400000000100, "TODoorAncient01"}, // Usually used in Ruins 1
+    {0x0145, F_V0_V4, 0x0000400000000400, "TODoorAncient03"}, // Usually used in Ruins 3
+    {0x0146, F_V0_V4, 0x0000400000000200, "TODoorAncient04"}, // Usually used in Ruins 2
+    {0x0147, F_V0_V4, 0x0000400000000100, "TODoorAncient05"}, // Usually used in Ruins 1
+    {0x0148, F_V0_V4, 0x0000400000000200, "TODoorAncient06"}, // Usually used in Ruins 2
+    {0x0149, F_V0_V4, 0x0000400000000400, "TODoorAncient07"}, // Usually used in Ruins 3
+
+    // Ruins 4-player door. Params:
+    //   param4 = base switch flag number (the actual switch flags used are
+    //     param4, param4 + 1, param4 + 2, and param4 + 3); param4 is clamped
+    //     to [0, 0xFC]
+    //   param6 = activation mode; same as for 0x00C1 (TODoorCave01)
+    {0x014A, F_V0_V4, 0x0000400000000700, "TODoorAncient08"},
+
+    // Ruins 2-player door. Params:
+    //   param4 = base switch flag number (the actual switch flags used are
+    //     param4 and param4 + 1); param4 is clamped to [0, 0xFE]
+    //   param6 = activation mode; same as for 0x00C1 (TODoorCave01)
+    {0x014B, F_V0_V4, 0x0000400000000700, "TODoorAncient09"},
+
+    // Ruins sensor. Params:
+    //   param1 = activation radius delta (actual radius is param1 + 50)
+    //   param4 = switch flag number
+    //   param5 = if negative, sensor is always on
+    //   param6 = TODO (clamped to [0, 1] - model index?)
+    {0x014C, F_V0_V4, 0x0000400000000700, "TOSensorAncient01"},
+
+    // Ruins laser fence switch. Params:
+    //   param1 = if negative, switch's effect is temporary; if zero or
+    //     positive, it's permanent
+    //   param4 = switch flag number
+    //   param5 = color (clamped to [0, 3])
+    {0x014D, F_V0_V4, 0x0000400000000700, "TOKeyAncient01"},
+
+    // Ruins fence objects. Params:
+    //   param4 = switch flag number (negative = always unlocked)
+    //   param5 = color (clamped to [0, 3])
+    {0x014E, F_V0_V4, 0x00004FF000000700, "TOFenceAncient01"}, // 4x2
+    {0x014F, F_V0_V4, 0x00004FF000000700, "TOFenceAncient02"}, // 6x2
+    {0x0150, F_V0_V4, 0x0000400000000700, "TOFenceAncient03"}, // 4x4
+    {0x0151, F_V0_V4, 0x0000400000000700, "TOFenceAncient04"}, // 6x4
+
+    // Ruins poison-spewing blob. This object is technically an item box, and
+    // drops an item when destroyed. Unlike most other item boxes, it cannot
+    // be specialized (ignore_def is always true). Params:
+    //   param1 = TODO (value is param1 + 299)
+    //   param2 = TODO (value is param2 + 209)
+    //   param3 = TODO (value is param3 + 399)
+    //   param6 = TODO (value is param6 + 4)
+    {0x0152, F_V0_V4, 0x00004E000F800700, "TContainerAncient01"},
+
+    // Ruins falling trap. Trap power seems to be scaled by difficulty
+    // (Normal = x1, Hard = x2, Very Hard = x3, Ultimate = x6). Params:
+    //   param1 = trigger radius delta (value is (param1 / 2) + 30)
+    //   param2 = TODO (clamped below to 0)
+    //   param3 = TODO (clamped below to 1)
+    //   param4 = TODO (seems it only matters if this is negative or not in
+    //     the base class (TOTrap), but TOTrapAncient01 clamps it below to 0)
+    //   param5 = TODO (clamped to [0, 5]; calls player->vtable[0x19] on
+    //     explode unless this is 5)
+    //   param6 = TODO (value is param6 + 30, multipled by 0.33 if offline)
+    {0x0153, F_V0_V4, 0x0000400000780700, "TOTrapAncient01"},
+
+    // Ruins pop-up trap. Params:
+    //   param1 = trigger radius delta (value is (param1 / 2) + 30)
+    //   param4 = delay (value is param4 + 30; clamped below to 0)
+    //   angle.z = TODO (seems it only matters if angle.z is > 0 or not)
+    {0x0154, F_V0_V4, 0x0000400000000700, "TOTrapAncient02"},
+
+    // Ruins crystal monument. Same parameters as TOCapsuleAncient01.
+    {0x0155, F_V0_V4, 0x0000400000000700, "TOMonumentAncient01"},
+
+    // Non-Ruins monument. Sets a quest flag when activated. The quest flag
+    // depends on which area the object appears in:
+    //   Mine 2 = 0x2E
+    //   Cave 2 = 0x2D
+    //   Any other area = 0x2C
+    // When all three of the above quest flags are active, this object also
+    // sets quest flag 0x2F.
+    // There appear to be no parameters.
+    {0x0156, F_V0_V4, 0x0000400000000094, "TOMonumentAncient02"},
+
+    // Ruins rocks. None of these take any parameters.
+    {0x0159, F_V0_V4, 0x0000400000000700, "TOWreckAncient01"},
+    {0x015A, F_V0_V4, 0x0000400000000700, "TOWreckAncient02"},
+    {0x015B, F_V0_V4, 0x0000400000000700, "TOWreckAncient03"},
+    {0x015C, F_V0_V4, 0x0000400000000700, "TOWreckAncient04"},
+    {0x015D, F_V0_V4, 0x0000400000000700, "TOWreckAncient05"},
+    {0x015E, F_V0_V4, 0x0000400000000700, "TOWreckAncient06"},
+    {0x015F, F_V0_V4, 0x0000400000000700, "TOWreckAncient07"},
+
+    // This ID constructs different objects depending on where it's used. On
+    // floor 0D (Vol Opt), it constructs TObjWarpBoss03; on other floors
+    // where it's valid, it constructs TObjFogCollisionPoison.
+    // TObjFogCollisionPoison creates a switchable, foggy area that's visible
+    // and hurts the player if the switch flag isn't on. Params are the same
+    // as for 0x0018 (TObjFogCollisionSwitch), but there is also:
+    //   param2 = poison power (scaled by difficulty: Normal = x1, Hard = x2,
+    //     Very Hard = x3, Ultimate = x6)
+    // TObjWarpBoss03 creates an invisible warp. This is used for the warp
+    // behind the door to Ruins after defeating Vol Opt. Params:
+    //   param4 = destination floor
+    {0x0160, F_V0_V4, 0x0000400000002000, "TObjWarpBoss03"},
+    {0x0160, F_V0_V4, 0x00004FF030600700, "TObjFogCollisionPoison"},
+
+    // Ruins specialized box. Same parameters as 0x0088 (TObjContainerBase2).
+    {0x0161, F_V0_V4, 0x00004003007B0700, "TOContainerAncientItemCommon"},
+
+    // Ruins random box. Same parameters as 0x0088 (TObjContainerBase2).
+    {0x0162, F_V0_V4, 0x00004003007B0700, "TOContainerAncientItemRare"},
+
+    // Ruins enemy boxes, disguised as either of the above two objects.
+    // Params:
+    //   param4 = event number
+    {0x0163, F_V0_V4, 0x00004000007B0700, "TOContainerAncientEnemyCommon"},
+    {0x0164, F_V0_V4, 0x00004000007B0700, "TOContainerAncientEnemyRare"},
+
+    // Ruins always-empty box. There are no parameters.
+    {0x0165, F_V2_V4, 0x00004000007B0700, "TOContainerAncientItemNone"},
+
+    // Ruins breakable rock. Params:
+    //   param4 = switch flag number (when enabled, destroys this object)
+    {0x0166, F_V2_V4, 0x0000400000000700, "TOWreckAncientBrakable05"},
+
+    // Ruins pop-up trap with techs. Params:
+    //   param1 = trigger radius delta (value is (param1 / 2) + 30)
+    //   param2 = number of hits to destroy trap (clamped to [1, 256])
+    //   param3 = tech level modifier:
+    //     Normal: level = param3 + 1 (clamped to [0, 14])
+    //     Hard: level = (param3 * 2) + 1 (clamped to [0, 14])
+    //     Very Hard: level = (param3 * 4) + 1 (clamped to [0, 14])
+    //     Ultimate: level = (param3 * 6) + 1 (clamped to [0, 29])
+    //     (Note: level is offset by 1, so a value of 0 means tech level 1)
+    //   param4 = delay (value is param4 + 30; clamped below to 0)
+    //   param5 = switch flag number (negative = always active)
+    //   param6 = tech number:
+    //     0 = Foie
+    //     1 = Gizonde
+    //     2 = Gibarta
+    //     3 = Megid
+    //     anything else = Gifoie
+    //   angle.z = TODO (seems it only matters if angle.z is > 0 or not)
+    {0x0167, F_V2_V4, 0x0000400C3FF807C0, "TOTrapAncient02R"},
+
+    // Flying white bird. Params:
+    //   param1 = TODO (value is param1 + 1)
+    //   param2 = TODO (value is param2 + 50)
+    //   param3 = TODO (value is param3 + 100)
+    //   param4 = number of birds? (value is param4 + 3, clamped to [1, 6])
+    //   param5 = TODO (value is (param5 / 10) + 1)
+    //   param6 = TODO (value is (param6 / 10) + 1)
+    {0x0170, F_V0_V4, 0x0000400000614000, "TOBoss4Bird"},
+
+    // Dark Falz obelisk. There appear to be no parameters.
+    {0x0171, F_V0_V4, 0x0000400000004000, "TOBoss4Tower"},
+
+    // Floating rocks. Params:
+    //   param1 = x/z range delta? (value is param1 + 50)
+    //   param2 = TODO (value is abs(param2))
+    //   param4 = number of rocks? (clamped to [1, 8])
+    {0x0172, F_V0_V4, 0x0000400000004000, "TOBoss4Rock"},
+
+    // Floating soul. Params:
+    //   param1 = TODO
+    //   param2 = TODO
+    //   param3 = TODO
+    //   param4 = TODO (seems it only matters if this is negative or not)
+    //   param5 = TODO
+    //   param6 = TODO
+    {0x0173, F_V0_V2, 0x0000000000004000, "TOSoulDF"},
+
+    // Butterfly. This is a subclass of TODragonfly and takes the same params
+    // as 0x00CD (TODragonflyCave01), but also:
+    //   param6 = model number? (clamped to [0, 2])
+    {0x0174, F_V0_V2, 0x0000000000004000, "TOButterflyDF"},
+
+    // Lobby information counter (game menu) collision. Params:
+    //   param1 = radius
+    {0x0180, F_V0_V4, 0x0000400000008000, "TObjInfoCol"},
+    {0x0180, F_EP3, 0x0000000000008000, "TObjInfoCol"},
+
+    // Warp between lobbies (not warp out of game to lobby). Params:
+    //   param5 = hide beams (beams shown if <= 0, hidden if > 0)
+    {0x0181, F_V0_V4, 0x0000400000008000, "TObjWarpLobby"},
+    {0x0181, F_EP3, 0x0000000000008000, "TObjWarpLobby"},
+
+    // Lobby 1 event object (tree). Params:
+    //   param4 = default decorations when there is no event:
+    //     0x01 = flowers (Lobby 2)
+    //     0x02 = fountains (Lobby 4)
+    //     0x03 = very tall aquariums (Lobby 5)
+    //     0x04 = green trees (Lobby 1)
+    //     0x05 = stained glass windows (Lobby 9)
+    //     0x06 = snowy evergreen trees (Lobby 10)
+    //     0x07 = windmills (Lobby 3)
+    //     0x08 = spectral columns (Lobby 8)
+    //     0x09 = planetary models (Lobby 7)
+    //     Anything else = grass (Lobby 6)
+    {0x0182, F_V3_V4, 0x0000400000008000, "TObjLobbyMain"},
+    {0x0182, F_EP3, 0x0000000000008000, "TObjLobbyMain"},
+
+    // Lobby pigeon. Params:
+    //   param4 = model number? (clamped to [0, 2])
+    //   param5 = TODO (3 different behaviors: <= 0, == 1, or >= 2)
+    //   param6 = TODO (it only matters if this is > 0 or not)
+    // Visibility depends on the current season event in a complicated way:
+    //   If param5 <= 0, visible only when there's no season event
+    //   If param5 == 1 and param6 <= 0, visible during Wedding event
+    //   If param5 == 2 and param6 <= 0, visible during Valentine's Day and
+    //     White Day events
+    //   If none of the above, visible during Halloween event
+    {0x0183, F_V3_V4, 0x0000400000008000, "__LOBBY_PIGEON__"},
+    {0x0183, F_EP3, 0x0000000000008002, "__LOBBY_PIGEON__"},
+
+    // Lobby butterfly. Params:
+    //   param4 = model number (only two models; <= 0 or > 0)
+    // TODO: Is this object's visibility affected by season events? It may
+    // only be affected by the event when the object loads, and not when the
+    // season is changed via the DA command.
+    {0x0184, F_V3_V4, 0x0000400000008000, "TObjButterflyLobby"},
+    {0x0184, F_EP3, 0x0000000000008002, "TObjButterflyLobby"},
+
+    // Lobby rainbow. Visible only when there is no season event. There are
+    // no parameters.
+    {0x0185, F_V3_V4, 0x0000400000008000, "TObjRainbowLobby"},
+    {0x0185, F_EP3, 0x0000000000008002, "TObjRainbowLobby"},
+
+    // Lobby pumpkin. Visible only during Halloween season event. There are
+    // no parameters.
+    {0x0186, F_V3_V4, 0x0000400000008000, "TObjKabochaLobby"},
+    {0x0186, F_EP3, 0x0000000000008000, "TObjKabochaLobby"},
+
+    // Lobby stained-glass windows. Params:
+    //   param4 = event flag:
+    //     zero or negative = visible only when no season event is active
+    //     positive = visible only during Christmas season event
+    {0x0187, F_V3_V4, 0x0000400000008000, "TObjStendGlassLobby"},
+    {0x0187, F_EP3, 0x0000000000008000, "TObjStendGlassLobby"},
+
+    // Lobby red and white striped curtain. Visible only during the spring
+    // and summer season events (12 and 13). No parameters.
+    {0x0188, F_V3_V4, 0x0000400000008000, "TObjCurtainLobby"},
+    {0x0188, F_EP3, 0x0000000000008000, "TObjCurtainLobby"},
+
+    // Lobby wedding arch. Visible only during the wedding season event. No
+    // parameters.
+    {0x0189, F_V3_V4, 0x0000400000008000, "TObjWeddingLobby"},
+    {0x0189, F_EP3, 0x0000000000008000, "TObjWeddingLobby"},
+
+    // Lobby snowy evergreen tree (Lobby 10). No parameters.
+    {0x018A, F_V3_V4, 0x0000400000008000, "TObjTreeLobby"},
+    {0x018A, F_EP3, 0x0000000000008000, "TObjTreeLobby"},
+
+    // Lobby aquarium (Lobby 5). Visible only when there is no season event.
+    // No parameters.
+    {0x018B, F_V3_V4, 0x0000400000008000, "TObjSuisouLobby"},
+    {0x018B, F_EP3, 0x0000000000008000, "TObjSuisouLobby"},
+
+    // Lobby particles. Params:
+    //   param1 = TODO (clamped to [0, 575])
+    //   param3 = same as param3 from 0001 (TObjParticle)
+    //   param4 = particle type (0-9; any other value treated as 0)
+    //   param5 = same as param4 (not param5!) from 0001 (TObjParticle)
+    //   param6 = same as param5 (not param6!) from 0001 (TObjParticle)
+    {0x018C, F_V3_V4, 0x0000400000008000, "TObjParticleLobby"},
+    {0x018C, F_EP3, 0x0000000000008000, "TObjParticleLobby"},
+
+    // Episode 3 lobby battle table. Params:
+    //   param4 = player count (1-4); only 2 and 4 are used in-game
+    //   param5 = table number (used in E4 and E5 commands)
+    {0x018D, F_EP3, 0x0000000000008000, "TObjLobbyTable"},
+
+    // Episode 3 lobby jukebox. No parameters.
+    {0x018E, F_EP3, 0x0000000000008000, "TObjJukeBox"},
+
+    // TODO: Describe this object. There appear to be no parameters.
+    {0x0190, F_V2_V4, 0x0000400000610000, "TObjCamera"},
+
+    // Short Spaceship wall. There appear to be no parameters.
+    {0x0191, F_V2_V4, 0x0000400800610000, "TObjTuitate"},
+
+    // Spaceship door. Params:
+    //   param4 = switch flag number (if this is negative, the door is always
+    //     unlocked)
+    {0x0192, F_V2_V4, 0x0000400000610000, "TObjDoaEx01"},
+
+    // Tall Spaceship wall. There appear to be no parameters.
+    {0x0193, F_V2_V4, 0x0000400800610000, "TObjBigTuitate"},
+
+    // Temple door. Params:
+    //   param4 = switch flag number (if this is negative, the door is always
+    //     unlocked)
+    {0x01A0, F_V2_V4, 0x00004000001A0000, "TODoorVS2Door01"},
+
+    // Temple rubble. None of these take any parameters.
+    {0x01A1, F_V2_V4, 0x00004000001A0000, "TOVS2Wreck01"}, // Partly-broken wall (like breakable wall)
+    {0x01A2, F_V2_V4, 0x00004000001A0000, "TOVS2Wreck02"}, // Broken column
+    {0x01A3, F_V2_V4, 0x00004000001A0000, "TOVS2Wreck03"}, // Broken wall pieces lying flat
+    {0x01A4, F_V2_V4, 0x00004000001A0000, "TOVS2Wreck04"}, // Column
+    {0x01A5, F_V2_V4, 0x00004000001A0000, "TOVS2Wreck05"}, // Broken toppled column
+    {0x01A6, F_V2_V4, 0x00004000001A0000, "TOVS2Wreck06"}, // Truncated conic monument
+
+    // Temple breakable wall, which looks like 0x01A1 (TOVS2Wreck01). Params:
+    //   param4 = number of hits, minus 256 for some reason (for example, for
+    //     a 6-hit wall, this should be -250, or 0xFFFFFF06)
+    {0x01A7, F_V2_V4, 0x00004000001A0000, "TOVS2Wall01"},
+
+    // Lens flare enable/disable switch. This object triggers when the local
+    // player is within 20 units, and sets a global which determines whether
+    // objects of type 0x001E (__LENS_FLARE__) should render anything.
+    // Params:
+    //   param1 = if > 0, enable lens flare rendering; if <= 0, disable it
+    // This object isn't constructed in split-screen mode.
+    {0x01A8, F_V2_V4, 0x000041F1001A0000, "__LENS_FLARE_SWITCH_COLLISION__"},
+
+    // Rising bridges. Similar to 0x008F (TObjHashi). Params:
+    //   param1 = extra depth when lowered (this is added to TObjHashiBase's
+    //     30 unit displacement if the bridge is lowered when constructed)
+    //   param2 = rise speed in units per frame
+    //   param4 = switch flag number
+    {0x01A9, F_V2_V4, 0x00004000001A0000, "TObjHashiVersus1"}, // Small brown rising bridge
+    {0x01AA, F_V2_V4, 0x00004000001A0000, "TObjHashiVersus2"}, // Long rising bridge
+
+    // Multiplayer Temple/Spaceship doors. Params:
+    //   param4 = base switch flag number (the actual switch flags used are
+    //     param4, param4 + 1, param4 + 2, etc.; if this is negative, the
+    //     door is always unlocked)
+    //   param5 = number of switch flags
+    //   param6 = synchronization mode:
+    //     negative = when all switch flags are enabled, door is permanently
+    //       unlocked via 6x0B even if some switch flags are disabled later
+    //     zero or positive = door only stays unlocked while all of the
+    //       switch flags are active and locks again when any are disabled
+    //       (no effect in single-player offline mode; the negative behavior
+    //       is used instead)
+    {0x01AB, F_V3_V4, 0x0000400000180000, "TODoorFourLightRuins"}, // Temple
+    {0x01C0, F_V3_V4, 0x0000000000600000, "TODoorFourLightSpace"}, // Spaceship
+
+    // CCA item box. It seems this box type cannot be specialized. There are
+    // no parameters.
+    {0x0200, F_V3_V4, 0x000041FC4F800000, "TObjContainerJung"},
+
+    // CCA cross-floor warp. Params:
+    //   param4 = destination floor
+    //   param6 = color (0 = blue, 1 = red); if this is 0 in Challenge mode,
+    //     the warp is destroyed immediately
+    {0x0201, F_V3_V4, 0x0000400CFF800000, "TObjWarpJung"},
+
+    // CCA door. Params:
+    //   param4 = base switch flag number (the actual switch flags used are
+    //     param4, param4 + 1, param4 + 2, etc.; if this is negative, the
+    //     door is always unlocked)
+    //   param5 = number of switch flags
+    {0x0202, F_V3_V4, 0x0000400C0F800000, "TObjDoorJung"},
+
+    // CCA item box. Same parameters as 0x0088 (TObjContainerBase2).
+    // In the Episode 4 Crater areas, this object constructs 0x92
+    // (TObjContainerBase) instead.
+    {0x0203, F_V3_V4, 0x0000400C4F800000, "TObjContainerJungEx"},
+    {0x0203, F_V4, 0x000001F000000000, "TObjContainerBase(0203)"},
+
+    // CCA main door. This door checks quest flags 0x0046, 0x0047, and 0x0048
+    // and opens when all are enabled. There are no parameters.
+    {0x0204, F_V3_V4, 0x0000400000800000, "TODoorJungleMain"},
+
+    // CCA main door switch. This switch sets one of the quest flags checked
+    // by 0x0204 (TODoorJungleMain). Params:
+    //   param4 = quest flag index (0 = 0x0046, 1 = 0x0047, 2 = 0x0048)
+    {0x0205, F_V3_V4, 0x0000400C0F800000, "TOKeyJungleMain"},
+
+    // Jungle breakable rocks. Params:
+    //   param4 = switch flag number (object is passable when enabled)
+    {0x0206, F_V3_V4, 0x000040040F800000, "TORockJungleS01"}, // Small rock
+    {0x0207, F_V3_V4, 0x000040040F800000, "TORockJungleM01"}, // Small 3-rock wall
+
+    // Jungle large 3-rock wall. Unlike the above, this takes no parameters
+    // and cannot be opened.
+    {0x0208, F_V3_V4, 0x000040040F800000, "TORockJungleL01"},
+
+    // Jungle plant. Params:
+    //   param4 = model number? (clamped to [0, 1])
+    {0x0209, F_V3_V4, 0x000040040F800000, "TOGrassJungle"},
+
+    // CCA warp outside main gate. Unlike other warps on Ragol, this one
+    // presents the player with a choice of areas: Jungle North (6), Mountain
+    // (8), or Seaside (9). Params:
+    //   param6 = color (0 = blue, 1 = red); if this is 0 in Challenge mode,
+    //     the warp is destroyed immediately
+    {0x020A, F_V3_V4, 0x0000400C0F800000, "TObjWarpJungMain"},
+
+    // Background lightning generator. Each strike lasts for 11 frames and
+    // strikes at a random angle around the player. Params:
+    //   param1 = lightning distance from player
+    //   param2 = lightning height
+    //   param3 = TODO (value is ((param3 / 32768) * 0.3) + 1)
+    //   param4 = minimum frames between strikes
+    //   param5 = interval randomness (after each strike, a random number is
+    //     chosen between param4 and (param4 + param5) to determine how many
+    //     frames to wait until the next strike)
+    {0x020B, F_V3_V4, 0x0000400040800000, "TBGLightningCtrl"},
+
+    // Bird objects. Params:
+    //   param4 = model number? (clamped to [0, 2])
+    {0x020C, F_V3_V4, 0x00004E0C0B000000, "__WHITE_BIRD__"}, // Formerly __TObjPathObj_subclass_020C__
+    {0x020D, F_V3_V4, 0x000040080B000000, "__ORANGE_BIRD__"}, // Formerly __TObjPathObj_subclass_020D__
+
+    // Jungle box that triggers a wave event when opened. Params:
+    //   param4 = event number
+    //   param5 = model number (clamped to [0, 1])
+    {0x020E, F_V3_V4, 0x0000400C0F800000, "TObjContainerJungEnemy"},
+
+    // Chain saw damage trap. Params:
+    //   param2 = base damage (multiplied by difficulty: Normal = x1/5, Hard
+    //     = x2/5, Very Hard = x3/5, Ultimate = x6/5)
+    //   param3 = model number (<= 0 for small saw, > 0 for large saw)
+    //   param4 = switch flag number (disabled when switch flag is enabled)
+    //   param5 high word = rotation range (16-bit angle)
+    //   param5 low word = rotation speed (angle units per frame)
+    //   param6 high word = if nonzero, ignore rotation range and rotate in a
+    //     full circle instead
+    //   param6 low word = delay between cycles (seconds)
+    {0x020F, F_V3_V4, 0x0000400C3F800000, "TOTrapChainSawDamage"},
+
+    // Laser detector trap. Params:
+    //   param3 = model number (<= for small laser, > 0 for large laser)
+    //   param4 = switch flag number (enables this flag when triggered)
+    //   param5-6: same as 0x020F (TOTrapChainSawDamage)
+    {0x0210, F_V3_V4, 0x0000400C3F800000, "TOTrapChainSawKey"},
+
+    // TODO: Describe this object. It's a subclass of TODragonfly and has the
+    // same params as 0x00CD (TODragonflyCave01), though it appears that some
+    // may have different scale factors or offsets.
+    {0x0211, F_V3_V4, 0x00004E0003800000, "TOBiwaMushi"},
+    {0x0211, F_EP3, 0x0000000000000002, "TOBiwaMushi"},
+
+    // Seagull. Params:
+    //   param4 = model number? (clamped to [0, 2])
+    {0x0212, F_V3_V4, 0x000040080F800000, "__SEAGULL__"},
+    {0x0212, F_EP3, 0x0000000000000002, "__SEAGULL__"},
+
+    // TODO: Describe this object. Params:
+    //   param4 = model number (clamped to [0, 2])
+    {0x0213, F_V3_V4, 0x00004E040F000000, "TOJungleDesign"},
+
+    // Fish. This object is not constructed in split-screen mode. Params:
+    //   param1-3 = TODO (Vector3F)
+    //   param4 = TODO
+    //   param5 = TODO
+    //   param6 = TODO
+    {0x0220, F_V3_V4, 0x0000400439008000, "TObjFish"},
+    {0x0220, F_EP3, 0x0000000000008002, "TObjFish"},
+
+    // Seabed multiplayer door. Params:
+    //   param4 = base switch flag number (the actual switch flags used are
+    //     param4, param4 + 1, param4 + 2, etc.; if this is negative, the
+    //     door is always unlocked)
+    //   param5 = number of switch flags (clamped to [0, 4])
+    //   param6 = synchronization mode:
+    //     negative = when all switch flags are enabled, door is permanently
+    //       unlocked via 6x0B even if some switch flags are disabled later
+    //     zero or positive = door only stays unlocked while all of the
+    //       switch flags are active and locks again when any are disabled
+    //       (no effect in single-player offline mode; the negative behavior
+    //       is used instead)
+    {0x0221, F_V3_V4, 0x0000400030000000, "TODoorFourLightSeabed"}, // Blue edges
+    {0x0222, F_V3_V4, 0x0000400030000000, "TODoorFourLightSeabedU"},
+
+    // Small cryotube. Params:
+    //   param4 = model number (clamped to [0, 3])
+    {0x0223, F_V3_V4, 0x0000400830000000, "TObjSeabedSuiso_CH"},
+
+    // Breakable glass wall. Params:
+    //   param4 = switch flag number
+    //   param5 = model number (clamped to [0, 2])
+    {0x0224, F_V3_V4, 0x0000400030000000, "TObjSeabedSuisoBrakable"},
+
+    // Small floating robots. These are subclasses of TODragonfly and have
+    // the same params as 0x00CD (TODragonflyCave01), though it appears that
+    // some may have different scale factors or offsets (TODO).
+    {0x0225, F_V3_V4, 0x0000400030000000, "TOMekaFish00"}, // Blue
+    {0x0226, F_V3_V4, 0x0000400030000000, "TOMekaFish01"}, // Red
+
+    // Dolphin. Params:
+    //   param4 = model number (clamped to [0, 4])
+    {0x0227, F_V3_V4, 0x0000400030000000, "__DOLPHIN__"},
+
+    // Seabed capturing trap, similar to 0x0153 (TOTrapAncient01) in
+    // function. Triggers when a player is within 15 units. Params:
+    //   param1 = TODO (clamped to [0.1, 10])
+    //   param4 = hold time after trigger (in seconds; clamped to [1, 60])
+    //   param5 = hide in split-screen:
+    //     zero or negative = always visible
+    //     positive = invisible in split-screen mode
+    //   param6 = same as param5 from 0x0153 (TOTrapAncient01)
+    {0x0228, F_V3_V4, 0x0000400C3F800000, "TOTrapSeabed01"},
+
+    // VR link object. This object is destroyed immediately in Challenge mode
+    // and split-screen mode. Same parameters as 0x008D (TOCapsuleAncient01).
+    {0x0229, F_V3_V4, 0x0000400FFFF80000, "TOCapsuleLabo"},
+
+    // Alias for 0x0001 (TObjParticle). The constructor function is exactly
+    // the same as for 0x0001, so this object has all the same paarameters
+    // and behavior as that object.
+    {0x0240, F_V3_V4, 0x0000400040000000, "TObjParticle"},
+
+    // Teleporter after Barba Ray. This object behaves exactly the same as
+    // 0x0002 (TObjAreaWarpForest), except it's invisible until the boss is
+    // defeated.
+    {0x0280, F_V3_V4, 0x0000400100000000, "__BARBA_RAY_TELEPORTER__"},
+
+    // TODO: Describe this object. There appear to be no parameters.
+    {0x02A0, F_V3_V4, 0x0000400200000000, "TObjLiveCamera"},
+
+    // Gee nest. This object is technically an item box, and drops an item
+    // when destroyed. Unlike most other item boxes, it cannot be specialized
+    // (ignore_def is always true). Params are the same as for 0x0152
+    // (TContainerAncient01), but there is also:
+    //   angle.z = number of hits to destroy
+    {0x02B0, F_V3_V4, 0x00004E0C0F800700, "TContainerAncient01R"},
+
+    // Lab objects. None of these take any parameters.
+    {0x02B1, F_V3_V4, 0x0000400000040000, "TObjLaboDesignBase(0)"}, // Computer console
+    {0x02B1, F_EP3, 0x0000000000000001, "TObjLaboDesignBase(0)"}, // Computer console
+    {0x02B2, F_V3_V4, 0x0000400000040000, "TObjLaboDesignBase(1)"}, // Computer console (alternate colors)
+    {0x02B2, F_EP3, 0x0000000000000001, "TObjLaboDesignBase(1)"}, // Computer console (alternate colors)
+    {0x02B3, F_V3_V4, 0x0000400000040000, "TObjLaboDesignBase(2)"}, // Chair
+    {0x02B3, F_EP3, 0x0000000000000001, "TObjLaboDesignBase(2)"}, // Chair
+    {0x02B4, F_V3_V4, 0x0000400000040000, "TObjLaboDesignBase(3)"}, // Orange wall
+    {0x02B4, F_EP3, 0x0000000000000001, "TObjLaboDesignBase(3)"}, // Orange wall
+    {0x02B5, F_V3_V4, 0x0000400000040000, "TObjLaboDesignBase(4)"}, // Gray/blue wall
+    {0x02B5, F_EP3, 0x0000000000000001, "TObjLaboDesignBase(4)"}, // Gray/blue wall
+    {0x02B6, F_V3_V4, 0x0000400000040000, "TObjLaboDesignBase(5)"}, // Long table
+    {0x02B6, F_EP3, 0x0000000000000001, "TObjLaboDesignBase(5)"}, // Long table
+
+    // Game Boy Advance. Params:
+    //   param4 = quest label to call when activated (inherited from
+    //     TObjMesBase)
+    //   param6 = type (clamped to [0, 1]; 0 = "QUEST", 1 = "RICO")
+    //     (inherited from TObjMesBase)
+    {0x02B7, F_GC, 0x0000000000040001, "TObjGbAdvance"},
+
+    // Like TObjQuestColA (TODO: In what ways is it different?). Parameters
+    // are the same as for TObjQuestCol, but also:
+    //   param2 = TODO
+    //   param5 = quest script manager to use (zero or negative = quest,
+    //     positive = free play)
+    {0x02B8, F_V3_V4, 0x00006FFFFFFC7FFF, "TObjQuestColALock2"},
+    {0x02B8, F_EP3, 0x0000000000000001, "TObjQuestColALock2"},
+
+    // Like 0x0003 (TObjMapWarpForest), but is invisible and automatically
+    // warps players when they enter its radius. This is used to simulate
+    // floor warps in the Control Tower. Has the same parameters as
+    // TObjMapWarpForest, but also:
+    //   param5 = destination "floor" number (this is an intra-map warp and
+    //     doesn't actually change floors; the "floor" number is only visual)
+    //   param6 = if <= 0, shows "floor" number (param5 formatted as "%xF")
+    //     after warp; if > 0, param5 is ignored
+    {0x02B9, F_V3_V4, 0x00007FFC3FFF78FF, "TObjMapForceWarp"},
+    {0x02B9, F_EP3, 0x0000000000000001, "TObjMapForceWarp"},
+
+    // Behaves like 0x0012 (TObjQuestCol), but also has the param5 behavior
+    // from 0x02B8 (TObjQuestColALock2).
+    {0x02BA, F_V3_V4, 0x00006FFFFFFC7FFF, "TObjQuestCol2"},
+    {0x02BA, F_EP3, 0x0000000000000001, "TObjQuestCol2"},
+
+    // Episode 2 Lab door with glass window. Same parameters as
+    // TODoorLaboNormal, except param5 is unused.
+    {0x02BB, F_V3_V4, 0x0000400000040000, "TODoorLaboNormal"},
+
+    // Episode 2 ending movie warp (used in final boss arenas after the boss
+    // is defeated). Same params as 0x001C (TObjAreaWarpEnding).
+    {0x02BC, F_V3_V4, 0x0000400080000000, "TObjAreaWarpEndingJung"},
+
+    // Warp to another location on the same map. Used for the Lab/city warp.
+    // This warp is visible in all game modes, but cannot be used in Episode
+    // 1, Battle mode, or Challenge mode. Params:
+    //   param1-3 = destination (same as for TObjMapWarpForest)
+    //   param4 = destination angle (same as for TObjMapWarpForest)
+    //   param6 = destination text (clamped to [0, 2]):
+    //     00 = "The Principal"
+    //     01 = "Pioneer 2"
+    //     02 = "Lab"
+    {0x02BD, F_V3_V4, 0x0000400000040000, "TObjLaboMapWarp"},
+
+    // This object is used internally by Episode 3 during battles as the
+    // visual implementation for some overlay tiles.
+    // Params:
+    //   param1-3 = TODO
+    //   param4 = model number:
+    //     00 = TODO (iwa.bml)
+    //     01 = TODO (l_kusa.bml)
+    //     02 = TODO (s_kusa.bml)
+    //     03 = TODO (crash_car.bml)
+    //     04 = TODO (crash_warp.bml)
+    //     05 = TODO (new_marker.bml)
+    //     06 = TODO (r_guard.bml)
+    //     07 = TODO (ryuuboku.bml)
+    //     08 = TODO (ryuuboku_l.bml)
+    //     09 = Rock (overlay = 0x10; new_iwa_1.bml)
+    //     0A = TODO (new_iwa_2.bml)
+    //     0B = Purple warp (overlay = 0x30; warp_p.bml)
+    //     0C = Red warp (overlay = 0x31; warp_r.bml)
+    //     0D = Green warp (overlay = 0x32; warp_g.bml)
+    //     0E = Blue warp (overlay = 0x33; warp_b.bml)
+    //     0F = Fence (overlay = 0x20; shareobj_new_guard.bml)
+    //   param6 second-low byte = TODO
+    //   param6 low byte = TODO
+    {0x02D0, F_EP3, 0x0000000000000002, "TObjKazariCard"},
+
+    // TODO: Describe these objects. There appear to be no parameters.
+    {0x02D1, F_EP3, 0x0000000000000001, "TObj_FloatingCardMaterial_Dark"},
+    {0x02D2, F_EP3, 0x0000000000000001, "TObj_FloatingCardMaterial_Hero"},
+
+    // Morgue warps. These don't actually do anything; they just look like a
+    // warp. The actual warping is done by another object (TObjCityAreaWarp
+    // for the lobby teleporter, or TShopGenerator for the battle counter).
+    // TObjCardCityMapWarp takes no parameters.
+    {0x02D3, F_EP3, 0x0000000000000001, "TObjCardCityMapWarp(0)"}, // Battle counter warp (blue lines)
+    {0x02D9, F_EP3, 0x0000000000000001, "TObjCardCityMapWarp(1)"}, // TODO
+    {0x02E3, F_EP3, 0x0000000000000001, "TObjCardCityMapWarp(2)"}, // Lobby warp (yellow lines)
+
+    // Morgue doors. None of these take any parameters. Unsurprisingly, the
+    // _Closed variants don't open.
+    {0x02D4, F_EP3, 0x0000000000000001, "TObjCardCityDoor(0)"}, // Yellow (to deck edit room)
+    {0x02D5, F_EP3, 0x0000000000000001, "TObjCardCityDoor(1)"}, // Blue (to battle entry counter)
+    {0x02D8, F_EP3, 0x0000000000000001, "TObjCardCityDoor(2)"}, // TODO
+    {0x02DF, F_EP3, 0x0000000000000001, "TObjCardCityDoor(3)"}, // Solid (always closed in normal Morgue)
+    {0x02E0, F_EP3, 0x0000000000000001, "TObjCardCityDoor(4)"}, // Gray (to chief)
+    {0x02DC, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(0)"}, // TODO
+    {0x02DD, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(1)"}, // TODO
+    {0x02DE, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(2)"}, // TODO
+    {0x02E1, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(3)"}, // TODO
+    {0x02E2, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(4)"}, // TODO
+
+    // Mortis Fons geyser. Params:
+    //   param1-3 = TODO
+    //   param4 = mode (value is param4 % 0x0B):
+    //     00 = MIZUMODE_NONE
+    //     01 = MIZUMODE_LOW
+    //     02 = MIZUMODE_MIDDLE
+    //     03 = MIZUMODE_HIGH
+    //     04 = MIZUMODE_RAIN
+    //     05 = MIZUMODE_WAVE
+    //     06 = MIZUMODE_HIGHTYNY
+    //     07 = MIZUMODE_REFLECT
+    //     08 = MIZUMODE_FOG
+    //     09 = MIZUMODE_FOG2
+    //     0A = MIZUMODE_LIGHT
+    //   param5 = TODO (value is param5 % 7)
+    {0x02D6, F_EP3, 0x0000000000000002, "TObjKazariGeyserMizu"},
+
+    // TODO: Describe this object. It appears to be created by many creatures
+    // and probably SCs as well, but it's not obvious what it's used for,
+    // since the logic of tiles being blocked or free is implemented in
+    // TCardServer, which doesn't interact with this object. Further research
+    // is needed here. Params:
+    //   param1-3 = TODO
+    //   param4 = TODO (expected to be 0 or 1)
+    {0x02D7, F_EP3, 0x0000000000000002, "TObjSetCardColi"},
+
+    // Floating robots, presumably. These are both subclasses of 0x0106
+    // (TODragonflyMachine01) and take all the same params as that object.
+    {0x02DA, F_EP3, 0x0000000000000001, "TOFlyMekaHero"},
+    {0x02DB, F_EP3, 0x0000000000000001, "TOFlyMekaDark"},
+
+    // Lobby banner or model display object. This implements display of media
+    // sent with the B9 command. Params:
+    //   param1-3 = scale factors (x, y, z)
+    //   param4 = index into location bit field (0-31 where 0 is the least-
+    //     significant bit; see Episode3LobbyBanners in config.example.json
+    //     for the bits' meanings)
+    //   param5 = TODO
+    {0x02E4, F_EP3, 0x0000000000008001, "TObjSinBoardCard"},
+
+    // TODO: Describe this object. Params:
+    //   param4 = model number (0 or 1)
+    {0x02E5, F_EP3, 0x0000000000000001, "TObjCityMoji"},
+
+    // Like TObjCardCityMapWarp(2) (the warp to the lobby from the Morgue)
+    // but doesn't render the circles. Used in offline mode where that warp
+    // is disabled. No parameters.
+    {0x02E6, F_EP3, 0x0000000000000001, "TObjCityWarpOff"},
+
+    // Small flying robot. There appear to be no parameters.
+    {0x02E7, F_EP3, 0x0000000000000001, "TObjFlyCom"},
+
+    // TODO: Describe this object. Params:
+    //   param4 = TODO (used in vtable[0x0E])
+    {0x02E8, F_EP3, 0x0000000000000001, "__UNKNOWN_02E8__"},
+
+    // Episode 4 light source.
+    // TODO: Find and document this object's parameters.
+    {0x0300, F_V4, 0x00005FF000000000, "__EP4_LIGHT__"},
+
+    // Wilds/Crater cactus. Params:
+    //   param1 = horizontal scale (x, z)
+    //   param2 = vertical scale (y)
+    //   param4 = model number (0-2, not bounds-checked)
+    //   param5 = TODO
+    {0x0301, F_V4, 0x00004FF000000000, "__WILDS_CRATER_CACTUS__"},
+
+    // Wilds/Crater brown rock. Params:
+    //   param1-3 = scale factors (x, y, z); z factor also scales hitbox size
+    //   param4 = model number (0-2, not bounds-checked)
+    {0x0302, F_V4, 0x00004FF000000000, "__WILDS_CRATER_BROWN_ROCK__"},
+
+    // Wilds/Crater destructible brown rock. Params:
+    //   param4 = switch flag number
+    {0x0303, F_V4, 0x00004FF000000000, "__WILDS_CRATER_BROWN_ROCK_DESTRUCTIBLE__"},
+
+    // TODO: Construct this object and see what it is. Params:
+    //   param4 = object identifier (must be in range [0, 15]; used in 6xD4
+    //     command)
+    {0x0340, F_V4, 0x0000400000000000, "__UNKNOWN_0340__"},
+
+    // TODO: Construct this object and see what it is. It looks like some
+    // kind of child object of 0340. Params:
+    //   param4 = object identifier (must be in range [0, 15]; used in 6xD4
+    //     command; looks like it should match an existing 0340's identifier)
+    //   param5 = child index? (must be in range [0, 3])
+    {0x0341, F_V4, 0x0000400000000000, "__UNKNOWN_0341__"},
+
+    // Poison plant. Base damage is 10 (Normal), 20 (Hard), 30 (Very Hard),
+    // or 60 (Ultimate). There appear to be no parameters.
+    {0x0380, F_V4, 0x00004E0000000000, "__POISON_PLANT__"},
+
+    // TODO: Describe this object. Params:
+    //   param4 = model number (clamped to [0, 1])
+    {0x0381, F_V4, 0x00004E0000000000, "__UNKNOWN_0381__"},
+
+    // TODO: Describe this object. There appear to be no parameters.
+    {0x0382, F_V4, 0x00004E0000000000, "__UNKNOWN_0382__"},
+
+    // Desert ooze plant. Params:
+    //   param1 = animation speed?
+    //   param2 = scale factor
+    //   param4 = model number (clamped to [0, 1])
+    {0x0383, F_V4, 0x00004E0000000000, "__DESERT_OOZE_PLANT__"},
+
+    // TODO: Describe this object. Params:
+    //   param1 = animation speed?
+    //   param4 = TODO (clamped to [0, 1])
+    {0x0385, F_V4, 0x00004E0000000000, "__UNKNOWN_0385__"},
+
+    // Wilds/Crater black rocks. Params:
+    //   param4 = model number (0-2, not bounds-checked)
+    {0x0386, F_V4, 0x00004FF000000000, "__WILDS_CRATER_BLACK_ROCKS__"},
+
+    // TODO: Describe this object. Params (names come from debug strings):
+    //   angle.x = dest x
+    //   angle.y = dest y
+    //   angle.z = dest z
+    //   param1 = area radius
+    //   param2 = area power (value is param2 * 0.8)
+    //   param4 = hole radius (value is param4 / 100)
+    //   param5 = hole power (value is param5 / 100)
+    {0x0387, F_V4, 0x00004E0000000000, "__UNKNOWN_0387__"},
+
+    // TODO: Describe this object. Params:
+    //   param1 = hitbox width (x; only used if param6 == 0)
+    //   param2 = hitbox radius (only used if param6 != 0)
+    //   param3 = hitbox depth (z; only used if param6 == 0)
+    //   param4 = TODO (value is param4 / 100)
+    //   param6 = hitbox type (0 = rectangular, anything else = cylindrical)
+    {0x0388, F_V4, 0x00004E0000000000, "__UNKNOWN_0388__"},
+
+    // Game flag set/clear zone. This sets and clears game flags (the flags
+    // sent in 6x0A) when the player enters the object's hitbox. Params:
+    //   param1-3 = same as for 0x0388
+    //   param4 = game flags to set (low 8 bits only)
+    //   param5 = game flags to clear (low 8 bits only)
+    //   param6 = same as for 0x0388
+    // There appears to be a bug that causes the game to always set all 8 of
+    // the low game flags, regardless of the value of param4. The clearing
+    // logic (param5) appears to work correctly.
+    {0x0389, F_V4, 0x0000400000000000, "__GAME_FLAG_SET_CLEAR_ZONE__"},
+
+    // HP drain zone. When a player is within this object's hitbox, it
+    // subtracts 0.66% of the player's current HP at a regular interval. The
+    // amount of damage per interval is capped below at 1 HP, so it will
+    // always do a nonzero amount of damage each time. Params:
+    //   param1-3 = same as for 0x0388
+    //   param5 = interval (in frames) between damage applications
+    //   param6 = same as for 0x0388
+    {0x038A, F_V4, 0x0000400000000000, "__HP_DRAIN_ZONE__"},
+
+    // Falling stalactite. Activates when any player is within 50 units. Base
+    // damage is 100 on Normal, 200 on Hard, 300 on Very Hard, or 600 on
+    // Ultimate. There appear to be no parameters.
+    {0x038B, F_V4, 0x00004E0000000000, "__FALLING_STALACTITE__"},
+
+    // Solid desert plant. Params:
+    //   param1 = horizontal scale factor (x, z)
+    //   param2 = vertical scale factor (y)
+    {0x038C, F_V4, 0x00004E0000000000, "__DESERT_PLANT_SOLID__"},
+
+    // Desert crystals-style box. Params:
+    //   param1 = contents type:
+    //     0 = always empty
+    //     1 = standard random item (ignore_def = 1)
+    //     2 = customized item (ignore_def = 0)
+    //     3 = trigger set event
+    // If param1 is 0 or 1, no other parameters are used. (In the case of 1,
+    // param3-6 are sent to the server in the 6xA2 command; however, the
+    // standard implementation ignores them.)
+    // If param1 is 2, the other parameters have the same meanings as for
+    // 0x0088 (TObjContainerBase2).
+    // If param1 is 3, the event number is specified in param4.
+    {0x038D, F_V4, 0x00004E0000000000, "__DESERT_CRYSTALS_BOX__"},
+
+    // Episode 4 test door. param4 and param6 are the same as for 0x0056
+    // (TODoorLabo).
+    {0x038E, F_V4, 0x0000400000000000, "__EP4_TEST_DOOR__"},
+
+    // Beehive. Params:
+    //   param1 = horizontal scale factor (x, z)
+    //   param2 = vertical scale factor (y)
+    //   param4 = model number (clamped to [0, 1])
+    {0x038F, F_V4, 0x00004E0000000000, "__BEEHIVE__"},
+
+    // Episode 4 test particles. Generates particles at a specific location
+    // (TODO) at a regular interval. Params:
+    //   angle.x = TODO
+    //   angle.y = TODO
+    //   param1 = particle distance? (TODO)
+    //   param2 = TODO
+    //   param4 = frames between effects
+    {0x0390, F_V4, 0x00004E0000000000, "__EP4_TEST_PARTICLE__"},
+
+    // Heat (implemented as a type of poison fog). Has the same parameters as
+    // TObjFogCollisionPoison.
+    {0x0391, F_V4, 0x00004E0000000000, "__HEAT__"},
+
+    // Episode 4 boss egg. There appear to be no parameters.
+    {0x03C0, F_V4, 0x0000500000000000, "__EP4_BOSS_EGG__"},
+
+    // Episode 4 boss rock spawner. Params:
+    //   param4 = type (clamped to [0, 2])
+    {0x03C1, F_V4, 0x0000500000000000, "__EP4_BOSS_ROCK_SPAWNER__"},
+});
+
+static const vector<DATEntityDefinition> dat_enemy_definitions({
+    // This is newserv's canonical definition of map enemy and NPC types.
+
+    // Enemies and NPCs take a similar arguments structure as objects:
+    // objects use ObjectSetEntry, enemies use EnemySetEntry. Unlike objects,
+    // some IDs are reused across game versions, so the same ID can generate
+    // a completely different entity on different game versions. Where this
+    // happens is noted in the comments below.
+
+    // Some enemies have params that the game's code references, but only in
+    // places where their effects can't be seen (for example, in normally-
+    // unused debug menus). These may have been used to test frame-by-frame
+    // animations for some enemies; see TObjEneMe3Shinowa_v76 for an example
+    // of this usage. The enemies with params like this are:
+    // - TObjEneMe3ShinowaReal (param3, param4)
+    // - TObjEneDf2Bringer (param1, param2)
+    // - TObjEneRe7Berura (param1, param2)
+    // - TBoss1Dragon (param1, param2)
+    // - TBoss5Gryphon (param1, param2)
+    // - TBoss2DeRolLe (param1, param2)
+    // - TBoss8Dragon (param1, param2)
+    // - TObjEneBm5GibonU (param4, param5; these params also have non-debug
+    //     meanings)
+    // - TObjEneMorfos (oaram1, param2; these params also have non-debug
+    //     meanings)
+    // TODO: Add more enemies to this list as they are found
+
+    // NPCs. Params:
+    //   param1 = action parameter (depends on param6; see below)
+    //   param2 = visibility register number (if this is > 0, the NPC will
+    //     only be visible when this register is nonzero; if this is >= 1000,
+    //     the effective register is param2 - 1000 and register values for
+    //     both param2 and param3 are read from the free play script
+    //     environment instead of the quest script environment)
+    //   param3 = hide override register number (if this is > 0, the NPC will
+    //     not be visible when this register is nonzero, regardless of the
+    //     state of the register specified by param2; if this is >= 1000, the
+    //     effective register is param3 - 1000 and register values for both
+    //     param2 and param3 are read from the free play script environment
+    //     instead of the quest script environment)
+    //   param4 = object number ("character ID" in qedit; if this is outside
+    //     the range [100, 999], the quest label in param5 is called in the
+    //     free play script instead of the quest script)
+    //   param5 = quest label to call when interacted with (if zero, NPC does
+    //     nothing upon interaction)
+    //   param6 = specifies what NPC does when idle:
+    //     0 = stand still (param1 is ignored)
+    //     1 = walk around randomly (param1 = max walk distance from home)
+    //     2 = TODO (Ep3 only; appears to be unused)
+    //     3 = TODO (Ep3 only; appears to be unused)
+    // TODO: setting param4 to 0 changes something else about the NPC; figure
+    // out what this does (see TObjNpcBase_v57_set_config_from_params)
+    {0x0001, F_V0_V4, 0x0000200000000001, "TObjNpcFemaleBase"}, // Woman with red hair and purple outfit
+    {0x0001, F_EP3, 0x0000000000000001, "TObjNpcFemaleBase"}, // Woman with red hair and purple outfit
+    {0x0002, F_V0_V4, 0x0000200000000001, "TObjNpcFemaleChild"}, // Shorter version of the above
+    {0x0002, F_EP3, 0x0000000000000001, "TObjNpcFemaleChild"}, // Shorter version of the above
+    {0x0003, F_V0_V4, 0x0000200000040001, "TObjNpcFemaleDwarf"}, // Woman wearing green outfit
+    {0x0003, F_EP3, 0x0000000000000001, "TObjNpcFemaleDwarf"}, // Woman wearing green outfit
+    {0x0004, F_V0_V4, 0x0000200000000001, "TObjNpcFemaleFat"}, // Woman outside Hunter's Guild
+    {0x0004, F_EP3, 0x0000000000000001, "TObjNpcFemaleFat"}, // Woman outside Hunter's Guild
+    {0x0005, F_V0_V4, 0x0000200000000001, "TObjNpcFemaleMacho"}, // Tool shop woman
+    {0x0005, F_EP3, 0x0000000000000001, "TObjNpcFemaleMacho"}, // Tool shop woman
+    {0x0006, F_V0_V4, 0x0000200000040001, "TObjNpcFemaleOld"}, // Older woman with yellow/red outfit
+    {0x0006, F_EP3, 0x0000000000000001, "TObjNpcFemaleOld"}, // Older woman with yellow/red outfit
+    {0x0007, F_V0_V4, 0x0000200000000001, "TObjNpcFemaleTall"}, // Woman walking around inside shop area
+    {0x0007, F_EP3, 0x0000000000000001, "TObjNpcFemaleTall"}, // Woman walking around inside shop area
+    {0x0008, F_V0_V4, 0x0000200000008001, "TObjNpcMaleBase"}, // Similar appearance to weapon shop man
+    {0x0008, F_EP3, 0x0000000000008001, "TObjNpcMaleBase"}, // Similar appearance to weapon shop man
+    {0x0009, F_V0_V4, 0x0000200000040001, "TObjNpcMaleChild"}, // Kid wearing purple
+    {0x0009, F_EP3, 0x0000000000000001, "TObjNpcMaleChild"}, // Kid wearing purple
+    {0x000A, F_V0_V4, 0x0000200000000001, "TObjNpcMaleDwarf"}, // Man outside Medical Center
+    {0x000A, F_EP3, 0x0000000000000001, "TObjNpcMaleDwarf"}, // Man outside Medical Center
+    {0x000B, F_V0_V4, 0x0000200000040001, "TObjNpcMaleFat"}, // Armor shop man
+    {0x000B, F_EP3, 0x0000000000000001, "TObjNpcMaleFat"}, // Armor shop man
+    {0x000C, F_V0_V4, 0x0000200000000001, "TObjNpcMaleMacho"}, // Weapon shop man
+    {0x000C, F_EP3, 0x0000000000000001, "TObjNpcMaleMacho"}, // Weapon shop man
+    {0x000D, F_V0_V4, 0x0000200000040001, "TObjNpcMaleOld"}, // Man near telepipe locations
+    {0x000D, F_EP3, 0x0000000000000001, "TObjNpcMaleOld"}, // Man near telepipe locations
+    {0x000E, F_V0_V4, 0x0000200000040001, "TObjNpcMaleTall"}, // Man wearing turquoise
+    {0x000E, F_EP3, 0x0000000000000001, "TObjNpcMaleTall"}, // Man wearing turquoise
+    {0x0019, F_V0_V4, 0x00003FF000040001, "TObjNpcSoldierBase"}, // Man right of the Ragol warp door
+    {0x0019, F_EP3, 0x0000000000000001, "TObjNpcSoldierBase"}, // Man right of the Ragol warp door
+    {0x001A, F_V0_V4, 0x0000200000000001, "TObjNpcSoldierMacho"}, // Man left of the Ragol warp door
+    {0x001A, F_EP3, 0x0000000000000001, "TObjNpcSoldierMacho"}, // Man left of the Ragol warp door
+    {0x001B, F_V0_V4, 0x0000200000040001, "TObjNpcGovernorBase"}, // Principal Tyrell
+    {0x001B, F_EP3, 0x0000000000000001, "TObjNpcGovernorBase"}, // Principal Tyrell
+    {0x001C, F_V0_V4, 0x0000200000040001, "TObjNpcConnoisseur"}, // Tekker
+    {0x001D, F_V0_V4, 0x0000200000040021, "TObjNpcCloakroomBase"}, // Bank woman
+    {0x001E, F_V0_V4, 0x0000200000000001, "TObjNpcExpertBase"}, // Man in front of bank
+    {0x001F, F_V0_V4, 0x0000200000040001, "TObjNpcNurseBase"}, // Nurses in Medical Center
+    {0x0020, F_V0_V4, 0x0000200000040001, "TObjNpcSecretaryBase"}, // Irene
+    {0x0020, F_EP3, 0x0000000000000001, "TObjNpcSecretaryBase"}, // Karen
+    {0x0021, F_V0_V4, 0x0000200000000001, "TObjNpcHHM00"}, // TODO
+    {0x0021, F_EP3, 0x0000000000000001, "TObjNpcHHM00"}, // TODO
+    {0x0022, F_V0_V4, 0x0000200000000001, "TObjNpcNHW00"}, // TODO
+    {0x0022, F_EP3, 0x0000000000000001, "TObjNpcNHW00"}, // TODO
+    {0x0024, F_V0_V4, 0x0000200000000001, "TObjNpcHRM00"}, // TODO
+    {0x0025, F_V0_V4, 0x0000200000040001, "TObjNpcARM00"}, // TODO
+    {0x0026, F_V0_V4, 0x0000200000040001, "TObjNpcARW00"}, // TODO
+    {0x0026, F_EP3, 0x0000000000000001, "TObjNpcARW00"}, // TODO
+    {0x0027, F_V0_V4, 0x0000200000040001, "TObjNpcHFW00"}, // TODO
+    {0x0027, F_EP3, 0x0000000000000001, "TObjNpcHFW00"}, // TODO
+    {0x0028, F_V0_V4, 0x0000200000040001, "TObjNpcNFM00"}, // TODO
+    {0x0028, F_EP3, 0x0000000000000001, "TObjNpcNFM00"}, // TODO
+    {0x0029, F_V0_V4, 0x00003C0000000001, "TObjNpcNFW00"}, // TODO
+    {0x0029, F_EP3, 0x0000000000000001, "TObjNpcNFW00"}, // TODO
+    {0x002B, F_V0_V4, 0x0000200000000001, "TObjNpcNHW01"}, // TODO
+    {0x002C, F_V0_V4, 0x0000200000000001, "TObjNpcAHM01"}, // TODO
+    {0x002D, F_V0_V4, 0x0000200000000001, "TObjNpcHRM01"}, // TODO
+    {0x0030, F_V0_V4, 0x0000200000000001, "TObjNpcHFW01"}, // TODO
+    {0x0031, F_V0_V4, 0x0000200000040001, "TObjNpcNFM01"}, // TODO
+    {0x0031, F_EP3, 0x0000000000000001, "TObjNpcNFM01"}, // TODO
+    {0x0032, F_V0_V4, 0x00002C0000000001, "TObjNpcNFW01"}, // TODO
+    {0x0045, F_V0_V4, 0x00000FF40F800006, "TObjNpcLappy"}, // Rappy NPC
+    {0x0046, F_V0_V4, 0x0000000000000004, "TObjNpcMoja"}, // Small Hildebear NPC
+    {0x0047, F_V2, 0x0000000000000004, "TObjNpcRico"}, // Rico
+    {0x00A9, F_V0_V4, 0x0000000000000600, "TObjNpcBringer"}, // Dark Bringer NPC
+    {0x00D0, F_V3_V4, 0x0000200000040001, "TObjNpcKenkyu"}, // Ep2 armor shop man
+    {0x00D1, F_V3_V4, 0x0000200000040001, "TObjNpcSoutokufu"}, // Natasha Milarose
+    {0x00D2, F_V3_V4, 0x0000000000040000, "TObjNpcHosa"}, // Dan
+    {0x00D3, F_V3_V4, 0x000000F000040000, "TObjNpcKenkyuW"}, // Ep2 tool shop woman
+    {0x00D6, F_EP3, 0x0000000000000001, "TObjNpcHeroGovernor"}, // Morgue Chief
+    {0x00D7, F_EP3, 0x0000000000000001, "TObjNpcHeroGovernor"}, // Morgue Chief (direct alias of 00D6)
+    {0x00F0, F_V3_V4, 0x0000000000040000, "TObjNpcHosa2"}, // Man next to room with warp to Lab
+    {0x00F1, F_V3_V4, 0x0000000000040000, "TObjNpcKenkyu2"}, // Ep2 weapon shop man
+    {0x00F2, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00F2)"}, // TODO
+    {0x00F3, F_V3_V4, 0x00003FF000040000, "TObjNpcNgcBase(0x00F3)"}, // TODO
+    {0x00F4, F_V3_V4, 0x00003FF030040000, "TObjNpcNgcBase(0x00F4)"}, // TODO
+    {0x00F5, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00F5)"}, // TODO
+    {0x00F6, F_V3_V4, 0x000000080F840000, "TObjNpcNgcBase(0x00F6)"}, // TODO
+    {0x00F7, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00F7)"}, // Nol
+    {0x00F8, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00F8)"}, // Elly
+    {0x00F9, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00F9)"}, // Woman with cyan hair down the ramp from Ep2 Medical Center
+    {0x00FA, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00FA)"}, // Woman with bright red hair down the ramp from Ep2 Medical Center
+    {0x00FB, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00FB)"}, // Man with blue hair near the Ep2 Medical Center
+    {0x00FC, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00FC)"}, // Man in room next to Ep2 Hunter's Guild
+    {0x00FD, F_V3_V4, 0x000000040F840000, "TObjNpcNgcBase(0x00FD)"}, // TODO
+    {0x00FE, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00FE)"}, // Episode 2 Hunter's Guild woman
+    {0x00FF, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00FF)"}, // Woman near room with teleporter to VR areas
+    {0x0100, F_V4, 0x0000200000040001, "__MOMOKA__"}, // Momoka (v4 only)
+    {0x0110, F_EP3, 0x0000000000000001, "TObjNpcWalkingMeka_Hero"}, // Small talking robot in Morgue
+    {0x0111, F_EP3, 0x0000000000000001, "TObjNpcWalkingMeka_Dark"}, // Small talking robot in Morgue
+
+    // Episode 3 scientist and aide NPCs. These NPC take all the same params as
+    // the NPCs defined above, but also:
+    //   angle.x = model number (clamped to [0, 3] for scientists, [0, 2] for
+    //     aides)
+    // The two type values for scientists (00D4 and 00D5) are direct aliases
+    // for each other; there is no difference between their in-game appearance
+    // or behavior.
+    {0x00D4, F_EP3, 0x0000000000000001, "TObjNpcHeroScientist"},
+    {0x00D5, F_EP3, 0x0000000000000001, "TObjNpcHeroScientist"},
+    {0x0112, F_EP3, 0x0000000000000001, "TObjNpcHeroAide"},
+
+    // Quest NPC. Params are the same as for the standard NPCs above, except:
+    //   param6 low byte = flags (bit field):
+    //     01 = same as param6 above (0 = stand still; 1 = walk around)
+    //     10 = TODO
+    //   param6 high byte = NPC index in npcplayerchar.dat
+    {0x0118, F_V4, 0x00007FF000000000, "__QUEST_NPC__"},
+
+    // Enemy that behaves like an NPC. Has all the same params as the
+    // standard NPC types, but also:
+    //   angle.x = definition index
+    // The definition index is an integer from 0 to 15 (decimal) specifying
+    // which model, animations, and hitbox to use. The available choices
+    // depend on which assets are loaded, which in turn depend on the area
+    // the NPC appears in.
+    // TODO: Make a list of all of the choices for each area here
+    {0x0033, F_V3_V4, 0x0000200FFFFFFFFF, "TObjNpcEnemy"},
+    {0x0033, F_EP3, 0x0000000000008001, "TObjNpcEnemy"},
+
+    // Hildebear. Params:
+    //   param1 = initial location (clamped to [0, 1]; 0 = ground, 1 = sky)
+    //   param2 = chance to use tech (value is param3 + 0.6, clamped to [0,
+    //     1]; TODO: it's not clear when exactly the decision points are)
+    //   param3 = chance to jump when more than 150 units away (value is
+    //     param2 + 0.3, clamped to [0, 1])
+    //   param6 = if >= 1, always rare
+    {0x0040, F_V0_V4, 0x00000000001B0004, "TObjEneMoja"},
+
+    // Rappy. Params:
+    //   param1 = TODO (clamped to [0, 1]; overwritten with 1 if wave_number
+    //     is > 0; could be spawn location like for Hildebear?)
+    //   param6 = rare flag (on v1-v3, rappy is rare if param6 != 0; on v4,
+    //     rappy is rare if (param6 & 1) != 0)
+    //   param7 = TODO
+    // Exactly which rappy is constructed depends on param6 (or the random
+    // rare check) and the current season event:
+    //   Ep1/Ep2 non-rare = Rag Rappy
+    //   Ep4 non-rare = Sand Rappy (Crater or Desert variation)
+    //   Ep1 rare = Al Rappy
+    //   Ep2 rare, Christmas = Saint Rappy
+    //   Ep2 rare, Easter = Egg Rappy
+    //   Ep2 rare, Halloween = Hallo Rappy
+    //   Ep2 rare, any other season event (or none) = Love Rappy
+    //   Ep4 rare = Del Rappy (Crater or Desert variation)
+    {0x0041, F_V0_V4, 0x00004FF000180006, "TObjEneLappy"},
+
+    // Monest (and Mothmants). Params:
+    //   param2 = number of Mothmants to expel at start (clamped to [0, 6])
+    //   param3 = total Mothmants (clamped to [0, min(30, num_children)]
+    //     where num_children comes from the EnemySetEntry; if this is less
+    //     than param2, then param2 will take precedence but no further
+    //     Mothmants will emerge after the first group)
+    // Note: In map_forest01_02e.dat in the vanilla map files there is a
+    // Monest that has param1 = 3 and param2 = 10. This looks like just an
+    // off-by-one error on Sega's part where they accidentally shifted the
+    // parameters down by one place. As described above, this Monest expels
+    // 6 Mothmants, then no more after they are killed.
+    {0x0042, F_V0_V4, 0x0000000000180006, "TObjEneBm3FlyNest"},
+
+    // Savage Wolf or Barbarous Wolf. Params:
+    //   param1 = group number (when a Barbarous Wolf dies, all wolves with
+    //     the same group number howl and trigger their buffs or weaknesses)
+    //   param2 = if less than 1, this is a Savage Wolf; otherwise it's a
+    //     Barbarous Wolf
+    {0x0043, F_V0_V4, 0x0000000000600006, "TObjEneBm5Wolf"},
+
+    // Booma, Gobooma, or Gigobooma. Params:
+    //   param1 = TODO (fraction of max HP; see TObjEnemyV8048ee80_v5A)
+    //   param2 = idle walk radius (when there's no target, it will walk
+    //     around its spawn location within this radius; if this is zero, it
+    //     stands still instead)
+    //   param6 = type (0 = Booma, 1 = Gobooma, 2 = Gigobooma)
+    //   param7 = group ID (if nonzero, it looks like this is used to cause
+    //     groups of enemies to band together and all attack the same player,
+    //     chosen by the highest-ranking enemy (by param6) in the group;
+    //     TODO: this explanation is unverified and param7 was never used by
+    //     Sega; see client code at 3OE1:800F6F3C)
+    {0x0044, F_V0_V4, 0x0000000000000006, "TObjEneBeast"},
+
+    // Grass Assassin. Params:
+    //   param1 = TODO
+    //   param2 = TODO (some state is set based on whather this is <= 0 or
+    //     not, but the value is also used directly in some places)
+    //   param3 = TODO (see TObjGrass_update_case8)
+    //   param4 = TODO (see TObjGrass_update_case8)
+    {0x0060, F_V0_V4, 0x00000000001B0018, "TObjGrass"},
+
+    // Poison Lily or Del Lily. Del Lily is constructed if the current area
+    // is 0x23 (Control Tower); otherwise, Poison Lily is constructed. There
+    // appear to be no parameters.
+    {0x0061, F_V0_V4, 0x0000000800180038, "TObjEneRe2Flower"},
+
+    // Nano Dragon. Params:
+    //   param1 = TODO (seems it only matters if this is 1 or not)
+    //   param2 = TODO (defaults to 50 if param2 < 1)
+    //   param7 = TODO (set in init)
+    {0x0062, F_V0_V4, 0x0000000000000038, "TObjEneNanoDrago"},
+
+    // Evil Shark, Pal Shark, or Guil Shark. Same params as 0x0044
+    // (TObjEneBeast), except:
+    //   param6 = type (0 = Evil Shark, 1 = Pal Shark, 2 = Guil Shark)
+    {0x0063, F_V0_V4, 0x0000000000030038, "TObjEneShark"},
+
+    // Pofuilly Slime. num_children is clamped to [0, 4]. Params:
+    //   param7 = rare flag (if the lowest bit is set, this is a Pouilly
+    //     Slime instead; on BB, this is ignored)
+    {0x0064, F_V0_V4, 0x0000000000000030, "TObjEneSlime"},
+
+    // Pan Arms (Hidoom + Migium). There appear to be no parameters.
+    {0x0065, F_V0_V4, 0x0000000000600028, "TObjEnePanarms"},
+
+    // Gillchic or Dubchic. Params:
+    //   param1 = rapid fire count (number of lasers fired before moving
+    //     again; if this is 0, the default of 2 is used)
+    //   param6 = type (0 = Dubchic, 1 = Gillchic)
+    //   param7 = TODO
+    {0x0080, F_V0_V4, 0x00000000006000C0, "TObjEneDubchik"},
+
+    // Garanz. There appear to be no parameters.
+    // TODO: There is some behavior difference if wave_number is 0 vs. any
+    // other value. Figure out what exactly this does.
+    {0x0081, F_V0_V4, 0x00000000002000C0, "TObjEneGyaranzo"},
+
+    // Sinow Beat. Params:
+    //   param1 = disable mirage effect if >= 1.0
+    //   param2 = is Sinow Gold if >= 1.0
+    // Note: All params are on the base class (TObjEneMe3Shinowa).
+    {0x0082, F_V0_V4, 0x00000000000300C0, "TObjEneMe3ShinowaReal"},
+
+    // Canadine. Params:
+    //   param1 = behavior (0 = in fighter, 1 = out fighter; this controls
+    //     whether the Canadine will use its direct attack or stay high off
+    //     the ground instead)
+    {0x0083, F_V0_V4, 0x00000000000000C0, "TObjEneMe1Canadin"},
+
+    // Canane. There appear to be no parameters. There are always 8 followers
+    // arranged in a ring around the Canane.
+    {0x0084, F_V0_V4, 0x00000000000000C0, "TObjEneMe1CanadinLeader"},
+
+    // Dubwitch. Destroying a Dubwitch destroys all Dubchics in the same
+    // room. There appear to be no parameters.
+    {0x0085, F_V0_V4, 0x00000000006000C0, "TOCtrlDubchik"},
+
+    // Delsaber. Params:
+    //   param1 = jump distance delta (value used is param1 + 100)
+    //   param2 = prejudice flag (these values directly correspond to the
+    //     bits in PlayerVisualConfig::class_flags; see below for details):
+    //     0 = males
+    //     1 = females
+    //     2 = humans
+    //     3 = newmans
+    //     4 = androids
+    //     5 = hunters
+    //     6 = rangers
+    //     7 = forces
+    //     8 = no prejudice
+    // If any player is within 30 units of a Delsaber, it will target that
+    // player. Otherwise, the Delsaber will target the nearest player that
+    // matches its prejudice flag; if no player matches this flag, it will
+    // target the nearest player.
+    {0x00A0, F_V0_V4, 0x0000000000630300, "TObjEneSaver"},
+
+    // Chaos Sorceror. There appear to be no parameters.
+    {0x00A1, F_V0_V4, 0x0000000000400500, "TObjEneRe4Sorcerer"},
+
+    // Dark Gunner. Params:
+    //   param1 = group number (there should be between 1 and 16 Dark Gunners
+    //     and one control enemy with the same group number in the same room)
+    //   param2 = TODO (number within group? possibly unused?)
+    //   param7 = TODO
+    {0x00A2, F_V0_V4, 0x0000000000000600, "TObjEneDarkGunner"},
+
+    // Dark Gunner control enemy. This enemy doesn't actually exist in-game;
+    // it only has logic for choosing a Dark Gunner from its group to be the
+    // leader, and then changing this leader periodically. Params:
+    //   param1 = group number (see above)
+    {0x00A3, F_V0_V4, 0x0000000000000600, "TObjEneDarkGunCenter"},
+
+    // Dark Bringer. There appear to be no parameters.
+    {0x00A4, F_V0_V4, 0x0000000000030600, "TObjEneDf2Bringer"},
+
+    // Dark Belra. There appear to be no parameters.
+    {0x00A5, F_V0_V4, 0x0000000000180500, "TObjEneRe7Berura"},
+
+    // Dimenian / La Dimenian / So Dimenian. Same parameters as 0x0044
+    // (TObjEneBeast), except:
+    //   param6 = type (0 = Dimenian, 1 = La Dimenian, 2 = So Dimenian)
+    {0x00A6, F_V0_V4, 0x0000000000180700, "TObjEneDimedian"},
+
+    // Bulclaw. There appear to be no parameters.
+    {0x00A7, F_V0_V4, 0x0000000000000700, "TObjEneBalClawBody"},
+
+    // Claw. There appear to be no parameters.
+    {0x00A8, F_V0_V4, 0x0000000000000700, "TObjEneBalClawClaw"},
+
+    // Dragon (if in Episode 1) or Gal Gryphon (if in Episode 2). There
+    // appear to be no parameters.
+    {0x00C0, F_V0_V4, 0x0000000000000800, "TBoss1Dragon"},
+    {0x00C0, F_V3_V4, 0x0000000040000000, "TBoss5Gryphon"},
+
+    // De Rol Le. There appear to be no parameters.
+    {0x00C1, F_V0_V4, 0x0000000000001000, "TBoss2DeRolLe"},
+
+    // Vol Opt and various pieces thereof. Generally only TBoss3Volopt and
+    // TBoss3VoloptP02 should be specified in map files; the other enemies
+    // are automatically created by TBoss3Volopt. None of these take any
+    // parameters.
+    {0x00C2, F_V0_V4, 0x0000000000002000, "TBoss3Volopt"}, // Main control object
+    {0x00C3, F_V0_V4, 0x0000000000002000, "TBoss3VoloptP01"}, // Phase 1 (x6; one for each big monitor)
+    {0x00C4, F_V0_V4, 0x0000000000002000, "TBoss3VoloptCore"}, // Core
+    {0x00C5, F_V0_V4, 0x0000000000002000, "TBoss3VoloptP02"}, // Phase 2
+    {0x00C6, F_V0_V4, 0x0000000000002000, "TBoss3VoloptMonitor"}, // Monitor (x24; 4 for each wall)
+    {0x00C7, F_V0_V4, 0x0000000000002000, "TBoss3VoloptHiraisin"}, // Pillar (lightning rod)
+
+    // Dark Falz. There appear to be no parameters.
+    {0x00C8, F_V0_V4, 0x0000000000004000, "TBoss4DarkFalz"},
+
+    // Other episode 2 bosses. None of these take any parameters.
+    {0x00CA, F_V3_V4, 0x0000000080000000, "TBoss6PlotFalz"}, // Olga Flow
+    {0x00CB, F_V3_V4, 0x0000000100000000, "TBoss7DeRolLeC"}, // Barba Ray
+    {0x00CC, F_V3_V4, 0x0000000200000000, "TBoss8Dragon"}, // Gol Dragon
+
+    // Sinow Berill or Sinow Spigell. Params:
+    //   param1 = spawn type:
+    //     0 = invisible + ground
+    //     1 = invisible + ceiling
+    //     2 = visible + ground
+    //     3 = visible + ceiling
+    //   param2 = chance to enable stealth (value used is param2 + 0.3)
+    //   param3 = chance to cast technique (value used is param3 + 0.4)
+    //   param4 = chance to teleport (value used is param4 + 0.5)
+    //   param5 = chance to disable stealth (value used is param5 + 0.1;
+    //     applies when hit, but (TODO) also some other events)
+    //   param6 = type:
+    //     zero or negative = Sinow Berill
+    //     positive = Sinow Spigell
+    // param2, param3, and param4 are evaluated in that order after the Sinow
+    // jumps back. That is, the game first generates a random float between 0
+    // and 1, and compares it to param2 to decide whether to enable stealth.
+    // If it does, the other params are ignored. If it doesn't, the game then
+    // checks param3 in the same manner to determine whether to cast a tech;
+    // if that doesn't happen either, the game checks param4 to determine
+    // whether to teleport. If none of those happen, the Sinow just walks
+    // forward again and attacks.
+    {0x00D4, F_V3_V4, 0x000000000F800000, "TObjEneMe3StelthReal"},
+
+    // Merillia / Meriltas. Params:
+    //   param1 = chance to run away after being hit (value used is param1 -
+    //     0.2, clamped below to 0)
+    //   param3 = chance to do poison attack after being hit (value used is
+    //     param3 - 0.2, clamped below to 0)
+    //   param4 = distance to run away (value used is param4 + 300)
+    //   param5 = wakeup radius delta (value used is param5 + 100, clamped
+    //     below to 15; enemy will wake up when any player is nearby)
+    //   param6 = type (0 = Merillia, 1 = Meriltas)
+    {0x00D5, F_V3_V4, 0x000000040F800000, "TObjEneMerillLia"},
+
+    // Mericarol / Mericus / Merikle / Mericarand. Params:
+    //   param1 = chance of doing run attack after being hit when HP is less
+    //     than half of max (value used is param1 + 0.5)
+    //   param2 = speed during run attack (units per frame; value used is
+    //     param2 + 3, clamped below to 1)
+    //   param3 = chance of doing spit attack when player is nearby (actual
+    //     probability is param3 + 0.1; if the check fails, it will do the
+    //     slash attack instead)
+    //   param6 = subtype:
+    //     0 = Mericarol
+    //     1 = Mericus
+    //     2 = Merikle
+    //     anything else = Mericarand (see below)
+    // If this is a Mericarand, it is "randomly" chosen to be one of the
+    // three subtypes at construction time. On v1-v3, the client chooses
+    // randomly (but consistently, based on the entity ID) between Mericarol
+    // (80%), Mericus (10%) or Merikle (10%). On v4, if the entity ID isn't
+    // marked rare by the server, the Mericarand becomes a Mericarol;
+    // otherwise, it becomes a Mericus if its entity ID is even or a Merikle
+    // if it's odd.
+    {0x00D6, F_V3_V4, 0x000000080F800000, "TObjEneBm9Mericarol"},
+
+    // Ul Gibbon / Zol Gibbon. Params:
+    //   param1 = group number
+    //   param2 = appear type (<1 = spot appear; >=1 = jump appear)
+    //   param3 = chance of jumping forward or back at each decision point
+    //     (value used is param3 + 0.4)
+    //   param4 = chance of casting a tech when not near any player (value
+    //     used is param4 + 0.3)
+    //   param5 = chance of casting a tech immediately after jumping forward
+    //     or back (value used is param5 + 0.3; does not apply after jumps
+    //     that are attacks)
+    //   param6 = type (zero or negative = Ul Gibbon, positive = Zol Gibbon)
+    {0x00D7, F_V3_V4, 0x000000040F800000, "TObjEneBm5GibonU"},
+
+    // Gibbles. Params:
+    //   param1 = jump distance delta (value used is param1 + 100)
+    //   param2 = prejudice flag (see 0x00A0 (TObjEneSaver); the behavior
+    //     here is exactly the same)
+    //   param3 = chance to jump at each decision point (0-1)
+    //   param4 = chance to jump after being hit (0-1)
+    {0x00D8, F_V3_V4, 0x000000080F800000, "TObjEneGibbles"},
+
+    // Gee. Params:
+    //   param1 = in fighter / out fighter setting (see TObjEneMe1Canadin)
+    //   param2 = appear height (0 = low, 1 = high)
+    //   param3 = appear speed (value is param3 + 1, clamped below to 1)
+    //   param4 = needle speed (value is param4 + 6, clamped below to 0.01)
+    // Note: The client's debug strings say "APPEAR SPEED(+1.f Min:0.01f)"
+    // for param3 and "NEEDLE SPEED(+6.f Min:1.f)" for param4. The "Min:"
+    // parts of those strings are incorrect; the comments above are correct.
+    {0x00D9, F_V3_V4, 0x000000040F800000, "TObjEneMe1Gee"},
+
+    // Gi Gue. Params:
+    //   param1 = TODO (only matters if >= 1 or not)
+    //   param2 = TODO (only used if param1 >= 1; defaults to 50 if param2 <
+    //     1; maybe same as Nano Dragon's param2?)
+    //   param3 = TODO (value is param3 + 150)
+    //   param4 = TODO (value is param4 + 0.5)
+    //   param5 = TODO (value is param5 + 0.5)
+    //   param7 = TODO
+    {0x00DA, F_V3_V4, 0x000000080F800000, "TObjEneMe1GiGue"},
+
+    // Deldepth. Params:
+    //   param1 = TODO (value is param1 + 0.6, clamped below to 0; seems to
+    //     be unused?)
+    {0x00DB, F_V3_V4, 0x0000000030000000, "TObjEneDelDepth"},
+
+    // Delbiter. Params:
+    //   param1 = chance to howl (value is param1 + 0.3)
+    //   param2 = chance to cause confusion via howl (value is param2 + 0.3)
+    //   param3 = maximum distance at which howl can cause confusion (value
+    //     is param3 + 30, clamped below to 10)
+    //   param4 = chance to fire laser (value is param4 + 0.3)
+    //   param5 = chance to charge (value is param5 + 0.5)
+    //   param6 = type (0 = stand, 1 = run)
+    {0x00DC, F_V3_V4, 0x0000000830000000, "TObjEneDellBiter"},
+
+    // Dolmolm / Dolmdarl. Same parameters as TObjEneBeast, but also:
+    //   param3 = TODO (value is param3 + 0.3; probability of some sort)
+    //   param4 = TODO (value is param4 + 0.3; probability of some sort)
+    //   param6 = type (zero or negative = Dolmolm; positive = Dolmdarl)
+    {0x00DD, F_V3_V4, 0x0000000430000000, "TObjEneDolmOlm"},
+
+    // Morfos. Params:
+    //   param1 = TODO (value is param1 + 0.28)
+    //   param2 = TODO (value is param2 + 20)
+    //   param3 = TODO (value is param3 + 0.1; probability; used when current
+    //     HP is less than half of max)
+    //   param4 = TODO (value is param4 + 0.1; probability; used when current
+    //     HP is less than half of max)
+    //   param6 = TODO
+    {0x00DE, F_V3_V4, 0x0000000030000000, "TObjEneMorfos"},
+
+    // Recobox. Params:
+    //   param1 = Recon floating height (value used for each Recon is 45 +
+    //     rand(-2, 2) + param1)
+    //   param2 = Recon target radius (distance from target; value used for
+    //     each Recon is 50 + rand(-5, 5) + param2; param2 is clamped below
+    //     to -30)
+    //   param4 = maximum number of concurrently-active Recons (clamped to
+    //     [0, min(6, num_children - 1)])
+    //   param6 = type:
+    //     zero or negative = floor (Recons exit upward)
+    //     1 = ceiling (Recons exit downward)
+    //     2 or greater = wall (Recons exit horizontally)
+    // Note: The debug strings in TObjEneRecobox_v6A seem to imply that the
+    // total Recon count in the box is (param7 + 1); however, this is not
+    // true. The total Recon count in the box is actually (num_children - 1).
+    {0x00DF, F_V3_V4, 0x0000000C30000000, "TObjEneRecobox"},
+
+    // Sinow Zoa / Sinow Zele, or Epsilon (depending on the current area). It
+    // appears that the Sinows take the same params as TObjEneMe3StelthReal
+    // (Sinow Berill / Sinow Spigell), except (of course):
+    //   param6 = type:
+    //     zero or negative = Sinow Zoa
+    //     positive = Sinow Zele
+    // Params for Epsilon:
+    //   param1 = TODO (value is param1 + 0.5, clamped below to 0)
+    //   param2 = TODO (value is param2 + 512; it appears this was supposed
+    //     to be clamped below to 0, but due to a copy/paste error it isn't)
+    //   param3 = TODO (value is (param3 + 20) * 5, clamped below to 150)
+    //   param4 = TODO (value is (param4 + 20) * 5, clamped below to 150)
+    {0x00E0, F_V3_V4, 0x0000000030000000, "TObjEneMe3SinowZoaReal"},
+    {0x00E0, F_V3_V4, 0x0000000800000000, "TObjEneEpsilonBody"},
+
+    // Ill Gill. Params:
+    //   param1 = TODO (seems it only matters if this is zero or not; are there other uses?)
+    //   param2 = TODO (used in TObjEneIllGill_update phase 3)
+    {0x00E1, F_V3_V4, 0x0000000800000000, "TObjEneIllGill"},
+
+    // TODO: Describe the rest of the enemy types.
+    {0x0110, F_V4, 0x000041F000000000, "__ASTARK__"}, // Constructor in 59NL: 005A3D60
+    {0x0111, F_V4, 0x00004FF000000000, "__YOWIE__/__SATELLITE_LIZARD__"}, // Constructor in 59NL: 005AE7CC
+    {0x0112, F_V4, 0x00004E0000000000, "__MERISSA_A__"}, // Constructor in 59NL: 005B6B24
+    {0x0113, F_V4, 0x00004E0000000000, "__GIRTABLULU__"}, // Constructor in 59NL: 005AB9AC
+    {0x0114, F_V4, 0x00004FF000000000, "__ZU__"}, // Constructor in 59NL: 005B47B8
+    {0x0115, F_V4, 0x000041F000000000, "__BOOTA_FAMILY__"}, // Constructor in 59NL: 005A5C08 // TODO: probably a subclass of TObjEnemyV8048ee80; check if there are any others in BB
+    {0x0116, F_V4, 0x000041F000000000, "__DORPHON__"}, // Constructor in 59NL: 005A673C
+    {0x0117, F_V4, 0x00004E0000000000, "__GORAN_FAMILY__"}, // Constructor in 59NL: 005ADAC4
+    {0x0119, F_V4, 0x0000100000000000, "__EPISODE_4_BOSS__"}, // Constructor in 59NL: 0076A86C
+});
+
+static string name_for_entity_type(
+    unordered_multimap<uint16_t, const DATEntityDefinition*>& index,
+    const vector<DATEntityDefinition>& defs,
+    uint16_t type,
+    Version version,
+    uint8_t area) {
+
+  if (index.size() == 0) {
+    for (const auto& def : defs) {
+      index.emplace(def.type, &def);
+    }
   }
+
+  auto its = index.equal_range(type);
+  uint16_t version_mask = (1 << static_cast<size_t>(version));
+  uint64_t area_mask = static_cast<uint64_t>(1ULL << area);
+
+  if ((version != Version::UNKNOWN) && (area != 0xFF)) {
+    for (auto [it, end_it] = its; it != end_it; it++) {
+      const auto* def = it->second;
+      if ((def->area_flags & area_mask) && (def->version_flags & version_mask)) {
+        return def->name;
+      }
+    }
+  }
+
+  // When matching only by type or by (type, version), we can expect multiple
+  // matches
+  if (version != Version::UNKNOWN) {
+    string ret;
+    for (auto [it, end_it] = its; it != end_it; it++) {
+      const auto* def = it->second;
+      if (def->version_flags & version_mask) {
+        if (!ret.empty()) {
+          ret.push_back('/');
+        }
+        ret += def->name;
+      }
+    }
+    if (!ret.empty()) {
+      return ret;
+    }
+  }
+
+  string ret;
+  for (auto [it, end_it] = its; it != end_it; it++) {
+    const auto* def = it->second;
+    if (!ret.empty()) {
+      ret.push_back('/');
+    }
+    ret += def->name;
+  }
+
+  return ret.empty()
+      ? phosg::string_printf("__UNKNOWN_ENTITY_%04hX__", type)
+      : ret;
 }
 
-const char* MapFile::name_for_enemy_type(uint16_t type) {
-  static const unordered_map<uint16_t, const char*> names({
-      // This is newserv's canonical definition of map enemy and NPC types.
-      // Object types are documented in name_for_object_type instead.
-
-      // Enemies and NPCs take a similar arguments structure as objects:
-      // objects use ObjectSetEntry, enemies use EnemySetEntry. Unlike objects,
-      // some IDs are reused across game versions, so the same ID can generate
-      // a completely different entity on different game versions. Where this
-      // happens is noted in the comments below.
-
-      // TODO: Add default floor availability information in the notes here.
-
-      // Some enemies have params that the game's code references, but only in
-      // places where their effects can't be seen (for example, in normally-
-      // unused debug menus). These may have been used to test frame-by-frame
-      // animations for some enemies; see TObjEneMe3Shinowa_v76 for an example
-      // of this usage. The enemies with params like this are:
-      // - TObjEneMe3ShinowaReal (param3, param4)
-      // - TObjEneDf2Bringer (param1, param2)
-      // - TObjEneRe7Berura (param1, param2)
-      // - TBoss1Dragon (param1, param2)
-      // - TBoss5Gryphon (param1, param2)
-      // - TBoss2DeRolLe (param1, param2)
-      // - TBoss8Dragon (param1, param2)
-      // - TObjEneBm5GibonU (param4, param5; these params also have non-debug
-      //     meanings)
-      // - TObjEneMorfos (oaram1, param2; these params also have non-debug
-      //     meanings)
-      // TODO: Add more enemies to this list as they are found
-
-      // NPCs. Params:
-      //   param1 = action parameter (depends on param6; see below)
-      //   param2 = visibility register number (if this is > 0, the NPC will
-      //     only be visible when this register is nonzero; if this is >= 1000,
-      //     the effective register is param2 - 1000 and register values for
-      //     both param2 and param3 are read from the free play script
-      //     environment instead of the quest script environment)
-      //   param3 = hide override register number (if this is > 0, the NPC will
-      //     not be visible when this register is nonzero, regardless of the
-      //     state of the register specified by param2; if this is >= 1000, the
-      //     effective register is param3 - 1000 and register values for both
-      //     param2 and param3 are read from the free play script environment
-      //     instead of the quest script environment)
-      //   param4 = object number ("character ID" in qedit; if this is outside
-      //     the range [100, 999], the quest label in param5 is called in the
-      //     free play script instead of the quest script)
-      //   param5 = quest label to call when interacted with (if zero, NPC does
-      //     nothing upon interaction)
-      //   param6 = specifies what NPC does when idle:
-      //     0 = stand still (param1 is ignored)
-      //     1 = walk around randomly (param1 = max walk distance from home)
-      //     2 = TODO (Ep3 only; appears to be unused)
-      //     3 = TODO (Ep3 only; appears to be unused)
-      // TODO: setting param4 to 0 changes something else about the NPC; figure
-      // out what this does (see TObjNpcBase_v57_set_config_from_params)
-      {0x0001, "TObjNpcFemaleBase"}, // Woman with red hair and purple outfit
-      {0x0002, "TObjNpcFemaleChild"}, // Shorter version of the above
-      {0x0003, "TObjNpcFemaleDwarf"}, // Woman wearing green outfit
-      {0x0004, "TObjNpcFemaleFat"}, // Woman outside Hunter's Guild
-      {0x0005, "TObjNpcFemaleMacho"}, // Tool shop woman
-      {0x0006, "TObjNpcFemaleOld"}, // Older woman with yellow/red outfit
-      {0x0007, "TObjNpcFemaleTall"}, // Woman walking around inside shop area
-      {0x0008, "TObjNpcMaleBase"}, // Similar appearance to weapon shop man
-      {0x0009, "TObjNpcMaleChild"}, // Kid wearing purple
-      {0x000A, "TObjNpcMaleDwarf"}, // Man outside Medical Center
-      {0x000B, "TObjNpcMaleFat"}, // Armor shop man
-      {0x000C, "TObjNpcMaleMacho"}, // Weapon shop man
-      {0x000D, "TObjNpcMaleOld"}, // Man near telepipe locations
-      {0x000E, "TObjNpcMaleTall"}, // Man wearing turquoise
-      {0x0019, "TObjNpcSoldierBase"}, // Man right of the Ragol warp door
-      {0x001A, "TObjNpcSoldierMacho"}, // Man left of the Ragol warp door
-      {0x001B, "TObjNpcGovernorBase"}, // Principal Tyrell
-      {0x001C, "TObjNpcConnoisseur"}, // Tekker
-      {0x001D, "TObjNpcCloakroomBase"}, // Bank woman
-      {0x001E, "TObjNpcExpertBase"}, // Man in front of bank
-      {0x001F, "TObjNpcNurseBase"}, // Nurses in Medical Center
-      {0x0020, "TObjNpcSecretaryBase"}, // Irene
-      {0x0021, "TObjNpcHHM00"}, // TODO
-      {0x0022, "TObjNpcNHW00"}, // TODO
-      {0x0024, "TObjNpcHRM00"}, // TODO
-      {0x0025, "TObjNpcARM00"}, // TODO
-      {0x0026, "TObjNpcARW00"}, // TODO
-      {0x0027, "TObjNpcHFW00"}, // TODO
-      {0x0028, "TObjNpcNFM00"}, // TODO
-      {0x0029, "TObjNpcNFW00"}, // TODO
-      {0x002B, "TObjNpcNHW01"}, // TODO
-      {0x002C, "TObjNpcAHM01"}, // TODO
-      {0x002D, "TObjNpcHRM01"}, // TODO
-      {0x0030, "TObjNpcHFW01"}, // TODO
-      {0x0031, "TObjNpcNFM01"}, // TODO
-      {0x0032, "TObjNpcNFW01"}, // TODO
-      {0x0045, "TObjNpcLappy"}, // Rappy
-      {0x0046, "TObjNpcMoja"}, // Small Hildebear
-      {0x0047, "TObjNpcRico"}, // Rico (v2 only; not available on v1 or v3+)
-      {0x00A9, "TObjNpcBringer"}, // Dark Bringer
-      {0x00D0, "TObjNpcKenkyu"}, // Ep2 armor shop man (v3+ only)
-      {0x00D1, "TObjNpcSoutokufu"}, // Natasha Milarose (v3+ only)
-      {0x00D2, "TObjNpcHosa"}, // Dan (v3+ only)
-      {0x00D3, "TObjNpcKenkyuW"}, // Ep2 tool shop woman (v3+ only)
-      {0x00F0, "TObjNpcHosa2"}, // Man next to room with warp to Lab (v3+ only)
-      {0x00F1, "TObjNpcKenkyu2"}, // Ep2 weapon shop man (v3+ only)
-      {0x00F2, "TObjNpcNgcBase(0x00F2)"}, // TODO (v3+ only)
-      {0x00F3, "TObjNpcNgcBase(0x00F3)"}, // TODO (v3+ only)
-      {0x00F4, "TObjNpcNgcBase(0x00F4)"}, // TODO (v3+ only)
-      {0x00F5, "TObjNpcNgcBase(0x00F5)"}, // TODO (v3+ only)
-      {0x00F6, "TObjNpcNgcBase(0x00F6)"}, // TODO (v3+ only)
-      {0x00F7, "TObjNpcNgcBase(0x00F7)"}, // Nol (v3+ only)
-      {0x00F8, "TObjNpcNgcBase(0x00F8)"}, // Elly (v3+ only)
-      {0x00F9, "TObjNpcNgcBase(0x00F9)"}, // Woman with cyan hair down the ramp from Ep2 Medical Center (v3+ only)
-      {0x00FA, "TObjNpcNgcBase(0x00FA)"}, // Woman with bright red hair down the ramp from Ep2 Medical Center (v3+ only)
-      {0x00FB, "TObjNpcNgcBase(0x00FB)"}, // Man with blue hair near the Ep2 Medical Center (v3+ only)
-      {0x00FC, "TObjNpcNgcBase(0x00FC)"}, // Man in room next to Ep2 Hunter's Guild (v3+ only)
-      {0x00FD, "TObjNpcNgcBase(0x00FD)"}, // TODO (v3+ only)
-      {0x00FE, "TObjNpcNgcBase(0x00FE)"}, // Episode 2 Hunter's Guild woman (v3+ only)
-      {0x00FF, "TObjNpcNgcBase(0x00FF)"}, // Woman near room with teleporter to VR areas (v3+ only)
-      {0x0100, "__MOMOKA__"}, // Momoka (v4 only)
-
-      // Quest NPC. Params are the same as for the standard NPCs above, except:
-      //   param6 low byte = flags (bit field):
-      //     01 = same as param6 above (0 = stand still; 1 = walk around)
-      //     10 = TODO
-      //   param6 high byte = NPC index in npcplayerchar.dat
-      // Availability: v4 only
-      {0x0118, "__QUEST_NPC__"},
-
-      // Enemy that behaves like an NPC. Has all the same params as the
-      // standard NPC types, but also:
-      //   angle.x = definition index
-      // The definition index is an integer from 0 to 15 (decimal) specifying
-      // which model, animations, and hitbox to use. The available choices
-      // depend on which assets are loaded, which in turn depend on the area
-      // the NPC appears in.
-      // TODO: Make a list of all of the choices for each area here
-      // Availability: v3+ only
-      {0x0033, "TObjNpcEnemy"},
-
-      // Hildebear. Params:
-      //   param1 = initial location (clamped to [0, 1]; 0 = ground, 1 = sky)
-      //   param2 = chance to use tech (value is param3 + 0.6, clamped to [0,
-      //     1]; TODO: it's not clear when exactly the decision points are)
-      //   param3 = chance to jump when more than 150 units away (value is
-      //     param2 + 0.3, clamped to [0, 1])
-      //   param6 = if >= 1, always rare
-      {0x0040, "TObjEneMoja"},
-
-      // Rappy. Params:
-      //   param1 = TODO (clamped to [0, 1]; overwritten with 1 if wave_number
-      //     is > 0; could be spawn location like for Hildebear?)
-      //   param6 = rare flag (on v1-v3, rappy is rare if param6 != 0; on v4,
-      //     rappy is rare if (param6 & 1) != 0)
-      //   param7 = TODO
-      // Exactly which rappy is constructed depends on param6 (or the random
-      // rare check) and the current season event:
-      //   Ep1/Ep2 non-rare = Rag Rappy
-      //   Ep4 non-rare = Sand Rappy (Crater or Desert variation)
-      //   Ep1 rare = Al Rappy
-      //   Ep2 rare, Christmas = Saint Rappy
-      //   Ep2 rare, Easter = Egg Rappy
-      //   Ep2 rare, Halloween = Hallo Rappy
-      //   Ep2 rare, any other season event (or none) = Love Rappy
-      //   Ep4 rare = Del Rappy (Crater or Desert variation)
-      {0x0041, "TObjEneLappy"},
-
-      // Monest (and Mothmants). Params:
-      //   param2 = number of Mothmants to expel at start (clamped to [0, 6])
-      //   param3 = total Mothmants (clamped to [0, min(30, num_children)]
-      //     where num_children comes from the EnemySetEntry; if this is less
-      //     than param2, then param2 will take precedence but no further
-      //     Mothmants will emerge after the first group)
-      // Note: In map_forest01_02e.dat in the vanilla map files there is a
-      // Monest that has param1 = 3 and param2 = 10. This looks like just an
-      // off-by-one error on Sega's part where they accidentally shifted the
-      // parameters down by one place. As described above, this Monest expels
-      // 6 Mothmants, then no more after they are killed.
-      {0x0042, "TObjEneBm3FlyNest"},
-
-      // Savage Wolf or Barbarous Wolf. Params:
-      //   param1 = group number (when a Barbarous Wolf dies, all wolves with
-      //     the same group number howl and trigger their buffs or weaknesses)
-      //   param2 = if less than 1, this is a Savage Wolf; otherwise it's a
-      //     Barbarous Wolf
-      {0x0043, "TObjEneBm5Wolf"},
-
-      // Booma, Gobooma, or Gigobooma. Params:
-      //   param1 = TODO (fraction of max HP; see TObjEnemyV8048ee80_v5A)
-      //   param2 = idle walk radius (when there's no target, it will walk
-      //     around its spawn location within this radius; if this is zero, it
-      //     stands still instead)
-      //   param6 = type (0 = Booma, 1 = Gobooma, 2 = Gigobooma)
-      //   param7 = group ID (if nonzero, it looks like this is used to cause
-      //     groups of enemies to band together and all attack the same player,
-      //     chosen by the highest-ranking enemy (by param6) in the group;
-      //     TODO: this explanation is unverified and param7 was never used by
-      //     Sega; see client code at 3OE1:800F6F3C)
-      {0x0044, "TObjEneBeast"},
-
-      // Grass Assassin. Params:
-      //   param1 = TODO
-      //   param2 = TODO (some state is set based on whather this is <= 0 or
-      //     not, but the value is also used directly in some places)
-      //   param3 = TODO (see TObjGrass_update_case8)
-      //   param4 = TODO (see TObjGrass_update_case8)
-      {0x0060, "TObjGrass"},
-
-      // Poison Lily or Del Lily. Del Lily is constructed if the current area
-      // is 0x23 (Control Tower); otherwise, Poison Lily is constructed. There
-      // appear to be no parameters.
-      {0x0061, "TObjEneRe2Flower"},
-
-      // Nano Dragon. Params:
-      //   param1 = TODO (seems it only matters if this is 1 or not)
-      //   param2 = TODO (defaults to 50 if param2 < 1)
-      //   param7 = TODO (set in init)
-      {0x0062, "TObjEneNanoDrago"},
-
-      // Evil Shark, Pal Shark, or Guil Shark. Same params as 0x0044
-      // (TObjEneBeast), except:
-      //   param6 = type (0 = Evil Shark, 1 = Pal Shark, 2 = Guil Shark)
-      {0x0063, "TObjEneShark"},
-
-      // Pofuilly Slime. num_children is clamped to [0, 4]. Params:
-      //   param7 = rare flag (if the lowest bit is set, this is a Pouilly
-      //     Slime instead; on BB, this is ignored)
-      {0x0064, "TObjEneSlime"},
-
-      // Pan Arms (Hidoom + Migium). There appear to be no parameters.
-      {0x0065, "TObjEnePanarms"},
-
-      // Gillchic or Dubchic. Params:
-      //   param1 = rapid fire count (number of lasers fired before moving
-      //     again; if this is 0, the default of 2 is used)
-      //   param6 = type (0 = Dubchic, 1 = Gillchic)
-      //   param7 = TODO
-      {0x0080, "TObjEneDubchik"},
-
-      // Garanz. There appear to be no parameters.
-      // TODO: There is some behavior difference if wave_number is 0 vs. any
-      // other value. Figure out what exactly this does.
-      {0x0081, "TObjEneGyaranzo"},
-
-      // Sinow Beat. Params:
-      //   param1 = disable mirage effect if >= 1.0
-      //   param2 = is Sinow Gold if >= 1.0
-      // Note: All params are on the base class (TObjEneMe3Shinowa).
-      {0x0082, "TObjEneMe3ShinowaReal"},
-
-      // Canadine. Params:
-      //   param1 = behavior (0 = in fighter, 1 = out fighter; this controls
-      //     whether the Canadine will use its direct attack or stay high off
-      //     the ground instead)
-      {0x0083, "TObjEneMe1Canadin"},
-
-      // Canane. There appear to be no parameters. There are always 8 followers
-      // arranged in a ring around the Canane.
-      {0x0084, "TObjEneMe1CanadinLeader"},
-
-      // Dubwitch. Destroying a Dubwitch destroys all Dubchics in the same
-      // room. There appear to be no parameters.
-      {0x0085, "TOCtrlDubchik"},
-
-      // Delsaber. Params:
-      //   param1 = jump distance delta (value used is param1 + 100)
-      //   param2 = prejudice flag (these values directly correspond to the
-      //     bits in PlayerVisualConfig::class_flags; see below for details):
-      //     0 = males
-      //     1 = females
-      //     2 = humans
-      //     3 = newmans
-      //     4 = androids
-      //     5 = hunters
-      //     6 = rangers
-      //     7 = forces
-      //     8 = no prejudice
-      // If any player is within 30 units of a Delsaber, it will target that
-      // player. Otherwise, the Delsaber will target the nearest player that
-      // matches its prejudice flag; if no player matches this flag, it will
-      // target the nearest player.
-      {0x00A0, "TObjEneSaver"},
-
-      // Chaos Sorceror. There appear to be no parameters.
-      {0x00A1, "TObjEneRe4Sorcerer"},
-
-      // Dark Gunner. Params:
-      //   param1 = group number (there should be between 1 and 16 Dark Gunners
-      //     and one control enemy with the same group number in the same room)
-      //   param2 = TODO (number within group? possibly unused?)
-      //   param7 = TODO
-      {0x00A2, "TObjEneDarkGunner"},
-
-      // Dark Gunner control enemy. This enemy doesn't actually exist in-game;
-      // it only has logic for choosing a Dark Gunner from its group to be the
-      // leader, and then changing this leader periodically. Params:
-      //   param1 = group number (see above)
-      {0x00A3, "TObjEneDarkGunCenter"},
-
-      // Dark Bringer. There appear to be no parameters.
-      {0x00A4, "TObjEneDf2Bringer"},
-
-      // Dark Belra. There appear to be no parameters.
-      {0x00A5, "TObjEneRe7Berura"},
-
-      // Dimenian / La Dimenian / So Dimenian. Same parameters as 0x0044
-      // (TObjEneBeast), except:
-      //   param6 = type (0 = Dimenian, 1 = La Dimenian, 2 = So Dimenian)
-      {0x00A6, "TObjEneDimedian"},
-
-      // Bulclaw. There appear to be no parameters.
-      {0x00A7, "TObjEneBalClawBody"},
-
-      // Claw. There appear to be no parameters.
-      {0x00A8, "TObjEneBalClawClaw"},
-
-      // Dragon (if in Episode 1) or Gal Gryphon (if in Episode 2). There
-      // appear to be no parameters.
-      {0x00C0, "TBoss1Dragon/TBoss5Gryphon"},
-
-      // De Rol Le. There appear to be no parameters.
-      {0x00C1, "TBoss2DeRolLe"},
-
-      // Vol Opt and various pieces thereof. Generally only TBoss3Volopt and
-      // TBoss3VoloptP02 should be specified in map files; the other enemies
-      // are automatically created by TBoss3Volopt. None of these take any
-      // parameters.
-      {0x00C2, "TBoss3Volopt"}, // Main control object
-      {0x00C3, "TBoss3VoloptP01"}, // Phase 1 (x6; one for each big monitor)
-      {0x00C4, "TBoss3VoloptCore"}, // Core
-      {0x00C5, "TBoss3VoloptP02"}, // Phase 2
-      {0x00C6, "TBoss3VoloptMonitor"}, // Monitor (x24; 4 for each wall)
-      {0x00C7, "TBoss3VoloptHiraisin"}, // Pillar (lightning rod)
-
-      // Dark Falz. There appear to be no parameters.
-      {0x00C8, "TBoss4DarkFalz"},
-
-      // Other episode 2 bosses. None of these take any parameters.
-      // Availability: v3+ only
-      {0x00CA, "TBoss6PlotFalz"}, // Olga Flow
-      {0x00CB, "TBoss7DeRolLeC"}, // Barba Ray
-      {0x00CC, "TBoss8Dragon"}, // Gol Dragon
-
-      // Sinow Berill (Ep2) or scientist NPCs (Ep3). The Ep3 scientist NPCs
-      // take all the same params as the NPCs defined at the beginning of this
-      // list, but also:
-      //   angle.x = model number (clamped to [0, 3])
-      // Sinow Berill's params:
-      //   param1 = spawn type:
-      //     0 = invisible + ground
-      //     1 = invisible + ceiling
-      //     2 = visible + ground
-      //     3 = visible + ceiling
-      //   param2 = chance to enable stealth (value used is param2 + 0.3)
-      //   param3 = chance to cast technique (value used is param3 + 0.4)
-      //   param4 = chance to teleport (value used is param4 + 0.5)
-      //   param5 = chance to disable stealth (value used is param5 + 0.1;
-      //     applies when hit, but (TODO) also some other events)
-      //   param6 = type:
-      //     zero or negative = Sinow Berill
-      //     positive = Sinow Spigell
-      // param2, param3, and param4 are evaluated in that order after the Sinow
-      // jumps back. That is, the game first generates a random float between 0
-      // and 1, and compares it to param2 to decide whether to enable stealth.
-      // If it does, the other params are ignored. If it doesn't, the game then
-      // checks param3 in the same manner to determine whether to cast a tech;
-      // if that doesn't happen either, the game checks param4 to determine
-      // whether to teleport. If none of those happen, the Sinow just walks
-      // forward again and attacks.
-      // Availability: v3+ only (Sinow Berill); Ep3 only (scientist NPCs)
-      {0x00D4, "TObjEneMe3StelthReal/TObjNpcHeroScientist"},
-
-      // Merillia / Meriltas (Ep2) or scientist NPCs (Ep3). On Ep3 this is a
-      // direct alias for 0x00D4 and not a distinct object NPC type.
-      // Merillia's params:
-      //   param1 = chance to run away after being hit (value used is param1 -
-      //     0.2, clamped below to 0)
-      //   param3 = chance to do poison attack after being hit (value used is
-      //     param3 - 0.2, clamped below to 0)
-      //   param4 = distance to run away (value used is param4 + 300)
-      //   param5 = wakeup radius delta (value used is param5 + 100, clamped
-      //     below to 15; enemy will wake up when any player is nearby)
-      //   param6 = type (0 = Merillia, 1 = Meriltas)
-      // Availability: v3+ only (Merillia/Meriltas); Ep3 only (scientist NPCs)
-      {0x00D5, "TObjEneMerillLia/TObjNpcHeroScientist"},
-
-      // Mericarol (Ep2) or Morgue chief NPC (Ep3). The Ep3 Morgue chief NPC
-      // takes all the same params as the NPCs defined at the beginning of this
-      // list.
-      // Mericarol's params:
-      //   param1 = chance of doing run attack after being hit when HP is less
-      //     than half of max (value used is param1 + 0.5)
-      //   param2 = speed during run attack (units per frame; value used is
-      //     param2 + 3, clamped below to 1)
-      //   param3 = chance of doing spit attack when player is nearby (actual
-      //     probability is param3 + 0.1; if the check fails, it will do the
-      //     slash attack instead)
-      //   param6 = subtype:
-      //     0 = Mericarol
-      //     1 = Mericus
-      //     2 = Merikle
-      //     anything else = Mericarand (see below)
-      // If this is a Mericarand, it is "randomly" chosen to be one of the
-      // three subtypes at construction time. On v1-v3, the client chooses
-      // randomly (but consistently, based on the entity ID) between Mericarol
-      // (80%), Mericus (10%) or Merikle (10%). On v4, if the entity ID isn't
-      // marked rare by the server, the Mericarand becomes a Mericarol;
-      // otherwise, it becomes a Mericus if its entity ID is even or a Merikle
-      // if it's odd.
-      // Availability: v3+ only (Mericarol); Ep3 only (Morgue chief NPC)
-      {0x00D6, "TObjEneBm9Mericarol/TObjNpcHeroGovernor"},
-
-      // Ul Gibbon / Zol Gibbon (Ep2) or Morgue chief NPC (Ep3). On Ep3 this is
-      // a direct alias for 0x00D6 and not a distinct object NPC type.
-      // Gibbons' params:
-      //   param1 = group number
-      //   param2 = appear type (<1 = spot appear; >=1 = jump appear)
-      //   param3 = chance of jumping forward or back at each decision point
-      //     (value used is param3 + 0.4)
-      //   param4 = chance of casting a tech when not near any player (value
-      //     used is param4 + 0.3)
-      //   param5 = chance of casting a tech immediately after jumping forward
-      //     or back (value used is param5 + 0.3; does not apply after jumps
-      //     that are attacks)
-      //   param6 = type (zero or negative = Ul Gibbon, positive = Zol Gibbon)
-      // Availability: v3+ only (Gibbons); Ep3 only (Morgue chief NPC)
-      {0x00D7, "TObjEneBm5GibonU/TObjNpcHeroGovernor"},
-
-      // Gibbles. Params:
-      //   param1 = jump distance delta (value used is param1 + 100)
-      //   param2 = prejudice flag (see 0x00A0 (TObjEneSaver); the behavior
-      //     here is exactly the same)
-      //   param3 = chance to jump at each decision point (0-1)
-      //   param4 = chance to jump after being hit (0-1)
-      // Availability: v3+ only
-      {0x00D8, "TObjEneGibbles"},
-
-      // Gee. Params:
-      //   param1 = in fighter / out fighter setting (see TObjEneMe1Canadin)
-      //   param2 = appear height (0 = low, 1 = high)
-      //   param3 = appear speed (value is param3 + 1, clamped below to 1)
-      //   param4 = needle speed (value is param4 + 6, clamped below to 0.01)
-      // Note: The client's debug strings say "APPEAR SPEED(+1.f Min:0.01f)"
-      // for param3 and "NEEDLE SPEED(+6.f Min:1.f)" for param4. The "Min:"
-      // parts of those strings are incorrect; the comments above are correct.
-      // Availability: v3+ only
-      {0x00D9, "TObjEneMe1Gee"},
-
-      // Gi Gue. Params:
-      //   param1 = TODO (only matters if >= 1 or not)
-      //   param2 = TODO (only used if param1 >= 1; defaults to 50 if param2 <
-      //     1; maybe same as Nano Dragon's param2?)
-      //   param3 = TODO (value is param3 + 150)
-      //   param4 = TODO (value is param4 + 0.5)
-      //   param5 = TODO (value is param5 + 0.5)
-      //   param7 = TODO
-      // Availability: v3+ only
-      {0x00DA, "TObjEneMe1GiGue"},
-
-      // Deldepth. Params:
-      //   param1 = TODO (value is param1 + 0.6, clamped below to 0; seems to
-      //     be unused?)
-      // Availability: v3+ only
-      {0x00DB, "TObjEneDelDepth"},
-
-      // Delbiter. Params:
-      //   param1 = chance to howl (value is param1 + 0.3)
-      //   param2 = chance to cause confusion via howl (value is param2 + 0.3)
-      //   param3 = maximum distance at which howl can cause confusion (value
-      //     is param3 + 30, clamped below to 10)
-      //   param4 = chance to fire laser (value is param4 + 0.3)
-      //   param5 = chance to charge (value is param5 + 0.5)
-      //   param6 = type (0 = stand, 1 = run)
-      // Availability: v3+ only
-      {0x00DC, "TObjEneDellBiter"},
-
-      // Dolmolm / Dolmdarl. Same parameters as TObjEneBeast, but also:
-      //   param3 = TODO (value is param3 + 0.3; probability of some sort)
-      //   param4 = TODO (value is param4 + 0.3; probability of some sort)
-      //   param6 = type (zero or negative = Dolmolm; positive = Dolmdarl)
-      // Availability: v3+ only
-      {0x00DD, "TObjEneDolmOlm"},
-
-      // Morfos. Params:
-      //   param1 = TODO (value is param1 + 0.28)
-      //   param2 = TODO (value is param2 + 20)
-      //   param3 = TODO (value is param3 + 0.1; probability; used when current
-      //     HP is less than half of max)
-      //   param4 = TODO (value is param4 + 0.1; probability; used when current
-      //     HP is less than half of max)
-      //   param6 = TODO
-      // Availability: v3+ only
-      {0x00DE, "TObjEneMorfos"},
-
-      // Recobox. Params:
-      //   param1 = Recon floating height (value used for each Recon is 45 +
-      //     rand(-2, 2) + param1)
-      //   param2 = Recon target radius (distance from target; value used for
-      //     each Recon is 50 + rand(-5, 5) + param2; param2 is clamped below
-      //     to -30)
-      //   param4 = maximum number of concurrently-active Recons (clamped to
-      //     [0, min(6, num_children - 1)])
-      //   param6 = type:
-      //     zero or negative = floor (Recons exit upward)
-      //     1 = ceiling (Recons exit downward)
-      //     2 or greater = wall (Recons exit horizontally)
-      // Note: The debug strings in TObjEneRecobox_v6A seem to imply that the
-      // total Recon count in the box is (param7 + 1); however, this is not
-      // true. The total Recon count in the box is actually (num_children - 1).
-      // Availability: v3+ only
-      {0x00DF, "TObjEneRecobox"},
-
-      // Sinow Zoa / Sinow Zele, or Epsilon (depending on the current area). It
-      // appears that the Sinows take the same params as TObjEneMe3StelthReal
-      // (Sinow Berill / Sinow Spigell), except (of course):
-      //   param6 = type:
-      //     zero or negative = Sinow Zoa
-      //     positive = Sinow Zele
-      // Params for Epsilon:
-      //   param1 = TODO (value is param1 + 0.5, clamped below to 0)
-      //   param2 = TODO (value is param2 + 512; it appears this was supposed
-      //     to be clamped below to 0, but due to a copy/paste error it isn't)
-      //   param3 = TODO (value is (param3 + 20) * 5, clamped below to 150)
-      //   param4 = TODO (value is (param4 + 20) * 5, clamped below to 150)
-      // Availability: v3+ only (both Sinows and Epsilon)
-      {0x00E0, "TObjEneMe3SinowZoaReal/TObjEneEpsilonBody"},
-
-      // Ill Gill. Params:
-      //   param1 = TODO (seems it only matters if this is zero or not; are there other uses?)
-      //   param2 = TODO (used in TObjEneIllGill_update phase 3)
-      // Availability: v3+ only
-      {0x00E1, "TObjEneIllGill"},
-
-      // TODO: Describe the rest of the enemy types.
-      {0x0110, "__ASTARK__/TObjNpcWalkingMeka_Hero"}, // Constructor in 59NL: 005A3D60; 3SE0: 80271DB0 // Ep3/v4 only // Ep3: Small talking robot in Morgue
-      {0x0111, "__YOWIE__/__SATELLITE_LIZARD__/TObjNpcWalkingMeka_Dark"}, // Constructor in 59NL: 005AE7CC; 3SE0: 80271790 // Ep3/v4 only // Ep3: Small talking robot in Morgue
-      {0x0112, "__MERISSA_A__/TObjNpcHeroAide"}, // Constructor in 59NL: 005B6B24; 3SE0: 802F4888 // Ep3/v4 only // Ep3: multiple NPCs
-      {0x0113, "__GIRTABLULU__"}, // Constructor in 59NL: 005AB9AC // v4 only
-      {0x0114, "__ZU__"}, // Constructor in 59NL: 005B47B8 // v4 only
-      {0x0115, "__BOOTA_FAMILY__"}, // Constructor in 59NL: 005A5C08 // v4 only // TODO: probably a subclass of TObjEnemyV8048ee80; check if there are any others in BB
-      {0x0116, "__DORPHON__"}, // Constructor in 59NL: 005A673C // v4 only
-      {0x0117, "__GORAN_FAMILY__"}, // Constructor in 59NL: 005ADAC4 // v4 only
-      {0x0119, "__EPISODE_4_BOSS__"}, // Constructor in 59NL: 0076A86C // v4 only
-  });
-  try {
-    return names.at(type);
-  } catch (const out_of_range&) {
-    return "__UNKNOWN__";
-  }
+string MapFile::name_for_object_type(uint16_t type, Version version, uint8_t area) {
+  static unordered_multimap<uint16_t, const DATEntityDefinition*> index;
+  return name_for_entity_type(index, dat_object_definitions, type, version, area);
+}
+string MapFile::name_for_enemy_type(uint16_t type, Version version, uint8_t area) {
+  static unordered_multimap<uint16_t, const DATEntityDefinition*> index;
+  return name_for_entity_type(index, dat_enemy_definitions, type, version, area);
 }
 
-string MapFile::ObjectSetEntry::str() const {
-  string name_str = MapFile::name_for_object_type(this->base_type);
+string MapFile::ObjectSetEntry::str(Version version, uint8_t area) const {
+  string name_str = MapFile::name_for_object_type(this->base_type, version, area);
   return phosg::string_printf("[ObjectSetEntry type=%04hX \"%s\" set_flags=%04hX index=%04hX floor=%04hX entity_id=%04hX group=%04hX room=%04hX a3=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] unused=%08" PRIX32 "]",
       this->base_type.load(),
       name_str.c_str(),
@@ -3206,10 +3233,11 @@ uint64_t MapFile::ObjectSetEntry::semantic_hash(uint8_t floor) const {
   return ret;
 }
 
-string MapFile::EnemySetEntry::str() const {
+string MapFile::EnemySetEntry::str(Version version, uint8_t area) const {
+  auto type_name = MapFile::name_for_enemy_type(this->base_type, version, area);
   return phosg::string_printf("[EnemySetEntry type=%04hX \"%s\" set_flags=%04hX index=%04hX num_children=%04hX floor=%04hX entity_id=%04hX room=%04hX wave_number=%04hX wave_number2=%04hX a1=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %g %g %04hX %04hX] unused=%08" PRIX32 "]",
       this->base_type.load(),
-      MapFile::name_for_enemy_type(this->base_type),
+      type_name.c_str(),
       this->set_flags.load(),
       this->index.load(),
       this->num_children.load(),
@@ -3853,7 +3881,7 @@ string MapFile::disassemble_action_stream(const void* data, size_t size) {
   return phosg::join(ret, "\n");
 }
 
-string MapFile::disassemble(bool reassembly) const {
+string MapFile::disassemble(bool reassembly, Version version) const {
   deque<string> ret;
   for (uint8_t floor = 0; floor < this->sections_for_floor.size(); floor++) {
     const auto& sf = this->sections_for_floor[floor];
@@ -3868,10 +3896,10 @@ string MapFile::disassemble(bool reassembly) const {
       }
       for (size_t z = 0; z < sf.object_set_count; z++) {
         if (reassembly) {
-          ret.emplace_back(sf.object_sets[z].str());
+          ret.emplace_back(sf.object_sets[z].str(version));
         } else {
           size_t k_id = z + sf.first_object_set_index;
-          ret.emplace_back(phosg::string_printf("/* K-%03zX */ ", k_id) + sf.object_sets[z].str());
+          ret.emplace_back(phosg::string_printf("/* K-%03zX */ ", k_id) + sf.object_sets[z].str(version));
         }
       }
     }
@@ -3884,10 +3912,10 @@ string MapFile::disassemble(bool reassembly) const {
       }
       for (size_t z = 0; z < sf.enemy_set_count; z++) {
         if (reassembly) {
-          ret.emplace_back(sf.enemy_sets[z].str());
+          ret.emplace_back(sf.enemy_sets[z].str(version));
         } else {
           size_t s_id = z + sf.first_enemy_set_index;
-          ret.emplace_back(phosg::string_printf("/* S-%03zX */ ", s_id) + sf.enemy_sets[z].str());
+          ret.emplace_back(phosg::string_printf("/* S-%03zX */ ", s_id) + sf.enemy_sets[z].str(version));
         }
       }
     }
@@ -3973,7 +4001,7 @@ string SuperMap::Object::str() const {
   for (Version v : ALL_NON_PATCH_VERSIONS) {
     const auto& def = this->version(v);
     if (def.relative_object_index != 0xFFFF) {
-      string args_str = def.set_entry->str();
+      string args_str = def.set_entry->str(v);
       ret += phosg::string_printf(
           " %s:[%04hX => %s]", phosg::name_for_enum(v), def.relative_object_index, args_str.c_str());
     }
@@ -3999,7 +4027,7 @@ string SuperMap::Enemy::str() const {
   for (Version v : ALL_NON_PATCH_VERSIONS) {
     const auto& def = this->version(v);
     if (def.relative_enemy_index != 0xFFFF) {
-      string args_str = def.set_entry->str();
+      string args_str = def.set_entry->str(v);
       ret += phosg::string_printf(
           " %s:[%04hX/%04hX => %s]",
           phosg::name_for_enum(v),

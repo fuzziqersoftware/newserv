@@ -142,8 +142,8 @@ private:
 
 class MapFile : public std::enable_shared_from_this<MapFile> {
 public:
-  static const char* name_for_object_type(uint16_t type);
-  static const char* name_for_enemy_type(uint16_t type);
+  static std::string name_for_object_type(uint16_t type, Version version = Version::UNKNOWN, uint8_t area = 0xFF);
+  static std::string name_for_enemy_type(uint16_t type, Version version = Version::UNKNOWN, uint8_t area = 0xFF);
 
   struct SectionHeader { // Only used for quest DAT files
     enum class Type {
@@ -192,7 +192,7 @@ public:
     /* 44 */
 
     uint64_t semantic_hash(uint8_t floor) const;
-    std::string str() const;
+    std::string str(Version version = Version::UNKNOWN, uint8_t area = 0xFF) const;
   } __packed_ws__(ObjectSetEntry, 0x44);
 
   struct EnemySetEntry { // Section type 2 (ENEMY_SETS)
@@ -219,7 +219,7 @@ public:
     /* 48 */
 
     uint64_t semantic_hash(uint8_t floor) const;
-    std::string str() const;
+    std::string str(Version version = Version::UNKNOWN, uint8_t area = 0xFF) const;
   } __packed_ws__(EnemySetEntry, 0x48);
 
   struct EventsSectionHeader { // Section type 3 (EVENTS)
@@ -424,7 +424,7 @@ public:
   size_t count_events() const;
 
   static std::string disassemble_action_stream(const void* data, size_t size);
-  std::string disassemble(bool reassembly = false) const;
+  std::string disassemble(bool reassembly = false, Version version = Version::UNKNOWN) const;
 
 protected:
   void link_data(std::shared_ptr<const std::string> data);
@@ -701,10 +701,11 @@ public:
       this->item_drop_checked = false;
     }
 
-    inline const char* type_name(Version v) const {
-      return this->super_obj
-          ? MapFile::name_for_object_type(this->super_obj->version(v).set_entry->base_type)
-          : "<DYNAMIC>";
+    inline std::string type_name(Version v, uint8_t area = 0xFF) const {
+      if (!this->super_obj) {
+        return "<DYNAMIC>";
+      }
+      return MapFile::name_for_object_type(this->super_obj->version(v).set_entry->base_type, v, area);
     }
   };
 

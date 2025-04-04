@@ -1540,7 +1540,7 @@ Action a_disassemble_quest_map(
         *data = prs_decompress(*data);
       }
       bool reassembly = args.get<bool>("reassembly");
-      string result = MapFile(data).disassemble(reassembly);
+      string result = MapFile(data).disassemble(reassembly, get_cli_version(args, Version::UNKNOWN));
       write_output_data(args, result.data(), result.size(), "txt");
     });
 Action a_disassemble_free_map(
@@ -1571,11 +1571,11 @@ Action a_disassemble_free_map(
       bool reassembly = args.get<bool>("reassembly");
       string result;
       if (is_objects) {
-        result = MapFile(floor, data, nullptr, nullptr).disassemble(reassembly);
+        result = MapFile(floor, data, nullptr, nullptr).disassemble(reassembly, get_cli_version(args, Version::UNKNOWN));
       } else if (is_enemies) {
-        result = MapFile(floor, nullptr, data, nullptr).disassemble(reassembly);
+        result = MapFile(floor, nullptr, data, nullptr).disassemble(reassembly, get_cli_version(args, Version::UNKNOWN));
       } else if (is_events) {
-        result = MapFile(floor, nullptr, nullptr, data).disassemble(reassembly);
+        result = MapFile(floor, nullptr, nullptr, data).disassemble(reassembly, get_cli_version(args, Version::UNKNOWN));
       } else {
         throw logic_error("unhandled input type");
       }
