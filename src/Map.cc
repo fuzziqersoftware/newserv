@@ -572,9 +572,19 @@ static const vector<vector<vector<AreaMapFileInfo>>> map_file_info = {
 // DAT file structure
 
 struct DATEntityDefinition {
-  uint16_t type;
+  // This field directly maps to the base_type field in ObjectSetEntry and
+  // EnemySetEntry.
+  uint16_t base_type;
+  // Each bit in this field indicates whether the definition applies to that
+  // version or not. Earlier versions are in less-significant bits.
   uint16_t version_flags;
+  // Each bit in this field indicates whether the definition applies to that
+  // area or not. Ep1 Pioneer 2 is the least-significant bit. Note that Episode
+  // 3 only has Morgue (0x1), battle (0x2), and lobby (0x8000) areas, so only
+  // those bits can be set here if version_flags is F_EP3.
   uint64_t area_flags;
+  // This is the internal name of the class as specified in the client, if it's
+  // available (if not, this is a somewhat-descriptive made-up name).
   const char* name;
 };
 
@@ -807,7 +817,7 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //   param2 = explosion radius delta (actual radius is param2 / 2 + 60)
     //   param3 = trap group number:
     //     negative = trap triggers and explodes alone
-    //     00 = trap follows player who triggered it (online only; when
+    //     0 = trap follows player who triggered it (online only; when
     //       offline, these act as if the group number were negative, and
     //       param6 is overwritten with 30 (1 second))
     //     positive = trap is part of a group that all trigger and explode
@@ -820,14 +830,14 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //   param5 = damage type (clamped to [0, 5])
     //     00 = direct damage (damage = power / 5)
     //     01 = fire (damage = power * (100 - EFR) / 500)
-    //     02 = cold (can freeze; damage = power * (100 - EIC) / 500)
-    //       chance of freezing = ((((power - 250) / 40) + 5) / 40) clamped
-    //       to [0, 0.4], or to [0.2, 0.4] on Ultimate
-    //     03 = electric (can shock; damage = power * (100 - EIC) / 500)
-    //       chance of shock = 1/15, or 1/40 on Ultimate
+    //     02 = cold (damage = power * (100 - EIC) / 500; chance of freezing =
+    //       ((((power - 250) / 40) + 5) / 40) clamped to [0, 0.4], or to [0.2,
+    //       0.4] on Ultimate)
+    //     03 = electric (damage = power * (100 - EIC) / 500; chance of shock =
+    //       1/15, or 1/40 on Ultimate)
     //     04 = light (damage = power * (100 - ELT) / 500)
-    //     05 = dark (instantly kills with chance (power - EDK) / 100); if
-    //       used in a boss arena and in non-Ultimate mode, cannot kill
+    //     05 = dark (instantly kills with chance (power - EDK) / 100; if used
+    //       in a boss arena and in non-Ultimate mode, cannot kill)
     //   param6 = number of frames between trigger and explosion
     {0x000A, F_V0_V4, 0x00005FFC3FFB07FE, "TOMineIcon01"},
 
@@ -903,11 +913,11 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //   param1-3 = box dimensions (x, y, z; rotated by angle fields)
     //   param4 = wall type:
     //     00 = custom (see param5)
-    //     01 = blocks enemies only (as if param5 = 00008000)
+    //     01 = blocks enemies only (as if param5 = 0x00008000)
     //     02 = blocks enemies and players (as if param5 = 0x00008900)
     //     03 = blocks enemies and players, but enemies can see targets
     //       through the collision (as if param5 = 0x00000800)
-    //     04 = blocks players only (as if param5 = 00002000)
+    //     04 = blocks players only (as if param5 = 0x00002000)
     //     05 = undefined behavior due to missing bounds check
     //     anything else = same as 01
     //   param5 = flags (bit field; used if param4 = 0) (TODO: describe bits)
@@ -1297,7 +1307,7 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     {0x0048, F_V0_V4, 0x0000600000000001, "TObjCityDoor_Warp"}, // Door to Ragol warp
     {0x0049, F_V0_V4, 0x0000600000000001, "TObjCityDoor_Med"}, // Door to Medical Center
 
-    // TODO: Describe this object. There appear to be no parameters.
+    // Elevator visible in Pioneer 2. There appear to be no parameters.
     {0x004A, F_V0_V4, 0x0000600000000001, "__ELEVATOR__"},
 
     // Holiday event decorations. There appear to be no parameters, except
@@ -2575,9 +2585,10 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
 
     // Enemies and NPCs take a similar arguments structure as objects:
     // objects use ObjectSetEntry, enemies use EnemySetEntry. Unlike objects,
-    // some IDs are reused across game versions, so the same ID can generate
-    // a completely different entity on different game versions. Where this
-    // happens is noted in the comments below.
+    // some IDs are reused across game versions or areas, so the same enemy
+    // type can generate a completely different entity on different game
+    // versions. This is why some enemies have multiple entries with the same
+    // type and different names.
 
     // Some enemies have params that the game's code references, but only in
     // places where their effects can't be seen (for example, in normally-
@@ -2709,7 +2720,7 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     {0x00FD, F_V3_V4, 0x000000040F840000, "TObjNpcNgcBase(0x00FD)"}, // TODO
     {0x00FE, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00FE)"}, // Episode 2 Hunter's Guild woman
     {0x00FF, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00FF)"}, // Woman near room with teleporter to VR areas
-    {0x0100, F_V4, 0x0000200000040001, "__MOMOKA__"}, // Momoka (v4 only)
+    {0x0100, F_V4, 0x0000200000040001, "__MOMOKA__"}, // Momoka
     {0x0110, F_EP3, 0x0000000000000001, "TObjNpcWalkingMeka_Hero"}, // Small talking robot in Morgue
     {0x0111, F_EP3, 0x0000000000000001, "TObjNpcWalkingMeka_Dark"}, // Small talking robot in Morgue
 
@@ -2918,13 +2929,10 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     // Claw. There appear to be no parameters.
     {0x00A8, F_V0_V4, 0x0000000000000700, "TObjEneBalClawClaw"},
 
-    // Dragon (if in Episode 1) or Gal Gryphon (if in Episode 2). There
-    // appear to be no parameters.
-    {0x00C0, F_V0_V4, 0x0000000000000800, "TBoss1Dragon"},
-    {0x00C0, F_V3_V4, 0x0000000040000000, "TBoss5Gryphon"},
-
-    // De Rol Le. There appear to be no parameters.
-    {0x00C1, F_V0_V4, 0x0000000000001000, "TBoss2DeRolLe"},
+    // Early bosses. None of these take any parameters.
+    {0x00C0, F_V0_V4, 0x0000000000000800, "TBoss1Dragon"}, // Dragon
+    {0x00C0, F_V3_V4, 0x0000000040000000, "TBoss5Gryphon"}, // Gal Gryphon
+    {0x00C1, F_V0_V4, 0x0000000000001000, "TBoss2DeRolLe"}, // De Rol Le
 
     // Vol Opt and various pieces thereof. Generally only TBoss3Volopt and
     // TBoss3VoloptP02 should be specified in map files; the other enemies
@@ -2937,10 +2945,8 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     {0x00C6, F_V0_V4, 0x0000000000002000, "TBoss3VoloptMonitor"}, // Monitor (x24; 4 for each wall)
     {0x00C7, F_V0_V4, 0x0000000000002000, "TBoss3VoloptHiraisin"}, // Pillar (lightning rod)
 
-    // Dark Falz. There appear to be no parameters.
-    {0x00C8, F_V0_V4, 0x0000000000004000, "TBoss4DarkFalz"},
-
-    // Other episode 2 bosses. None of these take any parameters.
+    // More bosses. None of these take any parameters.
+    {0x00C8, F_V0_V4, 0x0000000000004000, "TBoss4DarkFalz"}, // Dark Falz
     {0x00CA, F_V3_V4, 0x0000000080000000, "TBoss6PlotFalz"}, // Olga Flow
     {0x00CB, F_V3_V4, 0x0000000100000000, "TBoss7DeRolLeC"}, // Barba Ray
     {0x00CC, F_V3_V4, 0x0000000200000000, "TBoss8Dragon"}, // Gol Dragon
@@ -3091,19 +3097,19 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     // true. The total Recon count in the box is actually (num_children - 1).
     {0x00DF, F_V3_V4, 0x0000000C30000000, "TObjEneRecobox"},
 
-    // Sinow Zoa / Sinow Zele, or Epsilon (depending on the current area). It
-    // appears that the Sinows take the same params as TObjEneMe3StelthReal
-    // (Sinow Berill / Sinow Spigell), except (of course):
+    // Sinow Zoa / Sinow Zele. It appears to take the same params as
+    // TObjEneMe3StelthReal (Sinow Berill / Sinow Spigell), except (of course):
     //   param6 = type:
     //     zero or negative = Sinow Zoa
     //     positive = Sinow Zele
-    // Params for Epsilon:
+    {0x00E0, F_V3_V4, 0x0000000030000000, "TObjEneMe3SinowZoaReal"},
+
+    // Epsilon. Params:
     //   param1 = TODO (value is param1 + 0.5, clamped below to 0)
     //   param2 = TODO (value is param2 + 512; it appears this was supposed
     //     to be clamped below to 0, but due to a copy/paste error it isn't)
     //   param3 = TODO (value is (param3 + 20) * 5, clamped below to 150)
     //   param4 = TODO (value is (param4 + 20) * 5, clamped below to 150)
-    {0x00E0, F_V3_V4, 0x0000000030000000, "TObjEneMe3SinowZoaReal"},
     {0x00E0, F_V3_V4, 0x0000000800000000, "TObjEneEpsilonBody"},
 
     // Ill Gill. Params:
@@ -3150,7 +3156,7 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     //   param6 = flags (bit field):
     //     0001 = always rare (Dorphon Eclair)
     // TODO: The values above make it look like param1-5 are the same as for
-    // TObjEneDellBiter. Verify is this is the case.
+    // TObjEneDellBiter. Verify if this is the case.
     {0x0116, F_V4, 0x000041F000000000, "__DORPHON__"},
 
     // Goran / Pyro Goran / Goran Detonator. Same parameters as TObjEneBeast,
@@ -3177,7 +3183,7 @@ static string name_for_entity_type(
 
   if (index.size() == 0) {
     for (const auto& def : defs) {
-      index.emplace(def.type, &def);
+      index.emplace(def.base_type, &def);
     }
   }
 
@@ -3237,13 +3243,10 @@ string MapFile::name_for_enemy_type(uint16_t type, Version version, uint8_t area
 
 string MapFile::ObjectSetEntry::str(Version version, uint8_t area) const {
   string name_str = MapFile::name_for_object_type(this->base_type, version, area);
-  return phosg::string_printf("[ObjectSetEntry type=%04hX \"%s\" set_flags=%04hX index=%04hX floor=%04hX entity_id=%04hX group=%04hX room=%04hX a3=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] unused=%08" PRIX32 "]",
+  return phosg::string_printf("[ObjectSetEntry type=%04hX \"%s\" floor=%04hX group=%04hX room=%04hX a3=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] unused=%08" PRIX32 "]",
       this->base_type.load(),
       name_str.c_str(),
-      this->set_flags.load(),
-      this->index.load(),
       this->floor.load(),
-      this->entity_id.load(),
       this->group.load(),
       this->room.load(),
       this->unknown_a3.load(),
@@ -3280,14 +3283,11 @@ uint64_t MapFile::ObjectSetEntry::semantic_hash(uint8_t floor) const {
 
 string MapFile::EnemySetEntry::str(Version version, uint8_t area) const {
   auto type_name = MapFile::name_for_enemy_type(this->base_type, version, area);
-  return phosg::string_printf("[EnemySetEntry type=%04hX \"%s\" set_flags=%04hX index=%04hX num_children=%04hX floor=%04hX entity_id=%04hX room=%04hX wave_number=%04hX wave_number2=%04hX a1=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %g %g %04hX %04hX] unused=%08" PRIX32 "]",
+  return phosg::string_printf("[EnemySetEntry type=%04hX \"%s\" num_children=%04hX floor=%04hX room=%04hX wave_number=%04hX wave_number2=%04hX a1=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %g %g %04hX %04hX] unused=%08" PRIX32 "]",
       this->base_type.load(),
       type_name.c_str(),
-      this->set_flags.load(),
-      this->index.load(),
       this->num_children.load(),
       this->floor.load(),
-      this->entity_id.load(),
       this->room.load(),
       this->wave_number.load(),
       this->wave_number2.load(),
@@ -4525,30 +4525,45 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       default_num_children = 5;
       break;
     case 0x00D4: // TObjEneMe3StelthReal
-      add((set_entry->param6 > 0) ? EnemyType::SINOW_SPIGELL : EnemyType::SINOW_BERILL);
-      default_num_children = 4;
-      break;
-    case 0x00D5: // TObjEneMerillLia
-      add((set_entry->param6 > 0) ? EnemyType::MERILTAS : EnemyType::MERILLIA);
-      break;
-    case 0x00D6: { // TObjEneBm9Mericarol
-      switch (set_entry->param6) {
-        case 0:
-          add(EnemyType::MERICAROL);
-          break;
-        case 1:
-          add(EnemyType::MERIKLE);
-          break;
-        case 2:
-          add(EnemyType::MERICUS);
-          break;
-        default:
-          add(EnemyType::MERICARAND);
+      if (this->episode == Episode::EP3) {
+        add(EnemyType::NON_ENEMY_NPC);
+      } else {
+        add((set_entry->param6 > 0) ? EnemyType::SINOW_SPIGELL : EnemyType::SINOW_BERILL);
+        default_num_children = 4;
       }
       break;
-    }
+    case 0x00D5: // TObjEneMerillLia
+      if (this->episode == Episode::EP3) {
+        add(EnemyType::NON_ENEMY_NPC);
+      } else {
+        add((set_entry->param6 > 0) ? EnemyType::MERILTAS : EnemyType::MERILLIA);
+      }
+      break;
+    case 0x00D6: // TObjEneBm9Mericarol
+      if (this->episode == Episode::EP3) {
+        add(EnemyType::NON_ENEMY_NPC);
+      } else {
+        switch (set_entry->param6) {
+          case 0:
+            add(EnemyType::MERICAROL);
+            break;
+          case 1:
+            add(EnemyType::MERIKLE);
+            break;
+          case 2:
+            add(EnemyType::MERICUS);
+            break;
+          default:
+            add(EnemyType::MERICARAND);
+        }
+      }
+      break;
     case 0x00D7: // TObjEneBm5GibonU
-      add((set_entry->param6 > 0) ? EnemyType::ZOL_GIBBON : EnemyType::UL_GIBBON);
+      if (this->episode == Episode::EP3) {
+        add(EnemyType::NON_ENEMY_NPC);
+      } else {
+        add((set_entry->param6 > 0) ? EnemyType::ZOL_GIBBON : EnemyType::UL_GIBBON);
+      }
       break;
     case 0x00D8: // TObjEneGibbles
       add(EnemyType::GIBBLES);
@@ -4588,20 +4603,29 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       add(EnemyType::ILL_GILL);
       break;
     case 0x0110:
-      add(EnemyType::ASTARK);
+      if (this->episode == Episode::EP3) {
+        add(EnemyType::NON_ENEMY_NPC);
+      } else {
+        add(EnemyType::ASTARK);
+      }
       break;
     case 0x0111:
-      if (floor > 0x05) {
+      if (this->episode == Episode::EP3) {
+        add(EnemyType::NON_ENEMY_NPC);
+      } else if (floor > 0x05) {
         add(set_entry->param2 ? EnemyType::YOWIE_DESERT : EnemyType::SATELLITE_LIZARD_DESERT);
       } else {
         add(set_entry->param2 ? EnemyType::YOWIE_CRATER : EnemyType::SATELLITE_LIZARD_CRATER);
       }
       break;
-    case 0x0112: {
-      bool is_rare = (set_entry->param6 & 1);
-      add(EnemyType::MERISSA_A, is_rare, is_rare);
+    case 0x0112:
+      if (this->episode == Episode::EP3) {
+        add(EnemyType::NON_ENEMY_NPC);
+      } else {
+        bool is_rare = (set_entry->param6 & 1);
+        add(EnemyType::MERISSA_A, is_rare, is_rare);
+      }
       break;
-    }
     case 0x0113:
       add(EnemyType::GIRTABLULU);
       break;

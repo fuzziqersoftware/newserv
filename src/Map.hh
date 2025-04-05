@@ -182,9 +182,10 @@ public:
     // Angles are specified as 16-bit integers, where 0 is no rotation around
     // the axis and FFFF is almost a complete counterclockwise rotation.
     /* 1C */ VectorXYZI angle;
-    /* 28 */ le_float param1 = 0.0f; // Boxes: if <= 0, this is a specialized box, and the specialization is in param4/5/6
+    // See notes in dat_object_definitions in Map.cc for how these are used
+    /* 28 */ le_float param1 = 0.0f;
     /* 2C */ le_float param2 = 0.0f;
-    /* 30 */ le_float param3 = 0.0f; // Boxes: if == 0, the item should be varied by difficulty and area
+    /* 30 */ le_float param3 = 0.0f;
     /* 34 */ le_int32_t param4 = 0;
     /* 38 */ le_int32_t param5 = 0;
     /* 3C */ le_int32_t param6 = 0;
@@ -208,6 +209,7 @@ public:
     /* 12 */ le_uint16_t unknown_a1 = 0;
     /* 14 */ VectorXYZF pos;
     /* 24 */ VectorXYZI angle;
+    // See notes in dat_enemy_definitions in Map.cc for how these are used
     /* 2C */ le_float param1 = 0.0f;
     /* 30 */ le_float param2 = 0.0f;
     /* 34 */ le_float param3 = 0.0f;
