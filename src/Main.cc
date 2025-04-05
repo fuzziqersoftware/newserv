@@ -2301,7 +2301,10 @@ Action a_name_all_items(
     });
 
 Action a_print_level_stats(
-    "print-level-stats", nullptr, +[](phosg::Arguments& args) {
+    "show-level-tables", "\
+  show-level-tables\n\
+    Print the level tables for each version in a semi-human-reatable format.\n",
+    +[](phosg::Arguments& args) {
       auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
       s->clear_file_caches(false);
@@ -2388,7 +2391,11 @@ Action a_print_level_stats(
     });
 
 Action a_print_item_parameter_tables(
-    "print-item-tables", nullptr, +[](phosg::Arguments& args) {
+    "show-item-tables", "\
+  show-item-tables\n\
+    Print the item parameter tables for each version in a semi-human-reatable\n\
+    format.\n",
+    +[](phosg::Arguments& args) {
       auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_all();
       for (Version v : ALL_VERSIONS) {

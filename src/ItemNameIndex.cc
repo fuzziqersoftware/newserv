@@ -886,20 +886,6 @@ void ItemNameIndex::print_table(FILE* stream) const {
     fprintf(stream, "\n");
   }
 
-  fprintf(stream, "CLASS     =>  F GF RF  B GB RB  Z GZ RZ GR DB JL ZL SH RY RS AT RV MG\n");
-  for (size_t char_class = 0; char_class < 12; char_class++) {
-    fprintf(stream, "%9s =>", name_for_char_class(char_class));
-    for (size_t tech_num = 0; tech_num < 0x13; tech_num++) {
-      uint8_t max_level = pmt->get_max_tech_level(char_class, tech_num) + 1;
-      if (max_level == 0x00) {
-        fprintf(stream, "   ");
-      } else {
-        fprintf(stream, " %2hhu", max_level);
-      }
-    }
-    fprintf(stream, "\n");
-  }
-
   for (size_t table_index = 0; table_index < 8; table_index++) {
     static const char* names[11] = {
         "Monomate", "Dimate", "Trimate", "Monofluid",

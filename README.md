@@ -760,6 +760,7 @@ There are several actions that don't fit well into the table above, which let yo
 * Format Episode 3 game data in a human-readable manner (`show-ep3-maps`, `show-ep3-cards`, `generate-ep3-cards-html`)
 * Format Blue Burst battle parameter files in a human-readable manner (`show-battle-params`)
 * Convert item data to a human-readable description, or vice versa (`describe-item`)
+* Show the server's item and level tables (`show-item-tables`, `show-level-tables`)
 * Connect to another PSO server and pretend to be a client (`cat-client`)
 * Generate or describe DC serial numbers (`generate-dc-serial-number`, `inspect-dc-serial-number`)
 
