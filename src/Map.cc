@@ -2606,7 +2606,6 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     //     meanings)
     // - TObjEneMorfos (oaram1, param2; these params also have non-debug
     //     meanings)
-    // TODO: Add more enemies to this list as they are found
 
     // NPCs. Params:
     //   param1 = action parameter (depends on param6; see below)
@@ -2754,7 +2753,7 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     {0x0033, F_EP3, 0x0000000000008001, "TObjNpcEnemy"},
 
     // Hildebear. Params:
-    //   param1 = initial location (clamped to [0, 1]; 0 = ground, 1 = sky)
+    //   param1 = initial location (zero or negative = ground, positive = jump)
     //   param2 = chance to use tech (value is param3 + 0.6, clamped to [0,
     //     1]; TODO: it's not clear when exactly the decision points are)
     //   param3 = chance to jump when more than 150 units away (value is
@@ -2763,8 +2762,8 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     {0x0040, F_V0_V4, 0x00000000001B0004, "TObjEneMoja"},
 
     // Rappy. Params:
-    //   param1 = TODO (clamped to [0, 1]; overwritten with 1 if wave_number
-    //     is > 0; could be spawn location like for Hildebear?)
+    //   param1 = initial location (zero or negative = ground, positive = sky;
+    //     ignored if wave_number is > 0 in which case it's always sky)
     //   param6 = rare flag (on v1-v3, rappy is rare if param6 != 0; on v4,
     //     rappy is rare if (param6 & 1) != 0)
     //   param7 = TODO
@@ -2815,7 +2814,7 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
 
     // Grass Assassin. Params:
     //   param1 = TODO
-    //   param2 = TODO (some state is set based on whather this is <= 0 or
+    //   param2 = TODO (some state is set based on whether this is <= 0 or
     //     not, but the value is also used directly in some places)
     //   param3 = TODO (see TObjGrass_update_case8)
     //   param4 = TODO (see TObjGrass_update_case8)

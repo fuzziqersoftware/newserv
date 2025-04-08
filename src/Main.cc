@@ -1030,9 +1030,10 @@ Action a_decrypt_dcv2_executable(
     table (KATSUO.SEA), and VALUES should be the path to the value fixup table\n\
     (IWASHI.SEA). The output is written to EXEC.dec.\n\
     If --simple is given, uses the simpler encryption method used in some\n\
-    community modifications of the game. In this case, --seed is not required;\n\
-    if not given, finds the seed automatically, and prints it to stderr so you\n\
-    will be able to use it when re-encrypting.\n",
+    community modifications of the game (Enhancement Pack, for example). In\n\
+    this case, --seed is not required; if not given, finds the seed\n\
+    automatically, and prints it to stderr so you will be able to use it when\n\
+    re-encrypting.\n",
     +[](phosg::Arguments& args) {
       string executable_filename = args.get<string>("executable", true);
       string executable_data = phosg::load_file(executable_filename);

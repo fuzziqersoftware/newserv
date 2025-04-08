@@ -1,5 +1,7 @@
 OBJECTS
 
+./newserv address-translator files/pso-executables 59NL "parse-dat-object-constructor-tables files/dat-object-specs.json"
+
 TYPE => 1OJ1--------------------- 1OJ2--------------------- 1OEF--------------------- 2OEF--------------------- 3OE1--------------------- 3SE0--------------------- 4OEU--------------------- 59NL--------------------- NAME
 0000 => 8C070448:000000000000FFFF 8C072810:000000000000FFFF 8C07ADD8:000000000000FFFF 8C08A784:000000000003FFFF 8019554C:0000000FFFFFFFFF 800BDD8C:0000000000008001 001E1360:0000000FFFFFFFFF 00661728:00007FFFFFFFFFFF TObjPlayerSet
 0001 => 8C068700:000000000000FFFF 8C06AA44:000000000000FFFF 8C0722A4:000000000000FFFF 8C080804:000000000003FFFF 801954E4:0000000FFFFFFFFF 800BDD24:0000000000008003 001E0F90:0000000FFFFFFFFF 00660938:00006FFFFFFFFFFF TObjParticle
@@ -321,6 +323,8 @@ TYPE => 1OJ1--------------------- 1OJ2--------------------- 1OEF----------------
 
 
 ENEMIES
+
+./newserv address-translator files/pso-executables 59NL "parse-dat-enemy-constructor-tables files/dat-enemy-specs.json"
 
 TYPE => 1OJ1--------------------- 1OJ2--------------------- 1OEF--------------------- 2OEF--------------------- 3OE1--------------------- 3SE0--------------------- 4OEU--------------------- 59NL--------------------- NAME
 0001 => 8C0FAB14:0000000000000001 8C0FDFCC:0000000000000001 8C10C8A8:0000000000000001 8C124380:0000000000000001 80149C20:0000000000000001 800A6AE0:0000000000000001 0019CA60:0000000000000001 00609164:0000200000000001 TObjNpcFemaleBase

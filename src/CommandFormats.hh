@@ -4009,7 +4009,7 @@ struct G_Unknown_6x09 {
 } __packed_ws__(G_Unknown_6x09, 4);
 
 // 6x0A: Update enemy state
-// In Ultimate mode, the low 7 bits of game_flags are ignored, and 6x9C is used
+// In Ultimate mode, the low 6 bits of game_flags are ignored, and 6x9C is used
 // to update those instead.
 
 template <bool BE>
@@ -5490,7 +5490,7 @@ struct G_LevelUpAllTechniques_6x9B {
 } __packed_ws__(G_LevelUpAllTechniques_6x9B, 8);
 
 // 6x9C: Set enemy low game flags (not valid on Episode 3)
-// This command only has an effect in Ultimate mode. It sets the low 7 bits of
+// This command only has an effect in Ultimate mode. It sets the low 6 bits of
 // game_flags (those that match 0x0000003F).
 
 struct G_SetEnemyLowGameFlagsUltimate_6x9C {
