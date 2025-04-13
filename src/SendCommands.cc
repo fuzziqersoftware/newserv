@@ -739,7 +739,7 @@ void send_stream_file_chunk_bb(shared_ptr<Client> c, uint32_t chunk_index) {
 }
 
 void send_approve_player_choice_bb(shared_ptr<Client> c) {
-  S_ApprovePlayerChoice_BB_00E4 cmd = {c->bb_character_index, 1};
+  S_ApprovePlayerChoice_BB_00E4 cmd = {static_cast<int8_t>(c->bb_character_index), 1};
   send_command_t(c, 0x00E4, 0x00000000, cmd);
 }
 

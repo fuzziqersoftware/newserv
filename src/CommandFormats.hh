@@ -3112,7 +3112,7 @@ check_struct_size(S_TournamentGameDetails_Ep3_E3, 0x73C);
 
 struct C_PlayerPreviewRequest_BB_E3 {
   le_int32_t character_index = 0;
-  le_uint32_t unused = 0;
+  le_uint32_t unknown_a1 = 0;
 } __packed_ws__(C_PlayerPreviewRequest_BB_E3, 0x08);
 
 // E4: CARD lobby battle table state (Episode 3)
@@ -3319,7 +3319,7 @@ struct C_GuildCardChecksum_01E8 {
 // 02E8 (S->C): Accept/decline guild card file checksum
 // If needs_update is nonzero, the client will request the guild card file by
 // sending an 03E8 command. If needs_update is zero, the client will skip
-// downloading the guild card file and send a 04EB command (requesting the
+// downloading the guild card file and send an 04EB command (requesting the
 // stream file) instead.
 
 struct S_GuildCardChecksumResponse_BB_02E8 {
@@ -3643,7 +3643,7 @@ struct S_StreamFileChunk_BB_02EB {
 struct C_LeaveCharacterSelect_BB_00EC {
   // Reason codes:
   // 0 = canceled
-  // 1 = recreate character
+  // 1 = create or recreate character
   // 2 = dressing room
   le_uint32_t reason = 0;
 } __packed_ws__(C_LeaveCharacterSelect_BB_00EC, 4);

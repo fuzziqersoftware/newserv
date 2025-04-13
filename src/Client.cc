@@ -672,14 +672,14 @@ string Client::system_filename() const {
   return phosg::string_printf("system/players/system_%s.psosys", this->login->bb_license->username.c_str());
 }
 
-string Client::character_filename(const std::string& bb_username, int8_t index) {
+string Client::character_filename(const std::string& bb_username, ssize_t index) {
   if (bb_username.empty()) {
     throw logic_error("non-BB players do not have character data");
   }
   if (index < 0) {
     throw logic_error("character index is not set");
   }
-  return phosg::string_printf("system/players/player_%s_%hhd.psochar", bb_username.c_str(), index);
+  return phosg::string_printf("system/players/player_%s_%zd.psochar", bb_username.c_str(), index);
 }
 
 string Client::backup_character_filename(uint32_t account_id, size_t index, bool is_ep3) {
@@ -687,7 +687,7 @@ string Client::backup_character_filename(uint32_t account_id, size_t index, bool
       account_id, index, is_ep3 ? "pso3char" : "psochar");
 }
 
-string Client::character_filename(int8_t index) const {
+string Client::character_filename(ssize_t index) const {
   if (this->version() != Version::BB_V4) {
     throw logic_error("non-BB players do not have character data");
   }
@@ -738,9 +738,9 @@ string Client::legacy_player_filename() const {
     throw logic_error("character index is not set");
   }
   return phosg::string_printf(
-      "system/players/player_%s_%hhd.nsc",
+      "system/players/player_%s_%zd.nsc",
       this->login->bb_license->username.c_str(),
-      static_cast<int8_t>(this->bb_character_index + 1));
+      static_cast<ssize_t>(this->bb_character_index + 1));
 }
 
 void Client::create_character_file(
@@ -1088,7 +1088,7 @@ bool Client::use_shared_bank() {
   }
 }
 
-void Client::use_character_bank(int8_t index) {
+void Client::use_character_bank(ssize_t index) {
   this->use_default_bank();
   if (index != this->bb_character_index) {
     auto files_manager = this->require_server_state()->player_files_manager;

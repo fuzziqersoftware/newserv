@@ -252,7 +252,7 @@ public:
   uint32_t telepipe_lobby_id;
   TelepipeState telepipe_state;
   std::shared_ptr<Episode3::PlayerConfig> ep3_config; // Null for non-Ep3
-  int8_t bb_character_index;
+  ssize_t bb_character_index; // -1 = not set
   ItemData bb_identify_result;
   std::array<std::vector<ItemData>, 3> bb_shop_contents;
 
@@ -361,9 +361,9 @@ public:
       std::shared_ptr<const LevelTable> level_table);
 
   std::string system_filename() const;
-  static std::string character_filename(const std::string& bb_username, int8_t index);
+  static std::string character_filename(const std::string& bb_username, ssize_t index);
   static std::string backup_character_filename(uint32_t account_id, size_t index, bool is_ep3);
-  std::string character_filename(int8_t index = -1) const;
+  std::string character_filename(ssize_t index = -1) const;
   std::string guild_card_filename() const;
   std::string shared_bank_filename() const;
 
@@ -391,7 +391,7 @@ public:
   const PlayerBank200& current_bank() const;
   std::shared_ptr<PSOBBCharacterFile> current_bank_character();
   bool use_shared_bank(); // Returns true if the bank exists; false if it was created
-  void use_character_bank(int8_t bb_character_index);
+  void use_character_bank(ssize_t bb_character_index);
   void use_default_bank();
 
   void print_inventory(FILE* stream) const;
@@ -407,7 +407,7 @@ private:
   std::shared_ptr<PSOBBGuildCardFile> guild_card_data;
   std::shared_ptr<PlayerBank200> external_bank;
   std::shared_ptr<PSOBBCharacterFile> external_bank_character;
-  int8_t external_bank_character_index;
+  ssize_t external_bank_character_index;
   uint64_t last_play_time_update;
 
   void save_and_clear_external_bank();
