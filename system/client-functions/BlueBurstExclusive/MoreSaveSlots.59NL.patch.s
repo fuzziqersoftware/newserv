@@ -32,6 +32,8 @@ memcpy:
   .include  CopyData
   ret
 
+
+
 start:
   # Apply all necessary patches
   call      apply_enable_scroll_patch
@@ -40,8 +42,9 @@ start:
   call      apply_fix_file_index
   call      apply_preview_window_fix
   call      apply_static_patches
-  # Rewrite the existing char file to have the appropriate size; this must be
-  # done after all patches are applied
+  # Rewrite the existing char file regions to have the appropriate size; this
+  # must be done after the patches are applied because we call the checksum
+  # function, which is patched by one of the above calls
   call      update_existing_char_file_list
   jmp       update_existing_char_file_list_memcard
 
@@ -64,6 +67,8 @@ enable_scroll_start:
   mov       ecx, [eax + 0xEC]  # ecx = scroll_bar->client_id
   imul      ecx, ecx, 0x24
   # Set up scroll bar graphics (in struct at scroll_bar + 0x1C)
+  # TODO: Even though we set this up the same way PSO Xbox does, it still
+  # doesn't render. Figure this out and fix it.
   mov       dword [eax + ecx + 0x1C], 0x439D0000
   mov       dword [eax + ecx + 0x20], 0x43360000
   mov       dword [eax + ecx + 0x24], 0x439D0000
@@ -89,7 +94,8 @@ enable_scroll_end:
 
 
 apply_fix_scroll_patch1:
-  # This patch fixes the preview display so it will show the correct character
+  # This patch fixes character selection cursor object so it will take the
+  # scroll offset into account
   push      6           # Call size
   push      0x00413C38  # Call address
   call      get_code_size_for_fix_scroll_patch1
@@ -111,7 +117,9 @@ fix_scroll_patch1_end:
 
 
 apply_fix_scroll_patch2:
-  # This patch fixes the preview display so it will show the correct character
+  # This patch changes the TAdSinglePlyChrSelectGC::selected_index_within_view
+  # to be the selected character's absolute index (including scroll_offset),
+  # not the index only within to the displayed four characters
   push      6           # Call size
   push      0x00413CD8  # Call address
   call      get_code_size_for_fix_scroll_patch2
@@ -188,7 +196,6 @@ preview_window_fix_end:
 
 apply_static_patches:
   .include WriteCodeBlocksBB
-
   # These patches change various places where the character data size and slot
   # count are referenced
   .data    0x004751A4
@@ -235,16 +242,16 @@ apply_static_patches:
   .data    0x00022FC4  # total file size
   .data    0x006C2643
   .data    0x00000004
-  .binary  BC2F0200  # save_count offset
+  .data    0x00022FBC  # save_count offset
   .data    0x006C264D
   .data    0x00000004
-  .binary  BC2F0200  # save_count offset
+  .data    0x00022FBC  # save_count offset
   .data    0x006C26EF
   .data    0x00000004
-  .binary  BC2F0200  # save_count offset
+  .data    0x00022FBC  # save_count offset
   .data    0x006C2705
   .data    0x00000004
-  .binary  C02F0200  # round2_seed offset
+  .data    0x00022FC0  # round2_seed offset
   .data    0x006C2793
   .data    0x00000004
   .data    0x00022FC4  # total file size
@@ -268,10 +275,10 @@ apply_static_patches:
   .data    0x00022FC4  # total file size
   .data    0x006C35D2
   .data    0x00000004
-  .binary  BC2F0200  # save_count offset
+  .data    0x00022FBC  # save_count offset
   .data    0x006C35DB
   .data    0x00000004
-  .binary  BC2F0200  # save_count offset
+  .data    0x00022FBC  # save_count offset
   .data    0x006C36E0
   .data    0x00000004
   .data    0x00022FC4  # total file size
@@ -412,7 +419,7 @@ apply_static_patches:
   .data    0x00022FC4  # total file size
   .data    0x006C6B74
   .data    0x00000004
-  .binary  5D000000  # memcard block count
+  .data    0x0000005D  # memcard block count
   .data    0x006C6BF6
   .data    0x00000004
   .data    0x00022FC4  # total file size
@@ -445,9 +452,9 @@ apply_static_patches:
   .data    0x00022FC4  # total file size
   .data    0x0077BE92
   .data    0x00000004
-  .binary  B42F0200  # bgm_test_songs_unlocked offset
+  .data    0x00022FB4  # bgm_test_songs_unlocked offset
 
-  # Signature check on all files (rewritten as loop)
+  # Signature check on all save files (rewritten as loop)
   .data    0x006C1C2D
   .deltaof sig_check_begin, sig_check_end
 sig_check_begin:
@@ -519,8 +526,7 @@ update_existing_char_file_list:
   # Replace the existing character list with an appropriately-longer one. This
   # part does not need to be done if the patch is applied statically to the
   # executable; this is only necessary when used as a server patch because the
-  # character list is already allocated at the time the patch is applied in
-  # that case
+  # character list is already allocated at the time the patch is applied.
   push      0x00022FC4  # total file size
   mov       eax, 0x008581C5  # operator_new
   call      eax
@@ -574,6 +580,8 @@ clear_next_char_done:
   mov       ecx, 0x006C26FC
   jmp       ecx  # PSOBBCharacterFileList::checksum(char_file_list)
 
+
+
 update_existing_char_file_list_memcard:
   # Allocate a new memory card file area and copy the data there too. It seems
   # Sega didn't fully strip out the local saving code from PSOBB; instead, they
@@ -581,6 +589,8 @@ update_existing_char_file_list_memcard:
   # bigger now, we also have to make that heap-allocated buffer larger. We add
   # a few "blocks" on the end, since the original code in the game does that
   # too, but it's probably not strictly necessary.
+  # Like the above, this part is not necessary if this patch is statically
+  # applied to the executable.
   mov       eax, 0x00022FC4  # total file size
   add       eax, 0x0000FFFF
   and       eax, 0xFFFFC000
