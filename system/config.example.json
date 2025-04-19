@@ -1028,7 +1028,7 @@
   // here, the server will allow that action even when cheat mode is off.
   "CheatingBehaviors": [
     "CreateItems", // Use of the $item command
-    "EditSectionID", // Use of $edit secid
+    "EditSectionID", // Use of $edit secid for characters past Level 1
     "EditStats", // Use of $edit atp, etc.
     "Ep3ReplaceAssist", // Use of $setassist
     "Ep3UnsetFieldCharacter", // Use of $unset

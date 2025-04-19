@@ -105,7 +105,6 @@
 00F5 = Weapon badge approval for gran squall //is cleared if quest is left
 00F6 = Secret delivery. Got AKIKO's FRYING PAN!
 00FB = Got Orochi-agito
-00FB = Received OROCHI-AGITO!
 00FD = Unknown addicting food
 0105 = Central dome fire swirl. Got Glory of the past!
 0106 = Central dome fire swirl. Got Mark3.

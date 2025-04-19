@@ -1,5 +1,5 @@
-DC NTE: pso02.dricas.ne.jp
-Nov 2000 proto: test1.st-pso.games.sega.net
-Dec 2000 proto: sg107634.csrd.sega.co.jp OR master.pso.dream-key.com
-Jan 2001 proto: master.pso.dream-key.com
-Aug 2001 proto (v2): game01.st-pso.games.sega.net
+1OJ1 (DC NTE): pso02.dricas.ne.jp
+1OJ2 (11/2000): test1.st-pso.games.sega.net
+1OJ3 (12/2000): sg107634.csrd.sega.co.jp OR master.pso.dream-key.com
+1OJ4 (01/2001): master.pso.dream-key.com
+2OJ5 (08/2001; v2): game01.st-pso.games.sega.net

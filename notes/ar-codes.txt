@@ -39,8 +39,7 @@ Version codes (from README.md):
   4OPD: PSO Xbox EU Disc
   4OPU: PSO Xbox EU TU
   59NJ: PSO BB JP 1.25.11
-  59NL: PSO BB JP 1.25.13
-  59NL: PSO BB Tethealla
+  59NL: PSO BB JP 1.25.13 (including the Tethealla client)
 
 The menu code
 This code makes all disabled items in menus selectable, which allows you to e.g. use items you can't normally use

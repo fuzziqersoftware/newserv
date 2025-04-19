@@ -1,7 +1,7 @@
-patch required in TethVer12513 to get this to work: 0048210D EB
+patch required in 59NL to get this to work: 0048210D EB
 
-is_hangame callsites:
-0040457C - ??? (something in TDataProtocol?)
+is_hangame callsites in 59NL:
+0040457C - don't save password on disconnect
 004820F4 - client version check (use patch above to bypass)
 00708318 - patch server domain name
 00708348 - patch server port
