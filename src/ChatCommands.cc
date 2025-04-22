@@ -244,7 +244,33 @@ ChatCommandDefinition cc_arrow(
     {"$arrow"},
     +[](const ServerArgs& a) {
       auto l = a.c->require_lobby();
-      a.c->lobby_arrow_color = stoull(a.text, nullptr, 0);
+      if (a.text == "red") {
+        a.c->lobby_arrow_color = 0x01;
+      } else if (a.text == "blue") {
+        a.c->lobby_arrow_color = 0x02;
+      } else if (a.text == "green") {
+        a.c->lobby_arrow_color = 0x03;
+      } else if (a.text == "yellow") {
+        a.c->lobby_arrow_color = 0x04;
+      } else if (a.text == "purple") {
+        a.c->lobby_arrow_color = 0x05;
+      } else if (a.text == "cyan") {
+        a.c->lobby_arrow_color = 0x06;
+      } else if (a.text == "orange") {
+        a.c->lobby_arrow_color = 0x07;
+      } else if (a.text == "pink") {
+        a.c->lobby_arrow_color = 0x08;
+      } else if (a.text == "white") {
+        a.c->lobby_arrow_color = 0x09;
+      } else if (a.text == "white2") {
+        a.c->lobby_arrow_color = 0x0A;
+      } else if (a.text == "white3") {
+        a.c->lobby_arrow_color = 0x0B;
+      } else if (a.text == "black") {
+        a.c->lobby_arrow_color = 0x0C;
+      } else {
+        a.c->lobby_arrow_color = stoull(a.text, nullptr, 0);
+      }
       if (!l->is_game()) {
         send_arrow_update(l);
       }
