@@ -908,24 +908,41 @@ ChatCommandDefinition cc_exit(
     {"$exit"},
     +[](const ServerArgs& a) {
       auto l = a.c->require_lobby();
-      if (l->is_game()) {
-        if (l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) || l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
-          G_UnusedHeader cmd = {0x73, 0x01, 0x0000};
-          a.c->channel.send(0x60, 0x00, cmd);
-          a.c->floor = 0;
-        } else if (is_ep3(a.c->version())) {
-          a.c->channel.send(0xED, 0x00);
-        } else {
-          throw precondition_failed("$C6You must return to\nthe lobby first");
-        }
-      } else {
+      if (!l->is_game()) {
+        // Client is in the lobby; send them to the login server (main menu)
         send_self_leave_notification(a.c);
         if (!a.c->config.check_flag(Client::Flag::NO_D6)) {
           send_message_box(a.c, "");
         }
-
         send_client_to_login_server(a.c);
+        return;
       }
+      if (is_ep3(a.c->version())) {
+        // Client is on Ep3; command ED triggers game exit
+        a.c->channel.send(0xED, 0x00);
+        return;
+      }
+      if (l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) || l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
+        // Client is in a quest; command 6x73 triggers game exit
+        G_UnusedHeader cmd = {0x73, 0x01, 0x0000};
+        a.c->channel.send(0x60, 0x00, cmd);
+        a.c->floor = 0;
+        return;
+      }
+      if (a.c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL) &&
+          a.c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE)) {
+        auto s = a.c->require_server_state();
+        shared_ptr<const CompiledFunctionCode> fn;
+        try {
+          fn = s->function_code_index->get_patch("ExitAnywhere", a.c->config.specific_version);
+        } catch (const out_of_range&) {
+        }
+        if (fn) {
+          send_function_call(a.c, fn);
+          return;
+        }
+      }
+      throw precondition_failed("$C6You must return to\nthe lobby first");
     },
     +[](const ProxyArgs& a) {
       if (a.ses->is_in_game) {
