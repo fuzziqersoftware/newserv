@@ -3616,13 +3616,12 @@ static void on_E0_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
   send_system_file_bb(c);
 }
 
-static void on_E3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
+static void on_E3_BB(shared_ptr<Client> c, uint16_t, uint32_t flag, string& data) {
   const auto& cmd = check_size_t<C_PlayerPreviewRequest_BB_E3>(data);
 
-  c->save_and_unload_character();
-  c->bb_character_index = cmd.character_index;
-
   if (c->bb_connection_phase != 0x00) {
+    c->save_and_unload_character();
+    c->bb_character_index = cmd.character_index;
     send_approve_player_choice_bb(c);
 
   } else {
@@ -3631,15 +3630,33 @@ static void on_E3_BB(shared_ptr<Client> c, uint16_t, uint32_t, string& data) {
       return;
     }
 
-    auto s = c->require_server_state();
-    try {
-      auto preview = c->character()->to_preview();
-      send_player_preview_bb(c, cmd.character_index, &preview);
+    auto send_preview = [&c](size_t index) -> void {
+      c->save_and_unload_character();
+      c->bb_character_index = index;
+      try {
+        auto preview = c->character()->to_preview();
+        send_player_preview_bb(c, c->bb_character_index, &preview);
 
-    } catch (const exception& e) {
-      // Player doesn't exist
-      c->log.warning("Can\'t load character data: %s", e.what());
-      send_player_preview_bb(c, cmd.character_index, nullptr);
+      } catch (const exception& e) {
+        // Player doesn't exist
+        c->log.warning("Can\'t load character data: %s", e.what());
+        send_player_preview_bb(c, c->bb_character_index, nullptr);
+      }
+    };
+
+    if (flag == 0) {
+      if (cmd.character_index < 0 || cmd.character_index >= 0x80) {
+        throw runtime_error("client requested invalid character slot");
+      }
+      send_preview(cmd.character_index);
+    } else if (cmd.character_index == 0) {
+      if (flag >= 0x80) {
+        throw runtime_error("client requested too many character slots");
+      }
+      auto s = c->require_server_state();
+      for (size_t z = 0; z < flag; z++) {
+        send_preview(z);
+      }
     }
   }
 }

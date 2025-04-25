@@ -479,6 +479,28 @@ sig_bad:
   .binary  CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 sig_check_end:  # 006C1C76
 
+  # Send slot count in E3 command
+  .data    0x0046EB20  # TDataProtocol::send_E3_for_index
+  .deltaof send_slot_count_in_E3_begin, send_slot_count_in_E3_end
+send_slot_count_in_E3_begin:
+  # ecx = this (TDataProtocol*)
+  # [esp + 4] = slot_index
+  push     0
+  push     dword [esp + 8]  # slot_index
+  push     0x0C  # slot count
+  push     0x00E30010
+  mov      eax, esp
+  push     0x10
+  push     eax
+  mov      eax, [ecx]
+  call     [eax + 0x20]  # this->send_command(&cmd, 0x10)  // ret 8
+  add      esp, 8
+  mov      eax, 0x006C1A80
+  call     eax  # set_current_char_slot(slot_index)  // ret 0
+  add      esp, 8
+  ret      4
+send_slot_count_in_E3_end:
+
   # Show slot number in each menu item
   .data    0x00401D57
   .deltaof show_slot_number_begin, show_slot_number_end

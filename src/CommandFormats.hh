@@ -3109,6 +3109,10 @@ check_struct_size(S_TournamentGameDetails_Ep3NTE_E3, 0x734);
 check_struct_size(S_TournamentGameDetails_Ep3_E3, 0x73C);
 
 // E3 (C->S): Player preview request (BB)
+// header.flag is not used by the vanilla client, but newserv's MoreSaveSlots
+// patch uses header.flag to tell the server how many save slots the client
+// expects. The server uses this to send all the character previews at once,
+// thus reducing the number of network roundtrips during login.
 
 struct C_PlayerPreviewRequest_BB_E3 {
   le_int32_t character_index = 0;
