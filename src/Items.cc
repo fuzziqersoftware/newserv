@@ -6,7 +6,7 @@
 
 using namespace std;
 
-void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGEncryption> opt_rand_crypt) {
+void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<RandomGenerator> rand_crypt) {
   auto s = c->require_server_state();
 
   // On PC (and presumably DC), the client sends a 6x29 after this to delete the
@@ -177,7 +177,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<PSOLFGE
     // they could end up thinking the unwrapped item is something completely
     // different. (They don't even use a fixed random seed, like for rares;
     // they just call rand().) How does this actually work on console PSO?
-    size_t det = random_from_optional_crypt(opt_rand_crypt) % sum;
+    size_t det = rand_crypt->next() % sum;
     for (size_t z = 0; z < table.second; z++) {
       const auto& entry = table.first[z];
       if (det > entry.probability) {

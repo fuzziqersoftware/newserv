@@ -172,7 +172,7 @@ struct C_Login_Patch_04 {
   parray<le_uint32_t, 3> unused;
   pstring<TextEncoding::ASCII, 0x10> username;
   pstring<TextEncoding::ASCII, 0x10> password;
-  pstring<TextEncoding::ASCII, 0x40> email;
+  pstring<TextEncoding::ASCII, 0x40> email_address;
 } __packed_ws__(C_Login_Patch_04, 0x6C);
 
 // 05 (S->C): Disconnect
@@ -514,13 +514,23 @@ struct S_UpdateClientConfig_BB_04 {
 // appears in PSO v1 and v2, but it is not used, implying that at some point
 // there was a separate command to send the block list, but it was scrapped.
 // Perhaps this was used for command A1, which is identical to 07 and A0 in all
-// versions of PSO (except DC NTE).
+// versions of PSO (except DC NTE, whch uses 07/8E/8F instead).
 
-// This command sets the interaction mode, which affects which objects can be
-// interacted with and what certain controls do. It also affects some in-game
-// behaviors; for example, if the leader's interaction mode is set incorrectly
-// in a game, the leader will not send the game state to joining players, so
-// they will wait forever and not be able to actually join.
+// In all PSO versions except DC NTE and 11/2000, this command sets the
+// interaction mode, which affects which objects can be interacted with and
+// what certain controls do. It also affects some in-game behaviors; for
+// example, if the leader's interaction mode is set incorrectly in a game, the
+// leader will not send the game state to joining players, so they will wait
+// forever and not be able to actually join.
+
+// In DC NTE and 11/2000, a side effect of this command not setting the
+// interaction mode is that the menu doesn't work properly unless another
+// command that sets the correct interaction mode (1) is sent before it. The
+// user-visible effects of the interaction mode not being set are that the
+// "Please select a ship" message doesn't appear, the X button does nothing,
+// and selecting an item from the menu doesn't dismiss the menu and instead
+// softlocks, since the client doesn't send anything.) One such command that
+// sets the correct interaction mode is command 04 with an error code of 0.
 
 // The menu is titled "Ship Select" unless the first menu item begins with the
 // text "BLOCK" (all caps), in which case it is titled "Block Select".
@@ -1627,7 +1637,7 @@ struct C_ConnectionInfo_DCNTE_8A {
   le_uint32_t unused = 0;
   pstring<TextEncoding::ASCII, 0x30> username;
   pstring<TextEncoding::ASCII, 0x30> password;
-  pstring<TextEncoding::ASCII, 0x30> email_address; // From Sylverant documentation
+  pstring<TextEncoding::ASCII, 0x30> email_address;
 } __packed_ws__(C_ConnectionInfo_DCNTE_8A, 0xA0);
 
 // 8A (S->C): Connection information result (DC NTE only)
@@ -1661,7 +1671,7 @@ struct C_Login_DCNTE_8B {
   pstring<TextEncoding::ASCII, 0x11> access_key;
   pstring<TextEncoding::ASCII, 0x30> username;
   pstring<TextEncoding::ASCII, 0x30> password;
-  pstring<TextEncoding::ASCII, 0x10> name;
+  pstring<TextEncoding::ASCII, 0x10> login_character_name;
   parray<uint8_t, 2> unused;
 } __packed_ws__(C_Login_DCNTE_8B, 0xAC);
 
@@ -1720,7 +1730,7 @@ struct C_RegisterV1_DC_92 {
   parray<uint8_t, 2> unused2;
   pstring<TextEncoding::ASCII, 0x30> serial_number2;
   pstring<TextEncoding::ASCII, 0x30> access_key2;
-  pstring<TextEncoding::ASCII, 0x30> email; // According to Sylverant documentation
+  pstring<TextEncoding::ASCII, 0x30> email_address;
 } __packed_ws__(C_RegisterV1_DC_92, 0xA0);
 
 // 92 (S->C): Register result (non-BB)
@@ -1741,7 +1751,7 @@ struct C_LoginV1_DC_93 {
   /* 29 */ pstring<TextEncoding::ASCII, 0x11> access_key;
   /* 3A */ pstring<TextEncoding::ASCII, 0x30> serial_number2;
   /* 6A */ pstring<TextEncoding::ASCII, 0x30> access_key2;
-  /* 9A */ pstring<TextEncoding::ASCII, 0x10> name;
+  /* 9A */ pstring<TextEncoding::ASCII, 0x10> login_character_name;
   /* AA */ parray<uint8_t, 2> unused2;
   /* AC */
 } __packed_ws__(C_LoginV1_DC_93, 0xAC);
@@ -1753,11 +1763,11 @@ struct C_LoginExtendedV1_DC_93 : C_LoginV1_DC_93 {
 // 93 (C->S): Log in (BB)
 
 struct C_LoginBase_BB_93 {
-  le_uint32_t player_tag = 0x00010000;
-  le_uint32_t guild_card_number = 0;
-  le_uint32_t sub_version = 0;
-  uint8_t language = 0;
-  int8_t character_slot = 0;
+  /* 00 */ le_uint32_t player_tag = 0x00010000;
+  /* 04 */ le_uint32_t guild_card_number = 0;
+  /* 08 */ le_uint32_t sub_version = 0;
+  /* 0C */ uint8_t language = 0;
+  /* 0D */ int8_t character_slot = 0;
   // Values for connection_phase:
   // 00 - initial connection (client will request system file, characters, etc.)
   // 01 - choose character
@@ -1766,17 +1776,18 @@ struct C_LoginBase_BB_93 {
   // 04 - login server
   // 05 - lobby server
   // 06 - lobby server (with Meet User fields specified)
-  uint8_t connection_phase = 0;
-  uint8_t client_code = 0;
-  le_uint32_t security_token = 0;
-  pstring<TextEncoding::ASCII, 0x30> username;
-  pstring<TextEncoding::ASCII, 0x30> password;
+  /* 0E */ uint8_t connection_phase = 0;
+  /* 0F */ uint8_t client_code = 0;
+  /* 10 */ le_uint32_t security_token = 0;
+  /* 14 */ pstring<TextEncoding::ASCII, 0x30> username;
+  /* 44 */ pstring<TextEncoding::ASCII, 0x30> password;
 
   // These fields map to the same fields in SC_MeetUserExtensionT. There is no
   // equivalent of the name field from that structure on BB (though newserv
   // doesn't use it anyway).
-  le_uint32_t menu_id = 0;
-  le_uint32_t preferred_lobby_id = 0;
+  /* 74 */ le_uint32_t menu_id = 0;
+  /* 78 */ le_uint32_t preferred_lobby_id = 0;
+  /* 7C */
 } __packed_ws__(C_LoginBase_BB_93, 0x7C);
 
 struct C_LoginWithoutHardwareInfo_BB_93 : C_LoginBase_BB_93 {
@@ -1784,14 +1795,16 @@ struct C_LoginWithoutHardwareInfo_BB_93 : C_LoginBase_BB_93 {
   // config at connect time. So the first time the server gets this command, it
   // will be something like "Ver. 1.24.3". This format is used on older client
   // versions (before 1.23.8?)
-  parray<uint8_t, 0x28> client_config;
+  /* 7C */ parray<uint8_t, 0x28> client_config;
+  /* A4 */
 } __packed_ws__(C_LoginWithoutHardwareInfo_BB_93, 0xA4);
 
 struct C_LoginWithHardwareInfo_BB_93 : C_LoginBase_BB_93 {
   // See the comment in the above structure. This format is used on newer client
   // versions.
-  parray<le_uint32_t, 2> hardware_info;
-  parray<uint8_t, 0x28> client_config;
+  /* 7C */ be_uint64_t hardware_id;
+  /* 84 */ parray<uint8_t, 0x28> client_config;
+  /* AC */
 } __packed_ws__(C_LoginWithHardwareInfo_BB_93, 0xAC);
 
 // 94: Invalid command
@@ -1975,7 +1988,7 @@ struct C_Login_DC_PC_GC_9D {
   /* 48 */ pstring<TextEncoding::ASCII, 0x10> access_key; // On XB, this is the XBL user ID
   /* 58 */ pstring<TextEncoding::ASCII, 0x30> serial_number2; // On DCv2, this is the hardware ID; on XB, this is the XBL gamertag
   /* 88 */ pstring<TextEncoding::ASCII, 0x30> access_key2; // On XB, this is the XBL user ID
-  /* B8 */ pstring<TextEncoding::ASCII, 0x10> name;
+  /* B8 */ pstring<TextEncoding::ASCII, 0x10> login_character_name;
   /* C8 */
 } __packed_ws__(C_Login_DC_PC_GC_9D, 0xC8);
 
@@ -2006,13 +2019,13 @@ struct C_LoginExtended_GC_9E : C_Login_GC_9E {
 
 struct C_Login_XB_9E : C_Login_DC_PC_GC_9D {
   /* 00C8 */ parray<uint8_t, 0x20> unknown_a4;
-  /* 00E8 */ XBNetworkLocation netloc;
+  /* 00E8 */ XBNetworkLocation xb_netloc;
   // By default, this array is initialized with [0x5A2773DD, 0xD82B2345,
   // 0x4FF904D5] on 4OEU (US TU version).
-  /* 0118 */ parray<le_uint32_t, 3> unknown_a1a;
+  /* 0118 */ parray<le_uint32_t, 3> xb_unknown_a1a;
   /* 0124 */ le_uint32_t xb_user_id_high = 0;
   /* 0128 */ le_uint32_t xb_user_id_low = 0;
-  /* 012C */ le_uint32_t unknown_a1b = 0;
+  /* 012C */ le_uint32_t xb_unknown_a1b = 0;
   /* 0130 */
 } __packed_ws__(C_Login_XB_9E, 0x130);
 
@@ -2045,8 +2058,7 @@ struct C_LoginExtended_BB_9E {
 
 // 9F (C->S): Client config / security data response (V3/BB)
 // The data is opaque to the client, as described at the top of this file.
-// If newserv ever sent a 9F command (it currently does not). On BB, this
-// command does not work during the data server phase.
+// On BB, this command does not work during the data server phase.
 
 struct C_ClientConfig_V3_9F {
   parray<uint8_t, 0x20> data;
@@ -3444,7 +3456,7 @@ struct SC_TeamChat_BB_07EA {
 struct S_TeamMemberList_BB_09EA {
   le_uint32_t entry_count = 0;
   struct Entry {
-    // This is displayed as "<%04d> %s" % (rank, name)
+    // This is displayed as "<{:04}> {}" % (rank, name)
     le_uint32_t rank = 0;
     le_uint32_t privilege_level = 0; // 0x10 or 0x20 = green, 0x30 = blue, 0x40 = red, anything else = white
     le_uint32_t guild_card_number = 0;
@@ -4257,11 +4269,11 @@ struct G_UseItem_6x27 {
 
 // 6x28: Feed MAG (protected on V3/V4)
 
-struct G_FeedMAG_6x28 {
+struct G_FeedMag_6x28 {
   G_ClientIDHeader header;
   le_uint32_t mag_item_id = 0;
   le_uint32_t fed_item_id = 0;
-} __packed_ws__(G_FeedMAG_6x28, 0x0C);
+} __packed_ws__(G_FeedMag_6x28, 0x0C);
 
 // 6x29: Delete inventory item (via bank deposit / sale / feeding MAG) (protected on V3 but not V4)
 // This subcommand is also used for reducing the size of stacks - if amount is
@@ -7351,9 +7363,10 @@ struct G_TournamentMatchResult_Ep3_6xB4x51 {
   le_uint16_t num_players_per_team = 0;
   le_uint16_t winner_team_id = 0;
   le_uint32_t meseta_amount = 0;
-  // This field apparently is supposed to contain a %s token (as for printf)
-  // which is replaced with meseta_amount. The results screen animates this text
-  // counting up from 0 to meseta_amount.
+  // This field apparently is supposed to contain a %s token (as for sprintf)
+  // which is replaced with meseta_amount. (Yes, %s, not %d; it seems they
+  // manually convert it to a string for some reason before calling sprintf.)
+  // The results screen animates this text counting up from 0 to meseta_amount.
   pstring<TextEncoding::MARKED, 0x20> meseta_reward_text;
 } __packed_ws__(G_TournamentMatchResult_Ep3_6xB4x51, 0xF4);
 

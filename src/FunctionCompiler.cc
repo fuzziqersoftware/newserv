@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <filesystem>
 #include <phosg/Filesystem.hh>
 #include <phosg/Hash.hh>
 #include <phosg/Time.hh>
@@ -18,16 +19,6 @@
 #include "Loggers.hh"
 
 using namespace std;
-
-static bool is_function_compiler_available = true;
-
-bool function_compiler_available() {
-  return is_function_compiler_available;
-}
-
-void set_function_compiler_available(bool is_available) {
-  is_function_compiler_available = is_available;
-}
 
 const char* name_for_architecture(CompiledFunctionCode::Architecture arch) {
   switch (arch) {
@@ -149,11 +140,11 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
     }
 
     // Look in the function directory first, then the system directory
-    string asm_filename = phosg::string_printf("%s/%s.%s.inc.s", function_directory.c_str(), name.c_str(), arch_name_token);
-    if (!phosg::isfile(asm_filename)) {
-      asm_filename = phosg::string_printf("%s/%s.%s.inc.s", system_directory.c_str(), name.c_str(), arch_name_token);
+    string asm_filename = std::format("{}/{}.{}.inc.s", function_directory, name, arch_name_token);
+    if (!std::filesystem::is_regular_file(asm_filename)) {
+      asm_filename = std::format("{}/{}.{}.inc.s", system_directory, name, arch_name_token);
     }
-    if (phosg::isfile(asm_filename)) {
+    if (std::filesystem::is_regular_file(asm_filename)) {
       if (!get_include_stack.emplace(name).second) {
         throw runtime_error("mutual recursion between includes: " + name);
       }
@@ -176,11 +167,11 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
     }
 
     string bin_filename = function_directory + "/" + name + ".inc.bin";
-    if (phosg::isfile(bin_filename)) {
+    if (std::filesystem::is_regular_file(bin_filename)) {
       return phosg::load_file(bin_filename);
     }
     bin_filename = system_directory + "/" + name + ".inc.bin";
-    if (phosg::isfile(bin_filename)) {
+    if (std::filesystem::is_regular_file(bin_filename)) {
       return phosg::load_file(bin_filename);
     }
     throw runtime_error("data not found for include: " + name + " (from " + asm_filename + " or " + bin_filename + ")");
@@ -217,7 +208,7 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
 
   set<uint32_t> reloc_indexes;
   for (const auto& it : ret->label_offsets) {
-    if (phosg::starts_with(it.first, "reloc")) {
+    if (it.first.starts_with("reloc")) {
       reloc_indexes.emplace(it.second / 4);
     }
   }
@@ -242,33 +233,30 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
 }
 
 FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
-  if (!function_compiler_available()) {
-    function_compiler_log.info("Function compiler is not available");
-    return;
-  }
-
-  string system_dir_path = phosg::ends_with(directory, "/") ? (directory + "System") : (directory + "/System");
+  string system_dir_path = directory.ends_with("/") ? (directory + "System") : (directory + "/System");
 
   uint32_t next_menu_item_id = 1;
-  for (const auto& subdir_name : phosg::list_directory_sorted(directory)) {
-    string subdir_path = phosg::ends_with(directory, "/") ? (directory + subdir_name) : (directory + "/" + subdir_name);
-    if (!phosg::isdir(subdir_path)) {
-      function_compiler_log.warning("Skipping %s (not a directory)", subdir_name.c_str());
+  for (const auto& item : std::filesystem::directory_iterator(directory)) {
+    string subdir_name = item.path().filename().string();
+    string subdir_path = directory.ends_with("/") ? (directory + subdir_name) : (directory + "/" + subdir_name);
+    if (!std::filesystem::is_directory(subdir_path)) {
+      function_compiler_log.warning_f("Skipping {} (not a directory)", subdir_name);
       continue;
     }
 
-    for (const auto& filename : phosg::list_directory_sorted(subdir_path)) {
+    for (const auto& item : std::filesystem::directory_iterator(subdir_path)) {
+      string filename = item.path().filename().string();
       try {
-        if (!phosg::ends_with(filename, ".s")) {
+        if (!filename.ends_with(".s")) {
           continue;
         }
 
         string name = filename.substr(0, filename.size() - 2);
-        if (phosg::ends_with(name, ".inc")) {
+        if (name.ends_with(".inc")) {
           continue;
         }
 
-        bool is_patch = phosg::ends_with(name, ".patch");
+        bool is_patch = name.ends_with(".patch");
         if (is_patch) {
           name.resize(name.size() - 6);
         }
@@ -277,15 +265,15 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
         CompiledFunctionCode::Architecture arch = CompiledFunctionCode::Architecture::UNKNOWN;
         uint32_t specific_version = 0;
         string short_name = name;
-        if (phosg::ends_with(name, ".ppc")) {
+        if (name.ends_with(".ppc")) {
           arch = CompiledFunctionCode::Architecture::POWERPC;
           name.resize(name.size() - 4);
           short_name = name;
-        } else if (phosg::ends_with(name, ".x86")) {
+        } else if (name.ends_with(".x86")) {
           arch = CompiledFunctionCode::Architecture::X86;
           name.resize(name.size() - 4);
           short_name = name;
-        } else if (phosg::ends_with(name, ".sh4")) {
+        } else if (name.ends_with(".sh4")) {
           arch = CompiledFunctionCode::Architecture::SH4;
           name.resize(name.size() - 4);
           short_name = name;
@@ -314,8 +302,8 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
         auto code = compile_function_code(arch, subdir_path, system_dir_path, name, text);
         if (code->index != 0) {
           if (!this->index_to_function.emplace(code->index, code).second) {
-            throw runtime_error(phosg::string_printf(
-                "duplicate function index: %08" PRIX32, code->index));
+            throw runtime_error(std::format(
+                "duplicate function index: {:08X}", code->index));
           }
         }
         code->specific_version = specific_version;
@@ -327,16 +315,16 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
           this->menu_item_id_and_specific_version_to_patch_function.emplace(
               static_cast<uint64_t>(code->menu_item_id) << 32 | specific_version, code);
           this->name_and_specific_version_to_patch_function.emplace(
-              phosg::string_printf("%s-%08" PRIX32, short_name.c_str(), specific_version), code);
+              std::format("{}-{:08X}", short_name, specific_version), code);
         }
 
-        string index_prefix = code->index ? phosg::string_printf("%02X => ", code->index) : "";
-        string patch_prefix = is_patch ? phosg::string_printf("[%08" PRIX32 "/%08" PRIX32 "] ", code->menu_item_id, code->specific_version) : "";
-        function_compiler_log.info("Compiled function %s%s%s (%s)",
-            index_prefix.c_str(), patch_prefix.c_str(), name.c_str(), name_for_architecture(code->arch));
+        string index_prefix = code->index ? std::format("{:02X} => ", code->index) : "";
+        string patch_prefix = is_patch ? std::format("[{:08X}/{:08X}] ", code->menu_item_id, code->specific_version) : "";
+        function_compiler_log.info_f("Compiled function {}{}{} ({})",
+            index_prefix, patch_prefix, name, name_for_architecture(code->arch));
 
       } catch (const exception& e) {
-        function_compiler_log.warning("Failed to compile function %s: %s", filename.c_str(), e.what());
+        function_compiler_log.warning_f("Failed to compile function {}: {}", filename, e.what());
       }
     }
   }
@@ -344,13 +332,13 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
 
 shared_ptr<const Menu> FunctionCodeIndex::patch_switches_menu(
     uint32_t specific_version, const std::unordered_set<std::string>& auto_patches_enabled) const {
-  auto suffix = phosg::string_printf("-%08" PRIX32, specific_version);
+  auto suffix = std::format("-{:08X}", specific_version);
 
   auto ret = make_shared<Menu>(MenuID::PATCH_SWITCHES, "Patches");
   ret->items.emplace_back(PatchesMenuItemID::GO_BACK, "Go back", "Return to the\nmain menu", 0);
   for (const auto& it : this->name_and_specific_version_to_patch_function) {
     const auto& fn = it.second;
-    if (fn->hide_from_patches_menu || !phosg::ends_with(it.first, suffix)) {
+    if (fn->hide_from_patches_menu || !it.first.ends_with(suffix)) {
       continue;
     }
     string name;
@@ -374,16 +362,12 @@ bool FunctionCodeIndex::patch_menu_empty(uint32_t specific_version) const {
 std::shared_ptr<const CompiledFunctionCode> FunctionCodeIndex::get_patch(
     const std::string& name, uint32_t specific_version) const {
   return this->name_and_specific_version_to_patch_function.at(
-      phosg::string_printf("%s-%08" PRIX32, name.c_str(), specific_version));
+      std::format("{}-{:08X}", name, specific_version));
 }
 
 DOLFileIndex::DOLFileIndex(const string& directory) {
-  if (!function_compiler_available()) {
-    function_compiler_log.info("Function compiler is not available");
-    return;
-  }
-  if (!phosg::isdir(directory)) {
-    function_compiler_log.info("DOL file directory is missing");
+  if (!std::filesystem::is_directory(directory)) {
+    function_compiler_log.info_f("DOL file directory is missing");
     return;
   }
 
@@ -392,9 +376,10 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
   menu->items.emplace_back(ProgramsMenuItemID::GO_BACK, "Go back", "Return to the\nmain menu", 0);
 
   uint32_t next_menu_item_id = 0;
-  for (const auto& filename : phosg::list_directory_sorted(directory)) {
-    bool is_dol = phosg::ends_with(filename, ".dol");
-    bool is_compressed_dol = phosg::ends_with(filename, ".dol.prs");
+  for (const auto& item : std::filesystem::directory_iterator(directory)) {
+    string filename = item.path().filename().string();
+    bool is_dol = filename.ends_with(".dol");
+    bool is_compressed_dol = filename.ends_with(".dol.prs");
     if (!is_dol && !is_compressed_dol) {
       continue;
     }
@@ -423,10 +408,10 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
 
         string compressed_size_str = phosg::format_size(file_data.size());
         string decompressed_size_str = phosg::format_size(decompressed_size);
-        function_compiler_log.info("Loaded compressed DOL file %s (%s -> %s)",
-            dol->name.c_str(), compressed_size_str.c_str(), decompressed_size_str.c_str());
-        description = phosg::string_printf("$C6%s$C7\n%s\n%s (orig)",
-            dol->name.c_str(), compressed_size_str.c_str(), decompressed_size_str.c_str());
+        function_compiler_log.info_f("Loaded compressed DOL file {} ({} -> {})",
+            dol->name, compressed_size_str, decompressed_size_str);
+        description = std::format("$C6{}$C7\n{}\n{} (orig)",
+            dol->name, compressed_size_str, decompressed_size_str);
 
       } else {
         phosg::StringWriter w;
@@ -439,8 +424,8 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
         dol->data = std::move(w.str());
 
         string size_str = phosg::format_size(dol->data.size());
-        function_compiler_log.info("Loaded DOL file %s (%s)", filename.c_str(), size_str.c_str());
-        description = phosg::string_printf("$C6%s$C7\n%s", dol->name.c_str(), size_str.c_str());
+        function_compiler_log.info_f("Loaded DOL file {} ({})", filename, size_str);
+        description = std::format("$C6{}$C7\n{}", dol->name, size_str);
       }
 
       this->name_to_file.emplace(dol->name, dol);
@@ -449,7 +434,7 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
       menu->items.emplace_back(dol->menu_item_id, dol->name, description, MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL_RUNS_CODE);
 
     } catch (const exception& e) {
-      function_compiler_log.warning("Failed to load DOL file %s: %s", filename.c_str(), e.what());
+      function_compiler_log.warning_f("Failed to load DOL file {}: {}", filename, e.what());
     }
   }
 }

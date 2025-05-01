@@ -24,11 +24,9 @@ public:
       GameMode mode,
       uint8_t difficulty,
       uint8_t section_id,
-      std::shared_ptr<PSOLFGEncryption> opt_rand_crypt,
+      std::shared_ptr<RandomGenerator> rand_crypt,
       std::shared_ptr<const BattleRules> restrictions = nullptr);
   ~ItemCreator() = default;
-
-  void set_random_crypt(std::shared_ptr<PSOLFGEncryption> new_random_crypt);
 
   struct DropResult {
     ItemData item;
@@ -101,7 +99,7 @@ private:
   //   [0x0E] - apparently unused
   //   [0x0F] - which common weapon special to generate
   //   [0x10] - apparently unused
-  std::shared_ptr<PSOLFGEncryption> opt_rand_crypt;
+  std::shared_ptr<RandomGenerator> rand_crypt;
 
   bool are_rare_drops_allowed() const;
   uint8_t normalize_area_number(uint8_t area) const;

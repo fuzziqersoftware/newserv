@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 
+#include <asio.hpp>
 #include <functional>
 #include <string>
 #include <vector>
@@ -71,21 +72,15 @@ constexpr uint32_t GO_BACK = 0xAAFFFFAA;
 constexpr uint32_t CHAT_COMMANDS = 0xAA0101AA;
 constexpr uint32_t PLAYER_NOTIFICATIONS = 0xAA0202AA;
 constexpr uint32_t DROP_NOTIFICATIONS = 0xAA0303AA;
-constexpr uint32_t BLOCK_PINGS = 0xAA0404AA;
-constexpr uint32_t INFINITE_HP = 0xAA0505AA;
-constexpr uint32_t INFINITE_TP = 0xAA0606AA;
-constexpr uint32_t SWITCH_ASSIST = 0xAA0707AA;
-constexpr uint32_t BLOCK_EVENTS = 0xAA0808AA;
-constexpr uint32_t BLOCK_PATCHES = 0xAA0909AA;
-constexpr uint32_t SAVE_FILES = 0xAA0A0AAA;
-constexpr uint32_t VIRTUAL_CLIENT = 0xAA0B0BAA;
-constexpr uint32_t RED_NAME = 0xAA0C0CAA;
-constexpr uint32_t BLANK_NAME = 0xAA0D0DAA;
-constexpr uint32_t SUPPRESS_LOGIN = 0xAA0E0EAA;
-constexpr uint32_t SKIP_CARD = 0xAA0F0FAA;
-constexpr uint32_t EP3_INFINITE_MESETA = 0xAA1010AA;
-constexpr uint32_t EP3_INFINITE_TIME = 0xAA1111AA;
-constexpr uint32_t EP3_UNMASK_WHISPERS = 0xAA1212AA;
+constexpr uint32_t INFINITE_HP = 0xAA0404AA;
+constexpr uint32_t INFINITE_TP = 0xAA0505AA;
+constexpr uint32_t SWITCH_ASSIST = 0xAA0606AA;
+constexpr uint32_t BLOCK_EVENTS = 0xAA0707AA;
+constexpr uint32_t BLOCK_PATCHES = 0xAA0808AA;
+constexpr uint32_t SAVE_FILES = 0xAA0909AA;
+constexpr uint32_t EP3_INFINITE_MESETA = 0xAA0A0AAA;
+constexpr uint32_t EP3_INFINITE_TIME = 0xAA0B0BAA;
+constexpr uint32_t EP3_UNMASK_WHISPERS = 0xAA0C0CAA;
 } // namespace ProxyOptionsMenuItemID
 
 namespace TeamRewardMenuItemID {
@@ -134,8 +129,16 @@ struct MenuItem {
   std::function<std::string()> get_description;
   uint32_t flags;
 
-  MenuItem(uint32_t item_id, const std::string& name, const std::string& description, uint32_t flags);
-  MenuItem(uint32_t item_id, const std::string& name, std::function<std::string()> get_description, uint32_t flags);
+  MenuItem(
+      uint32_t item_id,
+      const std::string& name,
+      const std::string& description,
+      uint32_t flags);
+  MenuItem(
+      uint32_t item_id,
+      const std::string& name,
+      std::function<std::string()> get_description,
+      uint32_t flags);
 };
 
 struct Menu {

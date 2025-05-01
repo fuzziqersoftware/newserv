@@ -1,9 +1,13 @@
-#include <event2/event.h>
-#include <event2/thread.h>
-#include <pwd.h>
+#include <phosg/Platform.hh>
+
 #include <signal.h>
 #include <string.h>
+#ifndef PHOSG_WINDOWS
+#include <pwd.h>
+#endif
 
+#include <asio.hpp>
+#include <filesystem>
 #include <mutex>
 #include <phosg/Arguments.hh>
 #include <phosg/Filesystem.hh>
@@ -19,12 +23,12 @@
 
 #include "AddressTranslator.hh"
 #include "BMLArchive.hh"
-#include "CatSession.hh"
 #include "Compression.hh"
 #include "DCSerialNumbers.hh"
 #include "DNSServer.hh"
 #include "DownloadSession.hh"
 #include "GSLArchive.hh"
+#include "GameServer.hh"
 #include "HTTPServer.hh"
 #include "IPStackSimulator.hh"
 #include "ImageEncoder.hh"
@@ -33,8 +37,6 @@
 #include "PPKArchive.hh"
 #include "PSOGCObjectGraph.hh"
 #include "PSOProtocol.hh"
-#include "PatchServer.hh"
-#include "ProxyServer.hh"
 #include "Quest.hh"
 #include "QuestScript.hh"
 #include "ReplaySession.hh"
@@ -76,32 +78,34 @@ vector<T> parse_int_vector(const phosg::JSON& o) {
   return ret;
 }
 
+#ifndef PHOSG_WINDOWS
 void drop_privileges(const string& username) {
   if ((getuid() != 0) || (getgid() != 0)) {
-    throw runtime_error(phosg::string_printf(
-        "newserv was not started as root; can\'t switch to user %s",
-        username.c_str()));
+    throw runtime_error(std::format(
+        "newserv was not started as root; can\'t switch to user {}",
+        username));
   }
 
   struct passwd* pw = getpwnam(username.c_str());
   if (!pw) {
     string error = phosg::string_for_error(errno);
-    throw runtime_error(phosg::string_printf("user %s not found (%s)",
-        username.c_str(), error.c_str()));
+    throw runtime_error(std::format("user {} not found ({})",
+        username, error));
   }
 
   if (setgid(pw->pw_gid) != 0) {
     string error = phosg::string_for_error(errno);
-    throw runtime_error(phosg::string_printf("can\'t switch to group %d (%s)",
-        pw->pw_gid, error.c_str()));
+    throw runtime_error(std::format("can\'t switch to group {} ({})",
+        pw->pw_gid, error));
   }
   if (setuid(pw->pw_uid) != 0) {
     string error = phosg::string_for_error(errno);
-    throw runtime_error(phosg::string_printf("can\'t switch to user %d (%s)",
-        pw->pw_uid, error.c_str()));
+    throw runtime_error(std::format("can\'t switch to user {} ({})",
+        pw->pw_uid, error));
   }
-  config_log.info("Switched to user %s (%d:%d)", username.c_str(), pw->pw_uid, pw->pw_gid);
+  config_log.info_f("Switched to user {} ({}:{})", username, pw->pw_uid, pw->pw_gid);
 }
+#endif
 
 Version get_cli_version(phosg::Arguments& args, Version default_value = Version::UNKNOWN) {
   if (args.get<bool>("pc-patch")) {
@@ -246,7 +250,7 @@ struct Action {
         run(run) {
     auto emplace_ret = all_actions.emplace(this->name, this);
     if (!emplace_ret.second) {
-      throw logic_error(phosg::string_printf("multiple actions with the same name: %s", this->name));
+      throw logic_error(std::format("multiple actions with the same name: {}", this->name));
     }
     action_order.emplace_back(this);
   }
@@ -270,11 +274,11 @@ Action a_version(
 
 static void a_compress_decompress_fn(phosg::Arguments& args) {
   const auto& action = args.get<string>(0);
-  bool is_prs = phosg::ends_with(action, "-prs");
-  bool is_bc0 = phosg::ends_with(action, "-bc0");
-  bool is_pr2 = phosg::ends_with(action, "-pr2");
-  bool is_prc = phosg::ends_with(action, "-prc");
-  bool is_decompress = phosg::starts_with(action, "decompress-");
+  bool is_prs = action.ends_with("-prs");
+  bool is_bc0 = action.ends_with("-bc0");
+  bool is_pr2 = action.ends_with("-pr2");
+  bool is_prc = action.ends_with("-prc");
+  bool is_decompress = action.starts_with("decompress-");
   bool is_big_endian = args.get<bool>("big-endian");
   bool is_optimal = args.get<bool>("optimal");
   bool is_pessimal = args.get<bool>("pessimal");
@@ -295,14 +299,14 @@ static void a_compress_decompress_fn(phosg::Arguments& args) {
   auto progress_fn = [&](auto, size_t input_progress, size_t, size_t output_progress) -> void {
     float progress = static_cast<float>(input_progress * 100) / input_bytes;
     float size_ratio = static_cast<float>(output_progress * 100) / input_progress;
-    fprintf(stderr, "... %zu/%zu (%g%%) => %zu (%g%%)    \r",
+    phosg::fwrite_fmt(stderr, "... {}/{} ({:g}%) => {} ({:g}%)    \r",
         input_progress, input_bytes, progress, output_progress, size_ratio);
   };
   auto optimal_progress_fn = [&](auto phase, size_t input_progress, size_t input_bytes, size_t output_progress) -> void {
     const char* phase_name = phosg::name_for_enum(phase);
     float progress = static_cast<float>(input_progress * 100) / input_bytes;
     float size_ratio = static_cast<float>(output_progress * 100) / input_progress;
-    fprintf(stderr, "... [%s] %zu/%zu (%g%%) => %zu (%g%%)    \r",
+    phosg::fwrite_fmt(stderr, "... [{}] {}/{} ({:g}%) => {} ({:g}%)    \r",
         phase_name, input_progress, input_bytes, progress, output_progress, size_ratio);
   };
 
@@ -336,12 +340,12 @@ static void a_compress_decompress_fn(phosg::Arguments& args) {
   float size_ratio = static_cast<float>(data.size() * 100) / input_bytes;
   double bytes_per_sec = input_bytes / (static_cast<double>(end - start) / 1000000.0);
   string bytes_per_sec_str = phosg::format_size(bytes_per_sec);
-  phosg::log_info("%zu (0x%zX) bytes input => %zu (0x%zX) bytes output (%g%%) in %s (%s / sec)",
-      input_bytes, input_bytes, data.size(), data.size(), size_ratio, time_str.c_str(), bytes_per_sec_str.c_str());
+  phosg::log_info_f("{} (0x{:X}) bytes input => {} (0x{:X}) bytes output ({:g}%) in {} ({} / sec)",
+      input_bytes, input_bytes, data.size(), data.size(), size_ratio, time_str, bytes_per_sec_str);
 
   if (is_pr2 || is_prc) {
     if (is_decompress && (data.size() != pr2_expected_size)) {
-      phosg::log_warning("Result data size (%zu bytes) does not match expected size from PR2 header (%zu bytes)", data.size(), pr2_expected_size);
+      phosg::log_warning_f("Result data size ({} bytes) does not match expected size from PR2 header ({} bytes)", data.size(), pr2_expected_size);
     } else if (!is_decompress) {
       uint32_t pr2_seed = seed.empty() ? phosg::random_object<uint32_t>() : stoul(seed, nullptr, 16);
       data = is_big_endian
@@ -408,7 +412,7 @@ Action a_prs_size(
       string data = read_input_data(args);
       size_t input_bytes = data.size();
       size_t output_bytes = prs_decompress_size(data);
-      phosg::log_info("%zu (0x%zX) bytes input => %zu (0x%zX) bytes output",
+      phosg::log_info_f("{} (0x{:X}) bytes input => {} (0x{:X}) bytes output",
           input_bytes, input_bytes, output_bytes, output_bytes);
     });
 
@@ -535,7 +539,7 @@ static void a_encrypt_decrypt_trivial_fn(phosg::Arguments& args) {
         best_seed_score = score;
       }
     }
-    fprintf(stderr, "Basis appears to be %02hhX (%zu zero bytes in output)\n",
+    phosg::fwrite_fmt(stderr, "Basis appears to be {:02X} ({} zero bytes in output)\n",
         best_seed, best_seed_score);
     basis = best_seed;
   } else {
@@ -572,7 +576,7 @@ Action a_parse_pc_v2_registry(
     exported from the HKEY_CURRENT_USER\\Software\\SonicTeam\\PSOV2 key.\n",
     +[](phosg::Arguments& args) {
       string data = read_input_data(args);
-      if (phosg::starts_with(data, "\xFF\xFE")) {
+      if (data.starts_with("\xFF\xFE")) {
         data = tt_utf16_to_utf8(data.substr(2));
       }
       data = phosg::str_replace_all(data, "\r", "");
@@ -581,15 +585,15 @@ Action a_parse_pc_v2_registry(
       bool in_psov2_section = false;
       string serial_data, access_data, email_data;
       for (string line : phosg::split(data, '\n')) {
-        if (phosg::starts_with(line, "[")) {
+        if (line.starts_with("[")) {
           in_psov2_section = (line == "[HKEY_CURRENT_USER\\Software\\SonicTeam\\PSOV2]");
         } else if (!in_psov2_section) {
           // Wrong section; skip the line
-        } else if (phosg::starts_with(line, "\"SERIAL\"=hex:")) {
+        } else if (line.starts_with("\"SERIAL\"=hex:")) {
           serial_data = phosg::parse_data_string(line.substr(13));
-        } else if (phosg::starts_with(line, "\"ACCESS\"=hex:")) {
+        } else if (line.starts_with("\"ACCESS\"=hex:")) {
           access_data = phosg::parse_data_string(line.substr(13));
-        } else if (phosg::starts_with(line, "\"E-MAIL\"=hex:")) {
+        } else if (line.starts_with("\"E-MAIL\"=hex:")) {
           email_data = phosg::parse_data_string(line.substr(13));
         }
       }
@@ -610,8 +614,8 @@ Action a_parse_pc_v2_registry(
       uint32_t serial_number = stoul(serial_data, nullptr, 16);
       phosg::strip_trailing_zeroes(access_data);
       phosg::strip_trailing_zeroes(email_data);
-      fprintf(stderr, "Serial number (decimal): %" PRIu32 "\nSerial number (hex): %08" PRIX32 "\nAccess key: %s\nEmail address: %s\n",
-          serial_number, serial_number, access_data.c_str(), email_data.c_str());
+      phosg::fwrite_fmt(stderr, "Serial number (decimal): {}\nSerial number (hex): {:08X}\nAccess key: {}\nEmail address: {}\n",
+          serial_number, serial_number, access_data, email_data);
     });
 
 Action a_generate_pc_v2_registry(
@@ -627,9 +631,9 @@ Action a_generate_pc_v2_registry(
         if (data.size() == 0) {
           return string();
         }
-        string ret = phosg::string_printf("%02hx", data[0]);
+        string ret = std::format("{:02x}", data[0]);
         for (size_t z = 1; z < data.size(); z++) {
-          ret += phosg::string_printf(",%02hx", data[z]);
+          ret += std::format(",{:02x}", data[z]);
         }
         return ret;
       };
@@ -645,7 +649,7 @@ Action a_generate_pc_v2_registry(
       }
       email.resize(0x40, '\0');
 
-      string serial_data = decrypt_v2_registry_value(phosg::string_printf("%08" PRIX32, serial_number));
+      string serial_data = decrypt_v2_registry_value(std::format("{:08X}", serial_number));
       string access_data = decrypt_v2_registry_value(access_key);
       string email_data = decrypt_v2_registry_value(email);
 
@@ -653,8 +657,8 @@ Action a_generate_pc_v2_registry(
       string access_hex = hex_str_for_data(access_data);
       string email_hex = hex_str_for_data(email_data);
 
-      string output_data = phosg::string_printf("Windows Registry Editor Version 5.00\r\n\r\n[HKEY_CURRENT_USER\\Software\\SonicTeam\\PSOV2]\r\n\r\n\"SERIAL\"=hex:%s\r\n\"ACCESS\"=hex:%s\r\n\"E-MAIL\"=hex:%s\r\n",
-          serial_hex.c_str(), access_hex.c_str(), email_hex.c_str());
+      string output_data = std::format("Windows Registry Editor Version 5.00\r\n\r\n[HKEY_CURRENT_USER\\Software\\SonicTeam\\PSOV2]\r\n\r\n\"SERIAL\"=hex:{}\r\n\"ACCESS\"=hex:{}\r\n\"E-MAIL\"=hex:{}\r\n",
+          serial_hex, access_hex, email_hex);
 
       write_output_data(args, output_data.data(), output_data.size(), "reg");
     });
@@ -726,7 +730,7 @@ static void a_encrypt_decrypt_vms_save_fn(phosg::Arguments& args) {
                   iter.complete = true;
                 }
                 lock_guard g(output_lock);
-                fprintf(stderr, "\nFound serial number: %08" PRIX32 "\n", serial_number);
+                phosg::fwrite_fmt(stderr, "\nFound serial number: {:08X}\n", serial_number);
                 *reinterpret_cast<StructT*>(data.data() + data_start_offset) = decrypted;
 
               } catch (const runtime_error&) {
@@ -744,7 +748,7 @@ static void a_encrypt_decrypt_vms_save_fn(phosg::Arguments& args) {
             size_t progress = iter.progress();
             size_t total_count = iter.total_count();
             float progress_percent = static_cast<float>(progress * 100) / total_count;
-            fprintf(stderr, "... %zu/%zu (%g%%, domain %02hhX, subdomain %02hhX, index2 %04hX, index3 %04hX)\r",
+            phosg::fwrite_fmt(stderr, "... {}/{} ({:g}%, domain {:02X}, subdomain {:02X}, index2 {:04X}, index3 {:04X})\r",
                 progress, total_count, progress_percent, iter.domain, iter.subdomain, iter.index2, iter.index3);
             if (iter.complete) {
               break;
@@ -764,7 +768,7 @@ static void a_encrypt_decrypt_vms_save_fn(phosg::Arguments& args) {
                   data_section, sizeof(StructT), serial_number, skip_checksum, override_round2_seed);
 
               lock_guard g(output_lock);
-              fprintf(stderr, "\nFound serial number: %08" PRIX64 "\n", serial_number);
+              phosg::fwrite_fmt(stderr, "\nFound serial number: {:08X}\n", serial_number);
               *reinterpret_cast<StructT*>(data.data() + data_start_offset) = decrypted;
               return true;
 
@@ -796,32 +800,32 @@ static void a_encrypt_decrypt_vms_save_fn(phosg::Arguments& args) {
 
   bool is_v2 = header.is_v2();
   if (!is_v2 && (header.data_size == sizeof(PSODCNTECharacterFile))) {
-    fprintf(stderr, "File type: DC NTE character\n");
+    phosg::fwrite_fmt(stderr, "File type: DC NTE character\n");
     process_file.template operator()<PSODCNTECharacterFile, false>();
   } else if (!is_v2 && (header.data_size == sizeof(PSODCNTEGuildCardFile))) {
-    fprintf(stderr, "File type: DC NTE Guild Card list\n");
+    phosg::fwrite_fmt(stderr, "File type: DC NTE Guild Card list\n");
     throw runtime_error("DC NTE Guild Card files are not encrypted");
   } else if (!is_v2 && (header.data_size == sizeof(PSODC112000CharacterFile))) {
-    fprintf(stderr, "File type: DC 11/2000 character\n");
+    phosg::fwrite_fmt(stderr, "File type: DC 11/2000 character\n");
     process_file.template operator()<PSODC112000CharacterFile, false>();
   } else if (!is_v2 && (header.data_size == sizeof(PSODC112000GuildCardFile))) {
-    fprintf(stderr, "File type: DC 11/2000 Guild Card list\n");
+    phosg::fwrite_fmt(stderr, "File type: DC 11/2000 Guild Card list\n");
     throw runtime_error("DC 11/2000 Guild Card files are not encrypted");
   } else if (!is_v2 && (header.data_size == sizeof(PSODCV1CharacterFile))) {
-    fprintf(stderr, "File type: DC v1 character\n");
+    phosg::fwrite_fmt(stderr, "File type: DC v1 character\n");
     process_file.template operator()<PSODCV1CharacterFile, true>();
   } else if (is_v2 && (header.data_size == sizeof(PSODCV2CharacterFile))) {
-    fprintf(stderr, "File type: DC v2 character\n");
+    phosg::fwrite_fmt(stderr, "File type: DC v2 character\n");
     process_file.template operator()<PSODCV2CharacterFile, true>();
   } else if (header.data_size == sizeof(PSODCV1V2GuildCardFile)) {
     // There appears to be a copy/paste error here: the game uses the character
     // file size when checksumming the Guild Card file, so we must do the same
     if (!is_v2) {
-      fprintf(stderr, "File type: DC v1 Guild Card list\n");
+      phosg::fwrite_fmt(stderr, "File type: DC v1 Guild Card list\n");
       static_assert(sizeof(PSODCV1CharacterFile) <= sizeof(PSODCV1V2GuildCardFile::EncryptedSection));
       process_file.template operator()<PSODCV1V2GuildCardFile::EncryptedSection, true, sizeof(PSODCV1CharacterFile)>();
     } else {
-      fprintf(stderr, "File type: DC v2 Guild Card list\n");
+      phosg::fwrite_fmt(stderr, "File type: DC v2 Guild Card list\n");
       static_assert(sizeof(PSODCV2CharacterFile) <= sizeof(PSODCV1V2GuildCardFile::EncryptedSection));
       process_file.template operator()<PSODCV1V2GuildCardFile::EncryptedSection, true, sizeof(PSODCV2CharacterFile)>();
     }
@@ -951,7 +955,7 @@ static void a_encrypt_decrypt_pc_save_fn(phosg::Arguments& args) {
             charfile->entries[z].encrypted = decrypt_fixed_size_data_section_t<PSOPCCharacterFile::CharacterEntry::EncryptedSection, false>(
                 &charfile->entries[z].encrypted, sizeof(charfile->entries[z].encrypted), round1_seed, skip_checksum, override_round2_seed);
           } catch (const exception& e) {
-            fprintf(stderr, "warning: cannot decrypt character %zu: %s\n", z, e.what());
+            phosg::fwrite_fmt(stderr, "warning: cannot decrypt character {}: {}\n", z, e.what());
           }
         }
       }
@@ -1089,11 +1093,11 @@ Action a_decode_gci_snapshot(
       try {
         header.check();
       } catch (const exception& e) {
-        phosg::log_warning("File header failed validation (%s)", e.what());
+        phosg::log_warning_f("File header failed validation ({})", e.what());
       }
       const auto& file = r.get<PSOGCSnapshotFile>();
       if (!file.checksum_correct()) {
-        phosg::log_warning("File internal checksum is incorrect");
+        phosg::log_warning_f("File internal checksum is incorrect");
       }
 
       auto img = file.decode_image();
@@ -1173,13 +1177,13 @@ Action a_salvage_gci(
           header.check();
           const auto& system = r.get<PSOGCSystemFile>();
           likely_round1_seed = system.creation_timestamp;
-          phosg::log_info("System file appears to be in order; round1 seed is %08" PRIX64, likely_round1_seed);
+          phosg::log_info_f("System file appears to be in order; round1 seed is {:08X}", likely_round1_seed);
         } catch (const exception& e) {
-          phosg::log_warning("Cannot parse system file (%s); ignoring it", e.what());
+          phosg::log_warning_f("Cannot parse system file ({}); ignoring it", e.what());
         }
       } else if (!seed.empty()) {
         likely_round1_seed = stoul(seed, nullptr, 16);
-        phosg::log_info("Specified round1 seed is %08" PRIX64, likely_round1_seed);
+        phosg::log_info_f("Specified round1 seed is {:08X}", likely_round1_seed);
       }
 
       if (round2 && likely_round1_seed > 0x100000000) {
@@ -1226,7 +1230,7 @@ Action a_salvage_gci(
             const char* sys_seed_str = (!round2 && (it.second == likely_round1_seed))
                 ? " (this is the seed from the system file)"
                 : "";
-            phosg::log_info("Round %c seed %08" PRIX32 " resulted in %zu zero bytes%s",
+            phosg::log_info_f("Round {} seed {:08X} resulted in {} zero bytes{}",
                 round2 ? '2' : '1', it.second, it.first, sys_seed_str);
           }
         };
@@ -1272,7 +1276,7 @@ Action a_salvage_gci(
           }
           print_top_seeds(intermediate_top_seeds);
           round2_lower_half = intermediate_top_seeds.rbegin()->second & 0xFFFF;
-          phosg::log_info("Lower half of seed is likely %04" PRIX32 " (%zu zero bytes)", round2_lower_half, intermediate_top_seeds.rbegin()->first);
+          phosg::log_info_f("Lower half of seed is likely {:04X} ({} zero bytes)", round2_lower_half, intermediate_top_seeds.rbegin()->first);
           for (auto& top_seeds : top_seeds_by_thread) {
             top_seeds.clear();
           }
@@ -1386,9 +1390,9 @@ Action a_find_decryption_seed(
           0, 0x100000000, 0x1000, num_threads);
 
       if (seed < 0x100000000) {
-        phosg::log_info("Found seed %08" PRIX64, seed);
+        phosg::log_info_f("Found seed {:08X}", seed);
       } else {
-        phosg::log_error("No seed found");
+        phosg::log_error_f("No seed found");
       }
     });
 
@@ -1474,10 +1478,10 @@ Action a_encode_qst(
       bool download = args.get<bool>("download");
 
       string bin_filename = input_filename;
-      string dat_filename = phosg::ends_with(bin_filename, ".bin")
+      string dat_filename = bin_filename.ends_with(".bin")
           ? (bin_filename.substr(0, bin_filename.size() - 3) + "dat")
           : (bin_filename + ".dat");
-      string pvr_filename = phosg::ends_with(bin_filename, ".bin")
+      string pvr_filename = bin_filename.ends_with(".bin")
           ? (bin_filename.substr(0, bin_filename.size() - 3) + "pvr")
           : (bin_filename + ".pvr");
       auto bin_data = make_shared<string>(phosg::load_file(bin_filename));
@@ -1556,9 +1560,9 @@ Action a_disassemble_free_map(
     +[](phosg::Arguments& args) {
       const string& input_filename = args.get<string>(1, true);
       string input_filename_lower = phosg::tolower(input_filename);
-      bool is_events = phosg::ends_with(input_filename_lower, ".evt");
-      bool is_enemies = phosg::ends_with(input_filename_lower, "e.dat") || phosg::ends_with(input_filename_lower, "e_s.dat") || phosg::ends_with(input_filename_lower, "e_c1.dat") || phosg::ends_with(input_filename_lower, "e_d.dat");
-      bool is_objects = phosg::ends_with(input_filename_lower, "o.dat") || phosg::ends_with(input_filename_lower, "o_s.dat") || phosg::ends_with(input_filename_lower, "o_c1.dat") || phosg::ends_with(input_filename_lower, "o_d.dat");
+      bool is_events = input_filename_lower.ends_with(".evt");
+      bool is_enemies = input_filename_lower.ends_with("e.dat") || input_filename_lower.ends_with("e_s.dat") || input_filename_lower.ends_with("e_c1.dat") || input_filename_lower.ends_with("e_d.dat");
+      bool is_objects = input_filename_lower.ends_with("o.dat") || input_filename_lower.ends_with("o_s.dat") || input_filename_lower.ends_with("o_c1.dat") || input_filename_lower.ends_with("o_d.dat");
       if (!is_objects && !is_enemies && !is_events) {
         throw runtime_error("cannot determine input file type");
       }
@@ -1647,7 +1651,7 @@ Action a_assemble_all_patches(
           w.write(data);
           string out_path = code->source_path + (encrypted ? ".enc.bin" : ".std.bin");
           phosg::save_file(out_path, w.str());
-          fprintf(stderr, "... %s\n", out_path.c_str());
+          phosg::fwrite_fmt(stderr, "... {}\n", out_path);
         }
       };
 
@@ -1687,18 +1691,19 @@ Action a_generate_gsl(
       string output_filename = args.get<string>(2, false);
       if (output_filename.empty()) {
         output_filename = input_directory;
-        while (phosg::ends_with(output_filename, "/")) {
+        while (output_filename.ends_with("/")) {
           output_filename.pop_back();
         }
         output_filename += ".gsl";
       }
 
       unordered_map<string, string> files;
-      for (const auto& filename : phosg::list_directory(input_directory)) {
+      for (const auto& item : std::filesystem::directory_iterator(input_directory)) {
+        string filename = item.path().filename().string();
         string file_path = input_directory + "/" + filename;
-        if (!phosg::isfile(file_path)) {
-          throw std::runtime_error(phosg::string_printf(
-              "input directory contains %s which is not a file", filename.c_str()));
+        if (!std::filesystem::is_regular_file(file_path)) {
+          throw std::runtime_error(std::format(
+              "input directory contains {} which is not a file", filename));
         }
         files.emplace(filename, phosg::load_file(file_path));
       }
@@ -1726,9 +1731,9 @@ void a_extract_archive_fn(phosg::Arguments& args) {
     const auto& all_entries = arch.all_entries();
     for (size_t z = 0; z < all_entries.size(); z++) {
       auto e = arch.get(z);
-      string out_file = phosg::string_printf("%s-%zu", output_prefix.c_str(), z);
-      phosg::save_file(out_file.c_str(), e.first, e.second);
-      fprintf(stderr, "... %s\n", out_file.c_str());
+      string out_file = std::format("{}-{}", output_prefix, z);
+      phosg::save_file(out_file, e.first, e.second);
+      phosg::fwrite_fmt(stderr, "... {}\n", out_file);
     }
   } else if (args.get<string>(0) == "extract-gsl") {
     GSLArchive arch(data_shared, args.get<bool>("big-endian"));
@@ -1736,7 +1741,7 @@ void a_extract_archive_fn(phosg::Arguments& args) {
       auto e = arch.get(entry_it.first);
       string out_file = output_prefix + entry_it.first;
       phosg::save_file(out_file, e.first, e.second);
-      fprintf(stderr, "... %s\n", out_file.c_str());
+      phosg::fwrite_fmt(stderr, "... {}\n", out_file);
     }
   } else if (args.get<string>(0) == "extract-bml") {
     BMLArchive arch(data_shared, args.get<bool>("big-endian"));
@@ -1746,7 +1751,7 @@ void a_extract_archive_fn(phosg::Arguments& args) {
         string data = prs_decompress(e.first, e.second);
         string out_file = output_prefix + entry_it.first;
         phosg::save_file(out_file, data);
-        fprintf(stderr, "... %s\n", out_file.c_str());
+        phosg::fwrite_fmt(stderr, "... {}\n", out_file);
       }
 
       auto gvm_e = arch.get_gvm(entry_it.first);
@@ -1754,7 +1759,7 @@ void a_extract_archive_fn(phosg::Arguments& args) {
         string data = prs_decompress(gvm_e.first, gvm_e.second);
         string out_file = output_prefix + entry_it.first + ".gvm";
         phosg::save_file(out_file, data);
-        fprintf(stderr, "... %s\n", out_file.c_str());
+        phosg::fwrite_fmt(stderr, "... {}\n", out_file);
       }
     }
   } else if (args.get<string>(0) == "extract-ppk") {
@@ -1762,7 +1767,7 @@ void a_extract_archive_fn(phosg::Arguments& args) {
     for (const auto& [filename, data] : files) {
       string out_file = output_prefix + filename;
       phosg::save_file(out_file, data);
-      fprintf(stderr, "... %s\n", out_file.c_str());
+      phosg::fwrite_fmt(stderr, "... {}\n", out_file);
     }
   } else {
     throw logic_error("unimplemented archive type");
@@ -1802,8 +1807,9 @@ Action a_decode_text_archive(
     "decode-text-archive", "\
   decode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Decode a text archive to JSON. --collections=NUM_COLLECTIONS is given,\n\
-    expects a fixed number of collections in the input. If --has-pr3 is given,\n\
-    expects the input not to have a REL footer.\n",
+    expects a fixed number of collections in the input (this is needed for DC\n\
+    NTE and 11/2000). If --has-pr3 is given, expects the input not to have a\n\
+    REL footer.\n",
     +[](phosg::Arguments& args) {
       string data = read_input_data(args);
       bool is_sjis = args.get<bool>("japanese");
@@ -1835,13 +1841,13 @@ Action a_encode_text_archive(
         if (input_filename.empty() || (input_filename == "-")) {
           throw runtime_error("encoded text archive cannot be written to stdout");
         }
-        phosg::save_file(phosg::string_printf("%s.pr2", input_filename.c_str()), result.first);
-        phosg::save_file(phosg::string_printf("%s.pr3", input_filename.c_str()), result.second);
+        phosg::save_file(std::format("{}.pr2", input_filename), result.first);
+        phosg::save_file(std::format("{}.pr3", input_filename), result.second);
       } else if (output_filename == "-") {
         throw runtime_error("encoded text archive cannot be written to stdout");
       } else {
         string out_filename = output_filename;
-        if (phosg::ends_with(out_filename, ".pr2")) {
+        if (out_filename.ends_with(".pr2")) {
           phosg::save_file(out_filename, result.first);
           out_filename[out_filename.size() - 1] = '3';
           phosg::save_file(out_filename, result.second);
@@ -1886,9 +1892,9 @@ Action a_decode_word_select_set(
       const vector<string>* unitxt_collection;
       if (!unitxt_filename.empty()) {
         unique_ptr<UnicodeTextSet> uts;
-        if (phosg::ends_with(unitxt_filename, ".prs")) {
+        if (unitxt_filename.ends_with(".prs")) {
           uts = make_unique<UnicodeTextSet>(phosg::load_file(unitxt_filename));
-        } else if (phosg::ends_with(unitxt_filename, ".json")) {
+        } else if (unitxt_filename.ends_with(".json")) {
           uts = make_unique<UnicodeTextSet>(phosg::JSON::parse(phosg::load_file(unitxt_filename)));
         } else {
           throw runtime_error("unitxt filename must end in .prs or .json");
@@ -1909,9 +1915,9 @@ Action a_print_word_select_table(
     option is given, prints the token table sorted by canonical name.\n",
     +[](phosg::Arguments& args) {
       auto s = make_shared<ServerState>(get_config_filename(args));
-      s->load_patch_indexes(false);
-      s->load_text_index(false);
-      s->load_word_select_table(false);
+      s->load_patch_indexes();
+      s->load_text_index();
+      s->load_word_select_table();
       Version v;
       try {
         v = get_cli_version(args);
@@ -1923,33 +1929,6 @@ Action a_print_word_select_table(
       } else {
         s->word_select_table->print(stdout);
       }
-    });
-
-Action a_cat_client(
-    "cat-client", "\
-  cat-client ADDR:PORT\n\
-    Connect to the given server and simulate a PSO client. newserv will then\n\
-    print all the received commands to stdout, and forward any commands typed\n\
-    into stdin to the remote server. It is assumed that the input and output\n\
-    are terminals, so all commands are hex-encoded. The --patch, --dc, --pc,\n\
-    --gc, and --bb options can be used to select the command format and\n\
-    encryption. If --bb is used, the --key=KEY-NAME option is also required (as\n\
-    in decrypt-data above).\n",
-    +[](phosg::Arguments& args) {
-      auto version = get_cli_version(args);
-      shared_ptr<PSOBBEncryption::KeyFile> key;
-      if (uses_v4_encryption(version)) {
-        string key_file_name = args.get<string>("key");
-        if (key_file_name.empty()) {
-          throw runtime_error("a key filename is required for BB client emulation");
-        }
-        key = make_shared<PSOBBEncryption::KeyFile>(
-            phosg::load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + key_file_name + ".nsk"));
-      }
-      shared_ptr<struct event_base> base(event_base_new(), event_base_free);
-      auto cat_client_remote = phosg::make_sockaddr_storage(phosg::parse_netloc(args.get<string>(1))).first;
-      CatSession session(base, cat_client_remote, get_cli_version(args), key);
-      event_base_dispatch(base.get());
     });
 
 Action a_download_files(
@@ -1965,8 +1944,7 @@ Action a_download_files(
         key = make_shared<PSOBBEncryption::KeyFile>(
             phosg::load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + key_file_name + ".nsk"));
       }
-      shared_ptr<struct event_base> base(event_base_new(), event_base_free);
-      auto remote = phosg::make_sockaddr_storage(phosg::parse_netloc(args.get<string>(1))).first;
+      auto [remote_host, remote_port] = phosg::parse_netloc(args.get<string>(1));
       auto character = PSOCHARFile::load_shared(args.get<string>("character", true), false).character_file;
       auto ship_menu_selections_str = args.get<string>("ship-menu-selections", false);
 
@@ -1989,9 +1967,11 @@ Action a_download_files(
           "serial-number",
           0,
           is_v1_or_v2(version) ? phosg::Arguments::IntFormat::HEX : phosg::Arguments::IntFormat::DEFAULT);
+      auto io_context = make_shared<asio::io_context>();
       DownloadSession session(
-          base,
-          remote,
+          io_context,
+          remote_host,
+          remote_port,
           args.get<string>("output-dir", true),
           version,
           args.get<uint8_t>("language"),
@@ -2009,7 +1989,7 @@ Action a_download_files(
           on_request_complete_commands,
           args.get<bool>("interactive"),
           args.get<bool>("show-command-data"));
-      event_base_dispatch(base.get());
+      io_context->run();
     });
 
 Action a_convert_rare_item_set(
@@ -2031,10 +2011,10 @@ Action a_convert_rare_item_set(
       double rate_factor = args.get<double>("multiply", 1.0);
       auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
-      s->load_patch_indexes(false);
-      s->load_text_index(false);
-      s->load_item_definitions(false);
-      s->load_item_name_indexes(false);
+      s->load_patch_indexes();
+      s->load_text_index();
+      s->load_item_definitions();
+      s->load_item_name_indexes();
 
       string input_filename = args.get<string>(1, false);
       if (input_filename.empty() || (input_filename == "-")) {
@@ -2044,15 +2024,15 @@ Action a_convert_rare_item_set(
       string input_filename_lower = phosg::tolower(input_filename);
       auto data = make_shared<string>(read_input_data(args));
       shared_ptr<RareItemSet> rs;
-      if (phosg::ends_with(input_filename_lower, ".json")) {
+      if (input_filename_lower.ends_with(".json")) {
         rs = make_shared<RareItemSet>(phosg::JSON::parse(*data), s->item_name_index_opt(get_cli_version(args, Version::BB_V4)));
-      } else if (phosg::ends_with(input_filename_lower, ".gsl")) {
+      } else if (input_filename_lower.ends_with(".gsl")) {
         rs = make_shared<RareItemSet>(GSLArchive(data, false), false);
-      } else if (phosg::ends_with(input_filename_lower, ".gslb")) {
+      } else if (input_filename_lower.ends_with(".gslb")) {
         rs = make_shared<RareItemSet>(GSLArchive(data, true), true);
-      } else if (phosg::ends_with(input_filename_lower, ".afs")) {
+      } else if (input_filename_lower.ends_with(".afs")) {
         rs = make_shared<RareItemSet>(AFSArchive(data), is_v1(get_cli_version(args, Version::DC_V2)));
-      } else if (phosg::ends_with(input_filename_lower, ".rel")) {
+      } else if (input_filename_lower.ends_with(".rel")) {
         rs = make_shared<RareItemSet>(*data, true);
       } else {
         throw runtime_error("cannot determine input format; use a filename ending with .json, .gsl, .gslb, .afs, or .rel");
@@ -2066,21 +2046,21 @@ Action a_convert_rare_item_set(
       string output_filename_lower = phosg::tolower(output_filename);
       if (output_filename.empty() || (output_filename == "-")) {
         rs->print_all_collections(stdout, s->item_name_index_opt(get_cli_version(args, Version::BB_V4)));
-      } else if (phosg::ends_with(output_filename_lower, ".json")) {
+      } else if (output_filename_lower.ends_with(".json")) {
         auto json = rs->json(s->item_name_index_opt(get_cli_version(args, Version::BB_V4)));
         string data = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::HEX_INTEGERS | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
         write_output_data(args, data.data(), data.size(), nullptr);
-      } else if (phosg::ends_with(output_filename_lower, ".gsl")) {
+      } else if (output_filename_lower.ends_with(".gsl")) {
         string data = rs->serialize_gsl(args.get<bool>("big-endian"));
         write_output_data(args, data.data(), data.size(), nullptr);
-      } else if (phosg::ends_with(output_filename_lower, ".gslb")) {
+      } else if (output_filename_lower.ends_with(".gslb")) {
         string data = rs->serialize_gsl(true);
         write_output_data(args, data.data(), data.size(), nullptr);
-      } else if (phosg::ends_with(output_filename_lower, ".afs")) {
+      } else if (output_filename_lower.ends_with(".afs")) {
         bool is_v1 = ::is_v1(get_cli_version(args, Version::DC_V2));
         string data = rs->serialize_afs(is_v1);
         write_output_data(args, data.data(), data.size(), nullptr);
-      } else if (phosg::ends_with(output_filename_lower, ".html")) {
+      } else if (output_filename_lower.ends_with(".html")) {
         bool is_v1 = ::is_v1(get_cli_version(args, Version::BB_V4));
         static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
         for (GameMode mode : modes) {
@@ -2094,7 +2074,7 @@ Action a_convert_rare_item_set(
               string data = rs->serialize_html(mode, episode, difficulty, item_name_index);
               string out_filename = output_filename.substr(0, output_filename.size() - 5) + "." + name_for_mode(mode) + "." + abbreviation_for_episode(episode) + "." + abbreviation_for_difficulty(difficulty) + output_filename.substr(output_filename.size() - 5);
               phosg::save_file(out_filename, data);
-              phosg::log_info("... %s", out_filename.c_str());
+              phosg::log_info_f("... {}", out_filename);
             }
           }
         }
@@ -2119,11 +2099,11 @@ Action a_convert_common_item_set(
 
       auto data = make_shared<string>(read_input_data(args));
       shared_ptr<CommonItemSet> cs;
-      if (phosg::ends_with(input_filename, ".json")) {
+      if (input_filename.ends_with(".json")) {
         cs = make_shared<JSONCommonItemSet>(phosg::JSON::parse(*data));
-      } else if (phosg::ends_with(input_filename, ".gsl")) {
+      } else if (input_filename.ends_with(".gsl")) {
         cs = make_shared<GSLV3V4CommonItemSet>(data, args.get<bool>("big-endian"));
-      } else if (phosg::ends_with(input_filename, ".gslb")) {
+      } else if (input_filename.ends_with(".gslb")) {
         cs = make_shared<GSLV3V4CommonItemSet>(data, true);
       } else {
         throw runtime_error("cannot determine input format; use a filename ending with .json, .gsl, .gslb, or .afs");
@@ -2151,10 +2131,10 @@ Action a_describe_item(
 
       auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
-      s->load_patch_indexes(false);
-      s->load_text_index(false);
-      s->load_item_definitions(false);
-      s->load_item_name_indexes(false);
+      s->load_patch_indexes();
+      s->load_text_index();
+      s->load_item_definitions();
+      s->load_item_name_indexes();
       auto name_index = s->item_name_index(version);
 
       ItemData item = name_index->parse_item_description(description);
@@ -2166,7 +2146,7 @@ Action a_describe_item(
       string desc = name_index->describe_item(item);
       string desc_colored = name_index->describe_item(item, true);
 
-      phosg::log_info("Data (decoded):        %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
+      phosg::log_info_f("Data (decoded):        {:02X}{:02X}{:02X}{:02X} {:02X}{:02X}{:02X}{:02X} {:02X}{:02X}{:02X}{:02X} -------- {:02X}{:02X}{:02X}{:02X}",
           item.data1[0], item.data1[1], item.data1[2], item.data1[3],
           item.data1[4], item.data1[5], item.data1[6], item.data1[7],
           item.data1[8], item.data1[9], item.data1[10], item.data1[11],
@@ -2177,14 +2157,14 @@ Action a_describe_item(
       ItemData item_v2_decoded = item_v2;
       item_v2_decoded.decode_for_version(Version::PC_V2);
 
-      phosg::log_info("Data (V2-encoded):     %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
+      phosg::log_info_f("Data (V2-encoded):     {:02X}{:02X}{:02X}{:02X} {:02X}{:02X}{:02X}{:02X} {:02X}{:02X}{:02X}{:02X} -------- {:02X}{:02X}{:02X}{:02X}",
           item_v2.data1[0], item_v2.data1[1], item_v2.data1[2], item_v2.data1[3],
           item_v2.data1[4], item_v2.data1[5], item_v2.data1[6], item_v2.data1[7],
           item_v2.data1[8], item_v2.data1[9], item_v2.data1[10], item_v2.data1[11],
           item_v2.data2[0], item_v2.data2[1], item_v2.data2[2], item_v2.data2[3]);
       if (item_v2_decoded != item) {
-        phosg::log_warning("V2-decoded data does not match original data");
-        phosg::log_warning("Data (V2-decoded):     %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
+        phosg::log_warning_f("V2-decoded data does not match original data");
+        phosg::log_warning_f("Data (V2-decoded):     {:02X}{:02X}{:02X}{:02X} {:02X}{:02X}{:02X}{:02X} {:02X}{:02X}{:02X}{:02X} -------- {:02X}{:02X}{:02X}{:02X}",
             item_v2_decoded.data1[0], item_v2_decoded.data1[1], item_v2_decoded.data1[2], item_v2_decoded.data1[3],
             item_v2_decoded.data1[4], item_v2_decoded.data1[5], item_v2_decoded.data1[6], item_v2_decoded.data1[7],
             item_v2_decoded.data1[8], item_v2_decoded.data1[9], item_v2_decoded.data1[10], item_v2_decoded.data1[11],
@@ -2196,38 +2176,38 @@ Action a_describe_item(
       ItemData item_gc_decoded = item_gc;
       item_gc_decoded.decode_for_version(Version::GC_V3);
 
-      phosg::log_info("Data (GC-encoded):     %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
+      phosg::log_info_f("Data (GC-encoded):     {:02X}{:02X}{:02X}{:02X} {:02X}{:02X}{:02X}{:02X} {:02X}{:02X}{:02X}{:02X} -------- {:02X}{:02X}{:02X}{:02X}",
           item_gc.data1[0], item_gc.data1[1], item_gc.data1[2], item_gc.data1[3],
           item_gc.data1[4], item_gc.data1[5], item_gc.data1[6], item_gc.data1[7],
           item_gc.data1[8], item_gc.data1[9], item_gc.data1[10], item_gc.data1[11],
           item_gc.data2[0], item_gc.data2[1], item_gc.data2[2], item_gc.data2[3]);
       if (item_gc_decoded != item) {
-        phosg::log_warning("GC-decoded data does not match original data");
-        phosg::log_warning("Data (GC-decoded):     %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX %02hhX%02hhX%02hhX%02hhX -------- %02hhX%02hhX%02hhX%02hhX",
+        phosg::log_warning_f("GC-decoded data does not match original data");
+        phosg::log_warning_f("Data (GC-decoded):     {:02X}{:02X}{:02X}{:02X} {:02X}{:02X}{:02X}{:02X} {:02X}{:02X}{:02X}{:02X} -------- {:02X}{:02X}{:02X}{:02X}",
             item_gc_decoded.data1[0], item_gc_decoded.data1[1], item_gc_decoded.data1[2], item_gc_decoded.data1[3],
             item_gc_decoded.data1[4], item_gc_decoded.data1[5], item_gc_decoded.data1[6], item_gc_decoded.data1[7],
             item_gc_decoded.data1[8], item_gc_decoded.data1[9], item_gc_decoded.data1[10], item_gc_decoded.data1[11],
             item_gc_decoded.data2[0], item_gc_decoded.data2[1], item_gc_decoded.data2[2], item_gc_decoded.data2[3]);
       }
 
-      phosg::log_info("Description: %s", desc.c_str());
-      phosg::log_info("Description (in-game): %s", desc_colored.c_str());
+      phosg::log_info_f("Description: {}", desc);
+      phosg::log_info_f("Description (in-game): {}", desc_colored);
 
       size_t purchase_price = s->item_parameter_table(Version::BB_V4)->price_for_item(item);
       size_t sale_price = purchase_price >> 3;
-      phosg::log_info("Purchase price: %zu; sale price: %zu", purchase_price, sale_price);
+      phosg::log_info_f("Purchase price: {}; sale price: {}", purchase_price, sale_price);
     });
 
 Action a_name_all_items(
     "name-all-items", nullptr, +[](phosg::Arguments& args) {
       auto s = make_shared<ServerState>(get_config_filename(args));
-      s->clear_file_caches(false);
+      s->clear_file_caches();
       s->load_config_early();
-      s->load_patch_indexes(false);
-      s->load_text_index(false);
-      s->load_item_definitions(false);
-      s->load_item_name_indexes(false);
-      s->load_ep3_cards(false);
+      s->load_patch_indexes();
+      s->load_text_index();
+      s->load_item_definitions();
+      s->load_item_name_indexes();
+      s->load_ep3_cards();
       s->load_config_late();
 
       set<uint32_t> all_primary_identifiers;
@@ -2241,7 +2221,7 @@ Action a_name_all_items(
 
       if (args.get<bool>("list")) {
         for (uint32_t primary_identifier : all_primary_identifiers) {
-          fprintf(stdout, "%08" PRIX32 "\n", primary_identifier);
+          phosg::fwrite_fmt(stdout, "{:08X}\n", primary_identifier);
           for (Version v : ALL_VERSIONS) {
             const auto& index = s->item_name_index_opt(v);
             if (index) {
@@ -2250,9 +2230,9 @@ Action a_name_all_items(
               string name = index->describe_item(item);
               try {
                 bool is_rare = pmt->is_item_rare(item);
-                fprintf(stdout, "  %10s: %s %s\n", phosg::name_for_enum(v), is_rare ? "+++" : "---", name.c_str());
+                phosg::fwrite_fmt(stdout, "  {:10}: {} {}\n", phosg::name_for_enum(v), is_rare ? "+++" : "---", name);
               } catch (const out_of_range&) {
-                fprintf(stdout, "  %10s:     (missing)\n", phosg::name_for_enum(v));
+                phosg::fwrite_fmt(stdout, "  {:10}:     (missing)\n", phosg::name_for_enum(v));
               }
             }
           }
@@ -2262,11 +2242,11 @@ Action a_name_all_items(
         bool separate_classes = args.get<bool>("separate-classes");
 
         auto print_header = [&]() -> void {
-          fprintf(stdout, "IDENT   :");
+          phosg::fwrite_fmt(stdout, "IDENT   :");
           for (Version v : ALL_VERSIONS) {
             const auto& index = s->item_name_index_opt(v);
             if (index) {
-              fprintf(stdout, " %30s    ", phosg::name_for_enum(v));
+              phosg::fwrite_fmt(stdout, " {:30}    ", phosg::name_for_enum(v));
             }
           }
           fputc('\n', stdout);
@@ -2281,7 +2261,7 @@ Action a_name_all_items(
           }
           prev_ident = primary_identifier;
 
-          fprintf(stdout, "%08" PRIX32 ":", primary_identifier);
+          phosg::fwrite_fmt(stdout, "{:08X}:", primary_identifier);
           for (Version v : ALL_VERSIONS) {
             const auto& index = s->item_name_index_opt(v);
             if (index) {
@@ -2290,9 +2270,9 @@ Action a_name_all_items(
               if (index->exists(item)) {
                 string name = index->describe_item(item);
                 bool is_rare = pmt->is_item_rare(item);
-                fprintf(stdout, " %30s%s", name.c_str(), is_rare ? " ***" : " ...");
+                phosg::fwrite_fmt(stdout, " {:30}{}", name, is_rare ? " ***" : " ...");
               } else {
-                fprintf(stdout, " ------------------------------ ---");
+                phosg::fwrite_fmt(stdout, " ------------------------------ ---");
               }
             }
           }
@@ -2308,9 +2288,9 @@ Action a_print_level_stats(
     +[](phosg::Arguments& args) {
       auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
-      s->clear_file_caches(false);
-      s->load_patch_indexes(false);
-      s->load_level_tables(false);
+      s->clear_file_caches();
+      s->load_patch_indexes();
+      s->load_level_tables();
 
       vector<PlayerStats> level_1_v1_v2;
       vector<PlayerStats> level_100_v1_v2;
@@ -2342,38 +2322,38 @@ Action a_print_level_stats(
       }
 
       auto print_stats_set = [](const vector<PlayerStats>& stats_vec, const char* name) -> void {
-        fprintf(stdout, "%s      ", name);
+        phosg::fwrite_fmt(stdout, "{}      ", name);
         for (size_t z = 0; z < stats_vec.size(); z++) {
-          fprintf(stdout, "  %s", abbreviation_for_char_class(z));
+          phosg::fwrite_fmt(stdout, "  {}", abbreviation_for_char_class(z));
         }
 
-        fprintf(stdout, "\n%s   ATP", name);
+        phosg::fwrite_fmt(stdout, "\n{}   ATP", name);
         for (const auto& stats : stats_vec) {
-          fprintf(stdout, "  %4hu", stats.char_stats.atp.load());
+          phosg::fwrite_fmt(stdout, "  {:4}", stats.char_stats.atp);
         }
-        fprintf(stdout, "\n%s   DFP", name);
+        phosg::fwrite_fmt(stdout, "\n{}   DFP", name);
         for (const auto& stats : stats_vec) {
-          fprintf(stdout, "  %4hu", stats.char_stats.dfp.load());
+          phosg::fwrite_fmt(stdout, "  {:4}", stats.char_stats.dfp);
         }
-        fprintf(stdout, "\n%s   MST", name);
+        phosg::fwrite_fmt(stdout, "\n{}   MST", name);
         for (const auto& stats : stats_vec) {
-          fprintf(stdout, "  %4hu", stats.char_stats.mst.load());
+          phosg::fwrite_fmt(stdout, "  {:4}", stats.char_stats.mst);
         }
-        fprintf(stdout, "\n%s   ATA", name);
+        phosg::fwrite_fmt(stdout, "\n{}   ATA", name);
         for (const auto& stats : stats_vec) {
-          fprintf(stdout, "  %4hu", stats.char_stats.ata.load());
+          phosg::fwrite_fmt(stdout, "  {:4}", stats.char_stats.ata);
         }
-        fprintf(stdout, "\n%s   EVP", name);
+        phosg::fwrite_fmt(stdout, "\n{}   EVP", name);
         for (const auto& stats : stats_vec) {
-          fprintf(stdout, "  %4hu", stats.char_stats.evp.load());
+          phosg::fwrite_fmt(stdout, "  {:4}", stats.char_stats.evp);
         }
-        fprintf(stdout, "\n%s   LCK", name);
+        phosg::fwrite_fmt(stdout, "\n{}   LCK", name);
         for (const auto& stats : stats_vec) {
-          fprintf(stdout, "  %4hu", stats.char_stats.lck.load());
+          phosg::fwrite_fmt(stdout, "  {:4}", stats.char_stats.lck);
         }
-        fprintf(stdout, "\n%s    HP", name);
+        phosg::fwrite_fmt(stdout, "\n{}    HP", name);
         for (const auto& stats : stats_vec) {
-          fprintf(stdout, "  %4hu", stats.char_stats.hp.load());
+          phosg::fwrite_fmt(stdout, "  {:4}", stats.char_stats.hp);
         }
         fputc('\n', stdout);
       };
@@ -2398,11 +2378,11 @@ Action a_print_item_parameter_tables(
     format.\n",
     +[](phosg::Arguments& args) {
       auto s = make_shared<ServerState>(get_config_filename(args));
-      s->load_all();
+      s->load_all(false);
       for (Version v : ALL_VERSIONS) {
         const auto& index = s->item_name_index_opt(v);
         if (index) {
-          fprintf(stdout, "======== %s\n", phosg::name_for_enum(v));
+          phosg::fwrite_fmt(stdout, "======== {}\n", phosg::name_for_enum(v));
           index->print_table(stdout);
         }
       }
@@ -2417,7 +2397,7 @@ Action a_show_ep3_cards(
       bool one_line = args.get<bool>("one-line");
 
       auto s = make_shared<ServerState>(get_config_filename(args));
-      s->load_ep3_cards(false);
+      s->load_ep3_cards();
 
       unique_ptr<BinaryTextSet> text_english;
       try {
@@ -2427,28 +2407,28 @@ Action a_show_ep3_cards(
       }
 
       auto card_ids = s->ep3_card_index->all_ids();
-      phosg::log_info("%zu card definitions", card_ids.size());
+      phosg::log_info_f("{} card definitions", card_ids.size());
       for (uint32_t card_id : card_ids) {
         auto entry = s->ep3_card_index->definition_for_id(card_id);
         string def_str = entry->def.str(one_line, text_english.get());
         if (one_line) {
-          fprintf(stdout, "%s\n", def_str.c_str());
+          phosg::fwrite_fmt(stdout, "{}\n", def_str);
         } else {
-          fprintf(stdout, "%s\n", def_str.c_str());
+          phosg::fwrite_fmt(stdout, "{}\n", def_str);
           if (!entry->debug_tags.empty()) {
             string tags = phosg::join(entry->debug_tags, ", ");
-            fprintf(stdout, "  Tags: %s\n", tags.c_str());
+            phosg::fwrite_fmt(stdout, "  Tags: {}\n", tags);
           }
           if (!entry->dice_caption.empty()) {
-            fprintf(stdout, "  Dice caption: %s\n", entry->dice_caption.c_str());
+            phosg::fwrite_fmt(stdout, "  Dice caption: {}\n", entry->dice_caption);
           }
           if (!entry->dice_caption.empty()) {
-            fprintf(stdout, "  Dice text: %s\n", entry->dice_text.c_str());
+            phosg::fwrite_fmt(stdout, "  Dice text: {}\n", entry->dice_text);
           }
           if (!entry->text.empty()) {
             string text = phosg::str_replace_all(entry->text, "\n", "\n    ");
             phosg::strip_trailing_whitespace(text);
-            fprintf(stdout, "  Text:\n    %s\n", text.c_str());
+            phosg::fwrite_fmt(stdout, "  Text:\n    {}\n", text);
           }
           fputc('\n', stdout);
         }
@@ -2472,10 +2452,10 @@ Action a_generate_ep3_cards_html(
       bool no_disassembly = args.get<bool>("no-disassembly");
 
       auto s = make_shared<ServerState>(get_config_filename(args));
-      s->clear_file_caches(false);
-      s->load_patch_indexes(false);
-      s->load_text_index(false);
-      s->load_ep3_cards(false);
+      s->clear_file_caches();
+      s->load_patch_indexes();
+      s->load_text_index();
+      s->load_ep3_cards();
 
       shared_ptr<const TextSet> text_english;
       try {
@@ -2521,7 +2501,8 @@ Action a_generate_ep3_cards_html(
           }
 
           if (cardtex_directory) {
-            for (const auto& filename : phosg::list_directory_sorted(cardtex_directory)) {
+            for (const auto& item : std::filesystem::directory_iterator(cardtex_directory)) {
+              string filename = item.path().filename().string();
               if ((filename[0] == 'C' || filename[0] == 'M' || filename[0] == 'L') && (filename[1] == '_')) {
                 size_t card_id = stoull(filename.substr(2, 3), nullptr, 10);
                 if (this->card_infos.size() <= card_id) {
@@ -2592,7 +2573,7 @@ Action a_generate_ep3_cards_html(
       blocks.emplace_back("<table><tr><th rowspan=\"2\" style=\"text-align: left; padding: 4px\">ID</th>");
 
       for (const auto& vi : version_infos) {
-        blocks.emplace_back(phosg::string_printf("<th colspan=\"%zu\" style=\"text-align: left; padding: 4px\">%s</th>",
+        blocks.emplace_back(std::format("<th colspan=\"{}\" style=\"text-align: left; padding: 4px\">{}</th>",
             vi.num_output_columns, vi.name));
       }
       blocks.emplace_back("</tr><tr>");
@@ -2627,12 +2608,12 @@ Action a_generate_ep3_cards_html(
           continue;
         }
 
-        blocks.emplace_back(phosg::string_printf("<tr><td style=\"padding: 4px; vertical-align: top\"><pre>%04zX</pre></td>", card_id));
+        blocks.emplace_back(std::format("<tr><td style=\"padding: 4px; vertical-align: top\"><pre>{:04X}</pre></td>", card_id));
 
         for (const auto& vi : version_infos) {
           const VersionInfo::CardInfo* entry = vi.get_entry(card_id);
           if (!entry) {
-            blocks.emplace_back(phosg::string_printf("<td colspan=\"%zu\" style=\"padding: 4px; vertical-align: top\"><pre>No entry</pre></td>",
+            blocks.emplace_back(std::format("<td colspan=\"{}\" style=\"padding: 4px; vertical-align: top\"><pre>No entry</pre></td>",
                 vi.num_output_columns));
             continue;
           }
@@ -2649,7 +2630,7 @@ Action a_generate_ep3_cards_html(
             background_color = "#333333";
           }
 
-          string td_tag = phosg::string_printf("<td style=\"padding: 4px; vertical-align: top; background-color: %s\">", background_color);
+          string td_tag = std::format("<td style=\"padding: 4px; vertical-align: top; background-color: {}\">", background_color);
           if (vi.show_small_column) {
             blocks.emplace_back(td_tag);
             if (!entry->small_data_url.empty()) {
@@ -2710,14 +2691,14 @@ Action a_show_ep3_maps(
     Print the Episode 3 maps from the system/ep3 directory in a (sort of)\n\
     human-readable format.\n",
     +[](phosg::Arguments& args) {
-      config_log.info("Collecting Episode 3 data");
+      config_log.info_f("Collecting Episode 3 data");
 
       auto s = make_shared<ServerState>(get_config_filename(args));
-      s->load_ep3_cards(false);
-      s->load_ep3_maps(false);
+      s->load_ep3_cards();
+      s->load_ep3_maps();
 
       auto map_ids = s->ep3_map_index->all_numbers();
-      phosg::log_info("%zu maps", map_ids.size());
+      phosg::log_info_f("{} maps", map_ids.size());
       for (uint32_t map_id : map_ids) {
         auto map = s->ep3_map_index->for_number(map_id);
         const auto& vms = map->all_versions();
@@ -2726,7 +2707,7 @@ Action a_show_ep3_maps(
             continue;
           }
           string map_s = vms[language]->map->str(s->ep3_card_index.get(), language);
-          fprintf(stdout, "(%c) %s\n", char_for_language_code(language), map_s.c_str());
+          phosg::fwrite_fmt(stdout, "({}) {}\n", char_for_language_code(language), map_s);
         }
       }
     });
@@ -2738,20 +2719,20 @@ Action a_show_battle_params(
     in a human-readable format.\n",
     +[](phosg::Arguments& args) {
       auto s = make_shared<ServerState>(get_config_filename(args));
-      s->load_patch_indexes(false);
-      s->load_battle_params(false);
+      s->load_patch_indexes();
+      s->load_battle_params();
 
-      fprintf(stdout, "Episode 1 multi\n");
+      phosg::fwrite_fmt(stdout, "Episode 1 multi\n");
       s->battle_params->get_table(false, Episode::EP1).print(stdout);
-      fprintf(stdout, "Episode 1 solo\n");
+      phosg::fwrite_fmt(stdout, "Episode 1 solo\n");
       s->battle_params->get_table(true, Episode::EP1).print(stdout);
-      fprintf(stdout, "Episode 2 multi\n");
+      phosg::fwrite_fmt(stdout, "Episode 2 multi\n");
       s->battle_params->get_table(false, Episode::EP2).print(stdout);
-      fprintf(stdout, "Episode 2 solo\n");
+      phosg::fwrite_fmt(stdout, "Episode 2 solo\n");
       s->battle_params->get_table(true, Episode::EP2).print(stdout);
-      fprintf(stdout, "Episode 4 multi\n");
+      phosg::fwrite_fmt(stdout, "Episode 4 multi\n");
       s->battle_params->get_table(false, Episode::EP4).print(stdout);
-      fprintf(stdout, "Episode 4 solo\n");
+      phosg::fwrite_fmt(stdout, "Episode 4 solo\n");
       s->battle_params->get_table(true, Episode::EP4).print(stdout);
     });
 
@@ -2768,10 +2749,12 @@ Action a_check_supermaps(
 
       auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
-      s->clear_file_caches(false);
-      s->load_patch_indexes(false);
-      s->load_set_data_tables(false);
-      s->load_maps(false);
+      s->clear_file_caches();
+      s->load_patch_indexes();
+      s->load_set_data_tables();
+      s->load_maps();
+
+      auto rand_crypt = make_shared<MT19937Generator>(phosg::random_object<uint32_t>());
 
       SuperMap::EfficiencyStats all_free_maps_eff;
       for (const auto& it : s->supermap_for_free_play_key) {
@@ -2784,8 +2767,8 @@ Action a_check_supermaps(
 
         string filename_token;
         if (save_disassembly) {
-          string filename = phosg::string_printf(
-              "supermap_%s_%s_%c_%02hhX_%02hhx_%02hhX.txt",
+          string filename = std::format(
+              "supermap_{}_{}_{}_{:02X}_{:02X}_{:02X}.txt",
               abbreviation_for_episode(episode),
               abbreviation_for_mode(mode),
               abbreviation_for_difficulty(difficulty),
@@ -2798,15 +2781,15 @@ Action a_check_supermaps(
         auto eff = it.second->efficiency();
         all_free_maps_eff += eff;
         auto eff_str = eff.str();
-        fprintf(stderr, "FREE MAP: %08" PRIX32 " => %s %s %c floor=%02hhX layout=%02hhX entities=%02hhX => %s%s\n",
+        phosg::fwrite_fmt(stderr, "FREE MAP: {:08X} => {} {} {} floor={:02X} layout={:02X} entities={:02X} => {}{}\n",
             it.first,
             abbreviation_for_episode(episode),
             abbreviation_for_mode(mode),
             abbreviation_for_difficulty(difficulty),
-            floor, layout, entities, eff_str.c_str(), filename_token.c_str());
+            floor, layout, entities, eff_str, filename_token);
       }
       string all_free_maps_eff_str = all_free_maps_eff.str();
-      fprintf(stderr, "ALL FREE MAPS: %s\n", all_free_maps_eff_str.c_str());
+      phosg::fwrite_fmt(stderr, "ALL FREE MAPS: {}\n", all_free_maps_eff_str);
 
       // Generate MapStates for a few random variations
       for (size_t z = 0; z < 0x20; z++) {
@@ -2818,26 +2801,26 @@ Action a_check_supermaps(
         uint8_t difficulty = phosg::random_object<uint32_t>() % 4;
         uint8_t event = phosg::random_object<uint32_t>() % 8;
         uint32_t random_seed = phosg::random_object<uint32_t>();
-        fprintf(stderr, "FREE MAP STATE TEST: %s %s %c\n",
+        phosg::fwrite_fmt(stderr, "FREE MAP STATE TEST: {} {} {}\n",
             abbreviation_for_episode(episode),
             abbreviation_for_mode(mode),
             abbreviation_for_difficulty(difficulty));
 
         auto sdt = s->set_data_table(Version::BB_V4, episode, mode, difficulty);
-        auto variations = sdt->generate_variations(episode, (mode == GameMode::SOLO), nullptr);
+        auto variations = sdt->generate_variations(episode, (mode == GameMode::SOLO), rand_crypt);
         auto supermaps = s->supermaps_for_variations(episode, mode, difficulty, variations);
         auto map_state = make_shared<MapState>(
-            0, difficulty, event, random_seed, MapState::DEFAULT_RARE_ENEMIES, nullptr, supermaps);
+            0, difficulty, event, random_seed, MapState::DEFAULT_RARE_ENEMIES, rand_crypt, supermaps);
         map_state->verify();
 
-        fprintf(stderr, "  map state ok: 0x%zX objects, 0x%zX enemies, 0x%zX enemy sets, 0x%zX events\n",
+        phosg::fwrite_fmt(stderr, "  map state ok: 0x{:X} objects, 0x{:X} enemies, 0x{:X} enemy sets, 0x{:X} events\n",
             map_state->object_states.size(),
             map_state->enemy_states.size(),
             map_state->enemy_set_states.size(),
             map_state->event_states.size());
       }
 
-      s->load_quest_index(false);
+      s->load_quest_index();
 
       SuperMap::EfficiencyStats all_quests_eff;
       uint32_t random_seed = args.get<uint32_t>("random-seed", 0, phosg::Arguments::IntFormat::HEX);
@@ -2849,9 +2832,9 @@ Action a_check_supermaps(
 
         string filename_token;
         if (save_disassembly) {
-          string filename = phosg::string_printf("supermap_quest_%" PRIu32 "_%08" PRIX32 ".txt", it.first, random_seed);
+          string filename = std::format("supermap_quest_{}_{:08X}.txt", it.first, random_seed);
           auto f = phosg::fopen_unique(filename, "wt");
-          fprintf(f.get(), "QUEST %" PRIu32 " (%s)\n", it.first, it.second->name.c_str());
+          phosg::fwrite_fmt(f.get(), "QUEST {} ({})\n", it.first, it.second->name);
           supermap->print(f.get());
           filename_token = " => " + filename;
         }
@@ -2860,10 +2843,10 @@ Action a_check_supermaps(
           for (Version v : ALL_NON_PATCH_VERSIONS) {
             counts_for_version[static_cast<size_t>(v)] = supermap->count_enemy_sets_for_version(v);
           }
-          string filename = phosg::string_printf("supermap_quest_%" PRIu32 "_%08" PRIX32 "_enemy_counts.txt", it.first, random_seed);
+          string filename = std::format("supermap_quest_{}_{:08X}_enemy_counts.txt", it.first, random_seed);
           auto f = phosg::fopen_unique(filename, "wt");
-          fprintf(f.get(), "QUEST %" PRIu32 " (%s)\n", it.first, it.second->name.c_str());
-          fprintf(f.get(), "ENEMY---------------  DCNTE  11/2K  DC-V1  DC-V2  PCNTE  PC-V2  GCNTE  GC-V3  XB-V3  BB-V4\n");
+          phosg::fwrite_fmt(f.get(), "QUEST {} ({})\n", it.first, it.second->name);
+          phosg::fwrite_fmt(f.get(), "ENEMY---------------  DCNTE  11/2K  DC-V1  DC-V2  PCNTE  PC-V2  GCNTE  GC-V3  XB-V3  BB-V4\n");
           for (size_t type_ss = 0; type_ss < static_cast<size_t>(EnemyType::MAX_ENEMY_TYPE); type_ss++) {
             EnemyType type = static_cast<EnemyType>(type_ss);
             bool any_count_nonzero = false;
@@ -2880,11 +2863,11 @@ Action a_check_supermaps(
               }
             }
             if (any_count_nonzero) {
-              fprintf(f.get(), "%20s", phosg::name_for_enum(type));
+              phosg::fwrite_fmt(f.get(), "{:20}", phosg::name_for_enum(type));
               for (Version v : ALL_NON_PATCH_VERSIONS) {
                 size_t count = counts[static_cast<size_t>(v)];
                 if (count > 0) {
-                  fprintf(f.get(), "  %5zu", count);
+                  phosg::fwrite_fmt(f.get(), "  {:5}", count);
                 } else {
                   fputs("       ", f.get());
                 }
@@ -2896,7 +2879,7 @@ Action a_check_supermaps(
         auto eff = supermap->efficiency();
         all_quests_eff += eff;
         auto eff_str = eff.str();
-        fprintf(stderr, "QUEST MAP: %08" PRIX32 " => %s%s\n", it.first, eff_str.c_str(), filename_token.c_str());
+        phosg::fwrite_fmt(stderr, "QUEST MAP: {:08X} => {}{}\n", it.first, eff_str, filename_token);
 
         auto map_state = make_shared<MapState>(
             0,
@@ -2904,18 +2887,18 @@ Action a_check_supermaps(
             0,
             phosg::random_object<uint32_t>(),
             MapState::DEFAULT_RARE_ENEMIES,
-            nullptr,
+            rand_crypt,
             supermap);
         map_state->verify();
 
-        fprintf(stderr, "  map state ok: 0x%zX objects, 0x%zX enemies, 0x%zX enemy sets, 0x%zX events\n",
+        phosg::fwrite_fmt(stderr, "  map state ok: 0x{:X} objects, 0x{:X} enemies, 0x{:X} enemy sets, 0x{:X} events\n",
             map_state->object_states.size(),
             map_state->enemy_states.size(),
             map_state->enemy_set_states.size(),
             map_state->event_states.size());
       }
       string all_quests_eff_str = all_quests_eff.str();
-      fprintf(stderr, "ALL QUEST MAPS: %s\n", all_quests_eff_str.c_str());
+      phosg::fwrite_fmt(stderr, "ALL QUEST MAPS: {}\n", all_quests_eff_str);
     });
 
 Action a_parse_object_graph(
@@ -2935,7 +2918,7 @@ Action a_generate_dc_serial_number(
       uint8_t domain = args.get<uint8_t>(1);
       uint8_t subdomain = args.get<uint8_t>(2);
       string serial_number = generate_dc_serial_number(domain, subdomain);
-      fprintf(stdout, "%s\n", serial_number.c_str());
+      phosg::fwrite_fmt(stdout, "{}\n", serial_number);
     });
 Action a_generate_all_dc_serial_numbers(
     "dc-serial-number-generator-test", nullptr,
@@ -2951,7 +2934,7 @@ Action a_generate_all_dc_serial_numbers(
       while ((serial_number = iter.next()) != 0) {
         serial_numbers[iter.domain * 3 + iter.subdomain].emplace(serial_number);
         if (((++num_serial_numbers) % 0x10000) == 0) {
-          fprintf(stderr, "... %08zX (domain=%02hhX, subdomain=%02hhX, index2=%04hX, index3=%04hX) counts=[%zu, %zu, %zu, %zu, %zu, %zu, %zu, %zu, %zu]\n",
+          phosg::fwrite_fmt(stderr, "... {:08X} (domain={:02X}, subdomain={:02X}, index2={:04X}, index3={:04X}) counts=[{}, {}, {}, {}, {}, {}, {}, {}, {}]\n",
               num_serial_numbers, iter.domain, iter.subdomain, iter.index2, iter.index3,
               serial_numbers[0].size(), serial_numbers[1].size(), serial_numbers[2].size(),
               serial_numbers[3].size(), serial_numbers[4].size(), serial_numbers[5].size(),
@@ -2969,7 +2952,7 @@ Action a_generate_all_dc_serial_numbers(
             bool was_iterated = serial_numbers[domain * 3 + subdomain].count(serial_number);
             if (is_valid != was_iterated) {
               lock_guard g(output_lock);
-              fprintf(stdout, "Mismatch at %08" PRIX64 " (domain=%hhu, subdomain=%hhu): is_valid=%s, was_iterated=%s\n",
+              phosg::fwrite_fmt(stdout, "Mismatch at {:08X} (domain={}, subdomain={}): is_valid={}, was_iterated={}\n",
                   serial_number, domain, subdomain, is_valid ? "true" : "false", was_iterated ? "true" : "false");
             } else if (is_valid && was_iterated) {
               found_counts[domain * 3 + subdomain]++;
@@ -2979,7 +2962,7 @@ Action a_generate_all_dc_serial_numbers(
         return false;
       };
       auto progress_fn = [&](uint64_t, uint64_t, uint64_t current_value, uint64_t) -> void {
-        fprintf(stderr, "... %08" PRIX64 " %" PRId64 " mismatches; counts: [%zu/%zu, %zu/%zu, %zu/%zu, %zu/%zu, %zu/%zu, %zu/%zu, %zu/%zu, %zu/%zu, %zu/%zu]\r", current_value, num_mismatches.load(),
+        phosg::fwrite_fmt(stderr, "... {:08X} {} mismatches; counts: [{}/{}, {}/{}, {}/{}, {}/{}, {}/{}, {}/{}, {}/{}, {}/{}, {}/{}]\r", current_value, num_mismatches.load(),
             found_counts[0].load(), serial_numbers[0].size(),
             found_counts[1].load(), serial_numbers[1].size(),
             found_counts[2].load(), serial_numbers[2].size(),
@@ -3012,13 +2995,13 @@ Action a_inspect_dc_serial_number(
       for (uint8_t domain = 0; domain < 3; domain++) {
         for (uint8_t subdomain = 0; subdomain < 3; subdomain++) {
           if (dc_serial_number_is_valid_fast(serial_number_str, domain, subdomain)) {
-            fprintf(stdout, "%s is valid in domain %hhu subdomain %hhu\n", serial_number_str.c_str(), domain, subdomain);
+            phosg::fwrite_fmt(stdout, "{} is valid in domain {} subdomain {}\n", serial_number_str, domain, subdomain);
             num_valid_subdomains++;
           }
         }
       }
       if (num_valid_subdomains == 0) {
-        fprintf(stdout, "%s is not valid in any domain\n", serial_number_str.c_str());
+        phosg::fwrite_fmt(stdout, "{} is not valid in any domain\n", serial_number_str);
       }
     });
 Action a_dc_serial_number_speed_test(
@@ -3048,10 +3031,10 @@ Action a_diff_executables(
       const string& a_filename = args.get<string>(1);
       const string& b_filename = args.get<string>(2);
       bool show_pre = args.get<bool>("show-pre");
-      bool a_is_dol = phosg::ends_with(a_filename, ".dol");
-      bool b_is_dol = phosg::ends_with(b_filename, ".dol");
-      bool a_is_xbe = phosg::ends_with(a_filename, ".xbe");
-      bool b_is_xbe = phosg::ends_with(b_filename, ".xbe");
+      bool a_is_dol = a_filename.ends_with(".dol");
+      bool b_is_dol = b_filename.ends_with(".dol");
+      bool a_is_xbe = a_filename.ends_with(".xbe");
+      bool b_is_xbe = b_filename.ends_with(".xbe");
       std::vector<DiffEntry> result;
       if (a_is_dol && b_is_dol) {
         result = diff_dol_files(a_filename, b_filename);
@@ -3064,9 +3047,9 @@ Action a_diff_executables(
         string b_str = phosg::format_data_string(it.b_data, nullptr, phosg::FormatDataFlags::HEX_ONLY);
         if (show_pre) {
           string a_str = phosg::format_data_string(it.a_data, nullptr, phosg::FormatDataFlags::HEX_ONLY);
-          fprintf(stdout, "%08" PRIX32 ": %s => %s\n", it.address, a_str.c_str(), b_str.c_str());
+          phosg::fwrite_fmt(stdout, "{:08X}: {} => {}\n", it.address, a_str, b_str);
         } else {
-          fprintf(stdout, "%08" PRIX32 " %s\n", it.address, b_str.c_str());
+          phosg::fwrite_fmt(stdout, "{:08X} {}\n", it.address, b_str);
         }
       }
     });
@@ -3077,7 +3060,7 @@ Action a_generate_hangame_creds(
       const string& token = args.get<string>(2);
       const string& unused = args.get<string>(3, false);
       string hex = phosg::format_data_string(encode_psobb_hangame_credentials(user_id, token, unused));
-      fprintf(stdout, "psobb.exe 1196310600 %s\n", hex.c_str());
+      phosg::fwrite_fmt(stdout, "psobb.exe 1196310600 {}\n", hex);
     });
 
 Action a_format_ep3_battle_record(
@@ -3090,8 +3073,8 @@ Action a_format_ep3_battle_record(
 Action a_replay_ep3_battle_commands(
     "replay-ep3-battle-commands", nullptr, +[](phosg::Arguments& args) {
       auto s = make_shared<ServerState>(get_config_filename(args));
-      s->load_ep3_cards(false);
-      s->load_ep3_maps(false);
+      s->load_ep3_cards();
+      s->load_ep3_maps();
 
       int64_t base_seed = args.get<int64_t>("seed", -1);
       bool is_trial = (get_cli_version(args, Version::GC_EP3) == Version::GC_EP3_NTE);
@@ -3111,7 +3094,7 @@ Action a_replay_ep3_battle_commands(
             .map_index = s->ep3_map_index,
             .behavior_flags = 0x0092,
             .opt_rand_stream = nullptr,
-            .opt_rand_crypt = (seed >= 0) ? make_shared<PSOV2Encryption>(seed) : nullptr,
+            .rand_crypt = make_shared<MT19937Generator>(seed),
             .tournament = nullptr,
             .trap_card_ids = {},
         };
@@ -3142,8 +3125,8 @@ Action a_replay_ep3_battle_record(
       auto rec = make_shared<Episode3::BattleRecord>(read_input_data(args));
 
       auto s = make_shared<ServerState>(get_config_filename(args));
-      s->load_ep3_cards(false);
-      s->load_ep3_maps(false);
+      s->load_ep3_cards();
+      s->load_ep3_maps();
 
       bool is_trial = (get_cli_version(args, Version::GC_EP3) == Version::GC_EP3_NTE);
 
@@ -3155,7 +3138,7 @@ Action a_replay_ep3_battle_record(
               Episode3::BehaviorFlag::DISABLE_MASKING |
               Episode3::BehaviorFlag::LOG_COMMANDS_IF_LOBBY_MISSING),
           .opt_rand_stream = make_shared<phosg::StringReader>(rec->get_random_stream()),
-          .opt_rand_crypt = nullptr,
+          .rand_crypt = make_shared<DisabledRandomGenerator>(),
           .tournament = nullptr,
           .trap_card_ids = {},
       };
@@ -3166,7 +3149,7 @@ Action a_replay_ep3_battle_record(
       auto server = make_shared<Episode3::Server>(nullptr, std::move(options));
       server->init();
       for (const auto& command : rec->get_all_server_data_commands()) {
-        phosg::log_info("Server data command");
+        phosg::log_info_f("Server data command");
         phosg::print_data(stderr, command, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
         server->on_server_data_input(nullptr, command);
       }
@@ -3181,161 +3164,103 @@ Action a_run_server_replay_log(
     "", nullptr, +[](phosg::Arguments& args) {
       {
         string build_date = phosg::format_time(BUILD_TIMESTAMP);
-        config_log.info("newserv %s compiled at %s", GIT_REVISION_HASH, build_date.c_str());
+        config_log.info_f("newserv {} compiled at {}", GIT_REVISION_HASH, build_date);
       }
 
-      if (evthread_use_pthreads()) {
-        throw runtime_error("failed to set up libevent threads");
-      }
-
-      if (!phosg::isdir("system/players")) {
-        config_log.info("Players directory does not exist; creating it");
-        mkdir("system/players", 0755);
+      if (!std::filesystem::is_directory("system/players")) {
+        config_log.info_f("Players directory does not exist; creating it");
+        std::filesystem::create_directories("system/players");
       }
 
       const string& replay_log_filename = args.get<string>("replay-log");
-      bool is_replay = !replay_log_filename.empty();
 
+#ifndef PHOSG_WINDOWS
       signal(SIGPIPE, SIG_IGN);
-      if (isatty(fileno(stderr))) {
+#endif
+      if (!phosg::is_windows() && isatty(fileno(stderr))) {
         use_terminal_colors = true;
       }
 
-      if (is_replay) {
-        set_function_compiler_available(false);
-      }
+      auto state = make_shared<ServerState>(get_config_filename(args));
+      state->load_all(true);
 
-      shared_ptr<struct event_base> base(event_base_new(), event_base_free);
-      auto state = make_shared<ServerState>(base, get_config_filename(args), is_replay);
-      state->load_all();
-
-      if (state->dns_server_port && !is_replay) {
+      if (state->dns_server_port) {
         if (!state->dns_server_addr.empty()) {
-          config_log.info("Starting DNS server on %s:%hu", state->dns_server_addr.c_str(), state->dns_server_port);
+          config_log.info_f("Starting DNS server on {}:{}", state->dns_server_addr, state->dns_server_port);
         } else {
-          config_log.info("Starting DNS server on port %hu", state->dns_server_port);
+          config_log.info_f("Starting DNS server on port {}", state->dns_server_port);
         }
-        state->dns_server = make_shared<DNSServer>(
-            base, state->local_address, state->external_address, state->banned_ipv4_ranges);
+        state->dns_server = make_shared<DNSServer>(state);
         state->dns_server->listen(state->dns_server_addr, state->dns_server_port);
       } else {
-        config_log.info("DNS server is disabled");
+        config_log.info_f("DNS server is disabled");
       }
 
       shared_ptr<ServerShell> shell;
       shared_ptr<ReplaySession> replay_session;
       shared_ptr<SignalWatcher> signal_watcher;
-      if (is_replay) {
-        config_log.info("Starting proxy server");
-        state->proxy_server = make_shared<ProxyServer>(base, state);
-        config_log.info("Starting game server");
-        state->game_server = make_shared<Server>(base, state);
+      if (!replay_log_filename.empty()) {
+        config_log.info_f("Starting game server");
+        state->game_server = make_shared<GameServer>(state);
 
-        auto nop_destructor = +[](FILE*) {};
-        shared_ptr<FILE> log_f(stdin, nop_destructor);
-        if (replay_log_filename != "-") {
-          log_f = phosg::fopen_shared(replay_log_filename, "rt");
-        }
+        auto log_f = phosg::fopen_shared(replay_log_filename, "rt");
 
-        replay_session = make_shared<ReplaySession>(base, log_f.get(), state, args.get<bool>("require-basic-credentials"));
-        replay_session->start();
+        replay_session = make_shared<ReplaySession>(state, log_f.get(), false);
+        asio::co_spawn(*state->io_context, replay_session->run(), asio::detached);
 
       } else {
-        config_log.info("Opening sockets");
-        for (const auto& it : state->name_to_port_config) {
-          const auto& pc = it.second;
-          if (pc->behavior == ServerBehavior::PROXY_SERVER) {
-            if (!state->proxy_server.get()) {
-              config_log.info("Starting proxy server");
-              state->proxy_server = make_shared<ProxyServer>(base, state);
-            }
-
-            // For PC and GC, proxy sessions are dynamically created when a client
-            // picks a destination from the menu. For patch and BB clients, there's
-            // no way to ask the client which destination they want, so only one
-            // destination is supported, and we have to manually specify the
-            // destination netloc here.
-            if (is_patch(pc->version)) {
-              auto [ss, size] = phosg::make_sockaddr_storage(
-                  state->proxy_destination_patch.first,
-                  state->proxy_destination_patch.second);
-              state->proxy_server->listen(pc->addr, pc->port, pc->version, &ss);
-            } else if (is_v4(pc->version)) {
-              auto [ss, size] = phosg::make_sockaddr_storage(
-                  state->proxy_destination_bb.first,
-                  state->proxy_destination_bb.second);
-              state->proxy_server->listen(pc->addr, pc->port, pc->version, &ss);
-            } else {
-              state->proxy_server->listen(pc->addr, pc->port, pc->version);
-            }
-
-          } else if (pc->behavior == ServerBehavior::PATCH_SERVER_PC) {
-            if (!state->pc_patch_server.get()) {
-              config_log.info("Starting PC_V2 patch server");
-              state->pc_patch_server = make_shared<PatchServer>(state->generate_patch_server_config(false));
-            }
-            string spec = phosg::string_printf("TU-%hu-%s-patch2", pc->port, pc->name.c_str());
-            state->pc_patch_server->listen(spec, pc->addr, pc->port, Version::PC_PATCH);
-
-          } else if (pc->behavior == ServerBehavior::PATCH_SERVER_BB) {
-            if (!state->bb_patch_server.get()) {
-              config_log.info("Starting BB_V4 patch server");
-              state->bb_patch_server = make_shared<PatchServer>(state->generate_patch_server_config(true));
-            }
-            string spec = phosg::string_printf("TU-%hu-%s-patch4", pc->port, pc->name.c_str());
-            state->bb_patch_server->listen(spec, pc->addr, pc->port, Version::BB_PATCH);
-
-          } else {
-            if (!state->game_server.get()) {
-              config_log.info("Starting game server");
-              state->game_server = make_shared<Server>(base, state);
-            }
-            string spec = phosg::string_printf("TG-%hu-%s-%s-%s", pc->port, phosg::name_for_enum(pc->version), pc->name.c_str(), phosg::name_for_enum(pc->behavior));
-            state->game_server->listen(spec, pc->addr, pc->port, pc->version, pc->behavior);
+        config_log.info_f("Opening sockets");
+        for (const auto& [_, pc] : state->name_to_port_config) {
+          if (!state->game_server.get()) {
+            config_log.info_f("Starting game server");
+            state->game_server = make_shared<GameServer>(state);
           }
+          string spec = std::format("TG-{}-{}-{}-{}",
+              pc->port, phosg::name_for_enum(pc->version), pc->name, phosg::name_for_enum(pc->behavior));
+          state->game_server->listen(spec, pc->addr, pc->port, pc->version, pc->behavior);
         }
 
         if (!state->ip_stack_addresses.empty() || !state->ppp_stack_addresses.empty() || !state->ppp_raw_addresses.empty()) {
-          config_log.info("Starting IP/PPP stack simulator");
-          state->ip_stack_simulator = make_shared<IPStackSimulator>(base, state);
+          config_log.info_f("Starting IP/PPP stack simulator");
+          state->ip_stack_simulator = make_shared<IPStackSimulator>(state);
           for (const auto& it : state->ip_stack_addresses) {
             auto netloc = phosg::parse_netloc(it);
-            string spec = (netloc.second == 0) ? ("T-IPS-" + netloc.first) : phosg::string_printf("T-IPS-%hu", netloc.second);
+            string spec = (netloc.second == 0) ? ("T-IPS-" + netloc.first) : std::format("T-IPS-{}", netloc.second);
             state->ip_stack_simulator->listen(
-                spec, netloc.first, netloc.second, IPStackSimulator::Protocol::ETHERNET_TAPSERVER);
+                spec, netloc.first, netloc.second, VirtualNetworkProtocol::ETHERNET_TAPSERVER);
           }
           for (const auto& it : state->ppp_stack_addresses) {
             auto netloc = phosg::parse_netloc(it);
-            string spec = (netloc.second == 0) ? ("T-PPPST-" + netloc.first) : phosg::string_printf("T-PPPST-%hu", netloc.second);
+            string spec = (netloc.second == 0) ? ("T-PPPST-" + netloc.first) : std::format("T-PPPST-{}", netloc.second);
             state->ip_stack_simulator->listen(
-                spec, netloc.first, netloc.second, IPStackSimulator::Protocol::HDLC_TAPSERVER);
+                spec, netloc.first, netloc.second, VirtualNetworkProtocol::HDLC_TAPSERVER);
           }
           for (const auto& it : state->ppp_raw_addresses) {
             auto netloc = phosg::parse_netloc(it);
-            string spec = (netloc.second == 0) ? ("T-PPPSR-" + netloc.first) : phosg::string_printf("T-PPPSR-%hu", netloc.second);
+            string spec = (netloc.second == 0) ? ("T-PPPSR-" + netloc.first) : std::format("T-PPPSR-{}", netloc.second);
             state->ip_stack_simulator->listen(
-                spec, netloc.first, netloc.second, IPStackSimulator::Protocol::HDLC_RAW);
+                spec, netloc.first, netloc.second, VirtualNetworkProtocol::HDLC_RAW);
             if (netloc.second) {
               if (state->local_address == 0 && state->external_address == 0) {
-                config_log.info(
-                    "Cannot generate Devolution phone numbers for %s because LocalAddress and ExternalAddress are not specified in the configuration",
-                    spec.c_str());
+                config_log.info_f(
+                    "Cannot generate Devolution phone numbers for {} because LocalAddress and ExternalAddress are not specified in the configuration",
+                    spec);
               } else if (state->local_address == 0) {
-                config_log.info(
-                    "Note: The Devolution phone number for %s is %" PRIu64 " (external)",
-                    spec.c_str(), devolution_phone_number_for_netloc(state->external_address, netloc.second));
+                config_log.info_f(
+                    "Note: The Devolution phone number for {} is {} (external)",
+                    spec, devolution_phone_number_for_netloc(state->external_address, netloc.second));
               } else if (state->external_address == 0) {
-                config_log.info(
-                    "Note: The Devolution phone number for %s is %" PRIu64 " (local)",
-                    spec.c_str(), devolution_phone_number_for_netloc(state->local_address, netloc.second));
+                config_log.info_f(
+                    "Note: The Devolution phone number for {} is {} (local)",
+                    spec, devolution_phone_number_for_netloc(state->local_address, netloc.second));
               } else if (state->local_address == state->external_address) {
-                config_log.info(
-                    "Note: The Devolution phone number for %s is %" PRIu64 " (local+external)",
-                    spec.c_str(), devolution_phone_number_for_netloc(state->local_address, netloc.second));
+                config_log.info_f(
+                    "Note: The Devolution phone number for {} is {} (local+external)",
+                    spec, devolution_phone_number_for_netloc(state->local_address, netloc.second));
               } else {
-                config_log.info(
-                    "Note: The Devolution phone numbers for %s are %" PRIu64 " (local) and %" PRIu64 " (external)",
-                    spec.c_str(),
+                config_log.info_f(
+                    "Note: The Devolution phone numbers for {} are {} (local) and {} (external)",
+                    spec,
                     devolution_phone_number_for_netloc(state->local_address, netloc.second),
                     devolution_phone_number_for_netloc(state->external_address, netloc.second));
               }
@@ -3344,9 +3269,8 @@ Action a_run_server_replay_log(
         }
 
         if (!state->http_addresses.empty() || !state->http_addresses.empty()) {
-          config_log.info("Starting HTTP server");
-          shared_ptr<struct event_base> shared_base = IS_WINDOWS ? state->base : nullptr;
-          state->http_server = make_shared<HTTPServer>(state, shared_base);
+          config_log.info_f("Starting HTTP server");
+          state->http_server = make_shared<HTTPServer>(state);
           for (const auto& it : state->http_addresses) {
             auto netloc = phosg::parse_netloc(it);
             state->http_server->listen(netloc.first, netloc.second);
@@ -3354,15 +3278,17 @@ Action a_run_server_replay_log(
         }
 
 #ifndef PHOSG_WINDOWS
-        config_log.info("Enabling signal watcher");
+        config_log.info_f("Enabling signal watcher");
         signal_watcher = make_shared<SignalWatcher>(state);
 #endif
       }
 
+#ifndef PHOSG_WINDOWS
       if (!state->username.empty()) {
-        config_log.info("Switching to user %s", state->username.c_str());
+        config_log.info_f("Switching to user {}", state->username);
         drop_privileges(state->username);
       }
+#endif
 
       bool should_run_shell;
       if (state->run_shell_behavior == ServerState::RunShellBehavior::DEFAULT) {
@@ -3376,50 +3302,22 @@ Action a_run_server_replay_log(
         should_run_shell = !replay_session.get();
       }
 
-      config_log.info("Ready");
+      config_log.info_f("Ready");
       if (should_run_shell) {
         shell = make_shared<ServerShell>(state);
       }
 
-      event_base_dispatch(base.get());
+      state->io_context->run();
+      config_log.info_f("Normal shutdown");
 
-      if (replay_session) {
-        // If in a replay session, run the event loop for a bit longer to make
-        // sure the server doesn't send anything unexpected after the end of
-        // the session.
-        auto tv = phosg::usecs_to_timeval(500000);
-        event_base_loopexit(base.get(), &tv);
-        event_base_dispatch(base.get());
+      if (replay_session && replay_session->failed()) {
+        throw runtime_error("Replay failed");
       }
-
-      config_log.info("Normal shutdown");
-      if (state->pc_patch_server) {
-        state->pc_patch_server->schedule_stop();
-      }
-      if (state->bb_patch_server) {
-        state->bb_patch_server->schedule_stop();
-      }
-      if (state->http_server) {
-        state->http_server->schedule_stop();
-      }
-      if (state->pc_patch_server) {
-        config_log.info("Waiting for PC_V2 patch server to stop");
-        state->pc_patch_server->wait_for_stop();
-      }
-      if (state->bb_patch_server) {
-        config_log.info("Waiting for BB_V4 patch server to stop");
-        state->bb_patch_server->wait_for_stop();
-      }
-      if (state->http_server) {
-        config_log.info("Waiting for HTTP server to stop");
-        state->http_server->wait_for_stop();
-      }
-      state->proxy_server.reset(); // Break reference cycle
     });
 
 void print_version_info() {
   string build_date = phosg::format_time(BUILD_TIMESTAMP);
-  fprintf(stderr, "newserv-%s built %s UTC\n", GIT_REVISION_HASH, build_date.c_str());
+  phosg::fwrite_fmt(stderr, "newserv-{} built {} UTC\n", GIT_REVISION_HASH, build_date);
 }
 
 void print_usage() {
@@ -3487,7 +3385,7 @@ int main(int argc, char** argv) {
   try {
     a = all_actions.at(action_name);
   } catch (const out_of_range&) {
-    phosg::log_error("Unknown or invalid action; try --help");
+    phosg::log_error_f("Unknown or invalid action; try --help");
     return 1;
   }
   if (IS_WINDOWS) {
@@ -3497,19 +3395,19 @@ int main(int argc, char** argv) {
     try {
       a->run(args);
     } catch (const phosg::cannot_open_file& e) {
-      phosg::log_error("Top-level exception (cannot_open_file): %s", e.what());
+      phosg::log_error_f("Top-level exception (cannot_open_file): {}", e.what());
       throw;
     } catch (const invalid_argument& e) {
-      phosg::log_error("Top-level exception (invalid_argument): %s", e.what());
+      phosg::log_error_f("Top-level exception (invalid_argument): {}", e.what());
       throw;
     } catch (const out_of_range& e) {
-      phosg::log_error("Top-level exception (out_of_range): %s", e.what());
+      phosg::log_error_f("Top-level exception (out_of_range): {}", e.what());
       throw;
     } catch (const runtime_error& e) {
-      phosg::log_error("Top-level exception (runtime_error): %s", e.what());
+      phosg::log_error_f("Top-level exception (runtime_error): {}", e.what());
       throw;
     } catch (const exception& e) {
-      phosg::log_error("Top-level exception: %s", e.what());
+      phosg::log_error_f("Top-level exception: {}", e.what());
       throw;
     }
   } else {

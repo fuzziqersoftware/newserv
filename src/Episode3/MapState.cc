@@ -20,11 +20,11 @@ void MapState::clear() {
 }
 
 void MapState::print(FILE* stream) const {
-  fprintf(stream, "[Map: w=%hu h=%hu]\n", this->width.load(), this->height.load());
+  phosg::fwrite_fmt(stream, "[Map: w={} h={}]\n", this->width, this->height);
   for (size_t y = 0; y < this->height; y++) {
     fputc(' ', stream);
     for (size_t x = 0; x < this->width; x++) {
-      fprintf(stream, " %02hhX", this->tiles[y][x]);
+      phosg::fwrite_fmt(stream, " {:02X}", this->tiles[y][x]);
     }
     fputc('\n', stream);
   }

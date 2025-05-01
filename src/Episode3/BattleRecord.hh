@@ -1,8 +1,8 @@
 #pragma once
 
-#include <event2/event.h>
 #include <stdint.h>
 
+#include <asio.hpp>
 #include <deque>
 #include <memory>
 #include <phosg/Strings.hh>
@@ -108,7 +108,7 @@ private:
 
 class BattleRecordPlayer {
 public:
-  BattleRecordPlayer(std::shared_ptr<const BattleRecord> rec, std::shared_ptr<struct event_base> base);
+  BattleRecordPlayer(std::shared_ptr<asio::io_context> io_context, std::shared_ptr<const BattleRecord> rec);
   ~BattleRecordPlayer() = default;
 
   std::shared_ptr<const BattleRecord> get_record() const;
@@ -117,16 +117,14 @@ public:
   void start();
 
 private:
-  static void dispatch_schedule_events(evutil_socket_t, short, void* ctx);
-  void schedule_events();
-
+  std::shared_ptr<asio::io_context> io_context;
   std::shared_ptr<const BattleRecord> record;
   std::deque<BattleRecord::Event>::const_iterator event_it;
   uint64_t play_start_timestamp;
-  std::shared_ptr<struct event_base> base;
   std::weak_ptr<Lobby> lobby;
-  std::shared_ptr<struct event> next_command_ev;
-  phosg::StringReader random_r;
+  asio::steady_timer next_command_timer;
+
+  asio::awaitable<void> play_task();
 };
 
 } // namespace Episode3

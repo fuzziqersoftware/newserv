@@ -1,4 +1,6 @@
 List of differences in Ep3 NTE compared to Final:
+- COMs can play more than one defense card per turn
+- The battle setup menu allows 1v2 battles
 - Assist cards
 - - Dice Fever sets dice to 6, not 5, and there is no Dice Fever +
 - - Rich + and Charity + also don't exist

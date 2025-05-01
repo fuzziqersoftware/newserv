@@ -187,7 +187,7 @@ void DeckState::restart() {
   this->shuffle();
 }
 
-void DeckState::do_mulligan(bool is_nte) {
+void DeckState::redraw_initial_hand(bool is_nte) {
   for (size_t z = 0; z < this->entries.size(); z++) {
     if (this->entries[z].state == CardState::DISCARDED) {
       this->entries[z].state = CardState::DRAWABLE;
@@ -308,7 +308,7 @@ static const char* name_for_card_state(DeckState::CardState st) {
 }
 
 void DeckState::print(FILE* stream, std::shared_ptr<const CardIndex> card_index) const {
-  fprintf(stream, "DeckState: client_id=%hhu draw_index=%hhu card_ref_base=@%04hX shuffle=%s loop=%s\n",
+  phosg::fwrite_fmt(stream, "DeckState: client_id={} draw_index={} card_ref_base=@{:04X} shuffle={} loop={}\n",
       this->client_id, this->draw_index, this->card_ref_base, this->shuffle_enabled ? "true" : "false", this->loop_enabled ? "true" : "false");
   for (size_t z = 0; z < 31; z++) {
     const auto& e = this->entries[z];
@@ -321,10 +321,10 @@ void DeckState::print(FILE* stream, std::shared_ptr<const CardIndex> card_index)
     }
     if (ce) {
       string name = ce->def.en_name.decode(1);
-      fprintf(stream, "  (%02zu) index=%02hhX ref=@%04hX card_id=#%04hX \"%s\" %s\n",
-          z, e.deck_index, this->card_refs[z], e.card_id, name.c_str(), name_for_card_state(e.state));
+      phosg::fwrite_fmt(stream, "  ({:02}) index={:02X} ref=@{:04X} card_id=#{:04X} \"{}\" {}\n",
+          z, e.deck_index, this->card_refs[z], e.card_id, name, name_for_card_state(e.state));
     } else {
-      fprintf(stream, "  (%02zu) index=%02hhX ref=@%04hX card_id=#%04hX %s\n",
+      phosg::fwrite_fmt(stream, "  ({:02}) index={:02X} ref=@{:04X} card_id=#{:04X} {}\n",
           z, e.deck_index, this->card_refs[z], e.card_id, name_for_card_state(e.state));
     }
   }

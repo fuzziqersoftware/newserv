@@ -82,19 +82,19 @@ void BattleRecord::Event::serialize(phosg::StringWriter& w) const {
 
 void BattleRecord::Event::print(FILE* stream) const {
   string time_str = phosg::format_time(this->timestamp);
-  fprintf(stream, "Event @%016" PRIX64 " (%s) ", this->timestamp, time_str.c_str());
+  phosg::fwrite_fmt(stream, "Event @{:016X} ({}) ", this->timestamp, time_str);
   switch (this->type) {
     case Type::PLAYER_JOIN:
-      fprintf(stream, "PLAYER_JOIN %02" PRIX32 "\n", this->players[0].lobby_data.client_id.load());
+      phosg::fwrite_fmt(stream, "PLAYER_JOIN {:02X}\n", this->players[0].lobby_data.client_id);
       this->players[0].print(stream);
       break;
     case Type::PLAYER_LEAVE:
-      fprintf(stream, "PLAYER_LEAVE %02hhu\n", this->leaving_client_id);
+      phosg::fwrite_fmt(stream, "PLAYER_LEAVE {:02}\n", this->leaving_client_id);
       break;
     case Type::SET_INITIAL_PLAYERS:
-      fprintf(stream, "SET_INITIAL_PLAYERS");
+      phosg::fwrite_fmt(stream, "SET_INITIAL_PLAYERS");
       for (const auto& player : this->players) {
-        fprintf(stream, " %02" PRIX32, player.lobby_data.client_id.load());
+        phosg::fwrite_fmt(stream, " {:02X}", player.lobby_data.client_id);
       }
       fputc('\n', stream);
       for (const auto& player : this->players) {
@@ -102,23 +102,23 @@ void BattleRecord::Event::print(FILE* stream) const {
       }
       break;
     case Type::BATTLE_COMMAND:
-      fprintf(stream, "BATTLE_COMMAND\n");
+      phosg::fwrite_fmt(stream, "BATTLE_COMMAND\n");
       phosg::print_data(stream, this->data, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
       break;
     case Type::GAME_COMMAND:
-      fprintf(stream, "GAME_COMMAND\n");
+      phosg::fwrite_fmt(stream, "GAME_COMMAND\n");
       phosg::print_data(stream, this->data, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
       break;
     case Type::EP3_GAME_COMMAND:
-      fprintf(stream, "EP3_GAME_COMMAND\n");
+      phosg::fwrite_fmt(stream, "EP3_GAME_COMMAND\n");
       phosg::print_data(stream, this->data, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
       break;
     case Type::CHAT_MESSAGE:
-      fprintf(stream, "CHAT_MESSAGE %08" PRIX32 "\n", this->guild_card_number);
+      phosg::fwrite_fmt(stream, "CHAT_MESSAGE {:08X}\n", this->guild_card_number);
       phosg::print_data(stream, this->data, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
       break;
     case Type::SERVER_DATA_COMMAND:
-      fprintf(stream, "SERVER_DATA_COMMAND\n");
+      phosg::fwrite_fmt(stream, "SERVER_DATA_COMMAND\n");
       phosg::print_data(stream, this->data, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
       break;
     default:
@@ -363,26 +363,24 @@ void BattleRecord::set_battle_end_timestamp() {
 void BattleRecord::print(FILE* stream) const {
   string start_str = phosg::format_time(this->battle_start_timestamp);
   string end_str = phosg::format_time(this->battle_end_timestamp);
-  fprintf(stream, "BattleRecord %s behavior_flags=%08" PRIX32 " start=%016" PRIX64 " (%s) end=%016" PRIX64 " (%s); %zu events\n",
+  phosg::fwrite_fmt(stream, "BattleRecord {} behavior_flags={:08X} start={:016X} ({}) end={:016X} ({}); {} events\n",
       this->is_writable ? "writable" : "read-only",
       this->behavior_flags,
       this->battle_start_timestamp,
-      start_str.c_str(),
+      start_str,
       this->battle_end_timestamp,
-      end_str.c_str(), this->events.size());
+      end_str, this->events.size());
   for (const auto& event : this->events) {
     event.print(stream);
   }
 }
 
-BattleRecordPlayer::BattleRecordPlayer(
-    shared_ptr<const BattleRecord> rec,
-    shared_ptr<struct event_base> base)
-    : record(rec),
+BattleRecordPlayer::BattleRecordPlayer(std::shared_ptr<asio::io_context> io_context, shared_ptr<const BattleRecord> rec)
+    : io_context(io_context),
+      record(rec),
       event_it(this->record->events.begin()),
       play_start_timestamp(0),
-      base(base),
-      next_command_ev(event_new(this->base.get(), -1, EV_TIMEOUT, &BattleRecordPlayer::dispatch_schedule_events, this), event_free) {}
+      next_command_timer(*this->io_context) {}
 
 shared_ptr<const BattleRecord> BattleRecordPlayer::get_record() const {
   return this->record;
@@ -395,40 +393,37 @@ void BattleRecordPlayer::set_lobby(shared_ptr<Lobby> l) {
 void BattleRecordPlayer::start() {
   if (this->play_start_timestamp == 0) {
     this->play_start_timestamp = phosg::now();
-    this->schedule_events();
+    asio::co_spawn(*this->io_context, this->play_task(), asio::detached);
   }
 }
 
-void BattleRecordPlayer::dispatch_schedule_events(evutil_socket_t, short, void* ctx) {
-  reinterpret_cast<BattleRecordPlayer*>(ctx)->schedule_events();
-}
-
-void BattleRecordPlayer::schedule_events() {
-  // If the lobby is destroyed, we can't replay anything - just return without
-  // rescheduling
+asio::awaitable<void> BattleRecordPlayer::play_task() {
   auto l = this->lobby.lock();
-  if (!l) {
-    return;
-  }
 
   for (;;) {
     uint64_t relative_ts = phosg::now() - this->play_start_timestamp + this->record->battle_start_timestamp;
+
+    // If the lobby is destroyed, we can't replay anything
+    if (!l) {
+      co_return;
+    }
 
     if (this->event_it == this->record->events.end()) {
       if (relative_ts >= this->record->battle_end_timestamp) {
         // If the record is complete and the end timestamp has been reached,
         // send exit commands to all players in the lobby, and don't reschedule
-        // the event (it will be deleted along with the Player when the lobby is
-        // destroyed, when the last client leaves)
+        // the event (it will be deleted along with the Player when the lobby
+        // is destroyed, when the last client leaves)
         send_command(l, 0xED, 0x00);
+        break;
 
       } else {
-        // There are no more events to play, but the battle has not officially
-        // ended yet - reschedule the event for the end time
-        auto tv = phosg::usecs_to_timeval(this->record->battle_end_timestamp - relative_ts);
-        event_add(this->next_command_ev.get(), &tv);
+        // There are no more events to play, but the battle has not actually
+        // ended yet; wait until the end time
+        this->next_command_timer.expires_after(std::chrono::microseconds(this->record->battle_end_timestamp - relative_ts));
+        co_await this->next_command_timer.async_wait(asio::use_awaitable);
+        l = this->lobby.lock();
       }
-      break;
 
     } else {
       if (this->event_it->timestamp <= relative_ts) {
@@ -464,11 +459,10 @@ void BattleRecordPlayer::schedule_events() {
         this->event_it++;
 
       } else {
-        // The next event should not occur yet, so reschedule for the time when
-        // it should occur
-        auto tv = phosg::usecs_to_timeval(this->event_it->timestamp - relative_ts);
-        event_add(this->next_command_ev.get(), &tv);
-        break;
+        // The next event should not occur yet, so wait until its time
+        this->next_command_timer.expires_after(std::chrono::microseconds(this->event_it->timestamp - relative_ts));
+        co_await this->next_command_timer.async_wait(asio::use_awaitable);
+        l = this->lobby.lock();
       }
     }
   }

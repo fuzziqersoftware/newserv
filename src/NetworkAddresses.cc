@@ -1,12 +1,15 @@
+#include "WindowsPlatform.hh"
+
 #include "NetworkAddresses.hh"
 
-#include <arpa/inet.h>
 #include <errno.h>
-#include <ifaddrs.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
 #include <sys/types.h>
+#ifndef PHOSG_WINDOWS
+#include <ifaddrs.h>
+#else
+#include <iphlpapi.h>
+#include <ws2tcpip.h>
+#endif
 
 #include <memory>
 #include <phosg/Encoding.hh>
@@ -16,40 +19,17 @@
 
 using namespace std;
 
-uint32_t resolve_address(const char* address) {
-  struct addrinfo* res0;
-  if (getaddrinfo(address, nullptr, nullptr, &res0)) {
-    auto e = phosg::string_for_error(errno);
-    throw runtime_error(phosg::string_printf(
-        "can\'t resolve hostname %s: %s", address, e.c_str()));
-  }
-
-  std::unique_ptr<struct addrinfo, void (*)(struct addrinfo*)> res0_unique(res0, freeaddrinfo);
-  struct addrinfo* res4 = nullptr;
-  for (struct addrinfo* res = res0; res; res = res->ai_next) {
-    if (res->ai_family == AF_INET) {
-      res4 = res;
-    }
-  }
-  if (!res4) {
-    throw runtime_error(phosg::string_printf(
-        "can\'t resolve hostname %s: no usable data", address));
-  }
-
-  struct sockaddr_in* res_sin = (struct sockaddr_in*)res4->ai_addr;
-  return ntohl(res_sin->sin_addr.s_addr);
-}
-
 map<string, uint32_t> get_local_addresses() {
+  map<string, uint32_t> ret;
+
+#ifndef PHOSG_WINDOWS
   struct ifaddrs* ifa_raw;
   if (getifaddrs(&ifa_raw)) {
     auto s = phosg::string_for_error(errno);
-    throw runtime_error(phosg::string_printf("failed to get interface addresses: %s", s.c_str()));
+    throw runtime_error(std::format("failed to get interface addresses: {}", s));
   }
-
   unique_ptr<struct ifaddrs, void (*)(struct ifaddrs*)> ifa(ifa_raw, freeifaddrs);
 
-  map<string, uint32_t> ret;
   for (struct ifaddrs* i = ifa.get(); i; i = i->ifa_next) {
     if (!i->ifa_addr) {
       continue;
@@ -62,6 +42,32 @@ map<string, uint32_t> get_local_addresses() {
 
     ret.emplace(i->ifa_name, ntohl(sin->sin_addr.s_addr));
   }
+
+#else
+  ULONG buffer_size = 0x1000;
+  std::vector<char> buffer(buffer_size);
+
+  auto* adapters = reinterpret_cast<IP_ADAPTER_ADDRESSES*>(buffer.data());
+  DWORD result = GetAdaptersAddresses(AF_INET, GAA_FLAG_INCLUDE_PREFIX, nullptr, adapters, &buffer_size);
+  if (result == ERROR_BUFFER_OVERFLOW) {
+    buffer.resize(buffer_size);
+    adapters = reinterpret_cast<IP_ADAPTER_ADDRESSES*>(buffer.data());
+    result = GetAdaptersAddresses(AF_INET, GAA_FLAG_INCLUDE_PREFIX, nullptr, adapters, &buffer_size);
+  }
+
+  if (result != NO_ERROR) {
+    throw runtime_error(std::format("GetAdaptersAddresses failed: {}", result));
+  }
+
+  for (IP_ADAPTER_ADDRESSES* adapter = adapters; adapter != nullptr; adapter = adapter->Next) {
+    for (IP_ADAPTER_UNICAST_ADDRESS* ua = adapter->FirstUnicastAddress; ua != nullptr; ua = ua->Next) {
+      if (ua->Address.lpSockaddr->sa_family == AF_INET) {
+        sockaddr_in* sa_in = reinterpret_cast<sockaddr_in*>(ua->Address.lpSockaddr);
+        ret.emplace(adapter->AdapterName, ntohl(sa_in->sin_addr.S_un.S_addr));
+      }
+    }
+  }
+#endif
 
   return ret;
 }
@@ -87,7 +93,7 @@ bool is_local_address(const sockaddr_storage& daddr) {
 }
 
 string string_for_address(uint32_t address) {
-  return phosg::string_printf("%hhu.%hhu.%hhu.%hhu",
+  return std::format("{}.{}.{}.{}",
       static_cast<uint8_t>(address >> 24), static_cast<uint8_t>(address >> 16),
       static_cast<uint8_t>(address >> 8), static_cast<uint8_t>(address));
 }

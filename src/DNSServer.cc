@@ -1,7 +1,5 @@
 #include "DNSServer.hh"
 
-#include <netinet/in.h>
-#include <poll.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -14,48 +12,23 @@
 
 #include "Loggers.hh"
 #include "NetworkAddresses.hh"
+#include "ServerState.hh"
 
 using namespace std;
 
-DNSServer::DNSServer(
-    shared_ptr<struct event_base> base,
-    uint32_t local_connect_address,
-    uint32_t external_connect_address,
-    shared_ptr<const IPV4RangeSet> banned_ipv4_ranges)
-    : base(base),
-      local_connect_address(local_connect_address),
-      external_connect_address(external_connect_address),
-      banned_ipv4_ranges(banned_ipv4_ranges) {}
-
-DNSServer::~DNSServer() {
-  for (const auto& it : this->fd_to_receive_event) {
-    close(it.first);
-  }
-}
-
-void DNSServer::listen(const std::string& socket_path) {
-  this->add_socket(phosg::listen(socket_path, 0, 0));
-}
+DNSServer::DNSServer(shared_ptr<ServerState> state)
+    : state(state) {}
 
 void DNSServer::listen(const std::string& addr, int port) {
-  this->add_socket(phosg::listen(addr, port, 0));
-}
+  if (port == 0) {
+    throw std::runtime_error("Listening port cannot be zero");
+  }
+  asio::ip::address asio_addr = addr.empty() ? asio::ip::address_v4::any() : asio::ip::make_address(addr);
+  asio::ip::udp::endpoint endpoint(asio_addr, port);
+  auto sock = make_shared<asio::ip::udp::socket>(*this->state->io_context, endpoint);
+  this->sockets.emplace(sock);
 
-void DNSServer::listen(int port) {
-  this->add_socket(phosg::listen("", port, 0));
-}
-
-void DNSServer::add_socket(int fd) {
-  unique_ptr<struct event, void (*)(struct event*)> e(
-      event_new(this->base.get(), fd, EV_READ | EV_PERSIST, &DNSServer::dispatch_on_receive_message, this),
-      event_free);
-  event_add(e.get(), nullptr);
-  this->fd_to_receive_event.emplace(fd, std::move(e));
-}
-
-void DNSServer::dispatch_on_receive_message(evutil_socket_t fd,
-    short events, void* ctx) {
-  reinterpret_cast<DNSServer*>(ctx)->on_receive_message(fd, events);
+  asio::co_spawn(*this->state->io_context, this->dns_server_task(sock), asio::detached);
 }
 
 string DNSServer::response_for_query(const void* vdata, size_t size, uint32_t resolved_address) {
@@ -77,45 +50,27 @@ string DNSServer::response_for_query(const void* vdata, size_t size, uint32_t re
   return response;
 }
 
-string DNSServer::response_for_query(
-    const string& query, uint32_t resolved_address) {
+string DNSServer::response_for_query(const string& query, uint32_t resolved_address) {
   return DNSServer::response_for_query(query.data(), query.size(), resolved_address);
 }
 
-void DNSServer::on_receive_message(int fd, short) {
+asio::awaitable<void> DNSServer::dns_server_task(std::shared_ptr<asio::ip::udp::socket> sock) {
   for (;;) {
-    struct sockaddr_storage remote;
-    socklen_t remote_size = sizeof(sockaddr_in);
-    memset(&remote, 0, remote_size);
-
     string input(2048, 0);
-    ssize_t bytes = recvfrom(fd, const_cast<char*>(input.data()), input.size(),
-        0, reinterpret_cast<sockaddr*>(&remote), &remote_size);
+    asio::ip::udp::endpoint sender_ep;
+    size_t bytes = co_await sock->async_receive_from(asio::buffer(input), sender_ep, asio::use_awaitable);
+    uint32_t sender_addr = ipv4_addr_for_asio_addr(sender_ep.address());
 
-    if (bytes < 0) {
-      if (errno != EAGAIN) {
-        dns_server_log.error("input error %d", errno);
-        throw runtime_error("cannot read from udp socket");
-      }
-      break;
-
-    } else if (bytes == 0) {
-      break;
-
-    } else if (bytes < 0x0C) {
-      dns_server_log.warning("input query too small");
+    if (bytes < 0x0C) {
+      dns_server_log.warning_f("input query too small");
       phosg::print_data(stderr, input.data(), bytes);
-
-    } else if (!this->banned_ipv4_ranges->check(remote)) {
+    } else if (!this->state->banned_ipv4_ranges->check(sender_addr)) {
       input.resize(bytes);
-      const sockaddr_in* remote_sin = reinterpret_cast<const sockaddr_in*>(&remote);
-      uint32_t remote_address = ntohl(remote_sin->sin_addr.s_addr);
-      uint32_t connect_address = is_local_address(remote_address)
-          ? this->local_connect_address
-          : this->external_connect_address;
+      uint32_t connect_address = is_local_address(sender_addr)
+          ? this->state->local_address
+          : this->state->external_address;
       string response = this->response_for_query(input, connect_address);
-      sendto(fd, response.data(), response.size(), 0,
-          reinterpret_cast<const sockaddr*>(&remote), remote_size);
+      co_await sock->async_send_to(asio::buffer(response.data(), response.size()), sender_ep, asio::use_awaitable);
     }
   }
 }

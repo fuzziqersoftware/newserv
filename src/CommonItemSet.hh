@@ -311,22 +311,22 @@ struct ProbabilityTable {
     return this->items[--this->count];
   }
 
-  void shuffle(std::shared_ptr<PSOLFGEncryption> opt_rand_crypt) {
+  void shuffle(std::shared_ptr<RandomGenerator> rand_crypt) {
     for (size_t z = 1; z < this->count; z++) {
-      size_t other_z = random_from_optional_crypt(opt_rand_crypt) % (z + 1);
+      size_t other_z = rand_crypt->next() % (z + 1);
       ItemT t = this->items[z];
       this->items[z] = this->items[other_z];
       this->items[other_z] = t;
     }
   }
 
-  ItemT sample(std::shared_ptr<PSOLFGEncryption> opt_rand_crypt) const {
+  ItemT sample(std::shared_ptr<RandomGenerator> rand_crypt) const {
     if (this->count == 0) {
       throw std::runtime_error("sample from empty probability table");
     } else if (this->count == 1) {
       return this->items[0];
     } else {
-      return this->items[random_from_optional_crypt(opt_rand_crypt) % this->count];
+      return this->items[rand_crypt->next() % this->count];
     }
   }
 };

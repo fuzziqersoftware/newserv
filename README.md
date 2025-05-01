@@ -12,8 +12,8 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
 * Background
     * [History](#history)
     * [Other server projects](#other-server-projects)
-    * [Developer information](#developer-information)
     * [Using newserv in other projects](#using-newserv-in-other-projects)
+    * [Contributing to newserv](#contributing-to-newserv)
 * [Compatibility](#compatibility)
 * Setup
     * [Server setup](#server-setup)
@@ -46,7 +46,7 @@ For a while it was essentially necessary to use a proxy to go online at all, so 
 
 <img align="left" src="static/s-aeon.png" /> Sometime in 2006 or 2007, I abandoned Khyller and rebuilt the entire thing from scratch, resulting in Aeon. Aeon was substantially cleaner in code than Khyller but still fairly hard to work with, and it lacked a few of the more arcane features I had originally written (for example, the ability to convert any quest into a download quest). In addition, the code still had some stability problems... it turns out that Aeon's concurrency primitives were simply incorrect. I had derived the concept of a mutex myself, before taking any real computer engineering classes, but had implemented it incorrectly. I made the race window as small as possible, but Aeon would still randomly crash after running seemingly fine for a few days.
 
-At the time of its inception, Aeon was also called newserv, and you may find some beta releases floating around the Internet with filenames like `newserv-b3.zip`. I had released betas 1, 2, and 3 before I released the entire source of beta 5 and stopped working on the project when I went to college. This was around the time when I switched from writing software primarily on Windows to primarily on macOS and Linux, so Aeon beta 5 was the last server I wrote that specifically targeted Windows. (newserv, which you're looking at now, is a bit tedious to compile on Windows but does work.)
+At the time of its inception, Aeon was also called newserv, and you may find some beta releases floating around the Internet with filenames like `newserv-b3.zip`. I had released betas 1, 2, and 3 before I released the entire source of beta 5 and stopped working on the project when I went to college. This was around the time when I switched from writing software primarily on Windows to primarily on macOS and Linux, so Aeon beta 5 was the last server I wrote that specifically targeted Windows. (newserv, which you're looking at now, is difficult to compile on Windows but does work.)
 
 <img align="left" src="static/s-newserv.png" /> After a long hiatus from PSO and much professional and personal development in my technical abilities, I was reminiscing sometime in October 2018 by reading my old code archives. Somehow inspired when I came across Aeon, I spent a weekend and a couple more evenings rewriting the entire project again, cleaning up ancient patterns I had used eleven years ago, replacing entire modules with simple STL containers, and eliminating even more support files in favor of configuration autodetection. The code is now suitably modern and stable, and I'm not embarrassed by its existence, as I am by Aeon beta 5's source code and my archive of Khyller (which, thankfully, no one else ever saw).
 
@@ -67,9 +67,15 @@ Independently of this project, there are many other PSO servers out there. Those
 * (2021) **[Phantasmal World](https://github.com/DaanVandenBosch/phantasmal-world)**: A set of PSO tools, including a web-based model viewer and quest builder, and a PSO server, written by Daan Vanden Bosch.
 * (2021) **[Elseware](http://git.sharnoth.com/jake/elseware)**: A PSOBB server written in Rust by Jake.
 
-## Developer information
+## Using newserv in other projects
 
-There is a lot of code in this project that could be useful as a reference. Some of the more notable files are:
+You are free to use code from newserv in your own open-source projects; the only condition is that the contents of the LICENSE file must be included in your project if you use code from newserv. Your project does not also have to use the MIT license; you can use any license you want.
+
+If you want to use parts of newserv in your project, there are two easy ways to do so with proper licensing:
+* If you're using a lot of code from newserv, you can put a copy of newserv's LICENSE file in your repository alongside your own license file, or include the contents of newserv's license in your own license file.
+* If you're only using a few files from newserv, you can copy and paste the contents of the LICENSE file into a comment at the beginning of each copied file.
+
+Some of the more likely useful files are:
 * **src/CommandFormats.hh**: Complete listing of all network commands used in all known versions of the game, and their formats
 * **src/CommonItemSet.hh/cc**: Format of ItemPT files, shop definition files, and tekker adjustment tables
 * **src/DCSerialNumbers.hh/cc**: PSO DC serial number validation algorithm and serial number generator
@@ -83,13 +89,13 @@ There is a lot of code in this project that could be useful as a reference. Some
 * **src/Episode3/DataIndexes.hh**: Episode 3 file structures, including card definition format and map/quest format
 * **system/item-tables/names-v4.json**: Names of all items, indexed by the first 3 bytes of data1
 
-## Using newserv in other projects
+## Contributing to newserv
 
-There is a fair amount of code in this project that could potentially be useful to other projects. You are free to use code from newserv in your own open-source projects; the only condition is that the contents of the LICENSE file must be included in your project if you use code from newserv. Your project does not also have to use the MIT license; you can use any license you want.
+The goals of this project are:
+* Build stable, extensible PSO server software that includes all vanilla functionality as well as optional modern conveniences, features, and cheats.
+* Document the internals of PSO's network protocol, file formats, and game mechanics. This is mainly done through comments in the code.
 
-If you want to use parts of newserv in your project, there are two easy ways to do so with proper licensing:
-* If you're using a lot of code from newserv, you can put a copy of newserv's LICENSE file in your repository alongside your own license file, or include the contents of newserv's license in your own license file.
-* If you're only using a few files from newserv, you can copy and paste the contents of the LICENSE file into a comment at the beginning of each copied file.
+This is a personal project; there is no official development team, official website, or official instance of newserv. Issues and pull requests are certainly welcome, but please only add content (e.g. quests or patches) that you've created, is already public, or you have permission to release publicly.
 
 # Compatibility
 
@@ -97,14 +103,14 @@ newserv supports all known versions of PSO, including various development protot
 
 | Version         | Lobbies  | Games    | Proxy    |
 |-----------------|----------|----------|----------|
-| DC NTE          | Yes      | Yes      | No       |
-| DC 11/2000      | Yes      | Yes      | No       |
+| DC NTE          | Yes      | Yes      | Yes      |
+| DC 11/2000      | Yes      | Yes      | Yes      |
 | DC 12/2000      | Yes      | Yes      | Yes      |
 | DC 01/2001      | Yes      | Yes      | Yes      |
 | DC V1           | Yes      | Yes      | Yes      |
 | DC 08/2001      | Yes      | Yes      | Yes      |
 | DC V2           | Yes      | Yes      | Yes      |
-| PC NTE          | Yes (1)  | Yes      | No       |
+| PC NTE          | Yes (1)  | Yes      | Yes      |
 | PC              | Yes      | Yes      | Yes      |
 | GC Ep1&2 NTE    | Yes      | Yes      | Yes      |
 | GC Ep1&2        | Yes      | Yes      | Yes      |
@@ -138,24 +144,29 @@ If you're on an older version of Windows (before Windows 10), the Cygwin librari
 
 ### Linux
 
-There are currently no precompiled releases for Linux. To run newserv on Linux, you'll have to build it from source - see the "Building from source" section below.
+There are currently no precompiled releases for Linux. To run newserv on Linux, you'll have to build it from source - see the section below.
 
-### Building from source
+### Building from source (macOS/Linux)
 
-1. Install the packages newserv depends on.
-    * If you're on Windows, install [Cygwin](https://www.cygwin.com/). While doing so, install the `cmake`, `gcc-core`, `gcc-g++`, `git`, `libevent2.1_7`, `libevent-devel`, `make`, `libiconv-devel`, and `zlib` packages. Do the rest of these steps inside a Cygwin shell (not a Windows cmd shell or PowerShell).
-    * If you're on macOS, run `brew install cmake libevent libiconv`.
-    * If you're on Linux, run `sudo apt-get install cmake libevent-dev` (or use your Linux distribution's package manager).
-3. Build and install [phosg](https://github.com/fuzziqersoftware/phosg) and [resource_dasm](https://github.com/fuzziqersoftware/resource_dasm).
-5. Run `cmake . && make` in the newserv directory.
+To build on macOS or Linux:
 
-After building newserv, edit system/config.example.json as needed **and rename it to system/config.json** (note that this step is not necessary for the precompiled releases!), set up [client patch directories](#client-patch-directories) if you're planning to play Blue Burst, then run `./newserv` in newserv's directory.
+1. Install the dependencies needed for your platform:
+    * macOS: `brew install cmake asio libiconv`
+    * Linux: `sudo apt-get install cmake libasio-dev` (or use your Linux distribution's package manager)
+2. Build and install [phosg](https://github.com/fuzziqersoftware/phosg) and [resource_dasm](https://github.com/fuzziqersoftware/resource_dasm).
+3. Run `cmake . && make` in the newserv directory.
+
+After building newserv, edit system/config.example.json as needed **and rename it to system/config.json** (note that this step is not necessary for the precompiled releases), set up [client patch directories](#client-patch-directories) if you're planning to play Blue Burst, then run `./newserv` in newserv's directory.
 
 The server has an interactive shell which can be used to make changes, such as managing user accounts, updating the server's configuration, managing Episode 3 tournaments, and more. Type `help` and press Enter to see all the commands.
 
 On Linux and macOS, the server also responds to SIGUSR1 and SIGUSR2. SIGUSR1 does the equivalent of the shell's `reload config` command, which reloads config.json but not any dependent files (so quests, Episode 3 maps, etc. will not be reloaded). SIGUSR2 does the equivalent of the shell's `reload all` command, which reloads everything.
 
 To use newserv in other ways (e.g. for translating data), see the end of this document.
+
+### Building from source (Windows)
+
+The current version of newserv is cross-compiled using mingw-w64 on a macOS build machine, with the necessary libraries manually installed. Setting up such a build environment is tedious and not recommended; it's recommended to just use a release version instead.
 
 ## Client patch directories
 
@@ -276,7 +287,8 @@ A license is a set of credentials that a player can use to log in. There are six
 * *GC licenses* consist of a 10-digit decimal serial number, a 12-character access key, and a password of up to 8 characters.
 * *XB licenses* consist of a gamertag of up to 16 characters, a 16-character hex user ID, and a 16-character hex account ID.
 * *BB licenses* consist of a username of up to 16 characters and a password of up to 16 characters.
-Each account may have multiple licenses. To add a license to an account, use `add-license` in the shell.
+
+Each account may have multiple licenses. To add a license to an existing account, use `add-license` in the shell.
 
 On BB, character data is scoped to the license, but system and Guild Card data is scoped to the account. That is, an account with multiple BB licenses can have more than 4 characters (up to 4 per license), but they will all share the same team membership and Guild Card lists.
 
@@ -374,7 +386,9 @@ newserv has the ability to save character data on the server side. For PSO BB, t
 
 Each account has 4 BB character slots and 16 non-BB character file slots. The non-BB slots are independent of the BB slots, and can be accessed with the `$savechar <slot>` and `$loadchar <slot>` commands (slots are numbered 1 through 16). `$savechar` copies the character you're currently playing as and saves the data on the server, and `$loadchar` does the reverse, overwriting your current character with the data saved on the server. Note that you can load a character that was saved from a different version of PSO, which allows you to easily transfer characters between games. On v1 and v2, changes done by `$loadchar` will be undone if you join a game; to permanently save your changes, disconnect from the lobby after using the command.
 
-There is a third command, `$bbchar <username> <password> <slot>`, which behaves similarly to `$savechar` but writes the character data to a BB character slot in a different account instead (slots are numbered 1 through 4). This can be used to "upgrade" a character to BB from an earlier version.
+You can see basic information about a character saved on the server (without affecting your current character) by using `$checkchar <slot>`. You can delete a previously-saved character with `$deletechar <slot>`.
+
+There is also the command `$bbchar <username> <password> <slot>`, which behaves similarly to `$savechar` but writes the character data to a BB character slot in a different account instead (slots are numbered 1 through 4). This can be used to "upgrade" a character to BB from an earlier version.
 
 Exactly which data is saved and loaded depends on the game version:
 
@@ -497,9 +511,9 @@ If you want to play online on remote servers rather than running your own server
 
 To use the proxy for PSO DC, PC, or GC, add an entry to the corresponding ProxyDestinations dictionary in config.json, then run newserv and connect to it as normal (see below). You'll see a "Proxy server" option in the main menu, and you can pick which remote server to connect to.
 
-To use the proxy for PSO BB, set the ProxyDestination-BB entry in config.json. If this option is set, it essentially disables the game server for all PSO BB clients - all clients will be proxied to the specified destination instead. Unfortunately, because PSO BB uses a different set of handlers for the data server phase and character selection, there's no in-game way to present the player with a list of options, like there is on PSO PC and PSO GC.
+To use the proxy for PSO BB, set the ProxyDestination-BB entry in config.json. If this option is set, it essentially disables the game server for all BB clients - all BB clients will be proxied to the specified destination instead. Unfortunately, because PSO BB uses a different set of handlers for the data server phase and character selection, there's no in-game way to present the player with a list of options, like there is on PSO PC and PSO GC.
 
-When you're on PSO DC, PC, or GC and are connected to a remote server through newserv's proxy, choosing the Change Ship or Change Block action from the lobby counter will send you back to newserv's main menu instead of the remote server's ship or block select menu. You can go back to the server you were just on by choosing it from the proxy server menu again.
+When you're on PSO DC, PC, GC, or Xbox and are connected to a remote server through newserv's proxy, choosing the Change Ship or Change Block action from the lobby counter will send you back to newserv's main menu instead of the remote server's ship or block select menu. You can go back to the server you were just on by choosing it from the proxy server menu again.
 
 There are many options available when starting a proxy session. All options are off by default unless otherwise noted. The options are:
 * **Chat commands**: enables chat commands in the proxy session (on by default).
@@ -522,54 +536,54 @@ There are many options available when starting a proxy session. All options are 
     * Episode 3 card definitions (saved as .mnr files)
     * Episode 3 media updates (saved as .gvm, .bml, or .bin files)
 
-The remote server will probably try to assign you a Guild Card number that doesn't match the one you have on newserv. On PSO DC, PC and GC, the proxy server rewrites the commands in transit to make it look like the remote server assigned you the same Guild Card number as you have on newserv, but if the remote server has some external integrations (e.g. forum or Discord bots), they will use the Guild Card number that the remote server believes it has assigned to you. The number assigned by the remote server is shown to you when you first connect to the remote server, and you can retrieve it in lobbies or during games with the `$li` command.
+The remote server will probably try to assign you a Guild Card number that doesn't match the one you have on newserv. The proxy rewrites the commands in transit to make it look like the remote server assigned you the same Guild Card number as you have on newserv, but if the remote server has some external integrations (e.g. forum or Discord bots), they will use the Guild Card number that the remote server believes it has assigned to you. The number assigned by the remote server is shown to you when you first connect to the remote server, and you can retrieve it in lobbies or during games with the `$li` command.
 
-Some chat commands (see below) have the same basic function on the proxy server but have different effects or conditions. In addition, there are some server shell commands that affect clients on the proxy (run `help` in the shell to see what they are). If there's only one proxy session open, the shell's proxy commands will affect that session. Otherwise, you'll have to specify which session to affect with the `on` prefix - to send a chat message in LinkedSession:17205AE4, for example, you would run `on 17205AE4 chat ...`.
+Some chat commands (see below) have the same basic function on the proxy but have different effects or conditions. In addition, there are some server shell commands that affect clients on the proxy (run `help` in the shell to see what they are). If there's only one proxy session open, the shell's proxy commands will affect that session. Otherwise, you'll have to specify which session to affect with the `on` prefix - to send a chat message in C-17's session, for example, you would run `on C-17 chat ...`.
 
 ## Chat commands
 
 newserv supports a variety of commands players can use by chatting in-game. Any chat message that begins with `$` is treated as a chat command. (If you actually want to send a chat message starting with `$`, type `$$` instead.) On the DC 11/2000 prototype, `@` is used instead of `$` for all chat commands, since `$` does not appear on the English virtual keyboard.
 
-Some commands only work on the game server and not on the proxy server. The chat commands are:
+Some commands only work for clients not in proxy sessions. The chat commands are:
 
 * Information commands
-    * `$li`: Show basic information about the lobby or game you're in. If you're on the proxy server, show information about your connection instead (remote Guild Card number, client ID, etc.).
-    * `$si` (game server only): Show basic information about the server.
-    * `$ping`: Show round-trip ping time from the server to you. On the proxy server, show the ping time from you to the proxy and from the proxy to the server.
-    * `$matcount` (game server only): Show how many of each type of material you've used.
-    * `$killcount` (game server only): Show the kill count on your currently-equipped weapon. If you're in a game and not on BB, the value is only accurate at the time the item enters the game.
+    * `$li`: Show basic information about the lobby or game you're in. If you're on the proxy, show information about your connection instead (remote Guild Card number, client ID, etc.).
+    * `$si`: Show basic information about the server.
+    * `$ping`: Show round-trip ping time from the server to you. On the proxy, show the ping time from you to the proxy and from the proxy to the server.
+    * `$matcount` (non-proxy only): Show how many of each type of material you've used.
+    * `$killcount` (non-proxy only): Show the kill count on your currently-equipped weapon. If you're in a game and not on BB, the value is only accurate at the time the item enters the game.
     * `$itemnotifs <mode>`: Enable item drop notification messages. If the game has private drops enabled, you will only see a notification if the dropped item is visible to you; you won't be notified of other players' drops. The modes are:
         * `off`: No notifications are shown.
         * `rare`: You are notified when a rare item drops.
         * `on`: You are notified when any item drops, except Meseta.
         * `every`: You are notified when any item drops, including Meseta.
     * `$announcerares`: Enable or disable announcements for your rare item finds. This determines whether rare items you find will be announced to the game and server, not whether you will see announcements for others finding rare items.
-    * `$what` (game server only): Show the type, name, and stats of the nearest item on the ground.
-    * `$where` (game server only): Show your current floor number and coordinates. Mainly useful for debugging.
-    * `$qfread <field-name>` (game server only): Show the value of a quest counter in your player data. The field names are defined in config.json.
+    * `$what` (non-proxy only): Show the type, name, and stats of the nearest item on the ground.
+    * `$where`: Show your current floor number and coordinates. Mainly useful for debugging.
+    * `$qfread <field-name>` (non-proxy only): Show the value of a quest counter in your player data. The field names are defined in config.json.
 
 * Debugging commands
-    * `$debug` (game server only): Enable or disable debug. You need the DEBUG flag in your user account to use this command. Enabling debug does several things:
+    * `$debug`: Enable or disable debug. You need the DEBUG flag in your user account to use this command. Enabling debug does several things:
         * You'll see in-game messages from the server when you take some actions, like killing enemies, opening boxes, or flipping switches.
         * You'll see the rare seed value and floor variations when you join a game.
         * You'll be placed into the last available slot in lobbies and games instead of the first, unless you're joining a BB solo-mode game.
         * You'll be able to join games with any PSO version, not only those for which cross-version play is normally enabled. See the "Cross-version play" section above for details on this.
         * Most of the commands in this section are enabled. (A few of them are always enabled and don't require `$debug`.)
-    * `$whatobj` and `$whatene` (game server only): Tells you what the closest object or enemy spawn point is to your position, along with its coordinates and object or enemy ID. The full definition is also printed to the server's log. These commands can be used without `$debug` enabled.
-    * `$readmem <address>` (game server only): Read 4 bytes from the given address and show you the values.
-    * `$writemem <address> <data>` (game server only): Write data to the given address. Data is not required to be any specific size.
-    * `$nativecall <address> [arg1 ...]` (game server only, GC only): Call a native function on your client. Only arguments passed in registers are supported; calling functions that take many arguments is not supported.
-    * `$quest <number>` (game server only): Load a quest by quest number. Can be used to load battle or challenge quests with only one player present. `$debug` is not required for this command if the specified quest has the AllowStartFromChatCommand field set in its metadata file.
+    * `$whatobj` and `$whatene` (non-proxy only): Tells you what the closest object or enemy spawn point is to your position, along with its coordinates and object or enemy ID. The full definition is also printed to the server's log. These commands can be used without `$debug` enabled.
+    * `$readmem <address>`: Read 4 bytes from the given address and show you the values.
+    * `$writemem <address> <data>`: Write data to the given address. Data is not required to be any specific size.
+    * `$nativecall <address> [arg1 ...]` (GC only): Call a native function on your client. Only arguments passed in registers are supported; calling functions that take many arguments is not supported.
+    * `$quest <number>` (non-proxy only): Load a quest by quest number. Can be used to load battle or challenge quests with only one player present. `$debug` is not required for this command if the specified quest has the AllowStartFromChatCommand field set in its metadata file.
     * `$qcall <function-id>`: Call a quest function on your client.
-    * `$qcheck <flag-num>` (game server only): Show the value of a quest flag. This command can be used without `$debug` enabled. If you're in a game, show the value of the flag in that game; if you're in the lobby, show the saved value of that quest flag for your character (BB only).
+    * `$qcheck <flag-num>` (non-proxy only): Show the value of a quest flag. This command can be used without `$debug` enabled. If you're in a game, show the value of the flag in that game; if you're in the lobby, show the saved value of that quest flag for your character (BB only).
     * `$qset <flag-num>` or `$qclear <flag-num>`: Set or clear a quest flag for everyone in the game. If you're in the lobby and on BB, set or clear the saved value of a quest flag in your character file.
-    * `$qgread <flag-num>` (game server only): Show the value of a quest counter ("global flag"). This command can be used without `$debug` enabled.
-    * `$qgwrite <flag-num> <value>` (game server only): Set the value of a quest counter ("global flag") for yourself.
+    * `$qgread <flag-num>` (non-proxy only): Show the value of a quest counter ("global flag"). This command can be used without `$debug` enabled.
+    * `$qgwrite <flag-num> <value>` (non-proxy only): Set the value of a quest counter ("global flag") for yourself.
     * `$qsync <reg-num> <value>`: Set a quest register's value for yourself only. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.
     * `$qsyncall <reg-num> <value>`: Set a quest register's value for everyone in the game. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.
     * `$swset [floor] <flag-num>` and `$swclear [floor] <flag-num>`: Set or clear a switch flag. If floor is not given, sets or clears the flag on your current floor.
     * `$swsetall`: Set all switch flags on your current floor. This unlocks all doors, disables all laser fences, triggers all light/poison switches, etc.
-    * `$gc` (game server only): Send your own Guild Card to yourself.
+    * `$gc` (non-proxy only): Send your own Guild Card to yourself.
     * `$sc <data>`: Send a command to yourself.
     * `$ss <data>`: Send a command to the remote server (if in a proxy session) or to the game server.
     * `$sb <data>`: Send a command to yourself, and to the remote server or game server.
@@ -577,31 +591,33 @@ Some commands only work on the game server and not on the proxy server. The chat
 
 * Personal state commands
     * `$arrow <color-id>`: Change your lobby arrow color. The color may be specified by number (0-12) or by name (red, blue, green, yellow, purple, cyan, orange, pink, white, white2, white3, or black).
-    * `$secid <section-id>`: Set your override section ID. After running this command, any games you create will use your override section ID for rare drops instead of your character's actual section ID. If you're in a game and you are the leader of the game, this also immediately changes the item tables used by the server when creating items. To revert to your actual section id, run `$secid` with no name after it. On the proxy server, this will not work if the remote server controls item drops. If the server does not allow cheat mode anywhere (that is, "CheatModeBehavior" is "Off" in config.json), this command does nothing.
-    * `$rand <seed>`: Set your override random seed (specified as a 32-bit hex value). This will make any games you create use the given seed for rare enemies. This also makes item drops deterministic in Blue Burst games hosted by newserv. On the proxy server, this command can cause desyncs with other players in the same game, since they will not see the overridden random seed. To remove the override, run `$rand` with no arguments. If the server does not allow cheat mode anywhere (that is, "CheatModeBehavior" is "Off" in config.json), this command does nothing.
-    * `$ln [name-or-type]`: Set the lobby number. Visible only to you. This command exists because some non-lobby maps can be loaded as lobbies with invalid lobby numbers. See the "GC lobby types" and "Ep3 lobby types" entries in the information menu for acceptable values here. Note that non-lobby maps do not have a lobby counter, so there's no way to exit the lobby without using either `$ln` again or `$exit`. On the game server, `$ln` reloads the lobby immediately; on the proxy server, it doesn't take effect until you load another lobby yourself (which means you'll like have to use `$exit` to escape). Run this command with no argument to return to the default lobby.
+    * `$secid <section-id>`: Set your override section ID. After running this command, any games you create will use your override section ID for rare drops instead of your character's actual section ID. If you're in a game and you are the leader of the game, this also immediately changes the item tables used by the server when creating items. To revert to your actual section id, run `$secid` with no name after it. On the proxy, this will not work if the remote server controls item drops. If the server does not allow cheat mode anywhere (that is, "CheatModeBehavior" is "Off" in config.json), this command does nothing.
+    * `$rand <seed>`: Set your override random seed (specified as a 32-bit hex value). This will make any games you create use the given seed for rare enemies and item drops. On the proxy, this command can cause desyncs with other players in the same game, since they will not see the overridden random seed. To remove the override, run `$rand` with no arguments. If the server does not allow cheat mode anywhere (that is, "CheatModeBehavior" is "Off" in config.json), this command does nothing.
+    * `$ln [name-or-type]`: Set the lobby number. Visible only to you. This command exists because some non-lobby maps can be loaded as lobbies with invalid lobby numbers. See the "GC lobby types" and "Ep3 lobby types" entries in the information menu for acceptable values here. Note that non-lobby maps do not have a lobby counter, so there's no way to exit the lobby without using either `$ln` again or `$exit`. On the game server, `$ln` reloads the lobby immediately; on the proxy, it doesn't take effect until you load another lobby yourself (which means you'll like have to use `$exit` to escape). Run this command with no argument to return to the default lobby.
     * `$swa`: Enable or disable switch assist. When enabled, the server will unlock two-player and four-player doors in non-quest games when you step on any of the required switches.
     * `$exit`: If you're in a lobby, send you to the main menu (which ends your proxy session, if you're in one). If you're in a game or spectator team, send you to the lobby (but does not end your proxy session if you're in one). Does nothing if you're in a non-Episode 3 game and no quest is in progress.
     * `$patch <name>`: Run a patch on your client. `<name>` must exactly match the name of a patch on the server.
 
-* Character data commands (game server only)
+* Character data commands (non-proxy only)
     * `$savechar <slot>`: Save your current character data on the server in the specified slot. See the [server-side saves section](#server-side-saves) for more details.
     * `$loadchar <slot>`: Save your current character data on the server in the specified slot. See the [server-side saves section](#server-side-saves) for more details.
     * `$bbchar <username> <password> <slot>`: Save your current character data on the server in a different account's BB character slots. See the [server-side saves section](#server-side-saves) for more details.
+    * `$checkchar <slot>`: Tells you basic information about a server-side character previously saved using `$savechar`.
+    * `$deletechar <slot>`: Deletes a server-side character previously saved using `$savechar`.
     * `$edit <stat> <value>`: Modify your character data. See the [using $edit](#using-edit) section for details.
 
-* Blue Burst player commands (game server only)
+* Blue Burst player commands (non-proxy only)
     * `$bank [number]`: Switch your current bank, so you can access your other character's banks (if `number` is 1-4) or your shared account bank (if `number` is 0). If `number` is not given, switch back to your current character's bank.
     * `$save`: Save your character, system, and Guild Card data immediately. (By default, your character is saved every 60 seconds while online, and your account and Guild Card data are saved whenever they change.)
 
-* Game state commands (game server only)
+* Game state commands (non-proxy only)
     * `$maxlevel <level>`: Set the maximum level for players to join the current game. (This only applies when joining; if a player joins and then levels up past this level during the game, they are not kicked out, but won't be able to rejoin if they leave.)
     * `$minlevel <level>`: Set the minimum level for players to join the current game.
     * `$password <password>`: Set the game's join password. To unlock the game, run `$password` with nothing after it.
     * `$dropmode [mode]`: Change the way item drops behave in the current game. `mode` can be `none`, `client`, `shared`, `private`, or `duplicate`. If `mode` is not given, tells you the current drop mode without changing it. See the [item tables and drop modes section](#item-tables-and-drop-modes) for more information.
     * `$persist`: Enable or disable persistence for the current game. When persistence is on, the game will not be deleted when the last player leaves. The states of enemies, objects, and switches will be saved, and items left on the floor will not be deleted. (But if you're in the private or duplicate drop mode, items dropped by enemies are deleted - to make sure a certain item won't be deleted, you can pick it up and drop it again.) If the game is empty for too long (15 minutes by default), it is then deleted.
 
-* Episode 3 commands (game server only)
+* Episode 3 commands (non-proxy only)
     * `$spec`: Toggle the allow spectators flag for Episode 3 games. If any players are spectating when this flag is disabled, they are sent back to the lobby.
     * `$inftime`: Toggle infinite-time mode. Must be used before starting a battle. If infinite-time mode is on, the overall and per-phase time limits will be disabled regardless of the values chosen during battle rules setup. After completing a battle, infinite-time mode is reset to the server's default value (which can be set in Episode3BehaviorFlags in config.json).
     * `$dicerange [d:L-H] [1:L-H] [a1:L-H] [d1:L-H]`: Set override dice ranges for the next battle. The min and max dice values from the rules setup menu always apply to the ATK dice, but you can specify a different range for the DEF dice with `d:2-4` (for example). The `1:` override applies to the 1-player team in a 2v1 game (so you would set the 2-player team's desired dice range in the rules menu). You can also specify the 1-player team's ATK and DEF ranges separately with the `a1:` and `d1:` overrides. Note that these ranges will only be used if the chosen map or quest does not override them.
@@ -611,22 +627,22 @@ Some commands only work on the game server and not on the proxy server. The chat
     * `$playrec <name>`: Play a battle recording. This command creates a spectator team immediately but the replay does not start automatically, to give other players a chance to join. To start the battle replay within the spectator team, run `$playrec` again (with no name). There is a bug in Dolphin that makes this command unstable in emulation (see the "Battle records" section above).
 
 * Cheat mode commands
-    * `$cheat` (game server only): Enable or disable cheat mode for the current game. All other cheat mode commands do nothing if cheat mode is disabled. By default, cheat mode is off in new games but can be enabled; there is an option in config.json that allows you to disable cheat mode entirely, or set it to on by default in new games. Cheat mode is always enabled on the proxy server, unless cheat mode is disabled on the entire server.
+    * `$cheat` (non-proxy only): Enable or disable cheat mode for the current game. All other cheat mode commands do nothing if cheat mode is disabled. By default, cheat mode is off in new games but can be enabled; there is an option in config.json that allows you to disable cheat mode entirely, or set it to on by default in new games. Cheat mode is always enabled on the proxy, unless cheat mode is disabled on the entire server.
     * `$infhp`: Enable or disable infinite HP mode. Applies to only you; does not affect other players. When enabled, one-hit KO attacks will still kill you, but on most versions of the game (not DCv1, GC US 1.2, or GC JP 1.5), the server will automatically revive you if you die. On all versions except GC US 1.2 and GC JP 1.5, infinite HP also automatically cures status ailments.
     * `$inftp`: Enable or disable infinite TP mode. Applies to only you; does not affect other players.
     * `$warpme <floor-id>` (or `$warp <floor-id>`): Warp yourself to the given floor.
-    * `$warpall <floor-id>`: Warp everyone in the game to the given floor. You must be the leader to use this command, unless you're on the proxy server.
+    * `$warpall <floor-id>`: Warp everyone in the game to the given floor. You must be the leader to use this command, unless you're on the proxy.
     * `$next`: Warp yourself to the next floor.
-    * `$item <desc>` (or `$i <desc>`): Create an item. `desc` may be a description of the item (e.g. "Hell Saber +5 0/10/25/0/10") or a string of hex data specifying the item code. Item codes are 16 hex bytes; at least 2 bytes must be specified, and all unspecified bytes are zeroes. If you are on the proxy server, you must not be using Blue Burst for this command to work. On the game server, this command works for all versions.
-    * `$unset <index>` (game server only): In an Episode 3 battle, removes one of your set cards from the field. `<index>` is the index of the set card as it appears on your screen - 1 is the card next to your SC's icon, 2 is the card to the right of 1, etc. This does not cause a Hunters-side SC to lose HP, as they normally do when their items are destroyed.
-    * `$dropmode [mode]` (proxy server): Change the way item drops behave in the current game, if you are not on BB. Unlike the game server version of this command, using this on the proxy server requires cheats to be enabled. This works by intercepting the drop requests sent to and from the leader. (So, if you are the leader and not using server drop mode on the remote server, it affects the entire game; otherwise, it affects only items generated by your actions.) `mode` can be `none` (no drops), `default` (normal drops), or `proxy` (use newserv's drop tables instead of the remote server's). If `mode` is not given, tells you the current drop mode without changing it.
+    * `$item <desc>` (or `$i <desc>`): Create an item. `desc` may be a description of the item (e.g. "Hell Saber +5 0/10/25/0/10") or a string of hex data specifying the item code. Item codes are 16 hex bytes; at least 2 bytes must be specified, and all unspecified bytes are zeroes. If you are on the proxy, you must not be using Blue Burst for this command to work. On the game server, this command works for all versions.
+    * `$unset <index>` (non-proxy only): In an Episode 3 battle, removes one of your set cards from the field. `<index>` is the index of the set card as it appears on your screen - 1 is the card next to your SC's icon, 2 is the card to the right of 1, etc. This does not cause a Hunters-side SC to lose HP, as they normally do when their items are destroyed.
+    * `$dropmode [mode]` (proxy only): Change the way item drops behave in the current game, if you are not on BB. Unlike the game server version of this command, using this on the proxy requires cheats to be enabled. This works by intercepting the drop requests sent to and from the leader. (So, if you are the leader and not using server drop mode on the remote server, it affects the entire game; otherwise, it affects only items generated by your actions.) `mode` can be `none` (no drops), `default` (normal drops), or `proxy` (use newserv's drop tables instead of the remote server's). If `mode` is not given, tells you the current drop mode without changing it.
 
 * Aesthetic commands
-    * `$event <event>`: Set the current holiday event in the current lobby. Holiday events are documented in the "Using $event" item in the information menu. If you're on the proxy server, this applies to all lobbies and games you join, but only you will see the new event - other players will not.
-    * `$allevent <event>` (game server only): Set the current holiday event in all lobbies.
+    * `$event <event>`: Set the current holiday event in the current lobby. Holiday events are documented in the "Using $event" item in the information menu. If you're on the proxy, this applies to all lobbies and games you join, but only you will see the new event - other players will not.
+    * `$allevent <event>` (non-proxy only): Set the current holiday event in all lobbies.
     * `$song <song-id>` (Episode 3 only): Play a specific song in the current lobby.
 
-* Administration commands (game server only)
+* Administration commands (non-proxy only)
     * `$ann <message>`: Send an announcement message. The message is sent as temporary on-screen text to all players in all games and lobbies. On BB, the message appears in the scrolling top bar.
     * `$ann!`, `$ann?`, `$ann?!`: Same as `$ann`, but with `?`, omits the sender's name, and with `!`, sends the message as a Simple Mail message instead of on-screen text.
     * `$silence <identifier>`: Silence a player (remove their ability to chat) or unsilence a player. The identifier may be the player's name or Guild Card number.
@@ -690,7 +706,7 @@ The HTTP server has the following endpoints:
 * `GET /y/data/config`: Returns the server's configuration file.
 * `GET /y/accounts`: Returns information about all registered accounts.
 * `GET /y/clients`: Returns information about all connected clients on the game server.
-* `GET /y/proxy-clients`: Returns information about all connected clients on the proxy server.
+* `GET /y/proxy-clients`: Returns information about all connected clients on the proxy.
 * `GET /y/lobbies`: Returns information about all lobbies and games.
 * `GET /y/server`: Returns information about the server.
 * `GET /y/summary`: Returns a summary of the server's state, connected clients, active games, and proxy sessions.
@@ -718,7 +734,7 @@ Upon connecting, you'll get the message `{"ServerType": "newserv"}`. After that,
 
 # Non-server features
 
-newserv has many CLI options, which can be used to access functionality other than the game and proxy server. Run `newserv help` to see a full list of the options and how to use each one.
+newserv has many CLI options, which can be used to access functionality other than the game server and proxy. Run `newserv help` to see a full list of the options and how to use each one.
 
 The data formats that newserv can convert to/from are:
 

@@ -1,169 +1,209 @@
 #pragma once
 
-#include <netinet/in.h>
 #include <stdint.h>
 
-#include <deque>
+#include <asio.hpp>
+#include <list>
+#include <memory>
 #include <phosg/Filesystem.hh>
 #include <phosg/Process.hh>
 #include <string>
 
+#include "AsyncUtils.hh"
+#include "Channel.hh"
 #include "IPFrameInfo.hh"
-#include "ProxyServer.hh"
 #include "Server.hh"
 #include "ServerState.hh"
 #include "Text.hh"
 
-class IPStackSimulator : public std::enable_shared_from_this<IPStackSimulator> {
+class IPStackSimulator;
+class IPSSChannel;
+
+constexpr size_t DEFAULT_RESEND_PUSH_USECS = 200000; // 200ms
+
+enum class VirtualNetworkProtocol {
+  ETHERNET_TAPSERVER = 0,
+  HDLC_TAPSERVER,
+  HDLC_RAW,
+};
+
+struct IPSSSocket : ServerSocket {
+  VirtualNetworkProtocol protocol;
+};
+
+struct IPSSClient : std::enable_shared_from_this<IPSSClient> {
+  std::shared_ptr<asio::io_context> io_context;
+  std::weak_ptr<IPStackSimulator> sim;
+  uint64_t network_id;
+  asio::ip::tcp::socket sock;
+  VirtualNetworkProtocol protocol;
+  uint32_t hdlc_escape_control_character_flags = 0xFFFFFFFF;
+  uint32_t hdlc_remote_magic_number = 0;
+  parray<uint8_t, 6> mac_addr; // Only used for LinkType::ETHERNET
+  uint32_t ipv4_addr;
+  asio::steady_timer idle_timeout_timer;
+
+  struct TCPConnection {
+    std::weak_ptr<IPSSClient> client;
+    std::shared_ptr<IPSSChannel> server_channel;
+    bool awaiting_first_ack = true;
+    bool awaiting_ack = false;
+    uint32_t server_addr = 0;
+    uint16_t server_port = 0;
+    uint16_t client_port = 0;
+    uint32_t next_client_seq = 0;
+    uint32_t acked_server_seq = 0;
+    size_t resend_push_usecs = DEFAULT_RESEND_PUSH_USECS;
+    size_t next_push_max_frame_size = 1024;
+    size_t max_frame_size = 1024;
+    size_t bytes_received = 0;
+    size_t bytes_sent = 0;
+    size_t outbound_data_bytes = 0;
+    std::list<std::string> outbound_data;
+    asio::steady_timer resend_push_timer;
+
+    TCPConnection(std::shared_ptr<IPSSClient> client);
+
+    inline uint64_t key() const {
+      return (static_cast<uint64_t>(this->server_addr) << 32) |
+          (static_cast<uint64_t>(this->server_port) << 16) |
+          static_cast<uint64_t>(this->client_port);
+    }
+    static inline uint64_t key(const IPv4Header& ipv4, const TCPHeader& tcp) {
+      return (static_cast<uint64_t>(ipv4.dest_addr) << 32) |
+          (static_cast<uint64_t>(tcp.dest_port) << 16) |
+          static_cast<uint64_t>(tcp.src_port);
+    }
+    static inline uint64_t key(const FrameInfo& fi) {
+      if (!fi.ipv4 || !fi.tcp) {
+        throw std::logic_error("tcp_conn_key_for_frame called on non-TCP frame");
+      }
+      return key(*fi.ipv4, *fi.tcp);
+    }
+
+    void drain_outbound_data(size_t bytes);
+    void linearize_outbound_data(size_t bytes);
+  };
+  std::unordered_map<uint64_t, std::shared_ptr<TCPConnection>> tcp_connections;
+
+  IPSSClient(
+      std::shared_ptr<IPStackSimulator> sim,
+      uint64_t network_id,
+      VirtualNetworkProtocol protocol,
+      asio::ip::tcp::socket&& sock);
+  void reschedule_idle_timeout();
+};
+
+// IPSSChannel provides an "unwrapped" connection to the rest of the server. It
+// implements the Channel interface and can be used in place of an
+// SocketChannel, so the rest of the server doesn't have to know about
+// IPStackSimulator.
+class IPSSChannel : public Channel {
 public:
-  enum class Protocol {
-    ETHERNET_TAPSERVER = 0,
-    HDLC_TAPSERVER,
-    HDLC_RAW,
-  };
+  std::shared_ptr<IPStackSimulator> sim;
+  std::weak_ptr<IPSSClient> ipss_client;
+  std::weak_ptr<IPSSClient::TCPConnection> tcp_conn;
 
-  using unique_listener = std::unique_ptr<struct evconnlistener, void (*)(struct evconnlistener*)>;
-  using unique_bufferevent = std::unique_ptr<struct bufferevent, void (*)(struct bufferevent*)>;
-  using unique_evbuffer = std::unique_ptr<struct evbuffer, void (*)(struct evbuffer*)>;
-  using unique_event = std::unique_ptr<struct event, void (*)(struct event*)>;
+  IPSSChannel(
+      std::shared_ptr<IPStackSimulator> sim,
+      std::weak_ptr<IPSSClient> ipss_client,
+      std::weak_ptr<IPSSClient::TCPConnection> tcp_conn,
+      Version version,
+      uint8_t language,
+      const std::string& name = "",
+      phosg::TerminalFormat terminal_send_color = phosg::TerminalFormat::END,
+      phosg::TerminalFormat terminal_recv_color = phosg::TerminalFormat::END);
 
-  struct IPClient : std::enable_shared_from_this<IPClient> {
-    std::weak_ptr<IPStackSimulator> sim;
-    uint64_t network_id;
+  virtual std::string default_name() const;
 
-    unique_bufferevent bev;
-    Protocol protocol;
-    uint32_t hdlc_escape_control_character_flags = 0xFFFFFFFF;
-    uint32_t hdlc_remote_magic_number = 0;
-    parray<uint8_t, 6> mac_addr; // Only used for LinkType::ETHERNET
-    uint32_t ipv4_addr;
+  virtual bool connected() const;
+  virtual void disconnect();
 
-    struct TCPConnection {
-      std::weak_ptr<IPClient> client;
+  // Adds inbound data, which will then be available via recv_raw(). This
+  // function is called by IPStackSimulator to forward "unwrapped" data to
+  // the game/proxy servers.
+  void add_inbound_data(const void* data, size_t size);
 
-      // The PSO protocol begins with the server sending a command, but we
-      // shouldn't send a PSH immediately after the SYN+ACK, so the connection
-      // isn't handed to the Server object until after the 3-way handshake
-      // (receive SYN, send SYN+ACK, receive ACK). This means server_bev is null
-      // during the first part of the connection phase.
-      unique_bufferevent server_bev;
-      // TODO: Get rid of pending_data and just use server_bev's input buffer in
-      // its place
-      unique_evbuffer pending_data;
-      unique_event resend_push_event;
+  virtual void send_raw(std::string&& data);
+  virtual asio::awaitable<void> recv_raw(void* data, size_t size);
 
-      bool awaiting_first_ack;
+private:
+  AsyncEvent data_available_signal;
+  std::deque<std::string> inbound_data;
+  void* recv_buf = nullptr;
+  size_t recv_buf_size = 0;
+};
 
-      uint32_t server_addr;
-      uint16_t server_port;
-      uint16_t client_port;
-      uint32_t next_client_seq;
-      uint32_t acked_server_seq;
-      size_t resend_push_usecs;
-      size_t next_push_max_frame_size;
-      size_t max_frame_size;
-      size_t bytes_received;
-      size_t bytes_sent;
+class IPStackSimulator
+    : public Server<IPSSClient, IPSSSocket>,
+      public std::enable_shared_from_this<IPStackSimulator> {
+public:
+  IPStackSimulator(std::shared_ptr<ServerState> state);
+  ~IPStackSimulator() = default;
 
-      TCPConnection();
-    };
-    std::unordered_map<uint64_t, TCPConnection> tcp_connections;
-
-    unique_event idle_timeout_event;
-
-    IPClient(std::shared_ptr<IPStackSimulator> sim, uint64_t network_id, Protocol protocol, struct bufferevent* bev);
-
-    static void dispatch_on_client_input(struct bufferevent* bev, void* ctx);
-    void on_client_input(struct bufferevent* bev);
-    static void dispatch_on_client_error(struct bufferevent* bev, short events, void* ctx);
-    void on_client_error(struct bufferevent* bev, short events);
-
-    static void dispatch_on_idle_timeout(evutil_socket_t fd, short events, void* ctx);
-    void on_idle_timeout();
-  };
-
-  IPStackSimulator(
-      std::shared_ptr<struct event_base> base,
-      std::shared_ptr<ServerState> state);
-  ~IPStackSimulator();
-
-  void listen(const std::string& name, const std::string& socket_path, Protocol protocol);
-  void listen(const std::string& name, const std::string& addr, int port, Protocol protocol);
-  void listen(const std::string& name, int port, Protocol protocol);
-  void add_socket(const std::string& name, int fd, Protocol protocol);
+  void listen(const std::string& name, const std::string& addr, int port, VirtualNetworkProtocol protocol);
 
   static uint32_t connect_address_for_remote_address(uint32_t remote_addr);
 
-  std::shared_ptr<IPClient> get_network(uint64_t network_id) const;
-  inline const std::unordered_map<uint64_t, std::shared_ptr<IPClient>>& all_networks() const {
-    return this->network_id_to_client;
+  inline std::shared_ptr<ServerState> get_state() {
+    return this->state;
   }
 
-  void disconnect_client(uint64_t network_id);
-
 private:
-  std::shared_ptr<struct event_base> base;
   std::shared_ptr<ServerState> state;
-  uint64_t next_network_id;
-
-  struct ListeningSocket {
-    std::string name;
-    Protocol protocol;
-    unique_listener listener;
-
-    ListeningSocket(const std::string& name, Protocol protocol, unique_listener&& l)
-        : name(name),
-          protocol(protocol),
-          listener(std::move(l)) {}
-  };
-
-  std::unordered_map<int, ListeningSocket> listening_sockets;
-  std::unordered_map<uint64_t, std::shared_ptr<IPClient>> network_id_to_client;
+  uint64_t next_network_id = 1;
 
   parray<uint8_t, 6> host_mac_address_bytes;
   parray<uint8_t, 6> broadcast_mac_address_bytes;
 
-  FILE* pcap_text_log_file;
-
-  static uint64_t tcp_conn_key_for_connection(const IPClient::TCPConnection& conn);
+  static uint64_t tcp_conn_key_for_connection(std::shared_ptr<const IPSSClient::TCPConnection> conn);
   static uint64_t tcp_conn_key_for_client_frame(const IPv4Header& ipv4, const TCPHeader& tcp);
   static uint64_t tcp_conn_key_for_client_frame(const FrameInfo& fi);
 
   static std::string str_for_ipv4_netloc(uint32_t addr, uint16_t port);
-  static std::string str_for_tcp_connection(std::shared_ptr<const IPClient> c, const IPClient::TCPConnection& conn);
+  static std::string str_for_tcp_connection(
+      std::shared_ptr<const IPSSClient> c, std::shared_ptr<const IPSSClient::TCPConnection> conn);
 
-  static void dispatch_on_listen_accept(struct evconnlistener* listener,
-      evutil_socket_t fd, struct sockaddr* address, int socklen, void* ctx);
-  void on_listen_accept(struct evconnlistener* listener, evutil_socket_t fd, struct sockaddr* address, int socklen);
-  static void dispatch_on_listen_error(struct evconnlistener* listener, void* ctx);
-  void on_listen_error(struct evconnlistener* listener);
+  asio::awaitable<void> send_ethernet_tapserver_frame(
+      std::shared_ptr<IPSSClient> c, FrameInfo::Protocol proto, const void* data, size_t size) const;
+  asio::awaitable<void> send_hdlc_frame(
+      std::shared_ptr<IPSSClient> c, FrameInfo::Protocol proto, const void* data, size_t size, bool is_raw) const;
+  asio::awaitable<void> send_layer3_frame(
+      std::shared_ptr<IPSSClient> c, FrameInfo::Protocol proto, const void* data, size_t size) const;
+  [[nodiscard]] inline asio::awaitable<void> send_layer3_frame(
+      std::shared_ptr<IPSSClient> c, FrameInfo::Protocol proto, const std::string& data) const {
+    return this->send_layer3_frame(c, proto, data.data(), data.size());
+  }
 
-  void send_layer3_frame(std::shared_ptr<IPClient> c, FrameInfo::Protocol proto, const std::string& data) const;
-  void send_layer3_frame(std::shared_ptr<IPClient> c, FrameInfo::Protocol proto, const void* data, size_t size) const;
+  asio::awaitable<void> on_client_frame(std::shared_ptr<IPSSClient> c, const void* data, size_t size);
+  asio::awaitable<void> on_client_lcp_frame(std::shared_ptr<IPSSClient> c, const FrameInfo& fi);
+  asio::awaitable<void> on_client_pap_frame(std::shared_ptr<IPSSClient> c, const FrameInfo& fi);
+  asio::awaitable<void> on_client_ipcp_frame(std::shared_ptr<IPSSClient> c, const FrameInfo& fi);
+  asio::awaitable<void> on_client_arp_frame(std::shared_ptr<IPSSClient> c, const FrameInfo& fi);
+  asio::awaitable<void> on_client_udp_frame(std::shared_ptr<IPSSClient> c, const FrameInfo& fi);
+  asio::awaitable<void> on_client_tcp_frame(std::shared_ptr<IPSSClient> c, const FrameInfo& fi);
 
-  void on_client_frame(std::shared_ptr<IPClient> c, const std::string& frame);
-  void on_client_lcp_frame(std::shared_ptr<IPClient> c, const FrameInfo& fi);
-  void on_client_pap_frame(std::shared_ptr<IPClient> c, const FrameInfo& fi);
-  void on_client_ipcp_frame(std::shared_ptr<IPClient> c, const FrameInfo& fi);
-  void on_client_arp_frame(std::shared_ptr<IPClient> c, const FrameInfo& fi);
-  void on_client_udp_frame(std::shared_ptr<IPClient> c, const FrameInfo& fi);
-  void on_client_tcp_frame(std::shared_ptr<IPClient> c, const FrameInfo& fi);
-
-  static void dispatch_on_server_input(struct bufferevent* bev, void* ctx);
-  void on_server_input(std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn);
-  static void dispatch_on_server_error(struct bufferevent* bev, short events, void* ctx);
-  void on_server_error(std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn, short events);
-
-  static void dispatch_on_resend_push(evutil_socket_t, short, void* ctx);
-  void send_pending_push_frame(std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn, bool always_send);
-  void send_tcp_frame(
-      std::shared_ptr<IPClient> c,
-      IPClient::TCPConnection& conn,
+  void schedule_send_pending_push_frame(std::shared_ptr<IPSSClient::TCPConnection> conn, uint64_t delay_usecs);
+  asio::awaitable<void> send_pending_push_frame(
+      std::shared_ptr<IPSSClient> c, std::shared_ptr<IPSSClient::TCPConnection> conn);
+  asio::awaitable<void> send_tcp_frame(
+      std::shared_ptr<IPSSClient> c,
+      std::shared_ptr<IPSSClient::TCPConnection> conn,
       uint16_t flags = 0,
-      struct evbuffer* src_buf = nullptr,
-      size_t src_bytes = 0);
+      const void* payload_data = nullptr,
+      size_t payload_bytes = 0);
 
-  void open_server_connection(std::shared_ptr<IPClient> c, IPClient::TCPConnection& conn);
+  asio::awaitable<void> open_server_connection(
+      std::shared_ptr<IPSSClient> c, std::shared_ptr<IPSSClient::TCPConnection> conn);
+  asio::awaitable<void> close_tcp_connection(
+      std::shared_ptr<IPSSClient> c, std::shared_ptr<IPSSClient::TCPConnection> conn);
 
-  void log_frame(const std::string& data) const;
+  [[nodiscard]] virtual std::shared_ptr<IPSSClient> create_client(
+      std::shared_ptr<IPSSSocket> listen_sock, asio::ip::tcp::socket&& client_sock);
+  asio::awaitable<void> handle_tapserver_client(std::shared_ptr<IPSSClient> c);
+  asio::awaitable<void> handle_hdlc_raw_client(std::shared_ptr<IPSSClient> c);
+  virtual asio::awaitable<void> handle_client(std::shared_ptr<IPSSClient> c);
+  virtual asio::awaitable<void> destroy_client(std::shared_ptr<IPSSClient> c);
+
+  friend class IPSSChannel;
 };

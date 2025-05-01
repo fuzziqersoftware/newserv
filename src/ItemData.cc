@@ -797,13 +797,13 @@ ItemData ItemData::from_primary_identifier(const StackLimits& limits, uint32_t p
 }
 
 string ItemData::hex() const {
-  return phosg::string_printf("%08" PRIX32 " %08" PRIX32 " %08" PRIX32 " (%08" PRIX32 ") %08" PRIX32,
-      this->data1db[0].load(), this->data1db[1].load(), this->data1db[2].load(), this->id.load(), this->data2db.load());
+  return std::format("{:08X} {:08X} {:08X} ({:08X}) {:08X}",
+      this->data1db[0], this->data1db[1], this->data1db[2], this->id, this->data2db);
 }
 
 string ItemData::short_hex() const {
-  auto ret = phosg::string_printf("%08" PRIX32 "%08" PRIX32 "%08" PRIX32 "%08" PRIX32,
-      this->data1db[0].load(), this->data1db[1].load(), this->data1db[2].load(), this->data2db.load());
+  auto ret = std::format("{:08X}{:08X}{:08X}{:08X}",
+      this->data1db[0], this->data1db[1], this->data1db[2], this->data2db);
   size_t offset = ret.find_last_not_of('0');
   if (offset != string::npos) {
     offset += (offset & 1) ? 1 : 2;

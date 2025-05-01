@@ -66,7 +66,7 @@ public:
   void discard_random_hand_card();
   bool discard_ref_from_hand(uint16_t card_ref);
   void discard_set_assist_card();
-  bool do_mulligan();
+  bool redraw_initial_hand();
   void draw_hand(ssize_t override_count = 0);
   void draw_initial_hand();
   int32_t error_code_for_client_setting_card(
@@ -95,7 +95,7 @@ public:
   uint8_t get_team_id() const;
   ssize_t hand_index_for_card_ref(uint16_t card_ref) const;
   size_t set_index_for_card_ref(uint16_t card_ref) const;
-  bool is_mulligan_allowed() const;
+  bool is_hand_redraw_allowed() const;
   bool is_team_turn() const;
   void log_discard(uint16_t card_ref, uint16_t reason);
   uint16_t pop_from_discard_log(uint16_t reason);
@@ -152,7 +152,7 @@ public:
   std::shared_ptr<Card> sc_card;
   bcarray<std::shared_ptr<Card>, 8> set_cards;
   uint8_t client_id;
-  uint16_t num_mulligans_allowed;
+  uint16_t num_hand_redraws_allowed;
   CardType sc_card_type;
   uint8_t team_id;
   uint8_t atk_points;

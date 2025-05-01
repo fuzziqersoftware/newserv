@@ -9,7 +9,7 @@ namespace Episode3 {
 PlayerState::PlayerState(uint8_t client_id, shared_ptr<Server> server)
     : w_server(server),
       client_id(client_id),
-      num_mulligans_allowed(1),
+      num_hand_redraws_allowed(1),
       sc_card_type(CardType::HUNTERS_SC),
       team_id(0xFF),
       atk_points(0),
@@ -705,14 +705,14 @@ void PlayerState::discard_set_assist_card() {
   s->destroy_cards_with_zero_hp();
 }
 
-bool PlayerState::do_mulligan() {
-  if (!this->is_mulligan_allowed()) {
+bool PlayerState::redraw_initial_hand() {
+  if (!this->is_hand_redraw_allowed()) {
     return false;
   }
 
   auto s = this->server();
 
-  this->num_mulligans_allowed--;
+  this->num_hand_redraws_allowed--;
   while (this->card_refs[0] != 0xFFFF) {
     this->discard_ref_from_hand(this->card_refs[0]);
   }
@@ -727,7 +727,7 @@ bool PlayerState::do_mulligan() {
     s->send(cmd);
   }
 
-  this->deck_state->do_mulligan(s->options.is_nte());
+  this->deck_state->redraw_initial_hand(s->options.is_nte());
   this->draw_hand(5);
 
   if (!s->options.is_nte()) {
@@ -841,7 +841,7 @@ vector<uint16_t> PlayerState::get_all_cards_within_range(
 
   auto log = s->log_stack("get_all_cards_within_range: ");
   string loc_str = loc.str();
-  log.debug("loc=%s, target_team_id=%02hhX", loc_str.c_str(), target_team_id);
+  log.debug_f("loc={}, target_team_id={:02X}", loc_str, target_team_id);
 
   vector<uint16_t> ret;
   for (size_t client_id = 0; client_id < 4; client_id++) {
@@ -939,8 +939,8 @@ size_t PlayerState::set_index_for_card_ref(uint16_t card_ref) const {
   return -1;
 }
 
-bool PlayerState::is_mulligan_allowed() const {
-  return (this->num_mulligans_allowed > 0);
+bool PlayerState::is_hand_redraw_allowed() const {
+  return (this->num_hand_redraws_allowed > 0);
 }
 
 bool PlayerState::is_team_turn() const {
@@ -1766,20 +1766,20 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
 
   auto attacker_card = s->card_for_set_card_ref(pa.attacker_card_ref);
   if (attacker_card) {
-    log.debug("attacker card present");
+    log.debug_f("attacker card present");
     attacker_card->card_flags |= 0x100;
   }
 
   auto action_type = s->ruler_server->get_pending_action_type(pa);
   if (action_type == ActionType::DEFENSE) {
-    log.debug("action type is DEFENSE");
+    log.debug_f("action type is DEFENSE");
   } else if (action_type == ActionType::ATTACK) {
-    log.debug("action type is ATTACK");
+    log.debug_f("action type is ATTACK");
   } else {
-    log.debug("action type is UNKNOWN");
+    log.debug_f("action type is UNKNOWN");
   }
   if (!is_nte) {
-    log.debug("(non-nte) subtracting action points");
+    log.debug_f("(non-nte) subtracting action points");
     this->subtract_or_check_atk_or_def_points_for_action(pa, true);
   }
 
@@ -1787,7 +1787,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
     auto card = s->card_for_set_card_ref(pa.attacker_card_ref);
     if (card) {
       card->loc.direction = pa.facing_direction;
-      log.debug("set facing direction to %s", phosg::name_for_enum(card->loc.direction));
+      log.debug_f("set facing direction to {}", phosg::name_for_enum(card->loc.direction));
 
       G_AddToSetCardLog_Ep3_6xB4x4A cmd;
       cmd.card_refs.clear(0xFFFF);
@@ -1796,9 +1796,9 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
       cmd.entry_count = 0;
       size_t z = 0;
       do {
-        if (log.should_log(phosg::LogLevel::DEBUG)) {
+        if (log.should_log(phosg::LogLevel::L_DEBUG)) {
           string ref_str = s->debug_str_for_card_ref(pa.action_card_refs[z]);
-          log.debug("on action card ref %s", ref_str.c_str());
+          log.debug_f("on action card ref {}", ref_str);
         }
         card->unknown_80237A90(pa, pa.action_card_refs[z]);
         card->unknown_802379BC(pa.action_card_refs[z]);
@@ -1833,9 +1833,9 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
     for (size_t z = 0; (z < 4 * 9) && (pa.target_card_refs[z] != 0xFFFF); z++) {
       auto target_card = s->card_for_set_card_ref(pa.target_card_refs[z]);
       if (target_card) {
-        if (log.should_log(phosg::LogLevel::DEBUG)) {
+        if (log.should_log(phosg::LogLevel::L_DEBUG)) {
           string ref_str = s->debug_str_for_card_ref(pa.target_card_refs[z]);
-          log.debug("on target card ref %s", ref_str.c_str());
+          log.debug_f("on target card ref {}", ref_str);
         }
         target_card->unknown_802379DC(pa);
         if (!is_nte) {
@@ -1859,13 +1859,13 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
     }
   }
   if (is_nte) {
-    log.debug("(nte) subtracting action points");
+    log.debug_f("(nte) subtracting action points");
     this->subtract_or_check_atk_or_def_points_for_action(pa, 1);
   }
   for (size_t z = 0; (z < pa.action_card_refs.size()) && (pa.action_card_refs[z] != 0xFFFF); z++) {
-    if (log.should_log(phosg::LogLevel::DEBUG)) {
+    if (log.should_log(phosg::LogLevel::L_DEBUG)) {
       string ref_str = s->debug_str_for_card_ref(pa.action_card_refs[z]);
-      log.debug("discarding %s from hand", ref_str.c_str());
+      log.debug_f("discarding {} from hand", ref_str);
     }
     this->discard_ref_from_hand(pa.action_card_refs[z]);
   }

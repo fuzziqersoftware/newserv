@@ -1,6 +1,5 @@
 #pragma once
 
-#include <event2/event.h>
 #include <inttypes.h>
 
 #include <array>
@@ -135,7 +134,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   std::string name;
   // This seed is also sent to the client for rare enemy generation
   uint32_t random_seed;
-  std::shared_ptr<PSOLFGEncryption> opt_rand_crypt;
+  std::shared_ptr<RandomGenerator> rand_crypt;
   uint8_t allowed_drop_modes;
   DropMode drop_mode;
   std::shared_ptr<ItemCreator> item_creator; // Always null for lobbies, never null for games
@@ -185,7 +184,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   // This is only used when the PERSISTENT flag is set and idle_timeout_usecs
   // is not zero
   uint64_t idle_timeout_usecs;
-  std::unique_ptr<struct event, void (*)(struct event*)> idle_timeout_event;
+  asio::steady_timer idle_timeout_timer;
 
   Lobby(std::shared_ptr<ServerState> s, uint32_t id, bool is_game);
   Lobby(const Lobby&) = delete;
@@ -286,8 +285,6 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   QuestIndex::IncludeCondition quest_include_condition() const;
 
   std::unordered_map<uint32_t, std::shared_ptr<Client>> clients_by_account_id() const;
-
-  static void dispatch_on_idle_timeout(evutil_socket_t, short, void* ctx);
 
   static bool compare_shared(const std::shared_ptr<const Lobby>& a, const std::shared_ptr<const Lobby>& b);
 };

@@ -220,16 +220,10 @@ bool specific_version_is_bb(uint32_t specific_version);
 
 enum class ServerBehavior {
   PC_CONSOLE_DETECT = 0,
-  LOGIN_SERVER,
-  LOBBY_SERVER,
+  GAME_SERVER,
   PATCH_SERVER_PC,
   PATCH_SERVER_BB,
-  PROXY_SERVER,
 };
-
-const char* login_port_name_for_version(Version v);
-const char* lobby_port_name_for_version(Version v);
-const char* proxy_port_name_for_version(Version v);
 
 template <>
 const char* phosg::name_for_enum<ServerBehavior>(ServerBehavior behavior);

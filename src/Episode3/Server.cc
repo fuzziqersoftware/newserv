@@ -58,7 +58,7 @@ Server::Server(shared_ptr<Lobby> lobby, Options&& options)
       battle_start_usecs(0),
       should_copy_prev_states_to_current_states(0),
       card_special(nullptr),
-      clients_done_in_mulligan_phase(false),
+      clients_done_in_redraw_initial_hand_phase(false),
       num_pending_attacks_with_cards(0),
       unknown_a14(0),
       unknown_a15(0),
@@ -83,12 +83,14 @@ Server::Server(shared_ptr<Lobby> lobby, Options&& options)
 
 Server::~Server() noexcept(false) {
   if (this->logger_stack.size() != 1) {
-    throw logic_error(phosg::string_printf("incorrect logger stack size: expected 1, received %zu", this->logger_stack.size()));
+    throw logic_error(std::format("incorrect logger stack size: expected 1, received {}", this->logger_stack.size()));
   }
   delete this->logger_stack.back();
 }
 
 void Server::init() {
+  this->log().info_f("Creating server with random seed {:08X}", this->options.rand_crypt->seed());
+
   this->map_and_rules = make_shared<MapAndRulesState>();
   this->num_clients_present = 0;
   this->overlay_state.clear();
@@ -173,9 +175,9 @@ std::string Server::debug_str_for_card_ref(uint16_t card_ref) const {
   auto ce = this->definition_for_card_ref(card_ref);
   if (ce) {
     string name = ce->def.en_name.decode();
-    return phosg::string_printf("@%04hX (#%04" PRIX32 " %s)", card_ref, ce->def.card_id.load(), name.c_str());
+    return std::format("@{:04X} (#{:04X} {})", card_ref, ce->def.card_id, name);
   } else {
-    return phosg::string_printf("@%04hX (missing)", card_ref);
+    return std::format("@{:04X} (missing)", card_ref);
   }
 }
 
@@ -186,9 +188,9 @@ std::string Server::debug_str_for_card_id(uint16_t card_id) const {
   auto ce = this->definition_for_card_id(card_id);
   if (ce) {
     string name = ce->def.en_name.decode();
-    return phosg::string_printf("#%04hX (%s)", card_id, name.c_str());
+    return std::format("#{:04X} ({})", card_id, name);
   } else {
-    return phosg::string_printf("#%04hX (missing)", card_id);
+    return std::format("#{:04X} (missing)", card_id);
   }
 }
 
@@ -260,7 +262,7 @@ void Server::send(const void* data, size_t size, uint8_t command, bool enable_ma
     }
 
   } else if ((this->options.behavior_flags & BehaviorFlag::LOG_COMMANDS_IF_LOBBY_MISSING) &&
-      this->log().info("Generated command")) {
+      this->log().info_f("Generated command")) {
     phosg::print_data(stderr, data, size, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
   }
 }
@@ -273,9 +275,9 @@ void Server::send_6xB4x46() const {
   // debugging easier.
   G_ServerVersionStrings_Ep3_6xB4x46 cmd;
   cmd.version_signature.encode(this->options.is_nte() ? VERSION_SIGNATURE_NTE : VERSION_SIGNATURE, 1);
-  cmd.date_str1.encode(phosg::format_time(this->options.card_index->definitions_mtime() * 1000000), 1);
+  cmd.date_str1.encode(std::format("Card definitions: {:016X}", this->options.card_index->definitions_hash()), 1);
   string build_date = phosg::format_time(BUILD_TIMESTAMP);
-  cmd.date_str2.encode(phosg::string_printf("newserv %s compiled at %s", GIT_REVISION_HASH, build_date.c_str()), 1);
+  cmd.date_str2.encode(std::format("newserv {} compiled at {}", GIT_REVISION_HASH, build_date), 1);
   this->send(cmd);
 }
 
@@ -291,7 +293,7 @@ string Server::prepare_6xB6x41_map_definition(shared_ptr<const MapIndex::Map> ma
   return std::move(w.str());
 }
 
-void Server::send_commands_for_joining_spectator(Channel& ch) const {
+void Server::send_commands_for_joining_spectator(std::shared_ptr<Channel> ch) const {
   bool should_send_state = true;
   if (this->setup_phase == SetupPhase::REGISTRATION) {
     // If registration is still in progress, we only need to send the map data
@@ -303,84 +305,62 @@ void Server::send_commands_for_joining_spectator(Channel& ch) const {
   }
 
   if (this->last_chosen_map) {
-    string data = this->prepare_6xB6x41_map_definition(this->last_chosen_map, ch.language, this->options.is_nte());
-    this->log().info("Sending %c version of map %08" PRIX32, char_for_language_code(ch.language), this->last_chosen_map->map_number);
-    ch.send(0x6C, 0x00, data);
+    string data = this->prepare_6xB6x41_map_definition(this->last_chosen_map, ch->language, this->options.is_nte());
+    this->log().info_f("Sending {} version of map {:08X}", char_for_language_code(ch->language), this->last_chosen_map->map_number);
+    ch->send(0x6C, 0x00, data);
   }
 
   if (should_send_state) {
-    ch.send(0xC9, 0x00, this->prepare_6xB4x03());
+    ch->send(0xC9, 0x00, this->prepare_6xB4x03());
     for (uint8_t client_id = 0; client_id < 4; client_id++) {
       auto ps = this->player_states[client_id];
       if (ps) {
-        ch.send(0xC9, 0x00, ps->prepare_6xB4x02());
-        ch.send(0xC9, 0x00, ps->prepare_6xB4x04());
+        ch->send(0xC9, 0x00, ps->prepare_6xB4x02());
+        ch->send(0xC9, 0x00, ps->prepare_6xB4x04());
       }
     }
-    if (ch.version == Version::GC_EP3_NTE) {
+    if (ch->version == Version::GC_EP3_NTE) {
       G_UpdateMap_Ep3NTE_6xB4x05 cmd;
       cmd.state = *this->map_and_rules;
-      ch.send(0xC9, 0x00, cmd);
+      ch->send(0xC9, 0x00, cmd);
     } else {
       G_UpdateMap_Ep3_6xB4x05 cmd;
       cmd.state = *this->map_and_rules;
-      ch.send(0xC9, 0x00, cmd);
+      ch->send(0xC9, 0x00, cmd);
     }
     // TODO: Sega does something like this; do we have to do this too?
     // for (uint8_t client_id = 0; client_id < 4; client_id++) {
     //   (send 6xB4x4E, 6xB4x4C, 6xB4x4D for each set card)
     //   (send 6xB4x4F for client_id)
     // }
-    ch.send(0xC9, 0x00, this->prepare_6xB4x07_decks_update());
+    ch->send(0xC9, 0x00, this->prepare_6xB4x07_decks_update());
     // TODO: Sega sends 6xB4x05 here again; why? Is that necessary? They also
     // send 6xB4x02 again for each player after that (but not 6xB4x04)
-    ch.send(0xC9, 0x00, this->prepare_6xB4x1C_names_update());
-    ch.send(0xC9, 0x00, this->prepare_6xB4x50_trap_tile_locations());
+    ch->send(0xC9, 0x00, this->prepare_6xB4x1C_names_update());
+    ch->send(0xC9, 0x00, this->prepare_6xB4x50_trap_tile_locations());
     {
       G_LoadCurrentEnvironment_Ep3_6xB4x3B cmd_3B;
-      ch.send(0xC9, 0x00, &cmd_3B, sizeof(cmd_3B));
+      ch->send(0xC9, 0x00, &cmd_3B, sizeof(cmd_3B));
     }
-  }
-}
-
-__attribute__((format(printf, 2, 3))) void Server::send_debug_message_printf(const char* fmt, ...) const {
-  auto l = this->lobby.lock();
-  if (l && (this->options.behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
-    va_list va;
-    va_start(va, fmt);
-    std::string buf = phosg::string_vprintf(fmt, va);
-    va_end(va);
-    send_text_message(l, buf);
-  }
-}
-
-__attribute__((format(printf, 2, 3))) void Server::send_info_message_printf(const char* fmt, ...) const {
-  auto l = this->lobby.lock();
-  if (l) {
-    va_list va;
-    va_start(va, fmt);
-    std::string buf = phosg::string_vprintf(fmt, va);
-    va_end(va);
-    send_text_message(l, buf);
   }
 }
 
 void Server::send_debug_command_received_message(
     uint8_t client_id, uint8_t subsubcommand, const char* description) const {
-  this->log().debug("%hhu/CAx%02hhX %s", client_id, subsubcommand, description);
-  this->send_debug_message_printf("$C5%hhu/CAx%02hhX %s", client_id, subsubcommand, description);
+  this->log().debug_f("{}/CAx{:02X} {}", client_id, subsubcommand, description);
+  this->send_debug_message("$C5{}/CAx{:02X} {}", client_id, subsubcommand, description);
 }
 
 void Server::send_debug_command_received_message(uint8_t subsubcommand, const char* description) const {
-  this->log().debug("*/CAx%02hhX %s", subsubcommand, description);
-  this->send_debug_message_printf("$C5*/CAx%02hhX %s", subsubcommand, description);
+  this->log().debug_f("*/CAx{:02X} {}", subsubcommand, description);
+  this->send_debug_message("$C5*/CAx{:02X} {}", subsubcommand, description);
 }
 
 void Server::send_debug_message_if_error_code_nonzero(uint8_t client_id, int32_t error_code) const {
   if (error_code < 0) {
-    this->send_debug_message_printf("$C4%hhu/ERROR -0x%zX", client_id, static_cast<ssize_t>(-error_code));
+    this->send_debug_message("$C4{}/ERROR -0x{:X}", client_id, static_cast<ssize_t>(-error_code));
   } else if (error_code > 0) {
-    this->send_debug_message_printf("$C4%hhu/ERROR 0x%zX", client_id, static_cast<ssize_t>(error_code));
+    this->send_debug_message("$C4{}/ERROR 0x{:X}", client_id, static_cast<ssize_t>(error_code));
   }
 }
 
@@ -949,62 +929,62 @@ void Server::end_action_phase() {
 
 bool Server::enqueue_attack_or_defense(uint8_t client_id, ActionState* pa) {
   auto log = this->log_stack("enqueue_attack_or_defense: ");
-  if (log.should_log(phosg::LogLevel::DEBUG)) {
+  if (log.should_log(phosg::LogLevel::L_DEBUG)) {
     string s = pa->str(this->shared_from_this());
-    log.debug("input: %s", s.c_str());
+    log.debug_f("input: {}", s);
   }
 
   if (client_id >= 4) {
     this->ruler_server->error_code3 = -0x78;
-    log.debug("failed: invalid client ID");
+    log.debug_f("failed: invalid client ID");
     return false;
   }
 
   auto ps = this->player_states[client_id];
   if (!ps) {
     this->ruler_server->error_code3 = -0x72;
-    log.debug("failed: player not present");
+    log.debug_f("failed: player not present");
     return false;
   }
 
   if (pa->action_card_refs[0] == 0xFFFF) {
     if (pa->defense_card_ref != 0xFFFF) {
       pa->action_card_refs[0] = pa->defense_card_ref;
-      log.debug("moved defense card ref to action card ref 0");
+      log.debug_f("moved defense card ref to action card ref 0");
     }
   } else {
     pa->defense_card_ref = pa->action_card_refs[0];
-    log.debug("moved action card ref 0 to defense card ref");
+    log.debug_f("moved action card ref 0 to defense card ref");
   }
 
   if (!this->ruler_server->is_attack_or_defense_valid(*pa)) {
-    log.debug("failed: attack or defense not valid");
+    log.debug_f("failed: attack or defense not valid");
     return false;
   }
 
   int16_t ally_atk_result = this->send_6xB4x33_remove_ally_atk_if_needed(*pa);
   if (ally_atk_result == 1) {
-    log.debug("pending: need ally approval");
+    log.debug_f("pending: need ally approval");
     return true;
   } else if (ally_atk_result == -1) {
-    log.debug("failed: ally declined");
+    log.debug_f("failed: ally declined");
     return false;
   }
 
   if (this->num_pending_attacks >= 0x20) {
     this->ruler_server->error_code3 = -0x71;
-    log.debug("failed: too many pending attacks");
+    log.debug_f("failed: too many pending attacks");
     return false;
   }
 
   size_t attack_index = this->num_pending_attacks++;
   this->pending_attacks[attack_index] = *pa;
-  if (log.should_log(phosg::LogLevel::DEBUG)) {
+  if (log.should_log(phosg::LogLevel::L_DEBUG)) {
     string pa_str = this->pending_attacks[attack_index].str(this->shared_from_this());
-    log.debug("set pending attack %zu: %s", attack_index, pa_str.c_str());
+    log.debug_f("set pending attack {}: {}", attack_index, pa_str);
   }
   ps->set_action_cards_for_action_state(*pa);
-  log.debug("set action cards");
+  log.debug_f("set action cards");
   auto card = this->card_for_set_card_ref(this->send_6xB4x06_if_card_ref_invalid(pa->attacker_card_ref, 1));
   if (card) {
     card->card_flags |= 0x400;
@@ -1056,7 +1036,7 @@ uint32_t Server::get_random_raw() {
   if (this->options.opt_rand_stream) {
     this->options.opt_rand_stream->readx(&ret, sizeof(ret));
   } else {
-    ret = random_from_optional_crypt(this->options.opt_rand_crypt);
+    ret = this->options.rand_crypt->next();
   }
 
   if (this->battle_record && this->battle_record->writable()) {
@@ -1740,20 +1720,20 @@ bool Server::update_registration_phase() {
   auto log = this->log_stack("update_registration_phase: ");
 
   if (this->setup_phase != SetupPhase::REGISTRATION) {
-    log.debug("setup_phase is not REGISTRATION");
+    log.debug_f("setup_phase is not REGISTRATION");
     return false;
   }
 
   if (this->map_and_rules->num_players == 0) {
     this->registration_phase = RegistrationPhase::AWAITING_NUM_PLAYERS;
-    log.debug("registration_phase set to AWAITING_NUM_PLAYERS");
+    log.debug_f("registration_phase set to AWAITING_NUM_PLAYERS");
     this->update_battle_state_flags_and_send_6xB4x03_if_needed();
     return false;
   }
 
   if (this->map_and_rules->num_players != this->num_clients_present) {
     this->registration_phase = RegistrationPhase::AWAITING_PLAYERS;
-    log.debug("registration_phase set to AWAITING_PLAYERS");
+    log.debug_f("registration_phase set to AWAITING_PLAYERS");
     this->update_battle_state_flags_and_send_6xB4x03_if_needed();
     return false;
   }
@@ -1767,20 +1747,20 @@ bool Server::update_registration_phase() {
 
   if (num_team0_registered_players != this->map_and_rules->num_team0_players) {
     this->registration_phase = RegistrationPhase::AWAITING_DECKS;
-    log.debug("registration_phase set to AWAITING_DECKS");
+    log.debug_f("registration_phase set to AWAITING_DECKS");
     this->update_battle_state_flags_and_send_6xB4x03_if_needed();
     return false;
   }
 
   this->registration_phase = RegistrationPhase::REGISTERED;
   this->update_battle_state_flags_and_send_6xB4x03_if_needed();
-  log.debug("battle can begin");
+  log.debug_f("battle can begin");
   return true;
 }
 
 const unordered_map<uint8_t, Server::handler_t> Server::subcommand_handlers({
-    {0x0B, &Server::handle_CAx0B_mulligan_hand},
-    {0x0C, &Server::handle_CAx0C_end_mulligan_phase},
+    {0x0B, &Server::handle_CAx0B_redraw_initial_hand},
+    {0x0C, &Server::handle_CAx0C_end_redraw_initial_hand_phase},
     {0x0D, &Server::handle_CAx0D_end_non_action_phase},
     {0x0E, &Server::handle_CAx0E_discard_card_from_hand},
     {0x0F, &Server::handle_CAx0F_set_card_from_hand},
@@ -1809,7 +1789,7 @@ void Server::on_server_data_input(shared_ptr<Client> sender_c, const string& dat
   size_t expected_size = header.size * 4;
   if (expected_size < data.size()) {
     phosg::print_data(stderr, data);
-    throw runtime_error(phosg::string_printf("command is incomplete: expected %zX bytes, received %zX bytes", expected_size, data.size()));
+    throw runtime_error(std::format("command is incomplete: expected {:X} bytes, received {:X} bytes", expected_size, data.size()));
   }
   if (header.subcommand != 0xB3) {
     throw runtime_error("server data command is not 6xB3");
@@ -1835,7 +1815,7 @@ void Server::on_server_data_input(shared_ptr<Client> sender_c, const string& dat
   }
 }
 
-void Server::handle_CAx0B_mulligan_hand(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx0B_redraw_initial_hand(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_RedrawInitialHand_Ep3_CAx0B>(data);
   this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "REDRAW");
   if (in_cmd.client_id >= 4) {
@@ -1854,20 +1834,20 @@ void Server::handle_CAx0B_mulligan_hand(shared_ptr<Client>, const string& data) 
     if (!ps) {
       error_code = -0x72;
     } else {
-      ps->do_mulligan();
+      ps->redraw_initial_hand();
     }
   }
 
   if (!this->options.is_nte() || (error_code == 0)) {
     G_ActionResult_Ep3_6xB4x1E out_cmd;
-    out_cmd.sequence_num = in_cmd.header.sequence_num.load();
+    out_cmd.sequence_num = in_cmd.header.sequence_num;
     out_cmd.error_code = error_code;
     this->send(out_cmd);
   }
   this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
 }
 
-void Server::handle_CAx0C_end_mulligan_phase(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx0C_end_redraw_initial_hand_phase(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_EndInitialRedrawPhase_Ep3_CAx0C>(data);
   this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "HAND READY");
   if (in_cmd.client_id >= 4) {
@@ -1898,13 +1878,13 @@ void Server::handle_CAx0C_end_mulligan_phase(shared_ptr<Client>, const string& d
     if (!ps) {
       error_code = -0x72;
     } else {
-      this->clients_done_in_mulligan_phase[in_cmd.client_id] = true;
+      this->clients_done_in_redraw_initial_hand_phase[in_cmd.client_id] = true;
       ps->assist_flags |= AssistFlag::READY_TO_END_PHASE;
       ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
 
       bool all_clients_ready = true;
       for (size_t z = 0; z < 4; z++) {
-        if (this->player_states[z] && !this->clients_done_in_mulligan_phase[z]) {
+        if (this->player_states[z] && !this->clients_done_in_redraw_initial_hand_phase[z]) {
           all_clients_ready = false;
           break;
         }
@@ -2229,7 +2209,7 @@ void Server::handle_CAx14_update_deck_during_setup(shared_ptr<Client>, const str
         }
       }
       if (verify_error) {
-        throw runtime_error(phosg::string_printf("invalid deck: -0x%" PRIX32, verify_error));
+        throw runtime_error(std::format("invalid deck: -0x{:X}", verify_error));
       }
       if (!this->options.is_nte() && !(this->options.behavior_flags & BehaviorFlag::SKIP_D1_D2_REPLACE)) {
         this->ruler_server->replace_D1_D2_rank_cards_with_Attack(entry.card_ids);
@@ -2573,7 +2553,7 @@ void Server::send_6xB6x41_to_all_clients() const {
         map_commands_by_language[c->language()] = this->prepare_6xB6x41_map_definition(
             this->last_chosen_map, c->language(), this->options.is_nte());
       }
-      this->log().info("Sending %c version of map %08" PRIX32, char_for_language_code(c->language()), this->last_chosen_map->map_number);
+      this->log().info_f("Sending {} version of map {:08X}", char_for_language_code(c->language()), this->last_chosen_map->map_number);
       send_command(c, 0x6C, 0x00, map_commands_by_language[c->language()]);
     };
     for (const auto& c : l->clients) {
@@ -2782,7 +2762,7 @@ void Server::unknown_8023EEF4() {
   auto log = this->log_stack("unknown_8023EEF4: ");
 
   if (this->unknown_a14 >= 0x20) {
-    log.debug("unknown_a14 too large (0x%" PRIX32 ")", this->unknown_a14);
+    log.debug_f("unknown_a14 too large (0x{:X})", this->unknown_a14);
     return;
   }
 
@@ -2791,34 +2771,34 @@ void Server::unknown_8023EEF4() {
     auto card = this->attack_cards[this->unknown_a14];
     if (this->get_current_team_turn() == card->get_team_id()) {
       ActionState as = this->pending_attacks_with_cards[this->unknown_a14];
-      if (log.should_log(phosg::LogLevel::DEBUG)) {
-        log.debug("card @%04hX #%04hX can attack", card->get_card_ref(), card->get_card_id());
+      if (log.should_log(phosg::LogLevel::L_DEBUG)) {
+        log.debug_f("card @{:04X} #{:04X} can attack", card->get_card_ref(), card->get_card_id());
         string as_str = as.str(this->shared_from_this());
-        log.debug("as: %s", as_str.c_str());
+        log.debug_f("as: {}", as_str);
       }
       if (is_nte) {
         this->replace_targets_due_to_destruction_nte(&as);
       } else {
         this->replace_targets_due_to_destruction_or_conditions(&as);
       }
-      if (log.should_log(phosg::LogLevel::DEBUG)) {
+      if (log.should_log(phosg::LogLevel::L_DEBUG)) {
         string as_str = as.str(this->shared_from_this());
-        log.debug("as after target replacement: %s", as_str.c_str());
+        log.debug_f("as after target replacement: {}", as_str);
       }
       if (this->any_target_exists_for_attack(as)) {
-        log.debug("as is valid");
+        log.debug_f("as is valid");
         break;
       } else {
-        log.debug("as is not valid");
+        log.debug_f("as is not valid");
       }
     } else {
-      log.debug("card @%04hX #%04hX cannot attack (wrong turn)", card->get_card_ref(), card->get_card_id());
+      log.debug_f("card @{:04X} #{:04X} cannot attack (wrong turn)", card->get_card_ref(), card->get_card_id());
     }
     this->unknown_a14++;
   }
 
   if (this->unknown_a14 < this->num_pending_attacks_with_cards) {
-    log.debug("a14 (%" PRIu32 ") < num_pending_attacks_with_cards (%" PRIu32 ")", this->unknown_a14, this->num_pending_attacks_with_cards);
+    log.debug_f("a14 ({}) < num_pending_attacks_with_cards ({})", this->unknown_a14, this->num_pending_attacks_with_cards);
     this->defense_list_ended_for_client.clear(false);
 
     G_UpdateAttackTargets_Ep3_6xB4x29 cmd;
@@ -3142,13 +3122,13 @@ void Server::unknown_802402F4() {
     if (ps && (this->current_team_turn2 == ps->get_team_id())) {
       auto card = ps->get_sc_card();
       if (card) {
-        log.debug("SC card has action chain");
+        log.debug_f("SC card has action chain");
         card->compute_action_chain_results(true, false);
       }
       for (size_t set_index = 0; set_index < 8; set_index++) {
         card = ps->get_set_card(set_index);
         if (card) {
-          log.debug("set card %zu has action chain", set_index);
+          log.debug_f("set card {} has action chain", set_index);
           card->compute_action_chain_results(true, false);
         }
       }

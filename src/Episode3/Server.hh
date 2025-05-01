@@ -73,7 +73,7 @@ public:
     std::shared_ptr<const MapIndex> map_index;
     uint32_t behavior_flags;
     std::shared_ptr<phosg::StringReader> opt_rand_stream;
-    std::shared_ptr<PSOLFGEncryption> opt_rand_crypt;
+    std::shared_ptr<RandomGenerator> rand_crypt;
     std::shared_ptr<const Tournament> tournament;
     std::array<std::vector<uint16_t>, 5> trap_card_ids;
 
@@ -109,7 +109,7 @@ public:
     for (size_t z = 0; z < count; z++) {
       if (refs[z] != 0xFFFF) {
         std::string ref_str = this->debug_str_for_card_ref(refs[z]);
-        ret += phosg::string_printf("%zu:%s ", z, ref_str.c_str());
+        ret += std::format("{}:{} ", z, ref_str);
       }
     }
     if (ret.size() > 1) {
@@ -145,20 +145,23 @@ public:
     this->send(&cmd, cmd.header.size * 4, command, enable_masking);
   }
   void send(const void* data, size_t size, uint8_t command = 0xC9, bool enable_masking = true) const;
-  void send_commands_for_joining_spectator(Channel& ch) const;
+  void send_commands_for_joining_spectator(std::shared_ptr<Channel> ch) const;
 
   void force_battle_result(uint8_t surrendered_client_id, bool set_winner);
   void force_replace_assist_card(uint8_t client_id, uint16_t card_id);
   void force_destroy_field_character(uint8_t client_id, size_t set_index);
 
-  __attribute__((format(printf, 2, 3))) void send_debug_message_printf(const char* fmt, ...) const;
-  __attribute__((format(printf, 2, 3))) void send_info_message_printf(const char* fmt, ...) const;
-  void send_debug_command_received_message(
-      uint8_t client_id, uint8_t subsubcommand, const char* description) const;
-  void send_debug_command_received_message(
-      uint8_t subsubcommand, const char* description) const;
-  void send_debug_message_if_error_code_nonzero(
-      uint8_t client_id, int32_t error_code) const;
+  template <typename... ArgTs>
+  void send_debug_message(std::format_string<ArgTs...> fmt, ArgTs&&... args) const {
+    auto l = this->lobby.lock();
+    if (l && (this->options.behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
+      send_text_message(l, std::format(std::forward<std::format_string<ArgTs...>>(fmt), std::forward<ArgTs>(args)...));
+    }
+  }
+
+  void send_debug_command_received_message(uint8_t client_id, uint8_t subsubcommand, const char* description) const;
+  void send_debug_command_received_message(uint8_t subsubcommand, const char* description) const;
+  void send_debug_message_if_error_code_nonzero(uint8_t client_id, int32_t error_code) const;
 
   void send_6xB4x46() const;
 
@@ -218,8 +221,8 @@ public:
   void update_battle_state_flags_and_send_6xB4x03_if_needed(bool always_send = false);
   bool update_registration_phase();
   void on_server_data_input(std::shared_ptr<Client> sender_c, const std::string& data);
-  void handle_CAx0B_mulligan_hand(std::shared_ptr<Client> sender_c, const std::string& data);
-  void handle_CAx0C_end_mulligan_phase(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx0B_redraw_initial_hand(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx0C_end_redraw_initial_hand_phase(std::shared_ptr<Client> sender_c, const std::string& data);
   void handle_CAx0D_end_non_action_phase(std::shared_ptr<Client> sender_c, const std::string& data);
   void handle_CAx0E_discard_card_from_hand(std::shared_ptr<Client> sender_c, const std::string& data);
   void handle_CAx0F_set_card_from_hand(std::shared_ptr<Client> sender_c, const std::string& data);
@@ -330,7 +333,7 @@ public:
   std::shared_ptr<CardSpecial> card_special;
   std::shared_ptr<StateFlags> state_flags;
   std::array<std::shared_ptr<PlayerState>, 4> player_states;
-  parray<uint32_t, 4> clients_done_in_mulligan_phase;
+  parray<uint32_t, 4> clients_done_in_redraw_initial_hand_phase;
   uint32_t num_pending_attacks_with_cards;
   bcarray<std::shared_ptr<Card>, 0x20> attack_cards;
   bcarray<ActionState, 0x20> pending_attacks_with_cards;

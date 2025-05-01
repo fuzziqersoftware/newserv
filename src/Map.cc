@@ -26,7 +26,7 @@ string Variations::str() const {
     if (!ret.empty()) {
       ret += ",";
     }
-    ret += phosg::string_printf("%02zX:[%" PRIX32 ",%" PRIX32 "]", z, e.layout.load(), e.entities.load());
+    ret += std::format("{:02X}:[{:X},{:X}]", z, e.layout, e.entities);
   }
   return ret;
 }
@@ -35,10 +35,7 @@ phosg::JSON Variations::json() const {
   auto ret = phosg::JSON::list();
   for (size_t z = 0; z < this->entries.size(); z++) {
     const auto& e = this->entries[z];
-    ret.emplace_back(phosg::JSON::dict({
-        {"layout", e.layout.load()},
-        {"entities", e.entities.load()},
-    }));
+    ret.emplace_back(phosg::JSON::dict({{"layout", e.layout.load()}, {"entities", e.entities.load()}}));
   }
   return ret;
 }
@@ -46,13 +43,13 @@ phosg::JSON Variations::json() const {
 SetDataTableBase::SetDataTableBase(Version version) : version(version) {}
 
 Variations SetDataTableBase::generate_variations(
-    Episode episode, bool is_solo, shared_ptr<PSOLFGEncryption> opt_rand_crypt) const {
+    Episode episode, bool is_solo, shared_ptr<RandomGenerator> rand_crypt) const {
   Variations ret;
   for (size_t floor = 0; floor < ret.entries.size(); floor++) {
     auto& e = ret.entries[floor];
     auto num_vars = this->num_free_play_variations_for_floor(episode, is_solo, floor);
-    e.layout = (num_vars.layout > 1) ? (random_from_optional_crypt(opt_rand_crypt) % num_vars.layout) : 0;
-    e.entities = (num_vars.entities > 1) ? (random_from_optional_crypt(opt_rand_crypt) % num_vars.entities) : 0;
+    e.layout = (num_vars.layout > 1) ? (rand_crypt->next() % num_vars.layout) : 0;
+    e.entities = (num_vars.entities > 1) ? (rand_crypt->next() % num_vars.entities) : 0;
   }
   return ret;
 }
@@ -236,15 +233,15 @@ string SetDataTable::map_filename_for_variation(
 
 string SetDataTable::str() const {
   vector<string> lines;
-  lines.emplace_back(phosg::string_printf("FL/V1/V2 => ----------------------OBJECT -----------------ENEMY+EVENT -----------------------SETUP\n"));
+  lines.emplace_back(std::format("FL/V1/V2 => ----------------------OBJECT -----------------ENEMY+EVENT -----------------------SETUP\n"));
   for (size_t a = 0; a < this->entries.size(); a++) {
     const auto& v1_v = this->entries[a];
     for (size_t v1 = 0; v1 < v1_v.size(); v1++) {
       const auto& v2_v = v1_v[v1];
       for (size_t v2 = 0; v2 < v2_v.size(); v2++) {
         const auto& e = v2_v[v2];
-        lines.emplace_back(phosg::string_printf("%02zX/%02zX/%02zX => %28s %28s %28s\n",
-            a, v1, v2, e.object_list_basename.c_str(), e.enemy_and_event_list_basename.c_str(), e.area_setup_filename.c_str()));
+        lines.emplace_back(std::format("{:02X}/{:02X}/{:02X} => {:28} {:28} {:28}\n",
+            a, v1, v2, e.object_list_basename, e.enemy_and_event_list_basename, e.area_setup_filename));
       }
     }
   }
@@ -1327,7 +1324,7 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //   param2 = base height
     //   param3 = area depth
     //   param4 = launch frequency (when a firework is launched, the game
-    //     generates a random number R in range [0, 0x7FFF] and waits
+    //     generates a random number r in range [0, 0x7FFF] and waits
     //     ((param4 + 60) * (r / 0x8000) * 3.0)) frames before launching the
     //     next firework)
     {0x0053, F_V0_V4, 0x0000600400040001, "TObjCity_Season_FireWorkCtrl"},
@@ -1422,8 +1419,8 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //   param3 = if zero, then bonuses, grinds, etc. are applied to the item
     //     after it's generated; if nonzero, the item is not randomized at
     //     all and drops exactly as specified in param4-6
-    //   param4-6 = item definition. see base_item_for_specialized_box in
-    //     ItemCreator.cc for how these values are decoded
+    //   param4-6 = item definition (see base_item_for_specialized_box in
+    //     ItemCreator.cc for how these values are decoded)
     // In the non-specialized case (param1 <= 0), param3-6 are still sent via
     // the 6xA2 command when the box is opened on v3 and later, and the
     // server may choose to use those parameters for some purpose. The client
@@ -1675,7 +1672,7 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     {0x0102, F_V0_V4, 0x00000000000000C0, "TODoorMachine02"},
     {0x0102, F_V4, 0x00004E0000000000, "__EP4_TEST_DOOR__"},
 
-    // Large cryo-tube. There appear to be no parameters.
+    // Large cryotube. There appear to be no parameters.
     {0x0103, F_V0_V4, 0x00004008000000C0, "TOCapsuleMachine01"},
 
     // Computer. Same parameters as 0x008D (TOCapsuleAncient01).
@@ -1715,9 +1712,8 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     // 0x2C, 0x2D, and 0x2E to determine the state of each seal on the door
     // (for Forest, Caves, and Mines respectively). It then checks quest flag
     // 0x2F; if this flag is set, then all seals are unlocked regardless of
-    // the preceding three flags' values. Curiously, it seems that these
-    // flags are checked every frame, even though it's normally impossible to
-    // change their values in the area where this object appears.
+    // the preceding three flags' values. All of these flags are checked every
+    // frame, not only at construction time.
     // No parameters.
     {0x0130, F_V0_V4, 0x0000400000002000, "TODoorVoShip"},
 
@@ -1830,18 +1826,19 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     {0x015E, F_V0_V4, 0x0000400000000700, "TOWreckAncient06"},
     {0x015F, F_V0_V4, 0x0000400000000700, "TOWreckAncient07"},
 
-    // This ID constructs different objects depending on where it's used. On
+    // 0x0160 constructs different objects depending on where it's used. On
     // floor 0D (Vol Opt), it constructs TObjWarpBoss03; on other floors
     // where it's valid, it constructs TObjFogCollisionPoison.
+    // TObjWarpBoss03 creates an invisible warp. This is used for the warp
+    // behind the door to Ruins after defeating Vol Opt. Params:
+    //   param4 = destination floor
+    {0x0160, F_V0_V4, 0x0000400000002000, "TObjWarpBoss03"},
+
     // TObjFogCollisionPoison creates a switchable, foggy area that's visible
     // and hurts the player if the switch flag isn't on. Params are the same
     // as for 0x0018 (TObjFogCollisionSwitch), but there is also:
     //   param2 = poison power (scaled by difficulty: Normal = x1, Hard = x2,
     //     Very Hard = x3, Ultimate = x6)
-    // TObjWarpBoss03 creates an invisible warp. This is used for the warp
-    // behind the door to Ruins after defeating Vol Opt. Params:
-    //   param4 = destination floor
-    {0x0160, F_V0_V4, 0x0000400000002000, "TObjWarpBoss03"},
     {0x0160, F_V0_V4, 0x00004FF030600700, "TObjFogCollisionPoison"},
 
     // Ruins specialized box. Same parameters as 0x0088 (TObjContainerBase2).
@@ -2095,7 +2092,7 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     {0x0202, F_V3_V4, 0x0000400C0F800000, "TObjDoorJung"},
 
     // CCA item box. Same parameters as 0x0088 (TObjContainerBase2).
-    // In the Episode 4 Crater areas, this object constructs 0x92
+    // In the Episode 4 Crater areas, this object constructs 0x0092
     // (TObjContainerBase) instead.
     {0x0203, F_V3_V4, 0x0000400C4F800000, "TObjContainerJungEx"},
     {0x0203, F_V4, 0x000001F000000000, "TObjContainerBase(0203)"},
@@ -2142,8 +2139,8 @@ static const vector<DATEntityDefinition> dat_object_definitions({
 
     // Bird objects. Params:
     //   param4 = model number? (clamped to [0, 2])
-    {0x020C, F_V3_V4, 0x00004E0C0B000000, "__WHITE_BIRD__"}, // Formerly __TObjPathObj_subclass_020C__
-    {0x020D, F_V3_V4, 0x000040080B000000, "__ORANGE_BIRD__"}, // Formerly __TObjPathObj_subclass_020D__
+    {0x020C, F_V3_V4, 0x00004E0C0B000000, "__WHITE_BIRD__"},
+    {0x020D, F_V3_V4, 0x000040080B000000, "__ORANGE_BIRD__"},
 
     // Jungle box that triggers a wave event when opened. Params:
     //   param4 = event number
@@ -2191,7 +2188,7 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     {0x0220, F_V3_V4, 0x0000400439008000, "TObjFish"},
     {0x0220, F_EP3, 0x0000000000008002, "TObjFish"},
 
-    // Seabed multiplayer door. Params:
+    // Seabed multiplayer doors. Params:
     //   param4 = base switch flag number (the actual switch flags used are
     //     param4, param4 + 1, param4 + 2, etc.; if this is negative, the
     //     door is always unlocked)
@@ -3368,7 +3365,7 @@ static string name_for_entity_type(
   }
 
   return ret.empty()
-      ? phosg::string_printf("__UNKNOWN_ENTITY_%04hX__", type)
+      ? std::format("__UNKNOWN_ENTITY_{:04X}__", type)
       : ret;
 }
 
@@ -3383,26 +3380,26 @@ string MapFile::name_for_enemy_type(uint16_t type, Version version, uint8_t area
 
 string MapFile::ObjectSetEntry::str(Version version, uint8_t area) const {
   string name_str = MapFile::name_for_object_type(this->base_type, version, area);
-  return phosg::string_printf("[ObjectSetEntry type=%04hX \"%s\" floor=%04hX group=%04hX room=%04hX a3=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %08" PRIX32 " %08" PRIX32 " %08" PRIX32 "] unused=%08" PRIX32 "]",
-      this->base_type.load(),
-      name_str.c_str(),
-      this->floor.load(),
-      this->group.load(),
-      this->room.load(),
-      this->unknown_a3.load(),
-      this->pos.x.load(),
-      this->pos.y.load(),
-      this->pos.z.load(),
-      this->angle.x.load(),
-      this->angle.y.load(),
-      this->angle.z.load(),
-      this->param1.load(),
-      this->param2.load(),
-      this->param3.load(),
-      this->param4.load(),
-      this->param5.load(),
-      this->param6.load(),
-      this->unused.load());
+  return std::format("[ObjectSetEntry type={:04X} \"{}\" floor={:04X} group={:04X} room={:04X} a3={:04X} x={:g} y={:g} z={:g} x_angle={:08X} y_angle={:08X} z_angle={:08X} params=[{:g} {:g} {:g} {:08X} {:08X} {:08X}] unused={:08X}]",
+      this->base_type,
+      name_str,
+      this->floor,
+      this->group,
+      this->room,
+      this->unknown_a3,
+      this->pos.x,
+      this->pos.y,
+      this->pos.z,
+      this->angle.x,
+      this->angle.y,
+      this->angle.z,
+      this->param1,
+      this->param2,
+      this->param3,
+      this->param4,
+      this->param5,
+      this->param6,
+      this->unused);
 }
 
 uint64_t MapFile::ObjectSetEntry::semantic_hash(uint8_t floor) const {
@@ -3423,29 +3420,29 @@ uint64_t MapFile::ObjectSetEntry::semantic_hash(uint8_t floor) const {
 
 string MapFile::EnemySetEntry::str(Version version, uint8_t area) const {
   auto type_name = MapFile::name_for_enemy_type(this->base_type, version, area);
-  return phosg::string_printf("[EnemySetEntry type=%04hX \"%s\" num_children=%04hX floor=%04hX room=%04hX wave_number=%04hX wave_number2=%04hX a1=%04hX x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 " params=[%g %g %g %g %g %04hX %04hX] unused=%08" PRIX32 "]",
-      this->base_type.load(),
-      type_name.c_str(),
-      this->num_children.load(),
-      this->floor.load(),
-      this->room.load(),
-      this->wave_number.load(),
-      this->wave_number2.load(),
-      this->unknown_a1.load(),
-      this->pos.x.load(),
-      this->pos.y.load(),
-      this->pos.z.load(),
-      this->angle.x.load(),
-      this->angle.y.load(),
-      this->angle.z.load(),
-      this->param1.load(),
-      this->param2.load(),
-      this->param3.load(),
-      this->param4.load(),
-      this->param5.load(),
-      this->param6.load(),
-      this->param7.load(),
-      this->unused.load());
+  return std::format("[EnemySetEntry type={:04X} \"{}\" num_children={:04X} floor={:04X} room={:04X} wave_number={:04X} wave_number2={:04X} a1={:04X} x={:g} y={:g} z={:g} x_angle={:08X} y_angle={:08X} z_angle={:08X} params=[{:g} {:g} {:g} {:g} {:g} {:04X} {:04X}] unused={:08X}]",
+      this->base_type,
+      type_name,
+      this->num_children,
+      this->floor,
+      this->room,
+      this->wave_number,
+      this->wave_number2,
+      this->unknown_a1,
+      this->pos.x,
+      this->pos.y,
+      this->pos.z,
+      this->angle.x,
+      this->angle.y,
+      this->angle.z,
+      this->param1,
+      this->param2,
+      this->param3,
+      this->param4,
+      this->param5,
+      this->param6,
+      this->param7,
+      this->unused);
 }
 
 uint64_t MapFile::EnemySetEntry::semantic_hash(uint8_t floor) const {
@@ -3468,14 +3465,14 @@ uint64_t MapFile::EnemySetEntry::semantic_hash(uint8_t floor) const {
 }
 
 string MapFile::Event1Entry::str() const {
-  return phosg::string_printf("[Event1Entry event_id=%08" PRIX32 " flags=%04hX event_type=%04hX room=%04hX wave_number=%04hX delay=%08" PRIX32 " action_stream_offset=%08" PRIX32 "]",
-      this->event_id.load(),
-      this->flags.load(),
-      this->event_type.load(),
-      this->room.load(),
-      this->wave_number.load(),
-      this->delay.load(),
-      this->action_stream_offset.load());
+  return std::format("[Event1Entry event_id={:08X} flags={:04X} event_type={:04X} room={:04X} wave_number={:04X} delay={:08X} action_stream_offset={:08X}]",
+      this->event_id,
+      this->flags,
+      this->event_type,
+      this->room,
+      this->wave_number,
+      this->delay,
+      this->action_stream_offset);
 }
 
 uint64_t MapFile::Event1Entry::semantic_hash(uint8_t floor) const {
@@ -3487,48 +3484,48 @@ uint64_t MapFile::Event1Entry::semantic_hash(uint8_t floor) const {
 }
 
 string MapFile::Event2Entry::str() const {
-  return phosg::string_printf("[Event2Entry event_id=%08" PRIX32 " flags=%04hX event_type=%04hX room=%04hX wave_number=%04hX min_delay=%08" PRIX32 " max_delay=%08" PRIX32 " min_enemies=%02hhX max_enemies=%02hhX max_waves=%04hX action_stream_offset=%08" PRIX32 "]",
-      this->event_id.load(),
-      this->flags.load(),
-      this->event_type.load(),
-      this->room.load(),
-      this->wave_number.load(),
-      this->min_delay.load(),
-      this->max_delay.load(),
+  return std::format("[Event2Entry event_id={:08X} flags={:04X} event_type={:04X} room={:04X} wave_number={:04X} min_delay={:08X} max_delay={:08X} min_enemies={:02X} max_enemies={:02X} max_waves={:04X} action_stream_offset={:08X}]",
+      this->event_id,
+      this->flags,
+      this->event_type,
+      this->room,
+      this->wave_number,
+      this->min_delay,
+      this->max_delay,
       this->min_enemies,
       this->max_enemies,
-      this->max_waves.load(),
-      this->action_stream_offset.load());
+      this->max_waves,
+      this->action_stream_offset);
 }
 
 string MapFile::RandomEnemyLocationEntry::str() const {
-  return phosg::string_printf("[RandomEnemyLocationEntry x=%g y=%g z=%g x_angle=%08" PRIX32 " y_angle=%08" PRIX32 " z_angle=%08" PRIX32 "a9=%04hX a10=%04hX]",
-      this->pos.x.load(),
-      this->pos.y.load(),
-      this->pos.z.load(),
-      this->angle.x.load(),
-      this->angle.y.load(),
-      this->angle.z.load(),
-      this->unknown_a9.load(),
-      this->unknown_a10.load());
+  return std::format("[RandomEnemyLocationEntry x={:g} y={:g} z={:g} x_angle={:08X} y_angle={:08X} z_angle={:08X}a9={:04X} a10={:04X}]",
+      this->pos.x,
+      this->pos.y,
+      this->pos.z,
+      this->angle.x,
+      this->angle.y,
+      this->angle.z,
+      this->unknown_a9,
+      this->unknown_a10);
 }
 
 string MapFile::RandomEnemyDefinition::str() const {
-  return phosg::string_printf("[RandomEnemyDefinition params=[%g %g %g %g %g %04hX %04hX] entry_num=%08" PRIX32 " min_children=%04hX max_children=%04hX]",
-      this->param1.load(),
-      this->param2.load(),
-      this->param3.load(),
-      this->param4.load(),
-      this->param5.load(),
-      this->param6.load(),
-      this->param7.load(),
-      this->entry_num.load(),
-      this->min_children.load(),
-      this->max_children.load());
+  return std::format("[RandomEnemyDefinition params=[{:g} {:g} {:g} {:g} {:g} {:04X} {:04X}] entry_num={:08X} min_children={:04X} max_children={:04X}]",
+      this->param1,
+      this->param2,
+      this->param3,
+      this->param4,
+      this->param5,
+      this->param6,
+      this->param7,
+      this->entry_num,
+      this->min_children,
+      this->max_children);
 }
 
 string MapFile::RandomEnemyWeight::str() const {
-  return phosg::string_printf("[RandomEnemyWeight base_type_index=%02hhX def_entry_num=%02hhX weight=%02hhX a4=%02hhX]",
+  return std::format("[RandomEnemyWeight base_type_index={:02X} def_entry_num={:02X} weight={:02X} a4={:02X}]",
       this->base_type_index,
       this->def_entry_num,
       this->weight,
@@ -3614,7 +3611,7 @@ MapFile::MapFile(std::shared_ptr<const std::string> data) {
       break;
     }
     if (header.section_size < sizeof(header)) {
-      throw runtime_error(phosg::string_printf("quest entities list has invalid section header at offset 0x%zX", r.where() - sizeof(header)));
+      throw runtime_error(std::format("quest entities list has invalid section header at offset 0x{:X}", r.where() - sizeof(header)));
     }
 
     if (header.floor >= this->sections_for_floor.size()) {
@@ -4015,51 +4012,51 @@ string MapFile::disassemble_action_stream(const void* data, size_t size) {
     uint8_t opcode = r.get_u8();
     switch (opcode) {
       case 0x00:
-        ret.emplace_back(phosg::string_printf("  00            nop"));
+        ret.emplace_back(std::format("  00            nop"));
         break;
       case 0x01:
-        ret.emplace_back(phosg::string_printf("  01            stop"));
+        ret.emplace_back(std::format("  01            stop"));
         r.go(r.size());
         break;
       case 0x08: {
         uint16_t room = r.get_u16l();
         uint16_t group = r.get_u16l();
-        ret.emplace_back(phosg::string_printf("  08 %04hX %04hX  construct_objects       room=%04hX group=%04hX",
+        ret.emplace_back(std::format("  08 {:04X} {:04X}  construct_objects       room={:04X} group={:04X}",
             room, group, room, group));
         break;
       }
       case 0x09: {
         uint16_t room = r.get_u16l();
         uint16_t wave_number = r.get_u16l();
-        ret.emplace_back(phosg::string_printf("  09 %04hX %04hX  construct_enemies       room=%04hX wave_number=%04hX",
+        ret.emplace_back(std::format("  09 {:04X} {:04X}  construct_enemies       room={:04X} wave_number={:04X}",
             room, wave_number, room, wave_number));
         break;
       }
       case 0x0A: {
         uint16_t id = r.get_u16l();
-        ret.emplace_back(phosg::string_printf("  0A %04hX       enable_switch_flag      id=%04hX", id, id));
+        ret.emplace_back(std::format("  0A {:04X}       enable_switch_flag      id={:04X}", id, id));
         break;
       }
       case 0x0B: {
         uint16_t id = r.get_u16l();
-        ret.emplace_back(phosg::string_printf("  0B %04hX       disable_switch_flag     id=%04hX", id, id));
+        ret.emplace_back(std::format("  0B {:04X}       disable_switch_flag     id={:04X}", id, id));
         break;
       }
       case 0x0C: {
         uint32_t event_id = r.get_u32l();
-        ret.emplace_back(phosg::string_printf("  0C %08" PRIX32 "   trigger_event           event_id=%08" PRIX32, event_id, event_id));
+        ret.emplace_back(std::format("  0C {:08X}   trigger_event           event_id={:08X}", event_id, event_id));
         break;
       }
       case 0x0D: {
         uint16_t room = r.get_u16l();
         uint16_t wave_number = r.get_u16l();
-        ret.emplace_back(phosg::string_printf("  0D %04hX %04hX  construct_enemies_stop  room=%04hX wave_number=%04hX",
+        ret.emplace_back(std::format("  0D {:04X} {:04X}  construct_enemies_stop  room={:04X} wave_number={:04X}",
             room, wave_number, room, wave_number));
         r.go(r.size());
         break;
       }
       default:
-        ret.emplace_back(phosg::string_printf("  %02hhX            .invalid", opcode));
+        ret.emplace_back(std::format("  {:02X}            .invalid", opcode));
     }
   }
 
@@ -4074,9 +4071,9 @@ string MapFile::disassemble(bool reassembly, Version version) const {
 
     if (sf.object_sets) {
       if (reassembly) {
-        ret.emplace_back(phosg::string_printf(".object_sets %hhu", floor));
+        ret.emplace_back(std::format(".object_sets {}", floor));
       } else {
-        ret.emplace_back(phosg::string_printf(".object_sets %hhu /* 0x%zX in file; 0x%zX bytes */",
+        ret.emplace_back(std::format(".object_sets {} /* 0x{:X} in file; 0x{:X} bytes */",
             floor, sf.object_sets_file_offset, sf.object_sets_file_size));
       }
       for (size_t z = 0; z < sf.object_set_count; z++) {
@@ -4084,15 +4081,15 @@ string MapFile::disassemble(bool reassembly, Version version) const {
           ret.emplace_back(sf.object_sets[z].str(version));
         } else {
           size_t k_id = z + sf.first_object_set_index;
-          ret.emplace_back(phosg::string_printf("/* K-%03zX */ ", k_id) + sf.object_sets[z].str(version));
+          ret.emplace_back(std::format("/* K-{:03X} */ ", k_id) + sf.object_sets[z].str(version));
         }
       }
     }
     if (sf.enemy_sets) {
       if (reassembly) {
-        ret.emplace_back(phosg::string_printf(".enemy_sets %hhu", floor));
+        ret.emplace_back(std::format(".enemy_sets {}", floor));
       } else {
-        ret.emplace_back(phosg::string_printf(".enemy_sets %hhu /* 0x%zX in file; 0x%zX bytes */",
+        ret.emplace_back(std::format(".enemy_sets {} /* 0x{:X} in file; 0x{:X} bytes */",
             floor, sf.enemy_sets_file_offset, sf.enemy_sets_file_size));
       }
       for (size_t z = 0; z < sf.enemy_set_count; z++) {
@@ -4100,15 +4097,15 @@ string MapFile::disassemble(bool reassembly, Version version) const {
           ret.emplace_back(sf.enemy_sets[z].str(version));
         } else {
           size_t s_id = z + sf.first_enemy_set_index;
-          ret.emplace_back(phosg::string_printf("/* S-%03zX */ ", s_id) + sf.enemy_sets[z].str(version));
+          ret.emplace_back(std::format("/* S-{:03X} */ ", s_id) + sf.enemy_sets[z].str(version));
         }
       }
     }
     if (sf.events1) {
       if (reassembly) {
-        ret.emplace_back(phosg::string_printf(".events %hhu", floor));
+        ret.emplace_back(std::format(".events {}", floor));
       } else {
-        ret.emplace_back(phosg::string_printf(".events %hhu /* 0x%zX in file; 0x%zX bytes; 0x%zX bytes in action stream */",
+        ret.emplace_back(std::format(".events {} /* 0x{:X} in file; 0x{:X} bytes; 0x{:X} bytes in action stream */",
             floor, sf.events_file_offset, sf.events_file_size, sf.event_action_stream_bytes));
       }
       for (size_t z = 0; z < sf.event_count; z++) {
@@ -4117,12 +4114,12 @@ string MapFile::disassemble(bool reassembly, Version version) const {
           ret.emplace_back(ev.str());
         } else {
           size_t w_id = z + sf.first_event_set_index;
-          ret.emplace_back(phosg::string_printf("/* W-%03zX */ ", w_id) + ev.str());
+          ret.emplace_back(std::format("/* W-{:03X} */ ", w_id) + ev.str());
         }
         if (ev.action_stream_offset >= sf.event_action_stream_bytes) {
-          ret.emplace_back(phosg::string_printf(
-              "  // WARNING: Event action stream offset (0x%" PRIX32 ") is outside of this section",
-              ev.action_stream_offset.load()));
+          ret.emplace_back(std::format(
+              "  // WARNING: Event action stream offset (0x{:X}) is outside of this section",
+              ev.action_stream_offset));
         }
         size_t as_size = as_r.size() - ev.action_stream_offset;
         ret.emplace_back(this->disassemble_action_stream(as_r.pgetv(ev.action_stream_offset, as_size), as_size));
@@ -4130,10 +4127,10 @@ string MapFile::disassemble(bool reassembly, Version version) const {
     }
     if (sf.events2) {
       if (reassembly) {
-        ret.emplace_back(phosg::string_printf(".random_events %hhu", floor));
+        ret.emplace_back(std::format(".random_events {}", floor));
       } else {
-        ret.emplace_back(phosg::string_printf(
-            ".random_events %hhu /* 0x%zX in file; 0x%zX bytes; 0x%zX bytes in action stream */",
+        ret.emplace_back(std::format(
+            ".random_events {} /* 0x{:X} in file; 0x{:X} bytes; 0x{:X} bytes in action stream */",
             floor, sf.events_file_offset, sf.events_file_size, sf.event_action_stream_bytes));
       }
       for (size_t z = 0; z < sf.event_count; z++) {
@@ -4141,12 +4138,12 @@ string MapFile::disassemble(bool reassembly, Version version) const {
         if (reassembly) {
           ret.emplace_back(ev.str());
         } else {
-          ret.emplace_back(phosg::string_printf("/* index %zu */", z) + ev.str());
+          ret.emplace_back(std::format("/* index {} */", z) + ev.str());
         }
         if (ev.action_stream_offset >= sf.event_action_stream_bytes) {
-          ret.emplace_back(phosg::string_printf(
-              "  // WARNING: Event action stream offset (0x%" PRIX32 ") is outside of this section",
-              ev.action_stream_offset.load()));
+          ret.emplace_back(std::format(
+              "  // WARNING: Event action stream offset (0x{:X}) is outside of this section",
+              ev.action_stream_offset));
         }
         size_t as_size = as_r.size() - ev.action_stream_offset;
         ret.emplace_back(this->disassemble_action_stream(as_r.pgetv(ev.action_stream_offset, as_size), as_size));
@@ -4154,18 +4151,18 @@ string MapFile::disassemble(bool reassembly, Version version) const {
     }
     if (sf.random_enemy_locations_data) {
       if (reassembly) {
-        ret.emplace_back(phosg::string_printf(".random_enemy_locations %hhu", floor));
+        ret.emplace_back(std::format(".random_enemy_locations {}", floor));
       } else {
-        ret.emplace_back(phosg::string_printf(".random_enemy_locations %hhu /* 0x%zX in file; 0x%zX bytes */",
+        ret.emplace_back(std::format(".random_enemy_locations {} /* 0x{:X} in file; 0x{:X} bytes */",
             floor, sf.random_enemy_locations_file_offset, sf.random_enemy_locations_file_size));
       }
       ret.emplace_back(phosg::format_data(sf.random_enemy_locations_data, sf.random_enemy_locations_data_size));
     }
     if (sf.random_enemy_definitions_data) {
       if (reassembly) {
-        ret.emplace_back(phosg::string_printf(".random_enemy_definitions %hhu", floor));
+        ret.emplace_back(std::format(".random_enemy_definitions {}", floor));
       } else {
-        ret.emplace_back(phosg::string_printf(".random_enemy_definitions %hhu /* 0x%zX in file; 0x%zX bytes */",
+        ret.emplace_back(std::format(".random_enemy_definitions {} /* 0x{:X} in file; 0x{:X} bytes */",
             floor, sf.random_enemy_definitions_file_offset, sf.random_enemy_definitions_file_size));
       }
       ret.emplace_back(phosg::format_data(sf.random_enemy_definitions_data, sf.random_enemy_definitions_data_size));
@@ -4178,7 +4175,7 @@ string MapFile::disassemble(bool reassembly, Version version) const {
 // Super map
 
 string SuperMap::Object::id_str() const {
-  return phosg::string_printf("KS-%02hhX-%03zX", this->floor, this->super_id);
+  return std::format("KS-{:02X}-{:03X}", this->floor, this->super_id);
 }
 
 string SuperMap::Object::str() const {
@@ -4187,8 +4184,8 @@ string SuperMap::Object::str() const {
     const auto& def = this->version(v);
     if (def.relative_object_index != 0xFFFF) {
       string args_str = def.set_entry->str(v);
-      ret += phosg::string_printf(
-          " %s:[%04hX => %s]", phosg::name_for_enum(v), def.relative_object_index, args_str.c_str());
+      ret += std::format(
+          " {}:[{:04X} => {}]", phosg::name_for_enum(v), def.relative_object_index, args_str);
     }
   }
   ret += "]";
@@ -4196,11 +4193,11 @@ string SuperMap::Object::str() const {
 }
 
 string SuperMap::Enemy::id_str() const {
-  return phosg::string_printf("ES-%02hhX-%03zX-%03zX", this->floor, this->super_set_id, this->super_id);
+  return std::format("ES-{:02X}-{:03X}-{:03X}", this->floor, this->super_set_id, this->super_id);
 }
 
 string SuperMap::Enemy::str() const {
-  string ret = phosg::string_printf("[Enemy ES-%02hhX-%03zX-%03zX type=%s child_index=%hX alias_enemy_index_delta=%hX is_default_rare_v123=%s is_default_rare_bb=%s",
+  string ret = std::format("[Enemy ES-{:02X}-{:03X}-{:03X} type={} child_index={:X} alias_enemy_index_delta={:X} is_default_rare_v123={} is_default_rare_bb={}",
       this->floor,
       this->super_set_id,
       this->super_id,
@@ -4213,12 +4210,12 @@ string SuperMap::Enemy::str() const {
     const auto& def = this->version(v);
     if (def.relative_enemy_index != 0xFFFF) {
       string args_str = def.set_entry->str(v);
-      ret += phosg::string_printf(
-          " %s:[%04hX/%04hX => %s]",
+      ret += std::format(
+          " {}:[{:04X}/{:04X} => {}]",
           phosg::name_for_enum(v),
           def.relative_set_index,
           def.relative_enemy_index,
-          args_str.c_str());
+          args_str);
     }
   }
   ret += "]";
@@ -4226,7 +4223,7 @@ string SuperMap::Enemy::str() const {
 }
 
 string SuperMap::Event::id_str() const {
-  return phosg::string_printf("WS-%02hhX-%03zX", this->floor, this->super_id);
+  return std::format("WS-{:02X}-{:03X}", this->floor, this->super_id);
 }
 
 string SuperMap::Event::str() const {
@@ -4236,12 +4233,12 @@ string SuperMap::Event::str() const {
     if (def.relative_event_index != 0xFFFF) {
       string action_stream_str = phosg::format_data_string(def.action_stream, def.action_stream_size);
       string args_str = def.set_entry->str();
-      ret += phosg::string_printf(
-          " %s:[%04hX => %s+%s]",
+      ret += std::format(
+          " {}:[{:04X} => {}+{}]",
           phosg::name_for_enum(v),
           def.relative_event_index,
-          args_str.c_str(),
-          action_stream_str.c_str());
+          args_str,
+          action_stream_str);
     }
   }
   ret += "]";
@@ -4466,7 +4463,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       add(EnemyType::NON_ENEMY_NPC);
       break;
     case 0x0040: { // TObjEneMoja
-      bool is_rare = (set_entry->param6.load() >= 1);
+      bool is_rare = (set_entry->param6 >= 1);
       add(EnemyType::HILDEBEAR, is_rare, is_rare);
       break;
     }
@@ -4526,7 +4523,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
     }
     case 0x0065: // TObjEnePanarms
       if ((set_entry->num_children != 0) && (set_entry->num_children != 2)) {
-        this->log.warning("PAN_ARMS has an unusual num_children (0x%hX)", set_entry->num_children.load());
+        this->log.warning_f("PAN_ARMS has an unusual num_children (0x{:X})", set_entry->num_children);
       }
       default_num_children = -1; // Skip adding children (because we do it here)
       add(EnemyType::PAN_ARMS);
@@ -4559,7 +4556,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       break;
     case 0x00A1: // TObjEneRe4Sorcerer
       if ((set_entry->num_children != 0) && (set_entry->num_children != 2)) {
-        this->log.warning("CHAOS_SORCERER has an unusual num_children (0x%hX)", set_entry->num_children.load());
+        this->log.warning_f("CHAOS_SORCERER has an unusual num_children (0x{:X})", set_entry->num_children);
       }
       default_num_children = -1; // Skip adding children (because we do it here)
       add(EnemyType::CHAOS_SORCERER);
@@ -4602,7 +4599,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       break;
     case 0x00C1: // TBoss2DeRolLe
       if ((set_entry->num_children != 0) && (set_entry->num_children != 0x13)) {
-        this->log.warning("DE_ROL_LE has an unusual num_children (0x%hX)", set_entry->num_children.load());
+        this->log.warning_f("DE_ROL_LE has an unusual num_children (0x{:X})", set_entry->num_children);
       }
       default_num_children = -1; // Skip adding children (because we do it here)
       add(EnemyType::DE_ROL_LE);
@@ -4615,7 +4612,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       break;
     case 0x00C2: // TBoss3Volopt
       if ((set_entry->num_children != 0) && (set_entry->num_children != 0x23)) {
-        this->log.warning("VOL_OPT has an unusual num_children (0x%hX)", set_entry->num_children.load());
+        this->log.warning_f("VOL_OPT has an unusual num_children (0x{:X})", set_entry->num_children);
       }
       default_num_children = -1; // Skip adding children (because we do it here)
       add(EnemyType::VOL_OPT_1);
@@ -4637,7 +4634,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       break;
     case 0x00C8: // TBoss4DarkFalz
       if ((set_entry->num_children != 0) && (set_entry->num_children != 0x200)) {
-        this->log.warning("DARK_FALZ has an unusual num_children (0x%hX)", set_entry->num_children.load());
+        this->log.warning_f("DARK_FALZ has an unusual num_children (0x{:X})", set_entry->num_children);
       }
       add(EnemyType::DARK_FALZ_3);
       default_num_children = -1; // Skip adding children (because we do it here)
@@ -4805,7 +4802,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
 
     default:
       add(EnemyType::UNKNOWN);
-      this->log.warning("Invalid enemy type %04hX", set_entry->base_type.load());
+      this->log.warning_f("Invalid enemy type {:04X}", set_entry->base_type);
       break;
   }
 
@@ -4921,9 +4918,9 @@ void SuperMap::link_event_version(
     size_t map_file_action_stream_size) {
   if (entry->action_stream_offset >= map_file_action_stream_size) {
     string s = entry->str();
-    throw runtime_error(phosg::string_printf(
-        "action stream offset 0x%" PRIX32 " is beyond end of action stream (0x%zX) for event %s",
-        entry->action_stream_offset.load(), map_file_action_stream_size, s.c_str()));
+    throw runtime_error(std::format(
+        "action stream offset 0x{:X} is beyond end of action stream (0x{:X}) for event {}",
+        entry->action_stream_offset, map_file_action_stream_size, s));
   }
   const void* ev_action_stream_start = reinterpret_cast<const uint8_t*>(map_file_action_stream) +
       entry->action_stream_offset;
@@ -5014,7 +5011,7 @@ vector<EditAction> compute_edit_path(
               action_ch = 'D';
               break;
           }
-          fprintf(stream, "  %c %03.2g", action_ch, entry.cost);
+          phosg::fwrite_fmt(stream, "  {} {:03.2g}", action_ch, entry.cost);
         }
         fputc('\n', stream);
       }
@@ -5483,8 +5480,8 @@ std::string SuperMap::EfficiencyStats::str() const {
   double event_eff = this->total_event_slots
       ? (static_cast<double>(this->filled_event_slots * 100) / static_cast<double>(this->total_event_slots))
       : 0;
-  return phosg::string_printf(
-      "EfficiencyStats[K = %zu/%zu (%lg%%), E = %zu/%zu (%lg%%), W = %zu/%zu (%g%%)]",
+  return std::format(
+      "EfficiencyStats[K = {}/{} ({:g}%), E = {}/{} ({:g}%), W = {}/{} ({:g}%)]",
       this->filled_object_slots, this->total_object_slots, object_eff,
       this->filled_enemy_set_slots, this->total_enemy_set_slots, enemy_set_eff,
       this->filled_event_slots, this->total_event_slots, event_eff);
@@ -5550,14 +5547,14 @@ void SuperMap::verify() const {
         }
       }
       if (ene->super_set_id != super_set_id) {
-        throw logic_error(phosg::string_printf(
-            "enemy super_set_id is incorrect; expected S-%03zX, received S-%03zX",
+        throw logic_error(std::format(
+            "enemy super_set_id is incorrect; expected S-{:03X}, received S-{:03X}",
             super_set_id, ene->super_set_id));
       }
     }
     if (super_set_id != this->enemy_sets.size() - 1) {
-      throw logic_error(phosg::string_printf(
-          "not all enemy sets are in the enemies list; ended with 0x%zX, expected 0x%zX",
+      throw logic_error(std::format(
+          "not all enemy sets are in the enemies list; ended with 0x{:X}, expected 0x{:X}",
           super_set_id, this->enemy_sets.size()));
     }
   }
@@ -5688,92 +5685,92 @@ void SuperMap::verify() const {
 }
 
 void SuperMap::print(FILE* stream) const {
-  fprintf(stream, "SuperMap %s random=%08" PRIX64 "\n", name_for_episode(this->episode), this->random_seed);
+  phosg::fwrite_fmt(stream, "SuperMap {} random={:08X}\n", name_for_episode(this->episode), this->random_seed);
 
-  fprintf(stream, "               DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 E3TE GCE3 XBV3 BBV4\n");
-  fprintf(stream, "  MAP         ");
+  phosg::fwrite_fmt(stream, "               DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 E3TE GCE3 XBV3 BBV4\n");
+  phosg::fwrite_fmt(stream, "  MAP         ");
   for (const auto& v : ALL_NON_PATCH_VERSIONS) {
     const auto& entities = this->version(v);
-    fprintf(stream, " %s", entities.map_file ? "++++" : "----");
+    phosg::fwrite_fmt(stream, " {}", entities.map_file ? "++++" : "----");
   }
   fputc('\n', stream);
   for (uint8_t floor = 0; floor < 0x12; floor++) {
-    fprintf(stream, "  KS  START %02hhX", floor);
+    phosg::fwrite_fmt(stream, "  KS  START {:02X}", floor);
     for (const auto& v : ALL_NON_PATCH_VERSIONS) {
       const auto& entities = this->version(v);
-      fprintf(stream, " %04zX", entities.object_floor_start_indexes[floor]);
+      phosg::fwrite_fmt(stream, " {:04X}", entities.object_floor_start_indexes[floor]);
     }
     fputc('\n', stream);
   }
   for (uint8_t floor = 0; floor < 0x12; floor++) {
-    fprintf(stream, "  ES  START %02hhX", floor);
+    phosg::fwrite_fmt(stream, "  ES  START {:02X}", floor);
     for (const auto& v : ALL_NON_PATCH_VERSIONS) {
       const auto& entities = this->version(v);
-      fprintf(stream, " %04zX", entities.enemy_floor_start_indexes[floor]);
+      phosg::fwrite_fmt(stream, " {:04X}", entities.enemy_floor_start_indexes[floor]);
     }
     fputc('\n', stream);
   }
   for (uint8_t floor = 0; floor < 0x12; floor++) {
-    fprintf(stream, "  ESS START %02hhX", floor);
+    phosg::fwrite_fmt(stream, "  ESS START {:02X}", floor);
     for (const auto& v : ALL_NON_PATCH_VERSIONS) {
       const auto& entities = this->version(v);
-      fprintf(stream, " %04zX", entities.enemy_set_floor_start_indexes[floor]);
+      phosg::fwrite_fmt(stream, " {:04X}", entities.enemy_set_floor_start_indexes[floor]);
     }
     fputc('\n', stream);
   }
   for (uint8_t floor = 0; floor < 0x12; floor++) {
-    fprintf(stream, "  WS  START %02hhX", floor);
+    phosg::fwrite_fmt(stream, "  WS  START {:02X}", floor);
     for (const auto& v : ALL_NON_PATCH_VERSIONS) {
       const auto& entities = this->version(v);
-      fprintf(stream, " %04zX", entities.event_floor_start_indexes[floor]);
+      phosg::fwrite_fmt(stream, " {:04X}", entities.event_floor_start_indexes[floor]);
     }
     fputc('\n', stream);
   }
 
-  fprintf(stream, "  KS-FL-ID  DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 E3TE GCE3 XBV3 BBV4 DEFINITION\n");
+  phosg::fwrite_fmt(stream, "  KS-FL-ID  DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 E3TE GCE3 XBV3 BBV4 DEFINITION\n");
   for (const auto& obj : this->objects) {
-    fprintf(stream, "  KS-%02hhX-%03zX", obj->floor, obj->super_id);
+    phosg::fwrite_fmt(stream, "  KS-{:02X}-{:03X}", obj->floor, obj->super_id);
     for (Version v : ALL_NON_PATCH_VERSIONS) {
       const auto& obj_ver = obj->version(v);
       if (obj_ver.relative_object_index == 0xFFFF) {
-        fprintf(stream, " ----");
+        phosg::fwrite_fmt(stream, " ----");
       } else {
-        fprintf(stream, " %04hX", obj_ver.relative_object_index);
+        phosg::fwrite_fmt(stream, " {:04X}", obj_ver.relative_object_index);
       }
     }
     auto obj_str = obj->str();
-    fprintf(stream, " %s\n", obj_str.c_str());
+    phosg::fwrite_fmt(stream, " {}\n", obj_str);
   }
 
-  fprintf(stream, "  ES-FL-ID  DCTE----- DCPR----- DCV1----- DCV2----- PCTE----- PCV2----- GCTE----- GCV3----- EP3TE---- GCEP3---- XBV3----- BBV4----- DEFINITION\n");
+  phosg::fwrite_fmt(stream, "  ES-FL-ID  DCTE----- DCPR----- DCV1----- DCV2----- PCTE----- PCV2----- GCTE----- GCV3----- EP3TE---- GCEP3---- XBV3----- BBV4----- DEFINITION\n");
   for (const auto& ene : this->enemies) {
-    fprintf(stream, "  ES-%02hhX-%03zX", ene->floor, ene->super_id);
+    phosg::fwrite_fmt(stream, "  ES-{:02X}-{:03X}", ene->floor, ene->super_id);
     for (Version v : ALL_NON_PATCH_VERSIONS) {
       const auto& ene_ver = ene->version(v);
       if (ene_ver.relative_enemy_index == 0xFFFF) {
-        fprintf(stream, " ----:----");
+        phosg::fwrite_fmt(stream, " ----:----");
       } else {
-        fprintf(stream, " %04hX:%04hX", ene_ver.relative_set_index, ene_ver.relative_enemy_index);
+        phosg::fwrite_fmt(stream, " {:04X}:{:04X}", ene_ver.relative_set_index, ene_ver.relative_enemy_index);
       }
     }
 
     auto ene_str = ene->str();
-    fprintf(stream, " %s\n", ene_str.c_str());
+    phosg::fwrite_fmt(stream, " {}\n", ene_str);
   }
 
-  fprintf(stream, "  WS-FL-ID  DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 E3TE GCE3 XBV3 BBV4 DEFINITION\n");
+  phosg::fwrite_fmt(stream, "  WS-FL-ID  DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 E3TE GCE3 XBV3 BBV4 DEFINITION\n");
   for (const auto& ev : this->events) {
-    fprintf(stream, "  WS-%02hhX-%03zX", ev->floor, ev->super_id);
+    phosg::fwrite_fmt(stream, "  WS-{:02X}-{:03X}", ev->floor, ev->super_id);
     for (Version v : ALL_NON_PATCH_VERSIONS) {
       const auto& ev_ver = ev->version(v);
       if (ev_ver.relative_event_index == 0xFFFF) {
-        fprintf(stream, " ----");
+        phosg::fwrite_fmt(stream, " ----");
       } else {
-        fprintf(stream, " %04hX", ev_ver.relative_event_index);
+        phosg::fwrite_fmt(stream, " {:04X}", ev_ver.relative_event_index);
       }
     }
     auto ev_str = ev->str();
-    fprintf(stream, " %s\n", ev_str.c_str());
+    phosg::fwrite_fmt(stream, " {}\n", ev_str);
   }
 }
 
@@ -5803,7 +5800,7 @@ MapState::RareEnemyRates::RareEnemyRates(const phosg::JSON& json)
       kondrieu(json.get_int("Kondrieu", DEFAULT_RARE_BOSS_RATE_V4)) {}
 
 string MapState::RareEnemyRates::str() const {
-  return phosg::string_printf("RareEnemyRates(hildeblue=%08" PRIX32 ", rappy=%08" PRIX32 ", nar_lily=%08" PRIX32 ", pouilly_slime=%08" PRIX32 ", mericarand=%08" PRIX32 ", merissa_aa=%08" PRIX32 ", pazuzu=%08" PRIX32 ", dorphon_eclair=%08" PRIX32 ", kondrieu=%08" PRIX32 ")",
+  return std::format("RareEnemyRates(hildeblue={:08X}, rappy={:08X}, nar_lily={:08X}, pouilly_slime={:08X}, mericarand={:08X}, merissa_aa={:08X}, pazuzu={:08X}, dorphon_eclair={:08X}, kondrieu={:08X})",
       this->hildeblue, this->rappy, this->nar_lily, this->pouilly_slime, this->mericarand,
       this->merissa_aa, this->pazuzu, this->dorphon_eclair, this->kondrieu);
 }
@@ -5876,8 +5873,16 @@ uint32_t MapState::EnemyState::convert_game_flags(uint32_t game_flags, bool to_v
   //   y = is near enemy
   //   H = is enemy?
   //   I = is object? (some entities have both H and I set though)
-  // It could be that the flags 0x70000000 are actually a 3-bit integer rather
-  // than individual flags. TODO: Investigate this.
+
+  // TODO: The above might all be wrong.
+  // GC 00100000 10010000 00001110 00000000
+  // PC 00101001 00000000 01100100 00000000
+
+  // PC 00101001 10110000 00101110 00000000
+  // GC 00100000 10011011 00000111 00000000
+
+  // PC 00101001 10010000 00101110 00000000
+  // GC 00100000 10011001 00000111 00000000
 
   if (to_v3) {
     return (game_flags & 0xE00000FF) |
@@ -5977,9 +5982,9 @@ MapState::MapState(
     uint8_t event,
     uint32_t random_seed,
     std::shared_ptr<const RareEnemyRates> bb_rare_rates,
-    std::shared_ptr<PSOLFGEncryption> opt_rand_crypt,
+    std::shared_ptr<RandomGenerator> rand_crypt,
     std::vector<std::shared_ptr<const SuperMap>> floor_map_defs)
-    : log(phosg::string_printf("[MapState(free):%08" PRIX64 "] ", lobby_or_session_id), lobby_log.min_level),
+    : log(std::format("[MapState(free):{:08X}] ", lobby_or_session_id), lobby_log.min_level),
       difficulty(difficulty),
       event(event),
       random_seed(random_seed),
@@ -5990,7 +5995,7 @@ MapState::MapState(
     auto& this_fc = this->floor_config_entries[floor];
     this_fc.super_map = (floor < floor_map_defs.size()) ? floor_map_defs[floor] : nullptr;
     if (this_fc.super_map) {
-      this->index_super_map(this_fc, opt_rand_crypt);
+      this->index_super_map(this_fc, rand_crypt);
     }
 
     if (floor < this->floor_config_entries.size() - 1) {
@@ -6027,16 +6032,16 @@ MapState::MapState(
     uint8_t event,
     uint32_t random_seed,
     std::shared_ptr<const RareEnemyRates> bb_rare_rates,
-    std::shared_ptr<PSOLFGEncryption> opt_rand_crypt,
+    std::shared_ptr<RandomGenerator> rand_crypt,
     std::shared_ptr<const SuperMap> quest_map_def)
-    : log(phosg::string_printf("[MapState(free):%08" PRIX64 "] ", lobby_or_session_id), lobby_log.min_level),
+    : log(std::format("[MapState(free):{:08X}] ", lobby_or_session_id), lobby_log.min_level),
       difficulty(difficulty),
       event(event),
       random_seed(random_seed),
       bb_rare_rates(bb_rare_rates) {
   FloorConfig& fc = this->floor_config_entries.emplace_back();
   fc.super_map = quest_map_def;
-  this->index_super_map(fc, opt_rand_crypt);
+  this->index_super_map(fc, rand_crypt);
   this->compute_dynamic_object_base_indexes();
   this->verify();
 }
@@ -6057,7 +6062,7 @@ void MapState::reset() {
   }
 }
 
-void MapState::index_super_map(const FloorConfig& fc, shared_ptr<PSOLFGEncryption> opt_rand_crypt) {
+void MapState::index_super_map(const FloorConfig& fc, shared_ptr<RandomGenerator> rand_crypt) {
   if (!fc.super_map) {
     throw logic_error("cannot index floor config with no map definition");
   }
@@ -6148,9 +6153,7 @@ void MapState::index_super_map(const FloorConfig& fc, shared_ptr<PSOLFGEncryptio
             }
           }
 
-        } else if ((bb_rare_rate > 0) &&
-            (this->bb_rare_enemy_indexes.size() < 0x10) &&
-            (random_from_optional_crypt(opt_rand_crypt) < bb_rare_rate)) {
+        } else if ((bb_rare_rate > 0) && (this->bb_rare_enemy_indexes.size() < 0x10) && (rand_crypt->next() < bb_rare_rate)) {
           this->bb_rare_enemy_indexes.emplace_back(enemy_index);
           ene_st->set_rare(v);
           if ((type == EnemyType::MERICARAND) && (enemy_index & 1)) {
@@ -6364,7 +6367,7 @@ vector<shared_ptr<MapState::EventState>> MapState::event_states_for_floor_room_w
 
 void MapState::import_object_states_from_sync(
     Version from_version, const SyncObjectStateEntry* entries, size_t entry_count) {
-  this->log.info("Importing object state from sync command");
+  this->log.info_f("Importing object state from sync command");
   size_t object_index = 0;
   for (const auto& fc : this->floor_config_entries) {
     if (!fc.super_map) {
@@ -6382,8 +6385,8 @@ void MapState::import_object_states_from_sync(
       if (from_version == Version::DC_NTE) {
         fc_end_object_index = entry_count;
       } else {
-        throw runtime_error(phosg::string_printf(
-            "the map has more objects (at least 0x%zX) than the client has (0x%zX)",
+        throw runtime_error(std::format(
+            "the map has more objects (at least 0x{:X}) than the client has (0x{:X})",
             fc_end_object_index, entry_count));
       }
     }
@@ -6395,20 +6398,20 @@ void MapState::import_object_states_from_sync(
         throw logic_error("super object link is incorrect");
       }
       if (obj_st->game_flags != entry.flags) {
-        this->log.warning("(%04zX => K-%03zX) Game flags from client (%04hX) do not match game flags from map (%04hX)",
-            object_index, obj_st->k_id, entry.flags.load(), obj_st->game_flags);
+        this->log.warning_f("({:04X} => K-{:03X}) Game flags from client ({:04X}) do not match game flags from map ({:04X})",
+            object_index, obj_st->k_id, entry.flags, obj_st->game_flags);
         obj_st->game_flags = entry.flags;
       }
     }
   }
   if (object_index < entry_count) {
-    throw runtime_error(phosg::string_printf("the client has more objects (0x%zX) than the map has (0x%zX)",
+    throw runtime_error(std::format("the client has more objects (0x{:X}) than the map has (0x{:X})",
         entry_count, object_index));
   }
 }
 
 void MapState::import_enemy_states_from_sync(Version from_version, const SyncEnemyStateEntry* entries, size_t entry_count) {
-  this->log.info("Importing enemy state from sync command");
+  this->log.info_f("Importing enemy state from sync command");
   size_t enemy_index = 0;
   bool is_v3 = !is_v1_or_v2(from_version);
   for (const auto& fc : this->floor_config_entries) {
@@ -6422,7 +6425,7 @@ void MapState::import_enemy_states_from_sync(Version from_version, const SyncEne
     const auto& entities = fc.super_map->version(from_version);
     size_t fc_end_enemy_index = base_indexes.base_enemy_index + entities.enemies.size();
     if (fc_end_enemy_index > entry_count) {
-      throw runtime_error(phosg::string_printf("the map has more enemies than the client has (0x%zX)", entry_count));
+      throw runtime_error(std::format("the map has more enemies than the client has (0x{:X})", entry_count));
     }
     for (; enemy_index < min<size_t>(fc_end_enemy_index, entry_count); enemy_index++) {
       const auto& entry = entries[enemy_index];
@@ -6432,24 +6435,24 @@ void MapState::import_enemy_states_from_sync(Version from_version, const SyncEne
         throw logic_error("super enemy link is incorrect");
       }
       if (ene_st->get_game_flags(is_v3) != entry.flags) {
-        this->log.warning("(%04zX => E-%03zX) Flags from client (%08" PRIX32 "(%s)) do not match game flags from map (%08" PRIX32 "(%s))",
+        this->log.warning_f("({:04X} => E-{:03X}) Flags from client ({:08X}({})) do not match game flags from map ({:08X}({}))",
             enemy_index,
             ene_st->e_id,
-            entry.flags.load(),
+            entry.flags,
             is_v3 ? "v3" : "v2",
             ene_st->game_flags,
             (ene_st->server_flags & MapState::EnemyState::Flag::GAME_FLAGS_IS_V3) ? "v3" : "v2");
         ene_st->set_game_flags(entry.flags, !is_v1_or_v2(from_version));
       }
       if (ene_st->total_damage != entry.total_damage) {
-        this->log.warning("(%04zX => E-%03zX) Total damage from client (%hu) does not match total damage from map (%hu)",
-            enemy_index, ene_st->e_id, entry.total_damage.load(), ene_st->total_damage);
+        this->log.warning_f("({:04X} => E-{:03X}) Total damage from client ({}) does not match total damage from map ({})",
+            enemy_index, ene_st->e_id, entry.total_damage, ene_st->total_damage);
         ene_st->total_damage = entry.total_damage;
       }
     }
   }
   if (enemy_index < entry_count) {
-    throw runtime_error(phosg::string_printf("the client has more enemies (0x%zX) than the map has (0x%zX)",
+    throw runtime_error(std::format("the client has more enemies (0x{:X}) than the map has (0x{:X})",
         entry_count, enemy_index));
   }
 }
@@ -6463,7 +6466,7 @@ void MapState::import_flag_states_from_sync(
     const le_uint16_t* event_flags,
     size_t event_flags_count) {
   {
-    this->log.info("Importing object set flags from sync command");
+    this->log.info_f("Importing object set flags from sync command");
     size_t object_index = 0;
     for (const auto& fc : this->floor_config_entries) {
       if (!fc.super_map) {
@@ -6481,8 +6484,8 @@ void MapState::import_flag_states_from_sync(
         if (from_version == Version::DC_NTE) {
           fc_end_object_index = object_set_flags_count;
         } else {
-          throw runtime_error(phosg::string_printf(
-              "the map has more objects (at least 0x%zX) than the client has (0x%zX)",
+          throw runtime_error(std::format(
+              "the map has more objects (at least 0x{:X}) than the client has (0x{:X})",
               fc_end_object_index, object_set_flags_count));
         }
       }
@@ -6494,20 +6497,20 @@ void MapState::import_flag_states_from_sync(
           throw logic_error("super object link is incorrect");
         }
         if (obj_st->set_flags != set_flags) {
-          this->log.warning("(%04zX => K-%03zX) Set flags from client (%04hX) do not match set flags from map (%04hX)",
+          this->log.warning_f("({:04X} => K-{:03X}) Set flags from client ({:04X}) do not match set flags from map ({:04X})",
               object_index, obj_st->k_id, set_flags, obj_st->set_flags);
           obj_st->set_flags = set_flags;
         }
       }
     }
     if (object_index < object_set_flags_count) {
-      throw runtime_error(phosg::string_printf("the client has more objects (0x%zX) than the map has (0x%zX)",
+      throw runtime_error(std::format("the client has more objects (0x{:X}) than the map has (0x{:X})",
           object_set_flags_count, object_index));
     }
   }
 
   {
-    this->log.info("Importing enemy set flags from sync command");
+    this->log.info_f("Importing enemy set flags from sync command");
     size_t enemy_set_index = 0;
     for (const auto& fc : this->floor_config_entries) {
       if (!fc.super_map) {
@@ -6530,7 +6533,7 @@ void MapState::import_flag_states_from_sync(
           throw logic_error("super enemy link is incorrect");
         }
         if (ene_st->set_flags != set_flags) {
-          this->log.warning("(%04zX => E-%03zX) Set flags from client (%04hX) do not match set flags from map (%04hX)",
+          this->log.warning_f("({:04X} => E-{:03X}) Set flags from client ({:04X}) do not match set flags from map ({:04X})",
               enemy_set_index, ene_st->e_id, set_flags, ene_st->set_flags);
           ene_st->set_flags = set_flags;
         }
@@ -6542,7 +6545,7 @@ void MapState::import_flag_states_from_sync(
   }
 
   {
-    this->log.info("Importing event flags from sync command");
+    this->log.info_f("Importing event flags from sync command");
     size_t event_index = 0;
     for (const auto& fc : this->floor_config_entries) {
       if (!fc.super_map) {
@@ -6562,7 +6565,7 @@ void MapState::import_flag_states_from_sync(
         const auto& ev = entities.events.at(event_index - base_indexes.base_event_index);
         auto& ev_st = this->event_states.at(fc.base_super_ids.base_event_index + ev->super_id);
         if (ev_st->flags != flags) {
-          this->log.warning("(%04zX => W-%03zX) Set flags from client (%04hX) do not match flags from map (%04hX)",
+          this->log.warning_f("({:04X} => W-{:03X}) Set flags from client ({:04X}) do not match flags from map ({:04X})",
               event_index, ev_st->w_id, flags, ev_st->flags);
           ev_st->flags = flags;
         }
@@ -6591,23 +6594,23 @@ void MapState::verify() const {
       }
     }
     if (this->object_states.size() != total_object_count) {
-      throw logic_error(phosg::string_printf(
-          "map state object count (0x%zX) does not match supermap object count (0x%zX)",
+      throw logic_error(std::format(
+          "map state object count (0x{:X}) does not match supermap object count (0x{:X})",
           this->object_states.size(), total_object_count));
     }
     if (this->enemy_states.size() != total_enemy_count) {
-      throw logic_error(phosg::string_printf(
-          "map state enemy count (0x%zX) does not match supermap enemy count (0x%zX)",
+      throw logic_error(std::format(
+          "map state enemy count (0x{:X}) does not match supermap enemy count (0x{:X})",
           this->enemy_states.size(), total_enemy_count));
     }
     if (this->enemy_set_states.size() != total_enemy_set_count) {
-      throw logic_error(phosg::string_printf(
-          "map state enemy set count (0x%zX) does not match supermap enemy set count (0x%zX)",
+      throw logic_error(std::format(
+          "map state enemy set count (0x{:X}) does not match supermap enemy set count (0x{:X})",
           this->enemy_set_states.size(), total_enemy_set_count));
     }
     if (this->event_states.size() != total_event_count) {
-      throw logic_error(phosg::string_printf(
-          "map state event count (0x%zX) does not match supermap event count (0x%zX)",
+      throw logic_error(std::format(
+          "map state event count (0x{:X}) does not match supermap event count (0x{:X})",
           this->event_states.size(), total_event_count));
     }
 
@@ -6694,13 +6697,13 @@ void MapState::verify() const {
       size_t base_enemy_index = this->floor_config(ene->super_ene->floor).base_indexes_for_version(Version::BB_V4).base_enemy_index;
       size_t enemy_index = base_enemy_index + ene->super_ene->version(Version::BB_V4).relative_enemy_index;
       if (!remaining_bb_rare_indexes.erase(enemy_index)) {
-        throw logic_error(phosg::string_printf("BB random rare enemy index %04zX not present in indexes set", enemy_index));
+        throw logic_error(std::format("BB random rare enemy index {:04X} not present in indexes set", enemy_index));
       }
     }
     if (!remaining_bb_rare_indexes.empty()) {
       vector<string> indexes;
       for (uint16_t index : remaining_bb_rare_indexes) {
-        indexes.emplace_back(phosg::string_printf("%04hX", index));
+        indexes.emplace_back(std::format("{:04X}", index));
       }
       throw logic_error("not all BB random rare enemies were accounted for; remaining: " + phosg::join(indexes, ", "));
     }
@@ -6711,32 +6714,32 @@ void MapState::verify() const {
 }
 
 void MapState::print(FILE* stream) const {
-  fprintf(stream, "Difficulty %s, event %02hhX, state random seed %08" PRIX32 "\n",
+  phosg::fwrite_fmt(stream, "Difficulty {}, event {:02X}, state random seed {:08X}\n",
       name_for_difficulty(this->difficulty), this->event, this->random_seed);
   auto rare_rates_str = this->bb_rare_rates->str();
-  fprintf(stream, "BB rare rates: %s\n", rare_rates_str.c_str());
+  phosg::fwrite_fmt(stream, "BB rare rates: {}\n", rare_rates_str);
 
-  fprintf(stream, "Base indexes:\n");
-  fprintf(stream, "  FL DCTE----------- DCPR----------- DCV1----------- DCV2----------- PCTE----------- PCV2----------- GCTE----------- GCV3----------- GCEP3TE-------- GCEP3---------- XBV3----------- BBV4-----------\n");
-  fprintf(stream, "  FL KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT\n");
+  phosg::fwrite_fmt(stream, "Base indexes:\n");
+  phosg::fwrite_fmt(stream, "  FL DCTE----------- DCPR----------- DCV1----------- DCV2----------- PCTE----------- PCV2----------- GCTE----------- GCV3----------- GCEP3TE-------- GCEP3---------- XBV3----------- BBV4-----------\n");
+  phosg::fwrite_fmt(stream, "  FL KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT\n");
   for (size_t floor = 0; floor < this->floor_config_entries.size(); floor++) {
     auto fc = this->floor_config_entries[floor];
     if (fc.super_map) {
-      fprintf(stream, "  %02zX", floor);
+      phosg::fwrite_fmt(stream, "  {:02X}", floor);
       for (Version v : ALL_NON_PATCH_VERSIONS) {
         const auto& indexes = fc.base_indexes_for_version(v);
-        fprintf(stream, " %03zX %03zX %03zX %03zX", indexes.base_object_index, indexes.base_enemy_index, indexes.base_enemy_set_index, indexes.base_event_index);
+        phosg::fwrite_fmt(stream, " {:03X} {:03X} {:03X} {:03X}", indexes.base_object_index, indexes.base_enemy_index, indexes.base_enemy_set_index, indexes.base_event_index);
       }
       fputc('\n', stream);
     } else {
-      fprintf(stream, "  %02zX --------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- ---------------\n", floor);
+      phosg::fwrite_fmt(stream, "  {:02X} --------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- ---------------\n", floor);
     }
   }
 
-  fprintf(stream, "Objects:\n");
-  fprintf(stream, "  FL OBJID DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 E3TE GCE3 XBV3 BBV4 OBJECT\n");
+  phosg::fwrite_fmt(stream, "Objects:\n");
+  phosg::fwrite_fmt(stream, "  FL OBJID DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 E3TE GCE3 XBV3 BBV4 OBJECT\n");
   for (const auto& obj_st : this->object_states) {
-    fprintf(stream, "  %02hhX K-%03zX", obj_st->super_obj->floor, obj_st->k_id);
+    phosg::fwrite_fmt(stream, "  {:02X} K-{:03X}", obj_st->super_obj->floor, obj_st->k_id);
     const auto& fc = this->floor_config(obj_st->super_obj->floor);
     for (Version v : ALL_NON_PATCH_VERSIONS) {
       const auto& obj_v = obj_st->super_obj->version(v);
@@ -6744,18 +6747,18 @@ void MapState::print(FILE* stream) const {
         fputs(" ----", stream);
       } else {
         uint16_t index = fc.base_indexes_for_version(v).base_object_index + obj_v.relative_object_index;
-        fprintf(stream, " %04hX", index);
+        phosg::fwrite_fmt(stream, " {:04X}", index);
       }
     }
     string obj_str = obj_st->super_obj->str();
-    fprintf(stream, " %s game_flags=%04hX set_flags=%04hX item_drop_checked=%s\n",
-        obj_str.c_str(), obj_st->game_flags, obj_st->set_flags, obj_st->item_drop_checked ? "true" : "false");
+    phosg::fwrite_fmt(stream, " {} game_flags={:04X} set_flags={:04X} item_drop_checked={}\n",
+        obj_str, obj_st->game_flags, obj_st->set_flags, obj_st->item_drop_checked ? "true" : "false");
   }
 
-  fprintf(stream, "Enemies:\n");
-  fprintf(stream, "  FL ENEID DCTE----- DCPR----- DCV1----- DCV2----- PCTE----- PCV2----- GCTE----- GCV3----- EP3TE---- GCEP3---- XBV3----- BBV4----- ENEMY\n");
+  phosg::fwrite_fmt(stream, "Enemies:\n");
+  phosg::fwrite_fmt(stream, "  FL ENEID DCTE----- DCPR----- DCV1----- DCV2----- PCTE----- PCV2----- GCTE----- GCV3----- EP3TE---- GCEP3---- XBV3----- BBV4----- ENEMY\n");
   for (const auto& ene_st : this->enemy_states) {
-    fprintf(stream, "  %02hhX E-%03zX", ene_st->super_ene->floor, ene_st->e_id);
+    phosg::fwrite_fmt(stream, "  {:02X} E-{:03X}", ene_st->super_ene->floor, ene_st->e_id);
     const auto& fc = this->floor_config(ene_st->super_ene->floor);
     for (Version v : ALL_NON_PATCH_VERSIONS) {
       const auto& ene_v = ene_st->super_ene->version(v);
@@ -6764,12 +6767,12 @@ void MapState::print(FILE* stream) const {
       } else {
         uint16_t index = fc.base_indexes_for_version(v).base_enemy_index + ene_v.relative_enemy_index;
         uint16_t set_index = fc.base_indexes_for_version(v).base_enemy_set_index + ene_v.relative_set_index;
-        fprintf(stream, " %04hX-%04hX", index, set_index);
+        phosg::fwrite_fmt(stream, " {:04X}-{:04X}", index, set_index);
       }
     }
     string ene_str = ene_st->super_ene->str();
-    fprintf(stream, " %s total_damage=%04hX rare_flags=%04hX game_flags=%08" PRIX32 "(%s) set_flags=%04hX server_flags=%04hX\n",
-        ene_str.c_str(),
+    phosg::fwrite_fmt(stream, " {} total_damage={:04X} rare_flags={:04X} game_flags={:08X}({}) set_flags={:04X} server_flags={:04X}\n",
+        ene_str,
         ene_st->total_damage,
         ene_st->rare_flags,
         ene_st->game_flags,
@@ -6779,19 +6782,19 @@ void MapState::print(FILE* stream) const {
   }
 
   if (this->bb_rare_enemy_indexes.empty()) {
-    fprintf(stream, "BB rare enemy indexes: (none)\n");
+    phosg::fwrite_fmt(stream, "BB rare enemy indexes: (none)\n");
   } else {
     string s;
     for (auto index : this->bb_rare_enemy_indexes) {
-      s += phosg::string_printf(" %04zX", index);
+      s += std::format(" {:04X}", index);
     }
-    fprintf(stream, "BB rare enemy indexes:%s\n", s.c_str());
+    phosg::fwrite_fmt(stream, "BB rare enemy indexes:{}\n", s);
   }
 
-  fprintf(stream, "Events:\n");
-  fprintf(stream, "  FL EVTID DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 E3TE GCE3 XBV3 BBV4 EVENT\n");
+  phosg::fwrite_fmt(stream, "Events:\n");
+  phosg::fwrite_fmt(stream, "  FL EVTID DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 E3TE GCE3 XBV3 BBV4 EVENT\n");
   for (const auto& ev_st : this->event_states) {
-    fprintf(stream, "  %02hhX W-%03zX", ev_st->super_ev->floor, ev_st->w_id);
+    phosg::fwrite_fmt(stream, "  {:02X} W-{:03X}", ev_st->super_ev->floor, ev_st->w_id);
     const auto& fc = this->floor_config(ev_st->super_ev->floor);
     for (Version v : ALL_NON_PATCH_VERSIONS) {
       const auto& ev_v = ev_st->super_ev->version(v);
@@ -6799,11 +6802,11 @@ void MapState::print(FILE* stream) const {
         fputs(" ----", stream);
       } else {
         uint16_t index = fc.base_indexes_for_version(v).base_event_index + ev_v.relative_event_index;
-        fprintf(stream, " %04hX", index);
+        phosg::fwrite_fmt(stream, " {:04X}", index);
       }
     }
     string ev_str = ev_st->super_ev->str();
-    fprintf(stream, " %s set_flags=%04hX\n", ev_str.c_str(), ev_st->flags);
+    phosg::fwrite_fmt(stream, " {} set_flags={:04X}\n", ev_str, ev_st->flags);
   }
 }
 

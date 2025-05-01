@@ -72,7 +72,7 @@ struct PlayerInventoryItemT {
     ret.unknown_a1 = this->unknown_a1;
     ret.extension_data1 = this->extension_data1;
     ret.extension_data2 = this->extension_data2;
-    ret.flags = this->flags.load();
+    ret.flags = this->flags;
     ret.data = this->data;
     ret.data.id.store_raw(phosg::bswap32(ret.data.id.load_raw()));
     return ret;
@@ -97,8 +97,8 @@ struct PlayerBankItemT {
   operator PlayerBankItemT<!BE>() const {
     PlayerBankItemT<!BE> ret;
     ret.data = this->data;
-    ret.amount = this->amount.load();
-    ret.present = this->present.load();
+    ret.amount = this->amount;
+    ret.present = this->present;
     return ret;
   }
 } __attribute__((packed));
@@ -409,8 +409,8 @@ struct PlayerBankT {
   template <size_t DestSlotCount, bool DestBE>
   operator PlayerBankT<DestSlotCount, DestBE>() const {
     PlayerBankT<DestSlotCount, DestBE> ret;
-    ret.num_items = std::min<size_t>(ret.items.size(), this->num_items.load());
-    ret.meseta = this->meseta.load();
+    ret.num_items = std::min<size_t>(ret.items.size(), this->num_items);
+    ret.meseta = this->meseta;
     for (size_t z = 0; z < std::min<size_t>(ret.items.size(), this->items.size()); z++) {
       ret.items[z] = this->items[z];
     }

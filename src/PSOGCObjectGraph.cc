@@ -81,8 +81,8 @@ void PSOGCObjectGraph::Object::print(FILE* stream, size_t indent_level) const {
     fputc(' ', stream);
     fputc(' ', stream);
   }
-  fprintf(stream, "%s +%04hX @ %08" PRIX32 " (VT %08" PRIX32 ": destroy=%08" PRIX32 " update=%08" PRIX32 " render=%08" PRIX32 " render_shadow=%08" PRIX32 ")\n",
-      this->type_name.c_str(),
+  phosg::fwrite_fmt(stream, "{} +{:04X} @ {:08X} (VT {:08X}: destroy={:08X} update={:08X} render={:08X} render_shadow={:08X})\n",
+      this->type_name,
       this->flags,
       this->address,
       this->vtable->address,

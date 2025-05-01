@@ -16,10 +16,10 @@ void compute_effective_range(
     const Location& loc,
     shared_ptr<const MapAndRulesState> map_and_rules,
     phosg::PrefixedLogger* log) {
-  if (log && log->should_log(phosg::LogLevel::DEBUG)) {
+  if (log && log->should_log(phosg::LogLevel::L_DEBUG)) {
     string loc_str = loc.str();
-    log->debug("compute_effective_range: card_id=#%04hX, loc=%s", card_id, loc_str.c_str());
-    log->debug("compute_effective_range: map_and_rules->map:");
+    log->debug_f("compute_effective_range: card_id=#{:04X}, loc={}", card_id, loc_str);
+    log->debug_f("compute_effective_range: map_and_rules->map:");
     map_and_rules->map.print(stderr);
   }
   ret.clear(0);
@@ -40,14 +40,14 @@ void compute_effective_range(
     }
   }
   if (log) {
-    log->debug("compute_effective_range: range_def: %05" PRIX32 " %05" PRIX32 " %05" PRIX32 " %05" PRIX32 " %05" PRIX32 " %05" PRIX32, range_def[0], range_def[1], range_def[2], range_def[3], range_def[4], range_def[5]);
+    log->debug_f("compute_effective_range: range_def: {:05X} {:05X} {:05X} {:05X} {:05X} {:05X}", range_def[0], range_def[1], range_def[2], range_def[3], range_def[4], range_def[5]);
   }
 
   if (range_def[0] == 0x000FFFFF) {
     // Entire field
     ret.clear(2);
     if (log) {
-      log->debug("compute_effective_range: entire field (2)");
+      log->debug_f("compute_effective_range: entire field (2)");
     }
     return;
   }
@@ -64,7 +64,7 @@ void compute_effective_range(
   }
   if (log) {
     for (size_t y = 0; y < 9; y++) {
-      log->debug("compute_effective_range: decoded_range: %hhX %hhX %hhX %hhX %hhX %hhX %hhX %hhX %hhX",
+      log->debug_f("compute_effective_range: decoded_range: {:X} {:X} {:X} {:X} {:X} {:X} {:X} {:X} {:X}",
           decoded_range[y * 9 + 0], decoded_range[y * 9 + 1], decoded_range[y * 9 + 2], decoded_range[y * 9 + 3], decoded_range[y * 9 + 4], decoded_range[y * 9 + 5], decoded_range[y * 9 + 6], decoded_range[y * 9 + 7], decoded_range[y * 9 + 8]);
     }
   }
@@ -98,7 +98,7 @@ void compute_effective_range(
           }
           ret[y * 9 + x] = decoded_range[up_y * 9 + up_x];
           if (log) {
-            log->debug("compute_effective_range: x=%hd y=%hd up_x=%hd up_y=%hd v=%hhX", x, y, up_x, up_y, ret[y * 9 + x]);
+            log->debug_f("compute_effective_range: x={} y={} up_x={} up_y={} v={:X}", x, y, up_x, up_y, ret[y * 9 + x]);
           }
         }
       }
@@ -107,7 +107,7 @@ void compute_effective_range(
 
   if (log) {
     for (size_t y = 0; y < 9; y++) {
-      log->debug("compute_effective_range: ret: %hhX %hhX %hhX %hhX %hhX %hhX %hhX %hhX %hhX",
+      log->debug_f("compute_effective_range: ret: {:X} {:X} {:X} {:X} {:X} {:X} {:X} {:X} {:X}",
           ret[y * 9 + 0], ret[y * 9 + 1], ret[y * 9 + 2], ret[y * 9 + 3], ret[y * 9 + 4], ret[y * 9 + 5], ret[y * 9 + 6], ret[y * 9 + 7], ret[y * 9 + 8]);
     }
   }
@@ -941,7 +941,7 @@ bool RulerServer::check_usability_or_condition_apply(
     AttackMedium attack_medium) const {
   auto s = this->server();
   bool is_nte = s->options.is_nte();
-  auto log = s->log_stack(phosg::string_printf("check_usability_or_condition_apply(%02hhX, #%04hX, %02hhX, #%04hX, #%04hX, %02hhX, %s, %s): ", client_id1, card_id1, client_id2, card_id2, card_id3, def_effect_index, is_item_usability_check ? "true" : "false", phosg::name_for_enum(attack_medium)));
+  auto log = s->log_stack(std::format("check_usability_or_condition_apply({:02X}, #{:04X}, {:02X}, #{:04X}, #{:04X}, {:02X}, {}, {}): ", client_id1, card_id1, client_id2, card_id2, card_id3, def_effect_index, is_item_usability_check ? "true" : "false", phosg::name_for_enum(attack_medium)));
 
   if (static_cast<uint8_t>(attack_medium) & 0x80) {
     attack_medium = AttackMedium::UNKNOWN;
@@ -951,11 +951,11 @@ bool RulerServer::check_usability_or_condition_apply(
   auto ce2 = this->definition_for_card_id(card_id2);
   auto ce3 = this->definition_for_card_id(card_id3);
   if (!ce1) {
-    log.debug("ce1 missing");
+    log.debug_f("ce1 missing");
     return false;
   }
   if (!is_nte && (ce1->def.type == CardType::ITEM) && this->card_id_is_boss_sc(card_id2)) {
-    log.debug("ce1 is item and card_id2 is boss sc");
+    log.debug_f("ce1 is item and card_id2 is boss sc");
     return false;
   }
 
@@ -964,12 +964,12 @@ bool RulerServer::check_usability_or_condition_apply(
     criterion_code = ce1->def.usable_criterion;
   } else {
     if (def_effect_index > 2) {
-      log.debug("invalid def_effect_index");
+      log.debug_f("invalid def_effect_index");
       return false;
     }
     criterion_code = ce1->def.effects[def_effect_index].apply_criterion;
   }
-  log.debug("criterion_code=%s", phosg::name_for_enum(criterion_code));
+  log.debug_f("criterion_code={}", phosg::name_for_enum(criterion_code));
 
   // For item usability checks, prevent criteria that depend on player
   // positioning/team setup
@@ -980,7 +980,7 @@ bool RulerServer::check_usability_or_condition_apply(
           (criterion_code == CriterionCode::FC) ||
           (criterion_code == CriterionCode::NOT_SC) ||
           (criterion_code == CriterionCode::SC))) {
-    log.debug("criterion is forbidden");
+    log.debug_f("criterion is forbidden");
     criterion_code = CriterionCode::NONE;
   }
 
@@ -1354,7 +1354,7 @@ bool RulerServer::check_usability_or_condition_apply(
       }
   }
 
-  log.debug("default return (false)");
+  log.debug_f("default return (false)");
   return false;
 }
 
@@ -1478,43 +1478,43 @@ bool RulerServer::compute_effective_range_and_target_mode_for_attack(
   for (z = 0; (z < 8) && (pa.action_card_refs[z] != 0xFFFF); z++) {
   }
   if (z >= 8) {
-    log.debug("too many action card refs");
+    log.debug_f("too many action card refs");
     return false;
   }
-  log.debug("%zu action card refs", z);
+  log.debug_f("{} action card refs", z);
   uint16_t card_ref = (z == 0) ? pa.attacker_card_ref : pa.action_card_refs[z - 1];
-  log.debug("base card ref = @%04hX", card_ref);
+  log.debug_f("base card ref = @{:04X}", card_ref);
 
   uint16_t card_id = this->card_id_for_card_ref(card_ref);
   if (card_id == 0xFFFF) {
-    log.debug("card ref is broken");
+    log.debug_f("card ref is broken");
     return false;
   }
 
   auto ce = this->definition_for_card_id(card_id);
   uint8_t client_id = client_id_for_card_ref(pa.attacker_card_ref);
   if ((client_id == 0xFF) || !ce) {
-    log.debug("card ref is broken or definition is missing");
+    log.debug_f("card ref is broken or definition is missing");
     return false;
   }
 
   if (out_orig_card_ref) {
-    log.debug("orig_card_ref = @%04hX", card_ref);
+    log.debug_f("orig_card_ref = @{:04X}", card_ref);
     *out_orig_card_ref = card_ref;
   }
 
   auto target_mode = ce->def.target_mode;
   if (this->card_ref_or_sc_has_fixed_range(pa.attacker_card_ref)) {
     const char* target_mode_name = name_for_target_mode(target_mode);
-    log.debug("attacker card ref @%04hX has fixed range; target mode is %s (%hhu)",
-        pa.attacker_card_ref.load(), target_mode_name, static_cast<uint8_t>(target_mode));
+    log.debug_f("attacker card ref @{:04X} has fixed range; target mode is {} ({})",
+        pa.attacker_card_ref, target_mode_name, static_cast<uint8_t>(target_mode));
     card_id = this->card_id_for_card_ref(pa.attacker_card_ref);
     if (!is_nte) {
       auto sc_ce = this->definition_for_card_id(card_id);
       if (sc_ce && (static_cast<uint8_t>(target_mode) < 6)) {
         target_mode = sc_ce->def.target_mode;
         const char* target_mode_name = name_for_target_mode(target_mode);
-        log.debug("sc_ce overrides target mode with %s (%hhu)",
+        log.debug_f("sc_ce overrides target mode with {} ({})",
             target_mode_name, static_cast<uint8_t>(target_mode));
       }
     }
@@ -1525,10 +1525,10 @@ bool RulerServer::compute_effective_range_and_target_mode_for_attack(
     auto assist_effect = this->assist_server->get_active_assist_by_index(z);
     if (assist_effect == AssistEffect::SIMPLE) {
       card_id = this->card_id_for_card_ref(pa.attacker_card_ref);
-      log.debug("SIMPLE assist overrides card id with #%04hX", card_id);
+      log.debug_f("SIMPLE assist overrides card id with #{:04X}", card_id);
     } else if (assist_effect == AssistEffect::HEAVY_FOG) {
       card_id = 0xFFFE;
-      log.debug("HEAVY_FOG assist overrides card id with #%04hX", card_id);
+      log.debug_f("HEAVY_FOG assist overrides card id with #{:04X}", card_id);
     }
   }
 
@@ -2059,27 +2059,27 @@ shared_ptr<const CardIndex::CardEntry> RulerServer::definition_for_card_id(uint3
 
 uint32_t RulerServer::get_card_id_with_effective_range(
     uint16_t card_ref, uint16_t card_id_override, TargetMode* out_target_mode) const {
-  auto log = this->server()->log_stack(phosg::string_printf("get_card_id_with_effective_range(@%04hX, #%04hX): ", card_ref, card_id_override));
+  auto log = this->server()->log_stack(std::format("get_card_id_with_effective_range(@{:04X}, #{:04X}): ", card_ref, card_id_override));
 
   uint16_t card_id = (card_id_override == 0xFFFF)
       ? this->card_id_for_card_ref(card_ref)
       : card_id_override;
-  log.debug("card_id=#%04hX", card_id);
+  log.debug_f("card_id=#{:04X}", card_id);
 
   if (card_id != 0xFFFF) {
     auto ce = this->definition_for_card_id(card_id);
     uint8_t client_id = client_id_for_card_ref(card_ref);
     if ((client_id != 0xFF) && ce) {
       TargetMode effective_target_mode = ce->def.target_mode;
-      log.debug("ce valid for #%04hX with effective target mode %s", card_id, name_for_target_mode(effective_target_mode));
+      log.debug_f("ce valid for #{:04X} with effective target mode {}", card_id, name_for_target_mode(effective_target_mode));
 
       if (this->card_ref_or_sc_has_fixed_range(card_ref)) {
         // Undo the override that may have been passed in
-        log.debug("@%04hX has FIXED_RANGE", card_ref);
+        log.debug_f("@{:04X} has FIXED_RANGE", card_ref);
         card_id = this->card_id_for_card_ref(card_ref);
         auto orig_ce = this->definition_for_card_id(card_id);
         if (orig_ce && (static_cast<uint8_t>(effective_target_mode) < 6)) {
-          log.debug("ce valid for #%04hX with effective target mode %s; overriding to %s", card_id, name_for_target_mode(effective_target_mode), name_for_target_mode(orig_ce->def.target_mode));
+          log.debug_f("ce valid for #{:04X} with effective target mode {}; overriding to {}", card_id, name_for_target_mode(effective_target_mode), name_for_target_mode(orig_ce->def.target_mode));
           effective_target_mode = orig_ce->def.target_mode;
         }
       }
@@ -2089,17 +2089,17 @@ uint32_t RulerServer::get_card_id_with_effective_range(
         auto eff = this->assist_server->get_active_assist_by_index(z);
         if (eff == AssistEffect::SIMPLE) {
           card_id = this->card_id_for_card_ref(card_ref);
-          log.debug("SIMPLE assist effect is active; using #%04hX for range", card_id);
+          log.debug_f("SIMPLE assist effect is active; using #{:04X} for range", card_id);
         } else if (eff == AssistEffect::HEAVY_FOG) {
           card_id = 0xFFFE;
-          log.debug("HEAVY_FOG assist effect is active; limiting range to one tile in front");
+          log.debug_f("HEAVY_FOG assist effect is active; limiting range to one tile in front");
         }
       }
 
       if (out_target_mode) {
         *out_target_mode = effective_target_mode;
       }
-      log.debug("results: card_id=#%04hX, target_mode=%s", card_id, name_for_target_mode(effective_target_mode));
+      log.debug_f("results: card_id=#{:04X}, target_mode={}", card_id, name_for_target_mode(effective_target_mode));
     }
   }
 

@@ -4,26 +4,26 @@
 
 using namespace std;
 
-phosg::PrefixedLogger channel_exceptions_log("[Channel] ", phosg::LogLevel::USE_DEFAULT);
-phosg::PrefixedLogger client_log("", phosg::LogLevel::USE_DEFAULT);
-phosg::PrefixedLogger command_data_log("[Commands] ", phosg::LogLevel::USE_DEFAULT);
-phosg::PrefixedLogger config_log("[Config] ", phosg::LogLevel::USE_DEFAULT);
-phosg::PrefixedLogger dns_server_log("[DNSServer] ", phosg::LogLevel::USE_DEFAULT);
-phosg::PrefixedLogger function_compiler_log("[FunctionCompiler] ", phosg::LogLevel::USE_DEFAULT);
-phosg::PrefixedLogger ip_stack_simulator_log("[IPStackSimulator] ", phosg::LogLevel::USE_DEFAULT);
-phosg::PrefixedLogger lobby_log("", phosg::LogLevel::USE_DEFAULT);
-phosg::PrefixedLogger patch_index_log("[PatchFileIndex] ", phosg::LogLevel::USE_DEFAULT);
-phosg::PrefixedLogger player_data_log("", phosg::LogLevel::USE_DEFAULT);
-phosg::PrefixedLogger proxy_server_log("[ProxyServer] ", phosg::LogLevel::USE_DEFAULT);
-phosg::PrefixedLogger replay_log("[ReplaySession] ", phosg::LogLevel::USE_DEFAULT);
-phosg::PrefixedLogger server_log("[Server] ", phosg::LogLevel::USE_DEFAULT);
-phosg::PrefixedLogger static_game_data_log("[StaticGameData] ", phosg::LogLevel::USE_DEFAULT);
+phosg::PrefixedLogger channel_exceptions_log("[Channel] ", phosg::LogLevel::L_USE_DEFAULT);
+phosg::PrefixedLogger client_log("", phosg::LogLevel::L_USE_DEFAULT);
+phosg::PrefixedLogger command_data_log("[Commands] ", phosg::LogLevel::L_USE_DEFAULT);
+phosg::PrefixedLogger config_log("[Config] ", phosg::LogLevel::L_USE_DEFAULT);
+phosg::PrefixedLogger dns_server_log("[DNSServer] ", phosg::LogLevel::L_USE_DEFAULT);
+phosg::PrefixedLogger function_compiler_log("[FunctionCompiler] ", phosg::LogLevel::L_USE_DEFAULT);
+phosg::PrefixedLogger ip_stack_simulator_log("[IPStackSimulator] ", phosg::LogLevel::L_USE_DEFAULT);
+phosg::PrefixedLogger lobby_log("", phosg::LogLevel::L_USE_DEFAULT);
+phosg::PrefixedLogger patch_index_log("[PatchFileIndex] ", phosg::LogLevel::L_USE_DEFAULT);
+phosg::PrefixedLogger player_data_log("", phosg::LogLevel::L_USE_DEFAULT);
+phosg::PrefixedLogger proxy_server_log("[ProxyServer] ", phosg::LogLevel::L_USE_DEFAULT);
+phosg::PrefixedLogger replay_log("[ReplaySession] ", phosg::LogLevel::L_USE_DEFAULT);
+phosg::PrefixedLogger server_log("[Server] ", phosg::LogLevel::L_USE_DEFAULT);
+phosg::PrefixedLogger static_game_data_log("[StaticGameData] ", phosg::LogLevel::L_USE_DEFAULT);
 
 static void set_log_level_from_json(
     phosg::PrefixedLogger& log, const phosg::JSON& d, const char* json_key) {
   try {
     string name = phosg::toupper(d.at(json_key).as_string());
-    log.min_level = phosg::enum_for_name<phosg::LogLevel>(name.c_str());
+    log.min_level = phosg::enum_for_name<phosg::LogLevel>(name);
   } catch (const out_of_range&) {
   }
 }

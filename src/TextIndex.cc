@@ -1,5 +1,6 @@
 #include "TextIndex.hh"
 
+#include <filesystem>
 #include <phosg/Encoding.hh>
 #include <phosg/Filesystem.hh>
 #include <phosg/Random.hh>
@@ -198,8 +199,8 @@ BinaryTextSet::BinaryTextSet(const std::string& pr2_data, size_t collection_coun
     // they're just in the middle of the collections list. Sigh...
     try {
       for (uint32_t string_offset_offset = first_string_offset_offset;
-           (string_offset_offset == first_string_offset_offset) || !used_offsets.count(string_offset_offset);
-           string_offset_offset += 4) {
+          (string_offset_offset == first_string_offset_offset) || !used_offsets.count(string_offset_offset);
+          string_offset_offset += 4) {
         collection.emplace_back(tt(r.pget_cstr(r.pget_u32l(string_offset_offset))));
       }
     } catch (const out_of_range&) {
@@ -341,8 +342,8 @@ void BinaryTextAndKeyboardsSet::parse_t(const string& pr2_data, bool is_sjis) {
     auto& collection = this->collections.emplace_back();
     uint32_t first_string_offset_offset = r.pget<U32T<BE>>(offset);
     for (uint32_t string_offset_offset = first_string_offset_offset;
-         (string_offset_offset == first_string_offset_offset) || !used_offsets.count(string_offset_offset);
-         string_offset_offset += 4) {
+        (string_offset_offset == first_string_offset_offset) || !used_offsets.count(string_offset_offset);
+        string_offset_offset += 4) {
       collection.emplace_back(tt(r.pget_cstr(r.pget<U32T<BE>>(string_offset_offset))));
     }
   }
@@ -477,11 +478,11 @@ TextIndex::TextIndex(
         for (const auto& it : bintext_filenames) {
           string file_path = directory + "/" + subdirectory + "/" + it.first;
           string json_path = file_path + ".json";
-          if (phosg::isfile(json_path)) {
-            this->log.info("Loading %s %c JSON text set from %s", phosg::name_for_enum(version), char_for_language_code(it.second), json_path.c_str());
+          if (std::filesystem::is_regular_file(json_path)) {
+            this->log.info_f("Loading {} {} JSON text set from {}", phosg::name_for_enum(version), char_for_language_code(it.second), json_path);
             this->add_set(version, it.second, make_shared<BinaryTextSet>(phosg::JSON::parse(phosg::load_file(json_path))));
-          } else if (phosg::isfile(file_path)) {
-            this->log.info("Loading %s %c binary text set from %s", phosg::name_for_enum(version), char_for_language_code(it.second), file_path.c_str());
+          } else if (std::filesystem::is_regular_file(file_path)) {
+            this->log.info_f("Loading {} {} binary text set from {}", phosg::name_for_enum(version), char_for_language_code(it.second), file_path);
             this->add_set(version, it.second, make_set(phosg::load_file(file_path), it.second == 0));
           }
         }
@@ -489,17 +490,17 @@ TextIndex::TextIndex(
         for (const auto& it : unitext_filenames) {
           string file_path = directory + "/" + subdirectory + "/" + it.first;
           string json_path = file_path + ".json";
-          if (phosg::isfile(json_path)) {
-            this->log.info("Loading %s %c JSON text set from %s", phosg::name_for_enum(version), char_for_language_code(it.second), json_path.c_str());
+          if (std::filesystem::is_regular_file(json_path)) {
+            this->log.info_f("Loading {} {} JSON text set from {}", phosg::name_for_enum(version), char_for_language_code(it.second), json_path);
             this->add_set(version, it.second, make_shared<UnicodeTextSet>(phosg::JSON::parse(phosg::load_file(json_path))));
           } else {
             auto patch_file = get_patch_file ? get_patch_file(version, it.first) : nullptr;
             if (patch_file) {
-              this->log.info("Loading %s %c Unicode text set from %s in patch tree", phosg::name_for_enum(version), char_for_language_code(it.second), it.first.c_str());
+              this->log.info_f("Loading {} {} Unicode text set from {} in patch tree", phosg::name_for_enum(version), char_for_language_code(it.second), it.first);
               this->add_set(version, it.second, make_set(*patch_file, it.second == 0));
             } else {
-              if (phosg::isfile(file_path)) {
-                this->log.info("Loading %s %c Unicode text set from %s", phosg::name_for_enum(version), char_for_language_code(it.second), file_path.c_str());
+              if (std::filesystem::is_regular_file(file_path)) {
+                this->log.info_f("Loading {} {} Unicode text set from {}", phosg::name_for_enum(version), char_for_language_code(it.second), file_path);
                 this->add_set(version, it.second, make_set(phosg::load_file(file_path), it.second == 0));
               }
             }

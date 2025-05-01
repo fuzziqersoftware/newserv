@@ -181,16 +181,16 @@ ItemParameterTable::WeaponV4 ItemParameterTable::WeaponV1V2::to_v4() const {
 
 ItemParameterTable::WeaponV4 ItemParameterTable::WeaponGCNTE::to_v4() const {
   WeaponV4 ret;
-  ret.base.id = this->base.id.load();
-  ret.base.type = this->base.type.load();
-  ret.base.skin = this->base.skin.load();
-  ret.class_flags = this->class_flags.load();
-  ret.atp_min = this->atp_min.load();
-  ret.atp_max = this->atp_max.load();
-  ret.atp_required = this->atp_required.load();
-  ret.mst_required = this->mst_required.load();
-  ret.ata_required = this->ata_required.load();
-  ret.mst = this->mst.load();
+  ret.base.id = this->base.id;
+  ret.base.type = this->base.type;
+  ret.base.skin = this->base.skin;
+  ret.class_flags = this->class_flags;
+  ret.atp_min = this->atp_min;
+  ret.atp_max = this->atp_max;
+  ret.atp_required = this->atp_required;
+  ret.mst_required = this->mst_required;
+  ret.ata_required = this->ata_required;
+  ret.mst = this->mst;
   ret.max_grind = this->max_grind;
   ret.photon = this->photon;
   ret.special = this->special;
@@ -211,16 +211,16 @@ ItemParameterTable::WeaponV4 ItemParameterTable::WeaponGCNTE::to_v4() const {
 template <bool BE>
 ItemParameterTable::WeaponV4 ItemParameterTable::WeaponV3T<BE>::to_v4() const {
   WeaponV4 ret;
-  ret.base.id = this->base.id.load();
-  ret.base.type = this->base.type.load();
-  ret.base.skin = this->base.skin.load();
-  ret.class_flags = this->class_flags.load();
-  ret.atp_min = this->atp_min.load();
-  ret.atp_max = this->atp_max.load();
-  ret.atp_required = this->atp_required.load();
-  ret.mst_required = this->mst_required.load();
-  ret.ata_required = this->ata_required.load();
-  ret.mst = this->mst.load();
+  ret.base.id = this->base.id;
+  ret.base.type = this->base.type;
+  ret.base.skin = this->base.skin;
+  ret.class_flags = this->class_flags;
+  ret.atp_min = this->atp_min;
+  ret.atp_max = this->atp_max;
+  ret.atp_required = this->atp_required;
+  ret.mst_required = this->mst_required;
+  ret.ata_required = this->ata_required;
+  ret.mst = this->mst;
   ret.max_grind = this->max_grind;
   ret.photon = this->photon;
   ret.special = this->special;
@@ -287,14 +287,14 @@ ItemParameterTable::ArmorOrShieldV4 ItemParameterTable::ArmorOrShieldV1V2::to_v4
 template <bool BE>
 ItemParameterTable::ArmorOrShieldV4 ItemParameterTable::ArmorOrShieldV3T<BE>::to_v4() const {
   ArmorOrShieldV4 ret;
-  ret.base.id = this->base.id.load();
-  ret.base.type = this->base.type.load();
-  ret.base.skin = this->base.skin.load();
-  ret.dfp = this->dfp.load();
-  ret.evp = this->evp.load();
+  ret.base.id = this->base.id;
+  ret.base.type = this->base.type;
+  ret.base.skin = this->base.skin;
+  ret.dfp = this->dfp;
+  ret.evp = this->evp;
   ret.block_particle = this->block_particle;
   ret.block_effect = this->block_effect;
-  ret.class_flags = this->class_flags.load();
+  ret.class_flags = this->class_flags;
   ret.required_level = this->required_level;
   ret.efr = this->efr;
   ret.eth = this->eth;
@@ -330,12 +330,12 @@ ItemParameterTable::UnitV4 ItemParameterTable::UnitV1V2::to_v4() const {
 template <bool BE>
 ItemParameterTable::UnitV4 ItemParameterTable::UnitV3T<BE>::to_v4() const {
   UnitV4 ret;
-  ret.base.id = this->base.id.load();
-  ret.base.type = this->base.type.load();
-  ret.base.skin = this->base.skin.load();
-  ret.stat = this->stat.load();
-  ret.stat_amount = this->stat_amount.load();
-  ret.modifier_amount = this->modifier_amount.load();
+  ret.base.id = this->base.id;
+  ret.base.type = this->base.type;
+  ret.base.skin = this->base.skin;
+  ret.stat = this->stat;
+  ret.stat_amount = this->stat_amount;
+  ret.modifier_amount = this->modifier_amount;
   return ret;
 }
 
@@ -377,10 +377,10 @@ ItemParameterTable::MagV4 ItemParameterTable::MagV2::to_v4() const {
 template <bool BE>
 ItemParameterTable::MagV4 ItemParameterTable::MagV3T<BE>::to_v4() const {
   MagV4 ret;
-  ret.base.id = this->base.id.load();
-  ret.base.type = this->base.type.load();
-  ret.base.skin = this->base.skin.load();
-  ret.feed_table = this->feed_table.load();
+  ret.base.id = this->base.id;
+  ret.base.type = this->base.type;
+  ret.base.skin = this->base.skin;
+  ret.feed_table = this->feed_table;
   ret.photon_blast = this->photon_blast;
   ret.activation = this->activation;
   ret.on_pb_full = this->on_pb_full;
@@ -391,7 +391,7 @@ ItemParameterTable::MagV4 ItemParameterTable::MagV3T<BE>::to_v4() const {
   ret.on_low_hp_flag = this->on_low_hp_flag;
   ret.on_death_flag = this->on_death_flag;
   ret.on_boss_flag = this->on_boss_flag;
-  ret.class_flags = this->class_flags.load();
+  ret.class_flags = this->class_flags;
   return ret;
 }
 
@@ -408,13 +408,13 @@ ItemParameterTable::ToolV4 ItemParameterTable::ToolV1V2::to_v4() const {
 template <bool BE>
 ItemParameterTable::ToolV4 ItemParameterTable::ToolV3T<BE>::to_v4() const {
   ToolV4 ret;
-  ret.base.id = this->base.id.load();
-  ret.base.type = this->base.type.load();
-  ret.base.skin = this->base.skin.load();
-  ret.amount = this->amount.load();
-  ret.tech = this->tech.load();
-  ret.cost = this->cost.load();
-  ret.item_flags = this->item_flags.load();
+  ret.base.id = this->base.id;
+  ret.base.type = this->base.type;
+  ret.base.skin = this->base.skin;
+  ret.amount = this->amount;
+  ret.tech = this->tech;
+  ret.cost = this->cost;
+  ret.item_flags = this->item_flags;
   return ret;
 }
 
@@ -720,7 +720,7 @@ pair<uint8_t, uint8_t> ItemParameterTable::find_tool_by_id_t(uint32_t tool_table
       }
     }
   }
-  throw out_of_range(phosg::string_printf("invalid tool class %08" PRIX32, item_id));
+  throw out_of_range(std::format("invalid tool class {:08X}", item_id));
 }
 
 pair<uint8_t, uint8_t> ItemParameterTable::find_tool_by_id(uint32_t item_id) const {
@@ -907,8 +907,8 @@ const ItemParameterTable::Special& ItemParameterTable::get_special(uint8_t speci
         this->parsed_specials.resize(special + 1);
       }
       const auto& sp_be = this->r.pget<SpecialBE>(this->offsets_gc_nte->special_data_table + sizeof(SpecialBE) * special);
-      this->parsed_specials[special].type = sp_be.type.load();
-      this->parsed_specials[special].amount = sp_be.amount.load();
+      this->parsed_specials[special].type = sp_be.type;
+      this->parsed_specials[special].amount = sp_be.amount;
     }
     return this->parsed_specials[special];
   } else if (this->offsets_v3_be) {
@@ -917,8 +917,8 @@ const ItemParameterTable::Special& ItemParameterTable::get_special(uint8_t speci
         this->parsed_specials.resize(special + 1);
       }
       const auto& sp_be = this->r.pget<SpecialBE>(this->offsets_v3_be->special_data_table + sizeof(SpecialBE) * special);
-      this->parsed_specials[special].type = sp_be.type.load();
-      this->parsed_specials[special].amount = sp_be.amount.load();
+      this->parsed_specials[special].type = sp_be.type;
+      this->parsed_specials[special].amount = sp_be.amount;
     }
     return this->parsed_specials[special];
   } else if (this->offsets_v4) {

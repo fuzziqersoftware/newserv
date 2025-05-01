@@ -8,88 +8,6 @@
 
 using namespace std;
 
-const char* login_port_name_for_version(Version v) {
-  switch (v) {
-    case Version::PC_PATCH:
-      return "pc-patch";
-    case Version::BB_PATCH:
-      return "bb-patch";
-    case Version::DC_NTE:
-    case Version::DC_11_2000:
-    case Version::DC_V1:
-    case Version::DC_V2:
-    case Version::GC_NTE:
-    case Version::GC_V3:
-    case Version::GC_EP3_NTE:
-    case Version::GC_EP3:
-      return "console-login";
-    case Version::PC_NTE:
-    case Version::PC_V2:
-      return "pc-login";
-    case Version::XB_V3:
-      return "xb-login";
-    case Version::BB_V4:
-      return "bb-init";
-    default:
-      throw runtime_error("unknown version");
-  }
-}
-
-const char* lobby_port_name_for_version(Version v) {
-  switch (v) {
-    case Version::PC_PATCH:
-      return "pc-patch";
-    case Version::BB_PATCH:
-      return "bb-patch";
-    case Version::DC_NTE:
-    case Version::DC_11_2000:
-    case Version::DC_V1:
-    case Version::DC_V2:
-    case Version::GC_NTE:
-    case Version::GC_V3:
-    case Version::GC_EP3_NTE:
-    case Version::GC_EP3:
-      return "console-lobby";
-    case Version::PC_NTE:
-    case Version::PC_V2:
-      return "pc-lobby";
-    case Version::XB_V3:
-      return "xb-lobby";
-    case Version::BB_V4:
-      return "bb-lobby";
-    default:
-      throw runtime_error("unknown version");
-  }
-}
-
-const char* proxy_port_name_for_version(Version v) {
-  switch (v) {
-    case Version::PC_PATCH:
-      return "pc-patch";
-    case Version::BB_PATCH:
-      return "bb-patch";
-    case Version::DC_NTE:
-    case Version::DC_11_2000:
-    case Version::DC_V1:
-    case Version::DC_V2:
-    case Version::GC_NTE:
-      return "dc-proxy";
-    case Version::GC_V3:
-    case Version::GC_EP3_NTE:
-    case Version::GC_EP3:
-      return "gc-proxy";
-    case Version::PC_NTE:
-    case Version::PC_V2:
-      return "pc-proxy";
-    case Version::XB_V3:
-      return "xb-proxy";
-    case Version::BB_V4:
-      return "bb-proxy";
-    default:
-      throw runtime_error("unknown version");
-  }
-}
-
 template <>
 const char* phosg::name_for_enum<Version>(Version v) {
   switch (v) {
@@ -166,16 +84,12 @@ const char* phosg::name_for_enum<ServerBehavior>(ServerBehavior behavior) {
   switch (behavior) {
     case ServerBehavior::PC_CONSOLE_DETECT:
       return "pc_console_detect";
-    case ServerBehavior::LOGIN_SERVER:
-      return "login_server";
-    case ServerBehavior::LOBBY_SERVER:
-      return "lobby_server";
+    case ServerBehavior::GAME_SERVER:
+      return "game_server";
     case ServerBehavior::PATCH_SERVER_PC:
       return "patch_server_pc";
     case ServerBehavior::PATCH_SERVER_BB:
       return "patch_server_bb";
-    case ServerBehavior::PROXY_SERVER:
-      return "proxy_server";
   }
   throw logic_error("invalid server behavior");
 }
@@ -184,18 +98,14 @@ template <>
 ServerBehavior phosg::enum_for_name<ServerBehavior>(const char* name) {
   if (!strcasecmp(name, "pc_console_detect")) {
     return ServerBehavior::PC_CONSOLE_DETECT;
-  } else if (!strcasecmp(name, "login_server") || !strcasecmp(name, "login") || !strcasecmp(name, "data_server_bb")) {
-    return ServerBehavior::LOGIN_SERVER;
-  } else if (!strcasecmp(name, "lobby_server") || !strcasecmp(name, "lobby")) {
-    return ServerBehavior::LOBBY_SERVER;
+  } else if (!strcasecmp(name, "game_server") || !strcasecmp(name, "game")) {
+    return ServerBehavior::GAME_SERVER;
   } else if (!strcasecmp(name, "patch_server_pc") || !strcasecmp(name, "patch_pc")) {
     return ServerBehavior::PATCH_SERVER_PC;
   } else if (!strcasecmp(name, "patch_server_bb") || !strcasecmp(name, "patch_bb")) {
     return ServerBehavior::PATCH_SERVER_BB;
-  } else if (!strcasecmp(name, "proxy_server") || !strcasecmp(name, "proxy")) {
-    return ServerBehavior::PROXY_SERVER;
   } else {
-    throw invalid_argument("incorrect server behavior name");
+    throw invalid_argument(std::format("incorrect server behavior name: {}", name));
   }
 }
 

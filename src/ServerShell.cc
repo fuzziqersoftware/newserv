@@ -1,6 +1,5 @@
 #include "ServerShell.hh"
 
-#include <event2/event.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -28,7 +27,7 @@ ServerShell::~ServerShell() {
 
 void ServerShell::thread_fn() {
   for (;;) {
-    fprintf(stdout, "newserv> ");
+    phosg::fwrite_fmt(stdout, "newserv> ");
     fflush(stdout);
     string command;
     uint64_t read_start_usecs = phosg::now();
@@ -42,14 +41,14 @@ void ServerShell::thread_fn() {
       if (phosg::now() - read_start_usecs < 1000000 || e.error != -1) {
         throw;
       }
-      phosg::log_warning("I/O error reading from terminal: %s (%d)", e.what(), e.error);
+      phosg::log_warning_f("I/O error reading from terminal: {} ({})", e.what(), e.error);
       continue;
     }
 
     // If command is empty (not even a \n), it's probably EOF
     if (command.empty()) {
       fputc('\n', stderr);
-      event_base_loopexit(this->state->base.get(), nullptr);
+      this->state->io_context->stop();
       return;
     }
 
@@ -57,15 +56,28 @@ void ServerShell::thread_fn() {
     phosg::strip_leading_whitespace(command);
 
     try {
-      auto lines = ShellCommand::dispatch_str(this->state, command);
-      for (const auto& line : lines) {
-        fprintf(stdout, "%s\n", line.c_str());
+      std::promise<deque<string>> promise;
+      auto future = promise.get_future();
+
+      asio::co_spawn(
+          *this->state->io_context,
+          [&]() mutable -> asio::awaitable<void> {
+            try {
+              promise.set_value(co_await ShellCommand::dispatch_str(this->state, command));
+            } catch (...) {
+              promise.set_exception(std::current_exception());
+            }
+          },
+          asio::detached);
+
+      for (const auto& line : future.get()) {
+        phosg::fwrite_fmt(stdout, "{}\n", line);
       }
     } catch (const exit_shell&) {
-      event_base_loopexit(this->state->base.get(), nullptr);
+      this->state->io_context->stop();
       return;
     } catch (const exception& e) {
-      fprintf(stderr, "FAILED: %s\n", e.what());
+      phosg::fwrite_fmt(stderr, "FAILED: {}\n", e.what());
     }
   }
 }

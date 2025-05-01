@@ -13,9 +13,6 @@ static inline uint16_t collapse_checksum(uint32_t sum) {
   return (sum & 0xFFFF) + (sum >> 16);
 }
 
-FrameInfo::FrameInfo(LinkType link_type, const string& data)
-    : FrameInfo(link_type, data.data(), data.size()) {}
-
 FrameInfo::FrameInfo(LinkType link_type, const void* header_start, size_t size)
     : FrameInfo() {
   this->link_type = link_type;
@@ -126,37 +123,37 @@ string FrameInfo::header_str() const {
 
   string ret;
   if (this->ether) {
-    ret = phosg::string_printf(
-        "ETHER:%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX->%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX",
+    ret = std::format(
+        "ETHER:{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}->{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}",
         this->ether->src_mac[0], this->ether->src_mac[1], this->ether->src_mac[2],
         this->ether->src_mac[3], this->ether->src_mac[4], this->ether->src_mac[5],
         this->ether->dest_mac[0], this->ether->dest_mac[1], this->ether->dest_mac[2],
         this->ether->dest_mac[3], this->ether->dest_mac[4], this->ether->dest_mac[5]);
   } else if (this->hdlc) {
-    ret = phosg::string_printf("HDLC:%02hhX/%02hhX", this->hdlc->address, this->hdlc->control);
+    ret = std::format("HDLC:{:02X}/{:02X}", this->hdlc->address, this->hdlc->control);
   } else {
     return "<invalid-frame-info>";
   }
 
   if (this->arp) {
-    ret += phosg::string_printf(
-        ",ARP,hw_type=%04hX,proto_type=%04hX,hw_addr_len=%02hhX,proto_addr_len=%02hhX,op=%04hX",
-        this->arp->hardware_type.load(), this->arp->protocol_type.load(), this->arp->hwaddr_len, this->arp->paddr_len, this->arp->operation.load());
+    ret += std::format(
+        ",ARP,hw_type={:04X},proto_type={:04X},hw_addr_len={:02X},proto_addr_len={:02X},op={:04X}",
+        this->arp->hardware_type, this->arp->protocol_type, this->arp->hwaddr_len, this->arp->paddr_len, this->arp->operation);
 
   } else if (this->ipv4) {
-    ret += phosg::string_printf(
-        ",IPv4,size=%04hX,src=%08" PRIX32 ",dest=%08" PRIX32,
-        this->ipv4->size.load(), this->ipv4->src_addr.load(), this->ipv4->dest_addr.load());
+    ret += std::format(
+        ",IPv4,size={:04X},src={:08X},dest={:08X}",
+        this->ipv4->size, this->ipv4->src_addr, this->ipv4->dest_addr);
 
     if (this->udp) {
-      ret += phosg::string_printf(
-          ",UDP,src_port=%04hX,dest_port=%04hX,size=%04hX",
-          this->udp->src_port.load(), this->udp->dest_port.load(), this->udp->size.load());
+      ret += std::format(
+          ",UDP,src_port={:04X},dest_port={:04X},size={:04X}",
+          this->udp->src_port, this->udp->dest_port, this->udp->size);
 
     } else if (this->tcp) {
-      ret += phosg::string_printf(
-          ",TCP,src_port=%04hX,dest_port=%04hX,seq=%08" PRIX32 ",ack=%08" PRIX32 ",flags=%04hX(",
-          this->tcp->src_port.load(), this->tcp->dest_port.load(), this->tcp->seq_num.load(), this->tcp->ack_num.load(), this->tcp->flags.load());
+      ret += std::format(
+          ",TCP,src_port={:04X},dest_port={:04X},seq={:08X},ack={:08X},flags={:04X}(",
+          this->tcp->src_port, this->tcp->dest_port, this->tcp->seq_num, this->tcp->ack_num, this->tcp->flags);
       if (this->tcp->flags & TCPHeader::Flag::FIN) {
         ret += "FIN,";
       }
@@ -175,14 +172,14 @@ string FrameInfo::header_str() const {
       ret += ')';
 
     } else {
-      ret += phosg::string_printf(",proto=%02hhX", this->ipv4->protocol);
+      ret += std::format(",proto={:02X}", this->ipv4->protocol);
     }
 
   } else {
     if (this->ether) {
-      ret += phosg::string_printf(",proto=%04hX", this->ether->protocol.load());
+      ret += std::format(",proto={:04X}", this->ether->protocol);
     } else if (this->hdlc) {
-      ret += phosg::string_printf(",proto=%04hX", this->hdlc->protocol.load());
+      ret += std::format(",proto={:04X}", this->hdlc->protocol);
     }
   }
 

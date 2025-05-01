@@ -6,7 +6,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "ProxyServer.hh"
 #include "ServerState.hh"
 
 class exit_shell : public std::runtime_error {
@@ -21,18 +20,20 @@ struct ShellCommand {
     std::string command;
     std::string args;
     std::string session_name;
+
+    std::shared_ptr<Client> get_client() const;
+    std::shared_ptr<Client> get_proxy_client() const;
   };
 
   const char* name;
   const char* help_text;
-  bool run_on_event_thread;
-  std::deque<std::string> (*run)(Args&);
+  asio::awaitable<std::deque<std::string>> (*run)(Args&);
 
   static std::vector<const ShellCommand*> commands_by_order;
   static std::unordered_map<std::string, const ShellCommand*> commands_by_name;
 
-  ShellCommand(const char* name, const char* help_text, bool run_on_event_thread, std::deque<std::string> (*run)(Args&));
+  ShellCommand(const char* name, const char* help_text, asio::awaitable<std::deque<std::string>> (*run)(Args&));
 
-  static std::deque<std::string> dispatch_str(std::shared_ptr<ServerState> s, const std::string& command);
-  static std::deque<std::string> dispatch(Args& args);
+  static asio::awaitable<std::deque<std::string>> dispatch_str(std::shared_ptr<ServerState> s, const std::string& command);
+  static asio::awaitable<std::deque<std::string>> dispatch(Args& args);
 };

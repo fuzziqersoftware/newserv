@@ -52,10 +52,7 @@ class SetDataTableBase {
 public:
   virtual ~SetDataTableBase() = default;
 
-  Variations generate_variations(
-      Episode episode,
-      bool is_solo,
-      std::shared_ptr<PSOLFGEncryption> opt_rand_crypt = nullptr) const;
+  Variations generate_variations(Episode episode, bool is_solo, std::shared_ptr<RandomGenerator> rand_crypt) const;
   virtual Variations::Entry num_available_variations_for_floor(Episode episode, uint8_t floor) const = 0;
   virtual Variations::Entry num_free_play_variations_for_floor(Episode episode, bool is_solo, uint8_t floor) const = 0;
 
@@ -339,7 +336,7 @@ public:
     uint32_t location_indexes_used;
     uint32_t location_entries_base_offset;
 
-    RandomState(uint32_t random_seed);
+    explicit RandomState(uint32_t random_seed);
     size_t rand_int_biased(size_t min_v, size_t max_v);
     uint32_t next_location_index();
     void generate_shuffled_location_table(const RandomEnemyLocationsHeader& header, phosg::StringReader r, uint16_t room);
@@ -389,7 +386,7 @@ public:
       std::shared_ptr<const std::string> enemy_sets_data,
       std::shared_ptr<const std::string> events_data);
   // Constructor for materialize_random_sections
-  MapFile(uint32_t random_seed);
+  explicit MapFile(uint32_t random_seed);
   ~MapFile() = default;
 
   inline uint64_t source_hash() const {
@@ -913,25 +910,25 @@ public:
       uint64_t lobby_or_session_id,
       uint8_t difficulty,
       uint8_t event,
-      uint32_t random_seed,
+      uint32_t random_seed, // For client-matched rare enemies (non-BB)
       std::shared_ptr<const RareEnemyRates> bb_rare_rates,
-      std::shared_ptr<PSOLFGEncryption> opt_rand_crypt,
+      std::shared_ptr<RandomGenerator> rand_crypt,
       std::vector<std::shared_ptr<const SuperMap>> floor_map_defs);
   // Constructor for quests
   MapState(
       uint64_t lobby_or_session_id,
       uint8_t difficulty,
       uint8_t event,
-      uint32_t random_seed,
+      uint32_t random_seed, // For client-matched rare enemies (non-BB)
       std::shared_ptr<const RareEnemyRates> bb_rare_rates,
-      std::shared_ptr<PSOLFGEncryption> opt_rand_crypt,
+      std::shared_ptr<RandomGenerator> rand_crypt,
       std::shared_ptr<const SuperMap> quest_map_def);
   // Constructor for empty maps (used in challenge mode before a quest starts)
   MapState();
 
   ~MapState() = default;
 
-  void index_super_map(const FloorConfig& floor_config, std::shared_ptr<PSOLFGEncryption> opt_rand_crypt);
+  void index_super_map(const FloorConfig& floor_config, std::shared_ptr<RandomGenerator> rand_crypt);
   void compute_dynamic_object_base_indexes();
 
   inline FloorConfig& floor_config(uint8_t floor) {

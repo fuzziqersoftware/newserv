@@ -6,6 +6,7 @@
 #include <memory>
 #include <phosg/Encoding.hh>
 #include <phosg/Random.hh>
+#include <random>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -13,6 +14,39 @@
 #include "Compression.hh"
 #include "Text.hh"
 #include "Types.hh"
+
+class RandomGenerator {
+public:
+  virtual ~RandomGenerator() = default;
+  virtual uint32_t next() = 0;
+
+  inline uint32_t seed() const {
+    return this->initial_seed;
+  }
+
+protected:
+  uint32_t initial_seed;
+  RandomGenerator(uint32_t seed);
+};
+
+class DisabledRandomGenerator : public RandomGenerator {
+public:
+  DisabledRandomGenerator();
+  virtual ~DisabledRandomGenerator() = default;
+
+  virtual uint32_t next();
+};
+
+class MT19937Generator : public RandomGenerator {
+public:
+  explicit MT19937Generator(uint32_t seed);
+  virtual ~MT19937Generator() = default;
+
+  virtual uint32_t next();
+
+private:
+  std::mt19937 gen;
+};
 
 class PSOEncryption {
 public:
@@ -25,14 +59,14 @@ public:
 
   virtual ~PSOEncryption() = default;
 
-  virtual void encrypt(void* data, size_t size, bool advance = true) = 0;
-  virtual void decrypt(void* data, size_t size, bool advance = true);
+  virtual void encrypt(void* data, size_t size) = 0;
+  virtual void decrypt(void* data, size_t size);
 
-  inline void encrypt(std::string& data, bool advance = true) {
-    this->encrypt(data.data(), data.size(), advance);
+  inline void encrypt(std::string& data) {
+    this->encrypt(data.data(), data.size());
   }
-  inline void decrypt(std::string& data, bool advance = true) {
-    this->decrypt(data.data(), data.size(), advance);
+  inline void decrypt(std::string& data) {
+    this->decrypt(data.data(), data.size());
   }
 
   virtual Type type() const = 0;
@@ -41,27 +75,47 @@ protected:
   PSOEncryption() = default;
 };
 
-class PSOLFGEncryption : public PSOEncryption {
+class PSOLFGEncryption : public PSOEncryption, public RandomGenerator {
 public:
-  virtual void encrypt(void* data, size_t size, bool advance = true);
-  void encrypt_big_endian(void* data, size_t size, bool advance = true);
-  void encrypt_minus(void* data, size_t size, bool advance = true);
-  void encrypt_big_endian_minus(void* data, size_t size, bool advance = true);
-  void encrypt_both_endian(void* le_data, void* be_data, size_t size, bool advance = true);
+  virtual void encrypt(void* data, size_t size);
+  void encrypt_big_endian(void* data, size_t size);
+  void encrypt_minus(void* data, size_t size);
+  void encrypt_big_endian_minus(void* data, size_t size);
+  void encrypt_both_endian(void* le_data, void* be_data, size_t size);
 
   template <bool BE>
-  void encrypt_t(void* data, size_t size, bool advance = true);
+  void encrypt_t(void* vdata, size_t size) {
+    size_t uint32_count = size >> 2;
+    size_t extra_bytes = size & 3;
+    U32T<BE>* data = reinterpret_cast<U32T<BE>*>(vdata);
+    for (size_t x = 0; x < uint32_count; x++) {
+      data[x] ^= this->next();
+    }
+    if (extra_bytes) {
+      U32T<BE> last = 0;
+      memcpy(&last, &data[uint32_count], extra_bytes);
+      last ^= this->next();
+      memcpy(&data[uint32_count], &last, extra_bytes);
+    }
+  }
+
   template <bool BE>
-  void encrypt_minus_t(void* data, size_t size, bool advance = true);
-
-  uint32_t next(bool advance = true);
-
-  inline uint32_t seed() const {
-    return this->initial_seed;
+  void encrypt_minus_t(void* vdata, size_t size) {
+    size_t uint32_count = size >> 2;
+    size_t extra_bytes = size & 3;
+    U32T<BE>* data = reinterpret_cast<U32T<BE>*>(vdata);
+    for (size_t x = 0; x < uint32_count; x++) {
+      data[x] = this->next() - data[x];
+    }
+    if (extra_bytes) {
+      U32T<BE> last = 0;
+      memcpy(&last, &data[uint32_count], extra_bytes);
+      last = this->next() - last;
+      memcpy(&data[uint32_count], &last, extra_bytes);
+    }
   }
-  uint32_t absolute_offset() const {
-    return (this->cycles * this->end_offset) + this->offset;
-  }
+
+  virtual uint32_t next();
 
 protected:
   PSOLFGEncryption(uint32_t seed, size_t stream_length, size_t end_offset);
@@ -71,8 +125,6 @@ protected:
   std::vector<uint32_t> stream;
   size_t offset;
   size_t end_offset;
-  uint32_t initial_seed;
-  size_t cycles;
 };
 
 class PSOV2Encryption : public PSOLFGEncryption {
@@ -134,8 +186,8 @@ public:
 
   PSOBBEncryption(const KeyFile& key, const void* seed, size_t seed_size);
 
-  virtual void encrypt(void* data, size_t size, bool advance = true);
-  virtual void decrypt(void* data, size_t size, bool advance = true);
+  virtual void encrypt(void* data, size_t size);
+  virtual void decrypt(void* data, size_t size);
 
   virtual Type type() const;
 
@@ -156,7 +208,7 @@ public:
       const std::unordered_set<uint32_t>& v2_matches,
       const std::unordered_set<uint32_t>& v3_matches);
 
-  virtual void encrypt(void* data, size_t size, bool advance = true);
+  virtual void encrypt(void* data, size_t size);
 
   virtual Type type() const;
 
@@ -172,7 +224,7 @@ public:
   PSOV2OrV3ImitatorEncryption(
       uint32_t key, std::shared_ptr<PSOV2OrV3DetectorEncryption> client_crypt);
 
-  virtual void encrypt(void* data, size_t size, bool advance = true);
+  virtual void encrypt(void* data, size_t size);
 
   virtual Type type() const;
 
@@ -194,8 +246,8 @@ public:
       const void* seed,
       size_t seed_size);
 
-  virtual void encrypt(void* data, size_t size, bool advance = true);
-  virtual void decrypt(void* data, size_t size, bool advance = true);
+  virtual void encrypt(void* data, size_t size);
+  virtual void decrypt(void* data, size_t size);
 
   inline std::shared_ptr<const PSOBBEncryption::KeyFile> get_active_key() const {
     return this->active_key;
@@ -222,8 +274,8 @@ public:
       size_t seed_size,
       bool jsd1_use_detector_seed);
 
-  virtual void encrypt(void* data, size_t size, bool advance = true);
-  virtual void decrypt(void* data, size_t size, bool advance = true);
+  virtual void encrypt(void* data, size_t size);
+  virtual void decrypt(void* data, size_t size);
 
   virtual Type type() const;
 
@@ -240,8 +292,8 @@ class JSD0Encryption : public PSOEncryption {
 public:
   JSD0Encryption(const void* seed, size_t seed_size);
 
-  virtual void encrypt(void* data, size_t size, bool advance = true);
-  virtual void decrypt(void* data, size_t size, bool advance = true);
+  virtual void encrypt(void* data, size_t size);
+  virtual void decrypt(void* data, size_t size);
 
   virtual Type type() const = 0;
 
@@ -260,7 +312,7 @@ private:
   U32T<BE> value;
 
 public:
-  ChallengeTimeT() = default;
+  ChallengeTimeT() : value(0) {}
   ChallengeTimeT(uint16_t v) {
     this->encode(v);
   }
@@ -352,8 +404,4 @@ std::string encrypt_pr2_data(const std::string& data, size_t decompressed_size, 
     crypt.decrypt(ret.data() + 8, ret.size() - 8);
   }
   return ret;
-}
-
-inline uint32_t random_from_optional_crypt(std::shared_ptr<PSOLFGEncryption> random_crypt) {
-  return random_crypt ? random_crypt->next() : phosg::random_object<uint32_t>();
 }

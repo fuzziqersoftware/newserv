@@ -60,15 +60,15 @@ std::unordered_map<std::string, std::string> decode_ppk_file(const std::string& 
     decrypt_ppk_data(data, phosg::tolower(filename), password);
     uint32_t checksum = phosg::crc32(data.data(), data.size());
     if (checksum != entry.checksum) {
-      throw runtime_error(phosg::string_printf(
-          "incorrect checksum for file %s (expected %08" PRIX32 "; received %08" PRIX32 ")",
-          filename.c_str(), entry.checksum.load(), checksum));
+      throw runtime_error(std::format(
+          "incorrect checksum for file {} (expected {:08X}; received {:08X})",
+          filename, entry.checksum, checksum));
     }
     if (entry.compressed_size < entry.decompressed_size) {
       data = prs_decompress(data);
     }
     if (!ret.emplace(filename, data).second) {
-      throw runtime_error(phosg::string_printf("archive contains multiple files with the same name (%s)", filename.c_str()));
+      throw runtime_error(std::format("archive contains multiple files with the same name ({})", filename));
     }
     offset = entry_offset - 4;
   }

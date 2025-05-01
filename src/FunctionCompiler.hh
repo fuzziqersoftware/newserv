@@ -11,9 +11,6 @@
 
 #include "Menu.hh"
 
-bool function_compiler_available();
-void set_function_compiler_available(bool is_available);
-
 // TODO: Support x86 and SH4 function calls in the future. Currently we only
 // support PPC32 because I haven't written an appropriate x86 assembler yet.
 

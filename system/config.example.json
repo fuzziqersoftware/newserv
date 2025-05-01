@@ -29,7 +29,13 @@
   // this user's permissions after loading its configuration and opening
   // listening sockets. The special value $SUDO_USER causes newserv to look up
   // the desired username in the $SUDO_USER environment variable instead.
+  // This option has no effect on Windows.
   // "User": "$SUDO_USER",
+
+  // Number of threads to use for CPU-intensive work. This value must be at
+  // least 1, and should generally not be more than the number of CPUs in the
+  // system.
+  "WorkerThreads": 1,
 
   // Address to connect local clients to (IP address or interface name). This
   // is the address that newserv will expect clients on the same network as the
@@ -57,7 +63,7 @@
     // on that port on all interfaces), but you can also replace the integer
     // with a 2-list of [address, port] to listen in a specific port. For
     // example, that might look like:
-    // "xb-login": [["en0", 9500], "xb", "login_server"],
+    // "xb": [["en0", 9500], "xb", "login_server"],
 
     // Various versions of PSO hardcode these ports in the clients. Don't change
     // these unless you don't want to support certain versions of PSO.
@@ -67,100 +73,46 @@
     // leading them to connect to either the console-login port or the pc-login
     // port (both of which must be defined below if pc_console_detect is used).
     // If you want to support only PC, you can change the pc_console_detect
-    // behavior for these ports to login_server. If you don't want to support
+    // behavior for these ports to game_server. If you don't want to support
     // PC, you can do the same, but also change the version from pc to gc.
     // Note: It is not an error that no ports appear here with "dc" in their
     // definitions. DC clients use the same ports as GC clients, and newserv can
     // tell them apart at the time they connect.
-    "gc-jp10":       [9000,  "gc",    "login_server"],
-    "gc-jp11":       [9001,  "gc",    "login_server"],
-    "gc-jp3te":      [9002,  "gc",    "login_server"],
-    "gc-jp3":        [9003,  "gc",    "login_server"],
-    "gc-us12t1":     [9064,  "gc",    "login_server"],
+    "gc-jp10":       [9000,  "gc",    "game_server"],
+    "gc-jp11":       [9001,  "gc",    "game_server"],
+    "gc-jp3te":      [9002,  "gc",    "game_server"],
+    "gc-jp3":        [9003,  "gc",    "game_server"],
+    "gc-us12t1":     [9064,  "gc",    "game_server"],
     "gc-us10":       [9100,  "pc",    "pc_console_detect"],
-    "gc-us3":        [9103,  "gc",    "login_server"],
-    "gc-eu10":       [9200,  "gc",    "login_server"],
-    "gc-eu11":       [9201,  "gc",    "login_server"],
-    "gc-eu3-50":     [9202,  "gc",    "login_server"],
-    "gc-eu3-60a":    [9203,  "gc",    "login_server"],
-    "gc-eu3-60b":    [9204,  "gc",    "login_server"],
-    "pc":            [9300,  "pc",    "login_server"],
+    "gc-us3":        [9103,  "gc",    "game_server"],
+    "gc-eu10":       [9200,  "gc",    "game_server"],
+    "gc-eu11":       [9201,  "gc",    "game_server"],
+    "gc-eu3-50":     [9202,  "gc",    "game_server"],
+    "gc-eu3-60a":    [9203,  "gc",    "game_server"],
+    "gc-eu3-60b":    [9204,  "gc",    "game_server"],
+    "pc":            [9300,  "pc",    "game_server"],
+    "xb":            [9500,  "xb",    "game_server"],
     "pc-patch":      [10000, "patch", "patch_server_pc"],
     "bb-patch":      [11000, "patch", "patch_server_bb"],
+    "bb-jp-patch":   [11100, "patch", "patch_server_bb"],
+    "bb-jp":         [11101, "bb",    "game_server"],
     "bb-patch-hg":   [11200, "patch", "patch_server_bb"],
-    "bb-init":       [12000, "bb",    "login_server"],
-
-    // PSO Xbox tunnels its connections through the Xbox Live service (or, in
-    // modern times, Insignia), and that service determines which port the
-    // connection goes to on the server side. By default, newserv uses 9500 for
-    // PSO Xbox connections, but this is not hardcoded in the client.
-    "xb-login":      [9500,  "xb", "login_server"],
-
-    // The official PSOBB Japanese client uses these ports.
-    "bb-patch2":     [11100, "patch", "patch_server_bb"],
-    "bb-init2":      [11101, "bb",    "login_server"],
-
-    // Schthack PSOBB uses these ports.
-    // "bb-patch3":     [10500, "patch", "patch_server_bb"],
-    // "bb-init3":      [13000, "bb",    "login_server"],
-
-    // Ephinea PSOBB uses these ports. Note that 13000 is also used by Schthack
-    // PSOBB, but not for the patch server; this means you unfortunately can't
-    // support both Schthack and Ephinea PSOBB clients at the same time. This
-    // may be fixed in the future using a similar technique as the
-    // pc_console_detect behavior, but this isn't implemented yet.
-    // "bb-patch4":     [13000, "patch", "patch_server_bb"],
-    // "bb-init4":      [14000, "bb",    "login_server"],
-
-    // newserv uses these ports, but there is no external reason that these
-    // numbers were chosen. You can change the port numbers here without any
-    // issues. Some of these names are required; specifically:
-    // - If there are any ports using the pc_console_detect behavior, then the
-    //   pc-login and console-login ports must be defined. newserv will fail on
-    //   startup if either port is not defined.
-    // - If you have any DC, GC, or XB clients connecting to the server, the
-    //   console-lobby port must be defined. The version for this port should be
-    //   "gc", even though DC and XB clients can connect to it (newserv will
-    //   automatically detect the correct game version for each client).
-    // - If you have any PC clients connecting to the server, the pc-lobby port
-    //   must be defined.
-    // - If you have any BB clients connecting to the server, the bb-lobby,
-    //   bb-data1, and bb-data2 ports must be defined.
-    // - The bb-data1 and bb-data2 ports must be sequential; that is, the
-    //   bb-data2 port number must be equal to the bb-data1 port number + 1.
-    // - The proxy ports do not need to be defined unless the proxy server is
-    //   enabled for the respective version via the ProxyDestinations fields
-    //   (below).
-    "console-login": [5100,  "gc",    "login_server"],
-    "pc-login":      [5101,  "pc",    "login_server"],
-    "xb-lobby":      [5105,  "xb",    "login_server"],
-    "console-lobby": [5110,  "gc",    "lobby_server"],
-    "pc-lobby":      [5111,  "pc",    "lobby_server"],
-    "bb-lobby":      [5112,  "bb",    "lobby_server"],
-    "dc-proxy":      [5120,  "dc",    "proxy_server"],
-    "pc-proxy":      [5121,  "pc",    "proxy_server"],
-    "gc-proxy":      [5122,  "gc",    "proxy_server"],
-    "xb-proxy":      [5123,  "xb",    "proxy_server"],
-    "bb-proxy":      [5124,  "bb",    "proxy_server"],
-    "bb-data1":      [12004, "bb",    "login_server"],
-    "bb-data2":      [12005, "bb",    "login_server"],
+    "bb-data1":      [12000, "bb",    "game_server"],
+    "bb-data2":      [12001, "bb",    "game_server"],
   },
 
-  // Where to listen for IP and PPP stack clients. This exists to interface with
-  // PSO GC clients running in a local Dolphin emulator. To enable local Dolphin
-  // clients to connect, set IPStackListen to ["/tmp/dolphin-tap"] and configure
-  // Dolphin to use the tapserver type of broadband adapter. You do not need to
-  // install or run tapserver. See README.md for details on how to get PSO to
-  // connect via this interface. You can also add numbers or "address:port"
-  // strings to these lists to listen for tapserver connections on TCP ports.
-  // On Windows, Unix sockets are not available, so you can only use TCP sockets
-  // here. You can get Dolphin to connect locally by adding a port to this list
-  // and configuring Dolphin to connect to the same port. For example, you could
+  // Where to listen for IP and PPP stack clients. This exists to interface
+  // with PSO GC clients running in a local Dolphin emulator. See README.md for
+  // details on how to get PSO to connect via this interface. You can also add
+  // "address:port" strings to these lists to listen for tapserver connections
+  // // on specific interfaces only.
+  // You can get Dolphin to connect locally by adding a port to this list and
+  // configuring Dolphin to connect to the same port. For example, you could
   // set this to ["127.0.0.1:5059"] (which listens on port 5059 but only accepts
   // connections from the local machine), and configure Dolphin's tapserver BBA
   // to connect to 127.0.0.1:5059.
-  "IPStackListen": ["/tmp/dolphin-tap", 5059],
-  "PPPStackListen": ["/tmp/dolphin-modem-tap", 5058],
+  "IPStackListen": [5059],
+  "PPPStackListen": [5058],
 
   // Where to listen for PPP clients. This exists to interface with PSO GC
   // clients running on a Wii with Devolution, which emulates the modem adapter.
@@ -1314,10 +1266,4 @@
     "songcount":      [0x03, 0x07C00000], // Song count
     "wrappingpapers": [0x0B, 0x1FF00000], // Wrapping Papers
   },
-
-  // Whether to enable certain exception handling. Disabling this causes
-  // newserv to abort when any client causes an exception, which is generally
-  // only useful for debugging newserv itself. This setting should usually be
-  // left on.
-  "CatchHandlerExceptions": true,
 }

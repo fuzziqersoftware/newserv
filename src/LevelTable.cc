@@ -129,7 +129,7 @@ LevelTableV3BE::LevelTableV3BE(const string& data, bool encrypted) {
       dest_delta.ata = src_delta.ata;
       dest_delta.lck = src_delta.lck;
       dest_delta.tp = src_delta.tp;
-      dest_delta.experience = src_delta.experience.load();
+      dest_delta.experience = src_delta.experience;
     }
   }
 }

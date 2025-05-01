@@ -21,7 +21,7 @@ static string refs_str_for_cards_vector(const vector<shared_ptr<T>>& cards) {
     if (!ret.empty()) {
       ret += ", ";
     }
-    ret += phosg::string_printf("@%04hX", ref_for_card(card));
+    ret += std::format("@{:04X}", ref_for_card(card));
   }
   return ret;
 }
@@ -89,45 +89,45 @@ uint32_t CardSpecial::AttackEnvStats::at(size_t index) const {
 }
 
 void CardSpecial::AttackEnvStats::print(FILE* stream) const {
-  fprintf(stream, "(a)   total_num_set_cards                = %" PRIu32 "\n", this->total_num_set_cards);
-  fprintf(stream, "(ab)  num_a_beast_creatures              = %" PRIu32 "\n", this->num_a_beast_creatures);
-  fprintf(stream, "(ac)  player_num_atk_points              = %" PRIu32 "\n", this->player_num_atk_points);
-  fprintf(stream, "(adm) sc_effective_ap                    = %" PRIu32 "\n", this->sc_effective_ap);
-  fprintf(stream, "(ap)  effective_ap                       = %" PRIu32 "\n", this->effective_ap);
-  fprintf(stream, "(bi)  num_native_creatures               = %" PRIu32 "\n", this->num_native_creatures);
-  fprintf(stream, "(cs)  card_cost                          = %" PRIu32 "\n", this->card_cost);
-  fprintf(stream, "(d)   dice_roll_value1                   = %" PRIu32 "\n", this->dice_roll_value1);
-  fprintf(stream, "(dc)  dice_roll_value2                   = %" PRIu32 "\n", this->dice_roll_value2);
-  fprintf(stream, "(ddm) attack_bonus                       = %" PRIu32 "\n", this->attack_bonus);
-  fprintf(stream, "(df)  num_destroyed_ally_fcs             = %" PRIu32 "\n", this->num_destroyed_ally_fcs);
-  fprintf(stream, "(dk)  num_dark_creatures                 = %" PRIu32 "\n", this->num_dark_creatures);
-  fprintf(stream, "(dm)  effective_ap_if_not_tech           = %" PRIu32 "\n", this->effective_ap_if_not_tech);
-  fprintf(stream, "(dn)  unknown_a1                         = %" PRIu32 "\n", this->unknown_a1);
-  fprintf(stream, "(edm) target_attack_bonus                = %" PRIu32 "\n", this->target_attack_bonus);
-  fprintf(stream, "(ef)  non_target_team_num_set_cards      = %" PRIu32 "\n", this->non_target_team_num_set_cards);
-  fprintf(stream, "(ehp) target_current_hp                  = %" PRIu32 "\n", this->target_current_hp);
-  fprintf(stream, "(f)   num_set_cards                      = %" PRIu32 "\n", this->num_set_cards);
-  fprintf(stream, "(fdm) final_last_attack_damage           = %" PRIu32 "\n", this->final_last_attack_damage);
-  fprintf(stream, "(ff)  target_team_num_set_cards          = %" PRIu32 "\n", this->target_team_num_set_cards);
-  fprintf(stream, "(gn)  num_gun_type_items                 = %" PRIu32 "\n", this->num_gun_type_items);
-  fprintf(stream, "(hf)  num_item_or_creature_cards_in_hand = %" PRIu32 "\n", this->num_item_or_creature_cards_in_hand);
-  fprintf(stream, "(hp)  current_hp                         = %" PRIu32 "\n", this->current_hp);
-  fprintf(stream, "(kap) action_cards_ap                    = %" PRIu32 "\n", this->action_cards_ap);
-  fprintf(stream, "(ktp) action_cards_tp                    = %" PRIu32 "\n", this->action_cards_tp);
-  fprintf(stream, "(ldm) last_attack_preliminary_damage     = %" PRIu32 "\n", this->last_attack_preliminary_damage);
-  fprintf(stream, "(lv)  team_dice_bonus                    = %" PRIu32 "\n", this->team_dice_bonus);
-  fprintf(stream, "(mc)  num_machine_creatures              = %" PRIu32 "\n", this->num_machine_creatures);
-  fprintf(stream, "(mhp) max_hp                             = %" PRIu32 "\n", this->max_hp);
-  fprintf(stream, "(ndm) last_attack_damage_count           = %" PRIu32 "\n", this->last_attack_damage_count);
-  fprintf(stream, "(php) defined_max_hp                     = %" PRIu32 "\n", this->defined_max_hp);
-  fprintf(stream, "(rdm) last_attack_damage                 = %" PRIu32 "\n", this->last_attack_damage);
-  fprintf(stream, "(sa)  num_sword_type_items               = %" PRIu32 "\n", this->num_sword_type_items);
-  fprintf(stream, "(sat) num_sword_type_items_on_team       = %" PRIu32 "\n", this->num_sword_type_items_on_team);
-  fprintf(stream, "(tdm) effective_ap_if_not_physical       = %" PRIu32 "\n", this->effective_ap_if_not_physical);
-  fprintf(stream, "(tf)  player_num_destroyed_fcs           = %" PRIu32 "\n", this->player_num_destroyed_fcs);
-  fprintf(stream, "(tp)  effective_tp                       = %" PRIu32 "\n", this->effective_tp);
-  fprintf(stream, "(tt)  effective_ap_if_not_tech2          = %" PRIu32 "\n", this->effective_ap_if_not_tech2);
-  fprintf(stream, "(wd)  num_cane_type_items                = %" PRIu32 "\n", this->num_cane_type_items);
+  phosg::fwrite_fmt(stream, "(a)   total_num_set_cards                = {}\n", this->total_num_set_cards);
+  phosg::fwrite_fmt(stream, "(ab)  num_a_beast_creatures              = {}\n", this->num_a_beast_creatures);
+  phosg::fwrite_fmt(stream, "(ac)  player_num_atk_points              = {}\n", this->player_num_atk_points);
+  phosg::fwrite_fmt(stream, "(adm) sc_effective_ap                    = {}\n", this->sc_effective_ap);
+  phosg::fwrite_fmt(stream, "(ap)  effective_ap                       = {}\n", this->effective_ap);
+  phosg::fwrite_fmt(stream, "(bi)  num_native_creatures               = {}\n", this->num_native_creatures);
+  phosg::fwrite_fmt(stream, "(cs)  card_cost                          = {}\n", this->card_cost);
+  phosg::fwrite_fmt(stream, "(d)   dice_roll_value1                   = {}\n", this->dice_roll_value1);
+  phosg::fwrite_fmt(stream, "(dc)  dice_roll_value2                   = {}\n", this->dice_roll_value2);
+  phosg::fwrite_fmt(stream, "(ddm) attack_bonus                       = {}\n", this->attack_bonus);
+  phosg::fwrite_fmt(stream, "(df)  num_destroyed_ally_fcs             = {}\n", this->num_destroyed_ally_fcs);
+  phosg::fwrite_fmt(stream, "(dk)  num_dark_creatures                 = {}\n", this->num_dark_creatures);
+  phosg::fwrite_fmt(stream, "(dm)  effective_ap_if_not_tech           = {}\n", this->effective_ap_if_not_tech);
+  phosg::fwrite_fmt(stream, "(dn)  unknown_a1                         = {}\n", this->unknown_a1);
+  phosg::fwrite_fmt(stream, "(edm) target_attack_bonus                = {}\n", this->target_attack_bonus);
+  phosg::fwrite_fmt(stream, "(ef)  non_target_team_num_set_cards      = {}\n", this->non_target_team_num_set_cards);
+  phosg::fwrite_fmt(stream, "(ehp) target_current_hp                  = {}\n", this->target_current_hp);
+  phosg::fwrite_fmt(stream, "(f)   num_set_cards                      = {}\n", this->num_set_cards);
+  phosg::fwrite_fmt(stream, "(fdm) final_last_attack_damage           = {}\n", this->final_last_attack_damage);
+  phosg::fwrite_fmt(stream, "(ff)  target_team_num_set_cards          = {}\n", this->target_team_num_set_cards);
+  phosg::fwrite_fmt(stream, "(gn)  num_gun_type_items                 = {}\n", this->num_gun_type_items);
+  phosg::fwrite_fmt(stream, "(hf)  num_item_or_creature_cards_in_hand = {}\n", this->num_item_or_creature_cards_in_hand);
+  phosg::fwrite_fmt(stream, "(hp)  current_hp                         = {}\n", this->current_hp);
+  phosg::fwrite_fmt(stream, "(kap) action_cards_ap                    = {}\n", this->action_cards_ap);
+  phosg::fwrite_fmt(stream, "(ktp) action_cards_tp                    = {}\n", this->action_cards_tp);
+  phosg::fwrite_fmt(stream, "(ldm) last_attack_preliminary_damage     = {}\n", this->last_attack_preliminary_damage);
+  phosg::fwrite_fmt(stream, "(lv)  team_dice_bonus                    = {}\n", this->team_dice_bonus);
+  phosg::fwrite_fmt(stream, "(mc)  num_machine_creatures              = {}\n", this->num_machine_creatures);
+  phosg::fwrite_fmt(stream, "(mhp) max_hp                             = {}\n", this->max_hp);
+  phosg::fwrite_fmt(stream, "(ndm) last_attack_damage_count           = {}\n", this->last_attack_damage_count);
+  phosg::fwrite_fmt(stream, "(php) defined_max_hp                     = {}\n", this->defined_max_hp);
+  phosg::fwrite_fmt(stream, "(rdm) last_attack_damage                 = {}\n", this->last_attack_damage);
+  phosg::fwrite_fmt(stream, "(sa)  num_sword_type_items               = {}\n", this->num_sword_type_items);
+  phosg::fwrite_fmt(stream, "(sat) num_sword_type_items_on_team       = {}\n", this->num_sword_type_items_on_team);
+  phosg::fwrite_fmt(stream, "(tdm) effective_ap_if_not_physical       = {}\n", this->effective_ap_if_not_physical);
+  phosg::fwrite_fmt(stream, "(tf)  player_num_destroyed_fcs           = {}\n", this->player_num_destroyed_fcs);
+  phosg::fwrite_fmt(stream, "(tp)  effective_tp                       = {}\n", this->effective_tp);
+  phosg::fwrite_fmt(stream, "(tt)  effective_ap_if_not_tech2          = {}\n", this->effective_ap_if_not_tech2);
+  phosg::fwrite_fmt(stream, "(wd)  num_cane_type_items                = {}\n", this->num_cane_type_items);
 }
 
 CardSpecial::CardSpecial(shared_ptr<Server> server) : w_server(server) {}
@@ -251,14 +251,14 @@ void CardSpecial::apply_action_conditions(
   if (attacker_card == defender_card) {
     temp_as = this->create_attack_state_from_card_action_chain(attacker_card);
     if (as) {
-      log.debug("using action state from override");
+      log.debug_f("using action state from override");
       temp_as = *as;
     } else {
-      log.debug("using action state from attacker card");
+      log.debug_f("using action state from attacker card");
     }
   } else {
     temp_as = this->create_defense_state_for_card_pair_action_chains(attacker_card, defender_card);
-    log.debug("using action state from card pair");
+    log.debug_f("using action state from card pair");
   }
 
   this->apply_defense_conditions(temp_as, when, defender_card, flags);
@@ -307,9 +307,9 @@ bool CardSpecial::apply_defense_condition(
   bool is_nte = s->options.is_nte();
   auto log = s->log_stack("apply_defense_condition: ");
 
-  if (log.should_log(phosg::LogLevel::DEBUG)) {
-    log.debug(
-        "when=%s, cond_index=%hhu, defender_card=(@%04hX #%04hX), flags=%08" PRIX32 ", p8=%s",
+  if (log.should_log(phosg::LogLevel::L_DEBUG)) {
+    log.debug_f(
+        "when={}, cond_index={}, defender_card=(@{:04X} #{:04X}), flags={:08X}, p8={}",
         phosg::name_for_enum(when),
         cond_index,
         defender_card->get_card_ref(),
@@ -318,32 +318,32 @@ bool CardSpecial::apply_defense_condition(
         unknown_p8 ? "true" : "false");
     auto defender_cond_str = defender_cond->str(s);
     auto defense_state_str = defense_state.str(s);
-    log.debug("defender_cond = %s", defender_cond_str.c_str());
-    log.debug("defense_state = %s", defense_state_str.c_str());
+    log.debug_f("defender_cond = {}", defender_cond_str);
+    log.debug_f("defense_state = {}", defense_state_str);
   }
 
   if (defender_cond->type == ConditionType::NONE) {
-    log.debug("no condition");
+    log.debug_f("no condition");
     return false;
   }
 
   auto orig_eff = this->original_definition_for_condition(*defender_cond);
-  if (log.should_log(phosg::LogLevel::DEBUG)) {
+  if (log.should_log(phosg::LogLevel::L_DEBUG)) {
     auto orig_eff_str = orig_eff->str();
-    log.debug("orig_eff = %s", orig_eff_str.c_str());
+    log.debug_f("orig_eff = {}", orig_eff_str);
   }
 
   uint16_t attacker_card_ref = defense_state.attacker_card_ref;
   if (attacker_card_ref == 0xFFFF) {
     attacker_card_ref = defense_state.original_attacker_card_ref;
   }
-  log.debug("attacker_card_ref = @%04hX", attacker_card_ref);
+  log.debug_f("attacker_card_ref = @{:04X}", attacker_card_ref);
 
   bool defender_has_ability_trap = !is_nte && this->card_ref_has_ability_trap(*defender_cond);
-  log.debug("defender_has_ability_trap = %s", defender_has_ability_trap ? "true" : "false");
+  log.debug_f("defender_has_ability_trap = {}", defender_has_ability_trap ? "true" : "false");
 
   if ((is_nte || (flags & 4)) && !this->is_card_targeted_by_condition(*defender_cond, defense_state, defender_card)) {
-    log.debug("not targeted by condition");
+    log.debug_f("not targeted by condition");
     if (defender_cond->type != ConditionType::NONE) {
       G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
       cmd.effect.flags = 0x04;
@@ -359,7 +359,7 @@ bool CardSpecial::apply_defense_condition(
   }
 
   if ((when == EffectWhen::AFTER_ANY_CARD_ATTACK) && (defender_cond->type == ConditionType::GUOM) && (flags & 4)) {
-    log.debug("deleting guom condition");
+    log.debug_f("deleting guom condition");
     CardShortStatus stat = defender_card->get_short_status();
     if (stat.card_flags & 4) {
       G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
@@ -396,7 +396,7 @@ bool CardSpecial::apply_defense_condition(
   }
 
   if ((when == EffectWhen::BEFORE_DICE_PHASE_THIS_TEAM_TURN) && (flags & 4) && !defender_has_ability_trap && (defender_cond->type == ConditionType::ACID)) {
-    log.debug("applying acid");
+    log.debug_f("applying acid");
     int16_t hp = defender_card->get_current_hp();
     if (hp > 0) {
       this->send_6xB4x06_for_stat_delta(defender_card, defender_cond->card_ref, 0x20, -1, 0, 1);
@@ -406,11 +406,11 @@ bool CardSpecial::apply_defense_condition(
   }
 
   if (!orig_eff || (orig_eff->when != when)) {
-    log.debug("unsetting flag 4");
+    log.debug_f("unsetting flag 4");
     flags &= ~4;
   }
   if ((flags == 0) || defender_has_ability_trap) {
-    log.debug("no condition remains to apply");
+    log.debug_f("no condition remains to apply");
     return false;
   }
 
@@ -427,10 +427,10 @@ bool CardSpecial::apply_defense_condition(
 
   string expr = orig_eff->expr.decode();
   int16_t expr_value = this->evaluate_effect_expr(astats, expr.c_str(), dice_roll);
-  log.debug("execute_effect ...");
+  log.debug_f("execute_effect ...");
   this->execute_effect(*defender_cond, defender_card, expr_value, defender_cond->value, orig_eff->type, flags, attacker_card_ref);
   if (flags & 4) {
-    log.debug("recomputing action chaing results");
+    log.debug_f("recomputing action chaing results");
     if (is_nte || !(defender_card->card_flags & 2)) {
       defender_card->compute_action_chain_results(true, false);
     }
@@ -440,7 +440,7 @@ bool CardSpecial::apply_defense_condition(
   }
 
   if (dice_roll.value_used_in_expr && !(original_cond_flags & 1) && !unknown_p8) {
-    log.debug("dice roll was used; setting dice display flag");
+    log.debug_f("dice roll was used; setting dice display flag");
     defender_cond->flags |= 1;
     G_ApplyConditionEffect_Ep3_6xB4x06 cmd;
     cmd.effect.flags = 0x08;
@@ -491,11 +491,11 @@ bool CardSpecial::apply_stat_deltas_to_all_cards_from_all_conditions_with_card_r
 
 bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condition& cond, shared_ptr<Card> card) {
   auto s = this->server();
-  auto log = s->log_stack(phosg::string_printf("apply_stat_deltas_to_card_from_condition_and_clear_cond(@%04hX #%04hX): ", card->get_card_ref(), card->get_card_id()));
+  auto log = s->log_stack(std::format("apply_stat_deltas_to_card_from_condition_and_clear_cond(@{:04X} #{:04X}): ", card->get_card_ref(), card->get_card_id()));
   bool is_nte = s->options.is_nte();
 
   string cond_str = cond.str(s);
-  log.debug("cond: %s", cond_str.c_str());
+  log.debug_f("cond: {}", cond_str);
 
   ConditionType cond_type = cond.type;
   int16_t cond_value = is_nte ? cond.value.load() : clamp<int16_t>(cond.value, -99, 99);
@@ -508,7 +508,7 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
       if (cond_flags & 2) {
         int16_t ap = clamp<int16_t>(card->ap, -99, 99);
         int16_t tp = clamp<int16_t>(card->tp, -99, 99);
-        log.debug("A_T_SWAP_0C: swapping AP (%hd) and TP (%hd)", ap, tp);
+        log.debug_f("A_T_SWAP_0C: swapping AP ({}) and TP ({})", ap, tp);
         if (!is_nte) {
           this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0xA0, tp - ap, 0, 0);
           this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x80, ap - tp, 0, 0);
@@ -516,7 +516,7 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
         card->ap = tp;
         card->tp = ap;
       } else {
-        log.debug("A_T_SWAP_0C: required flag is missing");
+        log.debug_f("A_T_SWAP_0C: required flag is missing");
       }
       break;
     case ConditionType::A_H_SWAP:
@@ -524,7 +524,7 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
         int16_t ap = clamp<int16_t>(card->ap, -99, 99);
         int16_t hp = clamp<int16_t>(card->get_current_hp(), -99, 99);
         if (hp != ap) {
-          log.debug("A_H_SWAP: swapping AP (%hd) and HP (%hd)", ap, hp);
+          log.debug_f("A_H_SWAP: swapping AP ({}) and HP ({})", ap, hp);
           if (!is_nte) {
             this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0xA0, hp - ap, 0, 0);
             this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x20, ap - hp, 0, 0);
@@ -533,10 +533,10 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
           card->ap = hp;
           this->destroy_card_if_hp_zero(card, cond_card_ref);
         } else {
-          log.debug("A_H_SWAP: AP (%hd) == HP (%hd)", ap, hp);
+          log.debug_f("A_H_SWAP: AP ({}) == HP ({})", ap, hp);
         }
       } else {
-        log.debug("A_H_SWAP: required flag is missing");
+        log.debug_f("A_H_SWAP: required flag is missing");
       }
       break;
     case ConditionType::AP_OVERRIDE:
@@ -550,12 +550,12 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
             this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0xA0, -cond_value, 0, 0);
           }
           card->ap = max<int16_t>(card->ap - cond_value, 0);
-          log.debug("AP_OVERRIDE: subtracting %hd from AP => %hd", cond_value, card->ap);
+          log.debug_f("AP_OVERRIDE: subtracting {} from AP => {}", cond_value, card->ap);
         } else {
           other_cond->value = clamp<int16_t>(other_cond->value + cond_value, -99, 99);
         }
       } else {
-        log.debug("AP_OVERRIDE: required flag is missing");
+        log.debug_f("AP_OVERRIDE: required flag is missing");
       }
       break;
     case ConditionType::TP_OVERRIDE:
@@ -567,12 +567,12 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
             this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x80, -cond_value, 0, 0);
           }
           card->tp = max<int16_t>(card->tp - cond_value, 0);
-          log.debug("TP_OVERRIDE: subtracting %hd from TP => %hd", cond_value, card->tp);
+          log.debug_f("TP_OVERRIDE: subtracting {} from TP => {}", cond_value, card->tp);
         } else {
           other_cond->value = clamp<int16_t>(other_cond->value + cond_value, -99, 99);
         }
       } else {
-        log.debug("TP_OVERRIDE: required flag is missing");
+        log.debug_f("TP_OVERRIDE: required flag is missing");
       }
       break;
     case ConditionType::MISC_AP_BONUSES:
@@ -581,9 +581,9 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
           this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0xA0, -cond_value, 0, 0);
         }
         card->ap = max<int16_t>(card->ap - cond_value, 0);
-        log.debug("MISC_AP_BONUSES: subtracting %hd from AP => %hd", cond_value, card->ap);
+        log.debug_f("MISC_AP_BONUSES: subtracting {} from AP => {}", cond_value, card->ap);
       } else {
-        log.debug("MISC_AP_BONUSES: required flag is missing");
+        log.debug_f("MISC_AP_BONUSES: required flag is missing");
       }
       break;
     case ConditionType::MISC_TP_BONUSES:
@@ -592,9 +592,9 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
           this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x80, -cond_value, 0, 0);
         }
         card->tp = max<int16_t>(card->tp - cond_value, 0);
-        log.debug("MISC_TP_BONUSES: subtracting %hd from TP => %hd", cond_value, card->tp);
+        log.debug_f("MISC_TP_BONUSES: subtracting {} from TP => {}", cond_value, card->tp);
       } else {
-        log.debug("MISC_TP_BONUSES: required flag is missing");
+        log.debug_f("MISC_TP_BONUSES: required flag is missing");
       }
       break;
     case ConditionType::AP_SILENCE:
@@ -604,9 +604,9 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
       if (cond_flags & 2) {
         this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0xA0, cond_value, 0, 0);
         card->ap = max<int16_t>(card->ap + cond_value, 0);
-        log.debug("AP_SILENCE: adding %hd to AP => %hd", cond_value, card->ap);
+        log.debug_f("AP_SILENCE: adding {} to AP => {}", cond_value, card->ap);
       } else {
-        log.debug("AP_SILENCE: required flag is missing");
+        log.debug_f("AP_SILENCE: required flag is missing");
       }
       break;
     case ConditionType::TP_SILENCE:
@@ -616,14 +616,14 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
       if (cond_flags & 2) {
         this->send_6xB4x06_for_stat_delta(card, cond_card_ref, 0x80, cond_value, 0, 0);
         card->tp = max<int16_t>(card->tp + cond_value, 0);
-        log.debug("TP_SILENCE: adding %hd to TP => %hd", cond_value, card->tp);
+        log.debug_f("TP_SILENCE: adding {} to TP => {}", cond_value, card->tp);
       } else {
-        log.debug("TP_SILENCE: required flag is missing");
+        log.debug_f("TP_SILENCE: required flag is missing");
       }
       break;
     trial_unimplemented:
     default:
-      log.debug("%s: no adjustments for condition type", phosg::name_for_enum(cond_type));
+      log.debug_f("{}: no adjustments for condition type", phosg::name_for_enum(cond_type));
       break;
   }
 
@@ -741,22 +741,22 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
   bool is_nte = s->options.is_nte();
 
   string pa_str = pa.str(s);
-  log.debug("pa=%s, card=@%04hX #%04hX, dice_roll=%hhu, target=@%04hX, condition_giver=@%04hX", pa_str.c_str(), card->get_card_ref(), card->get_card_id(), dice_roll.value, target_card_ref, condition_giver_card_ref);
+  log.debug_f("pa={}, card=@{:04X} #{:04X}, dice_roll={}, target=@{:04X}, condition_giver=@{:04X}", pa_str, card->get_card_ref(), card->get_card_id(), dice_roll.value, target_card_ref, condition_giver_card_ref);
 
   auto attacker_card = s->card_for_set_card_ref(pa.attacker_card_ref);
   if (!attacker_card && (pa.original_attacker_card_ref != 0xFFFF)) {
     attacker_card = s->card_for_set_card_ref(pa.original_attacker_card_ref);
-    log.debug("attacker=@%04hX #%04hX (from original)", attacker_card->get_card_ref(), attacker_card->get_card_id());
+    log.debug_f("attacker=@{:04X} #{:04X} (from original)", attacker_card->get_card_ref(), attacker_card->get_card_id());
   } else if (attacker_card) {
-    log.debug("attacker=@%04hX #%04hX (from set)", attacker_card->get_card_ref(), attacker_card->get_card_id());
+    log.debug_f("attacker=@{:04X} #{:04X} (from set)", attacker_card->get_card_ref(), attacker_card->get_card_id());
   } else {
-    log.debug("attacker=null (from set)");
+    log.debug_f("attacker=null (from set)");
   }
 
   AttackEnvStats ast;
 
   auto ps = card->player_state();
-  log.debug("base ps = %hhu", ps->client_id);
+  log.debug_f("base ps = {}", ps->client_id);
   ast.num_set_cards = is_nte ? ps->count_set_cards_for_env_stats_nte() : ps->count_set_cards();
   auto condition_giver_card = s->card_for_set_card_ref(condition_giver_card_ref);
   auto target_card = s->card_for_set_card_ref(target_card_ref);
@@ -871,8 +871,8 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
   // Note: The (z < 8) conditions in these two loops are not present in the
   // original code.
   for (z = 0;
-       ((target_card_ref != z_ref) && (z < 8) && ((z_ref = pa.action_card_refs[z]) != 0xFFFF));
-       z++) {
+      ((target_card_ref != z_ref) && (z < 8) && ((z_ref = pa.action_card_refs[z]) != 0xFFFF));
+      z++) {
   }
 
   ast.action_cards_ap = 0;
@@ -1227,9 +1227,9 @@ shared_ptr<Card> CardSpecial::compute_replaced_target_based_on_conditions(
 
 StatSwapType CardSpecial::compute_stat_swap_type(shared_ptr<const Card> card) const {
   auto s = this->server();
-  auto log = s->log_stack(phosg::string_printf("compute_stat_swap_type(@%04hX #%04hX): ", card->get_card_ref(), card->get_card_id()));
+  auto log = s->log_stack(std::format("compute_stat_swap_type(@{:04X} #{:04X}): ", card->get_card_ref(), card->get_card_id()));
   if (!card) {
-    log.debug("card is missing");
+    log.debug_f("card is missing");
     return StatSwapType::NONE;
   }
 
@@ -1237,33 +1237,33 @@ StatSwapType CardSpecial::compute_stat_swap_type(shared_ptr<const Card> card) co
   for (size_t cond_index = 0; cond_index < 9; cond_index++) {
     auto& cond = card->action_chain.conditions[cond_index];
     if (cond.type != ConditionType::NONE) {
-      auto cond_log = log.sub(phosg::string_printf("(%zu) ", cond_index));
+      auto cond_log = log.sub(std::format("({}) ", cond_index));
       string cond_str = cond.str(s);
-      cond_log.debug("%s", cond_str.c_str());
+      cond_log.debug_f("{}", cond_str);
       if (!this->card_ref_has_ability_trap(cond)) {
         if (cond.type == ConditionType::UNKNOWN_75) {
           if (ret == StatSwapType::A_H_SWAP) {
-            log.debug("UNKNOWN_75: clearing");
+            log.debug_f("UNKNOWN_75: clearing");
             ret = StatSwapType::NONE;
           } else {
-            log.debug("UNKNOWN_75: setting A_H_SWAP");
+            log.debug_f("UNKNOWN_75: setting A_H_SWAP");
             ret = StatSwapType::A_H_SWAP;
           }
         } else if (cond.type == ConditionType::A_T_SWAP) {
           if (ret == StatSwapType::A_T_SWAP) {
-            log.debug("A_T_SWAP: clearing");
+            log.debug_f("A_T_SWAP: clearing");
             ret = StatSwapType::NONE;
           } else {
-            log.debug("A_T_SWAP: setting A_T_SWAP");
+            log.debug_f("A_T_SWAP: setting A_T_SWAP");
             ret = StatSwapType::A_T_SWAP;
           }
         }
       } else {
-        log.debug("skipping due to ability trap");
+        log.debug_f("skipping due to ability trap");
       }
     }
   }
-  log.debug("ret = %zu", static_cast<size_t>(ret));
+  log.debug_f("ret = {}", static_cast<size_t>(ret));
   return ret;
 }
 
@@ -1713,8 +1713,8 @@ int32_t CardSpecial::evaluate_effect_expr(
     const char* expr,
     DiceRoll& dice_roll) const {
   auto log = this->server()->log_stack("evaluate_effect_expr: ");
-  if (log.min_level == phosg::LogLevel::DEBUG) {
-    log.debug("ast, expr=\"%s\", dice_roll=(client_id=%02hhX, a2=%02hhX, value=%02hhX, value_used_in_expr=%s, a5=%04hX)", expr, dice_roll.client_id, dice_roll.unknown_a2, dice_roll.value, dice_roll.value_used_in_expr ? "true" : "false", dice_roll.unknown_a5);
+  if (log.min_level == phosg::LogLevel::L_DEBUG) {
+    log.debug_f("ast, expr=\"{}\", dice_roll=(client_id={:02X}, a2={:02X}, value={:02X}, value_used_in_expr={}, a5={:04X})", expr, dice_roll.client_id, dice_roll.unknown_a2, dice_roll.value, dice_roll.value_used_in_expr ? "true" : "false", dice_roll.unknown_a5);
     ast.print(stderr);
   }
 
@@ -1747,7 +1747,7 @@ int32_t CardSpecial::evaluate_effect_expr(
   // Operators are evaluated left-to-right - there are no operator precedence
   // rules
   int32_t value = 0;
-  log.debug("value=%" PRId32 " (start)", value);
+  log.debug_f("value={} (start)", value);
   for (size_t token_index = 0; token_index < tokens.size(); token_index++) {
     auto token_type = tokens[token_index].first;
     int32_t token_value = tokens[token_index].second;
@@ -1756,7 +1756,7 @@ int32_t CardSpecial::evaluate_effect_expr(
     }
     if (token_type == ExpressionTokenType::NUMBER) {
       value = token_value;
-      log.debug("value=%" PRId32 " (token_type=NUMBER, token_value=%" PRId32 ")", value, token_value);
+      log.debug_f("value={} (token_type=NUMBER, token_value={})", value, token_value);
     } else {
       if (token_index >= tokens.size() - 1) {
         throw runtime_error("no token on right side of binary operator");
@@ -1770,23 +1770,23 @@ int32_t CardSpecial::evaluate_effect_expr(
       switch (token_type) {
         case ExpressionTokenType::ROUND_DIVIDE:
           value = lround(static_cast<double>(value) / right_value);
-          log.debug("value=%" PRId32 " (token_type=ROUND_DIVIDE, right_token_value=%" PRId32 ")", value, right_value);
+          log.debug_f("value={} (token_type=ROUND_DIVIDE, right_token_value={})", value, right_value);
           break;
         case ExpressionTokenType::SUBTRACT:
           value -= right_value;
-          log.debug("value=%" PRId32 " (token_type=SUBTRACT, right_token_value=%" PRId32 ")", value, right_value);
+          log.debug_f("value={} (token_type=SUBTRACT, right_token_value={})", value, right_value);
           break;
         case ExpressionTokenType::ADD:
           value += right_value;
-          log.debug("value=%" PRId32 " (token_type=ADD, right_token_value=%" PRId32 ")", value, right_value);
+          log.debug_f("value={} (token_type=ADD, right_token_value={})", value, right_value);
           break;
         case ExpressionTokenType::MULTIPLY:
           value *= right_value;
-          log.debug("value=%" PRId32 " (token_type=MULTIPLY, right_token_value=%" PRId32 ")", value, right_value);
+          log.debug_f("value={} (token_type=MULTIPLY, right_token_value={})", value, right_value);
           break;
         case ExpressionTokenType::FLOOR_DIVIDE:
           value = floor(value / right_value);
-          log.debug("value=%" PRId32 " (token_type=FLOOR_DIVIDE, right_token_value=%" PRId32 ")", value, right_value);
+          log.debug_f("value={} (token_type=FLOOR_DIVIDE, right_token_value={})", value, right_value);
           break;
         default:
           throw logic_error("invalid binary operator");
@@ -1794,7 +1794,7 @@ int32_t CardSpecial::evaluate_effect_expr(
     }
   }
 
-  log.debug("value=%" PRId32 " (result)", value);
+  log.debug_f("value={} (result)", value);
   return value;
 }
 
@@ -1807,10 +1807,10 @@ bool CardSpecial::execute_effect(
     uint32_t unknown_p7,
     uint16_t attacker_card_ref) {
   auto s = this->server();
-  auto log = s->log_stack(phosg::string_printf("execute_effect(@%04hX #%04hX): ", card->get_card_ref(), card->get_card_id()));
+  auto log = s->log_stack(std::format("execute_effect(@{:04X} #{:04X}): ", card->get_card_ref(), card->get_card_id()));
   {
     string cond_str = cond.str(s);
-    log.debug("cond=%s, card=@%04hX, expr_value=%hd, unknown_p5=%hd, cond_type=%s, unknown_p7=%" PRIu32 ", attacker_card_ref=@%04hX", cond_str.c_str(), ref_for_card(card), expr_value, unknown_p5, phosg::name_for_enum(cond_type), unknown_p7, attacker_card_ref);
+    log.debug_f("cond={}, card=@{:04X}, expr_value={}, unknown_p5={}, cond_type={}, unknown_p7={} attacker_card_ref=@{:04X}", cond_str, ref_for_card(card), expr_value, unknown_p5, phosg::name_for_enum(cond_type), unknown_p7, attacker_card_ref);
   }
   bool is_nte = s->options.is_nte();
 
@@ -1959,7 +1959,7 @@ bool CardSpecial::execute_effect(
       if (unknown_p7 & 4) {
         int16_t hp = is_nte ? card->get_current_hp() : clamp<int16_t>(card->get_current_hp(), -99, 99);
         int16_t new_hp = is_nte ? (hp + positive_expr_value) : clamp<int16_t>(hp + positive_expr_value, -99, 99);
-        log.debug("HEAL: hp=%hd, positive_expr_value=%hd, new_hp=%hd", hp, positive_expr_value, new_hp);
+        log.debug_f("HEAL: hp={}, positive_expr_value={}, new_hp={}", hp, positive_expr_value, new_hp);
         this->send_6xB4x06_for_stat_delta(card, attacker_card_ref, 0x20, new_hp - hp, true, true);
         if (new_hp != hp) {
           card->set_current_hp(new_hp);
@@ -2842,8 +2842,8 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
     int16_t p_target_type,
     bool apply_usability_filters) const {
   auto s = this->server();
-  auto log = s->log_stack(phosg::string_printf("get_targeted_cards_for_condition(@%04hX, %hhu, @%04hX): ", card_ref, def_effect_index, setter_card_ref));
-  log.debug("card_ref=@%04hX, def_effect_index=%02hhX, setter_card_ref=@%04hX, as, p_target_type=%hd, apply_usability_filters=%s", card_ref, def_effect_index, setter_card_ref, p_target_type, apply_usability_filters ? "true" : "false");
+  auto log = s->log_stack(std::format("get_targeted_cards_for_condition(@{:04X}, {}, @{:04X}): ", card_ref, def_effect_index, setter_card_ref));
+  log.debug_f("card_ref=@{:04X}, def_effect_index={:02X}, setter_card_ref=@{:04X}, as, p_target_type={}, apply_usability_filters={}", card_ref, def_effect_index, setter_card_ref, p_target_type, apply_usability_filters ? "true" : "false");
 
   vector<shared_ptr<const Card>> ret;
 
@@ -2852,12 +2852,12 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
   if (!card1) {
     card1 = s->card_for_set_card_ref(setter_card_ref);
   }
-  log.debug("card1=@%04hX", ref_for_card(card1));
+  log.debug_f("card1=@{:04X}", ref_for_card(card1));
 
   auto card2 = s->card_for_set_card_ref((as.attacker_card_ref == 0xFFFF)
           ? as.original_attacker_card_ref
           : as.attacker_card_ref);
-  log.debug("card2=@%04hX", ref_for_card(card2));
+  log.debug_f("card2=@{:04X}", ref_for_card(card2));
 
   Location card1_loc;
   if (!card1) {
@@ -2868,13 +2868,13 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
     this->get_card1_loc_with_card2_opposite_direction(&card1_loc, card1, card2);
 
     string card1_loc_str = card1_loc.str();
-    log.debug("card1_loc=%s", card1_loc_str.c_str());
+    log.debug_f("card1_loc={}", card1_loc_str);
   }
 
   AttackMedium attack_medium = card2
       ? card2->action_chain.chain.attack_medium
       : AttackMedium::UNKNOWN;
-  log.debug("attack_medium=%s", phosg::name_for_enum(attack_medium));
+  log.debug_f("attack_medium={}", phosg::name_for_enum(attack_medium));
 
   auto add_card_refs = [&](const vector<uint16_t>& result_card_refs) -> void {
     for (uint16_t result_card_ref : result_card_refs) {
@@ -2890,10 +2890,10 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
     case 0x05: { // p05
       auto result_card = s->card_for_set_card_ref(setter_card_ref);
       if (result_card) {
-        log.debug("(p01/p05) result_card=@%04hX", ref_for_card(result_card));
+        log.debug_f("(p01/p05) result_card=@{:04X}", ref_for_card(result_card));
         ret.emplace_back(result_card);
       } else {
-        log.debug("(p01/p05) result_card=null");
+        log.debug_f("(p01/p05) result_card=null");
       }
       break;
     }
@@ -3073,28 +3073,28 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
         if (def && ps) {
           // TODO: Again with the Gifoie hardcoding...
           uint16_t range_card_id = this->get_card_id_with_effective_range(card1, 0x00D9, card2);
-          log23.debug("effective range card ID is #%04hX", range_card_id);
+          log23.debug_f("effective range card ID is #{:04X}", range_card_id);
           parray<uint8_t, 9 * 9> range;
           compute_effective_range(range, s->options.card_index, range_card_id, card1_loc, s->map_and_rules, &log23);
           auto result_card_refs = ps->get_all_cards_within_range(range, card1_loc, 0xFF);
-          log23.debug("%zu result card refs", result_card_refs.size());
+          log23.debug_f("{} result card refs", result_card_refs.size());
           for (uint16_t result_card_ref : result_card_refs) {
-            auto result_log = log23.subf("(result @%04hX) ", result_card_ref);
+            auto result_log = log23.sub(std::format("(result @{:04X}) ", result_card_ref));
             auto result_card = s->card_for_set_card_ref(result_card_ref);
             if (!result_card) {
-              result_log.debug("result card not found");
+              result_log.debug_f("result card not found");
             } else if (result_card->get_definition()->def.type == CardType::ITEM) {
-              result_log.debug("result card is item");
+              result_log.debug_f("result card is item");
             } else {
-              result_log.debug("result card found and is not item");
+              result_log.debug_f("result card found and is not item");
               ret.emplace_back(result_card);
             }
           }
         } else {
-          log23.debug("def or ps is missing");
+          log23.debug_f("def or ps is missing");
         }
       } else {
-        log23.debug("card1 is missing");
+        log23.debug_f("card1 is missing");
       }
       break;
     }
@@ -3194,28 +3194,28 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
       };
       bool is_nte = s->options.is_nte();
       if (as.original_attacker_card_ref == 0xFFFF) {
-        log36.debug("original_attacker_card_ref missing");
+        log36.debug_f("original_attacker_card_ref missing");
         // debug_str_for_card_ref
         for (size_t z = 0; (z < 4 * 9) && (as.target_card_refs[z] != 0xFFFF); z++) {
           string debug_ref_str = s->debug_str_for_card_ref(as.target_card_refs[z]);
-          log36.debug("examining %s", debug_ref_str.c_str());
+          log36.debug_f("examining {}", debug_ref_str);
           auto result_card = s->card_for_set_card_ref(as.target_card_refs[z]);
           if (result_card && should_include(result_card->get_definition(), is_nte)) {
-            log36.debug("adding %s", debug_ref_str.c_str());
+            log36.debug_f("adding {}", debug_ref_str);
             ret.emplace_back(result_card);
           } else {
-            log36.debug("skipping %s", debug_ref_str.c_str());
+            log36.debug_f("skipping {}", debug_ref_str);
           }
         }
       } else if (card2 && should_include(card2->get_definition(), is_nte)) {
         string debug_ref_str = s->debug_str_for_card_ref(card2->get_card_ref());
-        log36.debug("original_attacker_card_ref present; adding card2 = %s", debug_ref_str.c_str());
+        log36.debug_f("original_attacker_card_ref present; adding card2 = {}", debug_ref_str);
         ret.emplace_back(card2);
       } else if (card2) {
         string debug_ref_str = s->debug_str_for_card_ref(card2->get_card_ref());
-        log36.debug("original_attacker_card_ref present and card2 (%s) not eligible", debug_ref_str.c_str());
+        log36.debug_f("original_attacker_card_ref present and card2 ({}) not eligible", debug_ref_str);
       } else {
-        log36.debug("original_attacker_card_ref present and card2 missing");
+        log36.debug_f("original_attacker_card_ref present and card2 missing");
       }
       break;
     }
@@ -3252,17 +3252,17 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
       ret = this->find_all_set_cards_with_cost_in_range(
           (p_target_type == 0x27) ? 4 : 0,
           (p_target_type == 0x27) ? 99 : 3);
-      if (log3940.should_log(phosg::LogLevel::DEBUG)) {
+      if (log3940.should_log(phosg::LogLevel::L_DEBUG)) {
         for (const auto& card : ret) {
-          log3940.debug("found target @%04hX #%04hX", card->get_card_ref(), card->get_card_id());
+          log3940.debug_f("found target @{:04X} #{:04X}", card->get_card_ref(), card->get_card_id());
         }
       }
       if (!s->options.is_nte()) {
-        log3940.debug("filtering targets");
+        log3940.debug_f("filtering targets");
         ret = this->filter_cards_by_range(ret, card1, card1_loc, card2);
-        if (log3940.should_log(phosg::LogLevel::DEBUG)) {
+        if (log3940.should_log(phosg::LogLevel::L_DEBUG)) {
           for (const auto& card : ret) {
-            log3940.debug("retained target @%04hX #%04hX", card->get_card_ref(), card->get_card_id());
+            log3940.debug_f("retained target @{:04X} #{:04X}", card->get_card_ref(), card->get_card_id());
           }
         }
       }
@@ -3497,9 +3497,9 @@ vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(
       if (s->ruler_server->check_usability_or_apply_condition_for_card_refs(
               card_ref, setter_card_ref, c->get_card_ref(), def_effect_index, attack_medium)) {
         filtered_ret.emplace_back(c);
-        log.debug("usability filter: kept card @%04hX", ref_for_card(c));
+        log.debug_f("usability filter: kept card @{:04X}", ref_for_card(c));
       } else {
-        log.debug("usability filter: removed card @%04hX", ref_for_card(c));
+        log.debug_f("usability filter: removed card @{:04X}", ref_for_card(c));
       }
     }
     return filtered_ret;
@@ -3526,16 +3526,16 @@ bool CardSpecial::is_card_targeted_by_condition(
   auto s = this->server();
   auto log = s->log_stack("is_card_targeted_by_condition: ");
 
-  if (log.should_log(phosg::LogLevel::DEBUG)) {
-    log.debug("card=(@%04hX #%04hX)", card->get_card_ref(), card->get_card_id());
+  if (log.should_log(phosg::LogLevel::L_DEBUG)) {
+    log.debug_f("card=(@{:04X} #{:04X})", card->get_card_ref(), card->get_card_id());
     auto cond_str = cond.str(s);
     auto as_str = as.str(s);
-    log.debug("cond = %s", cond_str.c_str());
-    log.debug("as = %s", as_str.c_str());
+    log.debug_f("cond = {}", cond_str);
+    log.debug_f("as = {}", as_str);
   }
 
   if (cond.type == ConditionType::NONE) {
-    log.debug("condition is NONE (=> true)");
+    log.debug_f("condition is NONE (=> true)");
     return true;
   }
 
@@ -3546,12 +3546,12 @@ bool CardSpecial::is_card_targeted_by_condition(
       ((ce->def.type == CardType::ITEM) || ce->def.is_sc()) &&
       (cond.remaining_turns != 100) &&
       (s->options.is_nte() || (client_id_for_card_ref(card->get_card_ref()) == client_id_for_card_ref(cond.card_ref)))) {
-    log.debug("failed item or SC check (=> false)");
+    log.debug_f("failed item or SC check (=> false)");
     return false;
   }
 
   if (cond.remaining_turns != 102) {
-    log.debug("remaining_turns != 102 (=> true)");
+    log.debug_f("remaining_turns != 102 (=> true)");
     return true;
   }
 
@@ -3569,15 +3569,15 @@ bool CardSpecial::is_card_targeted_by_condition(
         0);
     for (auto c : target_cards) {
       if (c == card) {
-        log.debug("targeted by p condition (=> true)");
+        log.debug_f("targeted by p condition (=> true)");
         return true;
       }
     }
-    log.debug("not targeted by p condition (=> false)");
+    log.debug_f("not targeted by p condition (=> false)");
     return false;
   } else {
 
-    log.debug("SC check does not apply");
+    log.debug_f("SC check does not apply");
     return false;
   }
 }
@@ -3806,7 +3806,7 @@ size_t CardSpecial::sum_last_attack_damage(
   size_t damage_count = 0;
   auto check_card = [&](shared_ptr<const Card> c) -> void {
     if (c && (c->last_attack_final_damage > 0)) {
-      log.debug("check_card @%04hX #%04hX => %hd", c->get_card_ref(), c->get_card_id(), c->last_attack_final_damage);
+      log.debug_f("check_card @{:04X} #{:04X} => {}", c->get_card_ref(), c->get_card_id(), c->last_attack_final_damage);
       if (out_damage_sum) {
         *out_damage_sum += c->last_attack_final_damage;
       }
@@ -4013,13 +4013,13 @@ void CardSpecial::evaluate_and_apply_effects(
     bool apply_defense_condition_to_all_cards,
     uint16_t apply_defense_condition_to_card_ref) {
   auto s = this->server();
-  auto log = s->log_stack(phosg::string_printf("evaluate_and_apply_effects(%s, @%04hX, @%04hX): ", phosg::name_for_enum(when), set_card_ref, sc_card_ref));
+  auto log = s->log_stack(std::format("evaluate_and_apply_effects({}, @{:04X}, @{:04X}): ", phosg::name_for_enum(when), set_card_ref, sc_card_ref));
   bool is_nte = s->options.is_nte();
 
   {
     string as_str = as.str(s);
-    log.debug("when=%s, set_card_ref=@%04hX, as=%s, sc_card_ref=@%04hX, apply_defense_condition_to_all_cards=%s, apply_defense_condition_to_card_ref=@%04hX",
-        phosg::name_for_enum(when), set_card_ref, as_str.c_str(), sc_card_ref, apply_defense_condition_to_all_cards ? "true" : "false", apply_defense_condition_to_card_ref);
+    log.debug_f("when={}, set_card_ref=@{:04X}, as={}, sc_card_ref=@{:04X}, apply_defense_condition_to_all_cards={}, apply_defense_condition_to_card_ref=@{:04X}",
+        phosg::name_for_enum(when), set_card_ref, as_str, sc_card_ref, apply_defense_condition_to_all_cards ? "true" : "false", apply_defense_condition_to_card_ref);
   }
 
   if (!is_nte) {
@@ -4028,7 +4028,7 @@ void CardSpecial::evaluate_and_apply_effects(
 
   auto ce = this->server()->definition_for_card_ref(set_card_ref);
   if (!ce) {
-    log.debug("ce missing");
+    log.debug_f("ce missing");
     return;
   }
 
@@ -4076,15 +4076,15 @@ void CardSpecial::evaluate_and_apply_effects(
   dice_roll.unknown_a2 = 3;
   dice_roll.value_used_in_expr = false;
 
-  log.debug("inputs: dice_roll=%02hhX, random_percent=%hhu, unknown_v1=%s", dice_roll.value, random_percent, unknown_v1 ? "true" : "false");
+  log.debug_f("inputs: dice_roll={:02X}, random_percent={}, unknown_v1={}", dice_roll.value, random_percent, unknown_v1 ? "true" : "false");
 
   for (size_t def_effect_index = 0; (def_effect_index < 3) && !unknown_v1 && (ce->def.effects[def_effect_index].type != ConditionType::NONE); def_effect_index++) {
-    auto effect_log = log.sub(phosg::string_printf("(effect:%zu) ", def_effect_index));
+    auto effect_log = log.sub(std::format("(effect:{}) ", def_effect_index));
     const auto& card_effect = ce->def.effects[def_effect_index];
     string card_effect_str = card_effect.str();
-    effect_log.debug("effect: %s", card_effect_str.c_str());
+    effect_log.debug_f("effect: {}", card_effect_str);
     if (card_effect.when != when) {
-      effect_log.debug("does not apply (effect.when=%s, when=%s)", phosg::name_for_enum(card_effect.when), phosg::name_for_enum(when));
+      effect_log.debug_f("does not apply (effect.when={}, when={})", phosg::name_for_enum(card_effect.when), phosg::name_for_enum(when));
       continue;
     }
 
@@ -4093,18 +4093,18 @@ void CardSpecial::evaluate_and_apply_effects(
       throw runtime_error("card effect arg3 is missing");
     }
     int16_t arg3_value = atoi(arg3_s.c_str() + 1);
-    effect_log.debug("arg3_value=%hd", arg3_value);
+    effect_log.debug_f("arg3_value={}", arg3_value);
     auto targeted_cards = this->get_targeted_cards_for_condition(
         set_card_ref, def_effect_index, sc_card_ref, as, arg3_value, 1);
     string refs_str = refs_str_for_cards_vector(targeted_cards);
-    effect_log.debug("targeted_cards=[%s]", refs_str.c_str());
+    effect_log.debug_f("targeted_cards=[{}]", refs_str);
     bool all_targets_matched = false;
     if (!is_nte &&
         !targeted_cards.empty() &&
         ((card_effect.type == ConditionType::UNKNOWN_64) ||
             (card_effect.type == ConditionType::MISC_DEFENSE_BONUSES) ||
             (card_effect.type == ConditionType::MOSTLY_HALFGUARDS))) {
-      effect_log.debug("special targeting applies");
+      effect_log.debug_f("special targeting applies");
       size_t count = 0;
       for (size_t z = 0; z < targeted_cards.size(); z++) {
         dice_roll.value_used_in_expr = false;
@@ -4132,22 +4132,22 @@ void CardSpecial::evaluate_and_apply_effects(
         targeted_cards.clear();
       }
     } else {
-      effect_log.debug("special targeting does not apply");
+      effect_log.debug_f("special targeting does not apply");
     }
 
     for (size_t z = 0; z < targeted_cards.size(); z++) {
-      auto target_log = effect_log.sub(phosg::string_printf("(target:@%04hX) ", targeted_cards[z]->get_card_ref()));
+      auto target_log = effect_log.sub(std::format("(target:@{:04X}) ", targeted_cards[z]->get_card_ref()));
       dice_roll.value_used_in_expr = false;
       string arg2_str = card_effect.arg2.decode();
-      target_log.debug("arg2_str = %s", arg2_str.c_str());
+      target_log.debug_f("arg2_str = {}", arg2_str);
       if (all_targets_matched ||
           this->evaluate_effect_arg2_condition(
               as, targeted_cards[z], arg2_str.c_str(), dice_roll, set_card_ref, sc_card_ref, random_percent, when)) {
-        target_log.debug("arg2 condition passed");
+        target_log.debug_f("arg2 condition passed");
         auto env_stats = this->compute_attack_env_stats(as, targeted_cards[z], dice_roll, set_card_ref, sc_card_ref);
         string expr_str = card_effect.expr.decode();
         int16_t value = this->evaluate_effect_expr(env_stats, expr_str.c_str(), dice_roll);
-        target_log.debug("expr = %s, value = %hd", expr_str.c_str(), value);
+        target_log.debug_f("expr = {}, value = {}", expr_str, value);
 
         uint32_t unknown_v1 = 0;
         auto target_card = this->compute_replaced_target_based_on_conditions(
@@ -4163,16 +4163,16 @@ void CardSpecial::evaluate_and_apply_effects(
             sc_card_ref);
         if (!target_card) {
           target_card = targeted_cards[z];
-          target_log.debug("target card (not replaced) = @%04hX", target_card->get_card_ref());
+          target_log.debug_f("target card (not replaced) = @{:04X}", target_card->get_card_ref());
         } else {
-          target_log.debug("target card (replaced) = @%04hX", target_card->get_card_ref());
+          target_log.debug_f("target card (replaced) = @{:04X}", target_card->get_card_ref());
         }
 
         ssize_t applied_cond_index = -1;
         if ((unknown_v1 == 0) && !this->should_cancel_condition_due_to_anti_abnormality(card_effect, target_card, dice_cmd.effect.target_card_ref, sc_card_ref)) {
           applied_cond_index = target_card->apply_abnormal_condition(
               card_effect, def_effect_index, dice_cmd.effect.target_card_ref, sc_card_ref, value, dice_roll.value, random_percent);
-          target_log.debug("applied abnormal condition");
+          target_log.debug_f("applied abnormal condition");
           // This debug_print call is in the original code.
           // this->debug_print(when, 4, &env_stats, "!set_abnormal..", target_card, card_effect.type);
         }
@@ -4202,12 +4202,12 @@ void CardSpecial::evaluate_and_apply_effects(
           if (apply_defense_condition_to_all_cards || (apply_defense_condition_to_card_ref == targeted_cards[z]->get_card_ref())) {
             this->apply_defense_condition(
                 when, &target_card->action_chain.conditions[applied_cond_index], applied_cond_index, as, target_card, 4, 1);
-            target_log.debug("applied defense condition");
+            target_log.debug_f("applied defense condition");
           }
         }
         target_card->send_6xB4x4E_4C_4D_if_needed(0);
       } else {
-        target_log.debug("arg2 condition failed");
+        target_log.debug_f("arg2 condition failed");
       }
       if (dice_roll.value_used_in_expr) {
         any_expr_used_dice_roll = true;
@@ -4712,73 +4712,73 @@ vector<shared_ptr<const Card>> CardSpecial::filter_cards_by_range(
     shared_ptr<const Card> card2) const {
   auto log = this->server()->log_stack("filter_cards_by_range: ");
 
-  if (log.should_log(phosg::LogLevel::DEBUG)) {
-    auto card1_str = card1 ? phosg::string_printf("@%04hX #%04hX", card1->get_card_ref(), card1->get_card_id()) : "null";
-    auto card2_str = card2 ? phosg::string_printf("@%04hX #%04hX", card2->get_card_ref(), card2->get_card_id()) : "null";
+  if (log.should_log(phosg::LogLevel::L_DEBUG)) {
+    auto card1_str = card1 ? std::format("@{:04X} #{:04X}", card1->get_card_ref(), card1->get_card_id()) : "null";
+    auto card2_str = card2 ? std::format("@{:04X} #{:04X}", card2->get_card_ref(), card2->get_card_id()) : "null";
     auto loc_str = card1_loc.str();
-    log.debug("card1=(%s), card2=(%s), loc=%s", card1_str.c_str(), card2_str.c_str(), loc_str.c_str());
+    log.debug_f("card1=({}), card2=({}), loc={}", card1_str, card2_str, loc_str);
 
     for (const auto& card : cards) {
       if (card) {
-        log.debug("input card: @%04hX #%04hX", card->get_card_ref(), card->get_card_id());
+        log.debug_f("input card: @{:04X} #{:04X}", card->get_card_ref(), card->get_card_id());
       } else {
-        log.debug("input card: null");
+        log.debug_f("input card: null");
       }
     }
   }
 
   vector<shared_ptr<const Card>> ret;
   if (!card1 || cards.empty()) {
-    log.debug("card1 missing or input list is blank");
+    log.debug_f("card1 missing or input list is blank");
     return ret;
   }
 
   auto ps = card1->player_state();
   if (!ps) {
-    log.debug("ps is missing");
+    log.debug_f("ps is missing");
     return ret;
   }
 
   // TODO: Remove hardcoded card ID here (Earthquake)
   uint16_t card_id = this->get_card_id_with_effective_range(card1, 0x00ED, card2);
-  log.debug("card_id = #%04hX", card_id);
+  log.debug_f("card_id = #{:04X}", card_id);
 
   parray<uint8_t, 9 * 9> range;
   compute_effective_range(range, this->server()->options.card_index, card_id, card1_loc, this->server()->map_and_rules);
-  if (log.should_log(phosg::LogLevel::DEBUG)) {
+  if (log.should_log(phosg::LogLevel::L_DEBUG)) {
     auto loc_str = card1_loc.str();
-    log.debug("compute_effective_range(range, ci, #%04hX, %s, map) =>", card_id, loc_str.c_str());
+    log.debug_f("compute_effective_range(range, ci, #{:04X}, {}, map) =>", card_id, loc_str);
     for (size_t y = 0; y < 9; y++) {
       const uint8_t* row = &range[y * 9];
-      log.debug("  range[%zu] = %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX",
+      log.debug_f("  range[{}] = {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X}",
           y, row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8]);
     }
   }
 
   auto card_refs_in_range = ps->get_card_refs_within_range_from_all_players(range, card1_loc, CardType::ITEM);
-  if (log.should_log(phosg::LogLevel::DEBUG)) {
+  if (log.should_log(phosg::LogLevel::L_DEBUG)) {
     for (uint16_t card_ref : card_refs_in_range) {
-      log.debug("ref in range: @%04hX", card_ref);
+      log.debug_f("ref in range: @{:04X}", card_ref);
     }
   }
 
   for (auto card : cards) {
     if (!card || (card->get_card_ref() == 0xFFFF)) {
       if (card) {
-        log.debug("(@%04hX #%04hX) out of range", card->get_card_ref(), card->get_card_id());
+        log.debug_f("(@{:04X} #{:04X}) out of range", card->get_card_ref(), card->get_card_id());
       } else {
-        log.debug("(null) card missing");
+        log.debug_f("(null) card missing");
       }
       continue;
     }
     for (uint16_t card_ref_in_range : card_refs_in_range) {
       if (card_ref_in_range == card->get_card_ref()) {
-        log.debug("(@%04hX #%04hX) in range", card->get_card_ref(), card->get_card_id());
+        log.debug_f("(@{:04X} #{:04X}) in range", card->get_card_ref(), card->get_card_id());
         ret.emplace_back(card);
         break;
       }
     }
-    log.debug("(@%04hX #%04hX) out of range", card->get_card_ref(), card->get_card_id());
+    log.debug_f("(@{:04X} #{:04X}) out of range", card->get_card_ref(), card->get_card_id());
   }
   return ret;
 }
@@ -4787,7 +4787,7 @@ void CardSpecial::apply_effects_after_attack_target_resolution(const ActionState
   auto s = this->server();
   auto log = s->log_stack("apply_effects_after_attack_target_resolution: ");
   string as_str = as.str(s);
-  log.debug("as=%s", as_str.c_str());
+  log.debug_f("as={}", as_str);
 
   for (size_t z = 0; (z < 8) && (as.action_card_refs[z] != 0xFFFF); z++) {
     uint16_t card_ref = this->send_6xB4x06_if_card_ref_invalid(as.action_card_refs[z], 0x1E);
@@ -4878,7 +4878,7 @@ void CardSpecial::dice_phase_before_for_card(shared_ptr<Card> card) {
 template <EffectWhen When1, EffectWhen When2>
 void CardSpecial::apply_effects_on_phase_change_t(shared_ptr<Card> unknown_p2, const ActionState* existing_as) {
   auto s = this->server();
-  auto log = s->log_stack(phosg::string_printf("apply_effects_on_phase_change_t<%s, %s>(@%04hX #%04hX): ", phosg::name_for_enum(When1), phosg::name_for_enum(When2), unknown_p2->get_card_ref(), unknown_p2->get_card_id()));
+  auto log = s->log_stack(std::format("apply_effects_on_phase_change_t<{}, {}>(@{:04X} #{:04X}): ", phosg::name_for_enum(When1), phosg::name_for_enum(When2), unknown_p2->get_card_ref(), unknown_p2->get_card_id()));
   bool is_nte = s->options.is_nte();
 
   ActionState as;
@@ -4929,7 +4929,7 @@ void CardSpecial::unknown_8024945C(shared_ptr<Card> unknown_p2, const ActionStat
 }
 
 void CardSpecial::unknown_8024966C(shared_ptr<Card> unknown_p2, const ActionState* existing_as) {
-  auto log = this->server()->log_stack(phosg::string_printf("unknown_8024966C(@%04hX #%04hX): ", unknown_p2->get_card_ref(), unknown_p2->get_card_id()));
+  auto log = this->server()->log_stack(std::format("unknown_8024966C(@{:04X} #{:04X}): ", unknown_p2->get_card_ref(), unknown_p2->get_card_id()));
 
   ActionState as;
   if (!existing_as) {
@@ -5080,7 +5080,7 @@ template <
     EffectWhen WhenTargetsAndActionCards>
 void CardSpecial::apply_effects_before_or_after_attack(shared_ptr<Card> unknown_p2) {
   auto s = this->server();
-  auto log = s->log_stack(phosg::string_printf("apply_effects_before_or_after_attack<%s, %s, %s, %s>(@%04hX #%04hX): ",
+  auto log = s->log_stack(std::format("apply_effects_before_or_after_attack<{}, {}, {}, {}>(@{:04X} #{:04X}): ",
       phosg::name_for_enum(WhenAllCards), phosg::name_for_enum(WhenAttackerAndActionCards), phosg::name_for_enum(WhenAttackerOrHunterSCCard), phosg::name_for_enum(WhenTargetsAndActionCards), unknown_p2->get_card_ref(), unknown_p2->get_card_id()));
 
   ActionState as = this->create_attack_state_from_card_action_chain(unknown_p2);

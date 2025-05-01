@@ -64,19 +64,19 @@ void Condition::clear_FF() {
 std::string Condition::str(shared_ptr<const Server> s) const {
   auto card_ref_str = s->debug_str_for_card_ref(this->card_ref);
   auto giver_ref_str = s->debug_str_for_card_ref(this->condition_giver_card_ref);
-  return phosg::string_printf(
-      "Condition[type=%s, turns=%hhu, a_arg=%hhd, dice=%hhu, flags=%02hhX, "
-      "def_eff_index=%hhu, ref=%s, value=%hd, giver_ref=%s "
-      "percent=%hhu value8=%hd order=%hu a8=%hu]",
+  return std::format(
+      "Condition[type={}, turns={}, a_arg={}, dice={}, flags={:02X}, "
+      "def_eff_index={}, ref={}, value={}, giver_ref={} "
+      "percent={} value8={} order={} a8={}]",
       phosg::name_for_enum(this->type),
       this->remaining_turns,
       this->a_arg_value,
       this->dice_roll_value,
       this->flags,
       this->card_definition_effect_index,
-      card_ref_str.c_str(),
-      this->value.load(),
-      giver_ref_str.c_str(),
+      card_ref_str,
+      this->value,
+      giver_ref_str,
       this->random_percent,
       this->value8,
       this->order,
@@ -103,12 +103,12 @@ void EffectResult::clear() {
 std::string EffectResult::str(shared_ptr<const Server> s) const {
   string attacker_ref_str = s->debug_str_for_card_ref(this->attacker_card_ref);
   string target_ref_str = s->debug_str_for_card_ref(this->target_card_ref);
-  return phosg::string_printf(
-      "EffectResult[att_ref=%s, target_ref=%s, value=%hhd, "
-      "cur_hp=%hhd, ap=%hhd, tp=%hhd, flags=%02hhX, op=%hhd, "
-      "cond_index=%hhu, dice=%hhu]",
-      attacker_ref_str.c_str(),
-      target_ref_str.c_str(),
+  return std::format(
+      "EffectResult[att_ref={}, target_ref={}, value={}, "
+      "cur_hp={}, ap={}, tp={}, flags={:02X}, op={}, "
+      "cond_index={}, dice={}]",
+      attacker_ref_str,
+      target_ref_str,
       this->value,
       this->current_hp,
       this->ap,
@@ -139,14 +139,14 @@ bool CardShortStatus::operator!=(const CardShortStatus& other) const {
 std::string CardShortStatus::str(shared_ptr<const Server> s) const {
   string loc_s = this->loc.str();
   string ref_str = s->debug_str_for_card_ref(this->card_ref);
-  return phosg::string_printf(
-      "CardShortStatus[ref=%s, cur_hp=%hd, flags=%08" PRIX32 ", loc=%s, "
-      "u1=%04hX, max_hp=%hhd, u2=%hhu]",
-      ref_str.c_str(),
-      this->current_hp.load(),
-      this->card_flags.load(),
-      loc_s.c_str(),
-      this->unused1.load(),
+  return std::format(
+      "CardShortStatus[ref={}, cur_hp={}, flags={:08X}, loc={}, "
+      "u1={:04X}, max_hp={}, u2={}]",
+      ref_str,
+      this->current_hp,
+      this->card_flags,
+      loc_s,
+      this->unused1,
       this->max_hp,
       this->unused2);
 }
@@ -193,18 +193,18 @@ std::string ActionState::str(shared_ptr<const Server> s) const {
   string original_attacker_ref_s = s->debug_str_for_card_ref(this->original_attacker_card_ref);
   string target_refs_s = s->debug_str_for_card_refs(this->target_card_refs);
   string action_refs_s = s->debug_str_for_card_refs(this->action_card_refs);
-  return phosg::string_printf(
-      "ActionState[client=%hX, u=%hhu, facing=%s, attacker_ref=%s, "
-      "def_ref=%s, target_refs=%s, action_refs=%s, "
-      "orig_attacker_ref=%s]",
-      this->client_id.load(),
+  return std::format(
+      "ActionState[client={:X}, u={}, facing={}, attacker_ref={}, "
+      "def_ref={}, target_refs={}, action_refs={}, "
+      "orig_attacker_ref={}]",
+      this->client_id,
       this->unused,
       phosg::name_for_enum(this->facing_direction),
-      attacker_ref_s.c_str(),
-      defense_ref_s.c_str(),
-      target_refs_s.c_str(),
-      action_refs_s.c_str(),
-      original_attacker_ref_s.c_str());
+      attacker_ref_s,
+      defense_ref_s,
+      target_refs_s,
+      action_refs_s,
+      original_attacker_ref_s);
 }
 
 ActionChain::ActionChain() {
@@ -243,20 +243,20 @@ std::string ActionChain::str(shared_ptr<const Server> s) const {
   string unknown_card_ref_a3_s = s->debug_str_for_card_ref(this->unknown_card_ref_a3);
   string attack_action_card_refs_s = s->debug_str_for_card_refs(this->attack_action_card_refs);
   string target_card_refs_s = s->debug_str_for_card_refs(this->target_card_refs);
-  return phosg::string_printf(
-      "ActionChain[eff_ap=%hhd, eff_tp=%hhd, ap_bonus=%hhd, damage=%hhd, "
-      "acting_ref=%s, unknown_ref_a3=%s, attack_action_refs=%s, "
-      "attack_action_ref_count=%hhu, medium=%s, target_ref_count=%hhu, "
-      "subphase=%s, strikes=%hhu, damage_mult=%hhd, attack_num=%hhu, "
-      "tp_bonus=%hhd, phys_bonus_nte=%hhu, tech_bonus_nte=%hhu, card_ap=%hhd, "
-      "card_tp=%hhd, flags=%08" PRIX32 ", target_refs=%s]",
+  return std::format(
+      "ActionChain[eff_ap={}, eff_tp={}, ap_bonus={}, damage={}, "
+      "acting_ref={}, unknown_ref_a3={}, attack_action_refs={}, "
+      "attack_action_ref_count={}, medium={}, target_ref_count={}, "
+      "subphase={}, strikes={}, damage_mult={}, attack_num={}, "
+      "tp_bonus={}, phys_bonus_nte={}, tech_bonus_nte={}, card_ap={}, "
+      "card_tp={}, flags={:08X}, target_refs={}]",
       this->effective_ap,
       this->effective_tp,
       this->ap_effect_bonus,
       this->damage,
-      acting_card_ref_s.c_str(),
-      unknown_card_ref_a3_s.c_str(),
-      attack_action_card_refs_s.c_str(),
+      acting_card_ref_s,
+      unknown_card_ref_a3_s,
+      attack_action_card_refs_s,
       this->attack_action_card_ref_count,
       phosg::name_for_enum(this->attack_medium),
       this->target_card_ref_count,
@@ -269,8 +269,8 @@ std::string ActionChain::str(shared_ptr<const Server> s) const {
       this->tech_attack_bonus_nte,
       this->card_ap,
       this->card_tp,
-      this->flags.load(),
-      target_card_refs_s.c_str());
+      this->flags,
+      target_card_refs_s);
 }
 
 void ActionChain::clear() {
@@ -341,7 +341,7 @@ std::string ActionChainWithConds::str(shared_ptr<const Server> s) const {
       if (ret.back() != '[') {
         ret += ", ";
       }
-      ret += phosg::string_printf("%zu:", z);
+      ret += std::format("{}:", z);
       ret += this->conditions[z].str(s);
     }
   }
@@ -580,22 +580,22 @@ std::string ActionMetadata::str(shared_ptr<const Server> s) const {
   string target_card_refs_s = s->debug_str_for_card_refs(this->target_card_refs);
   string defense_card_refs_s = s->debug_str_for_card_refs(this->defense_card_refs);
   string original_attacker_card_refs_s = s->debug_str_for_card_refs(this->original_attacker_card_refs);
-  return phosg::string_printf(
-      "ActionMetadata[ref=%s, target_ref_count=%hhu, def_ref_count=%hhu, "
-      "subphase=%s, def_power=%hhd, def_bonus=%hhd, "
-      "att_bonus=%hhd, flags=%08" PRIX32 ", target_refs=%s, "
-      "defense_refs=%s, original_attacker_refs=%s]",
-      card_ref_s.c_str(),
+  return std::format(
+      "ActionMetadata[ref={}, target_ref_count={}, def_ref_count={}, "
+      "subphase={}, def_power={}, def_bonus={}, "
+      "att_bonus={}, flags={:08X}, target_refs={}, "
+      "defense_refs={}, original_attacker_refs={}]",
+      card_ref_s,
       this->target_card_ref_count,
       this->defense_card_ref_count,
       phosg::name_for_enum(this->action_subphase),
       this->defense_power,
       this->defense_bonus,
       this->attack_bonus,
-      this->flags.load(),
-      target_card_refs_s.c_str(),
-      defense_card_refs_s.c_str(),
-      original_attacker_card_refs_s.c_str());
+      this->flags,
+      target_card_refs_s,
+      defense_card_refs_s,
+      original_attacker_card_refs_s);
 }
 
 void ActionMetadata::clear() {
@@ -683,13 +683,13 @@ std::string HandAndEquipState::str(shared_ptr<const Server> s) const {
   string set_card_refs_s = s->debug_str_for_card_refs(this->set_card_refs);
   string hand_card_refs2_s = s->debug_str_for_card_refs(this->hand_card_refs2);
   string set_card_refs2_s = s->debug_str_for_card_refs(this->set_card_refs2);
-  return phosg::string_printf(
-      "HandAndEquipState[dice=[%hhu, %hhu], atk=%hhu, def=%hhu, atk2=%hhu, "
-      "a1=%hhu, total_set_cost=%hhu, is_cpu=%hhu, assist_flags=%08" PRIX32 ", "
-      "hand_refs=%s, assist_ref=%s, set_refs=%s, sc_ref=%s, hand_refs2=%s, "
-      "set_refs2=%s, assist_ref2=%s, assist_set_num=%hu, assist_card_id=%s, "
-      "assist_turns=%hhu, assist_delay=%hhu, atk_bonus=%hhu, def_bonus=%hhu, "
-      "u2=[%hhu, %hhu]]",
+  return std::format(
+      "HandAndEquipState[dice=[{}, {}], atk={}, def={}, atk2={}, "
+      "a1={}, total_set_cost={}, is_cpu={}, assist_flags={:08X}, "
+      "hand_refs={}, assist_ref={}, set_refs={}, sc_ref={}, hand_refs2={}, "
+      "set_refs2={}, assist_ref2={}, assist_set_num={}, assist_card_id={}, "
+      "assist_turns={}, assist_delay={}, atk_bonus={}, def_bonus={}, "
+      "u2=[{}, {}]]",
       this->dice_results[0],
       this->dice_results[1],
       this->atk_points,
@@ -698,16 +698,16 @@ std::string HandAndEquipState::str(shared_ptr<const Server> s) const {
       this->unknown_a1,
       this->total_set_cards_cost,
       this->is_cpu_player,
-      this->assist_flags.load(),
-      hand_card_refs_s.c_str(),
-      assist_card_ref_s.c_str(),
-      set_card_refs_s.c_str(),
-      sc_card_ref_s.c_str(),
-      hand_card_refs2_s.c_str(),
-      set_card_refs2_s.c_str(),
-      assist_card_ref2_s.c_str(),
-      this->assist_card_set_number.load(),
-      assist_card_id_s.c_str(),
+      this->assist_flags,
+      hand_card_refs_s,
+      assist_card_ref_s,
+      set_card_refs_s,
+      sc_card_ref_s,
+      hand_card_refs2_s,
+      set_card_refs2_s,
+      assist_card_ref2_s,
+      this->assist_card_set_number,
+      assist_card_id_s,
       this->assist_remaining_turns,
       this->assist_delay_turns,
       this->atk_bonuses,
@@ -838,19 +838,19 @@ const char* PlayerBattleStats::name_for_rank(uint8_t rank) {
 }
 
 PlayerBattleStatsTrial::PlayerBattleStatsTrial(const PlayerBattleStats& data)
-    : damage_given(data.damage_given.load()),
-      damage_taken(data.damage_taken.load()),
-      num_opponent_cards_destroyed(data.num_opponent_cards_destroyed.load()),
-      num_owned_cards_destroyed(data.num_owned_cards_destroyed.load()),
-      total_move_distance(data.total_move_distance.load()) {}
+    : damage_given(data.damage_given),
+      damage_taken(data.damage_taken),
+      num_opponent_cards_destroyed(data.num_opponent_cards_destroyed),
+      num_owned_cards_destroyed(data.num_owned_cards_destroyed),
+      total_move_distance(data.total_move_distance) {}
 
 PlayerBattleStatsTrial::operator PlayerBattleStats() const {
   PlayerBattleStats ret;
-  ret.damage_given = this->damage_given.load();
-  ret.damage_taken = this->damage_taken.load();
-  ret.num_opponent_cards_destroyed = this->num_opponent_cards_destroyed.load();
-  ret.num_owned_cards_destroyed = this->num_owned_cards_destroyed.load();
-  ret.total_move_distance = this->total_move_distance.load();
+  ret.damage_given = this->damage_given;
+  ret.damage_taken = this->damage_taken;
+  ret.num_opponent_cards_destroyed = this->num_opponent_cards_destroyed;
+  ret.num_owned_cards_destroyed = this->num_owned_cards_destroyed;
+  ret.total_move_distance = this->total_move_distance;
   return ret;
 }
 
@@ -861,26 +861,26 @@ static bool is_card_within_range(
     phosg::PrefixedLogger* log) {
   if (ss.card_ref == 0xFFFF) {
     if (log) {
-      log->debug("is_card_within_range: (false) ss.card_ref missing");
+      log->debug_f("is_card_within_range: (false) ss.card_ref missing");
     }
     return false;
   }
   if (range[0] == 2) {
     if (log) {
-      log->debug("is_card_within_range: (true) range is entire field");
+      log->debug_f("is_card_within_range: (true) range is entire field");
     }
     return true;
   }
 
   if ((ss.loc.x < anchor_loc.x - 4) || (ss.loc.x > anchor_loc.x + 4)) {
     if (log) {
-      log->debug("is_card_within_range: (false) outside x range (ss.loc.x=%hhu, anchor_loc.x=%hhu)", ss.loc.x, anchor_loc.x);
+      log->debug_f("is_card_within_range: (false) outside x range (ss.loc.x={}, anchor_loc.x={})", ss.loc.x, anchor_loc.x);
     }
     return false;
   }
   if ((ss.loc.y < anchor_loc.y - 4) || (ss.loc.y > anchor_loc.y + 4)) {
     if (log) {
-      log->debug("is_card_within_range: (false) outside y range (ss.loc.y=%hhu, anchor_loc.y=%hhu)", ss.loc.y, anchor_loc.y);
+      log->debug_f("is_card_within_range: (false) outside y range (ss.loc.y={}, anchor_loc.y={})", ss.loc.y, anchor_loc.y);
     }
     return false;
   }
@@ -889,7 +889,7 @@ static bool is_card_within_range(
   uint8_t x_index = (ss.loc.x - anchor_loc.x) + 4;
   bool ret = (range[y_index * 9 + x_index] != 0);
   if (log) {
-    log->debug("is_card_within_range: (%s) (ss.loc=(%hhu,%hhu), anchor_loc=(%hhu,%hhu), indexes=(%hhu,%hhu))",
+    log->debug_f("is_card_within_range: ({}) (ss.loc=({},{}), anchor_loc=({},{}), indexes=({},{}))",
         ret ? "true" : "false", ss.loc.x, ss.loc.y, anchor_loc.x, anchor_loc.y, x_index, y_index);
   }
   return ret;
@@ -903,24 +903,24 @@ vector<uint16_t> get_card_refs_within_range(
   vector<uint16_t> ret;
   if (is_card_within_range(range, loc, short_statuses[0], log)) {
     if (log) {
-      log->debug("get_card_refs_within_range: sc card @%04hX within range", short_statuses[0].card_ref.load());
+      log->debug_f("get_card_refs_within_range: sc card @{:04X} within range", short_statuses[0].card_ref);
     }
     ret.emplace_back(short_statuses[0].card_ref);
   } else {
     if (log) {
-      log->debug("get_card_refs_within_range: sc card @%04hX not within range", short_statuses[0].card_ref.load());
+      log->debug_f("get_card_refs_within_range: sc card @{:04X} not within range", short_statuses[0].card_ref);
     }
   }
   for (size_t card_index = 7; card_index < 15; card_index++) {
     const auto& ss = short_statuses[card_index];
     if (is_card_within_range(range, loc, ss, log)) {
       if (log) {
-        log->debug("get_card_refs_within_range: card @%04hX within range", ss.card_ref.load());
+        log->debug_f("get_card_refs_within_range: card @{:04X} within range", ss.card_ref);
       }
       ret.emplace_back(ss.card_ref);
     } else {
       if (log) {
-        log->debug("get_card_refs_within_range: card @%04hX not within range", ss.card_ref.load());
+        log->debug_f("get_card_refs_within_range: card @{:04X} not within range", ss.card_ref);
       }
     }
   }

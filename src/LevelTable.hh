@@ -24,13 +24,13 @@ struct CharacterStatsT {
 
   operator CharacterStatsT<!BE>() const {
     CharacterStatsT<!BE> ret;
-    ret.atp = this->atp.load();
-    ret.mst = this->mst.load();
-    ret.evp = this->evp.load();
-    ret.hp = this->hp.load();
-    ret.dfp = this->dfp.load();
-    ret.ata = this->ata.load();
-    ret.lck = this->lck.load();
+    ret.atp = this->atp;
+    ret.mst = this->mst;
+    ret.evp = this->evp;
+    ret.hp = this->hp;
+    ret.dfp = this->dfp;
+    ret.ata = this->ata;
+    ret.lck = this->lck;
     return ret;
   }
 } __attribute__((packed));
@@ -53,12 +53,12 @@ struct PlayerStatsT {
   operator PlayerStatsT<!BE>() const {
     PlayerStatsT<!BE> ret;
     ret.char_stats = this->char_stats;
-    ret.esp = this->esp.load();
-    ret.height = this->height.load();
-    ret.unknown_a3 = this->unknown_a3.load();
-    ret.level = this->level.load();
-    ret.experience = this->experience.load();
-    ret.meseta = this->meseta.load();
+    ret.esp = this->esp;
+    ret.height = this->height;
+    ret.unknown_a3 = this->unknown_a3;
+    ret.level = this->level;
+    ret.experience = this->experience;
+    ret.meseta = this->meseta;
     return ret;
   }
 } __attribute__((packed));

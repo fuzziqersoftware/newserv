@@ -552,7 +552,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSODCN
   ret->inventory.decode_from_client(Version::DC_V1);
   uint8_t language = ret->inventory.language;
   ret->disp = src.disp.to_bb(language, language);
-  ret->validation_flags = src.validation_flags;
+  ret->validation_flags = 0;
   ret->creation_timestamp = src.creation_timestamp;
   ret->play_time_seconds = src.play_time_seconds;
   ret->option_flags = src.option_flags;
@@ -561,8 +561,8 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSODCN
     // Copy the first half of the quest flags to all difficulties
     ret->quest_flags.data[difficulty].data = src.quest_flags;
   }
-  ret->bank.meseta = src.bank_meseta.load();
-  ret->bank.num_items = src.num_bank_items.load();
+  ret->bank.meseta = src.bank_meseta;
+  ret->bank.num_items = src.num_bank_items;
   for (size_t z = 0; z < std::min<size_t>(ret->bank.items.size(), src.bank_items.size()); z++) {
     auto& dest_item = ret->bank.items[z];
     dest_item.data = src.bank_items[z];
@@ -585,7 +585,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSODC1
   ret->inventory.decode_from_client(Version::DC_V1);
   uint8_t language = ret->inventory.language;
   ret->disp = src.disp.to_bb(language, language);
-  ret->validation_flags = src.validation_flags;
+  ret->validation_flags = 0;
   ret->creation_timestamp = src.creation_timestamp;
   ret->play_time_seconds = src.play_time_seconds;
   ret->option_flags = src.option_flags;
@@ -594,8 +594,8 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSODC1
     // Copy the first half of the quest flags to all difficulties
     ret->quest_flags.data[difficulty].data = src.quest_flags;
   }
-  ret->bank.meseta = src.bank_meseta.load();
-  ret->bank.num_items = src.num_bank_items.load();
+  ret->bank.meseta = src.bank_meseta;
+  ret->bank.num_items = src.num_bank_items;
   for (size_t z = 0; z < std::min<size_t>(ret->bank.items.size(), src.bank_items.size()); z++) {
     auto& dest_item = ret->bank.items[z];
     dest_item.data = src.bank_items[z];
@@ -607,7 +607,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSODC1
   for (size_t z = 0; z < std::min<size_t>(ret->symbol_chats.size(), src.symbol_chats.size()); z++) {
     auto& ret_sc = ret->symbol_chats[z];
     const auto& src_sc = src.symbol_chats[z];
-    ret_sc.present = src_sc.present.load();
+    ret_sc.present = src_sc.present;
     ret_sc.name.encode(src_sc.name.decode(language), language);
     ret_sc.spec = src_sc.spec;
   }
@@ -640,7 +640,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSODCV
   for (size_t z = 0; z < std::min<size_t>(ret->symbol_chats.size(), src.symbol_chats.size()); z++) {
     auto& ret_sc = ret->symbol_chats[z];
     const auto& src_sc = src.symbol_chats[z];
-    ret_sc.present = src_sc.present.load();
+    ret_sc.present = src_sc.present;
     ret_sc.name.encode(src_sc.name.decode(language), language);
     ret_sc.spec = src_sc.spec;
   }
@@ -673,7 +673,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSODCV
   for (size_t z = 0; z < std::min<size_t>(ret->symbol_chats.size(), src.symbol_chats.size()); z++) {
     auto& ret_sc = ret->symbol_chats[z];
     const auto& src_sc = src.symbol_chats[z];
-    ret_sc.present = src_sc.present.load();
+    ret_sc.present = src_sc.present;
     ret_sc.name.encode(src_sc.name.decode(language), language);
     ret_sc.spec = src_sc.spec;
   }
@@ -684,8 +684,8 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSODCV
   ret->challenge_records = src.challenge_records;
   ret->tech_menu_shortcut_entries = src.tech_menu_shortcut_entries;
   for (size_t z = 0; z < 5; z++) {
-    ret->choice_search_config.entries[z].parent_choice_id = src.choice_search_config[z * 2].load();
-    ret->choice_search_config.entries[z].choice_id = src.choice_search_config[z * 2 + 1].load();
+    ret->choice_search_config.entries[z].parent_choice_id = src.choice_search_config[z * 2];
+    ret->choice_search_config.entries[z].choice_id = src.choice_search_config[z * 2 + 1];
   }
   return ret;
 }
@@ -704,18 +704,18 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOGCN
   // not do this, so the data2 fields are already in the correct order here.
   uint8_t language = ret->inventory.language;
   ret->disp = src.disp.to_bb(language, language);
-  ret->validation_flags = src.validation_flags.load();
-  ret->creation_timestamp = src.creation_timestamp.load();
-  ret->play_time_seconds = src.play_time_seconds.load();
-  ret->option_flags = src.option_flags.load();
-  ret->save_count = src.save_count.load();
+  ret->validation_flags = src.validation_flags;
+  ret->creation_timestamp = src.creation_timestamp;
+  ret->play_time_seconds = src.play_time_seconds;
+  ret->option_flags = src.option_flags;
+  ret->save_count = src.save_count;
   ret->quest_flags = src.quest_flags;
   ret->bank = src.bank;
   ret->guild_card = src.guild_card;
   for (size_t z = 0; z < std::min<size_t>(ret->symbol_chats.size(), src.symbol_chats.size()); z++) {
     auto& ret_sc = ret->symbol_chats[z];
     const auto& gc_sc = src.symbol_chats[z];
-    ret_sc.present = gc_sc.present.load();
+    ret_sc.present = gc_sc.present;
     ret_sc.name.encode(gc_sc.name.decode(language), language);
     ret_sc.spec = gc_sc.spec;
   }
@@ -726,7 +726,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOGCN
   ret->unknown_a4 = src.unknown_a4;
   ret->challenge_records = src.challenge_records;
   for (size_t z = 0; z < std::min<size_t>(ret->tech_menu_shortcut_entries.size(), src.tech_menu_shortcut_entries.size()); z++) {
-    ret->tech_menu_shortcut_entries[z] = src.tech_menu_shortcut_entries[z].load();
+    ret->tech_menu_shortcut_entries[z] = src.tech_menu_shortcut_entries[z];
   }
   return ret;
 }
@@ -745,19 +745,19 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOGCC
   // not do this, so the data2 fields are already in the correct order here.
   uint8_t language = ret->inventory.language;
   ret->disp = src.disp.to_bb(language, language);
-  ret->validation_flags = src.validation_flags.load();
-  ret->creation_timestamp = src.creation_timestamp.load();
-  ret->play_time_seconds = src.play_time_seconds.load();
-  ret->option_flags = src.option_flags.load();
-  ret->save_count = src.save_count.load();
+  ret->validation_flags = src.validation_flags;
+  ret->creation_timestamp = src.creation_timestamp;
+  ret->play_time_seconds = src.play_time_seconds;
+  ret->option_flags = src.option_flags;
+  ret->save_count = src.save_count;
   ret->quest_flags = src.quest_flags;
-  ret->death_count = src.death_count.load();
+  ret->death_count = src.death_count;
   ret->bank = src.bank;
   ret->guild_card = src.guild_card;
   for (size_t z = 0; z < std::min<size_t>(ret->symbol_chats.size(), src.symbol_chats.size()); z++) {
     auto& ret_sc = ret->symbol_chats[z];
     const auto& src_sc = src.symbol_chats[z];
-    ret_sc.present = src_sc.present.load();
+    ret_sc.present = src_sc.present;
     ret_sc.name.encode(src_sc.name.decode(language), language);
     ret_sc.spec = src_sc.spec;
   }
@@ -770,12 +770,12 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOGCC
   ret->unknown_a4 = src.unknown_a4;
   ret->challenge_records = src.challenge_records;
   for (size_t z = 0; z < std::min<size_t>(ret->tech_menu_shortcut_entries.size(), src.tech_menu_shortcut_entries.size()); z++) {
-    ret->tech_menu_shortcut_entries[z] = src.tech_menu_shortcut_entries[z].load();
+    ret->tech_menu_shortcut_entries[z] = src.tech_menu_shortcut_entries[z];
   }
   ret->choice_search_config = src.choice_search_config;
   ret->unknown_a6 = src.unknown_a6;
   for (size_t z = 0; z < std::min<size_t>(ret->quest_counters.size(), src.quest_counters.size()); z++) {
-    ret->quest_counters[z] = src.quest_counters[z].load();
+    ret->quest_counters[z] = src.quest_counters[z];
   }
   ret->offline_battle_records = src.offline_battle_records;
   ret->unknown_a7 = src.unknown_a7;
@@ -792,18 +792,18 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOGCE
   ret->inventory = src.inventory;
   uint8_t language = ret->inventory.language;
   ret->disp = src.disp.to_bb(language, language);
-  ret->validation_flags = src.validation_flags.load();
-  ret->creation_timestamp = src.creation_timestamp.load();
-  ret->play_time_seconds = src.play_time_seconds.load();
-  ret->option_flags = src.option_flags.load();
-  ret->save_count = src.save_count.load();
-  ret->death_count = src.death_count.load();
+  ret->validation_flags = src.validation_flags;
+  ret->creation_timestamp = src.creation_timestamp;
+  ret->play_time_seconds = src.play_time_seconds;
+  ret->option_flags = src.option_flags;
+  ret->save_count = src.save_count;
+  ret->death_count = src.death_count;
   ret->bank = src.bank;
   ret->guild_card = src.guild_card;
   for (size_t z = 0; z < std::min<size_t>(ret->symbol_chats.size(), src.symbol_chats.size()); z++) {
     auto& ret_sc = ret->symbol_chats[z];
     const auto& gc_sc = src.symbol_chats[z];
-    ret_sc.present = gc_sc.present.load();
+    ret_sc.present = gc_sc.present;
     ret_sc.name.encode(gc_sc.name.decode(language), language);
     ret_sc.spec = gc_sc.spec;
   }
@@ -816,15 +816,15 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOGCE
   ret->unknown_a4 = src.ep3_config.unknown_a4;
   ret->challenge_records.rank_title.encode(src.ep3_config.rank_text.decode(language), language);
   for (size_t z = 0; z < std::min<size_t>(ret->tech_menu_shortcut_entries.size(), src.ep3_config.tech_menu_shortcut_entries.size()); z++) {
-    ret->tech_menu_shortcut_entries[z] = src.ep3_config.tech_menu_shortcut_entries[z].load();
+    ret->tech_menu_shortcut_entries[z] = src.ep3_config.tech_menu_shortcut_entries[z];
   }
   ret->choice_search_config.disabled = !!(ret->option_flags & 0x00040000);
   for (size_t z = 0; z < 5; z++) {
-    ret->choice_search_config.entries[z].parent_choice_id = src.ep3_config.choice_search_config[z * 2].load();
-    ret->choice_search_config.entries[z].choice_id = src.ep3_config.choice_search_config[z * 2 + 1].load();
+    ret->choice_search_config.entries[z].parent_choice_id = src.ep3_config.choice_search_config[z * 2];
+    ret->choice_search_config.entries[z].choice_id = src.ep3_config.choice_search_config[z * 2 + 1];
   }
   for (size_t z = 0; z < std::min<size_t>(ret->quest_counters.size(), src.ep3_config.scenario_progress.size()); z++) {
-    ret->quest_counters[z] = src.ep3_config.scenario_progress[z].load();
+    ret->quest_counters[z] = src.ep3_config.scenario_progress[z];
   }
   ret->offline_battle_records = src.ep3_config.unused_offline_records;
   return ret;
@@ -842,19 +842,19 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOXBC
   uint8_t language = ret->inventory.language;
   ret->disp = src.disp.to_bb(language, language);
   ret->validation_flags = src.validation_flags;
-  ret->creation_timestamp = src.creation_timestamp.load();
-  ret->play_time_seconds = src.play_time_seconds.load();
-  ret->option_flags = src.option_flags.load();
-  ret->save_count = src.save_count.load();
+  ret->creation_timestamp = src.creation_timestamp;
+  ret->play_time_seconds = src.play_time_seconds;
+  ret->option_flags = src.option_flags;
+  ret->save_count = src.save_count;
   ret->quest_flags = src.quest_flags;
-  ret->death_count = src.death_count.load();
+  ret->death_count = src.death_count;
   ret->bank = src.bank;
   ret->bank.decode_from_client(Version::XB_V3);
   ret->guild_card = src.guild_card;
   for (size_t z = 0; z < std::min<size_t>(ret->symbol_chats.size(), src.symbol_chats.size()); z++) {
     auto& ret_sc = ret->symbol_chats[z];
     const auto& src_sc = src.symbol_chats[z];
-    ret_sc.present = src_sc.present.load();
+    ret_sc.present = src_sc.present;
     ret_sc.name.encode(src_sc.name.decode(language), language);
     ret_sc.spec = src_sc.spec;
   }
@@ -867,19 +867,19 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOXBC
   ret->unknown_a4 = src.unknown_a4;
   ret->challenge_records = src.challenge_records;
   for (size_t z = 0; z < std::min<size_t>(ret->tech_menu_shortcut_entries.size(), src.tech_menu_shortcut_entries.size()); z++) {
-    ret->tech_menu_shortcut_entries[z] = src.tech_menu_shortcut_entries[z].load();
+    ret->tech_menu_shortcut_entries[z] = src.tech_menu_shortcut_entries[z];
   }
   ret->choice_search_config = src.choice_search_config;
   ret->unknown_a6 = src.unknown_a6;
   for (size_t z = 0; z < std::min<size_t>(ret->quest_counters.size(), src.quest_counters.size()); z++) {
-    ret->quest_counters[z] = src.quest_counters[z].load();
+    ret->quest_counters[z] = src.quest_counters[z];
   }
   ret->offline_battle_records = src.offline_battle_records;
   ret->unknown_a7 = src.unknown_a7;
   return ret;
 }
 
-PSOBBCharacterFile::operator PSODCNTECharacterFile::Character() const {
+PSODCNTECharacterFile::Character PSOBBCharacterFile::as_dc_nte(uint64_t hardware_id) const {
   uint8_t language = this->inventory.language;
 
   PSODCNTECharacterFile::Character ret;
@@ -889,14 +889,14 @@ PSOBBCharacterFile::operator PSODCNTECharacterFile::Character() const {
   ret.inventory.encode_for_client(Version::DC_NTE, nullptr);
   ret.disp = this->disp.to_dcpcv3<false>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::DC_V2);
-  ret.validation_flags = this->validation_flags.load();
-  ret.creation_timestamp = this->creation_timestamp.load();
-  ret.play_time_seconds = this->play_time_seconds.load();
-  ret.option_flags = this->option_flags.load();
+  ret.masked_creation_timestamp = this->creation_timestamp ^ static_cast<uint32_t>(hardware_id >> 16);
+  ret.creation_timestamp = this->creation_timestamp;
+  ret.play_time_seconds = this->play_time_seconds;
+  ret.option_flags = this->option_flags;
   ret.quest_flags.clear(0);
   ret.quest_flags = this->quest_flags.data[0].data; // Just use Normal difficulty flags
-  ret.bank_meseta = this->bank.meseta.load();
-  ret.num_bank_items = this->bank.num_items.load();
+  ret.bank_meseta = this->bank.meseta;
+  ret.num_bank_items = this->bank.num_items;
   for (size_t z = 0; z < std::min<size_t>(ret.bank_items.size(), this->bank.items.size()); z++) {
     auto& dest_item = ret.bank_items[z];
     dest_item = this->bank.items[z].data;
@@ -905,7 +905,7 @@ PSOBBCharacterFile::operator PSODCNTECharacterFile::Character() const {
   return ret;
 }
 
-PSOBBCharacterFile::operator PSODC112000CharacterFile::Character() const {
+PSODC112000CharacterFile::Character PSOBBCharacterFile::as_11_2000(uint64_t hardware_id) const {
   uint8_t language = this->inventory.language;
 
   PSODC112000CharacterFile::Character ret;
@@ -915,14 +915,14 @@ PSOBBCharacterFile::operator PSODC112000CharacterFile::Character() const {
   ret.inventory.encode_for_client(Version::DC_11_2000, nullptr);
   ret.disp = this->disp.to_dcpcv3<false>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::DC_V2);
-  ret.validation_flags = this->validation_flags.load();
-  ret.creation_timestamp = this->creation_timestamp.load();
-  ret.play_time_seconds = this->play_time_seconds.load();
-  ret.option_flags = this->option_flags.load();
-  ret.save_count_since_last_inventory_erasure = this->save_count.load();
+  ret.masked_creation_timestamp = this->creation_timestamp ^ static_cast<uint32_t>(hardware_id >> 16);
+  ret.creation_timestamp = this->creation_timestamp;
+  ret.play_time_seconds = this->play_time_seconds;
+  ret.option_flags = this->option_flags;
+  ret.save_count_since_last_inventory_erasure = this->save_count;
   ret.quest_flags = this->quest_flags.data[0].data; // Just use Normal difficulty flags
-  ret.bank_meseta = this->bank.meseta.load();
-  ret.num_bank_items = this->bank.num_items.load();
+  ret.bank_meseta = this->bank.meseta;
+  ret.num_bank_items = this->bank.num_items;
   for (size_t z = 0; z < std::min<size_t>(ret.bank_items.size(), this->bank.items.size()); z++) {
     auto& dest_item = ret.bank_items[z];
     dest_item = this->bank.items[z].data;
@@ -932,7 +932,7 @@ PSOBBCharacterFile::operator PSODC112000CharacterFile::Character() const {
   for (size_t z = 0; z < std::min<size_t>(ret.symbol_chats.size(), this->symbol_chats.size()); z++) {
     auto& ret_sc = ret.symbol_chats[z];
     const auto& gc_sc = this->symbol_chats[z];
-    ret_sc.present = gc_sc.present.load();
+    ret_sc.present = gc_sc.present;
     ret_sc.name.encode(gc_sc.name.decode(language), language);
     ret_sc.spec = gc_sc.spec;
   }
@@ -952,11 +952,11 @@ PSOBBCharacterFile::operator PSODCV1CharacterFile::Character() const {
   ret.inventory.encode_for_client(Version::DC_V1, nullptr);
   ret.disp = this->disp.to_dcpcv3<false>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::DC_V2);
-  ret.validation_flags = this->validation_flags.load();
-  ret.creation_timestamp = this->creation_timestamp.load();
-  ret.play_time_seconds = this->play_time_seconds.load();
-  ret.option_flags = this->option_flags.load();
-  ret.save_count = this->save_count.load();
+  ret.validation_flags = this->validation_flags;
+  ret.creation_timestamp = this->creation_timestamp;
+  ret.play_time_seconds = this->play_time_seconds;
+  ret.option_flags = this->option_flags;
+  ret.save_count = this->save_count;
   ret.quest_flags = this->quest_flags;
   ret.bank = this->bank;
   ret.bank.encode_for_client(Version::DC_V1);
@@ -964,7 +964,7 @@ PSOBBCharacterFile::operator PSODCV1CharacterFile::Character() const {
   for (size_t z = 0; z < std::min<size_t>(ret.symbol_chats.size(), this->symbol_chats.size()); z++) {
     auto& ret_sc = ret.symbol_chats[z];
     const auto& gc_sc = this->symbol_chats[z];
-    ret_sc.present = gc_sc.present.load();
+    ret_sc.present = gc_sc.present;
     ret_sc.name.encode(gc_sc.name.decode(language), language);
     ret_sc.spec = gc_sc.spec;
   }
@@ -984,11 +984,11 @@ PSOBBCharacterFile::operator PSODCV2CharacterFile::Character() const {
   ret.inventory.encode_for_client(Version::DC_V2, nullptr);
   ret.disp = this->disp.to_dcpcv3<false>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::DC_V2);
-  ret.validation_flags = this->validation_flags.load();
-  ret.creation_timestamp = this->creation_timestamp.load();
-  ret.play_time_seconds = this->play_time_seconds.load();
-  ret.option_flags = this->option_flags.load();
-  ret.save_count = this->save_count.load();
+  ret.validation_flags = this->validation_flags;
+  ret.creation_timestamp = this->creation_timestamp;
+  ret.play_time_seconds = this->play_time_seconds;
+  ret.option_flags = this->option_flags;
+  ret.save_count = this->save_count;
   ret.quest_flags = this->quest_flags;
   ret.bank = this->bank;
   ret.bank.encode_for_client(Version::DC_V2);
@@ -996,7 +996,7 @@ PSOBBCharacterFile::operator PSODCV2CharacterFile::Character() const {
   for (size_t z = 0; z < std::min<size_t>(ret.symbol_chats.size(), this->symbol_chats.size()); z++) {
     auto& ret_sc = ret.symbol_chats[z];
     const auto& gc_sc = this->symbol_chats[z];
-    ret_sc.present = gc_sc.present.load();
+    ret_sc.present = gc_sc.present;
     ret_sc.name.encode(gc_sc.name.decode(language), language);
     ret_sc.spec = gc_sc.spec;
   }
@@ -1006,11 +1006,11 @@ PSOBBCharacterFile::operator PSODCV2CharacterFile::Character() const {
   ret.battle_records = this->battle_records;
   ret.challenge_records = this->challenge_records;
   for (size_t z = 0; z < std::min<size_t>(ret.tech_menu_shortcut_entries.size(), this->tech_menu_shortcut_entries.size()); z++) {
-    ret.tech_menu_shortcut_entries[z] = this->tech_menu_shortcut_entries[z].load();
+    ret.tech_menu_shortcut_entries[z] = this->tech_menu_shortcut_entries[z];
   }
   for (size_t z = 0; z < 5; z++) {
-    ret.choice_search_config[z * 2] = this->choice_search_config.entries[z].parent_choice_id.load();
-    ret.choice_search_config[z * 2 + 1] = this->choice_search_config.entries[z].choice_id.load();
+    ret.choice_search_config[z * 2] = this->choice_search_config.entries[z].parent_choice_id;
+    ret.choice_search_config[z * 2 + 1] = this->choice_search_config.entries[z].choice_id;
   }
   return ret;
 }
@@ -1026,18 +1026,18 @@ PSOBBCharacterFile::operator PSOGCNTECharacterFileCharacter() const {
   // not do this, so the data2 fields are already in the correct order here.
   ret.disp = this->disp.to_dcpcv3<true>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::GC_V3);
-  ret.validation_flags = this->validation_flags.load();
-  ret.creation_timestamp = this->creation_timestamp.load();
-  ret.play_time_seconds = this->play_time_seconds.load();
-  ret.option_flags = this->option_flags.load();
-  ret.save_count = this->save_count.load();
+  ret.validation_flags = this->validation_flags;
+  ret.creation_timestamp = this->creation_timestamp;
+  ret.play_time_seconds = this->play_time_seconds;
+  ret.option_flags = this->option_flags;
+  ret.save_count = this->save_count;
   ret.quest_flags = this->quest_flags;
   ret.bank = this->bank;
   ret.guild_card = this->guild_card;
   for (size_t z = 0; z < std::min<size_t>(ret.symbol_chats.size(), this->symbol_chats.size()); z++) {
     auto& ret_sc = ret.symbol_chats[z];
     const auto& gc_sc = this->symbol_chats[z];
-    ret_sc.present = gc_sc.present.load();
+    ret_sc.present = gc_sc.present;
     ret_sc.name.encode(gc_sc.name.decode(language), language);
     ret_sc.spec = gc_sc.spec;
   }
@@ -1048,7 +1048,7 @@ PSOBBCharacterFile::operator PSOGCNTECharacterFileCharacter() const {
   ret.unknown_a4 = this->unknown_a4;
   ret.challenge_records = this->challenge_records;
   for (size_t z = 0; z < std::min<size_t>(ret.tech_menu_shortcut_entries.size(), this->tech_menu_shortcut_entries.size()); z++) {
-    ret.tech_menu_shortcut_entries[z] = this->tech_menu_shortcut_entries[z].load();
+    ret.tech_menu_shortcut_entries[z] = this->tech_menu_shortcut_entries[z];
   }
   return ret;
 }
@@ -1064,19 +1064,19 @@ PSOBBCharacterFile::operator PSOGCCharacterFile::Character() const {
   // not do this, so the data2 fields are already in the correct order here.
   ret.disp = this->disp.to_dcpcv3<true>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::GC_V3);
-  ret.validation_flags = this->validation_flags.load();
-  ret.creation_timestamp = this->creation_timestamp.load();
-  ret.play_time_seconds = this->play_time_seconds.load();
-  ret.option_flags = this->option_flags.load();
-  ret.save_count = this->save_count.load();
+  ret.validation_flags = this->validation_flags;
+  ret.creation_timestamp = this->creation_timestamp;
+  ret.play_time_seconds = this->play_time_seconds;
+  ret.option_flags = this->option_flags;
+  ret.save_count = this->save_count;
   ret.quest_flags = this->quest_flags;
-  ret.death_count = this->death_count.load();
+  ret.death_count = this->death_count;
   ret.bank = this->bank;
   ret.guild_card = this->guild_card;
   for (size_t z = 0; z < std::min<size_t>(ret.symbol_chats.size(), this->symbol_chats.size()); z++) {
     auto& ret_sc = ret.symbol_chats[z];
     const auto& gc_sc = this->symbol_chats[z];
-    ret_sc.present = gc_sc.present.load();
+    ret_sc.present = gc_sc.present;
     ret_sc.name.encode(gc_sc.name.decode(language), language);
     ret_sc.spec = gc_sc.spec;
   }
@@ -1089,12 +1089,12 @@ PSOBBCharacterFile::operator PSOGCCharacterFile::Character() const {
   ret.unknown_a4 = this->unknown_a4;
   ret.challenge_records = this->challenge_records;
   for (size_t z = 0; z < std::min<size_t>(ret.tech_menu_shortcut_entries.size(), this->tech_menu_shortcut_entries.size()); z++) {
-    ret.tech_menu_shortcut_entries[z] = this->tech_menu_shortcut_entries[z].load();
+    ret.tech_menu_shortcut_entries[z] = this->tech_menu_shortcut_entries[z];
   }
   ret.choice_search_config = this->choice_search_config;
   ret.unknown_a6 = this->unknown_a6;
   for (size_t z = 0; z < std::min<size_t>(ret.quest_counters.size(), this->quest_counters.size()); z++) {
-    ret.quest_counters[z] = this->quest_counters[z].load();
+    ret.quest_counters[z] = this->quest_counters[z];
   }
   ret.offline_battle_records = this->offline_battle_records;
   ret.unknown_a7 = this->unknown_a7;
@@ -1109,20 +1109,20 @@ PSOBBCharacterFile::operator PSOXBCharacterFileCharacter() const {
   ret.inventory.encode_for_client(Version::XB_V3, nullptr);
   ret.disp = this->disp.to_dcpcv3<false>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::XB_V3);
-  ret.validation_flags = this->validation_flags.load();
-  ret.creation_timestamp = this->creation_timestamp.load();
-  ret.play_time_seconds = this->play_time_seconds.load();
-  ret.option_flags = this->option_flags.load();
-  ret.save_count = this->save_count.load();
+  ret.validation_flags = this->validation_flags;
+  ret.creation_timestamp = this->creation_timestamp;
+  ret.play_time_seconds = this->play_time_seconds;
+  ret.option_flags = this->option_flags;
+  ret.save_count = this->save_count;
   ret.quest_flags = this->quest_flags;
-  ret.death_count = this->death_count.load();
+  ret.death_count = this->death_count;
   ret.bank = this->bank;
   ret.bank.encode_for_client(Version::XB_V3);
   ret.guild_card = this->guild_card;
   for (size_t z = 0; z < std::min<size_t>(ret.symbol_chats.size(), this->symbol_chats.size()); z++) {
     auto& ret_sc = ret.symbol_chats[z];
     const auto& gc_sc = this->symbol_chats[z];
-    ret_sc.present = gc_sc.present.load();
+    ret_sc.present = gc_sc.present;
     ret_sc.name.encode(gc_sc.name.decode(language), language);
     ret_sc.spec = gc_sc.spec;
   }
@@ -1135,12 +1135,12 @@ PSOBBCharacterFile::operator PSOXBCharacterFileCharacter() const {
   ret.unknown_a4 = this->unknown_a4;
   ret.challenge_records = this->challenge_records;
   for (size_t z = 0; z < std::min<size_t>(ret.tech_menu_shortcut_entries.size(), this->tech_menu_shortcut_entries.size()); z++) {
-    ret.tech_menu_shortcut_entries[z] = this->tech_menu_shortcut_entries[z].load();
+    ret.tech_menu_shortcut_entries[z] = this->tech_menu_shortcut_entries[z];
   }
   ret.choice_search_config = this->choice_search_config;
   ret.unknown_a6 = this->unknown_a6;
   for (size_t z = 0; z < std::min<size_t>(ret.quest_counters.size(), this->quest_counters.size()); z++) {
-    ret.quest_counters[z] = this->quest_counters[z].load();
+    ret.quest_counters[z] = this->quest_counters[z];
   }
   ret.offline_battle_records = this->offline_battle_records;
   ret.unknown_a7 = this->unknown_a7;
@@ -1478,7 +1478,7 @@ string encode_psobb_hangame_credentials(const string& user_id, const string& tok
   if (user_id.size() > 12) {
     throw runtime_error("user_id must be at most 12 characters");
   }
-  if (!phosg::ends_with(user_id, "@HG")) {
+  if (!user_id.ends_with("@HG")) {
     throw runtime_error("user_id must end with \"@HG\"");
   }
   if (token.empty()) {

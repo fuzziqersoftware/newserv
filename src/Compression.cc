@@ -1018,7 +1018,7 @@ void prs_disassemble(FILE* stream, const void* data, size_t size) {
     uint8_t buffered_bits = cr.buffered_bits();
     if (cr.read()) {
       uint8_t literal_value = r.get_u8();
-      fprintf(stream, "[%zX] %hhu> 1    %02hhX        literal %02hhX\n",
+      phosg::fwrite_fmt(stream, "[{:X}] {}> 1    {:02X}        literal {:02X}\n",
           output_bytes, buffered_bits, literal_value, literal_value);
       output_bytes++;
 
@@ -1030,19 +1030,19 @@ void prs_disassemble(FILE* stream, const void* data, size_t size) {
         uint16_t a = (a_high << 8) | a_low;
         ssize_t offset = (a >> 3) | (~0x1FFF);
         if (offset == ~0x1FFF) {
-          fprintf(stream, "[%zX] end\n", output_bytes);
+          phosg::fwrite_fmt(stream, "[{:X}] end\n", output_bytes);
           break;
         }
         if (a & 7) {
           count = (a & 7) + 2;
           read_offset = output_bytes + offset;
-          fprintf(stream, "[%zX] %hhu> 01   %02hhX %02hhX     long copy from %zd (offset=%zX) size=%zX\n",
+          phosg::fwrite_fmt(stream, "[{:X}] {}> 01   {:02X} {:02X}     long copy from {} (offset={:X}) size={:X}\n",
               output_bytes, buffered_bits, a_low, a_high, offset, read_offset, count);
         } else {
           uint8_t count_u8 = r.get_u8();
           count = count_u8 + 1;
           read_offset = output_bytes + offset;
-          fprintf(stream, "[%zX] %hhu> 01   %02hhX %02hhX %02hhX  extended copy from %zd (offset=%zX) size=%zX\n",
+          phosg::fwrite_fmt(stream, "[{:X}] {}> 01   {:02X} {:02X} {:02X}  extended copy from {} (offset={:X}) size={:X}\n",
               output_bytes, buffered_bits, a_low, a_high, count_u8, offset, read_offset, count);
         }
 
@@ -1053,7 +1053,7 @@ void prs_disassemble(FILE* stream, const void* data, size_t size) {
         count = ((first_bit ? 2 : 0) | (second_bit ? 1 : 0)) + 2;
         ssize_t offset = offset_u8 | (~0xFF);
         read_offset = output_bytes + offset;
-        fprintf(stream, "[%zX] %hhu> 00%c%c %02hhX        short copy from %zd (offset=%zX) size=%zX\n",
+        phosg::fwrite_fmt(stream, "[{:X}] {}> 00{}{} {:02X}        short copy from {} (offset={:X}) size={:X}\n",
             output_bytes, buffered_bits, first_bit ? '1' : '0', second_bit ? '1' : '0', offset_u8, offset, read_offset, count);
       }
 
@@ -1346,11 +1346,11 @@ void bc0_disassemble(FILE* stream, const void* data, size_t size) {
       uint8_t a2 = r.get_u8();
       size_t count = (a2 & 0x0F) + 3;
       // size_t backreference_offset = a1 | ((a2 << 4) & 0xF00);
-      fprintf(stream, "[%zX] backreference %02zX\n", output_bytes, count);
+      phosg::fwrite_fmt(stream, "[{:X}] backreference {:02X}\n", output_bytes, count);
       output_bytes += count;
 
     } else {
-      fprintf(stream, "[%zX] literal %02hhX\n", output_bytes, r.get_u8());
+      phosg::fwrite_fmt(stream, "[{:X}] literal {:02X}\n", output_bytes, r.get_u8());
       output_bytes++;
     }
   }

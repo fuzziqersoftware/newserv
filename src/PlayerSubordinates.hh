@@ -209,25 +209,25 @@ struct PlayerVisualConfigT {
     PlayerVisualConfigT<!BE> ret;
     ret.name = this->name;
     ret.unknown_a2 = this->unknown_a2;
-    ret.name_color = this->name_color.load();
+    ret.name_color = this->name_color;
     ret.extra_model = this->extra_model;
     ret.unused = this->unused;
-    ret.name_color_checksum = this->name_color_checksum.load();
+    ret.name_color_checksum = this->name_color_checksum;
     ret.section_id = this->section_id;
     ret.char_class = this->char_class;
     ret.validation_flags = this->validation_flags;
     ret.version = this->version;
-    ret.class_flags = this->class_flags.load();
-    ret.costume = this->costume.load();
-    ret.skin = this->skin.load();
-    ret.face = this->face.load();
-    ret.head = this->head.load();
-    ret.hair = this->hair.load();
-    ret.hair_r = this->hair_r.load();
-    ret.hair_g = this->hair_g.load();
-    ret.hair_b = this->hair_b.load();
-    ret.proportion_x = this->proportion_x.load();
-    ret.proportion_y = this->proportion_y.load();
+    ret.class_flags = this->class_flags;
+    ret.costume = this->costume;
+    ret.skin = this->skin;
+    ret.face = this->face;
+    ret.head = this->head;
+    ret.hair = this->hair;
+    ret.hair_r = this->hair_r;
+    ret.hair_g = this->hair_g;
+    ret.hair_b = this->hair_b;
+    ret.proportion_x = this->proportion_x;
+    ret.proportion_y = this->proportion_y;
     return ret;
   }
 } __attribute__((packed));
@@ -428,7 +428,7 @@ struct GuildCardBB {
   operator GuildCardGCT<BE, DescriptionLength>() const {
     GuildCardGCT<BE, DescriptionLength> ret;
     ret.player_tag = 0x00010000;
-    ret.guild_card_number = this->guild_card_number.load();
+    ret.guild_card_number = this->guild_card_number;
     ret.name.encode(this->name.decode(this->language), this->language);
     ret.description.encode(this->description.decode(this->language), this->language);
     ret.present = this->present;
@@ -443,7 +443,7 @@ struct GuildCardBB {
 template <bool BE, size_t DescriptionLength>
 GuildCardGCT<BE, DescriptionLength>::operator GuildCardBB() const {
   GuildCardBB ret;
-  ret.guild_card_number = this->guild_card_number.load();
+  ret.guild_card_number = this->guild_card_number;
   ret.name.encode(this->name.decode(this->language), this->language);
   ret.description.encode(this->description.decode(this->language), this->language);
   ret.present = this->present;
@@ -526,7 +526,7 @@ struct ChallengeAwardStateT {
 
   operator ChallengeAwardStateT<!BE>() const {
     ChallengeAwardStateT<!BE> ret;
-    ret.rank_award_flags = this->rank_award_flags.load();
+    ret.rank_award_flags = this->rank_award_flags;
     ret.maximum_rank = this->maximum_rank;
     return ret;
   }
@@ -573,33 +573,30 @@ template <bool BE>
 struct PlayerRecordsChallengeV3T {
   // Offsets are (1) relative to start of C5 entry, and (2) relative to start
   // of save file structure
-  struct Stats {
-    /* 00:1C */ U16T<BE> title_color = 0x7FFF; // XRGB1555
-    /* 02:1E */ parray<uint8_t, 2> unknown_u0;
-    /* 04:20 */ parray<ChallengeTimeT<BE>, 9> times_ep1_online;
-    /* 28:44 */ parray<ChallengeTimeT<BE>, 5> times_ep2_online;
-    /* 3C:58 */ parray<ChallengeTimeT<BE>, 9> times_ep1_offline;
-    /* 60:7C */ uint8_t grave_is_ep2 = 0;
-    /* 61:7D */ uint8_t grave_stage_num = 0;
-    /* 62:7E */ uint8_t grave_floor = 0;
-    /* 63:7F */ uint8_t unknown_g0 = 0;
-    /* 64:80 */ U16T<BE> grave_deaths = 0;
-    /* 66:82 */ parray<uint8_t, 2> unknown_u4;
-    /* 68:84 */ U32T<BE> grave_time = 0; // Encoded as in PlayerRecordsChallengeDCPC
-    /* 6C:88 */ U32T<BE> grave_defeated_by_enemy_rt_index = 0;
-    /* 70:8C */ F32T<BE> grave_x = 0.0f;
-    /* 74:90 */ F32T<BE> grave_y = 0.0f;
-    /* 78:94 */ F32T<BE> grave_z = 0.0f;
-    /* 7C:98 */ pstring<TextEncoding::ASCII, 0x14> grave_team;
-    /* 90:AC */ pstring<TextEncoding::ASCII, 0x20> grave_message;
-    /* B0:CC */ parray<uint8_t, 4> unknown_m5;
-    /* B4:D0 */ parray<U32T<BE>, 3> unknown_t6;
-    /* C0:DC */ ChallengeAwardStateT<BE> ep1_online_award_state;
-    /* C8:E4 */ ChallengeAwardStateT<BE> ep2_online_award_state;
-    /* D0:EC */ ChallengeAwardStateT<BE> ep1_offline_award_state;
-    /* D8:F4 */
-  } __attribute__((packed));
-  /* 0000:001C */ Stats stats;
+  /* 0000:001C */ U16T<BE> title_color = 0x7FFF; // XRGB1555
+  /* 0002:001E */ parray<uint8_t, 2> unknown_u0;
+  /* 0004:0020 */ parray<ChallengeTimeT<BE>, 9> times_ep1_online;
+  /* 0028:0044 */ parray<ChallengeTimeT<BE>, 5> times_ep2_online;
+  /* 003C:0058 */ parray<ChallengeTimeT<BE>, 9> times_ep1_offline;
+  /* 0060:007C */ uint8_t grave_is_ep2 = 0;
+  /* 0061:007D */ uint8_t grave_stage_num = 0;
+  /* 0062:007E */ uint8_t grave_floor = 0;
+  /* 0063:007F */ uint8_t unknown_g0 = 0;
+  /* 0064:0080 */ U16T<BE> grave_deaths = 0;
+  /* 0066:0082 */ parray<uint8_t, 2> unknown_u4;
+  /* 0068:0084 */ U32T<BE> grave_time = 0; // Encoded as in PlayerRecordsChallengeDCPC
+  /* 006C:0088 */ U32T<BE> grave_defeated_by_enemy_rt_index = 0;
+  /* 0070:008C */ F32T<BE> grave_x = 0.0f;
+  /* 0074:0090 */ F32T<BE> grave_y = 0.0f;
+  /* 0078:0094 */ F32T<BE> grave_z = 0.0f;
+  /* 007C:0098 */ pstring<TextEncoding::ASCII, 0x14> grave_team;
+  /* 0090:00AC */ pstring<TextEncoding::ASCII, 0x20> grave_message;
+  /* 00B0:00CC */ parray<uint8_t, 4> unknown_m5;
+  /* 00B4:00D0 */ parray<U32T<BE>, 3> unknown_t6;
+  /* 00C0:00DC */ ChallengeAwardStateT<BE> ep1_online_award_state;
+  /* 00C8:00E4 */ ChallengeAwardStateT<BE> ep2_online_award_state;
+  /* 00D0:00EC */ ChallengeAwardStateT<BE> ep1_offline_award_state;
+  /* 00D8:00F4 */
   // On Episode 3, there are special cases that apply to this field - if the
   // text ends with certain strings, the player will have particle effects
   // emanate from their character in the lobby every 2 seconds. The effects are:
@@ -615,6 +612,34 @@ using PlayerRecordsChallengeV3 = PlayerRecordsChallengeV3T<false>;
 using PlayerRecordsChallengeV3BE = PlayerRecordsChallengeV3T<true>;
 check_struct_size(PlayerRecordsChallengeV3, 0x100);
 check_struct_size(PlayerRecordsChallengeV3BE, 0x100);
+
+struct PlayerRecordsChallengeEp3 {
+  /* 00:1C */ be_uint16_t title_color = 0x7FFF; // XRGB1555
+  /* 02:1E */ parray<uint8_t, 2> unknown_u0;
+  /* 04:20 */ parray<ChallengeTimeT<true>, 9> times_ep1_online;
+  /* 28:44 */ parray<ChallengeTimeT<true>, 5> times_ep2_online;
+  /* 3C:58 */ parray<ChallengeTimeT<true>, 9> times_ep1_offline;
+  /* 60:7C */ uint8_t grave_is_ep2 = 0;
+  /* 61:7D */ uint8_t grave_stage_num = 0;
+  /* 62:7E */ uint8_t grave_floor = 0;
+  /* 63:7F */ uint8_t unknown_g0 = 0;
+  /* 64:80 */ be_uint16_t grave_deaths = 0;
+  /* 66:82 */ parray<uint8_t, 2> unknown_u4;
+  /* 68:84 */ be_uint32_t grave_time = 0; // Encoded as in PlayerRecordsChallengeDCPC
+  /* 6C:88 */ be_uint32_t grave_defeated_by_enemy_rt_index = 0;
+  /* 70:8C */ be_float grave_x = 0.0f;
+  /* 74:90 */ be_float grave_y = 0.0f;
+  /* 78:94 */ be_float grave_z = 0.0f;
+  /* 7C:98 */ pstring<TextEncoding::ASCII, 0x14> grave_team;
+  /* 90:AC */ pstring<TextEncoding::ASCII, 0x20> grave_message;
+  /* B0:CC */ parray<uint8_t, 4> unknown_m5;
+  /* B4:D0 */ parray<be_uint32_t, 3> unknown_t6;
+  /* C0:DC */ ChallengeAwardStateT<true> ep1_online_award_state;
+  /* C8:E4 */ ChallengeAwardStateT<true> ep2_online_award_state;
+  /* D0:EC */ ChallengeAwardStateT<true> ep1_offline_award_state;
+  /* D8:F4 */
+} __attribute__((packed));
+check_struct_size(PlayerRecordsChallengeEp3, 0xD8);
 
 struct PlayerRecordsChallengeBB {
   /* 0000 */ le_uint16_t title_color = 0x7FFF; // XRGB1555
@@ -653,32 +678,32 @@ struct PlayerRecordsChallengeBB {
 
   template <bool BE>
   PlayerRecordsChallengeBB(const PlayerRecordsChallengeV3T<BE>& rec)
-      : title_color(rec.stats.title_color.load()),
-        unknown_u0(rec.stats.unknown_u0),
-        times_ep1_online(rec.stats.times_ep1_online),
-        times_ep2_online(rec.stats.times_ep2_online),
-        times_ep1_offline(rec.stats.times_ep1_offline),
-        grave_is_ep2(rec.stats.grave_is_ep2),
-        grave_stage_num(rec.stats.grave_stage_num),
-        grave_floor(rec.stats.grave_floor),
-        unknown_g0(rec.stats.unknown_g0),
-        grave_deaths(rec.stats.grave_deaths.load()),
-        unknown_u4(rec.stats.unknown_u4),
-        grave_time(rec.stats.grave_time.load()),
-        grave_defeated_by_enemy_rt_index(rec.stats.grave_defeated_by_enemy_rt_index.load()),
-        grave_x(rec.stats.grave_x.load()),
-        grave_y(rec.stats.grave_y.load()),
-        grave_z(rec.stats.grave_z.load()),
-        grave_team(rec.stats.grave_team.decode(), 1),
-        grave_message(rec.stats.grave_message.decode(), 1),
-        unknown_m5(rec.stats.unknown_m5),
-        ep1_online_award_state(rec.stats.ep1_online_award_state),
-        ep2_online_award_state(rec.stats.ep2_online_award_state),
-        ep1_offline_award_state(rec.stats.ep1_offline_award_state),
+      : title_color(rec.title_color),
+        unknown_u0(rec.unknown_u0),
+        times_ep1_online(rec.times_ep1_online),
+        times_ep2_online(rec.times_ep2_online),
+        times_ep1_offline(rec.times_ep1_offline),
+        grave_is_ep2(rec.grave_is_ep2),
+        grave_stage_num(rec.grave_stage_num),
+        grave_floor(rec.grave_floor),
+        unknown_g0(rec.unknown_g0),
+        grave_deaths(rec.grave_deaths),
+        unknown_u4(rec.unknown_u4),
+        grave_time(rec.grave_time),
+        grave_defeated_by_enemy_rt_index(rec.grave_defeated_by_enemy_rt_index),
+        grave_x(rec.grave_x),
+        grave_y(rec.grave_y),
+        grave_z(rec.grave_z),
+        grave_team(rec.grave_team.decode(), 1),
+        grave_message(rec.grave_message.decode(), 1),
+        unknown_m5(rec.unknown_m5),
+        ep1_online_award_state(rec.ep1_online_award_state),
+        ep2_online_award_state(rec.ep2_online_award_state),
+        ep1_offline_award_state(rec.ep1_offline_award_state),
         rank_title(rec.rank_title.decode(), 1),
         unknown_l7(rec.unknown_l7) {
-    for (size_t z = 0; z < std::min<size_t>(this->unknown_t6.size(), rec.stats.unknown_t6.size()); z++) {
-      this->unknown_t6[z] = rec.stats.unknown_t6[z].load();
+    for (size_t z = 0; z < std::min<size_t>(this->unknown_t6.size(), rec.unknown_t6.size()); z++) {
+      this->unknown_t6[z] = rec.unknown_t6[z];
     }
   }
 
@@ -687,31 +712,31 @@ struct PlayerRecordsChallengeBB {
   template <bool BE>
   operator PlayerRecordsChallengeV3T<BE>() const {
     PlayerRecordsChallengeV3T<BE> ret;
-    ret.stats.title_color = this->title_color.load();
-    ret.stats.unknown_u0 = this->unknown_u0;
-    ret.stats.times_ep1_online = this->times_ep1_online;
-    ret.stats.times_ep2_online = this->times_ep2_online;
-    ret.stats.times_ep1_offline = this->times_ep1_offline;
-    ret.stats.grave_is_ep2 = this->grave_is_ep2;
-    ret.stats.grave_stage_num = this->grave_stage_num;
-    ret.stats.grave_floor = this->grave_floor;
-    ret.stats.unknown_g0 = this->unknown_g0;
-    ret.stats.grave_deaths = this->grave_deaths.load();
-    ret.stats.unknown_u4 = this->unknown_u4;
-    ret.stats.grave_time = this->grave_time.load();
-    ret.stats.grave_defeated_by_enemy_rt_index = this->grave_defeated_by_enemy_rt_index.load();
-    ret.stats.grave_x = this->grave_x.load();
-    ret.stats.grave_y = this->grave_y.load();
-    ret.stats.grave_z = this->grave_z.load();
-    ret.stats.grave_team.encode(this->grave_team.decode(), 1);
-    ret.stats.grave_message.encode(this->grave_message.decode(), 1);
-    ret.stats.unknown_m5 = this->unknown_m5;
-    for (size_t z = 0; z < std::min<size_t>(ret.stats.unknown_t6.size(), this->unknown_t6.size()); z++) {
-      ret.stats.unknown_t6[z] = this->unknown_t6[z].load();
+    ret.title_color = this->title_color;
+    ret.unknown_u0 = this->unknown_u0;
+    ret.times_ep1_online = this->times_ep1_online;
+    ret.times_ep2_online = this->times_ep2_online;
+    ret.times_ep1_offline = this->times_ep1_offline;
+    ret.grave_is_ep2 = this->grave_is_ep2;
+    ret.grave_stage_num = this->grave_stage_num;
+    ret.grave_floor = this->grave_floor;
+    ret.unknown_g0 = this->unknown_g0;
+    ret.grave_deaths = this->grave_deaths;
+    ret.unknown_u4 = this->unknown_u4;
+    ret.grave_time = this->grave_time;
+    ret.grave_defeated_by_enemy_rt_index = this->grave_defeated_by_enemy_rt_index;
+    ret.grave_x = this->grave_x;
+    ret.grave_y = this->grave_y;
+    ret.grave_z = this->grave_z;
+    ret.grave_team.encode(this->grave_team.decode(), 1);
+    ret.grave_message.encode(this->grave_message.decode(), 1);
+    ret.unknown_m5 = this->unknown_m5;
+    for (size_t z = 0; z < std::min<size_t>(ret.unknown_t6.size(), this->unknown_t6.size()); z++) {
+      ret.unknown_t6[z] = this->unknown_t6[z];
     }
-    ret.stats.ep1_online_award_state = this->ep1_online_award_state;
-    ret.stats.ep2_online_award_state = this->ep2_online_award_state;
-    ret.stats.ep1_offline_award_state = this->ep1_offline_award_state;
+    ret.ep1_online_award_state = this->ep1_online_award_state;
+    ret.ep2_online_award_state = this->ep2_online_award_state;
+    ret.ep1_offline_award_state = this->ep1_offline_award_state;
     ret.rank_title.encode(this->rank_title.decode(), 1);
     ret.unknown_l7 = this->unknown_l7;
     return ret;
@@ -731,14 +756,14 @@ struct PlayerRecordsBattleT {
   operator PlayerRecordsBattleT<!BE>() const {
     PlayerRecordsBattleT<!BE> ret;
     for (size_t z = 0; z < this->place_counts.size(); z++) {
-      ret.place_counts[z] = this->place_counts[z].load();
+      ret.place_counts[z] = this->place_counts[z];
     }
-    ret.disconnect_count = this->disconnect_count.load();
+    ret.disconnect_count = this->disconnect_count;
     for (size_t z = 0; z < this->unknown_a1.size(); z++) {
-      ret.unknown_a1[z] = this->unknown_a1[z].load();
+      ret.unknown_a1[z] = this->unknown_a1[z];
     }
     for (size_t z = 0; z < this->unknown_a2.size(); z++) {
-      ret.unknown_a2[z] = this->unknown_a2[z].load();
+      ret.unknown_a2[z] = this->unknown_a2[z];
     }
     return ret;
   }
@@ -985,9 +1010,9 @@ struct SymbolChatT {
 
   operator SymbolChatT<!BE>() const {
     SymbolChatT<!BE> ret;
-    ret.spec = this->spec.load();
+    ret.spec = this->spec;
     for (size_t z = 0; z < this->corner_objects.size(); z++) {
-      ret.corner_objects[z] = this->corner_objects[z].load();
+      ret.corner_objects[z] = this->corner_objects[z];
     }
     ret.face_parts = this->face_parts;
     return ret;

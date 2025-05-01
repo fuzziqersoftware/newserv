@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <filesystem>
 #include <phosg/Filesystem.hh>
 #include <phosg/Hash.hh>
 #include <phosg/Random.hh>
@@ -292,7 +293,7 @@ phosg::JSON Account::json() const {
 }
 
 string Account::str() const {
-  std::string ret = phosg::string_printf("Account: %010" PRIu32 "/%08" PRIX32 "\n", this->account_id, this->account_id);
+  std::string ret = std::format("Account: {:010}/{:08X}\n", this->account_id, this->account_id);
 
   if (this->flags) {
     string flags_str = "";
@@ -336,10 +337,10 @@ string Account::str() const {
     }
     if (flags_str.empty()) {
       flags_str = "none";
-    } else if (phosg::ends_with(flags_str, ",")) {
+    } else if (flags_str.ends_with(",")) {
       flags_str.pop_back();
     }
-    ret += phosg::string_printf("  Flags: %08" PRIX32 " (%s)\n", this->flags, flags_str.c_str());
+    ret += std::format("  Flags: {:08X} ({})\n", this->flags, flags_str);
   }
 
   if (this->user_flags) {
@@ -349,56 +350,56 @@ string Account::str() const {
     }
     if (user_flags_str.empty()) {
       user_flags_str = "none";
-    } else if (phosg::ends_with(user_flags_str, ",")) {
+    } else if (user_flags_str.ends_with(",")) {
       user_flags_str.pop_back();
     }
-    ret += phosg::string_printf("  User flags: %08" PRIX32 " (%s)\n", this->user_flags, user_flags_str.c_str());
+    ret += std::format("  User flags: {:08X} ({})\n", this->user_flags, user_flags_str);
   }
 
   if (this->ban_end_time) {
     string time_str = phosg::format_time(this->ban_end_time);
-    ret += phosg::string_printf("  Banned until: %" PRIu64 " (%s)\n", this->ban_end_time, time_str.c_str());
+    ret += std::format("  Banned until: {} ({})\n", this->ban_end_time, time_str);
   }
   if (this->ep3_current_meseta || this->ep3_total_meseta_earned) {
-    ret += phosg::string_printf("  Episode 3 meseta: %" PRIu32 " (total earned: %" PRIu32 ")\n",
+    ret += std::format("  Episode 3 meseta: {} (total earned: {})\n",
         this->ep3_current_meseta, this->ep3_total_meseta_earned);
   }
   if (!this->last_player_name.empty()) {
-    ret += phosg::string_printf("  Last player name: \"%s\"\n", this->last_player_name.c_str());
+    ret += std::format("  Last player name: \"{}\"\n", this->last_player_name);
   }
   if (!this->auto_reply_message.empty()) {
-    ret += phosg::string_printf("  Auto reply message: \"%s\"\n", this->auto_reply_message.c_str());
+    ret += std::format("  Auto reply message: \"{}\"\n", this->auto_reply_message);
   }
   if (this->bb_team_id) {
-    ret += phosg::string_printf("  BB team ID: %08" PRIX32 "\n", this->bb_team_id);
+    ret += std::format("  BB team ID: {:08X}\n", this->bb_team_id);
   }
   if (this->is_temporary) {
-    ret += phosg::string_printf("  Is temporary license: true\n");
+    ret += std::format("  Is temporary license: true\n");
   }
 
   for (const auto& it : this->dc_nte_licenses) {
-    ret += phosg::string_printf("  DC NTE license: serial_number=%s access_key=%s\n",
-        it.second->serial_number.c_str(), it.second->access_key.c_str());
+    ret += std::format("  DC NTE license: serial_number={} access_key={}\n",
+        it.second->serial_number, it.second->access_key);
   }
   for (const auto& it : this->dc_licenses) {
-    ret += phosg::string_printf("  DC license: serial_number=%" PRIX32 " access_key=%s\n",
-        it.second->serial_number, it.second->access_key.c_str());
+    ret += std::format("  DC license: serial_number={:X} access_key={}\n",
+        it.second->serial_number, it.second->access_key);
   }
   for (const auto& it : this->pc_licenses) {
-    ret += phosg::string_printf("  PC license: serial_number=%" PRIX32 " access_key=%s\n",
-        it.second->serial_number, it.second->access_key.c_str());
+    ret += std::format("  PC license: serial_number={:X} access_key={}\n",
+        it.second->serial_number, it.second->access_key);
   }
   for (const auto& it : this->gc_licenses) {
-    ret += phosg::string_printf("  GC license: serial_number=%010" PRIu32 " access_key=%s password=%s\n",
-        it.second->serial_number, it.second->access_key.c_str(), it.second->password.c_str());
+    ret += std::format("  GC license: serial_number={:010} access_key={} password={}\n",
+        it.second->serial_number, it.second->access_key, it.second->password);
   }
   for (const auto& it : this->xb_licenses) {
-    ret += phosg::string_printf("  XB license: gamertag=%s user_id=%016" PRIX64 " account_id=%016" PRIX64 "\n",
-        it.second->gamertag.c_str(), it.second->user_id, it.second->account_id);
+    ret += std::format("  XB license: gamertag={} user_id={:016X} account_id={:016X}\n",
+        it.second->gamertag, it.second->user_id, it.second->account_id);
   }
   for (const auto& it : this->bb_licenses) {
-    ret += phosg::string_printf("  BB license: username=%s password=%s\n",
-        it.second->username.c_str(), it.second->password.c_str());
+    ret += std::format("  BB license: username={} password={}\n",
+        it.second->username, it.second->password);
   }
 
   phosg::strip_trailing_whitespace(ret);
@@ -409,13 +410,13 @@ void Account::save() const {
   if (!this->is_temporary) {
     auto json = this->json();
     string json_data = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::HEX_INTEGERS);
-    string filename = phosg::string_printf("system/licenses/%010" PRIu32 ".json", this->account_id);
+    string filename = std::format("system/licenses/{:010}.json", this->account_id);
     phosg::save_file(filename, json_data);
   }
 }
 
 void Account::delete_file() const {
-  string filename = phosg::string_printf("system/licenses/%010" PRIu32 ".json", this->account_id);
+  string filename = std::format("system/licenses/{:010}.json", this->account_id);
   remove(filename.c_str());
 }
 
@@ -440,24 +441,24 @@ uint64_t Login::proxy_session_id() const {
 }
 
 string Login::str() const {
-  string ret = phosg::string_printf("Account:%08" PRIX32, this->account->account_id);
+  string ret = std::format("Account:{:08X}", this->account->account_id);
   if (this->account_was_created) {
     ret += " (new)";
   }
   if (this->dc_nte_license) {
-    ret += phosg::string_printf(" via DC NTE serial number %s", this->dc_nte_license->serial_number.c_str());
+    ret += std::format(" via DC NTE serial number {}", this->dc_nte_license->serial_number);
   } else if (this->dc_license) {
-    ret += phosg::string_printf(" via DC serial number %08" PRIX32, this->dc_license->serial_number);
+    ret += std::format(" via DC serial number {:08X}", this->dc_license->serial_number);
   } else if (this->pc_license) {
-    ret += phosg::string_printf(" via PC serial number %08" PRIX32, this->pc_license->serial_number);
+    ret += std::format(" via PC serial number {:08X}", this->pc_license->serial_number);
   } else if (this->gc_license) {
-    ret += phosg::string_printf(" via GC serial number %010" PRIu32, this->gc_license->serial_number);
+    ret += std::format(" via GC serial number {:010}", this->gc_license->serial_number);
   } else if (this->xb_license) {
-    ret += phosg::string_printf(" via XB user ID %016" PRIX64, this->xb_license->user_id);
+    ret += std::format(" via XB user ID {:016X}", this->xb_license->user_id);
   } else if (this->bb_license) {
-    ret += phosg::string_printf(" via BB username %s", this->bb_license->username.c_str());
+    ret += std::format(" via BB username {}", this->bb_license->username);
   } else {
-    ret += phosg::string_printf(" artificially");
+    ret += std::format(" artificially");
   }
   return ret;
 }
@@ -1043,16 +1044,17 @@ shared_ptr<Account> AccountIndex::create_temporary_account_for_shared_account(
 AccountIndex::AccountIndex(bool force_all_temporary)
     : force_all_temporary(force_all_temporary) {
   if (!this->force_all_temporary) {
-    if (!phosg::isdir("system/licenses")) {
-      mkdir("system/licenses", 0755);
+    if (!std::filesystem::is_directory("system/licenses")) {
+      std::filesystem::create_directories("system/licenses");
     } else {
-      for (const auto& item : phosg::list_directory("system/licenses")) {
-        if (phosg::ends_with(item, ".json")) {
+      for (const auto& item : std::filesystem::directory_iterator("system/licenses")) {
+        string filename = item.path().filename().string();
+        if (filename.ends_with(".json")) {
           try {
-            phosg::JSON json = phosg::JSON::parse(phosg::load_file("system/licenses/" + item));
+            phosg::JSON json = phosg::JSON::parse(phosg::load_file("system/licenses/" + filename));
             this->add(make_shared<Account>(json));
           } catch (const exception& e) {
-            phosg::log_error("Failed to index account %s", item.c_str());
+            phosg::log_error_f("Failed to index account {}", filename);
             throw;
           }
         }

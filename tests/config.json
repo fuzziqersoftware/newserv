@@ -8,7 +8,7 @@
   // 3. Unregistered users are allowed. This enables the tests to run on other
   //    machines, which won't have the same account files.
   "ServerName": "Alexandria",
-  "CatchHandlerExceptions": false,
+  "WorkerThreads": 1,
 
   "PersistentGameIdleTimeout": 1800000000,
   "AllowedDropModesV1V2Normal": 0x1F,
@@ -38,9 +38,9 @@
     "Ep3UnsetFieldCharacter",
     "InfiniteHPTP",
     "InsufficientMinimumLevel",
-    "OverrideRandomSeed",
+    // "OverrideRandomSeed",
     "OverrideSectionID",
-    "OverrideVariations",
+    // "OverrideVariations",
     "ProxyOverrideDrops",
     // "ResetMaterials",
     "Warp",
@@ -65,10 +65,13 @@
   "BannedIPV4Ranges": [],
   "Episode3BehaviorFlags": 0xFA,
   "EnableSendFunctionCallQuestNumbers": {
+    "3OE2": 88530, // US Plus (v1.2) + customizations
+    "3OJ5": 88531, // JP Plus (v1.5)
     "3SE0": 88532, // US Ep3
     "3SP0": 88533, // EU Ep3
   },
-  "EnableV3V4ProtectedSubcommands": false,
+  "EnableV3V4ProtectedSubcommands": true,
+  "AllowSavingAccounts": false,
 
   "Episode3InfiniteMeseta": false,
   "Episode3DefeatPlayerMeseta": [400, 500, 600, 700, 800],
@@ -76,52 +79,49 @@
   "Episode3FinalRoundMesetaBonus": 300,
 
   "PortConfiguration": {
-    "gc-jp10":       [9000,  "gc",    "login_server"],
-    "gc-jp11":       [9001,  "gc",    "login_server"],
-    "gc-jp3te":      [9002,  "gc",    "login_server"],
-    "gc-jp3":        [9003,  "gc",    "login_server"],
-    "gc-us12t1":     [9064,  "gc",    "login_server"],
+    "gc-jp10":       [9000,  "gc",    "game_server"],
+    "gc-jp11":       [9001,  "gc",    "game_server"],
+    "gc-jp3te":      [9002,  "gc",    "game_server"],
+    "gc-jp3":        [9003,  "gc",    "game_server"],
+    "gc-us12t1":     [9064,  "gc",    "game_server"],
     "gc-us10":       [9100,  "pc",    "pc_console_detect"],
-    "gc-us3":        [9103,  "gc",    "login_server"],
-    "gc-eu10":       [9200,  "gc",    "login_server"],
-    "gc-eu11":       [9201,  "gc",    "login_server"],
-    "gc-eu3-50":     [9202,  "gc",    "login_server"],
-    "gc-eu3-60a":    [9203,  "gc",    "login_server"],
-    "gc-eu3-60b":    [9204,  "gc",    "login_server"],
-    "pc":            [9300,  "pc",    "login_server"],
-    "xb":            [9500,  "xb",    "login_server"],
+    "gc-us3":        [9103,  "gc",    "game_server"],
+    "gc-eu10":       [9200,  "gc",    "game_server"],
+    "gc-eu11":       [9201,  "gc",    "game_server"],
+    "gc-eu3-50":     [9202,  "gc",    "game_server"],
+    "gc-eu3-60a":    [9203,  "gc",    "game_server"],
+    "gc-eu3-60b":    [9204,  "gc",    "game_server"],
+    "pc":            [9300,  "pc",    "game_server"],
     "pc-patch":      [10000, "patch", "patch_server_pc"],
     "bb-patch":      [11000, "patch", "patch_server_bb"],
     "bb-patch-hg":   [11200, "patch", "patch_server_bb"],
-    "bb-patch2":     [11100, "patch", "patch_server_bb"],
-    "bb-patch3":     [10500, "patch", "patch_server_bb"],
-    "bb-init":       [12000, "bb",    "login_server"],
-    "bb-init2":      [11101, "bb",    "login_server"],
-    "bb-proxy2":     [9932,  "bb",    "proxy_server"],
-    "bb-patch4":     [13000, "bb",    "login_server"],
-    "console-login": [5100,  "gc",    "login_server"],
-    "pc-login":      [5101,  "pc",    "login_server"],
-    "xb-login":      [5102,  "xb",    "login_server"],
-    "console-lobby": [5110,  "gc",    "lobby_server"],
-    "pc-lobby":      [5111,  "pc",    "lobby_server"],
-    "xb-lobby":      [5105,  "xb",    "lobby_server"],
-    "bb-lobby":      [5112,  "bb",    "lobby_server"],
-    "dc-proxy":      [5107,  "dc",    "proxy_server"],
-    "gc-proxy":      [5109,  "gc",    "proxy_server"],
-    "xb-proxy":      [5113,  "xb",    "proxy_server"],
-    "pc-proxy":      [5121,  "pc",    "proxy_server"],
-    "bb-proxy":      [5122,  "bb",    "proxy_server"],
-    "bb-data1":      [12004, "bb",    "login_server"],
-    "bb-data2":      [12005, "bb",    "login_server"],
+    "bb":            [12000, "bb",    "game_server"],
+    "xb":            [9500,  "xb",    "game_server"],
+    "bb-jp-patch":   [11100, "patch", "patch_server_bb"],
+    "bb-jp":         [11101, "bb",    "game_server"],
+    "bb-data1":      [12004, "bb",    "game_server"],
+    "bb-data2":      [12005, "bb",    "game_server"],
   },
 
-  "ProxyDestinations-GC": {
-    "Schtserv": "psobb.dyndns.org:9103",
-    "Sylverant": "sylverant.net:9103",
+  "ProxyDestinations-DC": {
+    "Schtserv": "psobb.dyndns.org:9200",
+    "Sylverant": "sylverant.net:9200",
+    "EU/Ragol": "ragol.org:9200",
   },
   "ProxyDestinations-PC": {
     "Schtserv": "psobb.dyndns.org:9100",
     "Sylverant": "sylverant.net:9100",
+    "EU/Ragol": "ragol.org:9100",
+  },
+  "ProxyDestinations-GC": {
+    "Schtserv": "psobb.dyndns.org:9103",
+    "Sylverant": "sylverant.net:9103",
+    "EU/Ragol": "ragol.org:9103",
+  },
+  "ProxyDestinations-XB": {
+    "Schtserv": "psobb.dyndns.org:9500",
+    "Sylverant": "sylverant.net:9500",
+    "EU/Ragol": "ragol.org:9500",
   },
 
   "ClientPingInterval": 30000000,
@@ -144,10 +144,29 @@
     [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
   ],
   "ClientCustomizationLobbySearchOrder": [8, 9, 10, 11, 12, 13, 14, 15, 1, 2, 3, 4, 5, 6, 7],
-  "LobbyEvents": [
-    "none", "none", "none", "none", "none", "none", "none", "none", "none", "none", "none", "none", "none", "none", "none", "none", "none", "none", "none", "none",
+    "LobbyEvents": [
+    "xmas", // Lobby 1
+    "none", // Lobby 2
+    "val", // Lobby 3
+    "easter", // Lobby 4
+    "hallo", // Lobby 5
+    "sonic", // Lobby 6
+    "newyear", // Lobby 7
+    "summer", // Lobby 8
+    "white", // Lobby 9
+    "wedding", // Lobby 10 (or Lobby 0 on early versions)
+    "fall", // Lobby 11 (DCv2 and later only)
+    "s-spring", // Lobby 12 (DCv2 and later only)
+    "s-summer", // Lobby 13 (DCv2 and later only)
+    "spring", // Lobby 14 (DCv2 and later only)
+    "none", // Lobby 15 (DCv2 and later only)
+    "xmas", // Lobby C1 (Episode 3 only)
+    "sonic", // Lobby C2 (Episode 3 only)
+    "fall", // Lobby C3 (Episode 3 only)
+    "s-summer", // Lobby C4 (Episode 3 only)
+    "sonic", // Lobby C5 (Episode 3 only)
   ],
-  "MenuEvent": "none",
+  "MenuEvent": "xmas",
 
   "LogLevels": {
     "AXMessages": "INFO",
@@ -171,22 +190,37 @@
   "AllowPCNTE": true,
   "EnableChatCommands": true,
   "CompatibilityGroups": [0x0000, 0x0000, 0x0004, 0x0008, 0x00B0, 0x00B0, 0x0040, 0x00B0, 0x0100, 0x1200, 0x0400, 0x0800, 0x1200, 0x2000],
+  "VersionNameColors": [
+    0xFFCCCCCC, // DC NTE
+    0xFFAAAAAA, // DC 11/2000
+    0xFFFFFFFF, // DC v1
+    0xFFFFAE35, // DC v2
+    0xFFC78626, // PC NTE
+    0xFFFFAE35, // PC v2
+    0xFF9999FF, // GC NTE
+    0xFFFFCCFF, // GC
+    0xFFCCCC00, // Ep3 NTE
+    0xFFDFF56E, // Ep3
+    0xFFCCFFCC, // Xbox
+    0xFF55FDE3, // BB (the official Episode 4 color is probably 0xFFC69141)
+  ],
   "InformationMenuContents": [
-    ["Text colors", "$C7Display color values", "These values can be used to color text in\nsome situations, with escape codes like %sC6.\n\n$C0Color 0$C7 - Black\n$C1Color 1$C7 - Blue\n$C2Color 2$C7 - Green\n$C3Color 3$C7 - Cyan\n$C4Color 4$C7 - Red\n$C5Color 5$C7 - Purple\n$C6Color 6$C7 - Yellow\n$C7Color 7$C7 - White\n$C8Color 8$C7 - Pink\n$C9Color 9$C7 - Violet\n$CGColor G$C7 - Orange Pulse"],
-    ["Lobby commands", "$C7Display commands\nfor use in the\nlobby", "Lobby commands: you must be a moderator to use\nthese commands.\n\n%sallevent <event>: Change the server's event\n%sevent <event>: Change this lobby's event\n%stype <type>: Change this lobby's type\n%sann <message>: Announce a message to all players\n%sax <message>: Send a message to the server"],
-    ["Game commands", "$C7Display commands\nfor use in games", "Game commands: you must be the game leader to\nuse these commands.\n\n%spassword <password>: Set the game's password.\n    If used with no password, unlocks the game.\n%smaxlevel <%n>: Set the game's maximum level.\n%sminlevel <%n>: Set the game's minimum level.\n%scheat: Enable or disable cheat mode."],
-    ["Player commands", "$C7Display commands\nfor player data", "Player commands: anyone can use these commands.\n\n%sarrow <color>: Change your lobby arrow color.\n%sbbchar <username> <password> <slot>: Convert\n    your character to PSOBB format.\n%sli: Show lobby or game information.\n%swhat: Describes the nearest item on the ground."],
-    ["Cheat commands", "$C7Display commands\nfor cheating", "Cheat commands: cheat mode must be enabled in the\ngame for these commands to work.\n\n%scheat: Enables or disables cheat mode in a game.\n%sinfhp: Enables or disables infinite HP for you.\n%sinftp: Enables or disables infinite TP for you.\n%swarp <area>: Sends you to a certain area.\n%sitem <data>: Creates an item. The item will appear\n    from the next box opened or enemy defeated.\n%sedit <stat> <value>: Changes your character stats.\n    This command works only on Blue Burst."],
-    ["Mod commands", "$C7Display commands\nfor moderators", "Moderation commands: you must be a moderator to\nuse these commands.\n\n%ssilence <serial>: Silence/unsilence a player.\n%skick <serial>: Disconnect a player from the server.\n%sban <duration> <serial>: Ban a player. Duration may\n    be of the form 60m, 24h, 2w, etc."],
-    ["Using $item", "$C7Show how to use\nthe %sitem command", "Using the %sitem command\n\nThe %sitem command is used to create items.\nUse it like this:\n\n%sitem <item code in hexadecimal>\n\nThe item code must be from 2 to 16 bytes (4 to 32\ncharacters) of hexadecimal data. Any bytes you\nomit will become zeroes.\n\nThe item that you specify will appear from the next\nenemy you kill or box you break.\n\nTo create meseta, use the command like this:\n\n%sitem 04000000 %n0 %n0 <amount>"],
-    ["Using $edit", "$C7Show how to use\nthe %sedit command", "Using the %sedit command\n\n%sedit is used on PSOBB to change character stats.\nUse one of the following subcommands:\n\n%sedit ATP <value>\n%sedit MST <value>\n%sedit EVP <value>\n%sedit HP <value>\n%sedit DFP <value>\n%sedit ATA <value>\n%sedit LCK <value>\n%sedit MESETA <amount>\n%sedit EXP <amount>\n%sedit LEVEL <level>\n%sedit NAMECOLOR <color in hex, AARRGGBB format)\n%sedit SECID <section ID name>\n%sedit NAME <new character name>\n%sedit NPC <NPC name>\n%sedit TECH <technique name> <new technique level>\n\nNPC names: none, ninja, rico, sonic, knuckles,\n     flowen, elly\n\nTechnique names: foie, gifoie, rafoie, barta,\n     gibarta, rabarta, zonde, gizonde, razonde,\n     grants, deband, jellen, zalure, shifta, ryuker,\n     resta, anti, reverser, megid, all"],
-    ["Using $bbchar", "$C7Show how to use\nthe %sbbchar command", "Using the %sbbchar command\n\n%sbbchar is used to convert a character from an\nolder version of PSO to Blue Burst format and save\nit on this server. Use the command like this:\n\n%sbbchar <username> <password> <slot>\n\nIf the username and password are correct, the\ncharacter that you're currently playing as will be\nconverted to PSOBB format and saved under that\naccount, in the specified character slot (1-4)."],
-    ["Arrow colors", "$C7Display lobby arrow\ncolor list", "$C7These values can be used with the $C6%sarrow$C7 command.\n\n0: no marker\n1: red\n2: blue\n3: green\n4: yellow\n5: purple\n6: cyan\n7: orange\n8: pink\n9: white\n10: white\n11: white\n12: black"],
-    ["Event values", "$C7Display lobby event\nlist", "These values can be used with the $C6%sevent$C7 command.\n\nnone - no event\nxmas - Christmas event\nval - Valentine's Day\neaster - Easter Sunday event\nhallo - Halloween event\nsonic - Sonic Adventure DX event\nnewyear - New Year's event\nbval - White Day\nwedding - Wedding Day event\nspring - spring event\ns-spring - spring event with striped background\nsummer - summer event\ns-summer - summer event with striped background\nfall - fall event"],
-    ["GC lobby types", "$C7Display lobby type\nlist for Episodes\nI & II", "These values can be used with the %stype command.\n$C6*$C7 indicates lobbies where players can't move.\n$C2Green$C7 indicates Episode 1 & 2 (GC) only lobbies.\n\nnormal - standard lobby\n$C2inormal$C7 - under standard lobby $C6*$C7\n$C2ipc$C7 - under PC lobby $C6*$C7\n$C2iball$C7 - under soccer lobby $C6*$C7\n$C2cave1$C7 - Cave 1 $C6*$C7\n$C2cave2u$C7 - Cave 2 Ultimate $C6*$C7\n$C2dragon$C7 - Dragon stage (floor is black)\n$C2derolle$C7 - De Rol Le stage (water/walls are gone)\n$C2volopt$C7 - Vol Opt stage\n$C2darkfalz$C7 - Dark Falz stage"],
-    ["Ep3 lobby types", "$C7Display lobby type\nlist for Episode\nIII", "These values can be used with the %sln command.\n$C6*$C7 indicates lobbies where players can't move.\n$C8Pink$C7 indicates Episode 3 only lobbies.\n\nnormal - standard lobby\n$C8planet$C7 - Blank Ragol Lobby\n$C8clouds$C7 - Blank Sky Lobby\n$C8cave$C7 - Unguis Lapis\n$C8jungle$C7 - Episode 2 Jungle\n$C8forest2-1$C7 - Episode 1 Forest 2 (ground)\n$C8forest2-2$C7 - Episode 1 Forest 2 (near Dome)\n$C8windpower$C7\n$C8overview$C7\n$C8seaside$C7 - Episode 2 Seaside\n$C8some?$C7\n$C8dmorgue$C7 - Destroyed Morgue\n$C8caelum$C7 - Caelum\n$C8digital$C7\n$C8boss1$C7\n$C8boss2$C7\n$C8boss3$C7\n$C8knight$C7 - Leukon Knight stage\n$C8sky$C7 - Via Tubus\n$C8morgue$C7 - Morgue"],
-    ["Area list", "$C7Display stage code\nlist", "These values can be used with the $C6%swarp$C7 command.\n\n$C2Green$C7 areas will be empty unless you are in a quest.\n$C6Yellow$C7 areas will not allow you to move.\n\n   $C8Episode 1  / Episode 2        / Episode 4$C7\n0: Pioneer 2  / Pioneer 2        / Pioneer 2\n1: Forest 1   / Temple Alpha    / Crater East\n2: Forest 2   / Temple Beta     / Crater West\n3: Caves 1    / Spaceship Alpha / Crater South\n4: Caves 2    / Spaceship Beta  / Crater North\n5: Caves 3    / CCA              / Crater Interior\n6: Mines 1    / Jungle North     / Desert 1\n7: Mines 2    / Jungle South     / Desert 2\n8: Ruins 1     / Mountain         / Desert 3\n9: Ruins 2     / Seaside          / Saint-Milion\n10: Ruins 3   / Seabed Upper    / $C6Test map$C7\n11: Dragon    / Seabed Lower\n12: De Rol Le / Gal Gryphon\n13: Vol Opt   / Olga Flow\n14: Dark Falz / Barba Ray\n15: $C2Lobby$C7     / Gol Dragon\n16: $C6Battle 1$C7  / $C6Seaside Night$C7\n17: $C6Battle 2$C7  / $C2Tower$C7"],
-    ["Debug commands", "$C7Display commands\nfor debugging\nnewserv itself", "The following commands may be useful for\ninvestigating bugs in newserv.\n\n%sdbgid: Enable or disable high ID preference.\n    When enabled, you'll be placed into the\n    latest slot in lobbies/games instead of\n    the earliest.\n%sgc: Send your own Guild Card to yourself.\n%srand <value in hex>: Set the random seed for\n    all games you create."]
+    ["Lobby commands", "Show commands used\nin the lobby", "These commands can be used in the lobby.\n\n$C6%sli$C7: Show basic information about the lobby\n$C6%sarrow <color-id>$C7: Change your lobby arrow color\n$C6%sln [name]$C7: Change the lobby type (for you only)\n$C6%sexit$C7: Leave the current game or lobby\n$C6%spatch <name>$C7: Run a patch on your client\n\n$C8Episode 3 only:$C7\n$C6%ssong <song-id>$C7: Play a jukebox song"],
+    ["Game commands", "Show commands used\nin games", "These commands can be used to customize games.\n\n$C8Before starting a game:$C7\n$C6%ssecid <section-id>$C7: Set your override section ID\n$C6%srand <seed>$C7: Set your override random seed\n\n$C8When in a game:$C7\n$C6%sli$C7: Show basic information about the game\n$C6%swhat$C7: Describe the nearest item on the ground\n$C6%smaxlevel <level>$C7: Set maximum level to join\n$C6%sminlevel <level>$C7: Set minimum level to join\n$C6%spassword [password]$C7: Lock or unlock the game"],
+    ["Player commands", "Show commands used\nto edit player data", "These commands can be used to work with your player data.\n\n$C6%sbbchar <username> <password> <1-4>$C7: Convert your\n    character to BB format\n$C6%sedit <stat> <value>$C7: Modify your character data"],
+    ["Ep3 commands", "Show commands used\nin Episode 3 games", "These commands can be used in Episode 3 games.\n\n$C8Before battle begins:$C7\n$C6%sinftime$C7: Disable all battle time limits, regardless\n    of limits set in battle rules\n$C6%sdefrange <min>-<max>$C7: Set the DEF dice range for\n    the next battle\n\n$C8During battle:$C7\n$C6%sspec$C7: Allow or forbid spectators\n$C6%sstat <what>$C7: Show a live statistic\n$C6%ssurrender$C7: Immediately lose the current battle\n\n$C8In game after battle:$C7\n$C6%ssaverec <name>$C7: Save recording of the last battle"],
+    ["Cheat commands", "Show commands used\nfor cheating", "These commands can be used to cheat.\n\n$C8In a game:$C7\n$C6%scheat$C7: Enable or disable cheat mode\n\n$C8When cheat mode is enabled:$C7\n$C6%sinfhp$C7 / $C6%sinftp$C7: Enable or disable infinite HP or TP\n$C6%swarpme <area-id>$C7: Warp yourself to the given area\n$C6%swarpall <area-id>$C7: Warp everyone to the given area\n$C6%snext$C7: Warp yourself to the next area\n$C6%sswa$C7: Enable or disable switch assist\n$C6%si <name>$C7 / $C6%si <hex>$C7: Create an item\n\n$C8Episode 3 only:$C7\n$C6%sunset <index>$C7: Remove one of your set cards from\n    the field"],
+    ["Admin commands", "Show commands used\nfor setting server\noptions", "These commands provide administration functions.\n\n$C6%sevent <event>$C7: Set the holiday in the current lobby\n$C6%sallevent <event>$C7: Set the holiday in all lobbies\n$C6%sann <message>$C7: Send an announcement message to\n    all players\n$C6%sax <message>$C7: Send a message to the server\n$C6%ssilence <who>$C7: Silence or unsilence a player\n$C6%skick <who>$C7: Disconnect a player\n$C6%sban <who>$C7: Ban a player"],
+    ["Debug commands", "Show commands used\nfor debugging", "These commands are used for debugging.\n\n$C6%sdebug$C7: Enable or disable debug messages\n$C6%scall <id>$C7: Call a quest function\n$C6%sgc$C7: Send your own Guild Card to yourself\n$C6%spersist$C7: Cause game to not close when last player\n    leaves\n$C6%ssc <data>$C7: Send a command to yourself\n\n$C8Proxy only:$C7\n$C6%sss <data>$C7: Send a command to the remote server"],
+    ["Using $i", "$C7Show how to use\nthe %si command", "The %si command is used to create items.\nUse it like this (for example):\n\n$C6%si Double Cannon +10 0/0/20/15/35$C7\n$C6%si Hell Pallasch$C7\n$C6%si Black Ring +5DEF$C7\n$C6%si Knight/Power++$C7\n$C6%si Sato 5/50/10.5/50 120% 200IQ$C7\n$C6%si Trimate x3$C7\n$C6%si 1000 Meseta$C7\n\nYou can also use a hex code instead of a name\n(this is the same as the Sato example above):\n\n$C6%si 023F7300F40188131A04881378C80000$C7"],
+    ["Using $edit", "$C7Show how to use\nthe %sedit command", "%sedit is used in PSOBB to change character stats.\nUse one of the following subcommands:\n\n$C6%sedit ATP <value>$C7\n$C6%sedit MST <value>$C7\n$C6%sedit EVP <value>$C7\n$C6%sedit HP <value>$C7\n$C6%sedit DFP <value>$C7\n$C6%sedit ATA <value>$C7\n$C6%sedit LCK <value>$C7\n$C6%sedit MESETA <amount>$C7\n$C6%sedit EXP <amount>$C7\n$C6%sedit LEVEL <level>$C7\n$C6%sedit NAMECOLOR <color in hex, AARRGGBB format>$C7\n$C6%sedit SECID <section ID name>$C7\n$C6%sedit NAME <new character name>$C7\n$C6%sedit NPC <NPC name>$C7\n$C6%sedit TECH <technique name> <new technique level>$C7\n\nNPC names: none, ninja, rico, sonic, knuckles,\n    flowen, elly\n\nTechnique names: foie, gifoie, rafoie, barta,\n    gibarta, rabarta, zonde, gizonde, razonde,\n    grants, deband, jellen, zalure, shifta, ryuker,\n    resta, anti, reverser, megid, all"],
+    ["Using $bbchar", "$C7Show how to use\nthe %sbbchar command", "%sbbchar is used to convert a character from an\nolder version of PSO to Blue Burst format and save\nit on this server. Use the command like this:\n\n$C6%sbbchar <username> <password> <slot>$C7\n\nIf the username and password are correct, the\ncharacter that you're currently playing as will be\nconverted to PSOBB format and saved under that\naccount, in the specified character slot (1-4)."],
+    ["Text colors", "Show color values", "These values can be used to color text in\nsome situations with escape codes like %sC6.\nFor example, these can be used in the Info Board.\n\n$C0%sC0$C7 - Black     $C1%sC1$C7 - Blue     $C2%sC2$C7 - Green\n$C3%sC3$C7 - Cyan      $C4%sC4$C7 - Red     $C5%sC5$C7 - Purple\n$C6%sC6$C7 - Yellow    $C7%sC7$C7 - White   $C8%sC8$C7 - Pink\n$C9%sC9$C7 - Violet     $CG%sCG$C7 - Orange Pulse\n\n$Ca%sCa$C7 - Orange (Episode 3 only)"],
+    ["Arrow colors", "$C7Show lobby arrow\ncolor list", "Use these names with %sarrow.\n\n0 - no marker\n1 - red\n2 - blue\n3 - green\n4 - yellow\n5 - purple\n6 - cyan\n7 - orange\n8 - pink\n9 - white\n10 - white\n11 - white\n12 - black"],
+    ["Event names", "$C7Show lobby event\nnames", "Use these names with %sevent and %sallevent.\n\nnone - no event\nxmas - Christmas event\nval - Valentine's Day\neaster - Easter Sunday event\nhallo - Halloween event\nsonic - Sonic Adventure DX event\nnewyear - New Year's event\nbval - White Day\nwedding - Wedding Day event\nspring - spring event\ns-spring - spring event with striped background\nsummer - summer event\ns-summer - summer event with striped background\nfall - fall event"],
+    ["GC lobby types", "$C7Show lobby type\nlist for Episodes\nI & II", "Use these names with %sln on Episodes 1 & 2.\n$C6*$C7 indicates lobbies where players can't move.\n\nnormal - standard lobby\ninormal - under standard lobby $C6*$C7\nipc - under PC lobby $C6*$C7\niball - under soccer lobby $C6*$C7\ncave1 - Cave 1 $C6*$C7\ncave2u - Cave 2 Ultimate $C6*$C7\ndragon - Dragon stage (floor is black)\nderolle - De Rol Le stage (water/walls are gone)\nvolopt - Vol Opt stage\ndarkfalz - Dark Falz stage"],
+    ["Ep3 lobby types", "$C7Show lobby type\nlist for Episode III", "Use these names with %sln on Episode 3.\n\nnormal - Standard lobby\nplanet - Blank Ragol lobby\nclouds - Blank sky lobby\ncave - Unguis Lapis (platform missing)\njungle - Nebula Montana 1 (Ep2 Jungle)\nforest2-1 - Lupus Silva 2 (Ep1 Forest 2)\nforest2-2 - Lupus Silva 1 (Ep1 Forest 2)\nwindpower - Molae Venti\noverview - Nebula Montana 2\nseaside - Tener Sinus (Ep2 Seaside)\nfons - Mortis Fons\ndmorgue - Destroyed Morgue (column missing)\ncaelum - Tower of Caelum (top)\ncyber - Cyber\nboss1 - Castor/Pollux map\nboss2 - Amplum Umbra map\ndolor - Dolor Odor\nravum - Ravum Aedes Sacra\nsky - Via Tubus (tube missing)\nmorgue - Morgue (column missing)"],
+    ["Area list", "$C7Show stage code\nlist", "Use these names with %swarpme and %swarpall.\n$C2Green$C7 areas will be empty unless you are in a quest.\n$C6Yellow$C7 areas will not allow you to move.\n\n    $C8Episode 1  / Episode 2        / Episode 4$C7\n0: Pioneer 2  / Pioneer 2        / Pioneer 2\n1: Forest 1   / Temple Alpha    / Crater East\n2: Forest 2   / Temple Beta     / Crater West\n3: Caves 1    / Spaceship Alpha / Crater South\n4: Caves 2    / Spaceship Beta  / Crater North\n5: Caves 3    / CCA              / Crater Interior\n6: Mines 1    / Jungle North     / Desert 1\n7: Mines 2    / Jungle South     / Desert 2\n8: Ruins 1     / Mountain         / Desert 3\n9: Ruins 2     / Seaside          / Saint-Milion\n10: Ruins 3   / Seabed Upper    / $C6Test map$C7\n11: Dragon    / Seabed Lower\n12: De Rol Le / Gal Gryphon\n13: Vol Opt   / Olga Flow\n14: Dark Falz / Barba Ray\n15: $C2Lobby$C7     / Gol Dragon\n16: $C6Battle 1$C7  / $C6Seaside Night$C7\n17: $C6Battle 2$C7  / $C2Tower$C7"],
   ],
   "WelcomeMessage": "You are connected to $C6Alexandria$C7.",
   "PCPatchServerMessage": "newserv patch server\r\n\r\nThis server is not affiliated with, sponsored by, or in any other way connected to SEGA or Sonic Team, and is owned and operated completely independently.",
@@ -444,31 +478,31 @@
     "Episode4": [1, 40, 70, 110],
   },
 
-  "QuestFlagRewritesV1V2": {
-    // "F_0017": true, // Ep1 area unlocks
-    // "F_0020": true, // Ep1 area unlocks
-    // "F_002A": true, // Ep1 area unlocks
+"QuestFlagRewritesV1V2": {
+    "F_0017": true, // Ep1 area unlocks
+    "F_0020": true, // Ep1 area unlocks
+    "F_002A": true, // Ep1 area unlocks
   },
   "QuestFlagRewritesV3": {
-    // "F_0017": true, // Ep1 area unlocks
-    // "F_0020": true, // Ep1 area unlocks
-    // "F_002A": true, // Ep1 area unlocks
-    // "F_004C": true, // Ep2 area unlocks
-    // "F_004F": true, // Ep2 area unlocks
-    // "F_0052": true, // Ep2 area unlocks
+    "F_0017": true, // Ep1 area unlocks
+    "F_0020": true, // Ep1 area unlocks
+    "F_002A": true, // Ep1 area unlocks
+    "F_004C": true, // Ep2 area unlocks
+    "F_004F": true, // Ep2 area unlocks
+    "F_0052": true, // Ep2 area unlocks
   },
   "QuestFlagRewritesV4": {
-    // "F_01F9": true, // Ep1 area unlocks
-    // "F_0201": true, // Ep1 area unlocks
-    // "F_0207": true, // Ep1 area unlocks
-    // "F_021B": true, // Ep2 area unlocks
-    // "F_0225": true, // Ep2 area unlocks
-    // "F_022F": true, // Ep2 area unlocks
-    // "F_02BD": true, // Ep4 area unlocks
-    // "F_02BE": true, // Ep4 area unlocks
-    // "F_02BF": true, // Ep4 area unlocks
-    // "F_02C0": true, // Ep4 area unlocks
-    // "F_02C1": true, // Ep4 area unlocks
+    "F_01F9": true, // Ep1 area unlocks
+    "F_0201": true, // Ep1 area unlocks
+    "F_0207": true, // Ep1 area unlocks
+    "F_021B": true, // Ep2 area unlocks
+    "F_0225": true, // Ep2 area unlocks
+    "F_022F": true, // Ep2 area unlocks
+    "F_02BD": true, // Ep4 area unlocks
+    "F_02BE": true, // Ep4 area unlocks
+    "F_02BF": true, // Ep4 area unlocks
+    "F_02C0": true, // Ep4 area unlocks
+    "F_02C1": true, // Ep4 area unlocks
     "F_0046": false, // Ep2 CCA door lock fix
     "F_0047": false, // Ep2 CCA door lock fix
     "F_0048": false, // Ep2 CCA door lock fix

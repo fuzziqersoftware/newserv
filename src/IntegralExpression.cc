@@ -184,7 +184,7 @@ int64_t IntegralExpression::FlagLookupNode::evaluate(const Env& env) const {
 }
 
 string IntegralExpression::FlagLookupNode::str() const {
-  return phosg::string_printf("F_%04hX", this->flag_index);
+  return std::format("F_{:04X}", this->flag_index);
 }
 
 IntegralExpression::ChallengeCompletionLookupNode::ChallengeCompletionLookupNode(
@@ -214,7 +214,7 @@ int64_t IntegralExpression::ChallengeCompletionLookupNode::evaluate(const Env& e
 }
 
 string IntegralExpression::ChallengeCompletionLookupNode::str() const {
-  return phosg::string_printf("CC_%s_%hhu", abbreviation_for_episode(this->episode), static_cast<uint8_t>(this->stage_index + 1));
+  return std::format("CC_{}_{}", abbreviation_for_episode(this->episode), static_cast<uint8_t>(this->stage_index + 1));
 }
 
 IntegralExpression::TeamRewardLookupNode::TeamRewardLookupNode(const string& reward_name)
@@ -296,7 +296,7 @@ int64_t IntegralExpression::ConstantNode::evaluate(const Env&) const {
 }
 
 string IntegralExpression::ConstantNode::str() const {
-  return phosg::string_printf("%" PRId64, this->value);
+  return std::format("{}", this->value);
 }
 
 unique_ptr<const IntegralExpression::Node> IntegralExpression::parse_expr(string_view text) {

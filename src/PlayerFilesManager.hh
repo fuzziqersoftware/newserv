@@ -1,10 +1,10 @@
 #pragma once
 
-#include <event2/event.h>
 #include <inttypes.h>
 #include <stddef.h>
 
 #include <array>
+#include <asio.hpp>
 #include <phosg/Encoding.hh>
 #include <string>
 #include <utility>
@@ -21,7 +21,7 @@
 
 class PlayerFilesManager {
 public:
-  explicit PlayerFilesManager(std::shared_ptr<struct event_base> base);
+  explicit PlayerFilesManager(std::shared_ptr<asio::io_context> io_context);
   ~PlayerFilesManager() = default;
 
   std::shared_ptr<PSOBBBaseSystemFile> get_system(const std::string& filename);
@@ -35,13 +35,14 @@ public:
   void set_bank(const std::string& filename, std::shared_ptr<PlayerBank200> file);
 
 private:
-  std::shared_ptr<struct event_base> base;
-  std::unique_ptr<struct event, void (*)(struct event*)> clear_expired_files_event;
+  std::shared_ptr<asio::io_context> io_context;
+  asio::steady_timer clear_expired_files_timer;
 
   std::unordered_map<std::string, std::shared_ptr<PSOBBBaseSystemFile>> loaded_system_files;
   std::unordered_map<std::string, std::shared_ptr<PSOBBCharacterFile>> loaded_character_files;
   std::unordered_map<std::string, std::shared_ptr<PSOBBGuildCardFile>> loaded_guild_card_files;
   std::unordered_map<std::string, std::shared_ptr<PlayerBank200>> loaded_bank_files;
 
-  static void clear_expired_files(evutil_socket_t fd, short events, void* ctx);
+  void schedule_callback();
+  void clear_expired_files();
 };

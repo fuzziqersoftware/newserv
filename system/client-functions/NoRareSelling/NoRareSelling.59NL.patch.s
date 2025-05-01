@@ -17,9 +17,9 @@ start:
   mov       [0x005D26F1], eax      # Unidentified weapons
   mov       [0x005D2706], eax      # Rare weapons
 
-  # For tools, it's a harder to implement this, because the price comes from
-  # the ItemPMT tools table and there is no branch for rares. Still, we can add
-  # a branch to a stub to handle tools.
+  # For tools, it's harder to implement this, because the price comes from the
+  # ItemPMT tools table and there is no branch for rares. Still, we can add a
+  # branch to a stub to handle tools.
   pop       ecx
   push      5
   push      0x005D2528

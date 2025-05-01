@@ -132,13 +132,13 @@ struct WordSelectMessageT {
 
   operator WordSelectMessageT<!BE>() const {
     WordSelectMessageT<!BE> ret;
-    ret.num_tokens = this->num_tokens.load();
-    ret.target_type = this->target_type.load();
+    ret.num_tokens = this->num_tokens;
+    ret.target_type = this->target_type;
     for (size_t z = 0; z < this->tokens.size(); z++) {
-      ret.tokens[z] = this->tokens[z].load();
+      ret.tokens[z] = this->tokens[z];
     }
-    ret.numeric_parameter = this->numeric_parameter.load();
-    ret.unknown_a4 = this->unknown_a4.load();
+    ret.numeric_parameter = this->numeric_parameter;
+    ret.unknown_a4 = this->unknown_a4;
     return ret;
   }
 } __attribute__((packed));
@@ -170,7 +170,7 @@ struct SaveFileChatShortcutEntryT {
   template <bool RetBE, TextEncoding RetEncoding, size_t RetMaxSize>
   SaveFileChatShortcutEntryT<RetBE, RetEncoding, RetMaxSize> convert(uint8_t language) const {
     SaveFileChatShortcutEntryT<RetBE, RetEncoding, RetMaxSize> ret;
-    ret.type = this->type.load();
+    ret.type = this->type;
     switch (ret.type) {
       case 1:
         ret.definition.text.encode(this->definition.text.decode(language), language);
@@ -310,8 +310,14 @@ struct PSODCNTECharacterFile {
     // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
     /* 0000:---- */ PlayerInventory inventory;
     /* 034C:---- */ PlayerDispDataDCPCV3 disp;
-    /* 041C:0000 */ le_uint32_t validation_flags = 0;
+    // masked_creation_timestamp is expected to contain the value
+    // (creation_timestamp ^ hardware_id_mid), where hardware_id_mid contains
+    // the middle 32 bits of the 64-bit hardware ID returned by the SYSINFO_ID
+    // syscall (the top and bottom 16 bits are ignored for this purpose).
+    /* 041C:0000 */ le_uint32_t masked_creation_timestamp = 0;
     /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
+    // The value of signature is approximately pi * 1e9, but they got a couple
+    // of digits wrong (3141562653)
     /* 0424:0008 */ le_uint32_t signature = 0xBB40711D;
     /* 0428:000C */ le_uint32_t play_time_seconds = 0;
     /* 042C:0010 */ le_uint32_t option_flags = 0x00040058;
@@ -343,7 +349,7 @@ struct PSODC112000CharacterFile {
     // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
     /* 0000:---- */ PlayerInventory inventory;
     /* 034C:---- */ PlayerDispDataDCPCV3 disp;
-    /* 041C:0000 */ le_uint32_t validation_flags = 0;
+    /* 041C:0000 */ le_uint32_t masked_creation_timestamp = 0;
     /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
     /* 0424:0008 */ le_uint32_t signature = 0xBB40711D;
     /* 0428:000C */ le_uint32_t play_time_seconds = 0;
@@ -469,7 +475,7 @@ struct PSOPCCharacterFile { // PSO______SYS and PSO______SYD
         /* 1CD8 */ parray<le_uint16_t, 20> tech_menu_shortcut_entries;
         /* 1D00 */ parray<le_uint32_t, 10> choice_search_config;
         /* 1D28 */ parray<uint8_t, 4> unknown_a2;
-        /* 1D2C */ pstring<TextEncoding::ASCII, 0x10> serial_number; // As %08X (not decimal)
+        /* 1D2C */ pstring<TextEncoding::ASCII, 0x10> serial_number; // As {:08X} (not decimal)
         /* 1D3C */ pstring<TextEncoding::ASCII, 0x10> access_key; // As decimal
         /* 1D4C */
       } __packed_ws__(Character, 0x1D4C);
@@ -598,7 +604,7 @@ struct PSOGCCharacterFile {
     /* 2798:237C */
   } __packed_ws__(Character, 0x2798);
   /* 00004 */ parray<Character, 7> characters; // 0-3: main chars, 4-6: temps
-  /* 1152C */ pstring<TextEncoding::ASCII, 0x10> serial_number; // As %08X (not decimal)
+  /* 1152C */ pstring<TextEncoding::ASCII, 0x10> serial_number; // As {:08X} (not decimal)
   /* 1153C */ pstring<TextEncoding::ASCII, 0x10> access_key;
   /* 1154C */ pstring<TextEncoding::ASCII, 0x10> password;
   /* 1155C */ be_uint64_t bgm_test_songs_unlocked = 0;
@@ -631,7 +637,7 @@ struct PSOGCEp3NTECharacter {
   /* 2718:22FC */ pstring<TextEncoding::MARKED, 0xAC> info_board;
   /* 27C4:23A8 */ PlayerRecordsBattleBE battle_records;
   /* 27DC:23C0 */ parray<uint8_t, 4> unknown_a10;
-  /* 27E0:23C4 */ PlayerRecordsChallengeV3BE::Stats challenge_record_stats;
+  /* 27E0:23C4 */ PlayerRecordsChallengeEp3 challenge_record_stats;
   /* 28B8:249C */ Episode3::PlayerConfigNTE ep3_config;
   /* 4610:41F4 */ be_uint32_t unknown_a11 = 0;
   /* 4614:41F8 */ be_uint32_t unknown_a12 = 0;
@@ -676,7 +682,7 @@ struct PSOGCEp3CharacterFile {
     // In this struct, place_counts[0] is win_count and [1] is loss_count
     /* 1564:1148 */ PlayerRecordsBattleBE battle_records;
     /* 157C:1160 */ parray<uint8_t, 4> unknown_a10;
-    /* 1580:1164 */ PlayerRecordsChallengeV3BE::Stats challenge_record_stats;
+    /* 1580:1164 */ PlayerRecordsChallengeEp3 challenge_record_stats;
     /* 1658:123C */ Episode3::PlayerConfig ep3_config;
     /* 39A8:358C */ be_uint32_t unknown_a11 = 0;
     /* 39AC:3590 */ be_uint32_t unknown_a12 = 0;
@@ -688,7 +694,7 @@ struct PSOGCEp3CharacterFile {
     operator PSOGCEp3NTECharacter() const;
   } __packed_ws__(Character, 0x39B4);
   /* 00004 */ parray<Character, 7> characters;
-  /* 193F0 */ pstring<TextEncoding::ASCII, 0x10> serial_number; // As %08X (not decimal)
+  /* 193F0 */ pstring<TextEncoding::ASCII, 0x10> serial_number; // As {:08X} (not decimal)
   /* 19400 */ pstring<TextEncoding::ASCII, 0x10> access_key; // As 12 ASCII characters (decimal)
   /* 19410 */ pstring<TextEncoding::ASCII, 0x10> password;
   // In Episode 3, this field still exists, but is unused since BGM test was
@@ -812,8 +818,8 @@ struct PSOBBCharacterFile {
   static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSOGCEp3CharacterFile::Character& src);
   static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSOXBCharacterFileCharacter& src);
 
-  operator PSODCNTECharacterFile::Character() const;
-  operator PSODC112000CharacterFile::Character() const;
+  PSODCNTECharacterFile::Character as_dc_nte(uint64_t hardware_id) const;
+  PSODC112000CharacterFile::Character as_11_2000(uint64_t hardware_id) const;
   operator PSODCV1CharacterFile::Character() const;
   operator PSODCV2CharacterFile::Character() const;
   operator PSOGCNTECharacterFileCharacter() const;
@@ -1097,8 +1103,8 @@ std::string decrypt_fixed_size_data_section_s(
     uint32_t actual_crc = phosg::crc32(decrypted.data(), decrypted.size());
     checksum = expected_crc;
     if (expected_crc != actual_crc) {
-      throw std::runtime_error(phosg::string_printf(
-          "incorrect decrypted data section checksum: expected %08" PRIX32 "; received %08" PRIX32,
+      throw std::runtime_error(std::format(
+          "incorrect decrypted data section checksum: expected {:08X}; received {:08X}",
           expected_crc, actual_crc));
     }
   }
@@ -1133,8 +1139,8 @@ StructT decrypt_fixed_size_data_section_t(
     uint32_t actual_crc = phosg::crc32(&ret, ChecksumLength);
     ret.checksum = expected_crc;
     if (expected_crc != actual_crc) {
-      throw std::runtime_error(phosg::string_printf(
-          "incorrect decrypted data section checksum: expected %08" PRIX32 "; received %08" PRIX32,
+      throw std::runtime_error(std::format(
+          "incorrect decrypted data section checksum: expected {:08X}; received {:08X}",
           expected_crc, actual_crc));
     }
   }

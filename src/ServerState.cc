@@ -2,6 +2,7 @@
 
 #include <string.h>
 
+#include <filesystem>
 #include <memory>
 #include <phosg/Filesystem.hh>
 #include <phosg/Image.hh>
@@ -9,8 +10,8 @@
 #include <phosg/Platform.hh>
 
 #include "Compression.hh"
-#include "EventUtils.hh"
 #include "FileContentsCache.hh"
+#include "GameServer.hh"
 #include "IPStackSimulator.hh"
 #include "ImageEncoder.hh"
 #include "Loggers.hh"
@@ -58,7 +59,7 @@ ServerState::QuestF960Result::QuestF960Result(const phosg::JSON& json, shared_pt
       try {
         this->results[day].emplace_back(name_index->parse_item_description(item_it->as_string()));
       } catch (const exception& e) {
-        config_log.warning("Cannot parse item description \"%s\": %s (skipping entry)", item_it->as_string().c_str(), e.what());
+        config_log.warning_f("Cannot parse item description \"{}\": {} (skipping entry)", item_it->as_string(), e.what());
       }
     }
   }
@@ -66,21 +67,13 @@ ServerState::QuestF960Result::QuestF960Result(const phosg::JSON& json, shared_pt
 
 ServerState::ServerState(const string& config_filename)
     : creation_time(phosg::now()),
+      io_context(make_shared<asio::io_context>(1)),
       config_filename(config_filename),
-      bb_stream_files_cache(new FileContentsCache(3600000000ULL)),
-      bb_system_cache(new FileContentsCache(3600000000ULL)),
-      gba_files_cache(new FileContentsCache(3600000000ULL)) {}
-
-ServerState::ServerState(shared_ptr<struct event_base> base, const string& config_filename, bool is_replay)
-    : creation_time(phosg::now()),
-      base(base),
-      config_filename(config_filename),
-      is_replay(is_replay),
+      thread_pool(make_unique<asio::thread_pool>()),
       bb_stream_files_cache(new FileContentsCache(3600000000ULL)),
       bb_system_cache(new FileContentsCache(3600000000ULL)),
       gba_files_cache(new FileContentsCache(3600000000ULL)),
-      player_files_manager(this->base ? make_shared<PlayerFilesManager>(base) : nullptr),
-      destroy_lobbies_event(this->base ? event_new(base.get(), -1, EV_TIMEOUT, &ServerState::dispatch_destroy_lobbies, this) : nullptr, event_free) {}
+      player_files_manager(make_shared<PlayerFilesManager>(this->io_context)) {}
 
 void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
   shared_ptr<Lobby> added_to_lobby;
@@ -227,22 +220,18 @@ void ServerState::remove_lobby(shared_ptr<Lobby> l) {
   if (l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM)) {
     auto primary_l = l->watched_lobby.lock();
     if (primary_l) {
-      primary_l->log.info("Unlinking watcher lobby %" PRIX32, l->lobby_id);
+      primary_l->log.info_f("Unlinking watcher lobby {:X}", l->lobby_id);
       primary_l->watcher_lobbies.erase(l);
     } else {
-      l->log.info("No watched lobby to unlink");
+      l->log.info_f("No watched lobby to unlink");
     }
     l->watched_lobby.reset();
   } else {
     send_ep3_disband_watcher_lobbies(l);
   }
 
-  this->lobbies_to_destroy.emplace(l);
-  auto tv = phosg::usecs_to_timeval(0);
-  event_add(this->destroy_lobbies_event.get(), &tv);
-
+  l->log.info_f("Unlinking lobby from index");
   this->id_to_lobby.erase(lobby_it);
-  l->log.info("Enqueued for deletion");
 }
 
 void ServerState::on_player_left_lobby(shared_ptr<Lobby> l, uint8_t leaving_client_id) {
@@ -286,27 +275,59 @@ shared_ptr<Client> ServerState::find_client(const string* identifier, uint64_t a
 }
 
 uint32_t ServerState::connect_address_for_client(shared_ptr<Client> c) const {
-  if (c->channel.virtual_network_id) {
-    if (c->channel.remote_addr.ss_family != AF_INET) {
-      throw logic_error("virtual connection is missing remote IPv4 address");
+  {
+    auto ipss_channel = dynamic_pointer_cast<IPSSChannel>(c->channel);
+    if (ipss_channel) {
+      auto ipss_c = ipss_channel->ipss_client.lock();
+      if (!ipss_c) {
+        throw runtime_error("IPSS client is expired");
+      }
+      return IPStackSimulator::connect_address_for_remote_address(ipss_c->ipv4_addr);
     }
-    const auto* sin = reinterpret_cast<const sockaddr_in*>(&c->channel.remote_addr);
-    return IPStackSimulator::connect_address_for_remote_address(ntohl(sin->sin_addr.s_addr));
   }
 
-  uint32_t ret = is_local_address(c->channel.remote_addr) ? this->local_address : this->external_address;
-  if (ret != 0) {
-    return ret;
+  {
+    auto socket_channel = dynamic_pointer_cast<SocketChannel>(c->channel);
+    if (socket_channel) {
+      uint32_t addr = ipv4_addr_for_asio_addr(socket_channel->local_addr.address());
+      uint32_t ret = is_local_address(addr) ? this->local_address : this->external_address;
+      return ret ? ret : addr;
+    }
   }
 
-  struct sockaddr_storage addr;
-  phosg::get_socket_addresses(bufferevent_getfd(c->channel.bev.get()), &addr, nullptr);
-  if (addr.ss_family == AF_INET) {
-    const sockaddr_in* sin = reinterpret_cast<const sockaddr_in*>(&addr);
-    return ntohl(sin->sin_addr.s_addr);
+  {
+    auto peer_channel = dynamic_pointer_cast<PeerChannel>(c->channel);
+    if (peer_channel) {
+      // This is used during replays; the "client" will ignore this and
+      // reconnect via another PeerChannel
+      return 0xEEEEEEEE;
+    }
   }
 
   throw runtime_error("no connect address available");
+}
+
+uint16_t ServerState::game_server_port_for_version(Version v) const {
+  switch (v) {
+    case Version::DC_NTE:
+    case Version::DC_11_2000:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_NTE:
+    case Version::GC_EP3:
+      return this->name_to_port_config.at("gc-us3")->port;
+    case Version::PC_NTE:
+    case Version::PC_V2:
+      return this->name_to_port_config.at("pc")->port;
+    case Version::XB_V3:
+      return this->name_to_port_config.at("xb")->port;
+    case Version::BB_V4:
+      return this->name_to_port_config.at("xb")->port;
+    default:
+      throw runtime_error("unknown version");
+  }
 }
 
 shared_ptr<const Menu> ServerState::information_menu(Version version) const {
@@ -399,10 +420,6 @@ size_t ServerState::default_min_level_for_game(Version version, Episode episode,
     default:
       throw runtime_error("invalid episode");
   }
-}
-
-void ServerState::dispatch_destroy_lobbies(evutil_socket_t, short, void* ctx) {
-  reinterpret_cast<ServerState*>(ctx)->lobbies_to_destroy.clear();
 }
 
 shared_ptr<const SetDataTableBase> ServerState::set_data_table(
@@ -522,11 +539,11 @@ void ServerState::set_port_configuration(const vector<PortConfiguration>& port_c
   }
 
   if (any_port_is_pc_console_detect) {
-    if (!this->name_to_port_config.count("pc-login")) {
-      throw runtime_error("pc-login port is not defined, but some ports use the pc_console_detect behavior");
+    if (!this->name_to_port_config.count("pc")) {
+      throw runtime_error("pc port is not defined, but some ports use the pc_console_detect behavior");
     }
-    if (!this->name_to_port_config.count("console-login")) {
-      throw runtime_error("console-login port is not defined, but some ports use the pc_console_detect behavior");
+    if (!this->name_to_port_config.count("gc-us3")) {
+      throw runtime_error("gc-us3 port is not defined, but some ports use the pc_console_detect behavior");
     }
   }
 }
@@ -591,7 +608,7 @@ shared_ptr<const string> ServerState::load_map_file(Version version, const strin
     }
   }
   try {
-    string path = phosg::string_printf("system/maps/%s/%s", file_path_token_for_version(version), filename.c_str());
+    string path = std::format("system/maps/{}/{}", file_path_token_for_version(version), filename);
     auto ret = make_shared<string>(phosg::load_file(path));
     return ret;
   } catch (const exception& e) {
@@ -621,18 +638,18 @@ vector<PortConfiguration> ServerState::parse_port_configuration(const phosg::JSO
     auto spec = this->parse_port_spec(item_list->at(0));
     pc.addr = std::move(spec.first);
     pc.port = spec.second;
-    pc.version = phosg::enum_for_name<Version>(item_list->at(1).as_string().c_str());
-    pc.behavior = phosg::enum_for_name<ServerBehavior>(item_list->at(2).as_string().c_str());
+    pc.version = phosg::enum_for_name<Version>(item_list->at(1).as_string());
+    pc.behavior = phosg::enum_for_name<ServerBehavior>(item_list->at(2).as_string());
   }
   return ret;
 }
 
 void ServerState::collect_network_addresses() {
-  config_log.info("Reading network addresses");
+  config_log.info_f("Reading network addresses");
   this->all_addresses = get_local_addresses();
   for (const auto& it : this->all_addresses) {
     string addr_str = string_for_address(it.second);
-    config_log.info("Found interface: %s = %s", it.first.c_str(), addr_str.c_str());
+    config_log.info_f("Found interface: {} = {}", it.first, addr_str);
   }
 }
 
@@ -641,7 +658,7 @@ void ServerState::load_config_early() {
     throw logic_error("configuration filename is missing");
   }
 
-  config_log.info("Loading configuration");
+  config_log.info_f("Loading configuration");
   this->config_json = make_shared<phosg::JSON>(phosg::JSON::parse(phosg::load_file(this->config_filename)));
 
   auto parse_behavior_switch = [&](const string& json_key, BehaviorSwitch default_value) -> ServerState::BehaviorSwitch {
@@ -664,6 +681,7 @@ void ServerState::load_config_early() {
   };
 
   this->name = this->config_json->at("ServerName").as_string();
+  this->num_worker_threads = this->config_json->at("WorkerThreads").as_int();
 
   if (!this->one_time_config_loaded) {
     try {
@@ -688,11 +706,11 @@ void ServerState::load_config_early() {
     try {
       for (const auto& item : this->config_json->at("IPStackListen").as_list()) {
         if (item->is_int()) {
-          this->ip_stack_addresses.emplace_back(phosg::string_printf("0.0.0.0:%" PRId64, item->as_int()));
+          this->ip_stack_addresses.emplace_back(std::format("0.0.0.0:{}", item->as_int()));
         } else if (!IS_WINDOWS) {
           this->ip_stack_addresses.emplace_back(item->as_string());
         } else {
-          config_log.warning("Unix sockets are not supported on Windows; skipping address %s", item->as_string().c_str());
+          config_log.warning_f("Unix sockets are not supported on Windows; skipping address {}", item->as_string());
         }
       }
     } catch (const out_of_range&) {
@@ -700,11 +718,11 @@ void ServerState::load_config_early() {
     try {
       for (const auto& item : this->config_json->at("PPPStackListen").as_list()) {
         if (item->is_int()) {
-          this->ppp_stack_addresses.emplace_back(phosg::string_printf("0.0.0.0:%" PRId64, item->as_int()));
+          this->ppp_stack_addresses.emplace_back(std::format("0.0.0.0:{}", item->as_int()));
         } else if (!IS_WINDOWS) {
           this->ppp_stack_addresses.emplace_back(item->as_string());
         } else {
-          config_log.warning("Unix sockets are not supported on Windows; skipping address %s", item->as_string().c_str());
+          config_log.warning_f("Unix sockets are not supported on Windows; skipping address {}", item->as_string());
         }
       }
     } catch (const out_of_range&) {
@@ -712,11 +730,11 @@ void ServerState::load_config_early() {
     try {
       for (const auto& item : this->config_json->at("PPPRawListen").as_list()) {
         if (item->is_int()) {
-          this->ppp_raw_addresses.emplace_back(phosg::string_printf("0.0.0.0:%" PRId64, item->as_int()));
+          this->ppp_raw_addresses.emplace_back(std::format("0.0.0.0:{}", item->as_int()));
         } else if (!IS_WINDOWS) {
           this->ppp_raw_addresses.emplace_back(item->as_string());
         } else {
-          config_log.warning("Unix sockets are not supported on Windows; skipping address %s", item->as_string().c_str());
+          config_log.warning_f("Unix sockets are not supported on Windows; skipping address {}", item->as_string());
         }
       }
     } catch (const out_of_range&) {
@@ -724,11 +742,11 @@ void ServerState::load_config_early() {
     try {
       for (const auto& item : this->config_json->at("HTTPListen").as_list()) {
         if (item->is_int()) {
-          this->http_addresses.emplace_back(phosg::string_printf("0.0.0.0:%" PRId64, item->as_int()));
+          this->http_addresses.emplace_back(std::format("0.0.0.0:{}", item->as_int()));
         } else if (!IS_WINDOWS) {
           this->http_addresses.emplace_back(item->as_string());
         } else {
-          config_log.warning("Unix sockets are not supported on Windows; skipping address %s", item->as_string().c_str());
+          config_log.warning_f("Unix sockets are not supported on Windows; skipping address {}", item->as_string());
         }
       }
     } catch (const out_of_range&) {
@@ -742,11 +760,11 @@ void ServerState::load_config_early() {
     try {
       this->local_address = this->all_addresses.at(local_address_str);
       string addr_str = string_for_address(this->local_address);
-      config_log.info("Added local address: %s (%s)", addr_str.c_str(),
-          local_address_str.c_str());
+      config_log.info_f("Added local address: {} ({})", addr_str,
+          local_address_str);
     } catch (const out_of_range&) {
       this->local_address = address_for_string(local_address_str.c_str());
-      config_log.info("Added local address: %s", local_address_str.c_str());
+      config_log.info_f("Added local address: {}", local_address_str);
     }
     this->all_addresses.erase("<local>");
     this->all_addresses.emplace("<local>", this->local_address);
@@ -759,9 +777,9 @@ void ServerState::load_config_early() {
     }
     if (this->local_address) {
       string addr_str = string_for_address(this->local_address);
-      config_log.warning("Local address not specified; using %s as default", addr_str.c_str());
+      config_log.warning_f("Local address not specified; using {} as default", addr_str);
     } else {
-      config_log.warning("Local address not specified and no default is available");
+      config_log.warning_f("Local address not specified and no default is available");
     }
   }
 
@@ -770,11 +788,11 @@ void ServerState::load_config_early() {
     try {
       this->external_address = this->all_addresses.at(external_address_str);
       string addr_str = string_for_address(this->external_address);
-      config_log.info("Added external address: %s (%s)", addr_str.c_str(),
-          external_address_str.c_str());
+      config_log.info_f("Added external address: {} ({})", addr_str,
+          external_address_str);
     } catch (const out_of_range&) {
       this->external_address = address_for_string(external_address_str.c_str());
-      config_log.info("Added external address: %s", external_address_str.c_str());
+      config_log.info_f("Added external address: {}", external_address_str);
     }
     this->all_addresses.erase("<external>");
     this->all_addresses.emplace("<external>", this->external_address);
@@ -788,9 +806,9 @@ void ServerState::load_config_early() {
     }
     if (this->external_address) {
       string addr_str = string_for_address(this->external_address);
-      config_log.warning("External address not specified; using %s as default", addr_str.c_str());
+      config_log.warning_f("External address not specified; using {} as default", addr_str);
     } else {
-      config_log.warning("External address not specified and no default is available; only local clients will be able to connect");
+      config_log.warning_f("External address not specified and no default is available; only local clients will be able to connect");
     }
   }
 
@@ -808,6 +826,7 @@ void ServerState::load_config_early() {
   this->ip_stack_debug = this->config_json->get_bool("IPStackDebug", false);
   this->allow_unregistered_users = this->config_json->get_bool("AllowUnregisteredUsers", false);
   this->allow_pc_nte = this->config_json->get_bool("AllowPCNTE", false);
+  this->allow_saving_accounts = this->config_json->get_bool("AllowSavingAccounts", true);
   this->use_temp_accounts_for_prototypes = this->config_json->get_bool("UseTemporaryAccountsForPrototypes", true);
   this->notify_server_for_max_level_achieved = this->config_json->get_bool("NotifyServerForMaxLevelAchieved", false);
   this->allowed_drop_modes_v1_v2_normal = this->config_json->get_int("AllowedDropModesV1V2Normal", 0x1F);
@@ -842,7 +861,7 @@ void ServerState::load_config_early() {
     unordered_map<uint16_t, IntegralExpression> ret;
     try {
       for (const auto& it : json->get_dict(key)) {
-        if (!phosg::starts_with(it.first, "F_")) {
+        if (!it.first.starts_with("F_")) {
           throw runtime_error("invalid flag reference: " + it.first);
         }
         uint16_t flag = stoul(it.first.substr(2), nullptr, 16);
@@ -882,9 +901,9 @@ void ServerState::load_config_early() {
   try {
     for (const auto& it : this->config_json->get_dict("EnableSendFunctionCallQuestNumbers")) {
       if (it.first.size() != 4) {
-        throw runtime_error(phosg::string_printf(
-            "specific_version %s in EnableSendFunctionCallQuestNumbers is not a 4-byte string",
-            it.first.c_str()));
+        throw runtime_error(std::format(
+            "specific_version {} in EnableSendFunctionCallQuestNumbers is not a 4-byte string",
+            it.first));
       }
       uint32_t specific_version = phosg::StringReader(it.first).get_u32b();
       int64_t quest_num = it.second->as_int();
@@ -893,7 +912,6 @@ void ServerState::load_config_early() {
   } catch (const out_of_range&) {
   }
   this->enable_v3_v4_protected_subcommands = this->config_json->get_bool("EnableV3V4ProtectedSubcommands", false);
-  this->catch_handler_exceptions = this->config_json->get_bool("CatchHandlerExceptions", true);
 
   auto parse_int_list = +[](const phosg::JSON& json) -> vector<uint32_t> {
     vector<uint32_t> ret;
@@ -920,7 +938,6 @@ void ServerState::load_config_early() {
   this->ep3_card_auction_points = this->config_json->get_int("CardAuctionPoints", 0);
   this->hide_download_commands = this->config_json->get_bool("HideDownloadCommands", true);
   this->proxy_allow_save_files = this->config_json->get_bool("ProxyAllowSaveFiles", true);
-  this->proxy_enable_login_options = this->config_json->get_bool("ProxyEnableLoginOptions", false);
 
   try {
     const auto& i = this->config_json->at("CardAuctionSize");
@@ -936,50 +953,48 @@ void ServerState::load_config_early() {
     this->ep3_card_auction_max_size = 0;
   }
 
-  if (!this->is_replay) {
-    this->ep3_lobby_banners.clear();
-    size_t banner_index = 0;
-    for (const auto& it : this->config_json->get("Episode3LobbyBanners", phosg::JSON::list()).as_list()) {
-      string path = "system/ep3/banners/" + it->at(2).as_string();
+  this->ep3_lobby_banners.clear();
+  size_t banner_index = 0;
+  for (const auto& it : this->config_json->get("Episode3LobbyBanners", phosg::JSON::list()).as_list()) {
+    string path = "system/ep3/banners/" + it->at(2).as_string();
 
-      string compressed_gvm_data;
-      string decompressed_gvm_data;
-      string lower_path = phosg::tolower(path);
-      if (phosg::ends_with(lower_path, ".gvm.prs")) {
-        compressed_gvm_data = phosg::load_file(path);
-      } else if (phosg::ends_with(lower_path, ".gvm")) {
-        decompressed_gvm_data = phosg::load_file(path);
-      } else if (phosg::ends_with(lower_path, ".bmp")) {
-        phosg::Image img(path);
-        decompressed_gvm_data = encode_gvm(
-            img,
-            img.get_has_alpha() ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565,
-            phosg::string_printf("bnr%zu", banner_index),
-            0x80 | banner_index);
-        banner_index++;
-      } else {
-        throw runtime_error(phosg::string_printf("banner %s is in an unknown format", path.c_str()));
-      }
-
-      size_t decompressed_size = decompressed_gvm_data.empty()
-          ? prs_decompress_size(compressed_gvm_data)
-          : decompressed_gvm_data.size();
-      if (decompressed_size > 0x37000) {
-        throw runtime_error(phosg::string_printf("banner %s is too large (0x%zX bytes; maximum size is 0x37000 bytes)", path.c_str(), decompressed_size));
-      }
-
-      if (compressed_gvm_data.empty()) {
-        compressed_gvm_data = prs_compress_optimal(decompressed_gvm_data);
-      }
-      if (compressed_gvm_data.size() > 0x3800) {
-        throw runtime_error(phosg::string_printf("banner %s cannot be compressed small enough (0x%zX bytes; maximum size is 0x3800 bytes compressed)", it->at(2).as_string().c_str(), compressed_gvm_data.size()));
-      }
-      config_log.info("Loaded Episode 3 lobby banner %s (0x%zX -> 0x%zX bytes)", path.c_str(), decompressed_size, compressed_gvm_data.size());
-      this->ep3_lobby_banners.emplace_back(
-          Ep3LobbyBannerEntry{.type = static_cast<uint32_t>(it->at(0).as_int()),
-              .which = static_cast<uint32_t>(it->at(1).as_int()),
-              .data = std::move(compressed_gvm_data)});
+    string compressed_gvm_data;
+    string decompressed_gvm_data;
+    string lower_path = phosg::tolower(path);
+    if (lower_path.ends_with(".gvm.prs")) {
+      compressed_gvm_data = phosg::load_file(path);
+    } else if (lower_path.ends_with(".gvm")) {
+      decompressed_gvm_data = phosg::load_file(path);
+    } else if (lower_path.ends_with(".bmp")) {
+      phosg::Image img(path);
+      decompressed_gvm_data = encode_gvm(
+          img,
+          img.get_has_alpha() ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565,
+          std::format("bnr{}", banner_index),
+          0x80 | banner_index);
+      banner_index++;
+    } else {
+      throw runtime_error(std::format("banner {} is in an unknown format", path));
     }
+
+    size_t decompressed_size = decompressed_gvm_data.empty()
+        ? prs_decompress_size(compressed_gvm_data)
+        : decompressed_gvm_data.size();
+    if (decompressed_size > 0x37000) {
+      throw runtime_error(std::format("banner {} is too large (0x{:X} bytes; maximum size is 0x37000 bytes)", path, decompressed_size));
+    }
+
+    if (compressed_gvm_data.empty()) {
+      compressed_gvm_data = prs_compress_optimal(decompressed_gvm_data);
+    }
+    if (compressed_gvm_data.size() > 0x3800) {
+      throw runtime_error(std::format("banner {} cannot be compressed small enough (0x{:X} bytes; maximum size is 0x3800 bytes compressed)", it->at(2).as_string(), compressed_gvm_data.size()));
+    }
+    config_log.info_f("Loaded Episode 3 lobby banner {} (0x{:X} -> 0x{:X} bytes)", path, decompressed_size, compressed_gvm_data.size());
+    this->ep3_lobby_banners.emplace_back(
+        Ep3LobbyBannerEntry{.type = static_cast<uint32_t>(it->at(0).as_int()),
+            .which = static_cast<uint32_t>(it->at(1).as_int()),
+            .data = std::move(compressed_gvm_data)});
   }
 
   {
@@ -1136,11 +1151,11 @@ void ServerState::load_config_early() {
   try {
     this->quest_category_index = make_shared<QuestCategoryIndex>(this->config_json->at("QuestCategories"));
   } catch (const exception& e) {
-    throw runtime_error(phosg::string_printf(
-        "QuestCategories is missing or invalid in config.json (%s) - see config.example.json for an example", e.what()));
+    throw runtime_error(std::format(
+        "QuestCategories is missing or invalid in config.json ({}) - see config.example.json for an example", e.what()));
   }
 
-  config_log.info("Creating menus");
+  config_log.info_f("Creating menus");
 
   auto information_menu_v2 = make_shared<Menu>(MenuID::INFORMATION, "Information");
   auto information_menu_v3 = make_shared<Menu>(MenuID::INFORMATION, "Information");
@@ -1214,28 +1229,16 @@ void ServerState::load_config_early() {
   try {
     const string& netloc_str = this->config_json->get_string("ProxyDestination-Patch");
     this->proxy_destination_patch = phosg::parse_netloc(netloc_str);
-    config_log.info("Patch server proxy is enabled with destination %s", netloc_str.c_str());
-    for (auto& it : this->name_to_port_config) {
-      if (is_patch(it.second->version)) {
-        it.second->behavior = ServerBehavior::PROXY_SERVER;
-      }
-    }
+    config_log.info_f("Patch server proxy is enabled with destination {}", netloc_str);
   } catch (const out_of_range&) {
-    this->proxy_destination_patch.first = "";
-    this->proxy_destination_patch.second = 0;
+    this->proxy_destination_patch.reset();
   }
   try {
     const string& netloc_str = this->config_json->get_string("ProxyDestination-BB");
     this->proxy_destination_bb = phosg::parse_netloc(netloc_str);
-    config_log.info("BB proxy is enabled with destination %s", netloc_str.c_str());
-    for (auto& it : this->name_to_port_config) {
-      if (it.second->version == Version::BB_V4) {
-        it.second->behavior = ServerBehavior::PROXY_SERVER;
-      }
-    }
+    config_log.info_f("BB proxy is enabled with destination {}", netloc_str);
   } catch (const out_of_range&) {
-    this->proxy_destination_bb.first = "";
-    this->proxy_destination_bb.second = 0;
+    this->proxy_destination_bb.reset();
   }
 
   this->welcome_message = this->config_json->get_string("WelcomeMessage", "");
@@ -1304,8 +1307,6 @@ void ServerState::load_config_early() {
   } catch (const out_of_range&) {
     this->cheat_flags = CheatFlags();
   }
-
-  this->update_dependent_server_configs();
 }
 
 void ServerState::load_config_late() {
@@ -1336,7 +1337,7 @@ void ServerState::load_config_late() {
       try {
         card_id = this->ep3_card_index->definition_for_name_normalized(it.first)->def.card_id;
       } catch (const out_of_range&) {
-        throw runtime_error(phosg::string_printf("Ep3 card \"%s\" in auction pool does not exist", it.first.c_str()));
+        throw runtime_error(std::format("Ep3 card \"{}\" in auction pool does not exist", it.first));
       }
       this->ep3_card_auction_pool.emplace_back(
           CardAuctionPoolEntry{
@@ -1364,11 +1365,11 @@ void ServerState::load_config_late() {
             try {
               const auto& card = this->ep3_card_index->definition_for_name_normalized(card_name);
               if (card->def.type != Episode3::CardType::ASSIST) {
-                throw runtime_error(phosg::string_printf("Ep3 card \"%s\" in trap card list is not an assist card", card_name.c_str()));
+                throw runtime_error(std::format("Ep3 card \"{}\" in trap card list is not an assist card", card_name));
               }
               trap_card_ids.emplace_back(card->def.card_id);
             } catch (const out_of_range&) {
-              throw runtime_error(phosg::string_printf("Ep3 card \"%s\" in trap card list does not exist", card_name.c_str()));
+              throw runtime_error(std::format("Ep3 card \"{}\" in trap card list does not exist", card_name));
             }
           }
         }
@@ -1376,7 +1377,7 @@ void ServerState::load_config_late() {
     } catch (const out_of_range&) {
     }
   } else {
-    config_log.warning("Episode 3 card definitions missing; cannot set trap card IDs from config");
+    config_log.warning_f("Episode 3 card definitions missing; cannot set trap card IDs from config");
   }
 
   this->quest_F95E_results.clear();
@@ -1394,7 +1395,7 @@ void ServerState::load_config_late() {
             try {
               difficulty_res.emplace_back(this->parse_item_description(Version::BB_V4, item_it->as_string()));
             } catch (const exception& e) {
-              config_log.warning("Cannot parse item description \"%s\": %s (skipping entry)", item_it->as_string().c_str(), e.what());
+              config_log.warning_f("Cannot parse item description \"{}\": {} (skipping entry)", item_it->as_string(), e.what());
             }
           }
         }
@@ -1408,7 +1409,7 @@ void ServerState::load_config_late() {
         try {
           this->quest_F95F_results.emplace_back(make_pair(price, this->parse_item_description(Version::BB_V4, list.at(1)->as_string())));
         } catch (const exception& e) {
-          config_log.warning("Cannot parse item description \"%s\": %s (skipping entry)", list.at(1)->as_string().c_str(), e.what());
+          config_log.warning_f("Cannot parse item description \"{}\": {} (skipping entry)", list.at(1)->as_string(), e.what());
         }
       }
     } catch (const out_of_range&) {
@@ -1425,7 +1426,7 @@ void ServerState::load_config_late() {
         try {
           this->secret_lottery_results.emplace_back(this->parse_item_description(Version::BB_V4, it->as_string()));
         } catch (const exception& e) {
-          config_log.warning("Cannot parse item description \"%s\": %s (skipping entry)", it->as_string().c_str(), e.what());
+          config_log.warning_f("Cannot parse item description \"{}\": {} (skipping entry)", it->as_string(), e.what());
         }
       }
     } catch (const out_of_range&) {
@@ -1442,7 +1443,7 @@ void ServerState::load_config_late() {
               auto item = this->parse_item_description(v, pi_json->as_string());
               ret.emplace(item.primary_identifier());
             } catch (const exception& e) {
-              config_log.warning("Cannot parse item description \"%s\": %s (skipping entry)", pi_json->as_string().c_str(), e.what());
+              config_log.warning_f("Cannot parse item description \"{}\": {} (skipping entry)", pi_json->as_string(), e.what());
             }
           }
         }
@@ -1464,115 +1465,85 @@ void ServerState::load_config_late() {
         "NotifyServerForItemPrimaryIdentifiersV4", Version::BB_V4);
 
   } else {
-    config_log.warning("BB item name index is missing; cannot load quest reward lists from config");
+    config_log.warning_f("BB item name index is missing; cannot load quest reward lists from config");
   }
 }
 
-void ServerState::load_bb_private_keys(bool from_non_event_thread) {
+void ServerState::load_bb_private_keys() {
   vector<shared_ptr<const PSOBBEncryption::KeyFile>> new_keys;
-  for (const string& filename : phosg::list_directory("system/blueburst/keys")) {
-    if (!phosg::ends_with(filename, ".nsk")) {
+  for (const auto& item : std::filesystem::directory_iterator("system/blueburst/keys")) {
+    string filename = item.path().filename().string();
+    if (!filename.ends_with(".nsk")) {
       continue;
     }
     new_keys.emplace_back(make_shared<PSOBBEncryption::KeyFile>(
         phosg::load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + filename)));
-    config_log.info("Loaded Blue Burst key file: %s", filename.c_str());
+    config_log.info_f("Loaded Blue Burst key file: {}", filename);
   }
-
-  auto set = [s = this->shared_from_this(), new_keys = std::move(new_keys)]() {
-    s->bb_private_keys = std::move(new_keys);
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
+  this->bb_private_keys = std::move(new_keys);
 }
 
-void ServerState::load_bb_system_defaults(bool from_non_event_thread) {
-  shared_ptr<const parray<uint8_t, 0x16C>> new_key_config;
-  shared_ptr<const parray<uint8_t, 0x38>> new_joystick_config;
-
+void ServerState::load_bb_system_defaults() {
   try {
-    new_key_config = make_shared<parray<uint8_t, 0x16C>>(phosg::load_object_file<parray<uint8_t, 0x16C>>("system/blueburst/default-keyboard-config.bin"));
-    config_log.info("Default Blue Burst keyboard config is present");
+    this->bb_default_keyboard_config = make_shared<parray<uint8_t, 0x16C>>(phosg::load_object_file<parray<uint8_t, 0x16C>>("system/blueburst/default-keyboard-config.bin"));
+    config_log.info_f("Default Blue Burst keyboard config is present");
   } catch (const phosg::cannot_open_file&) {
   }
   try {
-    new_joystick_config = make_shared<parray<uint8_t, 0x38>>(phosg::load_object_file<parray<uint8_t, 0x38>>("system/blueburst/default-joystick-config.bin"));
-    config_log.info("Default Blue Burst joystick config is present");
+    this->bb_default_joystick_config = make_shared<parray<uint8_t, 0x38>>(phosg::load_object_file<parray<uint8_t, 0x38>>("system/blueburst/default-joystick-config.bin"));
+    config_log.info_f("Default Blue Burst joystick config is present");
   } catch (const phosg::cannot_open_file&) {
   }
-
-  auto set = [s = this->shared_from_this(), new_key_config = std::move(new_key_config), new_joystick_config = std::move(new_joystick_config)]() {
-    s->bb_default_keyboard_config = std::move(new_key_config);
-    s->bb_default_joystick_config = std::move(new_joystick_config);
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
 }
 
-void ServerState::load_accounts(bool from_non_event_thread) {
-  config_log.info("Indexing accounts");
-  shared_ptr<AccountIndex> new_index = make_shared<AccountIndex>(this->is_replay);
-
-  auto set = [s = this->shared_from_this(), new_index = std::move(new_index)]() {
-    s->account_index = std::move(new_index);
-    s->update_dependent_server_configs();
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
+void ServerState::load_accounts() {
+  config_log.info_f("Indexing accounts");
+  this->account_index = make_shared<AccountIndex>(!this->allow_saving_accounts);
 }
 
-void ServerState::load_teams(bool from_non_event_thread) {
-  config_log.info("Indexing teams");
-  shared_ptr<TeamIndex> new_index = make_shared<TeamIndex>("system/teams", this->team_reward_defs_json);
-
-  auto set = [s = this->shared_from_this(), new_index = std::move(new_index)]() {
-    s->team_index = std::move(new_index);
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
+void ServerState::load_teams() {
+  config_log.info_f("Indexing teams");
+  this->team_index = make_shared<TeamIndex>("system/teams", this->team_reward_defs_json);
 }
 
-void ServerState::load_patch_indexes(bool from_non_event_thread) {
+void ServerState::load_patch_indexes() {
   shared_ptr<const GSLArchive> bb_data_gsl;
   shared_ptr<PatchFileIndex> pc_patch_file_index;
   shared_ptr<PatchFileIndex> bb_patch_file_index;
 
-  if (phosg::isdir("system/patch-pc")) {
-    config_log.info("Indexing PSO PC patch files");
+  if (std::filesystem::is_directory("system/patch-pc")) {
+    config_log.info_f("Indexing PSO PC patch files");
     pc_patch_file_index = make_shared<PatchFileIndex>("system/patch-pc");
   } else {
-    config_log.info("PSO PC patch files not present");
+    config_log.info_f("PSO PC patch files not present");
   }
-  if (phosg::isdir("system/patch-bb")) {
-    config_log.info("Indexing PSO BB patch files");
+  if (std::filesystem::is_directory("system/patch-bb")) {
+    config_log.info_f("Indexing PSO BB patch files");
     bb_patch_file_index = make_shared<PatchFileIndex>("system/patch-bb");
     try {
       auto gsl_file = bb_patch_file_index->get("./data/data.gsl");
       bb_data_gsl = make_shared<GSLArchive>(gsl_file->load_data(), false);
-      config_log.info("data.gsl found in BB patch files");
+      config_log.info_f("data.gsl found in BB patch files");
     } catch (const out_of_range&) {
-      config_log.info("data.gsl is not present in BB patch files");
+      config_log.info_f("data.gsl is not present in BB patch files");
     }
   } else {
-    config_log.info("PSO BB patch files not present");
+    config_log.info_f("PSO BB patch files not present");
   }
 
-  auto set = [s = this->shared_from_this(),
-                 bb_data_gsl = std::move(bb_data_gsl),
-                 pc_patch_file_index = std::move(pc_patch_file_index),
-                 bb_patch_file_index = std::move(bb_patch_file_index)]() {
-    s->bb_data_gsl = std::move(bb_data_gsl);
-    s->pc_patch_file_index = std::move(pc_patch_file_index);
-    s->bb_patch_file_index = std::move(bb_patch_file_index);
-    s->update_dependent_server_configs();
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
+  this->bb_data_gsl = std::move(bb_data_gsl);
+  this->pc_patch_file_index = std::move(pc_patch_file_index);
+  this->bb_patch_file_index = std::move(bb_patch_file_index);
 }
 
-void ServerState::load_maps(bool from_non_event_thread) {
+void ServerState::load_maps() {
   using SDT = SetDataTable;
 
-  config_log.info("Loading map layouts");
-  auto room_layout_index = make_shared<RoomLayoutIndex>(
+  config_log.info_f("Loading map layouts");
+  auto new_room_layout_index = make_shared<RoomLayoutIndex>(
       phosg::JSON::parse(phosg::load_file("system/maps/room-layout-index.json")));
 
-  config_log.info("Loading Episode 3 Morgue maps");
+  config_log.info_f("Loading Episode 3 Morgue maps");
   unordered_map<uint64_t, shared_ptr<const MapFile>> new_map_file_for_source_hash;
   map<uint32_t, array<shared_ptr<const MapFile>, NUM_VERSIONS>> new_map_files_for_free_play_key;
   {
@@ -1585,13 +1556,13 @@ void ServerState::load_maps(bool from_non_event_thread) {
       auto map_file = make_shared<MapFile>(0, objects_data, enemies_data, nullptr);
       new_map_file_for_source_hash.emplace(map_file->source_hash(), map_file);
       new_map_files_for_free_play_key[free_play_key].at(static_cast<size_t>(Version::GC_EP3)) = map_file;
-      config_log.info("Episode 3 map files loaded with free play key %08" PRIX32, free_play_key);
+      config_log.info_f("Episode 3 map files loaded with free play key {:08X}", free_play_key);
     } else {
-      config_log.info("Episode 3 map files not found; skipping");
+      config_log.info_f("Episode 3 map files not found; skipping");
     }
   }
 
-  config_log.info("Loading free play map files");
+  config_log.info_f("Loading free play map files");
   for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
     const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
     for (Episode episode : episodes) {
@@ -1602,8 +1573,13 @@ void ServerState::load_maps(bool from_non_event_thread) {
 
       const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
       for (GameMode mode : modes) {
-        if (((mode == GameMode::BATTLE || mode == GameMode::CHALLENGE) && is_v1(v)) ||
-            (mode == GameMode::SOLO && !is_v4(v))) {
+        if ((mode == GameMode::BATTLE) && is_pre_v1(v)) {
+          continue;
+        }
+        if ((mode == GameMode::CHALLENGE) && is_v1(v)) {
+          continue;
+        }
+        if ((mode == GameMode::SOLO && !is_v4(v))) {
           continue;
         }
         for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
@@ -1644,7 +1620,7 @@ void ServerState::load_maps(bool from_non_event_thread) {
                   }
 
                   // Uncomment for debugging
-                  // config_log.info("Maps for %s %s %s %s %02hhX %02zu %02zu (%08" PRIX32 " => %016" PRIX64 "): objects=%s(%s)+0x%zX enemies=%s(%s)+0x%zX events=%s(%s)+0x%zX",
+                  // config_log.info_f("Maps for {} {} {} {} {:02X} {:02} {:02} ({:08X} => {:016X}): objects={}({})+0x{:X} enemies={}({})+0x{:X} events={}({})+0x{:X}",
                   //     phosg::name_for_enum(v),
                   //     name_for_episode(episode),
                   //     name_for_mode(mode),
@@ -1654,13 +1630,13 @@ void ServerState::load_maps(bool from_non_event_thread) {
                   //     var_entities,
                   //     free_play_key,
                   //     map_file->source_hash(),
-                  //     objects_filename.empty() ? "(none)" : objects_filename.c_str(),
+                  //     objects_filename.empty() ? "(none)" : objects_filename,
                   //     objects_data ? "present" : "missing",
                   //     map_file->count_object_sets(),
-                  //     enemies_filename.empty() ? "(none)" : enemies_filename.c_str(),
+                  //     enemies_filename.empty() ? "(none)" : enemies_filename,
                   //     enemies_data ? "present" : "missing",
                   //     map_file->count_enemy_sets(),
-                  //     events_filename.empty() ? "(none)" : events_filename.c_str(),
+                  //     events_filename.empty() ? "(none)" : events_filename,
                   //     events_data ? "present" : "missing",
                   //     map_file->count_events());
 
@@ -1674,17 +1650,11 @@ void ServerState::load_maps(bool from_non_event_thread) {
     }
   }
 
-  auto set = [s = this->shared_from_this(),
-                 new_map_file_for_source_hash = std::move(new_map_file_for_source_hash),
-                 new_map_files_for_free_play_key = std::move(new_map_files_for_free_play_key),
-                 new_room_layout_index = std::move(room_layout_index)]() {
-    s->map_file_for_source_hash = std::move(new_map_file_for_source_hash);
-    s->map_files_for_free_play_key = std::move(new_map_files_for_free_play_key);
-    s->room_layout_index = new_room_layout_index;
-    s->supermap_for_source_hash_sum.clear();
-    s->supermap_for_free_play_key.clear();
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
+  this->map_file_for_source_hash = std::move(new_map_file_for_source_hash);
+  this->map_files_for_free_play_key = std::move(new_map_files_for_free_play_key);
+  this->room_layout_index = new_room_layout_index;
+  this->supermap_for_source_hash_sum.clear();
+  this->supermap_for_free_play_key.clear();
 }
 
 shared_ptr<const SuperMap> ServerState::get_free_play_supermap(
@@ -1699,7 +1669,7 @@ shared_ptr<const SuperMap> ServerState::get_free_play_supermap(
   try {
     map_files = &this->map_files_for_free_play_key.at(free_play_key);
   } catch (const out_of_range&) {
-    static_game_data_log.info("No maps exist for key %08" PRIX32 "; cannot construct supermap", free_play_key);
+    static_game_data_log.info_f("No maps exist for key {:08X}; cannot construct supermap", free_play_key);
     this->supermap_for_free_play_key.emplace(free_play_key, nullptr);
     return nullptr;
   }
@@ -1710,7 +1680,7 @@ shared_ptr<const SuperMap> ServerState::get_free_play_supermap(
   }
 
   // Uncomment for debugging
-  // fprintf(stderr, "SuperMap for %s %s %s %02hhX %02hhX %02hhX (%08" PRIX32 "): %016" PRIX64 " from",
+  // phosg::fwrite_fmt(stderr, "SuperMap for {} {} {} {:02X} {:02X} {:02X} ({:08X}): {:016X} from",
   //     name_for_episode(episode),
   //     name_for_mode(mode),
   //     name_for_difficulty(difficulty),
@@ -1721,9 +1691,9 @@ shared_ptr<const SuperMap> ServerState::get_free_play_supermap(
   //     source_hash_sum);
   // for (const auto& map_file : it.second) {
   //   if (map_file) {
-  //     fprintf(stderr, " %016" PRIX64, map_file->source_hash());
+  //     phosg::fwrite_fmt(stderr, " {:016X}", map_file->source_hash());
   //   } else {
-  //     fprintf(stderr, " ----------------");
+  //     phosg::fwrite_fmt(stderr, " ----------------");
   //   }
   // }
   // fputc('\n', stderr);
@@ -1731,11 +1701,11 @@ shared_ptr<const SuperMap> ServerState::get_free_play_supermap(
   shared_ptr<const SuperMap> supermap;
   try {
     supermap = this->supermap_for_source_hash_sum.at(source_hash_sum);
-    static_game_data_log.info("Linking existing free play supermap %016" PRIX64 " for key %08" PRIX32, source_hash_sum, free_play_key);
+    static_game_data_log.info_f("Linking existing free play supermap {:016X} for key {:08X}", source_hash_sum, free_play_key);
   } catch (const out_of_range&) {
     supermap = make_shared<SuperMap>(episode, *map_files);
     this->supermap_for_source_hash_sum.emplace(source_hash_sum, supermap);
-    static_game_data_log.info("Constructed free play supermap %016" PRIX64 " for key %08" PRIX32, source_hash_sum, free_play_key);
+    static_game_data_log.info_f("Constructed free play supermap {:016X} for key {:08X}", source_hash_sum, free_play_key);
   }
   this->supermap_for_free_play_key.emplace(free_play_key, supermap);
   return supermap;
@@ -1754,31 +1724,28 @@ vector<shared_ptr<const SuperMap>> ServerState::supermaps_for_variations(
     }
     ret.push_back(this->get_free_play_supermap(episode, mode, difficulty, floor, e.layout, e.entities));
     if (ret.back()) {
-      static_game_data_log.info("Using supermap %08" PRIX32 " for floor %02zX layout %" PRIX32 " entities %" PRIX32,
+      static_game_data_log.info_f("Using supermap {:08X} for floor {:02X} layout {:X} entities {:X}",
           this->free_play_key(episode, mode, difficulty, floor, e.layout, e.entities),
-          floor, e.layout.load(), e.entities.load());
+          floor, e.layout, e.entities);
     } else {
-      static_game_data_log.info("No supermap available for floor %02zX layout %" PRIX32 " entities %" PRIX32,
-          floor, e.layout.load(), e.entities.load());
+      static_game_data_log.info_f("No supermap available for floor {:02X} layout {:X} entities {:X}",
+          floor, e.layout, e.entities);
     }
   }
   return ret;
 }
 
-void ServerState::clear_file_caches(bool from_non_event_thread) {
-  auto set = [s = this->shared_from_this()]() {
-    config_log.info("Clearing BB stream file cache");
-    s->bb_stream_files_cache.reset(new FileContentsCache(3600000000ULL));
-    config_log.info("Clearing BB system cache");
-    s->bb_system_cache.reset(new FileContentsCache(3600000000ULL));
-    config_log.info("Clearing GBA file cache");
-    s->gba_files_cache.reset(new FileContentsCache(300 * 1000 * 1000));
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
+void ServerState::clear_file_caches() {
+  config_log.info_f("Clearing BB stream file cache");
+  this->bb_stream_files_cache.reset(new FileContentsCache(3600000000ULL));
+  config_log.info_f("Clearing BB system cache");
+  this->bb_system_cache.reset(new FileContentsCache(3600000000ULL));
+  config_log.info_f("Clearing GBA file cache");
+  this->gba_files_cache.reset(new FileContentsCache(300 * 1000 * 1000));
 }
 
-void ServerState::load_set_data_tables(bool from_non_event_thread) {
-  config_log.info("Loading set data tables");
+void ServerState::load_set_data_tables() {
+  config_log.info_f("Loading set data tables");
 
   array<shared_ptr<const SetDataTableBase>, NUM_VERSIONS> new_tables;
   array<shared_ptr<const SetDataTableBase>, NUM_VERSIONS> new_tables_ep1_ult;
@@ -1810,51 +1777,32 @@ void ServerState::load_set_data_tables(bool from_non_event_thread) {
   auto bb_solo_data_ep1_ult = this->load_map_file(Version::BB_V4, "SetDataTableOffUlti.rel");
   new_table_bb_solo_ep1_ult = make_shared<SetDataTable>(Version::BB_V4, *bb_solo_data_ep1_ult);
 
-  auto set = [s = this->shared_from_this(),
-                 new_tables = std::move(new_tables),
-                 new_tables_ep1_ult = std::move(new_tables_ep1_ult),
-                 new_table_bb_solo = std::move(new_table_bb_solo),
-                 new_table_bb_solo_ep1_ult = std::move(new_table_bb_solo_ep1_ult)]() {
-    s->set_data_tables = std::move(new_tables);
-    s->set_data_tables_ep1_ult = std::move(new_tables_ep1_ult);
-    s->bb_solo_set_data_table = std::move(new_table_bb_solo);
-    s->bb_solo_set_data_table_ep1_ult = std::move(new_table_bb_solo_ep1_ult);
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
+  this->set_data_tables = std::move(new_tables);
+  this->set_data_tables_ep1_ult = std::move(new_tables_ep1_ult);
+  this->bb_solo_set_data_table = std::move(new_table_bb_solo);
+  this->bb_solo_set_data_table_ep1_ult = std::move(new_table_bb_solo_ep1_ult);
 }
 
-void ServerState::load_battle_params(bool from_non_event_thread) {
-  config_log.info("Loading battle parameters");
-  auto new_battle_params = make_shared<BattleParamsIndex>(
+void ServerState::load_battle_params() {
+  config_log.info_f("Loading battle parameters");
+  this->battle_params = make_shared<BattleParamsIndex>(
       this->load_bb_file("BattleParamEntry_on.dat"),
       this->load_bb_file("BattleParamEntry_lab_on.dat"),
       this->load_bb_file("BattleParamEntry_ep4_on.dat"),
       this->load_bb_file("BattleParamEntry.dat"),
       this->load_bb_file("BattleParamEntry_lab.dat"),
       this->load_bb_file("BattleParamEntry_ep4.dat"));
-
-  auto set = [s = this->shared_from_this(), new_battle_params = std::move(new_battle_params)]() {
-    s->battle_params = std::move(new_battle_params);
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
 }
 
-void ServerState::load_level_tables(bool from_non_event_thread) {
-  config_log.info("Loading level tables");
-  auto new_table_v1_v2 = make_shared<LevelTableV2>(phosg::load_file("system/level-tables/PlayerTable-pc-v2.prs"), true);
-  auto new_table_v3 = make_shared<LevelTableV3BE>(phosg::load_file("system/level-tables/PlyLevelTbl-gc-v3.cpt"), true);
-  auto new_table_v4 = make_shared<LevelTableV4>(*this->load_bb_file("PlyLevelTbl.prs"), true);
-
-  auto set = [s = this->shared_from_this(), new_table_v1_v2 = std::move(new_table_v1_v2), new_table_v3 = std::move(new_table_v3), new_table_v4 = std::move(new_table_v4)]() {
-    s->level_table_v1_v2 = std::move(new_table_v1_v2);
-    s->level_table_v3 = std::move(new_table_v3);
-    s->level_table_v4 = std::move(new_table_v4);
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
+void ServerState::load_level_tables() {
+  config_log.info_f("Loading level tables");
+  this->level_table_v1_v2 = make_shared<LevelTableV2>(phosg::load_file("system/level-tables/PlayerTable-pc-v2.prs"), true);
+  this->level_table_v3 = make_shared<LevelTableV3BE>(phosg::load_file("system/level-tables/PlyLevelTbl-gc-v3.cpt"), true);
+  this->level_table_v4 = make_shared<LevelTableV4>(*this->load_bb_file("PlyLevelTbl.prs"), true);
 }
 
-void ServerState::load_text_index(bool from_non_event_thread) {
-  auto new_index = make_shared<TextIndex>("system/text-sets", [&](Version version, const string& filename) -> shared_ptr<const string> {
+void ServerState::load_text_index() {
+  this->text_index = make_shared<TextIndex>("system/text-sets", [&](Version version, const string& filename) -> shared_ptr<const string> {
     try {
       if (version == Version::BB_V4) {
         return this->load_bb_file(filename);
@@ -1867,15 +1815,10 @@ void ServerState::load_text_index(bool from_non_event_thread) {
       return nullptr;
     }
   });
-
-  auto set = [s = this->shared_from_this(), new_index = std::move(new_index)]() {
-    s->text_index = std::move(new_index);
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
 }
 
-void ServerState::load_word_select_table(bool from_non_event_thread) {
-  config_log.info("Loading Word Select table");
+void ServerState::load_word_select_table() {
+  config_log.info_f("Loading Word Select table");
 
   vector<vector<string>> name_alias_lists;
   auto json = phosg::JSON::parse(phosg::load_file("system/text-sets/ws-name-alias-lists.json"));
@@ -1890,53 +1833,48 @@ void ServerState::load_word_select_table(bool from_non_event_thread) {
   const vector<string>* bb_unitxt_collection = nullptr;
   unique_ptr<UnicodeTextSet> pc_unitxt_data;
   if (this->text_index) {
-    config_log.info("(Word select) Using PC_V2 unitxt_e.prs from text index");
+    config_log.info_f("(Word select) Using PC_V2 unitxt_e.prs from text index");
     pc_unitxt_collection = &this->text_index->get(Version::PC_V2, 1, 35);
   } else {
-    config_log.info("(Word select) Loading PC_V2 unitxt_e.prs");
+    config_log.info_f("(Word select) Loading PC_V2 unitxt_e.prs");
     pc_unitxt_data = make_unique<UnicodeTextSet>(phosg::load_file("system/text-sets/pc-v2/unitxt_e.prs"));
     pc_unitxt_collection = &pc_unitxt_data->get(35);
   }
-  config_log.info("(Word select) Loading BB_V4 unitxt_ws_e.prs");
+  config_log.info_f("(Word select) Loading BB_V4 unitxt_ws_e.prs");
   auto bb_unitxt_data = make_unique<UnicodeTextSet>(phosg::load_file("system/text-sets/bb-v4/unitxt_ws_e.prs"));
   bb_unitxt_collection = &bb_unitxt_data->get(0);
 
-  config_log.info("(Word select) Loading DC_NTE data");
+  config_log.info_f("(Word select) Loading DC_NTE data");
   WordSelectSet dc_nte_ws(phosg::load_file("system/text-sets/dc-nte/ws_data.bin"), Version::DC_NTE, nullptr, true);
-  config_log.info("(Word select) Loading DC_11_2000 data");
+  config_log.info_f("(Word select) Loading DC_11_2000 data");
   WordSelectSet dc_112000_ws(phosg::load_file("system/text-sets/dc-11-2000/ws_data.bin"), Version::DC_11_2000, nullptr, false);
-  config_log.info("(Word select) Loading DC_V1 data");
+  config_log.info_f("(Word select) Loading DC_V1 data");
   WordSelectSet dc_v1_ws(phosg::load_file("system/text-sets/dc-v1/ws_data.bin"), Version::DC_V1, nullptr, false);
-  config_log.info("(Word select) Loading DC_V2 data");
+  config_log.info_f("(Word select) Loading DC_V2 data");
   WordSelectSet dc_v2_ws(phosg::load_file("system/text-sets/dc-v2/ws_data.bin"), Version::DC_V2, nullptr, false);
-  config_log.info("(Word select) Loading PC_NTE data");
+  config_log.info_f("(Word select) Loading PC_NTE data");
   WordSelectSet pc_nte_ws(phosg::load_file("system/text-sets/pc-nte/ws_data.bin"), Version::PC_NTE, pc_unitxt_collection, false);
-  config_log.info("(Word select) Loading PC_V2 data");
+  config_log.info_f("(Word select) Loading PC_V2 data");
   WordSelectSet pc_v2_ws(phosg::load_file("system/text-sets/pc-v2/ws_data.bin"), Version::PC_V2, pc_unitxt_collection, false);
-  config_log.info("(Word select) Loading GC_NTE data");
+  config_log.info_f("(Word select) Loading GC_NTE data");
   WordSelectSet gc_nte_ws(phosg::load_file("system/text-sets/gc-nte/ws_data.bin"), Version::GC_NTE, nullptr, false);
-  config_log.info("(Word select) Loading GC_V3 data");
+  config_log.info_f("(Word select) Loading GC_V3 data");
   WordSelectSet gc_v3_ws(phosg::load_file("system/text-sets/gc-v3/ws_data.bin"), Version::GC_V3, nullptr, false);
-  config_log.info("(Word select) Loading GC_EP3_NTE data");
+  config_log.info_f("(Word select) Loading GC_EP3_NTE data");
   WordSelectSet gc_ep3_nte_ws(phosg::load_file("system/text-sets/gc-ep3-nte/ws_data.bin"), Version::GC_EP3_NTE, nullptr, false);
-  config_log.info("(Word select) Loading GC_EP3 data");
+  config_log.info_f("(Word select) Loading GC_EP3 data");
   WordSelectSet gc_ep3_ws(phosg::load_file("system/text-sets/gc-ep3/ws_data.bin"), Version::GC_EP3, nullptr, false);
-  config_log.info("(Word select) Loading XB_V3 data");
+  config_log.info_f("(Word select) Loading XB_V3 data");
   WordSelectSet xb_v3_ws(phosg::load_file("system/text-sets/xb-v3/ws_data.bin"), Version::XB_V3, nullptr, false);
-  config_log.info("(Word select) Loading BB_V4 data");
+  config_log.info_f("(Word select) Loading BB_V4 data");
   WordSelectSet bb_v4_ws(phosg::load_file("system/text-sets/bb-v4/ws_data.bin"), Version::BB_V4, bb_unitxt_collection, false);
 
-  config_log.info("(Word select) Generating table");
-  auto new_table = make_shared<WordSelectTable>(
+  config_log.info_f("(Word select) Generating table");
+  this->word_select_table = make_shared<WordSelectTable>(
       dc_nte_ws, dc_112000_ws, dc_v1_ws, dc_v2_ws,
       pc_nte_ws, pc_v2_ws, gc_nte_ws, gc_v3_ws,
       gc_ep3_nte_ws, gc_ep3_ws, xb_v3_ws, bb_v4_ws,
       name_alias_lists);
-
-  auto set = [s = this->shared_from_this(), new_table = std::move(new_table)]() {
-    s->word_select_table = std::move(new_table);
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
 }
 
 shared_ptr<ItemNameIndex> ServerState::create_item_name_index_for_version(
@@ -1969,30 +1907,24 @@ shared_ptr<ItemNameIndex> ServerState::create_item_name_index_for_version(
   }
 }
 
-void ServerState::load_item_name_indexes(bool from_non_event_thread) {
-  array<shared_ptr<const ItemNameIndex>, NUM_VERSIONS> new_indexes;
-
+void ServerState::load_item_name_indexes() {
   for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
     Version v = static_cast<Version>(v_s);
-    config_log.info("Generating item name index for %s", phosg::name_for_enum(v));
-    new_indexes[v_s] = this->create_item_name_index_for_version(
+    config_log.info_f("Generating item name index for {}", phosg::name_for_enum(v));
+    this->item_name_indexes[v_s] = this->create_item_name_index_for_version(
         this->item_parameter_table(v), this->item_stack_limits(v), this->text_index);
   }
-  new_indexes[static_cast<size_t>(Version::GC_EP3)] = new_indexes[static_cast<size_t>(Version::GC_V3)];
-  new_indexes[static_cast<size_t>(Version::GC_EP3_NTE)] = new_indexes[static_cast<size_t>(Version::GC_V3)];
-
-  auto set = [s = this->shared_from_this(), new_indexes = std::move(new_indexes)]() {
-    s->item_name_indexes = std::move(new_indexes);
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
+  this->item_name_indexes[static_cast<size_t>(Version::GC_EP3)] = this->item_name_indexes[static_cast<size_t>(Version::GC_V3)];
+  this->item_name_indexes[static_cast<size_t>(Version::GC_EP3_NTE)] = this->item_name_indexes[static_cast<size_t>(Version::GC_V3)];
 }
 
-void ServerState::load_drop_tables(bool from_non_event_thread) {
-  config_log.info("Loading rare item sets");
+void ServerState::load_drop_tables() {
+  config_log.info_f("Loading rare item sets");
 
   unordered_map<string, shared_ptr<RareItemSet>> new_rare_item_sets;
-  for (const auto& filename : phosg::list_directory_sorted("system/item-tables")) {
-    if (!phosg::starts_with(filename, "rare-table-")) {
+  for (const auto& item : std::filesystem::directory_iterator("system/item-tables")) {
+    string filename = item.path().filename().string();
+    if (!filename.starts_with("rare-table-")) {
       continue;
     }
 
@@ -2000,57 +1932,57 @@ void ServerState::load_drop_tables(bool from_non_event_thread) {
     size_t ext_offset = filename.rfind('.');
     string basename = (ext_offset == string::npos) ? filename : filename.substr(0, ext_offset);
 
-    if (phosg::ends_with(filename, "-v1.json")) {
-      config_log.info("Loading v1 JSON rare item table %s", filename.c_str());
+    if (filename.ends_with("-v1.json")) {
+      config_log.info_f("Loading v1 JSON rare item table {}", filename);
       new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(phosg::JSON::parse(phosg::load_file(path)), this->item_name_index(Version::DC_V1)));
-    } else if (phosg::ends_with(filename, "-v2.json")) {
-      config_log.info("Loading v2 JSON rare item table %s", filename.c_str());
+    } else if (filename.ends_with("-v2.json")) {
+      config_log.info_f("Loading v2 JSON rare item table {}", filename);
       new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(phosg::JSON::parse(phosg::load_file(path)), this->item_name_index(Version::PC_V2)));
-    } else if (phosg::ends_with(filename, "-v3.json")) {
-      config_log.info("Loading v3 JSON rare item table %s", filename.c_str());
+    } else if (filename.ends_with("-v3.json")) {
+      config_log.info_f("Loading v3 JSON rare item table {}", filename);
       new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(phosg::JSON::parse(phosg::load_file(path)), this->item_name_index(Version::GC_V3)));
-    } else if (phosg::ends_with(filename, "-v4.json")) {
-      config_log.info("Loading v4 JSON rare item table %s", filename.c_str());
+    } else if (filename.ends_with("-v4.json")) {
+      config_log.info_f("Loading v4 JSON rare item table {}", filename);
       new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(phosg::JSON::parse(phosg::load_file(path)), this->item_name_index(Version::BB_V4)));
 
-    } else if (phosg::ends_with(filename, ".afs")) {
-      config_log.info("Loading AFS rare item table %s", filename.c_str());
+    } else if (filename.ends_with(".afs")) {
+      config_log.info_f("Loading AFS rare item table {}", filename);
       auto data = make_shared<string>(phosg::load_file(path));
       new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(AFSArchive(data), false));
 
-    } else if (phosg::ends_with(filename, ".gsl")) {
-      config_log.info("Loading GSL rare item table %s", filename.c_str());
+    } else if (filename.ends_with(".gsl")) {
+      config_log.info_f("Loading GSL rare item table {}", filename);
       auto data = make_shared<string>(phosg::load_file(path));
       new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(GSLArchive(data, false), false));
 
-    } else if (phosg::ends_with(filename, ".gslb")) {
-      config_log.info("Loading GSL rare item table %s", filename.c_str());
+    } else if (filename.ends_with(".gslb")) {
+      config_log.info_f("Loading GSL rare item table {}", filename);
       auto data = make_shared<string>(phosg::load_file(path));
       new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(GSLArchive(data, true), true));
 
-    } else if (phosg::ends_with(filename, ".rel")) {
-      config_log.info("Loading REL rare item table %s", filename.c_str());
+    } else if (filename.ends_with(".rel")) {
+      config_log.info_f("Loading REL rare item table {}", filename);
       new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(phosg::load_file(path), true));
     }
   }
 
-  config_log.info("Loading v2 common item table");
+  config_log.info_f("Loading v2 common item table");
   auto ct_data_v2 = make_shared<string>(phosg::load_file("system/item-tables/ItemCT-pc-v2.afs"));
   auto pt_data_v2 = make_shared<string>(phosg::load_file("system/item-tables/ItemPT-pc-v2.afs"));
   auto new_common_item_set_v2 = make_shared<AFSV2CommonItemSet>(pt_data_v2, ct_data_v2);
-  config_log.info("Loading v3+v4 common item table");
+  config_log.info_f("Loading v3+v4 common item table");
   auto pt_data_v3_v4 = make_shared<string>(phosg::load_file("system/item-tables/ItemPT-gc-v3.gsl"));
   auto new_common_item_set_v3_v4 = make_shared<GSLV3V4CommonItemSet>(pt_data_v3_v4, true);
 
-  config_log.info("Loading armor table");
+  config_log.info_f("Loading armor table");
   auto armor_data = make_shared<string>(phosg::load_file("system/item-tables/ArmorRandom-gc-v3.rel"));
   auto new_armor_random_set = make_shared<ArmorRandomSet>(armor_data);
 
-  config_log.info("Loading tool table");
+  config_log.info_f("Loading tool table");
   auto tool_data = make_shared<string>(phosg::load_file("system/item-tables/ToolRandom-gc-v3.rel"));
   auto new_tool_random_set = make_shared<ToolRandomSet>(tool_data);
 
-  config_log.info("Loading weapon tables");
+  config_log.info_f("Loading weapon tables");
   array<shared_ptr<const WeaponRandomSet>, 4> new_weapon_random_sets;
   const char* filenames[4] = {
       "system/item-tables/WeaponRandomNormal-gc-v3.rel",
@@ -2063,45 +1995,35 @@ void ServerState::load_drop_tables(bool from_non_event_thread) {
     new_weapon_random_sets[z] = make_shared<WeaponRandomSet>(weapon_data);
   }
 
-  config_log.info("Loading tekker adjustment table");
+  config_log.info_f("Loading tekker adjustment table");
   auto tekker_data = make_shared<string>(phosg::load_file("system/item-tables/JudgeItem-gc-v3.rel"));
   auto new_tekker_adjustment_set = make_shared<TekkerAdjustmentSet>(tekker_data);
 
-  auto set = [s = this->shared_from_this(),
-                 new_rare_item_sets = std::move(new_rare_item_sets),
-                 new_common_item_set_v2 = std::move(new_common_item_set_v2),
-                 new_common_item_set_v3_v4 = std::move(new_common_item_set_v3_v4),
-                 new_armor_random_set = std::move(new_armor_random_set),
-                 new_tool_random_set = std::move(new_tool_random_set),
-                 new_weapon_random_sets = std::move(new_weapon_random_sets),
-                 new_tekker_adjustment_set = std::move(new_tekker_adjustment_set)]() {
-    if (s->server_global_drop_rate_multiplier != 1.0) {
-      for (auto& it : new_rare_item_sets) {
-        it.second->multiply_all_rates(s->server_global_drop_rate_multiplier);
-      }
-    }
-    // We can't just std::move() new_rare_item_sets into place because its values are
-    // not const :(
-    s->rare_item_sets.clear();
+  if (this->server_global_drop_rate_multiplier != 1.0) {
     for (auto& it : new_rare_item_sets) {
-      s->rare_item_sets.emplace(it.first, std::move(it.second));
+      it.second->multiply_all_rates(this->server_global_drop_rate_multiplier);
     }
-    s->common_item_set_v2 = std::move(new_common_item_set_v2);
-    s->common_item_set_v3_v4 = std::move(new_common_item_set_v3_v4);
-    s->armor_random_set = std::move(new_armor_random_set);
-    s->tool_random_set = std::move(new_tool_random_set);
-    s->weapon_random_sets = std::move(new_weapon_random_sets);
-    s->tekker_adjustment_set = std::move(new_tekker_adjustment_set);
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
+  }
+  // We can't just std::move() new_rare_item_sets into place because its values are
+  // not const :(
+  this->rare_item_sets.clear();
+  for (auto& it : new_rare_item_sets) {
+    this->rare_item_sets.emplace(it.first, std::move(it.second));
+  }
+  this->common_item_set_v2 = std::move(new_common_item_set_v2);
+  this->common_item_set_v3_v4 = std::move(new_common_item_set_v3_v4);
+  this->armor_random_set = std::move(new_armor_random_set);
+  this->tool_random_set = std::move(new_tool_random_set);
+  this->weapon_random_sets = std::move(new_weapon_random_sets);
+  this->tekker_adjustment_set = std::move(new_tekker_adjustment_set);
 }
 
-void ServerState::load_item_definitions(bool from_non_event_thread) {
+void ServerState::load_item_definitions() {
   array<shared_ptr<const ItemParameterTable>, NUM_VERSIONS> new_item_parameter_tables;
   for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
     Version v = static_cast<Version>(v_s);
-    string path = phosg::string_printf("system/item-tables/ItemPMT-%s.prs", file_path_token_for_version(v));
-    config_log.info("Loading item definition table %s", path.c_str());
+    string path = std::format("system/item-tables/ItemPMT-{}.prs", file_path_token_for_version(v));
+    config_log.info_f("Loading item definition table {}", path);
     auto data = make_shared<string>(prs_decompress(phosg::load_file(path)));
     new_item_parameter_tables[v_s] = make_shared<ItemParameterTable>(data, v);
   }
@@ -2110,119 +2032,72 @@ void ServerState::load_item_definitions(bool from_non_event_thread) {
   auto new_item_translation_table = make_shared<ItemTranslationTable>(json, new_item_parameter_tables);
 
   // TODO: We should probably load the tables for other versions too.
-  config_log.info("Loading v1/v2 mag evolution table");
+  config_log.info_f("Loading v1/v2 mag evolution table");
   auto mag_data_v1_v2 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-dc-v2.prs")));
   auto new_table_v1_v2 = make_shared<MagEvolutionTable>(mag_data_v1_v2, 0x3A);
-  config_log.info("Loading v3 mag evolution table");
+  config_log.info_f("Loading v3 mag evolution table");
   auto mag_data_v3 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-xb-v3.prs")));
   auto new_table_v3 = make_shared<MagEvolutionTable>(mag_data_v3, 0x43);
-  config_log.info("Loading v4 mag evolution table");
+  config_log.info_f("Loading v4 mag evolution table");
   auto mag_data_v4 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-bb-v4.prs")));
   auto new_table_v4 = make_shared<MagEvolutionTable>(mag_data_v4, 0x53);
 
-  auto set = [s = this->shared_from_this(),
-                 new_item_parameter_tables = std::move(new_item_parameter_tables),
-                 new_item_translation_table = std::move(new_item_translation_table),
-                 new_table_v1_v2 = std::move(new_table_v1_v2),
-                 new_table_v3 = std::move(new_table_v3),
-                 new_table_v4 = std::move(new_table_v4)]() {
-    s->item_parameter_tables = std::move(new_item_parameter_tables);
-    s->item_translation_table = std::move(new_item_translation_table);
-    s->mag_evolution_table_v1_v2 = std::move(new_table_v1_v2);
-    s->mag_evolution_table_v3 = std::move(new_table_v3);
-    s->mag_evolution_table_v4 = std::move(new_table_v4);
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
+  this->item_parameter_tables = std::move(new_item_parameter_tables);
+  this->item_translation_table = std::move(new_item_translation_table);
+  this->mag_evolution_table_v1_v2 = std::move(new_table_v1_v2);
+  this->mag_evolution_table_v3 = std::move(new_table_v3);
+  this->mag_evolution_table_v4 = std::move(new_table_v4);
 }
 
-void ServerState::load_ep3_cards(bool from_non_event_thread) {
-  config_log.info("Loading Episode 3 card definitions");
-  auto new_ep3_card_index = make_shared<Episode3::CardIndex>(
+void ServerState::load_ep3_cards() {
+  config_log.info_f("Loading Episode 3 card definitions");
+  this->ep3_card_index = make_shared<Episode3::CardIndex>(
       "system/ep3/card-definitions.mnr",
       "system/ep3/card-definitions.mnrd",
       "system/ep3/card-text.mnr",
       "system/ep3/card-text.mnrd",
       "system/ep3/card-dice-text.mnr",
       "system/ep3/card-dice-text.mnrd");
-  config_log.info("Loading Episode 3 trial card definitions");
-  auto new_ep3_card_index_trial = make_shared<Episode3::CardIndex>(
+  config_log.info_f("Loading Episode 3 trial card definitions");
+  this->ep3_card_index_trial = make_shared<Episode3::CardIndex>(
       "system/ep3/card-definitions-trial.mnr",
       "system/ep3/card-definitions-trial.mnrd",
       "system/ep3/card-text-trial.mnr",
       "system/ep3/card-text-trial.mnrd",
       "system/ep3/card-dice-text-trial.mnr",
       "system/ep3/card-dice-text-trial.mnrd");
-  config_log.info("Loading Episode 3 COM decks");
-  auto new_ep3_com_deck_index = make_shared<Episode3::COMDeckIndex>("system/ep3/com-decks.json");
-
-  auto set = [s = this->shared_from_this(),
-                 new_ep3_card_index = std::move(new_ep3_card_index),
-                 new_ep3_card_index_trial = std::move(new_ep3_card_index_trial),
-                 new_ep3_com_deck_index = std::move(new_ep3_com_deck_index)]() {
-    s->ep3_card_index = std::move(new_ep3_card_index);
-    s->ep3_card_index_trial = std::move(new_ep3_card_index_trial);
-    s->ep3_com_deck_index = std::move(new_ep3_com_deck_index);
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
+  config_log.info_f("Loading Episode 3 COM decks");
+  this->ep3_com_deck_index = make_shared<Episode3::COMDeckIndex>("system/ep3/com-decks.json");
 }
 
-void ServerState::load_ep3_maps(bool from_non_event_thread) {
-  config_log.info("Collecting Episode 3 maps");
-  auto new_ep3_map_index = make_shared<Episode3::MapIndex>("system/ep3/maps");
-
-  auto set = [s = this->shared_from_this(), new_ep3_map_index = std::move(new_ep3_map_index)]() {
-    s->ep3_map_index = std::move(new_ep3_map_index);
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
+void ServerState::load_ep3_maps() {
+  config_log.info_f("Collecting Episode 3 maps");
+  this->ep3_map_index = make_shared<Episode3::MapIndex>("system/ep3/maps");
 }
 
-void ServerState::load_ep3_tournament_state(bool from_non_event_thread) {
-  config_log.info("Loading Episode 3 tournament state");
+void ServerState::load_ep3_tournament_state() {
+  config_log.info_f("Loading Episode 3 tournament state");
   const string& tournament_state_filename = "system/ep3/tournament-state.json";
-  auto new_ep3_tournament_index = make_shared<Episode3::TournamentIndex>(
+  this->ep3_tournament_index = make_shared<Episode3::TournamentIndex>(
       this->ep3_map_index, this->ep3_com_deck_index, tournament_state_filename);
-
-  auto set = [s = this->shared_from_this(),
-                 new_ep3_tournament_index = std::move(new_ep3_tournament_index)]() {
-    s->ep3_tournament_index = std::move(new_ep3_tournament_index);
-    s->ep3_tournament_index->link_all_clients(s);
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
+  this->ep3_tournament_index->link_all_clients(this->shared_from_this());
 }
 
-void ServerState::load_quest_index(bool from_non_event_thread) {
-  config_log.info("Collecting quests");
-  auto new_default_quest_index = make_shared<QuestIndex>("system/quests", this->quest_category_index, false);
-  config_log.info("Collecting Episode 3 download quests");
-  auto new_ep3_download_quest_index = make_shared<QuestIndex>("system/ep3/maps-download", this->quest_category_index, true);
-
-  auto set = [s = this->shared_from_this(),
-                 new_default_quest_index = std::move(new_default_quest_index),
-                 new_ep3_download_quest_index = std::move(new_ep3_download_quest_index)]() {
-    s->default_quest_index = std::move(new_default_quest_index);
-    s->ep3_download_quest_index = std::move(new_ep3_download_quest_index);
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
+void ServerState::load_quest_index() {
+  config_log.info_f("Collecting quests");
+  this->default_quest_index = make_shared<QuestIndex>("system/quests", this->quest_category_index, false);
+  config_log.info_f("Collecting Episode 3 download quests");
+  this->ep3_download_quest_index = make_shared<QuestIndex>("system/ep3/maps-download", this->quest_category_index, true);
 }
 
-void ServerState::compile_functions(bool from_non_event_thread) {
-  config_log.info("Compiling client functions");
-  auto new_function_code_index = make_shared<FunctionCodeIndex>("system/client-functions");
-
-  auto set = [s = this->shared_from_this(), new_function_code_index = std::move(new_function_code_index)]() {
-    s->function_code_index = std::move(new_function_code_index);
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
+void ServerState::compile_functions() {
+  config_log.info_f("Compiling client functions");
+  this->function_code_index = make_shared<FunctionCodeIndex>("system/client-functions");
 }
 
-void ServerState::load_dol_files(bool from_non_event_thread) {
-  config_log.info("Loading DOL files");
-  auto new_dol_file_index = make_shared<DOLFileIndex>("system/dol");
-
-  auto set = [s = this->shared_from_this(), new_dol_file_index = std::move(new_dol_file_index)]() {
-    s->dol_file_index = std::move(new_dol_file_index);
-  };
-  this->forward_or_call(from_non_event_thread, std::move(set));
+void ServerState::load_dol_files() {
+  config_log.info_f("Loading DOL files");
+  this->dol_file_index = make_shared<DOLFileIndex>("system/dol");
 }
 
 void ServerState::create_default_lobbies() {
@@ -2235,7 +2110,7 @@ void ServerState::create_default_lobbies() {
   vector<shared_ptr<Lobby>> ep3_only_lobbies;
 
   for (size_t x = 0; x < 20; x++) {
-    auto lobby_name = phosg::string_printf("LOBBY%zu", x + 1);
+    auto lobby_name = std::format("LOBBY{}", x + 1);
     bool allow_v1 = (x <= 9);
     bool allow_non_ep3 = (x <= 14);
 
@@ -2270,64 +2145,40 @@ void ServerState::create_default_lobbies() {
   }
 }
 
-void ServerState::load_all() {
+void ServerState::load_all(bool enable_thread_pool) {
   this->collect_network_addresses();
   this->load_config_early();
-  this->load_bb_private_keys(false);
-  this->load_bb_system_defaults(false);
-  this->load_accounts(false);
-  this->clear_file_caches(false);
-  this->load_patch_indexes(false);
-  this->load_ep3_cards(false);
-  this->load_ep3_maps(false);
-  this->load_ep3_tournament_state(false);
-  this->compile_functions(false);
-  this->load_dol_files(false);
+  if (enable_thread_pool) {
+    if (this->num_worker_threads > 0) {
+      config_log.info_f("Starting thread pool with {} threads", this->num_worker_threads);
+      this->thread_pool = make_unique<asio::thread_pool>(this->num_worker_threads);
+    } else {
+      config_log.warning_f("WorkerThreads is zero or not set; using default thread count");
+    }
+  }
+  this->load_bb_private_keys();
+  this->load_bb_system_defaults();
+  this->load_accounts();
+  this->clear_file_caches();
+  this->load_patch_indexes();
+  this->load_ep3_cards();
+  this->load_ep3_maps();
+  this->load_ep3_tournament_state();
+  this->compile_functions();
+  this->load_dol_files();
   this->create_default_lobbies();
-  this->load_set_data_tables(false);
-  this->load_maps(false);
-  this->load_battle_params(false);
-  this->load_level_tables(false);
-  this->load_text_index(false);
-  this->load_word_select_table(false);
-  this->load_item_definitions(false);
-  this->load_item_name_indexes(false);
-  this->load_drop_tables(false);
+  this->load_set_data_tables();
+  this->load_maps();
+  this->load_battle_params();
+  this->load_level_tables();
+  this->load_text_index();
+  this->load_word_select_table();
+  this->load_item_definitions();
+  this->load_item_name_indexes();
+  this->load_drop_tables();
   this->load_config_late();
-  this->load_teams(false);
-  this->load_quest_index(false);
-}
-
-shared_ptr<PatchServer::Config> ServerState::generate_patch_server_config(bool is_bb) const {
-  auto ret = make_shared<PatchServer::Config>();
-#ifdef PHOSG_WINDOWS
-  // libevent doesn't play nice with Cygwin, so we run the patch server on the
-  // main thread there. The problem seems to be that the locking structures are
-  // never set up, presumably since we call event_use_pthreads() since
-  // event_use_windows_threads() doesn't exist. (Does literally no one else use
-  // libevent with Cygwin??)
-  ret->shared_base = this->base;
-#endif
-  ret->allow_unregistered_users = this->allow_unregistered_users;
-  ret->hide_data_from_logs = this->hide_download_commands;
-  ret->idle_timeout_usecs = this->patch_client_idle_timeout_usecs;
-  ret->message = is_bb ? this->bb_patch_server_message : this->pc_patch_server_message;
-  ret->account_index = this->account_index;
-  ret->banned_ipv4_ranges = this->banned_ipv4_ranges;
-  ret->patch_file_index = is_bb ? this->bb_patch_file_index : this->pc_patch_file_index;
-  return ret;
-}
-
-void ServerState::update_dependent_server_configs() const {
-  if (this->pc_patch_server) {
-    this->pc_patch_server->set_config(this->generate_patch_server_config(false));
-  }
-  if (this->bb_patch_server) {
-    this->bb_patch_server->set_config(this->generate_patch_server_config(true));
-  }
-  if (this->dns_server) {
-    this->dns_server->set_banned_ipv4_ranges(this->banned_ipv4_ranges);
-  }
+  this->load_teams();
+  this->load_quest_index();
 }
 
 void ServerState::disconnect_all_banned_clients() {
@@ -2335,71 +2186,23 @@ void ServerState::disconnect_all_banned_clients() {
 
   if (this->game_server) {
     for (const auto& c : this->game_server->all_clients()) {
-      if ((c->login && (c->login->account->ban_end_time > now_usecs)) ||
-          this->banned_ipv4_ranges->check(c->channel.remote_addr)) {
-        this->game_server->disconnect_client(c);
-      }
-    }
-  }
-
-  // Proxy server
-  if (this->proxy_server) {
-    vector<uint32_t> sessions_to_close;
-    for (const auto& it : this->proxy_server->all_sessions()) {
-      auto ses = it.second;
-      if ((ses->login && (ses->login->account->ban_end_time > now_usecs)) ||
-          this->banned_ipv4_ranges->check(ses->client_channel.remote_addr)) {
-        sessions_to_close.emplace_back(it.first);
-      }
-    }
-    for (uint32_t ses_id : sessions_to_close) {
-      this->proxy_server->delete_session(ses_id);
-    }
-  }
-
-  // IP stack simulator (IP bans only; account bans will presumably be handled
-  // by one of the above cases)
-  if (this->ip_stack_simulator) {
-    vector<uint64_t> ids_to_disconnect;
-    for (const auto& it : this->ip_stack_simulator->all_networks()) {
-      int fd = bufferevent_getfd(it.second->bev.get());
-      if (fd < 0) {
-        continue;
-      }
-      struct sockaddr_storage remote_ss;
-      phosg::get_socket_addresses(fd, nullptr, &remote_ss);
-      if (this->banned_ipv4_ranges->check(remote_ss)) {
-        ids_to_disconnect.emplace_back(it.second->network_id);
-      }
-    }
-    for (uint64_t id : ids_to_disconnect) {
-      this->ip_stack_simulator->disconnect_client(id);
-    }
-  }
-}
-
-string ServerState::format_address_for_channel_name(
-    const struct sockaddr_storage& remote_ss, uint64_t virtual_network_id) {
-  if (!virtual_network_id) {
-    if (remote_ss.ss_family == 0) {
-      return "__invalid_address__";
-    } else {
-      return "ipv4:" + phosg::render_sockaddr_storage(remote_ss);
-    }
-  } else {
-    if (this->ip_stack_simulator) {
-      auto network = this->ip_stack_simulator->get_network(virtual_network_id);
-      int fd = bufferevent_getfd(network->bev.get());
-      if (fd < 0) {
-        return phosg::string_printf("ipss:N-%" PRIu64 ":__unknown_address__", network->network_id);
+      uint32_t addr = 0;
+      auto ipss_channel = dynamic_pointer_cast<IPSSChannel>(c->channel);
+      if (ipss_channel) {
+        auto ipss_c = ipss_channel->ipss_client.lock();
+        if (ipss_c) {
+          addr = ipss_c->ipv4_addr;
+        }
       } else {
-        struct sockaddr_storage remote_ss;
-        phosg::get_socket_addresses(fd, nullptr, &remote_ss);
-        string addr_str = phosg::render_sockaddr_storage(remote_ss);
-        return phosg::string_printf("ipss:N-%" PRIu64 ":%s", network->network_id, addr_str.c_str());
+        auto socket_channel = dynamic_pointer_cast<SocketChannel>(c->channel);
+        if (socket_channel) {
+          addr = ipv4_addr_for_asio_addr(socket_channel->local_addr.address());
+        }
       }
-    } else {
-      return "__unknown_address__";
+      if ((c->login && (c->login->account->ban_end_time > now_usecs)) ||
+          this->banned_ipv4_ranges->check(addr)) {
+        c->channel->disconnect();
+      }
     }
   }
 }

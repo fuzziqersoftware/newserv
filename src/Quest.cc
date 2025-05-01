@@ -1,6 +1,7 @@
 #include "Quest.hh"
 
 #include <algorithm>
+#include <filesystem>
 #include <mutex>
 #include <phosg/Encoding.hh>
 #include <phosg/Filesystem.hh>
@@ -91,16 +92,16 @@ string decrypt_download_quest_data_section(
     size_t decompressed_size = prs_decompress_size(
         r.getv(r.remaining(), false), r.remaining(), sizeof(Episode3::MapDefinitionTrial), true);
     if (decompressed_size < sizeof(Episode3::MapDefinitionTrial)) {
-      throw runtime_error(phosg::string_printf(
-          "decompressed size (%zu) does not match expected size (%zu)",
+      throw runtime_error(std::format(
+          "decompressed size ({}) does not match expected size ({})",
           decompressed_size, sizeof(Episode3::MapDefinitionTrial)));
     }
     return decrypted.substr(0x28);
 
   } else {
     if (header->decompressed_size & 0xFFF00000) {
-      throw runtime_error(phosg::string_printf(
-          "decompressed_size too large (%08" PRIX32 ")", header->decompressed_size.load()));
+      throw runtime_error(std::format(
+          "decompressed_size too large ({:08X})", header->decompressed_size));
     }
 
     if (!skip_checksum) {
@@ -109,8 +110,8 @@ string decrypt_download_quest_data_section(
       uint32_t actual_crc = phosg::crc32(decrypted.data(), orig_size);
       header->checksum = expected_crc;
       if (expected_crc != actual_crc && expected_crc != phosg::bswap32(actual_crc)) {
-        throw runtime_error(phosg::string_printf(
-            "incorrect decrypted data section checksum: expected %08" PRIX32 "; received %08" PRIX32,
+        throw runtime_error(std::format(
+            "incorrect decrypted data section checksum: expected {:08X}; received {:08X}",
             expected_crc, actual_crc));
       }
     }
@@ -127,11 +128,11 @@ string decrypt_download_quest_data_section(
     size_t decompressed_size = prs_decompress_size(
         decrypted.data() + sizeof(HeaderT),
         decrypted.size() - sizeof(HeaderT));
-    size_t expected_decompressed_size = header->decompressed_size.load();
+    size_t expected_decompressed_size = header->decompressed_size;
     if ((decompressed_size != expected_decompressed_size) &&
         (decompressed_size != expected_decompressed_size - 8)) {
-      throw runtime_error(phosg::string_printf(
-          "decompressed size (%zu) does not match expected size (%zu)",
+      throw runtime_error(std::format(
+          "decompressed size ({}) does not match expected size ({})",
           decompressed_size, expected_decompressed_size));
     }
 
@@ -153,8 +154,8 @@ string decrypt_vms_v1_data_section(const void* data_section, size_t size) {
 
   size_t actual_decompressed_size = prs_decompress_size(data);
   if (actual_decompressed_size != expected_decompressed_size) {
-    throw runtime_error(phosg::string_printf(
-        "decompressed size (%zu) does not match size in header (%" PRId32 ")",
+    throw runtime_error(std::format(
+        "decompressed size ({}) does not match size in header ({})",
         actual_decompressed_size, expected_decompressed_size));
   }
 
@@ -180,7 +181,7 @@ string find_seed_and_decrypt_download_quest_data_section(
       0, 0x100000000, 0x1000, num_threads);
 
   if (!result.empty() && (result_seed < 0x100000000)) {
-    static_game_data_log.info("Found seed %08" PRIX64, result_seed);
+    static_game_data_log.info_f("Found seed {:08X}", result_seed);
     return result;
   } else {
     throw runtime_error("no seed found");
@@ -224,9 +225,9 @@ void VersionedQuest::assert_valid() const {
 
 string VersionedQuest::bin_filename() const {
   if (this->episode == Episode::EP3) {
-    return phosg::string_printf("m%06" PRIu32 "p_e.bin", this->quest_number);
+    return std::format("m{:06}p_e.bin", this->quest_number);
   } else {
-    return phosg::string_printf("quest%" PRIu32 ".bin", this->quest_number);
+    return std::format("quest{}.bin", this->quest_number);
   }
 }
 
@@ -234,7 +235,7 @@ string VersionedQuest::dat_filename() const {
   if (this->episode == Episode::EP3) {
     throw logic_error("Episode 3 quests do not have .dat files");
   } else {
-    return phosg::string_printf("quest%" PRIu32 ".dat", this->quest_number);
+    return std::format("quest{}.dat", this->quest_number);
   }
 }
 
@@ -242,7 +243,7 @@ string VersionedQuest::pvr_filename() const {
   if (this->episode == Episode::EP3) {
     throw logic_error("Episode 3 quests do not have .pvr files");
   } else {
-    return phosg::string_printf("quest%" PRIu32 ".pvr", this->quest_number);
+    return std::format("quest{}.pvr", this->quest_number);
   }
 }
 
@@ -250,18 +251,18 @@ string VersionedQuest::xb_filename() const {
   if (this->episode == Episode::EP3) {
     throw logic_error("Episode 3 quests do not have Xbox filenames");
   } else {
-    return phosg::string_printf("quest%" PRIu32 "_%c.dat", this->quest_number, tolower(char_for_language_code(this->language)));
+    return std::format("quest{}_{}.dat", this->quest_number, static_cast<char>(tolower(char_for_language_code(this->language))));
   }
 }
 
 string VersionedQuest::encode_qst() const {
   unordered_map<string, shared_ptr<const string>> files;
-  files.emplace(phosg::string_printf("quest%" PRIu32 ".bin", this->quest_number), this->bin_contents);
-  files.emplace(phosg::string_printf("quest%" PRIu32 ".dat", this->quest_number), this->dat_contents);
+  files.emplace(std::format("quest{}.bin", this->quest_number), this->bin_contents);
+  files.emplace(std::format("quest{}.dat", this->quest_number), this->dat_contents);
   if (this->pvr_contents) {
-    files.emplace(phosg::string_printf("quest%" PRIu32 ".pvr", this->quest_number), this->pvr_contents);
+    files.emplace(std::format("quest{}.pvr", this->quest_number), this->pvr_contents);
   }
-  string xb_filename = phosg::string_printf("quest%" PRIu32 "_%c.dat", quest_number, tolower(char_for_language_code(language)));
+  string xb_filename = std::format("quest{}_{}.dat", quest_number, static_cast<char>(tolower(char_for_language_code(language))));
   return encode_qst_file(files, this->name, this->quest_number, xb_filename, this->version, this->is_dlq_encoded);
 }
 
@@ -325,85 +326,85 @@ uint32_t Quest::versions_key(Version v, uint8_t language) {
 
 void Quest::add_version(shared_ptr<const VersionedQuest> vq) {
   if (this->quest_number != vq->quest_number) {
-    throw logic_error(phosg::string_printf(
-        "incorrect versioned quest number (existing: %08" PRIX32 ", new: %08" PRIX32 ")",
+    throw logic_error(std::format(
+        "incorrect versioned quest number (existing: {:08X}, new: {:08X})",
         this->quest_number, vq->quest_number));
   }
   if (this->category_id != vq->category_id) {
-    throw runtime_error(phosg::string_printf(
-        "quest version is in a different category (existing: %08" PRIX32 ", new: %08" PRIX32 ")",
+    throw runtime_error(std::format(
+        "quest version is in a different category (existing: {:08X}, new: {:08X})",
         this->category_id, vq->category_id));
   }
   if (this->episode != vq->episode) {
-    throw runtime_error(phosg::string_printf(
-        "quest version is in a different episode (existing: %s, new: %s)",
+    throw runtime_error(std::format(
+        "quest version is in a different episode (existing: {}, new: {})",
         name_for_episode(this->episode), name_for_episode(vq->episode)));
   }
   if (this->allow_start_from_chat_command != vq->allow_start_from_chat_command) {
-    throw runtime_error(phosg::string_printf(
-        "quest version has a different allow_start_from_chat_command state (existing: %s, new: %s)",
+    throw runtime_error(std::format(
+        "quest version has a different allow_start_from_chat_command state (existing: {}, new: {})",
         this->allow_start_from_chat_command ? "true" : "false", vq->allow_start_from_chat_command ? "true" : "false"));
   }
   if (this->joinable != vq->joinable) {
-    throw runtime_error(phosg::string_printf(
-        "quest version has a different joinability state (existing: %s, new: %s)",
+    throw runtime_error(std::format(
+        "quest version has a different joinability state (existing: {}, new: {})",
         this->joinable ? "true" : "false", vq->joinable ? "true" : "false"));
   }
   if (this->max_players != vq->max_players) {
-    throw runtime_error(phosg::string_printf(
-        "quest version has a different maximum player count (existing: %hhu, new: %hhu)",
+    throw runtime_error(std::format(
+        "quest version has a different maximum player count (existing: {}, new: {})",
         this->max_players, vq->max_players));
   }
   if (this->lock_status_register != vq->lock_status_register) {
-    throw runtime_error(phosg::string_printf(
-        "quest version has a different lock status register (existing: %04hX, new: %04hX)",
+    throw runtime_error(std::format(
+        "quest version has a different lock status register (existing: {:04X}, new: {:04X})",
         this->lock_status_register, vq->lock_status_register));
   }
   if (!this->battle_rules != !vq->battle_rules) {
-    throw runtime_error(phosg::string_printf(
-        "quest version has a different battle rules presence state (existing: %s, new: %s)",
+    throw runtime_error(std::format(
+        "quest version has a different battle rules presence state (existing: {}, new: {})",
         this->battle_rules ? "present" : "absent", vq->battle_rules ? "present" : "absent"));
   }
   if (this->battle_rules && (*this->battle_rules != *vq->battle_rules)) {
     string existing_str = this->battle_rules->json().serialize();
     string new_str = vq->battle_rules->json().serialize();
-    throw runtime_error(phosg::string_printf(
-        "quest version has different battle rules (existing: %s, new: %s)",
-        existing_str.c_str(), new_str.c_str()));
+    throw runtime_error(std::format(
+        "quest version has different battle rules (existing: {}, new: {})",
+        existing_str, new_str));
   }
   if (this->challenge_template_index != vq->challenge_template_index) {
-    throw runtime_error(phosg::string_printf(
-        "quest version has different challenge template index (existing: %zd, new: %zd)",
+    throw runtime_error(std::format(
+        "quest version has different challenge template index (existing: {}, new: {})",
         this->challenge_template_index, vq->challenge_template_index));
   }
   if (this->description_flag != vq->description_flag) {
-    throw runtime_error(phosg::string_printf(
-        "quest version has different description flag (existing: %02hhX, new: %02hhX)",
+    throw runtime_error(std::format(
+        "quest version has different description flag (existing: {:02X}, new: {:02X})",
         this->description_flag, vq->description_flag));
   }
   if (!this->available_expression != !vq->available_expression) {
-    throw runtime_error(phosg::string_printf(
-        "quest version has available expression but root quest does not, or vice versa (existing: %s, new: %s)",
+    throw runtime_error(std::format(
+        "quest version has available expression but root quest does not, or vice versa (existing: {}, new: {})",
         this->available_expression ? "present" : "absent", vq->available_expression ? "present" : "absent"));
   }
   if (this->available_expression && *this->available_expression != *vq->available_expression) {
     string existing_str = this->available_expression->str();
     string new_str = vq->available_expression->str();
-    throw runtime_error(phosg::string_printf(
-        "quest version has a different available expression (existing: %s, new: %s)",
-        existing_str.c_str(), new_str.c_str()));
+    throw runtime_error(std::format(
+        "quest version has a different available expression (existing: {}, new: {})",
+        existing_str, new_str));
   }
   if (!this->enabled_expression != !vq->enabled_expression) {
-    throw runtime_error(phosg::string_printf(
-        "quest version has enabled expression but root quest does not, or vice versa (existing: %s, new: %s)",
+    throw runtime_error(std::format(
+        "quest version has enabled expression but root quest does not, or vice versa (existing: {}, new: {})",
         this->enabled_expression ? "present" : "absent", vq->enabled_expression ? "present" : "absent"));
   }
   if (this->enabled_expression && *this->enabled_expression != *vq->enabled_expression) {
     string existing_str = this->enabled_expression->str();
     string new_str = vq->enabled_expression->str();
-    throw runtime_error(phosg::string_printf(
-        "quest version has a different enabled expression (existing: %s, new: %s)",
-        existing_str.c_str(), new_str.c_str()));
+    throw runtime_error(std::format(
+        "quest version has a different enabled expression (existing: {}, new: {})",
+        existing_str, new_str));
   }
 
   this->versions.emplace(this->versions_key(vq->version, vq->language), vq);
@@ -441,8 +442,8 @@ std::shared_ptr<const SuperMap> Quest::get_supermap(int64_t random_seed) const {
   if (save_to_cache) {
     this->supermap = supermap;
   }
-  static_game_data_log.info("Constructed %s supermap for quest %" PRIu32 " (%s)",
-      save_to_cache ? "cacheable" : "temporary", this->quest_number, this->name.c_str());
+  static_game_data_log.info_f("Constructed {} supermap for quest {} ({})",
+      save_to_cache ? "cacheable" : "temporary", this->quest_number, this->name);
 
   return supermap;
 }
@@ -561,11 +562,12 @@ QuestIndex::QuestIndex(
     };
 
     string cat_path = directory + "/" + cat->directory_name;
-    if (!phosg::isdir(cat_path)) {
-      static_game_data_log.warning("Quest category directory %s is missing; skipping it", cat_path.c_str());
+    if (!std::filesystem::is_directory(cat_path)) {
+      static_game_data_log.warning_f("Quest category directory {} is missing; skipping it", cat_path);
       continue;
     }
-    for (string filename : phosg::list_directory_sorted(cat_path)) {
+    for (const auto& item : std::filesystem::directory_iterator(cat_path)) {
+      string filename = item.path().filename().string();
       if (filename == ".DS_Store") {
         continue;
       }
@@ -575,16 +577,16 @@ QuestIndex::QuestIndex(
       try {
         string orig_filename = filename;
         string file_data;
-        if (phosg::ends_with(filename, ".gci")) {
+        if (filename.ends_with(".gci")) {
           file_data = decode_gci_data(phosg::load_file(file_path));
           filename.resize(filename.size() - 4);
-        } else if (phosg::ends_with(filename, ".vms")) {
+        } else if (filename.ends_with(".vms")) {
           file_data = decode_vms_data(phosg::load_file(file_path));
           filename.resize(filename.size() - 4);
-        } else if (phosg::ends_with(filename, ".dlq")) {
+        } else if (filename.ends_with(".dlq")) {
           file_data = decode_dlq_data(phosg::load_file(file_path));
           filename.resize(filename.size() - 4);
-        } else if (phosg::ends_with(filename, ".bin.txt")) {
+        } else if (filename.ends_with(".bin.txt")) {
           string include_dir = phosg::dirname(file_path);
           assembled = make_unique<AssembledQuestScript>(assemble_quest_script(
               phosg::load_file(file_path),
@@ -592,7 +594,7 @@ QuestIndex::QuestIndex(
               {include_dir, "system/quests/includes", "system/client-functions/System"}));
           file_data = std::move(assembled->data);
           filename.resize(filename.size() - 4);
-          if (phosg::ends_with(filename, ".bin")) {
+          if (filename.ends_with(".bin")) {
             filename.push_back('d');
           }
         } else {
@@ -624,11 +626,11 @@ QuestIndex::QuestIndex(
         } else if (extension == "qst") {
           auto files = decode_qst_data(file_data);
           for (auto& it : files) {
-            if (phosg::ends_with(it.first, ".bin")) {
+            if (it.first.ends_with(".bin")) {
               add_bin_file(file_basename, orig_filename, std::move(it.second), nullptr);
-            } else if (phosg::ends_with(it.first, ".dat")) {
+            } else if (it.first.ends_with(".dat")) {
               add_dat_file(file_basename, orig_filename, std::move(it.second));
-            } else if (phosg::ends_with(it.first, ".pvr")) {
+            } else if (it.first.ends_with(".pvr")) {
               add_file(pvr_files, file_basename, orig_filename, std::move(it.second), true);
             } else {
               throw runtime_error("qst file contains unsupported file type: " + it.first);
@@ -637,7 +639,7 @@ QuestIndex::QuestIndex(
         }
 
       } catch (const exception& e) {
-        static_game_data_log.warning("(%s) Failed to load quest file: (%s)", filename.c_str(), e.what());
+        static_game_data_log.warning_f("({}) Failed to load quest file: ({})", filename, e.what());
       }
     }
   }
@@ -919,41 +921,41 @@ QuestIndex::QuestIndex(
       auto category_name = this->category_index->at(vq->category_id)->name;
       string filenames_str = entry.filename;
       if (dat_filedata) {
-        filenames_str += phosg::string_printf("/%s", dat_filedata->filename.c_str());
+        filenames_str += std::format("/{}", dat_filedata->filename);
       }
       if (pvr_filedata) {
-        filenames_str += phosg::string_printf("/%s", pvr_filedata->filename.c_str());
+        filenames_str += std::format("/{}", pvr_filedata->filename);
       }
       if (json_filedata) {
-        filenames_str += phosg::string_printf("/%s", json_filedata->filename.c_str());
+        filenames_str += std::format("/{}", json_filedata->filename);
       }
       auto q_it = this->quests_by_number.find(vq->quest_number);
       if (q_it != this->quests_by_number.end()) {
         q_it->second->add_version(vq);
-        static_game_data_log.info("(%s) Added %s %c version of quest %" PRIu32 " (%s)",
-            filenames_str.c_str(),
+        static_game_data_log.info_f("({}) Added {} {} version of quest {} ({})",
+            filenames_str,
             phosg::name_for_enum(vq->version),
             char_for_language_code(vq->language),
             vq->quest_number,
-            vq->name.c_str());
+            vq->name);
       } else {
         auto q = make_shared<Quest>(vq);
         this->quests_by_number.emplace(vq->quest_number, q);
         this->quests_by_name.emplace(vq->name, q);
         this->quests_by_category_id_and_number[q->category_id].emplace(vq->quest_number, q);
-        static_game_data_log.info("(%s) Created %s %c quest %" PRIu32 " (%s) (%s, %s (%" PRIu32 "), %s)",
-            filenames_str.c_str(),
+        static_game_data_log.info_f("({}) Created {} {} quest {} ({}) ({}, {} ({}), {})",
+            filenames_str,
             phosg::name_for_enum(vq->version),
             char_for_language_code(vq->language),
             vq->quest_number,
-            vq->name.c_str(),
+            vq->name,
             name_for_episode(vq->episode),
-            category_name.c_str(),
+            category_name,
             vq->category_id,
             vq->joinable ? "joinable" : "not joinable");
       }
     } catch (const exception& e) {
-      static_game_data_log.warning("(%s) Failed to index quest file: %s", basename.c_str(), e.what());
+      static_game_data_log.warning_f("({}) Failed to index quest file: {}", basename, e.what());
     }
   }
 }
@@ -1198,8 +1200,8 @@ string decode_gci_data(
 
       size_t expected_decompressed_bytes = dlq_header.decompressed_size - 8;
       if (decompressed_bytes < expected_decompressed_bytes) {
-        throw runtime_error(phosg::string_printf(
-            "GCI decompressed data is smaller than expected size (have 0x%zX bytes, expected 0x%zX bytes)",
+        throw runtime_error(std::format(
+            "GCI decompressed data is smaller than expected size (have 0x{:X} bytes, expected 0x{:X} bytes)",
             decompressed_bytes, expected_decompressed_bytes));
       }
 
@@ -1247,8 +1249,8 @@ string decode_gci_data(
 
       size_t decompressed_size = prs_decompress_size(decrypted);
       if (decompressed_size != sizeof(Episode3::MapDefinition)) {
-        throw runtime_error(phosg::string_printf(
-            "decompressed quest is 0x%zX bytes; expected 0x%zX bytes",
+        throw runtime_error(std::format(
+            "decompressed quest is 0x{:X} bytes; expected 0x{:X} bytes",
             decompressed_size, sizeof(Episode3::MapDefinition)));
       }
       return decrypted;
@@ -1394,7 +1396,7 @@ static unordered_map<string, string> decode_qst_data_t(const string& data) {
 
   for (const auto& it : file_remaining_bytes) {
     if (it.second) {
-      throw runtime_error(phosg::string_printf("expected %zu (0x%zX) more bytes for file %s", it.second, it.second, it.first.c_str()));
+      throw runtime_error(std::format("expected {} (0x{:X}) more bytes for file {}", it.second, it.second, it.first));
     }
   }
 

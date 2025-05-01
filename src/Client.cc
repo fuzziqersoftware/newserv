@@ -1,16 +1,15 @@
 #include "Client.hh"
 
 #include <errno.h>
-#include <event2/buffer.h>
-#include <event2/bufferevent.h>
-#include <event2/event.h>
 #include <string.h>
 #include <unistd.h>
 
 #include <atomic>
+#include <filesystem>
 #include <phosg/Network.hh>
 #include <phosg/Time.hh>
 
+#include "GameServer.hh"
 #include "IPStackSimulator.hh"
 #include "Loggers.hh"
 #include "SendCommands.hh"
@@ -23,7 +22,7 @@ const uint64_t CLIENT_CONFIG_MAGIC = 0x8399AC32;
 
 static atomic<uint64_t> next_id(1);
 
-void Client::Config::set_flags_for_version(Version version, int64_t sub_version) {
+void Client::set_flags_for_version(Version version, int64_t sub_version) {
   this->set_flag(Flag::PROXY_CHAT_COMMANDS_ENABLED);
 
   // BB shares some sub_version values with GC Episode 3, so we handle it
@@ -153,17 +152,17 @@ void Client::Config::set_flags_for_version(Version version, int64_t sub_version)
       this->set_flag(Flag::CAN_RECEIVE_ENABLE_B2_QUEST);
       break;
     default:
-      throw runtime_error(phosg::string_printf("unknown sub_version %" PRIX64, sub_version));
+      throw runtime_error(std::format("unknown sub_version {:X}", sub_version));
   }
 }
 
-Client::ItemDropNotificationMode Client::Config::get_drop_notification_mode() const {
+Client::ItemDropNotificationMode Client::get_drop_notification_mode() const {
   uint8_t mode_s = (this->check_flag(Flag::ITEM_DROP_NOTIFICATIONS_1) ? 1 : 0) |
       (this->check_flag(Flag::ITEM_DROP_NOTIFICATIONS_2) ? 2 : 0);
   return static_cast<Client::ItemDropNotificationMode>(mode_s);
 }
 
-void Client::Config::set_drop_notification_mode(ItemDropNotificationMode new_mode) {
+void Client::set_drop_notification_mode(ItemDropNotificationMode new_mode) {
   uint8_t mode_s = static_cast<uint8_t>(new_mode);
   if (mode_s & 1) {
     this->set_flag(Client::Flag::ITEM_DROP_NOTIFICATIONS_1);
@@ -177,133 +176,121 @@ void Client::Config::set_drop_notification_mode(ItemDropNotificationMode new_mod
   }
 }
 
-bool Client::Config::should_update_vs(const Config& other) const {
-  constexpr uint64_t mask = static_cast<uint64_t>(Flag::CLIENT_SIDE_MASK);
-  return ((this->enabled_flags ^ other.enabled_flags) & mask) ||
-      (this->specific_version != other.specific_version) ||
-      (this->override_random_seed != other.override_random_seed) ||
-      (this->override_section_id != other.override_section_id) ||
-      (this->override_lobby_event != other.override_lobby_event) ||
-      (this->override_lobby_number != other.override_lobby_number) ||
-      (this->proxy_destination_address != other.proxy_destination_address) ||
-      (this->proxy_destination_port != other.proxy_destination_port);
-}
-
 Client::Client(
-    shared_ptr<Server> server,
-    struct bufferevent* bev,
-    uint64_t virtual_network_id,
-    Version version,
+    shared_ptr<GameServer> server,
+    shared_ptr<Channel> channel,
     ServerBehavior server_behavior)
     : server(server),
       id(next_id++),
-      log(phosg::string_printf("[C-%" PRIX64 "] ", this->id), client_log.min_level),
-      channel(bev, virtual_network_id, version, 1, nullptr, nullptr, this, "", phosg::TerminalFormat::FG_YELLOW, phosg::TerminalFormat::FG_GREEN),
+      log(std::format("[C-{:X}] ", this->id), client_log.min_level),
+      channel(channel),
       server_behavior(server_behavior),
-      should_disconnect(false),
-      should_send_to_lobby_server(false),
-      should_send_to_proxy_server(false),
-      bb_connection_phase(0xFF),
-      ping_start_time(0),
-      sub_version(-1),
-      floor(0),
-      lobby_client_id(0),
-      lobby_arrow_color(0),
-      preferred_lobby_id(-1),
-      save_game_data_event(
-          event_new(
-              bufferevent_get_base(bev), -1, EV_TIMEOUT | EV_PERSIST,
-              &Client::dispatch_save_game_data, this),
-          event_free),
-      send_ping_event(
-          event_new(
-              bufferevent_get_base(bev), -1, EV_TIMEOUT,
-              &Client::dispatch_send_ping, this),
-          event_free),
-      idle_timeout_event(
-          event_new(
-              bufferevent_get_base(bev), -1, EV_TIMEOUT,
-              &Client::dispatch_idle_timeout, this),
-          event_free),
-      card_battle_table_number(-1),
-      card_battle_table_seat_number(0),
-      card_battle_table_seat_state(0),
-      last_game_info_requested(0),
-      should_update_play_time(false),
-      bb_character_index(-1),
-      next_exp_value(0),
-      can_chat(true),
-      dol_base_addr(0),
-      external_bank_character_index(-1),
-      last_play_time_update(0) {
+      save_game_data_timer(*server->get_io_context()),
+      send_ping_timer(*server->get_io_context()),
+      idle_timeout_timer(*server->get_io_context()),
+      should_update_play_time(false) {
   this->update_channel_name();
 
-  this->config.set_flags_for_version(version, -1);
+  // Don't print data sent to patch clients to the logs. The patch server
+  // protocol is fully understood and data logs for patch clients are generally
+  // more annoying than helpful at this point.
   auto s = server->get_state();
-  if (is_v1_or_v2(this->version()) ? s->default_rare_notifs_enabled_v1_v2 : s->default_rare_notifs_enabled_v3_v4) {
-    this->config.set_drop_notification_mode(ItemDropNotificationMode::RARES_ONLY);
+  if (is_patch(this->version()) && s->hide_download_commands) {
+    this->channel->terminal_recv_color = phosg::TerminalFormat::END;
+    this->channel->terminal_send_color = phosg::TerminalFormat::END;
+  } else {
+    this->channel->terminal_recv_color = phosg::TerminalFormat::FG_GREEN;
+    this->channel->terminal_send_color = phosg::TerminalFormat::FG_YELLOW;
   }
-  this->config.specific_version = default_specific_version_for_version(version, -1);
 
-  memset(&this->next_connection_addr, 0, sizeof(this->next_connection_addr));
+  this->set_flags_for_version(this->version(), -1);
+  if (is_v1_or_v2(this->version()) ? s->default_rare_notifs_enabled_v1_v2 : s->default_rare_notifs_enabled_v3_v4) {
+    this->set_drop_notification_mode(ItemDropNotificationMode::RARES_ONLY);
+  }
+  this->specific_version = default_specific_version_for_version(this->version(), -1);
 
-  this->reschedule_save_game_data_event();
-  this->reschedule_ping_and_timeout_events();
+  this->reschedule_save_game_data_timer();
+  this->reschedule_ping_and_timeout_timers();
 
   // Don't print data sent to patch clients to the logs. The patch server
   // protocol is fully understood and data logs for patch clients are generally
   // more annoying than helpful at this point.
   if ((s->hide_download_commands) &&
-      ((this->channel.version == Version::PC_PATCH) || (this->channel.version == Version::BB_PATCH))) {
-    this->channel.terminal_recv_color = phosg::TerminalFormat::END;
-    this->channel.terminal_send_color = phosg::TerminalFormat::END;
+      ((this->version() == Version::PC_PATCH) || (this->version() == Version::BB_PATCH))) {
+    this->channel->terminal_recv_color = phosg::TerminalFormat::END;
+    this->channel->terminal_send_color = phosg::TerminalFormat::END;
+  } else {
+    this->channel->terminal_send_color = phosg::TerminalFormat::FG_YELLOW;
+    this->channel->terminal_recv_color = phosg::TerminalFormat::FG_GREEN;
   }
 
-  this->log.info("Created");
+  this->log.info_f("Created");
 }
 
 Client::~Client() {
   if (!this->disconnect_hooks.empty()) {
-    this->log.warning("Disconnect hooks pending at client destruction time:");
+    this->log.warning_f("Disconnect hooks pending at client destruction time:");
     for (const auto& it : this->disconnect_hooks) {
-      this->log.warning("  %s", it.first.c_str());
+      this->log.warning_f("  {}", it.first);
     }
   }
 
   if ((this->version() == Version::BB_V4) && (this->character_data.get())) {
     this->save_all();
   }
-  this->log.info("Deleted");
+  this->log.info_f("Deleted");
 }
 
 void Client::update_channel_name() {
-  string ip_str = this->require_server_state()->format_address_for_channel_name(
-      this->channel.remote_addr, this->channel.virtual_network_id);
+  string default_name = this->channel->default_name();
 
   auto player = this->character(false, false);
   if (player) {
     string name_str = player->disp.name.decode(this->language());
     size_t level = player->disp.stats.level + 1;
-    this->channel.name = phosg::string_printf("C-%" PRIX64 " (%s Lv.%zu) @ %s", this->id, name_str.c_str(), level, ip_str.c_str());
+    this->channel->name = std::format("C-{:X} ({} Lv.{}) @ {}",
+        this->id, name_str, level, default_name);
   } else {
-    this->channel.name = phosg::string_printf("C-%" PRIX64 " @ %s", this->id, ip_str.c_str());
+    this->channel->name = std::format("C-{:X} @ {}", this->id, default_name);
   }
-  this->log.info("Channel name updated from player data: %s", this->channel.name.c_str());
+  this->log.info_f("Channel name updated: {}", this->channel->name);
 }
 
-void Client::reschedule_save_game_data_event() {
-  if (this->version() == Version::BB_V4) {
-    struct timeval tv = phosg::usecs_to_timeval(60000000); // 1 minute
-    event_add(this->save_game_data_event.get(), &tv);
+void Client::reschedule_save_game_data_timer() {
+  if (this->version() != Version::BB_V4) {
+    return;
   }
+  this->save_game_data_timer.expires_after(std::chrono::seconds(60));
+  this->idle_timeout_timer.async_wait([this](std::error_code ec) {
+    if (!ec) {
+      if (this->character(false)) {
+        this->save_all();
+      }
+    }
+  });
 }
 
-void Client::reschedule_ping_and_timeout_events() {
+void Client::reschedule_ping_and_timeout_timers() {
   auto s = this->require_server_state();
-  struct timeval ping_tv = phosg::usecs_to_timeval(s->client_ping_interval_usecs);
-  event_add(this->send_ping_event.get(), &ping_tv);
-  struct timeval idle_tv = phosg::usecs_to_timeval(s->client_idle_timeout_usecs);
-  event_add(this->idle_timeout_event.get(), &idle_tv);
+  if (!is_patch(this->version())) {
+    this->send_ping_timer.expires_after(std::chrono::microseconds(s->client_ping_interval_usecs));
+    this->send_ping_timer.async_wait([this](std::error_code ec) {
+      if (!ec) {
+        this->log.info_f("Sending ping command");
+        // The game doesn't use this timestamp; we only use it for debugging purposes
+        be_uint64_t timestamp = phosg::now();
+        this->channel->send(0x1D, 0x00, &timestamp, sizeof(be_uint64_t));
+      }
+    });
+  }
+
+  this->idle_timeout_timer.expires_after(std::chrono::microseconds(s->client_idle_timeout_usecs));
+  this->idle_timeout_timer.async_wait([this](std::error_code ec) {
+    if (!ec) {
+      this->log.info_f("Idle timeout expired");
+      this->channel->disconnect();
+    }
+  });
 }
 
 void Client::convert_account_to_temporary_if_nte() {
@@ -312,7 +299,7 @@ void Client::convert_account_to_temporary_if_nte() {
   // replace it with a temporary account.
   auto s = this->require_server_state();
   if (s->use_temp_accounts_for_prototypes && this->login->account_was_created && is_any_nte(this->version())) {
-    this->log.info("Client is a prototype version and the account was created during this session; converting permanent account to temporary account");
+    this->log.info_f("Client is a prototype version and the account was created during this session; converting permanent account to temporary account");
     this->login->account->is_temporary = true;
     this->login->account->delete_file();
     this->login->account_was_created = false;
@@ -348,7 +335,7 @@ shared_ptr<const TeamIndex::Team> Client::team() const {
   auto s = this->require_server_state();
   auto team = s->team_index->get_by_id(this->login->account->bb_team_id);
   if (!team) {
-    this->log.info("Account contains a team ID, but the team does not exist; clearing team ID from account");
+    this->log.info_f("Account contains a team ID, but the team does not exist; clearing team ID from account");
     this->login->account->bb_team_id = 0;
     this->login->account->save();
     return nullptr;
@@ -356,7 +343,7 @@ shared_ptr<const TeamIndex::Team> Client::team() const {
 
   auto member_it = team->members.find(this->login->account->account_id);
   if (member_it == team->members.end()) {
-    this->log.info("Account contains a team ID, but the team does not contain this member; clearing team ID from account");
+    this->log.info_f("Account contains a team ID, but the team does not contain this member; clearing team ID from account");
     this->login->account->bb_team_id = 0;
     this->login->account->save();
     return nullptr;
@@ -368,7 +355,7 @@ shared_ptr<const TeamIndex::Team> Client::team() const {
     auto& m = member_it->second;
     string name = p->disp.name.decode(this->language());
     if (m.name != name) {
-      this->log.info("Updating player name in team config");
+      this->log.info_f("Updating player name in team config");
       s->team_index->update_member_name(this->login->account->account_id, name);
     }
   }
@@ -402,9 +389,9 @@ bool Client::evaluate_quest_availability_expression(
       .v1_present = v1_present,
   };
   int64_t ret = expr->evaluate(env);
-  if (this->log.should_log(phosg::LogLevel::INFO)) {
+  if (this->log.should_log(phosg::LogLevel::L_INFO)) {
     string expr_str = expr->str();
-    this->log.info("Evaluated integral expression %s => %s", expr_str.c_str(), ret ? "TRUE" : "FALSE");
+    this->log.info_f("Evaluated integral expression {} => {}", expr_str, ret ? "TRUE" : "FALSE");
   }
   return ret;
 }
@@ -448,62 +435,11 @@ bool Client::can_use_chat_commands() const {
   return this->require_server_state()->enable_chat_commands;
 }
 
-void Client::dispatch_save_game_data(evutil_socket_t, short, void* ctx) {
-  reinterpret_cast<Client*>(ctx)->save_game_data();
-}
-
-void Client::save_game_data() {
-  if (this->version() != Version::BB_V4) {
-    throw logic_error("save_game_data called for non-BB client");
-  }
-  if (this->character(false)) {
-    this->save_all();
-  }
-}
-
-void Client::dispatch_send_ping(evutil_socket_t, short, void* ctx) {
-  reinterpret_cast<Client*>(ctx)->send_ping();
-}
-
-void Client::send_ping() {
-  if (!is_patch(this->version())) {
-    this->log.info("Sending ping command");
-    // The game doesn't use this timestamp; we only use it for debugging purposes
-    be_uint64_t timestamp = phosg::now();
-    try {
-      this->channel.send(0x1D, 0x00, &timestamp, sizeof(be_uint64_t));
-    } catch (const exception& e) {
-      this->log.info("Failed to send ping: %s", e.what());
-    }
-  }
-}
-
-void Client::dispatch_idle_timeout(evutil_socket_t, short, void* ctx) {
-  reinterpret_cast<Client*>(ctx)->idle_timeout();
-}
-
-void Client::idle_timeout() {
-  this->log.info("Idle timeout expired");
-  auto s = this->server.lock();
-  if (s) {
-    auto c = this->shared_from_this();
-    s->disconnect_client(c);
-  } else {
-    this->log.info("Server is deleted; cannot disconnect client");
-  }
-}
-
-void Client::suspend_timeouts() {
-  event_del(this->send_ping_event.get());
-  event_del(this->idle_timeout_event.get());
-  this->log.info("Timeouts suspended");
-}
-
 void Client::set_login(shared_ptr<Login> login) {
   this->login = login;
-  if (this->log.should_log(phosg::LogLevel::INFO)) {
+  if (this->log.should_log(phosg::LogLevel::L_INFO)) {
     string login_str = this->login->str();
-    this->log.info("Login: %s", login_str.c_str());
+    this->log.info_f("Login: {}", login_str);
   }
 }
 
@@ -669,7 +605,7 @@ string Client::system_filename() const {
   if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
   }
-  return phosg::string_printf("system/players/system_%s.psosys", this->login->bb_license->username.c_str());
+  return std::format("system/players/system_{}.psosys", this->login->bb_license->username);
 }
 
 string Client::character_filename(const std::string& bb_username, ssize_t index) {
@@ -679,11 +615,11 @@ string Client::character_filename(const std::string& bb_username, ssize_t index)
   if (index < 0) {
     throw logic_error("character index is not set");
   }
-  return phosg::string_printf("system/players/player_%s_%zd.psochar", bb_username.c_str(), index);
+  return std::format("system/players/player_{}_{}.psochar", bb_username, index);
 }
 
 string Client::backup_character_filename(uint32_t account_id, size_t index, bool is_ep3) {
-  return phosg::string_printf("system/players/backup_player_%" PRIu32 "_%zu.%s",
+  return std::format("system/players/backup_player_{}_{}.{}",
       account_id, index, is_ep3 ? "pso3char" : "psochar");
 }
 
@@ -704,7 +640,7 @@ string Client::guild_card_filename() const {
   if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
   }
-  return phosg::string_printf("system/players/guild_cards_%s.psocard", this->login->bb_license->username.c_str());
+  return std::format("system/players/guild_cards_{}.psocard", this->login->bb_license->username);
 }
 
 string Client::shared_bank_filename() const {
@@ -714,7 +650,7 @@ string Client::shared_bank_filename() const {
   if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
   }
-  return phosg::string_printf("system/players/shared_bank_%s.psobank", this->login->bb_license->username.c_str());
+  return std::format("system/players/shared_bank_{}.psobank", this->login->bb_license->username);
 }
 
 string Client::legacy_account_filename() const {
@@ -724,7 +660,7 @@ string Client::legacy_account_filename() const {
   if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
   }
-  return phosg::string_printf("system/players/account_%s.nsa", this->login->bb_license->username.c_str());
+  return std::format("system/players/account_{}.nsa", this->login->bb_license->username);
 }
 
 string Client::legacy_player_filename() const {
@@ -737,9 +673,9 @@ string Client::legacy_player_filename() const {
   if (this->bb_character_index < 0) {
     throw logic_error("character index is not set");
   }
-  return phosg::string_printf(
-      "system/players/player_%s_%zd.nsc",
-      this->login->bb_license->username.c_str(),
+  return std::format(
+      "system/players/player_{}_{}.nsc",
+      this->login->bb_license->username,
       static_cast<ssize_t>(this->bb_character_index + 1));
 }
 
@@ -772,25 +708,25 @@ void Client::load_all_files() {
   string sys_filename = this->system_filename();
   this->system_data = files_manager->get_system(sys_filename);
   if (this->system_data) {
-    player_data_log.info("Using loaded system file %s", sys_filename.c_str());
-  } else if (phosg::isfile(sys_filename)) {
+    player_data_log.info_f("Using loaded system file {}", sys_filename);
+  } else if (std::filesystem::is_regular_file(sys_filename)) {
     this->system_data = make_shared<PSOBBBaseSystemFile>(phosg::load_object_file<PSOBBBaseSystemFile>(sys_filename, true));
     files_manager->set_system(sys_filename, this->system_data);
-    player_data_log.info("Loaded system data from %s", sys_filename.c_str());
+    player_data_log.info_f("Loaded system data from {}", sys_filename);
   } else {
-    player_data_log.info("System file is missing: %s", sys_filename.c_str());
+    player_data_log.info_f("System file is missing: {}", sys_filename);
   }
 
   if (this->bb_character_index >= 0) {
     string char_filename = this->character_filename();
     this->character_data = files_manager->get_character(char_filename);
     if (this->character_data) {
-      player_data_log.info("Using loaded character file %s", char_filename.c_str());
-    } else if (phosg::isfile(char_filename)) {
+      player_data_log.info_f("Using loaded character file {}", char_filename);
+    } else if (std::filesystem::is_regular_file(char_filename)) {
       auto psochar = PSOCHARFile::load_shared(char_filename, !this->system_data);
       this->character_data = psochar.character_file;
       files_manager->set_character(char_filename, this->character_data);
-      player_data_log.info("Loaded character data from %s", char_filename.c_str());
+      player_data_log.info_f("Loaded character data from {}", char_filename);
 
       // If there was no .psosys file, use the system file from the .psochar
       // file instead
@@ -800,34 +736,34 @@ void Client::load_all_files() {
         }
         this->system_data = psochar.system_file;
         files_manager->set_system(sys_filename, this->system_data);
-        player_data_log.info("Loaded system data from %s", char_filename.c_str());
+        player_data_log.info_f("Loaded system data from {}", char_filename);
       }
 
       this->update_character_data_after_load(this->character_data);
       this->system_data->language = this->language();
 
     } else {
-      player_data_log.info("Character file is missing: %s", char_filename.c_str());
+      player_data_log.info_f("Character file is missing: {}", char_filename);
     }
   }
 
   string card_filename = this->guild_card_filename();
   this->guild_card_data = files_manager->get_guild_card(card_filename);
   if (this->guild_card_data) {
-    player_data_log.info("Using loaded Guild Card file %s", card_filename.c_str());
-  } else if (phosg::isfile(card_filename)) {
+    player_data_log.info_f("Using loaded Guild Card file {}", card_filename);
+  } else if (std::filesystem::is_regular_file(card_filename)) {
     this->guild_card_data = make_shared<PSOBBGuildCardFile>(phosg::load_object_file<PSOBBGuildCardFile>(card_filename));
     files_manager->set_guild_card(card_filename, this->guild_card_data);
-    player_data_log.info("Loaded Guild Card data from %s", card_filename.c_str());
+    player_data_log.info_f("Loaded Guild Card data from {}", card_filename);
   } else {
-    player_data_log.info("Guild Card file is missing: %s", card_filename.c_str());
+    player_data_log.info_f("Guild Card file is missing: {}", card_filename);
   }
 
   // If any of the above files were missing, try to load from .nsa/.nsc files instead
   if (!this->system_data || (!this->character_data && (this->bb_character_index >= 0)) || !this->guild_card_data) {
     string nsa_filename = this->legacy_account_filename();
     shared_ptr<LegacySavedAccountDataBB> nsa_data;
-    if (phosg::isfile(nsa_filename)) {
+    if (std::filesystem::is_regular_file(nsa_filename)) {
       nsa_data = make_shared<LegacySavedAccountDataBB>(phosg::load_object_file<LegacySavedAccountDataBB>(nsa_filename));
       if (!nsa_data->signature.eq(LegacySavedAccountDataBB::SIGNATURE)) {
         throw runtime_error("account data header is incorrect");
@@ -835,12 +771,12 @@ void Client::load_all_files() {
       if (!this->system_data) {
         this->system_data = make_shared<PSOBBBaseSystemFile>(nsa_data->system_file);
         files_manager->set_system(sys_filename, this->system_data);
-        player_data_log.info("Loaded legacy system data from %s", nsa_filename.c_str());
+        player_data_log.info_f("Loaded legacy system data from {}", nsa_filename);
       }
       if (!this->guild_card_data) {
         this->guild_card_data = make_shared<PSOBBGuildCardFile>(nsa_data->guild_card_file);
         files_manager->set_guild_card(card_filename, this->guild_card_data);
-        player_data_log.info("Loaded legacy Guild Card data from %s", nsa_filename.c_str());
+        player_data_log.info_f("Loaded legacy Guild Card data from {}", nsa_filename);
       }
     }
 
@@ -854,12 +790,12 @@ void Client::load_all_files() {
         this->system_data->joystick_config = *s->bb_default_joystick_config;
       }
       files_manager->set_system(sys_filename, this->system_data);
-      player_data_log.info("Created new system data");
+      player_data_log.info_f("Created new system data");
     }
     if (!this->guild_card_data) {
       this->guild_card_data = make_shared<PSOBBGuildCardFile>();
       files_manager->set_guild_card(card_filename, this->guild_card_data);
-      player_data_log.info("Created new Guild Card data");
+      player_data_log.info_f("Created new Guild Card data");
     }
 
     if (!this->character_data && (this->bb_character_index >= 0)) {
@@ -900,9 +836,9 @@ void Client::load_all_files() {
         this->character_data->option_flags = nsa_data->option_flags;
         this->character_data->symbol_chats = nsa_data->symbol_chats;
         this->character_data->shortcuts = nsa_data->shortcuts;
-        player_data_log.info("Loaded legacy player data from %s and %s", nsa_filename.c_str(), nsc_filename.c_str());
+        player_data_log.info_f("Loaded legacy player data from {} and {}", nsa_filename, nsc_filename);
       } else {
-        player_data_log.info("Loaded legacy player data from %s", nsc_filename.c_str());
+        player_data_log.info_f("Loaded legacy player data from {}", nsc_filename);
       }
       this->update_character_data_after_load(this->character_data);
     }
@@ -928,7 +864,7 @@ void Client::update_character_data_after_load(shared_ptr<PSOBBCharacterFile> cha
   charfile->import_tethealla_material_usage(this->require_server_state()->level_table(this->version()));
 
   uint8_t lang = this->language();
-  player_data_log.info("Overriding language fields in save files with %02hhX (%c)", lang, char_for_language_code(lang));
+  player_data_log.info_f("Overriding language fields in save files with {:02X} ({})", lang, char_for_language_code(lang));
   charfile->inventory.language = lang;
   charfile->guild_card.language = lang;
 }
@@ -946,7 +882,7 @@ void Client::save_all() {
   if (this->external_bank) {
     string filename = this->shared_bank_filename();
     phosg::save_object_file<PlayerBank200>(filename, *this->external_bank);
-    player_data_log.info("Saved shared bank file %s", filename.c_str());
+    player_data_log.info_f("Saved shared bank file {}", filename);
   }
   if (this->external_bank_character) {
     this->save_character_file(
@@ -962,7 +898,7 @@ void Client::save_system_file() const {
   }
   string filename = this->system_filename();
   phosg::save_object_file(filename, *this->system_data);
-  player_data_log.info("Saved system file %s", filename.c_str());
+  player_data_log.info_f("Saved system file {}", filename);
 }
 
 void Client::save_character_file(
@@ -970,14 +906,14 @@ void Client::save_character_file(
     shared_ptr<const PSOBBBaseSystemFile> system,
     shared_ptr<const PSOBBCharacterFile> character) {
   PSOCHARFile::save(filename, system, character);
-  player_data_log.info("Saved character file %s", filename.c_str());
+  player_data_log.info_f("Saved character file {}", filename);
 }
 
 void Client::save_ep3_character_file(
     const string& filename,
     const PSOGCEp3CharacterFile::Character& character) {
   phosg::save_file(filename, &character, sizeof(character));
-  player_data_log.info("Saved Episode 3 character file %s", filename.c_str());
+  player_data_log.info_f("Saved Episode 3 character file {}", filename);
 }
 
 void Client::save_character_file() {
@@ -993,7 +929,7 @@ void Client::save_character_file() {
     uint64_t t = phosg::now();
     uint64_t seconds = (t - this->last_play_time_update) / 1000000;
     this->character_data->play_time_seconds += seconds;
-    player_data_log.info("Added %" PRIu64 " seconds to play time", seconds);
+    player_data_log.info_f("Added {} seconds to play time", seconds);
     this->last_play_time_update = t;
   }
 
@@ -1006,7 +942,7 @@ void Client::save_guild_card_file() const {
   }
   string filename = this->guild_card_filename();
   phosg::save_object_file(filename, *this->guild_card_data);
-  player_data_log.info("Saved Guild Card file %s", filename.c_str());
+  player_data_log.info_f("Saved Guild Card file {}", filename);
 }
 
 void Client::load_backup_character(uint32_t account_id, size_t index) {
@@ -1030,7 +966,7 @@ void Client::save_and_unload_character() {
   if (this->character_data) {
     this->save_character_file();
     this->character_data.reset();
-    this->log.info("Unloaded character");
+    this->log.info_f("Unloaded character");
   }
 }
 
@@ -1056,13 +992,13 @@ void Client::use_default_bank() {
     string filename = this->shared_bank_filename();
     phosg::save_object_file<PlayerBank200>(filename, *this->external_bank);
     this->external_bank.reset();
-    player_data_log.info("Detached shared bank %s", filename.c_str());
+    player_data_log.info_f("Detached shared bank {}", filename);
   }
   if (this->external_bank_character) {
     string filename = this->character_filename(this->external_bank_character_index);
     this->save_character_file(filename, this->system_data, this->external_bank_character);
     this->external_bank_character.reset();
-    player_data_log.info("Detached character %s from bank", filename.c_str());
+    player_data_log.info_f("Detached character {} from bank", filename);
   }
 }
 
@@ -1073,17 +1009,17 @@ bool Client::use_shared_bank() {
   auto files_manager = this->require_server_state()->player_files_manager;
   this->external_bank = files_manager->get_bank(filename);
   if (this->external_bank) {
-    player_data_log.info("Using loaded shared bank %s", filename.c_str());
+    player_data_log.info_f("Using loaded shared bank {}", filename);
     return true;
-  } else if (phosg::isfile(filename)) {
+  } else if (std::filesystem::is_regular_file(filename)) {
     this->external_bank = make_shared<PlayerBank200>(phosg::load_object_file<PlayerBank200>(filename));
     files_manager->set_bank(filename, this->external_bank);
-    player_data_log.info("Loaded shared bank %s", filename.c_str());
+    player_data_log.info_f("Loaded shared bank {}", filename);
     return true;
   } else {
     this->external_bank = make_shared<PlayerBank200>();
     files_manager->set_bank(filename, this->external_bank);
-    player_data_log.info("Created shared bank for %s", filename.c_str());
+    player_data_log.info_f("Created shared bank for {}", filename);
     return false;
   }
 }
@@ -1097,13 +1033,13 @@ void Client::use_character_bank(ssize_t index) {
     this->external_bank_character = files_manager->get_character(filename);
     if (this->external_bank_character) {
       this->external_bank_character_index = index;
-      player_data_log.info("Using loaded character file %s for external bank", filename.c_str());
-    } else if (phosg::isfile(filename)) {
+      player_data_log.info_f("Using loaded character file {} for external bank", filename);
+    } else if (std::filesystem::is_regular_file(filename)) {
       this->external_bank_character = PSOCHARFile::load_shared(filename, false).character_file;
       this->update_character_data_after_load(this->external_bank_character);
       this->external_bank_character_index = index;
       files_manager->set_character(filename, this->external_bank_character);
-      player_data_log.info("Loaded character data from %s for external bank", filename.c_str());
+      player_data_log.info_f("Loaded character data from {} for external bank", filename);
     } else {
       throw runtime_error("character does not exist");
     }
@@ -1113,26 +1049,45 @@ void Client::use_character_bank(ssize_t index) {
 void Client::print_inventory(FILE* stream) const {
   auto s = this->require_server_state();
   auto p = this->character();
-  fprintf(stream, "[PlayerInventory] Meseta: %" PRIu32 "\n", p->disp.stats.meseta.load());
-  fprintf(stream, "[PlayerInventory] %hhu items\n", p->inventory.num_items);
+  phosg::fwrite_fmt(stream, "[PlayerInventory] Meseta: {}\n", p->disp.stats.meseta);
+  phosg::fwrite_fmt(stream, "[PlayerInventory] {} items\n", p->inventory.num_items);
   for (size_t x = 0; x < p->inventory.num_items; x++) {
     const auto& item = p->inventory.items[x];
     auto hex = item.data.hex();
     auto name = s->describe_item(this->version(), item.data, false);
-    fprintf(stream, "[PlayerInventory]   %2zu: [+%08" PRIX32 "] %s (%s)\n", x, item.flags.load(), hex.c_str(), name.c_str());
+    phosg::fwrite_fmt(stream, "[PlayerInventory]   {:2}: [+{:08X}] {} ({})\n", x, item.flags, hex, name);
   }
 }
 
 void Client::print_bank(FILE* stream) const {
   auto s = this->require_server_state();
   auto bank = this->current_bank();
-  fprintf(stream, "[PlayerBank] Meseta: %" PRIu32 "\n", bank.meseta.load());
-  fprintf(stream, "[PlayerBank] %" PRIu32 " items\n", bank.num_items.load());
+  phosg::fwrite_fmt(stream, "[PlayerBank] Meseta: {}\n", bank.meseta);
+  phosg::fwrite_fmt(stream, "[PlayerBank] {} items\n", bank.num_items);
   for (size_t x = 0; x < bank.num_items; x++) {
     const auto& item = bank.items[x];
     const char* present_token = item.present ? "" : " (missing present flag)";
     auto hex = item.data.hex();
     auto name = s->describe_item(this->version(), item.data, false);
-    fprintf(stream, "[PlayerBank]   %3zu: %s (%s) (x%hu)%s\n", x, hex.c_str(), name.c_str(), item.amount.load(), present_token);
+    phosg::fwrite_fmt(stream, "[PlayerBank]   {:3}: {} ({}) (x{}){}\n", x, hex, name, item.amount, present_token);
   }
+}
+
+void Client::cancel_pending_promises() {
+  for (const auto& promise : this->function_call_response_queue) {
+    if (!promise->done()) {
+      promise->cancel();
+    }
+  }
+  this->function_call_response_queue.clear();
+
+  if (this->character_data_ready_promise && !this->character_data_ready_promise->done()) {
+    this->character_data_ready_promise->cancel();
+  }
+  this->character_data_ready_promise.reset();
+
+  if (this->enable_save_promise && !this->enable_save_promise->done()) {
+    this->enable_save_promise->cancel();
+  }
+  this->enable_save_promise.reset();
 }

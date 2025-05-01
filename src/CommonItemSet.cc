@@ -129,7 +129,7 @@ CommonItemSet::Table::Table(const phosg::JSON& json, Episode episode)
     static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
     for (Episode episode : episodes) {
       for (auto type : enemy_types_for_rare_table_index(episode, z)) {
-        string name = phosg::string_printf("%s:%s", abbreviation_for_episode(episode), phosg::name_for_enum(type));
+        string name = std::format("{}:{}", abbreviation_for_episode(episode), phosg::name_for_enum(type));
         from_json_into(*enemy_meseta_ranges_json.at(name), this->enemy_meseta_ranges[z]);
         this->enemy_type_drop_probs[z] = enemy_type_drop_probs_json.at(name)->as_int();
         this->enemy_item_classes[z] = enemy_item_classes_json.at(name)->as_int();
@@ -163,8 +163,8 @@ void CommonItemSet::Table::print(FILE* stream) const {
   const auto& meseta_ranges = this->enemy_meseta_ranges;
   const auto& drop_probs = this->enemy_type_drop_probs;
   const auto& item_classes = this->enemy_item_classes;
-  fprintf(stream, "Enemy tables:\n");
-  fprintf(stream, "  ##   $LOW  $HIGH  DAR%%  ITEM        ENEMIES\n");
+  phosg::fwrite_fmt(stream, "Enemy tables:\n");
+  phosg::fwrite_fmt(stream, "  ##   $LOW  $HIGH  DAR%  ITEM        ENEMIES\n");
   for (size_t z = 0; z < 0x64; z++) {
     string enemies_str;
     for (EnemyType enemy_type : enemy_types_for_rare_table_index(this->episode, z)) {
@@ -174,11 +174,11 @@ void CommonItemSet::Table::print(FILE* stream) const {
       enemies_str += phosg::name_for_enum(enemy_type);
     }
     if (drop_probs[z]) {
-      fprintf(stream, "  %02zX  %5hu  %5hu  %3hhu%%  %02hX:%s  %s\n",
+      phosg::fwrite_fmt(stream, "  {:02X}  {:5}  {:5}  {:3}%  {:02X}:{}  {}\n",
           z, meseta_ranges[z].min, meseta_ranges[z].max, drop_probs[z], item_classes[z],
-          name_for_common_item_class(item_classes[z]), enemies_str.c_str());
+          name_for_common_item_class(item_classes[z]), enemies_str);
     } else {
-      fprintf(stream, "  %02zX  -----  -----    0%%  --          %s\n", z, enemies_str.c_str());
+      phosg::fwrite_fmt(stream, "  {:02X}  -----  -----    0%  --          {}\n", z, enemies_str);
     }
   }
 
@@ -196,8 +196,8 @@ void CommonItemSet::Table::print(FILE* stream) const {
       "ROD     ",
       "WAND    ",
   };
-  fprintf(stream, "Base weapon config:\n");
-  fprintf(stream, "  TYPE         PROB  [SB  AL]  FLOORS\n");
+  phosg::fwrite_fmt(stream, "Base weapon config:\n");
+  phosg::fwrite_fmt(stream, "  TYPE         PROB  [SB  AL]  FLOORS\n");
   for (size_t z = 0; z < 12; z++) {
     uint8_t floor_to_class[10];
     if (this->subtype_base_table[z] < 0) {
@@ -213,17 +213,17 @@ void CommonItemSet::Table::print(FILE* stream) const {
         floor_to_class[x] = this->subtype_base_table[z] + (x / this->subtype_area_length_table[z]);
       }
     }
-    fprintf(stream, "  %02zX:%s  %3hhu%%  [%02hhX  %02hhX]  %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX %02hhX\n",
+    phosg::fwrite_fmt(stream, "  {:02X}:{}  {:3}%  [{:02X}  {:02X}]  {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X}\n",
         z, base_weapon_type_names[z], this->base_weapon_type_prob_table[z],
         this->subtype_base_table[z], this->subtype_area_length_table[z],
         floor_to_class[0], floor_to_class[1], floor_to_class[2], floor_to_class[3], floor_to_class[4],
         floor_to_class[5], floor_to_class[6], floor_to_class[7], floor_to_class[8], floor_to_class[9]);
   }
 
-  fprintf(stream, "Box configuration:\n");
-  fprintf(stream, "  AR   $LOW  $HIGH  WEP%%  ARM%%  SHD%%  UNI%%   TL%%  MST%%   NO%%\n");
+  phosg::fwrite_fmt(stream, "Box configuration:\n");
+  phosg::fwrite_fmt(stream, "  AR   $LOW  $HIGH  WEP%  ARM%  SHD%  UNI%   TL%  MST%   NO%\n");
   for (size_t z = 0; z < 10; z++) {
-    fprintf(stream, "  %02zX  %5hu  %5hu  %3hhu%%  %3hhu%%  %3hhu%%  %3hhu%%  %3hhu%%  %3hhu%%  %3hhu%%\n",
+    phosg::fwrite_fmt(stream, "  {:02X}  {:5}  {:5}  {:3}%  {:3}%  {:3}%  {:3}%  {:3}%  {:3}%  {:3}%\n",
         z, this->box_meseta_ranges[z].min, this->box_meseta_ranges[z].max,
         this->box_item_class_prob_table[0][z],
         this->box_item_class_prob_table[1][z],
@@ -234,43 +234,43 @@ void CommonItemSet::Table::print(FILE* stream) const {
         this->box_item_class_prob_table[6][z]);
   }
 
-  fprintf(stream, "Weapon drops:\n");
-  fprintf(stream, "  Grinds:\n");
-  fprintf(stream, "    GD  AR0%%  AR1%%  AR2%%  AR3%%\n");
+  phosg::fwrite_fmt(stream, "Weapon drops:\n");
+  phosg::fwrite_fmt(stream, "  Grinds:\n");
+  phosg::fwrite_fmt(stream, "    GD  AR0%  AR1%  AR2%  AR3%\n");
   for (size_t z = 0; z < 9; z++) {
-    fprintf(stream, "    +%zu  %3hhd%%  %3hhd%%  %3hhd%%  %3hhd%%\n", z,
+    phosg::fwrite_fmt(stream, "    +{}  {:3}%  {:3}%  {:3}%  {:3}%\n", z,
         this->grind_prob_table[z][0], this->grind_prob_table[z][1],
         this->grind_prob_table[z][2], this->grind_prob_table[z][3]);
   }
-  fprintf(stream, "  Bonus value table:\n");
-  fprintf(stream, "    ID");
+  phosg::fwrite_fmt(stream, "  Bonus value table:\n");
+  phosg::fwrite_fmt(stream, "    ID");
   for (int8_t v = -10; v <= 100; v += 5) {
-    fprintf(stream, "  %5hhd%%", v);
+    phosg::fwrite_fmt(stream, "  {:5}%", v);
   }
   fputc('\n', stream);
   for (size_t z = 0; z < (this->has_rare_bonus_value_prob_table ? 6 : 5); z++) {
-    fprintf(stream, "    %02zX", z);
+    phosg::fwrite_fmt(stream, "    {:02X}", z);
     for (size_t x = 0; x < 0x17; x++) {
-      fprintf(stream, "  %5hu#", this->bonus_value_prob_table[x][z]);
+      phosg::fwrite_fmt(stream, "  {:5}#", this->bonus_value_prob_table[x][z]);
     }
     fputc('\n', stream);
   }
-  fprintf(stream, "  Area config tables:\n");
-  fprintf(stream, "    AR  BONUS  SP   NO%%  NTV%%   AB%%  MAC%%  DRK%%  HIT%%  SM  SPC%%\n");
+  phosg::fwrite_fmt(stream, "  Area config tables:\n");
+  phosg::fwrite_fmt(stream, "    AR  BONUS  SP   NO%  NTV%   AB%  MAC%  DRK%  HIT%  SM  SPC%\n");
   for (size_t z = 0; z < 10; z++) {
-    fprintf(stream, "    %02zX  %02hhX %02hhX  %02hhX  %3hhu%%  %3hhu%%  %3hhu%%  %3hhu%%  %3hhu%%  %3hhu%%  %02hhX  %3hhu%%\n",
+    phosg::fwrite_fmt(stream, "    {:02X}  {:02X} {:02X}  {:02X}  {:3}%  {:3}%  {:3}%  {:3}%  {:3}%  {:3}%  {:02X}  {:3}%\n",
         z, this->nonrare_bonus_prob_spec[0][z], this->nonrare_bonus_prob_spec[1][z], this->nonrare_bonus_prob_spec[2][z],
         this->bonus_type_prob_table[0][z], this->bonus_type_prob_table[1][z], this->bonus_type_prob_table[2][z],
         this->bonus_type_prob_table[3][z], this->bonus_type_prob_table[4][z], this->bonus_type_prob_table[5][z],
         this->special_mult[z], this->special_percent[z]);
   }
 
-  fprintf(stream, "  Tool class table:\n");
-  fprintf(stream, "    CS     A1     A2     A3     A4     A5     A6     A7     A8     A9    A10\n");
+  phosg::fwrite_fmt(stream, "  Tool class table:\n");
+  phosg::fwrite_fmt(stream, "    CS     A1     A2     A3     A4     A5     A6     A7     A8     A9    A10\n");
   for (size_t tool_class = 0; tool_class < this->tool_class_prob_table.size(); tool_class++) {
-    fprintf(stream, "    %02zX", tool_class);
+    phosg::fwrite_fmt(stream, "    {:02X}", tool_class);
     for (size_t area_norm = 0; area_norm < 10; area_norm++) {
-      fprintf(stream, "  %5hu", this->tool_class_prob_table[tool_class][area_norm]);
+      phosg::fwrite_fmt(stream, "  {:5}", this->tool_class_prob_table[tool_class][area_norm]);
     }
     fputc('\n', stream);
   }
@@ -297,42 +297,42 @@ void CommonItemSet::Table::print(FILE* stream) const {
       "MEGID   ",
   };
 
-  fprintf(stream, "  Technique table:\n");
-  fprintf(stream, "    TECH                   A1            A2            A3            A4            A5            A6            A7            A8            A9           A10\n");
+  phosg::fwrite_fmt(stream, "  Technique table:\n");
+  phosg::fwrite_fmt(stream, "    TECH                   A1            A2            A3            A4            A5            A6            A7            A8            A9           A10\n");
   for (size_t tech_num = 0; tech_num < this->technique_index_prob_table.size(); tech_num++) {
-    fprintf(stream, "    %02zX:%s", tech_num, technique_names[tech_num]);
+    phosg::fwrite_fmt(stream, "    {:02X}:{}", tech_num, technique_names[tech_num]);
     for (size_t area_norm = 0; area_norm < 10; area_norm++) {
       uint16_t prob = this->technique_index_prob_table[tech_num][area_norm];
       if (prob) {
         const auto& level_range = this->technique_level_ranges[tech_num][area_norm];
         size_t min_level = level_range.min + 1;
         size_t max_level = level_range.max + 1;
-        fprintf(stream, "  %5hu[%2zu-%2zu]", prob, min_level, max_level);
+        phosg::fwrite_fmt(stream, "  {:5}[{:2}-{:2}]", prob, min_level, max_level);
       } else {
-        fprintf(stream, "      0[-----]");
+        phosg::fwrite_fmt(stream, "      0[-----]");
       }
     }
     fputc('\n', stream);
   }
 
-  fprintf(stream, "  Armor/shield type bias: %hhu\n", this->armor_or_shield_type_bias);
+  phosg::fwrite_fmt(stream, "  Armor/shield type bias: {}\n", this->armor_or_shield_type_bias);
 
-  fprintf(stream, "  Armor/shield type index table:\n");
-  fprintf(stream, "    TY  PROB\n");
+  phosg::fwrite_fmt(stream, "  Armor/shield type index table:\n");
+  phosg::fwrite_fmt(stream, "    TY  PROB\n");
   for (size_t z = 0; z < 5; z++) {
-    fprintf(stream, "    %02zX  %3hhu%%\n", z, this->armor_shield_type_index_prob_table[z]);
+    phosg::fwrite_fmt(stream, "    {:02X}  {:3}%\n", z, this->armor_shield_type_index_prob_table[z]);
   }
 
-  fprintf(stream, "  Armor/shield slot count table:\n");
-  fprintf(stream, "    #S  PROB\n");
+  phosg::fwrite_fmt(stream, "  Armor/shield slot count table:\n");
+  phosg::fwrite_fmt(stream, "    #S  PROB\n");
   for (size_t z = 0; z < 5; z++) {
-    fprintf(stream, "    %02zX  %3hhu%%\n", z, this->armor_slot_count_prob_table[z]);
+    phosg::fwrite_fmt(stream, "    {:02X}  {:3}%\n", z, this->armor_slot_count_prob_table[z]);
   }
 
-  fprintf(stream, "  Unit maximum stars table:\n");
-  fprintf(stream, "    AR   #*\n");
+  phosg::fwrite_fmt(stream, "  Unit maximum stars table:\n");
+  phosg::fwrite_fmt(stream, "    AR   #*\n");
   for (size_t z = 0; z < 10; z++) {
-    fprintf(stream, "    %02zX  %3hhu\n", z, this->unit_max_stars_table[z]);
+    phosg::fwrite_fmt(stream, "    {:02X}  {:3}\n", z, this->unit_max_stars_table[z]);
   }
 }
 
@@ -344,7 +344,7 @@ phosg::JSON CommonItemSet::Table::json() const {
     static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
     for (Episode episode : episodes) {
       for (auto type : enemy_types_for_rare_table_index(episode, z)) {
-        string name = phosg::string_printf("%s:%s", abbreviation_for_episode(episode), phosg::name_for_enum(type));
+        string name = std::format("{}:{}", abbreviation_for_episode(episode), phosg::name_for_enum(type));
         enemy_meseta_ranges_json.emplace(name, to_json(this->enemy_meseta_ranges[z]));
         enemy_type_drop_probs_json.emplace(name, this->enemy_type_drop_probs[z]);
         enemy_item_classes_json.emplace(name, this->enemy_item_classes[z]);
@@ -413,7 +413,7 @@ void CommonItemSet::print(FILE* stream) const {
         for (uint8_t section_id = 0; section_id < 10; section_id++) {
           try {
             auto table = this->get_table(episode, mode, difficulty, section_id);
-            fprintf(stream, "============ %s %s %s %s\n",
+            phosg::fwrite_fmt(stream, "============ {} {} {} {}\n",
                 name_for_mode(mode), name_for_episode(episode), name_for_difficulty(difficulty), name_for_section_id(section_id));
             table->print(stream);
           } catch (const runtime_error&) {
@@ -503,7 +503,7 @@ shared_ptr<const CommonItemSet::Table> CommonItemSet::get_table(
   try {
     return this->tables.at(this->key_for_table(episode, mode, difficulty, secid));
   } catch (const out_of_range&) {
-    throw runtime_error(phosg::string_printf("common item table not available for episode=%s, mode=%s, difficulty=%hu, secid=%hu",
+    throw runtime_error(std::format("common item table not available for episode={}, mode={}, difficulty={}, secid={}",
         name_for_episode(episode), name_for_mode(mode), difficulty, secid));
   }
 }
@@ -554,11 +554,11 @@ GSLV3V4CommonItemSet::GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gs
       default:
         throw runtime_error("invalid episode");
     }
-    return phosg::string_printf(
-        "ItemPT%s%s%c%1hhu.rel",
+    return std::format(
+        "ItemPT{}{}{}{}.rel",
         is_challenge ? "c" : "",
         episode_token,
-        tolower(abbreviation_for_difficulty(difficulty)),
+        static_cast<char>(tolower(abbreviation_for_difficulty(difficulty))),
         section_id);
   };
 

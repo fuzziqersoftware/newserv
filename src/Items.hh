@@ -12,7 +12,7 @@
 #include "ServerState.hh"
 #include "StaticGameData.hh"
 
-void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_ptr<PSOLFGEncryption> opt_rand_crypt);
+void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_ptr<RandomGenerator> rand_crypt);
 void player_feed_mag(std::shared_ptr<Client> c, size_t mag_item_index, size_t fed_item_index);
 
 void apply_mag_feed_result(

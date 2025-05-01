@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <filesystem>
 #include <functional>
 #include <phosg/Filesystem.hh>
 #include <phosg/Hash.hh>
@@ -13,6 +14,13 @@
 
 using namespace std;
 
+int64_t file_mtime_int(const std::string& path) {
+  auto mtime = std::filesystem::last_write_time(path);
+  auto sctp = std::chrono::time_point_cast<std::chrono::nanoseconds>(
+      mtime - std::filesystem::file_time_type::clock::now() + std::chrono::system_clock::now());
+  return sctp.time_since_epoch().count();
+}
+
 PatchFileIndex::File::File(PatchFileIndex* index)
     : index(index),
       crc32(0),
@@ -22,7 +30,7 @@ std::shared_ptr<const std::string> PatchFileIndex::File::load_data() {
   if (!this->loaded_data) {
     string relative_path = phosg::join(this->path_directories, "/") + "/" + this->name;
     string full_path = this->index->root_dir + "/" + relative_path;
-    patch_index_log.info("Loading data for %s", relative_path.c_str());
+    patch_index_log.info_f("Loading data for {}", relative_path);
     this->loaded_data = make_shared<string>(phosg::load_file(full_path));
     this->size = this->loaded_data->size();
   }
@@ -37,10 +45,10 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
   try {
     string metadata_text = phosg::load_file(metadata_cache_filename);
     metadata_cache_json = phosg::JSON::parse(metadata_text);
-    patch_index_log.info("Loaded patch metadata cache from %s", metadata_cache_filename.c_str());
+    patch_index_log.info_f("Loaded patch metadata cache from {}", metadata_cache_filename);
   } catch (const exception& e) {
     metadata_cache_json = phosg::JSON::dict();
-    patch_index_log.warning("Cannot load patch metadata cache from %s: %s", metadata_cache_filename.c_str(), e.what());
+    patch_index_log.warning_f("Cannot load patch metadata cache from {}: {}", metadata_cache_filename, e.what());
   }
 
   // Assuming it's rare for patch files to change, we skip writing the metadata
@@ -54,36 +62,38 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
 
     string relative_dirs = phosg::join(path_directories, "/");
     string full_dir_path = root_dir + '/' + relative_dirs;
-    patch_index_log.info("Listing directory %s", full_dir_path.c_str());
+    patch_index_log.info_f("Listing directory {}", full_dir_path);
 
-    for (const auto& item : phosg::list_directory(full_dir_path)) {
+    for (const auto& dir_item : std::filesystem::directory_iterator(full_dir_path)) {
+      string item = dir_item.path().filename().string();
+
       // Skip invisible files (e.g. .DS_Store on macOS)
-      if (phosg::starts_with(item, ".")) {
+      if (item.starts_with(".")) {
         continue;
       }
 
       string relative_item_path = relative_dirs + '/' + item;
       string full_item_path = root_dir + '/' + relative_item_path;
-      if (phosg::isdir(full_item_path)) {
+      if (std::filesystem::is_directory(full_item_path)) {
         collect_dir(item);
-      } else if (phosg::isfile(full_item_path)) {
-
-        auto st = phosg::stat(full_item_path);
+      } else if (std::filesystem::is_regular_file(full_item_path)) {
 
         auto f = make_shared<File>(this);
         f->path_directories = path_directories;
         f->name = item;
+
+        int64_t file_mtime = file_mtime_int(full_item_path);
 
         string compute_crc32s_message; // If not empty, should compute crc32s
         phosg::JSON cache_item_json;
         try {
           cache_item_json = metadata_cache_json.at(relative_item_path);
           uint64_t cached_size = cache_item_json.get_int(0);
-          uint64_t cached_mtime = cache_item_json.get_int(1);
-          if (static_cast<uint64_t>(st.st_mtime) != cached_mtime) {
+          int64_t cached_mtime = cache_item_json.get_int(1);
+          if (file_mtime != cached_mtime) {
             throw runtime_error("file has been modified");
           }
-          if (static_cast<uint64_t>(st.st_size) != cached_size) {
+          if (std::filesystem::file_size(full_item_path) != cached_size) {
             throw runtime_error("file size has changed");
           }
           f->size = cached_size;
@@ -110,7 +120,7 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
             chunk_crcs_item.emplace_back(chunk_crc);
           }
           new_metadata_cache_json.emplace(
-              relative_item_path, phosg::JSON::list({f->size, st.st_mtime, f->crc32, std::move(chunk_crcs_item)}));
+              relative_item_path, phosg::JSON::list({f->size, file_mtime, f->crc32, std::move(chunk_crcs_item)}));
           should_write_metadata_cache = true;
 
         } else {
@@ -123,13 +133,11 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
         this->files_by_patch_order.emplace_back(f);
         this->files_by_name.emplace(relative_item_path, f);
         if (compute_crc32s_message.empty()) {
-          patch_index_log.info(
-              "Added file %s (%" PRIu32 " bytes; %zu chunks; %08" PRIX32 " from cache)",
-              full_item_path.c_str(), f->size, f->chunk_crcs.size(), f->crc32);
+          patch_index_log.info_f("Added file {} ({} bytes; {} chunks; {:08X} from cache)",
+              full_item_path, f->size, f->chunk_crcs.size(), f->crc32);
         } else {
-          patch_index_log.info(
-              "Added file %s (%" PRIu32 " bytes; %zu chunks; %08" PRIX32 " [%s])",
-              full_item_path.c_str(), f->size, f->chunk_crcs.size(), f->crc32, compute_crc32s_message.c_str());
+          patch_index_log.info_f("Added file {} ({} bytes; {} chunks; {:08X} [{}])",
+              full_item_path, f->size, f->chunk_crcs.size(), f->crc32, compute_crc32s_message);
         }
       }
     }
@@ -142,12 +150,12 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
   if (should_write_metadata_cache) {
     try {
       phosg::save_file(metadata_cache_filename, new_metadata_cache_json.serialize());
-      patch_index_log.info("Saved patch metadata cache to %s", metadata_cache_filename.c_str());
+      patch_index_log.info_f("Saved patch metadata cache to {}", metadata_cache_filename);
     } catch (const exception& e) {
-      patch_index_log.warning("Cannot save patch metadata cache to %s: %s", metadata_cache_filename.c_str(), e.what());
+      patch_index_log.warning_f("Cannot save patch metadata cache to {}: {}", metadata_cache_filename, e.what());
     }
   } else {
-    patch_index_log.info("No files were modified; skipping metadata cache update");
+    patch_index_log.info_f("No files were modified; skipping metadata cache update");
   }
 }
 

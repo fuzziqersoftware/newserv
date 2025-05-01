@@ -1304,7 +1304,7 @@ string generate_dc_serial_number(uint8_t domain, uint8_t subdomain) {
   size_t index2 = phosg::random_object<uint32_t>() % num_primes2;
   size_t index3 = phosg::random_object<uint32_t>() % num_primes3;
   uint32_t value = primes1[index1] * primes2[index2] * primes3[index3];
-  string s = phosg::string_printf("%08X", value);
+  string s = std::format("{:08X}", value);
 
   string ret;
   for (char ch : s) {
@@ -1336,7 +1336,7 @@ unordered_map<uint32_t, string> generate_all_dc_serial_numbers(uint8_t domain, u
   while ((serial_number = iter.next()) != 0) {
     ret[serial_number].push_back(((iter.domain << 2) & 3) | (iter.subdomain & 3));
     if (iter.index3 == 0) {
-      fprintf(stderr, "... (it) domain=%hhu subdomain=%hhu index2=%hu results=%zu (0x%zX)\n", iter.domain, iter.subdomain, iter.index2, ret.size(), ret.size());
+      phosg::fwrite_fmt(stderr, "... (it) domain={} subdomain={} index2={} results={} (0x{:X})\n", iter.domain, iter.subdomain, iter.index2, ret.size(), ret.size());
     }
   }
   return ret;
@@ -1389,14 +1389,14 @@ size_t DCSerialNumberIterator::progress() const {
 
 void dc_serial_number_speed_test(uint64_t seed) {
   uint32_t effective_seed = (seed & 0xFFFFFFFF00000000) ? phosg::random_object<uint32_t>() : seed;
-  fprintf(stderr, "Product speed test with seed=%08" PRIX32 "\n", effective_seed);
+  phosg::fwrite_fmt(stderr, "Product speed test with seed={:08X}\n", effective_seed);
   PSOV2Encryption crypt(effective_seed);
   uint64_t time_slow = 0;
   uint64_t time_fast = 0;
   size_t num_disagreements = 0;
   static constexpr size_t count = 0x1000;
   for (size_t z = 0; z < count; z++) {
-    string s = phosg::string_printf("%08X", crypt.next());
+    string s = std::format("{:08X}", crypt.next());
 
     uint64_t start = phosg::now();
     bool is_valid_fast = dc_serial_number_is_valid_fast(s, 1, 0xFF);
@@ -1407,17 +1407,17 @@ void dc_serial_number_speed_test(uint64_t seed) {
     time_slow += phosg::now() - start;
 
     if (((z & 0xF) == 0) || is_valid_slow || is_valid_fast) {
-      fprintf(stderr, "... %02zX: %s => %s %s%s\n", z, s.c_str(), is_valid_slow ? "SLOW" : "----", is_valid_fast ? "FAST" : "----", is_valid_slow != is_valid_fast ? " !!!" : "");
+      phosg::fwrite_fmt(stderr, "... {:02X}: {} => {} {}{}\n", z, s, is_valid_slow ? "SLOW" : "----", is_valid_fast ? "FAST" : "----", is_valid_slow != is_valid_fast ? " !!!" : "");
     }
     if (is_valid_fast != is_valid_slow) {
       num_disagreements++;
     }
   }
 
-  fprintf(stderr, "Total time (slow): %" PRId64 " usecs (%" PRIu64 " per serial number)\n", time_slow, time_slow / count);
-  fprintf(stderr, "Total time (fast): %" PRId64 " usecs (%" PRIu64 " per serial number)\n", time_fast, time_fast / count);
-  fprintf(stderr, "Fast vs. slow speedup: %zux\n", static_cast<size_t>(time_slow / time_fast));
-  fprintf(stderr, "Disagreements: %zu\n", num_disagreements);
+  phosg::fwrite_fmt(stderr, "Total time (slow): {} usecs ({} per serial number)\n", time_slow, time_slow / count);
+  phosg::fwrite_fmt(stderr, "Total time (fast): {} usecs ({} per serial number)\n", time_fast, time_fast / count);
+  phosg::fwrite_fmt(stderr, "Fast vs. slow speedup: {}x\n", static_cast<size_t>(time_slow / time_fast));
+  phosg::fwrite_fmt(stderr, "Disagreements: {}\n", num_disagreements);
 }
 
 string decrypt_dp_address_jpn(
@@ -1480,7 +1480,7 @@ std::string crypt_dp_address_jpn_simple(const std::string& data, int64_t mask_ke
     if (mask_key < 0) {
       throw runtime_error("cannot determine mask key");
     }
-    phosg::log_info("Determined %08" PRIX64 " to be the most likely mask key", mask_key);
+    phosg::log_info_f("Determined {:08X} to be the most likely mask key", mask_key);
     r.go(0);
   }
 

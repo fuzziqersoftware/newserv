@@ -563,7 +563,7 @@ struct pstring {
           throw std::logic_error("unknown text encoding");
       }
     } catch (const std::runtime_error& e) {
-      phosg::log_warning("Unencodable text: %s", e.what());
+      phosg::log_warning_f("Unencodable text: {}", e.what());
       if (BytesPerChar == 2) {
         if (Bytes >= 6) {
           this->data[0] = '<';
@@ -638,7 +638,7 @@ struct pstring {
           throw std::logic_error("unknown text encoding");
       }
     } catch (const std::runtime_error& e) {
-      phosg::log_warning("Undecodable text: %s", e.what());
+      phosg::log_warning_f("Undecodable text: {}", e.what());
       return "<?>";
     }
   }
@@ -718,7 +718,7 @@ struct pstring {
   }
 
   // Note: The contents of a pstring do not have to be null-terminated, so there
-  // is no .c_str() function.
+  // is no  function.
 } __attribute__((packed));
 
 // Helper functions

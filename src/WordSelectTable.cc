@@ -157,15 +157,15 @@ const string& WordSelectSet::string_for_token(uint16_t token_id) const {
 }
 
 void WordSelectSet::print(FILE* stream) const {
-  fprintf(stream, "strings:\n");
+  phosg::fwrite_fmt(stream, "strings:\n");
   for (size_t z = 0; z < this->strings.size(); z++) {
     auto escaped = phosg::escape_controls_utf8(this->strings[z]);
-    fprintf(stream, "  [%04zX] \"%s\"\n", z, escaped.c_str());
+    phosg::fwrite_fmt(stream, "  [{:04X}] \"{}\"\n", z, escaped);
   }
-  fprintf(stream, "token_id_to_string_id:\n");
+  phosg::fwrite_fmt(stream, "token_id_to_string_id:\n");
   for (size_t z = 0; z < this->token_id_to_string_id.size(); z++) {
     auto escaped = phosg::escape_controls_utf8(this->string_for_token(z));
-    fprintf(stream, "  [%04zX] %04zX \"%s\"\n", z, this->token_id_to_string_id[z], escaped.c_str());
+    phosg::fwrite_fmt(stream, "  [{:04X}] {:04X} \"{}\"\n", z, this->token_id_to_string_id[z], escaped);
   }
 }
 
@@ -200,7 +200,7 @@ WordSelectTable::WordSelectTable(
   {
     for (size_t z = 0; z < 12; z++) {
       auto& token = dynamic_tokens.emplace_back(make_shared<Token>());
-      token->canonical_name = phosg::string_printf("__PLAYER_%zu_NAME__", z);
+      token->canonical_name = std::format("__PLAYER_{}_NAME__", z);
       this->name_to_token.emplace(token->canonical_name, token);
     }
     auto& token = dynamic_tokens.emplace_back(make_shared<Token>());
@@ -249,36 +249,36 @@ WordSelectTable::WordSelectTable(
 }
 
 void WordSelectTable::print(FILE* stream) const {
-  fprintf(stream, "DCN  DC11 DCv1 DCv2 PCN  PCv2 GCN  GCv3 Ep3N Ep3  XBv3 BBv4 CANONICAL-NAME\n");
+  phosg::fwrite_fmt(stream, "DCN  DC11 DCv1 DCv2 PCN  PCv2 GCN  GCv3 Ep3N Ep3  XBv3 BBv4 CANONICAL-NAME\n");
   for (const auto& it : this->name_to_token) {
     const auto& token = it.second;
     for (size_t z = 0; z < 12; z++) {
       if (token->values_by_version[z] == 0xFFFF) {
-        fprintf(stream, "     ");
+        phosg::fwrite_fmt(stream, "     ");
       } else {
-        fprintf(stream, "%04hX ", token->values_by_version[z]);
+        phosg::fwrite_fmt(stream, "{:04X} ", token->values_by_version[z]);
       }
     }
     string serialized = phosg::JSON(token->canonical_name).serialize(phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY);
-    fprintf(stream, "%s\n", serialized.c_str());
+    phosg::fwrite_fmt(stream, "{}\n", serialized);
   }
 }
 
 void WordSelectTable::print_index(FILE* stream, Version v) const {
-  fprintf(stream, "        DCN  DC11 DCv1 DCv2 PCN  PCv2 GCN  GCv3 Ep3N Ep3  XBv3 BBv4 CANONICAL-NAME\n");
+  phosg::fwrite_fmt(stream, "        DCN  DC11 DCv1 DCv2 PCN  PCv2 GCN  GCv3 Ep3N Ep3  XBv3 BBv4 CANONICAL-NAME\n");
   const auto& index = this->tokens_for_version(v);
   for (size_t token_id = 0; token_id < index.size(); token_id++) {
     const auto& token = index[token_id];
-    fprintf(stream, "%04zX => ", token_id);
+    phosg::fwrite_fmt(stream, "{:04X} => ", token_id);
     for (size_t z = 0; z < 12; z++) {
       if (token->values_by_version[z] == 0xFFFF) {
-        fprintf(stream, "     ");
+        phosg::fwrite_fmt(stream, "     ");
       } else {
-        fprintf(stream, "%04hX ", token->values_by_version[z]);
+        phosg::fwrite_fmt(stream, "{:04X} ", token->values_by_version[z]);
       }
     }
     string serialized = phosg::JSON(token->canonical_name).serialize(phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY);
-    fprintf(stream, "%s\n", serialized.c_str());
+    phosg::fwrite_fmt(stream, "{}\n", serialized);
   }
 }
 
@@ -291,7 +291,7 @@ void WordSelectTable::validate(const WordSelectMessage& msg, Version version) co
     }
     const auto& token = index.at(msg.tokens[z]);
     if (!token) {
-      throw runtime_error(phosg::string_printf("token %04hX does not exist in the index", msg.tokens[z].load()));
+      throw runtime_error(std::format("token {:04X} does not exist in the index", msg.tokens[z]));
     }
   }
 }
@@ -309,11 +309,11 @@ WordSelectMessage WordSelectTable::translate(
     } else {
       const auto& token = index.at(msg.tokens[z]);
       if (!token) {
-        throw runtime_error(phosg::string_printf("token %04hX does not exist in the index", msg.tokens[z].load()));
+        throw runtime_error(std::format("token {:04X} does not exist in the index", msg.tokens[z]));
       }
       ret.tokens[z] = token->slot_for_version(to_version);
       if (ret.tokens[z] == 0xFFFF) {
-        throw runtime_error(phosg::string_printf("token %04hX has no translation", msg.tokens[z].load()));
+        throw runtime_error(std::format("token {:04X} has no translation", msg.tokens[z]));
       }
     }
   }

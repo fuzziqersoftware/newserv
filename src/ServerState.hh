@@ -1,7 +1,5 @@
 #pragma once
 
-#include <event2/event.h>
-
 #include <atomic>
 #include <map>
 #include <memory>
@@ -17,7 +15,6 @@
 #include "DNSServer.hh"
 #include "Episode3/DataIndexes.hh"
 #include "Episode3/Tournament.hh"
-#include "EventUtils.hh"
 #include "FunctionCompiler.hh"
 #include "GSLArchive.hh"
 #include "IPV4RangeSet.hh"
@@ -27,15 +24,13 @@
 #include "LevelTable.hh"
 #include "Lobby.hh"
 #include "Menu.hh"
-#include "PatchServer.hh"
 #include "PlayerFilesManager.hh"
 #include "Quest.hh"
 #include "TeamIndex.hh"
 #include "WordSelectTable.hh"
 
 // Forward declarations due to reference cycles
-class ProxyServer;
-class Server;
+class GameServer;
 class IPStackSimulator;
 class HTTPServer;
 
@@ -91,13 +86,15 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   }
 
   uint64_t creation_time;
-  std::shared_ptr<struct event_base> base;
+  std::shared_ptr<asio::io_context> io_context;
 
   std::string config_filename;
   std::shared_ptr<const phosg::JSON> config_json;
-  bool is_replay = false;
   bool one_time_config_loaded = false;
   bool default_lobbies_created = false;
+
+  size_t num_worker_threads = 0;
+  std::unique_ptr<asio::thread_pool> thread_pool;
 
   std::string name;
   std::unordered_map<std::string, std::shared_ptr<PortConfiguration>> name_to_port_config;
@@ -145,7 +142,6 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   uint64_t persistent_game_idle_timeout_usecs = 0;
   std::unordered_map<uint32_t, int64_t> enable_send_function_call_quest_numbers;
   bool enable_v3_v4_protected_subcommands = false;
-  bool catch_handler_exceptions = true;
   bool ep3_infinite_meseta = false;
   std::vector<uint32_t> ep3_defeat_player_meseta_rewards = {400, 500, 600, 700, 800};
   std::vector<uint32_t> ep3_defeat_com_meseta_rewards = {100, 200, 300, 400, 500};
@@ -157,6 +153,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   BehaviorSwitch cheat_mode_behavior = BehaviorSwitch::OFF_BY_DEFAULT;
   bool default_switch_assist_enabled = false;
   bool use_game_creator_section_id = false;
+  bool use_psov2_rand_crypt = false; // Used in some tests
   bool rare_notifs_enabled_for_client_drops = false;
   bool default_rare_notifs_enabled_v1_v2 = false;
   bool default_rare_notifs_enabled_v3_v4 = false;
@@ -263,6 +260,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::vector<Ep3LobbyBannerEntry> ep3_lobby_banners;
 
   std::shared_ptr<AccountIndex> account_index;
+  bool allow_saving_accounts = true;
   std::shared_ptr<IPV4RangeSet> banned_ipv4_ranges;
   std::shared_ptr<TeamIndex> team_index;
   phosg::JSON team_reward_defs_json;
@@ -279,17 +277,14 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::vector<std::pair<std::string, uint16_t>> proxy_destinations_pc;
   std::vector<std::pair<std::string, uint16_t>> proxy_destinations_gc;
   std::vector<std::pair<std::string, uint16_t>> proxy_destinations_xb;
-  std::pair<std::string, uint16_t> proxy_destination_patch;
-  std::pair<std::string, uint16_t> proxy_destination_bb;
+  std::optional<std::pair<std::string, uint16_t>> proxy_destination_patch;
+  std::optional<std::pair<std::string, uint16_t>> proxy_destination_bb;
   std::string welcome_message;
   std::string pc_patch_server_message;
   std::string bb_patch_server_message;
 
   std::shared_ptr<PlayerFilesManager> player_files_manager;
-  std::unordered_map<Channel*, std::shared_ptr<Client>> channel_to_client;
   std::map<int64_t, std::shared_ptr<Lobby>> id_to_lobby;
-  std::unordered_set<std::shared_ptr<Lobby>> lobbies_to_destroy;
-  std::shared_ptr<struct event> destroy_lobbies_event;
   std::array<std::vector<uint32_t>, NUM_VERSIONS> public_lobby_search_orders;
   std::vector<uint32_t> client_customization_public_lobby_search_order;
   std::atomic<int32_t> next_lobby_id = 1;
@@ -301,18 +296,15 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   uint32_t external_address = 0;
 
   bool proxy_allow_save_files = true;
-  bool proxy_enable_login_options = false;
 
   std::shared_ptr<IPStackSimulator> ip_stack_simulator;
   std::shared_ptr<DNSServer> dns_server;
-  std::shared_ptr<ProxyServer> proxy_server;
-  std::shared_ptr<Server> game_server;
-  std::shared_ptr<PatchServer> pc_patch_server;
-  std::shared_ptr<PatchServer> bb_patch_server;
+  std::shared_ptr<GameServer> game_server;
   std::shared_ptr<HTTPServer> http_server;
 
+  std::unordered_map<uint32_t, ProxySession::PersistentConfig> proxy_persistent_configs;
+
   explicit ServerState(const std::string& config_filename = "");
-  ServerState(std::shared_ptr<struct event_base> base, const std::string& config_filename, bool is_replay);
   ServerState(const ServerState&) = delete;
   ServerState(ServerState&&) = delete;
   ServerState& operator=(const ServerState&) = delete;
@@ -342,6 +334,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
       std::shared_ptr<Lobby> l = nullptr);
 
   uint32_t connect_address_for_client(std::shared_ptr<Client> c) const;
+  uint16_t game_server_port_for_version(Version v) const;
 
   std::shared_ptr<const Menu> information_menu(Version version) const;
   std::shared_ptr<const Menu> proxy_destinations_menu(Version version) const;
@@ -361,7 +354,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
 
   const std::vector<uint32_t>& public_lobby_search_order(Version version, bool is_client_customization) const;
   inline const std::vector<uint32_t>& public_lobby_search_order(std::shared_ptr<const Client> c) const {
-    return this->public_lobby_search_order(c->version(), c->config.check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION));
+    return this->public_lobby_search_order(c->version(), c->check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION));
   }
 
   inline uint32_t name_color_for_client(Version v, bool is_client_customization) const {
@@ -371,7 +364,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
     return this->version_name_colors ? this->version_name_colors->at(static_cast<size_t>(v) - NUM_PATCH_VERSIONS) : 0;
   }
   inline uint32_t name_color_for_client(std::shared_ptr<const Client> c) const {
-    return this->name_color_for_client(c->version(), c->config.check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION));
+    return this->name_color_for_client(c->version(), c->check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION));
   }
 
   std::shared_ptr<const std::vector<std::string>> information_contents_for_client(std::shared_ptr<const Client> c) const;
@@ -391,24 +384,6 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::pair<std::string, uint16_t> parse_port_spec(const phosg::JSON& json) const;
   std::vector<PortConfiguration> parse_port_configuration(const phosg::JSON& json) const;
 
-  template <typename T>
-  inline T call_on_event_thread(std::function<T()>&& fn) {
-    return ::call_on_event_thread<T>(this->base, std::move(fn));
-  }
-  inline void forward_to_event_thread(std::function<void()>&& fn) {
-    ::forward_to_event_thread(this->base, std::move(fn));
-  }
-  inline void forward_or_call(bool from_non_event_thread, std::function<void()>&& fn) {
-    if (from_non_event_thread) {
-      ::forward_to_event_thread(this->base, std::move(fn));
-    } else {
-      fn();
-    }
-  }
-
-  std::shared_ptr<PatchServer::Config> generate_patch_server_config(bool is_bb) const;
-  void update_dependent_server_configs() const;
-
   static constexpr uint32_t free_play_key(
       Episode episode, GameMode mode, uint8_t difficulty, uint8_t floor, uint32_t layout, uint32_t entities) {
     return (static_cast<uint32_t>(episode) << 28) |
@@ -426,44 +401,37 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
       uint8_t difficulty,
       const Variations& variations);
 
-  // The following functions may only be called from a non-event thread if they
-  // take a from_non_event_thread argument; any function that does not have this
-  // argument must be called only from the event thread.
   void create_default_lobbies();
   void collect_network_addresses();
   void load_config_early();
   void load_config_late();
-  void load_bb_private_keys(bool from_non_event_thread);
-  void load_bb_system_defaults(bool from_non_event_thread);
-  void load_accounts(bool from_non_event_thread);
-  void load_teams(bool from_non_event_thread);
-  void load_patch_indexes(bool from_non_event_thread);
-  void load_maps(bool from_non_event_thread);
-  void clear_file_caches(bool from_non_event_thread);
-  void load_battle_params(bool from_non_event_thread);
-  void load_level_tables(bool from_non_event_thread);
-  void load_text_index(bool from_non_event_thread);
+  void load_bb_private_keys();
+  void load_bb_system_defaults();
+  void load_accounts();
+  void load_teams();
+  void load_patch_indexes();
+  void load_maps();
+  void clear_file_caches();
+  void load_battle_params();
+  void load_level_tables();
+  void load_text_index();
   std::shared_ptr<ItemNameIndex> create_item_name_index_for_version(
       std::shared_ptr<const ItemParameterTable> pmt,
       std::shared_ptr<const ItemData::StackLimits> limits,
       std::shared_ptr<const TextIndex> text_index) const;
-  void load_item_name_indexes(bool from_non_event_thread);
-  void load_drop_tables(bool from_non_event_thread);
-  void load_item_definitions(bool from_non_event_thread);
-  void load_set_data_tables(bool from_non_event_thread);
-  void load_word_select_table(bool from_non_event_thread);
-  void load_ep3_cards(bool from_non_event_thread);
-  void load_ep3_maps(bool from_non_event_thread);
-  void load_ep3_tournament_state(bool from_non_event_thread);
-  void load_quest_index(bool from_non_event_thread);
-  void compile_functions(bool from_non_event_thread);
-  void load_dol_files(bool from_non_event_thread);
-  void load_all();
+  void load_item_name_indexes();
+  void load_drop_tables();
+  void load_item_definitions();
+  void load_set_data_tables();
+  void load_word_select_table();
+  void load_ep3_cards();
+  void load_ep3_maps();
+  void load_ep3_tournament_state();
+  void load_quest_index();
+  void compile_functions();
+  void load_dol_files();
 
-  void enqueue_destroy_lobbies();
-  static void dispatch_destroy_lobbies(evutil_socket_t, short, void* ctx);
+  void load_all(bool enable_thread_pool);
 
   void disconnect_all_banned_clients();
-
-  std::string format_address_for_channel_name(const struct sockaddr_storage& remote_ss, uint64_t virtual_network);
 };

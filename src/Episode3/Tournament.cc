@@ -3,7 +3,9 @@
 #include <phosg/Random.hh>
 
 #include "../CommandFormats.hh"
+#include "../GameServer.hh"
 #include "../SendCommands.hh"
+#include "../ServerState.hh"
 
 using namespace std;
 
@@ -49,16 +51,16 @@ string Tournament::Team::str() const {
     num_com_players += player.is_com();
   }
 
-  string ret = phosg::string_printf("[Team/%zu %s %zuH/%zuC/%zuP name=%s pass=%s rounds=%zu",
+  string ret = std::format("[Team/{} {} {}H/{}C/{}P name={} pass={} rounds={}",
       this->index, this->is_active ? "active" : "inactive",
-      num_human_players, num_com_players, this->max_players, this->name.c_str(),
-      this->password.c_str(), this->num_rounds_cleared);
+      num_human_players, num_com_players, this->max_players, this->name,
+      this->password, this->num_rounds_cleared);
   for (const auto& player : this->players) {
     if (player.is_human()) {
       if (player.player_name.empty()) {
-        ret += phosg::string_printf(" %08" PRIX32, player.account_id);
+        ret += std::format(" {:08X}", player.account_id);
       } else {
-        ret += phosg::string_printf(" %08" PRIX32 " (%s)", player.account_id, player.player_name.c_str());
+        ret += std::format(" {:08X} ({})", player.account_id, player.player_name);
       }
     }
   }
@@ -206,7 +208,7 @@ Tournament::Match::Match(
 
 string Tournament::Match::str() const {
   string winner_str = this->winner_team ? this->winner_team->str() : "(none)";
-  return phosg::string_printf("[Match round=%zu winner=%s]", this->round_num, winner_str.c_str());
+  return std::format("[Match round={} winner={}]", this->round_num, winner_str);
 }
 
 bool Tournament::Match::resolve_if_skippable() {
@@ -318,7 +320,7 @@ Tournament::Tournament(
     const Rules& rules,
     size_t num_teams,
     uint8_t flags)
-    : log(phosg::string_printf("[Tournament:%s] ", name.c_str())),
+    : log(std::format("[Tournament:{}] ", name)),
       map_index(map_index),
       com_deck_index(com_deck_index),
       name(name),
@@ -343,7 +345,7 @@ Tournament::Tournament(
     shared_ptr<const MapIndex> map_index,
     shared_ptr<const COMDeckIndex> com_deck_index,
     const phosg::JSON& json)
-    : log(phosg::string_printf("[Tournament:%s] ", json.get_string("name").c_str())),
+    : log(std::format("[Tournament:{}] ", json.get_string("name"))),
       map_index(map_index),
       com_deck_index(com_deck_index),
       source_json(json),
@@ -665,7 +667,7 @@ void Tournament::start() {
     auto m = this->zero_round_matches[z];
     auto t = m->winner_team;
     if (t->name.empty()) {
-      t->name = has_com_teams ? phosg::string_printf("COM:%zu", z) : "(no entrant)";
+      t->name = has_com_teams ? std::format("COM:{}", z) : "(no entrant)";
     }
     for (const auto& player : t->players) {
       if (player.is_com()) {
@@ -718,7 +720,7 @@ void Tournament::send_all_state_updates_on_deletion() const {
 }
 
 string Tournament::bracket_str() const {
-  string ret = phosg::string_printf("Tournament \"%s\"\n", this->name.c_str());
+  string ret = std::format("Tournament \"{}\"\n", this->name);
 
   function<void(shared_ptr<Match>, size_t)> add_match = [&](shared_ptr<Match> m, size_t indent_level) -> void {
     ret.append(2 * indent_level, ' ');
@@ -738,16 +740,16 @@ string Tournament::bracket_str() const {
   auto en_vm = this->map->version(1);
   if (en_vm) {
     string map_name = en_vm->map->name.decode(en_vm->language);
-    ret += phosg::string_printf("  Map: %08" PRIX32 " (%s)\n", this->map->map_number, map_name.c_str());
+    ret += std::format("  Map: {:08X} ({})\n", this->map->map_number, map_name);
   } else {
-    ret += phosg::string_printf("  Map: %08" PRIX32 "\n", this->map->map_number);
+    ret += std::format("  Map: {:08X}\n", this->map->map_number);
   }
   string rules_str = this->rules.str();
-  ret += phosg::string_printf("  Rules: %s\n", rules_str.c_str());
-  ret += phosg::string_printf("  Structure: %s, %zu entries\n", (this->flags & Flag::IS_2V2) ? "2v2" : "1v1", this->num_teams);
-  ret += phosg::string_printf("  COM teams: %s\n", (this->flags & Flag::HAS_COM_TEAMS) ? "allowed" : "forbidden");
-  ret += phosg::string_printf("  Shuffle entries: %s\n", (this->flags & Flag::SHUFFLE_ENTRIES) ? "yes" : "no");
-  ret += phosg::string_printf("  Resize on start: %s\n", (this->flags & Flag::RESIZE_ON_START) ? "yes" : "no");
+  ret += std::format("  Rules: {}\n", rules_str);
+  ret += std::format("  Structure: {}, {} entries\n", (this->flags & Flag::IS_2V2) ? "2v2" : "1v1", this->num_teams);
+  ret += std::format("  COM teams: {}\n", (this->flags & Flag::HAS_COM_TEAMS) ? "allowed" : "forbidden");
+  ret += std::format("  Shuffle entries: {}\n", (this->flags & Flag::SHUFFLE_ENTRIES) ? "yes" : "no");
+  ret += std::format("  Resize on start: {}\n", (this->flags & Flag::RESIZE_ON_START) ? "yes" : "no");
   switch (this->current_state) {
     case State::REGISTRATION:
       ret += "  State: REGISTRATION\n";
@@ -770,13 +772,13 @@ string Tournament::bracket_str() const {
     ret += "  Teams:\n";
     for (const auto& team : this->teams) {
       string team_str = team->str();
-      ret += phosg::string_printf("    %s\n", team_str.c_str());
+      ret += std::format("    {}\n", team_str);
     }
   } else {
     ret += "  Pending matches:\n";
     for (const auto& match : this->pending_matches) {
       string match_str = match->str();
-      ret += phosg::string_printf("    %s\n", match_str.c_str());
+      ret += std::format("    {}\n", match_str);
     }
   }
 
@@ -940,8 +942,12 @@ void TournamentIndex::link_client(shared_ptr<Client> c) {
 }
 
 void TournamentIndex::link_all_clients(std::shared_ptr<ServerState> s) {
-  for (const auto& c_it : s->channel_to_client) {
-    this->link_client(c_it.second);
+  // This can be called before the game server exists, so do nothing in that
+  // case
+  if (s->game_server) {
+    for (const auto& c : s->game_server->all_clients()) {
+      this->link_client(c);
+    }
   }
 }
 

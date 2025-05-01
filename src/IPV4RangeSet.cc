@@ -1,7 +1,5 @@
 #include "IPV4RangeSet.hh"
 
-#include <arpa/inet.h>
-
 using namespace std;
 
 IPV4RangeSet::IPV4RangeSet(const phosg::JSON& json) {
@@ -45,7 +43,7 @@ phosg::JSON IPV4RangeSet::json() const {
   for (const auto& it : this->ranges) {
     uint32_t addr = it.first;
     uint8_t mask_bits = it.second;
-    ret.emplace_back(phosg::string_printf("%hhu.%hhu.%hhu.%hhu/%hhu",
+    ret.emplace_back(std::format("{}.{}.{}.{}/{}",
         static_cast<uint8_t>((addr >> 24) & 0xFF),
         static_cast<uint8_t>((addr >> 16) & 0xFF),
         static_cast<uint8_t>((addr >> 8) & 0xFF),
@@ -62,12 +60,4 @@ bool IPV4RangeSet::check(uint32_t addr) const {
   }
   const auto& range = *(--it);
   return (((range.first ^ addr) & (0xFFFFFFFF << (32 - range.second))) == 0);
-}
-
-bool IPV4RangeSet::check(const struct sockaddr_storage& ss) const {
-  if (ss.ss_family != AF_INET) {
-    return false;
-  }
-  const sockaddr_in* sin = reinterpret_cast<const sockaddr_in*>(&ss);
-  return this->check(ntohl(sin->sin_addr.s_addr));
 }

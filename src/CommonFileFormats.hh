@@ -45,7 +45,7 @@ struct VectorXZF {
   }
 
   inline std::string str() const {
-    return phosg::string_printf("[VectorXZF x=%g z=%g]", this->x.load(), this->z.load());
+    return std::format("[VectorXZF x={:g} z={:g}]", this->x, this->z);
   }
 } __packed_ws__(VectorXZF, 0x08);
 
@@ -109,7 +109,7 @@ struct VectorXYZF {
   }
 
   inline std::string str() const {
-    return phosg::string_printf("[VectorXYZF x=%g y=%g z=%g]", this->x.load(), this->y.load(), this->z.load());
+    return std::format("[VectorXYZF x={:g} y={:g} z={:g}]", this->x, this->y, this->z);
   }
 } __packed_ws__(VectorXYZF, 0x0C);
 
@@ -143,12 +143,11 @@ struct RELFileFooterT {
   static constexpr bool IsBE = BE;
   // Relocations is a list of words (le_uint16_t on DC/PC/XB/BB, be_uint16_t on
   // GC) containing the number of doublewords (uint32_t) to skip for each
-  // relocation. The relocation pointer starts immediately after the
-  // checksum_size field in the header, and advances by the value of one
-  // relocation word (times 4) before each relocation. At each relocated
-  // doubleword, the address of the first byte of the code (after checksum_size)
-  // is added to the existing value.
-  // For example, if the code segment contains the following data (where R
+  // relocation. The relocation pointer starts at the beginning of the file
+  // data, and advances by the value of one relocation word (times 4) before
+  // each relocation. At each relocated doubleword, the address of the first
+  // byte of the file is added to the existing value.
+  // For example, if the file data contains the following data (where R
   // specifies doublewords to relocate):
   //   RR RR RR RR ?? ?? ?? ?? ?? ?? ?? ?? RR RR RR RR
   //   RR RR RR RR ?? ?? ?? ?? RR RR RR RR

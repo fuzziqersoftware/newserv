@@ -7,6 +7,7 @@
 #include "Compression.hh"
 #include "Loggers.hh"
 #include "SendCommands.hh"
+#include "ServerState.hh"
 #include "Text.hh"
 
 using namespace std;
@@ -16,7 +17,7 @@ bool Lobby::FloorItem::visible_to_client(uint8_t client_id) const {
 }
 
 Lobby::FloorItemManager::FloorItemManager(uint32_t lobby_id, uint8_t floor)
-    : log(phosg::string_printf("[Lobby:%08" PRIX32 ":FloorItems:%02hhX] ", lobby_id, floor), lobby_log.min_level),
+    : log(std::format("[Lobby:{:08X}:FloorItems:{:02X}] ", lobby_id, floor), lobby_log.min_level),
       next_drop_number(0) {}
 
 bool Lobby::FloorItemManager::exists(uint32_t item_id) const {
@@ -57,8 +58,8 @@ void Lobby::FloorItemManager::add(shared_ptr<Lobby::FloorItem> fi) {
       this->queue_for_client[z].emplace(fi->drop_number, fi);
     }
   }
-  this->log.info("Added floor item %08" PRIX32 " at %g, %g with drop number %" PRIu64 " with flags %03hX",
-      fi->data.id.load(), fi->pos.x.load(), fi->pos.z.load(), fi->drop_number, fi->flags);
+  this->log.info_f("Added floor item {:08X} at {:g}, {:g} with drop number {} with flags {:03X}",
+      fi->data.id, fi->pos.x, fi->pos.z, fi->drop_number, fi->flags);
 }
 
 std::shared_ptr<Lobby::FloorItem> Lobby::FloorItemManager::remove(uint32_t item_id, uint8_t client_id) {
@@ -76,8 +77,8 @@ std::shared_ptr<Lobby::FloorItem> Lobby::FloorItemManager::remove(uint32_t item_
     }
   }
   this->items.erase(item_it);
-  this->log.info("Removed floor item %08" PRIX32 " at %g, %g with drop number %" PRIu64 " with flags %03hX",
-      fi->data.id.load(), fi->pos.x.load(), fi->pos.z.load(), fi->drop_number, fi->flags);
+  this->log.info_f("Removed floor item {:08X} at {:g}, {:g} with drop number {} with flags {:03X}",
+      fi->data.id, fi->pos.x, fi->pos.z, fi->drop_number, fi->flags);
   return fi;
 }
 
@@ -88,7 +89,7 @@ std::unordered_set<std::shared_ptr<Lobby::FloorItem>> Lobby::FloorItemManager::e
       ret.emplace(this->remove(this->queue_for_client[z].begin()->second->data.id, 0xFF));
     }
   }
-  this->log.info("Evicted %zu items", ret.size());
+  this->log.info_f("Evicted {} items", ret.size());
   return ret;
 }
 
@@ -102,7 +103,7 @@ void Lobby::FloorItemManager::clear_inaccessible(uint16_t remaining_clients_mask
   for (uint32_t item_id : item_ids_to_delete) {
     this->remove(item_id, 0xFF);
   }
-  this->log.info("Deleted %zu inaccessible items", item_ids_to_delete.size());
+  this->log.info_f("Deleted {} inaccessible items", item_ids_to_delete.size());
 }
 
 void Lobby::FloorItemManager::clear_private() {
@@ -115,7 +116,7 @@ void Lobby::FloorItemManager::clear_private() {
   for (uint32_t item_id : item_ids_to_delete) {
     this->remove(item_id, 0xFF);
   }
-  this->log.info("Deleted %zu private items", item_ids_to_delete.size());
+  this->log.info_f("Deleted {} private items", item_ids_to_delete.size());
 }
 
 void Lobby::FloorItemManager::clear() {
@@ -125,7 +126,7 @@ void Lobby::FloorItemManager::clear() {
     queue.clear();
   }
   this->next_drop_number = 0;
-  this->log.info("Deleted %zu items", num_items);
+  this->log.info_f("Deleted {} items", num_items);
 }
 
 uint32_t Lobby::FloorItemManager::reassign_all_item_ids(uint32_t next_item_id) {
@@ -143,7 +144,7 @@ uint32_t Lobby::FloorItemManager::reassign_all_item_ids(uint32_t next_item_id) {
 
 Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id, bool is_game)
     : server_state(s),
-      log(phosg::string_printf("[%s:%" PRIX32 "] ", is_game ? "Game" : "Lobby", id), lobby_log.min_level),
+      log(std::format("[{}:{:X}] ", is_game ? "Game" : "Lobby", id), lobby_log.min_level),
       lobby_id(id),
       min_level(0),
       max_level(0xFFFFFFFF),
@@ -157,6 +158,7 @@ Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id, bool is_game)
       exp_share_multiplier(0.5),
       challenge_exp_multiplier(1.0f),
       random_seed(phosg::random_object<uint32_t>()),
+      rand_crypt(make_shared<DisabledRandomGenerator>()),
       drop_mode(DropMode::CLIENT),
       event(0),
       block(0),
@@ -164,10 +166,8 @@ Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id, bool is_game)
       max_clients(12),
       enabled_flags(0),
       idle_timeout_usecs(0),
-      idle_timeout_event(
-          event_new(s->base.get(), -1, EV_TIMEOUT | EV_PERSIST, &Lobby::dispatch_on_idle_timeout, this),
-          event_free) {
-  this->log.info("Created");
+      idle_timeout_timer(*s->io_context) {
+  this->log.info_f("Created");
   if (is_game) {
     this->set_flag(Flag::GAME);
   }
@@ -175,7 +175,7 @@ Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id, bool is_game)
 }
 
 Lobby::~Lobby() {
-  this->log.info("Deleted");
+  this->log.info_f("Deleted");
 }
 
 void Lobby::reset_next_item_ids() {
@@ -249,6 +249,12 @@ void Lobby::create_item_creator(Version logic_version) {
       throw logic_error("invalid lobby base version");
   }
 
+  shared_ptr<RandomGenerator> rand_crypt;
+  if (s->use_psov2_rand_crypt) {
+    rand_crypt = make_shared<PSOV2Encryption>(this->rand_crypt->seed());
+  } else {
+    rand_crypt = make_shared<MT19937Generator>(this->rand_crypt->seed());
+  }
   this->item_creator = make_shared<ItemCreator>(
       common_item_set,
       rare_item_set,
@@ -262,7 +268,7 @@ void Lobby::create_item_creator(Version logic_version) {
       (this->mode == GameMode::SOLO) ? GameMode::NORMAL : this->mode,
       this->difficulty,
       this->effective_section_id(),
-      this->opt_rand_crypt,
+      rand_crypt,
       this->quest ? this->quest->battle_rules : nullptr);
 }
 
@@ -300,7 +306,7 @@ void Lobby::load_maps() {
         this->event,
         this->random_seed,
         this->rare_enemy_rates,
-        this->opt_rand_crypt,
+        this->rand_crypt,
         this->quest->get_supermap(this->random_seed));
   } else {
     auto s = this->require_server_state();
@@ -310,7 +316,7 @@ void Lobby::load_maps() {
         this->event,
         this->random_seed,
         this->rare_enemy_rates,
-        this->opt_rand_crypt,
+        this->rand_crypt,
         s->supermaps_for_variations(this->episode, this->mode, this->difficulty, this->variations));
   }
 
@@ -331,9 +337,9 @@ void Lobby::load_maps() {
 void Lobby::create_ep3_server() {
   auto s = this->require_server_state();
   if (!this->ep3_server) {
-    this->log.info("Creating Episode 3 server state");
+    this->log.info_f("Creating Episode 3 server state");
   } else {
-    this->log.info("Recreating Episode 3 server state");
+    this->log.info_f("Recreating Episode 3 server state");
   }
   auto tourn = this->tournament_match ? this->tournament_match->tournament.lock() : nullptr;
 
@@ -343,7 +349,7 @@ void Lobby::create_ep3_server() {
       .map_index = s->ep3_map_index,
       .behavior_flags = s->ep3_behavior_flags,
       .opt_rand_stream = nullptr,
-      .opt_rand_crypt = this->opt_rand_crypt,
+      .rand_crypt = this->rand_crypt,
       .tournament = tourn,
       .trap_card_ids = s->ep3_trap_card_ids,
   };
@@ -376,9 +382,9 @@ bool Lobby::any_client_loading() const {
     if (!lc.get()) {
       continue;
     }
-    if (lc->config.check_flag(Client::Flag::LOADING) ||
-        lc->config.check_flag(Client::Flag::LOADING_QUEST) ||
-        lc->config.check_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST)) {
+    if (lc->check_flag(Client::Flag::LOADING) ||
+        lc->check_flag(Client::Flag::LOADING_QUEST) ||
+        lc->check_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST)) {
       return true;
     }
   }
@@ -419,7 +425,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
     this->clients[required_client_id] = c;
     index = required_client_id;
 
-  } else if (c->config.check_flag(Client::Flag::DEBUG_ENABLED) && (this->mode != GameMode::SOLO)) {
+  } else if (c->check_flag(Client::Flag::DEBUG_ENABLED) && (this->mode != GameMode::SOLO)) {
     for (index = this->max_clients - 1; index >= min_client_id; index--) {
       if (!this->clients[index].get()) {
         this->clients[index] = c;
@@ -480,7 +486,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
   // On BB, we send artificial flag state to fix an Episode 2 bug where the
   // CCA door lock state is overwritten by quests.
   if (this->is_game() && (c->version() == Version::BB_V4)) {
-    c->config.set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE);
+    c->set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE);
   }
 
   // If the lobby is recording a battle record, add the player join event
@@ -510,17 +516,16 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
   }
 
   // There is a player in the lobby, so it is no longer idle
-  if (event_pending(this->idle_timeout_event.get(), EV_TIMEOUT, nullptr)) {
-    event_del(this->idle_timeout_event.get());
-    this->log.info("Idle timeout cancelled");
+  if (this->idle_timeout_timer.cancel()) {
+    this->log.info_f("Idle timeout cancelled");
   }
 }
 
 void Lobby::remove_client(shared_ptr<Client> c) {
   if (this->clients.at(c->lobby_client_id) != c) {
     auto other_c = this->clients[c->lobby_client_id].get();
-    throw logic_error(phosg::string_printf(
-        "client\'s lobby client id (%hhu) does not match client list (%u)",
+    throw logic_error(std::format(
+        "client\'s lobby client id ({}) does not match client list ({})",
         c->lobby_client_id,
         static_cast<uint8_t>(other_c ? other_c->lobby_client_id : 0xFF)));
   }
@@ -580,9 +585,18 @@ void Lobby::remove_client(shared_ptr<Client> c) {
       (this->idle_timeout_usecs > 0)) {
     // If the lobby is persistent but has an idle timeout, make it expire after
     // the specified time
-    auto tv = phosg::usecs_to_timeval(this->idle_timeout_usecs);
-    event_add(this->idle_timeout_event.get(), &tv);
-    this->log.info("Idle timeout scheduled");
+    this->idle_timeout_timer.expires_after(std::chrono::microseconds(this->idle_timeout_usecs));
+    this->idle_timeout_timer.async_wait([this](std::error_code ec) {
+      if (!ec) {
+        if (this->count_clients() == 0) {
+          this->log.info_f("Idle timeout expired");
+          this->require_server_state()->remove_lobby(this->shared_from_this());
+        } else {
+          this->log.error_f("Idle timeout occurred, but clients are present in lobby");
+        }
+      }
+    });
+    this->log.info_f("Idle timeout scheduled");
   }
 }
 
@@ -631,7 +645,7 @@ Lobby::JoinError Lobby::join_error_for_client(std::shared_ptr<Client> c, const s
   if (this->count_clients() >= this->max_clients) {
     return JoinError::FULL;
   }
-  bool debug_enabled = c->config.check_flag(Client::Flag::DEBUG_ENABLED);
+  bool debug_enabled = c->check_flag(Client::Flag::DEBUG_ENABLED);
   if (!this->version_is_allowed(c->version()) && !debug_enabled) {
     return JoinError::VERSION_CONFLICT;
   }
@@ -649,7 +663,7 @@ Lobby::JoinError Lobby::join_error_for_client(std::shared_ptr<Client> c, const s
       return JoinError::SOLO;
     }
     if (!debug_enabled &&
-        (this->check_flag(Flag::IS_CLIENT_CUSTOMIZATION) != c->config.check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION))) {
+        (this->check_flag(Flag::IS_CLIENT_CUSTOMIZATION) != c->check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION))) {
       return JoinError::VERSION_CONFLICT;
     }
     if (!c->login->account->check_flag(Account::Flag::FREE_JOIN_GAMES)) {
@@ -759,15 +773,15 @@ void Lobby::assign_inventory_and_bank_item_ids(shared_ptr<Client> c, bool consum
     this->next_item_id_for_client[c->lobby_client_id] = orig_next_item_id;
   }
 
-  if (c->log.info("Assigned inventory item IDs%s", consume_ids ? "" : " but did not mark IDs as used")) {
+  if (c->log.info_f("Assigned inventory item IDs{}", consume_ids ? "" : " but did not mark IDs as used")) {
     c->print_inventory(stderr);
     auto& bank = c->current_bank();
     if (p->bank.num_items) {
       bank.assign_ids(0x99000000 + (c->lobby_client_id << 20));
-      c->log.info("Assigned bank item IDs");
+      c->log.info_f("Assigned bank item IDs");
       c->print_bank(stderr);
     } else {
-      c->log.info("Bank is empty");
+      c->log.info_f("Bank is empty");
     }
   }
 }
@@ -798,18 +812,6 @@ QuestIndex::IncludeCondition Lobby::quest_include_condition() const {
     }
     return is_enabled ? QuestIndex::IncludeState::AVAILABLE : QuestIndex::IncludeState::DISABLED;
   };
-}
-
-void Lobby::dispatch_on_idle_timeout(evutil_socket_t, short, void* ctx) {
-  auto l = reinterpret_cast<Lobby*>(ctx)->shared_from_this();
-  if (l->count_clients() == 0) {
-    l->log.info("Idle timeout expired");
-    auto s = l->require_server_state();
-    s->remove_lobby(l);
-  } else {
-    l->log.error("Idle timeout occurred, but clients are present in lobby");
-    event_del(l->idle_timeout_event.get());
-  }
 }
 
 bool Lobby::compare_shared(const shared_ptr<const Lobby>& a, const shared_ptr<const Lobby>& b) {

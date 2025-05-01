@@ -19,27 +19,10 @@
 
 using namespace std;
 
-PlayerFilesManager::PlayerFilesManager(std::shared_ptr<struct event_base> base)
-    : base(base),
-      clear_expired_files_event(
-          event_new(this->base.get(), -1, EV_TIMEOUT | EV_PERSIST, &PlayerFilesManager::clear_expired_files, this),
-          event_free) {
-  auto tv = phosg::usecs_to_timeval(30 * 1000 * 1000);
-  event_add(this->clear_expired_files_event.get(), &tv);
-}
-
-template <typename KeyT, typename ValueT>
-size_t erase_unused(std::unordered_map<KeyT, std::shared_ptr<ValueT>>& m) {
-  size_t ret = 0;
-  for (auto it = m.begin(); it != m.end();) {
-    if (it->second.use_count() <= 1) {
-      it = m.erase(it);
-      ret++;
-    } else {
-      it++;
-    }
-  }
-  return ret;
+PlayerFilesManager::PlayerFilesManager(std::shared_ptr<asio::io_context> io_context)
+    : io_context(io_context),
+      clear_expired_files_timer(*this->io_context) {
+  this->schedule_callback();
 }
 
 std::shared_ptr<PSOBBBaseSystemFile> PlayerFilesManager::get_system(const std::string& filename) {
@@ -98,22 +81,42 @@ void PlayerFilesManager::set_bank(const std::string& filename, std::shared_ptr<P
   }
 }
 
-void PlayerFilesManager::clear_expired_files(evutil_socket_t, short, void* ctx) {
-  auto* self = reinterpret_cast<PlayerFilesManager*>(ctx);
-  size_t num_deleted = erase_unused(self->loaded_system_files);
-  if (num_deleted) {
-    player_data_log.info("Cleared %zu expired system file(s)", num_deleted);
+void PlayerFilesManager::schedule_callback() {
+  this->clear_expired_files_timer.expires_after(std::chrono::seconds(30));
+  this->clear_expired_files_timer.async_wait(bind(&PlayerFilesManager::clear_expired_files, this));
+}
+
+template <typename KeyT, typename ValueT>
+size_t erase_unused(std::unordered_map<KeyT, std::shared_ptr<ValueT>>& m) {
+  size_t ret = 0;
+  for (auto it = m.begin(); it != m.end();) {
+    if (it->second.use_count() <= 1) {
+      it = m.erase(it);
+      ret++;
+    } else {
+      it++;
+    }
   }
-  num_deleted = erase_unused(self->loaded_character_files);
+  return ret;
+}
+
+void PlayerFilesManager::clear_expired_files() {
+  size_t num_deleted = erase_unused(this->loaded_system_files);
   if (num_deleted) {
-    player_data_log.info("Cleared %zu expired character file(s)", num_deleted);
+    player_data_log.info_f("Cleared {} expired system file(s)", num_deleted);
   }
-  num_deleted = erase_unused(self->loaded_guild_card_files);
+  num_deleted = erase_unused(this->loaded_character_files);
   if (num_deleted) {
-    player_data_log.info("Cleared %zu expired Guild Card file(s)", num_deleted);
+    player_data_log.info_f("Cleared {} expired character file(s)", num_deleted);
   }
-  num_deleted = erase_unused(self->loaded_bank_files);
+  num_deleted = erase_unused(this->loaded_guild_card_files);
   if (num_deleted) {
-    player_data_log.info("Cleared %zu expired bank file(s)", num_deleted);
+    player_data_log.info_f("Cleared {} expired Guild Card file(s)", num_deleted);
   }
+  num_deleted = erase_unused(this->loaded_bank_files);
+  if (num_deleted) {
+    player_data_log.info_f("Cleared {} expired bank file(s)", num_deleted);
+  }
+
+  this->schedule_callback();
 }

@@ -3,7 +3,9 @@
 #include <stdint.h>
 
 #include <array>
+#include <chrono>
 #include <deque>
+#include <filesystem>
 #include <phosg/Filesystem.hh>
 #include <phosg/Random.hh>
 #include <phosg/Time.hh>
@@ -110,7 +112,7 @@ bool Location::operator!=(const Location& other) const {
 }
 
 std::string Location::str() const {
-  return phosg::string_printf("Location[x=%hhu, y=%hhu, dir=%hhu:%s, u=%hhu]",
+  return std::format("Location[x={}, y={}, dir={}:{}, u={}]",
       this->x, this->y, static_cast<uint8_t>(this->direction), phosg::name_for_enum(this->direction), this->unused);
 }
 
@@ -494,13 +496,13 @@ string CardDefinition::Stat::str() const {
     case Type::BLANK:
       return "(blank)";
     case Type::STAT:
-      return phosg::string_printf("%hhd", this->stat);
+      return std::format("{}", this->stat);
     case Type::PLUS_STAT:
-      return phosg::string_printf("+%hhd", this->stat);
+      return std::format("+{}", this->stat);
     case Type::MINUS_STAT:
-      return phosg::string_printf("-%d", -this->stat);
+      return std::format("-{}", -this->stat);
     case Type::EQUALS_STAT:
-      return phosg::string_printf("=%hhd", this->stat);
+      return std::format("={}", this->stat);
     case Type::UNKNOWN:
       return "?";
     case Type::PLUS_UNKNOWN:
@@ -510,7 +512,7 @@ string CardDefinition::Stat::str() const {
     case Type::EQUALS_UNKNOWN:
       return "=?";
     default:
-      return phosg::string_printf("[%02hhX %02hhX]", this->type, this->stat);
+      return std::format("[{:02X} {:02X}]", static_cast<uint8_t>(this->type), this->stat);
   }
 }
 
@@ -542,44 +544,44 @@ string CardDefinition::Effect::str_for_arg(const string& arg) {
 
   switch (arg[0]) {
     case 'a':
-      return phosg::string_printf("%s (Each activation lasts for %zu attack%s)", arg.c_str(), value, (value == 1) ? "" : "s");
+      return std::format("{} (Each activation lasts for {} attack{})", arg, value, (value == 1) ? "" : "s");
     case 'C':
     case 'c':
-      return phosg::string_printf("%s (Req. linked item (%zu=>%zu))", arg.c_str(), value / 10, value % 10);
+      return std::format("{} (Req. linked item ({}=>{}))", arg, value / 10, value % 10);
     case 'd':
-      return phosg::string_printf("%s (Req. die roll in [%zu, %zu])", arg.c_str(), value / 10, value % 10);
+      return std::format("{} (Req. die roll in [{}, {}])", arg, value / 10, value % 10);
     case 'e':
       return arg + " (While equipped)";
     case 'h':
-      return phosg::string_printf("%s (Req. HP >= %zu)", arg.c_str(), value);
+      return std::format("{} (Req. HP >= {})", arg, value);
     case 'i':
-      return phosg::string_printf("%s (Req. HP <= %zu)", arg.c_str(), value);
+      return std::format("{} (Req. HP <= {})", arg, value);
     case 'n':
       try {
-        return phosg::string_printf("%s (Req. condition: %s)", arg.c_str(), description_for_n_condition.at(value));
+        return std::format("{} (Req. condition: {})", arg, description_for_n_condition.at(value));
       } catch (const out_of_range&) {
         return arg + " (Req. condition: unknown)";
       }
     case 'o': {
       const char* suffix = ((value / 10) == 1) ? " on opponent card" : " on self";
       if (value == 0) {
-        return phosg::string_printf("%s (Req. any previous effect%s)", arg.c_str(), suffix);
+        return std::format("{} (Req. any previous effect{})", arg, suffix);
       } else {
-        return phosg::string_printf("%s (Req. effect %zu passed%s)", arg.c_str(), static_cast<size_t>(value % 10), suffix);
+        return std::format("{} (Req. effect {} passed{})", arg, static_cast<size_t>(value % 10), suffix);
       }
     }
     case 'p':
       try {
-        return phosg::string_printf("%s (Target: %s)", arg.c_str(), description_for_p_target.at(value));
+        return std::format("{} (Target: {})", arg, description_for_p_target.at(value));
       } catch (const out_of_range&) {
         return arg + " (Target: unknown)";
       }
     case 'r':
-      return phosg::string_printf("%s (Random with %zu%% chance)", arg.c_str(), value == 0 ? 100 : value);
+      return std::format("{} (Random with {}% chance)", arg, value == 0 ? 100 : value);
     case 's':
-      return phosg::string_printf("%s (Req. cost in [%zu, %zu])", arg.c_str(), value / 10, value % 10);
+      return std::format("{} (Req. cost in [{}, {}])", arg, value / 10, value % 10);
     case 't':
-      return phosg::string_printf("%s (Turns: %zu)", arg.c_str(), value);
+      return std::format("{} (Turns: {})", arg, value);
     default:
       return arg + " (unknown)";
   }
@@ -587,10 +589,10 @@ string CardDefinition::Effect::str_for_arg(const string& arg) {
 
 string CardDefinition::Effect::str(const char* separator, const TextSet* text_archive) const {
   vector<string> tokens;
-  tokens.emplace_back(phosg::string_printf("%hhu:", this->effect_num));
+  tokens.emplace_back(std::format("{}:", this->effect_num));
   {
     uint8_t type = static_cast<uint8_t>(this->type);
-    string cmd_str = phosg::string_printf("cmd=%02hhX", type);
+    string cmd_str = std::format("cmd={:02X}", type);
     try {
       const char* name = description_for_condition_type.at(type).name;
       if (name) {
@@ -604,13 +606,13 @@ string CardDefinition::Effect::str(const char* separator, const TextSet* text_ar
   if (!this->expr.empty()) {
     tokens.emplace_back("expr=" + this->expr.decode());
   }
-  tokens.emplace_back(phosg::string_printf("when=%02hhX:%s", static_cast<uint8_t>(this->when), phosg::name_for_enum(this->when)));
+  tokens.emplace_back(std::format("when={:02X}:{}", static_cast<uint8_t>(this->when), phosg::name_for_enum(this->when)));
   tokens.emplace_back("arg1=" + this->str_for_arg(this->arg1.decode()));
   tokens.emplace_back("arg2=" + this->str_for_arg(this->arg2.decode()));
   tokens.emplace_back("arg3=" + this->str_for_arg(this->arg3.decode()));
   {
     uint8_t type = static_cast<uint8_t>(this->apply_criterion);
-    string cond_str = phosg::string_printf("cond=%02hhX", type);
+    string cond_str = std::format("cond={:02X}", type);
     try {
       const char* name = phosg::name_for_enum(this->apply_criterion);
       cond_str += ':';
@@ -634,9 +636,9 @@ string CardDefinition::Effect::str(const char* separator, const TextSet* text_ar
         ch = '$';
       }
     }
-    tokens.emplace_back(phosg::string_printf("name=%02hhX \"%s\"", this->name_index, formatted_name.c_str()));
+    tokens.emplace_back(std::format("name={:02X} \"{}\"", this->name_index, formatted_name));
   } else {
-    tokens.emplace_back(phosg::string_printf("name=%02hhX", this->name_index));
+    tokens.emplace_back(std::format("name={:02X}", this->name_index));
   }
 
   return phosg::join(tokens, separator);
@@ -733,7 +735,7 @@ string name_for_rank(CardRank rank) {
   try {
     return names.at(static_cast<uint8_t>(rank) - 1);
   } catch (const out_of_range&) {
-    return phosg::string_printf("(%02hhX)", static_cast<uint8_t>(rank));
+    return std::format("({:02X})", static_cast<uint8_t>(rank));
   }
 }
 
@@ -767,7 +769,7 @@ string string_for_colors(const parray<uint8_t, 8>& colors) {
       try {
         ret += name_for_link_color(colors[x]);
       } catch (const invalid_argument&) {
-        ret += phosg::string_printf("%02hhX", colors[x]);
+        ret += std::format("{:02X}", colors[x]);
       }
     }
   }
@@ -783,16 +785,16 @@ string string_for_assist_turns(uint8_t turns) {
   } else if (turns == 99) {
     return "FOREVER";
   } else {
-    return phosg::string_printf("%hhu", turns);
+    return std::format("{}", turns);
   }
 }
 
 string string_for_range(const parray<be_uint32_t, 6>& range) {
   string ret;
   for (size_t x = 0; x < 6; x++) {
-    ret += phosg::string_printf("%05" PRIX32 "/", range[x].load());
+    ret += std::format("{:05X}/", range[x]);
   }
-  while (phosg::starts_with(ret, "00000/")) {
+  while (ret.starts_with("00000/")) {
     ret = ret.substr(6);
   }
   if (!ret.empty()) {
@@ -830,11 +832,11 @@ string string_for_drop_rate(uint16_t drop_rate) {
   }
   uint8_t environment_number = (drop_rate / 10) % 100;
   if (environment_number) {
-    tokens.emplace_back(phosg::string_printf("environment_number=%02hhX", static_cast<uint8_t>(environment_number - 1)));
+    tokens.emplace_back(std::format("environment_number={:02X}", static_cast<uint8_t>(environment_number - 1)));
   } else {
     tokens.emplace_back("environment_number=ANY");
   }
-  tokens.emplace_back(phosg::string_printf("rarity_class=%hhu", static_cast<uint8_t>((drop_rate / 1000) % 10)));
+  tokens.emplace_back(std::format("rarity_class={}", static_cast<uint8_t>((drop_rate / 1000) % 10)));
   switch ((drop_rate / 10000) % 10) {
     case 0:
       tokens.emplace_back("deck_type=ANY");
@@ -849,7 +851,7 @@ string string_for_drop_rate(uint16_t drop_rate) {
       tokens.emplace_back("deck_type=__UNKNOWN__");
   }
   string description = phosg::join(tokens, ", ");
-  return phosg::string_printf("[%hu: %s]", drop_rate, description.c_str());
+  return std::format("[{}: {}]", drop_rate, description);
 }
 
 static const char* short_name_for_assist_ai_param_target(uint8_t target) {
@@ -915,49 +917,49 @@ string CardDefinition::str(bool single_line, const TextSet* text_archive) const 
   string drop0_str = string_for_drop_rate(this->drop_rates[0]);
   string drop1_str = string_for_drop_rate(this->drop_rates[1]);
 
-  string cost_str = phosg::string_printf("%hhX", this->self_cost);
+  string cost_str = std::format("{:X}", this->self_cost);
   if (this->ally_cost) {
     if (single_line) {
-      cost_str += phosg::string_printf("+%hhX", this->ally_cost);
+      cost_str += std::format("+{:X}", this->ally_cost);
     } else {
-      cost_str += phosg::string_printf(" (self) + %hhX (ally)", this->ally_cost);
+      cost_str += std::format(" (self) + {:X} (ally)", this->ally_cost);
     }
   }
 
   string en_name_s = this->en_name.decode();
   if (single_line) {
     string range_str = string_for_range(this->range);
-    return phosg::string_printf(
-        "[Card: %04" PRIX32 " name=%s type=%s usable_condition=%s rank=%s "
-        "cost=%s target=%s range=%s assist_turns=%s cannot_move=%s "
-        "cannot_attack=%s cannot_drop=%s hp=%s ap=%s tp=%s mv=%s left=%s right=%s "
-        "top=%s class=%s assist_ai_params=[target=%s priority=%hhu effect=%hhu] drop_rates=[%s, %s] effects=[%s]]",
-        this->card_id.load(),
-        en_name_s.c_str(),
-        type_str.c_str(),
-        criterion_str.c_str(),
-        rank_str.c_str(),
-        cost_str.c_str(),
+    return std::format(
+        "[Card: {:04X} name={} type={} usable_condition={} rank={} "
+        "cost={} target={} range={} assist_turns={} cannot_move={} "
+        "cannot_attack={} cannot_drop={} hp={} ap={} tp={} mv={} left={} right={} "
+        "top={} class={} assist_ai_params=[target={} priority={} effect={}] drop_rates=[{}, {}] effects=[{}]]",
+        this->card_id,
+        en_name_s,
+        type_str,
+        criterion_str,
+        rank_str,
+        cost_str,
         target_mode_str,
-        range_str.c_str(),
-        assist_turns_str.c_str(),
+        range_str,
+        assist_turns_str,
         this->cannot_move ? "true" : "false",
         this->cannot_attack ? "true" : "false",
         this->cannot_drop ? "true" : "false",
-        hp_str.c_str(),
-        ap_str.c_str(),
-        tp_str.c_str(),
-        mv_str.c_str(),
-        left_str.c_str(),
-        right_str.c_str(),
-        top_str.c_str(),
-        card_class_str.c_str(),
+        hp_str,
+        ap_str,
+        tp_str,
+        mv_str,
+        left_str,
+        right_str,
+        top_str,
+        card_class_str,
         short_name_for_assist_ai_param_target((this->assist_ai_params / 1000) % 10),
         static_cast<uint8_t>((this->assist_ai_params / 100) % 10),
         static_cast<uint8_t>(this->assist_ai_params % 100),
-        drop0_str.c_str(),
-        drop1_str.c_str(),
-        effects_str.c_str());
+        drop0_str,
+        drop1_str,
+        effects_str);
 
   } else { // Not single-line
     string range_str;
@@ -981,65 +983,65 @@ string CardDefinition::str(bool single_line, const TextSet* text_archive) const 
     string jp_name_short_s = this->jp_short_name.decode();
     string names_str;
     if (!en_name_s.empty()) {
-      names_str += phosg::string_printf(" EN: \"%s\"", en_name_s.c_str());
+      names_str += std::format(" EN: \"{}\"", en_name_s);
       if (!en_name_short_s.empty() && en_name_short_s != en_name_s) {
-        names_str += phosg::string_printf(" (Abr. \"%s\")", en_name_short_s.c_str());
+        names_str += std::format(" (Abr. \"{}\")", en_name_short_s);
       }
     }
     if (!jp_name_s.empty()) {
-      names_str += phosg::string_printf(" JP: \"%s\"", jp_name_s.c_str());
+      names_str += std::format(" JP: \"{}\"", jp_name_s);
       if (!jp_name_short_s.empty() && jp_name_short_s != jp_name_s) {
-        names_str += phosg::string_printf(" (Abr. \"%s\")", jp_name_short_s.c_str());
+        names_str += std::format(" (Abr. \"{}\")", jp_name_short_s);
       }
     }
-    return phosg::string_printf(
+    return std::format(
         "\
-Card: %04" PRIX32 "%s\n\
-  Type: %s, class: %s\n\
-  Usability condition: %s\n\
-  Rank: %s\n\
-  Cost: %s\n\
-  Target mode: %s\n\
-  Range:%s\n\
-  Assist turns: %s\n\
-  Capabilities: %s move, %s attack\n\
-  HP: %s, AP: %s, TP: %s, MV: %s\n\
+Card: {:04X}{}\n\
+  Type: {}, class: {}\n\
+  Usability condition: {}\n\
+  Rank: {}\n\
+  Cost: {}\n\
+  Target mode: {}\n\
+  Range:{}\n\
+  Assist turns: {}\n\
+  Capabilities: {} move, {} attack\n\
+  HP: {}, AP: {}, TP: {}, MV: {}\n\
   Colors:\n\
-    Left: %s\n\
-    Right: %s\n\
-    Top: %s\n\
-  Assist AI parameters: [target %s, priority %hu, effect %hu]\n\
+    Left: {}\n\
+    Right: {}\n\
+    Top: {}\n\
+  Assist AI parameters: [target {}, priority {}, effect {}]\n\
   Drop rates:\n\
-    %s\n\
-    %s\n\
-    %s\n\
-  Effects:%s",
-        this->card_id.load(),
-        names_str.c_str(),
-        type_str.c_str(),
-        card_class_str.c_str(),
-        criterion_str.c_str(),
-        rank_str.c_str(),
-        cost_str.c_str(),
+    {}\n\
+    {}\n\
+    {}\n\
+  Effects:{}",
+        this->card_id,
+        names_str,
+        type_str,
+        card_class_str,
+        criterion_str,
+        rank_str,
+        cost_str,
         target_mode_str,
-        range_str.c_str(),
-        assist_turns_str.c_str(),
+        range_str,
+        assist_turns_str,
         this->cannot_move ? "cannot" : "can",
         this->cannot_attack ? "cannot" : "can",
-        hp_str.c_str(),
-        ap_str.c_str(),
-        tp_str.c_str(),
-        mv_str.c_str(),
-        left_str.c_str(),
-        right_str.c_str(),
-        top_str.c_str(),
+        hp_str,
+        ap_str,
+        tp_str,
+        mv_str,
+        left_str,
+        right_str,
+        top_str,
         name_for_assist_ai_param_target((this->assist_ai_params / 1000) % 10),
         static_cast<uint8_t>((this->assist_ai_params / 100) % 10),
         static_cast<uint8_t>(this->assist_ai_params % 100),
-        drop0_str.c_str(),
-        drop1_str.c_str(),
+        drop0_str,
+        drop1_str,
         this->cannot_drop ? "Forbidden" : "Permitted",
-        effects_str.c_str());
+        effects_str);
   }
 }
 
@@ -1235,51 +1237,51 @@ PlayerConfigNTE::operator PlayerConfig() const {
 
 Rules::Rules(const phosg::JSON& json) {
   this->clear();
-  this->overall_time_limit = json.get_int("overall_time_limit", this->overall_time_limit);
-  this->phase_time_limit = json.get_int("phase_time_limit", this->phase_time_limit);
-  this->allowed_cards = json.get_enum("allowed_cards", this->allowed_cards);
-  this->min_dice_value = json.get_int("min_dice", this->min_dice_value);
-  this->max_dice_value = json.get_int("max_dice", this->max_dice_value);
-  this->disable_deck_shuffle = json.get_bool("disable_deck_shuffle", this->disable_deck_shuffle);
-  this->disable_deck_loop = json.get_bool("disable_deck_loop", this->disable_deck_loop);
-  this->char_hp = json.get_int("char_hp", this->char_hp);
-  this->hp_type = json.get_enum("hp_type", this->hp_type);
-  this->no_assist_cards = json.get_bool("no_assist_cards", this->no_assist_cards);
-  this->disable_dialogue = json.get_bool("disable_dialogue", this->disable_dialogue);
-  this->dice_exchange_mode = json.get_enum("dice_exchange_mode", this->dice_exchange_mode);
-  this->disable_dice_boost = json.get_bool("disable_dice_boost", this->disable_dice_boost);
-  uint8_t min_dice = json.get_int("min_def_dice", (this->def_dice_value_range >> 4) & 0x0F);
-  uint8_t max_dice = json.get_int("max_def_dice", this->def_dice_value_range & 0x0F);
+  this->overall_time_limit = json.get_int("OverallTimeLimit", json.get_int("overall_time_limit", this->overall_time_limit));
+  this->phase_time_limit = json.get_int("PhaseTimeLimit", json.get_int("phase_time_limit", this->phase_time_limit));
+  this->allowed_cards = json.get_enum("AllowedCards", json.get_enum("allowed_cards", this->allowed_cards));
+  this->min_dice_value = json.get_int("MinDice", json.get_int("min_dice", this->min_dice_value));
+  this->max_dice_value = json.get_int("MaxDice", json.get_int("max_dice", this->max_dice_value));
+  this->disable_deck_shuffle = json.get_bool("DisableDeckShuffle", json.get_bool("disable_deck_shuffle", this->disable_deck_shuffle));
+  this->disable_deck_loop = json.get_bool("DisableDeckLoop", json.get_bool("disable_deck_loop", this->disable_deck_loop));
+  this->char_hp = json.get_int("CharHP", json.get_int("char_hp", this->char_hp));
+  this->hp_type = json.get_enum("HPType", json.get_enum("hp_type", this->hp_type));
+  this->no_assist_cards = json.get_bool("NoAssistCards", json.get_bool("no_assist_cards", this->no_assist_cards));
+  this->disable_dialogue = json.get_bool("DisableDialogue", json.get_bool("disable_dialogue", this->disable_dialogue));
+  this->dice_exchange_mode = json.get_enum("DiceExchangeMode", json.get_enum("dice_exchange_mode", this->dice_exchange_mode));
+  this->disable_dice_boost = json.get_bool("DisableDiceBoost", json.get_bool("disable_dice_boost", this->disable_dice_boost));
+  uint8_t min_dice = json.get_int("MinDEFDice", json.get_int("min_def_dice", (this->def_dice_value_range >> 4) & 0x0F));
+  uint8_t max_dice = json.get_int("MaxDEFDice", json.get_int("max_def_dice", this->def_dice_value_range & 0x0F));
   this->def_dice_value_range = ((min_dice << 4) & 0xF0) | (max_dice & 0x0F);
-  min_dice = json.get_int("min_atk_dice_2v1", (this->atk_dice_value_range_2v1 >> 4) & 0x0F);
-  max_dice = json.get_int("max_atk_dice_2v1", this->atk_dice_value_range_2v1 & 0x0F);
+  min_dice = json.get_int("MinATKDice2v1", json.get_int("min_atk_dice_2v1", (this->atk_dice_value_range_2v1 >> 4) & 0x0F));
+  max_dice = json.get_int("MaxATKDice2v1", json.get_int("max_atk_dice_2v1", this->atk_dice_value_range_2v1 & 0x0F));
   this->atk_dice_value_range_2v1 = ((min_dice << 4) & 0xF0) | (max_dice & 0x0F);
-  min_dice = json.get_int("min_def_dice_2v1", (this->def_dice_value_range_2v1 >> 4) & 0x0F);
-  max_dice = json.get_int("max_def_dice_2v1", this->def_dice_value_range_2v1 & 0x0F);
+  min_dice = json.get_int("MinDEFDice2v1", json.get_int("min_def_dice_2v1", (this->def_dice_value_range_2v1 >> 4) & 0x0F));
+  max_dice = json.get_int("MaxDEFDice2v1", json.get_int("max_def_dice_2v1", this->def_dice_value_range_2v1 & 0x0F));
   this->def_dice_value_range_2v1 = ((min_dice << 4) & 0xF0) | (max_dice & 0x0F);
 }
 
 phosg::JSON Rules::json() const {
   return phosg::JSON::dict({
-      {"overall_time_limit", this->overall_time_limit},
-      {"phase_time_limit", this->phase_time_limit},
-      {"allowed_cards", phosg::name_for_enum(this->allowed_cards)},
-      {"min_dice", this->min_dice_value},
-      {"max_dice", this->max_dice_value},
-      {"disable_deck_shuffle", static_cast<bool>(this->disable_deck_shuffle)},
-      {"disable_deck_loop", static_cast<bool>(this->disable_deck_loop)},
-      {"char_hp", this->char_hp},
-      {"hp_type", phosg::name_for_enum(this->hp_type)},
-      {"no_assist_cards", static_cast<bool>(this->no_assist_cards)},
-      {"disable_dialogue", static_cast<bool>(this->disable_dialogue)},
-      {"dice_exchange_mode", phosg::name_for_enum(this->dice_exchange_mode)},
-      {"disable_dice_boost", static_cast<bool>(this->disable_dice_boost)},
-      {"min_def_dice", ((this->def_dice_value_range >> 4) & 0x0F)},
-      {"max_def_dice", (this->def_dice_value_range & 0x0F)},
-      {"min_atk_dice_2v1", ((this->atk_dice_value_range_2v1 >> 4) & 0x0F)},
-      {"max_atk_dice_2v1", (this->atk_dice_value_range_2v1 & 0x0F)},
-      {"min_def_dice_2v1", ((this->def_dice_value_range_2v1 >> 4) & 0x0F)},
-      {"max_def_dice_2v1", (this->def_dice_value_range_2v1 & 0x0F)},
+      {"OverallTimeLimit", this->overall_time_limit},
+      {"PhaseTimeLimit", this->phase_time_limit},
+      {"AllowedCards", phosg::name_for_enum(this->allowed_cards)},
+      {"MinDice", this->min_dice_value},
+      {"MaxDice", this->max_dice_value},
+      {"DisableDeckShuffle", static_cast<bool>(this->disable_deck_shuffle)},
+      {"DisableDeckLoop", static_cast<bool>(this->disable_deck_loop)},
+      {"CharHP", this->char_hp},
+      {"HPType", phosg::name_for_enum(this->hp_type)},
+      {"NoAssistCards", static_cast<bool>(this->no_assist_cards)},
+      {"DisableDialogue", static_cast<bool>(this->disable_dialogue)},
+      {"DiceExchangeMode", phosg::name_for_enum(this->dice_exchange_mode)},
+      {"DisableDiceBoost", static_cast<bool>(this->disable_dice_boost)},
+      {"MinDEFDice", ((this->def_dice_value_range >> 4) & 0x0F)},
+      {"MaxDEFDice", (this->def_dice_value_range & 0x0F)},
+      {"MinATKDice2v1", ((this->atk_dice_value_range_2v1 >> 4) & 0x0F)},
+      {"MaxATKDice2v1", (this->atk_dice_value_range_2v1 & 0x0F)},
+      {"MinDEFDice2v1", ((this->def_dice_value_range_2v1 >> 4) & 0x0F)},
+      {"MaxDEFDice2v1", (this->def_dice_value_range_2v1 & 0x0F)},
   });
 }
 
@@ -1358,7 +1360,7 @@ string Rules::str() const {
   if (this->char_hp == 0xFF) {
     tokens.emplace_back("char_hp=(open)");
   } else {
-    tokens.emplace_back(phosg::string_printf("char_hp=%hhu", this->char_hp));
+    tokens.emplace_back(std::format("char_hp={}", this->char_hp));
   }
 
   switch (this->hp_type) {
@@ -1375,7 +1377,7 @@ string Rules::str() const {
       if (static_cast<uint8_t>(this->hp_type) == 0xFF) {
         tokens.emplace_back("hp_type=(open)");
       } else {
-        tokens.emplace_back(phosg::string_printf("hp_type=(%02hhX)",
+        tokens.emplace_back(std::format("hp_type=({:02X})",
             static_cast<uint8_t>(this->hp_type)));
       }
       break;
@@ -1388,14 +1390,14 @@ string Rules::str() const {
     } else if (range.first == 0x00) {
       s += "min=(default), ";
     } else {
-      s += phosg::string_printf("min=%hhu, ", range.first);
+      s += std::format("min={}, ", range.first);
     }
     if (range.second == 0xFF) {
       s += "max=(open)]";
     } else if (range.second == 0x00) {
       s += "max=(default)]";
     } else {
-      s += phosg::string_printf("max=%hhu]", range.second);
+      s += std::format("max={}]", range.second);
     }
     return s;
   };
@@ -1424,7 +1426,7 @@ string Rules::str() const {
       if (static_cast<uint8_t>(this->dice_exchange_mode) == 0xFF) {
         tokens.emplace_back("dice_exchange=(open)");
       } else {
-        tokens.emplace_back(phosg::string_printf("dice_exchange=(%02hhX)",
+        tokens.emplace_back(std::format("dice_exchange=({:02X})",
             static_cast<uint8_t>(this->dice_exchange_mode)));
       }
       break;
@@ -1439,7 +1441,7 @@ string Rules::str() const {
       case 0xFF:
         return "(open)";
       default:
-        return phosg::string_printf("(%02hhX)", v);
+        return std::format("({:02X})", v);
     }
   };
 
@@ -1464,7 +1466,7 @@ string Rules::str() const {
       if (static_cast<uint8_t>(this->allowed_cards) == 0xFF) {
         tokens.emplace_back("allowed_cards=(open)");
       } else {
-        tokens.emplace_back(phosg::string_printf("allowed_cards=(%02hhX)",
+        tokens.emplace_back(std::format("allowed_cards=({:02X})",
             static_cast<uint8_t>(this->allowed_cards)));
       }
       break;
@@ -1474,14 +1476,14 @@ string Rules::str() const {
   if (this->overall_time_limit == 0xFF) {
     tokens.emplace_back("overall_time_limit=(open)");
   } else if (this->overall_time_limit) {
-    tokens.emplace_back(phosg::string_printf("overall_time_limit=%zumin", static_cast<size_t>(this->overall_time_limit * 5)));
+    tokens.emplace_back(std::format("overall_time_limit={}min", static_cast<size_t>(this->overall_time_limit * 5)));
   } else {
     tokens.emplace_back("overall_time_limit=(infinite)");
   }
   if (this->phase_time_limit == 0xFF) {
     tokens.emplace_back("phase_time_limit=(open)");
   } else if (this->phase_time_limit) {
-    tokens.emplace_back(phosg::string_printf("phase_time_limit=%hhusec", this->phase_time_limit));
+    tokens.emplace_back(std::format("phase_time_limit={}sec", this->phase_time_limit));
   } else {
     tokens.emplace_back("phase_time_limit=(infinite)");
   }
@@ -1790,17 +1792,17 @@ phosg::JSON MapDefinition::EntryState::json() const {
 // phosg::JSON MapDefinition::json() const { ... }
 
 string MapDefinition::CameraSpec::str() const {
-  return phosg::string_printf(
-      "CameraSpec[a1=(%g %g %g %g %g %g %g %g %g) camera=(%g %g %g) focus=(%g %g %g) a2=(%g %g %g)]",
-      this->unknown_a1[0].load(), this->unknown_a1[1].load(),
-      this->unknown_a1[2].load(), this->unknown_a1[3].load(),
-      this->unknown_a1[4].load(), this->unknown_a1[5].load(),
-      this->unknown_a1[6].load(), this->unknown_a1[7].load(),
-      this->unknown_a1[8].load(), this->camera_x.load(),
-      this->camera_y.load(), this->camera_z.load(),
-      this->focus_x.load(), this->focus_y.load(),
-      this->focus_z.load(), this->unknown_a2[0].load(),
-      this->unknown_a2[1].load(), this->unknown_a2[2].load());
+  return std::format(
+      "CameraSpec[a1=({:g} {:g} {:g} {:g} {:g} {:g} {:g} {:g} {:g}) camera=({:g} {:g} {:g}) focus=({:g} {:g} {:g}) a2=({:g} {:g} {:g})]",
+      this->unknown_a1[0], this->unknown_a1[1],
+      this->unknown_a1[2], this->unknown_a1[3],
+      this->unknown_a1[4], this->unknown_a1[5],
+      this->unknown_a1[6], this->unknown_a1[7],
+      this->unknown_a1[8], this->camera_x,
+      this->camera_y, this->camera_z,
+      this->focus_x, this->focus_y,
+      this->focus_z, this->unknown_a2[0],
+      this->unknown_a2[1], this->unknown_a2[2]);
 }
 
 string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
@@ -1809,21 +1811,21 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
     for (size_t y = 0; y < this->height; y++) {
       string line = "   ";
       for (size_t x = 0; x < this->width; x++) {
-        line += phosg::string_printf(" %02hhX", tiles[y][x]);
+        line += std::format(" {:02X}", tiles[y][x]);
       }
       lines.emplace_back(std::move(line));
     }
   };
 
-  lines.emplace_back(phosg::string_printf("Map %08" PRIX32 ": %hhux%hhu",
-      this->map_number.load(), this->width, this->height));
-  lines.emplace_back(phosg::string_printf("  tag: %08" PRIX32, this->tag.load()));
-  lines.emplace_back(phosg::string_printf("  environment_number: %02hhX (%s)", this->environment_number, name_for_environment_number(this->environment_number)));
-  lines.emplace_back(phosg::string_printf("  num_camera_zones: %02hhX", this->num_camera_zones));
+  lines.emplace_back(std::format("Map {:08X}: {}x{}",
+      this->map_number, this->width, this->height));
+  lines.emplace_back(std::format("  tag: {:08X}", this->tag));
+  lines.emplace_back(std::format("  environment_number: {:02X} ({})", this->environment_number, name_for_environment_number(this->environment_number)));
+  lines.emplace_back(std::format("  num_camera_zones: {:02X}", this->num_camera_zones));
   lines.emplace_back("  tiles:");
   add_map(this->map_tiles);
-  lines.emplace_back(phosg::string_printf(
-      "  start_tile_definitions: A:[1p: %02hhX; 2p: %02hhX,%02hhX; 3p: %02hhX,%02hhX,%02hhX], B:[1p: %02hhX; 2p: %02hhX,%02hhX; 3p: %02hhX,%02hhX,%02hhX]",
+  lines.emplace_back(std::format(
+      "  start_tile_definitions: A:[1p: {:02X}; 2p: {:02X},{:02X}; 3p: {:02X},{:02X},{:02X}], B:[1p: {:02X}; 2p: {:02X},{:02X}; 3p: {:02X},{:02X},{:02X}]",
       this->start_tile_definitions[0][0], this->start_tile_definitions[0][1],
       this->start_tile_definitions[0][2], this->start_tile_definitions[0][3],
       this->start_tile_definitions[0][4], this->start_tile_definitions[0][5],
@@ -1832,7 +1834,7 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
       this->start_tile_definitions[1][4], this->start_tile_definitions[1][5]));
   for (size_t z = 0; z < this->num_camera_zones; z++) {
     for (size_t w = 0; w < 2; w++) {
-      lines.emplace_back(phosg::string_printf("  camera zone %zu (team %c):", z, w ? 'A' : 'B'));
+      lines.emplace_back(std::format("  camera zone {} (team {}):", z, w ? 'A' : 'B'));
       add_map(this->camera_zone_maps[w][z]);
       lines.emplace_back("    " + this->camera_zone_specs[w][z].str());
     }
@@ -1840,84 +1842,84 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
   for (size_t w = 0; w < 3; w++) {
     for (size_t z = 0; z < 2; z++) {
       string spec_str = this->overview_specs[w][z].str();
-      lines.emplace_back(phosg::string_printf("  overview_specs[%zu][team %zu]: %s", w, z, spec_str.c_str()));
+      lines.emplace_back(std::format("  overview_specs[{}][team {}]: {}", w, z, spec_str));
     }
   }
   lines.emplace_back("  overlay tiles:");
   add_map(this->overlay_state.tiles);
-  lines.emplace_back(phosg::string_printf(
-      "  unused1: %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32,
-      this->overlay_state.unused1[0].load(),
-      this->overlay_state.unused1[1].load(),
-      this->overlay_state.unused1[2].load(),
-      this->overlay_state.unused1[3].load(),
-      this->overlay_state.unused1[4].load()));
-  lines.emplace_back(phosg::string_printf(
-      "  trap_tile_colors_nte: %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32,
-      this->overlay_state.trap_tile_colors_nte[0].load(),
-      this->overlay_state.trap_tile_colors_nte[1].load(),
-      this->overlay_state.trap_tile_colors_nte[2].load(),
-      this->overlay_state.trap_tile_colors_nte[3].load(),
-      this->overlay_state.trap_tile_colors_nte[4].load(),
-      this->overlay_state.trap_tile_colors_nte[5].load(),
-      this->overlay_state.trap_tile_colors_nte[6].load(),
-      this->overlay_state.trap_tile_colors_nte[7].load(),
-      this->overlay_state.trap_tile_colors_nte[8].load(),
-      this->overlay_state.trap_tile_colors_nte[9].load(),
-      this->overlay_state.trap_tile_colors_nte[10].load(),
-      this->overlay_state.trap_tile_colors_nte[11].load(),
-      this->overlay_state.trap_tile_colors_nte[12].load(),
-      this->overlay_state.trap_tile_colors_nte[13].load(),
-      this->overlay_state.trap_tile_colors_nte[14].load(),
-      this->overlay_state.trap_tile_colors_nte[15].load()));
-  lines.emplace_back(phosg::string_printf(
-      "  trap_card_ids_nte: #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX #%04hX",
-      this->overlay_state.trap_card_ids_nte[0].load(),
-      this->overlay_state.trap_card_ids_nte[1].load(),
-      this->overlay_state.trap_card_ids_nte[2].load(),
-      this->overlay_state.trap_card_ids_nte[3].load(),
-      this->overlay_state.trap_card_ids_nte[4].load(),
-      this->overlay_state.trap_card_ids_nte[5].load(),
-      this->overlay_state.trap_card_ids_nte[6].load(),
-      this->overlay_state.trap_card_ids_nte[7].load(),
-      this->overlay_state.trap_card_ids_nte[8].load(),
-      this->overlay_state.trap_card_ids_nte[9].load(),
-      this->overlay_state.trap_card_ids_nte[10].load(),
-      this->overlay_state.trap_card_ids_nte[11].load(),
-      this->overlay_state.trap_card_ids_nte[12].load(),
-      this->overlay_state.trap_card_ids_nte[13].load(),
-      this->overlay_state.trap_card_ids_nte[14].load(),
-      this->overlay_state.trap_card_ids_nte[15].load()));
+  lines.emplace_back(std::format(
+      "  unused1: {:08X} {:08X} {:08X} {:08X} {:08X}",
+      this->overlay_state.unused1[0],
+      this->overlay_state.unused1[1],
+      this->overlay_state.unused1[2],
+      this->overlay_state.unused1[3],
+      this->overlay_state.unused1[4]));
+  lines.emplace_back(std::format(
+      "  trap_tile_colors_nte: {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X}",
+      this->overlay_state.trap_tile_colors_nte[0],
+      this->overlay_state.trap_tile_colors_nte[1],
+      this->overlay_state.trap_tile_colors_nte[2],
+      this->overlay_state.trap_tile_colors_nte[3],
+      this->overlay_state.trap_tile_colors_nte[4],
+      this->overlay_state.trap_tile_colors_nte[5],
+      this->overlay_state.trap_tile_colors_nte[6],
+      this->overlay_state.trap_tile_colors_nte[7],
+      this->overlay_state.trap_tile_colors_nte[8],
+      this->overlay_state.trap_tile_colors_nte[9],
+      this->overlay_state.trap_tile_colors_nte[10],
+      this->overlay_state.trap_tile_colors_nte[11],
+      this->overlay_state.trap_tile_colors_nte[12],
+      this->overlay_state.trap_tile_colors_nte[13],
+      this->overlay_state.trap_tile_colors_nte[14],
+      this->overlay_state.trap_tile_colors_nte[15]));
+  lines.emplace_back(std::format(
+      "  trap_card_ids_nte: #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X}",
+      this->overlay_state.trap_card_ids_nte[0],
+      this->overlay_state.trap_card_ids_nte[1],
+      this->overlay_state.trap_card_ids_nte[2],
+      this->overlay_state.trap_card_ids_nte[3],
+      this->overlay_state.trap_card_ids_nte[4],
+      this->overlay_state.trap_card_ids_nte[5],
+      this->overlay_state.trap_card_ids_nte[6],
+      this->overlay_state.trap_card_ids_nte[7],
+      this->overlay_state.trap_card_ids_nte[8],
+      this->overlay_state.trap_card_ids_nte[9],
+      this->overlay_state.trap_card_ids_nte[10],
+      this->overlay_state.trap_card_ids_nte[11],
+      this->overlay_state.trap_card_ids_nte[12],
+      this->overlay_state.trap_card_ids_nte[13],
+      this->overlay_state.trap_card_ids_nte[14],
+      this->overlay_state.trap_card_ids_nte[15]));
 
   lines.emplace_back("  default_rules: " + this->default_rules.str());
   lines.emplace_back("  name: " + this->name.decode(language));
   lines.emplace_back("  location_name: " + this->location_name.decode(language));
   lines.emplace_back("  quest_name: " + this->quest_name.decode(language));
   lines.emplace_back("  description: " + this->description.decode(language));
-  lines.emplace_back(phosg::string_printf("  map_xy: %hu %hu", this->map_x.load(), this->map_y.load()));
+  lines.emplace_back(std::format("  map_xy: {} {}", this->map_x, this->map_y));
   for (size_t z = 0; z < 3; z++) {
-    lines.emplace_back(phosg::string_printf("  npc_chars[%zu]:", z));
+    lines.emplace_back(std::format("  npc_chars[{}]:", z));
     lines.emplace_back("    name: " + this->npc_ai_params[z].ai_name.decode(language));
-    lines.emplace_back(phosg::string_printf(
-        "    ai_params: (a1: %04hX %04hX, is_arkz: %02hhX, a2: %02hX %02hX %02hX)",
-        this->npc_ai_params[z].unknown_a1[0].load(), this->npc_ai_params[z].unknown_a1[1].load(),
+    lines.emplace_back(std::format(
+        "    ai_params: (a1: {:04X} {:04X}, is_arkz: {:02X}, a2: {:02X} {:02X} {:02X})",
+        this->npc_ai_params[z].unknown_a1[0], this->npc_ai_params[z].unknown_a1[1],
         this->npc_ai_params[z].is_arkz, this->npc_ai_params[z].unknown_a2[0],
         this->npc_ai_params[z].unknown_a2[1], this->npc_ai_params[z].unknown_a2[2]));
     for (size_t w = 0; w < 0x78; w += 0x08) {
-      lines.emplace_back(phosg::string_printf(
-          "    ai_params.a3[0x%02zX:0x%02zX]: %04hX %04hX %04hX %04hX %04hX %04hX %04hX %04hX",
+      lines.emplace_back(std::format(
+          "    ai_params.a3[0x{:02X}:0x{:02X}]: {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X}",
           w, w + 0x08,
-          this->npc_ai_params[z].params[w + 0x00].load(), this->npc_ai_params[z].params[w + 0x01].load(),
-          this->npc_ai_params[z].params[w + 0x02].load(), this->npc_ai_params[z].params[w + 0x03].load(),
-          this->npc_ai_params[z].params[w + 0x04].load(), this->npc_ai_params[z].params[w + 0x05].load(),
-          this->npc_ai_params[z].params[w + 0x06].load(), this->npc_ai_params[z].params[w + 0x07].load()));
+          this->npc_ai_params[z].params[w + 0x00], this->npc_ai_params[z].params[w + 0x01],
+          this->npc_ai_params[z].params[w + 0x02], this->npc_ai_params[z].params[w + 0x03],
+          this->npc_ai_params[z].params[w + 0x04], this->npc_ai_params[z].params[w + 0x05],
+          this->npc_ai_params[z].params[w + 0x06], this->npc_ai_params[z].params[w + 0x07]));
     }
-    lines.emplace_back(phosg::string_printf(
-        "    ai_params.a3[0x78:0x7E]: %04hX %04hX %04hX %04hX %04hX %04hX",
-        this->npc_ai_params[z].params[0x78].load(), this->npc_ai_params[z].params[0x79].load(),
-        this->npc_ai_params[z].params[0x7A].load(), this->npc_ai_params[z].params[0x7B].load(),
-        this->npc_ai_params[z].params[0x7C].load(), this->npc_ai_params[z].params[0x7D].load()));
-    lines.emplace_back(phosg::string_printf("  npc_decks[%zu]:", z));
+    lines.emplace_back(std::format(
+        "    ai_params.a3[0x78:0x7E]: {:04X} {:04X} {:04X} {:04X} {:04X} {:04X}",
+        this->npc_ai_params[z].params[0x78], this->npc_ai_params[z].params[0x79],
+        this->npc_ai_params[z].params[0x7A], this->npc_ai_params[z].params[0x7B],
+        this->npc_ai_params[z].params[0x7C], this->npc_ai_params[z].params[0x7D]));
+    lines.emplace_back(std::format("  npc_decks[{}]:", z));
     lines.emplace_back("    name: " + this->npc_decks[z].deck_name.decode(language));
     for (size_t w = 0; w < 0x20; w++) {
       uint16_t card_id = this->npc_decks[z].card_ids[w];
@@ -1930,9 +1932,9 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
       }
       if (entry) {
         string name = entry->def.en_name.decode(language);
-        lines.emplace_back(phosg::string_printf("    cards[%02zu]: #%04hX (%s)", w, card_id, name.c_str()));
+        lines.emplace_back(std::format("    cards[{:02}]: #{:04X} ({})", w, card_id, name));
       } else {
-        lines.emplace_back(phosg::string_printf("    cards[%02zu]: #%04hX", w, card_id));
+        lines.emplace_back(std::format("    cards[{:02}]: #{:04X}", w, card_id));
       }
     }
     for (size_t x = 0; x < 0x10; x++) {
@@ -1940,19 +1942,19 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
       if (set.when == -1 && set.percent_chance == 0xFFFF) {
         continue;
       }
-      lines.emplace_back(phosg::string_printf("  npc_dialogue[%zu][%zu] (when: %04hX, chance: %hu%%):",
-          z, x, set.when.load(), set.percent_chance.load()));
+      lines.emplace_back(std::format("  npc_dialogue[{}][{}] (when: {:04X}, chance: {}%):",
+          z, x, set.when, set.percent_chance));
       for (size_t w = 0; w < 4; w++) {
         if (!set.strings[w].empty() && set.strings[w].at(0) != 0xFF) {
           string s = set.strings[w].decode(language);
-          lines.emplace_back(phosg::string_printf("    strings[%zu]: %s", w, s.c_str()));
+          lines.emplace_back(std::format("    strings[{}]: {}", w, s));
         }
       }
     }
   }
   lines.emplace_back("  a7: " + phosg::format_data_string(this->unknown_a7.data(), this->unknown_a7.bytes()));
-  lines.emplace_back(phosg::string_printf("  npc_ai_params_entry_index: [%08" PRIX32 ", %08" PRIX32 ", %08" PRIX32 "]",
-      this->npc_ai_params_entry_index[0].load(), this->npc_ai_params_entry_index[1].load(), this->npc_ai_params_entry_index[2].load()));
+  lines.emplace_back(std::format("  npc_ai_params_entry_index: [{:08X}, {:08X}, {:08X}]",
+      this->npc_ai_params_entry_index[0], this->npc_ai_params_entry_index[1], this->npc_ai_params_entry_index[2]));
   if (!this->before_message.empty()) {
     lines.emplace_back("  before_message: " + this->before_message.decode(language));
   }
@@ -1973,17 +1975,17 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
     }
     if (entry) {
       string name = entry->def.en_name.decode(language);
-      lines.emplace_back(phosg::string_printf("  reward_cards[%02zu]: #%04hX (%s)", z, card_id, name.c_str()));
+      lines.emplace_back(std::format("  reward_cards[{:02}]: #{:04X} ({})", z, card_id, name));
     } else {
-      lines.emplace_back(phosg::string_printf("  reward_cards[%02zu]: #%04hX", z, card_id));
+      lines.emplace_back(std::format("  reward_cards[{:02}]: #{:04X}", z, card_id));
     }
   }
-  lines.emplace_back(phosg::string_printf("  level_overrides: [win: %" PRId32 ", loss: %" PRId32 "]",
-      this->win_level_override.load(), this->loss_level_override.load()));
-  lines.emplace_back(phosg::string_printf("  field_offset: (x: %hd units, y:%hd units) (x: %lg tiles, y: %lg tiles)", this->field_offset_x.load(), this->field_offset_y.load(), static_cast<double>(this->field_offset_x) / 25.0, static_cast<double>(this->field_offset_y) / 25.0));
-  lines.emplace_back(phosg::string_printf("  map_category: %02hhX", this->map_category));
-  lines.emplace_back(phosg::string_printf("  cyber_block_type: %02hhX", this->cyber_block_type));
-  lines.emplace_back(phosg::string_printf("  a11: %04hX", this->unknown_a11.load()));
+  lines.emplace_back(std::format("  level_overrides: [win: {}, loss: {}]",
+      this->win_level_override, this->loss_level_override));
+  lines.emplace_back(std::format("  field_offset: (x: {} units, y:{} units) (x: {:g} tiles, y: {:g} tiles)", this->field_offset_x, this->field_offset_y, static_cast<double>(this->field_offset_x) / 25.0, static_cast<double>(this->field_offset_y) / 25.0));
+  lines.emplace_back(std::format("  map_category: {:02X}", this->map_category));
+  lines.emplace_back(std::format("  cyber_block_type: {:02X}", this->cyber_block_type));
+  lines.emplace_back(std::format("  a11: {:04X}", this->unknown_a11));
   static const array<const char*, 0x18> sc_card_entry_names = {
       "00 (Guykild; 0005)",
       "01 (Kylria; 0006)",
@@ -2019,7 +2021,7 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
       unavailable_sc_cards += ", ";
     }
     if (this->unavailable_sc_cards[z] >= sc_card_entry_names.size()) {
-      unavailable_sc_cards += phosg::string_printf("%04hX (invalid)", this->unavailable_sc_cards[z].load());
+      unavailable_sc_cards += std::format("{:04X} (invalid)", this->unavailable_sc_cards[z]);
     } else {
       unavailable_sc_cards += sc_card_entry_names[this->unavailable_sc_cards[z]];
     }
@@ -2048,7 +2050,7 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
         player_type = "FREE";
         break;
       default:
-        player_type = phosg::string_printf("(%02hhX)", this->entry_states[z].player_type);
+        player_type = std::format("({:02X})", this->entry_states[z].player_type);
         break;
     }
     string deck_type;
@@ -2063,11 +2065,11 @@ string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
         deck_type = "any deck allowed";
         break;
       default:
-        deck_type = phosg::string_printf("(%02hhX)", this->entry_states[z].deck_type);
+        deck_type = std::format("({:02X})", this->entry_states[z].deck_type);
         break;
     }
-    lines.emplace_back(phosg::string_printf(
-        "  entry_states[%zu]: %s / %s", z, player_type.c_str(), deck_type.c_str()));
+    lines.emplace_back(std::format(
+        "  entry_states[{}]: {} / {}", z, player_type, deck_type));
   }
   return phosg::join(lines, "\n");
 }
@@ -2326,9 +2328,9 @@ CardIndex::CardIndex(
   unordered_map<uint32_t, string> card_text;
   try {
     string text_bin_data;
-    if (!decompressed_text_filename.empty() && phosg::isfile(decompressed_text_filename)) {
+    if (!decompressed_text_filename.empty() && std::filesystem::is_regular_file(decompressed_text_filename)) {
       text_bin_data = phosg::load_file(decompressed_text_filename);
-    } else if (!text_filename.empty() && phosg::isfile(text_filename)) {
+    } else if (!text_filename.empty() && std::filesystem::is_regular_file(text_filename)) {
       text_bin_data = prs_decompress(phosg::load_file(text_filename));
     }
     if (!text_bin_data.empty()) {
@@ -2416,15 +2418,15 @@ CardIndex::CardIndex(
       }
     }
   } catch (const exception& e) {
-    static_game_data_log.warning("Failed to load card text: %s", e.what());
+    static_game_data_log.warning_f("Failed to load card text: {}", e.what());
   }
 
   unordered_map<uint32_t, pair<string, string>> card_dice_text;
   try {
     string text_bin_data;
-    if (!decompressed_dice_text_filename.empty() && phosg::isfile(decompressed_dice_text_filename)) {
+    if (!decompressed_dice_text_filename.empty() && std::filesystem::is_regular_file(decompressed_dice_text_filename)) {
       text_bin_data = phosg::load_file(decompressed_dice_text_filename);
-    } else if (!dice_text_filename.empty() && phosg::isfile(dice_text_filename)) {
+    } else if (!dice_text_filename.empty() && std::filesystem::is_regular_file(dice_text_filename)) {
       text_bin_data = prs_decompress(phosg::load_file(dice_text_filename));
     }
     if (!text_bin_data.empty()) {
@@ -2440,12 +2442,11 @@ CardIndex::CardIndex(
       }
     }
   } catch (const exception& e) {
-    static_game_data_log.warning("Failed to load card dice text: %s", e.what());
+    static_game_data_log.warning_f("Failed to load card dice text: {}", e.what());
   }
 
   try {
     string decompressed_data;
-    this->mtime_for_card_definitions = phosg::stat(filename).st_mtime;
     try {
       decompressed_data = phosg::load_file(decompressed_filename);
       this->compressed_card_definitions.clear();
@@ -2458,6 +2459,7 @@ CardIndex::CardIndex(
     if (decompressed_data.size() > 0x36EC0) {
       throw runtime_error("decompressed card list data is too long");
     }
+    this->defs_hash = phosg::fnv1a64(decompressed_data);
 
     // The card definitions file is a standard REL file; the root offset points
     // to an ArrayRef which specifies an array of CardDefinition structs
@@ -2482,8 +2484,8 @@ CardIndex::CardIndex(
 
       auto entry = make_shared<CardEntry>(CardEntry{def, "", "", "", {}});
       if (!this->card_definitions.emplace(entry->def.card_id, entry).second) {
-        throw runtime_error(phosg::string_printf(
-            "duplicate card id: %08" PRIX32, entry->def.card_id.load()));
+        throw runtime_error(std::format(
+            "duplicate card id: {:08X}", entry->def.card_id));
       }
 
       // Some cards intentionally have the same name, so we just leave them
@@ -2522,14 +2524,14 @@ CardIndex::CardIndex(
       uint64_t start = phosg::now();
       this->compressed_card_definitions = prs_compress(decompressed_data);
       uint64_t diff = phosg::now() - start;
-      static_game_data_log.info(
-          "Compressed card definitions (%zu bytes -> %zu bytes) in %" PRIu64 "us",
+      static_game_data_log.info_f(
+          "Compressed card definitions ({} bytes -> {} bytes) in {}us",
           decompressed_data.size(), this->compressed_card_definitions.size(), diff);
     }
 
     if (this->compressed_card_definitions.size() > 0x7BF8) {
       // Try to reduce the compressed size by clearing out text
-      static_game_data_log.info("Compressed card list data is too long (0x%zX bytes); removing text", this->compressed_card_definitions.size());
+      static_game_data_log.info_f("Compressed card list data is too long (0x{:X} bytes); removing text", this->compressed_card_definitions.size());
       for (size_t x = 0; x < count; x++) {
         if (static_cast<int8_t>(defs[x].type) < 0) {
           continue;
@@ -2540,8 +2542,8 @@ CardIndex::CardIndex(
       uint64_t start = phosg::now();
       this->compressed_card_definitions = prs_compress_optimal(decompressed_data.data(), decompressed_data.size());
       uint64_t diff = phosg::now() - start;
-      static_game_data_log.info(
-          "Compressed card definitions (0x%zX bytes -> 0x%zX bytes) in %" PRIu64 "us",
+      static_game_data_log.info_f(
+          "Compressed card definitions (0x{:X} bytes -> 0x{:X} bytes) in {}us",
           decompressed_data.size(), this->compressed_card_definitions.size(), diff);
     }
 
@@ -2549,9 +2551,9 @@ CardIndex::CardIndex(
       throw runtime_error("compressed card list data is too long");
     }
 
-    static_game_data_log.info("Indexed %zu Episode 3 card definitions", this->card_definitions.size());
+    static_game_data_log.info_f("Indexed {} Episode 3 card definitions", this->card_definitions.size());
   } catch (const exception& e) {
-    static_game_data_log.warning("Failed to load Episode 3 card update: %s", e.what());
+    static_game_data_log.warning_f("Failed to load Episode 3 card update: {}", e.what());
   }
 }
 
@@ -2582,8 +2584,8 @@ set<uint32_t> CardIndex::all_ids() const {
   return ret;
 }
 
-uint64_t CardIndex::definitions_mtime() const {
-  return this->mtime_for_card_definitions;
+uint64_t CardIndex::definitions_hash() const {
+  return this->defs_hash;
 }
 
 phosg::JSON CardIndex::definitions_json() const {
@@ -2618,8 +2620,8 @@ MapIndex::VersionedMap::VersionedMap(std::string&& compressed_data, uint8_t lang
   } else if (decompressed.size() == sizeof(MapDefinition)) {
     this->map = make_shared<MapDefinition>(*reinterpret_cast<const MapDefinition*>(decompressed.data()));
   } else {
-    throw runtime_error(phosg::string_printf(
-        "decompressed data size is incorrect (expected %zu bytes, read %zu bytes)",
+    throw runtime_error(std::format(
+        "decompressed data size is incorrect (expected {} bytes, read {} bytes)",
         sizeof(MapDefinition), decompressed.size()));
   }
 }
@@ -2689,33 +2691,34 @@ shared_ptr<const MapIndex::VersionedMap> MapIndex::Map::version(uint8_t language
 }
 
 MapIndex::MapIndex(const string& directory) {
-  for (const auto& filename : phosg::list_directory_sorted(directory)) {
+  for (const auto& item : std::filesystem::directory_iterator(directory)) {
+    string filename = item.path().filename().string();
     try {
       string base_filename;
       string compressed_data;
       shared_ptr<MapDefinition> decompressed_data;
-      if (phosg::ends_with(filename, ".mnmd") || phosg::ends_with(filename, ".bind")) {
+      if (filename.ends_with(".mnmd") || filename.ends_with(".bind")) {
         decompressed_data = make_shared<MapDefinition>(phosg::load_object_file<MapDefinition>(directory + "/" + filename));
         base_filename = filename.substr(0, filename.size() - 5);
-      } else if (phosg::ends_with(filename, ".mnm") || phosg::ends_with(filename, ".bin")) {
+      } else if (filename.ends_with(".mnm") || filename.ends_with(".bin")) {
         compressed_data = phosg::load_file(directory + "/" + filename);
         base_filename = filename.substr(0, filename.size() - 4);
-      } else if (phosg::ends_with(filename, ".bin.gci") || phosg::ends_with(filename, ".mnm.gci")) {
+      } else if (filename.ends_with(".bin.gci") || filename.ends_with(".mnm.gci")) {
         compressed_data = decode_gci_data(phosg::load_file(directory + "/" + filename));
         base_filename = filename.substr(0, filename.size() - 8);
-      } else if (phosg::ends_with(filename, ".gci")) {
+      } else if (filename.ends_with(".gci")) {
         compressed_data = decode_gci_data(phosg::load_file(directory + "/" + filename));
         base_filename = filename.substr(0, filename.size() - 4);
-      } else if (phosg::ends_with(filename, ".bin.vms") || phosg::ends_with(filename, ".mnm.vms")) {
+      } else if (filename.ends_with(".bin.vms") || filename.ends_with(".mnm.vms")) {
         compressed_data = decode_vms_data(phosg::load_file(directory + "/" + filename));
         base_filename = filename.substr(0, filename.size() - 8);
-      } else if (phosg::ends_with(filename, ".vms")) {
+      } else if (filename.ends_with(".vms")) {
         compressed_data = decode_vms_data(phosg::load_file(directory + "/" + filename));
         base_filename = filename.substr(0, filename.size() - 4);
-      } else if (phosg::ends_with(filename, ".bin.dlq") || phosg::ends_with(filename, ".mnm.dlq")) {
+      } else if (filename.ends_with(".bin.dlq") || filename.ends_with(".mnm.dlq")) {
         compressed_data = decode_dlq_data(phosg::load_file(directory + "/" + filename));
         base_filename = filename.substr(0, filename.size() - 8);
-      } else if (phosg::ends_with(filename, ".dlq")) {
+      } else if (filename.ends_with(".dlq")) {
         compressed_data = decode_dlq_data(phosg::load_file(directory + "/" + filename));
         base_filename = filename.substr(0, filename.size() - 4);
       } else {
@@ -2743,26 +2746,26 @@ MapIndex::MapIndex(const string& directory) {
       auto map_it = this->maps.find(vm->map->map_number);
       if (map_it == this->maps.end()) {
         map_it = this->maps.emplace(vm->map->map_number, make_shared<Map>(vm)).first;
-        static_game_data_log.info("(%s) Created Episode 3 map %08" PRIX32 " %c (%s; %s)",
-            filename.c_str(),
-            vm->map->map_number.load(),
+        static_game_data_log.info_f("({}) Created Episode 3 map {:08X} {} ({}; {})",
+            filename,
+            vm->map->map_number,
             char_for_language_code(vm->language),
             vm->map->is_quest() ? "quest" : "free",
-            name.c_str());
+            name);
       } else {
         map_it->second->add_version(vm);
-        static_game_data_log.info("(%s) Added Episode 3 map version %08" PRIX32 " %c (%s; %s)",
-            filename.c_str(),
-            vm->map->map_number.load(),
+        static_game_data_log.info_f("({}) Added Episode 3 map version {:08X} {} ({}; {})",
+            filename,
+            vm->map->map_number,
             char_for_language_code(vm->language),
             vm->map->is_quest() ? "quest" : "free",
-            name.c_str());
+            name);
       }
       this->maps_by_name.emplace(vm->map->name.decode(vm->language), map_it->second);
 
     } catch (const exception& e) {
-      static_game_data_log.warning("Failed to index Episode 3 map %s: %s",
-          filename.c_str(), e.what());
+      static_game_data_log.warning_f("Failed to index Episode 3 map {}: {}",
+          filename, e.what());
     }
   }
 }
@@ -2801,7 +2804,7 @@ const string& MapIndex::get_compressed_list(size_t num_players, uint8_t language
       e.map_x = vm->map->map_x;
       e.map_y = vm->map->map_y;
       e.environment_number = vm->map->environment_number;
-      e.map_number = vm->map->map_number.load();
+      e.map_number = vm->map->map_number;
       e.width = vm->map->width;
       e.height = vm->map->height;
       e.map_tiles = vm->map->map_tiles;
@@ -2841,10 +2844,10 @@ const string& MapIndex::get_compressed_list(size_t num_players, uint8_t language
     compressed_w.write(prs.close());
     compressed_map_list = std::move(compressed_w.str());
     if (compressed_map_list.size() > 0x7BEC) {
-      throw runtime_error(phosg::string_printf("compressed map list for %zu players is too large (0x%zX bytes)", num_players, compressed_map_list.size()));
+      throw runtime_error(std::format("compressed map list for {} players is too large (0x{:X} bytes)", num_players, compressed_map_list.size()));
     }
     size_t decompressed_size = sizeof(header) + entries_w.size() + strings_w.size();
-    static_game_data_log.info("Generated Episode 3 compressed map list for %zu player(s) (%zu maps; 0x%zX -> 0x%zX bytes)",
+    static_game_data_log.info_f("Generated Episode 3 compressed map list for {} player(s) ({} maps; 0x{:X} -> 0x{:X} bytes)",
         num_players, num_maps, decompressed_size, compressed_map_list.size());
   }
   return compressed_map_list;
@@ -2883,7 +2886,7 @@ COMDeckIndex::COMDeckIndex(const string& filename) {
       }
     }
   } catch (const exception& e) {
-    static_game_data_log.warning("Failed to load Episode 3 COM decks: %s", e.what());
+    static_game_data_log.warning_f("Failed to load Episode 3 COM decks: {}", e.what());
   }
 }
 

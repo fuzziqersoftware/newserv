@@ -1,6 +1,5 @@
 #include "ShellCommands.hh"
 
-#include <event2/event.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -8,42 +7,70 @@
 #include <phosg/Strings.hh>
 
 #include "ChatCommands.hh"
+#include "GameServer.hh"
 #include "ReceiveCommands.hh"
+#include "ReplaySession.hh"
 #include "SendCommands.hh"
 #include "ServerState.hh"
 #include "StaticGameData.hh"
 
 using namespace std;
 
-std::vector<const ShellCommand*> ShellCommand::commands_by_order;
-std::unordered_map<std::string, const ShellCommand*> ShellCommand::commands_by_name;
+vector<const ShellCommand*> ShellCommand::commands_by_order;
+unordered_map<string, const ShellCommand*> ShellCommand::commands_by_name;
 
 exit_shell::exit_shell() : runtime_error("shell exited") {}
+
+shared_ptr<Client> ShellCommand::Args::get_client() const {
+  if (!s->game_server) {
+    throw logic_error("game server is missing");
+  }
+
+  shared_ptr<Client> c;
+  if (this->session_name.empty()) {
+    return this->s->game_server->get_client();
+  } else {
+    auto clients = this->s->game_server->get_clients_by_identifier(this->session_name);
+    if (clients.empty()) {
+      throw runtime_error("no such client");
+    }
+    if (clients.size() > 1) {
+      throw runtime_error("multiple clients found");
+    }
+    return clients[0];
+  }
+}
+
+shared_ptr<Client> ShellCommand::Args::get_proxy_client() const {
+  auto c = this->get_client();
+  if (!c->proxy_session) {
+    throw runtime_error("client is not in a proxy session");
+  }
+  return c;
+}
 
 ShellCommand::ShellCommand(
     const char* name,
     const char* help_text,
-    bool run_on_event_thread,
-    std::deque<std::string> (*run)(Args&))
+    asio::awaitable<deque<string>> (*run)(Args&))
     : name(name),
       help_text(help_text),
-      run_on_event_thread(run_on_event_thread),
       run(run) {
   ShellCommand::commands_by_order.emplace_back(this);
   ShellCommand::commands_by_name.emplace(this->name, this);
 }
 
-std::deque<std::string> ShellCommand::dispatch_str(std::shared_ptr<ServerState> s, const std::string& command) {
+asio::awaitable<deque<string>> ShellCommand::dispatch_str(shared_ptr<ServerState> s, const string& command) {
   size_t command_end = phosg::skip_non_whitespace(command, 0);
   size_t args_begin = phosg::skip_whitespace(command, command_end);
   Args args;
   args.s = s;
   args.command = command.substr(0, command_end);
   args.args = command.substr(args_begin);
-  return ShellCommand::dispatch(args);
+  co_return co_await ShellCommand::dispatch(args);
 }
 
-std::deque<std::string> ShellCommand::dispatch(Args& args) {
+asio::awaitable<deque<string>> ShellCommand::dispatch(Args& args) {
   const ShellCommand* def = nullptr;
   try {
     def = commands_by_name.at(args.command);
@@ -51,22 +78,9 @@ std::deque<std::string> ShellCommand::dispatch(Args& args) {
   }
   if (!def) {
     throw runtime_error("no such command; try 'help'");
-  } else if (def->run_on_event_thread) {
-    return args.s->call_on_event_thread<std::deque<std::string>>([def, &args]() -> std::deque<std::string> {
-      return def->run(args);
-    });
   } else {
     return def->run(args);
   }
-}
-
-static shared_ptr<ProxyServer::LinkedSession> get_proxy_session(std::shared_ptr<ServerState> s, const string& name) {
-  if (!s->proxy_server.get()) {
-    throw runtime_error("the proxy server is disabled");
-  }
-  return name.empty()
-      ? s->proxy_server->get_session()
-      : s->proxy_server->get_session_by_name(name);
 }
 
 static string get_quoted_string(string& s) {
@@ -95,20 +109,19 @@ static string get_quoted_string(string& s) {
   return ret;
 }
 
-static auto empty_handler = +[](ShellCommand::Args&) -> std::deque<std::string> {
-  return {};
-};
+static asio::awaitable<deque<string>> empty_handler(ShellCommand::Args&) {
+  co_return deque<string>();
+}
 
-ShellCommand c_nop1("", nullptr, false, empty_handler);
-ShellCommand c_nop2("//", nullptr, false, empty_handler);
-ShellCommand c_nop3("#", nullptr, false, empty_handler);
+ShellCommand c_nop1("", nullptr, empty_handler);
+ShellCommand c_nop2("//", nullptr, empty_handler);
+ShellCommand c_nop3("#", nullptr, empty_handler);
 
 ShellCommand c_help(
     "help", "help\n\
     You\'re reading it now.",
-    false,
-    +[](ShellCommand::Args&) -> std::deque<std::string> {
-      std::deque<std::string> ret({"Commands:"});
+    +[](ShellCommand::Args&) -> asio::awaitable<deque<string>> {
+      deque<string> ret({"Commands:"});
       for (const auto& def : ShellCommand::commands_by_order) {
         if (def->help_text) {
           // TODO: It's not great that we copy the text here.
@@ -116,13 +129,12 @@ ShellCommand c_help(
           s += def->help_text;
         }
       }
-      return ret;
+      co_return ret;
     });
 ShellCommand c_exit(
     "exit", "exit (or ctrl+d)\n\
     Shut down the server.",
-    false,
-    +[](ShellCommand::Args&) -> std::deque<std::string> {
+    +[](ShellCommand::Args&) -> asio::awaitable<deque<string>> {
       throw exit_shell();
     });
 ShellCommand c_on(
@@ -134,8 +146,7 @@ ShellCommand c_on(
     gamertag, or a BB account username. For proxy commands, SESSION should be\n\
     the session ID, which generally is the same as the player\'s account ID\n\
     and appears after \"LinkedSession:\" in the log output.",
-    false,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
       size_t session_name_end = phosg::skip_non_whitespace(args.args, 0);
       size_t command_begin = phosg::skip_whitespace(args.args, session_name_end);
       size_t command_end = phosg::skip_non_whitespace(args.args, command_begin);
@@ -176,82 +187,76 @@ ShellCommand c_reload(
     disconnect or reload the battle parameters, so if these are changed without\n\
     restarting, clients may see (for example) EXP messages inconsistent with\n\
     the amounts of EXP actually received.",
-    false,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
       auto types = phosg::split(args.args, ' ');
       for (const auto& type : types) {
         if (type == "all") {
-          args.s->call_on_event_thread<void>([s = args.s]() {
-            s->load_all();
-          });
+          args.s->load_all(true);
         } else if (type == "bb-keys") {
-          args.s->load_bb_private_keys(true);
+          args.s->load_bb_private_keys();
         } else if (type == "accounts") {
-          args.s->load_accounts(true);
+          args.s->load_accounts();
         } else if (type == "maps") {
-          args.s->load_maps(true);
+          args.s->load_maps();
         } else if (type == "caches") {
-          args.s->clear_file_caches(true);
+          args.s->clear_file_caches();
         } else if (type == "patch-files") {
-          args.s->load_patch_indexes(true);
+          args.s->load_patch_indexes();
         } else if (type == "ep3-cards") {
-          args.s->load_ep3_cards(true);
+          args.s->load_ep3_cards();
         } else if (type == "ep3-maps") {
-          args.s->load_ep3_maps(true);
+          args.s->load_ep3_maps();
         } else if (type == "ep3-tournaments") {
-          args.s->load_ep3_tournament_state(true);
+          args.s->load_ep3_tournament_state();
         } else if (type == "functions") {
-          args.s->compile_functions(true);
+          args.s->compile_functions();
         } else if (type == "dol-files") {
-          args.s->load_dol_files(true);
+          args.s->load_dol_files();
         } else if (type == "set-tables") {
-          args.s->load_set_data_tables(true);
+          args.s->load_set_data_tables();
         } else if (type == "battle-params") {
-          args.s->load_battle_params(true);
+          args.s->load_battle_params();
         } else if (type == "level-tables") {
-          args.s->load_level_tables(true);
+          args.s->load_level_tables();
         } else if (type == "text-index") {
-          args.s->load_text_index(true);
+          args.s->load_text_index();
         } else if (type == "word-select") {
-          args.s->load_word_select_table(true);
+          args.s->load_word_select_table();
         } else if (type == "item-definitions") {
-          args.s->load_item_definitions(true);
+          args.s->load_item_definitions();
         } else if (type == "item-name-index") {
-          args.s->load_item_name_indexes(true);
+          args.s->load_item_name_indexes();
         } else if (type == "drop-tables") {
-          args.s->load_drop_tables(true);
+          args.s->load_drop_tables();
         } else if (type == "config") {
-          args.s->forward_to_event_thread([s = args.s]() {
-            s->load_config_early();
-            s->load_config_late();
-          });
+          args.s->load_config_early();
+          args.s->load_config_late();
         } else if (type == "teams") {
-          args.s->load_teams(true);
+          args.s->load_teams();
         } else if (type == "quests") {
-          args.s->load_quest_index(true);
+          args.s->load_quest_index();
         } else {
           throw runtime_error("invalid data type: " + type);
         }
       }
 
-      return {};
+      co_return deque<string>{};
     });
 
 ShellCommand c_list_accounts(
     "list-accounts", "list-accounts\n\
     List all accounts registered on the server.",
-    true,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+      deque<string> ret;
       auto accounts = args.s->account_index->all();
       if (accounts.empty()) {
-        return {"No accounts registered"};
+        ret.emplace_back("No accounts registered");
       } else {
-        std::deque<std::string> ret;
         for (const auto& a : accounts) {
           ret.emplace_back(a->str());
         }
-        return ret;
       }
+      co_return ret;
     });
 
 uint32_t parse_account_flags(const string& flags_str) {
@@ -360,21 +365,20 @@ ShellCommand c_add_account(
       IS_SHARED_ACCOUNT: Account is a shared serial (disables Access Key and\n\
           password checks; players will get Guild Cards based on their player\n\
           names)",
-    true,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
       auto account = make_shared<Account>();
       for (const string& token : phosg::split(args.args, ' ')) {
-        if (phosg::starts_with(token, "id=")) {
+        if (token.starts_with("id=")) {
           account->account_id = stoul(token.substr(3), nullptr, 16);
-        } else if (phosg::starts_with(token, "ep3-current-meseta=")) {
+        } else if (token.starts_with("ep3-current-meseta=")) {
           account->ep3_current_meseta = stoul(token.substr(19), nullptr, 0);
-        } else if (phosg::starts_with(token, "ep3-total-meseta=")) {
+        } else if (token.starts_with("ep3-total-meseta=")) {
           account->ep3_total_meseta_earned = stoul(token.substr(17), nullptr, 0);
         } else if (token == "temporary") {
           account->is_temporary = true;
-        } else if (phosg::starts_with(token, "flags=")) {
+        } else if (token.starts_with("flags=")) {
           account->flags = parse_account_flags(token.substr(6));
-        } else if (phosg::starts_with(token, "user-flags=")) {
+        } else if (token.starts_with("user-flags=")) {
           account->user_flags = parse_account_user_flags(token.substr(11));
         } else {
           throw invalid_argument("invalid account field: " + token);
@@ -382,7 +386,7 @@ ShellCommand c_add_account(
       }
       args.s->account_index->add(account);
       account->save();
-      return {phosg::string_printf("Account %08" PRIX32 " added", account->account_id)};
+      co_return deque<string>{format("Account {:08X} added", account->account_id)};
     });
 ShellCommand c_update_account(
     "update-account", "update-account ACCOUNT-ID PARAMETERS...\n\
@@ -401,8 +405,7 @@ ShellCommand c_update_account(
       temporary: Marks the account as temporary; it is not saved to disk and\n\
           therefore will be deleted when the server shuts down.\n\
       permanent: If the account was temporary, makes it non-temporary.",
-    true,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
       auto tokens = phosg::split(args.args, ' ');
       if (tokens.size() < 2) {
         throw runtime_error("not enough arguments");
@@ -419,35 +422,35 @@ ShellCommand c_update_account(
       uint8_t new_is_temporary = 0xFF;
       int64_t new_ban_duration = -1;
       for (const string& token : tokens) {
-        if (phosg::starts_with(token, "ep3-current-meseta=")) {
+        if (token.starts_with("ep3-current-meseta=")) {
           new_ep3_current_meseta = stoul(token.substr(19), nullptr, 0);
-        } else if (phosg::starts_with(token, "ep3-total-meseta=")) {
+        } else if (token.starts_with("ep3-total-meseta=")) {
           new_ep3_total_meseta = stoul(token.substr(17), nullptr, 0);
         } else if (token == "temporary") {
           new_is_temporary = 1;
         } else if (token == "permanent") {
           new_is_temporary = 0;
-        } else if (phosg::starts_with(token, "flags=")) {
+        } else if (token.starts_with("flags=")) {
           new_flags = parse_account_flags(token.substr(6));
-        } else if (phosg::starts_with(token, "user-flags=")) {
+        } else if (token.starts_with("user-flags=")) {
           new_user_flags = parse_account_user_flags(token.substr(11));
         } else if (token == "unban") {
           new_ban_duration = 0;
-        } else if (phosg::starts_with(token, "ban-duration=")) {
+        } else if (token.starts_with("ban-duration=")) {
           auto duration_str = token.substr(13);
-          if (phosg::ends_with(duration_str, "s")) {
+          if (duration_str.ends_with("s")) {
             new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 1000000LL;
-          } else if (phosg::ends_with(duration_str, "m")) {
+          } else if (duration_str.ends_with("m")) {
             new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 60000000LL;
-          } else if (phosg::ends_with(duration_str, "h")) {
+          } else if (duration_str.ends_with("h")) {
             new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 3600000000LL;
-          } else if (phosg::ends_with(duration_str, "d")) {
+          } else if (duration_str.ends_with("d")) {
             new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 86400000000LL;
-          } else if (phosg::ends_with(duration_str, "w")) {
+          } else if (duration_str.ends_with("w")) {
             new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 604800000000LL;
-          } else if (phosg::ends_with(duration_str, "mo")) {
+          } else if (duration_str.ends_with("mo")) {
             new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 2)) * 2952000000000LL;
-          } else if (phosg::ends_with(duration_str, "y")) {
+          } else if (duration_str.ends_with("y")) {
             new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 31536000000000LL;
           } else {
             throw runtime_error("invalid time unit");
@@ -481,19 +484,18 @@ ShellCommand c_update_account(
         args.s->disconnect_all_banned_clients();
       }
 
-      return {phosg::string_printf("Account %08" PRIX32 " updated", account->account_id)};
+      co_return deque<string>{format("Account {:08X} updated", account->account_id)};
     });
 ShellCommand c_delete_account(
     "delete-account", "delete-account ACCOUNT-ID\n\
     Delete an account from the server. If a player is online with the deleted\n\
     account, they will not be automatically disconnected.",
-    true,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
       auto account = args.s->account_index->from_account_id(stoul(args.args, nullptr, 16));
       args.s->account_index->remove(account->account_id);
       account->is_temporary = true;
       account->delete_file();
-      return {"Account deleted"};
+      co_return deque<string>{"Account deleted"};
     });
 
 ShellCommand c_add_license(
@@ -512,8 +514,7 @@ ShellCommand c_add_license(
       add-license 385A92C4 DC 107862F9 d38XTu2p\n\
       add-license 385A92C4 GC 0418572923 282949185033 hunter2\n\
       add-license 385A92C4 BB user1 trustno1",
-    true,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
       auto tokens = phosg::split(args.args, ' ');
       if (tokens.size() < 3) {
         throw runtime_error("not enough arguments");
@@ -583,7 +584,7 @@ ShellCommand c_add_license(
       }
 
       account->save();
-      return {phosg::string_printf("Account %08" PRIX32 " updated", account->account_id)};
+      co_return deque<string>{format("Account {:08X} updated", account->account_id)};
     });
 ShellCommand c_delete_license(
     "delete-license", "delete-license ACCOUNT-ID TYPE PRIMARY-CREDENTIAL\n\
@@ -602,8 +603,7 @@ ShellCommand c_delete_license(
       delete-license 385A92C4 GC 0418572923\n\
       delete-license 385A92C4 XB 7E29A2950019EB20\n\
       delete-license 385A92C4 BB user1",
-    true,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
       auto tokens = phosg::split(args.args, ' ');
       if (tokens.size() != 3) {
         throw runtime_error("incorrect argument count");
@@ -629,21 +629,20 @@ ShellCommand c_delete_license(
       }
 
       account->save();
-      return {phosg::string_printf("Account %08" PRIX32 " updated", account->account_id)};
+      co_return deque<string>{format("Account {:08X} updated", account->account_id)};
     });
 
 ShellCommand c_lookup(
     "lookup", "lookup USER\n\
     Find the account for a logged-in user.",
-    true,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
       auto target = args.s->find_client(&args.args);
       if (target->login) {
-        return {phosg::string_printf("Found client %s with account ID %08" PRIX32,
-            target->channel.name.c_str(), target->login->account->account_id)};
+        co_return deque<string>{format("Found client {} with account ID {:08X}",
+            target->channel->name, target->login->account->account_id)};
       } else {
         // This should be impossible
-        throw std::logic_error("find_client found user who is not logged in");
+        throw logic_error("find_client found user who is not logged in");
       }
     });
 ShellCommand c_kick(
@@ -651,29 +650,26 @@ ShellCommand c_kick(
     Disconnect a user from the server. USER may be an account ID, player name,\n\
     or client ID (beginning with \"C-\"). This does not ban the user; they are\n\
     free to reconnect after doing this.",
-    true,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
       auto target = args.s->find_client(&args.args);
       send_message_box(target, "$C6You have been kicked off the server.");
-      args.s->game_server->disconnect_client(target);
-      return {phosg::string_printf("Client C-%" PRIX64 " disconnected from server", target->id)};
+      target->channel->disconnect();
+      co_return deque<string>{format("Client C-{:X} disconnected from server", target->id)};
     });
 
 ShellCommand c_announce(
     "announce", "announce MESSAGE\n\
     Send an announcement message to all players.",
-    true,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
       send_text_or_scrolling_message(args.s, args.args, args.args);
-      return {};
+      co_return deque<string>{};
     });
 ShellCommand c_announce_mail(
     "announce-mail", "announce-mail MESSAGE\n\
     Send an announcement message via Simple Mail to all players.",
-    true,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
       send_simple_mail(args.s, 0, args.s->name, args.args);
-      return {};
+      co_return deque<string>{};
     });
 
 ShellCommand c_create_tournament(
@@ -704,8 +700,7 @@ ShellCommand c_create_tournament(
       dialogue=ON/OFF: Enable/disable dialogue\n\
       dice-exchange=ATK/DEF/NONE: Set dice exchange mode\n\
       dice-boost=ON/OFF: Enable/disable dice boost",
-    true,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
       string name = get_quoted_string(args.args);
       string map_name = get_quoted_string(args.args);
       auto map = args.s->ep3_map_index->for_name(map_name);
@@ -725,7 +720,7 @@ ShellCommand c_create_tournament(
             flags |= Episode3::Tournament::Flag::SHUFFLE_ENTRIES;
           } else if (token == "resize") {
             flags |= Episode3::Tournament::Flag::RESIZE_ON_START;
-          } else if (phosg::starts_with(token, "dice=")) {
+          } else if (token.starts_with("dice=")) {
             auto parse_range_c = +[](const string& s) -> uint8_t {
               auto tokens = phosg::split(s, '-');
               if (tokens.size() != 2) {
@@ -768,7 +763,7 @@ ShellCommand c_create_tournament(
               rules.atk_dice_value_range_2v1 = 0;
               rules.def_dice_value_range_2v1 = 0;
             }
-          } else if (phosg::starts_with(token, "overall-time-limit=")) {
+          } else if (token.starts_with("overall-time-limit=")) {
             uint32_t limit = stoul(token.substr(19));
             if (limit > 600) {
               throw runtime_error("overall-time-limit must be 600 or fewer minutes");
@@ -777,9 +772,9 @@ ShellCommand c_create_tournament(
               throw runtime_error("overall-time-limit must be a multiple of 5 minutes");
             }
             rules.overall_time_limit = limit;
-          } else if (phosg::starts_with(token, "phase-time-limit=")) {
+          } else if (token.starts_with("phase-time-limit=")) {
             rules.phase_time_limit = stoul(token.substr(17));
-          } else if (phosg::starts_with(token, "hp=")) {
+          } else if (token.starts_with("hp=")) {
             rules.char_hp = stoul(token.substr(3));
           } else if (token == "allowed-cards=all") {
             rules.allowed_cards = Episode3::AllowedCards::ALL;
@@ -826,24 +821,23 @@ ShellCommand c_create_tournament(
           }
         }
       }
-      std::deque<std::string> ret;
+      deque<string> ret;
       if (rules.check_and_reset_invalid_fields()) {
         ret.emplace_back("Warning: Some rules were invalid and reset to defaults");
       }
       auto tourn = args.s->ep3_tournament_index->create_tournament(name, map, rules, num_teams, flags);
-      ret.emplace_back(phosg::string_printf("Created tournament \"%s\"", tourn->get_name().c_str()));
-      return ret;
+      ret.emplace_back(format("Created tournament \"{}\"", tourn->get_name()));
+      co_return ret;
     });
 
 ShellCommand c_delete_tournament(
     "delete-tournament", "delete-tournament TOURNAMENT-NAME\n\
     Delete a tournament. Quotes are required around the tournament name unless\n\
     the name contains no spaces.",
-    true,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
       string name = get_quoted_string(args.args);
       if (args.s->ep3_tournament_index->delete_tournament(name)) {
-        return {"Deleted tournament"};
+        co_return deque<string>{"Deleted tournament"};
       } else {
         throw runtime_error("tournament does not exist");
       }
@@ -851,28 +845,26 @@ ShellCommand c_delete_tournament(
 ShellCommand c_list_tournaments(
     "list-tournaments", "list-tournaments\n\
     List the names and numbers of all existing tournaments.",
-    true,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
-      std::deque<std::string> ret;
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+      deque<string> ret;
       for (const auto& it : args.s->ep3_tournament_index->all_tournaments()) {
         ret.emplace_back("  " + it.second->get_name());
       }
-      return ret;
+      co_return ret;
     });
 ShellCommand c_start_tournament(
     "start-tournament", "start-tournament TOURNAMENT-NAME\n\
     End registration for a tournament and allow matches to begin. Quotes are\n\
     required around the tournament name unless the name contains no spaces.",
-    true,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
       string name = get_quoted_string(args.args);
       auto tourn = args.s->ep3_tournament_index->get_tournament(name);
       if (tourn) {
         tourn->start();
         args.s->ep3_tournament_index->save();
         tourn->send_all_state_updates();
-        send_ep3_text_message_printf(args.s, "$C7The tournament\n$C6%s$C7\nhas begun", tourn->get_name().c_str());
-        return {"Tournament started"};
+        send_ep3_text_message_fmt(args.s, "$C7The tournament\n$C6{}$C7\nhas begun", tourn->get_name());
+        co_return deque<string>{"Tournament started"};
       } else {
         throw runtime_error("tournament does not exist");
       }
@@ -881,12 +873,11 @@ ShellCommand c_describe_tournament(
     "describe-tournament", "describe-tournament TOURNAMENT-NAME\n\
     Show the current state of a tournament. Quotes are required around the\n\
     tournament name unless the name contains no spaces.",
-    true,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
       string name = get_quoted_string(args.args);
       auto tourn = args.s->ep3_tournament_index->get_tournament(name);
       if (tourn) {
-        return {tourn->bracket_str()};
+        co_return deque<string>{tourn->bracket_str()};
       } else {
         throw runtime_error("tournament does not exist");
       }
@@ -902,126 +893,65 @@ ShellCommand c_cc(
     via this command are exempt from permission checks, so commands that\n\
     require cheat mode or debug mode are always available via cc even if the\n\
     player cannot normamlly use them.",
-    true,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
-      shared_ptr<ProxyServer::LinkedSession> ses;
-      try {
-        ses = get_proxy_session(args.s, args.session_name);
-      } catch (const exception&) {
-      }
-
-      if (ses.get()) {
-        on_chat_command(ses, args.args, false);
-      } else {
-        shared_ptr<Client> c;
-        if (args.session_name.empty()) {
-          c = args.s->game_server->get_client();
-        } else {
-          auto clients = args.s->game_server->get_clients_by_identifier(args.session_name);
-          if (clients.empty()) {
-            throw runtime_error("no such client");
-          }
-          if (clients.size() > 1) {
-            throw runtime_error("multiple clients found");
-          }
-          c = std::move(clients[0]);
-        }
-
-        if (c) {
-          on_chat_command(c, args.args, false);
-        } else {
-          throw runtime_error("no client available");
-        }
-      }
-      return {};
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+      auto c = args.get_client();
+      co_await on_chat_command(c, args.args, false);
+      co_return deque<string>{};
     });
 
-std::deque<std::string> f_sc_ss(ShellCommand::Args& args) {
+asio::awaitable<deque<string>> f_sc_ss(ShellCommand::Args& args) {
   string data = phosg::parse_data_string(args.args, nullptr, phosg::ParseDataFlags::ALLOW_FILES);
   if (data.size() == 0) {
     throw invalid_argument("no data given");
   }
   data.resize((data.size() + 3) & (~3));
 
-  shared_ptr<ProxyServer::LinkedSession> ses;
-  try {
-    ses = get_proxy_session(args.s, args.session_name);
-  } catch (const exception&) {
-  }
-
-  if (ses.get()) {
-    if (args.command[1] == 's') {
-      ses->server_channel.send(data);
-    } else {
-      ses->client_channel.send(data);
-    }
-
+  auto c = args.get_client();
+  if (args.command[1] == 's') {
+    co_await on_command_with_header(c, data);
   } else {
-    shared_ptr<Client> c;
-    if (args.session_name.empty()) {
-      c = args.s->game_server->get_client();
-    } else {
-      auto clients = args.s->game_server->get_clients_by_identifier(args.session_name);
-      if (clients.empty()) {
-        throw runtime_error("no such client");
-      }
-      if (clients.size() > 1) {
-        throw runtime_error("multiple clients found");
-      }
-      c = std::move(clients[0]);
-    }
-
-    if (c) {
-      if (args.command[1] == 's') {
-        on_command_with_header(c, data);
-      } else {
-        send_command_with_header(c->channel, data.data(), data.size());
-      }
-    } else {
-      throw runtime_error("no client available");
-    }
+    send_command_with_header(c->channel, data.data(), data.size());
   }
 
-  return {};
+  co_return deque<string>{};
 }
 
 ShellCommand c_sc("sc", "sc DATA\n\
-    Send a command to the client. This command also can be used to send data to\n\
-    a client on the game server.",
-    true, f_sc_ss);
+    Send a network command to the client.",
+    f_sc_ss);
 ShellCommand c_ss("ss", "ss DATA\n\
-    Send a command to the remote server.",
-    true, f_sc_ss);
+    Send a network command to the server.",
+    f_sc_ss);
 
 ShellCommand c_show_slots(
     "show-slots", "show-slots\n\
     Show the player names, Guild Card numbers, and client IDs of all players in\n\
     the current lobby or game.",
-    true,
-    +[](ShellCommand::Args& args) -> std::deque<std::string> {
-      std::deque<std::string> ret;
-      auto ses = get_proxy_session(args.s, args.session_name);
-      for (size_t z = 0; z < ses->lobby_players.size(); z++) {
-        const auto& player = ses->lobby_players[z];
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+      auto c = args.get_proxy_client();
+
+      deque<string> ret;
+      for (size_t z = 0; z < c->proxy_session->lobby_players.size(); z++) {
+        const auto& player = c->proxy_session->lobby_players[z];
         if (player.guild_card_number) {
-          ret.emplace_back(phosg::string_printf("  %zu: %" PRIu32 " => %s (%c, %s, %s)",
-              z, player.guild_card_number, player.name.c_str(),
+          ret.emplace_back(format("  {}: {} => {} ({}, {}, {})",
+              z, player.guild_card_number, player.name,
               char_for_language_code(player.language),
               name_for_char_class(player.char_class),
               name_for_section_id(player.section_id)));
         } else {
-          ret.emplace_back(phosg::string_printf("  %zu: (no player)", z));
+          ret.emplace_back(format("  {}: (no player)", z));
         }
       }
-      return ret;
+      co_return ret;
     });
 
-std::deque<std::string> fn_chat(ShellCommand::Args& args) {
-  auto ses = get_proxy_session(args.s, args.session_name);
+asio::awaitable<deque<string>> fn_chat(ShellCommand::Args& args) {
+  auto c = args.get_proxy_client();
   bool is_dchat = (args.command == "dchat");
 
-  if (!is_dchat && uses_utf16(ses->version())) {
-    send_chat_message_from_client(ses->server_channel, args.args, 0);
+  if (!is_dchat && uses_utf16(c->version())) {
+    send_chat_message_from_client(c->proxy_session->server_channel, args.args, 0);
   } else {
     string data(8, '\0');
     data.push_back('\x09');
@@ -1033,22 +963,22 @@ std::deque<std::string> fn_chat(ShellCommand::Args& args) {
       data.push_back('\0');
     }
     data.resize((data.size() + 3) & (~3));
-    ses->server_channel.send(0x06, 0x00, data);
+    c->proxy_session->server_channel->send(0x06, 0x00, data);
   }
 
-  return {};
+  co_return deque<string>{};
 }
-ShellCommand c_c("c", "c TEXT", true, fn_chat);
+ShellCommand c_c("c", "c TEXT", fn_chat);
 ShellCommand c_chat("chat", "chat TEXT\n\
     Send a chat message to the server.",
-    true, fn_chat);
+    fn_chat);
 ShellCommand c_dchat("dchat", "dchat DATA\n\
     Send a chat message to the server with arbitrary data in it.",
-    true, fn_chat);
+    fn_chat);
 
-std::deque<std::string> fn_wchat(ShellCommand::Args& args) {
-  auto ses = get_proxy_session(args.s, args.session_name);
-  if (!is_ep3(ses->version())) {
+asio::awaitable<deque<string>> fn_wchat(ShellCommand::Args& args) {
+  auto c = args.get_proxy_client();
+  if (!is_ep3(c->version())) {
     throw runtime_error("wchat can only be used on Episode 3");
   }
   string data(8, '\0');
@@ -1058,43 +988,42 @@ std::deque<std::string> fn_wchat(ShellCommand::Args& args) {
   data += args.args;
   data.push_back('\0');
   data.resize((data.size() + 3) & (~3));
-  ses->server_channel.send(0x06, 0x00, data);
-  return {};
+  c->proxy_session->server_channel->send(0x06, 0x00, data);
+  co_return deque<string>{};
 }
-ShellCommand c_wc("wc", "wc TEXT", true, fn_wchat);
+ShellCommand c_wc("wc", "wc TEXT", fn_wchat);
 ShellCommand c_wchat("wchat", "wchat TEXT\n\
     Send a chat message with private_flags on Episode 3.",
-    true, fn_wchat);
+    fn_wchat);
 
 ShellCommand c_marker(
     "marker", "marker COLOR-ID\n\
     Change your lobby marker color.",
-    true, +[](ShellCommand::Args& args) -> std::deque<std::string> {
-      auto ses = get_proxy_session(args.s, args.session_name);
-      ses->server_channel.send(0x89, stoul(args.args));
-      return {};
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+      auto c = args.get_proxy_client();
+      c->proxy_session->server_channel->send(0x89, stoul(args.args));
+      co_return deque<string>{};
     });
 
-std::deque<std::string> fn_warp(ShellCommand::Args& args) {
-  auto ses = get_proxy_session(args.s, args.session_name);
-
+asio::awaitable<deque<string>> fn_warp(ShellCommand::Args& args) {
+  auto c = args.get_proxy_client();
   uint8_t floor = stoul(args.args);
-  send_warp(ses->client_channel, ses->lobby_client_id, floor, true);
+  send_warp(c->channel, c->lobby_client_id, floor, true);
   if (args.command == "warpall") {
-    send_warp(ses->server_channel, ses->lobby_client_id, floor, false);
+    send_warp(c->proxy_session->server_channel, c->lobby_client_id, floor, false);
   }
-  return {};
+  co_return deque<string>{};
 }
-ShellCommand c_warp("warp", "warp FLOOR-ID", true, fn_warp);
+ShellCommand c_warp("warp", "warp FLOOR-ID", fn_warp);
 ShellCommand c_warpme("warpme", "warpme FLOOR-ID\n\
     Send yourself to a specific floor.",
-    true, fn_warp);
+    fn_warp);
 ShellCommand c_warpall("warpall", "warpall FLOOR-ID\n\
     Send everyone to a specific floor.",
-    true, fn_warp);
+    fn_warp);
 
-std::deque<std::string> fn_info_board(ShellCommand::Args& args) {
-  auto ses = get_proxy_session(args.s, args.session_name);
+asio::awaitable<deque<string>> fn_info_board(ShellCommand::Args& args) {
+  auto c = args.get_proxy_client();
 
   string data;
   if (args.command == "info-board-data") {
@@ -1105,83 +1034,53 @@ std::deque<std::string> fn_info_board(ShellCommand::Args& args) {
   data.push_back('\0');
   data.resize((data.size() + 3) & (~3));
 
-  ses->server_channel.send(0xD9, 0x00, data);
-  return {};
+  c->proxy_session->server_channel->send(0xD9, 0x00, data);
+  co_return deque<string>{};
 }
 ShellCommand c_info_board("info-board", "info-board TEXT\n\
     Set your info board contents. This will affect the current session only,\n\
     and will not be saved for future sessions.",
-    true, fn_info_board);
+    fn_info_board);
 ShellCommand c_info_board_data("info-board-data", "info-board-data DATA\n\
     Set your info board contents with arbitrary data. Like the above, affects\n\
     the current session only.",
-    true, fn_info_board);
+    fn_info_board);
 
-ShellCommand c_set_challenge_rank_title(
-    "set-challenge-rank-title", "set-challenge-rank-title TEXT\n\
-    Set the player\'s override Challenge rank text.",
-    true, +[](ShellCommand::Args& args) -> std::deque<std::string> {
-      auto ses = get_proxy_session(args.s, args.session_name);
-      ses->challenge_rank_title_override = args.args;
-      return {};
-    });
-ShellCommand c_set_challenge_rank_color(
-    "set-challenge-rank-color", "set-challenge-rank-color RRGGBBAA\n\
-    Set the player\'s override Challenge rank color.",
-    true, +[](ShellCommand::Args& args) -> std::deque<std::string> {
-      auto ses = get_proxy_session(args.s, args.session_name);
-      ses->challenge_rank_color_override = stoul(args.args, nullptr, 16);
-      return {};
-    });
-
-std::deque<std::string> fn_create_item(ShellCommand::Args& args) {
-  auto ses = get_proxy_session(args.s, args.session_name);
-
-  if (ses->version() == Version::BB_V4) {
-    throw runtime_error("proxy session is BB");
-  }
-  if (!ses->is_in_game) {
-    throw runtime_error("proxy session is not in a game");
-  }
-  if (ses->lobby_client_id != ses->leader_client_id) {
-    throw runtime_error("proxy session is not game leader");
-  }
-
-  auto s = ses->require_server_state();
-  ItemData item = s->parse_item_description(ses->version(), args.args);
-  item.id = phosg::random_object<uint32_t>() | 0x80000000;
-
-  if (args.command == "set-next-item") {
-    ses->next_drop_item = item;
-
-    string name = s->describe_item(ses->version(), ses->next_drop_item, true);
-    send_text_message(ses->client_channel, "$C7Next drop:\n" + name);
-
-  } else {
-    send_drop_stacked_item_to_channel(s, ses->client_channel, item, ses->floor, ses->pos);
-    send_drop_stacked_item_to_channel(s, ses->server_channel, item, ses->floor, ses->pos);
-
-    string name = s->describe_item(ses->version(), ses->next_drop_item, true);
-    send_text_message(ses->client_channel, "$C7Item created:\n" + name);
-  }
-
-  return {};
-}
-ShellCommand c_create_item("create-item", "create-item DATA\n\
+ShellCommand c_create_item(
+    "create-item", "create-item DATA\n\
     Create an item as if the client had run the $item command.",
-    true, fn_create_item);
-ShellCommand c_set_next_item("set-next-item", "set-next-item DATA\n\
-    Set the next item to be dropped.",
-    true, fn_create_item);
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+      auto c = args.get_proxy_client();
 
-ShellCommand c_close_idle_sessions(
-    "close-idle-sessions", "close-idle-sessions\n\
-    Close all proxy sessions that don\'t have a client and server connected.",
-    true, +[](ShellCommand::Args& args) -> std::deque<std::string> {
-      if (args.s->proxy_server) {
-        size_t count = args.s->proxy_server->delete_disconnected_sessions();
-        return {phosg::string_printf("%zu sessions closed\n", count)};
-      } else {
-        throw runtime_error("the proxy server is disabled");
+      if (c->version() == Version::BB_V4) {
+        throw runtime_error("proxy session is BB");
       }
+      if (!c->proxy_session->is_in_game) {
+        throw runtime_error("proxy session is not in a game");
+      }
+      if (c->lobby_client_id != c->proxy_session->leader_client_id) {
+        throw runtime_error("proxy session is not game leader");
+      }
+
+      ItemData item = args.s->parse_item_description(c->version(), args.args);
+      item.id = phosg::random_object<uint32_t>() | 0x80000000;
+
+      send_drop_stacked_item_to_channel(args.s, c->channel, item, c->floor, c->pos);
+      send_drop_stacked_item_to_channel(args.s, c->proxy_session->server_channel, item, c->floor, c->pos);
+
+      string name = args.s->describe_item(c->version(), item, true);
+      send_text_message(c->channel, "$C7Item created:\n" + name);
+      co_return deque<string>{};
+    });
+
+ShellCommand c_replay_log(
+    "replay-log", nullptr,
+    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+      if (args.s->allow_saving_accounts) {
+        throw runtime_error("Replays cannot be run when account saving is enabled");
+      }
+      auto log_f = phosg::fopen_shared(args.args, "rt");
+      auto replay_session = make_shared<ReplaySession>(args.s, log_f.get(), true);
+      co_await replay_session->run();
+      co_return deque<string>{};
     });

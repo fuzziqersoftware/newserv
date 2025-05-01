@@ -1,5 +1,6 @@
 #include "TeamIndex.hh"
 
+#include <filesystem>
 #include <phosg/Filesystem.hh>
 #include <phosg/Image.hh>
 #include <phosg/Random.hh>
@@ -47,11 +48,11 @@ TeamIndex::Team::Team(uint32_t team_id) : Team() {
 }
 
 string TeamIndex::Team::json_filename() const {
-  return phosg::string_printf("system/teams/%08" PRIX32 ".json", this->team_id);
+  return std::format("system/teams/{:08X}.json", this->team_id);
 }
 
 string TeamIndex::Team::flag_filename() const {
-  return phosg::string_printf("system/teams/%08" PRIX32 ".bmp", this->team_id);
+  return std::format("system/teams/{:08X}.bmp", this->team_id);
 }
 
 void TeamIndex::Team::load_config() {
@@ -242,16 +243,17 @@ TeamIndex::TeamIndex(const string& directory, const phosg::JSON& reward_defs_jso
     this->reward_defs.emplace_back(reward_menu_item_id++, *it);
   }
 
-  if (!phosg::isdir(this->directory)) {
-    mkdir(this->directory.c_str(), 0755);
+  if (!std::filesystem::is_directory(this->directory)) {
+    std::filesystem::create_directories(this->directory.c_str());
     return;
   }
-  for (const auto& filename : phosg::list_directory(this->directory)) {
+  for (const auto& item : std::filesystem::directory_iterator(this->directory)) {
+    string filename = item.path().filename().string();
     string file_path = this->directory + "/" + filename;
     if (filename == "base.json") {
       auto json = phosg::JSON::parse(phosg::load_file(file_path));
       this->next_team_id = json.get_int("NextTeamID");
-    } else if (phosg::ends_with(filename, ".json")) {
+    } else if (filename.ends_with(".json")) {
       try {
         uint32_t team_id = stoul(filename.substr(0, filename.size() - 5), nullptr, 16);
         auto team = make_shared<Team>(team_id);
@@ -259,12 +261,12 @@ TeamIndex::TeamIndex(const string& directory, const phosg::JSON& reward_defs_jso
         try {
           team->load_flag();
         } catch (const exception& e) {
-          static_game_data_log.warning("Failed to load flag for team %08" PRIX32 ": %s", team_id, e.what());
+          static_game_data_log.warning_f("Failed to load flag for team {:08X}: {}", team_id, e.what());
         }
         this->add_to_indexes(team);
-        static_game_data_log.info("Indexed team %08" PRIX32 " (%s) (%zu members)", team_id, team->name.c_str(), team->num_members());
+        static_game_data_log.info_f("Indexed team {:08X} ({}) ({} members)", team_id, team->name, team->num_members());
       } catch (const exception& e) {
-        static_game_data_log.warning("Failed to index team from %s: %s", filename.c_str(), e.what());
+        static_game_data_log.warning_f("Failed to index team from {}: {}", filename, e.what());
       }
     }
   }
@@ -463,7 +465,7 @@ void TeamIndex::add_to_indexes(shared_ptr<Team> team) {
   }
   for (const auto& it : team->members) {
     if (!this->account_id_to_team.emplace(it.second.account_id, team).second) {
-      static_game_data_log.warning("Serial number %08" PRIX32 " (%010" PRIu32 ") exists in multiple teams",
+      static_game_data_log.warning_f("Serial number {:08X} ({:010}) exists in multiple teams",
           it.second.account_id, it.second.account_id);
     }
   }

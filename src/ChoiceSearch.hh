@@ -31,12 +31,12 @@ struct ChoiceSearchConfigT {
 
   operator ChoiceSearchConfigT<!BE>() const {
     ChoiceSearchConfigT<!BE> ret;
-    ret.disabled = this->disabled.load();
+    ret.disabled = this->disabled;
     for (size_t z = 0; z < this->entries.size(); z++) {
       auto& ret_e = ret.entries[z];
       const auto& this_e = this->entries[z];
-      ret_e.parent_choice_id = this_e.parent_choice_id.load();
-      ret_e.choice_id = this_e.choice_id.load();
+      ret_e.parent_choice_id = this_e.parent_choice_id;
+      ret_e.choice_id = this_e.choice_id;
     }
     return ret;
   }

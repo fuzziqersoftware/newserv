@@ -9,14 +9,11 @@
 #include "PSOProtocol.hh"
 #include "ServerState.hh"
 
-void on_subcommand_multi(std::shared_ptr<Client> c, uint8_t command, uint8_t flag, std::string& data);
+uint8_t translate_subcommand_number(Version to_version, Version from_version, uint8_t subcommand);
 
-void send_item_notification_if_needed(
-    std::shared_ptr<ServerState> s,
-    Channel& ch,
-    const Client::Config& config,
-    const ItemData& item,
-    bool is_from_rare_table);
+asio::awaitable<void> on_subcommand_multi(std::shared_ptr<Client> c, Channel::Message& msg);
+
+void send_item_notification_if_needed(std::shared_ptr<Client> c, const ItemData& item, bool is_from_rare_table);
 
 G_SpecializableItemDropRequest_6xA2 normalize_drop_request(const void* data, size_t size);
 
@@ -29,12 +26,10 @@ struct DropReconcileResult {
 };
 
 DropReconcileResult reconcile_drop_request_with_map(
-    phosg::PrefixedLogger& log,
-    Channel& client_channel,
+    std::shared_ptr<Client> c,
     G_SpecializableItemDropRequest_6xA2& cmd,
     Episode episode,
     uint8_t event,
-    const Client::Config& config,
     std::shared_ptr<MapState> map,
     bool mark_drop);
 

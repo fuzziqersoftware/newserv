@@ -23,12 +23,12 @@ ItemTranslationTable::ItemTranslationTable(
       if (is_canonical(id)) {
         has_any_canonical_id = true;
         if (!this->entry_index_for_version[v_s].emplace(id, z).second) {
-          throw runtime_error(phosg::string_printf("(row %zu) duplicate canonical ID %08" PRIX32, z, id));
+          throw runtime_error(std::format("(row {}) duplicate canonical ID {:08X}", z, id));
         }
       }
     }
     if (!has_any_canonical_id) {
-      throw runtime_error(phosg::string_printf("(row %zu) no canonical ID present in row", z));
+      throw runtime_error(std::format("(row {}) no canonical ID present in row", z));
     }
   }
 
@@ -46,25 +46,25 @@ ItemTranslationTable::ItemTranslationTable(
       uint32_t e_id = this->entries[z].id_for_version[v_s];
       if (is_canonical(e_id)) {
         if (!entry_index.count(e_id)) {
-          throw logic_error(phosg::string_printf("(row %zu version %s) canonical ID %" PRIX32 " is missing from the index", z, phosg::name_for_enum(v), e_id));
+          throw logic_error(std::format("(row {} version {}) canonical ID {:X} is missing from the index", z, phosg::name_for_enum(v), e_id));
         }
         try {
           item_parameter_table->definition_for_primary_identifier(e_id);
         } catch (const out_of_range&) {
-          throw runtime_error(phosg::string_printf("(row %zu version %s) ID %" PRIX32 " not defined in item parameter table", z, phosg::name_for_enum(v), e_id));
+          throw runtime_error(std::format("(row {} version {}) ID {:X} not defined in item parameter table", z, phosg::name_for_enum(v), e_id));
         }
         if (!remaining_identifiers.erase(e_id)) {
-          throw runtime_error(phosg::string_printf("(row %zu version %s) ID %" PRIX32 " not in item parameter table's primary identifier list", z, phosg::name_for_enum(v), e_id));
+          throw runtime_error(std::format("(row {} version {}) ID {:X} not in item parameter table's primary identifier list", z, phosg::name_for_enum(v), e_id));
         }
       } else if (!entry_index.count(make_canonical(e_id))) {
-        throw runtime_error(phosg::string_printf("(row %zu version %s) ID %" PRIX32 " refers to nonexistent canonical ID", z, phosg::name_for_enum(v), e_id));
+        throw runtime_error(std::format("(row {} version {}) ID {:X} refers to nonexistent canonical ID", z, phosg::name_for_enum(v), e_id));
       }
     }
 
     if (!remaining_identifiers.empty()) {
-      string missing_str = phosg::string_printf("(version %s) not all identifiers in the item parameter table are defined in the translation table; missing:", phosg::name_for_enum(v));
+      string missing_str = std::format("(version {}) not all identifiers in the item parameter table are defined in the translation table; missing:", phosg::name_for_enum(v));
       for (uint32_t id : remaining_identifiers) {
-        missing_str += phosg::string_printf(" %08" PRIX32, id);
+        missing_str += std::format(" {:08X}", id);
       }
       throw runtime_error(missing_str);
     }

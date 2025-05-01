@@ -156,7 +156,6 @@ struct FrameInfo {
   size_t payload_size = 0;
 
   FrameInfo() = default;
-  FrameInfo(LinkType link_type, const std::string& data);
   FrameInfo(LinkType link_type, const void* data, size_t size);
 
   std::string header_str() const;

@@ -18,14 +18,14 @@ std::shared_ptr<Lobby> create_game_generic(
     std::shared_ptr<Lobby> watched_lobby = nullptr,
     std::shared_ptr<Episode3::BattleRecordPlayer> battle_player = nullptr);
 void set_lobby_quest(std::shared_ptr<Lobby> l, std::shared_ptr<const Quest> q, bool substitute_v3_for_ep3 = false);
+asio::awaitable<void> start_login_server_procedure(std::shared_ptr<Client> c);
 
-void on_connect(std::shared_ptr<Client> c);
-void on_disconnect(std::shared_ptr<Client> c);
-void on_login_complete(std::shared_ptr<Client> c);
+asio::awaitable<void> start_proxy_session(
+    std::shared_ptr<Client> c, const std::string& host, uint16_t port, bool use_persistent_config);
+asio::awaitable<void> end_proxy_session(std::shared_ptr<Client> c, const std::string& error_message = "");
 
-void on_command(std::shared_ptr<Client> c, uint16_t command, uint32_t flag, std::string& data);
-void on_command_with_header(std::shared_ptr<Client> c, const std::string& data);
+asio::awaitable<void> on_connect(std::shared_ptr<Client> c);
+asio::awaitable<void> on_disconnect(std::shared_ptr<Client> c);
 
-void send_client_to_login_server(std::shared_ptr<Client> c);
-void send_client_to_lobby_server(std::shared_ptr<Client> c);
-void send_client_to_proxy_server(std::shared_ptr<Client> c);
+asio::awaitable<void> on_command(std::shared_ptr<Client> c, std::unique_ptr<Channel::Message> msg);
+asio::awaitable<void> on_command_with_header(std::shared_ptr<Client> c, const std::string& data);

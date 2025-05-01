@@ -719,3 +719,6 @@ Show extended item info when targeting a dropped item
         04005188 38210020
         0400518C 7C0803A6
         04005190 4E800020
+
+All weapons can do 3-hit combos
+3OE1 => 041D3248 38000001

@@ -1,10 +1,9 @@
 #pragma once
 
+#include <asio.hpp>
 #include <memory>
 #include <string>
 #include <thread>
-
-#include <event2/event.h>
 
 #include "ServerState.hh"
 
@@ -20,9 +19,7 @@ public:
 protected:
   phosg::PrefixedLogger log;
   std::shared_ptr<ServerState> state;
-  std::unique_ptr<struct event, void (*)(struct event*)> sigusr1_event;
-  std::unique_ptr<struct event, void (*)(struct event*)> sigusr2_event;
+  asio::signal_set signals;
 
-  static void dispatch_on_signal(evutil_socket_t, short, void* ctx);
-  void on_signal(int signum);
+  asio::awaitable<void> signal_handler_task();
 };

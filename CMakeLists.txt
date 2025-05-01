@@ -19,18 +19,14 @@ endif()
 
 # Library search
 
-find_path     (LIBEVENT_INCLUDE_DIR NAMES event.h)
-find_library  (LIBEVENT_LIBRARY     NAMES event)
-find_library  (LIBEVENT_CORE        NAMES event_core)
-find_library  (LIBEVENT_PTHREADS    NAMES event_pthreads)
-set (LIBEVENT_INCLUDE_DIRS ${LIBEVENT_INCLUDE_DIR})
-set (LIBEVENT_LIBRARIES
-        ${LIBEVENT_LIBRARY}
-        ${LIBEVENT_CORE}
-        ${LIBEVENT_PTHREADS})
-
+find_path(ASIO_INCLUDE_DIR NAMES asio.hpp HINTS "${WINDOWS_ENV}/include" REQUIRED)
+if(WIN32)
+    find_path(Iconv_INCLUDE_DIRS NAMES iconv.h HINTS "${WINDOWS_ENV}/include" REQUIRED)
+    find_library(Iconv_LIBRARIES NAMES iconv HINTS "${WINDOWS_ENV}/lib" REQUIRED)
+else()
+    find_package(Iconv REQUIRED)
+endif()
 find_package(phosg REQUIRED)
-find_package(Iconv REQUIRED)
 find_package(resource_file REQUIRED)
 
 
@@ -54,10 +50,12 @@ add_custom_target(
 set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/Revision.cc
     src/Account.cc
+    src/AddressTranslator.cc
     src/AFSArchive.cc
+    src/AsyncHTTPServer.cc
+    src/AsyncUtils.cc
     src/BattleParamsIndex.cc
     src/BMLArchive.cc
-    src/CatSession.cc
     src/Channel.cc
     src/ChatCommands.cc
     src/ChoiceSearch.cc
@@ -80,9 +78,9 @@ set(SOURCES
     src/Episode3/RulerServer.cc
     src/Episode3/Server.cc
     src/Episode3/Tournament.cc
-    src/EventUtils.cc
     src/FileContentsCache.cc
     src/FunctionCompiler.cc
+    src/GameServer.cc
     src/GSLArchive.cc
     src/HTTPServer.cc
     src/ImageEncoder.cc
@@ -94,8 +92,8 @@ set(SOURCES
     src/ItemData.cc
     src/ItemNameIndex.cc
     src/ItemParameterTable.cc
-    src/ItemTranslationTable.cc
     src/Items.cc
+    src/ItemTranslationTable.cc
     src/LevelTable.cc
     src/Lobby.cc
     src/Loggers.cc
@@ -104,12 +102,11 @@ set(SOURCES
     src/Menu.cc
     src/NetworkAddresses.cc
     src/PatchFileIndex.cc
-    src/PatchServer.cc
     src/PlayerFilesManager.cc
     src/PlayerSubordinates.cc
     src/PPKArchive.cc
     src/ProxyCommands.cc
-    src/ProxyServer.cc
+    src/ProxySession.cc
     src/PSOEncryption.cc
     src/PSOGCObjectGraph.cc
     src/PSOProtocol.cc
@@ -119,10 +116,8 @@ set(SOURCES
     src/ReceiveCommands.cc
     src/ReceiveSubcommands.cc
     src/ReplaySession.cc
-    src/Revision.cc
     src/SaveFileFormats.cc
     src/SendCommands.cc
-    src/Server.cc
     src/ServerShell.cc
     src/ServerState.cc
     src/ShellCommands.cc
@@ -135,13 +130,13 @@ set(SOURCES
     src/WordSelectTable.cc
 )
 
-if(resource_file_FOUND)
-    set(SOURCES ${SOURCES} src/AddressTranslator.cc)
-endif()
-
 add_executable(newserv ${SOURCES})
-target_include_directories(newserv PUBLIC ${LIBEVENT_INCLUDE_DIR} ${Iconv_INCLUDE_DIRS})
-target_link_libraries(newserv phosg::phosg ${LIBEVENT_LIBRARIES} ${Iconv_LIBRARIES} pthread resource_file::resource_file)
+target_include_directories(newserv PUBLIC ${ASIO_INCLUDE_DIR} ${Iconv_INCLUDE_DIRS})
+target_link_libraries(newserv phosg::phosg ${Iconv_LIBRARIES} pthread resource_file::resource_file)
+if (WIN32)
+    target_compile_definitions(newserv PUBLIC -DWINVER=0x0A00 -D_WIN32_WINNT=0x0A00)
+    target_link_libraries(newserv ws2_32 mswsock bcrypt iphlpapi -static -static-libgcc -static-libstdc++)
+endif()
 add_dependencies(newserv newserv-Revision-cc)
 
 # target_compile_options(newserv PRIVATE -fsanitize=address)
@@ -162,15 +157,6 @@ foreach(LogTestCase IN ITEMS ${LogTestCases})
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMAND ${CMAKE_BINARY_DIR}/newserv --replay-log=${LogTestCase} --config=${CMAKE_SOURCE_DIR}/tests/config.json)
 endforeach()
-
-if(resource_file_FOUND)
-    foreach(LogRDTestCase IN ITEMS ${LogRDTestCases})
-        add_test(
-            NAME ${LogRDTestCase}
-            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            COMMAND ${CMAKE_BINARY_DIR}/newserv --replay-log=${LogRDTestCase} --config=${CMAKE_SOURCE_DIR}/tests/config.json)
-    endforeach()
-endif()
 
 file(GLOB ScriptTestCases ${CMAKE_SOURCE_DIR}/tests/*.test.sh)
 

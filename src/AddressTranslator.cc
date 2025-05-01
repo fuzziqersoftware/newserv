@@ -1,6 +1,7 @@
 #include "AddressTranslator.hh"
 
 #include <array>
+#include <filesystem>
 #include <future>
 #include <phosg/Filesystem.hh>
 #include <phosg/Strings.hh>
@@ -113,42 +114,43 @@ public:
   AddressTranslator(const string& directory)
       : log("[addr-trans] "),
         directory(directory) {
-    while (phosg::ends_with(this->directory, "/")) {
+    while (this->directory.ends_with("/")) {
       this->directory.pop_back();
     }
-    for (const auto& filename : phosg::list_directory(this->directory)) {
+    for (const auto& item : std::filesystem::directory_iterator(this->directory)) {
+      string filename = item.path().filename().string();
       if (filename.size() < 4) {
         continue;
       }
       string name = filename.substr(0, filename.size() - 4);
       string path = directory + "/" + filename;
 
-      if (phosg::ends_with(filename, ".dol")) {
+      if (filename.ends_with(".dol")) {
         ResourceDASM::DOLFile dol(path.c_str());
         auto mem = make_shared<ResourceDASM::MemoryContext>();
         dol.load_into(mem);
         this->mems.emplace(name, mem);
         this->ppc_mems.emplace(mem);
-        this->log.info("Loaded %s", name.c_str());
-      } else if (phosg::ends_with(filename, ".xbe")) {
+        this->log.info_f("Loaded {}", name);
+      } else if (filename.ends_with(".xbe")) {
         ResourceDASM::XBEFile xbe(path.c_str());
         auto mem = make_shared<ResourceDASM::MemoryContext>();
         xbe.load_into(mem);
         this->mems.emplace(name, mem);
-        this->log.info("Loaded %s", name.c_str());
-      } else if (phosg::ends_with(filename, ".exe")) {
+        this->log.info_f("Loaded {}", name);
+      } else if (filename.ends_with(".exe")) {
         ResourceDASM::PEFile pe(path.c_str());
         auto mem = make_shared<ResourceDASM::MemoryContext>();
         pe.load_into(mem);
         this->mems.emplace(name, mem);
-        this->log.info("Loaded %s", name.c_str());
-      } else if (phosg::ends_with(filename, ".bin")) {
+        this->log.info_f("Loaded {}", name);
+      } else if (filename.ends_with(".bin")) {
         string data = phosg::load_file(path);
         auto mem = make_shared<ResourceDASM::MemoryContext>();
         mem->allocate_at(0x8C010000, data.size());
         mem->memcpy(0x8C010000, data.data(), data.size());
         this->mems.emplace(name, mem);
-        this->log.info("Loaded %s", name.c_str());
+        this->log.info_f("Loaded {}", name);
       }
     }
   }
@@ -202,14 +204,14 @@ public:
         }
       }
       if (r2_low_found && r2_high_found) {
-        fprintf(stderr, "(%s) r2 = %08" PRIX32 "\n", it.first.c_str(), r2);
+        phosg::fwrite_fmt(stderr, "({}) r2 = {:08X}\n", it.first, r2);
       } else {
-        fprintf(stderr, "(%s) r2 = __MISSING__\n", it.first.c_str());
+        phosg::fwrite_fmt(stderr, "({}) r2 = __MISSING__\n", it.first);
       }
       if (r13_low_found && r13_high_found) {
-        fprintf(stderr, "(%s) r13 = %08" PRIX32 "\n", it.first.c_str(), r13);
+        phosg::fwrite_fmt(stderr, "({}) r13 = {:08X}\n", it.first, r13);
       } else {
-        fprintf(stderr, "(%s) r13 = __MISSING__\n", it.first.c_str());
+        phosg::fwrite_fmt(stderr, "({}) r13 = __MISSING__\n", it.first);
       }
     }
   }
@@ -357,16 +359,16 @@ public:
     }
 
     for (const auto& [type, constructor_to_area_ranges] : table) {
-      fprintf(stdout, "%04" PRIX32 " =>", type);
+      phosg::fwrite_fmt(stdout, "{:04X} =>", type);
       for (const auto& [constructor, area_ranges] : constructor_to_area_ranges) {
-        fprintf(stdout, " %08" PRIX32, constructor);
+        phosg::fwrite_fmt(stdout, " {:08X}", constructor);
         bool is_first = true;
         for (const auto& [start, end] : area_ranges) {
           fputc(is_first ? ':' : ',', stdout);
           if (start == end) {
-            fprintf(stdout, "%02zX", start);
+            phosg::fwrite_fmt(stdout, "{:02X}", start);
           } else {
-            fprintf(stdout, "%02zX-%02zX", start, end);
+            phosg::fwrite_fmt(stdout, "{:02X}-{:02X}", start, end);
           }
           is_first = false;
         }
@@ -403,17 +405,17 @@ public:
           if (!cell_data.empty()) {
             cell_data.push_back(' ');
           }
-          cell_data += phosg::string_printf("%08" PRIX32, constructor);
+          cell_data += std::format("{:08X}", constructor);
           if (print_area_masks) {
-            cell_data += phosg::string_printf(":%016" PRIX64, this->area_mask_for_ranges(area_ranges));
+            cell_data += std::format(":{:016X}", this->area_mask_for_ranges(area_ranges));
           } else {
             bool is_first = true;
             for (const auto& [start, end] : area_ranges) {
               cell_data.push_back(is_first ? ':' : ',');
               if (start == end) {
-                cell_data += phosg::string_printf("%02zX", start);
+                cell_data += std::format("{:02X}", start);
               } else {
-                cell_data += phosg::string_printf("%02zX-%02zX", start, end);
+                cell_data += std::format("{:02X}-{:02X}", start, end);
               }
               is_first = false;
             }
@@ -438,7 +440,7 @@ public:
     header_line += " NAME";
 
     for (const auto& [type, formatted_cells] : formatted_cells_for_type) {
-      string line = phosg::string_printf("%04" PRIX32 " =>", type);
+      string line = std::format("{:04X} =>", type);
       for (const auto& spec : specs) {
         size_t width = version_widths.at(spec.src_name);
         try {
@@ -465,7 +467,7 @@ public:
 
     for (auto& line : formatted_lines) {
       phosg::strip_trailing_whitespace(line);
-      fprintf(stdout, "%s\n", line.c_str());
+      phosg::fwrite_fmt(stdout, "{}\n", line);
     }
   }
 
@@ -500,7 +502,7 @@ public:
     size_t src_offset = src_addr - src_section.first;
     size_t src_bytes_available_before = src_offset;
     size_t src_bytes_available_after = src_section.second - src_offset - 4;
-    this->log.info("(find_match/%s) Source offset = %08zX with %zX/%zX bytes available before/after",
+    this->log.info_f("(find_match/{}) Source offset = {:08X} with {:X}/{:X} bytes available before/after",
         method_token, src_offset, src_bytes_available_before, src_bytes_available_after);
 
     size_t match_bytes_before = 0;
@@ -570,7 +572,7 @@ public:
           }
         }
       }
-      this->log.info("(find_match/%s) For match length %zX, %zu matches found", method_token, match_length, num_matches);
+      this->log.info_f("(find_match/{}) For match length {:X}, {} matches found", method_token, match_length, num_matches);
       if (num_matches == 1) {
         return last_match_address;
       } else if (num_matches == 0) {
@@ -641,7 +643,7 @@ public:
     map<string, uint32_t> results;
     for (const auto& it : this->mems) {
       if (it.second == this->src_mem) {
-        log.info("(%s) %08" PRIX32 " (from source)", it.first.c_str(), src_addr);
+        log.info_f("({}) {:08X} (from source)", it.first, src_addr);
         results.emplace(it.first, src_addr);
 
       } else {
@@ -673,24 +675,24 @@ public:
           const char* method_name = this->name_for_expand_method(methods[z]);
           try {
             uint32_t ret = futures[z].get();
-            log.info("(%s) (%s) %08" PRIX32, it.first.c_str(), method_name, ret);
+            log.info_f("({}) ({}) {:08X}", it.first, method_name, ret);
             match_addrs.emplace(ret);
           } catch (const exception& e) {
-            log.error("(%s) (%s) failed: %s", it.first.c_str(), method_name, e.what());
+            log.error_f("({}) ({}) failed: {}", it.first, method_name, e.what());
           }
         }
 
         if (match_addrs.empty()) {
-          log.error("(%s) no match found", it.first.c_str());
+          log.error_f("({}) no match found", it.first);
         } else if (match_addrs.size() > 1) {
-          log.error("(%s) different matches found by different methods", it.first.c_str());
+          log.error_f("({}) different matches found by different methods", it.first);
         } else {
           results.emplace(it.first, *match_addrs.begin());
         }
       }
     }
     for (const auto& it : results) {
-      fprintf(stdout, "%s => %08" PRIX32 "\n", it.first.c_str(), it.second);
+      phosg::fwrite_fmt(stdout, "{} => {:08X}\n", it.first, it.second);
     }
   }
 
@@ -749,7 +751,7 @@ public:
           }
         }
       }
-      this->log.info("... For match length %zX, %zu matches found", match_length, num_matches);
+      this->log.info_f("... For match length {:X}, {} matches found", match_length, num_matches);
       if (num_matches == 1) {
         return last_match_address;
       } else if (num_matches == 0) {
@@ -778,27 +780,27 @@ public:
     map<string, uint32_t> results;
     for (const auto& it : this->mems) {
       if (it.second == this->src_mem) {
-        log.info("(%s) %08" PRIX32 " (from source)", it.first.c_str(), src_addr);
+        log.info_f("({}) {:08X} (from source)", it.first, src_addr);
         results.emplace(it.first, src_addr);
 
       } else {
         uint32_t ret = 0;
         try {
           ret = this->find_be_to_le_data_match(it.second, src_addr, src_size);
-          log.info("(%s) %08" PRIX32, it.first.c_str(), ret);
+          log.info_f("({}) {:08X}", it.first, ret);
         } catch (const exception& e) {
-          log.error("(%s) failed: %s", it.first.c_str(), e.what());
+          log.error_f("({}) failed: {}", it.first, e.what());
         }
 
         if (ret == 0) {
-          log.error("(%s) no match found", it.first.c_str());
+          log.error_f("({}) no match found", it.first);
         } else {
           results.emplace(it.first, ret);
         }
       }
     }
     for (const auto& it : results) {
-      fprintf(stdout, "%s => %08" PRIX32 "\n", it.first.c_str(), it.second);
+      phosg::fwrite_fmt(stdout, "{} => {:08X}\n", it.first, it.second);
     }
   }
 
@@ -808,7 +810,7 @@ public:
         uint32_t last_addr = sec_addr + sec_size - data.size();
         for (uint32_t addr = sec_addr; addr < last_addr; addr++) {
           if (!mem->memcmp(addr, data.data(), data.size())) {
-            fprintf(stderr, "%s => %08" PRIX32 "\n", name.c_str(), addr);
+            phosg::fwrite_fmt(stderr, "{} => {:08X}\n", name, addr);
           }
         }
       }
@@ -849,9 +851,9 @@ public:
   void run_shell() {
     while (!feof(stdin)) {
       if (!this->src_filename.empty()) {
-        fprintf(stdout, "addr-trans:%s/%s> ", this->directory.c_str(), this->src_filename.c_str());
+        phosg::fwrite_fmt(stdout, "addr-trans:{}/{}> ", this->directory, this->src_filename);
       } else {
-        fprintf(stdout, "addr-trans:%s> ", this->directory.c_str());
+        phosg::fwrite_fmt(stdout, "addr-trans:{}> ", this->directory);
       }
       fflush(stdout);
 
@@ -859,7 +861,7 @@ public:
       try {
         this->handle_command(command);
       } catch (const exception& e) {
-        this->log.error("Failed: %s", e.what());
+        this->log.error_f("Failed: {}", e.what());
       }
     }
     fputc('\n', stdout);

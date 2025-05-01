@@ -164,7 +164,7 @@ EnemyType phosg::enum_for_name<EnemyType>(const char* name) {
   if (index.empty()) {
     for (const auto& def : type_defs) {
       if (!index.emplace(def.enum_name, def.type).second) {
-        throw logic_error(phosg::string_printf("duplicate enemy enum name: %s", def.enum_name));
+        throw logic_error(std::format("duplicate enemy enum name: {}", def.enum_name));
       }
     }
   }

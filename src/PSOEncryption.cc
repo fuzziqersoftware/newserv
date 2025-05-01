@@ -13,100 +13,65 @@ using namespace std;
 
 // TODO: fix style in this file, especially in psobb functions
 
+RandomGenerator::RandomGenerator(uint32_t seed) : initial_seed(seed) {}
+
+DisabledRandomGenerator::DisabledRandomGenerator() : RandomGenerator(0) {}
+
+uint32_t DisabledRandomGenerator::next() {
+  throw std::runtime_error("Random data cannot be generated in this context");
+}
+
+MT19937Generator::MT19937Generator(uint32_t seed) : RandomGenerator(seed), gen(seed) {}
+
+uint32_t MT19937Generator::next() {
+  return this->gen();
+}
+
 // Most ciphers used by PSO are symmetric; alias decrypt to encrypt by default
-void PSOEncryption::decrypt(void* data, size_t size, bool advance) {
-  this->encrypt(data, size, advance);
+void PSOEncryption::decrypt(void* data, size_t size) {
+  this->encrypt(data, size);
 }
 
 PSOLFGEncryption::PSOLFGEncryption(
     uint32_t seed, size_t stream_length, size_t end_offset)
-    : stream(stream_length, 0),
+    : RandomGenerator(seed),
+      stream(stream_length, 0),
       offset(0),
-      end_offset(end_offset),
-      initial_seed(seed),
-      cycles(0) {}
+      end_offset(end_offset) {}
 
-uint32_t PSOLFGEncryption::next(bool advance) {
+uint32_t PSOLFGEncryption::next() {
   if (this->offset == this->end_offset) {
     this->update_stream();
   }
-  uint32_t ret = this->stream[this->offset];
-  if (advance) {
-    this->offset++;
-  }
-  return ret;
+  return this->stream[this->offset++];
 }
 
-template <bool BE>
-void PSOLFGEncryption::encrypt_t(void* vdata, size_t size, bool advance) {
-  if (!advance && (size != 4)) {
-    throw logic_error("cannot peek-encrypt/decrypt with size > 4");
-  }
-
-  size_t uint32_count = size >> 2;
-  size_t extra_bytes = size & 3;
-  U32T<BE>* data = reinterpret_cast<U32T<BE>*>(vdata);
-  for (size_t x = 0; x < uint32_count; x++) {
-    data[x] ^= this->next(advance);
-  }
-  if (extra_bytes) {
-    U32T<BE> last = 0;
-    memcpy(&last, &data[uint32_count], extra_bytes);
-    last ^= this->next(advance);
-    memcpy(&data[uint32_count], &last, extra_bytes);
-  }
+void PSOLFGEncryption::encrypt(void* vdata, size_t size) {
+  this->encrypt_t<false>(vdata, size);
 }
 
-template <bool BE>
-void PSOLFGEncryption::encrypt_minus_t(void* vdata, size_t size, bool advance) {
-  if (!advance && (size != 4)) {
-    throw logic_error("cannot peek-encrypt/decrypt with size > 4");
-  }
-
-  size_t uint32_count = size >> 2;
-  size_t extra_bytes = size & 3;
-  U32T<BE>* data = reinterpret_cast<U32T<BE>*>(vdata);
-  for (size_t x = 0; x < uint32_count; x++) {
-    data[x] = this->next(advance) - data[x];
-  }
-  if (extra_bytes) {
-    U32T<BE> last = 0;
-    memcpy(&last, &data[uint32_count], extra_bytes);
-    last = this->next(advance) - last;
-    memcpy(&data[uint32_count], &last, extra_bytes);
-  }
+void PSOLFGEncryption::encrypt_big_endian(void* vdata, size_t size) {
+  this->encrypt_t<true>(vdata, size);
 }
 
-void PSOLFGEncryption::encrypt(void* vdata, size_t size, bool advance) {
-  this->encrypt_t<false>(vdata, size, advance);
+void PSOLFGEncryption::encrypt_minus(void* vdata, size_t size) {
+  this->encrypt_minus_t<false>(vdata, size);
 }
 
-void PSOLFGEncryption::encrypt_big_endian(void* vdata, size_t size, bool advance) {
-  this->encrypt_t<true>(vdata, size, advance);
+void PSOLFGEncryption::encrypt_big_endian_minus(void* vdata, size_t size) {
+  this->encrypt_minus_t<true>(vdata, size);
 }
 
-void PSOLFGEncryption::encrypt_minus(void* vdata, size_t size, bool advance) {
-  this->encrypt_minus_t<false>(vdata, size, advance);
-}
-
-void PSOLFGEncryption::encrypt_big_endian_minus(void* vdata, size_t size, bool advance) {
-  this->encrypt_minus_t<true>(vdata, size, advance);
-}
-
-void PSOLFGEncryption::encrypt_both_endian(
-    void* le_vdata, void* be_vdata, size_t size, bool advance) {
+void PSOLFGEncryption::encrypt_both_endian(void* le_vdata, void* be_vdata, size_t size) {
   if (size & 3) {
     throw invalid_argument("size must be a multiple of 4");
-  }
-  if (!advance && (size != 4)) {
-    throw logic_error("cannot peek-encrypt/decrypt with size > 4");
   }
   size >>= 2;
 
   le_uint32_t* le_data = reinterpret_cast<le_uint32_t*>(le_vdata);
   be_uint32_t* be_data = reinterpret_cast<be_uint32_t*>(be_vdata);
   for (size_t x = 0; x < size; x++) {
-    uint32_t key = this->next(advance);
+    uint32_t key = this->next();
     le_data[x] ^= key;
     be_data[x] ^= key;
   }
@@ -125,7 +90,6 @@ PSOV2Encryption::PSOV2Encryption(uint32_t seed)
   for (size_t x = 0; x < 5; x++) {
     this->update_stream();
   }
-  this->cycles = 0;
 }
 
 void PSOV2Encryption::update_stream() {
@@ -136,7 +100,6 @@ void PSOV2Encryption::update_stream() {
     this->stream[z] -= this->stream[z - 0x18];
   }
   this->offset = 1;
-  this->cycles++;
 }
 
 PSOEncryption::Type PSOV2Encryption::type() const {
@@ -174,7 +137,6 @@ PSOV3Encryption::PSOV3Encryption(uint32_t seed)
   for (size_t x = 0; x < 4; x++) {
     this->update_stream();
   }
-  this->cycles = 0;
 }
 
 void PSOV3Encryption::update_stream() {
@@ -186,7 +148,6 @@ void PSOV3Encryption::update_stream() {
     this->stream[z] ^= this->stream[z - PHASE2_OFFSET];
   }
   this->offset = 0;
-  this->cycles++;
 }
 
 PSOEncryption::Type PSOV3Encryption::type() const {
@@ -199,7 +160,7 @@ PSOBBEncryption::PSOBBEncryption(
   this->apply_seed(original_seed, seed_size);
 }
 
-void PSOBBEncryption::encrypt(void* vdata, size_t size, bool advance) {
+void PSOBBEncryption::encrypt(void* vdata, size_t size) {
   if (this->state.subtype == Subtype::TFS1) {
     if (size & 7) {
       throw invalid_argument("size must be a multiple of 8");
@@ -231,20 +192,12 @@ void PSOBBEncryption::encrypt(void* vdata, size_t size, bool advance) {
     if (size & 1) {
       throw invalid_argument("size must be a multiple of 2");
     }
-    if (!advance && (size > 0x100)) {
-      throw logic_error("JSD1 can only peek-encrypt up to 0x100 bytes");
-    }
     uint8_t* bytes = reinterpret_cast<uint8_t*>(vdata);
     for (size_t z = 0; z < size; z++) {
       uint8_t v = bytes[z];
       bytes[z] = v ^ this->state.private_keys.as8[this->state.initial_keys.jsd1_stream_offset];
-      if (advance) {
-        this->state.private_keys.as8[this->state.initial_keys.jsd1_stream_offset] -= v;
-      }
+      this->state.private_keys.as8[this->state.initial_keys.jsd1_stream_offset] -= v;
       this->state.initial_keys.jsd1_stream_offset++;
-    }
-    if (!advance) {
-      this->state.initial_keys.jsd1_stream_offset -= size;
     }
     for (size_t z = 0; z < size; z += 2) {
       uint8_t a = bytes[z];
@@ -296,7 +249,7 @@ void PSOBBEncryption::encrypt(void* vdata, size_t size, bool advance) {
   }
 }
 
-void PSOBBEncryption::decrypt(void* vdata, size_t size, bool advance) {
+void PSOBBEncryption::decrypt(void* vdata, size_t size) {
   if (this->state.subtype == Subtype::TFS1) {
     if (size & 7) {
       throw invalid_argument("size must be a multiple of 8");
@@ -328,9 +281,6 @@ void PSOBBEncryption::decrypt(void* vdata, size_t size, bool advance) {
     if (size & 1) {
       throw invalid_argument("size must be a multiple of 2");
     }
-    if (!advance && (size > 0x100)) {
-      throw logic_error("JSD1 can only peek-decrypt up to 0x100 bytes");
-    }
     uint8_t* bytes = reinterpret_cast<uint8_t*>(vdata);
     for (size_t z = 0; z < size; z += 2) {
       uint8_t a = bytes[z];
@@ -340,13 +290,8 @@ void PSOBBEncryption::decrypt(void* vdata, size_t size, bool advance) {
     }
     for (size_t z = 0; z < size; z++) {
       bytes[z] ^= this->state.private_keys.as8[this->state.initial_keys.jsd1_stream_offset];
-      if (advance) {
-        this->state.private_keys.as8[this->state.initial_keys.jsd1_stream_offset] -= bytes[z];
-      }
+      this->state.private_keys.as8[this->state.initial_keys.jsd1_stream_offset] -= bytes[z];
       this->state.initial_keys.jsd1_stream_offset++;
-    }
-    if (!advance) {
-      this->state.initial_keys.jsd1_stream_offset -= size;
     }
 
   } else { // STANDARD or MOCB1
@@ -676,7 +621,7 @@ PSOV2OrV3DetectorEncryption::PSOV2OrV3DetectorEncryption(
       v2_matches(v2_matches),
       v3_matches(v3_matches) {}
 
-void PSOV2OrV3DetectorEncryption::encrypt(void* data, size_t size, bool advance) {
+void PSOV2OrV3DetectorEncryption::encrypt(void* data, size_t size) {
   if (!this->active_crypt) {
     if (size != 4) {
       throw logic_error("initial detector decrypt size must be 4");
@@ -686,29 +631,29 @@ void PSOV2OrV3DetectorEncryption::encrypt(void* data, size_t size, bool advance)
 
     le_uint32_t decrypted_v2 = encrypted;
     auto v2_crypt = make_unique<PSOV2Encryption>(this->key);
-    v2_crypt->decrypt(&decrypted_v2, sizeof(decrypted_v2), false);
+    v2_crypt->decrypt(&decrypted_v2, sizeof(decrypted_v2));
 
     le_uint32_t decrypted_v3 = encrypted;
     auto v3_crypt = make_unique<PSOV3Encryption>(this->key);
-    v3_crypt->decrypt(&decrypted_v3, sizeof(decrypted_v3), false);
+    v3_crypt->decrypt(&decrypted_v3, sizeof(decrypted_v3));
 
     bool v2_match = this->v2_matches.count(decrypted_v2);
     bool v3_match = this->v3_matches.count(decrypted_v3);
     if (!v2_match && !v3_match) {
-      throw runtime_error(phosg::string_printf(
-          "unable to determine crypt version (input=%08" PRIX32 ", v2=%08" PRIX32 ", v3=%08" PRIX32 ")",
-          encrypted.load(), decrypted_v2.load(), decrypted_v3.load()));
+      throw runtime_error(std::format(
+          "unable to determine crypt version (input={:08X}, v2={:08X}, v3={:08X})", encrypted, decrypted_v2, decrypted_v3));
     } else if (v2_match && v3_match) {
-      throw runtime_error(phosg::string_printf(
-          "ambiguous crypt version (v2=%08" PRIX32 ", v3=%08" PRIX32 ")",
-          decrypted_v2.load(), decrypted_v3.load()));
+      throw runtime_error(std::format("ambiguous crypt version (v2={:08X}, v3={:08X})", decrypted_v2, decrypted_v3));
     } else if (v2_match) {
       this->active_crypt = std::move(v2_crypt);
+      *reinterpret_cast<le_uint32_t*>(data) = decrypted_v2;
     } else {
       this->active_crypt = std::move(v3_crypt);
+      *reinterpret_cast<le_uint32_t*>(data) = decrypted_v3;
     }
+  } else {
+    this->active_crypt->encrypt(data, size);
   }
-  this->active_crypt->encrypt(data, size, advance);
 }
 
 PSOEncryption::Type PSOV2OrV3DetectorEncryption::type() const {
@@ -723,7 +668,7 @@ PSOV2OrV3ImitatorEncryption::PSOV2OrV3ImitatorEncryption(
     : key(key),
       detector_crypt(detector_crypt) {}
 
-void PSOV2OrV3ImitatorEncryption::encrypt(void* data, size_t size, bool advance) {
+void PSOV2OrV3ImitatorEncryption::encrypt(void* data, size_t size) {
   if (!this->active_crypt) {
     auto t = this->detector_crypt->type();
     if (t == Type::V2) {
@@ -734,7 +679,7 @@ void PSOV2OrV3ImitatorEncryption::encrypt(void* data, size_t size, bool advance)
       throw logic_error("detector crypt is not V2 or V3");
     }
   }
-  this->active_crypt->encrypt(data, size, advance);
+  this->active_crypt->encrypt(data, size);
 }
 
 PSOEncryption::Type PSOV2OrV3ImitatorEncryption::type() const {
@@ -753,14 +698,14 @@ PSOBBMultiKeyDetectorEncryption::PSOBBMultiKeyDetectorEncryption(
       expected_first_data(expected_first_data),
       seed(reinterpret_cast<const char*>(seed), seed_size) {}
 
-void PSOBBMultiKeyDetectorEncryption::encrypt(void* data, size_t size, bool advance) {
+void PSOBBMultiKeyDetectorEncryption::encrypt(void* data, size_t size) {
   if (!this->active_crypt.get()) {
     throw logic_error("PSOBB multi-key encryption requires client input first");
   }
-  this->active_crypt->encrypt(data, size, advance);
+  this->active_crypt->encrypt(data, size);
 }
 
-void PSOBBMultiKeyDetectorEncryption::decrypt(void* data, size_t size, bool advance) {
+void PSOBBMultiKeyDetectorEncryption::decrypt(void* data, size_t size) {
   if (!this->active_crypt.get()) {
     if (size != 8) {
       throw logic_error("initial decryption size does not match expected first data size");
@@ -770,7 +715,7 @@ void PSOBBMultiKeyDetectorEncryption::decrypt(void* data, size_t size, bool adva
       this->active_key = key;
       this->active_crypt = make_shared<PSOBBEncryption>(*this->active_key, this->seed.data(), this->seed.size());
       string test_data(reinterpret_cast<const char*>(data), size);
-      this->active_crypt->decrypt(test_data.data(), test_data.size(), false);
+      this->active_crypt->decrypt(test_data.data(), test_data.size());
       if (this->expected_first_data.count(test_data)) {
         break;
       }
@@ -781,7 +726,7 @@ void PSOBBMultiKeyDetectorEncryption::decrypt(void* data, size_t size, bool adva
       throw runtime_error("none of the registered private keys are valid for this client");
     }
   }
-  this->active_crypt->decrypt(data, size, advance);
+  this->active_crypt->decrypt(data, size);
 }
 
 PSOEncryption::Type PSOBBMultiKeyDetectorEncryption::type() const {
@@ -797,12 +742,12 @@ PSOBBMultiKeyImitatorEncryption::PSOBBMultiKeyImitatorEncryption(
       seed(reinterpret_cast<const char*>(seed), seed_size),
       jsd1_use_detector_seed(jsd1_use_detector_seed) {}
 
-void PSOBBMultiKeyImitatorEncryption::encrypt(void* data, size_t size, bool advance) {
-  this->ensure_crypt()->encrypt(data, size, advance);
+void PSOBBMultiKeyImitatorEncryption::encrypt(void* data, size_t size) {
+  this->ensure_crypt()->encrypt(data, size);
 }
 
-void PSOBBMultiKeyImitatorEncryption::decrypt(void* data, size_t size, bool advance) {
-  this->ensure_crypt()->decrypt(data, size, advance);
+void PSOBBMultiKeyImitatorEncryption::decrypt(void* data, size_t size) {
+  this->ensure_crypt()->decrypt(data, size);
 }
 
 PSOEncryption::Type PSOBBMultiKeyImitatorEncryption::type() const {
@@ -835,7 +780,7 @@ JSD0Encryption::JSD0Encryption(const void* seed, size_t seed_size) : key(0) {
   }
 }
 
-void JSD0Encryption::decrypt(void* data, size_t size, bool) {
+void JSD0Encryption::decrypt(void* data, size_t size) {
   uint8_t* bytes = reinterpret_cast<uint8_t*>(data);
   for (size_t z = 0; z < size; z++) {
     bytes[z] ^= this->key;
@@ -843,7 +788,7 @@ void JSD0Encryption::decrypt(void* data, size_t size, bool) {
   }
 }
 
-void JSD0Encryption::encrypt(void* data, size_t size, bool) {
+void JSD0Encryption::encrypt(void* data, size_t size) {
   uint8_t* bytes = reinterpret_cast<uint8_t*>(data);
   for (size_t z = 0; z < size; z++) {
     bytes[z] += this->key;

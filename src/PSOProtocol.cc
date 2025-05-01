@@ -1,7 +1,5 @@
 #include "PSOProtocol.hh"
 
-#include <event2/buffer.h>
-
 #include <phosg/Strings.hh>
 #include <stdexcept>
 
@@ -190,16 +188,16 @@ void PSOCommandHeader::set_flag(Version version, uint32_t flag) {
 
 void check_size_v(size_t size, size_t min_size, size_t max_size) {
   if (size < min_size) {
-    throw std::runtime_error(phosg::string_printf(
-        "command too small (expected at least 0x%zX bytes, received 0x%zX bytes)",
+    throw std::runtime_error(std::format(
+        "command too small (expected at least 0x{:X} bytes, received 0x{:X} bytes)",
         min_size, size));
   }
   if (max_size < min_size) {
     max_size = min_size;
   }
   if (size > max_size) {
-    throw std::runtime_error(phosg::string_printf(
-        "command too large (expected at most 0x%zX bytes, received 0x%zX bytes)",
+    throw std::runtime_error(std::format(
+        "command too large (expected at most 0x{:X} bytes, received 0x{:X} bytes)",
         max_size, size));
   }
 }

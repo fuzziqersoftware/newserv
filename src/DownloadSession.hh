@@ -1,7 +1,5 @@
 #pragma once
 
-#include <event2/event.h>
-
 #include <functional>
 #include <map>
 #include <memory>
@@ -18,8 +16,9 @@
 class DownloadSession {
 public:
   DownloadSession(
-      std::shared_ptr<struct event_base> base,
-      const struct sockaddr_storage& remote,
+      std::shared_ptr<asio::io_context> io_context,
+      const std::string& remote_host,
+      uint16_t remote_port,
       const std::string& output_dir,
       Version version,
       uint8_t language,
@@ -43,12 +42,19 @@ public:
   DownloadSession& operator=(DownloadSession&&) = delete;
   virtual ~DownloadSession() = default;
 
+  asio::awaitable<void> run();
+
 protected:
   // Config (must be set by caller)
+  std::string remote_host;
+  uint16_t remote_port;
   std::string output_dir;
+  Version version;
+  uint8_t language;
+  bool show_command_data;
   std::shared_ptr<const PSOBBEncryption::KeyFile> bb_key_file;
-  uint32_t serial_number2;
   uint32_t serial_number;
+  uint32_t serial_number2;
   std::string access_key;
   std::string username;
   std::string password;
@@ -62,17 +68,17 @@ protected:
 
   // State (set during session)
   phosg::PrefixedLogger log;
-  std::shared_ptr<struct event_base> base;
-  Channel channel;
+  std::shared_ptr<asio::io_context> io_context;
+  std::shared_ptr<Channel> channel;
   uint64_t hardware_id;
-  uint32_t guild_card_number;
+  uint32_t guild_card_number = 0;
   parray<uint8_t, 0x28> prev_cmd_data;
   parray<uint8_t, 0x20> client_config;
-  bool sent_96;
+  bool sent_96 = false;
   std::vector<S_LobbyListEntry_83> lobby_menu_items;
 
-  bool should_request_category_list;
-  uint64_t current_request;
+  bool should_request_category_list = true;
+  uint64_t current_request = 0;
   std::map<uint64_t, std::string> pending_requests;
   std::unordered_set<uint64_t> done_requests;
 
@@ -92,20 +98,14 @@ protected:
     bool v3;
   };
   static const std::vector<GameConfig> game_configs;
-  size_t current_game_config_index;
-  bool in_game;
-  bool bin_complete;
-  bool dat_complete;
+  size_t current_game_config_index = 0;
+  bool in_game = false;
+  bool bin_complete = false;
+  bool dat_complete = false;
 
-  static void dispatch_on_channel_input(Channel& ch, uint16_t command, uint32_t flag, std::string& msg);
-  static void dispatch_on_channel_error(Channel& ch, short events);
-  void on_channel_input(uint16_t command, uint32_t flag, std::string& msg);
-  void on_channel_error(short events);
-
-  void send_next_request();
-  void on_request_complete();
-
-  void assign_item_ids(uint32_t base_item_id);
   void send_93_9D_9E(bool extended);
   void send_61_98(bool is_98);
+  asio::awaitable<void> on_message(Channel::Message& msg);
+  void send_next_request();
+  void on_request_complete();
 };

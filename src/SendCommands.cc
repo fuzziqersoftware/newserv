@@ -1,6 +1,5 @@
 #include "SendCommands.hh"
 
-#include <event2/buffer.h>
 #include <inttypes.h>
 #include <stdarg.h>
 #include <string.h>
@@ -17,8 +16,8 @@
 #include "CommandFormats.hh"
 #include "Compression.hh"
 #include "FileContentsCache.hh"
+#include "GameServer.hh"
 #include "PSOProtocol.hh"
-#include "ProxyServer.hh"
 #include "ReceiveSubcommands.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
@@ -73,12 +72,11 @@ const unordered_set<string> bb_crypt_initial_client_commands({
 });
 
 void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag, const vector<pair<const void*, size_t>>& blocks) {
-  c->channel.send(command, flag, blocks);
+  c->channel->send(command, flag, blocks);
 }
 
-void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag,
-    const void* data, size_t size) {
-  c->channel.send(command, flag, data, size);
+void send_command(shared_ptr<Client> c, uint16_t command, uint32_t flag, const void* data, size_t size) {
+  c->channel->send(command, flag, data, size);
 }
 
 void send_command_excluding_client(shared_ptr<Lobby> l, shared_ptr<Client> c,
@@ -94,7 +92,7 @@ void send_command_excluding_client(shared_ptr<Lobby> l, shared_ptr<Client> c,
 void send_command_if_not_loading(shared_ptr<Lobby> l,
     uint16_t command, uint32_t flag, const void* data, size_t size) {
   for (auto& client : l->clients) {
-    if (!client || client->config.check_flag(Client::Flag::LOADING)) {
+    if (!client || client->check_flag(Client::Flag::LOADING)) {
       continue;
     }
     send_command(client, command, flag, data, size);
@@ -114,13 +112,13 @@ void send_command(shared_ptr<ServerState> s, uint16_t command, uint32_t flag,
 }
 
 template <typename HeaderT>
-void send_command_with_header_t(Channel& ch, const void* data, size_t size) {
+void send_command_with_header_t(std::shared_ptr<Channel> ch, const void* data, size_t size) {
   const HeaderT* header = reinterpret_cast<const HeaderT*>(data);
-  ch.send(header->command, header->flag, header + 1, size - sizeof(HeaderT));
+  ch->send(header->command, header->flag, header + 1, size - sizeof(HeaderT));
 }
 
-void send_command_with_header(Channel& ch, const void* data, size_t size) {
-  switch (ch.version) {
+void send_command_with_header(std::shared_ptr<Channel> ch, const void* data, size_t size) {
+  switch (ch->version) {
     case Version::PC_PATCH:
     case Version::BB_PATCH:
     case Version::PC_NTE:
@@ -164,6 +162,20 @@ prepare_server_init_contents_console(
   return cmd;
 }
 
+void send_server_init_patch(shared_ptr<Client> c) {
+  uint32_t server_key = phosg::random_object<uint32_t>();
+  uint32_t client_key = phosg::random_object<uint32_t>();
+
+  S_ServerInit_Patch_02 cmd;
+  cmd.copyright.encode("Patch Server. Copyright SonicTeam, LTD. 2001");
+  cmd.server_key = server_key;
+  cmd.client_key = client_key;
+  c->channel->send(0x02, 0x00, cmd);
+
+  c->channel->crypt_out = make_shared<PSOV2Encryption>(server_key);
+  c->channel->crypt_in = make_shared<PSOV2Encryption>(client_key);
+}
+
 void send_server_init_dc_pc_v3(shared_ptr<Client> c, uint8_t flags) {
   bool initial_connection = (flags & SendServerInitFlag::IS_INITIAL_CONNECTION);
   uint8_t command = initial_connection ? 0x17 : 0x02;
@@ -176,8 +188,8 @@ void send_server_init_dc_pc_v3(shared_ptr<Client> c, uint8_t flags) {
   switch (c->version()) {
     case Version::PC_NTE:
     case Version::PC_V2:
-      c->channel.crypt_in = make_shared<PSOV2Encryption>(client_key);
-      c->channel.crypt_out = make_shared<PSOV2Encryption>(server_key);
+      c->channel->crypt_in = make_shared<PSOV2Encryption>(client_key);
+      c->channel->crypt_out = make_shared<PSOV2Encryption>(server_key);
       break;
     case Version::DC_NTE:
     case Version::DC_11_2000:
@@ -189,13 +201,13 @@ void send_server_init_dc_pc_v3(shared_ptr<Client> c, uint8_t flags) {
     case Version::GC_EP3: {
       auto det_crypt = make_shared<PSOV2OrV3DetectorEncryption>(
           client_key, v2_crypt_initial_client_commands, v3_crypt_initial_client_commands);
-      c->channel.crypt_in = det_crypt;
-      c->channel.crypt_out = make_shared<PSOV2OrV3ImitatorEncryption>(server_key, det_crypt);
+      c->channel->crypt_in = det_crypt;
+      c->channel->crypt_out = make_shared<PSOV2OrV3ImitatorEncryption>(server_key, det_crypt);
       break;
     }
     case Version::XB_V3:
-      c->channel.crypt_in = make_shared<PSOV3Encryption>(client_key);
-      c->channel.crypt_out = make_shared<PSOV3Encryption>(server_key);
+      c->channel->crypt_in = make_shared<PSOV3Encryption>(client_key);
+      c->channel->crypt_out = make_shared<PSOV3Encryption>(server_key);
       break;
     default:
       throw invalid_argument("incorrect client version");
@@ -227,19 +239,22 @@ void send_server_init_bb(shared_ptr<Client> c, uint8_t flags) {
 
   static const string primary_expected_first_data("\xB4\x00\x93\x00\x00\x00\x00\x00", 8);
   static const string secondary_expected_first_data("\xDC\x00\xDB\x00\x00\x00\x00\x00", 8);
-  auto detector_crypt = make_shared<PSOBBMultiKeyDetectorEncryption>(
+  c->bb_detector_crypt = make_shared<PSOBBMultiKeyDetectorEncryption>(
       c->require_server_state()->bb_private_keys,
       bb_crypt_initial_client_commands,
       cmd.basic_cmd.client_key.data(),
       sizeof(cmd.basic_cmd.client_key));
-  c->channel.crypt_in = detector_crypt;
-  c->channel.crypt_out = make_shared<PSOBBMultiKeyImitatorEncryption>(
-      detector_crypt, cmd.basic_cmd.server_key.data(),
-      sizeof(cmd.basic_cmd.server_key), true);
+  c->channel->crypt_in = c->bb_detector_crypt;
+  c->channel->crypt_out = make_shared<PSOBBMultiKeyImitatorEncryption>(
+      c->bb_detector_crypt, cmd.basic_cmd.server_key.data(), sizeof(cmd.basic_cmd.server_key), true);
 }
 
 void send_server_init(shared_ptr<Client> c, uint8_t flags) {
   switch (c->version()) {
+    case Version::PC_PATCH:
+    case Version::BB_PATCH:
+      send_server_init_patch(c);
+      break;
     case Version::DC_NTE:
     case Version::DC_11_2000:
     case Version::DC_V1:
@@ -261,133 +276,104 @@ void send_server_init(shared_ptr<Client> c, uint8_t flags) {
   }
 }
 
-void send_update_client_config(shared_ptr<Client> c, bool always_send) {
-  if (always_send || (is_v3(c->version()) && (c->config.should_update_vs(c->synced_config)))) {
-    switch (c->version()) {
-      case Version::DC_NTE:
-      case Version::DC_11_2000:
-      case Version::DC_V1:
-      case Version::DC_V2:
-      case Version::PC_NTE:
-      case Version::PC_V2: {
-        if (!c->config.check_flag(Client::Flag::HAS_GUILD_CARD_NUMBER)) {
-          c->config.set_flag(Client::Flag::HAS_GUILD_CARD_NUMBER);
-          S_UpdateClientConfig_DC_PC_04 cmd;
-          cmd.player_tag = 0x00010000;
-          cmd.guild_card_number = c->login->account->account_id;
-          send_command_t(c, 0x04, 0x00, cmd);
-        }
-        break;
-      }
-      case Version::GC_NTE:
-      case Version::GC_V3:
-      case Version::GC_EP3_NTE:
-      case Version::GC_EP3:
-      case Version::XB_V3: {
-        c->config.set_flag(Client::Flag::HAS_GUILD_CARD_NUMBER);
-        S_UpdateClientConfig_V3_04 cmd;
-        cmd.player_tag = 0x00010000;
-        cmd.guild_card_number = c->login->account->account_id;
-        c->config.serialize_into(cmd.client_config);
-        send_command_t(c, 0x04, 0x00, cmd);
-        break;
-      }
-      default:
-        throw logic_error("send_update_client_config called on incorrect game version");
+void send_set_guild_card_number(shared_ptr<Client> c) {
+  switch (c->version()) {
+    case Version::DC_NTE:
+    case Version::DC_11_2000:
+    case Version::DC_V1:
+    case Version::DC_V2:
+    case Version::PC_NTE:
+    case Version::PC_V2: {
+      S_UpdateClientConfig_DC_PC_04 cmd;
+      cmd.player_tag = 0x00010000;
+      cmd.guild_card_number = c->login->account->account_id;
+      send_command_t(c, 0x04, 0x00, cmd);
+      break;
     }
-    c->synced_config = c->config;
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_NTE:
+    case Version::GC_EP3:
+    case Version::XB_V3: {
+      S_UpdateClientConfig_V3_04 cmd;
+      cmd.player_tag = 0x00010000;
+      cmd.guild_card_number = c->login->account->account_id;
+      cmd.client_config.clear(0xFF);
+      send_command_t(c, 0x04, 0x00, cmd);
+      break;
+    }
+    default:
+      throw logic_error("send_set_guild_card_number called on incorrect game version");
   }
 }
 
-void send_quest_buffer_overflow(shared_ptr<Client> c) {
-  // PSO Episode 3 USA doesn't natively support the B2 command, but we can add
-  // it back to the game with some tricky commands. For details on how this
-  // works, see system/client-functions/Episode3USAQuestBufferOverflow.ppc.s.
-  auto fn = c->require_server_state()->function_code_index->name_to_function.at("Episode3USAQuestBufferOverflow");
-  if (fn->code.size() > 0x400) {
-    throw runtime_error("Episode 3 buffer overflow code must be a single segment");
-  }
-
-  S_OpenFile_PC_GC_44_A6 open_cmd;
-  open_cmd.name.encode("PSO/BufferOverflow");
-  open_cmd.type = 3;
-  open_cmd.file_size = 0x18;
-  open_cmd.filename.encode("m999999p_e.bin");
-  send_command_t(c, 0xA6, 0x00, open_cmd);
-
-  S_WriteFile_13_A7 write_cmd;
-  write_cmd.filename.encode("m999999p_e.bin");
-  memcpy(write_cmd.data.data(), fn->code.data(), fn->code.size());
-  if (fn->code.size() < 0x400) {
-    memset(&write_cmd.data[fn->code.size()], 0, 0x400 - fn->code.size());
-  }
-  write_cmd.data_size = fn->code.size();
-  send_command_t(c, 0xA7, 0x00, write_cmd);
+void send_patch_enter_directory(shared_ptr<Client> c, const string& dir) {
+  S_EnterDirectory_Patch_09 cmd = {{dir, 1}};
+  c->channel->send(0x09, 0x00, cmd);
 }
 
-void empty_function_call_response_handler(uint32_t, uint32_t) {}
+void send_patch_change_to_directory(
+    shared_ptr<Client> c,
+    vector<string>& client_path_directories,
+    const vector<string>& file_path_directories) {
+  // First, exit all leaf directories that don't match the desired path
+  while (!client_path_directories.empty() &&
+      ((client_path_directories.size() > file_path_directories.size()) ||
+          (client_path_directories.back() != file_path_directories[client_path_directories.size() - 1]))) {
+    c->channel->send(0x0A, 0x00);
+    client_path_directories.pop_back();
+  }
 
-void prepare_client_for_patches(shared_ptr<Client> c, function<void()> on_complete) {
+  // At this point, client_path_directories should be a prefix of
+  // file_path_directories (or should match exactly)
+  if (client_path_directories.size() > file_path_directories.size()) {
+    throw logic_error("did not exit all necessary directories");
+  }
+  for (size_t x = 0; x < client_path_directories.size(); x++) {
+    if (client_path_directories[x] != file_path_directories[x]) {
+      throw logic_error("intermediate path is not a prefix of final path");
+    }
+  }
+
+  // Second, enter all necessary leaf directories
+  while (client_path_directories.size() < file_path_directories.size()) {
+    const string& dir = file_path_directories[client_path_directories.size()];
+    send_patch_enter_directory(c, dir);
+    client_path_directories.emplace_back(dir);
+  }
+}
+
+asio::awaitable<void> prepare_client_for_patches(shared_ptr<Client> c) {
   auto s = c->require_server_state();
 
-  auto send_version_detect = [s, wc = weak_ptr<Client>(c), on_complete]() -> void {
-    auto c = wc.lock();
-    if (!c) {
-      return;
-    }
-
-    const char* version_detect_name = nullptr;
-    if (c->version() == Version::DC_V2) {
-      version_detect_name = "VersionDetectDC";
-    } else if (is_gc(c->version())) {
-      version_detect_name = "VersionDetectGC";
-    } else if (c->version() == Version::XB_V3) {
-      version_detect_name = "VersionDetectXB";
-    }
-    if (version_detect_name && specific_version_is_indeterminate(c->config.specific_version)) {
-      send_function_call(c, s->function_code_index->name_to_function.at(version_detect_name));
-      c->function_call_response_queue.emplace_back([wc = weak_ptr<Client>(c), on_complete](uint32_t specific_version, uint32_t) -> void {
-        auto c = wc.lock();
-        if (!c) {
-          return;
-        }
-        c->config.specific_version = specific_version;
-        c->log.info("Version detected as %08" PRIX32, c->config.specific_version);
-        on_complete();
-      });
-    } else {
-      on_complete();
-    }
-  };
-
-  if (!c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH)) {
+  if (!c->check_flag(Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH)) {
     auto fn = s->function_code_index->name_to_function.at("CacheClearFix-Phase1");
-    send_function_call(c, fn, {}, nullptr, 0, 0x80000000, 8, 0x7F2734EC);
-    c->function_call_response_queue.emplace_back([s, wc = weak_ptr<Client>(c), send_version_detect](uint32_t, uint32_t header_checksum) -> void {
-      auto c = wc.lock();
-      if (!c) {
-        return;
-      }
-      try {
-        c->config.specific_version = specific_version_for_gc_header_checksum(header_checksum);
-        c->log.info("Version detected as %08" PRIX32 " from header checksum %08" PRIX32, c->config.specific_version, header_checksum);
-      } catch (const out_of_range&) {
-        c->log.info("Could not detect specific version from header checksum %08" PRIX32, header_checksum);
-      }
-      send_function_call(c, s->function_code_index->name_to_function.at("CacheClearFix-Phase2"));
-      c->function_call_response_queue.emplace_back([s, wc = weak_ptr<Client>(c), send_version_detect](uint32_t, uint32_t) -> void {
-        auto c = wc.lock();
-        if (!c) {
-          return;
-        }
-        c->log.info("Client cache behavior patched");
-        c->config.set_flag(Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
-        send_update_client_config(c, false);
-        send_version_detect();
-      });
-    });
-  } else {
-    send_version_detect();
+    unordered_map<string, uint32_t> label_writes;
+    auto call1_res = co_await send_function_call(c, fn, label_writes, nullptr, 0, 0x80000000, 8, 0x7F2734EC);
+    try {
+      c->specific_version = specific_version_for_gc_header_checksum(call1_res.checksum);
+      c->log.info_f("Version detected as {:08X} from header checksum {:08X}",
+          c->specific_version, call1_res.checksum);
+    } catch (const out_of_range&) {
+      c->log.info_f("Could not detect specific version from header checksum {:08X}", call1_res.checksum);
+    }
+    co_await send_function_call(c, s->function_code_index->name_to_function.at("CacheClearFix-Phase2"));
+    c->log.info_f("Client cache behavior patched");
+    c->set_flag(Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
+  }
+
+  const char* version_detect_name = nullptr;
+  if (c->version() == Version::DC_V2) {
+    version_detect_name = "VersionDetectDC";
+  } else if (is_gc(c->version())) {
+    version_detect_name = "VersionDetectGC";
+  } else if (c->version() == Version::XB_V3) {
+    version_detect_name = "VersionDetectXB";
+  }
+  if (version_detect_name && specific_version_is_indeterminate(c->specific_version)) {
+    auto vers_detect_res = co_await send_function_call(c, s->function_code_index->name_to_function.at(version_detect_name));
+    c->specific_version = vers_detect_res.return_value;
+    c->log.info_f("Version detected as {:08X}", c->specific_version);
   }
 }
 
@@ -440,7 +426,7 @@ string prepare_send_function_call_data(
   return std::move(w.str());
 }
 
-void send_function_call(
+asio::awaitable<C_ExecuteCodeResult_B3> send_function_call(
     shared_ptr<Client> c,
     shared_ptr<const CompiledFunctionCode> code,
     const unordered_map<string, uint32_t>& label_writes,
@@ -450,9 +436,13 @@ void send_function_call(
     uint32_t checksum_size,
     uint32_t override_relocations_offset,
     bool ignore_actually_runs_code_flag) {
-  return send_function_call(
+  if (!c->channel->connected()) {
+    throw std::runtime_error("Client has already disconnected");
+  }
+  auto promise = make_shared<AsyncPromise<C_ExecuteCodeResult_B3>>();
+  send_function_call(
       c->channel,
-      c->config,
+      c->enabled_flags,
       code,
       label_writes,
       suffix_data,
@@ -461,11 +451,32 @@ void send_function_call(
       checksum_size,
       override_relocations_offset,
       ignore_actually_runs_code_flag);
+  c->function_call_response_queue.emplace_back(promise);
+  co_return co_await promise->get();
+}
+
+asio::awaitable<void> send_function_call_multi(shared_ptr<Client> c, vector<shared_ptr<const CompiledFunctionCode>> codes) {
+  if (codes.empty()) {
+    co_return;
+  }
+  if (!c->channel->connected()) {
+    throw std::runtime_error("Client has already disconnected");
+  }
+
+  shared_ptr<AsyncPromise<C_ExecuteCodeResult_B3>> last_promise;
+  for (const auto& code : codes) {
+    last_promise = make_shared<AsyncPromise<C_ExecuteCodeResult_B3>>();
+    c->function_call_response_queue.emplace_back(last_promise);
+    send_function_call(c->channel, c->enabled_flags, code);
+  }
+  if (c->channel->connected()) {
+    co_await last_promise->get();
+  }
 }
 
 void send_function_call(
-    Channel& ch,
-    const Client::Config& client_config,
+    shared_ptr<Channel> ch,
+    uint64_t client_enabled_flags,
     shared_ptr<const CompiledFunctionCode> code,
     const unordered_map<string, uint32_t>& label_writes,
     const void* suffix_data,
@@ -474,23 +485,24 @@ void send_function_call(
     uint32_t checksum_size,
     uint32_t override_relocations_offset,
     bool ignore_actually_runs_code_flag) {
-  if (!client_config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL)) {
+  if (!Client::check_flag(client_enabled_flags, Client::Flag::HAS_SEND_FUNCTION_CALL)) {
     throw logic_error("client does not support function calls");
   }
   if (!ignore_actually_runs_code_flag &&
       code.get() &&
-      !client_config.check_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE)) {
+      !Client::check_flag(client_enabled_flags, Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE)) {
     throw logic_error("client only supports checksums in send_function_call");
   }
 
   string data = prepare_send_function_call_data(
       code, label_writes, suffix_data, suffix_size, checksum_addr, checksum_size, override_relocations_offset,
-      client_config.check_flag(Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL));
+      Client::check_flag(client_enabled_flags, Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL));
 
-  ch.send(0xB2, code ? code->index : 0x00, data);
+  ch->send(0xB2, code ? code->index : 0x00, data);
 }
 
-bool send_protected_command(std::shared_ptr<Client> c, const void* data, size_t size, bool echo_to_lobby) {
+asio::awaitable<bool> send_protected_command(
+    std::shared_ptr<Client> c, const void* data, size_t size, bool echo_to_lobby) {
   switch (c->version()) {
     case Version::DC_NTE:
     case Version::DC_11_2000:
@@ -498,13 +510,15 @@ bool send_protected_command(std::shared_ptr<Client> c, const void* data, size_t 
     case Version::DC_V2:
     case Version::PC_NTE:
     case Version::PC_V2:
-    case Version::GC_NTE:
-      if (echo_to_lobby) {
-        send_command(c->require_lobby(), 0x60, 0x00, data, size);
+    case Version::GC_NTE: {
+      auto l = echo_to_lobby ? c->lobby.lock() : nullptr;
+      if (l) {
+        send_command(l, 0x60, 0x00, data, size);
       } else {
         send_command(c, 0x60, 0x00, data, size);
       }
-      return true;
+      co_return true;
+    }
 
     case Version::GC_V3:
     case Version::XB_V3:
@@ -513,37 +527,68 @@ bool send_protected_command(std::shared_ptr<Client> c, const void* data, size_t 
     case Version::BB_V4: {
       auto s = c->require_server_state();
       if (!s->enable_v3_v4_protected_subcommands ||
-          !c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL) ||
-          !c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE)) {
-        return false;
+          !c->check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL) ||
+          !c->check_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE)) {
+        co_return false;
       }
 
-      prepare_client_for_patches(c, [wc = weak_ptr<Client>(c), data = string(reinterpret_cast<const char*>(data), size), echo_to_lobby]() {
-        auto c = wc.lock();
-        if (!c) {
-          return;
+      co_await prepare_client_for_patches(c);
+
+      try {
+        auto fn = s->function_code_index->get_patch("CallProtectedHandler", c->specific_version);
+        unordered_map<string, uint32_t> label_writes{{"size", size}};
+        co_await send_function_call(c, fn, label_writes, data, size);
+        auto l = echo_to_lobby ? c->lobby.lock() : nullptr;
+        if (l) {
+          send_command_excluding_client(l, c, 0x60, 0x00, data, size);
         }
-        try {
-          auto s = c->require_server_state();
-          auto fn = s->function_code_index->get_patch("CallProtectedHandler", c->config.specific_version);
-          send_function_call(c, fn, {{"size", data.size()}}, data.data(), data.size());
-          c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
-          if (echo_to_lobby) {
-            auto l = c->lobby.lock();
-            if (l) {
-              send_command_excluding_client(l, c, 0x60, 0x00, data.data(), data.size());
-            }
-          }
-        } catch (const exception& e) {
-          c->log.warning("Failed to send protected command: %s", e.what());
-        }
-      });
-      return true;
+      } catch (const exception& e) {
+        c->log.warning_f("Failed to send protected command: {}", e.what());
+      }
+      co_return true;
     }
 
     default:
-      return false;
+      co_return false;
   }
+}
+
+asio::awaitable<void> send_dol_file(shared_ptr<Client> c, shared_ptr<DOLFileIndex::File> dol) {
+  auto s = c->require_server_state();
+
+  // Determine the necessary start address for the data
+  unordered_map<string, uint32_t> label_writes{{"address", 0x80000034}}; // ArenaHigh from GC globals
+  auto addr_ret = co_await send_function_call(
+      c, s->function_code_index->name_to_function.at("ReadMemoryWordGC"), label_writes);
+  uint32_t dol_base_addr = (addr_ret.return_value - dol->data.size()) & (~3);
+
+  // Write the file in multiple chunks
+  for (size_t offset = 0; offset < dol->data.size();) {
+    // Note: The protocol allows commands to be up to 0x7C00 bytes in size, but
+    // sending large B2 commands can cause the client to crash or softlock. To
+    // avoid this, we limit the payload to 4KB, which results in a B2 command
+    // 0x10D0 bytes in size.
+    size_t bytes_to_send = min<size_t>(0x1000, dol->data.size() - offset);
+    string data_to_send = dol->data.substr(offset, bytes_to_send);
+
+    auto s = c->require_server_state();
+    auto fn = s->function_code_index->name_to_function.at("WriteMemoryGC");
+    label_writes = {{"dest_addr", (dol_base_addr + offset)}, {"size", bytes_to_send}};
+    co_await send_function_call(c, fn, label_writes, data_to_send.data(), data_to_send.size());
+
+    size_t progress_percent = ((offset + bytes_to_send) * 100) / dol->data.size();
+    send_ship_info(c, std::format("{}%%", progress_percent));
+
+    offset += bytes_to_send;
+  }
+
+  // Send the final function, which moves the DOL's sections into place and
+  // calls the entrypoint
+  auto fn = s->function_code_index->name_to_function.at("RunDOL");
+  label_writes = {{"dol_base_ptr", dol_base_addr}};
+  co_await send_function_call(c, fn, label_writes);
+  // The client will stop running PSO after this, so disconnect them
+  c->channel->disconnect();
 }
 
 void send_reconnect(shared_ptr<Client> c, uint32_t address, uint16_t port) {
@@ -602,7 +647,7 @@ void send_client_init_bb(shared_ptr<Client> c, uint32_t error_code) {
   cmd.player_tag = 0x00010000;
   cmd.guild_card_number = c->login->account->account_id;
   cmd.security_token = team ? team->team_id : 0;
-  c->config.serialize_into(cmd.client_config);
+  cmd.client_config.clear(0xFF);
   cmd.can_create_team = 1;
   cmd.episode_4_unlocked = 1;
 
@@ -747,7 +792,7 @@ void send_complete_player_bb(shared_ptr<Client> c) {
   auto p = c->character(true, false);
   auto sys = c->system_file(true);
   auto team = c->team();
-  if (c->config.check_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB)) {
+  if (c->check_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB)) {
     p->inventory.language = 1;
     p->guild_card.language = 1;
     sys->language = 1;
@@ -772,31 +817,31 @@ enum class ColorMode {
 };
 
 static void send_text(
-    Channel& ch,
+    std::shared_ptr<Channel> ch,
     phosg::StringWriter& w,
     uint16_t command,
     uint32_t flag,
     const string& text,
     ColorMode color_mode) {
-  bool is_w = uses_utf16(ch.version);
-  if (ch.version == Version::DC_NTE) {
+  bool is_w = uses_utf16(ch->version);
+  if (ch->version == Version::DC_NTE) {
     color_mode = ColorMode::STRIP;
   }
 
   try {
     switch (color_mode) {
       case ColorMode::NONE:
-        w.write(tt_encode_marked_optional(text, ch.language, is_w));
+        w.write(tt_encode_marked_optional(text, ch->language, is_w));
         break;
       case ColorMode::ADD:
-        w.write(tt_encode_marked_optional(add_color(text), ch.language, is_w));
+        w.write(tt_encode_marked_optional(add_color(text), ch->language, is_w));
         break;
       case ColorMode::STRIP:
-        w.write(tt_encode_marked_optional(strip_color(text), ch.language, is_w));
+        w.write(tt_encode_marked_optional(strip_color(text), ch->language, is_w));
         break;
     }
   } catch (const runtime_error& e) {
-    phosg::log_warning("Failed to encode message for %02hX command: %s", command, e.what());
+    phosg::log_warning_f("Failed to encode message for {:02X} command: {}", command, e.what());
     return;
   }
 
@@ -809,15 +854,15 @@ static void send_text(
   while (w.str().size() & 3) {
     w.put_u8(0);
   }
-  ch.send(command, flag, w.str());
+  ch->send(command, flag, w.str());
 }
 
-static void send_text(Channel& ch, uint16_t command, uint32_t flag, const string& text, ColorMode color_mode) {
+static void send_text(std::shared_ptr<Channel> ch, uint16_t command, uint32_t flag, const string& text, ColorMode color_mode) {
   phosg::StringWriter w;
   send_text(ch, w, command, flag, text, color_mode);
 }
 
-static void send_header_text(Channel& ch, uint16_t command, uint32_t guild_card_number, const string& text, ColorMode color_mode) {
+static void send_header_text(std::shared_ptr<Channel> ch, uint16_t command, uint32_t guild_card_number, const string& text, ColorMode color_mode) {
   phosg::StringWriter w;
   w.put(SC_TextHeader_01_06_11_B0_EE({0, guild_card_number}));
   send_text(ch, w, command, 0x00, text, color_mode);
@@ -852,12 +897,12 @@ void send_message_box(shared_ptr<Client> c, const string& text) {
   send_text(c->channel, command, 0x00, text, ColorMode::ADD);
 }
 
-void send_ep3_timed_message_box(Channel& ch, uint32_t frames, const string& message) {
+void send_ep3_timed_message_box(std::shared_ptr<Channel> ch, uint32_t frames, const string& message) {
   string encoded;
   try {
-    encoded = tt_encode_marked(add_color(message), ch.language, false);
+    encoded = tt_encode_marked(add_color(message), ch->language, false);
   } catch (const runtime_error& e) {
-    phosg::log_warning("Failed to encode message for EA command: %s", e.what());
+    phosg::log_warning_f("Failed to encode message for EA command: {}", e.what());
     return;
   }
   phosg::StringWriter w;
@@ -867,7 +912,7 @@ void send_ep3_timed_message_box(Channel& ch, uint32_t frames, const string& mess
   while (w.size() & 3) {
     w.put_u8(0);
   }
-  ch.send(0xEA, 0x00, w.str());
+  ch->send(0xEA, 0x00, w.str());
 }
 
 void send_lobby_name(shared_ptr<Client> c, const string& text) {
@@ -887,12 +932,12 @@ void send_ship_info(shared_ptr<Client> c, const string& text) {
   send_header_text(c->channel, 0x11, 0, text, ColorMode::ADD);
 }
 
-void send_ship_info(Channel& ch, const string& text) {
+void send_ship_info(std::shared_ptr<Channel> ch, const string& text) {
   send_header_text(ch, 0x11, 0, text, ColorMode::ADD);
 }
 
-void send_text_message(Channel& ch, const string& text) {
-  if ((ch.version != Version::DC_NTE) && (ch.version != Version::DC_11_2000)) {
+void send_text_message(std::shared_ptr<Channel> ch, const string& text) {
+  if ((ch->version != Version::DC_NTE) && (ch->version != Version::DC_11_2000)) {
     send_header_text(ch, 0xB0, 0, text, ColorMode::ADD);
   }
 }
@@ -912,23 +957,9 @@ void send_text_message(shared_ptr<Lobby> l, const string& text) {
 }
 
 void send_text_message(shared_ptr<ServerState> s, const string& text) {
-  for (auto& it : s->channel_to_client) {
-    if (it.second->login && !is_patch(it.second->version())) {
-      send_text_message(it.second, text);
-    }
-  }
-}
-
-__attribute__((format(printf, 2, 3))) void send_ep3_text_message_printf(shared_ptr<ServerState> s, const char* format, ...) {
-  va_list va;
-  va_start(va, format);
-  string buf = phosg::string_vprintf(format, va);
-  va_end(va);
-  for (auto& it : s->id_to_lobby) {
-    for (auto& c : it.second->clients) {
-      if (c && is_ep3(c->version())) {
-        send_text_message(c, buf);
-      }
+  for (auto& c : s->game_server->all_clients()) {
+    if (c->login && !is_patch(c->version())) {
+      send_text_message(c, text);
     }
   }
 }
@@ -959,9 +990,9 @@ void send_text_or_scrolling_message(
 }
 
 void send_text_or_scrolling_message(shared_ptr<ServerState> s, const std::string& text, const std::string& scrolling) {
-  for (const auto& it : s->channel_to_client) {
-    if (it.second->login && !is_patch(it.second->version())) {
-      send_text_or_scrolling_message(it.second, text, scrolling);
+  for (const auto& c : s->game_server->all_clients()) {
+    if (c->login && !is_patch(c->version())) {
+      send_text_or_scrolling_message(c, text, scrolling);
     }
   }
 }
@@ -980,7 +1011,7 @@ string prepare_chat_data(
   }
   data.append(from_name);
   if (version == Version::DC_NTE) {
-    data.append(phosg::string_printf(">%X", from_client_id));
+    data.append(std::format(">{:X}", from_client_id));
   } else {
     data.append(1, '\t');
   }
@@ -1001,9 +1032,9 @@ string prepare_chat_data(
   }
 }
 
-void send_chat_message_from_client(Channel& ch, const string& text, char private_flags) {
+void send_chat_message_from_client(std::shared_ptr<Channel> ch, const string& text, char private_flags) {
   if (private_flags != 0) {
-    if (!is_ep3(ch.version)) {
+    if (!is_ep3(ch->version)) {
       throw runtime_error("nonzero private_flags in non-GC chat message");
     }
     string effective_text;
@@ -1101,9 +1132,9 @@ void send_simple_mail(shared_ptr<Client> c, uint32_t from_guild_card_number, con
 }
 
 void send_simple_mail(shared_ptr<ServerState> s, uint32_t from_guild_card_number, const string& from_name, const string& text) {
-  for (const auto& it : s->channel_to_client) {
-    if (it.second->login && !is_patch(it.second->version())) {
-      send_simple_mail(it.second, from_guild_card_number, from_name, text);
+  for (const auto& c : s->game_server->all_clients()) {
+    if (c->login && !is_patch(c->version())) {
+      send_simple_mail(c, from_guild_card_number, from_name, text);
     }
   }
 }
@@ -1180,7 +1211,6 @@ void send_card_search_result_t(
     shared_ptr<Client> result,
     shared_ptr<Lobby> result_lobby) {
   auto s = c->require_server_state();
-  string port_name = lobby_port_name_for_version(c->version());
 
   S_GuildCardSearchResultT<CommandHeaderT, Encoding> cmd;
   cmd.player_tag = 0x00010000;
@@ -1190,16 +1220,16 @@ void send_card_search_result_t(
   cmd.reconnect_command_header.command = 0x19;
   cmd.reconnect_command_header.flag = 0x00;
   cmd.reconnect_command.address = s->connect_address_for_client(c);
-  cmd.reconnect_command.port = s->name_to_port_config.at(port_name)->port;
+  cmd.reconnect_command.port = s->game_server_port_for_version(c->version());
   cmd.reconnect_command.unused = 0;
 
   string location_string;
   if (result_lobby->is_game()) {
-    location_string = phosg::string_printf("%s,,BLOCK01,%s", result_lobby->name.c_str(), s->name.c_str());
+    location_string = std::format("{},,BLOCK01,{}", result_lobby->name, s->name);
   } else if (result_lobby->is_ep3()) {
-    location_string = phosg::string_printf("BLOCK01-C%02" PRIu32 ",,BLOCK01,%s", result_lobby->lobby_id - 15, s->name.c_str());
+    location_string = std::format("BLOCK01-C{:02},,BLOCK01,{}", result_lobby->lobby_id - 15, s->name);
   } else {
-    location_string = phosg::string_printf("BLOCK01-%02" PRIu32 ",,BLOCK01,%s", result_lobby->lobby_id, s->name.c_str());
+    location_string = std::format("BLOCK01-{:02},,BLOCK01,{}", result_lobby->lobby_id, s->name);
   }
   cmd.location_string.encode(location_string, c->language());
   cmd.extension.lobby_refs[0].menu_id = MenuID::LOBBY;
@@ -1240,7 +1270,7 @@ void send_card_search_result(
 
 template <typename CmdT>
 void send_guild_card_dc_pc_gc_t(
-    Channel& ch,
+    std::shared_ptr<Channel> ch,
     uint32_t guild_card_number,
     const string& name,
     const string& description,
@@ -1253,17 +1283,17 @@ void send_guild_card_dc_pc_gc_t(
   cmd.header.unused = 0x0000;
   cmd.guild_card.player_tag = 0x00010000;
   cmd.guild_card.guild_card_number = guild_card_number;
-  cmd.guild_card.name.encode(name, ch.language);
-  cmd.guild_card.description.encode(description, ch.language);
+  cmd.guild_card.name.encode(name, ch->language);
+  cmd.guild_card.description.encode(description, ch->language);
   cmd.guild_card.present = 1;
   cmd.guild_card.language = language;
   cmd.guild_card.section_id = section_id;
   cmd.guild_card.char_class = char_class;
-  ch.send(0x60, 0x00, &cmd, sizeof(cmd));
+  ch->send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
 void send_guild_card_xb(
-    Channel& ch,
+    std::shared_ptr<Channel> ch,
     uint32_t guild_card_number,
     uint64_t xb_user_id,
     const string& name,
@@ -1279,17 +1309,17 @@ void send_guild_card_xb(
   cmd.guild_card.guild_card_number = guild_card_number;
   cmd.guild_card.xb_user_id_high = (xb_user_id >> 32) & 0xFFFFFFFF;
   cmd.guild_card.xb_user_id_low = xb_user_id & 0xFFFFFFFF;
-  cmd.guild_card.name.encode(name, ch.language);
-  cmd.guild_card.description.encode(description, ch.language);
+  cmd.guild_card.name.encode(name, ch->language);
+  cmd.guild_card.description.encode(description, ch->language);
   cmd.guild_card.present = 1;
   cmd.guild_card.language = language;
   cmd.guild_card.section_id = section_id;
   cmd.guild_card.char_class = char_class;
-  ch.send(0x60, 0x00, &cmd, sizeof(cmd));
+  ch->send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
 static void send_guild_card_bb(
-    Channel& ch,
+    std::shared_ptr<Channel> ch,
     uint32_t guild_card_number,
     const string& name,
     const string& team_name,
@@ -1302,18 +1332,18 @@ static void send_guild_card_bb(
   cmd.header.size = sizeof(cmd) / 4;
   cmd.header.unused = 0x0000;
   cmd.guild_card.guild_card_number = guild_card_number;
-  cmd.guild_card.name.encode(name, ch.language);
-  cmd.guild_card.team_name.encode(team_name, ch.language);
-  cmd.guild_card.description.encode(description, ch.language);
+  cmd.guild_card.name.encode(name, ch->language);
+  cmd.guild_card.team_name.encode(team_name, ch->language);
+  cmd.guild_card.description.encode(description, ch->language);
   cmd.guild_card.present = 1;
   cmd.guild_card.language = language;
   cmd.guild_card.section_id = section_id;
   cmd.guild_card.char_class = char_class;
-  ch.send(0x60, 0x00, &cmd, sizeof(cmd));
+  ch->send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
 void send_guild_card(
-    Channel& ch,
+    std::shared_ptr<Channel> ch,
     uint32_t guild_card_number,
     uint64_t xb_user_id,
     const string& name,
@@ -1322,7 +1352,7 @@ void send_guild_card(
     uint8_t language,
     uint8_t section_id,
     uint8_t char_class) {
-  switch (ch.version) {
+  switch (ch->version) {
     case Version::DC_NTE:
       send_guild_card_dc_pc_gc_t<G_SendGuildCard_DCNTE_6x06>(
           ch, guild_card_number, name, description, language, section_id, char_class);
@@ -1430,13 +1460,13 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
         throw runtime_error("menus not supported for this game version");
     }
     if (item.flags & MenuItem::Flag::REQUIRES_MESSAGE_BOXES) {
-      is_visible &= !c->config.check_flag(Client::Flag::NO_D6);
+      is_visible &= !c->check_flag(Client::Flag::NO_D6);
     }
     if (item.flags & MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL_RUNS_CODE) {
-      is_visible &= (c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL) && c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE));
+      is_visible &= (c->check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL) && c->check_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE));
     }
     if (item.flags & MenuItem::Flag::REQUIRES_SAVE_DISABLED) {
-      is_visible &= !c->config.check_flag(Client::Flag::SAVE_ENABLED);
+      is_visible &= !c->check_flag(Client::Flag::SAVE_ENABLED);
     }
     if (item.flags & MenuItem::Flag::INVISIBLE_IN_INFO_MENU) {
       is_visible &= !is_info_menu;
@@ -1450,6 +1480,12 @@ void send_menu_t(shared_ptr<Client> c, shared_ptr<const Menu> menu, bool is_info
       e.difficulty_tag = 0x04;
       e.num_players = (c->version() == Version::BB_V4) ? 0x00 : 0x0F;
     }
+  }
+
+  // See the description of the 07 command in CommandFormats.hh for details on
+  // why we do this.
+  if (is_pre_v1(c->version())) {
+    send_set_guild_card_number(c);
   }
 
   send_command_vt(c, is_info_menu ? 0x1F : 0x07, entries.size() - 1, entries);
@@ -1484,11 +1520,11 @@ void send_game_menu_t(
   }
 
   set<shared_ptr<const Lobby>, bool (*)(const shared_ptr<const Lobby>&, const shared_ptr<const Lobby>&)> games(Lobby::compare_shared);
-  bool client_has_debug = c->config.check_flag(Client::Flag::DEBUG_ENABLED);
+  bool client_has_debug = c->check_flag(Client::Flag::DEBUG_ENABLED);
   for (shared_ptr<Lobby> l : s->all_lobbies()) {
     if (l->is_game() &&
         (client_has_debug || l->version_is_allowed(c->version())) &&
-        (client_has_debug || (l->check_flag(Lobby::Flag::IS_CLIENT_CUSTOMIZATION) == c->config.check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION))) &&
+        (client_has_debug || (l->check_flag(Lobby::Flag::IS_CLIENT_CUSTOMIZATION) == c->check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION))) &&
         (l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM) == is_spectator_team_list) &&
         (!show_tournaments_only || l->tournament_match)) {
       games.emplace(l);
@@ -1776,8 +1812,8 @@ template <>
 void populate_lobby_data_for_client(PlayerLobbyDataXB& ret, shared_ptr<const Client> c, shared_ptr<const Client> viewer_c) {
   ret.player_tag = 0x00010000;
   ret.guild_card_number = c->login->account->account_id;
-  if (c->xb_netloc) {
-    ret.netloc = *c->xb_netloc;
+  if (c->version() == Version::XB_V3) {
+    ret.netloc = c->xb_netloc;
   } else {
     ret.netloc.account_id = 0xAE00000000000000 | c->login->account->account_id;
   }
@@ -1892,7 +1928,7 @@ static void send_join_spectator_team(shared_ptr<Client> c, shared_ptr<Lobby> l) 
       e.guild_card_number = entry.lobby_data.guild_card_number;
       e.name = entry.disp.visual.name;
       e.present = 1;
-      e.level = entry.level.load();
+      e.level = entry.level;
       e.name_color = entry.disp.visual.name_color;
 
       player_count++;
@@ -2062,7 +2098,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       throw logic_error("invalid game version");
   }
 
-  c->log.info("Creating game join command queue");
+  c->log.info_f("Creating game join command queue");
   c->game_join_command_queue = make_unique<deque<Client::JoinCommand>>();
   send_command(c, 0x1D, 0x00);
 }
@@ -2091,8 +2127,8 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
     lobby_type = 0;
     lobby_block = 0;
   } else {
-    if (c->config.override_lobby_number != 0x80) {
-      lobby_type = c->config.override_lobby_number;
+    if (c->override_lobby_number != 0x80) {
+      lobby_type = c->override_lobby_number;
     } else if (l->check_flag(Lobby::Flag::IS_OVERFLOW)) {
       lobby_type = is_ep3(c->version()) ? 15 : 0;
     } else {
@@ -2180,8 +2216,8 @@ void send_join_lobby_xb(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cl
   send_player_records_t<PlayerRecordsEntry_V3>(c, l, joining_client);
 
   uint8_t lobby_type;
-  if (c->config.override_lobby_number != 0x80) {
-    lobby_type = c->config.override_lobby_number;
+  if (c->override_lobby_number != 0x80) {
+    lobby_type = c->override_lobby_number;
   } else if (l->check_flag(Lobby::Flag::IS_OVERFLOW)) {
     lobby_type = is_ep3(c->version()) ? 15 : 0;
   } else {
@@ -2317,9 +2353,8 @@ void send_join_lobby(shared_ptr<Client> c, shared_ptr<Lobby> l) {
 
   // If the client will stop sending message box close confirmations after
   // joining any lobby, set the appropriate flag and update the client config
-  if (c->config.check_flag(Client::Flag::NO_D6_AFTER_LOBBY) && !c->config.check_flag(Client::Flag::NO_D6)) {
-    c->config.set_flag(Client::Flag::NO_D6);
-    send_update_client_config(c, false);
+  if (c->check_flag(Client::Flag::NO_D6_AFTER_LOBBY) && !c->check_flag(Client::Flag::NO_D6)) {
+    c->set_flag(Client::Flag::NO_D6);
   }
 }
 
@@ -2385,7 +2420,14 @@ void send_self_leave_notification(shared_ptr<Client> c) {
   send_command_t(c, 0x69, c->lobby_client_id, cmd);
 }
 
-void send_get_player_info(shared_ptr<Client> c, bool request_extended) {
+asio::awaitable<GetPlayerInfoResult> send_get_player_info(shared_ptr<Client> c, bool request_extended) {
+  if (c->character_data_ready_promise) {
+    throw logic_error("character data promise is already present at request time");
+  }
+  if (!c->channel->connected()) {
+    throw runtime_error("Client has already disconnected");
+  }
+
   switch (c->version()) {
     case Version::DC_NTE:
     case Version::DC_11_2000:
@@ -2406,28 +2448,32 @@ void send_get_player_info(shared_ptr<Client> c, bool request_extended) {
       throw logic_error("invalid version");
   }
 
+  bool full_req_sent = false;
   if (request_extended &&
-      c->config.check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL) &&
-      c->config.check_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE)) {
-    auto s = c->require_server_state();
-    prepare_client_for_patches(c, [wc = weak_ptr<Client>(c)]() {
-      auto c = wc.lock();
-      if (!c) {
-        return;
-      }
-      try {
-        auto s = c->require_server_state();
-        auto fn = s->function_code_index->get_patch("GetExtendedPlayerInfo", c->config.specific_version);
-        send_function_call(c, fn);
-        c->function_call_response_queue.emplace_back(empty_function_call_response_handler);
-      } catch (const exception& e) {
-        c->log.warning("Failed to send extended player info request: %s", e.what());
-        send_get_player_info(c, false);
-      }
-    });
-  } else {
+      c->check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL) &&
+      c->check_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE)) {
+    co_await prepare_client_for_patches(c);
+    if (!c->channel->connected()) {
+      throw runtime_error("Client disconnected during patch preparation");
+    }
+    try {
+      auto s = c->require_server_state();
+      auto fn = s->function_code_index->get_patch("GetExtendedPlayerInfo", c->specific_version);
+      send_function_call(c->channel, c->enabled_flags, fn);
+      c->function_call_response_queue.emplace_back(make_shared<AsyncPromise<C_ExecuteCodeResult_B3>>());
+      full_req_sent = true;
+    } catch (const exception& e) {
+      c->log.warning_f("Failed to send extended player info request: {}", e.what());
+    }
+  }
+
+  if (!full_req_sent) {
     send_command(c, (c->version() == Version::DC_NTE) ? 0x8D : 0x95, 0x00);
   }
+
+  auto promise = make_shared<AsyncPromise<GetPlayerInfoResult>>();
+  c->character_data_ready_promise = promise;
+  co_return co_await promise->get();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2542,30 +2588,30 @@ void send_player_stats_change(shared_ptr<Client> c, PlayerStatsChange stat, uint
   send_command_vt(l, (subs.size() > 0x400 / sizeof(G_UpdateEntityStat_6x9A)) ? 0x6C : 0x60, 0x00, subs);
 }
 
-void send_player_stats_change(Channel& ch, uint16_t client_id, PlayerStatsChange stat, uint32_t amount) {
+void send_player_stats_change(std::shared_ptr<Channel> ch, uint16_t client_id, PlayerStatsChange stat, uint32_t amount) {
   auto subs = generate_stats_change_subcommands(client_id, stat, amount);
   send_command_vt(ch, (subs.size() > 0x400 / sizeof(G_UpdateEntityStat_6x9A)) ? 0x6C : 0x60, 0x00, subs);
 }
 
-void send_remove_negative_conditions(shared_ptr<Client> c) {
+asio::awaitable<void> send_remove_negative_conditions(shared_ptr<Client> c) {
   G_AddStatusEffect_6x0C cmd;
   cmd.header = {0x0C, sizeof(G_AddStatusEffect_6x0C) >> 2, c->lobby_client_id};
   cmd.effect_type = 7; // Healing ring
   cmd.amount = 0;
-  send_protected_command(c, &cmd, sizeof(cmd), true);
+  co_await send_protected_command(c, &cmd, sizeof(cmd), true);
 }
 
-void send_remove_negative_conditions(Channel& ch, uint16_t client_id) {
+void send_remove_negative_conditions(std::shared_ptr<Channel> ch, uint16_t client_id) {
   G_AddStatusEffect_6x0C cmd;
   cmd.header = {0x0C, sizeof(G_AddStatusEffect_6x0C) >> 2, client_id};
   cmd.effect_type = 7; // Healing ring
   cmd.amount = 0;
-  ch.send(0x60, 0x00, &cmd, sizeof(cmd));
+  ch->send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
-void send_warp(Channel& ch, uint8_t client_id, uint32_t floor, bool is_private) {
+void send_warp(std::shared_ptr<Channel> ch, uint8_t client_id, uint32_t floor, bool is_private) {
   G_InterLevelWarp_6x94 cmd = {{0x94, 0x02, 0}, floor, {}};
-  ch.send(is_private ? 0x62 : 0x60, client_id, &cmd, sizeof(cmd));
+  ch->send(is_private ? 0x62 : 0x60, client_id, &cmd, sizeof(cmd));
 }
 
 void send_warp(shared_ptr<Client> c, uint32_t floor, bool is_private) {
@@ -2580,16 +2626,16 @@ void send_warp(shared_ptr<Lobby> l, uint32_t floor, bool is_private) {
   }
 }
 
-void send_ep3_change_music(Channel& ch, uint32_t song) {
+void send_ep3_change_music(std::shared_ptr<Channel> ch, uint32_t song) {
   G_ChangeLobbyMusic_Ep3_6xBF cmd = {{0xBF, 0x02, 0}, song};
-  ch.send(0x60, 0x00, cmd);
+  ch->send(0x60, 0x00, cmd);
 }
 
 void send_game_join_sync_command(
     shared_ptr<Client> c, const void* data, size_t size, uint8_t dc_nte_sc, uint8_t dc_11_2000_sc, uint8_t sc) {
   string compressed_data = bc0_compress(data, size);
-  if (c->config.check_flag(Client::Flag::DEBUG_ENABLED)) {
-    c->log.info("Compressed sync data from (%zX -> %zX bytes):", size, compressed_data.size());
+  if (c->check_flag(Client::Flag::DEBUG_ENABLED)) {
+    c->log.info_f("Compressed sync data from ({:X} -> {:X} bytes):", size, compressed_data.size());
     phosg::print_data(stderr, data, size);
   }
   send_game_join_sync_command_compressed(c, compressed_data.data(), compressed_data.size(), size, dc_nte_sc, dc_11_2000_sc, sc);
@@ -2632,7 +2678,7 @@ void send_game_join_sync_command_compressed(
   }
 
   if (c->game_join_command_queue) {
-    c->log.info("Client not ready to receive game commands; adding to queue");
+    c->log.info_f("Client not ready to receive game commands; adding to queue");
     auto& cmd = c->game_join_command_queue->emplace_back();
     cmd.command = 0x6D;
     cmd.flag = c->lobby_client_id;
@@ -2654,11 +2700,11 @@ void send_game_item_state(shared_ptr<Client> c) {
   for (size_t z = 0; z < 12; z++) {
     decompressed_header.next_item_id_per_player[z] = l->next_item_id_for_client[z];
   }
-  l->log.info("Sending next item IDs to client: %08" PRIX32 " %08" PRIX32 " %08" PRIX32 " %08" PRIX32,
-      decompressed_header.next_item_id_per_player[0].load(),
-      decompressed_header.next_item_id_per_player[1].load(),
-      decompressed_header.next_item_id_per_player[2].load(),
-      decompressed_header.next_item_id_per_player[3].load());
+  l->log.info_f("Sending next item IDs to client: {:08X} {:08X} {:08X} {:08X}",
+      decompressed_header.next_item_id_per_player[0],
+      decompressed_header.next_item_id_per_player[1],
+      decompressed_header.next_item_id_per_player[2],
+      decompressed_header.next_item_id_per_player[3]);
 
   for (size_t floor = 0; floor < 0x0F; floor++) {
     const auto& m = l->floor_item_managers.at(floor);
@@ -2868,7 +2914,7 @@ void send_game_flag_state_t(shared_ptr<Client> c) {
 
     if (w.size() > 0) {
       if (c->game_join_command_queue) {
-        c->log.info("Client not ready to receive join commands; adding to queue");
+        c->log.info_f("Client not ready to receive join commands; adding to queue");
         auto& cmd = c->game_join_command_queue->emplace_back();
         cmd.command = 0x006D;
         cmd.flag = c->lobby_client_id;
@@ -2886,7 +2932,7 @@ void send_game_flag_state_t(shared_ptr<Client> c) {
     cmd.quest_flags = (l && !l->quest_flags_known) ? *l->quest_flag_values : c->character()->quest_flags;
 
     if (c->game_join_command_queue) {
-      c->log.info("Client not ready to receive join commands; adding to queue");
+      c->log.info_f("Client not ready to receive join commands; adding to queue");
       auto& queue_cmd = c->game_join_command_queue->emplace_back();
       queue_cmd.command = 0x0062;
       queue_cmd.flag = c->lobby_client_id;
@@ -2987,7 +3033,7 @@ void send_game_player_state(shared_ptr<Client> to_c, shared_ptr<Client> from_c, 
 
 void send_drop_item_to_channel(
     shared_ptr<ServerState> s,
-    Channel& ch,
+    std::shared_ptr<Channel> ch,
     const ItemData& item,
     uint8_t source_type,
     uint8_t floor,
@@ -2996,24 +3042,24 @@ void send_drop_item_to_channel(
   if (entity_index == 0xFFFF) {
     send_drop_stacked_item_to_channel(s, ch, item, floor, pos);
   } else {
-    uint8_t subcommand = get_pre_v1_subcommand(ch.version, 0x51, 0x58, 0x5F);
+    uint8_t subcommand = get_pre_v1_subcommand(ch->version, 0x51, 0x58, 0x5F);
     G_DropItem_PC_V3_BB_6x5F cmd = {
         {{subcommand, 0x0B, 0x0000}, {floor, source_type, entity_index, pos, 0, 0, item}}, 0};
-    cmd.item.item.encode_for_version(ch.version, s->item_parameter_table_for_encode(ch.version));
-    ch.send(0x60, 0x00, &cmd, sizeof(cmd));
+    cmd.item.item.encode_for_version(ch->version, s->item_parameter_table_for_encode(ch->version));
+    ch->send(0x60, 0x00, &cmd, sizeof(cmd));
   }
 }
 
 void send_drop_stacked_item_to_channel(
     shared_ptr<ServerState> s,
-    Channel& ch,
+    std::shared_ptr<Channel> ch,
     const ItemData& item,
     uint8_t floor,
     const VectorXZF& pos) {
-  uint8_t subcommand = get_pre_v1_subcommand(ch.version, 0x4F, 0x56, 0x5D);
+  uint8_t subcommand = get_pre_v1_subcommand(ch->version, 0x4F, 0x56, 0x5D);
   G_DropStackedItem_PC_V3_BB_6x5D cmd = {{{subcommand, 0x0A, 0x0000}, floor, 0, pos, item}, 0};
-  cmd.item_data.encode_for_version(ch.version, s->item_parameter_table_for_encode(ch.version));
-  ch.send(0x60, 0x00, &cmd, sizeof(cmd));
+  cmd.item_data.encode_for_version(ch->version, s->item_parameter_table_for_encode(ch->version));
+  ch->send(0x60, 0x00, &cmd, sizeof(cmd));
 }
 
 void send_drop_stacked_item_to_lobby(shared_ptr<Lobby> l, const ItemData& item, uint8_t floor, const VectorXZF& pos) {
@@ -3191,10 +3237,10 @@ void send_rare_enemy_index_list(shared_ptr<Client> c, const vector<size_t>& inde
   send_command_t(c, 0xDE, 0x00, cmd);
 }
 
-void send_quest_function_call(Channel& ch, uint16_t label) {
+void send_quest_function_call(std::shared_ptr<Channel> ch, uint16_t label) {
   S_CallQuestFunction_V3_BB_AB cmd;
   cmd.label = label;
-  ch.send(0xAB, 0x00, &cmd, sizeof(cmd));
+  ch->send(0xAB, 0x00, &cmd, sizeof(cmd));
 }
 
 void send_quest_function_call(shared_ptr<Client> c, uint16_t label) {
@@ -3205,7 +3251,7 @@ void send_quest_function_call(shared_ptr<Client> c, uint16_t label) {
 // ep3 only commands
 
 void send_ep3_card_list_update(shared_ptr<Client> c) {
-  if (!c->config.check_flag(Client::Flag::HAS_EP3_CARD_DEFS)) {
+  if (!c->check_flag(Client::Flag::HAS_EP3_CARD_DEFS)) {
     auto s = c->require_server_state();
     const auto& data = (c->version() == Version::GC_EP3_NTE)
         ? s->ep3_card_index_trial->get_compressed_definitions()
@@ -3425,8 +3471,8 @@ string ep3_description_for_client(shared_ptr<Client> c) {
     throw runtime_error("client is not Episode 3");
   }
   auto p = c->character();
-  return phosg::string_printf(
-      "%s CLv%" PRIu32 " %c",
+  return std::format(
+      "{} CLv{} {}",
       name_for_char_class(p->disp.visual.char_class),
       p->disp.stats.level + 1,
       char_for_language_code(p->inventory.language));
@@ -3658,8 +3704,8 @@ void send_ep3_tournament_match_result(shared_ptr<Lobby> l, uint32_t meseta_rewar
 
     G_TournamentMatchResult_Ep3_6xB4x51 cmd;
     cmd.match_description.encode((match == tourn->get_final_match())
-            ? phosg::string_printf("(%s) Final match", tourn->get_name().c_str())
-            : phosg::string_printf("(%s) Round %zu", tourn->get_name().c_str(), match->round_num),
+            ? std::format("({}) Final match", tourn->get_name())
+            : std::format("({}) Round {}", tourn->get_name(), match->round_num),
         lc->language());
     cmd.names_entries[0].team_name.encode(match->preceding_a->winner_team->name, lc->language());
     write_player_names(cmd.names_entries[0], match->preceding_a->winner_team);
@@ -3681,7 +3727,7 @@ void send_ep3_tournament_match_result(shared_ptr<Lobby> l, uint32_t meseta_rewar
   }
 
   if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES) {
-    send_text_message_printf(l, "$C5TOURN/%" PRIX32 "/%zu WIN %c",
+    send_text_message_fmt(l, "$C5TOURN/{:X}/{} WIN {}",
         tourn->get_menu_item_id(), match->round_num,
         match->winner_team == match->preceding_a->winner_team ? 'A' : 'B');
   }
@@ -3727,11 +3773,11 @@ void send_ep3_update_game_metadata(shared_ptr<Lobby> l) {
     auto tourn = l->tournament_match ? l->tournament_match->tournament.lock() : 0;
     if (l->tournament_match && tourn) {
       if (tourn->get_final_match() == l->tournament_match) {
-        text = phosg::string_printf("Viewing final match of tournament %s", tourn->get_name().c_str());
+        text = std::format("Viewing final match of tournament {}", tourn->get_name());
       } else {
-        text = phosg::string_printf(
-            "Viewing match in round %zu of tournament %s",
-            l->tournament_match->round_num, tourn->get_name().c_str());
+        text = std::format(
+            "Viewing match in round {} of tournament {}",
+            l->tournament_match->round_num, tourn->get_name());
       }
     } else {
       text = "Viewing battle in game " + l->name;
@@ -3820,9 +3866,9 @@ void send_quest_file_chunk(
   }
   cmd.data_size = size;
 
-  c->log.info("Sending quest file chunk %s:%zu", filename.c_str(), chunk_index);
+  c->log.info_f("Sending quest file chunk {}:{}", filename, chunk_index);
   const auto& s = c->require_server_state();
-  c->channel.send(is_download_quest ? 0xA7 : 0x13, chunk_index, &cmd, sizeof(cmd), s->hide_download_commands);
+  c->channel->send(is_download_quest ? 0xA7 : 0x13, chunk_index, &cmd, sizeof(cmd), s->hide_download_commands);
 }
 
 template <typename CommandT>
@@ -3932,7 +3978,7 @@ void send_open_quest_file(
     if (chunk_bytes > 0x400) {
       chunk_bytes = 0x400;
     }
-    send_quest_file_chunk(c, filename.c_str(), offset / 0x400,
+    send_quest_file_chunk(c, filename, offset / 0x400,
         contents->data() + offset, chunk_bytes, (type != QuestFileType::ONLINE));
   }
 
@@ -3940,7 +3986,7 @@ void send_open_quest_file(
   // acknowledgement handler (13 or A7) cna know what to send next
   if (chunks_to_send < total_chunks) {
     c->sending_files.emplace(filename, contents);
-    c->log.info("Opened file %s", filename.c_str());
+    c->log.info_f("Opened file {}", filename);
   }
 }
 
@@ -3955,7 +4001,7 @@ bool send_quest_barrier_if_all_clients_ready(shared_ptr<Lobby> l) {
     if (!l->clients[x]) {
       continue;
     }
-    if (l->clients[x]->config.check_flag(Client::Flag::LOADING_QUEST)) {
+    if (l->clients[x]->check_flag(Client::Flag::LOADING_QUEST)) {
       break;
     }
   }
@@ -3991,7 +4037,7 @@ bool send_ep3_start_tournament_deck_select_if_all_clients_ready(shared_ptr<Lobby
     if (!l->clients[x]) {
       continue;
     }
-    if (l->clients[x]->config.check_flag(Client::Flag::LOADING_TOURNAMENT)) {
+    if (l->clients[x]->check_flag(Client::Flag::LOADING_TOURNAMENT)) {
       break;
     }
   }
@@ -4059,7 +4105,7 @@ void send_ep3_disband_watcher_lobbies(shared_ptr<Lobby> primary_l) {
     if (!watcher_l->is_ep3()) {
       throw logic_error("spectator team is not an Episode 3 lobby");
     }
-    primary_l->log.info("Disbanding watcher lobby %" PRIX32, watcher_l->lobby_id);
+    primary_l->log.info_f("Disbanding watcher lobby {:X}", watcher_l->lobby_id);
     send_command(watcher_l, 0xED, 0x00);
   }
 }
@@ -4074,7 +4120,11 @@ void send_server_time(shared_ptr<Client> c) {
 
   time_t t_secs = t / 1000000;
   struct tm t_parsed;
+#ifndef PHOSG_WINDOWS
   gmtime_r(&t_secs, &t_parsed);
+#else
+  gmtime_s(&t_parsed, &t_secs);
+#endif
 
   string time_str(128, 0);
   size_t len = strftime(time_str.data(), time_str.size(), "%Y:%m:%d: %H:%M:%S.000", &t_parsed);

@@ -11,25 +11,25 @@ using namespace std;
 
 void BattleParamsIndex::Table::print(FILE* stream) const {
   auto print_entry = +[](FILE* stream, const PlayerStats& e) {
-    fprintf(stream,
-        "%5hu %5hu %5hu %5hu %5hu %5hu %5hu %5hu %5" PRIu32 " %5" PRIu32,
-        e.char_stats.atp.load(),
-        e.char_stats.mst.load(),
-        e.char_stats.evp.load(),
-        e.char_stats.hp.load(),
-        e.char_stats.dfp.load(),
-        e.char_stats.ata.load(),
-        e.char_stats.lck.load(),
-        e.esp.load(),
-        e.experience.load(),
-        e.meseta.load());
+    phosg::fwrite_fmt(stream,
+        "{:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5}",
+        e.char_stats.atp,
+        e.char_stats.mst,
+        e.char_stats.evp,
+        e.char_stats.hp,
+        e.char_stats.dfp,
+        e.char_stats.ata,
+        e.char_stats.lck,
+        e.esp,
+        e.experience,
+        e.meseta);
   };
 
   for (size_t diff = 0; diff < 4; diff++) {
-    fprintf(stream, "%c ZZ   ATP   PSV   EVP    HP   DFP   ATA   LCK   ESP   EXP  DIFF\n",
+    phosg::fwrite_fmt(stream, "{} ZZ   ATP   PSV   EVP    HP   DFP   ATA   LCK   ESP   EXP  DIFF\n",
         abbreviation_for_difficulty(diff));
     for (size_t z = 0; z < 0x60; z++) {
-      fprintf(stream, "  %02zX ", z);
+      phosg::fwrite_fmt(stream, "  {:02X} ", z);
       print_entry(stream, this->stats[diff][z]);
       fputc('\n', stream);
     }
@@ -54,8 +54,8 @@ BattleParamsIndex::BattleParamsIndex(
     for (uint8_t episode = 0; episode < 3; episode++) {
       auto& file = this->files[is_solo][episode];
       if (file.data->size() < sizeof(Table)) {
-        throw runtime_error(phosg::string_printf(
-            "battle params table size is incorrect (expected %zX bytes, have %zX bytes; is_solo=%hhu, episode=%hhu)",
+        throw runtime_error(std::format(
+            "battle params table size is incorrect (expected {:X} bytes, have {:X} bytes; is_solo={}, episode={})",
             sizeof(Table), file.data->size(), is_solo, episode));
       }
       file.table = reinterpret_cast<const Table*>(file.data->data());
