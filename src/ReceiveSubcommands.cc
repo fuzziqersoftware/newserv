@@ -1920,7 +1920,7 @@ static asio::awaitable<void> on_player_drop_item(shared_ptr<Client> c, Subcomman
     auto name = s->describe_item(c->version(), item, false);
     l->log.info_f("Player {} dropped item {:08X} ({}) at {}:({:g}, {:g})",
         cmd.header.client_id, cmd.item_id, name, cmd.floor, cmd.pos.x, cmd.pos.z);
-    c->print_inventory(stderr);
+    c->print_inventory();
   }
 
   forward_subcommand(c, msg);
@@ -1965,7 +1965,7 @@ static asio::awaitable<void> on_create_inventory_item_t(shared_ptr<Client> c, Su
     if (l->log.should_log(phosg::LogLevel::L_INFO)) {
       auto name = s->describe_item(c->version(), item, false);
       l->log.info_f("Player {} created inventory item {:08X} ({})", c->lobby_client_id, item.id, name);
-      c->print_inventory(stderr);
+      c->print_inventory();
     }
   }
 
@@ -2009,7 +2009,7 @@ static void on_drop_partial_stack_t(shared_ptr<Client> c, SubcommandMessage& msg
     auto name = s->describe_item(c->version(), item, false);
     l->log.info_f("Player {} split stack to create floor item {:08X} ({}) at {}:({:g},{:g})",
         cmd.header.client_id, item.id, name, cmd.floor, cmd.pos.x, cmd.pos.z);
-    c->print_inventory(stderr);
+    c->print_inventory();
   }
 
   forward_subcommand_with_item_transcode_t(c, msg.command, msg.flag, cmd);
@@ -2064,7 +2064,7 @@ static asio::awaitable<void> on_drop_partial_stack_bb(shared_ptr<Client> c, Subc
     auto name = s->describe_item(c->version(), item, false);
     l->log.info_f("Player {} split stack {:08X} (removed: {}) at {}:({:g}, {:g})",
         cmd.header.client_id, cmd.item_id, name, cmd.floor, cmd.pos.x, cmd.pos.z);
-    c->print_inventory(stderr);
+    c->print_inventory();
   }
   co_return;
 }
@@ -2097,7 +2097,7 @@ static asio::awaitable<void> on_buy_shop_item(shared_ptr<Client> c, SubcommandMe
     auto name = s->describe_item(c->version(), item, false);
     l->log.info_f("Player {} bought item {:08X} ({}) from shop ({} Meseta)",
         cmd.header.client_id, item.id, name, price);
-    c->print_inventory(stderr);
+    c->print_inventory();
   }
 
   forward_subcommand_with_item_transcode_t(c, msg.command, msg.flag, cmd);
@@ -2251,7 +2251,7 @@ static asio::awaitable<void> on_pick_up_item_generic(
       auto s = c->require_server_state();
       auto name = s->describe_item(c->version(), fi->data, false);
       l->log.info_f("Player {} picked up {:08X} ({})", client_id, item_id, name);
-      c->print_inventory(stderr);
+      c->print_inventory();
     }
 
     for (size_t z = 0; z < 12; z++) {
@@ -2384,7 +2384,7 @@ static asio::awaitable<void> on_use_item(shared_ptr<Client> c, SubcommandMessage
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
     l->log.info_f("Player {} used item {}:{:08X} ({})",
         c->lobby_client_id, cmd.header.client_id, cmd.item_id, name);
-    c->print_inventory(stderr);
+    c->print_inventory();
   }
 
   forward_subcommand(c, msg);
@@ -2426,7 +2426,7 @@ static asio::awaitable<void> on_feed_mag(shared_ptr<Client> c, SubcommandMessage
     l->log.info_f("Player {} fed item {}:{:08X} ({}) to mag {}:{:08X} ({})",
         c->lobby_client_id, cmd.header.client_id, cmd.fed_item_id, fed_name,
         cmd.header.client_id, cmd.mag_item_id, mag_name);
-    c->print_inventory(stderr);
+    c->print_inventory();
   }
 
   forward_subcommand(c, msg);
@@ -2672,7 +2672,7 @@ static asio::awaitable<void> on_ep3_private_word_select_bb_bank_action(
           string name = s->describe_item(Version::BB_V4, item, false);
           l->log.info_f("Player {} deposited item {:08X} (x{}) ({}) in the bank",
               c->lobby_client_id, cmd.item_id, cmd.item_amount, name);
-          c->print_inventory(stderr);
+          c->print_inventory();
         }
       }
 
@@ -2702,7 +2702,7 @@ static asio::awaitable<void> on_ep3_private_word_select_bb_bank_action(
           string name = s->describe_item(Version::BB_V4, item, false);
           l->log.info_f("Player {} withdrew item {:08X} (x{}) ({}) from the bank",
               c->lobby_client_id, item.id, cmd.item_amount, name);
-          c->print_inventory(stderr);
+          c->print_inventory();
         }
       }
 
@@ -4030,7 +4030,7 @@ static asio::awaitable<void> on_item_reward_request_bb(shared_ptr<Client> c, Sub
       auto name = s->describe_item(c->version(), item, false);
       l->log.info_f("Player {} created inventory item {:08X} ({}) via quest command",
           c->lobby_client_id, item.id, name);
-      c->print_inventory(stderr);
+      c->print_inventory();
     }
 
   } catch (const out_of_range&) {
@@ -4069,7 +4069,7 @@ asio::awaitable<void> on_transfer_item_via_mail_message_bb(shared_ptr<Client> c,
     auto name = s->describe_item(c->version(), item, false);
     l->log.info_f("Player {} sent inventory item {}:{:08X} ({}) x{} to player {:08X}",
         c->lobby_client_id, cmd.header.client_id, cmd.item_id, name, cmd.amount, cmd.target_guild_card_number);
-    c->print_inventory(stderr);
+    c->print_inventory();
   }
 
   // To receive an item, the player must be online, using BB, have a character
@@ -4136,7 +4136,7 @@ static asio::awaitable<void> on_exchange_item_for_team_points_bb(shared_ptr<Clie
     auto name = s->describe_item(c->version(), item, false);
     l->log.info_f("Player {} exchanged inventory item {}:{:08X} ({}) for {} team points",
         c->lobby_client_id, cmd.header.client_id, cmd.item_id, name, points);
-    c->print_inventory(stderr);
+    c->print_inventory();
   }
 
   // The original implementation forwarded the 6xCC command to all other
@@ -4169,7 +4169,7 @@ static asio::awaitable<void> on_destroy_inventory_item(shared_ptr<Client> c, Sub
     auto name = s->describe_item(c->version(), item, false);
     l->log.info_f("Player {} destroyed inventory item {}:{:08X} ({})",
         c->lobby_client_id, cmd.header.client_id, cmd.item_id, name);
-    c->print_inventory(stderr);
+    c->print_inventory();
   }
   forward_subcommand(c, msg);
 }
@@ -4327,7 +4327,7 @@ static asio::awaitable<void> on_sell_item_at_shop_bb(shared_ptr<Client> c, Subco
     auto name = s->describe_item(c->version(), item, false);
     l->log.info_f("Player {} sold inventory item {:08X} ({}) for {} Meseta",
         c->lobby_client_id, cmd.item_id, name, price);
-    c->print_inventory(stderr);
+    c->print_inventory();
   }
 
   forward_subcommand(c, msg);
@@ -4370,7 +4370,7 @@ static asio::awaitable<void> on_buy_shop_item_bb(shared_ptr<Client> c, Subcomman
     auto name = s->describe_item(c->version(), item, false);
     l->log.info_f("Player {} purchased item {:08X} ({}) for {} meseta",
         c->lobby_client_id, item.id, name, price);
-    c->print_inventory(stderr);
+    c->print_inventory();
   }
   co_return;
 }

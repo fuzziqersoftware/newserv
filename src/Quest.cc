@@ -932,7 +932,7 @@ QuestIndex::QuestIndex(
       auto q_it = this->quests_by_number.find(vq->quest_number);
       if (q_it != this->quests_by_number.end()) {
         q_it->second->add_version(vq);
-        static_game_data_log.info_f("({}) Added {} {} version of quest {} ({})",
+        static_game_data_log.debug_f("({}) Added {} {} version of quest {} ({})",
             filenames_str,
             phosg::name_for_enum(vq->version),
             char_for_language_code(vq->language),
@@ -943,7 +943,7 @@ QuestIndex::QuestIndex(
         this->quests_by_number.emplace(vq->quest_number, q);
         this->quests_by_name.emplace(vq->name, q);
         this->quests_by_category_id_and_number[q->category_id].emplace(vq->quest_number, q);
-        static_game_data_log.info_f("({}) Created {} {} quest {} ({}) ({}, {} ({}), {})",
+        static_game_data_log.debug_f("({}) Created {} {} quest {} ({}) ({}, {} ({}), {})",
             filenames_str,
             phosg::name_for_enum(vq->version),
             char_for_language_code(vq->language),

@@ -2746,7 +2746,7 @@ MapIndex::MapIndex(const string& directory) {
       auto map_it = this->maps.find(vm->map->map_number);
       if (map_it == this->maps.end()) {
         map_it = this->maps.emplace(vm->map->map_number, make_shared<Map>(vm)).first;
-        static_game_data_log.info_f("({}) Created Episode 3 map {:08X} {} ({}; {})",
+        static_game_data_log.debug_f("({}) Created Episode 3 map {:08X} {} ({}; {})",
             filename,
             vm->map->map_number,
             char_for_language_code(vm->language),
@@ -2754,7 +2754,7 @@ MapIndex::MapIndex(const string& directory) {
             name);
       } else {
         map_it->second->add_version(vm);
-        static_game_data_log.info_f("({}) Added Episode 3 map version {:08X} {} ({}; {})",
+        static_game_data_log.debug_f("({}) Added Episode 3 map version {:08X} {} ({}; {})",
             filename,
             vm->map->map_number,
             char_for_language_code(vm->language),

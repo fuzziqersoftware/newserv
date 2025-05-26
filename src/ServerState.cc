@@ -1478,7 +1478,7 @@ void ServerState::load_bb_private_keys() {
     }
     new_keys.emplace_back(make_shared<PSOBBEncryption::KeyFile>(
         phosg::load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + filename)));
-    config_log.info_f("Loaded Blue Burst key file: {}", filename);
+    config_log.debug_f("Loaded Blue Burst key file: {}", filename);
   }
   this->bb_private_keys = std::move(new_keys);
 }
@@ -1833,43 +1833,43 @@ void ServerState::load_word_select_table() {
   const vector<string>* bb_unitxt_collection = nullptr;
   unique_ptr<UnicodeTextSet> pc_unitxt_data;
   if (this->text_index) {
-    config_log.info_f("(Word select) Using PC_V2 unitxt_e.prs from text index");
+    config_log.debug_f("(Word select) Using PC_V2 unitxt_e.prs from text index");
     pc_unitxt_collection = &this->text_index->get(Version::PC_V2, 1, 35);
   } else {
-    config_log.info_f("(Word select) Loading PC_V2 unitxt_e.prs");
+    config_log.debug_f("(Word select) Loading PC_V2 unitxt_e.prs");
     pc_unitxt_data = make_unique<UnicodeTextSet>(phosg::load_file("system/text-sets/pc-v2/unitxt_e.prs"));
     pc_unitxt_collection = &pc_unitxt_data->get(35);
   }
-  config_log.info_f("(Word select) Loading BB_V4 unitxt_ws_e.prs");
+  config_log.debug_f("(Word select) Loading BB_V4 unitxt_ws_e.prs");
   auto bb_unitxt_data = make_unique<UnicodeTextSet>(phosg::load_file("system/text-sets/bb-v4/unitxt_ws_e.prs"));
   bb_unitxt_collection = &bb_unitxt_data->get(0);
 
-  config_log.info_f("(Word select) Loading DC_NTE data");
+  config_log.debug_f("(Word select) Loading DC_NTE data");
   WordSelectSet dc_nte_ws(phosg::load_file("system/text-sets/dc-nte/ws_data.bin"), Version::DC_NTE, nullptr, true);
-  config_log.info_f("(Word select) Loading DC_11_2000 data");
+  config_log.debug_f("(Word select) Loading DC_11_2000 data");
   WordSelectSet dc_112000_ws(phosg::load_file("system/text-sets/dc-11-2000/ws_data.bin"), Version::DC_11_2000, nullptr, false);
-  config_log.info_f("(Word select) Loading DC_V1 data");
+  config_log.debug_f("(Word select) Loading DC_V1 data");
   WordSelectSet dc_v1_ws(phosg::load_file("system/text-sets/dc-v1/ws_data.bin"), Version::DC_V1, nullptr, false);
-  config_log.info_f("(Word select) Loading DC_V2 data");
+  config_log.debug_f("(Word select) Loading DC_V2 data");
   WordSelectSet dc_v2_ws(phosg::load_file("system/text-sets/dc-v2/ws_data.bin"), Version::DC_V2, nullptr, false);
-  config_log.info_f("(Word select) Loading PC_NTE data");
+  config_log.debug_f("(Word select) Loading PC_NTE data");
   WordSelectSet pc_nte_ws(phosg::load_file("system/text-sets/pc-nte/ws_data.bin"), Version::PC_NTE, pc_unitxt_collection, false);
-  config_log.info_f("(Word select) Loading PC_V2 data");
+  config_log.debug_f("(Word select) Loading PC_V2 data");
   WordSelectSet pc_v2_ws(phosg::load_file("system/text-sets/pc-v2/ws_data.bin"), Version::PC_V2, pc_unitxt_collection, false);
-  config_log.info_f("(Word select) Loading GC_NTE data");
+  config_log.debug_f("(Word select) Loading GC_NTE data");
   WordSelectSet gc_nte_ws(phosg::load_file("system/text-sets/gc-nte/ws_data.bin"), Version::GC_NTE, nullptr, false);
-  config_log.info_f("(Word select) Loading GC_V3 data");
+  config_log.debug_f("(Word select) Loading GC_V3 data");
   WordSelectSet gc_v3_ws(phosg::load_file("system/text-sets/gc-v3/ws_data.bin"), Version::GC_V3, nullptr, false);
-  config_log.info_f("(Word select) Loading GC_EP3_NTE data");
+  config_log.debug_f("(Word select) Loading GC_EP3_NTE data");
   WordSelectSet gc_ep3_nte_ws(phosg::load_file("system/text-sets/gc-ep3-nte/ws_data.bin"), Version::GC_EP3_NTE, nullptr, false);
-  config_log.info_f("(Word select) Loading GC_EP3 data");
+  config_log.debug_f("(Word select) Loading GC_EP3 data");
   WordSelectSet gc_ep3_ws(phosg::load_file("system/text-sets/gc-ep3/ws_data.bin"), Version::GC_EP3, nullptr, false);
-  config_log.info_f("(Word select) Loading XB_V3 data");
+  config_log.debug_f("(Word select) Loading XB_V3 data");
   WordSelectSet xb_v3_ws(phosg::load_file("system/text-sets/xb-v3/ws_data.bin"), Version::XB_V3, nullptr, false);
-  config_log.info_f("(Word select) Loading BB_V4 data");
+  config_log.debug_f("(Word select) Loading BB_V4 data");
   WordSelectSet bb_v4_ws(phosg::load_file("system/text-sets/bb-v4/ws_data.bin"), Version::BB_V4, bb_unitxt_collection, false);
 
-  config_log.info_f("(Word select) Generating table");
+  config_log.debug_f("(Word select) Generating table");
   this->word_select_table = make_shared<WordSelectTable>(
       dc_nte_ws, dc_112000_ws, dc_v1_ws, dc_v2_ws,
       pc_nte_ws, pc_v2_ws, gc_nte_ws, gc_v3_ws,
@@ -1908,9 +1908,10 @@ shared_ptr<ItemNameIndex> ServerState::create_item_name_index_for_version(
 }
 
 void ServerState::load_item_name_indexes() {
+  config_log.info_f("Generating item name indexes");
   for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
     Version v = static_cast<Version>(v_s);
-    config_log.info_f("Generating item name index for {}", phosg::name_for_enum(v));
+    config_log.debug_f("Generating item name index for {}", phosg::name_for_enum(v));
     this->item_name_indexes[v_s] = this->create_item_name_index_for_version(
         this->item_parameter_table(v), this->item_stack_limits(v), this->text_index);
   }
@@ -2020,10 +2021,11 @@ void ServerState::load_drop_tables() {
 
 void ServerState::load_item_definitions() {
   array<shared_ptr<const ItemParameterTable>, NUM_VERSIONS> new_item_parameter_tables;
+  config_log.info_f("Loading item definition tables");
   for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
     Version v = static_cast<Version>(v_s);
     string path = std::format("system/item-tables/ItemPMT-{}.prs", file_path_token_for_version(v));
-    config_log.info_f("Loading item definition table {}", path);
+    config_log.debug_f("Loading item definition table {}", path);
     auto data = make_shared<string>(prs_decompress(phosg::load_file(path)));
     new_item_parameter_tables[v_s] = make_shared<ItemParameterTable>(data, v);
   }

@@ -345,8 +345,8 @@ public:
   void use_character_bank(ssize_t bb_character_index);
   void use_default_bank();
 
-  void print_inventory(FILE* stream) const;
-  void print_bank(FILE* stream) const;
+  void print_inventory() const;
+  void print_bank() const;
 
   void cancel_pending_promises();
 

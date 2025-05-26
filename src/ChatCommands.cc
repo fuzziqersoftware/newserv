@@ -401,7 +401,7 @@ ChatCommandDefinition cc_bank(
       auto& bank = a.c->current_bank();
       bank.assign_ids(0x99000000 + (a.c->lobby_client_id << 20));
       a.c->log.info_f("Assigned bank item IDs");
-      a.c->print_bank(stderr);
+      a.c->print_bank();
 
       send_text_message_fmt(a.c, "{} items\n{} Meseta", bank.num_items, bank.meseta);
       co_return;

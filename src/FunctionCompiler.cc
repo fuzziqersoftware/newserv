@@ -320,7 +320,7 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
 
         string index_prefix = code->index ? std::format("{:02X} => ", code->index) : "";
         string patch_prefix = is_patch ? std::format("[{:08X}/{:08X}] ", code->menu_item_id, code->specific_version) : "";
-        function_compiler_log.info_f("Compiled function {}{}{} ({})",
+        function_compiler_log.debug_f("Compiled function {}{}{} ({})",
             index_prefix, patch_prefix, name, name_for_architecture(code->arch));
 
       } catch (const exception& e) {
@@ -408,10 +408,9 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
 
         string compressed_size_str = phosg::format_size(file_data.size());
         string decompressed_size_str = phosg::format_size(decompressed_size);
-        function_compiler_log.info_f("Loaded compressed DOL file {} ({} -> {})",
+        function_compiler_log.debug_f("Loaded compressed DOL file {} ({} -> {})",
             dol->name, compressed_size_str, decompressed_size_str);
-        description = std::format("$C6{}$C7\n{}\n{} (orig)",
-            dol->name, compressed_size_str, decompressed_size_str);
+        description = std::format("$C6{}$C7\n{}\n{} (orig)", dol->name, compressed_size_str, decompressed_size_str);
 
       } else {
         phosg::StringWriter w;
@@ -424,7 +423,7 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
         dol->data = std::move(w.str());
 
         string size_str = phosg::format_size(dol->data.size());
-        function_compiler_log.info_f("Loaded DOL file {} ({})", filename, size_str);
+        function_compiler_log.debug_f("Loaded DOL file {} ({})", filename, size_str);
         description = std::format("$C6{}$C7\n{}", dol->name, size_str);
       }
 

@@ -480,28 +480,27 @@ ReplaySession::ReplaySession(shared_ptr<ServerState> state, FILE* input_log, boo
     }
   }
 
-  replay_log.info_f("{} clients in log", this->clients.size());
+  replay_log.debug_f("{} clients in log", this->clients.size());
   for (const auto& it : this->clients) {
     string client_str = it.second->str();
-    replay_log.info_f("  {} => {}", it.first, client_str);
+    replay_log.debug_f("  {} => {}", it.first, client_str);
   }
 
-  replay_log.info_f("{} events in replay log", num_events);
+  replay_log.debug_f("{} events in replay log", num_events);
   for (auto ev = this->first_event; ev != nullptr; ev = ev->next_event) {
     string ev_str = ev->str();
-    replay_log.info_f("  {}", ev_str);
+    replay_log.debug_f("  {}", ev_str);
   }
 }
 
 asio::awaitable<void> ReplaySession::run() {
   try {
+    replay_log.info_f("Starting replay");
     while (this->first_event) {
       if (!this->first_event->complete) {
         auto& c = this->clients.at(this->first_event->client_id);
 
-        auto ev_str = this->first_event->str();
-        replay_log.info_f("Event: {}", ev_str);
-
+        replay_log.debug_f("Event: {}", this->first_event->str());
         switch (this->first_event->type) {
           case Event::Type::CONNECT: {
             if (c->channel->connected()) {
@@ -649,6 +648,11 @@ asio::awaitable<void> ReplaySession::run() {
     }
   } catch (const exception& e) {
     replay_log.error_f("Replay failed: {}", e.what());
+    if (this->first_event) {
+      replay_log.error_f("Next pending event: {}", this->first_event->str());
+    } else {
+      replay_log.error_f("No events are pending at failure time");
+    }
     this->run_failed = true;
   }
 

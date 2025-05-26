@@ -30,7 +30,7 @@ std::shared_ptr<const std::string> PatchFileIndex::File::load_data() {
   if (!this->loaded_data) {
     string relative_path = phosg::join(this->path_directories, "/") + "/" + this->name;
     string full_path = this->index->root_dir + "/" + relative_path;
-    patch_index_log.info_f("Loading data for {}", relative_path);
+    patch_index_log.debug_f("Loading data for {}", relative_path);
     this->loaded_data = make_shared<string>(phosg::load_file(full_path));
     this->size = this->loaded_data->size();
   }
@@ -45,7 +45,7 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
   try {
     string metadata_text = phosg::load_file(metadata_cache_filename);
     metadata_cache_json = phosg::JSON::parse(metadata_text);
-    patch_index_log.info_f("Loaded patch metadata cache from {}", metadata_cache_filename);
+    patch_index_log.debug_f("Loaded patch metadata cache from {}", metadata_cache_filename);
   } catch (const exception& e) {
     metadata_cache_json = phosg::JSON::dict();
     patch_index_log.warning_f("Cannot load patch metadata cache from {}: {}", metadata_cache_filename, e.what());
@@ -62,7 +62,7 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
 
     string relative_dirs = phosg::join(path_directories, "/");
     string full_dir_path = root_dir + '/' + relative_dirs;
-    patch_index_log.info_f("Listing directory {}", full_dir_path);
+    patch_index_log.debug_f("Listing directory {}", full_dir_path);
 
     for (const auto& dir_item : std::filesystem::directory_iterator(full_dir_path)) {
       string item = dir_item.path().filename().string();
@@ -133,10 +133,10 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
         this->files_by_patch_order.emplace_back(f);
         this->files_by_name.emplace(relative_item_path, f);
         if (compute_crc32s_message.empty()) {
-          patch_index_log.info_f("Added file {} ({} bytes; {} chunks; {:08X} from cache)",
+          patch_index_log.debug_f("Added file {} ({} bytes; {} chunks; {:08X} from cache)",
               full_item_path, f->size, f->chunk_crcs.size(), f->crc32);
         } else {
-          patch_index_log.info_f("Added file {} ({} bytes; {} chunks; {:08X} [{}])",
+          patch_index_log.debug_f("Added file {} ({} bytes; {} chunks; {:08X} [{}])",
               full_item_path, f->size, f->chunk_crcs.size(), f->crc32, compute_crc32s_message);
         }
       }
@@ -150,12 +150,12 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
   if (should_write_metadata_cache) {
     try {
       phosg::save_file(metadata_cache_filename, new_metadata_cache_json.serialize());
-      patch_index_log.info_f("Saved patch metadata cache to {}", metadata_cache_filename);
+      patch_index_log.debug_f("Saved patch metadata cache to {}", metadata_cache_filename);
     } catch (const exception& e) {
       patch_index_log.warning_f("Cannot save patch metadata cache to {}: {}", metadata_cache_filename, e.what());
     }
   } else {
-    patch_index_log.info_f("No files were modified; skipping metadata cache update");
+    patch_index_log.debug_f("No files were modified; skipping metadata cache update");
   }
 }
 
