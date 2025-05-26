@@ -11,7 +11,7 @@ RUN apt update && apt install -y --no-install-recommends \
     make \
     cmake \
     g++ \
-    libevent-dev \
+    libasio-dev \
     zlib1g-dev
 
 # ---
@@ -29,13 +29,13 @@ RUN git clone --depth 1 -b ${PHOSG_TARGET} https://github.com/fuzziqersoftware/p
     sudo make install
 
 RUN \
-if [ "$BUILD_RESOURCE_DASM" = "true" ] ; then \
+    if [ "$BUILD_RESOURCE_DASM" = "true" ] ; then \
     git clone --depth 1 -b ${RESOURCE_DASM_TARGET} https://github.com/fuzziqersoftware/resource_dasm.git && \
     cd resource_dasm && \
     cmake . && \
     make -j$(nproc) && \
     sudo make install \
-; fi
+    ; fi
 
 # ---
 
@@ -53,10 +53,10 @@ RUN cmake -B $PWD/build -DCMAKE_BUILD_TYPE=${BUILD_TYPE} && \
     sudo make -C build install
 
 RUN \
-if [ "$BUILD_STRIP" = "true" ] ; then \
-  strip /usr/local/lib/*.a && \
-  strip /usr/local/bin/* \
-; fi
+    if [ "$BUILD_STRIP" = "true" ] ; then \
+    strip /usr/local/lib/*.a && \
+    strip /usr/local/bin/* \
+    ; fi
 
 # ---
 
@@ -72,7 +72,7 @@ RUN cp -f system/config.example.json system/config.json && \
 FROM ${BASE_IMAGE} AS final
 
 RUN apt update && apt install -y --no-install-recommends \
-    libevent-dev \
+    libasio-dev \
     && rm -rf /var/lib/apt/lists/* /var/cache/apt/*
 
 WORKDIR /newserv

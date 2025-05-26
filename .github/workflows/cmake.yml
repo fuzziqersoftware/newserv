@@ -22,12 +22,12 @@ jobs:
 
       - name: Install libraries (Linux)
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: sudo apt-get install -y libevent-dev
+        run: sudo apt-get install -y cmake libasio-dev
 
       - name: Install libraries (macOS)
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
-          brew install libevent
+          brew install cmake asio libiconv
 
           cat << EOF > nproc
           #!/bin/sh
