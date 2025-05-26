@@ -3203,6 +3203,9 @@ Action a_run_server_replay_log(
         config_log.info_f("Starting game server");
         state->game_server = make_shared<GameServer>(state);
 
+        // TODO: Do this properly via a config option, you lazy bum
+        state->dol_file_index = make_shared<DOLFileIndex>();
+
         auto log_f = phosg::fopen_shared(replay_log_filename, "rt");
 
         replay_session = make_shared<ReplaySession>(state, log_f.get(), false);

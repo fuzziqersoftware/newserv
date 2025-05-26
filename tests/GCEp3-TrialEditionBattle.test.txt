@@ -2141,7 +2141,7 @@ I 85372 2025-05-23 18:39:57 - [Commands] Received from C-1 (Tali Lv.1) @ ipss:N-
 I 85372 2025-05-23 18:39:58 - [Commands] Received from C-1 (Tali Lv.1) @ ipss:N-1:127.0.0.1:52535 (version=GC_EP3_NTE command=D6 flag=00)
 0000 | D6 00 04 00                                     |
 I 85372 2025-05-23 18:39:58 - [Commands] Sending to C-1 (Tali Lv.1) @ ipss:N-1:127.0.0.1:52535 (version=GC_EP3_NTE command=07 flag=08)
-0000 | 07 08 00 01 11 00 00 11 FF FF FF FF 04 00 41 6C |               Al
+0000 | 07 07 E4 00 11 00 00 11 FF FF FF FF 04 00 41 6C |               Al
 0010 | 65 78 61 6E 64 72 69 61 00 00 00 00 00 00 00 00 | exandria
 0020 | 11 00 00 11 11 22 22 11 04 0F 47 6F 20 74 6F 20 |      ""   Go to
 0030 | 6C 6F 62 62 79 00 00 00 00 00 00 00 11 00 00 11 | lobby
@@ -2152,11 +2152,10 @@ I 85372 2025-05-23 18:39:58 - [Commands] Sending to C-1 (Tali Lv.1) @ ipss:N-1:1
 0080 | 77 6E 6C 6F 61 64 20 71 75 65 73 74 73 00 00 00 | wnload quests
 0090 | 11 00 00 11 11 66 66 11 04 0F 50 61 74 63 68 65 |      ff   Patche
 00A0 | 73 00 00 00 00 00 00 00 00 00 00 00 11 00 00 11 | s
-00B0 | 11 77 77 11 04 0F 50 72 6F 67 72 61 6D 73 00 00 |  ww   Programs
-00C0 | 00 00 00 00 00 00 00 00 11 00 00 11 11 88 88 11 |
-00D0 | 04 0F 44 69 73 63 6F 6E 6E 65 63 74 00 00 00 00 |   Disconnect
-00E0 | 00 00 00 00 11 00 00 11 11 99 99 11 04 0F 43 6C |               Cl
-00F0 | 65 61 72 20 6C 69 63 65 6E 73 65 00 00 00 00 00 | ear license
+00B0 | 11 88 88 11 04 0F 44 69 73 63 6F 6E 6E 65 63 74 |       Disconnect
+00C0 | 00 00 00 00 00 00 00 00 11 00 00 11 11 99 99 11 |
+00D0 | 04 0F 43 6C 65 61 72 20 6C 69 63 65 6E 73 65 00 |   Clear license
+00E0 | 00 00 00 00                                     |
 I 85372 2025-05-23 18:40:00 - [Commands] Received from C-1 (Tali Lv.1) @ ipss:N-1:127.0.0.1:52535 (version=GC_EP3_NTE command=10 flag=00)
 0000 | 10 00 0C 00 11 00 00 11 11 33 33 11             |          33
 I 85372 2025-05-23 18:40:00 - [Commands] Sending to C-1 (Tali Lv.1) @ ipss:N-1:127.0.0.1:52535 (version=GC_EP3_NTE command=07 flag=11)
@@ -2264,7 +2263,7 @@ I 85372 2025-05-23 18:40:02 - [Commands] Sending to C-1 (Tali Lv.1) @ ipss:N-1:1
 I 85372 2025-05-23 18:40:03 - [Commands] Received from C-1 (Tali Lv.1) @ ipss:N-1:127.0.0.1:52535 (version=GC_EP3_NTE command=10 flag=00)
 0000 | 10 00 0C 00 22 00 00 22 22 FF FF 22             |     "  ""  "
 I 85372 2025-05-23 18:40:03 - [Commands] Sending to C-1 (Tali Lv.1) @ ipss:N-1:127.0.0.1:52535 (version=GC_EP3_NTE command=07 flag=08)
-0000 | 07 08 00 01 11 00 00 11 FF FF FF FF 04 00 41 6C |               Al
+0000 | 07 07 E4 00 11 00 00 11 FF FF FF FF 04 00 41 6C |               Al
 0010 | 65 78 61 6E 64 72 69 61 00 00 00 00 00 00 00 00 | exandria
 0020 | 11 00 00 11 11 22 22 11 04 0F 47 6F 20 74 6F 20 |      ""   Go to
 0030 | 6C 6F 62 62 79 00 00 00 00 00 00 00 11 00 00 11 | lobby
@@ -2275,11 +2274,10 @@ I 85372 2025-05-23 18:40:03 - [Commands] Sending to C-1 (Tali Lv.1) @ ipss:N-1:1
 0080 | 77 6E 6C 6F 61 64 20 71 75 65 73 74 73 00 00 00 | wnload quests
 0090 | 11 00 00 11 11 66 66 11 04 0F 50 61 74 63 68 65 |      ff   Patche
 00A0 | 73 00 00 00 00 00 00 00 00 00 00 00 11 00 00 11 | s
-00B0 | 11 77 77 11 04 0F 50 72 6F 67 72 61 6D 73 00 00 |  ww   Programs
-00C0 | 00 00 00 00 00 00 00 00 11 00 00 11 11 88 88 11 |
-00D0 | 04 0F 44 69 73 63 6F 6E 6E 65 63 74 00 00 00 00 |   Disconnect
-00E0 | 00 00 00 00 11 00 00 11 11 99 99 11 04 0F 43 6C |               Cl
-00F0 | 65 61 72 20 6C 69 63 65 6E 73 65 00 00 00 00 00 | ear license
+00B0 | 11 88 88 11 04 0F 44 69 73 63 6F 6E 6E 65 63 74 |       Disconnect
+00C0 | 00 00 00 00 00 00 00 00 11 00 00 11 11 99 99 11 |
+00D0 | 04 0F 43 6C 65 61 72 20 6C 69 63 65 6E 73 65 00 |   Clear license
+00E0 | 00 00 00 00                                     |
 I 85372 2025-05-23 18:40:03 - [Commands] Received from C-1 (Tali Lv.1) @ ipss:N-1:127.0.0.1:52535 (version=GC_EP3_NTE command=10 flag=00)
 0000 | 10 00 0C 00 11 00 00 11 11 22 22 11             |          ""
 I 85372 2025-05-23 18:40:03 - [Commands] Sending to C-1 (Tali Lv.1) @ ipss:N-1:127.0.0.1:52535 (version=GC_EP3_NTE command=97 flag=01)
