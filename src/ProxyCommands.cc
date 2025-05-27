@@ -356,11 +356,11 @@ static asio::awaitable<HandlerResult> S_B_03(shared_ptr<Client> c, Channel::Mess
   resp.character_slot = c->bb_character_index;
   resp.connection_phase = c->bb_connection_phase;
   resp.client_code = c->bb_client_code;
-  resp.security_token = c->proxy_session->remote_bb_security_token;
+  resp.security_token = c->bb_security_token;
   resp.username.encode(c->username, c->language());
   resp.password.encode(c->password, c->language());
   resp.hardware_id = c->hardware_id;
-  resp.client_config = c->proxy_session->remote_client_config_data;
+  resp.client_config = c->bb_client_config;
   if (c->proxy_session->enable_remote_ip_crc_patch) {
     *reinterpret_cast<le_uint32_t*>(resp.client_config.data() + 0x10) =
         c->proxy_session->remote_ip_crc ^ (1309539928UL + 1248334810UL);
@@ -373,27 +373,17 @@ static asio::awaitable<HandlerResult> S_B_03(shared_ptr<Client> c, Channel::Mess
 static asio::awaitable<HandlerResult> S_B_E6(shared_ptr<Client> c, Channel::Message& msg) {
   const auto& cmd = msg.check_size_t<S_ClientInit_BB_00E6>(0xFFFF);
   c->proxy_session->remote_guild_card_number = cmd.guild_card_number;
-  c->proxy_session->remote_bb_security_token = cmd.security_token;
-  c->proxy_session->remote_client_config_data = cmd.client_config;
+  c->bb_security_token = cmd.security_token;
+  c->bb_client_config = cmd.client_config;
 
   auto s = c->require_server_state();
   auto& pc = s->proxy_persistent_configs[c->login->account->account_id];
   pc.account_id = c->login->account->account_id;
   pc.remote_guild_card_number = c->proxy_session->remote_guild_card_number;
-  pc.remote_bb_security_token = c->proxy_session->remote_bb_security_token;
-  pc.remote_client_config_data = c->proxy_session->remote_client_config_data;
   pc.enable_remote_ip_crc_patch = c->proxy_session->enable_remote_ip_crc_patch;
   c->log.info_f("Updated persistent config for proxy session");
 
-  if ((c->bb_connection_phase == 0) && c->proxy_session->received_reconnect) {
-    c->proxy_session->server_channel->send(0x00E0); // Request system file
-  }
-
-  co_return HandlerResult::SUPPRESS;
-}
-
-static asio::awaitable<HandlerResult> C_B_E0(shared_ptr<Client>, Channel::Message&) {
-  co_return HandlerResult::SUPPRESS;
+  co_return HandlerResult::FORWARD;
 }
 
 static asio::awaitable<HandlerResult> S_V123_04(shared_ptr<Client> c, Channel::Message& msg) {
@@ -748,18 +738,18 @@ static asio::awaitable<HandlerResult> S_G_E4(shared_ptr<Client> c, Channel::Mess
 static asio::awaitable<HandlerResult> S_B_22(shared_ptr<Client> c, Channel::Message& msg) {
   // We use this command (which is sent before the init encryption command) to
   // detect a particular server behavior that we'll have to work around later.
-  // It looks like this command's existence is another anti-proxy measure, since
+  // It looks like this command's existence is an anti-proxy measure, since
   // this command is 0x34 bytes in total, and the logic that adds padding bytes
   // when the command size isn't a multiple of 8 is only active when encryption
   // is enabled. Presumably some simpler proxies would get this wrong.
   // Editor's note: There's an unsavory message in this command's data field,
-  // hence the hash here instead of a direct string comparison. I'd love to hear
-  // the story behind why they put that string there.
+  // hence the hash here instead of a direct string comparison. I'd love to
+  // hear the story behind why they put that string there.
   if ((msg.data.size() == 0x2C) && (phosg::fnv1a64(msg.data.data(), msg.data.size()) == 0x8AF8314316A27994)) {
     c->log.info_f("Enabling remote IP CRC patch");
     c->proxy_session->enable_remote_ip_crc_patch = true;
   }
-  co_return HandlerResult::FORWARD;
+  co_return HandlerResult::SUPPRESS;
 }
 
 static asio::awaitable<HandlerResult> S_19_U_14(shared_ptr<Client> c, Channel::Message& msg) {
@@ -2249,7 +2239,7 @@ static on_message_t handlers[0x100][NUM_VERSIONS][2] = {
 /* DE */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
 /* DF */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 // CMD     S_PC_PATCH     C          S_BB_PATCH     C          S_DC_NTE       C           S_DC_12_2000   C              S_DC_V1           C              S_DC_V2           C               S_PC_NTE       C               S_PC_V2        C               S_GC_NTE          C              S_GC_V3           C               S_GC_EP3_NTE      C               S_GC_EP3          C               S_XB_V3        C               S_BB_V4       C
-/* E0 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {nullptr,          nullptr},      {nullptr,          nullptr},      {nullptr,          nullptr},      {S_invalid,     nullptr},      {nullptr,      C_B_E0}},
+/* E0 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {nullptr,          nullptr},      {nullptr,          nullptr},      {nullptr,          nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
 /* E1 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {nullptr,          nullptr},      {nullptr,          nullptr},      {nullptr,          nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
 /* E2 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {nullptr,          nullptr},      {nullptr,          nullptr},      {nullptr,          nullptr},      {S_invalid,     nullptr},      {S_B_E2,       nullptr}},
 /* E3 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {nullptr,          nullptr},      {nullptr,          nullptr},      {nullptr,          nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
@@ -2317,7 +2307,8 @@ asio::awaitable<void> on_proxy_command(shared_ptr<Client> c, bool from_server, u
   }
 }
 
-asio::awaitable<void> handle_proxy_server_commands(shared_ptr<Client> c, shared_ptr<ProxySession> ses, shared_ptr<Channel> channel) {
+asio::awaitable<void> handle_proxy_server_commands(
+    shared_ptr<Client> c, shared_ptr<ProxySession> ses, shared_ptr<Channel> channel) {
   std::string error_str;
   // server_channel can be changed by receiving a 19 command, hence the
   // exception handler is inside the loop here
@@ -2326,6 +2317,9 @@ asio::awaitable<void> handle_proxy_server_commands(shared_ptr<Client> c, shared_
     try {
       msg = make_unique<Channel::Message>(co_await channel->recv());
       if (c->proxy_session == ses) {
+        for (size_t z = 0; z < std::min<size_t>(c->proxy_session->prev_server_command_bytes.size(), msg->data.size()); z++) {
+          c->proxy_session->prev_server_command_bytes[z] = msg->data[z];
+        }
         asio::co_spawn(co_await asio::this_coro::executor, on_proxy_command(c, true, std::move(msg)), asio::detached);
       }
     } catch (const std::system_error& e) {

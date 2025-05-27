@@ -10,8 +10,6 @@ ProxySession::ProxySession(shared_ptr<Channel> server_channel, const PersistentC
     : server_channel(server_channel) {
   if (pc) {
     this->remote_guild_card_number = pc->remote_guild_card_number;
-    this->remote_bb_security_token = pc->remote_bb_security_token;
-    this->remote_client_config_data = pc->remote_client_config_data;
     this->enable_remote_ip_crc_patch = pc->enable_remote_ip_crc_patch;
   } else if (is_v4(this->server_channel->version)) {
     this->remote_guild_card_number = 0;

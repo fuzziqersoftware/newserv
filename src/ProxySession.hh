@@ -44,7 +44,6 @@ struct ProxySession {
   uint64_t server_ping_start_time = 0;
 
   int64_t remote_guild_card_number = -1;
-  uint32_t remote_bb_security_token = 0;
   parray<uint8_t, 0x28> remote_client_config_data;
 
   enum class DropMode {
@@ -64,8 +63,6 @@ struct ProxySession {
   struct PersistentConfig {
     uint32_t account_id;
     uint32_t remote_guild_card_number;
-    uint32_t remote_bb_security_token;
-    parray<uint8_t, 0x28> remote_client_config_data;
     bool enable_remote_ip_crc_patch;
     std::unique_ptr<asio::steady_timer> expire_timer;
   };

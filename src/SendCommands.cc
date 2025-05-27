@@ -237,8 +237,6 @@ void send_server_init_bb(shared_ptr<Client> c, uint8_t flags) {
   auto cmd = prepare_server_init_contents_bb(server_key, client_key, flags);
   send_command_t(c, use_secondary_message ? 0x9B : 0x03, 0x00, cmd);
 
-  static const string primary_expected_first_data("\xB4\x00\x93\x00\x00\x00\x00\x00", 8);
-  static const string secondary_expected_first_data("\xDC\x00\xDB\x00\x00\x00\x00\x00", 8);
   c->bb_detector_crypt = make_shared<PSOBBMultiKeyDetectorEncryption>(
       c->require_server_state()->bb_private_keys,
       bb_crypt_initial_client_commands,

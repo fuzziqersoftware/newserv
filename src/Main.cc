@@ -663,6 +663,19 @@ Action a_generate_pc_v2_registry(
       write_output_data(args, output_data.data(), output_data.size(), "reg");
     });
 
+Action a_encrypt_challenge_time(
+    "encrypt-challenge-time", nullptr, +[](phosg::Arguments& args) {
+      uint16_t time = args.get<uint16_t>(1);
+      uint32_t ret = encrypt_challenge_time(time);
+      phosg::fwrite_fmt(stderr, "{} => {:08X}\n", phosg::format_duration(time * 1000000), ret);
+    });
+Action a_decrypt_challenge_time(
+    "decrypt-challenge-time", nullptr, +[](phosg::Arguments& args) {
+      uint32_t time = args.get<uint32_t>(1, phosg::Arguments::IntFormat::HEX);
+      uint16_t ret = decrypt_challenge_time(time);
+      phosg::fwrite_fmt(stderr, "{:08X} => {}\n", time, phosg::format_duration(ret * 1000000));
+    });
+
 Action a_encrypt_challenge_data(
     "encrypt-challenge-data", nullptr, +[](phosg::Arguments& args) {
       string data = read_input_data(args);

@@ -454,7 +454,7 @@ asio::awaitable<void> start_proxy_session(shared_ptr<Client> c, const string& ho
       send_proxy_destinations_menu(c);
     }
   } else {
-    // Get persistent config if client is BB
+    // Get persistent config if available
     ProxySession::PersistentConfig* pc = nullptr;
     if (use_persistent_config) {
       try {
@@ -477,8 +477,8 @@ asio::awaitable<void> start_proxy_session(shared_ptr<Client> c, const string& ho
         std::format("C-{} proxy remote server at {}", c->id, netloc_str),
         phosg::TerminalFormat::FG_YELLOW,
         phosg::TerminalFormat::FG_RED);
-
     c->proxy_session = make_shared<ProxySession>(channel, pc);
+
     c->log.info_f("Server channel connected");
     asio::co_spawn(*s->io_context, handle_proxy_server_commands(c, c->proxy_session, channel), asio::detached);
   }
@@ -507,15 +507,6 @@ asio::awaitable<void> end_proxy_session(shared_ptr<Client> c, const std::string&
   } catch (const out_of_range&) {
   }
 
-  bool is_in_game = c->proxy_session->is_in_game;
-  c->proxy_session->server_channel->disconnect();
-  c->proxy_session.reset();
-
-  if (is_v4(c->version())) {
-    c->channel->disconnect();
-    co_return;
-  }
-
   // Delete all the other players
   for (size_t x = 0; x < c->proxy_session->lobby_players.size(); x++) {
     if (c->proxy_session->lobby_players[x].guild_card_number == 0) {
@@ -525,6 +516,15 @@ asio::awaitable<void> end_proxy_session(shared_ptr<Client> c, const std::string&
     uint8_t leader_id = c->lobby_client_id;
     S_LeaveLobby_66_69_Ep3_E9 cmd = {leaving_id, leader_id, 1, 0};
     c->channel->send(c->proxy_session->is_in_game ? 0x66 : 0x69, leaving_id, &cmd, sizeof(cmd));
+  }
+
+  bool is_in_game = c->proxy_session->is_in_game;
+  c->proxy_session->server_channel->disconnect();
+  c->proxy_session.reset();
+
+  if (is_v4(c->version())) {
+    c->channel->disconnect();
+    co_return;
   }
 
   if (is_in_game) {
@@ -1480,24 +1480,34 @@ static asio::awaitable<void> on_93_BB(shared_ptr<Client> c, Channel::Message& ms
     c->preferred_lobby_id = base_cmd.preferred_lobby_id;
   }
 
-  send_client_init_bb(c, 0);
-
-  if (!c->bb_client_config.is_filled_with(0xFF)) {
+  if (base_cmd.guild_card_number == 0) {
     // There is a (bug? feature?) in the BB client such that it has to receive
     // a reconnect command during the data server phase, or else it won't know
     // where to connect to during character selection. It's not clear why they
     // didn't just make it use the initial connection address by default...
+    send_client_init_bb(c, 0);
     send_reconnect(c, s->connect_address_for_client(c), s->name_to_port_config.at("bb-data1")->port);
+    co_return;
 
   } else if (s->proxy_destination_bb.has_value()) {
-    // Start a proxy session if there's a destination configured Ignore the
-    // persistent config if this is the first data server connection, to
-    // prevent quick reconnects from incorrectly reusing the old session's
-    // state.
+    // Start a proxy session immediately if there's a destination set. Two
+    // things to watch out for:
+    // - Ignore the persistent config if this is the first data server
+    //   connection, to prevent quick reconnects from incorrectly reusing the
+    //   old session's state.
+    // - We don't send 00E6 (send_client_init_bb) in this case. This is because
+    //   the login command is resent to the remote server, and we forward its
+    //   response back to the client directly.
     const auto& [host, port] = *s->proxy_destination_bb;
     co_await start_proxy_session(c, host, port, c->bb_connection_phase != 0);
+    c->proxy_session->remote_client_config_data = c->bb_client_config;
+    co_return;
 
-  } else if (c->bb_connection_phase >= 0x04) {
+  } else {
+    send_client_init_bb(c, 0);
+  }
+
+  if (c->bb_connection_phase >= 0x04) {
     // This means the client is done with the data server phase and is in the
     // game server phase; we should send the ship select menu or a lobby join
     // command.

@@ -908,7 +908,11 @@ asio::awaitable<deque<string>> f_sc_ss(ShellCommand::Args& args) {
 
   auto c = args.get_client();
   if (args.command[1] == 's') {
-    co_await on_command_with_header(c, data);
+    if (c->proxy_session) {
+      send_command_with_header(c->proxy_session->server_channel, data.data(), data.size());
+    } else {
+      co_await on_command_with_header(c, data);
+    }
   } else {
     send_command_with_header(c->channel, data.data(), data.size());
   }

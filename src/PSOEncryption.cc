@@ -706,27 +706,28 @@ void PSOBBMultiKeyDetectorEncryption::encrypt(void* data, size_t size) {
 }
 
 void PSOBBMultiKeyDetectorEncryption::decrypt(void* data, size_t size) {
-  if (!this->active_crypt.get()) {
-    if (size != 8) {
-      throw logic_error("initial decryption size does not match expected first data size");
-    }
-
-    for (const auto& key : this->possible_keys) {
-      this->active_key = key;
-      this->active_crypt = make_shared<PSOBBEncryption>(*this->active_key, this->seed.data(), this->seed.size());
-      string test_data(reinterpret_cast<const char*>(data), size);
-      this->active_crypt->decrypt(test_data.data(), test_data.size());
-      if (this->expected_first_data.count(test_data)) {
-        break;
-      }
-      this->active_key.reset();
-      this->active_crypt.reset();
-    }
-    if (!this->active_crypt.get()) {
-      throw runtime_error("none of the registered private keys are valid for this client");
-    }
+  if (this->active_crypt.get()) {
+    this->active_crypt->decrypt(data, size);
+    return;
   }
-  this->active_crypt->decrypt(data, size);
+
+  if (size != 8) {
+    throw logic_error("initial decryption size does not match expected first data size");
+  }
+
+  for (const auto& key : this->possible_keys) {
+    this->active_key = key;
+    this->active_crypt = make_shared<PSOBBEncryption>(*this->active_key, this->seed.data(), this->seed.size());
+    string test_data(reinterpret_cast<const char*>(data), size);
+    this->active_crypt->decrypt(test_data.data(), test_data.size());
+    if (this->expected_first_data.count(test_data)) {
+      memcpy(data, test_data.data(), size);
+      return;
+    }
+    this->active_key.reset();
+    this->active_crypt.reset();
+  }
+  throw runtime_error("none of the registered private keys are valid for this client");
 }
 
 PSOEncryption::Type PSOBBMultiKeyDetectorEncryption::type() const {
