@@ -464,8 +464,8 @@ static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool 
     }
 
     // username/password are tokens[0] and [1]
-    dest_character_index = stoll(tokens[2]) - 1;
-    if ((dest_character_index >= 127) || (dest_character_index < 0)) {
+    dest_character_index = stoull(tokens[2]) - 1;
+    if (dest_character_index >= 127) {
       throw precondition_failed("$C6Player index must\nbe in range 1-127");
     }
 
@@ -478,8 +478,8 @@ static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool 
     }
 
   } else {
-    dest_character_index = stoll(a.text) - 1;
-    if ((dest_character_index >= s->num_backup_character_slots) || (dest_character_index < 0)) {
+    dest_character_index = stoull(a.text) - 1;
+    if (dest_character_index >= s->num_backup_character_slots) {
       throw precondition_failed("$C6Player index must\nbe in range 1-{}", s->num_backup_character_slots);
     }
     dest_account = a.c->login->account;
