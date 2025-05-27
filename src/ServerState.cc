@@ -1095,6 +1095,7 @@ void ServerState::load_config_early() {
   }
 
   this->enable_chat_commands = this->config_json->get_bool("EnableChatCommands", true);
+  this->num_backup_character_slots = this->config_json->get_int("BackupCharacterSlots", 16);
 
   this->version_name_colors.reset();
   this->client_customization_name_color = 0;

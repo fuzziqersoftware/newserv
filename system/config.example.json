@@ -279,6 +279,11 @@
   // use chat commands.
   "EnableChatCommands": true,
 
+  // Number of backup character slots for each account, accessible with the
+  // $savechar, $loadchar, and $checkchar commands. This can be any value, but
+  // it's recommended to use a small number such as 16.
+  "BackupCharacterSlots": 16,
+
   // Information menu contents. Each entry is a list containing [title,
   // short description, full contents]. In the short description and full
   // contents, you can use PSO escape codes with the $ character (for example,

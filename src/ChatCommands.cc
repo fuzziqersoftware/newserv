@@ -25,6 +25,41 @@
 using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
+// Tools
+
+string str_for_flag_ranges(const vector<bool>& flags) {
+  string ret;
+  auto add_result = [&](size_t start, size_t end) {
+    if (!ret.empty()) {
+      ret.push_back(',');
+    }
+    if (start == end) {
+      ret += std::format("{}", start);
+    } else if (start == end - 1) {
+      ret += std::format("{},{}", start, end);
+    } else {
+      ret += std::format("{}-{}", start, end);
+    }
+  };
+
+  size_t range_start = 0;
+  bool in_range = false;
+  for (size_t z = 0; z < flags.size(); z++) {
+    if (flags[z] && !in_range) {
+      in_range = true;
+      range_start = z;
+    } else if (!flags[z] && in_range) {
+      in_range = false;
+      add_result(range_start, z - 1);
+    }
+  }
+  if (in_range) {
+    add_result(range_start, flags.size() - 1);
+  }
+  return ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Checks
 
 class precondition_failed {
@@ -421,7 +456,7 @@ static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool 
 
   shared_ptr<Account> dest_account;
   shared_ptr<BBLicense> dest_bb_license;
-  ssize_t dest_character_index = 0;
+  size_t dest_character_index = 0;
   if (is_bb_conversion) {
     vector<string> tokens = phosg::split(a.text, ' ');
     if (tokens.size() != 3) {
@@ -430,8 +465,8 @@ static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool 
 
     // username/password are tokens[0] and [1]
     dest_character_index = stoll(tokens[2]) - 1;
-    if ((dest_character_index > 3) || (dest_character_index < 0)) {
-      throw precondition_failed("$C6Player index must\nbe in range 1-4");
+    if ((dest_character_index >= 127) || (dest_character_index < 0)) {
+      throw precondition_failed("$C6Player index must\nbe in range 1-127");
     }
 
     try {
@@ -444,8 +479,8 @@ static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool 
 
   } else {
     dest_character_index = stoll(a.text) - 1;
-    if ((dest_character_index > 15) || (dest_character_index < 0)) {
-      throw precondition_failed("$C6Player index must\nbe in range 1-16");
+    if ((dest_character_index >= s->num_backup_character_slots) || (dest_character_index < 0)) {
+      throw precondition_failed("$C6Player index must\nbe in range 1-{}", s->num_backup_character_slots);
     }
     dest_account = a.c->login->account;
   }
@@ -574,30 +609,49 @@ ChatCommandDefinition cc_checkchar(
         throw precondition_failed("$C7This command cannot\nbe used on a shared\naccount");
       }
 
-      size_t index = stoull(a.text, nullptr, 0) - 1;
-      if (index > 15) {
-        throw precondition_failed("$C6Player index must\nbe in range 1-16");
-      }
+      auto s = a.c->require_server_state();
 
-      try {
-        if (is_ep3(a.c->version())) {
-          string filename = a.c->backup_character_filename(a.c->login->account->account_id, index, true);
-          auto ch = phosg::load_object_file<PSOGCEp3CharacterFile::Character>(filename);
-          send_text_message_fmt(a.c, "Slot {}: $C6{}$C7\n{} {}\nCLv: on {}.{}, off {}.{}",
-              index + 1, ch.disp.visual.name.decode(),
-              name_for_section_id(ch.disp.visual.section_id), name_for_char_class(ch.disp.visual.char_class),
-              (ch.ep3_config.online_clv_exp / 100) + 1, ch.ep3_config.online_clv_exp % 100,
-              (ch.ep3_config.offline_clv_exp / 100) + 1, ch.ep3_config.offline_clv_exp % 100);
-        } else {
-          string filename = a.c->backup_character_filename(a.c->login->account->account_id, index, false);
-          auto ch = PSOCHARFile::load_shared(filename, false).character_file;
-          send_text_message_fmt(a.c, "Slot {}: $C6{}$C7\n{} {}\nLevel {}",
-              index + 1, ch->disp.name.decode(),
-              name_for_section_id(ch->disp.visual.section_id), name_for_char_class(ch->disp.visual.char_class),
-              ch->disp.stats.level + 1);
+      if (a.text.empty()) {
+        bool is_ep3 = ::is_ep3(a.c->version());
+
+        vector<bool> flags;
+        flags.emplace_back(false);
+        for (size_t z = 0; z < s->num_backup_character_slots; z++) {
+          string filename = a.c->backup_character_filename(a.c->login->account->account_id, z, is_ep3);
+          flags.emplace_back(std::filesystem::is_regular_file(filename));
         }
-      } catch (const phosg::cannot_open_file&) {
-        send_text_message_fmt(a.c, "No character in\nslot {}", index + 1);
+        string used_str = str_for_flag_ranges(flags);
+        flags.flip();
+        flags[0] = false;
+        string free_str = str_for_flag_ranges(flags);
+        send_text_message_fmt(a.c, "Used: {}\nFree: {}", used_str, free_str);
+
+      } else {
+        size_t index = stoull(a.text, nullptr, 0) - 1;
+        if (index >= s->num_backup_character_slots) {
+          throw precondition_failed("$C6Player index must\nbe in range 1-{}", s->num_backup_character_slots);
+        }
+
+        try {
+          if (is_ep3(a.c->version())) {
+            string filename = a.c->backup_character_filename(a.c->login->account->account_id, index, true);
+            auto ch = phosg::load_object_file<PSOGCEp3CharacterFile::Character>(filename);
+            send_text_message_fmt(a.c, "Slot {}: $C6{}$C7\n{} {}\nCLv: on {}.{}, off {}.{}",
+                index + 1, ch.disp.visual.name.decode(),
+                name_for_section_id(ch.disp.visual.section_id), name_for_char_class(ch.disp.visual.char_class),
+                (ch.ep3_config.online_clv_exp / 100) + 1, ch.ep3_config.online_clv_exp % 100,
+                (ch.ep3_config.offline_clv_exp / 100) + 1, ch.ep3_config.offline_clv_exp % 100);
+          } else {
+            string filename = a.c->backup_character_filename(a.c->login->account->account_id, index, false);
+            auto ch = PSOCHARFile::load_shared(filename, false).character_file;
+            send_text_message_fmt(a.c, "Slot {}: $C6{}$C7\n{} {}\nLevel {}",
+                index + 1, ch->disp.name.decode(),
+                name_for_section_id(ch->disp.visual.section_id), name_for_char_class(ch->disp.visual.char_class),
+                ch->disp.stats.level + 1);
+          }
+        } catch (const phosg::cannot_open_file&) {
+          send_text_message_fmt(a.c, "No character in\nslot {}", index + 1);
+        }
       }
 
       co_return;
@@ -1508,11 +1562,12 @@ ChatCommandDefinition cc_loadchar(
         throw precondition_failed("$C7This command cannot\nbe used on a shared\naccount");
       }
 
+      auto s = a.c->require_server_state();
       auto l = a.c->require_lobby();
 
       size_t index = stoull(a.text, nullptr, 0) - 1;
-      if (index > 15) {
-        throw precondition_failed("$C6Player index must\nbe in range 1-16");
+      if (index >= s->num_backup_character_slots) {
+        throw precondition_failed("$C6Player index must\nbe in range 1-{}", s->num_backup_character_slots);
       }
 
       shared_ptr<PSOGCEp3CharacterFile::Character> ep3_char;
@@ -1524,7 +1579,6 @@ ChatCommandDefinition cc_loadchar(
 
       if (a.c->version() == Version::BB_V4) {
         // On BB, it suffices to simply send the character file again
-        auto s = a.c->require_server_state();
         send_complete_player_bb(a.c);
         send_player_leave_notification(l, a.c->lobby_client_id);
         s->send_lobby_join_notifications(l, a.c);

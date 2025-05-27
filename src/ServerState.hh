@@ -115,6 +115,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool use_temp_accounts_for_prototypes = true;
   std::array<uint16_t, NUM_VERSIONS> compatibility_groups = {};
   bool enable_chat_commands = true;
+  size_t num_backup_character_slots = 16;
   std::unique_ptr<std::array<uint32_t, NUM_NON_PATCH_VERSIONS>> version_name_colors;
   uint32_t client_customization_name_color = 0x00000000;
   uint8_t allowed_drop_modes_v1_v2_normal = 0x1F;
