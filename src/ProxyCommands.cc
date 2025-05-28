@@ -1955,6 +1955,20 @@ asio::awaitable<HandlerResult> C_6x(shared_ptr<Client> c, Channel::Message& msg)
       }
       break;
 
+    case 0x4E: {
+      if (c->check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
+        if (is_v1_or_v2(c->version()) && (c->version() != Version::GC_NTE)) {
+          G_UseMedicalCenter_6x31 cmd = {0x31, 0x01, c->lobby_client_id};
+          send_command_t(c->channel, 0x60, 0x00, cmd);
+          send_command_t(c->proxy_session->server_channel, 0x60, 0x00, cmd);
+        } else {
+          G_RevivePlayer_V3_BB_6xA1 cmd = {0xA1, 0x01, c->lobby_client_id};
+          co_await send_protected_command(c, &cmd, sizeof(cmd), true);
+        }
+      }
+      break;
+    }
+
     case 0x5F:
       send_item_notification_if_needed(
           c, msg.check_size_t<G_DropItem_DC_6x5F>(sizeof(G_DropItem_PC_V3_BB_6x5F)).item.item, true);
