@@ -28,6 +28,23 @@ static void set_log_level_from_json(
   }
 }
 
+void set_all_log_levels(phosg::LogLevel level) {
+  channel_exceptions_log.min_level = level;
+  client_log.min_level = level;
+  command_data_log.min_level = level;
+  config_log.min_level = level;
+  dns_server_log.min_level = level;
+  function_compiler_log.min_level = level;
+  ip_stack_simulator_log.min_level = level;
+  lobby_log.min_level = level;
+  patch_index_log.min_level = level;
+  player_data_log.min_level = level;
+  proxy_server_log.min_level = level;
+  replay_log.min_level = level;
+  server_log.min_level = level;
+  static_game_data_log.min_level = level;
+}
+
 void set_log_levels_from_json(const phosg::JSON& json) {
   set_log_level_from_json(channel_exceptions_log, json, "ChannelExceptions");
   set_log_level_from_json(client_log, json, "Clients");

@@ -3195,6 +3195,9 @@ Action a_run_server_replay_log(
       }
 
       auto state = make_shared<ServerState>(get_config_filename(args));
+      if (args.get<bool>("debug")) {
+        state->is_debug = true;
+      }
       state->load_all(true);
 
       if (state->dns_server_port) {

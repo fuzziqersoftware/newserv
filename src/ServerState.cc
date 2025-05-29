@@ -1059,7 +1059,11 @@ void ServerState::load_config_early() {
   this->exp_share_multiplier = this->config_json->get_float("BBEXPShareMultiplier", 0.5);
   this->server_global_drop_rate_multiplier = this->config_json->get_float("ServerGlobalDropRateMultiplier", 1);
 
-  set_log_levels_from_json(this->config_json->get("LogLevels", phosg::JSON::dict()));
+  if (this->is_debug) {
+    set_all_log_levels(phosg::LogLevel::L_DEBUG);
+  } else {
+    set_log_levels_from_json(this->config_json->get("LogLevels", phosg::JSON::dict()));
+  }
 
   try {
     this->run_shell_behavior = this->config_json->at("RunInteractiveShell").as_bool()

@@ -4982,9 +4982,7 @@ struct G_6x70_Base_DCNTE {
   /* 0002 */ le_uint16_t room_id = 0;
   /* 0004 */ le_uint32_t flags1 = 0;
   /* 0008 */ VectorXYZF pos;
-  /* 0014 */ le_uint32_t angle_x = 0;
-  /* 0018 */ le_uint32_t angle_y = 0;
-  /* 001C */ le_uint32_t angle_z = 0;
+  /* 0014 */ VectorXYZI angle;
   /* 0020 */ le_uint16_t unknown_a3a = 0;
   /* 0022 */ le_uint16_t current_hp = 0;
 } __packed_ws__(G_6x70_Base_DCNTE, 0x24);

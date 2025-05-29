@@ -2786,10 +2786,9 @@ void send_game_enemy_state(shared_ptr<Client> c) {
   auto s = c->require_server_state();
 
   vector<SyncEnemyStateEntry> entries;
-  bool is_v3 = !is_v1_or_v2(c->version());
   for (auto ene_st : l->map_state->iter_enemy_states(c->version())) {
     auto& entry = entries.emplace_back();
-    entry.flags = ene_st->get_game_flags(is_v3);
+    entry.flags = ene_st->game_flags;
     entry.item_drop_id = (ene_st->server_flags & MapState::EnemyState::Flag::ITEM_DROPPED)
         ? 0xFFFF
         : (0xCA0 + l->map_state->index_for_enemy_state(c->version(), ene_st));

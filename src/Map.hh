@@ -716,7 +716,6 @@ public:
       ITEM_DROPPED = 0x0008,
       ALL_HITS_MASK_FIRST = 0x0010,
       ALL_HITS_MASK = 0x00F0,
-      GAME_FLAGS_IS_V3 = 0x0100,
     };
     size_t e_id = 0;
     size_t set_id = 0;
@@ -727,31 +726,12 @@ public:
     uint16_t set_flags = 0; // Only used if super_ene->child_index == 0
     uint16_t server_flags = 0;
 
-    static uint32_t convert_game_flags(uint32_t game_flags, bool to_v3);
-
     inline void reset() {
       this->total_damage = 0;
       this->rare_flags = 0;
       this->game_flags = 0;
       this->set_flags = 0;
       this->server_flags = 0;
-    }
-
-    inline void set_game_flags(uint32_t game_flags, bool is_v3) {
-      this->game_flags = game_flags;
-      if (is_v3) {
-        this->server_flags |= Flag::GAME_FLAGS_IS_V3;
-      } else {
-        this->server_flags &= ~Flag::GAME_FLAGS_IS_V3;
-      }
-    }
-    inline uint32_t get_game_flags(bool is_v3) const {
-      bool flags_is_v3 = (this->server_flags & Flag::GAME_FLAGS_IS_V3);
-      if (flags_is_v3 == is_v3) {
-        return this->game_flags;
-      } else {
-        return this->convert_game_flags(this->game_flags, is_v3);
-      }
     }
 
     inline bool is_rare(Version version) const {

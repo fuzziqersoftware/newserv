@@ -9,7 +9,7 @@ start:
 
   .data     0x801352D0
   .data     0x00000004
-  .data     0x38600000
+  li        r3, 0
 
   .data     0x00000000
   .data     0x00000000

@@ -1,8 +1,9 @@
 # This patch enables the debug menus in PSO Episode 3 USA. Specifically, it
 # causes them all to load, but only activates one (selected by uncommenting a
 # line below). See the comments for more information. Most of these editors are
-# present in PSO PC and PSOX as well, but not in GC Episodes 1 & 2. There are
-# notes in the below comments that may help get these editors working on PSO PC.
+# present in PSO PC and PSO Xbox as well, but not in GC Episodes 1 & 2. There
+# are notes in the below comments that may help get these editors working on
+# PSO PC.
 
 # This patch must not be run from the Patches menu - it should only be run with
 # the $patch command, since the client will likely crash if the player is not

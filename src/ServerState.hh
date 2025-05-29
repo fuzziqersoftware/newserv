@@ -109,6 +109,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   uint64_t client_ping_interval_usecs = 30000000;
   uint64_t client_idle_timeout_usecs = 60000000;
   uint64_t patch_client_idle_timeout_usecs = 300000000;
+  bool is_debug = false;
   bool ip_stack_debug = false;
   bool allow_unregistered_users = false;
   bool allow_pc_nte = false;

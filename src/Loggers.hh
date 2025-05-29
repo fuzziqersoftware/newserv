@@ -18,4 +18,5 @@ extern phosg::PrefixedLogger replay_log;
 extern phosg::PrefixedLogger server_log;
 extern phosg::PrefixedLogger static_game_data_log;
 
+void set_all_log_levels(phosg::LogLevel level);
 void set_log_levels_from_json(const phosg::JSON& json);

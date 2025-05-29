@@ -1154,10 +1154,42 @@ G_6x70_Base_V1 Parsed6x70Data::base_v1(bool is_v3) const {
   return ret;
 }
 
+uint32_t Parsed6x70Data::convert_game_flags(uint32_t game_flags, bool to_v3) {
+  // The format of game_flags for players was changed significantly between v2
+  // and v3, and not accounting for this results in odd effects like other
+  // characters not appearing when joining a game. Unfortunately, some bits
+  // were deleted on v3 and other bits were added, so it doesn't suffice to
+  // simply store the most complete format of this field - we have to be able
+  // to convert between the two.
+
+  // Bits on v2: ?IHCBAzy xwvutsrq ponmlkji hgfedcba
+  // Bits on v3: ?IHGFEDC BAzyxwvu srqponkj hgfedcba
+  // The bits ilmt were removed in v3 and the bits to their left were shifted
+  // right. The bits DEFG were added in v3 and do not exist on v2.
+  // Known meanings for these bits:
+  //   o = is dead
+  //   n = should play hit animation
+  //   y = is near enemy
+  //   H = is enemy?
+  //   I = is object? (some entities have both H and I set though)
+
+  if (to_v3) {
+    return (game_flags & 0xE00000FF) |
+        ((game_flags & 0x00000600) >> 1) |
+        ((game_flags & 0x0007E000) >> 3) |
+        ((game_flags & 0x1FF00000) >> 4);
+  } else {
+    return (game_flags & 0xE00000FF) |
+        ((game_flags << 1) & 0x00000600) |
+        ((game_flags << 3) & 0x0007E000) |
+        ((game_flags << 4) & 0x1FF00000);
+  }
+}
+
 uint32_t Parsed6x70Data::get_game_flags(bool is_v3) const {
   return (this->game_flags_is_v3 == is_v3)
       ? this->game_flags
-      : MapState::EnemyState::convert_game_flags(this->game_flags, is_v3);
+      : Parsed6x70Data::convert_game_flags(this->game_flags, is_v3);
 }
 
 static asio::awaitable<void> on_sync_joining_player_disp_and_inventory(
@@ -3423,36 +3455,29 @@ static asio::awaitable<void> on_update_enemy_state(shared_ptr<Client> c, Subcomm
   if ((cmd.enemy_index & 0xF000) || (cmd.header.entity_id != (cmd.enemy_index | 0x1000))) {
     throw runtime_error("mismatched enemy id/index");
   }
-  bool is_v3 = !is_v1_or_v2(c->version());
   auto ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd.enemy_index);
   uint32_t src_flags = is_big_endian(c->version()) ? bswap32(cmd.game_flags) : cmd.game_flags.load();
   if (l->difficulty == 3) {
-    src_flags = (src_flags & 0xFFFFFFC0) | (ene_st->get_game_flags(is_v3) & 0x0000003F);
+    src_flags = (src_flags & 0xFFFFFFC0) | (ene_st->game_flags & 0x0000003F);
   }
-  ene_st->set_game_flags(src_flags, is_v3);
+  ene_st->game_flags = src_flags;
   ene_st->total_damage = cmd.total_damage;
   ene_st->set_last_hit_by_client_id(c->lobby_client_id);
-  l->log.info_f("E-{:03X} updated to damage={} game_flags={:08X} ({})",
-      ene_st->e_id,
-      ene_st->total_damage,
-      ene_st->game_flags,
-      (ene_st->server_flags & MapState::EnemyState::Flag::GAME_FLAGS_IS_V3) ? "v3" : "v2");
+  l->log.info_f("E-{:03X} updated to damage={} game_flags={:08X}", ene_st->e_id, ene_st->total_damage, ene_st->game_flags);
 
   for (auto lc : l->clients) {
     if (lc && (lc != c)) {
       cmd.enemy_index = l->map_state->index_for_enemy_state(lc->version(), ene_st);
       if (cmd.enemy_index != 0xFFFF) {
         cmd.header.entity_id = 0x1000 | cmd.enemy_index;
-        uint32_t game_flags = ene_st->get_game_flags(!is_v1_or_v2(lc->version()));
-        cmd.game_flags = is_big_endian(lc->version()) ? phosg::bswap32(game_flags) : game_flags;
+        cmd.game_flags = is_big_endian(lc->version()) ? phosg::bswap32(ene_st->game_flags) : ene_st->game_flags;
         send_command_t(lc, 0x60, 0x00, cmd);
       }
     }
   }
 }
 
-static asio::awaitable<void> on_set_enemy_low_game_flags_ultimate(
-    shared_ptr<Client> c, SubcommandMessage& msg) {
+static asio::awaitable<void> on_set_enemy_low_game_flags_ultimate(shared_ptr<Client> c, SubcommandMessage& msg) {
   auto& cmd = msg.check_size_t<G_SetEnemyLowGameFlagsUltimate_6x9C>();
 
   if (command_is_private(msg.command) ||
@@ -3467,15 +3492,10 @@ static asio::awaitable<void> on_set_enemy_low_game_flags_ultimate(
     co_return;
   }
 
-  bool is_v3 = !is_v1_or_v2(c->version());
   auto ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd.header.entity_id - 0x1000);
-  uint32_t game_flags = ene_st->get_game_flags(is_v3);
-  if (!(game_flags & cmd.low_game_flags)) {
-    ene_st->set_game_flags(game_flags | cmd.low_game_flags, is_v3);
-    l->log.info_f("E-{:03X} updated to game_flags={:08X} ({})",
-        ene_st->e_id,
-        ene_st->game_flags,
-        (ene_st->server_flags & MapState::EnemyState::Flag::GAME_FLAGS_IS_V3) ? "v3" : "v2");
+  if (!(ene_st->game_flags & cmd.low_game_flags)) {
+    ene_st->game_flags |= cmd.low_game_flags;
+    l->log.info_f("E-{:03X} updated to game_flags={:08X}", ene_st->e_id, ene_st->game_flags);
   }
 
   co_await forward_subcommand_with_entity_id_transcode_t<G_SetEnemyLowGameFlagsUltimate_6x9C>(c, msg);

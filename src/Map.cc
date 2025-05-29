@@ -5848,54 +5848,11 @@ uint32_t MapState::RareEnemyRates::for_enemy_type(EnemyType type) const {
   }
 }
 
-const shared_ptr<const MapState::RareEnemyRates> MapState::NO_RARE_ENEMIES = make_shared<MapState::RareEnemyRates>(
-    0, 0, 0);
+const shared_ptr<const MapState::RareEnemyRates> MapState::NO_RARE_ENEMIES = make_shared<MapState::RareEnemyRates>(0, 0, 0);
 const shared_ptr<const MapState::RareEnemyRates> MapState::DEFAULT_RARE_ENEMIES = make_shared<MapState::RareEnemyRates>(
     MapState::RareEnemyRates::DEFAULT_RARE_ENEMY_RATE_V3,
     MapState::RareEnemyRates::DEFAULT_MERICARAND_RATE_V3,
     MapState::RareEnemyRates::DEFAULT_RARE_BOSS_RATE_V4);
-
-uint32_t MapState::EnemyState::convert_game_flags(uint32_t game_flags, bool to_v3) {
-  // The format of game_flags was changed significantly between v2 and v3, and
-  // not accounting for this results in odd effects like other characters not
-  // appearing when joining a game. Unfortunately, some bits were deleted on v3
-  // and other bits were added, so it doesn't suffice to simply store the most
-  // complete format of this field - we have to be able to convert between the
-  // two.
-
-  // Bits on v2: ?IHCBAzy xwvutsrq ponmlkji hgfedcba
-  // Bits on v3: ?IHGFEDC BAzyxwvu srqponkj hgfedcba
-  // The bits ilmt were removed in v3 and the bits to their left were shifted
-  // right. The bits DEFG were added in v3 and do not exist on v2.
-  // Known meanings for these bits:
-  //   o = is dead
-  //   n = should play hit animation
-  //   y = is near enemy
-  //   H = is enemy?
-  //   I = is object? (some entities have both H and I set though)
-
-  // TODO: The above might all be wrong.
-  // GC 00100000 10010000 00001110 00000000
-  // PC 00101001 00000000 01100100 00000000
-
-  // PC 00101001 10110000 00101110 00000000
-  // GC 00100000 10011011 00000111 00000000
-
-  // PC 00101001 10010000 00101110 00000000
-  // GC 00100000 10011001 00000111 00000000
-
-  if (to_v3) {
-    return (game_flags & 0xE00000FF) |
-        ((game_flags & 0x00000600) >> 1) |
-        ((game_flags & 0x0007E000) >> 3) |
-        ((game_flags & 0x1FF00000) >> 4);
-  } else {
-    return (game_flags & 0xE00000FF) |
-        ((game_flags << 1) & 0x00000600) |
-        ((game_flags << 3) & 0x0007E000) |
-        ((game_flags << 4) & 0x1FF00000);
-  }
-}
 
 MapState::EntityIterator::EntityIterator(MapState* map_state, Version version, bool at_end)
     : map_state(map_state),
@@ -6413,7 +6370,6 @@ void MapState::import_object_states_from_sync(
 void MapState::import_enemy_states_from_sync(Version from_version, const SyncEnemyStateEntry* entries, size_t entry_count) {
   this->log.info_f("Importing enemy state from sync command");
   size_t enemy_index = 0;
-  bool is_v3 = !is_v1_or_v2(from_version);
   for (const auto& fc : this->floor_config_entries) {
     if (!fc.super_map) {
       continue;
@@ -6434,15 +6390,10 @@ void MapState::import_enemy_states_from_sync(Version from_version, const SyncEne
       if (ene_st->super_ene != ene) {
         throw logic_error("super enemy link is incorrect");
       }
-      if (ene_st->get_game_flags(is_v3) != entry.flags) {
-        this->log.warning_f("({:04X} => E-{:03X}) Flags from client ({:08X}({})) do not match game flags from map ({:08X}({}))",
-            enemy_index,
-            ene_st->e_id,
-            entry.flags,
-            is_v3 ? "v3" : "v2",
-            ene_st->game_flags,
-            (ene_st->server_flags & MapState::EnemyState::Flag::GAME_FLAGS_IS_V3) ? "v3" : "v2");
-        ene_st->set_game_flags(entry.flags, !is_v1_or_v2(from_version));
+      if (ene_st->game_flags != entry.flags) {
+        this->log.warning_f("({:04X} => E-{:03X}) Flags from client ({:08X}) do not match game flags from map ({:08X})",
+            enemy_index, ene_st->e_id, entry.flags, ene_st->game_flags);
+        ene_st->game_flags = entry.flags;
       }
       if (ene_st->total_damage != entry.total_damage) {
         this->log.warning_f("({:04X} => E-{:03X}) Total damage from client ({}) does not match total damage from map ({})",
@@ -6771,14 +6722,8 @@ void MapState::print(FILE* stream) const {
       }
     }
     string ene_str = ene_st->super_ene->str();
-    phosg::fwrite_fmt(stream, " {} total_damage={:04X} rare_flags={:04X} game_flags={:08X}({}) set_flags={:04X} server_flags={:04X}\n",
-        ene_str,
-        ene_st->total_damage,
-        ene_st->rare_flags,
-        ene_st->game_flags,
-        (ene_st->server_flags & MapState::EnemyState::Flag::GAME_FLAGS_IS_V3) ? "v3" : "v2",
-        ene_st->set_flags,
-        ene_st->server_flags);
+    phosg::fwrite_fmt(stream, " {} total_damage={:04X} rare_flags={:04X} game_flags={:08X} set_flags={:04X} server_flags={:04X}\n",
+        ene_str, ene_st->total_damage, ene_st->rare_flags, ene_st->game_flags, ene_st->set_flags, ene_st->server_flags);
   }
 
   if (this->bb_rare_enemy_indexes.empty()) {

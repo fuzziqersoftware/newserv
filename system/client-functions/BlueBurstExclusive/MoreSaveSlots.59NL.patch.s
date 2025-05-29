@@ -119,7 +119,7 @@ fix_scroll_patch1_end:
 apply_fix_scroll_patch2:
   # This patch changes the TAdSinglePlyChrSelectGC::selected_index_within_view
   # to be the selected character's absolute index (including scroll_offset),
-  # not the index only within to the displayed four characters
+  # not the index only within the displayed four characters
   push      6           # Call size
   push      0x00413CD8  # Call address
   call      get_code_size_for_fix_scroll_patch2
@@ -166,7 +166,7 @@ selection_index_fix2_end:
 
 apply_preview_window_fix:
   # This patch fixes the preview display so it will show the correct section
-  # ID, etc.
+  # ID, level, etc.
   push      5           # Call size
   push      0x0040216C  # Call address
   call      get_code_size_for_preview_window_fix
