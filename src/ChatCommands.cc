@@ -1284,7 +1284,7 @@ ChatCommandDefinition cc_item(
 
       } else {
         auto l = a.c->require_lobby();
-        ItemData item = s->parse_item_description(a.c->version(), a.text);
+        item = s->parse_item_description(a.c->version(), a.text);
         item.id = l->generate_item_id(a.c->lobby_client_id);
 
         if ((l->drop_mode == Lobby::DropMode::SERVER_PRIVATE) || (l->drop_mode == Lobby::DropMode::SERVER_DUPLICATE)) {
