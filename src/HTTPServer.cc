@@ -798,7 +798,7 @@ asio::awaitable<std::unique_ptr<HTTPResponse>> HTTPServer::handle_request(shared
     } else if (req.path == "/y/data/rare-tables") {
       this->require_GET(req);
       ret = this->generate_rare_table_list_json();
-    } else if (!req.path.starts_with("/y/data/rare-tables/")) {
+    } else if (req.path.starts_with("/y/data/rare-tables/")) {
       this->require_GET(req);
       ret = co_await this->generate_rare_table_json(req.path.substr(20));
     } else if (req.path == "/y/data/quests") {
