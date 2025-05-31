@@ -8,7 +8,7 @@ start:
   mflr   r0
   stw    [r1 + 4], r0
   stwu   [r1 - 0x20], r1
-  bl     read
+  bl     resume
 call_addr:
   .zero
 arg0:
