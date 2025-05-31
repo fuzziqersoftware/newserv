@@ -277,9 +277,13 @@ void Client::reschedule_ping_and_timeout_timers() {
     this->send_ping_timer.async_wait([this](std::error_code ec) {
       if (!ec) {
         this->log.info_f("Sending ping command");
-        // The game doesn't use this timestamp; we only use it for debugging purposes
-        be_uint64_t timestamp = phosg::now();
-        this->channel->send(0x1D, 0x00, &timestamp, sizeof(be_uint64_t));
+        try {
+          // The game doesn't use this timestamp; we only use it for debugging purposes
+          be_uint64_t timestamp = phosg::now();
+          this->channel->send(0x1D, 0x00, &timestamp, sizeof(be_uint64_t));
+        } catch (const exception& e) {
+          this->log.warning_f("Failed to send ping: {}", e.what());
+        }
       }
     });
   }
