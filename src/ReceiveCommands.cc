@@ -43,18 +43,14 @@ asio::awaitable<void> on_connect(std::shared_ptr<Client> c) {
       uint16_t pc_port = s->name_to_port_config.at("pc")->port;
       uint16_t console_port = s->name_to_port_config.at("gc-us3")->port;
       send_pc_console_split_reconnect(c, s->connect_address_for_client(c), pc_port, console_port);
-      // TODO: There appears to be a bug that occurs rarely when an IPSSClient
+      // TODO: There appears to be a bug that occurs rarely when a client
       // connects to this port; sometimes it disconnects before receiving the
-      // data it needs. My hypothesis is that there's either a bug in
-      // IPSSClient where the data isn't being sent before the RST, or there's
-      // a bug in AVE-TCP where it doesn't forward the last data to the app if
-      // the RST is received on the same frame as the last PSH. In either case,
-      // waiting a short amount of time here should mitigate it. This doesn't
-      // seem to happen at all with SocketChannel, so we only do it for
-      // IPSSChannel.
-      if (dynamic_pointer_cast<IPSSChannel>(c->channel)) {
-        co_await async_sleep(std::chrono::seconds(1));
-      }
+      // data it needs. My hypothesis is that there's either a bug in Channel
+      // where the data isn't being sent before the RST, or there's a bug in
+      // AVE-TCP where it doesn't forward the last data to the app if the RST
+      // is received on the same frame as the last PSH. In either case, waiting
+      // a short amount of time here should mitigate it.
+      co_await async_sleep(std::chrono::seconds(2));
       c->channel->disconnect();
       break;
     }
