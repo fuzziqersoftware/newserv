@@ -645,7 +645,7 @@ void send_client_init_bb(shared_ptr<Client> c, uint32_t error_code) {
   cmd.player_tag = 0x00010000;
   cmd.guild_card_number = c->login->account->account_id;
   cmd.security_token = team ? team->team_id : 0;
-  cmd.client_config.clear(0xFF);
+  cmd.client_config = c->bb_client_config;
   cmd.can_create_team = 1;
   cmd.episode_4_unlocked = 1;
 
