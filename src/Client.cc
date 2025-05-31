@@ -1053,27 +1053,27 @@ void Client::use_character_bank(ssize_t index) {
 void Client::print_inventory() const {
   auto s = this->require_server_state();
   auto p = this->character();
-  this->log.info_f("[PlayerInventory] Meseta: {}\n", p->disp.stats.meseta);
-  this->log.info_f("[PlayerInventory] {} items\n", p->inventory.num_items);
+  this->log.info_f("[PlayerInventory] Meseta: {}", p->disp.stats.meseta);
+  this->log.info_f("[PlayerInventory] {} items", p->inventory.num_items);
   for (size_t x = 0; x < p->inventory.num_items; x++) {
     const auto& item = p->inventory.items[x];
     auto hex = item.data.hex();
     auto name = s->describe_item(this->version(), item.data, false);
-    this->log.info_f("[PlayerInventory]   {:2}: [+{:08X}] {} ({})\n", x, item.flags, hex, name);
+    this->log.info_f("[PlayerInventory]   {:2}: [+{:08X}] {} ({})", x, item.flags, hex, name);
   }
 }
 
 void Client::print_bank() const {
   auto s = this->require_server_state();
   auto bank = this->current_bank();
-  this->log.info_f("[PlayerBank] Meseta: {}\n", bank.meseta);
-  this->log.info_f("[PlayerBank] {} items\n", bank.num_items);
+  this->log.info_f("[PlayerBank] Meseta: {}", bank.meseta);
+  this->log.info_f("[PlayerBank] {} items", bank.num_items);
   for (size_t x = 0; x < bank.num_items; x++) {
     const auto& item = bank.items[x];
     const char* present_token = item.present ? "" : " (missing present flag)";
     auto hex = item.data.hex();
     auto name = s->describe_item(this->version(), item.data, false);
-    this->log.info_f("[PlayerBank]   {:3}: {} ({}) (x{}){}\n", x, hex, name, item.amount, present_token);
+    this->log.info_f("[PlayerBank]   {:3}: {} ({}) (x{}){}", x, hex, name, item.amount, present_token);
   }
 }
 
