@@ -3518,7 +3518,7 @@ static asio::awaitable<void> on_update_object_state_t(shared_ptr<Client> c, Subc
   l->log.info_f("K-{:03X} updated with game_flags={:08X}", obj_st->k_id, obj_st->game_flags);
 
   if ((cmd.object_index & 0xF000) || (cmd.header.entity_id != (cmd.object_index | 0x4000))) {
-    throw runtime_error("mismatched enemy id/index");
+    throw runtime_error("mismatched object id/index");
   }
 
   for (auto lc : l->clients) {
