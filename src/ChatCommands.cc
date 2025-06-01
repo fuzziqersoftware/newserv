@@ -487,7 +487,13 @@ static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool 
 
   // If the client isn't BB, request the player info. (If they are BB, the
   // server already has it)
-  auto ch = co_await send_get_player_info(a.c, true);
+  GetPlayerInfoResult ch;
+  if (a.c->version() == Version::BB_V4) {
+    ch.character = a.c->character();
+    ch.is_full_info = true;
+  } else {
+    ch = co_await send_get_player_info(a.c, true);
+  }
 
   string filename = dest_bb_license
       ? Client::character_filename(dest_bb_license->username, dest_character_index)
