@@ -5408,7 +5408,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xE1 */ {NONE, NONE, 0xE1, on_quest_F95F_result_bb},
     /* 6xE2 */ {NONE, NONE, 0xE2, on_quest_F960_result_bb},
     /* 6xE3 */ {NONE, NONE, 0xE3, on_invalid},
-    /* 6xE4 */ {NONE, NONE, 0xE4, on_invalid},
+    /* 6xE4 */ {NONE, NONE, 0xE4, forward_subcommand_with_entity_id_transcode_t<G_IncrementEnemyDamageThreshold_Extension_6xE4>}, // Extended subcommand; see CommandFormats.hh
     /* 6xE5 */ {NONE, NONE, 0xE5, on_invalid},
     /* 6xE6 */ {NONE, NONE, 0xE6, on_invalid},
     /* 6xE7 */ {NONE, NONE, 0xE7, on_invalid},

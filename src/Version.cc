@@ -228,38 +228,27 @@ bool specific_version_is_pc_v2(uint32_t specific_version) {
 }
 
 bool specific_version_is_gc(uint32_t specific_version) {
-  // GC specific_versions are 3GRV, where G is [OS], R is [JEP], V is [0-9T]
-  if ((specific_version & 0xFF000000) != 0x33000000) {
-    return false;
-  }
-  char game = specific_version >> 16;
-  if ((game != 'O') && (game != 'S')) {
-    return false;
-  }
-  char region = specific_version >> 8;
-  if ((region != 'J') && (region != 'E') && (region != 'P')) {
-    return false;
-  }
-  char revision = specific_version;
-  return (isdigit(revision) || (revision == 'T'));
+  // GC specific_versions are 3___
+  return ((specific_version & 0xFF000000) == 0x33000000);
 }
 
 bool specific_version_is_xb(uint32_t specific_version) {
-  // XB specific_versions are 4ORV, where R is [JEP], V is [BDU]
-  if ((specific_version & 0xFFFF0000) != 0x344F0000) {
-    return false;
-  }
-  char region = specific_version >> 8;
-  if ((region != 'J') && (region != 'E') && (region != 'P')) {
-    return false;
-  }
-  char revision = specific_version;
-  return ((revision == 'B') || (revision == 'D') || (revision == 'U'));
+  // XB specific_versions are 4O__
+  return ((specific_version & 0xFF000000) == 0x34000000);
 }
 
 bool specific_version_is_bb(uint32_t specific_version) {
   // BB specific_versions are 5XXX, where X is an encoding of the revision number
-  return (specific_version & 0xFF000000) == 0x35000000;
+  return ((specific_version & 0xFF000000) == 0x35000000);
+}
+
+string str_for_specific_version(uint32_t specific_version) {
+  string ret;
+  for (size_t z = 0; z < 4; z++) {
+    char ch = specific_version >> (24 - (z << 3));
+    ret.push_back(isalnum(ch) ? ch : '_');
+  }
+  return ret;
 }
 
 const char* file_path_token_for_version(Version version) {

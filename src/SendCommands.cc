@@ -496,7 +496,7 @@ void send_function_call(
       code, label_writes, suffix_data, suffix_size, checksum_addr, checksum_size, override_relocations_offset,
       Client::check_flag(client_enabled_flags, Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL));
 
-  ch->send(0xB2, code ? code->index : 0x00, data);
+  ch->send(0xB2, 0x00, data);
 }
 
 asio::awaitable<bool> send_protected_command(

@@ -96,11 +96,9 @@ string CompiledFunctionCode::generate_client_command(
     size_t suffix_size,
     uint32_t override_relocations_offset) const {
   if (this->arch == Architecture::POWERPC) {
-    return this->generate_client_command_t<true>(
-        label_writes, suffix_data, suffix_size, override_relocations_offset);
+    return this->generate_client_command_t<true>(label_writes, suffix_data, suffix_size, override_relocations_offset);
   } else if ((this->arch == Architecture::X86) || (this->arch == Architecture::SH4)) {
-    return this->generate_client_command_t<false>(
-        label_writes, suffix_data, suffix_size, override_relocations_offset);
+    return this->generate_client_command_t<false>(label_writes, suffix_data, suffix_size, override_relocations_offset);
   } else {
     throw logic_error("invalid architecture");
   }
@@ -110,18 +108,12 @@ bool CompiledFunctionCode::is_big_endian() const {
   return this->arch == Architecture::POWERPC;
 }
 
-shared_ptr<CompiledFunctionCode> compile_function_code(
+static vector<shared_ptr<CompiledFunctionCode>> compile_function_code(
     CompiledFunctionCode::Architecture arch,
     const string& function_directory,
     const string& system_directory,
     const string& name,
     const string& text) {
-  auto ret = make_shared<CompiledFunctionCode>();
-  ret->arch = arch;
-  ret->short_name = name;
-  ret->index = 0;
-  ret->hide_from_patches_menu = false;
-
   unordered_set<string> get_include_stack;
   function<string(const string&)> get_include = [&](const string& name) -> string {
     const char* arch_name_token;
@@ -177,56 +169,135 @@ shared_ptr<CompiledFunctionCode> compile_function_code(
     throw runtime_error("data not found for include: " + name + " (from " + asm_filename + " or " + bin_filename + ")");
   };
 
-  ResourceDASM::EmulatorBase::AssembleResult assembled;
-  if (arch == CompiledFunctionCode::Architecture::POWERPC) {
-    assembled = ResourceDASM::PPC32Emulator::assemble(text, get_include);
-  } else if (arch == CompiledFunctionCode::Architecture::X86) {
-    assembled = ResourceDASM::X86Emulator::assemble(text, get_include);
-  } else if (arch == CompiledFunctionCode::Architecture::SH4) {
-    assembled = ResourceDASM::SH4Emulator::assemble(text, get_include);
-  } else {
-    throw runtime_error("invalid architecture");
-  }
-  ret->code = std::move(assembled.code);
-  ret->label_offsets = std::move(assembled.label_offsets);
-  for (const auto& it : assembled.metadata_keys) {
-    if (it.first == "hide_from_patches_menu") {
-      ret->hide_from_patches_menu = true;
-    } else if (it.first == "index") {
-      if (it.second.size() != 1) {
-        throw runtime_error("invalid index value in .meta directive");
+  // Handle VERS tokens
+  vector<uint32_t> specific_versions;
+  auto lines = phosg::split(text, '\n');
+  for (auto& line : lines) {
+    if (line.starts_with(".versions ")) {
+      if (!specific_versions.empty()) {
+        throw std::runtime_error("multiple .versions directives in file");
       }
-      ret->index = it.second[0];
-    } else if (it.first == "name") {
-      ret->long_name = it.second;
-    } else if (it.first == "description") {
-      ret->description = it.second;
-    } else {
-      throw runtime_error("unknown metadata key: " + it.first);
+      for (auto& vers_token : phosg::split(line.substr(10), ' ')) {
+        phosg::strip_whitespace(vers_token);
+        if (vers_token.empty()) {
+          continue;
+        }
+        if (vers_token.size() != 4) {
+          throw std::runtime_error("invalid token in .version directive: " + vers_token);
+        }
+        specific_versions.emplace_back(*reinterpret_cast<const be_uint32_t*>(vers_token.data()));
+      }
+      line.clear();
     }
   }
 
-  set<uint32_t> reloc_indexes;
-  for (const auto& it : ret->label_offsets) {
-    if (it.first.starts_with("reloc")) {
-      reloc_indexes.emplace(it.second / 4);
+  // Preprocess <VERS> tokens in the text if a .versions directive was given
+  vector<string> version_texts;
+  if (specific_versions.empty()) {
+    specific_versions.emplace_back(0);
+    version_texts.emplace_back(text);
+
+  } else {
+    vector<deque<string>> version_lines;
+    version_lines.resize(specific_versions.size());
+
+    size_t line_num = 1;
+    for (const auto& line : lines) {
+      size_t vers_offset = line.find("<VERS ");
+      if (vers_offset == string::npos) {
+        for (auto& lines : version_lines) {
+          lines.emplace_back(line);
+        }
+
+      } else {
+        for (size_t vers_index = 0; vers_index < specific_versions.size(); vers_index++) {
+          string version_line = line;
+          size_t vers_offset = line.find("<VERS ");
+          while (vers_offset != string::npos) {
+            size_t end_offset = version_line.find('>', vers_offset + 6);
+            if (end_offset == string::npos) {
+              throw runtime_error(std::format("(line {}) unterminated <VERS> replacement", line_num));
+            }
+            auto tokens = phosg::split(version_line.substr(vers_offset + 6, end_offset - vers_offset - 6), ' ');
+            if (tokens.size() != specific_versions.size()) {
+              throw runtime_error(std::format("(line {}) invalid <VERS> replacement", line_num));
+            }
+            version_line = version_line.substr(0, vers_offset) + tokens.at(vers_index) + version_line.substr(end_offset + 1);
+            vers_offset = version_line.find("<VERS ");
+          }
+          version_lines[vers_index].emplace_back(version_line);
+        }
+      }
+      line_num++;
+    }
+
+    for (const auto& lines : version_lines) {
+      version_texts.emplace_back(phosg::join(lines, "\n"));
     }
   }
 
-  try {
-    ret->entrypoint_offset_offset = ret->label_offsets.at("entry_ptr");
-  } catch (const out_of_range&) {
-    throw runtime_error("code does not contain entry_ptr label");
-  }
+  vector<shared_ptr<CompiledFunctionCode>> ret;
+  for (size_t vers_index = 0; vers_index < specific_versions.size(); vers_index++) {
+    uint32_t specific_version = specific_versions[vers_index];
+    const auto& version_text = version_texts.at(vers_index);
 
-  uint32_t prev_index = 0;
-  for (const auto& it : reloc_indexes) {
-    uint32_t delta = it - prev_index;
-    if (delta > 0xFFFF) {
-      throw runtime_error("relocation delta too far away");
+    try {
+      ResourceDASM::EmulatorBase::AssembleResult assembled;
+      if (arch == CompiledFunctionCode::Architecture::POWERPC) {
+        assembled = ResourceDASM::PPC32Emulator::assemble(version_text, get_include);
+      } else if (arch == CompiledFunctionCode::Architecture::X86) {
+        assembled = ResourceDASM::X86Emulator::assemble(version_text, get_include);
+      } else if (arch == CompiledFunctionCode::Architecture::SH4) {
+        assembled = ResourceDASM::SH4Emulator::assemble(version_text, get_include);
+      } else {
+        throw runtime_error("invalid architecture");
+      }
+
+      auto compiled = ret.emplace_back(make_shared<CompiledFunctionCode>());
+      compiled->arch = arch;
+      compiled->short_name = name;
+      compiled->specific_version = specific_version;
+      compiled->code = std::move(assembled.code);
+      compiled->label_offsets = std::move(assembled.label_offsets);
+      for (const auto& it : assembled.metadata_keys) {
+        if (it.first == "hide_from_patches_menu") {
+          compiled->hide_from_patches_menu = true;
+        } else if (it.first == "name") {
+          compiled->long_name = it.second;
+        } else if (it.first == "description") {
+          compiled->description = it.second;
+        } else {
+          throw runtime_error("unknown metadata key: " + it.first);
+        }
+      }
+
+      set<uint32_t> reloc_indexes;
+      for (const auto& it : compiled->label_offsets) {
+        if (it.first.starts_with("reloc")) {
+          reloc_indexes.emplace(it.second / 4);
+        }
+      }
+
+      try {
+        compiled->entrypoint_offset_offset = compiled->label_offsets.at("entry_ptr");
+      } catch (const out_of_range&) {
+        throw runtime_error("code does not contain entry_ptr label");
+      }
+
+      uint32_t prev_index = 0;
+      for (const auto& it : reloc_indexes) {
+        uint32_t delta = it - prev_index;
+        if (delta > 0xFFFF) {
+          throw runtime_error("relocation delta too far away");
+        }
+        compiled->relocation_deltas.emplace_back(delta);
+        prev_index = it;
+      }
+
+    } catch (const exception& e) {
+      string version_str = specific_version ? (" (" + str_for_specific_version(specific_version) + ")") : "";
+      function_compiler_log.warning_f("Failed to compile function {}{}: {}", name, version_str, e.what());
     }
-    ret->relocation_deltas.emplace_back(delta);
-    prev_index = it;
   }
 
   return ret;
@@ -239,21 +310,16 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
   for (const auto& item : std::filesystem::directory_iterator(directory)) {
     string subdir_name = item.path().filename().string();
     string subdir_path = directory.ends_with("/") ? (directory + subdir_name) : (directory + "/" + subdir_name);
-    if (!std::filesystem::is_directory(subdir_path)) {
-      function_compiler_log.warning_f("Skipping {} (not a directory)", subdir_name);
-      continue;
-    }
 
-    for (const auto& item : std::filesystem::directory_iterator(subdir_path)) {
-      string filename = item.path().filename().string();
+    auto add_file = [&](string filename) -> void {
       try {
         if (!filename.ends_with(".s")) {
-          continue;
+          return;
         }
 
         string name = filename.substr(0, filename.size() - 2);
         if (name.ends_with(".inc")) {
-          continue;
+          return;
         }
 
         bool is_patch = name.ends_with(".patch");
@@ -299,33 +365,41 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
 
         string path = subdir_path + "/" + filename;
         string text = phosg::load_file(path);
-        auto code = compile_function_code(arch, subdir_path, system_dir_path, name, text);
-        if (code->index != 0) {
-          if (!this->index_to_function.emplace(code->index, code).second) {
-            throw runtime_error(std::format(
-                "duplicate function index: {:08X}", code->index));
+        for (auto code : compile_function_code(arch, subdir_path, system_dir_path, name, text)) {
+          if (code->specific_version == 0) {
+            code->specific_version = specific_version;
           }
-        }
-        code->specific_version = specific_version;
-        code->source_path = path;
-        code->short_name = short_name;
-        this->name_to_function.emplace(name, code);
-        if (is_patch) {
-          code->menu_item_id = next_menu_item_id++;
-          this->menu_item_id_and_specific_version_to_patch_function.emplace(
-              static_cast<uint64_t>(code->menu_item_id) << 32 | specific_version, code);
-          this->name_and_specific_version_to_patch_function.emplace(
-              std::format("{}-{:08X}", short_name, specific_version), code);
-        }
+          code->source_path = path;
+          code->short_name = short_name;
+          this->name_to_function.emplace(name, code);
+          if (is_patch) {
+            code->menu_item_id = next_menu_item_id++;
+            this->menu_item_id_and_specific_version_to_patch_function.emplace(
+                static_cast<uint64_t>(code->menu_item_id) << 32 | code->specific_version, code);
+            this->name_and_specific_version_to_patch_function.emplace(
+                std::format("{}-{:08X}", code->short_name, code->specific_version), code);
+          }
 
-        string index_prefix = code->index ? std::format("{:02X} => ", code->index) : "";
-        string patch_prefix = is_patch ? std::format("[{:08X}/{:08X}] ", code->menu_item_id, code->specific_version) : "";
-        function_compiler_log.debug_f("Compiled function {}{}{} ({})",
-            index_prefix, patch_prefix, name, name_for_architecture(code->arch));
+          string patch_prefix = is_patch ? std::format("[{:08X}] ", code->menu_item_id) : "";
+          function_compiler_log.debug_f("Compiled function {}{} ({}; {})",
+              patch_prefix, name, str_for_specific_version(code->specific_version), name_for_architecture(code->arch));
+        }
 
       } catch (const exception& e) {
         function_compiler_log.warning_f("Failed to compile function {}: {}", filename, e.what());
       }
+    };
+
+    if (std::filesystem::is_regular_file(subdir_path)) {
+      add_file(subdir_path);
+    } else if (std::filesystem::is_directory(subdir_path)) {
+      for (const auto& item : std::filesystem::directory_iterator(subdir_path)) {
+        string filename = item.path().filename().string();
+        add_file(filename);
+      }
+    } else {
+      function_compiler_log.warning_f("Skipping {} (unknown file type)", subdir_name);
+      continue;
     }
   }
 }

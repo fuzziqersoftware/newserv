@@ -1,0 +1,70 @@
+.meta name="No item loss"
+.meta description="Disables logic that\ndeletes items if\nyou don't log off\nnormally"
+# Original code by Ralf @ GC-Forever and Aleron Ives
+# https://www.gc-forever.com/forums/viewtopic.php?t=2050
+# https://www.gc-forever.com/forums/viewtopic.php?t=2049
+# Xbox port by fuzziqersoftware
+
+.versions 4OED 4OEU 4OJB 4OJD 4OJU 4OPD 4OPU
+
+entry_ptr:
+reloc0:
+  .offsetof start
+start:
+  .include  WriteCodeBlocksXB
+  .data     <VERS 0x000D1B85 0x000D1BD5 0x000D1A35 0x000D1B05 0x000D1AF5 0x000D1BA5 0x000D1BD5>
+  .data     0x00000001
+  .binary   00
+  .data     <VERS 0x000D1BFC 0x000D1C4C 0x000D1AAC 0x000D1B7C 0x000D1B6C 0x000D1C1C 0x000D1C4C>
+  .data     0x00000002
+  .binary   EB08
+  .data     <VERS 0x0020E805 0x0020E805 0x0020E5D5 0x0020E755 0x0020E9D5 0x0020E825 0x0020E895>
+  .data     0x00000001
+  .binary   EB
+  .data     <VERS 0x002119CA 0x00211A2A 0x0021170A 0x0021197A 0x00211BFA 0x002119EA 0x00211ABA>
+  .data     0x00000002
+  .binary   EB74
+  .data     <VERS 0x002291B5 0x00229255 0x00228F15 0x00229125 0x00229415 0x002291D5 0x002292E5>
+  .data     0x00000002
+  .binary   9090
+  .data     <VERS 0x00229237 0x002292D7 0x00228F97 0x002291A7 0x00229497 0x00229257 0x00229367>
+  .data     0x00000002
+  .binary   EB08
+  .data     <VERS 0x0022A222 0x0022A2C2 0x00229F82 0x0022A192 0x0022A482 0x0022A242 0x0022A352>
+  .data     0x00000002
+  .binary   9090
+  .data     <VERS 0x0022A29B 0x0022A33B 0x00229FFB 0x0022A20B 0x0022A4FB 0x0022A2BB 0x0022A3CB>
+  .data     0x00000002
+  .binary   EB08
+  .data     <VERS 0x0022BF35 0x0022BFD5 0x0022BC95 0x0022BEA5 0x0022C195 0x0022BF55 0x0022C065>
+  .data     0x00000001
+  .binary   00
+  .data     <VERS 0x0022BF6E 0x0022C00E 0x0022BCCE 0x0022BEDE 0x0022C1CE 0x0022BF8E 0x0022C09E>
+  .data     0x00000002
+  .binary   EB08
+  .data     <VERS 0x0022C2E6 0x0022C386 0x0022C046 0x0022C256 0x0022C546 0x0022C306 0x0022C416>
+  .data     0x00000001
+  .binary   00
+  .data     <VERS 0x002418E8 0x00241A78 0x00241608 0x00241858 0x00241BD8 0x00241908 0x00241B08>
+  .data     0x00000001
+  .binary   00
+  .data     <VERS 0x0024195C 0x00241AEC 0x0024167C 0x002418CC 0x00241C4C 0x0024197C 0x00241B7C>
+  .data     0x00000002
+  .binary   EB08
+  .data     <VERS 0x002A2904 0x002A2B34 0x002A0FA4 0x002A19F4 0x002A2EC4 0x002A2924 0x002A2BF4>
+  .data     0x00000001
+  .binary   00
+  .data     <VERS 0x002A297C 0x002A2BAC 0x002A101C 0x002A1A6C 0x002A2F3C 0x002A299C 0x002A2C6C>
+  .data     0x00000002
+  .binary   EB08
+  .data     <VERS 0x002D677A 0x002D6C8A 0x002D481A 0x002D53DA 0x002D6CBA 0x002D67AA 0x002D6D0A>
+  .data     0x00000001
+  .binary   00
+  .data     <VERS 0x002D67ED 0x002D6CFD 0x002D488D 0x002D544D 0x002D6D2D 0x002D681D 0x002D6D7D>
+  .data     0x00000002
+  .binary   EB08
+  .data     <VERS 0x002F0E1E 0x002F0FCE 0x002EEEBE 0x002EF9CE 0x002F0FCE 0x002F0E4E 0x002F103E>
+  .data     0x00000001
+  .binary   EB
+  .data     0x00000000
+  .data     0x00000000

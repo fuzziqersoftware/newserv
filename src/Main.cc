@@ -1660,9 +1660,10 @@ Action a_assemble_all_patches(
           phosg::StringWriter w;
           string data = prepare_send_function_call_data(
               code, {}, nullptr, 0, checksum_addr, checksum_size, override_start_addr, encrypted);
-          w.put(PSOCommandHeaderDCV3{.command = 0xB2, .flag = code->index, .size = data.size() + 4});
+          w.put(PSOCommandHeaderDCV3{.command = 0xB2, .flag = 0x00, .size = data.size() + 4});
           w.write(data);
-          string out_path = code->source_path + (encrypted ? ".enc.bin" : ".std.bin");
+          string out_path = std::format("{}.{}.{}.bin",
+              code->source_path, str_for_specific_version(code->specific_version), (encrypted ? "enc" : "std"));
           phosg::save_file(out_path, w.str());
           phosg::fwrite_fmt(stderr, "... {}\n", out_path);
         }

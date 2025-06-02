@@ -11,7 +11,7 @@ start:
   mov.l     r5, [arg1]
   mov.l     r6, [arg2]
   mov.l     r7, [arg3]
-  calls     r0
+  calls     [r0]
   nop
   lds.l     pr, [r15]+
   rets
@@ -19,12 +19,12 @@ start:
 
   .align 4
 call_addr:
-  .zero
+  .data     0
 arg0:
-  .zero
+  .data     0
 arg1:
-  .zero
+  .data     0
 arg2:
-  .zero
+  .data     0
 arg3:
-  .zero
+  .data     0

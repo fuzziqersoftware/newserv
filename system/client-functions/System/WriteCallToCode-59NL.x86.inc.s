@@ -49,7 +49,7 @@ memcpy_again:
   setl      al
   or        al, 0xE8
   mov       [edx], al  # Write E8 (call), or E9 (jmp) if size was negative
-  mov       [edx + 1], ecx  # Write E8 (call) followed by delta
+  mov       [edx + 1], ecx  # Write delta
 
   # Write as many nops after the call opcode as necessary
   mov       ecx, 5

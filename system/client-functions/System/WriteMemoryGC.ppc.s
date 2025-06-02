@@ -5,22 +5,22 @@
 # functions subsystem. There are three kinds of functions: includes, patches,
 # and general functions.
 
-# General functions are not version-specific (usually) but are architecture-
-# specific. This file, WriteMemoryGC, is a general function for all PowerPC
-# versions of PSO, which means all GameCube versions. General functions are
-# named like NAME.ARCH.s, where ARCH is sh4, ppc, or x86.
+# - General functions are not version-specific (usually) but are architecture-
+#   specific. This file, WriteMemoryGC, is a general function for all PowerPC
+#   versions of PSO, which means all GameCube versions. General functions are
+#   named like NAME.ARCH.s, where ARCH is sh4, ppc, or x86.
 
-# Includes are snippets of code that are intended to be used as part of other
-# general functions and patches. Includes are named like NAME.ARCH.inc.s, where
-# ARCH has the same meaning as above. These can be used with the .include
-# directive; there is an example of this in the code below.
+# - Includes are snippets of code that are intended to be used as part of other
+#   general functions and patches. Includes are named like NAME.ARCH.inc.s,
+#   where ARCH has the same meaning as above. These can be used with the
+#   .include directive; there is an example of this in the code below.
 
-# Patches are functions that are available to run upon client request. They can
-# be made available in the Patches menu or via the $patch command. Patches
-# should be named like PATCHNAME.VERS.patch.s, where VERS denotes which
-# specific game version the patch is for. These version codes are listed in
-# README.md, and directly correspond to values returned by the VersionDetect
-# functions, also in this directory.
+# - Patches are functions that are available to run upon client request. They
+#   can be made available in the Patches menu or via the $patch command.
+#   Patches should be named like PATCHNAME.VERS.patch.s, where VERS denotes
+#   which specific game version the patch is for. These version codes are
+#   listed in README.md, and directly correspond to values returned by the
+#   VersionDetect functions, also in this directory.
 
 # For example, to use this function to write the bytes 38 00 00 05 to the
 # address 8010521C, send_function_call could be called like this:
@@ -38,19 +38,19 @@
 # requested by the client, so those features should only be used in general
 # functions.
 
+# The .versions directive may be used in patches (but not in includes or
+# general functions) and enables parameterization. If .version is used, then
+# the patch may later use expressions like <VERS value1 value2 ...> to generate
+# the same patch with different values for different game versions. In each
+# <VERS> expression, the number of values must match the number of versions
+# given in the .versions directive.
+# .versions VRS1 VRS2 VRS3 ...
+
 # These directives tell newserv what to show to the player in the Patches menu.
 # Neither of them is required; if the name is omitted, the filename is used
 # instead.
 .meta name="Write memory"
 .meta description="Writes data to any location in memory"
-
-# The .meta index directive tells newserv what value to use in the flag field
-# when sending the B2 command. This is needed if the server needs to do
-# something when the B3 response is received. If specified, the index must be in
-# the range 01-FF. The DOL loading functionality, which this function is a part
-# of, uses indexes E0, E1, and E2, but the WriteMemoryGC function can also be
-# used for other purposes.
-.meta index=E1
 
 # To hide a patch from the Patches menu (so it can only be used with the $patch
 # command), this directive can be used. This has no effect if used in includes

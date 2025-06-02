@@ -25,15 +25,14 @@ struct CompiledFunctionCode {
   std::string code;
   std::vector<uint16_t> relocation_deltas;
   std::unordered_map<std::string, uint32_t> label_offsets;
-  uint32_t entrypoint_offset_offset;
+  uint32_t entrypoint_offset_offset = 0;
   std::string source_path; // Path to source file from newserv root
   std::string short_name; // Based on filename
   std::string long_name; // From .meta name directive
   std::string description; // From .meta description directive
-  uint8_t index; // 0 = unused (not registered in index_to_function)
-  uint32_t menu_item_id;
-  bool hide_from_patches_menu;
-  uint32_t specific_version;
+  uint32_t menu_item_id = 0;
+  bool hide_from_patches_menu = false;
+  uint32_t specific_version = 0; // 0 = not a client-selectable patch
 
   bool is_big_endian() const;
 
@@ -51,12 +50,6 @@ struct CompiledFunctionCode {
 };
 
 const char* name_for_architecture(CompiledFunctionCode::Architecture arch);
-
-std::shared_ptr<CompiledFunctionCode> compile_function_code(
-    CompiledFunctionCode::Architecture arch,
-    const std::string& directory,
-    const std::string& name,
-    const std::string& text);
 
 struct FunctionCodeIndex {
   FunctionCodeIndex() = default;

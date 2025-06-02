@@ -218,6 +218,8 @@ bool specific_version_is_gc(uint32_t specific_version);
 bool specific_version_is_xb(uint32_t specific_version);
 bool specific_version_is_bb(uint32_t specific_version);
 
+std::string str_for_specific_version(uint32_t specific_version);
+
 enum class ServerBehavior {
   PC_CONSOLE_DETECT = 0,
   GAME_SERVER,

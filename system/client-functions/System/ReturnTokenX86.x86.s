@@ -1,5 +1,3 @@
-.meta index=E5
-
 entry_ptr:
 reloc0:
   .offsetof start
