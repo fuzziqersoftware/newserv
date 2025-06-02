@@ -635,7 +635,13 @@ public:
     throw runtime_error("scan field too long; too many matches");
   }
 
-  void find_all_matches(uint32_t src_addr, uint32_t src_size) const {
+  enum class MatchType {
+    ANY = 0,
+    TEXT,
+    DATA,
+  };
+
+  void find_all_matches(uint32_t src_addr, uint32_t src_size, MatchType type) const {
     if (!this->src_mem) {
       throw runtime_error("no source file selected");
     }
@@ -660,19 +666,48 @@ public:
             ExpandMethod::PPC_DATA_BACKWARD,
             ExpandMethod::PPC_DATA_BOTH,
         };
+        static const vector<ExpandMethod> ppc_text_methods = {
+            ExpandMethod::PPC_TEXT_FORWARD,
+            ExpandMethod::PPC_TEXT_FORWARD_WITH_BARRIER,
+            ExpandMethod::PPC_TEXT_BACKWARD,
+            ExpandMethod::PPC_TEXT_BACKWARD_WITH_BARRIER,
+            ExpandMethod::PPC_TEXT_BOTH,
+            ExpandMethod::PPC_TEXT_BOTH_WITH_BARRIER,
+            ExpandMethod::PPC_TEXT_BOTH_IGNORE_ORIGIN,
+        };
+        static const vector<ExpandMethod> ppc_data_methods = {
+            ExpandMethod::PPC_DATA_FORWARD,
+            ExpandMethod::PPC_DATA_BACKWARD,
+            ExpandMethod::PPC_DATA_BOTH,
+        };
         static const vector<ExpandMethod> raw_methods = {
             ExpandMethod::RAW_FORWARD,
             ExpandMethod::RAW_BACKWARD,
             ExpandMethod::RAW_BOTH,
         };
-        const auto& methods = this->ppc_mems.count(it.second) ? ppc_methods : raw_methods;
-        for (size_t z = 0; z < methods.size(); z++) {
-          futures.emplace_back(async(&AddressTranslator::find_match, this, it.second, src_addr, src_size, methods[z]));
+
+        const vector<ExpandMethod>* methods;
+        if (this->ppc_mems.count(it.second)) {
+          if (type == MatchType::ANY) {
+            methods = &ppc_methods;
+          } else if (type == MatchType::TEXT) {
+            methods = &ppc_text_methods;
+          } else if (type == MatchType::DATA) {
+            methods = &ppc_data_methods;
+          } else {
+            throw logic_error("invalid match type");
+          }
+        } else {
+          methods = &raw_methods;
+        }
+
+        for (size_t z = 0; z < methods->size(); z++) {
+          futures.emplace_back(async(&AddressTranslator::find_match, this, it.second, src_addr, src_size, methods->at(z)));
         }
 
         unordered_set<uint32_t> match_addrs;
         for (size_t z = 0; z < futures.size(); z++) {
-          const char* method_name = this->name_for_expand_method(methods[z]);
+          const char* method_name = this->name_for_expand_method(methods->at(z));
           try {
             uint32_t ret = futures[z].get();
             log.info_f("({}) ({}) {:08X}", it.first, method_name, ret);
@@ -831,7 +866,18 @@ public:
     } else if (tokens[0] == "match") {
       this->find_all_matches(
           stoul(tokens.at(1), nullptr, 16),
-          tokens.size() >= 3 ? stoul(tokens[2], nullptr, 16) : 0);
+          tokens.size() >= 3 ? stoul(tokens[2], nullptr, 16) : 0,
+          MatchType::ANY);
+    } else if (tokens[0] == "match-text") {
+      this->find_all_matches(
+          stoul(tokens.at(1), nullptr, 16),
+          tokens.size() >= 3 ? stoul(tokens[2], nullptr, 16) : 0,
+          MatchType::TEXT);
+    } else if (tokens[0] == "match-data") {
+      this->find_all_matches(
+          stoul(tokens.at(1), nullptr, 16),
+          tokens.size() >= 3 ? stoul(tokens[2], nullptr, 16) : 0,
+          MatchType::DATA);
     } else if (tokens[0] == "match-be-le") {
       this->find_all_be_to_le_data_matches(
           stoul(tokens.at(1), nullptr, 16),
