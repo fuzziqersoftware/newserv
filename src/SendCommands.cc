@@ -2591,6 +2591,29 @@ void send_player_stats_change(std::shared_ptr<Channel> ch, uint16_t client_id, P
   send_command_vt(ch, (subs.size() > 0x400 / sizeof(G_UpdateEntityStat_6x9A)) ? 0x6C : 0x60, 0x00, subs);
 }
 
+void send_change_player_hp(std::shared_ptr<Channel> ch, uint16_t client_id, PlayerHPChange what, int16_t amount) {
+  uint8_t subcommand_number;
+  if (ch->version == Version::DC_NTE) {
+    subcommand_number = 0x2B;
+  } else if (ch->version == Version::DC_11_2000) {
+    subcommand_number = 0x2D;
+  } else {
+    subcommand_number = 0x2F;
+  }
+  G_ChangePlayerHP_6x2F cmd = {
+      {subcommand_number, sizeof(G_ChangePlayerHP_6x2F) / 4, client_id},
+      static_cast<uint32_t>(what), amount, client_id};
+  send_command_t(ch, 0x60, 0x00, cmd);
+}
+
+void send_change_player_hp(std::shared_ptr<Lobby> l, uint16_t client_id, PlayerHPChange what, int16_t amount) {
+  for (const auto& lc : l->clients) {
+    if (lc) {
+      send_change_player_hp(lc->channel, client_id, what, amount);
+    }
+  }
+}
+
 asio::awaitable<void> send_remove_negative_conditions(shared_ptr<Client> c) {
   G_AddStatusEffect_6x0C cmd;
   cmd.header = {0x0C, sizeof(G_AddStatusEffect_6x0C) >> 2, c->lobby_client_id};

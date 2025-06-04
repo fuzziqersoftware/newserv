@@ -334,7 +334,7 @@ void send_arrow_update(std::shared_ptr<Lobby> l);
 void send_unblock_join(std::shared_ptr<Client> c);
 void send_resume_game(std::shared_ptr<Lobby> l, std::shared_ptr<Client> ready_client);
 
-enum PlayerStatsChange {
+enum class PlayerStatsChange {
   SUBTRACT_HP = 0,
   SUBTRACT_TP = 1,
   SUBTRACT_MESETA = 2,
@@ -342,10 +342,18 @@ enum PlayerStatsChange {
   ADD_TP = 4,
 };
 
-void send_player_stats_change(
-    std::shared_ptr<Client> c, PlayerStatsChange stat, uint32_t amount);
-void send_player_stats_change(
-    std::shared_ptr<Channel> ch, uint16_t client_id, PlayerStatsChange stat, uint32_t amount);
+void send_player_stats_change(std::shared_ptr<Client> c, PlayerStatsChange stat, uint32_t amount);
+void send_player_stats_change(std::shared_ptr<Channel> ch, uint16_t client_id, PlayerStatsChange stat, uint32_t amount);
+
+enum class PlayerHPChange {
+  SET_HP = 0,
+  INCREMENT_HP = 1,
+  MAXIMIZE_HP = 2,
+};
+
+void send_change_player_hp(std::shared_ptr<Channel> ch, uint16_t client_id, PlayerHPChange what, int16_t amount);
+void send_change_player_hp(std::shared_ptr<Lobby> l, uint16_t client_id, PlayerHPChange what, int16_t amount);
+
 asio::awaitable<void> send_remove_negative_conditions(std::shared_ptr<Client> c);
 void send_remove_negative_conditions(std::shared_ptr<Channel> ch, uint16_t client_id);
 void send_warp(std::shared_ptr<Channel> ch, uint8_t client_id, uint32_t floor, bool is_private);

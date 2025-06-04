@@ -2096,12 +2096,7 @@ I 39471 2025-05-21 23:41:39 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 0000 | 60 00 14 00 4B 04 00 00 EC 3B 1D 01 48 26 1F C1 | `   K    ;  H&
 0010 | 08 63 7F BF                                     |  c
 I 39471 2025-05-21 23:41:39 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:41:39 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 0C 03 00 00 03 00 00 00 00 00 00 00 | `
 I 39471 2025-05-21 23:41:39 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=B2 flag=00)
@@ -4072,12 +4067,7 @@ I 39471 2025-05-21 23:43:40 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:43:40 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:43:40 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:43:40 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 0C 03 00 00 11 00 00 00 00 00 00 00 | `
 I 39471 2025-05-21 23:43:40 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=B2 flag=00)
@@ -4110,12 +4100,7 @@ I 39471 2025-05-21 23:43:40 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 I 39471 2025-05-21 23:43:41 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:43:41 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:43:41 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 A0 E7 06 00 03 00 | `   ?
 0010 | DA 9E AD C3 00 00 E8 34 C2 CE BC C3             |        4
@@ -4265,12 +4250,7 @@ I 39471 2025-05-21 23:43:50 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 I 39471 2025-05-21 23:43:50 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 2F 03 00 00 00 00 00 00 28 01 00 00 | `   /       (
 I 39471 2025-05-21 23:43:50 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:43:50 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 0C 03 00 00 02 00 00 00 00 00 00 00 | `
 I 39471 2025-05-21 23:43:50 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=B2 flag=00)
@@ -4323,12 +4303,7 @@ I 39471 2025-05-21 23:43:51 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:43:52 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:43:52 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:43:52 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 1F 43 06 00 03 00 | `   ?      C
 0010 | 52 69 C4 C3 00 00 E8 34 2F AD C8 C3             | Ri     4/
@@ -4357,12 +4332,7 @@ I 39471 2025-05-21 23:43:55 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 I 39471 2025-05-21 23:43:55 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:43:55 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:43:55 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 A3 D0 06 00 03 00 | `   ?
 0010 | B5 EB C1 C3 00 00 E8 34 23 6E CB C3             |        4#n
@@ -4377,12 +4347,7 @@ I 39471 2025-05-21 23:43:55 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:43:55 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:43:55 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:43:55 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 78 D1 06 00 03 00 | `   ?     x
 0010 | B5 EB C1 C3 00 00 E8 34 23 6E CB C3             |        4#n
@@ -4974,12 +4939,7 @@ I 39471 2025-05-21 23:44:30 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:44:30 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:44:30 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:44:30 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 8A 66 06 00 03 00 | `   ?      f
 0010 | 17 72 96 C3 00 00 E8 34 95 19 F6 C3             |  r     4
@@ -5009,24 +4969,14 @@ I 39471 2025-05-21 23:44:30 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:44:30 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:44:30 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:44:30 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 BC 4A 06 00 03 00 | `   ?      J
 0010 | 17 72 96 C3 00 00 E8 34 95 19 F6 C3             |  r     4
 I 39471 2025-05-21 23:44:30 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:44:30 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:44:31 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 0A 03 FE 12 FE 02 BE 00 20 B0 0E 00 | `
 I 39471 2025-05-21 23:44:31 - [Game:16] E-312 updated to damage=190 game_flags=20B00E00 (v3)
@@ -5056,12 +5006,7 @@ I 39471 2025-05-21 23:44:33 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:44:33 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:44:33 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:44:33 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 18 C7 06 00 03 00 | `   ?
 0010 | 17 72 96 C3 00 00 E8 34 95 19 F6 C3             |  r     4
@@ -6377,12 +6322,7 @@ I 39471 2025-05-21 23:45:39 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 0000 | 60 00 14 00 4B 04 00 00 45 30 3F 01 00 00 00 00 | `   K   E0?
 0010 | 00 00 00 00                                     |
 I 39471 2025-05-21 23:45:39 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:45:39 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 45 30 06 00 04 00 | `   ?     E0
 0010 | D9 8F D4 42 00 00 E8 34 3C D4 00 C4             |    B   4<
@@ -6456,12 +6396,7 @@ I 39471 2025-05-21 23:45:44 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 0000 | 60 00 14 00 4B 04 00 00 C2 FB 35 01 00 00 00 00 | `   K     5
 0010 | 00 00 00 00                                     |
 I 39471 2025-05-21 23:45:44 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:45:44 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 C2 FB 06 00 04 00 | `   ?
 0010 | D9 8F D4 42 00 00 E8 34 3C D4 00 C4             |    B   4<
@@ -6499,12 +6434,7 @@ I 39471 2025-05-21 23:45:48 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:45:48 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:45:48 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:45:48 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 FA 6B 06 00 04 00 | `   ?      k
 0010 | D9 8F D4 42 00 00 E8 34 3C D4 00 C4             |    B   4<
@@ -6527,12 +6457,7 @@ I 39471 2025-05-21 23:45:48 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 0000 | 60 00 14 00 4B 04 00 00 FA 6B 35 01 00 00 00 00 | `   K    k5
 0010 | 00 00 00 00                                     |
 I 39471 2025-05-21 23:45:48 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:45:48 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 FA 6B 06 00 04 00 | `   ?      k
 0010 | D9 8F D4 42 00 00 E8 34 3C D4 00 C4             |    B   4<
@@ -6662,12 +6587,7 @@ I 39471 2025-05-21 23:45:58 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 0000 | 60 00 14 00 4B 04 00 00 A6 E8 3E 01 18 87 AD 40 | `   K     >    @
 0010 | 70 6E 06 C1                                     | pn
 I 39471 2025-05-21 23:45:58 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:45:58 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 A6 E8 06 00 04 00 | `   ?
 0010 | F2 6D 8B 43 00 00 E8 34 F5 24 F4 C3             |  m C   4 $
@@ -8145,12 +8065,7 @@ I 39471 2025-05-21 23:47:29 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 0000 | 60 00 14 00 4B 04 00 00 B1 40 3F 01 00 00 00 00 | `   K    @?
 0010 | 00 00 00 00                                     |
 I 39471 2025-05-21 23:47:29 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:47:29 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 B1 40 07 00 07 00 | `   ?      @
 0010 | 73 B8 2E C3 E0 AB 20 C2 3C BA 3F 43             | s .     < ?C
@@ -8362,12 +8277,7 @@ I 39471 2025-05-21 23:47:40 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:47:41 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:47:41 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:47:41 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 0A 03 34 13 34 03 BE 00 20 90 0E 00 | `     4 4
 I 39471 2025-05-21 23:47:41 - [Game:16] E-348 updated to damage=190 game_flags=20900E00 (v3)
@@ -8398,12 +8308,7 @@ I 39471 2025-05-21 23:47:44 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:47:44 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:47:44 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:47:44 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 52 5B 07 00 01 00 | `   ?     R[
 0010 | C6 87 15 BF BA 00 3D 41 38 47 15 C3             |       =A8G
@@ -8586,12 +8491,7 @@ I 39471 2025-05-21 23:47:55 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 I 39471 2025-05-21 23:47:55 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:47:55 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:47:55 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 C1 DC 07 00 02 00 | `   ?
 0010 | 35 CD 9D 42 FE FF 33 C2 87 72 DD C3             | 5  B  3  r
@@ -8602,12 +8502,7 @@ I 39471 2025-05-21 23:47:56 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 I 39471 2025-05-21 23:47:56 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:47:56 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:47:56 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 D1 DC 07 00 02 00 | `   ?
 0010 | 35 CD 9D 42 FE FF 33 C2 87 72 DD C3             | 5  B  3  r
@@ -8617,12 +8512,7 @@ I 39471 2025-05-21 23:47:56 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 I 39471 2025-05-21 23:47:56 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:47:56 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:47:57 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 DF A5 07 00 02 00 | `   ?
 0010 | 60 67 9B 42 FE FF 33 C2 C2 64 DE C3             | `g B  3  d
@@ -8646,12 +8536,7 @@ I 39471 2025-05-21 23:47:58 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:47:59 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:47:59 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:47:59 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 02 14 07 00 02 00 | `   ?
 0010 | 5E 3D 95 42 FC FF 33 C2 21 3C EA C3             | ^= B  3 !<
@@ -8787,12 +8672,7 @@ I 39471 2025-05-21 23:48:14 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:48:15 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:48:15 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:48:15 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 0A 03 38 13 38 03 87 01 20 B0 0E 00 | `     8 8
 I 39471 2025-05-21 23:48:15 - [Game:16] E-34C updated to damage=391 game_flags=20B00E00 (v3)
@@ -8826,12 +8706,7 @@ I 39471 2025-05-21 23:48:16 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 I 39471 2025-05-21 23:48:16 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:48:16 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:48:16 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 47 DE 07 00 02 00 | `   ?     G
 0010 | 5E 3D 95 42 FC FF 33 C2 21 3C EA C3             | ^= B  3 !<
@@ -8846,12 +8721,7 @@ I 39471 2025-05-21 23:48:17 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:48:17 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:48:17 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:48:17 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 4E DE 07 00 02 00 | `   ?     N
 0010 | 5E 3D 95 42 FC FF 33 C2 21 3C EA C3             | ^= B  3 !<
@@ -8883,12 +8753,7 @@ I 39471 2025-05-21 23:48:18 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:48:19 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:48:19 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:48:19 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 0A 03 3A 13 3A 03 A9 00 20 00 0E 00 | `     : :
 I 39471 2025-05-21 23:48:19 - [Game:16] E-34E updated to damage=169 game_flags=20000E00 (v3)
@@ -9302,12 +9167,7 @@ I 39471 2025-05-21 23:48:55 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:48:55 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:48:55 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:48:55 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 47 34 07 00 02 00 | `   ?     G4
 0010 | 68 04 85 42 FC FF 33 C2 24 63 E1 C3             | h  B  3 $c
@@ -9323,12 +9183,7 @@ I 39471 2025-05-21 23:48:56 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 0000 | 60 00 14 00 4B 04 00 00 1B 53 4F 01 2B BD 0E C1 | `   K    SO +
 0010 | AE A9 90 40                                     |    @
 I 39471 2025-05-21 23:48:56 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:48:57 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 1B 53 07 00 02 00 | `   ?      S
 0010 | E4 A0 66 42 FB FF 33 C2 03 25 DF C3             |   fB  3  %
@@ -9370,12 +9225,7 @@ I 39471 2025-05-21 23:48:58 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:48:59 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:48:59 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:48:59 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 0A 03 3C 13 3C 03 BE 00 20 B0 0E 00 | `     < <
 I 39471 2025-05-21 23:48:59 - [Game:16] E-350 updated to damage=190 game_flags=20B00E00 (v3)
@@ -9405,12 +9255,7 @@ I 39471 2025-05-21 23:49:01 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 I 39471 2025-05-21 23:49:01 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:49:01 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:49:01 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 89 11 07 00 02 00 | `   ?
 0010 | E4 A0 66 42 FB FF 33 C2 03 25 DF C3             |   fB  3  %
@@ -9426,12 +9271,7 @@ I 39471 2025-05-21 23:49:01 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 0000 | 60 00 14 00 4B 04 00 00 CB 10 3E 01 B3 2E 80 C0 | `   K     >  .
 0010 | E9 94 12 C1                                     |
 I 39471 2025-05-21 23:49:01 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:49:01 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 CB 10 07 00 02 00 | `   ?
 0010 | 19 BB 56 42 FE FF 33 C2 81 B0 E3 C3             |   VB  3
@@ -10121,12 +9961,7 @@ I 39471 2025-05-21 23:49:51 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 0000 | 60 00 14 00 4B 04 00 00 B0 D8 3F 01 00 00 00 00 | `   K     ?
 0010 | 00 00 00 00                                     |
 I 39471 2025-05-21 23:49:51 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:49:51 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 B0 D8 07 00 03 00 | `   ?
 0010 | CC 1B 0B 44 81 5C 2D C0 59 E3 D2 C3             |    D \- Y
@@ -10220,12 +10055,7 @@ I 39471 2025-05-21 23:49:58 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 I 39471 2025-05-21 23:49:59 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:49:59 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:49:59 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 C3 6A 07 00 03 00 | `   ?      j
 0010 | 52 4D EF 43 51 2D B2 40 9D 37 FF C3             | RM CQ- @ 7
@@ -10240,12 +10070,7 @@ I 39471 2025-05-21 23:50:00 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:50:00 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:50:00 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:50:00 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 CC 6A 07 00 03 00 | `   ?      j
 0010 | 52 4D EF 43 51 2D B2 40 9D 37 FF C3             | RM CQ- @ 7
@@ -11286,12 +11111,7 @@ I 39471 2025-05-21 23:50:49 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:50:49 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:50:49 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:50:50 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 41 40 07 00 03 00 | `   ?     A@
 0010 | F4 A9 A5 43 A4 CA 18 41 F4 1A B6 C3             |    C   A
@@ -11912,12 +11732,7 @@ I 39471 2025-05-21 23:51:13 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:51:14 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:51:14 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:51:14 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 0A 03 5E 13 5E 03 BE 00 20 B0 0E 00 | `     ^ ^
 I 39471 2025-05-21 23:51:14 - [Game:16] E-377 updated to damage=190 game_flags=20B00E00 (v3)
@@ -11950,12 +11765,7 @@ I 39471 2025-05-21 23:51:16 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:51:16 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:51:16 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:51:16 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 0A 03 5F 13 5F 03 BE 00 20 B0 0E 00 | `     _ _
 I 39471 2025-05-21 23:51:16 - [Game:16] E-378 updated to damage=190 game_flags=20B00E00 (v3)
@@ -12185,12 +11995,7 @@ I 39471 2025-05-21 23:51:26 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:51:27 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:51:27 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:51:27 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 0A 03 65 13 65 03 BE 00 20 B0 0E 00 | `     e e
 I 39471 2025-05-21 23:51:27 - [Game:16] E-37C updated to damage=190 game_flags=20B00E00 (v3)
@@ -12374,12 +12179,7 @@ I 39471 2025-05-21 23:51:37 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:51:38 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:51:38 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:51:38 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 01 00 00 DA 07 00 05 00 | `   ?
 0010 | 78 84 33 44 B2 06 38 C1 83 D6 65 C4             | x 3D  8   e
@@ -12462,12 +12262,7 @@ I 39471 2025-05-21 23:51:40 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 0000 | 60 00 14 00 4B 04 00 00 D8 98 1D 01 00 00 00 00 | `   K
 0010 | 00 00 00 00                                     |
 I 39471 2025-05-21 23:51:40 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:51:40 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 D8 98 07 00 05 00 | `   ?
 0010 | 78 84 33 44 B2 06 38 C1 83 D6 65 C4             | x 3D  8   e
@@ -12910,22 +12705,12 @@ I 39471 2025-05-21 23:52:04 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:
 I 39471 2025-05-21 23:52:05 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 08 00 4A 01 00 00                         | `   J
 I 39471 2025-05-21 23:52:05 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:52:05 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 14 00 4B 04 00 00 93 2A 1D 01 00 00 00 00 | `   K    *
 0010 | 00 00 00 00                                     |
 I 39471 2025-05-21 23:52:05 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:52:05 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 0A 03 62 13 62 03 BE 00 20 B0 0E 00 | `     b b
 I 39471 2025-05-21 23:52:05 - [Game:16] E-37B updated to damage=190 game_flags=20B00E00 (v3)
@@ -13106,12 +12891,7 @@ I 39471 2025-05-21 23:52:16 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 0000 | 60 00 14 00 4B 04 00 00 6C 73 1D 01 00 00 00 00 | `   K   ls
 0010 | 00 00 00 00                                     |
 I 39471 2025-05-21 23:52:16 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:52:17 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 3F 06 00 00 00 00 6C 73 07 00 05 00 | `   ?     ls
 0010 | 4A A2 1F 44 85 E2 5D 40 7D E2 80 C4             | J  D  ]@}
@@ -14105,12 +13885,7 @@ I 39471 2025-05-21 23:53:12 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N
 0000 | 60 00 14 00 4B 04 00 00 26 41 39 01 3A D6 1F C1 | `   K   &A9 :
 0010 | F6 98 EC 3E                                     |    >
 I 39471 2025-05-21 23:53:12 - [Commands] Sending to C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 54 00 9A 02 00 00 00 00 03 FF 9A 02 00 00 | ` T
-0010 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0020 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0030 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0040 | 00 00 03 FF 9A 02 00 00 00 00 03 FF 9A 02 00 00 |
-0050 | 00 00 03 FF                                     |
+0000 | 60 00 10 00 2F 03 00 00 02 00 00 00 00 00 00 00 | `   /
 I 39471 2025-05-21 23:53:12 - [Commands] Received from C-A (Jess Lv.51) @ ipss:N-2:127.0.0.1:57072 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 0A 03 6E 13 6E 03 A8 01 20 00 0E 00 | `     n n
 I 39471 2025-05-21 23:53:12 - [Game:16] E-382 updated to damage=424 game_flags=20000E00 (v3)

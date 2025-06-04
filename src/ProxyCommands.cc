@@ -1926,9 +1926,9 @@ asio::awaitable<HandlerResult> C_6x(shared_ptr<Client> c, Channel::Message& msg)
     case 0x4A:
     case 0x4B:
     case 0x4C:
-      if (!is_v1(c->version()) && c->check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
-        send_player_stats_change(c->channel, c->lobby_client_id, PlayerStatsChange::ADD_HP, 2550);
-        send_player_stats_change(c->proxy_session->server_channel, c->lobby_client_id, PlayerStatsChange::ADD_HP, 2550);
+      if (c->check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
+        send_change_player_hp(c->channel, c->lobby_client_id, PlayerHPChange::MAXIMIZE_HP, 0);
+        send_change_player_hp(c->proxy_session->server_channel, c->lobby_client_id, PlayerHPChange::MAXIMIZE_HP, 0);
       }
       break;
 

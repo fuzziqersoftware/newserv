@@ -1680,10 +1680,9 @@ static asio::awaitable<void> on_player_revived(shared_ptr<Client> c, SubcommandM
   auto l = c->require_lobby();
   if (l->is_game()) {
     forward_subcommand(c, msg);
-    bool player_cheats_enabled = !is_v1(c->version()) &&
-        (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE)));
-    if (player_cheats_enabled && c->check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
-      send_player_stats_change(c, PlayerStatsChange::ADD_HP, 2550);
+    if ((l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE))) &&
+        c->check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
+      send_change_player_hp(l, c->lobby_client_id, PlayerHPChange::MAXIMIZE_HP, 0);
     }
   }
   co_return;
@@ -1715,10 +1714,9 @@ static asio::awaitable<void> on_change_hp(shared_ptr<Client> c, SubcommandMessag
   }
 
   forward_subcommand(c, msg);
-  bool player_cheats_enabled = !is_v1(c->version()) &&
-      (l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE)));
-  if (player_cheats_enabled && c->check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
-    send_player_stats_change(c, PlayerStatsChange::ADD_HP, 2550);
+  if ((l->check_flag(Lobby::Flag::CHEATS_ENABLED) || c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE)) &&
+      c->check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
+    send_change_player_hp(l, c->lobby_client_id, PlayerHPChange::MAXIMIZE_HP, 0);
   }
 }
 
