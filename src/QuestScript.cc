@@ -991,7 +991,12 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xB6, "item_delete_by_type", "item_delete2", {{REG_SET_FIXED, 3}, {REG_SET_FIXED, 12}}, F_V0_V4},
 
     // Searches the player's inventory for an item and returns its item ID.
-    // regsA[0-2] = item.data1[0-2] to search for
+    // The matching condition depends on the item's type:
+    //   Weapons: data1[0-2] must match, and data1[4] (special/flags) must be 0
+    //   Armor/shield/unit: data1[0-2] must match
+    //   Mag: data1[0-1] must match; regsA[2] is ignored
+    //   Tool: data1[0-2] must match; if it's a tech disk, data1[4] must be 0
+    // regsA[0-2] = item.data1[0-2] to search for, as above
     // regB = found item ID, or FFFFFFFF if not found
     {0xB7, "find_inventory_item", "item_check", {{REG_SET_FIXED, 3}, REG}, F_V0_V4},
 
@@ -1130,8 +1135,10 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xD0, "pl_pkon", nullptr, {}, F_V1_V4},
 
     // Like find_inventory_item, but regsA specifies data1[0-2] as well as
-    // data1[4]. Returns the item ID in regB, or FFFFFFFF if not found.
-    {0xD1, "pl_chk_item2", nullptr, {{REG_SET_FIXED, 4}, REG}, F_V1_V4},
+    // data1[4]. The matching conditions are the same as in find_inventory_item
+    // except that data1[4] must match regsA[3], instead of zero. Returns the
+    // item ID in regB, or FFFFFFFF if not found.
+    {0xD1, "find_inventory_item_ex", "pl_chk_item2", {{REG_SET_FIXED, 4}, REG}, F_V1_V4},
 
     // Enables/disables the main menu and shortcut menu.
     {0xD2, "enable_mainmenu", nullptr, {}, F_V1_V4},
@@ -1171,9 +1178,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xDD, "load_midi", nullptr, {}, F_V1_V4},
 
     // Finds an item in the player's bank, and clears its entry in the bank.
-    // regsA[0-5] = item.data1[0-5]
+    // regsA[0-5] = item.data1[0-5] (bank item must exactly match all bytes)
     // regB = 1 if item was found and cleared, 0 if not
-    {0xDE, "item_detect_bank", "unknownDE", {{REG_SET_FIXED, 6}, REG}, F_V1_V4},
+    {0xDE, "delete_bank_item", "unknownDE", {{REG_SET_FIXED, 6}, REG}, F_V1_V4},
 
     // Sets NPC AI behaviors.
     // regsA[0] = unknown (TODO)
@@ -1628,8 +1635,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Creates an S-rank weapon in the player's inventory. This opcode is not
     // used in challenge mode, presumably since it doesn't offer a mechanism
-    // for the player to choose their weapon's name. The award_item_give_to
-    // opcode is used instead.
+    // for the player to choose their weapon's name. The award_item_give opcode
+    // is used instead.
     // regA/valueA = client ID (must match local client ID)
     // regB (must be a register, even on v3/v4) = item.data1[1]
     // strC = custom name
@@ -2353,7 +2360,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[1-3] = item.data1[0-2]
     // regB = returned amount of item present in player's inventory
     // If the item is not present, returns 0.
-    {0xF911, "get_item_count", "get_stackable_item_count", {{REG_SET_FIXED, 4}, REG}, F_V3_V4},
+    {0xF911, "get_stackable_item_count", "get_item_count", {{REG_SET_FIXED, 4}, REG}, F_V3_V4},
 
     // Freezes a character and hides their equips, or does the opposite.
     // Internally, this toggles the disable-update flag on TL_03.
@@ -2460,11 +2467,12 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // valueB = value to write
     {0xF926, "write_counter", "write_global_flag", {INT32, INT32}, F_V3_V4 | F_ARGS},
 
-    // Checks if an item exists in the local player's bank.
+    // Checks if an item exists in the local player's bank. The matching logic
+    // is the same as in find_inventory_item.
     // regsA[0-2] = item.data1[0-2]
     // regsA[3] = item.data1[4]
     // regB = 1 if item was found, 0 if not
-    {0xF927, "item_detect_bank2", "item_check_bank", {{REG_SET_FIXED, 4}, REG}, F_V3_V4},
+    {0xF927, "find_bank_item", "item_check_bank", {{REG_SET_FIXED, 4}, REG}, F_V3_V4},
 
     // Returns whether each player is present.
     // regsA[0-3] = returned flags (for each player: 0 if absent, 1 if present)
@@ -2486,7 +2494,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Returns the item chosen by the player in an open_pack_select window, or
     // FFFFFFFF if they canceled it.
-    {0xF92C, "get_item_id", nullptr, {REG}, F_V3_V4},
+    {0xF92C, "get_chosen_item_id", "get_item_id", {REG}, F_V3_V4},
 
     // Adds a color overlay on the player's screen. The overlay fades in
     // linearly over the given number of frames. The overlay is not deleted
