@@ -1947,7 +1947,7 @@ static asio::awaitable<void> on_player_drop_item(shared_ptr<Client> c, Subcomman
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
     auto s = c->require_server_state();
-    auto name = s->describe_item(c->version(), item, false);
+    auto name = s->describe_item(c->version(), item);
     l->log.info_f("Player {} dropped item {:08X} ({}) at {}:({:g}, {:g})",
         cmd.header.client_id, cmd.item_id, name, cmd.floor, cmd.pos.x, cmd.pos.z);
     c->print_inventory();
@@ -1985,7 +1985,7 @@ static asio::awaitable<void> on_create_inventory_item_t(shared_ptr<Client> c, Su
     }
 
     if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-      auto name = s->describe_item(c->version(), item, false);
+      auto name = s->describe_item(c->version(), item);
       l->log.info_f("Player {} created inventory item {:08X} ({}) in inventory of NPC {:02X}; ignoring", c->lobby_client_id, item.id, name, cmd.header.client_id);
     }
 
@@ -1993,7 +1993,7 @@ static asio::awaitable<void> on_create_inventory_item_t(shared_ptr<Client> c, Su
     c->character()->add_item(item, *s->item_stack_limits(c->version()));
 
     if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-      auto name = s->describe_item(c->version(), item, false);
+      auto name = s->describe_item(c->version(), item);
       l->log.info_f("Player {} created inventory item {:08X} ({})", c->lobby_client_id, item.id, name);
       c->print_inventory();
     }
@@ -2036,7 +2036,7 @@ static void on_drop_partial_stack_t(shared_ptr<Client> c, SubcommandMessage& msg
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
     auto s = c->require_server_state();
-    auto name = s->describe_item(c->version(), item, false);
+    auto name = s->describe_item(c->version(), item);
     l->log.info_f("Player {} split stack to create floor item {:08X} ({}) at {}:({:g},{:g})",
         cmd.header.client_id, item.id, name, cmd.floor, cmd.pos.x, cmd.pos.z);
     c->print_inventory();
@@ -2091,7 +2091,7 @@ static asio::awaitable<void> on_drop_partial_stack_bb(shared_ptr<Client> c, Subc
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
     auto s = c->require_server_state();
-    auto name = s->describe_item(c->version(), item, false);
+    auto name = s->describe_item(c->version(), item);
     l->log.info_f("Player {} split stack {:08X} (removed: {}) at {}:({:g}, {:g})",
         cmd.header.client_id, cmd.item_id, name, cmd.floor, cmd.pos.x, cmd.pos.z);
     c->print_inventory();
@@ -2124,7 +2124,7 @@ static asio::awaitable<void> on_buy_shop_item(shared_ptr<Client> c, SubcommandMe
   p->remove_meseta(price, c->version() != Version::BB_V4);
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-    auto name = s->describe_item(c->version(), item, false);
+    auto name = s->describe_item(c->version(), item);
     l->log.info_f("Player {} bought item {:08X} ({}) from shop ({} Meseta)",
         cmd.header.client_id, item.id, name, price);
     c->print_inventory();
@@ -2156,7 +2156,7 @@ void send_item_notification_if_needed(shared_ptr<Client> c, const ItemData& item
   }
 
   if (should_notify) {
-    string name = s->describe_item(c->version(), item, true);
+    string name = s->describe_item(c->version(), item, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
     const char* rare_header = (should_include_rare_header ? "$C6Rare item dropped:\n" : "");
     send_text_message_fmt(c, "{}{}", rare_header, name);
   }
@@ -2199,7 +2199,7 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, SubcommandMessage&
   l->on_item_id_generated_externally(item.id);
   l->add_item(cmd.item.floor, item, cmd.item.pos, obj_st, ene_st, should_notify ? 0x100F : 0x000F);
 
-  auto name = s->describe_item(c->version(), item, false);
+  auto name = s->describe_item(c->version(), item);
   l->log.info_f("Player {} (leader) created floor item {:08X} ({}){} at {}:({:g}, {:g})",
       l->leader_id,
       item.id,
@@ -2279,7 +2279,7 @@ static asio::awaitable<void> on_pick_up_item_generic(
 
     if (l->log.should_log(phosg::LogLevel::L_INFO)) {
       auto s = c->require_server_state();
-      auto name = s->describe_item(c->version(), fi->data, false);
+      auto name = s->describe_item(c->version(), fi->data);
       l->log.info_f("Player {} picked up {:08X} ({})", client_id, item_id, name);
       c->print_inventory();
     }
@@ -2313,8 +2313,8 @@ static asio::awaitable<void> on_pick_up_item_generic(
 
       if (should_send_game_notif || should_send_global_notif) {
         string p_name = p->disp.name.decode();
-        string desc_ingame = s->describe_item(c->version(), fi->data, true);
-        string desc_http = s->describe_item(c->version(), fi->data, false);
+        string desc_ingame = s->describe_item(c->version(), fi->data, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
+        string desc_http = s->describe_item(c->version(), fi->data);
 
         if (s->http_server) {
           auto message = make_shared<phosg::JSON>(phosg::JSON::dict({
@@ -2407,7 +2407,7 @@ static asio::awaitable<void> on_use_item(shared_ptr<Client> c, SubcommandMessage
     // Note: We do this weird scoping thing because player_use_item will
     // likely delete the item, which will break the reference here.
     const auto& item = p->inventory.items[index].data;
-    name = s->describe_item(c->version(), item, false);
+    name = s->describe_item(c->version(), item);
   }
   player_use_item(c, index, l->rand_crypt);
 
@@ -2438,9 +2438,9 @@ static asio::awaitable<void> on_feed_mag(shared_ptr<Client> c, SubcommandMessage
     // Note: We do this weird scoping thing because player_feed_mag will
     // likely delete the items, which will break the references here.
     const auto& fed_item = p->inventory.items[fed_index].data;
-    fed_name = s->describe_item(c->version(), fed_item, false);
+    fed_name = s->describe_item(c->version(), fed_item);
     const auto& mag_item = p->inventory.items[mag_index].data;
-    mag_name = s->describe_item(c->version(), mag_item, false);
+    mag_name = s->describe_item(c->version(), mag_item);
   }
   player_feed_mag(c, mag_index, fed_index);
 
@@ -2699,7 +2699,7 @@ static asio::awaitable<void> on_ep3_private_word_select_bb_bank_action(
         send_destroy_item_to_lobby(c, cmd.item_id, cmd.item_amount, true);
 
         if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-          string name = s->describe_item(Version::BB_V4, item, false);
+          string name = s->describe_item(Version::BB_V4, item);
           l->log.info_f("Player {} deposited item {:08X} (x{}) ({}) in the bank",
               c->lobby_client_id, cmd.item_id, cmd.item_amount, name);
           c->print_inventory();
@@ -2729,7 +2729,7 @@ static asio::awaitable<void> on_ep3_private_word_select_bb_bank_action(
         send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
 
         if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-          string name = s->describe_item(Version::BB_V4, item, false);
+          string name = s->describe_item(Version::BB_V4, item);
           l->log.info_f("Player {} withdrew item {:08X} (x{}) ({}) from the bank",
               c->lobby_client_id, item.id, cmd.item_amount, name);
           c->print_inventory();
@@ -3024,7 +3024,7 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
         if (res.item.empty()) {
           l->log.info_f("No item was created");
         } else {
-          string name = s->describe_item(c->version(), res.item, false);
+          string name = s->describe_item(c->version(), res.item);
           l->log.info_f("Entity {:04X} (area {:02X}) created item {}", cmd.entity_index, cmd.effective_area, name);
           if (drop_mode == Lobby::DropMode::SERVER_DUPLICATE) {
             for (const auto& lc : l->clients) {
@@ -3062,7 +3062,7 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
             if (res.item.empty()) {
               l->log.info_f("No item was created for {}", lc->channel->name);
             } else {
-              string name = s->describe_item(lc->version(), res.item, false);
+              string name = s->describe_item(lc->version(), res.item);
               l->log.info_f("Entity {:04X} (area {:02X}) created item {}", cmd.entity_index, cmd.effective_area, name);
               res.item.id = l->generate_item_id(0xFF);
               l->log.info_f("Creating item {:08X} at {:02X}:{:g},{:g} for {}",
@@ -4045,7 +4045,7 @@ static asio::awaitable<void> on_item_reward_request_bb(shared_ptr<Client> c, Sub
     c->character()->add_item(item, limits);
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
     if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-      auto name = s->describe_item(c->version(), item, false);
+      auto name = s->describe_item(c->version(), item);
       l->log.info_f("Player {} created inventory item {:08X} ({}) via quest command",
           c->lobby_client_id, item.id, name);
       c->print_inventory();
@@ -4053,7 +4053,7 @@ static asio::awaitable<void> on_item_reward_request_bb(shared_ptr<Client> c, Sub
 
   } catch (const out_of_range&) {
     if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-      auto name = s->describe_item(c->version(), item, false);
+      auto name = s->describe_item(c->version(), item);
       l->log.info_f("Player {} attempted to create inventory item {:08X} ({}) via quest command, but it cannot be placed in their inventory",
           c->lobby_client_id, item.id, name);
     }
@@ -4084,7 +4084,7 @@ asio::awaitable<void> on_transfer_item_via_mail_message_bb(shared_ptr<Client> c,
   auto item = p->remove_item(cmd.item_id, cmd.amount, limits);
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-    auto name = s->describe_item(c->version(), item, false);
+    auto name = s->describe_item(c->version(), item);
     l->log.info_f("Player {} sent inventory item {}:{:08X} ({}) x{} to player {:08X}",
         c->lobby_client_id, cmd.header.client_id, cmd.item_id, name, cmd.amount, cmd.target_guild_card_number);
     c->print_inventory();
@@ -4151,7 +4151,7 @@ static asio::awaitable<void> on_exchange_item_for_team_points_bb(shared_ptr<Clie
   s->team_index->add_member_points(c->login->account->account_id, points);
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-    auto name = s->describe_item(c->version(), item, false);
+    auto name = s->describe_item(c->version(), item);
     l->log.info_f("Player {} exchanged inventory item {}:{:08X} ({}) for {} team points",
         c->lobby_client_id, cmd.header.client_id, cmd.item_id, name, points);
     c->print_inventory();
@@ -4184,7 +4184,7 @@ static asio::awaitable<void> on_destroy_inventory_item(shared_ptr<Client> c, Sub
   auto item = p->remove_item(cmd.item_id, cmd.amount, *s->item_stack_limits(c->version()));
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-    auto name = s->describe_item(c->version(), item, false);
+    auto name = s->describe_item(c->version(), item);
     l->log.info_f("Player {} destroyed inventory item {}:{:08X} ({})",
         c->lobby_client_id, cmd.header.client_id, cmd.item_id, name);
     c->print_inventory();
@@ -4236,7 +4236,7 @@ static asio::awaitable<void> on_destroy_floor_item(shared_ptr<Client> c, Subcomm
         c->lobby_client_id, cmd.item_id);
 
   } else {
-    auto name = s->describe_item(c->version(), fi->data, false);
+    auto name = s->describe_item(c->version(), fi->data);
     l->log.info_f("Player {} destroyed floor item {:08X} ({})", c->lobby_client_id, cmd.item_id, name);
 
     // Only forward to players for whom the item was visible
@@ -4342,7 +4342,7 @@ static asio::awaitable<void> on_sell_item_at_shop_bb(shared_ptr<Client> c, Subco
   p->add_meseta(price);
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-    auto name = s->describe_item(c->version(), item, false);
+    auto name = s->describe_item(c->version(), item);
     l->log.info_f("Player {} sold inventory item {:08X} ({}) for {} Meseta",
         c->lobby_client_id, cmd.item_id, name, price);
     c->print_inventory();
@@ -4385,7 +4385,7 @@ static asio::awaitable<void> on_buy_shop_item_bb(shared_ptr<Client> c, Subcomman
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
     auto s = c->require_server_state();
-    auto name = s->describe_item(c->version(), item, false);
+    auto name = s->describe_item(c->version(), item);
     l->log.info_f("Player {} purchased item {:08X} ({}) for {} meseta",
         c->lobby_client_id, item.id, name, price);
     c->print_inventory();
@@ -5048,12 +5048,12 @@ static asio::awaitable<void> on_quest_F960_result_bb(shared_ptr<Client> c, Subco
     p->add_item(item, *s->item_stack_limits(c->version()));
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
     if (c->log.should_log(phosg::LogLevel::L_INFO)) {
-      string name = s->describe_item(c->version(), item, false);
+      string name = s->describe_item(c->version(), item);
       c->log.info_f("Awarded item {}", name);
     }
   } catch (const out_of_range&) {
     if (c->log.should_log(phosg::LogLevel::L_INFO)) {
-      string name = s->describe_item(c->version(), item, false);
+      string name = s->describe_item(c->version(), item);
       c->log.info_f("Attempted to award item {}, but inventory was full", name);
     }
   }

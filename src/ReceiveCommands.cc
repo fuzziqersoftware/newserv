@@ -4088,7 +4088,7 @@ static asio::awaitable<void> on_DF_BB(shared_ptr<Client> c, Channel::Message& ms
       award_state.rank_award_flags |= cmd.rank_bitmask;
       p->add_item(cmd.item, *s->item_stack_limits(c->version()));
       l->on_item_id_generated_externally(cmd.item.id);
-      string desc = s->describe_item(Version::BB_V4, cmd.item, false);
+      string desc = s->describe_item(Version::BB_V4, cmd.item);
       l->log.info_f("(Challenge mode) Item awarded to player {}: {}", c->lobby_client_id, desc);
       break;
     }

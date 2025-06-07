@@ -97,7 +97,10 @@ const array<const char*, 0x11> name_for_s_rank_special = {
     "King\'s",
 };
 
-std::string ItemNameIndex::describe_item(const ItemData& item, bool include_color_escapes, bool hide_mag_stats) const {
+std::string ItemNameIndex::describe_item(const ItemData& item, uint8_t flags) const {
+  bool include_color_escapes = flags & ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES;
+  bool name_only = flags & ItemNameIndex::Flag::NAME_ONLY;
+
   if (item.data1[0] == 0x04) {
     return std::format("{}{} Meseta", include_color_escapes ? "$C7" : "", item.data2d);
   }
@@ -108,13 +111,14 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
   bool is_unidentified = false;
   if ((item.data1[0] == 0x00) && (item.data1[4] != 0x00) && !item.is_s_rank_weapon()) {
     is_unidentified = item.data1[4] & 0x80;
-    bool is_present = item.data1[4] & 0x40;
     uint8_t special_id = item.data1[4] & 0x3F;
-    if (is_present) {
-      ret_tokens.emplace_back("Wrapped");
-    }
-    if (is_unidentified) {
-      ret_tokens.emplace_back("????");
+    if (!name_only) {
+      if (item.data1[4] & 0x40) {
+        ret_tokens.emplace_back("Wrapped");
+      }
+      if (is_unidentified) {
+        ret_tokens.emplace_back("????");
+      }
     }
     if (special_id) {
       try {
@@ -124,7 +128,7 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
       }
     }
   }
-  if ((item.data1[0] == 0x00) && (item.data1[2] != 0x00) && item.is_s_rank_weapon()) {
+  if (!name_only && (item.data1[0] == 0x00) && (item.data1[2] != 0x00) && item.is_s_rank_weapon()) {
     try {
       ret_tokens.emplace_back(name_for_s_rank_special.at(item.data1[2]));
     } catch (const out_of_range&) {
@@ -135,9 +139,10 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
   // Armors, shields, and units (0x01) can be wrapped, as can mags (0x02) and
   // non-stackable tools (0x03). However, each of these item classes has its
   // flags in a different location.
-  if (((item.data1[0] == 0x01) && (item.data1[4] & 0x40)) ||
-      ((item.data1[0] == 0x02) && (item.data2[2] & 0x40)) ||
-      ((item.data1[0] == 0x03) && !item.is_stackable(*this->limits) && (item.data1[3] & 0x40))) {
+  if (!name_only &&
+      (((item.data1[0] == 0x01) && (item.data1[4] & 0x40)) ||
+          ((item.data1[0] == 0x02) && (item.data2[2] & 0x40)) ||
+          ((item.data1[0] == 0x03) && !item.is_stackable(*this->limits) && (item.data1[3] & 0x40)))) {
     ret_tokens.emplace_back("Wrapped");
   }
 
@@ -168,7 +173,7 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
 
   if (item.data1[0] == 0x00) {
     // For weapons, add the grind and bonuses, or S-rank name if applicable
-    if (item.data1[3] > 0) {
+    if (!name_only && item.data1[3] > 0) {
       ret_tokens.emplace_back(std::format("+{}", item.data1[3]));
     }
 
@@ -210,7 +215,7 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
         }
       }
 
-    } else { // Not S-rank (extended name bits not set)
+    } else if (!name_only) { // Not S-rank (extended name bits not set)
       parray<int8_t, 5> bonuses(0);
       for (size_t x = 0; x < 3; x++) {
         uint8_t which = item.data1[6 + 2 * x];
@@ -258,7 +263,7 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
         ret_tokens.emplace_back(std::format("!MD:{:04X}", modifier));
       }
 
-    } else { // Armor/shields
+    } else if (!name_only) { // Armor/shields
       if (item.data1[5] > 0) {
         if (item.data1[5] == 1) {
           ret_tokens.emplace_back("(1 slot)");
@@ -276,7 +281,7 @@ std::string ItemNameIndex::describe_item(const ItemData& item, bool include_colo
       }
     }
 
-  } else if (!hide_mag_stats && (item.data1[0] == 0x02)) {
+  } else if (!name_only && (item.data1[0] == 0x02)) {
     // For mags, add tons of info
     ret_tokens.emplace_back(std::format("LV{}", item.data1[2]));
 

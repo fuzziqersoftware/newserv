@@ -884,7 +884,7 @@ static asio::awaitable<HandlerResult> SC_6x60_6xA2(shared_ptr<Client> c, Channel
     c->log.info_f("No item was created");
   } else {
     auto s = c->require_server_state();
-    string name = s->describe_item(c->version(), res.item, false);
+    string name = s->describe_item(c->version(), res.item);
     c->log.info_f("Entity {:04X} (area {:02X}) created item {}", cmd.entity_index, cmd.effective_area, name);
     res.item.id = c->proxy_session->next_item_id++;
     c->log.info_f("Creating item {:08X} at {:02X}:{:g},{:g} for all clients",

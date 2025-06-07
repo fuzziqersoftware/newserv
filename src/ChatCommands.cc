@@ -1302,7 +1302,7 @@ ChatCommandDefinition cc_item(
         }
       }
 
-      string name = s->describe_item(a.c->version(), item, true);
+      string name = s->describe_item(a.c->version(), item, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
       send_text_message(a.c, "$C7Item created:\n" + name);
       co_return;
     });
@@ -1364,28 +1364,38 @@ ChatCommandDefinition cc_killcount(
       a.check_is_proxy(false);
 
       auto p = a.c->character();
-      size_t item_index;
-      try {
-        item_index = p->inventory.find_equipped_item(EquipSlot::WEAPON);
-      } catch (const out_of_range&) {
-        throw precondition_failed("No weapon equipped");
+      vector<size_t> item_indexes;
+      for (size_t z = 0; z < p->inventory.num_items; z++) {
+        const auto& item = p->inventory.items[z];
+        if (item.is_equipped() && item.data.has_kill_count()) {
+          item_indexes.emplace_back(z);
+        }
       }
 
-      const auto& item = p->inventory.items.at(item_index);
-      if (!item.data.has_kill_count()) {
-        throw precondition_failed("Weapon does not\nhave a kill count");
-      }
+      if (item_indexes.empty()) {
+        throw precondition_failed("No equipped items\nhave kill counts");
 
-      // Kill counts are only accurate on the server side at all times on BB. On
-      // other versions, we update the server's view of the client's inventory
-      // during games, but we can't track kills because the client doesn't inform
-      // the server whether it counted a kill for any individual enemy. So, on
-      // non-BB versions, the kill count is accurate at all times in the lobby
-      // (since kills can't occur there), or at the beginning of a game.
-      if ((a.c->version() == Version::BB_V4) || !a.c->require_lobby()->is_game()) {
-        send_text_message_fmt(a.c, "{} kills", item.data.get_kill_count());
       } else {
-        send_text_message_fmt(a.c, "{} kills as of\ngame join", item.data.get_kill_count());
+        // Kill counts are only accurate on the server side at all times on BB.
+        // On other versions, we update the server's view of the client's
+        // inventory during games, but we can't track kills because the client
+        // doesn't inform the server whether it counted a kill for any
+        // individual enemy. So, on non-BB versions, the kill count is accurate
+        // at all times in the lobby (since kills can't occur there), or at the
+        // beginning of a game.
+        if ((a.c->version() == Version::BB_V4) || !a.c->require_lobby()->is_game()) {
+          send_text_message(a.c, "As of now:");
+        } else {
+          send_text_message(a.c, "As of game join:");
+        }
+
+        auto s = a.c->require_server_state();
+        for (size_t z : item_indexes) {
+          const auto& item = p->inventory.items[z];
+          string name = s->describe_item(
+              a.c->version(), item.data, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES | ItemNameIndex::Flag::NAME_ONLY);
+          send_text_message_fmt(a.c, "{}$C7: {} kills", name, item.data.get_kill_count());
+        }
       }
       co_return;
     });
@@ -2768,7 +2778,7 @@ ChatCommandDefinition cc_what(
         throw precondition_failed("$C4No items are near you");
       } else {
         auto s = a.c->require_server_state();
-        string name = s->describe_item(a.c->version(), nearest_fi->data, true);
+        string name = s->describe_item(a.c->version(), nearest_fi->data, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
         send_text_message(a.c, name);
       }
       co_return;

@@ -38,7 +38,12 @@ public:
   inline bool exists(const ItemData& item) const {
     return this->primary_identifier_index.count(item.primary_identifier());
   }
-  std::string describe_item(const ItemData& item, bool include_color_escapes = false, bool hide_mag_stats = false) const;
+
+  enum Flag : uint8_t {
+    INCLUDE_PSO_COLOR_ESCAPES = 0x01,
+    NAME_ONLY = 0x02,
+  };
+  std::string describe_item(const ItemData& item, uint8_t flags = 0) const;
   ItemData parse_item_description(const std::string& description) const;
 
   void print_table(FILE* stream) const;

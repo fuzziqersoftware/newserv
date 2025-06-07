@@ -1058,7 +1058,7 @@ void Client::print_inventory() const {
   for (size_t x = 0; x < p->inventory.num_items; x++) {
     const auto& item = p->inventory.items[x];
     auto hex = item.data.hex();
-    auto name = s->describe_item(this->version(), item.data, false);
+    auto name = s->describe_item(this->version(), item.data);
     this->log.info_f("[PlayerInventory]   {:2}: [+{:08X}] {} ({})", x, item.flags, hex, name);
   }
 }
@@ -1072,7 +1072,7 @@ void Client::print_bank() const {
     const auto& item = bank.items[x];
     const char* present_token = item.present ? "" : " (missing present flag)";
     auto hex = item.data.hex();
-    auto name = s->describe_item(this->version(), item.data, false);
+    auto name = s->describe_item(this->version(), item.data);
     this->log.info_f("[PlayerBank]   {:3}: {} ({}) (x{}){}", x, hex, name, item.amount, present_token);
   }
 }

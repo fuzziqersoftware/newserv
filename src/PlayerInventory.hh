@@ -77,6 +77,10 @@ struct PlayerInventoryItemT {
     ret.data.id.store_raw(phosg::bswap32(ret.data.id.load_raw()));
     return ret;
   }
+
+  bool is_equipped() const {
+    return (this->flags & 8);
+  }
 } __attribute__((packed));
 using PlayerInventoryItem = PlayerInventoryItemT<false>;
 using PlayerInventoryItemBE = PlayerInventoryItemT<true>;

@@ -1072,7 +1072,7 @@ ShellCommand c_create_item(
       send_drop_stacked_item_to_channel(args.s, c->channel, item, c->floor, c->pos);
       send_drop_stacked_item_to_channel(args.s, c->proxy_session->server_channel, item, c->floor, c->pos);
 
-      string name = args.s->describe_item(c->version(), item, true);
+      string name = args.s->describe_item(c->version(), item, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
       send_text_message(c->channel, "$C7Item created:\n" + name);
       co_return deque<string>{};
     });

@@ -351,7 +351,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const ItemData::StackLimits> item_stack_limits(Version version) const;
   std::shared_ptr<const ItemNameIndex> item_name_index_opt(Version version) const; // Returns null if missing
   std::shared_ptr<const ItemNameIndex> item_name_index(Version version) const; // Throws if missing
-  std::string describe_item(Version version, const ItemData& item, bool include_color_codes) const;
+  std::string describe_item(Version version, const ItemData& item, uint8_t flags = 0) const;
   ItemData parse_item_description(Version version, const std::string& description) const;
 
   const std::vector<uint32_t>& public_lobby_search_order(Version version, bool is_client_customization) const;

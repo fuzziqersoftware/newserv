@@ -2158,7 +2158,7 @@ Action a_describe_item(
       }
 
       string desc = name_index->describe_item(item);
-      string desc_colored = name_index->describe_item(item, true);
+      string desc_colored = name_index->describe_item(item, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
 
       phosg::log_info_f("Data (decoded):        {:02X}{:02X}{:02X}{:02X} {:02X}{:02X}{:02X}{:02X} {:02X}{:02X}{:02X}{:02X} -------- {:02X}{:02X}{:02X}{:02X}",
           item.data1[0], item.data1[1], item.data1[2], item.data1[3],

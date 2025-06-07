@@ -193,7 +193,7 @@ std::shared_ptr<phosg::JSON> HTTPServer::generate_client_json(
             {"ItemID", item.data.id.load()},
         });
         if (item_name_index) {
-          item_dict.emplace("Description", item_name_index->describe_item(item.data, false));
+          item_dict.emplace("Description", item_name_index->describe_item(item.data));
         }
         items_json.emplace_back(std::move(item_dict));
       }
@@ -431,7 +431,7 @@ std::shared_ptr<phosg::JSON> HTTPServer::generate_lobby_json(
               {"ItemID", item->data.id.load()},
           });
           if (item_name_index) {
-            item_dict.emplace("Description", item_name_index->describe_item(item->data, false));
+            item_dict.emplace("Description", item_name_index->describe_item(item->data));
           }
           floor_items_json.emplace_back(std::move(item_dict));
         }

@@ -722,7 +722,7 @@ string RareItemSet::serialize_html(
         }
 
         string hex = example_item.short_hex();
-        string desc = name_index->describe_item(example_item, false, true);
+        string desc = name_index->describe_item(example_item, ItemNameIndex::Flag::NAME_ONLY);
         tokens.emplace_back(std::format("<span class=\"item\" title=\"Hex: {}\">{}</span>", hex, desc));
 
         float denom = static_cast<float>(frac.second) / static_cast<double>(frac.first);
