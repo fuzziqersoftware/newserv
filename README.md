@@ -54,16 +54,17 @@ At the time of its inception, Aeon was also called newserv, and you may find som
 
 Independently of this project, there are many other PSO servers out there. Those that I know of that are (or were) public are listed here in approximate chronological order:
 
-* (Early 2000s) **[Schtserv](https://schtserv.com/)**: The first public-access PSO server; written in Delphi by Schthack. Still active and popular as of early 2025. Schtserv is also the only other unofficial server to support all versions of PSO, including Episode 3. (Their implementation of Episode 3 is based on newserv's, which is itself based on Sega's.)
+* (Early 2000s) **[Schtserv](https://schtserv.com/)**: The first public-access PSO server, written in Delphi by Schthack. Schtserv is the only other unofficial server to support Episode 3, their implementation of which is based on newserv's (which is based on Sega's).
 * (2005) **Khyller**: An early attempt of mine to support PSO PC, GC, and BB. See above for more details.
 * (2006) **Aeon**: My second attempt. Better than Khyller, but still unreliable.
-* (2008) **Tethealla**: A fairly extensive implementation of PSOBB, written in C by Sodaboy. The public version of Tethealla has been [officially disowned](https://www.pioneer2.net/community/threads/tethealla-server-forums-removal.26365/) (as it is now more than 15 years old), but closed-source development continues. [Ephinea](https://ephinea.pioneer2.net/), currently the most popular PSOBB server, is the continuation of this project. Several other modern PSOBB servers are forks of the initial public version of Tethealla as well.
-* (2008) **[Sylverant](https://sylverant.net/)** [(source)](https://sourceforge.net/projects/sylverant/): The second public-access PSO server; written in C by BlueCrab. Still active and popular as of early 2025.
+* (2008) **Tethealla**: A fairly extensive implementation of PSOBB, written in C by Sodaboy. The public version of Tethealla has been [officially disowned](https://www.pioneer2.net/community/threads/tethealla-server-forums-removal.26365/) as it is now more than 15 years old, but closed-source development continues. [Ephinea](https://ephinea.pioneer2.net/) is the continuation of this project. Several other modern PSOBB servers are forks of the initial public version of Tethealla as well.
+* (2008) **[Sylverant](https://sylverant.net/)** [(source)](https://sourceforge.net/projects/sylverant/): The second public-access PSO server, written in C by BlueCrab.
 * (2015) **[Archon](https://github.com/dcrodman/archon)**: A PSOBB server written in Go by Drew Rodman.
 * (2015) **[Idola](https://github.com/HybridEidolon/idolapsoserv)**: A PSOBB server written in Rust by HybridEidolon. Functionality status unknown; the project has been archived.
-* (2017) **[Aselia](https://github.com/Solybum/Aselia)**: A PSOBB server written written in C# by Soly. It seems this was planned to be open-source at some point, but that has not (yet) happened.
+* (2017) **[Aselia](https://github.com/Solybum/Aselia)**: A PSOBB server written in C# by Soly. It seems this was planned to be open-source at some point, but that has not (yet) happened.
 * (2018) **newserv**: This project right here.
 * (2019) **[Mechonis](https://gitlab.com/sora3087/mechonis)**: A PSOBB server with a microservice architecture written in TypeScript by TrueVision.
+* (2020) **[Booma.Server](https://github.com/HelloKitty/Booma.Server)**: A PSOBB server written in C# by Glader, with Soly's help.
 * (2021) **[Phantasmal World](https://github.com/DaanVandenBosch/phantasmal-world)**: A set of PSO tools, including a web-based model viewer and quest builder, and a PSO server, written by Daan Vanden Bosch.
 * (2021) **[Elseware](http://git.sharnoth.com/jake/elseware)**: A PSOBB server written in Rust by Jake.
 
