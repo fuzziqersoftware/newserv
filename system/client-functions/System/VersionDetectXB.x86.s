@@ -14,5 +14,13 @@ reloc0:
   .offsetof start
 
 start:
-  .include VersionDetectWithPatchFunctionsXB
+  .include GetVersionInfoXB
+
+  test     eax, eax
+  jz       version_not_found
+  mov      eax, [eax]
+  ret
+
+version_not_found:
+  mov      eax, 0x344F0000
   ret

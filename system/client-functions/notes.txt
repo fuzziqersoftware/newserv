@@ -1,8 +1,7 @@
 Used regions in PSO GC:
-
 80004000-80004194 (0194) ExtendedItemInfo (AR code uses 80005000 due to conflict with q8853x)
 800041A0-800041B8 (0018) UnsellableRares
-800041C0-???????? (????) EnemyDamageSync
+800041C0-???????? (TODO) EnemyDamageSync
 8000B088-8000B0E0 (0058) BugFixes
 8000B0E0-8000B254 (0174) q8853x send_function_call handler
 8000B5C8-8000B5DC (0014) BugFixes
@@ -27,3 +26,10 @@ Used regions in PSO GC:
 8000D9A0-8000D9B8 (0018) BugFixes
 8000DFA0-8000DFE0 (0040) DrawDistance
 8000E1E0-8000E1FC (001C) BugFixes
+
+Used regions in PSO XB (40EU):
+002DB550-002DB600 (B0) handle_0E => EnemyHPBars, FlickeringStatusIcons
+002DC970-002DCA70 (100) handle_91 => EnemyDamageSync
+
+Potentially available regions in PSO XB:
+002BFDB0-002BFE40 (90) handle_03_phase2 (replace handler in table with do_nothing, or just prepend with ret)

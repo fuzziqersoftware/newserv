@@ -1,10 +1,10 @@
 # This file defines the following function:
-#   write_call_to_code(
-#     const void* patch_code,
-#     size_t patch_code_size,
-#     size_t call_count,
-#     void* call_opcode_address,
-#     ssize_t call_opcode_bytes,
+#   void [/std] write_call_to_code(
+#     const void* patch_code @ [esp + 0x04],
+#     size_t patch_code_size @ [esp + 0x08],
+#     size_t call_count @ [esp + 0x0C],
+#     void* call_opcode_address @ [esp + 0x10],
+#     ssize_t call_opcode_bytes @ [esp + 0x14],
 #     ...);
 # This function allocates memory for patch_code, copies patch_code to that
 # memory, then writes a call or jmp opcode to call_opcode_address that calls

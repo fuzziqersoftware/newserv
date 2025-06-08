@@ -320,6 +320,10 @@ static asio::awaitable<void> on_invalid(shared_ptr<Client> c, SubcommandMessage&
   co_return;
 }
 
+static asio::awaitable<void> on_debug_info(shared_ptr<Client>, SubcommandMessage&) {
+  co_return;
+}
+
 static asio::awaitable<void> on_forward_check_game_loading(shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (l->is_game() && l->any_client_loading()) {
@@ -3475,6 +3479,33 @@ static asio::awaitable<void> on_update_enemy_state(shared_ptr<Client> c, Subcomm
   }
 }
 
+static asio::awaitable<void> on_incr_enemy_damage(shared_ptr<Client> c, SubcommandMessage& msg) {
+  auto& cmd = msg.check_size_t<G_IncrementEnemyDamage_Extension_6xE4>();
+
+  if (command_is_private(msg.command)) {
+    co_return;
+  }
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    co_return;
+  }
+  if (cmd.header.entity_id < 0x1000 || cmd.header.entity_id >= 0x4000) {
+    throw runtime_error("6xE4 received for non-enemy entity");
+  }
+  auto ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd.header.entity_id & 0x0FFF);
+
+  c->log.info_f("E-{:03X} damage incremented by {}; before hit, damage was {} (cmd) or {} (ene_st) and HP was {}/{}",
+      ene_st->e_id,
+      cmd.hit_amount.load(),
+      ene_st->total_damage,
+      cmd.total_damage_before_hit.load(),
+      cmd.current_hp_before_hit.load(),
+      cmd.max_hp.load());
+  ene_st->total_damage = std::min<uint32_t>(ene_st->total_damage + cmd.hit_amount, cmd.max_hp);
+
+  co_await forward_subcommand_with_entity_id_transcode_t<G_IncrementEnemyDamage_Extension_6xE4>(c, msg);
+}
+
 static asio::awaitable<void> on_set_enemy_low_game_flags_ultimate(shared_ptr<Client> c, SubcommandMessage& msg) {
   auto& cmd = msg.check_size_t<G_SetEnemyLowGameFlagsUltimate_6x9C>();
 
@@ -5406,7 +5437,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xE1 */ {NONE, NONE, 0xE1, on_quest_F95F_result_bb},
     /* 6xE2 */ {NONE, NONE, 0xE2, on_quest_F960_result_bb},
     /* 6xE3 */ {NONE, NONE, 0xE3, on_invalid},
-    /* 6xE4 */ {NONE, NONE, 0xE4, forward_subcommand_with_entity_id_transcode_t<G_IncrementEnemyDamageThreshold_Extension_6xE4>}, // Extended subcommand; see CommandFormats.hh
+    /* 6xE4 */ {NONE, NONE, 0xE4, on_incr_enemy_damage}, // Extended subcommand; see CommandFormats.hh
     /* 6xE5 */ {NONE, NONE, 0xE5, on_invalid},
     /* 6xE6 */ {NONE, NONE, 0xE6, on_invalid},
     /* 6xE7 */ {NONE, NONE, 0xE7, on_invalid},
@@ -5433,7 +5464,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6xFC */ {NONE, NONE, 0xFC, on_invalid},
     /* 6xFD */ {NONE, NONE, 0xFD, on_invalid},
     /* 6xFE */ {NONE, NONE, 0xFE, on_invalid},
-    /* 6xFF */ {NONE, NONE, 0xFF, on_invalid},
+    /* 6xFF */ {NONE, NONE, 0xFF, on_debug_info}, // Extended subcommand with no format; used for debugging patches
 };
 
 asio::awaitable<void> on_subcommand_multi(shared_ptr<Client> c, Channel::Message& msg) {

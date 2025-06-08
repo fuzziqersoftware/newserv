@@ -7434,14 +7434,13 @@ struct G_RejectBattleStartRequest_Ep3_6xB4x53 {
 //   XB v3: PSOXBCharacterFile::Character
 
 // 6xE4: Increment enemy damage threshold
-// This command increments or decrements the minimum amount of damage an enemy
-// has sustained. This threshold is used to mitigate the effects of damage
-// cancellation due to the original game's 6x0A implementation.
+// This command increments or decrements the amount of damage an enemy has
+// sustained. This replaces the use of total_damage in 6x0A to update enemy HP.
 
-struct G_IncrementEnemyDamageThreshold_Extension_6xE4 {
-  G_EntityIDHeader header = {0xE4, sizeof(G_IncrementEnemyDamageThreshold_Extension_6xE4) / 4, 0x0000};
+struct G_IncrementEnemyDamage_Extension_6xE4 {
+  G_EntityIDHeader header = {0xE4, sizeof(G_IncrementEnemyDamage_Extension_6xE4) / 4, 0x0000};
   le_int16_t hit_amount = 0;
   le_uint16_t total_damage_before_hit = 0;
   le_uint16_t current_hp_before_hit = 0;
   le_uint16_t max_hp = 0;
-} __packed_ws__(G_IncrementEnemyDamageThreshold_Extension_6xE4, 0x0C);
+} __packed_ws__(G_IncrementEnemyDamage_Extension_6xE4, 0x0C);
