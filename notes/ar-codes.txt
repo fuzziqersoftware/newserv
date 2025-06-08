@@ -722,3 +722,12 @@ Show extended item info when targeting a dropped item
 
 All weapons can do 3-hit combos
 3OE1 => 041D3248 38000001
+
+Disable save file signature validation (for moving Xbox saves across consoles)
+4OJB => 002F01CB 9090
+4OJD => 002F0CDB 9090
+4OJU => 002F22DB 9090
+4OED => 002F212B 9090
+4OEU => 002F22DB 9090
+4OPD => 002F215B 9090
+4OPU => 002F234B 9090
