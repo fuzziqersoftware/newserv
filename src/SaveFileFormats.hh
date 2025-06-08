@@ -91,6 +91,31 @@ struct PSOGCIFileHeader {
   bool is_nte() const;
 } __packed_ws__(PSOGCIFileHeader, 0x2088);
 
+struct PSOXBFileHeader {
+  // The signature is computed by doing the following:
+  //   // TODO: Should flags be 0 or 1? It looks like it should be 0 for
+  //   // character files, but not sure about this
+  //   auto handle = XCalculateSignatureBegin(flags);
+  //   XCalculateSignatureUpdate(
+  //       handle,
+  //       &header.source_size,
+  //       total_size - offsetof(PSOXBFileHeader, source_size));
+  //   XCalculateSignatureEnd(handle, header.signature);
+  /* 0000 */ parray<uint8_t, 0x14> signature;
+  /* 0014 */ le_uint32_t source_size = 0; // == total file size - 0x4000
+  /* 0018 */ parray<uint8_t, 0x3FE8> unused; // Always blank (zeroes)
+  /* 4000 */ pstring<TextEncoding::MARKED, 0x20> game_name;
+  /* 4020 */ pstring<TextEncoding::MARKED, 0x20> file_name;
+  /* 4040 */ parray<uint8_t, 0x1800> banner; // Always blank (zeroes)
+  /* 5840 */ parray<uint8_t, 0x800> icon; // Always blank (zeroes)
+  /* 6040 */ le_uint32_t data_size = 0;
+  /* 6044 */ le_uint32_t checksum = 0; // Starts at game_name
+  /* 6048 */
+
+  bool checksum_correct() const;
+  void check() const;
+} __packed_ws__(PSOXBFileHeader, 0x6048);
+
 ////////////////////////////////////////////////////////////////////////////////
 // Subordinate structures
 
@@ -279,6 +304,35 @@ struct PSOGCEp3SystemFile {
   /* 0128 */ be_uint32_t unknown_a3 = 0;
   /* 012C */
 } __packed_ws__(PSOGCEp3SystemFile, 0x12C);
+
+struct PSOXBSystemFile {
+  /* 0000 */ le_uint32_t checksum = 0;
+  /* 0004 */ le_int16_t music_volume = -50;
+  /* 0006 */ int8_t sound_volume = 0;
+  /* 0007 */ uint8_t language = 0;
+  /* 0008 */ be_int32_t server_time_delta_frames = 200;
+  /* 000C */ be_uint16_t udp_behavior = 0; // 0 = auto, 1 = on, 2 = off
+  /* 000E */ be_uint16_t surround_sound_enabled = 0;
+  /* 0010 */ parray<uint8_t, 0x0100> event_flags;
+  /* 0110 */ parray<uint8_t, 8> unknown_a1;
+  struct UserEntry {
+    /* 00 */ le_uint32_t xb_user_id_high = 0;
+    /* 04 */ le_uint32_t xb_user_id_low = 0;
+    /* 08 */ le_uint32_t unknown_a2;
+    /* 0C */ le_uint32_t last_write_year;
+    /* 10 */ le_uint32_t last_write_month;
+    /* 14 */ le_uint32_t last_write_day;
+    /* 18 */ le_uint32_t last_write_hour;
+    /* 1C */ le_uint32_t last_write_minute;
+    /* 20 */ le_uint32_t last_write_second;
+    /* 24 */ le_uint32_t flags = 1; // 1 = not present
+    /* 28 */ pstring<TextEncoding::ASCII, 0x10> gamertag;
+    /* 38 */
+  } __packed_ws__(UserEntry, 0x38);
+  /* 0118 */ parray<UserEntry, 4> users;
+  /* 01F8 */ le_uint32_t creation_timestamp = 0;
+  /* 01FC */
+} __packed_ws__(PSOXBSystemFile, 0x1FC);
 
 struct PSOBBMinimalSystemFile {
   /* 0000 */ be_uint32_t checksum = 0;
@@ -717,48 +771,65 @@ struct PSOGCEp3CharacterFile {
   /* 194B0 */
 } __packed_ws__(PSOGCEp3CharacterFile, 0x194B0);
 
-struct PSOXBCharacterFileCharacter {
-  // This structure is internally split into two by the game. The offsets here
-  // are relative to the start of this structure (first column), and relative
-  // to the start of the second internal structure (second column).
-  // Most fields have the same meanings as in PSOGCCharacterFile::Character.
-  /* 0000:---- */ PlayerInventory inventory;
-  /* 034C:---- */ PlayerDispDataDCPCV3 disp;
-  /* 041C:0000 */ le_uint32_t validation_flags = 0;
-  /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
-  /* 0424:0008 */ le_uint32_t signature = 0xC87ED5B1;
-  /* 0428:000C */ le_uint32_t play_time_seconds = 0;
-  /* 042C:0010 */ le_uint32_t option_flags = 0x00040058;
-  /* 0430:0014 */ le_uint32_t save_count = 1;
-  /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
-  /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
-  /* 0460:0044 */ QuestFlags quest_flags;
-  /* 0660:0244 */ le_uint32_t death_count = 0;
-  /* 0664:0248 */ PlayerBank200 bank;
-  /* 192C:1510 */ GuildCardXB guild_card;
-  /* 1B58:173C */ parray<SaveFileSymbolChatEntryDCXB, 12> symbol_chats;
-  /* 1F78:1B5C */ parray<SaveFileShortcutEntryXB, 16> shortcuts;
-  /* 24B8:209C */ pstring<TextEncoding::MARKED, 0xAC> auto_reply;
-  /* 2518:20FC */ pstring<TextEncoding::MARKED, 0xAC> info_board;
-  // TODO: The following fields are guesses and have not been verified.
-  /* 2610:21F4 */ PlayerRecordsBattle battle_records;
-  /* 2628:220C */ parray<uint8_t, 4> unknown_a4;
-  /* 262C:2210 */ PlayerRecordsChallengeV3 challenge_records;
-  /* 272C:2310 */ parray<le_uint16_t, 20> tech_menu_shortcut_entries;
-  /* 2754:2338 */ ChoiceSearchConfig choice_search_config;
-  /* 276C:2350 */ parray<uint8_t, 0x10> unknown_a6;
-  /* 277C:2360 */ parray<le_uint32_t, 0x10> quest_counters;
-  /* 27BC:23A0 */ PlayerRecordsBattle offline_battle_records;
-  /* 27D4:23B8 */ parray<uint8_t, 4> unknown_a7;
-  struct UnknownA8Entry {
-    /* 00 */ le_uint32_t unknown_a1 = 0;
-    /* 04 */ parray<uint8_t, 0x1C> unknown_a2;
-    /* 20 */ parray<le_float, 4> unknown_a3;
-    /* 30 */
-  } __packed_ws__(UnknownA8Entry, 0x30);
-  /* 27D8:23BC */ parray<UnknownA8Entry, 5> unknown_a8;
-  /* 28C8:24AC */
-} __packed_ws__(PSOXBCharacterFileCharacter, 0x28C8);
+struct PSOXBCharacterFile {
+  struct Character {
+    // This structure is internally split into two by the game. The offsets here
+    // are relative to the start of this structure (first column), and relative
+    // to the start of the second internal structure (second column).
+    // Most fields have the same meanings as in PSOGCCharacterFile::Character.
+    /* 0000:---- */ PlayerInventory inventory;
+    /* 034C:---- */ PlayerDispDataDCPCV3 disp;
+    /* 041C:0000 */ le_uint32_t validation_flags = 0;
+    /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
+    /* 0424:0008 */ le_uint32_t signature = 0xC87ED5B1;
+    /* 0428:000C */ le_uint32_t play_time_seconds = 0;
+    /* 042C:0010 */ le_uint32_t option_flags = 0x00040058;
+    /* 0430:0014 */ le_uint32_t save_count = 1;
+    /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
+    /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
+    /* 0460:0044 */ QuestFlags quest_flags;
+    /* 0660:0244 */ le_uint32_t death_count = 0;
+    /* 0664:0248 */ PlayerBank200 bank;
+    /* 192C:1510 */ GuildCardXB guild_card;
+    /* 1B58:173C */ parray<SaveFileSymbolChatEntryDCXB, 12> symbol_chats;
+    /* 1F78:1B5C */ parray<SaveFileShortcutEntryXB, 16> shortcuts;
+    /* 24B8:209C */ pstring<TextEncoding::MARKED, 0xAC> auto_reply;
+    /* 2518:20FC */ pstring<TextEncoding::MARKED, 0xAC> info_board;
+    // TODO: The following fields are guesses and have not been verified.
+    /* 2610:21F4 */ PlayerRecordsBattle battle_records;
+    /* 2628:220C */ parray<uint8_t, 4> unknown_a4;
+    /* 262C:2210 */ PlayerRecordsChallengeV3 challenge_records;
+    /* 272C:2310 */ parray<le_uint16_t, 20> tech_menu_shortcut_entries;
+    /* 2754:2338 */ ChoiceSearchConfig choice_search_config;
+    /* 276C:2350 */ parray<uint8_t, 0x10> unknown_a6;
+    /* 277C:2360 */ parray<le_uint32_t, 0x10> quest_counters;
+    /* 27BC:23A0 */ PlayerRecordsBattle offline_battle_records;
+    /* 27D4:23B8 */ parray<uint8_t, 4> unknown_a7;
+    struct UnknownA8Entry {
+      /* 00 */ le_uint32_t unknown_a1 = 0;
+      /* 04 */ parray<uint8_t, 0x1C> unknown_a2;
+      /* 20 */ parray<le_float, 4> unknown_a3;
+      /* 30 */
+    } __packed_ws__(UnknownA8Entry, 0x30);
+    /* 27D8:23BC */ parray<UnknownA8Entry, 5> unknown_a8;
+    /* 28C8:24AC */
+  } __packed_ws__(Character, 0x28C8);
+
+  struct CharEntry {
+    Character character;
+    parray<uint8_t, 0x18> unknown_a1;
+  } __packed_ws__(CharEntry, 0x28E0);
+
+  /* 00000 */ le_uint32_t checksum = 0;
+  /* 00004 */ parray<CharEntry, 15> characters;
+  /* 26524 */ pstring<TextEncoding::ASCII, 0x10> serial_number;
+  /* 26534 */ pstring<TextEncoding::ASCII, 0x10> access_key;
+  /* 26544 */ pstring<TextEncoding::ASCII, 0x10> password;
+  /* 26554 */ be_uint64_t bgm_test_songs_unlocked = 0;
+  /* 2655C */ le_uint32_t save_count = 1;
+  /* 26560 */ le_uint32_t round2_seed = 0;
+  /* 26564 */
+} __packed_ws__(PSOXBCharacterFile, 0x26564);
 
 struct PSOBBCharacterFile {
   // Most fields have the same meanings as in PSOGCCharacterFile::Character.
@@ -816,7 +887,7 @@ struct PSOBBCharacterFile {
   static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSOGCNTECharacterFileCharacter& src);
   static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSOGCCharacterFile::Character& src);
   static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSOGCEp3CharacterFile::Character& src);
-  static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSOXBCharacterFileCharacter& src);
+  static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSOXBCharacterFile::Character& src);
 
   PSODCNTECharacterFile::Character as_dc_nte(uint64_t hardware_id) const;
   PSODC112000CharacterFile::Character as_11_2000(uint64_t hardware_id) const;
@@ -825,7 +896,7 @@ struct PSOBBCharacterFile {
   operator PSOGCNTECharacterFileCharacter() const;
   operator PSOGCCharacterFile::Character() const;
   operator PSOGCEp3CharacterFile::Character() const;
-  operator PSOXBCharacterFileCharacter() const;
+  operator PSOXBCharacterFile::Character() const;
 
   void add_item(const ItemData& item, const ItemData::StackLimits& limits);
   ItemData remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits);
@@ -946,6 +1017,14 @@ struct PSOGCGuildCardFile {
   /* E288 */ be_uint32_t round2_seed = 0;
   /* E28C */
 } __packed_ws__(PSOGCGuildCardFile, 0xE28C);
+
+struct PSOXBGuildCardFile {
+  /* 00000 */ le_uint32_t checksum = 0;
+  /* 00004 */ parray<GuildCardXB, 100> entries;
+  /* 0D934 */ parray<GuildCardXB, 0x1C> blocked_senders;
+  /* 11604 */ le_uint32_t creation_timestamp = 0;
+  /* 11608 */ le_uint32_t round2_seed = 0;
+} __packed_ws__(PSOXBGuildCardFile, 0x1160C);
 
 struct PSOBBGuildCardFile {
   struct Entry {

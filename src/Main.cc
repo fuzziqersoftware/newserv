@@ -859,85 +859,6 @@ Action a_encrypt_vms_save("encrypt-vms-save", "\
     hexadecimal value.\n",
     a_encrypt_decrypt_vms_save_fn);
 
-static void a_encrypt_decrypt_gci_save_fn(phosg::Arguments& args) {
-  bool is_decrypt = (args.get<string>(0) == "decrypt-gci-save");
-  bool skip_checksum = args.get<bool>("skip-checksum");
-  string seed = args.get<string>("seed");
-  string system_filename = args.get<string>("sys");
-  int64_t override_round2_seed = args.get<int64_t>("round2-seed", -1, phosg::Arguments::IntFormat::HEX);
-
-  uint32_t round1_seed;
-  if (!system_filename.empty()) {
-    string system_data = phosg::load_file(system_filename);
-    phosg::StringReader r(system_data);
-    const auto& header = r.get<PSOGCIFileHeader>();
-    header.check();
-    const auto& system = r.get<PSOGCSystemFile>();
-    round1_seed = system.creation_timestamp;
-  } else if (!seed.empty()) {
-    round1_seed = stoul(seed, nullptr, 16);
-  } else {
-    throw runtime_error("either --sys or --seed must be given");
-  }
-
-  auto data = read_input_data(args);
-  phosg::StringReader r(data);
-  const auto& header = r.get<PSOGCIFileHeader>();
-  header.check();
-
-  size_t data_start_offset = r.where();
-
-  auto process_file = [&]<typename StructT>() {
-    if (is_decrypt) {
-      const void* data_section = r.getv(header.data_size);
-      auto decrypted = decrypt_fixed_size_data_section_t<StructT, true>(
-          data_section, header.data_size, round1_seed, skip_checksum, override_round2_seed);
-      *reinterpret_cast<StructT*>(data.data() + data_start_offset) = decrypted;
-    } else {
-      const auto& s = r.get<StructT>();
-      auto encrypted = encrypt_fixed_size_data_section_t<StructT, true>(s, round1_seed);
-      if (data_start_offset + encrypted.size() > data.size()) {
-        throw runtime_error("encrypted result exceeds file size");
-      }
-      memcpy(data.data() + data_start_offset, encrypted.data(), encrypted.size());
-    }
-  };
-
-  if (header.data_size == sizeof(PSOGCGuildCardFile)) {
-    process_file.template operator()<PSOGCGuildCardFile>();
-  } else if (header.is_ep12() && (header.data_size == sizeof(PSOGCCharacterFile))) {
-    process_file.template operator()<PSOGCCharacterFile>();
-  } else if (header.is_ep3() && (header.data_size == sizeof(PSOGCEp3CharacterFile))) {
-    auto* charfile = reinterpret_cast<PSOGCEp3CharacterFile*>(data.data() + data_start_offset);
-    if (!is_decrypt) {
-      for (size_t z = 0; z < charfile->characters.size(); z++) {
-        charfile->characters[z].ep3_config.encrypt(phosg::random_object<uint8_t>());
-      }
-    }
-    process_file.template operator()<PSOGCEp3CharacterFile>();
-    if (is_decrypt) {
-      for (size_t z = 0; z < charfile->characters.size(); z++) {
-        charfile->characters[z].ep3_config.decrypt();
-      }
-    }
-  } else {
-    throw runtime_error("unrecognized save type");
-  }
-
-  write_output_data(args, data.data(), data.size(), is_decrypt ? "gcid" : "gci");
-}
-
-Action a_decrypt_gci_save("decrypt-gci-save", nullptr, a_encrypt_decrypt_gci_save_fn);
-Action a_encrypt_gci_save("encrypt-gci-save", "\
-  encrypt-gci-save CRYPT-OPTION INPUT-FILENAME [OUTPUT-FILENAME]\n\
-  decrypt-gci-save CRYPT-OPTION INPUT-FILENAME [OUTPUT-FILENAME]\n\
-    Encrypt or decrypt a character or Guild Card file in GCI format. If\n\
-    encrypting, the checksum is also recomputed and stored in the encrypted\n\
-    file. CRYPT-OPTION is required; it can be either --sys=SYSTEM-FILENAME\n\
-    (specifying the name of the corresponding PSO_SYSTEM .gci file) or\n\
-    --seed=ROUND1-SEED (specified as a 32-bit hexadecimal number).\n",
-    a_encrypt_decrypt_gci_save_fn);
-
 static void a_encrypt_decrypt_pc_save_fn(phosg::Arguments& args) {
   bool is_decrypt = (args.get<string>(0) == "decrypt-pc-save");
   bool skip_checksum = args.get<bool>("skip-checksum");
@@ -1033,6 +954,137 @@ static void a_encrypt_decrypt_save_data_fn(phosg::Arguments& args) {
   }
   write_output_data(args, output_data.data(), output_data.size(), "dec");
 }
+
+static void a_encrypt_decrypt_gci_save_fn(phosg::Arguments& args) {
+  bool is_decrypt = (args.get<string>(0) == "decrypt-gci-save");
+  bool skip_checksum = args.get<bool>("skip-checksum");
+  string seed = args.get<string>("seed");
+  string system_filename = args.get<string>("sys");
+  int64_t override_round2_seed = args.get<int64_t>("round2-seed", -1, phosg::Arguments::IntFormat::HEX);
+
+  uint32_t round1_seed;
+  if (!system_filename.empty()) {
+    string system_data = phosg::load_file(system_filename);
+    phosg::StringReader r(system_data);
+    const auto& header = r.get<PSOGCIFileHeader>();
+    header.check();
+    const auto& system = r.get<PSOGCSystemFile>();
+    round1_seed = system.creation_timestamp;
+  } else if (!seed.empty()) {
+    round1_seed = stoul(seed, nullptr, 16);
+  } else {
+    throw runtime_error("either --sys or --seed must be given");
+  }
+
+  auto data = read_input_data(args);
+  phosg::StringReader r(data);
+  const auto& header = r.get<PSOGCIFileHeader>();
+  header.check();
+
+  size_t data_start_offset = r.where();
+
+  auto process_file = [&]<typename StructT>() {
+    if (is_decrypt) {
+      const void* data_section = r.getv(header.data_size);
+      auto decrypted = decrypt_fixed_size_data_section_t<StructT, true>(
+          data_section, header.data_size, round1_seed, skip_checksum, override_round2_seed);
+      *reinterpret_cast<StructT*>(data.data() + data_start_offset) = decrypted;
+    } else {
+      const auto& s = r.get<StructT>();
+      auto encrypted = encrypt_fixed_size_data_section_t<StructT, true>(s, round1_seed);
+      if (data_start_offset + encrypted.size() > data.size()) {
+        throw runtime_error("encrypted result exceeds file size");
+      }
+      memcpy(data.data() + data_start_offset, encrypted.data(), encrypted.size());
+    }
+  };
+
+  if (header.data_size == sizeof(PSOGCGuildCardFile)) {
+    process_file.template operator()<PSOGCGuildCardFile>();
+  } else if (header.is_ep12() && (header.data_size == sizeof(PSOGCCharacterFile))) {
+    process_file.template operator()<PSOGCCharacterFile>();
+  } else if (header.is_ep3() && (header.data_size == sizeof(PSOGCEp3CharacterFile))) {
+    auto* charfile = reinterpret_cast<PSOGCEp3CharacterFile*>(data.data() + data_start_offset);
+    if (!is_decrypt) {
+      for (size_t z = 0; z < charfile->characters.size(); z++) {
+        charfile->characters[z].ep3_config.encrypt(phosg::random_object<uint8_t>());
+      }
+    }
+    process_file.template operator()<PSOGCEp3CharacterFile>();
+    if (is_decrypt) {
+      for (size_t z = 0; z < charfile->characters.size(); z++) {
+        charfile->characters[z].ep3_config.decrypt();
+      }
+    }
+  } else {
+    throw runtime_error("unrecognized save type");
+  }
+
+  write_output_data(args, data.data(), data.size(), is_decrypt ? "gcid" : "gci");
+}
+
+Action a_decrypt_gci_save("decrypt-gci-save", nullptr, a_encrypt_decrypt_gci_save_fn);
+Action a_encrypt_gci_save("encrypt-gci-save", "\
+  encrypt-gci-save CRYPT-OPTION INPUT-FILENAME [OUTPUT-FILENAME]\n\
+  decrypt-gci-save CRYPT-OPTION INPUT-FILENAME [OUTPUT-FILENAME]\n\
+    Encrypt or decrypt a character or Guild Card file in GCI format. If\n\
+    encrypting, the checksum is also recomputed and stored in the encrypted\n\
+    file. CRYPT-OPTION is required; it can be either --sys=SYSTEM-FILENAME\n\
+    (specifying the name of the corresponding PSO_SYSTEM .gci file) or\n\
+    --seed=ROUND1-SEED (specified as a 32-bit hexadecimal number).\n",
+    a_encrypt_decrypt_gci_save_fn);
+
+Action a_decrypt_xbox_save(
+    "decrypt-xbox-save", "\
+  decrypt-xbox-save CRYPT-OPTION INPUT-FILENAME [OUTPUT-FILENAME]\n\
+    Decrypt a character or Guild Card file in Xbox format. CRYPT-OPTION is\n\
+    required; it can be either --sys=SYSTEM-FILENAME (specifying the name of\n\
+    the corresponding PSO_SYSTEM file) or --seed=ROUND1-SEED (specified as a\n\
+    32-bit hexadecimal number).\n",
+    +[](phosg::Arguments& args) {
+      bool skip_checksum = args.get<bool>("skip-checksum");
+      string seed = args.get<string>("seed");
+      string system_filename = args.get<string>("sys");
+      int64_t override_round2_seed = args.get<int64_t>("round2-seed", -1, phosg::Arguments::IntFormat::HEX);
+
+      uint32_t round1_seed;
+      if (!system_filename.empty()) {
+        string system_data = phosg::load_file(system_filename);
+        phosg::StringReader r(system_data);
+        const auto& header = r.get<PSOXBFileHeader>();
+        header.check();
+        const auto& system = r.get<PSOXBSystemFile>();
+        round1_seed = system.creation_timestamp;
+      } else if (!seed.empty()) {
+        round1_seed = stoul(seed, nullptr, 16);
+      } else {
+        throw runtime_error("either --sys or --seed must be given");
+      }
+
+      auto data = read_input_data(args);
+      phosg::StringReader r(data);
+      const auto& header = r.get<PSOXBFileHeader>();
+      header.check();
+
+      size_t data_start_offset = r.where();
+
+      auto process_file = [&]<typename StructT>() {
+        const void* data_section = r.getv(header.data_size);
+        auto decrypted = decrypt_fixed_size_data_section_t<StructT, false>(
+            data_section, header.data_size, round1_seed, skip_checksum, override_round2_seed);
+        *reinterpret_cast<StructT*>(data.data() + data_start_offset) = decrypted;
+      };
+
+      if (header.data_size == sizeof(PSOXBGuildCardFile)) {
+        process_file.template operator()<PSOXBGuildCardFile>();
+      } else if (header.data_size == sizeof(PSOXBCharacterFile)) {
+        process_file.template operator()<PSOXBCharacterFile>();
+      } else {
+        throw runtime_error("unrecognized save type");
+      }
+
+      write_output_data(args, data.data(), data.size(), "dec");
+    });
 
 // TODO: Write usage text for these actions
 Action a_decrypt_save_data("decrypt-save-data", nullptr, a_encrypt_decrypt_save_data_fn);

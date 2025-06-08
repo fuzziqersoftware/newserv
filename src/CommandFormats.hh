@@ -7429,7 +7429,7 @@ struct G_RejectBattleStartRequest_Ep3_6xB4x53 {
 // Requested with the GetExtendedPlayerInfo patch. Format depends on version:
 //   DC v2: PSODCV2CharacterFile
 //   GC v3: PSOGCCharacterFile::Character
-//   XB v3: PSOXBCharacterFileCharacter
+//   XB v3: PSOXBCharacterFile::Character
 
 // 6xE4: Increment enemy damage threshold
 // This command increments or decrements the minimum amount of damage an enemy

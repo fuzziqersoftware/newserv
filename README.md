@@ -754,6 +754,7 @@ The data formats that newserv can convert to/from are:
 | PSO DC save file (.vms)             | `encrypt-vms-save`        | `decrypt-vms-save`           |
 | PSO PC save file                    | `encrypt-pc-save`         | `decrypt-pc-save`            |
 | PSO GC save file (.gci)             | `encrypt-gci-save`        | `decrypt-gci-save`           |
+| PSO Xbox save file                  | None                      | `decrypt-xbox-save`          |
 | PSO GC snapshot file                | None                      | `decode-gci-snapshot`        |
 | Quest script (.bin)                 | `assemble-quest-script`   | `disassemble-quest-script`   |
 | Quest map (.dat)                    | None                      | `disassemble-quest-map`      |

@@ -50,4 +50,4 @@ get_data_ptr:
 data:
   .data  <VERS 0x0062D844 0x0062DDE4 0x0063591C 0x00632E04 0x0063269C 0x00632E04 0x0063319C>  # char_file_part1
   .data  <VERS 0x0062D8E8 0x0062DE88 0x006359C0 0x00632EA8 0x00632740 0x00632EA8 0x00633240>  # char_file_part2
-  # Server adds a PSOXBCharacterFileCharacter here
+  # Server adds a PSOXBCharacterFile::Character here

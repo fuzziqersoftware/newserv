@@ -312,6 +312,22 @@ PSOGCEp3CharacterFile::Character::operator PSOGCEp3NTECharacter() const {
   return ret;
 }
 
+bool PSOXBFileHeader::checksum_correct() const {
+  uint32_t cs = phosg::crc32(&this->game_name, this->game_name.bytes());
+  cs = phosg::crc32(&this->file_name, this->file_name.bytes(), cs);
+  cs = phosg::crc32(&this->banner, this->banner.bytes(), cs);
+  cs = phosg::crc32(&this->icon, this->icon.bytes(), cs);
+  cs = phosg::crc32(&this->data_size, sizeof(this->data_size), cs);
+  cs = phosg::crc32("\0\0\0\0", 4, cs); // this->checksum (treated as zero)
+  return (cs == this->checksum);
+}
+
+void PSOXBFileHeader::check() const {
+  if (!this->checksum_correct()) {
+    throw runtime_error("Xbox file intermediate header checksum is incorrect");
+  }
+}
+
 void PSOBBGuildCardFile::Entry::clear() {
   this->data.clear();
   this->unknown_a1.clear(0);
@@ -830,7 +846,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOGCE
   return ret;
 }
 
-shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOXBCharacterFileCharacter& src) {
+shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOXBCharacterFile::Character& src) {
   auto ret = PSOBBCharacterFile::create_from_config(
       src.guild_card.guild_card_number,
       src.inventory.language,
@@ -1101,10 +1117,10 @@ PSOBBCharacterFile::operator PSOGCCharacterFile::Character() const {
   return ret;
 }
 
-PSOBBCharacterFile::operator PSOXBCharacterFileCharacter() const {
+PSOBBCharacterFile::operator PSOXBCharacterFile::Character() const {
   uint8_t language = this->inventory.language;
 
-  PSOXBCharacterFileCharacter ret;
+  PSOXBCharacterFile::Character ret;
   ret.inventory = this->inventory;
   ret.inventory.encode_for_client(Version::XB_V3, nullptr);
   ret.disp = this->disp.to_dcpcv3<false>(language, language);

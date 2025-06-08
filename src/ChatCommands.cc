@@ -1646,7 +1646,7 @@ ChatCommandDefinition cc_loadchar(
           if (!a.c->login || !a.c->login->xb_license) {
             throw runtime_error("XB client is not logged in");
           }
-          PSOXBCharacterFileCharacter xb_char = *a.c->character();
+          PSOXBCharacterFile::Character xb_char = *a.c->character();
           xb_char.guild_card.xb_user_id_high = (a.c->login->xb_license->user_id >> 32) & 0xFFFFFFFF;
           xb_char.guild_card.xb_user_id_low = a.c->login->xb_license->user_id & 0xFFFFFFFF;
           co_await send_set_extended_player_info(xb_char);

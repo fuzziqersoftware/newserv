@@ -3533,7 +3533,7 @@ static asio::awaitable<void> on_30(shared_ptr<Client> c, Channel::Message& msg) 
         ch = PSOBBCharacterFile::create_from_file(msg.check_size_t<PSOGCCharacterFile::Character>());
         break;
       case Version::XB_V3:
-        ch = PSOBBCharacterFile::create_from_file(msg.check_size_t<PSOXBCharacterFileCharacter>());
+        ch = PSOBBCharacterFile::create_from_file(msg.check_size_t<PSOXBCharacterFile::Character>());
         break;
       case Version::GC_EP3_NTE:
       case Version::GC_EP3:
