@@ -11,7 +11,8 @@ start:
 
   .data     <VERS 0x002C0AEE 0x002C167E 0x002C2BEE 0x002C272E 0x002C291E 0x002C275E 0x002C2A7E>
   .data     0x00000004
-  .binary   31C9EB03
+  xor       ecx, ecx
+  jmp       +3
 
   .data     0x00000000
   .data     0x00000000

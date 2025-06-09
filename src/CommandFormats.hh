@@ -4012,17 +4012,19 @@ struct G_SymbolChat_6x07 {
 
 // 6x08: Invalid subcommand
 
-// 6x09: Unknown
+// 6x09: Kill enemy (broken/unused)
 // header.entity_id is expected to be an enemy ID, but is also expected to be
-// in the range [0x00, 0x80) since it writes to an array of 0x80 entries. This
-// duality makes no sense because enemy IDs are greater than or equal to
-// 0x1000, so any valid enemy ID would be far outside the array's range, and
-// the write is not bounds-checked. For this reason, newserv unconditionally
-// blocks this command.
+// in the range [0x00, 0x80) since the command handler writes to an array of
+// 0x80 entries. This duality is nonsense because enemy IDs are greater than or
+// equal to 0x1000, so any valid enemy ID would be far outside the array's
+// range. newserv unconditionally blocks this command because it appears never
+// to be used, and the array write is not bounds-checked, so it could be used
+// to cause undefined behavior on other clients. It seems that this broken
+// logic predates even DC NTE.
 
-struct G_Unknown_6x09 {
+struct G_LegacyKillEnemy_6x09 {
   G_EntityIDHeader header;
-} __packed_ws__(G_Unknown_6x09, 4);
+} __packed_ws__(G_LegacyKillEnemy_6x09, 4);
 
 // 6x0A: Update enemy state
 // In Ultimate mode, the low 6 bits of game_flags are ignored, and 6x9C is used

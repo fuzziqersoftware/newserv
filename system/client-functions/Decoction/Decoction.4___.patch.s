@@ -14,8 +14,11 @@ start:
   .include  WriteCodeBlocksXB
   .data     <VERS 0x00184160 0x00184350 0x00184400 0x00184340 0x00184310 0x00184360 0x001842D0>
   .deltaof  code_start, code_end
+  .address  <VERS 0x00184160 0x00184350 0x00184400 0x00184340 0x00184310 0x00184360 0x001842D0>
 code_start:
-  mov    eax, 0x88888888  # eax = &player_compute_implied_stats (the value is overwritten by the including patch)
+
+  .label player_compute_implied_stats, <VERS 0x001FD3D0 0x001FD530 0x001FD7B0 0x001FD5E0 0x001FD5E0 0x001FD600 0x001FD670>
+
   lea    edx, [ecx + 0x78]
   cmp    byte [edx + 0x76], 11  # this->data1[2] (item+0xEE) ?= 0x0B
   jne    skip_all
@@ -43,7 +46,7 @@ next_stat:
   jne    next_stat
 
   mov    ecx, ebx
-  call   eax  # player_compute_implied_stats
+  call   player_compute_implied_stats
 
   lea    ecx, [ebx + 0x0330]
 
@@ -62,8 +65,5 @@ skip_all:
   ret
 
 code_end:
-  .data     <VERS 0x00184161 0x00184351 0x00184401 0x00184341 0x00184311 0x00184361 0x001842D1>
-  .data     0x00000004
-  .data     <VERS 0x001FD3D0 0x001FD530 0x001FD7B0 0x001FD5E0 0x001FD5E0 0x001FD600 0x001FD670>
   .data     0x00000000
   .data     0x00000000
