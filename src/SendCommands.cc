@@ -453,7 +453,8 @@ asio::awaitable<C_ExecuteCodeResult_B3> send_function_call(
   co_return co_await promise->get();
 }
 
-asio::awaitable<void> send_function_call_multi(shared_ptr<Client> c, vector<shared_ptr<const CompiledFunctionCode>> codes) {
+asio::awaitable<void> send_function_call_multi(
+    shared_ptr<Client> c, unordered_set<shared_ptr<const CompiledFunctionCode>> codes) {
   if (codes.empty()) {
     co_return;
   }

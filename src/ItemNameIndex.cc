@@ -216,17 +216,21 @@ std::string ItemNameIndex::describe_item(const ItemData& item, uint8_t flags) co
       }
 
     } else if (!name_only) { // Not S-rank (extended name bits not set)
+      size_t num_bonuses = 3;
+
+      if (item.data1[10] & 0x80) {
+        ret_tokens.emplace_back(std::format("K:{}", item.get_kill_count()));
+        num_bonuses = 2;
+      }
+
       parray<int8_t, 5> bonuses(0);
-      for (size_t x = 0; x < 3; x++) {
+      for (size_t x = 0; x < num_bonuses; x++) {
         uint8_t which = item.data1[6 + 2 * x];
         uint8_t value = item.data1[7 + 2 * x];
         if (which == 0) {
           continue;
         }
-        if (which & 0x80) {
-          uint16_t kill_count = ((which << 8) & 0x7F00) | (value & 0xFF);
-          ret_tokens.emplace_back(std::format("K:{}", kill_count));
-        } else if (which > 5) {
+        if (which > 5) {
           ret_tokens.emplace_back(std::format("!PC:{:02X}{:02X}", which, value));
         } else {
           bonuses[which - 1] = value;
@@ -261,6 +265,10 @@ std::string ItemNameIndex::describe_item(const ItemData& item, uint8_t flags) co
         ret_tokens.back().append("--");
       } else if (modifier != 0) {
         ret_tokens.emplace_back(std::format("!MD:{:04X}", modifier));
+      }
+
+      if (item.data1[10] & 0x80) {
+        ret_tokens.emplace_back(std::format("K:{}", item.get_kill_count()));
       }
 
     } else if (!name_only) { // Armor/shields
@@ -526,6 +534,9 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
         ret.data1w[3] = phosg::bswap16(0x8000 | (char_indexes[1] & 0x1F) | ((char_indexes[0] & 0x1F) << 5));
         ret.data1w[4] = phosg::bswap16(0x8000 | (char_indexes[4] & 0x1F) | ((char_indexes[3] & 0x1F) << 5) | ((char_indexes[2] & 0x1F) << 10));
         ret.data1w[5] = phosg::bswap16(0x8000 | (char_indexes[7] & 0x1F) | ((char_indexes[6] & 0x1F) << 5) | ((char_indexes[5] & 0x1F) << 10));
+
+      } else if (token.starts_with("k:")) {
+        ret.set_kill_count(stoul(token.substr(2), nullptr, 0));
 
       } else {
         auto p_tokens = phosg::split(token, '/');

@@ -826,11 +826,20 @@
   // Client functions listed here are always enabled as auto patches for BB
   // clients. For example, you can add "StackLimits" here if you've edited the
   // StackLimits patch and the ItemStackLimits field in this file, and want the
-  // limits to take effect on BB clients.
+  // limits to take effect on BB clients. If a client connects using a client
+  // version that isn't compatible with one of these patches, the client will
+  // be disconnected.
   "BBRequiredPatches": [
     // You will probably want to uncomment the following line if you want to
     // use items that were unreleased on the original Sega servers.
     // "ClearUnreleasedItemList",
+  ],
+  // Client functions listed here are automatically sent to all clients. If a
+  // client connects using a client version that isn't compatible with some of
+  // these patches, the incompatible patches are skipped and the client is
+  // allowed to connect. This option applies to all PSO versions, not only BB.
+  "AutoPatches": [
+    // "AccurateKillCount",
   ],
 
   // Whether to retain server drop tables when game leaders change. The client

@@ -1302,7 +1302,14 @@ void ServerState::load_config_early() {
   this->bb_required_patches.clear();
   try {
     for (const auto& it : this->config_json->get_list("BBRequiredPatches")) {
-      this->bb_required_patches.emplace_back(it->as_string());
+      this->bb_required_patches.emplace(it->as_string());
+    }
+  } catch (const out_of_range&) {
+  }
+  this->auto_patches.clear();
+  try {
+    for (const auto& it : this->config_json->get_list("AutoPatches")) {
+      this->auto_patches.emplace(it->as_string());
     }
   } catch (const out_of_range&) {
   }

@@ -219,7 +219,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::array<std::shared_ptr<const MapState::RareEnemyRates>, 4> rare_enemy_rates_by_difficulty;
   std::shared_ptr<const MapState::RareEnemyRates> rare_enemy_rates_challenge;
   std::array<std::array<size_t, 4>, 3> min_levels_v4; // Indexed as [episode][difficulty]
-  std::vector<std::string> bb_required_patches;
+  std::unordered_set<std::string> bb_required_patches;
+  std::unordered_set<std::string> auto_patches;
   CheatFlags cheat_flags;
 
   struct QuestF960Result {

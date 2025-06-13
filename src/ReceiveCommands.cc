@@ -232,7 +232,8 @@ static asio::awaitable<void> send_auto_patches_if_needed(shared_ptr<Client> c) {
   auto s = c->require_server_state();
 
   if (c->login->account->auto_patches_enabled.empty() &&
-      ((c->version() != Version::BB_V4) || s->bb_required_patches.empty())) {
+      ((c->version() != Version::BB_V4) || s->bb_required_patches.empty()) &&
+      s->auto_patches.empty()) {
     c->set_flag(Client::Flag::HAS_AUTO_PATCHES);
   }
 
@@ -240,11 +241,11 @@ static asio::awaitable<void> send_auto_patches_if_needed(shared_ptr<Client> c) {
     c->set_flag(Client::Flag::HAS_AUTO_PATCHES);
     co_await prepare_client_for_patches(c);
 
-    vector<shared_ptr<const CompiledFunctionCode>> functions_to_send;
+    unordered_set<shared_ptr<const CompiledFunctionCode>> functions_to_send;
     if (c->version() == Version::BB_V4) {
       for (const auto& patch_name : s->bb_required_patches) {
         try {
-          functions_to_send.emplace_back(s->function_code_index->get_patch(patch_name, c->specific_version));
+          functions_to_send.emplace(s->function_code_index->get_patch(patch_name, c->specific_version));
         } catch (const out_of_range&) {
           string message = std::format(
               "Your client is not compatible with a\nrequired patch on this server.\n\nClient version: {:08X}\nPatch name: {}", c->specific_version, patch_name);
@@ -254,9 +255,17 @@ static asio::awaitable<void> send_auto_patches_if_needed(shared_ptr<Client> c) {
         }
       }
     }
+    for (const auto& patch_name : s->auto_patches) {
+      try {
+        functions_to_send.emplace(s->function_code_index->get_patch(patch_name, c->specific_version));
+      } catch (const out_of_range&) {
+        c->log.warning_f("Server has auto patch {} enabled, but it is not available for specific_version {:08X}",
+            patch_name, c->specific_version);
+      }
+    }
     for (const auto& patch_name : c->login->account->auto_patches_enabled) {
       try {
-        functions_to_send.emplace_back(s->function_code_index->get_patch(patch_name, c->specific_version));
+        functions_to_send.emplace(s->function_code_index->get_patch(patch_name, c->specific_version));
       } catch (const out_of_range&) {
         c->log.warning_f("Client has auto patch {} enabled, but it is not available for specific_version {:08X}",
             patch_name, c->specific_version);
@@ -2528,7 +2537,7 @@ static asio::awaitable<void> on_10_main_menu(shared_ptr<Client> c, uint32_t item
       // don't send them from this mennu, because we need to know the
       // client's specific_version before sending the menu.
       co_await prepare_client_for_patches(c);
-      send_menu(c, c->require_server_state()->function_code_index->patch_switches_menu(c->specific_version, c->login->account->auto_patches_enabled));
+      send_menu(c, c->require_server_state()->function_code_index->patch_switches_menu(c->specific_version, s->auto_patches, c->login->account->auto_patches_enabled));
       break;
     }
 
@@ -2863,7 +2872,7 @@ static asio::awaitable<void> on_10_patch_switches(shared_ptr<Client> c, uint32_t
       c->login->account->auto_patches_enabled.erase(fn->short_name);
     }
     c->login->account->save();
-    send_menu(c, s->function_code_index->patch_switches_menu(c->specific_version, c->login->account->auto_patches_enabled));
+    send_menu(c, s->function_code_index->patch_switches_menu(c->specific_version, s->auto_patches, c->login->account->auto_patches_enabled));
   }
   co_return;
 }

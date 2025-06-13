@@ -405,18 +405,20 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
 }
 
 shared_ptr<const Menu> FunctionCodeIndex::patch_switches_menu(
-    uint32_t specific_version, const std::unordered_set<std::string>& auto_patches_enabled) const {
+    uint32_t specific_version,
+    const std::unordered_set<std::string>& server_auto_patches_enabled,
+    const std::unordered_set<std::string>& client_auto_patches_enabled) const {
   auto suffix = std::format("-{:08X}", specific_version);
 
   auto ret = make_shared<Menu>(MenuID::PATCH_SWITCHES, "Patches");
   ret->items.emplace_back(PatchesMenuItemID::GO_BACK, "Go back", "Return to the\nmain menu", 0);
   for (const auto& it : this->name_and_specific_version_to_patch_function) {
     const auto& fn = it.second;
-    if (fn->hide_from_patches_menu || !it.first.ends_with(suffix)) {
+    if (fn->hide_from_patches_menu || !it.first.ends_with(suffix) || server_auto_patches_enabled.count(fn->short_name)) {
       continue;
     }
     string name;
-    name.push_back(auto_patches_enabled.count(fn->short_name) ? '*' : '-');
+    name.push_back(client_auto_patches_enabled.count(fn->short_name) ? '*' : '-');
     name += fn->long_name.empty() ? fn->short_name : fn->long_name;
     ret->items.emplace_back(fn->menu_item_id, name, fn->description, MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL_RUNS_CODE);
   }
