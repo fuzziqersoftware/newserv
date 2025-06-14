@@ -1211,17 +1211,21 @@ static asio::awaitable<void> on_9D_9E(shared_ptr<Client> c, Channel::Message& ms
     }
 
   } else if (msg.command == 0x9E) {
-    const auto& cmd = check_size_t<C_Login_GC_9E>(msg.data, sizeof(C_LoginExtended_GC_9E));
-    base_cmd = &cmd;
-    if (cmd.is_extended) {
-      const auto& cmd = check_size_t<C_LoginExtended_GC_9E>(msg.data);
-      if (cmd.extension.lobby_refs[0].menu_id == MenuID::LOBBY) {
-        c->preferred_lobby_id = cmd.extension.lobby_refs[0].item_id;
+    auto handle_cmd = [&]<typename BaseCmdT, typename ExtendedCmdT>() {
+      const auto& cmd = check_size_t<BaseCmdT>(msg.data, sizeof(ExtendedCmdT));
+      base_cmd = &cmd;
+      if (cmd.is_extended) {
+        const auto& cmd = check_size_t<ExtendedCmdT>(msg.data);
+        if (cmd.extension.lobby_refs[0].menu_id == MenuID::LOBBY) {
+          c->preferred_lobby_id = cmd.extension.lobby_refs[0].item_id;
+        }
       }
-    }
-
+    };
     if (is_v3(c->version())) {
+      handle_cmd.template operator()<C_Login_PC_GC_9E, C_LoginExtended_GC_9E>();
       c->set_flag(Client::Flag::AT_WELCOME_MESSAGE);
+    } else {
+      handle_cmd.template operator()<C_Login_PC_GC_9E, C_LoginExtended_PC_9E>();
     }
 
   } else {
@@ -1321,8 +1325,10 @@ static asio::awaitable<void> on_9D_9E(shared_ptr<Client> c, Channel::Message& ms
         }
         if (resp.checksum == 0x3677024C) {
           c->specific_version = SPECIFIC_VERSION_PC_V2_DEFAULT;
-          c->log.info_f("Version detected as {:08X} from PE header checksum {:08X}",
-              c->specific_version, resp.checksum);
+          c->log.info_f("Version detected as {:08X} from PE header checksum {:08X}", c->specific_version, resp.checksum);
+        } else if (resp.checksum == 0x058BF2FF) {
+          c->specific_version = SPECIFIC_VERSION_PC_V2_FINAL;
+          c->log.info_f("Version detected as {:08X} from PE header checksum {:08X}", c->specific_version, resp.checksum);
         } else {
           c->specific_version = SPECIFIC_VERSION_PC_V2_INDETERMINATE;
           c->log.info_f("Version cannot be determined from PE header checksum {:08X}", resp.checksum);

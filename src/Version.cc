@@ -215,16 +215,16 @@ bool specific_version_is_indeterminate(uint32_t specific_version) {
 }
 
 bool specific_version_is_dc(uint32_t specific_version) {
-  // All v1 and v2 specific_versions are DC except 324F4A57 (2OJW), which is PC
+  // All v1 and v2 specific_versions are DC except 2OJW and 2OJZ, which are PC
   uint8_t major_version = specific_version >> 24;
   if (major_version < 0x31 || major_version > 0x32) {
     return false;
   }
-  return (specific_version != SPECIFIC_VERSION_PC_V2_DEFAULT);
+  return !specific_version_is_pc_v2(specific_version);
 }
 
 bool specific_version_is_pc_v2(uint32_t specific_version) {
-  return (specific_version == SPECIFIC_VERSION_PC_V2_DEFAULT);
+  return ((specific_version == SPECIFIC_VERSION_PC_V2_DEFAULT) || (specific_version == SPECIFIC_VERSION_PC_V2_FINAL));
 }
 
 bool specific_version_is_gc(uint32_t specific_version) {

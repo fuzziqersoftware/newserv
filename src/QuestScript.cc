@@ -2095,6 +2095,15 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // is the last opcode implemented before v3.
     {0xF8BB, "write_flag_buf_to_event_flags2", "unknownF8BB", {REG}, F_V2_V4},
 
+    // TODO(DX): Figure out what these do. They only exist on the latest
+    // version of PCv2; they do not exist in the more common version of PCv2 on
+    // the Internet, nor do they exist in any later PSO version (although F8BC
+    // was replaced with set_episode in GC_V3).
+    {0xF8BC, "unknown_F8BC", nullptr, {REG, REG}, F_PC_V2}, // regA = client ID, regB = result (TODO)
+    {0xF8BD, "unknown_F8BD", nullptr, {REG, {REG_SET_FIXED, 15}}, F_PC_V2}, // TODO: Document args
+    {0xF8BE, "unknown_F8BE", nullptr, {}, F_PC_V2},
+    {0xF8BF, "unknown_F8BF", nullptr, {}, F_PC_V2},
+
     // Sets the current episode. Must be used in the start label. valueA should
     // be 0 for Episode 1 (which is the default), 1 for Episode 2, or 2 for
     // Episode 4 (BB only).

@@ -2000,8 +2000,9 @@ struct C_LoginExtended_PC_9D : C_Login_DC_PC_GC_9D {
   SC_MeetUserExtension_PC_BB extension;
 } __packed_ws__(C_LoginExtended_PC_9D, 0x14C);
 
-// 9E (C->S): Log in with client config (V3/BB)
-// Not used on GC Episodes 1&2 Trial Edition.
+// 9E (C->S): Log in with client config (PC/V3/BB)
+// Not used on GC Episodes 1&2 Trial Edition, nor on v1 or most v2 versions.
+// Of all pre-v3 versions, only the latest version of PCv2 appears to use this.
 // The extended version of this command is used in the same circumstances as
 // when PSO PC uses the extended version of the 9D command.
 // PSO XB does not send the client config (security data) in the 9E command,
@@ -2009,11 +2010,13 @@ struct C_LoginExtended_PC_9D : C_Login_DC_PC_GC_9D {
 // retrieve the client config.
 // header.flag is 1 if the client has UDP disabled.
 
-struct C_Login_GC_9E : C_Login_DC_PC_GC_9D {
+struct C_Login_PC_GC_9E : C_Login_DC_PC_GC_9D {
   parray<uint8_t, 0x20> client_config;
-} __packed_ws__(C_Login_GC_9E, 0xE8);
-
-struct C_LoginExtended_GC_9E : C_Login_GC_9E {
+} __packed_ws__(C_Login_PC_GC_9E, 0xE8);
+struct C_LoginExtended_PC_9E : C_Login_PC_GC_9E {
+  SC_MeetUserExtension_PC_BB extension;
+} __packed_ws__(C_LoginExtended_PC_9E, 0x16C);
+struct C_LoginExtended_GC_9E : C_Login_PC_GC_9E {
   SC_MeetUserExtension_DC_V3 extension;
 } __packed_ws__(C_LoginExtended_GC_9E, 0x14C);
 
@@ -2051,12 +2054,13 @@ struct C_LoginExtended_BB_9E {
   /* 0170 */
 } __packed_ws__(C_LoginExtended_BB_9E, 0x170);
 
-// 9F (S->C): Request client config / security data (V3/BB)
-// This command is not valid on PSO GC Episodes 1&2 Trial Edition, nor any
-// pre-V3 PSO versions. Client will respond with a 9F command.
+// 9F (S->C): Request client config / security data (PC/V3/BB)
+// This command is not valid on PSO GC Episodes 1&2 Trial Edition nor on any
+// other pre-v3 versions, except the latest PC v2 version, which does have it.
+// Client will respond with a 9F command.
 // No arguments
 
-// 9F (C->S): Client config / security data response (V3/BB)
+// 9F (C->S): Client config / security data response (PC/V3/BB)
 // The data is opaque to the client, as described at the top of this file.
 // On BB, this command does not work during the data server phase.
 

@@ -17,7 +17,8 @@ Version codes (from README.md):
   2OJF: PSO DC v2 JP
   2OEF: PSO DC v2 US
   2OPF: PSO DC v2 EU
-  2OJW: PSO PC (v2)
+  2OJW: PSO PC (v2) 04/2002
+  2OJZ: PSO PC (v2) 02/2003
   3OJT: PSO GC Trial Edition
   3OJ2: PSO GC v1.2 JP
   3OJ3: PSO GC v1.3 JP

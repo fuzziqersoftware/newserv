@@ -184,7 +184,7 @@ void DownloadSession::send_93_9D_9E(bool extended) {
     ret.access_key2 = ret.access_key;
     ret.login_character_name.encode(this->character->disp.name.decode());
     ret.client_config = this->client_config;
-    this->channel->send(0x9E, 0x01, &ret, extended ? sizeof(ret) : sizeof(C_Login_GC_9E));
+    this->channel->send(0x9E, 0x01, &ret, extended ? sizeof(ret) : sizeof(C_Login_PC_GC_9E));
 
   } else if (this->version == Version::XB_V3) {
     C_LoginExtended_XB_9E ret;

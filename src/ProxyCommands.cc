@@ -236,7 +236,7 @@ static asio::awaitable<HandlerResult> S_G_9A(shared_ptr<Client> c, Channel::Mess
   // right after the client config data
   c->proxy_session->server_channel->send(
       0x9E, 0x01, &cmd,
-      cmd.is_extended ? sizeof(C_LoginExtended_GC_9E) : sizeof(C_Login_GC_9E));
+      cmd.is_extended ? sizeof(C_LoginExtended_GC_9E) : sizeof(C_Login_PC_GC_9E));
 
   co_return HandlerResult::SUPPRESS;
 }
