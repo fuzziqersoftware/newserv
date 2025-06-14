@@ -876,10 +876,8 @@ struct S_ReconnectSplit_19 {
 // it's not clear if this is accurate. At least, BB US v1.24.3 and later do not
 // support this command.
 
-// 0022: GameGuard check (BB)
-
-// Command 0022 is a 16-byte challenge (sent in the data field) using the
-// following structure.
+// 0022: GameGuard challenge/response (BB)
+// This command is not valid on BB Trial Edition.
 
 struct SC_GameGuardCheck_BB_0022 {
   parray<le_uint32_t, 4> data;
@@ -890,11 +888,13 @@ struct SC_GameGuardCheck_BB_0022 {
 // the returned timestamp is before the previous timestamp returned, but not by
 // too much - it seems the game only considers deltas between 3 seconds and 30
 // minutes suspicious for these purposes.
+// This command is not valid on BB Trial Edition.
 
 // 23 (S->C): Momoka Item Exchange result (BB)
 // Sent in response to a 6xD9 command from the client.
 // header.flag indicates if an item was exchanged: 0 means success, 1 means
 // failure.
+// This command is not valid on BB Trial Edition.
 
 // 24 (S->C): Secret Lottery Ticket exchange result (BB)
 // Sent in response to a 6xDE command from the client.
@@ -904,6 +904,7 @@ struct SC_GameGuardCheck_BB_0022 {
 // header.flag indicates whether the client had any Secret Lottery Tickets in
 // their inventory (and hence could participate): 0 means success, 1 means
 // failure. However, this value is unused by the client.
+// This command is not valid on BB Trial Edition.
 
 struct S_ExchangeSecretLotteryTicketResult_BB_24 {
   le_uint16_t label = 0;
@@ -914,8 +915,9 @@ struct S_ExchangeSecretLotteryTicketResult_BB_24 {
 
 // 25 (S->C): Gallon's Plan result (BB)
 // Sent in response to a 6xE1 command from the client.
-// The client sets the quest registers reg_num1 to reg_value1 and reg_num2 to
-// reg_value2, then starts a new quest thread at the specified label.
+// The client sets the quest registers reg_num1 to value1 and reg_num2 to
+// value2, then starts a new quest thread at the specified label.
+// This command is not valid on BB Trial Edition.
 
 struct S_GallonPlanResult_BB_25 {
   le_uint16_t label = 0;
@@ -3793,7 +3795,8 @@ struct S_SetShutdownCommand_BB_01EF {
 // F0 (S->C): Force update player lobby data (BB)
 // Format is PlayerLobbyDataBB (in PlayerSubordinates.hh). This command
 // overwrites the lobby data for the player given by .client_id without
-// reloading the game or lobby.
+// reloading the game or lobby. This command is not valid on PSOBB Trial
+// Edition.
 
 // This command probably exists to handle cases like the following:
 // 1. Player A is in a team and is not the team master. Player A creates a game.
