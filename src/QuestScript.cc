@@ -2010,7 +2010,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Returns the local player's battle mode records. The values returned are
     // the first 7 fields of the PlayerRecordsBattle structure (see
     // PlayerSubordinates.hh). These are:
-    // regsA[0-3] = number of times placed 1st, 2nd, 3rd, 4th respectively
+    // regsA[0-3] = number of times placed 1st, 2nd, 3rd, and 4th, respectively
     // regsA[4] = number of disconnects
     // regsA[5-6] = unknown (TODO)
     {0xF8AB, "get_ba_record", nullptr, {{REG_SET_FIXED, 7}}, F_V2_V4},
@@ -2095,19 +2095,37 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // is the last opcode implemented before v3.
     {0xF8BB, "write_flag_buf_to_event_flags2", "unknownF8BB", {REG}, F_V2_V4},
 
-    // TODO(DX): Figure out what these do. They only exist on the latest
-    // version of PCv2; they do not exist in the more common version of PCv2 on
-    // the Internet, nor do they exist in any later PSO version (although F8BC
-    // was replaced with set_episode in GC_V3).
-    {0xF8BC, "unknown_F8BC", nullptr, {REG, REG}, F_PC_V2}, // regA = client ID, regB = result (TODO)
-    {0xF8BD, "unknown_F8BD", nullptr, {REG, {REG_SET_FIXED, 15}}, F_PC_V2}, // TODO: Document args
-    {0xF8BE, "unknown_F8BE", nullptr, {}, F_PC_V2},
-    {0xF8BF, "unknown_F8BF", nullptr, {}, F_PC_V2},
+    // Returns (in regB) the Guild Card number of the player in the slot
+    // specified by regA. If there is no player in that slot, returns FFFFFFFF.
+    // This opcode is only implemented on certain later versions of PC v2, and
+    // not on any v3 or later versions.
+    {0xF8BC, "get_player_guild_card_number", nullptr, {REG, REG}, F_PC_V2},
 
     // Sets the current episode. Must be used in the start label. valueA should
     // be 0 for Episode 1 (which is the default), 1 for Episode 2, or 2 for
     // Episode 4 (BB only).
     {0xF8BC, "set_episode", nullptr, {INT32}, F_V3_V4 | F_SET_EPISODE},
+
+    // This opcode returns (in regsB) the full symbol chat data for the symbol
+    // chat currently being said by the player specified in regA. The symbol
+    // chat data is only returned for 120 frames (4 seconds) after the
+    // corresponding 6x07 command is received; after that, this opcode will
+    // return a blank symbol chat instead. This opcode only works if
+    // create_symbol_chat_monitor is run first.
+    // This opcode is only implemented on certain later versions of PC v2, and
+    // not on any v3 or later versions.
+    {0xF8BD, "get_current_symbol_chat", nullptr, {REG, {REG_SET_FIXED, 15}}, F_PC_V2}, // TODO: Document args
+
+    // This opcode is enables the usage of get_current_symbol_chat.
+    // This opcode is only implemented on certain later versions of PC v2, and
+    // not on any v3 or later versions.
+    {0xF8BE, "create_symbol_chat_monitor", nullptr, {}, F_PC_V2},
+
+    // This opcode causes the client to immediately save the PSO______COM
+    // (system) and PSO______GUD (Guild Card) files to disk.
+    // This opcode is only implemented on certain later versions of PC v2, and
+    // not on any v3 or later versions.
+    {0xF8BF, "save_system_and_gc_files", nullptr, {}, F_PC_V2},
 
     // Requests a file from the server by sending a D7 command. valueA
     // specifies header.flag, strB is the file name (up to 16 characters).
