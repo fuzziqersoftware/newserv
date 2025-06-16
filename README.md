@@ -141,8 +141,6 @@ Currently newserv works on macOS, Windows, and Ubuntu Linux. It will likely work
 4. (Optional) If you plan to play Blue Burst on newserv, set up the patch directory. See [client patch directories](#client-patch-directories) for details.
 5. Run the newserv executable.
 
-If you're on an older version of Windows (before Windows 10), the Cygwin libraries included with the release may be incompatible. See [this issue](https://github.com/fuzziqersoftware/newserv/issues/621) for a possible workaround.
-
 ### Linux
 
 There are currently no precompiled releases for Linux. To run newserv on Linux, you'll have to build it from source - see the section below.

@@ -605,9 +605,10 @@ struct CardDefinition {
   // actions, and assist cards have 1 here.
   /* 008F */ uint8_t cannot_attack;
   /* 0090 */ uint8_t unused3;
-  // If cannot_drop is 0, this card can't appear in post-battle rewards. A
-  // value of 0 here also prevents the card from being used as a God Whim
-  // random assist.
+  // If cannot_drop is 1, this card can't appear in post-battle rewards and is
+  // considered unobtainable by players, so the game will remove it from the
+  // player's collection if they have any copies of it. A value of 1 here also
+  // prevents the card from being used as a God Whim random assist.
   /* 0091 */ uint8_t cannot_drop;
   // This criterion code specifies who can use the card, and when it can be
   // used. This specifies which Hero-side SCs can use which items, for example,
