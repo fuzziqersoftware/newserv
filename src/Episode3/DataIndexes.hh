@@ -865,7 +865,8 @@ struct PlayerConfig {
   /* 0138:---- */ PlayerRecordsBattleBE unused_offline_records;
   /* 0150:---- */ parray<uint8_t, 4> unknown_a4;
   // The PlayerDataSegment structure begins here. In newserv, we combine this
-  // structure into PlayerConfig since the two are always used together.
+  // structure into PlayerConfig since the two are always used together on the
+  // server side.
   /* 0154:0000 */ uint8_t is_encrypted;
   /* 0155:0001 */ uint8_t basis;
   /* 0156:0002 */ parray<uint8_t, 2> unused;
@@ -938,6 +939,8 @@ struct PlayerConfig {
 
   void decrypt();
   void encrypt(uint8_t basis);
+
+  bool card_count_checksums_correct() const;
 } __packed_ws__(PlayerConfig, 0x2350);
 
 struct PlayerConfigNTE {

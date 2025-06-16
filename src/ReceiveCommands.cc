@@ -3426,6 +3426,12 @@ static asio::awaitable<void> on_61_98(shared_ptr<Client> c, Channel::Message& ms
         }
         const auto* cmd3 = &check_size_t<C_CharacterData_Ep3_61_98>(msg.data);
         c->ep3_config = make_shared<Episode3::PlayerConfig>(cmd3->ep3_config);
+        c->ep3_config->decrypt();
+        if (c->ep3_config->card_count_checksums_correct()) {
+          c->log.info_f("Card count checksums are correct");
+        } else {
+          c->log.info_f("Card count checksums are incorrect");
+        }
         cmd = reinterpret_cast<const C_CharacterData_V3_61_98*>(cmd3);
         if (specific_version_is_indeterminate(c->specific_version)) {
           c->specific_version = SPECIFIC_VERSION_GC_EP3_JP; // 3SJ0

@@ -1177,6 +1177,19 @@ void PlayerConfig::encrypt(uint8_t basis) {
   this->basis = basis;
 }
 
+bool PlayerConfig::card_count_checksums_correct() const {
+  for (size_t z = 0; z < this->card_count_checksums.size(); z++) {
+    uint16_t checksum_value = 0;
+    for (size_t w = 0; w < 20; w++) {
+      checksum_value += reinterpret_cast<const uint8_t*>(&this->card_counts)[z * 50 + w];
+    }
+    if (this->card_count_checksums[z] != checksum_value) {
+      return false;
+    }
+  }
+  return true;
+}
+
 PlayerConfigNTE::PlayerConfigNTE(const PlayerConfig& config)
     : rank_text(config.rank_text),
       unknown_a1(config.unknown_a1),
