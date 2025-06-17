@@ -224,6 +224,14 @@ inline asio::ip::tcp::endpoint make_endpoint_ipv4(uint32_t addr, uint16_t port) 
   return asio::ip::tcp::endpoint(asio::ip::address_v4(addr), port);
 }
 
+inline asio::ip::tcp::endpoint make_endpoint_ipv6(const void* addr, uint16_t port) {
+  std::array<uint8_t, 0x10> bytes;
+  for (size_t z = 0; z < 0x10; z++) {
+    bytes[z] = reinterpret_cast<const uint8_t*>(addr)[z];
+  }
+  return asio::ip::tcp::endpoint(asio::ip::address_v6(bytes), port);
+}
+
 inline std::string str_for_endpoint(const asio::ip::tcp::endpoint& ep) {
   return ep.address().to_string() + std::format(":{}", ep.port());
 }

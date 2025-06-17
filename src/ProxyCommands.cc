@@ -779,6 +779,9 @@ static asio::awaitable<HandlerResult> S_19_U_14(shared_ptr<Client> c, Channel::M
   if (is_patch(c->version())) {
     auto& cmd = msg.check_size_t<S_Reconnect_Patch_14>();
     new_ep = make_endpoint_ipv4(cmd.address, cmd.port);
+  } else if (msg.flag == 6 && msg.data.size() >= sizeof(S_ReconnectIPv6_Extension_19)) {
+    auto& cmd = msg.check_size_t<S_ReconnectIPv6_Extension_19>(0xFFFF);
+    new_ep = make_endpoint_ipv6(cmd.address.data(), cmd.port);
   } else {
     // This weird maximum size is here to properly handle the version-split
     // command that some servers (including newserv) use on port 9100

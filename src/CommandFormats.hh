@@ -807,6 +807,20 @@ struct C_WriteFileConfirmation_V3_BB_13_A7 {
 using S_Reconnect_19 = S_ReconnectT<le_uint16_t>;
 check_struct_size(S_Reconnect_19, 8);
 
+// Sylverant implements an IPv6 version of this command, but it's not obvious
+// why. IPv6 technically did exist as a draft standard at the time of PSO's
+// development, but it wasn't widely used until over a decade later. IPv6
+// support is not implemented in any version of the PSO client that I've seen,
+// but we implement Sylverant's version of this command anyway because newserv
+// may connect to Sylverant via IPv6 when using the proxy. Sylverant sends the
+// value 6 in header.flag in this case, presumably to indicate the protocol.
+
+struct S_ReconnectIPv6_Extension_19 {
+  parray<uint8_t, 0x10> address;
+  le_uint16_t port = 0;
+  le_uint16_t unused = 0;
+} __packed_ws__(S_ReconnectIPv6_Extension_19, 0x14);
+
 // Because PSO PC and some versions of PSO DC/GC use the same port but different
 // protocols, we use a specially-crafted 19 command to send them to two
 // different ports depending on the client version. I first saw this technique
