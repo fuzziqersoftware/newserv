@@ -972,7 +972,11 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     // In offline mode, this object constructs TObjWarpBossMulti instead.
     {0x0019, F_V0_V4, 0x00006FFC3FFC04A5, "TObjWarpBoss"},
 
-    // Sign board. This shows the loaded image from a quest (via load_pvr).
+    // Sign board. This shows the loaded image from a quest (via load_pvr). On
+    // the final version of PCv2, this object doesn't render at all; my guess
+    // is that Sega hardcoded the PVR filenames for the various events in the
+    // executable, then after those events ended, they just deleted the
+    // load_pvr code entirely, leaving this object nonfunctional.
     // Params:
     //   param1-3 = scale factors (x, y, z)
     {0x001A, F_V1_V4, 0x0000600000040001, "TObjSinBoard"},
