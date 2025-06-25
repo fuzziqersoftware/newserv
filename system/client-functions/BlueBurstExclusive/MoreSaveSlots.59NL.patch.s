@@ -67,8 +67,6 @@ enable_scroll_start:
   mov       ecx, [eax + 0xEC]  # ecx = scroll_bar->client_id
   imul      ecx, ecx, 0x24
   # Set up scroll bar graphics (in struct at scroll_bar + 0x1C)
-  # TODO: Even though we set this up the same way PSO Xbox does, it still
-  # doesn't render. Figure this out and fix it.
   mov       dword [eax + ecx + 0x1C], 0x439D0000
   mov       dword [eax + ecx + 0x20], 0x43360000
   mov       dword [eax + ecx + 0x24], 0x439D0000
@@ -77,7 +75,7 @@ enable_scroll_start:
   mov       dword [eax + ecx + 0x30], 0x425EA3D7
   mov       dword [eax + ecx + 0x34], 0x00000008
   mov       dword [eax + ecx + 0x38], 0x00000000
-  mov       dword [eax + ecx + 0x2C], 0x00000000
+  mov       dword [eax + ecx + 0x2C], 0x3F800000
   or        dword [eax + 0xF0], 1  # scroll_bar->flags |= 1
   mov       ecx, [eax + 0xEC]
   shl       ecx, 4
