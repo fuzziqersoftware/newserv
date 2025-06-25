@@ -1001,46 +1001,13 @@ ChatCommandDefinition cc_edit(
           if (tokens.at(1) == "none") {
             p->disp.visual.extra_model = 0;
             p->disp.visual.validation_flags &= 0xFD;
-            // Restore saved fields, if any
-            if (p->disp.visual.unused[0] == 0x8D) {
-              p->disp.visual.char_class = p->disp.visual.unused[1];
-              p->disp.visual.head = p->disp.visual.unused[2];
-              p->disp.visual.hair = p->disp.visual.unused[3];
-              p->disp.visual.unused.clear(0);
-            }
+            p->disp.visual.restore_npc_saved_fields();
           } else {
             uint8_t npc = npc_for_name(tokens.at(1), a.c->version());
             if (npc == 0xFF) {
               throw precondition_failed("$C6No such NPC");
             }
-
-            // Some NPCs can crash the client if the character's class is
-            // incorrect. To handle this, we save the affected fields in the unused
-            // bytes after extra_model.
-            int8_t replacement_class = -1;
-            switch (npc) {
-              case 1: // Rico (replace with HUnewearl)
-              case 6: // Elly (replace with HUnewearl)
-                replacement_class = 0x01;
-                break;
-              case 0: // Ninja (replace with HUmar)
-              case 2: // Sonic (replace with HUmar)
-              case 5: // Flowen (replace with HUmar)
-                replacement_class = 0x00;
-                break;
-            }
-            if (replacement_class >= 0) {
-              if (p->disp.visual.unused[0] != 0x8D) {
-                p->disp.visual.unused[0] = 0x8D;
-                p->disp.visual.unused[1] = p->disp.visual.char_class;
-                p->disp.visual.unused[2] = p->disp.visual.head;
-                p->disp.visual.unused[3] = p->disp.visual.hair;
-              }
-              p->disp.visual.char_class = replacement_class;
-              p->disp.visual.head = 0x00;
-              p->disp.visual.hair = 0x00;
-            }
-
+            p->disp.visual.backup_npc_saved_fields();
             p->disp.visual.extra_model = npc;
             p->disp.visual.validation_flags |= 0x02;
           }

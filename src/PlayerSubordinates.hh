@@ -32,7 +32,21 @@ struct PlayerVisualConfigT {
   /* 10 */ parray<uint8_t, 8> unknown_a2;
   /* 18 */ U32T<BE> name_color = 0xFFFFFFFF; // ARGB
   /* 1C */ uint8_t extra_model = 0;
-  /* 1D */ parray<uint8_t, 0x0F> unused;
+  // Some NPCs can crash the client if the character's class is incorrect. To
+  // handle this, we save the affected fields in the unused bytes after
+  // extra_model. This is a newserv-specific extension; it appears the
+  // following 15 bytes were simply never used by Sega.
+  /* 1D */ uint8_t npc_saved_data_type = 0;
+  /* 1E */ uint8_t npc_saved_costume = 0;
+  /* 1F */ uint8_t npc_saved_skin = 0;
+  /* 20 */ uint8_t npc_saved_face = 0;
+  /* 21 */ uint8_t npc_saved_head = 0;
+  /* 22 */ uint8_t npc_saved_hair = 0;
+  /* 23 */ uint8_t npc_saved_hair_r = 0;
+  /* 24 */ uint8_t npc_saved_hair_g = 0;
+  /* 25 */ uint8_t npc_saved_hair_b = 0;
+  /* 26 */ parray<uint8_t, 2> unused;
+  /* 28 */ F32T<BE> npc_saved_proportion_y = 0.0;
   // See compute_name_color_checksum for details on how this is computed. If the
   // value is incorrect, V1 and V2 will ignore the name_color field and use the
   // default color instead. This field is ignored on GC; on BB (and presumably
@@ -79,6 +93,72 @@ struct PlayerVisualConfigT {
 
   void compute_name_color_checksum() {
     this->name_color_checksum = this->compute_name_color_checksum(this->name_color);
+  }
+
+  void backup_npc_saved_fields() {
+    if (this->npc_saved_data_type == 0x8E) {
+      return;
+    }
+
+    // Restore old-format data if needed before backing up again
+    this->restore_npc_saved_fields();
+
+    this->npc_saved_data_type = 0x8E;
+    this->npc_saved_costume = this->costume;
+    this->npc_saved_skin = this->skin;
+    this->npc_saved_face = this->face;
+    this->npc_saved_head = this->head;
+    this->npc_saved_hair = this->hair;
+    this->npc_saved_hair_r = this->hair_r;
+    this->npc_saved_hair_g = this->hair_g;
+    this->npc_saved_hair_b = this->hair_b;
+    this->npc_saved_proportion_y = this->proportion_y;
+    this->costume = 0;
+    this->skin = 0;
+    this->face = 0;
+    this->head = 0;
+    this->hair = 0;
+    this->hair_r = 0;
+    this->hair_g = 0;
+    this->hair_b = 0;
+    this->proportion_y = 0;
+  }
+
+  void restore_npc_saved_fields() {
+    switch (this->npc_saved_data_type) {
+      case 0x00:
+        break;
+      case 0x8D: // Old format
+        this->char_class = this->npc_saved_costume;
+        this->head = this->npc_saved_skin;
+        this->hair = this->npc_saved_face;
+        break;
+      case 0x8E: // New format
+        this->costume = this->npc_saved_costume;
+        this->skin = this->npc_saved_skin;
+        this->face = this->npc_saved_face;
+        this->head = this->npc_saved_head;
+        this->hair = this->npc_saved_hair;
+        this->hair_r = this->npc_saved_hair_r;
+        this->hair_g = this->npc_saved_hair_g;
+        this->hair_b = this->npc_saved_hair_b;
+        this->proportion_y = this->npc_saved_proportion_y;
+        break;
+      default:
+        throw std::runtime_error("unknown saved NPC data format");
+    }
+
+    this->npc_saved_data_type = 0;
+    this->npc_saved_costume = 0;
+    this->npc_saved_skin = 0;
+    this->npc_saved_face = 0;
+    this->npc_saved_head = 0;
+    this->npc_saved_hair = 0;
+    this->npc_saved_hair_r = 0;
+    this->npc_saved_hair_g = 0;
+    this->npc_saved_hair_b = 0;
+    this->unused.clear(0);
+    this->npc_saved_proportion_y = 0.0;
   }
 
   void enforce_lobby_join_limits_for_version(Version v) {
