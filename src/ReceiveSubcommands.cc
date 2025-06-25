@@ -4417,8 +4417,7 @@ static asio::awaitable<void> on_buy_shop_item_bb(shared_ptr<Client> c, Subcomman
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
     auto s = c->require_server_state();
     auto name = s->describe_item(c->version(), item);
-    l->log.info_f("Player {} purchased item {:08X} ({}) for {} meseta",
-        c->lobby_client_id, item.id, name, price);
+    l->log.info_f("Player {} purchased item {:08X} ({}) for {} meseta", c->lobby_client_id, item.id, name, price);
     c->print_inventory();
   }
   co_return;

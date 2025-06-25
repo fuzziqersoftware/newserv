@@ -4607,6 +4607,8 @@ struct G_PlayerDied_6x4D {
 } __packed_ws__(G_PlayerDied_6x4D, 8);
 
 // 6x4E: Player is dead can be revived (protected on V3/V4)
+// This command creates the particle effect that Reverser and Moon Atomizers
+// can target.
 
 struct G_PlayerRevivable_6x4E {
   G_ClientIDHeader header;

@@ -75,7 +75,7 @@ enable_scroll_start:
   mov       dword [eax + ecx + 0x30], 0x425EA3D7
   mov       dword [eax + ecx + 0x34], 0x00000008
   mov       dword [eax + ecx + 0x38], 0x00000000
-  mov       dword [eax + ecx + 0x2C], 0x3F800000
+  mov       dword [eax + ecx + 0x3C], 0x00000000
   or        dword [eax + 0xF0], 1  # scroll_bar->flags |= 1
   mov       ecx, [eax + 0xEC]
   shl       ecx, 4
