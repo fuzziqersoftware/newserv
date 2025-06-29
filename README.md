@@ -26,7 +26,7 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
     * [Cross-version play](#cross-version-play)
     * [Server-side saves](#server-side-saves)
     * [Episode 3 features](#episode-3-features)
-    * [Memory patches, client functions, and DOL files](#memory-patches-client-functions-and-dol-files)
+    * [Memory patches, client functions, and DOL files](#memory-patches-and-client-functions)
     * [Using newserv as a proxy](#using-newserv-as-a-proxy)
     * [Chat commands](#chat-commands)
     * [REST API](#rest-api)
@@ -447,7 +447,7 @@ There is no public editor for Episode 3 maps and quests, but the format is descr
 
 Like quests, Episode 3 card definitions, maps, and quests are cached in memory. If you've changed any of these files, you can run `reload ep3-cards` or `reload ep3-maps` in the interactive shell to make the changes take effect without restarting the server.
 
-## Memory patches, client functions, and DOL files
+## Memory patches and client functions
 
 You can put assembly files in the system/client-functions directory with filenames like PatchName.VERS.patch.s and they will appear in the Patches menu for clients that support client functions. Client functions are written in SH-4, PowerPC, or x86 assembly and are compiled when newserv is started. The assembly system's features are documented in the comments in system/client-functions/System/WriteMemoryGC.ppc.s.
 
@@ -497,9 +497,11 @@ The specific versions are:
 *Notes:*
 1. *Client functions are only supported on these versions if EnableSendFunctionCallQuestNumbers is set in config.json. See the comments there for more information.*
 
-newserv comes with a set of patches for many of the above versions, based on AR codes originally made by Ralf at GC-Forever and Aleron Ives. Many of them were originally posted in [this thread](https://www.gc-forever.com/forums/viewtopic.php?f=38&t=2050).
+newserv comes with a set of patches for many of the above versions. These are organized in subdirectories within system/client-functions/.
 
-You can also put DOL files in the system/dol directory, and they will appear in the Programs menu for GC clients. Selecting a DOL file there will load the file into the GameCube's memory and run it, just like the old homebrew loaders (PSUL and PSOload) did. For this to work, ReadMemoryWordGC.ppc.s, WriteMemoryGC.ppc.s, and RunDOL.ppc.s must be present in the system/client-functions/System directory. This has been tested on Dolphin but not on a real GameCube, so results may vary.
+### DOL loader
+
+You can put DOL files in the system/dol directory, and they will appear in the Programs menu for GC clients. Selecting a DOL file there will load the file into the GameCube's memory and run it, just like the old homebrew loaders (PSUL and PSOload) did. For this to work, ReadMemoryWordGC.ppc.s, WriteMemoryGC.ppc.s, and RunDOL.ppc.s must be present in the system/client-functions/System directory. This has been tested on Dolphin but not on a real GameCube, so results may vary.
 
 Like other kinds of data, functions and DOL files are cached in memory. If you've changed any of these files, you can run `reload functions` or `reload dol-files` in the interactive shell to make the changes take effect without restarting the server.
 
