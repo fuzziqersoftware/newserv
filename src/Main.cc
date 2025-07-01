@@ -1166,7 +1166,7 @@ Action a_decode_gci_snapshot(
       }
 
       auto img = file.decode_image();
-      string saved = img.save(phosg::Image::Format::WINDOWS_BITMAP);
+      string saved = img.serialize(phosg::ImageFormat::WINDOWS_BITMAP);
       write_output_data(args, saved.data(), saved.size(), "bmp");
     });
 
@@ -1177,13 +1177,16 @@ Action a_encode_gvm(
     GVM file can be used as an Episode 3 lobby banner.\n",
     +[](phosg::Arguments& args) {
       const string& input_filename = args.get<string>(1, false);
-      phosg::Image img;
+      string data;
       if (!input_filename.empty() && (input_filename != "-")) {
-        img = phosg::Image(input_filename);
+        data = phosg::load_file(input_filename);
       } else {
-        img = phosg::Image(stdin);
+        data = phosg::read_all(stdin);
       }
-      string encoded = encode_gvm(img, img.get_has_alpha() ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565, "image.gvr", 0);
+      auto img = phosg::ImageRGBA8888::from_file_data(data);
+      // If the image has any transparent pixels at all, use RGB5A3
+      string encoded = encode_gvm(
+          img, has_any_transparent_pixels(img) ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565, "image.gvr", 0);
       write_output_data(args, encoded.data(), encoded.size(), "gvm");
     });
 
@@ -1196,7 +1199,7 @@ Action a_decode_bitmap_font(
     +[](phosg::Arguments& args) {
       std::string data = read_input_data(args);
       size_t width = args.get<size_t>("width");
-      std::string bmp_data = decode_fon(data, width).save(phosg::Image::Format::WINDOWS_BITMAP);
+      std::string bmp_data = decode_fon(data, width).serialize(phosg::ImageFormat::WINDOWS_BITMAP);
       write_output_data(args, bmp_data.data(), bmp_data.size(), "bmp");
     });
 Action a_encode_bitmap_font(
@@ -1207,12 +1210,13 @@ Action a_encode_bitmap_font(
     original fon\'s dimensions.\n",
     +[](phosg::Arguments& args) {
       const string& input_filename = args.get<string>(1, false);
-      phosg::Image img;
+      string data;
       if (!input_filename.empty() && (input_filename != "-")) {
-        img = phosg::Image(input_filename);
+        data = phosg::load_file(input_filename);
       } else {
-        img = phosg::Image(stdin);
+        data = phosg::read_all(stdin);
       }
+      auto img = phosg::ImageRGB888::from_file_data(data);
       string encoded = encode_fon(img);
       write_output_data(args, encoded.data(), encoded.size(), "fon");
     });
@@ -2591,22 +2595,19 @@ Action a_generate_ep3_cards_html(
             phosg::parallel_range<uint32_t>([&](uint32_t index, size_t) -> bool {
               auto& info = this->card_infos[index];
               if (!info.large_filename.empty()) {
-                phosg::Image img(info.large_filename);
-                phosg::Image cropped(512, 399);
-                cropped.blit(img, 0, 0, 512, 399, 0, 0);
-                info.large_data_url = cropped.png_data_url();
+                auto img = phosg::ImageRGBA8888::from_file_data(phosg::load_file(info.large_filename));
+                img.resize(512, 399);
+                info.large_data_url = img.serialize(phosg::ImageFormat::PNG_DATA_URL);
               }
               if (!info.medium_filename.empty()) {
-                phosg::Image img(info.medium_filename);
-                phosg::Image cropped(184, 144);
-                cropped.blit(img, 0, 0, 184, 144, 0, 0);
-                info.medium_data_url = cropped.png_data_url();
+                auto img = phosg::ImageRGBA8888::from_file_data(phosg::load_file(info.medium_filename));
+                img.resize(184, 144);
+                info.medium_data_url = img.serialize(phosg::ImageFormat::PNG_DATA_URL);
               }
               if (!info.small_filename.empty()) {
-                phosg::Image img(info.small_filename);
-                phosg::Image cropped(58, 43);
-                cropped.blit(img, 0, 0, 58, 43, 0, 0);
-                info.small_data_url = cropped.png_data_url();
+                auto img = phosg::ImageRGBA8888::from_file_data(phosg::load_file(info.small_filename));
+                img.resize(58, 43);
+                info.small_data_url = img.serialize(phosg::ImageFormat::PNG_DATA_URL);
               }
               return false;
             },

@@ -98,14 +98,14 @@ void TeamIndex::Team::save_config() const {
 }
 
 void TeamIndex::Team::load_flag() {
-  phosg::Image img(this->flag_filename());
+  auto img = phosg::ImageRGBA8888::from_file_data(phosg::load_file(this->flag_filename()));
   if (img.get_width() != 32 || img.get_height() != 32) {
     throw runtime_error("incorrect flag image dimensions");
   }
   this->flag_data.reset(new parray<le_uint16_t, 0x20 * 0x20>());
   for (size_t y = 0; y < 32; y++) {
     for (size_t x = 0; x < 32; x++) {
-      this->flag_data->at(y * 0x20 + x) = encode_rgba8888_to_argb1555(img.read_pixel(x, y));
+      this->flag_data->at(y * 0x20 + x) = phosg::argb1555_for_rgba8888(img.read(x, y));
     }
   }
 }
@@ -114,13 +114,13 @@ void TeamIndex::Team::save_flag() const {
   if (!this->flag_data) {
     return;
   }
-  phosg::Image img(32, 32, true);
+  phosg::ImageRGBA8888 img(32, 32);
   for (size_t y = 0; y < 32; y++) {
     for (size_t x = 0; x < 32; x++) {
-      img.write_pixel(x, y, decode_argb1555_to_rgba8888(this->flag_data->at(y * 0x20 + x)));
+      img.write(x, y, phosg::rgba8888_for_argb1555(this->flag_data->at(y * 0x20 + x)));
     }
   }
-  img.save(this->flag_filename(), phosg::Image::Format::WINDOWS_BITMAP);
+  phosg::save_file(this->flag_filename(), img.serialize(phosg::ImageFormat::WINDOWS_BITMAP));
 }
 
 void TeamIndex::Team::delete_files() const {

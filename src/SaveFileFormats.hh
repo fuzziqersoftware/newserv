@@ -1066,7 +1066,7 @@ struct PSOGCSnapshotFile {
   /* 1818C */
 
   bool checksum_correct() const;
-  phosg::Image decode_image() const;
+  phosg::ImageRGB888 decode_image() const;
 } __packed_ws__(PSOGCSnapshotFile, 0x1818C);
 
 ////////////////////////////////////////////////////////////////////////////////

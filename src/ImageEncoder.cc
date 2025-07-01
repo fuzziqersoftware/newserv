@@ -35,7 +35,7 @@ struct GVRHeader {
   be_uint16_t height;
 } __packed_ws__(GVRHeader, 0x10);
 
-string encode_gvm(const phosg::Image& img, GVRDataFormat data_format, const string& internal_name, uint32_t global_index) {
+string encode_gvm(const phosg::ImageRGBA8888& img, GVRDataFormat data_format, const string& internal_name, uint32_t global_index) {
   int8_t dimensions_field = -2;
   {
     size_t h = img.get_height();
@@ -90,17 +90,16 @@ string encode_gvm(const phosg::Image& img, GVRDataFormat data_format, const stri
     for (size_t x = 0; x < img.get_width(); x += 4) {
       for (size_t yy = 0; yy < 4; yy++) {
         for (size_t xx = 0; xx < 4; xx++) {
-          uint64_t a, r, g, b;
-          img.read_pixel(x + xx, y + yy, &r, &g, &b, &a);
+          uint32_t c = img.read(x + xx, y + yy);
           switch (data_format) {
             case GVRDataFormat::RGB565:
-              w.put_u16b(encode_rgb565(r, g, b));
+              w.put_u16b(phosg::rgb565_for_rgba8888(c));
               break;
             case GVRDataFormat::RGB5A3:
-              w.put_u16b(encode_rgb5a3(r, g, b, a));
+              w.put_u16b(encode_rgb5a3(c));
               break;
             case GVRDataFormat::ARGB8888:
-              w.put_u32b(encode_argb8888(r, g, b, a));
+              w.put_u32b(phosg::argb8888_for_rgba8888(c));
               break;
             default:
               throw logic_error("cannot encode pixel format");
@@ -115,15 +114,15 @@ string encode_gvm(const phosg::Image& img, GVRDataFormat data_format, const stri
 
 static const array<uint32_t, 4> fon_colors = {0x000000FF, 0x555555FF, 0xAAAAAAFF, 0xFFFFFFFF};
 
-phosg::Image decode_fon(const string& data, size_t width) {
+phosg::ImageRGB888 decode_fon(const string& data, size_t width) {
   size_t num_pixels = data.size() * 4;
   size_t height = num_pixels / width;
-  phosg::Image ret(width, height);
+  phosg::ImageRGB888 ret(width, height);
 
   phosg::BitReader r(data);
   for (size_t y = 0; y < height; y++) {
     for (size_t x = 0; x < width; x++) {
-      ret.write_pixel(x, y, fon_colors[r.read(2)]);
+      ret.write(x, y, fon_colors[r.read(2)]);
     }
   }
   return ret;
@@ -133,11 +132,11 @@ constexpr size_t uabs(size_t a, size_t b) {
   return (a > b) ? (a - b) : (b - a);
 }
 
-string encode_fon(const phosg::Image& img) {
+string encode_fon(const phosg::ImageRGB888& img) {
   phosg::BitWriter w;
   for (size_t y = 0; y < img.get_height(); y++) {
     for (size_t x = 0; x < img.get_width(); x++) {
-      uint32_t color = img.read_pixel(x, y);
+      uint32_t color = img.read(x, y);
 
       size_t result_delta = 0x400;
       size_t result_index = 0;

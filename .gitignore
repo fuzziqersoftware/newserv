@@ -14,6 +14,7 @@ CTestTestfile.cmake
 install_manifest.txt
 Makefile
 Testing
+build
 
 # Files modified by the user and/or server that don't have defaults
 system/config.json
@@ -35,6 +36,7 @@ system/patch-bb/.metadata-cache.json
 # repository
 files
 make_release.py
+notes-private
 old-khyller
 old-newserv
 release

@@ -218,16 +218,7 @@ bool PSOGCSnapshotFile::checksum_correct() const {
   return (crc == this->checksum);
 }
 
-static uint32_t decode_rgb565(uint16_t c) {
-  // Input bits:                    rrrrrggg gggbbbbb
-  // Output bits: rrrrrrrr gggggggg bbbbbbbb aaaaaaaa
-  return ((c << 16) & 0xF8000000) | ((c << 11) & 0x07000000) | // R
-      ((c << 13) & 0x00FC0000) | ((c << 7) & 0x00030000) | // G
-      ((c << 11) & 0x0000F800) | ((c << 6) & 0x00000700) | // B
-      0x000000FF; // A
-}
-
-phosg::Image PSOGCSnapshotFile::decode_image() const {
+phosg::ImageRGB888 PSOGCSnapshotFile::decode_image() const {
   size_t width = this->width ? this->width.load() : 256;
   size_t height = this->height ? this->height.load() : 192;
   if (width != 256) {
@@ -238,14 +229,13 @@ phosg::Image PSOGCSnapshotFile::decode_image() const {
   }
 
   // 4x4 blocks of pixels
-  phosg::Image ret(width, height, false);
+  phosg::ImageRGB888 ret(width, height);
   size_t offset = 0;
   for (size_t y = 0; y < this->height; y += 4) {
     for (size_t x = 0; x < this->width; x += 4) {
       for (size_t yy = 0; yy < 4; yy++) {
         for (size_t xx = 0; xx < 4; xx++) {
-          uint32_t color = decode_rgb565(this->pixels[offset++]);
-          ret.write_pixel(x + xx, y + yy, color);
+          ret.write(x + xx, y + yy, phosg::rgba8888_for_rgb565(this->pixels[offset++]));
         }
       }
     }

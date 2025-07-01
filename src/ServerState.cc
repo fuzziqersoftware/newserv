@@ -966,10 +966,10 @@ void ServerState::load_config_early() {
     } else if (lower_path.ends_with(".gvm")) {
       decompressed_gvm_data = phosg::load_file(path);
     } else if (lower_path.ends_with(".bmp")) {
-      phosg::Image img(path);
+      auto img = phosg::ImageRGBA8888::from_file_data(phosg::load_file(path));
       decompressed_gvm_data = encode_gvm(
           img,
-          img.get_has_alpha() ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565,
+          has_any_transparent_pixels(img) ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565,
           std::format("bnr{}", banner_index),
           0x80 | banner_index);
       banner_index++;
