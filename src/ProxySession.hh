@@ -22,6 +22,7 @@ struct ProxySession {
   uint32_t remote_ip_crc = 0;
   bool received_reconnect = false;
   bool enable_remote_ip_crc_patch = false;
+  bool bb_client_sent_E0 = false;
 
   struct LobbyPlayer {
     uint32_t guild_card_number = 0;

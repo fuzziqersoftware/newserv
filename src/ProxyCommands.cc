@@ -424,10 +424,7 @@ static asio::awaitable<HandlerResult> S_V123_04(shared_ptr<Client> c, Channel::M
   // If there was previously a guild card number, assume we got the lobby server
   // init text instead of the port map init text.
   memcpy(c->proxy_session->remote_client_config_data.data(),
-      had_guild_card_number
-          ? "t Lobby Server. Copyright SEGA E"
-          : "t Port Map. Copyright SEGA Enter",
-      0x20);
+      had_guild_card_number ? "t Lobby Server. Copyright SEGA E" : "t Port Map. Copyright SEGA Enter", 0x20);
   memcpy(c->proxy_session->remote_client_config_data.data(), &cmd.client_config,
       min<size_t>(msg.data.size() - offsetof(S_UpdateClientConfig_V3_04, client_config),
           c->proxy_session->remote_client_config_data.bytes()));
@@ -676,6 +673,12 @@ static asio::awaitable<HandlerResult> C_B3(shared_ptr<Client> c, Channel::Messag
   } else {
     co_return HandlerResult::FORWARD;
   }
+}
+
+static asio::awaitable<HandlerResult> C_B_E0(shared_ptr<Client> c, Channel::Message& msg) {
+  auto ret = c->proxy_session->bb_client_sent_E0 ? HandlerResult::FORWARD : HandlerResult::SUPPRESS;
+  c->proxy_session->bb_client_sent_E0 = true;
+  co_return ret;
 }
 
 static asio::awaitable<HandlerResult> S_B_E2(shared_ptr<Client> c, Channel::Message& msg) {
@@ -1550,7 +1553,7 @@ template <typename CmdT>
 static asio::awaitable<HandlerResult> S_64(shared_ptr<Client> c, Channel::Message& msg) {
   CmdT* cmd;
   S_JoinGame_Ep3_64* cmd_ep3 = nullptr;
-  if (c->sub_version >= 0x40) {
+  if ((c->sub_version >= 0x40) && is_v3(c->version())) {
     cmd = &msg.check_size_t<CmdT>(sizeof(S_JoinGame_Ep3_64));
     cmd_ep3 = &msg.check_size_t<S_JoinGame_Ep3_64>();
   } else if (c->version() == Version::XB_V3) {
@@ -2256,7 +2259,7 @@ static on_message_t handlers[0x100][NUM_VERSIONS][2] = {
 /* DE */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
 /* DF */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 // CMD     S_PC_PATCH     C          S_BB_PATCH     C          S_DC_NTE       C           S_DC_12_2000   C              S_DC_V1           C              S_DC_V2           C               S_PC_NTE       C               S_PC_V2        C               S_GC_NTE          C              S_GC_V3           C               S_GC_EP3_NTE      C               S_GC_EP3          C               S_XB_V3        C               S_BB_V4       C
-/* E0 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {nullptr,          nullptr},      {nullptr,          nullptr},      {nullptr,          nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* E0 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {nullptr,          nullptr},      {nullptr,          nullptr},      {nullptr,          nullptr},      {S_invalid,     nullptr},      {nullptr,      C_B_E0}},
 /* E1 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {nullptr,          nullptr},      {nullptr,          nullptr},      {nullptr,          nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
 /* E2 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {nullptr,          nullptr},      {nullptr,          nullptr},      {nullptr,          nullptr},      {S_invalid,     nullptr},      {S_B_E2,       nullptr}},
 /* E3 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {nullptr,          nullptr},      {nullptr,          nullptr},      {nullptr,          nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
