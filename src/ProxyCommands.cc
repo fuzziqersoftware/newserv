@@ -675,7 +675,7 @@ static asio::awaitable<HandlerResult> C_B3(shared_ptr<Client> c, Channel::Messag
   }
 }
 
-static asio::awaitable<HandlerResult> C_B_E0(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> C_B_E0(shared_ptr<Client> c, Channel::Message&) {
   auto ret = c->proxy_session->bb_client_sent_E0 ? HandlerResult::FORWARD : HandlerResult::SUPPRESS;
   c->proxy_session->bb_client_sent_E0 = true;
   co_return ret;
