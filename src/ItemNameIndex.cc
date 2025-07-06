@@ -697,7 +697,8 @@ void ItemNameIndex::print_table(FILE* stream) const {
       item.data1[2] = data1_2;
       string name = this->describe_item(item);
 
-      phosg::fwrite_fmt(stream, "00{:02X}{:02X} => {:08X} {:04X} {:04X} {:6} {:04X} {:5} {:5} {:5} {:5} {:5} {:5} {:3} {:02X} {:02X} {:3} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:2}* {} {} {}\n",
+      auto& stat_boost = pmt->get_stat_boost(w.stat_boost_entry_index);
+      phosg::fwrite_fmt(stream, "00{:02X}{:02X} => {:08X} {:04X} {:04X} {:6} {:04X} {:5} {:5} {:5} {:5} {:5} {:5} {:3} {:02X} {:02X} {:3} {:02X}({:02X}:{:04X},{:02X}:{:04X}) {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:2}* {} {} {}\n",
           data1_1,
           data1_2,
           w.base.id,
@@ -715,7 +716,11 @@ void ItemNameIndex::print_table(FILE* stream) const {
           w.photon,
           w.special,
           w.ata,
-          w.stat_boost,
+          w.stat_boost_entry_index,
+          stat_boost.stats[0],
+          stat_boost.amounts[0],
+          stat_boost.stats[1],
+          stat_boost.amounts[1],
           w.projectile,
           w.trail1_x,
           w.trail1_y,
@@ -754,7 +759,8 @@ void ItemNameIndex::print_table(FILE* stream) const {
       item.data1[2] = data1_2;
       string name = this->describe_item(item);
 
-      phosg::fwrite_fmt(stream, "01{:02X}{:02X} => {:08X} {:04X} {:04X} {:6} {:5} {:5} {:02X} {:02X} {:04X} {:3} {:3} {:3} {:3} {:3} {:3} {:3} {:3} {:02X} {:02X} {:02X} {:02X} {:2}* {} {}\n",
+      auto& stat_boost = pmt->get_stat_boost(a.stat_boost_entry_index);
+      phosg::fwrite_fmt(stream, "01{:02X}{:02X} => {:08X} {:04X} {:04X} {:6} {:5} {:5} {:02X} {:02X} {:04X} {:3} {:3} {:3} {:3} {:3} {:3} {:3} {:3} {:02X}({:02X}:{:04X},{:02X}:{:04X}) {:02X} {:02X} {:02X} {:2}* {} {}\n",
           data1_1,
           data1_2,
           a.base.id,
@@ -774,7 +780,11 @@ void ItemNameIndex::print_table(FILE* stream) const {
           a.elt,
           a.dfp_range,
           a.evp_range,
-          a.stat_boost,
+          a.stat_boost_entry_index,
+          stat_boost.stats[0],
+          stat_boost.amounts[0],
+          stat_boost.stats[1],
+          stat_boost.amounts[1],
           a.tech_boost,
           a.flags_type,
           a.unknown_a4,

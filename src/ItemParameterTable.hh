@@ -71,7 +71,7 @@ public:
     /* 11 */ uint8_t photon = 0;
     /* 12 */ uint8_t special = 0;
     /* 13 */ uint8_t ata = 0;
-    /* 14 */ uint8_t stat_boost = 0; // TODO: This could be larger (16 or 32 bits)
+    /* 14 */ uint8_t stat_boost_entry_index = 0; // TODO: This could be larger (16 or 32 bits)
     /* 15 */ parray<uint8_t, 3> unknown_a9;
     /* 18 */
 
@@ -91,7 +91,7 @@ public:
     /* 17 */ uint8_t photon = 0;
     /* 18 */ uint8_t special = 0;
     /* 19 */ uint8_t ata = 0;
-    /* 1A */ uint8_t stat_boost = 0;
+    /* 1A */ uint8_t stat_boost_entry_index = 0;
     /* 1B */ uint8_t projectile = 0;
     /* 1C */ int8_t trail1_x = 0;
     /* 1D */ int8_t trail1_y = 0;
@@ -120,7 +120,7 @@ public:
     /* 17 */ uint8_t photon = 0;
     /* 18 */ uint8_t special = 0;
     /* 19 */ uint8_t ata = 0;
-    /* 1A */ uint8_t stat_boost = 0;
+    /* 1A */ uint8_t stat_boost_entry_index = 0;
     /* 1B */ uint8_t projectile = 0;
     /* 1C */ int8_t trail1_x = 0;
     /* 1D */ int8_t trail1_y = 0;
@@ -162,7 +162,7 @@ public:
     /* 1B */ uint8_t photon = 0;
     /* 1C */ uint8_t special = 0;
     /* 1D */ uint8_t ata = 0;
-    /* 1E */ uint8_t stat_boost = 0;
+    /* 1E */ uint8_t stat_boost_entry_index = 0;
     /* 1F */ uint8_t projectile = 0;
     /* 20 */ int8_t trail1_x = 0;
     /* 21 */ int8_t trail1_y = 0;
@@ -201,7 +201,7 @@ public:
 
   template <typename BaseT, bool BE>
   struct ArmorOrShieldFinalT : ArmorOrShieldT<BaseT, BE> {
-    /* 14 */ uint8_t stat_boost = 0;
+    /* 14 */ uint8_t stat_boost_entry_index = 0;
     /* 15 */ uint8_t tech_boost = 0;
     // TODO: Figure out what this does. Only a few values appear to do anything:
     // Shields:
@@ -391,10 +391,30 @@ public:
 
   template <bool BE>
   struct StatBoostT {
-    uint8_t stat1 = 0;
-    uint8_t stat2 = 0;
-    U16T<BE> amount1 = 0;
-    U16T<BE> amount2 = 0;
+    // Only the first of these stat/amount pairs is used in most versions of
+    // the game. In DC 11/2000 Sega apparently changed the loop from
+    // `for (z = 0; z != 2; z++)` to `for (z = 0; z != 1; z++)`, so only the
+    // first stat/amount pair is used on all versions after DC NTE.
+    // Values for stats:
+    //   01 = ATP bonus
+    //   02 = ATA bonus
+    //   03 = EVP bonus
+    //   04 = DFP bonus
+    //   05 = MST bonus
+    //   06 = HP bonus
+    //   07 = LCK bonus
+    //   08 = all of the above bonuses except HP
+    //   09 = ATP penalty
+    //   0A = ATA penalty
+    //   0B = EVP penalty
+    //   0C = DFP penalty
+    //   0D = MST penalty
+    //   0E = HP penalty
+    //   0F = LCK penalty
+    //   10 = all of the above penalties except HP
+    //   Anything else (including 00) = no bonus or penalty
+    parray<uint8_t, 2> stats = 0;
+    parray<U16T<BE>, 2> amounts;
   } __attribute__((packed));
   using StatBoost = StatBoostT<false>;
   using StatBoostBE = StatBoostT<true>;
@@ -476,6 +496,7 @@ public:
   uint8_t get_item_stars(uint32_t id) const;
   uint8_t get_special_stars(uint8_t special) const;
   const Special& get_special(uint8_t special) const;
+  const StatBoost& get_stat_boost(uint8_t entry_index) const;
   uint8_t get_max_tech_level(uint8_t char_class, uint8_t tech_num) const;
   uint8_t get_weapon_v1_replacement(uint8_t data1_1) const;
 
@@ -624,6 +645,7 @@ protected:
   mutable std::vector<MagV4> parsed_mags;
   mutable std::unordered_map<uint16_t, ToolV4> parsed_tools;
   mutable std::vector<Special> parsed_specials;
+  mutable std::vector<StatBoost> parsed_stat_boosts;
 
   // Key is used_item. We can't index on (used_item, equipped_item) because
   // equipped_item may contain wildcards, and the matching order matters.

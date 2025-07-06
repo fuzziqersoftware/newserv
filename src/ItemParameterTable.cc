@@ -175,7 +175,7 @@ ItemParameterTable::WeaponV4 ItemParameterTable::WeaponV1V2::to_v4() const {
   ret.photon = this->photon;
   ret.special = this->special;
   ret.ata = this->ata;
-  ret.stat_boost = this->stat_boost;
+  ret.stat_boost_entry_index = this->stat_boost_entry_index;
   return ret;
 }
 
@@ -195,7 +195,7 @@ ItemParameterTable::WeaponV4 ItemParameterTable::WeaponGCNTE::to_v4() const {
   ret.photon = this->photon;
   ret.special = this->special;
   ret.ata = this->ata;
-  ret.stat_boost = this->stat_boost;
+  ret.stat_boost_entry_index = this->stat_boost_entry_index;
   ret.projectile = this->projectile;
   ret.trail1_x = this->trail1_x;
   ret.trail1_y = this->trail1_y;
@@ -225,7 +225,7 @@ ItemParameterTable::WeaponV4 ItemParameterTable::WeaponV3T<BE>::to_v4() const {
   ret.photon = this->photon;
   ret.special = this->special;
   ret.ata = this->ata;
-  ret.stat_boost = this->stat_boost;
+  ret.stat_boost_entry_index = this->stat_boost_entry_index;
   ret.projectile = this->projectile;
   ret.trail1_x = this->trail1_x;
   ret.trail1_y = this->trail1_y;
@@ -277,7 +277,7 @@ ItemParameterTable::ArmorOrShieldV4 ItemParameterTable::ArmorOrShieldV1V2::to_v4
   ret.elt = this->elt;
   ret.dfp_range = this->dfp_range;
   ret.evp_range = this->evp_range;
-  ret.stat_boost = this->stat_boost;
+  ret.stat_boost_entry_index = this->stat_boost_entry_index;
   ret.tech_boost = this->tech_boost;
   ret.flags_type = this->flags_type;
   ret.unknown_a4 = this->unknown_a4;
@@ -303,7 +303,7 @@ ItemParameterTable::ArmorOrShieldV4 ItemParameterTable::ArmorOrShieldV3T<BE>::to
   ret.elt = this->elt;
   ret.dfp_range = this->dfp_range;
   ret.evp_range = this->evp_range;
-  ret.stat_boost = this->stat_boost;
+  ret.stat_boost_entry_index = this->stat_boost_entry_index;
   ret.tech_boost = this->tech_boost;
   ret.flags_type = this->flags_type;
   ret.unknown_a4 = this->unknown_a4;
@@ -522,25 +522,22 @@ const ItemParameterTable::ArmorOrShieldV4& ItemParameterTable::get_armor_or_shie
     }
     return ret;
   } catch (const std::out_of_range&) {
-    ArmorOrShieldV4 def_v4;
-
-    if (this->offsets_dc_protos) {
-      def_v4 = indirect_lookup_2d<ArmorOrShieldDCProtos, false>(this->r, this->offsets_dc_protos->armor_table, data1_1 - 1, data1_2).to_v4();
-    } else if (this->offsets_v1_v2) {
-      def_v4 = indirect_lookup_2d<ArmorOrShieldV1V2, false>(this->r, this->offsets_v1_v2->armor_table, data1_1 - 1, data1_2).to_v4();
-    } else if (this->offsets_gc_nte) {
-      def_v4 = indirect_lookup_2d<ArmorOrShieldV3BE, true>(this->r, this->offsets_gc_nte->armor_table, data1_1 - 1, data1_2).to_v4();
-    } else if (this->offsets_v3_le) {
-      def_v4 = indirect_lookup_2d<ArmorOrShieldV3, false>(this->r, this->offsets_v3_le->armor_table, data1_1 - 1, data1_2).to_v4();
-    } else if (this->offsets_v3_be) {
-      def_v4 = indirect_lookup_2d<ArmorOrShieldV3BE, true>(this->r, this->offsets_v3_be->armor_table, data1_1 - 1, data1_2).to_v4();
-    } else {
-      throw logic_error("table is not v2, v3, or v4");
+    while (data1_2 >= parsed_vec.size()) {
+      auto& def_v4 = parsed_vec.emplace_back();
+      if (this->offsets_dc_protos) {
+        def_v4 = indirect_lookup_2d<ArmorOrShieldDCProtos, false>(this->r, this->offsets_dc_protos->armor_table, data1_1 - 1, parsed_vec.size() - 1).to_v4();
+      } else if (this->offsets_v1_v2) {
+        def_v4 = indirect_lookup_2d<ArmorOrShieldV1V2, false>(this->r, this->offsets_v1_v2->armor_table, data1_1 - 1, parsed_vec.size() - 1).to_v4();
+      } else if (this->offsets_gc_nte) {
+        def_v4 = indirect_lookup_2d<ArmorOrShieldV3BE, true>(this->r, this->offsets_gc_nte->armor_table, data1_1 - 1, parsed_vec.size() - 1).to_v4();
+      } else if (this->offsets_v3_le) {
+        def_v4 = indirect_lookup_2d<ArmorOrShieldV3, false>(this->r, this->offsets_v3_le->armor_table, data1_1 - 1, parsed_vec.size() - 1).to_v4();
+      } else if (this->offsets_v3_be) {
+        def_v4 = indirect_lookup_2d<ArmorOrShieldV3BE, true>(this->r, this->offsets_v3_be->armor_table, data1_1 - 1, parsed_vec.size() - 1).to_v4();
+      } else {
+        throw logic_error("table is not v2, v3, or v4");
+      }
     }
-    if (data1_2 >= parsed_vec.size()) {
-      parsed_vec.resize(data1_2 + 1);
-    }
-    parsed_vec[data1_2] = def_v4;
     return parsed_vec[data1_2];
   }
 }
@@ -575,24 +572,22 @@ const ItemParameterTable::UnitV4& ItemParameterTable::get_unit(uint8_t data1_2) 
     }
     return ret;
   } catch (const std::out_of_range&) {
-    UnitV4 def_v4;
-    if (this->offsets_dc_protos) {
-      def_v4 = indirect_lookup_2d<UnitDCProtos, false>(this->r, this->offsets_dc_protos->unit_table, 0, data1_2).to_v4();
-    } else if (this->offsets_v1_v2) {
-      def_v4 = indirect_lookup_2d<UnitV1V2, false>(this->r, this->offsets_v1_v2->unit_table, 0, data1_2).to_v4();
-    } else if (this->offsets_gc_nte) {
-      def_v4 = indirect_lookup_2d<UnitV3BE, true>(this->r, this->offsets_gc_nte->unit_table, 0, data1_2).to_v4();
-    } else if (this->offsets_v3_le) {
-      def_v4 = indirect_lookup_2d<UnitV3, false>(this->r, this->offsets_v3_le->unit_table, 0, data1_2).to_v4();
-    } else if (this->offsets_v3_be) {
-      def_v4 = indirect_lookup_2d<UnitV3BE, true>(this->r, this->offsets_v3_be->unit_table, 0, data1_2).to_v4();
-    } else {
-      throw logic_error("table is not v2, v3, or v4");
+    while (data1_2 >= this->parsed_units.size()) {
+      auto& def_v4 = this->parsed_units.emplace_back();
+      if (this->offsets_dc_protos) {
+        def_v4 = indirect_lookup_2d<UnitDCProtos, false>(this->r, this->offsets_dc_protos->unit_table, 0, this->parsed_units.size() - 1).to_v4();
+      } else if (this->offsets_v1_v2) {
+        def_v4 = indirect_lookup_2d<UnitV1V2, false>(this->r, this->offsets_v1_v2->unit_table, 0, this->parsed_units.size() - 1).to_v4();
+      } else if (this->offsets_gc_nte) {
+        def_v4 = indirect_lookup_2d<UnitV3BE, true>(this->r, this->offsets_gc_nte->unit_table, 0, this->parsed_units.size() - 1).to_v4();
+      } else if (this->offsets_v3_le) {
+        def_v4 = indirect_lookup_2d<UnitV3, false>(this->r, this->offsets_v3_le->unit_table, 0, this->parsed_units.size() - 1).to_v4();
+      } else if (this->offsets_v3_be) {
+        def_v4 = indirect_lookup_2d<UnitV3BE, true>(this->r, this->offsets_v3_be->unit_table, 0, this->parsed_units.size() - 1).to_v4();
+      } else {
+        throw logic_error("table is not v2, v3, or v4");
+      }
     }
-    if (data1_2 >= this->parsed_units.size()) {
-      this->parsed_units.resize(data1_2 + 1);
-    }
-    this->parsed_units[data1_2] = def_v4;
     return this->parsed_units[data1_2];
   }
 }
@@ -627,28 +622,26 @@ const ItemParameterTable::MagV4& ItemParameterTable::get_mag(uint8_t data1_1) co
     }
     return ret;
   } catch (const std::out_of_range&) {
-    MagV4 def_v4;
-    if (this->offsets_dc_protos) {
-      def_v4 = indirect_lookup_2d<MagV1, false>(this->r, this->offsets_dc_protos->mag_table, 0, data1_1).to_v4();
-    } else if (this->offsets_v1_v2) {
-      if (is_v1(this->version)) {
-        def_v4 = indirect_lookup_2d<MagV1, false>(this->r, this->offsets_v1_v2->mag_table, 0, data1_1).to_v4();
+    while (data1_1 >= this->parsed_mags.size()) {
+      auto& def_v4 = this->parsed_mags.emplace_back();
+      if (this->offsets_dc_protos) {
+        def_v4 = indirect_lookup_2d<MagV1, false>(this->r, this->offsets_dc_protos->mag_table, 0, this->parsed_mags.size() - 1).to_v4();
+      } else if (this->offsets_v1_v2) {
+        if (is_v1(this->version)) {
+          def_v4 = indirect_lookup_2d<MagV1, false>(this->r, this->offsets_v1_v2->mag_table, 0, this->parsed_mags.size() - 1).to_v4();
+        } else {
+          def_v4 = indirect_lookup_2d<MagV2, false>(this->r, this->offsets_v1_v2->mag_table, 0, this->parsed_mags.size() - 1).to_v4();
+        }
+      } else if (this->offsets_gc_nte) {
+        def_v4 = indirect_lookup_2d<MagV3BE, true>(this->r, this->offsets_gc_nte->mag_table, 0, this->parsed_mags.size() - 1).to_v4();
+      } else if (this->offsets_v3_le) {
+        def_v4 = indirect_lookup_2d<MagV3, false>(this->r, this->offsets_v3_le->mag_table, 0, this->parsed_mags.size() - 1).to_v4();
+      } else if (this->offsets_v3_be) {
+        def_v4 = indirect_lookup_2d<MagV3BE, true>(this->r, this->offsets_v3_be->mag_table, 0, this->parsed_mags.size() - 1).to_v4();
       } else {
-        def_v4 = indirect_lookup_2d<MagV2, false>(this->r, this->offsets_v1_v2->mag_table, 0, data1_1).to_v4();
+        throw logic_error("table is not v2, v3, or v4");
       }
-    } else if (this->offsets_gc_nte) {
-      def_v4 = indirect_lookup_2d<MagV3BE, true>(this->r, this->offsets_gc_nte->mag_table, 0, data1_1).to_v4();
-    } else if (this->offsets_v3_le) {
-      def_v4 = indirect_lookup_2d<MagV3, false>(this->r, this->offsets_v3_le->mag_table, 0, data1_1).to_v4();
-    } else if (this->offsets_v3_be) {
-      def_v4 = indirect_lookup_2d<MagV3BE, true>(this->r, this->offsets_v3_be->mag_table, 0, data1_1).to_v4();
-    } else {
-      throw logic_error("table is not v2, v3, or v4");
     }
-    if (data1_1 >= this->parsed_mags.size()) {
-      this->parsed_mags.resize(data1_1 + 1);
-    }
-    this->parsed_mags[data1_1] = def_v4;
     return this->parsed_mags[data1_1];
   }
 }
@@ -923,6 +916,38 @@ const ItemParameterTable::Special& ItemParameterTable::get_special(uint8_t speci
     return this->parsed_specials[special];
   } else if (this->offsets_v4) {
     return this->r.pget<Special>(this->offsets_v4->special_data_table + sizeof(Special) * special);
+  } else {
+    throw logic_error("table is not v2, v3, or v4");
+  }
+}
+
+const ItemParameterTable::StatBoost& ItemParameterTable::get_stat_boost(uint8_t entry_index) const {
+  if (this->offsets_dc_protos) {
+    return this->r.pget<StatBoost>(this->offsets_dc_protos->stat_boost_table + sizeof(StatBoost) * entry_index);
+  } else if (this->offsets_v1_v2) {
+    return this->r.pget<StatBoost>(this->offsets_v1_v2->stat_boost_table + sizeof(StatBoost) * entry_index);
+  } else if (this->offsets_v3_le) {
+    return this->r.pget<StatBoost>(this->offsets_v3_le->stat_boost_table + sizeof(StatBoost) * entry_index);
+  } else if (this->offsets_gc_nte) {
+    while (entry_index >= this->parsed_stat_boosts.size()) {
+      const auto& sb_be = this->r.pget<StatBoostBE>(this->offsets_gc_nte->stat_boost_table + sizeof(StatBoostBE) * this->parsed_stat_boosts.size());
+      auto& sb = this->parsed_stat_boosts.emplace_back();
+      sb.stats = sb_be.stats;
+      sb.amounts[0] = sb_be.amounts[0];
+      sb.amounts[1] = sb_be.amounts[1];
+    }
+    return this->parsed_stat_boosts[entry_index];
+  } else if (this->offsets_v3_be) {
+    while (entry_index >= this->parsed_stat_boosts.size()) {
+      const auto& sb_be = this->r.pget<StatBoostBE>(this->offsets_v3_be->stat_boost_table + sizeof(StatBoostBE) * this->parsed_stat_boosts.size());
+      auto& sb = this->parsed_stat_boosts.emplace_back();
+      sb.stats = sb_be.stats;
+      sb.amounts[0] = sb_be.amounts[0];
+      sb.amounts[1] = sb_be.amounts[1];
+    }
+    return this->parsed_stat_boosts[entry_index];
+  } else if (this->offsets_v4) {
+    return this->r.pget<StatBoost>(this->offsets_v4->stat_boost_table + sizeof(StatBoost) * entry_index);
   } else {
     throw logic_error("table is not v2, v3, or v4");
   }
