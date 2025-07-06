@@ -267,7 +267,7 @@ std::string ItemNameIndex::describe_item(const ItemData& item, uint8_t flags) co
         ret_tokens.emplace_back(std::format("!MD:{:04X}", modifier));
       }
 
-      if (item.data1[10] & 0x80) {
+      if (!name_only && (item.data1[10] & 0x80)) {
         ret_tokens.emplace_back(std::format("K:{}", item.get_kill_count()));
       }
 
