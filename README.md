@@ -602,7 +602,7 @@ Some commands only work for clients not in proxy sessions. The chat commands are
 
 * Character data commands (non-proxy only)
     * `$savechar <slot>`: Save your current character data on the server in the specified slot. See the [server-side saves section](#server-side-saves) for more details.
-    * `$loadchar <slot>`: Save your current character data on the server in the specified slot. See the [server-side saves section](#server-side-saves) for more details.
+    * `$loadchar <slot>`: Load character data from the specified slot on the server, and replace your current character with it. See the [server-side saves section](#server-side-saves) for more details.
     * `$bbchar <username> <password> <slot>`: Save your current character data on the server in a different account's BB character slots. See the [server-side saves section](#server-side-saves) for more details.
     * `$checkchar [slot]`: Tells you basic information about a server-side character previously saved using `$savechar`. If `slot` is not given, tells you which slots are used and which are free.
     * `$deletechar <slot>`: Deletes a server-side character previously saved using `$savechar`.
