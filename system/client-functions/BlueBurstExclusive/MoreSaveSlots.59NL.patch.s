@@ -526,14 +526,14 @@ show_slot_number_strend_done:
   lea      ecx, [ecx + ebp + 1]
   push     ecx  # Slot number (scroll_offset + z)
   call     get_show_slot_number_suffix_fmt
-  .binary  2000280023002500640029000000  # L" (#%d)"
+  .binary  20002800230025006400290020000000  # L" (#%d) "
 get_show_slot_number_suffix_fmt:
   push     eax  # Destination buffer
   mov      eax, 0x00857E29  # _swprintf
   call     eax
   add      esp, 0x0C
   jmp      show_slot_number_end
-  .zero    0x98
+  .zero    0x96
 show_slot_number_end:  # 00401E4D
 
   # End static patches
