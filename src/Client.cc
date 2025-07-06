@@ -261,11 +261,12 @@ void Client::reschedule_save_game_data_timer() {
     return;
   }
   this->save_game_data_timer.expires_after(std::chrono::seconds(60));
-  this->idle_timeout_timer.async_wait([this](std::error_code ec) {
+  this->save_game_data_timer.async_wait([this](std::error_code ec) {
     if (!ec) {
       if (this->character(false)) {
         this->save_all();
       }
+      this->reschedule_save_game_data_timer();
     }
   });
 }
