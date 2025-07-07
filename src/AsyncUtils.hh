@@ -240,7 +240,7 @@ inline uint32_t ipv4_addr_for_asio_addr(const asio::ip::address& addr) {
   if (!addr.is_v4()) {
     throw std::runtime_error("Address is not IPv4");
   }
-  return ntohl(addr.to_v4().to_uint());
+  return addr.to_v4().to_uint();
 }
 
 asio::awaitable<asio::ip::tcp::socket> async_connect_tcp(uint32_t ipv4_addr, uint16_t port);
