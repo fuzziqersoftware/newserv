@@ -2369,6 +2369,26 @@ ChatCommandDefinition cc_song(
       co_return;
     });
 
+ChatCommandDefinition cc_sound(
+    {"$sound"},
+    +[](const Args& a) -> asio::awaitable<void> {
+      bool echo_to_all = (!a.text.empty() && a.text[0] == '!');
+      uint32_t sound_id = stoul(echo_to_all ? a.text.substr(1) : a.text, nullptr, 16);
+
+      // TODO: Using floor is technically incorrect here; it should be area
+      G_PlaySoundFromPlayer_6xB2 cmd = {{0xB2, 0x03, 0x0000}, static_cast<uint8_t>(a.c->floor), 0x00, a.c->lobby_client_id, sound_id};
+      if (!echo_to_all) {
+        send_command_t(a.c, 0x60, 0x00, cmd);
+      } else if (a.c->proxy_session) {
+        send_command_t(a.c, 0x60, 0x00, cmd);
+        send_command_t(a.c->proxy_session->server_channel, 0x60, 0x00, cmd);
+      } else {
+        a.check_debug_enabled();
+        send_command_t(a.c->require_lobby(), 0x60, 0x00, cmd);
+      }
+      co_return;
+    });
+
 ChatCommandDefinition cc_spec(
     {"$spec"},
     +[](const Args& a) -> asio::awaitable<void> {

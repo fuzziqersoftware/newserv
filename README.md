@@ -564,22 +564,25 @@ Some commands only work for clients not in proxy sessions. The chat commands are
     * `$where`: Show your current floor number and coordinates. Mainly useful for debugging.
     * `$qfread <field-name>` (non-proxy only): Show the value of a quest counter in your player data. The field names are defined in config.json.
 
-* Debugging commands
-    * `$debug`: Enable or disable debug. You need the DEBUG flag in your user account to use this command. Enabling debug does several things:
+* Basic debugging commands (special permissions not required)
+    * `$whatobj` and `$whatene` (non-proxy only): Tells you what the closest object or enemy spawn point is to your position, along with its coordinates and object or enemy ID. The full definition is also printed to the server's log.
+    * `$qcheck <flag-num>` (non-proxy only): Show the value of a quest flag. If you're in a game, show the value of the flag in that game; if you're in the lobby, show the saved value of that quest flag for your character (BB only).
+    * `$qgread <flag-num>` (non-proxy only): Show the value of a quest counter ("global flag").
+    * `$sound <sound-id>`: Play the given sound (GC only).
+
+* Restricted debugging commands (`$debug` permission required)
+    * `$debug`: Enable debug mode. You need the DEBUG flag in your user account to use this command. Enabling debug does several things:
+        * You'll be able to use the rest of the commands in this section.
         * You'll see in-game messages from the server when you take some actions, like killing enemies, opening boxes, or flipping switches.
         * You'll see the rare seed value and floor variations when you join a game.
         * You'll be placed into the last available slot in lobbies and games instead of the first, unless you're joining a BB solo-mode game.
         * You'll be able to join games with any PSO version, not only those for which cross-version play is normally enabled. See the "Cross-version play" section above for details on this.
-        * Most of the commands in this section are enabled. (A few of them are always enabled and don't require `$debug`.)
-    * `$whatobj` and `$whatene` (non-proxy only): Tells you what the closest object or enemy spawn point is to your position, along with its coordinates and object or enemy ID. The full definition is also printed to the server's log. These commands can be used without `$debug` enabled.
     * `$readmem <address>`: Read 4 bytes from the given address and show you the values.
     * `$writemem <address> <data>`: Write data to the given address. Data is not required to be any specific size.
     * `$nativecall <address> [arg1 ...]` (GC only): Call a native function on your client. Only arguments passed in registers are supported; calling functions that take many arguments is not supported.
     * `$quest <number>` (non-proxy only): Load a quest by quest number. Can be used to load battle or challenge quests with only one player present. `$debug` is not required for this command if the specified quest has the AllowStartFromChatCommand field set in its metadata file.
     * `$qcall <function-id>`: Call a quest function on your client.
-    * `$qcheck <flag-num>` (non-proxy only): Show the value of a quest flag. This command can be used without `$debug` enabled. If you're in a game, show the value of the flag in that game; if you're in the lobby, show the saved value of that quest flag for your character (BB only).
     * `$qset <flag-num>` or `$qclear <flag-num>`: Set or clear a quest flag for everyone in the game. If you're in the lobby and on BB, set or clear the saved value of a quest flag in your character file.
-    * `$qgread <flag-num>` (non-proxy only): Show the value of a quest counter ("global flag"). This command can be used without `$debug` enabled.
     * `$qgwrite <flag-num> <value>` (non-proxy only): Set the value of a quest counter ("global flag") for yourself.
     * `$qsync <reg-num> <value>`: Set a quest register's value for yourself only. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.
     * `$qsyncall <reg-num> <value>`: Set a quest register's value for everyone in the game. `<reg-num>` should be either rXX (e.g. r60) or fXX (e.g. f60); if the latter, `<value>` is parsed as a floating-point value instead of as an integer.
@@ -589,7 +592,7 @@ Some commands only work for clients not in proxy sessions. The chat commands are
     * `$sc <data>`: Send a command to yourself.
     * `$ss <data>`: Send a command to the remote server (if in a proxy session) or to the game server.
     * `$sb <data>`: Send a command to yourself, and to the remote server or game server.
-    * `$auction` (Episode 3 only): Bring up the CARD Auction menu, regardless of how many players are in the game or if you have a VIP card.
+    * `$auction` (Episode 3 only): Bring up the CARD Auction menu, even if there are fewer than 4 players are in the game or you don't have a VIP card.
 
 * Personal state commands
     * `$arrow <color-id>`: Change your lobby arrow color. The color may be specified by number (0-12) or by name (red, blue, green, yellow, purple, cyan, orange, pink, white, white2, white3, or black).
