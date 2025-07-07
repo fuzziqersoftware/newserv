@@ -2,6 +2,8 @@ Used regions in PSO GC:
 80004000-80004194 (0194) ExtendedItemInfo (AR code uses 80005000 due to conflict with q8853x)
 800041A0-800041B8 (0018) UnsellableRares
 800041C0-???????? (TODO) EnemyDamageSync
+
+8000B06C-8000B088 (001C) BugFixes
 8000B088-8000B0E0 (0058) BugFixes
 8000B0E0-8000B254 (0174) q8853x send_function_call handler
 8000B5C8-8000B5DC (0014) BugFixes

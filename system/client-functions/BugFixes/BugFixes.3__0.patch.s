@@ -562,5 +562,29 @@ start:
   .data     0x00000004
   .data     0x43480000
 
+  # Belra arm bug fix (this part by fuzziqersoftware)
+  .data     <VERS 0x800959B0 0x800959B0 0x80095724>
+  .data     0x00000004
+  .address  <VERS 0x800959B0 0x800959B0 0x80095724>
+  bl        belra_bugfix_hook1
+  .data     <VERS 0x800959C0 0x800959C0 0x80095734>
+  .data     0x00000004
+  .address  <VERS 0x800959C0 0x800959C0 0x80095734>
+  bl        belra_bugfix_hook2
+
+  .data     0x8000B06C
+  .deltaof  belra_bugfix_hook1, belra_bugfix_end
+  .address  0x8000B06C
+belra_bugfix_hook1:
+  li        r0, 1
+  stw       [r13 - <VERS 0x2E30 0x2E30 0x2E48>], r0  # Anchor: 80039388 @ 3OE1
+  b         [<VERS 803D4410 803D4468 803D3140>]
+belra_bugfix_hook2:
+  li        r4, 0
+  stw       [r13 - <VERS 0x2E30 0x2E30 0x2E48>], r4
+  lwz       r4, [r28 + 0x04]
+  blr
+belra_bugfix_end:
+
   .data     0x00000000
   .data     0x00000000
