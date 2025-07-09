@@ -678,7 +678,7 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
 void ItemNameIndex::print_table(FILE* stream) const {
   auto pmt = this->item_parameter_table;
 
-  phosg::fwrite_fmt(stream, "WEAPON => ---ID--- TYPE SKIN POINTS FLAG ATPLO ATPHI ATPRQ MSTRQ ATARQ -MST- GND PH SP ATA SB PJ 1X 1Y 2X 2Y CL A1 A2 A3 A4 A5 TB BF V1 ST* USL ---DIVISOR--- NAME\n");
+  phosg::fwrite_fmt(stream, "WEAPON => ---ID--- TYPE SKIN POINTS FLAG ATPLO ATPHI ATPRQ MSTRQ ATARQ -MST- GND PH SP ATA SB(S1:AMT1,S2:AMT2) PJ 1X 1Y 2X 2Y CL A1 A2 A3 A4 A5 TB BF V1 ST* USL ---DIVISOR--- NAME\n");
   for (size_t data1_1 = 0; data1_1 < pmt->num_weapon_classes; data1_1++) {
     uint8_t v1_replacement = pmt->get_weapon_v1_replacement(data1_1);
     float sale_divisor = pmt->get_sale_divisor(0x00, data1_1);
@@ -742,7 +742,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
     }
   }
 
-  phosg::fwrite_fmt(stream, "ARMOR  => ---ID--- TYPE SKIN POINTS -DFP- -EVP- BP BE FLAG LVL EFR ETH EIC EDK ELT DFR EVR SB TB FT A4 ST* ---DIVISOR--- NAME\n");
+  phosg::fwrite_fmt(stream, "ARMOR  => ---ID--- TYPE SKIN POINTS -DFP- -EVP- BP BE FLAG LVL EFR ETH EIC EDK ELT DFR EVR SB(S1:AMT1,S2:AMT2) TB FT A4 ST* ---DIVISOR--- NAME\n");
   for (size_t data1_1 = 1; data1_1 < 3; data1_1++) {
     float sale_divisor = pmt->get_sale_divisor(0x01, data1_1);
     string divisor_str = std::format("{:g}", sale_divisor);
