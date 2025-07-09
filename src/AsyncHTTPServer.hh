@@ -205,9 +205,11 @@ protected:
         if (resp) {
           co_await c->send_http_response(*resp);
         }
-        auto* conn_header = req.get_header("connection");
-        if (!conn_header || (*conn_header != "keep-alive")) {
-          c->r.close();
+        if (!c->is_websocket) {
+          auto* conn_header = req.get_header("connection");
+          if (!conn_header || (*conn_header != "keep-alive")) {
+            c->r.close();
+          }
         }
       }
 
