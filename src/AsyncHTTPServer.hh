@@ -87,7 +87,7 @@ struct HTTPServerLimits {
   size_t max_http_data_size = 0x200000; // 2MB
   size_t max_http_keepalive_idle_usecs = 300 * 1000 * 1000; // 5 minutes (0 = no limit)
   size_t max_websocket_message_size = 0x200000; // 2MB
-  size_t max_websocket_idle_usecs = 300 * 1000 * 1000; // 5 minutes (0 = no limit)
+  size_t max_websocket_idle_usecs = 0; // No limit by default
 };
 
 extern const HTTPServerLimits DEFAULT_HTTP_LIMITS;
