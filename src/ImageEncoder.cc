@@ -35,7 +35,7 @@ struct GVRHeader {
   be_uint16_t height;
 } __packed_ws__(GVRHeader, 0x10);
 
-string encode_gvm(const phosg::ImageRGBA8888& img, GVRDataFormat data_format, const string& internal_name, uint32_t global_index) {
+string encode_gvm(const phosg::ImageRGBA8888N& img, GVRDataFormat data_format, const string& internal_name, uint32_t global_index) {
   int8_t dimensions_field = -2;
   {
     size_t h = img.get_height();

@@ -1195,8 +1195,15 @@
   // "RareEnemyRates-Ultimate": {...},
   // "RareEnemyRates-Challenge": {...},
 
-  // You can override the minimum character levels required to make BB games in
+  // You can override the minimum character levels required to make games in
   // each episode and difficulty level here.
+  "V1V2MinimumLevels": {
+    "Episode1": [1, 20, 40, 80],
+  },
+  "V3MinimumLevels": {
+    "Episode1": [1, 20, 40, 80],
+    "Episode2": [1, 20, 40, 80],
+  },
   "BBMinimumLevels": {
     "Episode1": [1, 20, 50, 90],
     "Episode2": [1, 30, 60, 100],

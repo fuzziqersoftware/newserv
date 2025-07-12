@@ -106,7 +106,7 @@ uint32_t class_flags_for_class(uint8_t char_class);
 
 char char_for_challenge_rank(uint8_t rank);
 
-extern const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V3;
+extern const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V123;
 extern const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP1;
 extern const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP2;
 extern const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP4;

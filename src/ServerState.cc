@@ -400,23 +400,20 @@ shared_ptr<const QuestIndex> ServerState::quest_index(Version version) const {
 }
 
 size_t ServerState::default_min_level_for_game(Version version, Episode episode, uint8_t difficulty) const {
-  // A player's actual level is their displayed level - 1, so the minimums for
-  // Episode 1 (for example) are actually 1, 20, 40, 80.
+  const auto& min_levels = is_v4(version)
+      ? this->min_levels_v4
+      : is_v3(version)
+      ? this->min_levels_v3
+      : this->min_levels_v1_v2;
   switch (episode) {
-    case Episode::EP1: {
-      const auto& min_levels = (version == Version::BB_V4) ? this->min_levels_v4[0] : DEFAULT_MIN_LEVELS_V3;
-      return min_levels.at(difficulty);
-    }
-    case Episode::EP2: {
-      const auto& min_levels = (version == Version::BB_V4) ? this->min_levels_v4[1] : DEFAULT_MIN_LEVELS_V3;
-      return min_levels.at(difficulty);
-    }
+    case Episode::EP1:
+      return min_levels[0].at(difficulty);
+    case Episode::EP2:
+      return min_levels[1].at(difficulty);
     case Episode::EP3:
       return 0;
-    case Episode::EP4: {
-      const auto& min_levels = (version == Version::BB_V4) ? this->min_levels_v4[2] : DEFAULT_MIN_LEVELS_V3;
-      return min_levels.at(difficulty);
-    }
+    case Episode::EP4:
+      return min_levels[2].at(difficulty);
     default:
       throw runtime_error("invalid episode");
   }
@@ -966,7 +963,7 @@ void ServerState::load_config_early() {
     } else if (lower_path.ends_with(".gvm")) {
       decompressed_gvm_data = phosg::load_file(path);
     } else if (lower_path.ends_with(".bmp")) {
-      auto img = phosg::ImageRGBA8888::from_file_data(phosg::load_file(path));
+      auto img = phosg::ImageRGBA8888N::from_file_data(phosg::load_file(path));
       decompressed_gvm_data = encode_gvm(
           img,
           has_any_transparent_pixels(img) ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565,
@@ -1273,31 +1270,42 @@ void ServerState::load_config_early() {
     this->rare_enemy_rates_challenge = MapState::DEFAULT_RARE_ENEMIES;
   }
 
+  this->min_levels_v1_v2[0] = DEFAULT_MIN_LEVELS_V123;
+  this->min_levels_v1_v2[1] = DEFAULT_MIN_LEVELS_V123;
+  this->min_levels_v1_v2[2] = DEFAULT_MIN_LEVELS_V123;
+  this->min_levels_v3[0] = DEFAULT_MIN_LEVELS_V123;
+  this->min_levels_v3[1] = DEFAULT_MIN_LEVELS_V123;
+  this->min_levels_v3[2] = DEFAULT_MIN_LEVELS_V123;
   this->min_levels_v4[0] = DEFAULT_MIN_LEVELS_V4_EP1;
   this->min_levels_v4[1] = DEFAULT_MIN_LEVELS_V4_EP2;
   this->min_levels_v4[2] = DEFAULT_MIN_LEVELS_V4_EP4;
-  try {
-    for (const auto& ep_it : this->config_json->get_dict("BBMinimumLevels")) {
-      array<size_t, 4> levels({0, 0, 0, 0});
-      for (size_t z = 0; z < 4; z++) {
-        levels[z] = ep_it.second->get_int(z) - 1;
+  auto populate_min_levels = [&](std::array<std::array<size_t, 4>, 3>& dest, const char* key_name) -> void {
+    try {
+      for (const auto& ep_it : this->config_json->get_dict(key_name)) {
+        array<size_t, 4> levels({0, 0, 0, 0});
+        for (size_t z = 0; z < 4; z++) {
+          levels[z] = ep_it.second->get_int(z) - 1;
+        }
+        switch (episode_for_token_name(ep_it.first)) {
+          case Episode::EP1:
+            dest[0] = levels;
+            break;
+          case Episode::EP2:
+            dest[1] = levels;
+            break;
+          case Episode::EP4:
+            dest[2] = levels;
+            break;
+          default:
+            throw runtime_error("unknown episode");
+        }
       }
-      switch (episode_for_token_name(ep_it.first)) {
-        case Episode::EP1:
-          this->min_levels_v4[0] = levels;
-          break;
-        case Episode::EP2:
-          this->min_levels_v4[1] = levels;
-          break;
-        case Episode::EP4:
-          this->min_levels_v4[2] = levels;
-          break;
-        default:
-          throw runtime_error("unknown episode");
-      }
+    } catch (const out_of_range&) {
     }
-  } catch (const out_of_range&) {
-  }
+  };
+  populate_min_levels(this->min_levels_v1_v2, "V1V2MinimumLevels");
+  populate_min_levels(this->min_levels_v3, "V3MinimumLevels");
+  populate_min_levels(this->min_levels_v4, "BBMinimumLevels");
 
   this->bb_required_patches.clear();
   try {

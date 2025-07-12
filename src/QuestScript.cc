@@ -830,8 +830,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[0] = floor
     // regsA[1] = section
     // regsA[2] = group
-    {0x8A, "unhide_obj", nullptr, {{REG_SET_FIXED, 3}}, F_V0_V4},
-    {0x8B, "unhide_ene", nullptr, {{REG_SET_FIXED, 3}}, F_V0_V4},
+    {0x8A, "construct_delayed_object", "unhide_obj", {{REG_SET_FIXED, 3}}, F_V0_V4},
+    {0x8B, "construct_delayed_enemy", "unhide_ene", {{REG_SET_FIXED, 3}}, F_V0_V4},
 
     // Starts a new thread when the player is close enough to the given point.
     // The collision is created on the current floor; the thread is created

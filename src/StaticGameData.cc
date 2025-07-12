@@ -805,7 +805,7 @@ char char_for_challenge_rank(uint8_t rank) {
   return "BAS"[rank];
 }
 
-const array<size_t, 4> DEFAULT_MIN_LEVELS_V3({0, 19, 39, 79});
+const array<size_t, 4> DEFAULT_MIN_LEVELS_V123({0, 19, 39, 79});
 const array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP1({0, 19, 39, 79});
 const array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP2({0, 29, 49, 89});
 const array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP4({0, 39, 79, 109});

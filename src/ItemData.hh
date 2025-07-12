@@ -118,7 +118,7 @@ struct ItemData {
   // sending where needed.
   // Related note: PSO V2 has an annoyingly complicated format for mags that
   // doesn't match the above table. We decode this upon receipt and encode it
-  // imemdiately before sending when interacting with V2 clients; see the
+  // immediately before sending when interacting with V2 clients; see the
   // implementation of decode_for_version() for details.
 
   union {

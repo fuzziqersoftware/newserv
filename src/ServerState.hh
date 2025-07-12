@@ -218,6 +218,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const SetDataTableBase> bb_solo_set_data_table_ep1_ult;
   std::array<std::shared_ptr<const MapState::RareEnemyRates>, 4> rare_enemy_rates_by_difficulty;
   std::shared_ptr<const MapState::RareEnemyRates> rare_enemy_rates_challenge;
+  std::array<std::array<size_t, 4>, 3> min_levels_v1_v2; // Indexed as [episode][difficulty]
+  std::array<std::array<size_t, 4>, 3> min_levels_v3; // Indexed as [episode][difficulty]
   std::array<std::array<size_t, 4>, 3> min_levels_v4; // Indexed as [episode][difficulty]
   std::unordered_set<std::string> bb_required_patches;
   std::unordered_set<std::string> auto_patches;

@@ -1183,7 +1183,7 @@ Action a_encode_gvm(
       } else {
         data = phosg::read_all(stdin);
       }
-      auto img = phosg::ImageRGBA8888::from_file_data(data);
+      auto img = phosg::ImageRGBA8888N::from_file_data(data);
       // If the image has any transparent pixels at all, use RGB5A3
       string encoded = encode_gvm(
           img, has_any_transparent_pixels(img) ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565, "image.gvr", 0);
@@ -2595,17 +2595,17 @@ Action a_generate_ep3_cards_html(
             phosg::parallel_range<uint32_t>([&](uint32_t index, size_t) -> bool {
               auto& info = this->card_infos[index];
               if (!info.large_filename.empty()) {
-                auto img = phosg::ImageRGBA8888::from_file_data(phosg::load_file(info.large_filename));
+                auto img = phosg::ImageRGBA8888N::from_file_data(phosg::load_file(info.large_filename));
                 img.resize(512, 399);
                 info.large_data_url = img.serialize(phosg::ImageFormat::PNG_DATA_URL);
               }
               if (!info.medium_filename.empty()) {
-                auto img = phosg::ImageRGBA8888::from_file_data(phosg::load_file(info.medium_filename));
+                auto img = phosg::ImageRGBA8888N::from_file_data(phosg::load_file(info.medium_filename));
                 img.resize(184, 144);
                 info.medium_data_url = img.serialize(phosg::ImageFormat::PNG_DATA_URL);
               }
               if (!info.small_filename.empty()) {
-                auto img = phosg::ImageRGBA8888::from_file_data(phosg::load_file(info.small_filename));
+                auto img = phosg::ImageRGBA8888N::from_file_data(phosg::load_file(info.small_filename));
                 img.resize(58, 43);
                 info.small_data_url = img.serialize(phosg::ImageFormat::PNG_DATA_URL);
               }

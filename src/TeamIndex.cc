@@ -98,7 +98,7 @@ void TeamIndex::Team::save_config() const {
 }
 
 void TeamIndex::Team::load_flag() {
-  auto img = phosg::ImageRGBA8888::from_file_data(phosg::load_file(this->flag_filename()));
+  auto img = phosg::ImageRGBA8888N::from_file_data(phosg::load_file(this->flag_filename()));
   if (img.get_width() != 32 || img.get_height() != 32) {
     throw runtime_error("incorrect flag image dimensions");
   }
@@ -114,7 +114,7 @@ void TeamIndex::Team::save_flag() const {
   if (!this->flag_data) {
     return;
   }
-  phosg::ImageRGBA8888 img(32, 32);
+  phosg::ImageRGBA8888N img(32, 32);
   for (size_t y = 0; y < 32; y++) {
     for (size_t x = 0; x < 32; x++) {
       img.write(x, y, phosg::rgba8888_for_argb1555(this->flag_data->at(y * 0x20 + x)));
