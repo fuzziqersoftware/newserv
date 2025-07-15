@@ -5211,9 +5211,9 @@ struct G_Unknown_6x78 {
 struct G_GogoBall_6x79 {
   G_UnusedHeader header;
   le_uint32_t unknown_a1 = 0;
-  le_uint32_t unknown_a2 = 0;
+  le_uint32_t angle = 0;
   VectorXZF ball_pos;
-  uint8_t unknown_a5 = 0;
+  uint8_t use_missile_sound = 0;
   parray<uint8_t, 3> unused;
 } __packed_ws__(G_GogoBall_6x79, 0x18);
 
