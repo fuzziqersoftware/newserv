@@ -18,10 +18,16 @@ public:
     Table(const phosg::JSON& json, Episode episode);
     Table(const phosg::StringReader& r, bool big_endian, bool is_v3, Episode episode);
 
+    bool operator==(const Table& other) const = default;
+    bool operator!=(const Table& other) const = default;
+
     template <typename IntT>
     struct Range {
       IntT min;
       IntT max;
+
+      bool operator==(const Range& other) const = default;
+      bool operator!=(const Range& other) const = default;
     } __attribute__((packed));
 
     Episode episode;
@@ -50,6 +56,7 @@ public:
 
     phosg::JSON json() const;
     void print(FILE* stream) const;
+    void print_diff(FILE* stream, const Table& other) const;
 
   private:
     template <bool BE>
@@ -261,9 +268,13 @@ public:
     check_struct_size(OffsetsBE, 0x54);
   };
 
+  bool operator==(const CommonItemSet& other) const = default;
+  bool operator!=(const CommonItemSet& other) const = default;
+
   std::shared_ptr<const Table> get_table(Episode episode, GameMode mode, uint8_t difficulty, uint8_t secid) const;
   phosg::JSON json() const;
   void print(FILE* stream) const;
+  void print_diff(FILE* stream, const CommonItemSet& other) const;
 
 protected:
   CommonItemSet() = default;

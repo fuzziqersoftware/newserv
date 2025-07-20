@@ -128,8 +128,15 @@ CommonItemSet::Table::Table(const phosg::JSON& json, Episode episode)
   for (size_t z = 0; z < 0x64; z++) {
     static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
     for (Episode episode : episodes) {
+      auto types = enemy_types_for_rare_table_index(episode, z);
+      vector<string> names;
+      if (types.empty()) {
+        names.emplace_back(std::format("{}:!{:02X}", abbreviation_for_episode(episode), z));
+      }
       for (auto type : enemy_types_for_rare_table_index(episode, z)) {
-        string name = std::format("{}:{}", abbreviation_for_episode(episode), phosg::name_for_enum(type));
+        names.emplace_back(std::format("{}:{}", abbreviation_for_episode(episode), phosg::name_for_enum(type)));
+      }
+      for (const auto& name : names) {
         from_json_into(*enemy_meseta_ranges_json.at(name), this->enemy_meseta_ranges[z]);
         this->enemy_type_drop_probs[z] = enemy_type_drop_probs_json.at(name)->as_int();
         this->enemy_item_classes[z] = enemy_item_classes_json.at(name)->as_int();
@@ -336,6 +343,122 @@ void CommonItemSet::Table::print(FILE* stream) const {
   }
 }
 
+void CommonItemSet::Table::print_diff(FILE* stream, const Table& other) const {
+  if (this->episode != other.episode) {
+    phosg::fwrite_fmt(stream, ">   Episode: {} -> {}\n", name_for_episode(this->episode), name_for_episode(other.episode));
+  }
+  if (this->base_weapon_type_prob_table != other.base_weapon_type_prob_table) {
+    phosg::fwrite_fmt(stream, ">   base_weapon_type_prob_table: {} -> {}\n",
+        phosg::format_data_string(&this->base_weapon_type_prob_table, sizeof(this->base_weapon_type_prob_table)),
+        phosg::format_data_string(&other.base_weapon_type_prob_table, sizeof(other.base_weapon_type_prob_table)));
+  }
+  if (this->subtype_base_table != other.subtype_base_table) {
+    phosg::fwrite_fmt(stream, ">   subtype_base_table: {} -> {}\n",
+        phosg::format_data_string(&this->subtype_base_table, sizeof(this->subtype_base_table)),
+        phosg::format_data_string(&other.subtype_base_table, sizeof(other.subtype_base_table)));
+  }
+  if (this->subtype_area_length_table != other.subtype_area_length_table) {
+    phosg::fwrite_fmt(stream, ">   subtype_area_length_table: {} -> {}\n",
+        phosg::format_data_string(&this->subtype_area_length_table, sizeof(this->subtype_area_length_table)),
+        phosg::format_data_string(&other.subtype_area_length_table, sizeof(other.subtype_area_length_table)));
+  }
+  if (this->grind_prob_table != other.grind_prob_table) {
+    phosg::fwrite_fmt(stream, ">   grind_prob_table: {} -> {}\n",
+        phosg::format_data_string(&this->grind_prob_table, sizeof(this->grind_prob_table)),
+        phosg::format_data_string(&other.grind_prob_table, sizeof(other.grind_prob_table)));
+  }
+  if (this->armor_shield_type_index_prob_table != other.armor_shield_type_index_prob_table) {
+    phosg::fwrite_fmt(stream, ">   armor_shield_type_index_prob_table: {} -> {}\n",
+        phosg::format_data_string(&this->armor_shield_type_index_prob_table, sizeof(this->armor_shield_type_index_prob_table)),
+        phosg::format_data_string(&other.armor_shield_type_index_prob_table, sizeof(other.armor_shield_type_index_prob_table)));
+  }
+  if (this->armor_slot_count_prob_table != other.armor_slot_count_prob_table) {
+    phosg::fwrite_fmt(stream, ">   armor_slot_count_prob_table: {} -> {}\n",
+        phosg::format_data_string(&this->armor_slot_count_prob_table, sizeof(this->armor_slot_count_prob_table)),
+        phosg::format_data_string(&other.armor_slot_count_prob_table, sizeof(other.armor_slot_count_prob_table)));
+  }
+  if (this->enemy_meseta_ranges != other.enemy_meseta_ranges) {
+    phosg::fwrite_fmt(stream, ">   enemy_meseta_ranges: {} -> {}\n",
+        phosg::format_data_string(&this->enemy_meseta_ranges, sizeof(this->enemy_meseta_ranges)),
+        phosg::format_data_string(&other.enemy_meseta_ranges, sizeof(other.enemy_meseta_ranges)));
+  }
+  if (this->enemy_type_drop_probs != other.enemy_type_drop_probs) {
+    phosg::fwrite_fmt(stream, ">   enemy_type_drop_probs: {} -> {}\n",
+        phosg::format_data_string(&this->enemy_type_drop_probs, sizeof(this->enemy_type_drop_probs)),
+        phosg::format_data_string(&other.enemy_type_drop_probs, sizeof(other.enemy_type_drop_probs)));
+  }
+  if (this->enemy_item_classes != other.enemy_item_classes) {
+    phosg::fwrite_fmt(stream, ">   enemy_item_classes: {} -> {}\n",
+        phosg::format_data_string(&this->enemy_item_classes, sizeof(this->enemy_item_classes)),
+        phosg::format_data_string(&other.enemy_item_classes, sizeof(other.enemy_item_classes)));
+  }
+  if (this->box_meseta_ranges != other.box_meseta_ranges) {
+    phosg::fwrite_fmt(stream, ">   box_meseta_ranges: {} -> {}\n",
+        phosg::format_data_string(&this->box_meseta_ranges, sizeof(this->box_meseta_ranges)),
+        phosg::format_data_string(&other.box_meseta_ranges, sizeof(other.box_meseta_ranges)));
+  }
+  if (this->has_rare_bonus_value_prob_table != other.has_rare_bonus_value_prob_table) {
+    phosg::fwrite_fmt(stream, ">   Has rare bonus value prob table: {} -> {}\n",
+        this->has_rare_bonus_value_prob_table ? "true" : "false",
+        other.has_rare_bonus_value_prob_table ? "true" : "false");
+  }
+  if (this->bonus_value_prob_table != other.bonus_value_prob_table) {
+    phosg::fwrite_fmt(stream, ">   bonus_value_prob_table: {} -> {}\n",
+        phosg::format_data_string(&this->bonus_value_prob_table, sizeof(this->bonus_value_prob_table)),
+        phosg::format_data_string(&other.bonus_value_prob_table, sizeof(other.bonus_value_prob_table)));
+  }
+  if (this->nonrare_bonus_prob_spec != other.nonrare_bonus_prob_spec) {
+    phosg::fwrite_fmt(stream, ">   nonrare_bonus_prob_spec: {} -> {}\n",
+        phosg::format_data_string(&this->nonrare_bonus_prob_spec, sizeof(this->nonrare_bonus_prob_spec)),
+        phosg::format_data_string(&other.nonrare_bonus_prob_spec, sizeof(other.nonrare_bonus_prob_spec)));
+  }
+  if (this->bonus_type_prob_table != other.bonus_type_prob_table) {
+    phosg::fwrite_fmt(stream, ">   bonus_type_prob_table: {} -> {}\n",
+        phosg::format_data_string(&this->bonus_type_prob_table, sizeof(this->bonus_type_prob_table)),
+        phosg::format_data_string(&other.bonus_type_prob_table, sizeof(other.bonus_type_prob_table)));
+  }
+  if (this->special_mult != other.special_mult) {
+    phosg::fwrite_fmt(stream, ">   special_mult: {} -> {}\n",
+        phosg::format_data_string(&this->special_mult, sizeof(this->special_mult)),
+        phosg::format_data_string(&other.special_mult, sizeof(other.special_mult)));
+  }
+  if (this->special_percent != other.special_percent) {
+    phosg::fwrite_fmt(stream, ">   special_percent: {} -> {}\n",
+        phosg::format_data_string(&this->special_percent, sizeof(this->special_percent)),
+        phosg::format_data_string(&other.special_percent, sizeof(other.special_percent)));
+  }
+  if (this->tool_class_prob_table != other.tool_class_prob_table) {
+    phosg::fwrite_fmt(stream, ">   tool_class_prob_table: {} -> {}\n",
+        phosg::format_data_string(&this->tool_class_prob_table, sizeof(this->tool_class_prob_table)),
+        phosg::format_data_string(&other.tool_class_prob_table, sizeof(other.tool_class_prob_table)));
+  }
+  if (this->technique_index_prob_table != other.technique_index_prob_table) {
+    phosg::fwrite_fmt(stream, ">   technique_index_prob_table: {} -> {}\n",
+        phosg::format_data_string(&this->technique_index_prob_table, sizeof(this->technique_index_prob_table)),
+        phosg::format_data_string(&other.technique_index_prob_table, sizeof(other.technique_index_prob_table)));
+  }
+  if (this->technique_level_ranges != other.technique_level_ranges) {
+    phosg::fwrite_fmt(stream, ">   technique_level_ranges: {} -> {}\n",
+        phosg::format_data_string(&this->technique_level_ranges, sizeof(this->technique_level_ranges)),
+        phosg::format_data_string(&other.technique_level_ranges, sizeof(other.technique_level_ranges)));
+  }
+  if (this->armor_or_shield_type_bias != other.armor_or_shield_type_bias) {
+    phosg::fwrite_fmt(stream, ">   Armor/shield type bias: {} -> {}\n",
+        this->armor_or_shield_type_bias ? "true" : "false",
+        other.armor_or_shield_type_bias ? "true" : "false");
+  }
+  if (this->unit_max_stars_table != other.unit_max_stars_table) {
+    phosg::fwrite_fmt(stream, ">   unit_max_stars_table: {} -> {}\n",
+        phosg::format_data_string(&this->unit_max_stars_table, sizeof(this->unit_max_stars_table)),
+        phosg::format_data_string(&other.unit_max_stars_table, sizeof(other.unit_max_stars_table)));
+  }
+  if (this->box_item_class_prob_table != other.box_item_class_prob_table) {
+    phosg::fwrite_fmt(stream, ">   box_item_class_prob_table: {} -> {}\n",
+        phosg::format_data_string(&this->box_item_class_prob_table, sizeof(this->box_item_class_prob_table)),
+        phosg::format_data_string(&other.box_item_class_prob_table, sizeof(other.box_item_class_prob_table)));
+  }
+}
+
 phosg::JSON CommonItemSet::Table::json() const {
   phosg::JSON enemy_meseta_ranges_json = phosg::JSON::dict();
   phosg::JSON enemy_type_drop_probs_json = phosg::JSON::dict();
@@ -343,8 +466,16 @@ phosg::JSON CommonItemSet::Table::json() const {
   for (size_t z = 0; z < 0x64; z++) {
     static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
     for (Episode episode : episodes) {
-      for (auto type : enemy_types_for_rare_table_index(episode, z)) {
-        string name = std::format("{}:{}", abbreviation_for_episode(episode), phosg::name_for_enum(type));
+      auto types = enemy_types_for_rare_table_index(episode, z);
+      vector<string> names;
+      if (types.empty()) {
+        names.emplace_back(std::format("{}:!{:02X}", abbreviation_for_episode(episode), z));
+      } else {
+        for (auto type : types) {
+          names.emplace_back(std::format("{}:{}", abbreviation_for_episode(episode), phosg::name_for_enum(type)));
+        }
+      }
+      for (const auto& name : names) {
         enemy_meseta_ranges_json.emplace(name, to_json(this->enemy_meseta_ranges[z]));
         enemy_type_drop_probs_json.emplace(name, this->enemy_type_drop_probs[z]);
         enemy_item_classes_json.emplace(name, this->enemy_item_classes[z]);
@@ -417,6 +548,43 @@ void CommonItemSet::print(FILE* stream) const {
                 name_for_mode(mode), name_for_episode(episode), name_for_difficulty(difficulty), name_for_section_id(section_id));
             table->print(stream);
           } catch (const runtime_error&) {
+          }
+        }
+      }
+    }
+  }
+}
+
+void CommonItemSet::print_diff(FILE* stream, const CommonItemSet& other) const {
+  static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
+  for (const auto& mode : modes) {
+    static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
+    for (const auto& episode : episodes) {
+      for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
+        for (uint8_t section_id = 0; section_id < 10; section_id++) {
+          shared_ptr<const Table> this_table;
+          shared_ptr<const Table> other_table;
+          try {
+            this_table = this->get_table(episode, mode, difficulty, section_id);
+          } catch (const runtime_error&) {
+          }
+          try {
+            other_table = other.get_table(episode, mode, difficulty, section_id);
+          } catch (const runtime_error&) {
+          }
+
+          if (!this_table && !other_table) {
+            continue;
+          } else if (!this_table) {
+            phosg::fwrite_fmt(stream, "> Table present in other but not this: {} {} {} {}\n",
+                name_for_mode(mode), name_for_episode(episode), name_for_difficulty(difficulty), name_for_section_id(section_id));
+          } else if (!other_table) {
+            phosg::fwrite_fmt(stream, "> Table present in this but not other: {} {} {} {}\n",
+                name_for_mode(mode), name_for_episode(episode), name_for_difficulty(difficulty), name_for_section_id(section_id));
+          } else if (*this_table != *other_table) {
+            phosg::fwrite_fmt(stream, "> Tables do not match: {} {} {} {}\n",
+                name_for_mode(mode), name_for_episode(episode), name_for_difficulty(difficulty), name_for_section_id(section_id));
+            this_table->print_diff(stream, *other_table);
           }
         }
       }

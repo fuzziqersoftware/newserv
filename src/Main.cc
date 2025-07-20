@@ -2152,6 +2152,20 @@ Action a_convert_rare_item_set(
         throw runtime_error("cannot determine output format; use a filename ending with .json, .gsl, .gslb, or .afs");
       }
     });
+
+static shared_ptr<CommonItemSet> load_common_item_set(const std::string& filename, bool big_endian) {
+  auto data = make_shared<string>(phosg::load_file(filename));
+  if (filename.ends_with(".json")) {
+    return make_shared<JSONCommonItemSet>(phosg::JSON::parse(*data));
+  } else if (filename.ends_with(".gsl")) {
+    return make_shared<GSLV3V4CommonItemSet>(data, big_endian);
+  } else if (filename.ends_with(".gslb")) {
+    return make_shared<GSLV3V4CommonItemSet>(data, true);
+  } else {
+    throw runtime_error("cannot determine input format; use a filename ending with .json, .gsl, or .gslb");
+  }
+}
+
 Action a_convert_common_item_set(
     "convert-common-item-set", "\
   convert-common-item-set INPUT-FILENAME [OUTPUT-FILENAME]\n\
@@ -2167,26 +2181,31 @@ Action a_convert_common_item_set(
         throw runtime_error("input filename must be given");
       }
 
-      auto data = make_shared<string>(read_input_data(args));
-      shared_ptr<CommonItemSet> cs;
-      if (input_filename.ends_with(".json")) {
-        cs = make_shared<JSONCommonItemSet>(phosg::JSON::parse(*data));
-      } else if (input_filename.ends_with(".gsl")) {
-        cs = make_shared<GSLV3V4CommonItemSet>(data, args.get<bool>("big-endian"));
-      } else if (input_filename.ends_with(".gslb")) {
-        cs = make_shared<GSLV3V4CommonItemSet>(data, true);
-      } else {
-        throw runtime_error("cannot determine input format; use a filename ending with .json, .gsl, .gslb, or .afs");
-      }
-
+      auto cs = load_common_item_set(input_filename, args.get<bool>("big-endian"));
       const string& output_filename = args.get<string>(2, false);
       if (output_filename.empty()) {
         cs->print(stdout);
       } else {
         auto json = cs->json();
-        string json_data = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::HEX_INTEGERS | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
+        string json_data = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
         write_output_data(args, json_data.data(), json_data.size(), "json");
       }
+    });
+Action a_compare_common_item_set(
+    "compare-common-item-set", nullptr,
+    +[](phosg::Arguments& args) {
+      string input_filename1 = args.get<string>(1, false);
+      if (input_filename1.empty() || (input_filename1 == "-")) {
+        throw runtime_error("two input filenames must be given");
+      }
+      string input_filename2 = args.get<string>(2, false);
+      if (input_filename2.empty() || (input_filename2 == "-")) {
+        throw runtime_error("two input filenames must be given");
+      }
+
+      auto cs1 = load_common_item_set(input_filename1, args.get<bool>("big-endian1"));
+      auto cs2 = load_common_item_set(input_filename2, args.get<bool>("big-endian2"));
+      cs1->print_diff(stdout, *cs2);
     });
 
 Action a_describe_item(
