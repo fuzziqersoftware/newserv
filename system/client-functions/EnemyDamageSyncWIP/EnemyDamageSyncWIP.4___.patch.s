@@ -1,6 +1,7 @@
 .meta hide_from_patches_menu
 .meta name="DMC"
 .meta description="Mitigates effects\nof enemy health\ndesync"
+.meta client_flag="0x2000000000000000"
 
 .versions 4OJB 4OJD 4OJU 4OED 4OEU 4OPD 4OPU
 
@@ -16,6 +17,30 @@ write_call_to_code_multi:
 start:
   call      write_static_patches
   call      write_incr_hp_with_sync
+  call      write_6x0A_patch
+  ret
+
+
+
+write_6x0A_patch:
+  push      5
+  push      <VERS 0x002B3B55 0x002B4625 0x002B5BB5 0x002B56C5 0x002B58A5 0x002B56E5 0x002B59B5>
+  push      1
+  call      +4
+  .deltaof  on_6x0A_patch_start, on_6x0A_patch_end
+  pop       eax
+  push      dword [eax]
+  call      on_6x0A_patch_end
+
+on_6x0A_patch_start:  # (TObjectV004434c8* this @ eax, int16_t amount @ cx) -> bool @ eax
+  test      byte [0x006354B8], 0x80
+  jnz       on_6x0A_patch_skip_write
+  mov       [esp + 0x16], ax
+on_6x0A_patch_skip_write:
+  ret
+
+on_6x0A_patch_end:
+  call      write_call_to_code_multi
   ret
 
 
@@ -65,6 +90,9 @@ on_add_or_subtract_hp_start:  # (TObjectV004434c8* this @ eax, int16_t amount @ 
   push      eax
   push      ecx
   push      ebx
+
+  test      byte [0x006354B8], 0x80
+  jz        on_add_or_subtract_hp_skip_send
   movzx     edx, word [eax + 0x1C]  # ene->entity_id
   cmp       edx, 0x1000
   jl        on_add_or_subtract_hp_skip_send
@@ -120,14 +148,12 @@ on_add_or_subtract_hp_end:
 write_static_patches:
   .include WriteCodeBlocksXB
 
-  # Don't let 6x0A handler overwrite total_damage
-  .data     <VERS 0x002B3B55 0x002B4625 0x002B5BB5 0x002B56C5 0x002B58A5 0x002B56E5 0x002B59B5>
-  .data     5
-  nop
-  nop
-  nop
-  nop
-  nop
+  .data     <VERS 0x002DB7A0 0x002DC370 0x002DDC30 0x002DD700 0x002DDC00 0x002DD730 0x002DDC80>
+  .data     9
+flag_check_start:
+  cmp       dword [0x006354B8], 0
+  je        +0x38
+flag_check_end:
 
   .data     <VERS 0x00537180 0x00537800 0x0053EB20 0x0053BFA0 0x0053B840 0x0053BFA0 0x0053C340>
   .data     8
@@ -143,6 +169,9 @@ handle_6xE4:  # [std] (G_6xE4* cmd @ [esp + 4]) -> void
   push      ebx
   push      esi
   push      edi
+
+  test      byte [0x006354B8], 0x80
+  jz        handle_6xE4_return
   mov       ebx, [esp + 0x10]  # cmd
   movzx     eax, word [ebx + 2]
   cmp       eax, 0x1000

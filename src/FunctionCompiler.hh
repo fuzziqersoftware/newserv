@@ -30,6 +30,7 @@ struct CompiledFunctionCode {
   std::string short_name; // Based on filename
   std::string long_name; // From .meta name directive
   std::string description; // From .meta description directive
+  uint64_t client_flag = 0; // From .meta client_flag directive
   uint32_t menu_item_id = 0;
   bool hide_from_patches_menu = false;
   uint32_t specific_version = 0; // 0 = not a client-selectable patch

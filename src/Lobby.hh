@@ -213,6 +213,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   void create_item_creator(Version logic_version = Version::UNKNOWN);
   uint8_t effective_section_id() const;
   uint16_t quest_version_flags() const;
+  uint8_t client_extension_flags() const;
   void load_maps();
   void create_ep3_server();
 

@@ -1,6 +1,7 @@
 .meta hide_from_patches_menu
 .meta name="DMC"
 .meta description="Mitigates effects\nof enemy health\ndesync"
+.meta client_flag="0x2000000000000000"
 
 .versions 3OJ2 3OJ3 3OJ4 3OJ5 3OE0 3OE1 3OE2 3OP0
 
@@ -18,11 +19,18 @@ start:
 
 
 
+  .data     <VERS 0x801E40C4 0x801E4648 0x801E481C 0x801E4594 0x801E4528 0x801E4528 0x801E45E8 0x801E4C24>
+  .data     8
+  cmpwi     r0, 0
+  beq       +0x0C
+
+
+
   # Don't allow 6x0A to set total_damage; we'll do it with 6xE4 instead
   .data     <VERS 0x800F6064 0x800F6368 0x800F6594 0x800F6490 0x800F6308 0x800F6308 0x800F64A0 0x800F6468>
   .data     4
   .address  <VERS 0x800F6064 0x800F6368 0x800F6594 0x800F6490 0x800F6308 0x800F6308 0x800F64A0 0x800F6468>
-  nop
+  bl        set_enemy_total_damage_hook
 
 
 
@@ -129,8 +137,11 @@ start:
   .deltaof  code_start, code_end
   .address  0x800041C0
 code_start:
-
 handle_6xE4:  # [std] (G_IncrementEnemyDamage_Extension_6xE4* cmd @ r3) -> void
+  lwz       r12, [r13 - <VERS 0x50A0 0x5098 0x5078 0x5078 0x5088 0x5088 0x5068 0x5028>]
+  andi.     r12, r12, 0x0080
+  beqlr
+
   mflr      r0
   stw       [r1 + 4], r0
   stwu      [r1 - 0x20], r1
@@ -224,6 +235,11 @@ on_TObjectV8047c128_add_hp_with_sync:  # [std] (TObjectV8047c128* ene @ r3, int1
 on_TObjectV8047c128_subtract_hp_with_sync:  # [std] (TObjectV8047c128* ene @ r3, int16_t amount @ r4) -> void
   li        r5, 0
 on_add_or_subtract_hp:  # [std] (TObjectV8047c128* ene @ r3, int16_t amount @ r4, bool is_add @ r5) -> void
+
+  lwz       r12, [r13 - <VERS 0x50A0 0x5098 0x5078 0x5078 0x5088 0x5088 0x5068 0x5028>]
+  andi.     r12, r12, 0x0080
+  beq       on_add_or_subtract_hp_skip_send
+
   lhz       r0, [r3 + 0x1C]
   cmplwi    r0, 0x1000
   blt       on_add_or_subtract_hp_skip_send
@@ -290,6 +306,15 @@ on_add_or_subtract_hp_skip_send:
   b         TObjectV8047c128_add_hp
 on_add_or_subtract_hp_tail_call_subtract_hp:
   b         TObjectV8047c128_subtract_hp
+
+
+
+set_enemy_total_damage_hook:
+  lwz       r12, [r13 - <VERS 0x50A0 0x5098 0x5078 0x5078 0x5088 0x5088 0x5068 0x5028>]
+  andi.     r12, r12, 0x0080
+  bnelr
+  sth       [r1 + 0x0E], r3
+  blr
 
 
 

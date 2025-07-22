@@ -2724,8 +2724,8 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     {0x0110, F_EP3, 0x0000000000000001, "TObjNpcWalkingMeka_Hero"}, // Small talking robot in Morgue
     {0x0111, F_EP3, 0x0000000000000001, "TObjNpcWalkingMeka_Dark"}, // Small talking robot in Morgue
 
-    // Episode 3 scientist and aide NPCs. These NPC take all the same params as
-    // the NPCs defined above, but also:
+    // Episode 3 scientist and aide NPCs. These NPCs take all the same params
+    // as the NPCs defined above, but also:
     //   angle.x = model number (clamped to [0, 3] for scientists, [0, 2] for
     //     aides)
     // The two type values for scientists (00D4 and 00D5) are direct aliases
@@ -2931,7 +2931,7 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     // Monest that has param1 = 3 and param2 = 10. This looks like just an
     // off-by-one error on Sega's part where they accidentally shifted the
     // parameters down by one place. As described above, this Monest expels
-    // 6 Mothmants, then no more after they are killed.
+    // 6 Mothmants immediately, then no more after those 6 are killed.
     {0x0042, F_V0_V4, 0x0000000000180006, "TObjEneBm3FlyNest"},
 
     // Savage Wolf or Barbarous Wolf. Params:

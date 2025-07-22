@@ -266,6 +266,8 @@ static vector<shared_ptr<CompiledFunctionCode>> compile_function_code(
           compiled->long_name = it.second;
         } else if (it.first == "description") {
           compiled->description = it.second;
+        } else if (it.first == "client_flag") {
+          compiled->client_flag = stoull(it.second, nullptr, 0);
         } else {
           throw runtime_error("unknown metadata key: " + it.first);
         }

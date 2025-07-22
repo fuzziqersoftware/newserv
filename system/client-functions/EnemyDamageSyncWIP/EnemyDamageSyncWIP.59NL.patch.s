@@ -1,6 +1,7 @@
 .meta hide_from_patches_menu
 .meta name="DMC"
 .meta description="Mitigates effects\nof enemy health\ndesync"
+.meta client_flag="0x2000000000000000"
 
 entry_ptr:
 reloc0:
@@ -26,6 +27,9 @@ handle_6xE4_start:  # (G_6xE4* cmd @ [esp + 4]) -> void
   push      ebx
   push      esi
   push      edi
+
+  test      byte [0x00AAB27C], 0x80
+  jz        handle_6xE4_return
   mov       ebx, [esp + 0x10]  # cmd
   movzx     eax, word [ebx + 2]
   cmp       eax, 0x1000
@@ -135,6 +139,8 @@ handle_6xE4_end:
   call      on_add_or_subtract_hp_end
 
 on_add_or_subtract_hp_start:  # (TObjectV00b441c0* this @ ecx, int16_t amount @ [esp + 4]) -> bool @ eax
+  test      byte [0x00AAB27C], 0x80
+  jz        on_add_or_subtract_hp_skip_send
   movzx     eax, word [ecx + 0x1C]  # ene->entity_id
   cmp       eax, 0x1000
   jl        on_add_or_subtract_hp_skip_send
@@ -183,9 +189,24 @@ on_add_or_subtract_hp_end:
 
 
 
-  # Don't let 6x0A handler overwrite total_damage
-  mov       byte [0x0078781F], 0x90
-  mov       dword [0x00787820], 0x90909090
+  push      5
+  push      0x0078781F
+  push      1
+  call      +4
+  .deltaof  on_6x0A_patch_start, on_6x0A_patch_end
+  pop       eax
+  push      dword [eax]
+  call      on_6x0A_patch_end
+
+on_6x0A_patch_start:  # (TObjectV00b441c0* this @ ecx, int16_t amount @ [esp + 4]) -> bool @ eax
+  test      byte [0x00AAB27C], 0x80
+  jz        on_6x0A_patch_skip_write
+  mov       [esp + 0x0A], cx
+on_6x0A_patch_skip_write:
+  ret
+
+on_6x0A_patch_end:
+  call      write_call_to_code_multi
 
 
 

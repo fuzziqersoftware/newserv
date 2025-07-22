@@ -296,6 +296,15 @@ uint16_t Lobby::quest_version_flags() const {
   return ret;
 }
 
+uint8_t Lobby::client_extension_flags() const {
+  for (auto lc : this->clients) {
+    if (lc && !lc->check_flag(Client::Flag::HAS_ENEMY_DAMAGE_SYNC_PATCH)) {
+      return 0x01;
+    }
+  }
+  return 0x81;
+}
+
 void Lobby::load_maps() {
   auto rare_rates = this->rare_enemy_rates ? this->rare_enemy_rates : MapState::DEFAULT_RARE_ENEMIES;
 

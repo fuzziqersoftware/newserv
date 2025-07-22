@@ -450,6 +450,7 @@ asio::awaitable<C_ExecuteCodeResult_B3> send_function_call(
       override_relocations_offset,
       ignore_actually_runs_code_flag);
   c->function_call_response_queue.emplace_back(promise);
+  c->enabled_flags |= code->client_flag;
   co_return co_await promise->get();
 }
 
@@ -467,6 +468,7 @@ asio::awaitable<void> send_function_call_multi(
     last_promise = make_shared<AsyncPromise<C_ExecuteCodeResult_B3>>();
     c->function_call_response_queue.emplace_back(last_promise);
     send_function_call(c->channel, c->enabled_flags, code);
+    c->enabled_flags |= code->client_flag;
   }
   if (c->channel->connected()) {
     co_await last_promise->get();
@@ -1994,7 +1996,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
     cmd.variations = l->variations;
     cmd.client_id = c->lobby_client_id;
     cmd.leader_id = l->leader_id;
-    cmd.disable_udp = 0x01; // Unused on PC/XB/BB
+    cmd.disable_udp = l->client_extension_flags();
     cmd.difficulty = l->difficulty;
     cmd.battle_mode = (l->mode == GameMode::BATTLE) ? 1 : 0;
     cmd.event = l->event;
@@ -2029,7 +2031,7 @@ void send_join_game(shared_ptr<Client> c, shared_ptr<Lobby> l) {
       S_JoinGame_DCNTE_64 cmd;
       cmd.client_id = c->lobby_client_id;
       cmd.leader_id = l->leader_id;
-      cmd.disable_udp = 0x01;
+      cmd.disable_udp = l->client_extension_flags();
       cmd.variations = l->variations;
       size_t player_count = populate_lobby_data(cmd);
       send_command_t(c, 0x64, player_count, cmd);
@@ -2158,6 +2160,7 @@ void send_join_lobby_t(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cli
   S_JoinLobbyT<LobbyFlags, LobbyDataT, DispDataT> cmd;
   cmd.lobby_flags.client_id = c->lobby_client_id;
   cmd.lobby_flags.leader_id = l->leader_id;
+  cmd.lobby_flags.disable_udp = l->client_extension_flags();
   cmd.lobby_flags.lobby_number = lobby_type;
   cmd.lobby_flags.block_number = lobby_block;
   cmd.lobby_flags.event = l->event;
@@ -2230,6 +2233,7 @@ void send_join_lobby_xb(shared_ptr<Client> c, shared_ptr<Lobby> l, shared_ptr<Cl
   S_JoinLobby_XB_65_67_68 cmd;
   cmd.lobby_flags.client_id = c->lobby_client_id;
   cmd.lobby_flags.leader_id = l->leader_id;
+  cmd.lobby_flags.disable_udp = l->client_extension_flags();
   cmd.lobby_flags.lobby_number = lobby_type;
   cmd.lobby_flags.block_number = l->block;
   cmd.lobby_flags.event = l->event;
@@ -2279,6 +2283,7 @@ void send_join_lobby_dc_nte(shared_ptr<Client> c, shared_ptr<Lobby> l,
   S_JoinLobby_DCNTE_65_67_68 cmd;
   cmd.lobby_flags.client_id = c->lobby_client_id;
   cmd.lobby_flags.leader_id = l->leader_id;
+  cmd.lobby_flags.disable_udp = l->client_extension_flags();
 
   vector<shared_ptr<Client>> lobby_clients;
   if (joining_client) {
@@ -2401,7 +2406,7 @@ void send_update_lobby_data_bb(std::shared_ptr<Client> c) {
 }
 
 void send_player_leave_notification(shared_ptr<Lobby> l, uint8_t leaving_client_id) {
-  S_LeaveLobby_66_69_Ep3_E9 cmd = {leaving_client_id, l->leader_id, 1, 0};
+  S_LeaveLobby_66_69_Ep3_E9 cmd = {leaving_client_id, l->leader_id, l->client_extension_flags(), 0};
   uint8_t cmd_num;
   if (l->is_game()) {
     cmd_num = l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM) ? 0xE9 : 0x66;

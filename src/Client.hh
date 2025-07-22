@@ -50,29 +50,29 @@ public:
     SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE      = 0x0000000000004000,
     SEND_FUNCTION_CALL_NO_CACHE_PATCH          = 0x0000000000008000,
     CAN_RECEIVE_ENABLE_B2_QUEST                = 0x0000000000020000,
-    AWAITING_ENABLE_B2_QUEST                   = 0x0000000000040000, // Server-side only
+    AWAITING_ENABLE_B2_QUEST                   = 0x0000000000040000,
 
     // State flags
-    LOADING                                    = 0x0000000000100000, // Server-side only
-    LOADING_QUEST                              = 0x0000000000200000, // Server-side only
-    LOADING_RUNNING_JOINABLE_QUEST             = 0x0000000000400000, // Server-side only
-    LOADING_TOURNAMENT                         = 0x0000000000800000, // Server-side only
-    IN_INFORMATION_MENU                        = 0x0000000001000000, // Server-side only
-    AT_WELCOME_MESSAGE                         = 0x0000000002000000, // Server-side only
+    LOADING                                    = 0x0000000000100000,
+    LOADING_QUEST                              = 0x0000000000200000,
+    LOADING_RUNNING_JOINABLE_QUEST             = 0x0000000000400000,
+    LOADING_TOURNAMENT                         = 0x0000000000800000,
+    IN_INFORMATION_MENU                        = 0x0000000001000000,
+    AT_WELCOME_MESSAGE                         = 0x0000000002000000,
     SAVE_ENABLED                               = 0x0000000004000000,
     HAS_EP3_CARD_DEFS                          = 0x0000000008000000,
     HAS_EP3_MEDIA_UPDATES                      = 0x0000000010000000,
     HAS_AUTO_PATCHES                           = 0x0000004000000000,
-    AT_BANK_COUNTER                            = 0x0000000080000000, // Server-side only
-    SHOULD_SEND_ARTIFICIAL_ITEM_STATE          = 0x0001000000000000, // Server-side only
-    SHOULD_SEND_ARTIFICIAL_ENEMY_AND_SET_STATE = 0x0040000000000000, // Server-side only
-    SHOULD_SEND_ARTIFICIAL_OBJECT_STATE        = 0x0080000000000000, // Server-side only
-    SHOULD_SEND_ARTIFICIAL_FLAG_STATE          = 0x0002000000000000, // Server-side only
-    SHOULD_SEND_ARTIFICIAL_PLAYER_STATES       = 0x0200000000000000, // Server-side only
+    AT_BANK_COUNTER                            = 0x0000000080000000,
+    SHOULD_SEND_ARTIFICIAL_ITEM_STATE          = 0x0001000000000000,
+    SHOULD_SEND_ARTIFICIAL_ENEMY_AND_SET_STATE = 0x0040000000000000,
+    SHOULD_SEND_ARTIFICIAL_OBJECT_STATE        = 0x0080000000000000,
+    SHOULD_SEND_ARTIFICIAL_FLAG_STATE          = 0x0002000000000000,
+    SHOULD_SEND_ARTIFICIAL_PLAYER_STATES       = 0x0200000000000000,
     SHOULD_SEND_ENABLE_SAVE                    = 0x0004000000000000,
     SWITCH_ASSIST_ENABLED                      = 0x0000000100000000,
     IS_CLIENT_CUSTOMIZATION                    = 0x0100000000000000,
-    EP3_ALLOW_6xBC                             = 0x1000000000000000, // Server-side only
+    EP3_ALLOW_6xBC                             = 0x1000000000000000,
 
     // Cheat mode and option flags
     INFINITE_HP_ENABLED                        = 0x0000000200000000,
@@ -80,6 +80,7 @@ public:
     DEBUG_ENABLED                              = 0x0000000800000000,
     ITEM_DROP_NOTIFICATIONS_1                  = 0x0010000000000000,
     ITEM_DROP_NOTIFICATIONS_2                  = 0x0020000000000000,
+    HAS_ENEMY_DAMAGE_SYNC_PATCH                = 0x2000000000000000, // Must be same as in EnemyDamageSync*.s
 
     // Proxy option flags
     PROXY_SAVE_FILES                           = 0x0000001000000000,
