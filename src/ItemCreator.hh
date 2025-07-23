@@ -96,7 +96,7 @@ private:
   //   [0x0B] - unit modifiers
   //   [0x0C] - common armor DFP bonuses
   //   [0x0D] - common armor EVP bonuses
-  //   [0x0E] - apparently unused
+  //   [0x0E] - unit stars
   //   [0x0F] - which common weapon special to generate
   //   [0x10] - apparently unused
   std::shared_ptr<RandomGenerator> rand_crypt;
