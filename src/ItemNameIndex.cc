@@ -678,7 +678,8 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
 void ItemNameIndex::print_table(FILE* stream) const {
   auto pmt = this->item_parameter_table;
 
-  phosg::fwrite_fmt(stream, "WEAPON => ---ID--- TYPE SKIN POINTS FLAG ATPLO ATPHI ATPRQ MSTRQ ATARQ -MST- GND PH SP ATA SB(S1:AMT1,S2:AMT2) PJ 1X 1Y 2X 2Y CL A1 A2 A3 A4 A5 TB BF V1 ST* USL ---DIVISOR--- NAME\n");
+  phosg::fwrite_fmt(stream, "WEAPONS\n");
+  phosg::fwrite_fmt(stream, "  CODE   => ---ID--- TYPE SKIN POINTS FLAG ATPLO ATPHI ATPRQ MSTRQ ATARQ -MST- GND PH SP ATA SB(S1:AMT1,S2:AMT2) PJ 1X 1Y 2X 2Y CL A1 A2 A3 A4 A5 TB BF V1 ST* USL ---DIVISOR--- NAME\n");
   for (size_t data1_1 = 0; data1_1 < pmt->num_weapon_classes; data1_1++) {
     uint8_t v1_replacement = pmt->get_weapon_v1_replacement(data1_1);
     float sale_divisor = pmt->get_sale_divisor(0x00, data1_1);
@@ -698,7 +699,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
       string name = this->describe_item(item);
 
       auto& stat_boost = pmt->get_stat_boost(w.stat_boost_entry_index);
-      phosg::fwrite_fmt(stream, "00{:02X}{:02X} => {:08X} {:04X} {:04X} {:6} {:04X} {:5} {:5} {:5} {:5} {:5} {:5} {:3} {:02X} {:02X} {:3} {:02X}({:02X}:{:04X},{:02X}:{:04X}) {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:2}* {} {} {}\n",
+      phosg::fwrite_fmt(stream, "  00{:02X}{:02X} => {:08X} {:04X} {:04X} {:6} {:04X} {:5} {:5} {:5} {:5} {:5} {:5} {:3} {:02X} {:02X} {:3} {:02X}({:02X}:{:04X},{:02X}:{:04X}) {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:2}* {} {} {}\n",
           data1_1,
           data1_2,
           w.base.id,
@@ -742,7 +743,8 @@ void ItemNameIndex::print_table(FILE* stream) const {
     }
   }
 
-  phosg::fwrite_fmt(stream, "ARMOR  => ---ID--- TYPE SKIN POINTS -DFP- -EVP- BP BE FLAG LVL EFR ETH EIC EDK ELT DFR EVR SB(S1:AMT1,S2:AMT2) TB FT A4 ST* ---DIVISOR--- NAME\n");
+  phosg::fwrite_fmt(stream, "ARMORS\n");
+  phosg::fwrite_fmt(stream, "  CODE   => ---ID--- TYPE SKIN POINTS -DFP- -EVP- BP BE FLAG LVL EFR ETH EIC EDK ELT DFR EVR SB(S1:AMT1,S2:AMT2) TB FT A4 ST* ---DIVISOR--- NAME\n");
   for (size_t data1_1 = 1; data1_1 < 3; data1_1++) {
     float sale_divisor = pmt->get_sale_divisor(0x01, data1_1);
     string divisor_str = std::format("{:g}", sale_divisor);
@@ -760,7 +762,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
       string name = this->describe_item(item);
 
       auto& stat_boost = pmt->get_stat_boost(a.stat_boost_entry_index);
-      phosg::fwrite_fmt(stream, "01{:02X}{:02X} => {:08X} {:04X} {:04X} {:6} {:5} {:5} {:02X} {:02X} {:04X} {:3} {:3} {:3} {:3} {:3} {:3} {:3} {:3} {:02X}({:02X}:{:04X},{:02X}:{:04X}) {:02X} {:02X} {:02X} {:2}* {} {}\n",
+      phosg::fwrite_fmt(stream, "  01{:02X}{:02X} => {:08X} {:04X} {:04X} {:6} {:5} {:5} {:02X} {:02X} {:04X} {:3} {:3} {:3} {:3} {:3} {:3} {:3} {:3} {:02X}({:02X}:{:04X},{:02X}:{:04X}) {:02X} {:02X} {:02X} {:2}* {} {}\n",
           data1_1,
           data1_2,
           a.base.id,
@@ -794,7 +796,8 @@ void ItemNameIndex::print_table(FILE* stream) const {
     }
   }
 
-  phosg::fwrite_fmt(stream, "UNIT   => ---ID--- TYPE SKIN POINTS STAT COUNT ST-MOD ST* ---DIVISOR--- NAME\n");
+  phosg::fwrite_fmt(stream, "UNITS\n");
+  phosg::fwrite_fmt(stream, "  CODE   => ---ID--- TYPE SKIN POINTS STAT COUNT ST-MOD ST* ---DIVISOR--- NAME\n");
   {
     float sale_divisor = pmt->get_sale_divisor(0x01, 0x03);
     string divisor_str = std::format("{:g}", sale_divisor);
@@ -811,7 +814,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
       item.data1[2] = data1_2;
       string name = this->describe_item(item);
 
-      phosg::fwrite_fmt(stream, "0103{:02X} => {:08X} {:04X} {:04X} {:6} {:04X} {:5} {:6} {:2}* {} {}\n",
+      phosg::fwrite_fmt(stream, "  0103{:02X} => {:08X} {:04X} {:04X} {:6} {:04X} {:5} {:6} {:2}* {} {}\n",
           data1_2,
           u.base.id,
           u.base.type,
@@ -826,7 +829,8 @@ void ItemNameIndex::print_table(FILE* stream) const {
     }
   }
 
-  phosg::fwrite_fmt(stream, "MAG    => ---ID--- TYPE SKIN POINTS FTBL PB AC E1 E2 E3 E4 C1 C2 C3 C4 FLAG ---DIVISOR--- NAME\n");
+  phosg::fwrite_fmt(stream, "MAGS\n");
+  phosg::fwrite_fmt(stream, "  CODE   => ---ID--- TYPE SKIN POINTS FTBL PB AC E1 E2 E3 E4 C1 C2 C3 C4 FLAG ---DIVISOR--- NAME\n");
   {
     size_t data1_1_limit = pmt->num_mags();
     for (size_t data1_1 = 0; data1_1 < data1_1_limit; data1_1++) {
@@ -842,7 +846,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
       item.data1[2] = 0x00;
       string name = this->describe_item(item);
 
-      phosg::fwrite_fmt(stream, "02{:02X}00 => {:08X} {:04X} {:04X} {:6} {:04X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:04X} {} {}\n",
+      phosg::fwrite_fmt(stream, "  02{:02X}00 => {:08X} {:04X} {:04X} {:6} {:04X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:04X} {} {}\n",
           data1_1,
           m.base.id,
           m.base.type,
@@ -865,7 +869,8 @@ void ItemNameIndex::print_table(FILE* stream) const {
     }
   }
 
-  phosg::fwrite_fmt(stream, "TOOL   => ---ID--- TYPE SKIN POINTS COUNT TECH -COST- ITEMFLAG ---DIVISOR--- NAME\n");
+  phosg::fwrite_fmt(stream, "TOOLS\n");
+  phosg::fwrite_fmt(stream, "  CODE   => ---ID--- TYPE SKIN POINTS COUNT TECH -COST- ITEMFLAG ---DIVISOR--- NAME\n");
   for (size_t data1_1 = 0; data1_1 < pmt->num_tool_classes; data1_1++) {
     float sale_divisor = pmt->get_sale_divisor(0x03, data1_1);
     string divisor_str = std::format("{:g}", sale_divisor);
@@ -882,7 +887,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
       item.set_tool_item_amount(*this->limits, 1);
       string name = this->describe_item(item);
 
-      phosg::fwrite_fmt(stream, "03{:02X}{:02X} => {:08X} {:04X} {:04X} {:6} {:5} {:04X} {:6} {:08X} {} {}\n",
+      phosg::fwrite_fmt(stream, "  03{:02X}{:02X} => {:08X} {:04X} {:04X} {:6} {:5} {:04X} {:6} {:08X} {} {}\n",
           data1_1,
           data1_2,
           t.base.id,
@@ -898,9 +903,10 @@ void ItemNameIndex::print_table(FILE* stream) const {
     }
   }
 
-  phosg::fwrite_fmt(stream, "CLASS     =>  F GF RF  B GB RB  Z GZ RZ GR DB JL ZL SH RY RS AT RV MG\n");
+  phosg::fwrite_fmt(stream, "MAX TECH LEVELS\n");
+  phosg::fwrite_fmt(stream, "  CLASS     =>  F GF RF  B GB RB  Z GZ RZ GR DB JL ZL SH RY RS AT RV MG\n");
   for (size_t char_class = 0; char_class < 12; char_class++) {
-    phosg::fwrite_fmt(stream, "{:9} =>", name_for_char_class(char_class));
+    phosg::fwrite_fmt(stream, "  {:9} =>", name_for_char_class(char_class));
     for (size_t tech_num = 0; tech_num < 0x13; tech_num++) {
       uint8_t max_level = pmt->get_max_tech_level(char_class, tech_num) + 1;
       if (max_level == 0x00) {
@@ -912,30 +918,40 @@ void ItemNameIndex::print_table(FILE* stream) const {
     phosg::fwrite_fmt(stream, "\n");
   }
 
+  phosg::fwrite_fmt(stream, "MAG FEED TABLES\n");
   for (size_t table_index = 0; table_index < 8; table_index++) {
     static const char* names[11] = {
         "Monomate", "Dimate", "Trimate", "Monofluid",
         "Difluid", "Trifluid", "Antidote", "Antiparalysis",
         "Sol Atomizer", "Moon Atomizer", "Star Atomizer"};
-    phosg::fwrite_fmt(stream, "TABLE {:02X}       => -DEF -POW -DEX MIND -IQ- SYNC\n", table_index);
+    phosg::fwrite_fmt(stream, "  TABLE {:02X}         => -DEF -POW -DEX MIND -IQ- SYNC\n", table_index);
     for (size_t which = 0; which < 11; which++) {
       const auto& res = pmt->get_mag_feed_result(table_index, which);
-      phosg::fwrite_fmt(stream, "{:14} => {:4} {:4} {:4} {:4} {:4} {:4}\n",
+      phosg::fwrite_fmt(stream, "    {:14} => {:4} {:4} {:4} {:4} {:4} {:4}\n",
           names[which], res.def, res.pow, res.dex, res.mind, res.iq, res.synchro);
     }
   }
 
-  phosg::fwrite_fmt(stream, "SPECIAL => TYPE COUNT ST*\n");
+  phosg::fwrite_fmt(stream, "SPECIAL DEFINITIONS\n");
+  phosg::fwrite_fmt(stream, "  SPECIAL => TYPE COUNT ST* NAME\n");
   for (size_t index = 0; index < pmt->num_specials; index++) {
     const auto& sp = pmt->get_special(index);
     uint8_t stars = pmt->get_special_stars(index);
-    phosg::fwrite_fmt(stream, "     {:02X} => {:04X} {:5} {:2}*\n", index, sp.type, sp.amount, stars);
+    const char* name = "";
+    if (index) {
+      try {
+        name = name_for_weapon_special.at(index);
+      } catch (const out_of_range&) {
+      }
+    }
+    phosg::fwrite_fmt(stream, "       {:02X} => {:04X} {:5} {:2}* {}\n", index, sp.type, sp.amount, stars, name);
   }
 
-  phosg::fwrite_fmt(stream, "---USE + -EQUIP => RESULT MLV GND LVL CLS\n");
+  phosg::fwrite_fmt(stream, "ITEM COMBINATIONS\n");
+  phosg::fwrite_fmt(stream, "  ---USE + -EQUIP => RESULT MLV GND LVL CLS\n");
   for (const auto& combo_list_it : pmt->get_all_item_combinations()) {
     for (const auto& combo : combo_list_it.second) {
-      phosg::fwrite_fmt(stream, "{:02X}{:02X}{:02X} + {:02X}{:02X}{:02X} => {:02X}{:02X}{:02X}",
+      phosg::fwrite_fmt(stream, "  {:02X}{:02X}{:02X} + {:02X}{:02X}{:02X} => {:02X}{:02X}{:02X}",
           combo.used_item[0], combo.used_item[1], combo.used_item[2],
           combo.equipped_item[0], combo.equipped_item[1], combo.equipped_item[2],
           combo.result_item[0], combo.result_item[1], combo.result_item[2]);
@@ -962,13 +978,14 @@ void ItemNameIndex::print_table(FILE* stream) const {
     }
   }
 
+  phosg::fwrite_fmt(stream, "EVENT ITEMS\n");
   size_t num_events = pmt->num_events();
   for (size_t event_number = 0; event_number < num_events; event_number++) {
-    phosg::fwrite_fmt(stream, "EV {:3} => PRB\n", event_number);
+    phosg::fwrite_fmt(stream, "  EV {:3} => PRB\n", event_number);
     auto events_list = pmt->get_event_items(event_number);
     for (size_t z = 0; z < events_list.second; z++) {
       const auto& event_item = events_list.first[z];
-      phosg::fwrite_fmt(stream, "{:02X}{:02X}{:02X} => {:3}\n",
+      phosg::fwrite_fmt(stream, "  {:02X}{:02X}{:02X} => {:3}\n",
           event_item.item[0], event_item.item[1], event_item.item[2], event_item.probability);
     }
   }
