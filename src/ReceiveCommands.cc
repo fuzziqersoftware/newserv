@@ -3546,15 +3546,21 @@ static asio::awaitable<void> on_30(shared_ptr<Client> c, Channel::Message& msg) 
     switch (c->version()) {
       case Version::DC_V2:
         ch = PSOBBCharacterFile::create_from_file(msg.check_size_t<PSODCV2CharacterFile::Character>());
+        ch->inventory.decode_from_client(c->version());
         break;
       case Version::GC_NTE:
         ch = PSOBBCharacterFile::create_from_file(msg.check_size_t<PSOGCNTECharacterFileCharacter>());
+        ch->inventory.decode_from_client(c->version());
         break;
       case Version::GC_V3:
         ch = PSOBBCharacterFile::create_from_file(msg.check_size_t<PSOGCCharacterFile::Character>());
+        // Note: We don't call ch->inventory.decode_from_client here because
+        // the data is sent in the game's native byte order, which is already
+        // correct on GC (unlike for 61/98)
         break;
       case Version::XB_V3:
         ch = PSOBBCharacterFile::create_from_file(msg.check_size_t<PSOXBCharacterFile::Character>());
+        ch->inventory.decode_from_client(c->version());
         break;
       case Version::GC_EP3_NTE:
       case Version::GC_EP3:
@@ -3568,7 +3574,6 @@ static asio::awaitable<void> on_30(shared_ptr<Client> c, Channel::Message& msg) 
       default:
         throw logic_error("extended player data command not implemented for version");
     }
-    ch->inventory.decode_from_client(c->version());
     ch->disp.visual.version = 4;
     ch->disp.visual.name_color_checksum = 0x00000000;
   }
