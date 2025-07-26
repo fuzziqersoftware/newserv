@@ -289,7 +289,7 @@ uint32_t ServerState::connect_address_for_client(shared_ptr<Client> c) const {
   {
     auto socket_channel = dynamic_pointer_cast<SocketChannel>(c->channel);
     if (socket_channel) {
-      uint32_t addr = ipv4_addr_for_asio_addr(socket_channel->local_addr.address());
+      uint32_t addr = ipv4_addr_for_asio_addr(socket_channel->remote_addr.address());
       uint32_t ret = is_local_address(addr) ? this->local_address : this->external_address;
       return ret ? ret : addr;
     }
