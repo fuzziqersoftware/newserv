@@ -951,23 +951,33 @@ ShellCommand c_show_slots(
     });
 
 asio::awaitable<deque<string>> fn_chat(ShellCommand::Args& args) {
-  auto c = args.get_proxy_client();
+  auto c = args.get_client();
   bool is_dchat = (args.command == "dchat");
 
-  if (!is_dchat && uses_utf16(c->version())) {
-    send_chat_message_from_client(c->proxy_session->server_channel, args.args, 0);
-  } else {
-    string data(8, '\0');
-    data.push_back('\x09');
-    data.push_back('E');
-    if (is_dchat) {
-      data += phosg::parse_data_string(args.args, nullptr, phosg::ParseDataFlags::ALLOW_FILES);
+  if (c->proxy_session) {
+    if (!is_dchat && uses_utf16(c->version())) {
+      send_chat_message_from_client(c->proxy_session->server_channel, args.args, 0);
     } else {
-      data += args.args;
-      data.push_back('\0');
+      string data(8, '\0');
+      data.push_back('\x09');
+      data.push_back('E');
+      if (is_dchat) {
+        data += phosg::parse_data_string(args.args, nullptr, phosg::ParseDataFlags::ALLOW_FILES);
+      } else {
+        data += args.args;
+        data.push_back('\0');
+      }
+      data.resize((data.size() + 3) & (~3));
+      c->proxy_session->server_channel->send(0x06, 0x00, data);
     }
-    data.resize((data.size() + 3) & (~3));
-    c->proxy_session->server_channel->send(0x06, 0x00, data);
+  } else if (c->login) {
+    string text = is_dchat ? phosg::parse_data_string(args.args, nullptr, phosg::ParseDataFlags::ALLOW_FILES) : args.args;
+    auto l = c->require_lobby();
+    for (auto& lc : l->clients) {
+      if (lc) {
+        send_chat_message(lc, c->login->account->account_id, c->character()->disp.name.decode(c->language()), text, 0);
+      }
+    }
   }
 
   co_return deque<string>{};
@@ -981,18 +991,27 @@ ShellCommand c_dchat("dchat", "dchat DATA\n\
     fn_chat);
 
 asio::awaitable<deque<string>> fn_wchat(ShellCommand::Args& args) {
-  auto c = args.get_proxy_client();
+  auto c = args.get_client();
   if (!is_ep3(c->version())) {
     throw runtime_error("wchat can only be used on Episode 3");
   }
-  string data(8, '\0');
-  data.push_back('\x40'); // private_flags: visible to all
-  data.push_back('\x09');
-  data.push_back('E');
-  data += args.args;
-  data.push_back('\0');
-  data.resize((data.size() + 3) & (~3));
-  c->proxy_session->server_channel->send(0x06, 0x00, data);
+  if (c->proxy_session) {
+    string data(8, '\0');
+    data.push_back('\x40'); // private_flags: visible to all
+    data.push_back('\x09');
+    data.push_back('E');
+    data += args.args;
+    data.push_back('\0');
+    data.resize((data.size() + 3) & (~3));
+    c->proxy_session->server_channel->send(0x06, 0x00, data);
+  } else if (c->login) {
+    auto l = c->require_lobby();
+    for (auto& lc : l->clients) {
+      if (lc) {
+        send_chat_message(lc, c->login->account->account_id, c->character()->disp.name.decode(c->language()), args.args, 0x40);
+      }
+    }
+  }
   co_return deque<string>{};
 }
 ShellCommand c_wc("wc", "wc TEXT", fn_wchat);
