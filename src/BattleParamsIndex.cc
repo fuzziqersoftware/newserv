@@ -9,10 +9,17 @@
 
 using namespace std;
 
-void BattleParamsIndex::Table::print(FILE* stream) const {
-  auto print_entry = +[](FILE* stream, const PlayerStats& e) {
+void BattleParamsIndex::Table::print(FILE* stream, Episode episode) const {
+  auto print_entry = [stream, episode](const PlayerStats& e, size_t z) {
+    string names_str;
+    for (auto type : enemy_types_for_battle_param_index(episode, z)) {
+      if (!names_str.empty()) {
+        names_str += ", ";
+      }
+      names_str += phosg::name_for_enum(type);
+    }
     phosg::fwrite_fmt(stream,
-        "{:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5}",
+        "{:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5}  {}",
         e.char_stats.atp,
         e.char_stats.mst,
         e.char_stats.evp,
@@ -22,15 +29,16 @@ void BattleParamsIndex::Table::print(FILE* stream) const {
         e.char_stats.lck,
         e.esp,
         e.experience,
-        e.meseta);
+        e.meseta,
+        names_str);
   };
 
   for (size_t diff = 0; diff < 4; diff++) {
-    phosg::fwrite_fmt(stream, "{} ZZ   ATP   PSV   EVP    HP   DFP   ATA   LCK   ESP   EXP  DIFF\n",
+    phosg::fwrite_fmt(stream, "{} ZZ   ATP   PSV   EVP    HP   DFP   ATA   LCK   ESP   EXP  DIFF  NAMES\n",
         abbreviation_for_difficulty(diff));
     for (size_t z = 0; z < 0x60; z++) {
       phosg::fwrite_fmt(stream, "  {:02X} ", z);
-      print_entry(stream, this->stats[diff][z]);
+      print_entry(this->stats[diff][z], z);
       fputc('\n', stream);
     }
   }

@@ -198,6 +198,33 @@ const vector<EnemyType>& enemy_types_for_rare_table_index(Episode episode, uint8
   }
 }
 
+const vector<EnemyType>& enemy_types_for_battle_param_index(Episode episode, uint8_t bp_index) {
+  const auto& generate_table = +[](Episode episode) -> vector<vector<EnemyType>> {
+    vector<vector<EnemyType>> ret;
+    for (const auto& def : type_defs) {
+      if (def.valid_in_episode(episode) && (def.bp_index != 0xFF)) {
+        if (def.bp_index >= ret.size()) {
+          ret.resize(def.bp_index + 1);
+        }
+        ret[def.bp_index].emplace_back(def.type);
+      }
+    }
+    return ret;
+  };
+
+  static array<vector<vector<EnemyType>>, 5> data;
+  auto& ret = data.at(static_cast<size_t>(episode));
+  if (ret.empty()) {
+    ret = generate_table(episode);
+  }
+  try {
+    return ret.at(bp_index);
+  } catch (const out_of_range&) {
+    static const vector<EnemyType> empty_vec;
+    return empty_vec;
+  }
+}
+
 EnemyType EnemyTypeDefinition::rare_type(Episode episode, uint8_t event, uint8_t floor) const {
   switch (this->type) {
     case EnemyType::HILDEBEAR:

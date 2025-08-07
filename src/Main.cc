@@ -2809,17 +2809,17 @@ Action a_show_battle_params(
       s->load_battle_params();
 
       phosg::fwrite_fmt(stdout, "Episode 1 multi\n");
-      s->battle_params->get_table(false, Episode::EP1).print(stdout);
+      s->battle_params->get_table(false, Episode::EP1).print(stdout, Episode::EP1);
       phosg::fwrite_fmt(stdout, "Episode 1 solo\n");
-      s->battle_params->get_table(true, Episode::EP1).print(stdout);
+      s->battle_params->get_table(true, Episode::EP1).print(stdout, Episode::EP1);
       phosg::fwrite_fmt(stdout, "Episode 2 multi\n");
-      s->battle_params->get_table(false, Episode::EP2).print(stdout);
+      s->battle_params->get_table(false, Episode::EP2).print(stdout, Episode::EP2);
       phosg::fwrite_fmt(stdout, "Episode 2 solo\n");
-      s->battle_params->get_table(true, Episode::EP2).print(stdout);
+      s->battle_params->get_table(true, Episode::EP2).print(stdout, Episode::EP2);
       phosg::fwrite_fmt(stdout, "Episode 4 multi\n");
-      s->battle_params->get_table(false, Episode::EP4).print(stdout);
+      s->battle_params->get_table(false, Episode::EP4).print(stdout, Episode::EP4);
       phosg::fwrite_fmt(stdout, "Episode 4 solo\n");
-      s->battle_params->get_table(true, Episode::EP4).print(stdout);
+      s->battle_params->get_table(true, Episode::EP4).print(stdout, Episode::EP4);
     });
 
 Action a_check_supermaps(

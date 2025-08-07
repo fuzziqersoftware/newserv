@@ -76,7 +76,7 @@ public:
     /* AE00 */ parray<parray<MovementData, 0x60>, 4> movement_data;
     /* F600 */
 
-    void print(FILE* stream) const;
+    void print(FILE* stream, Episode episode) const;
   } __packed_ws__(Table, 0xF600);
 
   BattleParamsIndex(

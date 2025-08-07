@@ -181,3 +181,4 @@ template <>
 EnemyType phosg::enum_for_name<EnemyType>(const char* name);
 
 const std::vector<EnemyType>& enemy_types_for_rare_table_index(Episode episode, uint8_t rt_index);
+const std::vector<EnemyType>& enemy_types_for_battle_param_index(Episode episode, uint8_t bp_index);

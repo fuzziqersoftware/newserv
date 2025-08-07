@@ -2252,8 +2252,7 @@ static asio::awaitable<void> on_pick_up_item_generic(
     // This can happen if the network is slow, and the client tries to pick up
     // the same item multiple times. Or multiple clients could try to pick up
     // the same item at approximately the same time; only one should get it.
-    l->log.warning_f("Player {} requests to pick up {:08X}, but the item does not exist; dropping command",
-        client_id, item_id);
+    l->log.warning_f("Player {} requests to pick up {:08X}, but the item does not exist; dropping command", client_id, item_id);
 
   } else {
     // This is handled by the server on BB, and by the leader on other versions.
@@ -2300,8 +2299,7 @@ static asio::awaitable<void> on_pick_up_item_generic(
       }
     }
 
-    if (!c->login->account->check_user_flag(Account::UserFlag::DISABLE_DROP_NOTIFICATION_BROADCAST) &&
-        (fi->flags & 0x1000)) {
+    if (!c->login->account->check_user_flag(Account::UserFlag::DISABLE_DROP_NOTIFICATION_BROADCAST) && (fi->flags & 0x1000)) {
       uint32_t pi = fi->data.primary_identifier();
       bool should_send_game_notif, should_send_global_notif;
       if (is_v1_or_v2(c->version()) && (c->version() != Version::GC_NTE)) {
