@@ -4056,7 +4056,7 @@ static asio::awaitable<void> on_item_reward_request_bb(shared_ptr<Client> c, Sub
 
   ItemData item;
   item = cmd.item_data;
-  item.enforce_min_stack_size(limits);
+  item.enforce_stack_size_limits(limits);
   item.id = l->generate_item_id(c->lobby_client_id);
 
   // The logic for the item_create and item_create2 opcodes (B3 and B4)
@@ -4717,7 +4717,7 @@ static asio::awaitable<void> on_quest_exchange_item_bb(shared_ptr<Client> c, Sub
     // TODO: We probably should use an allow-list here to prevent the client
     // from creating arbitrary items if cheat mode is disabled.
     ItemData new_item = cmd.replace_item;
-    new_item.enforce_min_stack_size(limits);
+    new_item.enforce_stack_size_limits(limits);
     new_item.id = l->generate_item_id(c->lobby_client_id);
     p->add_item(new_item, limits);
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
@@ -4775,7 +4775,7 @@ static asio::awaitable<void> on_photon_drop_exchange_for_item_bb(shared_ptr<Clie
     // TODO: We probably should use an allow-list here to prevent the client
     // from creating arbitrary items if cheat mode is disabled.
     ItemData new_item = cmd.new_item;
-    new_item.enforce_min_stack_size(limits);
+    new_item.enforce_stack_size_limits(limits);
     new_item.id = l->generate_item_id(c->lobby_client_id);
     p->add_item(new_item, limits);
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
@@ -4875,7 +4875,7 @@ static asio::awaitable<void> on_secret_lottery_ticket_exchange_bb(shared_ptr<Cli
     ItemData item = (s->secret_lottery_results.size() == 1)
         ? s->secret_lottery_results[0]
         : s->secret_lottery_results[l->rand_crypt->next() % s->secret_lottery_results.size()];
-    item.enforce_min_stack_size(limits);
+    item.enforce_stack_size_limits(limits);
     item.id = l->generate_item_id(c->lobby_client_id);
     p->add_item(item, limits);
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
@@ -4950,7 +4950,7 @@ static asio::awaitable<void> on_quest_F95E_result_bb(shared_ptr<Client> c, Subco
     } else if (item.data1[0] == 0x00) {
       item.data1[4] |= 0x80; // Unidentified
     } else {
-      item.enforce_min_stack_size(*s->item_stack_limits(c->version()));
+      item.enforce_stack_size_limits(*s->item_stack_limits(c->version()));
     }
 
     item.id = l->generate_item_id(0xFF);
@@ -4996,7 +4996,7 @@ static asio::awaitable<void> on_quest_F95F_result_bb(shared_ptr<Client> c, Subco
   send_command_t(c, 0x60, 0x00, cmd_6xDB);
 
   ItemData new_item = result.second;
-  new_item.enforce_min_stack_size(limits);
+  new_item.enforce_stack_size_limits(limits);
   new_item.id = l->generate_item_id(c->lobby_client_id);
   p->add_item(new_item, limits);
   send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
@@ -5116,7 +5116,7 @@ static asio::awaitable<void> on_momoka_item_exchange_bb(shared_ptr<Client> c, Su
     // TODO: We probably should use an allow-list here to prevent the client
     // from creating arbitrary items if cheat mode is disabled.
     ItemData new_item = cmd.replace_item;
-    new_item.enforce_min_stack_size(limits);
+    new_item.enforce_stack_size_limits(limits);
     new_item.id = l->generate_item_id(c->lobby_client_id);
     p->add_item(new_item, limits);
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);

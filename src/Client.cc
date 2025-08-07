@@ -859,6 +859,13 @@ void Client::load_all_files() {
   if (this->character_data) {
     // Clear legacy play_time field
     this->character_data->disp.name.clear_after_bytes(0x18);
+
+    // Enforce item stack limits, in case they've changed
+    auto s = this->require_server_state();
+    auto stack_limits = s->item_stack_limits(this->version());
+    this->character_data->inventory.enforce_stack_limits(stack_limits);
+    this->character_data->bank.enforce_stack_limits(stack_limits);
+
     this->login->account->auto_reply_message = this->character_data->auto_reply.decode();
     this->login->account->save();
     this->last_play_time_update = phosg::now();

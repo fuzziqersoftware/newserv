@@ -254,9 +254,14 @@ size_t ItemData::max_stack_size(const StackLimits& limits) const {
   return limits.get(this->data1[0], this->data1[1]);
 }
 
-void ItemData::enforce_min_stack_size(const StackLimits& limits) {
-  if (this->stack_size(limits) == 0) {
-    this->data1[5] = 1;
+void ItemData::enforce_stack_size_limits(const StackLimits& limits) {
+  if (this->data1[0] == 0x03) {
+    size_t max_stack_size = this->max_stack_size(limits);
+    if (max_stack_size > 1) {
+      this->data1[5] = std::clamp<uint8_t>(this->data1[5], 1, max_stack_size);
+    } else {
+      this->data1[5] = 0;
+    }
   }
 }
 

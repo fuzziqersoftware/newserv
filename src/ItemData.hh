@@ -163,7 +163,7 @@ struct ItemData {
   bool is_stackable(const StackLimits& limits) const;
   size_t stack_size(const StackLimits& limits) const;
   size_t max_stack_size(const StackLimits& limits) const;
-  void enforce_min_stack_size(const StackLimits& limits);
+  void enforce_stack_size_limits(const StackLimits& limits);
 
   static bool is_common_consumable(uint32_t primary_identifier);
   bool is_common_consumable() const;

@@ -396,7 +396,7 @@ ItemData ItemNameIndex::parse_item_description(const std::string& desc) const {
       }
     }
   }
-  ret.enforce_min_stack_size(*this->limits);
+  ret.enforce_stack_size_limits(*this->limits);
   return ret;
 }
 

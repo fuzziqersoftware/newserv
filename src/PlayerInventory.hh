@@ -287,6 +287,12 @@ struct PlayerInventoryT {
     }
   }
 
+  void enforce_stack_limits(std::shared_ptr<const ItemData::StackLimits> stack_limits) {
+    for (size_t z = 0; z < std::min<uint8_t>(this->num_items, this->items.size()); z++) {
+      this->items[z].data.enforce_stack_size_limits(*stack_limits);
+    }
+  }
+
   operator PlayerInventoryT<!BE>() const {
     PlayerInventoryT<!BE> ret;
     ret.num_items = this->num_items;
@@ -407,6 +413,12 @@ struct PlayerBankT {
   void encode_for_client(Version v) {
     for (size_t z = 0; z < this->items.size(); z++) {
       this->items[z].data.encode_for_version(v, nullptr);
+    }
+  }
+
+  void enforce_stack_limits(std::shared_ptr<const ItemData::StackLimits> stack_limits) {
+    for (size_t z = 0; z < std::min<uint8_t>(this->num_items, this->items.size()); z++) {
+      this->items[z].data.enforce_stack_size_limits(*stack_limits);
     }
   }
 
