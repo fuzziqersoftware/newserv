@@ -137,7 +137,7 @@ Currently newserv works on macOS, Windows, and Ubuntu Linux. It will likely work
 
 1. Download the latest release.zip file from the [releases page](https://github.com/fuzziqersoftware/newserv/releases).
 2. Extract the contents of the archive to some location on your computer.
-3. (Optional) If you want to change any config options, go into the system/ folder, open config.json in a text editor, and edit it to your liking. There are comments in the file that describe what all the options do.
+3. Go into the system/ folder, open config.json in a text editor, and edit it to your liking. There are comments in the file that describe what all the options do. Most of the options can be left alone if you want default behavior, but on Windows, you must change LocalAddress and ExternalAddress.
 4. (Optional) If you plan to play Blue Burst on newserv, set up the patch directory. See [client patch directories](#client-patch-directories) for details.
 5. Run the newserv executable.
 
