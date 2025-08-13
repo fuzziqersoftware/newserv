@@ -423,12 +423,14 @@ ChatCommandDefinition cc_bank(
         } else {
           send_text_message(a.c, "$C6Created shared bank (0)");
         }
-      } else if (new_char_index <= 4) {
+
+      } else if (new_char_index <= 127) {
         a.c->use_character_bank(new_char_index - 1);
         auto bp = a.c->current_bank_character();
 
         auto name = escape_player_name(bp->disp.name.decode(a.c->language()));
         send_text_message_fmt(a.c, "$C6Using {}\'s bank ({})", name, new_char_index);
+
       } else {
         throw precondition_failed("$C6Invalid bank number");
       }
