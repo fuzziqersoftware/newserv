@@ -1166,8 +1166,8 @@ uint32_t Parsed6x70Data::convert_game_flags(uint32_t game_flags, bool to_v3) {
   // simply store the most complete format of this field - we have to be able
   // to convert between the two.
 
-  // Bits on v2: ?IHCBAzy xwvutsrq ponmlkji hgfedcba
-  // Bits on v3: ?IHGFEDC BAzyxwvu srqponkj hgfedcba
+  // Bits on v2: JIHCBAzy xwvutsrq ponmlkji hgfedcba
+  // Bits on v3: JIHGFEDC BAzyxwvu srqponkj hgfedcba
   // The bits ilmt were removed in v3 and the bits to their left were shifted
   // right. The bits DEFG were added in v3 and do not exist on v2.
   // Known meanings for these bits:
@@ -1176,6 +1176,7 @@ uint32_t Parsed6x70Data::convert_game_flags(uint32_t game_flags, bool to_v3) {
   //   y = is near enemy
   //   H = is enemy?
   //   I = is object? (some entities have both H and I set though)
+  //   J = is item
 
   if (to_v3) {
     return (game_flags & 0xE00000FF) |
