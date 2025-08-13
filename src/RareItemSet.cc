@@ -28,11 +28,10 @@ string RareItemSet::ExpandedDrop::str(shared_ptr<const ItemNameIndex> name_index
 }
 
 uint32_t RareItemSet::expand_rate(uint8_t pc) {
-  // To compute the actual drop rare drop rate from pc, first decode pc into
-  // shift and value:
+  // To compute the actual rare drop rate from pc, first decode pc:
   //   pc = bits SSSSSVVV
-  //     shift = S - 4 (so shift is 0-27)
-  //     value = V + 7 (so value is 7-14)
+  //   shift = S - 4 (so shift is 0-27)
+  //   value = V + 7 (so value is 7-14)
   // Then, take the value 0x00000002, shift it left by shift (0-27), and
   // multiply the result by value (7-14) to get the actual drop rate. The result
   // is a probability out of 0xFFFFFFFF (so 0x40000000 means the item will drop
