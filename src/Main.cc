@@ -1892,7 +1892,7 @@ Action a_decode_text_archive(
         ts = make_unique<BinaryTextAndKeyboardsSet>(data, args.get<bool>("big-endian"), is_sjis);
       }
       phosg::JSON j = ts->json();
-      string out_data = j.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY);
+      string out_data = j.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY | phosg::JSON::SerializeOption::EXPAND_LEAF_CONTAINERS);
       write_output_data(args, out_data.data(), out_data.size(), "json");
     });
 Action a_encode_text_archive(
@@ -1932,7 +1932,7 @@ Action a_decode_unicode_text_set(
     "decode-unicode-text-set", nullptr, +[](phosg::Arguments& args) {
       UnicodeTextSet uts(read_input_data(args));
       phosg::JSON j = uts.json();
-      string out_data = j.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY);
+      string out_data = j.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY | phosg::JSON::SerializeOption::EXPAND_LEAF_CONTAINERS);
       write_output_data(args, out_data.data(), out_data.size(), "json");
     });
 Action a_encode_unicode_text_set(
