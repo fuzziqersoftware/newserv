@@ -604,6 +604,7 @@ Some commands only work for clients not in proxy sessions. The chat commands are
     * `$patch <name>`: Run a patch on your client. `<name>` must exactly match the name of a patch on the server.
 
 * Character data commands (non-proxy only)
+    * `$switchchar <slot>` (BB only): Switch to a different character from your account without logging out.
     * `$savechar <slot>`: Save your current character data on the server in the specified slot. See the [server-side saves section](#server-side-saves) for more details.
     * `$loadchar <slot>`: Load character data from the specified slot on the server, and replace your current character with it. See the [server-side saves section](#server-side-saves) for more details.
     * `$bbchar <username> <password> <slot>`: Save your current character data on the server in a different account's BB character slots. See the [server-side saves section](#server-side-saves) for more details.

@@ -2640,6 +2640,46 @@ ChatCommandDefinition cc_swsetall(
       co_return;
     });
 
+ChatCommandDefinition cc_switchchar(
+    {"$switchchar"},
+    +[](const Args& a) -> asio::awaitable<void> {
+      auto l = a.c->require_lobby();
+      auto s = a.c->require_server_state();
+
+      a.check_is_proxy(false);
+      a.check_is_game(false);
+      if (a.c->version() != Version::BB_V4) {
+        throw precondition_failed("This command can only\nbe used on BB");
+      }
+
+      int32_t index = stol(a.text, nullptr, 0) - 1;
+      if (index < 0) {
+        throw precondition_failed("Invalid slot number");
+      }
+      auto filename = Client::character_filename(a.c->login->bb_license->username, index);
+      if (!std::filesystem::is_regular_file(filename)) {
+        throw precondition_failed("No character exists\nin that slot");
+      }
+
+      a.c->save_and_unload_character();
+      a.c->bb_character_index = index;
+
+      // TODO: This can trigger a client bug where the previous character's
+      // name label object isn't deleted if the leave and join notifications
+      // are received on the same frame. This results in the receiving player
+      // seeing both labels over the new character, with the latest one
+      // appearing on top. We could fix this by requiring each recipient to
+      // reply to a ping between the two commands, similar to how the 64 and
+      // 6x6D commands are split during game joining, but implementing that
+      // here seems not worth the effort given the low likelihood and impact of
+      // this bug.
+      send_complete_player_bb(a.c);
+      send_player_leave_notification(l, a.c->lobby_client_id);
+      s->send_lobby_join_notifications(l, a.c);
+
+      co_return;
+    });
+
 ChatCommandDefinition cc_unset(
     {"$unset"},
     +[](const Args& a) -> asio::awaitable<void> {
