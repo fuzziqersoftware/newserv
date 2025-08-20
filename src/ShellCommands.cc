@@ -740,17 +740,17 @@ ShellCommand c_create_tournament(
             if (subtokens.size() < 1) {
               throw runtime_error("no dice ranges specified in dice= option");
             }
-            auto atk_range = parse_range_p(tokens[0]);
+            auto atk_range = parse_range_p(subtokens[0]);
             rules.min_dice_value = atk_range.first;
             rules.max_dice_value = atk_range.second;
             if (subtokens.size() >= 2) {
-              rules.def_dice_value_range = parse_range_c(tokens[1]);
+              rules.def_dice_value_range = parse_range_c(subtokens[1]);
               if (subtokens.size() >= 3) {
-                rules.atk_dice_value_range_2v1 = parse_range_c(tokens[2]);
+                rules.atk_dice_value_range_2v1 = parse_range_c(subtokens[2]);
                 if (subtokens.size() == 3) {
                   rules.def_dice_value_range_2v1 = rules.atk_dice_value_range_2v1;
                 } else if (subtokens.size() == 4) {
-                  rules.def_dice_value_range_2v1 = parse_range_c(tokens[3]);
+                  rules.def_dice_value_range_2v1 = parse_range_c(subtokens[3]);
                 } else {
                   throw runtime_error("too many range specs given");
                 }
