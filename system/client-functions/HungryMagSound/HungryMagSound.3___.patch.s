@@ -17,7 +17,12 @@ start:
   .data     0x8000BF30
   .deltaof  code_start, code_end
   .address  0x8000BF30
-code_start:
+code_start:  # [std] (TItemMag* this @ r3) -> void
+  lwz       r4, [r3 + 0xF0]
+  lhz       r4, [r4 + 0x1C]  # r4 = this->owner_player->entity_id
+  lwz       r5, [r13 - <VERS 0x5298 0x5290 0x5270 0x5270 0x5280 0x5280 0x5260 0x5220>]  # local_client_id
+  cmpl      r4, r5
+  bnelr
   lis       r3, 0x0002
   ori       r3, r3, 0x2825
   li        r4, 0
