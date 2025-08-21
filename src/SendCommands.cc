@@ -1751,9 +1751,12 @@ void send_quest_categories_menu(
 }
 
 void send_lobby_list(shared_ptr<Client> c) {
-  // This command appears to be deprecated, as PSO expects it to be exactly how
-  // this server sends it, and does not react if it's different, except by
-  // changing the lobby IDs.
+  // DC v1 expects 10 lobbies in this list; DC v2 and later accept a variable
+  // number, but other parts of the code expect there to always be 15 lobbies.
+  // Furthermore, there are only 16 entries in the array in TProtocol and the
+  // writes aren't bounds-checked, so the 83 command could overwrite later
+  // parts of TProtocol if more than 16 entries are sent. (On Episode 3, there
+  // are 21 entries instead.)
 
   auto s = c->require_server_state();
   vector<S_LobbyListEntry_83> entries;

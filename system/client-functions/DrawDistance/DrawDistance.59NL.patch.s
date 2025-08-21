@@ -82,7 +82,7 @@ patch_func_3:
   mov       dword [0x00518803], 0x90909090
   ret
 
-# TODO: Which objects this affects?
+# TOComputerMachine01
 patch_func_4:
   pop       ecx
   push      7
@@ -103,7 +103,7 @@ patch_code_end4:
   push      ecx
   jmp       write_call_func
 
-# TODO: This one too?
+# TObjCamera
 patch_func_5:
   pop       ecx
   push      6
