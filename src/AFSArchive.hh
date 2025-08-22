@@ -23,6 +23,10 @@ public:
     return this->entries;
   }
 
+  inline size_t num_entries() const {
+    return this->entries.size();
+  }
+
   std::pair<const void*, size_t> get(size_t index) const;
   std::string get_copy(size_t index) const;
   phosg::StringReader get_reader(size_t index) const;

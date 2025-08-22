@@ -2186,7 +2186,7 @@ static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, SubcommandMessage&
     throw runtime_error("BB client sent 6x5F command");
   }
 
-  bool should_notify = s->rare_notifs_enabled_for_client_drops && (l->drop_mode == Lobby::DropMode::CLIENT);
+  bool should_notify = s->rare_notifs_enabled_for_client_drops && (l->drop_mode == ServerDropMode::CLIENT);
 
   shared_ptr<const MapState::EnemyState> ene_st;
   shared_ptr<const MapState::ObjectState> obj_st;
@@ -2956,27 +2956,27 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
   G_SpecializableItemDropRequest_6xA2 cmd = normalize_drop_request(msg.data, msg.size);
   auto rec = reconcile_drop_request_with_map(c, cmd, l->episode, l->event, l->map_state, true);
 
-  Lobby::DropMode drop_mode = l->drop_mode;
+  ServerDropMode drop_mode = l->drop_mode;
   switch (drop_mode) {
-    case Lobby::DropMode::DISABLED:
+    case ServerDropMode::DISABLED:
       co_return;
-    case Lobby::DropMode::CLIENT: {
+    case ServerDropMode::CLIENT: {
       // If the leader is BB, use SERVER_SHARED instead
       // TODO: We should also use server drops if any clients have incompatible
       // object lists, since they might generate incorrect IDs for items and we
       // can't override them
       auto leader = l->clients[l->leader_id];
       if (leader && leader->version() == Version::BB_V4) {
-        drop_mode = Lobby::DropMode::SERVER_SHARED;
+        drop_mode = ServerDropMode::SERVER_SHARED;
         break;
       } else {
         forward_subcommand(c, msg);
         co_return;
       }
     }
-    case Lobby::DropMode::SERVER_SHARED:
-    case Lobby::DropMode::SERVER_DUPLICATE:
-    case Lobby::DropMode::SERVER_PRIVATE:
+    case ServerDropMode::SERVER_SHARED:
+    case ServerDropMode::SERVER_DUPLICATE:
+    case ServerDropMode::SERVER_PRIVATE:
       break;
     default:
       throw logic_error("invalid drop mode");
@@ -3016,11 +3016,11 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
     };
 
     switch (drop_mode) {
-      case Lobby::DropMode::DISABLED:
-      case Lobby::DropMode::CLIENT:
+      case ServerDropMode::DISABLED:
+      case ServerDropMode::CLIENT:
         throw logic_error("unhandled simple drop mode");
-      case Lobby::DropMode::SERVER_SHARED:
-      case Lobby::DropMode::SERVER_DUPLICATE: {
+      case ServerDropMode::SERVER_SHARED:
+      case ServerDropMode::SERVER_DUPLICATE: {
         // TODO: In SERVER_DUPLICATE mode, should we reduce the rates for rare
         // items? Maybe by a factor of l->count_clients()?
         auto res = generate_item();
@@ -3029,7 +3029,7 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
         } else {
           string name = s->describe_item(c->version(), res.item);
           l->log.info_f("Entity {:04X} (area {:02X}) created item {}", cmd.entity_index, cmd.effective_area, name);
-          if (drop_mode == Lobby::DropMode::SERVER_DUPLICATE) {
+          if (drop_mode == ServerDropMode::SERVER_DUPLICATE) {
             for (const auto& lc : l->clients) {
               if (lc && (rec.obj_st || (lc->floor == cmd.floor))) {
                 res.item.id = l->generate_item_id(0xFF);
@@ -3058,7 +3058,7 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
         }
         break;
       }
-      case Lobby::DropMode::SERVER_PRIVATE: {
+      case ServerDropMode::SERVER_PRIVATE: {
         for (const auto& lc : l->clients) {
           if (lc && (rec.obj_st || (lc->floor == cmd.floor))) {
             auto res = generate_item();
@@ -3135,7 +3135,7 @@ static asio::awaitable<void> on_set_quest_flag(shared_ptr<Client> c, SubcommandM
 
   forward_subcommand(c, msg);
 
-  if (l->drop_mode != Lobby::DropMode::DISABLED) {
+  if (l->drop_mode != ServerDropMode::DISABLED) {
     EnemyType boss_enemy_type = EnemyType::NONE;
     bool is_ep2 = (l->episode == Episode::EP2);
     if ((l->episode == Episode::EP1) && (c->floor == 0x0E)) {
@@ -4916,7 +4916,7 @@ static asio::awaitable<void> on_photon_crystal_exchange_bb(shared_ptr<Client> c,
   size_t index = p->inventory.find_item_by_primary_identifier(0x03100200);
   auto item = p->remove_item(p->inventory.items[index].data.id, 1, *s->item_stack_limits(c->version()));
   send_destroy_item_to_lobby(c, item.id, 1);
-  l->drop_mode = Lobby::DropMode::DISABLED;
+  l->drop_mode = ServerDropMode::DISABLED;
   l->allowed_drop_modes = (1 << static_cast<uint8_t>(l->drop_mode)); // DISABLED only
   co_return;
 }

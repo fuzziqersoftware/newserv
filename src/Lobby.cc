@@ -159,7 +159,7 @@ Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id, bool is_game)
       challenge_exp_multiplier(1.0f),
       random_seed(phosg::random_object<uint32_t>()),
       rand_crypt(make_shared<DisabledRandomGenerator>()),
-      drop_mode(DropMode::CLIENT),
+      drop_mode(ServerDropMode::CLIENT),
       event(0),
       block(0),
       leader_id(0),
@@ -214,41 +214,6 @@ void Lobby::create_item_creator(Version logic_version) {
     logic_version = leader_c ? leader_c->version() : Version::BB_V4;
   }
 
-  shared_ptr<const RareItemSet> rare_item_set;
-  shared_ptr<const CommonItemSet> common_item_set;
-  switch (logic_version) {
-    case Version::PC_PATCH:
-    case Version::BB_PATCH:
-    case Version::GC_EP3_NTE:
-    case Version::GC_EP3:
-      throw runtime_error("cannot create item creator for this base version");
-    case Version::DC_NTE:
-    case Version::DC_11_2000:
-    case Version::DC_V1:
-      // TODO: We should probably have a v1 common item set at some point too
-      common_item_set = s->common_item_set_v2;
-      rare_item_set = s->rare_item_sets.at("rare-table-v1");
-      break;
-    case Version::DC_V2:
-    case Version::PC_NTE:
-    case Version::PC_V2:
-      common_item_set = s->common_item_set_v2;
-      rare_item_set = s->rare_item_sets.at("rare-table-v2");
-      break;
-    case Version::GC_NTE:
-    case Version::GC_V3:
-    case Version::XB_V3:
-      common_item_set = s->common_item_set_v3_v4;
-      rare_item_set = s->rare_item_sets.at("rare-table-v3");
-      break;
-    case Version::BB_V4:
-      common_item_set = s->common_item_set_v3_v4;
-      rare_item_set = s->rare_item_sets.at("rare-table-v4");
-      break;
-    default:
-      throw logic_error("invalid lobby base version");
-  }
-
   shared_ptr<RandomGenerator> rand_crypt;
   if (s->use_psov2_rand_crypt) {
     rand_crypt = make_shared<PSOV2Encryption>(this->rand_crypt->seed());
@@ -256,8 +221,8 @@ void Lobby::create_item_creator(Version logic_version) {
     rand_crypt = make_shared<MT19937Generator>(this->rand_crypt->seed());
   }
   this->item_creator = make_shared<ItemCreator>(
-      common_item_set,
-      rare_item_set,
+      s->common_item_set(logic_version, this->quest),
+      s->rare_item_set(logic_version, this->quest),
       s->armor_random_set,
       s->tool_random_set,
       s->weapon_random_sets.at(this->difficulty),
@@ -883,39 +848,4 @@ bool Lobby::compare_shared(const shared_ptr<const Lobby>& a, const shared_ptr<co
   }
 
   return a->name < b->name;
-}
-
-template <>
-Lobby::DropMode phosg::enum_for_name<Lobby::DropMode>(const char* name) {
-  if (!strcmp(name, "DISABLED")) {
-    return Lobby::DropMode::DISABLED;
-  } else if (!strcmp(name, "CLIENT")) {
-    return Lobby::DropMode::CLIENT;
-  } else if (!strcmp(name, "SERVER_SHARED")) {
-    return Lobby::DropMode::SERVER_SHARED;
-  } else if (!strcmp(name, "SERVER_PRIVATE")) {
-    return Lobby::DropMode::SERVER_PRIVATE;
-  } else if (!strcmp(name, "SERVER_DUPLICATE")) {
-    return Lobby::DropMode::SERVER_DUPLICATE;
-  } else {
-    throw runtime_error("invalid drop mode");
-  }
-}
-
-template <>
-const char* phosg::name_for_enum<Lobby::DropMode>(Lobby::DropMode value) {
-  switch (value) {
-    case Lobby::DropMode::DISABLED:
-      return "DISABLED";
-    case Lobby::DropMode::CLIENT:
-      return "CLIENT";
-    case Lobby::DropMode::SERVER_SHARED:
-      return "SERVER_SHARED";
-    case Lobby::DropMode::SERVER_PRIVATE:
-      return "SERVER_PRIVATE";
-    case Lobby::DropMode::SERVER_DUPLICATE:
-      return "SERVER_DUPLICATE";
-    default:
-      throw runtime_error("invalid drop mode");
-  }
 }

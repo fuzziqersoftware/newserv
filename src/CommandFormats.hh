@@ -435,9 +435,9 @@ struct C_LegacyLogin_BB_04 {
 //   05 = Server down for maintenance (108)
 //   06 = Incorrect password (127)
 //   Any other nonzero value = Generic failure (101)
-// The client config field in this command is ignored by pre-V3 clients as well
-// as Episodes 1&2 Trial Edition. All other V3 clients save it as opaque data to
-// be returned in a 9E or 9F command later.
+// The client config field in this command is ignored by all clients that never
+// send 9E. Clients that do send 9E will save thie client config as opaque data
+// to be returned in a 9E or 9F command later.
 // The client will respond with a 96 command, but only the first time it
 // receives this command - for later 04 commands, the client will still update
 // its client config but will not respond. Changing the security data at any
@@ -4298,7 +4298,8 @@ struct G_FeedMag_6x28 {
   le_uint32_t fed_item_id = 0;
 } __packed_ws__(G_FeedMag_6x28, 0x0C);
 
-// 6x29: Delete inventory item (via bank deposit / sale / feeding MAG) (protected on V3 but not V4)
+// 6x29: Delete inventory item (via bank deposit / sale / feeding MAG)
+// (protected on V3 but not on V4)
 // This subcommand is also used for reducing the size of stacks - if amount is
 // less than the stack count, the item is not deleted and its ID remains valid.
 
@@ -5739,14 +5740,16 @@ struct G_SetLobbyChairState_6xAE {
   le_float unknown_a4 = 0;
 } __packed_ws__(G_SetLobbyChairState_6xAE, 0x10);
 
-// 6xAF: Turn lobby chair (not valid on pre-V3 or GC Trial Edition) (protected on V3/V4)
+// 6xAF: Turn lobby chair (not valid on pre-V3 or GC Trial Edition) (protected
+// on V3/V4)
 
 struct G_TurnLobbyChair_6xAF {
   G_ClientIDHeader header;
   le_uint32_t angle = 0; // In range [0x0000, 0xFFFF]
 } __packed_ws__(G_TurnLobbyChair_6xAF, 8);
 
-// 6xB0: Move lobby chair (not valid on pre-V3 or GC Trial Edition) (protected on V3/V4)
+// 6xB0: Move lobby chair (not valid on pre-V3 or GC Trial Edition) (protected
+// on V3/V4)
 
 struct G_MoveLobbyChair_6xB0 {
   G_ClientIDHeader header;

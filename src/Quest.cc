@@ -221,6 +221,15 @@ void VersionedQuest::assert_valid() const {
   if (!is_ep3(this->version) && !this->map_file) {
     throw runtime_error("parsed map file is missing");
   }
+  if (this->common_item_set_name.empty() != !this->common_item_set) {
+    throw runtime_error("common item set name/pointer mismatch");
+  }
+  if (this->rare_item_set_name.empty() != !this->rare_item_set) {
+    throw runtime_error("rare item set name/pointer mismatch");
+  }
+  if (this->allowed_drop_modes && !(this->allowed_drop_modes & (1 << static_cast<size_t>(this->default_drop_mode)))) {
+    throw runtime_error("default drop mode is not allowed");
+  }
 }
 
 string VersionedQuest::bin_filename() const {
@@ -280,7 +289,13 @@ Quest::Quest(shared_ptr<const VersionedQuest> initial_version)
       challenge_template_index(initial_version->challenge_template_index),
       description_flag(initial_version->description_flag),
       available_expression(initial_version->available_expression),
-      enabled_expression(initial_version->enabled_expression) {
+      enabled_expression(initial_version->enabled_expression),
+      common_item_set_name(initial_version->common_item_set_name),
+      rare_item_set_name(initial_version->rare_item_set_name),
+      common_item_set(initial_version->common_item_set),
+      rare_item_set(initial_version->rare_item_set),
+      allowed_drop_modes(initial_version->allowed_drop_modes),
+      default_drop_mode(initial_version->default_drop_mode) {
   this->add_version(initial_version);
 }
 
@@ -298,10 +313,6 @@ phosg::JSON Quest::json() const {
     }));
   }
 
-  auto battle_rules_json = this->battle_rules ? this->battle_rules->json() : nullptr;
-  auto challenge_template_index_json = (this->challenge_template_index >= 0)
-      ? this->challenge_template_index
-      : phosg::JSON(nullptr);
   return phosg::JSON::dict({
       {"Number", this->quest_number},
       {"CategoryID", this->category_id},
@@ -311,11 +322,15 @@ phosg::JSON Quest::json() const {
       {"MaxPlayers", this->max_players},
       {"LockStatusRegister", (this->lock_status_register >= 0) ? this->lock_status_register : phosg::JSON(nullptr)},
       {"Name", this->name},
-      {"BattleRules", std::move(battle_rules_json)},
-      {"ChallengeTemplateIndex", std::move(challenge_template_index_json)},
+      {"BattleRules", this->battle_rules ? this->battle_rules->json() : phosg::JSON(nullptr)},
+      {"ChallengeTemplateIndex", (this->challenge_template_index >= 0) ? this->challenge_template_index : phosg::JSON(nullptr)},
       {"DescriptionFlag", this->description_flag},
       {"AvailableExpression", this->available_expression ? this->available_expression->str() : phosg::JSON(nullptr)},
       {"EnabledExpression", this->available_expression ? this->available_expression->str() : phosg::JSON(nullptr)},
+      {"CommonItemSetName", this->common_item_set_name.empty() ? phosg::JSON(nullptr) : this->common_item_set_name},
+      {"RareItemSetName", this->rare_item_set_name.empty() ? phosg::JSON(nullptr) : this->rare_item_set_name},
+      {"AllowedDropModes", this->allowed_drop_modes},
+      {"DefaultDropMode", phosg::name_for_enum(this->default_drop_mode)},
       {"Versions", std::move(versions_json)},
   });
 }
@@ -406,6 +421,30 @@ void Quest::add_version(shared_ptr<const VersionedQuest> vq) {
         "quest version has a different enabled expression (existing: {}, new: {})",
         existing_str, new_str));
   }
+  if (this->common_item_set_name != vq->common_item_set_name) {
+    throw runtime_error(std::format(
+        "quest version has different common table name (existing: {}, new: {})",
+        this->common_item_set_name, vq->common_item_set_name));
+  }
+  if (this->common_item_set != vq->common_item_set) {
+    throw runtime_error("quest version has different common table");
+  }
+  if (this->rare_item_set_name != vq->rare_item_set_name) {
+    throw runtime_error(std::format(
+        "quest version has different rare table name (existing: {}, new: {})",
+        this->rare_item_set_name, vq->rare_item_set_name));
+  }
+  if (this->rare_item_set != vq->rare_item_set) {
+    throw runtime_error("quest version has different rare table");
+  }
+  if (this->allowed_drop_modes != vq->allowed_drop_modes) {
+    throw runtime_error(format("quest version has different allowed drop modes (existing: {:02X}, new: {:02X})",
+        this->allowed_drop_modes, vq->allowed_drop_modes));
+  }
+  if (this->default_drop_mode != vq->default_drop_mode) {
+    throw runtime_error(format("quest version has different default drop mode (existing: {}, new: {})",
+        phosg::name_for_enum(this->default_drop_mode), phosg::name_for_enum(vq->default_drop_mode)));
+  }
 
   this->versions.emplace(this->versions_key(vq->version, vq->language), vq);
 }
@@ -482,6 +521,8 @@ shared_ptr<const VersionedQuest> Quest::version(Version v, uint8_t language) con
 QuestIndex::QuestIndex(
     const string& directory,
     shared_ptr<const QuestCategoryIndex> category_index,
+    const unordered_map<string, shared_ptr<const CommonItemSet>>& common_item_sets,
+    const unordered_map<string, shared_ptr<const RareItemSet>>& rare_item_sets,
     bool is_ep3)
     : directory(directory),
       category_index(category_index) {
@@ -912,6 +953,28 @@ QuestIndex::QuestIndex(
         }
         try {
           vq->lock_status_register = metadata_json.get_int("LockStatusRegister");
+        } catch (const out_of_range&) {
+        }
+        try {
+          vq->common_item_set_name = metadata_json.at("CommonItemSetName").as_string();
+        } catch (const out_of_range&) {
+        }
+        if (!vq->common_item_set_name.empty()) {
+          vq->common_item_set = common_item_sets.at(vq->common_item_set_name);
+        }
+        try {
+          vq->rare_item_set_name = metadata_json.at("RareItemSetName").as_string();
+        } catch (const out_of_range&) {
+        }
+        if (!vq->rare_item_set_name.empty()) {
+          vq->rare_item_set = rare_item_sets.at(vq->rare_item_set_name);
+        }
+        try {
+          vq->allowed_drop_modes = metadata_json.at("AllowedDropModes").as_int();
+        } catch (const out_of_range&) {
+        }
+        try {
+          vq->default_drop_mode = phosg::enum_for_name<ServerDropMode>(metadata_json.at("DefaultDropMode").as_string());
         } catch (const out_of_range&) {
         }
       }

@@ -328,13 +328,13 @@ std::shared_ptr<phosg::JSON> HTTPServer::generate_client_json(
         {"LobbyPlayers", std::move(lobby_players_json)},
     });
     switch (ses->drop_mode) {
-      case ProxySession::DropMode::DISABLED:
+      case ProxyDropMode::DISABLED:
         ses_json.emplace("DropMode", "none");
         break;
-      case ProxySession::DropMode::PASSTHROUGH:
+      case ProxyDropMode::PASSTHROUGH:
         ses_json.emplace("DropMode", "default");
         break;
-      case ProxySession::DropMode::INTERCEPT:
+      case ProxyDropMode::INTERCEPT:
         ses_json.emplace("DropMode", "proxy");
         break;
     }
@@ -386,19 +386,19 @@ std::shared_ptr<phosg::JSON> HTTPServer::generate_lobby_json(
       ret->emplace("EXPShareMultiplier", l->exp_share_multiplier);
       ret->emplace("AllowedDropModes", l->allowed_drop_modes);
       switch (l->drop_mode) {
-        case Lobby::DropMode::DISABLED:
+        case ServerDropMode::DISABLED:
           ret->emplace("DropMode", "none");
           break;
-        case Lobby::DropMode::CLIENT:
+        case ServerDropMode::CLIENT:
           ret->emplace("DropMode", "client");
           break;
-        case Lobby::DropMode::SERVER_SHARED:
+        case ServerDropMode::SERVER_SHARED:
           ret->emplace("DropMode", "shared");
           break;
-        case Lobby::DropMode::SERVER_PRIVATE:
+        case ServerDropMode::SERVER_PRIVATE:
           ret->emplace("DropMode", "private");
           break;
-        case Lobby::DropMode::SERVER_DUPLICATE:
+        case ServerDropMode::SERVER_DUPLICATE:
           ret->emplace("DropMode", "duplicate");
           break;
       }
@@ -669,12 +669,23 @@ asio::awaitable<std::shared_ptr<phosg::JSON>> HTTPServer::generate_ep3_cards_jso
   });
 }
 
-asio::awaitable<std::shared_ptr<phosg::JSON>> HTTPServer::generate_common_tables_json() const {
-  auto v2_table = this->state->common_item_set_v2;
-  auto v3_v4_table = this->state->common_item_set_v3_v4;
-  co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> shared_ptr<phosg::JSON> {
-    return make_shared<phosg::JSON>(phosg::JSON::dict({{"v1_v2", v2_table->json()}, {"v3_v4", v3_v4_table->json()}}));
-  });
+std::shared_ptr<phosg::JSON> HTTPServer::generate_common_table_list_json() const {
+  auto ret = make_shared<phosg::JSON>(phosg::JSON::list());
+  for (const auto& it : this->state->common_item_sets) {
+    ret->emplace_back(it.first);
+  }
+  return ret;
+}
+
+asio::awaitable<std::shared_ptr<phosg::JSON>> HTTPServer::generate_common_table_json(const std::string& table_name) const {
+  try {
+    const auto& table = this->state->common_item_sets.at(table_name);
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> shared_ptr<phosg::JSON> {
+      return make_shared<phosg::JSON>(table->json());
+    });
+  } catch (const out_of_range&) {
+    throw HTTPError(404, "Table does not exist");
+  }
 }
 
 std::shared_ptr<phosg::JSON> HTTPServer::generate_rare_table_list_json() const {
@@ -794,7 +805,10 @@ asio::awaitable<std::unique_ptr<HTTPResponse>> HTTPServer::handle_request(shared
       ret = co_await this->generate_ep3_cards_json(true);
     } else if (req.path == "/y/data/common-tables") {
       this->require_GET(req);
-      ret = co_await this->generate_common_tables_json();
+      ret = this->generate_common_table_list_json();
+    } else if (req.path.starts_with("/y/data/common-tables/")) {
+      this->require_GET(req);
+      ret = co_await this->generate_common_table_json(req.path.substr(22));
     } else if (req.path == "/y/data/rare-tables") {
       this->require_GET(req);
       ret = this->generate_rare_table_list_json();

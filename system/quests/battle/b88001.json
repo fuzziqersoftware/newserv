@@ -75,4 +75,29 @@
   // via $quest, AvailableIf and EnabledIf are not checked, so it's inadvisable
   // to use this option if either of those options are also used.
   // "AllowStartFromChatCommand": true,
+
+  // If this field is specified, it overrides the default common item table for
+  // the duration of the quest. The common item table name must begin with
+  // either "common-table-" or "ItemPT-", and the corresponding file should be
+  // in system/item-tables/ and should be in .json, .afs, .gsl, or .gslb
+  // format. The file extension (.json, etc.) should not be included here. If
+  // you use this, make sure to set AllowedDropModes appropriately below.
+  // "CommonItemSetName": "common-table-custom1",
+
+  // If this field is specified, it overrides the default rare item table for
+  // the duration of the quest. The rare item table name must begin with either
+  // "rare-table-" or "ItemRT-". As for common item sets, the rare table must
+  // be in system/item-tables/. If it's in JSON format, the table name must end
+  // with -v1, -v2, -v3, or -v4. If you use this, make sure to set
+  // AllowedDropModes appropriately below.
+  // "RareItemSetName": "rare-table-custom1",
+
+  // If these fields are specified, they override the allowed drop modes and
+  // the default drop mode for the game when the quest is loaded. These
+  // function analogously to the drop mode fields in config.json; see the
+  // comments there for more information. If a custom common or rare table is
+  // also specified above, the client drop mode should be disallowed here (by
+  // clearing the 0x02 bit of AllowedDropModes).
+  // "AllowedDropModes": 0x1D,
+  // "DefaultDropMode": "SERVER_PRIVATE",
 }

@@ -512,6 +512,35 @@ ItemData ServerState::parse_item_description(Version version, const string& desc
   return this->item_name_index(version)->parse_item_description(description);
 }
 
+shared_ptr<const CommonItemSet> ServerState::common_item_set(Version logic_version, shared_ptr<const Quest> q) const {
+  if (q && q->common_item_set) {
+    return q->common_item_set;
+  } else if (is_v1_or_v2(logic_version)) {
+    // TODO: We should probably have a v1 common item set at some point too
+    return this->common_item_sets.at("common-table-v1-v2");
+  } else if (is_v3(logic_version) || is_v4(logic_version)) {
+    return this->common_item_sets.at("common-table-v3-v4");
+  } else {
+    throw runtime_error(std::format("no default common item set is available for {}", phosg::name_for_enum(logic_version)));
+  }
+}
+
+shared_ptr<const RareItemSet> ServerState::rare_item_set(Version logic_version, shared_ptr<const Quest> q) const {
+  if (q && q->rare_item_set) {
+    return q->rare_item_set;
+  } else if (is_v1(logic_version)) {
+    return this->rare_item_sets.at("rare-table-v1");
+  } else if (is_v2(logic_version)) {
+    return this->rare_item_sets.at("rare-table-v2");
+  } else if (is_v3(logic_version)) {
+    return this->rare_item_sets.at("rare-table-v3");
+  } else if (is_v4(logic_version)) {
+    return this->rare_item_sets.at("rare-table-v4");
+  } else {
+    throw runtime_error(std::format("no default rare item set is available for {}", phosg::name_for_enum(logic_version)));
+  }
+}
+
 void ServerState::set_port_configuration(const vector<PortConfiguration>& port_configs) {
   this->name_to_port_config.clear();
   this->number_to_port_config.clear();
@@ -835,22 +864,22 @@ void ServerState::load_config_early() {
   this->allowed_drop_modes_v4_normal = this->config_json->get_int("AllowedDropModesV4Normal", 0x1D);
   this->allowed_drop_modes_v4_battle = this->config_json->get_int("AllowedDropModesV4Battle", 0x05);
   this->allowed_drop_modes_v4_challenge = this->config_json->get_int("AllowedDropModesV4Challenge", 0x05);
-  this->default_drop_mode_v1_v2_normal = this->config_json->get_enum("DefaultDropModeV1V2Normal", Lobby::DropMode::CLIENT);
-  this->default_drop_mode_v1_v2_battle = this->config_json->get_enum("DefaultDropModeV1V2Battle", Lobby::DropMode::CLIENT);
-  this->default_drop_mode_v1_v2_challenge = this->config_json->get_enum("DefaultDropModeV1V2Challenge", Lobby::DropMode::CLIENT);
-  this->default_drop_mode_v3_normal = this->config_json->get_enum("DefaultDropModeV3Normal", Lobby::DropMode::CLIENT);
-  this->default_drop_mode_v3_battle = this->config_json->get_enum("DefaultDropModeV3Battle", Lobby::DropMode::CLIENT);
-  this->default_drop_mode_v3_challenge = this->config_json->get_enum("DefaultDropModeV3Challenge", Lobby::DropMode::CLIENT);
-  this->default_drop_mode_v4_normal = this->config_json->get_enum("DefaultDropModeV4Normal", Lobby::DropMode::SERVER_SHARED);
-  this->default_drop_mode_v4_battle = this->config_json->get_enum("DefaultDropModeV4Battle", Lobby::DropMode::SERVER_SHARED);
-  this->default_drop_mode_v4_challenge = this->config_json->get_enum("DefaultDropModeV4Challenge", Lobby::DropMode::SERVER_SHARED);
-  if ((this->default_drop_mode_v4_normal == Lobby::DropMode::CLIENT) ||
-      (this->default_drop_mode_v4_battle == Lobby::DropMode::CLIENT) ||
-      (this->default_drop_mode_v4_challenge == Lobby::DropMode::CLIENT)) {
+  this->default_drop_mode_v1_v2_normal = this->config_json->get_enum("DefaultDropModeV1V2Normal", ServerDropMode::CLIENT);
+  this->default_drop_mode_v1_v2_battle = this->config_json->get_enum("DefaultDropModeV1V2Battle", ServerDropMode::CLIENT);
+  this->default_drop_mode_v1_v2_challenge = this->config_json->get_enum("DefaultDropModeV1V2Challenge", ServerDropMode::CLIENT);
+  this->default_drop_mode_v3_normal = this->config_json->get_enum("DefaultDropModeV3Normal", ServerDropMode::CLIENT);
+  this->default_drop_mode_v3_battle = this->config_json->get_enum("DefaultDropModeV3Battle", ServerDropMode::CLIENT);
+  this->default_drop_mode_v3_challenge = this->config_json->get_enum("DefaultDropModeV3Challenge", ServerDropMode::CLIENT);
+  this->default_drop_mode_v4_normal = this->config_json->get_enum("DefaultDropModeV4Normal", ServerDropMode::SERVER_SHARED);
+  this->default_drop_mode_v4_battle = this->config_json->get_enum("DefaultDropModeV4Battle", ServerDropMode::SERVER_SHARED);
+  this->default_drop_mode_v4_challenge = this->config_json->get_enum("DefaultDropModeV4Challenge", ServerDropMode::SERVER_SHARED);
+  if ((this->default_drop_mode_v4_normal == ServerDropMode::CLIENT) ||
+      (this->default_drop_mode_v4_battle == ServerDropMode::CLIENT) ||
+      (this->default_drop_mode_v4_challenge == ServerDropMode::CLIENT)) {
     throw runtime_error("default V4 drop mode cannot be CLIENT");
   }
-  if ((this->allowed_drop_modes_v4_normal & (1 << static_cast<size_t>(Lobby::DropMode::CLIENT))) ||
-      (this->allowed_drop_modes_v4_battle & (1 << static_cast<size_t>(Lobby::DropMode::CLIENT))) || (this->allowed_drop_modes_v4_challenge & (1 << static_cast<size_t>(Lobby::DropMode::CLIENT)))) {
+  if ((this->allowed_drop_modes_v4_normal & (1 << static_cast<size_t>(ServerDropMode::CLIENT))) ||
+      (this->allowed_drop_modes_v4_battle & (1 << static_cast<size_t>(ServerDropMode::CLIENT))) || (this->allowed_drop_modes_v4_challenge & (1 << static_cast<size_t>(ServerDropMode::CLIENT)))) {
     throw runtime_error("CLIENT drop mode cannot be allowed in V4");
   }
 
@@ -1940,60 +1969,102 @@ void ServerState::load_item_name_indexes() {
 }
 
 void ServerState::load_drop_tables() {
-  config_log.info_f("Loading rare item sets");
+  config_log.info_f("Loading item sets");
 
-  unordered_map<string, shared_ptr<RareItemSet>> new_rare_item_sets;
+  unordered_map<string, shared_ptr<const RareItemSet>> new_rare_item_sets;
+  unordered_map<string, shared_ptr<const CommonItemSet>> new_common_item_sets;
   for (const auto& item : std::filesystem::directory_iterator("system/item-tables")) {
     string filename = item.path().filename().string();
-    if (!filename.starts_with("rare-table-")) {
-      continue;
-    }
 
-    string path = "system/item-tables/" + filename;
-    size_t ext_offset = filename.rfind('.');
-    string basename = (ext_offset == string::npos) ? filename : filename.substr(0, ext_offset);
+    if (filename.starts_with("common-table-") || filename.starts_with("ItemPT-")) {
+      string path = "system/item-tables/" + filename;
+      size_t ext_offset = filename.rfind('.');
+      string basename = (ext_offset == string::npos) ? filename : filename.substr(0, ext_offset);
 
-    if (filename.ends_with("-v1.json")) {
-      config_log.info_f("Loading v1 JSON rare item table {}", filename);
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(phosg::JSON::parse(phosg::load_file(path)), this->item_name_index(Version::DC_V1)));
-    } else if (filename.ends_with("-v2.json")) {
-      config_log.info_f("Loading v2 JSON rare item table {}", filename);
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(phosg::JSON::parse(phosg::load_file(path)), this->item_name_index(Version::PC_V2)));
-    } else if (filename.ends_with("-v3.json")) {
-      config_log.info_f("Loading v3 JSON rare item table {}", filename);
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(phosg::JSON::parse(phosg::load_file(path)), this->item_name_index(Version::GC_V3)));
-    } else if (filename.ends_with("-v4.json")) {
-      config_log.info_f("Loading v4 JSON rare item table {}", filename);
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(phosg::JSON::parse(phosg::load_file(path)), this->item_name_index(Version::BB_V4)));
+      // AFSV2CommonItemSet(std::shared_ptr<const std::string> pt_afs_data, std::shared_ptr<const std::string> ct_afs_data);
 
-    } else if (filename.ends_with(".afs")) {
-      config_log.info_f("Loading AFS rare item table {}", filename);
-      auto data = make_shared<string>(phosg::load_file(path));
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(AFSArchive(data), false));
+      if (filename.ends_with(".json")) {
+        config_log.info_f("Loading JSON common item table {}", filename);
+        new_common_item_sets.emplace(basename, make_shared<JSONCommonItemSet>(phosg::JSON::parse(phosg::load_file(path))));
+      } else if (filename.ends_with(".afs")) {
+        string ct_filename;
+        if (filename.starts_with("ItemPT-")) {
+          ct_filename = "ItemCT-" + filename.substr(7);
+        } else if (filename.starts_with("common-table-")) {
+          ct_filename = "challenge-common-table-" + filename.substr(13);
+        } else {
+          throw std::runtime_error(std::format("cannot determine challenge table filename for common table file: {}", filename));
+        }
+        auto data = make_shared<string>(phosg::load_file(path));
+        shared_ptr<string> ct_data;
+        try {
+          string ct_path = "system/item-tables/" + ct_filename;
+          ct_data = make_shared<string>(phosg::load_file(ct_path));
+          config_log.info_f("Loading AFS common item table {} with challenge table {}", filename, ct_filename);
+        } catch (const phosg::cannot_open_file&) {
+          config_log.info_f("Loading AFS common item table {} without challenge table", filename);
+        }
+        new_common_item_sets.emplace(basename, make_shared<AFSV2CommonItemSet>(data, ct_data));
+      } else if (filename.ends_with(".gsl")) {
+        config_log.info_f("Loading little-endian GSL common item table {}", filename);
+        auto data = make_shared<string>(phosg::load_file(path));
+        new_common_item_sets.emplace(basename, make_shared<GSLV3V4CommonItemSet>(data, false));
+      } else if (filename.ends_with(".gslb")) {
+        config_log.info_f("Loading big-endian GSL common item table {}", filename);
+        auto data = make_shared<string>(phosg::load_file(path));
+        new_common_item_sets.emplace(basename, make_shared<GSLV3V4CommonItemSet>(data, true));
+      } else {
+        throw std::runtime_error(std::format("unknown format for common table file: {}", filename));
+      }
 
-    } else if (filename.ends_with(".gsl")) {
-      config_log.info_f("Loading GSL rare item table {}", filename);
-      auto data = make_shared<string>(phosg::load_file(path));
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(GSLArchive(data, false), false));
+    } else if (filename.starts_with("rare-table-") || filename.starts_with("ItemRT-")) {
+      string path = "system/item-tables/" + filename;
+      size_t ext_offset = filename.rfind('.');
+      string basename = (ext_offset == string::npos) ? filename : filename.substr(0, ext_offset);
 
-    } else if (filename.ends_with(".gslb")) {
-      config_log.info_f("Loading GSL rare item table {}", filename);
-      auto data = make_shared<string>(phosg::load_file(path));
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(GSLArchive(data, true), true));
+      shared_ptr<RareItemSet> rare_set;
+      if (filename.ends_with("-v1.json")) {
+        config_log.info_f("Loading v1 JSON rare item table {}", filename);
+        rare_set = make_shared<RareItemSet>(phosg::JSON::parse(phosg::load_file(path)), this->item_name_index(Version::DC_V1));
+      } else if (filename.ends_with("-v2.json")) {
+        config_log.info_f("Loading v2 JSON rare item table {}", filename);
+        rare_set = make_shared<RareItemSet>(phosg::JSON::parse(phosg::load_file(path)), this->item_name_index(Version::PC_V2));
+      } else if (filename.ends_with("-v3.json")) {
+        config_log.info_f("Loading v3 JSON rare item table {}", filename);
+        rare_set = make_shared<RareItemSet>(phosg::JSON::parse(phosg::load_file(path)), this->item_name_index(Version::GC_V3));
+      } else if (filename.ends_with("-v4.json")) {
+        config_log.info_f("Loading v4 JSON rare item table {}", filename);
+        rare_set = make_shared<RareItemSet>(phosg::JSON::parse(phosg::load_file(path)), this->item_name_index(Version::BB_V4));
 
-    } else if (filename.ends_with(".rel")) {
-      config_log.info_f("Loading REL rare item table {}", filename);
-      new_rare_item_sets.emplace(basename, make_shared<RareItemSet>(phosg::load_file(path), true));
+      } else if (filename.ends_with(".afs")) {
+        config_log.info_f("Loading AFS rare item table {}", filename);
+        auto data = make_shared<string>(phosg::load_file(path));
+        rare_set = make_shared<RareItemSet>(AFSArchive(data), false);
+
+      } else if (filename.ends_with(".gsl")) {
+        config_log.info_f("Loading GSL rare item table {}", filename);
+        auto data = make_shared<string>(phosg::load_file(path));
+        rare_set = make_shared<RareItemSet>(GSLArchive(data, false), false);
+
+      } else if (filename.ends_with(".gslb")) {
+        config_log.info_f("Loading GSL rare item table {}", filename);
+        auto data = make_shared<string>(phosg::load_file(path));
+        rare_set = make_shared<RareItemSet>(GSLArchive(data, true), true);
+
+      } else if (filename.ends_with(".rel")) {
+        config_log.info_f("Loading REL rare item table {}", filename);
+        rare_set = make_shared<RareItemSet>(phosg::load_file(path), true);
+
+      } else {
+        throw std::runtime_error(std::format("unknown format for rare table file: {}", filename));
+      }
+
+      if (this->server_global_drop_rate_multiplier != 1.0) {
+        rare_set->multiply_all_rates(this->server_global_drop_rate_multiplier);
+      }
+      new_rare_item_sets.emplace(basename, std::move(rare_set));
     }
   }
-
-  config_log.info_f("Loading v2 common item table");
-  auto ct_data_v2 = make_shared<string>(phosg::load_file("system/item-tables/ItemCT-pc-v2.afs"));
-  auto pt_data_v2 = make_shared<string>(phosg::load_file("system/item-tables/ItemPT-pc-v2.afs"));
-  auto new_common_item_set_v2 = make_shared<AFSV2CommonItemSet>(pt_data_v2, ct_data_v2);
-  config_log.info_f("Loading v3+v4 common item table");
-  auto pt_data_v3_v4 = make_shared<string>(phosg::load_file("system/item-tables/ItemPT-gc-v3.gsl"));
-  auto new_common_item_set_v3_v4 = make_shared<GSLV3V4CommonItemSet>(pt_data_v3_v4, true);
 
   config_log.info_f("Loading armor table");
   auto armor_data = make_shared<string>(phosg::load_file("system/item-tables/ArmorRandom-gc-v3.rel"));
@@ -2020,19 +2091,8 @@ void ServerState::load_drop_tables() {
   auto tekker_data = make_shared<string>(phosg::load_file("system/item-tables/JudgeItem-gc-v3.rel"));
   auto new_tekker_adjustment_set = make_shared<TekkerAdjustmentSet>(tekker_data);
 
-  if (this->server_global_drop_rate_multiplier != 1.0) {
-    for (auto& it : new_rare_item_sets) {
-      it.second->multiply_all_rates(this->server_global_drop_rate_multiplier);
-    }
-  }
-  // We can't just std::move() new_rare_item_sets into place because its values are
-  // not const :(
-  this->rare_item_sets.clear();
-  for (auto& it : new_rare_item_sets) {
-    this->rare_item_sets.emplace(it.first, std::move(it.second));
-  }
-  this->common_item_set_v2 = std::move(new_common_item_set_v2);
-  this->common_item_set_v3_v4 = std::move(new_common_item_set_v3_v4);
+  this->rare_item_sets = std::move(new_rare_item_sets);
+  this->common_item_sets = std::move(new_common_item_sets);
   this->armor_random_set = std::move(new_armor_random_set);
   this->tool_random_set = std::move(new_tool_random_set);
   this->weapon_random_sets = std::move(new_weapon_random_sets);
@@ -2107,9 +2167,14 @@ void ServerState::load_ep3_tournament_state() {
 
 void ServerState::load_quest_index() {
   config_log.info_f("Collecting quests");
-  this->default_quest_index = make_shared<QuestIndex>("system/quests", this->quest_category_index, false);
+  this->default_quest_index = make_shared<QuestIndex>("system/quests", this->quest_category_index, this->common_item_sets, this->rare_item_sets, false);
   config_log.info_f("Collecting Episode 3 download quests");
-  this->ep3_download_quest_index = make_shared<QuestIndex>("system/ep3/maps-download", this->quest_category_index, true);
+  this->ep3_download_quest_index = make_shared<QuestIndex>(
+      "system/ep3/maps-download",
+      this->quest_category_index,
+      unordered_map<string, shared_ptr<const CommonItemSet>>{},
+      unordered_map<string, shared_ptr<const RareItemSet>>{},
+      true);
 }
 
 void ServerState::compile_functions() {

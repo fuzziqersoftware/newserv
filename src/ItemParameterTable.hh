@@ -16,6 +16,26 @@
 #include "Types.hh"
 #include "Version.hh"
 
+// TODO: These don't really belong here, but putting them anywhere else creates
+// annoying dependency cycles. Find or make a better place for these.
+enum class ServerDropMode {
+  DISABLED = 0,
+  CLIENT = 1, // Not allowed for BB games
+  SERVER_SHARED = 2,
+  SERVER_PRIVATE = 3,
+  SERVER_DUPLICATE = 4,
+};
+enum class ProxyDropMode {
+  DISABLED = 0,
+  PASSTHROUGH,
+  INTERCEPT,
+};
+
+template <>
+ServerDropMode phosg::enum_for_name<ServerDropMode>(const char* name);
+template <>
+const char* phosg::name_for_enum<ServerDropMode>(ServerDropMode value);
+
 class ItemParameterTable {
 public:
   // TODO: This implementation is ugly. We should use real classes and virtual

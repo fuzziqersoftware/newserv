@@ -128,15 +128,15 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   uint8_t allowed_drop_modes_v4_normal = 0x1D; // CLIENT not allowed
   uint8_t allowed_drop_modes_v4_battle = 0x05;
   uint8_t allowed_drop_modes_v4_challenge = 0x05;
-  Lobby::DropMode default_drop_mode_v1_v2_normal = Lobby::DropMode::CLIENT;
-  Lobby::DropMode default_drop_mode_v1_v2_battle = Lobby::DropMode::CLIENT;
-  Lobby::DropMode default_drop_mode_v1_v2_challenge = Lobby::DropMode::CLIENT;
-  Lobby::DropMode default_drop_mode_v3_normal = Lobby::DropMode::CLIENT;
-  Lobby::DropMode default_drop_mode_v3_battle = Lobby::DropMode::CLIENT;
-  Lobby::DropMode default_drop_mode_v3_challenge = Lobby::DropMode::CLIENT;
-  Lobby::DropMode default_drop_mode_v4_normal = Lobby::DropMode::SERVER_SHARED;
-  Lobby::DropMode default_drop_mode_v4_battle = Lobby::DropMode::SERVER_SHARED;
-  Lobby::DropMode default_drop_mode_v4_challenge = Lobby::DropMode::SERVER_SHARED;
+  ServerDropMode default_drop_mode_v1_v2_normal = ServerDropMode::CLIENT;
+  ServerDropMode default_drop_mode_v1_v2_battle = ServerDropMode::CLIENT;
+  ServerDropMode default_drop_mode_v1_v2_challenge = ServerDropMode::CLIENT;
+  ServerDropMode default_drop_mode_v3_normal = ServerDropMode::CLIENT;
+  ServerDropMode default_drop_mode_v3_battle = ServerDropMode::CLIENT;
+  ServerDropMode default_drop_mode_v3_challenge = ServerDropMode::CLIENT;
+  ServerDropMode default_drop_mode_v4_normal = ServerDropMode::SERVER_SHARED;
+  ServerDropMode default_drop_mode_v4_battle = ServerDropMode::SERVER_SHARED;
+  ServerDropMode default_drop_mode_v4_challenge = ServerDropMode::SERVER_SHARED;
   std::unordered_map<uint16_t, IntegralExpression> quest_flag_rewrites_v1_v2;
   std::unordered_map<uint16_t, IntegralExpression> quest_flag_rewrites_v3;
   std::unordered_map<uint16_t, IntegralExpression> quest_flag_rewrites_v4;
@@ -196,9 +196,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const LevelTable> level_table_v4;
   std::shared_ptr<const BattleParamsIndex> battle_params;
   std::shared_ptr<const GSLArchive> bb_data_gsl;
+  std::unordered_map<std::string, std::shared_ptr<const CommonItemSet>> common_item_sets;
   std::unordered_map<std::string, std::shared_ptr<const RareItemSet>> rare_item_sets;
-  std::shared_ptr<const CommonItemSet> common_item_set_v2;
-  std::shared_ptr<const CommonItemSet> common_item_set_v3_v4;
   std::shared_ptr<const ArmorRandomSet> armor_random_set;
   std::shared_ptr<const ToolRandomSet> tool_random_set;
   std::array<std::shared_ptr<const WeaponRandomSet>, 4> weapon_random_sets;
@@ -356,6 +355,9 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const ItemNameIndex> item_name_index(Version version) const; // Throws if missing
   std::string describe_item(Version version, const ItemData& item, uint8_t flags = 0) const;
   ItemData parse_item_description(Version version, const std::string& description) const;
+
+  std::shared_ptr<const CommonItemSet> common_item_set(Version logic_version, std::shared_ptr<const Quest> q) const;
+  std::shared_ptr<const RareItemSet> rare_item_set(Version logic_version, std::shared_ptr<const Quest> q) const;
 
   const std::vector<uint32_t>& public_lobby_search_order(Version version, bool is_client_customization) const;
   inline const std::vector<uint32_t>& public_lobby_search_order(std::shared_ptr<const Client> c) const {

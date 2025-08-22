@@ -677,29 +677,49 @@ shared_ptr<const CommonItemSet::Table> CommonItemSet::get_table(
 }
 
 AFSV2CommonItemSet::AFSV2CommonItemSet(
-    std::shared_ptr<const std::string> pt_afs_data,
-    std::shared_ptr<const std::string> ct_afs_data) {
-  // ItemPT.afs has 40 entries; the first 10 are for Normal, then Hard, etc.
-  AFSArchive pt_afs(pt_afs_data);
-  for (size_t difficulty = 0; difficulty < 4; difficulty++) {
-    for (size_t section_id = 0; section_id < 10; section_id++) {
-      auto entry = pt_afs.get(difficulty * 10 + section_id);
-      phosg::StringReader r(entry.first, entry.second);
-      auto table = make_shared<Table>(r, false, false, Episode::EP1);
-      this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::NORMAL, difficulty, section_id), table);
-      this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::BATTLE, difficulty, section_id), table);
-      this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::SOLO, difficulty, section_id), table);
+    std::shared_ptr<const std::string> pt_afs_data, std::shared_ptr<const std::string> ct_afs_data) {
+  // Each AFS file has 40 entries (30 on v1); the first 10 are for Normal, then
+  // Hard, etc.
+  {
+    AFSArchive pt_afs(pt_afs_data);
+    size_t max_difficulty;
+    if (pt_afs.num_entries() >= 40) {
+      max_difficulty = 4;
+    } else if (pt_afs.num_entries() >= 30) {
+      max_difficulty = 3;
+    } else {
+      throw std::runtime_error(std::format("PT AFS file has unexpected entry count ({})", pt_afs.num_entries()));
+    }
+    for (size_t difficulty = 0; difficulty < max_difficulty; difficulty++) {
+      for (size_t section_id = 0; section_id < 10; section_id++) {
+        auto entry = pt_afs.get(difficulty * 10 + section_id);
+        phosg::StringReader r(entry.first, entry.second);
+        auto table = make_shared<Table>(r, false, false, Episode::EP1);
+        this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::NORMAL, difficulty, section_id), table);
+        this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::BATTLE, difficulty, section_id), table);
+        this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::SOLO, difficulty, section_id), table);
+      }
     }
   }
 
-  // ItemCT.afs also has 40 entries, but only the 0th, 10th, 20th, and 30th are
-  // used (section_id is ignored)
-  AFSArchive ct_afs(ct_afs_data);
-  for (size_t difficulty = 0; difficulty < 4; difficulty++) {
-    auto r = ct_afs.get_reader(difficulty * 10);
-    auto table = make_shared<Table>(r, false, false, Episode::EP1);
-    for (size_t section_id = 0; section_id < 10; section_id++) {
-      this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::CHALLENGE, difficulty, section_id), table);
+  // ItemCT AFS files also have 40 entries, but only the 0th, 10th, 20th, and
+  // 30th are used (section_id is ignored)
+  if (ct_afs_data) {
+    AFSArchive ct_afs(ct_afs_data);
+    size_t max_difficulty;
+    if (ct_afs.num_entries() >= 40) {
+      max_difficulty = 4;
+    } else if (ct_afs.num_entries() >= 30) {
+      max_difficulty = 3;
+    } else {
+      throw std::runtime_error(std::format("CT AFS file has unexpected entry count ({})", ct_afs.num_entries()));
+    }
+    for (size_t difficulty = 0; difficulty < max_difficulty; difficulty++) {
+      auto r = ct_afs.get_reader(difficulty * 10);
+      auto table = make_shared<Table>(r, false, false, Episode::EP1);
+      for (size_t section_id = 0; section_id < 10; section_id++) {
+        this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::CHALLENGE, difficulty, section_id), table);
+      }
     }
   }
 }
@@ -758,10 +778,14 @@ GSLV3V4CommonItemSet::GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gs
 
     if (episode != Episode::EP4) {
       for (size_t difficulty = 0; difficulty < 4; difficulty++) {
-        auto r = gsl.get_reader(filename_for_table(episode, difficulty, 0, true));
-        auto table = make_shared<Table>(r, is_big_endian, true, episode);
-        for (size_t section_id = 0; section_id < 10; section_id++) {
-          this->tables.emplace(this->key_for_table(episode, GameMode::CHALLENGE, difficulty, section_id), table);
+        try {
+          auto r = gsl.get_reader(filename_for_table(episode, difficulty, 0, true));
+          auto table = make_shared<Table>(r, is_big_endian, true, episode);
+          for (size_t section_id = 0; section_id < 10; section_id++) {
+            this->tables.emplace(this->key_for_table(episode, GameMode::CHALLENGE, difficulty, section_id), table);
+          }
+        } catch (const out_of_range&) {
+          // GC NTE doesn't have Ep2 challenge; just skip adding the table
         }
       }
     }

@@ -90,13 +90,6 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     IS_OVERFLOW                     = 0x08000000,
     // clang-format on
   };
-  enum class DropMode {
-    DISABLED = 0,
-    CLIENT = 1, // Not allowed for BB games
-    SERVER_SHARED = 2,
-    SERVER_PRIVATE = 3,
-    SERVER_DUPLICATE = 4,
-  };
 
   std::weak_ptr<ServerState> server_state;
   phosg::PrefixedLogger log;
@@ -136,7 +129,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   uint32_t random_seed;
   std::shared_ptr<RandomGenerator> rand_crypt;
   uint8_t allowed_drop_modes;
-  DropMode drop_mode;
+  ServerDropMode drop_mode;
   std::shared_ptr<ItemCreator> item_creator; // Always null for lobbies, never null for games
 
   struct ChallengeParameters {
@@ -291,6 +284,6 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
 };
 
 template <>
-Lobby::DropMode phosg::enum_for_name<Lobby::DropMode>(const char* name);
+ServerDropMode phosg::enum_for_name<ServerDropMode>(const char* name);
 template <>
-const char* phosg::name_for_enum<Lobby::DropMode>(Lobby::DropMode value);
+const char* phosg::name_for_enum<ServerDropMode>(ServerDropMode value);

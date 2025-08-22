@@ -4,6 +4,41 @@
 
 using namespace std;
 
+template <>
+ServerDropMode phosg::enum_for_name<ServerDropMode>(const char* name) {
+  if (!strcmp(name, "DISABLED")) {
+    return ServerDropMode::DISABLED;
+  } else if (!strcmp(name, "CLIENT")) {
+    return ServerDropMode::CLIENT;
+  } else if (!strcmp(name, "SERVER_SHARED")) {
+    return ServerDropMode::SERVER_SHARED;
+  } else if (!strcmp(name, "SERVER_PRIVATE")) {
+    return ServerDropMode::SERVER_PRIVATE;
+  } else if (!strcmp(name, "SERVER_DUPLICATE")) {
+    return ServerDropMode::SERVER_DUPLICATE;
+  } else {
+    throw runtime_error("invalid drop mode");
+  }
+}
+
+template <>
+const char* phosg::name_for_enum<ServerDropMode>(ServerDropMode value) {
+  switch (value) {
+    case ServerDropMode::DISABLED:
+      return "DISABLED";
+    case ServerDropMode::CLIENT:
+      return "CLIENT";
+    case ServerDropMode::SERVER_SHARED:
+      return "SERVER_SHARED";
+    case ServerDropMode::SERVER_PRIVATE:
+      return "SERVER_PRIVATE";
+    case ServerDropMode::SERVER_DUPLICATE:
+      return "SERVER_DUPLICATE";
+    default:
+      throw runtime_error("invalid drop mode");
+  }
+}
+
 ItemParameterTable::ItemParameterTable(shared_ptr<const string> data, Version version)
     : version(version),
       data(data),

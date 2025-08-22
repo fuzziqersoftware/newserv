@@ -37,8 +37,9 @@ protected:
   std::shared_ptr<phosg::JSON> generate_all_json() const;
 
   asio::awaitable<std::shared_ptr<phosg::JSON>> generate_ep3_cards_json(bool trial) const;
-  asio::awaitable<std::shared_ptr<phosg::JSON>> generate_common_tables_json() const;
+  std::shared_ptr<phosg::JSON> generate_common_table_list_json() const;
   std::shared_ptr<phosg::JSON> generate_rare_table_list_json() const;
+  asio::awaitable<std::shared_ptr<phosg::JSON>> generate_common_table_json(const std::string& table_name) const;
   asio::awaitable<std::shared_ptr<phosg::JSON>> generate_rare_table_json(const std::string& table_name) const;
   asio::awaitable<std::shared_ptr<phosg::JSON>> generate_quest_list_json(std::shared_ptr<const QuestIndex> q);
 

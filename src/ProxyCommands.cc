@@ -844,13 +844,12 @@ static asio::awaitable<HandlerResult> SC_6x60_6xA2(shared_ptr<Client> c, Channel
     co_return HandlerResult::FORWARD;
   }
 
-  using DropMode = ProxySession::DropMode;
   switch (c->proxy_session->drop_mode) {
-    case DropMode::DISABLED:
+    case ProxyDropMode::DISABLED:
       co_return HandlerResult::SUPPRESS;
-    case DropMode::PASSTHROUGH:
+    case ProxyDropMode::PASSTHROUGH:
       co_return HandlerResult::FORWARD;
-    case DropMode::INTERCEPT:
+    case ProxyDropMode::INTERCEPT:
       break;
     default:
       throw logic_error("invalid drop mode");

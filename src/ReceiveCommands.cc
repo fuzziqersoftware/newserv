@@ -2252,19 +2252,19 @@ static asio::awaitable<void> on_09(shared_ptr<Client> c, Channel::Message& msg) 
           }
 
           switch (game->drop_mode) {
-            case Lobby::DropMode::DISABLED:
+            case ServerDropMode::DISABLED:
               info += "$C6Drops disabled$C7\n";
               break;
-            case Lobby::DropMode::CLIENT:
+            case ServerDropMode::CLIENT:
               info += "$C6Client drops$C7\n";
               break;
-            case Lobby::DropMode::SERVER_SHARED:
+            case ServerDropMode::SERVER_SHARED:
               info += "$C6Server drops$C7\n";
               break;
-            case Lobby::DropMode::SERVER_PRIVATE:
+            case ServerDropMode::SERVER_PRIVATE:
               info += "$C6Private drops$C7\n";
               break;
-            case Lobby::DropMode::SERVER_DUPLICATE:
+            case ServerDropMode::SERVER_DUPLICATE:
               info += "$C6Duplicate drops$C7\n";
               break;
           }
@@ -2432,6 +2432,10 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q, bool substi
   l->quest = q;
   if (l->episode != Episode::EP3) {
     l->episode = q->episode;
+  }
+  if (l->quest->allowed_drop_modes) {
+    l->allowed_drop_modes = l->quest->allowed_drop_modes;
+    l->drop_mode = l->quest->default_drop_mode;
   }
   l->create_item_creator();
 
@@ -4585,7 +4589,7 @@ shared_ptr<Lobby> create_game_generic(
     case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       quest_flag_rewrites = nullptr;
-      game->drop_mode = Lobby::DropMode::DISABLED;
+      game->drop_mode = ServerDropMode::DISABLED;
       game->allowed_drop_modes = (1 << static_cast<size_t>(game->drop_mode));
       break;
     case Version::BB_V4:
@@ -4601,10 +4605,10 @@ shared_ptr<Lobby> create_game_generic(
         game->allowed_drop_modes = s->allowed_drop_modes_v4_normal;
       }
       // Disallow CLIENT mode on BB
-      if (game->drop_mode == Lobby::DropMode::CLIENT) {
+      if (game->drop_mode == ServerDropMode::CLIENT) {
         throw logic_error("CLIENT mode not allowed on BB");
       }
-      if (game->allowed_drop_modes & (1 << static_cast<size_t>(Lobby::DropMode::CLIENT))) {
+      if (game->allowed_drop_modes & (1 << static_cast<size_t>(ServerDropMode::CLIENT))) {
         throw logic_error("CLIENT mode not allowed on BB");
       }
       break;

@@ -8,10 +8,13 @@
 #include <unordered_map>
 #include <vector>
 
+#include "CommonItemSet.hh"
 #include "IntegralExpression.hh"
+#include "ItemParameterTable.hh"
 #include "Map.hh"
 #include "PlayerSubordinates.hh"
 #include "QuestScript.hh"
+#include "RareItemSet.hh"
 #include "StaticGameData.hh"
 #include "TeamIndex.hh"
 
@@ -87,6 +90,12 @@ struct VersionedQuest {
   std::shared_ptr<const IntegralExpression> enabled_expression;
   bool allow_start_from_chat_command = false;
   int16_t lock_status_register = -1;
+  std::string common_item_set_name;
+  std::string rare_item_set_name;
+  std::shared_ptr<const CommonItemSet> common_item_set;
+  std::shared_ptr<const RareItemSet> rare_item_set;
+  uint8_t allowed_drop_modes = 0x00; // 0 = use server default
+  ServerDropMode default_drop_mode = ServerDropMode::CLIENT; // Ignored if allowed_drop_modes == 0
   bool is_dlq_encoded = false;
 
   void assert_valid() const;
@@ -115,6 +124,13 @@ struct Quest {
   uint8_t description_flag;
   std::shared_ptr<const IntegralExpression> available_expression;
   std::shared_ptr<const IntegralExpression> enabled_expression;
+  std::string common_item_set_name;
+  std::string rare_item_set_name;
+  std::shared_ptr<const CommonItemSet> common_item_set;
+  std::shared_ptr<const RareItemSet> rare_item_set;
+  uint8_t allowed_drop_modes = 0x00; // 0 = use server default
+  ServerDropMode default_drop_mode = ServerDropMode::CLIENT; // Ignored if allowed_drop_modes == 0
+
   std::map<uint32_t, std::shared_ptr<const VersionedQuest>> versions;
 
   Quest() = delete;
@@ -151,7 +167,12 @@ struct QuestIndex {
   std::map<std::string, std::shared_ptr<Quest>> quests_by_name;
   std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Quest>>> quests_by_category_id_and_number;
 
-  QuestIndex(const std::string& directory, std::shared_ptr<const QuestCategoryIndex> category_index, bool is_ep3);
+  QuestIndex(
+      const std::string& directory,
+      std::shared_ptr<const QuestCategoryIndex> category_index,
+      const std::unordered_map<std::string, std::shared_ptr<const CommonItemSet>>& common_item_sets,
+      const std::unordered_map<std::string, std::shared_ptr<const RareItemSet>>& rare_item_sets,
+      bool is_ep3);
   phosg::JSON json() const;
 
   std::shared_ptr<const Quest> get(uint32_t quest_number) const;

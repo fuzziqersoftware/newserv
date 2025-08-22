@@ -785,41 +785,40 @@ ChatCommandDefinition cc_dropmode(
 
       if (a.c->proxy_session) {
 
-        using DropMode = ProxySession::DropMode;
         if (a.text.empty()) {
           switch (a.c->proxy_session->drop_mode) {
-            case DropMode::DISABLED:
+            case ProxyDropMode::DISABLED:
               send_text_message(a.c, "Drop mode: disabled");
               break;
-            case DropMode::PASSTHROUGH:
+            case ProxyDropMode::PASSTHROUGH:
               send_text_message(a.c, "Drop mode: default");
               break;
-            case DropMode::INTERCEPT:
+            case ProxyDropMode::INTERCEPT:
               send_text_message(a.c, "Drop mode: proxy");
               break;
           }
 
         } else {
-          DropMode new_mode;
+          ProxyDropMode new_mode;
           if ((a.text == "none") || (a.text == "disabled")) {
-            new_mode = DropMode::DISABLED;
+            new_mode = ProxyDropMode::DISABLED;
           } else if ((a.text == "default") || (a.text == "passthrough")) {
-            new_mode = DropMode::PASSTHROUGH;
+            new_mode = ProxyDropMode::PASSTHROUGH;
           } else if ((a.text == "proxy") || (a.text == "intercept")) {
-            new_mode = DropMode::INTERCEPT;
+            new_mode = ProxyDropMode::INTERCEPT;
           } else {
             throw precondition_failed("Invalid drop mode");
           }
 
           a.c->proxy_session->set_drop_mode(s, a.c->version(), a.c->override_random_seed, new_mode);
           switch (a.c->proxy_session->drop_mode) {
-            case DropMode::DISABLED:
+            case ProxyDropMode::DISABLED:
               send_text_message(a.c->channel, "Item drops disabled");
               break;
-            case DropMode::PASSTHROUGH:
+            case ProxyDropMode::PASSTHROUGH:
               send_text_message(a.c->channel, "Item drops changed\nto default mode");
               break;
-            case DropMode::INTERCEPT:
+            case ProxyDropMode::INTERCEPT:
               send_text_message(a.c->channel, "Item drops changed\nto proxy mode");
               break;
           }
@@ -829,36 +828,36 @@ ChatCommandDefinition cc_dropmode(
         auto l = a.c->require_lobby();
         if (a.text.empty()) {
           switch (l->drop_mode) {
-            case Lobby::DropMode::DISABLED:
+            case ServerDropMode::DISABLED:
               send_text_message(a.c, "Drop mode: disabled");
               break;
-            case Lobby::DropMode::CLIENT:
+            case ServerDropMode::CLIENT:
               send_text_message(a.c, "Drop mode: client");
               break;
-            case Lobby::DropMode::SERVER_SHARED:
+            case ServerDropMode::SERVER_SHARED:
               send_text_message(a.c, "Drop mode: server\nshared");
               break;
-            case Lobby::DropMode::SERVER_PRIVATE:
+            case ServerDropMode::SERVER_PRIVATE:
               send_text_message(a.c, "Drop mode: server\nprivate");
               break;
-            case Lobby::DropMode::SERVER_DUPLICATE:
+            case ServerDropMode::SERVER_DUPLICATE:
               send_text_message(a.c, "Drop mode: server\nduplicate");
               break;
           }
 
         } else {
           a.check_is_leader();
-          Lobby::DropMode new_mode;
+          ServerDropMode new_mode;
           if ((a.text == "none") || (a.text == "disabled")) {
-            new_mode = Lobby::DropMode::DISABLED;
+            new_mode = ServerDropMode::DISABLED;
           } else if (a.text == "client") {
-            new_mode = Lobby::DropMode::CLIENT;
+            new_mode = ServerDropMode::CLIENT;
           } else if ((a.text == "shared") || (a.text == "server")) {
-            new_mode = Lobby::DropMode::SERVER_SHARED;
+            new_mode = ServerDropMode::SERVER_SHARED;
           } else if ((a.text == "private") || (a.text == "priv")) {
-            new_mode = Lobby::DropMode::SERVER_PRIVATE;
+            new_mode = ServerDropMode::SERVER_PRIVATE;
           } else if ((a.text == "duplicate") || (a.text == "dup")) {
-            new_mode = Lobby::DropMode::SERVER_DUPLICATE;
+            new_mode = ServerDropMode::SERVER_DUPLICATE;
           } else {
             throw precondition_failed("Invalid drop mode");
           }
@@ -869,19 +868,19 @@ ChatCommandDefinition cc_dropmode(
 
           l->drop_mode = new_mode;
           switch (l->drop_mode) {
-            case Lobby::DropMode::DISABLED:
+            case ServerDropMode::DISABLED:
               send_text_message(l, "Item drops disabled");
               break;
-            case Lobby::DropMode::CLIENT:
+            case ServerDropMode::CLIENT:
               send_text_message(l, "Item drops changed\nto client mode");
               break;
-            case Lobby::DropMode::SERVER_SHARED:
+            case ServerDropMode::SERVER_SHARED:
               send_text_message(l, "Item drops changed\nto server shared\nmode");
               break;
-            case Lobby::DropMode::SERVER_PRIVATE:
+            case ServerDropMode::SERVER_PRIVATE:
               send_text_message(l, "Item drops changed\nto server private\nmode");
               break;
-            case Lobby::DropMode::SERVER_DUPLICATE:
+            case ServerDropMode::SERVER_DUPLICATE:
               send_text_message(l, "Item drops changed\nto server duplicate\nmode");
               break;
           }
@@ -1262,7 +1261,7 @@ ChatCommandDefinition cc_item(
         item = s->parse_item_description(a.c->version(), a.text);
         item.id = l->generate_item_id(a.c->lobby_client_id);
 
-        if ((l->drop_mode == Lobby::DropMode::SERVER_PRIVATE) || (l->drop_mode == Lobby::DropMode::SERVER_DUPLICATE)) {
+        if ((l->drop_mode == ServerDropMode::SERVER_PRIVATE) || (l->drop_mode == ServerDropMode::SERVER_DUPLICATE)) {
           l->add_item(a.c->floor, item, a.c->pos, nullptr, nullptr, (1 << a.c->lobby_client_id));
           send_drop_stacked_item_to_channel(s, a.c->channel, item, a.c->floor, a.c->pos);
         } else {
@@ -1452,19 +1451,19 @@ ChatCommandDefinition cc_lobby_info(
                   "$C7Section ID: $C6{}$C7", name_for_section_id(l->effective_section_id())));
 
               switch (l->drop_mode) {
-                case Lobby::DropMode::DISABLED:
+                case ServerDropMode::DISABLED:
                   lines.emplace_back("Drops disabled");
                   break;
-                case Lobby::DropMode::CLIENT:
+                case ServerDropMode::CLIENT:
                   lines.emplace_back("Client item table");
                   break;
-                case Lobby::DropMode::SERVER_SHARED:
+                case ServerDropMode::SERVER_SHARED:
                   lines.emplace_back("Server item table");
                   break;
-                case Lobby::DropMode::SERVER_PRIVATE:
+                case ServerDropMode::SERVER_PRIVATE:
                   lines.emplace_back("Server indiv items");
                   break;
-                case Lobby::DropMode::SERVER_DUPLICATE:
+                case ServerDropMode::SERVER_DUPLICATE:
                   lines.emplace_back("Server dup items");
                   break;
                 default:

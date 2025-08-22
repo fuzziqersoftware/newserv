@@ -47,12 +47,7 @@ struct ProxySession {
   int64_t remote_guild_card_number = -1;
   parray<uint8_t, 0x28> remote_client_config_data;
 
-  enum class DropMode {
-    DISABLED = 0,
-    PASSTHROUGH,
-    INTERCEPT,
-  };
-  DropMode drop_mode = DropMode::PASSTHROUGH;
+  ProxyDropMode drop_mode = ProxyDropMode::PASSTHROUGH;
   std::shared_ptr<std::string> quest_dat_data;
   std::shared_ptr<ItemCreator> item_creator;
   std::shared_ptr<MapState> map_state;
@@ -80,7 +75,7 @@ struct ProxySession {
   };
   std::unordered_map<std::string, SavingFile> saving_files;
 
-  void set_drop_mode(std::shared_ptr<ServerState> s, Version version, int64_t override_random_seed, DropMode new_mode);
+  void set_drop_mode(std::shared_ptr<ServerState> s, Version version, int64_t override_random_seed, ProxyDropMode new_mode);
 
   void clear_lobby_players(size_t num_slots);
 };
