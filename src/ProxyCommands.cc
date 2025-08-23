@@ -1600,7 +1600,7 @@ static asio::awaitable<HandlerResult> S_64(shared_ptr<Client> c, Channel::Messag
   } else {
     c->proxy_session->lobby_event = 0;
     c->proxy_session->lobby_difficulty = 0;
-    c->proxy_session->lobby_section_id = c->character()->disp.visual.section_id;
+    c->proxy_session->lobby_section_id = c->character_file()->disp.visual.section_id;
     c->proxy_session->lobby_mode = GameMode::NORMAL;
     c->proxy_session->lobby_random_seed = phosg::random_object<uint32_t>();
   }

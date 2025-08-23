@@ -1397,6 +1397,7 @@ static asio::awaitable<void> on_93_BB(shared_ptr<Client> c, Channel::Message& ms
   c->sub_version = base_cmd.sub_version;
   // c->channel->language set after version check
   c->bb_character_index = base_cmd.character_slot;
+  c->bb_bank_character_index = base_cmd.character_slot;
   c->bb_connection_phase = base_cmd.connection_phase;
   c->bb_client_code = base_cmd.client_code;
   c->bb_security_token = base_cmd.security_token;
@@ -1968,7 +1969,7 @@ static asio::awaitable<void> on_CA_Ep3(shared_ptr<Client> c, Channel::Message& m
       l->battle_record = make_shared<Episode3::BattleRecord>(s->ep3_behavior_flags);
       for (auto existing_c : l->clients) {
         if (existing_c) {
-          auto existing_p = existing_c->character();
+          auto existing_p = existing_c->character_file();
           PlayerLobbyDataDCGC lobby_data;
           lobby_data.name.encode(existing_p->disp.name.decode(existing_c->language()), c->language());
           lobby_data.player_tag = 0x00010000;
@@ -2209,7 +2210,7 @@ static asio::awaitable<void> on_09(shared_ptr<Client> c, Channel::Message& msg) 
               const char* version_token = (game_c->version() != c->version())
                   ? version_tokens.at(static_cast<size_t>(game_c->version()))
                   : "";
-              auto player = game_c->character();
+              auto player = game_c->character_file();
               string name = escape_player_name(player->disp.name.decode(game_c->language()));
               info += std::format("{}{}\n  {} Lv{} {}\n",
                   name,
@@ -2388,14 +2389,14 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
 
     lc->delete_overlay();
     if (l->quest->battle_rules) {
-      lc->use_default_bank();
+      lc->change_bank(lc->bb_character_index);
       lc->create_battle_overlay(l->quest->battle_rules, s->level_table(lc->version()));
       lc->log.info_f("Created battle overlay");
     } else if (l->quest->challenge_template_index >= 0 && !is_v4(lc->version())) {
       // On BB, the client will send a sequence of DF commands that creates the
       // overlay; on non-BB, we do it at quest start time instead (hence the
       // version check above).
-      lc->use_default_bank();
+      lc->change_bank(lc->bb_character_index);
       lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table(lc->version()));
       lc->log.info_f("Created challenge overlay");
       l->assign_inventory_and_bank_item_ids(lc, true);
@@ -2924,7 +2925,7 @@ static asio::awaitable<void> on_10_tournament_entries(
     co_return;
   }
   if (team_name.empty()) {
-    team_name = c->character()->disp.name.decode(c->language());
+    team_name = c->character_file()->disp.name.decode(c->language());
     team_name += std::format("/{:X}", c->login->account->account_id);
   }
   uint16_t tourn_num = item_id >> 16;
@@ -3337,7 +3338,7 @@ static asio::awaitable<void> on_61_98(shared_ptr<Client> c, Channel::Message& ms
     c->clear_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_PLAYER_STATES);
   }
 
-  auto player = c->character();
+  auto player = c->character_file();
 
   switch (c->version()) {
     case Version::DC_NTE:
@@ -3642,7 +3643,7 @@ static asio::awaitable<void> on_06(shared_ptr<Client> c, Channel::Message& msg) 
     co_return;
   }
 
-  auto p = c->character();
+  auto p = c->character_file();
   string from_name = p->disp.name.decode(c->language());
   static const string whisper_text = "(whisper)";
   for (size_t x = 0; x < l->max_clients; x++) {
@@ -3696,6 +3697,7 @@ static asio::awaitable<void> on_E3_BB(shared_ptr<Client> c, Channel::Message& ms
   if (c->bb_connection_phase != 0x00) {
     c->save_and_unload_character();
     c->bb_character_index = cmd.character_index;
+    c->bb_bank_character_index = cmd.character_index;
     send_approve_player_choice_bb(c);
 
   } else {
@@ -3707,8 +3709,9 @@ static asio::awaitable<void> on_E3_BB(shared_ptr<Client> c, Channel::Message& ms
     auto send_preview = [&c](size_t index) -> void {
       c->save_and_unload_character();
       c->bb_character_index = index;
+      c->bb_bank_character_index = index;
       try {
-        auto preview = c->character()->to_preview();
+        auto preview = c->character_file()->to_preview();
         send_player_preview_bb(c, c->bb_character_index, &preview);
 
       } catch (const exception& e) {
@@ -3793,7 +3796,7 @@ static asio::awaitable<void> on_E8_BB(shared_ptr<Client> c, Channel::Message& ms
         }
       }
       if (c->login && new_gc.guild_card_number == c->login->account->account_id) {
-        c->character(true, false)->guild_card.description = new_gc.description;
+        c->character_file(true, false)->guild_card.description = new_gc.description;
         c->log.info_f("Updated character's guild card");
       }
       break;
@@ -3919,18 +3922,20 @@ static asio::awaitable<void> on_E5_BB(shared_ptr<Client> c, Channel::Message& ms
     co_return;
   }
 
-  if (c->character(false).get()) {
+  if (c->character_file(false).get()) {
     throw runtime_error("player already exists");
   }
 
   c->bb_character_index = -1;
+  c->bb_bank_character_index = -1;
   c->system_file(); // Ensure system file is loaded
   c->bb_character_index = cmd.character_index;
+  c->bb_bank_character_index = cmd.character_index;
 
   bool should_send_approve = true;
   if (c->bb_connection_phase == 0x03) { // Dressing room
     try {
-      c->character()->disp.apply_dressing_room(cmd.preview);
+      c->character_file()->disp.apply_dressing_room(cmd.preview);
     } catch (const exception& e) {
       send_message_box(c, std::format("$C6Character could not be modified:\n{}", e.what()));
       should_send_approve = false;
@@ -3955,17 +3960,17 @@ static asio::awaitable<void> on_ED_BB(shared_ptr<Client> c, Channel::Message& ms
   switch (msg.command) {
     case 0x01ED: {
       const auto& cmd = check_size_t<C_UpdateOptionFlags_BB_01ED>(msg.data);
-      c->character(true, false)->option_flags = cmd.option_flags;
+      c->character_file(true, false)->option_flags = cmd.option_flags;
       break;
     }
     case 0x02ED: {
       const auto& cmd = check_size_t<C_UpdateSymbolChats_BB_02ED>(msg.data);
-      c->character(true, false)->symbol_chats = cmd.symbol_chats;
+      c->character_file(true, false)->symbol_chats = cmd.symbol_chats;
       break;
     }
     case 0x03ED: {
       const auto& cmd = check_size_t<C_UpdateChatShortcuts_BB_03ED>(msg.data);
-      c->character(true, false)->shortcuts = cmd.chat_shortcuts;
+      c->character_file(true, false)->shortcuts = cmd.chat_shortcuts;
       break;
     }
     case 0x04ED: {
@@ -3982,17 +3987,17 @@ static asio::awaitable<void> on_ED_BB(shared_ptr<Client> c, Channel::Message& ms
     }
     case 0x06ED: {
       const auto& cmd = check_size_t<C_UpdateTechMenu_BB_06ED>(msg.data);
-      c->character(true, false)->tech_menu_shortcut_entries = cmd.tech_menu;
+      c->character_file(true, false)->tech_menu_shortcut_entries = cmd.tech_menu;
       break;
     }
     case 0x07ED: {
       const auto& cmd = check_size_t<C_UpdateCustomizeMenu_BB_07ED>(msg.data);
-      c->character()->disp.config = cmd.customize;
+      c->character_file()->disp.config = cmd.customize;
       break;
     }
     case 0x08ED: {
       const auto& cmd = check_size_t<C_UpdateChallengeRecords_BB_08ED>(msg.data);
-      c->character(true, false)->challenge_records = cmd.records;
+      c->character_file(true, false)->challenge_records = cmd.records;
       break;
     }
     default:
@@ -4007,7 +4012,7 @@ static asio::awaitable<void> on_E7_BB(shared_ptr<Client> c, Channel::Message& ms
   // TODO: In the future, we shouldn't need to trust any of the client's data
   // here. We should instead verify our copy of the player against what the
   // client sent, and alert on anything that's out of sync.
-  auto p = c->character();
+  auto p = c->character_file();
   p->challenge_records = cmd.char_file.challenge_records;
   p->battle_records = cmd.char_file.battle_records;
   p->death_count = cmd.char_file.death_count;
@@ -4062,7 +4067,7 @@ static asio::awaitable<void> on_DF_BB(shared_ptr<Client> c, Channel::Message& ms
         // On non-BB, there is no DF command, and overlays are created at quest
         // start time instead, hence the version check here.
         if (lc && is_v4(lc->version())) {
-          lc->use_default_bank();
+          lc->change_bank(lc->bb_character_index);
           lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table(lc->version()));
           lc->log.info_f("Created challenge overlay");
           l->assign_inventory_and_bank_item_ids(lc, true);
@@ -4111,7 +4116,7 @@ static asio::awaitable<void> on_DF_BB(shared_ptr<Client> c, Channel::Message& ms
 
     case 0x07DF: {
       const auto& cmd = check_size_t<C_CreateChallengeModeAwardItem_BB_07DF>(msg.data);
-      auto p = c->character(true, false);
+      auto p = c->character_file(true, false);
       auto& award_state = (l->episode == Episode::EP2)
           ? p->challenge_records.ep2_online_award_state
           : p->challenge_records.ep1_online_award_state;
@@ -4159,7 +4164,7 @@ static asio::awaitable<void> on_C0(shared_ptr<Client> c, Channel::Message&) {
 }
 
 static asio::awaitable<void> on_C2(shared_ptr<Client> c, Channel::Message& msg) {
-  c->character()->choice_search_config = check_size_t<ChoiceSearchConfig>(msg.data);
+  c->character_file()->choice_search_config = check_size_t<ChoiceSearchConfig>(msg.data);
   co_return;
 }
 
@@ -4170,7 +4175,7 @@ static void on_choice_search_t(shared_ptr<Client> c, const ChoiceSearchConfig& c
   vector<ResultT> results;
   for (const auto& l : s->all_lobbies()) {
     for (const auto& lc : l->clients) {
-      if (!lc || !lc->login || lc->character()->choice_search_config.disabled) {
+      if (!lc || !lc->login || lc->character_file()->choice_search_config.disabled) {
         continue;
       }
 
@@ -4191,7 +4196,7 @@ static void on_choice_search_t(shared_ptr<Client> c, const ChoiceSearchConfig& c
       }
 
       if (is_match) {
-        auto lp = lc->character();
+        auto lp = lc->character_file();
         auto& result = results.emplace_back();
         result.guild_card_number = lc->login->account->account_id;
         result.name.encode(lp->disp.name.decode(lc->language()), c->language());
@@ -4336,7 +4341,7 @@ static asio::awaitable<void> on_81(shared_ptr<Client> c, Channel::Message& msg) 
     // If the target has auto-reply enabled, send the autoreply. Note that we also
     // forward the message in this case.
     if (!c->blocked_senders.count(target->login->account->account_id)) {
-      auto target_p = target->character();
+      auto target_p = target->character_file();
       if (!target_p->auto_reply.empty()) {
         send_simple_mail(
             c,
@@ -4350,7 +4355,7 @@ static asio::awaitable<void> on_81(shared_ptr<Client> c, Channel::Message& msg) 
     send_simple_mail(
         target,
         c->login->account->account_id,
-        c->character()->disp.name.decode(c->language()),
+        c->character_file()->disp.name.decode(c->language()),
         message);
   }
 }
@@ -4368,7 +4373,7 @@ static asio::awaitable<void> on_D9(shared_ptr<Client> c, Channel::Message& msg) 
     msg.data.push_back(0);
   }
   try {
-    c->character(true, false)->info_board.encode(tt_decode_marked(msg.data, c->language(), is_w), c->language());
+    c->character_file(true, false)->info_board.encode(tt_decode_marked(msg.data, c->language(), is_w), c->language());
   } catch (const runtime_error& e) {
     c->log.warning_f("Failed to decode info board message: {}", e.what());
   }
@@ -4383,7 +4388,7 @@ static asio::awaitable<void> on_C7(shared_ptr<Client> c, Channel::Message& msg) 
   }
 
   string message = tt_decode_marked(msg.data, c->language(), is_w);
-  c->character(true, false)->auto_reply.encode(message, c->language());
+  c->character_file(true, false)->auto_reply.encode(message, c->language());
   c->login->account->auto_reply_message = message;
   c->login->account->save();
   co_return;
@@ -4391,7 +4396,7 @@ static asio::awaitable<void> on_C7(shared_ptr<Client> c, Channel::Message& msg) 
 
 static asio::awaitable<void> on_C8(shared_ptr<Client> c, Channel::Message& msg) {
   check_size_v(msg.data.size(), 0);
-  c->character(true, false)->auto_reply.clear();
+  c->character_file(true, false)->auto_reply.clear();
   c->login->account->auto_reply_message.clear();
   c->login->account->save();
   co_return;
@@ -4442,7 +4447,7 @@ shared_ptr<Lobby> create_game_generic(
 
   size_t min_level = s->default_min_level_for_game(creator_c->version(), episode, difficulty);
 
-  auto p = creator_c->character();
+  auto p = creator_c->character_file();
   if (!creator_c->login->account->check_flag(Account::Flag::FREE_JOIN_GAMES) && (min_level > p->disp.stats.level)) {
     // Note: We don't throw here because this is a situation players might
     // actually encounter while playing the game normally
@@ -5121,8 +5126,8 @@ static asio::awaitable<void> on_D2_V3_BB(shared_ptr<Client> c, Channel::Message&
     if (to_c->version() == Version::BB_V4) {
       // On BB, the server is expected to generate the delete item and create
       // item commands
-      auto to_p = to_c->character();
-      auto from_p = from_c->character();
+      auto to_p = to_c->character_file();
+      auto from_p = from_c->character_file();
       for (const auto& trade_item : from_c->pending_item_trade->items) {
         size_t amount = trade_item.stack_size(*s->item_stack_limits(from_c->version()));
 
@@ -5316,7 +5321,7 @@ static asio::awaitable<void> on_EA_BB(shared_ptr<Client> c, Channel::Message& ms
         // TODO: What's the right error code to use here?
         send_command(c, 0x02EA, 0x00000001);
       } else {
-        string player_name = c->character()->disp.name.decode(c->language());
+        string player_name = c->character_file()->disp.name.decode(c->language());
         auto team = s->team_index->create(team_name, c->login->account->account_id, player_name);
         c->login->account->bb_team_id = team->team_id;
         c->login->account->save();
@@ -5355,7 +5360,7 @@ static asio::awaitable<void> on_EA_BB(shared_ptr<Client> c, Channel::Message& ms
             s->team_index->add_member(
                 team->team_id,
                 added_c->login->account->account_id,
-                added_c->character()->disp.name.decode(added_c->language()));
+                added_c->character_file()->disp.name.decode(added_c->language()));
             send_command(c, 0x04EA, 0x00000000);
             send_command(added_c, 0x04EA, 0x00000000);
             send_team_metadata_change_notifications(
@@ -5516,7 +5521,7 @@ static asio::awaitable<void> on_EA_BB(shared_ptr<Client> c, Channel::Message& ms
           send_team_metadata_change_notifications(s, team, 0, TeamMetadataChange::REWARD_FLAGS);
         }
         if (!reward.reward_item.empty()) {
-          c->current_bank().add_item(reward.reward_item, *s->item_stack_limits(c->version()));
+          c->bank_file()->add_item(reward.reward_item, *s->item_stack_limits(c->version()));
         }
       }
       break;

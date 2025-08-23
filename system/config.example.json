@@ -672,6 +672,13 @@
     [0x040, "download-ep3", "Download", "$E$C6Quests to download\nto your Memory Card"],
   ],
 
+  // BB bank size. If you change either of these values, you must also add
+  // "BankSize" to BBRequiredPatches, and change the patch contents in
+  // system/client-functions/BlueBurstExclusive/BankSize.59NL.patch.s to
+  // reflect the counts you set here.
+  "BBMaxBankItems": 200,
+  "BBMaxBankMeseta": 999999,
+
   // Item stack limits. Note that changing these does not affect the client's
   // behavior automatically - this only exists to allow the server to
   // understand the behavior of clients that are already patched with different

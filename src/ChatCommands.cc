@@ -225,7 +225,7 @@ static asio::awaitable<void> server_command_announce_inner(const Args& a, bool m
       send_text_or_scrolling_message(s, a.text, a.text);
     }
   } else {
-    auto from_name = a.c->character()->disp.name.decode(a.c->language());
+    auto from_name = a.c->character_file()->disp.name.decode(a.c->language());
     if (mail) {
       send_simple_mail(s, 0, from_name, a.text);
     } else {
@@ -332,7 +332,7 @@ ChatCommandDefinition cc_auction(
     });
 
 static string name_for_client(shared_ptr<Client> c) {
-  auto player = c->character(false);
+  auto player = c->character_file(false);
   if (player.get()) {
     return escape_player_name(player->disp.name.decode(player->inventory.language));
   }
@@ -417,30 +417,24 @@ ChatCommandDefinition cc_bank(
 
       ssize_t new_char_index = a.text.empty() ? (a.c->bb_character_index + 1) : stol(a.text, nullptr, 0);
 
-      if (new_char_index == 0) {
-        if (a.c->use_shared_bank()) {
-          send_text_message(a.c, "$C6Using shared bank (0)");
-        } else {
-          send_text_message(a.c, "$C6Created shared bank (0)");
-        }
+      if (new_char_index <= 0) {
+        a.c->change_bank(-1);
+        send_text_message(a.c, "$C6Using shared bank");
 
       } else if (new_char_index <= 127) {
-        a.c->use_character_bank(new_char_index - 1);
-        auto bp = a.c->current_bank_character();
-
-        auto name = escape_player_name(bp->disp.name.decode(a.c->language()));
-        send_text_message_fmt(a.c, "$C6Using {}\'s bank ({})", name, new_char_index);
+        a.c->change_bank(new_char_index - 1);
+        send_text_message_fmt(a.c, "$C6Using character {}'s bank", new_char_index);
 
       } else {
         throw precondition_failed("$C6Invalid bank number");
       }
 
-      auto& bank = a.c->current_bank();
-      bank.assign_ids(0x99000000 + (a.c->lobby_client_id << 20));
+      auto bank = a.c->bank_file();
+      bank->assign_ids(0x99000000 + (a.c->lobby_client_id << 20));
       a.c->log.info_f("Assigned bank item IDs");
       a.c->print_bank();
 
-      send_text_message_fmt(a.c, "{} items\n{} Meseta", bank.num_items, bank.meseta);
+      send_text_message_fmt(a.c, "{} items\n{} Meseta", bank->items.size(), bank->meseta);
       co_return;
     });
 
@@ -491,7 +485,7 @@ static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool 
   // server already has it)
   GetPlayerInfoResult ch;
   if (a.c->version() == Version::BB_V4) {
-    ch.character = a.c->character();
+    ch.character = a.c->character_file();
     ch.is_full_info = true;
   } else {
     ch = co_await send_get_player_info(a.c, true);
@@ -500,11 +494,6 @@ static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool 
   string filename = dest_bb_license
       ? Client::character_filename(dest_bb_license->username, dest_character_index)
       : Client::backup_character_filename(dest_account->account_id, dest_character_index, is_ep3(a.c->version()));
-
-  if (s->player_files_manager->get_character(filename)) {
-    send_text_message(a.c, "$C6The target player\nis currently loaded.\nSign off in Blue\nBurst and try again.");
-    co_return;
-  }
 
   if (ch.is_full_info) {
     // Client sent 30; ch contains the verbatim save file from the client
@@ -911,7 +900,7 @@ ChatCommandDefinition cc_edit(
       using MatType = PSOBBCharacterFile::MaterialType;
 
       try {
-        auto p = a.c->character();
+        auto p = a.c->character_file();
         if (tokens.at(0) == "atp" && (cheats_allowed || !s->cheat_flags.edit_stats)) {
           p->disp.stats.char_stats.atp = stoul(tokens.at(1));
         } else if (tokens.at(0) == "mst" && (cheats_allowed || !s->cheat_flags.edit_stats)) {
@@ -1331,7 +1320,7 @@ ChatCommandDefinition cc_killcount(
     +[](const Args& a) -> asio::awaitable<void> {
       a.check_is_proxy(false);
 
-      auto p = a.c->character();
+      auto p = a.c->character_file();
       vector<size_t> item_indexes;
       for (size_t z = 0; z < p->inventory.num_items; z++) {
         const auto& item = p->inventory.items[z];
@@ -1597,13 +1586,13 @@ ChatCommandDefinition cc_loadchar(
         };
 
         if (a.c->version() == Version::DC_V2) {
-          PSODCV2CharacterFile::Character dc_char = *a.c->character();
+          PSODCV2CharacterFile::Character dc_char = *a.c->character_file();
           co_await send_set_extended_player_info(dc_char);
         } else if (a.c->version() == Version::GC_NTE) {
-          PSOGCNTECharacterFileCharacter gc_char = *a.c->character();
+          PSOGCNTECharacterFileCharacter gc_char = *a.c->character_file();
           co_await send_set_extended_player_info(gc_char);
         } else if (a.c->version() == Version::GC_V3) {
-          PSOGCCharacterFile::Character gc_char = *a.c->character();
+          PSOGCCharacterFile::Character gc_char = *a.c->character_file();
           co_await send_set_extended_player_info(gc_char);
         } else if (a.c->version() == Version::GC_EP3_NTE) {
           PSOGCEp3NTECharacter nte_char = *ep3_char;
@@ -1614,7 +1603,7 @@ ChatCommandDefinition cc_loadchar(
           if (!a.c->login || !a.c->login->xb_license) {
             throw runtime_error("XB client is not logged in");
           }
-          PSOXBCharacterFile::Character xb_char = *a.c->character();
+          PSOXBCharacterFile::Character xb_char = *a.c->character_file();
           xb_char.guild_card.xb_user_id_high = (a.c->login->xb_license->user_id >> 32) & 0xFFFFFFFF;
           xb_char.guild_card.xb_user_id_low = a.c->login->xb_license->user_id & 0xFFFFFFFF;
           co_await send_set_extended_player_info(xb_char);
@@ -1637,7 +1626,7 @@ ChatCommandDefinition cc_matcount(
     +[](const Args& a) -> asio::awaitable<void> {
       a.check_is_proxy(false);
 
-      auto p = a.c->character();
+      auto p = a.c->character_file();
       if (is_v1_or_v2(a.c->version())) {
         send_text_message_fmt(a.c, "{} HP, {} TP",
             p->get_material_usage(PSOBBCharacterFile::MaterialType::HP),
@@ -1879,7 +1868,7 @@ ChatCommandDefinition cc_qcheck(
         if (!l->quest_flags_known || l->quest_flags_known->get(l->difficulty, flag_num)) {
           send_text_message_fmt(a.c, "$C7Game: flag 0x{:X} ({})\nis {} on {}",
               flag_num, flag_num,
-              a.c->character()->quest_flags.get(l->difficulty, flag_num) ? "set" : "not set",
+              a.c->character_file()->quest_flags.get(l->difficulty, flag_num) ? "set" : "not set",
               name_for_difficulty(l->difficulty));
         } else {
           send_text_message_fmt(a.c, "$C7Game: flag 0x{:X} ({})\nis unknown on {}",
@@ -1888,7 +1877,7 @@ ChatCommandDefinition cc_qcheck(
       } else if (a.c->version() == Version::BB_V4) {
         send_text_message_fmt(a.c, "$C7Player: flag 0x{:X} ({})\nis {} on {}",
             flag_num, flag_num,
-            a.c->character()->quest_flags.get(l->difficulty, flag_num) ? "set" : "not set",
+            a.c->character_file()->quest_flags.get(l->difficulty, flag_num) ? "set" : "not set",
             name_for_difficulty(l->difficulty));
       }
       co_return;
@@ -1913,7 +1902,7 @@ static void command_qset_qclear(const Args& a, bool should_set) {
       }
     }
 
-    auto p = a.c->character(false);
+    auto p = a.c->character_file(false);
     if (p) {
       if (should_set) {
         p->quest_flags.set(l->difficulty, flag_num);
@@ -1966,7 +1955,7 @@ ChatCommandDefinition cc_qfread(
         throw runtime_error("invalid quest counter definition");
       }
 
-      uint32_t counter_value = a.c->character()->quest_counters.at(counter_index) & mask;
+      uint32_t counter_value = a.c->character_file()->quest_counters.at(counter_index) & mask;
 
       while (!(mask & 1)) {
         mask >>= 1;
@@ -1986,7 +1975,7 @@ ChatCommandDefinition cc_qgread(
     +[](const Args& a) -> asio::awaitable<void> {
       a.check_is_proxy(false);
       uint8_t counter_num = stoul(a.text, nullptr, 0);
-      const auto& counters = a.c->character()->quest_counters;
+      const auto& counters = a.c->character_file()->quest_counters;
       if (counter_num >= counters.size()) {
         throw precondition_failed("$C7Counter ID must be\nless than {}", counters.size());
       } else {
@@ -2015,11 +2004,11 @@ ChatCommandDefinition cc_qgwrite(
 
       uint8_t counter_num = stoul(tokens[0], nullptr, 0);
       uint32_t value = stoul(tokens[1], nullptr, 0);
-      auto& counters = a.c->character()->quest_counters;
+      auto& counters = a.c->character_file()->quest_counters;
       if (counter_num >= counters.size()) {
         throw precondition_failed("$C7Counter ID must be\nless than {}", counters.size());
       } else {
-        a.c->character()->quest_counters[counter_num] = value;
+        a.c->character_file()->quest_counters[counter_num] = value;
         G_SetQuestCounter_BB_6xD2 cmd = {{0xD2, sizeof(G_SetQuestCounter_BB_6xD2) / 4, a.c->lobby_client_id}, counter_num, value};
         send_command_t(a.c, 0x60, 0x00, cmd);
         send_text_message_fmt(a.c, "$C7Quest counter {}\nset to {}", counter_num, value);
@@ -2534,7 +2523,7 @@ ChatCommandDefinition cc_surrender(
       if (!ps || !ps->is_alive()) {
         throw precondition_failed("$C6Defeated players\ncannot surrender");
       }
-      string name = remove_color(a.c->character()->disp.name.decode(a.c->language()));
+      string name = remove_color(a.c->character_file()->disp.name.decode(a.c->language()));
       send_text_message_fmt(l, "$C6{} has\nsurrendered", name);
       for (const auto& watcher_l : l->watcher_lobbies) {
         send_text_message_fmt(watcher_l, "$C6{} has\nsurrendered", name);
@@ -2662,6 +2651,7 @@ ChatCommandDefinition cc_switchchar(
 
       a.c->save_and_unload_character();
       a.c->bb_character_index = index;
+      a.c->bb_bank_character_index = index;
 
       // TODO: This can trigger a client bug where the previous character's
       // name label object isn't deleted if the leave and join notifications
@@ -2952,7 +2942,7 @@ ChatCommandDefinition cc_where(
       if (!a.c->proxy_session && l && l->is_game()) {
         for (auto lc : l->clients) {
           if (lc && (lc != a.c)) {
-            string name = lc->character()->disp.name.decode(lc->language());
+            string name = lc->character_file()->disp.name.decode(lc->language());
             send_text_message_fmt(a.c, "$C6{}$C7 {:X}:{}",
                 name, lc->floor, FloorDefinition::get(l->episode, lc->floor).short_name);
           }

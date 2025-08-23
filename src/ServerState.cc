@@ -72,8 +72,7 @@ ServerState::ServerState(const string& config_filename)
       thread_pool(make_unique<asio::thread_pool>()),
       bb_stream_files_cache(new FileContentsCache(3600000000ULL)),
       bb_system_cache(new FileContentsCache(3600000000ULL)),
-      gba_files_cache(new FileContentsCache(3600000000ULL)),
-      player_files_manager(make_shared<PlayerFilesManager>(this->io_context)) {}
+      gba_files_cache(new FileContentsCache(3600000000ULL)) {}
 
 void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
   shared_ptr<Lobby> added_to_lobby;
@@ -1064,6 +1063,9 @@ void ServerState::load_config_early() {
     }
   } catch (const out_of_range&) {
   }
+
+  this->bb_max_bank_items = this->config_json->get_int("BBMaxBankItems", 200);
+  this->bb_max_bank_meseta = this->config_json->get_int("BBMaxBankMeseta", 999999);
 
   for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
     if (!this->item_stack_limits_tables[v_s]) {

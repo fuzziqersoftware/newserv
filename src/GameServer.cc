@@ -96,7 +96,7 @@ vector<shared_ptr<Client>> GameServer::get_clients_by_identifier(const string& i
       continue;
     }
 
-    auto p = c->character(false, false);
+    auto p = c->character_file(false, false);
     if (p && p->disp.name.eq(ident, p->inventory.language)) {
       results.emplace_back(c);
       continue;

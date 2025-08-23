@@ -624,7 +624,7 @@ static asio::awaitable<void> on_sync_joining_player_compressed_state(shared_ptr<
       }
 
       auto l = c->require_lobby();
-      size_t target_num_items = target->character()->inventory.num_items;
+      size_t target_num_items = target->character_file()->inventory.num_items;
       for (size_t z = 0; z < 12; z++) {
         uint32_t client_next_id = decompressed_cmd->next_item_id_per_player[z];
         uint32_t server_next_id = l->next_item_id_for_client[z];
@@ -1422,20 +1422,20 @@ static asio::awaitable<void> on_send_guild_card(shared_ptr<Client> c, Subcommand
   switch (c->version()) {
     case Version::DC_NTE: {
       const auto& cmd = msg.check_size_t<G_SendGuildCard_DCNTE_6x06>();
-      c->character(true, false)->guild_card.description.encode(cmd.guild_card.description.decode(c->language()), c->language());
+      c->character_file(true, false)->guild_card.description.encode(cmd.guild_card.description.decode(c->language()), c->language());
       break;
     }
     case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2: {
       const auto& cmd = msg.check_size_t<G_SendGuildCard_DC_6x06>();
-      c->character(true, false)->guild_card.description.encode(cmd.guild_card.description.decode(c->language()), c->language());
+      c->character_file(true, false)->guild_card.description.encode(cmd.guild_card.description.decode(c->language()), c->language());
       break;
     }
     case Version::PC_NTE:
     case Version::PC_V2: {
       const auto& cmd = msg.check_size_t<G_SendGuildCard_PC_6x06>();
-      c->character(true, false)->guild_card.description = cmd.guild_card.description;
+      c->character_file(true, false)->guild_card.description = cmd.guild_card.description;
       break;
     }
     case Version::GC_NTE:
@@ -1443,12 +1443,12 @@ static asio::awaitable<void> on_send_guild_card(shared_ptr<Client> c, Subcommand
     case Version::GC_EP3_NTE:
     case Version::GC_EP3: {
       const auto& cmd = msg.check_size_t<G_SendGuildCard_GC_6x06>();
-      c->character(true, false)->guild_card.description.encode(cmd.guild_card.description.decode(c->language()), c->language());
+      c->character_file(true, false)->guild_card.description.encode(cmd.guild_card.description.decode(c->language()), c->language());
       break;
     }
     case Version::XB_V3: {
       const auto& cmd = msg.check_size_t<G_SendGuildCard_XB_6x06>();
-      c->character(true, false)->guild_card.description.encode(cmd.guild_card.description.decode(c->language()), c->language());
+      c->character_file(true, false)->guild_card.description.encode(cmd.guild_card.description.decode(c->language()), c->language());
       break;
     }
     case Version::BB_V4:
@@ -1535,7 +1535,7 @@ static asio::awaitable<void> on_word_select_t(shared_ptr<Client> c, SubcommandMe
         }
 
       } catch (const exception& e) {
-        string name = escape_player_name(c->character()->disp.name.decode(c->language()));
+        string name = escape_player_name(c->character_file()->disp.name.decode(c->language()));
         lc->log.warning_f("Untranslatable Word Select message: {}", e.what());
         send_text_message_fmt(lc, "$C4Untranslatable Word\nSelect message from\n{}", name);
       }
@@ -1641,7 +1641,7 @@ static asio::awaitable<void> on_player_died(shared_ptr<Client> c, SubcommandMess
 
   // Decrease MAG's synchro
   try {
-    auto& inventory = c->character()->inventory;
+    auto& inventory = c->character_file()->inventory;
     size_t mag_index = inventory.find_equipped_item(EquipSlot::MAG);
     auto& data = inventory.items[mag_index].data;
     data.data2[0] = max<int8_t>(static_cast<int8_t>(data.data2[0] - 5), 0);
@@ -1946,7 +1946,7 @@ static asio::awaitable<void> on_player_drop_item(shared_ptr<Client> c, Subcomman
 
   auto s = c->require_server_state();
   auto l = c->require_lobby();
-  auto p = c->character();
+  auto p = c->character_file();
   auto item = p->remove_item(cmd.item_id, 0, *s->item_stack_limits(c->version()));
   l->add_item(cmd.floor, item, cmd.pos, nullptr, nullptr, 0x00F);
 
@@ -1995,7 +1995,7 @@ static asio::awaitable<void> on_create_inventory_item_t(shared_ptr<Client> c, Su
     }
 
   } else {
-    c->character()->add_item(item, *s->item_stack_limits(c->version()));
+    c->character_file()->add_item(item, *s->item_stack_limits(c->version()));
 
     if (l->log.should_log(phosg::LogLevel::L_INFO)) {
       auto name = s->describe_item(c->version(), item);
@@ -2075,7 +2075,7 @@ static asio::awaitable<void> on_drop_partial_stack_bb(shared_ptr<Client> c, Subc
   }
 
   auto s = c->require_server_state();
-  auto p = c->character();
+  auto p = c->character_file();
   const auto& limits = *s->item_stack_limits(c->version());
   auto item = p->remove_item(cmd.item_id, cmd.amount, limits);
 
@@ -2118,7 +2118,7 @@ static asio::awaitable<void> on_buy_shop_item(shared_ptr<Client> c, SubcommandMe
   }
 
   auto s = c->require_server_state();
-  auto p = c->character();
+  auto p = c->character_file();
   ItemData item = cmd.item_data;
   item.data2d = 0; // Clear the price field
   item.decode_for_version(c->version());
@@ -2261,7 +2261,7 @@ static asio::awaitable<void> on_pick_up_item_generic(
     // it receives a 6x5A and the floor item exists, so we just implement that
     // logic here instead of forwarding the 6x5A to the leader.
 
-    auto p = c->character();
+    auto p = c->character_file();
     auto s = c->require_server_state();
     auto fi = l->remove_item(floor, item_id, c->lobby_client_id);
     if (!fi->visible_to_client(c->lobby_client_id)) {
@@ -2372,7 +2372,7 @@ static asio::awaitable<void> on_equip_item(shared_ptr<Client> c, SubcommandMessa
 
   auto l = c->require_lobby();
   EquipSlot slot = static_cast<EquipSlot>(cmd.equip_slot.load());
-  auto p = c->character();
+  auto p = c->character_file();
   p->inventory.equip_item_id(cmd.item_id, slot, is_pre_v1(c->version()));
   c->log.info_f("Equipped item {:08X}", cmd.item_id);
 
@@ -2387,7 +2387,7 @@ static asio::awaitable<void> on_unequip_item(shared_ptr<Client> c, SubcommandMes
   }
 
   auto l = c->require_lobby();
-  auto p = c->character();
+  auto p = c->character_file();
   p->inventory.unequip_item_id(cmd.item_id);
   c->log.info_f("Unequipped item {:08X}", cmd.item_id);
 
@@ -2403,7 +2403,7 @@ static asio::awaitable<void> on_use_item(shared_ptr<Client> c, SubcommandMessage
 
   auto l = c->require_lobby();
   auto s = c->require_server_state();
-  auto p = c->character();
+  auto p = c->character_file();
   size_t index = p->inventory.find_item(cmd.item_id);
   string name;
   {
@@ -2432,7 +2432,7 @@ static asio::awaitable<void> on_feed_mag(shared_ptr<Client> c, SubcommandMessage
 
   auto s = c->require_server_state();
   auto l = c->require_lobby();
-  auto p = c->character();
+  auto p = c->character_file();
 
   size_t mag_index = p->inventory.find_item(cmd.mag_item_id);
   size_t fed_index = p->inventory.find_item(cmd.fed_item_id);
@@ -2534,7 +2534,7 @@ static asio::awaitable<void> on_open_shop_bb_or_ep3_battle_subs(shared_ptr<Clien
   } else {
     const auto& cmd = msg.check_size_t<G_ShopContentsRequest_BB_6xB5>();
     auto s = c->require_server_state();
-    size_t level = c->character()->disp.stats.level + 1;
+    size_t level = c->character_file()->disp.stats.level + 1;
     switch (cmd.shop_type) {
       case 0:
         c->bb_shop_contents[0] = l->item_creator->generate_tool_shop_contents(level);
@@ -2619,7 +2619,7 @@ static asio::awaitable<void> on_ep3_private_word_select_bb_bank_action(
     const auto& cmd = msg.check_size_t<G_PrivateWordSelect_Ep3_6xBD>();
     s->word_select_table->validate(cmd.message, c->version());
 
-    string from_name = c->character()->disp.name.decode(c->language());
+    string from_name = c->character_file()->disp.name.decode(c->language());
     static const string whisper_text = "(whisper)";
     auto send_to_client = [&](shared_ptr<Client> lc) -> void {
       if (cmd.private_flags & (1 << lc->lobby_client_id)) {
@@ -2671,21 +2671,21 @@ static asio::awaitable<void> on_ep3_private_word_select_bb_bank_action(
       co_return;
     }
 
-    auto p = c->character();
-    auto& bank = c->current_bank();
+    auto p = c->character_file();
+    auto bank = c->bank_file();
     if (cmd.action == 0) { // Deposit
       if (cmd.item_id == 0xFFFFFFFF) { // Deposit Meseta
         if (cmd.meseta_amount > p->disp.stats.meseta) {
           l->log.info_f("Player {} attempted to deposit {} Meseta in the bank, but has only {} Meseta on hand",
               c->lobby_client_id, cmd.meseta_amount, p->disp.stats.meseta);
-        } else if ((bank.meseta + cmd.meseta_amount) > 999999) {
+        } else if ((bank->meseta + cmd.meseta_amount) > bank->max_meseta) {
           l->log.info_f("Player {} attempted to deposit {} Meseta in the bank, but already has {} Meseta in the bank",
               c->lobby_client_id, cmd.meseta_amount, p->disp.stats.meseta);
         } else {
-          bank.meseta += cmd.meseta_amount;
+          bank->meseta += cmd.meseta_amount;
           p->disp.stats.meseta -= cmd.meseta_amount;
           l->log.info_f("Player {} deposited {} Meseta in the bank (bank now has {}; inventory now has {})",
-              c->lobby_client_id, cmd.meseta_amount, bank.meseta, p->disp.stats.meseta);
+              c->lobby_client_id, cmd.meseta_amount, bank->meseta, p->disp.stats.meseta);
         }
 
       } else { // Deposit item
@@ -2698,7 +2698,7 @@ static asio::awaitable<void> on_ep3_private_word_select_bb_bank_action(
         if (item.id == 0xFFFFFFFF) {
           item.id = cmd.item_id;
         }
-        bank.add_item(item, limits);
+        bank->add_item(item, limits);
         send_destroy_item_to_lobby(c, cmd.item_id, cmd.item_amount, true);
 
         if (l->log.should_log(phosg::LogLevel::L_INFO)) {
@@ -2711,22 +2711,22 @@ static asio::awaitable<void> on_ep3_private_word_select_bb_bank_action(
 
     } else if (cmd.action == 1) { // Take
       if (cmd.item_index == 0xFFFF) { // Take Meseta
-        if (cmd.meseta_amount > bank.meseta) {
+        if (cmd.meseta_amount > bank->meseta) {
           l->log.info_f("Player {} attempted to withdraw {} Meseta from the bank, but has only {} Meseta in the bank",
-              c->lobby_client_id, cmd.meseta_amount, bank.meseta);
+              c->lobby_client_id, cmd.meseta_amount, bank->meseta);
         } else if ((p->disp.stats.meseta + cmd.meseta_amount) > 999999) {
           l->log.info_f("Player {} attempted to withdraw {} Meseta from the bank, but already has {} Meseta on hand",
               c->lobby_client_id, cmd.meseta_amount, p->disp.stats.meseta);
         } else {
-          bank.meseta -= cmd.meseta_amount;
+          bank->meseta -= cmd.meseta_amount;
           p->disp.stats.meseta += cmd.meseta_amount;
           l->log.info_f("Player {} withdrew {} Meseta from the bank (bank now has {}; inventory now has {})",
-              c->lobby_client_id, cmd.meseta_amount, bank.meseta, p->disp.stats.meseta);
+              c->lobby_client_id, cmd.meseta_amount, bank->meseta, p->disp.stats.meseta);
         }
 
       } else { // Take item
         const auto& limits = *s->item_stack_limits(c->version());
-        auto item = bank.remove_item(cmd.item_id, cmd.item_amount, limits);
+        auto item = bank->remove_item(cmd.item_id, cmd.item_amount, limits);
         item.id = l->generate_item_id(c->lobby_client_id);
         p->add_item(item, limits);
         send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
@@ -2751,7 +2751,7 @@ static void on_sort_inventory_bb_inner(shared_ptr<Client> c, const SubcommandMes
   }
 
   const auto& cmd = msg.check_size_t<G_SortInventory_BB_6xC4>();
-  auto p = c->character();
+  auto p = c->character_file();
 
   // Make sure the set of item IDs passed in by the client exactly matches the
   // set of item IDs present in the inventory
@@ -3123,7 +3123,7 @@ static asio::awaitable<void> on_set_quest_flag(shared_ptr<Client> c, SubcommandM
   if (c->version() == Version::BB_V4) {
     auto s = c->require_server_state();
     // TODO: Should we allow overlays here?
-    auto p = c->character(true, false);
+    auto p = c->character_file(true, false);
     if (should_set) {
       c->log.info_f("Setting quest flag {}:{:04X}", name_for_difficulty(difficulty), flag_num);
       p->quest_flags.set(difficulty, flag_num);
@@ -3721,7 +3721,7 @@ static asio::awaitable<void> on_charge_attack_bb(shared_ptr<Client> c, Subcomman
   }
 
   const auto& cmd = msg.check_size_t<G_ChargeAttack_BB_6xC7>();
-  auto& disp = c->character()->disp;
+  auto& disp = c->character_file()->disp;
   if (cmd.meseta_amount > disp.stats.meseta) {
     disp.stats.meseta = 0;
   } else {
@@ -3745,7 +3745,7 @@ static void send_max_level_notification_if_needed(shared_ptr<Client> c) {
     max_level = 998;
   }
 
-  auto p = c->character();
+  auto p = c->character_file();
   if (p->disp.stats.level == max_level) {
     string name = p->disp.name.decode(c->language());
     size_t level_for_str = max_level + 1;
@@ -3769,7 +3769,7 @@ static asio::awaitable<void> on_level_up(shared_ptr<Client> c, SubcommandMessage
 
   // On the DC prototypes, this command doesn't include any stats - it just
   // increments the player's level by 1.
-  auto p = c->character();
+  auto p = c->character_file();
   if (is_pre_v1(c->version())) {
     msg.check_size_t<G_ChangePlayerLevel_DCNTE_6x30>();
     auto s = c->require_server_state();
@@ -3800,7 +3800,7 @@ static asio::awaitable<void> on_level_up(shared_ptr<Client> c, SubcommandMessage
 
 static void add_player_exp(shared_ptr<Client> c, uint32_t exp) {
   auto s = c->require_server_state();
-  auto p = c->character();
+  auto p = c->character_file();
 
   p->disp.stats.experience += exp;
   if (c->version() == Version::BB_V4) {
@@ -3886,8 +3886,8 @@ static asio::awaitable<void> on_steal_exp_bb(shared_ptr<Client> c, SubcommandMes
   auto s = c->require_server_state();
   const auto& cmd = msg.check_size_t<G_StealEXP_BB_6xC6>();
 
-  auto p = c->character();
-  if (c->character()->disp.stats.level >= 199) {
+  auto p = c->character_file();
+  if (c->character_file()->disp.stats.level >= 199) {
     co_return;
   }
 
@@ -4005,7 +4005,7 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
               ene_st->e_id,
               phosg::name_for_enum(type));
         }
-        if (lc->character()->disp.stats.level < 199) {
+        if (lc->character_file()->disp.stats.level < 199) {
           add_player_exp(lc, player_exp);
         }
       }
@@ -4014,7 +4014,7 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
     // Update kill counts on unsealable items, but only for the player who
     // actually killed the enemy
     if (ene_st->last_hit_by_client_id(client_id)) {
-      auto& inventory = lc->character()->inventory;
+      auto& inventory = lc->character_file()->inventory;
       for (size_t z = 0; z < inventory.num_items; z++) {
         auto& item = inventory.items[z];
         if ((item.flags & 0x08) && s->item_parameter_table(lc->version())->is_unsealable_item(item.data)) {
@@ -4028,7 +4028,7 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
 static asio::awaitable<void> on_adjust_player_meseta_bb(shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_AdjustPlayerMeseta_BB_6xC9>();
 
-  auto p = c->character();
+  auto p = c->character_file();
   if (cmd.amount < 0) {
     if (-cmd.amount > static_cast<int32_t>(p->disp.stats.meseta)) {
       p->disp.stats.meseta = 0;
@@ -4072,7 +4072,7 @@ static asio::awaitable<void> on_item_reward_request_bb(shared_ptr<Client> c, Sub
   // from the server. To handle this, we simply ignore any 6xCA command if the
   // item can't be created.
   try {
-    c->character()->add_item(item, limits);
+    c->character_file()->add_item(item, limits);
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
     if (l->log.should_log(phosg::LogLevel::L_INFO)) {
       auto name = s->describe_item(c->version(), item);
@@ -4109,7 +4109,7 @@ asio::awaitable<void> on_transfer_item_via_mail_message_bb(shared_ptr<Client> c,
   }
 
   auto s = c->require_server_state();
-  auto p = c->character();
+  auto p = c->character_file();
   const auto& limits = *s->item_stack_limits(c->version());
   auto item = p->remove_item(cmd.item_id, cmd.amount, limits);
 
@@ -4127,10 +4127,10 @@ asio::awaitable<void> on_transfer_item_via_mail_message_bb(shared_ptr<Client> c,
   auto target_c = s->find_client(nullptr, cmd.target_guild_card_number);
   if (target_c &&
       (target_c->version() == Version::BB_V4) &&
-      (target_c->character(false) != nullptr) &&
+      (target_c->character_file(false) != nullptr) &&
       !target_c->check_flag(Client::Flag::AT_BANK_COUNTER)) {
     try {
-      target_c->current_bank().add_item(item, limits);
+      target_c->bank_file()->add_item(item, limits);
       item_sent = true;
     } catch (const runtime_error&) {
     }
@@ -4174,7 +4174,7 @@ static asio::awaitable<void> on_exchange_item_for_team_points_bb(shared_ptr<Clie
   }
 
   auto s = c->require_server_state();
-  auto p = c->character();
+  auto p = c->character_file();
   auto item = p->remove_item(cmd.item_id, cmd.amount, *s->item_stack_limits(c->version()));
 
   size_t points = s->item_parameter_table(Version::BB_V4)->get_item_team_points(item);
@@ -4210,7 +4210,7 @@ static asio::awaitable<void> on_destroy_inventory_item(shared_ptr<Client> c, Sub
   }
 
   auto s = c->require_server_state();
-  auto p = c->character();
+  auto p = c->character_file();
   auto item = p->remove_item(cmd.item_id, cmd.amount, *s->item_stack_limits(c->version()));
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
@@ -4306,7 +4306,7 @@ static asio::awaitable<void> on_identify_item_bb(shared_ptr<Client> c, Subcomman
       co_return;
     }
 
-    auto p = c->character();
+    auto p = c->character_file();
     size_t x = p->inventory.find_item(cmd.item_id);
     if (p->inventory.items[x].data.data1[0] != 0) {
       throw runtime_error("non-weapon items cannot be unidentified");
@@ -4347,7 +4347,7 @@ static asio::awaitable<void> on_accept_identify_item_bb(shared_ptr<Client> c, Su
       throw runtime_error("accepted item ID does not match previous identify request");
     }
     auto s = c->require_server_state();
-    c->character()->add_item(c->bb_identify_result, *s->item_stack_limits(c->version()));
+    c->character_file()->add_item(c->bb_identify_result, *s->item_stack_limits(c->version()));
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, c->bb_identify_result);
     c->bb_identify_result.clear();
   }
@@ -4366,7 +4366,7 @@ static asio::awaitable<void> on_sell_item_at_shop_bb(shared_ptr<Client> c, Subco
   const auto& cmd = msg.check_size_t<G_SellItemAtShop_BB_6xC0>();
 
   auto s = c->require_server_state();
-  auto p = c->character();
+  auto p = c->character_file();
   auto item = p->remove_item(cmd.item_id, cmd.amount, *s->item_stack_limits(c->version()));
   size_t price = (s->item_parameter_table(c->version())->price_for_item(item) >> 3) * cmd.amount;
   p->add_meseta(price);
@@ -4405,7 +4405,7 @@ static asio::awaitable<void> on_buy_shop_item_bb(shared_ptr<Client> c, Subcomman
 
   size_t price = item.data2d * cmd.amount;
   item.data2d = 0;
-  auto p = c->character();
+  auto p = c->character_file();
   p->remove_meseta(price, false);
 
   item.id = cmd.shop_item_id;
@@ -4431,7 +4431,7 @@ static asio::awaitable<void> on_medical_center_bb(shared_ptr<Client> c, Subcomma
     throw runtime_error("6xC5 command sent in non-game lobby");
   }
 
-  c->character()->remove_meseta(10, false);
+  c->character_file()->remove_meseta(10, false);
   co_return;
 }
 
@@ -4468,7 +4468,7 @@ static asio::awaitable<void> on_battle_restart_bb(shared_ptr<Client> c, Subcomma
   for (auto& lc : l->clients) {
     if (lc) {
       lc->delete_overlay();
-      lc->use_default_bank();
+      lc->change_bank(lc->bb_character_index);
       lc->create_battle_overlay(new_rules, s->level_table(c->version()));
     }
   }
@@ -4495,7 +4495,7 @@ static asio::awaitable<void> on_battle_level_up_bb(shared_ptr<Client> c, Subcomm
   auto lc = l->clients.at(cmd.header.client_id);
   if (lc) {
     auto s = c->require_server_state();
-    auto lp = lc->character();
+    auto lp = lc->character_file();
     uint32_t target_level = min<uint32_t>(lp->disp.stats.level + cmd.num_levels, 199);
     uint32_t before_exp = lp->disp.stats.experience;
     int32_t exp_delta = lp->disp.stats.experience - before_exp;
@@ -4554,7 +4554,7 @@ static asio::awaitable<void> on_challenge_mode_retry_or_quit(shared_ptr<Client> 
 
     for (auto lc : l->clients) {
       if (lc) {
-        lc->use_default_bank();
+        lc->change_bank(lc->bb_character_index);
         lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table(c->version()));
         lc->log.info_f("Created challenge overlay");
         l->assign_inventory_and_bank_item_ids(lc, true);
@@ -4580,7 +4580,7 @@ static asio::awaitable<void> on_challenge_update_records(shared_ptr<Client> c, S
     co_return;
   }
 
-  auto p = c->character(true, false);
+  auto p = c->character_file(true, false);
   Version c_version = c->version();
   switch (c_version) {
     case Version::DC_V2:
@@ -4708,7 +4708,7 @@ static asio::awaitable<void> on_quest_exchange_item_bb(shared_ptr<Client> c, Sub
   auto s = c->require_server_state();
 
   try {
-    auto p = c->character();
+    auto p = c->character_file();
     const auto& limits = *s->item_stack_limits(c->version());
 
     size_t found_index = p->inventory.find_item_by_primary_identifier(cmd.find_item.primary_identifier());
@@ -4744,7 +4744,7 @@ static asio::awaitable<void> on_wrap_item_bb(shared_ptr<Client> c, SubcommandMes
   const auto& cmd = msg.check_size_t<G_WrapItem_BB_6xD6>();
   auto s = c->require_server_state();
 
-  auto p = c->character();
+  auto p = c->character_file();
   auto item = p->remove_item(cmd.item.id, 1, *s->item_stack_limits(c->version()));
   send_destroy_item_to_lobby(c, item.id, 1);
   item.wrap(*s->item_stack_limits(c->version()), cmd.present_color);
@@ -4766,7 +4766,7 @@ static asio::awaitable<void> on_photon_drop_exchange_for_item_bb(shared_ptr<Clie
   auto s = c->require_server_state();
 
   try {
-    auto p = c->character();
+    auto p = c->character_file();
     const auto& limits = *s->item_stack_limits(c->version());
 
     size_t found_index = p->inventory.find_item_by_primary_identifier(0x03100000);
@@ -4804,7 +4804,7 @@ static asio::awaitable<void> on_photon_drop_exchange_for_s_rank_special_bb(share
   const auto& limits = *s->item_stack_limits(c->version());
 
   try {
-    auto p = c->character();
+    auto p = c->character_file();
 
     static const array<uint8_t, 0x10> costs({60, 60, 20, 20, 30, 30, 30, 50, 40, 50, 40, 40, 50, 40, 40, 40});
     uint8_t cost = costs.at(cmd.special_type);
@@ -4851,7 +4851,7 @@ static asio::awaitable<void> on_secret_lottery_ticket_exchange_bb(shared_ptr<Cli
     throw runtime_error("no secret lottery results are defined");
   }
 
-  auto p = c->character();
+  auto p = c->character_file();
   ssize_t slt_index = -1;
   try {
     slt_index = p->inventory.find_item_by_primary_identifier(0x03100300); // Secret Lottery Ticket
@@ -4912,7 +4912,7 @@ static asio::awaitable<void> on_photon_crystal_exchange_bb(shared_ptr<Client> c,
 
   msg.check_size_t<G_ExchangePhotonCrystals_BB_6xDF>();
   auto s = c->require_server_state();
-  auto p = c->character();
+  auto p = c->character_file();
   size_t index = p->inventory.find_item_by_primary_identifier(0x03100200);
   auto item = p->remove_item(p->inventory.items[index].data.id, 1, *s->item_stack_limits(c->version()));
   send_destroy_item_to_lobby(c, item.id, 1);
@@ -4976,7 +4976,7 @@ static asio::awaitable<void> on_quest_F95F_result_bb(shared_ptr<Client> c, Subco
 
   const auto& cmd = msg.check_size_t<G_ExchangePhotonTickets_BB_6xE1>();
   auto s = c->require_server_state();
-  auto p = c->character();
+  auto p = c->character_file();
 
   const auto& result = s->quest_F95F_results.at(cmd.result_index);
   if (result.second.empty()) {
@@ -5023,7 +5023,7 @@ static asio::awaitable<void> on_quest_F960_result_bb(shared_ptr<Client> c, Subco
 
   const auto& cmd = msg.check_size_t<G_GetMesetaSlotPrize_BB_6xE2>();
   auto s = c->require_server_state();
-  auto p = c->character();
+  auto p = c->character_file();
 
   time_t t_secs = phosg::now() / 1000000;
   struct tm t_parsed;
@@ -5103,7 +5103,7 @@ static asio::awaitable<void> on_momoka_item_exchange_bb(shared_ptr<Client> c, Su
 
   const auto& cmd = msg.check_size_t<G_MomokaItemExchange_BB_6xD9>();
   auto s = c->require_server_state();
-  auto p = c->character();
+  auto p = c->character_file();
   try {
     const auto& limits = *s->item_stack_limits(c->version());
     size_t found_index = p->inventory.find_item_by_primary_identifier(cmd.find_item.primary_identifier());
@@ -5144,7 +5144,7 @@ static asio::awaitable<void> on_upgrade_weapon_attribute_bb(shared_ptr<Client> c
 
   const auto& cmd = msg.check_size_t<G_UpgradeWeaponAttribute_BB_6xDA>();
   auto s = c->require_server_state();
-  auto p = c->character();
+  auto p = c->character_file();
   try {
     size_t item_index = p->inventory.find_item(cmd.item_id);
     auto& item = p->inventory.items[item_index].data;
@@ -5195,7 +5195,7 @@ static asio::awaitable<void> on_upgrade_weapon_attribute_bb(shared_ptr<Client> c
 
 static asio::awaitable<void> on_write_quest_counter_bb(shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_SetQuestCounter_BB_6xD2>();
-  c->character()->quest_counters[cmd.index] = cmd.value;
+  c->character_file()->quest_counters[cmd.index] = cmd.value;
   co_return;
 }
 

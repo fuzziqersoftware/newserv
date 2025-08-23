@@ -975,7 +975,7 @@ asio::awaitable<deque<string>> fn_chat(ShellCommand::Args& args) {
     auto l = c->require_lobby();
     for (auto& lc : l->clients) {
       if (lc) {
-        send_chat_message(lc, c->login->account->account_id, c->character()->disp.name.decode(c->language()), text, 0);
+        send_chat_message(lc, c->login->account->account_id, c->character_file()->disp.name.decode(c->language()), text, 0);
       }
     }
   }
@@ -1008,7 +1008,8 @@ asio::awaitable<deque<string>> fn_wchat(ShellCommand::Args& args) {
     auto l = c->require_lobby();
     for (auto& lc : l->clients) {
       if (lc) {
-        send_chat_message(lc, c->login->account->account_id, c->character()->disp.name.decode(c->language()), args.args, 0x40);
+        send_chat_message(
+            lc, c->login->account->account_id, c->character_file()->disp.name.decode(c->language()), args.args, 0x40);
       }
     }
   }

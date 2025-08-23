@@ -114,6 +114,7 @@ public:
   uint8_t bb_client_code = 0;
   uint8_t bb_connection_phase = 0xFF;
   ssize_t bb_character_index = -1; // -1 = not set
+  ssize_t bb_bank_character_index = -1; // -1 = shared bank
   uint32_t bb_security_token = 0;
   parray<uint8_t, 0x28> bb_client_config;
   std::string login_character_name;
@@ -288,6 +289,36 @@ public:
 
   void set_login(std::shared_ptr<Login> login);
 
+  void import_blocked_senders(const parray<le_uint32_t, 30>& blocked_senders);
+
+  static std::string system_filename(const std::string& bb_username);
+  std::string system_filename() const;
+  std::shared_ptr<PSOBBBaseSystemFile> system_file(bool allow_load = true);
+  std::shared_ptr<const PSOBBBaseSystemFile> system_file(bool throw_if_missing = true) const;
+  void save_system_file() const;
+
+  static std::string guild_card_filename(const std::string& bb_username);
+  std::string guild_card_filename() const;
+  std::shared_ptr<PSOBBGuildCardFile> guild_card_file(bool allow_load = true);
+  std::shared_ptr<const PSOBBGuildCardFile> guild_card_file(bool allow_load = true) const;
+  void save_guild_card_file() const;
+
+  static std::string character_filename(const std::string& bb_username, ssize_t index);
+  static std::string backup_character_filename(uint32_t account_id, size_t index, bool is_ep3);
+  std::string character_filename() const;
+  std::shared_ptr<PSOBBCharacterFile> character_file(bool allow_load = true, bool allow_overlay = true);
+  std::shared_ptr<const PSOBBCharacterFile> character_file(bool throw_if_missing = true, bool allow_overlay = true) const;
+  static void save_character_file(
+      const std::string& filename,
+      std::shared_ptr<const PSOBBBaseSystemFile> sys,
+      std::shared_ptr<const PSOBBCharacterFile> character);
+  static void save_ep3_character_file(const std::string& filename, const PSOGCEp3CharacterFile::Character& character);
+  void save_character_file();
+  void create_character_file(
+      uint32_t guild_card_number,
+      uint8_t language,
+      const PlayerDispDataBBPreview& preview,
+      std::shared_ptr<const LevelTable> level_table);
   void create_battle_overlay(std::shared_ptr<const BattleRules> rules, std::shared_ptr<const LevelTable> level_table);
   void create_challenge_overlay(Version version, size_t template_index, std::shared_ptr<const LevelTable> level_table);
   inline void delete_overlay() {
@@ -297,54 +328,22 @@ public:
     return this->overlay_character_data.get() != nullptr;
   }
 
-  void import_blocked_senders(const parray<le_uint32_t, 30>& blocked_senders);
+  static std::string bank_filename(const std::string& bb_username, ssize_t index);
+  std::string bank_filename() const;
+  std::shared_ptr<PlayerBank> bank_file(bool allow_load = true);
+  std::shared_ptr<const PlayerBank> bank_file(bool throw_if_missing = true) const;
+  static void save_bank_file(const std::string& filename, const PlayerBank& bank);
+  void save_bank_file() const;
+  void change_bank(ssize_t bb_character_index); // -1 = use shared bank
 
-  std::shared_ptr<PSOBBBaseSystemFile> system_file(bool allow_load = true);
-  std::shared_ptr<PSOBBCharacterFile> character(bool allow_load = true, bool allow_overlay = true);
-  std::shared_ptr<PSOBBGuildCardFile> guild_card_file(bool allow_load = true);
-  std::shared_ptr<const PSOBBBaseSystemFile> system_file(bool allow_load = true) const;
-  std::shared_ptr<const PSOBBCharacterFile> character(bool allow_load = true, bool allow_overlay = true) const;
-  std::shared_ptr<const PSOBBGuildCardFile> guild_card_file(bool allow_load = true) const;
-
-  void create_character_file(
-      uint32_t guild_card_number,
-      uint8_t language,
-      const PlayerDispDataBBPreview& preview,
-      std::shared_ptr<const LevelTable> level_table);
-
-  std::string system_filename() const;
-  static std::string character_filename(const std::string& bb_username, ssize_t index);
-  static std::string backup_character_filename(uint32_t account_id, size_t index, bool is_ep3);
-  std::string character_filename(ssize_t index = -1) const;
-  std::string guild_card_filename() const;
-  std::string shared_bank_filename() const;
-
-  std::string legacy_player_filename() const;
   std::string legacy_account_filename() const;
+  std::string legacy_player_filename() const;
 
   void save_all();
-  void save_system_file() const;
-  static void save_character_file(
-      const std::string& filename,
-      std::shared_ptr<const PSOBBBaseSystemFile> sys,
-      std::shared_ptr<const PSOBBCharacterFile> character);
-  static void save_ep3_character_file(
-      const std::string& filename,
-      const PSOGCEp3CharacterFile::Character& character);
-  // Note: This function is not const because it updates the player's play time.
-  void save_character_file();
-  void save_guild_card_file() const;
 
   void load_backup_character(uint32_t account_id, size_t index);
   std::shared_ptr<PSOGCEp3CharacterFile::Character> load_ep3_backup_character(uint32_t account_id, size_t index);
   void save_and_unload_character();
-
-  PlayerBank200& current_bank();
-  const PlayerBank200& current_bank() const;
-  std::shared_ptr<PSOBBCharacterFile> current_bank_character();
-  bool use_shared_bank(); // Returns true if the bank exists; false if it was created
-  void use_character_bank(ssize_t bb_character_index);
-  void use_default_bank();
 
   void print_inventory() const;
   void print_bank() const;
@@ -359,9 +358,7 @@ private:
   std::shared_ptr<PSOBBCharacterFile> overlay_character_data;
   std::shared_ptr<PSOBBCharacterFile> character_data;
   std::shared_ptr<PSOBBGuildCardFile> guild_card_data;
-  std::shared_ptr<PlayerBank200> external_bank;
-  std::shared_ptr<PSOBBCharacterFile> external_bank_character;
-  ssize_t external_bank_character_index = -1;
+  std::shared_ptr<PlayerBank> bank_data;
   uint64_t last_play_time_update = 0;
 
   void load_all_files();

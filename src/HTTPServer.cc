@@ -169,7 +169,7 @@ std::shared_ptr<phosg::JSON> HTTPServer::generate_client_json(
   if (c->version() == Version::BB_V4) {
     ret->emplace("BBCharacterIndex", c->bb_character_index);
   }
-  auto p = c->character(false, false);
+  auto p = c->character_file(false, false);
   if (p) {
     if (!is_ep3(c->version())) {
       if (c->version() != Version::DC_NTE) {
@@ -596,7 +596,7 @@ std::shared_ptr<phosg::JSON> HTTPServer::generate_lobbies_json() const {
 std::shared_ptr<phosg::JSON> HTTPServer::generate_summary_json() const {
   auto clients_json = phosg::JSON::list();
   for (const auto& c : this->state->game_server->all_clients()) {
-    auto p = c->character(false, false);
+    auto p = c->character_file(false, false);
     auto l = c->lobby.lock();
     clients_json.emplace_back(phosg::JSON::dict({
         {"ID", c->id},

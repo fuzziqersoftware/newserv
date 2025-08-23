@@ -24,7 +24,6 @@
 #include "LevelTable.hh"
 #include "Lobby.hh"
 #include "Menu.hh"
-#include "PlayerFilesManager.hh"
 #include "Quest.hh"
 #include "TeamIndex.hh"
 #include "WordSelectTable.hh"
@@ -205,6 +204,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::array<std::shared_ptr<const ItemParameterTable>, NUM_VERSIONS> item_parameter_tables;
   std::shared_ptr<const ItemTranslationTable> item_translation_table;
   std::array<std::shared_ptr<const ItemData::StackLimits>, NUM_VERSIONS> item_stack_limits_tables;
+  size_t bb_max_bank_items = 200;
+  size_t bb_max_bank_meseta = 999999;
   std::shared_ptr<const MagEvolutionTable> mag_evolution_table_v1_v2;
   std::shared_ptr<const MagEvolutionTable> mag_evolution_table_v3;
   std::shared_ptr<const MagEvolutionTable> mag_evolution_table_v4;
@@ -287,7 +288,6 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::string pc_patch_server_message;
   std::string bb_patch_server_message;
 
-  std::shared_ptr<PlayerFilesManager> player_files_manager;
   std::map<int64_t, std::shared_ptr<Lobby>> id_to_lobby;
   std::array<std::vector<uint32_t>, NUM_VERSIONS> public_lobby_search_orders;
   std::vector<uint32_t> client_customization_public_lobby_search_order;

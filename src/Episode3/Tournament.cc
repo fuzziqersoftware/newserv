@@ -18,7 +18,7 @@ Tournament::PlayerEntry::PlayerEntry(uint32_t account_id, const string& player_n
 Tournament::PlayerEntry::PlayerEntry(shared_ptr<Client> c)
     : account_id(c->login->account->account_id),
       client(c),
-      player_name(c->character()->disp.name.decode(c->language())) {}
+      player_name(c->character_file()->disp.name.decode(c->language())) {}
 
 Tournament::PlayerEntry::PlayerEntry(
     shared_ptr<const COMDeckDefinition> com_deck)

@@ -102,7 +102,7 @@ set(SOURCES
     src/Menu.cc
     src/NetworkAddresses.cc
     src/PatchFileIndex.cc
-    src/PlayerFilesManager.cc
+    src/PlayerInventory.cc
     src/PlayerSubordinates.cc
     src/PPKArchive.cc
     src/ProxyCommands.cc

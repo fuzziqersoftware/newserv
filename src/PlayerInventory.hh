@@ -315,95 +315,6 @@ struct PlayerBankT {
   /* 0008 */ parray<PlayerBankItemT<BE>, SlotCount> items;
   /* 05A8 for 60 items (v1/v2), 12C8 for 200 items (v3/v4) */
 
-  uint32_t checksum() const {
-    return phosg::crc32(this, 2 * sizeof(U32T<BE>) + sizeof(PlayerBankItemT<BE>) * std::min<size_t>(SlotCount, this->num_items));
-  }
-
-  void add_item(const ItemData& item, const ItemData::StackLimits& limits) {
-    uint32_t primary_identifier = item.primary_identifier();
-
-    if (primary_identifier == 0x04000000) {
-      this->meseta += item.data2d;
-      if (this->meseta > 999999) {
-        this->meseta = 999999;
-      }
-      return;
-    }
-
-    size_t combine_max = item.max_stack_size(limits);
-    if (combine_max > 1) {
-      size_t y;
-      for (y = 0; y < this->num_items; y++) {
-        if (this->items[y].data.primary_identifier() == primary_identifier) {
-          break;
-        }
-      }
-
-      if (y < this->num_items) {
-        uint8_t new_count = this->items[y].data.data1[5] + item.data1[5];
-        if (new_count > combine_max) {
-          throw std::runtime_error("stack size would exceed limit");
-        }
-        this->items[y].data.data1[5] = new_count;
-        this->items[y].amount = new_count;
-        return;
-      }
-    }
-
-    if (this->num_items >= SlotCount) {
-      throw std::runtime_error("no free space in bank");
-    }
-    auto& last_item = this->items[this->num_items];
-    last_item.data = item;
-    last_item.amount = (item.max_stack_size(limits) > 1) ? item.data1[5] : 1;
-    last_item.present = 1;
-    this->num_items++;
-  }
-
-  ItemData remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits) {
-    size_t index = this->find_item(item_id);
-    auto& bank_item = this->items[index];
-
-    ItemData ret;
-    if (amount && (bank_item.data.stack_size(limits) > 1) && (amount < bank_item.data.data1[5])) {
-      ret = bank_item.data;
-      ret.data1[5] = amount;
-      bank_item.data.data1[5] -= amount;
-      bank_item.amount -= amount;
-      return ret;
-    }
-
-    ret = bank_item.data;
-    this->num_items--;
-    for (size_t x = index; x < this->num_items; x++) {
-      this->items[x] = this->items[x + 1];
-    }
-    auto& last_item = this->items[this->num_items];
-    last_item.amount = 0;
-    last_item.present = 0;
-    last_item.data.clear();
-    return ret;
-  }
-
-  size_t find_item(uint32_t item_id) {
-    for (size_t x = 0; x < this->num_items; x++) {
-      if (this->items[x].data.id == item_id) {
-        return x;
-      }
-    }
-    throw std::out_of_range("item not present");
-  }
-
-  void sort() {
-    std::sort(this->items.data(), this->items.data() + this->num_items);
-  }
-
-  void assign_ids(uint32_t base_id) {
-    for (size_t z = 0; z < this->num_items; z++) {
-      this->items[z].data.id = base_id + z;
-    }
-  }
-
   void decode_from_client(Version v) {
     for (size_t z = 0; z < this->items.size(); z++) {
       this->items[z].data.decode_for_version(v);
@@ -413,12 +324,6 @@ struct PlayerBankT {
   void encode_for_client(Version v) {
     for (size_t z = 0; z < this->items.size(); z++) {
       this->items[z].data.encode_for_version(v, nullptr);
-    }
-  }
-
-  void enforce_stack_limits(std::shared_ptr<const ItemData::StackLimits> stack_limits) {
-    for (size_t z = 0; z < std::min<uint8_t>(this->num_items, this->items.size()); z++) {
-      this->items[z].data.enforce_stack_size_limits(*stack_limits);
     }
   }
 
@@ -439,3 +344,46 @@ using PlayerBank200BE = PlayerBankT<200, true>;
 check_struct_size(PlayerBank60, 0x05A8);
 check_struct_size(PlayerBank200, 0x12C8);
 check_struct_size(PlayerBank200BE, 0x12C8);
+
+struct PlayerBank {
+  uint32_t max_meseta = 999999;
+  uint32_t max_items = 200;
+  uint32_t meseta = 0;
+  std::vector<PlayerBankItem> items;
+
+  PlayerBank() = default;
+
+  template <size_t SrcSlotCount, bool SrcBE>
+  PlayerBank(const PlayerBankT<SrcSlotCount, SrcBE>& src)
+      : max_meseta(999999), max_items(SrcSlotCount), meseta(src.meseta) {
+    this->items.reserve(src.num_items);
+    for (size_t z = 0; z < src.num_items; z++) {
+      this->items.emplace_back(src.items[z]);
+    }
+  }
+
+  template <size_t DestSlotCount, bool DestBE>
+  operator PlayerBankT<DestSlotCount, DestBE>() const {
+    PlayerBankT<DestSlotCount, DestBE> ret;
+    ret.num_items = std::min<size_t>(ret.items.size(), this->items.size());
+    ret.meseta = this->meseta;
+    for (size_t z = 0; z < ret.num_items; z++) {
+      ret.items[z] = this->items[z];
+    }
+    return ret;
+  }
+
+  void load(FILE* f);
+  void save(FILE* f) const;
+
+  uint32_t bb_checksum() const;
+
+  void add_item(const ItemData& item, const ItemData::StackLimits& limits);
+  ItemData remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits);
+  size_t find_item(uint32_t item_id);
+  void sort();
+
+  void assign_ids(uint32_t base_id);
+
+  void enforce_stack_limits(std::shared_ptr<const ItemData::StackLimits> stack_limits);
+};

@@ -246,7 +246,7 @@ uint8_t Lobby::effective_section_id() const {
   }
   auto leader = this->clients.at(this->leader_id);
   if (leader) {
-    return leader->character()->disp.visual.section_id;
+    return leader->character_file()->disp.visual.section_id;
   }
   return 0;
 }
@@ -465,7 +465,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
 
   // If the lobby is recording a battle record, add the player join event
   if (this->battle_record) {
-    auto p = c->character();
+    auto p = c->character_file();
     PlayerLobbyDataDCGC lobby_data;
     lobby_data.player_tag = 0x00010000;
     lobby_data.guild_card_number = c->login->account->account_id;
@@ -607,7 +607,7 @@ shared_ptr<Client> Lobby::find_client(const string* identifier, uint64_t account
     if (account_id && lc->login && (lc->login->account->account_id == account_id)) {
       return lc;
     }
-    if (identifier && (lc->character()->disp.name.eq(*identifier, lc->language()))) {
+    if (identifier && (lc->character_file()->disp.name.eq(*identifier, lc->language()))) {
       return lc;
     }
   }
@@ -644,7 +644,7 @@ Lobby::JoinError Lobby::join_error_for_client(std::shared_ptr<Client> c, const s
       if (password && !this->password.empty() && (*password != this->password)) {
         return JoinError::INCORRECT_PASSWORD;
       }
-      auto p = c->character();
+      auto p = c->character_file();
       if (p->disp.stats.level < this->min_level) {
         return JoinError::LEVEL_TOO_LOW;
       }
@@ -738,7 +738,7 @@ void Lobby::on_item_id_generated_externally(uint32_t item_id) {
 }
 
 void Lobby::assign_inventory_and_bank_item_ids(shared_ptr<Client> c, bool consume_ids) {
-  auto p = c->character();
+  auto p = c->character_file();
   uint32_t orig_next_item_id = this->next_item_id_for_client.at(c->lobby_client_id);
   for (size_t z = 0; z < p->inventory.num_items; z++) {
     p->inventory.items[z].data.id = this->generate_item_id(c->lobby_client_id);
@@ -749,9 +749,9 @@ void Lobby::assign_inventory_and_bank_item_ids(shared_ptr<Client> c, bool consum
 
   if (c->log.info_f("Assigned inventory item IDs{}", consume_ids ? "" : " but did not mark IDs as used")) {
     c->print_inventory();
-    auto& bank = c->current_bank();
-    if (p->bank.num_items) {
-      bank.assign_ids(0x99000000 + (c->lobby_client_id << 20));
+    auto bank = c->bank_file();
+    if (!bank->items.empty()) {
+      bank->assign_ids(0x99000000 + (c->lobby_client_id << 20));
       c->log.info_f("Assigned bank item IDs");
       c->print_bank();
     } else {
