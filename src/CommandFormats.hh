@@ -4221,8 +4221,34 @@ struct G_DisablePKModeForPlayer_6x1C {
   G_ClientIDHeader header;
 } __packed_ws__(G_DisablePKModeForPlayer_6x1C, 4);
 
-// 6x1D: Invalid subcommand
-// 6x1E: Invalid subcommand
+// 6x1D: Request partial player data (pre-v1 only)
+// The subcommand number 6x1D is not used in any final version of PSO; this
+// number is assigned based on what the command number would be if it were. On
+// DC NTE, this is subcommand 6x19; on 11/2000, it's 6x1B.
+// This command does not appear to ever be sent by the client; however, it will
+// respond with 6x1E if it receives this command.
+
+struct G_RequestPartialPlayerData_DCProtos_6x1D {
+  G_UnusedHeader header;
+} __packed_ws__(G_RequestPartialPlayerData_DCProtos_6x1D, 4);
+
+// 6x1E: Partial player data (pre-v1 only)
+// The subcommand number 6x1E is not used in any final version of PSO; this
+// number is assigned based on what the command number would be if it were. On
+// DC NTE, this is subcommand 6x1A; on 11/2000, it's 6x1C.
+// The command is truncated after the last valid item in the inventory (that
+// is, there will be less than 0x360 bytes if the player has fewer than 30
+// items on hand).
+
+struct G_PartialPlayerData_DCProtos_6x1E {
+  /* 0000 */ G_ClientIDHeader header;
+  /* 0004 */ le_uint16_t floor;
+  /* 0006 */ le_uint16_t num_items;
+  /* 0008 */ VectorXYZF pos;
+  /* 0014 */ le_uint32_t angle_y;
+  /* 0018 */ parray<PlayerInventoryItem, 30> items;
+  /* 0360 */
+} __packed_ws__(G_PartialPlayerData_DCProtos_6x1E, 0x360);
 
 // 6x1F: Set player floor and request positions
 
@@ -4418,7 +4444,18 @@ struct G_RevivePlayer_6x33 {
 // 6x34: Unknown
 // This subcommand is ignored by all versions of PSO.
 
-// 6x35: Invalid subcommand
+// 6x35: Unknown (pre-v1 only)
+// This command seems to have a unique history. In DC NTE, it is 6x30, and has
+// a handler that does something related to what 6x36 does (6x31 in DC NTE). In
+// 11/2000, however, it seems to have been entirely deleted, and has no command
+// number at all. But then in DC v1 and later, there is a gap in the subcommand
+// number table, implying that this command was assigned a number, but there is
+// no function to send or handle it.
+
+struct G_Unknown_DCNTE_6x35 {
+  G_ClientIDHeader header;
+  parray<uint8_t, 4> unused;
+} __packed_ws__(G_Unknown_DCNTE_6x35, 8);
 
 // 6x36: Unknown (supported; game only)
 // This subcommand is completely ignored on V3.
@@ -4446,6 +4483,16 @@ struct G_DonateToPhotonBlast_6x38 {
   le_uint16_t unused = 0;
 } __packed_ws__(G_DonateToPhotonBlast_6x38, 8);
 
+// 6x38.5 (nominally) / 6x33 (DC NTE) / 6x35 (11/2000): Unknown (related to
+// level up sequence)
+// This command was deleted after 11/2000 and has no assigned number in any
+// final version of PSO, hence the odd numbering. It is sent during the level
+// up sequence in certain situations (TODO).
+
+struct G_UnknownLevelUpSequence_DCNTE_6x33_112000_6x35 {
+  G_ClientIDHeader header;
+} __packed_ws__(G_UnknownLevelUpSequence_DCNTE_6x33_112000_6x35, 4);
+
 // 6x39: Photon blast ready (protected on V3/V4)
 // This is sent when a player's PB meter reaches 100.
 
@@ -4471,7 +4518,20 @@ struct G_ClearTemporaryPhotonBlastStateFlags_6x3B {
 // 6x3C: Unknown (DCv1 and earlier)
 // This command has a handler, but it does nothing, even on DC NTE.
 
-// 6x3D: Invalid subcommand
+// 6x3D: Target list base
+// This appears to be a base class for 6x46, 6x47, and 6x49 (and possibly other
+// subcommands), but it is never sent on the wire. Its likely purpose is to
+// provide the TargetEntry structure and related functions to derived classes,
+// but it does still have a structure of its own, as described here.
+
+struct TargetEntry {
+  le_uint16_t entity_id = 0;
+  le_uint16_t unknown_a2 = 0;
+} __packed_ws__(TargetEntry, 4);
+
+struct G_TargetBase_6x3D {
+  G_UnusedHeader header;
+} __packed_ws__(G_TargetBase_6x3D, 4);
 
 // 6x3E: Stop moving (protected on V3/V4)
 
@@ -4532,11 +4592,6 @@ struct G_Attack_6x43_6x44_6x45 {
 // clients. The client only expects up to 10 entries here, so if the number of
 // targets is too large, the client will byteswap the function's return address
 // on the stack, and it will crash.
-
-struct TargetEntry {
-  le_uint16_t entity_id = 0;
-  le_uint16_t unknown_a2 = 0;
-} __packed_ws__(TargetEntry, 4);
 
 struct G_AttackFinished_6x46 {
   G_ClientIDHeader header;
@@ -4635,8 +4690,8 @@ struct G_SwitchInteraction_6x50 {
 // 6x51: Set player angle
 // If UDP mode is enabled, this command is sent via UDP.
 // This command appears to be vestigial - no version of the game has a handler
-// for it (it is always ignored), but PSO GC has a function that sends it. It's
-// not known if this function is ever called, or how to trigger it.
+// for it (it is always ignored), but most versions have a function that sends
+// it. It's not known if this function is ever called, or how to trigger it.
 
 struct G_SetPlayerAngle_6x51 {
   G_ClientIDHeader header;

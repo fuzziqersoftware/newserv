@@ -72,55 +72,46 @@ struct SubcommandDefinition {
 };
 using SDF = SubcommandDefinition::Flag;
 
-extern const SubcommandDefinition subcommand_definitions[0x100];
-
-static const SubcommandDefinition* def_for_nte_subcommand(uint8_t subcommand) {
-  static std::array<uint8_t, 0x100> nte_to_final_map;
-  static bool nte_to_final_map_populated = false;
-  if (!nte_to_final_map_populated) {
-    nte_to_final_map.fill(0);
-    for (size_t z = 0; z < 0x100; z++) {
-      const auto& def = subcommand_definitions[z];
-      if (def.nte_subcommand != 0x00) {
-        if (nte_to_final_map[def.nte_subcommand]) {
-          throw logic_error("multiple NTE subcommands map to the same final subcommand");
-        }
-        nte_to_final_map[def.nte_subcommand] = z;
-      }
-    }
-    nte_to_final_map_populated = true;
-  }
-  uint8_t final_subcommand = nte_to_final_map[subcommand];
-  return final_subcommand ? &subcommand_definitions[final_subcommand] : nullptr;
-}
-
-static const SubcommandDefinition* def_for_proto_subcommand(uint8_t subcommand) {
-  static std::array<uint8_t, 0x100> proto_to_final_map;
-  static bool proto_to_final_map_populated = false;
-  if (!proto_to_final_map_populated) {
-    proto_to_final_map.fill(0);
-    for (size_t z = 0; z < 0x100; z++) {
-      const auto& def = subcommand_definitions[z];
-      if (def.proto_subcommand != 0x00) {
-        if (proto_to_final_map[def.proto_subcommand]) {
-          throw logic_error("multiple prototype subcommands map to the same final subcommand");
-        }
-        proto_to_final_map[def.proto_subcommand] = z;
-      }
-    }
-    proto_to_final_map_populated = true;
-  }
-  uint8_t final_subcommand = proto_to_final_map[subcommand];
-  return final_subcommand ? &subcommand_definitions[final_subcommand] : nullptr;
-}
+extern const vector<SubcommandDefinition> subcommand_definitions;
 
 const SubcommandDefinition* def_for_subcommand(Version version, uint8_t subcommand) {
+  static bool populated = false;
+  static std::array<const SubcommandDefinition*, 0x100> nte_defs;
+  static std::array<const SubcommandDefinition*, 0x100> proto_defs;
+  static std::array<const SubcommandDefinition*, 0x100> final_defs;
+  if (!populated) {
+    nte_defs.fill(nullptr);
+    proto_defs.fill(nullptr);
+    final_defs.fill(nullptr);
+    for (const auto& def : subcommand_definitions) {
+      if (def.nte_subcommand != 0x00) {
+        if (nte_defs[def.nte_subcommand]) {
+          throw logic_error("multiple subcommand definitions map to the same NTE subcommand");
+        }
+        nte_defs[def.nte_subcommand] = &def;
+      }
+      if (def.proto_subcommand != 0x00) {
+        if (proto_defs[def.proto_subcommand]) {
+          throw logic_error("multiple subcommand definitions map to the same 11/2000 subcommand");
+        }
+        proto_defs[def.proto_subcommand] = &def;
+      }
+      if (def.final_subcommand != 0x00) {
+        if (final_defs[def.final_subcommand]) {
+          throw logic_error("multiple subcommand definitions map to the same final subcommand");
+        }
+        final_defs[def.final_subcommand] = &def;
+      }
+    }
+    populated = true;
+  }
+
   if (version == Version::DC_NTE) {
-    return def_for_nte_subcommand(subcommand);
+    return nte_defs[subcommand];
   } else if (version == Version::DC_11_2000) {
-    return def_for_proto_subcommand(subcommand);
+    return proto_defs[subcommand];
   } else {
-    return &subcommand_definitions[subcommand];
+    return final_defs[subcommand];
   }
 }
 
@@ -5205,7 +5196,7 @@ static asio::awaitable<void> on_write_quest_counter_bb(shared_ptr<Client> c, Sub
 // syntax highlighting
 constexpr uint8_t NONE = 0x00;
 
-const SubcommandDefinition subcommand_definitions[0x100] = {
+const vector<SubcommandDefinition> subcommand_definitions{
     // {DC NTE, 11/2000, all other versions, handler}
     /* 6x00 */ {0x00, 0x00, 0x00, on_invalid},
     /* 6x01 */ {0x01, 0x01, 0x01, on_invalid},
@@ -5260,15 +5251,16 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x32 */ {NONE, NONE, 0x32, on_forward_check_game},
     /* 6x33 */ {0x2E, 0x30, 0x33, on_forward_check_game},
     /* 6x34 */ {0x2F, 0x31, 0x34, on_forward_check_game},
-    /* 6x35 */ {0x30, 0x32, 0x35, on_invalid},
-    /* 6x36 */ {NONE, NONE, 0x36, on_forward_check_game},
+    /* 6x35 */ {0x30, NONE, 0x35, on_invalid},
+    /* 6x36 */ {0x31, 0x32, 0x36, on_forward_check_game},
     /* 6x37 */ {0x32, 0x33, 0x37, on_forward_check_game},
-    /* 6x38 */ {0x33, 0x34, 0x38, on_forward_check_game},
+    /* 6x38 */ {NONE, 0x34, 0x38, on_forward_check_game},
+    /* NONE */ {0x33, 0x35, NONE, on_forward_check_game},
     /* 6x39 */ {NONE, 0x36, 0x39, on_forward_check_game},
     /* 6x3A */ {NONE, 0x37, 0x3A, on_forward_check_game},
     /* 6x3B */ {NONE, 0x38, 0x3B, forward_subcommand_m},
     /* 6x3C */ {0x34, 0x39, 0x3C, forward_subcommand_m},
-    /* 6x3D */ {NONE, NONE, 0x3D, on_invalid},
+    /* 6x3D */ {0x35, 0x3A, 0x3D, on_invalid},
     /* 6x3E */ {NONE, NONE, 0x3E, on_movement_with_floor<G_StopAtPosition_6x3E>},
     /* 6x3F */ {0x36, 0x3B, 0x3F, on_movement_with_floor<G_SetPosition_6x3F>},
     /* 6x40 */ {0x37, 0x3C, 0x40, on_movement<G_WalkToPosition_6x40>},
@@ -5288,7 +5280,7 @@ const SubcommandDefinition subcommand_definitions[0x100] = {
     /* 6x4E */ {NONE, NONE, 0x4E, on_player_revivable},
     /* 6x4F */ {0x43, 0x49, 0x4F, on_player_revived},
     /* 6x50 */ {0x44, 0x4A, 0x50, on_forward_check_game_client},
-    /* 6x51 */ {NONE, NONE, 0x51, on_invalid},
+    /* 6x51 */ {0x45, 0x4B, 0x51, on_invalid},
     /* 6x52 */ {0x46, 0x4C, 0x52, on_set_animation_state},
     /* 6x53 */ {0x47, 0x4D, 0x53, on_forward_check_game},
     /* 6x54 */ {0x48, 0x4E, 0x54, forward_subcommand_m},
