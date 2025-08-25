@@ -494,7 +494,7 @@ string Client::guild_card_filename(const string& bb_username) {
 
 string Client::guild_card_filename() const {
   if (this->version() != Version::BB_V4) {
-    throw logic_error("non-BB players do not have saved character data");
+    throw logic_error("non-BB players do not have saved Guild Card files");
   }
   if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
@@ -529,7 +529,7 @@ void Client::save_guild_card_file() const {
 
 string Client::character_filename(const std::string& bb_username, ssize_t index) {
   if (bb_username.empty()) {
-    throw logic_error("non-BB players do not have saved character data");
+    throw logic_error("non-BB players do not have saved character filenames");
   }
   if (index < 0) {
     throw logic_error("character index is not set");
@@ -544,7 +544,7 @@ string Client::backup_character_filename(uint32_t account_id, size_t index, bool
 
 string Client::character_filename() const {
   if (this->version() != Version::BB_V4) {
-    throw logic_error("non-BB players do not have saved character data");
+    throw logic_error("non-BB players do not have saved character filenames");
   }
   if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
@@ -722,7 +722,7 @@ void Client::create_challenge_overlay(Version version, size_t template_index, sh
 
 string Client::bank_filename(const std::string& bb_username, ssize_t index) {
   if (bb_username.empty()) {
-    throw logic_error("non-BB players do not have saved character data");
+    throw logic_error("non-BB players do not have saved bank files");
   }
   if (index < 0) {
     return std::format("system/players/shared_bank_{}.psobank", bb_username);
@@ -733,7 +733,7 @@ string Client::bank_filename(const std::string& bb_username, ssize_t index) {
 
 string Client::bank_filename() const {
   if (this->version() != Version::BB_V4) {
-    throw logic_error("non-BB players do not have saved character data");
+    throw logic_error("non-BB players do not have saved bank filenames");
   }
   if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
@@ -743,7 +743,7 @@ string Client::bank_filename() const {
 
 std::shared_ptr<PlayerBank> Client::bank_file(bool allow_load) {
   if (this->version() != Version::BB_V4) {
-    throw logic_error("non-BB players do not have saved character data");
+    throw logic_error("non-BB players do not have saved bank files");
   }
   if (this->has_overlay()) {
     throw std::runtime_error("bank is inaccessible when overlay is present");
@@ -820,7 +820,7 @@ void Client::change_bank(ssize_t index) {
 
 string Client::legacy_account_filename() const {
   if (this->version() != Version::BB_V4) {
-    throw logic_error("non-BB players do not have saved character data");
+    throw logic_error("non-BB players do not have saved account data");
   }
   if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
@@ -830,7 +830,7 @@ string Client::legacy_account_filename() const {
 
 string Client::legacy_player_filename() const {
   if (this->version() != Version::BB_V4) {
-    throw logic_error("non-BB players do not have saved character data");
+    throw logic_error("non-BB players do not have saved player files");
   }
   if (!this->login || !this->login->bb_license) {
     throw logic_error("client is not logged in");
@@ -1084,16 +1084,19 @@ void Client::print_inventory() const {
 }
 
 void Client::print_bank() const {
-  auto s = this->require_server_state();
-  auto bank = this->bank_file();
-  this->log.info_f("[PlayerBank] Meseta: {}", bank->meseta);
-  this->log.info_f("[PlayerBank] {} items", bank->items.size());
-  for (size_t x = 0; x < bank->items.size(); x++) {
-    const auto& item = bank->items[x];
-    const char* present_token = item.present ? "" : " (missing present flag)";
-    auto hex = item.data.hex();
-    auto name = s->describe_item(this->version(), item.data);
-    this->log.info_f("[PlayerBank]   {:3}: {} ({}) (x{}){}", x, hex, name, item.amount, present_token);
+  if (this->bank_data) {
+    auto s = this->require_server_state();
+    this->log.info_f("[PlayerBank] Meseta: {}", this->bank_data->meseta);
+    this->log.info_f("[PlayerBank] {} items", this->bank_data->items.size());
+    for (size_t x = 0; x < this->bank_data->items.size(); x++) {
+      const auto& item = this->bank_data->items[x];
+      const char* present_token = item.present ? "" : " (missing present flag)";
+      auto hex = item.data.hex();
+      auto name = s->describe_item(this->version(), item.data);
+      this->log.info_f("[PlayerBank]   {:3}: {} ({}) (x{}){}", x, hex, name, item.amount, present_token);
+    }
+  } else {
+    this->log.info_f("[PlayerBank] Bank data not loaded");
   }
 }
 

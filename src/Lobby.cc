@@ -749,13 +749,15 @@ void Lobby::assign_inventory_and_bank_item_ids(shared_ptr<Client> c, bool consum
 
   if (c->log.info_f("Assigned inventory item IDs{}", consume_ids ? "" : " but did not mark IDs as used")) {
     c->print_inventory();
-    auto bank = c->bank_file();
-    if (!bank->items.empty()) {
-      bank->assign_ids(0x99000000 + (c->lobby_client_id << 20));
-      c->log.info_f("Assigned bank item IDs");
-      c->print_bank();
-    } else {
-      c->log.info_f("Bank is empty");
+    if (c->version() == Version::BB_V4) {
+      auto bank = c->bank_file();
+      if (!bank->items.empty()) {
+        bank->assign_ids(0x99000000 + (c->lobby_client_id << 20));
+        c->log.info_f("Assigned bank item IDs");
+        c->print_bank();
+      } else {
+        c->log.info_f("Bank is empty");
+      }
     }
   }
 }
