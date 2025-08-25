@@ -3971,8 +3971,11 @@ struct G_WriteSwitchFlag_6x05 {
   // flag state change - this can happen when a wave event script sets a switch
   // flag, for example.
   G_EntityIDHeader header;
-  // TODO: Some of these might be big-endian on GC; it only byteswaps
-  // switch_flag_num. Are the others actually uint16, or are they uint8[2]?
+  // It seems client_id isn't used anywhere. Some switch-like objects set it
+  // when sending this command, but it seems it's never read when 6x05 is
+  // received (including by virtual functions called on the affected object).
+  // PSO GC doesn't even bother to byteswap it, and we don't either since it's
+  // unused.
   le_uint16_t client_id = 0;
   le_uint16_t unused = 0;
   le_uint16_t switch_flag_num = 0;
@@ -6687,9 +6690,10 @@ struct G_ForceDisconnect_Ep3_6xB5x1A {
   // No arguments
 } __packed_ws__(G_ForceDisconnect_Ep3_6xB5x1A, 8);
 
-// 6xB3x1B / CAx1B: Set player name during setup
-// Curiously, this command can be used during a non-setup phase; the server
-// should ignore the command's contents but still send a 6xB4x1C in response.
+// 6xB3x1B / CAx1B: Set player name
+// This command is normally sent during battle setup to populate player slots,
+// but is also sent if a player disconnects during battle to switch their
+// player type from human to CPU.
 
 struct G_SetPlayerName_Ep3_CAx1B {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_SetPlayerName_Ep3_CAx1B) / 4, 0, 0x1B, 0, 0, 0, 0, 0};

@@ -1263,7 +1263,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[0] = switch flag number
     // regsA[1] = floor number
     // regsA[2] = flags (see 6x05 definition in CommandFormats.hh)
-    {0xEC, "sw_send", nullptr, {{REG_SET_FIXED, 3}}, F_V1_V4},
+    {0xEC, "update_switch_flag", "sw_send", {{REG_SET_FIXED, 3}}, F_V1_V4},
 
     // Creates a BGM controller object. Use this before set_bgm.
     {0xED, "create_bgmctrl", nullptr, {}, F_V1_V4},
