@@ -344,7 +344,6 @@ struct S_ServerInitWithAfterMessageT_DC_PC_V3_02_17_91_9B {
 
 // 03 (C->S): Legacy register (non-BB)
 // Internal name: SndRegist
-// TODO: Are the DCv1 and DCv2 formats the same as this structure?
 
 struct C_LegacyLogin_PC_V3_03 {
   /* 00 */ be_uint64_t hardware_id;
@@ -400,7 +399,6 @@ struct S_ServerInitWithAfterMessageT_BB_03_9B {
 // now-unused sequence. Like 03, this command isn't used by any known PSO
 // version.
 // header.flag is 1 if the client has UDP disabled.
-// TODO: Are the DCv1 and DCv2 formats the same as this structure?
 
 struct C_LegacyLogin_PC_V3_04 {
   /* 00 */ be_uint64_t hardware_id;
