@@ -118,14 +118,15 @@ newserv supports all known versions of PSO, including various development protot
 | GC Ep1&2 Plus   | Yes      | Yes      | Yes      |
 | GC Ep3 NTE      | Yes      | Yes (2)  | Yes      |
 | GC Ep3          | Yes      | Yes      | Yes      |
-| Xbox Ep1&2 Beta | Yes      | Yes      | Yes      |
-| Xbox Ep1&2      | Yes      | Yes      | Yes      |
+| Xbox Ep1&2 Beta | Yes (3)  | Yes (3)  | Yes (3)  |
+| Xbox Ep1&2      | Yes (3)  | Yes (3)  | Yes (3)  |
 | BB (vanilla)    | Yes      | Yes      | Yes      |
 | BB (Tethealla)  | Yes      | Yes      | Yes      |
 
 *Notes:*
 1. *This is the only version of PSO that doesn't have any way to identify the player's account - there is no serial number or username. For this reason, AllowUnregisteredUsers must be enabled in config.json to support PC NTE, and PC NTE players receive a random Guild Card number every time they connect. To prevent abuse, PC NTE support can be disabled in config.json.*
 2. *Episode 3 NTE battles are not well-tested; some things may not work. See notes/ep3-nte-differences.txt for a list of known differences between NTE and the final version. NTE and non-NTE players cannot battle each other.*
+3. *PSO Xbox connects through Xbox Live, so you can't easily host a private server for this version of the game. See the [How to connect](#pso-xbox) section.*
 
 # Setup
 
@@ -255,6 +256,10 @@ If you're using the tapserver BBA or modem type, you can make it connect to a ne
 2. Click the "..." button next to the SP1 menu. If you're using the tapserver BBA, enter `127.0.0.1:5059` in the box. If you're using the tapserver modem, enter `127.0.0.1:5058` in the box. (If newserv isn't running on the same machine as Dolphin, replace 127.0.0.1 with newserv's IP address.)
 3. In PSO's network settings, enable DHCP ("Automatically obtain an IP address"), set DNS server address to "Automatic", and leave DHCP Hostname as "Not set". Leave the proxy server settings blank.
 4. Start an online game.
+
+### PSO Xbox
+
+Unfortunately, you can't easily host a private server for PSO Xbox because the Xbox version of the game tunnels its connections through Xbox Live. There is a modern replacement for Xbox Live named [Insignia](https://insignia.live/), which supports the three main PSO Xbox servers, but as of now does not support other private PSO servers.
 
 ### PSO BB
 
