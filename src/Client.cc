@@ -762,7 +762,7 @@ std::shared_ptr<PlayerBank> Client::bank_file(bool allow_load) {
       // should use the current character's bank); otherwise, load the
       // corresponding character and parse the bank from that character file
       if (this->bb_bank_character_index == this->bb_character_index) {
-        this->bank_data = std::make_shared<PlayerBank>(this->character_file(false, false)->bank);
+        this->bank_data = std::make_shared<PlayerBank>(this->character_file(true, false)->bank);
         this->log.info_f("Using bank data from loaded character");
       } else {
         if (!this->login || !this->login->bb_license) {
@@ -994,8 +994,10 @@ void Client::load_all_files() {
   auto s = this->require_server_state();
   auto stack_limits = s->item_stack_limits(this->version());
 
-  // bank_file() loads the bank data
-  this->bank_file()->enforce_stack_limits(stack_limits);
+  if (this->bb_character_index >= 0) {
+    // bank_file() loads the bank data
+    this->bank_file()->enforce_stack_limits(stack_limits);
+  }
 
   this->blocked_senders.clear();
   for (size_t z = 0; z < this->guild_card_data->blocked.size(); z++) {
