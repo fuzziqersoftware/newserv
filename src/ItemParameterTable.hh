@@ -1,5 +1,7 @@
 #pragma once
 
+#include "WindowsPlatform.hh"
+
 #include <stdint.h>
 
 #include <array>

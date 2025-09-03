@@ -136,6 +136,7 @@ target_link_libraries(newserv phosg::phosg ${Iconv_LIBRARIES} pthread resource_f
 if (WIN32)
     target_compile_definitions(newserv PUBLIC -DWINVER=0x0A00 -D_WIN32_WINNT=0x0A00)
     target_link_libraries(newserv ws2_32 mswsock bcrypt iphlpapi -static -static-libgcc -static-libstdc++)
+    target_compile_options(newserv PRIVATE -Wa,-mbig-obj)
 endif()
 add_dependencies(newserv newserv-Revision-cc)
 

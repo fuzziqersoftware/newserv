@@ -9,7 +9,13 @@
 #ifdef PHOSG_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#ifdef DELETE
 #undef DELETE
+#endif
+#ifdef ERROR
 #undef ERROR
+#endif
+#ifdef PASSTHROUGH
 #undef PASSTHROUGH
+#endif
 #endif
