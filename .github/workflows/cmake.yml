@@ -27,7 +27,7 @@ jobs:
       - name: Install libraries (macOS)
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
-          brew install cmake asio libiconv
+          brew install asio libiconv
 
           cat << EOF > nproc
           #!/bin/sh
