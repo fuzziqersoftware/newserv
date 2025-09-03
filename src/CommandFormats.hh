@@ -7168,7 +7168,11 @@ struct G_OpenBlockingMenu_Ep3_6xB5x3F {
   int8_t menu_type = 0; // Must be in the range [-1, 0x14]
   uint8_t client_id = 0;
   parray<uint8_t, 2> unused1;
-  le_uint32_t unknown_a3 = 0;
+  // The random_seed field is only used for the battle prep menu (01/02); for
+  // other menu types, it contains uninitialized data. This is used as the
+  // seed for a PSOV2Encryption instance, but it's not clear what that instance
+  // is used for (if anything).
+  le_uint32_t random_seed = 0;
   parray<uint8_t, 4> unused2;
 } __packed_ws__(G_OpenBlockingMenu_Ep3_6xB5x3F, 0x14);
 
@@ -7205,9 +7209,9 @@ struct G_InitiateCardAuction_Ep3_6xB5x42 {
 // 6xB5x43: Unused legacy card auction
 // This command stores the card IDs and counts in a global array on the client,
 // but this array is never read from. The function that handles this command is
-// remarkably similar to the function that handles the EF command, so It's
-// likely that this command is a now-unused early implementation of the card
-// auction sequence.
+// very similar to the function that handles the EF command, so it's likely
+// that this command is a now-unused early implementation of the card auction
+// initiation sequence.
 
 struct G_UnusedLegacyCardAuction_Ep3_6xB5x43 {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_UnusedLegacyCardAuction_Ep3_6xB5x43) / 4, 0, 0x43, 0, 0, 0};
@@ -7215,7 +7219,7 @@ struct G_UnusedLegacyCardAuction_Ep3_6xB5x43 {
     // Both fields here are masked. To get the actual values used by the game,
     // XOR the values here with 0x39AB.
     le_uint16_t masked_card_id = 0xFFFF; // Must be < 0x2F1 (when unmasked)
-    le_uint16_t masked_count = 0; // Must be in [1, 99] (when unmasked)
+    le_uint16_t masked_cost = 0; // Must be in [1, 99] (when unmasked)
   } __packed_ws__(Entry, 4);
   parray<Entry, 0x14> entries;
 } __packed_ws__(G_UnusedLegacyCardAuction_Ep3_6xB5x43, 0x58);
