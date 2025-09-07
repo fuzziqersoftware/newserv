@@ -3342,8 +3342,8 @@ static asio::awaitable<void> on_set_entity_set_flag(shared_ptr<Client> c, Subcom
                 }
                 break;
               }
-              case 0x0A: // enable_switch_flag
-              case 0x0B: { // disable_switch_flag
+              case 0x0A: // set_switch_flag
+              case 0x0B: { // clear_switch_flag
                 // These opcodes cause the client to send 6x05 commands, so
                 // we don't have to do anything here.
                 uint16_t switch_flag_num = actions_r.get_u16l();

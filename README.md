@@ -374,7 +374,7 @@ In the server drop modes, the item tables used to generate common items are in t
 
 ## Cross-version play
 
-All versions of PSO can see and interact with each other in the lobby. By default, newserv allows V1 and V2 players to play together, and allows GC and Xbox players to play together. You can change these rules to allow all versions to play together, or to prevent versions from playing together, with the CompatibilityGroups setting in config.json.
+All versions of PSO can see and interact with each other in the lobby. By default, newserv allows V1 and V2 players to play in games together, and allows GC and Xbox players to play in games together. You can change these rules to allow all versions to play in games together, or to prevent versions from playing in games together, with the CompatibilityGroups setting in config.json.
 
 There are several cross-version restrictions that always apply regardless of the compatibility groups setting:
 * DC V1 players cannot join DC V2 games if the game creator didn't choose to allow them.

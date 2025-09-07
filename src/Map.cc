@@ -2007,8 +2007,18 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     {0x018C, F_V3_V4, 0x0000400000008000, "TObjParticleLobby"},
     {0x018C, F_EP3, 0x0000000000008000, "TObjParticleLobby"},
 
-    // Episode 3 lobby battle table. Params:
-    //   param4 = player count (1-4); only 2 and 4 are used in-game
+    // Episode 3 lobby battle table. This object is responsible for the red
+    // panels on the floor next to the battle table that turn green when you
+    // step on them; it also shows the confirmation window and sends the
+    // necessary commands to the server. The actual table model and the non-lit
+    // parts of the floor panels are part of the lobby geometry, not this
+    // object. Params:
+    //   param4 = player count
+    //     1 = 1 player (doesn't work properly - there's no way to confirm)
+    //     2 = 2 players
+    //     3 = 3 players (unused, but works)
+    //     4 = 4 players
+    //     anything else = object doesn't load
     //   param5 = table number (used in E4 and E5 commands)
     {0x018D, F_EP3, 0x0000000000008000, "TObjLobbyTable"},
 
@@ -4038,12 +4048,12 @@ string MapFile::disassemble_action_stream(const void* data, size_t size) {
       }
       case 0x0A: {
         uint16_t id = r.get_u16l();
-        ret.emplace_back(std::format("  0A {:04X}       enable_switch_flag      id={:04X}", id, id));
+        ret.emplace_back(std::format("  0A {:04X}       set_switch_flag         id={:04X}", id, id));
         break;
       }
       case 0x0B: {
         uint16_t id = r.get_u16l();
-        ret.emplace_back(std::format("  0B {:04X}       disable_switch_flag     id={:04X}", id, id));
+        ret.emplace_back(std::format("  0B {:04X}       clear_switch_flag       id={:04X}", id, id));
         break;
       }
       case 0x0C: {
@@ -4885,8 +4895,8 @@ static size_t get_action_stream_size(const void* data, size_t size) {
         r.skip(4);
         done = (cmd == 0x0D);
         break;
-      case 0x0A: // enable_switch_flag(uint16_t flag_num)
-      case 0x0B: // disable_switch_flag(uint16_t flag_num)
+      case 0x0A: // set_switch_flag(uint16_t flag_num)
+      case 0x0B: // clear_switch_flag(uint16_t flag_num)
         r.skip(2);
         break;
       default:
