@@ -1377,6 +1377,14 @@ static asio::awaitable<HandlerResult> S_G_B9(shared_ptr<Client> c, Channel::Mess
   co_return (c->version() == Version::GC_EP3) ? HandlerResult::FORWARD : HandlerResult::SUPPRESS;
 }
 
+static asio::awaitable<HandlerResult> C_G_B9(shared_ptr<Client> c, Channel::Message& msg) {
+  if (c->proxy_session->suppress_next_ep3_media_update_confirmation) {
+    c->proxy_session->suppress_next_ep3_media_update_confirmation = false;
+    co_return HandlerResult::SUPPRESS;
+  }
+  co_return HandlerResult::FORWARD;
+}
+
 static asio::awaitable<HandlerResult> S_G_EF(shared_ptr<Client> c, Channel::Message& msg) {
   if (is_ep3(c->version())) {
     if (c->check_flag(Client::Flag::PROXY_EP3_INFINITE_MESETA_ENABLED)) {
@@ -2216,7 +2224,7 @@ static on_message_t handlers[0x100][NUM_VERSIONS][2] = {
 /* B6 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* B7 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_G_B7,           nullptr},      {S_G_B7,           nullptr},      {S_G_B7,           nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* B8 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_G_B8,           nullptr},      {S_G_B8,           nullptr},      {S_G_B8,           nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
-/* B9 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_G_B9,           nullptr},      {S_G_B9,           nullptr},      {S_G_B9,           nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
+/* B9 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_G_B9,           C_G_B9},       {S_G_B9,           C_G_B9},       {S_G_B9,           C_G_B9},       {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* BA */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_G_BA,           nullptr},      {S_G_BA,           nullptr},      {S_G_BA,           nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* BB */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {nullptr,          nullptr},      {nullptr,          nullptr},      {nullptr,          nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* BC */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},

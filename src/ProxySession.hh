@@ -43,6 +43,7 @@ struct ProxySession {
   Episode lobby_episode = Episode::EP1;
   uint32_t lobby_random_seed = 0;
   uint64_t server_ping_start_time = 0;
+  bool suppress_next_ep3_media_update_confirmation = false;
 
   int64_t remote_guild_card_number = -1;
   parray<uint8_t, 0x28> remote_client_config_data;

@@ -433,10 +433,6 @@ asio::awaitable<void> start_proxy_session(shared_ptr<Client> c, const string& ho
   if (!s->proxy_allow_save_files) {
     c->clear_flag(Client::Flag::PROXY_SAVE_FILES);
   }
-  if (c->version() == Version::GC_EP3) {
-    send_ep3_media_update(c, 4, 0, "");
-    c->clear_flag(Client::Flag::HAS_EP3_MEDIA_UPDATES);
-  }
 
   string netloc_str = std::format("{}:{}", host, port);
   c->log.info_f("Connecting to {}", netloc_str);
@@ -483,6 +479,13 @@ asio::awaitable<void> start_proxy_session(shared_ptr<Client> c, const string& ho
         phosg::TerminalFormat::FG_YELLOW,
         phosg::TerminalFormat::FG_RED);
     c->proxy_session = make_shared<ProxySession>(channel, pc);
+
+    if (c->version() == Version::GC_EP3) {
+      send_ep3_media_update(c, 4, 0, "");
+      c->clear_flag(Client::Flag::HAS_EP3_MEDIA_UPDATES);
+      c->proxy_session->suppress_next_ep3_media_update_confirmation = true;
+    }
+    send_change_event(c, 0x00);
 
     c->log.info_f("Server channel connected");
     asio::co_spawn(*s->io_context, handle_proxy_server_commands(c, c->proxy_session, channel), asio::detached);

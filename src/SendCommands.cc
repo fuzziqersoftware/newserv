@@ -3292,11 +3292,7 @@ void send_ep3_card_list_update(shared_ptr<Client> c) {
   }
 }
 
-void send_ep3_media_update(
-    shared_ptr<Client> c,
-    uint32_t type,
-    uint32_t which,
-    const string& compressed_data) {
+void send_ep3_media_update(shared_ptr<Client> c, uint32_t type, uint32_t which, const string& compressed_data) {
   phosg::StringWriter w;
   w.put<S_UpdateMediaHeader_Ep3_B9>({type, which, compressed_data.size(), 0});
   w.write(compressed_data);
