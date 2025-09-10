@@ -1,5 +1,6 @@
 .meta name="VIP card"
 .meta description="Gives you a VIP card"
+.meta hide_from_patches_menu
 
 .versions 3SJT 3SJ0 3SE0 3SP0
 

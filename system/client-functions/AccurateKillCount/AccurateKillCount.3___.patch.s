@@ -1,6 +1,5 @@
 .meta name="Kill count fix"
 .meta description="Fixes client-side\nkill counts when\nmultiple enemies are\nkilled on the same\nframe"
-.meta hide_from_patches_menu
 
 .versions 3OJ2 3OJ3 3OJ4 3OJ5 3OE0 3OE1 3OE2 3OP0
 
