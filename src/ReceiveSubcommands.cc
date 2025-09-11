@@ -414,18 +414,23 @@ asio::awaitable<void> forward_subcommand_with_entity_id_transcode_t(shared_ptr<C
   co_return;
 }
 
-template <typename CmdT>
-void forward_subcommand_with_entity_targets_transcode_t(shared_ptr<Client> c, SubcommandMessage& msg) {
+template <typename HeaderT>
+asio::awaitable<void> forward_subcommand_with_entity_targets_transcode_t(shared_ptr<Client> c, SubcommandMessage& msg) {
   // I'm lazy and this should never happen for item commands (since all players
   // need to stay in sync)
   if (command_is_private(msg.command)) {
     throw runtime_error("entity subcommand sent via private command");
   }
 
-  const auto& cmd = msg.check_size_t<CmdT>(offsetof(CmdT, targets), sizeof(CmdT));
-  if (cmd.target_count > min<size_t>(cmd.header.size - offsetof(CmdT, targets) / 4, cmd.targets.size())) {
-    throw runtime_error("invalid attack finished command");
+  phosg::StringReader r(msg.data, msg.size);
+  const auto& header = r.get<HeaderT>();
+  if (header.target_count > 10) {
+    throw runtime_error("invalid target count");
   }
+  if (header.target_count > std::min<size_t>(header.header.size - sizeof(HeaderT) / 4, 10)) {
+    throw runtime_error("invalid target list command");
+  }
+  const auto* targets = r.get_array<TargetEntry>(header.target_count);
 
   auto l = c->require_lobby();
   if (!l->is_game()) {
@@ -438,8 +443,8 @@ void forward_subcommand_with_entity_targets_transcode_t(shared_ptr<Client> c, Su
     uint16_t entity_id;
   };
   vector<TargetResolution> resolutions;
-  for (size_t z = 0; z < cmd.target_count; z++) {
-    auto& res = resolutions.emplace_back(TargetResolution{nullptr, nullptr, cmd.targets[z].entity_id});
+  for (size_t z = 0; z < header.target_count; z++) {
+    auto& res = resolutions.emplace_back(TargetResolution{nullptr, nullptr, targets[z].entity_id});
     if ((res.entity_id >= 0x1000) && (res.entity_id < 0x4000)) {
       res.ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, res.entity_id - 0x1000);
     } else if ((res.entity_id >= 0x4000) && (res.entity_id < 0xFFFF)) {
@@ -452,32 +457,29 @@ void forward_subcommand_with_entity_targets_transcode_t(shared_ptr<Client> c, Su
       continue;
     }
     if (c->version() != lc->version()) {
-      // NOTE: We can't just do `CmdT out_cmd = cmd` here because cmd may not
-      // point to a full command; it is likely shorter than the full structure
-      CmdT out_cmd;
-      memcpy(&out_cmd, &cmd, msg.size);
-      out_cmd.header.subcommand = translate_subcommand_number(lc->version(), c->version(), cmd.header.subcommand);
-      if (out_cmd.header.subcommand) {
-        size_t valid_targets = 0;
-        for (size_t z = 0; z < cmd.target_count; z++) {
+      HeaderT out_header = header;
+      vector<TargetEntry> out_targets;
+      out_header.header.subcommand = translate_subcommand_number(lc->version(), c->version(), header.header.subcommand);
+      out_header.target_count = 0;
+      if (out_header.header.subcommand) {
+        for (size_t z = 0; z < header.target_count; z++) {
+          uint16_t entity_id;
           const auto& res = resolutions[z];
-          auto& target = out_cmd.targets[valid_targets];
           if (res.ene_st) {
-            target.entity_id = 0x1000 | l->map_state->index_for_enemy_state(lc->version(), res.ene_st);
+            entity_id = 0x1000 | l->map_state->index_for_enemy_state(lc->version(), res.ene_st);
           } else if (res.obj_st) {
-            target.entity_id = 0x4000 | l->map_state->index_for_object_state(lc->version(), res.obj_st);
+            entity_id = 0x4000 | l->map_state->index_for_object_state(lc->version(), res.obj_st);
           } else {
-            target.entity_id = res.entity_id;
+            entity_id = res.entity_id;
           }
-          if (target.entity_id != 0xFFFF) {
-            target.unknown_a2 = cmd.targets[z].unknown_a2;
-            valid_targets++;
+          if (entity_id != 0xFFFF) {
+            out_targets.emplace_back(TargetEntry{entity_id, targets[z].unknown_a2});
           }
         }
-        size_t out_size = offsetof(CmdT, targets) + sizeof(TargetEntry) * valid_targets;
-        out_cmd.header.size = out_size >> 2;
-        out_cmd.target_count = valid_targets;
-        send_command(lc, msg.command, msg.flag, &out_cmd, out_size);
+        size_t out_size = sizeof(HeaderT) + sizeof(TargetEntry) * out_targets.size();
+        out_header.header.size = out_size >> 2;
+        out_header.target_count = out_targets.size();
+        send_command_t_vt(lc, msg.command, msg.flag, out_header, out_targets);
       } else {
         lc->log.info_f("Subcommand cannot be translated to client\'s version");
       }
@@ -485,6 +487,7 @@ void forward_subcommand_with_entity_targets_transcode_t(shared_ptr<Client> c, Su
       send_command(lc, msg.command, msg.flag, msg.data, msg.size);
     }
   }
+  co_return;
 }
 
 static shared_ptr<Client> get_sync_target(shared_ptr<Client> sender_c, uint8_t command, uint8_t flag, bool allow_if_not_loading) {
@@ -1731,36 +1734,6 @@ static asio::awaitable<void> on_cast_technique_finished(shared_ptr<Client> c, Su
       send_player_stats_change(c, PlayerStatsChange::ADD_TP, 255);
     }
   }
-  co_return;
-}
-
-static asio::awaitable<void> on_attack_finished(shared_ptr<Client> c, SubcommandMessage& msg) {
-  const auto& cmd = msg.check_size_t<G_AttackFinished_6x46>(
-      offsetof(G_AttackFinished_6x46, targets), sizeof(G_AttackFinished_6x46));
-  if (cmd.target_count > min<size_t>(cmd.header.size - 2, cmd.targets.size())) {
-    throw runtime_error("invalid attack finished command");
-  }
-  forward_subcommand_with_entity_targets_transcode_t<G_AttackFinished_6x46>(c, msg);
-  co_return;
-}
-
-static asio::awaitable<void> on_cast_technique(shared_ptr<Client> c, SubcommandMessage& msg) {
-  const auto& cmd = msg.check_size_t<G_CastTechnique_6x47>(
-      offsetof(G_CastTechnique_6x47, targets), sizeof(G_CastTechnique_6x47));
-  if (cmd.target_count > min<size_t>(cmd.header.size - 2, cmd.targets.size())) {
-    throw runtime_error("invalid cast technique command");
-  }
-  forward_subcommand_with_entity_targets_transcode_t<G_CastTechnique_6x47>(c, msg);
-  co_return;
-}
-
-static asio::awaitable<void> on_execute_photon_blast(shared_ptr<Client> c, SubcommandMessage& msg) {
-  const auto& cmd = msg.check_size_t<G_ExecutePhotonBlast_6x49>(
-      offsetof(G_ExecutePhotonBlast_6x49, targets), sizeof(G_ExecutePhotonBlast_6x49));
-  if (cmd.target_count > min<size_t>(cmd.header.size - 3, cmd.targets.size())) {
-    throw runtime_error("invalid subtract PB energy command");
-  }
-  forward_subcommand_with_entity_targets_transcode_t<G_ExecutePhotonBlast_6x49>(c, msg);
   co_return;
 }
 
@@ -5272,10 +5245,10 @@ const vector<SubcommandDefinition> subcommand_definitions{
     /* 6x43 */ {0x3A, 0x3F, 0x43, on_forward_check_game_client},
     /* 6x44 */ {0x3B, 0x40, 0x44, on_forward_check_game_client},
     /* 6x45 */ {0x3C, 0x41, 0x45, on_forward_check_game_client},
-    /* 6x46 */ {NONE, 0x42, 0x46, on_attack_finished},
-    /* 6x47 */ {0x3D, 0x43, 0x47, on_cast_technique},
+    /* 6x46 */ {NONE, 0x42, 0x46, forward_subcommand_with_entity_targets_transcode_t<G_AttackFinished_Header_6x46>},
+    /* 6x47 */ {0x3D, 0x43, 0x47, forward_subcommand_with_entity_targets_transcode_t<G_CastTechnique_Header_6x47>},
     /* 6x48 */ {NONE, NONE, 0x48, on_cast_technique_finished},
-    /* 6x49 */ {0x3E, 0x44, 0x49, on_execute_photon_blast},
+    /* 6x49 */ {0x3E, 0x44, 0x49, forward_subcommand_with_entity_targets_transcode_t<G_ExecutePhotonBlast_Header_6x49>},
     /* 6x4A */ {0x3F, 0x45, 0x4A, on_change_hp<G_ClientIDHeader>},
     /* 6x4B */ {0x40, 0x46, 0x4B, on_change_hp<G_ClientIDHeader>},
     /* 6x4C */ {0x41, 0x47, 0x4C, on_change_hp<G_ClientIDHeader>},

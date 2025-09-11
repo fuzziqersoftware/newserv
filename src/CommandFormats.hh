@@ -4520,7 +4520,8 @@ struct G_ClearTemporaryPhotonBlastStateFlags_6x3B {
 // This appears to be a base class for 6x46, 6x47, and 6x49 (and possibly other
 // subcommands), but it is never sent on the wire. Its likely purpose is to
 // provide the TargetEntry structure and related functions to derived classes,
-// but it does still have a structure of its own, as described here.
+// but it does still have a subcommand number and a structure of its own, as
+// described here.
 
 struct TargetEntry {
   le_uint16_t entity_id = 0;
@@ -4591,17 +4592,16 @@ struct G_Attack_6x43_6x44_6x45 {
 // targets is too large, the client will byteswap the function's return address
 // on the stack, and it will crash.
 
-struct G_AttackFinished_6x46 {
+struct G_AttackFinished_Header_6x46 {
   G_ClientIDHeader header;
   le_uint32_t target_count = 0;
-  // The client may send a shorter command if not all of these are used.
-  parray<TargetEntry, 10> targets;
-} __packed_ws__(G_AttackFinished_6x46, 0x30);
+  // Up to 10 TargetEntries are sent here
+} __packed_ws__(G_AttackFinished_Header_6x46, 8);
 
 // 6x47: Cast technique (protected on V3/V4)
 // On GC, this command has the same bounds-check bug as 6x46.
 
-struct G_CastTechnique_6x47 {
+struct G_CastTechnique_Header_6x47 {
   G_ClientIDHeader header;
   uint8_t technique_number = 0;
   uint8_t unused = 0; // Must not be negative
@@ -4612,9 +4612,8 @@ struct G_CastTechnique_6x47 {
   // cleaned it up.
   uint8_t level = 0;
   uint8_t target_count = 0; // Must be in [0, 10]
-  // The client may send a shorter command if not all of these are used.
-  parray<TargetEntry, 10> targets;
-} __packed_ws__(G_CastTechnique_6x47, 0x30);
+  // Up to 10 TargetEntries are sent here
+} __packed_ws__(G_CastTechnique_Header_6x47, 8);
 
 // 6x48: Cast technique complete (protected on V3/V4)
 
@@ -4629,16 +4628,15 @@ struct G_CastTechniqueComplete_6x48 {
 // 6x49: Execute Photon Blast (protected on V3/V4)
 // On GC, this command has the same bounds-check bug as 6x46.
 
-struct G_ExecutePhotonBlast_6x49 {
+struct G_ExecutePhotonBlast_Header_6x49 {
   G_ClientIDHeader header;
   uint8_t unknown_a1 = 0;
   uint8_t unknown_a2 = 0;
   le_uint16_t target_count = 0;
   le_uint16_t unknown_a3 = 0;
   le_uint16_t unknown_a4 = 0;
-  // The client may send a shorter command if not all of these are used.
-  parray<TargetEntry, 10> targets;
-} __packed_ws__(G_ExecutePhotonBlast_6x49, 0x34);
+  // Up to 10 TargetEntries are sent here
+} __packed_ws__(G_ExecutePhotonBlast_Header_6x49, 0x0C);
 
 // 6x4A: Fully shield attack (protected on V3/V4)
 

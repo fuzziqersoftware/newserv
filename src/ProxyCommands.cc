@@ -916,9 +916,8 @@ static asio::awaitable<HandlerResult> S_6x(shared_ptr<Client> c, Channel::Messag
       co_return HandlerResult::SUPPRESS;
 
     case 0x46: {
-      const auto& cmd = msg.check_size_t<G_AttackFinished_6x46>(
-          offsetof(G_AttackFinished_6x46, targets), sizeof(G_AttackFinished_6x46));
-      if (cmd.target_count > min<size_t>(cmd.header.size - 2, cmd.targets.size())) {
+      const auto& header = msg.check_size_t<G_AttackFinished_Header_6x46>(0xFFFF);
+      if (header.target_count > min<size_t>(header.header.size - sizeof(G_AttackFinished_Header_6x46) / 4, 10)) {
         c->log.warning_f("Blocking subcommand 6x46 with invalid count");
         co_return HandlerResult::SUPPRESS;
       }
@@ -926,9 +925,8 @@ static asio::awaitable<HandlerResult> S_6x(shared_ptr<Client> c, Channel::Messag
     }
 
     case 0x47: {
-      const auto& cmd = msg.check_size_t<G_CastTechnique_6x47>(
-          offsetof(G_CastTechnique_6x47, targets), sizeof(G_CastTechnique_6x47));
-      if (cmd.target_count > min<size_t>(cmd.header.size - 2, cmd.targets.size())) {
+      const auto& header = msg.check_size_t<G_CastTechnique_Header_6x47>(0xFFFF);
+      if (header.target_count > min<size_t>(header.header.size - sizeof(G_CastTechnique_Header_6x47) / 4, 10)) {
         c->log.warning_f("Blocking subcommand 6x47 with invalid count");
         co_return HandlerResult::SUPPRESS;
       }
@@ -936,9 +934,8 @@ static asio::awaitable<HandlerResult> S_6x(shared_ptr<Client> c, Channel::Messag
     }
 
     case 0x49: {
-      const auto& cmd = msg.check_size_t<G_ExecutePhotonBlast_6x49>(
-          offsetof(G_ExecutePhotonBlast_6x49, targets), sizeof(G_ExecutePhotonBlast_6x49));
-      if (cmd.target_count > min<size_t>(cmd.header.size - 3, cmd.targets.size())) {
+      const auto& header = msg.check_size_t<G_ExecutePhotonBlast_Header_6x49>(0xFFFF);
+      if (header.target_count > min<size_t>(header.header.size - sizeof(G_ExecutePhotonBlast_Header_6x49) / 4, 10)) {
         c->log.warning_f("Blocking subcommand 6x49 with invalid count");
         co_return HandlerResult::SUPPRESS;
       }

@@ -118,8 +118,12 @@ void send_command_vt(std::shared_ptr<Channel> ch, uint16_t command, uint32_t fla
 }
 
 template <typename TargetT, typename StructT, typename EntryT>
-void send_command_t_vt(std::shared_ptr<TargetT> c, uint16_t command,
-    uint32_t flag, const StructT& data, const std::vector<EntryT>& array_data) {
+void send_command_t_vt(
+    std::shared_ptr<TargetT> c,
+    uint16_t command,
+    uint32_t flag,
+    const StructT& data,
+    const std::vector<EntryT>& array_data) {
   std::string all_data(reinterpret_cast<const char*>(&data), sizeof(StructT));
   all_data.append(reinterpret_cast<const char*>(array_data.data()),
       array_data.size() * sizeof(EntryT));
