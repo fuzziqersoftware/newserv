@@ -452,7 +452,10 @@ void forward_subcommand_with_entity_targets_transcode_t(shared_ptr<Client> c, Su
       continue;
     }
     if (c->version() != lc->version()) {
-      CmdT out_cmd = cmd;
+      // NOTE: We can't just do `CmdT out_cmd = cmd` here because cmd may not
+      // point to a full command; it is likely shorter than the full structure
+      CmdT out_cmd;
+      memcpy(&out_cmd, &cmd, msg.size);
       out_cmd.header.subcommand = translate_subcommand_number(lc->version(), c->version(), cmd.header.subcommand);
       if (out_cmd.header.subcommand) {
         size_t valid_targets = 0;
