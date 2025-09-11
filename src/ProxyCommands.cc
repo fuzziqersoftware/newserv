@@ -1377,7 +1377,7 @@ static asio::awaitable<HandlerResult> S_G_B9(shared_ptr<Client> c, Channel::Mess
   co_return (c->version() == Version::GC_EP3) ? HandlerResult::FORWARD : HandlerResult::SUPPRESS;
 }
 
-static asio::awaitable<HandlerResult> C_G_B9(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> C_G_B9(shared_ptr<Client> c, Channel::Message&) {
   if (c->proxy_session->suppress_next_ep3_media_update_confirmation) {
     c->proxy_session->suppress_next_ep3_media_update_confirmation = false;
     co_return HandlerResult::SUPPRESS;
