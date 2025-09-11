@@ -155,7 +155,13 @@ handle_6xE4:  # [std] (G_IncrementEnemyDamage_Extension_6xE4* cmd @ r3) -> void
   blt       handle_6xE4_return
   cmplwi    r3, 0x1B50
   bge       handle_6xE4_return
-  bl        state_for_enemy  # auto* st = state_for_enemy(cmd->header.entity_id);
+
+  bl        get_enemy_entity
+  stw       [r1 + 0x18], r3  # TObjEnemy* ene @ var18 = get_enemy_entity(cmd->header.entity_id);
+
+  li        r3, 2
+  lhbrx     r3, [r31 + r3]
+  bl        state_for_enemy  # EnemyState* st = state_for_enemy(cmd->header.entity_id);
 
   lhz       r4, [r3 + 6]  # st->total_damage
   li        r5, 0x04
@@ -175,7 +181,10 @@ handle_6xE4:  # [std] (G_IncrementEnemyDamage_Extension_6xE4* cmd @ r3) -> void
   ori       r4, r4, 0x800
   stw       [r3], r4  # st->game_flags |= 0x800;
 
-  # Send 6x0A with dead flag
+  # Send 6x0A with dead flag, but only if the entity is constructed
+  lwz       r6, [r1 + 0x18]
+  cmplwi    r6, 0
+  beq       handle_6xE4_return
   stw       [r1 + 0x14], r4
   li        r6, 0x12
   sthbrx    [r1 + r6], r5
@@ -198,9 +207,7 @@ handle_6xE4_damage_nonnegative:
   mr        r30, r3
   bl        send_debug_info
 
-  li        r3, 2
-  lhbrx     r3, [r31 + r3]
-  bl        get_enemy_entity
+  lwz       r3, [r1 + 0x18]  # if (ene) ene->v50_on_state_updated(&st);
   cmplwi    r3, 0
   beq       handle_6xE4_return
   mr        r4, r30

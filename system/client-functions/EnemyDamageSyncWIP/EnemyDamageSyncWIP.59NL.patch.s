@@ -37,6 +37,11 @@ handle_6xE4_start:  # (G_6xE4* cmd @ [esp + 4]) -> void
   cmp       eax, 0x1B50
   jge       handle_6xE4_return
 
+  movzx     eax, word [ebx + 2]
+  .include  GetEnemyEntity-59NL  # auto* ene = get_enemy_entity(cmd->header.entity_id);
+  push      eax
+
+  movzx     eax, word [ebx + 2]
   and       eax, 0x0FFF
   imul      eax, eax, 0x0C
   add       eax, [0x00AB02B8]  # eax = state_for_enemy(cmd->header.entity_id)
@@ -50,9 +55,11 @@ handle_6xE4_start:  # (G_6xE4* cmd @ [esp + 4]) -> void
   mov       [eax + 0x06], di  # st.total_damage = cmd->max_hp;
   mov       edx, [eax]
   test      edx, 0x800
-  jnz       handle_6xE4_return
+  jnz       handle_6xE4_return_pop_ene
   or        edx, 0x800
   mov       [eax], edx
+  cmp       dword [esp], 0
+  je        handle_6xE4_return_pop_ene
   push      edx  # out_cmd.flags
   sub       esp, 8
   mov       word [esp], 0x030A  # out_cmd.header.{subcommand,size}
@@ -64,7 +71,7 @@ handle_6xE4_start:  # (G_6xE4* cmd @ [esp + 4]) -> void
   mov       ecx, esp
   mov       edx, 0x008003E0
   call      edx  # send_and_handle_60(&out_cmd);
-  add       esp, 0x0C
+  add       esp, 0x10
   jmp       handle_6xE4_return
 
 handle_6xE4_damage_less_than_max_hp:
@@ -74,15 +81,16 @@ handle_6xE4_damage_less_than_max_hp:
   mov       [eax + 0x06], dx  # st.total_damage = std::max<int16_t>(st.total_damage + cmd->hit_amount, 0);
 
   mov       edx, eax  # edx = ene_st
-  movzx     eax, word [ebx + 2]
-  .include  GetEnemyEntity-59NL  # auto* ene = get_enemy_entity(cmd->header.entity_id);
+  mov       eax, [esp]  # eax = ene
   test      eax, eax
-  jz        handle_6xE4_return
+  jz        handle_6xE4_return_pop_ene
   mov       ecx, eax
   push      edx
   mov       edx, [ecx]
   call      [edx + 0x148]  # ene->vtable[0x52](ene, &st);
 
+handle_6xE4_return_pop_ene:
+  add       esp, 4
 handle_6xE4_return:
   pop       edi
   pop       esi

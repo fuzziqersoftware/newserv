@@ -179,6 +179,11 @@ handle_6xE4:  # [std] (G_6xE4* cmd @ [esp + 4]) -> void
   cmp       eax, 0x1B50
   jge       handle_6xE4_return
 
+  mov       edi, eax
+  call      <VERS 0x002B36B0 0x002B4180 0x002B5710 0x002B5220 0x002B5400 0x002B5240 0x002B5510>  # TObjEnemy* ene = get_enemy_entity(cmd->header.entity_id);
+  push      eax
+
+  movzx     eax, word [ebx + 2]
   and       eax, 0x0FFF
   imul      eax, eax, 0x0C
   add       eax, [<VERS 0x00633068 0x006336C8 0x0063B210 0x006386F8 0x00637F90 0x006386F8 0x00638A90>]  # eax = state_for_enemy(cmd->header.entity_id)
@@ -192,9 +197,12 @@ handle_6xE4:  # [std] (G_6xE4* cmd @ [esp + 4]) -> void
   mov       [eax + 0x06], di  # st.total_damage = cmd->max_hp;
   mov       edx, [eax]
   test      edx, 0x800
-  jnz       handle_6xE4_return
+  jnz       handle_6xE4_return_pop_ene
   or        edx, 0x800
   mov       [eax], edx
+
+  cmp       dword [esp], 0
+  je        handle_6xE4_return_pop_ene
   push      edx  # out_cmd.flags
   sub       esp, 8
   mov       word [esp], 0x030A  # out_cmd.header.{subcommand,size}
@@ -216,7 +224,7 @@ handle_6xE4_root_protocol_missing:
   call      <VERS 0x002DBC30 0x002DC7B0 0x002DE070 0x002DDB90 0x002DE090 0x002DDBC0 0x002DE0C0>  # handle_60(&out_cmd)
   mov       dword [<VERS 0x0071E8C8 0x0071EF28 0x00726A68 0x00723F68 0x007237E8 0x00723F68 0x007242E8>], 0
 
-  add       esp, 0x10
+  add       esp, 0x14
   jmp       handle_6xE4_return
 
 handle_6xE4_damage_less_than_max_hp:
@@ -226,15 +234,16 @@ handle_6xE4_damage_less_than_max_hp:
   mov       [eax + 0x06], dx  # st.total_damage = std::max<int16_t>(st.total_damage + cmd->hit_amount, 0);
 
   mov       esi, eax  # esi = ene_st
-  movzx     di, word [ebx + 2]
-  call      <VERS 0x002B36B0 0x002B4180 0x002B5710 0x002B5220 0x002B5400 0x002B5240 0x002B5510>  # auto* ene = get_enemy_entity(cmd->header.entity_id);
+  mov       eax, [esp]  # eax = ene
   test      eax, eax
-  jz        handle_6xE4_return
+  jz        handle_6xE4_return_pop_ene
   mov       ecx, eax
   push      esi
   mov       edx, [ecx]
   call      [edx + 0x138]  # ene->vtable[0x4E](ene, &st);
 
+handle_6xE4_return_pop_ene:
+  add       esp, 4
 handle_6xE4_return:
   pop       edi
   pop       esi
