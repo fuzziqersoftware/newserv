@@ -34,7 +34,7 @@ public:
   }
 
   void set_value(T&& result) {
-    if (this->exc || this->val.has_value()) {
+    if (this->done()) {
       throw std::logic_error("attempted to set value on completed promise");
     }
     this->val = result;
@@ -42,7 +42,7 @@ public:
   }
 
   void set_exception(std::exception_ptr ex) {
-    if (this->exc || this->val.has_value()) {
+    if (this->done()) {
       throw std::logic_error("attempted to set value on completed promise");
     }
     this->exc = ex;
@@ -67,12 +67,13 @@ private:
   std::optional<ResolverRef> resolver_ref;
 
   void resolve() {
-    if (this->resolver_ref.has_value()) {
+    if (this->resolver_ref) {
       auto* executor = this->resolver_ref->executor;
-      asio::post(*executor, [ref = std::move(this->resolver_ref)]() mutable -> void {
-        ref->resolve(std::error_code{});
-      });
+      ResolverRef ref = std::move(*this->resolver_ref);
       this->resolver_ref.reset();
+      asio::post(*executor, [ref = std::move(ref)]() mutable -> void {
+        ref.resolve(std::error_code{});
+      });
     }
   }
 };
@@ -102,7 +103,7 @@ public:
   }
 
   void set_value() {
-    if (this->exc || this->returned) {
+    if (this->done()) {
       throw std::logic_error("attempted to set value on completed promise");
     }
     this->returned = true;
@@ -110,7 +111,7 @@ public:
   }
 
   void set_exception(std::exception_ptr ex) {
-    if (this->exc || this->returned) {
+    if (this->done()) {
       throw std::logic_error("attempted to set value on completed promise");
     }
     this->exc = ex;
@@ -130,17 +131,18 @@ private:
     asio::detail::awaitable_handler<asio::any_io_executor, std::error_code> resolve;
     asio::any_io_executor* executor;
   };
-  bool returned;
+  bool returned = false;
   std::exception_ptr exc;
   std::optional<ResolverRef> resolver_ref;
 
   void resolve() {
-    if (this->resolver_ref.has_value()) {
+    if (this->resolver_ref) {
       auto* executor = this->resolver_ref->executor;
-      asio::post(*executor, [ref = std::move(this->resolver_ref)]() mutable -> void {
-        ref->resolve(std::error_code{});
-      });
+      ResolverRef ref = std::move(*this->resolver_ref);
       this->resolver_ref.reset();
+      asio::post(*executor, [ref = std::move(ref)]() mutable -> void {
+        ref.resolve(std::error_code{});
+      });
     }
   }
 };
@@ -251,10 +253,13 @@ template <typename FnT, typename... ArgTs>
 asio::awaitable<std::invoke_result_t<FnT, ArgTs...>> call_on_thread_pool(asio::thread_pool& pool, FnT&& f, ArgTs&&... args) {
   using ReturnT = std::invoke_result_t<FnT, ArgTs...>;
   auto bound = std::bind(std::forward<FnT>(f), std::forward<ArgTs>(args)...);
-  AsyncPromise<ReturnT> promise;
 
-  asio::post(pool, [&promise, &bound]() -> void {
-    promise.set_value(bound());
+  // We have to use a shared_ptr here in case call_on_thread_pool is canceled
+  // (in that case, the posted callback will try to use promise after the
+  // call_on_thread_pool coroutine has been destroyed)
+  auto promise = std::make_shared<AsyncPromise<ReturnT>>();
+  asio::post(pool, [bound = std::move(bound), promise]() mutable {
+    promise->set_value(bound());
   });
-  co_return co_await promise.get();
+  co_return co_await promise->get();
 }
