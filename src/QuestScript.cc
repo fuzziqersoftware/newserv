@@ -3694,8 +3694,8 @@ Episode find_quest_episode_from_script(const void* data, size_t size, Version ve
     case Version::DC_V2:
     case Version::PC_NTE:
     case Version::PC_V2:
-      return Episode::EP1;
     case Version::GC_NTE:
+      return Episode::EP1;
     case Version::GC_V3:
     case Version::GC_EP3_NTE:
     case Version::GC_EP3:
