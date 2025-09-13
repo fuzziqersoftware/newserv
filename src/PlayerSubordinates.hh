@@ -563,6 +563,8 @@ struct XBNetworkLocation {
   /* 04 */ le_uint32_t external_ipv4_address = 0x23232323;
   /* 08 */ le_uint16_t port = 9500;
   /* 0A */ parray<uint8_t, 6> mac_address = 0x77;
+  // The remainder of this struct appears to be private/opaque in the XDK (and
+  // newserv doesn't use it either)
   /* 10 */ le_uint32_t sg_ip_address = 0x0B0B0B0B;
   /* 14 */ le_uint32_t spi = 0xCCCCCCCC;
   /* 18 */ le_uint64_t account_id = 0xFFFFFFFFFFFFFFFF;

@@ -674,49 +674,48 @@ struct S_LegacyJoinGame_XB_0E {
 
 // 10 (C->S): Menu selection
 // Internal name: SndAction
-// header.flag contains two flags: 02 specifies if a password is present, and 01
-// specifies... something else. These two bits directly correspond to the two
-// lowest bits in the flags field of the game menu: 02 specifies that the game
-// is locked, but the function of 01 is unknown.
-// Annoyingly, the no-arguments form of the command can have any flag value, so
-// it doesn't suffice to check the flag value to know which format is being
-// used!
+// header.flag is a bit field containing two flags: 02 specifies if a password
+// is present, and 01 specifies if a name is present. (If both are set, the
+// name comes first, as described below). These two bits directly correspond to
+// the two lowest bits in the flags field of the game menu: 02 specifies that
+// the game is locked, but the function of 01 is unknown. The ability to send
+// a name along with a menu choice is unused in all client versions except
+// Episode 3, where it's used in the tourname entries menu. It's not clear why
+// all other versions have the ability send a name here - it may be a relic
+// from very early development.
 
-struct C_MenuSelection_10_Flag00 {
+struct C_MenuSelectionBase_10 {
   le_uint32_t menu_id = 0;
   le_uint32_t item_id = 0;
-} __packed_ws__(C_MenuSelection_10_Flag00, 8);
+} __packed_ws__(C_MenuSelectionBase_10, 8);
 
 template <TextEncoding Encoding>
-struct C_MenuSelectionT_10_Flag01 {
-  C_MenuSelection_10_Flag00 basic_cmd;
+struct C_MenuSelectionWithNameT_10 : C_MenuSelectionBase_10 {
   pstring<Encoding, 0x10> name;
 } __attribute__((packed));
-using C_MenuSelection_DC_V3_10_Flag01 = C_MenuSelectionT_10_Flag01<TextEncoding::MARKED>;
-using C_MenuSelection_PC_BB_10_Flag01 = C_MenuSelectionT_10_Flag01<TextEncoding::UTF16>;
-check_struct_size(C_MenuSelection_DC_V3_10_Flag01, 0x18);
-check_struct_size(C_MenuSelection_PC_BB_10_Flag01, 0x28);
+using C_MenuSelectionWithName_DC_V3_10 = C_MenuSelectionWithNameT_10<TextEncoding::MARKED>;
+using C_MenuSelectionWithName_PC_BB_10 = C_MenuSelectionWithNameT_10<TextEncoding::UTF16>;
+check_struct_size(C_MenuSelectionWithName_DC_V3_10, 0x18);
+check_struct_size(C_MenuSelectionWithName_PC_BB_10, 0x28);
 
 template <TextEncoding Encoding>
-struct C_MenuSelectionT_10_Flag02 {
-  C_MenuSelection_10_Flag00 basic_cmd;
+struct C_MenuSelectionWithPasswordT_10 : C_MenuSelectionBase_10 {
   pstring<Encoding, 0x10> password;
 } __attribute__((packed));
-using C_MenuSelection_DC_V3_10_Flag02 = C_MenuSelectionT_10_Flag02<TextEncoding::MARKED>;
-using C_MenuSelection_PC_BB_10_Flag02 = C_MenuSelectionT_10_Flag02<TextEncoding::UTF16>;
-check_struct_size(C_MenuSelection_DC_V3_10_Flag02, 0x18);
-check_struct_size(C_MenuSelection_PC_BB_10_Flag02, 0x28);
+using C_MenuSelectionWithPassword_DC_V3_10 = C_MenuSelectionWithPasswordT_10<TextEncoding::MARKED>;
+using C_MenuSelectionWithPassword_PC_BB_10 = C_MenuSelectionWithPasswordT_10<TextEncoding::UTF16>;
+check_struct_size(C_MenuSelectionWithPassword_DC_V3_10, 0x18);
+check_struct_size(C_MenuSelectionWithPassword_PC_BB_10, 0x28);
 
 template <TextEncoding Encoding>
-struct C_MenuSelectionT_10_Flag03 {
-  C_MenuSelection_10_Flag00 basic_cmd;
+struct C_MenuSelectionWithNameAndPasswordT_10 : C_MenuSelectionBase_10 {
   pstring<Encoding, 0x10> name;
   pstring<Encoding, 0x10> password;
 } __attribute__((packed));
-using C_MenuSelection_DC_V3_10_Flag03 = C_MenuSelectionT_10_Flag03<TextEncoding::MARKED>;
-using C_MenuSelection_PC_BB_10_Flag03 = C_MenuSelectionT_10_Flag03<TextEncoding::UTF16>;
-check_struct_size(C_MenuSelection_DC_V3_10_Flag03, 0x28);
-check_struct_size(C_MenuSelection_PC_BB_10_Flag03, 0x48);
+using C_MenuSelectionWithNameAndPassword_DC_V3_10 = C_MenuSelectionWithNameAndPasswordT_10<TextEncoding::MARKED>;
+using C_MenuSelectionWithNameAndPassword_PC_BB_10 = C_MenuSelectionWithNameAndPasswordT_10<TextEncoding::UTF16>;
+check_struct_size(C_MenuSelectionWithNameAndPassword_DC_V3_10, 0x28);
+check_struct_size(C_MenuSelectionWithNameAndPassword_PC_BB_10, 0x48);
 
 // 11 (S->C): Ship info
 // Internal name: RcvMessage
@@ -1365,9 +1364,6 @@ struct LobbyFlags {
   // DCv2 and later, the game mode option is always present.
   uint8_t enable_battle_mode_v1 = 1;
   uint8_t event = 0;
-  // TODO: This is a partially-informed, but untested, guess based on
-  // disassembly of the Xbox client. It'd be nice if someone let me know if
-  // this is correct or not
   uint8_t xb_enable_voice_chat = 1;
   le_uint32_t random_seed = 0; // Unused for lobbies
 } __packed_ws__(LobbyFlags, 0x0C);
@@ -1740,7 +1736,7 @@ struct C_RegisterV1_DC_92 {
   be_uint64_t hardware_id;
   le_uint32_t sub_version;
   uint8_t unused1 = 0;
-  uint8_t language = 0; // TODO: This is a guess; verify it
+  uint8_t language = 0;
   parray<uint8_t, 2> unused2;
   pstring<TextEncoding::ASCII, 0x30> serial_number2;
   pstring<TextEncoding::ASCII, 0x30> access_key2;
@@ -2374,8 +2370,9 @@ struct S_RankUpdate_Ep3_B7 {
 // No arguments
 // The client sends this after it receives a B8 from the server.
 
-// B8 (C->S): Unknown (BB)
-// The client accepts this command, but ignores it.
+// B8 (C->S): Valid but ignored (BB)
+// The client accepts this command, but ignores it. It may have had some
+// later-removed purpose during BB's development.
 
 // B9 (S->C): Update CARD lobby media (Episode 3)
 // This command is not valid on Episode 3 Trial Edition.
@@ -2702,26 +2699,27 @@ struct S_ConfirmTournamentEntry_Ep3_CC {
 // CF: Invalid command
 
 // D0 (C->S): Start trade sequence (V3/BB)
-// The trade window sequence is a bit complicated. The normal flow is:
+// The trade window sequence is a bit complicated. On pre-BB versions, the
+// normal flow is:
 // - Clients sync trade state with 6xA6 commands
-// - When both have confirmed, one client (the initiator) sends a D0
-// - Server sends a D1 to the non-initiator
-// - Non-initiator sends a D0
-// - Server sends a D1 to both clients
-// - Both clients delete the sent items from their inventories (and send the
-//   appropriate subcommand)
-// - Both clients send a D2 (similarly to how AC works, the server should not
-//   proceed until both D2s are received)
-// - Server sends a D3 to both clients with each other's data from their D0s,
-//   followed immediately by a D4 01 to both clients, which completes the trade
+// - When both have confirmed, one client (the initiator) sends D0
+// - The server sends D1 to the other client (the responder)
+// - The responder sends D0
+// - The server sends D1 to both clients
+// - Both clients delete the sent items from their inventories and send the
+//   appropriate subcommand (6x29)
+// - Both clients send D2; similarly to how AC works, the server doesn't
+//   proceed until both D2 commands are received
+// - The server sends D3 to both clients with each other's data from their D0
+//   commands, followed immediately by D4 01 to both clients, which completes
+//   the trade
 // - Both clients send the appropriate subcommand to create inventory items
-// TODO: On BB, is the server responsible for sending the appropriate item
-// delete/create subcommands?
+// On BB, the flow is similar, except after both D2 commands are received, the
+// server instead handles the rest of the process - it sends 6x29 commands to
+// delete the inventory items and 6xBE to create the traded items.
 // At any point if an error occurs, either client may send a D4 00, which
 // cancels the entire sequence. The server should then send D4 00 to both
 // clients.
-// TODO: The server should presumably also send a D4 00 if either client
-// disconnects during the sequence.
 
 struct SC_TradeItems_D0_D3 { // D0 when sent by client, D3 when sent by server
   le_uint16_t target_client_id = 0;
@@ -2947,7 +2945,11 @@ struct S_TournamentList_Ep3NTE_E0 {
     le_uint16_t max_teams = 0;
   } __packed_ws__(Entry, 0x34);
   parray<Entry, 0x20> entries;
-} __packed_ws__(S_TournamentList_Ep3NTE_E0, 0x680);
+  uint8_t unknown_a1 = 0;
+  uint8_t unknown_a2 = 0;
+  uint8_t unknown_a3 = 0;
+  uint8_t unknown_a4 = 0;
+} __packed_ws__(S_TournamentList_Ep3NTE_E0, 0x684);
 
 struct S_TournamentList_Ep3_E0 {
   struct Entry {
@@ -2981,7 +2983,13 @@ struct S_TournamentList_Ep3_E0 {
     le_uint16_t unknown_a4 = 0xFFFF;
   } __packed_ws__(Entry, 0x38);
   parray<Entry, 0x20> entries;
-} __packed_ws__(S_TournamentList_Ep3_E0, 0x700);
+  // These fields exist in the command (the copy constructor copies them over)
+  // but it seems they aren't used by the client at all.
+  uint8_t unknown_a1 = 0;
+  uint8_t unknown_a2 = 0;
+  uint8_t unknown_a3 = 0;
+  uint8_t unknown_a4 = 0;
+} __packed_ws__(S_TournamentList_Ep3_E0, 0x704);
 
 // E0 (C->S): Request system file (BB)
 // No arguments. The server should respond with an E1 or E2 command.
@@ -3045,10 +3053,9 @@ struct S_SystemFileCreated_00E1_BB {
 // E2 (S->C): Tournament entry list (Episode 3)
 // Client may send 09 commands if the player presses X. It's not clear what the
 // server should respond with in this case.
-// If the player selects an entry slot, client will respond with a long-form 10
-// command (the Flag03 variant); in this case, unknown_a1 is the team name, and
-// password is the team password. The server should respond to that with a CC
-// command.
+// If the player selects an entry slot, client will respond with a 10 command
+// containing both a team name and password (with flag = 3). The server should
+// respond to that with a CC command.
 
 struct S_TournamentEntryList_Ep3_E2 {
   le_uint16_t players_per_team = 0;
@@ -3485,7 +3492,9 @@ struct S_TeamMemberList_BB_09EA {
 } __packed_ws__(S_TeamMemberList_BB_09EA, 4);
 
 // 0CEA (S->C): Unknown
-// The client ignores this command.
+// The client ignores this command. It calls filter_curse_words on the
+// presumably variable-sized text that follows the first 0x20 bytes of the
+// command, but then does nothing with the result.
 
 struct S_Unknown_BB_0CEA {
   parray<uint8_t, 0x20> unknown_a1;
@@ -3556,7 +3565,7 @@ struct S_TeamInfoForPlayer_BB_13EA_15EA_Entry {
 // the same as for the 13EA command.
 
 // 16EA (S->C): Transfer item via Simple Mail result
-// No arguments except header.flag, which is 0 if the transfer failed and
+// No arguments except header.flag, which is zero if the transfer failed or
 // nonzero if it succeeded.
 
 // 18EA: Intra-team ranking information
@@ -3934,7 +3943,8 @@ struct G_ExtendedHeaderT {
 // 6x03: Unknown
 // These subcommands are completely ignored on V3 and later.
 // On all known DC versions (NTE through V2), the contents of these commands
-// are written to a global array, but nothing reads from this array.
+// are written to a global array, but nothing reads from this array. This
+// command is likely a relic from pre-NTE development.
 
 struct G_Unknown_6x02_6x03 {
   G_ClientIDHeader header;
@@ -3946,16 +3956,16 @@ struct G_Unknown_6x02_6x03 {
 } __packed_ws__(G_Unknown_6x02_6x03, 0x14);
 
 // 6x04: Activate switch by token (deprecated)
-// This appears to be an early version of 6x0B; it only affects TObjDoorKey
-// objects and can only activate them, not deactivate them. 6x0B is much more
-// versatile and is used instead in all known versions of the game. This
-// command is likely a relic from pre-NTE development.
+// This appears to be an early version of 6x05 or 6x0B; it only affects
+// TObjDoorKey objects and can only activate them, not deactivate them. 6x05
+// and 6x0B are much more versatile and are used instead in all known versions
+// of the game. This command is likely a relic from pre-NTE development.
 
-struct G_Unknown_6x04 {
+struct G_LegacyActivateSwitchByToken_6x04 {
   G_ParameterHeader header; // param = door token (NOT entity ID or index)
-  le_uint16_t unused1 = 0;
-  le_uint16_t unused2 = 0;
-} __packed_ws__(G_Unknown_6x04, 8);
+  le_uint16_t switch_token = 0;
+  le_uint16_t unused = 0;
+} __packed_ws__(G_LegacyActivateSwitchByToken_6x04, 8);
 
 // 6x05: Write switch flag
 // Some things that don't look like switches are implemented as switches using
@@ -3966,7 +3976,7 @@ struct G_Unknown_6x04 {
 
 struct G_WriteSwitchFlag_6x05 {
   // header.entity_id may be 0xFFFF if no object is responsible for the switch
-  // flag state change - this can happen when a wave event script sets a switch
+  // flag state change - this happens when a wave event script sets a switch
   // flag, for example.
   G_EntityIDHeader header;
   // It seems client_id isn't used anywhere. Some switch-like objects set it
@@ -3985,6 +3995,9 @@ struct G_WriteSwitchFlag_6x05 {
 } __packed_ws__(G_WriteSwitchFlag_6x05, 0x0C);
 
 // 6x06: Send guild card
+// On BB, the server is responsible for generating and sending the Guild Card
+// data. newserv applies this logic for all versions of the game, to prevent
+// players from sending Guild Cards other than their own.
 
 struct G_SendGuildCard_DCNTE_6x06 {
   G_UnusedHeader header;
@@ -4477,7 +4490,7 @@ struct G_PhotonBlast_6x37 {
 
 struct G_DonateToPhotonBlast_6x38 {
   G_ClientIDHeader header;
-  le_uint16_t unknown_a1 = 0;
+  le_uint16_t target_client_id = 0;
   le_uint16_t unused = 0;
 } __packed_ws__(G_DonateToPhotonBlast_6x38, 8);
 
@@ -4582,7 +4595,7 @@ struct G_MoveToPosition_6x41_6x42 {
 
 struct G_Attack_6x43_6x44_6x45 {
   G_ClientIDHeader header;
-  le_uint16_t unknown_a1 = 0;
+  le_uint16_t angle_y = 0;
   le_uint16_t unknown_a2 = 0;
 } __packed_ws__(G_Attack_6x43_6x44_6x45, 8);
 
@@ -4630,11 +4643,11 @@ struct G_CastTechniqueComplete_6x48 {
 
 struct G_ExecutePhotonBlast_Header_6x49 {
   G_ClientIDHeader header;
-  uint8_t unknown_a1 = 0;
-  uint8_t unknown_a2 = 0;
+  int8_t unknown_a1 = 0;
+  uint8_t unused1 = 0;
   le_uint16_t target_count = 0;
-  le_uint16_t unknown_a3 = 0;
-  le_uint16_t unknown_a4 = 0;
+  le_uint16_t pb_meter_value = 0;
+  le_uint16_t unused2 = 0;
   // Up to 10 TargetEntries are sent here
 } __packed_ws__(G_ExecutePhotonBlast_Header_6x49, 0x0C);
 
@@ -5253,6 +5266,10 @@ struct G_SyncQuestRegister_6x77 {
 } __packed_ws__(G_SyncQuestRegister_6x77, 0x0C);
 
 // 6x78: Unknown
+// This command appears to set a per-player timer of some sort. It was
+// introduced in v2, and there is an object that uses this timer, but it seems
+// that that object is never constructed. In v3 and later, that object has been
+// entirely deleted, so the command does nothing.
 
 struct G_Unknown_6x78 {
   G_UnusedHeader header;
@@ -5265,7 +5282,7 @@ struct G_Unknown_6x78 {
 
 struct G_GogoBall_6x79 {
   G_UnusedHeader header;
-  le_uint32_t unknown_a1 = 0;
+  le_uint32_t unknown_a1 = 0; // Appears to be time-related; it's based on server_time_delta_frames
   le_uint32_t angle = 0;
   VectorXZF ball_pos;
   uint8_t use_missile_sound = 0;
@@ -5746,11 +5763,13 @@ struct G_Unknown_GCNTE_6xAB {
 struct G_CreateLobbyChair_6xAB {
   G_ClientIDHeader header;
   le_uint16_t unused = 0;
-  le_uint16_t flags = 0; // Only the low two bits are used
+  // Only two bits in this field have meanings:
+  // 01 = unknown
+  // 02 = which pose/animation (on GC, 0 = X+A, 1 = X+B)
+  le_uint16_t flags = 0;
 } __packed_ws__(G_CreateLobbyChair_6xAB, 8);
 
-// 6xAC: Unknown (not valid on pre-V3)
-// This command appears to be different on GC NTE than on any other version.
+// 6xAC: De Rol Le / Barba Ray boss actions (GC NTE)
 
 struct G_Unknown_GCNTE_6xAC {
   G_EntityIDHeader header;
@@ -5780,19 +5799,19 @@ struct G_OlgaFlowSubordinateBossActions_6xAD {
   parray<uint8_t, 0x40> unknown_a1;
 } __packed_ws__(G_OlgaFlowSubordinateBossActions_6xAD, 0x44);
 
-// 6xAE: Set lobby chair state (sent by existing clients at join time)
+// 6xAE: Set animation state (sent by existing clients at join time)
 // This subcommand is not valid on DC, PC, or GC Trial Edition.
 
-struct G_SetLobbyChairState_6xAE {
+struct G_SetAnimationState_6xAE {
   G_ClientIDHeader header;
-  le_uint16_t unknown_a1 = 0;
+  le_uint16_t animation_number = 0;
   le_uint16_t unused = 0;
   // This field contains the flags field on the sender's TObjPlayer object.
   // If the bit 04000000 is set in this field, then (flags & 1C000000) is or'ed
   // into the TObjPlayer's flags field. All other bits are ignored.
   le_uint32_t flags = 0;
-  le_float unknown_a4 = 0;
-} __packed_ws__(G_SetLobbyChairState_6xAE, 0x10);
+  le_float animation_timer = 0;
+} __packed_ws__(G_SetAnimationState_6xAE, 0x10);
 
 // 6xAF: Turn lobby chair (not valid on pre-V3 or GC Trial Edition) (protected
 // on V3/V4)
@@ -6356,7 +6375,7 @@ struct G_ExchangeItemInQuest_BB_6xDB {
   G_ClientIDHeader header;
   // If this is 0, the command is identical to 6x29. If this is 1, a function
   // similar to find_item_by_id is called instead of find_item_by_id, but I
-  // don't yet know what exactly the logic differences are.
+  // don't yet know what exactly the logic differences are (TODO).
   le_uint32_t unknown_a1 = 0;
   le_uint32_t item_id = 0;
   le_uint32_t amount = 0;
@@ -6413,7 +6432,8 @@ struct G_RequestItemDropFromQuest_BB_6xE0 {
 } __packed_ws__(G_RequestItemDropFromQuest_BB_6xE0, 0x10);
 
 // 6xE1: Exchange Photon Tickets (BB; handled by server)
-// The client sends this when it executes an F95F quest opcode.
+// The client sends this when it executes an F95F quest opcode. The comments
+// denote where in the command each argument to that opcode is sent.
 
 struct G_ExchangePhotonTickets_BB_6xE1 {
   G_ClientIDHeader header;
@@ -6898,7 +6918,7 @@ struct G_EnqueueAnimation_Ep3_6xB4x2C {
   /* 0A */ parray<le_uint16_t, 3> card_refs;
   /* 10 */ Episode3::Location loc;
   /* 14 */ le_uint32_t trap_card_id = 0xFFFFFFFF;
-  /* 14 */ le_uint32_t unknown_a3 = 0xFFFFFFFF;
+  /* 18 */ le_uint32_t unknown_a3 = 0xFFFFFFFF;
   /* 1C */
 } __packed_ws__(G_EnqueueAnimation_Ep3_6xB4x2C, 0x1C);
 

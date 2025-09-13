@@ -2964,38 +2964,45 @@ partner (if any) and opponent(s).",
   }
 }
 
+template <bool UsesUTF16>
 static asio::awaitable<void> on_10(shared_ptr<Client> c, Channel::Message& msg) {
-  bool uses_utf16 = ::uses_utf16(c->version());
+  constexpr TextEncoding Encoding = UsesUTF16 ? TextEncoding::UTF16 : TextEncoding::MARKED;
 
   uint32_t menu_id;
   uint32_t item_id;
-  string team_name;
+  string name;
   string password;
-
-  if (msg.data.size() > sizeof(C_MenuSelection_10_Flag00)) {
-    if (uses_utf16) {
-      // TODO: We can support the Flag03 variant here, but PC/BB probably never
-      // actually use it.
-      const auto& cmd = check_size_t<C_MenuSelection_PC_BB_10_Flag02>(msg.data);
-      password = cmd.password.decode(c->language());
-      menu_id = cmd.basic_cmd.menu_id;
-      item_id = cmd.basic_cmd.item_id;
-    } else if (msg.data.size() > sizeof(C_MenuSelection_DC_V3_10_Flag02)) {
-      const auto& cmd = check_size_t<C_MenuSelection_DC_V3_10_Flag03>(msg.data);
-      team_name = cmd.name.decode(c->language());
-      password = cmd.password.decode(c->language());
-      menu_id = cmd.basic_cmd.menu_id;
-      item_id = cmd.basic_cmd.item_id;
-    } else {
-      const auto& cmd = check_size_t<C_MenuSelection_DC_V3_10_Flag02>(msg.data);
-      password = cmd.password.decode(c->language());
-      menu_id = cmd.basic_cmd.menu_id;
-      item_id = cmd.basic_cmd.item_id;
+  switch (msg.flag) {
+    case 0: {
+      const auto& cmd = check_size_t<C_MenuSelectionBase_10>(msg.data);
+      menu_id = cmd.menu_id;
+      item_id = cmd.item_id;
+      break;
     }
-  } else {
-    const auto& cmd = check_size_t<C_MenuSelection_10_Flag00>(msg.data);
-    menu_id = cmd.menu_id;
-    item_id = cmd.item_id;
+    case 1: {
+      const auto& cmd = check_size_t<C_MenuSelectionWithNameT_10<Encoding>>(msg.data);
+      name = cmd.name.decode(c->language());
+      menu_id = cmd.menu_id;
+      item_id = cmd.item_id;
+      break;
+    }
+    case 2: {
+      const auto& cmd = check_size_t<C_MenuSelectionWithPasswordT_10<Encoding>>(msg.data);
+      password = cmd.password.decode(c->language());
+      menu_id = cmd.menu_id;
+      item_id = cmd.item_id;
+      break;
+    }
+    case 3: {
+      const auto& cmd = check_size_t<C_MenuSelectionWithNameAndPasswordT_10<Encoding>>(msg.data);
+      name = cmd.name.decode(c->language());
+      password = cmd.password.decode(c->language());
+      menu_id = cmd.menu_id;
+      item_id = cmd.item_id;
+      break;
+    }
+    default:
+      throw std::runtime_error("invalid options for menu selection command");
   }
 
   auto s = c->require_server_state();
@@ -3037,7 +3044,7 @@ static asio::awaitable<void> on_10(shared_ptr<Client> c, Channel::Message& msg) 
       co_await on_10_tournaments(c, menu_id, item_id);
       break;
     case MenuID::TOURNAMENT_ENTRIES:
-      co_await on_10_tournament_entries(c, item_id, std::move(team_name), std::move(password));
+      co_await on_10_tournament_entries(c, item_id, std::move(name), std::move(password));
       break;
     default:
       send_message_box(c, "Incorrect menu ID");
@@ -5584,7 +5591,7 @@ static on_command_t handlers[0x100][NUM_VERSIONS] = {
 /* 0E */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 0F */ {on_0F_U, on_0F_U, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 //        PC_PATCH BB_PATCH DC_NTE          DC_PROTO        DCV1            DCV2            PC-NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
-/* 10 */ {on_10_U, on_10_U, on_10,          on_10,          on_10,          on_10,          on_10,       on_10,       on_10,          on_10,          on_10,          on_10,          on_10,          on_10},
+/* 10 */ {on_10_U, on_10_U, on_10<false>,   on_10<false>,   on_10<false>,   on_10<false>,   on_10<true>, on_10<true>, on_10<false>,   on_10<false>,   on_10<false>,   on_10<false>,   on_10<false>,   on_10<true>},
 /* 11 */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 12 */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 13 */ {nullptr, nullptr, on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_ignored,  on_ignored,  on_13_A7_V3_V4, on_13_A7_V3_V4, on_13_A7_V3_V4, on_13_A7_V3_V4, on_13_A7_V3_V4, on_13_A7_V3_V4},

@@ -457,7 +457,7 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
     case 0x1F:
     case 0xA0:
     case 0xA1: {
-      C_MenuSelection_10_Flag00 ret;
+      C_MenuSelectionBase_10 ret;
 
       auto handle_command = [&]<typename CmdT>() {
         const auto* items = check_size_vec_t<CmdT>(msg.data, msg.flag + 1);
@@ -764,7 +764,7 @@ void DownloadSession::send_next_request() {
       this->log.info_f("Sending request {:016X}", this->current_request);
     }
 
-    C_MenuSelection_10_Flag00 cmd;
+    C_MenuSelectionBase_10 cmd;
     cmd.menu_id = (this->current_request >> 32) & 0xFFFFFFFF;
     cmd.item_id = this->current_request & 0xFFFFFFFF;
     this->channel->send(0x10, 0x00, cmd);
