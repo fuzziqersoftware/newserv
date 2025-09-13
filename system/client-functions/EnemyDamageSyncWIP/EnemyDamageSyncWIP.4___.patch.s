@@ -103,11 +103,11 @@ on_add_or_subtract_hp_start:  # (TObjectV004434c8* this @ eax, int16_t amount @ 
   imul      edx, edx, 0x0C
   add       edx, [<VERS 0x00633068 0x006336C8 0x0063B210 0x006386F8 0x00637F90 0x006386F8 0x00638A90>]  # eax = state_for_enemy(cmd->header.entity_id)
 
-  sub       esp, 0x0C
-  mov       word [esp], 0x03E4
+  sub       esp, 0x10
+  mov       word [esp], 0x04E4
   mov       bx, [eax + 0x1C]
   mov       [esp + 0x02], bx  # cmd.entity_id
-  cmp       dword [esp + 0x18], <VERS 0x002A6900 0x002A73E0 0x002A88B0 0x002A8340 0x002A8520 0x002A8360 0x002A85E0>  # Check if callsite is add_hp
+  cmp       dword [esp + 0x1C], <VERS 0x002A6900 0x002A73E0 0x002A88B0 0x002A8340 0x002A8520 0x002A8360 0x002A85E0>  # Check if callsite is add_hp
   jne       on_add_or_subtract_hp_skip_negate_amount
   neg       cx
 on_add_or_subtract_hp_skip_negate_amount:
@@ -118,16 +118,31 @@ on_add_or_subtract_hp_skip_negate_amount:
   mov       [esp + 0x08], bx  # cmd.current_hp
   mov       bx, [eax + 0x02BC]
   mov       [esp + 0x0A], bx  # cmd.max_hp
+  mov       dword [esp + 0x0C], 0xBF800000  # cmd.factor
+
+  cmp       dword [esp + 0x1C], <VERS 0x002A7CE0 0x002A87C4 0x002A9C94 0x002A9724 0x002A9904 0x002A9744 0x002A99C4>  # Check if callsite is Devil's/Demon's
+  jne       on_add_or_subtract_hp_not_proportional
+  # esp is 0x20 down from where it is in caller's context
+  mov       cx, 100
+  sub       cx, [esp + 0x34]  # cx = (100 - special_amount)
+  movsx     ecx, cx
+  mov       [esp - 4], ecx
+  fild      st0, dword [esp - 4]  # current_hp_factor = static_cast<float>(100 - special_amount)
+  fmul      st0, dword [esp + 0x38]  # *= weapon_reduction_factor
+  mov       dword [esp - 4], 0x42C80000  # 100.0f
+  fdiv      st0, dword [esp - 4]
+  fstp      dword [esp + 0x0C], st0  # cmd.factor = ((100 - special_amount) * weapon_reduction_factor) / 100
+on_add_or_subtract_hp_not_proportional:
 
   mov       ecx, esp
   mov       ebx, [<VERS 0x0071EEFC 0x0071F55C 0x007270A0 0x0072459C 0x00723E20 0x0072459C 0x00724920>]  # root_protocol
   test      ebx, ebx
   jz        on_add_or_subtract_hp_skip_send
-  mov       eax, 0x0C
+  mov       eax, 0x10
   # Can't just `call <addr>` here because this code is relocated at apply time
   mov       edx, <VERS 0x002DA120 0x002DACF0 0x002DC5B0 0x002DC080 0x002DC580 0x002DC0B0 0x002DC600>
   call      edx  # send_60(root_protocol, &out_cmd, sizeof(out_cmd))
-  add       esp, 0x0C
+  add       esp, 0x10
 
 on_add_or_subtract_hp_skip_send:
   mov       edx, <VERS 0x002A80C0 0x002A8BA0 0x002AA070 0x002A9B00 0x002A9CE0 0x002A9B20 0x002A9DA0>  # subtract_hp
@@ -187,6 +202,27 @@ handle_6xE4:  # [std] (G_6xE4* cmd @ [esp + 4]) -> void
   and       eax, 0x0FFF
   imul      eax, eax, 0x0C
   add       eax, [<VERS 0x00633068 0x006336C8 0x0063B210 0x006386F8 0x00637F90 0x006386F8 0x00638A90>]  # eax = state_for_enemy(cmd->header.entity_id)
+
+  cmp       dword [ebx + 0x0C], 0
+  jl        handle_6xE4_not_proportional
+  mov       cx, [ebx + 0x0A]  # cmd->max_hp
+  sub       cx, [eax + 0x06]  # st.total_damage
+  movzx     ecx, cx
+  xor       edx, edx
+  cmp       ecx, edx
+  cmovl     ecx, edx
+  mov       [esp - 4], ecx
+  fild      st0, dword [esp - 4]  # current_hp = static_cast<float>(max<int32_t>(cmd->max_hp - st.total_damage, 0))
+  fld       st0, dword [ebx + 0x0C]
+  fmulp     st1, st0
+  fistp     dword [esp - 4], st0
+  mov       ecx, dword [esp - 4]  # adjusted_hit_amount = static_cast<int16_t>(current_hp * cmd->factor)
+  xor       edx, edx
+  inc       edx
+  cmp       ecx, edx
+  cmovl     ecx, edx
+  mov       [ebx + 0x04], cx  # cmd->hit_amount = min<int32_t>(1, adjusted_hit_amount)
+handle_6xE4_not_proportional:
 
   movzx     edx, word [eax + 0x06]  # st.total_damage
   movsx     esi, word [ebx + 0x04]  # cmd->hit_amount

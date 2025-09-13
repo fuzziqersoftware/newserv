@@ -46,6 +46,27 @@ handle_6xE4_start:  # (G_6xE4* cmd @ [esp + 4]) -> void
   imul      eax, eax, 0x0C
   add       eax, [0x00AB02B8]  # eax = state_for_enemy(cmd->header.entity_id)
 
+  cmp       dword [ebx + 0x0C], 0
+  jl        handle_6xE4_not_proportional
+  mov       cx, [ebx + 0x0A]  # cmd->max_hp
+  sub       cx, [eax + 0x06]  # st.total_damage
+  movzx     ecx, cx
+  xor       edx, edx
+  cmp       ecx, edx
+  cmovl     ecx, edx
+  mov       [esp - 4], ecx
+  fild      st0, dword [esp - 4]  # current_hp = static_cast<float>(max<int32_t>(cmd->max_hp - st.total_damage, 0))
+  fld       st0, dword [ebx + 0x0C]
+  fmulp     st1, st0
+  fistp     dword [esp - 4], st0
+  mov       ecx, dword [esp - 4]  # adjusted_hit_amount = static_cast<int16_t>(current_hp * cmd->factor)
+  xor       edx, edx
+  inc       edx
+  cmp       ecx, edx
+  cmovl     ecx, edx
+  mov       [ebx + 0x04], cx  # cmd->hit_amount = min<int32_t>(1, adjusted_hit_amount)
+handle_6xE4_not_proportional:
+
   movzx     edx, word [eax + 0x06]  # st.total_damage
   movsx     esi, word [ebx + 0x04]  # cmd->hit_amount
   movzx     edi, word [ebx + 0x0A]  # cmd->max_hp
@@ -122,7 +143,7 @@ handle_6xE4_end:
   push      5
   push      0x00775A60  # TObjectV00b441c0::v19_handle_hit_special_effects
   push      5
-  push      0x00775726  # TObjectV00b441c0::v19_handle_hit_special_effects
+  push      0x00775726  # TObjectV00b441c0::v19_handle_hit_special_effects (Devil's/Demon's)
   push      5
   push      0x00774D7B  # TObjectV00b441c0::v18_accept_hit
   push      5
@@ -159,12 +180,12 @@ on_add_or_subtract_hp_start:  # (TObjectV00b441c0* this @ ecx, int16_t amount @ 
   imul      eax, eax, 0x0C
   add       eax, [0x00AB02B8]  # eax = state_for_enemy(cmd->header.entity_id)
 
-  sub       esp, 0x0C
-  mov       word [esp], 0x03E4
+  sub       esp, 0x10
+  mov       word [esp], 0x04E4
   mov       dx, [ecx + 0x1C]
   mov       [esp + 0x02], dx  # cmd.entity_id
-  mov       dx, [esp + 0x10]
-  cmp       dword [esp + 0x0C], 0x0077444D  # Check if callsite is add_hp
+  mov       dx, [esp + 0x14]
+  cmp       dword [esp + 0x10], 0x0077444D  # Check if callsite is add_hp
   jne       on_add_or_subtract_hp_skip_negate_amount
   neg       dx
 on_add_or_subtract_hp_skip_negate_amount:
@@ -175,15 +196,30 @@ on_add_or_subtract_hp_skip_negate_amount:
   mov       [esp + 0x08], dx  # cmd.current_hp
   mov       dx, [ecx + 0x02BC]
   mov       [esp + 0x0A], dx  # cmd.max_hp
+  mov       dword [esp + 0x0C], 0xBF800000  # cmd.factor
+
+  cmp       dword [esp + 0x10], 0x0077572B  # Check if callsite is Devil's/Demon's
+  jne       on_add_or_subtract_hp_not_proportional
+  # esp is 0x18 down from where it is in caller's context
+  mov       edx, 100
+  sub       edx, [esp + 0x24]  # edx = (100 - special_amount)
+  mov       [esp - 4], edx
+  fild      st0, dword [esp - 4]  # current_hp_factor = static_cast<float>(100 - special_amount)
+  fmul      st0, dword [esp + 0x50]  # *= weapon_reduction_factor
+  mov       dword [esp - 4], 0x42C80000  # 100.0f
+  fdiv      st0, dword [esp - 4]
+  fstp      dword [esp + 0x0C], st0  # cmd.factor = ((100 - special_amount) * weapon_reduction_factor) / 100
+on_add_or_subtract_hp_not_proportional:
+
   mov       edx, esp
   push      ecx
-  push      0x0C
+  push      0x10
   push      edx
   mov       ecx, [0x00AAB284]
   mov       edx, 0x007D3F38
   call      edx  # send_60(root_protocol, &cmd, sizeof(cmd));
   pop       ecx
-  add       esp, 0x0C
+  add       esp, 0x10
 
 on_add_or_subtract_hp_skip_send:
   mov       eax, 0x00777414  # subtract_hp

@@ -3460,9 +3460,10 @@ static asio::awaitable<void> on_incr_enemy_damage(shared_ptr<Client> c, Subcomma
   }
   auto ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd.header.entity_id & 0x0FFF);
 
-  c->log.info_f("E-{:03X} damage incremented by {}; before hit, damage was {} (cmd) or {} (ene_st) and HP was {}/{}",
+  c->log.info_f("E-{:03X} damage incremented by {} with factor {}; before hit, damage was {} (cmd) or {} (ene_st) and HP was {}/{}",
       ene_st->e_id,
       cmd.hit_amount.load(),
+      cmd.factor.load(),
       ene_st->total_damage,
       cmd.total_damage_before_hit.load(),
       cmd.current_hp_before_hit.load(),

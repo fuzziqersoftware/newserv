@@ -92,10 +92,20 @@ start:
   .data     4
   .address  <VERS 0x80012C58 0x80012C88 0x80012F50 0x80012C38 0x80012C70 0x80012C70 0x80012C38 0x80012CB0>
   bl        on_TObjectV8047c128_subtract_hp_with_sync
+  .data     <VERS 0x80012FE0 0x80013010 0x800132D8 0x80012FC0 0x80012FF8 0x80012FF8 0x80012FC0 0x80013038>
+  .data     8
+  fmuls     f3, f0, f2
+  fmuls     f31, f30, f3
+  .data     <VERS 0x80012FFC 0x8001302C 0x800132F4 0x80012FDC 0x80013014 0x80013014 0x80012FDC 0x80013054>
+  .data     4
+  fctiwz    f3, f31
+  .data     <VERS 0x80013004 0x80013034 0x800132FC 0x80012FE4 0x8001301C 0x8001301C 0x80012FE4 0x8001305C>
+  .data     4
+  stfd      [r1 + 0x40], f3
   .data     <VERS 0x8001300C 0x8001303C 0x80013304 0x80012FEC 0x80013024 0x80013024 0x80012FEC 0x80013064>
   .data     4
   .address  <VERS 0x8001300C 0x8001303C 0x80013304 0x80012FEC 0x80013024 0x80013024 0x80012FEC 0x80013064>
-  bl        on_TObjectV8047c128_subtract_hp_with_sync
+  bl        on_TObjectV8047c128_subtract_hp_with_sync_demons_devils
   # subtract_hp callsites in TObjectV8047c128_v17_accept_hit
   .data     <VERS 0x80013454 0x80013484 0x800137F4 0x80013434 0x8001346C 0x8001346C 0x80013434 0x800134AC>
   .data     4
@@ -163,6 +173,41 @@ handle_6xE4:  # [std] (G_IncrementEnemyDamage_Extension_6xE4* cmd @ r3) -> void
   lhbrx     r3, [r31 + r3]
   bl        state_for_enemy  # EnemyState* st = state_for_enemy(cmd->header.entity_id);
 
+  li        r4, 0x0C
+  lwbrx     r5, [r31 + r4]  # cmd->factor
+  andis.    r0, r5, 0x8000
+  bne       handle_6xE4_not_proportional
+  stwx      [r31 + r4], r5
+
+  li        r8, 0x0A
+  lhbrx     r8, [r31 + r8]
+  lhz       r4, [r3 + 6]
+  sub       r8, r8, r4  # current_hp = cmd->max_hp - st->total_damage
+  cmpwi     r8, 0
+  blt       handle_6xE4_not_proportional
+
+  lis       r4, 0x4B00
+  or        r5, r4, r8
+  stw       [r1 - 4], r5
+  lfs       f1, [r1 - 4]
+  stw       [r1 - 4], r4
+  lfs       f2, [r1 - 4]
+  fsubs     f1, f1, f2  # f1 = static_cast<float>(current_hp)
+  lfs       f2, [r31 + 0x0C]
+  fmuls     f1, f1, f2
+  fctiwz    f1, f1
+  stfd      [r1 - 8], f1
+  lwz       r8, [r1 - 4]
+  li        r4, 1
+  cmp       r8, r4
+  bge       handle_6xE4_proportional_positive
+  mr        r8, r4
+handle_6xE4_proportional_positive:
+  li        r5, 0x04
+  sthbrx    [r31 + r5], r8
+handle_6xE4_not_proportional:
+
+  # r3 still has the return value of state_for_enemy
   lhz       r4, [r3 + 6]  # st->total_damage
   li        r5, 0x04
   lhbrx     r5, [r31 + r5]  # cmd->hit_amount
@@ -236,13 +281,23 @@ state_for_enemy:  # [/r4] (uint16_t entity_id @ r3) -> EnemyState* @ r3
 
 
 
-on_TObjectV8047c128_add_hp_with_sync:  # [std] (TObjectV8047c128* ene @ r3, int16_t amount @ r4) -> void
+  # AdjustmentType:
+  #   0 = SUBTRACT
+  #   1 = SUBTRACT_PROPORTION
+  #   2 = ADD
+
+on_TObjectV8047c128_subtract_hp_with_sync_demons_devils:
   li        r5, 1
   b         on_add_or_subtract_hp
+
+on_TObjectV8047c128_add_hp_with_sync:  # [std] (TObjectV8047c128* ene @ r3, int16_t amount @ r4) -> void
+  li        r5, 2
+  b         on_add_or_subtract_hp
+
 on_TObjectV8047c128_subtract_hp_with_sync:  # [std] (TObjectV8047c128* ene @ r3, int16_t amount @ r4) -> void
   li        r5, 0
-on_add_or_subtract_hp:  # [std] (TObjectV8047c128* ene @ r3, int16_t amount @ r4, bool is_add @ r5) -> void
 
+on_add_or_subtract_hp:  # [std] (TObjectV8047c128* ene @ r3, int16_t amount @ r4, AdjustmentType type @ r5) -> void
   lwz       r12, [r13 - <VERS 0x50A0 0x5098 0x5078 0x5078 0x5088 0x5088 0x5068 0x5028>]
   andi.     r12, r12, 0x0080
   beq       on_add_or_subtract_hp_skip_send
@@ -259,10 +314,10 @@ on_add_or_subtract_hp:  # [std] (TObjectV8047c128* ene @ r3, int16_t amount @ r4
 
   mflr      r0
   stw       [r1 + 4], r0
-  stwu      [r1 - 0x20], r1
-  stw       [r1 + 0x14], r29
-  stw       [r1 + 0x18], r30
-  stw       [r1 + 0x1C], r31
+  stwu      [r1 - 0x40], r1
+  stw       [r1 + 0x34], r29
+  stw       [r1 + 0x38], r30
+  stw       [r1 + 0x3C], r31
   mr        r29, r3
   mr        r30, r4
   mr        r31, r5
@@ -271,14 +326,14 @@ on_add_or_subtract_hp:  # [std] (TObjectV8047c128* ene @ r3, int16_t amount @ r4
   bl        state_for_enemy  # EnemyState* st = state_for_enemy(ene->entity_id);
 
   mr        r5, r30
-  cmplwi    r31, 0
-  beq       on_add_or_subtract_hp_skip_negate_amount
+  cmplwi    r31, 2
+  bne       on_add_or_subtract_hp_skip_negate_amount
   neg       r5, r5
 on_add_or_subtract_hp_skip_negate_amount:
 
   li        r4, 0x1C
   lhbrx     r4, [r29 + r4]
-  oris      r4, r4, 0xE403
+  oris      r4, r4, 0xE404
   stw       [r1 + 0x08], r4
   li        r4, 0x0C
   sthbrx    [r1 + r4], r5
@@ -291,25 +346,37 @@ on_add_or_subtract_hp_skip_negate_amount:
   li        r4, 0x2B8
   lhbrx     r4, [r29 + r4]
   sth       [r1 + 0x12], r4
+
+  li        r5, 0x14
+  cmplwi    r31, 1
+  bne       on_add_or_subtract_hp_not_proportional
+  fmuls     f0, f30, f0
+  stfsx     [r1 + r5], f0  # current_hp_factor (== (1.0 - special_amount * 0.01)) * weapon_reduction_factor
+  lwzx      r4, [r1 + r5]
+  b         on_add_or_subtract_hp_proportional_check_end
+on_add_or_subtract_hp_not_proportional:
+  lis       r4, 0xBF80
+on_add_or_subtract_hp_proportional_check_end:
+  stwbrx    [r1 + r5], r4
+
   mr        r3, r11
   addi      r4, r1, 0x08
-  li        r5, 0x0C
+  li        r5, 0x10
   bl        send_60
 
-on_add_or_subtract_hp_tail_call:
   mr        r3, r29
   mr        r4, r30
   mr        r5, r31
-  lwz       r31, [r1 + 0x1C]
-  lwz       r30, [r1 + 0x18]
-  lwz       r29, [r1 + 0x14]
-  addi      r1, r1, 0x20
+  lwz       r31, [r1 + 0x3C]
+  lwz       r30, [r1 + 0x38]
+  lwz       r29, [r1 + 0x34]
+  addi      r1, r1, 0x40
   lwz       r0, [r1 + 4]
   mtlr      r0
 
 on_add_or_subtract_hp_skip_send:
-  cmplwi    r5, 0
-  beq       on_add_or_subtract_hp_tail_call_subtract_hp
+  cmplwi    r5, 2
+  bne       on_add_or_subtract_hp_tail_call_subtract_hp
   b         TObjectV8047c128_add_hp
 on_add_or_subtract_hp_tail_call_subtract_hp:
   b         TObjectV8047c128_subtract_hp

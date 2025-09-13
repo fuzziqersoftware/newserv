@@ -7518,14 +7518,17 @@ struct G_RejectBattleStartRequest_Ep3_6xB4x53 {
 //   GC v3: PSOGCCharacterFile::Character
 //   XB v3: PSOXBCharacterFile::Character
 
-// 6xE4: Increment enemy damage threshold
+// 6xE4: Increment enemy damage
 // This command increments or decrements the amount of damage an enemy has
-// sustained. This replaces the use of total_damage in 6x0A to update enemy HP.
+// sustained. This replaces the use of total_damage in 6x0A to update enemy HP
+// when used with the EnemyDamageSync patch.
 
 struct G_IncrementEnemyDamage_Extension_6xE4 {
-  G_EntityIDHeader header = {0xE4, sizeof(G_IncrementEnemyDamage_Extension_6xE4) / 4, 0x0000};
-  le_int16_t hit_amount = 0;
-  le_uint16_t total_damage_before_hit = 0;
-  le_uint16_t current_hp_before_hit = 0;
-  le_uint16_t max_hp = 0;
-} __packed_ws__(G_IncrementEnemyDamage_Extension_6xE4, 0x0C);
+  /* 00 */ G_EntityIDHeader header = {0xE4, sizeof(G_IncrementEnemyDamage_Extension_6xE4) / 4, 0x0000};
+  /* 04 */ le_int16_t hit_amount = 0;
+  /* 06 */ le_uint16_t total_damage_before_hit = 0;
+  /* 08 */ le_uint16_t current_hp_before_hit = 0;
+  /* 0A */ le_uint16_t max_hp = 0;
+  /* 0C */ le_float factor = -1.0;
+  /* 10 */
+} __packed_ws__(G_IncrementEnemyDamage_Extension_6xE4, 0x10);
