@@ -274,24 +274,16 @@ void Lobby::load_maps() {
   auto rare_rates = this->rare_enemy_rates ? this->rare_enemy_rates : MapState::DEFAULT_RARE_ENEMIES;
 
   if (this->quest) {
+    this->log.info_f("Loading quest supermap");
+    auto supermap = this->quest->get_supermap(this->random_seed);
     this->map_state = make_shared<MapState>(
-        this->lobby_id,
-        this->difficulty,
-        this->event,
-        this->random_seed,
-        this->rare_enemy_rates,
-        this->rand_crypt,
-        this->quest->get_supermap(this->random_seed));
+        this->lobby_id, this->difficulty, this->event, this->random_seed, this->rare_enemy_rates, this->rand_crypt, supermap);
   } else {
+    this->log.info_f("Loading free play supermaps");
     auto s = this->require_server_state();
+    auto supermaps = s->supermaps_for_variations(this->episode, this->mode, this->difficulty, this->variations);
     this->map_state = make_shared<MapState>(
-        this->lobby_id,
-        this->difficulty,
-        this->event,
-        this->random_seed,
-        this->rare_enemy_rates,
-        this->rand_crypt,
-        s->supermaps_for_variations(this->episode, this->mode, this->difficulty, this->variations));
+        this->lobby_id, this->difficulty, this->event, this->random_seed, this->rare_enemy_rates, this->rand_crypt, supermaps);
   }
 
   if (this->check_flag(Lobby::Flag::DEBUG)) {
@@ -749,7 +741,7 @@ void Lobby::assign_inventory_and_bank_item_ids(shared_ptr<Client> c, bool consum
 
   if (c->log.info_f("Assigned inventory item IDs{}", consume_ids ? "" : " but did not mark IDs as used")) {
     c->print_inventory();
-    if (c->version() == Version::BB_V4) {
+    if ((c->version() == Version::BB_V4) && !c->has_overlay()) {
       auto bank = c->bank_file();
       if (!bank->items.empty()) {
         bank->assign_ids(0x99000000 + (c->lobby_client_id << 20));

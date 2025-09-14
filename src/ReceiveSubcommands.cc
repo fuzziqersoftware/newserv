@@ -4436,7 +4436,9 @@ static asio::awaitable<void> on_battle_restart_bb(shared_ptr<Client> c, Subcomma
   for (auto& lc : l->clients) {
     if (lc) {
       lc->delete_overlay();
-      lc->change_bank(lc->bb_character_index);
+      if (is_v4(lc->version())) {
+        lc->change_bank(lc->bb_character_index);
+      }
       lc->create_battle_overlay(new_rules, s->level_table(c->version()));
     }
   }
@@ -4513,6 +4515,11 @@ static asio::awaitable<void> on_challenge_mode_retry_or_quit(shared_ptr<Client> 
   const auto& cmd = msg.check_size_t<G_SelectChallengeModeFailureOption_6x97>();
 
   auto l = c->require_lobby();
+  auto leader_c = l->clients.at(l->leader_id);
+  if (leader_c != c) {
+    throw runtime_error("6x97 sent by non-leader");
+  }
+
   if (l->is_game() && (cmd.is_retry == 1) && l->quest && (l->quest->challenge_template_index >= 0)) {
     auto s = l->require_server_state();
 
@@ -4520,12 +4527,18 @@ static asio::awaitable<void> on_challenge_mode_retry_or_quit(shared_ptr<Client> 
       m.clear();
     }
 
-    for (auto lc : l->clients) {
-      if (lc) {
-        lc->change_bank(lc->bb_character_index);
-        lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table(c->version()));
-        lc->log.info_f("Created challenge overlay");
-        l->assign_inventory_and_bank_item_ids(lc, true);
+    // If the leader (c) is BB, they are expected to send 02DF later, which
+    // will recreate the overlays.
+    if (!is_v4(c->version())) {
+      for (auto lc : l->clients) {
+        if (lc) {
+          if (is_v4(lc->version())) {
+            lc->change_bank(lc->bb_character_index);
+          }
+          lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table(c->version()));
+          lc->log.info_f("Created challenge overlay");
+          l->assign_inventory_and_bank_item_ids(lc, true);
+        }
       }
     }
 

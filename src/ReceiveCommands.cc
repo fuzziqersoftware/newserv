@@ -2370,6 +2370,10 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
   if (!l->quest) {
     throw logic_error("on_quest_loaded called without a quest loaded");
   }
+  auto leader_c = l->clients.at(l->leader_id);
+  if (!leader_c) {
+    throw std::logic_error("lobby has no leader");
+  }
 
   // Replace the free-play map with the quest's map
   l->load_maps();
@@ -2391,18 +2395,24 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
     }
 
     lc->delete_overlay();
-    if (l->quest->battle_rules) {
-      lc->change_bank(lc->bb_character_index);
-      lc->create_battle_overlay(l->quest->battle_rules, s->level_table(lc->version()));
-      lc->log.info_f("Created battle overlay");
-    } else if (l->quest->challenge_template_index >= 0 && !is_v4(lc->version())) {
-      // On BB, the client will send a sequence of DF commands that creates the
-      // overlay; on non-BB, we do it at quest start time instead (hence the
-      // version check above).
-      lc->change_bank(lc->bb_character_index);
+
+    if ((l->quest->challenge_template_index >= 0) && !is_v4(leader_c->version())) {
+      // If the leader is BB, they will send an 02DF command that will create
+      // the overlays later; on other versions, we do it at quest start time
+      // (now) instead, hence the version check above.
+      if (is_v4(lc->version())) {
+        lc->change_bank(lc->bb_character_index);
+      }
       lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table(lc->version()));
       lc->log.info_f("Created challenge overlay");
       l->assign_inventory_and_bank_item_ids(lc, true);
+
+    } else if (l->quest->battle_rules) {
+      if (is_v4(lc->version())) {
+        lc->change_bank(lc->bb_character_index);
+      }
+      lc->create_battle_overlay(l->quest->battle_rules, s->level_table(lc->version()));
+      lc->log.info_f("Created battle overlay");
     }
   }
 }
@@ -4064,6 +4074,13 @@ static asio::awaitable<void> on_DF_BB(shared_ptr<Client> c, Channel::Message& ms
       if (!l->quest) {
         throw runtime_error("challenge mode character template config command sent in non-challenge game");
       }
+      auto leader_c = l->clients.at(l->leader_id);
+      if (!leader_c) {
+        throw logic_error("lobby has no leader");
+      }
+      if (leader_c != c) {
+        throw runtime_error("non-leader sent 02DF command");
+      }
       auto vq = l->quest->version(Version::BB_V4, c->language());
       if (vq->challenge_template_index != static_cast<ssize_t>(cmd.template_index)) {
         throw runtime_error("challenge template index in quest metadata does not match index sent by client");
@@ -4074,10 +4091,13 @@ static asio::awaitable<void> on_DF_BB(shared_ptr<Client> c, Channel::Message& ms
       }
 
       for (auto lc : l->clients) {
-        // On non-BB, there is no DF command, and overlays are created at quest
-        // start time instead, hence the version check here.
-        if (lc && is_v4(lc->version())) {
-          lc->change_bank(lc->bb_character_index);
+        // See comment in on_quest_loaded about when the leader is responsible
+        // for creating challenge overlays vs. when the server should do it at
+        // quest load time
+        if (lc) {
+          if (is_v4(lc->version())) {
+            lc->change_bank(lc->bb_character_index);
+          }
           lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table(lc->version()));
           lc->log.info_f("Created challenge overlay");
           l->assign_inventory_and_bank_item_ids(lc, true);
