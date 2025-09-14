@@ -674,15 +674,26 @@ struct S_LegacyJoinGame_XB_0E {
 
 // 10 (C->S): Menu selection
 // Internal name: SndAction
-// header.flag is a bit field containing two flags: 02 specifies if a password
-// is present, and 01 specifies if a name is present. (If both are set, the
-// name comes first, as described below). These two bits directly correspond to
-// the two lowest bits in the flags field of the game menu: 02 specifies that
-// the game is locked, but the function of 01 is unknown. The ability to send
-// a name along with a menu choice is unused in all client versions except
-// Episode 3, where it's used in the tourname entries menu. It's not clear why
-// all other versions have the ability send a name here - it may be a relic
-// from very early development.
+// header.flag has different meanings depending on which menu is selected.
+// For most menus, header.flag is a bit field containing two flags: 02
+// specifies if a password is present, and 01 specifies if a name is present.
+// (If both are set, the name comes first, as described below). These two bits
+// directly correspond to the two lowest bits in the flags field of the game
+// menu: 02 specifies that the game is locked, but the function of 01 is
+// unknown. The ability to send a name along with a menu choice is unused in
+// all client versions except Episode 3, where it's used in the tournament
+// entries menu. It's not clear why all other versions have the ability send a
+// name here - it may be a relic from very early development.
+// For the quest categories menu, header.flag specifies the player's
+// progression through the story. The values are:
+//   0 = has not yet defeated Dragon
+//   1 = has defeated Dragon but not De Rol Le
+//   2 = has defeated De Rol Le but not Vol Opt
+//   3 = has defeated Vol Opt but not Dark Falz
+//   4 = has defeated Dark Falz
+// For the challenge categories menu, header.flag specifies something related
+// to challenge stage completion (TODO: reverse-engineer function at
+// 59NL:004DA300 to see what this is)
 
 struct C_MenuSelectionBase_10 {
   le_uint32_t menu_id = 0;

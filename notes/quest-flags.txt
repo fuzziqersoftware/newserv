@@ -17,7 +17,7 @@
 0019 = P2 Scientist after defeating dragon
 001E = Entered Caves 1 (Gov 2-1)
 001F = Entered De Rol Le in 2-4
-0020 = De Ro lee defeated
+0020 = De Rol Le defeated
 0021 = Mines unlocked (P2 Tyrell after defeating De Rol Le)
 0028 = Entered Mines 1
 0029 = Entered Vol Opt Area

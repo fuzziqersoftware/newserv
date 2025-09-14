@@ -2978,83 +2978,76 @@ template <bool UsesUTF16>
 static asio::awaitable<void> on_10(shared_ptr<Client> c, Channel::Message& msg) {
   constexpr TextEncoding Encoding = UsesUTF16 ? TextEncoding::UTF16 : TextEncoding::MARKED;
 
-  uint32_t menu_id;
-  uint32_t item_id;
+  const auto& base_cmd = check_size_t<C_MenuSelectionBase_10>(msg.data, 0xFFFF);
+
   string name;
   string password;
-  switch (msg.flag) {
-    case 0: {
-      const auto& cmd = check_size_t<C_MenuSelectionBase_10>(msg.data);
-      menu_id = cmd.menu_id;
-      item_id = cmd.item_id;
+  switch (msg.data.size()) {
+    case sizeof(C_MenuSelectionBase_10):
+      break;
+    case sizeof(C_MenuSelectionWithNameT_10<Encoding>): {
+      static_assert(
+          sizeof(C_MenuSelectionWithNameT_10<Encoding>) == sizeof(C_MenuSelectionWithPasswordT_10<Encoding>),
+          "Single-flag 10 commands should be the same size");
+      if (msg.flag & 1) {
+        const auto& cmd = check_size_t<C_MenuSelectionWithNameT_10<Encoding>>(msg.data);
+        name = cmd.name.decode(c->language());
+      } else if (msg.flag & 2) {
+        const auto& cmd = check_size_t<C_MenuSelectionWithPasswordT_10<Encoding>>(msg.data);
+        password = cmd.password.decode(c->language());
+      }
       break;
     }
-    case 1: {
-      const auto& cmd = check_size_t<C_MenuSelectionWithNameT_10<Encoding>>(msg.data);
-      name = cmd.name.decode(c->language());
-      menu_id = cmd.menu_id;
-      item_id = cmd.item_id;
-      break;
-    }
-    case 2: {
-      const auto& cmd = check_size_t<C_MenuSelectionWithPasswordT_10<Encoding>>(msg.data);
-      password = cmd.password.decode(c->language());
-      menu_id = cmd.menu_id;
-      item_id = cmd.item_id;
-      break;
-    }
-    case 3: {
+    case sizeof(C_MenuSelectionWithNameAndPasswordT_10<Encoding>): {
       const auto& cmd = check_size_t<C_MenuSelectionWithNameAndPasswordT_10<Encoding>>(msg.data);
       name = cmd.name.decode(c->language());
       password = cmd.password.decode(c->language());
-      menu_id = cmd.menu_id;
-      item_id = cmd.item_id;
       break;
     }
     default:
-      throw std::runtime_error("invalid options for menu selection command");
+      throw runtime_error("unknown menu selection format");
   }
 
   auto s = c->require_server_state();
-  switch (menu_id) {
+  switch (base_cmd.menu_id) {
     case MenuID::MAIN:
-      co_await on_10_main_menu(c, item_id);
+      co_await on_10_main_menu(c, base_cmd.item_id);
       break;
     case MenuID::CLEAR_LICENSE_CONFIRMATION:
-      co_await on_10_clear_license_confirmation(c, item_id);
+      co_await on_10_clear_license_confirmation(c, base_cmd.item_id);
       break;
     case MenuID::INFORMATION:
-      co_await on_10_information(c, item_id);
+      co_await on_10_information(c, base_cmd.item_id);
       break;
     case MenuID::PROXY_OPTIONS:
-      co_await on_10_proxy_options(c, item_id);
+      co_await on_10_proxy_options(c, base_cmd.item_id);
       break;
     case MenuID::PROXY_DESTINATIONS:
-      co_await on_10_proxy_destinations(c, item_id);
+      co_await on_10_proxy_destinations(c, base_cmd.item_id);
       break;
     case MenuID::GAME:
-      co_await on_10_game_menu(c, item_id, std::move(password));
+      co_await on_10_game_menu(c, base_cmd.item_id, std::move(password));
       break;
     case MenuID::QUEST_CATEGORIES_EP1:
     case MenuID::QUEST_CATEGORIES_EP2:
-      co_await on_10_quest_categories(c, item_id);
+      co_await on_10_quest_categories(c, base_cmd.item_id);
       break;
     case MenuID::QUEST_EP1:
     case MenuID::QUEST_EP2:
-      co_await on_10_quest_menu(c, item_id);
+      co_await on_10_quest_menu(c, base_cmd.item_id);
       break;
     case MenuID::PATCH_SWITCHES:
-      co_await on_10_patch_switches(c, item_id);
+      co_await on_10_patch_switches(c, base_cmd.item_id);
       break;
     case MenuID::PROGRAMS:
-      co_await on_10_programs(c, item_id);
+      co_await on_10_programs(c, base_cmd.item_id);
       break;
     case MenuID::TOURNAMENTS_FOR_SPEC:
     case MenuID::TOURNAMENTS:
-      co_await on_10_tournaments(c, menu_id, item_id);
+      co_await on_10_tournaments(c, base_cmd.menu_id, base_cmd.item_id);
       break;
     case MenuID::TOURNAMENT_ENTRIES:
-      co_await on_10_tournament_entries(c, item_id, std::move(name), std::move(password));
+      co_await on_10_tournament_entries(c, base_cmd.item_id, std::move(name), std::move(password));
       break;
     default:
       send_message_box(c, "Incorrect menu ID");
