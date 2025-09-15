@@ -168,6 +168,12 @@ To use newserv in other ways (e.g. for translating data), see the end of this do
 
 The current version of newserv is cross-compiled using mingw-w64 on a macOS build machine, with the necessary libraries manually installed. Setting up such a build environment is tedious and not recommended; it's recommended to just use a release version instead.
 
+Here is a rough outline of the Windows build process. You should only attempt this yourself if you're familiar with setting up build environments and can deal with issues you may encounter along the way.
+1. Install recent versions of MinGW and CMake.
+2. Build and install zlib, libiconv, asio, phosg, and resource_dasm into your MinGW environment.
+3. Clone the newserv repository with symlinks enabled: `git clone -c core.symlinks=true https://github.com/fuzziqersoftware/newserv.git`
+4. Build newserv via CMake.
+
 ## Client patch directories
 
 newserv implements a patch server for PSO PC and PSO BB game data. Any file or directory you put in the system/patch-bb or system/patch-pc directories will be synced to clients when they connect to the patch server.
