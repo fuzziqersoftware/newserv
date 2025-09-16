@@ -356,6 +356,36 @@ inline std::string decrypt_v2_registry_value(const std::string& s) {
   return decrypt_v2_registry_value(s.data(), s.size());
 }
 
+template <bool BE>
+std::string decrypt_pr1_data(const void* data, size_t size) {
+  if (size < 4) {
+    throw std::runtime_error("not enough data for PR1 footer");
+  }
+  phosg::StringReader r(data, size);
+  std::string ret = r.read(size - 4);
+  PSOV2Encryption crypt(r.get<U32T<BE>>());
+  if constexpr (BE) {
+    crypt.encrypt_big_endian(ret.data(), ret.size());
+  } else {
+    crypt.decrypt(ret.data(), ret.size());
+  }
+  return ret;
+}
+
+template <bool BE>
+std::string encrypt_pr1_data(const void* data, size_t size, uint32_t seed) {
+  phosg::StringWriter w;
+  w.write(data, size);
+  w.put<U32T<BE>>(seed);
+  PSOV2Encryption crypt(seed);
+  if constexpr (BE) {
+    crypt.encrypt_big_endian(w.str().data(), size);
+  } else {
+    crypt.encrypt(w.str().data(), size);
+  }
+  return std::move(w.str());
+}
+
 struct DecryptedPR2 {
   std::string compressed_data;
   size_t decompressed_size;
