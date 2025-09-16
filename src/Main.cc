@@ -2153,16 +2153,20 @@ Action a_convert_rare_item_set(
       }
     });
 
-static shared_ptr<CommonItemSet> load_common_item_set(const std::string& filename, bool big_endian) {
+static shared_ptr<CommonItemSet> load_common_item_set(
+    const std::string& filename, const std::string& ct_filename, bool big_endian) {
   auto data = make_shared<string>(phosg::load_file(filename));
   if (filename.ends_with(".json")) {
     return make_shared<JSONCommonItemSet>(phosg::JSON::parse(*data));
+  } else if (filename.ends_with(".afs")) {
+    auto ct_data = make_shared<string>(phosg::load_file(ct_filename));
+    return make_shared<AFSV2CommonItemSet>(data, ct_data);
   } else if (filename.ends_with(".gsl")) {
     return make_shared<GSLV3V4CommonItemSet>(data, big_endian);
   } else if (filename.ends_with(".gslb")) {
     return make_shared<GSLV3V4CommonItemSet>(data, true);
   } else {
-    throw runtime_error("cannot determine input format; use a filename ending with .json, .gsl, or .gslb");
+    throw runtime_error("cannot determine input format; use a filename ending with .json, .afs, .gsl, or .gslb");
   }
 }
 
@@ -2173,6 +2177,7 @@ Action a_convert_common_item_set(
     OUTPUT-FILENAME or stdout. The input filename must end in one of the\n\
     following extensions:\n\
       .json (newserv JSON common item table)\n\
+      .afs (PSO v2 AFS archive; --ct-filename is required in this case)\n\
       .gsl (PSO BB little-endian GSL archive)\n\
       .gslb (PSO GC big-endian GSL archive)\n",
     +[](phosg::Arguments& args) {
@@ -2181,7 +2186,7 @@ Action a_convert_common_item_set(
         throw runtime_error("input filename must be given");
       }
 
-      auto cs = load_common_item_set(input_filename, args.get<bool>("big-endian"));
+      auto cs = load_common_item_set(input_filename, args.get<string>("ct-filename", false), args.get<bool>("big-endian"));
       const string& output_filename = args.get<string>(2, false);
       if (output_filename.empty()) {
         cs->print(stdout);
@@ -2203,8 +2208,8 @@ Action a_compare_common_item_set(
         throw runtime_error("two input filenames must be given");
       }
 
-      auto cs1 = load_common_item_set(input_filename1, args.get<bool>("big-endian1"));
-      auto cs2 = load_common_item_set(input_filename2, args.get<bool>("big-endian2"));
+      auto cs1 = load_common_item_set(input_filename1, args.get<string>("ct-filename1", false), args.get<bool>("big-endian1"));
+      auto cs2 = load_common_item_set(input_filename2, args.get<string>("ct-filename2", false), args.get<bool>("big-endian2"));
       cs1->print_diff(stdout, *cs2);
     });
 
