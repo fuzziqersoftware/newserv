@@ -870,32 +870,49 @@ static void send_header_text(std::shared_ptr<Channel> ch, uint16_t command, uint
 }
 
 void send_message_box(shared_ptr<Client> c, const string& text) {
-  uint16_t command;
-  switch (c->version()) {
-    case Version::PC_PATCH:
-    case Version::BB_PATCH:
-      command = 0x13;
-      break;
-    case Version::DC_NTE:
-    case Version::DC_11_2000:
-    case Version::DC_V1:
-    case Version::DC_V2:
-    case Version::PC_NTE:
-    case Version::PC_V2:
-      command = 0x1A;
-      break;
-    case Version::GC_NTE:
-    case Version::GC_V3:
-    case Version::GC_EP3_NTE:
-    case Version::GC_EP3:
-    case Version::XB_V3:
-    case Version::BB_V4:
-      command = 0xD5;
-      break;
-    default:
-      throw logic_error("invalid game version");
+  if (is_v4(c->version())) {
+    phosg::StringWriter w;
+    try {
+      w.write(tt_encode_marked_optional(add_color(text), c->language(), true));
+    } catch (const runtime_error& e) {
+      phosg::log_warning_f("Failed to encode text for message box command: {}", e.what());
+      return;
+    }
+    w.put_u16(0);
+    while (w.str().size() & 3) {
+      w.put_u8(0);
+    }
+    send_command(c, (w.size() <= 0x400) ? 0x1A : 0xD5, 0x00, w.str());
+
+  } else {
+    uint16_t command;
+    switch (c->version()) {
+      case Version::PC_PATCH:
+      case Version::BB_PATCH:
+        command = 0x13;
+        break;
+      case Version::DC_NTE:
+      case Version::DC_11_2000:
+      case Version::DC_V1:
+      case Version::DC_V2:
+      case Version::PC_NTE:
+      case Version::PC_V2:
+        command = 0x1A;
+        break;
+      case Version::GC_NTE:
+      case Version::GC_V3:
+      case Version::GC_EP3_NTE:
+      case Version::GC_EP3:
+      case Version::XB_V3:
+        command = 0xD5;
+        break;
+      case Version::BB_V4:
+        throw std::logic_error("BB not handled before version switch");
+      default:
+        throw logic_error("invalid game version");
+    }
+    send_text(c->channel, command, 0x00, text, ColorMode::ADD);
   }
-  send_text(c->channel, command, 0x00, text, ColorMode::ADD);
 }
 
 void send_ep3_timed_message_box(std::shared_ptr<Channel> ch, uint32_t frames, const string& message) {

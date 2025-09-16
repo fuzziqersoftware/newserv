@@ -856,7 +856,8 @@ struct S_ReconnectSplit_19 {
 // the chat log window contents will appear in the message box, prepended to
 // the message text from the command.
 // The maximum length of the message is 0x400 bytes. This is the only
-// difference between this command and the D5 command.
+// difference between this command and the D5 command (except on BB - see the
+// notes on D5 for more information).
 
 // 1B (S->C): Valid but ignored (all versions)
 // Internal name: RcvBattleData
@@ -2765,7 +2766,10 @@ struct SC_TradeItems_D0_D3 { // D0 when sent by client, D3 when sent by server
 // See D0 description for usage information.
 
 // D5: Large message box (V3/BB)
-// Same as 1A command, except the maximum length of the message is 0x1000 bytes.
+// Same as 1A command, except the maximum length of the message is 0x1000
+// bytes. On BB, this command is not valid during the data server phase
+// (whereas 1A is valid there). The BB client ignores all D5 commands after the
+// first one sent in each connection; this logic does not apply to 1A.
 
 // D6 (C->S): Large message box closed (V3)
 // No arguments
