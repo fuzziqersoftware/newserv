@@ -3679,6 +3679,79 @@ static asio::awaitable<void> on_gol_dragon_actions(shared_ptr<Client> c, Subcomm
   }
 }
 
+template <typename CmdT>
+static asio::awaitable<void> on_vol_opt_actions_t(shared_ptr<Client> c, SubcommandMessage& msg) {
+  auto& cmd = msg.check_size_t<CmdT>();
+
+  if (command_is_private(msg.command)) {
+    co_return;
+  }
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    co_return;
+  }
+
+  if (cmd.entity_index_count > 6) {
+    throw runtime_error("invalid 6x16/6x84 command");
+  }
+  for (size_t z = 0; z < cmd.entity_index_table.size(); z++) {
+    if (cmd.entity_index_table[z] >= 6) {
+      throw runtime_error("invalid 6x16/6x84 command");
+    }
+  }
+
+  co_await forward_subcommand_with_entity_id_transcode_t<CmdT>(c, msg);
+}
+
+static asio::awaitable<void> on_set_entity_pos_and_angle_6x17(shared_ptr<Client> c, SubcommandMessage& msg) {
+  auto& cmd = msg.check_size_t<G_SetEntityPositionAndAngle_6x17>();
+
+  if (command_is_private(msg.command)) {
+    co_return;
+  }
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    co_return;
+  }
+
+  if ((cmd.header.entity_id < 0x1000) &&
+      (cmd.header.entity_id != c->lobby_client_id) &&
+      (l->clients.at(cmd.header.entity_id) != nullptr)) {
+    throw runtime_error("client sent 6x17 command affecting another player");
+  }
+
+  co_await forward_subcommand_with_entity_id_transcode_t<G_SetEntityPositionAndAngle_6x17>(c, msg);
+}
+
+static asio::awaitable<void> on_set_boss_warp_flags_6x6A(shared_ptr<Client> c, SubcommandMessage& msg) {
+  auto& cmd = msg.check_size_t<G_SetBossWarpFlags_6x6A>();
+
+  if (command_is_private(msg.command)) {
+    co_return;
+  }
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    co_return;
+  }
+  if (cmd.header.entity_id < 0x4000) {
+    throw runtime_error("6x6A sent for non-object entity");
+  }
+
+  auto obj_st = l->map_state->object_state_for_index(c->version(), c->floor, cmd.header.entity_id - 0x4000);
+  if (!obj_st->super_obj) {
+    throw runtime_error("missing object for 6x6A command");
+  }
+  auto set_entry = obj_st->super_obj->version(c->version()).set_entry;
+  if (!set_entry) {
+    throw runtime_error("missing set entry for 6x6A command");
+  }
+  if (set_entry->base_type != 0x0019 && set_entry->base_type != 0x0055) {
+    throw runtime_error("incorrect object type for 6x6A command");
+  }
+
+  co_await forward_subcommand_with_entity_id_transcode_t<G_SetBossWarpFlags_6x6A>(c, msg);
+}
+
 static asio::awaitable<void> on_charge_attack_bb(shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
@@ -4673,6 +4746,21 @@ static asio::awaitable<void> on_challenge_update_records(shared_ptr<Client> c, S
   }
 }
 
+static asio::awaitable<void> on_update_battle_data_6x7D(shared_ptr<Client> c, SubcommandMessage& msg) {
+  auto l = c->lobby.lock();
+  if (!l) {
+    c->log.warning_f("Not in any lobby; dropping command");
+    co_return;
+  }
+
+  const auto& cmd = msg.check_size_t<G_SetBattleModeData_6x7D>(0xFFFF);
+  if ((cmd.what == 3 || cmd.what == 4) && cmd.params[0] >= 4) {
+    throw runtime_error("invalid client ID in 6x7D command");
+  }
+
+  co_await on_forward_check_game(c, msg);
+}
+
 static asio::awaitable<void> on_quest_exchange_item_bb(shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
@@ -5210,8 +5298,8 @@ const vector<SubcommandDefinition> subcommand_definitions{
     /* 6x13 */ {0x11, 0x11, 0x13, forward_subcommand_with_entity_id_transcode_t<G_DeRolLeBossActions_6x13>},
     /* 6x14 */ {0x12, 0x12, 0x14, forward_subcommand_with_entity_id_transcode_t<G_DeRolLeBossActions_6x14>},
     /* 6x15 */ {0x13, 0x13, 0x15, forward_subcommand_with_entity_id_transcode_t<G_VolOptBossActions_6x15>},
-    /* 6x16 */ {0x14, 0x14, 0x16, forward_subcommand_with_entity_id_transcode_t<G_VolOptBossActions_6x16>},
-    /* 6x17 */ {0x15, 0x15, 0x17, forward_subcommand_with_entity_id_transcode_t<G_VolOpt2BossActions_6x17>},
+    /* 6x16 */ {0x14, 0x14, 0x16, on_vol_opt_actions_t<G_VolOptBossActions_6x16>},
+    /* 6x17 */ {0x15, 0x15, 0x17, on_set_entity_pos_and_angle_6x17},
     /* 6x18 */ {0x16, 0x16, 0x18, forward_subcommand_with_entity_id_transcode_t<G_VolOpt2BossActions_6x18>},
     /* 6x19 */ {0x17, 0x17, 0x19, forward_subcommand_with_entity_id_transcode_t<G_DarkFalzActions_6x19>},
     /* 6x1A */ {NONE, NONE, 0x1A, on_invalid},
@@ -5295,7 +5383,7 @@ const vector<SubcommandDefinition> subcommand_definitions{
     /* 6x67 */ {0x58, 0x5F, 0x67, on_trigger_set_event},
     /* 6x68 */ {0x59, 0x60, 0x68, on_update_telepipe_state},
     /* 6x69 */ {0x5A, 0x61, 0x69, on_npc_control},
-    /* 6x6A */ {0x5B, 0x62, 0x6A, forward_subcommand_with_entity_id_transcode_t<G_SetBossWarpFlags_6x6A>},
+    /* 6x6A */ {0x5B, 0x62, 0x6A, on_set_boss_warp_flags_6x6A},
     /* 6x6B */ {0x5C, 0x63, 0x6B, on_sync_joining_player_compressed_state},
     /* 6x6C */ {0x5D, 0x64, 0x6C, on_sync_joining_player_compressed_state},
     /* 6x6D */ {0x5E, 0x65, 0x6D, on_sync_joining_player_compressed_state},
@@ -5314,14 +5402,14 @@ const vector<SubcommandDefinition> subcommand_definitions{
     /* 6x7A */ {NONE, NONE, 0x7A, on_forward_check_game_client},
     /* 6x7B */ {NONE, NONE, 0x7B, forward_subcommand_m},
     /* 6x7C */ {NONE, NONE, 0x7C, on_challenge_update_records},
-    /* 6x7D */ {NONE, NONE, 0x7D, on_forward_check_game},
+    /* 6x7D */ {NONE, NONE, 0x7D, on_update_battle_data_6x7D},
     /* 6x7E */ {NONE, NONE, 0x7E, forward_subcommand_m},
     /* 6x7F */ {NONE, NONE, 0x7F, on_battle_scores},
     /* 6x80 */ {NONE, NONE, 0x80, on_forward_check_game},
     /* 6x81 */ {NONE, NONE, 0x81, on_forward_check_game},
     /* 6x82 */ {NONE, NONE, 0x82, on_forward_check_game},
     /* 6x83 */ {NONE, NONE, 0x83, on_forward_check_game},
-    /* 6x84 */ {NONE, NONE, 0x84, on_forward_check_game},
+    /* 6x84 */ {NONE, NONE, 0x84, on_vol_opt_actions_t<G_VolOptBossActions_6x84>},
     /* 6x85 */ {NONE, NONE, 0x85, on_forward_check_game},
     /* 6x86 */ {NONE, NONE, 0x86, on_update_object_state_t<G_HitDestructibleObject_6x86>},
     /* 6x87 */ {NONE, NONE, 0x87, on_forward_check_game},

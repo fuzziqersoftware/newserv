@@ -915,6 +915,40 @@ static asio::awaitable<HandlerResult> S_6x(shared_ptr<Client> c, Channel::Messag
       c->log.warning_f("Blocking invalid subcommand from server");
       co_return HandlerResult::SUPPRESS;
 
+    case 0x16:
+    case 0x84: {
+      const auto& cmd = msg.check_size_t<G_VolOptBossActions_6x16>(0xFFFF);
+      if (cmd.entity_index_count > 6) {
+        c->log.warning_f("Blocking subcommand 6x16/6x84 with invalid entity index count");
+        co_return HandlerResult::SUPPRESS;
+      }
+      for (size_t z = 0; z < cmd.entity_index_table.size(); z++) {
+        if (cmd.entity_index_table[z] >= 6) {
+          c->log.warning_f("Blocking subcommand 6x16/6x84 with invalid entity index");
+          co_return HandlerResult::SUPPRESS;
+        }
+      }
+      break;
+    }
+
+    case 0x17: {
+      const auto& cmd = msg.check_size_t<G_SetEntityPositionAndAngle_6x17>();
+      if (cmd.header.entity_id == c->lobby_client_id) {
+        c->log.warning_f("Blocking subcommand 6x17 targeting local client");
+        co_return HandlerResult::SUPPRESS;
+      }
+      break;
+    }
+
+    case 0x2F: {
+      const auto& cmd = msg.check_size_t<G_ChangePlayerHP_6x2F>();
+      if (cmd.client_id == c->lobby_client_id) {
+        c->log.warning_f("Blocking subcommand 6x2F targeting local player");
+        co_return HandlerResult::SUPPRESS;
+      }
+      break;
+    }
+
     case 0x46: {
       const auto& header = msg.check_size_t<G_AttackFinished_Header_6x46>(0xFFFF);
       if (header.target_count > min<size_t>(header.header.size - sizeof(G_AttackFinished_Header_6x46) / 4, 10)) {
@@ -953,6 +987,42 @@ static asio::awaitable<HandlerResult> S_6x(shared_ptr<Client> c, Channel::Messag
     case 0x60:
     case 0xA2:
       co_return co_await SC_6x60_6xA2(c, msg);
+
+    case 0x6A: {
+      auto& cmd = msg.check_size_t<G_SetBossWarpFlags_6x6A>();
+      if (c->proxy_session->map_state) {
+        shared_ptr<MapState::ObjectState> obj_st;
+        try {
+          obj_st = c->proxy_session->map_state->object_state_for_index(c->version(), c->floor, cmd.header.entity_id - 0x4000);
+        } catch (const exception& e) {
+          c->log.warning_f("Invalid object reference ({})", e.what());
+        }
+
+        if (!obj_st || !obj_st->super_obj) {
+          c->log.warning_f("Blocking subcommand 6x6A with missing object");
+          co_return HandlerResult::SUPPRESS;
+        }
+        auto set_entry = obj_st->super_obj->version(c->version()).set_entry;
+        if (!set_entry) {
+          c->log.warning_f("Blocking subcommand 6x6A with missing set entry");
+          co_return HandlerResult::SUPPRESS;
+        }
+        if (set_entry->base_type != 0x0019 && set_entry->base_type != 0x0055) {
+          c->log.warning_f("Blocking subcommand 6x6A with incorrect object type");
+          co_return HandlerResult::SUPPRESS;
+        }
+      }
+      break;
+    }
+
+    case 0x7D: {
+      const auto& cmd = msg.check_size_t<G_SetBattleModeData_6x7D>();
+      if ((cmd.what == 3 || cmd.what == 4) && cmd.params[0] >= 4) {
+        c->log.warning_f("Blocking subcommand 6x7D with invalid client ID");
+        co_return HandlerResult::SUPPRESS;
+      }
+      break;
+    }
 
     case 0xB3:
     case 0xB4:

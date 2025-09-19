@@ -4202,19 +4202,20 @@ struct G_VolOptBossActions_6x15 {
 
 struct G_VolOptBossActions_6x16 {
   G_EntityIDHeader header;
-  parray<uint8_t, 6> unknown_a2;
-  le_uint16_t unknown_a3 = 0;
+  parray<uint8_t, 6> entity_index_table;
+  le_uint16_t entity_index_count = 0;
 } __packed_ws__(G_VolOptBossActions_6x16, 0x0C);
 
-// 6x17: Vol Opt phase 2 boss actions (not valid on Episode 3)
+// 6x17: Set entity position and angle (not valid on Episode 3)
+// This command sets an entity's position and angle without performing any
+// validity checks, even on v3 and later. We unconditionally block this if it
+// affects a player other than the sender.
 
-struct G_VolOpt2BossActions_6x17 {
+struct G_SetEntityPositionAndAngle_6x17 {
   G_EntityIDHeader header;
-  le_float unknown_a2 = 0.0f;
-  le_float unknown_a3 = 0.0f;
-  le_float unknown_a4 = 0.0f;
-  le_uint32_t unknown_a5 = 0;
-} __packed_ws__(G_VolOpt2BossActions_6x17, 0x14);
+  VectorXYZF pos;
+  le_uint32_t angle = 0;
+} __packed_ws__(G_SetEntityPositionAndAngle_6x17, 0x14);
 
 // 6x18: Vol Opt phase 2 boss actions (not valid on Episode 3)
 
@@ -5416,10 +5417,7 @@ struct G_PlaceTrap_6x83 {
 // 6x84: Vol Opt boss actions (not valid on Episode 3)
 // Same format and usage as 6x16, except unknown_a2 is ignored in 6x84.
 
-struct G_VolOptBossActions_6x84 {
-  G_UnusedHeader header;
-  parray<uint8_t, 6> unknown_a1;
-  le_uint16_t unknown_a2 = 0;
+struct G_VolOptBossActions_6x84 : G_VolOptBossActions_6x16 {
   le_uint16_t unknown_a3 = 0;
   le_uint16_t unused = 0;
 } __packed_ws__(G_VolOptBossActions_6x84, 0x10);
