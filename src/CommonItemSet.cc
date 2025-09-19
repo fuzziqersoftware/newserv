@@ -48,11 +48,7 @@ void from_json_into(const phosg::JSON& json, parray<CommonItemSet::Table::Range<
 
 template <typename IntT>
 phosg::JSON to_json(const CommonItemSet::Table::Range<IntT>& v) {
-  if (v.min == v.max) {
-    return phosg::JSON(v.min);
-  } else {
-    return phosg::JSON::list({v.min, v.max});
-  }
+  return (v.min == v.max) ? phosg::JSON(v.min) : phosg::JSON::list({v.min, v.max});
 }
 
 template <typename IntT>
@@ -820,8 +816,7 @@ JSONCommonItemSet::JSONCommonItemSet(const phosg::JSON& json) {
 }
 
 RELFileSet::RELFileSet(std::shared_ptr<const std::string> data)
-    : data(data),
-      r(*this->data) {}
+    : data(data), r(*this->data) {}
 
 ArmorRandomSet::ArmorRandomSet(std::shared_ptr<const std::string> data)
     : RELFileSet(data) {
@@ -849,18 +844,13 @@ ArmorRandomSet::get_unit_table(size_t index) const {
 ToolRandomSet::ToolRandomSet(std::shared_ptr<const std::string> data)
     : RELFileSet(data) {
   uint32_t specs_offset = r.pget_u32b(data->size() - 0x10);
-  this->common_recovery_table_spec = &r.pget<TableSpec>(r.pget_u32b(
-      specs_offset));
-  this->rare_recovery_table_spec = &r.pget<TableSpec>(
-      r.pget_u32b(specs_offset + sizeof(uint32_t)),
-      2 * sizeof(TableSpec));
+  this->common_recovery_table_spec = &r.pget<TableSpec>(r.pget_u32b(specs_offset));
+  this->rare_recovery_table_spec = &r.pget<TableSpec>(r.pget_u32b(specs_offset + sizeof(uint32_t)), 2 * sizeof(TableSpec));
   this->tech_disk_table_spec = this->rare_recovery_table_spec + 1;
-  this->tech_disk_level_table_spec = &r.pget<TableSpec>(r.pget_u32b(
-      specs_offset + 2 * sizeof(uint32_t)));
+  this->tech_disk_level_table_spec = &r.pget<TableSpec>(r.pget_u32b(specs_offset + 2 * sizeof(uint32_t)));
 }
 
-pair<const uint8_t*, size_t> ToolRandomSet::get_common_recovery_table(
-    size_t index) const {
+pair<const uint8_t*, size_t> ToolRandomSet::get_common_recovery_table(size_t index) const {
   return this->get_table<uint8_t>(*this->common_recovery_table_spec, index);
 }
 
@@ -887,25 +877,21 @@ WeaponRandomSet::WeaponRandomSet(std::shared_ptr<const std::string> data)
 
 std::pair<const WeaponRandomSet::WeightTableEntry8*, size_t>
 WeaponRandomSet::get_weapon_type_table(size_t index) const {
-  const auto& spec = this->r.pget<TableSpec>(
-      this->offsets->weapon_type_table + index * sizeof(TableSpec));
-  const auto* data = &this->r.pget<WeightTableEntry8>(
-      spec.offset, spec.entries_per_table * sizeof(WeightTableEntry8));
+  const auto& spec = this->r.pget<TableSpec>(this->offsets->weapon_type_table + index * sizeof(TableSpec));
+  const auto* data = &this->r.pget<WeightTableEntry8>(spec.offset, spec.entries_per_table * sizeof(WeightTableEntry8));
   return make_pair(data, spec.entries_per_table);
 }
 
 const parray<WeaponRandomSet::WeightTableEntry32, 6>*
 WeaponRandomSet::get_bonus_type_table(size_t which, size_t index) const {
   uint32_t base_offset = which ? this->offsets->bonus_type_table2 : this->offsets->bonus_type_table1;
-  return &this->r.pget<parray<WeightTableEntry32, 6>>(
-      base_offset + sizeof(parray<WeightTableEntry32, 6>) * index);
+  return &this->r.pget<parray<WeightTableEntry32, 6>>(base_offset + sizeof(parray<WeightTableEntry32, 6>) * index);
 }
 
 const WeaponRandomSet::RangeTableEntry*
 WeaponRandomSet::get_bonus_range(size_t which, size_t index) const {
   uint32_t base_offset = which ? this->offsets->bonus_range_table2 : this->offsets->bonus_range_table1;
-  return &this->r.pget<RangeTableEntry>(
-      base_offset + sizeof(RangeTableEntry) * index);
+  return &this->r.pget<RangeTableEntry>(base_offset + sizeof(RangeTableEntry) * index);
 }
 
 const parray<WeaponRandomSet::WeightTableEntry32, 3>*
@@ -916,19 +902,16 @@ WeaponRandomSet::get_special_mode_table(size_t index) const {
 
 const WeaponRandomSet::RangeTableEntry*
 WeaponRandomSet::get_standard_grind_range(size_t index) const {
-  return &this->r.pget<RangeTableEntry>(
-      this->offsets->standard_grind_range_table + sizeof(RangeTableEntry) * index);
+  return &this->r.pget<RangeTableEntry>(this->offsets->standard_grind_range_table + sizeof(RangeTableEntry) * index);
 }
 
 const WeaponRandomSet::RangeTableEntry*
 WeaponRandomSet::get_favored_grind_range(size_t index) const {
-  return &this->r.pget<RangeTableEntry>(
-      this->offsets->favored_grind_range_table + sizeof(RangeTableEntry) * index);
+  return &this->r.pget<RangeTableEntry>(this->offsets->favored_grind_range_table + sizeof(RangeTableEntry) * index);
 }
 
 TekkerAdjustmentSet::TekkerAdjustmentSet(std::shared_ptr<const std::string> data)
-    : data(data),
-      r(*data) {
+    : data(data), r(*data) {
   this->offsets = &this->r.pget<Offsets>(this->r.pget_u32b(this->r.size() - 0x10));
 }
 

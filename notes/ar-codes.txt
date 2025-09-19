@@ -70,14 +70,50 @@ Disable serial number validation (untested)
         8C2670B6 01E0
 
 Disable item equip restrictions ("God of equip")
+3OE0 => 0410521C 38000005
 3OE1 => 0410521C 38000005
+3OE2 => 041050E4 38000005
+3OJ2 => 04104F78 38000005
+3OJ3 => 04105154 38000005
+3OJ4 => 04105240 38000005
+3OJ5 => 041050D4 38000005
+3OJT => 0415BF50 38000005
+3OP0 => 041052D4 38000005
 59NL => 005C9F31 E9A7000000
 
 All rareable enemies are rare
+3OE0 => 040AC944 60000000 // Hildeblue
+        040C1B70 60000000 // Rappies
+        040C3FC8 60000000 // Nar Lily
+        040EB050 48000010 // Pouilly Slime
 3OE1 => 040AC944 60000000 // Hildeblue
         040C1B70 60000000 // Rappies
         040C3FC8 60000000 // Nar Lily
         040EB050 48000010 // Pouilly Slime
+3OE2 => 040ACAFC 60000000 // Hildeblue
+        040C1D08 60000000 // Rappies
+        040C4160 60000000 // Nar Lily
+        040EB1E8 48000010 // Pouilly Slime
+3OJ2 => 040AC6B8 60000000 // Hildeblue
+        040C18CC 60000000 // Rappies
+        040C3D24 60000000 // Nar Lily
+        040EADAC 48000010 // Pouilly Slime
+3OJ3 => 040AC9C4 60000000 // Hildeblue
+        040C1BD0 60000000 // Rappies
+        040C4028 60000000 // Nar Lily
+        040EB0B0 48000010 // Pouilly Slime
+3OJ4 => 040ACB3C 60000000 // Hildeblue
+        040C1E04 60000000 // Rappies
+        040C41A0 60000000 // Nar Lily
+        040EB374 48000010 // Pouilly Slime
+3OJ5 => 040ACAEC 60000000 // Hildeblue
+        040C1CF8 60000000 // Rappies
+        040C4150 60000000 // Nar Lily
+        040EB1D8 48000010 // Pouilly Slime
+3OP0 => 040ACAC4 60000000 // Hildeblue
+        040C1CD0 60000000 // Rappies
+        040C4128 60000000 // Nar Lily
+        040EB1B0 48000010 // Pouilly Slime
 
 Unlock all songs in BGM test
 Note: sadly, there are no secret/unused ones
@@ -199,6 +235,16 @@ Unlock all COM decks
 3SP0 => 042CB414 38600001
 3SE0 => 042CA908 38600001
 
+Enable marker color menu in all lobbies
+3OJ2 => 04138200 3800000E
+3OJ3 => 04138508 3800000E
+3OJ4 => 041390AC 3800000E
+3OJ5 => 041385B0 3800000E
+3OE0 => 041384BC 3800000E
+3OE1 => 041384BC 3800000E
+3OE2 => 041385C0 3800000E
+3OP0 => 04138840 3800000E
+
 Enable all lobby counter options in non-CARD lobbies
 3SE0 => 04096A8C 480000C0
         04096B4C 38800007
@@ -219,7 +265,10 @@ Change HUD color mask
         0438CA90 6000BBAA
 
 Disable lobby event music (but keep the visuals)
+3OJT => 040B2394 38000000
 3SE0 => 040B705C 38000000
+3SJ0 => 040B7078 38000000
+3SP0 => 040B74A0 38000000
 
 Enable Pinz's Shop Super Card Capsule Machine as a fourth option
 3SE0 => 043101C0 38800004
@@ -722,7 +771,14 @@ Show extended item info when targeting a dropped item
         04005190 4E800020
 
 All weapons can do 3-hit combos
+3OE0 => 041D3248 38000001
 3OE1 => 041D3248 38000001
+3OE2 => 041D3448 38000001
+3OJ2 => 041D2DEC 38000001
+3OJ3 => 041D3318 38000001
+3OJ4 => 041D3144 38000001
+3OJ5 => 041D33E4 38000001
+3OP0 => 041D3904 38000001
 
 Disable save file signature validation (for moving Xbox saves across consoles)
 4OJB => 002F01CB 9090
