@@ -4040,11 +4040,7 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
             l->challenge_exp_multiplier *
             (is_ep2 ? 1.3 : 1.0);
         if (lc->check_flag(Client::Flag::DEBUG_ENABLED)) {
-          send_text_message_fmt(
-              lc, "$C5+{} E-{:03X} {}",
-              player_exp,
-              ene_st->e_id,
-              phosg::name_for_enum(type));
+          send_text_message_fmt(lc, "$C5+{} E-{:03X} {}", player_exp, ene_st->e_id, phosg::name_for_enum(type));
         }
         if (lc->character_file()->disp.stats.level < 199) {
           add_player_exp(lc, player_exp);

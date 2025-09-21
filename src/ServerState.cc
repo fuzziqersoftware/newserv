@@ -1083,9 +1083,9 @@ void ServerState::load_config_early() {
     }
   }
 
-  this->bb_global_exp_multiplier = this->config_json->get_int("BBGlobalEXPMultiplier", 1);
-  this->exp_share_multiplier = this->config_json->get_float("BBEXPShareMultiplier", 0.5);
-  this->server_global_drop_rate_multiplier = this->config_json->get_float("ServerGlobalDropRateMultiplier", 1);
+  this->bb_global_exp_multiplier = this->config_json->get_float("BBGlobalEXPMultiplier", 1.0f);
+  this->exp_share_multiplier = this->config_json->get_float("BBEXPShareMultiplier", 0.5f);
+  this->server_global_drop_rate_multiplier = this->config_json->get_float("ServerGlobalDropRateMultiplier", 1.0f);
 
   if (this->is_debug) {
     set_all_log_levels(phosg::LogLevel::L_DEBUG);

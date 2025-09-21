@@ -6404,10 +6404,19 @@ struct G_Episode4BossActions_BB_6xDC {
 
 // 6xDD: Set EXP multiplier (BB)
 // header.param specifies the EXP multiplier. It is 1-based, so the value 2
-// means all EXP is doubled, for example.
+// means all EXP is doubled, for example. This only affects what the client
+// shows when an enemy is killed; actual EXP gains are controlled by the server
+// in response to the 6xC8 command.
+// newserv supports an extension to this command that supports fractional
+// multipliers. This is implemented in FractionalEXPMultiplier.59NL.patch.s.
 
 struct G_SetEXPMultiplier_BB_6xDD {
   G_ParameterHeader header;
+} __packed_ws__(G_SetEXPMultiplier_BB_6xDD, 4);
+
+struct G_SetFractionalEXPMultiplier_Extension_BB_6xDD {
+  G_ParameterHeader header;
+  le_float multiplier;
 } __packed_ws__(G_SetEXPMultiplier_BB_6xDD, 4);
 
 // 6xDE: Exchange Secret Lottery Ticket (BB; handled by server)

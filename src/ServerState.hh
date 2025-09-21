@@ -241,9 +241,9 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::vector<QuestF960Result> quest_F960_success_results;
   QuestF960Result quest_F960_failure_results;
   std::vector<ItemData> secret_lottery_results;
-  uint16_t bb_global_exp_multiplier = 1;
-  float exp_share_multiplier = 0.5;
-  double server_global_drop_rate_multiplier = 1.0;
+  float bb_global_exp_multiplier = 1.0f;
+  float exp_share_multiplier = 0.5f;
+  float server_global_drop_rate_multiplier = 1.0f;
 
   std::shared_ptr<Episode3::TournamentIndex> ep3_tournament_index;
 
