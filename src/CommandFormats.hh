@@ -6417,7 +6417,7 @@ struct G_SetEXPMultiplier_BB_6xDD {
 struct G_SetFractionalEXPMultiplier_Extension_BB_6xDD {
   G_ParameterHeader header;
   le_float multiplier;
-} __packed_ws__(G_SetEXPMultiplier_BB_6xDD, 4);
+} __packed_ws__(G_SetFractionalEXPMultiplier_Extension_BB_6xDD, 8);
 
 // 6xDE: Exchange Secret Lottery Ticket (BB; handled by server)
 // The client sends this when it executes an F95C quest opcode.
