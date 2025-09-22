@@ -3261,7 +3261,8 @@ void send_set_exp_multiplier(shared_ptr<Lobby> l) {
   if (!l->is_game()) {
     throw logic_error("6xDD can only be sent in games (not in lobbies)");
   }
-  G_SetFractionalEXPMultiplier_Extension_BB_6xDD cmd = {{0xDD, sizeof(G_SetEXPMultiplier_BB_6xDD) / 4, 1}, 1.0f};
+  G_SetFractionalEXPMultiplier_Extension_BB_6xDD cmd = {
+      {0xDD, sizeof(G_SetFractionalEXPMultiplier_Extension_BB_6xDD) / 4, 1}, 1.0f};
   if (l->mode != GameMode::CHALLENGE) {
     cmd.header.param = l->base_exp_multiplier;
     cmd.multiplier = l->base_exp_multiplier;
