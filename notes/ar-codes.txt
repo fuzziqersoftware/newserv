@@ -483,6 +483,11 @@ Note: Without a TextEnglish.pr2/pr3 patch, the menu items for these sounds will 
         0442B6E0 802C0000
 
 Use English language files
+3OJT => 04189FE8 38000001
+        0418A010 38000001
+        0418A0A0 38000001
+        0418A0C8 38000001
+        04189EC4 3BC00001
 3SJT => 0408E414 38600001
         0408E448 38000001
         0408E44C 900DA62C
