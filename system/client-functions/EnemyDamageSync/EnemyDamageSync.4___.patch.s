@@ -1,4 +1,3 @@
-.meta hide_from_patches_menu
 .meta name="DMC"
 .meta description="Mitigates effects\nof enemy health\ndesync"
 .meta client_flag="0x2000000000000000"
