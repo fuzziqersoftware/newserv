@@ -3723,11 +3723,10 @@ static asio::awaitable<void> on_set_entity_pos_and_angle_6x17(shared_ptr<Client>
   if (l->episode != Episode::EP1) {
     throw runtime_error("client sent 6x17 command in non-Ep1 game");
   }
+  // TODO: If a quest is loaded, we should use the quest's floor assignments
+  // here instead of a constant
   if (c->floor != 0x0D) {
     throw runtime_error("client sent 6x17 command on floor other than Vol Opt");
-  }
-  if (l->leader_id != c->lobby_client_id) {
-    throw runtime_error("non-leader client sent 6x17 command");
   }
   if (cmd.header.entity_id != c->lobby_client_id) {
     // If the target is on a different floor or does not exist, just drop the
