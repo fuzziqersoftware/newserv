@@ -3714,10 +3714,28 @@ static asio::awaitable<void> on_set_entity_pos_and_angle_6x17(shared_ptr<Client>
     co_return;
   }
 
-  if ((cmd.header.entity_id < 0x1000) &&
-      (cmd.header.entity_id != c->lobby_client_id) &&
-      (l->clients.at(cmd.header.entity_id) != nullptr)) {
-    throw runtime_error("client sent 6x17 command affecting another player");
+  // 6x17 is used to transport players to the other part of the Vol Opt boss
+  // arena, so phase 2 can begin. We only allow 6x17 if the sender is the
+  // leader and both players (sender and receiver) are in the Vol Opt arena.
+  if (cmd.header.entity_id >= 0x1000) {
+    throw runtime_error("client sent 6x17 command affecting a non-player entity");
+  }
+  if (l->episode != Episode::EP1) {
+    throw runtime_error("client sent 6x17 command in non-Ep1 game");
+  }
+  if (c->floor != 0x0D) {
+    throw runtime_error("client sent 6x17 command on floor other than Vol Opt");
+  }
+  if (l->leader_id != c->lobby_client_id) {
+    throw runtime_error("non-leader client sent 6x17 command");
+  }
+  if (cmd.header.entity_id != c->lobby_client_id) {
+    // If the target is on a different floor or does not exist, just drop the
+    // command instead of raising; this could have been due to a data race
+    auto target = l->clients.at(cmd.header.entity_id);
+    if (!target || target->floor != c->floor) {
+      co_return;
+    }
   }
 
   co_await forward_subcommand_with_entity_id_transcode_t<G_SetEntityPositionAndAngle_6x17>(c, msg);
