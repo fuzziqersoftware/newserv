@@ -5155,18 +5155,30 @@ static asio::awaitable<void> on_quest_F960_result_bb(shared_ptr<Client> c, Subco
       {0xE3, sizeof(G_SetMesetaSlotPrizeResult_BB_6xE3) >> 2, c->lobby_client_id}, item};
   send_command_t(c, 0x60, 0x00, cmd_6xE3);
 
+  // Add the item to the player's inventory if possible; if not, drop it on the
+  // floor where the player is standing
+  bool added_to_inventory;
   try {
     p->add_item(item, *s->item_stack_limits(c->version()));
-    send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
-    if (c->log.should_log(phosg::LogLevel::L_INFO)) {
-      string name = s->describe_item(c->version(), item);
-      c->log.info_f("Awarded item {}", name);
-    }
+    added_to_inventory = true;
   } catch (const out_of_range&) {
-    if (c->log.should_log(phosg::LogLevel::L_INFO)) {
-      string name = s->describe_item(c->version(), item);
-      c->log.info_f("Attempted to award item {}, but inventory was full", name);
-    }
+    // If the game's drop mode is private or duplicate, make the item visible
+    // only to this player; in other modes, make it visible to everyone
+    uint16_t flags = ((l->drop_mode == ServerDropMode::SERVER_PRIVATE) || (l->drop_mode == ServerDropMode::SERVER_DUPLICATE))
+        ? (1 << c->lobby_client_id)
+        : 0x000F;
+    l->add_item(c->floor, item, cmd.pos, nullptr, nullptr, flags);
+    added_to_inventory = false;
+  }
+
+  if (c->log.should_log(phosg::LogLevel::L_INFO)) {
+    string name = s->describe_item(c->version(), item);
+    c->log.info_f("Awarded item {} {}", name, added_to_inventory ? "in inventory" : "on ground (inventory is full)");
+  }
+  if (added_to_inventory) {
+    send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
+  } else {
+    send_drop_item_to_channel(s, c->channel, item, 0, cmd.floor, cmd.pos, 0xFFFF);
   }
   co_return;
 }
