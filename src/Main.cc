@@ -1195,11 +1195,24 @@ Action a_decode_bitmap_font(
   decode-bitmap-font --width=WIDTH [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Decode a 2-bit bitmap font file (.fon) into a BMP image. The --width\n\
     option is required; if the output looks wrong, try increasing or\n\
-    decreasing this number. For S18all04.fon, the width should be 20.\n",
+    decreasing this number. For S18all04.fon, the width should be 20. If\n\
+    --show-unused is given, highlights the unused ares of ISO8859 characters\n\
+    in red.\n",
     +[](phosg::Arguments& args) {
       std::string data = read_input_data(args);
       size_t width = args.get<size_t>("width");
-      std::string bmp_data = decode_fon(data, width).serialize(phosg::ImageFormat::WINDOWS_BITMAP);
+      phosg::Image res = decode_fon(data, width);
+      if (width == 20 && args.get<bool>("show-unused")) {
+        static const array<uint8_t, 0xBF> iso8859_widths{7, 9, 13, 11, 15, 14, 7, 8, 8, 11, 11, 7, 11, 7, 11, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 7, 7, 9, 11, 9, 10, 15, 13, 12, 13, 12, 11, 11, 13, 12, 8, 11, 12, 11, 15, 12, 13, 11, 13, 12, 11, 13, 12, 13, 15, 12, 13, 11, 8, 11, 8, 8, 9, 8, 12, 11, 12, 11, 12, 10, 12, 11, 6, 9, 11, 6, 14, 11, 12, 11, 11, 9, 11, 10, 11, 12, 15, 11, 11, 11, 9, 8, 9, 9, 9, 12, 7, 10, 13, 10, 10, 7, 10, 8, 17, 9, 12, 11, 9, 17, 9, 7, 11, 8, 8, 8, 11, 11, 8, 7, 6, 9, 12, 13, 13, 13, 10, 13, 13, 13, 13, 13, 13, 17, 13, 11, 11, 11, 11, 8, 8, 8, 8, 12, 12, 13, 13, 13, 13, 13, 11, 13, 12, 12, 12, 12, 15, 11, 10, 12, 12, 12, 12, 12, 12, 17, 12, 12, 12, 12, 12, 6, 6, 6, 6, 11, 11, 12, 12, 12, 12, 12, 11, 12, 11, 11, 11, 11, 11, 11, 11};
+        for (size_t z = 0; z < iso8859_widths.size(); z++) {
+          for (size_t y = (z + 1) * 0x12; y < (z + 2) * 0x12; y++) {
+            for (size_t x = iso8859_widths.at(z); x < width; x++) {
+              res.write(x, y, 0xFF0000FF);
+            }
+          }
+        }
+      }
+      string bmp_data = res.serialize(phosg::ImageFormat::WINDOWS_BITMAP);
       write_output_data(args, bmp_data.data(), bmp_data.size(), "bmp");
     });
 Action a_encode_bitmap_font(
