@@ -5142,42 +5142,44 @@ static asio::awaitable<void> on_D2_V3_BB(shared_ptr<Client> c, Channel::Message&
   }
 
   auto s = c->require_server_state();
-  auto complete_trade_for_side = +[](shared_ptr<Client> to_c, shared_ptr<Client> from_c) {
-    auto l = to_c->require_lobby();
-    auto s = to_c->require_server_state();
+  auto complete_trade_for_side = [s, l](shared_ptr<Client> c, shared_ptr<Client> other_c) -> void {
+    if (c->version() == Version::BB_V4) {
+      // On BB, the server generates the delete/create item commands
+      auto p = c->character_file();
+      auto other_p = other_c->character_file();
 
-    if (to_c->version() == Version::BB_V4) {
-      // On BB, the server is expected to generate the delete item and create
-      // item commands
-      auto to_p = to_c->character_file();
-      auto from_p = from_c->character_file();
-      for (const auto& trade_item : from_c->pending_item_trade->items) {
-        size_t amount = trade_item.stack_size(*s->item_stack_limits(from_c->version()));
+      // Delete items that are being given away
+      for (const auto& item : c->pending_item_trade->items) {
+        size_t amount = item.stack_size(*s->item_stack_limits(c->version()));
+        p->remove_item(item.id, amount, *s->item_stack_limits(c->version()));
 
-        auto item = from_p->remove_item(trade_item.id, amount, *s->item_stack_limits(from_c->version()));
         // This is a special case: when the trade is executed, the client
         // deletes the traded items from its own inventory automatically, so we
         // should NOT send the 6x29 to that client; we should only send it to
         // the other clients in the game.
-        G_DeleteInventoryItem_6x29 cmd = {{0x29, 0x03, from_c->lobby_client_id}, item.id, amount};
+        G_DeleteInventoryItem_6x29 cmd = {{0x29, 0x03, c->lobby_client_id}, item.id, amount};
         for (auto lc : l->clients) {
-          if (lc && (lc != from_c)) {
+          if (lc && (lc != c)) {
             send_command_t(l, 0x60, 0x00, cmd);
           }
         }
-
-        to_p->add_item(trade_item, *s->item_stack_limits(to_c->version()));
-        send_create_inventory_item_to_lobby(to_c, to_c->lobby_client_id, item);
       }
-      send_command(to_c, 0xD3, 0x00);
+
+      for (const auto& trade_item : other_c->pending_item_trade->items) {
+        ItemData added_item = trade_item;
+        added_item.id = l->generate_item_id(c->lobby_client_id);
+        p->add_item(added_item, *s->item_stack_limits(c->version()));
+        send_create_inventory_item_to_lobby(c, c->lobby_client_id, added_item);
+      }
+      send_command(c, 0xD3, 0x00);
 
     } else {
-      // On V3, the clients will handle it; we just send their final trade lists
-      // to each other
-      send_execute_item_trade(to_c, from_c->pending_item_trade->items);
+      // On V3, the client will handle it; we just have to forward the other
+      // client's trade list
+      send_execute_item_trade(c, other_c->pending_item_trade->items);
     }
 
-    send_command(to_c, 0xD4, 0x01);
+    send_command(c, 0xD4, 0x01);
   };
 
   c->pending_item_trade->confirmed = true;

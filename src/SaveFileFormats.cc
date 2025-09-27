@@ -1268,8 +1268,7 @@ ItemData PSOBBCharacterFile::remove_item(uint32_t item_id, uint32_t amount, cons
   // then create a new item and reduce the amount of the existing stack. Note
   // that passing amount == 0 means to remove the entire stack, so this only
   // applies if amount is nonzero.
-  if (amount && (inventory_item.data.stack_size(limits) > 1) &&
-      (amount < inventory_item.data.data1[5])) {
+  if (amount && (inventory_item.data.stack_size(limits) > 1) && (amount < inventory_item.data.data1[5])) {
     if (is_equipped) {
       throw runtime_error("character has a combine item equipped");
     }
