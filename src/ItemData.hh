@@ -82,14 +82,14 @@ struct ItemData {
   // QUICK ITEM FORMAT REFERENCE
   //           data1/0  data1/4  data1/8  data2
   //   Weapon: 00ZZZZGG SSNNAABB AABBAABB 00000000
-  //   Armor:  0101ZZ00 FFTTDDDD EEEE0000 00000000
-  //   Shield: 0102ZZ00 FFTTDDDD EEEE0000 00000000
-  //   Unit:   0103ZZ00 FF00RRRR 00000000 00000000
+  //   Armor:  0101ZZ00 FFTTDDDD EEEEXXXX 00000000
+  //   Shield: 0102ZZ00 FFTTDDDD EEEEXXXX 00000000
+  //   Unit:   0103ZZ00 FF00RRRR 0000XXXX 00000000
   //   Mag:    02ZZLLWW HHHHIIII JJJJKKKK YYQQPPVV
-  //   Tool:   03ZZZZUU 00CC0000 00000000 00000000
+  //   Tool:   03ZZZZUU 00CC0000 0000XXXX 00000000
   //   Meseta: 04000000 00000000 00000000 MMMMMMMM
-  // A = attribute type (for S-ranks, custom name)
-  // B = attribute amount (for S-ranks, custom name)
+  // A = attribute type (for S-ranks, custom name; last pair is kill count for some weapons)
+  // B = attribute amount (for S-ranks, custom name; last pair is kill count for some weapons)
   // C = stack size (for tools)
   // D = DEF bonus
   // E = EVP bonus
@@ -110,6 +110,7 @@ struct ItemData {
   // U = tool flags (40=present; unused if item is stackable)
   // V = mag color
   // W = photon blasts
+  // X = kill count (big-endian; high bit always set)
   // Y = mag synchro
   // Z = item ID
   // Note: PSO GC erroneously byteswaps data2 even when the item is a mag. This

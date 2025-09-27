@@ -679,7 +679,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
   auto pmt = this->item_parameter_table;
 
   phosg::fwrite_fmt(stream, "WEAPONS\n");
-  phosg::fwrite_fmt(stream, "  CODE   => ---ID--- TYPE SKIN POINTS FLAG ATPLO ATPHI ATPRQ MSTRQ ATARQ -MST- GND PH SP ATA SB(S1:AMT1,S2:AMT2) PJ 1X 1Y 2X 2Y CL A1 A2 A3 A4 A5 TB BF V1 ST* USL ---DIVISOR--- NAME\n");
+  phosg::fwrite_fmt(stream, "  CODE   => ---ID--- TYPE SKIN POINTS FLAG ATPLO ATPHI ATPRQ MSTRQ ATARQ -MST- GND PH SP ATA SB(S1:AMT1,S2:AMT2) PJ 1X 1Y 2X 2Y CL --A1-- A4 A5 TB BF V1 ST* USL ---DIVISOR--- NAME\n");
   for (size_t data1_1 = 0; data1_1 < pmt->num_weapon_classes; data1_1++) {
     uint8_t v1_replacement = pmt->get_weapon_v1_replacement(data1_1);
     float sale_divisor = pmt->get_sale_divisor(0x00, data1_1);
@@ -699,7 +699,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
       string name = this->describe_item(item);
 
       auto& stat_boost = pmt->get_stat_boost(w.stat_boost_entry_index);
-      phosg::fwrite_fmt(stream, "  00{:02X}{:02X} => {:08X} {:04X} {:04X} {:6} {:04X} {:5} {:5} {:5} {:5} {:5} {:5} {:3} {:02X} {:02X} {:3} {:02X}({:02X}:{:04X},{:02X}:{:04X}) {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:2}* {} {} {}\n",
+      phosg::fwrite_fmt(stream, "  00{:02X}{:02X} => {:08X} {:04X} {:04X} {:6} {:04X} {:5} {:5} {:5} {:5} {:5} {:5} {:3} {:02X} {:02X} {:3} {:02X}({:02X}:{:04X},{:02X}:{:04X}) {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X}{:02X}{:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:2}* {} {} {}\n",
           data1_1,
           data1_2,
           w.base.id,
@@ -728,9 +728,9 @@ void ItemNameIndex::print_table(FILE* stream) const {
           w.trail2_x,
           w.trail2_y,
           w.color,
-          w.unknown_a1,
-          w.unknown_a2,
-          w.unknown_a3,
+          w.unknown_a1[0],
+          w.unknown_a1[1],
+          w.unknown_a1[2],
           w.unknown_a4,
           w.unknown_a5,
           w.tech_boost,

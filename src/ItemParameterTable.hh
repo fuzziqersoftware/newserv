@@ -120,9 +120,7 @@ public:
     /* 1E */ int8_t trail2_x = 0;
     /* 1F */ int8_t trail2_y = 0;
     /* 20 */ int8_t color = 0;
-    /* 21 */ uint8_t unknown_a1 = 0;
-    /* 22 */ uint8_t unknown_a2 = 0;
-    /* 23 */ uint8_t unknown_a3 = 0;
+    /* 21 */ parray<uint8_t, 3> unknown_a1 = 0;
     /* 24 */
 
     WeaponV4 to_v4() const;
@@ -149,9 +147,7 @@ public:
     /* 1E */ int8_t trail2_x = 0;
     /* 1F */ int8_t trail2_y = 0;
     /* 20 */ int8_t color = 0;
-    /* 21 */ uint8_t unknown_a1 = 0;
-    /* 22 */ uint8_t unknown_a2 = 0;
-    /* 23 */ uint8_t unknown_a3 = 0;
+    /* 21 */ parray<uint8_t, 3> unknown_a1 = 0;
     /* 24 */ uint8_t unknown_a4 = 0;
     /* 25 */ uint8_t unknown_a5 = 0;
     /* 26 */ uint8_t tech_boost = 0;
@@ -191,9 +187,7 @@ public:
     /* 22 */ int8_t trail2_x = 0;
     /* 23 */ int8_t trail2_y = 0;
     /* 24 */ int8_t color = 0;
-    /* 25 */ uint8_t unknown_a1 = 0;
-    /* 26 */ uint8_t unknown_a2 = 0;
-    /* 27 */ uint8_t unknown_a3 = 0;
+    /* 25 */ parray<uint8_t, 3> unknown_a1 = 0;
     /* 28 */ uint8_t unknown_a4 = 0;
     /* 29 */ uint8_t unknown_a5 = 0;
     /* 2A */ uint8_t tech_boost = 0;
@@ -691,7 +685,7 @@ public:
       // This specifies which entry in ItemMagMotion.dat is used. The file is
       // just a list of 0x64-byte structures. 0xFF = no TItemMagSub is created
       uint8_t motion_table_entry = 0xFF;
-      parray<uint8_t, 5> unknown_a1;
+      parray<uint8_t, 5> unknown_a1 = 0;
     } __packed_ws__(Side, 0x06);
     parray<Side, 2> sides; // [0] = right side, [1] = left side
   } __packed_ws__(MotionReference, 0x0C);

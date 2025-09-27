@@ -238,8 +238,6 @@ ItemParameterTable::WeaponV4 ItemParameterTable::WeaponGCNTE::to_v4() const {
   ret.trail2_y = this->trail2_y;
   ret.color = this->color;
   ret.unknown_a1 = this->unknown_a1;
-  ret.unknown_a2 = this->unknown_a2;
-  ret.unknown_a3 = this->unknown_a3;
   return ret;
 }
 
@@ -268,8 +266,6 @@ ItemParameterTable::WeaponV4 ItemParameterTable::WeaponV3T<BE>::to_v4() const {
   ret.trail2_y = this->trail2_y;
   ret.color = this->color;
   ret.unknown_a1 = this->unknown_a1;
-  ret.unknown_a2 = this->unknown_a2;
-  ret.unknown_a3 = this->unknown_a3;
   ret.unknown_a4 = this->unknown_a4;
   ret.unknown_a5 = this->unknown_a5;
   ret.tech_boost = this->tech_boost;
