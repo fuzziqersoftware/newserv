@@ -1179,7 +1179,8 @@ struct OverlayState {
 struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // If tag is not 0x00000100, the game considers the map to be corrupt in
   // offline mode and will delete it (if it's a download quest). The tag field
-  // doesn't seem to have any other use.
+  // doesn't seem to have any other use. In Trial Edition, download quests are
+  // expected to have 0x96 here instead.
   /* 0000 */ be_uint32_t tag;
 
   /* 0004 */ be_uint32_t map_number; // Must be unique across all maps
@@ -1597,12 +1598,14 @@ public:
     VersionedMap(std::string&& compressed_data, uint8_t language);
 
     std::shared_ptr<const MapDefinitionTrial> trial() const;
-    const std::string& compressed(bool is_nte) const;
+    std::shared_ptr<const std::string> compressed(bool trial) const;
+    std::shared_ptr<const std::string> trial_download() const;
 
   private:
     mutable std::shared_ptr<const MapDefinitionTrial> trial_map;
-    mutable std::string compressed_data;
-    mutable std::string compressed_trial_data;
+    mutable std::shared_ptr<std::string> compressed_data;
+    mutable std::shared_ptr<std::string> compressed_data_trial;
+    mutable std::shared_ptr<std::string> download_data_trial;
   };
 
   class Map {
@@ -1624,14 +1627,20 @@ public:
   };
 
   const std::string& get_compressed_list(size_t num_players, uint8_t language) const;
-  std::shared_ptr<const Map> for_number(uint32_t id) const;
-  std::shared_ptr<const Map> for_name(const std::string& name) const;
-  std::set<uint32_t> all_numbers() const;
+  inline std::shared_ptr<const Map> get(uint32_t id) const {
+    return this->maps.at(id);
+  }
+  inline std::shared_ptr<const Map> get(const std::string& name) const {
+    return this->maps_by_name.at(name);
+  }
+  inline const std::map<uint32_t, std::shared_ptr<const Map>>& all() const {
+    return this->maps;
+  }
 
 private:
   // The compressed map lists are generated on demand from the maps map below
   mutable std::vector<std::array<std::string, 4>> compressed_map_lists;
-  std::map<uint32_t, std::shared_ptr<Map>> maps;
+  std::map<uint32_t, std::shared_ptr<const Map>> maps;
   std::unordered_map<std::string, std::shared_ptr<Map>> maps_by_name;
 };
 

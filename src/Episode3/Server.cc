@@ -287,9 +287,9 @@ string Server::prepare_6xB6x41_map_definition(shared_ptr<const MapIndex::Map> ma
   const auto& compressed = vm->compressed(is_nte);
 
   phosg::StringWriter w;
-  uint32_t subcommand_size = (compressed.size() + sizeof(G_MapData_Ep3_6xB6x41) + 3) & (~3);
-  w.put<G_MapData_Ep3_6xB6x41>({{{{0xB6, 0, 0}, subcommand_size}, 0x41, {}}, vm->map->map_number.load(), compressed.size(), 0});
-  w.write(compressed);
+  uint32_t subcommand_size = (compressed->size() + sizeof(G_MapData_Ep3_6xB6x41) + 3) & (~3);
+  w.put<G_MapData_Ep3_6xB6x41>({{{{0xB6, 0, 0}, subcommand_size}, 0x41, {}}, vm->map->map_number.load(), compressed->size(), 0});
+  w.write(*compressed);
   return std::move(w.str());
 }
 
@@ -2588,7 +2588,7 @@ void Server::handle_CAx41_map_request(shared_ptr<Client>, const string& data) {
   const auto& cmd = check_size_t<G_MapDataRequest_Ep3_CAx41>(data);
   this->send_debug_command_received_message(cmd.header.subsubcommand, "MAP DATA");
   if (!this->options.tournament || (this->options.tournament->get_map()->map_number == cmd.map_number)) {
-    this->last_chosen_map = this->options.map_index->for_number(cmd.map_number);
+    this->last_chosen_map = this->options.map_index->get(cmd.map_number);
     this->send_6xB6x41_to_all_clients();
   }
 }

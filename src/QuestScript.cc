@@ -26,33 +26,37 @@ using namespace std;
 // This file documents PSO's quest script execution system.
 
 // The quest execution system has several relevant data structures:
-// - The quest script. This is a stream of binary data containing opcodes (as
-//   defined below), each followed by their arguments.
-// - The function table. This is a list of offsets into the quest script which
-//   can be used as targets for jumps and calls, as well as references to large
-//   data structures that don't fit in quest opcode arguments.
-// - The registers. There are 256 registers, referred to as r0-r255. In later
+// - The quest script is a stream of binary data containing opcodes (as defined
+//   below), each followed by their arguments. The offset of the code section
+//   of this stream is defined here.
+// - The execution state specifies what the client should do on every frame.
+//   There are many possible states here, such as waiting for the player to
+//   dismiss a chat bubble, choose an item from a menu, etc.
+// - The function table is a list of offsets into the quest script which can be
+//   used as targets for jumps and calls, as well as references to large data
+//   structures that don't fit in quest opcode arguments.
+// - The quest registers are 32-bit integers referred to as r0-r255. In later
 //   versions, registers may contain floating-point values, in which case
 //   they're referred to as f0-f255 (but they still occupy the same memory as
 //   r0-255).
-// - The args list. This is a list of up to 8 values used for many quest
+// - The args list is a list of up to 8 32-bit values used for many quest
 //   opcodes in v3 and later. These opcodes are preceded by one or more
 //   arg_push opcodes, which allow scripts the ability to pass values from
 //   immediate data, registers, labels, or even pointers to registers. Opcodes
 //   that use the args list are tagged with F_ARGS below.
-// - The stack. This is an array of 32-bit integers (16 of them on v1/v2, 64 of
-//   them on v3/v4), which is used by the call and ret opcodes (which push and
-//   pop offsets into the quest script), but may also be used by the stack_push
-//   and stack_pop opcodes to work with arbitrary data. There is protection
-//   from stack underflows (the caller receives the value 0, or the thread
+// - The stack is an array of 32-bit integers (16 of them on v1/v2, 64 of them
+//   on v3/v4), which is used by the call and ret opcodes (which push and pop
+//   offsets into the quest script), but may also be used by the stack_push and
+//   stack_pop opcodes to work with arbitrary data. There is protection from
+//   stack underflows (the caller receives the value 0, or the thread
 //   terminates in case of the ret opcode), but there is no protection from
 //   overflows.
-// - Quest flags. These are a per-character array of 1024 single-bit flags
-//   saved with the character data. (On Episode 3, there are 8192 instead.)
-// - Quest counters. These are a per-character array of 16 32-bit values saved
+// - The quest flags are a per-character array of 1024 single-bit flags saved
+//   with the character data. (On Episode 3, there are 8192 instead.)
+// - The quest counters are a per-character array of 16 32-bit values saved
 //   with the character data. (On Episode 3, there are 48 instead.)
-// - Event flags. These are an array of 0x100 bytes stored in the system file
-//   (not the character file).
+// - The event flags are an array of 0x100 bytes stored in the system file (not
+//   the character file).
 
 using AttackData = BattleParamsIndex::AttackData;
 using ResistData = BattleParamsIndex::ResistData;
@@ -160,11 +164,15 @@ struct QuestScriptOpcodeDefinition {
       LABEL16 = 0,
       LABEL16_SET,
       LABEL32,
-      REG,
-      REG_SET,
-      REG_SET_FIXED, // Sequence of N consecutive regs
-      REG32,
-      REG32_SET_FIXED, // Sequence of N consecutive regs
+      R_REG,
+      W_REG,
+      R_REG_SET,
+      R_REG_SET_FIXED, // Sequence of N consecutive regs
+      W_REG_SET_FIXED, // Sequence of N consecutive regs
+      R_REG32,
+      W_REG32,
+      R_REG32_SET_FIXED, // Sequence of N consecutive regs
+      W_REG32_SET_FIXED, // Sequence of N consecutive regs
       I8,
       I16,
       I32,
@@ -235,8 +243,7 @@ using Arg = QuestScriptOpcodeDefinition::Argument;
 
 static_assert(NUM_VERSIONS == 14, "Don\'t forget to update the QuestScript flags and opcode definitions table");
 
-// F_PASS means the argument list isn't cleared after this opcode executes
-static constexpr uint16_t F_PASS = 0x0001; // Version::PC_PATCH (unused for quests)
+static constexpr uint16_t F_PUSH_ARG = 0x0001; // Version::PC_PATCH (unused for quests)
 // F_ARGS means this opcode takes its arguments via the argument list on v3 and
 // later. It has no effect on v2 and earlier.
 static constexpr uint16_t F_ARGS = 0x0002; // Version::BB_PATCH (unused for quests)
@@ -253,11 +260,6 @@ static constexpr uint16_t F_GC_EP3TE = 0x0400; // Version::GC_EP3_NTE
 static constexpr uint16_t F_GC_EP3 = 0x0800; // Version::GC_EP3
 static constexpr uint16_t F_XB_V3 = 0x1000; // Version::XB_V3
 static constexpr uint16_t F_BB_V4 = 0x2000; // Version::BB_V4
-// This flag specifies that the opcode ends a function (returns).
-static constexpr uint16_t F_RET = 0x4000;
-// This flag specifies that the opcode sets the current episode. This is used
-// to automatically detect a quest's episode from its script.
-static constexpr uint16_t F_SET_EPISODE = 0x8000;
 
 static_assert(F_DC_NTE == v_flag(Version::DC_NTE));
 static_assert(F_DC_112000 == v_flag(Version::DC_11_2000));
@@ -299,22 +301,31 @@ static constexpr auto LABEL16 = Arg::Type::LABEL16;
 static constexpr auto LABEL16_SET = Arg::Type::LABEL16_SET;
 // LABEL32 is a 32-bit index into the function table
 static constexpr auto LABEL32 = Arg::Type::LABEL32;
-// REG is a single byte specifying a register number (rXX or fXX)
-static constexpr auto REG = Arg::Type::REG;
-// REG_SET is a single byte specifying how many registers follow, followed by
+// R_REG is a single byte specifying a register number (rXX or fXX) which is
+// read by the opcode and not modified
+static constexpr auto R_REG = Arg::Type::R_REG;
+// W_REG is a single byte specifying a register number (rXX or fXX) which is
+// written by the opcode (and maybe also read beforehand)
+static constexpr auto W_REG = Arg::Type::W_REG;
+// R_REG_SET is a single byte specifying how many registers follow, followed by
 // that many bytes specifying individual register numbers.
-static constexpr auto REG_SET = Arg::Type::REG_SET;
-// REG_SET_FIXED is a single byte specifying a register number, but the opcode
-// implicitly uses the following registers as well. For example, if an opcode
-// takes a {REG_SET_FIXED, 4} and the value 100 was passed to that opcode, only
-// the byte 0x64 would appear in the script data, but the opcode would use
-// r100, r101, r102, and r103.
-static constexpr auto REG_SET_FIXED = Arg::Type::REG_SET_FIXED;
-// REG32 is a 32-bit register number. The high 24 bits are unused.
-static constexpr auto REG32 = Arg::Type::REG32;
-// REG32_SET_FIXED is like REG_SET_FIXED, but uses a 32-bit register number.
-// The high 24 bits are unused.
-static constexpr auto REG32_SET_FIXED = Arg::Type::REG32_SET_FIXED;
+static constexpr auto R_REG_SET = Arg::Type::R_REG_SET;
+// R_REG_SET_FIXED is a single byte specifying a register number, but the
+// opcode implicitly reads the following registers as well. For example, if an
+// opcode takes a {REG_SET_FIXED, 4} and the value 100 was passed to that
+// opcode, only the byte 0x64 would appear in the script data, but the opcode
+// would use r100, r101, r102, and r103.
+static constexpr auto R_REG_SET_FIXED = Arg::Type::R_REG_SET_FIXED;
+// W_REG_SET_FIXED is like R_REG_SET_FIXED, but is used for registers that are
+// written (and maybe read beforehand) by the opcode.
+static constexpr auto W_REG_SET_FIXED = Arg::Type::W_REG_SET_FIXED;
+// [R/W]_REG32 is a 32-bit register number. The high 24 bits are unused.
+static constexpr auto R_REG32 = Arg::Type::R_REG32;
+static constexpr auto W_REG32 = Arg::Type::W_REG32;
+// [RW]_REG32_SET_FIXED is like [RW]_REG_SET_FIXED, but uses a 32-bit register
+// number. The high 24 bits are unused.
+static constexpr auto R_REG32_SET_FIXED = Arg::Type::R_REG32_SET_FIXED;
+static constexpr auto W_REG32_SET_FIXED = Arg::Type::W_REG32_SET_FIXED;
 // I8, I16, and I32 are unsigned integers of various sizes
 static constexpr auto I8 = Arg::Type::I8;
 static constexpr auto I16 = Arg::Type::I16;
@@ -354,7 +365,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x00, "nop", nullptr, {}, F_V0_V4},
 
     // Pops new PC off stack
-    {0x01, "ret", nullptr, {}, F_V0_V4 | F_RET},
+    {0x01, "ret", nullptr, {}, F_V0_V4},
 
     // Stops execution for the current frame. Execution resumes immediately
     // after this opcode on the next frame.
@@ -372,40 +383,40 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Pops r7-r1 from the stack
     {0x06, "va_end", nullptr, {}, F_V3_V4},
 
-    // Replaces r1-r7 with the args stack, then calls labelA
+    // Replaces r1-r7 with the args list, then calls labelA
     {0x07, "va_call", nullptr, {SCRIPT16}, F_V3_V4},
 
     // Copies a value from regB to regA
-    {0x08, "let", nullptr, {REG, REG}, F_V0_V4},
+    {0x08, "let", nullptr, {W_REG, R_REG}, F_V0_V4},
 
     // Sets regA to valueB
-    {0x09, "leti", nullptr, {REG, I32}, F_V0_V4},
+    {0x09, "leti", nullptr, {W_REG, I32}, F_V0_V4},
 
     // Sets regA to the memory address of regB. Note that this opcode was moved
     // to 0C in v3 and later.
-    {0x0A, "leta", nullptr, {REG, REG}, F_V0_V2},
+    {0x0A, "leta", nullptr, {W_REG, R_REG}, F_V0_V2},
 
     // Sets regA to valueB
-    {0x0A, "letb", nullptr, {REG, I8}, F_V3_V4},
+    {0x0A, "letb", nullptr, {W_REG, I8}, F_V3_V4},
 
     // Sets regA to valueB
-    {0x0B, "letw", nullptr, {REG, I16}, F_V3_V4},
+    {0x0B, "letw", nullptr, {W_REG, I16}, F_V3_V4},
 
     // Sets regA to the memory address of regB
-    {0x0C, "leta", nullptr, {REG, REG}, F_V3_V4},
+    {0x0C, "leta", nullptr, {W_REG, R_REG}, F_V3_V4},
 
     // Sets regA to the address of the offset of labelB in the function table
     // (to get the offset, use read4 after this)
-    {0x0D, "leto", nullptr, {REG, SCRIPT16}, F_V3_V4},
+    {0x0D, "leto", nullptr, {W_REG, SCRIPT16}, F_V3_V4},
 
     // Sets regA to 1
-    {0x10, "set", nullptr, {REG}, F_V0_V4},
+    {0x10, "set", nullptr, {W_REG}, F_V0_V4},
 
     // Sets regA to 0
-    {0x11, "clear", nullptr, {REG}, F_V0_V4},
+    {0x11, "clear", nullptr, {W_REG}, F_V0_V4},
 
     // Sets a regA to 0 if it's nonzero and vice versa
-    {0x12, "rev", nullptr, {REG}, F_V0_V4},
+    {0x12, "rev", nullptr, {W_REG}, F_V0_V4},
 
     // Sets flagA to 1. Sends 6x75.
     {0x13, "gset", nullptr, {I16}, F_V0_V4},
@@ -420,61 +431,61 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x15, "grev", nullptr, {I16}, F_V0_V4},
 
     // If regB is nonzero, sets flagA; otherwise, clears it
-    {0x16, "glet", nullptr, {I16, REG}, F_V0_V4},
+    {0x16, "glet", nullptr, {I16, R_REG}, F_V0_V4},
 
     // Sets regB to the value of flagA
-    {0x17, "gget", nullptr, {I16, REG}, F_V0_V4},
+    {0x17, "gget", nullptr, {I16, R_REG}, F_V0_V4},
 
     // regA += regB
-    {0x18, "add", nullptr, {REG, REG}, F_V0_V4},
+    {0x18, "add", nullptr, {W_REG, R_REG}, F_V0_V4},
 
     // regA += valueB
-    {0x19, "addi", nullptr, {REG, I32}, F_V0_V4},
+    {0x19, "addi", nullptr, {W_REG, I32}, F_V0_V4},
 
     // regA -= regB
-    {0x1A, "sub", nullptr, {REG, REG}, F_V0_V4},
+    {0x1A, "sub", nullptr, {W_REG, R_REG}, F_V0_V4},
 
     // regA -= valueB
-    {0x1B, "subi", nullptr, {REG, I32}, F_V0_V4},
+    {0x1B, "subi", nullptr, {W_REG, I32}, F_V0_V4},
 
     // regA *= regB
-    {0x1C, "mul", nullptr, {REG, REG}, F_V0_V4},
+    {0x1C, "mul", nullptr, {W_REG, R_REG}, F_V0_V4},
 
     // regA *= valueB
-    {0x1D, "muli", nullptr, {REG, I32}, F_V0_V4},
+    {0x1D, "muli", nullptr, {W_REG, I32}, F_V0_V4},
 
     // regA /= regB
-    {0x1E, "div", nullptr, {REG, REG}, F_V0_V4},
+    {0x1E, "div", nullptr, {W_REG, R_REG}, F_V0_V4},
 
     // regA /= valueB
-    {0x1F, "divi", nullptr, {REG, I32}, F_V0_V4},
+    {0x1F, "divi", nullptr, {W_REG, I32}, F_V0_V4},
 
     // regA &= regB
-    {0x20, "and", nullptr, {REG, REG}, F_V0_V4},
+    {0x20, "and", nullptr, {W_REG, R_REG}, F_V0_V4},
 
     // regA &= valueB
-    {0x21, "andi", nullptr, {REG, I32}, F_V0_V4},
+    {0x21, "andi", nullptr, {W_REG, I32}, F_V0_V4},
 
     // regA |= regB
-    {0x22, "or", nullptr, {REG, REG}, F_V0_V4},
+    {0x22, "or", nullptr, {W_REG, R_REG}, F_V0_V4},
 
     // regA |= valueB
-    {0x23, "ori", nullptr, {REG, I32}, F_V0_V4},
+    {0x23, "ori", nullptr, {W_REG, I32}, F_V0_V4},
 
     // regA ^= regB
-    {0x24, "xor", nullptr, {REG, REG}, F_V0_V4},
+    {0x24, "xor", nullptr, {W_REG, R_REG}, F_V0_V4},
 
     // regA ^= valueB
-    {0x25, "xori", nullptr, {REG, I32}, F_V0_V4},
+    {0x25, "xori", nullptr, {W_REG, I32}, F_V0_V4},
 
     // regA %= regB
     // Note: This does signed division, so if the value is negative, you might
     // get unexpected results.
-    {0x26, "mod", nullptr, {REG, REG}, F_V3_V4},
+    {0x26, "mod", nullptr, {W_REG, R_REG}, F_V3_V4},
 
     // regA %= valueB
     // Note: Unlike mod, this does unsigned division.
-    {0x27, "modi", nullptr, {REG, I32}, F_V3_V4},
+    {0x27, "modi", nullptr, {W_REG, I32}, F_V3_V4},
 
     // Jumps to labelA
     {0x28, "jmp", nullptr, {SCRIPT16}, F_V0_V4},
@@ -484,115 +495,115 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x29, "call", nullptr, {SCRIPT16}, F_V0_V4},
 
     // If all values in regsB are nonzero, jumps to labelA
-    {0x2A, "jmp_on", nullptr, {SCRIPT16, REG_SET}, F_V0_V4},
+    {0x2A, "jmp_on", nullptr, {SCRIPT16, R_REG_SET}, F_V0_V4},
 
     // If all values in regsB are zero, jumps to labelA
-    {0x2B, "jmp_off", nullptr, {SCRIPT16, REG_SET}, F_V0_V4},
+    {0x2B, "jmp_off", nullptr, {SCRIPT16, R_REG_SET}, F_V0_V4},
 
     // If regA == regB, jumps to labelC
-    {0x2C, "jmp_eq", "jmp_=", {REG, REG, SCRIPT16}, F_V0_V4},
+    {0x2C, "jmp_eq", "jmp_=", {R_REG, R_REG, SCRIPT16}, F_V0_V4},
 
     // If regA == valueB, jumps to labelC
-    {0x2D, "jmpi_eq", "jmpi_=", {REG, I32, SCRIPT16}, F_V0_V4},
+    {0x2D, "jmpi_eq", "jmpi_=", {R_REG, I32, SCRIPT16}, F_V0_V4},
 
     // If regA != regB, jumps to labelC
-    {0x2E, "jmp_ne", "jmp_!=", {REG, REG, SCRIPT16}, F_V0_V4},
+    {0x2E, "jmp_ne", "jmp_!=", {R_REG, R_REG, SCRIPT16}, F_V0_V4},
 
     // If regA != valueB, jumps to labelC
-    {0x2F, "jmpi_ne", "jmpi_!=", {REG, I32, SCRIPT16}, F_V0_V4},
+    {0x2F, "jmpi_ne", "jmpi_!=", {R_REG, I32, SCRIPT16}, F_V0_V4},
 
     // If regA > regB (unsigned), jumps to labelC
-    {0x30, "ujmp_gt", "ujmp_>", {REG, REG, SCRIPT16}, F_V0_V4},
+    {0x30, "ujmp_gt", "ujmp_>", {R_REG, R_REG, SCRIPT16}, F_V0_V4},
 
     // If regA > valueB (unsigned), jumps to labelC
-    {0x31, "ujmpi_gt", "ujmpi_>", {REG, I32, SCRIPT16}, F_V0_V4},
+    {0x31, "ujmpi_gt", "ujmpi_>", {R_REG, I32, SCRIPT16}, F_V0_V4},
 
     // If regA > regB (signed), jumps to labelC
-    {0x32, "jmp_gt", "jmp_>", {REG, REG, SCRIPT16}, F_V0_V4},
+    {0x32, "jmp_gt", "jmp_>", {R_REG, R_REG, SCRIPT16}, F_V0_V4},
 
     // If regA > valueB (signed), jumps to labelC
-    {0x33, "jmpi_gt", "jmpi_>", {REG, I32, SCRIPT16}, F_V0_V4},
+    {0x33, "jmpi_gt", "jmpi_>", {R_REG, I32, SCRIPT16}, F_V0_V4},
 
     // If regA < regB (unsigned), jumps to labelC
-    {0x34, "ujmp_lt", "ujmp_<", {REG, REG, SCRIPT16}, F_V0_V4},
+    {0x34, "ujmp_lt", "ujmp_<", {R_REG, R_REG, SCRIPT16}, F_V0_V4},
 
     // If regA < valueB (unsigned), jumps to labelC
-    {0x35, "ujmpi_lt", "ujmpi_<", {REG, I32, SCRIPT16}, F_V0_V4},
+    {0x35, "ujmpi_lt", "ujmpi_<", {R_REG, I32, SCRIPT16}, F_V0_V4},
 
     // If regA < regB (signed), jumps to labelC
-    {0x36, "jmp_lt", "jmp_<", {REG, REG, SCRIPT16}, F_V0_V4},
+    {0x36, "jmp_lt", "jmp_<", {R_REG, R_REG, SCRIPT16}, F_V0_V4},
 
     // If regA < valueB (signed), jumps to labelC
-    {0x37, "jmpi_lt", "jmpi_<", {REG, I32, SCRIPT16}, F_V0_V4},
+    {0x37, "jmpi_lt", "jmpi_<", {R_REG, I32, SCRIPT16}, F_V0_V4},
 
     // If regA >= regB (unsigned), jumps to labelC
-    {0x38, "ujmp_ge", "ujmp_>=", {REG, REG, SCRIPT16}, F_V0_V4},
+    {0x38, "ujmp_ge", "ujmp_>=", {R_REG, R_REG, SCRIPT16}, F_V0_V4},
 
     // If regA >= valueB (unsigned), jumps to labelC
-    {0x39, "ujmpi_ge", "ujmpi_>=", {REG, I32, SCRIPT16}, F_V0_V4},
+    {0x39, "ujmpi_ge", "ujmpi_>=", {R_REG, I32, SCRIPT16}, F_V0_V4},
 
     // If regA >= regB (signed), jumps to labelC
-    {0x3A, "jmp_ge", "jmp_>=", {REG, REG, SCRIPT16}, F_V0_V4},
+    {0x3A, "jmp_ge", "jmp_>=", {R_REG, R_REG, SCRIPT16}, F_V0_V4},
 
     // If regA >= valueB (signed), jumps to labelC
-    {0x3B, "jmpi_ge", "jmpi_>=", {REG, I32, SCRIPT16}, F_V0_V4},
+    {0x3B, "jmpi_ge", "jmpi_>=", {R_REG, I32, SCRIPT16}, F_V0_V4},
 
     // If regA <= regB (unsigned), jumps to labelC
-    {0x3C, "ujmp_le", "ujmp_<=", {REG, REG, SCRIPT16}, F_V0_V4},
+    {0x3C, "ujmp_le", "ujmp_<=", {R_REG, R_REG, SCRIPT16}, F_V0_V4},
 
     // If regA <= valueB (unsigned), jumps to labelC
-    {0x3D, "ujmpi_le", "ujmpi_<=", {REG, I32, SCRIPT16}, F_V0_V4},
+    {0x3D, "ujmpi_le", "ujmpi_<=", {R_REG, I32, SCRIPT16}, F_V0_V4},
 
     // If regA <= regB (signed), jumps to labelC
-    {0x3E, "jmp_le", "jmp_<=", {REG, REG, SCRIPT16}, F_V0_V4},
+    {0x3E, "jmp_le", "jmp_<=", {R_REG, R_REG, SCRIPT16}, F_V0_V4},
 
     // If regA <= valueB (signed), jumps to labelC
-    {0x3F, "jmpi_le", "jmpi_<=", {REG, I32, SCRIPT16}, F_V0_V4},
+    {0x3F, "jmpi_le", "jmpi_<=", {R_REG, I32, SCRIPT16}, F_V0_V4},
 
     // Jumps to labelsB[regA]
-    {0x40, "switch_jmp", nullptr, {REG, SCRIPT16_SET}, F_V0_V4},
+    {0x40, "switch_jmp", nullptr, {R_REG, SCRIPT16_SET}, F_V0_V4},
 
     // Calls labelsB[regA]
-    {0x41, "switch_call", nullptr, {REG, SCRIPT16_SET}, F_V0_V4},
+    {0x41, "switch_call", nullptr, {R_REG, SCRIPT16_SET}, F_V0_V4},
 
     // Does nothing
     {0x42, "nop_42", nullptr, {I32}, F_V0_V2},
 
     // Pushes the value in regA to the stack
-    {0x42, "stack_push", nullptr, {REG}, F_V3_V4},
+    {0x42, "stack_push", nullptr, {R_REG}, F_V3_V4},
 
     // Pops a value from the stack and puts it into regA
-    {0x43, "stack_pop", nullptr, {REG}, F_V3_V4},
+    {0x43, "stack_pop", nullptr, {W_REG}, F_V3_V4},
 
     // Pushes (valueB) regs in increasing order starting at regA
-    {0x44, "stack_pushm", nullptr, {REG, I32}, F_V3_V4},
+    {0x44, "stack_pushm", nullptr, {R_REG, I32}, F_V3_V4},
 
     // Pops (valueB) regs in decreasing order ending at regA
-    {0x45, "stack_popm", nullptr, {REG, I32}, F_V3_V4},
+    {0x45, "stack_popm", nullptr, {W_REG, I32}, F_V3_V4},
 
     // Appends regA to the args list
-    {0x48, "arg_pushr", nullptr, {REG}, F_V3_V4 | F_PASS},
+    {0x48, "arg_pushr", nullptr, {R_REG}, F_V3_V4 | F_PUSH_ARG},
 
     // Appends valueA to the args list
-    {0x49, "arg_pushl", nullptr, {I32}, F_V3_V4 | F_PASS},
-    {0x4A, "arg_pushb", nullptr, {I8}, F_V3_V4 | F_PASS},
-    {0x4B, "arg_pushw", nullptr, {I16}, F_V3_V4 | F_PASS},
+    {0x49, "arg_pushl", nullptr, {I32}, F_V3_V4 | F_PUSH_ARG},
+    {0x4A, "arg_pushb", nullptr, {I8}, F_V3_V4 | F_PUSH_ARG},
+    {0x4B, "arg_pushw", nullptr, {I16}, F_V3_V4 | F_PUSH_ARG},
 
     // Appends the memory address of regA to the args list
-    {0x4C, "arg_pusha", nullptr, {REG}, F_V3_V4 | F_PASS},
+    {0x4C, "arg_pusha", nullptr, {R_REG}, F_V3_V4 | F_PUSH_ARG},
 
     // Appends the script offset of labelA to the args list
-    {0x4D, "arg_pusho", nullptr, {LABEL16}, F_V3_V4 | F_PASS},
+    {0x4D, "arg_pusho", nullptr, {LABEL16}, F_V3_V4 | F_PUSH_ARG},
 
     // Appends strA to the args list
-    {0x4E, "arg_pushs", nullptr, {CSTRING}, F_V3_V4 | F_PASS},
+    {0x4E, "arg_pushs", nullptr, {CSTRING}, F_V3_V4 | F_PUSH_ARG},
 
     // Creates dialogue with an object/NPC (valueA) starting with message strB
     {0x50, "message", nullptr, {I32, CSTRING}, F_V0_V4 | F_ARGS},
 
     // Prompts the player with a list of choices (strB; items separated by
     // newlines) and returns the index of their choice in regA
-    {0x51, "list", nullptr, {REG, CSTRING}, F_V0_V4 | F_ARGS},
+    {0x51, "list", nullptr, {W_REG, CSTRING}, F_V0_V4 | F_ARGS},
 
     // Fades from black
     {0x52, "fadein", nullptr, {}, F_V0_V4},
@@ -643,7 +654,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x5C, "message_end", "mesend", {}, F_V0_V4},
 
     // Gets the current time, in seconds since 00:00:00 on 1 January 2000
-    {0x5D, "gettime", nullptr, {REG}, F_V0_V4},
+    {0x5D, "gettime", nullptr, {W_REG}, F_V0_V4},
 
     // Closes a window_msg
     {0x5E, "window_msg_end", "winend", {}, F_V0_V4},
@@ -674,8 +685,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   according to qedit.info)
     // regsA[5] = template index (see 6x69 in CommandFormats.hh)
     // valueB is required in pre-v3 but is ignored
-    {0x66, "npc_crp", "npc_crp_V1", {{REG_SET_FIXED, 6}, I32}, F_V0_V2},
-    {0x66, "npc_crp", "npc_crp_V3", {{REG_SET_FIXED, 6}}, F_V3_V4},
+    {0x66, "npc_crp", "npc_crp_V1", {{R_REG_SET_FIXED, 6}, I32}, F_V0_V2},
+    {0x66, "npc_crp", "npc_crp_V3", {{R_REG_SET_FIXED, 6}}, F_V3_V4},
 
     // Creates a pipe. valueA is client ID
     {0x68, "create_pipe", nullptr, {I32}, F_V0_V4 | F_ARGS},
@@ -683,12 +694,12 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Checks player HP, but not in a straightforward manner.
     // Specifically, sets regA to 1 if (current_hp / max_hp) < (1 / valueB).
     // Sets regA to 0 otherwise.
-    {0x69, "p_hpstat", "p_hpstat_V1", {REG, CLIENT_ID}, F_V0_V2 | F_ARGS},
-    {0x69, "p_hpstat", "p_hpstat_V3", {REG, CLIENT_ID}, F_V3_V4 | F_ARGS},
+    {0x69, "p_hpstat", "p_hpstat_V1", {W_REG, CLIENT_ID}, F_V0_V2 | F_ARGS},
+    {0x69, "p_hpstat", "p_hpstat_V3", {W_REG, CLIENT_ID}, F_V3_V4 | F_ARGS},
 
     // Sets regA to 1 if player in slot (valueB) is dead, or 0 if alive.
-    {0x6A, "p_dead", "p_dead_V1", {REG, CLIENT_ID}, F_V0_V2 | F_ARGS},
-    {0x6A, "p_dead", "p_dead_V3", {REG, CLIENT_ID}, F_V3_V4 | F_ARGS},
+    {0x6A, "p_dead", "p_dead_V1", {W_REG, CLIENT_ID}, F_V0_V2 | F_ARGS},
+    {0x6A, "p_dead", "p_dead_V3", {W_REG, CLIENT_ID}, F_V3_V4 | F_ARGS},
 
     // Disables/enables telepipes/Ryuker
     {0x6B, "p_disablewarp", nullptr, {}, F_V0_V4},
@@ -699,8 +710,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[3] = angle
     // regsA[4] = client ID
     // valueB is required in pre-v3 but is ignored
-    {0x6D, "p_move", "p_move_v1", {{REG_SET_FIXED, 5}, I32}, F_V0_V2},
-    {0x6D, "p_move", "p_move_V3", {{REG_SET_FIXED, 5}}, F_V3_V4},
+    {0x6D, "p_move", "p_move_v1", {{R_REG_SET_FIXED, 5}, I32}, F_V0_V2},
+    {0x6D, "p_move", "p_move_V3", {{R_REG_SET_FIXED, 5}}, F_V3_V4},
 
     // Causes the player with client ID valueA to look at an unspecified other
     // player. The specified player looks at the player with the lowest client
@@ -727,7 +738,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // valueA = client ID
     // regsB[0-2] = position (x, y, z as integers)
     // regsB[3] = angle
-    {0x76, "set_player_start_position", "p_setpos", {CLIENT_ID, {REG_SET_FIXED, 4}}, F_V0_V4 | F_ARGS},
+    {0x76, "set_player_start_position", "p_setpos", {CLIENT_ID, {R_REG_SET_FIXED, 4}}, F_V0_V4 | F_ARGS},
 
     // Returns players to the Hunter's Guild counter.
     {0x77, "p_return_guild", nullptr, {}, F_V0_V4},
@@ -744,8 +755,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[6] = initial state (0 = alive, 1 = dead, 2 = invisible text box,
     //   according to qedit.info)
     // regsA[7] = client ID
-    {0x79, "npc_talk_pl", "npc_talk_pl_V1", {{REG32_SET_FIXED, 8}}, F_V0_V2},
-    {0x79, "npc_talk_pl", "npc_talk_pl_V3", {{REG_SET_FIXED, 8}}, F_V3_V4},
+    {0x79, "npc_talk_pl", "npc_talk_pl_V1", {{R_REG32_SET_FIXED, 8}}, F_V0_V2},
+    {0x79, "npc_talk_pl", "npc_talk_pl_V3", {{R_REG_SET_FIXED, 8}}, F_V3_V4},
 
     // Destroys an NPC created with npc_talk_pl. This opcode cannot be executed
     // multiple times on the same frame; if it is, only the last one will take
@@ -757,8 +768,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x7B, "npc_crtpk", "npc_crtpk_V3", {I32, I32}, F_V3_V4 | F_ARGS},
 
     // Creates attacker NPC
-    {0x7C, "npc_crppk", "npc_crppk_V1", {{REG32_SET_FIXED, 7}, I32}, F_V0_V2},
-    {0x7C, "npc_crppk", "npc_crppk_V3", {{REG_SET_FIXED, 7}}, F_V3_V4},
+    {0x7C, "npc_crppk", "npc_crppk_V1", {{R_REG32_SET_FIXED, 7}, I32}, F_V0_V2},
+    {0x7C, "npc_crppk", "npc_crppk_V3", {{R_REG_SET_FIXED, 7}}, F_V3_V4},
 
     // Creates an NPC with client ID 1. It is not recommended to use this
     // opcode if a player can be in that slot - use npc_crptalk_id instead.
@@ -767,8 +778,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[4] = initial state (0 = alive, 1 = dead, 2 = invisible text box,
     //   according to qedit.info)
     // regsA[5] = template index (see 6x69 in CommandFormats.hh)
-    {0x7D, "npc_crptalk", "npc_crptalk_v1", {{REG32_SET_FIXED, 6}, I32}, F_V0_V2},
-    {0x7D, "npc_crptalk", "npc_crptalk_V3", {{REG_SET_FIXED, 6}}, F_V3_V4},
+    {0x7D, "npc_crptalk", "npc_crptalk_v1", {{R_REG32_SET_FIXED, 6}, I32}, F_V0_V2},
+    {0x7D, "npc_crptalk", "npc_crptalk_V3", {{R_REG_SET_FIXED, 6}}, F_V3_V4},
 
     // Causes client ID valueA to look at client ID valueB. Sends 6x3E.
     {0x7E, "p_look_at", nullptr, {CLIENT_ID, CLIENT_ID}, F_V0_V4 | F_ARGS},
@@ -780,8 +791,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   according to qedit.info)
     // regsA[5] = client ID
     // regsA[6] = template index (see 6x69 in CommandFormats.hh)
-    {0x7F, "npc_crp_id", "npc_crp_id_V1", {{REG32_SET_FIXED, 7}, I32}, F_V0_V2},
-    {0x7F, "npc_crp_id", "npc_crp_id_v3", {{REG_SET_FIXED, 7}}, F_V3_V4},
+    {0x7F, "npc_crp_id", "npc_crp_id_V1", {{R_REG32_SET_FIXED, 7}, I32}, F_V0_V2},
+    {0x7F, "npc_crp_id", "npc_crp_id_v3", {{R_REG_SET_FIXED, 7}}, F_V3_V4},
 
     // Causes the camera to shake
     {0x80, "cam_quake", nullptr, {}, F_V0_V4},
@@ -797,8 +808,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[0-2] = destination (x, y, z as integers)
     // regsA[3] = pan time (in frames; 30 frames/sec)
     // regsA[4] = end time (in frames; 30 frames/sec)
-    {0x84, "cam_pan", "cam_pan_V1", {{REG32_SET_FIXED, 5}, I32}, F_V0_V2},
-    {0x84, "cam_pan", "cam_pan_V3", {{REG_SET_FIXED, 5}}, F_V3_V4},
+    {0x84, "cam_pan", "cam_pan_V1", {{R_REG32_SET_FIXED, 5}, I32}, F_V0_V2},
+    {0x84, "cam_pan", "cam_pan_V3", {{R_REG_SET_FIXED, 5}}, F_V3_V4},
 
     // Temporarily sets the game's difficulty to Very Hard (even on v2). On v3
     // and later, does nothing.
@@ -813,25 +824,25 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Creates a telepipe. The telepipe disappears upon being used.
     // regsA[0-2] = location (x, y, z as integers)
     // regsA[3] = owner client ID (player or NPC must exist in the game)
-    {0x87, "pos_pipe", "pos_pipe_V1", {{REG32_SET_FIXED, 4}, I32}, F_V0_V2},
-    {0x87, "pos_pipe", "pos_pipe_V3", {{REG_SET_FIXED, 4}}, F_V3_V4},
+    {0x87, "pos_pipe", "pos_pipe_V1", {{R_REG32_SET_FIXED, 4}, I32}, F_V0_V2},
+    {0x87, "pos_pipe", "pos_pipe_V3", {{R_REG_SET_FIXED, 4}}, F_V3_V4},
 
     // Checks if all set events (enemies) have been destroyed in a given room.
     // regA = result (0 = not cleared, 1 = cleared)
     // regsB[0] = floor number
     // regsB[1] = room ID
-    {0x88, "if_zone_clear", nullptr, {REG, {REG_SET_FIXED, 2}}, F_V0_V4},
+    {0x88, "if_zone_clear", nullptr, {W_REG, {R_REG_SET_FIXED, 2}}, F_V0_V4},
 
     // Returns the number of enemies destroyed so far in this game (since the
     // quest began).
-    {0x89, "chk_ene_num", nullptr, {REG}, F_V0_V4},
+    {0x89, "chk_ene_num", nullptr, {W_REG}, F_V0_V4},
 
     // Constructs all objects or enemies that match the conditions:
     // regsA[0] = floor
     // regsA[1] = section
     // regsA[2] = group
-    {0x8A, "construct_delayed_object", "unhide_obj", {{REG_SET_FIXED, 3}}, F_V0_V4},
-    {0x8B, "construct_delayed_enemy", "unhide_ene", {{REG_SET_FIXED, 3}}, F_V0_V4},
+    {0x8A, "construct_delayed_object", "unhide_obj", {{R_REG_SET_FIXED, 3}}, F_V0_V4},
+    {0x8B, "construct_delayed_enemy", "unhide_ene", {{R_REG_SET_FIXED, 3}}, F_V0_V4},
 
     // Starts a new thread when the player is close enough to the given point.
     // The collision is created on the current floor; the thread is created
@@ -839,15 +850,15 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[0-2] = location (x, y, z as integers)
     // regsA[3] = radius
     // regsA[4] = label index where thread should start
-    {0x8C, "at_coords_call", nullptr, {{REG_SET_FIXED, 5}}, F_V0_V4},
+    {0x8C, "at_coords_call", nullptr, {{R_REG_SET_FIXED, 5}}, F_V0_V4},
 
     // Like at_coords_call, but the thread is not started automatically.
     // Instead, the player's primary action button becomes "talk" within the
     // radius, and the label is called when the player presses that button.
-    {0x8D, "at_coords_talk", nullptr, {{REG_SET_FIXED, 5}}, F_V0_V4},
+    {0x8D, "at_coords_talk", nullptr, {{R_REG_SET_FIXED, 5}}, F_V0_V4},
 
     // Like at_coords_call, but only triggers if an NPC enters the radius.
-    {0x8E, "npc_coords_call", "walk_to_coord_call", {{REG_SET_FIXED, 5}}, F_V0_V4},
+    {0x8E, "npc_coords_call", "walk_to_coord_call", {{R_REG_SET_FIXED, 5}}, F_V0_V4},
 
     // Like at_coords_call, but triggers when a player within the event radius
     // is also within the player radius of any other player.
@@ -855,7 +866,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[3] = event radius (centered at x, y, z defined above)
     // regsA[4] = player radius (centered at player)
     // regsA[5] = label index where thread should start
-    {0x8F, "party_coords_call", "col_npcinr", {{REG_SET_FIXED, 6}}, F_V0_V4},
+    {0x8F, "party_coords_call", "col_npcinr", {{R_REG_SET_FIXED, 6}}, F_V0_V4},
 
     // Enables/disables a switch flag (valueA). Does NOT send 6x05, so other
     // players will not know about this change! Use sw_send instead to keep
@@ -883,7 +894,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[4] = label number to call
     // regsA[5] = distance from ground to target
     // regB = returned object token (can be used with del_obj_param)
-    {0x94, "set_obj_param", nullptr, {{REG_SET_FIXED, 6}, REG}, F_V0_V4},
+    {0x94, "set_obj_param", nullptr, {{R_REG_SET_FIXED, 6}, W_REG}, F_V0_V4},
 
     // Causes the labelB to be called on a new thread when the player warps to
     // floorA. If the given floor already has a registered handler, it is
@@ -902,7 +913,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[5] = player radius (if NPC is closer, label is not called)
     // regsA[6-8] = warp location (x, y, z as integers) for use with
     //   npc_chkwarp within the triggered function
-    {0x97, "check_npc_straggle", "col_plinaw", {{REG_SET_FIXED, 9}}, F_V1_V4},
+    {0x97, "check_npc_straggle", "col_plinaw", {{R_REG_SET_FIXED, 9}}, F_V1_V4},
 
     // Hides or shows the HUD.
     {0x98, "hud_hide", nullptr, {}, F_V0_V4},
@@ -950,8 +961,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Makes a player or NPC walk to a location.
     // regsA[0-2] = location (x, y, z as integers; y is ignored)
     // regsA[3] = client ID
-    {0xA8, "pl_walk", "pl_walk_V1", {{REG32_SET_FIXED, 4}, I32}, F_V0_V2},
-    {0xA8, "pl_walk", "pl_walk_V3", {{REG_SET_FIXED, 4}}, F_V3_V4},
+    {0xA8, "pl_walk", "pl_walk_V1", {{R_REG32_SET_FIXED, 4}, I32}, F_V0_V2},
+    {0xA8, "pl_walk", "pl_walk_V3", {{R_REG_SET_FIXED, 4}}, F_V3_V4},
 
     // Gives valueB Meseta to the player with client ID valueA. Negative values
     // do not appear to be handled properly; if this opcode attempts to take
@@ -963,18 +974,18 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Deletes an interactable object previously created by set_obj_param.
     // valueA is the object's token (returned by set_obj_param in regB).
-    {0xB2, "del_obj_param", nullptr, {REG}, F_V0_V4},
+    {0xB2, "del_obj_param", nullptr, {R_REG}, F_V0_V4},
 
     // Creates an item in the player's inventory. If the item is successfully
     // created, this opcode sends 6x2B on all versions except BB. On BB, this
     // opcode sends 6xCA, and the server sends 6xBE to create the item.
     // regsA[0-2] = item.data1[0-2]
     // regB = returned item ID, or FFFFFFFF if item can't be created
-    {0xB3, "item_create", nullptr, {{REG_SET_FIXED, 3}, REG}, F_V0_V4},
+    {0xB3, "item_create", nullptr, {{R_REG_SET_FIXED, 3}, W_REG}, F_V0_V4},
 
     // Like item_create, but regsA specify all of item.data1 instead of only
     // the first 3 bytes.
-    {0xB4, "item_create2", nullptr, {{REG_SET_FIXED, 12}, REG}, F_V0_V4},
+    {0xB4, "item_create2", nullptr, {{R_REG_SET_FIXED, 12}, W_REG}, F_V0_V4},
 
     // Deletes an item from the player's inventory. Sends 6x29 if ths item is
     // found and deleted. If the item is stackable, only one of it is deleted;
@@ -982,13 +993,14 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regA = item ID
     // regsB[0-11] = item.data1[0-11] for deleted item
     // regsB must not wrap around (that is, the first register in regsB cannot
-    // be in the range [r245, r255]).
-    {0xB5, "item_delete", nullptr, {REG, {REG_SET_FIXED, 12}}, F_V0_V4},
+    // be in the range [r245, r255]). If the item is not found, regsB[0] is set
+    // to 0xFFFFFFFF and the rest of regsB are not affected.
+    {0xB5, "item_delete", nullptr, {R_REG, {W_REG_SET_FIXED, 12}}, F_V0_V4},
 
     // Like item_delete, but searches by item.data1[0-2] instead of by item ID.
     // regsA[0-2] = item.data1[0-2] to search for
     // regsB[0-11] = item.data1[0-11] for deleted item
-    {0xB6, "item_delete_by_type", "item_delete2", {{REG_SET_FIXED, 3}, {REG_SET_FIXED, 12}}, F_V0_V4},
+    {0xB6, "item_delete_by_type", "item_delete2", {{R_REG_SET_FIXED, 3}, {W_REG_SET_FIXED, 12}}, F_V0_V4},
 
     // Searches the player's inventory for an item and returns its item ID.
     // The matching condition depends on the item's type:
@@ -998,7 +1010,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   Tool: data1[0-2] must match; if it's a tech disk, data1[4] must be 0
     // regsA[0-2] = item.data1[0-2] to search for, as above
     // regB = found item ID, or FFFFFFFF if not found
-    {0xB7, "find_inventory_item", "item_check", {{REG_SET_FIXED, 3}, REG}, F_V0_V4},
+    {0xB7, "find_inventory_item", "item_check", {{R_REG_SET_FIXED, 3}, W_REG}, F_V0_V4},
 
     // Triggers set event valueA on the current floor. Sends 6x67.
     {0xB8, "setevt", nullptr, {I32}, F_V05_V4 | F_ARGS},
@@ -1007,7 +1019,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // executed, returns 2.
     // This opcode only returns 0-2, even in Ultimate (which results in 2 as
     // well). All non-v1 quests should use get_difficulty_level_v2 instead.
-    {0xB9, "get_difficulty_level_v1", "get_difflvl", {REG}, F_V05_V4},
+    {0xB9, "get_difficulty_level_v1", "get_difflvl", {W_REG}, F_V05_V4},
 
     // Sets a label to be called (in a new thread) when the quest exits.
     // This happens during the unload procedure when leaving the game, so most
@@ -1026,8 +1038,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[0-2] = location (x, y, z as integers)
     // regsA[3] = effect type
     // regsA[4] = duration (in frames; 30 frames/sec)
-    {0xC0, "particle", "particle_V1", {{REG32_SET_FIXED, 5}, I32}, F_V05_V2},
-    {0xC0, "particle", "particle_V3", {{REG_SET_FIXED, 5}}, F_V3_V4},
+    {0xC0, "particle", "particle_V1", {{R_REG32_SET_FIXED, 5}, I32}, F_V05_V2},
+    {0xC0, "particle", "particle_V3", {{R_REG_SET_FIXED, 5}}, F_V3_V4},
 
     // Specifies what NPCs should say in various situations. This opcode sets
     // strings for all NPCs; to set strings for only specific NPCs, use
@@ -1076,7 +1088,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   template, 3: nothing)
     // regsA[2] = major variation (minor variation is set to zero)
     // regsA[3] = ignored
-    {0xC4, "map_designate", nullptr, {{REG_SET_FIXED, 4}}, F_V05_V4},
+    {0xC4, "map_designate", nullptr, {{R_REG_SET_FIXED, 4}}, F_V05_V4},
 
     // Locks (masterkey_on) or unlocks (masterkey_off) all doors
     {0xC5, "masterkey_on", nullptr, {}, F_V05_V4},
@@ -1088,13 +1100,13 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Sets the time displayed in the timer window. The value in regA should be
     // a number of seconds.
-    {0xC9, "winset_time", nullptr, {REG}, F_V05_V4},
+    {0xC9, "winset_time", nullptr, {R_REG}, F_V05_V4},
 
     // Returns the time from the system clock.
     // - On DC, reads from hardware registers
     // - On GC, reads from the TBRs
     // - On PCv2, XB, and BB, calls QueryPerformanceCounter
-    {0xCA, "getmtime", nullptr, {REG}, F_V05_V4},
+    {0xCA, "getmtime", nullptr, {W_REG}, F_V05_V4},
 
     // Creates an item in the quest board.
     // valueA = index of item (0-5)
@@ -1115,8 +1127,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[2] = entity (client ID, 0x1000 + enemy ID, or 0x4000 + object ID)
     // regsA[3] = y offset (as integer)
     // valueB is required in pre-v3 but is ignored
-    {0xCD, "particle_id", "particle_id_V1", {{REG32_SET_FIXED, 4}, I32}, F_V05_V2},
-    {0xCD, "particle_id", "particle_id_V3", {{REG_SET_FIXED, 4}}, F_V3_V4},
+    {0xCD, "particle_id", "particle_id_V1", {{R_REG32_SET_FIXED, 4}, I32}, F_V05_V2},
+    {0xCD, "particle_id", "particle_id_V3", {{R_REG_SET_FIXED, 4}}, F_V3_V4},
 
     // Creates an NPC.
     // regsA[0-2] = position (x, y, z as integers)
@@ -1125,8 +1137,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   according to qedit.info)
     // regsA[5] = template index (see 6x69 in CommandFormats.hh)
     // regsA[6] = client ID
-    {0xCE, "npc_crptalk_id", "npc_crptalk_id_V1", {{REG32_SET_FIXED, 7}, I32}, F_V05_V2},
-    {0xCE, "npc_crptalk_id", "npc_crptalk_id_V3", {{REG_SET_FIXED, 7}}, F_V3_V4},
+    {0xCE, "npc_crptalk_id", "npc_crptalk_id_V1", {{R_REG32_SET_FIXED, 7}, I32}, F_V05_V2},
+    {0xCE, "npc_crptalk_id", "npc_crptalk_id_V3", {{R_REG_SET_FIXED, 7}}, F_V3_V4},
 
     // Deletes all strings registered with npc_text.
     {0xCF, "npc_text_clear_all", "npc_lang_clean", {}, F_V05_V4},
@@ -1138,7 +1150,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // data1[4]. The matching conditions are the same as in find_inventory_item
     // except that data1[4] must match regsA[3], instead of zero. Returns the
     // item ID in regB, or FFFFFFFF if not found.
-    {0xD1, "find_inventory_item_ex", "pl_chk_item2", {{REG_SET_FIXED, 4}, REG}, F_V1_V4},
+    {0xD1, "find_inventory_item_ex", "pl_chk_item2", {{R_REG_SET_FIXED, 4}, W_REG}, F_V1_V4},
 
     // Enables/disables the main menu and shortcut menu.
     {0xD2, "enable_mainmenu", nullptr, {}, F_V1_V4},
@@ -1158,14 +1170,14 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Closes the Quest Board message window
     {0xD7, "close_msg_qb", nullptr, {}, F_V1_V4},
 
-    // Writes the valueB (a single byte) to the event flag (valueA)
+    // Writes the valueB (a single byte) to the event flag specified by valueA.
     {0xD8, "set_eventflag", "set_eventflag_v1", {I32, I32}, F_V1_V2 | F_ARGS},
     {0xD8, "set_eventflag", "set_eventflag_v3", {I32, I32}, F_V3_V4 | F_ARGS},
 
     // Sets regA to valueB, and sends 6x77 so other clients will also set their
     // local regA to valueB.
-    {0xD9, "sync_register", "sync_leti", {REG32, I32}, F_V1_V2 | F_ARGS},
-    {0xD9, "sync_register", "sync_leti", {REG, I32}, F_V3_V4 | F_ARGS},
+    {0xD9, "sync_register", "sync_leti", {W_REG32, I32}, F_V1_V2 | F_ARGS},
+    {0xD9, "sync_register", "sync_leti", {W_REG, I32}, F_V3_V4 | F_ARGS},
 
     // TODO: Document these
     {0xDA, "set_returnhunter", nullptr, {}, F_V1_V4},
@@ -1180,7 +1192,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Finds an item in the player's bank, and clears its entry in the bank.
     // regsA[0-5] = item.data1[0-5] (bank item must exactly match all bytes)
     // regB = 1 if item was found and cleared, 0 if not
-    {0xDE, "delete_bank_item", "unknownDE", {{REG_SET_FIXED, 6}, REG}, F_V1_V4},
+    {0xDE, "delete_bank_item", "unknownDE", {{R_REG_SET_FIXED, 6}, W_REG}, F_V1_V4},
 
     // Sets NPC AI behaviors.
     // regsA[0] = unknown (TODO)
@@ -1207,8 +1219,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[12] = attack technique probability (in range [0, 100])
     // regsA[13] = unknown (TODO); appears to be a distance range
     // valueB = NPC template to modify (00-3F)
-    {0xDF, "npc_param", "npc_param_V1", {{REG32_SET_FIXED, 14}, I32}, F_V1_V2},
-    {0xDF, "npc_param", "npc_param_V3", {{REG_SET_FIXED, 14}, I32}, F_V3_V4 | F_ARGS},
+    {0xDF, "npc_param", "npc_param_V1", {{R_REG32_SET_FIXED, 14}, I32}, F_V1_V2},
+    {0xDF, "npc_param", "npc_param_V3", {{R_REG_SET_FIXED, 14}, I32}, F_V3_V4 | F_ARGS},
 
     // TODO(DX): Document this. It enables a flag that affects some logic in
     // TBoss1Dragon::update. The flag is disabled when the Dragon's boss arena
@@ -1225,8 +1237,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Sets camera parameters for the current frame.
     // regsA[0-2] = relative location of focus point from player
     // regsA[3-5] = relative location of camera from player
-    {0xE2, "pcam_param", "pcam_param_V1", {{REG32_SET_FIXED, 6}}, F_V1_V2},
-    {0xE2, "pcam_param", "pcam_param_V3", {{REG_SET_FIXED, 6}}, F_V3_V4},
+    {0xE2, "pcam_param", "pcam_param_V1", {{R_REG32_SET_FIXED, 6}}, F_V1_V2},
+    {0xE2, "pcam_param", "pcam_param_V3", {{R_REG_SET_FIXED, 6}}, F_V3_V4},
 
     // Triggers set event (valueB) on floor (valueA). Sends 6x67.
     {0xE3, "start_setevt", "start_setevt_v1", {I32, I32}, F_V1_V2 | F_ARGS},
@@ -1237,22 +1249,22 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xE5, "warp_off", nullptr, {}, F_V1_V4},
 
     // Returns the client ID of the local client
-    {0xE6, "get_client_id", "get_slotnumber", {REG}, F_V1_V4},
+    {0xE6, "get_client_id", "get_slotnumber", {W_REG}, F_V1_V4},
 
     // Returns the client ID of the lobby/game leader
-    {0xE7, "get_leader_id", "get_servernumber", {REG}, F_V1_V4},
+    {0xE7, "get_leader_id", "get_servernumber", {W_REG}, F_V1_V4},
 
     // Sets an event flag from a register. In v3 and later, this is not needed,
     // since set_eventflag can be called with F_ARGS, but it still exists.
-    {0xE8, "set_eventflag2", nullptr, {I32, REG}, F_V1_V4 | F_ARGS},
+    {0xE8, "set_eventflag2", nullptr, {I32, R_REG}, F_V1_V4 | F_ARGS},
 
     // regA %= regB
     // This is exactly the same as the mod opcode (including its quirk).
-    {0xE9, "mod2", "res", {REG, REG}, F_V1_V4},
+    {0xE9, "mod2", "res", {W_REG, R_REG}, F_V1_V4},
 
     // regA %= valueB
     // This is exactly the same as the modi opcode (including its quirk).
-    {0xEA, "modi2", "unknownEA", {REG, I32}, F_V1_V4},
+    {0xEA, "modi2", "unknownEA", {W_REG, I32}, F_V1_V4},
 
     // Changes the background music. create_bgmctrl must be run before doing
     // this. The values for valueA are the same as for playbgm_epi.
@@ -1263,7 +1275,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[0] = switch flag number
     // regsA[1] = floor number
     // regsA[2] = flags (see 6x05 definition in CommandFormats.hh)
-    {0xEC, "update_switch_flag", "sw_send", {{REG_SET_FIXED, 3}}, F_V1_V4},
+    {0xEC, "update_switch_flag", "sw_send", {{R_REG_SET_FIXED, 3}}, F_V1_V4},
 
     // Creates a BGM controller object. Use this before set_bgm.
     {0xED, "create_bgmctrl", nullptr, {}, F_V1_V4},
@@ -1274,17 +1286,18 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Like sync_register, but takes the value from another register rather
     // than using an immediate value. On v3 and later, this is identical to
     // sync_register.
-    {0xEF, "sync_register2", "sync_let", {I32, REG32}, F_V1_V2},
-    {0xEF, "sync_register2", nullptr, {REG, I32}, F_V3_V4 | F_ARGS},
+    {0xEF, "sync_register2", "sync_let", {W_REG32, R_REG32}, F_V1_V2},
+    {0xEF, "sync_register2", nullptr, {W_REG, I32}, F_V3_V4 | F_ARGS},
+
     // Same as sync_register2, but sends the value via UDP if UDP is enabled.
     // This opcode was removed after GC NTE and is missing from v3 and v4.
-    {0xF0, "sync_register2_udp", "send_regwork", {REG32, REG32}, F_V1_V2},
+    {0xF0, "sync_register2_udp", "send_regwork", {W_REG32, W_REG32}, F_V1_V2},
 
     // Sets the camera's location and angle.
     // regsA[0-2] = camera location (x, y, z as integers)
     // regsA[3-5] = camera focus location (x, y, z as integers)
-    {0xF1, "leti_fixed_camera", "leti_fixed_camera_V1", {{REG32_SET_FIXED, 6}}, F_V2},
-    {0xF1, "leti_fixed_camera", "leti_fixed_camera_V3", {{REG_SET_FIXED, 6}}, F_V3_V4},
+    {0xF1, "leti_fixed_camera", "leti_fixed_camera_V1", {{R_REG32_SET_FIXED, 6}}, F_V2},
+    {0xF1, "leti_fixed_camera", "leti_fixed_camera_V3", {{R_REG_SET_FIXED, 6}}, F_V3_V4},
 
     // Resets the camera to non-fixed (default behavior).
     {0xF2, "default_camera_pos1", nullptr, {}, F_V2_V4},
@@ -1315,19 +1328,19 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // doesn't correctly terminate it this way. However, the following field is
     // the TQuestThread pointer, which is non-null only if the sensor has
     // already triggered, so it doesn't misbehave.
-    {0xF801, "set_chat_callback", "set_chat_callback?", {{REG32_SET_FIXED, 5}, CSTRING}, F_V2_V4 | F_ARGS},
+    {0xF801, "set_chat_callback", "set_chat_callback?", {{R_REG32_SET_FIXED, 5}, CSTRING}, F_V2_V4 | F_ARGS},
 
     // Returns the difficulty level. Unlike get_difficulty_level_v1, this
     // correctly returns 3 in Ultimate.
-    {0xF808, "get_difficulty_level_v2", "get_difflvl2", {REG}, F_V2_V4},
+    {0xF808, "get_difficulty_level_v2", "get_difflvl2", {W_REG}, F_V2_V4},
 
     // Returns the number of players in the game.
-    {0xF809, "get_number_of_players", "get_number_of_player1", {REG}, F_V2_V4},
+    {0xF809, "get_number_of_players", "get_number_of_player1", {W_REG}, F_V2_V4},
 
     // Returns the location of the specified player.
     // regsA[0-2] = returned location (x, y, z as integers)
     // regB = client ID
-    {0xF80A, "get_coord_of_player", nullptr, {{REG_SET_FIXED, 3}, REG}, F_V2_V4},
+    {0xF80A, "get_coord_of_player", nullptr, {{W_REG_SET_FIXED, 3}, R_REG}, F_V2_V4},
 
     // Enables or disables the area map and minimap.
     {0xF80B, "enable_map", nullptr, {}, F_V2_V4},
@@ -1340,7 +1353,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   template, 3: nothing)
     // regsA[3] = major variation
     // regsA[4] = minor variation
-    {0xF80D, "map_designate_ex", nullptr, {{REG_SET_FIXED, 5}}, F_V2_V4},
+    {0xF80D, "map_designate_ex", nullptr, {{R_REG_SET_FIXED, 5}}, F_V2_V4},
 
     // Enables or disables weapon dropping upon death for a player.
     // Sends 6x81 (disable) or 6x82 (enable).
@@ -1414,7 +1427,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF81C, "ba_start", "ba_disp_msg", {CSTRING}, F_V2_V4 | F_ARGS},
 
     // Sets the number of levels to gain upon respawn in battle
-    {0xF81D, "death_lvl_up", nullptr, {I32}, F_V2_V4 | F_ARGS},
+    {0xF81D, "ba_death_lvl_up", "death_lvl_up", {I32}, F_V2_V4 | F_ARGS},
 
     // Sets the Meseta mode in battle. valueA (matches enum):
     // 0 => ALLOW
@@ -1427,11 +1440,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // regsA[3-8] specify first 6 bytes of an ItemData. This opcode consumes an
     // item ID, but does nothing else.
-    {0xF821, "nop_F821", nullptr, {{REG_SET_FIXED, 9}}, F_V2_V4},
+    {0xF821, "nop_F821", nullptr, {{R_REG_SET_FIXED, 9}}, F_V2_V4},
 
     // This opcode does nothing. It has two branches (one for online, one for
     // offline), but both branches do nothing.
-    {0xF822, "nop_F822", nullptr, {REG}, F_V2_V4},
+    {0xF822, "nop_F822", nullptr, {R_REG}, F_V2_V4},
 
     // Sets the challenge template index. See Client::create_challenge_overlay
     // for details on how the template is used.
@@ -1443,26 +1456,26 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Sets the factor by which all EXP is multiplied in challenge mode.
     // The multiplier value is regsA[0] + (regsA[1] / regsA[2]).
-    {0xF825, "exp_multiplication", nullptr, {{REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF825, "exp_multiplication", nullptr, {{R_REG_SET_FIXED, 3}}, F_V2_V4},
 
     // Checks if any player is still alive in challenge mode. Returns 1 if all
     // players are dead, or 0 if not.
-    {0xF826, "cmode_check_all_players_dead", "if_player_alive_cm", {REG}, F_V2_V4},
+    {0xF826, "cmode_check_all_players_dead", "if_player_alive_cm", {W_REG}, F_V2_V4},
 
     // Checks if all players are still alive in challenge mode. Returns 1 if any
     // player is dead, or 0 if not.
-    {0xF827, "cmode_check_any_player_dead", "get_user_is_dead?", {REG}, F_V2_V4},
+    {0xF827, "cmode_check_any_player_dead", "get_user_is_dead?", {W_REG}, F_V2_V4},
 
     // Sends the player with client ID regA to floor regB. Does nothing if regA
     // doesn't refer to the local player.
-    {0xF828, "go_floor", nullptr, {REG, REG}, F_V2_V4},
+    {0xF828, "go_floor", nullptr, {R_REG, R_REG}, F_V2_V4},
 
     // Returns the number of enemies killed (in regB) by the player whose
     // client ID is regA. This value is capped to 999.
-    {0xF829, "get_num_kills", nullptr, {REG, REG}, F_V2_V4},
+    {0xF829, "get_num_kills", nullptr, {R_REG, W_REG}, F_V2_V4},
 
     // Resets the kill count for the player specified by regA.
-    {0xF82A, "reset_kills", nullptr, {REG}, F_V2_V4},
+    {0xF82A, "reset_kills", nullptr, {R_REG}, F_V2_V4},
 
     // Sets or clears a switch flag, and synchronizes the value to all players.
     // valueA = floor
@@ -1473,35 +1486,35 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Checks a switch flag on the current floor
     // regsA[0] = switch flag index
     // regsA[1] = result (0 or 1)
-    {0xF82D, "read_switch_flag", "if_switch_not_pressed", {{REG_SET_FIXED, 2}}, F_V2_V4},
+    {0xF82D, "read_switch_flag", "if_switch_not_pressed", {{W_REG_SET_FIXED, 2}}, F_V2_V4},
 
     // Checks a switch flag on any floor
     // regsA[0] = floor
     // regsA[1] = switch flag index
     // regsA[2] = result (0 or 1)
-    {0xF82E, "read_switch_flag_on_floor", "if_switch_pressed", {{REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF82E, "read_switch_flag_on_floor", "if_switch_pressed", {{W_REG_SET_FIXED, 3}}, F_V2_V4},
 
     // Enables a player to control the Dragon. valueA specifies the client ID.
-    {0xF830, "control_dragon", nullptr, {REG}, F_V2_V4},
+    {0xF830, "control_dragon", nullptr, {R_REG}, F_V2_V4},
 
     // Disables player control of the Dragon.
     {0xF831, "release_dragon", nullptr, {}, F_V2_V4},
 
     // Shrinks a player or returns them to normal size. regA specifies the
     // client ID.
-    {0xF838, "shrink", nullptr, {REG}, F_V2_V4},
-    {0xF839, "unshrink", nullptr, {REG}, F_V2_V4},
+    {0xF838, "shrink", nullptr, {R_REG}, F_V2_V4},
+    {0xF839, "unshrink", nullptr, {R_REG}, F_V2_V4},
 
     // These set some camera parameters for the specified player. These
     // parameters appear to be unused, so these opcodes essentially do nothing.
     // regsA[0] = client ID
     // regsA[1-3] = a Vector3F (x, y, z as integers)
-    {0xF83A, "set_shrink_cam1", nullptr, {{REG_SET_FIXED, 4}}, F_V2_V4},
-    {0xF83B, "set_shrink_cam2", nullptr, {{REG_SET_FIXED, 4}}, F_V2_V4},
+    {0xF83A, "set_shrink_cam1", nullptr, {{R_REG_SET_FIXED, 4}}, F_V2_V4},
+    {0xF83B, "set_shrink_cam2", nullptr, {{R_REG_SET_FIXED, 4}}, F_V2_V4},
 
     // Shows the timer window in challenge mode. regA is the time value to
     // display, in seconds.
-    {0xF83C, "disp_time_cmode", nullptr, {REG}, F_V2_V4},
+    {0xF83C, "disp_time_cmode", nullptr, {R_REG}, F_V2_V4},
 
     // Sets the total number of areas across all challenge quests for the
     // current episode
@@ -1546,15 +1559,15 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //     enemy. (Default 7)
     //   ba_meseta_score: Sets the score earned per Meseta in the player's
     //     inventory. (Default 0)
-    {0xF848, "ba_player_give_damage_score", "give_damage_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
-    {0xF849, "ba_player_take_damage_score", "take_damage_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
-    {0xF84A, "ba_enemy_give_damage_score", "enemy_give_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
-    {0xF84B, "ba_enemy_take_damage_score", "enemy_take_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
-    {0xF84C, "ba_player_kill_score", "kill_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
-    {0xF84D, "ba_player_death_score", "death_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
-    {0xF84E, "ba_enemy_kill_score", "enemy_kill_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
-    {0xF84F, "ba_enemy_death_score", "enemy_death_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
-    {0xF850, "ba_meseta_score", "meseta_score", {{REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF848, "ba_player_give_damage_score", "give_damage_score", {{R_REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF849, "ba_player_take_damage_score", "take_damage_score", {{R_REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF84A, "ba_enemy_give_damage_score", "enemy_give_score", {{R_REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF84B, "ba_enemy_take_damage_score", "enemy_take_score", {{R_REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF84C, "ba_player_kill_score", "kill_score", {{R_REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF84D, "ba_player_death_score", "death_score", {{R_REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF84E, "ba_enemy_kill_score", "enemy_kill_score", {{R_REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF84F, "ba_enemy_death_score", "enemy_death_score", {{R_REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF850, "ba_meseta_score", "meseta_score", {{R_REG_SET_FIXED, 3}}, F_V2_V4},
 
     // Sets the number of traps players can use in battle mode. regsA[1] is the
     // amount; regsA[0] is the trap type:
@@ -1562,7 +1575,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   1 = Slow trap (internal type 2)
     //   2 = Confuse trap (internal type 3)
     //   3 = Freeze trap (internal type 1)
-    {0xF851, "ba_set_trap_count", "ba_set_trap", {{REG_SET_FIXED, 2}}, F_V2_V4},
+    {0xF851, "ba_set_trap_count", "ba_set_trap", {{R_REG_SET_FIXED, 2}}, F_V2_V4},
 
     // Enables (0) or disables (1) the targeting reticle in battle
     {0xF852, "ba_hide_target_reticle", "ba_set_target", {I32}, F_V2_V4 | F_ARGS},
@@ -1591,8 +1604,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // should be done by the server on BB.
     // regsA[0] = client ID
     // regsA[1-3] = item.data1[0-2]
-    {0xF85A, "equip_item", "equip_item_v2", {{REG32_SET_FIXED, 4}}, F_V2},
-    {0xF85A, "equip_item", "equip_item_v3", {{REG_SET_FIXED, 4}}, F_V3_V4},
+    {0xF85A, "equip_item", "equip_item_v2", {{R_REG32_SET_FIXED, 4}}, F_V2},
+    {0xF85A, "equip_item", "equip_item_v3", {{R_REG_SET_FIXED, 4}}, F_V3_V4},
 
     // Unequips an item from a client. Sends 6x26 if an item is unequipped.
     // valueA = client ID
@@ -1640,8 +1653,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regA/valueA = client ID (must match local client ID)
     // regB (must be a register, even on v3/v4) = item.data1[1]
     // strC = custom name
-    {0xF862, "give_s_rank_weapon", nullptr, {REG32, REG32, CSTRING}, F_V2},
-    {0xF862, "give_s_rank_weapon", nullptr, {I32, REG, CSTRING}, F_V3_V4 | F_ARGS},
+    {0xF862, "give_s_rank_weapon", nullptr, {R_REG32, R_REG32, CSTRING}, F_V2},
+    {0xF862, "give_s_rank_weapon", nullptr, {I32, R_REG, CSTRING}, F_V3_V4 | F_ARGS},
 
     // Returns the currently-equipped mag's levels. If no mag is equipped,
     // regsA are unaffected! Make sure to initialize them before using this.
@@ -1649,8 +1662,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[1] = returned POW level
     // regsA[2] = returned DEX level
     // regsA[3] = returned MIND level
-    {0xF863, "get_mag_levels", nullptr, {{REG32_SET_FIXED, 4}}, F_V2},
-    {0xF863, "get_mag_levels", nullptr, {{REG_SET_FIXED, 4}}, F_V3_V4},
+    {0xF863, "get_mag_levels", nullptr, {{W_REG32_SET_FIXED, 4}}, F_V2},
+    {0xF863, "get_mag_levels", nullptr, {{W_REG_SET_FIXED, 4}}, F_V3_V4},
 
     // Sets the color and rank text if the player manages to complete the
     // current challenge stage.
@@ -1669,7 +1682,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // challenge rank text and color according to the rank they achieved.
     // Sends 07DF on BB; on other versions, sends nothing.
     // regA = return value (1 if item successfully created; 0 otherwise)
-    {0xF867, "award_item_give", "award_item_give_to?", {REG}, F_V2_V4},
+    {0xF867, "award_item_give", "award_item_give_to?", {W_REG}, F_V2_V4},
 
     // Specifies where the time threshold is for a challenge rank.
     // regsA[0] = rank (0 = B, 1 = A, 2 = S)
@@ -1677,7 +1690,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   this rank or better)
     // regsA[2] = award flags mask (generally should be (1 << regsA[0]))
     // regB = result (0 = failed, 1 = success)
-    {0xF868, "set_cmode_rank_threshold", "set_cmode_rank", {{REG_SET_FIXED, 3}, REG}, F_V2_V4},
+    {0xF868, "set_cmode_rank_threshold", "set_cmode_rank", {{R_REG_SET_FIXED, 3}, W_REG}, F_V2_V4},
 
     // Registers a timing result of (regA) seconds for the current challenge
     // mode stage. Returns a result code in regB:
@@ -1688,23 +1701,23 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   4 = player did not achieve a new rank this time
     //   5 = player's inventory is full and can't receive the prize
     //   6 = internal errors (e.g. save file is missing, stage number not set)
-    {0xF869, "check_rank_time", nullptr, {REG, REG}, F_V2_V4},
+    {0xF869, "check_rank_time", nullptr, {R_REG, W_REG}, F_V2_V4},
 
     // Creates an item in the local player's bank, and saves the player's
     // challenge rank and title color. Sends 07DF on BB. This is used for the A
     // and B rank prizes.
     // regsA = item.data1[0-5]
     // regB = returned success code (1 = success, 0 = failed)
-    {0xF86A, "item_create_cmode", nullptr, {{REG_SET_FIXED, 6}, REG}, F_V2_V4},
+    {0xF86A, "item_create_cmode", nullptr, {{R_REG_SET_FIXED, 6}, W_REG}, F_V2_V4},
 
     // Sets the effective area for item drops in battle. valueA should be in
     // the range [1, 10].
-    {0xF86B, "ba_set_box_drop_area", "ba_box_drops", {REG}, F_V2_V4},
+    {0xF86B, "ba_set_box_drop_area", "ba_box_drops", {R_REG}, F_V2_V4},
 
     // Shows a confirmation window asking if the player is satsified with their
     // choice of S rank prize and weapon name.
     // regA = result code (0 = OK, 1 = reconsider)
-    {0xF86C, "award_item_ok", "award_item_ok?", {REG}, F_V2_V4},
+    {0xF86C, "award_item_ok", "award_item_ok?", {W_REG}, F_V2_V4},
 
     // Enables or disables traps' ability to hurt the player who set them
     {0xF86D, "ba_set_trapself", nullptr, {}, F_V2_V4},
@@ -1724,7 +1737,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF872, "ba_set_time_limit", nullptr, {I32}, F_V2_V4 | F_ARGS},
 
     // Sets regA to 1 if Dark Falz has been defeated, or 0 otherwise.
-    {0xF873, "dark_falz_is_dead", "falz_is_dead", {REG}, F_V2_V4},
+    {0xF873, "dark_falz_is_dead", "falz_is_dead", {W_REG}, F_V2_V4},
 
     // Sets an override for the challenge rank text. At the time the rank is
     // checked via check_rank_time, these overrides are applied in the order
@@ -1737,19 +1750,19 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Enables or disables the transparency effect, similar to the Stealth
     // Suit. regA is the client ID.
-    {0xF875, "enable_stealth_suit_effect", nullptr, {REG}, F_V2_V4},
-    {0xF876, "disable_stealth_suit_effect", nullptr, {REG}, F_V2_V4},
+    {0xF875, "enable_stealth_suit_effect", nullptr, {R_REG}, F_V2_V4},
+    {0xF876, "disable_stealth_suit_effect", nullptr, {R_REG}, F_V2_V4},
 
     // Enables or disables the use of techniques for a player. regA is the
     // client ID.
-    {0xF877, "enable_techs", nullptr, {REG}, F_V2_V4},
-    {0xF878, "disable_techs", nullptr, {REG}, F_V2_V4},
+    {0xF877, "enable_techs", nullptr, {R_REG}, F_V2_V4},
+    {0xF878, "disable_techs", nullptr, {R_REG}, F_V2_V4},
 
     // Returns the gender of a character.
     // regA = client ID
     // regB = returned gender (0 = male, 1 = female, 2 = no player present or
     //   invalid class flags)
-    {0xF879, "get_gender", nullptr, {REG, REG}, F_V2_V4},
+    {0xF879, "get_gender", nullptr, {R_REG, W_REG}, F_V2_V4},
 
     // Returns the race and class of a character.
     // regA = client ID
@@ -1757,7 +1770,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   player present or invalid class flags)
     // regsB[1] = returned class (0 = hunter, 1 = ranger, 2 = force, 3 = no
     //   player present or invalid class flags)
-    {0xF87A, "get_chara_class", nullptr, {REG, {REG_SET_FIXED, 2}}, F_V2_V4},
+    {0xF87A, "get_chara_class", nullptr, {R_REG, {W_REG_SET_FIXED, 2}}, F_V2_V4},
 
     // Removes Meseta from a player. Sends 6xC9 on BB.
     // regsA[0] = client ID
@@ -1767,66 +1780,67 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsB[1] = result code if player not present (0 is written here if there
     //   is no player with the specified client ID)
     // Note that only one of regsB[0] and regsB[1] is written; the other is
-    // unchanged. Make sure to initialize these registers properly.
-    {0xF87B, "take_slot_meseta", nullptr, {{REG_SET_FIXED, 2}, REG}, F_V2_V4},
+    // unchanged. Therefore, it's good practice to set regsB[1] to a nonzero
+    // value before using this opcode.
+    {0xF87B, "take_slot_meseta", nullptr, {{R_REG_SET_FIXED, 2}, {W_REG_SET_FIXED, 2}}, F_V2_V4},
 
     // Returns the Guild Card file creation time in seconds since 00:00:00 on
     // 1 January 2000.
-    {0xF87C, "get_guild_card_file_creation_time", "get_encryption_key", {REG}, F_V2_V4},
+    {0xF87C, "get_guild_card_file_creation_time", "get_encryption_key", {W_REG}, F_V2_V4},
 
     // Kills the player whose client ID is regA.
-    {0xF87D, "kill_player", nullptr, {REG}, F_V2_V4},
+    {0xF87D, "kill_player", nullptr, {R_REG}, F_V2_V4},
 
     // Returns (in regA) the player's serial number. On BB, returns 0.
-    {0xF87E, "get_serial_number", nullptr, {REG}, F_V2_V3},
-    {0xF87E, "return_0_F87E", nullptr, {REG}, F_V4},
+    {0xF87E, "get_serial_number", nullptr, {W_REG}, F_V2_V3},
+    {0xF87E, "return_0_F87E", nullptr, {W_REG}, F_V4},
 
     // Reads an event flag from the system file.
     // regA = event flag index (0x00-0xFF)
     // regB = returned event flag value (1 byte)
-    {0xF87F, "get_eventflag", "read_guildcard_flag", {REG, REG}, F_V2_V4},
+    {0xF87F, "get_eventflag", "read_guildcard_flag", {R_REG, W_REG}, F_V2_V4},
 
     // Normally, trap damage is computed with the following formula:
     //   (700.0 * area_factor[area] * 2.0 * (0.01 * level + 0.1))
     // This opcode overrides that computation. The value is specified with the
     // integer and fractional parts split up: the actual value used by the game
     // will be regsA[0] + (regsA[1] / regsA[2]).
-    {0xF880, "set_trap_damage", "ba_set_dmgtrap", {{REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF880, "set_trap_damage", "ba_set_dmgtrap", {{R_REG_SET_FIXED, 3}}, F_V2_V4},
 
     // Loads the name of the player whose client ID is regA into a static
     // buffer, which can later be referred to with "<pl_name>" in message
     // strings.
-    {0xF881, "get_pl_name", "get_pl_name?", {REG}, F_V2_V4},
+    {0xF881, "get_pl_name", "get_pl_name?", {R_REG}, F_V2_V4},
 
     // Loads the job (Hunter, Ranger, or Force) of the player whose client ID
     // is regA into a static buffer, which can later be referred to with
     // "<pl_job>" in message strings.
-    {0xF882, "get_pl_job", nullptr, {REG}, F_V2_V4},
+    {0xF882, "get_pl_job", nullptr, {R_REG}, F_V2_V4},
 
     // Counts the number of players near the specified player.
     // regsA[0] = client ID
     // regsA[1] = radius (as integer)
     // regB = count
-    {0xF883, "get_player_proximity", "players_in_range", {{REG_SET_FIXED, 2}, REG}, F_V2_V4},
+    {0xF883, "get_player_proximity", "players_in_range", {{R_REG_SET_FIXED, 2}, W_REG}, F_V2_V4},
 
     // Writes 2 bytes to the event flags in the system file.
     // valueA = flag index (must be 254 or less)
     // regB/valueB = value
-    {0xF884, "set_eventflag16", "write_guild_flagw", {I32, REG}, F_V2},
+    {0xF884, "set_eventflag16", "write_guild_flagw", {I32, R_REG}, F_V2},
     {0xF884, "set_eventflag16", "write_guild_flagw", {I32, I32}, F_V3_V4 | F_ARGS},
 
     // Writes 4 bytes to the event flags in the system file.
     // valueA = flag index (must be 252 or less)
     // regB/valueB = value
-    {0xF885, "set_eventflag32", "write_guild_flagl", {I32, REG}, F_V2},
+    {0xF885, "set_eventflag32", "write_guild_flagl", {I32, R_REG}, F_V2},
     {0xF885, "set_eventflag32", "write_guild_flagl", {I32, I32}, F_V3_V4 | F_ARGS},
 
     // Returns (in regB) the battle result place (1, 2, 3, or 4) of the player
     // specified by regA.
-    {0xF886, "ba_get_place", nullptr, {REG, REG}, F_V2_V4},
+    {0xF886, "ba_get_place", nullptr, {R_REG, W_REG}, F_V2_V4},
 
     // Returns (in regB) the battle score of the player specified by regA.
-    {0xF887, "ba_get_score", nullptr, {REG, REG}, F_V2_V4},
+    {0xF887, "ba_get_score", nullptr, {R_REG, W_REG}, F_V2_V4},
 
     // TODO: Document these
     {0xF888, "enable_win_pfx", "ba_close_msg", {}, F_V2_V4},
@@ -1848,29 +1862,30 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   11 = reviving
     //   12 = frozen
     //   13 = warping (BB only)
-    {0xF88A, "get_player_state", "get_player_status", {REG, REG}, F_V2_V4},
+    {0xF88A, "get_player_state", "get_player_status", {R_REG, W_REG}, F_V2_V4},
 
     // Sends a Simple Mail message to the player.
     // regA (v2) = sender's Guild Card number
     // valueA (v3+) = number of register that holds sender's Guild Card number
     // strB = sender name and message (separated by \n)
-    {0xF88B, "send_mail", nullptr, {REG, CSTRING}, F_V2_V4 | F_ARGS},
+    {0xF88B, "send_mail", nullptr, {R_REG, CSTRING}, F_V2_V4 | F_ARGS},
 
-    // Returns the game's major version (2 on DCv2/PC, 3 on GC, 4 on XB and BB)
-    {0xF88C, "get_game_version", nullptr, {REG}, F_V2_V4},
+    // Returns the game's major version (2 on DCv2/PC/GCNTE, 3 on GC/Ep3, 4 on
+    // Xbox and BB)
+    {0xF88C, "get_game_version", nullptr, {W_REG}, F_V2_V4},
 
     // Sets the local player's stage completion time in challenge mode.
     // regA = time in seconds
     // regB = value to be used in computation of token_v4 (BB only; see 6x95 in
     //   CommandFormats.hh for details)
-    {0xF88D, "chl_set_timerecord", "chl_set_timerecord?", {REG}, F_V2 | F_V3},
-    {0xF88D, "chl_set_timerecord", "chl_set_timerecord?", {REG, REG}, F_V4},
+    {0xF88D, "chl_set_timerecord", "chl_set_timerecord?", {R_REG}, F_V2 | F_V3},
+    {0xF88D, "chl_set_timerecord", "chl_set_timerecord?", {R_REG, R_REG}, F_V4},
 
     // Gets the current player's completion time for the current challenge
     // stage in seconds. If the player's time is invalid or faster than the
     // time set by chl_set_min_time_online (or 5 minutes, if offline), returns
     // -2. If used in non-challenge mode, returns -1.
-    {0xF88E, "chl_get_timerecord", "chl_get_timerecord?", {REG}, F_V2_V4},
+    {0xF88E, "chl_get_timerecord", "chl_get_timerecord?", {W_REG}, F_V2_V4},
 
     // Sets the probabilities of getting recovery items from challenge mode
     // graves. There are 10 floating-point values, specified as fractions in an
@@ -1890,7 +1905,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   regsA[14] / regsA[15]: Chance of getting Monofluid x1
     //   regsA[16] / regsA[17]: Chance of getting Difluid x1
     //   regsA[18] / regsA[19]: Chance of getting Trifluid x1
-    {0xF88F, "set_cmode_grave_rates", nullptr, {{REG_SET_FIXED, 20}}, F_V2_V4},
+    {0xF88F, "set_cmode_grave_rates", nullptr, {{R_REG_SET_FIXED, 20}}, F_V2_V4},
 
     // Clears all levels from the main warp.
     {0xF890, "clear_mainwarp_all", "clear_area_list", {}, F_V2_V4},
@@ -1911,14 +1926,14 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Reads 2 bytes or 4 bytes from the event flags in the system file.
     // regA = event flag index
     // regB = returned value
-    {0xF896, "get_eventflag16", "read_guildflag_16b", {REG, REG}, F_V2_V4},
-    {0xF897, "get_eventflag32", "read_guildflag_32b", {REG, REG}, F_V2_V4},
+    {0xF896, "get_eventflag16", "read_guildflag_16b", {R_REG, W_REG}, F_V2_V4},
+    {0xF897, "get_eventflag32", "read_guildflag_32b", {R_REG, W_REG}, F_V2_V4},
 
     // regA <<= regB
-    {0xF898, "shift_left", nullptr, {REG, REG}, F_V2_V4},
+    {0xF898, "shift_left", nullptr, {W_REG, R_REG}, F_V2_V4},
 
     // regA >>= regB
-    {0xF899, "shift_right", nullptr, {REG, REG}, F_V2_V4},
+    {0xF899, "shift_right", nullptr, {W_REG, R_REG}, F_V2_V4},
 
     // Generates a random number by calling rand(). Note that the returned
     // value is not uniform! The algorithm generates a uniform random number,
@@ -1933,7 +1948,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[0] = minimum value
     // regsA[1] = maximum value
     // regB = generated random value
-    {0xF89A, "get_random", nullptr, {{REG_SET_FIXED, 2}, REG}, F_V2_V4},
+    {0xF89A, "get_random", nullptr, {{R_REG_SET_FIXED, 2}, W_REG}, F_V2_V4},
 
     // Clears all game state, including all floor items, set states (enemy and
     // object), enemy and object states, wave event flags, and switch flags.
@@ -1944,7 +1959,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   0 = not chosen yet
     //   1 = no (releases players to interact on Pioneer 2)
     //   2 = yes (restarts the stage)
-    {0xF89C, "get_chl_retry_choice", "retry_menu", {REG}, F_V2_V4},
+    {0xF89C, "get_chl_retry_choice", "retry_menu", {W_REG}, F_V2_V4},
 
     // Creates the retry menu when a challenge stage is failed
     {0xF89D, "chl_create_retry_menu", "chl_enable_retry", {}, F_V2_V4},
@@ -1955,13 +1970,13 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Restores a player's HP and TP, clears status effects, and revives the
     // player if dead.
     // regA = client ID
-    {0xF89F, "player_recovery", "unknownF89F", {REG}, F_V2_V4},
+    {0xF89F, "player_recovery", "unknownF89F", {R_REG}, F_V2_V4},
 
     // These opcodes set, clear, and check (respectively) a flag that appears
     // to do nothing at all.
     {0xF8A0, "disable_bosswarp_option", "unknownF8A0", {}, F_V2_V4},
     {0xF8A1, "enable_bosswarp_option", "unknownF8A1", {}, F_V2_V4},
-    {0xF8A2, "is_bosswarp_opt_disabled", "get_bosswarp_option", {REG}, F_V2_V4},
+    {0xF8A2, "is_bosswarp_opt_disabled", "get_bosswarp_option", {W_REG}, F_V2_V4},
 
     // Loads the player's serial number into the "flag buffer", which is a
     // 4-byte buffer that can be written to event flags. (It's not obvious why
@@ -1971,11 +1986,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Writes the flag buffer to event flags. regA specifies which event flag
     // (the first of 4 consecutive flags).
-    {0xF8A4, "write_flag_buf_to_event_flags", "encrypt_gc_entry_auto", {REG}, F_V2_V4},
+    {0xF8A4, "write_flag_buf_to_event_flags", "encrypt_gc_entry_auto", {R_REG}, F_V2_V4},
 
     // Like set_chat_callback, but without a filter string. The meanings of
     // regsA are the same as for set_chat_callback.
-    {0xF8A5, "set_chat_callback_no_filter", "chat_detect", {{REG_SET_FIXED, 5}}, F_V2_V4},
+    {0xF8A5, "set_chat_callback_no_filter", "chat_detect", {{R_REG_SET_FIXED, 5}}, F_V2_V4},
 
     // Creates a symbol chat collision object. See the description of
     // TOSymbolchatColli in Map.cc for details on how this object behaves and
@@ -1990,22 +2005,22 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   that use this opcode should use the big-endian version of the struct.
     //   (Practically, this means the first 32-bit field and the following 4
     //   16-bit fields must be byteswapped.)
-    {0xF8A6, "set_symbol_chat_collision", "symbol_chat_create", {{REG_SET_FIXED, 10}}, F_V2_V4},
+    {0xF8A6, "set_symbol_chat_collision", "symbol_chat_create", {{R_REG_SET_FIXED, 10}}, F_V2_V4},
 
     // Sets the size that a player shrinks to when using the shrink opcode.
     // regA specified the client ID. The actual shrink size used is
     // regsB[0] + (regsB[1] / regsB[2]). If regsB[2] is 0, the fractional part
     // is considered to be zero and not used.
-    {0xF8A7, "set_shrink_size", nullptr, {REG, {REG_SET_FIXED, 3}}, F_V2_V4},
+    {0xF8A7, "set_shrink_size", nullptr, {R_REG, {R_REG_SET_FIXED, 3}}, F_V2_V4},
 
     // Sets the amount by which techniques level up upon respawn in battle.
     {0xF8A8, "ba_death_tech_level_up", "death_tech_lvl_up2", {I32}, F_V2_V4 | F_ARGS},
 
     // Returns 1 if Vol Opt has been defeated in the current game/quest.
-    {0xF8A9, "vol_opt_is_dead", "volopt_is_dead", {REG}, F_V2_V4},
+    {0xF8A9, "vol_opt_is_dead", "volopt_is_dead", {W_REG}, F_V2_V4},
 
     // Returns 1 if the local player has a challenge mode grave message.
-    {0xF8AA, "is_there_grave_message", nullptr, {REG}, F_V2_V4},
+    {0xF8AA, "is_there_grave_message", nullptr, {W_REG}, F_V2_V4},
 
     // Returns the local player's battle mode records. The values returned are
     // the first 7 fields of the PlayerRecordsBattle structure (see
@@ -2013,7 +2028,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[0-3] = number of times placed 1st, 2nd, 3rd, and 4th, respectively
     // regsA[4] = number of disconnects
     // regsA[5-6] = unknown (TODO)
-    {0xF8AB, "get_ba_record", nullptr, {{REG_SET_FIXED, 7}}, F_V2_V4},
+    {0xF8AB, "get_ba_record", nullptr, {{W_REG_SET_FIXED, 7}}, F_V2_V4},
 
     // Returns the current player's challenge mode rank. Reads from the state
     // corresponding to the current game mode (that is, reads from online Ep1
@@ -2023,41 +2038,41 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   1 = B rank
     //   2 = A rank
     //   3 = S rank
-    {0xF8AC, "get_cmode_prize_rank", nullptr, {REG}, F_V2_V4},
+    {0xF8AC, "get_cmode_prize_rank", nullptr, {W_REG}, F_V2_V4},
 
     // Returns the number of players (in regA). Unlike get_number_of_players,
     // this counts the number of objects that have entity IDs assigned in the
     // players' ID space, whereas get_number_of_players counds the number of
     // TObjPlayer objects. For all practical purposes, these should result in
     // the same number.
-    {0xF8AD, "get_number_of_players2", "get_number_of_player2", {REG}, F_V2_V4},
+    {0xF8AD, "get_number_of_players2", "get_number_of_player2", {W_REG}, F_V2_V4},
 
     // Returns 1 (in regA) if the current game has a nonempty name. The game
     // name is set by command 8A from the server.
-    {0xF8AE, "party_has_name", nullptr, {REG}, F_V2_V4},
+    {0xF8AE, "party_has_name", nullptr, {W_REG}, F_V2_V4},
 
     // Returns 1 (in regA) if there is a chat message available (that is, if
     // anyone has sent a chat message in the current game).
-    {0xF8AF, "someone_has_spoken", nullptr, {REG}, F_V2_V4},
+    {0xF8AF, "someone_has_spoken", nullptr, {W_REG}, F_V2_V4},
 
     // Reads a 1-byte, 2-byte, or 4-byte value from the address (regB/valueB)
     // and places it in regA.
-    {0xF8B0, "read1", nullptr, {REG, REG}, F_V2},
-    {0xF8B0, "read1", nullptr, {REG, I32}, F_V3_V4 | F_ARGS},
-    {0xF8B1, "read2", nullptr, {REG, REG}, F_V2},
-    {0xF8B1, "read2", nullptr, {REG, I32}, F_V3_V4 | F_ARGS},
-    {0xF8B2, "read4", nullptr, {REG, REG}, F_V2},
-    {0xF8B2, "read4", nullptr, {REG, I32}, F_V3_V4 | F_ARGS},
+    {0xF8B0, "read1", nullptr, {W_REG, R_REG}, F_V2},
+    {0xF8B0, "read1", nullptr, {W_REG, I32}, F_V3_V4 | F_ARGS},
+    {0xF8B1, "read2", nullptr, {W_REG, R_REG}, F_V2},
+    {0xF8B1, "read2", nullptr, {W_REG, I32}, F_V3_V4 | F_ARGS},
+    {0xF8B2, "read4", nullptr, {W_REG, R_REG}, F_V2},
+    {0xF8B2, "read4", nullptr, {W_REG, I32}, F_V3_V4 | F_ARGS},
 
     // Writes a 1-byte, 2-byte, or 4-byte value from regB/valueB to the address
     // (regA/valueA). On v2 and GC NTE, these opcodes have a bug which makes
     // them essentially useless: they ignore regB and instead write the value
     // in regA to the address in regA.
-    {0xF8B3, "write1", nullptr, {REG, REG}, F_V2},
+    {0xF8B3, "write1", nullptr, {R_REG, R_REG}, F_V2},
     {0xF8B3, "write1", nullptr, {I32, I32}, F_V3_V4 | F_ARGS},
-    {0xF8B4, "write2", nullptr, {REG, REG}, F_V2},
+    {0xF8B4, "write2", nullptr, {R_REG, R_REG}, F_V2},
     {0xF8B4, "write2", nullptr, {I32, I32}, F_V3_V4 | F_ARGS},
-    {0xF8B5, "write4", nullptr, {REG, REG}, F_V2},
+    {0xF8B5, "write4", nullptr, {R_REG, R_REG}, F_V2},
     {0xF8B5, "write4", nullptr, {I32, I32}, F_V3_V4 | F_ARGS},
 
     // Returns a bitmask of 5 different types of detectable hacking. This
@@ -2074,12 +2089,12 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //     are_rare_drops_allowed in ItemCreator.cc)
     //   0x10 = any bits in validation_flags in the character file are set (see
     //     PSOGCCharacterFile::Character in SaveFileFormats.hh)
-    {0xF8B6, "check_for_hacking", "is_mag_hacked", {REG}, F_V2_V4},
+    {0xF8B6, "check_for_hacking", "is_mag_hacked", {W_REG}, F_V2_V4},
 
     // Challenge mode cannot be completed unless this many seconds have passed
     // since the stage began. If not set or if offline, 5 minutes is used as
     // the threshold instead.
-    {0xF8B7, "chl_set_min_time_online", "unknownF8B7", {REG}, F_V2_V4},
+    {0xF8B7, "chl_set_min_time_online", "unknownF8B7", {R_REG}, F_V2_V4},
 
     // Disables the challenge mode retry menu
     {0xF8B8, "disable_retry_menu", "unknownF8B8", {}, F_V2_V4},
@@ -2093,18 +2108,19 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Behaves exactly the same as write_flag_buf_to_event_flags (F8A4). This
     // is the last opcode implemented before v3.
-    {0xF8BB, "write_flag_buf_to_event_flags2", "unknownF8BB", {REG}, F_V2_V4},
+    {0xF8BB, "write_flag_buf_to_event_flags2", "unknownF8BB", {R_REG}, F_V2_V4},
 
     // Returns (in regB) the Guild Card number of the player in the slot
     // specified by regA. If there is no player in that slot, returns FFFFFFFF.
     // This opcode is only implemented on certain later versions of PC v2, and
     // not on any v3 or later versions.
-    {0xF8BC, "get_player_guild_card_number", nullptr, {REG, REG}, F_PC_V2},
+    {0xF8BC, "get_player_guild_card_number", nullptr, {R_REG, W_REG}, F_PC_V2},
 
     // Sets the current episode. Must be used in the start label. valueA should
     // be 0 for Episode 1 (which is the default), 1 for Episode 2, or 2 for
-    // Episode 4 (BB only).
-    {0xF8BC, "set_episode", nullptr, {I32}, F_V3_V4 | F_SET_EPISODE},
+    // Episode 4 (BB only). This opcode also resets the floor configuration, so
+    // it will undo any effects of the map_designate family of opcodes.
+    {0xF8BC, "set_episode", nullptr, {I32}, F_V3_V4},
 
     // This opcode returns (in regsB) the full symbol chat data for the symbol
     // chat currently being said by the player specified in regA. The symbol
@@ -2114,7 +2130,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // create_symbol_chat_monitor is run first.
     // This opcode is only implemented on certain later versions of PC v2, and
     // not on any v3 or later versions.
-    {0xF8BD, "get_current_symbol_chat", nullptr, {REG, {REG_SET_FIXED, 15}}, F_PC_V2}, // TODO: Document args
+    {0xF8BD, "get_current_symbol_chat", nullptr, {R_REG, {W_REG_SET_FIXED, 15}}, F_PC_V2},
 
     // This opcode is enables the usage of get_current_symbol_chat.
     // This opcode is only implemented on certain later versions of PC v2, and
@@ -2139,8 +2155,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   0 = failed (server sent a D7 command)
     //   1 = pending
     //   2 = complete
-    {0xF8C1, "get_dl_status", nullptr, {REG}, F_V3},
-    {0xF8C1, "nop_F8C1", nullptr, {REG}, F_V4},
+    {0xF8C1, "get_dl_status", nullptr, {W_REG}, F_V3},
+    {0xF8C1, "nop_F8C1", nullptr, {R_REG}, F_V4},
 
     // Prepares to load a GBA ROM from a previous file_dl_req opcode. Does
     // nothing on Xbox and BB.
@@ -2158,20 +2174,20 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   4 = complete
     // This opcode always returns 0 on Xbox, and does nothing (doesn't even
     // affect regA) on BB.
-    {0xF8C3, "start_or_update_gba_joyboot", "get_gba_state?", {REG}, F_GC_V3 | F_GC_EP3TE | F_GC_EP3},
-    {0xF8C3, "return_0_F8C3", nullptr, {REG}, F_XB_V3},
-    {0xF8C3, "nop_F8C3", nullptr, {REG}, F_V4},
+    {0xF8C3, "start_or_update_gba_joyboot", "get_gba_state?", {W_REG}, F_GC_V3 | F_GC_EP3TE | F_GC_EP3},
+    {0xF8C3, "return_0_F8C3", nullptr, {W_REG}, F_XB_V3},
+    {0xF8C3, "nop_F8C3", nullptr, {R_REG}, F_V4},
 
     // Shows the challenge mode result window in split-screen mode. Does
     // nothing on BB.
     // regA = completion time in seconds, as returned by chl_get_timerecord
-    {0xF8C4, "congrats_msg_multi_cm", "unknownF8C4", {REG}, F_V3},
-    {0xF8C4, "nop_F8C4", nullptr, {REG}, F_V4},
+    {0xF8C4, "congrats_msg_multi_cm", "unknownF8C4", {R_REG}, F_V3},
+    {0xF8C4, "nop_F8C4", nullptr, {R_REG}, F_V4},
 
     // Checks if the stage is done in offline challenge mode. Returns 1 if the
     // stage is still in progress, or 0 if it's completed or failed.
-    {0xF8C5, "stage_in_progress_multi_cm", "stage_end_multi_cm", {REG}, F_V3},
-    {0xF8C5, "nop_F8C5", nullptr, {REG}, F_V4},
+    {0xF8C5, "stage_in_progress_multi_cm", "stage_end_multi_cm", {W_REG}, F_V3},
+    {0xF8C5, "nop_F8C5", nullptr, {R_REG}, F_V4},
 
     // Causes a fade to black, then exits the game. This is the same result as
     // receiving a 6x73 command.
@@ -2180,50 +2196,50 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Causes a player to perform an animation.
     // regA = client ID
     // regB = animation number (TODO: document these)
-    {0xF8C7, "use_animation", nullptr, {REG, REG}, F_V3_V4},
+    {0xF8C7, "use_animation", nullptr, {R_REG, R_REG}, F_V3_V4},
 
     // Stops an animation started with use_animation.
     // regA = client ID
-    {0xF8C8, "stop_animation", nullptr, {REG}, F_V3_V4},
+    {0xF8C8, "stop_animation", nullptr, {R_REG}, F_V3_V4},
 
     // Causes a player to run to a location, as 6x42 does. Sends 6x42.
     // regsA[0-2] = location (x, y, z as integers; y is ignored)
     // regsA[3] = client ID
-    {0xF8C9, "run_to_coord", nullptr, {{REG_SET_FIXED, 4}, REG}, F_V3_V4},
+    {0xF8C9, "run_to_coord", nullptr, {{R_REG_SET_FIXED, 4}, R_REG}, F_V3_V4},
 
     // Makes a player invincible, or removes their invincibility.
     // regA = client ID
     // regB = enable invicibility (1 = enable, 0 = disable)
-    {0xF8CA, "set_slot_invincible", nullptr, {REG, REG}, F_V3_V4},
+    {0xF8CA, "set_slot_invincible", nullptr, {R_REG, R_REG}, F_V3_V4},
 
     // Removes a player's invicibility. clear_slot_invincible rXX is equivalent
     // to set_slot_invincible rXX, 0.
     // regA = client ID
-    {0xF8CB, "clear_slot_invincible", "set_slot_targetable?", {REG}, F_V3_V4},
+    {0xF8CB, "clear_slot_invincible", "set_slot_targetable?", {R_REG}, F_V3_V4},
 
     // These opcodes inflict various status conditions on a player. In the case
     // of Shifta/Deband/Jellen/Zalure, the effective technicuqe level is 21.
     // regA = client ID
-    {0xF8CC, "set_slot_poison", nullptr, {REG}, F_V3_V4},
-    {0xF8CD, "set_slot_paralyze", nullptr, {REG}, F_V3_V4},
-    {0xF8CE, "set_slot_shock", nullptr, {REG}, F_V3_V4},
-    {0xF8CF, "set_slot_freeze", nullptr, {REG}, F_V3_V4},
-    {0xF8D0, "set_slot_slow", nullptr, {REG}, F_V3_V4},
-    {0xF8D1, "set_slot_confuse", nullptr, {REG}, F_V3_V4},
-    {0xF8D2, "set_slot_shifta", nullptr, {REG}, F_V3_V4},
-    {0xF8D3, "set_slot_deband", nullptr, {REG}, F_V3_V4},
-    {0xF8D4, "set_slot_jellen", nullptr, {REG}, F_V3_V4},
-    {0xF8D5, "set_slot_zalure", nullptr, {REG}, F_V3_V4},
+    {0xF8CC, "set_slot_poison", nullptr, {R_REG}, F_V3_V4},
+    {0xF8CD, "set_slot_paralyze", nullptr, {R_REG}, F_V3_V4},
+    {0xF8CE, "set_slot_shock", nullptr, {R_REG}, F_V3_V4},
+    {0xF8CF, "set_slot_freeze", nullptr, {R_REG}, F_V3_V4},
+    {0xF8D0, "set_slot_slow", nullptr, {R_REG}, F_V3_V4},
+    {0xF8D1, "set_slot_confuse", nullptr, {R_REG}, F_V3_V4},
+    {0xF8D2, "set_slot_shifta", nullptr, {R_REG}, F_V3_V4},
+    {0xF8D3, "set_slot_deband", nullptr, {R_REG}, F_V3_V4},
+    {0xF8D4, "set_slot_jellen", nullptr, {R_REG}, F_V3_V4},
+    {0xF8D5, "set_slot_zalure", nullptr, {R_REG}, F_V3_V4},
 
     // Same as leti_fixed_camera, but takes floating-point arguments.
     // regsA[0-2] = camera location (x, y, z as floats)
     // regsA[3-5] = camera focus location (x, y, z as floats)
-    {0xF8D6, "fleti_fixed_camera", nullptr, {{REG_SET_FIXED, 6}}, F_V3_V4 | F_ARGS},
+    {0xF8D6, "fleti_fixed_camera", nullptr, {{R_REG_SET_FIXED, 6}}, F_V3_V4 | F_ARGS},
 
     // Sets the camera to follow the player at a fixed angle.
     // valueA = client ID
     // regsB[0-2] = camera angle (x, y, z as floats)
-    {0xF8D7, "fleti_locked_camera", nullptr, {I32, {REG_SET_FIXED, 3}}, F_V3_V4 | F_ARGS},
+    {0xF8D7, "fleti_locked_camera", nullptr, {I32, {R_REG_SET_FIXED, 3}}, F_V3_V4 | F_ARGS},
 
     // This opcode appears to be exactly the same as default_camera_pos.
     // TODO: Is there any difference?
@@ -2243,24 +2259,24 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsE[0-2] = result point (x, y, z as floats)
     // regsE[3] = the result code (0 = failed, 1 = success)
     // labelF = control point entries (array of valueA VectorXYZTF structures)
-    {0xF8DB, "get_vector_from_path", "unknownF8DB", {I32, FLOAT32, FLOAT32, I32, {REG_SET_FIXED, 4}, SCRIPT16}, F_V3_V4 | F_ARGS},
+    {0xF8DB, "get_vector_from_path", "unknownF8DB", {I32, FLOAT32, FLOAT32, I32, {W_REG_SET_FIXED, 4}, SCRIPT16}, F_V3_V4 | F_ARGS},
 
     // Same as npc_text, but only applies to a specific player slot.
     // valueA = client ID
     // valueB = situation number (same as for npc_text)
     // strC = string for NPC to say (up to 52 characters)
-    {0xF8DC, "npc_text_id", "NPC_action_string", {REG, REG, CSTRING_LABEL16}, F_V3_V4},
+    {0xF8DC, "npc_text_id", "NPC_action_string", {R_REG, R_REG, CSTRING_LABEL16}, F_V3_V4},
 
     // Returns a bitmask of the buttons which are currently pressed or held on
     // this frame.
     // regA = controller port number
     // regB = returned button flags
-    {0xF8DD, "get_held_buttons", "get_pad_cond", {REG, REG}, F_V3_V4},
+    {0xF8DD, "get_held_buttons", "get_pad_cond", {R_REG, W_REG}, F_V3_V4},
 
     // Returns a bitmask of the buttons which were newly pressed on this frame.
     // Buttons which were pressed on prevous frames and still held down are not
     // returned. Same arguments as get_held_buttons.
-    {0xF8DE, "get_pressed_buttons", "get_button_cond", {REG, REG}, F_V3_V4},
+    {0xF8DE, "get_pressed_buttons", "get_button_cond", {R_REG, W_REG}, F_V3_V4},
 
     // Freezes enemies and makes them untargetable, or unfreezes them and makes
     // them targetable again. Internally, this toggles a flag that disables
@@ -2281,33 +2297,33 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Sets a player's HP or TP to their maximum HP or TP.
     // regA = client ID
-    {0xF8E3, "restore_hp", nullptr, {REG}, F_V3_V4},
-    {0xF8E4, "restore_tp", nullptr, {REG}, F_V3_V4},
+    {0xF8E3, "restore_hp", nullptr, {R_REG}, F_V3_V4},
+    {0xF8E4, "restore_tp", nullptr, {R_REG}, F_V3_V4},
 
     // Closes a chat bubble for a player, if one is open.
     // regA = client ID
-    {0xF8E5, "close_chat_bubble", nullptr, {REG}, F_V3_V4},
+    {0xF8E5, "close_chat_bubble", nullptr, {R_REG}, F_V3_V4},
 
     // Moves a dynamic collision object.
     // regA = object token (returned by set_obj_param, etc.)
     // regsB[0-2] = location (x, y, z as integers)
-    {0xF8E6, "move_coords_object", nullptr, {REG, {REG_SET_FIXED, 3}}, F_V3_V4},
+    {0xF8E6, "move_coords_object", nullptr, {R_REG, {R_REG_SET_FIXED, 3}}, F_V3_V4},
 
     // These are the same as their counterparts without _ex, but these return
     // an object token in regB which can be used with del_obj_param,
     // move_coords_object, etc. set_obj_param_ex is the same as set_obj_param,
     // since set_obj_param already returns an object token.
-    {0xF8E7, "at_coords_call_ex", nullptr, {{REG_SET_FIXED, 5}, REG}, F_V3_V4},
-    {0xF8E8, "at_coords_talk_ex", nullptr, {{REG_SET_FIXED, 5}, REG}, F_V3_V4},
-    {0xF8E9, "npc_coords_call_ex", "walk_to_coord_call_ex", {{REG_SET_FIXED, 5}, REG}, F_V3_V4},
-    {0xF8EA, "party_coords_call_ex", "col_npcinr_ex", {{REG_SET_FIXED, 6}, REG}, F_V3_V4},
-    {0xF8EB, "set_obj_param_ex", "unknownF8EB", {{REG_SET_FIXED, 6}, REG}, F_V3_V4},
-    {0xF8EC, "npc_check_straggle_ex", "col_plinaw_ex", {{REG_SET_FIXED, 9}, REG}, F_V3_V4},
+    {0xF8E7, "at_coords_call_ex", nullptr, {{R_REG_SET_FIXED, 5}, W_REG}, F_V3_V4},
+    {0xF8E8, "at_coords_talk_ex", nullptr, {{R_REG_SET_FIXED, 5}, W_REG}, F_V3_V4},
+    {0xF8E9, "npc_coords_call_ex", "walk_to_coord_call_ex", {{R_REG_SET_FIXED, 5}, W_REG}, F_V3_V4},
+    {0xF8EA, "party_coords_call_ex", "col_npcinr_ex", {{R_REG_SET_FIXED, 6}, W_REG}, F_V3_V4},
+    {0xF8EB, "set_obj_param_ex", "unknownF8EB", {{R_REG_SET_FIXED, 6}, W_REG}, F_V3_V4},
+    {0xF8EC, "npc_check_straggle_ex", "col_plinaw_ex", {{R_REG_SET_FIXED, 9}, W_REG}, F_V3_V4},
 
     // Returns 1 if the player is doing certain animations. (TODO: Which ones?)
     // regA = client ID
     // regB = returned value
-    {0xF8ED, "animation_check", nullptr, {REG, REG}, F_V3_V4},
+    {0xF8ED, "animation_check", nullptr, {R_REG, W_REG}, F_V3_V4},
 
     // Specifies which image to use for the image board in Pioneer 2 (if
     // placed). Only one image may be loaded at a time. Images must be square
@@ -2339,55 +2355,56 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsE[0-2] = result point (x, y, z as floats)
     // regsE[3] = the result code (0 = failed, 1 = success)
     // labelF = control point entries (array of valueA VectorXYZTF structures)
-    {0xF8F2, "compute_bezier_curve_point", "load_unk_data", {I32, FLOAT32, FLOAT32, I32, {REG_SET_FIXED, 4}, {LABEL16, Arg::DataType::BEZIER_CONTROL_POINT_DATA}}, F_V3_V4 | F_ARGS},
+    {0xF8F2, "compute_bezier_curve_point", "load_unk_data", {I32, FLOAT32, FLOAT32, I32, {W_REG_SET_FIXED, 4}, {LABEL16, Arg::DataType::BEZIER_CONTROL_POINT_DATA}}, F_V3_V4 | F_ARGS},
 
     // Creates a timed particle effect. Like the particle opcode, but the
     // location (and duration, for some reason) are floats.
     // regsA[0-2] = location (x, y, z as floats)
     // valueB = effect type
     // valueC = duration as float (in frames; 30 frames/sec)
-    {0xF8F3, "particle2", nullptr, {{REG_SET_FIXED, 3}, I32, FLOAT32}, F_V3_V4 | F_ARGS},
+    {0xF8F3, "particle2", nullptr, {{R_REG_SET_FIXED, 3}, I32, FLOAT32}, F_V3_V4 | F_ARGS},
 
     // Converts the integer in regB into a float in regA.
-    {0xF901, "dec2float", nullptr, {REG, REG}, F_V3_V4},
+    {0xF901, "dec2float", nullptr, {W_REG, R_REG}, F_V3_V4},
 
     // Converts the float in regB into an integer in regA.
-    {0xF902, "float2dec", nullptr, {REG, REG}, F_V3_V4},
+    {0xF902, "float2dec", nullptr, {W_REG, R_REG}, F_V3_V4},
 
     // These are the same as let and leti. Nominally regB/valueB should be a
     // float, but the implementation treats it as an int (which is still
-    // correct).
-    {0xF903, "flet", "floatlet", {REG, REG}, F_V3_V4},
-    {0xF904, "fleti", "floati", {REG, FLOAT32}, F_V3_V4},
+    // correct, since the float is already encoded before the handler function
+    // is called).
+    {0xF903, "flet", "floatlet", {W_REG, R_REG}, F_V3_V4},
+    {0xF904, "fleti", "floati", {W_REG, FLOAT32}, F_V3_V4},
 
     // regA += regB (or valueB), as floats
-    {0xF908, "fadd", nullptr, {REG, REG}, F_V3_V4},
-    {0xF909, "faddi", nullptr, {REG, FLOAT32}, F_V3_V4},
+    {0xF908, "fadd", nullptr, {W_REG, R_REG}, F_V3_V4},
+    {0xF909, "faddi", nullptr, {W_REG, FLOAT32}, F_V3_V4},
 
     // regA -= regB (or valueB), as floats
-    {0xF90A, "fsub", nullptr, {REG, REG}, F_V3_V4},
-    {0xF90B, "fsubi", nullptr, {REG, FLOAT32}, F_V3_V4},
+    {0xF90A, "fsub", nullptr, {W_REG, R_REG}, F_V3_V4},
+    {0xF90B, "fsubi", nullptr, {W_REG, FLOAT32}, F_V3_V4},
 
     // regA *= regB (or valueB), as floats
-    {0xF90C, "fmul", nullptr, {REG, REG}, F_V3_V4},
-    {0xF90D, "fmuli", nullptr, {REG, FLOAT32}, F_V3_V4},
+    {0xF90C, "fmul", nullptr, {W_REG, R_REG}, F_V3_V4},
+    {0xF90D, "fmuli", nullptr, {W_REG, FLOAT32}, F_V3_V4},
 
     // regA /= regB (or valueB), as floats
-    {0xF90E, "fdiv", nullptr, {REG, REG}, F_V3_V4},
-    {0xF90F, "fdivi", nullptr, {REG, FLOAT32}, F_V3_V4},
+    {0xF90E, "fdiv", nullptr, {W_REG, R_REG}, F_V3_V4},
+    {0xF90F, "fdivi", nullptr, {W_REG, FLOAT32}, F_V3_V4},
 
     // Returns the number of times a player has ever died - not just in the
     // current quest/game/session!
     // regA = client ID
     // regB = returned death count
-    {0xF910, "get_total_deaths", "get_unknown_count?", {CLIENT_ID, REG}, F_V3_V4 | F_ARGS},
+    {0xF910, "get_total_deaths", "get_unknown_count?", {CLIENT_ID, W_REG}, F_V3_V4 | F_ARGS},
 
     // Returns the stack size of the specified item in the player's inventory.
     // regsA[0] = client ID
     // regsA[1-3] = item.data1[0-2]
     // regB = returned amount of item present in player's inventory
     // If the item is not present, returns 0.
-    {0xF911, "get_stackable_item_count", "get_item_count", {{REG_SET_FIXED, 4}, REG}, F_V3_V4},
+    {0xF911, "get_stackable_item_count", "get_item_count", {{R_REG_SET_FIXED, 4}, W_REG}, F_V3_V4},
 
     // Freezes a character and hides their equips, or does the opposite.
     // Internally, this toggles the disable-update flag on TL_03.
@@ -2419,7 +2436,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Checks if activate_palettex has been run for a player.
     // regA = client ID
     // regB = returned flag (0 = not overridden, 1 = overridden)
-    {0xF919, "get_palettex_activated", "get_paletteX_activated", {CLIENT_ID, REG}, F_V3_V4 | F_ARGS},
+    {0xF919, "get_palettex_activated", "get_paletteX_activated", {CLIENT_ID, W_REG}, F_V3_V4 | F_ARGS},
 
     // Checks if activate_palettex has been run for a player.
     // regA = client ID
@@ -2429,7 +2446,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // uses this opcode preceded by only two arg_push opcodes, implying that it
     // was intended to take two arguments, but the client really does only use
     // quest_arg_stack[0] and quest_arg_stack[2].
-    {0xF91A, "get_palettex_enabled", "get_unknown_paletteX_status?", {CLIENT_ID, I32, REG}, F_V3_V4 | F_ARGS},
+    {0xF91A, "get_palettex_enabled", "get_unknown_paletteX_status?", {CLIENT_ID, I32, W_REG}, F_V3_V4 | F_ARGS},
 
     // Disables/enables movement for a player. Unlike disable_movement1, this
     // does not send 6x2C.
@@ -2438,26 +2455,26 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF91C, "enable_movement2", nullptr, {CLIENT_ID}, F_V3_V4 | F_ARGS},
 
     // Returns the local player's play time in seconds.
-    {0xF91D, "get_time_played", nullptr, {REG}, F_V3_V4},
+    {0xF91D, "get_time_played", nullptr, {W_REG}, F_V3_V4},
 
     // Returns the number of Guild Cards saved to the Guild Card file.
-    {0xF91E, "get_guildcard_total", nullptr, {REG}, F_V3_V4},
+    {0xF91E, "get_guildcard_total", nullptr, {W_REG}, F_V3_V4},
 
     // Returns the amount of Meseta the player has in both their inventory and
     // bank.
     // regA = returned Meseta amount in inventory
     // regB = returned Meseta amount in bank
-    {0xF91F, "get_slot_meseta", nullptr, {{REG_SET_FIXED, 2}}, F_V3_V4},
+    {0xF91F, "get_slot_meseta", nullptr, {{W_REG_SET_FIXED, 2}}, F_V3_V4},
 
     // Returns a player's level.
     // valueA = client ID
     // regB = returned level
-    {0xF920, "get_player_level", nullptr, {CLIENT_ID, REG}, F_V3_V4 | F_ARGS},
+    {0xF920, "get_player_level", nullptr, {CLIENT_ID, W_REG}, F_V3_V4 | F_ARGS},
 
     // Returns a player's section ID.
     // valueA = client ID
     // regB = returned section ID (see name_to_section_id in StaticGameData.cc)
-    {0xF921, "get_section_id", "get_Section_ID", {CLIENT_ID, REG}, F_V3_V4 | F_ARGS},
+    {0xF921, "get_section_id", "get_Section_ID", {CLIENT_ID, W_REG}, F_V3_V4 | F_ARGS},
 
     // Returns a player's maximum and current HP and TP.
     // valueA = client ID
@@ -2467,7 +2484,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsB[3] = returned current TP
     // If there's no player in the given slot, the returned values are all
     // FFFFFFFF.
-    {0xF922, "get_player_hp_tp", "get_player_hp", {CLIENT_ID, {REG_SET_FIXED, 4}}, F_V3_V4 | F_ARGS},
+    {0xF922, "get_player_hp_tp", "get_player_hp", {CLIENT_ID, {W_REG_SET_FIXED, 4}}, F_V3_V4 | F_ARGS},
 
     // Returns the floor and room ID of the given player.
     // valueA = client ID
@@ -2475,19 +2492,19 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsB[1] = returned room number
     // If there's no player in the given slot, the returned values are both
     // FFFFFFFF.
-    {0xF923, "get_player_room", "get_floor_number", {CLIENT_ID, {REG_SET_FIXED, 2}}, F_V3_V4 | F_ARGS},
+    {0xF923, "get_player_room", "get_floor_number", {CLIENT_ID, {W_REG_SET_FIXED, 2}}, F_V3_V4 | F_ARGS},
 
     // Checks if each player (individually) is near the given location.
     // regsA[0-1] = location (x, z as integers; y not included)
     // regsA[2] = radius as integer
     // regsB[0-3] = returned results for each player slot (0 = player not
     //   present or outside radius; 1 = player within radius)
-    {0xF924, "get_coord_player_detect", nullptr, {{REG_SET_FIXED, 3}, {REG_SET_FIXED, 4}}, F_V3_V4},
+    {0xF924, "get_coord_player_detect", nullptr, {{R_REG_SET_FIXED, 3}, {W_REG_SET_FIXED, 4}}, F_V3_V4},
 
     // Reads the value of a quest counter.
     // valueA = counter index (0-15)
     // regB = returned value
-    {0xF925, "read_counter", "read_global_flag", {I32, REG}, F_V3_V4 | F_ARGS},
+    {0xF925, "read_counter", "read_global_flag", {I32, W_REG}, F_V3_V4 | F_ARGS},
 
     // Writes a value to a quest counter.
     // valueA = counter index (0-15)
@@ -2499,11 +2516,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[0-2] = item.data1[0-2]
     // regsA[3] = item.data1[4]
     // regB = 1 if item was found, 0 if not
-    {0xF927, "find_bank_item", "item_check_bank", {{REG_SET_FIXED, 4}, REG}, F_V3_V4},
+    {0xF927, "find_bank_item", "item_check_bank", {{R_REG_SET_FIXED, 4}, W_REG}, F_V3_V4},
 
     // Returns whether each player is present.
     // regsA[0-3] = returned flags (for each player: 0 if absent, 1 if present)
-    {0xF928, "get_players_present", "floor_player_detect", {{REG_SET_FIXED, 4}}, F_V3_V4},
+    {0xF928, "get_players_present", "floor_player_detect", {{W_REG_SET_FIXED, 4}}, F_V3_V4},
 
     // Prepares to load a GBA ROM from a local GSL file. Does nothing on Xbox
     // and BB.
@@ -2517,11 +2534,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // window opened by open_pack_select. Generally used for subsequent item
     // choices when trading multiple items.
     // regA = item ID
-    {0xF92B, "prevent_item_select", "item_select", {REG}, F_V3_V4},
+    {0xF92B, "prevent_item_select", "item_select", {R_REG}, F_V3_V4},
 
     // Returns the item chosen by the player in an open_pack_select window, or
-    // FFFFFFFF if they canceled it.
-    {0xF92C, "get_chosen_item_id", "get_item_id", {REG}, F_V3_V4},
+    // 0xFFFFFFFF if they canceled it.
+    {0xF92C, "get_chosen_item_id", "get_item_id", {W_REG}, F_V3_V4},
 
     // Adds a color overlay on the player's screen. The overlay fades in
     // linearly over the given number of frames. The overlay is not deleted
@@ -2566,15 +2583,16 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // strB = message
     {0xF931, "chat_bubble", nullptr, {I32, CSTRING}, F_V3_V4 | F_ARGS},
 
-    // Sets the episode to be loaded the next time an area is loaded. ValueA is
-    // the same as for set_episode.
-    {0xF932, "set_episode2", nullptr, {REG}, F_V3_V4},
+    // Sets the episode to be loaded the next time an area is loaded. regA is
+    // the same as for set_episode. Unlike set_episode, this opcode does not
+    // reset the floor configuration.
+    {0xF932, "set_episode2", nullptr, {R_REG}, F_V3_V4},
 
     // Sets the rank prizes in offline challenge mode.
     // regsA[0] = rank (unusual value order: 0 = S, 1 = B, 2 = A)
     // regsA[1-6] = item.data1[0-5]
-    {0xF933, "item_create_multi_cm", "unknownF933", {{REG_SET_FIXED, 7}}, F_V3},
-    {0xF933, "nop_F933", nullptr, {{REG_SET_FIXED, 7}}, F_V4},
+    {0xF933, "item_create_multi_cm", "unknownF933", {{R_REG_SET_FIXED, 7}}, F_V3},
+    {0xF933, "nop_F933", nullptr, {{R_REG_SET_FIXED, 7}}, F_V4},
 
     // Shows a scrolling text window.
     // valueA = X position on screen
@@ -2585,7 +2603,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // valueF = scrolling speed
     // regG = set to 1 when message has entirely scrolled past
     // strH = message
-    {0xF934, "scroll_text", nullptr, {I32, I32, I32, I32, I32, FLOAT32, REG, CSTRING}, F_V3_V4 | F_ARGS},
+    {0xF934, "scroll_text", nullptr, {I32, I32, I32, I32, I32, FLOAT32, W_REG, CSTRING}, F_V3_V4 | F_ARGS},
 
     // Creates, destroys, or updates the GBA loading progress bar (same as the
     // quest download progress bar). These opcodes do nothing on Xbox and BB.
@@ -2609,7 +2627,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Returns the item data for an item chosen with open_pack_select.
     // valueA = item ID
     // regsB[0-11] = returned item.data1[0-11]
-    {0xF93A, "get_item_info", nullptr, {ITEM_ID, {REG_SET_FIXED, 12}}, F_V3_V4 | F_ARGS},
+    // If the item doesn't exist, regsB[0] is set to 0xFFFFFFFF and the rest of
+    // regsB are unaffected.
+    {0xF93A, "get_item_info", nullptr, {ITEM_ID, {W_REG_SET_FIXED, 12}}, F_V3_V4 | F_ARGS},
 
     // Wraps an item in the player's inventory. The specified item is deleted
     // and a new one is created with the wrapped flag set. The new item has a
@@ -2630,7 +2650,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Returns the local player's language setting. For values, see
     // name_for_language_code in StaticGameData.cc.
-    {0xF93D, "get_lang_setting", "get_lang_setting?", {REG}, F_V3_V4 | F_ARGS},
+    {0xF93D, "get_lang_setting", "get_lang_setting?", {W_REG}, F_V3_V4 | F_ARGS},
 
     // Sets some values to be sent to the server with send_statistic.
     // valueA = stat_id (used in send_statistic); this is set to the quest
@@ -2651,12 +2671,12 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regA = result (0 = word not said, 1 = word said)
     // valueB = client ID
     // strC = string to match (same semantics as for set_chat_callback)
-    {0xF940, "check_for_keyword", "keyword", {REG, CLIENT_ID, CSTRING}, F_V3_V4 | F_ARGS},
+    {0xF940, "check_for_keyword", "keyword", {W_REG, CLIENT_ID, CSTRING}, F_V3_V4 | F_ARGS},
 
     // Returns a player's Guild Card number.
     // valueA = client ID
     // regB = returned Guild Card number
-    {0xF941, "get_guildcard_num", nullptr, {CLIENT_ID, REG}, F_V3_V4 | F_ARGS},
+    {0xF941, "get_guildcard_num", nullptr, {CLIENT_ID, W_REG}, F_V3_V4 | F_ARGS},
 
     // Returns the last symbol chat that a player said (at least, since the
     // capture buffer was created). Use create_symbol_chat_capture_buffer
@@ -2666,7 +2686,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // (see SymbolChatT in PlayerSubordinates.hh for details).
     // valueA = client ID
     // regsB[0-14] = returned symbol chat data
-    {0xF942, "get_recent_symbol_chat", "symchat_unknown", {I32, {REG_SET_FIXED, 15}}, F_V3_V4 | F_ARGS},
+    {0xF942, "get_recent_symbol_chat", "symchat_unknown", {I32, {W_REG_SET_FIXED, 15}}, F_V3_V4 | F_ARGS},
 
     // Creates the capture buffer required by get_recent_symbol_chat.
     {0xF943, "create_symbol_chat_capture_buffer", "unknownF943", {}, F_V3_V4},
@@ -2674,7 +2694,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Checks whether an item is stackable.
     // valueA = item ID
     // regB = result (0 = not stackable, 1 = stackable, FFFFFFFF = not found)
-    {0xF944, "get_item_stackability", "get_wrap_status", {ITEM_ID, REG}, F_V3_V4 | F_ARGS},
+    {0xF944, "get_item_stackability", "get_wrap_status", {ITEM_ID, W_REG}, F_V3_V4 | F_ARGS},
 
     // Sets the floor where the players will start. This generally should be
     // used in the start label (where map_designate, etc. are used). This is
@@ -2686,19 +2706,19 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // measured as numbers in the range [0, 65536].
     // regA = result value
     // valueB = input angle
-    {0xF946, "sin", nullptr, {REG, I32}, F_V3_V4 | F_ARGS},
-    {0xF947, "cos", nullptr, {REG, I32}, F_V3_V4 | F_ARGS},
-    {0xF948, "tan", nullptr, {REG, I32}, F_V3_V4 | F_ARGS},
+    {0xF946, "sin", nullptr, {W_REG, I32}, F_V3_V4 | F_ARGS},
+    {0xF947, "cos", nullptr, {W_REG, I32}, F_V3_V4 | F_ARGS},
+    {0xF948, "tan", nullptr, {W_REG, I32}, F_V3_V4 | F_ARGS},
 
     // Computes the arctangent of the input ratio. Equivalent C:
     //   regA = (int)((atan2(valueB, valueC) * 65536.0) / (2 * M_PI))
     // regA = result (integer angle, 0-65535)
     // valueB = numerator as float
     // valueC = denominator as float
-    {0xF949, "atan2_int", "atan", {REG, FLOAT32, FLOAT32}, F_V3_V4 | F_ARGS},
+    {0xF949, "atan2_int", "atan", {W_REG, FLOAT32, FLOAT32}, F_V3_V4 | F_ARGS},
 
     // Sets regA to 1 if Olga Flow has been defeated, or 0 otherwise.
-    {0xF94A, "olga_flow_is_dead", "olga_is_dead", {REG}, F_V3_V4},
+    {0xF94A, "olga_flow_is_dead", "olga_is_dead", {W_REG}, F_V3_V4},
 
     // Creates a timed particle effect. Similar to the particle opcode, but the
     // created particles have no draw distance, so they are visible from very
@@ -2706,7 +2726,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[0-2] = location (x, y, z as integers)
     // regsA[3] = effect type
     // regsA[4] = duration (in frames; 30 frames/sec)
-    {0xF94B, "particle_effect_nc", "particle3", {{REG_SET_FIXED, 5}}, F_V3_V4},
+    {0xF94B, "particle_effect_nc", "particle3", {{R_REG_SET_FIXED, 5}}, F_V3_V4},
 
     // Creates a particle effect on a given entity. Similar to the particle_id
     // opcode, but the created particles have no draw distance, so they are
@@ -2715,25 +2735,25 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsA[1] = duration in frames
     // regsA[2] = entity (client ID, 0x1000 + enemy ID, or 0x4000 + object ID)
     // regsA[3] = y offset (as integer)
-    {0xF94C, "player_effect_nc", "particle3f_id", {{REG_SET_FIXED, 4}}, F_V3_V4},
+    {0xF94C, "player_effect_nc", "particle3f_id", {{R_REG_SET_FIXED, 4}}, F_V3_V4},
 
     // Returns 1 in regA if a file named PSO3_CHARACTER is present on either
     // memory card. This opcode is only available on PSO Plus on GC; that is,
     // it only exists on JP v1.4, JP v1.5, and US v1.2.
-    {0xF94D, "has_ep3_save_file", nullptr, {REG}, F_GC_V3 | F_ARGS},
+    {0xF94D, "has_ep3_save_file", nullptr, {W_REG}, F_GC_V3 | F_ARGS},
 
     // Gives the player one copy of a card. regA is the card ID.
-    {0xF94D, "give_card", "is_there_cardbattle?", {REG}, F_GC_EP3TE},
+    {0xF94D, "give_card", "is_there_cardbattle?", {R_REG}, F_GC_EP3TE},
 
     // Gives the player one copy of a card, or takes one copy away.
     // regsA[0] = card_id
     // regsA[1] = action (give card if >= 0, take card if < 0)
-    {0xF94D, "give_or_take_card", "is_there_cardbattle?", {{REG_SET_FIXED, 2}}, F_GC_EP3},
+    {0xF94D, "give_or_take_card", "is_there_cardbattle?", {{R_REG_SET_FIXED, 2}}, F_GC_EP3},
 
     // TODO(DX): Related to voice chat, but functionality is unknown. valueA is
     // a client ID; a value is read from that player's TVoiceChatClient object
     // and (!!value) is placed in regB. This value is set by the 6xB3 command.
-    {0xF94D, "unknown_F94D", nullptr, {I32, REG}, F_XB_V3 | F_ARGS},
+    {0xF94D, "unknown_F94D", nullptr, {I32, W_REG}, F_XB_V3 | F_ARGS},
 
     // These opcodes all do nothing on BB. F94D is presumably the voice chat
     // opcode from Xbox, which was removed, but it's not clear what the other
@@ -2766,7 +2786,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF951, "bb_map_designate", "BB_Map_Designate", {I8, I8, I8, I8, I8}, F_V4},
 
     // Returns the number of items in the player's inventory.
-    {0xF952, "bb_get_number_in_pack", "BB_get_number_in_pack", {REG}, F_V4},
+    {0xF952, "bb_get_number_in_pack", "BB_get_number_in_pack", {W_REG}, F_V4},
 
     // Requests an item exchange in the player's inventory. Sends 6xD5.
     // valueA/valueB/valueC = item.data1[0-2] to search for
@@ -2779,7 +2799,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // valueA = item ID
     // regB = returned status (0 = can't be wrapped, 1 = can be wrapped,
     //   2 = item not found)
-    {0xF954, "bb_check_wrap", "BB_check_wrap", {I32, REG}, F_V4 | F_ARGS},
+    {0xF954, "bb_check_wrap", "BB_check_wrap", {I32, W_REG}, F_V4 | F_ARGS},
 
     // Requests an item exchange for Photon Drops. Sends 6xD7.
     // valueA/valueB/valueC = item.data1[0-2] for requested item
@@ -2818,7 +2838,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Returns 1 if the Episode 4 boss death cutscene is playing, or 0 if not
     // (even if the boss has already been defeated).
-    {0xF95A, "bb_is_ep4_boss_dying", nullptr, {REG}, F_V4},
+    {0xF95A, "bb_is_ep4_boss_dying", nullptr, {W_REG}, F_V4},
 
     // Requests an item exchange. Sends 6xD9.
     // valueA = find_item.data1[0-2] (low 3 bytes; high byte unused)
@@ -2869,7 +2889,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   0 = 6xE3 hasn't been received
     //   1 = the received item is valid
     //   2 = the received item is invalid, or the item ID was already in use
-    {0xF961, "bb_get_6xE3_status", "unknownF961", {REG}, F_V4},
+    {0xF961, "bb_get_6xE3_status", "unknownF961", {W_REG}, F_V4},
 };
 
 static const unordered_map<uint16_t, const QuestScriptOpcodeDefinition*>&
@@ -3177,7 +3197,7 @@ std::string disassemble_quest_script(
                 case Type::LABEL16:
                 case Type::LABEL32: {
                   uint32_t label_id = (arg.type == Type::LABEL32) ? cmd_r.get_u32l() : cmd_r.get_u16l();
-                  if (def->flags & F_PASS) {
+                  if (def->flags & F_PUSH_ARG) {
                     arg_stack_values.emplace_back(ArgStackValue::Type::LABEL, label_id);
                   }
                   if (label_id >= function_table.size()) {
@@ -3198,8 +3218,8 @@ std::string disassemble_quest_script(
                   break;
                 }
                 case Type::LABEL16_SET: {
-                  if (def->flags & F_PASS) {
-                    throw logic_error("LABEL16_SET cannot be pushed to arg stack");
+                  if (def->flags & F_PUSH_ARG) {
+                    throw logic_error("LABEL16_SET cannot be pushed to arg list");
                   }
                   uint8_t num_functions = cmd_r.get_u8();
                   for (size_t z = 0; z < num_functions; z++) {
@@ -3228,17 +3248,18 @@ std::string disassemble_quest_script(
                   }
                   break;
                 }
-                case Type::REG: {
+                case Type::R_REG:
+                case Type::W_REG: {
                   uint8_t reg = cmd_r.get_u8();
-                  if (def->flags & F_PASS) {
+                  if (def->flags & F_PUSH_ARG) {
                     arg_stack_values.emplace_back((def->opcode == 0x004C) ? ArgStackValue::Type::REG_PTR : ArgStackValue::Type::REG, reg);
                   }
                   dasm_arg = std::format("r{}", reg);
                   break;
                 }
-                case Type::REG_SET: {
-                  if (def->flags & F_PASS) {
-                    throw logic_error("REG_SET cannot be pushed to arg stack");
+                case Type::R_REG_SET: {
+                  if (def->flags & F_PUSH_ARG) {
+                    throw logic_error("REG_SET cannot be pushed to arg list");
                   }
                   uint8_t num_regs = cmd_r.get_u8();
                   for (size_t z = 0; z < num_regs; z++) {
@@ -3251,17 +3272,19 @@ std::string disassemble_quest_script(
                   }
                   break;
                 }
-                case Type::REG_SET_FIXED: {
-                  if (def->flags & F_PASS) {
-                    throw logic_error("REG_SET_FIXED cannot be pushed to arg stack");
+                case Type::R_REG_SET_FIXED:
+                case Type::W_REG_SET_FIXED: {
+                  if (def->flags & F_PUSH_ARG) {
+                    throw logic_error("REG_SET_FIXED cannot be pushed to arg list");
                   }
                   uint8_t first_reg = cmd_r.get_u8();
                   dasm_arg = std::format("r{}-r{}", first_reg, static_cast<uint8_t>(first_reg + arg.count - 1));
                   break;
                 }
-                case Type::REG32_SET_FIXED: {
-                  if (def->flags & F_PASS) {
-                    throw logic_error("REG32_SET_FIXED cannot be pushed to arg stack");
+                case Type::R_REG32_SET_FIXED:
+                case Type::W_REG32_SET_FIXED: {
+                  if (def->flags & F_PUSH_ARG) {
+                    throw logic_error("REG32_SET_FIXED cannot be pushed to arg list");
                   }
                   uint32_t first_reg = cmd_r.get_u32l();
                   dasm_arg = std::format("r{}-r{}", first_reg, static_cast<uint32_t>(first_reg + arg.count - 1));
@@ -3269,7 +3292,7 @@ std::string disassemble_quest_script(
                 }
                 case Type::I8: {
                   uint8_t v = cmd_r.get_u8();
-                  if (def->flags & F_PASS) {
+                  if (def->flags & F_PUSH_ARG) {
                     arg_stack_values.emplace_back(ArgStackValue::Type::INT, v);
                   }
                   dasm_arg = std::format("0x{:02X}", v);
@@ -3277,7 +3300,7 @@ std::string disassemble_quest_script(
                 }
                 case Type::I16: {
                   uint16_t v = cmd_r.get_u16l();
-                  if (def->flags & F_PASS) {
+                  if (def->flags & F_PUSH_ARG) {
                     arg_stack_values.emplace_back(ArgStackValue::Type::INT, v);
                   }
                   dasm_arg = std::format("0x{:04X}", v);
@@ -3285,7 +3308,7 @@ std::string disassemble_quest_script(
                 }
                 case Type::I32: {
                   uint32_t v = cmd_r.get_u32l();
-                  if (def->flags & F_PASS) {
+                  if (def->flags & F_PUSH_ARG) {
                     arg_stack_values.emplace_back(ArgStackValue::Type::INT, v);
                   }
                   dasm_arg = std::format("0x{:08X}", v);
@@ -3293,7 +3316,7 @@ std::string disassemble_quest_script(
                 }
                 case Type::FLOAT32: {
                   float v = cmd_r.get_f32l();
-                  if (def->flags & F_PASS) {
+                  if (def->flags & F_PUSH_ARG) {
                     arg_stack_values.emplace_back(ArgStackValue::Type::INT, as_type<uint32_t>(v));
                   }
                   dasm_arg = std::format("{:g}", v);
@@ -3305,13 +3328,13 @@ std::string disassemble_quest_script(
                     for (uint16_t ch = cmd_r.get_u16l(); ch; ch = cmd_r.get_u16l()) {
                       w.put_u16l(ch);
                     }
-                    if (def->flags & F_PASS) {
+                    if (def->flags & F_PUSH_ARG) {
                       arg_stack_values.emplace_back(tt_utf16_to_utf8(w.str()));
                     }
                     dasm_arg = escape_string(w.str(), TextEncoding::UTF16);
                   } else {
                     string s = cmd_r.get_cstr();
-                    if (def->flags & F_PASS) {
+                    if (def->flags & F_PUSH_ARG) {
                       arg_stack_values.emplace_back(language ? tt_8859_to_utf8(s) : tt_sega_sjis_to_utf8(s));
                     }
                     dasm_arg = escape_string(s, encoding_for_language(language));
@@ -3350,7 +3373,7 @@ std::string disassemble_quest_script(
                     case Arg::Type::LABEL32:
                       switch (arg_value.type) {
                         case ArgStackValue::Type::REG:
-                          dasm_arg = std::format("r{}/* warning: cannot determine label data type */", arg_value.as_int);
+                          dasm_arg = std::format("r{} /* warning: cannot determine label data type */", arg_value.as_int);
                           break;
                         case ArgStackValue::Type::LABEL:
                         case ArgStackValue::Type::INT:
@@ -3366,8 +3389,10 @@ std::string disassemble_quest_script(
                           dasm_arg = "/* invalid-type */";
                       }
                       break;
-                    case Arg::Type::REG:
-                    case Arg::Type::REG32:
+                    case Arg::Type::R_REG:
+                    case Arg::Type::W_REG:
+                    case Arg::Type::R_REG32:
+                    case Arg::Type::W_REG32:
                       switch (arg_value.type) {
                         case ArgStackValue::Type::REG:
                           dasm_arg = std::format("regs[r{}]", arg_value.as_int);
@@ -3379,8 +3404,10 @@ std::string disassemble_quest_script(
                           dasm_arg = "/* invalid-type */";
                       }
                       break;
-                    case Arg::Type::REG_SET_FIXED:
-                    case Arg::Type::REG32_SET_FIXED:
+                    case Arg::Type::R_REG_SET_FIXED:
+                    case Arg::Type::W_REG_SET_FIXED:
+                    case Arg::Type::R_REG32_SET_FIXED:
+                    case Arg::Type::W_REG32_SET_FIXED:
                       switch (arg_value.type) {
                         case ArgStackValue::Type::REG:
                           dasm_arg = std::format("regs[r{}]-regs[r{}+{}]", arg_value.as_int, arg_value.as_int, static_cast<uint8_t>(arg_def.count - 1));
@@ -3429,9 +3456,9 @@ std::string disassemble_quest_script(
                       }
                       break;
                     case Arg::Type::LABEL16_SET:
-                    case Arg::Type::REG_SET:
+                    case Arg::Type::R_REG_SET:
                     default:
-                      throw logic_error("set-type arg found on arg stack");
+                      throw logic_error("set-type arg found on arg list");
                   }
 
                   if (!is_first_arg) {
@@ -3445,7 +3472,7 @@ std::string disassemble_quest_script(
             }
           }
 
-          if (!(def->flags & F_PASS)) {
+          if (def->flags & F_ARGS) {
             arg_stack_values.clear();
           }
         }
@@ -3678,153 +3705,6 @@ std::string disassemble_quest_script(
 
   lines.emplace_back(); // Add a \n on the end
   return phosg::join(lines, "\n");
-}
-
-Episode find_quest_episode_from_script(const void* data, size_t size, Version version) {
-  phosg::StringReader r(data, size);
-
-  bool use_wstrs = false;
-  size_t code_offset = 0;
-  size_t function_table_offset = 0;
-  Episode header_episode = Episode::NONE;
-  switch (version) {
-    case Version::DC_NTE:
-    case Version::DC_11_2000:
-    case Version::DC_V1:
-    case Version::DC_V2:
-    case Version::PC_NTE:
-    case Version::PC_V2:
-    case Version::GC_NTE:
-      return Episode::EP1;
-    case Version::GC_V3:
-    case Version::GC_EP3_NTE:
-    case Version::GC_EP3:
-    case Version::XB_V3: {
-      const auto& header = r.get<PSOQuestHeaderGC>();
-      code_offset = header.code_offset;
-      function_table_offset = header.function_table_offset;
-      break;
-    }
-    case Version::BB_V4: {
-      use_wstrs = true;
-      const auto& header = r.get<PSOQuestHeaderBB>();
-      code_offset = header.code_offset;
-      function_table_offset = header.function_table_offset;
-      header_episode = episode_for_quest_episode_number(header.episode);
-      break;
-    }
-    default:
-      throw logic_error("invalid quest version");
-  }
-
-  unordered_set<Episode> found_episodes;
-  try {
-    const auto& opcodes = opcodes_for_version(version);
-    // The set_episode opcode should always be in the first function (0)
-    phosg::StringReader cmd_r = r.sub(code_offset + r.pget_u32l(function_table_offset));
-
-    while (!cmd_r.eof()) {
-      uint16_t opcode = cmd_r.get_u8();
-      if ((opcode & 0xFE) == 0xF8) {
-        opcode = (opcode << 8) | cmd_r.get_u8();
-      }
-
-      const QuestScriptOpcodeDefinition* def = nullptr;
-      try {
-        def = opcodes.at(opcode);
-      } catch (const out_of_range&) {
-      }
-
-      if (def == nullptr) {
-        throw runtime_error(std::format("unknown quest opcode {:04X}", opcode));
-      }
-
-      if (def->flags & F_RET) {
-        break;
-      }
-
-      if (!(def->flags & F_ARGS)) {
-        for (const auto& arg : def->args) {
-          using Type = QuestScriptOpcodeDefinition::Argument::Type;
-          string dasm_arg;
-          switch (arg.type) {
-            case Type::LABEL16:
-              cmd_r.skip(2);
-              break;
-            case Type::LABEL32:
-              cmd_r.skip(4);
-              break;
-            case Type::LABEL16_SET:
-              if (def->flags & F_PASS) {
-                throw logic_error("LABEL16_SET cannot be pushed to arg stack");
-              }
-              cmd_r.skip(cmd_r.get_u8() * 2);
-              break;
-            case Type::REG:
-              cmd_r.skip(1);
-              break;
-            case Type::REG_SET:
-              if (def->flags & F_PASS) {
-                throw logic_error("REG_SET cannot be pushed to arg stack");
-              }
-              cmd_r.skip(cmd_r.get_u8());
-              break;
-            case Type::REG_SET_FIXED:
-              if (def->flags & F_PASS) {
-                throw logic_error("REG_SET_FIXED cannot be pushed to arg stack");
-              }
-              cmd_r.skip(1);
-              break;
-            case Type::REG32_SET_FIXED:
-              if (def->flags & F_PASS) {
-                throw logic_error("REG32_SET_FIXED cannot be pushed to arg stack");
-              }
-              cmd_r.skip(4);
-              break;
-            case Type::I8:
-              cmd_r.skip(1);
-              break;
-            case Type::I16:
-              cmd_r.skip(2);
-              break;
-            case Type::I32:
-              if (def->flags & F_SET_EPISODE) {
-                found_episodes.emplace(episode_for_quest_episode_number(cmd_r.get_u32l()));
-              } else {
-                cmd_r.skip(4);
-              }
-              break;
-            case Type::FLOAT32:
-              cmd_r.skip(4);
-              break;
-            case Type::CSTRING:
-              if (use_wstrs) {
-                for (uint16_t ch = cmd_r.get_u16l(); ch; ch = cmd_r.get_u16l()) {
-                }
-              } else {
-                for (uint8_t ch = cmd_r.get_u8(); ch; ch = cmd_r.get_u8()) {
-                }
-              }
-              break;
-            default:
-              throw logic_error("invalid argument type");
-          }
-        }
-      }
-    }
-  } catch (const exception& e) {
-    phosg::log_warning_f("Cannot determine episode from quest script ({})", e.what());
-  }
-
-  if (found_episodes.size() > 1) {
-    throw runtime_error("multiple episodes found");
-  } else if (found_episodes.size() == 1) {
-    return *found_episodes.begin();
-  } else if (header_episode != Episode::NONE) {
-    return header_episode;
-  } else {
-    return Episode::EP1;
-  }
 }
 
 Episode episode_for_quest_episode_number(uint8_t episode_number) {
@@ -4467,23 +4347,32 @@ AssembledQuestScript assemble_quest_script(
                 // If the corresponding argument is a REG or REG_SET_FIXED, push
                 // the register number, not the register's value, since it's an
                 // out-param
-                if ((arg_def.type == Type::REG) || (arg_def.type == Type::REG32)) {
-                  code_w.put_u8(0x4A); // arg_pushb
-                  auto reg = parse_reg(arg);
-                  reg->offsets.emplace(code_w.size());
-                  code_w.put_u8(reg->number);
-                } else if (
-                    (arg_def.type == Type::REG_SET_FIXED) ||
-                    (arg_def.type == Type::REG32_SET_FIXED)) {
-                  auto regs = parse_reg_set_fixed(arg, arg_def.count);
-                  code_w.put_u8(0x4A); // arg_pushb
-                  regs[0]->offsets.emplace(code_w.size());
-                  code_w.put_u8(regs[0]->number);
-                } else {
-                  code_w.put_u8(0x48); // arg_pushr
-                  auto reg = parse_reg(arg);
-                  reg->offsets.emplace(code_w.size());
-                  code_w.put_u8(reg->number);
+                switch (arg_def.type) {
+                  case Type::R_REG:
+                  case Type::W_REG:
+                  case Type::R_REG32:
+                  case Type::W_REG32: {
+                    code_w.put_u8(0x4A); // arg_pushb
+                    auto reg = parse_reg(arg);
+                    reg->offsets.emplace(code_w.size());
+                    code_w.put_u8(reg->number);
+                    break;
+                  }
+                  case Type::R_REG_SET_FIXED:
+                  case Type::W_REG_SET_FIXED:
+                  case Type::R_REG32_SET_FIXED:
+                  case Type::W_REG32_SET_FIXED: {
+                    auto regs = parse_reg_set_fixed(arg, arg_def.count);
+                    code_w.put_u8(0x4A); // arg_pushb
+                    regs[0]->offsets.emplace(code_w.size());
+                    code_w.put_u8(regs[0]->number);
+                    break;
+                  }
+                  default:
+                    code_w.put_u8(0x48); // arg_pushr
+                    auto reg = parse_reg(arg);
+                    reg->offsets.emplace(code_w.size());
+                    code_w.put_u8(reg->number);
                 }
               } else if ((arg[0] == '@') && ((arg[1] == 'r') || (arg[1] == 'f'))) {
                 code_w.put_u8(0x4C); // arg_pusha
@@ -4573,17 +4462,21 @@ AssembledQuestScript assemble_quest_script(
                   }
                   break;
                 }
-                case Type::REG:
-                case Type::REG32:
-                  add_reg(parse_reg(arg), arg_def.type == Type::REG32);
+                case Type::R_REG:
+                case Type::W_REG:
+                case Type::R_REG32:
+                case Type::W_REG32:
+                  add_reg(parse_reg(arg), (arg_def.type == Type::R_REG32) || (arg_def.type == Type::W_REG32));
                   break;
-                case Type::REG_SET_FIXED:
-                case Type::REG32_SET_FIXED: {
+                case Type::R_REG_SET_FIXED:
+                case Type::W_REG_SET_FIXED:
+                case Type::R_REG32_SET_FIXED:
+                case Type::W_REG32_SET_FIXED: {
                   auto regs = parse_reg_set_fixed(arg, arg_def.count);
-                  add_reg(regs[0], arg_def.type == Type::REG32_SET_FIXED);
+                  add_reg(regs[0], (arg_def.type == Type::R_REG32_SET_FIXED) || (arg_def.type == Type::W_REG32_SET_FIXED));
                   break;
                 }
-                case Type::REG_SET: {
+                case Type::R_REG_SET: {
                   auto regs = split_set(arg);
                   code_w.put_u8(regs.size());
                   for (auto reg_arg : regs) {
@@ -4756,16 +4649,726 @@ AssembledQuestScript assemble_quest_script(
   w.write(function_table.data(), function_table.size() * sizeof(function_table[0]));
   return AssembledQuestScript{
       .data = std::move(w.str()),
-      .metadata = QuestMetadata{
-          .quest_number = quest_num,
-          .version = quest_version,
-          .language = quest_language,
-          .episode = quest_episode,
-          .joinable = quest_joinable,
-          .max_players = quest_max_players,
-          .name = quest_name,
-          .short_description = quest_short_desc,
-          .long_description = quest_long_desc,
-      },
+      .quest_number = quest_num,
+      .version = quest_version,
+      .language = quest_language,
+      .episode = quest_episode,
+      .joinable = quest_joinable,
+      .max_players = quest_max_players,
+      .name = quest_name,
+      .short_description = quest_short_desc,
+      .long_description = quest_long_desc,
   };
+}
+
+void populate_quest_metadata_from_script(
+    QuestMetadata& meta, const void* data, size_t size, Version version, uint8_t language) {
+  phosg::StringReader r(data, size);
+  uint32_t code_offset = r.size();
+  uint32_t function_table_offset = r.size();
+  switch (version) {
+    case Version::DC_NTE: {
+      const auto& header = r.get<PSOQuestHeaderDCNTE>();
+      meta.episode = Episode::EP1;
+      meta.max_players = 4;
+      meta.name = header.name.decode(language);
+      if (meta.quest_number == 0xFFFFFFFF) {
+        meta.quest_number = phosg::fnv1a32(meta.name);
+      }
+      code_offset = header.code_offset;
+      function_table_offset = header.function_table_offset;
+      break;
+    }
+    case Version::DC_11_2000: {
+      const auto& header = r.get<PSOQuestHeaderDC112000>();
+      meta.episode = Episode::EP1;
+      meta.max_players = 4;
+      meta.name = header.name.decode(language);
+      meta.short_description = header.short_description.decode(language);
+      meta.long_description = header.long_description.decode(language);
+      if (meta.quest_number == 0xFFFFFFFF) {
+        meta.quest_number = phosg::fnv1a32(meta.name);
+      }
+      code_offset = header.code_offset;
+      function_table_offset = header.function_table_offset;
+      break;
+    }
+    case Version::DC_V1:
+    case Version::DC_V2: {
+      const auto& header = r.get<PSOQuestHeaderDC>();
+      meta.episode = Episode::EP1;
+      meta.max_players = 4;
+      meta.name = header.name.decode(language);
+      meta.short_description = header.short_description.decode(language);
+      meta.long_description = header.long_description.decode(language);
+      if (meta.quest_number == 0xFFFFFFFF) {
+        meta.quest_number = header.quest_number;
+      }
+      code_offset = header.code_offset;
+      function_table_offset = header.function_table_offset;
+      break;
+    }
+    case Version::PC_NTE:
+    case Version::PC_V2: {
+      const auto& header = r.get<PSOQuestHeaderPC>();
+      meta.episode = Episode::EP1;
+      meta.max_players = 4;
+      if (meta.quest_number == 0xFFFFFFFF) {
+        meta.quest_number = header.quest_number;
+      }
+      meta.name = header.name.decode(language);
+      meta.short_description = header.short_description.decode(language);
+      meta.long_description = header.long_description.decode(language);
+      code_offset = header.code_offset;
+      function_table_offset = header.function_table_offset;
+      break;
+    }
+    case Version::GC_NTE:
+    case Version::GC_V3:
+    case Version::GC_EP3_NTE:
+    case Version::GC_EP3:
+    case Version::XB_V3: {
+      // Note: This codepath handles Episode 3 quest scripts, which are not the
+      // same as Episode 3 maps and download quests. Quest scripts (handled
+      // here) are only used offline in story mode, but can be disassembled
+      // with disassemble_quest_script, hence we need to be able to parse them.
+      const auto& header = r.get<PSOQuestHeaderGC>();
+      meta.episode = Episode::EP1;
+      meta.max_players = 4;
+      if (meta.quest_number == 0xFFFFFFFF) {
+        meta.quest_number = header.quest_number;
+      }
+      meta.name = header.name.decode(language);
+      meta.short_description = header.short_description.decode(language);
+      meta.long_description = header.long_description.decode(language);
+      code_offset = header.code_offset;
+      function_table_offset = header.function_table_offset;
+      break;
+    }
+    case Version::BB_V4: {
+      const auto& header = r.get<PSOQuestHeaderBB>();
+      meta.episode = episode_for_quest_episode_number(header.episode);
+      meta.joinable |= header.joinable;
+      meta.max_players = 4;
+      if (meta.quest_number == 0xFFFFFFFF) {
+        meta.quest_number = header.quest_number;
+      }
+      meta.name = header.name.decode(language);
+      meta.short_description = header.short_description.decode(language);
+      meta.long_description = header.long_description.decode(language);
+      code_offset = header.code_offset;
+      function_table_offset = header.function_table_offset;
+      break;
+    }
+    default:
+      throw logic_error("invalid quest version");
+  }
+
+  const auto& opcodes = opcodes_for_version(version);
+  bool version_has_args = F_HAS_ARGS & v_flag(version);
+
+  struct RegisterFile {
+    // All registers are initially zero
+    size_t current_checkpoint = 0;
+    struct Register {
+      size_t checkpoint = 0;
+      uint32_t known_value = 0;
+      bool written = false;
+    };
+    std::array<Register, 0x100> regs;
+
+    std::string str() const {
+      string ret = "[";
+      for (size_t z = 0; z < this->regs.size(); z++) {
+        if (this->is_valid(z) && this->regs[z].written) {
+          if (ret.size() > 1) {
+            ret += ",";
+          }
+          ret += std::format("r{}={}", z, this->get(z));
+        }
+      }
+      ret += "]";
+      return ret;
+    }
+
+    uint32_t get(size_t which) const {
+      const auto& reg = this->regs[which & 0xFF];
+      if (reg.checkpoint >= this->current_checkpoint) {
+        return reg.known_value;
+      }
+      throw runtime_error(std::format("value for r{} not known", which));
+    }
+    inline void set(size_t which, uint32_t value) {
+      auto& reg = this->regs[which & 0xFF];
+      reg.known_value = value;
+      reg.checkpoint = this->current_checkpoint;
+      reg.written = true;
+    }
+    inline void invalidate(size_t which) {
+      this->regs[which & 0xFF].checkpoint = this->current_checkpoint - 1;
+    }
+    inline void invalidate_sequence(size_t first, size_t count) {
+      if (count > 0x100) {
+        throw runtime_error("invalid count in invalidate_sequence");
+      }
+      for (size_t z = 0; z < count; z++) {
+        this->invalidate(first);
+      }
+    }
+    inline void invalidate_all() {
+      this->current_checkpoint++;
+    }
+    inline bool is_valid(size_t which) const {
+      return this->regs[which & 0xFF].checkpoint >= this->current_checkpoint;
+    }
+  };
+
+  auto get_label_offset = [&](size_t label) -> uint32_t {
+    return code_offset + r.pget_u32l(function_table_offset + 4 * label);
+  };
+
+  // The set_episode opcode and floor remapping opcodes should always be in
+  // the first function (0), so we simulate that. But battle and challenge
+  // quests can also have setup opcodes in the floor handlers, so we have to
+  // simulate those too.
+  deque<uint32_t> pending_fn_offsets{get_label_offset(0)};
+  unordered_set<uint32_t> done_fn_offsets;
+  shared_ptr<BattleRules> battle_rules;
+  meta.assign_default_areas(version, meta.episode);
+  while (!pending_fn_offsets.empty()) {
+    uint32_t start_offset = pending_fn_offsets.front();
+    pending_fn_offsets.pop_front();
+    if (!done_fn_offsets.emplace(start_offset).second) {
+      continue;
+    }
+    // phosg::fwrite_fmt(stderr, "Trace: examining function starting at {:X}\n", start_offset - code_offset);
+
+    vector<uint32_t> args_list;
+    RegisterFile regs;
+    r.go(start_offset);
+    try {
+      while (!r.eof()) {
+        uint16_t opcode = r.get_u8();
+        if ((opcode & 0xFE) == 0xF8) {
+          opcode = (opcode << 8) | r.get_u8();
+        }
+
+        const QuestScriptOpcodeDefinition* def = nullptr;
+        try {
+          def = opcodes.at(opcode);
+        } catch (const out_of_range&) {
+        }
+        if (def == nullptr) {
+          throw runtime_error(std::format("unknown quest opcode {:04X}", opcode));
+        }
+        // phosg::fwrite_fmt(stderr, "... Trace: {:08X} -> {:04X} {} with {}\n", r.where() - (opcode > 0x100 ? 2 : 1) - code_offset, opcode, def->name, regs.str());
+
+        bool default_args = false;
+        bool use_args = version_has_args && (def->flags & F_ARGS);
+
+        auto get_single_int32_arg = [&]() -> uint32_t {
+          if (use_args) {
+            if (args_list.size() != 1) {
+              throw runtime_error(std::format("incorrect argument count to {}", def->name));
+            }
+            return args_list[0];
+          } else {
+            return r.get_u32l();
+          }
+        };
+
+        switch (opcode) {
+          case 0x0000: // nop
+            break;
+
+          case 0x0001: // ret
+          case 0x0002: // sync
+            // We stop analyzing at sync because all of the opcodes we care about
+            // must happen on the first frame the thread runs (either in the
+            // start label or the floor handler).
+            r.go(r.size());
+            break;
+
+          case 0x0006: // va_end
+            regs.invalidate_sequence(1, 7);
+            break;
+
+          case 0x0007: // va_call
+            r.skip(2);
+            regs.invalidate_all();
+            break;
+
+          case 0x0008: { // let
+            uint8_t a = r.get_u8();
+            regs.set(a, regs.get(r.get_u8()));
+            break;
+          }
+          case 0x0009: { // leti
+            uint8_t a = r.get_u8();
+            regs.set(a, r.get_u32l());
+            break;
+          }
+          case 0x000A: { // leta (v1/v2); letb (v3/v4)
+            uint8_t a = r.get_u8();
+            if (is_v1_or_v2(version)) { // leta
+              regs.invalidate(a);
+              r.skip(1);
+            } else { // letb
+              regs.set(a, r.get_u8());
+            }
+            break;
+          }
+          case 0x000B: { // letw
+            uint8_t a = r.get_u8();
+            regs.set(a, r.get_u16l());
+            break;
+          }
+          case 0x000C: // leta (v3/v4)
+            regs.invalidate(r.get_u8());
+            r.skip(1);
+            break;
+          case 0x000D: // leto
+            regs.invalidate(r.get_u8());
+            r.skip(2);
+            break;
+
+          case 0x0010: // set
+            regs.set(r.get_u8(), 1);
+            break;
+          case 0x0011: // clear
+            regs.set(r.get_u8(), 0);
+            break;
+          case 0x0012: { // rev
+            uint8_t a = r.get_u8();
+            if (regs.is_valid(a)) {
+              regs.set(a, !regs.get(a));
+            }
+            break;
+          }
+
+          case 0x0028: { // jmp
+            uint32_t offset = get_label_offset(r.get_u16l());
+            if (!done_fn_offsets.emplace(offset).second) {
+              r.go(r.size());
+            } else {
+              r.go(offset);
+            }
+            break;
+          }
+          case 0x0029: // call
+            r.skip(2);
+            regs.invalidate_all();
+            break;
+
+          case 0x002C: // jmp_eq
+          case 0x002E: // jmp_ne
+          case 0x0030: // ujmp_gt
+          case 0x0032: // jmp_gt
+          case 0x0034: // ujmp_lt
+          case 0x0036: // jmp_lt
+          case 0x0038: // ujmp_ge
+          case 0x003A: // jmp_ge
+          case 0x003C: // ujmp_le
+          case 0x003E: // jmp_le
+            r.skip(4); // 2x R_REG, LABEL16
+            break;
+          case 0x002D: // jmpi_eq
+          case 0x002F: // jmpi_ne
+          case 0x0031: // ujmpi_gt
+          case 0x0033: // jmpi_gt
+          case 0x0035: // ujmpi_lt
+          case 0x0037: // jmpi_lt
+          case 0x0039: // ujmpi_ge
+          case 0x003B: // jmpi_ge
+          case 0x003D: // ujmpi_le
+          case 0x003F: // jmpi_le
+            r.skip(7); // R_REG, I32, LABEL16
+            break;
+
+          case 0x0040: // switch_jmp
+          case 0x0041: { // switch_call
+            r.get_u8();
+            r.skip(2 * r.get_u8());
+            if (opcode == 0x0041) {
+              regs.invalidate_all();
+            }
+            break;
+          }
+
+          case 0x0045: { // stack_popm
+            uint8_t a = r.get_u8();
+            regs.invalidate_sequence(a, r.get_u32l());
+            break;
+          }
+
+          case 0x0048: // arg_pushr
+            args_list.emplace_back(regs.get(r.get_u8()));
+            break;
+          case 0x0049: // arg_pushl
+            args_list.emplace_back(r.get_u32l());
+            break;
+          case 0x004A: // arg_pushb
+            args_list.emplace_back(r.get_u8());
+            break;
+          case 0x004B: // arg_pushw
+            args_list.emplace_back(r.get_u16l());
+            break;
+          case 0x004C: // arg_pusha
+            r.skip(1);
+            break;
+          case 0x004D: // arg_pusho
+            args_list.emplace_back(get_label_offset(r.get_u16l()));
+            break;
+          case 0x004E: // arg_pushs
+            args_list.emplace_back(r.where());
+            if (uses_utf16(version)) {
+              while (r.get_u16l()) {
+              }
+            } else {
+              while (r.get_u8()) {
+              }
+            }
+            break;
+
+          case 0x0095: { // set_floor_handler
+            // We have to follow these because battle quests define their rules
+            // in the floor handler, not in the start label
+            if (use_args) {
+              if (args_list.size() != 2) {
+                throw runtime_error("incorrect argument count for set_floor_handler");
+              }
+              pending_fn_offsets.emplace_back(get_label_offset(args_list[1]));
+            } else {
+              r.skip(4); // Floor number
+              pending_fn_offsets.emplace_back(get_label_offset(r.get_u16l()));
+            }
+            break;
+          }
+
+          case 0xF80D: { // map_designate_ex
+            uint8_t base_reg = r.get_u8();
+            meta.area_for_floor.at(regs.get(base_reg)) = regs.get(base_reg + 1);
+            // phosg::fwrite_fmt(stderr, ">>> Trace: map_designate_ex fa[{}]={}\n", regs.get(base_reg), regs.get(base_reg + 1));
+            break;
+          }
+
+          case 0xF811: // clear_ba_rules
+            battle_rules = make_shared<BattleRules>();
+            meta.battle_rules = battle_rules;
+            break;
+
+          case 0xF812: // ba_set_tech_disk_mode
+            switch (get_single_int32_arg()) {
+              case 0:
+                battle_rules->tech_disk_mode = BattleRules::TechDiskMode::FORBID_ALL;
+                break;
+              case 1:
+                battle_rules->tech_disk_mode = BattleRules::TechDiskMode::ALLOW;
+                break;
+              case 2:
+                battle_rules->tech_disk_mode = BattleRules::TechDiskMode::LIMIT_LEVEL;
+                break;
+              default:
+                throw runtime_error("invalid battle tech disk mode");
+            }
+            break;
+
+          case 0xF813: // ba_set_weapon_and_armor_mode
+            switch (get_single_int32_arg()) {
+              case 0:
+                battle_rules->weapon_and_armor_mode = BattleRules::WeaponAndArmorMode::FORBID_ALL;
+                break;
+              case 1:
+                battle_rules->weapon_and_armor_mode = BattleRules::WeaponAndArmorMode::ALLOW;
+                break;
+              case 2:
+                battle_rules->weapon_and_armor_mode = BattleRules::WeaponAndArmorMode::CLEAR_AND_ALLOW;
+                break;
+              case 3:
+                battle_rules->weapon_and_armor_mode = BattleRules::WeaponAndArmorMode::FORBID_RARES;
+                break;
+              default:
+                throw runtime_error("invalid battle weapon and armor mode");
+            }
+            break;
+
+          case 0xF814: // ba_set_forbid_mags
+            switch (get_single_int32_arg()) {
+              case 0:
+                battle_rules->mag_mode = BattleRules::MagMode::FORBID_ALL;
+                break;
+              case 1:
+                battle_rules->mag_mode = BattleRules::MagMode::ALLOW;
+                break;
+              default:
+                throw runtime_error("invalid battle mag mode");
+            }
+            break;
+
+          case 0xF815: // ba_set_tool_mode
+            switch (get_single_int32_arg()) {
+              case 0:
+                battle_rules->tool_mode = BattleRules::ToolMode::FORBID_ALL;
+                break;
+              case 1:
+                battle_rules->tool_mode = BattleRules::ToolMode::ALLOW;
+                break;
+              case 2:
+                battle_rules->tool_mode = BattleRules::ToolMode::CLEAR_AND_ALLOW;
+                break;
+              default:
+                throw runtime_error("invalid battle tool mode");
+            }
+            break;
+
+          case 0xF816: // ba_set_trap_mode
+            switch (get_single_int32_arg()) {
+              case 0:
+                battle_rules->trap_mode = BattleRules::TrapMode::DEFAULT;
+                break;
+              case 1:
+                battle_rules->trap_mode = BattleRules::TrapMode::ALL_PLAYERS;
+                break;
+              default:
+                throw runtime_error("invalid battle trap mode");
+            }
+            break;
+
+          case 0xF817: // ba_set_unused_F817
+            battle_rules->unused_F817 = get_single_int32_arg();
+            break;
+
+          case 0xF818: // ba_set_respawn
+            switch (get_single_int32_arg()) {
+              case 0:
+                battle_rules->respawn_mode = BattleRules::RespawnMode::FORBID;
+                break;
+              case 1:
+                battle_rules->respawn_mode = BattleRules::RespawnMode::ALLOW;
+                break;
+              case 2:
+                battle_rules->respawn_mode = BattleRules::RespawnMode::LIMIT_LIVES;
+                break;
+              default:
+                throw runtime_error("invalid battle tech disk mode");
+            }
+            break;
+
+          case 0xF819: // ba_set_replace_char
+            battle_rules->replace_char = get_single_int32_arg();
+            break;
+
+          case 0xF81A: // ba_dropwep
+            battle_rules->drop_weapon = get_single_int32_arg();
+            break;
+
+          case 0xF81B: // ba_teams
+            battle_rules->is_teams = get_single_int32_arg();
+            break;
+
+          case 0xF81D: // ba_death_lvl_up
+            battle_rules->death_level_up = get_single_int32_arg();
+            break;
+
+          case 0xF81E: // ba_set_meseta_drop_mode
+            switch (get_single_int32_arg()) {
+              case 0:
+                battle_rules->meseta_mode = BattleRules::MesetaMode::ALLOW;
+                break;
+              case 1:
+                battle_rules->meseta_mode = BattleRules::MesetaMode::FORBID_ALL;
+                break;
+              case 2:
+                battle_rules->meseta_mode = BattleRules::MesetaMode::CLEAR_AND_ALLOW;
+                break;
+              default:
+                throw runtime_error("invalid battle meseta mode");
+            }
+            break;
+
+          case 0xF823: // set_cmode_char_template
+            meta.challenge_template_index = get_single_int32_arg();
+            // phosg::fwrite_fmt(stderr, ">>> Trace: meta.challenge_template_index = {}\n", meta.challenge_template_index);
+            break;
+
+          case 0xF824: // set_cmode_difficulty
+            meta.challenge_difficulty = get_single_int32_arg();
+            // phosg::fwrite_fmt(stderr, ">>> Trace: meta.challenge_difficulty = {}\n", meta.challenge_difficulty);
+            break;
+
+          case 0xF825: { // exp_multiplication
+            uint8_t a = r.get_u8();
+            meta.challenge_exp_multiplier = static_cast<float>(regs.get(a)) + static_cast<float>(regs.get(a + 1)) / static_cast<float>(regs.get(a + 2));
+            // phosg::fwrite_fmt(stderr, ">>> Trace: meta.challenge_exp_multiplier = {}\n", meta.challenge_exp_multiplier);
+            break;
+          }
+
+          case 0xF851: { // ba_set_trap_count
+            uint8_t a = r.get_u8();
+            // Why did they do this? Why not just make the indexes the same?
+            std::array<size_t, 4> trap_types = {0, 2, 3, 1};
+            battle_rules->trap_counts.at(trap_types.at(regs.get(a))) = regs.get(a + 1);
+            break;
+          }
+
+          case 0xF852: // ba_hide_target_reticle
+            battle_rules->hide_target_reticle = get_single_int32_arg();
+            break;
+
+          case 0xF85E: // ba_enable_sonar
+            battle_rules->enable_sonar = get_single_int32_arg();
+            break;
+
+          case 0xF85F: // ba_sonar_count
+            battle_rules->sonar_count = get_single_int32_arg();
+            break;
+
+          case 0xF86B: // ba_set_box_drop_area
+            battle_rules->box_drop_area = regs.get(r.get_u8());
+            break;
+
+          case 0xF86F: // ba_set_lives
+            battle_rules->lives = get_single_int32_arg();
+            break;
+
+          case 0xF870: // ba_set_max_tech_level
+            battle_rules->max_tech_level = get_single_int32_arg();
+            break;
+
+          case 0xF871: // ba_set_char_level
+            battle_rules->char_level = get_single_int32_arg();
+            break;
+
+          case 0xF872: // ba_set_time_limit
+            battle_rules->time_limit = get_single_int32_arg();
+            break;
+
+          case 0xF88C: // get_game_version
+            if (is_v1_or_v2(version)) {
+              regs.set(r.get_u8(), 2);
+            } else if (is_gc(version)) {
+              regs.set(r.get_u8(), 3);
+            } else {
+              regs.set(r.get_u8(), 4);
+            }
+            break;
+
+          case 0xF89E: // ba_forbid_scape_dolls
+            battle_rules->forbid_scape_dolls = get_single_int32_arg();
+            break;
+
+          case 0xF8A8: // ba_death_tech_level_up
+            battle_rules->death_tech_level_up = get_single_int32_arg();
+            break;
+
+          case 0xF8BC: // set_episode
+            switch (r.get_u32l()) {
+              case 0:
+                meta.episode = Episode::EP1;
+                break;
+              case 1:
+                meta.episode = Episode::EP2;
+                break;
+              case 2:
+                if (!is_v4(version)) {
+                  throw runtime_error("invalid argument to set_episode");
+                }
+                meta.episode = Episode::EP4;
+                break;
+              default:
+                throw runtime_error("invalid argument to set_episode");
+            }
+            meta.assign_default_areas(version, meta.episode);
+            // phosg::fwrite_fmt(stderr, ">>> Trace: meta.episode = {}\n", name_for_episode(meta.episode));
+            break;
+
+          case 0xF932: // set_episode2
+            // This takes a register as an argument, so we can't handle it here
+            throw runtime_error("quest uses set_episode2");
+
+          case 0xF951: { // bb_map_designate
+            uint8_t floor = r.get_u8();
+            meta.area_for_floor.at(floor) = r.get_u8();
+            r.skip(3); // entities_list_type, vars.layout, vars.entities
+            // phosg::fwrite_fmt(stderr, ">>> Trace: bb_map_designate fa[{}]={}\n", floor, meta.area_for_floor.at(floor));
+            break;
+          }
+
+          default:
+            // phosg::fwrite_fmt(stderr, "Trace: unhandled opcode at {:X}: {:04X} ({})\n", r.where() - code_offset, opcode, def->name);
+            default_args = true;
+        }
+
+        if (default_args) {
+          // Read and skip all immediate args, and invalidate any registers
+          for (size_t arg_index = 0; arg_index < def->args.size(); arg_index++) {
+            const auto& arg = def->args[arg_index];
+
+            using Type = QuestScriptOpcodeDefinition::Argument::Type;
+            switch (arg.type) {
+              case Type::W_REG:
+                regs.invalidate(use_args ? args_list.at(arg_index) : r.get_u8());
+                break;
+              case Type::W_REG_SET_FIXED:
+                regs.invalidate_sequence(use_args ? args_list.at(arg_index) : r.get_u8(), arg.count);
+                break;
+              case Type::I8:
+              case Type::R_REG:
+              case Type::R_REG_SET_FIXED:
+                r.skip(use_args ? 0 : 1);
+                break;
+              case Type::I16:
+              case Type::LABEL16:
+                r.skip(use_args ? 0 : 2);
+                break;
+              case Type::W_REG32:
+                regs.invalidate(use_args ? args_list.at(arg_index) : r.get_u32l());
+                break;
+              case Type::W_REG32_SET_FIXED:
+                regs.invalidate_sequence(use_args ? args_list.at(arg_index) : r.get_u32l(), arg.count);
+                break;
+              case Type::I32:
+              case Type::FLOAT32:
+              case Type::R_REG32:
+              case Type::R_REG32_SET_FIXED:
+              case Type::LABEL32:
+                r.skip(use_args ? 0 : 4);
+                break;
+              case Type::LABEL16_SET:
+                if (use_args) {
+                  throw logic_error("LABEL16_SET cannot be encoded with F_ARGS");
+                }
+                r.skip(r.get_u8() * 2);
+                break;
+              case Type::R_REG_SET:
+                if (use_args) {
+                  throw logic_error("R_REG_SET cannot be encoded with F_ARGS");
+                }
+                r.skip(r.get_u8());
+                break;
+              case Type::CSTRING:
+                if (!use_args) {
+                  if (uses_utf16(version)) {
+                    while (r.get_u16l()) {
+                    }
+                  } else {
+                    while (r.get_u8()) {
+                    }
+                  }
+                }
+                break;
+              default:
+                throw logic_error("invalid argument type");
+            }
+          }
+        }
+
+        if (!(def->flags & F_PUSH_ARG)) {
+          args_list.clear();
+        }
+      }
+    } catch (const runtime_error& e) {
+      // phosg::fwrite_fmt(stderr, "!!! Trace: function skipped: {}\n", e.what());
+    }
+  }
 }

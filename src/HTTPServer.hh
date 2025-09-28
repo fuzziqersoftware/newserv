@@ -41,7 +41,7 @@ protected:
   std::shared_ptr<phosg::JSON> generate_rare_table_list_json() const;
   asio::awaitable<std::shared_ptr<phosg::JSON>> generate_common_table_json(const std::string& table_name) const;
   asio::awaitable<std::shared_ptr<phosg::JSON>> generate_rare_table_json(const std::string& table_name) const;
-  asio::awaitable<std::shared_ptr<phosg::JSON>> generate_quest_list_json(std::shared_ptr<const QuestIndex> q);
+  asio::awaitable<std::shared_ptr<phosg::JSON>> generate_quest_list_json();
 
   void require_GET(const HTTPRequest& req);
   phosg::JSON require_POST(const HTTPRequest& req);

@@ -639,7 +639,6 @@
     //       0x008 - appears in solo mode (BB)
     //       0x010 - appears at government counter (BB)
     //       0x020 - appears in download quest menu
-    //       0x040 - appears in Episode 3 download quest menu
     //       0x080 - hide quests that don't match the game's episode
     //       0x100 - is Episode 2 Challenge category
     //   directory_name: the directory inside system/quests that contains quests
@@ -668,8 +667,6 @@
     [0x010, "government-ep2", "The Military's Hero", "$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline"],
     [0x010, "government-ep4", "The Meteor Impact Incident", "$E$C6Quests that follow\nthe Episode 4\nstoryline"],
     [0x020, "download", "Download", "$E$C6Quests to download\nto your Memory Card"],
-    [0x040, "download-ep3-trial", "Trial Download", "$E$C6Quests to download\nto your Memory Card\nfrom Episode 3\nTrial Edition"],
-    [0x040, "download-ep3", "Download", "$E$C6Quests to download\nto your Memory Card"],
   ],
 
   // BB bank size. If you change either of these values, you must also add
@@ -1231,9 +1228,9 @@
   // true and false here, since the server doesn't have direct access to the
   // client's quest flags from their save file.
   // If you use an expression, the format is the same as the AvailableIf and
-  // EnabledIf fields in quest JSON files (see system/quests/battle/b88001.json
-  // for details). Note that the expression is only evaluated at the time the
-  // game is created, and the player-specific tokens like C_EpX_YY refer to the
+  // EnabledIf fields in quest JSONs (see system/quests/retrieval/q058.json for
+  // details). Note that the expression is only evaluated at the time the game
+  // is created, and the player-specific tokens like C_EpX_YY refer to the
   // player who created the game.
   // The UnlockAllAreas option is now gone; if you want the same behavior as if
   // it were enabled, uncomment all the "area unlocks" lines below. Note that

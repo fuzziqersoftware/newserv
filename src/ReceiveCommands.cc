@@ -341,14 +341,13 @@ static asio::awaitable<void> on_login_complete(shared_ptr<Client> c) {
           !c->check_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE))) {
     shared_ptr<const Quest> q;
     try {
-      int64_t quest_num = s->enable_send_function_call_quest_numbers.at(c->specific_version);
-      q = s->default_quest_index->get(quest_num);
+      q = s->quest_index->get(s->enable_send_function_call_quest_numbers.at(c->specific_version));
     } catch (const out_of_range&) {
     }
     if (!q) {
       c->log.info_f("There is no quest to enable server function calls for specific version {:08X}", c->specific_version);
     } else if (q) {
-      auto vq = q->version(is_ep3(c->version()) ? Version::GC_V3 : c->version(), 1);
+      auto vq = q->version(c->version(), 1);
       if (vq) {
         c->set_flag(Client::Flag::HAS_SEND_FUNCTION_CALL);
         c->set_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE);
@@ -364,12 +363,14 @@ static asio::awaitable<void> on_login_complete(shared_ptr<Client> c) {
           lobby_data.guild_card_number = c->login->account->account_id;
           send_command_t(c, 0x64, 0x01, cmd);
         } else {
-          c->log.info_f("Sending {} version of quest \"{}\"", char_for_language_code(vq->language), vq->name);
+          c->log.info_f("Sending {} version of quest \"{}\"", char_for_language_code(vq->language), vq->meta.name);
           string bin_filename = vq->bin_filename();
           string dat_filename = vq->dat_filename();
           string xb_filename = vq->xb_filename();
-          send_open_quest_file(c, bin_filename, bin_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
-          send_open_quest_file(c, dat_filename, dat_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
+          send_open_quest_file(
+              c, bin_filename, bin_filename, xb_filename, vq->meta.quest_number, QuestFileType::ONLINE, vq->bin_contents);
+          send_open_quest_file(
+              c, dat_filename, dat_filename, xb_filename, vq->meta.quest_number, QuestFileType::ONLINE, vq->dat_contents);
 
           if (!is_v1_or_v2(c->version())) {
             send_command(c, 0xAC, 0x00);
@@ -2153,11 +2154,10 @@ static asio::awaitable<void> on_09(shared_ptr<Client> c, Channel::Message& msg) 
     case MenuID::QUEST_EP1:
     case MenuID::QUEST_EP2: {
       bool is_download_quest = !c->lobby.lock();
-      auto quest_index = s->quest_index(c->version());
-      if (!quest_index) {
+      if (!s->quest_index) {
         send_quest_info(c, "$C7Quests are not available.", 0x00, is_download_quest);
       } else {
-        auto q = quest_index->get(cmd.item_id);
+        auto q = s->quest_index->get(cmd.item_id);
         if (!q) {
           send_quest_info(c, "$C4Quest does not\nexist.", 0x00, is_download_quest);
         } else {
@@ -2165,9 +2165,19 @@ static asio::awaitable<void> on_09(shared_ptr<Client> c, Channel::Message& msg) 
           if (!vq) {
             send_quest_info(c, "$C4Quest does not\nexist for this game\nversion.", 0x00, is_download_quest);
           } else {
-            send_quest_info(c, vq->long_description, vq->description_flag, is_download_quest);
+            send_quest_info(c, vq->meta.long_description, vq->meta.description_flag, is_download_quest);
           }
         }
+      }
+      break;
+    }
+    case MenuID::QUEST_EP3: {
+      auto map = s->ep3_download_map_index->get(cmd.item_id);
+      if (!map) {
+        send_quest_info(c, "$C4Map does not exist.", 0x00, true);
+      } else {
+        auto vm = map->version(c->language());
+        send_quest_info(c, vm->map->description.decode(vm->language), 0x00, true);
       }
       break;
     }
@@ -2245,7 +2255,7 @@ static asio::awaitable<void> on_09(shared_ptr<Client> c, Channel::Message& msg) 
 
           if (game->quest) {
             info += (game->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) ? "$C6Quest: " : "$C4Quest: ";
-            info += remove_color(game->quest->name);
+            info += remove_color(game->quest->meta.name);
             info += "\n";
           } else if (game->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
             info += "$C6Quest in progress\n";
@@ -2396,22 +2406,22 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
 
     lc->delete_overlay();
 
-    if ((l->quest->challenge_template_index >= 0) && !is_v4(leader_c->version())) {
+    if ((l->quest->meta.challenge_template_index >= 0) && !is_v4(leader_c->version())) {
       // If the leader is BB, they will send an 02DF command that will create
       // the overlays later; on other versions, we do it at quest start time
       // (now) instead, hence the version check above.
       if (is_v4(lc->version())) {
         lc->change_bank(lc->bb_character_index);
       }
-      lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table(lc->version()));
+      lc->create_challenge_overlay(lc->version(), l->quest->meta.challenge_template_index, s->level_table(lc->version()));
       lc->log.info_f("Created challenge overlay");
       l->assign_inventory_and_bank_item_ids(lc, true);
 
-    } else if (l->quest->battle_rules) {
+    } else if (l->quest->meta.battle_rules) {
       if (is_v4(lc->version())) {
         lc->change_bank(lc->bb_character_index);
       }
-      lc->create_battle_overlay(l->quest->battle_rules, s->level_table(lc->version()));
+      lc->create_battle_overlay(l->quest->meta.battle_rules, s->level_table(lc->version()));
       lc->log.info_f("Created battle overlay");
     }
   }
@@ -2426,16 +2436,16 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q, bool substi
   }
 
   // Only allow loading battle/challenge quests if the game mode is correct
-  if ((q->challenge_template_index >= 0) != (l->mode == GameMode::CHALLENGE)) {
+  if ((q->meta.challenge_template_index >= 0) != (l->mode == GameMode::CHALLENGE)) {
     throw runtime_error("incorrect game mode");
   }
-  if ((q->battle_rules != nullptr) != (l->mode == GameMode::BATTLE)) {
+  if ((q->meta.battle_rules != nullptr) != (l->mode == GameMode::BATTLE)) {
     throw runtime_error("incorrect game mode");
   }
 
   auto s = l->require_server_state();
 
-  if (q->joinable) {
+  if (q->meta.joinable) {
     l->set_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS);
   } else {
     l->set_flag(Lobby::Flag::QUEST_IN_PROGRESS);
@@ -2445,11 +2455,14 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q, bool substi
 
   l->quest = q;
   if (l->episode != Episode::EP3) {
-    l->episode = q->episode;
+    l->episode = q->meta.episode;
   }
-  if (l->quest->allowed_drop_modes) {
-    l->allowed_drop_modes = l->quest->allowed_drop_modes;
-    l->drop_mode = l->quest->default_drop_mode;
+  if (l->quest->meta.allowed_drop_modes) {
+    l->allowed_drop_modes = l->quest->meta.allowed_drop_modes;
+    l->drop_mode = l->quest->meta.default_drop_mode;
+  }
+  if (l->quest->meta.challenge_difficulty >= 0) {
+    l->difficulty = l->quest->meta.challenge_difficulty;
   }
   l->create_item_creator();
 
@@ -2468,13 +2481,15 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q, bool substi
       lc->channel->disconnect();
       break;
     }
-    lc->log.info_f("Sending {} version of quest \"{}\"", char_for_language_code(vq->language), vq->name);
+    lc->log.info_f("Sending {} version of quest \"{}\"", char_for_language_code(vq->language), vq->meta.name);
 
     string bin_filename = vq->bin_filename();
     string dat_filename = vq->dat_filename();
     string xb_filename = vq->xb_filename();
-    send_open_quest_file(lc, bin_filename, bin_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
-    send_open_quest_file(lc, dat_filename, dat_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
+    send_open_quest_file(
+        lc, bin_filename, bin_filename, xb_filename, vq->meta.quest_number, QuestFileType::ONLINE, vq->bin_contents);
+    send_open_quest_file(
+        lc, dat_filename, dat_filename, xb_filename, vq->meta.quest_number, QuestFileType::ONLINE, vq->dat_contents);
 
     // There is no such thing as command AC (quest barrier) on PSO V1 and V2;
     // quests just start immediately when they're done downloading. (This is
@@ -2532,24 +2547,11 @@ static asio::awaitable<void> on_10_main_menu(shared_ptr<Client> c, uint32_t item
       break;
 
     case MainMenuItemID::DOWNLOAD_QUESTS: {
-      QuestMenuType menu_type = QuestMenuType::DOWNLOAD;
       if (is_ep3(c->version())) {
-        menu_type = QuestMenuType::EP3_DOWNLOAD;
-        // Episode 3 has only download quests, not online quests, so this is
-        // always the download quest menu. (Episode 3 does actually have
-        // online quests, but they're served via a server data request
-        // instead of the file download paradigm that other versions use.)
-        auto quest_index = s->quest_index(c->version());
-        uint16_t version_flags = (1 << static_cast<size_t>(c->version()));
-        const auto& categories = quest_index->categories(menu_type, Episode::EP3, version_flags);
-        if (categories.size() == 1) {
-          auto quests = quest_index->filter(Episode::EP3, version_flags, categories[0]->category_id);
-          send_quest_menu(c, quests, true);
-          break;
-        }
+        send_ep3_download_quest_menu(c);
+      } else {
+        send_quest_categories_menu(c, QuestMenuType::DOWNLOAD, Episode::NONE);
       }
-
-      send_quest_categories_menu(c, s->quest_index(c->version()), menu_type, Episode::NONE);
       break;
     }
 
@@ -2799,9 +2801,13 @@ static asio::awaitable<void> on_10_game_menu(shared_ptr<Client> c, uint32_t item
 }
 
 static asio::awaitable<void> on_10_quest_categories(shared_ptr<Client> c, uint32_t item_id) {
+  // Episode 3 doesn't have this menu
+  if (is_ep3(c->version())) {
+    throw runtime_error("Episode 3 client made selection on quest categories menu");
+  }
+
   auto s = c->require_server_state();
-  auto quest_index = s->quest_index(c->version());
-  if (!quest_index) {
+  if (!s->quest_index) {
     send_lobby_message_box(c, "$C7Quests are not available.");
     co_return;
   }
@@ -2814,18 +2820,21 @@ static asio::awaitable<void> on_10_quest_categories(shared_ptr<Client> c, uint32
     include_condition = l->quest_include_condition();
   }
 
-  const auto& quests = quest_index->filter(episode, version_flags, item_id, include_condition);
+  const auto& quests = s->quest_index->filter(episode, version_flags, item_id, include_condition);
   send_quest_menu(c, quests, !l);
 }
 
 static asio::awaitable<void> on_10_quest_menu(shared_ptr<Client> c, uint32_t item_id) {
+  if (is_ep3(c->version())) {
+    throw runtime_error("Episode 1/2/4 quests cannot be downloaded by Ep3 clients");
+  }
+
   auto s = c->require_server_state();
-  auto quest_index = s->quest_index(c->version());
-  if (!quest_index) {
+  if (!s->quest_index) {
     send_lobby_message_box(c, "$C7Quests are not\navailable.");
     co_return;
   }
-  auto q = quest_index->get(item_id);
+  auto q = s->quest_index->get(item_id);
   if (!q) {
     send_lobby_message_box(c, "$C7Quest does not exist.");
     co_return;
@@ -2840,7 +2849,7 @@ static asio::awaitable<void> on_10_quest_menu(shared_ptr<Client> c, uint32_t ite
   }
 
   if (l) {
-    if (q->episode == Episode::EP3) {
+    if (q->meta.episode == Episode::EP3) {
       send_lobby_message_box(c, "$C7Episode 3 quests\ncannot be loaded\nvia this interface.");
       co_return;
     }
@@ -2860,24 +2869,32 @@ static asio::awaitable<void> on_10_quest_menu(shared_ptr<Client> c, uint32_t ite
       send_lobby_message_box(c, "$C7Quest does not exist\nfor this game version.");
       co_return;
     }
-    // Episode 3 uses the download quest commands (A6/A7) but does not
-    // expect the server to have already encrypted the quest files, unlike
-    // other versions.
-    // TODO: This is not true for Episode 3 Trial Edition. We also would
-    // have to convert the map to a MapDefinitionTrial, though.
-    if (is_ep3(vq->version)) {
-      send_open_quest_file(c, q->name, vq->bin_filename(), "", vq->quest_number, QuestFileType::EPISODE_3, vq->bin_contents);
-    } else {
-      vq = vq->create_download_quest(c->language());
-      string xb_filename = vq->xb_filename();
-      QuestFileType type = vq->pvr_contents ? QuestFileType::DOWNLOAD_WITH_PVR : QuestFileType::DOWNLOAD_WITHOUT_PVR;
-      send_open_quest_file(c, q->name, vq->bin_filename(), xb_filename, vq->quest_number, type, vq->bin_contents);
-      send_open_quest_file(c, q->name, vq->dat_filename(), xb_filename, vq->quest_number, type, vq->dat_contents);
-      if (vq->pvr_contents) {
-        send_open_quest_file(c, q->name, vq->pvr_filename(), xb_filename, vq->quest_number, type, vq->pvr_contents);
-      }
+    vq = vq->create_download_quest(c->language());
+    string xb_filename = vq->xb_filename();
+    QuestFileType type = vq->pvr_contents ? QuestFileType::DOWNLOAD_WITH_PVR : QuestFileType::DOWNLOAD_WITHOUT_PVR;
+    send_open_quest_file(c, q->meta.name, vq->bin_filename(), xb_filename, vq->meta.quest_number, type, vq->bin_contents);
+    send_open_quest_file(c, q->meta.name, vq->dat_filename(), xb_filename, vq->meta.quest_number, type, vq->dat_contents);
+    if (vq->pvr_contents) {
+      send_open_quest_file(c, q->meta.name, vq->pvr_filename(), xb_filename, vq->meta.quest_number, type, vq->pvr_contents);
     }
   }
+}
+
+static asio::awaitable<void> on_10_ep3_download_quest_menu(shared_ptr<Client> c, uint32_t item_id) {
+  auto s = c->require_server_state();
+  if (!is_ep3(c->version())) {
+    throw runtime_error("Episode 3 quests can only be downloaded by Ep3 clients");
+  }
+  if (c->lobby.lock()) {
+    throw runtime_error("Episode 3 quests can only be downloaded when client is not in a lobby");
+  }
+  auto map = s->ep3_download_map_index->get(item_id);
+  auto vm = map->version(c->language());
+  auto name = vm->map->name.decode(vm->language);
+  string filename = std::format("m{:06}p_{:c}.bin", map->map_number, tolower(char_for_language_code(vm->language)));
+  auto data = (c->version() == Version::GC_EP3_NTE) ? vm->trial_download() : vm->compressed(false);
+  send_open_quest_file(c, name, filename, "", map->map_number, QuestFileType::EPISODE_3, data);
+  co_return;
 }
 
 static asio::awaitable<void> on_10_patch_switches(shared_ptr<Client> c, uint32_t item_id) {
@@ -3035,6 +3052,9 @@ static asio::awaitable<void> on_10(shared_ptr<Client> c, Channel::Message& msg) 
     case MenuID::QUEST_EP1:
     case MenuID::QUEST_EP2:
       co_await on_10_quest_menu(c, base_cmd.item_id);
+      break;
+    case MenuID::QUEST_EP3:
+      co_await on_10_ep3_download_quest_menu(c, base_cmd.item_id);
       break;
     case MenuID::PATCH_SWITCHES:
       co_await on_10_patch_switches(c, base_cmd.item_id);
@@ -3207,7 +3227,7 @@ static asio::awaitable<void> on_A2(shared_ptr<Client> c, Channel::Message& msg) 
     }
   }
 
-  send_quest_categories_menu(c, s->quest_index(c->version()), menu_type, l->episode);
+  send_quest_categories_menu(c, menu_type, l->episode);
   l->set_flag(Lobby::Flag::QUEST_SELECTION_IN_PROGRESS);
 }
 
@@ -4075,7 +4095,7 @@ static asio::awaitable<void> on_DF_BB(shared_ptr<Client> c, Channel::Message& ms
         throw runtime_error("non-leader sent 02DF command");
       }
       auto vq = l->quest->version(Version::BB_V4, c->language());
-      if (vq->challenge_template_index != static_cast<ssize_t>(cmd.template_index)) {
+      if (vq->meta.challenge_template_index != static_cast<ssize_t>(cmd.template_index)) {
         throw runtime_error("challenge template index in quest metadata does not match index sent by client");
       }
 
@@ -4091,7 +4111,7 @@ static asio::awaitable<void> on_DF_BB(shared_ptr<Client> c, Channel::Message& ms
           if (is_v4(lc->version())) {
             lc->change_bank(lc->bb_character_index);
           }
-          lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table(lc->version()));
+          lc->create_challenge_overlay(lc->version(), l->quest->meta.challenge_template_index, s->level_table(lc->version()));
           lc->log.info_f("Created challenge overlay");
           l->assign_inventory_and_bank_item_ids(lc, true);
         }
@@ -4103,6 +4123,12 @@ static asio::awaitable<void> on_DF_BB(shared_ptr<Client> c, Channel::Message& ms
 
     case 0x03DF: {
       const auto& cmd = check_size_t<C_SetChallengeModeDifficulty_BB_03DF>(msg.data);
+      if (!l->quest) {
+        throw runtime_error("challenge mode difficulty config command sent in non-challenge game");
+      }
+      if (static_cast<uint32_t>(l->quest->meta.challenge_difficulty) != cmd.difficulty) {
+        throw runtime_error("incorrect difficulty level");
+      }
       if (l->difficulty != cmd.difficulty) {
         l->difficulty = cmd.difficulty;
         l->create_item_creator();
@@ -4112,8 +4138,13 @@ static asio::awaitable<void> on_DF_BB(shared_ptr<Client> c, Channel::Message& ms
     }
 
     case 0x04DF: {
-      const auto& cmd = check_size_t<C_SetChallengeModeEXPMultiplier_BB_04DF>(msg.data);
-      l->challenge_exp_multiplier = cmd.exp_multiplier;
+      check_size_t<C_SetChallengeModeEXPMultiplier_BB_04DF>(msg.data);
+      if (!l->quest) {
+        throw runtime_error("challenge mode difficulty config command sent in non-challenge game");
+      }
+      l->challenge_exp_multiplier = (l->quest->meta.challenge_exp_multiplier < 0)
+          ? 1.0
+          : l->quest->meta.challenge_exp_multiplier;
       l->log.info_f("(Challenge mode) EXP multiplier set to {:g}", l->challenge_exp_multiplier);
       break;
     }
@@ -4907,7 +4938,7 @@ static asio::awaitable<void> on_6F(shared_ptr<Client> c, Channel::Message& msg) 
     shared_ptr<const Quest> q;
     try {
       int64_t quest_num = s->enable_send_function_call_quest_numbers.at(c->specific_version);
-      q = s->default_quest_index->get(quest_num);
+      q = s->quest_index->get(quest_num);
     } catch (const out_of_range&) {
       throw std::logic_error("cannot find patch enable quest after it was previously found during login");
     }
@@ -4915,12 +4946,12 @@ static asio::awaitable<void> on_6F(shared_ptr<Client> c, Channel::Message& msg) 
     if (!vq) {
       throw std::logic_error("cannot find patch enable quest version after it was previously found during login");
     }
-    c->log.info_f("Sending {} version of quest \"{}\"", char_for_language_code(vq->language), vq->name);
+    c->log.info_f("Sending {} version of quest \"{}\"", char_for_language_code(vq->language), vq->meta.name);
     string bin_filename = vq->bin_filename();
     string dat_filename = vq->dat_filename();
     string xb_filename = vq->xb_filename();
-    send_open_quest_file(c, bin_filename, bin_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
-    send_open_quest_file(c, dat_filename, dat_filename, xb_filename, vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
+    send_open_quest_file(c, bin_filename, bin_filename, xb_filename, vq->meta.quest_number, QuestFileType::ONLINE, vq->bin_contents);
+    send_open_quest_file(c, dat_filename, dat_filename, xb_filename, vq->meta.quest_number, QuestFileType::ONLINE, vq->dat_contents);
     co_return;
   }
   // Now l is not null
@@ -4990,8 +5021,8 @@ static asio::awaitable<void> on_6F(shared_ptr<Client> c, Channel::Message& msg) 
       string bin_filename = vq->bin_filename();
       string dat_filename = vq->dat_filename();
 
-      send_open_quest_file(c, bin_filename, bin_filename, "", vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
-      send_open_quest_file(c, dat_filename, dat_filename, "", vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
+      send_open_quest_file(c, bin_filename, bin_filename, "", vq->meta.quest_number, QuestFileType::ONLINE, vq->bin_contents);
+      send_open_quest_file(c, dat_filename, dat_filename, "", vq->meta.quest_number, QuestFileType::ONLINE, vq->dat_contents);
       c->set_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST);
       c->log.info_f("LOADING_RUNNING_JOINABLE_QUEST flag set");
       should_resume_game = false;
@@ -5058,8 +5089,8 @@ static asio::awaitable<void> on_99(shared_ptr<Client> c, Channel::Message& msg) 
     string bin_filename = vq->bin_filename();
     string dat_filename = vq->dat_filename();
 
-    send_open_quest_file(c, bin_filename, bin_filename, "", vq->quest_number, QuestFileType::ONLINE, vq->bin_contents);
-    send_open_quest_file(c, dat_filename, dat_filename, "", vq->quest_number, QuestFileType::ONLINE, vq->dat_contents);
+    send_open_quest_file(c, bin_filename, bin_filename, "", vq->meta.quest_number, QuestFileType::ONLINE, vq->bin_contents);
+    send_open_quest_file(c, dat_filename, dat_filename, "", vq->meta.quest_number, QuestFileType::ONLINE, vq->dat_contents);
     c->set_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST);
     c->log.info_f("LOADING_RUNNING_JOINABLE_QUEST flag set");
 

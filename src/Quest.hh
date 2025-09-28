@@ -13,6 +13,7 @@
 #include "ItemParameterTable.hh"
 #include "Map.hh"
 #include "PlayerSubordinates.hh"
+#include "QuestMetadata.hh"
 #include "QuestScript.hh"
 #include "RareItemSet.hh"
 #include "StaticGameData.hh"
@@ -34,7 +35,6 @@ enum class QuestMenuType {
   SOLO = 3,
   GOVERNMENT = 4,
   DOWNLOAD = 5,
-  EP3_DOWNLOAD = 6,
   // 7 can't be used as a menu type (it enables the per-episode filter)
 };
 
@@ -67,35 +67,16 @@ struct QuestCategoryIndex {
 };
 
 struct VersionedQuest {
+  QuestMetadata meta;
+
   // Most of these default values are intentionally invalid; we use these
   // values to check if each field was parsed during quest indexing.
-  uint32_t category_id = 0xFFFFFFFF;
-  uint32_t quest_number = 0xFFFFFFFF;
   Version version = Version::UNKNOWN;
   uint8_t language = 0xFF;
-  Episode episode = Episode::NONE;
-  bool joinable = false;
-  uint8_t max_players = 0x00;
-  std::string name;
-  std::string short_description;
-  std::string long_description;
   std::shared_ptr<const std::string> bin_contents;
   std::shared_ptr<const std::string> dat_contents;
   std::shared_ptr<const MapFile> map_file;
   std::shared_ptr<const std::string> pvr_contents;
-  std::shared_ptr<const BattleRules> battle_rules;
-  ssize_t challenge_template_index = -1;
-  uint8_t description_flag = 0x00;
-  std::shared_ptr<const IntegralExpression> available_expression;
-  std::shared_ptr<const IntegralExpression> enabled_expression;
-  bool allow_start_from_chat_command = false;
-  int16_t lock_status_register = -1;
-  std::string common_item_set_name;
-  std::string rare_item_set_name;
-  std::shared_ptr<const CommonItemSet> common_item_set;
-  std::shared_ptr<const RareItemSet> rare_item_set;
-  uint8_t allowed_drop_modes = 0x00; // 0 = use server default
-  ServerDropMode default_drop_mode = ServerDropMode::CLIENT; // Ignored if allowed_drop_modes == 0
   bool is_dlq_encoded = false;
 
   void assert_valid() const;
@@ -110,27 +91,8 @@ struct VersionedQuest {
 };
 
 struct Quest {
-  uint32_t quest_number;
-  uint32_t category_id;
-  Episode episode;
-  bool allow_start_from_chat_command;
-  bool joinable;
-  uint8_t max_players;
-  int16_t lock_status_register;
-  std::string name;
+  QuestMetadata meta;
   mutable std::shared_ptr<const SuperMap> supermap;
-  std::shared_ptr<const BattleRules> battle_rules;
-  ssize_t challenge_template_index;
-  uint8_t description_flag;
-  std::shared_ptr<const IntegralExpression> available_expression;
-  std::shared_ptr<const IntegralExpression> enabled_expression;
-  std::string common_item_set_name;
-  std::string rare_item_set_name;
-  std::shared_ptr<const CommonItemSet> common_item_set;
-  std::shared_ptr<const RareItemSet> rare_item_set;
-  uint8_t allowed_drop_modes = 0x00; // 0 = use server default
-  ServerDropMode default_drop_mode = ServerDropMode::CLIENT; // Ignored if allowed_drop_modes == 0
-
   std::map<uint32_t, std::shared_ptr<const VersionedQuest>> versions;
 
   Quest() = delete;
@@ -171,8 +133,7 @@ struct QuestIndex {
       const std::string& directory,
       std::shared_ptr<const QuestCategoryIndex> category_index,
       const std::unordered_map<std::string, std::shared_ptr<const CommonItemSet>>& common_item_sets,
-      const std::unordered_map<std::string, std::shared_ptr<const RareItemSet>>& rare_item_sets,
-      bool is_ep3);
+      const std::unordered_map<std::string, std::shared_ptr<const RareItemSet>>& rare_item_sets);
   phosg::JSON json() const;
 
   std::shared_ptr<const Quest> get(uint32_t quest_number) const;

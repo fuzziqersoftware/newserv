@@ -318,7 +318,7 @@ For .dat files, the `LANGUAGE` token may be omitted. If it's present, then that 
 
 For example, the GameCube version of Lost HEAT SWORD is in two files named `q058-gc-e.bin` and `q058-gc.dat`. newserv knows these files are quests because they're in the system/quests/ directory, it knows they're for PSO GC because the filenames contain `-gc`, it knows this is the English version of the quest because the .bin filename ends with `-e` (even though the .dat filename does not), and it puts them in the Retrieval category because the files are within the retrieval/ directory within system/quests/.
 
-Some quests have additional JSON metadata files that describe how the server should handle them. These metadata files are generally named similarly to their .bin and .dat counterparts, except the `VERSION` token may also be omitted if the metadata applies to all languages of the quest on all PSO versions. See the comments in system/quests/battle/b88001.json for all of the available options and how to use them. Some of the options are:
+Some quests have additional JSON metadata files that describe how the server should handle them. These metadata files are generally named similarly to their .bin and .dat counterparts, except the `VERSION` token may also be omitted if the metadata applies to all languages of the quest on all PSO versions. See the comments in system/quests/retrieval/q058.json for all of the available options and how to use them. Some of the options are:
 - Disable or hide the quest if certain preceding quests aren't cleared or other conditions aren't met
 - Enable the quest to be joined while in progress
 - Override the common and/or rare item tables and set the allowed drop modes

@@ -201,6 +201,8 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     this->enabled_flags ^= static_cast<uint32_t>(flag);
   }
 
+  uint8_t area_for_floor(Version version, uint8_t floor) const;
+
   std::shared_ptr<ServerState> require_server_state() const;
   std::shared_ptr<ChallengeParameters> require_challenge_params() const;
   void create_item_creator(Version logic_version = Version::UNKNOWN);

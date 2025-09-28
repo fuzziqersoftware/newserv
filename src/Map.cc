@@ -67,7 +67,7 @@ vector<string> SetDataTableBase::map_filenames_for_variations(
   return ret;
 }
 
-uint8_t SetDataTableBase::default_area_for_floor(Episode episode, uint8_t floor) const {
+uint8_t SetDataTableBase::default_area_for_floor(Version version, Episode episode, uint8_t floor) {
   // For some inscrutable reason, Pioneer 2's area number in Episode 4 is
   // discontiguous with all the rest. Why, Sega??
   static const array<uint8_t, 0x12> areas_ep1 = {
@@ -82,7 +82,7 @@ uint8_t SetDataTableBase::default_area_for_floor(Episode episode, uint8_t floor)
     case Episode::EP1:
       return areas_ep1.at(floor);
     case Episode::EP2: {
-      const auto& areas = ((this->version == Version::GC_NTE) ? areas_ep2_gc_nte : areas_ep2);
+      const auto& areas = ((version == Version::GC_NTE) ? areas_ep2_gc_nte : areas_ep2);
       return areas.at(floor);
     }
     case Episode::EP4:
@@ -90,6 +90,10 @@ uint8_t SetDataTableBase::default_area_for_floor(Episode episode, uint8_t floor)
     default:
       throw logic_error("incorrect episode");
   }
+}
+
+uint8_t SetDataTableBase::default_area_for_floor(Episode episode, uint8_t floor) const {
+  return this->default_area_for_floor(this->version, episode, floor);
 }
 
 SetDataTable::SetDataTable(Version version, const string& data) : SetDataTableBase(version) {
@@ -5833,7 +5837,7 @@ phosg::JSON MapState::RareEnemyRates::json() const {
   });
 }
 
-uint32_t MapState::RareEnemyRates::for_enemy_type(EnemyType type) const {
+uint32_t MapState::RareEnemyRates::get(EnemyType type) const {
   switch (type) {
     case EnemyType::HILDEBEAR:
       return this->hildeblue;
@@ -6071,7 +6075,7 @@ void MapState::index_super_map(const FloorConfig& fc, shared_ptr<RandomGenerator
     auto rare_type = type_definition_for_enemy(type).rare_type(fc.super_map->get_episode(), this->event, ene->floor);
     if ((type == EnemyType::MERICARAND) || (rare_type != type)) {
       unordered_map<uint32_t, float> det_cache;
-      uint32_t bb_rare_rate = this->bb_rare_rates->for_enemy_type(type);
+      uint32_t bb_rare_rate = this->bb_rare_rates->get(type);
       for (Version v : ALL_NON_PATCH_VERSIONS) {
         // Skip this version if the enemy doesn't exist there
         uint16_t relative_enemy_index = ene->version(v).relative_enemy_index;

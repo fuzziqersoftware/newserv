@@ -394,10 +394,6 @@ shared_ptr<const vector<string>> ServerState::information_contents_for_client(sh
   return is_v1_or_v2(c->version()) ? this->information_contents_v2 : this->information_contents_v3;
 }
 
-shared_ptr<const QuestIndex> ServerState::quest_index(Version version) const {
-  return is_ep3(version) ? this->ep3_download_quest_index : this->default_quest_index;
-}
-
 size_t ServerState::default_min_level_for_game(Version version, Episode episode, uint8_t difficulty) const {
   const auto& min_levels = is_v4(version)
       ? this->min_levels_v4
@@ -512,8 +508,8 @@ ItemData ServerState::parse_item_description(Version version, const string& desc
 }
 
 shared_ptr<const CommonItemSet> ServerState::common_item_set(Version logic_version, shared_ptr<const Quest> q) const {
-  if (q && q->common_item_set) {
-    return q->common_item_set;
+  if (q && q->meta.common_item_set) {
+    return q->meta.common_item_set;
   } else if (is_v1_or_v2(logic_version)) {
     // TODO: We should probably have a v1 common item set at some point too
     return this->common_item_sets.at("common-table-v1-v2");
@@ -525,8 +521,8 @@ shared_ptr<const CommonItemSet> ServerState::common_item_set(Version logic_versi
 }
 
 shared_ptr<const RareItemSet> ServerState::rare_item_set(Version logic_version, shared_ptr<const Quest> q) const {
-  if (q && q->rare_item_set) {
-    return q->rare_item_set;
+  if (q && q->meta.rare_item_set) {
+    return q->meta.rare_item_set;
   } else if (is_v1(logic_version)) {
     return this->rare_item_sets.at("rare-table-v1");
   } else if (is_v2(logic_version)) {
@@ -2157,6 +2153,8 @@ void ServerState::load_ep3_cards() {
 void ServerState::load_ep3_maps() {
   config_log.info_f("Collecting Episode 3 maps");
   this->ep3_map_index = make_shared<Episode3::MapIndex>("system/ep3/maps");
+  config_log.info_f("Collecting Episode 3 download maps");
+  this->ep3_download_map_index = make_shared<Episode3::MapIndex>("system/ep3/maps-download");
 }
 
 void ServerState::load_ep3_tournament_state() {
@@ -2169,14 +2167,8 @@ void ServerState::load_ep3_tournament_state() {
 
 void ServerState::load_quest_index() {
   config_log.info_f("Collecting quests");
-  this->default_quest_index = make_shared<QuestIndex>("system/quests", this->quest_category_index, this->common_item_sets, this->rare_item_sets, false);
-  config_log.info_f("Collecting Episode 3 download quests");
-  this->ep3_download_quest_index = make_shared<QuestIndex>(
-      "system/ep3/maps-download",
-      this->quest_category_index,
-      unordered_map<string, shared_ptr<const CommonItemSet>>{},
-      unordered_map<string, shared_ptr<const RareItemSet>>{},
-      true);
+  this->quest_index = make_shared<QuestIndex>(
+      "system/quests", this->quest_category_index, this->common_item_sets, this->rare_item_sets);
 }
 
 void ServerState::compile_functions() {

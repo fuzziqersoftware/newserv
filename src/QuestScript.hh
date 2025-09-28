@@ -5,6 +5,7 @@
 #include <phosg/Encoding.hh>
 #include <phosg/Tools.hh>
 
+#include "QuestMetadata.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
 #include "Version.hh"
@@ -18,6 +19,18 @@ struct PSOQuestHeaderDCNTE {
   /* 0010 */ pstring<TextEncoding::SJIS, 0x10> name;
   /* 0020 */
 } __packed_ws__(PSOQuestHeaderDCNTE, 0x20);
+
+struct PSOQuestHeaderDC112000 {
+  /* 0000 */ le_uint32_t code_offset = 0;
+  /* 0004 */ le_uint32_t function_table_offset = 0;
+  /* 0008 */ le_uint32_t size = 0;
+  /* 000C */ le_uint16_t unknown_a1 = 0;
+  /* 000E */ le_uint16_t unknown_a2 = 0;
+  /* 0010 */ pstring<TextEncoding::MARKED, 0x20> name;
+  /* 0030 */ pstring<TextEncoding::MARKED, 0x80> short_description;
+  /* 00B0 */ pstring<TextEncoding::MARKED, 0x120> long_description;
+  /* 01D0 */
+} __packed_ws__(PSOQuestHeaderDC112000, 0x1D0);
 
 struct PSOQuestHeaderDC { // Same format for DC v1 and v2
   /* 0000 */ le_uint32_t code_offset = 0;
@@ -100,7 +113,8 @@ std::string disassemble_quest_script(
     bool reassembly_mode = false,
     bool use_qedit_names = false);
 
-struct QuestMetadata {
+struct AssembledQuestScript {
+  std::string data;
   int64_t quest_number = -1;
   Version version = Version::UNKNOWN;
   uint8_t language = 0xFF;
@@ -111,13 +125,9 @@ struct QuestMetadata {
   std::string short_description;
   std::string long_description;
 };
-struct AssembledQuestScript {
-  std::string data;
-  QuestMetadata metadata;
-};
 AssembledQuestScript assemble_quest_script(
     const std::string& text,
     const std::vector<std::string>& script_include_directories,
     const std::vector<std::string>& native_include_directories);
 
-Episode find_quest_episode_from_script(const void* data, size_t size, Version version);
+void populate_quest_metadata_from_script(QuestMetadata& meta, const void* data, size_t size, Version version, uint8_t language);

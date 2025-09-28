@@ -312,11 +312,8 @@ void send_quest_menu(
     std::shared_ptr<Client> c,
     const std::vector<std::pair<QuestIndex::IncludeState, std::shared_ptr<const Quest>>>& quests,
     bool is_download_menu);
-void send_quest_categories_menu(
-    std::shared_ptr<Client> c,
-    std::shared_ptr<const QuestIndex> quest_index,
-    QuestMenuType menu_type,
-    Episode episode);
+void send_ep3_download_quest_menu(std::shared_ptr<Client> c);
+void send_quest_categories_menu(std::shared_ptr<Client> c, QuestMenuType menu_type, Episode episode);
 void send_lobby_list(std::shared_ptr<Client> c);
 
 void send_player_records(

@@ -703,7 +703,7 @@ ShellCommand c_create_tournament(
     +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
       string name = get_quoted_string(args.args);
       string map_name = get_quoted_string(args.args);
-      auto map = args.s->ep3_map_index->for_name(map_name);
+      auto map = args.s->ep3_map_index->get(map_name);
       uint32_t num_teams = stoul(get_quoted_string(args.args), nullptr, 0);
       Episode3::Rules rules;
       rules.set_defaults();

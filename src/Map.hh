@@ -67,6 +67,7 @@ public:
   std::vector<std::string> map_filenames_for_variations(
       Episode episode, GameMode mode, const Variations& variations, FilenameType type) const;
 
+  static uint8_t default_area_for_floor(Version version, Episode episode, uint8_t floor);
   uint8_t default_area_for_floor(Episode episode, uint8_t floor) const;
 
 protected:
@@ -672,7 +673,7 @@ public:
     RareEnemyRates(uint32_t enemy_rate, uint32_t mericarand_rate, uint32_t boss_rate);
     explicit RareEnemyRates(const phosg::JSON& json);
 
-    uint32_t for_enemy_type(EnemyType type) const;
+    uint32_t get(EnemyType type) const;
 
     std::string str() const;
     phosg::JSON json() const;

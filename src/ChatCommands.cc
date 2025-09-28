@@ -2074,8 +2074,7 @@ ChatCommandDefinition cc_quest(
       a.check_is_game(true);
 
       auto s = a.c->require_server_state();
-      Version effective_version = is_ep3(a.c->version()) ? Version::GC_V3 : a.c->version();
-      auto q = s->quest_index(effective_version)->get(stoul(a.text));
+      auto q = s->quest_index->get(stoul(a.text));
       if (!q) {
         throw precondition_failed("$C6Quest not found");
       }
@@ -2085,8 +2084,17 @@ ChatCommandDefinition cc_quest(
         if (l->count_clients() > 1) {
           throw precondition_failed("$C6This command can only\nbe used with no\nother players present");
         }
-        if (!q->allow_start_from_chat_command) {
+        if (!q->meta.allow_start_from_chat_command) {
           throw precondition_failed("$C6This quest cannot\nbe started with the\n%squest command");
+        }
+      }
+
+      for (size_t client_id = 0; client_id < l->max_clients; client_id++) {
+        auto lc = l->clients[client_id];
+        if (lc) {
+          if (!q->version(lc->version(), lc->language())) {
+            throw precondition_failed("$C6Quest does not exist\nfor all players\' game\nversions");
+          }
         }
       }
 
@@ -2365,8 +2373,9 @@ ChatCommandDefinition cc_sound(
       bool echo_to_all = (!a.text.empty() && a.text[0] == '!');
       uint32_t sound_id = stoul(echo_to_all ? a.text.substr(1) : a.text, nullptr, 16);
 
-      // TODO: Using floor is technically incorrect here; it should be area
-      G_PlaySoundFromPlayer_6xB2 cmd = {{0xB2, 0x03, 0x0000}, static_cast<uint8_t>(a.c->floor), 0x00, a.c->lobby_client_id, sound_id};
+      auto l = a.c->require_lobby();
+      uint8_t area = l->area_for_floor(a.c->version(), a.c->floor);
+      G_PlaySoundFromPlayer_6xB2 cmd = {{0xB2, 0x03, 0x0000}, area, 0x00, a.c->lobby_client_id, sound_id};
       if (!echo_to_all) {
         send_command_t(a.c, 0x60, 0x00, cmd);
       } else if (a.c->proxy_session) {
@@ -2812,13 +2821,10 @@ static void whatobj_whatene_fn(const Args& a, bool include_objs, bool include_en
     throw precondition_failed("$C4No map loaded");
   }
 
-  // TODO: We should use the actual area if a loaded quest has reassigned
-  // them; it's likely that the variations will be wrong if we don't
   uint8_t area, layout_var;
   auto s = a.c->require_server_state();
   if (l->episode != Episode::EP3) {
-    auto sdt = s->set_data_table(a.c->version(), l->episode, l->mode, l->difficulty);
-    area = sdt->default_area_for_floor(l->episode, a.c->floor);
+    area = l->area_for_floor(a.c->version(), a.c->floor);
     layout_var = (a.c->floor < 0x10) ? l->variations.entries[a.c->floor].layout.load() : 0x00;
   } else {
     area = a.c->floor;

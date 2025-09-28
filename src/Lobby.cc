@@ -186,6 +186,14 @@ void Lobby::reset_next_item_ids() {
   this->next_game_item_id = 0xCC000000;
 }
 
+uint8_t Lobby::area_for_floor(Version version, uint8_t floor) const {
+  if (this->quest) {
+    return this->quest->meta.area_for_floor.at(floor);
+  }
+  auto sdt = this->require_server_state()->set_data_table(version, this->episode, this->mode, this->difficulty);
+  return sdt->default_area_for_floor(this->episode, floor);
+}
+
 shared_ptr<ServerState> Lobby::require_server_state() const {
   auto s = this->server_state.lock();
   if (!s) {
@@ -234,7 +242,7 @@ void Lobby::create_item_creator(Version logic_version) {
       this->difficulty,
       this->effective_section_id(),
       rand_crypt,
-      this->quest ? this->quest->battle_rules : nullptr);
+      this->quest ? this->quest->meta.battle_rules : nullptr);
 }
 
 uint8_t Lobby::effective_section_id() const {

@@ -717,10 +717,9 @@ asio::awaitable<std::shared_ptr<phosg::JSON>> HTTPServer::generate_rare_table_js
   }
 }
 
-asio::awaitable<std::shared_ptr<phosg::JSON>> HTTPServer::generate_quest_list_json(
-    std::shared_ptr<const QuestIndex> quest_index) {
+asio::awaitable<std::shared_ptr<phosg::JSON>> HTTPServer::generate_quest_list_json() {
   co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> shared_ptr<phosg::JSON> {
-    return make_shared<phosg::JSON>(quest_index->json());
+    return make_shared<phosg::JSON>(this->state->quest_index->json());
   });
 }
 
@@ -817,7 +816,7 @@ asio::awaitable<std::unique_ptr<HTTPResponse>> HTTPServer::handle_request(shared
       ret = co_await this->generate_rare_table_json(req.path.substr(20));
     } else if (req.path == "/y/data/quests") {
       this->require_GET(req);
-      ret = co_await this->generate_quest_list_json(this->state->quest_index(Version::GC_V3));
+      ret = co_await this->generate_quest_list_json();
     } else if (req.path == "/y/data/config") {
       this->require_GET(req);
       ret = this->state->config_json;

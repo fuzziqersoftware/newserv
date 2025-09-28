@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "PlayerSubordinates.hh"
-#include "QuestScript.hh"
 #include "StaticGameData.hh"
 #include "TeamIndex.hh"
 

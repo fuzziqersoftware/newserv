@@ -3105,7 +3105,8 @@ static asio::awaitable<void> on_set_quest_flag(shared_ptr<Client> c, SubcommandM
   if (l->drop_mode != ServerDropMode::DISABLED) {
     EnemyType boss_enemy_type = EnemyType::NONE;
     bool is_ep2 = (l->episode == Episode::EP2);
-    if ((l->episode == Episode::EP1) && (c->floor == 0x0E)) {
+    uint8_t area = l->area_for_floor(c->version(), c->floor);
+    if ((l->episode == Episode::EP1) && (area == 0x0E)) {
       // On Normal, Dark Falz does not have a third phase, so send the drop
       // request after the end of the second phase. On all other difficulty
       // levels, send it after the third phase.
@@ -3114,7 +3115,7 @@ static asio::awaitable<void> on_set_quest_flag(shared_ptr<Client> c, SubcommandM
       } else if ((difficulty != 0) && (flag_num == 0x0037)) {
         boss_enemy_type = EnemyType::DARK_FALZ_3;
       }
-    } else if (is_ep2 && (flag_num == 0x0057) && (c->floor == 0x0D)) {
+    } else if (is_ep2 && (flag_num == 0x0057) && (area == 0x0D)) {
       boss_enemy_type = EnemyType::OLGA_FLOW_2;
     }
 
@@ -3187,9 +3188,9 @@ static asio::awaitable<void> on_sync_quest_register(shared_ptr<Client> c, Subcom
   // If the lock status register is being written, change the game's flags to
   // allow or forbid joining
   if (l->quest &&
-      l->quest->joinable &&
-      (l->quest->lock_status_register >= 0) &&
-      (cmd.register_number == l->quest->lock_status_register)) {
+      l->quest->meta.joinable &&
+      (l->quest->meta.lock_status_register >= 0) &&
+      (cmd.register_number == l->quest->meta.lock_status_register)) {
     // Lock if value is nonzero; unlock if value is zero
     if (cmd.value.as_int) {
       l->set_flag(Lobby::Flag::QUEST_IN_PROGRESS);
@@ -3723,10 +3724,8 @@ static asio::awaitable<void> on_set_entity_pos_and_angle_6x17(shared_ptr<Client>
   if (l->episode != Episode::EP1) {
     throw runtime_error("client sent 6x17 command in non-Ep1 game");
   }
-  // TODO: If a quest is loaded, we should use the quest's floor assignments
-  // here instead of a constant
-  if (c->floor != 0x0D) {
-    throw runtime_error("client sent 6x17 command on floor other than Vol Opt");
+  if (l->area_for_floor(c->version(), c->floor) != 0x0D) {
+    throw runtime_error("client sent 6x17 command in area other than Vol Opt");
   }
   if (cmd.header.entity_id != c->lobby_client_id) {
     // If the target is on a different floor or does not exist, just drop the
@@ -4606,7 +4605,7 @@ static asio::awaitable<void> on_challenge_mode_retry_or_quit(shared_ptr<Client> 
     throw runtime_error("6x97 sent by non-leader");
   }
 
-  if (l->is_game() && (cmd.is_retry == 1) && l->quest && (l->quest->challenge_template_index >= 0)) {
+  if (l->is_game() && (cmd.is_retry == 1) && l->quest && (l->quest->meta.challenge_template_index >= 0)) {
     auto s = l->require_server_state();
 
     for (auto& m : l->floor_item_managers) {
@@ -4621,7 +4620,7 @@ static asio::awaitable<void> on_challenge_mode_retry_or_quit(shared_ptr<Client> 
           if (is_v4(lc->version())) {
             lc->change_bank(lc->bb_character_index);
           }
-          lc->create_challenge_overlay(lc->version(), l->quest->challenge_template_index, s->level_table(c->version()));
+          lc->create_challenge_overlay(lc->version(), l->quest->meta.challenge_template_index, s->level_table(c->version()));
           lc->log.info_f("Created challenge overlay");
           l->assign_inventory_and_bank_item_ids(lc, true);
         }

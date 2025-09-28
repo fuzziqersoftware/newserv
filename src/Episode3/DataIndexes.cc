@@ -2626,8 +2626,8 @@ MapIndex::VersionedMap::VersionedMap(shared_ptr<const MapDefinition> map, uint8_
 
 MapIndex::VersionedMap::VersionedMap(std::string&& compressed_data, uint8_t language)
     : language(language),
-      compressed_data(std::move(compressed_data)) {
-  string decompressed = prs_decompress(this->compressed_data);
+      compressed_data(make_shared<string>(std::move(compressed_data))) {
+  string decompressed = prs_decompress(*this->compressed_data);
   if (decompressed.size() == sizeof(MapDefinitionTrial)) {
     this->map = make_shared<MapDefinition>(*reinterpret_cast<const MapDefinitionTrial*>(decompressed.data()));
   } else if (decompressed.size() == sizeof(MapDefinition)) {
@@ -2646,19 +2646,28 @@ shared_ptr<const MapDefinitionTrial> MapIndex::VersionedMap::trial() const {
   return this->trial_map;
 }
 
-const std::string& MapIndex::VersionedMap::compressed(bool is_nte) const {
-  if (is_nte) {
-    if (this->compressed_trial_data.empty()) {
+std::shared_ptr<const std::string> MapIndex::VersionedMap::compressed(bool trial) const {
+  if (trial) {
+    if (!this->compressed_data_trial) {
       auto md = this->trial();
-      this->compressed_trial_data = prs_compress(md.get(), sizeof(*md));
+      this->compressed_data_trial = make_shared<string>(prs_compress(md.get(), sizeof(*md)));
     }
-    return this->compressed_trial_data;
+    return this->compressed_data_trial;
   } else {
-    if (this->compressed_data.empty()) {
-      this->compressed_data = prs_compress(this->map.get(), sizeof(*this->map));
+    if (!this->compressed_data) {
+      this->compressed_data = make_shared<string>(prs_compress(this->map.get(), sizeof(*this->map)));
     }
     return this->compressed_data;
   }
+}
+
+std::shared_ptr<const std::string> MapIndex::VersionedMap::trial_download() const {
+  if (!this->download_data_trial) {
+    MapDefinitionTrial trial_map = *this->map;
+    trial_map.tag = 0x96;
+    this->download_data_trial = make_shared<string>(prs_compress(&trial_map, sizeof(trial_map)));
+  }
+  return this->download_data_trial;
 }
 
 MapIndex::Map::Map(shared_ptr<const VersionedMap> initial_version)
@@ -2704,6 +2713,7 @@ shared_ptr<const MapIndex::VersionedMap> MapIndex::Map::version(uint8_t language
 }
 
 MapIndex::MapIndex(const string& directory) {
+  map<uint32_t, shared_ptr<Map>> mutable_maps;
   for (const auto& item : std::filesystem::directory_iterator(directory)) {
     string filename = item.path().filename().string();
     try {
@@ -2756,9 +2766,10 @@ MapIndex::MapIndex(const string& directory) {
       }
 
       string name = vm->map->name.decode(vm->language);
-      auto map_it = this->maps.find(vm->map->map_number);
-      if (map_it == this->maps.end()) {
-        map_it = this->maps.emplace(vm->map->map_number, make_shared<Map>(vm)).first;
+      auto map_it = mutable_maps.find(vm->map->map_number);
+      if (map_it == mutable_maps.end()) {
+        map_it = mutable_maps.emplace(vm->map->map_number, make_shared<Map>(vm)).first;
+        this->maps.emplace(vm->map->map_number, map_it->second);
         static_game_data_log.debug_f("({}) Created Episode 3 map {:08X} {} ({}; {})",
             filename,
             vm->map->map_number,
@@ -2864,22 +2875,6 @@ const string& MapIndex::get_compressed_list(size_t num_players, uint8_t language
         num_players, num_maps, decompressed_size, compressed_map_list.size());
   }
   return compressed_map_list;
-}
-
-shared_ptr<const MapIndex::Map> MapIndex::for_number(uint32_t id) const {
-  return this->maps.at(id);
-}
-
-shared_ptr<const MapIndex::Map> MapIndex::for_name(const string& name) const {
-  return this->maps_by_name.at(name);
-}
-
-set<uint32_t> MapIndex::all_numbers() const {
-  set<uint32_t> ret;
-  for (const auto& it : this->maps) {
-    ret.emplace(it.first);
-  }
-  return ret;
 }
 
 COMDeckIndex::COMDeckIndex(const string& filename) {

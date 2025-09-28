@@ -263,8 +263,6 @@
     [0x010, "government-ep2", "The Military's Hero", "$E$CG-Heathcliff Flowen-\n$C6Quests that follow\nthe Episode 2\nstoryline"],
     [0x010, "government-ep4", "The Meteor Impact Incident", "$E$C6Quests that follow\nthe Episode 4\nstoryline"],
     [0x020, "download", "Download", "$E$C6Quests to download\nto your Memory Card"],
-    [0x040, "download-ep3-trial", "Trial Download", "$E$C6Quests to download\nto your Memory Card\nfrom Episode 3\nTrial Edition"],
-    [0x040, "download-ep3", "Download", "$E$C6Quests to download\nto your Memory Card"],
   ],
 
   "ItemStackLimits": [

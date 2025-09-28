@@ -2801,10 +2801,9 @@ Action a_show_ep3_maps(
       s->load_ep3_cards();
       s->load_ep3_maps();
 
-      auto map_ids = s->ep3_map_index->all_numbers();
+      const auto& map_ids = s->ep3_map_index->all();
       phosg::log_info_f("{} maps", map_ids.size());
-      for (uint32_t map_id : map_ids) {
-        auto map = s->ep3_map_index->for_number(map_id);
+      for (const auto& [map_number, map] : map_ids) {
         const auto& vms = map->all_versions();
         for (size_t language = 0; language < vms.size(); language++) {
           if (!vms[language]) {
@@ -2928,7 +2927,7 @@ Action a_check_supermaps(
 
       SuperMap::EfficiencyStats all_quests_eff;
       uint32_t random_seed = args.get<uint32_t>("random-seed", 0, phosg::Arguments::IntFormat::HEX);
-      for (const auto& it : s->default_quest_index->quests_by_number) {
+      for (const auto& it : s->quest_index->quests_by_number) {
         auto supermap = it.second->get_supermap(random_seed);
         if (!supermap) {
           throw logic_error("quest does not have a supermap, even with a specified random seed");
@@ -2938,7 +2937,7 @@ Action a_check_supermaps(
         if (save_disassembly) {
           string filename = std::format("supermap_quest_{}_{:08X}.txt", it.first, random_seed);
           auto f = phosg::fopen_unique(filename, "wt");
-          phosg::fwrite_fmt(f.get(), "QUEST {} ({})\n", it.first, it.second->name);
+          phosg::fwrite_fmt(f.get(), "QUEST {} ({})\n", it.first, it.second->meta.name);
           supermap->print(f.get());
           filename_token = " => " + filename;
         }
@@ -2949,7 +2948,7 @@ Action a_check_supermaps(
           }
           string filename = std::format("supermap_quest_{}_{:08X}_enemy_counts.txt", it.first, random_seed);
           auto f = phosg::fopen_unique(filename, "wt");
-          phosg::fwrite_fmt(f.get(), "QUEST {} ({})\n", it.first, it.second->name);
+          phosg::fwrite_fmt(f.get(), "QUEST {} ({})\n", it.first, it.second->meta.name);
           phosg::fwrite_fmt(f.get(), "ENEMY---------------  DCNTE  11/2K  DC-V1  DC-V2  PCNTE  PC-V2  GCNTE  GC-V3  XB-V3  BB-V4\n");
           for (size_t type_ss = 0; type_ss < static_cast<size_t>(EnemyType::MAX_ENEMY_TYPE); type_ss++) {
             EnemyType type = static_cast<EnemyType>(type_ss);
@@ -3003,6 +3002,19 @@ Action a_check_supermaps(
       }
       string all_quests_eff_str = all_quests_eff.str();
       phosg::fwrite_fmt(stderr, "ALL QUEST MAPS: {}\n", all_quests_eff_str);
+    });
+
+Action a_check_quests(
+    "check-quests", nullptr,
+    +[](phosg::Arguments& args) {
+      auto s = make_shared<ServerState>(get_config_filename(args));
+      s->is_debug = true;
+      s->load_config_early();
+      s->clear_file_caches();
+      s->load_patch_indexes();
+      s->load_set_data_tables();
+      s->load_maps();
+      s->load_quest_index();
     });
 
 Action a_parse_object_graph(

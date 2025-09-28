@@ -1645,10 +1645,10 @@ void send_quest_menu_t(
     }
 
     auto& e = entries.emplace_back();
-    e.menu_id = ((it.second->episode == Episode::EP1) || (it.second->episode == Episode::EP3)) ? MenuID::QUEST_EP1 : MenuID::QUEST_EP2;
-    e.item_id = it.second->quest_number;
-    e.name.encode(vq->name, c->language());
-    e.short_description.encode(add_color(vq->short_description), c->language());
+    e.menu_id = (it.second->meta.episode == Episode::EP2) ? MenuID::QUEST_EP2 : MenuID::QUEST_EP1;
+    e.item_id = it.second->meta.quest_number;
+    e.name.encode(vq->meta.name, c->language());
+    e.short_description.encode(add_color(vq->meta.short_description), c->language());
   }
   send_command_vt(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
 }
@@ -1666,21 +1666,31 @@ void send_quest_menu_bb(
     }
 
     auto& e = entries.emplace_back();
-    e.menu_id = (it.second->episode == Episode::EP1) ? MenuID::QUEST_EP1 : MenuID::QUEST_EP2;
-    e.item_id = it.second->quest_number;
-    e.name.encode(vq->name, c->language());
-    e.short_description.encode(add_color(vq->short_description), c->language());
+    e.menu_id = (it.second->meta.episode == Episode::EP2) ? MenuID::QUEST_EP2 : MenuID::QUEST_EP1;
+    e.item_id = it.second->meta.quest_number;
+    e.name.encode(vq->meta.name, c->language());
+    e.short_description.encode(add_color(vq->meta.short_description), c->language());
     e.disabled = (it.first == QuestIndex::IncludeState::DISABLED) ? 1 : 0;
   }
   send_command_vt(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
 }
 
+void send_ep3_download_quest_menu(shared_ptr<Client> c) {
+  auto s = c->require_server_state();
+  vector<S_QuestMenuEntry_DC_GC_A2_A4> entries;
+  for (const auto& it : s->ep3_download_map_index->all()) {
+    auto vm = it.second->version(c->language());
+    auto& e = entries.emplace_back();
+    e.menu_id = MenuID::QUEST_EP3;
+    e.item_id = it.first; // map_number
+    e.name.encode(vm->map->name.decode(vm->language), c->language());
+    e.short_description.encode(add_color(vm->map->location_name.decode(vm->language)), c->language());
+  }
+  send_command_vt(c, 0xA4, entries.size(), entries);
+}
+
 template <typename EntryT>
-void send_quest_categories_menu_t(
-    shared_ptr<Client> c,
-    shared_ptr<const QuestIndex> quest_index,
-    QuestMenuType menu_type,
-    Episode episode) {
+void send_quest_categories_menu_t(shared_ptr<Client> c, QuestMenuType menu_type, Episode episode) {
   QuestIndex::IncludeCondition include_condition = nullptr;
   if (!c->login->account->check_flag(Account::Flag::DISABLE_QUEST_REQUIREMENTS)) {
     auto l = c->lobby.lock();
@@ -1694,7 +1704,8 @@ void send_quest_categories_menu_t(
   }
 
   vector<EntryT> entries;
-  for (const auto& cat : quest_index->categories(menu_type, episode, version_flags, include_condition)) {
+  auto s = c->require_server_state();
+  for (const auto& cat : s->quest_index->categories(menu_type, episode, version_flags, include_condition)) {
     auto& e = entries.emplace_back();
     e.menu_id = cat->use_ep2_icon() ? MenuID::QUEST_CATEGORIES_EP2 : MenuID::QUEST_CATEGORIES_EP1;
     e.item_id = cat->category_id;
@@ -1702,7 +1713,7 @@ void send_quest_categories_menu_t(
     e.short_description.encode(add_color(cat->description), c->language());
   }
 
-  bool is_download_menu = (menu_type == QuestMenuType::DOWNLOAD) || (menu_type == QuestMenuType::EP3_DOWNLOAD);
+  bool is_download_menu = (menu_type == QuestMenuType::DOWNLOAD);
   send_command_vt(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
 }
 
@@ -1736,15 +1747,11 @@ void send_quest_menu(
   }
 }
 
-void send_quest_categories_menu(
-    shared_ptr<Client> c,
-    shared_ptr<const QuestIndex> quest_index,
-    QuestMenuType menu_type,
-    Episode episode) {
+void send_quest_categories_menu(shared_ptr<Client> c, QuestMenuType menu_type, Episode episode) {
   switch (c->version()) {
     case Version::PC_NTE:
     case Version::PC_V2:
-      send_quest_categories_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, quest_index, menu_type, episode);
+      send_quest_categories_menu_t<S_QuestMenuEntry_PC_A2_A4>(c, menu_type, episode);
       break;
     case Version::DC_NTE:
     case Version::DC_11_2000:
@@ -1754,13 +1761,13 @@ void send_quest_categories_menu(
     case Version::GC_V3:
     case Version::GC_EP3_NTE:
     case Version::GC_EP3:
-      send_quest_categories_menu_t<S_QuestMenuEntry_DC_GC_A2_A4>(c, quest_index, menu_type, episode);
+      send_quest_categories_menu_t<S_QuestMenuEntry_DC_GC_A2_A4>(c, menu_type, episode);
       break;
     case Version::XB_V3:
-      send_quest_categories_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, quest_index, menu_type, episode);
+      send_quest_categories_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, menu_type, episode);
       break;
     case Version::BB_V4:
-      send_quest_categories_menu_t<S_QuestMenuEntry_BB_A2_A4>(c, quest_index, menu_type, episode);
+      send_quest_categories_menu_t<S_QuestMenuEntry_BB_A2_A4>(c, menu_type, episode);
       break;
     default:
       throw logic_error("unimplemented versioned command");
@@ -4023,12 +4030,11 @@ void send_open_quest_file(
     if (chunk_bytes > 0x400) {
       chunk_bytes = 0x400;
     }
-    send_quest_file_chunk(c, filename, offset / 0x400,
-        contents->data() + offset, chunk_bytes, (type != QuestFileType::ONLINE));
+    send_quest_file_chunk(c, filename, offset / 0x400, contents->data() + offset, chunk_bytes, (type != QuestFileType::ONLINE));
   }
 
   // If there are still chunks to send, track the file so the chunk
-  // acknowledgement handler (13 or A7) cna know what to send next
+  // acknowledgement handler (13 or A7) can know what to send next
   if (chunks_to_send < total_chunks) {
     c->sending_files.emplace(filename, contents);
     c->log.info_f("Opened file {}", filename);

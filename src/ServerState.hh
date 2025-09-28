@@ -183,13 +183,13 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const Episode3::CardIndex> ep3_card_index;
   std::shared_ptr<const Episode3::CardIndex> ep3_card_index_trial;
   std::shared_ptr<const Episode3::MapIndex> ep3_map_index;
+  std::shared_ptr<const Episode3::MapIndex> ep3_download_map_index;
   std::shared_ptr<const Episode3::COMDeckIndex> ep3_com_deck_index;
   std::shared_ptr<const G_SetEXResultValues_Ep3_6xB4x4B> ep3_default_ex_values;
   std::shared_ptr<const G_SetEXResultValues_Ep3_6xB4x4B> ep3_tournament_ex_values;
   std::shared_ptr<const G_SetEXResultValues_Ep3_6xB4x4B> ep3_tournament_final_round_ex_values;
   std::shared_ptr<const QuestCategoryIndex> quest_category_index;
-  std::shared_ptr<const QuestIndex> default_quest_index;
-  std::shared_ptr<const QuestIndex> ep3_download_quest_index;
+  std::shared_ptr<const QuestIndex> quest_index;
   std::shared_ptr<const LevelTableV2> level_table_v1_v2;
   std::shared_ptr<const LevelTable> level_table_v3;
   std::shared_ptr<const LevelTable> level_table_v4;
@@ -375,7 +375,6 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   }
 
   std::shared_ptr<const std::vector<std::string>> information_contents_for_client(std::shared_ptr<const Client> c) const;
-  std::shared_ptr<const QuestIndex> quest_index(Version version) const;
 
   size_t default_min_level_for_game(Version version, Episode episode, uint8_t difficulty) const;
 
