@@ -342,7 +342,7 @@ bool ItemCreator::should_allow_meseta_drops() const {
 
 ItemData ItemCreator::check_rare_spec_and_create_rare_enemy_item(uint32_t enemy_type, uint8_t area_norm) {
   ItemData item;
-  if (this->are_rare_drops_allowed() && (enemy_type > 0) && (enemy_type < 0x58)) {
+  if (this->are_rare_drops_allowed() && (enemy_type > 0) && (enemy_type < 0x64)) {
     // Note: In the original implementation, enemies can only have one possible
     // rare drop. In our implementation, they can have multiple rare drops if
     // JSONRareItemSet is used (the other RareItemSet implementations never
