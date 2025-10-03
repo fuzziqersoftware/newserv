@@ -766,7 +766,7 @@ std::shared_ptr<PlayerBank> Client::bank_file(bool allow_load) {
       if (this->bb_bank_character_index == this->bb_character_index) {
         this->bank_data = std::make_shared<PlayerBank>(this->character_file(true, false)->bank);
         this->log.info_f("Using bank data from loaded character");
-      } else {
+      } else if (this->bb_bank_character_index >= 0) {
         if (!this->login || !this->login->bb_license) {
           throw logic_error("client is not logged in");
         }
@@ -774,6 +774,10 @@ std::shared_ptr<PlayerBank> Client::bank_file(bool allow_load) {
         auto character = PSOCHARFile::load_shared(filename, false).character_file;
         this->bank_data = std::make_shared<PlayerBank>(character->bank);
         this->log.info_f("Using bank data from {}", filename);
+      } else {
+        // The shared bank doesn't exist; make a new one
+        this->bank_data = make_shared<PlayerBank>();
+        this->log.info_f("Created new shared bank");
       }
     }
 
