@@ -4052,7 +4052,7 @@ struct G_SendGuildCard_BB_6x06 {
 } __packed_ws__(G_SendGuildCard_BB_6x06, 0x10C);
 
 // 6x07: Symbol chat
-// If UDP mode is enabled, this command is sent via UDP.
+// If UDP is enabled, this command is sent via UDP.
 
 struct G_SymbolChat_6x07 {
   G_UnusedHeader header;
@@ -7189,7 +7189,7 @@ check_struct_size(G_SetTournamentPlayerDecks_Ep3_6xB4x3D, 0x1CC);
 struct G_MakeCardAuctionBid_Ep3_6xB5x3E {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_MakeCardAuctionBid_Ep3_6xB5x3E) / 4, 0, 0x3E, 0, 0, 0};
   uint8_t card_index = 0; // Index of card in EF command
-  uint8_t bid_value = 0; // 1-99
+  uint8_t bid_value = 0; // 0-99
   parray<uint8_t, 2> unused;
 } __packed_ws__(G_MakeCardAuctionBid_Ep3_6xB5x3E, 0x0C);
 

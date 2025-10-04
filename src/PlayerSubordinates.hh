@@ -455,11 +455,11 @@ struct GuildCardGCT {
   /* 04:04 */ U32T<BE> guild_card_number = 0;
   /* 08:08 */ pstring<TextEncoding::ASCII, 0x18> name;
   /* 20:20 */ pstring<TextEncoding::MARKED, DescriptionLength> description;
-  /* 8C:8C */ uint8_t present = 0;
-  /* 8D:8D */ uint8_t language = 0;
-  /* 8E:8E */ uint8_t section_id = 0;
-  /* 8F:8F */ uint8_t char_class = 0;
-  /* 90:90 */
+  /* A0:8C */ uint8_t present = 0;
+  /* A1:8D */ uint8_t language = 0;
+  /* A2:8E */ uint8_t section_id = 0;
+  /* A3:8F */ uint8_t char_class = 0;
+  /* A4:90 */
 
   operator GuildCardBB() const;
 } __attribute__((packed));
