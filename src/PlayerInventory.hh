@@ -179,11 +179,11 @@ struct PlayerInventoryT {
     }
   }
 
-  void equip_item_id(uint32_t item_id, EquipSlot slot, bool allow_overwrite) {
-    this->equip_item_index(this->find_item(item_id), slot, allow_overwrite);
+  void equip_item_id(uint32_t item_id, EquipSlot slot) {
+    this->equip_item_index(this->find_item(item_id), slot);
   }
 
-  void equip_item_index(size_t index, EquipSlot slot, bool allow_overwrite) {
+  void equip_item_index(size_t index, EquipSlot slot) {
     auto& item = this->items[index];
 
     if ((slot == EquipSlot::UNKNOWN) || !item.data.can_be_equipped_in_slot(slot)) {
@@ -191,11 +191,7 @@ struct PlayerInventoryT {
     }
 
     if (this->has_equipped_item(slot)) {
-      if (allow_overwrite) {
-        this->unequip_item_slot(slot);
-      } else {
-        throw std::runtime_error("equip slot is already in use");
-      }
+      this->unequip_item_slot(slot);
     }
 
     item.flags |= 0x00000008;

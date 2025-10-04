@@ -2340,7 +2340,7 @@ static asio::awaitable<void> on_equip_item(shared_ptr<Client> c, SubcommandMessa
   auto l = c->require_lobby();
   EquipSlot slot = static_cast<EquipSlot>(cmd.equip_slot.load());
   auto p = c->character_file();
-  p->inventory.equip_item_id(cmd.item_id, slot, is_pre_v1(c->version()));
+  p->inventory.equip_item_id(cmd.item_id, slot);
   c->log.info_f("Equipped item {:08X}", cmd.item_id);
 
   forward_subcommand(c, msg);
