@@ -154,7 +154,9 @@ void IPSSClient::reschedule_idle_timeout() {
   this->idle_timeout_timer.async_wait([this, sim](std::error_code ec) {
     if (!ec) {
       sim->log.info_f("Idle timeout expired on N-{:X}", this->network_id);
-      this->sock.close();
+      if (this->sock.is_open()) {
+        this->sock.close();
+      }
     }
   });
 }
@@ -1233,11 +1235,9 @@ asio::awaitable<void> IPStackSimulator::on_client_tcp_frame(shared_ptr<IPSSClien
 
         // Send the new data to the server
         if (!conn->server_channel) {
-          this->log.warning_f("Client sent data on TCP connection {}, but server channel is missing",
-              conn_str);
+          this->log.warning_f("Client sent data on TCP connection {}, but server channel is missing", conn_str);
         } else if (!conn->server_channel->connected()) {
-          this->log.warning_f("Client sent data on TCP connection {}, but server channel is disconnected",
-              conn_str);
+          this->log.warning_f("Client sent data on TCP connection {}, but server channel is disconnected", conn_str);
         } else {
           conn->server_channel->add_inbound_data(payload, payload_size);
         }
@@ -1425,7 +1425,9 @@ std::shared_ptr<IPSSClient> IPStackSimulator::create_client(
     std::shared_ptr<IPSSSocket> listen_sock, asio::ip::tcp::socket&& client_sock) {
   uint32_t addr = ipv4_addr_for_asio_addr(client_sock.remote_endpoint().address());
   if (this->state->banned_ipv4_ranges->check(addr)) {
-    client_sock.close();
+    if (client_sock.is_open()) {
+      client_sock.close();
+    }
     return nullptr;
   }
 

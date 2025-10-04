@@ -335,7 +335,7 @@ asio::awaitable<WebSocketMessage> HTTPClient::recv_websocket_message(size_t max_
       } else if (opcode == 0x08) {
         // Close message
         co_await this->send_websocket_message(msg.data, msg.opcode);
-        this->r.get_socket().close();
+        this->r.close();
 
       } else if (opcode == 0x09) {
         // Ping message
@@ -343,7 +343,7 @@ asio::awaitable<WebSocketMessage> HTTPClient::recv_websocket_message(size_t max_
 
       } else {
         // Unknown control message type
-        this->r.get_socket().close();
+        this->r.close();
       }
       continue;
     }
@@ -351,7 +351,7 @@ asio::awaitable<WebSocketMessage> HTTPClient::recv_websocket_message(size_t max_
     // If there's an existing fragment, the current message's opcode should be
     // zero; if there's no pending message, it must not be zero
     if (prev_msg_present == (opcode != 0)) {
-      this->r.get_socket().close();
+      this->r.close();
       continue;
     }
 

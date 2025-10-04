@@ -189,8 +189,14 @@ public:
     return this->sock;
   }
 
+  inline bool is_open() const {
+    return this->sock.is_open();
+  }
+
   inline void close() {
-    this->sock.close();
+    if (this->sock.is_open()) {
+      this->sock.close();
+    }
   }
 
 private:

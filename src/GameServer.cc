@@ -118,7 +118,9 @@ vector<shared_ptr<Client>> GameServer::get_clients_by_identifier(const string& i
 shared_ptr<Client> GameServer::create_client(shared_ptr<GameServerSocket> listen_sock, asio::ip::tcp::socket&& client_sock) {
   uint32_t addr = ipv4_addr_for_asio_addr(client_sock.remote_endpoint().address());
   if (this->state->banned_ipv4_ranges->check(addr)) {
-    client_sock.close();
+    if (client_sock.is_open()) {
+      client_sock.close();
+    }
     return nullptr;
   }
 
