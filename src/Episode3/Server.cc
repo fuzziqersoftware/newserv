@@ -592,7 +592,14 @@ void Server::force_replace_assist_card(uint8_t client_id, uint16_t card_id) {
   if (!ps) {
     throw runtime_error("player does not exist");
   }
-  ps->replace_assist_card_by_id(card_id);
+  if (card_id == 0xFFFF) {
+    ps->discard_set_assist_card();
+    this->check_for_destroyed_cards_and_send_6xB4x05_6xB4x02();
+    this->check_for_battle_end();
+
+  } else {
+    ps->replace_assist_card_by_id(card_id);
+  }
 }
 
 void Server::force_destroy_field_character(uint8_t client_id, size_t visible_index) {

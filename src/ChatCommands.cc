@@ -2697,8 +2697,12 @@ ChatCommandDefinition cc_unset(
         throw precondition_failed("$C6Battle has not\nyet begun");
       }
 
-      size_t index = stoull(a.text) - 1;
-      l->ep3_server->force_destroy_field_character(a.c->lobby_client_id, index);
+      size_t index = stoull(a.text);
+      if (index == 0) {
+        l->ep3_server->force_replace_assist_card(a.c->lobby_client_id, 0xFFFF);
+      } else {
+        l->ep3_server->force_destroy_field_character(a.c->lobby_client_id, index - 1);
+      }
       co_return;
     });
 
