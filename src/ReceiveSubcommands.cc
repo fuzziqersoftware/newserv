@@ -5194,7 +5194,8 @@ static asio::awaitable<void> on_momoka_item_exchange_bb(shared_ptr<Client> c, Su
     throw runtime_error("6xD9 command sent during free play");
   }
 
-  const auto& cmd = msg.check_size_t<G_MomokaItemExchange_BB_6xD9>();
+  // See notes in CommandFormats.hh about why we allow larger commands here
+  const auto& cmd = msg.check_size_t<G_MomokaItemExchange_BB_6xD9>(0xFFFF);
   auto s = c->require_server_state();
   auto p = c->character_file();
   try {

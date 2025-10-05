@@ -6356,7 +6356,10 @@ struct G_AddSRankWeaponSpecial_BB_6xD8 {
 } __packed_ws__(G_AddSRankWeaponSpecial_BB_6xD8, 0x24);
 
 // 6xD9: Momoka item exchange (BB; handled by server)
-// The client sends this when it executes an F95B quest opcode.
+// The client sends this when it executes an F95B quest opcode. The client has
+// an unfortunate bug where it doesn't set the size field when generating this
+// command, so the size ends up as an uninitialized value and the client sends
+// more (or less!) data than necessary.
 
 struct G_MomokaItemExchange_BB_6xD9 {
   G_ClientIDHeader header;
