@@ -33,6 +33,7 @@ struct ProxySession {
     uint8_t char_class = 0;
   };
   std::vector<LobbyPlayer> lobby_players;
+  bool is_in_lobby = false;
   bool is_in_game = false;
   bool is_in_quest = false;
   uint8_t leader_client_id = 0;

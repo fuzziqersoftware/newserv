@@ -523,6 +523,12 @@ constexpr on_message_t S_P_81 = &S_81<SC_SimpleMail_PC_81>;
 constexpr on_message_t S_B_81 = &S_81<SC_SimpleMail_BB_81>;
 
 static asio::awaitable<HandlerResult> S_88(shared_ptr<Client> c, Channel::Message& msg) {
+  // If the client isn't in the lobby, suppress the command (Ep3 can crash if
+  // it receives this while loading; other versions probably also will crash)
+  if (!c->proxy_session->is_in_lobby) {
+    co_return HandlerResult::SUPPRESS;
+  }
+
   bool modified = false;
   if (c->login && c->login->account->account_id != c->proxy_session->remote_guild_card_number) {
     size_t expected_size = sizeof(S_ArrowUpdateEntry_88) * msg.flag;
@@ -1499,6 +1505,7 @@ template <typename CmdT>
 static asio::awaitable<HandlerResult> S_65_67_68_EB(shared_ptr<Client> c, Channel::Message& msg) {
   if (msg.command == 0x67) {
     c->proxy_session->clear_lobby_players(12);
+    c->proxy_session->is_in_lobby = true;
     c->proxy_session->is_in_game = false;
     c->proxy_session->is_in_quest = false;
     c->floor = 0x0F;
@@ -1642,6 +1649,7 @@ static asio::awaitable<HandlerResult> S_64(shared_ptr<Client> c, Channel::Messag
 
   c->proxy_session->clear_lobby_players(4);
   c->floor = 0;
+  c->proxy_session->is_in_lobby = false;
   c->proxy_session->is_in_game = true;
   c->proxy_session->is_in_quest = false;
   if constexpr (sizeof(cmd) > sizeof(S_JoinGame_DCNTE_64)) {
@@ -1746,6 +1754,7 @@ static asio::awaitable<HandlerResult> S_E8(shared_ptr<Client> c, Channel::Messag
   auto& cmd = msg.check_size_t<S_JoinSpectatorTeam_Ep3_E8>();
 
   c->floor = 0;
+  c->proxy_session->is_in_lobby = false;
   c->proxy_session->is_in_game = true;
   c->proxy_session->is_in_quest = false;
   c->proxy_session->lobby_event = cmd.event;
@@ -1835,6 +1844,7 @@ static asio::awaitable<HandlerResult> S_66_69_E9(shared_ptr<Client> c, Channel::
 
 static asio::awaitable<HandlerResult> C_98(shared_ptr<Client> c, Channel::Message& msg) {
   c->floor = 0x0F;
+  c->proxy_session->is_in_lobby = false;
   c->proxy_session->is_in_game = false;
   c->proxy_session->is_in_quest = false;
   c->proxy_session->lobby_event = 0;
