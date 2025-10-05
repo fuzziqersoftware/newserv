@@ -3808,8 +3808,7 @@ void send_ep3_update_game_metadata(shared_ptr<Lobby> l) {
     cmd.total_spectators = total_spectators;
     for (auto c : l->clients) {
       if (c) {
-        if ((c->version() == Version::GC_EP3) &&
-            !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+        if ((c->version() == Version::GC_EP3) && !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
           G_SetGameMetadata_Ep3_6xB4x52 masked_cmd = cmd;
           uint8_t mask_key = (phosg::random_object<uint32_t>() % 0xFF) + 1;
           set_mask_for_ep3_game_command(&masked_cmd, sizeof(masked_cmd), mask_key);
@@ -3827,9 +3826,7 @@ void send_ep3_update_game_metadata(shared_ptr<Lobby> l) {
       if (tourn->get_final_match() == l->tournament_match) {
         text = std::format("Viewing final match of tournament {}", tourn->get_name());
       } else {
-        text = std::format(
-            "Viewing match in round {} of tournament {}",
-            l->tournament_match->round_num, tourn->get_name());
+        text = std::format("Viewing match in round {} of tournament {}", l->tournament_match->round_num, tourn->get_name());
       }
     } else {
       text = "Viewing battle in game " + l->name;
@@ -3846,8 +3843,7 @@ void send_ep3_update_game_metadata(shared_ptr<Lobby> l) {
       cmd.text.encode(text, 1);
       for (auto c : watcher_l->clients) {
         if (c) {
-          if ((c->version() == Version::GC_EP3) &&
-              !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+          if ((c->version() == Version::GC_EP3) && !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
             G_SetGameMetadata_Ep3_6xB4x52 masked_cmd = cmd;
             uint8_t mask_key = (phosg::random_object<uint32_t>() % 0xFF) + 1;
             set_mask_for_ep3_game_command(&masked_cmd, sizeof(masked_cmd), mask_key);
@@ -3900,12 +3896,7 @@ void set_mask_for_ep3_game_command(void* vdata, size_t size, uint8_t mask_key) {
 }
 
 void send_quest_file_chunk(
-    shared_ptr<Client> c,
-    const string& filename,
-    size_t chunk_index,
-    const void* data,
-    size_t size,
-    bool is_download_quest) {
+    shared_ptr<Client> c, const string& filename, size_t chunk_index, const void* data, size_t size, bool is_download_quest) {
   if (size > 0x400) {
     throw logic_error("quest file chunks must be 1KB or smaller");
   }
@@ -3930,7 +3921,7 @@ void send_open_quest_file_t(
     const string& filename,
     const string&,
     uint32_t file_size,
-    uint32_t,
+    uint32_t, // quest_number (only used on Xbox)
     QuestFileType type) {
   CommandT cmd;
   uint8_t command_num;

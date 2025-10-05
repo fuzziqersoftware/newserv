@@ -247,9 +247,9 @@ public:
     static constexpr bool IsBE = BE;
 
     U16T<BE> type;
-    U16T<BE> unknown_a1;
+    U16T<BE> unused;
     U32T<BE> constructor_addr;
-    F32T<BE> unknown_a2;
+    F32T<BE> max_dist2; // Only applies for objects
     U32T<BE> default_num_children;
   } __attribute__((packed));
 
@@ -259,9 +259,9 @@ public:
 
     pstring<TextEncoding::ASCII, 0x10> debug_name;
     U16T<BE> type;
-    U16T<BE> unknown_a1;
+    U16T<BE> unused;
     U32T<BE> constructor_addr;
-    F32T<BE> unknown_a2;
+    F32T<BE> max_dist2; // Only applies for objects
     U32T<BE> default_num_children;
   } __attribute__((packed));
 
