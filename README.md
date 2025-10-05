@@ -482,6 +482,7 @@ The specific versions are:
 | PSO DC v2 JP                 | 2OJF | SH-4                           |
 | PSO DC v2 US                 | 2OEF | SH-4                           |
 | PSO DC v2 EU                 | 2OPF | SH-4                           |
+| PSO PC (v2) Trial Edition    | 2OJT | Client functions not supported |
 | PSO PC (v2) 04/2002          | 2OJW | Client functions not supported |
 | PSO PC (v2) 02/2003          | 2OJZ | Client functions not supported |
 | PSO GC Trial Edition         | 3OJT | PowerPC                        |
