@@ -826,7 +826,9 @@
   //   (50% by default).
   // - If the player is not on the same floor as an enemy when it is killed and
   //   never tagged it, they get no EXP.
-  // To disable EXP share in BB games, set this to zero.
+  // To disable EXP share in BB games, set this to zero. EXP share is always
+  // disabled during battle and challenge quests (but not in free-play battle
+  // mode).
   "BBEXPShareMultiplier": 0.5,
   // Drop rate multiplier for all server drop tables. This applies to server
   // drop modes in all game versions. If you want to scale the drop rates for

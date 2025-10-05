@@ -96,12 +96,12 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
 
   uint32_t lobby_id;
 
-  uint32_t min_level;
-  uint32_t max_level;
+  uint32_t min_level = 0;
+  uint32_t max_level = 0xFFFFFFFF;
 
   // Game state
   std::array<uint32_t, 12> next_item_id_for_client;
-  uint32_t next_game_item_id;
+  uint32_t next_game_item_id = 0xCC000000;
   std::vector<FloorItemManager> floor_item_managers;
   std::shared_ptr<const MapState::RareEnemyRates> rare_enemy_rates;
   std::shared_ptr<MapState> map_state; // Always null for lobbies, never null for games
@@ -114,22 +114,22 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   // Bits in allowed_versions specify who is allowed to join this game. The
   // bits are indexed as (1 << version), where version is a value from the
   // Version enum.
-  uint16_t allowed_versions;
-  uint8_t creator_section_id;
-  uint8_t override_section_id;
-  Episode episode;
-  GameMode mode;
-  uint8_t difficulty; // 0-3
-  float base_exp_multiplier;
-  float exp_share_multiplier;
-  float challenge_exp_multiplier;
+  uint16_t allowed_versions = 0x0000;
+  uint8_t creator_section_id = 0xFF;
+  uint8_t override_section_id = 0xFF;
+  Episode episode = Episode::NONE;
+  GameMode mode = GameMode::NORMAL;
+  uint8_t difficulty = 0; // 0-3
+  float base_exp_multiplier = 1.0f;
+  float exp_share_multiplier = 0.5f;
+  float challenge_exp_multiplier = 1.0f;
   std::string password;
   std::string name;
   // This seed is also sent to the client for rare enemy generation
-  uint32_t random_seed;
+  uint32_t random_seed = 0;
   std::shared_ptr<RandomGenerator> rand_crypt;
-  uint8_t allowed_drop_modes;
-  ServerDropMode drop_mode;
+  uint8_t allowed_drop_modes = 0x1F;
+  ServerDropMode drop_mode = ServerDropMode::CLIENT;
   std::shared_ptr<ItemCreator> item_creator; // Always null for lobbies, never null for games
 
   struct ChallengeParameters {
@@ -164,11 +164,11 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   std::shared_ptr<const G_SetEXResultValues_Ep3_6xB4x4B> ep3_ex_result_values;
 
   // Lobby stuff
-  uint8_t event;
-  uint8_t block;
-  uint8_t leader_id;
-  uint8_t max_clients;
-  uint32_t enabled_flags;
+  uint8_t event = 0;
+  uint8_t block = 0;
+  uint8_t leader_id = 0;
+  uint8_t max_clients = 12;
+  uint32_t enabled_flags = 0;
   std::shared_ptr<const Quest> quest;
   std::array<std::shared_ptr<Client>, 12> clients;
   // Keys in this map are client_id
@@ -176,7 +176,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
 
   // This is only used when the PERSISTENT flag is set and idle_timeout_usecs
   // is not zero
-  uint64_t idle_timeout_usecs;
+  uint64_t idle_timeout_usecs = 0;
   asio::steady_timer idle_timeout_timer;
 
   Lobby(std::shared_ptr<ServerState> s, uint32_t id, bool is_game);

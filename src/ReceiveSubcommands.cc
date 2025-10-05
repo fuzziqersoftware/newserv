@@ -4029,15 +4029,19 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
     if (base_exp != 0.0) {
       // If this player killed the enemy, they get full EXP; if they tagged the
       // enemy, they get 80% EXP; if auto EXP share is enabled and they are
-      // close enough to the monster, they get a smaller share; if none of these
-      // situations apply, they get no EXP.
+      // close enough to the monster, they get a smaller share; if none of
+      // these situations apply, they get no EXP. In Battle and Challenge
+      // modes, if a quest is loaded, EXP share is disabled.
+      float exp_share_multiplier = (((l->mode == GameMode::BATTLE) || (l->mode == GameMode::CHALLENGE)) && l->quest)
+          ? 0.0f
+          : l->exp_share_multiplier;
       double rate_factor;
       if (ene_st->last_hit_by_client_id(client_id)) {
-        rate_factor = max<double>(1.0, l->exp_share_multiplier);
+        rate_factor = max<double>(1.0, exp_share_multiplier);
       } else if (ene_st->ever_hit_by_client_id(client_id)) {
-        rate_factor = max<double>(0.8, l->exp_share_multiplier);
+        rate_factor = max<double>(0.8, exp_share_multiplier);
       } else if (lc->floor == ene_st->super_ene->floor) {
-        rate_factor = l->exp_share_multiplier;
+        rate_factor = max<double>(0.0, exp_share_multiplier);
       } else {
         rate_factor = 0.0;
       }
