@@ -1849,7 +1849,14 @@ static void on_ep3_battle_table_state_updated(shared_ptr<Lobby> l, int16_t table
 
 static asio::awaitable<void> on_E4_Ep3(shared_ptr<Client> c, Channel::Message& msg) {
   const auto& cmd = check_size_t<C_CardBattleTableState_Ep3_E4>(msg.data);
-  auto l = c->require_lobby();
+
+  // This command can be received shortly after a proxy session closes if the
+  // player uses $exit while standing on a battle table pad. In that situation,
+  // the player will not be in any lobby, so we just ignore the command.
+  auto l = c->lobby.lock();
+  if (!l) {
+    co_return;
+  }
 
   if (cmd.seat_number >= 4) {
     throw runtime_error("invalid seat number");
