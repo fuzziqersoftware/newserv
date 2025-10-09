@@ -430,7 +430,8 @@ string RareItemSet::serialize_html(
     GameMode mode,
     Episode episode,
     uint8_t difficulty,
-    shared_ptr<const ItemNameIndex> name_index) const {
+    shared_ptr<const ItemNameIndex> name_index,
+    shared_ptr<const CommonItemSet> common_item_set) const {
 
   struct ZoneTypes {
     const char* name;
@@ -683,7 +684,7 @@ string RareItemSet::serialize_html(
     blocks.emplace_back("</tr>");
   };
 
-  auto add_specs_row = [&](const char* loc_name, bool is_box, const array<vector<ExpandedDrop>, 10>& specs_lists) -> void {
+  auto add_specs_row = [&](const EnemyTypeDefinition* type_def, const char* loc_name, bool is_box, const array<vector<ExpandedDrop>, 10>& specs_lists) -> void {
     bool any_list_nonempty = false;
     for (const auto& specs_list : specs_lists) {
       any_list_nonempty |= !specs_list.empty();
@@ -702,6 +703,13 @@ string RareItemSet::serialize_html(
         }
 
         auto frac = phosg::reduce_fraction<uint64_t>(spec.probability, 0x100000000);
+
+        if (common_item_set && type_def && type_def->rt_index != 0xFF) {
+          auto table = common_item_set->get_table(episode, mode, difficulty, section_id);
+          frac.first *= table->enemy_type_drop_probs.at(type_def->rt_index);
+          frac.second *= 100;
+          frac = phosg::reduce_fraction<uint64_t>(frac.first, frac.second);
+        }
 
         ItemData example_item = spec.data;
         if (example_item.can_be_encoded_in_rel_rare_table()) {
@@ -726,8 +734,8 @@ string RareItemSet::serialize_html(
 
         float denom = static_cast<float>(frac.second) / static_cast<double>(frac.first);
         string denom_token = (floor(denom) == denom)
-            ? std::format("1 / {:g}", denom)
-            : std::format("1 / %.02f", denom);
+            ? std::format("1 / {:.0f}", denom)
+            : std::format("1 / {:.02f}", denom);
         tokens.emplace_back(std::format(
             "<span class=\"rate\" title=\"Exact rate: {} / {}\">{}</span>",
             frac.first, frac.second, denom_token));
@@ -754,7 +762,7 @@ string RareItemSet::serialize_html(
       }
       const auto& type_def = type_definition_for_enemy(type);
       const char* name = (difficulty == 3 && type_def.ultimate_name) ? type_def.ultimate_name : type_def.in_game_name;
-      add_specs_row(name, false, specs_lists);
+      add_specs_row(&type_def, name, false, specs_lists);
     }
     for (uint8_t floor : zone_type.floors) {
       const auto& floor_def = FloorDefinition::get(episode, floor);
@@ -766,7 +774,7 @@ string RareItemSet::serialize_html(
         specs_lists[section_id] = this->get_box_specs(mode, episode, difficulty, section_id, floor_def.drop_area_norm);
       }
       auto loc_name = std::format("{} (box)", floor_def.in_game_name);
-      add_specs_row(loc_name.c_str(), true, specs_lists);
+      add_specs_row(nullptr, loc_name.c_str(), true, specs_lists);
     }
   }
   blocks.emplace_back("</table></div></body></html>");

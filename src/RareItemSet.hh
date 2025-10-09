@@ -9,6 +9,7 @@
 #include <string>
 
 #include "AFSArchive.hh"
+#include "CommonItemSet.hh"
 #include "GSLArchive.hh"
 #include "ItemNameIndex.hh"
 #include "StaticGameData.hh"
@@ -45,7 +46,8 @@ public:
       GameMode mode,
       Episode episode,
       uint8_t difficulty,
-      std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
+      std::shared_ptr<const ItemNameIndex> name_index = nullptr,
+      std::shared_ptr<const CommonItemSet> common_item_set = nullptr) const;
   phosg::JSON json(std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
 
   void multiply_all_rates(double factor);

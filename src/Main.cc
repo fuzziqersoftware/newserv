@@ -2098,6 +2098,7 @@ Action a_convert_rare_item_set(
       s->load_text_index();
       s->load_item_definitions();
       s->load_item_name_indexes();
+      s->load_drop_tables();
 
       string input_filename = args.get<string>(1, false);
       if (input_filename.empty() || (input_filename == "-")) {
@@ -2144,7 +2145,8 @@ Action a_convert_rare_item_set(
         string data = rs->serialize_afs(is_v1);
         write_output_data(args, data.data(), data.size(), nullptr);
       } else if (output_filename_lower.ends_with(".html")) {
-        bool is_v1 = ::is_v1(get_cli_version(args, Version::BB_V4));
+        Version cli_version = get_cli_version(args, Version::BB_V4);
+        bool is_v1 = ::is_v1(cli_version);
         static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
         for (GameMode mode : modes) {
           static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
@@ -2153,8 +2155,8 @@ Action a_convert_rare_item_set(
               if (!rs->has_entries_for_game_config(mode, episode, difficulty)) {
                 continue;
               }
-              auto item_name_index = s->item_name_index(get_cli_version(args, Version::BB_V4));
-              string data = rs->serialize_html(mode, episode, difficulty, item_name_index);
+              auto item_name_index = s->item_name_index(cli_version);
+              string data = rs->serialize_html(mode, episode, difficulty, item_name_index, s->common_item_set(cli_version, nullptr));
               string out_filename = output_filename.substr(0, output_filename.size() - 5) + "." + name_for_mode(mode) + "." + abbreviation_for_episode(episode) + "." + abbreviation_for_difficulty(difficulty) + output_filename.substr(output_filename.size() - 5);
               phosg::save_file(out_filename, data);
               phosg::log_info_f("... {}", out_filename);
