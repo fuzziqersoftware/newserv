@@ -704,9 +704,12 @@ string RareItemSet::serialize_html(
 
         auto frac = phosg::reduce_fraction<uint64_t>(spec.probability, 0x100000000);
 
+        std::string exact_token = std::format("Exact rate: {} / {}", frac.first, frac.second);
         if (common_item_set && type_def && type_def->rt_index != 0xFF) {
           auto table = common_item_set->get_table(episode, mode, difficulty, section_id);
-          frac.first *= table->enemy_type_drop_probs.at(type_def->rt_index);
+          uint8_t dar = table->enemy_type_drop_probs.at(type_def->rt_index);
+          exact_token += std::format(" (DAR: {}%)", dar);
+          frac.first *= dar;
           frac.second *= 100;
           frac = phosg::reduce_fraction<uint64_t>(frac.first, frac.second);
         }
@@ -736,9 +739,7 @@ string RareItemSet::serialize_html(
         string denom_token = (floor(denom) == denom)
             ? std::format("1 / {:.0f}", denom)
             : std::format("1 / {:.02f}", denom);
-        tokens.emplace_back(std::format(
-            "<span class=\"rate\" title=\"Exact rate: {} / {}\">{}</span>",
-            frac.first, frac.second, denom_token));
+        tokens.emplace_back(std::format("<span class=\"rate\" title=\"{}\">{}</span>", exact_token, denom_token));
       }
       if (!blocks.empty()) {
         blocks.emplace_back(phosg::join(tokens, "<br />"));
