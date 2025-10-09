@@ -13,15 +13,18 @@ AsyncEvent::AsyncEvent(asio::any_io_executor ex)
     : executor(ex), is_set(false) {}
 
 void AsyncEvent::set() {
-  lock_guard g(this->lock);
-  this->is_set = true;
-  for (auto& waiter : this->waiters) {
+  std::vector<std::unique_ptr<asio::detail::awaitable_handler<asio::any_io_executor>>> waiters_to_resume;
+  {
+    lock_guard g(this->lock);
+    this->is_set = true;
+    this->waiters.swap(waiters_to_resume);
+  }
+  for (auto& waiter : waiters_to_resume) {
     asio::post(this->executor,
         [handler = std::move(waiter)]() mutable {
           (*handler)();
         });
   }
-  this->waiters.clear();
 }
 
 void AsyncEvent::clear() {
