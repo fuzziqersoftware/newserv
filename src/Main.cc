@@ -2089,7 +2089,8 @@ Action a_convert_rare_item_set(
       .rel (Schtserv rare table; cannot be used in output filename)\n\
       .html (HTML rare table; cannot be used in input filename)\n\
     If the --multiply=X option is given, multiplies all drop rates by X (given\n\
-    as a decimal value).\n",
+    as a decimal value). The HTML drop tables will account for each enemy\'s\n\
+    drop-anything rate; the true drop rates are shown in tooltips.\n",
     +[](phosg::Arguments& args) {
       double rate_factor = args.get<double>("multiply", 1.0);
       auto s = make_shared<ServerState>(get_config_filename(args));
