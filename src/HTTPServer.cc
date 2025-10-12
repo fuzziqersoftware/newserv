@@ -379,7 +379,12 @@ std::shared_ptr<phosg::JSON> HTTPServer::generate_lobby_json(
       ret->emplace("QuestInProgress", l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS));
       ret->emplace("JoinableQuestInProgress", l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS));
       ret->emplace("Variations", l->variations.json());
-      ret->emplace("SectionID", name_for_section_id(l->effective_section_id()));
+      uint8_t effective_section_id = l->effective_section_id();
+      if (effective_section_id < 10) {
+        ret->emplace("SectionID", name_for_section_id(effective_section_id));
+      } else {
+        ret->emplace("SectionID", nullptr);
+      }
       ret->emplace("Mode", name_for_mode(l->mode));
       ret->emplace("Difficulty", name_for_difficulty(l->difficulty));
       ret->emplace("BaseEXPMultiplier", l->base_exp_multiplier);
@@ -634,7 +639,12 @@ std::shared_ptr<phosg::JSON> HTTPServer::generate_summary_json() const {
         game_json.emplace("QuestSelectionInProgress", l->check_flag(Lobby::Flag::QUEST_SELECTION_IN_PROGRESS));
         game_json.emplace("QuestInProgress", l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS));
         game_json.emplace("JoinableQuestInProgress", l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS));
-        game_json.emplace("SectionID", name_for_section_id(l->effective_section_id()));
+        uint8_t effective_section_id = l->effective_section_id();
+        if (effective_section_id < 10) {
+          game_json.emplace("SectionID", name_for_section_id(effective_section_id));
+        } else {
+          game_json.emplace("SectionID", nullptr);
+        }
         game_json.emplace("Mode", name_for_mode(l->mode));
         game_json.emplace("Difficulty", name_for_difficulty(l->difficulty));
         game_json.emplace("Quest", l->quest ? l->quest->json() : phosg::JSON(nullptr));

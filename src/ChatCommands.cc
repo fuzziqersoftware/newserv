@@ -1433,11 +1433,12 @@ ChatCommandDefinition cc_lobby_info(
               if (l->max_level == 0xFFFFFFFF) {
                 lines.emplace_back(std::format("$C6{:08X}$C7 L$C6{}+$C7", l->lobby_id, l->min_level + 1));
               } else {
-                lines.emplace_back(std::format(
-                    "$C6{:08X}$C7 L$C6{}-{}$C7", l->lobby_id, l->min_level + 1, l->max_level + 1));
+                lines.emplace_back(std::format("$C6{:08X}$C7 L$C6{}-{}$C7", l->lobby_id, l->min_level + 1, l->max_level + 1));
               }
-              lines.emplace_back(std::format(
-                  "$C7Section ID: $C6{}$C7", name_for_section_id(l->effective_section_id())));
+              uint8_t effective_section_id = l->effective_section_id();
+              if (effective_section_id < 10) {
+                lines.emplace_back(std::format("$C7Section ID: $C6{}$C7", name_for_section_id(effective_section_id)));
+              }
 
               switch (l->drop_mode) {
                 case ServerDropMode::DISABLED:

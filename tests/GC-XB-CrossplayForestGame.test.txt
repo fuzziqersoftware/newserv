@@ -19562,43 +19562,35 @@ I 56583 2025-05-23 21:27:15 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:
 I 56583 2025-05-23 21:27:15 - [Commands] Received from C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=09 flag=00)
 0000 | 09 00 0C 00 44 00 00 44 15 00 00 00             |     D  D
 I 56583 2025-05-23 21:27:15 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=11 flag=00)
-0000 | 11 00 64 00 00 00 00 00 00 00 00 00 53 65 63 74 |   d         Sect
-0010 | 69 6F 6E 20 49 44 3A 20 56 69 72 69 64 69 61 0A | ion ID: Viridia
-0020 | 09 43 36 43 68 65 61 74 73 20 65 6E 61 62 6C 65 |  C6Cheats enable
-0030 | 64 09 43 37 0A 09 43 36 50 65 72 73 69 73 74 65 | d C7  C6Persiste
-0040 | 6E 63 65 20 65 6E 61 62 6C 65 64 09 43 37 0A 09 | nce enabled C7
-0050 | 43 36 50 72 69 76 61 74 65 20 64 72 6F 70 73 09 | C6Private drops
-0060 | 43 37 00 00                                     | C7
+0000 | 11 00 50 00 00 00 00 00 00 00 00 00 09 43 36 43 |   P          C6C
+0010 | 68 65 61 74 73 20 65 6E 61 62 6C 65 64 09 43 37 | heats enabled C7
+0020 | 0A 09 43 36 50 65 72 73 69 73 74 65 6E 63 65 20 |   C6Persistence
+0030 | 65 6E 61 62 6C 65 64 09 43 37 0A 09 43 36 50 72 | enabled C7  C6Pr
+0040 | 69 76 61 74 65 20 64 72 6F 70 73 09 43 37 00 00 | ivate drops C7
 I 56583 2025-05-23 21:27:16 - [Commands] Received from C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=09 flag=00)
 0000 | 09 00 0C 00 44 00 00 44 15 00 00 00             |     D  D
 I 56583 2025-05-23 21:27:16 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=11 flag=00)
-0000 | 11 00 64 00 00 00 00 00 00 00 00 00 53 65 63 74 |   d         Sect
-0010 | 69 6F 6E 20 49 44 3A 20 56 69 72 69 64 69 61 0A | ion ID: Viridia
-0020 | 09 43 36 43 68 65 61 74 73 20 65 6E 61 62 6C 65 |  C6Cheats enable
-0030 | 64 09 43 37 0A 09 43 36 50 65 72 73 69 73 74 65 | d C7  C6Persiste
-0040 | 6E 63 65 20 65 6E 61 62 6C 65 64 09 43 37 0A 09 | nce enabled C7
-0050 | 43 36 50 72 69 76 61 74 65 20 64 72 6F 70 73 09 | C6Private drops
-0060 | 43 37 00 00                                     | C7
+0000 | 11 00 50 00 00 00 00 00 00 00 00 00 09 43 36 43 |   P          C6C
+0010 | 68 65 61 74 73 20 65 6E 61 62 6C 65 64 09 43 37 | heats enabled C7
+0020 | 0A 09 43 36 50 65 72 73 69 73 74 65 6E 63 65 20 |   C6Persistence
+0030 | 65 6E 61 62 6C 65 64 09 43 37 0A 09 43 36 50 72 | enabled C7  C6Pr
+0040 | 69 76 61 74 65 20 64 72 6F 70 73 09 43 37 00 00 | ivate drops C7
 I 56583 2025-05-23 21:27:17 - [Commands] Received from C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=09 flag=00)
 0000 | 09 00 0C 00 44 00 00 44 15 00 00 00             |     D  D
 I 56583 2025-05-23 21:27:17 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=11 flag=00)
-0000 | 11 00 64 00 00 00 00 00 00 00 00 00 53 65 63 74 |   d         Sect
-0010 | 69 6F 6E 20 49 44 3A 20 56 69 72 69 64 69 61 0A | ion ID: Viridia
-0020 | 09 43 36 43 68 65 61 74 73 20 65 6E 61 62 6C 65 |  C6Cheats enable
-0030 | 64 09 43 37 0A 09 43 36 50 65 72 73 69 73 74 65 | d C7  C6Persiste
-0040 | 6E 63 65 20 65 6E 61 62 6C 65 64 09 43 37 0A 09 | nce enabled C7
-0050 | 43 36 50 72 69 76 61 74 65 20 64 72 6F 70 73 09 | C6Private drops
-0060 | 43 37 00 00                                     | C7
+0000 | 11 00 50 00 00 00 00 00 00 00 00 00 09 43 36 43 |   P          C6C
+0010 | 68 65 61 74 73 20 65 6E 61 62 6C 65 64 09 43 37 | heats enabled C7
+0020 | 0A 09 43 36 50 65 72 73 69 73 74 65 6E 63 65 20 |   C6Persistence
+0030 | 65 6E 61 62 6C 65 64 09 43 37 0A 09 43 36 50 72 | enabled C7  C6Pr
+0040 | 69 76 61 74 65 20 64 72 6F 70 73 09 43 37 00 00 | ivate drops C7
 I 56583 2025-05-23 21:27:18 - [Commands] Received from C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=09 flag=00)
 0000 | 09 00 0C 00 44 00 00 44 15 00 00 00             |     D  D
 I 56583 2025-05-23 21:27:18 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=11 flag=00)
-0000 | 11 00 64 00 00 00 00 00 00 00 00 00 53 65 63 74 |   d         Sect
-0010 | 69 6F 6E 20 49 44 3A 20 56 69 72 69 64 69 61 0A | ion ID: Viridia
-0020 | 09 43 36 43 68 65 61 74 73 20 65 6E 61 62 6C 65 |  C6Cheats enable
-0030 | 64 09 43 37 0A 09 43 36 50 65 72 73 69 73 74 65 | d C7  C6Persiste
-0040 | 6E 63 65 20 65 6E 61 62 6C 65 64 09 43 37 0A 09 | nce enabled C7
-0050 | 43 36 50 72 69 76 61 74 65 20 64 72 6F 70 73 09 | C6Private drops
-0060 | 43 37 00 00                                     | C7
+0000 | 11 00 50 00 00 00 00 00 00 00 00 00 09 43 36 43 |   P          C6C
+0010 | 68 65 61 74 73 20 65 6E 61 62 6C 65 64 09 43 37 | heats enabled C7
+0020 | 0A 09 43 36 50 65 72 73 69 73 74 65 6E 63 65 20 |   C6Persistence
+0030 | 65 6E 61 62 6C 65 64 09 43 37 0A 09 43 36 50 72 | enabled C7  C6Pr
+0040 | 69 76 61 74 65 20 64 72 6F 70 73 09 43 37 00 00 | ivate drops C7
 I 56583 2025-05-23 21:27:19 - [Commands] Received from C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=10 flag=00)
 0000 | 10 00 0C 00 44 00 00 44 15 00 00 00             |     D  D
 I 56583 2025-05-23 21:27:19 - [Lobby:00000015:FloorItems:00] Added floor item CC000000 at 264.563, 264.725 with drop number 0 with flags 00F

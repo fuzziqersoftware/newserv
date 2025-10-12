@@ -2246,7 +2246,10 @@ static asio::awaitable<void> on_09(shared_ptr<Client> c, Channel::Message& msg) 
         // time, send page 2 (extended info)
         if (info.empty()) {
           c->last_game_info_requested = 0;
-          info += std::format("Section ID: {}\n", name_for_section_id(game->effective_section_id()));
+          uint8_t effective_section_id = game->effective_section_id();
+          if (effective_section_id < 10) {
+            info += std::format("Section ID: {}\n", name_for_section_id(effective_section_id));
+          }
           if (game->max_level != 0xFFFFFFFF) {
             info += std::format("Req. level: {}-{}\n", game->min_level + 1, game->max_level + 1);
           } else if (game->min_level != 0) {

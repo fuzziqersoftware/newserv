@@ -211,6 +211,10 @@ void Lobby::create_item_creator(Version logic_version) {
   } else {
     rand_crypt = make_shared<MT19937Generator>(this->rand_crypt->seed());
   }
+  uint8_t effective_section_id = this->effective_section_id();
+  if (effective_section_id >= 10) {
+    effective_section_id = 0x00;
+  }
   this->item_creator = make_shared<ItemCreator>(
       s->common_item_set(logic_version, this->quest),
       s->rare_item_set(logic_version, this->quest),
@@ -223,7 +227,7 @@ void Lobby::create_item_creator(Version logic_version) {
       this->episode,
       (this->mode == GameMode::SOLO) ? GameMode::NORMAL : this->mode,
       this->difficulty,
-      this->effective_section_id(),
+      effective_section_id,
       rand_crypt,
       this->quest ? this->quest->meta.battle_rules : nullptr);
 }
@@ -239,7 +243,7 @@ uint8_t Lobby::effective_section_id() const {
   if (leader) {
     return leader->character_file()->disp.visual.section_id;
   }
-  return 0;
+  return 0xFF;
 }
 
 uint16_t Lobby::quest_version_flags() const {

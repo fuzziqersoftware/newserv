@@ -4377,7 +4377,11 @@ static asio::awaitable<void> on_identify_item_bb(shared_ptr<Client> c, Subcomman
     p->disp.stats.meseta -= 100;
     c->bb_identify_result = p->inventory.items[x].data;
     c->bb_identify_result.data1[4] &= 0x7F;
-    l->item_creator->apply_tekker_deltas(c->bb_identify_result, l->effective_section_id());
+    uint8_t effective_section_id = l->effective_section_id();
+    if (effective_section_id >= 10) {
+      throw std::runtime_error("effective section ID is not valid");
+    }
+    l->item_creator->apply_tekker_deltas(c->bb_identify_result, effective_section_id);
     send_item_identify_result(c);
 
   } else {
