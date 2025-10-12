@@ -109,8 +109,8 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
         if (!compute_crc32s_message.empty()) {
           auto data = f->load_data(); // Sets f->size
           f->crc32 = phosg::crc32(data->data(), f->size);
-          for (size_t x = 0; x < data->size(); x += 0x4000) {
-            size_t chunk_bytes = min<size_t>(f->size - x, 0x4000);
+          for (size_t x = 0; x < data->size(); x += this->CHUNK_SIZE) {
+            size_t chunk_bytes = min<size_t>(f->size - x, this->CHUNK_SIZE);
             f->chunk_crcs.emplace_back(phosg::crc32(data->data() + x, chunk_bytes));
           }
 

@@ -672,12 +672,12 @@ asio::awaitable<void> on_10_U(shared_ptr<Client> c, Channel::Message&) {
 
         for (size_t x = 0; x < req.file->chunk_crcs.size(); x++) {
           auto data = req.file->load_data();
-          size_t chunk_size = min<uint32_t>(req.file->size - (x * 0x4000), 0x4000);
+          size_t chunk_size = min<uint32_t>(req.file->size - (x * PatchFileIndex::CHUNK_SIZE), PatchFileIndex::CHUNK_SIZE);
 
           vector<pair<const void*, size_t>> blocks;
           S_WriteFileHeader_Patch_07 cmd_header = {x, req.file->chunk_crcs[x], chunk_size};
           blocks.emplace_back(&cmd_header, sizeof(cmd_header));
-          blocks.emplace_back(data->data() + (x * 0x4000), chunk_size);
+          blocks.emplace_back(data->data() + (x * PatchFileIndex::CHUNK_SIZE), chunk_size);
           c->channel->send(0x07, 0x00, blocks);
         }
 

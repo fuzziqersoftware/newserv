@@ -101,6 +101,7 @@ set(SOURCES
     src/Map.cc
     src/Menu.cc
     src/NetworkAddresses.cc
+    src/PatchDownloadSession.cc
     src/PatchFileIndex.cc
     src/PlayerInventory.cc
     src/PlayerSubordinates.cc

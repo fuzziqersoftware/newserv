@@ -9,6 +9,8 @@
 #include <vector>
 
 struct PatchFileIndex {
+  static constexpr size_t CHUNK_SIZE = 0x6000;
+
   explicit PatchFileIndex(const std::string& root_dir);
 
   struct File {

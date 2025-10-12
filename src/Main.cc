@@ -37,6 +37,7 @@
 #include "PPKArchive.hh"
 #include "PSOGCObjectGraph.hh"
 #include "PSOProtocol.hh"
+#include "PatchDownloadSession.hh"
 #include "Quest.hh"
 #include "QuestScript.hh"
 #include "ReplaySession.hh"
@@ -2028,50 +2029,70 @@ Action a_download_files(
             phosg::load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + key_file_name + ".nsk"));
       }
       auto [remote_host, remote_port] = phosg::parse_netloc(args.get<string>(1));
-      auto character = PSOCHARFile::load_shared(args.get<string>("character", true), false).character_file;
-      auto ship_menu_selections_str = args.get<string>("ship-menu-selections", false);
 
-      unordered_set<string> ship_menu_selections;
-      if (!ship_menu_selections_str.empty()) {
-        for (const string& s : phosg::split(ship_menu_selections_str, ',')) {
-          ship_menu_selections.emplace(s);
-        }
-      }
-
-      vector<string> on_request_complete_commands;
-      string on_request_complete_arg = args.get<string>("on-request-complete-command", false);
-      if (!on_request_complete_arg.empty()) {
-        for (const string& command : phosg::split(on_request_complete_arg, ',')) {
-          on_request_complete_commands.emplace_back(phosg::parse_data_string(command));
-        }
-      }
-
-      uint32_t serial_number = args.get<uint32_t>(
-          "serial-number",
-          0,
-          is_v1_or_v2(version) ? phosg::Arguments::IntFormat::HEX : phosg::Arguments::IntFormat::DEFAULT);
       auto io_context = make_shared<asio::io_context>();
-      DownloadSession session(
-          io_context,
-          remote_host,
-          remote_port,
-          args.get<string>("output-dir", true),
-          version,
-          args.get<uint8_t>("language"),
-          key,
-          phosg::random_object<uint32_t>(),
-          serial_number,
-          args.get<string>("access-key", false),
-          args.get<string>("username", false),
-          args.get<string>("password", false),
-          args.get<string>("xb-gamertag", false),
-          args.get<uint64_t>("xb-user-id", 0, phosg::Arguments::IntFormat::HEX),
-          args.get<uint64_t>("xb-account-id", 0, phosg::Arguments::IntFormat::HEX),
-          character,
-          ship_menu_selections,
-          on_request_complete_commands,
-          args.get<bool>("interactive"),
-          args.get<bool>("show-command-data"));
+      unique_ptr<DownloadSession> download_session;
+      unique_ptr<PatchDownloadSession> patch_download_session;
+      if (is_patch(version)) {
+        patch_download_session = std::make_unique<PatchDownloadSession>(
+            io_context,
+            remote_host,
+            remote_port,
+            args.get<string>("output-dir", true),
+            version,
+            args.get<string>("username", false),
+            args.get<string>("password", false),
+            args.get<string>("email", false),
+            args.get<bool>("show-command-data"));
+        asio::co_spawn(*io_context, patch_download_session->run(), asio::detached);
+
+      } else {
+        auto character = PSOCHARFile::load_shared(args.get<string>("character", true), false).character_file;
+        auto ship_menu_selections_str = args.get<string>("ship-menu-selections", false);
+
+        unordered_set<string> ship_menu_selections;
+        if (!ship_menu_selections_str.empty()) {
+          for (const string& s : phosg::split(ship_menu_selections_str, ',')) {
+            ship_menu_selections.emplace(s);
+          }
+        }
+
+        vector<string> on_request_complete_commands;
+        string on_request_complete_arg = args.get<string>("on-request-complete-command", false);
+        if (!on_request_complete_arg.empty()) {
+          for (const string& command : phosg::split(on_request_complete_arg, ',')) {
+            on_request_complete_commands.emplace_back(phosg::parse_data_string(command));
+          }
+        }
+
+        uint32_t serial_number = args.get<uint32_t>(
+            "serial-number",
+            0,
+            is_v1_or_v2(version) ? phosg::Arguments::IntFormat::HEX : phosg::Arguments::IntFormat::DEFAULT);
+
+        download_session = std::make_unique<DownloadSession>(
+            io_context,
+            remote_host,
+            remote_port,
+            args.get<string>("output-dir", true),
+            version,
+            args.get<uint8_t>("language"),
+            key,
+            phosg::random_object<uint32_t>(),
+            serial_number,
+            args.get<string>("access-key", false),
+            args.get<string>("username", false),
+            args.get<string>("password", false),
+            args.get<string>("xb-gamertag", false),
+            args.get<uint64_t>("xb-user-id", 0, phosg::Arguments::IntFormat::HEX),
+            args.get<uint64_t>("xb-account-id", 0, phosg::Arguments::IntFormat::HEX),
+            character,
+            ship_menu_selections,
+            on_request_complete_commands,
+            args.get<bool>("interactive"),
+            args.get<bool>("show-command-data"));
+        asio::co_spawn(*io_context, download_session->run(), asio::detached);
+      }
       io_context->run();
     });
 

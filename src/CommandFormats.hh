@@ -190,17 +190,17 @@ struct S_OpenFile_Patch_06 {
 
 // 07 (S->C): Write file
 // The client's handler table says this command's maximum size is 0x6010
-// including the header, but the only servers I've seen use this command limit
-// chunks to 0x4010 (including the header). Unlike the game server's 13 and A7
-// commands, the chunks do not need to be the same size - the game opens the
-// file with the "a+b" mode each time it is written, so the new data is always
-// appended to the end.
+// including the header, but the command may be shorter if the server chooses
+// to use a shorter chunk size. Unlike the game server's 13 and A7 commands,
+// the chunks do not need to be the same size - the game opens the file with
+// the "a+b" mode each time it is written, so the new data is always appended
+// to the end.
 
 struct S_WriteFileHeader_Patch_07 {
   le_uint32_t chunk_index = 0;
   le_uint32_t chunk_checksum = 0; // CRC32 of the following chunk data
   le_uint32_t chunk_size = 0;
-  // The chunk data immediately follows here
+  // The chunk's data immediately follows here
 } __packed_ws__(S_WriteFileHeader_Patch_07, 0x0C);
 
 // 08 (S->C): Close current file
@@ -240,8 +240,8 @@ struct S_FileChecksumRequest_Patch_0C {
 
 struct C_FileInformation_Patch_0F {
   le_uint32_t request_id = 0; // Matches request_id from an earlier 0C command
-  le_uint32_t checksum = 0; // CRC32 of the file's data
-  le_uint32_t size = 0;
+  le_uint32_t checksum = 0; // CRC32 of the file's data (0 if file not found)
+  le_uint32_t size = 0; // 0 if file not found
 } __packed_ws__(C_FileInformation_Patch_0F, 0x0C);
 
 // 10 (C->S): End of file information command list
