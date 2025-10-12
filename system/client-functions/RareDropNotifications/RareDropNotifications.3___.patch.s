@@ -4,7 +4,7 @@
 # https://www.gc-forever.com/forums/viewtopic.php?t=2050
 # https://www.gc-forever.com/forums/viewtopic.php?t=2049
 
-.versions 3OE0 3OE1 3OE2 3OJ2 3OJ3 3OJ4 3OJ5 3OP0
+.versions 3OJ2 3OJ3 3OJ4 3OJ5 3OE0 3OE1 3OE2 3OP0
 
 entry_ptr:
 reloc0:
@@ -12,40 +12,67 @@ reloc0:
 start:
   .include  WriteCodeBlocksGC
 
-  .data     0x8000C660
-  .data     0x00000028
-  .data     0x881F00EF
-  .data     0x28000004
-  .data     0x40820018
-  .data     0x387F0038
-  .data     0x3C80FFFF
-  .data     0x38A00001
-  .data     0x38C00000
-  .data     <VERS 0x481ED381 0x481ED381 0x481ED511 0x481ECE15 0x481ED4B1 0x481ED709 0x481ED4BD 0x481EDA8D>
-  .data     0x7FE3FB78
-  .data     <VERS 0x480F6240 0x480F6240 0x480F6108 0x480F5F9C 0x480F6178 0x480F6788 0x480F60F8 0x480F62F8>
+  .label    hook_code, 0x8000C660
 
-  .data     0x8000C690
-  .data     0x0000002C
-  .data     0x28030000
-  .data     0x41820020
-  .data     0x880300EF
-  .data     0x28000004
-  .data     0x40820014
-  .data     0x3C600005
-  .data     0x60632813
-  .data     0x38800000
-  .data     <VERS 0x4802721D 0x4802721D 0x480271E5 0x48026FFD 0x4802702D 0x48027049 0x48026FDD 0x4802725D>
-  .data     0x80010024
-  .data     <VERS 0x4810E8F0 0x4810E8F0 0x4810E810 0x4810E64C 0x4810E868 0x4810EA38 0x4810E800 0x4810E9E8>
 
-  .data     <VERS 0x801028C0 0x801028C0 0x80102788 0x8010261C 0x801027F8 0x80102E08 0x80102778 0x80102978>
-  .data     0x00000004
-  .data     <VERS 0x4BF09DA0 0x4BF09DA0 0x4BF09ED8 0x4BF0A044 0x4BF09E68 0x4BF09858 0x4BF09EE8 0x4BF09CE8>
 
-  .data     <VERS 0x8011AFA4 0x8011AFA4 0x8011AEC4 0x8011AD00 0x8011AF1C 0x8011B0EC 0x8011AEB4 0x8011B09C>
-  .data     0x00000004
-  .data     <VERS 0x4BEF16EC 0x4BEF16EC 0x4BEF17CC 0x4BEF1990 0x4BEF1774 0x4BEF15A4 0x4BEF17DC 0x4BEF15F4>
+  # Called from TItem::update in the case when the item is on the ground
+  .label    minimap_hook_call, <VERS 0x8010261C 0x801027F8 0x80102E08 0x80102778 0x801028C0 0x801028C0 0x80102788 0x80102978>
+  .label    minimap_hook_ret, <VERS 0x80102620 0x801027FC 0x80102E0C 0x8010277C 0x801028C4 0x801028C4 0x8010278C 0x8010297C>
+  .label    minimap_render_dot, <VERS 0x801F9490 0x801F9B2C 0x801F9D84 0x801F9B38 0x801F99FC 0x801F99FC 0x801F9B8C 0x801FA108>
+
+  .data     hook_code
+  .deltaof  hooks_start, hooks_end
+  .address  hook_code
+hooks_start:
+minimap_hook:
+  lbz       r0, [r31 + 0x00EF]
+  cmplwi    r0, 4
+  bne       minimap_hook_skip_render  # if (item->box_type != ItemBoxType::RARE) return;
+  addi      r3, r31, 0x0038
+  lis       r4, 0xFFFF
+  li        r5, 0x0001
+  li        r6, 0x0000
+  bl        minimap_render_dot  # minimap_render_dot(&item->location, RED_COLOR, 1, 0);
+minimap_hook_skip_render:
+  mr        r3, r31
+  b         minimap_hook_ret
+
+
+
+  # Called from handle_6x5F immediately after the item is constructed
+  .label    sound_hook_call, <VERS 0x8011AD00 0x8011AF1C 0x8011B0EC 0x8011AEB4 0x8011AFA4 0x8011AFA4 0x8011AEC4 0x8011B09C>
+  .label    sound_hook_ret, <VERS 0x8011AD04 0x8011AF20 0x8011B0F0 0x8011AEB8 0x8011AFA8 0x8011AFA8 0x8011AEC8 0x8011B0A0>
+  .label    play_sound_at_location, <VERS 0x800336AC 0x800336DC 0x800336F8 0x8003368C 0x800338CC 0x800338CC 0x80033894 0x8003390C>
+
+sound_hook:
+  cmplwi    r3, 0
+  beq       sound_hook_skip_play  # if (item == nullptr) return;
+  lbz       r0, [r3 + 0x00EF]
+  cmplwi    r0, 4
+  bne       sound_hook_skip_play  # if (item->box_type != ItemBoxType::RARE) return;
+  lis       r3, 0x0005
+  ori       r3, r3, 0x2813
+  li        r4, 0x0000
+  bl        play_sound_at_location  # play_sound_at_location(RARE_JINGLE, nullptr);
+sound_hook_skip_play:
+  lwz       r0, [r1 + 0x0024]
+  b         sound_hook_ret
+hooks_end:
+
+
+
+  .data     minimap_hook_call
+  .data     4
+  .address  minimap_hook_call
+  b         minimap_hook
+
+  .data     sound_hook_call
+  .data     4
+  .address  sound_hook_call
+  b         sound_hook
+
+
 
   .data     0x00000000
   .data     0x00000000
