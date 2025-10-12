@@ -317,8 +317,14 @@ Unlock all offline free battle maps
 This unlocks ALL maps, including a bunch of maps with garbage names that crash if you try to play them
 3SJT => 042BE538 38600001
 3SJ0 => 042C9C2C 38600001
-3SP0 => 042CB50C 38600001
 3SE0 => 042CAA00 38600001
+3SP0 => 042CB50C 38600001
+
+Card auctions accessible with fewer than 4 players
+3SJT => 042DD618 38600004
+3SJ0 => 042F4F20 38600004
+3SE0 => 042F5D88 38600004
+3SP0 => 042F698C 38600004
 
 Talk to auction counter offline to get all cards
 3SE0 => 042F5D18 4BD160E8
