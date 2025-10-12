@@ -335,9 +335,29 @@ uint32_t Quest::versions_key(Version v, uint8_t language) {
   return (static_cast<uint32_t>(v) << 8) | language;
 }
 
+const string& Quest::name_for_language(uint8_t language) const {
+  if (!this->names_by_language.at(language).empty()) {
+    return this->names_by_language[language];
+  }
+  if (!this->names_by_language[1].empty()) {
+    return this->names_by_language[1];
+  }
+  for (const string& name : this->names_by_language) {
+    if (!name.empty()) {
+      return name;
+    }
+  }
+  return this->meta.name;
+}
+
 void Quest::add_version(shared_ptr<const VersionedQuest> vq) {
   this->meta.assert_compatible(vq->meta);
   this->versions.emplace(this->versions_key(vq->version, vq->language), vq);
+
+  auto& name_by_language = this->names_by_language.at(vq->language);
+  if (name_by_language.empty()) {
+    name_by_language = vq->meta.name;
+  }
 }
 
 std::shared_ptr<const SuperMap> Quest::get_supermap(int64_t random_seed) const {

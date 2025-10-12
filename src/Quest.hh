@@ -94,6 +94,7 @@ struct Quest {
   QuestMetadata meta;
   mutable std::shared_ptr<const SuperMap> supermap;
   std::map<uint32_t, std::shared_ptr<const VersionedQuest>> versions;
+  std::array<std::string, 8> names_by_language;
 
   Quest() = delete;
   explicit Quest(std::shared_ptr<const VersionedQuest> initial_version);
@@ -105,6 +106,8 @@ struct Quest {
   phosg::JSON json() const;
 
   std::shared_ptr<const SuperMap> get_supermap(int64_t random_seed) const;
+
+  const std::string& name_for_language(uint8_t language) const;
 
   void add_version(std::shared_ptr<const VersionedQuest> vq);
   bool has_version(Version v, uint8_t language) const;

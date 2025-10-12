@@ -2265,7 +2265,7 @@ static asio::awaitable<void> on_09(shared_ptr<Client> c, Channel::Message& msg) 
 
           if (game->quest) {
             info += (game->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) ? "$C6Quest: " : "$C4Quest: ";
-            info += remove_color(game->quest->meta.name);
+            info += remove_color(game->quest->name_for_language(c->language()));
             info += "\n";
           } else if (game->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
             info += "$C6Quest in progress\n";
