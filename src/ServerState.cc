@@ -510,10 +510,10 @@ ItemData ServerState::parse_item_description(Version version, const string& desc
 shared_ptr<const CommonItemSet> ServerState::common_item_set(Version logic_version, shared_ptr<const Quest> q) const {
   if (q && q->meta.common_item_set) {
     return q->meta.common_item_set;
-  } else if (is_v1_or_v2(logic_version)) {
+  } else if (is_v1_or_v2(logic_version) && (logic_version != Version::GC_NTE)) {
     // TODO: We should probably have a v1 common item set at some point too
     return this->common_item_sets.at("common-table-v1-v2");
-  } else if (is_v3(logic_version) || is_v4(logic_version)) {
+  } else if ((logic_version == Version::GC_NTE) || is_v3(logic_version) || is_v4(logic_version)) {
     return this->common_item_sets.at("common-table-v3-v4");
   } else {
     throw runtime_error(std::format("no default common item set is available for {}", phosg::name_for_enum(logic_version)));
@@ -525,9 +525,9 @@ shared_ptr<const RareItemSet> ServerState::rare_item_set(Version logic_version, 
     return q->meta.rare_item_set;
   } else if (is_v1(logic_version)) {
     return this->rare_item_sets.at("rare-table-v1");
-  } else if (is_v2(logic_version)) {
+  } else if (is_v2(logic_version) && (logic_version != Version::GC_NTE)) {
     return this->rare_item_sets.at("rare-table-v2");
-  } else if (is_v3(logic_version)) {
+  } else if (is_v3(logic_version) || (logic_version == Version::GC_NTE)) {
     return this->rare_item_sets.at("rare-table-v3");
   } else if (is_v4(logic_version)) {
     return this->rare_item_sets.at("rare-table-v4");
