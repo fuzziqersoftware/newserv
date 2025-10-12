@@ -353,7 +353,8 @@ enum class PlayerHPChange {
 };
 
 void send_change_player_hp(std::shared_ptr<Channel> ch, uint16_t client_id, PlayerHPChange what, int16_t amount);
-void send_change_player_hp(std::shared_ptr<Lobby> l, uint16_t client_id, PlayerHPChange what, int16_t amount);
+asio::awaitable<void> send_change_player_hp(std::shared_ptr<Client> c, uint16_t client_id, PlayerHPChange what, int16_t amount);
+asio::awaitable<void> send_change_player_hp(std::shared_ptr<Lobby> l, uint16_t client_id, PlayerHPChange what, int16_t amount);
 
 asio::awaitable<void> send_remove_negative_conditions(std::shared_ptr<Client> c);
 void send_remove_negative_conditions(std::shared_ptr<Channel> ch, uint16_t client_id);

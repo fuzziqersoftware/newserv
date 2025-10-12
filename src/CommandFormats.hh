@@ -4236,13 +4236,14 @@ struct G_DarkFalzActions_6x19 {
 
 // 6x1A: Invalid subcommand
 
-// 6x1B: Enable PK mode for player (not valid on Episode 3) (protected on V3/V4)
+// 6x1B: Enable PK mode for player (not valid on Episode 3) (protected on GC
+// NTE/V3/V4)
 
 struct G_EnablePKModeForPlayer_6x1B {
   G_ClientIDHeader header;
 } __packed_ws__(G_EnablePKModeForPlayer_6x1B, 4);
 
-// 6x1C: Disable PK mode for player (protected on V3/V4)
+// 6x1C: Disable PK mode for player (protected on GC NTE/V3/V4)
 
 struct G_DisablePKModeForPlayer_6x1C {
   G_ClientIDHeader header;
@@ -4322,7 +4323,7 @@ struct G_TeleportPlayer_6x24 {
   VectorXYZF pos;
 } __packed_ws__(G_TeleportPlayer_6x24, 0x14);
 
-// 6x25: Equip item (protected on V3/V4)
+// 6x25: Equip item (protected on GC NTE/V3/V4)
 
 struct G_EquipItem_6x25 {
   G_ClientIDHeader header;
@@ -4331,7 +4332,7 @@ struct G_EquipItem_6x25 {
   le_uint32_t equip_slot = 0;
 } __packed_ws__(G_EquipItem_6x25, 0x0C);
 
-// 6x26: Unequip item (protected on V3/V4)
+// 6x26: Unequip item (protected on GC NTE/V3/V4)
 
 struct G_UnequipItem_6x26 {
   G_ClientIDHeader header;
@@ -4339,14 +4340,14 @@ struct G_UnequipItem_6x26 {
   le_uint32_t unused = 0;
 } __packed_ws__(G_UnequipItem_6x26, 0x0C);
 
-// 6x27: Use item (protected on V3/V4)
+// 6x27: Use item (protected on GC NTE/V3/V4)
 
 struct G_UseItem_6x27 {
   G_ClientIDHeader header;
   le_uint32_t item_id = 0;
 } __packed_ws__(G_UseItem_6x27, 8);
 
-// 6x28: Feed MAG (protected on V3/V4)
+// 6x28: Feed MAG (protected on GC NTE/V3/V4)
 
 struct G_FeedMag_6x28 {
   G_ClientIDHeader header;
@@ -4355,7 +4356,7 @@ struct G_FeedMag_6x28 {
 } __packed_ws__(G_FeedMag_6x28, 0x0C);
 
 // 6x29: Delete inventory item (via bank deposit / sale / feeding MAG)
-// (protected on V3 but not on V4)
+// (protected on GC NTE/V3 but not on V4)
 // This subcommand is also used for reducing the size of stacks - if amount is
 // less than the stack count, the item is not deleted and its ID remains valid.
 
@@ -4365,7 +4366,7 @@ struct G_DeleteInventoryItem_6x29 {
   le_uint32_t amount = 0;
 } __packed_ws__(G_DeleteInventoryItem_6x29, 0x0C);
 
-// 6x2A: Drop item (protected on V3/V4)
+// 6x2A: Drop item (protected on GC NTE/V3/V4)
 
 struct G_DropItem_6x2A {
   G_ClientIDHeader header;
@@ -4375,7 +4376,7 @@ struct G_DropItem_6x2A {
   VectorXYZF pos;
 } __packed_ws__(G_DropItem_6x2A, 0x18);
 
-// 6x2B: Create item in inventory (tekker/bank) (protected on V3/V4)
+// 6x2B: Create item in inventory (tekker/bank) (protected on GC NTE/V3/V4)
 // On BB, the 6xBE command is used instead of 6x2B to create inventory items.
 // If equip_item is nonzero, the item is equipped immediately.
 
@@ -4390,7 +4391,7 @@ struct G_CreateInventoryItem_PC_V3_BB_6x2B : G_CreateInventoryItem_DC_6x2B {
   parray<uint8_t, 2> unused2 = 0;
 } __packed_ws__(G_CreateInventoryItem_PC_V3_BB_6x2B, 0x1C);
 
-// 6x2C: Impose hold (protected on V3/V4)
+// 6x2C: Impose hold (protected on GC NTE/V3/V4)
 // This updates PlayerHoldState in the TObjPlayer struct, but the format is not
 // the same. The names here match the fields in PlayerHoldState. A player hold
 // prevents the player from moving further than the trigger radius from the
@@ -4405,13 +4406,13 @@ struct G_ImposeHold_6x2C {
   le_float trigger_radius2 = 0.0f; // "2" here means "squared"
 } __packed_ws__(G_ImposeHold_6x2C, 0x14);
 
-// 6x2D: Release hold (protected on V3/V4)
+// 6x2D: Release hold (protected on GC NTE/V3/V4)
 
 struct G_ReleaseHold_6x2D {
   G_ClientIDHeader header;
 } __packed_ws__(G_ReleaseHold_6x2D, 4);
 
-// 6x2E: Set and/or clear player flags (protected on V3/V4)
+// 6x2E: Set and/or clear player flags (protected on GC NTE/V3/V4)
 
 struct G_SetOrClearPlayerFlags_6x2E {
   G_ClientIDHeader header;
@@ -4419,7 +4420,7 @@ struct G_SetOrClearPlayerFlags_6x2E {
   le_uint32_t or_mask = 0;
 } __packed_ws__(G_SetOrClearPlayerFlags_6x2E, 0x0C);
 
-// 6x2F: Change player HP
+// 6x2F: Change player HP (protected on GC NTE only)
 
 struct G_ChangePlayerHP_6x2F {
   G_ClientIDHeader header;
@@ -4428,7 +4429,7 @@ struct G_ChangePlayerHP_6x2F {
   le_uint16_t client_id = 0;
 } __packed_ws__(G_ChangePlayerHP_6x2F, 0x0C);
 
-// 6x30: Change player level
+// 6x30: Change player level (protected on GC NTE/V3 but not V4)
 // On DC NTE, the updated stats aren't sent, and the client may only gain a
 // single level at once. On other versions, this is not the case.
 
@@ -4561,7 +4562,7 @@ struct G_TargetBase_6x3D {
   G_UnusedHeader header;
 } __packed_ws__(G_TargetBase_6x3D, 4);
 
-// 6x3E: Stop moving (protected on V3/V4)
+// 6x3E: Stop moving (protected on GC NTE/V3/V4)
 
 struct G_StopAtPosition_6x3E {
   G_ClientIDHeader header;
@@ -4572,7 +4573,7 @@ struct G_StopAtPosition_6x3E {
   VectorXYZF pos;
 } __packed_ws__(G_StopAtPosition_6x3E, 0x18);
 
-// 6x3F: Set position (protected on V3/V4)
+// 6x3F: Set position (protected on GC NTE/V3/V4)
 
 struct G_SetPosition_6x3F {
   G_ClientIDHeader header;
@@ -4583,7 +4584,7 @@ struct G_SetPosition_6x3F {
   VectorXYZF pos;
 } __packed_ws__(G_SetPosition_6x3F, 0x18);
 
-// 6x40: Walk (protected on V3/V4)
+// 6x40: Walk (protected on GC NTE/V3/V4)
 // If UDP mode is enabled, this command is sent via UDP.
 
 struct G_WalkToPosition_6x40 {
@@ -4593,7 +4594,7 @@ struct G_WalkToPosition_6x40 {
 } __packed_ws__(G_WalkToPosition_6x40, 0x10);
 
 // 6x41: Move to position (v1)
-// 6x42: Run (protected on V3/V4)
+// 6x42: Run (protected on GC NTE/V3/V4)
 // Command 6x41 is completely ignored by v2 and later.
 // If UDP mode is enabled, this command is sent via UDP.
 // TODO: Should newserv translate 6x41 to 6x42? Is there any difference in how
@@ -4604,9 +4605,9 @@ struct G_MoveToPosition_6x41_6x42 {
   VectorXZF pos;
 } __packed_ws__(G_MoveToPosition_6x41_6x42, 0x0C);
 
-// 6x43: First attack (protected on V3/V4)
-// 6x44: Second attack (protected on V3/V4)
-// 6x45: Third attack (protected on V3/V4)
+// 6x43: First attack (protected on GC NTE/V3/V4)
+// 6x44: Second attack (protected on GC NTE/V3/V4)
+// 6x45: Third attack (protected on GC NTE/V3/V4)
 // If UDP mode is enabled, these commands are sent via UDP.
 
 struct G_Attack_6x43_6x44_6x45 {
@@ -4615,7 +4616,8 @@ struct G_Attack_6x43_6x44_6x45 {
   le_uint16_t unknown_a2 = 0;
 } __packed_ws__(G_Attack_6x43_6x44_6x45, 8);
 
-// 6x46: Attack finished (sent after each of 43, 44, and 45) (protected on V3/V4)
+// 6x46: Attack finished (sent after each of 43, 44, and 45) (protected on GC
+// NTE/V3/V4)
 // The number of targets is not bounds-checked during byteswapping on GC
 // clients. The client only expects up to 10 entries here, so if the number of
 // targets is too large, the client will byteswap the function's return address
@@ -4627,7 +4629,7 @@ struct G_AttackFinished_Header_6x46 {
   // Up to 10 TargetEntries are sent here
 } __packed_ws__(G_AttackFinished_Header_6x46, 8);
 
-// 6x47: Cast technique (protected on V3/V4)
+// 6x47: Cast technique (protected on GC NTE/V3/V4)
 // On GC, this command has the same bounds-check bug as 6x46.
 
 struct G_CastTechnique_Header_6x47 {
@@ -4644,7 +4646,7 @@ struct G_CastTechnique_Header_6x47 {
   // Up to 10 TargetEntries are sent here
 } __packed_ws__(G_CastTechnique_Header_6x47, 8);
 
-// 6x48: Cast technique complete (protected on V3/V4)
+// 6x48: Cast technique complete (protected on GC NTE/V3/V4)
 
 struct G_CastTechniqueComplete_6x48 {
   G_ClientIDHeader header;
@@ -4654,7 +4656,7 @@ struct G_CastTechniqueComplete_6x48 {
   le_uint16_t level = 0;
 } __packed_ws__(G_CastTechniqueComplete_6x48, 8);
 
-// 6x49: Execute Photon Blast (protected on V3/V4)
+// 6x49: Execute Photon Blast (protected on GC NTE/V3/V4)
 // On GC, this command has the same bounds-check bug as 6x46.
 
 struct G_ExecutePhotonBlast_Header_6x49 {
@@ -4673,8 +4675,8 @@ struct G_ShieldAttack_6x4A {
   G_ClientIDHeader header;
 } __packed_ws__(G_ShieldAttack_6x4A, 4);
 
-// 6x4B: Hit by enemy (protected on V3/V4)
-// 6x4C: Hit by enemy (protected on V3/V4)
+// 6x4B: Hit by enemy (protected on GC NTE/V3/V4)
+// 6x4C: Hit by enemy (protected on GC NTE/V3/V4)
 
 struct G_HitByEnemy_6x4B_6x4C {
   G_ClientIDHeader header;
@@ -4683,14 +4685,14 @@ struct G_HitByEnemy_6x4B_6x4C {
   VectorXZF velocity;
 } __packed_ws__(G_HitByEnemy_6x4B_6x4C, 0x10);
 
-// 6x4D: Player died (protected on V3/V4)
+// 6x4D: Player died (protected on GC NTE/V3/V4)
 
 struct G_PlayerDied_6x4D {
   G_ClientIDHeader header;
   le_uint32_t death_flags = 0; // Same as 6x70's death_flags field
 } __packed_ws__(G_PlayerDied_6x4D, 8);
 
-// 6x4E: Player is dead can be revived (protected on V3/V4)
+// 6x4E: Player is dead can be revived (protected on GC NTE/V3/V4)
 // This command creates the particle effect that Reverser and Moon Atomizers
 // can target.
 
@@ -4724,7 +4726,7 @@ struct G_SetPlayerAngle_6x51 {
   parray<uint8_t, 2> unused;
 } __packed_ws__(G_SetPlayerAngle_6x51, 8);
 
-// 6x52: Set animation state (protected on V3/V4)
+// 6x52: Set animation state (protected on GC NTE/V3/V4)
 
 struct G_SetAnimationState_6x52 {
   G_ClientIDHeader header;
@@ -4733,7 +4735,7 @@ struct G_SetAnimationState_6x52 {
   le_uint32_t angle = 0;
 } __packed_ws__(G_SetAnimationState_6x52, 0x0C);
 
-// 6x53: Unknown (supported; game only) (protected on V3/V4)
+// 6x53: Unknown (supported; game only) (protected on GC NTE/V3/V4)
 
 struct G_Unknown_6x53 {
   G_ClientIDHeader header;
@@ -4748,7 +4750,7 @@ struct G_Unknown_6x54 {
   G_ClientIDHeader header;
 } __packed_ws__(G_Unknown_6x54, 4);
 
-// 6x55: Intra-map warp (protected on V3/V4)
+// 6x55: Intra-map warp (protected on GC NTE/V3/V4)
 
 struct G_IntraMapWarp_6x55 {
   G_ClientIDHeader header;
@@ -4757,7 +4759,7 @@ struct G_IntraMapWarp_6x55 {
   VectorXYZF to_pos;
 } __packed_ws__(G_IntraMapWarp_6x55, 0x20);
 
-// 6x56: Set player position and angle (protected on V3/V4)
+// 6x56: Set player position and angle (protected on GC NTE/V3/V4)
 
 struct G_SetPlayerPositionAndAngle_6x56 {
   G_ClientIDHeader header;
@@ -4771,7 +4773,7 @@ struct G_Unknown_6x57 {
   G_ClientIDHeader header;
 } __packed_ws__(G_Unknown_6x57, 4);
 
-// 6x58: Lobby animation (protected on V3/V4)
+// 6x58: Lobby animation (protected on GC NTE/V3/V4)
 // If UDP mode is enabled, this command is sent via UDP.
 
 struct G_LobbyAnimation_6x58 {
@@ -4821,7 +4823,7 @@ struct G_DropStackedItem_PC_V3_BB_6x5D : G_DropStackedItem_DC_6x5D {
   le_uint32_t unused3 = 0;
 } __packed_ws__(G_DropStackedItem_PC_V3_BB_6x5D, 0x28);
 
-// 6x5E: Buy item at shop
+// 6x5E: Buy item at shop (protected on GC NTE/V3)
 
 struct G_BuyShopItem_6x5E {
   G_ClientIDHeader header;
@@ -5305,13 +5307,13 @@ struct G_GogoBall_6x79 {
   parray<uint8_t, 3> unused;
 } __packed_ws__(G_GogoBall_6x79, 0x18);
 
-// 6x7A: Enable Stealth Suit effect (protected on V3/V4)
+// 6x7A: Enable Stealth Suit effect (protected on GC NTE/V3/V4)
 
 struct G_EnableStealthSuitEffect_6x7A {
   G_ClientIDHeader header;
 } __packed_ws__(G_EnableStealthSuitEffect_6x7A, 4);
 
-// 6x7B: Disable Stealth Suit effect (protected on V3/V4)
+// 6x7B: Disable Stealth Suit effect (protected on GC NTE/V3/V4)
 
 struct G_DisableStealthSuitEffect_6x7B {
   G_ClientIDHeader header;
@@ -5394,19 +5396,19 @@ struct G_TriggerTrap_6x80 {
   le_uint16_t what = 0; // Must be 0, 1, or 2
 } __packed_ws__(G_TriggerTrap_6x80, 8);
 
-// 6x81: Disable drop weapon on death (protected on V3/V4)
+// 6x81: Disable drop weapon on death (protected on GC NTE/V3/V4)
 
 struct G_DisableDropWeaponOnDeath_6x81 {
   G_ClientIDHeader header;
 } __packed_ws__(G_DisableDropWeaponOnDeath_6x81, 4);
 
-// 6x82: Enable drop weapon on death (protected on V3/V4)
+// 6x82: Enable drop weapon on death (protected on GC NTE/V3/V4)
 
 struct G_EnableDropWeaponOnDeath_6x82 {
   G_ClientIDHeader header;
 } __packed_ws__(G_EnableDropWeaponOnDeath_6x82, 4);
 
-// 6x83: Place trap (protected on V3/V4)
+// 6x83: Place trap (protected on GC NTE/V3/V4)
 
 struct G_PlaceTrap_6x83 {
   G_ClientIDHeader header;
@@ -5603,7 +5605,7 @@ struct G_UpdateEntityStat_6x9A {
   uint8_t amount = 0;
 } __packed_ws__(G_UpdateEntityStat_6x9A, 8);
 
-// 6x9B: Level up all techniques (protected on V3/V4)
+// 6x9B: Level up all techniques (protected on GC NTE/V3/V4)
 // Used in battle mode if the rules specify that techniques should level up
 // upon character death.
 

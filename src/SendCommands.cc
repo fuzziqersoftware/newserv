@@ -502,16 +502,14 @@ void send_function_call(
   ch->send(0xB2, 0x00, data);
 }
 
-asio::awaitable<bool> send_protected_command(
-    std::shared_ptr<Client> c, const void* data, size_t size, bool echo_to_lobby) {
+asio::awaitable<bool> send_protected_command(std::shared_ptr<Client> c, const void* data, size_t size, bool echo_to_lobby) {
   switch (c->version()) {
     case Version::DC_NTE:
     case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
     case Version::PC_NTE:
-    case Version::PC_V2:
-    case Version::GC_NTE: {
+    case Version::PC_V2: {
       auto l = echo_to_lobby ? c->lobby.lock() : nullptr;
       if (l) {
         send_command(l, 0x60, 0x00, data, size);
@@ -521,6 +519,7 @@ asio::awaitable<bool> send_protected_command(
       co_return true;
     }
 
+    case Version::GC_NTE:
     case Version::GC_V3:
     case Version::XB_V3:
     case Version::GC_EP3_NTE:
@@ -2624,25 +2623,40 @@ void send_player_stats_change(std::shared_ptr<Channel> ch, uint16_t client_id, P
   send_command_vt(ch, (subs.size() > 0x400 / sizeof(G_UpdateEntityStat_6x9A)) ? 0x6C : 0x60, 0x00, subs);
 }
 
-void send_change_player_hp(std::shared_ptr<Channel> ch, uint16_t client_id, PlayerHPChange what, int16_t amount) {
+static G_ChangePlayerHP_6x2F generate_hp_restore_command(
+    Version version, uint8_t client_id, PlayerHPChange what, int16_t amount) {
   uint8_t subcommand_number;
-  if (ch->version == Version::DC_NTE) {
+  if (version == Version::DC_NTE) {
     subcommand_number = 0x2B;
-  } else if (ch->version == Version::DC_11_2000) {
+  } else if (version == Version::DC_11_2000) {
     subcommand_number = 0x2D;
   } else {
     subcommand_number = 0x2F;
   }
-  G_ChangePlayerHP_6x2F cmd = {
+  return G_ChangePlayerHP_6x2F{
       {subcommand_number, sizeof(G_ChangePlayerHP_6x2F) / 4, client_id},
       static_cast<uint32_t>(what), amount, client_id};
-  send_command_t(ch, 0x60, 0x00, cmd);
 }
 
-void send_change_player_hp(std::shared_ptr<Lobby> l, uint16_t client_id, PlayerHPChange what, int16_t amount) {
+void send_change_player_hp(
+    std::shared_ptr<Channel> ch, uint16_t client_id, PlayerHPChange what, int16_t amount) {
+  send_command_t(ch, 0x60, 0x00, generate_hp_restore_command(ch->version, client_id, what, amount));
+}
+
+asio::awaitable<void> send_change_player_hp(
+    std::shared_ptr<Client> c, uint16_t client_id, PlayerHPChange what, int16_t amount) {
+  if ((c->version() == Version::GC_NTE) && (client_id == c->lobby_client_id)) {
+    auto cmd = generate_hp_restore_command(c->version(), client_id, what, amount);
+    co_await send_protected_command(c, &cmd, sizeof(cmd), false);
+  } else {
+    send_change_player_hp(c->channel, client_id, what, amount);
+  }
+}
+
+asio::awaitable<void> send_change_player_hp(std::shared_ptr<Lobby> l, uint16_t client_id, PlayerHPChange what, int16_t amount) {
   for (const auto& lc : l->clients) {
     if (lc) {
-      send_change_player_hp(lc->channel, client_id, what, amount);
+      co_await send_change_player_hp(lc, client_id, what, amount);
     }
   }
 }

@@ -2017,7 +2017,7 @@ asio::awaitable<HandlerResult> C_6x(shared_ptr<Client> c, Channel::Message& msg)
     case 0x4B:
     case 0x4C:
       if (c->check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
-        send_change_player_hp(c->channel, c->lobby_client_id, PlayerHPChange::MAXIMIZE_HP, 0);
+        co_await send_change_player_hp(c, c->lobby_client_id, PlayerHPChange::MAXIMIZE_HP, 0);
         send_change_player_hp(c->proxy_session->server_channel, c->lobby_client_id, PlayerHPChange::MAXIMIZE_HP, 0);
       }
       break;
