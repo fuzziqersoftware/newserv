@@ -108,6 +108,111 @@ bool CompiledFunctionCode::is_big_endian() const {
   return this->arch == Architecture::POWERPC;
 }
 
+static unordered_map<uint32_t, std::string> preprocess_function_code(const std::string& text) {
+  auto parse_specific_version_list = +[](std::string&& text) -> vector<uint32_t> {
+    phosg::strip_whitespace(text);
+    vector<uint32_t> ret;
+    for (auto& vers_token : phosg::split(text, ' ')) {
+      phosg::strip_whitespace(vers_token);
+      if (vers_token.empty()) {
+        continue;
+      }
+      if (vers_token.size() != 4) {
+        throw std::runtime_error("invalid specific_version: " + vers_token);
+      }
+      ret.emplace_back(*reinterpret_cast<const be_uint32_t*>(vers_token.data()));
+    }
+    return ret;
+  };
+
+  // Find a .versions directive and populate specific_versions
+  vector<uint32_t> specific_versions;
+  auto lines = phosg::split(text, '\n');
+  for (auto& line : lines) {
+    if (line.starts_with(".versions ")) {
+      if (!specific_versions.empty()) {
+        throw std::runtime_error("multiple .versions directives in file");
+      }
+      specific_versions = parse_specific_version_list(line.substr(10));
+      if (specific_versions.empty()) {
+        throw std::runtime_error(".versions directive does not specify any versions");
+      }
+      line.clear();
+    }
+  }
+
+  // If there's no .versions directive, just return the text as-is
+  if (specific_versions.empty()) {
+    return {{0, std::move(text)}};
+  }
+
+  vector<deque<string>> version_lines;
+  version_lines.resize(specific_versions.size());
+
+  size_t line_num = 1;
+  vector<uint32_t> current_only_versions;
+  unordered_set<uint32_t> current_only_versions_set;
+  for (auto& line : lines) {
+    phosg::strip_whitespace(line);
+    if (line.starts_with(".only_versions ")) {
+      current_only_versions = parse_specific_version_list(line.substr(15));
+      current_only_versions_set.clear();
+      for (uint32_t specific_version : current_only_versions) {
+        current_only_versions_set.emplace(specific_version);
+      }
+
+    } else if (line == ".all_versions") {
+      current_only_versions.clear();
+      current_only_versions_set.clear();
+
+    } else {
+      size_t vers_offset = line.find("<VERS ");
+      if (vers_offset == string::npos) {
+        for (size_t vers_index = 0; vers_index < specific_versions.size(); vers_index++) {
+          if (current_only_versions.empty() || current_only_versions_set.count(specific_versions[vers_index])) {
+            version_lines[vers_index].emplace_back(line);
+          } else {
+            version_lines[vers_index].emplace_back("");
+          }
+        }
+
+      } else {
+        size_t token_index = 0;
+        for (size_t vers_index = 0; vers_index < specific_versions.size(); vers_index++) {
+          if (current_only_versions.empty() || current_only_versions_set.count(specific_versions[vers_index])) {
+            string version_line = line;
+            size_t vers_offset = line.find("<VERS ");
+            while (vers_offset != string::npos) {
+              size_t end_offset = version_line.find('>', vers_offset + 6);
+              if (end_offset == string::npos) {
+                throw runtime_error(std::format("(line {}) unterminated <VERS> replacement", line_num));
+              }
+              auto tokens = phosg::split(version_line.substr(vers_offset + 6, end_offset - vers_offset - 6), ' ');
+              if (tokens.size() <= token_index) {
+                throw runtime_error(std::format("(line {}) invalid <VERS> replacement", line_num));
+              }
+              version_line = version_line.substr(0, vers_offset) + tokens.at(token_index) + version_line.substr(end_offset + 1);
+              vers_offset = version_line.find("<VERS ");
+            }
+            version_lines[vers_index].emplace_back(version_line);
+            token_index++;
+          } else {
+            version_lines[vers_index].emplace_back("");
+          }
+        }
+      }
+    }
+
+    line_num++;
+  }
+
+  unordered_map<uint32_t, string> ret;
+  for (size_t z = 0; z < specific_versions.size(); z++) {
+    ret.emplace(specific_versions[z], phosg::join(version_lines.at(z), "\n"));
+  }
+  return ret;
+}
+
 static vector<shared_ptr<CompiledFunctionCode>> compile_function_code(
     CompiledFunctionCode::Architecture arch,
     const string& function_directory,
@@ -169,78 +274,10 @@ static vector<shared_ptr<CompiledFunctionCode>> compile_function_code(
     throw runtime_error("data not found for include: " + name + " (from " + asm_filename + " or " + bin_filename + ")");
   };
 
-  // Handle VERS tokens
-  vector<uint32_t> specific_versions;
-  auto lines = phosg::split(text, '\n');
-  for (auto& line : lines) {
-    if (line.starts_with(".versions ")) {
-      if (!specific_versions.empty()) {
-        throw std::runtime_error("multiple .versions directives in file");
-      }
-      for (auto& vers_token : phosg::split(line.substr(10), ' ')) {
-        phosg::strip_whitespace(vers_token);
-        if (vers_token.empty()) {
-          continue;
-        }
-        if (vers_token.size() != 4) {
-          throw std::runtime_error("invalid token in .version directive: " + vers_token);
-        }
-        specific_versions.emplace_back(*reinterpret_cast<const be_uint32_t*>(vers_token.data()));
-      }
-      line.clear();
-    }
-  }
-
-  // Preprocess <VERS> tokens in the text if a .versions directive was given
-  vector<string> version_texts;
-  if (specific_versions.empty()) {
-    specific_versions.emplace_back(0);
-    version_texts.emplace_back(text);
-
-  } else {
-    vector<deque<string>> version_lines;
-    version_lines.resize(specific_versions.size());
-
-    size_t line_num = 1;
-    for (const auto& line : lines) {
-      size_t vers_offset = line.find("<VERS ");
-      if (vers_offset == string::npos) {
-        for (auto& lines : version_lines) {
-          lines.emplace_back(line);
-        }
-
-      } else {
-        for (size_t vers_index = 0; vers_index < specific_versions.size(); vers_index++) {
-          string version_line = line;
-          size_t vers_offset = line.find("<VERS ");
-          while (vers_offset != string::npos) {
-            size_t end_offset = version_line.find('>', vers_offset + 6);
-            if (end_offset == string::npos) {
-              throw runtime_error(std::format("(line {}) unterminated <VERS> replacement", line_num));
-            }
-            auto tokens = phosg::split(version_line.substr(vers_offset + 6, end_offset - vers_offset - 6), ' ');
-            if (tokens.size() != specific_versions.size()) {
-              throw runtime_error(std::format("(line {}) invalid <VERS> replacement", line_num));
-            }
-            version_line = version_line.substr(0, vers_offset) + tokens.at(vers_index) + version_line.substr(end_offset + 1);
-            vers_offset = version_line.find("<VERS ");
-          }
-          version_lines[vers_index].emplace_back(version_line);
-        }
-      }
-      line_num++;
-    }
-
-    for (const auto& lines : version_lines) {
-      version_texts.emplace_back(phosg::join(lines, "\n"));
-    }
-  }
+  auto version_texts = preprocess_function_code(text);
 
   vector<shared_ptr<CompiledFunctionCode>> ret;
-  for (size_t vers_index = 0; vers_index < specific_versions.size(); vers_index++) {
-    uint32_t specific_version = specific_versions[vers_index];
-    const auto& version_text = version_texts.at(vers_index);
-
+  for (const auto& [specific_version, version_text] : version_texts) {
     try {
       ResourceDASM::EmulatorBase::AssembleResult assembled;
       if (arch == CompiledFunctionCode::Architecture::POWERPC) {

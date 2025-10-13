@@ -1714,19 +1714,23 @@ Action a_assemble_quest_script(
 
 Action a_assemble_all_patches(
     "assemble-all-patches", "\
-  assemble-all-patches\n\
+  assemble-all-patches [--skip-encrypted]\n\
     Assemble all patches in the system/client-functions directory, and produce\n\
     two compiled .bin files for each patch (one unencrypted, for most PSO\n\
     versions, and one encrypted, for PSO GC JP v1.4, JP Ep3, and Ep3 Trial\n\
     Edition). The output files are saved in system/client-functions.\n",
-    +[](phosg::Arguments&) {
+    +[](phosg::Arguments& args) {
       auto fci = make_shared<FunctionCodeIndex>("system/client-functions");
 
-      auto process_code = +[](shared_ptr<const CompiledFunctionCode> code,
-                               uint32_t checksum_addr,
-                               uint32_t checksum_size,
-                               uint32_t override_start_addr) -> void {
+      bool skip_encrypted = args.get<bool>("skip-encrypted");
+      auto process_code = [&](shared_ptr<const CompiledFunctionCode> code,
+                              uint32_t checksum_addr,
+                              uint32_t checksum_size,
+                              uint32_t override_start_addr) -> void {
         for (uint8_t encrypted = 0; encrypted < 2; encrypted++) {
+          if (encrypted && skip_encrypted) {
+            continue;
+          }
           phosg::StringWriter w;
           string data = prepare_send_function_call_data(
               code, {}, nullptr, 0, checksum_addr, checksum_size, override_start_addr, encrypted);
