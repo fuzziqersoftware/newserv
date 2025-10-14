@@ -985,7 +985,7 @@ ChatCommandDefinition cc_edit(
             p->disp.visual.section_id = secid;
           }
         } else if (tokens.at(0) == "name") {
-          vector<string> orig_tokens = phosg::split(a.text, ' ');
+          vector<string> orig_tokens = phosg::split(a.text, ' ', 1);
           p->disp.name.encode(orig_tokens.at(1), p->inventory.language);
         } else if (tokens.at(0) == "npc") {
           if (tokens.at(1) == "none") {
