@@ -4361,9 +4361,7 @@ void SuperMap::link_object_version(std::shared_ptr<Object> obj, Version version,
 }
 
 shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
-    Version version,
-    uint8_t floor,
-    const MapFile::EnemySetEntry* set_entry) {
+    Version version, uint8_t floor, const MapFile::EnemySetEntry* set_entry) {
 
   shared_ptr<Enemy> head_ene = nullptr;
   size_t next_child_index = 0;

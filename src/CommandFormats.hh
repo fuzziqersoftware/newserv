@@ -5969,10 +5969,15 @@ struct G_MapData_Ep3_6xB6x41 {
 } __packed_ws__(G_MapData_Ep3_6xB6x41, 0x14);
 
 // 6xB6: BB shop contents (server->client only)
+// The client will ignore this command (leaving the player softlocked) if there
+// are too many items. The limits are:
+// - Tool shop: up to 18 items allowed
+// - Weapon shop: up to 16 items allowed
+// - Armor shop: up to 21 items allowed
 
 struct G_ShopContents_BB_6xB6 {
   G_UnusedHeader header;
-  uint8_t shop_type = 0;
+  uint8_t shop_type = 0; // 0 = tool shop, 1 = weapon shop, 2 = armor shop
   uint8_t num_items = 0;
   le_uint16_t unused = 0;
   // Note: data2d of these entries should be the price
