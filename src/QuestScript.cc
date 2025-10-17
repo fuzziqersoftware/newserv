@@ -4496,7 +4496,7 @@ AssembledQuestScript assemble_quest_script(
                   code_w.put_u32l(stoll(arg, nullptr, 0));
                   break;
                 case Type::FLOAT32:
-                  code_w.put_u32l(stof(arg, nullptr));
+                  code_w.put_f32l(stof(arg, nullptr));
                   break;
                 case Type::CSTRING:
                   if (arg.starts_with("bin:")) {
