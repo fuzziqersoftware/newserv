@@ -2374,16 +2374,15 @@ static asio::awaitable<void> on_use_item(shared_ptr<Client> c, SubcommandMessage
   size_t index = p->inventory.find_item(cmd.item_id);
   string name;
   {
-    // Note: We do this weird scoping thing because player_use_item will
-    // likely delete the item, which will break the reference here.
+    // Note: We manually downscope item here because player_use_item will likely move or delete the item, which will
+    // break the reference, so we don't want to accidentally use it again after that.
     const auto& item = p->inventory.items[index].data;
     name = s->describe_item(c->version(), item);
   }
   player_use_item(c, index, l->rand_crypt);
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-    l->log.info_f("Player {} used item {}:{:08X} ({})",
-        c->lobby_client_id, cmd.header.client_id, cmd.item_id, name);
+    l->log.info_f("Player {} used item {}:{:08X} ({})", c->lobby_client_id, cmd.header.client_id, cmd.item_id, name);
     c->print_inventory();
   }
 

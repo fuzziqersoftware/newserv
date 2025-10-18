@@ -200,6 +200,16 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<RandomG
       }
     }
 
+  } else if (primary_identifier == 0x03170000) { // Unopened Hunters Report
+    // The unopened Hunters Report's rank is stored in the kill count field; using the unopened report copies the rank
+    // to data1[2] and replaces the inventory item with a new item with the same ID. The game also moves the item to
+    // the end of the inventory, so we do the same.
+    const auto& stack_limits = *s->item_stack_limits(c->version());
+    auto report_item = player->remove_item(item.data.id, 1, stack_limits);
+    report_item.data1[2] = report_item.get_kill_count();
+    player->add_item(report_item, stack_limits);
+    should_delete_item = false;
+
   } else {
     // Use item combinations table from ItemPMT
     bool combo_applied = false;
