@@ -371,7 +371,7 @@ bool Client::evaluate_quest_availability_expression(
     shared_ptr<const IntegralExpression> expr,
     shared_ptr<const Lobby> game,
     uint8_t event,
-    uint8_t difficulty,
+    Difficulty difficulty,
     size_t num_players,
     bool v1_present) const {
   if (this->login && this->login->account->check_flag(Account::Flag::DISABLE_QUEST_REQUIREMENTS)) {
@@ -385,7 +385,7 @@ bool Client::evaluate_quest_availability_expression(
   }
   auto p = this->character_file();
   IntegralExpression::Env env = {
-      .flags = &p->quest_flags.data.at(difficulty),
+      .flags = &p->quest_flags.data.at(static_cast<size_t>(difficulty)),
       .challenge_records = &p->challenge_records,
       .team = this->team(),
       .num_players = num_players,
@@ -404,7 +404,7 @@ bool Client::can_see_quest(
     shared_ptr<const Quest> q,
     shared_ptr<const Lobby> game,
     uint8_t event,
-    uint8_t difficulty,
+    Difficulty difficulty,
     size_t num_players,
     bool v1_present) const {
   if (!q->has_version_any_language(this->version())) {
@@ -418,7 +418,7 @@ bool Client::can_play_quest(
     shared_ptr<const Quest> q,
     shared_ptr<const Lobby> game,
     uint8_t event,
-    uint8_t difficulty,
+    Difficulty difficulty,
     size_t num_players,
     bool v1_present) const {
   if (!q->has_version_any_language(this->version())) {
@@ -618,7 +618,7 @@ void Client::save_character_file() {
 
 void Client::create_character_file(
     uint32_t guild_card_number,
-    uint8_t language,
+    Language language,
     const PlayerDispDataBBPreview& preview,
     shared_ptr<const LevelTable> level_table) {
   this->character_data = PSOBBCharacterFile::create_from_preview(guild_card_number, language, preview, level_table);
@@ -1027,8 +1027,8 @@ void Client::load_all_files() {
 void Client::update_character_data_after_load(shared_ptr<PSOBBCharacterFile> charfile) {
   charfile->import_tethealla_material_usage(this->require_server_state()->level_table(this->version()));
 
-  uint8_t lang = this->language();
-  this->log.info_f("Overriding language fields in save files with {:02X} ({})", lang, char_for_language_code(lang));
+  Language lang = this->language();
+  this->log.info_f("Overriding language fields in save files with {}", name_for_language(lang));
   charfile->inventory.language = lang;
   charfile->guild_card.language = lang;
 }

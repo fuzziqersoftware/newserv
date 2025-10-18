@@ -328,7 +328,7 @@ struct PlayerDispDataDCPCV3T {
     this->visual.enforce_lobby_join_limits_for_version(v);
   }
 
-  PlayerDispDataBB to_bb(uint8_t to_language, uint8_t from_language) const;
+  PlayerDispDataBB to_bb(Language to_language, Language from_language) const;
 } __attribute__((packed));
 using PlayerDispDataDCPCV3 = PlayerDispDataDCPCV3T<false>;
 using PlayerDispDataDCPCV3BE = PlayerDispDataDCPCV3T<true>;
@@ -361,7 +361,7 @@ struct PlayerDispDataBB {
   }
 
   template <bool BE>
-  PlayerDispDataDCPCV3T<BE> to_dcpcv3(uint8_t to_language, uint8_t from_language) const {
+  PlayerDispDataDCPCV3T<BE> to_dcpcv3(Language to_language, Language from_language) const {
     PlayerDispDataDCPCV3T<BE> ret;
     ret.stats = this->stats;
     ret.visual = this->visual;
@@ -377,7 +377,7 @@ struct PlayerDispDataBB {
 } __packed_ws__(PlayerDispDataBB, 0x190);
 
 template <bool BE>
-PlayerDispDataBB PlayerDispDataDCPCV3T<BE>::to_bb(uint8_t to_language, uint8_t from_language) const {
+PlayerDispDataBB PlayerDispDataDCPCV3T<BE>::to_bb(Language to_language, Language from_language) const {
   PlayerDispDataBB bb;
   bb.stats = this->stats;
   bb.visual = this->visual;
@@ -398,7 +398,7 @@ struct GuildCardDCNTE {
   /* 20 */ pstring<TextEncoding::MARKED, 0x48> description;
   /* 68 */ parray<uint8_t, 0x0F> unused2;
   /* 77 */ uint8_t present = 0;
-  /* 78 */ uint8_t language = 0;
+  /* 78 */ Language language = Language::JAPANESE;
   /* 79 */ uint8_t section_id = 0;
   /* 7A */ uint8_t char_class = 0;
   /* 7B */
@@ -413,7 +413,7 @@ struct GuildCardDC {
   /* 20 */ pstring<TextEncoding::MARKED, 0x48> description;
   /* 68 */ parray<uint8_t, 0x11> unused2;
   /* 79 */ uint8_t present = 0;
-  /* 7A */ uint8_t language = 0;
+  /* 7A */ Language language = Language::JAPANESE;
   /* 7B */ uint8_t section_id = 0;
   /* 7C */ uint8_t char_class = 0;
   /* 7D */
@@ -428,7 +428,7 @@ struct GuildCardPC {
   /* 08 */ pstring<TextEncoding::UTF16, 0x18> name;
   /* 38 */ pstring<TextEncoding::UTF16, 0x5A> description;
   /* EC */ uint8_t present = 0;
-  /* ED */ uint8_t language = 0;
+  /* ED */ Language language = Language::JAPANESE;
   /* EE */ uint8_t section_id = 0;
   /* EF */ uint8_t char_class = 0;
   /* F0 */
@@ -456,7 +456,7 @@ struct GuildCardGCT {
   /* 08:08 */ pstring<TextEncoding::ASCII, 0x18> name;
   /* 20:20 */ pstring<TextEncoding::MARKED, DescriptionLength> description;
   /* A0:8C */ uint8_t present = 0;
-  /* A1:8D */ uint8_t language = 0;
+  /* A1:8D */ Language language = Language::JAPANESE;
   /* A2:8E */ uint8_t section_id = 0;
   /* A3:8F */ uint8_t char_class = 0;
   /* A4:90 */
@@ -480,7 +480,7 @@ struct GuildCardXB {
   /* 0010 */ pstring<TextEncoding::ASCII, 0x18> name;
   /* 0028 */ pstring<TextEncoding::MARKED, 0x200> description;
   /* 0228 */ uint8_t present = 0;
-  /* 0229 */ uint8_t language = 0;
+  /* 0229 */ Language language = Language::JAPANESE;
   /* 022A */ uint8_t section_id = 0;
   /* 022B */ uint8_t char_class = 0;
   /* 022C */
@@ -494,7 +494,7 @@ struct GuildCardBB {
   /* 0034 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> team_name;
   /* 0054 */ pstring<TextEncoding::UTF16, 0x58> description;
   /* 0104 */ uint8_t present = 0;
-  /* 0105 */ uint8_t language = 0;
+  /* 0105 */ Language language = Language::JAPANESE;
   /* 0106 */ uint8_t section_id = 0;
   /* 0107 */ uint8_t char_class = 0;
   /* 0108 */
@@ -776,13 +776,13 @@ struct PlayerRecordsChallengeBB {
         grave_x(rec.grave_x),
         grave_y(rec.grave_y),
         grave_z(rec.grave_z),
-        grave_team(rec.grave_team.decode(), 1),
-        grave_message(rec.grave_message.decode(), 1),
+        grave_team(rec.grave_team.decode(), Language::ENGLISH),
+        grave_message(rec.grave_message.decode(), Language::ENGLISH),
         unknown_m5(rec.unknown_m5),
         ep1_online_award_state(rec.ep1_online_award_state),
         ep2_online_award_state(rec.ep2_online_award_state),
         ep1_offline_award_state(rec.ep1_offline_award_state),
-        rank_title(rec.rank_title.decode(), 1),
+        rank_title(rec.rank_title.decode(), Language::ENGLISH),
         unknown_l7(rec.unknown_l7) {
     for (size_t z = 0; z < std::min<size_t>(this->unknown_t6.size(), rec.unknown_t6.size()); z++) {
       this->unknown_t6[z] = rec.unknown_t6[z];
@@ -810,8 +810,8 @@ struct PlayerRecordsChallengeBB {
     ret.grave_x = this->grave_x;
     ret.grave_y = this->grave_y;
     ret.grave_z = this->grave_z;
-    ret.grave_team.encode(this->grave_team.decode(), 1);
-    ret.grave_message.encode(this->grave_message.decode(), 1);
+    ret.grave_team.encode(this->grave_team.decode(), Language::ENGLISH);
+    ret.grave_message.encode(this->grave_message.decode(), Language::ENGLISH);
     ret.unknown_m5 = this->unknown_m5;
     for (size_t z = 0; z < std::min<size_t>(ret.unknown_t6.size(), this->unknown_t6.size()); z++) {
       ret.unknown_t6[z] = this->unknown_t6[z];
@@ -819,7 +819,7 @@ struct PlayerRecordsChallengeBB {
     ret.ep1_online_award_state = this->ep1_online_award_state;
     ret.ep2_online_award_state = this->ep2_online_award_state;
     ret.ep1_offline_award_state = this->ep1_offline_award_state;
-    ret.rank_title.encode(this->rank_title.decode(), 1);
+    ret.rank_title.encode(this->rank_title.decode(), Language::ENGLISH);
     ret.unknown_l7 = this->unknown_l7;
     return ret;
   }
@@ -856,31 +856,31 @@ check_struct_size(PlayerRecordsBattle, 0x18);
 check_struct_size(PlayerRecordsBattleBE, 0x18);
 
 template <typename DestT, typename SrcT = DestT>
-DestT convert_player_disp_data(const SrcT&, uint8_t, uint8_t) {
+DestT convert_player_disp_data(const SrcT&, Language, Language) {
   static_assert(phosg::always_false<DestT, SrcT>::v,
       "unspecialized convert_player_disp_data should never be called");
 }
 
 template <>
-inline PlayerDispDataDCPCV3 convert_player_disp_data<PlayerDispDataDCPCV3>(const PlayerDispDataDCPCV3& src, uint8_t, uint8_t) {
+inline PlayerDispDataDCPCV3 convert_player_disp_data<PlayerDispDataDCPCV3>(const PlayerDispDataDCPCV3& src, Language, Language) {
   return src;
 }
 
 template <>
 inline PlayerDispDataDCPCV3 convert_player_disp_data<PlayerDispDataDCPCV3, PlayerDispDataBB>(
-    const PlayerDispDataBB& src, uint8_t to_language, uint8_t from_language) {
+    const PlayerDispDataBB& src, Language to_language, Language from_language) {
   return src.to_dcpcv3<false>(to_language, from_language);
 }
 
 template <>
 inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB, PlayerDispDataDCPCV3>(
-    const PlayerDispDataDCPCV3& src, uint8_t to_language, uint8_t from_language) {
+    const PlayerDispDataDCPCV3& src, Language to_language, Language from_language) {
   return src.to_bb(to_language, from_language);
 }
 
 template <>
 inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB>(
-    const PlayerDispDataBB& src, uint8_t, uint8_t) {
+    const PlayerDispDataBB& src, Language, Language) {
   return src;
 }
 
@@ -916,21 +916,28 @@ struct QuestFlagsForDifficulty {
 struct QuestFlags {
   parray<QuestFlagsForDifficulty, 4> data;
 
-  inline bool get(uint8_t difficulty, uint16_t flag_index) const {
-    return this->data[difficulty].get(flag_index);
+  inline QuestFlagsForDifficulty& for_difficulty(Difficulty difficulty) {
+    return this->data[static_cast<size_t>(difficulty)];
   }
-  inline void set(uint8_t difficulty, uint16_t flag_index) {
-    this->data[difficulty].set(flag_index);
+  inline const QuestFlagsForDifficulty& for_difficulty(Difficulty difficulty) const {
+    return this->data[static_cast<size_t>(difficulty)];
   }
-  inline void clear(uint8_t difficulty, uint16_t flag_index) {
-    this->data[difficulty].clear(flag_index);
+
+  inline bool get(Difficulty difficulty, uint16_t flag_index) const {
+    return this->for_difficulty(difficulty).get(flag_index);
   }
-  inline void update_all(uint8_t difficulty, bool set) {
-    this->data[difficulty].update_all(set);
+  inline void set(Difficulty difficulty, uint16_t flag_index) {
+    this->for_difficulty(difficulty).set(flag_index);
+  }
+  inline void clear(Difficulty difficulty, uint16_t flag_index) {
+    this->for_difficulty(difficulty).clear(flag_index);
+  }
+  inline void update_all(Difficulty difficulty, bool set) {
+    this->for_difficulty(difficulty).update_all(set);
   }
   inline void update_all(bool set) {
-    for (size_t z = 0; z < 4; z++) {
-      this->update_all(z, set);
+    for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
+      this->update_all(difficulty, set);
     }
   }
 } __packed_ws__(QuestFlags, 0x200);

@@ -231,7 +231,7 @@ void send_text_or_scrolling_message(std::shared_ptr<ServerState> s, const std::s
 
 std::string prepare_chat_data(
     Version version,
-    uint8_t language,
+    Language language,
     uint8_t from_client_id,
     const std::string& from_name,
     const std::string& text,
@@ -298,7 +298,7 @@ void send_guild_card(
     const std::string& name,
     const std::string& team_name,
     const std::string& description,
-    uint8_t language,
+    Language language,
     uint8_t section_id,
     uint8_t char_class);
 void send_guild_card(std::shared_ptr<Client> c, std::shared_ptr<Client> source);

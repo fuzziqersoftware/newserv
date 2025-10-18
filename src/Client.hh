@@ -228,7 +228,7 @@ public:
   inline Version version() const {
     return this->channel->version;
   }
-  inline uint8_t language() const {
+  inline Language language() const {
     return this->channel->language;
   }
 
@@ -267,21 +267,21 @@ public:
       std::shared_ptr<const IntegralExpression> expr,
       std::shared_ptr<const Lobby> game,
       uint8_t event,
-      uint8_t difficulty,
+      Difficulty difficulty,
       size_t num_players,
       bool v1_present) const;
   bool can_see_quest(
       std::shared_ptr<const Quest> q,
       std::shared_ptr<const Lobby> game,
       uint8_t event,
-      uint8_t difficulty,
+      Difficulty difficulty,
       size_t num_players,
       bool v1_present) const;
   bool can_play_quest(
       std::shared_ptr<const Quest> q,
       std::shared_ptr<const Lobby> game,
       uint8_t event,
-      uint8_t difficulty,
+      Difficulty difficulty,
       size_t num_players,
       bool v1_present) const;
 
@@ -316,7 +316,7 @@ public:
   void save_character_file();
   void create_character_file(
       uint32_t guild_card_number,
-      uint8_t language,
+      Language language,
       const PlayerDispDataBBPreview& preview,
       std::shared_ptr<const LevelTable> level_table);
   void create_battle_overlay(std::shared_ptr<const BattleRules> rules, std::shared_ptr<const LevelTable> level_table);

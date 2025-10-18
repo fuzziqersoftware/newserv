@@ -128,7 +128,7 @@ shared_ptr<Client> GameServer::create_client(shared_ptr<GameServerSocket> listen
       this->io_context,
       make_unique<asio::ip::tcp::socket>(std::move(client_sock)),
       listen_sock->version,
-      1,
+      Language::ENGLISH,
       "",
       phosg::TerminalFormat::FG_YELLOW,
       phosg::TerminalFormat::FG_GREEN);

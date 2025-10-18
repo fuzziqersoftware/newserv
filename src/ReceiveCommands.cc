@@ -347,7 +347,7 @@ static asio::awaitable<void> on_login_complete(shared_ptr<Client> c) {
     if (!q) {
       c->log.info_f("There is no quest to enable server function calls for specific version {:08X}", c->specific_version);
     } else if (q) {
-      auto vq = q->version(c->version(), 1);
+      auto vq = q->version(c->version(), Language::ENGLISH);
       if (vq) {
         c->set_flag(Client::Flag::HAS_SEND_FUNCTION_CALL);
         c->set_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE);
@@ -363,7 +363,7 @@ static asio::awaitable<void> on_login_complete(shared_ptr<Client> c) {
           lobby_data.guild_card_number = c->login->account->account_id;
           send_command_t(c, 0x64, 0x01, cmd);
         } else {
-          c->log.info_f("Sending {} version of quest \"{}\"", char_for_language_code(vq->language), vq->meta.name);
+          c->log.info_f("Sending {} version of quest \"{}\"", name_for_language(vq->language), vq->meta.name);
           string bin_filename = vq->bin_filename();
           string dat_filename = vq->dat_filename();
           string xb_filename = vq->xb_filename();
@@ -613,7 +613,7 @@ static asio::awaitable<void> on_04_U(shared_ptr<Client> c, Channel::Message& msg
       for (const auto& file : index->all_files()) {
         send_patch_change_to_directory(c, path_directories, file->path_directories);
 
-        S_FileChecksumRequest_Patch_0C req = {c->patch_file_checksum_requests.size(), {file->name, 1}};
+        S_FileChecksumRequest_Patch_0C req = {c->patch_file_checksum_requests.size(), {file->name, Language::ENGLISH}};
         c->channel->send(0x0C, 0x00, req);
         c->patch_file_checksum_requests.emplace_back(file);
       }
@@ -667,7 +667,7 @@ asio::awaitable<void> on_10_U(shared_ptr<Client> c, Channel::Message&) {
       if (req.needs_update()) {
         send_patch_change_to_directory(c, path_directories, req.file->path_directories);
 
-        S_OpenFile_Patch_06 open_cmd = {0, req.file->size, {req.file->name, 1}};
+        S_OpenFile_Patch_06 open_cmd = {0, req.file->size, {req.file->name, Language::ENGLISH}};
         c->channel->send(0x06, 0x00, open_cmd);
 
         for (size_t x = 0; x < req.file->chunk_crcs.size(); x++) {
@@ -1490,7 +1490,7 @@ static asio::awaitable<void> on_93_BB(shared_ptr<Client> c, Channel::Message& ms
       c->set_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB);
     }
   }
-  c->channel->language = c->check_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB) ? 1 : base_cmd.language;
+  c->channel->language = c->check_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB) ? Language::ENGLISH : base_cmd.language;
 
   if (base_cmd.menu_id == MenuID::LOBBY) {
     c->preferred_lobby_id = base_cmd.preferred_lobby_id;
@@ -2237,7 +2237,7 @@ static asio::awaitable<void> on_09(shared_ptr<Client> c, Channel::Message& msg) 
                   version_token,
                   name_for_char_class(player->disp.visual.char_class),
                   player->disp.stats.level + 1,
-                  char_for_language_code(game_c->language()));
+                  char_for_language(game_c->language()));
             }
           }
         }
@@ -2471,7 +2471,7 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q, bool substi
     l->allowed_drop_modes = l->quest->meta.allowed_drop_modes;
     l->drop_mode = l->quest->meta.default_drop_mode;
   }
-  if (l->quest->meta.challenge_difficulty >= 0) {
+  if (l->quest->meta.challenge_difficulty != Difficulty::UNKNOWN) {
     l->difficulty = l->quest->meta.challenge_difficulty;
   }
   l->create_item_creator();
@@ -2491,7 +2491,7 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q, bool substi
       lc->channel->disconnect();
       break;
     }
-    lc->log.info_f("Sending {} version of quest \"{}\"", char_for_language_code(vq->language), vq->meta.name);
+    lc->log.info_f("Sending {} version of quest \"{}\"", name_for_language(vq->language), vq->meta.name);
 
     string bin_filename = vq->bin_filename();
     string dat_filename = vq->dat_filename();
@@ -2901,7 +2901,7 @@ static asio::awaitable<void> on_10_ep3_download_quest_menu(shared_ptr<Client> c,
   auto map = s->ep3_download_map_index->get(item_id);
   auto vm = map->version(c->language());
   auto name = vm->map->name.decode(vm->language);
-  string filename = std::format("m{:06}p_{:c}.bin", map->map_number, tolower(char_for_language_code(vm->language)));
+  string filename = std::format("m{:06}p_{:c}.bin", map->map_number, tolower(char_for_language(vm->language)));
   auto data = (c->version() == Version::GC_EP3_NTE) ? vm->trial_download() : vm->compressed(false);
   send_open_quest_file(c, name, filename, "", map->map_number, QuestFileType::EPISODE_3, data);
   co_return;
@@ -4136,14 +4136,15 @@ static asio::awaitable<void> on_DF_BB(shared_ptr<Client> c, Channel::Message& ms
       if (!l->quest) {
         throw runtime_error("challenge mode difficulty config command sent in non-challenge game");
       }
-      if (static_cast<uint32_t>(l->quest->meta.challenge_difficulty) != cmd.difficulty) {
+      Difficulty cmd_difficulty = static_cast<Difficulty>(cmd.difficulty32.load());
+      if (l->quest->meta.challenge_difficulty != cmd_difficulty) {
         throw runtime_error("incorrect difficulty level");
       }
-      if (l->difficulty != cmd.difficulty) {
-        l->difficulty = cmd.difficulty;
+      if (l->difficulty != cmd_difficulty) {
+        l->difficulty = cmd_difficulty;
         l->create_item_creator();
       }
-      l->log.info_f("(Challenge mode) Difficulty set to {:02X}", l->difficulty);
+      l->log.info_f("(Challenge mode) Difficulty set to {}", name_for_difficulty(l->difficulty));
       break;
     }
 
@@ -4491,7 +4492,7 @@ shared_ptr<Lobby> create_game_generic(
     const std::string& password,
     Episode episode,
     GameMode mode,
-    uint8_t difficulty,
+    Difficulty difficulty,
     bool allow_v1,
     shared_ptr<Lobby> watched_lobby,
     shared_ptr<Episode3::BattleRecordPlayer> battle_player) {
@@ -4503,7 +4504,7 @@ shared_ptr<Lobby> create_game_generic(
     throw invalid_argument("incorrect episode number");
   }
 
-  if (difficulty > 3) {
+  if (static_cast<size_t>(difficulty) > 3) {
     throw invalid_argument("incorrect difficulty level");
   }
 
@@ -4527,7 +4528,7 @@ shared_ptr<Lobby> create_game_generic(
   game->difficulty = difficulty;
   game->allowed_versions = s->compatibility_groups.at(static_cast<size_t>(creator_c->version()));
   static_assert(NUM_VERSIONS == 14, "Don't forget to update the group compatibility restrictions");
-  if (!allow_v1 || (difficulty > 2) || (mode == GameMode::CHALLENGE) || (mode == GameMode::SOLO)) {
+  if (!allow_v1 || (difficulty == Difficulty::ULTIMATE) || (mode == GameMode::CHALLENGE) || (mode == GameMode::SOLO)) {
     game->forbid_version(Version::DC_NTE);
     game->forbid_version(Version::DC_11_2000);
     game->forbid_version(Version::DC_V1);
@@ -4701,7 +4702,7 @@ shared_ptr<Lobby> create_game_generic(
   if (game->mode == GameMode::CHALLENGE) {
     game->rare_enemy_rates = s->rare_enemy_rates_challenge;
   } else {
-    game->rare_enemy_rates = s->rare_enemy_rates_by_difficulty.at(game->difficulty);
+    game->rare_enemy_rates = s->rare_enemy_rates(game->difficulty);
   }
 
   if (game->episode != Episode::EP3) {
@@ -4736,7 +4737,7 @@ shared_ptr<Lobby> create_game_generic(
 
   if (quest_flag_rewrites && !quest_flag_rewrites->empty()) {
     IntegralExpression::Env env = {
-        .flags = &p->quest_flags.data.at(difficulty),
+        .flags = &p->quest_flags.for_difficulty(difficulty),
         .challenge_records = &p->challenge_records,
         .team = creator_c->team(),
         .num_players = 1,
@@ -4788,7 +4789,15 @@ static asio::awaitable<void> on_0C_C1_E7_EC(shared_ptr<Client> c, Channel::Messa
   shared_ptr<Lobby> game;
   if (is_pre_v1(c->version())) {
     const auto& cmd = check_size_t<C_CreateGame_DCNTE>(msg.data);
-    game = create_game_generic(s, c, cmd.name.decode(c->language()), cmd.password.decode(c->language()), Episode::EP1, GameMode::NORMAL, 0, true);
+    game = create_game_generic(
+        s,
+        c,
+        cmd.name.decode(c->language()),
+        cmd.password.decode(c->language()),
+        Episode::EP1,
+        GameMode::NORMAL,
+        Difficulty::NORMAL,
+        true);
 
   } else {
     const auto& cmd = check_size_t<C_CreateGame_DC_V3_0C_C1_Ep3_EC>(msg.data);
@@ -4952,11 +4961,11 @@ static asio::awaitable<void> on_6F(shared_ptr<Client> c, Channel::Message& msg) 
     } catch (const out_of_range&) {
       throw std::logic_error("cannot find patch enable quest after it was previously found during login");
     }
-    auto vq = q->version(is_ep3(c->version()) ? Version::GC_V3 : c->version(), 1);
+    auto vq = q->version(is_ep3(c->version()) ? Version::GC_V3 : c->version(), Language::ENGLISH);
     if (!vq) {
       throw std::logic_error("cannot find patch enable quest version after it was previously found during login");
     }
-    c->log.info_f("Sending {} version of quest \"{}\"", char_for_language_code(vq->language), vq->meta.name);
+    c->log.info_f("Sending {} version of quest \"{}\"", name_for_language(vq->language), vq->meta.name);
     string bin_filename = vq->bin_filename();
     string dat_filename = vq->dat_filename();
     string xb_filename = vq->xb_filename();

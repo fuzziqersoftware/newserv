@@ -193,7 +193,7 @@ struct SaveFileChatShortcutEntryT {
   /* 40:54:A4 */
 
   template <bool RetBE, TextEncoding RetEncoding, size_t RetMaxSize>
-  SaveFileChatShortcutEntryT<RetBE, RetEncoding, RetMaxSize> convert(uint8_t language) const {
+  SaveFileChatShortcutEntryT<RetBE, RetEncoding, RetMaxSize> convert(Language language) const {
     SaveFileChatShortcutEntryT<RetBE, RetEncoding, RetMaxSize> ret;
     ret.type = this->type;
     switch (ret.type) {
@@ -268,7 +268,7 @@ struct PSOPCSystemFile { // PSO______COM
   // assumption that Sega didn't change much between versions.
   /* 0004 */ le_int16_t music_volume = 0;
   /* 0006 */ int8_t sound_volume = 0;
-  /* 0007 */ uint8_t language = 1;
+  /* 0007 */ Language language = Language::ENGLISH;
   /* 0008 */ le_int32_t server_time_delta_frames = 1728000;
   /* 000C */ parray<le_uint16_t, 0x10> unknown_a4; // Last one is always 0x1234?
   /* 002C */ parray<uint8_t, 0x100> event_flags;
@@ -281,7 +281,7 @@ struct PSOGCSystemFile {
   /* 0000 */ be_uint32_t checksum = 0;
   /* 0004 */ be_int16_t music_volume = 0; // 0 = full volume; -250 = min volume
   /* 0006 */ int8_t sound_volume = 0; // 0 = full volume; -100 = min volume
-  /* 0007 */ uint8_t language = 1;
+  /* 0007 */ Language language = Language::ENGLISH;
   // This field stores the effective time zone offset between the server and
   // client, in frames. The default value is 1728000, which corresponds to 16
   // hours. This is recomputed when the client receives a B1 command.
@@ -309,7 +309,7 @@ struct PSOXBSystemFile {
   /* 0000 */ le_uint32_t checksum = 0;
   /* 0004 */ le_int16_t music_volume = -50;
   /* 0006 */ int8_t sound_volume = 0;
-  /* 0007 */ uint8_t language = 0;
+  /* 0007 */ Language language = Language::JAPANESE;
   /* 0008 */ be_int32_t server_time_delta_frames = 200;
   /* 000C */ be_uint16_t udp_behavior = 0; // 0 = auto, 1 = on, 2 = off
   /* 000E */ be_uint16_t surround_sound_enabled = 0;
@@ -338,7 +338,7 @@ struct PSOBBMinimalSystemFile {
   /* 0000 */ be_uint32_t checksum = 0;
   /* 0004 */ be_int16_t music_volume = 0;
   /* 0006 */ int8_t sound_volume = 0;
-  /* 0007 */ uint8_t language = 0;
+  /* 0007 */ Language language = Language::JAPANESE;
   /* 0008 */ be_int32_t server_time_delta_frames = 1728000;
   /* 000C */ be_uint16_t udp_behavior = 0; // 0 = auto, 1 = on, 2 = off
   /* 000E */ be_uint16_t surround_sound_enabled = 0;
@@ -871,13 +871,13 @@ struct PSOBBCharacterFile {
 
   static std::shared_ptr<PSOBBCharacterFile> create_from_config(
       uint32_t guild_card_number,
-      uint8_t language,
+      Language language,
       const PlayerVisualConfig& visual,
       const std::string& name,
       std::shared_ptr<const LevelTable> level_table);
   static std::shared_ptr<PSOBBCharacterFile> create_from_preview(
       uint32_t guild_card_number,
-      uint8_t language,
+      Language language,
       const PlayerDispDataBBPreview& preview,
       std::shared_ptr<const LevelTable> level_table);
   static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSODCNTECharacterFile::Character& src);
@@ -978,7 +978,7 @@ struct PSODCV1V2GuildCardFile {
     /* 0004 */ parray<PSODCGuildCardFileEntry, 100> entries;
     /* 3204 */ le_int16_t music_volume = 0;
     /* 3206 */ int8_t sound_volume = 0;
-    /* 3207 */ uint8_t language = 1;
+    /* 3207 */ Language language = Language::ENGLISH;
     /* 3208 */ le_int32_t server_time_delta_frames = 540000; // 648000 on DCv1
     /* 320C */ le_uint32_t creation_timestamp = 0;
     /* 3210 */ le_uint32_t round2_seed = 0;

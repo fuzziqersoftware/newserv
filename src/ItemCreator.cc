@@ -32,7 +32,7 @@ ItemCreator::ItemCreator(
     std::shared_ptr<const ItemData::StackLimits> stack_limits,
     Episode episode,
     GameMode mode,
-    uint8_t difficulty,
+    Difficulty difficulty,
     uint8_t section_id,
     std::shared_ptr<RandomGenerator> rand_crypt,
     shared_ptr<const BattleRules> restrictions)
@@ -1072,7 +1072,7 @@ void ItemCreator::generate_armor_shop_armors(vector<ItemData>& shop, size_t play
     item.data1[1] = 1;
     item.data1[2] = pt.pop();
 
-    if ((this->difficulty == 3) && (player_level > 99)) {
+    if ((this->difficulty == Difficulty::ULTIMATE) && (player_level > 99)) {
       if (player_level > 150) {
         item.data1[2] += 3;
       } else if (player_level >= 100) {
@@ -1116,7 +1116,7 @@ void ItemCreator::generate_armor_shop_shields(vector<ItemData>& shop, size_t pla
     item.data1[1] = 2;
     item.data1[2] = pt.pop();
 
-    if ((this->difficulty == 3) && (player_level > 99)) {
+    if ((this->difficulty == Difficulty::ULTIMATE) && (player_level > 99)) {
       if (player_level > 150) {
         item.data1[2] += 3;
       } else if (player_level >= 100) {
@@ -1360,7 +1360,7 @@ vector<ItemData> ItemCreator::generate_weapon_shop_contents(size_t player_level)
   }
 
   size_t table_index;
-  if (this->difficulty == 3) {
+  if (this->difficulty == Difficulty::ULTIMATE) {
     if (player_level < 11) {
       table_index = 0;
     } else if (player_level < 26) {

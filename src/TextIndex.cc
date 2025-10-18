@@ -454,54 +454,54 @@ TextIndex::TextIndex(
     : log("[TextIndex] ", static_game_data_log.min_level) {
   if (!directory.empty()) {
     auto add_version = [&](Version version, const string& subdirectory, function<shared_ptr<TextSet>(const string&, bool)> make_set) -> void {
-      static const map<string, uint8_t> bintext_filenames({
-          {"TextJapanese.pr2", 0x00},
-          {"TextEnglish.pr2", 0x01},
-          {"TextGerman.pr2", 0x02},
-          {"TextFrench.pr2", 0x03},
-          {"TextSpanish.pr2", 0x04},
+      static const map<string, Language> bintext_filenames({
+          {"TextJapanese.pr2", Language::JAPANESE},
+          {"TextEnglish.pr2", Language::ENGLISH},
+          {"TextGerman.pr2", Language::GERMAN},
+          {"TextFrench.pr2", Language::FRENCH},
+          {"TextSpanish.pr2", Language::SPANISH},
       });
-      static const map<string, uint8_t> unitext_filenames({
-          {"unitxt_j.prs", 0x00}, // PC/BB Japanese
-          {"unitxt_e.prs", 0x01}, // PC/BB English
-          {"unitxt_g.prs", 0x02}, // PC/BB German
-          {"unitxt_f.prs", 0x03}, // PC/BB French
-          {"unitxt_s.prs", 0x04}, // PC/BB Spanish
-          {"unitxt_b.prs", 0x05}, // PC Simplified Chinese
-          {"unitxt_cs.prs", 0x05}, // BB Simplified Chinese
-          {"unitxt_t.prs", 0x06}, // PC Traditional Chinese
-          {"unitxt_ct.prs", 0x06}, // BB Traditional Chinese
-          {"unitxt_k.prs", 0x07}, // PC Korean
-          {"unitxt_h.prs", 0x07}, // BB Korean
+      static const map<string, Language> unitext_filenames({
+          {"unitxt_j.prs", Language::JAPANESE}, // PC/BB Japanese
+          {"unitxt_e.prs", Language::ENGLISH}, // PC/BB English
+          {"unitxt_g.prs", Language::GERMAN}, // PC/BB German
+          {"unitxt_f.prs", Language::FRENCH}, // PC/BB French
+          {"unitxt_s.prs", Language::SPANISH}, // PC/BB Spanish
+          {"unitxt_b.prs", Language::SIMPLIFIED_CHINESE}, // PC Simplified Chinese
+          {"unitxt_cs.prs", Language::SIMPLIFIED_CHINESE}, // BB Simplified Chinese
+          {"unitxt_t.prs", Language::TRADITIONAL_CHINESE}, // PC Traditional Chinese
+          {"unitxt_ct.prs", Language::TRADITIONAL_CHINESE}, // BB Traditional Chinese
+          {"unitxt_k.prs", Language::KOREAN}, // PC Korean
+          {"unitxt_h.prs", Language::KOREAN}, // BB Korean
       });
       if (!uses_utf16(version)) {
-        for (const auto& it : bintext_filenames) {
-          string file_path = directory + "/" + subdirectory + "/" + it.first;
+        for (const auto& [base_filename, language] : bintext_filenames) {
+          string file_path = directory + "/" + subdirectory + "/" + base_filename;
           string json_path = file_path + ".json";
           if (std::filesystem::is_regular_file(json_path)) {
-            this->log.debug_f("Loading {} {} JSON text set from {}", phosg::name_for_enum(version), char_for_language_code(it.second), json_path);
-            this->add_set(version, it.second, make_shared<BinaryTextSet>(phosg::JSON::parse(phosg::load_file(json_path))));
+            this->log.debug_f("Loading {} {} JSON text set from {}", phosg::name_for_enum(version), name_for_language(language), json_path);
+            this->add_set(version, language, make_shared<BinaryTextSet>(phosg::JSON::parse(phosg::load_file(json_path))));
           } else if (std::filesystem::is_regular_file(file_path)) {
-            this->log.debug_f("Loading {} {} binary text set from {}", phosg::name_for_enum(version), char_for_language_code(it.second), file_path);
-            this->add_set(version, it.second, make_set(phosg::load_file(file_path), it.second == 0));
+            this->log.debug_f("Loading {} {} binary text set from {}", phosg::name_for_enum(version), name_for_language(language), file_path);
+            this->add_set(version, language, make_set(phosg::load_file(file_path), language == Language::JAPANESE));
           }
         }
       } else {
-        for (const auto& it : unitext_filenames) {
-          string file_path = directory + "/" + subdirectory + "/" + it.first;
+        for (const auto& [base_filename, language] : unitext_filenames) {
+          string file_path = directory + "/" + subdirectory + "/" + base_filename;
           string json_path = file_path + ".json";
           if (std::filesystem::is_regular_file(json_path)) {
-            this->log.debug_f("Loading {} {} JSON text set from {}", phosg::name_for_enum(version), char_for_language_code(it.second), json_path);
-            this->add_set(version, it.second, make_shared<UnicodeTextSet>(phosg::JSON::parse(phosg::load_file(json_path))));
+            this->log.debug_f("Loading {} {} JSON text set from {}", phosg::name_for_enum(version), name_for_language(language), json_path);
+            this->add_set(version, language, make_shared<UnicodeTextSet>(phosg::JSON::parse(phosg::load_file(json_path))));
           } else {
-            auto patch_file = get_patch_file ? get_patch_file(version, it.first) : nullptr;
+            auto patch_file = get_patch_file ? get_patch_file(version, base_filename) : nullptr;
             if (patch_file) {
-              this->log.debug_f("Loading {} {} Unicode text set from {} in patch tree", phosg::name_for_enum(version), char_for_language_code(it.second), it.first);
-              this->add_set(version, it.second, make_set(*patch_file, it.second == 0));
+              this->log.debug_f("Loading {} {} Unicode text set from {} in patch tree", phosg::name_for_enum(version), name_for_language(language), base_filename);
+              this->add_set(version, language, make_set(*patch_file, language == Language::JAPANESE));
             } else {
               if (std::filesystem::is_regular_file(file_path)) {
-                this->log.debug_f("Loading {} {} Unicode text set from {}", phosg::name_for_enum(version), char_for_language_code(it.second), file_path);
-                this->add_set(version, it.second, make_set(phosg::load_file(file_path), it.second == 0));
+                this->log.debug_f("Loading {} {} Unicode text set from {}", phosg::name_for_enum(version), name_for_language(language), file_path);
+                this->add_set(version, language, make_set(phosg::load_file(file_path), language == Language::JAPANESE));
               }
             }
           }
@@ -531,26 +531,26 @@ TextIndex::TextIndex(
   }
 }
 
-void TextIndex::add_set(Version version, uint8_t language, std::shared_ptr<const TextSet> ts) {
+void TextIndex::add_set(Version version, Language language, std::shared_ptr<const TextSet> ts) {
   this->sets[this->key_for_set(version, language)] = ts;
 }
 
-void TextIndex::delete_set(Version version, uint8_t language) {
+void TextIndex::delete_set(Version version, Language language) {
   this->sets.erase(this->key_for_set(version, language));
 }
 
-const std::string& TextIndex::get(Version version, uint8_t language, size_t collection_index, size_t string_index) const {
+const std::string& TextIndex::get(Version version, Language language, size_t collection_index, size_t string_index) const {
   return this->get(version, language)->get(collection_index, string_index);
 }
 
-const std::vector<std::string>& TextIndex::get(Version version, uint8_t language, size_t collection_index) const {
+const std::vector<std::string>& TextIndex::get(Version version, Language language, size_t collection_index) const {
   return this->get(version, language)->get(collection_index);
 }
 
-std::shared_ptr<const TextSet> TextIndex::get(Version version, uint8_t language) const {
+std::shared_ptr<const TextSet> TextIndex::get(Version version, Language language) const {
   return this->sets.at(this->key_for_set(version, language));
 }
 
-uint32_t TextIndex::key_for_set(Version version, uint8_t language) {
-  return (static_cast<uint32_t>(version) << 8) | language;
+uint32_t TextIndex::key_for_set(Version version, Language language) {
+  return (static_cast<uint32_t>(version) << 8) | static_cast<size_t>(language);
 }

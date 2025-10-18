@@ -132,7 +132,7 @@ std::shared_ptr<phosg::JSON> HTTPServer::generate_client_json(
       {"RemoteAddress", c->channel->default_name()},
       {"Version", phosg::name_for_enum(c->version())},
       {"SubVersion", c->sub_version},
-      {"Language", name_for_language_code(c->language())},
+      {"Language", name_for_language(c->language())},
       {"LocationX", c->pos.x.load()},
       {"LocationZ", c->pos.z.load()},
       {"LocationFloor", c->floor},
@@ -173,7 +173,7 @@ std::shared_ptr<phosg::JSON> HTTPServer::generate_client_json(
   if (p) {
     if (!is_ep3(c->version())) {
       if (c->version() != Version::DC_NTE) {
-        ret->emplace("InventoryLanguage", name_for_language_code(p->inventory.language));
+        ret->emplace("InventoryLanguage", name_for_language(p->inventory.language));
         ret->emplace("NumHPMaterialsUsed", p->get_material_usage(PSOBBCharacterFile::MaterialType::HP));
         ret->emplace("NumTPMaterialsUsed", p->get_material_usage(PSOBBCharacterFile::MaterialType::TP));
         if (!is_v1_or_v2(c->version())) {
@@ -302,7 +302,7 @@ std::shared_ptr<phosg::JSON> HTTPServer::generate_client_json(
         lobby_players_json.emplace_back(phosg::JSON::dict({
             {"GuildCardNumber", p.guild_card_number},
             {"Name", p.name},
-            {"Language", name_for_language_code(p.language)},
+            {"Language", name_for_language(p.language)},
             {"SectionID", name_for_section_id(p.section_id)},
             {"CharClass", name_for_char_class(p.char_class)},
         }));
@@ -481,7 +481,7 @@ std::shared_ptr<phosg::JSON> HTTPServer::generate_lobby_json(
                 }
               }
               deck_json = phosg::JSON::dict({
-                  {"Name", deck_entry->name.decode(lc ? lc->language() : 1)},
+                  {"Name", deck_entry->name.decode(lc ? lc->language() : Language::ENGLISH)},
                   {"TeamID", deck_entry->team_id.load()},
                   {"Cards", std::move(cards_json)},
                   {"GodWhimFlag", deck_entry->god_whim_flag},
@@ -490,7 +490,7 @@ std::shared_ptr<phosg::JSON> HTTPServer::generate_lobby_json(
             }
 
             auto player_json = phosg::JSON::dict({
-                {"PlayerName", ep3s->name_entries[z].name.decode(lc ? lc->language() : 1)},
+                {"PlayerName", ep3s->name_entries[z].name.decode(lc ? lc->language() : Language::ENGLISH)},
                 {"ClientID", ep3s->name_entries[z].client_id},
                 {"IsCOM", !!ep3s->name_entries[z].is_cpu_player},
                 {"Deck", std::move(deck_json)},
@@ -608,7 +608,7 @@ std::shared_ptr<phosg::JSON> HTTPServer::generate_summary_json() const {
         {"AccountID", c->login ? c->login->account->account_id : phosg::JSON(nullptr)},
         {"Name", p ? p->disp.name.decode(c->language()) : phosg::JSON(nullptr)},
         {"Version", phosg::name_for_enum(c->version())},
-        {"Language", name_for_language_code(c->language())},
+        {"Language", name_for_language(c->language())},
         {"Level", p ? p->disp.stats.level + 1 : phosg::JSON(nullptr)},
         {"Class", p ? name_for_char_class(p->disp.visual.char_class) : phosg::JSON(nullptr)},
         {"SectionID", p ? name_for_section_id(p->disp.visual.section_id) : phosg::JSON(nullptr)},

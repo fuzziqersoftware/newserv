@@ -72,7 +72,7 @@ struct VersionedQuest {
   // Most of these default values are intentionally invalid; we use these
   // values to check if each field was parsed during quest indexing.
   Version version = Version::UNKNOWN;
-  uint8_t language = 0xFF;
+  Language language = Language::UNKNOWN;
   std::shared_ptr<const std::string> bin_contents;
   std::shared_ptr<const std::string> dat_contents;
   std::shared_ptr<const MapFile> map_file;
@@ -86,7 +86,7 @@ struct VersionedQuest {
   std::string pvr_filename() const;
   std::string xb_filename() const;
 
-  std::shared_ptr<VersionedQuest> create_download_quest(uint8_t override_language = 0xFF) const;
+  std::shared_ptr<VersionedQuest> create_download_quest(Language override_language = Language::UNKNOWN) const;
   std::string encode_qst() const;
 };
 
@@ -107,14 +107,14 @@ struct Quest {
 
   std::shared_ptr<const SuperMap> get_supermap(int64_t random_seed) const;
 
-  const std::string& name_for_language(uint8_t language) const;
+  const std::string& name_for_language(Language language) const;
 
   void add_version(std::shared_ptr<const VersionedQuest> vq);
-  bool has_version(Version v, uint8_t language) const;
+  bool has_version(Version v, Language language) const;
   bool has_version_any_language(Version v) const;
-  std::shared_ptr<const VersionedQuest> version(Version v, uint8_t language) const;
+  std::shared_ptr<const VersionedQuest> version(Version v, Language language) const;
 
-  static uint32_t versions_key(Version v, uint8_t language);
+  static uint32_t versions_key(Version v, Language language);
 };
 
 struct QuestIndex {

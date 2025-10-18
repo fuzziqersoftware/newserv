@@ -8,6 +8,7 @@
 #include <phosg/Time.hh>
 
 #include "Loggers.hh"
+#include "StaticGameData.hh"
 #include "Version.hh"
 
 using namespace std;
@@ -16,7 +17,7 @@ extern bool use_terminal_colors;
 
 Channel::Channel(
     Version version,
-    uint8_t language,
+    Language language,
     const string& name,
     phosg::TerminalFormat terminal_send_color,
     phosg::TerminalFormat terminal_recv_color)
@@ -249,7 +250,7 @@ shared_ptr<SocketChannel> SocketChannel::create(
     std::shared_ptr<asio::io_context> io_context,
     std::unique_ptr<asio::ip::tcp::socket>&& sock,
     Version version,
-    uint8_t language,
+    Language language,
     const string& name,
     phosg::TerminalFormat terminal_send_color,
     phosg::TerminalFormat terminal_recv_color) {
@@ -263,7 +264,7 @@ SocketChannel::SocketChannel(
     std::shared_ptr<asio::io_context> io_context,
     std::unique_ptr<asio::ip::tcp::socket>&& sock,
     Version version,
-    uint8_t language,
+    Language language,
     const string& name,
     phosg::TerminalFormat terminal_send_color,
     phosg::TerminalFormat terminal_recv_color)
@@ -331,7 +332,7 @@ asio::awaitable<void> SocketChannel::send_task() {
 PeerChannel::PeerChannel(
     std::shared_ptr<asio::io_context> io_context,
     Version version,
-    uint8_t language,
+    Language language,
     const std::string& name,
     phosg::TerminalFormat terminal_send_color,
     phosg::TerminalFormat terminal_recv_color)

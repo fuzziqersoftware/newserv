@@ -1,6 +1,6 @@
 .version GC_V3
 .quest_num 88530
-.language 1
+.language E
 .episode Episode1
 .name "GC v1.2 USA patch enabler"
 .short_desc ""

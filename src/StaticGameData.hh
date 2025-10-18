@@ -17,6 +17,26 @@ enum class Episode {
   EP4 = 4,
 };
 
+enum class Difficulty : uint8_t {
+  NORMAL = 0,
+  HARD = 1,
+  VERY_HARD = 2,
+  ULTIMATE = 3,
+  UNKNOWN = 0xFF,
+};
+
+enum class Language : uint8_t {
+  JAPANESE = 0,
+  ENGLISH = 1,
+  GERMAN = 2,
+  FRENCH = 3,
+  SPANISH = 4,
+  SIMPLIFIED_CHINESE = 5,
+  TRADITIONAL_CHINESE = 6,
+  KOREAN = 7,
+  UNKNOWN = 0xFF,
+};
+
 bool episode_has_arpg_semantics(Episode ep);
 const char* name_for_episode(Episode ep);
 const char* token_name_for_episode(Episode ep);
@@ -63,13 +83,13 @@ bool char_class_is_hunter(uint8_t cls);
 bool char_class_is_ranger(uint8_t cls);
 bool char_class_is_force(uint8_t cls);
 
-const char* name_for_difficulty(uint8_t difficulty);
-const char* token_name_for_difficulty(uint8_t difficulty);
-char abbreviation_for_difficulty(uint8_t difficulty);
+const char* name_for_difficulty(Difficulty difficulty);
+const char* token_name_for_difficulty(Difficulty difficulty);
+char abbreviation_for_difficulty(Difficulty difficulty);
 
-const char* name_for_language_code(uint8_t language_code);
-char char_for_language_code(uint8_t language_code);
-uint8_t language_code_for_char(char language_char);
+const char* name_for_language(Language language);
+char char_for_language(Language language);
+Language language_for_char(char language_char);
 
 extern const std::vector<const char*> name_for_mag_color;
 extern const std::unordered_map<std::string, uint8_t> mag_color_for_name;
@@ -110,3 +130,12 @@ extern const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V123;
 extern const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP1;
 extern const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP2;
 extern const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP4;
+
+extern const std::array<GameMode, 2> ALL_GAME_MODES_V1;
+extern const std::array<GameMode, 3> ALL_GAME_MODES_V23;
+extern const std::array<GameMode, 4> ALL_GAME_MODES_V4;
+extern const std::array<Episode, 1> ALL_EPISODES_V12;
+extern const std::array<Episode, 2> ALL_EPISODES_V3;
+extern const std::array<Episode, 3> ALL_EPISODES_V4;
+extern const std::array<Difficulty, 3> ALL_DIFFICULTIES_V1;
+extern const std::array<Difficulty, 4> ALL_DIFFICULTIES_V234;

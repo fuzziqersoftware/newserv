@@ -109,7 +109,7 @@ public:
       std::weak_ptr<IPSSClient> ipss_client,
       std::weak_ptr<IPSSClient::TCPConnection> tcp_conn,
       Version version,
-      uint8_t language,
+      Language language,
       const std::string& name = "",
       phosg::TerminalFormat terminal_send_color = phosg::TerminalFormat::END,
       phosg::TerminalFormat terminal_recv_color = phosg::TerminalFormat::END);

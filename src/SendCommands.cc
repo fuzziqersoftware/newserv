@@ -306,7 +306,7 @@ void send_set_guild_card_number(shared_ptr<Client> c) {
 }
 
 void send_patch_enter_directory(shared_ptr<Client> c, const string& dir) {
-  S_EnterDirectory_Patch_09 cmd = {{dir, 1}};
+  S_EnterDirectory_Patch_09 cmd = {{dir, Language::ENGLISH}};
   c->channel->send(0x09, 0x00, cmd);
 }
 
@@ -793,9 +793,9 @@ void send_complete_player_bb(shared_ptr<Client> c) {
   auto sys = c->system_file(true);
   auto team = c->team();
   if (c->check_flag(Client::Flag::FORCE_ENGLISH_LANGUAGE_BB)) {
-    p->inventory.language = 1;
-    p->guild_card.language = 1;
-    sys->language = 1;
+    p->inventory.language = Language::ENGLISH;
+    p->guild_card.language = Language::ENGLISH;
+    sys->language = Language::ENGLISH;
   }
 
   SC_SyncSaveFiles_BB_E7 cmd;
@@ -1016,7 +1016,7 @@ void send_text_or_scrolling_message(shared_ptr<ServerState> s, const std::string
 
 string prepare_chat_data(
     Version version,
-    uint8_t language,
+    Language language,
     uint8_t from_client_id,
     const string& from_name,
     const string& text,
@@ -1024,7 +1024,7 @@ string prepare_chat_data(
   string data;
 
   if (version == Version::BB_V4) {
-    data.append(language ? "\tE" : "\tJ");
+    data.append((language == Language::JAPANESE) ? "\tJ" : "\tE");
   }
   data.append(from_name);
   if (version == Version::DC_NTE) {
@@ -1037,7 +1037,7 @@ string prepare_chat_data(
   }
 
   if (uses_utf16(version)) {
-    data.append(language ? "\tE" : "\tJ");
+    data.append((language == Language::JAPANESE) ? "\tJ" : "\tE");
     data.append(text);
     return tt_utf8_to_utf16(data);
   } else if (version == Version::DC_NTE) {
@@ -1291,7 +1291,7 @@ void send_guild_card_dc_pc_gc_t(
     uint32_t guild_card_number,
     const string& name,
     const string& description,
-    uint8_t language,
+    Language language,
     uint8_t section_id,
     uint8_t char_class) {
   CmdT cmd;
@@ -1315,7 +1315,7 @@ void send_guild_card_xb(
     uint64_t xb_user_id,
     const string& name,
     const string& description,
-    uint8_t language,
+    Language language,
     uint8_t section_id,
     uint8_t char_class) {
   G_SendGuildCard_XB_6x06 cmd;
@@ -1341,7 +1341,7 @@ static void send_guild_card_bb(
     const string& name,
     const string& team_name,
     const string& description,
-    uint8_t language,
+    Language language,
     uint8_t section_id,
     uint8_t char_class) {
   G_SendGuildCard_BB_6x06 cmd;
@@ -1366,7 +1366,7 @@ void send_guild_card(
     const string& name,
     const string& team_name,
     const string& description,
-    uint8_t language,
+    Language language,
     uint8_t section_id,
     uint8_t char_class) {
   switch (ch->version) {
@@ -1573,7 +1573,7 @@ void send_game_menu_t(
     auto& e = entries.emplace_back();
     e.menu_id = MenuID::GAME;
     e.item_id = l->lobby_id;
-    e.difficulty_tag = (is_ep3(c->version()) ? 0x0A : (l->difficulty + 0x22));
+    e.difficulty_tag = (is_ep3(c->version()) ? 0x0A : (static_cast<size_t>(l->difficulty) + 0x22));
     e.num_players = l->count_clients();
     if (is_dc(c->version())) {
       e.episode = l->version_is_allowed(Version::DC_V1) ? 1 : 0;
@@ -2952,12 +2952,12 @@ void send_game_flag_state_t(shared_ptr<Client> c) {
   if (l->quest_flags_known) { // Not all flags known; send multiple 6x75s
     phosg::StringWriter w;
     bool use_v3_cmd = !is_v1_or_v2(c->version()) || (c->version() == Version::GC_NTE);
-    for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
+    for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
       if ((difficulty != l->difficulty) && !use_v3_cmd) {
         continue;
       }
-      const auto& diff_flags = l->quest_flag_values->data.at(difficulty);
-      const auto& diff_known_flags = l->quest_flags_known->data.at(difficulty);
+      const auto& diff_flags = l->quest_flag_values->for_difficulty(difficulty);
+      const auto& diff_known_flags = l->quest_flags_known->for_difficulty(difficulty);
       for (uint8_t z = 0; z < diff_known_flags.data.size(); z++) {
         uint8_t known_flags = diff_known_flags.data[z];
         if (!known_flags) {
@@ -2969,7 +2969,7 @@ void send_game_flag_state_t(shared_ptr<Client> c) {
             uint16_t flag_num = ((z << 3) | sh);
             if (use_v3_cmd) {
               w.put(G_UpdateQuestFlag_V3_BB_6x75{
-                  {{0x75, 0x03, 0x0000}, flag_num, (((flag_values << sh) & 0x80) ? 0 : 1)}, difficulty, 0});
+                  {{0x75, 0x03, 0x0000}, flag_num, (((flag_values << sh) & 0x80) ? 0 : 1)}, static_cast<uint16_t>(difficulty), 0});
             } else {
               w.put(G_UpdateQuestFlag_DC_PC_6x75{
                   {0x75, 0x02, 0x0000}, flag_num, (((flag_values << sh) & 0x80) ? 0 : 1)});
@@ -3541,7 +3541,7 @@ string ep3_description_for_client(shared_ptr<Client> c) {
       "{} CLv{} {}",
       name_for_char_class(p->disp.visual.char_class),
       p->disp.stats.level + 1,
-      char_for_language_code(p->inventory.language));
+      char_for_language(p->inventory.language));
 }
 
 template <typename RulesT>
@@ -3783,7 +3783,7 @@ void send_ep3_tournament_match_result(shared_ptr<Lobby> l, uint32_t meseta_rewar
     cmd.num_players_per_team = match->preceding_a->winner_team->max_players;
     cmd.winner_team_id = (match->preceding_b->winner_team == match->winner_team);
     cmd.meseta_amount = meseta_reward;
-    cmd.meseta_reward_text.encode("You got %s meseta!", 1);
+    cmd.meseta_reward_text.encode("You got %s meseta!", Language::ENGLISH);
     if ((lc->version() != Version::GC_EP3_NTE) &&
         !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
       uint8_t mask_key = (phosg::random_object<uint32_t>() % 0xFF) + 1;
@@ -3854,7 +3854,7 @@ void send_ep3_update_game_metadata(shared_ptr<Lobby> l) {
       }
       cmd.total_spectators = total_spectators;
       cmd.text_size = text.size();
-      cmd.text.encode(text, 1);
+      cmd.text.encode(text, Language::ENGLISH);
       for (auto c : watcher_l->clients) {
         if (c) {
           if ((c->version() == Version::GC_EP3) && !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {

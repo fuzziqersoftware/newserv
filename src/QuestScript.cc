@@ -82,8 +82,8 @@ static const char* name_for_header_episode_number(uint8_t episode) {
   }
 }
 
-static TextEncoding encoding_for_language(uint8_t language) {
-  return (language ? TextEncoding::ISO8859 : TextEncoding::SJIS);
+static TextEncoding encoding_for_language(Language language) {
+  return ((language == Language::JAPANESE) ? TextEncoding::SJIS : TextEncoding::ISO8859);
 }
 
 static string escape_string(const string& data, TextEncoding encoding = TextEncoding::UTF8) {
@@ -2970,7 +2970,7 @@ std::string disassemble_quest_script(
     const void* data,
     size_t size,
     Version version,
-    uint8_t override_language,
+    Language override_language,
     bool reassembly_mode,
     bool use_qedit_names) {
   phosg::StringReader r(data, size);
@@ -2980,14 +2980,14 @@ std::string disassemble_quest_script(
   bool use_wstrs = false;
   size_t code_offset = 0;
   size_t function_table_offset = 0;
-  uint8_t language;
+  Language language;
   switch (version) {
     case Version::DC_NTE: {
       const auto& header = r.get<PSOQuestHeaderDCNTE>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
-      language = 0;
-      lines.emplace_back(".name " + escape_string(header.name.decode(0)));
+      language = Language::JAPANESE;
+      lines.emplace_back(".name " + escape_string(header.name.decode(Language::JAPANESE)));
       break;
     }
     case Version::DC_11_2000:
@@ -2996,15 +2996,15 @@ std::string disassemble_quest_script(
       const auto& header = r.get<PSOQuestHeaderDC>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
-      if (override_language != 0xFF) {
+      if (override_language != Language::UNKNOWN) {
         language = override_language;
-      } else if (header.language < 5) {
+      } else if (static_cast<size_t>(header.language) < 5) {
         language = header.language;
       } else {
-        language = 1;
+        language = Language::ENGLISH;
       }
       lines.emplace_back(std::format(".quest_num {}", header.quest_number));
-      lines.emplace_back(std::format(".language {}", header.language));
+      lines.emplace_back(std::format(".language {}", char_for_language(header.language)));
       lines.emplace_back(".name " + escape_string(header.name.decode(language)));
       lines.emplace_back(".short_desc " + escape_string(header.short_description.decode(language)));
       lines.emplace_back(".long_desc " + escape_string(header.long_description.decode(language)));
@@ -3016,15 +3016,15 @@ std::string disassemble_quest_script(
       const auto& header = r.get<PSOQuestHeaderPC>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
-      if (override_language != 0xFF) {
+      if (override_language != Language::UNKNOWN) {
         language = override_language;
-      } else if (header.language < 8) {
+      } else if (static_cast<size_t>(header.language) < 8) {
         language = header.language;
       } else {
-        language = 1;
+        language = Language::ENGLISH;
       }
       lines.emplace_back(std::format(".quest_num {}", header.quest_number));
-      lines.emplace_back(std::format(".language {}", header.language));
+      lines.emplace_back(std::format(".language {}", char_for_language(header.language)));
       lines.emplace_back(".name " + escape_string(header.name.decode(language)));
       lines.emplace_back(".short_desc " + escape_string(header.short_description.decode(language)));
       lines.emplace_back(".long_desc " + escape_string(header.long_description.decode(language)));
@@ -3038,15 +3038,15 @@ std::string disassemble_quest_script(
       const auto& header = r.get<PSOQuestHeaderGC>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
-      if (override_language != 0xFF) {
+      if (override_language != Language::UNKNOWN) {
         language = override_language;
-      } else if (header.language < 5) {
+      } else if (static_cast<size_t>(header.language) < 5) {
         language = header.language;
       } else {
-        language = 1;
+        language = Language::ENGLISH;
       }
       lines.emplace_back(std::format(".quest_num {}", header.quest_number));
-      lines.emplace_back(std::format(".language {}", header.language));
+      lines.emplace_back(std::format(".language {}", char_for_language(header.language)));
       lines.emplace_back(".name " + escape_string(header.name.decode(language)));
       lines.emplace_back(".short_desc " + escape_string(header.short_description.decode(language)));
       lines.emplace_back(".long_desc " + escape_string(header.long_description.decode(language)));
@@ -3057,10 +3057,10 @@ std::string disassemble_quest_script(
       const auto& header = r.get<PSOQuestHeaderBB>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
-      if (override_language != 0xFF) {
+      if (override_language != Language::UNKNOWN) {
         language = override_language;
       } else {
-        language = 1;
+        language = Language::ENGLISH;
       }
       lines.emplace_back(std::format(".quest_num {}", header.quest_number));
       lines.emplace_back(std::format(".episode {}", name_for_header_episode_number(header.episode)));
@@ -3335,7 +3335,7 @@ std::string disassemble_quest_script(
                   } else {
                     string s = cmd_r.get_cstr();
                     if (def->flags & F_PUSH_ARG) {
-                      arg_stack_values.emplace_back(language ? tt_8859_to_utf8(s) : tt_sega_sjis_to_utf8(s));
+                      arg_stack_values.emplace_back((language == Language::JAPANESE) ? tt_sega_sjis_to_utf8(s) : tt_8859_to_utf8(s));
                     }
                     dasm_arg = escape_string(s, encoding_for_language(language));
                   }
@@ -4008,7 +4008,7 @@ AssembledQuestScript assemble_quest_script(
   string quest_short_desc;
   string quest_long_desc;
   int64_t quest_num = -1;
-  uint8_t quest_language = 1;
+  Language quest_language = Language::ENGLISH;
   Episode quest_episode = Episode::EP1;
   uint8_t quest_max_players = 4;
   bool quest_joinable = false;
@@ -4033,7 +4033,11 @@ AssembledQuestScript assemble_quest_script(
         } else if (line.text.starts_with(".quest_num ")) {
           quest_num = stoul(line.text.substr(11), nullptr, 0);
         } else if (line.text.starts_with(".language ")) {
-          quest_language = stoul(line.text.substr(10), nullptr, 0);
+          auto code = line.text.substr(10);
+          if (code.size() != 1) {
+            throw runtime_error(".language directive argument is invalid");
+          }
+          quest_language = language_for_char(code[0]);
         } else if (line.text.starts_with(".episode ")) {
           quest_episode = episode_for_token_name(line.text.substr(9));
         } else if (line.text.starts_with(".max_players ")) {
@@ -4322,7 +4326,7 @@ AssembledQuestScript assemble_quest_script(
                 case Version::GC_EP3_NTE:
                 case Version::GC_EP3:
                 case Version::XB_V3:
-                  code_w.write(bin ? text : (quest_language ? tt_utf8_to_8859(text) : tt_utf8_to_sega_sjis(text)));
+                  code_w.write(bin ? text : ((quest_language == Language::JAPANESE) ? tt_utf8_to_sega_sjis(text) : tt_utf8_to_8859(text)));
                   code_w.put_u8(0);
                   break;
                 case Version::PC_NTE:
@@ -4571,7 +4575,7 @@ AssembledQuestScript assemble_quest_script(
       header.code_offset = sizeof(header);
       header.function_table_offset = sizeof(header) + code_w.size();
       header.size = header.function_table_offset + function_table.size() * sizeof(function_table[0]);
-      header.name.encode(quest_name, 0);
+      header.name.encode(quest_name, Language::JAPANESE);
       w.put(header);
       break;
     }
@@ -4662,7 +4666,7 @@ AssembledQuestScript assemble_quest_script(
 }
 
 void populate_quest_metadata_from_script(
-    QuestMetadata& meta, const void* data, size_t size, Version version, uint8_t language) {
+    QuestMetadata& meta, const void* data, size_t size, Version version, Language language) {
   phosg::StringReader r(data, size);
   uint32_t code_offset = r.size();
   uint32_t function_table_offset = r.size();
@@ -5192,7 +5196,10 @@ void populate_quest_metadata_from_script(
             break;
 
           case 0xF824: // set_cmode_difficulty
-            meta.challenge_difficulty = get_single_int32_arg();
+            meta.challenge_difficulty = static_cast<Difficulty>(get_single_int32_arg());
+            if (static_cast<size_t>(meta.challenge_difficulty) > 3) {
+              throw std::runtime_error("invalid challenge mode difficulty");
+            }
             // phosg::fwrite_fmt(stderr, ">>> Trace: meta.challenge_difficulty = {}\n", meta.challenge_difficulty);
             break;
 

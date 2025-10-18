@@ -33,12 +33,12 @@ void BattleParamsIndex::Table::print(FILE* stream, Episode episode) const {
         names_str);
   };
 
-  for (size_t diff = 0; diff < 4; diff++) {
+  for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
     phosg::fwrite_fmt(stream, "{} ZZ   ATP   PSV   EVP    HP   DFP   ATA   LCK   ESP   EXP  DIFF  NAMES\n",
-        abbreviation_for_difficulty(diff));
+        abbreviation_for_difficulty(difficulty));
     for (size_t z = 0; z < 0x60; z++) {
       phosg::fwrite_fmt(stream, "  {:02X} ", z);
-      print_entry(this->stats[diff][z], z);
+      print_entry(this->stats[static_cast<size_t>(difficulty)][z], z);
       fputc('\n', stream);
     }
   }

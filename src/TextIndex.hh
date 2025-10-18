@@ -96,15 +96,15 @@ public:
       std::function<std::shared_ptr<const std::string>(Version, const std::string&)> get_patch_file = nullptr);
   ~TextIndex() = default;
 
-  void add_set(Version version, uint8_t language, std::shared_ptr<const TextSet> ts);
-  void delete_set(Version version, uint8_t language);
+  void add_set(Version version, Language language, std::shared_ptr<const TextSet> ts);
+  void delete_set(Version version, Language language);
 
-  const std::string& get(Version version, uint8_t language, size_t collection_index, size_t string_index) const;
-  const std::vector<std::string>& get(Version version, uint8_t language, size_t collection_index) const;
-  std::shared_ptr<const TextSet> get(Version version, uint8_t language) const;
+  const std::string& get(Version version, Language language, size_t collection_index, size_t string_index) const;
+  const std::vector<std::string>& get(Version version, Language language, size_t collection_index) const;
+  std::shared_ptr<const TextSet> get(Version version, Language language) const;
 
 protected:
-  static uint32_t key_for_set(Version version, uint8_t language);
+  static uint32_t key_for_set(Version version, Language language);
 
   phosg::PrefixedLogger log;
   std::unordered_map<uint32_t, std::shared_ptr<const TextSet>> sets;

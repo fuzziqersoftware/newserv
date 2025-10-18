@@ -50,7 +50,7 @@ void GuildCardBB::clear() {
   this->team_name.clear();
   this->description.clear();
   this->present = 0;
-  this->language = 0;
+  this->language = Language::JAPANESE;
   this->section_id = 0;
   this->char_class = 0;
 }
@@ -218,11 +218,11 @@ PlayerRecordsChallengeBB::PlayerRecordsChallengeBB(const PlayerRecordsChallengeD
       grave_x(rec.grave_x),
       grave_y(rec.grave_y),
       grave_z(rec.grave_z),
-      grave_team(rec.grave_team.decode(), 1),
-      grave_message(rec.grave_message.decode(), 1),
+      grave_team(rec.grave_team.decode(), Language::ENGLISH),
+      grave_message(rec.grave_message.decode(), Language::ENGLISH),
       unknown_m5(0),
       unknown_t6(0),
-      rank_title(rec.rank_title.decode(), 1),
+      rank_title(rec.rank_title.decode(), Language::ENGLISH),
       unknown_l7(0) {}
 
 PlayerRecordsChallengeBB::PlayerRecordsChallengeBB(const PlayerRecordsChallengePC& rec)
@@ -242,11 +242,11 @@ PlayerRecordsChallengeBB::PlayerRecordsChallengeBB(const PlayerRecordsChallengeP
       grave_x(rec.grave_x),
       grave_y(rec.grave_y),
       grave_z(rec.grave_z),
-      grave_team(rec.grave_team.decode(), 1),
-      grave_message(rec.grave_message.decode(), 1),
+      grave_team(rec.grave_team.decode(), Language::ENGLISH),
+      grave_message(rec.grave_message.decode(), Language::ENGLISH),
       unknown_m5(0),
       unknown_t6(0),
-      rank_title(rec.rank_title.decode(), 1),
+      rank_title(rec.rank_title.decode(), Language::ENGLISH),
       unknown_l7(0) {}
 
 PlayerRecordsChallengeBB::operator PlayerRecordsChallengeDC() const {

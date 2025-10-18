@@ -70,11 +70,24 @@ public:
   } __packed_ws__(MovementData, 0x30);
 
   struct Table {
-    /* 0000 */ parray<parray<PlayerStats, 0x60>, 4> stats;
-    /* 3600 */ parray<parray<AttackData, 0x60>, 4> attack_data;
-    /* 7E00 */ parray<parray<ResistData, 0x60>, 4> resist_data;
-    /* AE00 */ parray<parray<MovementData, 0x60>, 4> movement_data;
+    /* 0000 */ parray<parray<PlayerStats, 0x60>, 4> stats; // [difficulty][bp_index]
+    /* 3600 */ parray<parray<AttackData, 0x60>, 4> attack_data; // [difficulty][bp_index]
+    /* 7E00 */ parray<parray<ResistData, 0x60>, 4> resist_data; // [difficulty][bp_index]
+    /* AE00 */ parray<parray<MovementData, 0x60>, 4> movement_data; // [difficulty][bp_index]
     /* F600 */
+
+    const PlayerStats& stats_for_index(Difficulty difficulty, uint8_t index) const {
+      return this->stats.at(static_cast<size_t>(difficulty)).at(index);
+    }
+    const AttackData& attack_data_for_index(Difficulty difficulty, uint8_t index) const {
+      return this->attack_data.at(static_cast<size_t>(difficulty)).at(index);
+    }
+    const ResistData& resist_data_for_index(Difficulty difficulty, uint8_t index) const {
+      return this->resist_data.at(static_cast<size_t>(difficulty)).at(index);
+    }
+    const MovementData& movement_data_for_index(Difficulty difficulty, uint8_t index) const {
+      return this->movement_data.at(static_cast<size_t>(difficulty)).at(index);
+    }
 
     void print(FILE* stream, Episode episode) const;
   } __packed_ws__(Table, 0xF600);

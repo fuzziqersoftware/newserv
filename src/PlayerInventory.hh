@@ -116,7 +116,7 @@ struct PlayerInventoryT {
   /* 0000 */ uint8_t num_items = 0;
   /* 0001 */ uint8_t hp_from_materials = 0;
   /* 0002 */ uint8_t tp_from_materials = 0;
-  /* 0003 */ uint8_t language = 0;
+  /* 0003 */ Language language = Language::JAPANESE;
   /* 0004 */ parray<PlayerInventoryItemT<BE>, 30> items;
   /* 034C */
 
@@ -265,14 +265,14 @@ struct PlayerInventoryT {
       // issue - its inventory format matches the rest of the versions.
       this->hp_from_materials = 0;
       this->tp_from_materials = 0;
-      this->language = 0;
+      this->language = Language::JAPANESE;
     } else if ((v != Version::PC_NTE) && (v != Version::PC_V2)) {
-      if (this->language > 4) {
-        this->language = 0;
+      if (static_cast<size_t>(this->language) > 4) {
+        this->language = Language::JAPANESE;
       }
     } else {
-      if (this->language > 7) {
-        this->language = 0;
+      if (static_cast<size_t>(this->language) > 7) {
+        this->language = Language::JAPANESE;
       }
     }
 

@@ -122,8 +122,7 @@ CommonItemSet::Table::Table(const phosg::JSON& json, Episode episode)
   const auto& enemy_type_drop_probs_json = json.at("EnemyTypeDropProbs").as_dict();
   const auto& enemy_item_classes_json = json.at("EnemyItemClasses").as_dict();
   for (size_t z = 0; z < 0x64; z++) {
-    static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
-    for (Episode episode : episodes) {
+    for (Episode episode : ALL_EPISODES_V4) {
       auto types = enemy_types_for_rare_table_index(episode, z);
       vector<string> names;
       if (types.empty()) {
@@ -460,8 +459,7 @@ phosg::JSON CommonItemSet::Table::json() const {
   phosg::JSON enemy_type_drop_probs_json = phosg::JSON::dict();
   phosg::JSON enemy_item_classes_json = phosg::JSON::dict();
   for (size_t z = 0; z < 0x64; z++) {
-    static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
-    for (Episode episode : episodes) {
+    for (Episode episode : ALL_EPISODES_V4) {
       auto types = enemy_types_for_rare_table_index(episode, z);
       vector<string> names;
       if (types.empty()) {
@@ -506,13 +504,11 @@ phosg::JSON CommonItemSet::Table::json() const {
 
 phosg::JSON CommonItemSet::json() const {
   auto modes_dict = phosg::JSON::dict();
-  static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
-  for (const auto& mode : modes) {
+  for (const auto& mode : ALL_GAME_MODES_V4) {
     auto episodes_dict = phosg::JSON::dict();
-    static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
-    for (const auto& episode : episodes) {
+    for (const auto& episode : ALL_EPISODES_V4) {
       auto difficulty_dict = phosg::JSON::dict();
-      for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
+      for (const auto& difficulty : ALL_DIFFICULTIES_V234) {
         auto section_id_dict = phosg::JSON::dict();
         for (uint8_t section_id = 0; section_id < 10; section_id++) {
           try {
@@ -532,11 +528,9 @@ phosg::JSON CommonItemSet::json() const {
 }
 
 void CommonItemSet::print(FILE* stream) const {
-  static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
-  for (const auto& mode : modes) {
-    static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
-    for (const auto& episode : episodes) {
-      for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
+  for (const auto& mode : ALL_GAME_MODES_V4) {
+    for (const auto& episode : ALL_EPISODES_V4) {
+      for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
         for (uint8_t section_id = 0; section_id < 10; section_id++) {
           try {
             auto table = this->get_table(episode, mode, difficulty, section_id);
@@ -552,11 +546,9 @@ void CommonItemSet::print(FILE* stream) const {
 }
 
 void CommonItemSet::print_diff(FILE* stream, const CommonItemSet& other) const {
-  static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
-  for (const auto& mode : modes) {
-    static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
-    for (const auto& episode : episodes) {
-      for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
+  for (const auto& mode : ALL_GAME_MODES_V4) {
+    for (const auto& episode : ALL_EPISODES_V4) {
+      for (const auto& difficulty : ALL_DIFFICULTIES_V234) {
         for (uint8_t section_id = 0; section_id < 10; section_id++) {
           shared_ptr<const Table> this_table;
           shared_ptr<const Table> other_table;
@@ -654,7 +646,7 @@ void CommonItemSet::Table::parse_itempt_t(const phosg::StringReader& r, bool is_
   this->box_item_class_prob_table = r.pget<parray<parray<uint8_t, 10>, 7>>(offsets.box_item_class_prob_table_offset);
 }
 
-uint16_t CommonItemSet::key_for_table(Episode episode, GameMode mode, uint8_t difficulty, uint8_t secid) {
+uint16_t CommonItemSet::key_for_table(Episode episode, GameMode mode, Difficulty difficulty, uint8_t secid) {
   // Bits: -----EEEMMDDSSSS
   return (((static_cast<uint16_t>(episode) << 8) & 0x0700) |
       ((static_cast<uint16_t>(mode) << 6) & 0x00C0) |
@@ -663,12 +655,12 @@ uint16_t CommonItemSet::key_for_table(Episode episode, GameMode mode, uint8_t di
 }
 
 shared_ptr<const CommonItemSet::Table> CommonItemSet::get_table(
-    Episode episode, GameMode mode, uint8_t difficulty, uint8_t secid) const {
+    Episode episode, GameMode mode, Difficulty difficulty, uint8_t secid) const {
   try {
     return this->tables.at(this->key_for_table(episode, mode, difficulty, secid));
   } catch (const out_of_range&) {
     throw runtime_error(std::format("common item table not available for episode={}, mode={}, difficulty={}, secid={}",
-        name_for_episode(episode), name_for_mode(mode), difficulty, secid));
+        name_for_episode(episode), name_for_mode(mode), name_for_difficulty(difficulty), secid));
   }
 }
 
@@ -678,17 +670,20 @@ AFSV2CommonItemSet::AFSV2CommonItemSet(
   // Hard, etc.
   {
     AFSArchive pt_afs(pt_afs_data);
-    size_t max_difficulty;
+    bool include_ultimate;
     if (pt_afs.num_entries() >= 40) {
-      max_difficulty = 4;
+      include_ultimate = true;
     } else if (pt_afs.num_entries() >= 30) {
-      max_difficulty = 3;
+      include_ultimate = false;
     } else {
       throw std::runtime_error(std::format("PT AFS file has unexpected entry count ({})", pt_afs.num_entries()));
     }
-    for (size_t difficulty = 0; difficulty < max_difficulty; difficulty++) {
+    for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
+      if ((difficulty == Difficulty::ULTIMATE) && !include_ultimate) {
+        continue;
+      }
       for (size_t section_id = 0; section_id < 10; section_id++) {
-        auto entry = pt_afs.get(difficulty * 10 + section_id);
+        auto entry = pt_afs.get(static_cast<size_t>(difficulty) * 10 + section_id);
         phosg::StringReader r(entry.first, entry.second);
         auto table = make_shared<Table>(r, false, false, Episode::EP1);
         this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::NORMAL, difficulty, section_id), table);
@@ -702,16 +697,19 @@ AFSV2CommonItemSet::AFSV2CommonItemSet(
   // 30th are used (section_id is ignored)
   if (ct_afs_data) {
     AFSArchive ct_afs(ct_afs_data);
-    size_t max_difficulty;
+    bool include_ultimate;
     if (ct_afs.num_entries() >= 40) {
-      max_difficulty = 4;
+      include_ultimate = true;
     } else if (ct_afs.num_entries() >= 30) {
-      max_difficulty = 3;
+      include_ultimate = false;
     } else {
       throw std::runtime_error(std::format("CT AFS file has unexpected entry count ({})", ct_afs.num_entries()));
     }
-    for (size_t difficulty = 0; difficulty < max_difficulty; difficulty++) {
-      auto r = ct_afs.get_reader(difficulty * 10);
+    for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
+      if ((difficulty == Difficulty::ULTIMATE) && !include_ultimate) {
+        continue;
+      }
+      auto r = ct_afs.get_reader(static_cast<size_t>(difficulty) * 10);
       auto table = make_shared<Table>(r, false, false, Episode::EP1);
       for (size_t section_id = 0; section_id < 10; section_id++) {
         this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::CHALLENGE, difficulty, section_id), table);
@@ -723,7 +721,7 @@ AFSV2CommonItemSet::AFSV2CommonItemSet(
 GSLV3V4CommonItemSet::GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gsl_data, bool is_big_endian) {
   GSLArchive gsl(gsl_data, is_big_endian);
 
-  auto filename_for_table = +[](Episode episode, uint8_t difficulty, uint8_t section_id, bool is_challenge) -> string {
+  auto filename_for_table = +[](Episode episode, Difficulty difficulty, uint8_t section_id, bool is_challenge) -> string {
     const char* episode_token = "";
     switch (episode) {
       case Episode::EP1:
@@ -746,9 +744,8 @@ GSLV3V4CommonItemSet::GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gs
         section_id);
   };
 
-  vector<Episode> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
-  for (Episode episode : episodes) {
-    for (size_t difficulty = 0; difficulty < 4; difficulty++) {
+  for (Episode episode : ALL_EPISODES_V4) {
+    for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
       for (size_t section_id = 0; section_id < 10; section_id++) {
         phosg::StringReader r;
         try {
@@ -773,7 +770,7 @@ GSLV3V4CommonItemSet::GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gs
     }
 
     if (episode != Episode::EP4) {
-      for (size_t difficulty = 0; difficulty < 4; difficulty++) {
+      for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
         try {
           auto r = gsl.get_reader(filename_for_table(episode, difficulty, 0, true));
           auto table = make_shared<Table>(r, is_big_endian, true, episode);
@@ -800,9 +797,9 @@ JSONCommonItemSet::JSONCommonItemSet(const phosg::JSON& json) {
       Episode episode = episode_keys.at(episode_it.first);
 
       for (const auto& difficulty_it : episode_it.second->as_dict()) {
-        static const unordered_map<string, uint8_t> difficulty_keys(
-            {{"Normal", 0}, {"Hard", 1}, {"VeryHard", 2}, {"Ultimate", 3}});
-        uint8_t difficulty = difficulty_keys.at(difficulty_it.first);
+        static const unordered_map<string, Difficulty> difficulty_keys(
+            {{"Normal", Difficulty::NORMAL}, {"Hard", Difficulty::HARD}, {"VeryHard", Difficulty::VERY_HARD}, {"Ultimate", Difficulty::ULTIMATE}});
+        Difficulty difficulty = difficulty_keys.at(difficulty_it.first);
 
         for (const auto& section_id_it : difficulty_it.second->as_dict()) {
           uint8_t section_id = section_id_for_name(section_id_it.first);

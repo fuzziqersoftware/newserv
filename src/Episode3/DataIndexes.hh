@@ -1315,7 +1315,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     /* 00 */ pstring<TextEncoding::MARKED, 0x18> deck_name;
     /* 18 */ parray<be_uint16_t, 0x20> card_ids; // Last one appears to always be FFFF
     /* 58 */
-    phosg::JSON json(uint8_t language) const;
+    phosg::JSON json(Language language) const;
   } __packed_ws__(NPCDeck, 0x58);
   /* 1FE8 */ parray<NPCDeck, 3> npc_decks; // Unused if name[0] == 0
 
@@ -1331,7 +1331,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     // TODO: Figure out exactly how these are used and document here.
     /* 0018 */ parray<be_uint16_t, 0x7E> params;
     /* 0114 */
-    phosg::JSON json(uint8_t language) const;
+    phosg::JSON json(Language language) const;
   } __packed_ws__(AIParams, 0x114);
   /* 20F0 */ parray<AIParams, 3> npc_ai_params; // Unused if name[0] == 0
 
@@ -1384,7 +1384,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     // strings, excluding any that are empty or begin with the character '^'.
     /* 0004 */ parray<pstring<TextEncoding::MARKED, 0x40>, 4> strings;
     /* 0104 */
-    phosg::JSON json(uint8_t language) const;
+    phosg::JSON json(Language language) const;
   } __packed_ws__(DialogueSet, 0x104);
 
   // There are up to 0x10 of these per valid NPC, but only the first 13 of them
@@ -1490,8 +1490,8 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // text may differ.
   void assert_semantically_equivalent(const MapDefinition& other) const;
 
-  std::string str(const CardIndex* card_index, uint8_t language) const;
-  phosg::JSON json(uint8_t language) const;
+  std::string str(const CardIndex* card_index, Language language) const;
+  phosg::JSON json(Language language) const;
 } __packed_ws__(MapDefinition, 0x5A18);
 
 struct MapDefinitionTrial {
@@ -1592,10 +1592,10 @@ public:
   class VersionedMap {
   public:
     std::shared_ptr<const MapDefinition> map;
-    uint8_t language;
+    Language language;
 
-    VersionedMap(std::shared_ptr<const MapDefinition> map, uint8_t language);
-    VersionedMap(std::string&& compressed_data, uint8_t language);
+    VersionedMap(std::shared_ptr<const MapDefinition> map, Language language);
+    VersionedMap(std::string&& compressed_data, Language language);
 
     std::shared_ptr<const MapDefinitionTrial> trial() const;
     std::shared_ptr<const std::string> compressed(bool trial) const;
@@ -1616,8 +1616,8 @@ public:
     explicit Map(std::shared_ptr<const VersionedMap> initial_version);
 
     void add_version(std::shared_ptr<const VersionedMap> vm);
-    bool has_version(uint8_t language) const;
-    std::shared_ptr<const VersionedMap> version(uint8_t language) const;
+    bool has_version(Language language) const;
+    std::shared_ptr<const VersionedMap> version(Language language) const;
     inline const std::vector<std::shared_ptr<const VersionedMap>>& all_versions() const {
       return this->versions;
     }
@@ -1626,7 +1626,7 @@ public:
     std::vector<std::shared_ptr<const VersionedMap>> versions;
   };
 
-  const std::string& get_compressed_list(size_t num_players, uint8_t language) const;
+  const std::string& get_compressed_list(size_t num_players, Language language) const;
   inline std::shared_ptr<const Map> get(uint32_t id) const {
     return this->maps.at(id);
   }

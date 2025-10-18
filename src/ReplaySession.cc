@@ -50,7 +50,7 @@ ReplaySession::Client::Client(shared_ptr<asio::io_context> io_context, uint64_t 
     : id(id),
       port(port),
       version(version),
-      channel(make_shared<PeerChannel>(io_context, this->version, 1, std::format("R-{:X}", this->id))) {}
+      channel(make_shared<PeerChannel>(io_context, this->version, Language::ENGLISH, std::format("R-{:X}", this->id))) {}
 
 string ReplaySession::Client::str() const {
   return std::format("Client[{}, T-{}, {}]", this->id, this->port, phosg::name_for_enum(this->version));

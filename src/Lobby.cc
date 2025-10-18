@@ -220,7 +220,7 @@ void Lobby::create_item_creator(Version logic_version) {
       s->rare_item_set(logic_version, this->quest),
       s->armor_random_set,
       s->tool_random_set,
-      s->weapon_random_sets.at(this->difficulty),
+      s->weapon_random_set(this->difficulty),
       s->tekker_adjustment_set,
       s->item_parameter_table(logic_version),
       s->item_stack_limits(logic_version),

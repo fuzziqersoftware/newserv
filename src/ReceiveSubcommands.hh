@@ -29,6 +29,7 @@ DropReconcileResult reconcile_drop_request_with_map(
     std::shared_ptr<Client> c,
     G_SpecializableItemDropRequest_6xA2& cmd,
     Episode episode,
+    Difficulty difficulty,
     uint8_t event,
     std::shared_ptr<MapState> map,
     bool mark_drop);
@@ -50,7 +51,7 @@ public:
   StatusEffectState attack_status_effect;
   StatusEffectState defense_status_effect;
   StatusEffectState unused_status_effect;
-  uint32_t language = 0;
+  Language language = Language::JAPANESE;
   uint32_t player_tag = 0;
   uint32_t guild_card_number = 0;
   uint32_t unknown_a6 = 0;
@@ -79,7 +80,7 @@ public:
   Parsed6x70Data(
       const G_SyncPlayerDispAndInventory_DC112000_6x70& cmd,
       uint32_t guild_card_number,
-      uint8_t language,
+      Language language,
       Version from_version,
       bool from_client_customization);
   Parsed6x70Data(
@@ -108,7 +109,7 @@ public:
   G_SyncPlayerDispAndInventory_DC_PC_6x70 as_dc_pc(std::shared_ptr<ServerState> s, Version to_version) const;
   G_SyncPlayerDispAndInventory_GC_6x70 as_gc_gcnte(std::shared_ptr<ServerState> s, Version to_version) const;
   G_SyncPlayerDispAndInventory_XB_6x70 as_xb(std::shared_ptr<ServerState> s) const;
-  G_SyncPlayerDispAndInventory_BB_6x70 as_bb(std::shared_ptr<ServerState> s, uint8_t language) const;
+  G_SyncPlayerDispAndInventory_BB_6x70 as_bb(std::shared_ptr<ServerState> s, Language language) const;
 
   uint64_t default_xb_user_id() const;
   void clear_v1_unused_item_fields();

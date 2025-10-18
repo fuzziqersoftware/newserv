@@ -28,7 +28,7 @@ struct QuestMetadata {
   std::shared_ptr<const BattleRules> battle_rules;
   ssize_t challenge_template_index = -1;
   float challenge_exp_multiplier = -1.0f;
-  int8_t challenge_difficulty = -1;
+  Difficulty challenge_difficulty = Difficulty::UNKNOWN;
   uint8_t description_flag = 0x00;
   std::shared_ptr<const IntegralExpression> available_expression;
   std::shared_ptr<const IntegralExpression> enabled_expression;

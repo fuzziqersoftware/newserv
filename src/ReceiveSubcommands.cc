@@ -805,7 +805,7 @@ Parsed6x70Data::Parsed6x70Data(
       unknown_a6_nte(cmd.unknown_a6),
       bonus_hp_from_materials(0),
       bonus_tp_from_materials(0),
-      language(0),
+      language(Language::JAPANESE),
       player_tag(0x00010000),
       guild_card_number(guild_card_number),
       unknown_a6(0),
@@ -829,7 +829,7 @@ Parsed6x70Data::Parsed6x70Data(
 Parsed6x70Data::Parsed6x70Data(
     const G_SyncPlayerDispAndInventory_DC112000_6x70& cmd,
     uint32_t guild_card_number,
-    uint8_t language,
+    Language language,
     Version from_version,
     bool from_client_customization)
     : from_version(from_version),
@@ -922,8 +922,8 @@ Parsed6x70Data::Parsed6x70Data(
   this->floor = cmd.floor;
   this->xb_user_id = this->default_xb_user_id();
   this->xb_unknown_a16 = cmd.unknown_a16;
-  this->name = cmd.name.decode(cmd.base.language);
-  this->visual.name.encode(this->name, cmd.base.language);
+  this->name = cmd.name.decode(this->language);
+  this->visual.name.encode(this->name, this->language);
 }
 
 G_SyncPlayerDispAndInventory_DCNTE_6x70 Parsed6x70Data::as_dc_nte(shared_ptr<ServerState> s) const {
@@ -1051,7 +1051,7 @@ G_SyncPlayerDispAndInventory_XB_6x70 Parsed6x70Data::as_xb(shared_ptr<ServerStat
   return ret;
 }
 
-G_SyncPlayerDispAndInventory_BB_6x70 Parsed6x70Data::as_bb(shared_ptr<ServerState> s, uint8_t language) const {
+G_SyncPlayerDispAndInventory_BB_6x70 Parsed6x70Data::as_bb(shared_ptr<ServerState> s, Language language) const {
   G_SyncPlayerDispAndInventory_BB_6x70 ret;
   ret.base = this->base_v1(true);
   ret.name.encode(this->name, language);
@@ -1116,7 +1116,7 @@ Parsed6x70Data::Parsed6x70Data(
       attack_status_effect(base.attack_status_effect),
       defense_status_effect(base.defense_status_effect),
       unused_status_effect(base.unused_status_effect),
-      language(base.language),
+      language(static_cast<Language>(base.language32.load())),
       player_tag(base.player_tag),
       guild_card_number(guild_card_number), // Ignore the client's GC#
       unknown_a6(base.unknown_a6),
@@ -1140,7 +1140,7 @@ G_6x70_Base_V1 Parsed6x70Data::base_v1(bool is_v3) const {
   ret.attack_status_effect = this->attack_status_effect;
   ret.defense_status_effect = this->defense_status_effect;
   ret.unused_status_effect = this->unused_status_effect;
-  ret.language = this->language;
+  ret.language32 = static_cast<size_t>(this->language);
   ret.player_tag = this->player_tag;
   ret.guild_card_number = this->guild_card_number;
   ret.unknown_a6 = this->unknown_a6;
@@ -2805,6 +2805,7 @@ DropReconcileResult reconcile_drop_request_with_map(
     shared_ptr<Client> c,
     G_SpecializableItemDropRequest_6xA2& cmd,
     Episode episode,
+    Difficulty difficulty,
     uint8_t event,
     shared_ptr<MapState> map,
     bool mark_drop) {
@@ -2857,7 +2858,7 @@ DropReconcileResult reconcile_drop_request_with_map(
   } else {
     if (map) {
       res.ene_st = map->enemy_state_for_index(version, cmd.floor, cmd.entity_index);
-      EnemyType type = res.ene_st->type(version, episode, event);
+      EnemyType type = res.ene_st->type(version, episode, difficulty, event);
       c->log.info_f("Drop check for E-{:03X} {}", res.ene_st->e_id, phosg::name_for_enum(type));
       res.effective_rt_index = type_definition_for_enemy(type).rt_index;
       // rt_indexes in Episode 4 don't match those sent in the command; we just
@@ -2921,7 +2922,7 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
   // mode, so that we can correctly mark enemies and objects as having dropped
   // their items in persistent games.
   G_SpecializableItemDropRequest_6xA2 cmd = normalize_drop_request(msg.data, msg.size);
-  auto rec = reconcile_drop_request_with_map(c, cmd, l->episode, l->event, l->map_state, true);
+  auto rec = reconcile_drop_request_with_map(c, cmd, l->episode, l->difficulty, l->event, l->map_state, true);
 
   ServerDropMode drop_mode = l->drop_mode;
   switch (drop_mode) {
@@ -3058,7 +3059,8 @@ static asio::awaitable<void> on_set_quest_flag(shared_ptr<Client> c, SubcommandM
     co_return;
   }
 
-  uint16_t flag_num, difficulty, action;
+  uint16_t flag_num, action;
+  Difficulty difficulty;
   if (is_v1_or_v2(c->version()) && (c->version() != Version::GC_NTE)) {
     const auto& cmd = msg.check_size_t<G_UpdateQuestFlag_DC_PC_6x75>();
     flag_num = cmd.flag;
@@ -3068,12 +3070,12 @@ static asio::awaitable<void> on_set_quest_flag(shared_ptr<Client> c, SubcommandM
     const auto& cmd = msg.check_size_t<G_UpdateQuestFlag_V3_BB_6x75>();
     flag_num = cmd.flag;
     action = cmd.action;
-    difficulty = cmd.difficulty;
+    difficulty = static_cast<Difficulty>(cmd.difficulty16.load());
   }
 
   // The client explicitly checks action for both 0 and 1 - any other value
   // means no operation is performed.
-  if ((flag_num >= 0x400) || (difficulty > 3) || (action > 1)) {
+  if ((flag_num >= 0x400) || (static_cast<size_t>(difficulty) > 3) || (action > 1)) {
     co_return;
   }
   bool should_set = (action == 0);
@@ -3110,9 +3112,9 @@ static asio::awaitable<void> on_set_quest_flag(shared_ptr<Client> c, SubcommandM
       // On Normal, Dark Falz does not have a third phase, so send the drop
       // request after the end of the second phase. On all other difficulty
       // levels, send it after the third phase.
-      if ((difficulty == 0) && (flag_num == 0x0035)) {
+      if ((difficulty == Difficulty::NORMAL) && (flag_num == 0x0035)) {
         boss_enemy_type = EnemyType::DARK_FALZ_2;
-      } else if ((difficulty != 0) && (flag_num == 0x0037)) {
+      } else if ((difficulty != Difficulty::NORMAL) && (flag_num == 0x0037)) {
         boss_enemy_type = EnemyType::DARK_FALZ_3;
       }
     } else if (is_ep2 && (flag_num == 0x0057) && (area == 0x0D)) {
@@ -3426,13 +3428,20 @@ static asio::awaitable<void> on_update_enemy_state(shared_ptr<Client> c, Subcomm
   }
   auto ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd.enemy_index);
   uint32_t src_flags = is_big_endian(c->version()) ? bswap32(cmd.game_flags) : cmd.game_flags.load();
-  if (l->difficulty == 3) {
+  if (l->difficulty == Difficulty::ULTIMATE) {
     src_flags = (src_flags & 0xFFFFFFC0) | (ene_st->game_flags & 0x0000003F);
   }
   ene_st->game_flags = src_flags;
   ene_st->total_damage = cmd.total_damage;
   ene_st->set_last_hit_by_client_id(c->lobby_client_id);
   l->log.info_f("E-{:03X} updated to damage={} game_flags={:08X}", ene_st->e_id, ene_st->total_damage, ene_st->game_flags);
+  auto& alias_ene_st = ene_st->alias_ene_st;
+  if (alias_ene_st) {
+    alias_ene_st->game_flags = ene_st->game_flags;
+    alias_ene_st->total_damage = ene_st->total_damage;
+    alias_ene_st->server_flags = ene_st->server_flags;
+    l->log.info_f("E-{:03X} updated via alias from E-{:03X}", alias_ene_st->e_id, ene_st->e_id);
+  }
 
   for (auto lc : l->clients) {
     if (lc && (lc != c)) {
@@ -3485,7 +3494,7 @@ static asio::awaitable<void> on_set_enemy_low_game_flags_ultimate(shared_ptr<Cli
     co_return;
   }
   auto l = c->require_lobby();
-  if (!l->is_game() || (l->difficulty != 3)) {
+  if (!l->is_game() || (l->difficulty != Difficulty::ULTIMATE)) {
     co_return;
   }
 
@@ -3888,7 +3897,7 @@ static uint32_t base_exp_for_enemy_type(
     shared_ptr<const BattleParamsIndex> bp_index,
     EnemyType enemy_type,
     Episode current_episode,
-    uint8_t difficulty,
+    Difficulty difficulty,
     uint8_t area,
     bool is_solo) {
   // Always try the current episode first. If the current episode is Ep4, try
@@ -3918,7 +3927,7 @@ static uint32_t base_exp_for_enemy_type(
     try {
       const auto& bp_table = bp_index->get_table(is_solo, episode);
       uint32_t bp_index = type_definition_for_enemy(enemy_type).bp_index;
-      return bp_table.stats[difficulty][bp_index].experience;
+      return bp_table.stats_for_index(difficulty, bp_index).experience;
     } catch (const out_of_range&) {
     }
   }
@@ -3971,16 +3980,16 @@ static asio::awaitable<void> on_steal_exp_bb(shared_ptr<Client> c, SubcommandMes
     co_return;
   }
 
-  auto type = ene_st->type(c->version(), l->episode, l->event);
+  auto type = ene_st->type(c->version(), l->episode, l->difficulty, l->event);
   uint32_t enemy_exp = base_exp_for_enemy_type(
       s->battle_params, type, l->episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
 
   // Note: The original code checks if special.type is 9, 10, or 11, and skips
   // applying the android bonus if so. We don't do anything for those special
   // types, so we don't check for that here.
-  float percent = special.amount + ((l->difficulty == 3) && char_class_is_android(p->disp.visual.char_class) ? 30 : 0);
+  float percent = special.amount + ((l->difficulty == Difficulty::ULTIMATE) && char_class_is_android(p->disp.visual.char_class) ? 30 : 0);
   float ep2_factor = (l->episode == Episode::EP2) ? 1.3 : 1.0;
-  uint32_t stolen_exp = max<uint32_t>(min<uint32_t>((enemy_exp * percent * ep2_factor) / 100.0f, (l->difficulty + 1) * 20), 1);
+  uint32_t stolen_exp = max<uint32_t>(min<uint32_t>((enemy_exp * percent * ep2_factor) / 100.0f, (static_cast<size_t>(l->difficulty) + 1) * 20), 1);
   if (c->check_flag(Client::Flag::DEBUG_ENABLED)) {
     c->log.info_f("Stolen EXP from E-{:03X} with enemy_exp={} percent={:g} stolen_exp={}",
         ene_st->e_id, enemy_exp, percent, stolen_exp);
@@ -4012,17 +4021,20 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
   // relevant players EXP then, if they deserve it).
   if (!ene_st->ever_hit_by_client_id(c->lobby_client_id) ||
       (ene_st->server_flags & MapState::EnemyState::Flag::EXP_GIVEN)) {
+    l->log.info_f("EXP already given for this enemy; ignoring request");
     co_return;
   }
   ene_st->server_flags |= MapState::EnemyState::Flag::EXP_GIVEN;
 
-  auto type = ene_st->type(c->version(), l->episode, l->event);
+  auto type = ene_st->type(c->version(), l->episode, l->difficulty, l->event);
   double base_exp = base_exp_for_enemy_type(
       s->battle_params, type, l->episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
+  l->log.info_f("Base EXP for this enemy ({}) is {:g}", phosg::name_for_enum(type), base_exp);
 
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto lc = l->clients[client_id];
     if (!lc) {
+      l->log.info_f("No client in slot {}", client_id);
       continue;
     }
 
@@ -4038,14 +4050,19 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
       double rate_factor;
       if (lc->character_file()->disp.stats.level >= 199) {
         rate_factor = 0.0;
+        l->log.info_f("Client in slot {} is level 200 and cannot receive EXP", client_id);
       } else if (ene_st->last_hit_by_client_id(client_id)) {
         rate_factor = max<double>(1.0, exp_share_multiplier);
+        l->log.info_f("Client in slot {} killed this enemy; EXP rate is {:g}", client_id, rate_factor);
       } else if (ene_st->ever_hit_by_client_id(client_id)) {
         rate_factor = max<double>(0.8, exp_share_multiplier);
+        l->log.info_f("Client in slot {} tagged this enemy; EXP rate is {:g}", client_id, rate_factor);
       } else if (lc->floor == ene_st->super_ene->floor) {
         rate_factor = max<double>(0.0, exp_share_multiplier);
+        l->log.info_f("Client in slot {} shared this enemy; EXP rate is {:g}", client_id, rate_factor);
       } else {
         rate_factor = 0.0;
+        l->log.info_f("Client in slot {} is not near this enemy; EXP rate is {:g}", client_id, rate_factor);
       }
 
       if (rate_factor > 0.0) {
@@ -4061,6 +4078,7 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
             l->base_exp_multiplier *
             l->challenge_exp_multiplier *
             (is_ep2 ? 1.3 : 1.0);
+        l->log.info_f("Client in slot {} receives {} EXP", client_id, player_exp);
         if (lc->check_flag(Client::Flag::DEBUG_ENABLED)) {
           send_text_message_fmt(lc, "$C5+{} E-{:03X} {}", player_exp, ene_st->e_id, phosg::name_for_enum(type));
         }
@@ -5025,9 +5043,9 @@ static asio::awaitable<void> on_quest_F95E_result_bb(shared_ptr<Client> c, Subco
   const auto& cmd = msg.check_size_t<G_RequestItemDropFromQuest_BB_6xE0>();
   auto s = c->require_server_state();
 
-  size_t count = (cmd.type > 0x03) ? 1 : (l->difficulty + 1);
+  size_t count = (cmd.type > 0x03) ? 1 : (static_cast<size_t>(l->difficulty) + 1);
   for (size_t z = 0; z < count; z++) {
-    const auto& results = s->quest_F95E_results.at(cmd.type).at(l->difficulty);
+    const auto& results = s->quest_F95E_results.at(cmd.type).at(static_cast<size_t>(l->difficulty));
     if (results.empty()) {
       throw runtime_error("invalid result type");
     }
@@ -5606,3 +5624,7 @@ asio::awaitable<void> on_subcommand_multi(shared_ptr<Client> c, Channel::Message
     offset += cmd_size;
   }
 }
+
+// TODO; // Dark Falz EXP doesn't work
+// TODO; // Guild Card Search doesn't work
+// TODO; // Team Search doesn't work

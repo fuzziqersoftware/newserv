@@ -737,7 +737,7 @@ string Tournament::bracket_str() const {
     }
   };
 
-  auto en_vm = this->map->version(1);
+  auto en_vm = this->map->version(Language::ENGLISH);
   if (en_vm) {
     string map_name = en_vm->map->name.decode(en_vm->language);
     ret += std::format("  Map: {:08X} ({})\n", this->map->map_number, map_name);

@@ -275,50 +275,50 @@ TextTranscoder tt_utf8_to_utf16("UTF-16LE", "UTF-8");
 TextTranscoder tt_ascii_to_utf8("UTF-8", "ASCII");
 TextTranscoder tt_utf8_to_ascii("ASCII", "UTF-8");
 
-string tt_encode_marked_optional(const string& utf8, uint8_t default_language, bool is_utf16) {
+string tt_encode_marked_optional(const string& utf8, Language default_language, bool is_utf16) {
   if (is_utf16) {
     return tt_utf8_to_utf16(utf8);
   } else {
-    if (default_language) {
-      try {
-        return tt_utf8_to_8859(utf8);
-      } catch (const exception& e) {
-        return "\tJ" + tt_utf8_to_sega_sjis(utf8);
-      }
-    } else {
+    if (default_language == Language::JAPANESE) {
       try {
         return tt_utf8_to_sega_sjis(utf8);
       } catch (const exception& e) {
         return "\tE" + tt_utf8_to_8859(utf8);
       }
+    } else {
+      try {
+        return tt_utf8_to_8859(utf8);
+      } catch (const exception& e) {
+        return "\tJ" + tt_utf8_to_sega_sjis(utf8);
+      }
     }
   }
 }
 
-string tt_encode_marked(const string& utf8, uint8_t default_language, bool is_utf16) {
+string tt_encode_marked(const string& utf8, Language default_language, bool is_utf16) {
   if (is_utf16) {
     string to_encode = "\t";
-    to_encode += marker_for_language_code(default_language);
+    to_encode += marker_for_language(default_language);
     to_encode += utf8;
     return tt_utf8_to_utf16(to_encode);
   } else {
-    if (default_language) {
+    if (default_language == Language::JAPANESE) {
       try {
-        return "\tE" + tt_utf8_to_8859(utf8);
-      } catch (const exception& e) {
         return "\tJ" + tt_utf8_to_sega_sjis(utf8);
+      } catch (const exception& e) {
+        return "\tE" + tt_utf8_to_8859(utf8);
       }
     } else {
       try {
-        return "\tJ" + tt_utf8_to_sega_sjis(utf8);
-      } catch (const exception& e) {
         return "\tE" + tt_utf8_to_8859(utf8);
+      } catch (const exception& e) {
+        return "\tJ" + tt_utf8_to_sega_sjis(utf8);
       }
     }
   }
 }
 
-string tt_decode_marked(const string& data, uint8_t default_language, bool is_utf16) {
+string tt_decode_marked(const string& data, Language default_language, bool is_utf16) {
   if (is_utf16) {
     string ret = tt_utf16_to_utf8(data);
     if (ret.size() >= 2 && ret[0] == '\t' && is_language_marker_utf16(ret[1])) {
@@ -333,7 +333,7 @@ string tt_decode_marked(const string& data, uint8_t default_language, bool is_ut
         return tt_8859_to_utf8(data.substr(2));
       }
     }
-    return default_language ? tt_8859_to_utf8(data) : tt_sega_sjis_to_utf8(data);
+    return (default_language == Language::JAPANESE) ? tt_sega_sjis_to_utf8(data) : tt_8859_to_utf8(data);
   }
 }
 
@@ -486,20 +486,20 @@ string escape_player_name(const string& name) {
   }
 }
 
-char marker_for_language_code(uint8_t language_code) {
-  switch (language_code) {
-    case 0:
+char marker_for_language(Language language) {
+  switch (language) {
+    case Language::JAPANESE:
       return 'J';
-    case 1:
-    case 2:
-    case 3:
-    case 4:
+    case Language::ENGLISH:
+    case Language::GERMAN:
+    case Language::FRENCH:
+    case Language::SPANISH:
       return 'E';
-    case 5:
+    case Language::SIMPLIFIED_CHINESE:
       return 'B';
-    case 6:
+    case Language::TRADITIONAL_CHINESE:
       return 'T';
-    case 7:
+    case Language::KOREAN:
       return 'K';
     default:
       return 'E';

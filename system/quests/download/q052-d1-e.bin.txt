@@ -1,6 +1,6 @@
 .version DC_V1
 .quest_num 52
-.language 1
+.language E
 .name "The Retired Hunter"
 .short_desc "I will kill\n10000 monsters\nbefore I die!"
 .long_desc "Client: Donoph\nQuest:\n  An old hunter, Donoph,\n  is about to die.\n  Defeat 99 monsters to\n  fulfill his dream.\nReward: 8000 Meseta\n"

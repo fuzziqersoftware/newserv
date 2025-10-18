@@ -1,6 +1,6 @@
 .version GC_V3
 .quest_num 88531
-.language 0
+.language J
 .episode Episode1
 .name "GC v1.5 JP patch enabler"
 .short_desc ""

@@ -38,7 +38,7 @@ struct PSOQuestHeaderDC { // Same format for DC v1 and v2
   /* 0008 */ le_uint32_t size = 0;
   /* 000C */ le_uint16_t unknown_a1 = 0;
   /* 000E */ le_uint16_t unknown_a2 = 0;
-  /* 0010 */ uint8_t language = 0;
+  /* 0010 */ Language language = Language::JAPANESE;
   /* 0011 */ uint8_t unknown_a3 = 0;
   /* 0012 */ le_uint16_t quest_number = 0; // 0xFFFF for challenge quests
   /* 0014 */ pstring<TextEncoding::MARKED, 0x20> name;
@@ -53,7 +53,7 @@ struct PSOQuestHeaderPC {
   /* 0008 */ le_uint32_t size = 0;
   /* 000C */ le_uint16_t unknown_a1 = 0;
   /* 000E */ le_uint16_t unknown_a2 = 0;
-  /* 0010 */ uint8_t language = 0;
+  /* 0010 */ Language language = Language::JAPANESE;
   /* 0011 */ uint8_t unknown_a3 = 0;
   /* 0012 */ le_uint16_t quest_number = 0; // 0xFFFF for challenge quests
   /* 0014 */ pstring<TextEncoding::UTF16, 0x20> name;
@@ -70,7 +70,7 @@ struct PSOQuestHeaderGC {
   /* 0008 */ le_uint32_t size = 0;
   /* 000C */ le_uint16_t unknown_a1 = 0;
   /* 000E */ le_uint16_t unknown_a2 = 0;
-  /* 0010 */ uint8_t language = 0;
+  /* 0010 */ Language language = Language::JAPANESE;
   /* 0011 */ uint8_t unknown_a3 = 0;
   // Note: The GC client byteswaps this field, then loads it as a byte, so
   // technically the high byte of this is what the client uses as the quest
@@ -109,7 +109,7 @@ std::string disassemble_quest_script(
     const void* data,
     size_t size,
     Version version,
-    uint8_t override_language = 0xFF,
+    Language override_language = Language::UNKNOWN,
     bool reassembly_mode = false,
     bool use_qedit_names = false);
 
@@ -117,7 +117,7 @@ struct AssembledQuestScript {
   std::string data;
   int64_t quest_number = -1;
   Version version = Version::UNKNOWN;
-  uint8_t language = 0xFF;
+  Language language = Language::UNKNOWN;
   Episode episode = Episode::NONE;
   bool joinable = false;
   uint8_t max_players = 0x00;
@@ -130,4 +130,4 @@ AssembledQuestScript assemble_quest_script(
     const std::vector<std::string>& script_include_directories,
     const std::vector<std::string>& native_include_directories);
 
-void populate_quest_metadata_from_script(QuestMetadata& meta, const void* data, size_t size, Version version, uint8_t language);
+void populate_quest_metadata_from_script(QuestMetadata& meta, const void* data, size_t size, Version version, Language language);

@@ -320,7 +320,7 @@ void DeckState::print(FILE* stream, std::shared_ptr<const CardIndex> card_index)
       }
     }
     if (ce) {
-      string name = ce->def.en_name.decode(1);
+      string name = ce->def.en_name.decode(Language::ENGLISH);
       phosg::fwrite_fmt(stream, "  ({:02}) index={:02X} ref=@{:04X} card_id=#{:04X} \"{}\" {}\n",
           z, e.deck_index, this->card_refs[z], e.card_id, name, name_for_card_state(e.state));
     } else {

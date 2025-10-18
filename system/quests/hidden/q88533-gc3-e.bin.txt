@@ -1,6 +1,6 @@
 .version GC_EP3
 .quest_num 88533
-.language 1
+.language E
 .episode Episode1
 .name "GC Ep3 EU patch enabler"
 .short_desc ""

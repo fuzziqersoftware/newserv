@@ -69,7 +69,7 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
   if (this->challenge_difficulty != other.challenge_difficulty) {
     throw runtime_error(std::format(
         "quest version has different challenge difficulty (existing: {}, new: {})",
-        this->challenge_difficulty, other.challenge_difficulty));
+        name_for_difficulty(this->challenge_difficulty), name_for_difficulty(other.challenge_difficulty)));
   }
   for (size_t z = 0; z < this->area_for_floor.size(); z++) {
     const auto& this_fa = this->area_for_floor[z];
@@ -150,7 +150,7 @@ phosg::JSON QuestMetadata::json() const {
       {"BattleRules", this->battle_rules ? this->battle_rules->json() : phosg::JSON(nullptr)},
       {"ChallengeTemplateIndex", (this->challenge_template_index >= 0) ? this->challenge_template_index : phosg::JSON(nullptr)},
       {"ChallengeEXPMultiplier", (this->challenge_exp_multiplier >= 0) ? this->challenge_exp_multiplier : phosg::JSON(nullptr)},
-      {"ChallengeDifficulty", (this->challenge_difficulty >= 0) ? this->challenge_difficulty : phosg::JSON(nullptr)},
+      {"ChallengeDifficulty", (this->challenge_difficulty != Difficulty::UNKNOWN) ? name_for_difficulty(this->challenge_difficulty) : phosg::JSON(nullptr)},
       {"DescriptionFlag", this->description_flag},
       {"AvailableExpression", this->available_expression ? this->available_expression->str() : phosg::JSON(nullptr)},
       {"EnabledExpression", this->available_expression ? this->available_expression->str() : phosg::JSON(nullptr)},

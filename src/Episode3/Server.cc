@@ -274,14 +274,14 @@ void Server::send_6xB4x46() const {
   // NTE doesn't have the date_str2 field, but we send it anyway to make
   // debugging easier.
   G_ServerVersionStrings_Ep3_6xB4x46 cmd;
-  cmd.version_signature.encode(this->options.is_nte() ? VERSION_SIGNATURE_NTE : VERSION_SIGNATURE, 1);
-  cmd.date_str1.encode(std::format("Card definitions: {:016X}", this->options.card_index->definitions_hash()), 1);
+  cmd.version_signature.encode(this->options.is_nte() ? VERSION_SIGNATURE_NTE : VERSION_SIGNATURE, Language::ENGLISH);
+  cmd.date_str1.encode(std::format("Card definitions: {:016X}", this->options.card_index->definitions_hash()), Language::ENGLISH);
   string build_date = phosg::format_time(BUILD_TIMESTAMP);
-  cmd.date_str2.encode(std::format("newserv {} compiled at {}", GIT_REVISION_HASH, build_date), 1);
+  cmd.date_str2.encode(std::format("newserv {} compiled at {}", GIT_REVISION_HASH, build_date), Language::ENGLISH);
   this->send(cmd);
 }
 
-string Server::prepare_6xB6x41_map_definition(shared_ptr<const MapIndex::Map> map, uint8_t language, bool is_nte) {
+string Server::prepare_6xB6x41_map_definition(shared_ptr<const MapIndex::Map> map, Language language, bool is_nte) {
   auto vm = map->version(language);
 
   const auto& compressed = vm->compressed(is_nte);
@@ -306,7 +306,7 @@ void Server::send_commands_for_joining_spectator(std::shared_ptr<Channel> ch) co
 
   if (this->last_chosen_map) {
     string data = this->prepare_6xB6x41_map_definition(this->last_chosen_map, ch->language, this->options.is_nte());
-    this->log().info_f("Sending {} version of map {:08X}", char_for_language_code(ch->language), this->last_chosen_map->map_number);
+    this->log().info_f("Sending {} version of map {:08X}", name_for_language(ch->language), this->last_chosen_map->map_number);
     ch->send(0x6C, 0x00, data);
   }
 
@@ -2137,7 +2137,7 @@ void Server::handle_CAx13_update_map_during_setup_t(shared_ptr<Client> c, const 
     // in the case of NTE, no values at all, since the Rules structure is
     // smaller). So, use the values from the last chosen map if applicable, or
     // the values from the $dicerange command if available.
-    uint8_t language = c ? c->language() : 1;
+    Language language = c ? c->language() : Language::ENGLISH;
     const Rules* map_rules = this->last_chosen_map ? &this->last_chosen_map->version(language)->map->default_rules : nullptr;
     auto& server_rules = this->map_and_rules->rules;
     // NTE can specify the DEF dice value range in its Rules struct, so we use
@@ -2526,7 +2526,7 @@ void Server::handle_CAx40_map_list_request(shared_ptr<Client> sender_c, const st
   }
 
   size_t num_players = l ? l->count_clients() : 1;
-  uint8_t language = sender_c ? sender_c->language() : 1;
+  Language language = sender_c ? sender_c->language() : Language::ENGLISH;
   const auto& list_data = this->options.map_index->get_compressed_list(num_players, language);
 
   phosg::StringWriter w;
@@ -2553,15 +2553,16 @@ void Server::send_6xB6x41_to_all_clients() const {
       if (!c) {
         return;
       }
-      if (map_commands_by_language.size() <= c->language()) {
-        map_commands_by_language.resize(c->language() + 1);
+      size_t lang_index = static_cast<size_t>(c->language());
+      if (map_commands_by_language.size() <= lang_index) {
+        map_commands_by_language.resize(lang_index + 1);
       }
-      if (map_commands_by_language[c->language()].empty()) {
-        map_commands_by_language[c->language()] = this->prepare_6xB6x41_map_definition(
+      if (map_commands_by_language[lang_index].empty()) {
+        map_commands_by_language[lang_index] = this->prepare_6xB6x41_map_definition(
             this->last_chosen_map, c->language(), this->options.is_nte());
       }
-      this->log().info_f("Sending {} version of map {:08X}", char_for_language_code(c->language()), this->last_chosen_map->map_number);
-      send_command(c, 0x6C, 0x00, map_commands_by_language[c->language()]);
+      this->log().info_f("Sending {} version of map {:08X}", name_for_language(c->language()), this->last_chosen_map->map_number);
+      send_command(c, 0x6C, 0x00, map_commands_by_language[lang_index]);
     };
     for (const auto& c : l->clients) {
       send_to_client(c);
@@ -2586,7 +2587,7 @@ void Server::send_6xB6x41_to_all_clients() const {
     }
 
   } else {
-    auto out_data = this->prepare_6xB6x41_map_definition(this->last_chosen_map, 1, false);
+    auto out_data = this->prepare_6xB6x41_map_definition(this->last_chosen_map, Language::ENGLISH, false);
     this->send(out_data.data(), out_data.size(), 0x6C, false);
   }
 }

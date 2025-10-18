@@ -940,7 +940,7 @@ ShellCommand c_show_slots(
         if (player.guild_card_number) {
           ret.emplace_back(format("  {}: {} => {} ({}, {}, {})",
               z, player.guild_card_number, player.name,
-              char_for_language_code(player.language),
+              char_for_language(player.language),
               name_for_char_class(player.char_class),
               name_for_section_id(player.section_id)));
         } else {

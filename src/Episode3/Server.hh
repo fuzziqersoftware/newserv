@@ -265,7 +265,7 @@ public:
 
   G_UpdateDecks_Ep3_6xB4x07 prepare_6xB4x07_decks_update() const;
   G_SetPlayerNames_Ep3_6xB4x1C prepare_6xB4x1C_names_update() const;
-  static std::string prepare_6xB6x41_map_definition(std::shared_ptr<const MapIndex::Map> map, uint8_t language, bool is_nte);
+  static std::string prepare_6xB6x41_map_definition(std::shared_ptr<const MapIndex::Map> map, Language language, bool is_nte);
   void send_6xB6x41_to_all_clients() const;
   G_SetTrapTileLocations_Ep3_6xB4x50 prepare_6xB4x50_trap_tile_locations() const;
 

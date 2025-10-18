@@ -3398,7 +3398,7 @@ string MapFile::name_for_enemy_type(uint16_t type, Version version, uint8_t area
 
 string MapFile::ObjectSetEntry::str(Version version, uint8_t area) const {
   string name_str = MapFile::name_for_object_type(this->base_type, version, area);
-  return std::format("[ObjectSetEntry type={:04X} \"{}\" floor={:04X} group={:04X} room={:04X} a3={:04X} x={:g} y={:g} z={:g} x_angle={:08X} y_angle={:08X} z_angle={:08X} params=[{:g} {:g} {:g} {:08X} {:08X} {:08X}] unused={:08X}]",
+  return std::format("[ObjectSetEntry type={:04X} \"{}\" floor={:04X} group={:04X} room={:04X} a3={:04X} x={:g} y={:g} z={:g} x_angle={:08X} y_angle={:08X} z_angle={:08X} params=[{:g} {:g} {:g} {:08X} {:08X} {:08X}]]",
       this->base_type,
       name_str,
       this->floor,
@@ -3416,8 +3416,7 @@ string MapFile::ObjectSetEntry::str(Version version, uint8_t area) const {
       this->param3,
       this->param4,
       this->param5,
-      this->param6,
-      this->unused);
+      this->param6);
 }
 
 uint64_t MapFile::ObjectSetEntry::semantic_hash(uint8_t floor) const {
@@ -3438,7 +3437,7 @@ uint64_t MapFile::ObjectSetEntry::semantic_hash(uint8_t floor) const {
 
 string MapFile::EnemySetEntry::str(Version version, uint8_t area) const {
   auto type_name = MapFile::name_for_enemy_type(this->base_type, version, area);
-  return std::format("[EnemySetEntry type={:04X} \"{}\" num_children={:04X} floor={:04X} room={:04X} wave_number={:04X} wave_number2={:04X} a1={:04X} x={:g} y={:g} z={:g} x_angle={:08X} y_angle={:08X} z_angle={:08X} params=[{:g} {:g} {:g} {:g} {:g} {:04X} {:04X}] unused={:08X}]",
+  return std::format("[EnemySetEntry type={:04X} \"{}\" num_children={:04X} floor={:04X} room={:04X} wave_number={:04X} wave_number2={:04X} a1={:04X} x={:g} y={:g} z={:g} x_angle={:08X} y_angle={:08X} z_angle={:08X} params=[{:g} {:g} {:g} {:g} {:g} {:04X} {:04X}]]",
       this->base_type,
       type_name,
       this->num_children,
@@ -3459,8 +3458,7 @@ string MapFile::EnemySetEntry::str(Version version, uint8_t area) const {
       this->param4,
       this->param5,
       this->param6,
-      this->param7,
-      this->unused);
+      this->param7);
 }
 
 uint64_t MapFile::EnemySetEntry::semantic_hash(uint8_t floor) const {
@@ -5951,7 +5949,7 @@ size_t MapState::EventIterator::num_entities_on_current_floor() const {
 
 MapState::MapState(
     uint64_t lobby_or_session_id,
-    uint8_t difficulty,
+    Difficulty difficulty,
     uint8_t event,
     uint32_t random_seed,
     std::shared_ptr<const RareEnemyRates> bb_rare_rates,
@@ -6001,7 +5999,7 @@ MapState::MapState(
 
 MapState::MapState(
     uint64_t lobby_or_session_id,
-    uint8_t difficulty,
+    Difficulty difficulty,
     uint8_t event,
     uint32_t random_seed,
     std::shared_ptr<const RareEnemyRates> bb_rare_rates,
@@ -6048,6 +6046,12 @@ void MapState::index_super_map(const FloorConfig& fc, shared_ptr<RandomGenerator
 
   for (const auto& ene : fc.super_map->all_enemies()) {
     auto& ene_st = this->enemy_states.emplace_back(make_shared<EnemyState>());
+    if (ene->alias_enemy_index_delta) {
+      ene_st->alias_ene_st = this->enemy_states.at((this->enemy_states.size() - 1) + ene->alias_enemy_index_delta);
+      if (ene_st->alias_ene_st->alias_ene_st) {
+        throw std::runtime_error("target for enemy state alias is itself an alias");
+      }
+    }
     if (ene->child_index == 0) {
       this->enemy_set_states.emplace_back(ene_st);
     }
@@ -6059,12 +6063,12 @@ void MapState::index_super_map(const FloorConfig& fc, shared_ptr<RandomGenerator
     EnemyType type;
     switch (ene->type) {
       case EnemyType::DARK_FALZ_3:
-        type = ((this->difficulty == 0) && (ene->alias_enemy_index_delta == 0))
+        type = ((this->difficulty == Difficulty::NORMAL) && (ene->alias_enemy_index_delta == 0))
             ? EnemyType::DARK_FALZ_2
             : EnemyType::DARK_FALZ_3;
         break;
       case EnemyType::DARVANT:
-        type = (this->difficulty == 3) ? EnemyType::DARVANT_ULTIMATE : EnemyType::DARVANT;
+        type = (this->difficulty == Difficulty::ULTIMATE) ? EnemyType::DARVANT_ULTIMATE : EnemyType::DARVANT;
         break;
       default:
         type = ene->type;
@@ -6687,7 +6691,7 @@ void MapState::print(FILE* stream) const {
   phosg::fwrite_fmt(stream, "BB rare rates: {}\n", rare_rates_str);
 
   phosg::fwrite_fmt(stream, "Base indexes:\n");
-  phosg::fwrite_fmt(stream, "  FL DCTE----------- DCPR----------- DCV1----------- DCV2----------- PCTE----------- PCV2----------- GCTE----------- GCV3----------- GCEP3TE-------- GCEP3---------- XBV3----------- BBV4-----------\n");
+  phosg::fwrite_fmt(stream, "  FL DC-NTE--------- DC-11-2000----- DC-V1---------- DC-V2---------- PC-NTE--------- PC-V2---------- GC-NTE--------- GC-V3---------- GC-EP3-NTE----- GC-EP3--------- XB-V3---------- BB-V4----------\n");
   phosg::fwrite_fmt(stream, "  FL KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT KST EST ESS EVT\n");
   for (size_t floor = 0; floor < this->floor_config_entries.size(); floor++) {
     auto fc = this->floor_config_entries[floor];
@@ -6723,9 +6727,12 @@ void MapState::print(FILE* stream) const {
   }
 
   phosg::fwrite_fmt(stream, "Enemies:\n");
-  phosg::fwrite_fmt(stream, "  FL ENEID DCTE----- DCPR----- DCV1----- DCV2----- PCTE----- PCV2----- GCTE----- GCV3----- EP3TE---- GCEP3---- XBV3----- BBV4----- ENEMY\n");
+  phosg::fwrite_fmt(stream, "  FL ENEID ALIAS DCTE----- DCPR----- DCV1----- DCV2----- PCTE----- PCV2----- GCTE----- GCV3----- EP3TE---- GCEP3---- XBV3----- BBV4----- ENEMY\n");
   for (const auto& ene_st : this->enemy_states) {
-    phosg::fwrite_fmt(stream, "  {:02X} E-{:03X}", ene_st->super_ene->floor, ene_st->e_id);
+    std::string alias_str = ene_st->super_ene->alias_enemy_index_delta
+        ? std::format("E-{:03X}", ene_st->e_id + ene_st->super_ene->alias_enemy_index_delta)
+        : "-----";
+    phosg::fwrite_fmt(stream, "  {:02X} E-{:03X} {}", ene_st->super_ene->floor, ene_st->e_id, alias_str);
     const auto& fc = this->floor_config(ene_st->super_ene->floor);
     for (Version v : ALL_NON_PATCH_VERSIONS) {
       const auto& ene_v = ene_st->super_ene->version(v);

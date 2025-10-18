@@ -271,7 +271,7 @@ public:
   bool operator==(const CommonItemSet& other) const = default;
   bool operator!=(const CommonItemSet& other) const = default;
 
-  std::shared_ptr<const Table> get_table(Episode episode, GameMode mode, uint8_t difficulty, uint8_t secid) const;
+  std::shared_ptr<const Table> get_table(Episode episode, GameMode mode, Difficulty difficulty, uint8_t secid) const;
   phosg::JSON json() const;
   void print(FILE* stream) const;
   void print_diff(FILE* stream, const CommonItemSet& other) const;
@@ -279,7 +279,7 @@ public:
 protected:
   CommonItemSet() = default;
 
-  static uint16_t key_for_table(Episode episode, GameMode mode, uint8_t difficulty, uint8_t secid);
+  static uint16_t key_for_table(Episode episode, GameMode mode, Difficulty difficulty, uint8_t secid);
 
   std::unordered_map<uint16_t, std::shared_ptr<Table>> tables;
 };

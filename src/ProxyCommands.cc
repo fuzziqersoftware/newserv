@@ -872,7 +872,13 @@ static asio::awaitable<HandlerResult> SC_6x60_6xA2(shared_ptr<Client> c, Channel
 
   G_SpecializableItemDropRequest_6xA2 cmd = normalize_drop_request(msg.data.data(), msg.data.size());
   auto rec = reconcile_drop_request_with_map(
-      c, cmd, c->proxy_session->lobby_episode, c->proxy_session->lobby_event, c->proxy_session->map_state, false);
+      c,
+      cmd,
+      c->proxy_session->lobby_episode,
+      c->proxy_session->lobby_difficulty,
+      c->proxy_session->lobby_event,
+      c->proxy_session->map_state,
+      false);
 
   ItemCreator::DropResult res;
   if (rec.obj_st) {
@@ -1509,7 +1515,7 @@ static asio::awaitable<HandlerResult> S_65_67_68_EB(shared_ptr<Client> c, Channe
     c->proxy_session->is_in_game = false;
     c->proxy_session->is_in_quest = false;
     c->floor = 0x0F;
-    c->proxy_session->lobby_difficulty = 0;
+    c->proxy_session->lobby_difficulty = Difficulty::NORMAL;
     c->proxy_session->lobby_section_id = 0;
     c->proxy_session->lobby_mode = GameMode::NORMAL;
     c->proxy_session->lobby_episode = Episode::EP1;
@@ -1682,7 +1688,7 @@ static asio::awaitable<HandlerResult> S_64(shared_ptr<Client> c, Channel::Messag
 
   } else {
     c->proxy_session->lobby_event = 0;
-    c->proxy_session->lobby_difficulty = 0;
+    c->proxy_session->lobby_difficulty = Difficulty::NORMAL;
     c->proxy_session->lobby_section_id = c->character_file()->disp.visual.section_id;
     c->proxy_session->lobby_mode = GameMode::NORMAL;
     c->proxy_session->lobby_random_seed = phosg::random_object<uint32_t>();
@@ -1758,7 +1764,7 @@ static asio::awaitable<HandlerResult> S_E8(shared_ptr<Client> c, Channel::Messag
   c->proxy_session->is_in_game = true;
   c->proxy_session->is_in_quest = false;
   c->proxy_session->lobby_event = cmd.event;
-  c->proxy_session->lobby_difficulty = 0;
+  c->proxy_session->lobby_difficulty = Difficulty::NORMAL;
   c->proxy_session->lobby_section_id = cmd.section_id;
   c->proxy_session->lobby_mode = GameMode::NORMAL;
   c->proxy_session->lobby_random_seed = 0;
@@ -1848,7 +1854,7 @@ static asio::awaitable<HandlerResult> C_98(shared_ptr<Client> c, Channel::Messag
   c->proxy_session->is_in_game = false;
   c->proxy_session->is_in_quest = false;
   c->proxy_session->lobby_event = 0;
-  c->proxy_session->lobby_difficulty = 0;
+  c->proxy_session->lobby_difficulty = Difficulty::NORMAL;
   c->proxy_session->lobby_section_id = 0;
   c->proxy_session->lobby_episode = Episode::EP1;
   c->proxy_session->lobby_mode = GameMode::NORMAL;

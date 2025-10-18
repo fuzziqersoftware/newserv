@@ -349,7 +349,7 @@ struct C_LegacyLogin_PC_V3_03 {
   /* 00 */ be_uint64_t hardware_id;
   /* 08 */ le_uint32_t sub_version = 0;
   /* 0C */ uint8_t is_extended = 0;
-  /* 0D */ uint8_t language = 0;
+  /* 0D */ Language language = Language::JAPANESE;
   /* 0E */ le_uint16_t unused = 0;
   // Note: These are suffixed with 2 since they come from the same source data
   // as the corresponding fields in 9D/9E. (Even though serial_number and
@@ -404,7 +404,7 @@ struct C_LegacyLogin_PC_V3_04 {
   /* 00 */ be_uint64_t hardware_id;
   /* 08 */ le_uint32_t sub_version = 0;
   /* 0C */ uint8_t is_extended = 0;
-  /* 0D */ uint8_t language = 0;
+  /* 0D */ Language language = Language::JAPANESE;
   /* 0E */ le_uint16_t unused = 0;
   /* 10 */ pstring<TextEncoding::ASCII, 0x10> serial_number;
   /* 20 */ pstring<TextEncoding::ASCII, 0x10> access_key;
@@ -414,7 +414,7 @@ struct C_LegacyLogin_PC_V3_04 {
 struct C_LegacyLogin_BB_04 {
   /* 00 */ le_uint32_t sub_version = 0;
   /* 04 */ uint8_t is_extended = 0;
-  /* 05 */ uint8_t language = 0;
+  /* 05 */ Language language = Language::JAPANESE;
   /* 06 */ le_uint16_t unused = 0;
   /* 08 */ pstring<TextEncoding::ASCII, 0x10> username;
   /* 18 */ pstring<TextEncoding::ASCII, 0x10> password;
@@ -1286,7 +1286,7 @@ struct S_JoinGameT_DC_PC {
   /* 0104 */ uint8_t client_id = 0;
   /* 0105 */ uint8_t leader_id = 0;
   /* 0106 */ uint8_t disable_udp = 1;
-  /* 0107 */ uint8_t difficulty = 0;
+  /* 0107 */ Difficulty difficulty = Difficulty::NORMAL;
   /* 0108 */ uint8_t battle_mode = 0;
   /* 0109 */ uint8_t event = 0;
   /* 010A */ uint8_t section_id = 0;
@@ -1687,7 +1687,7 @@ struct C_Login_DCNTE_8B {
   be_uint64_t hardware_id;
   le_uint32_t sub_version = 0x20;
   uint8_t is_extended = 0;
-  uint8_t language = 0;
+  Language language = Language::JAPANESE;
   parray<uint8_t, 2> unused1;
   pstring<TextEncoding::ASCII, 0x11> serial_number;
   pstring<TextEncoding::ASCII, 0x11> access_key;
@@ -1748,7 +1748,7 @@ struct C_RegisterV1_DC_92 {
   be_uint64_t hardware_id;
   le_uint32_t sub_version;
   uint8_t unused1 = 0;
-  uint8_t language = 0;
+  Language language = Language::JAPANESE;
   parray<uint8_t, 2> unused2;
   pstring<TextEncoding::ASCII, 0x30> serial_number2;
   pstring<TextEncoding::ASCII, 0x30> access_key2;
@@ -1767,7 +1767,7 @@ struct C_LoginV1_DC_93 {
   /* 08 */ be_uint64_t hardware_id;
   /* 10 */ le_uint32_t sub_version = 0;
   /* 14 */ uint8_t is_extended = 0;
-  /* 15 */ uint8_t language = 0;
+  /* 15 */ Language language = Language::JAPANESE;
   /* 16 */ parray<uint8_t, 2> unused1;
   /* 18 */ pstring<TextEncoding::ASCII, 0x11> serial_number;
   /* 29 */ pstring<TextEncoding::ASCII, 0x11> access_key;
@@ -1788,7 +1788,7 @@ struct C_LoginBase_BB_93 {
   /* 00 */ le_uint32_t player_tag = 0x00010000;
   /* 04 */ le_uint32_t guild_card_number = 0;
   /* 08 */ le_uint32_t sub_version = 0;
-  /* 0C */ uint8_t language = 0;
+  /* 0C */ Language language = Language::JAPANESE;
   /* 0D */ int8_t character_slot = 0;
   // Values for connection_phase:
   // 00 - initial connection (client will request system file, characters, etc.)
@@ -1952,7 +1952,7 @@ struct C_Register_DC_PC_V3_9C {
   /* 00 */ be_uint64_t hardware_id;
   /* 08 */ le_uint32_t sub_version = 0;
   /* 0C */ uint8_t unused1 = 0;
-  /* 0D */ uint8_t language = 0;
+  /* 0D */ Language language = Language::JAPANESE;
   /* 0E */ parray<uint8_t, 2> unused2;
   /* 10 */ pstring<TextEncoding::ASCII, 0x30> serial_number; // On XB, this is the XBL gamertag
   /* 40 */ pstring<TextEncoding::ASCII, 0x30> access_key; // On XB, this is the XBL user ID
@@ -1963,7 +1963,7 @@ struct C_Register_DC_PC_V3_9C {
 struct C_Register_BB_9C {
   le_uint32_t sub_version = 0;
   uint8_t unused1 = 0;
-  uint8_t language = 0;
+  Language language = Language::JAPANESE;
   parray<uint8_t, 2> unused2;
   pstring<TextEncoding::ASCII, 0x30> username;
   pstring<TextEncoding::ASCII, 0x30> password;
@@ -2002,7 +2002,7 @@ struct C_Login_DC_PC_GC_9D {
   /* 08 */ be_uint64_t hardware_id;
   /* 10 */ le_uint32_t sub_version = 0;
   /* 14 */ uint8_t is_extended = 0; // If 1, structure has extended format
-  /* 15 */ uint8_t language = 0; // 0 = JP, 1 = EN, 2 = DE, 3 = FR, 4 = ES
+  /* 15 */ Language language = Language::JAPANESE; // 0 = JP, 1 = EN, 2 = DE, 3 = FR, 4 = ES
   /* 16 */ parray<uint8_t, 0x2> unused3; // Always zeroes
   /* 18 */ pstring<TextEncoding::ASCII, 0x10> v1_serial_number;
   /* 28 */ pstring<TextEncoding::ASCII, 0x10> v1_access_key;
@@ -2062,7 +2062,7 @@ struct C_LoginExtended_BB_9E {
   /* 0000 */ le_uint32_t player_tag = 0x00010000;
   /* 0004 */ le_uint32_t guild_card_number = 0; // == account_id when on newserv
   /* 0008 */ le_uint32_t sub_version = 0;
-  /* 000C */ le_uint32_t language = 0;
+  /* 000C */ le_uint32_t language32 = 0;
   /* 0010 */ le_uint32_t unknown_a2 = 0;
   /* 0014 */ pstring<TextEncoding::ASCII, 0x10> v1_serial_number; // Always blank?
   /* 0024 */ pstring<TextEncoding::ASCII, 0x10> v1_access_key; // == "?"
@@ -2570,7 +2570,7 @@ check_struct_size(C_CreateGame_DCNTE, 0x28);
 
 template <TextEncoding Encoding>
 struct C_CreateGameT : C_CreateGameBaseT<Encoding> {
-  uint8_t difficulty = 0; // 0-3 (always 0 on Episode 3)
+  Difficulty difficulty = Difficulty::NORMAL; // Always NORMAL on Episode 3
   uint8_t battle_mode = 0; // 0 or 1 (always 0 on Episode 3)
   // Note: Episode 3 uses the challenge mode flag for view battle permissions.
   // 0 = view battle allowed; 1 = not allowed
@@ -2915,7 +2915,7 @@ struct C_SetChallengeModeCharacterTemplate_BB_02DF {
 
 struct C_SetChallengeModeDifficulty_BB_03DF {
   // No existing challenge mode quest sets this to a value other than zero.
-  le_uint32_t difficulty = 0;
+  le_uint32_t difficulty32 = 0;
 } __packed_ws__(C_SetChallengeModeDifficulty_BB_03DF, 4);
 
 struct C_SetChallengeModeEXPMultiplier_BB_04DF {
@@ -3324,7 +3324,7 @@ struct S_JoinSpectatorTeam_Ep3_E8 {
   /* 1170 */ uint8_t client_id = 0;
   /* 1171 */ uint8_t leader_id = 0;
   /* 1172 */ uint8_t disable_udp = 1;
-  /* 1173 */ uint8_t difficulty = 0;
+  /* 1173 */ Difficulty difficulty = Difficulty::NORMAL;
   /* 1174 */ uint8_t battle_mode = 0;
   /* 1175 */ uint8_t event = 0;
   /* 1176 */ uint8_t section_id = 0;
@@ -5145,7 +5145,7 @@ struct G_6x70_Base_V1 {
   /* 0040 */ StatusEffectState attack_status_effect;
   /* 004C */ StatusEffectState defense_status_effect;
   /* 0058 */ StatusEffectState unused_status_effect;
-  /* 0064 */ le_uint32_t language = 0;
+  /* 0064 */ le_uint32_t language32 = 0;
   /* 0068 */ le_uint32_t player_tag = 0;
   /* 006C */ le_uint32_t guild_card_number = 0;
   /* 0070 */ le_uint32_t unknown_a6 = 0; // Probably battle-related (assigned together with battle_team_number)
@@ -5256,7 +5256,7 @@ struct G_UpdateQuestFlag_DC_PC_6x75 {
 } __packed_ws__(G_UpdateQuestFlag_DC_PC_6x75, 8);
 
 struct G_UpdateQuestFlag_V3_BB_6x75 : G_UpdateQuestFlag_DC_PC_6x75 {
-  le_uint16_t difficulty = 0;
+  le_uint16_t difficulty16 = 0;
   le_uint16_t unused = 0;
 } __packed_ws__(G_UpdateQuestFlag_V3_BB_6x75, 0x0C);
 

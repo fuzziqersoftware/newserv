@@ -394,7 +394,7 @@ shared_ptr<const vector<string>> ServerState::information_contents_for_client(sh
   return is_v1_or_v2(c->version()) ? this->information_contents_v2 : this->information_contents_v3;
 }
 
-size_t ServerState::default_min_level_for_game(Version version, Episode episode, uint8_t difficulty) const {
+size_t ServerState::default_min_level_for_game(Version version, Episode episode, Difficulty difficulty) const {
   const auto& min_levels = is_v4(version)
       ? this->min_levels_v4
       : is_v3(version)
@@ -402,21 +402,21 @@ size_t ServerState::default_min_level_for_game(Version version, Episode episode,
       : this->min_levels_v1_v2;
   switch (episode) {
     case Episode::EP1:
-      return min_levels[0].at(difficulty);
+      return min_levels[0].at(static_cast<size_t>(difficulty));
     case Episode::EP2:
-      return min_levels[1].at(difficulty);
+      return min_levels[1].at(static_cast<size_t>(difficulty));
     case Episode::EP3:
       return 0;
     case Episode::EP4:
-      return min_levels[2].at(difficulty);
+      return min_levels[2].at(static_cast<size_t>(difficulty));
     default:
       throw runtime_error("invalid episode");
   }
 }
 
 shared_ptr<const SetDataTableBase> ServerState::set_data_table(
-    Version version, Episode episode, GameMode mode, uint8_t difficulty) const {
-  bool use_ult_tables = ((episode == Episode::EP1) && (difficulty == 3) && !is_v1(version) && (version != Version::PC_NTE));
+    Version version, Episode episode, GameMode mode, Difficulty difficulty) const {
+  bool use_ult_tables = ((episode == Episode::EP1) && (difficulty == Difficulty::ULTIMATE) && !is_v1(version) && (version != Version::PC_NTE));
   if (mode == GameMode::SOLO && is_v4(version)) {
     return use_ult_tables ? this->bb_solo_set_data_table_ep1_ult : this->bb_solo_set_data_table;
   }
@@ -1280,15 +1280,16 @@ void ServerState::load_config_early() {
   } catch (const out_of_range&) {
   }
 
-  for (size_t z = 0; z < 4; z++) {
+  for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
+    size_t diff_index = static_cast<size_t>(difficulty);
     shared_ptr<const MapState::RareEnemyRates> prev = MapState::DEFAULT_RARE_ENEMIES;
     try {
       string key = "RareEnemyRates-";
-      key += token_name_for_difficulty(z);
-      this->rare_enemy_rates_by_difficulty[z] = make_shared<MapState::RareEnemyRates>(this->config_json->at(key));
-      prev = this->rare_enemy_rates_by_difficulty[z];
+      key += token_name_for_difficulty(difficulty);
+      this->rare_enemy_rates_by_difficulty[diff_index] = make_shared<MapState::RareEnemyRates>(this->config_json->at(key));
+      prev = this->rare_enemy_rates_by_difficulty[diff_index];
     } catch (const out_of_range&) {
-      this->rare_enemy_rates_by_difficulty[z] = prev;
+      this->rare_enemy_rates_by_difficulty[diff_index] = prev;
     }
   }
   try {
@@ -1599,7 +1600,7 @@ void ServerState::load_maps() {
     auto objects_data = this->load_map_file(Version::GC_EP3, "map_city_on_battle_o.dat");
     auto enemies_data = this->load_map_file(Version::GC_EP3, "map_city_on_battle_e.dat");
     if (objects_data || enemies_data) {
-      uint32_t free_play_key = this->free_play_key(Episode::EP3, GameMode::NORMAL, 0, 0, 0, 0);
+      uint32_t free_play_key = this->free_play_key(Episode::EP3, GameMode::NORMAL, Difficulty::NORMAL, 0, 0, 0);
       auto map_file = make_shared<MapFile>(0, objects_data, enemies_data, nullptr);
       new_map_file_for_source_hash.emplace(map_file->source_hash(), map_file);
       new_map_files_for_free_play_key[free_play_key].at(static_cast<size_t>(Version::GC_EP3)) = map_file;
@@ -1611,15 +1612,13 @@ void ServerState::load_maps() {
 
   config_log.info_f("Loading free play map files");
   for (Version v : ALL_ARPG_SEMANTIC_VERSIONS) {
-    const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
-    for (Episode episode : episodes) {
+    for (Episode episode : ALL_EPISODES_V4) {
       if ((episode == Episode::EP2 && is_v1_or_v2(v) && (v != Version::GC_NTE)) ||
           (episode == Episode::EP4 && !is_v4(v))) {
         continue;
       }
 
-      const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
-      for (GameMode mode : modes) {
+      for (GameMode mode : ALL_GAME_MODES_V4) {
         if ((mode == GameMode::BATTLE) && is_pre_v1(v)) {
           continue;
         }
@@ -1629,8 +1628,8 @@ void ServerState::load_maps() {
         if ((mode == GameMode::SOLO && !is_v4(v))) {
           continue;
         }
-        for (uint8_t difficulty = 0; difficulty < 4; difficulty++) {
-          if ((difficulty == 3) && is_v1(v)) {
+        for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
+          if ((difficulty == Difficulty::ULTIMATE) && is_v1(v)) {
             continue;
           }
           auto sdt = this->set_data_table(v, episode, mode, difficulty);
@@ -1705,7 +1704,7 @@ void ServerState::load_maps() {
 }
 
 shared_ptr<const SuperMap> ServerState::get_free_play_supermap(
-    Episode episode, GameMode mode, uint8_t difficulty, uint8_t floor, uint32_t layout, uint32_t entities) {
+    Episode episode, GameMode mode, Difficulty difficulty, uint8_t floor, uint32_t layout, uint32_t entities) {
   uint32_t free_play_key = this->free_play_key(episode, mode, difficulty, floor, layout, entities);
   try {
     return this->supermap_for_free_play_key.at(free_play_key);
@@ -1759,10 +1758,7 @@ shared_ptr<const SuperMap> ServerState::get_free_play_supermap(
 }
 
 vector<shared_ptr<const SuperMap>> ServerState::supermaps_for_variations(
-    Episode episode,
-    GameMode mode,
-    uint8_t difficulty,
-    const Variations& variations) {
+    Episode episode, GameMode mode, Difficulty difficulty, const Variations& variations) {
   vector<shared_ptr<const SuperMap>> ret;
   for (size_t floor = 0; floor < 0x12; floor++) {
     Variations::Entry e;
@@ -1881,7 +1877,7 @@ void ServerState::load_word_select_table() {
   unique_ptr<UnicodeTextSet> pc_unitxt_data;
   if (this->text_index) {
     config_log.debug_f("(Word select) Using PC_V2 unitxt_e.prs from text index");
-    pc_unitxt_collection = &this->text_index->get(Version::PC_V2, 1, 35);
+    pc_unitxt_collection = &this->text_index->get(Version::PC_V2, Language::ENGLISH, 35);
   } else {
     config_log.debug_f("(Word select) Loading PC_V2 unitxt_e.prs");
     pc_unitxt_data = make_unique<UnicodeTextSet>(phosg::load_file("system/text-sets/pc-v2/unitxt_e.prs"));
@@ -1930,25 +1926,25 @@ shared_ptr<ItemNameIndex> ServerState::create_item_name_index_for_version(
     shared_ptr<const TextIndex> text_index) const {
   switch (limits->version) {
     case Version::DC_NTE:
-      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::DC_NTE, 0, 2));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::DC_NTE, Language::JAPANESE, 2));
     case Version::DC_11_2000:
-      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::DC_11_2000, 1, 2));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::DC_11_2000, Language::ENGLISH, 2));
     case Version::DC_V1:
-      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::DC_V1, 1, 2));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::DC_V1, Language::ENGLISH, 2));
     case Version::DC_V2:
-      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::DC_V2, 1, 3));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::DC_V2, Language::ENGLISH, 3));
     case Version::PC_NTE:
-      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::PC_NTE, 1, 3));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::PC_NTE, Language::ENGLISH, 3));
     case Version::PC_V2:
-      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::PC_V2, 1, 3));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::PC_V2, Language::ENGLISH, 3));
     case Version::GC_NTE:
-      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::GC_NTE, 1, 0));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::GC_NTE, Language::ENGLISH, 0));
     case Version::GC_V3:
-      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::GC_V3, 1, 0));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::GC_V3, Language::ENGLISH, 0));
     case Version::XB_V3:
-      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::XB_V3, 1, 0));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::XB_V3, Language::ENGLISH, 0));
     case Version::BB_V4:
-      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::BB_V4, 1, 1));
+      return make_shared<ItemNameIndex>(pmt, limits, text_index->get(Version::BB_V4, Language::ENGLISH, 1));
     default:
       return nullptr;
   }

@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <string>
 
+#include "StaticGameData.hh"
 #include "Types.hh"
 
 #define check_struct_size(StructT, Size)                                 \
@@ -81,11 +82,11 @@ extern TextTranscoder tt_utf8_to_utf16;
 extern TextTranscoder tt_ascii_to_utf8;
 extern TextTranscoder tt_utf8_to_ascii;
 
-std::string tt_encode_marked_optional(const std::string& utf8, uint8_t default_language, bool is_utf16);
-std::string tt_encode_marked(const std::string& utf8, uint8_t default_language, bool is_utf16);
-std::string tt_decode_marked(const std::string& data, uint8_t default_language, bool is_utf16);
+std::string tt_encode_marked_optional(const std::string& utf8, Language default_language, bool is_utf16);
+std::string tt_encode_marked(const std::string& utf8, Language default_language, bool is_utf16);
+std::string tt_decode_marked(const std::string& data, Language default_language, bool is_utf16);
 
-char marker_for_language_code(uint8_t language_code);
+char marker_for_language(Language language);
 bool is_language_marker_sjis_8859(char marker);
 bool is_language_marker_utf16(char marker);
 
@@ -467,7 +468,7 @@ struct pstring {
   pstring(const pstring<Encoding, Chars, BytesPerChar>& other) {
     memcpy(this->data, other.data, Bytes);
   }
-  pstring(const std::string& s, uint8_t language) {
+  pstring(const std::string& s, Language language) {
     this->encode(s, language);
   }
   pstring(pstring<Encoding, Chars, BytesPerChar>&& other) = delete;
@@ -485,7 +486,7 @@ struct pstring {
   }
   pstring<Encoding, Chars, BytesPerChar>& operator=(pstring<Encoding, Chars, BytesPerChar>&& s) = delete;
 
-  void encode(const std::string& s, uint8_t client_language = 1) {
+  void encode(const std::string& s, Language client_language = Language::ENGLISH) {
     try {
       switch (Encoding) {
         case TextEncoding::CHALLENGE8:
@@ -513,7 +514,7 @@ struct pstring {
             break;
           } else if (s.size() <= 2 || s[0] != '\t' || s[1] == 'C') {
             std::string to_encode = "\t";
-            to_encode += marker_for_language_code(client_language);
+            to_encode += marker_for_language(client_language);
             to_encode += s;
             auto ret = tt_utf8_to_utf16(this->data, Bytes, to_encode.data(), to_encode.size(), true);
             this->clear_after_bytes(ret.bytes_written);
@@ -536,7 +537,7 @@ struct pstring {
           break;
         }
         case TextEncoding::MARKED: {
-          if (client_language == 0) {
+          if (client_language == Language::JAPANESE) {
             try {
               auto ret = tt_utf8_to_sega_sjis(this->data, Bytes, s.data(), s.size(), true);
               this->clear_after_bytes(ret.bytes_written);
@@ -592,7 +593,7 @@ struct pstring {
     }
   }
 
-  std::string decode(uint8_t client_language = 1) const {
+  std::string decode(Language client_language = Language::ENGLISH) const {
     try {
       switch (Encoding) {
         case TextEncoding::CHALLENGE8: {
@@ -623,16 +624,16 @@ struct pstring {
           size_t offset = 0;
           if (this->data[0] == '\t') {
             if (this->data[1] == 'J') {
-              client_language = 0;
+              client_language = Language::JAPANESE;
               offset = 2;
             } else if (this->data[1] != 'C') {
-              client_language = 1;
+              client_language = Language::ENGLISH;
               offset = 2;
             }
           }
-          return client_language
-              ? tt_8859_to_utf8(&this->data[offset], this->used_chars_8() - offset)
-              : tt_sega_sjis_to_utf8(&this->data[offset], this->used_chars_8() - offset);
+          return (client_language == Language::JAPANESE)
+              ? tt_sega_sjis_to_utf8(&this->data[offset], this->used_chars_8() - offset)
+              : tt_8859_to_utf8(&this->data[offset], this->used_chars_8() - offset);
         }
         default:
           throw std::logic_error("unknown text encoding");
@@ -650,7 +651,7 @@ struct pstring {
     return (memcmp(this->data, other.data, Bytes) != 0);
   }
 
-  bool eq(const std::string& other, uint8_t language = 1) const {
+  bool eq(const std::string& other, Language language = Language::ENGLISH) const {
     return this->decode(language) == other;
   }
 

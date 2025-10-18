@@ -119,7 +119,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   uint8_t override_section_id = 0xFF;
   Episode episode = Episode::NONE;
   GameMode mode = GameMode::NORMAL;
-  uint8_t difficulty = 0; // 0-3
+  Difficulty difficulty = Difficulty::NORMAL;
   float base_exp_multiplier = 1.0f;
   float exp_share_multiplier = 0.5f;
   float challenge_exp_multiplier = 1.0f;

@@ -199,7 +199,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::unordered_map<std::string, std::shared_ptr<const RareItemSet>> rare_item_sets;
   std::shared_ptr<const ArmorRandomSet> armor_random_set;
   std::shared_ptr<const ToolRandomSet> tool_random_set;
-  std::array<std::shared_ptr<const WeaponRandomSet>, 4> weapon_random_sets;
+  std::array<std::shared_ptr<const WeaponRandomSet>, 4> weapon_random_sets; // Keyed oin difficulty
   std::shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set;
   std::array<std::shared_ptr<const ItemParameterTable>, NUM_VERSIONS> item_parameter_tables;
   std::shared_ptr<const ItemTranslationTable> item_translation_table;
@@ -344,7 +344,14 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const Menu> proxy_destinations_menu(Version version) const;
   const std::vector<std::pair<std::string, uint16_t>>& proxy_destinations(Version version) const;
 
-  std::shared_ptr<const SetDataTableBase> set_data_table(Version version, Episode episode, GameMode mode, uint8_t difficulty) const;
+  std::shared_ptr<const SetDataTableBase> set_data_table(Version version, Episode episode, GameMode mode, Difficulty difficulty) const;
+
+  inline std::shared_ptr<const WeaponRandomSet> weapon_random_set(Difficulty difficulty) const {
+    return this->weapon_random_sets.at(static_cast<size_t>(difficulty));
+  }
+  inline std::shared_ptr<const MapState::RareEnemyRates> rare_enemy_rates(Difficulty difficulty) const {
+    return this->rare_enemy_rates_by_difficulty.at(static_cast<size_t>(difficulty));
+  }
 
   std::shared_ptr<const LevelTable> level_table(Version version) const;
   std::shared_ptr<const ItemParameterTable> item_parameter_table(Version version) const;
@@ -376,7 +383,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
 
   std::shared_ptr<const std::vector<std::string>> information_contents_for_client(std::shared_ptr<const Client> c) const;
 
-  size_t default_min_level_for_game(Version version, Episode episode, uint8_t difficulty) const;
+  size_t default_min_level_for_game(Version version, Episode episode, Difficulty difficulty) const;
 
   void set_port_configuration(const std::vector<PortConfiguration>& port_configs);
 
@@ -391,7 +398,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::vector<PortConfiguration> parse_port_configuration(const phosg::JSON& json) const;
 
   static constexpr uint32_t free_play_key(
-      Episode episode, GameMode mode, uint8_t difficulty, uint8_t floor, uint32_t layout, uint32_t entities) {
+      Episode episode, GameMode mode, Difficulty difficulty, uint8_t floor, uint32_t layout, uint32_t entities) {
     return (static_cast<uint32_t>(episode) << 28) |
         (static_cast<uint32_t>(mode) << 26) |
         (static_cast<uint32_t>(difficulty) << 24) |
@@ -400,11 +407,11 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
         (static_cast<uint32_t>(entities) << 0);
   }
   std::shared_ptr<const SuperMap> get_free_play_supermap(
-      Episode episode, GameMode mode, uint8_t difficulty, uint8_t floor, uint32_t layout, uint32_t entities);
+      Episode episode, GameMode mode, Difficulty difficulty, uint8_t floor, uint32_t layout, uint32_t entities);
   std::vector<std::shared_ptr<const SuperMap>> supermaps_for_variations(
       Episode episode,
       GameMode mode,
-      uint8_t difficulty,
+      Difficulty difficulty,
       const Variations& variations);
 
   void create_default_lobbies();

@@ -31,7 +31,7 @@ void ProxySession::set_drop_mode(
         s->rare_item_set(version, nullptr),
         s->armor_random_set,
         s->tool_random_set,
-        s->weapon_random_sets.at(this->lobby_difficulty),
+        s->weapon_random_set(this->lobby_difficulty),
         s->tekker_adjustment_set,
         s->item_parameter_table(version),
         s->item_stack_limits(version),

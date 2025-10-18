@@ -15,10 +15,10 @@ struct DefaultSymbolChatEntry {
   array<uint16_t, 4> corner_objects;
   array<SymbolChatFacePart, 12> face_parts;
 
-  SaveFileSymbolChatEntryBB to_entry(uint8_t language) const {
+  SaveFileSymbolChatEntryBB to_entry(Language language) const {
     SaveFileSymbolChatEntryBB ret;
     ret.present = 1;
-    ret.name.encode(this->language_to_name.at(language), language);
+    ret.name.encode(this->language_to_name.at(static_cast<size_t>(language)), language);
     ret.spec.spec = this->spec;
     for (size_t z = 0; z < 4; z++) {
       ret.spec.corner_objects[z] = this->corner_objects[z];
@@ -350,7 +350,7 @@ PlayerDispDataBBPreview PSOBBCharacterFile::to_preview() const {
 
 shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_config(
     uint32_t guild_card_number,
-    uint8_t language,
+    Language language,
     const PlayerVisualConfig& visual,
     const std::string& name,
     shared_ptr<const LevelTable> level_table) {
@@ -540,7 +540,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_config(
 
 shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_preview(
     uint32_t guild_card_number,
-    uint8_t language,
+    Language language,
     const PlayerDispDataBBPreview& preview,
     shared_ptr<const LevelTable> level_table) {
   return PSOBBCharacterFile::create_from_config(
@@ -550,13 +550,13 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_preview(
 shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSODCNTECharacterFile::Character& src) {
   auto ret = PSOBBCharacterFile::create_from_config(
       src.guild_card.guild_card_number,
-      0,
+      Language::JAPANESE,
       src.disp.visual,
-      src.disp.visual.name.decode(0),
+      src.disp.visual.name.decode(Language::JAPANESE),
       nullptr);
   ret->inventory = src.inventory;
   ret->inventory.decode_from_client(Version::DC_V1);
-  uint8_t language = ret->inventory.language;
+  Language language = ret->inventory.language;
   ret->disp = src.disp.to_bb(language, language);
   ret->validation_flags = 0;
   ret->creation_timestamp = src.creation_timestamp;
@@ -585,11 +585,11 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSODC1
       src.guild_card.guild_card_number,
       src.inventory.language,
       src.disp.visual,
-      src.disp.visual.name.decode(0),
+      src.disp.visual.name.decode(Language::JAPANESE),
       nullptr);
   ret->inventory = src.inventory;
   ret->inventory.decode_from_client(Version::DC_V1);
-  uint8_t language = ret->inventory.language;
+  Language language = ret->inventory.language;
   ret->disp = src.disp.to_bb(language, language);
   ret->validation_flags = 0;
   ret->creation_timestamp = src.creation_timestamp;
@@ -628,11 +628,11 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSODCV
       src.guild_card.guild_card_number,
       src.inventory.language,
       src.disp.visual,
-      src.disp.visual.name.decode(0),
+      src.disp.visual.name.decode(Language::JAPANESE),
       nullptr);
   ret->inventory = src.inventory;
   ret->inventory.decode_from_client(Version::DC_V1);
-  uint8_t language = ret->inventory.language;
+  Language language = ret->inventory.language;
   ret->disp = src.disp.to_bb(language, language);
   ret->validation_flags = src.validation_flags;
   ret->creation_timestamp = src.creation_timestamp;
@@ -661,11 +661,11 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSODCV
       src.guild_card.guild_card_number,
       src.inventory.language,
       src.disp.visual,
-      src.disp.visual.name.decode(0),
+      src.disp.visual.name.decode(Language::JAPANESE),
       nullptr);
   ret->inventory = src.inventory;
   ret->inventory.decode_from_client(Version::DC_V2);
-  uint8_t language = ret->inventory.language;
+  Language language = ret->inventory.language;
   ret->disp = src.disp.to_bb(language, language);
   ret->validation_flags = src.validation_flags;
   ret->creation_timestamp = src.creation_timestamp;
@@ -701,14 +701,14 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOGCN
       src.guild_card.guild_card_number,
       src.inventory.language,
       src.disp.visual,
-      src.disp.visual.name.decode(0),
+      src.disp.visual.name.decode(Language::JAPANESE),
       nullptr);
   ret->inventory = src.inventory;
   // Note: We intentionally do not call ret->inventory.decode_from_client here.
   // This is because the GC client byteswaps data2 in each item before sending
   // it to the server in the 61 and 98 commands, but GetExtendedPlayerInfo does
   // not do this, so the data2 fields are already in the correct order here.
-  uint8_t language = ret->inventory.language;
+  Language language = ret->inventory.language;
   ret->disp = src.disp.to_bb(language, language);
   ret->validation_flags = src.validation_flags;
   ret->creation_timestamp = src.creation_timestamp;
@@ -742,14 +742,14 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOGCC
       src.guild_card.guild_card_number,
       src.inventory.language,
       src.disp.visual,
-      src.disp.visual.name.decode(0),
+      src.disp.visual.name.decode(Language::JAPANESE),
       nullptr);
   ret->inventory = src.inventory;
   // Note: We intentionally do not call ret->inventory.decode_from_client here.
   // This is because the GC client byteswaps data2 in each item before sending
   // it to the server in the 61 and 98 commands, but GetExtendedPlayerInfo does
   // not do this, so the data2 fields are already in the correct order here.
-  uint8_t language = ret->inventory.language;
+  Language language = ret->inventory.language;
   ret->disp = src.disp.to_bb(language, language);
   ret->validation_flags = src.validation_flags;
   ret->creation_timestamp = src.creation_timestamp;
@@ -793,10 +793,10 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOGCE
       src.guild_card.guild_card_number,
       src.inventory.language,
       src.disp.visual,
-      src.disp.visual.name.decode(0),
+      src.disp.visual.name.decode(Language::JAPANESE),
       nullptr);
   ret->inventory = src.inventory;
-  uint8_t language = ret->inventory.language;
+  Language language = ret->inventory.language;
   ret->disp = src.disp.to_bb(language, language);
   ret->validation_flags = src.validation_flags;
   ret->creation_timestamp = src.creation_timestamp;
@@ -841,11 +841,11 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOXBC
       src.guild_card.guild_card_number,
       src.inventory.language,
       src.disp.visual,
-      src.disp.visual.name.decode(0),
+      src.disp.visual.name.decode(Language::JAPANESE),
       nullptr);
   ret->inventory = src.inventory;
   ret->inventory.decode_from_client(Version::XB_V3);
-  uint8_t language = ret->inventory.language;
+  Language language = ret->inventory.language;
   ret->disp = src.disp.to_bb(language, language);
   ret->validation_flags = src.validation_flags;
   ret->creation_timestamp = src.creation_timestamp;
@@ -886,7 +886,7 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOXBC
 }
 
 PSODCNTECharacterFile::Character PSOBBCharacterFile::as_dc_nte(uint64_t hardware_id) const {
-  uint8_t language = this->inventory.language;
+  Language language = this->inventory.language;
 
   PSODCNTECharacterFile::Character ret;
   ret.inventory = this->inventory;
@@ -912,7 +912,7 @@ PSODCNTECharacterFile::Character PSOBBCharacterFile::as_dc_nte(uint64_t hardware
 }
 
 PSODC112000CharacterFile::Character PSOBBCharacterFile::as_11_2000(uint64_t hardware_id) const {
-  uint8_t language = this->inventory.language;
+  Language language = this->inventory.language;
 
   PSODC112000CharacterFile::Character ret;
   ret.inventory = this->inventory;
@@ -949,7 +949,7 @@ PSODC112000CharacterFile::Character PSOBBCharacterFile::as_11_2000(uint64_t hard
 }
 
 PSOBBCharacterFile::operator PSODCV1CharacterFile::Character() const {
-  uint8_t language = this->inventory.language;
+  Language language = this->inventory.language;
 
   PSODCV1CharacterFile::Character ret;
   ret.inventory = this->inventory;
@@ -981,7 +981,7 @@ PSOBBCharacterFile::operator PSODCV1CharacterFile::Character() const {
 }
 
 PSOBBCharacterFile::operator PSODCV2CharacterFile::Character() const {
-  uint8_t language = this->inventory.language;
+  Language language = this->inventory.language;
 
   PSODCV2CharacterFile::Character ret;
   ret.inventory = this->inventory;
@@ -1022,7 +1022,7 @@ PSOBBCharacterFile::operator PSODCV2CharacterFile::Character() const {
 }
 
 PSOBBCharacterFile::operator PSOGCNTECharacterFileCharacter() const {
-  uint8_t language = this->inventory.language;
+  Language language = this->inventory.language;
 
   PSOGCNTECharacterFileCharacter ret;
   ret.inventory = this->inventory;
@@ -1060,7 +1060,7 @@ PSOBBCharacterFile::operator PSOGCNTECharacterFileCharacter() const {
 }
 
 PSOBBCharacterFile::operator PSOGCCharacterFile::Character() const {
-  uint8_t language = this->inventory.language;
+  Language language = this->inventory.language;
 
   PSOGCCharacterFile::Character ret;
   ret.inventory = this->inventory;
@@ -1108,7 +1108,7 @@ PSOBBCharacterFile::operator PSOGCCharacterFile::Character() const {
 }
 
 PSOBBCharacterFile::operator PSOXBCharacterFile::Character() const {
-  uint8_t language = this->inventory.language;
+  Language language = this->inventory.language;
 
   PSOXBCharacterFile::Character ret;
   ret.inventory = this->inventory;

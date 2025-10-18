@@ -28,7 +28,7 @@ struct ProxySession {
     uint32_t guild_card_number = 0;
     uint64_t xb_user_id = 0;
     std::string name;
-    uint8_t language = 0;
+    Language language = Language::JAPANESE;
     uint8_t section_id = 0;
     uint8_t char_class = 0;
   };
@@ -38,7 +38,7 @@ struct ProxySession {
   bool is_in_quest = false;
   uint8_t leader_client_id = 0;
   uint8_t lobby_event = 0;
-  uint8_t lobby_difficulty = 0;
+  Difficulty lobby_difficulty = Difficulty::NORMAL;
   uint8_t lobby_section_id = 0;
   GameMode lobby_mode = GameMode::NORMAL;
   Episode lobby_episode = Episode::EP1;

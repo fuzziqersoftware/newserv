@@ -40,7 +40,7 @@ DownloadSession::DownloadSession(
     uint16_t remote_port,
     const std::string& output_dir,
     Version version,
-    uint8_t language,
+    Language language,
     std::shared_ptr<const PSOBBEncryption::KeyFile> bb_key_file,
     uint32_t serial_number2,
     uint32_t serial_number,
@@ -222,13 +222,13 @@ void DownloadSession::send_61_98(bool is_98) {
   if (is_v1(this->version)) {
     C_CharacterData_DCv1_61_98 ret;
     ret.inventory = this->character->inventory;
-    ret.disp = convert_player_disp_data<PlayerDispDataDCPCV3, PlayerDispDataBB>(this->character->disp, 1, 1);
+    ret.disp = convert_player_disp_data<PlayerDispDataDCPCV3, PlayerDispDataBB>(this->character->disp, Language::ENGLISH, Language::ENGLISH);
     this->channel->send(command, 0x01, ret);
 
   } else if (this->version == Version::DC_V2) {
     C_CharacterData_DCv2_61_98 ret;
     ret.inventory = this->character->inventory;
-    ret.disp = convert_player_disp_data<PlayerDispDataDCPCV3, PlayerDispDataBB>(this->character->disp, 1, 1);
+    ret.disp = convert_player_disp_data<PlayerDispDataDCPCV3, PlayerDispDataBB>(this->character->disp, Language::ENGLISH, Language::ENGLISH);
     ret.records.challenge = this->character->challenge_records;
     ret.records.battle = this->character->battle_records;
     ret.choice_search_config = this->character->choice_search_config;
@@ -237,7 +237,7 @@ void DownloadSession::send_61_98(bool is_98) {
   } else if (this->version == Version::PC_V2) {
     C_CharacterData_PC_61_98 ret;
     ret.inventory = this->character->inventory;
-    ret.disp = convert_player_disp_data<PlayerDispDataDCPCV3, PlayerDispDataBB>(this->character->disp, 1, 1);
+    ret.disp = convert_player_disp_data<PlayerDispDataDCPCV3, PlayerDispDataBB>(this->character->disp, Language::ENGLISH, Language::ENGLISH);
     ret.records.challenge = this->character->challenge_records;
     ret.records.battle = this->character->battle_records;
     ret.choice_search_config = this->character->choice_search_config;
@@ -246,7 +246,7 @@ void DownloadSession::send_61_98(bool is_98) {
   } else if (is_v3(this->version)) {
     C_CharacterData_V3_61_98 ret;
     ret.inventory = this->character->inventory;
-    ret.disp = convert_player_disp_data<PlayerDispDataDCPCV3, PlayerDispDataBB>(this->character->disp, 1, 1);
+    ret.disp = convert_player_disp_data<PlayerDispDataDCPCV3, PlayerDispDataBB>(this->character->disp, Language::ENGLISH, Language::ENGLISH);
     ret.records.challenge = this->character->challenge_records;
     ret.records.battle = this->character->battle_records;
     ret.choice_search_config = this->character->choice_search_config;
@@ -552,7 +552,7 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
         C_CreateGame_PC_C1 ret;
         ret.name.encode(random_name());
         ret.password.encode(random_name());
-        ret.difficulty = 0;
+        ret.difficulty = Difficulty::NORMAL;
         ret.battle_mode = (game_config.mode == GameMode::BATTLE);
         ret.challenge_mode = (game_config.mode == GameMode::CHALLENGE);
         ret.episode = 1;
@@ -562,7 +562,7 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
         C_CreateGame_DC_V3_0C_C1_Ep3_EC ret;
         ret.name.encode(random_name());
         ret.password.encode(random_name());
-        ret.difficulty = 0;
+        ret.difficulty = Difficulty::NORMAL;
         ret.battle_mode = (game_config.mode == GameMode::BATTLE);
         ret.challenge_mode = (game_config.mode == GameMode::CHALLENGE);
         if (is_v1(this->version)) {
@@ -582,7 +582,7 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
         C_CreateGame_BB_C1 ret;
         ret.name.encode(random_name());
         ret.password.encode(random_name());
-        ret.difficulty = 0;
+        ret.difficulty = Difficulty::NORMAL;
         ret.battle_mode = (game_config.mode == GameMode::BATTLE);
         ret.challenge_mode = (game_config.mode == GameMode::CHALLENGE);
         if (game_config.episode == Episode::EP1) {
@@ -651,12 +651,12 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
           filtered_name.push_back((isalnum(ch) || (ch == '-') || (ch == '.') || (ch == '_')) ? ch : '_');
         }
         string local_filename = std::format(
-            "{}/{:016X}_{}_{}_{}_{}",
+            "{}/{:016X}_{}_{}_{:c}_{}",
             this->output_dir,
             this->current_request,
             phosg::now(),
             phosg::name_for_enum(this->version),
-            char_for_language_code(this->language),
+            char_for_language(this->language),
             filtered_name);
         this->open_files.emplace(internal_name, OpenFile{.request = this->current_request, .filename = local_filename, .total_size = cmd.file_size, .data = ""});
       };

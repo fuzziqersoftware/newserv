@@ -166,7 +166,7 @@ IPSSChannel::IPSSChannel(
     std::weak_ptr<IPSSClient> ipss_client,
     std::weak_ptr<IPSSClient::TCPConnection> tcp_conn,
     Version version,
-    uint8_t language,
+    Language language,
     const std::string& name,
     phosg::TerminalFormat terminal_send_color,
     phosg::TerminalFormat terminal_recv_color)
@@ -1396,7 +1396,7 @@ asio::awaitable<void> IPStackSimulator::open_server_connection(
   }
   const auto& port_config = port_config_it->second;
 
-  conn->server_channel = make_shared<IPSSChannel>(this->shared_from_this(), c, conn, port_config->version, 1);
+  conn->server_channel = make_shared<IPSSChannel>(this->shared_from_this(), c, conn, port_config->version, Language::ENGLISH);
 
   if (!this->state->game_server.get()) {
     this->log.error_f("No server available for TCP connection {}", conn_str);

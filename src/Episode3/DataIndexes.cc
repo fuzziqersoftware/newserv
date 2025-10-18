@@ -1720,7 +1720,7 @@ phosg::JSON MapDefinition::CameraSpec::json() const {
   });
 }
 
-phosg::JSON MapDefinition::NPCDeck::json(uint8_t language) const {
+phosg::JSON MapDefinition::NPCDeck::json(Language language) const {
   phosg::JSON card_ids_json = phosg::JSON::list();
   for (size_t z = 0; z < this->card_ids.size(); z++) {
     if (this->card_ids[z] != 0xFFFF) {
@@ -1733,7 +1733,7 @@ phosg::JSON MapDefinition::NPCDeck::json(uint8_t language) const {
   });
 }
 
-phosg::JSON MapDefinition::AIParams::json(uint8_t language) const {
+phosg::JSON MapDefinition::AIParams::json(Language language) const {
   phosg::JSON params_json = phosg::JSON::list();
   for (size_t z = 0; z < this->params.size(); z++) {
     params_json.emplace_back(this->params[z].load());
@@ -1745,7 +1745,7 @@ phosg::JSON MapDefinition::AIParams::json(uint8_t language) const {
   });
 }
 
-phosg::JSON MapDefinition::DialogueSet::json(uint8_t language) const {
+phosg::JSON MapDefinition::DialogueSet::json(Language language) const {
   phosg::JSON strings_json = phosg::JSON::list();
   for (size_t z = 0; z < this->strings.size(); z++) {
     strings_json.emplace_back(this->strings[z].decode(language));
@@ -1818,7 +1818,7 @@ string MapDefinition::CameraSpec::str() const {
       this->unknown_a2[1], this->unknown_a2[2]);
 }
 
-string MapDefinition::str(const CardIndex* card_index, uint8_t language) const {
+string MapDefinition::str(const CardIndex* card_index, Language language) const {
   deque<string> lines;
   auto add_map = [&](const parray<parray<uint8_t, 0x10>, 0x10>& tiles) {
     for (size_t y = 0; y < this->height; y++) {
@@ -2503,7 +2503,7 @@ CardIndex::CardIndex(
 
       // Some cards intentionally have the same name, so we just leave them
       // unindexed (they can still be looked up by ID, of course)
-      string name = entry->def.en_name.decode(1);
+      string name = entry->def.en_name.decode(Language::ENGLISH);
       this->card_definitions_by_name.emplace(name, entry);
       this->card_definitions_by_name_normalized.emplace(this->normalize_card_name(name), entry);
 
@@ -2620,11 +2620,11 @@ string CardIndex::normalize_card_name(const string& name) {
   return ret;
 }
 
-MapIndex::VersionedMap::VersionedMap(shared_ptr<const MapDefinition> map, uint8_t language)
+MapIndex::VersionedMap::VersionedMap(shared_ptr<const MapDefinition> map, Language language)
     : map(map),
       language(language) {}
 
-MapIndex::VersionedMap::VersionedMap(std::string&& compressed_data, uint8_t language)
+MapIndex::VersionedMap::VersionedMap(std::string&& compressed_data, Language language)
     : language(language),
       compressed_data(make_shared<string>(std::move(compressed_data))) {
   string decompressed = prs_decompress(*this->compressed_data);
@@ -2673,33 +2673,39 @@ std::shared_ptr<const std::string> MapIndex::VersionedMap::trial_download() cons
 MapIndex::Map::Map(shared_ptr<const VersionedMap> initial_version)
     : map_number(initial_version->map->map_number),
       initial_version(initial_version) {
-  this->versions.resize(this->initial_version->language + 1);
-  this->versions[this->initial_version->language] = initial_version;
+  size_t lang_index = static_cast<size_t>(this->initial_version->language);
+  this->versions.resize(lang_index + 1);
+  this->versions[lang_index] = initial_version;
 }
 
 void MapIndex::Map::add_version(std::shared_ptr<const VersionedMap> vm) {
-  if (this->versions.size() <= vm->language) {
-    this->versions.resize(vm->language + 1);
+  size_t lang_index = static_cast<size_t>(vm->language);
+  if (this->versions.size() <= lang_index) {
+    this->versions.resize(lang_index + 1);
   }
-  if (this->versions[vm->language]) {
+  if (this->versions[lang_index]) {
     throw runtime_error("map version already exists");
   }
   this->initial_version->map->assert_semantically_equivalent(*vm->map);
-  this->versions[vm->language] = vm;
+  this->versions[lang_index] = vm;
 }
 
-bool MapIndex::Map::has_version(uint8_t language) const {
-  return (this->versions.size() > language) && !!this->versions[language];
+bool MapIndex::Map::has_version(Language language) const {
+  size_t lang_index = static_cast<size_t>(language);
+  return (this->versions.size() > lang_index) && !!this->versions[lang_index];
 }
 
-shared_ptr<const MapIndex::VersionedMap> MapIndex::Map::version(uint8_t language) const {
+shared_ptr<const MapIndex::VersionedMap> MapIndex::Map::version(Language language) const {
+  size_t lang_index = static_cast<size_t>(language);
+
   // If the requested language exists, return it
-  if ((language < this->versions.size()) && this->versions[language]) {
-    return this->versions[language];
+  if ((lang_index < this->versions.size()) && this->versions[lang_index]) {
+    return this->versions[lang_index];
   }
   // If English exists, return it
-  if ((1 < this->versions.size()) && this->versions[1]) {
-    return this->versions[1];
+  constexpr size_t english_lang_index = static_cast<size_t>(Language::ENGLISH);
+  if ((english_lang_index < this->versions.size()) && this->versions[english_lang_index]) {
+    return this->versions[english_lang_index];
   }
   // Return the first version that exists
   for (const auto& vm : this->versions) {
@@ -2754,7 +2760,7 @@ MapIndex::MapIndex(const string& directory) {
       if (base_filename[base_filename.size() - 2] != '-') {
         throw runtime_error("language code not present");
       }
-      uint8_t language = language_code_for_char(base_filename[base_filename.size() - 1]);
+      Language language = language_for_char(base_filename[base_filename.size() - 1]);
 
       shared_ptr<VersionedMap> vm;
       if (decompressed_data) {
@@ -2773,7 +2779,7 @@ MapIndex::MapIndex(const string& directory) {
         static_game_data_log.debug_f("({}) Created Episode 3 map {:08X} {} ({}; {})",
             filename,
             vm->map->map_number,
-            char_for_language_code(vm->language),
+            char_for_language(vm->language),
             vm->map->is_quest() ? "quest" : "free",
             name);
       } else {
@@ -2781,7 +2787,7 @@ MapIndex::MapIndex(const string& directory) {
         static_game_data_log.debug_f("({}) Added Episode 3 map version {:08X} {} ({}; {})",
             filename,
             vm->map->map_number,
-            char_for_language_code(vm->language),
+            char_for_language(vm->language),
             vm->map->is_quest() ? "quest" : "free",
             name);
       }
@@ -2794,7 +2800,7 @@ MapIndex::MapIndex(const string& directory) {
   }
 }
 
-const string& MapIndex::get_compressed_list(size_t num_players, uint8_t language) const {
+const string& MapIndex::get_compressed_list(size_t num_players, Language language) const {
   if (num_players == 0) {
     throw runtime_error("cannot generate map list for no players");
   }
@@ -2802,10 +2808,11 @@ const string& MapIndex::get_compressed_list(size_t num_players, uint8_t language
     throw logic_error("player count is too high in map list generation");
   }
 
-  if (language >= this->compressed_map_lists.size()) {
-    this->compressed_map_lists.resize(language + 1);
+  size_t lang_index = static_cast<size_t>(language);
+  if (lang_index >= this->compressed_map_lists.size()) {
+    this->compressed_map_lists.resize(lang_index + 1);
   }
-  string& compressed_map_list = this->compressed_map_lists[language].at(num_players - 1);
+  string& compressed_map_list = this->compressed_map_lists[lang_index].at(num_players - 1);
   if (compressed_map_list.empty()) {
     phosg::StringWriter entries_w;
     phosg::StringWriter strings_w;

@@ -476,36 +476,36 @@ bool char_class_is_force(uint8_t cls) {
   return class_flags.at(cls) & ClassFlag::FORCE;
 }
 
-const char* name_for_difficulty(uint8_t difficulty) {
+const char* name_for_difficulty(Difficulty difficulty) {
   static const array<const char*, 4> names = {
       "Normal", "Hard", "Very Hard", "Ultimate"};
   try {
-    return names.at(difficulty);
+    return names.at(static_cast<size_t>(difficulty));
   } catch (const out_of_range&) {
     return "Unknown";
   }
 }
 
-const char* token_name_for_difficulty(uint8_t difficulty) {
+const char* token_name_for_difficulty(Difficulty difficulty) {
   static const array<const char*, 4> names = {
       "Normal", "Hard", "VeryHard", "Ultimate"};
   try {
-    return names.at(difficulty);
+    return names.at(static_cast<size_t>(difficulty));
   } catch (const out_of_range&) {
     return "Unknown";
   }
 }
 
-char abbreviation_for_difficulty(uint8_t difficulty) {
+char abbreviation_for_difficulty(Difficulty difficulty) {
   static const array<char, 4> names = {'N', 'H', 'V', 'U'};
   try {
-    return names.at(difficulty);
+    return names.at(static_cast<size_t>(difficulty));
   } catch (const out_of_range&) {
     return '?';
   }
 }
 
-const char* name_for_language_code(uint8_t language_code) {
+const char* name_for_language(Language language) {
   array<const char*, 8> names = {{"Japanese",
       "English",
       "German",
@@ -514,39 +514,41 @@ const char* name_for_language_code(uint8_t language_code) {
       "Simplified Chinese",
       "Traditional Chinese",
       "Korean"}};
-  return (language_code < 8) ? names[language_code] : "Unknown";
+  size_t lang_index = static_cast<size_t>(language);
+  return (lang_index < 8) ? names[lang_index] : "Unknown";
 }
 
-char char_for_language_code(uint8_t language_code) {
-  return (language_code < 8) ? "JEGFSBTK"[language_code] : '?';
+char char_for_language(Language language) {
+  size_t lang_index = static_cast<size_t>(language);
+  return (lang_index < 8) ? "JEGFSBTK"[lang_index] : '?';
 }
 
-uint8_t language_code_for_char(char language_char) {
+Language language_for_char(char language_char) {
   switch (language_char) {
     case 'J':
     case 'j':
-      return 0;
+      return Language::JAPANESE;
     case 'E':
     case 'e':
-      return 1;
+      return Language::ENGLISH;
     case 'G':
     case 'g':
-      return 2;
+      return Language::GERMAN;
     case 'F':
     case 'f':
-      return 3;
+      return Language::FRENCH;
     case 'S':
     case 's':
-      return 4;
+      return Language::SPANISH;
     case 'B':
     case 'b':
-      return 5;
+      return Language::SIMPLIFIED_CHINESE;
     case 'T':
     case 't':
-      return 6;
+      return Language::TRADITIONAL_CHINESE;
     case 'K':
     case 'k':
-      return 7;
+      return Language::KOREAN;
     default:
       throw runtime_error("unknown language");
   }
@@ -809,3 +811,12 @@ const array<size_t, 4> DEFAULT_MIN_LEVELS_V123({0, 19, 39, 79});
 const array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP1({0, 19, 39, 79});
 const array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP2({0, 29, 49, 89});
 const array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP4({0, 39, 79, 109});
+
+const array<GameMode, 2> ALL_GAME_MODES_V1 = {GameMode::NORMAL, GameMode::BATTLE};
+const array<GameMode, 3> ALL_GAME_MODES_V23 = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE};
+const array<GameMode, 4> ALL_GAME_MODES_V4 = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
+const array<Episode, 1> ALL_EPISODES_V12 = {Episode::EP1};
+const array<Episode, 2> ALL_EPISODES_V3 = {Episode::EP1, Episode::EP2};
+const array<Episode, 3> ALL_EPISODES_V4 = {Episode::EP1, Episode::EP2, Episode::EP4};
+const array<Difficulty, 3> ALL_DIFFICULTIES_V1 = {Difficulty::NORMAL, Difficulty::HARD, Difficulty::VERY_HARD};
+const array<Difficulty, 4> ALL_DIFFICULTIES_V234 = {Difficulty::NORMAL, Difficulty::HARD, Difficulty::VERY_HARD, Difficulty::ULTIMATE};

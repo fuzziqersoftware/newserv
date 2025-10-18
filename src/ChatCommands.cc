@@ -966,7 +966,7 @@ ChatCommandDefinition cc_edit(
           if (tokens.at(1).size() != 1) {
             throw runtime_error("invalid language");
           }
-          uint8_t new_language = language_code_for_char(tokens.at(1).at(0));
+          Language new_language = language_for_char(tokens.at(1).at(0));
           a.c->channel->language = new_language;
           p->inventory.language = new_language;
           p->guild_card.language = new_language;
@@ -1829,7 +1829,7 @@ ChatCommandDefinition cc_playrec(
         auto record = make_shared<Episode3::BattleRecord>(data);
         auto battle_player = make_shared<Episode3::BattleRecordPlayer>(s->io_context, record);
         auto game = create_game_generic(
-            s, a.c, a.text, "", Episode::EP3, GameMode::NORMAL, 0, false, nullptr, battle_player);
+            s, a.c, a.text, "", Episode::EP3, GameMode::NORMAL, Difficulty::NORMAL, false, nullptr, battle_player);
         if (game) {
           if (start_battle_player_immediately) {
             game->set_flag(Lobby::Flag::START_BATTLE_PLAYER_IMMEDIATELY);
@@ -1920,8 +1920,8 @@ static void command_qset_qclear(const Args& a, bool should_set) {
       a.c->proxy_session->server_channel->send(0x60, 0x00, &cmd, sizeof(cmd));
     }
   } else {
-    uint8_t difficulty = a.c->proxy_session ? a.c->proxy_session->lobby_difficulty : a.c->require_lobby()->difficulty;
-    G_UpdateQuestFlag_V3_BB_6x75 cmd = {{{0x75, 0x03, 0x0000}, flag_num, should_set ? 0 : 1}, difficulty, 0x0000};
+    Difficulty difficulty = a.c->proxy_session ? a.c->proxy_session->lobby_difficulty : a.c->require_lobby()->difficulty;
+    G_UpdateQuestFlag_V3_BB_6x75 cmd = {{{0x75, 0x03, 0x0000}, flag_num, should_set ? 0 : 1}, static_cast<uint16_t>(difficulty), 0x0000};
     a.c->channel->send(0x60, 0x00, &cmd, sizeof(cmd));
     if (a.c->proxy_session) {
       a.c->proxy_session->server_channel->send(0x60, 0x00, &cmd, sizeof(cmd));
@@ -2892,7 +2892,7 @@ static void whatobj_whatene_fn(const Args& a, bool include_objs, bool include_en
     const auto* set_entry = nearest_ene->super_ene->version(a.c->version()).set_entry;
     string type_name = MapFile::name_for_enemy_type(set_entry->base_type, a.c->version(), area);
     send_text_message_fmt(a.c, "$C5E-{:03X}\n$C6{}\n$C2{}\n$C7X:{:.2f} Z:{:.2f}",
-        nearest_ene->e_id, phosg::name_for_enum(nearest_ene->type(a.c->version(), l->episode, l->event)),
+        nearest_ene->e_id, phosg::name_for_enum(nearest_ene->type(a.c->version(), l->episode, l->difficulty, l->event)),
         type_name, nearest_worldspace_pos.x, nearest_worldspace_pos.z);
     auto set_str = set_entry->str(a.c->version(), area);
     a.c->log.info_f("Enemy found via $whatobj: E-{:03X} {} at x={:g} y={:g} z={:g}",

@@ -1,6 +1,6 @@
 .version DC_V1
 .quest_num 50
-.language 1
+.language E
 .name "Soul of a Blacksmith"
 .short_desc "A blacksmith\nwants to make\na weapon using\nRagol\'s unknown\nmaterials."
 .long_desc "Client: Ozwald\nQuest:\nI want to make a new\nweapon using unknown\nmaterials on Ragol.\nReward: 2500 Meseta"

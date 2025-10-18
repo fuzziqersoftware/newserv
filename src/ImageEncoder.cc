@@ -71,7 +71,7 @@ string encode_gvm(const phosg::ImageRGBA8888N& img, GVRDataFormat data_format, c
   w.put<GVMFileHeader>({.signature = 0x47564D48, .header_size = 0x48, .flags = 0x000F, .num_files = 1});
   GVMFileEntry file_entry;
   file_entry.file_num = 0;
-  file_entry.name.encode(internal_name, 1);
+  file_entry.name.encode(internal_name, Language::ENGLISH);
   file_entry.data_format = data_format;
   file_entry.format_flags = 0;
   file_entry.dimensions = (dimensions_field << 4) | dimensions_field;

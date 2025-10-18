@@ -34,18 +34,18 @@ public:
   ~RareItemSet() = default;
 
   std::vector<ExpandedDrop> get_enemy_specs(
-      GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t rt_index) const;
+      GameMode mode, Episode episode, Difficulty difficulty, uint8_t secid, uint8_t rt_index) const;
   std::vector<ExpandedDrop> get_box_specs(
-      GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid, uint8_t area_norm) const;
+      GameMode mode, Episode episode, Difficulty difficulty, uint8_t secid, uint8_t area_norm) const;
 
-  bool has_entries_for_game_config(GameMode mode, Episode episode, uint8_t difficulty) const;
+  bool has_entries_for_game_config(GameMode mode, Episode episode, Difficulty difficulty) const;
 
   std::string serialize_afs(bool is_v1) const;
   std::string serialize_gsl(bool big_endian) const;
   std::string serialize_html(
       GameMode mode,
       Episode episode,
-      uint8_t difficulty,
+      Difficulty difficulty,
       std::shared_ptr<const ItemNameIndex> name_index = nullptr,
       std::shared_ptr<const CommonItemSet> common_item_set = nullptr) const;
   phosg::JSON json(std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
@@ -56,7 +56,7 @@ public:
       FILE* stream,
       GameMode mode,
       Episode episode,
-      uint8_t difficulty,
+      Difficulty difficulty,
       uint8_t section_id,
       std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
   void print_all_collections(FILE* stream, std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
@@ -113,10 +113,10 @@ protected:
 
   std::unordered_map<uint16_t, SpecCollection> collections;
 
-  const SpecCollection& get_collection(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid) const;
+  const SpecCollection& get_collection(GameMode mode, Episode episode, Difficulty difficulty, uint8_t secid) const;
 
-  static std::string gsl_entry_name_for_table(GameMode mode, Episode episode, uint8_t difficulty, uint8_t section_id);
-  static uint16_t key_for_params(GameMode mode, Episode episode, uint8_t difficulty, uint8_t secid);
+  static std::string gsl_entry_name_for_table(GameMode mode, Episode episode, Difficulty difficulty, uint8_t section_id);
+  static uint16_t key_for_params(GameMode mode, Episode episode, Difficulty difficulty, uint8_t secid);
 
   static uint32_t expand_rate(uint8_t pc);
   static uint8_t compress_rate(uint32_t probability);

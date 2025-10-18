@@ -187,7 +187,7 @@ public:
     /* 34 */ le_int32_t param4 = 0;
     /* 38 */ le_int32_t param5 = 0;
     /* 3C */ le_int32_t param6 = 0;
-    /* 40 */ le_uint32_t unused = 0; // Reserved for pointer in client's memory; unused by server
+    /* 40 */ le_uint32_t unused_obj_ptr = 0; // Reserved for pointer in client's memory; unused by server
     /* 44 */
 
     uint64_t semantic_hash(uint8_t floor) const;
@@ -215,7 +215,7 @@ public:
     /* 3C */ le_float param5 = 0.0f;
     /* 40 */ le_int16_t param6 = 0;
     /* 42 */ le_int16_t param7 = 0;
-    /* 44 */ le_uint32_t unused = 0; // Reserved for pointer in client's memory; unused by server
+    /* 44 */ le_uint32_t unused_obj_ptr = 0; // Reserved for pointer in client's memory; unused by server
     /* 48 */
 
     uint64_t semantic_hash(uint8_t floor) const;
@@ -710,6 +710,7 @@ public:
   };
 
   struct EnemyState {
+    std::shared_ptr<EnemyState> alias_ene_st; // Null for most enemies
     std::shared_ptr<const SuperMap::Enemy> super_ene;
     enum Flag {
       LAST_HIT_MASK = 0x0003,
@@ -745,7 +746,7 @@ public:
     inline void set_mericarand_variant_flag(Version version) {
       this->mericarand_variant_flags |= (1 << static_cast<size_t>(version));
     }
-    inline EnemyType type(Version version, Episode episode, uint8_t event) const {
+    inline EnemyType type(Version version, Episode episode, Difficulty difficulty, uint8_t event) const {
       if (this->super_ene->type == EnemyType::MERICARAND) {
         if (this->is_rare(version)) {
           return ((this->mericarand_variant_flags >> static_cast<size_t>(version)) & 1)
@@ -754,6 +755,10 @@ public:
         } else {
           return EnemyType::MERICAROL;
         }
+      } else if (this->super_ene->type == EnemyType::DARK_FALZ_3) {
+        return ((difficulty == Difficulty::NORMAL) && (this->super_ene->alias_enemy_index_delta == 0))
+            ? EnemyType::DARK_FALZ_2
+            : EnemyType::DARK_FALZ_3;
       } else {
         return this->is_rare(version)
             ? type_definition_for_enemy(this->super_ene->type).rare_type(episode, event, this->super_ene->floor)
@@ -874,7 +879,7 @@ public:
 
   phosg::PrefixedLogger log;
   std::vector<FloorConfig> floor_config_entries;
-  uint8_t difficulty = 0;
+  Difficulty difficulty = Difficulty::NORMAL;
   uint8_t event = 0;
   uint32_t random_seed = 0;
   std::shared_ptr<const RareEnemyRates> bb_rare_rates;
@@ -889,7 +894,7 @@ public:
   // Constructor for free play
   MapState(
       uint64_t lobby_or_session_id,
-      uint8_t difficulty,
+      Difficulty difficulty,
       uint8_t event,
       uint32_t random_seed, // For client-matched rare enemies (non-BB)
       std::shared_ptr<const RareEnemyRates> bb_rare_rates,
@@ -898,7 +903,7 @@ public:
   // Constructor for quests
   MapState(
       uint64_t lobby_or_session_id,
-      uint8_t difficulty,
+      Difficulty difficulty,
       uint8_t event,
       uint32_t random_seed, // For client-matched rare enemies (non-BB)
       std::shared_ptr<const RareEnemyRates> bb_rare_rates,

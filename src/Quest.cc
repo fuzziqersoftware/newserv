@@ -203,7 +203,7 @@ void VersionedQuest::assert_valid() const {
   if (this->version == Version::UNKNOWN) {
     throw runtime_error("version is not set");
   }
-  if (this->language == 0xFF) {
+  if (this->language == Language::UNKNOWN) {
     throw runtime_error("language is not set");
   }
   switch (this->meta.episode) {
@@ -290,7 +290,7 @@ string VersionedQuest::pvr_filename() const {
 
 string VersionedQuest::xb_filename() const {
   return std::format("quest{}_{}.dat",
-      this->meta.quest_number, static_cast<char>(tolower(char_for_language_code(this->language))));
+      this->meta.quest_number, static_cast<char>(tolower(char_for_language(this->language))));
 }
 
 string VersionedQuest::encode_qst() const {
@@ -301,7 +301,7 @@ string VersionedQuest::encode_qst() const {
     files.emplace(std::format("quest{}.pvr", this->meta.quest_number), this->pvr_contents);
   }
   string xb_filename = std::format("quest{}_{}.dat",
-      this->meta.quest_number, static_cast<char>(tolower(char_for_language_code(language))));
+      this->meta.quest_number, static_cast<char>(tolower(char_for_language(language))));
   return encode_qst_file(files, this->meta.name, this->meta.quest_number, xb_filename, this->version, this->is_dlq_encoded);
 }
 
@@ -315,7 +315,7 @@ phosg::JSON Quest::json() const {
   for (const auto& [_, vq] : this->versions) {
     versions_json.emplace_back(phosg::JSON::dict({
         {"Version", phosg::name_for_enum(vq->version)},
-        {"Language", name_for_language_code(vq->language)},
+        {"Language", name_for_language(vq->language)},
         {"Name", vq->meta.name},
         {"ShortDescription", vq->meta.short_description},
         {"LongDescription", vq->meta.long_description},
@@ -331,16 +331,18 @@ phosg::JSON Quest::json() const {
   });
 }
 
-uint32_t Quest::versions_key(Version v, uint8_t language) {
-  return (static_cast<uint32_t>(v) << 8) | language;
+uint32_t Quest::versions_key(Version v, Language language) {
+  return (static_cast<uint32_t>(v) << 8) | static_cast<uint8_t>(language);
 }
 
-const string& Quest::name_for_language(uint8_t language) const {
-  if (!this->names_by_language.at(language).empty()) {
-    return this->names_by_language[language];
+const string& Quest::name_for_language(Language language) const {
+  size_t lang_index = static_cast<size_t>(language);
+  if (!this->names_by_language.at(lang_index).empty()) {
+    return this->names_by_language[lang_index];
   }
-  if (!this->names_by_language[1].empty()) {
-    return this->names_by_language[1];
+  constexpr size_t english_lang_index = static_cast<size_t>(Language::ENGLISH);
+  if (!this->names_by_language[english_lang_index].empty()) {
+    return this->names_by_language[english_lang_index];
   }
   for (const string& name : this->names_by_language) {
     if (!name.empty()) {
@@ -354,7 +356,8 @@ void Quest::add_version(shared_ptr<const VersionedQuest> vq) {
   this->meta.assert_compatible(vq->meta);
   this->versions.emplace(this->versions_key(vq->version, vq->language), vq);
 
-  auto& name_by_language = this->names_by_language.at(vq->language);
+  size_t lang_index = static_cast<size_t>(vq->language);
+  auto& name_by_language = this->names_by_language.at(lang_index);
   if (name_by_language.empty()) {
     name_by_language = vq->meta.name;
   }
@@ -369,7 +372,7 @@ std::shared_ptr<const SuperMap> Quest::get_supermap(int64_t random_seed) const {
   bool any_map_file_present = false;
   array<shared_ptr<const MapFile>, NUM_VERSIONS> map_files;
   for (Version v : ALL_NON_PATCH_VERSIONS) {
-    auto vq = this->version(v, 1);
+    auto vq = this->version(v, Language::ENGLISH);
     if (vq && vq->map_file) {
       auto map_file = vq->map_file;
       if (map_file->has_random_sections()) {
@@ -398,17 +401,17 @@ std::shared_ptr<const SuperMap> Quest::get_supermap(int64_t random_seed) const {
   return supermap;
 }
 
-bool Quest::has_version(Version v, uint8_t language) const {
+bool Quest::has_version(Version v, Language language) const {
   return this->versions.count(this->versions_key(v, language));
 }
 
 bool Quest::has_version_any_language(Version v) const {
-  uint32_t k = this->versions_key(v, 0);
+  uint32_t k = this->versions_key(v, Language::JAPANESE);
   auto it = this->versions.lower_bound(k);
   return ((it != this->versions.end()) && ((it->first & 0xFF00) == k));
 }
 
-shared_ptr<const VersionedQuest> Quest::version(Version v, uint8_t language) const {
+shared_ptr<const VersionedQuest> Quest::version(Version v, Language language) const {
   // Return the requested version, if it exists
   try {
     return this->versions.at(this->versions_key(v, language));
@@ -417,13 +420,13 @@ shared_ptr<const VersionedQuest> Quest::version(Version v, uint8_t language) con
 
   // Return the English version, if it exists
   try {
-    return this->versions.at(this->versions_key(v, 1));
+    return this->versions.at(this->versions_key(v, Language::ENGLISH));
   } catch (const out_of_range&) {
   }
 
   // Return the first language, if it exists
-  auto it = this->versions.lower_bound(this->versions_key(v, 0));
-  if ((it == this->versions.end()) || ((it->first & 0xFF00) != this->versions_key(v, 0))) {
+  auto it = this->versions.lower_bound(this->versions_key(v, Language::JAPANESE));
+  if ((it == this->versions.end()) || ((it->first & 0xFF00) != this->versions_key(v, Language::JAPANESE))) {
     return nullptr;
   }
   return it->second;
@@ -646,7 +649,7 @@ QuestIndex::QuestIndex(
         if (language_token.size() != 1) {
           throw runtime_error("language token is not a single character");
         }
-        vq->language = language_code_for_char(language_token[0]);
+        vq->language = language_for_char(language_token[0]);
       }
 
       auto bin_decompressed = prs_decompress(*entry.data);
@@ -777,29 +780,27 @@ QuestIndex::QuestIndex(
       auto q_it = this->quests_by_number.find(vq->meta.quest_number);
       if (q_it != this->quests_by_number.end()) {
         q_it->second->add_version(vq);
-        static_game_data_log.debug_f("({}) Added {} {} version of quest {} ({}) with floors {}",
+        static_game_data_log.debug_f("({}) Added {} {} version of quest {} ({})",
             filenames_str,
             phosg::name_for_enum(vq->version),
-            char_for_language_code(vq->language),
+            char_for_language(vq->language),
             vq->meta.quest_number,
-            vq->meta.name,
-            phosg::format_data_string(vq->meta.area_for_floor.data(), 0x12));
+            vq->meta.name);
       } else {
         auto q = make_shared<Quest>(vq);
         this->quests_by_number.emplace(vq->meta.quest_number, q);
         this->quests_by_name.emplace(vq->meta.name, q);
         this->quests_by_category_id_and_number[q->meta.category_id].emplace(vq->meta.quest_number, q);
-        static_game_data_log.debug_f("({}) Created {} {} quest {} ({}) ({}, {} ({}), {}) with floors {}",
+        static_game_data_log.debug_f("({}) Created {} {} quest {} ({}) ({}, {} ({}), {})",
             filenames_str,
             phosg::name_for_enum(vq->version),
-            char_for_language_code(vq->language),
+            char_for_language(vq->language),
             vq->meta.quest_number,
             vq->meta.name,
             name_for_episode(vq->meta.episode),
             category_name,
             vq->meta.category_id,
-            vq->meta.joinable ? "joinable" : "not joinable",
-            phosg::format_data_string(vq->meta.area_for_floor.data(), 0x12));
+            vq->meta.joinable ? "joinable" : "not joinable");
       }
     } catch (const exception& e) {
       static_game_data_log.warning_f("({}) Failed to index quest file: {}", basename, e.what());
@@ -935,7 +936,7 @@ string encode_download_quest_data(const string& compressed_data, size_t decompre
   return data;
 }
 
-shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(uint8_t override_language) const {
+shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(Language override_language) const {
   // The download flag needs to be set in the bin header, or else the client
   // will ignore it when scanning for download quests in an offline game. To set
   // this flag, we need to decompress the quest's .bin file, set the flag, then
@@ -958,7 +959,7 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(uint8_t overrid
       if (decompressed_bin.size() < sizeof(PSOQuestHeaderDC)) {
         throw runtime_error("bin file is too small for header");
       }
-      if (override_language != 0xFF) {
+      if (override_language != Language::UNKNOWN) {
         reinterpret_cast<PSOQuestHeaderDC*>(data_ptr)->language = override_language;
       }
       break;
@@ -967,7 +968,7 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(uint8_t overrid
       if (decompressed_bin.size() < sizeof(PSOQuestHeaderPC)) {
         throw runtime_error("bin file is too small for header");
       }
-      if (override_language != 0xFF) {
+      if (override_language != Language::UNKNOWN) {
         reinterpret_cast<PSOQuestHeaderPC*>(data_ptr)->language = override_language;
       }
       break;
@@ -977,7 +978,7 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(uint8_t overrid
       if (decompressed_bin.size() < sizeof(PSOQuestHeaderGC)) {
         throw runtime_error("bin file is too small for header");
       }
-      if (override_language != 0xFF) {
+      if (override_language != Language::UNKNOWN) {
         reinterpret_cast<PSOQuestHeaderGC*>(data_ptr)->language = override_language;
       }
       break;

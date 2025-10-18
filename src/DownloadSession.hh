@@ -21,7 +21,7 @@ public:
       uint16_t remote_port,
       const std::string& output_dir,
       Version version,
-      uint8_t language,
+      Language language,
       std::shared_ptr<const PSOBBEncryption::KeyFile> bb_key_file,
       uint32_t serial_number2,
       uint32_t serial_number,
@@ -50,7 +50,7 @@ protected:
   uint16_t remote_port;
   std::string output_dir;
   Version version;
-  uint8_t language;
+  Language language;
   bool show_command_data;
   std::shared_ptr<const PSOBBEncryption::KeyFile> bb_key_file;
   uint32_t serial_number;

@@ -1610,7 +1610,7 @@ Action a_disassemble_quest_script(
       if (!args.get<bool>("decompressed")) {
         data = prs_decompress(data);
       }
-      uint8_t override_language = args.get<uint8_t>("language", 0xFF);
+      Language override_language = static_cast<Language>(args.get<uint8_t>("language", 0xFF));
       bool reassembly_mode = args.get<bool>("reassembly");
       bool use_qedit_names = args.get<bool>("qedit");
       string result = disassemble_quest_script(data.data(), data.size(), version, override_language, reassembly_mode, use_qedit_names);
@@ -2080,7 +2080,7 @@ Action a_download_files(
             remote_port,
             args.get<string>("output-dir", true),
             version,
-            args.get<uint8_t>("language"),
+            static_cast<Language>(args.get<uint8_t>("language")),
             key,
             phosg::random_object<uint32_t>(),
             serial_number,
@@ -2173,12 +2173,10 @@ Action a_convert_rare_item_set(
       } else if (output_filename_lower.ends_with(".html")) {
         Version cli_version = get_cli_version(args, Version::BB_V4);
         bool is_v1 = ::is_v1(cli_version);
-        static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
-        for (GameMode mode : modes) {
-          static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
-          for (Episode episode : episodes) {
-            for (size_t difficulty = 0; difficulty < (is_v1 ? 3 : 4); difficulty++) {
-              if (!rs->has_entries_for_game_config(mode, episode, difficulty)) {
+        for (GameMode mode : ALL_GAME_MODES_V4) {
+          for (Episode episode : ALL_EPISODES_V4) {
+            for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
+              if ((is_v1 && (difficulty == Difficulty::ULTIMATE)) || (!rs->has_entries_for_game_config(mode, episode, difficulty))) {
                 continue;
               }
               auto item_name_index = s->item_name_index(cli_version);
@@ -2594,7 +2592,7 @@ Action a_generate_ep3_cards_html(
 
       shared_ptr<const TextSet> text_english;
       try {
-        text_english = s->text_index->get(Version::GC_EP3, 1);
+        text_english = s->text_index->get(Version::GC_EP3, Language::ENGLISH);
       } catch (const out_of_range&) {
       }
 
@@ -2833,12 +2831,13 @@ Action a_show_ep3_maps(
       phosg::log_info_f("{} maps", map_ids.size());
       for (const auto& [map_number, map] : map_ids) {
         const auto& vms = map->all_versions();
-        for (size_t language = 0; language < vms.size(); language++) {
-          if (!vms[language]) {
+        for (size_t lang_index = 0; lang_index < vms.size(); lang_index++) {
+          if (!vms[lang_index]) {
             continue;
           }
-          string map_s = vms[language]->map->str(s->ep3_card_index.get(), language);
-          phosg::fwrite_fmt(stdout, "({}) {}\n", char_for_language_code(language), map_s);
+          Language language = static_cast<Language>(lang_index);
+          string map_s = vms[lang_index]->map->str(s->ep3_card_index.get(), language);
+          phosg::fwrite_fmt(stdout, "({}) {}\n", char_for_language(language), map_s);
         }
       }
     });
@@ -2891,7 +2890,7 @@ Action a_check_supermaps(
       for (const auto& it : s->supermap_for_free_play_key) {
         auto episode = static_cast<Episode>((it.first >> 28) & 7);
         auto mode = static_cast<GameMode>((it.first >> 26) & 3);
-        uint8_t difficulty = (it.first >> 24) & 3;
+        Difficulty difficulty = static_cast<Difficulty>((it.first >> 24) & 3);
         uint8_t floor = (it.first >> 16) & 0xFF;
         uint8_t layout = (it.first >> 8) & 0xFF;
         uint8_t entities = (it.first >> 0) & 0xFF;
@@ -2924,12 +2923,9 @@ Action a_check_supermaps(
 
       // Generate MapStates for a few random variations
       for (size_t z = 0; z < 0x20; z++) {
-        static const array<Episode, 3> episodes = {Episode::EP1, Episode::EP2, Episode::EP4};
-        static const array<GameMode, 4> modes = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
-
-        Episode episode = episodes[phosg::random_object<uint32_t>() % episodes.size()];
-        GameMode mode = modes[phosg::random_object<uint32_t>() % modes.size()];
-        uint8_t difficulty = phosg::random_object<uint32_t>() % 4;
+        Episode episode = ALL_EPISODES_V4[phosg::random_object<uint32_t>() % ALL_EPISODES_V4.size()];
+        GameMode mode = ALL_GAME_MODES_V4[phosg::random_object<uint32_t>() % ALL_GAME_MODES_V4.size()];
+        Difficulty difficulty = static_cast<Difficulty>(phosg::random_object<uint32_t>() % 4);
         uint8_t event = phosg::random_object<uint32_t>() % 8;
         uint32_t random_seed = phosg::random_object<uint32_t>();
         phosg::fwrite_fmt(stderr, "FREE MAP STATE TEST: {} {} {}\n",
@@ -3014,7 +3010,7 @@ Action a_check_supermaps(
 
         auto map_state = make_shared<MapState>(
             0,
-            phosg::random_object<uint8_t>() & 3,
+            static_cast<Difficulty>(phosg::random_object<uint8_t>() & 3),
             0,
             phosg::random_object<uint32_t>(),
             MapState::DEFAULT_RARE_ENEMIES,
