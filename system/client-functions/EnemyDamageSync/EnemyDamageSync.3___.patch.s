@@ -33,14 +33,6 @@ start:
 
 
 
-  # Enemy state setup debug hook
-  .data     <VERS 0x800F60BC 0x800F63C0 0x800F65EC 0x800F64E8 0x800F6360 0x800F6360 0x800F64F8 0x800F64C0>
-  .data     4
-  .address  <VERS 0x800F60BC 0x800F63C0 0x800F65EC 0x800F64E8 0x800F6360 0x800F6360 0x800F64F8 0x800F64C0>
-  bl        debug_hook1
-
-
-
   # Replace 6x09 with 6xE4 in subcommand handler table
   .data     <VERS 0x804C00C4 0x804C37FC 0x804C5C9C 0x804C5A3C 0x804C0894 0x804C0D74 0x804C5314 0x804C57B4>
   .data     8
@@ -187,16 +179,16 @@ handle_6xE4:  # [std] (G_IncrementEnemyDamage_Extension_6xE4* cmd @ r3) -> void
 
   lis       r4, 0x4B00
   or        r5, r4, r8
-  stw       [r1 - 4], r5
-  lfs       f1, [r1 - 4]
-  stw       [r1 - 4], r4
-  lfs       f2, [r1 - 4]
+  stw       [r1 + 0x10], r5
+  lfs       f1, [r1 + 0x10]
+  stw       [r1 + 0x10], r4
+  lfs       f2, [r1 + 0x10]
   fsubs     f1, f1, f2  # f1 = static_cast<float>(current_hp)
   lfs       f2, [r31 + 0x0C]
   fmuls     f1, f1, f2
   fctiwz    f1, f1
-  stfd      [r1 - 8], f1
-  lwz       r8, [r1 - 4]
+  stfd      [r1 + 0x10], f1
+  lwz       r8, [r1 + 0x14]
   li        r4, 1
   cmp       r8, r4
   bge       handle_6xE4_proportional_positive
@@ -217,8 +209,6 @@ handle_6xE4_not_proportional:
   blt       handle_6xE4_damage_less_than_max_hp
 
   sth       [r3 + 6], r5  # st->total_damage = cmd->max_hp;
-  li        r4, 0x0C
-  bl        send_debug_info  # TODO: Remove this when no longer necessary
   lwz       r4, [r3]
   andi.     r0, r4, 0x800
   bne       handle_6xE4_return
@@ -247,9 +237,7 @@ handle_6xE4_damage_less_than_max_hp:
   li        r4, 0
 handle_6xE4_damage_nonnegative:
   sth       [r3 + 6], r4  # st->total_damage = std::max<int16_t>(st->total_damage + cmd->hit_amount, 0);
-  li        r4, 0x0C
   mr        r30, r3
-  bl        send_debug_info
 
   lwz       r3, [r1 + 0x18]  # if (ene) ene->v50_on_state_updated(&st);
   cmplwi    r3, 0
@@ -387,81 +375,6 @@ set_enemy_total_damage_hook:
   andi.     r12, r12, 0x0080
   bnelr
   sth       [r1 + 0x0E], r3
-  blr
-
-
-
-# TODO: Remove this when no longer necessary
-debug_hook1:
-  mflr      r0
-  stw       [r1 + 4], r0
-  stwu      [r1 - 0x20], r1
-  mr        r6, r3
-  mr        r7, r4
-  mr        r3, r4
-  li        r4, 0x0C
-  li        r5, -1
-  bl        send_debug_info
-  mr        r3, r6
-  mr        r4, r7
-  addi      r1, r1, 0x20
-  lwz       r0, [r1 + 4]
-  mtlr      r0
-  mtctr     r12
-  bctr
-
-
-
-send_debug_info:  # (void* data @ r3, uint32_t size @ r4, uint16_t what @ r5) -> void
-  mflr      r0
-  stw       [r1 + 0x04], r0
-  stw       [r1 - 0x04], r3
-  stw       [r1 - 0x08], r4
-  stw       [r1 - 0x0C], r5
-  stw       [r1 - 0x10], r6
-  stw       [r1 - 0x14], r7
-  stw       [r1 - 0x18], r8
-  stw       [r1 - 0x1C], r9
-  stw       [r1 - 0x20], r10
-  stw       [r1 - 0x24], r11
-  stw       [r1 - 0x28], r12
-  subi      r6, r1, 0x40
-  sub       r6, r6, r4
-  stw       [r6], r1
-  mr        r1, r6
-
-  rlwinm    r6, r4, 14, 8, 15
-  addis     r6, r6, 1
-  oris      r6, r6, 0xFF00
-  rlwinm    r5, r5, 0, 16, 31
-  or        r5, r5, r6
-  stw       [r1 + 0x08], r5
-  li        r6, 0
-  subi      r3, r3, 4
-  addi      r7, r1, 0x08
-  rlwinm    r0, r4, 30, 24, 31
-  mtctr     r0
-copy_again:
-  lwzu      r0, [r3 + 4]
-  stwu      [r7 + 4], r0
-  bdnz      copy_again
-
-  addi      r3, r1, 0x08
-  bl        send_and_handle_60
-
-  lwz       r1, [r1]
-  lwz       r3, [r1 - 0x04]
-  lwz       r4, [r1 - 0x08]
-  lwz       r5, [r1 - 0x0C]
-  lwz       r6, [r1 - 0x10]
-  lwz       r7, [r1 - 0x14]
-  lwz       r8, [r1 - 0x18]
-  lwz       r9, [r1 - 0x1C]
-  lwz       r10, [r1 - 0x20]
-  lwz       r11, [r1 - 0x24]
-  lwz       r12, [r1 - 0x28]
-  lwz       r0, [r1 + 0x04]
-  mtlr      r0
   blr
 
 

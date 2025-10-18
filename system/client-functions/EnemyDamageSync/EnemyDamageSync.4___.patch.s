@@ -125,11 +125,12 @@ on_add_or_subtract_hp_skip_negate_amount:
   mov       cx, 100
   sub       cx, [esp + 0x34]  # cx = (100 - special_amount)
   movsx     ecx, cx
-  mov       [esp - 4], ecx
-  fild      st0, dword [esp - 4]  # current_hp_factor = static_cast<float>(100 - special_amount)
-  fmul      st0, dword [esp + 0x38]  # *= weapon_reduction_factor
-  mov       dword [esp - 4], 0x42C80000  # 100.0f
-  fdiv      st0, dword [esp - 4]
+  push      ecx
+  fild      st0, dword [esp]  # current_hp_factor = static_cast<float>(100 - special_amount)
+  fmul      st0, dword [esp + 0x3C]  # *= weapon_reduction_factor
+  mov       dword [esp], 0x42C80000  # 100.0f
+  fdiv      st0, dword [esp]
+  add       esp, 4
   fstp      dword [esp + 0x0C], st0  # cmd.factor = ((100 - special_amount) * weapon_reduction_factor) / 100
 on_add_or_subtract_hp_not_proportional:
 
@@ -210,12 +211,13 @@ handle_6xE4:  # [std] (G_6xE4* cmd @ [esp + 4]) -> void
   xor       edx, edx
   cmp       ecx, edx
   cmovl     ecx, edx
-  mov       [esp - 4], ecx
-  fild      st0, dword [esp - 4]  # current_hp = static_cast<float>(max<int32_t>(cmd->max_hp - st.total_damage, 0))
+  push      ecx
+  fild      st0, dword [esp]  # current_hp = static_cast<float>(max<int32_t>(cmd->max_hp - st.total_damage, 0))
   fld       st0, dword [ebx + 0x0C]
   fmulp     st1, st0
-  fistp     dword [esp - 4], st0
-  mov       ecx, dword [esp - 4]  # adjusted_hit_amount = static_cast<int16_t>(current_hp * cmd->factor)
+  fistp     dword [esp], st0
+  mov       ecx, dword [esp]  # adjusted_hit_amount = static_cast<int16_t>(current_hp * cmd->factor)
+  add       esp, 4
   xor       edx, edx
   inc       edx
   cmp       ecx, edx
