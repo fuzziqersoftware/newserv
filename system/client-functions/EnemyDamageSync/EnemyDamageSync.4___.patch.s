@@ -32,7 +32,7 @@ write_6x0A_patch:
   call      on_6x0A_patch_end
 
 on_6x0A_patch_start:  # (TObjectV004434c8* this @ eax, int16_t amount @ cx) -> bool @ eax
-  test      byte [0x006354B8], 0x80
+  test      byte [<VERS 0x00630590 0x00630BF0 0x00638738 0x00635C20 0x006354B8 0x00635C20 0x00635FB8>], 0x80
   jnz       on_6x0A_patch_skip_write
   mov       [esp + 0x16], ax
 on_6x0A_patch_skip_write:
@@ -90,7 +90,7 @@ on_add_or_subtract_hp_start:  # (TObjectV004434c8* this @ eax, int16_t amount @ 
   push      ecx
   push      ebx
 
-  test      byte [0x006354B8], 0x80
+  test      byte [<VERS 0x00630590 0x00630BF0 0x00638738 0x00635C20 0x006354B8 0x00635C20 0x00635FB8>], 0x80
   jz        on_add_or_subtract_hp_skip_send
   movzx     edx, word [eax + 0x1C]  # ene->entity_id
   cmp       edx, 0x1000
@@ -166,8 +166,8 @@ write_static_patches:
   .data     <VERS 0x002DB7A0 0x002DC370 0x002DDC30 0x002DD700 0x002DDC00 0x002DD730 0x002DDC80>
   .data     9
 flag_check_start:
-  cmp       dword [0x006354B8], 0
-  je        +0x38
+  test      byte [<VERS 0x00630590 0x00630BF0 0x00638738 0x00635C20 0x006354B8 0x00635C20 0x00635FB8>], 0x01
+  jz        +0x38
 flag_check_end:
 
   .data     <VERS 0x00537180 0x00537800 0x0053EB20 0x0053BFA0 0x0053B840 0x0053BFA0 0x0053C340>
@@ -185,7 +185,7 @@ handle_6xE4:  # [std] (G_6xE4* cmd @ [esp + 4]) -> void
   push      esi
   push      edi
 
-  test      byte [0x006354B8], 0x80
+  test      byte [<VERS 0x00630590 0x00630BF0 0x00638738 0x00635C20 0x006354B8 0x00635C20 0x00635FB8>], 0x80
   jz        handle_6xE4_return
   mov       ebx, [esp + 0x10]  # cmd
   movzx     eax, word [ebx + 2]
