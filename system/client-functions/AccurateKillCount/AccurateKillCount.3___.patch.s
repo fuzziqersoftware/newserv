@@ -9,10 +9,11 @@ reloc0:
 start:
   .include  WriteCodeBlocksGC
 
-  .data     <VERS 0x8012D2D4 0x8012D518 0x8012D550 0x8012D4B0 0x8012D578 0x8012D578 0x8012D4C0 0x8012D698>
+  .label    TItemWeapon_SealedJSword_count_kill_loc, <VERS 0x8012D2D4 0x8012D518 0x8012D550 0x8012D4B0 0x8012D578 0x8012D578 0x8012D4C0 0x8012D698>
+  .data     TItemWeapon_SealedJSword_count_kill_loc
   .deltaof  TItemWeapon_SealedJSword_count_kill, TItemWeapon_SealedJSword_count_kill_end
-  .address  <VERS 0x8012D2D4 0x8012D518 0x8012D550 0x8012D4B0 0x8012D578 0x8012D578 0x8012D4C0 0x8012D698>
-TItemWeapon_SealedJSword_count_kill:  # [std] (TItemWeapon_SealedJSword* this @ r3) -> void
+  .address  TItemWeapon_SealedJSword_count_kill_loc
+TItemWeapon_SealedJSword_count_kill:  # [std](TItemWeapon_SealedJSword* this @ r3) -> void
   lwz       r4, [r3 + 0xF0]  # r4 = this->owner_player
   lha       r5, [r4 + 0x11A]  # r5 = this->owner_player->num_kills_since_map_load
   lha       r6, [r3 + 0x1F8]  # r6 = this->last_owner_player_kill_count

@@ -4,7 +4,7 @@
 # https://www.gc-forever.com/forums/viewtopic.php?t=2050
 # https://www.gc-forever.com/forums/viewtopic.php?t=2049
 
-.versions 3OE0 3OE1 3OE2 3OJ2 3OJ3 3OJ4 3OJ5 3OP0
+.versions 3OJ2 3OJ3 3OJ4 3OJ5 3OE0 3OE1 3OE2 3OP0
 
 entry_ptr:
 reloc0:
@@ -12,9 +12,9 @@ reloc0:
 start:
   .include  WriteCodeBlocksGC
 
-  .data     <VERS 0x803515F4 0x80351638 0x80353220 0x80350740 0x80351B44 0x803530A0 0x80352E54 0x80352614>
+  .data     <VERS 0x80350740 0x80351B44 0x803530A0 0x80352E54 0x803515F4 0x80351638 0x80353220 0x80352614>
   .data     0x00000098
-  .address  <VERS 0x803515F4 0x80351638 0x80353220 0x80350740 0x80351B44 0x803530A0 0x80352E54 0x80352614>
+  .address  <VERS 0x80350740 0x80351B44 0x803530A0 0x80352E54 0x803515F4 0x80351638 0x80353220 0x80352614>
   lbz       r0, [r3 + 0xEE]
   cmplwi    r0, 11
   bne       +0x144
@@ -33,7 +33,7 @@ start:
   li        r5, 0x0D44
   bl        +0x38
   mr        r3, r31
-  .data     <VERS 0x4BE64BD9 0x4BE64B95 0x4BE63145 0x4BE656A1 0x4BE646F1 0x4BE654CD 0x4BE634AD 0x4BE6420D>
+  .data     <VERS 0x4BE656A1 0x4BE646F1 0x4BE654CD 0x4BE634AD 0x4BE64BD9 0x4BE64B95 0x4BE63145 0x4BE6420D>
   lhz       r0, [r31 + 0x032C]
   lhz       r3, [r31 + 0x02B8]
   cmpl      r0, r3

@@ -40,7 +40,9 @@ resume:
 
 get_data_addr:
   bl       resume
+  # allow_local_client_commands
   .data     <VERS 0x8065F458 0x805C4D58 0x805CF320 0x805D67A0 0x805D6540 0x805C5650 0x805CC630 0x805D5E50 0x805D2090>
+  # RcvPsoData2
   .data     <VERS 0x80236F24 0x801E3B38 0x801E40BC 0x801E4290 0x801E4008 0x801E3F9C 0x801E3F9C 0x801E405C 0x801E4698>
 
 size:

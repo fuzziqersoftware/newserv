@@ -6369,13 +6369,16 @@ struct G_AddSRankWeaponSpecial_BB_6xD8 {
 // more (or less!) data than necessary.
 
 struct G_MomokaItemExchange_BB_6xD9 {
-  G_ClientIDHeader header;
-  ItemData find_item; // Only data1[0]-[2] are used
-  ItemData replace_item; // Only data1[0]-[2] are used
-  le_uint32_t token1 = 0; // valueC (from F95B opcode) ^ sender client ID
-  le_uint32_t token2 = 0; // valueD (from F95B opcode) ^ sender client ID
-  le_uint16_t success_label = 0;
-  le_uint16_t failure_label = 0;
+  /* 00 */ G_ClientIDHeader header;
+  // Only data1[0-2] are used in find_item and replace_item when this is sent
+  // by the F95B quest opcode.
+  /* 04 */ ItemData find_item;
+  /* 18 */ ItemData replace_item;
+  /* 2C */ le_uint32_t token1 = 0; // valueC (from F95B opcode) ^ sender client ID
+  /* 30 */ le_uint32_t token2 = 0; // valueD (from F95B opcode) ^ sender client ID
+  /* 34 */ le_uint16_t success_label = 0;
+  /* 36 */ le_uint16_t failure_label = 0;
+  /* 38 */
 } __packed_ws__(G_MomokaItemExchange_BB_6xD9, 0x38);
 
 // 6xDA: Upgrade weapon attribute (BB; handled by server)
