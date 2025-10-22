@@ -436,7 +436,8 @@ QuestIndex::QuestIndex(
     const string& directory,
     shared_ptr<const QuestCategoryIndex> category_index,
     const unordered_map<string, shared_ptr<const CommonItemSet>>& common_item_sets,
-    const unordered_map<string, shared_ptr<const RareItemSet>>& rare_item_sets)
+    const unordered_map<string, shared_ptr<const RareItemSet>>& rare_item_sets,
+    bool raise_on_any_failure)
     : directory(directory),
       category_index(category_index) {
 
@@ -585,6 +586,9 @@ QuestIndex::QuestIndex(
         }
 
       } catch (const exception& e) {
+        if (raise_on_any_failure) {
+          throw runtime_error(format("({}) {}", filename, e.what()));
+        }
         static_game_data_log.warning_f("({}) Failed to load quest file: ({})", filename, e.what());
       }
     }
@@ -803,6 +807,9 @@ QuestIndex::QuestIndex(
             vq->meta.joinable ? "joinable" : "not joinable");
       }
     } catch (const exception& e) {
+      if (raise_on_any_failure) {
+        throw runtime_error(format("({}) {}", basename, e.what()));
+      }
       static_game_data_log.warning_f("({}) Failed to index quest file: {}", basename, e.what());
     }
   }

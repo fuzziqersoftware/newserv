@@ -4019,7 +4019,7 @@ AssembledQuestScript assemble_quest_script(
     wrap_exceptions_with_line_ref(line, [&]() -> void {
       if (line.text[0] == '.') {
         if (line.text.starts_with(".include ")) {
-          // Nothing to do
+          // Nothing to do (see above)
         } else if (line.text.starts_with(".version ")) {
           string name = line.text.substr(9);
           phosg::strip_leading_whitespace(name);
@@ -4268,7 +4268,12 @@ AssembledQuestScript assemble_quest_script(
       }
 
       auto line_tokens = phosg::split(line.text, ' ', 1);
-      const auto& opcode_def = opcodes.at(phosg::tolower(line_tokens.at(0)));
+      const QuestScriptOpcodeDefinition* opcode_def;
+      try {
+        opcode_def = opcodes.at(phosg::tolower(line_tokens.at(0)));
+      } catch (const out_of_range&) {
+        throw std::runtime_error(std::format("invalid opcode name: {}", line_tokens.at(0)));
+      }
 
       bool use_args = version_has_args && (opcode_def->flags & F_ARGS);
       if (!use_args) {

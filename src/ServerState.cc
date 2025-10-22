@@ -2161,15 +2161,15 @@ void ServerState::load_ep3_tournament_state() {
   this->ep3_tournament_index->link_all_clients(this->shared_from_this());
 }
 
-void ServerState::load_quest_index() {
+void ServerState::load_quest_index(bool raise_on_any_failure) {
   config_log.info_f("Collecting quests");
   this->quest_index = make_shared<QuestIndex>(
-      "system/quests", this->quest_category_index, this->common_item_sets, this->rare_item_sets);
+      "system/quests", this->quest_category_index, this->common_item_sets, this->rare_item_sets, raise_on_any_failure);
 }
 
-void ServerState::compile_functions() {
+void ServerState::compile_functions(bool raise_on_any_failure) {
   config_log.info_f("Compiling client functions");
-  this->function_code_index = make_shared<FunctionCodeIndex>("system/client-functions");
+  this->function_code_index = make_shared<FunctionCodeIndex>("system/client-functions", raise_on_any_failure);
 }
 
 void ServerState::load_dol_files() {

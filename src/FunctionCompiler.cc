@@ -218,7 +218,8 @@ static vector<shared_ptr<CompiledFunctionCode>> compile_function_code(
     const string& function_directory,
     const string& system_directory,
     const string& name,
-    const string& text) {
+    const string& text,
+    bool raise_on_any_failure) {
   unordered_set<string> get_include_stack;
   function<string(const string&)> get_include = [&](const string& name) -> string {
     const char* arch_name_token;
@@ -335,6 +336,9 @@ static vector<shared_ptr<CompiledFunctionCode>> compile_function_code(
 
     } catch (const exception& e) {
       string version_str = specific_version ? (" (" + str_for_specific_version(specific_version) + ")") : "";
+      if (raise_on_any_failure) {
+        throw;
+      }
       function_compiler_log.warning_f("Failed to compile function {}{}: {}", name, version_str, e.what());
     }
   }
@@ -342,7 +346,7 @@ static vector<shared_ptr<CompiledFunctionCode>> compile_function_code(
   return ret;
 }
 
-FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
+FunctionCodeIndex::FunctionCodeIndex(const string& directory, bool raise_on_any_failure) {
   string system_dir_path = directory.ends_with("/") ? (directory + "System") : (directory + "/System");
 
   uint32_t next_menu_item_id = 1;
@@ -404,7 +408,7 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
 
         string path = subdir_path + "/" + filename;
         string text = phosg::load_file(path);
-        for (auto code : compile_function_code(arch, subdir_path, system_dir_path, name, text)) {
+        for (auto code : compile_function_code(arch, subdir_path, system_dir_path, name, text, raise_on_any_failure)) {
           if (code->specific_version == 0) {
             code->specific_version = specific_version;
           }
@@ -425,6 +429,9 @@ FunctionCodeIndex::FunctionCodeIndex(const string& directory) {
         }
 
       } catch (const exception& e) {
+        if (raise_on_any_failure) {
+          throw runtime_error(format("({}) {}", filename, e.what()));
+        }
         function_compiler_log.warning_f("Failed to compile function {}: {}", filename, e.what());
       }
     };

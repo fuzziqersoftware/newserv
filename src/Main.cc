@@ -1720,7 +1720,7 @@ Action a_assemble_all_patches(
     versions, and one encrypted, for PSO GC JP v1.4, JP Ep3, and Ep3 Trial\n\
     Edition). The output files are saved in system/client-functions.\n",
     +[](phosg::Arguments& args) {
-      auto fci = make_shared<FunctionCodeIndex>("system/client-functions");
+      auto fci = make_shared<FunctionCodeIndex>("system/client-functions", false);
 
       bool skip_encrypted = args.get<bool>("skip-encrypted");
       auto process_code = [&](shared_ptr<const CompiledFunctionCode> code,
@@ -3038,7 +3038,16 @@ Action a_check_quests(
       s->load_patch_indexes();
       s->load_set_data_tables();
       s->load_maps();
-      s->load_quest_index();
+      s->load_quest_index(true);
+      phosg::fwrite_fmt(stdout, "All quests indexed\n");
+    });
+
+Action a_check_client_functions(
+    "check-client-functions", nullptr,
+    +[](phosg::Arguments&) {
+      set_all_log_levels(phosg::LogLevel::L_DEBUG);
+      FunctionCodeIndex fci("system/client-functions", true);
+      phosg::fwrite_fmt(stdout, "All client functions compiled\n");
     });
 
 Action a_parse_object_graph(

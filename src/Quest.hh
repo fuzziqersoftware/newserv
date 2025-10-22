@@ -136,7 +136,8 @@ struct QuestIndex {
       const std::string& directory,
       std::shared_ptr<const QuestCategoryIndex> category_index,
       const std::unordered_map<std::string, std::shared_ptr<const CommonItemSet>>& common_item_sets,
-      const std::unordered_map<std::string, std::shared_ptr<const RareItemSet>>& rare_item_sets);
+      const std::unordered_map<std::string, std::shared_ptr<const RareItemSet>>& rare_item_sets,
+      bool raise_on_any_failure);
   phosg::JSON json() const;
 
   std::shared_ptr<const Quest> get(uint32_t quest_number) const;

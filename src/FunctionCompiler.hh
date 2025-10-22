@@ -54,7 +54,7 @@ const char* name_for_architecture(CompiledFunctionCode::Architecture arch);
 
 struct FunctionCodeIndex {
   FunctionCodeIndex() = default;
-  explicit FunctionCodeIndex(const std::string& directory);
+  FunctionCodeIndex(const std::string& directory, bool raise_on_any_failure);
 
   std::unordered_map<std::string, std::shared_ptr<CompiledFunctionCode>> name_to_function;
   std::unordered_map<uint8_t, std::shared_ptr<CompiledFunctionCode>> index_to_function;

@@ -440,8 +440,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void load_ep3_cards();
   void load_ep3_maps();
   void load_ep3_tournament_state();
-  void load_quest_index();
-  void compile_functions();
+  void load_quest_index(bool raise_on_any_failure = false);
+  void compile_functions(bool raise_on_any_failure = false);
   void load_dol_files();
 
   void load_all(bool enable_thread_pool);
