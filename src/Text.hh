@@ -243,7 +243,11 @@ struct parray {
         this->items[x] = s.items[x];
       }
       for (; x < Count; x++) {
-        this->items[x] = 0;
+        if constexpr (std::is_integral_v<ItemT>) {
+          this->items[x] = 0;
+        } else {
+          this->items[x] = ItemT();
+        }
       }
     } else {
       for (size_t x = 0; x < Count; x++) {

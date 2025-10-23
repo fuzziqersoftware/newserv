@@ -681,7 +681,7 @@ struct PSOGCEp3NTECharacter {
   /* 0430:0014 */ be_uint32_t save_count = 1;
   /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
   /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
-  /* 0460:0044 */ parray<uint8_t, 0x400> seq_vars;
+  /* 0460:0044 */ Ep3SeqVars seq_vars;
   /* 0860:0444 */ be_uint32_t death_count = 0;
   /* 0864:0448 */ PlayerBank200BE bank;
   /* 1B2C:1710 */ GuildCardGCBE guild_card;
@@ -722,7 +722,7 @@ struct PSOGCEp3CharacterFile {
     // NPC decks are unlocked, and whether the player has a VIP card or not.
     // Logically, this structure maps to quest_flags in other versions, but is
     // a different size.
-    /* 0460:0044 */ parray<uint8_t, 0x400> seq_vars;
+    /* 0460:0044 */ Ep3SeqVars seq_vars;
     /* 0860:0444 */ be_uint32_t death_count = 0;
     // Curiously, Episode 3 characters do have item banks, but there are only 4
     // item slots. Presumably Sega didn't completely remove the bank in Ep3

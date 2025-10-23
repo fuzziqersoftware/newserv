@@ -694,7 +694,7 @@ static asio::awaitable<void> on_sync_joining_player_compressed_state(shared_ptr<
           // player), it's not surprising that no one noticed this. But it does
           // mean we have to check switch_flags_r.eof() here.
           for (size_t z = 0; (z < 0x20) && !switch_flags_r.eof(); z++) {
-            uint8_t& l_flags = l->switch_flags->data[floor][z];
+            uint8_t& l_flags = l->switch_flags->array(floor).data[z];
             uint8_t r_flags = switch_flags_r.get_u8();
             if (l_flags != r_flags) {
               l->log.warning_f("Switch flags do not match at floor {:02X} byte {:02X} (expected {:02X}, received {:02X})",

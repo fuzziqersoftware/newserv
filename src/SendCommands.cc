@@ -2956,8 +2956,8 @@ void send_game_flag_state_t(shared_ptr<Client> c) {
       if ((difficulty != l->difficulty) && !use_v3_cmd) {
         continue;
       }
-      const auto& diff_flags = l->quest_flag_values->for_difficulty(difficulty);
-      const auto& diff_known_flags = l->quest_flags_known->for_difficulty(difficulty);
+      const auto& diff_flags = l->quest_flag_values->array(difficulty);
+      const auto& diff_known_flags = l->quest_flags_known->array(difficulty);
       for (uint8_t z = 0; z < diff_known_flags.data.size(); z++) {
         uint8_t known_flags = diff_known_flags.data[z];
         if (!known_flags) {

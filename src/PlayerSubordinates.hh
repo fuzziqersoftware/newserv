@@ -884,10 +884,25 @@ inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB>(
   return src;
 }
 
-struct QuestFlagsForDifficulty {
-  static const QuestFlagsForDifficulty BB_QUEST_FLAG_APPLY_MASK;
+template <size_t NumFlags>
+struct FlagsArray {
+  parray<uint8_t, (NumFlags >> 3)> data = 0;
 
-  parray<uint8_t, 0x80> data;
+  FlagsArray() = default;
+  FlagsArray(const FlagsArray& other) = default;
+  FlagsArray(FlagsArray&& other) = default;
+  FlagsArray& operator=(const FlagsArray& other) = default;
+  FlagsArray& operator=(FlagsArray&& other) = default;
+
+  FlagsArray(std::initializer_list<uint8_t> init_items) : data(init_items) {}
+
+  template <size_t OtherNumFlags>
+  explicit FlagsArray(const FlagsArray<OtherNumFlags>& other) : data(other.data) {}
+  template <size_t OtherNumFlags>
+  FlagsArray& operator=(const FlagsArray<OtherNumFlags>& other) {
+    this->data = other.data;
+    return *this;
+  }
 
   inline bool get(uint16_t flag_index) const {
     size_t byte_index = flag_index >> 3;
@@ -904,6 +919,7 @@ struct QuestFlagsForDifficulty {
     uint8_t mask = 0x80 >> (flag_index & 7);
     this->data[byte_index] &= (~mask);
   }
+
   inline void update_all(bool set) {
     if (set) {
       this->data.clear(0xFF);
@@ -911,57 +927,66 @@ struct QuestFlagsForDifficulty {
       this->data.clear(0x00);
     }
   }
-} __packed_ws__(QuestFlagsForDifficulty, 0x80);
+} __attribute__((packed));
 
-struct QuestFlags {
-  parray<QuestFlagsForDifficulty, 4> data;
+template <size_t NumFlagsPerTable, size_t NumTables, typename TableIndexT = size_t>
+struct FlagsTable {
+  parray<FlagsArray<NumFlagsPerTable>, NumTables> data;
 
-  inline QuestFlagsForDifficulty& for_difficulty(Difficulty difficulty) {
-    return this->data[static_cast<size_t>(difficulty)];
-  }
-  inline const QuestFlagsForDifficulty& for_difficulty(Difficulty difficulty) const {
-    return this->data[static_cast<size_t>(difficulty)];
+  FlagsTable() = default;
+  FlagsTable(const FlagsTable& other) = default;
+  FlagsTable(FlagsTable&& other) = default;
+  FlagsTable& operator=(const FlagsTable& other) = default;
+  FlagsTable& operator=(FlagsTable&& other) = default;
+
+  template <size_t OtherNumFlagsPerTable, size_t OtherNumTables>
+  explicit FlagsTable(const FlagsTable<OtherNumFlagsPerTable, OtherNumTables, TableIndexT>& other) : data(other.data) {}
+  template <size_t OtherNumFlagsPerTable, size_t OtherNumTables>
+  FlagsTable& operator=(const FlagsTable<OtherNumFlagsPerTable, OtherNumTables, TableIndexT>& other) {
+    this->data = other.data;
+    return *this;
   }
 
-  inline bool get(Difficulty difficulty, uint16_t flag_index) const {
-    return this->for_difficulty(difficulty).get(flag_index);
+  inline FlagsArray<NumFlagsPerTable>& array(TableIndexT which) {
+    return this->data[static_cast<size_t>(which)];
   }
-  inline void set(Difficulty difficulty, uint16_t flag_index) {
-    this->for_difficulty(difficulty).set(flag_index);
+  inline const FlagsArray<NumFlagsPerTable>& array(TableIndexT which) const {
+    return this->data[static_cast<size_t>(which)];
   }
-  inline void clear(Difficulty difficulty, uint16_t flag_index) {
-    this->for_difficulty(difficulty).clear(flag_index);
+
+  inline bool get(TableIndexT array_index, size_t flag_index) const {
+    return this->array(array_index).get(flag_index);
   }
-  inline void update_all(Difficulty difficulty, bool set) {
-    this->for_difficulty(difficulty).update_all(set);
+  inline void set(TableIndexT array_index, size_t flag_index) {
+    this->array(array_index).set(flag_index);
+  }
+  inline void clear(TableIndexT array_index, size_t flag_index) {
+    this->array(array_index).clear(flag_index);
+  }
+  inline void update_all(TableIndexT array_index, bool set) {
+    this->array(array_index).update_all(set);
   }
   inline void update_all(bool set) {
-    for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
-      this->update_all(difficulty, set);
+    for (size_t z = 0; z < this->data.size(); z++) {
+      this->update_all(z, set);
     }
   }
-} __packed_ws__(QuestFlags, 0x200);
+} __attribute__((packed));
 
-struct QuestFlagsV1 {
-  parray<QuestFlagsForDifficulty, 3> data;
+using QuestFlagsForDifficulty = FlagsArray<0x400>;
+using QuestFlagsV1 = FlagsTable<0x400, 3, Difficulty>;
+using QuestFlags = FlagsTable<0x400, 4, Difficulty>;
+using Ep3SeqVars = FlagsArray<0x2000>;
+using SwitchFlagsV1 = FlagsTable<0x100, 0x10>;
+using SwitchFlags = FlagsTable<0x100, 0x12>;
+static_assert(sizeof(QuestFlagsForDifficulty) == 0x80);
+static_assert(sizeof(QuestFlagsV1) == 0x180);
+static_assert(sizeof(QuestFlags) == 0x200);
+static_assert(sizeof(Ep3SeqVars) == 0x400);
+static_assert(sizeof(SwitchFlagsV1) == 0x200);
+static_assert(sizeof(SwitchFlags) == 0x240);
 
-  QuestFlagsV1& operator=(const QuestFlags& other);
-  operator QuestFlags() const;
-} __packed_ws__(QuestFlagsV1, 0x180);
-
-struct SwitchFlags {
-  parray<parray<uint8_t, 0x20>, 0x12> data;
-
-  inline bool get(uint8_t floor, uint16_t flag_num) const {
-    return this->data[floor][flag_num >> 3] & (0x80 >> (flag_num & 7));
-  }
-  inline void set(uint8_t floor, uint16_t flag_num) {
-    this->data[floor][flag_num >> 3] |= (0x80 >> (flag_num & 7));
-  }
-  inline void clear(uint8_t floor, uint16_t flag_num) {
-    this->data[floor][flag_num >> 3] &= ~(0x80 >> (flag_num & 7));
-  }
-} __packed_ws__(SwitchFlags, 0x240);
+extern const QuestFlagsForDifficulty BB_QUEST_FLAG_APPLY_MASK;
 
 struct BattleRules {
   enum class TechDiskMode : uint8_t {

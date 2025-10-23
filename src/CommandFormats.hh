@@ -4069,8 +4069,10 @@ struct G_SymbolChat_6x07 {
 // equal to 0x1000, so any valid enemy ID would be far outside the array's
 // range. newserv unconditionally blocks this command because it appears never
 // to be used, and the array write is not bounds-checked, so it could be used
-// to cause undefined behavior on other clients. It seems that this broken
-// logic predates even DC NTE.
+// to cause undefined behavior on other clients. It seems that this logic
+// predates even DC NTE; it's likely that this was part of the implementation
+// of enemy states before entity IDs and the standard 0xB50-entry array of
+// states were introduced.
 
 struct G_LegacyKillEnemy_6x09 {
   G_EntityIDHeader header;
@@ -4455,11 +4457,11 @@ struct G_UseMedicalCenter_6x31 {
   G_ClientIDHeader header;
 } __packed_ws__(G_UseMedicalCenter_6x31, 4);
 
-// 6x32: Revive player (Medical Center)
+// 6x32: Revive all players (Medical Center)
 
-struct G_MedicalCenterRevivePlayer_6x32 {
+struct G_MedicalCenterReviveAllPlayers_6x32 {
   G_UnusedHeader header;
-} __packed_ws__(G_MedicalCenterRevivePlayer_6x32, 4);
+} __packed_ws__(G_MedicalCenterReviveAllPlayers_6x32, 4);
 
 // 6x33: Revive player (with Moon Atomizer) (protected on V3/V4)
 
@@ -4692,7 +4694,7 @@ struct G_PlayerDied_6x4D {
   le_uint32_t death_flags = 0; // Same as 6x70's death_flags field
 } __packed_ws__(G_PlayerDied_6x4D, 8);
 
-// 6x4E: Player is dead can be revived (protected on GC NTE/V3/V4)
+// 6x4E: Player can be revived (protected on GC NTE/V3/V4)
 // This command creates the particle effect that Reverser and Moon Atomizers
 // can target.
 
@@ -4707,7 +4709,9 @@ struct G_PlayerRevived_6x4F {
 } __packed_ws__(G_PlayerRevived_6x4F, 4);
 
 // 6x50: Switch interaction (protected on V3/V4)
-// If UDP mode is enabled, this command is sent via UDP.
+// If UDP mode is enabled, this command is sent via UDP. This command doesn't
+// actually do anything with the switch; it just sets the player's animation
+// state. 6x05 is used to set the switch flag if needed.
 
 struct G_SwitchInteraction_6x50 {
   G_ClientIDHeader header;
@@ -4804,12 +4808,11 @@ struct G_PickUpItemRequest_6x5A {
 // This command has a handler, but it does nothing, even on DC NTE.
 
 // 6x5C: Destroy floor item
-// Same format as 6x63. It appears this version should not be used because it
+// Same format as 6x63. It appears this command should not be used because it
 // removes the item from the floor just like 6x63 does, but 6x5C doesn't call
 // the item's destructor.
 
 // 6x5D: Drop meseta or stacked item
-// On DC NTE, this command has the same format, but is subcommand 6x4F instead.
 
 struct G_DropStackedItem_DC_6x5D {
   G_ClientIDHeader header;
@@ -4898,10 +4901,10 @@ struct G_DestroyFloorItem_6x5C_6x63 {
 } __packed_ws__(G_DestroyFloorItem_6x5C_6x63, 0x0C);
 
 // 6x64: Unused (not valid on Episode 3)
-// This command has a handler, but it does nothing even on DC NTE.
+// This command has a handler, but it does nothing, even on DC NTE.
 
 // 6x65: Unused (not valid on Episode 3)
-// This command has a handler, but it does nothing even on DC NTE.
+// This command has a handler, but it does nothing, even on DC NTE.
 
 // 6x66: Use star atomizer
 
@@ -5057,6 +5060,9 @@ struct G_SyncSetFlagState_6x6E_Decompressed {
 } __packed_ws__(G_SyncSetFlagState_6x6E_Decompressed, 8);
 
 // 6x6F: Set quest flags (used while loading into game)
+// On Episode 3, this command sets the seq vars instead. However, the client
+// never sends this, since seq vars don't need to be synced to the entire game
+// in online play.
 
 struct G_SetQuestFlags_DCv1_6x6F {
   G_UnusedHeader header;
@@ -5067,6 +5073,11 @@ struct G_SetQuestFlags_V2_V3_6x6F {
   G_UnusedHeader header;
   QuestFlags quest_flags;
 } __packed_ws__(G_SetQuestFlags_V2_V3_6x6F, 0x204);
+
+struct G_SetSeqVars_Ep3_6x6F {
+  G_UnusedHeader header;
+  Ep3SeqVars seq_vars;
+} __packed_ws__(G_SetSeqVars_Ep3_6x6F, 0x404);
 
 struct G_SetQuestFlags_BB_6x6F {
   G_UnusedHeader header;
@@ -5248,6 +5259,7 @@ check_struct_size(G_WordSelect_6x74, 0x20);
 check_struct_size(G_WordSelectBE_6x74, 0x20);
 
 // 6x75: Update quest flag
+// This command does nothing on Episode 3.
 
 struct G_UpdateQuestFlag_DC_PC_6x75 {
   G_UnusedHeader header;
@@ -5272,6 +5284,7 @@ struct G_SetEntitySetFlags_6x76 {
 
 // 6x77: Sync quest register
 // This is sent by the client when an opcode D9 is executed within a quest.
+// This command does nothing on Episode 3.
 
 struct G_SyncQuestRegister_6x77 {
   G_UnusedHeader header;

@@ -309,22 +309,7 @@ PlayerRecordsChallengeBB::operator PlayerRecordsChallengePC() const {
   return ret;
 }
 
-QuestFlagsV1& QuestFlagsV1::operator=(const QuestFlags& other) {
-  this->data[0] = other.data[0];
-  this->data[1] = other.data[1];
-  this->data[2] = other.data[2];
-  return *this;
-}
-
-QuestFlagsV1::operator QuestFlags() const {
-  QuestFlags ret;
-  ret.data[0] = this->data[0];
-  ret.data[1] = this->data[1];
-  ret.data[2] = this->data[2];
-  return ret;
-}
-
-const QuestFlagsForDifficulty QuestFlagsForDifficulty::BB_QUEST_FLAG_APPLY_MASK{{
+const QuestFlagsForDifficulty BB_QUEST_FLAG_APPLY_MASK{{
     // clang-format off
     /* 0000 */ 0x00, 0x3F, 0xFF, 0xE3, 0xE0, 0xFF, 0xFF, 0x00,
     /* 0040 */ 0x03, 0xFF, 0xFF, 0xFF, 0xF0, 0x00, 0x00, 0x00,
