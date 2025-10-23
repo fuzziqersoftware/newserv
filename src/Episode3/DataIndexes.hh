@@ -1587,7 +1587,7 @@ private:
 
 class MapIndex {
 public:
-  MapIndex(const std::string& directory);
+  explicit MapIndex(const std::string& directory);
 
   class VersionedMap {
   public:

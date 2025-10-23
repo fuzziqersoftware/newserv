@@ -1658,7 +1658,7 @@ static asio::awaitable<HandlerResult> S_64(shared_ptr<Client> c, Channel::Messag
   c->proxy_session->is_in_lobby = false;
   c->proxy_session->is_in_game = true;
   c->proxy_session->is_in_quest = false;
-  if constexpr (sizeof(cmd) > sizeof(S_JoinGame_DCNTE_64)) {
+  if constexpr (sizeof(*cmd) > sizeof(S_JoinGame_DCNTE_64)) {
     c->proxy_session->lobby_event = cmd->event;
     c->proxy_session->lobby_difficulty = cmd->difficulty;
     c->proxy_session->lobby_section_id = cmd->section_id;
