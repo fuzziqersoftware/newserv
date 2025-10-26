@@ -26,7 +26,7 @@ start:
   .data    <VERS 0x006C8C53 0x006C8C0F>
   .data    4
   .data    1000  # slot count
-  .data    <VERS 0x006C8C8F 0x006C8C4D>
+  .data    <VERS 0x006C8C91 0x006C8C4D>
   .data    4
   .data    1000  # slot count
   .data    <VERS 0x006C8B98 0x006C8B54>
@@ -68,7 +68,7 @@ start:
   .data    <VERS 0x006C933E 0x006C92FA>
   .data    4
   .data    1000  # slot count
-  .data    <VERS 0x006C98C5 0x006C9883>
+  .data    <VERS 0x006C98C7 0x006C9883>
   .data    4
   .data    1000  # slot count
   .data    <VERS 0x006C9A66 0x006C9A22>
