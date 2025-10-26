@@ -2,6 +2,8 @@
 .meta name="CallProtectedHandler"
 .meta description=""
 
+.versions 59NJ 59NL
+
 entry_ptr:
 reloc0:
   .offsetof start
@@ -29,8 +31,8 @@ resume:
 get_data_addr:
   call   resume
 
-  .data  0x00AAECF0  # should_allow_protected_commands
-  .data  0x00800860  # RcvPsoData2(void* data @ stack, uint32_t size @ stack)
+  .data  <VERS 0x00AAC870 0x00AAECF0>  # should_allow_protected_commands
+  .data  <VERS 0x008015D0 0x00800860>  # RcvPsoData2[std](void* data @ [esp + 4], uint32_t size @ [esp + 8])
 size:
   .data  0x00000000
 data:
