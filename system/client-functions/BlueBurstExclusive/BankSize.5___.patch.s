@@ -14,6 +14,8 @@
 .meta description=""
 .meta hide_from_patches_menu
 
+.versions 59NJ 59NL
+
 entry_ptr:
 reloc0:
   .offsetof start
@@ -21,80 +23,80 @@ reloc0:
 start:
   .include WriteCodeBlocksBB
 
-  .data    0x006C8C0F
+  .data    <VERS 0x006C8C53 0x006C8C0F>
   .data    4
   .data    1000  # slot count
-  .data    0x006C8C4D
+  .data    <VERS 0x006C8C8F 0x006C8C4D>
   .data    4
   .data    1000  # slot count
-  .data    0x006C8B54
+  .data    <VERS 0x006C8B98 0x006C8B54>
   .data    4
   .data    999  # slot count - 1
-  .data    0x006C8B94
+  .data    <VERS 0x006C8BD8 0x006C8B94>
   .data    4
   .data    0x5DC0  # data size - 8
-  .data    0x006C8D16
+  .data    <VERS 0x006C8D5A 0x006C8D16>
   .data    4
   .data    999  # slot count - 1
-  .data    0x006C8E5E
+  .data    <VERS 0x006C8EA2 0x006C8E5E>
   .data    4
   .data    999  # slot count - 1
-  .data    0x006C8F2C
+  .data    <VERS 0x006C8F70 0x006C8F2C>
   .data    4
   .data    999  # slot count - 1
-  .data    0x006C9016
+  .data    <VERS 0x006C905A 0x006C9016>
   .data    4
   .data    0x5DB0  # data size - 0x18
-  .data    0x006C9034
+  .data    <VERS 0x006C9078 0x006C9034>
   .data    4
   .data    0x5DC0  # data size - 8
-  .data    0x006C910D
+  .data    <VERS 0x006C9151 0x006C910D>
   .data    4
   .data    0x5DB0  # data size - 0x18
-  .data    0x006C9129
+  .data    <VERS 0x006C916D 0x006C9129>
   .data    4
   .data    0x5DC8  # data size
-  .data    0x006C9236
+  .data    <VERS 0x006C927A 0x006C9236>
   .data    4
   .data    1000  # slot count
-  .data    0x006C924C
+  .data    <VERS 0x006C9290 0x006C924C>
   .data    4
   .data    999  # slot count - 1
-  .data    0x006C9286
+  .data    <VERS 0x006C92CA 0x006C9286>
   .data    4
   .data    999  # slot count - 1
-  .data    0x006C92FA
+  .data    <VERS 0x006C933E 0x006C92FA>
   .data    4
   .data    1000  # slot count
-  .data    0x006C9883
+  .data    <VERS 0x006C98C5 0x006C9883>
   .data    4
   .data    1000  # slot count
-  .data    0x006C9A22
+  .data    <VERS 0x006C9A66 0x006C9A22>
   .data    4
   .data    2000000000  # max meseta
-  .data    0x006CA2DB
+  .data    <VERS 0x006CA31F 0x006CA2DB>
   .data    4
   .data    0x5DC8  # data size
-  .data    0x006CA303
+  .data    <VERS 0x006CA347 0x006CA303>
   .data    4
   .data    1000  # slot count
-  .data    0x006CA37F
+  .data    <VERS 0x006CA3C3 0x006CA37F>
   .data    4
   .data    0x5DC8  # data size
-  .data    0x006D7DAC
+  .data    <VERS 0x006D7DC4 0x006D7DAC>
   .data    4
   .data    1000  # slot count
-  .data    0x006D7DBD
+  .data    <VERS 0x006D7DD5 0x006D7DBD>
   .data    4
   .data    1000  # slot count
-  .data    0x006D7E14
+  .data    <VERS 0x006D7E2C 0x006D7E14>
   .data    4
   .data    1000  # slot count
-  .data    0x006D7BF5
+  .data    <VERS 0x006D7C0D 0x006D7BF5>
   .data    4
   .data    1000  # slot count
 
-  .data    0x006C8DBF
+  .data    <VERS 0x006C8E03 0x006C8DBF>
   .data    2
   jmp      +0x27
 
