@@ -12,7 +12,7 @@ write_call_to_code:
   # [esp + 0x18] = code size
   # [esp + 0x1C] = callsite count
   # [esp + 0x20] = callsite address
-  # [esp + 0x24] = callsite size
+  # [esp + 0x24] = callsite size (if zero, write absolute address instead)
   # ... (further callsite address/size pairs)
   # esi = allocated code addr
   # edi = version_info
@@ -55,21 +55,32 @@ next_callsite:
   call      [ecx]  # MmQueryAddressProtect(callsite_addr)
   push      eax
 
-  push      0x04
-  push      dword [esp + ebp + 0x0C]
+  mov       edx, 4
+  push      edx  # XBOX_PAGE_READWRITE
+  mov       ecx, [esp + ebp + 0x0C]  # callsite_size
+  test      ecx, ecx
+  cmovz     ecx, edx
+  push      ecx
   push      dword [esp + ebp + 0x0C]
   mov       ecx, [edi + 0x08]
   call      [ecx]  # MmSetAddressProtect(callsite_addr, callsite_size, XBOX_PAGE_READWRITE)
 
-  mov       edx, [esp + ebp + 4]  # edx = jump callsite
+  mov       edx, [esp + ebp + 4]  # edx = callsite addr
+  mov       eax, [esp + ebp + 8]  # eax = callsite size
+  test      eax, eax
+  jnz       write_call_opcode_and_nops
+write_address:
+  mov       [edx], esi
+  jmp       this_callsite_done
+
+write_call_opcode_and_nops:
   lea       ecx, [esi - 5]
-  sub       ecx, edx  # ecx = (dest code addr) - (jump callsite) - 5
+  sub       ecx, edx  # ecx = (dest code addr) - (callsite addr) - 5
   mov       byte [edx], 0xE8
   mov       [edx + 1], ecx  # Write E8 (call) followed by delta
 
   # Write as many nops after the call opcode as necessary
   mov       ecx, 5
-  mov       eax, [esp + ebp + 8]
 write_nop_again:
   cmp       ecx, eax
   jge       this_callsite_done
@@ -80,7 +91,11 @@ write_nop_again:
 this_callsite_done:
   # Restore the previous protection
   # Previous protection is still on the stack from MmQueryAddressProtect call
-  push      dword [esp + ebp + 8]
+  mov       edx, 4
+  mov       ecx, [esp + ebp + 8]
+  test      ecx, ecx
+  cmovz     ecx, edx
+  push      ecx
   push      dword [esp + ebp + 8]
   mov       ecx, [edi + 0x08]
   call      [ecx]  # MmSetAddressProtect(callsite_addr, callsite_size, prev_protection)

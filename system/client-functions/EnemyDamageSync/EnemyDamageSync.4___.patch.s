@@ -17,7 +17,137 @@ start:
   call      write_static_patches
   call      write_incr_hp_with_sync
   call      write_6x0A_patch
+  call      write_6xE4_handler
   ret
+
+
+
+call_write_call_to_code:
+  call      write_call_to_code_multi
+  ret
+
+
+
+write_6xE4_handler:
+  push      0  # Absolute address, not call opcode
+  push      <VERS 0x00537184 0x00537804 0x0053EB24 0x0053BFA4 0x0053B844 0x0053BFA4 0x0053C344>
+  push      1
+  call      +4
+  .deltaof  handle_6xE4, handle_6xE4_end
+  pop       eax
+  push      dword [eax]
+  call      call_write_call_to_code
+
+handle_6xE4:  # [std] (G_6xE4* cmd @ [esp + 4]) -> void
+  push      ebx
+  push      esi
+  push      edi
+
+  test      byte [<VERS 0x00630590 0x00630BF0 0x00638738 0x00635C20 0x006354B8 0x00635C20 0x00635FB8>], 0x80
+  jz        handle_6xE4_return
+  mov       ebx, [esp + 0x10]  # cmd
+  movzx     eax, word [ebx + 2]
+  cmp       eax, 0x1000
+  jl        handle_6xE4_return
+  cmp       eax, 0x1B50
+  jge       handle_6xE4_return
+
+  mov       edi, eax
+  mov       eax, <VERS 0x002B36B0 0x002B4180 0x002B5710 0x002B5220 0x002B5400 0x002B5240 0x002B5510>
+  call      eax  # TObjEnemy* ene = get_enemy_entity(cmd->header.entity_id);
+  push      eax
+
+  movzx     eax, word [ebx + 2]
+  and       eax, 0x0FFF
+  imul      eax, eax, 0x0C
+  add       eax, [<VERS 0x00633068 0x006336C8 0x0063B210 0x006386F8 0x00637F90 0x006386F8 0x00638A90>]  # eax = state_for_enemy(cmd->header.entity_id)
+
+  cmp       dword [ebx + 0x0C], 0
+  jl        handle_6xE4_not_proportional
+  mov       cx, [ebx + 0x0A]  # cmd->max_hp
+  sub       cx, [eax + 0x06]  # st.total_damage
+  movzx     ecx, cx
+  xor       edx, edx
+  cmp       ecx, edx
+  cmovl     ecx, edx
+  push      ecx
+  fild      st0, dword [esp]  # current_hp = static_cast<float>(max<int32_t>(cmd->max_hp - st.total_damage, 0))
+  fld       st0, dword [ebx + 0x0C]
+  fmulp     st1, st0
+  fistp     dword [esp], st0
+  mov       ecx, dword [esp]  # adjusted_hit_amount = static_cast<int16_t>(current_hp * cmd->factor)
+  add       esp, 4
+  xor       edx, edx
+  inc       edx
+  cmp       ecx, edx
+  cmovl     ecx, edx
+  mov       [ebx + 0x04], cx  # cmd->hit_amount = min<int32_t>(1, adjusted_hit_amount)
+handle_6xE4_not_proportional:
+
+  movzx     edx, word [eax + 0x06]  # st.total_damage
+  movsx     esi, word [ebx + 0x04]  # cmd->hit_amount
+  movzx     edi, word [ebx + 0x0A]  # cmd->max_hp
+  add       edx, esi  # st.total_damage + cmd->hit_amount
+  cmp       edx, edi
+  jl        handle_6xE4_damage_less_than_max_hp
+  mov       [eax + 0x06], di  # st.total_damage = cmd->max_hp;
+  mov       edx, [eax]
+  test      edx, 0x800
+  jnz       handle_6xE4_return_pop_ene
+  or        edx, 0x800
+  mov       [eax], edx
+
+  cmp       dword [esp], 0
+  je        handle_6xE4_return_pop_ene
+  push      edx  # out_cmd.flags
+  sub       esp, 8
+  mov       word [esp], 0x030A  # out_cmd.header.{subcommand,size}
+  mov       si, [ebx + 2]
+  mov       [esp + 2], si  # out_cmd.header.entity_id
+  and       si, 0x0FFF
+  mov       [esp + 4], si  # out_cmd.entity_index
+  mov       [esp + 6], di  # out_cmd.total_damage
+
+  mov       ecx, esp
+  push      ecx  # For handle_60 later
+  mov       ebx, [<VERS 0x0071EEFC 0x0071F55C 0x007270A0 0x0072459C 0x00723E20 0x0072459C 0x00724920>]  # root_protocol
+  test      ebx, ebx
+  jz        handle_6xE4_root_protocol_missing
+  mov       eax, 0x0C
+  mov       edx, <VERS 0x002DA120 0x002DACF0 0x002DC5B0 0x002DC080 0x002DC580 0x002DC0B0 0x002DC600>
+  call      edx  # send_60(root_protocol, &out_cmd, sizeof(out_cmd))
+handle_6xE4_root_protocol_missing:
+  mov       dword [<VERS 0x0071E8C8 0x0071EF28 0x00726A68 0x00723F68 0x007237E8 0x00723F68 0x007242E8>], 1
+  mov       eax, <VERS 0x002DBC30 0x002DC7B0 0x002DE070 0x002DDB90 0x002DE090 0x002DDBC0 0x002DE0C0>
+  call      eax  # handle_60(&out_cmd)
+  mov       dword [<VERS 0x0071E8C8 0x0071EF28 0x00726A68 0x00723F68 0x007237E8 0x00723F68 0x007242E8>], 0
+
+  add       esp, 0x14
+  jmp       handle_6xE4_return
+
+handle_6xE4_damage_less_than_max_hp:
+  xor       edi, edi
+  cmp       edx, edx
+  cmovl     edx, edi
+  mov       [eax + 0x06], dx  # st.total_damage = std::max<int16_t>(st.total_damage + cmd->hit_amount, 0);
+
+  mov       esi, eax  # esi = ene_st
+  mov       eax, [esp]  # eax = ene
+  test      eax, eax
+  jz        handle_6xE4_return_pop_ene
+  mov       ecx, eax
+  push      esi
+  mov       edx, [ecx]
+  call      [edx + 0x138]  # ene->vtable[0x4E](ene, &st);
+
+handle_6xE4_return_pop_ene:
+  add       esp, 4
+handle_6xE4_return:
+  pop       edi
+  pop       esi
+  pop       ebx
+  ret
+handle_6xE4_end:
 
 
 
@@ -29,7 +159,7 @@ write_6x0A_patch:
   .deltaof  on_6x0A_patch_start, on_6x0A_patch_end
   pop       eax
   push      dword [eax]
-  call      on_6x0A_patch_end
+  call      call_write_call_to_code
 
 on_6x0A_patch_start:  # (TObjectV004434c8* this @ eax, int16_t amount @ cx) -> bool @ eax
   test      byte [<VERS 0x00630590 0x00630BF0 0x00638738 0x00635C20 0x006354B8 0x00635C20 0x00635FB8>], 0x80
@@ -37,11 +167,7 @@ on_6x0A_patch_start:  # (TObjectV004434c8* this @ eax, int16_t amount @ cx) -> b
   mov       [esp + 0x16], ax
 on_6x0A_patch_skip_write:
   ret
-
 on_6x0A_patch_end:
-  call      write_call_to_code_multi
-  ret
-
 
 
   # Write TObjectV004434c8::incr_hp_with_sync
@@ -81,7 +207,7 @@ write_incr_hp_with_sync:
   .deltaof  on_add_or_subtract_hp_start, on_add_or_subtract_hp_end
   pop       eax
   push      dword [eax]
-  call      on_add_or_subtract_hp_end
+  call      call_write_call_to_code
 
 on_add_or_subtract_hp_start:  # (TObjectV004434c8* this @ eax, int16_t amount @ cx) -> bool @ eax
   # Check if callsite is subtract_hp_if_not_in_state_2
@@ -153,15 +279,14 @@ on_add_or_subtract_hp_skip_send:
   pop       ecx
   pop       eax
   jmp       edx
-
 on_add_or_subtract_hp_end:
-  call      write_call_to_code_multi
-  ret
 
 
 
 write_static_patches:
   .include WriteCodeBlocksXB
+
+
 
   .data     <VERS 0x002DB7A0 0x002DC370 0x002DDC30 0x002DD700 0x002DDC00 0x002DD730 0x002DDC80>
   .data     9
@@ -170,123 +295,13 @@ flag_check_start:
   jz        +0x38
 flag_check_end:
 
+
+
+  # Replace 6x09 handler with 6xE4
   .data     <VERS 0x00537180 0x00537800 0x0053EB20 0x0053BFA0 0x0053B840 0x0053BFA0 0x0053C340>
-  .data     8
+  .data     4
   .data     0x000600E4  # subcommand=0xE4, flags=6
-  .addrof   handle_6xE4
-
-  .data     <VERS 0x002DA510 0x002DB0E0 0x002DC9A0 0x002DC470 0x002DC970 0x002DC4A0 0x002DC9F0>
-  .deltaof  handle_91_replacement, handle_6xE4_end
-  .address  <VERS 0x002DA510 0x002DB0E0 0x002DC9A0 0x002DC470 0x002DC970 0x002DC4A0 0x002DC9F0>
-handle_91_replacement:  # [std] (S_91* cmd @ [esp + 4]) -> void
-  ret       4
-handle_6xE4:  # [std] (G_6xE4* cmd @ [esp + 4]) -> void
-  push      ebx
-  push      esi
-  push      edi
-
-  test      byte [<VERS 0x00630590 0x00630BF0 0x00638738 0x00635C20 0x006354B8 0x00635C20 0x00635FB8>], 0x80
-  jz        handle_6xE4_return
-  mov       ebx, [esp + 0x10]  # cmd
-  movzx     eax, word [ebx + 2]
-  cmp       eax, 0x1000
-  jl        handle_6xE4_return
-  cmp       eax, 0x1B50
-  jge       handle_6xE4_return
-
-  mov       edi, eax
-  call      <VERS 0x002B36B0 0x002B4180 0x002B5710 0x002B5220 0x002B5400 0x002B5240 0x002B5510>  # TObjEnemy* ene = get_enemy_entity(cmd->header.entity_id);
-  push      eax
-
-  movzx     eax, word [ebx + 2]
-  and       eax, 0x0FFF
-  imul      eax, eax, 0x0C
-  add       eax, [<VERS 0x00633068 0x006336C8 0x0063B210 0x006386F8 0x00637F90 0x006386F8 0x00638A90>]  # eax = state_for_enemy(cmd->header.entity_id)
-
-  cmp       dword [ebx + 0x0C], 0
-  jl        handle_6xE4_not_proportional
-  mov       cx, [ebx + 0x0A]  # cmd->max_hp
-  sub       cx, [eax + 0x06]  # st.total_damage
-  movzx     ecx, cx
-  xor       edx, edx
-  cmp       ecx, edx
-  cmovl     ecx, edx
-  push      ecx
-  fild      st0, dword [esp]  # current_hp = static_cast<float>(max<int32_t>(cmd->max_hp - st.total_damage, 0))
-  fld       st0, dword [ebx + 0x0C]
-  fmulp     st1, st0
-  fistp     dword [esp], st0
-  mov       ecx, dword [esp]  # adjusted_hit_amount = static_cast<int16_t>(current_hp * cmd->factor)
-  add       esp, 4
-  xor       edx, edx
-  inc       edx
-  cmp       ecx, edx
-  cmovl     ecx, edx
-  mov       [ebx + 0x04], cx  # cmd->hit_amount = min<int32_t>(1, adjusted_hit_amount)
-handle_6xE4_not_proportional:
-
-  movzx     edx, word [eax + 0x06]  # st.total_damage
-  movsx     esi, word [ebx + 0x04]  # cmd->hit_amount
-  movzx     edi, word [ebx + 0x0A]  # cmd->max_hp
-  add       edx, esi  # st.total_damage + cmd->hit_amount
-  cmp       edx, edi
-  jl        handle_6xE4_damage_less_than_max_hp
-  mov       [eax + 0x06], di  # st.total_damage = cmd->max_hp;
-  mov       edx, [eax]
-  test      edx, 0x800
-  jnz       handle_6xE4_return_pop_ene
-  or        edx, 0x800
-  mov       [eax], edx
-
-  cmp       dword [esp], 0
-  je        handle_6xE4_return_pop_ene
-  push      edx  # out_cmd.flags
-  sub       esp, 8
-  mov       word [esp], 0x030A  # out_cmd.header.{subcommand,size}
-  mov       si, [ebx + 2]
-  mov       [esp + 2], si  # out_cmd.header.entity_id
-  and       si, 0x0FFF
-  mov       [esp + 4], si  # out_cmd.entity_index
-  mov       [esp + 6], di  # out_cmd.total_damage
-
-  mov       ecx, esp
-  push      ecx  # For handle_60 later
-  mov       ebx, [<VERS 0x0071EEFC 0x0071F55C 0x007270A0 0x0072459C 0x00723E20 0x0072459C 0x00724920>]  # root_protocol
-  test      ebx, ebx
-  jz        handle_6xE4_root_protocol_missing
-  mov       eax, 0x0C
-  call      <VERS 0x002DA120 0x002DACF0 0x002DC5B0 0x002DC080 0x002DC580 0x002DC0B0 0x002DC600>  # send_60(root_protocol, &out_cmd, sizeof(out_cmd))
-handle_6xE4_root_protocol_missing:
-  mov       dword [<VERS 0x0071E8C8 0x0071EF28 0x00726A68 0x00723F68 0x007237E8 0x00723F68 0x007242E8>], 1
-  call      <VERS 0x002DBC30 0x002DC7B0 0x002DE070 0x002DDB90 0x002DE090 0x002DDBC0 0x002DE0C0>  # handle_60(&out_cmd)
-  mov       dword [<VERS 0x0071E8C8 0x0071EF28 0x00726A68 0x00723F68 0x007237E8 0x00723F68 0x007242E8>], 0
-
-  add       esp, 0x14
-  jmp       handle_6xE4_return
-
-handle_6xE4_damage_less_than_max_hp:
-  xor       edi, edi
-  cmp       edx, edx
-  cmovl     edx, edi
-  mov       [eax + 0x06], dx  # st.total_damage = std::max<int16_t>(st.total_damage + cmd->hit_amount, 0);
-
-  mov       esi, eax  # esi = ene_st
-  mov       eax, [esp]  # eax = ene
-  test      eax, eax
-  jz        handle_6xE4_return_pop_ene
-  mov       ecx, eax
-  push      esi
-  mov       edx, [ecx]
-  call      [edx + 0x138]  # ene->vtable[0x4E](ene, &st);
-
-handle_6xE4_return_pop_ene:
-  add       esp, 4
-handle_6xE4_return:
-  pop       edi
-  pop       esi
-  pop       ebx
-  ret
-handle_6xE4_end:
+  # Handler address written by write_6xE4_handler
 
 
 
