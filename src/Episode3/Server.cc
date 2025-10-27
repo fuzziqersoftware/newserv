@@ -2527,7 +2527,7 @@ void Server::handle_CAx40_map_list_request(shared_ptr<Client> sender_c, const st
 
   size_t num_players = l ? l->count_clients() : 1;
   Language language = sender_c ? sender_c->language() : Language::ENGLISH;
-  const auto& list_data = this->options.map_index->get_compressed_list(num_players, language);
+  const auto& list_data = this->options.map_index->get_compressed_list(num_players, language, this->options.is_nte());
 
   phosg::StringWriter w;
   uint32_t subcommand_size = (list_data.size() + sizeof(G_MapList_Ep3_6xB6x40) + 3) & (~3);
@@ -2596,7 +2596,7 @@ void Server::handle_CAx41_map_request(shared_ptr<Client>, const string& data) {
   const auto& cmd = check_size_t<G_MapDataRequest_Ep3_CAx41>(data);
   this->send_debug_command_received_message(cmd.header.subsubcommand, "MAP DATA");
   if (!this->options.tournament || (this->options.tournament->get_map()->map_number == cmd.map_number)) {
-    this->last_chosen_map = this->options.map_index->get(cmd.map_number);
+    this->last_chosen_map = this->options.map_index->map_for_id(cmd.map_number);
     this->send_6xB6x41_to_all_clients();
   }
 }

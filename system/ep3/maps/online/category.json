@@ -1,0 +1,19 @@
+{
+  // VisibilityFlags is a bit field specifying where this category appears in
+  // the game. The bits are:
+  //   0x01: Appears in the online quest list for Trial Edition
+  //   0x02: Appears in the online quest list for all other versions
+  //   0x04: Appears in the download quest list for Trial Edition
+  //   0x08: Appears in the download quest list for all other versions
+  // For the online quest list, all categories are aggregated into one, since
+  // the game has no way to separate quests into categories at the battle setup
+  // counter.
+  "VisibilityFlags": 0x03,
+
+  // The category's name. This is only used for download categories.
+  "Name": "Online quests",
+
+  // The category's description. This appears in the small window under the
+  // categories menu.
+  "Description": "Maps and quests to be played online",
+}

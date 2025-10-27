@@ -1674,20 +1674,6 @@ void send_quest_menu_bb(
   send_command_vt(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
 }
 
-void send_ep3_download_quest_menu(shared_ptr<Client> c) {
-  auto s = c->require_server_state();
-  vector<S_QuestMenuEntry_DC_GC_A2_A4> entries;
-  for (const auto& it : s->ep3_download_map_index->all()) {
-    auto vm = it.second->version(c->language());
-    auto& e = entries.emplace_back();
-    e.menu_id = MenuID::QUEST_EP3;
-    e.item_id = it.first; // map_number
-    e.name.encode(vm->map->name.decode(vm->language), c->language());
-    e.short_description.encode(add_color(vm->map->location_name.decode(vm->language)), c->language());
-  }
-  send_command_vt(c, 0xA4, entries.size(), entries);
-}
-
 template <typename EntryT>
 void send_quest_categories_menu_t(shared_ptr<Client> c, QuestMenuType menu_type, Episode episode) {
   QuestIndex::IncludeCondition include_condition = nullptr;
@@ -1706,7 +1692,7 @@ void send_quest_categories_menu_t(shared_ptr<Client> c, QuestMenuType menu_type,
   auto s = c->require_server_state();
   for (const auto& cat : s->quest_index->categories(menu_type, episode, version_flags, include_condition)) {
     auto& e = entries.emplace_back();
-    e.menu_id = cat->use_ep2_icon() ? MenuID::QUEST_CATEGORIES_EP2 : MenuID::QUEST_CATEGORIES_EP1;
+    e.menu_id = cat->use_ep2_icon() ? MenuID::QUEST_CATEGORIES_EP2 : MenuID::QUEST_CATEGORIES_EP1_EP3_EP4;
     e.item_id = cat->category_id;
     e.name.encode(cat->name, c->language());
     e.short_description.encode(add_color(cat->description), c->language());
@@ -1714,6 +1700,58 @@ void send_quest_categories_menu_t(shared_ptr<Client> c, QuestMenuType menu_type,
 
   bool is_download_menu = (menu_type == QuestMenuType::DOWNLOAD);
   send_command_vt(c, is_download_menu ? 0xA4 : 0xA2, entries.size(), entries);
+}
+
+void send_ep3_download_quest_categories_menu(shared_ptr<Client> c) {
+  if (c->lobby.lock()) {
+    throw std::runtime_error("cannot send Ep3 download quest menu to client in a lobby");
+  }
+
+  auto vis_flag = (c->version() == Version::GC_EP3_NTE)
+      ? Episode3::MapIndex::VisibilityFlag::DOWNLOAD_TRIAL
+      : Episode3::MapIndex::VisibilityFlag::DOWNLOAD_FINAL;
+
+  vector<S_QuestMenuEntry_DC_GC_A2_A4> entries;
+  auto s = c->require_server_state();
+  for (const auto& [_, cat] : s->ep3_map_index->all_categories()) {
+    if (cat->check_visibility_flag(vis_flag)) {
+      auto& e = entries.emplace_back();
+      e.menu_id = MenuID::QUEST_CATEGORIES_EP1_EP3_EP4;
+      e.item_id = cat->category_id;
+      e.name.encode(cat->name, c->language());
+      e.short_description.encode(add_color(cat->description), c->language());
+    }
+  }
+
+  send_command_vt(c, 0xA4, entries.size(), entries);
+}
+
+void send_ep3_download_quest_menu(shared_ptr<Client> c, uint32_t category_id) {
+  if (c->lobby.lock()) {
+    throw std::runtime_error("cannot send Ep3 download quest menu to client in a lobby");
+  }
+
+  auto vis_flag = (c->version() == Version::GC_EP3_NTE)
+      ? Episode3::MapIndex::VisibilityFlag::ONLINE_TRIAL
+      : Episode3::MapIndex::VisibilityFlag::ONLINE_FINAL;
+
+  auto s = c->require_server_state();
+  auto category = s->ep3_map_index->category_for_id(category_id);
+  if (!category->check_visibility_flag(vis_flag)) {
+    throw std::runtime_error("category is not visible to this client");
+  }
+
+  vector<S_QuestMenuEntry_DC_GC_A2_A4> entries;
+  for (const auto& [map_number, map] : category->all_maps()) {
+    auto vm = map->version(c->language());
+    auto& e = entries.emplace_back();
+    e.menu_id = MenuID::QUEST_EP3;
+    e.item_id = map_number;
+    e.name.encode(vm->map->name.decode(vm->language), c->language());
+    e.short_description.encode(add_color(vm->map->location_name.decode(vm->language)), c->language());
+  }
+
+  send_command_vt(c, 0xA4, entries.size(), entries);
 }
 
 void send_quest_menu(
@@ -1731,10 +1769,11 @@ void send_quest_menu(
     case Version::DC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
-    case Version::GC_EP3_NTE:
-    case Version::GC_EP3:
       send_quest_menu_t<S_QuestMenuEntry_DC_GC_A2_A4>(c, quests, is_download_menu);
       break;
+    case Version::GC_EP3_NTE:
+    case Version::GC_EP3:
+      throw std::logic_error("Episode 3 clients cannot receive a non-download quest menu");
     case Version::XB_V3:
       send_quest_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, quests, is_download_menu);
       break;
@@ -1758,9 +1797,14 @@ void send_quest_categories_menu(shared_ptr<Client> c, QuestMenuType menu_type, E
     case Version::DC_V2:
     case Version::GC_NTE:
     case Version::GC_V3:
+      send_quest_categories_menu_t<S_QuestMenuEntry_DC_GC_A2_A4>(c, menu_type, episode);
+      break;
     case Version::GC_EP3_NTE:
     case Version::GC_EP3:
-      send_quest_categories_menu_t<S_QuestMenuEntry_DC_GC_A2_A4>(c, menu_type, episode);
+      if (menu_type != QuestMenuType::DOWNLOAD) {
+        throw std::runtime_error("Episode 3 clients cannot receive a non-download quest menu");
+      }
+      send_ep3_download_quest_categories_menu(c);
       break;
     case Version::XB_V3:
       send_quest_categories_menu_t<S_QuestMenuEntry_XB_A2_A4>(c, menu_type, episode);

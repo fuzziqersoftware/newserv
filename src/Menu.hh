@@ -24,7 +24,7 @@ constexpr uint32_t QUEST_EP2 = 0x55020255;
 constexpr uint32_t QUEST_EP3 = 0x55030355;
 // See the decsription of the A2 command in CommandFormats.hh for why these
 // menu IDs don't fit the rest of the pattern.
-constexpr uint32_t QUEST_CATEGORIES_EP1 = 0x01000001;
+constexpr uint32_t QUEST_CATEGORIES_EP1_EP3_EP4 = 0x01000001;
 constexpr uint32_t QUEST_CATEGORIES_EP2 = 0x02000002;
 constexpr uint32_t PROXY_DESTINATIONS = 0x77000077;
 constexpr uint32_t PROGRAMS = 0x88000088;

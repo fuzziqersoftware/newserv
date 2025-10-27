@@ -2146,11 +2146,9 @@ void ServerState::load_ep3_cards() {
   this->ep3_com_deck_index = make_shared<Episode3::COMDeckIndex>("system/ep3/com-decks.json");
 }
 
-void ServerState::load_ep3_maps() {
+void ServerState::load_ep3_maps(bool raise_on_any_failure) {
   config_log.info_f("Collecting Episode 3 maps");
-  this->ep3_map_index = make_shared<Episode3::MapIndex>("system/ep3/maps");
-  config_log.info_f("Collecting Episode 3 download maps");
-  this->ep3_download_map_index = make_shared<Episode3::MapIndex>("system/ep3/maps-download");
+  this->ep3_map_index = make_shared<Episode3::MapIndex>("system/ep3/maps", raise_on_any_failure);
 }
 
 void ServerState::load_ep3_tournament_state() {

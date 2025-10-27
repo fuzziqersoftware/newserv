@@ -357,7 +357,7 @@ void Tournament::init() {
   bool is_registration_complete;
   if (!this->source_json.is_null()) {
     this->name = this->source_json.get_string("name");
-    this->map = this->map_index->get(this->source_json.get_int("map_number"));
+    this->map = this->map_index->map_for_id(this->source_json.get_int("map_number"));
     this->rules = Rules(this->source_json.at("rules"));
     this->flags = this->source_json.get_int("flags", 0x02);
     if (this->source_json.get_bool("is_2v2", false)) {

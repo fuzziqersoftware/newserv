@@ -183,7 +183,6 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const Episode3::CardIndex> ep3_card_index;
   std::shared_ptr<const Episode3::CardIndex> ep3_card_index_trial;
   std::shared_ptr<const Episode3::MapIndex> ep3_map_index;
-  std::shared_ptr<const Episode3::MapIndex> ep3_download_map_index;
   std::shared_ptr<const Episode3::COMDeckIndex> ep3_com_deck_index;
   std::shared_ptr<const G_SetEXResultValues_Ep3_6xB4x4B> ep3_default_ex_values;
   std::shared_ptr<const G_SetEXResultValues_Ep3_6xB4x4B> ep3_tournament_ex_values;
@@ -438,7 +437,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void load_set_data_tables();
   void load_word_select_table();
   void load_ep3_cards();
-  void load_ep3_maps();
+  void load_ep3_maps(bool raise_on_any_failure = false);
   void load_ep3_tournament_state();
   void load_quest_index(bool raise_on_any_failure = false);
   void compile_functions(bool raise_on_any_failure = false);

@@ -2152,7 +2152,7 @@ static asio::awaitable<void> on_09(shared_ptr<Client> c, Channel::Message& msg) 
   auto s = c->require_server_state();
 
   switch (cmd.menu_id) {
-    case MenuID::QUEST_CATEGORIES_EP1:
+    case MenuID::QUEST_CATEGORIES_EP1_EP3_EP4:
     case MenuID::QUEST_CATEGORIES_EP2:
       // Don't send anything here. The quest filter menu already has short
       // descriptions included with the entries, which the client shows in the
@@ -2179,8 +2179,12 @@ static asio::awaitable<void> on_09(shared_ptr<Client> c, Channel::Message& msg) 
       break;
     }
     case MenuID::QUEST_EP3: {
-      auto map = s->ep3_download_map_index->get(cmd.item_id);
-      if (!map) {
+      auto vis_flag = (c->version() == Version::GC_EP3_NTE)
+          ? Episode3::MapIndex::VisibilityFlag::ONLINE_TRIAL
+          : Episode3::MapIndex::VisibilityFlag::ONLINE_FINAL;
+
+      auto map = s->ep3_map_index->map_for_id(cmd.item_id);
+      if (!map || !map->check_visibility_flag(vis_flag)) {
         send_quest_info(c, "$C4Map does not exist.", 0x00, true);
       } else {
         auto vm = map->version(c->language());
@@ -2557,11 +2561,7 @@ static asio::awaitable<void> on_10_main_menu(shared_ptr<Client> c, uint32_t item
       break;
 
     case MainMenuItemID::DOWNLOAD_QUESTS: {
-      if (is_ep3(c->version())) {
-        send_ep3_download_quest_menu(c);
-      } else {
-        send_quest_categories_menu(c, QuestMenuType::DOWNLOAD, Episode::NONE);
-      }
+      send_quest_categories_menu(c, QuestMenuType::DOWNLOAD, Episode::NONE);
       break;
     }
 
@@ -2811,27 +2811,32 @@ static asio::awaitable<void> on_10_game_menu(shared_ptr<Client> c, uint32_t item
 }
 
 static asio::awaitable<void> on_10_quest_categories(shared_ptr<Client> c, uint32_t item_id) {
-  // Episode 3 doesn't have this menu
   if (is_ep3(c->version())) {
-    throw runtime_error("Episode 3 client made selection on quest categories menu");
-  }
+    auto s = c->require_server_state();
+    if (!s->ep3_map_index) {
+      send_lobby_message_box(c, "$C7Quests are not available.");
+      co_return;
+    }
+    send_ep3_download_quest_menu(c, item_id);
 
-  auto s = c->require_server_state();
-  if (!s->quest_index) {
-    send_lobby_message_box(c, "$C7Quests are not available.");
-    co_return;
-  }
+  } else {
+    auto s = c->require_server_state();
+    if (!s->quest_index) {
+      send_lobby_message_box(c, "$C7Quests are not available.");
+      co_return;
+    }
 
-  shared_ptr<Lobby> l = c->lobby.lock();
-  Episode episode = l ? l->episode : Episode::NONE;
-  uint16_t version_flags = (1 << static_cast<size_t>(c->version())) | (l ? l->quest_version_flags() : 0);
-  QuestIndex::IncludeCondition include_condition = nullptr;
-  if (l && !c->login->account->check_flag(Account::Flag::DISABLE_QUEST_REQUIREMENTS)) {
-    include_condition = l->quest_include_condition();
-  }
+    shared_ptr<Lobby> l = c->lobby.lock();
+    Episode episode = l ? l->episode : Episode::NONE;
+    uint16_t version_flags = (1 << static_cast<size_t>(c->version())) | (l ? l->quest_version_flags() : 0);
+    QuestIndex::IncludeCondition include_condition = nullptr;
+    if (l && !c->login->account->check_flag(Account::Flag::DISABLE_QUEST_REQUIREMENTS)) {
+      include_condition = l->quest_include_condition();
+    }
 
-  const auto& quests = s->quest_index->filter(episode, version_flags, item_id, include_condition);
-  send_quest_menu(c, quests, !l);
+    const auto& quests = s->quest_index->filter(episode, version_flags, item_id, include_condition);
+    send_quest_menu(c, quests, !l);
+  }
 }
 
 static asio::awaitable<void> on_10_quest_menu(shared_ptr<Client> c, uint32_t item_id) {
@@ -2898,7 +2903,16 @@ static asio::awaitable<void> on_10_ep3_download_quest_menu(shared_ptr<Client> c,
   if (c->lobby.lock()) {
     throw runtime_error("Episode 3 quests can only be downloaded when client is not in a lobby");
   }
-  auto map = s->ep3_download_map_index->get(item_id);
+
+  auto map = s->ep3_map_index->map_for_id(item_id);
+
+  auto vis_flag = (c->version() == Version::GC_EP3_NTE)
+      ? Episode3::MapIndex::VisibilityFlag::ONLINE_TRIAL
+      : Episode3::MapIndex::VisibilityFlag::ONLINE_FINAL;
+  if (!map->check_visibility_flag(vis_flag)) {
+    throw runtime_error("map is not visible to this client");
+  }
+
   auto vm = map->version(c->language());
   auto name = vm->map->name.decode(vm->language);
   string filename = std::format("m{:06}p_{:c}.bin", map->map_number, tolower(char_for_language(vm->language)));
@@ -3055,7 +3069,7 @@ static asio::awaitable<void> on_10(shared_ptr<Client> c, Channel::Message& msg) 
     case MenuID::GAME:
       co_await on_10_game_menu(c, base_cmd.item_id, std::move(password));
       break;
-    case MenuID::QUEST_CATEGORIES_EP1:
+    case MenuID::QUEST_CATEGORIES_EP1_EP3_EP4:
     case MenuID::QUEST_CATEGORIES_EP2:
       co_await on_10_quest_categories(c, base_cmd.item_id);
       break;

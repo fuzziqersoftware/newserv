@@ -2827,9 +2827,9 @@ Action a_show_ep3_maps(
       s->load_ep3_cards();
       s->load_ep3_maps();
 
-      const auto& map_ids = s->ep3_map_index->all();
-      phosg::log_info_f("{} maps", map_ids.size());
-      for (const auto& [map_number, map] : map_ids) {
+      const auto& all_maps = s->ep3_map_index->all_maps();
+      phosg::log_info_f("{} maps", all_maps.size());
+      for (const auto& [map_number, map] : all_maps) {
         const auto& vms = map->all_versions();
         for (size_t lang_index = 0; lang_index < vms.size(); lang_index++) {
           if (!vms[lang_index]) {
@@ -3040,6 +3040,15 @@ Action a_check_quests(
       s->load_maps();
       s->load_quest_index(true);
       phosg::fwrite_fmt(stdout, "All quests indexed\n");
+    });
+
+Action a_check_ep3_maps(
+    "check-ep3-maps", nullptr,
+    +[](phosg::Arguments& args) {
+      config_log.info_f("Collecting Episode 3 data");
+      auto s = make_shared<ServerState>(get_config_filename(args));
+      s->is_debug = true;
+      s->load_ep3_maps(true);
     });
 
 Action a_check_client_functions(

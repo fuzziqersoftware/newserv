@@ -1587,7 +1587,12 @@ private:
 
 class MapIndex {
 public:
-  explicit MapIndex(const std::string& directory);
+  enum class VisibilityFlag : uint8_t {
+    ONLINE_TRIAL = 0x01,
+    ONLINE_FINAL = 0x02,
+    DOWNLOAD_TRIAL = 0x04,
+    DOWNLOAD_FINAL = 0x08,
+  };
 
   class VersionedMap {
   public:
@@ -1611,9 +1616,14 @@ public:
   class Map {
   public:
     uint32_t map_number;
+    uint8_t visibility_flags;
     std::shared_ptr<const VersionedMap> initial_version;
 
-    explicit Map(std::shared_ptr<const VersionedMap> initial_version);
+    Map(std::shared_ptr<const VersionedMap> initial_version, uint8_t visibility_flags);
+
+    inline bool check_visibility_flag(VisibilityFlag flag) const {
+      return (this->visibility_flags & static_cast<uint8_t>(flag));
+    }
 
     void add_version(std::shared_ptr<const VersionedMap> vm);
     bool has_version(Language language) const;
@@ -1626,22 +1636,74 @@ public:
     std::vector<std::shared_ptr<const VersionedMap>> versions;
   };
 
-  const std::string& get_compressed_list(size_t num_players, Language language) const;
-  inline std::shared_ptr<const Map> get(uint32_t id) const {
+  class Category {
+  public:
+    uint32_t category_id;
+    uint8_t visibility_flags;
+    std::string name;
+    std::string description;
+
+    Category(uint32_t category_id, const phosg::JSON& json);
+
+    inline bool check_visibility_flag(VisibilityFlag flag) const {
+      return (this->visibility_flags & static_cast<uint8_t>(flag));
+    }
+
+    inline void add_map(std::shared_ptr<const Map> map) {
+      this->maps.emplace(map->map_number, map);
+    }
+    inline const std::map<uint32_t, std::shared_ptr<const Map>>& all_maps() const {
+      return this->maps;
+    }
+
+  private:
+    std::map<uint32_t, std::shared_ptr<const Map>> maps;
+  };
+
+  explicit MapIndex(const std::string& directory, bool raise_on_any_failure = false);
+
+  const std::string& get_compressed_list(size_t num_players, Language language, bool is_trial) const;
+  inline std::shared_ptr<const Map> map_for_id(uint32_t id) const {
     return this->maps.at(id);
   }
-  inline std::shared_ptr<const Map> get(const std::string& name) const {
+  inline std::shared_ptr<const Map> map_for_name(const std::string& name) const {
     return this->maps_by_name.at(name);
   }
-  inline const std::map<uint32_t, std::shared_ptr<const Map>>& all() const {
+  inline const std::map<uint32_t, std::shared_ptr<const Map>>& all_maps() const {
     return this->maps;
   }
 
+  inline std::shared_ptr<const Category> category_for_id(uint32_t id) const {
+    return this->categories.at(id);
+  }
+  inline const std::map<uint32_t, std::shared_ptr<const Category>>& all_categories() const {
+    return this->categories;
+  }
+
 private:
-  // The compressed map lists are generated on demand from the maps map below
-  mutable std::vector<std::array<std::string, 4>> compressed_map_lists;
+  // The compressed map lists are generated on demand from the maps map below.
+  // THey are indexed as [language][num_players]
+  mutable std::vector<std::array<std::string, 4>> compressed_map_lists_trial;
+  mutable std::vector<std::array<std::string, 4>> compressed_map_lists_final;
+
+  std::map<uint32_t, std::shared_ptr<const Category>> categories;
   std::map<uint32_t, std::shared_ptr<const Map>> maps;
   std::unordered_map<std::string, std::shared_ptr<Map>> maps_by_name;
+};
+
+class MapCategoryIndex {
+public:
+  explicit MapCategoryIndex(const std::string& directory);
+
+  inline std::shared_ptr<const MapIndex> get(uint32_t id) const {
+    return this->indexes.at(id);
+  }
+  inline const std::map<uint32_t, std::shared_ptr<const MapIndex>>& all() const {
+    return this->indexes;
+  }
+
+private:
+  std::map<uint32_t, std::shared_ptr<const MapIndex>> indexes;
 };
 
 class COMDeckIndex {

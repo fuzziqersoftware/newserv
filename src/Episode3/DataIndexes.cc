@@ -2670,8 +2670,9 @@ std::shared_ptr<const std::string> MapIndex::VersionedMap::trial_download() cons
   return this->download_data_trial;
 }
 
-MapIndex::Map::Map(shared_ptr<const VersionedMap> initial_version)
+MapIndex::Map::Map(shared_ptr<const VersionedMap> initial_version, uint8_t visibility_flags)
     : map_number(initial_version->map->map_number),
+      visibility_flags(visibility_flags),
       initial_version(initial_version) {
   size_t lang_index = static_cast<size_t>(this->initial_version->language);
   this->versions.resize(lang_index + 1);
@@ -2718,40 +2719,47 @@ shared_ptr<const MapIndex::VersionedMap> MapIndex::Map::version(Language languag
   throw logic_error("no map versions exist");
 }
 
-MapIndex::MapIndex(const string& directory) {
+MapIndex::Category::Category(uint32_t category_id, const phosg::JSON& json)
+    : category_id(category_id),
+      visibility_flags(json.get_int("VisibilityFlags")),
+      name(json.get_string("Name", "")),
+      description(json.get_string("Description", "")) {}
+
+MapIndex::MapIndex(const string& directory, bool raise_on_any_failure) {
   map<uint32_t, shared_ptr<Map>> mutable_maps;
-  for (const auto& item : std::filesystem::directory_iterator(directory)) {
-    string filename = item.path().filename().string();
+
+  auto try_add_map_file = [&](std::shared_ptr<Category> category, const std::string& file_path) -> void {
     try {
+      string filename = phosg::basename(file_path);
       string base_filename;
       string compressed_data;
       shared_ptr<MapDefinition> decompressed_data;
       if (filename.ends_with(".mnmd") || filename.ends_with(".bind")) {
-        decompressed_data = make_shared<MapDefinition>(phosg::load_object_file<MapDefinition>(directory + "/" + filename));
+        decompressed_data = make_shared<MapDefinition>(phosg::load_object_file<MapDefinition>(file_path));
         base_filename = filename.substr(0, filename.size() - 5);
       } else if (filename.ends_with(".mnm") || filename.ends_with(".bin")) {
-        compressed_data = phosg::load_file(directory + "/" + filename);
+        compressed_data = phosg::load_file(file_path);
         base_filename = filename.substr(0, filename.size() - 4);
       } else if (filename.ends_with(".bin.gci") || filename.ends_with(".mnm.gci")) {
-        compressed_data = decode_gci_data(phosg::load_file(directory + "/" + filename));
+        compressed_data = decode_gci_data(phosg::load_file(file_path));
         base_filename = filename.substr(0, filename.size() - 8);
       } else if (filename.ends_with(".gci")) {
-        compressed_data = decode_gci_data(phosg::load_file(directory + "/" + filename));
+        compressed_data = decode_gci_data(phosg::load_file(file_path));
         base_filename = filename.substr(0, filename.size() - 4);
       } else if (filename.ends_with(".bin.vms") || filename.ends_with(".mnm.vms")) {
-        compressed_data = decode_vms_data(phosg::load_file(directory + "/" + filename));
+        compressed_data = decode_vms_data(phosg::load_file(file_path));
         base_filename = filename.substr(0, filename.size() - 8);
       } else if (filename.ends_with(".vms")) {
-        compressed_data = decode_vms_data(phosg::load_file(directory + "/" + filename));
+        compressed_data = decode_vms_data(phosg::load_file(file_path));
         base_filename = filename.substr(0, filename.size() - 4);
       } else if (filename.ends_with(".bin.dlq") || filename.ends_with(".mnm.dlq")) {
-        compressed_data = decode_dlq_data(phosg::load_file(directory + "/" + filename));
+        compressed_data = decode_dlq_data(phosg::load_file(file_path));
         base_filename = filename.substr(0, filename.size() - 8);
       } else if (filename.ends_with(".dlq")) {
-        compressed_data = decode_dlq_data(phosg::load_file(directory + "/" + filename));
+        compressed_data = decode_dlq_data(phosg::load_file(file_path));
         base_filename = filename.substr(0, filename.size() - 4);
       } else {
-        continue; // Silently skip file
+        return; // Silently skip file
       }
 
       if (base_filename.size() < 2) {
@@ -2771,18 +2779,31 @@ MapIndex::MapIndex(const string& directory) {
         throw runtime_error("unknown map file format");
       }
 
+      uint8_t visibility_flags = category ? category->visibility_flags : 0x00;
+
       string name = vm->map->name.decode(vm->language);
       auto map_it = mutable_maps.find(vm->map->map_number);
       if (map_it == mutable_maps.end()) {
-        map_it = mutable_maps.emplace(vm->map->map_number, make_shared<Map>(vm)).first;
+        map_it = mutable_maps.emplace(vm->map->map_number, make_shared<Map>(vm, visibility_flags)).first;
         this->maps.emplace(vm->map->map_number, map_it->second);
-        static_game_data_log.debug_f("({}) Created Episode 3 map {:08X} {} ({}; {})",
+
+        string in_category_str;
+        if (category) {
+          in_category_str = std::format(" in category {}", category->name);
+          category->add_map(map_it->second);
+        }
+        static_game_data_log.debug_f("({}) Created Episode 3 map {:08X} {}{} ({}; {})",
             filename,
             vm->map->map_number,
             char_for_language(vm->language),
+            in_category_str,
             vm->map->is_quest() ? "quest" : "free",
             name);
       } else {
+        if (map_it->second->visibility_flags != visibility_flags) {
+          throw std::runtime_error(std::format("visibility flags {:02X} for added map {} do not match existing flags {}",
+              map_it->second->visibility_flags, file_path, visibility_flags));
+        }
         map_it->second->add_version(vm);
         static_game_data_log.debug_f("({}) Added Episode 3 map version {:08X} {} ({}; {})",
             filename,
@@ -2794,13 +2815,45 @@ MapIndex::MapIndex(const string& directory) {
       this->maps_by_name.emplace(vm->map->name.decode(vm->language), map_it->second);
 
     } catch (const exception& e) {
-      static_game_data_log.warning_f("Failed to index Episode 3 map {}: {}",
-          filename, e.what());
+      if (raise_on_any_failure) {
+        throw;
+      }
+      static_game_data_log.warning_f("Failed to index Episode 3 map {}: {}", file_path, e.what());
+    }
+  };
+
+  for (const auto& cat_item : std::filesystem::directory_iterator(directory)) {
+    string cat_dir_path = cat_item.path().string();
+
+    if (cat_item.is_directory()) {
+      shared_ptr<Category> category;
+      try {
+        string json_filename = std::format("{}/{}", cat_item.path().string(), "category.json");
+        auto category_json = phosg::JSON::parse(phosg::load_file(json_filename));
+        uint32_t category_id = this->categories.size() + 1;
+        auto category = make_shared<Category>(category_id, category_json);
+        this->categories.emplace(category_id, category);
+        static_game_data_log.debug_f("({}) Created Episode 3 map category {:08X} ({})",
+            cat_item.path().filename().string(), category_id, category->name);
+
+        for (const auto& map_item : std::filesystem::directory_iterator(cat_item)) {
+          try_add_map_file(category, map_item.path().string());
+        }
+
+      } catch (const exception& e) {
+        if (raise_on_any_failure) {
+          throw;
+        }
+        static_game_data_log.warning_f("Failed to index Episode 3 map category {}: {}", cat_item.path().string(), e.what());
+      }
+
+    } else {
+      try_add_map_file(nullptr, cat_dir_path);
     }
   }
 }
 
-const string& MapIndex::get_compressed_list(size_t num_players, Language language) const {
+const string& MapIndex::get_compressed_list(size_t num_players, Language language, bool is_trial) const {
   if (num_players == 0) {
     throw runtime_error("cannot generate map list for no players");
   }
@@ -2808,17 +2861,27 @@ const string& MapIndex::get_compressed_list(size_t num_players, Language languag
     throw logic_error("player count is too high in map list generation");
   }
 
+  auto& compressed_lists = is_trial ? this->compressed_map_lists_trial : this->compressed_map_lists_final;
+
   size_t lang_index = static_cast<size_t>(language);
-  if (lang_index >= this->compressed_map_lists.size()) {
-    this->compressed_map_lists.resize(lang_index + 1);
+  if (lang_index >= compressed_lists.size()) {
+    compressed_lists.resize(lang_index + 1);
   }
-  string& compressed_map_list = this->compressed_map_lists[lang_index].at(num_players - 1);
+  string& compressed_map_list = compressed_lists[lang_index].at(num_players - 1);
   if (compressed_map_list.empty()) {
     phosg::StringWriter entries_w;
     phosg::StringWriter strings_w;
 
+    auto vis_flag = is_trial
+        ? Episode3::MapIndex::VisibilityFlag::ONLINE_TRIAL
+        : Episode3::MapIndex::VisibilityFlag::ONLINE_FINAL;
+
     size_t num_maps = 0;
     for (const auto& map_it : this->maps) {
+      if (!map_it.second->check_visibility_flag(vis_flag)) {
+        continue;
+      }
+
       auto vm = map_it.second->version(language);
       size_t map_num_players = 0;
       for (size_t z = 0; z < 4; z++) {
@@ -2875,11 +2938,12 @@ const string& MapIndex::get_compressed_list(size_t num_players, Language languag
     compressed_w.write(prs.close());
     compressed_map_list = std::move(compressed_w.str());
     if (compressed_map_list.size() > 0x7BEC) {
-      throw runtime_error(std::format("compressed map list for {} players is too large (0x{:X} bytes)", num_players, compressed_map_list.size()));
+      throw runtime_error(std::format("compressed {} map list for {} players is too large (0x{:X} bytes)",
+          is_trial ? "trial" : "final", num_players, compressed_map_list.size()));
     }
     size_t decompressed_size = sizeof(header) + entries_w.size() + strings_w.size();
-    static_game_data_log.info_f("Generated Episode 3 compressed map list for {} player(s) ({} maps; 0x{:X} -> 0x{:X} bytes)",
-        num_players, num_maps, decompressed_size, compressed_map_list.size());
+    static_game_data_log.info_f("Generated Episode 3 compressed {} map list for {} player(s) ({} maps; 0x{:X} -> 0x{:X} bytes)",
+        is_trial ? "trial" : "final", num_players, num_maps, decompressed_size, compressed_map_list.size());
   }
   return compressed_map_list;
 }
