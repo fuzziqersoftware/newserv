@@ -210,12 +210,12 @@ std::shared_ptr<phosg::JSON> HTTPServer::generate_client_json(
       auto tech_levels_json = phosg::JSON::dict();
       for (size_t z = 0; z < 0x13; z++) {
         auto level = p->get_technique_level(z);
-        tech_levels_json.emplace(name_for_technique(z), (level != 0xFF) ? level : phosg::JSON(nullptr));
+        tech_levels_json.emplace(name_for_technique(z), (level != 0xFF) ? (level + 1) : phosg::JSON(nullptr));
       }
       ret->emplace("TechniqueLevels", std::move(tech_levels_json));
     }
     ret->emplace("Height", p->disp.stats.height.load());
-    ret->emplace("Level", p->disp.stats.level.load());
+    ret->emplace("Level", p->disp.stats.level.load() + 1);
     ret->emplace("NameColor", p->disp.visual.name_color.load());
     ret->emplace("ExtraModel", (p->disp.visual.validation_flags & 2) ? p->disp.visual.extra_model : phosg::JSON(nullptr));
     ret->emplace("SectionID", name_for_section_id(p->disp.visual.section_id));
@@ -485,7 +485,7 @@ std::shared_ptr<phosg::JSON> HTTPServer::generate_lobby_json(
                   {"TeamID", deck_entry->team_id.load()},
                   {"Cards", std::move(cards_json)},
                   {"GodWhimFlag", deck_entry->god_whim_flag},
-                  {"PlayerLevel", deck_entry->player_level.load()},
+                  {"PlayerLevel", deck_entry->player_level.load() + 1},
               });
             }
 
@@ -609,7 +609,7 @@ std::shared_ptr<phosg::JSON> HTTPServer::generate_summary_json() const {
         {"Name", p ? p->disp.name.decode(c->language()) : phosg::JSON(nullptr)},
         {"Version", phosg::name_for_enum(c->version())},
         {"Language", name_for_language(c->language())},
-        {"Level", p ? p->disp.stats.level + 1 : phosg::JSON(nullptr)},
+        {"Level", p ? (p->disp.stats.level + 1) : phosg::JSON(nullptr)},
         {"Class", p ? name_for_char_class(p->disp.visual.char_class) : phosg::JSON(nullptr)},
         {"SectionID", p ? name_for_section_id(p->disp.visual.section_id) : phosg::JSON(nullptr)},
         {"LobbyID", l ? l->lobby_id : phosg::JSON(nullptr)},
