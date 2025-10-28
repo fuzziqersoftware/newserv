@@ -2822,7 +2822,16 @@ MapIndex::MapIndex(const string& directory, bool raise_on_any_failure) {
     }
   };
 
+  std::vector<std::filesystem::directory_entry> cat_items;
   for (const auto& cat_item : std::filesystem::directory_iterator(directory)) {
+    cat_items.emplace_back(cat_item);
+  }
+  auto sort_fn = +[](const std::filesystem::directory_entry& a, const std::filesystem::directory_entry& b) -> bool {
+    return a.path().filename().string() < b.path().filename().string();
+  };
+  sort(cat_items.begin(), cat_items.end(), sort_fn);
+
+  for (const auto& cat_item : cat_items) {
     string cat_dir_path = cat_item.path().string();
 
     if (cat_item.is_directory()) {
