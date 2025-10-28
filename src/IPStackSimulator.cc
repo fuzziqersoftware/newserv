@@ -338,6 +338,7 @@ uint64_t IPStackSimulator::tcp_conn_key_for_client_frame(const FrameInfo& fi) {
 string IPStackSimulator::str_for_ipv4_netloc(uint32_t addr, uint16_t port) {
   be_uint32_t be_addr = addr;
   char addr_str[INET_ADDRSTRLEN];
+  memset(addr_str, 0, sizeof(addr_str));
   if (!inet_ntop(AF_INET, &be_addr, addr_str, INET_ADDRSTRLEN)) {
     return std::format("<UNKNOWN>:{}", port);
   } else {
