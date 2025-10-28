@@ -3311,14 +3311,14 @@ void send_level_up(shared_ptr<Client> c) {
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
-void send_give_experience(shared_ptr<Client> c, uint32_t amount) {
+void send_give_experience(shared_ptr<Client> c, uint32_t amount, uint16_t from_enemy_id) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw logic_error("6xBF can only be sent to BB clients");
   }
   uint16_t client_id = c->lobby_client_id;
-  G_GiveExperience_BB_6xBF cmd = {
-      {0xBF, sizeof(G_GiveExperience_BB_6xBF) / 4, client_id}, amount};
+  G_GiveExperience_Extension_BB_6xBF cmd = {
+      {0xBF, sizeof(G_GiveExperience_Extension_BB_6xBF) / 4, client_id}, amount, from_enemy_id, 0};
   send_command_t(l, 0x60, 0x00, cmd);
 }
 
@@ -3326,11 +3326,9 @@ void send_set_exp_multiplier(shared_ptr<Lobby> l) {
   if (!l->is_game()) {
     throw logic_error("6xDD can only be sent in games (not in lobbies)");
   }
-  G_SetFractionalEXPMultiplier_Extension_BB_6xDD cmd = {
-      {0xDD, sizeof(G_SetFractionalEXPMultiplier_Extension_BB_6xDD) / 4, 1}, 1.0f};
+  G_SetEXPMultiplier_BB_6xDD cmd = {0xDD, sizeof(G_SetEXPMultiplier_BB_6xDD) / 4, 1};
   if (l->mode != GameMode::CHALLENGE) {
     cmd.header.param = l->base_exp_multiplier;
-    cmd.multiplier = l->base_exp_multiplier;
   }
   for (auto lc : l->clients) {
     if (lc && (lc->version() == Version::BB_V4)) {

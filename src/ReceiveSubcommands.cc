@@ -3863,13 +3863,13 @@ static asio::awaitable<void> on_level_up(shared_ptr<Client> c, SubcommandMessage
   forward_subcommand(c, msg);
 }
 
-static void add_player_exp(shared_ptr<Client> c, uint32_t exp) {
+static void add_player_exp(shared_ptr<Client> c, uint32_t exp, uint16_t from_enemy_id) {
   auto s = c->require_server_state();
   auto p = c->character_file();
 
   p->disp.stats.experience += exp;
   if (c->version() == Version::BB_V4) {
-    send_give_experience(c, exp);
+    send_give_experience(c, exp, from_enemy_id);
   }
 
   bool leveled_up = false;
@@ -3994,7 +3994,7 @@ static asio::awaitable<void> on_steal_exp_bb(shared_ptr<Client> c, SubcommandMes
         ene_st->e_id, enemy_exp, percent, stolen_exp);
     send_text_message_fmt(c, "$C5+{} E-{:03X} {}", stolen_exp, ene_st->e_id, phosg::name_for_enum(type));
   }
-  add_player_exp(c, stolen_exp);
+  add_player_exp(c, stolen_exp, cmd.enemy_index | 0x1000);
 }
 
 static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, SubcommandMessage& msg) {
@@ -4081,7 +4081,7 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
         if (lc->check_flag(Client::Flag::DEBUG_ENABLED)) {
           send_text_message_fmt(lc, "$C5+{} E-{:03X} {}", player_exp, ene_st->e_id, phosg::name_for_enum(type));
         }
-        add_player_exp(lc, player_exp);
+        add_player_exp(lc, player_exp, cmd.enemy_index | 0x1000);
       }
     }
 
@@ -4582,7 +4582,7 @@ static asio::awaitable<void> on_battle_level_up_bb(shared_ptr<Client> c, Subcomm
     if (exp_delta > 0) {
       s->level_table(lc->version())->advance_to_level(lp->disp.stats, target_level, lp->disp.visual.char_class);
       if (lc->version() == Version::BB_V4) {
-        send_give_experience(lc, exp_delta);
+        send_give_experience(lc, exp_delta, 0xFFFF);
         send_level_up(lc);
       }
     }

@@ -18,7 +18,7 @@ write_call_to_code:
   # [esp + 0x04] = code ptr
   # [esp + 0x08] = code size
   # [esp + 0x0C] = jump callsite
-  # [esp + 0x10] = callsite size
+  # [esp + 0x10] = callsite size (if zero, write the address instead of a call)
 
   # Allocate memory for the copied code
   mov       ecx, [0x00AAB404]
@@ -41,8 +41,16 @@ memcpy_again:
   jne       memcpy_again
   pop       ebx
 
-  # Write the call or jmp opcode
   mov       edx, [esp + 0x0C]  # edx = jump callsite
+
+  # If the callsite size is zero, just write the address directly
+  cmp       dword [esp + 0x10], 0
+  jne       write_call_or_jmp
+  mov       [edx], eax
+  jmp       done
+
+  # Write the call or jmp opcode
+write_call_or_jmp:
   lea       ecx, [eax - 5]
   sub       ecx, edx  # ecx = (dest code addr) - (jump callsite) - 5
   cmp       dword [esp + 0x10], 0

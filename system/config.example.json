@@ -811,8 +811,9 @@
     "Friday": ["Monomate x1", "Dimate x1", "Trimate x1", "Monofluid x1", "Difluid x1", "Trifluid x1", "Sol Atomizer x1", "Moon Atomizer x1", "Antidote x1", "Antiparalysis x1", "Telepipe x1", "Trap Vision x1"],
     "Saturday": ["Monomate x1", "Dimate x1", "Trimate x1", "Monofluid x1", "Difluid x1", "Trifluid x1", "Sol Atomizer x1", "Moon Atomizer x1", "Antidote x1", "Antiparalysis x1", "Telepipe x1", "Trap Vision x1"],
   },
-  // EXP multiplier for BB games. This must be an integer due to a client
-  // limitation, and must be at least 1.
+  // EXP multiplier for BB games. If this is not an integer, the client will
+  // display incorrect EXP values, unless you also add "ServerEXPDisplay" to
+  // BBRequiredPatches.
   "BBGlobalEXPMultiplier": 1,
   // EXP share multiplier for BB games. The logic for EXP computation is:
   // - If the player lands the killing blow on an enemy they get full EXP (or
