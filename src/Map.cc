@@ -2178,9 +2178,9 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     {0x020F, F_V3_V4, 0x0000400C3F800000, "TOTrapChainSawDamage"},
 
     // Laser detector trap. Params:
-    //   param3 = model number (<= for small laser, > 0 for large laser)
+    //   param3 = model number (<= 0 for small laser, > 0 for large laser)
     //   param4 = switch flag number (enables this flag when triggered)
-    //   param5-6: same as 0x020F (TOTrapChainSawDamage)
+    //   param5-6 = same as 0x020F (TOTrapChainSawDamage)
     {0x0210, F_V3_V4, 0x0000400C3F800000, "TOTrapChainSawKey"},
 
     // TODO: Describe this object. It's a subclass of TODragonfly and has the

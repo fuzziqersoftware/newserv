@@ -554,6 +554,68 @@ Heaven Punisher's special always works
 3OE2 => 0412AD84 38800001
 3OP0 => 0412AF5C 38800001
 
+Fast tekker (skips wind-up jingle)
+1OJ1 => 8C15B0CA mov    r1, 1
+        8C15B0E6 nop
+1OJ2 => 8C162302 mov    r1, 1
+        8C16231E nop
+1OJ3 => 8C175E66 mov    r1, 1
+        8C175E82 nop
+1OJ4 => 8C1780AE mov    r1, 1
+        8C1780CA nop
+1OJF => 8C17600E mov    r1, 1
+        8C17602A nop
+1OEF => 8C17863E mov    r1, 1
+        8C17865A nop
+1OPF => 8C1783FA mov    r1, 1
+        8C178416 nop
+2OJ5 => 8C19BD4A mov    r1, 1
+        8C19BD66 nop
+2OJF => 8C19ADB6 mov    r1, 1
+        8C19ADD2 nop
+2OEF => 8C19BD4A mov    r1, 1
+        8C19BD66 nop
+2OPF => 8C19B7E2 mov    r1, 1
+        8C19B7FE nop
+2OJW => 005B14A3 mov    dword [ebx + 0x150], 1
+        005B14BF jmp    +0x0D
+2OJZ => 005B0193 mov    dword [ebx + 0x150], 1
+        005B01AF jmp    +0x0D
+3OJT => 0426FAE8 38000001
+        0426FB10 60000000
+3OJ2 => 0421F8CC 38000001
+        0421F8F4 60000000
+3OJ3 => 04220250 38000001
+        04220278 60000000
+3OJ4 => 04221154 38000001
+        0422117C 60000000
+3OJ5 => 04220EF0 38000001
+        04220F18 60000000
+3OE0 => 04220170 38000001
+        04220198 60000000
+3OE1 => 04220170 38000001
+        04220198 60000000
+3OE2 => 04221224 38000001
+        0422124C 60000000
+3OP0 => 04220ABC 38000001
+        04220AE4 60000000
+4OED => 0023EF3C mov    dword [ebp + 0x14C], 1
+        0023EF57 jmp    +0x0A
+4OEU => 0023F0BC mov    dword [ebp + 0x14C], 1
+        0023F0D7 jmp    +0x0A
+4OJB => 0023EC5C mov    dword [ebp + 0x14C], 1
+        0023EC77 jmp    +0x0A
+4OJD => 0023EEAC mov    dword [ebp + 0x14C], 1
+        0023EEC7 jmp    +0x0A
+4OJU => 0023F21C mov    dword [ebp + 0x14C], 1
+        0023F237 jmp    +0x0A
+4OPD => 0023EF5C mov    dword [ebp + 0x14C], 1
+        0023EF77 jmp    +0x0A
+4OPU => 0023F14C mov    dword [ebp + 0x14C], 1
+        0023F167 jmp    +0x0A
+59NL => 006DA113 mov    dword [edi + 0x14C], 1
+        006DA130 jmp    +0x0B
+
 Allow loading corrupted save files
 3OJ2 => 041FC784 38600007
         041FC788 4E800020
