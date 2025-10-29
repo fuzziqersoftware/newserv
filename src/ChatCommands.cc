@@ -2375,7 +2375,7 @@ ChatCommandDefinition cc_sound(
       uint32_t sound_id = stoul(echo_to_all ? a.text.substr(1) : a.text, nullptr, 16);
 
       auto l = a.c->require_lobby();
-      uint8_t area = l->area_for_floor(a.c->version(), a.c->floor);
+      uint8_t area = l->is_game() ? l->area_for_floor(a.c->version(), a.c->floor) : 0x0F;
       G_PlaySoundFromPlayer_6xB2 cmd = {{0xB2, 0x03, 0x0000}, area, 0x00, a.c->lobby_client_id, sound_id};
       if (!echo_to_all) {
         send_command_t(a.c, 0x60, 0x00, cmd);
