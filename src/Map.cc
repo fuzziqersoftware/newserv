@@ -1137,18 +1137,18 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     // switch flag must be activated by some other object. Params:
     //   angle.x = trigger mode:
     //     0 = disable watched switch flag when timer expires
-    //     any other value = enable up to 3 other switch flags when timer
+    //     any positive number = enable up to 3 other switch flags when timer
     //       expires and don't disable watched switch flag
     //   angle.y = if this is 1, play tick sound effect every second after
     //     activation (if any other value, no tick sound is played)
     //   angle.z = timer duration in frames
     //   param4 = switch flag to watch for activation in low 16 bits, switch
-    //     flag 1 to activate when timer expires (if angle.x = 0) in high 16
+    //     flag 1 to activate when timer expires (if angle.x != 0) in high 16
     //     bits (>= 0x100 if not needed)
     //   param5 = switch flag 2 to activate when timer expires (if
-    //     angle.x = 0) in high 16 bits (>= 0x100 if not needed)
+    //     angle.x != 0) in high 16 bits (>= 0x100 if not needed)
     //   param6 = switch flag 3 to activate when timer expires (if
-    //     angle.x = 0) in high 16 bits (>= 0x100 if not needed)
+    //     angle.x != 0) in high 16 bits (>= 0x100 if not needed)
     {0x0025, F_V2_V4, 0x00006FFC3FFF07FF, "TOSwitchTimer"},
 
     // Chat sensor. This object watches for chat messages said by players
@@ -1731,9 +1731,12 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //     >= 0 in Challenge mode, the warp is destroyed immediately
     {0x0140, F_V0_V4, 0x0000400000000700, "TObjGoalWarpAncient"},
 
-    // Ruins intra-area warp. Same parameters as 0x0003 (TObjMapWarpForest),
-    // but also:
-    //   param5 = type (negative = one-way, zero or positive = normal)
+    // Ruins intra-area warp. Params:
+    //   param1-3 = destination (same as for TObjMapWarpForest)
+    //   param4 = destination angle (same as for TObjMapWarpForest)
+    //   param5 = if negative, no warp lines render (only the floor pad
+    //     appears) and the player cannot use the warp; if zero or positive,
+    //     the warp functions normally
     {0x0141, F_V0_V4, 0x0000400000000700, "TObjMapWarpAncient"},
 
     // Ruins switch. Same parameters as 0x00C0 (TOKeyCave01).
