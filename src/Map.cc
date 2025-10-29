@@ -1767,7 +1767,9 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //   param1 = activation radius delta (actual radius is param1 + 50)
     //   param4 = switch flag number
     //   param5 = if negative, sensor is always on
-    //   param6 = TODO (clamped to [0, 1] - model index?)
+    //   param6 = texture index; uses fs_obj_o_sensor01r if <= 0, uses
+    //     fs_obj_o_sensor02r if positive; the two texture files are identical
+    //     (at least on GC) so this has no user-visible effects
     {0x014C, F_V0_V4, 0x0000400000000700, "TOSensorAncient01"},
 
     // Ruins laser fence switch. Params:
