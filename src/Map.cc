@@ -1707,9 +1707,19 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     {0x0109, F_V0_V4, 0x00004000000000C0, "TOExplosiveMachine02"},
     {0x010A, F_V0_V4, 0x00004000000000C0, "TOExplosiveMachine03"},
 
-    // Spark machine. Params:
-    //   param1 = TODO (value is param1 - 0.98)
-    //   param2 = TODO (seems it only matters if this is <= 0 or not)
+    // Spark machine. This looks like it's intended to appear in the bridge
+    // rooms in the Mines, to create an effect of the columnar machines
+    // sparking. This is implemented as four columns that randomly change their
+    // visibility. Each column has an accumulator value, which is initially
+    // zero. Every frame, the value (param1 - 0.98) is added to each column's
+    // accumulator and a random number between 0 and 1 is chosen; if the random
+    // number is less than the column's accumulator, its visibility state is
+    // changed and its accumulator is reset to zero. In this manner, param1 can
+    // be thought of as the frequency of state changes - 0.98 would mean they
+    // never change state, 1.98 would mean they change every frame. Params:
+    //   param1 = state change accumulation per frame (value is param1 - 0.98)
+    //   param2 = if <= 0, only one column flickers and the other are always
+    //     visible; if > 0, all columns flicker
     {0x010B, F_V0_V4, 0x00004000000000C0, "TOSparkMachine01"},
 
     // Large flashing box. Params:
