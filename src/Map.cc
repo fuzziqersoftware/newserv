@@ -1802,11 +1802,19 @@ static const vector<DATEntityDefinition> dat_object_definitions({
 
     // Ruins poison-spewing blob. This object is technically an item box, and
     // drops an item when destroyed. Unlike most other item boxes, it cannot
-    // be specialized (ignore_def is always true). Params:
-    //   param1 = TODO (value is param1 + 299)
-    //   param2 = TODO (value is param2 + 209)
-    //   param3 = TODO (value is param3 + 399)
-    //   param6 = TODO (value is param6 + 4)
+    // be specialized (ignore_def is always true). It cycles through the
+    // following 3 phases in order until it's destroyed:
+    //   Phase 0: idle (duration depends on param1 and players' positions)
+    //   Phase 1: preparing to spew poison (always lasts 60 frames)
+    //   Phase 2: spewing poison (duration specified by param2)
+    // Params:
+    //   param1 = maximum phase 0 duration in frames (value is param1 + 299;
+    //     it advances to phase 1 early if a player is within 80 units of it)
+    //   param2 = duration of phase 2 in frames (value is param2 + 209)
+    //   param3 = poison radius squared (value is param3 + 399, so if param3 =
+    //     1 for example, the poison radius is 20 units)
+    //   param6 = how often to create more particles during spewing phase (in
+    //     frames; value is param6 + 4)
     {0x0152, F_V0_V4, 0x00004E000F800700, "TContainerAncient01"},
 
     // Ruins falling trap. Trap power seems to be scaled by difficulty
