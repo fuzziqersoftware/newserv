@@ -1384,9 +1384,12 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     {0x0058, F_EP3, 0x0000000000000001, "TObjDeckCollision"},
 
     // Forest door. Params:
+    //   param1-3 = x, y, z coordinates for unlock "cutscene" (see param6)
     //   param4 = switch flag number (low byte) and number to appear on door
-    //     (second-lowest byte, modulo 0x0A)
-    //   param6 = TODO (expected to be 0 or 1)
+    //     (second-lowest byte, modulo 10)
+    //   param6 = if set to 1, enables unlock "cutscene" - when the door is
+    //     unlocked, the camera will snap to the coordinates in param1-3,
+    //     pointing toward the door, for 2 seconds
     {0x0080, F_V0_V4, 0x0000400000000006, "TObjDoor"},
 
     // Forest switch. Params:
