@@ -420,26 +420,6 @@ void Account::delete_file() const {
   remove(filename.c_str());
 }
 
-uint64_t Login::proxy_session_id() const {
-  uint64_t low_part = 0;
-  if (this->dc_nte_license) {
-    low_part = this->dc_nte_license->proxy_session_id_part();
-  } else if (this->dc_license) {
-    low_part = this->dc_license->proxy_session_id_part();
-  } else if (this->pc_license) {
-    low_part = this->pc_license->proxy_session_id_part();
-  } else if (this->gc_license) {
-    low_part = this->gc_license->proxy_session_id_part();
-  } else if (this->xb_license) {
-    low_part = this->xb_license->proxy_session_id_part();
-  } else if (this->bb_license) {
-    low_part = this->bb_license->proxy_session_id_part();
-  } else {
-    throw logic_error("none of the licenses in a Login were present");
-  }
-  return (static_cast<uint64_t>(this->account->account_id) << 32) | low_part;
-}
-
 string Login::str() const {
   string ret = std::format("Account:{:08X}", this->account->account_id);
   if (this->account_was_created) {

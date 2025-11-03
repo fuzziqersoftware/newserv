@@ -17,10 +17,6 @@ struct DCNTELicense {
   std::string serial_number;
   std::string access_key;
 
-  inline uint64_t proxy_session_id_part() const {
-    return phosg::fnv1a32(this->serial_number);
-  }
-
   static std::shared_ptr<DCNTELicense> from_json(const phosg::JSON& json);
   phosg::JSON json() const;
 };
@@ -28,10 +24,6 @@ struct DCNTELicense {
 struct V1V2License {
   uint32_t serial_number = 0;
   std::string access_key;
-
-  inline uint64_t proxy_session_id_part() const {
-    return this->serial_number;
-  }
 
   static std::shared_ptr<V1V2License> from_json(const phosg::JSON& json);
   phosg::JSON json() const;
@@ -42,10 +34,6 @@ struct GCLicense {
   std::string access_key;
   std::string password;
 
-  inline uint64_t proxy_session_id_part() const {
-    return this->serial_number;
-  }
-
   static std::shared_ptr<GCLicense> from_json(const phosg::JSON& json);
   phosg::JSON json() const;
 };
@@ -55,10 +43,6 @@ struct XBLicense {
   uint64_t user_id = 0;
   uint64_t account_id = 0;
 
-  inline uint64_t proxy_session_id_part() const {
-    return phosg::fnv1a32(this->gamertag);
-  }
-
   static std::shared_ptr<XBLicense> from_json(const phosg::JSON& json);
   phosg::JSON json() const;
 };
@@ -66,10 +50,6 @@ struct XBLicense {
 struct BBLicense {
   std::string username;
   std::string password;
-
-  inline uint64_t proxy_session_id_part() const {
-    return phosg::fnv1a32(this->username);
-  }
 
   static std::shared_ptr<BBLicense> from_json(const phosg::JSON& json);
   phosg::JSON json() const;
@@ -177,8 +157,6 @@ struct Login {
   std::shared_ptr<GCLicense> gc_license;
   std::shared_ptr<XBLicense> xb_license;
   std::shared_ptr<BBLicense> bb_license;
-
-  uint64_t proxy_session_id() const;
 
   std::string str() const;
 };
