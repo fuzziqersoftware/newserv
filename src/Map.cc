@@ -1585,8 +1585,11 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     // can be chosen via param6. If param6 is not 0, 1, or 2, no object is
     // created.
     // Params for TOHangceilingCave01Normal (param6 = 0):
-    //   param1 = TODO (radius delta? value is param1 + 29)
-    //   param2 = TODO (value is 1 - param2)
+    //   param1 = 1/4 time between crushes, in frames (value is param1 + 29, so
+    //     total time between crushes is (param1 + 29) * 4 frames)
+    //   param2 = wait time in frames after construction until first crush
+    //     (value is 1 - param2, so a more negative value means a longer wait
+    //     time)
     //   param3 = base damage (value is param3 + 100; scaled by difficulty:
     //     Normal = 1x, Hard = 2x, Very Hard = 3x, Ultimate = 6x)
     // Params for TOHangceilingCave01Key (param6 = 1):
@@ -1869,7 +1872,8 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     // Ruins pop-up trap. Params:
     //   param1 = trigger radius delta (value is (param1 / 2) + 30)
     //   param4 = delay (value is param4 + 30; clamped below to 0)
-    //   angle.z = TODO (seems it only matters if angle.z is > 0 or not)
+    //   angle.z = hide body (positive = only the blue highlights appear; zero
+    //     or negative = normal visibility)
     {0x0154, F_V0_V4, 0x0000400000000700, "TOTrapAncient02"},
 
     // Ruins crystal monument. Same parameters as TOCapsuleAncient01.
@@ -1945,7 +1949,7 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //     2 = Gibarta
     //     3 = Megid
     //     anything else = Gifoie
-    //   angle.z = TODO (seems it only matters if angle.z is > 0 or not)
+    //   angle.z = hide body (same as for TOTrapAncient02)
     {0x0167, F_V2_V4, 0x0000400C3FF807C0, "TOTrapAncient02R"},
 
     // Flying white bird. Params:
@@ -2089,7 +2093,8 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     // Episode 3 lobby jukebox. No parameters.
     {0x018E, F_EP3, 0x0000000000008000, "TObjJukeBox"},
 
-    // TODO: Describe this object. There appear to be no parameters.
+    // Spaceship overhead camera with red light and annoying gear noises. There
+    // appear to be no parameters.
     {0x0190, F_V2_V4, 0x0000400000610000, "TObjCamera"},
 
     // Short Spaceship wall. There appear to be no parameters.
@@ -2254,8 +2259,11 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     {0x0212, F_V3_V4, 0x000040080F800000, "__SEAGULL__"},
     {0x0212, F_EP3, 0x0000000000000002, "__SEAGULL__"},
 
-    // TODO: Describe this object. Params:
-    //   param4 = model number (clamped to [0, 2])
+    // Jungle wooden objects. Params:
+    //   param4 = model number:
+    //     0 or negative: long branch
+    //     1: shorter curved branch
+    //     2 or greater: small log
     {0x0213, F_V3_V4, 0x00004E040F000000, "TOJungleDesign"},
 
     // Fish. This object is not constructed in split-screen mode. Params:
@@ -2423,7 +2431,8 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //   param6 low byte = TODO
     {0x02D0, F_EP3, 0x0000000000000002, "TObjKazariCard"},
 
-    // TODO: Describe these objects. There appear to be no parameters.
+    // Effects visible in the central column in the Morgue when cards
+    // transform. There appear to be no parameters.
     {0x02D1, F_EP3, 0x0000000000000001, "TObj_FloatingCardMaterial_Dark"},
     {0x02D2, F_EP3, 0x0000000000000001, "TObj_FloatingCardMaterial_Hero"},
 
@@ -2432,21 +2441,23 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     // for the lobby teleporter, or TShopGenerator for the battle counter).
     // TObjCardCityMapWarp takes no parameters.
     {0x02D3, F_EP3, 0x0000000000000001, "TObjCardCityMapWarp(0)"}, // Battle counter warp (blue lines)
-    {0x02D9, F_EP3, 0x0000000000000001, "TObjCardCityMapWarp(1)"}, // TODO
+    {0x02D9, F_EP3, 0x0000000000000001, "TObjCardCityMapWarp(1)"}, // Battle counter warp (green lines; unused)
     {0x02E3, F_EP3, 0x0000000000000001, "TObjCardCityMapWarp(2)"}, // Lobby warp (yellow lines)
 
     // Morgue doors. None of these take any parameters. Unsurprisingly, the
-    // _Closed variants don't open.
-    {0x02D4, F_EP3, 0x0000000000000001, "TObjCardCityDoor(0)"}, // Yellow (to deck edit room)
-    {0x02D5, F_EP3, 0x0000000000000001, "TObjCardCityDoor(1)"}, // Blue (to battle entry counter)
-    {0x02D8, F_EP3, 0x0000000000000001, "TObjCardCityDoor(2)"}, // TODO
-    {0x02DF, F_EP3, 0x0000000000000001, "TObjCardCityDoor(3)"}, // Solid (always closed in normal Morgue)
+    // _Closed variants don't open. The _Closed variants also have a red light
+    // in the center instead of a blue light. Curiously, the (3) variant is
+    // opaque when _Closed, unlike the other _Closed doors.
+    {0x02D4, F_EP3, 0x0000000000000001, "TObjCardCityDoor(0)"}, // Yellow V-pattern (to deck edit room)
+    {0x02D5, F_EP3, 0x0000000000000001, "TObjCardCityDoor(1)"}, // Blue V-pattern (to battle entry counter)
+    {0x02D8, F_EP3, 0x0000000000000001, "TObjCardCityDoor(2)"}, // Green V-pattern (unused)
+    {0x02DF, F_EP3, 0x0000000000000001, "TObjCardCityDoor(3)"}, // Blue X-pattern (to lobby teleporter)
     {0x02E0, F_EP3, 0x0000000000000001, "TObjCardCityDoor(4)"}, // Gray (to chief)
-    {0x02DC, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(0)"}, // TODO
-    {0x02DD, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(1)"}, // TODO
-    {0x02DE, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(2)"}, // TODO
-    {0x02E1, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(3)"}, // TODO
-    {0x02E2, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(4)"}, // TODO
+    {0x02DC, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(0)"}, // Yellow V-pattern (to deck edit room)
+    {0x02DD, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(1)"}, // Blue V-pattern (to battle entry counter)
+    {0x02DE, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(2)"}, // Green V-pattern (unused)
+    {0x02E1, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(3)"}, // Opaque gray X-pattern
+    {0x02E2, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(4)"}, // Gray (to chief)
 
     // Mortis Fons geyser. Params:
     //   param1-3 = TODO
@@ -2485,11 +2496,16 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //   param4 = index into location bit field (0-31 where 0 is the least-
     //     significant bit; see Episode3LobbyBanners in config.example.json
     //     for the bits' meanings)
-    //   param5 = TODO
+    //   param5 = per-axis mirror flags (the low 3 nybbles of this value
+    //     specify whether to invert each axis of the model; if any nybble is 1
+    //     then the model is inverted along the corresponding axis; the lowest
+    //     nybble corresponds to the x axis)
     {0x02E4, F_EP3, 0x0000000000008001, "TObjSinBoardCard"},
 
-    // TODO: Describe this object. Params:
-    //   param4 = model number (0 or 1)
+    // Morgue info screen. Params:
+    //   param4 = model number:
+    //     0 = tall, yellow, vertical-scrolling
+    //     1 = short, blue, horizontal-scrolling
     {0x02E5, F_EP3, 0x0000000000000001, "TObjCityMoji"},
 
     // Like TObjCardCityMapWarp(2) (the warp to the lobby from the Morgue)
