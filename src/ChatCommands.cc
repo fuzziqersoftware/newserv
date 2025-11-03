@@ -1691,22 +1691,18 @@ ChatCommandDefinition cc_makeobj(
         }
       }
 
-      auto encode_float = [](float z) -> uint32_t {
-        return *reinterpret_cast<uint32_t*>(&z);
-      };
-
       unordered_map<string, uint32_t> label_writes{
           {"base_type_high", base_type_high},
           {"floor_low", a.c->floor},
-          {"pos_x", encode_float(pos.x)},
-          {"pos_y", encode_float(pos.y)},
-          {"pos_z", encode_float(pos.z)},
+          {"pos_x", std::bit_cast<float>(pos.x)},
+          {"pos_y", std::bit_cast<float>(pos.y)},
+          {"pos_z", std::bit_cast<float>(pos.z)},
           {"angle_x", angle.x},
           {"angle_y", angle.y},
           {"angle_z", angle.z},
-          {"param1", encode_float(param123.x)},
-          {"param2", encode_float(param123.y)},
-          {"param3", encode_float(param123.z)},
+          {"param1", std::bit_cast<float>(param123.x)},
+          {"param2", std::bit_cast<float>(param123.y)},
+          {"param3", std::bit_cast<float>(param123.z)},
           {"param4", param456.x},
           {"param5", param456.y},
           {"param6", param456.z},

@@ -62,17 +62,6 @@ using AttackData = BattleParamsIndex::AttackData;
 using ResistData = BattleParamsIndex::ResistData;
 using MovementData = BattleParamsIndex::MovementData;
 
-// bit_cast isn't in the standard place on macOS (it is apparently implicitly
-// included by resource_dasm, but newserv can be built without resource_dasm)
-// and I'm too lazy to go find the right header to include
-template <typename ToT, typename FromT>
-ToT as_type(const FromT& v) {
-  static_assert(sizeof(FromT) == sizeof(ToT), "types are not the same size");
-  ToT ret;
-  memcpy(&ret, &v, sizeof(ToT));
-  return ret;
-}
-
 static const char* name_for_header_episode_number(uint8_t episode) {
   static const array<const char*, 3> names = {"Episode1", "Episode2", "Episode4"};
   try {
@@ -3319,7 +3308,7 @@ std::string disassemble_quest_script(
                 case Type::FLOAT32: {
                   float v = cmd_r.get_f32l();
                   if (def->flags & F_PUSH_ARG) {
-                    arg_stack_values.emplace_back(ArgStackValue::Type::INT, as_type<uint32_t>(v));
+                    arg_stack_values.emplace_back(ArgStackValue::Type::INT, std::bit_cast<uint32_t>(v));
                   }
                   dasm_arg = std::format("{:g}", v);
                   break;
@@ -3444,7 +3433,7 @@ std::string disassemble_quest_script(
                           dasm_arg = std::format("f{}", arg_value.as_int);
                           break;
                         case ArgStackValue::Type::INT:
-                          dasm_arg = std::format("{:g}", as_type<float>(arg_value.as_int));
+                          dasm_arg = std::format("{:g}", std::bit_cast<float>(arg_value.as_int));
                           break;
                         default:
                           dasm_arg = "/* invalid-type */";
