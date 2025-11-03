@@ -1263,6 +1263,7 @@ static asio::awaitable<void> on_sync_joining_player_disp_and_inventory(
       throw logic_error("6x70 command from unknown game version");
   }
 
+  c->pos = c->last_reported_6x70->base.pos;
   send_game_player_state(target, c, false);
 }
 
@@ -1845,7 +1846,18 @@ static asio::awaitable<void> on_play_sound_from_player(shared_ptr<Client> c, Sub
 ////////////////////////////////////////////////////////////////////////////////
 
 template <typename CmdT>
-static asio::awaitable<void> on_movement(shared_ptr<Client> c, SubcommandMessage& msg) {
+static asio::awaitable<void> on_movement_xz(shared_ptr<Client> c, SubcommandMessage& msg) {
+  const auto& cmd = msg.check_size_t<CmdT>();
+  if (cmd.header.client_id != c->lobby_client_id) {
+    co_return;
+  }
+  c->pos.x = cmd.pos.x;
+  c->pos.z = cmd.pos.z;
+  forward_subcommand(c, msg);
+}
+
+template <typename CmdT>
+static asio::awaitable<void> on_movement_xyz(shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<CmdT>();
   if (cmd.header.client_id != c->lobby_client_id) {
     co_return;
@@ -1855,7 +1867,21 @@ static asio::awaitable<void> on_movement(shared_ptr<Client> c, SubcommandMessage
 }
 
 template <typename CmdT>
-static asio::awaitable<void> on_movement_with_floor(shared_ptr<Client> c, SubcommandMessage& msg) {
+static asio::awaitable<void> on_movement_xz_with_floor(shared_ptr<Client> c, SubcommandMessage& msg) {
+  const auto& cmd = msg.check_size_t<CmdT>();
+  if (cmd.header.client_id != c->lobby_client_id) {
+    co_return;
+  }
+  c->pos.x = cmd.pos.x;
+  c->pos.z = cmd.pos.z;
+  if (cmd.floor >= 0 && c->floor != static_cast<uint32_t>(cmd.floor)) {
+    c->floor = cmd.floor;
+  }
+  forward_subcommand(c, msg);
+}
+
+template <typename CmdT>
+static asio::awaitable<void> on_movement_xyz_with_floor(shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<CmdT>();
   if (cmd.header.client_id != c->lobby_client_id) {
     co_return;
@@ -3735,14 +3761,14 @@ static asio::awaitable<void> on_set_entity_pos_and_angle_6x17(shared_ptr<Client>
   if (l->area_for_floor(c->version(), c->floor) != 0x0D) {
     throw runtime_error("client sent 6x17 command in area other than Vol Opt");
   }
-  if (cmd.header.entity_id != c->lobby_client_id) {
-    // If the target is on a different floor or does not exist, just drop the
-    // command instead of raising; this could have been due to a data race
-    auto target = l->clients.at(cmd.header.entity_id);
-    if (!target || target->floor != c->floor) {
-      co_return;
-    }
+
+  // If the target is on a different floor or does not exist, just drop the
+  // command instead of raising; this could have been due to a data race
+  auto target = l->clients.at(cmd.header.entity_id);
+  if (!target || target->floor != c->floor) {
+    co_return;
   }
+  target->pos = cmd.pos;
 
   co_await forward_subcommand_with_entity_id_transcode_t<G_SetEntityPositionAndAngle_6x17>(c, msg);
 }
@@ -5358,11 +5384,11 @@ const vector<SubcommandDefinition> subcommand_definitions{
     /* 6x1D */ {0x19, 0x1B, 0x1D, on_invalid},
     /* 6x1E */ {0x1A, 0x1C, 0x1E, on_invalid},
     /* 6x1F */ {0x1B, 0x1D, 0x1F, on_change_floor_6x1F},
-    /* 6x20 */ {0x1C, 0x1E, 0x20, on_movement_with_floor<G_SetPosition_6x20>},
+    /* 6x20 */ {0x1C, 0x1E, 0x20, on_movement_xyz_with_floor<G_SetPosition_6x20>},
     /* 6x21 */ {0x1D, 0x1F, 0x21, on_change_floor_6x21},
     /* 6x22 */ {0x1E, 0x20, 0x22, on_forward_check_client},
     /* 6x23 */ {0x1F, 0x21, 0x23, on_set_player_visible},
-    /* 6x24 */ {0x20, 0x22, 0x24, on_forward_check_game},
+    /* 6x24 */ {0x20, 0x22, 0x24, on_movement_xyz<G_TeleportPlayer_6x24>},
     /* 6x25 */ {0x21, 0x23, 0x25, on_equip_item},
     /* 6x26 */ {0x22, 0x24, 0x26, on_unequip_item}, // TODO: Why does BB allow this in the lobby?
     /* 6x27 */ {0x23, 0x25, 0x27, on_use_item},
@@ -5389,11 +5415,11 @@ const vector<SubcommandDefinition> subcommand_definitions{
     /* 6x3B */ {NONE, 0x38, 0x3B, forward_subcommand_m},
     /* 6x3C */ {0x34, 0x39, 0x3C, forward_subcommand_m},
     /* 6x3D */ {0x35, 0x3A, 0x3D, on_invalid},
-    /* 6x3E */ {NONE, NONE, 0x3E, on_movement_with_floor<G_StopAtPosition_6x3E>},
-    /* 6x3F */ {0x36, 0x3B, 0x3F, on_movement_with_floor<G_SetPosition_6x3F>},
-    /* 6x40 */ {0x37, 0x3C, 0x40, on_movement<G_WalkToPosition_6x40>},
-    /* 6x41 */ {0x38, 0x3D, 0x41, on_movement<G_MoveToPosition_6x41_6x42>},
-    /* 6x42 */ {0x39, 0x3E, 0x42, on_movement<G_MoveToPosition_6x41_6x42>},
+    /* 6x3E */ {NONE, NONE, 0x3E, on_movement_xyz_with_floor<G_StopAtPosition_6x3E>},
+    /* 6x3F */ {0x36, 0x3B, 0x3F, on_movement_xyz_with_floor<G_SetPosition_6x3F>},
+    /* 6x40 */ {0x37, 0x3C, 0x40, on_movement_xz<G_WalkToPosition_6x40>},
+    /* 6x41 */ {0x38, 0x3D, 0x41, on_movement_xz<G_MoveToPosition_6x41_6x42>},
+    /* 6x42 */ {0x39, 0x3E, 0x42, on_movement_xz<G_MoveToPosition_6x41_6x42>},
     /* 6x43 */ {0x3A, 0x3F, 0x43, on_forward_check_game_client},
     /* 6x44 */ {0x3B, 0x40, 0x44, on_forward_check_game_client},
     /* 6x45 */ {0x3C, 0x41, 0x45, on_forward_check_game_client},
@@ -5412,8 +5438,8 @@ const vector<SubcommandDefinition> subcommand_definitions{
     /* 6x52 */ {0x46, 0x4C, 0x52, on_set_animation_state},
     /* 6x53 */ {0x47, 0x4D, 0x53, on_forward_check_game},
     /* 6x54 */ {0x48, 0x4E, 0x54, forward_subcommand_m},
-    /* 6x55 */ {0x49, 0x4F, 0x55, on_forward_check_game_client},
-    /* 6x56 */ {0x4A, 0x50, 0x56, on_movement<G_SetPlayerPositionAndAngle_6x56>},
+    /* 6x55 */ {0x49, 0x4F, 0x55, on_movement_xyz<G_IntraMapWarp_6x55>},
+    /* 6x56 */ {0x4A, 0x50, 0x56, on_movement_xyz<G_SetPlayerPositionAndAngle_6x56>},
     /* 6x57 */ {NONE, 0x51, 0x57, on_forward_check_client},
     /* 6x58 */ {NONE, NONE, 0x58, on_forward_check_client},
     /* 6x59 */ {0x4B, 0x52, 0x59, on_pick_up_item},

@@ -149,7 +149,7 @@ public:
   uint8_t override_lobby_number = 0x80; // 80 = no override
   int64_t override_random_seed = -1;
   std::unique_ptr<Variations> override_variations;
-  VectorXZF pos;
+  VectorXYZF pos;
   uint32_t floor = 0x0F;
   std::weak_ptr<Lobby> lobby;
   uint8_t lobby_client_id = 0;

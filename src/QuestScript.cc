@@ -630,7 +630,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // <rXX> => value of rXX as %d (signed integer)
     // <fXX> => value of rXX as %f (floating-point) (v3 and later)
     // <color X> => changes text color like $CX would (supported on 11/2000 and
-    //   later); X must be numeric, so <color G> does not work
+    //   later); X must be numeric and in the range 0-7, so <color 8>, <color
+    //   9>, and <color G> do not work (though \tC8, \tC9, and \tCG can be used
+    //   directly in the text, and do work)
     // <cr> => newline
     // <hero name> or <name hero> => character's name
     // <hero job> or <name job> => character's class

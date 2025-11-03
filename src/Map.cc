@@ -618,7 +618,8 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //   param4 = source type:
     //     0 = use this set when advancing from a lower floor
     //     1 = use this set when returning from a higher floor
-    //     anything else = set is unused
+    //     anything else = set is unused (TODO: but maybe used by
+    //       TObjAreaWarpQuest?)
     {0x0000, F_V0_V4, 0x00007FFFFFFFFFFF, "TObjPlayerSet"},
     {0x0000, F_EP3, 0x0000000000008001, "TObjPlayerSet"},
 
@@ -938,7 +939,7 @@ static const vector<DATEntityDefinition> dat_object_definitions({
 
     // Radar collision. Params:
     //   param1 = radius
-    //   param4 = TODO
+    //   param4 = minimap segment ID
     {0x0017, F_V0_V4, 0x00004FFFFFF8FFFE, "TObjRaderCol"},
     {0x0017, F_EP3, 0x0000000000008000, "TObjRaderCol"},
 
@@ -990,7 +991,7 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     // that the object is not destroyed immediately if it's blue and the game
     // is Challenge mode. Params:
     //   param1 = player set ID (TODO: what exactly does this do? Looks like it
-    //     does nothing unless it's >= 2)
+    //     does nothing unless it's >= 2; see TObjPlayerSet)
     //   param4 = destination floor
     //   param6 = color (0 = blue, 1 = red)
     {0x001B, F_V1_V4, 0x00005000000078FE, "TObjAreaWarpQuest"},
@@ -1005,10 +1006,10 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     // Params:
     //   param1 = TODO
     //   param2 = TODO
-    //   param3 = TODO
-    //   param4 = TODO
-    //   param5 = TODO
-    //   param6 = TODO
+    //   param3 = TODO (1 byte only)
+    //   param4 = TODO (1 byte only)
+    //   param5 = TODO (1 byte only)
+    //   param6 = TODO (1 byte only)
     {0x001D, F_V2_V4, 0x0000400000000002, "TEffStarLight2D_Base"},
 
     // VR Temple Beta / Barba Ray lens flare effect.
@@ -1017,7 +1018,6 @@ static const vector<DATEntityDefinition> dat_object_definitions({
 
     // Hides the area map when the player is near this object. Params:
     //   param1 = radius
-    // TODO: Test this.
     {0x001F, F_V2_V4, 0x00004FFC3FFB07FE, "TObjRaderHideCol"},
 
     // Item-detecting floor switch. Params:
@@ -1114,7 +1114,30 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     {0x0023, F_V2_V4, 0x00004FFC3FFB07FE, "TOAttackableCol"},
 
     // Damage effect. Params:
-    //   angle.x = effect type (in range [0x00, 0x14]; TODO: list these)
+    //   angle.x = effect type (in range [0x00, 0x14]; the following were
+    //     tested in Forest 1 and may have different effects in different
+    //     areas):
+    //     00 = fiery explosion with vertical camera shake
+    //     01 = vertical camera shake only
+    //     02 = bluish energy ball
+    //     03 = expanding white flash
+    //     04 = contracting white flash
+    //     05 = nothing
+    //     06 = rising fireball
+    //     07 = blue flash
+    //     08 = purple flash
+    //     09 = teal flash
+    //     0A = nothing
+    //     0B = big orange flash
+    //     0C = nothing
+    //     0D = big white flash
+    //     0E = black smoky flash
+    //     0F = nothing
+    //     10 = nothing
+    //     11 = smaller black smoke
+    //     12 = bluish-purple flash
+    //     13 = quick blue flash
+    //     14 = lavender-gray flash
     //   param1 = damage radius
     //   param2 = damage value, scaled by difficulty:
     //     Normal: param2 * 2
@@ -1132,9 +1155,9 @@ static const vector<DATEntityDefinition> dat_object_definitions({
 
     // Switch flag timer. This object watches for a switch flag to be
     // activated, then once it is, waits for a specified time, then disables
-    // that switch flag and activates up to three other switch flags. Note
-    // that this object just provides the timer functionality; the trigger
-    // switch flag must be activated by some other object. Params:
+    // that switch flag or activates up to three other switch flags. Note that
+    // this object just provides the timer functionality; the trigger switch
+    // flag must be activated by some other object. Params:
     //   angle.x = trigger mode:
     //     0 = disable watched switch flag when timer expires
     //     any positive number = enable up to 3 other switch flags when timer
@@ -1341,18 +1364,16 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     // be no parameters.
     {0x0054, F_V0_V4, 0x0000600000000001, "TObjCityDoor_Lobby"},
 
-    // Version of the main warp for Challenge mode? This object seems to
-    // behave similarly to boss teleporters; it shows the player a Yes/No
-    // confirmation menu and sends 6x6A to synchronize state. There is a
-    // global named last_set_mainwarp_value which is set to param4 when this
-    // object is constructed, but may be changed by a set_mainwarp quest
-    // opcode after that. If that happens, this object replaces its
-    // dest_floor with the floor specified in the last set_mainwarp quest
-    // opcode. Params:
+    // Version of the main warp for Challenge mode. This object looks like the
+    // main Ragol warp on Pioneer 2, but behaves similarly to boss teleporters:
+    // it shows the player a Yes/No confirmation menu and sends 6x6A to
+    // synchronize state. There is a global named last_set_mainwarp_value which
+    // is set to param4 when this object is constructed, but may be changed by
+    // a set_mainwarp quest opcode after that. If that happens, this object
+    // replaces its dest_floor with the floor specified in the last
+    // set_mainwarp quest opcode. Params:
     //   param4 = destination floor
     //   param5 = switch flag number
-    // TODO: This thing has a lot of code; figure out if there are any other
-    // parameters
     {0x0055, F_V2_V4, 0x0000600000040001, "TObjCityMainWarpChallenge"},
 
     // Episode 2 Lab door. Params:
@@ -1378,8 +1399,10 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     {0x0057, F_V3_V4, 0x0000600000040001, "TObjTradeCollision"},
     {0x0057, F_EP3, 0x0000000000000001, "TObjTradeCollision"},
 
-    // TODO: Describe this object. Presumably similar to TObjTradeCollision
-    // but enables the deck edit counter? Params:
+    // This object appears to be unused in both Ep3 NTE and the final release.
+    // It may have been an early version of Deck Edit or Entry Counter
+    // sequence, perhaps responsible for setting the players' statuses when
+    // they're near either of those counters. Params:
     //   param1 = radius
     {0x0058, F_EP3, 0x0000000000000001, "TObjDeckCollision"},
 
@@ -1398,9 +1421,13 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     {0x0081, F_V0_V4, 0x00004FF00078003E, "TObjDoorKey"},
 
     // Laser fence and square laser fence. Params:
-    //   param1 = color (range [0, 3])
+    //   param1 = color:
+    //     <=0 = red
+    //     1 = cyan
+    //     2 = green
+    //     >=3 = magenta
     //   param4 = switch flag number
-    //   param6 = model (TODO)
+    //   param6 = model (even value = short, odd value = long)
     {0x0082, F_V0_V4, 0x00004FF0000300FE, "TObjLazerFenceNorm"},
     {0x0083, F_V0_V4, 0x00004FF03FFB00FE, "TObjLazerFence4"},
 
@@ -1419,8 +1446,8 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //   param1-3 = TODO
     {0x0086, F_V0_V4, 0x00004E0000000006, "TButterfly"},
 
-    // TODO: Describe this object. Params:
-    //   param1 = model number
+    // Small vehicle. Params:
+    //   param1 = model number (even value = crashed, odd value = intact)
     {0x0087, F_V0_V4, 0x0000400000000006, "TMotorcycle"},
 
     // Item box. Params:
@@ -1439,8 +1466,9 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     {0x0088, F_V0_V4, 0x00004FF0B00000FE, "TObjContainerBase2"},
     {0x0088, F_EP3, 0x0000000000000002, "TObjContainerBase2"},
 
-    // Elevated cylindrical tank. Params:
-    //   param1-3 = TODO
+    // Elevated cylindrical tank. There appear to be no parameters; param1-3
+    // are copied into the object instance as a Vector3F, but it appears that
+    // that vector is never used.
     {0x0089, F_V0_V4, 0x0000400000000006, "TObjTank"},
 
     // TODO: Describe this object. Params:
@@ -1463,7 +1491,7 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //   param4 = base switch flag (the actual switch flags used are param4,
     //     param4 + 1, param4 + 2, etc.)
     //   param5 = number of switch flags (clamped to [1, 4])
-    //   param6 = TODO (only matters if this is zero or nonzero)
+    //   param6 = movement effect (0 = sparks + thud, 1 = grinding sound)
     {0x008C, F_V0_V1, 0x0000000000000006, "TObjContainerIdo"},
     {0x008C, F_V2_V4, 0x000040000000000E, "TObjContainerIdo"},
 
@@ -1473,8 +1501,9 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //     negative = enabled when player is within 70 units
     //     range [0x00, 0xFF] = enabled by corresponding switch flag
     //     0x100 and above = never enabled
-    //   param5 = message number (used with message quest opcode; TODO: has
-    //     the same [100, 999] check as some other objects)
+    //   param5 = message number ("character ID" in qedit; if this is outside
+    //     the range [100, 999], the quest label in param6 is called in the
+    //     free play script instead of the quest script)
     //   param6 = quest label to call when activated
     {0x008D, F_V0_V4, 0x00004000000027FE, "TOCapsuleAncient01"},
 
@@ -1492,7 +1521,7 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     {0x008F, F_V0_V4, 0x0000400000000006, "TObjHashi"},
 
     // Generic switch. Visually, this is the type usually used for objects
-    // other than doors, such as lights, poison rooms, and the Forest 1
+    // other than doors, such as lights, poison rooms, and the Forest 2
     // bridge. Params:
     //   param1 = activation mode:
     //     negative = temporary (TODO: test this)
@@ -1558,7 +1587,8 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     // Params for TOHangceilingCave01Normal (param6 = 0):
     //   param1 = TODO (radius delta? value is param1 + 29)
     //   param2 = TODO (value is 1 - param2)
-    //   param3 = TODO (value is param3 + 100)
+    //   param3 = base damage (value is param3 + 100; scaled by difficulty:
+    //     Normal = 1x, Hard = 2x, Very Hard = 3x, Ultimate = 6x)
     // Params for TOHangceilingCave01Key (param6 = 1):
     //   param1-3 = same as for TOHangceilingCave01Normal
     //   param4 = switch flag number (drops when switch flag is activated;
@@ -1698,10 +1728,13 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     // appears that some may have different scale factors or offsets (TODO).
     {0x0106, F_V0_V4, 0x00004000000000C0, "TODragonflyMachine01"},
 
-    // Floating blue light. Params:
-    //   param4 = TODO
-    //   param5 = TODO
-    //   param6 = TODO
+    // Floating rotating blue light (often appears next to doors). The light
+    // rotates about its vertical axis and floats up and down sinusoidally.
+    // Params:
+    //   param4 = float cycles per second (value is param4 * 0.1 + 1.0)
+    //   param5 = max float distance (value is param5 * 0.1 + 0.5)
+    //   param6 = rotation speed in angle units per frame (0x10000 = 1 complete
+    //     rotation)
     {0x0107, F_V0_V4, 0x00004000000000C0, "TOLightMachine01"},
 
     // Self-destructing objects. Params:
@@ -1711,22 +1744,23 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     {0x010A, F_V0_V4, 0x00004000000000C0, "TOExplosiveMachine03"},
 
     // Spark machine. This looks like it's intended to appear in the bridge
-    // rooms in the Mines, to create an effect of the columnar machines
-    // sparking. This is implemented as four columns that randomly change their
-    // visibility. Each column has an accumulator value, which is initially
-    // zero. Every frame, the value (param1 - 0.98) is added to each column's
-    // accumulator and a random number between 0 and 1 is chosen; if the random
-    // number is less than the column's accumulator, its visibility state is
-    // changed and its accumulator is reset to zero. In this manner, param1 can
-    // be thought of as the frequency of state changes - 0.98 would mean they
-    // never change state, 1.98 would mean they change every frame. Params:
+    // room in Mine 1, to create an effect of the columnar machines sparking.
+    // This is implemented as four columns that randomly change their
+    // visibility, intended to be in the same position as the map geometry.
+    // Each column has an accumulator value, which is initially zero. Every
+    // frame, the value (param1 - 0.98) is added to each column's accumulator
+    // and a random number between 0 and 1 is chosen; if the random number is
+    // less than the column's accumulator, its visibility state is changed and
+    // its accumulator is reset to zero. In this manner, param1 can be thought
+    // of as the frequency of state changes - 0.98 would mean they never change
+    // state, 1.98 would mean they change every frame. Params:
     //   param1 = state change accumulation per frame (value is param1 - 0.98)
-    //   param2 = if <= 0, only one column flickers and the other are always
+    //   param2 = if <= 0, only one column flickers and the others are always
     //     visible; if > 0, all columns flicker
     {0x010B, F_V0_V4, 0x00004000000000C0, "TOSparkMachine01"},
 
-    // Large flashing box. Params:
-    //   param2 = TODO (seems it only matters if this is < 0 or not)
+    // Open stall with a spinning red light on either side. Params:
+    //   param2 = if > 0, a gray box is present in the left half of the stall
     {0x010C, F_V0_V4, 0x00004000000000C0, "TOHangerMachine01"},
 
     // Ruins entrance door (after Vol Opt). This object reads quest flags

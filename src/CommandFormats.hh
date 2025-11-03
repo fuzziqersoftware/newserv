@@ -4210,8 +4210,7 @@ struct G_VolOptBossActions_6x16 {
 
 // 6x17: Set entity position and angle (not valid on Episode 3)
 // This command sets an entity's position and angle without performing any
-// validity checks, even on v3 and later. We unconditionally block this if it
-// affects a player other than the sender.
+// validity checks, even on v3 and later.
 
 struct G_SetEntityPositionAndAngle_6x17 {
   G_EntityIDHeader header;
@@ -4760,7 +4759,7 @@ struct G_IntraMapWarp_6x55 {
   G_ClientIDHeader header;
   le_uint32_t angle_y = 0;
   VectorXYZF from_pos;
-  VectorXYZF to_pos;
+  VectorXYZF pos;
 } __packed_ws__(G_IntraMapWarp_6x55, 0x20);
 
 // 6x56: Set player position and angle (protected on GC NTE/V3/V4)

@@ -1,5 +1,6 @@
 #include "ChatCommands.hh"
 
+#include <ctype.h>
 #include <string.h>
 
 #include <filesystem>
@@ -1620,6 +1621,101 @@ ChatCommandDefinition cc_loadchar(
         s->send_lobby_join_notifications(l, a.c);
       }
       co_return;
+    });
+
+ChatCommandDefinition cc_makeobj(
+    {"$makeobj"},
+    +[](const Args& a) -> asio::awaitable<void> {
+      a.check_debug_enabled();
+
+      auto tokens = phosg::split(a.text, ' ');
+      if (tokens.size() < 1) {
+        throw runtime_error("not enough arguments");
+      }
+
+      uint32_t base_type_high = stoul(tokens[0], nullptr, 0) << 16;
+      VectorXYZF pos = a.c->pos;
+      VectorXYZI angle{0, 0, 0};
+      VectorXYZF param123{0, 0, 0};
+      VectorXYZI param456{0, 0, 0};
+      for (size_t z = 1; z < tokens.size(); z++) {
+        auto subtokens = phosg::split(tokens[z], ':');
+        if (subtokens.size() != 2 || subtokens[0].size() != 1) {
+          throw runtime_error("invalid argument: " + tokens[z]);
+        }
+        switch (tolower(subtokens[0].front())) {
+          case 'X':
+          case 'x':
+            pos.x = stof(subtokens[1]);
+            break;
+          case 'Y':
+          case 'y':
+            pos.y = stof(subtokens[1]);
+            break;
+          case 'Z':
+          case 'z':
+            pos.z = stof(subtokens[1]);
+            break;
+          case 'R':
+          case 'r':
+            angle.x = stol(subtokens[1], nullptr, 0);
+            break;
+          case 'P':
+          case 'p':
+            angle.y = stol(subtokens[1], nullptr, 0);
+            break;
+          case 'W':
+          case 'w':
+            angle.z = stol(subtokens[1], nullptr, 0);
+            break;
+          case '1':
+            param123.x = stof(subtokens[1]);
+            break;
+          case '2':
+            param123.y = stof(subtokens[1]);
+            break;
+          case '3':
+            param123.z = stof(subtokens[1]);
+            break;
+          case '4':
+            param456.x = stol(subtokens[1], nullptr, 0);
+            break;
+          case '5':
+            param456.y = stol(subtokens[1], nullptr, 0);
+            break;
+          case '6':
+            param456.z = stol(subtokens[1], nullptr, 0);
+            break;
+          default:
+            throw runtime_error("invalid argument: " + tokens[z]);
+        }
+      }
+
+      auto encode_float = [](float z) -> uint32_t {
+        return *reinterpret_cast<uint32_t*>(&z);
+      };
+
+      unordered_map<string, uint32_t> label_writes{
+          {"base_type_high", base_type_high},
+          {"floor_low", a.c->floor},
+          {"pos_x", encode_float(pos.x)},
+          {"pos_y", encode_float(pos.y)},
+          {"pos_z", encode_float(pos.z)},
+          {"angle_x", angle.x},
+          {"angle_y", angle.y},
+          {"angle_z", angle.z},
+          {"param1", encode_float(param123.x)},
+          {"param2", encode_float(param123.y)},
+          {"param3", encode_float(param123.z)},
+          {"param4", param456.x},
+          {"param5", param456.y},
+          {"param6", param456.z},
+      };
+
+      co_await prepare_client_for_patches(a.c);
+      auto s = a.c->require_server_state();
+      auto fn = s->function_code_index->get_patch("CreateObject", a.c->specific_version);
+      co_await send_function_call(a.c, fn, label_writes);
     });
 
 ChatCommandDefinition cc_matcount(

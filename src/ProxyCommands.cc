@@ -2036,13 +2036,20 @@ asio::awaitable<HandlerResult> C_6x(shared_ptr<Client> c, Channel::Message& msg)
       c->pos = msg.check_size_t<G_SetPosition_6x3F>().pos;
       break;
 
-    case 0x40:
-      c->pos = msg.check_size_t<G_WalkToPosition_6x40>().pos;
+    case 0x40: {
+      const auto& cmd = msg.check_size_t<G_WalkToPosition_6x40>();
+      c->pos.x = cmd.pos.x;
+      c->pos.z = cmd.pos.z;
       break;
+    }
 
     case 0x41:
-      c->pos = msg.check_size_t<G_MoveToPosition_6x41_6x42>().pos;
+    case 0x42: {
+      const auto& cmd = msg.check_size_t<G_MoveToPosition_6x41_6x42>();
+      c->pos.x = cmd.pos.x;
+      c->pos.z = cmd.pos.z;
       break;
+    }
 
     case 0x48:
       if (!is_v1(c->version()) && c->check_flag(Client::Flag::INFINITE_TP_ENABLED)) {

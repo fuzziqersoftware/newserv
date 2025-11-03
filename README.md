@@ -606,6 +606,7 @@ Some commands only work for clients not in proxy sessions. The chat commands are
     * `$ss <data>`: Send a command to the remote server (if in a proxy session) or to the game server.
     * `$sb <data>`: Send a command to yourself, and to the remote server or game server.
     * `$auction` (Episode 3 only): Bring up the CARD Auction menu, even if there are fewer than 4 players are in the game or you don't have a VIP card.
+    * `$makeobj <type> [coords...] [angles...] [params...]`: Create a map object. This is only implemented for a few specific client versions. The type is an integer like `273` or `0x0107`. Coordinates are specified as e.g. `x:30 y:0 z:-25.5`; if coordinates are not specified, the object is created at the player's coordinates. Angles are specified as e.g. `r:0 p:0x1000 w:-0x400` (for roll, pitch, and yaw, respectively). Parameters are specified as e.g. `1:2.0 2:0.0 5:0x4000`; any unspecified parameters are set to zero. The object is only created for the calling player and is not added to the server's map state; if the object ever sends update commands (e.g. 6x0B), it will likely result in a disconnection.
 
 * Personal state commands
     * `$arrow <color-id>`: Change your lobby arrow color. The color may be specified by number (0-12) or by name (red, blue, green, yellow, purple, cyan, orange, pink, white, white2, white3, or black).
