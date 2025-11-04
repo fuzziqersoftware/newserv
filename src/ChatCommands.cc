@@ -1104,14 +1104,12 @@ ChatCommandDefinition cc_exit(
         is_in_quest = a.c->proxy_session->is_in_quest;
       } else {
         auto l = a.c->require_lobby();
-        is_in_quest = (l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) ||
-            l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS));
+        is_in_quest = (l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) || l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS));
       }
       if (is_in_quest) {
         // Client is in a quest; command 6x73 triggers game exit
         G_UnusedHeader cmd = {0x73, 0x01, 0x0000};
         a.c->channel->send(0x60, 0x00, cmd);
-        a.c->floor = 0;
         co_return;
       }
 
