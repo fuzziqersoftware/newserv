@@ -1901,14 +1901,14 @@ ChatCommandDefinition cc_playrec(
       if (l->is_game() && l->battle_player) {
         l->battle_player->start();
       } else if (!l->is_game()) {
-        string file_path = file_path_for_recording(a.text, a.c->login->account->account_id);
 
         auto s = a.c->require_server_state();
         string filename = a.text;
-        bool start_battle_player_immediately = (filename[0] == '!');
-        if (start_battle_player_immediately) {
+        bool start_battle_player_immediately = (filename.at(0) != '!');
+        if (!start_battle_player_immediately) {
           filename = filename.substr(1);
         }
+        string file_path = file_path_for_recording(filename, a.c->login->account->account_id);
 
         string data;
         try {
@@ -1919,7 +1919,7 @@ ChatCommandDefinition cc_playrec(
         auto record = make_shared<Episode3::BattleRecord>(data);
         auto battle_player = make_shared<Episode3::BattleRecordPlayer>(s->io_context, record);
         auto game = create_game_generic(
-            s, a.c, a.text, "", Episode::EP3, GameMode::NORMAL, Difficulty::NORMAL, false, nullptr, battle_player);
+            s, a.c, filename, "", Episode::EP3, GameMode::NORMAL, Difficulty::NORMAL, false, nullptr, battle_player);
         if (game) {
           if (start_battle_player_immediately) {
             game->set_flag(Lobby::Flag::START_BATTLE_PLAYER_IMMEDIATELY);
