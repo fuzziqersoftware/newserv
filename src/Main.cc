@@ -3028,6 +3028,91 @@ Action a_check_supermaps(
       phosg::fwrite_fmt(stderr, "ALL QUEST MAPS: {}\n", all_quests_eff_str);
     });
 
+Action a_print_free_supermap(
+    "print-free-supermap", "\
+  print-free-supermap [--psov2] [--seed=SEED] [--episode=1|2|4]\n\
+      [--mode=N|B|C|S] [--difficulty=N|H|V|U] [--event=EVENT] VARIATIONS\n\
+    Generates and prints the specified free play supermap.\n",
+    +[](phosg::Arguments& args) {
+      Episode episode;
+      {
+        const string& episode_str = args.get<string>("episode", false);
+        if (episode_str == "1" || episode_str == "") {
+          episode = Episode::EP1;
+        } else if (episode_str == "2") {
+          episode = Episode::EP2;
+        } else if (episode_str == "4") {
+          episode = Episode::EP4;
+        } else {
+          throw std::runtime_error("invalid episode number");
+        }
+      }
+
+      GameMode mode;
+      {
+        string mode_str = phosg::tolower(args.get<string>("mode", false));
+        if (mode_str == "n" || mode_str == "") {
+          mode = GameMode::NORMAL;
+        } else if (mode_str == "b") {
+          mode = GameMode::BATTLE;
+        } else if (mode_str == "c") {
+          mode = GameMode::CHALLENGE;
+        } else if (mode_str == "s") {
+          mode = GameMode::SOLO;
+        } else {
+          throw std::runtime_error("invalid game mode");
+        }
+      }
+
+      Difficulty difficulty;
+      {
+        string mode_str = phosg::tolower(args.get<string>("difficulty", false));
+        if (mode_str == "n" || mode_str == "") {
+          difficulty = Difficulty::NORMAL;
+        } else if (mode_str == "h") {
+          difficulty = Difficulty::HARD;
+        } else if (mode_str == "v") {
+          difficulty = Difficulty::VERY_HARD;
+        } else if (mode_str == "u") {
+          difficulty = Difficulty::ULTIMATE;
+        } else {
+          throw std::runtime_error("invalid difficulty level");
+        }
+      }
+
+      uint8_t event = args.get<uint8_t>("event", 0, phosg::Arguments::IntFormat::HEX);
+      uint32_t random_seed = args.get<uint32_t>("seed", phosg::random_object<uint32_t>(), phosg::Arguments::IntFormat::HEX);
+
+      string variations_str = args.get<string>(1);
+      Variations variations;
+      for (size_t z = 0; z < variations_str.size(); z++) {
+        if (z & 1) {
+          variations.entries[z >> 1].entities = phosg::value_for_hex_char(variations_str[z]);
+        } else {
+          variations.entries[z >> 1].layout = phosg::value_for_hex_char(variations_str[z]);
+        }
+      }
+
+      auto s = make_shared<ServerState>(get_config_filename(args));
+      s->load_config_early();
+      s->clear_file_caches();
+      s->load_patch_indexes();
+      s->load_set_data_tables();
+      s->load_maps();
+
+      shared_ptr<RandomGenerator> rand_crypt;
+      if (args.get<bool>("--psov2")) {
+        rand_crypt = std::make_shared<MT19937Generator>(random_seed);
+      } else {
+        rand_crypt = std::make_shared<PSOV2Encryption>(random_seed);
+      }
+      auto sdt = s->set_data_table(get_cli_version(args, Version::BB_V4), episode, mode, difficulty);
+      auto supermaps = s->supermaps_for_variations(episode, mode, difficulty, variations);
+      MapState map_state(0, difficulty, event, random_seed, MapState::DEFAULT_RARE_ENEMIES, rand_crypt, supermaps);
+      map_state.verify();
+      map_state.print(stdout);
+    });
+
 Action a_check_quests(
     "check-quests", nullptr,
     +[](phosg::Arguments& args) {
