@@ -174,21 +174,6 @@ string BattleRecord::serialize() const {
   return std::move(w.str());
 }
 
-bool BattleRecord::writable() const {
-  return this->is_writable;
-}
-
-bool BattleRecord::battle_in_progress() const {
-  return (this->battle_start_timestamp != 0);
-}
-
-const BattleRecord::Event* BattleRecord::get_first_event() const {
-  if (this->events.empty()) {
-    return nullptr;
-  }
-  return &this->events.front();
-}
-
 void BattleRecord::add_player(
     const PlayerLobbyDataDCGC& lobby_data,
     const PlayerInventory& inventory,
@@ -254,16 +239,6 @@ void BattleRecord::add_chat_message(
 
 void BattleRecord::add_random_data(const void* data, size_t size) {
   this->random_stream.append(reinterpret_cast<const char*>(data), size);
-}
-
-vector<string> BattleRecord::get_all_server_data_commands() const {
-  vector<string> ret;
-  for (const auto& event : this->events) {
-    if (event.type == Event::Type::SERVER_DATA_COMMAND) {
-      ret.emplace_back(event.data);
-    }
-  }
-  return ret;
 }
 
 const string& BattleRecord::get_random_stream() const {

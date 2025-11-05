@@ -313,6 +313,7 @@ void Lobby::create_ep3_server() {
       .rand_crypt = this->rand_crypt,
       .tournament = tourn,
       .trap_card_ids = s->ep3_trap_card_ids,
+      .output_queue = nullptr,
   };
   if (is_nte) {
     options.behavior_flags |= Episode3::BehaviorFlag::IS_TRIAL_EDITION;

@@ -231,6 +231,11 @@ int8_t Server::get_winner_team_id() const {
 
 void Server::send(const void* data, size_t size, uint8_t command, bool enable_masking) const {
   // Note: This function is (obviously) not part of the original implementation.
+
+  if (this->options.output_queue) {
+    this->options.output_queue->emplace_back(reinterpret_cast<const char*>(data), size);
+  }
+
   if (this->has_lobby) {
     auto l = this->lobby.lock();
     if (!l) {
@@ -2579,8 +2584,7 @@ void Server::send_6xB6x41_to_all_clients() const {
       // in the playback lobby
       for (string& data : map_commands_by_language) {
         if (!data.empty()) {
-          this->battle_record->add_command(
-              BattleRecord::Event::Type::BATTLE_COMMAND, std::move(data));
+          this->battle_record->add_command(BattleRecord::Event::Type::BATTLE_COMMAND, std::move(data));
           break;
         }
       }

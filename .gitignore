@@ -18,6 +18,7 @@ build
 
 # Files modified by the user and/or server that don't have defaults
 system/config.json
+system/ep3/battle-records/*.mzr
 system/ep3/battle-records/*.mzrd
 system/ep3/tournament-state.json
 system/licenses.nsi

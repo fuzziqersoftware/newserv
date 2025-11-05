@@ -1882,13 +1882,13 @@ ChatCommandDefinition cc_ping(
       co_return;
     });
 
-static string file_path_for_recording(const std::string& args, uint32_t account_id) {
+static string file_path_for_recording(const std::string& args, uint32_t account_id, bool compressed) {
   for (char ch : args) {
     if (ch <= 0x20 || ch > 0x7E || ch == '/') {
       throw runtime_error("invalid recording name");
     }
   }
-  return std::format("system/ep3/battle-records/{:010}_{}.mzrd", account_id, args);
+  return std::format("system/ep3/battle-records/{:010}_{}.mzr{}", account_id, args, compressed ? "" : "d");
 }
 
 ChatCommandDefinition cc_playrec(
@@ -1908,13 +1908,16 @@ ChatCommandDefinition cc_playrec(
         if (!start_battle_player_immediately) {
           filename = filename.substr(1);
         }
-        string file_path = file_path_for_recording(filename, a.c->login->account->account_id);
 
         string data;
         try {
-          data = phosg::load_file(file_path);
+          data = phosg::load_file(file_path_for_recording(filename, a.c->login->account->account_id, false));
         } catch (const phosg::cannot_open_file&) {
-          throw precondition_failed("$C4The recording does\nnot exist");
+          try {
+            data = prs_decompress(phosg::load_file(file_path_for_recording(filename, a.c->login->account->account_id, true)));
+          } catch (const phosg::cannot_open_file&) {
+            throw precondition_failed("$C4The recording does\nnot exist");
+          }
         }
         auto record = make_shared<Episode3::BattleRecord>(data);
         auto battle_player = make_shared<Episode3::BattleRecordPlayer>(s->io_context, record);
@@ -2288,7 +2291,7 @@ ChatCommandDefinition cc_saverec(
       if (!a.c->ep3_prev_battle_record) {
         throw precondition_failed("$C4No finished\nrecording is\npresent");
       }
-      string file_path = file_path_for_recording(a.text, a.c->login->account->account_id);
+      string file_path = file_path_for_recording(a.text, a.c->login->account->account_id, false);
       string data = a.c->ep3_prev_battle_record->serialize();
       phosg::save_file(file_path, data);
       send_text_message(a.c, "$C7Recording saved");

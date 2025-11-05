@@ -76,6 +76,7 @@ public:
     std::shared_ptr<RandomGenerator> rand_crypt;
     std::shared_ptr<const Tournament> tournament;
     std::array<std::vector<uint16_t>, 5> trap_card_ids;
+    std::shared_ptr<std::deque<std::string>> output_queue; // For replay testing
 
     inline bool is_nte() const {
       return (this->behavior_flags & BehaviorFlag::IS_TRIAL_EDITION);

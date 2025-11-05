@@ -62,10 +62,25 @@ public:
   explicit BattleRecord(const std::string& data);
   std::string serialize() const;
 
-  bool writable() const;
-  bool battle_in_progress() const;
+  inline bool writable() const {
+    return this->is_writable;
+  }
 
-  const Event* get_first_event() const;
+  inline uint32_t get_behavior_flags() const {
+    return this->behavior_flags;
+  }
+
+  inline bool battle_in_progress() const {
+    return (this->battle_start_timestamp != 0);
+  }
+
+  inline const Event* get_first_event() const {
+    return this->events.empty() ? nullptr : &this->events.front();
+  }
+
+  inline std::deque<Event> get_all_events() const {
+    return this->events;
+  }
 
   void add_player(
       const PlayerLobbyDataDCGC& lobby_data,
@@ -86,7 +101,6 @@ public:
 
   void print(FILE* stream) const;
 
-  std::vector<std::string> get_all_server_data_commands() const;
   const std::string& get_random_stream() const;
 
 private:
