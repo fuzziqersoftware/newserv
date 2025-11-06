@@ -309,7 +309,7 @@ std::string ItemNameIndex::describe_item(const ItemData& item, uint8_t flags) co
       }
     };
     ret_tokens.emplace_back(format_stat(def) + "/" + format_stat(pow) + "/" + format_stat(dex) + "/" + format_stat(mind));
-    ret_tokens.emplace_back(std::format("{}%", item.data2[0]));
+    ret_tokens.emplace_back(std::format("{}{}", item.data2[0], include_color_escapes ? "%%" : "%"));
     ret_tokens.emplace_back(std::format("{}IQ", item.data2[1]));
 
     uint8_t flags = item.data2[2];
