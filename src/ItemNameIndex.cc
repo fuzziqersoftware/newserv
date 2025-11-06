@@ -12,9 +12,16 @@ ItemNameIndex::ItemNameIndex(
       limits(limits) {
 
   for (uint32_t primary_identifier : item_parameter_table->compute_all_valid_primary_identifiers()) {
+    // 00000000 is a valid primary identifier but not a valid weapon; skip it
+    if (primary_identifier == 0x00000000) {
+      continue;
+    }
+
     const string* name = nullptr;
+    bool is_es_weapon = false;
     try {
       ItemData item = ItemData::from_primary_identifier(*this->limits, primary_identifier);
+      is_es_weapon = item.is_s_rank_weapon();
       name = &name_coll.at(item_parameter_table->get_item_id(item));
     } catch (const out_of_range&) {
     }
@@ -25,11 +32,14 @@ ItemNameIndex::ItemNameIndex(
       meta->name = *name;
       this->primary_identifier_index.emplace(meta->primary_identifier, meta);
       this->name_index.emplace(phosg::tolower(meta->name), meta);
+      if (is_es_weapon && ((primary_identifier & 0x0000FFFF) == 0x00000000)) {
+        this->es_name_index.emplace(phosg::tolower(meta->name), meta);
+      }
     }
   }
 }
 
-static const char* s_rank_name_characters = "\0ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_";
+static std::string s_rank_name_characters("\0ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_", 0x20);
 
 // clang-format off
 static const array<const char*, 0x29> name_for_weapon_special = {
@@ -201,7 +211,7 @@ std::string ItemNameIndex::describe_item(const ItemData& item, uint8_t flags) co
 
       string name;
       for (size_t x = 0; x < 8; x++) {
-        char ch = s_rank_name_characters[char_indexes[x]];
+        char ch = s_rank_name_characters.at(char_indexes[x]);
         if (ch == 0) {
           break;
         }
@@ -413,6 +423,112 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
     return ret;
   }
 
+  if (desc.starts_with("es ")) {
+    auto parse_name = [&](const std::string& token) -> void {
+      if (token.size() > 8) {
+        throw runtime_error("s-rank name too long");
+      }
+
+      uint8_t char_indexes[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+      for (size_t z = 0; z < token.size(); z++) {
+        char ch = toupper(token[z]);
+        size_t pos = s_rank_name_characters.find(ch);
+        if (pos == std::string::npos) {
+          throw runtime_error(std::format("s-rank name contains invalid character {:02X} ({})", ch, ch));
+        }
+        char_indexes[z] = pos;
+      }
+
+      ret.data1w[3] = phosg::bswap16(0x8000 | (char_indexes[1] & 0x1F) | ((char_indexes[0] & 0x1F) << 5));
+      ret.data1w[4] = phosg::bswap16(0x8000 | (char_indexes[4] & 0x1F) | ((char_indexes[3] & 0x1F) << 5) | ((char_indexes[2] & 0x1F) << 10));
+      ret.data1w[5] = phosg::bswap16(0x8000 | (char_indexes[7] & 0x1F) | ((char_indexes[6] & 0x1F) << 5) | ((char_indexes[5] & 0x1F) << 10));
+    };
+    auto parse_special = [&](const std::string& token) -> bool {
+      for (size_t z = 0; z < name_for_s_rank_special.size(); z++) {
+        if (name_for_s_rank_special[z] && (token == phosg::tolower(name_for_s_rank_special[z]))) {
+          ret.data1[2] = z;
+          return true;
+        }
+      }
+      return false;
+    };
+    auto parse_grind = [&](const std::string& token) -> bool {
+      if (token.starts_with('+')) {
+        ret.data1[3] = stoul(token.substr(1), nullptr, 0);
+        return true;
+      }
+      return false;
+    };
+    auto parse_type = [&](const std::string& token) -> void {
+      const auto& meta = this->es_name_index.at(token);
+      if (meta->primary_identifier & 0xFF00FFFF) {
+        throw std::runtime_error("ES weapon has invalid bits in primary identifier");
+      }
+      ret.data1[1] = meta->primary_identifier >> 16;
+    };
+
+    // Syntax: ES [NAME] [SPECIAL] TYPE [+GRIND]
+    auto tokens = phosg::split(desc, ' ');
+    switch (tokens.size()) {
+      case 0:
+      case 1:
+        throw std::runtime_error("ES weapon type is missing");
+
+      case 2:
+        // Must be ES TYPE
+        parse_name(tokens[1]);
+        break;
+
+      case 3:
+        // Any of the following:
+        // ES TYPE +N
+        // ES SPECIAL TYPE
+        // ES NAME TYPE
+        if (parse_grind(tokens[2])) {
+          parse_type(tokens[1]);
+        } else if (parse_special(tokens[1])) {
+          parse_type(tokens[2]);
+        } else {
+          parse_name(tokens[1]);
+          parse_type(tokens[2]);
+        }
+        break;
+      case 4:
+        // Any of the following:
+        // ES SPECIAL TYPE +N
+        // ES NAME TYPE +N
+        // ES NAME SPECIAL TYPE
+        if (parse_grind(tokens[3])) {
+          if (!parse_special(tokens[1])) {
+            parse_name(tokens[1]);
+          }
+          parse_type(tokens[2]);
+        } else {
+          parse_name(tokens[1]);
+          if (!parse_special(tokens[2])) {
+            throw std::runtime_error("invalid ES special");
+          }
+          parse_type(tokens[3]);
+        }
+        break;
+      case 5:
+        // Must be ES NAME SPECIAL TYPE +N
+        parse_name(tokens[1]);
+        if (!parse_special(tokens[2])) {
+          throw std::runtime_error("invalid ES special");
+        }
+        parse_type(tokens[3]);
+        if (!parse_grind(tokens[4])) {
+          throw std::runtime_error("invalid grind");
+        }
+        break;
+      default:
+        throw std::runtime_error("too many ES weapon tokens");
+    }
+
+    return ret;
+  }
+
   if (desc.starts_with("disk:")) {
     auto tokens = phosg::split(desc, ' ');
     tokens[0] = tokens[0].substr(5); // Trim off "disk:"
@@ -454,7 +570,6 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
     desc = desc.substr(z);
   }
 
-  // TODO: It'd be nice to be able to parse S-rank weapon specials here too.
   uint8_t weapon_special = 0;
   if (!skip_special) {
     for (size_t z = 0; z < name_for_weapon_special.size(); z++) {
@@ -507,6 +622,7 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
     // kill count if unsealable
     ret.data1[4] = weapon_special | (is_wrapped ? 0x40 : 0x00) | (is_unidentified ? 0x80 : 0x00);
 
+    bool kill_count_set = false;
     auto tokens = phosg::split(desc, ' ');
     for (auto& token : tokens) {
       if (token.empty()) {
@@ -517,26 +633,11 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
         ret.data1[3] = stoul(token, nullptr, 10);
 
       } else if (ret.is_s_rank_weapon()) {
-        if (token.size() > 8) {
-          throw runtime_error("s-rank name too long");
-        }
-
-        uint8_t char_indexes[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-        for (size_t z = 0; z < token.size(); z++) {
-          char ch = toupper(token[z]);
-          const char* pos = strchr(s_rank_name_characters, ch);
-          if (!pos) {
-            throw runtime_error(std::format("s-rank name contains invalid character {:02X} ({})", ch, ch));
-          }
-          char_indexes[z] = (pos - s_rank_name_characters);
-        }
-
-        ret.data1w[3] = phosg::bswap16(0x8000 | (char_indexes[1] & 0x1F) | ((char_indexes[0] & 0x1F) << 5));
-        ret.data1w[4] = phosg::bswap16(0x8000 | (char_indexes[4] & 0x1F) | ((char_indexes[3] & 0x1F) << 5) | ((char_indexes[2] & 0x1F) << 10));
-        ret.data1w[5] = phosg::bswap16(0x8000 | (char_indexes[7] & 0x1F) | ((char_indexes[6] & 0x1F) << 5) | ((char_indexes[5] & 0x1F) << 10));
+        throw std::runtime_error("ES weapon must be prefixed with \"ES\"");
 
       } else if (token.starts_with("k:")) {
         ret.set_kill_count(stoul(token.substr(2), nullptr, 0));
+        kill_count_set = true;
 
       } else {
         auto p_tokens = phosg::split(token, '/');
@@ -560,7 +661,7 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
       }
     }
 
-    if (this->item_parameter_table->is_unsealable_item(ret)) {
+    if (this->item_parameter_table->is_unsealable_item(ret) && !kill_count_set) {
       ret.set_kill_count(0);
     }
 
@@ -574,6 +675,18 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
           {"++", 0x0004},
       });
       ret.data1w[3] = modifiers.at(desc);
+
+      bool kill_count_set = false;
+      for (auto& token : phosg::split(desc, ' ')) {
+        if (token.starts_with("k:")) {
+          ret.set_kill_count(stoul(token.substr(2), nullptr, 0));
+          kill_count_set = true;
+          break;
+        }
+      }
+      if (this->item_parameter_table->is_unsealable_item(ret) && !kill_count_set) {
+        ret.set_kill_count(0);
+      }
 
     } else { // Armor/shield
       for (const auto& token : phosg::split(desc, ' ')) {

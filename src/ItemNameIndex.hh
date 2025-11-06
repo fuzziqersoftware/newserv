@@ -56,4 +56,5 @@ private:
 
   std::unordered_map<uint32_t, std::shared_ptr<const ItemMetadata>> primary_identifier_index;
   std::map<std::string, std::shared_ptr<const ItemMetadata>> name_index;
+  std::map<std::string, std::shared_ptr<const ItemMetadata>> es_name_index;
 };
