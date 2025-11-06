@@ -674,16 +674,26 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
           {"+", 0x0002},
           {"++", 0x0004},
       });
-      ret.data1w[3] = modifiers.at(desc);
-
       bool kill_count_set = false;
-      for (auto& token : phosg::split(desc, ' ')) {
-        if (token.starts_with("k:")) {
+      for (const auto& token : phosg::split(desc, ' ')) {
+        if (token == "--") {
+          ret.data1w[3] = 0xFFFC;
+        } else if (token == "-") {
+          ret.data1w[3] = 0xFFFE;
+        } else if (token == "+") {
+          ret.data1w[3] = 0x0002;
+        } else if (token == "++") {
+          ret.data1w[3] = 0x0004;
+        } else if (token.starts_with('+')) {
+          ret.data1w[3] = stoul(token.substr(1), nullptr, 0);
+        } else if (token.starts_with('-')) {
+          ret.data1w[3] = static_cast<uint16_t>(stol(token, nullptr, 0));
+        } else if (token.starts_with("k:")) {
           ret.set_kill_count(stoul(token.substr(2), nullptr, 0));
           kill_count_set = true;
-          break;
         }
       }
+
       if (this->item_parameter_table->is_unsealable_item(ret) && !kill_count_set) {
         ret.set_kill_count(0);
       }
