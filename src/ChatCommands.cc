@@ -2752,7 +2752,7 @@ ChatCommandDefinition cc_switchchar(
         throw precondition_failed("No character exists\nin that slot");
       }
 
-      a.c->save_and_unload_character();
+      a.c->unload_character(true);
       a.c->bb_character_index = index;
       a.c->bb_bank_character_index = index;
 

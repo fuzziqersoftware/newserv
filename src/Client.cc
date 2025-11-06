@@ -563,6 +563,9 @@ shared_ptr<PSOBBCharacterFile> Client::character_file(bool allow_load, bool allo
       throw runtime_error("character index not specified");
     }
     this->load_all_files();
+    if (!this->character_data) {
+      throw std::runtime_error("none of the corresponding character files exist");
+    }
   }
   return this->character_data;
 }
@@ -871,20 +874,17 @@ void Client::load_all_files() {
     throw logic_error("cannot load BB player data until client is logged in");
   }
 
-  this->system_data.reset();
-  this->character_data.reset();
-  this->guild_card_data.reset();
-  this->bank_data.reset();
-
-  string sys_filename = this->system_filename();
-  if (std::filesystem::is_regular_file(sys_filename)) {
-    this->system_data = make_shared<PSOBBBaseSystemFile>(phosg::load_object_file<PSOBBBaseSystemFile>(sys_filename, true));
-    this->log.info_f("Loaded system data from {}", sys_filename);
-  } else {
-    this->log.info_f("System file is missing: {}", sys_filename);
+  if (!this->system_data) {
+    string sys_filename = this->system_filename();
+    if (std::filesystem::is_regular_file(sys_filename)) {
+      this->system_data = make_shared<PSOBBBaseSystemFile>(phosg::load_object_file<PSOBBBaseSystemFile>(sys_filename, true));
+      this->log.info_f("Loaded system data from {}", sys_filename);
+    } else {
+      this->log.info_f("System file is missing: {}", sys_filename);
+    }
   }
 
-  if (this->bb_character_index >= 0) {
+  if (!this->character_data && (this->bb_character_index >= 0)) {
     string char_filename = this->character_filename();
     if (std::filesystem::is_regular_file(char_filename)) {
       auto psochar = PSOCHARFile::load_shared(char_filename, !this->system_data);
@@ -909,15 +909,18 @@ void Client::load_all_files() {
     }
   }
 
-  string card_filename = this->guild_card_filename();
-  if (std::filesystem::is_regular_file(card_filename)) {
-    this->guild_card_data = make_shared<PSOBBGuildCardFile>(phosg::load_object_file<PSOBBGuildCardFile>(card_filename));
-    this->log.info_f("Loaded Guild Card data from {}", card_filename);
-  } else {
-    this->log.info_f("Guild Card file is missing: {}", card_filename);
+  if (!this->guild_card_data) {
+    string card_filename = this->guild_card_filename();
+    if (std::filesystem::is_regular_file(card_filename)) {
+      this->guild_card_data = make_shared<PSOBBGuildCardFile>(phosg::load_object_file<PSOBBGuildCardFile>(card_filename));
+      this->log.info_f("Loaded Guild Card data from {}", card_filename);
+    } else {
+      this->log.info_f("Guild Card file is missing: {}", card_filename);
+    }
   }
 
-  // If any of the above files were missing, try to load from .nsa/.nsc files instead
+  // If any of the above files are still missing, try to load from .nsa/.nsc
+  // files instead
   if (!this->system_data || (!this->character_data && (this->bb_character_index >= 0)) || !this->guild_card_data) {
     string nsa_filename = this->legacy_account_filename();
     shared_ptr<LegacySavedAccountDataBB> nsa_data;
@@ -936,74 +939,74 @@ void Client::load_all_files() {
       }
     }
 
-    if (!this->system_data) {
-      this->system_data = make_shared<PSOBBBaseSystemFile>();
-      auto s = this->require_server_state();
-      if (s->bb_default_keyboard_config) {
-        this->system_data->key_config = *s->bb_default_keyboard_config;
-      }
-      if (s->bb_default_joystick_config) {
-        this->system_data->joystick_config = *s->bb_default_joystick_config;
-      }
-      this->log.info_f("Created new system data");
-    }
-    if (!this->guild_card_data) {
-      this->guild_card_data = make_shared<PSOBBGuildCardFile>();
-      this->log.info_f("Created new Guild Card data");
-    }
-
     if (!this->character_data && (this->bb_character_index >= 0)) {
       string nsc_filename = this->legacy_player_filename();
-      auto nsc_data = phosg::load_object_file<LegacySavedPlayerDataBB>(nsc_filename);
-      if (nsc_data.signature == LegacySavedPlayerDataBB::SIGNATURE_V0) {
-        nsc_data.signature = LegacySavedPlayerDataBB::SIGNATURE_V0;
-        nsc_data.unused.clear();
-        nsc_data.battle_records.place_counts.clear(0);
-        nsc_data.battle_records.disconnect_count = 0;
-        nsc_data.battle_records.unknown_a1.clear(0);
-      } else if (nsc_data.signature != LegacySavedPlayerDataBB::SIGNATURE_V1) {
-        throw runtime_error("legacy player data has incorrect signature");
-      }
+      if (std::filesystem::is_regular_file(nsc_filename)) {
+        auto nsc_data = phosg::load_object_file<LegacySavedPlayerDataBB>(nsc_filename);
+        if (nsc_data.signature == LegacySavedPlayerDataBB::SIGNATURE_V0) {
+          nsc_data.signature = LegacySavedPlayerDataBB::SIGNATURE_V0;
+          nsc_data.unused.clear();
+          nsc_data.battle_records.place_counts.clear(0);
+          nsc_data.battle_records.disconnect_count = 0;
+          nsc_data.battle_records.unknown_a1.clear(0);
+        } else if (nsc_data.signature != LegacySavedPlayerDataBB::SIGNATURE_V1) {
+          throw runtime_error("legacy player data has incorrect signature");
+        }
 
-      this->character_data = make_shared<PSOBBCharacterFile>();
-      this->character_data->inventory = nsc_data.inventory;
-      this->character_data->disp = nsc_data.disp;
-      this->character_data->play_time_seconds = 0;
-      this->character_data->quest_flags = nsc_data.quest_flags;
-      this->character_data->death_count = nsc_data.death_count;
-      this->character_data->bank = nsc_data.bank;
-      this->character_data->guild_card.guild_card_number = this->login->account->account_id;
-      this->character_data->guild_card.name = nsc_data.disp.name;
-      this->character_data->guild_card.description = nsc_data.guild_card_description;
-      this->character_data->guild_card.present = 1;
-      this->character_data->guild_card.language = nsc_data.inventory.language;
-      this->character_data->guild_card.section_id = nsc_data.disp.visual.section_id;
-      this->character_data->guild_card.char_class = nsc_data.disp.visual.char_class;
-      this->character_data->auto_reply = nsc_data.auto_reply;
-      this->character_data->info_board = nsc_data.info_board;
-      this->character_data->battle_records = nsc_data.battle_records;
-      this->character_data->challenge_records = nsc_data.challenge_records;
-      this->character_data->tech_menu_shortcut_entries = nsc_data.tech_menu_shortcut_entries;
-      this->character_data->quest_counters = nsc_data.quest_counters;
-      if (nsa_data) {
-        this->character_data->option_flags = nsa_data->option_flags;
-        this->character_data->symbol_chats = nsa_data->symbol_chats;
-        this->character_data->shortcuts = nsa_data->shortcuts;
-        this->log.info_f("Loaded legacy player data from {} and {}", nsa_filename, nsc_filename);
-      } else {
-        this->log.info_f("Loaded legacy player data from {}", nsc_filename);
+        this->character_data = make_shared<PSOBBCharacterFile>();
+        this->character_data->inventory = nsc_data.inventory;
+        this->character_data->disp = nsc_data.disp;
+        this->character_data->play_time_seconds = 0;
+        this->character_data->quest_flags = nsc_data.quest_flags;
+        this->character_data->death_count = nsc_data.death_count;
+        this->character_data->bank = nsc_data.bank;
+        this->character_data->guild_card.guild_card_number = this->login->account->account_id;
+        this->character_data->guild_card.name = nsc_data.disp.name;
+        this->character_data->guild_card.description = nsc_data.guild_card_description;
+        this->character_data->guild_card.present = 1;
+        this->character_data->guild_card.language = nsc_data.inventory.language;
+        this->character_data->guild_card.section_id = nsc_data.disp.visual.section_id;
+        this->character_data->guild_card.char_class = nsc_data.disp.visual.char_class;
+        this->character_data->auto_reply = nsc_data.auto_reply;
+        this->character_data->info_board = nsc_data.info_board;
+        this->character_data->battle_records = nsc_data.battle_records;
+        this->character_data->challenge_records = nsc_data.challenge_records;
+        this->character_data->tech_menu_shortcut_entries = nsc_data.tech_menu_shortcut_entries;
+        this->character_data->quest_counters = nsc_data.quest_counters;
+        if (nsa_data) {
+          this->character_data->option_flags = nsa_data->option_flags;
+          this->character_data->symbol_chats = nsa_data->symbol_chats;
+          this->character_data->shortcuts = nsa_data->shortcuts;
+          this->log.info_f("Loaded legacy player data from {} and {}", nsa_filename, nsc_filename);
+        } else {
+          this->log.info_f("Loaded legacy player data from {}", nsc_filename);
+        }
+        this->update_character_data_after_load(this->character_data);
       }
-      this->update_character_data_after_load(this->character_data);
     }
+  }
+
+  // The system and Guild Card files can be auto-created if they can't be
+  // loaded. After this, system_data and guild_card_data are always non-null,
+  // but character_data may still be null
+  if (!this->system_data) {
+    this->system_data = make_shared<PSOBBBaseSystemFile>();
+    auto s = this->require_server_state();
+    if (s->bb_default_keyboard_config) {
+      this->system_data->key_config = *s->bb_default_keyboard_config;
+    }
+    if (s->bb_default_joystick_config) {
+      this->system_data->joystick_config = *s->bb_default_joystick_config;
+    }
+    this->log.info_f("Created new system data");
+  }
+  if (!this->guild_card_data) {
+    this->guild_card_data = make_shared<PSOBBGuildCardFile>();
+    this->log.info_f("Created new Guild Card data");
   }
 
   auto s = this->require_server_state();
   auto stack_limits = s->item_stack_limits(this->version());
-
-  if (this->bb_character_index >= 0) {
-    // bank_file() loads the bank data
-    this->bank_file()->enforce_stack_limits(stack_limits);
-  }
 
   this->blocked_senders.clear();
   for (size_t z = 0; z < this->guild_card_data->blocked.size(); z++) {
@@ -1015,12 +1018,15 @@ void Client::load_all_files() {
   if (this->character_data) {
     // Clear legacy play_time field
     this->character_data->disp.name.clear_after_bytes(0x18);
-
     this->character_data->inventory.enforce_stack_limits(stack_limits);
-
     this->login->account->auto_reply_message = this->character_data->auto_reply.decode();
     this->login->account->save();
     this->last_play_time_update = phosg::now();
+    if (this->bb_character_index >= 0) {
+      // Note that bank_file() can't recur infinitely here because
+      // character_file is already set; it will not call load_all_files() again
+      this->bank_file()->enforce_stack_limits(stack_limits);
+    }
   }
 }
 
@@ -1065,13 +1071,17 @@ shared_ptr<PSOGCEp3CharacterFile::Character> Client::load_ep3_backup_character(u
   return ch;
 }
 
-void Client::save_and_unload_character() {
+void Client::unload_character(bool save) {
   if (this->character_data) {
-    this->save_character_file();
+    if (save) {
+      this->save_character_file();
+    }
     this->character_data.reset();
     this->log.info_f("Unloaded character");
     if (this->bank_data) {
-      this->save_bank_file();
+      if (save) {
+        this->save_bank_file();
+      }
       this->bank_data.reset();
       this->log.info_f("Unloaded bank");
     }

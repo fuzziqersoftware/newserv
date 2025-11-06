@@ -343,7 +343,7 @@ public:
 
   void load_backup_character(uint32_t account_id, size_t index);
   std::shared_ptr<PSOGCEp3CharacterFile::Character> load_ep3_backup_character(uint32_t account_id, size_t index);
-  void save_and_unload_character();
+  void unload_character(bool save);
 
   void print_inventory() const;
   void print_bank() const;

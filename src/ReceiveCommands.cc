@@ -3752,7 +3752,7 @@ static asio::awaitable<void> on_E3_BB(shared_ptr<Client> c, Channel::Message& ms
   const auto& cmd = check_size_t<C_PlayerPreviewRequest_BB_E3>(msg.data);
 
   if (c->bb_connection_phase != 0x00) {
-    c->save_and_unload_character();
+    c->unload_character(false);
     c->bb_character_index = cmd.character_index;
     c->bb_bank_character_index = cmd.character_index;
     send_approve_player_choice_bb(c);
@@ -3764,18 +3764,18 @@ static asio::awaitable<void> on_E3_BB(shared_ptr<Client> c, Channel::Message& ms
     }
 
     auto send_preview = [&c](size_t index) -> void {
-      c->save_and_unload_character();
+      c->unload_character(false);
       c->bb_character_index = index;
       c->bb_bank_character_index = index;
       try {
         auto preview = c->character_file()->to_preview();
         send_player_preview_bb(c, c->bb_character_index, &preview);
-
       } catch (const exception& e) {
         // Player doesn't exist
-        c->log.warning_f("Can\'t load character data: {}", e.what());
+        c->log.info_f("Can\'t load character data: {}", e.what());
         send_player_preview_bb(c, c->bb_character_index, nullptr);
       }
+      c->unload_character(false);
     };
 
     if (msg.flag == 0) {
