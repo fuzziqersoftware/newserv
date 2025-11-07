@@ -1752,7 +1752,6 @@ ItemData ItemCreator::base_item_for_specialized_box(uint32_t param4, uint32_t pa
     case 0x04:
       item.data2d = ((param5 >> 0x10) & 0xFFFF) * 10;
       break;
-
     default:
       throw runtime_error("invalid item class");
   }

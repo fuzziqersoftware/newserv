@@ -1454,11 +1454,42 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //   param1 = if positive, box is specialized to drop a specific item or
     //     type of item; if zero or negative, box drops any common item or
     //     none at all (and param3-6 are all ignored)
-    //   param3 = if zero, then bonuses, grinds, etc. are applied to the item
-    //     after it's generated; if nonzero, the item is not randomized at
-    //     all and drops exactly as specified in param4-6
-    //   param4-6 = item definition (see base_item_for_specialized_box in
-    //     ItemCreator.cc for how these values are decoded)
+    //   param3 = if zero, then only data1[0-1] are used and the rest of the
+    //     ItemData is cleared, then bonuses, grinds, etc. are applied to the
+    //     item; if nonzero, the item is not randomized at all and drops
+    //     exactly as specified in param4-6
+    //   param4-6 = item definition (see below)
+    // Not all fields in ItemData can be specified in the item definition here.
+    // The field order here does not match the field order in ItemData! The
+    // item definition is encoded here as follows:
+    //              -param4- -param5- -param6-
+    //   Weapon:    00wwZZSS GG--PPQQ PPQQPPQQ
+    //   Armor:     0100ZZTT 00VV---- --------
+    //   Shield:    0101ZZTT 00VV---- --------
+    //   Unit:      0102ZZ00 00VV---- --------
+    //   Mag:       02zz---- -------- --------
+    //   Tool:      03zzZZ-- -------- --------
+    //   Tech disk: 0302&&%% -------- --------
+    //   Meseta:    040000-- $$$$---- --------
+    //   - = ignored
+    //   G = weapon grind
+    //   P = attribute type (for S-ranks, custom name; last pair is kill count
+    //       for some weapons)
+    //   Q = attribute amount (for S-ranks, custom name; last pair is kill
+    //       count for some weapons)
+    //   S = weapon flags (80=untekked, 40=present) and special (low 6 bits)
+    //   T = slot count
+    //   U = tool flags (40=present; unused if item is stackable)
+    //   V = armor/shield/unit flags (40=present; low 4 bits are present color)
+    //   w = weapon class - 1 (second byte of item code, offset by 1, so e.g.
+    //       Mechgun is 07 here, not 08)
+    //   z = item class (second byte of item code)
+    //   Z = item subclass (third byte of item code)
+    //   & = technique level
+    //   % = technique number
+    //   $ = meseta amount, divided by 10 (so max possible amount is 655350)
+    // See base_item_for_specialized_box in ItemCreator.cc for newserv's
+    // implementation of decoding this format.
     // In the non-specialized case (param1 <= 0), param3-6 are still sent via
     // the 6xA2 command when the box is opened on v3 and later, and the
     // server may choose to use those parameters for some purpose. The client
