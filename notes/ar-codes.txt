@@ -82,6 +82,12 @@ Disable item equip restrictions ("God of equip")
 3OP0 => 041052D4 38000005
 59NL => 005C9F31 E9A7000000
 
+All items visible in Pioneer 2
+3OE1 => 04102D88 38600000
+
+Mags visible in Pioneer 2
+59NL => 005D9057 EB04
+
 All rareable enemies are rare
 3OE0 => 040AC944 60000000 // Hildeblue
         040C1B70 60000000 // Rappies
