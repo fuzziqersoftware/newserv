@@ -315,7 +315,7 @@ phosg::JSON Quest::json() const {
   for (const auto& [_, vq] : this->versions) {
     versions_json.emplace_back(phosg::JSON::dict({
         {"Version", phosg::name_for_enum(vq->version)},
-        {"Language", name_for_language(vq->language)},
+        {"Language", ::name_for_language(vq->language)},
         {"Name", vq->meta.name},
         {"ShortDescription", vq->meta.short_description},
         {"LongDescription", vq->meta.long_description},

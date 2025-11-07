@@ -2640,7 +2640,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF93C, "wrap_item_with_color", "item_packing2", {ITEM_ID, I32}, F_V3_V4 | F_ARGS},
 
     // Returns the local player's language setting. For values, see
-    // name_for_language_code in StaticGameData.cc.
+    // name_for_language in StaticGameData.cc.
     {0xF93D, "get_lang_setting", "get_lang_setting?", {W_REG}, F_V3_V4 | F_ARGS},
 
     // Sets some values to be sent to the server with send_statistic.
