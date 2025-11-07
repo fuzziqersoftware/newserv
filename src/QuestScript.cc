@@ -5045,10 +5045,23 @@ void populate_quest_metadata_from_script(
             break;
           }
 
+          case 0x00C4: { // map_designate
+            uint32_t floor = regs.get(r.get_u8());
+            if (floor < meta.area_for_floor.size()) {
+              meta.area_for_floor[floor] = floor;
+            }
+            // phosg::fwrite_fmt(stderr, ">>> Trace: map_designate fa[{}]={}\n", floor, floor);
+            break;
+          }
+
           case 0xF80D: { // map_designate_ex
             uint8_t base_reg = r.get_u8();
-            meta.area_for_floor.at(regs.get(base_reg)) = regs.get(base_reg + 1);
-            // phosg::fwrite_fmt(stderr, ">>> Trace: map_designate_ex fa[{}]={}\n", regs.get(base_reg), regs.get(base_reg + 1));
+            uint32_t floor = regs.get(base_reg);
+            uint32_t area = regs.get(base_reg + 1);
+            if (floor < meta.area_for_floor.size()) {
+              meta.area_for_floor[floor] = area;
+            }
+            // phosg::fwrite_fmt(stderr, ">>> Trace: map_designate_ex fa[{}]={}\n", floor, area);
             break;
           }
 
@@ -5291,9 +5304,14 @@ void populate_quest_metadata_from_script(
 
           case 0xF951: { // bb_map_designate
             uint8_t floor = r.get_u8();
-            meta.area_for_floor.at(floor) = r.get_u8();
-            r.skip(3); // entities_list_type, vars.layout, vars.entities
-            // phosg::fwrite_fmt(stderr, ">>> Trace: bb_map_designate fa[{}]={}\n", floor, meta.area_for_floor.at(floor));
+            if (floor < meta.area_for_floor.size()) {
+              meta.area_for_floor.at(floor) = r.get_u8();
+              r.skip(3); // entities_list_type, vars.layout, vars.entities
+              // phosg::fwrite_fmt(stderr, ">>> Trace: bb_map_designate fa[{}]={}\n", floor, meta.area_for_floor.at(floor));
+            } else {
+              r.skip(4); // area, entities_list_type, vars.layout, vars.entities
+              // phosg::fwrite_fmt(stderr, ">>> Trace: bb_map_designate fa[{}]=(ignored)\n", floor);
+            }
             break;
           }
 
