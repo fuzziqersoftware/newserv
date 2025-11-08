@@ -2574,10 +2574,12 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // strB = message
     {0xF931, "chat_bubble", nullptr, {I32, CSTRING}, F_V3_V4 | F_ARGS},
 
-    // Sets the episode to be loaded the next time an area is loaded. regA is
-    // the same as for set_episode. Unlike set_episode, this opcode does not
-    // reset the floor configuration.
-    {0xF932, "set_episode2", nullptr, {R_REG}, F_V3_V4},
+    // Sets the episode to be loaded the next time an area is loaded (e.g. by
+    // the player changing floors). regA is the same as for set_episode. Like
+    // set_episode, it resets the floor configuration to the defaults, but this
+    // happens at the time the player changes floors, not when the opcode is
+    // executed.
+    {0xF932, "delayed_switch_episode", "set_episode2", {R_REG}, F_V3_V4},
 
     // Sets the rank prizes in offline challenge mode.
     // regsA[0] = rank (unusual value order: 0 = S, 1 = B, 2 = A)
