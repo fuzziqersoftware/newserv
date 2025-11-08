@@ -86,7 +86,16 @@ All items visible in Pioneer 2
 3OE1 => 04102D88 38600000
 
 Mags visible in Pioneer 2
-59NL => 005D9057 EB04
+59NL => 005D8F4B EB04
+
+Disable pause menu background + offset
+3OE1 => 0424BD5C 48000370
+        0428735C 4800000C
+3OE2 => 0424CED8 48000370
+        042887D8 4800000C
+59NL => 00719B54 9090
+        00733BA7 9090
+        00733A0E 90E9
 
 All rareable enemies are rare
 3OE0 => 040AC944 60000000 // Hildeblue
