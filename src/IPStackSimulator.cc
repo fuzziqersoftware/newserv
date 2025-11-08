@@ -129,10 +129,7 @@ void IPSSClient::TCPConnection::linearize_outbound_data(size_t size) {
 }
 
 IPSSClient::IPSSClient(
-    shared_ptr<IPStackSimulator> sim,
-    uint64_t network_id,
-    VirtualNetworkProtocol protocol,
-    asio::ip::tcp::socket&& sock)
+    shared_ptr<IPStackSimulator> sim, uint64_t network_id, VirtualNetworkProtocol protocol, asio::ip::tcp::socket&& sock)
     : io_context(sim->get_io_context()),
       sim(sim),
       network_id(network_id),
@@ -179,8 +176,7 @@ IPSSChannel::IPSSChannel(
 std::string IPSSChannel::default_name() const {
   auto ipc = this->ipss_client.lock();
   if (ipc) {
-    string addr_str = str_for_endpoint(ipc->sock.remote_endpoint());
-    return std::format("ipss:N-{}:{}", ipc->network_id, addr_str);
+    return std::format("ipss:N-{}:{}", ipc->network_id, str_for_endpoint(ipc->sock.remote_endpoint()));
   } else {
     return std::format("ipss:N-{}:__unknown_address__", ipc->network_id);
   }
@@ -213,9 +209,7 @@ void IPSSChannel::add_inbound_data(const void* data, size_t size) {
     data = reinterpret_cast<const uint8_t*>(data) + direct_size;
     size -= direct_size;
     this->recv_buf_size -= direct_size;
-    this->recv_buf = this->recv_buf_size
-        ? reinterpret_cast<uint8_t*>(this->recv_buf) + direct_size
-        : nullptr;
+    this->recv_buf = this->recv_buf_size ? (reinterpret_cast<uint8_t*>(this->recv_buf) + direct_size) : nullptr;
   }
 
   // If there is still data left after the above, add it to the pending inbound
@@ -357,11 +351,12 @@ string IPStackSimulator::str_for_tcp_connection(
 asio::awaitable<void> IPStackSimulator::send_ethernet_tapserver_frame(
     shared_ptr<IPSSClient> c, FrameInfo::Protocol proto, const void* data, size_t size) const {
 
-  struct {
+  struct TapServerEthernetHeader {
     phosg::le_uint16_t frame_size;
     EthernetHeader ether;
-  } header;
-  static_assert(sizeof(header) == 0x10, "Ethernet tapserver header size is incorrect");
+  } __attribute__((packed));
+  static_assert(sizeof(TapServerEthernetHeader) == 0x10, "Ethernet tapserver header size is incorrect");
+  TapServerEthernetHeader header;
 
   header.ether.dest_mac = c->mac_addr;
   header.ether.src_mac = this->host_mac_address_bytes;
@@ -381,9 +376,7 @@ asio::awaitable<void> IPStackSimulator::send_ethernet_tapserver_frame(
   }
   header.frame_size = size + sizeof(EthernetHeader);
 
-  array<asio::const_buffer, 2> bufs{
-      asio::buffer(static_cast<const void*>(&header), sizeof(header)),
-      asio::buffer(data, size)};
+  array<asio::const_buffer, 2> bufs{asio::buffer(static_cast<const void*>(&header), sizeof(header)), asio::buffer(data, size)};
   co_await asio::async_write(c->sock, bufs, asio::use_awaitable);
 }
 
@@ -465,8 +458,7 @@ asio::awaitable<void> IPStackSimulator::on_client_frame(shared_ptr<IPSSClient> c
 
   FrameInfo fi(link_type, data, size);
   if (this->log.should_log(phosg::LogLevel::L_DEBUG)) {
-    string fi_header = fi.header_str();
-    this->log.debug_f("Frame header: {}", fi_header);
+    this->log.debug_f("Frame header: {}", fi.header_str());
   }
 
   if (fi.ether) {
@@ -480,8 +472,7 @@ asio::awaitable<void> IPStackSimulator::on_client_frame(shared_ptr<IPSSClient> c
     uint16_t stored_checksum = fi.stored_hdlc_checksum();
     if (expected_checksum != stored_checksum) {
       throw runtime_error(std::format(
-          "HDLC checksum is incorrect ({:04X} expected, {:04X} received)",
-          expected_checksum, stored_checksum));
+          "HDLC checksum is incorrect ({:04X} expected, {:04X} received)", expected_checksum, stored_checksum));
     }
   } else {
     throw runtime_error("frame is not Ethernet or HDLC");
@@ -503,8 +494,7 @@ asio::awaitable<void> IPStackSimulator::on_client_frame(shared_ptr<IPSSClient> c
     uint16_t expected_ipv4_checksum = fi.computed_ipv4_header_checksum();
     if (fi.ipv4->checksum != expected_ipv4_checksum) {
       throw runtime_error(std::format(
-          "IPv4 header checksum is incorrect ({:04X} expected, {:04X} received)",
-          expected_ipv4_checksum, fi.ipv4->checksum));
+          "IPv4 header checksum is incorrect ({:04X} expected, {:04X} received)", expected_ipv4_checksum, fi.ipv4->checksum));
     }
 
     if ((fi.ipv4->src_addr != c->ipv4_addr) && (fi.ipv4->src_addr != 0)) {
@@ -515,8 +505,7 @@ asio::awaitable<void> IPStackSimulator::on_client_frame(shared_ptr<IPSSClient> c
       uint16_t expected_udp_checksum = fi.computed_udp4_checksum();
       if (fi.udp->checksum != expected_udp_checksum) {
         throw runtime_error(std::format(
-            "UDP checksum is incorrect ({:04X} expected, {:04X} received)",
-            expected_udp_checksum, fi.udp->checksum));
+            "UDP checksum is incorrect ({:04X} expected, {:04X} received)", expected_udp_checksum, fi.udp->checksum));
       }
       co_await this->on_client_udp_frame(c, fi);
 
@@ -524,8 +513,7 @@ asio::awaitable<void> IPStackSimulator::on_client_frame(shared_ptr<IPSSClient> c
       uint16_t expected_tcp_checksum = fi.computed_tcp4_checksum();
       if (fi.tcp->checksum != expected_tcp_checksum) {
         throw runtime_error(std::format(
-            "TCP checksum is incorrect ({:04X} expected, {:04X} received)",
-            expected_tcp_checksum, fi.tcp->checksum));
+            "TCP checksum is incorrect ({:04X} expected, {:04X} received)", expected_tcp_checksum, fi.tcp->checksum));
       }
       co_await this->on_client_tcp_frame(c, fi);
 
@@ -991,8 +979,7 @@ asio::awaitable<void> IPStackSimulator::on_client_udp_frame(shared_ptr<IPSSClien
     r_ipv4.size = sizeof(IPv4Header) + sizeof(UDPHeader) + r_data.size();
     r_udp.size = sizeof(UDPHeader) + r_data.size();
     r_ipv4.checksum = FrameInfo::computed_ipv4_header_checksum(r_ipv4);
-    r_udp.checksum = FrameInfo::computed_udp4_checksum(
-        r_ipv4, r_udp, r_data.data(), r_data.size());
+    r_udp.checksum = FrameInfo::computed_udp4_checksum(r_ipv4, r_udp, r_data.data(), r_data.size());
 
     if (this->log.should_log(phosg::LogLevel::L_DEBUG)) {
       string remote_str = this->str_for_ipv4_netloc(fi.ipv4->src_addr, fi.udp->src_port);
@@ -1106,11 +1093,15 @@ asio::awaitable<void> IPStackSimulator::on_client_tcp_frame(shared_ptr<IPSSClien
         conn_str, conn->acked_server_seq, conn->next_client_seq);
 
   } else {
-    // This frame isn't a SYN, so a connection object should already exist
+    // This frame isn't a SYN, so a connection object should already exist;
+    // ignore the frame if there's no connection
     uint64_t key = this->tcp_conn_key_for_client_frame(fi);
     auto conn_it = c->tcp_connections.find(key);
     if (conn_it == c->tcp_connections.end()) {
-      throw runtime_error("non-SYN frame does not correspond to any open TCP connection");
+      if (this->log.debug_f("Ignoring non-SYN TCP frame with no active connection")) {
+        phosg::print_data(stderr, fi.payload, fi.payload_size);
+      }
+      co_return;
     }
     auto& conn = conn_it->second;
     bool conn_valid = true;
@@ -1247,8 +1238,7 @@ asio::awaitable<void> IPStackSimulator::on_client_tcp_frame(shared_ptr<IPSSClien
         conn->next_client_seq += payload_size;
         conn->bytes_received += payload_size;
         if (conn->next_client_seq < payload_size) {
-          this->log.warning_f("Client sequence number has wrapped (next={:08X}, bytes={:X})",
-              fi.tcp->seq_num, payload_size);
+          this->log.warning_f("Client sequence number has wrapped (next={:08X}, bytes={:X})", fi.tcp->seq_num, payload_size);
         }
       }
 
