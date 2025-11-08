@@ -6307,6 +6307,32 @@ uint16_t MapState::index_for_event_state(Version version, shared_ptr<const Event
       : (relative_index + this->floor_config(ev_st->super_ev->floor).base_indexes_for_version(version).base_event_index);
 }
 
+shared_ptr<MapState::ObjectState> MapState::object_state_for_index(Version version, uint16_t object_index) {
+  size_t dynamic_obj_base_index = this->dynamic_obj_base_index_for_version.at(static_cast<size_t>(version));
+  if (object_index < dynamic_obj_base_index) {
+    int8_t floor;
+    for (floor = this->floor_config_entries.size() - 1; floor >= 0; floor--) {
+      const auto& fc = this->floor_config_entries[floor];
+      size_t base_object_index = fc.base_indexes_for_version(version).base_object_index;
+      if (object_index >= base_object_index) {
+        if (!fc.super_map) {
+          throw out_of_range("there are no objects on the specified floor");
+        }
+        const auto& obj = fc.super_map->version(version).objects.at(object_index - base_object_index);
+        return this->object_states.at(fc.base_super_ids.base_object_index + obj->super_id);
+      }
+    }
+    throw out_of_range("the specified enemy does not exist");
+
+  } else {
+    size_t k_id_delta = object_index - dynamic_obj_base_index;
+    auto obj_st = make_shared<ObjectState>();
+    obj_st->k_id = this->dynamic_obj_base_k_id + k_id_delta;
+    obj_st->super_obj = nullptr;
+    return obj_st;
+  }
+}
+
 shared_ptr<MapState::ObjectState> MapState::object_state_for_index(Version version, uint8_t floor, uint16_t object_index) {
   size_t dynamic_obj_base_index = this->dynamic_obj_base_index_for_version.at(static_cast<size_t>(version));
   if (object_index < dynamic_obj_base_index) {
@@ -6352,6 +6378,22 @@ vector<shared_ptr<MapState::ObjectState>> MapState::door_states_for_switch_flag(
     }
   }
   return ret;
+}
+
+shared_ptr<MapState::EnemyState> MapState::enemy_state_for_index(Version version, uint16_t enemy_index) {
+  int8_t floor;
+  for (floor = this->floor_config_entries.size() - 1; floor >= 0; floor--) {
+    const auto& fc = this->floor_config_entries[floor];
+    size_t base_enemy_index = fc.base_indexes_for_version(version).base_enemy_index;
+    if (enemy_index >= base_enemy_index) {
+      if (!fc.super_map) {
+        throw out_of_range("there are no enemies on the specified floor");
+      }
+      const auto& ene = fc.super_map->version(version).enemies.at(enemy_index - base_enemy_index);
+      return this->enemy_states.at(fc.base_super_ids.base_enemy_index + ene->super_id);
+    }
+  }
+  throw out_of_range("the specified enemy does not exist");
 }
 
 shared_ptr<MapState::EnemyState> MapState::enemy_state_for_index(Version version, uint8_t floor, uint16_t enemy_index) {

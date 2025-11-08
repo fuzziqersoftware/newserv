@@ -1005,7 +1005,7 @@ static asio::awaitable<HandlerResult> S_6x(shared_ptr<Client> c, Channel::Messag
       if (c->proxy_session->map_state) {
         shared_ptr<MapState::ObjectState> obj_st;
         try {
-          obj_st = c->proxy_session->map_state->object_state_for_index(c->version(), c->floor, cmd.header.entity_id - 0x4000);
+          obj_st = c->proxy_session->map_state->object_state_for_index(c->version(), cmd.header.entity_id - 0x4000);
         } catch (const exception& e) {
           c->log.warning_f("Invalid object reference ({})", e.what());
         }

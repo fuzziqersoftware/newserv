@@ -945,12 +945,14 @@ public:
   uint16_t set_index_for_enemy_state(Version version, std::shared_ptr<const EnemyState> ene_st) const;
   uint16_t index_for_event_state(Version version, std::shared_ptr<const EventState> evt_st) const;
 
+  std::shared_ptr<ObjectState> object_state_for_index(Version version, uint16_t object_index);
   std::shared_ptr<ObjectState> object_state_for_index(Version version, uint8_t floor, uint16_t object_index);
   std::vector<std::shared_ptr<ObjectState>> object_states_for_floor_room_group(
       Version version, uint8_t floor, uint16_t room, uint16_t group);
   std::vector<std::shared_ptr<ObjectState>> door_states_for_switch_flag(
       Version version, uint8_t floor, uint8_t switch_flag);
 
+  std::shared_ptr<EnemyState> enemy_state_for_index(Version version, uint16_t enemy_index);
   std::shared_ptr<EnemyState> enemy_state_for_index(Version version, uint8_t floor, uint16_t enemy_index);
   std::shared_ptr<EnemyState> enemy_state_for_set_index(Version version, uint8_t floor, uint16_t enemy_set_index);
   std::shared_ptr<EnemyState> enemy_state_for_floor_type(Version version, uint8_t floor, EnemyType type);

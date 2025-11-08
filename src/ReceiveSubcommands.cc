@@ -381,9 +381,9 @@ asio::awaitable<void> forward_subcommand_with_entity_id_transcode_t(shared_ptr<C
   shared_ptr<const MapState::EnemyState> ene_st;
   shared_ptr<const MapState::ObjectState> obj_st;
   if ((cmd_entity_id >= 0x1000) && (cmd_entity_id < 0x4000)) {
-    ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd_entity_id - 0x1000);
+    ene_st = l->map_state->enemy_state_for_index(c->version(), cmd_entity_id - 0x1000);
   } else if ((cmd_entity_id >= 0x4000) && (cmd_entity_id < 0xFFFF)) {
-    obj_st = l->map_state->object_state_for_index(c->version(), c->floor, cmd_entity_id - 0x4000);
+    obj_st = l->map_state->object_state_for_index(c->version(), cmd_entity_id - 0x4000);
   }
 
   for (auto& lc : l->clients) {
@@ -446,9 +446,9 @@ asio::awaitable<void> forward_subcommand_with_entity_targets_transcode_t(shared_
   for (size_t z = 0; z < header.target_count; z++) {
     auto& res = resolutions.emplace_back(TargetResolution{nullptr, nullptr, targets[z].entity_id});
     if ((res.entity_id >= 0x1000) && (res.entity_id < 0x4000)) {
-      res.ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, res.entity_id - 0x1000);
+      res.ene_st = l->map_state->enemy_state_for_index(c->version(), res.entity_id - 0x1000);
     } else if ((res.entity_id >= 0x4000) && (res.entity_id < 0xFFFF)) {
-      res.obj_st = l->map_state->object_state_for_index(c->version(), c->floor, res.entity_id - 0x4000);
+      res.obj_st = l->map_state->object_state_for_index(c->version(), res.entity_id - 0x4000);
     }
   }
 
@@ -3451,7 +3451,7 @@ static asio::awaitable<void> on_update_enemy_state(shared_ptr<Client> c, Subcomm
   if ((cmd.enemy_index & 0xF000) || (cmd.header.entity_id != (cmd.enemy_index | 0x1000))) {
     throw runtime_error("mismatched enemy id/index");
   }
-  auto ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd.enemy_index);
+  auto ene_st = l->map_state->enemy_state_for_index(c->version(), cmd.enemy_index);
   uint32_t src_flags = is_big_endian(c->version()) ? bswap32(cmd.game_flags) : cmd.game_flags.load();
   if (l->difficulty == Difficulty::ULTIMATE) {
     src_flags = (src_flags & 0xFFFFFFC0) | (ene_st->game_flags & 0x0000003F);
@@ -3493,7 +3493,7 @@ static asio::awaitable<void> on_incr_enemy_damage(shared_ptr<Client> c, Subcomma
   if (cmd.header.entity_id < 0x1000 || cmd.header.entity_id >= 0x4000) {
     throw runtime_error("6xE4 received for non-enemy entity");
   }
-  auto ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd.header.entity_id & 0x0FFF);
+  auto ene_st = l->map_state->enemy_state_for_index(c->version(), cmd.header.entity_id & 0x0FFF);
 
   c->log.info_f("E-{:03X} damage incremented by {} with factor {}; before hit, damage was {} (cmd) or {} (ene_st) and HP was {}/{}",
       ene_st->e_id,
@@ -3523,7 +3523,7 @@ static asio::awaitable<void> on_set_enemy_low_game_flags_ultimate(shared_ptr<Cli
     co_return;
   }
 
-  auto ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd.header.entity_id - 0x1000);
+  auto ene_st = l->map_state->enemy_state_for_index(c->version(), cmd.header.entity_id - 0x1000);
   if (!(ene_st->game_flags & cmd.low_game_flags)) {
     ene_st->game_flags |= cmd.low_game_flags;
     l->log.info_f("E-{:03X} updated to game_flags={:08X}", ene_st->e_id, ene_st->game_flags);
@@ -3544,7 +3544,7 @@ static asio::awaitable<void> on_update_object_state_t(shared_ptr<Client> c, Subc
     co_return;
   }
 
-  auto obj_st = l->map_state->object_state_for_index(c->version(), c->floor, cmd.object_index);
+  auto obj_st = l->map_state->object_state_for_index(c->version(), cmd.object_index);
   obj_st->game_flags = cmd.flags;
   l->log.info_f("K-{:03X} updated with game_flags={:08X}", obj_st->k_id, obj_st->game_flags);
 
@@ -3647,7 +3647,7 @@ static asio::awaitable<void> on_dragon_actions_6x12(shared_ptr<Client> c, Subcom
     co_return;
   }
 
-  auto ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd.header.entity_id - 0x1000);
+  auto ene_st = l->map_state->enemy_state_for_index(c->version(), cmd.header.entity_id - 0x1000);
   if (ene_st->super_ene->type != EnemyType::DRAGON) {
     throw runtime_error("6x12 command sent for incorrect enemy type");
   }
@@ -3683,7 +3683,7 @@ static asio::awaitable<void> on_gol_dragon_actions(shared_ptr<Client> c, Subcomm
     co_return;
   }
 
-  auto ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd.header.entity_id - 0x1000);
+  auto ene_st = l->map_state->enemy_state_for_index(c->version(), cmd.header.entity_id - 0x1000);
   if (ene_st->super_ene->type != EnemyType::GOL_DRAGON) {
     throw runtime_error("6xA8 command sent for incorrect enemy type");
   }
@@ -3786,7 +3786,7 @@ static asio::awaitable<void> on_set_boss_warp_flags_6x6A(shared_ptr<Client> c, S
     throw runtime_error("6x6A sent for non-object entity");
   }
 
-  auto obj_st = l->map_state->object_state_for_index(c->version(), c->floor, cmd.header.entity_id - 0x4000);
+  auto obj_st = l->map_state->object_state_for_index(c->version(), cmd.header.entity_id - 0x4000);
   if (!obj_st->super_obj) {
     throw runtime_error("missing object for 6x6A command");
   }
@@ -3981,7 +3981,7 @@ static asio::awaitable<void> on_steal_exp_bb(shared_ptr<Client> c, SubcommandMes
     co_return;
   }
 
-  const auto& ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd.enemy_index);
+  const auto& ene_st = l->map_state->enemy_state_for_index(c->version(), cmd.enemy_index);
   if (ene_st->super_ene->floor != c->floor) {
     throw runtime_error("enemy is on a different floor");
   }
@@ -4035,7 +4035,7 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
     throw runtime_error("client ID is too large");
   }
 
-  auto ene_st = l->map_state->enemy_state_for_index(c->version(), c->floor, cmd.enemy_index);
+  auto ene_st = l->map_state->enemy_state_for_index(c->version(), cmd.enemy_index);
   string ene_str = ene_st->super_ene->str();
   c->log.info_f("EXP requested for E-{:03X}: {}", ene_st->e_id, ene_str);
 
