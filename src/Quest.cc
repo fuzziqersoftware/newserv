@@ -745,6 +745,10 @@ QuestIndex::QuestIndex(
         } catch (const out_of_range&) {
         }
         try {
+          vq->meta.enemy_exp_overrides = QuestMetadata::parse_enemy_exp_overrides(metadata_json.at("EnemyEXPOverrides"));
+        } catch (const out_of_range&) {
+        }
+        try {
           vq->meta.common_item_set_name = metadata_json.at("CommonItemSetName").as_string();
         } catch (const out_of_range&) {
         }

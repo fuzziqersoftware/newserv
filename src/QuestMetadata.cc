@@ -44,6 +44,9 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
         "quest version has a different lock status register (existing: {:04X}, new: {:04X})",
         this->lock_status_register, other.lock_status_register));
   }
+  if (this->enemy_exp_overrides != other.enemy_exp_overrides) {
+    throw runtime_error("quest version has different enemy EXP overrides");
+  }
   if (!this->battle_rules != !other.battle_rules) {
     throw runtime_error(std::format(
         "quest version has a different battle rules presence state (existing: {}, new: {})",
@@ -140,11 +143,19 @@ phosg::JSON QuestMetadata::json() const {
   for (const auto& fa : this->area_for_floor) {
     floors_json.emplace_back(fa);
   }
+  auto enemy_exp_overrides_json = phosg::JSON::dict();
+  for (const auto& [key, exp_override] : this->enemy_exp_overrides) {
+    auto difficulty = static_cast<Difficulty>((key >> 24) & 3);
+    auto floor = static_cast<uint8_t>((key >> 16) & 0xFF);
+    auto enemy_type = static_cast<EnemyType>(key & 0xFFFF);
+    auto key_str = std::format("{}:0x{:02X}:{}", name_for_difficulty(difficulty), floor, phosg::name_for_enum(enemy_type));
+    enemy_exp_overrides_json.emplace(key_str, exp_override);
+  }
   return phosg::JSON::dict({
       {"CategoryID", this->category_id},
       {"Number", this->quest_number},
       {"Episode", name_for_episode(this->episode)},
-      {"FloorAssignments", floors_json},
+      {"FloorAssignments", std::move(floors_json)},
       {"Joinable", this->joinable},
       {"MaxPlayers", this->max_players},
       {"BattleRules", this->battle_rules ? this->battle_rules->json() : phosg::JSON(nullptr)},
@@ -160,5 +171,43 @@ phosg::JSON QuestMetadata::json() const {
       {"DefaultDropMode", phosg::name_for_enum(this->default_drop_mode)},
       {"AllowStartFromChatCommand", this->allow_start_from_chat_command},
       {"LockStatusRegister", (this->lock_status_register >= 0) ? this->lock_status_register : phosg::JSON(nullptr)},
+      {"EnemyEXPOverrides", std::move(enemy_exp_overrides_json)},
   });
+}
+
+std::unordered_map<uint32_t, uint32_t> QuestMetadata::parse_enemy_exp_overrides(const phosg::JSON& json) {
+  try {
+    std::unordered_map<uint32_t, uint32_t> ret;
+    for (const auto& [key, exp_value_json] : json.as_dict()) {
+      // Key is like "Difficulty:Floor:EnemyType" or "Difficulty:EnemyType"
+      auto key_tokens = phosg::split(key, ':');
+
+      static const unordered_map<string, Difficulty> difficulty_keys(
+          {{"Normal", Difficulty::NORMAL}, {"Hard", Difficulty::HARD}, {"VeryHard", Difficulty::VERY_HARD}, {"Ultimate", Difficulty::ULTIMATE}});
+
+      Difficulty difficulty = Difficulty::NORMAL;
+      EnemyType enemy_type = EnemyType::UNKNOWN;
+      uint8_t floor = 0xFF;
+      if (key_tokens.size() == 2) {
+        enemy_type = phosg::enum_for_name<EnemyType>(key_tokens[1]);
+      } else if (key_tokens.size() == 3) {
+        floor = stoul(key_tokens[1], nullptr, 0);
+        enemy_type = phosg::enum_for_name<EnemyType>(key_tokens[2]);
+      } else {
+        throw runtime_error("malformatted key: " + key);
+      }
+      difficulty = difficulty_keys.at(key_tokens[0]);
+      if (floor == 0xFF) {
+        for (size_t floor = 0; floor < 0x12; floor++) {
+          ret.emplace(QuestMetadata::exp_override_key(difficulty, floor, enemy_type), exp_value_json->as_int());
+        }
+      } else {
+        ret.emplace(QuestMetadata::exp_override_key(difficulty, floor, enemy_type), exp_value_json->as_int());
+      }
+    }
+    return ret;
+
+  } catch (const exception& e) {
+    throw std::runtime_error(std::format("invalid enemy EXP overrides: ", e.what()));
+  }
 }

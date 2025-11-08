@@ -9,10 +9,12 @@
 #include <vector>
 
 #include "CommonItemSet.hh"
+#include "EnemyType.hh"
 #include "IntegralExpression.hh"
 #include "Map.hh"
 #include "PlayerSubordinates.hh"
 #include "RareItemSet.hh"
+#include "StaticGameData.hh"
 
 struct QuestMetadata {
   // This structure contains configuration that should be the same across all
@@ -40,10 +42,16 @@ struct QuestMetadata {
   ServerDropMode default_drop_mode = ServerDropMode::CLIENT; // Ignored if allowed_drop_modes == 0
   bool allow_start_from_chat_command = false;
   int16_t lock_status_register = -1;
+  std::unordered_map<uint32_t, uint32_t> enemy_exp_overrides;
 
   std::string name;
   std::string short_description;
   std::string long_description;
+
+  static std::unordered_map<uint32_t, uint32_t> parse_enemy_exp_overrides(const phosg::JSON& json);
+  static inline uint32_t exp_override_key(Difficulty difficulty, uint8_t floor, EnemyType enemy_type) {
+    return (static_cast<uint32_t>(difficulty) << 24) | (static_cast<uint32_t>(floor) << 16) | static_cast<uint32_t>(enemy_type);
+  }
 
   void assign_default_areas(Version version, Episode episode);
   void assert_compatible(const QuestMetadata& other) const;

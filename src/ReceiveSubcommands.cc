@@ -3919,11 +3919,19 @@ static void add_player_exp(shared_ptr<Client> c, uint32_t exp, uint16_t from_ene
 
 static uint32_t base_exp_for_enemy_type(
     shared_ptr<const BattleParamsIndex> bp_index,
+    shared_ptr<const Quest> quest, // Null in free play
     EnemyType enemy_type,
     Episode current_episode,
     Difficulty difficulty,
-    uint8_t area,
+    uint8_t floor,
     bool is_solo) {
+  if (quest) {
+    try {
+      return quest->meta.enemy_exp_overrides.at(QuestMetadata::exp_override_key(difficulty, floor, enemy_type));
+    } catch (const out_of_range&) {
+    }
+  }
+
   // Always try the current episode first. If the current episode is Ep4, try
   // Ep1 next if in Crater and Ep2 next if in Desert (this mirrors the logic in
   // BB Patch Project's omnispawn patch).
@@ -3936,10 +3944,11 @@ static uint32_t base_exp_for_enemy_type(
     episode_order[1] = Episode::EP1;
     episode_order[2] = Episode::EP4;
   } else if (current_episode == Episode::EP4) {
-    if (area <= 0x05) {
+    uint8_t area = quest->meta.area_for_floor.at(floor);
+    if (area <= 0x28) { // Crater
       episode_order[1] = Episode::EP1;
       episode_order[2] = Episode::EP2;
-    } else {
+    } else { // Desert
       episode_order[1] = Episode::EP2;
       episode_order[2] = Episode::EP1;
     }
@@ -3956,11 +3965,11 @@ static uint32_t base_exp_for_enemy_type(
     }
   }
   throw runtime_error(std::format(
-      "no base exp is available (type={}, episode={}, difficulty={}, area={:02X}, solo={})",
+      "no base exp is available (type={}, episode={}, difficulty={}, floor={:02X}, solo={})",
       phosg::name_for_enum(enemy_type),
       name_for_episode(current_episode),
       name_for_difficulty(difficulty),
-      area,
+      floor,
       is_solo ? "true" : "false"));
 }
 
@@ -4006,7 +4015,7 @@ static asio::awaitable<void> on_steal_exp_bb(shared_ptr<Client> c, SubcommandMes
 
   auto type = ene_st->type(c->version(), l->episode, l->difficulty, l->event);
   uint32_t enemy_exp = base_exp_for_enemy_type(
-      s->battle_params, type, l->episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
+      s->battle_params, l->quest, type, l->episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
 
   // Note: The original code checks if special.type is 9, 10, or 11, and skips
   // applying the android bonus if so. We don't do anything for those special
@@ -4052,7 +4061,7 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
 
   auto type = ene_st->type(c->version(), l->episode, l->difficulty, l->event);
   double base_exp = base_exp_for_enemy_type(
-      s->battle_params, type, l->episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
+      s->battle_params, l->quest, type, l->episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
   l->log.info_f("Base EXP for this enemy ({}) is {:g}", phosg::name_for_enum(type), base_exp);
 
   for (size_t client_id = 0; client_id < 4; client_id++) {

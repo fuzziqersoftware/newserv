@@ -1904,15 +1904,15 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Specifies which enemy should be affected by subsequent get_*_data
     // opcodes (the following 4 definitions). valueA is the battle parameter
     // index for the desired enemy.
-    {0xF891, "load_enemy_data", nullptr, {I32}, F_V2_V4 | F_ARGS},
+    {0xF891, "set_override_enemy_bp_index", "load_enemy_data", {I32}, F_V2_V4 | F_ARGS},
 
     // Replaces enemy stats with the given structures (PlayerStats, AttackData,
     // ResistData, or MovementData) for the enemy previously specified with
     // load_enemy_data.
-    {0xF892, "get_physical_data", nullptr, {{LABEL16, Arg::DataType::PLAYER_STATS, "stats"}}, F_V2_V4},
-    {0xF893, "get_attack_data", nullptr, {{LABEL16, Arg::DataType::ATTACK_DATA, "attack_data"}}, F_V2_V4},
-    {0xF894, "get_resist_data", nullptr, {{LABEL16, Arg::DataType::RESIST_DATA, "resist_data"}}, F_V2_V4},
-    {0xF895, "get_movement_data", nullptr, {{LABEL16, Arg::DataType::MOVEMENT_DATA, "movement_data"}}, F_V2_V4},
+    {0xF892, "set_enemy_physical_data", "get_physical_data", {{LABEL16, Arg::DataType::PLAYER_STATS, "stats"}}, F_V2_V4},
+    {0xF893, "set_enemy_attack_data", "get_attack_data", {{LABEL16, Arg::DataType::ATTACK_DATA, "attack_data"}}, F_V2_V4},
+    {0xF894, "set_enemy_resist_data", "get_resist_data", {{LABEL16, Arg::DataType::RESIST_DATA, "resist_data"}}, F_V2_V4},
+    {0xF895, "set_enemy_movement_data", "get_movement_data", {{LABEL16, Arg::DataType::MOVEMENT_DATA, "movement_data"}}, F_V2_V4},
 
     // Reads 2 bytes or 4 bytes from the event flags in the system file.
     // regA = event flag index

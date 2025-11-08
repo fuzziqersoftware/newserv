@@ -68,4 +68,19 @@
   // clearing the 0x02 bit of AllowedDropModes).
   // "AllowedDropModes": 0x1D,
   // "DefaultDropMode": "SERVER_PRIVATE",
+
+  // Quests may override enemies' stats, which may result in a different amount
+  // of experience than the enemy would give by default. If the quest uses the
+  // set_enemy_physical_data opcode (or get_physical_data in qedit), then the
+  // EXP values should be set in this dictionary. Each entry here applies to a
+  // specific enemy type in a specific difficulty level on a specific floor (or
+  // on all floors).
+  // "EnemyEXPOverrides": {
+  //   // Key is like "Difficulty:Floor:EnemyType" or "Difficulty:EnemyType",
+  //   // where floor is a decimal or hexadecimal integer and EnemyType matches
+  //   // one of the values in the EnemyType enum in EnemyType.hh. For example:
+  //   "Normal:1:GOBOOMA": 100, // Normal difficulty, floor 1 (Forest 1) only
+  //   "VeryHard:0x0B:DRAGON": 10000, // Very Hard difficulty, floor 11 (Dragon)
+  //   "Ultimate:DELSABER": 200, // Ultimate difficulty, all floors
+  // },
 }
