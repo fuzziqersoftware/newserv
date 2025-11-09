@@ -1741,11 +1741,11 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     {0x0101, F_V0_V1, 0x00000000000000C0, "TOKeyMachine01"},
     {0x0101, F_V2_V4, 0x00004FF0007B00C6, "TOKeyMachine01"},
 
-    // Mines single-switch door, or Ep4 test door if in Episode 4. Params (for
-    // both object types):
+    // Mines single-switch door, or Subterranean Desert door if in Episode 4.
+    // Params (for both object types):
     //   param4 = switch flag number
     {0x0102, F_V0_V4, 0x00000000000000C0, "TODoorMachine02"},
-    {0x0102, F_V4, 0x00004E0000000000, "__EP4_TEST_DOOR__"},
+    {0x0102, F_V4, 0x00004E0000000000, "__EP4_DOOR__"},
 
     // Large cryotube. There appear to be no parameters.
     {0x0103, F_V0_V4, 0x00004008000000C0, "TOCapsuleMachine01"},

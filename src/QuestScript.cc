@@ -2248,7 +2248,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // valueC = current position along path
     // valueD = loop flag (0 = no, 1 = yes)
     // regsE[0-2] = result point (x, y, z as floats)
-    // regsE[3] = the result code (0 = failed, 1 = success)
+    // regsE[3] = result code (0 = failed, 1 = success)
     // labelF = control point entries (array of valueA VectorXYZTF structures)
     {0xF8DB, "get_vector_from_path", "unknownF8DB", {I32, FLOAT32, FLOAT32, I32, {W_REG_SET_FIXED, 4}, SCRIPT16}, F_V3_V4 | F_ARGS},
 
@@ -2344,7 +2344,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // valueC = current position along path
     // valueD = loop flag (0 = no, 1 = yes)
     // regsE[0-2] = result point (x, y, z as floats)
-    // regsE[3] = the result code (0 = failed, 1 = success)
+    // regsE[3] = result code (0 = failed, 1 = success)
     // labelF = control point entries (array of valueA VectorXYZTF structures)
     {0xF8F2, "compute_bezier_curve_point", "load_unk_data", {I32, FLOAT32, FLOAT32, I32, {W_REG_SET_FIXED, 4}, {LABEL16, Arg::DataType::BEZIER_CONTROL_POINT_DATA}}, F_V3_V4 | F_ARGS},
 
