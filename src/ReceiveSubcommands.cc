@@ -3944,7 +3944,9 @@ static uint32_t base_exp_for_enemy_type(
     episode_order[1] = Episode::EP1;
     episode_order[2] = Episode::EP4;
   } else if (current_episode == Episode::EP4) {
-    uint8_t area = quest->meta.area_for_floor.at(floor);
+    uint8_t area = quest
+        ? quest->meta.area_for_floor.at(floor)
+        : SetDataTableBase::default_area_for_floor(Version::BB_V4, Episode::EP4, floor);
     if (area <= 0x28) { // Crater
       episode_order[1] = Episode::EP1;
       episode_order[2] = Episode::EP2;
