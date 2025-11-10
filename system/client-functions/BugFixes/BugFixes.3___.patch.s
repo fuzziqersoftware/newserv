@@ -878,5 +878,31 @@ g12_hook_end:
 
 
 
+  # Tsumikiri J-Sword special attack + rapid weapon switch bug fix (this part
+  # by fuzziqersoftware)
+
+  .label    tjs_switch_fix_hook_call, <VERS 0x8034CFA8 0x8034E3AC 0x8034F908 0x8034F6BC 0x8034DE5C 0x8034DEA0 0x8034FA88 0x8034EE7C>
+  .label    tjs_switch_fix_hook_loc, 0x8000B050
+  .data     tjs_switch_fix_hook_loc
+  .deltaof  tjs_switch_fix_hook_start, tjs_switch_fix_hook_end
+  .address  tjs_switch_fix_hook_loc
+tjs_switch_fix_hook_start:
+  lwz       r0, [r3 + 0x0188]
+  cmpwi     r0, 0
+  bnelr
+  mflr      r31
+  addi      r31, r31, 0x100
+  mtlr      r31
+  blr
+tjs_switch_fix_hook_end:
+
+  .data     tjs_switch_fix_hook_call
+  .data     8
+  .address  tjs_switch_fix_hook_call
+  beq       +0x108
+  bl        tjs_switch_fix_hook_loc
+
+
+
   .data     0
   .data     0

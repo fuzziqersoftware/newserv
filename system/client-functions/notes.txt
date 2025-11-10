@@ -3,6 +3,7 @@ Used regions in PSO GC:
 800041A0-800041B8 (0018) UnsellableRares
 800041C0-???????? (TODO) EnemyDamageSync
 
+8000B050-8000B06C (001C) BugFixes
 8000B06C-8000B088 (001C) BugFixes
 8000B088-8000B0E0 (0058) BugFixes
 8000B0E0-8000B254 (0174) q8853x send_function_call handler
