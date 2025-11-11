@@ -122,20 +122,19 @@ CommonItemSet::Table::Table(const phosg::JSON& json, Episode episode)
   const auto& enemy_type_drop_probs_json = json.at("EnemyTypeDropProbs").as_dict();
   const auto& enemy_item_classes_json = json.at("EnemyItemClasses").as_dict();
   for (size_t z = 0; z < 0x64; z++) {
-    for (Episode episode : ALL_EPISODES_V4) {
-      auto types = enemy_types_for_rare_table_index(episode, z);
-      vector<string> names;
-      if (types.empty()) {
-        names.emplace_back(std::format("{}:!{:02X}", abbreviation_for_episode(episode), z));
-      }
-      for (auto type : enemy_types_for_rare_table_index(episode, z)) {
+    auto types = enemy_types_for_rare_table_index(episode, z);
+    vector<string> names;
+    if (types.empty()) {
+      names.emplace_back(std::format("{}:!{:02X}", abbreviation_for_episode(episode), z));
+    } else {
+      for (auto type : types) {
         names.emplace_back(std::format("{}:{}", abbreviation_for_episode(episode), phosg::name_for_enum(type)));
       }
-      for (const auto& name : names) {
-        from_json_into(*enemy_meseta_ranges_json.at(name), this->enemy_meseta_ranges[z]);
-        this->enemy_type_drop_probs[z] = enemy_type_drop_probs_json.at(name)->as_int();
-        this->enemy_item_classes[z] = enemy_item_classes_json.at(name)->as_int();
-      }
+    }
+    for (const auto& name : names) {
+      from_json_into(*enemy_meseta_ranges_json.at(name), this->enemy_meseta_ranges[z]);
+      this->enemy_type_drop_probs[z] = enemy_type_drop_probs_json.at(name)->as_int();
+      this->enemy_item_classes[z] = enemy_item_classes_json.at(name)->as_int();
     }
   }
 }
