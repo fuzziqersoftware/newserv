@@ -1654,8 +1654,7 @@ void ItemCreator::generate_weapon_shop_item_bonus1(
 
   } else {
     const auto* range = this->weapon_random_set->get_bonus_range(0, table_index);
-    item.data1[7] = bonus_values.at(max<size_t>(
-        this->rand_int(range->max + 1), range->min));
+    item.data1[7] = bonus_values.at(max<size_t>(this->rand_int(range->max + 1), range->min));
   }
 }
 
@@ -1700,8 +1699,7 @@ void ItemCreator::generate_weapon_shop_item_bonus2(ItemData& item, size_t player
 
   } else {
     const auto* range = this->weapon_random_set->get_bonus_range(1, table_index);
-    item.data1[9] = bonus_values.at(max<size_t>(
-        this->rand_int(range->max + 1), range->min));
+    item.data1[9] = bonus_values.at(max<size_t>(this->rand_int(range->max + 1), range->min));
   }
 }
 

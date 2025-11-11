@@ -4320,13 +4320,11 @@ string SuperMap::Enemy::id_str() const {
 }
 
 string SuperMap::Enemy::str() const {
-  string ret = std::format("[Enemy ES-{:02X}-{:03X}-{:03X} type={} child_index={:X} alias_enemy_index_delta={:X} is_default_rare_v123={} is_default_rare_bb={}",
-      this->floor,
-      this->super_set_id,
-      this->super_id,
+  string ret = std::format("[Enemy {} type={} child_index={:X} alias_target_ene={} is_default_rare_v123={} is_default_rare_bb={}",
+      this->id_str(),
       phosg::name_for_enum(this->type),
       this->child_index,
-      this->alias_enemy_index_delta,
+      (this->alias_target_ene ? this->alias_target_ene->id_str() : "(none)"),
       this->is_default_rare_v123 ? "true" : "false",
       this->is_default_rare_bb ? "true" : "false");
   for (Version v : ALL_NON_PATCH_VERSIONS) {
@@ -4473,7 +4471,11 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
   auto add = [&](EnemyType type,
                  bool is_default_rare_v123 = false,
                  bool is_default_rare_bb = false,
-                 int16_t alias_enemy_index_delta = 0) -> void {
+                 std::shared_ptr<Enemy> alias_target_ene = nullptr) -> std::shared_ptr<Enemy> {
+    if (alias_target_ene && alias_target_ene->alias_target_ene) {
+      throw std::logic_error("alias may not point to an enemy that also is an alias");
+    }
+
     auto& entities = this->version(version);
 
     // TODO: It'd be nice to share some code between this function and
@@ -4488,7 +4490,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
     ene->type = type;
     ene->is_default_rare_v123 = is_default_rare_v123;
     ene->is_default_rare_bb = is_default_rare_bb;
-    ene->alias_enemy_index_delta = alias_enemy_index_delta;
+    ene->alias_target_ene = alias_target_ene;
     auto& ene_ver = ene->version(version);
     ene_ver.set_entry = set_entry;
     ene_ver.relative_enemy_index = entities.enemies.size();
@@ -4510,6 +4512,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
     // Add to room/group index
     uint64_t k = room_index_key(ene->floor, set_entry->room, set_entry->wave_number);
     entities.enemy_for_floor_room_and_wave_number.emplace(k, ene);
+    return ene;
   };
 
   // The following logic was originally based on the public version of
@@ -4753,26 +4756,28 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
     case 0x00C5: // Unnamed subclass of TObjEnemyCustom
       add(EnemyType::VOL_OPT_2);
       break;
-    case 0x00C8: // TBoss4DarkFalz
+    case 0x00C8: { // TBoss4DarkFalz
       if ((set_entry->num_children != 0) && (set_entry->num_children != 0x200)) {
         this->log.warning_f("DARK_FALZ has an unusual num_children (0x{:X})", set_entry->num_children);
       }
-      add(EnemyType::DARK_FALZ_3);
+      auto root_ene = add(EnemyType::DARK_FALZ_3);
       default_num_children = -1; // Skip adding children (because we do it here)
       for (size_t x = 0; x < 0x1FD; x++) {
         add(EnemyType::DARVANT);
       }
-      add(EnemyType::DARK_FALZ_3, false, false, -0x1FE);
-      add(EnemyType::DARK_FALZ_2, false, false, -0x1FF);
-      add(EnemyType::DARK_FALZ_1, false, false, -0x200);
+      add(EnemyType::DARK_FALZ_3, false, false, root_ene);
+      add(EnemyType::DARK_FALZ_2, false, false, root_ene);
+      add(EnemyType::DARK_FALZ_1, false, false, root_ene);
       break;
-    case 0x00CA: // TBoss6PlotFalz
-      add(EnemyType::OLGA_FLOW_2);
+    }
+    case 0x00CA: { // TBoss6PlotFalz
+      auto root_ene = add(EnemyType::OLGA_FLOW_2);
       default_num_children = -1; // Skip adding children (because we do it here)
       for (size_t x = 0; x < 0x200; x++) {
-        add(EnemyType::OLGA_FLOW_2, false, false, -(x + 1));
+        add(EnemyType::OLGA_FLOW_2, false, false, root_ene);
       }
       break;
+    }
     case 0x00CB: // TBoss7DeRolLeC
       add(EnemyType::BARBA_RAY);
       child_type = EnemyType::PIG_RAY;
@@ -5486,25 +5491,16 @@ vector<shared_ptr<const SuperMap::Object>> SuperMap::doors_for_switch_flag(
   return ret;
 }
 
-shared_ptr<const SuperMap::Enemy> SuperMap::enemy_for_index(Version version, uint16_t enemy_id, bool follow_alias) const {
+shared_ptr<const SuperMap::Enemy> SuperMap::enemy_for_index(Version version, uint16_t enemy_index) const {
   const auto& entities = this->version(version);
 
   if (entities.enemies.empty()) {
     throw out_of_range("no enemies defined");
   }
-  if (enemy_id >= entities.enemies.size()) {
+  if (enemy_index >= entities.enemies.size()) {
     throw out_of_range("enemy ID out of range");
   }
-  auto& enemy = entities.enemies[enemy_id];
-  if (follow_alias && (enemy->alias_enemy_index_delta != 0)) {
-    uint16_t target_id = enemy_id + enemy->alias_enemy_index_delta;
-    if (target_id >= entities.enemies.size()) {
-      throw out_of_range("aliased enemy ID out of range");
-    }
-    return entities.enemies[target_id];
-  } else {
-    return enemy;
-  }
+  return entities.enemies[enemy_index];
 }
 
 shared_ptr<const SuperMap::Enemy> SuperMap::enemy_for_floor_type(Version version, uint8_t floor, EnemyType type) const {
@@ -5513,10 +5509,13 @@ shared_ptr<const SuperMap::Enemy> SuperMap::enemy_for_floor_type(Version version
   if (entities.enemies.empty()) {
     throw out_of_range("no enemies defined");
   }
-  // TODO: Linear search is bad here. Do something better, like binary search
-  // for the floor start and just linear search through the floor enemies.
-  for (auto& ene : entities.enemies) {
-    if ((ene->floor == floor) && (ene->type == type)) {
+  size_t start_z = entities.enemy_floor_start_indexes.at(floor);
+  size_t end_z = (floor < entities.enemy_floor_start_indexes.size() - 1)
+      ? entities.enemy_floor_start_indexes[floor + 1]
+      : entities.enemy_floor_start_indexes.size();
+  for (size_t z = start_z; z < end_z; z++) {
+    auto& ene = entities.enemies[z];
+    if ((ene->floor == floor) || (ene->type == type)) {
       return ene;
     }
   }
@@ -6153,12 +6152,7 @@ void MapState::index_super_map(const FloorConfig& fc, shared_ptr<RandomGenerator
 
   for (const auto& ene : fc.super_map->all_enemies()) {
     auto& ene_st = this->enemy_states.emplace_back(make_shared<EnemyState>());
-    if (ene->alias_enemy_index_delta) {
-      ene_st->alias_ene_st = this->enemy_states.at((this->enemy_states.size() - 1) + ene->alias_enemy_index_delta);
-      if (ene_st->alias_ene_st->alias_ene_st) {
-        throw std::runtime_error("target for enemy state alias is itself an alias");
-      }
-    }
+
     if (ene->child_index == 0) {
       this->enemy_set_states.emplace_back(ene_st);
     }
@@ -6166,13 +6160,22 @@ void MapState::index_super_map(const FloorConfig& fc, shared_ptr<RandomGenerator
     ene_st->set_id = this->enemy_set_states.size() - 1;
     ene_st->super_ene = ene;
 
+    if (ene->alias_target_ene) {
+      ssize_t delta = ene->alias_target_ene->super_id - ene->super_id;
+      ene_st->alias_target_ene_st = this->enemy_states.at(ene_st->e_id + delta);
+      if (ene_st->alias_target_ene_st->super_ene != ene->alias_target_ene) {
+        throw std::logic_error("found incorrect alias target state for enemy");
+      }
+      if (ene_st->alias_target_ene_st->super_ene->alias_target_ene) {
+        throw std::runtime_error("target for enemy state alias is itself an alias");
+      }
+    }
+
     // Handle random rare enemies and difficulty-based effects
     EnemyType type;
     switch (ene->type) {
       case EnemyType::DARK_FALZ_3:
-        type = ((this->difficulty == Difficulty::NORMAL) && (ene->alias_enemy_index_delta == 0))
-            ? EnemyType::DARK_FALZ_2
-            : EnemyType::DARK_FALZ_3;
+        type = (this->difficulty == Difficulty::NORMAL) ? EnemyType::DARK_FALZ_2 : EnemyType::DARK_FALZ_3;
         break;
       case EnemyType::DARVANT:
         type = (this->difficulty == Difficulty::ULTIMATE) ? EnemyType::DARVANT_ULTIMATE : EnemyType::DARVANT;
@@ -6556,18 +6559,18 @@ void MapState::import_enemy_states_from_sync(Version from_version, const SyncEne
       const auto& entry = entries[enemy_index];
       const auto& ene = entities.enemies.at(enemy_index - base_indexes.base_enemy_index);
       auto& ene_st = this->enemy_states.at(fc.base_super_ids.base_enemy_index + ene->super_id);
-      if (ene_st->super_ene != ene) {
-        throw logic_error("super enemy link is incorrect");
-      }
-      if (ene_st->game_flags != entry.flags) {
-        this->log.warning_f("({:04X} => E-{:03X}) Flags from client ({:08X}) do not match game flags from map ({:08X})",
-            enemy_index, ene_st->e_id, entry.flags, ene_st->game_flags);
-        ene_st->game_flags = entry.flags;
-      }
-      if (ene_st->total_damage != entry.total_damage) {
-        this->log.warning_f("({:04X} => E-{:03X}) Total damage from client ({}) does not match total damage from map ({})",
-            enemy_index, ene_st->e_id, entry.total_damage, ene_st->total_damage);
-        ene_st->total_damage = entry.total_damage;
+      // Only set the state if it's not an alias
+      if (ene_st->super_ene == ene) {
+        if (ene_st->game_flags != entry.flags) {
+          this->log.warning_f("({:04X} => E-{:03X}) Flags from client ({:08X}) do not match game flags from map ({:08X})",
+              enemy_index, ene_st->e_id, entry.flags, ene_st->game_flags);
+          ene_st->game_flags = entry.flags;
+        }
+        if (ene_st->total_damage != entry.total_damage) {
+          this->log.warning_f("({:04X} => E-{:03X}) Total damage from client ({}) does not match total damage from map ({})",
+              enemy_index, ene_st->e_id, entry.total_damage, ene_st->total_damage);
+          ene_st->total_damage = entry.total_damage;
+        }
       }
     }
   }
@@ -6876,12 +6879,9 @@ void MapState::print(FILE* stream) const {
   }
 
   phosg::fwrite_fmt(stream, "Enemies:\n");
-  phosg::fwrite_fmt(stream, "  FL ENEID ALIAS DCTE----- DCPR----- DCV1----- DCV2----- PCTE----- PCV2----- GCTE----- GCV3----- EP3TE---- GCEP3---- XBV3----- BBV4----- ENEMY\n");
+  phosg::fwrite_fmt(stream, "  FL ENEID DCTE----- DCPR----- DCV1----- DCV2----- PCTE----- PCV2----- GCTE----- GCV3----- EP3TE---- GCEP3---- XBV3----- BBV4----- ENEMY\n");
   for (const auto& ene_st : this->enemy_states) {
-    std::string alias_str = ene_st->super_ene->alias_enemy_index_delta
-        ? std::format("E-{:03X}", ene_st->e_id + ene_st->super_ene->alias_enemy_index_delta)
-        : "-----";
-    phosg::fwrite_fmt(stream, "  {:02X} E-{:03X} {}", ene_st->super_ene->floor, ene_st->e_id, alias_str);
+    phosg::fwrite_fmt(stream, "  {:02X} E-{:03X}", ene_st->super_ene->floor, ene_st->e_id);
     const auto& fc = this->floor_config(ene_st->super_ene->floor);
     for (Version v : ALL_NON_PATCH_VERSIONS) {
       const auto& ene_v = ene_st->super_ene->version(v);

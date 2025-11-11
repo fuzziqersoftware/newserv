@@ -19,7 +19,10 @@ G_SpecializableItemDropRequest_6xA2 normalize_drop_request(const void* data, siz
 
 struct DropReconcileResult {
   std::shared_ptr<MapState::ObjectState> obj_st;
-  std::shared_ptr<MapState::EnemyState> ene_st;
+  // The ref ene_st is the one the client referenced in the drop request; the target ene_st is the one actually used
+  // for drop computation (which may be the result of following an alias from the ref ene_st)
+  std::shared_ptr<MapState::EnemyState> ref_ene_st;
+  std::shared_ptr<MapState::EnemyState> target_ene_st;
   uint8_t effective_rt_index;
   bool should_drop;
   bool ignore_def;

@@ -491,7 +491,7 @@ public:
     size_t super_id = 0;
     size_t super_set_id = 0;
     uint16_t child_index = 0;
-    int16_t alias_enemy_index_delta = 0; // 0 = no alias
+    std::shared_ptr<Enemy> alias_target_ene; // May be null
     EnemyType type = EnemyType::UNKNOWN;
     bool is_default_rare_v123 = false;
     bool is_default_rare_bb = false;
@@ -585,7 +585,7 @@ public:
   std::vector<std::shared_ptr<const Object>> doors_for_switch_flag(
       Version version, uint8_t floor, uint8_t switch_flag) const;
 
-  std::shared_ptr<const Enemy> enemy_for_index(Version version, uint16_t enemy_index, bool follow_alias) const;
+  std::shared_ptr<const Enemy> enemy_for_index(Version version, uint16_t enemy_index) const;
   std::shared_ptr<const Enemy> enemy_for_floor_type(Version version, uint8_t floor, EnemyType type) const;
   std::vector<std::shared_ptr<const Enemy>> enemies_for_floor_room_wave(
       Version version, uint8_t floor, uint16_t room, uint16_t wave_number) const;
@@ -710,7 +710,7 @@ public:
   };
 
   struct EnemyState {
-    std::shared_ptr<EnemyState> alias_ene_st; // Null for most enemies
+    std::shared_ptr<EnemyState> alias_target_ene_st; // Null for most enemies
     std::shared_ptr<const SuperMap::Enemy> super_ene;
     enum Flag {
       LAST_HIT_MASK = 0x0003,
@@ -756,7 +756,7 @@ public:
           return EnemyType::MERICAROL;
         }
       } else if (this->super_ene->type == EnemyType::DARK_FALZ_3) {
-        return ((difficulty == Difficulty::NORMAL) && (this->super_ene->alias_enemy_index_delta == 0))
+        return ((difficulty == Difficulty::NORMAL) && !this->super_ene->alias_target_ene)
             ? EnemyType::DARK_FALZ_2
             : EnemyType::DARK_FALZ_3;
       } else {

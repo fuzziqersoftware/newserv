@@ -2842,8 +2842,8 @@ DropReconcileResult reconcile_drop_request_with_map(
   res.should_drop = true;
   res.ignore_def = (cmd.ignore_def != 0);
 
-  if (is_box) {
-    if (map) {
+  if (map) {
+    if (is_box) {
       res.obj_st = map->object_state_for_index(version, cmd.floor, cmd.entity_index);
       if (!res.obj_st->super_obj) {
         throw std::runtime_error("referenced object from drop request is a player trap");
@@ -2878,23 +2878,23 @@ DropReconcileResult reconcile_drop_request_with_map(
         string type_name = MapFile::name_for_object_type(set_entry->base_type, version);
         send_text_message_fmt(c, "$C5K-{:03X} {} {}", res.obj_st->k_id, res.ignore_def ? 'G' : 'S', type_name);
       }
-    }
 
-  } else {
-    if (map) {
-      res.ene_st = map->enemy_state_for_index(version, cmd.floor, cmd.entity_index);
-      EnemyType type = res.ene_st->type(version, episode, difficulty, event);
-      c->log.info_f("Drop check for E-{:03X} {}", res.ene_st->e_id, phosg::name_for_enum(type));
+    } else {
+      res.ref_ene_st = map->enemy_state_for_index(version, cmd.floor, cmd.entity_index);
+      res.target_ene_st = res.ref_ene_st->alias_target_ene_st ? res.ref_ene_st->alias_target_ene_st : res.ref_ene_st;
+      EnemyType type = res.target_ene_st->type(version, episode, difficulty, event);
+      c->log.info_f("Drop check for E-{:03X} (target E-{:03X}, type {})",
+          res.ref_ene_st->e_id, res.target_ene_st->e_id, phosg::name_for_enum(type));
       res.effective_rt_index = type_definition_for_enemy(type).rt_index;
       // rt_indexes in Episode 4 don't match those sent in the command; we just
       // ignore what the client sends.
       if ((episode != Episode::EP4) && (cmd.rt_index != res.effective_rt_index)) {
         // Special cases: BULCLAW => BULK and DARK_GUNNER => DEATH_GUNNER
         if (cmd.rt_index == 0x27 && type == EnemyType::BULCLAW) {
-          c->log.info_f("E-{:03X} killed as BULK instead of BULCLAW", res.ene_st->e_id);
+          c->log.info_f("E-{:03X} killed as BULK instead of BULCLAW", res.target_ene_st->e_id);
           res.effective_rt_index = 0x27;
         } else if (cmd.rt_index == 0x23 && type == EnemyType::DARK_GUNNER) {
-          c->log.info_f("E-{:03X} killed as DEATH_GUNNER instead of DARK_GUNNER", res.ene_st->e_id);
+          c->log.info_f("E-{:03X} killed as DEATH_GUNNER instead of DARK_GUNNER", res.target_ene_st->e_id);
           res.effective_rt_index = 0x23;
         } else {
           c->log.warning_f("rt_index {:02X} from command does not match entity\'s expected index {:02X}",
@@ -2904,12 +2904,12 @@ DropReconcileResult reconcile_drop_request_with_map(
           }
         }
       }
-      if (cmd.floor != res.ene_st->super_ene->floor) {
+      if (cmd.floor != res.target_ene_st->super_ene->floor) {
         c->log.warning_f("Floor {:02X} from command does not match entity\'s expected floor {:02X}",
-            cmd.floor, res.ene_st->super_ene->floor);
+            cmd.floor, res.target_ene_st->super_ene->floor);
       }
       if (c->check_flag(Client::Flag::DEBUG_ENABLED)) {
-        send_text_message_fmt(c, "$C5E-{:03X} {}", res.ene_st->e_id, phosg::name_for_enum(type));
+        send_text_message_fmt(c, "$C5E-{:03X} {}", res.target_ene_st->e_id, phosg::name_for_enum(type));
       }
     }
   }
@@ -2923,12 +2923,12 @@ DropReconcileResult reconcile_drop_request_with_map(
         res.obj_st->item_drop_checked = true;
       }
     }
-    if (res.ene_st) {
-      if (res.ene_st->server_flags & MapState::EnemyState::Flag::ITEM_DROPPED) {
-        c->log.info_f("Drop check has already occurred for E-{:03X}; skipping it", res.ene_st->e_id);
+    if (res.target_ene_st) {
+      if (res.target_ene_st->server_flags & MapState::EnemyState::Flag::ITEM_DROPPED) {
+        c->log.info_f("Drop check has already occurred for E-{:03X}; skipping it", res.target_ene_st->e_id);
         res.should_drop = false;
       } else {
-        res.ene_st->server_flags |= MapState::EnemyState::Flag::ITEM_DROPPED;
+        res.target_ene_st->server_flags |= MapState::EnemyState::Flag::ITEM_DROPPED;
       }
     }
   }
@@ -2989,9 +2989,9 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
           return l->item_creator->on_specialized_box_item_drop(
               cmd.effective_area, cmd.param3, cmd.param4, cmd.param5, cmd.param6);
         }
-      } else if (rec.ene_st) {
+      } else if (rec.target_ene_st) {
         l->log.info_f("Creating item from enemy {:04X} => E-{:03X} (area {:02X})",
-            cmd.entity_index, rec.ene_st->e_id, cmd.effective_area);
+            cmd.entity_index, rec.target_ene_st->e_id, cmd.effective_area);
         return l->item_creator->on_monster_item_drop(rec.effective_rt_index, cmd.effective_area);
       } else {
         throw runtime_error("neither object nor enemy were present");
@@ -3001,8 +3001,8 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
     auto get_entity_index = [&](Version v) -> uint16_t {
       if (rec.obj_st) {
         return l->map_state->index_for_object_state(v, rec.obj_st);
-      } else if (rec.ene_st) {
-        return l->map_state->index_for_enemy_state(v, rec.ene_st);
+      } else if (rec.ref_ene_st) {
+        return l->map_state->index_for_enemy_state(v, rec.ref_ene_st);
       } else {
         return 0xFFFF;
       }
@@ -3028,7 +3028,7 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
                 res.item.id = l->generate_item_id(0xFF);
                 l->log.info_f("Creating item {:08X} at {:02X}:{:g},{:g} for {}",
                     res.item.id, cmd.floor, cmd.pos.x, cmd.pos.z, lc->channel->name);
-                l->add_item(cmd.floor, res.item, cmd.pos, rec.obj_st, rec.ene_st, 0x1000 | (1 << lc->lobby_client_id));
+                l->add_item(cmd.floor, res.item, cmd.pos, rec.obj_st, rec.ref_ene_st, 0x1000 | (1 << lc->lobby_client_id));
                 send_drop_item_to_channel(
                     s, lc->channel, res.item, rec.obj_st ? 2 : 1, cmd.floor, cmd.pos, get_entity_index(lc->version()));
                 send_item_notification_if_needed(lc, res.item, res.is_from_rare_table);
@@ -3039,7 +3039,7 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
             res.item.id = l->generate_item_id(0xFF);
             l->log.info_f("Creating item {:08X} at {:02X}:{:g},{:g} for all clients",
                 res.item.id, cmd.floor, cmd.pos.x, cmd.pos.z);
-            l->add_item(cmd.floor, res.item, cmd.pos, rec.obj_st, rec.ene_st, 0x100F);
+            l->add_item(cmd.floor, res.item, cmd.pos, rec.obj_st, rec.ref_ene_st, 0x100F);
             for (auto lc : l->clients) {
               if (lc) {
                 send_drop_item_to_channel(
@@ -3063,7 +3063,7 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
               res.item.id = l->generate_item_id(0xFF);
               l->log.info_f("Creating item {:08X} at {:02X}:{:g},{:g} for {}",
                   res.item.id, cmd.floor, cmd.pos.x, cmd.pos.z, lc->channel->name);
-              l->add_item(cmd.floor, res.item, cmd.pos, rec.obj_st, rec.ene_st, 0x1000 | (1 << lc->lobby_client_id));
+              l->add_item(cmd.floor, res.item, cmd.pos, rec.obj_st, rec.ref_ene_st, 0x1000 | (1 << lc->lobby_client_id));
               send_drop_item_to_channel(
                   s, lc->channel, res.item, rec.obj_st ? 2 : 1, cmd.floor, cmd.pos, get_entity_index(lc->version()));
               send_item_notification_if_needed(lc, res.item, res.is_from_rare_table);
@@ -3151,7 +3151,10 @@ static asio::awaitable<void> on_set_quest_flag(shared_ptr<Client> c, SubcommandM
       uint16_t enemy_index = 0xFFFF;
       uint8_t enemy_floor = 0xFF;
       try {
-        const auto& ene_st = l->map_state->enemy_state_for_floor_type(c->version(), c->floor, boss_enemy_type);
+        auto ene_st = l->map_state->enemy_state_for_floor_type(c->version(), c->floor, boss_enemy_type);
+        if (ene_st->alias_target_ene_st) {
+          ene_st = ene_st->alias_target_ene_st;
+        }
         enemy_index = l->map_state->index_for_enemy_state(c->version(), ene_st);
         enemy_floor = ene_st->super_ene->floor;
         if (c->floor != ene_st->super_ene->floor) {
@@ -3271,8 +3274,7 @@ static asio::awaitable<void> on_set_entity_set_flag(shared_ptr<Client> c, Subcom
       }
       room = set_entry->room;
       wave_number = set_entry->wave_number;
-      l->log.info_f("Client set set flags {:04X} on E-{:03X} (flags are now {:04X})",
-          cmd.flags, ene_st->e_id, cmd.flags);
+      l->log.info_f("Client set set flags {:04X} on E-{:03X} (flags are now {:04X})", cmd.flags, ene_st->e_id, cmd.flags);
     } catch (const out_of_range&) {
       l->log.warning_f("Flag update refers to missing enemy");
     }
@@ -3282,8 +3284,7 @@ static asio::awaitable<void> on_set_entity_set_flag(shared_ptr<Client> c, Subcom
       // they are defeated, set event_flags = (event_flags | 0x18) & (~4),
       // which means it is done and should not trigger
       bool all_enemies_defeated = true;
-      l->log.info_f("Checking for defeated enemies with room={:04X} wave_number={:04X}",
-          room, wave_number);
+      l->log.info_f("Checking for defeated enemies with room={:04X} wave_number={:04X}", room, wave_number);
       for (auto ene_st : l->map_state->enemy_states_for_floor_room_wave(c->version(), cmd.floor, room, wave_number)) {
         if (ene_st->super_ene->child_index) {
           l->log.info_f("E-{:03X} is a child of another enemy", ene_st->e_id);
@@ -3460,12 +3461,12 @@ static asio::awaitable<void> on_update_enemy_state(shared_ptr<Client> c, Subcomm
   ene_st->total_damage = cmd.total_damage;
   ene_st->set_last_hit_by_client_id(c->lobby_client_id);
   l->log.info_f("E-{:03X} updated to damage={} game_flags={:08X}", ene_st->e_id, ene_st->total_damage, ene_st->game_flags);
-  auto& alias_ene_st = ene_st->alias_ene_st;
-  if (alias_ene_st) {
-    alias_ene_st->game_flags = ene_st->game_flags;
-    alias_ene_st->total_damage = ene_st->total_damage;
-    alias_ene_st->server_flags = ene_st->server_flags;
-    l->log.info_f("E-{:03X} updated via alias from E-{:03X}", alias_ene_st->e_id, ene_st->e_id);
+  if (ene_st->alias_target_ene_st) {
+    ene_st->alias_target_ene_st->game_flags = src_flags;
+    ene_st->alias_target_ene_st->total_damage = cmd.total_damage;
+    ene_st->alias_target_ene_st->set_last_hit_by_client_id(c->lobby_client_id);
+    l->log.info_f("Alias target E-{:03X} updated to damage={} game_flags={:08X}",
+        ene_st->alias_target_ene_st->e_id, ene_st->alias_target_ene_st->total_damage, ene_st->alias_target_ene_st->game_flags);
   }
 
   for (auto lc : l->clients) {
@@ -3504,6 +3505,10 @@ static asio::awaitable<void> on_incr_enemy_damage(shared_ptr<Client> c, Subcomma
       cmd.current_hp_before_hit.load(),
       cmd.max_hp.load());
   ene_st->total_damage = std::min<uint32_t>(ene_st->total_damage + cmd.hit_amount, cmd.max_hp);
+  if (ene_st->alias_target_ene_st) {
+    ene_st->alias_target_ene_st->total_damage = std::min<uint32_t>(
+        ene_st->alias_target_ene_st->total_damage + cmd.hit_amount, cmd.max_hp);
+  }
 
   co_await forward_subcommand_with_entity_id_transcode_t<G_IncrementEnemyDamage_Extension_6xE4>(c, msg);
 }
@@ -3527,6 +3532,11 @@ static asio::awaitable<void> on_set_enemy_low_game_flags_ultimate(shared_ptr<Cli
   if (!(ene_st->game_flags & cmd.low_game_flags)) {
     ene_st->game_flags |= cmd.low_game_flags;
     l->log.info_f("E-{:03X} updated to game_flags={:08X}", ene_st->e_id, ene_st->game_flags);
+  }
+  if (ene_st->alias_target_ene_st && !(ene_st->alias_target_ene_st->game_flags & cmd.low_game_flags)) {
+    ene_st->alias_target_ene_st->game_flags |= cmd.low_game_flags;
+    l->log.info_f("Alias E-{:03X} updated to game_flags={:08X}",
+        ene_st->alias_target_ene_st->e_id, ene_st->alias_target_ene_st->game_flags);
   }
 
   co_await forward_subcommand_with_entity_id_transcode_t<G_SetEnemyLowGameFlagsUltimate_6x9C>(c, msg);
@@ -3651,6 +3661,9 @@ static asio::awaitable<void> on_dragon_actions_6x12(shared_ptr<Client> c, Subcom
   if (ene_st->super_ene->type != EnemyType::DRAGON) {
     throw runtime_error("6x12 command sent for incorrect enemy type");
   }
+  if (ene_st->alias_target_ene_st) {
+    throw runtime_error("DRAGON enemy is an alias");
+  }
 
   G_DragonBossActions_GC_6x12 sw_cmd = {{cmd.header.subcommand, cmd.header.size, cmd.header.entity_id.load()},
       cmd.unknown_a2.load(), cmd.unknown_a3.load(), cmd.unknown_a4.load(), cmd.x.load(), cmd.z.load()};
@@ -3686,6 +3699,9 @@ static asio::awaitable<void> on_gol_dragon_actions(shared_ptr<Client> c, Subcomm
   auto ene_st = l->map_state->enemy_state_for_index(c->version(), cmd.header.entity_id - 0x1000);
   if (ene_st->super_ene->type != EnemyType::GOL_DRAGON) {
     throw runtime_error("6xA8 command sent for incorrect enemy type");
+  }
+  if (ene_st->alias_target_ene_st) {
+    throw runtime_error("GOL_DRAGON enemy is an alias");
   }
 
   G_GolDragonBossActions_GC_6xA8 sw_cmd = {{cmd.header.subcommand, cmd.header.size, cmd.header.entity_id},
@@ -3992,7 +4008,10 @@ static asio::awaitable<void> on_steal_exp_bb(shared_ptr<Client> c, SubcommandMes
     co_return;
   }
 
-  const auto& ene_st = l->map_state->enemy_state_for_index(c->version(), cmd.enemy_index);
+  auto ene_st = l->map_state->enemy_state_for_index(c->version(), cmd.enemy_index);
+  if (ene_st->alias_target_ene_st) {
+    ene_st = ene_st->alias_target_ene_st;
+  }
   if (ene_st->super_ene->floor != c->floor) {
     throw runtime_error("enemy is on a different floor");
   }
@@ -4049,6 +4068,10 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
   auto ene_st = l->map_state->enemy_state_for_index(c->version(), cmd.enemy_index);
   string ene_str = ene_st->super_ene->str();
   c->log.info_f("EXP requested for E-{:03X}: {}", ene_st->e_id, ene_str);
+  if (ene_st->alias_target_ene_st) {
+    c->log.info_f("E-{:03X} is an alias for E-{:03X}", ene_st->e_id, ene_st->alias_target_ene_st->e_id);
+    ene_st = ene_st->alias_target_ene_st;
+  }
 
   // If the requesting player never hit this enemy, they are probably cheating;
   // ignore the command. Also, each player sends a 6xC8 if they ever hit the

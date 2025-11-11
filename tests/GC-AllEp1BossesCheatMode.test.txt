@@ -40754,7 +40754,7 @@ I 38563 2025-09-19 00:11:38 - [Game:15] Creating item from final boss (DARK_FALZ
 I 38563 2025-09-19 00:11:38 - [Game:15] Found enemy E-9A3 at index 083E on floor E
 I 38563 2025-09-19 00:11:38 - [C-2] Drop check for E-9A3 DARK_FALZ_2
 I 38563 2025-09-19 00:11:38 - [Commands] Sending to C-2 (Jess Lv.51) @ ipss:N-1:127.0.0.1:64785 (version=GC_V3 command=62 flag=00)
-0000 | 62 00 1C 00 60 06 00 00 0E 2F 3E 08 00 00 68 C2 | b   `    />   h
+0000 | 62 00 1C 00 60 06 00 00 0E 2F 3F 06 00 00 68 C2 | b   `    />   h
 0010 | 00 00 F8 41 02 00 00 00 0E 00 00 00             |    A
 I 38563 2025-09-19 00:11:38 - [Commands] Received from C-2 (Jess Lv.51) @ ipss:N-1:127.0.0.1:64785 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 10 00 52 03 00 00 08 00 00 00 14 F6 00 00 | `   R
