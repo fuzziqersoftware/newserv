@@ -894,3 +894,30 @@ Disable save file signature validation (for moving Xbox saves across consoles)
 4OEU => 002F22DB 9090
 4OPD => 002F215B 9090
 4OPU => 002F234B 9090
+
+Enable UDP test mode online
+3OE1 => 041A3D60 38600001
+
+Main warp door opens in Challenge mode
+3OE1 => 041820A4 38600001
+        041820A8 4E800020
+
+Allow arbitrary tech disk levels
+3OE1 => 0410EBE8 60000000
+        04100D18 60000000
+        041D6C0C 60000000
+        041D6C5C 60000000
+        0422CB50 60000000
+        042CD74C 4E800020
+
+Change particle colors in quest loading screen
+3OE1 => 04472C20 AARRGGBB // Default color
+        04472C24 AARRGGBB // Color after 1 A press
+        04472C28 AARRGGBB // Color after 2 A presses
+        04472C2C AARRGGBB // Color after 3 A presses
+        04472C30 AARRGGBB // Color after 4 A presses
+        04472C34 AARRGGBB // Color after 5 A presses
+
+Floor warp loading screen speed modifier
+// XXXX = speed; default is 01B4; 0800 = very fast/wobbly; 0020 = very slow
+3OE1 => 0434A350 3863XXXX
