@@ -1265,6 +1265,12 @@ struct C_CharacterData_BB_61_98 {
 // disp or inventory data. The clients in the game are responsible for sending
 // that data to each other during the join process with 60/62/6C/6D commands.
 
+// After receiving a 64 command, the client starts the game loading procedure,
+// during which it will completely ignore other 64 or 65 commands, and will
+// delay processing of all other commands except 1D until the loading procedure
+// is done. If more than 0x10000 bytes of commands are sent during loading, any
+// commands that don't fit in the buffer are lost.
+
 // Curiously, this command is named RcvStartGame3 internally, while 0E is named
 // RcvStartGame. The string RcvStartGame2 appears in the DC versions, but it
 // seems the relevant code was deleted - there are no references to the string.
@@ -1356,6 +1362,9 @@ struct S_JoinGame_BB_64 : S_JoinGameT_DC_PC<PlayerLobbyDataBB> {
 // When a player joins an existing game, the joining player receives a 64
 // command (described above), and the players already in the game receive a 65
 // command containing only the joining player's data.
+
+// Similarly to 64, the client will ignore 64 and 65 commands while loading,
+// and will buffer all other commands except 1D until loading is done.
 
 struct LobbyFlags_DCNTE {
   uint8_t client_id = 0;
@@ -1881,6 +1890,10 @@ struct C_CharSaveInfo_DCv2_PC_V3_BB_96 {
 // player data and remove the client from the game it's in (if any), but should
 // NOT assign it to an available lobby. The client will send an 84 when it's
 // ready to join a lobby.
+
+// Similarly to 64 and 65, the client will ignore 64 and 65 commands while
+// loading the lobby after sending 98, and will buffer all other commands
+// except 1D until loading is done.
 
 // 99 (C->S): Server time accepted
 // Internal name: SndPsoDirList
