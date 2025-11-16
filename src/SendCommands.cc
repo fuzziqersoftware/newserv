@@ -789,6 +789,10 @@ void send_approve_player_choice_bb(shared_ptr<Client> c) {
 }
 
 void send_complete_player_bb(shared_ptr<Client> c) {
+  if (!c->login) {
+    throw std::logic_error("cannot send player for client who is not logged in");
+  }
+
   auto p = c->character_file(true, false);
   auto sys = c->system_file(true);
   auto team = c->team();
@@ -805,6 +809,8 @@ void send_complete_player_bb(shared_ptr<Client> c) {
     cmd.team_membership = team->full_membership_for_member(c->login->account->account_id);
   }
   send_command_t(c, 0x00E7, 0x00000000, cmd);
+
+  c->login->account->last_player_name = p->disp.name.decode(p->inventory.language);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
