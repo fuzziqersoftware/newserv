@@ -2455,8 +2455,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Returns the amount of Meseta the player has in both their inventory and
     // bank.
-    // regA = returned Meseta amount in inventory
-    // regB = returned Meseta amount in bank
+    // regsA[0] = returned Meseta amount in inventory
+    // regsA[1] = returned Meseta amount in bank
     {0xF91F, "get_slot_meseta", nullptr, {{W_REG_SET_FIXED, 2}}, F_V3_V4},
 
     // Returns a player's level.
