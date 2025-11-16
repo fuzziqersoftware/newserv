@@ -3005,7 +3005,7 @@ CreateItemMaskEntry::operator QuestMetadata::CreateItemMask() const {
       // 1MMMmmm (m = min, M = max)
       uint32_t min = v % 1000;
       uint32_t max = (v / 1000) % 1000;
-      if (min > 0xFF || max > 0xFF | min > max) {
+      if ((min > 0xFF) || (max > 0xFF) || (min > max)) {
         throw std::runtime_error(std::format("invalid range spec {} (0x{:X})", v, v));
       }
       ret.data1_ranges[z] = Range{.min = static_cast<uint8_t>(min), .max = static_cast<uint8_t>(max)};
