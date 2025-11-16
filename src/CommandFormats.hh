@@ -6201,7 +6201,7 @@ struct G_GiveExperience_Extension_BB_6xBF {
   le_uint16_t unused = 0;
 } __packed_ws__(G_GiveExperience_Extension_BB_6xBF, 0x0C);
 
-// 6xC0: Sell item at shop (BB) (protected on V3/V4)
+// 6xC0: Sell item at shop (BB) (protected)
 
 struct G_SellItemAtShop_BB_6xC0 {
   G_UnusedHeader header;
@@ -6281,10 +6281,10 @@ struct G_AdjustPlayerMeseta_BB_6xC9 {
 
 // 6xCA: Request item reward from quest (BB; handled by server)
 
-struct G_ItemRewardRequest_BB_6xCA {
+struct G_QuestCreateItem_BB_6xCA {
   G_UnusedHeader header;
   ItemData item_data;
-} __packed_ws__(G_ItemRewardRequest_BB_6xCA, 0x18);
+} __packed_ws__(G_QuestCreateItem_BB_6xCA, 0x18);
 
 // 6xCB: Transfer item via mail message (BB)
 
@@ -6330,7 +6330,14 @@ struct G_ChallengeModeGraveRecoveryItemRequest_BB_6xD1 {
   le_uint16_t floor = 0;
   le_uint16_t room_id = 0;
   VectorXZF pos;
-  le_uint32_t item_type = 0; // Should be < 6
+  // Values for item_type:
+  //   0 = Monomate x1
+  //   1 = Dimate x1
+  //   2 = Trimate x1
+  //   3 = Monofluid x1
+  //   4 = Difluid x1
+  //   5 = Trifluid x1
+  le_uint32_t item_type = 0;
 } __packed_ws__(G_ChallengeModeGraveRecoveryItemRequest_BB_6xD1, 0x14);
 
 // 6xD2: Set quest counter (BB)
@@ -6359,13 +6366,13 @@ struct G_Unknown_BB_6xD4 {
 // 6xD5: Exchange item in quest (BB; handled by server)
 // The client sends this when it executes an F953 quest opcode.
 
-struct G_ExchangeItemInQuest_BB_6xD5 {
+struct G_QuestExchangeItem_BB_6xD5 {
   G_ClientIDHeader header;
   ItemData find_item; // Only data1[0]-[2] are used
   ItemData replace_item; // Only data1[0]-[2] are used
   le_uint16_t success_label = 0;
   le_uint16_t failure_label = 0;
-} __packed_ws__(G_ExchangeItemInQuest_BB_6xD5, 0x30);
+} __packed_ws__(G_QuestExchangeItem_BB_6xD5, 0x30);
 
 // 6xD6: Wrap item (BB; handled by server)
 

@@ -3351,10 +3351,15 @@ std::string disassemble_quest_script(
             } else {
               dasm_line += "... ";
 
-              if (def->args.size() != arg_stack_values.size()) {
+              if (def->args.size() > arg_stack_values.size()) {
                 dasm_line += std::format("/* matching error: expected {} arguments, received {} arguments */",
                     def->args.size(), arg_stack_values.size());
               } else {
+                if (def->args.size() < arg_stack_values.size()) {
+                  dasm_line += std::format("/* warning: expected {} arguments, received {} arguments */",
+                      def->args.size(), arg_stack_values.size());
+                }
+
                 bool is_first_arg = true;
                 for (size_t z = 0; z < def->args.size(); z++) {
                   const auto& arg_def = def->args[z];
@@ -3679,7 +3684,7 @@ std::string disassemble_quest_script(
         phosg::StringReader r = cmd_r.sub(l->offset, size);
         lines.emplace_back("  // As VectorXYZTF");
         while (r.remaining() >= sizeof(VectorXYZTF)) {
-          size_t offset = l->offset + cmd_r.where();
+          size_t offset = l->offset + r.where();
           const auto& e = r.get<VectorXYZTF>();
           lines.emplace_back(std::format("  {:04X}  vector       x={:g}, y={:g}, z={:g}, t={:g}", offset, e.x, e.y, e.z, e.t));
         }

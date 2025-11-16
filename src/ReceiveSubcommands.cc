@@ -5683,6 +5683,4 @@ asio::awaitable<void> on_subcommand_multi(shared_ptr<Client> c, Channel::Message
   }
 }
 
-// TODO; // Dark Falz EXP doesn't work
-// TODO; // Guild Card Search doesn't work
-// TODO; // Team Search doesn't work
+// NOCOMMIT: Make BB item creation opcodes use the quests' create masks
