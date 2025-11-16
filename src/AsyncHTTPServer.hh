@@ -9,6 +9,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <phosg/Encoding.hh>
 #include <phosg/Hash.hh>
 #include <phosg/Time.hh>
 #include <string>
@@ -82,6 +83,106 @@ struct HTTPClient {
   asio::awaitable<void> send_websocket_message(const std::string& data, uint8_t opcode = 0x01);
 };
 
+template <typename RetT>
+class HTTPRouter {
+public:
+  struct Args {
+    std::shared_ptr<HTTPClient> client;
+    const HTTPRequest& req;
+    std::unordered_map<std::string, std::string> params;
+    phosg::JSON post_data;
+
+    template <typename T>
+      requires(std::is_integral_v<T>)
+    T get_param(const char* name, bool hex = false) const {
+      const auto& value_str = this->params.at(name);
+      size_t conversion_end;
+      int64_t v = std::stoull(value_str, &conversion_end, hex ? 16 : 0);
+      if (conversion_end != value_str.size()) {
+        throw HTTPError(400, "Invalid integer value");
+      }
+
+      uint64_t uv = static_cast<uint64_t>(v);
+      if constexpr (std::is_unsigned_v<T>) {
+        if (uv & (~phosg::mask_for_type<T>)) {
+          throw HTTPError(400, "Unsigned value out of range");
+        }
+        return uv;
+      } else {
+        if (((uv & (~(phosg::mask_for_type<T> >> 1))) != 0) && ((uv & (~(phosg::mask_for_type<T> >> 1))) != (~(phosg::mask_for_type<T> >> 1)))) {
+          throw HTTPError(400, "Signed value out of range");
+        }
+        return v;
+      }
+    }
+  };
+
+  using Handler = std::function<asio::awaitable<RetT>(Args&&)>;
+
+  static std::vector<std::string> split_and_normalize_path(const std::string& path) {
+    auto path_tokens = phosg::split(path, '/');
+    while (!path_tokens.empty() && path_tokens.back().empty()) {
+      path_tokens.pop_back();
+    }
+    return path_tokens;
+  }
+
+  void add(HTTPRequest::Method method, const std::string& path_pattern, Handler handler) {
+    this->routes.emplace_back(Route{
+        .method = method, .path_tokens = this->split_and_normalize_path(path_pattern), .handler = handler});
+  }
+
+  asio::awaitable<RetT> call_handler(std::shared_ptr<HTTPClient> c, const HTTPRequest& req) {
+    Args args = {.client = c, .req = req, .params = {}, .post_data = phosg::JSON()};
+
+    auto tokens = this->split_and_normalize_path(req.path);
+    for (const auto& route : this->routes) {
+      if (route.path_tokens.size() != tokens.size()) {
+        continue;
+      }
+
+      bool matched = true;
+      args.params.clear();
+      for (size_t z = 0; z < tokens.size(); z++) {
+        if (route.path_tokens[z].starts_with(':')) {
+          args.params.emplace(route.path_tokens[z].substr(1), tokens[z]);
+        } else if (route.path_tokens[z] != tokens[z]) {
+          matched = false;
+          break;
+        }
+      }
+
+      if (matched) {
+        if (req.method != route.method) {
+          throw HTTPError(405, "Incorrect HTTP method");
+        }
+        if (req.method == HTTPRequest::Method::POST) {
+          auto* content_type = req.get_header("content-type");
+          if (!content_type || (*content_type != "application/json")) {
+            throw HTTPError(400, "POST requests must use the application/json content type");
+          }
+          try {
+            args.post_data = phosg::JSON::parse(req.data);
+          } catch (const std::exception& e) {
+            throw HTTPError(400, std::format("Invalid JSON: {}", e.what()));
+          }
+        }
+        co_return co_await route.handler(std::move(args));
+      }
+    }
+
+    throw HTTPError(404, "Request path did not match any route");
+  }
+
+private:
+  struct Route {
+    HTTPRequest::Method method;
+    std::vector<std::string> path_tokens;
+    Handler handler;
+  };
+  std::vector<Route> routes;
+};
+
 struct HTTPServerLimits {
   size_t max_http_request_line_size = 0x1000; // 4KB
   size_t max_http_data_size = 0x200000; // 2MB
@@ -119,6 +220,29 @@ public:
 
 protected:
   HTTPServerLimits limits;
+
+  void require_GET(const HTTPRequest& req) {
+    if (req.method != HTTPRequest::Method::GET) {
+      throw HTTPError(405, "GET method required for this endpoint");
+    }
+  }
+
+  phosg::JSON require_JSON_POST(const HTTPRequest& req) {
+    if (req.method != HTTPRequest::Method::POST) {
+      throw HTTPError(405, "POST method required for this endpoint");
+    }
+
+    auto* content_type = req.get_header("content-type");
+    if (!content_type || (*content_type != "application/json")) {
+      throw HTTPError(400, "POST requests must use the application/json content type");
+    }
+
+    try {
+      return phosg::JSON::parse(req.data);
+    } catch (const std::exception& e) {
+      throw HTTPError(400, std::format("Invalid JSON: {}", e.what()));
+    }
+  }
 
   // Attempts to switch the client to WebSockets. Returns true if this is done
   // successfully (and the caller should then receive/send WebSocket messages),

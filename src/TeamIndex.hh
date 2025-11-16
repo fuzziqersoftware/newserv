@@ -76,6 +76,7 @@ public:
     void load_config();
     void save_config() const;
     void load_flag();
+    phosg::ImageRGBA8888N decode_flag_data() const;
     void save_flag() const;
     void delete_files() const;
 

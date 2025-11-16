@@ -163,7 +163,7 @@ asio::awaitable<HTTPRequest> HTTPClient::recv_http_request(size_t max_line_size,
   } else if (method_token == "TRACE") {
     req.method = HTTPRequest::Method::TRACE;
   } else {
-    throw HTTPError(400, "unknown request method");
+    throw HTTPError(400, "Unknown request method");
   }
 
   req.http_version = std::move(line_tokens[2]);
@@ -237,26 +237,26 @@ asio::awaitable<HTTPRequest> HTTPClient::recv_http_request(size_t max_line_size,
       size_t parse_offset = 0;
       size_t chunk_size = stoull(line, &parse_offset, 16);
       if (parse_offset != line.size()) {
-        throw HTTPError(400, "invalid chunk header during chunked encoding");
+        throw HTTPError(400, "Invalid chunk header during chunked encoding");
       }
       if (chunk_size == 0) {
         break;
       }
       total_data_bytes += chunk_size;
       if (total_data_bytes > max_body_size) {
-        throw HTTPError(400, "request data size too large");
+        throw HTTPError(400, "Request data size too large");
       }
       chunks.emplace_back(co_await this->r.read_data(chunk_size));
       auto after_chunk_data = co_await this->r.read_line("\r\n", 0x20);
       if (!after_chunk_data.empty()) {
-        throw HTTPError(400, "incorrect trailing sequence after chunk data");
+        throw HTTPError(400, "Incorrect trailing sequence after chunk data");
       }
     }
   } else {
     auto content_length_header = req.get_header("content-length");
     size_t content_length = content_length_header ? stoull(*content_length_header) : 0;
     if (content_length > max_body_size) {
-      throw HTTPError(400, "request data size too large");
+      throw HTTPError(400, "Request data size too large");
     } else if (content_length > 0) {
       req.data = co_await this->r.read_data(content_length);
     }
@@ -289,8 +289,7 @@ asio::awaitable<WebSocketMessage> HTTPClient::recv_websocket_message(size_t max_
   while (this->r.get_socket().is_open()) {
     WebSocketMessage msg;
 
-    // We need at most 10 bytes to determine if there's a valid frame, or as
-    // little as 2
+    // We need at most 10 bytes to determine if there's a valid frame, or as little as 2
     co_await this->r.read_data_into(msg.header, 2);
 
     // Get the payload size

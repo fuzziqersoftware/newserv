@@ -265,7 +265,11 @@ asio::awaitable<std::invoke_result_t<FnT, ArgTs...>> call_on_thread_pool(asio::t
   // call_on_thread_pool coroutine has been destroyed)
   auto promise = std::make_shared<AsyncPromise<ReturnT>>();
   asio::post(pool, [bound = std::move(bound), promise]() mutable {
-    promise->set_value(bound());
+    try {
+      promise->set_value(bound());
+    } catch (...) {
+      promise->set_exception(std::current_exception());
+    }
   });
   co_return co_await promise->get();
 }

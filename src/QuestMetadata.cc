@@ -171,7 +171,7 @@ phosg::JSON QuestMetadata::json() const {
     enemy_exp_overrides_json.emplace(key_str, exp_override);
   }
 
-  auto create_item_mask_entries_json = phosg::JSON::dict();
+  auto create_item_mask_entries_json = phosg::JSON::list();
   for (const auto& item : this->create_item_mask_entries) {
     create_item_mask_entries_json.emplace_back(item.str());
   }

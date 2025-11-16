@@ -20,6 +20,7 @@ TeamIndex::Team::Member::Member(const phosg::JSON& json)
   try {
     this->account_id = json.get_int("AccountID");
   } catch (const out_of_range&) {
+    // Old format
     this->account_id = json.get_int("SerialNumber");
   }
 }
@@ -78,7 +79,7 @@ void TeamIndex::Team::load_config() {
   this->reward_flags = json.get_int("RewardFlags");
 }
 
-void TeamIndex::Team::save_config() const {
+phosg::JSON TeamIndex::Team::json() const {
   phosg::JSON members_json = phosg::JSON::list();
   for (const auto& it : this->members) {
     members_json.emplace_back(it.second.json());
@@ -87,14 +88,17 @@ void TeamIndex::Team::save_config() const {
   for (const auto& it : this->reward_keys) {
     reward_keys_json.emplace_back(it);
   }
-  phosg::JSON root = phosg::JSON::dict({
+  return phosg::JSON::dict({
       {"Name", this->name},
       {"SpentPoints", this->spent_points},
       {"Members", std::move(members_json)},
       {"RewardKeys", std::move(reward_keys_json)},
       {"RewardFlags", this->reward_flags},
   });
-  phosg::save_file(this->json_filename(), root.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::HEX_INTEGERS | phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY));
+}
+
+void TeamIndex::Team::save_config() const {
+  phosg::save_file(this->json_filename(), this->json().serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::HEX_INTEGERS | phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY));
 }
 
 void TeamIndex::Team::load_flag() {
@@ -110,16 +114,21 @@ void TeamIndex::Team::load_flag() {
   }
 }
 
-void TeamIndex::Team::save_flag() const {
-  if (!this->flag_data) {
-    return;
-  }
+phosg::ImageRGBA8888N TeamIndex::Team::decode_flag_data() const {
   phosg::ImageRGBA8888N img(32, 32);
   for (size_t y = 0; y < 32; y++) {
     for (size_t x = 0; x < 32; x++) {
       img.write(x, y, phosg::rgba8888_for_argb1555(this->flag_data->at(y * 0x20 + x)));
     }
   }
+  return img;
+}
+
+void TeamIndex::Team::save_flag() const {
+  if (!this->flag_data) {
+    return;
+  }
+  auto img = this->decode_flag_data();
   phosg::save_file(this->flag_filename(), img.serialize(phosg::ImageFormat::WINDOWS_BITMAP));
 }
 

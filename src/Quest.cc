@@ -845,9 +845,6 @@ phosg::JSON QuestIndex::json() const {
       {"Categories", std::move(categories_json)},
       {"Quests", std::move(quests_json)},
   });
-  // std::map<uint32_t, std::shared_ptr<Quest>> quests_by_number;
-  // std::map<std::string, std::shared_ptr<Quest>> quests_by_name;
-  // std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Quest>>> quests_by_category_id_and_number;
 }
 
 shared_ptr<const Quest> QuestIndex::get(uint32_t quest_number) const {
