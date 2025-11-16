@@ -59,6 +59,18 @@
 // capability.
 // .joinable
 
+// On BB, quests that create items via the script must specify which items are
+// allowed to be created. To do so, use this directive one or more times, which
+// instructs the server to allow creation of that item. These masks can specify
+// each byte of the item's data1 as ranges, to allow for parameters in the item
+// data. For example, this directive allows the quest to create Trifluids
+// (030102) with stack sizes of 1-10:
+// .allow_create_item 0301020000[01-0A]000000000000
+// Another example: this directive allows the quest to create any weapon in the
+// basic rifle series, not including the rares in that series, with a grind
+// value of up to 5 and up to two bonuses between 0 and 30% each:
+// .allow_create_item 0007[00-04][00-05]0000[00-05][00-1E][00-05][00-1E]0000
+
 // The quest script begins after the header directives. A quest script is a
 // sequence of opcodes, and labels denoting positions within that sequence that
 // can be jumped to or called like a function. All labels have names, and some

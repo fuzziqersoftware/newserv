@@ -4182,18 +4182,43 @@ static asio::awaitable<void> on_adjust_player_meseta_bb(shared_ptr<Client> c, Su
   co_return;
 }
 
-static asio::awaitable<void> on_item_reward_request_bb(shared_ptr<Client> c, SubcommandMessage& msg) {
-  const auto& cmd = msg.check_size_t<G_ItemRewardRequest_BB_6xCA>();
+static void assert_quest_item_create_allowed(shared_ptr<const Lobby> l, const ItemData& item) {
+  // We always enforce these restrictions, even if the client has cheat mode
+  // enabled or has debug enabled. If the client can cheat, there are much
+  // easier ways to create items (e.g. the $item chat command) than spoofing
+  // these quest item creation commands, so they should just do that instead.
+
+  if (!l->quest) {
+    throw std::runtime_error("cannot create quest reward item with no quest loaded");
+  }
+  for (const auto& mask : l->quest->meta.create_item_mask_entries) {
+    if (mask.match(item)) {
+      return;
+    }
+  }
+  l->log.warning_f("Player attempted to create quest item {}, but it does not match any create item mask", item.hex());
+  l->log.info_f("Quest has {} create item masks:", l->quest->meta.create_item_mask_entries.size());
+  for (const auto& mask : l->quest->meta.create_item_mask_entries) {
+    l->log.info_f("  {}", mask.str());
+  }
+  throw std::runtime_error("invalid item creation from quest");
+}
+
+static asio::awaitable<void> on_quest_create_item_bb(shared_ptr<Client> c, SubcommandMessage& msg) {
+  const auto& cmd = msg.check_size_t<G_QuestCreateItem_BB_6xCA>();
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   const auto& limits = *s->item_stack_limits(c->version());
 
   ItemData item;
   item = cmd.item_data;
+  // enforce_stack_size_limits must come after this assert since quests may
+  // attempt to create stackable items with a count of zero
+  assert_quest_item_create_allowed(l, item);
   item.enforce_stack_size_limits(limits);
   item.id = l->generate_item_id(c->lobby_client_id);
 
-  // The logic for the item_create and item_create2 opcodes (B3 and B4)
+  // The logic for the item_create and item_create2 quest opcodes (B3 and B4)
   // includes a precondition check to see if the player can actually add the
   // item to their inventory or not, and the entire command is skipped if not.
   // However, on BB, the implementation performs this check and sends a 6xCA
@@ -4869,21 +4894,21 @@ static asio::awaitable<void> on_quest_exchange_item_bb(shared_ptr<Client> c, Sub
     throw runtime_error("6xD5 command sent during free play");
   }
 
-  const auto& cmd = msg.check_size_t<G_ExchangeItemInQuest_BB_6xD5>();
+  const auto& cmd = msg.check_size_t<G_QuestExchangeItem_BB_6xD5>();
   auto s = c->require_server_state();
 
   try {
     auto p = c->character_file();
     const auto& limits = *s->item_stack_limits(c->version());
 
+    ItemData new_item = cmd.replace_item;
+    assert_quest_item_create_allowed(l, new_item);
+    new_item.enforce_stack_size_limits(limits);
+
     size_t found_index = p->inventory.find_item_by_primary_identifier(cmd.find_item.primary_identifier());
     auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 1, limits);
     send_destroy_item_to_lobby(c, found_item.id, 1);
 
-    // TODO: We probably should use an allow-list here to prevent the client
-    // from creating arbitrary items if cheat mode is disabled.
-    ItemData new_item = cmd.replace_item;
-    new_item.enforce_stack_size_limits(limits);
     new_item.id = l->generate_item_id(c->lobby_client_id);
     p->add_item(new_item, limits);
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
@@ -4934,14 +4959,14 @@ static asio::awaitable<void> on_photon_drop_exchange_for_item_bb(shared_ptr<Clie
     auto p = c->character_file();
     const auto& limits = *s->item_stack_limits(c->version());
 
+    ItemData new_item = cmd.new_item;
+    assert_quest_item_create_allowed(l, new_item);
+    new_item.enforce_stack_size_limits(limits);
+
     size_t found_index = p->inventory.find_item_by_primary_identifier(0x03100000);
     auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 0, limits);
     send_destroy_item_to_lobby(c, found_item.id, found_item.stack_size(limits));
 
-    // TODO: We probably should use an allow-list here to prevent the client
-    // from creating arbitrary items if cheat mode is disabled.
-    ItemData new_item = cmd.new_item;
-    new_item.enforce_stack_size_limits(limits);
     new_item.id = l->generate_item_id(c->lobby_client_id);
     p->add_item(new_item, limits);
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
@@ -4975,9 +5000,12 @@ static asio::awaitable<void> on_photon_drop_exchange_for_s_rank_special_bb(share
     uint8_t cost = costs.at(cmd.special_type);
 
     size_t payment_item_index = p->inventory.find_item_by_primary_identifier(0x03100000);
-    // Ensure weapon exists before removing PDs, so inventory state will be
-    // consistent in case of error
-    p->inventory.find_item(cmd.item_id);
+    {
+      const auto& item = p->inventory.items[p->inventory.find_item(cmd.item_id)];
+      if (!item.data.is_s_rank_weapon()) {
+        throw std::runtime_error("6xD8 cannot be used for non-ES weapons");
+      }
+    }
 
     auto payment_item = p->remove_item(p->inventory.items[payment_item_index].data.id, cost, limits);
     send_destroy_item_to_lobby(c, payment_item.id, cost);
@@ -5008,24 +5036,61 @@ static asio::awaitable<void> on_secret_lottery_ticket_exchange_bb(shared_ptr<Cli
   if (!l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) && !l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
     throw runtime_error("6xDE command sent during free play");
   }
-
-  auto s = c->require_server_state();
-  const auto& cmd = msg.check_size_t<G_ExchangeSecretLotteryTicket_BB_6xDE>();
-
-  if (s->secret_lottery_results.empty()) {
-    throw runtime_error("no secret lottery results are defined");
+  if (!l->quest) {
+    throw runtime_error("6xDE command sent with no quest loaded");
+  }
+  if (l->quest->meta.create_item_mask_entries.size() < 2) {
+    throw runtime_error("quest does not have enough create item mask entries");
   }
 
+  // See notes about 6xDE in CommandFormats.hh about this weirdness
+  const auto& cmd = msg.check_size_t<G_ExchangeSecretLotteryTicket_Incomplete_BB_6xDE>(0x0C);
+  uint16_t failure_label;
+  if (msg.size >= 0x0C) {
+    const auto& cmd = msg.check_size_t<G_ExchangeSecretLotteryTicket_BB_6xDE>();
+    failure_label = cmd.failure_label;
+  } else {
+    failure_label = cmd.success_label;
+  }
+
+  // The last mask entry is the currency item (e.g. Secret Lottery Ticket)
+  const auto& currency_mask = l->quest->meta.create_item_mask_entries.back();
+  uint32_t currency_primary_identifier = currency_mask.primary_identifier();
   auto p = c->character_file();
-  ssize_t slt_index = -1;
+  ssize_t currency_index = -1;
   try {
-    slt_index = p->inventory.find_item_by_primary_identifier(0x03100300); // Secret Lottery Ticket
+    currency_index = p->inventory.find_item_by_primary_identifier(currency_primary_identifier);
+    c->log.info_f("Currency item {:08X} found at index {}", currency_primary_identifier, currency_index);
   } catch (const out_of_range&) {
+    c->log.info_f("Currency item {:08X} not found in inventory", currency_primary_identifier);
   }
 
-  if (slt_index >= 0) {
+  S_ExchangeSecretLotteryTicketResult_BB_24 out_cmd;
+  out_cmd.start_reg_num = cmd.start_reg_num;
+  out_cmd.label = (currency_index >= 0) ? cmd.success_label.load() : failure_label;
+  for (size_t z = 0; z < out_cmd.reg_values.size(); z++) {
+    out_cmd.reg_values[z] = (l->rand_crypt->next() % (l->quest->meta.create_item_mask_entries.size() - 1)) + 1;
+    c->log.info_f("Mask index {} is {} ({})", z, out_cmd.reg_values[z] - 1, l->quest->meta.create_item_mask_entries[out_cmd.reg_values[z] - 1].str());
+  }
+
+  if (currency_index >= 0) {
+    size_t mask_index = out_cmd.reg_values[cmd.index - 1] - 1;
+    const auto& mask = l->quest->meta.create_item_mask_entries[mask_index];
+    c->log.info_f("Chose mask {} ({})", mask_index, mask.str());
+
+    ItemData item;
+    for (size_t z = 0; z < 12; z++) {
+      const auto& r = mask.data1_ranges[z];
+      if (r.min != r.max) {
+        throw std::runtime_error("invalid range for bb_exchange_slt");
+      }
+      item.data1[z] = r.min;
+    }
+    auto s = c->require_server_state();
     const auto& limits = *s->item_stack_limits(c->version());
-    uint32_t slt_item_id = p->inventory.items[slt_index].data.id;
+    item.enforce_stack_size_limits(limits);
+
+    uint32_t slt_item_id = p->inventory.items[currency_index].data.id;
 
     G_ExchangeItemInQuest_BB_6xDB exchange_cmd;
     exchange_cmd.header.subcommand = 0xDB;
@@ -5038,28 +5103,12 @@ static asio::awaitable<void> on_secret_lottery_ticket_exchange_bb(shared_ptr<Cli
 
     p->remove_item(slt_item_id, 1, limits);
 
-    ItemData item = (s->secret_lottery_results.size() == 1)
-        ? s->secret_lottery_results[0]
-        : s->secret_lottery_results[l->rand_crypt->next() % s->secret_lottery_results.size()];
-    item.enforce_stack_size_limits(limits);
     item.id = l->generate_item_id(c->lobby_client_id);
     p->add_item(item, limits);
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
   }
 
-  S_ExchangeSecretLotteryTicketResult_BB_24 out_cmd;
-  out_cmd.start_reg_num = cmd.index;
-  out_cmd.label = cmd.success_label;
-  if (s->secret_lottery_results.empty()) {
-    out_cmd.reg_values.clear(0);
-  } else if (s->secret_lottery_results.size() == 1) {
-    out_cmd.reg_values.clear(1);
-  } else {
-    for (size_t z = 0; z < out_cmd.reg_values.size(); z++) {
-      out_cmd.reg_values[z] = l->rand_crypt->next() % s->secret_lottery_results.size();
-    }
-  }
-  send_command_t(c, 0x24, (slt_index >= 0) ? 0 : 1, out_cmd);
+  send_command_t(c, 0x24, (currency_index >= 0) ? 0 : 1, out_cmd);
   co_return;
 }
 
@@ -5284,6 +5333,11 @@ static asio::awaitable<void> on_momoka_item_exchange_bb(shared_ptr<Client> c, Su
   auto p = c->character_file();
   try {
     const auto& limits = *s->item_stack_limits(c->version());
+
+    ItemData new_item = cmd.replace_item;
+    assert_quest_item_create_allowed(l, new_item);
+    new_item.enforce_stack_size_limits(limits);
+
     size_t found_index = p->inventory.find_item_by_primary_identifier(cmd.find_item.primary_identifier());
     auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 1, limits);
 
@@ -5292,10 +5346,6 @@ static asio::awaitable<void> on_momoka_item_exchange_bb(shared_ptr<Client> c, Su
 
     send_destroy_item_to_lobby(c, found_item.id, 1);
 
-    // TODO: We probably should use an allow-list here to prevent the client
-    // from creating arbitrary items if cheat mode is disabled.
-    ItemData new_item = cmd.replace_item;
-    new_item.enforce_stack_size_limits(limits);
     new_item.id = l->generate_item_id(c->lobby_client_id);
     p->add_item(new_item, limits);
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
@@ -5326,6 +5376,9 @@ static asio::awaitable<void> on_upgrade_weapon_attribute_bb(shared_ptr<Client> c
   try {
     size_t item_index = p->inventory.find_item(cmd.item_id);
     auto& item = p->inventory.items[item_index].data;
+    if (item.is_s_rank_weapon()) {
+      throw std::runtime_error("6xDA command sent for ES weapon");
+    }
 
     uint32_t payment_primary_identifier = cmd.payment_type ? 0x03100100 : 0x03100000;
     size_t payment_index = p->inventory.find_item_by_primary_identifier(payment_primary_identifier);
@@ -5348,7 +5401,7 @@ static asio::awaitable<void> on_upgrade_weapon_attribute_bb(shared_ptr<Client> c
     }
 
     size_t attribute_index = 0;
-    for (size_t z = 6; z <= 10; z += 2) {
+    for (size_t z = 6; z <= (item.has_kill_count() ? 10 : 8); z += 2) {
       if ((item.data1[z] == 0) || (!(item.data1[z] & 0x80) && (item.data1[z] == cmd.attribute))) {
         attribute_index = z;
         break;
@@ -5588,7 +5641,7 @@ const vector<SubcommandDefinition> subcommand_definitions{
     /* 6xC7 */ {NONE, NONE, 0xC7, on_charge_attack_bb},
     /* 6xC8 */ {NONE, NONE, 0xC8, on_enemy_exp_request_bb},
     /* 6xC9 */ {NONE, NONE, 0xC9, on_adjust_player_meseta_bb},
-    /* 6xCA */ {NONE, NONE, 0xCA, on_item_reward_request_bb},
+    /* 6xCA */ {NONE, NONE, 0xCA, on_quest_create_item_bb},
     /* 6xCB */ {NONE, NONE, 0xCB, on_transfer_item_via_mail_message_bb},
     /* 6xCC */ {NONE, NONE, 0xCC, on_exchange_item_for_team_points_bb},
     /* 6xCD */ {NONE, NONE, 0xCD, forward_subcommand_m},
@@ -5682,5 +5735,3 @@ asio::awaitable<void> on_subcommand_multi(shared_ptr<Client> c, Channel::Message
     offset += cmd_size;
   }
 }
-
-// NOCOMMIT: Make BB item creation opcodes use the quests' create masks

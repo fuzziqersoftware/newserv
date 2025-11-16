@@ -44,6 +44,33 @@ struct QuestMetadata {
   int16_t lock_status_register = -1;
   std::unordered_map<uint32_t, uint32_t> enemy_exp_overrides;
 
+  // Item create allowances (only used on BB)
+  struct CreateItemMask {
+    struct Range {
+      uint8_t min = 0x00;
+      uint8_t max = 0x00;
+
+      bool operator==(const Range& other) const = default;
+      bool operator!=(const Range& other) const = default;
+    };
+    std::array<Range, 12> data1_ranges;
+
+    CreateItemMask() = default;
+    CreateItemMask(const CreateItemMask& other) = default;
+    CreateItemMask(CreateItemMask&& other) = default;
+    CreateItemMask& operator=(const CreateItemMask& other) = default;
+    CreateItemMask& operator=(CreateItemMask&& other) = default;
+    bool operator==(const CreateItemMask& other) const = default;
+    bool operator!=(const CreateItemMask& other) const = default;
+
+    explicit CreateItemMask(const std::string& s); // Inverse of str()
+    std::string str() const;
+
+    bool match(const ItemData& item) const;
+    uint32_t primary_identifier() const; // Raises if any of data1[0-2] are ambiguous
+  };
+  std::vector<CreateItemMask> create_item_mask_entries;
+
   std::string name;
   std::string short_description;
   std::string long_description;

@@ -6280,6 +6280,8 @@ struct G_AdjustPlayerMeseta_BB_6xC9 {
 } __packed_ws__(G_AdjustPlayerMeseta_BB_6xC9, 8);
 
 // 6xCA: Request item reward from quest (BB; handled by server)
+// The server should create the item in the player's inventory using 6xBE if it
+// matches at least one of the item creation masks in the quest's header.
 
 struct G_QuestCreateItem_BB_6xCA {
   G_UnusedHeader header;
@@ -6365,6 +6367,10 @@ struct G_Unknown_BB_6xD4 {
 
 // 6xD5: Exchange item in quest (BB; handled by server)
 // The client sends this when it executes an F953 quest opcode.
+// If any item matching find_item.data1[0-2] is present in the player's
+// inventory, the server should destroy that item using 6x29, then create
+// replace_item in the player's inventory using 6xBE if it matches at least one
+// of the item creation masks in the quest's header.
 
 struct G_QuestExchangeItem_BB_6xD5 {
   G_ClientIDHeader header;
@@ -6385,6 +6391,8 @@ struct G_WrapItem_BB_6xD6 {
 
 // 6xD7: Paganini Photon Drop exchange (BB; handled by server)
 // The client sends this when it executes an F955 quest opcode.
+// The server should create the item in the player's inventory using 6xBE if it
+// matches at least one of the item creation masks in the quest's header.
 
 struct G_PaganiniPhotonDropExchange_BB_6xD7 {
   G_ClientIDHeader header;
@@ -6409,7 +6417,10 @@ struct G_AddSRankWeaponSpecial_BB_6xD8 {
 // The client sends this when it executes an F95B quest opcode. The client has
 // an unfortunate bug where it doesn't set the size field when generating this
 // command, so the size ends up as an uninitialized value and the client sends
-// more (or less!) data than necessary.
+// more (or less!) data than necessary. The MomokaItemExchangeFix patch fixes
+// this bug.
+// The server should create the item in the player's inventory using 6xBE if it
+// matches at least one of the item creation masks in the quest's header.
 
 struct G_MomokaItemExchange_BB_6xD9 {
   /* 00 */ G_ClientIDHeader header;
@@ -6470,18 +6481,21 @@ struct G_SetEXPMultiplier_BB_6xDD {
 
 // 6xDE: Exchange Secret Lottery Ticket (BB; handled by server)
 // The client sends this when it executes an F95C quest opcode.
-// There appears to be a bug in the client here: it sets the subcommand size to
-// 2 instead of 3, so the last relevant field (failure_label) is not sent to
-// the server.
+// There is a bug in the client here: it sets the subcommand size to 2 instead
+// of 3, so the last relevant field (failure_label) is not sent to the server.
+// This is fixed in the MomokaItemExchangeFix patch.
 
-struct G_ExchangeSecretLotteryTicket_BB_6xDE {
+struct G_ExchangeSecretLotteryTicket_Incomplete_BB_6xDE {
   G_ClientIDHeader header;
-  uint8_t index = 0;
-  uint8_t unknown_a1 = 0;
+  uint8_t index = 0; // 1-8
+  uint8_t start_reg_num = 0;
   le_uint16_t success_label = 0;
-  // le_uint16_t failure_label = 0;
-  // parray<uint8_t, 2> unused;
-} __packed_ws__(G_ExchangeSecretLotteryTicket_BB_6xDE, 8);
+} __packed_ws__(G_ExchangeSecretLotteryTicket_Incomplete_BB_6xDE, 8);
+
+struct G_ExchangeSecretLotteryTicket_BB_6xDE : G_ExchangeSecretLotteryTicket_Incomplete_BB_6xDE {
+  le_uint16_t failure_label = 0;
+  parray<uint8_t, 2> unused;
+} __packed_ws__(G_ExchangeSecretLotteryTicket_BB_6xDE, 0x0C);
 
 // 6xDF: Exchange Photon Crystals (BB; handled by server)
 // The client sends this when it executes an F95D quest opcode.

@@ -83,7 +83,21 @@ struct PSOQuestHeaderGC {
   /* 01D4 */
 } __packed_ws__(PSOQuestHeaderGC, 0x1D4);
 
-struct PSOQuestHeaderBB {
+struct CreateItemMaskEntry {
+  parray<le_int32_t, 12> data1_fields;
+  le_uint32_t present = 0;
+  le_uint32_t unknown_a3 = 0;
+
+  bool is_valid() const {
+    return (this->data1_fields[0] || this->data1_fields[1] || this->data1_fields[2]);
+  }
+
+  CreateItemMaskEntry() = default;
+  CreateItemMaskEntry(const QuestMetadata::CreateItemMask& mask);
+  operator QuestMetadata::CreateItemMask() const;
+} __packed_ws__(CreateItemMaskEntry, 0x38);
+
+struct PSOQuestHeaderBBBase {
   /* 0000 */ le_uint32_t code_offset = 0;
   /* 0004 */ le_uint32_t function_table_offset = 0;
   /* 0008 */ le_uint32_t size = 0;
@@ -99,7 +113,13 @@ struct PSOQuestHeaderBB {
   /* 0058 */ pstring<TextEncoding::UTF16, 0x80> short_description;
   /* 0158 */ pstring<TextEncoding::UTF16, 0x120> long_description;
   /* 0398 */
-} __packed_ws__(PSOQuestHeaderBB, 0x398);
+} __packed_ws__(PSOQuestHeaderBBBase, 0x0398);
+
+struct PSOQuestHeaderBB : PSOQuestHeaderBBBase {
+  /* 0398 */ parray<uint8_t, 0x94> unknown_a5;
+  /* 042C */ parray<CreateItemMaskEntry, 0x40> create_item_mask_entries;
+  /* 122C */
+} __packed_ws__(PSOQuestHeaderBB, 0x122C);
 
 void check_opcode_definitions();
 

@@ -47,6 +47,25 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
   if (this->enemy_exp_overrides != other.enemy_exp_overrides) {
     throw runtime_error("quest version has different enemy EXP overrides");
   }
+  if (!this->create_item_mask_entries.empty() &&
+      !other.create_item_mask_entries.empty() &&
+      this->create_item_mask_entries != other.create_item_mask_entries) {
+    string this_str, other_str;
+    for (const auto& item : this->create_item_mask_entries) {
+      if (!this_str.empty()) {
+        this_str += ", ";
+      }
+      this_str += item.str();
+    }
+    for (const auto& item : other.create_item_mask_entries) {
+      if (!other_str.empty()) {
+        other_str += ", ";
+      }
+      other_str += item.str();
+    }
+    throw runtime_error(std::format(
+        "quest version has a different set of create item masks (existing: {}, new: {})", this_str, other_str));
+  }
   if (!this->battle_rules != !other.battle_rules) {
     throw runtime_error(std::format(
         "quest version has a different battle rules presence state (existing: {}, new: {})",
@@ -151,6 +170,12 @@ phosg::JSON QuestMetadata::json() const {
     auto key_str = std::format("{}:0x{:02X}:{}", name_for_difficulty(difficulty), floor, phosg::name_for_enum(enemy_type));
     enemy_exp_overrides_json.emplace(key_str, exp_override);
   }
+
+  auto create_item_mask_entries_json = phosg::JSON::dict();
+  for (const auto& item : this->create_item_mask_entries) {
+    create_item_mask_entries_json.emplace_back(item.str());
+  }
+
   return phosg::JSON::dict({
       {"CategoryID", this->category_id},
       {"Number", this->quest_number},
@@ -172,7 +197,67 @@ phosg::JSON QuestMetadata::json() const {
       {"AllowStartFromChatCommand", this->allow_start_from_chat_command},
       {"LockStatusRegister", (this->lock_status_register >= 0) ? this->lock_status_register : phosg::JSON(nullptr)},
       {"EnemyEXPOverrides", std::move(enemy_exp_overrides_json)},
+      {"CreateItemMasks", std::move(create_item_mask_entries_json)},
   });
+}
+
+QuestMetadata::CreateItemMask::CreateItemMask(const std::string& s) {
+  phosg::StringReader r(s);
+  for (size_t z = 0; z < 12 && !r.eof(); z++) {
+    auto& range = this->data1_ranges[z];
+    char c = r.get_s8();
+    if (c == '[') {
+      c = r.get_s8();
+      range.min = (phosg::value_for_hex_char(c) << 4) | phosg::value_for_hex_char(r.get_s8());
+      if (r.get_s8() != '-') {
+        throw std::runtime_error("invalid range spec");
+      }
+      c = r.get_s8();
+      range.max = (phosg::value_for_hex_char(c) << 4) | phosg::value_for_hex_char(r.get_s8());
+      if (r.get_s8() != ']') {
+        throw std::runtime_error("invalid range spec");
+      }
+    } else {
+      range.min = (phosg::value_for_hex_char(c) << 4) | phosg::value_for_hex_char(r.get_s8());
+      range.max = range.min;
+    }
+  }
+}
+
+std::string QuestMetadata::CreateItemMask::str() const {
+  std::string ret;
+  for (size_t z = 0; z < 12; z++) {
+    const auto& r = this->data1_ranges[z];
+    if (r.min == r.max) {
+      ret += std::format("{:02X}", r.min);
+    } else {
+      ret += std::format("[{:02X}-{:02X}]", r.min, r.max);
+    }
+  }
+  return ret;
+}
+
+bool QuestMetadata::CreateItemMask::match(const ItemData& item) const {
+  for (size_t z = 0; z < 12; z++) {
+    const auto& r = this->data1_ranges[z];
+    uint8_t v = item.data1[z];
+    if (v < r.min || v > r.max) {
+      return false;
+    }
+  }
+  return true;
+}
+
+uint32_t QuestMetadata::CreateItemMask::primary_identifier() const {
+  uint32_t ret = 0;
+  for (size_t z = 0; z < 3; z++) {
+    const auto& r = this->data1_ranges[z];
+    if (r.min != r.max) {
+      throw std::runtime_error("create item mask is ambiguous; cannot compute primary identifier");
+    }
+    ret = (ret << 8) | r.min;
+  }
+  return ret << 8;
 }
 
 std::unordered_map<uint32_t, uint32_t> QuestMetadata::parse_enemy_exp_overrides(const phosg::JSON& json) {

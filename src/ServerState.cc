@@ -1432,7 +1432,6 @@ void ServerState::load_config_late() {
   this->quest_F95F_results.clear();
   this->quest_F960_success_results.clear();
   this->quest_F960_failure_results = QuestF960Result();
-  this->secret_lottery_results.clear();
   if (this->item_name_index(Version::BB_V4)) {
     try {
       for (const auto& type_it : this->config_json->get_list("QuestF95EResultItems")) {
@@ -1466,16 +1465,6 @@ void ServerState::load_config_late() {
       this->quest_F960_failure_results = QuestF960Result(this->config_json->at("QuestF960FailureResultItems"), this->item_name_index(Version::BB_V4));
       for (const auto& it : this->config_json->get_list("QuestF960SuccessResultItems")) {
         this->quest_F960_success_results.emplace_back(*it, this->item_name_index(Version::BB_V4));
-      }
-    } catch (const out_of_range&) {
-    }
-    try {
-      for (const auto& it : this->config_json->get_list("SecretLotteryResultItems")) {
-        try {
-          this->secret_lottery_results.emplace_back(this->parse_item_description(Version::BB_V4, it->as_string()));
-        } catch (const exception& e) {
-          config_log.warning_f("Cannot parse item description \"{}\": {} (skipping entry)", it->as_string(), e.what());
-        }
       }
     } catch (const out_of_range&) {
     }

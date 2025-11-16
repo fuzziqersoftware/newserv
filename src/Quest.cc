@@ -354,6 +354,9 @@ const string& Quest::name_for_language(Language language) const {
 
 void Quest::add_version(shared_ptr<const VersionedQuest> vq) {
   this->meta.assert_compatible(vq->meta);
+  if (this->meta.create_item_mask_entries.empty()) {
+    this->meta.create_item_mask_entries = vq->meta.create_item_mask_entries;
+  }
   this->versions.emplace(this->versions_key(vq->version, vq->language), vq);
 
   size_t lang_index = static_cast<size_t>(vq->language);

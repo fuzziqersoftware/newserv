@@ -969,7 +969,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Creates an item in the player's inventory. If the item is successfully
     // created, this opcode sends 6x2B on all versions except BB. On BB, this
-    // opcode sends 6xCA, and the server sends 6xBE to create the item.
+    // opcode sends 6xCA, and the server sends 6xBE to create the item. The
+    // requested item must match one of the item creation masks in the quest
+    // script's header.
     // regsA[0-2] = item.data1[0-2]
     // regB = returned item ID, or FFFFFFFF if item can't be created
     {0xB3, "item_create", nullptr, {{R_REG_SET_FIXED, 3}, W_REG}, F_V0_V4},
@@ -2764,6 +2766,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // 5 = bank
     // 6 = tekker
     // 7 = government quest counter
+    // 8 = Momoka item exchange (this opens a menu displaying the items
+    //     specified in the quest header, which sends 6xD9 when the player
+    //     chooses an item)
     // valueA is not bounds-checked, so it could be used to write a byte with
     // the value 1 anywhere in memory.
     {0xF950, "bb_p2_menu", "BB_p2_menu", {I32}, F_V4 | F_ARGS},
@@ -2781,7 +2786,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Returns the number of items in the player's inventory.
     {0xF952, "bb_get_number_in_pack", "BB_get_number_in_pack", {W_REG}, F_V4},
 
-    // Requests an item exchange in the player's inventory. Sends 6xD5.
+    // Requests an item exchange in the player's inventory. Sends 6xD5. The
+    // requested item must match one of the item creation masks in the quest
+    // script's header.
     // valueA/valueB/valueC = item.data1[0-2] to search for
     // valueD/valueE/valueF = item.data1[0-2] to replace it with
     // labelG = label to call on success
@@ -2794,11 +2801,13 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   2 = item not found)
     {0xF954, "bb_check_wrap", "BB_check_wrap", {I32, W_REG}, F_V4 | F_ARGS},
 
-    // Requests an item exchange for Photon Drops. Sends 6xD7.
+    // Requests an item exchange for Photon Drops. Sends 6xD7. The requested
+    // item must match one of the item creation masks in the quest script's
+    // header.
     // valueA/valueB/valueC = item.data1[0-2] for requested item
     // labelD = label to call on success
     // labelE = label to call on failure
-    {0xF955, "bb_exchange_pd_item", "BB_exchange_PD_item", {I32, I32, I32, LABEL16, LABEL16}, F_V4 | F_ARGS},
+    {0xF955, "bb_exchange_pd_item", "BB_exchange_PD_item", {I32, I32, I32, SCRIPT16, SCRIPT16}, F_V4 | F_ARGS},
 
     // Requests an S-rank special upgrade in exchange for Photon Drops. Sends
     // 6xD8.
@@ -2807,7 +2816,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // valueE = special type
     // labelF = label to call on success
     // labelG = label to call on failure
-    {0xF956, "bb_exchange_pd_srank", "BB_exchange_PD_srank", {I32, I32, I32, I32, I32, LABEL16, LABEL16}, F_V4 | F_ARGS},
+    {0xF956, "bb_exchange_pd_srank", "BB_exchange_PD_srank", {I32, I32, I32, I32, I32, SCRIPT16, SCRIPT16}, F_V4 | F_ARGS},
 
     // Requests a weapon attribute upgrade in exchange for Photon Drops. Sends
     // 6xDA.
@@ -2817,12 +2826,12 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // valueF = payment count (number of PDs)
     // labelG = label to call on success
     // labelH = label to call on failure
-    {0xF957, "bb_exchange_pd_percent", "BB_exchange_PD_special", {I32, I32, I32, I32, I32, I32, LABEL16, LABEL16}, F_V4 | F_ARGS},
+    {0xF957, "bb_exchange_pd_percent", "BB_exchange_PD_special", {I32, I32, I32, I32, I32, I32, SCRIPT16, SCRIPT16}, F_V4 | F_ARGS},
 
     // Requests a weapon attribute upgrade in exchange for Photon Spheres.
     // Sends 6xDA. Same arguments as bb_exchange_pd_percent, except Photon
     // Spheres are used instead.
-    {0xF958, "bb_exchange_ps_percent", "BB_exchange_PS_percent", {I32, I32, I32, I32, I32, I32, LABEL16, LABEL16}, F_V4 | F_ARGS},
+    {0xF958, "bb_exchange_ps_percent", "BB_exchange_PS_percent", {I32, I32, I32, I32, I32, I32, SCRIPT16, SCRIPT16}, F_V4 | F_ARGS},
 
     // Determines whether the Episode 4 boss can escape if undefeated after 20
     // minutes.
@@ -2833,24 +2842,28 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // (even if the boss has already been defeated).
     {0xF95A, "bb_is_ep4_boss_dying", nullptr, {W_REG}, F_V4},
 
-    // Requests an item exchange. Sends 6xD9.
+    // Requests an item exchange. Sends 6xD9. The requested item must match one
+    // of the item creation masks in the quest script's header.
     // valueA = find_item.data1[0-2] (low 3 bytes; high byte unused)
     // valueB = replace_item.data1[0-2] (low 3 bytes; high byte unused)
     // valueC = token1 (see 6xD9 in CommandFormats.hh)
     // valueD = token2 (see 6xD9 in CommandFormats.hh)
     // labelE = label to call on success
     // labelF = label to call on failure
-    {0xF95B, "bb_send_6xD9", nullptr, {I32, I32, I32, I32, LABEL16, LABEL16}, F_V4 | F_ARGS},
+    {0xF95B, "bb_replace_item", "bb_send_6xD9", {I32, I32, I32, I32, SCRIPT16, SCRIPT16}, F_V4 | F_ARGS},
 
     // Requests an exchange of Secret Lottery Tickets for items. Sends 6xDE.
-    // See SecretLotteryResultItems in config.json for the item pool used by
-    // this opcode.
+    // The pool of items that can be returned by this opcode is determined by
+    // the quest's header; newserv assembles/disassembles this field as
+    // .exchange_item directives. The first entry in the header is the currency
+    // item (which is to be deleted from the inventory); the others are the
+    // items the server randomly chooses from.
     // valueA = index
     // valueB = unknown_a1
     // labelC = label to call on success
     // labelD = label to call on failure (unused because of a client bug; see
     //   6xDE description in CommandFormats.hh for details)
-    {0xF95C, "bb_exchange_slt", "BB_exchange_SLT", {I32, I32, LABEL32, LABEL32}, F_V4 | F_ARGS},
+    {0xF95C, "bb_exchange_slt", "BB_exchange_SLT", {I32, I32, SCRIPT16, SCRIPT16}, F_V4 | F_ARGS},
 
     // Removes a single Photon Crystal from the player's inventory, and
     // disables drops for the rest of the quest. Sends 6xDF.
@@ -2959,6 +2972,52 @@ void check_opcode_definitions() {
   }
 }
 
+CreateItemMaskEntry::CreateItemMaskEntry(const QuestMetadata::CreateItemMask& mask) {
+  for (size_t z = 0; z < 12; z++) {
+    auto& r = mask.data1_ranges[z];
+    if (r.min == r.max) {
+      this->data1_fields[z] = r.min;
+    } else if (r.min == 0x00 && r.max == 0xFF) {
+      this->data1_fields[z] = -1;
+    } else {
+      this->data1_fields[z] = (r.min * 1000000) + (r.max * 1000);
+    }
+  }
+}
+
+CreateItemMaskEntry::operator QuestMetadata::CreateItemMask() const {
+  using Range = QuestMetadata::CreateItemMask::Range;
+
+  QuestMetadata::CreateItemMask ret;
+  for (size_t z = 0; z < 12; z++) {
+    int32_t v = this->data1_fields[z];
+
+    if (v < 0) {
+      // If v is negative, any value is allowed in this field
+      ret.data1_ranges[z] = Range{.min = 0x00, .max = 0xFF};
+
+    } else if (v < 0x100) {
+      // If v fits in an unsigned byte, this field must match exactly
+      ret.data1_ranges[z] = Range{.min = static_cast<uint8_t>(v), .max = static_cast<uint8_t>(v)};
+
+    } else if (v >= 1000000 && v <= 2000000) {
+      // Otherwise, the allowed range of values is encoded in decimal as
+      // 1MMMmmm (m = min, M = max)
+      uint32_t min = v % 1000;
+      uint32_t max = (v / 1000) % 1000;
+      if (min > 0xFF || max > 0xFF | min > max) {
+        throw std::runtime_error(std::format("invalid range spec {} (0x{:X})", v, v));
+      }
+      ret.data1_ranges[z] = Range{.min = static_cast<uint8_t>(min), .max = static_cast<uint8_t>(max)};
+
+    } else {
+      throw std::runtime_error(std::format("invalid range spec {} (0x{:X})", v, v));
+    }
+  }
+
+  return ret;
+}
+
 std::string disassemble_quest_script(
     const void* data,
     size_t size,
@@ -3047,7 +3106,7 @@ std::string disassemble_quest_script(
     }
     case Version::BB_V4: {
       use_wstrs = true;
-      const auto& header = r.get<PSOQuestHeaderBB>();
+      const auto& header = r.get<PSOQuestHeaderBBBase>();
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
       if (override_language != Language::UNKNOWN) {
@@ -3061,9 +3120,25 @@ std::string disassemble_quest_script(
       if (header.joinable) {
         lines.emplace_back(".joinable");
       }
-      lines.emplace_back(".name " + escape_string(header.name.decode(language)));
-      lines.emplace_back(".short_desc " + escape_string(header.short_description.decode(language)));
-      lines.emplace_back(".long_desc " + escape_string(header.long_description.decode(language)));
+      lines.emplace_back(std::format(".name {}", escape_string(header.name.decode(language))));
+      lines.emplace_back(std::format(".short_desc {}", escape_string(header.short_description.decode(language))));
+      lines.emplace_back(std::format(".long_desc {}", escape_string(header.long_description.decode(language))));
+      // Quests saved with Qedit may not have the full header, so only parse
+      // the full header if the code and function table offsets don't point to
+      // space within it
+      if ((header.code_offset >= sizeof(PSOQuestHeaderBB)) &&
+          (header.function_table_offset >= sizeof(PSOQuestHeaderBB))) {
+        r.go(0);
+        const auto& header = r.get<PSOQuestHeaderBB>();
+        for (size_t z = 0; z < header.create_item_mask_entries.size(); z++) {
+          const auto& qh_mask = header.create_item_mask_entries[z];
+          if (!qh_mask.is_valid()) {
+            break;
+          }
+          QuestMetadata::CreateItemMask qm_mask = qh_mask;
+          lines.emplace_back(std::format(".allow_create_item {}", qm_mask.str()));
+        }
+      }
       break;
     }
     default:
@@ -4010,6 +4085,7 @@ AssembledQuestScript assemble_quest_script(
   Episode quest_episode = Episode::EP1;
   uint8_t quest_max_players = 4;
   bool quest_joinable = false;
+  std::vector<QuestMetadata::CreateItemMask> create_item_mask_entries;
   for (const auto& line : lines) {
     if (line.text.empty()) {
       continue;
@@ -4028,6 +4104,17 @@ AssembledQuestScript assemble_quest_script(
           quest_short_desc = phosg::parse_data_string(line.text.substr(12));
         } else if (line.text.starts_with(".long_desc ")) {
           quest_long_desc = phosg::parse_data_string(line.text.substr(11));
+        } else if (line.text.starts_with(".allow_create_item ")) {
+          if (create_item_mask_entries.size() >= 0x40) {
+            throw std::runtime_error("too many .allow_create_item directives; at most 64 are allowed");
+          }
+
+          string args_str = line.text.substr(19);
+          phosg::strip_whitespace(args_str);
+
+          QuestMetadata::CreateItemMask mask(line.text.substr(19));
+          create_item_mask_entries.emplace_back(mask);
+
         } else if (line.text.starts_with(".quest_num ")) {
           quest_num = stoul(line.text.substr(11), nullptr, 0);
         } else if (line.text.starts_with(".language ")) {
@@ -4646,6 +4733,10 @@ AssembledQuestScript assemble_quest_script(
       header.name.encode(quest_name, quest_language);
       header.short_description.encode(quest_short_desc, quest_language);
       header.long_description.encode(quest_long_desc, quest_language);
+      header.unknown_a5.clear(0xFF);
+      for (size_t z = 0; z < create_item_mask_entries.size(); z++) {
+        header.create_item_mask_entries[z] = create_item_mask_entries[z];
+      }
       w.put(header);
       break;
     }
@@ -4753,7 +4844,7 @@ void populate_quest_metadata_from_script(
       break;
     }
     case Version::BB_V4: {
-      const auto& header = r.get<PSOQuestHeaderBB>();
+      const auto& header = r.get<PSOQuestHeaderBBBase>();
       meta.episode = episode_for_quest_episode_number(header.episode);
       meta.joinable |= header.joinable;
       meta.max_players = 4;
@@ -4763,6 +4854,21 @@ void populate_quest_metadata_from_script(
       meta.name = header.name.decode(language);
       meta.short_description = header.short_description.decode(language);
       meta.long_description = header.long_description.decode(language);
+      // Quests saved with Qedit may not have the full header, so only parse
+      // the full header if the code and function table offsets don't point to
+      // space within it
+      if ((header.code_offset >= sizeof(PSOQuestHeaderBB)) &&
+          (header.function_table_offset >= sizeof(PSOQuestHeaderBB))) {
+        r.go(0);
+        const auto& header = r.get<PSOQuestHeaderBB>();
+        for (size_t z = 0; z < header.create_item_mask_entries.size(); z++) {
+          const auto& item = header.create_item_mask_entries[z];
+          if (!item.is_valid()) {
+            break;
+          }
+          meta.create_item_mask_entries.emplace_back(item);
+        }
+      }
       code_offset = header.code_offset;
       function_table_offset = header.function_table_offset;
       break;

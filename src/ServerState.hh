@@ -239,7 +239,6 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::vector<std::pair<size_t, ItemData>> quest_F95F_results; // [(num_photon_tickets, item)]
   std::vector<QuestF960Result> quest_F960_success_results;
   QuestF960Result quest_F960_failure_results;
-  std::vector<ItemData> secret_lottery_results;
   float bb_global_exp_multiplier = 1.0f;
   float exp_share_multiplier = 0.5f;
   float server_global_drop_rate_multiplier = 1.0f;
