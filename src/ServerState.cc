@@ -1280,9 +1280,9 @@ void ServerState::load_config_early() {
   } catch (const out_of_range&) {
   }
 
+  shared_ptr<const MapState::RareEnemyRates> prev = MapState::DEFAULT_RARE_ENEMIES;
   for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
     size_t diff_index = static_cast<size_t>(difficulty);
-    shared_ptr<const MapState::RareEnemyRates> prev = MapState::DEFAULT_RARE_ENEMIES;
     try {
       string key = "RareEnemyRates-";
       key += token_name_for_difficulty(difficulty);
