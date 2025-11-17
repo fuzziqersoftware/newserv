@@ -518,7 +518,7 @@ HTTPServer::HTTPServer(shared_ptr<ServerState> state)
     }
   });
 
-  this->router.add(HTTPRequest::Method::GET, "/y/teams", [this](ArgsT&& params) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/teams", [this](ArgsT&&) -> RetT {
     auto res = make_shared<phosg::JSON>(phosg::JSON::dict());
     for (const auto& it : this->state->team_index->all()) {
       res->emplace(std::format("{}", it->team_id), it->json());
@@ -580,7 +580,7 @@ HTTPServer::HTTPServer(shared_ptr<ServerState> state)
     co_return this->state->config_json;
   });
 
-  this->router.add(HTTPRequest::Method::GET, "/y/summary", [this, generate_server_info_json](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/summary", [this, generate_server_info_json](ArgsT&&) -> RetT {
     auto clients_json = phosg::JSON::list();
     for (const auto& c : this->state->game_server->all_clients()) {
       auto p = c->character_file(false, false);
@@ -710,7 +710,7 @@ HTTPServer::HTTPServer(shared_ptr<ServerState> state)
     }
   });
 
-  this->router.add(HTTPRequest::Method::GET, "/y/data/quests", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/quests", [this](ArgsT&&) -> RetT {
     co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> shared_ptr<phosg::JSON> {
       return make_shared<phosg::JSON>(this->state->quest_index->json());
     });
