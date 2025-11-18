@@ -5394,7 +5394,7 @@ static asio::awaitable<void> on_upgrade_weapon_attribute_bb(shared_ptr<Client> c
       attribute_amount = 30;
     } else if (cmd.payment_type == 0 && cmd.payment_count == 4) {
       attribute_amount = 1;
-    } else if (cmd.payment_type == 1 && cmd.payment_count == 20) {
+    } else if (cmd.payment_type == 0 && cmd.payment_count == 20) {
       attribute_amount = 5;
     } else {
       throw runtime_error("unknown PD/PS expenditure");
