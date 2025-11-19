@@ -922,7 +922,7 @@ ChatCommandDefinition cc_edit(
           p->disp.stats.experience = stoul(tokens.at(1));
         } else if (tokens.at(0) == "level" && (cheats_allowed || !s->cheat_flags.edit_stats)) {
           p->disp.stats.level = stoul(tokens.at(1)) - 1;
-          p->recompute_stats(s->level_table(a.c->version()));
+          p->recompute_stats(s->level_table(a.c->version()), true);
         } else if (((tokens.at(0) == "material") || (tokens.at(0) == "mat")) && !is_v1_or_v2(a.c->version()) && (cheats_allowed || !s->cheat_flags.reset_materials)) {
           if (tokens.at(1) == "reset") {
             const auto& which = tokens.at(2);
@@ -960,7 +960,7 @@ ChatCommandDefinition cc_edit(
           } else {
             throw precondition_failed("$C6Invalid subcommand");
           }
-          p->recompute_stats(s->level_table(a.c->version()));
+          p->recompute_stats(s->level_table(a.c->version()), false);
         } else if (tokens.at(0) == "namecolor") {
           p->disp.visual.name_color = stoul(tokens.at(1), nullptr, 16);
         } else if (tokens.at(0) == "language" || tokens.at(0) == "lang") {

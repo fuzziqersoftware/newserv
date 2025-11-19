@@ -1415,12 +1415,14 @@ void PSOBBCharacterFile::import_tethealla_material_usage(std::shared_ptr<const L
   this->set_material_usage(MaterialType::LUCK, luck);
 }
 
-void PSOBBCharacterFile::recompute_stats(std::shared_ptr<const LevelTable> level_table) {
+void PSOBBCharacterFile::recompute_stats(std::shared_ptr<const LevelTable> level_table, bool reset_exp) {
   uint32_t level = this->disp.stats.level;
   uint32_t exp = this->disp.stats.experience;
   level_table->reset_to_base(this->disp.stats, this->disp.visual.char_class);
   level_table->advance_to_level(this->disp.stats, level, this->disp.visual.char_class);
-  this->disp.stats.experience = exp;
+  if (!reset_exp) {
+    this->disp.stats.experience = exp;
+  }
 
   this->disp.stats.char_stats.atp += (this->get_material_usage(MaterialType::POWER) * 2);
   this->disp.stats.char_stats.mst += (this->get_material_usage(MaterialType::MIND) * 2);

@@ -920,7 +920,7 @@ struct PSOBBCharacterFile {
   void set_material_usage(MaterialType which, uint8_t usage);
   void clear_all_material_usage();
   void import_tethealla_material_usage(std::shared_ptr<const LevelTable> level_table);
-  void recompute_stats(std::shared_ptr<const LevelTable> level_table);
+  void recompute_stats(std::shared_ptr<const LevelTable> level_table, bool reset_exp = false);
 } __packed_ws__(PSOBBCharacterFile, 0x2EA4);
 
 struct PSOCHARFile {
