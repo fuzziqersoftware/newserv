@@ -30,6 +30,10 @@ get_code_size:
 handle_6xBF_start:  # [std](G_6xBF* cmd @ [esp + 4]) -> void
   mov       edx, [esp + 4]
 
+  mov       ecx, [0x00A9C4F4]  # local_client_id
+  cmp       [edx + 2], cx
+  jne       skip_text
+
   cmp       byte [edx + 1], 3
   jl        skip_text
   movzx     eax, word [edx + 8]  # cmd.from_enemy_id
@@ -43,9 +47,9 @@ handle_6xBF_start:  # [std](G_6xBF* cmd @ [esp + 4]) -> void
   jnz       enemy_entity_ok
 
   # Use player entity if enemy entity is already gone
-  mov       ecx, 0x0068D5AC
-  mov       eax, [0x00A9C4F4]
-  call      ecx  # eax = TObjPlayer::for_client_id(local_client_id)
+  mov       eax, 0x0068D5AC
+  xchg      eax, ecx
+  call      ecx  # eax = TObjPlayer::for_client_id(local_client_id); conveniently, this function preserves all regs except eax
 
 enemy_entity_ok:
   push      0x0000FFFF  # entity_id; ignored by TFontSmallTask if not a player
