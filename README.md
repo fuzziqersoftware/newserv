@@ -83,7 +83,7 @@ Some of the more likely useful files are:
 * **src/ItemData.hh**: Item format reference
 * **src/ItemCreator.hh/cc**: Reverse-engineered item generator from Episodes 1&2 (used for all versions)
 * **src/ItemParameterTable.hh**: Format of many structures in ItemPMT.prs
-* **src/Map.hh/cc**: Map file (.dat) structure, listing of object/enemy types and parameters, and reverse-engineered Challenge Mode random enemy generation algorithm
+* **src/Map.hh/cc**: Map file (.dat/.evt) structure, listing of object/enemy types and parameters, and reverse-engineered Challenge Mode random enemy generation algorithm
 * **src/QuestScript.cc**: Complete listing of all quest opcodes on all versions, along with their arguments and behavior
 * **src/RareItemSet.hh/cc**: Format of ItemRT files (rare item drop tables)
 * **src/SaveFileFormats.hh**: Definitions of save file structures for all versions
@@ -181,7 +181,7 @@ newserv implements a patch server for PSO PC and PSO BB game data. Any file or d
 For Blue Burst set up, the below is mandatory for a smooth experience:
 
 1. Browse to your chosen client's data directory.
-2. Copy all the `map_*.dat` files, `unitxt_*` files and the `data.gsl` file and place them in `system/patch-bb/data`.
+2. Copy all the `map_*.dat` files, `map_*.evt`, `unitxt_*` files, and the `data.gsl` file and place them in `system/patch-bb/data`.
 3. If you're using game files from the Tethealla client, make a copy of `unitxt_j.prs` inside system/patch-bb/data and name it `unitxt_e.prs`. (If `unitxt_e.prs` already exists, replace it with the copied file.)
 
 If you don't have a BB client, or if you're using a Tethealla client from another source, Tethealla clients that are compatible with newserv can be found here: [English](https://web.archive.org/web/20240402011115/https://ragol.org/files/bb/TethVer12513_English.zip) / [Japanese](https://web.archive.org/web/20240402013127/https://ragol.org/files/bb/TethVer12513_Japanese.zip). These clients connect to 127.0.0.1 (localhost) automatically.
