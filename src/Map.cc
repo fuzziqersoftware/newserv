@@ -3977,6 +3977,10 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
               const auto& weight_entry = weights_r.get<RandomEnemyWeight>();
               if (det < weight_entry.weight) {
                 if ((weight_entry.base_type_index != 0xFF) && (weight_entry.def_entry_num != 0xFF)) {
+                  if (definitions_header.entry_count == 0) {
+                    throw runtime_error("no available random enemy definitions");
+                  }
+
                   EnemySetEntry e;
                   e.base_type = rand_enemy_base_types.at(weight_entry.base_type_index);
                   e.wave_number = wave_number;
@@ -3985,9 +3989,6 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
 
                   size_t bs_min = 0;
                   size_t bs_max = definitions_header.entry_count - 1;
-                  if (bs_max == 0) {
-                    throw runtime_error("no available random enemy definitions");
-                  }
                   do {
                     size_t bs_mid = (bs_min + bs_max) / 2;
                     if (definitions_r.pget<RandomEnemyDefinition>(bs_mid * sizeof(RandomEnemyDefinition)).entry_num < weight_entry.def_entry_num) {
