@@ -12,7 +12,7 @@
 
 struct PSOQuestHeaderDCNTE {
   /* 0000 */ le_uint32_t code_offset = 0;
-  /* 0004 */ le_uint32_t function_table_offset = 0;
+  /* 0004 */ le_uint32_t label_table_offset = 0;
   /* 0008 */ le_uint32_t size = 0;
   /* 000C */ le_uint16_t unknown_a1 = 0;
   /* 000E */ le_uint16_t unknown_a2 = 0;
@@ -22,7 +22,7 @@ struct PSOQuestHeaderDCNTE {
 
 struct PSOQuestHeaderDC112000 {
   /* 0000 */ le_uint32_t code_offset = 0;
-  /* 0004 */ le_uint32_t function_table_offset = 0;
+  /* 0004 */ le_uint32_t label_table_offset = 0;
   /* 0008 */ le_uint32_t size = 0;
   /* 000C */ le_uint16_t unknown_a1 = 0;
   /* 000E */ le_uint16_t unknown_a2 = 0;
@@ -34,7 +34,7 @@ struct PSOQuestHeaderDC112000 {
 
 struct PSOQuestHeaderDC { // Same format for DC v1 and v2
   /* 0000 */ le_uint32_t code_offset = 0;
-  /* 0004 */ le_uint32_t function_table_offset = 0;
+  /* 0004 */ le_uint32_t label_table_offset = 0;
   /* 0008 */ le_uint32_t size = 0;
   /* 000C */ le_uint16_t unknown_a1 = 0;
   /* 000E */ le_uint16_t unknown_a2 = 0;
@@ -49,7 +49,7 @@ struct PSOQuestHeaderDC { // Same format for DC v1 and v2
 
 struct PSOQuestHeaderPC {
   /* 0000 */ le_uint32_t code_offset;
-  /* 0004 */ le_uint32_t function_table_offset;
+  /* 0004 */ le_uint32_t label_table_offset;
   /* 0008 */ le_uint32_t size = 0;
   /* 000C */ le_uint16_t unknown_a1 = 0;
   /* 000E */ le_uint16_t unknown_a2 = 0;
@@ -66,7 +66,7 @@ struct PSOQuestHeaderPC {
 // separate struct; if so, rename this struct to V3.
 struct PSOQuestHeaderGC {
   /* 0000 */ le_uint32_t code_offset = 0;
-  /* 0004 */ le_uint32_t function_table_offset = 0;
+  /* 0004 */ le_uint32_t label_table_offset = 0;
   /* 0008 */ le_uint32_t size = 0;
   /* 000C */ le_uint16_t unknown_a1 = 0;
   /* 000E */ le_uint16_t unknown_a2 = 0;
@@ -99,7 +99,7 @@ struct CreateItemMaskEntry {
 
 struct PSOQuestHeaderBBBase {
   /* 0000 */ le_uint32_t code_offset = 0;
-  /* 0004 */ le_uint32_t function_table_offset = 0;
+  /* 0004 */ le_uint32_t label_table_offset = 0;
   /* 0008 */ le_uint32_t size = 0;
   /* 000C */ le_uint16_t unknown_a1 = 0;
   /* 000E */ le_uint16_t unknown_a2 = 0;
@@ -126,10 +126,11 @@ void check_opcode_definitions();
 Episode episode_for_quest_episode_number(uint8_t episode_number);
 
 std::string disassemble_quest_script(
-    const void* data,
-    size_t size,
+    const void* bin_data, // Must not be null
+    size_t bin_size,
     Version version,
-    Language override_language = Language::UNKNOWN,
+    Language language = Language::UNKNOWN,
+    std::shared_ptr<const MapFile> dat = nullptr,
     bool reassembly_mode = false,
     bool use_qedit_names = false);
 

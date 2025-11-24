@@ -1338,15 +1338,6 @@ static asio::awaitable<HandlerResult> S_13_A7(shared_ptr<Client> c, Channel::Mes
         sf->data = decode_dlq_data(sf->data);
       }
       phosg::save_file(sf->output_filename, sf->data);
-      if (sf->basename.ends_with(".bin")) {
-        try {
-          string decompressed = prs_decompress(sf->data);
-          auto disassembly = disassemble_quest_script(decompressed.data(), decompressed.size(), c->version(), c->language(), false);
-          phosg::save_file(sf->output_filename + ".txt", disassembly);
-        } catch (const exception& e) {
-          c->log.warning_f("Failed to disassemble quest file: {}", e.what());
-        }
-      }
     } else {
       c->log.info_f("Download complete for file {}", sf->basename);
     }

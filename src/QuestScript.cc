@@ -180,7 +180,7 @@ struct QuestScriptOpcodeDefinition {
       ATTACK_DATA,
       MOVEMENT_DATA,
       IMAGE_DATA,
-      BEZIER_CONTROL_POINT_DATA,
+      VECTOR4F_LIST,
     };
 
     Type type;
@@ -204,14 +204,14 @@ struct QuestScriptOpcodeDefinition {
   const char* name;
   const char* qedit_name;
   std::vector<Argument> args;
-  uint16_t flags;
+  uint32_t flags;
 
   QuestScriptOpcodeDefinition(
       uint16_t opcode,
       const char* name,
       const char* qedit_name,
       std::vector<Argument> args,
-      uint16_t flags)
+      uint32_t flags)
       : opcode(opcode),
         name(name),
         qedit_name(qedit_name),
@@ -224,31 +224,33 @@ struct QuestScriptOpcodeDefinition {
   }
 };
 
-constexpr uint16_t v_flag(Version v) {
-  return (1 << static_cast<uint16_t>(v));
+constexpr uint32_t v_flag(Version v) {
+  return (1 << static_cast<uint32_t>(v));
 }
 
 using Arg = QuestScriptOpcodeDefinition::Argument;
 
 static_assert(NUM_VERSIONS == 14, "Don\'t forget to update the QuestScript flags and opcode definitions table");
 
-static constexpr uint16_t F_PUSH_ARG = 0x0001; // Version::PC_PATCH (unused for quests)
+static constexpr uint32_t F_PUSH_ARG = 0x00010000;
+static constexpr uint32_t F_CLEAR_ARGS = 0x00020000;
 // F_ARGS means this opcode takes its arguments via the argument list on v3 and
 // later. It has no effect on v2 and earlier.
-static constexpr uint16_t F_ARGS = 0x0002; // Version::BB_PATCH (unused for quests)
+static constexpr uint32_t F_ARGS = 0x00040000;
+static constexpr uint32_t F_TERMINATOR = 0x00080000;
 // The following flags are used to specify which versions support each opcode.
-static constexpr uint16_t F_DC_NTE = 0x0004; // Version::DC_NTE
-static constexpr uint16_t F_DC_112000 = 0x0008; // Version::DC_11_2000
-static constexpr uint16_t F_DC_V1 = 0x0010; // Version::DC_V1
-static constexpr uint16_t F_DC_V2 = 0x0020; // Version::DC_V2
-static constexpr uint16_t F_PC_NTE = 0x0040; // Version::PC_NTE
-static constexpr uint16_t F_PC_V2 = 0x0080; // Version::PC_V2
-static constexpr uint16_t F_GC_NTE = 0x0100; // Version::GC_NTE
-static constexpr uint16_t F_GC_V3 = 0x0200; // Version::GC_V3
-static constexpr uint16_t F_GC_EP3TE = 0x0400; // Version::GC_EP3_NTE
-static constexpr uint16_t F_GC_EP3 = 0x0800; // Version::GC_EP3
-static constexpr uint16_t F_XB_V3 = 0x1000; // Version::XB_V3
-static constexpr uint16_t F_BB_V4 = 0x2000; // Version::BB_V4
+static constexpr uint32_t F_DC_NTE = 0x0004; // Version::DC_NTE
+static constexpr uint32_t F_DC_112000 = 0x0008; // Version::DC_11_2000
+static constexpr uint32_t F_DC_V1 = 0x0010; // Version::DC_V1
+static constexpr uint32_t F_DC_V2 = 0x0020; // Version::DC_V2
+static constexpr uint32_t F_PC_NTE = 0x0040; // Version::PC_NTE
+static constexpr uint32_t F_PC_V2 = 0x0080; // Version::PC_V2
+static constexpr uint32_t F_GC_NTE = 0x0100; // Version::GC_NTE
+static constexpr uint32_t F_GC_V3 = 0x0200; // Version::GC_V3
+static constexpr uint32_t F_GC_EP3TE = 0x0400; // Version::GC_EP3_NTE
+static constexpr uint32_t F_GC_EP3 = 0x0800; // Version::GC_EP3
+static constexpr uint32_t F_XB_V3 = 0x1000; // Version::XB_V3
+static constexpr uint32_t F_BB_V4 = 0x2000; // Version::BB_V4
 
 static_assert(F_DC_NTE == v_flag(Version::DC_NTE));
 static_assert(F_DC_112000 == v_flag(Version::DC_11_2000));
@@ -265,20 +267,20 @@ static_assert(F_BB_V4 == v_flag(Version::BB_V4));
 
 // clang-format off
 // These are shortcuts for common version ranges in the definitions below.
-static constexpr uint16_t F_V0_V2  = F_DC_NTE | F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE;
-static constexpr uint16_t F_V0_V4  = F_DC_NTE | F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
-static constexpr uint16_t F_V05_V2 =            F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE;
-static constexpr uint16_t F_V05_V4 =            F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
-static constexpr uint16_t F_V1_V2  =                          F_DC_V1 | F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE;
-static constexpr uint16_t F_V1_V4  =                          F_DC_V1 | F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
-static constexpr uint16_t F_V2     =                                    F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE;
-static constexpr uint16_t F_V2_V3  =                                    F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3;
-static constexpr uint16_t F_V2_V4  =                                    F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
-static constexpr uint16_t F_V3     =                                                                              F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3;
-static constexpr uint16_t F_V3_V4  =                                                                              F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
-static constexpr uint16_t F_V4     =                                                                                                                          F_BB_V4;
+static constexpr uint32_t F_V0_V2  = F_DC_NTE | F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE;
+static constexpr uint32_t F_V0_V4  = F_DC_NTE | F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint32_t F_V05_V2 =            F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE;
+static constexpr uint32_t F_V05_V4 =            F_DC_112000 | F_DC_V1 | F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint32_t F_V1_V2  =                          F_DC_V1 | F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE;
+static constexpr uint32_t F_V1_V4  =                          F_DC_V1 | F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint32_t F_V2     =                                    F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE;
+static constexpr uint32_t F_V2_V3  =                                    F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3;
+static constexpr uint32_t F_V2_V4  =                                    F_DC_V2 | F_PC_NTE | F_PC_V2 | F_GC_NTE | F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint32_t F_V3     =                                                                              F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3;
+static constexpr uint32_t F_V3_V4  =                                                                              F_GC_V3 | F_GC_EP3TE | F_GC_EP3 | F_XB_V3 | F_BB_V4;
+static constexpr uint32_t F_V4     =                                                                                                                          F_BB_V4;
 // clang-format on
-static constexpr uint16_t F_HAS_ARGS = F_V3_V4;
+static constexpr uint32_t F_HAS_ARGS = F_V3_V4;
 
 // These are the argument data types. All values are stored little-endian in
 // the script data, even on the GameCube.
@@ -354,26 +356,28 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x00, "nop", nullptr, {}, F_V0_V4},
 
     // Pops new PC off stack
-    {0x01, "ret", nullptr, {}, F_V0_V4},
+    {0x01, "ret", nullptr, {}, F_V0_V4 | F_TERMINATOR},
 
     // Stops execution for the current frame. Execution resumes immediately
     // after this opcode on the next frame.
     {0x02, "sync", nullptr, {}, F_V0_V4},
 
     // Exits entirely
-    {0x03, "exit", nullptr, {I32}, F_V0_V4},
+    {0x03, "exit", nullptr, {I32}, F_V0_V4 | F_TERMINATOR},
 
     // Starts a new thread at labelA
     {0x04, "thread", nullptr, {SCRIPT16}, F_V0_V4},
 
     // Pushes r1-r7 to the stack
-    {0x05, "va_start", nullptr, {}, F_V3_V4},
+    {0x05, "va_start", nullptr, {}, F_V3_V4 | F_CLEAR_ARGS},
 
     // Pops r7-r1 from the stack
     {0x06, "va_end", nullptr, {}, F_V3_V4},
 
     // Replaces r1-r7 with the args list, then calls labelA
-    {0x07, "va_call", nullptr, {SCRIPT16}, F_V3_V4},
+    // Note: This opcode doesn't directly clear the args list, but we assume
+    // during disassembly that the code being called does so.
+    {0x07, "va_call", nullptr, {SCRIPT16}, F_V3_V4 | F_CLEAR_ARGS},
 
     // Copies a value from regB to regA
     {0x08, "let", nullptr, {W_REG, R_REG}, F_V0_V4},
@@ -396,7 +400,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Sets regA to the address of the offset of labelB in the function table
     // (to get the offset, use read4 after this)
-    {0x0D, "leto", nullptr, {W_REG, SCRIPT16}, F_V3_V4},
+    {0x0D, "leto", nullptr, {W_REG, LABEL16}, F_V3_V4},
 
     // Sets regA to 1
     {0x10, "set", nullptr, {W_REG}, F_V0_V4},
@@ -477,11 +481,13 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x27, "modi", nullptr, {W_REG, I32}, F_V3_V4},
 
     // Jumps to labelA
-    {0x28, "jmp", nullptr, {SCRIPT16}, F_V0_V4},
+    {0x28, "jmp", nullptr, {SCRIPT16}, F_V0_V4 | F_TERMINATOR},
 
     // Pushes the script offset immediately after this opcode and jumps to
     // labelA
-    {0x29, "call", nullptr, {SCRIPT16}, F_V0_V4},
+    // Note: This opcode doesn't directly clear the args list, but we assume
+    // during disassembly that the code being called does so.
+    {0x29, "call", nullptr, {SCRIPT16}, F_V0_V4 | F_CLEAR_ARGS},
 
     // If all values in regsB are nonzero, jumps to labelA
     {0x2A, "jmp_on", nullptr, {SCRIPT16, R_REG_SET}, F_V0_V4},
@@ -549,11 +555,13 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // If regA <= valueB (signed), jumps to labelC
     {0x3F, "jmpi_le", "jmpi_<=", {R_REG, I32, SCRIPT16}, F_V0_V4},
 
-    // Jumps to labelsB[regA]
+    // Jumps to labelsB[regA]; if regA is out of range of labelsB, does nothing
     {0x40, "switch_jmp", nullptr, {R_REG, SCRIPT16_SET}, F_V0_V4},
 
-    // Calls labelsB[regA]
-    {0x41, "switch_call", nullptr, {R_REG, SCRIPT16_SET}, F_V0_V4},
+    // Calls labelsB[regA]; if regA is out of range of labelsB, does nothing
+    // Note: This opcode doesn't directly clear the args list, but we assume
+    // during disassembly that the code being called does so.
+    {0x41, "switch_call", nullptr, {R_REG, SCRIPT16_SET}, F_V0_V4 | F_CLEAR_ARGS},
 
     // Does nothing
     {0x42, "nop_42", nullptr, {I32}, F_V0_V2},
@@ -1056,10 +1064,10 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   0F: NPC hit for > 20% of max HP (and <= 30%)
     //   10: NPC hit for > 1% of max HP (and <= 20%)
     //   11: NPC healed by another player
-    //   12: Room cleared (set event cleared which did not trigger another set)
+    //   12: Room cleared (wave cleared which did not trigger another wave)
     //   13: NPC used a recovery item
     //   14: NPC cannot heal / recover
-    //   15: Wave but not room cleared (set event triggered by another set)
+    //   15: Wave but not room cleared (wave triggered by another wave)
     //   16: NPC casting Resta or Anti
     //   17: NPC casting Foie, Zonde, or Barta
     //   18: NPC regained sight of player (not valid on 11/2000)
@@ -2348,7 +2356,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsE[0-2] = result point (x, y, z as floats)
     // regsE[3] = result code (0 = failed, 1 = success)
     // labelF = control point entries (array of valueA VectorXYZTF structures)
-    {0xF8F2, "compute_bezier_curve_point", "load_unk_data", {I32, FLOAT32, FLOAT32, I32, {W_REG_SET_FIXED, 4}, {LABEL16, Arg::DataType::BEZIER_CONTROL_POINT_DATA}}, F_V3_V4 | F_ARGS},
+    {0xF8F2, "compute_bezier_curve_point", "load_unk_data", {I32, FLOAT32, FLOAT32, I32, {W_REG_SET_FIXED, 4}, {LABEL16, Arg::DataType::VECTOR4F_LIST}}, F_V3_V4 | F_ARGS},
 
     // Creates a timed particle effect. Like the particle opcode, but the
     // location (and duration, for some reason) are floats.
@@ -2653,7 +2661,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   by prepare_statistic
     // labelB = label1 (used in send_statistic)
     // labelC = label2 (used in send_statistic)
-    {0xF93E, "prepare_statistic", "prepare_statistic?", {I32, LABEL32, LABEL32}, F_V3_V4 | F_ARGS},
+    {0xF93E, "prepare_statistic", "prepare_statistic?", {I32, SCRIPT32, SCRIPT32}, F_V3_V4 | F_ARGS},
 
     // Enables use of the check_for_keyword opcode.
     {0xF93F, "enable_keyword_detect", "keyword_detect", {}, F_V3_V4},
@@ -2898,8 +2906,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF961, "bb_get_6xE3_status", "unknownF961", {W_REG}, F_V4},
 };
 
-static const unordered_map<uint16_t, const QuestScriptOpcodeDefinition*>&
-opcodes_for_version(Version v) {
+static const unordered_map<uint16_t, const QuestScriptOpcodeDefinition*>& opcodes_for_version(Version v) {
   static array<
       unordered_map<uint16_t, const QuestScriptOpcodeDefinition*>,
       static_cast<size_t>(Version::BB_V4) + 1>
@@ -2907,7 +2914,7 @@ opcodes_for_version(Version v) {
 
   auto& index = indexes.at(static_cast<size_t>(v));
   if (index.empty()) {
-    uint16_t vf = v_flag(v);
+    uint32_t vf = v_flag(v);
     for (size_t z = 0; z < sizeof(opcode_defs) / sizeof(opcode_defs[0]); z++) {
       const auto& def = opcode_defs[z];
       if (!(def.flags & vf)) {
@@ -2921,16 +2928,12 @@ opcodes_for_version(Version v) {
   return index;
 }
 
-static const unordered_map<string, const QuestScriptOpcodeDefinition*>&
-opcodes_by_name_for_version(Version v) {
-  static array<
-      unordered_map<string, const QuestScriptOpcodeDefinition*>,
-      static_cast<size_t>(Version::BB_V4) + 1>
-      indexes;
+static const unordered_map<string, const QuestScriptOpcodeDefinition*>& opcodes_by_name_for_version(Version v) {
+  static array<unordered_map<string, const QuestScriptOpcodeDefinition*>, static_cast<size_t>(Version::BB_V4) + 1> indexes;
 
   auto& index = indexes.at(static_cast<size_t>(v));
   if (index.empty()) {
-    uint16_t vf = v_flag(v);
+    uint32_t vf = v_flag(v);
     for (size_t z = 0; z < sizeof(opcode_defs) / sizeof(opcode_defs[0]); z++) {
       const auto& def = opcode_defs[z];
       if (!(def.flags & vf)) {
@@ -3019,25 +3022,28 @@ CreateItemMaskEntry::operator QuestMetadata::CreateItemMask() const {
 }
 
 std::string disassemble_quest_script(
-    const void* data,
-    size_t size,
+    const void* bin_data,
+    size_t bin_size,
     Version version,
-    Language override_language,
+    Language language,
+    shared_ptr<const MapFile> dat,
     bool reassembly_mode,
     bool use_qedit_names) {
-  phosg::StringReader r(data, size);
+
+  phosg::StringReader r(bin_data, bin_size);
   deque<string> lines;
   lines.emplace_back(std::format(".version {}", phosg::name_for_enum(version)));
 
+  // Phase 0: Parse the header and generate the metadata section
+
   bool use_wstrs = false;
   size_t code_offset = 0;
-  size_t function_table_offset = 0;
-  Language language;
+  size_t label_table_offset = 0;
   switch (version) {
     case Version::DC_NTE: {
       const auto& header = r.get<PSOQuestHeaderDCNTE>();
       code_offset = header.code_offset;
-      function_table_offset = header.function_table_offset;
+      label_table_offset = header.label_table_offset;
       language = Language::JAPANESE;
       lines.emplace_back(".name " + escape_string(header.name.decode(Language::JAPANESE)));
       break;
@@ -3047,13 +3053,9 @@ std::string disassemble_quest_script(
     case Version::DC_V2: {
       const auto& header = r.get<PSOQuestHeaderDC>();
       code_offset = header.code_offset;
-      function_table_offset = header.function_table_offset;
-      if (override_language != Language::UNKNOWN) {
-        language = override_language;
-      } else if (static_cast<size_t>(header.language) < 5) {
-        language = header.language;
-      } else {
-        language = Language::ENGLISH;
+      label_table_offset = header.label_table_offset;
+      if (language == Language::UNKNOWN) {
+        language = (static_cast<size_t>(header.language) < 5) ? header.language : Language::ENGLISH;
       }
       lines.emplace_back(std::format(".quest_num {}", header.quest_number));
       lines.emplace_back(std::format(".language {}", char_for_language(header.language)));
@@ -3067,13 +3069,9 @@ std::string disassemble_quest_script(
       use_wstrs = true;
       const auto& header = r.get<PSOQuestHeaderPC>();
       code_offset = header.code_offset;
-      function_table_offset = header.function_table_offset;
-      if (override_language != Language::UNKNOWN) {
-        language = override_language;
-      } else if (static_cast<size_t>(header.language) < 8) {
-        language = header.language;
-      } else {
-        language = Language::ENGLISH;
+      label_table_offset = header.label_table_offset;
+      if (language == Language::UNKNOWN) {
+        language = (static_cast<size_t>(header.language) < 8) ? header.language : Language::ENGLISH;
       }
       lines.emplace_back(std::format(".quest_num {}", header.quest_number));
       lines.emplace_back(std::format(".language {}", char_for_language(header.language)));
@@ -3089,13 +3087,9 @@ std::string disassemble_quest_script(
     case Version::XB_V3: {
       const auto& header = r.get<PSOQuestHeaderGC>();
       code_offset = header.code_offset;
-      function_table_offset = header.function_table_offset;
-      if (override_language != Language::UNKNOWN) {
-        language = override_language;
-      } else if (static_cast<size_t>(header.language) < 5) {
-        language = header.language;
-      } else {
-        language = Language::ENGLISH;
+      label_table_offset = header.label_table_offset;
+      if (language == Language::UNKNOWN) {
+        language = (static_cast<size_t>(header.language) < 5) ? header.language : Language::ENGLISH;
       }
       lines.emplace_back(std::format(".quest_num {}", header.quest_number));
       lines.emplace_back(std::format(".language {}", char_for_language(header.language)));
@@ -3108,10 +3102,8 @@ std::string disassemble_quest_script(
       use_wstrs = true;
       const auto& header = r.get<PSOQuestHeaderBBBase>();
       code_offset = header.code_offset;
-      function_table_offset = header.function_table_offset;
-      if (override_language != Language::UNKNOWN) {
-        language = override_language;
-      } else {
+      label_table_offset = header.label_table_offset;
+      if (language == Language::UNKNOWN) {
         language = Language::ENGLISH;
       }
       lines.emplace_back(std::format(".quest_num {}", header.quest_number));
@@ -3126,8 +3118,7 @@ std::string disassemble_quest_script(
       // Quests saved with Qedit may not have the full header, so only parse
       // the full header if the code and function table offsets don't point to
       // space within it
-      if ((header.code_offset >= sizeof(PSOQuestHeaderBB)) &&
-          (header.function_table_offset >= sizeof(PSOQuestHeaderBB))) {
+      if ((header.code_offset >= sizeof(PSOQuestHeaderBB)) && (header.label_table_offset >= sizeof(PSOQuestHeaderBB))) {
         r.go(0);
         const auto& header = r.get<PSOQuestHeaderBB>();
         for (size_t z = 0; z < header.create_item_mask_entries.size(); z++) {
@@ -3144,104 +3135,399 @@ std::string disassemble_quest_script(
     default:
       throw logic_error("invalid quest version");
   }
+  lines.emplace_back();
 
-  const auto& opcodes = opcodes_for_version(version);
-  phosg::StringReader cmd_r = r.sub(code_offset, function_table_offset - code_offset);
+  // Phase 1: Parse label table
+
+  phosg::StringReader text_r, label_table_r;
+  if (code_offset < label_table_offset) {
+    text_r = r.sub(code_offset, label_table_offset - code_offset);
+    label_table_r = r.sub(label_table_offset);
+  } else {
+    text_r = r.sub(code_offset);
+    label_table_r = r.sub(label_table_offset, code_offset - label_table_offset);
+  }
 
   struct Label {
-    string name;
-    uint32_t offset;
-    uint32_t label_index; // 0xFFFFFFFF = no label
-    uint64_t type_flags;
-    set<size_t> references;
+    struct ObjectSetRef {
+      uint8_t floor;
+      size_t set_index;
+      const MapFile::ObjectSetEntry* obj_set;
+    };
+    struct EnemySetRef {
+      uint8_t floor;
+      size_t set_index;
+      const MapFile::EnemySetEntry* ene_set;
+    };
 
-    Label(const string& name, uint32_t offset, int64_t label_index = -1, uint64_t type_flags = 0)
-        : name(name),
-          offset(offset),
-          label_index(label_index),
-          type_flags(type_flags) {}
-    void add_data_type(Arg::DataType type) {
-      this->type_flags |= (1 << static_cast<size_t>(type));
-    }
-    bool has_data_type(Arg::DataType type) const {
-      return this->type_flags & (1 << static_cast<size_t>(type));
-    }
+    set<uint32_t> label_nums;
+    uint32_t offset;
+    uint32_t size = 0;
+    set<size_t> script_refs;
+    vector<ObjectSetRef> object_refs;
+    vector<EnemySetRef> enemy_refs;
+    Arg::DataType type = Arg::DataType::NONE;
+    deque<string> lines;
   };
 
-  vector<shared_ptr<Label>> function_table;
-  multimap<size_t, shared_ptr<Label>> offset_to_label;
-  phosg::StringReader function_table_r = r.sub(function_table_offset);
-  while (!function_table_r.eof()) {
+  vector<shared_ptr<Label>> label_table;
+  map<size_t, shared_ptr<Label>> offset_to_label;
+  deque<pair<shared_ptr<Label>, Arg::DataType>> pending_labels;
+  while (!label_table_r.eof()) {
     try {
-      uint32_t label_index = function_table.size();
-      string name = (label_index == 0) ? "start" : std::format("label{:04X}", label_index);
-      uint32_t offset = function_table_r.get_u32l();
-      auto l = make_shared<Label>(name, offset, label_index);
-      if (label_index == 0) {
-        l->add_data_type(Arg::DataType::SCRIPT);
-      }
-      function_table.emplace_back(l);
-      if (l->offset < cmd_r.size()) {
-        offset_to_label.emplace(l->offset, l);
+      uint32_t offset = label_table_r.get_u32l();
+      if (offset < text_r.size()) {
+        shared_ptr<Label> l;
+        try {
+          l = offset_to_label.at(offset);
+        } catch (const std::out_of_range&) {
+          l = make_shared<Label>();
+          l->offset = offset;
+          if (label_table.size() == 0) {
+            pending_labels.emplace_back(make_pair(l, Arg::DataType::SCRIPT));
+          }
+          offset_to_label.emplace(l->offset, l);
+        }
+        l->label_nums.emplace(label_table.size());
+        label_table.emplace_back(l);
+      } else {
+        label_table.emplace_back(nullptr);
       }
     } catch (const out_of_range&) {
-      function_table_r.skip(function_table_r.remaining());
+      label_table_r.skip(label_table_r.remaining());
+    }
+  }
+  // If there's no label at offset 0, make a fake one, but don't put it in the
+  // label table because the script cannot reference it
+  if (!offset_to_label.count(0)) {
+    auto l = make_shared<Label>();
+    l->offset = 0;
+    offset_to_label.emplace(l->offset, l);
+  }
+
+  // Phase 2: Calculate the size of each label's data
+
+  {
+    auto it = offset_to_label.begin();
+    while (it != offset_to_label.end()) {
+      auto next_it = it;
+      next_it++;
+      it->second->size = ((next_it == offset_to_label.end()) ? text_r.size() : next_it->second->offset) - it->second->offset;
+      it = next_it;
     }
   }
 
-  struct DisassemblyLine {
-    string line;
-    size_t next_offset;
+  // Phase 3: Collect label references from the map, if present
 
-    DisassemblyLine(string&& line, size_t next_offset)
-        : line(std::move(line)),
-          next_offset(next_offset) {}
+  if (dat) {
+    for (uint8_t floor = 0; floor < 0x12; floor++) {
+      auto& fs = dat->floor(floor);
+      if (fs.object_sets) {
+        for (size_t z = 0; z < fs.object_set_count; z++) {
+          const auto& obj_set = fs.object_sets[z];
+          size_t label_num = label_table.size();
+          switch (obj_set.base_type) {
+            case 0x0012: // TObjQuestCol
+            case 0x0015: // TObjQuestColA
+            case 0x008B: // TObjComputer
+            case 0x02B7: // TObjGbAdvance
+              label_num = obj_set.param4;
+              break;
+            case 0x02B8: // TObjQuestColALock2
+            case 0x02BA: // TObjQuestCol2
+              if (obj_set.param5 <= 0) {
+                label_num = obj_set.param4;
+              }
+              break;
+            case 0x0023: // TOAttackableCol
+              if (obj_set.param6 > 0) {
+                label_num = obj_set.param6;
+              }
+              break;
+            case 0x0026: // TOChatSensor
+              if (obj_set.angle.x == 0) {
+                label_num = obj_set.param4;
+              }
+              break;
+            case 0x008D: // TOCapsuleAncient01
+            case 0x0104: // TOComputerMachine01
+            case 0x0155: // TOMonumentAncient01
+            case 0x0229: // TOCapsuleLabo
+              // NOTE: These objects can call quest functions in either the
+              // free play or quest script managers. We assume the caller knows
+              // what they're doing, and we don't check for this.
+              label_num = obj_set.param6;
+              break;
+          }
+          if (label_num < label_table.size()) {
+            auto l = label_table[label_num];
+            if (l) {
+              l->object_refs.emplace_back(Label::ObjectSetRef{.floor = floor, .set_index = z, .obj_set = &obj_set});
+              pending_labels.emplace_back(make_pair(l, Arg::DataType::SCRIPT));
+            }
+          }
+        }
+      }
+      if (fs.enemy_sets) {
+        for (size_t z = 0; z < fs.enemy_set_count; z++) {
+          // Only NPCs use script labels; no other enemies do
+          const auto& ene_set = fs.enemy_sets[z];
+          if ((((ene_set.base_type >= 0x0001) && (ene_set.base_type <= 0x000E)) ||
+                  ((ene_set.base_type >= 0x0010) && (ene_set.base_type <= 0x0022)) ||
+                  ((ene_set.base_type >= 0x0024) && (ene_set.base_type <= 0x0029)) ||
+                  ((ene_set.base_type >= 0x002B) && (ene_set.base_type <= 0x002D)) ||
+                  ((ene_set.base_type >= 0x0030) && (ene_set.base_type <= 0x0033)) ||
+                  ((ene_set.base_type >= 0x0045) && (ene_set.base_type <= 0x0047)) ||
+                  ((ene_set.base_type >= 0x00D0) && (ene_set.base_type <= 0x00D7)) ||
+                  ((ene_set.base_type >= 0x00F0) && (ene_set.base_type <= 0x0100)) ||
+                  ((ene_set.base_type >= 0x0110) && (ene_set.base_type <= 0x0112)) ||
+                  (ene_set.base_type == 0x00A9) ||
+                  (ene_set.base_type == 0x0118)) &&
+              (ene_set.param5 > 0) && (ene_set.param5 < label_table.size())) {
+            auto l = label_table[ene_set.param5];
+            if (l) {
+              l->enemy_refs.emplace_back(Label::EnemySetRef{.floor = floor, .set_index = z, .ene_set = &ene_set});
+              pending_labels.emplace_back(make_pair(l, Arg::DataType::SCRIPT));
+            }
+          }
+        }
+      }
+    }
+  }
+  if (!reassembly_mode) {
+    lines.emplace_back(std::format("// 0x{:X} data bytes in script section with {} labels", text_r.size(), offset_to_label.size()));
+    lines.emplace_back();
+  }
+
+  // Phase 4: Disassemble all referenced label regions, starting with label 0
+
+  auto disassemble_label_as_struct = [&]<typename StructT>(shared_ptr<Label> l, auto print_fn) {
+    if (reassembly_mode) {
+      l->lines.emplace_back("  .data " + phosg::format_data_string(text_r.pgetv(l->offset, l->size), l->size));
+    } else if (l->size >= sizeof(StructT)) {
+      print_fn(text_r.pget<StructT>(l->offset));
+      if (l->size > sizeof(StructT)) {
+        size_t struct_end_offset = l->offset + sizeof(StructT);
+        size_t remaining_size = l->size - sizeof(StructT);
+        l->lines.emplace_back("  // Extra data after structure");
+        l->lines.emplace_back(format_and_indent_data(text_r.pgetv(struct_end_offset, remaining_size), remaining_size, struct_end_offset));
+      }
+    } else {
+      l->lines.emplace_back(std::format("  // As raw data (0x{:X} bytes; too small for referenced type)", l->size));
+      l->lines.emplace_back(format_and_indent_data(text_r.pgetv(l->offset, l->size), l->size, l->offset));
+    }
   };
 
-  struct ArgStackValue {
-    enum class Type {
-      REG,
-      REG_PTR,
-      LABEL,
-      INT,
-      CSTRING,
+  auto disassemble_label_as_data = [&](shared_ptr<Label> l) -> void {
+    l->lines.emplace_back(std::format("  // As raw data (0x{:X} bytes)", l->size));
+    if (reassembly_mode) {
+      l->lines.emplace_back("  .data " + phosg::format_data_string(text_r.pgetv(l->offset, l->size), l->size));
+    } else {
+      l->lines.emplace_back(format_and_indent_data(text_r.pgetv(l->offset, l->size), l->size, l->offset));
+    }
+  };
+
+  auto disassemble_label_as_cstring = [&](shared_ptr<Label> l) -> void {
+    l->lines.emplace_back("  // As C string");
+
+    string str_data = text_r.pread(l->offset, l->size);
+    phosg::strip_trailing_zeroes(str_data);
+
+    string formatted;
+    size_t extra_zero_bytes;
+    if (use_wstrs) {
+      if (str_data.size() & 1) {
+        str_data.push_back(0);
+      }
+      extra_zero_bytes = l->size - str_data.size();
+      if (extra_zero_bytes >= 2) {
+        extra_zero_bytes -= 2;
+      }
+      formatted = escape_string(str_data, TextEncoding::UTF16);
+    } else {
+      extra_zero_bytes = l->size - str_data.size();
+      if (extra_zero_bytes >= 1) {
+        extra_zero_bytes--;
+      }
+      formatted = escape_string(str_data, encoding_for_language(language));
+    }
+    if (reassembly_mode) {
+      l->lines.emplace_back(std::format("  .cstr {}", formatted));
+    } else {
+      l->lines.emplace_back(std::format("  {:04X}  {}", l->offset, formatted));
+    }
+    if (extra_zero_bytes) {
+      l->lines.emplace_back("  .data " + string(extra_zero_bytes * 2, '0'));
+    }
+  };
+
+  auto disassemble_label_as_player_visual_config = [&](shared_ptr<Label> l) -> void {
+    disassemble_label_as_struct.template operator()<PlayerVisualConfig>(l, [&](const PlayerVisualConfig& visual) -> void {
+      l->lines.emplace_back("  // As PlayerVisualConfig");
+      l->lines.emplace_back(std::format("  {:04X}  name              {}", l->offset + offsetof(PlayerVisualConfig, name), escape_string(visual.name.decode(language))));
+      l->lines.emplace_back(std::format("  {:04X}  name_color        {:08X}", l->offset + offsetof(PlayerVisualConfig, name_color), visual.name_color));
+      l->lines.emplace_back(std::format("  {:04X}  a2                {}", l->offset + offsetof(PlayerVisualConfig, unknown_a2), phosg::format_data_string(visual.unknown_a2.data(), sizeof(visual.unknown_a2))));
+      l->lines.emplace_back(std::format("  {:04X}  extra_model       {:02X}", l->offset + offsetof(PlayerVisualConfig, extra_model), visual.extra_model));
+      l->lines.emplace_back(std::format("  {:04X}  unused            {}", l->offset + offsetof(PlayerVisualConfig, unused), phosg::format_data_string(visual.unused.data(), visual.unused.bytes())));
+      l->lines.emplace_back(std::format("  {:04X}  name_color_cs     {:08X}", l->offset + offsetof(PlayerVisualConfig, name_color_checksum), visual.name_color_checksum));
+      l->lines.emplace_back(std::format("  {:04X}  section_id        {:02X} ({})", l->offset + offsetof(PlayerVisualConfig, section_id), visual.section_id, name_for_section_id(visual.section_id)));
+      l->lines.emplace_back(std::format("  {:04X}  char_class        {:02X} ({})", l->offset + offsetof(PlayerVisualConfig, char_class), visual.char_class, name_for_char_class(visual.char_class)));
+      l->lines.emplace_back(std::format("  {:04X}  validation_flags  {:02X}", l->offset + offsetof(PlayerVisualConfig, validation_flags), visual.validation_flags));
+      l->lines.emplace_back(std::format("  {:04X}  version           {:02X}", l->offset + offsetof(PlayerVisualConfig, version), visual.version));
+      l->lines.emplace_back(std::format("  {:04X}  class_flags       {:08X}", l->offset + offsetof(PlayerVisualConfig, class_flags), visual.class_flags));
+      l->lines.emplace_back(std::format("  {:04X}  costume           {:04X}", l->offset + offsetof(PlayerVisualConfig, costume), visual.costume));
+      l->lines.emplace_back(std::format("  {:04X}  skin              {:04X}", l->offset + offsetof(PlayerVisualConfig, skin), visual.skin));
+      l->lines.emplace_back(std::format("  {:04X}  face              {:04X}", l->offset + offsetof(PlayerVisualConfig, face), visual.face));
+      l->lines.emplace_back(std::format("  {:04X}  head              {:04X}", l->offset + offsetof(PlayerVisualConfig, head), visual.head));
+      l->lines.emplace_back(std::format("  {:04X}  hair              {:04X}", l->offset + offsetof(PlayerVisualConfig, hair), visual.hair));
+      l->lines.emplace_back(std::format("  {:04X}  hair_color        {:04X}, {:04X}, {:04X}", l->offset + offsetof(PlayerVisualConfig, hair_r), visual.hair_r, visual.hair_g, visual.hair_b));
+      l->lines.emplace_back(std::format("  {:04X}  proportion        {:g}, {:g}", l->offset + offsetof(PlayerVisualConfig, proportion_x), visual.proportion_x, visual.proportion_y));
+    });
+  };
+  auto disassemble_label_as_player_stats = [&](shared_ptr<Label> l) -> void {
+    disassemble_label_as_struct.template operator()<PlayerStats>(l, [&](const PlayerStats& stats) -> void {
+      l->lines.emplace_back("  // As PlayerStats");
+      l->lines.emplace_back(std::format("  {:04X}  atp               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.atp), stats.char_stats.atp, stats.char_stats.atp));
+      l->lines.emplace_back(std::format("  {:04X}  mst               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.mst), stats.char_stats.mst, stats.char_stats.mst));
+      l->lines.emplace_back(std::format("  {:04X}  evp               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.evp), stats.char_stats.evp, stats.char_stats.evp));
+      l->lines.emplace_back(std::format("  {:04X}  hp                {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.hp), stats.char_stats.hp, stats.char_stats.hp));
+      l->lines.emplace_back(std::format("  {:04X}  dfp               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.dfp), stats.char_stats.dfp, stats.char_stats.dfp));
+      l->lines.emplace_back(std::format("  {:04X}  ata               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.ata), stats.char_stats.ata, stats.char_stats.ata));
+      l->lines.emplace_back(std::format("  {:04X}  lck               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.lck), stats.char_stats.lck, stats.char_stats.lck));
+      l->lines.emplace_back(std::format("  {:04X}  esp               {:04X} /* {} */", l->offset + offsetof(PlayerStats, esp), stats.esp, stats.esp));
+      l->lines.emplace_back(std::format("  {:04X}  height            {:08X} /* {:g} */", l->offset + offsetof(PlayerStats, height), stats.height.load_raw(), stats.height));
+      l->lines.emplace_back(std::format("  {:04X}  a3                {:08X} /* {:g} */", l->offset + offsetof(PlayerStats, unknown_a3), stats.unknown_a3.load_raw(), stats.unknown_a3));
+      l->lines.emplace_back(std::format("  {:04X}  level             {:08X} /* level {} */", l->offset + offsetof(PlayerStats, level), stats.level, stats.level + 1));
+      l->lines.emplace_back(std::format("  {:04X}  experience        {:08X} /* {} */", l->offset + offsetof(PlayerStats, experience), stats.experience, stats.experience));
+      l->lines.emplace_back(std::format("  {:04X}  meseta            {:08X} /* {} */", l->offset + offsetof(PlayerStats, meseta), stats.meseta, stats.meseta));
+    });
+  };
+  auto disassemble_label_as_resist_data = [&](shared_ptr<Label> l) -> void {
+    disassemble_label_as_struct.template operator()<ResistData>(l, [&](const ResistData& resist) -> void {
+      l->lines.emplace_back("  // As ResistData");
+      l->lines.emplace_back(std::format("  {:04X}  evp_bonus         {:04X} /* {} */", l->offset + offsetof(ResistData, evp_bonus), resist.evp_bonus, resist.evp_bonus));
+      l->lines.emplace_back(std::format("  {:04X}  efr               {:04X} /* {} */", l->offset + offsetof(ResistData, efr), resist.efr, resist.efr));
+      l->lines.emplace_back(std::format("  {:04X}  eic               {:04X} /* {} */", l->offset + offsetof(ResistData, eic), resist.eic, resist.eic));
+      l->lines.emplace_back(std::format("  {:04X}  eth               {:04X} /* {} */", l->offset + offsetof(ResistData, eth), resist.eth, resist.eth));
+      l->lines.emplace_back(std::format("  {:04X}  elt               {:04X} /* {} */", l->offset + offsetof(ResistData, elt), resist.elt, resist.elt));
+      l->lines.emplace_back(std::format("  {:04X}  edk               {:04X} /* {} */", l->offset + offsetof(ResistData, edk), resist.edk, resist.edk));
+      l->lines.emplace_back(std::format("  {:04X}  a6                {:08X} /* {} */", l->offset + offsetof(ResistData, unknown_a6), resist.unknown_a6, resist.unknown_a6));
+      l->lines.emplace_back(std::format("  {:04X}  a7                {:08X} /* {} */", l->offset + offsetof(ResistData, unknown_a7), resist.unknown_a7, resist.unknown_a7));
+      l->lines.emplace_back(std::format("  {:04X}  a8                {:08X} /* {} */", l->offset + offsetof(ResistData, unknown_a8), resist.unknown_a8, resist.unknown_a8));
+      l->lines.emplace_back(std::format("  {:04X}  a9                {:08X} /* {} */", l->offset + offsetof(ResistData, unknown_a9), resist.unknown_a9, resist.unknown_a9));
+      l->lines.emplace_back(std::format("  {:04X}  dfp_bonus         {:08X} /* {} */", l->offset + offsetof(ResistData, dfp_bonus), resist.dfp_bonus, resist.dfp_bonus));
+    });
+  };
+  auto disassemble_label_as_attack_data = [&](shared_ptr<Label> l) -> void {
+    disassemble_label_as_struct.template operator()<AttackData>(l, [&](const AttackData& attack) -> void {
+      l->lines.emplace_back("  // As AttackData");
+      l->lines.emplace_back(std::format("  {:04X}  a1                {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a1), attack.unknown_a1, attack.unknown_a1));
+      l->lines.emplace_back(std::format("  {:04X}  atp               {:04X} /* {} */", l->offset + offsetof(AttackData, atp), attack.atp, attack.atp));
+      l->lines.emplace_back(std::format("  {:04X}  ata_bonus         {:04X} /* {} */", l->offset + offsetof(AttackData, ata_bonus), attack.ata_bonus, attack.ata_bonus));
+      l->lines.emplace_back(std::format("  {:04X}  a4                {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a4), attack.unknown_a4, attack.unknown_a4));
+      l->lines.emplace_back(std::format("  {:04X}  distance_x        {:08X} /* {:g} */", l->offset + offsetof(AttackData, distance_x), attack.distance_x.load_raw(), attack.distance_x));
+      l->lines.emplace_back(std::format("  {:04X}  angle_x           {:08X} /* {}/65536 */", l->offset + offsetof(AttackData, angle_x), attack.angle_x.load_raw(), attack.angle_x));
+      l->lines.emplace_back(std::format("  {:04X}  distance_y        {:08X} /* {:g} */", l->offset + offsetof(AttackData, distance_y), attack.distance_y.load_raw(), attack.distance_y));
+      l->lines.emplace_back(std::format("  {:04X}  a8                {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a8), attack.unknown_a8, attack.unknown_a8));
+      l->lines.emplace_back(std::format("  {:04X}  a9                {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a9), attack.unknown_a9, attack.unknown_a9));
+      l->lines.emplace_back(std::format("  {:04X}  a10               {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a10), attack.unknown_a10, attack.unknown_a10));
+      l->lines.emplace_back(std::format("  {:04X}  a11               {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a11), attack.unknown_a11, attack.unknown_a11));
+      l->lines.emplace_back(std::format("  {:04X}  a12               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a12), attack.unknown_a12, attack.unknown_a12));
+      l->lines.emplace_back(std::format("  {:04X}  a13               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a13), attack.unknown_a13, attack.unknown_a13));
+      l->lines.emplace_back(std::format("  {:04X}  a14               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a14), attack.unknown_a14, attack.unknown_a14));
+      l->lines.emplace_back(std::format("  {:04X}  a15               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a15), attack.unknown_a15, attack.unknown_a15));
+      l->lines.emplace_back(std::format("  {:04X}  a16               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a16), attack.unknown_a16, attack.unknown_a16));
+    });
+  };
+  auto disassemble_label_as_movement_data = [&](shared_ptr<Label> l) -> void {
+    disassemble_label_as_struct.template operator()<MovementData>(l, [&](const MovementData& movement) -> void {
+      l->lines.emplace_back("  // As MovementData");
+      l->lines.emplace_back(std::format("  {:04X}  idle_move_speed   {:08X} /* {:g} */", l->offset + offsetof(MovementData, idle_move_speed), movement.idle_move_speed.load_raw(), movement.idle_move_speed));
+      l->lines.emplace_back(std::format("  {:04X}  idle_anim_speed   {:08X} /* {:g} */", l->offset + offsetof(MovementData, idle_animation_speed), movement.idle_animation_speed.load_raw(), movement.idle_animation_speed));
+      l->lines.emplace_back(std::format("  {:04X}  move_speed        {:08X} /* {:g} */", l->offset + offsetof(MovementData, move_speed), movement.move_speed.load_raw(), movement.move_speed));
+      l->lines.emplace_back(std::format("  {:04X}  animation_speed   {:08X} /* {:g} */", l->offset + offsetof(MovementData, animation_speed), movement.animation_speed.load_raw(), movement.animation_speed));
+      l->lines.emplace_back(std::format("  {:04X}  a1                {:08X} /* {:g} */", l->offset + offsetof(MovementData, unknown_a1), movement.unknown_a1.load_raw(), movement.unknown_a1));
+      l->lines.emplace_back(std::format("  {:04X}  a2                {:08X} /* {:g} */", l->offset + offsetof(MovementData, unknown_a2), movement.unknown_a2.load_raw(), movement.unknown_a2));
+      l->lines.emplace_back(std::format("  {:04X}  a3                {:08X} /* {} */", l->offset + offsetof(MovementData, unknown_a3), movement.unknown_a3, movement.unknown_a3));
+      l->lines.emplace_back(std::format("  {:04X}  a4                {:08X} /* {} */", l->offset + offsetof(MovementData, unknown_a4), movement.unknown_a4, movement.unknown_a4));
+      l->lines.emplace_back(std::format("  {:04X}  a5                {:08X} /* {} */", l->offset + offsetof(MovementData, unknown_a5), movement.unknown_a5, movement.unknown_a5));
+      l->lines.emplace_back(std::format("  {:04X}  a6                {:08X} /* {} */", l->offset + offsetof(MovementData, unknown_a6), movement.unknown_a6, movement.unknown_a6));
+      l->lines.emplace_back(std::format("  {:04X}  a7                {:08X} /* {} */", l->offset + offsetof(MovementData, unknown_a7), movement.unknown_a7, movement.unknown_a7));
+      l->lines.emplace_back(std::format("  {:04X}  a8                {:08X} /* {} */", l->offset + offsetof(MovementData, unknown_a8), movement.unknown_a8, movement.unknown_a8));
+    });
+  };
+  auto disassemble_label_as_image_data = [&](shared_ptr<Label> l) -> void {
+    if (reassembly_mode) {
+      l->lines.emplace_back(std::format("  // As compressed image data (0x{:X} bytes)", l->size));
+      l->lines.emplace_back("  .data " + phosg::format_data_string(text_r.pgetv(l->offset, l->size), l->size));
+    } else {
+      const void* data = text_r.pgetv(l->offset, l->size);
+      auto decompressed = prs_decompress_with_meta(data, l->size);
+      l->lines.emplace_back(std::format("  // As decompressed image data (0x{:X} bytes)", decompressed.data.size()));
+      l->lines.emplace_back(format_and_indent_data(decompressed.data.data(), decompressed.data.size(), 0));
+      if (decompressed.input_bytes_used < l->size) {
+        size_t compressed_end_offset = l->offset + decompressed.input_bytes_used;
+        size_t remaining_size = l->size - decompressed.input_bytes_used;
+        l->lines.emplace_back("  // Extra data after compressed data");
+        l->lines.emplace_back(format_and_indent_data(text_r.pgetv(compressed_end_offset, remaining_size), remaining_size, compressed_end_offset));
+      }
+    }
+  };
+  auto disassemble_label_as_vector4f_list = [&](shared_ptr<Label> l) -> void {
+    if (reassembly_mode) {
+      l->lines.emplace_back(std::format("  // As VectorXYZTF list (0x{:X} bytes)", l->size));
+      l->lines.emplace_back("  .data " + phosg::format_data_string(text_r.pgetv(l->offset, l->size), l->size));
+    } else {
+      phosg::StringReader r = text_r.sub(l->offset, l->size);
+      l->lines.emplace_back("  // As VectorXYZTF list");
+      while (r.remaining() >= sizeof(VectorXYZTF)) {
+        size_t offset = l->offset + r.where();
+        const auto& e = r.get<VectorXYZTF>();
+        l->lines.emplace_back(std::format("  {:04X}  vector       x={:g}, y={:g}, z={:g}, t={:g}", offset, e.x, e.y, e.z, e.t));
+      }
+      if (r.remaining() > 0) {
+        size_t struct_end_offset = l->offset + r.where();
+        size_t remaining_size = r.remaining();
+        l->lines.emplace_back("  // Extra data after structures");
+        l->lines.emplace_back(format_and_indent_data(r.getv(remaining_size), remaining_size, struct_end_offset));
+      }
+    }
+  };
+  auto disassemble_label_as_script = [&](shared_ptr<Label> l, bool fail_on_invalid) -> void {
+    struct ArgStackValue {
+      enum class Type {
+        REG,
+        REG_PTR,
+        LABEL,
+        INT,
+        CSTRING,
+      };
+      Type type;
+      uint32_t as_int;
+      std::string as_string;
+
+      ArgStackValue(Type type, uint32_t value) {
+        this->type = type;
+        this->as_int = value;
+      }
+      ArgStackValue(const std::string& value) {
+        this->type = Type::CSTRING;
+        this->as_string = value;
+      }
     };
-    Type type;
-    uint32_t as_int;
-    std::string as_string;
 
-    ArgStackValue(Type type, uint32_t value) {
-      this->type = type;
-      this->as_int = value;
-    }
-    ArgStackValue(const std::string& value) {
-      this->type = Type::CSTRING;
-      this->as_string = value;
-    }
-  };
+    const auto& opcodes = opcodes_for_version(version);
+    bool version_has_args = F_HAS_ARGS & v_flag(version);
 
-  map<size_t, DisassemblyLine> dasm_lines;
-  set<size_t> pending_dasm_start_offsets;
-  for (const auto& l : function_table) {
-    if (l->offset < cmd_r.size()) {
-      pending_dasm_start_offsets.emplace(l->offset);
-    }
-  }
-
-  bool version_has_args = F_HAS_ARGS & v_flag(version);
-  while (!pending_dasm_start_offsets.empty()) {
-    auto dasm_start_offset_it = pending_dasm_start_offsets.begin();
-    cmd_r.go(*dasm_start_offset_it);
-    pending_dasm_start_offsets.erase(dasm_start_offset_it);
-
+    auto label_r = text_r.sub(l->offset, l->size);
     vector<ArgStackValue> arg_stack_values;
-    while (!cmd_r.eof() && !dasm_lines.count(cmd_r.where())) {
-      size_t opcode_start_offset = cmd_r.where();
+    while (!label_r.eof()) {
+      size_t opcode_start_offset = label_r.where();
       string dasm_line;
       try {
-        uint16_t opcode = cmd_r.get_u8();
+        uint16_t opcode = label_r.get_u8();
         if ((opcode & 0xFE) == 0xF8) {
-          opcode = (opcode << 8) | cmd_r.get_u8();
+          opcode = (opcode << 8) | label_r.get_u8();
         }
 
         const QuestScriptOpcodeDefinition* def = nullptr;
@@ -3250,64 +3536,62 @@ std::string disassemble_quest_script(
         } catch (const out_of_range&) {
         }
 
+        auto dasm_label = [&](uint32_t label_id, Arg::DataType type) -> string {
+          if (label_id >= label_table.size()) {
+            if (fail_on_invalid) {
+              throw std::runtime_error(std::format("script refers to label{:04X} which is out of range", label_id));
+            }
+            return std::format("label{:04X} /* warning: label index out of range */", label_id);
+          }
+          auto& ref_l = label_table.at(label_id);
+          if (!ref_l) {
+            if (fail_on_invalid) {
+              throw std::runtime_error(std::format("script refers to label{:04X} which is not defined", label_id));
+            }
+            return std::format("label{:04X} /* warning: label is not defined */", label_id);
+          }
+          ref_l->script_refs.emplace(l->offset + opcode_start_offset);
+          if (type != Arg::DataType::NONE) {
+            pending_labels.emplace_back(make_pair(ref_l, type));
+          }
+          return reassembly_mode
+              ? std::format("label{:04X}", label_id)
+              : std::format("label{:04X} /* {:04X} */", label_id, ref_l->offset);
+        };
+
         if (def == nullptr) {
+          if (fail_on_invalid) {
+            throw std::runtime_error(std::format("script uses opcode {:04X} which does not exist", opcode));
+          }
           dasm_line = std::format(".unknown {:04X}", opcode);
         } else {
           const char* op_name = (use_qedit_names && def->qedit_name) ? def->qedit_name : def->name;
           dasm_line = op_name ? op_name : std::format("[{:04X}]", opcode);
           if (!version_has_args || !(def->flags & F_ARGS)) {
-            dasm_line.resize(0x20, ' ');
+            dasm_line.resize(std::max<size_t>(dasm_line.size() + 1, 0x20), ' ');
             bool is_first_arg = true;
             for (const auto& arg : def->args) {
               using Type = QuestScriptOpcodeDefinition::Argument::Type;
+
               string dasm_arg;
               switch (arg.type) {
                 case Type::LABEL16:
                 case Type::LABEL32: {
-                  uint32_t label_id = (arg.type == Type::LABEL32) ? cmd_r.get_u32l() : cmd_r.get_u16l();
+                  uint32_t label_id = (arg.type == Type::LABEL32) ? label_r.get_u32l() : label_r.get_u16l();
                   if (def->flags & F_PUSH_ARG) {
                     arg_stack_values.emplace_back(ArgStackValue::Type::LABEL, label_id);
                   }
-                  if (label_id >= function_table.size()) {
-                    dasm_arg = std::format("label{:04X}", label_id);
-                  } else {
-                    auto& l = function_table.at(label_id);
-                    if (reassembly_mode) {
-                      dasm_arg = std::format("label{:04X}", label_id);
-                    } else {
-                      dasm_arg = std::format("label{:04X} /* {:04X} */", label_id, l->offset);
-                    }
-                    l->references.emplace(opcode_start_offset);
-                    l->add_data_type(arg.data_type);
-                    if (arg.data_type == Arg::DataType::SCRIPT) {
-                      pending_dasm_start_offsets.emplace(l->offset);
-                    }
-                  }
+                  dasm_arg = dasm_label(label_id, arg.data_type);
                   break;
                 }
                 case Type::LABEL16_SET: {
                   if (def->flags & F_PUSH_ARG) {
                     throw logic_error("LABEL16_SET cannot be pushed to arg list");
                   }
-                  uint8_t num_functions = cmd_r.get_u8();
+                  uint8_t num_functions = label_r.get_u8();
                   for (size_t z = 0; z < num_functions; z++) {
                     dasm_arg += (dasm_arg.empty() ? "[" : ", ");
-                    uint32_t label_id = cmd_r.get_u16l();
-                    if (label_id >= function_table.size()) {
-                      dasm_arg += std::format("label{:04X}", label_id);
-                    } else {
-                      auto& l = function_table.at(label_id);
-                      if (reassembly_mode) {
-                        dasm_arg += std::format("label{:04X}", label_id);
-                      } else {
-                        dasm_arg += std::format("label{:04X} /* {:04X} */", label_id, l->offset);
-                      }
-                      l->references.emplace(opcode_start_offset);
-                      l->add_data_type(arg.data_type);
-                      if (arg.data_type == Arg::DataType::SCRIPT) {
-                        pending_dasm_start_offsets.emplace(l->offset);
-                      }
-                    }
+                    dasm_arg += dasm_label(label_r.get_u16l(), arg.data_type);
                   }
                   if (dasm_arg.empty()) {
                     dasm_arg = "[]";
@@ -3318,7 +3602,7 @@ std::string disassemble_quest_script(
                 }
                 case Type::R_REG:
                 case Type::W_REG: {
-                  uint8_t reg = cmd_r.get_u8();
+                  uint8_t reg = label_r.get_u8();
                   if (def->flags & F_PUSH_ARG) {
                     arg_stack_values.emplace_back((def->opcode == 0x004C) ? ArgStackValue::Type::REG_PTR : ArgStackValue::Type::REG, reg);
                   }
@@ -3329,9 +3613,9 @@ std::string disassemble_quest_script(
                   if (def->flags & F_PUSH_ARG) {
                     throw logic_error("REG_SET cannot be pushed to arg list");
                   }
-                  uint8_t num_regs = cmd_r.get_u8();
+                  uint8_t num_regs = label_r.get_u8();
                   for (size_t z = 0; z < num_regs; z++) {
-                    dasm_arg += std::format("{}r{}", (dasm_arg.empty() ? "[" : ", "), cmd_r.get_u8());
+                    dasm_arg += std::format("{}r{}", (dasm_arg.empty() ? "[" : ", "), label_r.get_u8());
                   }
                   if (dasm_arg.empty()) {
                     dasm_arg = "[]";
@@ -3345,7 +3629,7 @@ std::string disassemble_quest_script(
                   if (def->flags & F_PUSH_ARG) {
                     throw logic_error("REG_SET_FIXED cannot be pushed to arg list");
                   }
-                  uint8_t first_reg = cmd_r.get_u8();
+                  uint8_t first_reg = label_r.get_u8();
                   dasm_arg = std::format("r{}-r{}", first_reg, static_cast<uint8_t>(first_reg + arg.count - 1));
                   break;
                 }
@@ -3354,12 +3638,12 @@ std::string disassemble_quest_script(
                   if (def->flags & F_PUSH_ARG) {
                     throw logic_error("REG32_SET_FIXED cannot be pushed to arg list");
                   }
-                  uint32_t first_reg = cmd_r.get_u32l();
+                  uint32_t first_reg = label_r.get_u32l();
                   dasm_arg = std::format("r{}-r{}", first_reg, static_cast<uint32_t>(first_reg + arg.count - 1));
                   break;
                 }
                 case Type::I8: {
-                  uint8_t v = cmd_r.get_u8();
+                  uint8_t v = label_r.get_u8();
                   if (def->flags & F_PUSH_ARG) {
                     arg_stack_values.emplace_back(ArgStackValue::Type::INT, v);
                   }
@@ -3367,7 +3651,7 @@ std::string disassemble_quest_script(
                   break;
                 }
                 case Type::I16: {
-                  uint16_t v = cmd_r.get_u16l();
+                  uint16_t v = label_r.get_u16l();
                   if (def->flags & F_PUSH_ARG) {
                     arg_stack_values.emplace_back(ArgStackValue::Type::INT, v);
                   }
@@ -3375,7 +3659,7 @@ std::string disassemble_quest_script(
                   break;
                 }
                 case Type::I32: {
-                  uint32_t v = cmd_r.get_u32l();
+                  uint32_t v = label_r.get_u32l();
                   if (def->flags & F_PUSH_ARG) {
                     arg_stack_values.emplace_back(ArgStackValue::Type::INT, v);
                   }
@@ -3383,17 +3667,17 @@ std::string disassemble_quest_script(
                   break;
                 }
                 case Type::FLOAT32: {
-                  float v = cmd_r.get_f32l();
+                  float v = label_r.get_f32l();
                   if (def->flags & F_PUSH_ARG) {
                     arg_stack_values.emplace_back(ArgStackValue::Type::INT, std::bit_cast<uint32_t>(v));
                   }
-                  dasm_arg = std::format("{:g}", v);
+                  dasm_arg = std::format("{}", v);
                   break;
                 }
                 case Type::CSTRING:
                   if (use_wstrs) {
                     phosg::StringWriter w;
-                    for (uint16_t ch = cmd_r.get_u16l(); ch; ch = cmd_r.get_u16l()) {
+                    for (uint16_t ch = label_r.get_u16l(); ch; ch = label_r.get_u16l()) {
                       w.put_u16l(ch);
                     }
                     if (def->flags & F_PUSH_ARG) {
@@ -3401,7 +3685,7 @@ std::string disassemble_quest_script(
                     }
                     dasm_arg = escape_string(w.str(), TextEncoding::UTF16);
                   } else {
-                    string s = cmd_r.get_cstr();
+                    string s = label_r.get_cstr();
                     if (def->flags & F_PUSH_ARG) {
                       arg_stack_values.emplace_back((language == Language::JAPANESE) ? tt_sega_sjis_to_utf8(s) : tt_8859_to_utf8(s));
                     }
@@ -3420,136 +3704,152 @@ std::string disassemble_quest_script(
             }
 
           } else { // (def->flags & F_ARGS)
-            dasm_line.resize(0x20, ' ');
-            if (reassembly_mode) {
-              dasm_line += "...";
+            dasm_line.resize(std::max<size_t>(0x20, dasm_line.size() + 1), ' ');
+            dasm_line += "... ";
+
+            // Can't match if there aren't enough args
+            if (def->args.size() > arg_stack_values.size()) {
+              if (fail_on_invalid) {
+                throw std::runtime_error("received insufficient arguments for F_ARGS-type opcode");
+              }
+              dasm_line += std::format("/* matching error: expected {} arguments, received {} arguments */",
+                  def->args.size(), arg_stack_values.size());
             } else {
-              dasm_line += "... ";
-
-              if (def->args.size() > arg_stack_values.size()) {
-                dasm_line += std::format("/* matching error: expected {} arguments, received {} arguments */",
+              // CAN match if there are too many args, but show a warning
+              if (def->args.size() < arg_stack_values.size() && !reassembly_mode) {
+                dasm_line += std::format("/* warning: expected {} arguments, received {} arguments */ ",
                     def->args.size(), arg_stack_values.size());
-              } else {
-                if (def->args.size() < arg_stack_values.size()) {
-                  dasm_line += std::format("/* warning: expected {} arguments, received {} arguments */",
-                      def->args.size(), arg_stack_values.size());
-                }
+              }
 
-                bool is_first_arg = true;
-                for (size_t z = 0; z < def->args.size(); z++) {
-                  const auto& arg_def = def->args[z];
-                  const auto& arg_value = arg_stack_values[z];
+              bool is_first_arg = true;
+              for (size_t z = 0; z < def->args.size(); z++) {
+                const auto& arg_def = def->args[z];
+                const auto& arg_value = arg_stack_values[z];
 
-                  string dasm_arg;
-                  switch (arg_def.type) {
-                    case Arg::Type::LABEL16:
-                    case Arg::Type::LABEL32:
-                      switch (arg_value.type) {
-                        case ArgStackValue::Type::REG:
-                          dasm_arg = std::format("r{} /* warning: cannot determine label data type */", arg_value.as_int);
-                          break;
-                        case ArgStackValue::Type::LABEL:
-                        case ArgStackValue::Type::INT:
-                          dasm_arg = std::format("label{:04X}", arg_value.as_int);
-                          try {
-                            auto l = function_table.at(arg_value.as_int);
-                            l->add_data_type(arg_def.data_type);
-                            l->references.emplace(opcode_start_offset);
-                          } catch (const out_of_range&) {
-                          }
-                          break;
-                        default:
-                          dasm_arg = "/* invalid-type */";
-                      }
-                      break;
-                    case Arg::Type::R_REG:
-                    case Arg::Type::W_REG:
-                    case Arg::Type::R_REG32:
-                    case Arg::Type::W_REG32:
-                      switch (arg_value.type) {
-                        case ArgStackValue::Type::REG:
-                          dasm_arg = std::format("regs[r{}]", arg_value.as_int);
-                          break;
-                        case ArgStackValue::Type::INT:
-                          dasm_arg = std::format("r{}", arg_value.as_int);
-                          break;
-                        default:
-                          dasm_arg = "/* invalid-type */";
-                      }
-                      break;
-                    case Arg::Type::R_REG_SET_FIXED:
-                    case Arg::Type::W_REG_SET_FIXED:
-                    case Arg::Type::R_REG32_SET_FIXED:
-                    case Arg::Type::W_REG32_SET_FIXED:
-                      switch (arg_value.type) {
-                        case ArgStackValue::Type::REG:
-                          dasm_arg = std::format("regs[r{}]-regs[r{}+{}]", arg_value.as_int, arg_value.as_int, static_cast<uint8_t>(arg_def.count - 1));
-                          break;
-                        case ArgStackValue::Type::INT:
-                          dasm_arg = std::format("r{}-r{}", arg_value.as_int, static_cast<uint8_t>(arg_value.as_int + arg_def.count - 1));
-                          break;
-                        default:
-                          dasm_arg = "/* invalid-type */";
-                      }
-                      break;
-                    case Arg::Type::I8:
-                    case Arg::Type::I16:
-                    case Arg::Type::I32:
-                      switch (arg_value.type) {
-                        case ArgStackValue::Type::REG:
-                          dasm_arg = std::format("r{}", arg_value.as_int);
-                          break;
-                        case ArgStackValue::Type::REG_PTR:
-                          dasm_arg = std::format("&r{}", arg_value.as_int);
-                          break;
-                        case ArgStackValue::Type::INT:
-                          dasm_arg = std::format("0x{:X} /* {} */", arg_value.as_int, arg_value.as_int);
-                          break;
-                        default:
-                          dasm_arg = "/* invalid-type */";
-                      }
-                      break;
-                    case Arg::Type::FLOAT32:
-                      switch (arg_value.type) {
-                        case ArgStackValue::Type::REG:
-                          dasm_arg = std::format("f{}", arg_value.as_int);
-                          break;
-                        case ArgStackValue::Type::INT:
-                          dasm_arg = std::format("{:g}", std::bit_cast<float>(arg_value.as_int));
-                          break;
-                        default:
-                          dasm_arg = "/* invalid-type */";
-                      }
-                      break;
-                    case Arg::Type::CSTRING:
-                      if (arg_value.type == ArgStackValue::Type::CSTRING) {
-                        dasm_arg = escape_string(arg_value.as_string);
-                      } else {
+                string dasm_arg;
+                switch (arg_def.type) {
+                  case Arg::Type::LABEL16:
+                  case Arg::Type::LABEL32:
+                    switch (arg_value.type) {
+                      case ArgStackValue::Type::REG:
+                        dasm_arg = std::format("r{} /* warning: cannot determine label data type */", arg_value.as_int);
+                        break;
+                      case ArgStackValue::Type::LABEL:
+                      case ArgStackValue::Type::INT:
+                        dasm_arg = dasm_label(arg_value.as_int, arg_def.data_type);
+                        break;
+                      default:
+                        if (fail_on_invalid) {
+                          throw std::runtime_error("incorrect argument data type (expected REG, LABEL, or INT for LABEL16/LABEL32)");
+                        }
                         dasm_arg = "/* invalid-type */";
+                    }
+                    break;
+                  case Arg::Type::R_REG:
+                  case Arg::Type::W_REG:
+                  case Arg::Type::R_REG32:
+                  case Arg::Type::W_REG32:
+                    switch (arg_value.type) {
+                      case ArgStackValue::Type::REG:
+                        dasm_arg = std::format("regs[r{}]", arg_value.as_int);
+                        break;
+                      case ArgStackValue::Type::INT:
+                        dasm_arg = std::format("r{}", arg_value.as_int);
+                        break;
+                      default:
+                        if (fail_on_invalid) {
+                          throw std::runtime_error("incorrect argument data type (expected REG or INT for [RW]_REG(32)?)");
+                        }
+                        dasm_arg = "/* invalid-type */";
+                    }
+                    break;
+                  case Arg::Type::R_REG_SET_FIXED:
+                  case Arg::Type::W_REG_SET_FIXED:
+                  case Arg::Type::R_REG32_SET_FIXED:
+                  case Arg::Type::W_REG32_SET_FIXED:
+                    switch (arg_value.type) {
+                      case ArgStackValue::Type::REG:
+                        dasm_arg = std::format("regs[r{}]-regs[r{}+{}]", arg_value.as_int, arg_value.as_int, static_cast<uint8_t>(arg_def.count - 1));
+                        break;
+                      case ArgStackValue::Type::INT:
+                        dasm_arg = std::format("r{}-r{}", arg_value.as_int, static_cast<uint8_t>(arg_value.as_int + arg_def.count - 1));
+                        break;
+                      default:
+                        if (fail_on_invalid) {
+                          throw std::runtime_error("incorrect argument data type (expected REG or INT for [RW]_REG(32)?_SET_FIXED)");
+                        }
+                        dasm_arg = "/* invalid-type */";
+                    }
+                    break;
+                  case Arg::Type::I8:
+                  case Arg::Type::I16:
+                  case Arg::Type::I32:
+                    switch (arg_value.type) {
+                      case ArgStackValue::Type::REG:
+                        dasm_arg = std::format("r{}", arg_value.as_int);
+                        break;
+                      case ArgStackValue::Type::REG_PTR:
+                        dasm_arg = std::format("&r{}", arg_value.as_int);
+                        break;
+                      case ArgStackValue::Type::INT:
+                        dasm_arg = std::format("0x{:X} /* {} */", arg_value.as_int, arg_value.as_int);
+                        break;
+                      default:
+                        if (fail_on_invalid) {
+                          throw std::runtime_error("incorrect argument data type (expected REG, REG_PTR, or INT for I8/I16/I32)");
+                        }
+                        dasm_arg = "/* invalid-type */";
+                    }
+                    break;
+                  case Arg::Type::FLOAT32:
+                    switch (arg_value.type) {
+                      case ArgStackValue::Type::REG:
+                        dasm_arg = std::format("f{}", arg_value.as_int);
+                        break;
+                      case ArgStackValue::Type::INT:
+                        dasm_arg = std::format("{:g}", std::bit_cast<float>(arg_value.as_int));
+                        break;
+                      default:
+                        if (fail_on_invalid) {
+                          throw std::runtime_error("incorrect argument data type (expected REG or INT for FLOAT32)");
+                        }
+                        dasm_arg = "/* invalid-type */";
+                    }
+                    break;
+                  case Arg::Type::CSTRING:
+                    if (arg_value.type == ArgStackValue::Type::CSTRING) {
+                      dasm_arg = escape_string(arg_value.as_string);
+                    } else {
+                      if (fail_on_invalid) {
+                        throw std::runtime_error("incorrect argument data type (expected CSTRING)");
                       }
-                      break;
-                    case Arg::Type::LABEL16_SET:
-                    case Arg::Type::R_REG_SET:
-                    default:
-                      throw logic_error("set-type arg found on arg list");
-                  }
-
-                  if (!is_first_arg) {
-                    dasm_line += ", ";
-                  } else {
-                    is_first_arg = false;
-                  }
-                  dasm_line += dasm_arg;
+                      dasm_arg = "/* invalid-type */";
+                    }
+                    break;
+                  case Arg::Type::LABEL16_SET:
+                  case Arg::Type::R_REG_SET:
+                  default:
+                    throw logic_error("set-type arg found on arg list");
                 }
+
+                if (!is_first_arg) {
+                  dasm_line += ", ";
+                } else {
+                  is_first_arg = false;
+                }
+                dasm_line += dasm_arg;
               }
             }
           }
 
-          if (def->flags & F_ARGS) {
+          if (def->flags & (F_ARGS | F_CLEAR_ARGS)) {
             arg_stack_values.clear();
           }
         }
       } catch (const exception& e) {
+        if (fail_on_invalid) {
+          throw;
+        }
         dasm_line = std::format(".failed ({})", e.what());
       }
       phosg::strip_trailing_whitespace(dasm_line);
@@ -3558,225 +3858,166 @@ std::string disassemble_quest_script(
       if (reassembly_mode) {
         line_text = std::format("  {}", dasm_line);
       } else {
-        string hex_data = phosg::format_data_string(cmd_r.preadx(opcode_start_offset, cmd_r.where() - opcode_start_offset), nullptr, phosg::FormatDataFlags::HEX_ONLY);
+        size_t opcode_size = label_r.where() - opcode_start_offset;
+        string hex_data = phosg::format_data_string(label_r.preadx(opcode_start_offset, opcode_size), nullptr, phosg::FormatDataFlags::HEX_ONLY);
         if (hex_data.size() > 14) {
           hex_data.resize(12);
           hex_data += "...";
         }
         hex_data.resize(16, ' ');
-        line_text = std::format("  {:04X}  {}  {}", opcode_start_offset, hex_data, dasm_line);
+        line_text = std::format("  {:04X}  {}  {}", l->offset + opcode_start_offset, hex_data, dasm_line);
       }
-      dasm_lines.emplace(opcode_start_offset, DisassemblyLine(std::move(line_text), cmd_r.where()));
+      l->lines.emplace_back(std::move(line_text));
+    }
+  };
+
+  // In "parallel", iterate through all labels and process the queue of
+  // un-disassembled labels. The queue takes priority, since we know the
+  // intended data types of those labels. When the queue is empty, we resume
+  // sweeping the label table to disassemble any labels whose types we don't
+  // know, either as SCRIPT or DATA. If an unknown label successfully
+  // disassembles as SCRIPT, it may enqueue more labels, so we'll switch back
+  // to processing the queue. We only need to sweep for unknown labels once,
+  // since a label's type never becomes unknown once it's known.
+  auto unknown_label_it = offset_to_label.begin();
+  while (!pending_labels.empty() || (unknown_label_it != offset_to_label.end())) {
+    if (!pending_labels.empty()) {
+      auto [l, type] = pending_labels.front();
+      pending_labels.pop_front();
+
+      // Only disassemble if the data type has changed, and enforce a priority
+      // order for changing data types. The order is NONE < DATA < SCRIPT <
+      // (CSTRING and all struct types)
+      bool should_disassemble = false;
+      switch (type) {
+        case Arg::DataType::NONE:
+          throw std::logic_error("Cannot disassemble label with no data type");
+        case Arg::DataType::DATA:
+          should_disassemble = (l->type == Arg::DataType::NONE);
+          break;
+        case Arg::DataType::SCRIPT:
+          should_disassemble = (l->type == Arg::DataType::NONE) || (l->type == Arg::DataType::DATA);
+          break;
+        case Arg::DataType::CSTRING:
+        case Arg::DataType::PLAYER_STATS:
+        case Arg::DataType::PLAYER_VISUAL_CONFIG:
+        case Arg::DataType::RESIST_DATA:
+        case Arg::DataType::ATTACK_DATA:
+        case Arg::DataType::MOVEMENT_DATA:
+        case Arg::DataType::IMAGE_DATA:
+        case Arg::DataType::VECTOR4F_LIST:
+          should_disassemble = (l->type == Arg::DataType::NONE) || (l->type == Arg::DataType::DATA) || (l->type == Arg::DataType::SCRIPT);
+          break;
+      }
+      if (!should_disassemble) {
+        continue;
+      }
+
+      l->type = type;
+      l->lines.clear();
+      switch (type) {
+        case Arg::DataType::NONE:
+          throw std::logic_error("Cannot disassemble label with no data type");
+        case Arg::DataType::DATA:
+          disassemble_label_as_data(l);
+          break;
+        case Arg::DataType::CSTRING:
+          disassemble_label_as_cstring(l);
+          break;
+        case Arg::DataType::PLAYER_STATS:
+          disassemble_label_as_player_stats(l);
+          break;
+        case Arg::DataType::PLAYER_VISUAL_CONFIG:
+          disassemble_label_as_player_visual_config(l);
+          break;
+        case Arg::DataType::RESIST_DATA:
+          disassemble_label_as_resist_data(l);
+          break;
+        case Arg::DataType::ATTACK_DATA:
+          disassemble_label_as_attack_data(l);
+          break;
+        case Arg::DataType::MOVEMENT_DATA:
+          disassemble_label_as_movement_data(l);
+          break;
+        case Arg::DataType::IMAGE_DATA:
+          disassemble_label_as_image_data(l);
+          break;
+        case Arg::DataType::VECTOR4F_LIST:
+          disassemble_label_as_vector4f_list(l);
+          break;
+        case Arg::DataType::SCRIPT:
+          disassemble_label_as_script(l, false);
+          break;
+      }
+
+    } else { // unknown_label_it != offset_to_label.end()
+      auto [_, l] = *unknown_label_it;
+      if (l->type == Arg::DataType::NONE) {
+        l->lines.clear();
+        try {
+          disassemble_label_as_script(l, true);
+        } catch (const std::runtime_error& e) {
+          l->lines.clear();
+          l->lines.emplace_back(std::format("  // Could not disassemble as code ({})", e.what()));
+          disassemble_label_as_data(l);
+        }
+      }
+      unknown_label_it++;
     }
   }
 
-  auto label_it = offset_to_label.begin();
-  while (label_it != offset_to_label.end()) {
-    auto l = label_it->second;
-    label_it++;
-    size_t size = ((label_it == offset_to_label.end()) ? cmd_r.size() : label_it->second->offset) - l->offset;
-    if (size > 0) {
-      lines.emplace_back();
+  // Phase 5: Generate disassembly for all the label sections
+
+  for (const auto& [_, l] : offset_to_label) {
+    // Don't include __before__ in reassembly mode
+    if (reassembly_mode && (l->label_nums.empty())) {
+      continue;
     }
-    if (reassembly_mode) {
-      lines.emplace_back(std::format("{}@0x{:04X}:", l->name, l->label_index));
+
+    if (l->label_nums.empty()) {
+      lines.emplace_back("__before__:");
     } else {
-      lines.emplace_back(std::format("{}:", l->name));
-      if (l->references.size() == 1) {
-        lines.emplace_back(std::format("  // Referenced by instruction at {:04X}", *l->references.begin()));
-      } else if (!l->references.empty()) {
+      for (uint32_t label_num : l->label_nums) {
+        if (label_num == 0) {
+          lines.emplace_back("start:");
+        } else if (reassembly_mode) {
+          lines.emplace_back(std::format("label{:04X}@0x{:04X}:", label_num, label_num));
+        } else {
+          lines.emplace_back(std::format("label{:04X}:", label_num));
+        }
+      }
+    }
+
+    if (!reassembly_mode) {
+      // The reassembly-mode script doesn't have offsets, so these reference
+      // comments are only useful when it's off
+      if (l->script_refs.size() == 1) {
+        lines.emplace_back(std::format("  // Referenced by instruction at {:04X}", *l->script_refs.begin()));
+      } else if (!l->script_refs.empty()) {
         vector<string> tokens;
-        tokens.reserve(l->references.size());
-        for (size_t reference_offset : l->references) {
-          tokens.emplace_back(std::format("{:04X}", reference_offset));
+        tokens.reserve(l->script_refs.size());
+        for (size_t ref_offset : l->script_refs) {
+          tokens.emplace_back(std::format("{:04X}", ref_offset));
         }
         lines.emplace_back("  // Referenced by instructions at " + phosg::join(tokens, ", "));
       }
     }
 
-    if (l->type_flags == 0) {
-      lines.emplace_back(std::format("  // Could not determine data type; disassembling as code"));
-      l->add_data_type(Arg::DataType::SCRIPT);
+    for (const auto& obj_ref : l->object_refs) {
+      lines.emplace_back(std::format("  // Referenced by map object KS-{:02X}-{:03X} {}",
+          obj_ref.floor, obj_ref.set_index, obj_ref.obj_set->str()));
+    }
+    for (const auto& ene_ref : l->enemy_refs) {
+      lines.emplace_back(std::format("  // Referenced by map enemy ES-{:02X}-{:03X} {}",
+          ene_ref.floor, ene_ref.set_index, ene_ref.ene_set->str()));
     }
 
-    auto add_disassembly_lines = [&](size_t start_offset, size_t size) -> void {
-      for (size_t z = start_offset; z < start_offset + size;) {
-        const auto& l = dasm_lines.at(z);
-        lines.emplace_back(l.line);
-        if (l.next_offset <= z) {
-          throw logic_error("line points backward or to itself");
-        }
-        z = l.next_offset;
-      }
-    };
-
-    // Print data interpretations of the label (if any)
-    if (reassembly_mode) {
-      if (l->has_data_type(Arg::DataType::SCRIPT)) {
-        add_disassembly_lines(l->offset, size);
-      } else {
-        lines.emplace_back(".data " + phosg::format_data_string(cmd_r.pgetv(l->offset, size), size));
-      }
-
-    } else {
-      auto print_as_struct = [&]<Arg::DataType data_type, typename StructT>(function<void(const StructT&)> print_fn) {
-        if (l->has_data_type(data_type)) {
-          if (size >= sizeof(StructT)) {
-            print_fn(cmd_r.pget<StructT>(l->offset));
-            if (size > sizeof(StructT)) {
-              size_t struct_end_offset = l->offset + sizeof(StructT);
-              size_t remaining_size = size - sizeof(StructT);
-              lines.emplace_back("  // Extra data after structure");
-              lines.emplace_back(format_and_indent_data(cmd_r.pgetv(struct_end_offset, remaining_size), remaining_size, struct_end_offset));
-            }
-          } else {
-            lines.emplace_back(std::format("  // As raw data (0x{:X} bytes; too small for referenced type)", size));
-            lines.emplace_back(format_and_indent_data(cmd_r.pgetv(l->offset, size), size, l->offset));
-          }
-        }
-      };
-
-      if (l->has_data_type(Arg::DataType::DATA)) {
-        lines.emplace_back(std::format("  // As raw data (0x{:X} bytes)", size));
-        lines.emplace_back(format_and_indent_data(cmd_r.pgetv(l->offset, size), size, l->offset));
-      }
-      if (l->has_data_type(Arg::DataType::CSTRING)) {
-        lines.emplace_back(std::format("  // As C string (0x{:X} bytes)", size));
-        string str_data = cmd_r.pread(l->offset, size);
-        phosg::strip_trailing_zeroes(str_data);
-        string formatted;
-        if (use_wstrs) {
-          if (str_data.size() & 1) {
-            str_data.push_back(0);
-          }
-          formatted = escape_string(str_data, TextEncoding::UTF16);
-        } else {
-          formatted = escape_string(str_data, encoding_for_language(language));
-        }
-        lines.emplace_back(std::format("  {:04X}  {}", l->offset, formatted));
-      }
-      print_as_struct.template operator()<Arg::DataType::PLAYER_VISUAL_CONFIG, PlayerVisualConfig>([&](const PlayerVisualConfig& visual) -> void {
-        lines.emplace_back("  // As PlayerVisualConfig");
-        string name = escape_string(visual.name.decode(language));
-        lines.emplace_back(std::format("  {:04X}  name              {}", l->offset + offsetof(PlayerVisualConfig, name), name));
-        lines.emplace_back(std::format("  {:04X}  name_color        {:08X}", l->offset + offsetof(PlayerVisualConfig, name_color), visual.name_color));
-        string a2_str = phosg::format_data_string(visual.unknown_a2.data(), sizeof(visual.unknown_a2));
-        lines.emplace_back(std::format("  {:04X}  a2                {}", l->offset + offsetof(PlayerVisualConfig, unknown_a2), a2_str));
-        lines.emplace_back(std::format("  {:04X}  extra_model       {:02X}", l->offset + offsetof(PlayerVisualConfig, extra_model), visual.extra_model));
-        string unused = phosg::format_data_string(visual.unused.data(), visual.unused.bytes());
-        lines.emplace_back(std::format("  {:04X}  unused            {}", l->offset + offsetof(PlayerVisualConfig, unused), unused));
-        lines.emplace_back(std::format("  {:04X}  name_color_cs     {:08X}", l->offset + offsetof(PlayerVisualConfig, name_color_checksum), visual.name_color_checksum));
-        lines.emplace_back(std::format("  {:04X}  section_id        {:02X} ({})", l->offset + offsetof(PlayerVisualConfig, section_id), visual.section_id, name_for_section_id(visual.section_id)));
-        lines.emplace_back(std::format("  {:04X}  char_class        {:02X} ({})", l->offset + offsetof(PlayerVisualConfig, char_class), visual.char_class, name_for_char_class(visual.char_class)));
-        lines.emplace_back(std::format("  {:04X}  validation_flags  {:02X}", l->offset + offsetof(PlayerVisualConfig, validation_flags), visual.validation_flags));
-        lines.emplace_back(std::format("  {:04X}  version           {:02X}", l->offset + offsetof(PlayerVisualConfig, version), visual.version));
-        lines.emplace_back(std::format("  {:04X}  class_flags       {:08X}", l->offset + offsetof(PlayerVisualConfig, class_flags), visual.class_flags));
-        lines.emplace_back(std::format("  {:04X}  costume           {:04X}", l->offset + offsetof(PlayerVisualConfig, costume), visual.costume));
-        lines.emplace_back(std::format("  {:04X}  skin              {:04X}", l->offset + offsetof(PlayerVisualConfig, skin), visual.skin));
-        lines.emplace_back(std::format("  {:04X}  face              {:04X}", l->offset + offsetof(PlayerVisualConfig, face), visual.face));
-        lines.emplace_back(std::format("  {:04X}  head              {:04X}", l->offset + offsetof(PlayerVisualConfig, head), visual.head));
-        lines.emplace_back(std::format("  {:04X}  hair              {:04X}", l->offset + offsetof(PlayerVisualConfig, hair), visual.hair));
-        lines.emplace_back(std::format("  {:04X}  hair_color        {:04X}, {:04X}, {:04X}", l->offset + offsetof(PlayerVisualConfig, hair_r), visual.hair_r, visual.hair_g, visual.hair_b));
-        lines.emplace_back(std::format("  {:04X}  proportion        {:g}, {:g}", l->offset + offsetof(PlayerVisualConfig, proportion_x), visual.proportion_x, visual.proportion_y));
-      });
-      print_as_struct.template operator()<Arg::DataType::PLAYER_STATS, PlayerStats>([&](const PlayerStats& stats) -> void {
-        lines.emplace_back("  // As PlayerStats");
-        lines.emplace_back(std::format("  {:04X}  atp               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.atp), stats.char_stats.atp, stats.char_stats.atp));
-        lines.emplace_back(std::format("  {:04X}  mst               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.mst), stats.char_stats.mst, stats.char_stats.mst));
-        lines.emplace_back(std::format("  {:04X}  evp               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.evp), stats.char_stats.evp, stats.char_stats.evp));
-        lines.emplace_back(std::format("  {:04X}  hp                {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.hp), stats.char_stats.hp, stats.char_stats.hp));
-        lines.emplace_back(std::format("  {:04X}  dfp               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.dfp), stats.char_stats.dfp, stats.char_stats.dfp));
-        lines.emplace_back(std::format("  {:04X}  ata               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.ata), stats.char_stats.ata, stats.char_stats.ata));
-        lines.emplace_back(std::format("  {:04X}  lck               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.lck), stats.char_stats.lck, stats.char_stats.lck));
-        lines.emplace_back(std::format("  {:04X}  esp               {:04X} /* {} */", l->offset + offsetof(PlayerStats, esp), stats.esp, stats.esp));
-        lines.emplace_back(std::format("  {:04X}  height            {:08X} /* {:g} */", l->offset + offsetof(PlayerStats, height), stats.height.load_raw(), stats.height));
-        lines.emplace_back(std::format("  {:04X}  a3                {:08X} /* {:g} */", l->offset + offsetof(PlayerStats, unknown_a3), stats.unknown_a3.load_raw(), stats.unknown_a3));
-        lines.emplace_back(std::format("  {:04X}  level             {:08X} /* level {} */", l->offset + offsetof(PlayerStats, level), stats.level, stats.level + 1));
-        lines.emplace_back(std::format("  {:04X}  experience        {:08X} /* {} */", l->offset + offsetof(PlayerStats, experience), stats.experience, stats.experience));
-        lines.emplace_back(std::format("  {:04X}  meseta            {:08X} /* {} */", l->offset + offsetof(PlayerStats, meseta), stats.meseta, stats.meseta));
-      });
-      print_as_struct.template operator()<Arg::DataType::RESIST_DATA, ResistData>([&](const ResistData& resist) -> void {
-        lines.emplace_back("  // As ResistData");
-        lines.emplace_back(std::format("  {:04X}  evp_bonus         {:04X} /* {} */", l->offset + offsetof(ResistData, evp_bonus), resist.evp_bonus, resist.evp_bonus));
-        lines.emplace_back(std::format("  {:04X}  efr               {:04X} /* {} */", l->offset + offsetof(ResistData, efr), resist.efr, resist.efr));
-        lines.emplace_back(std::format("  {:04X}  eic               {:04X} /* {} */", l->offset + offsetof(ResistData, eic), resist.eic, resist.eic));
-        lines.emplace_back(std::format("  {:04X}  eth               {:04X} /* {} */", l->offset + offsetof(ResistData, eth), resist.eth, resist.eth));
-        lines.emplace_back(std::format("  {:04X}  elt               {:04X} /* {} */", l->offset + offsetof(ResistData, elt), resist.elt, resist.elt));
-        lines.emplace_back(std::format("  {:04X}  edk               {:04X} /* {} */", l->offset + offsetof(ResistData, edk), resist.edk, resist.edk));
-        lines.emplace_back(std::format("  {:04X}  a6                {:08X} /* {} */", l->offset + offsetof(ResistData, unknown_a6), resist.unknown_a6, resist.unknown_a6));
-        lines.emplace_back(std::format("  {:04X}  a7                {:08X} /* {} */", l->offset + offsetof(ResistData, unknown_a7), resist.unknown_a7, resist.unknown_a7));
-        lines.emplace_back(std::format("  {:04X}  a8                {:08X} /* {} */", l->offset + offsetof(ResistData, unknown_a8), resist.unknown_a8, resist.unknown_a8));
-        lines.emplace_back(std::format("  {:04X}  a9                {:08X} /* {} */", l->offset + offsetof(ResistData, unknown_a9), resist.unknown_a9, resist.unknown_a9));
-        lines.emplace_back(std::format("  {:04X}  dfp_bonus         {:08X} /* {} */", l->offset + offsetof(ResistData, dfp_bonus), resist.dfp_bonus, resist.dfp_bonus));
-      });
-      print_as_struct.template operator()<Arg::DataType::ATTACK_DATA, AttackData>([&](const AttackData& attack) -> void {
-        lines.emplace_back("  // As AttackData");
-        lines.emplace_back(std::format("  {:04X}  a1                {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a1), attack.unknown_a1, attack.unknown_a1));
-        lines.emplace_back(std::format("  {:04X}  atp               {:04X} /* {} */", l->offset + offsetof(AttackData, atp), attack.atp, attack.atp));
-        lines.emplace_back(std::format("  {:04X}  ata_bonus         {:04X} /* {} */", l->offset + offsetof(AttackData, ata_bonus), attack.ata_bonus, attack.ata_bonus));
-        lines.emplace_back(std::format("  {:04X}  a4                {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a4), attack.unknown_a4, attack.unknown_a4));
-        lines.emplace_back(std::format("  {:04X}  distance_x        {:08X} /* {:g} */", l->offset + offsetof(AttackData, distance_x), attack.distance_x.load_raw(), attack.distance_x));
-        lines.emplace_back(std::format("  {:04X}  angle_x           {:08X} /* {}/65536 */", l->offset + offsetof(AttackData, angle_x), attack.angle_x.load_raw(), attack.angle_x));
-        lines.emplace_back(std::format("  {:04X}  distance_y        {:08X} /* {:g} */", l->offset + offsetof(AttackData, distance_y), attack.distance_y.load_raw(), attack.distance_y));
-        lines.emplace_back(std::format("  {:04X}  a8                {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a8), attack.unknown_a8, attack.unknown_a8));
-        lines.emplace_back(std::format("  {:04X}  a9                {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a9), attack.unknown_a9, attack.unknown_a9));
-        lines.emplace_back(std::format("  {:04X}  a10               {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a10), attack.unknown_a10, attack.unknown_a10));
-        lines.emplace_back(std::format("  {:04X}  a11               {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a11), attack.unknown_a11, attack.unknown_a11));
-        lines.emplace_back(std::format("  {:04X}  a12               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a12), attack.unknown_a12, attack.unknown_a12));
-        lines.emplace_back(std::format("  {:04X}  a13               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a13), attack.unknown_a13, attack.unknown_a13));
-        lines.emplace_back(std::format("  {:04X}  a14               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a14), attack.unknown_a14, attack.unknown_a14));
-        lines.emplace_back(std::format("  {:04X}  a15               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a15), attack.unknown_a15, attack.unknown_a15));
-        lines.emplace_back(std::format("  {:04X}  a16               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a16), attack.unknown_a16, attack.unknown_a16));
-      });
-      print_as_struct.template operator()<Arg::DataType::MOVEMENT_DATA, MovementData>([&](const MovementData& movement) -> void {
-        lines.emplace_back("  // As MovementData");
-        lines.emplace_back(std::format("  {:04X}  idle_move_speed   {:08X} /* {:g} */", l->offset + offsetof(MovementData, idle_move_speed), movement.idle_move_speed.load_raw(), movement.idle_move_speed));
-        lines.emplace_back(std::format("  {:04X}  idle_anim_speed   {:08X} /* {:g} */", l->offset + offsetof(MovementData, idle_animation_speed), movement.idle_animation_speed.load_raw(), movement.idle_animation_speed));
-        lines.emplace_back(std::format("  {:04X}  move_speed        {:08X} /* {:g} */", l->offset + offsetof(MovementData, move_speed), movement.move_speed.load_raw(), movement.move_speed));
-        lines.emplace_back(std::format("  {:04X}  animation_speed   {:08X} /* {:g} */", l->offset + offsetof(MovementData, animation_speed), movement.animation_speed.load_raw(), movement.animation_speed));
-        lines.emplace_back(std::format("  {:04X}  a1                {:08X} /* {:g} */", l->offset + offsetof(MovementData, unknown_a1), movement.unknown_a1.load_raw(), movement.unknown_a1));
-        lines.emplace_back(std::format("  {:04X}  a2                {:08X} /* {:g} */", l->offset + offsetof(MovementData, unknown_a2), movement.unknown_a2.load_raw(), movement.unknown_a2));
-        lines.emplace_back(std::format("  {:04X}  a3                {:08X} /* {} */", l->offset + offsetof(MovementData, unknown_a3), movement.unknown_a3, movement.unknown_a3));
-        lines.emplace_back(std::format("  {:04X}  a4                {:08X} /* {} */", l->offset + offsetof(MovementData, unknown_a4), movement.unknown_a4, movement.unknown_a4));
-        lines.emplace_back(std::format("  {:04X}  a5                {:08X} /* {} */", l->offset + offsetof(MovementData, unknown_a5), movement.unknown_a5, movement.unknown_a5));
-        lines.emplace_back(std::format("  {:04X}  a6                {:08X} /* {} */", l->offset + offsetof(MovementData, unknown_a6), movement.unknown_a6, movement.unknown_a6));
-        lines.emplace_back(std::format("  {:04X}  a7                {:08X} /* {} */", l->offset + offsetof(MovementData, unknown_a7), movement.unknown_a7, movement.unknown_a7));
-        lines.emplace_back(std::format("  {:04X}  a8                {:08X} /* {} */", l->offset + offsetof(MovementData, unknown_a8), movement.unknown_a8, movement.unknown_a8));
-      });
-      if (l->has_data_type(Arg::DataType::IMAGE_DATA)) {
-        const void* data = cmd_r.pgetv(l->offset, size);
-        auto decompressed = prs_decompress_with_meta(data, size);
-        lines.emplace_back(std::format("  // As decompressed image data (0x{:X} bytes)", decompressed.data.size()));
-        lines.emplace_back(format_and_indent_data(decompressed.data.data(), decompressed.data.size(), 0));
-        if (decompressed.input_bytes_used < size) {
-          size_t compressed_end_offset = l->offset + decompressed.input_bytes_used;
-          size_t remaining_size = size - decompressed.input_bytes_used;
-          lines.emplace_back("  // Extra data after compressed data");
-          lines.emplace_back(format_and_indent_data(cmd_r.pgetv(compressed_end_offset, remaining_size), remaining_size, compressed_end_offset));
-        }
-      }
-      if (l->has_data_type(Arg::DataType::BEZIER_CONTROL_POINT_DATA)) {
-        phosg::StringReader r = cmd_r.sub(l->offset, size);
-        lines.emplace_back("  // As VectorXYZTF");
-        while (r.remaining() >= sizeof(VectorXYZTF)) {
-          size_t offset = l->offset + r.where();
-          const auto& e = r.get<VectorXYZTF>();
-          lines.emplace_back(std::format("  {:04X}  vector       x={:g}, y={:g}, z={:g}, t={:g}", offset, e.x, e.y, e.z, e.t));
-        }
-        if (r.remaining() > 0) {
-          size_t struct_end_offset = l->offset + r.where();
-          size_t remaining_size = r.remaining();
-          lines.emplace_back("  // Extra data after structures");
-          lines.emplace_back(format_and_indent_data(r.getv(remaining_size), remaining_size, struct_end_offset));
-        }
-      }
-      if (l->has_data_type(Arg::DataType::SCRIPT)) {
-        add_disassembly_lines(l->offset, size);
-      }
+    for (auto& line : l->lines) {
+      lines.emplace_back(std::move(line));
     }
+    lines.emplace_back();
   }
 
-  lines.emplace_back(); // Add a \n on the end
   return phosg::join(lines, "\n");
 }
 
@@ -4316,6 +4557,15 @@ AssembledQuestScript assemble_quest_script(
       if (line.text[0] == '.') {
         if (line.text.starts_with(".data ")) {
           code_w.write(phosg::parse_data_string(line.text.substr(6)));
+        } else if (line.text.starts_with(".cstr ")) {
+          string data = phosg::parse_data_string(line.text.substr(6));
+          if (uses_utf16(quest_version)) {
+            code_w.write(tt_utf8_to_utf16(data));
+            code_w.put_u16l(0);
+          } else {
+            code_w.write((quest_language == Language::JAPANESE) ? tt_utf8_to_sega_sjis(text) : tt_utf8_to_8859(text));
+            code_w.put_u8(0);
+          }
         } else if (line.text.starts_with(".zero ")) {
           size_t size = stoull(line.text.substr(6), nullptr, 0);
           code_w.extend_by(size, 0x00);
@@ -4634,22 +4884,22 @@ AssembledQuestScript assemble_quest_script(
     }
   }
 
-  // Generate function table
-  ssize_t function_table_size = labels_by_index.rbegin()->first + 1;
-  vector<le_uint32_t> function_table;
-  function_table.reserve(function_table_size);
+  // Generate label table
+  ssize_t label_table_size = labels_by_index.rbegin()->first + 1;
+  vector<le_uint32_t> label_table;
+  label_table.reserve(label_table_size);
   {
     auto it = labels_by_index.begin();
-    for (ssize_t z = 0; z < function_table_size; z++) {
+    for (ssize_t z = 0; z < label_table_size; z++) {
       if (it == labels_by_index.end()) {
         throw logic_error("function table size exceeds maximum function ID");
       } else if (it->first > z) {
-        function_table.emplace_back(0xFFFFFFFF);
+        label_table.emplace_back(0xFFFFFFFF);
       } else if (it->first == z) {
         if (it->second->offset < 0) {
           throw runtime_error("label " + it->second->name + " does not have a valid offset");
         }
-        function_table.emplace_back(it->second->offset);
+        label_table.emplace_back(it->second->offset);
         it++;
       } else if (it->first < z) {
         throw logic_error("missed label " + it->second->name + " when compiling function table");
@@ -4663,8 +4913,8 @@ AssembledQuestScript assemble_quest_script(
     case Version::DC_NTE: {
       PSOQuestHeaderDCNTE header;
       header.code_offset = sizeof(header);
-      header.function_table_offset = sizeof(header) + code_w.size();
-      header.size = header.function_table_offset + function_table.size() * sizeof(function_table[0]);
+      header.label_table_offset = sizeof(header) + code_w.size();
+      header.size = header.label_table_offset + label_table.size() * sizeof(label_table[0]);
       header.name.encode(quest_name, Language::JAPANESE);
       w.put(header);
       break;
@@ -4674,8 +4924,8 @@ AssembledQuestScript assemble_quest_script(
     case Version::DC_V2: {
       PSOQuestHeaderDC header;
       header.code_offset = sizeof(header);
-      header.function_table_offset = sizeof(header) + code_w.size();
-      header.size = header.function_table_offset + function_table.size() * sizeof(function_table[0]);
+      header.label_table_offset = sizeof(header) + code_w.size();
+      header.size = header.label_table_offset + label_table.size() * sizeof(label_table[0]);
       header.language = quest_language;
       header.quest_number = quest_num;
       header.name.encode(quest_name, quest_language);
@@ -4688,8 +4938,8 @@ AssembledQuestScript assemble_quest_script(
     case Version::PC_V2: {
       PSOQuestHeaderPC header;
       header.code_offset = sizeof(header);
-      header.function_table_offset = sizeof(header) + code_w.size();
-      header.size = header.function_table_offset + function_table.size() * sizeof(function_table[0]);
+      header.label_table_offset = sizeof(header) + code_w.size();
+      header.size = header.label_table_offset + label_table.size() * sizeof(label_table[0]);
       header.language = quest_language;
       header.quest_number = quest_num;
       header.name.encode(quest_name, quest_language);
@@ -4705,8 +4955,8 @@ AssembledQuestScript assemble_quest_script(
     case Version::XB_V3: {
       PSOQuestHeaderGC header;
       header.code_offset = sizeof(header);
-      header.function_table_offset = sizeof(header) + code_w.size();
-      header.size = header.function_table_offset + function_table.size() * sizeof(function_table[0]);
+      header.label_table_offset = sizeof(header) + code_w.size();
+      header.size = header.label_table_offset + label_table.size() * sizeof(label_table[0]);
       header.language = quest_language;
       header.quest_number = quest_num;
       header.name.encode(quest_name, quest_language);
@@ -4718,8 +4968,8 @@ AssembledQuestScript assemble_quest_script(
     case Version::BB_V4: {
       PSOQuestHeaderBB header;
       header.code_offset = sizeof(header);
-      header.function_table_offset = sizeof(header) + code_w.size();
-      header.size = header.function_table_offset + function_table.size() * sizeof(function_table[0]);
+      header.label_table_offset = sizeof(header) + code_w.size();
+      header.size = header.label_table_offset + label_table.size() * sizeof(label_table[0]);
       header.quest_number = quest_num;
       if (quest_episode == Episode::EP4) {
         header.episode = 2;
@@ -4733,7 +4983,7 @@ AssembledQuestScript assemble_quest_script(
       header.name.encode(quest_name, quest_language);
       header.short_description.encode(quest_short_desc, quest_language);
       header.long_description.encode(quest_long_desc, quest_language);
-      header.unknown_a5.clear(0xFF);
+      header.unknown_a5.clear(0);
       for (size_t z = 0; z < create_item_mask_entries.size(); z++) {
         header.create_item_mask_entries[z] = create_item_mask_entries[z];
       }
@@ -4744,7 +4994,7 @@ AssembledQuestScript assemble_quest_script(
       throw logic_error("invalid quest version");
   }
   w.write(code_w.str());
-  w.write(function_table.data(), function_table.size() * sizeof(function_table[0]));
+  w.write(label_table.data(), label_table.size() * sizeof(label_table[0]));
   return AssembledQuestScript{
       .data = std::move(w.str()),
       .quest_number = quest_num,
@@ -4763,7 +5013,7 @@ void populate_quest_metadata_from_script(
     QuestMetadata& meta, const void* data, size_t size, Version version, Language language) {
   phosg::StringReader r(data, size);
   uint32_t code_offset = r.size();
-  uint32_t function_table_offset = r.size();
+  uint32_t label_table_offset = r.size();
   switch (version) {
     case Version::DC_NTE: {
       const auto& header = r.get<PSOQuestHeaderDCNTE>();
@@ -4774,7 +5024,7 @@ void populate_quest_metadata_from_script(
         meta.quest_number = phosg::fnv1a32(meta.name);
       }
       code_offset = header.code_offset;
-      function_table_offset = header.function_table_offset;
+      label_table_offset = header.label_table_offset;
       break;
     }
     case Version::DC_11_2000: {
@@ -4788,7 +5038,7 @@ void populate_quest_metadata_from_script(
         meta.quest_number = phosg::fnv1a32(meta.name);
       }
       code_offset = header.code_offset;
-      function_table_offset = header.function_table_offset;
+      label_table_offset = header.label_table_offset;
       break;
     }
     case Version::DC_V1:
@@ -4803,7 +5053,7 @@ void populate_quest_metadata_from_script(
         meta.quest_number = header.quest_number;
       }
       code_offset = header.code_offset;
-      function_table_offset = header.function_table_offset;
+      label_table_offset = header.label_table_offset;
       break;
     }
     case Version::PC_NTE:
@@ -4818,7 +5068,7 @@ void populate_quest_metadata_from_script(
       meta.short_description = header.short_description.decode(language);
       meta.long_description = header.long_description.decode(language);
       code_offset = header.code_offset;
-      function_table_offset = header.function_table_offset;
+      label_table_offset = header.label_table_offset;
       break;
     }
     case Version::GC_NTE:
@@ -4840,7 +5090,7 @@ void populate_quest_metadata_from_script(
       meta.short_description = header.short_description.decode(language);
       meta.long_description = header.long_description.decode(language);
       code_offset = header.code_offset;
-      function_table_offset = header.function_table_offset;
+      label_table_offset = header.label_table_offset;
       break;
     }
     case Version::BB_V4: {
@@ -4858,7 +5108,7 @@ void populate_quest_metadata_from_script(
       // the full header if the code and function table offsets don't point to
       // space within it
       if ((header.code_offset >= sizeof(PSOQuestHeaderBB)) &&
-          (header.function_table_offset >= sizeof(PSOQuestHeaderBB))) {
+          (header.label_table_offset >= sizeof(PSOQuestHeaderBB))) {
         r.go(0);
         const auto& header = r.get<PSOQuestHeaderBB>();
         for (size_t z = 0; z < header.create_item_mask_entries.size(); z++) {
@@ -4870,7 +5120,7 @@ void populate_quest_metadata_from_script(
         }
       }
       code_offset = header.code_offset;
-      function_table_offset = header.function_table_offset;
+      label_table_offset = header.label_table_offset;
       break;
     }
     default:
@@ -4937,7 +5187,7 @@ void populate_quest_metadata_from_script(
   };
 
   auto get_label_offset = [&](size_t label) -> uint32_t {
-    return code_offset + r.pget_u32l(function_table_offset + 4 * label);
+    return code_offset + r.pget_u32l(label_table_offset + 4 * label);
   };
 
   // The set_episode opcode and floor remapping opcodes should always be in

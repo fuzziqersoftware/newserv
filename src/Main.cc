@@ -1595,7 +1595,7 @@ Action a_check_quest_opcodes(
     });
 Action a_disassemble_quest_script(
     "disassemble-quest-script", "\
-  disassemble-quest-script [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  disassemble-quest-script [OPTIONS] [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Disassemble the input quest script (.bin file) into a text representation\n\
     of the commands and metadata it contains. Specify the quest\'s game version\n\
     with one of the --dc-nte, --dc-v1, --dc-v2, --pc, --gc-nte, --gc, --gc-ep3,\n\
@@ -1603,17 +1603,25 @@ Action a_disassemble_quest_script(
     default; the --qedit option will result in names matching those used by\n\
     QEdit. If you intend to reassemble the script, after editing it, use the\n\
     --reassembly option to add explicit label numbers and remove offsets and\n\
-    data in code sections.\n",
+    data in code sections. To include script references from the map, use the\n\
+    --map-file=FILENAME option.",
     +[](phosg::Arguments& args) {
       string data = read_input_data(args);
       auto version = get_cli_version(args);
       if (!args.get<bool>("decompressed")) {
         data = prs_decompress(data);
       }
-      Language override_language = static_cast<Language>(args.get<uint8_t>("language", 0xFF));
+      shared_ptr<MapFile> map_file;
+      string map_filename = args.get<string>("map-file", false);
+      if (!map_filename.empty()) {
+        auto map_data = make_shared<string>(prs_decompress(phosg::load_file(map_filename)));
+        map_file = make_shared<MapFile>(map_data);
+      }
+      Language language = static_cast<Language>(args.get<uint8_t>("language", 0xFF));
       bool reassembly_mode = args.get<bool>("reassembly");
       bool use_qedit_names = args.get<bool>("qedit");
-      string result = disassemble_quest_script(data.data(), data.size(), version, override_language, reassembly_mode, use_qedit_names);
+      string result = disassemble_quest_script(
+          data.data(), data.size(), version, language, map_file, reassembly_mode, use_qedit_names);
       write_output_data(args, result.data(), result.size(), "txt");
     });
 Action a_disassemble_quest_map(
