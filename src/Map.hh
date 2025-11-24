@@ -223,6 +223,10 @@ public:
   } __packed_ws__(EnemySetEntry, 0x48);
 
   struct EventsSectionHeader { // Section type 3 (EVENTS)
+    // The events section has three zones: the header (this structure), the
+    // event entries, and the action stream. The header specifies where to find
+    // each one in the section, and how many entries there are. The offsets
+    // here are relative to the beginning of the header.
     /* 00 */ le_uint32_t action_stream_offset;
     /* 04 */ le_uint32_t entries_offset;
     /* 08 */ le_uint32_t entry_count;
@@ -235,17 +239,64 @@ public:
   } __packed_ws__(EventsSectionHeader, 0x10);
 
   struct Event1Entry { // Section type 3 (EVENTS) if format == 0
+    // A wave event consists of an event (this struct) and an action stream,
+    // which is a short script that runs when all enemies in the wave are
+    // killed. Generally, events work like this:
+    //   1. The event is triggered (e.g. via a quest script or trigger object).
+    //      This sets flag 0004 on the wave event.
+    //   2. The client constructs a TSetEvtDestroy object, which despite its
+    //      name, is also responsible for constructing enemies. This sets flag
+    //      0002 on the wave event. This object waits for the delay specified
+    //      in this structure (in frames), then constructs the wave's enemies.
+    //   3. The player kills all the enemies.
+    //   4. The TSetEvtDestroy object sets flag 0010 on the event.
+    //   5. The TSetEvtDestroy object sets flag 0008 on the event and runs the
+    //      post-wave actions. (This happens one frame after the above.) See
+    //      the implementation of MapFile::disassemble_action_stream for
+    //      details on the format of post-wave actions. It then clears flag
+    //      0004 (but not 0002).
+
+    // The event ID identifies this event on the current floor. It is not
+    // required that all wave events have unique IDs; if multiple events have
+    // the same ID, they will all trigger at the same time when any one of them
+    // is triggered (since wave events can only be triggered by ID).
     /* 00 */ le_uint32_t event_id = 0;
-    // Bits in flags:
-    //   0004 = is active
+
+    // The flags field specifies the state of the event. This field is synced
+    // to a joining player as part of the 6x6E command during the game loading
+    // sequence. Known bits:
+    //   0002 = wave object constructor has been called (this flag is not
+    //          synced via 6x6E)
+    //   0004 = is active (has been triggered)
     //   0008 = post-wave actions have been run
     //   0010 = all enemies killed
-    /* 04 */ le_uint16_t flags = 0; // Used by PSO at runtime, unused in DAT file
-    /* 06 */ le_uint16_t event_type = 0;
+    /* 04 */ le_uint16_t flags = 0; // Used by PSO at runtime, unused in file
+
+    // It seems Sega originally wanted to support multiple types of events, and
+    // the event_type field controls which constructor is called when the event
+    // is triggered by a 6x67 command. It seems they never actually used this
+    // though; there are only two valid values: 0 makes the event do nothing
+    // (no object is constructed at all) and 1 uses the normal control object
+    // (TSetEvtDestroy). There is no bounds check here, so any other value
+    // causes undefined behavior.
+    /* 06 */ le_uint16_t event_type = 1;
+
+    // The room and wave_number fields specify which enemies should be
+    // constructed when this event triggers. All enemies whose room and
+    // wave_number fields match these two fields are constructed at the same
+    // time when the event triggers (or after the delay below).
     /* 08 */ le_uint16_t room = 0;
     /* 0A */ le_uint16_t wave_number = 0;
+
+    // The delay field specified how long (in frames) to wait after the event's
+    // trigger time before constructing all the enemies.
     /* 0C */ le_uint32_t delay = 0;
+
+    // This field specifies where in the action stream data to start running
+    // commands for this event, when all enemies are defeated. This is relative
+    // to the beginning of the action stream, not the events section header.
     /* 10 */ le_uint32_t action_stream_offset = 0;
+
     /* 14 */
 
     uint64_t semantic_hash(uint8_t floor) const;
