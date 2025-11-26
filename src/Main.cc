@@ -1692,10 +1692,11 @@ Action a_disassemble_set_data_table(
 
 Action a_assemble_quest_script(
     "assemble-quest-script", "\
-  assemble-quest-script [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+  assemble-quest-script [OPTIONS] [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Assemble the input quest script (.txt file) into a compressed .bin file\n\
     usable as an online quest script. If --decompressed is given, produces an\n\
-    uncompressed .bind file instead.\n",
+    uncompressed .bind file instead. If --disable-strict is given, allows some\n\
+    invalid behaviors (e.g. calling an undefined label by number).",
     +[](phosg::Arguments& args) {
       string text = read_input_data(args);
 
@@ -1707,7 +1708,8 @@ Action a_assemble_quest_script(
       auto result = assemble_quest_script(
           text,
           {include_dir, "system/quests/includes"},
-          {include_dir, "system/quests/includes", "system/client-functions/System"});
+          {include_dir, "system/quests/includes", "system/client-functions/System"},
+          !args.get<bool>("disable-strict"));
       string result_data = std::move(result.data);
       bool compress = !args.get<bool>("decompressed");
       if (compress) {
@@ -3133,6 +3135,87 @@ Action a_check_quests(
       s->load_maps();
       s->load_quest_index(true);
       phosg::fwrite_fmt(stdout, "All quests indexed\n");
+    });
+
+Action a_check_quest_reassembly(
+    "check-quest-reassembly", nullptr,
+    +[](phosg::Arguments& args) {
+      auto s = make_shared<ServerState>(get_config_filename(args));
+      s->is_debug = true;
+      s->load_config_early();
+      s->clear_file_caches();
+      s->load_patch_indexes();
+      s->load_set_data_tables();
+      s->load_maps();
+      s->load_quest_index(true);
+
+      for (const auto& [_, q] : s->quest_index->quests_by_number) {
+        for (const auto& [_, vq] : q->versions) {
+          auto decompressed_bin = prs_decompress(*vq->bin_contents);
+          auto disassembled = disassemble_quest_script(decompressed_bin.data(), decompressed_bin.size(), vq->version, vq->language, vq->map_file, false, false);
+          auto reassembly = disassemble_quest_script(decompressed_bin.data(), decompressed_bin.size(), vq->version, vq->language, vq->map_file, true, false);
+          string include_dir = phosg::dirname(vq->bin_filename());
+          AssembledQuestScript assembled;
+          try {
+            assembled = assemble_quest_script(
+                reassembly,
+                {"system/quests/includes"},
+                {"system/quests/includes", "system/client-functions/System"},
+                false);
+            if (assembled.data != decompressed_bin) {
+              throw std::runtime_error("Reassembled quest script does not match original");
+            }
+            if (assembled.quest_number != vq->meta.quest_number) {
+              throw std::runtime_error(std::format("Reassembled quest number {} does not match original ({})",
+                  assembled.quest_number, vq->meta.quest_number));
+            }
+            if (assembled.version != vq->version) {
+              throw std::runtime_error(std::format("Reassembled quest version {} does not match original ({})",
+                  phosg::name_for_enum(assembled.version), phosg::name_for_enum(vq->version)));
+            }
+            if (assembled.language != vq->language) {
+              throw std::runtime_error(std::format("Reassembled quest language {} does not match original ({})",
+                  name_for_language(assembled.language), name_for_language(vq->language)));
+            }
+            if (assembled.episode != vq->meta.episode) {
+              throw std::runtime_error(std::format("Reassembled quest episode {} does not match original ({})",
+                  name_for_episode(assembled.episode), name_for_episode(vq->meta.episode)));
+            }
+            if (assembled.joinable != vq->meta.joinable) {
+              throw std::runtime_error(std::format("Reassembled quest joinable {} does not match original ({})",
+                  assembled.joinable, vq->meta.joinable));
+            }
+            if (assembled.max_players != vq->meta.max_players) {
+              throw std::runtime_error(std::format("Reassembled quest max_players {} does not match original ({})",
+                  assembled.max_players, vq->meta.max_players));
+            }
+            if (assembled.name != vq->meta.name) {
+              throw std::runtime_error(std::format("Reassembled quest name \"{}\" does not match original (\"{}\")",
+                  assembled.name, vq->meta.name));
+            }
+            if (assembled.short_description != vq->meta.short_description) {
+              throw std::runtime_error(std::format("Reassembled quest short description \"{}\" does not match original (\"{}\")",
+                  assembled.short_description, vq->meta.short_description));
+            }
+            if (assembled.long_description != vq->meta.long_description) {
+              throw std::runtime_error(std::format("Reassembled quest long description \"{}\" does not match original (\"{}\")",
+                  assembled.long_description, vq->meta.long_description));
+            }
+          } catch (const std::exception& e) {
+            phosg::log_error_f("================ DISASSEMBLY:");
+            phosg::fwritex(stderr, disassembled);
+            phosg::log_error_f("================ REASSEMBLY:");
+            phosg::fwritex(stderr, reassembly);
+            if (!assembled.data.empty()) {
+              phosg::log_error_f("================ BINDIFF:");
+              phosg::print_binary_diff(stderr, decompressed_bin.data(), decompressed_bin.size(), assembled.data.data(), assembled.data.size(), isatty(fileno(stderr)), 3, 0);
+            }
+            phosg::log_info_f("... {} {} {} ({}) FAILED", phosg::name_for_enum(vq->version), name_for_language(vq->language), vq->bin_filename(), vq->meta.name);
+            throw;
+          }
+          phosg::log_info_f("... {} {} {} ({}) OK", phosg::name_for_enum(vq->version), name_for_language(vq->language), vq->bin_filename(), vq->meta.name);
+        }
+      }
     });
 
 Action a_check_ep3_maps(

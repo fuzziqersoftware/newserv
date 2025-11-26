@@ -62,15 +62,6 @@ using AttackData = BattleParamsIndex::AttackData;
 using ResistData = BattleParamsIndex::ResistData;
 using MovementData = BattleParamsIndex::MovementData;
 
-static const char* name_for_header_episode_number(uint8_t episode) {
-  static const array<const char*, 3> names = {"Episode1", "Episode2", "Episode4"};
-  try {
-    return names.at(episode);
-  } catch (const out_of_range&) {
-    return "Episode1  # invalid value in header";
-  }
-}
-
 static TextEncoding encoding_for_language(Language language) {
   return ((language == Language::JAPANESE) ? TextEncoding::SJIS : TextEncoding::ISO8859);
 }
@@ -2983,9 +2974,10 @@ CreateItemMaskEntry::CreateItemMaskEntry(const QuestMetadata::CreateItemMask& ma
     } else if (r.min == 0x00 && r.max == 0xFF) {
       this->data1_fields[z] = -1;
     } else {
-      this->data1_fields[z] = (r.min * 1000000) + (r.max * 1000);
+      this->data1_fields[z] = 1000000 + (r.max * 1000) + r.min;
     }
   }
+  this->present = this->is_valid();
 }
 
 CreateItemMaskEntry::operator QuestMetadata::CreateItemMask() const {
@@ -3036,102 +3028,59 @@ std::string disassemble_quest_script(
 
   // Phase 0: Parse the header and generate the metadata section
 
-  bool use_wstrs = false;
-  size_t code_offset = 0;
-  size_t label_table_offset = 0;
+  QuestMetadata meta;
+  populate_quest_metadata_from_script(meta, bin_data, bin_size, version, language);
   switch (version) {
-    case Version::DC_NTE: {
-      const auto& header = r.get<PSOQuestHeaderDCNTE>();
-      code_offset = header.code_offset;
-      label_table_offset = header.label_table_offset;
-      language = Language::JAPANESE;
-      lines.emplace_back(".name " + escape_string(header.name.decode(Language::JAPANESE)));
+    case Version::DC_NTE:
+      lines.emplace_back(".name " + escape_string(meta.name));
       break;
-    }
     case Version::DC_11_2000:
     case Version::DC_V1:
-    case Version::DC_V2: {
-      const auto& header = r.get<PSOQuestHeaderDC>();
-      code_offset = header.code_offset;
-      label_table_offset = header.label_table_offset;
-      if (language == Language::UNKNOWN) {
-        language = (static_cast<size_t>(header.language) < 5) ? header.language : Language::ENGLISH;
-      }
-      lines.emplace_back(std::format(".quest_num {}", header.quest_number));
-      lines.emplace_back(std::format(".language {}", char_for_language(header.language)));
-      lines.emplace_back(".name " + escape_string(header.name.decode(language)));
-      lines.emplace_back(".short_desc " + escape_string(header.short_description.decode(language)));
-      lines.emplace_back(".long_desc " + escape_string(header.long_description.decode(language)));
+    case Version::DC_V2:
+      lines.emplace_back(std::format(".quest_num {}", meta.quest_number));
+      lines.emplace_back(std::format(".language {}", char_for_language(meta.language)));
+      lines.emplace_back(".name " + escape_string(meta.name));
+      lines.emplace_back(".short_desc " + escape_string(meta.short_description));
+      lines.emplace_back(".long_desc " + escape_string(meta.long_description));
       break;
-    }
     case Version::PC_NTE:
-    case Version::PC_V2: {
-      use_wstrs = true;
-      const auto& header = r.get<PSOQuestHeaderPC>();
-      code_offset = header.code_offset;
-      label_table_offset = header.label_table_offset;
-      if (language == Language::UNKNOWN) {
-        language = (static_cast<size_t>(header.language) < 8) ? header.language : Language::ENGLISH;
-      }
-      lines.emplace_back(std::format(".quest_num {}", header.quest_number));
-      lines.emplace_back(std::format(".language {}", char_for_language(header.language)));
-      lines.emplace_back(".name " + escape_string(header.name.decode(language)));
-      lines.emplace_back(".short_desc " + escape_string(header.short_description.decode(language)));
-      lines.emplace_back(".long_desc " + escape_string(header.long_description.decode(language)));
+    case Version::PC_V2:
+      lines.emplace_back(std::format(".quest_num {}", meta.quest_number));
+      lines.emplace_back(std::format(".language {}", char_for_language(meta.language)));
+      lines.emplace_back(".name " + escape_string(meta.name));
+      lines.emplace_back(".short_desc " + escape_string(meta.short_description));
+      lines.emplace_back(".long_desc " + escape_string(meta.long_description));
       break;
-    }
     case Version::GC_NTE:
     case Version::GC_V3:
     case Version::GC_EP3_NTE:
     case Version::GC_EP3:
-    case Version::XB_V3: {
-      const auto& header = r.get<PSOQuestHeaderGC>();
-      code_offset = header.code_offset;
-      label_table_offset = header.label_table_offset;
-      if (language == Language::UNKNOWN) {
-        language = (static_cast<size_t>(header.language) < 5) ? header.language : Language::ENGLISH;
-      }
-      lines.emplace_back(std::format(".quest_num {}", header.quest_number));
-      lines.emplace_back(std::format(".language {}", char_for_language(header.language)));
-      lines.emplace_back(".name " + escape_string(header.name.decode(language)));
-      lines.emplace_back(".short_desc " + escape_string(header.short_description.decode(language)));
-      lines.emplace_back(".long_desc " + escape_string(header.long_description.decode(language)));
+    case Version::XB_V3:
+      lines.emplace_back(std::format(".quest_num {}", meta.quest_number));
+      lines.emplace_back(std::format(".episode {}", token_name_for_episode(meta.episode)));
+      lines.emplace_back(std::format(".language {}", char_for_language(meta.language)));
+      lines.emplace_back(".name " + escape_string(meta.name));
+      lines.emplace_back(".short_desc " + escape_string(meta.short_description));
+      lines.emplace_back(".long_desc " + escape_string(meta.long_description));
       break;
-    }
-    case Version::BB_V4: {
-      use_wstrs = true;
-      const auto& header = r.get<PSOQuestHeaderBBBase>();
-      code_offset = header.code_offset;
-      label_table_offset = header.label_table_offset;
-      if (language == Language::UNKNOWN) {
-        language = Language::ENGLISH;
-      }
-      lines.emplace_back(std::format(".quest_num {}", header.quest_number));
-      lines.emplace_back(std::format(".episode {}", name_for_header_episode_number(header.episode)));
-      lines.emplace_back(std::format(".max_players {}", header.max_players ? header.max_players : 4));
-      if (header.joinable) {
+    case Version::BB_V4:
+      lines.emplace_back(std::format(".quest_num {}", meta.quest_number));
+      lines.emplace_back(std::format(".episode {}", token_name_for_episode(meta.episode)));
+      lines.emplace_back(std::format(".language {}", char_for_language(meta.language)));
+      lines.emplace_back(std::format(".max_players {}", meta.max_players));
+      if (meta.joinable) {
         lines.emplace_back(".joinable");
       }
-      lines.emplace_back(std::format(".name {}", escape_string(header.name.decode(language))));
-      lines.emplace_back(std::format(".short_desc {}", escape_string(header.short_description.decode(language))));
-      lines.emplace_back(std::format(".long_desc {}", escape_string(header.long_description.decode(language))));
-      // Quests saved with Qedit may not have the full header, so only parse
-      // the full header if the code and function table offsets don't point to
-      // space within it
-      if ((header.code_offset >= sizeof(PSOQuestHeaderBB)) && (header.label_table_offset >= sizeof(PSOQuestHeaderBB))) {
-        r.go(0);
-        const auto& header = r.get<PSOQuestHeaderBB>();
-        for (size_t z = 0; z < header.create_item_mask_entries.size(); z++) {
-          const auto& qh_mask = header.create_item_mask_entries[z];
-          if (!qh_mask.is_valid()) {
-            break;
-          }
-          QuestMetadata::CreateItemMask qm_mask = qh_mask;
-          lines.emplace_back(std::format(".allow_create_item {}", qm_mask.str()));
-        }
+      lines.emplace_back(std::format(".name {}", escape_string(meta.name)));
+      lines.emplace_back(std::format(".short_desc {}", escape_string(meta.short_description)));
+      lines.emplace_back(std::format(".long_desc {}", escape_string(meta.long_description)));
+      if (meta.bb_unknown_a5) {
+        lines.emplace_back(std::format(".bb_unknown_a5 {}", phosg::format_data_string(meta.bb_unknown_a5->data(), meta.bb_unknown_a5->size())));
+      }
+      for (const auto& mask : meta.create_item_mask_entries) {
+        lines.emplace_back(std::format(".allow_create_item {}", mask.str()));
       }
       break;
-    }
     default:
       throw logic_error("invalid quest version");
   }
@@ -3140,12 +3089,12 @@ std::string disassemble_quest_script(
   // Phase 1: Parse label table
 
   phosg::StringReader text_r, label_table_r;
-  if (code_offset < label_table_offset) {
-    text_r = r.sub(code_offset, label_table_offset - code_offset);
-    label_table_r = r.sub(label_table_offset);
+  if (meta.text_offset < meta.label_table_offset) {
+    text_r = r.sub(meta.text_offset, meta.label_table_offset - meta.text_offset);
+    label_table_r = r.sub(meta.label_table_offset);
   } else {
-    text_r = r.sub(code_offset);
-    label_table_r = r.sub(label_table_offset, code_offset - label_table_offset);
+    text_r = r.sub(meta.text_offset);
+    label_table_r = r.sub(meta.label_table_offset, meta.text_offset - meta.label_table_offset);
   }
 
   struct Label {
@@ -3335,7 +3284,7 @@ std::string disassemble_quest_script(
 
     string formatted;
     size_t extra_zero_bytes;
-    if (use_wstrs) {
+    if (uses_utf16(version)) {
       if (str_data.size() & 1) {
         str_data.push_back(0);
       }
@@ -3353,11 +3302,14 @@ std::string disassemble_quest_script(
     }
     if (reassembly_mode) {
       l->lines.emplace_back(std::format("  .cstr {}", formatted));
+      if (extra_zero_bytes) {
+        l->lines.emplace_back(std::format("  .data {}", string(extra_zero_bytes * 2, '0')));
+      }
     } else {
-      l->lines.emplace_back(std::format("  {:04X}  {}", l->offset, formatted));
-    }
-    if (extra_zero_bytes) {
-      l->lines.emplace_back("  .data " + string(extra_zero_bytes * 2, '0'));
+      l->lines.emplace_back(std::format("  {:04X}  .cstr {}", l->offset, formatted));
+      if (extra_zero_bytes) {
+        l->lines.emplace_back(std::format("  {:04X}  .data {}", l->offset + l->size - extra_zero_bytes, string(extra_zero_bytes * 2, '0')));
+      }
     }
   };
 
@@ -3675,7 +3627,7 @@ std::string disassemble_quest_script(
                   break;
                 }
                 case Type::CSTRING:
-                  if (use_wstrs) {
+                  if (uses_utf16(version)) {
                     phosg::StringWriter w;
                     for (uint16_t ch = label_r.get_u16l(); ch; ch = label_r.get_u16l()) {
                       w.put_u16l(ch);
@@ -4222,7 +4174,8 @@ struct RegisterAssigner {
 AssembledQuestScript assemble_quest_script(
     const std::string& text,
     const vector<string>& script_include_directories,
-    const vector<string>& native_include_directories) {
+    const vector<string>& native_include_directories,
+    bool strict) {
 
   struct Line {
     string filename; // Empty if this is the main file
@@ -4244,9 +4197,11 @@ AssembledQuestScript assemble_quest_script(
   };
 
   std::vector<Line> lines;
-  auto include_file = [&](const std::string& filename, const std::string& text, ssize_t parent_index) {
-    // Inserts the new lines after the parent line and preprocesses them. The
-    // parent line is not modified or deleted.
+  auto include_file = [&](const std::string& filename, const std::string& orig_text, ssize_t parent_index) {
+    // Inserts the new lines after the parent line and preprocesses them. The parent line is not modified or deleted.
+    std::string text = orig_text;
+    phosg::strip_comments_inplace(text);
+
     vector<Line> new_lines;
     auto text_lines = phosg::split(text, '\n');
     for (size_t z = 0; z < text_lines.size(); z++) {
@@ -4255,21 +4210,6 @@ AssembledQuestScript assemble_quest_script(
       line.number = z + 1;
       line.text = std::move(text_lines[z]);
       line.parent_index = parent_index;
-
-      // Strip comments and whitespace
-      size_t comment_start = line.text.find("/*");
-      while (comment_start != string::npos) {
-        size_t comment_end = line.text.find("*/", comment_start + 2);
-        if (comment_end == string::npos) {
-          throw runtime_error("unterminated inline comment");
-        }
-        line.text.erase(comment_start, comment_end + 2 - comment_start);
-        comment_start = line.text.find("/*");
-      }
-      comment_start = line.text.find("//");
-      if (comment_start != string::npos) {
-        line.text.resize(comment_start);
-      }
       phosg::strip_trailing_whitespace(line.text);
       phosg::strip_leading_whitespace(line.text);
     }
@@ -4326,6 +4266,7 @@ AssembledQuestScript assemble_quest_script(
   Episode quest_episode = Episode::EP1;
   uint8_t quest_max_players = 4;
   bool quest_joinable = false;
+  std::shared_ptr<parray<uint8_t, 0x94>> bb_unknown_a5;
   std::vector<QuestMetadata::CreateItemMask> create_item_mask_entries;
   for (const auto& line : lines) {
     if (line.text.empty()) {
@@ -4370,6 +4311,15 @@ AssembledQuestScript assemble_quest_script(
           quest_max_players = stoul(line.text.substr(12), nullptr, 0);
         } else if (line.text.starts_with(".joinable ")) {
           quest_joinable = true;
+        } else if (line.text.starts_with(".bb_unknown_a5 ")) {
+          std::string data = phosg::parse_data_string(line.text.substr(15));
+          if (data.size() != 0x94) {
+            throw std::runtime_error(".bb_unknown_a5 directive must specify 0x94 bytes of data");
+          }
+          bb_unknown_a5 = std::make_shared<parray<uint8_t, 0x94>>();
+          for (size_t z = 0; z < 0x94; z++) {
+            bb_unknown_a5->at(z) = static_cast<uint8_t>(data[z]);
+          }
         }
       }
     });
@@ -4563,7 +4513,7 @@ AssembledQuestScript assemble_quest_script(
             code_w.write(tt_utf8_to_utf16(data));
             code_w.put_u16l(0);
           } else {
-            code_w.write((quest_language == Language::JAPANESE) ? tt_utf8_to_sega_sjis(text) : tt_utf8_to_8859(text));
+            code_w.write((quest_language == Language::JAPANESE) ? tt_utf8_to_sega_sjis(data) : tt_utf8_to_8859(data));
             code_w.put_u8(0);
           }
         } else if (line.text.starts_with(".zero ")) {
@@ -4762,13 +4712,26 @@ AssembledQuestScript assemble_quest_script(
 
             } else { // Not use_args
               auto add_label = [&](const string& name, bool is32) -> void {
-                if (!labels_by_name.count(name)) {
-                  throw runtime_error("label not defined: " + name);
-                }
-                if (is32) {
-                  code_w.put_u32(labels_by_name.at(name)->index);
+                size_t label_index;
+                auto it = labels_by_name.find(name);
+                if (it == labels_by_name.end()) {
+                  if (strict) {
+                    throw runtime_error("label not defined: " + name);
+                  } else if (name.starts_with("label")) {
+                    size_t used_chars;
+                    label_index = std::stoul(name.substr(5), &used_chars, 16);
+                    if (used_chars != name.size() - 5) {
+                      throw runtime_error("label not defined: " + name);
+                    }
+                  }
                 } else {
-                  code_w.put_u16(labels_by_name.at(name)->index);
+                  label_index = it->second->index;
+                }
+
+                if (is32) {
+                  code_w.put_u32(label_index);
+                } else {
+                  code_w.put_u16(label_index);
                 }
               };
               auto add_reg = [&](shared_ptr<RegisterAssigner::Register> reg, bool is32) -> void {
@@ -4912,7 +4875,7 @@ AssembledQuestScript assemble_quest_script(
   switch (quest_version) {
     case Version::DC_NTE: {
       PSOQuestHeaderDCNTE header;
-      header.code_offset = sizeof(header);
+      header.text_offset = sizeof(header);
       header.label_table_offset = sizeof(header) + code_w.size();
       header.size = header.label_table_offset + label_table.size() * sizeof(label_table[0]);
       header.name.encode(quest_name, Language::JAPANESE);
@@ -4923,7 +4886,7 @@ AssembledQuestScript assemble_quest_script(
     case Version::DC_V1:
     case Version::DC_V2: {
       PSOQuestHeaderDC header;
-      header.code_offset = sizeof(header);
+      header.text_offset = sizeof(header);
       header.label_table_offset = sizeof(header) + code_w.size();
       header.size = header.label_table_offset + label_table.size() * sizeof(label_table[0]);
       header.language = quest_language;
@@ -4937,7 +4900,7 @@ AssembledQuestScript assemble_quest_script(
     case Version::PC_NTE:
     case Version::PC_V2: {
       PSOQuestHeaderPC header;
-      header.code_offset = sizeof(header);
+      header.text_offset = sizeof(header);
       header.label_table_offset = sizeof(header) + code_w.size();
       header.size = header.label_table_offset + label_table.size() * sizeof(label_table[0]);
       header.language = quest_language;
@@ -4954,7 +4917,7 @@ AssembledQuestScript assemble_quest_script(
     case Version::GC_EP3:
     case Version::XB_V3: {
       PSOQuestHeaderGC header;
-      header.code_offset = sizeof(header);
+      header.text_offset = sizeof(header);
       header.label_table_offset = sizeof(header) + code_w.size();
       header.size = header.label_table_offset + label_table.size() * sizeof(label_table[0]);
       header.language = quest_language;
@@ -4967,7 +4930,7 @@ AssembledQuestScript assemble_quest_script(
     }
     case Version::BB_V4: {
       PSOQuestHeaderBB header;
-      header.code_offset = sizeof(header);
+      header.text_offset = sizeof(header);
       header.label_table_offset = sizeof(header) + code_w.size();
       header.size = header.label_table_offset + label_table.size() * sizeof(label_table[0]);
       header.quest_number = quest_num;
@@ -4978,12 +4941,16 @@ AssembledQuestScript assemble_quest_script(
       } else {
         header.episode = 0;
       }
-      header.max_players = quest_max_players;
+      header.max_players = (quest_max_players == 4) ? 0 : quest_max_players;
       header.joinable = quest_joinable ? 1 : 0;
       header.name.encode(quest_name, quest_language);
       header.short_description.encode(quest_short_desc, quest_language);
       header.long_description.encode(quest_long_desc, quest_language);
-      header.unknown_a5.clear(0);
+      if (bb_unknown_a5) {
+        header.unknown_a5 = *bb_unknown_a5;
+      } else {
+        header.unknown_a5.clear(0);
+      }
       for (size_t z = 0; z < create_item_mask_entries.size(); z++) {
         header.create_item_mask_entries[z] = create_item_mask_entries[z];
       }
@@ -5011,9 +4978,9 @@ AssembledQuestScript assemble_quest_script(
 
 void populate_quest_metadata_from_script(
     QuestMetadata& meta, const void* data, size_t size, Version version, Language language) {
+  meta.language = language;
+
   phosg::StringReader r(data, size);
-  uint32_t code_offset = r.size();
-  uint32_t label_table_offset = r.size();
   switch (version) {
     case Version::DC_NTE: {
       const auto& header = r.get<PSOQuestHeaderDCNTE>();
@@ -5023,22 +4990,24 @@ void populate_quest_metadata_from_script(
       if (meta.quest_number == 0xFFFFFFFF) {
         meta.quest_number = phosg::fnv1a32(meta.name);
       }
-      code_offset = header.code_offset;
-      label_table_offset = header.label_table_offset;
+      meta.text_offset = header.text_offset;
+      meta.label_table_offset = header.label_table_offset;
+      meta.language = Language::JAPANESE;
       break;
     }
     case Version::DC_11_2000: {
       const auto& header = r.get<PSOQuestHeaderDC112000>();
       meta.episode = Episode::EP1;
       meta.max_players = 4;
-      meta.name = header.name.decode(language);
-      meta.short_description = header.short_description.decode(language);
-      meta.long_description = header.long_description.decode(language);
+      meta.language = (language == Language::UNKNOWN) ? Language::JAPANESE : language;
+      meta.name = header.name.decode(meta.language);
+      meta.short_description = header.short_description.decode(meta.language);
+      meta.long_description = header.long_description.decode(meta.language);
       if (meta.quest_number == 0xFFFFFFFF) {
         meta.quest_number = phosg::fnv1a32(meta.name);
       }
-      code_offset = header.code_offset;
-      label_table_offset = header.label_table_offset;
+      meta.text_offset = header.text_offset;
+      meta.label_table_offset = header.label_table_offset;
       break;
     }
     case Version::DC_V1:
@@ -5046,14 +5015,15 @@ void populate_quest_metadata_from_script(
       const auto& header = r.get<PSOQuestHeaderDC>();
       meta.episode = Episode::EP1;
       meta.max_players = 4;
-      meta.name = header.name.decode(language);
-      meta.short_description = header.short_description.decode(language);
-      meta.long_description = header.long_description.decode(language);
+      meta.language = (language != Language::UNKNOWN) ? language : ((static_cast<size_t>(header.language) < 5) ? header.language : Language::ENGLISH);
+      meta.name = header.name.decode(meta.language);
+      meta.short_description = header.short_description.decode(meta.language);
+      meta.long_description = header.long_description.decode(meta.language);
       if (meta.quest_number == 0xFFFFFFFF) {
         meta.quest_number = header.quest_number;
       }
-      code_offset = header.code_offset;
-      label_table_offset = header.label_table_offset;
+      meta.text_offset = header.text_offset;
+      meta.label_table_offset = header.label_table_offset;
       break;
     }
     case Version::PC_NTE:
@@ -5064,11 +5034,12 @@ void populate_quest_metadata_from_script(
       if (meta.quest_number == 0xFFFFFFFF) {
         meta.quest_number = header.quest_number;
       }
-      meta.name = header.name.decode(language);
-      meta.short_description = header.short_description.decode(language);
-      meta.long_description = header.long_description.decode(language);
-      code_offset = header.code_offset;
-      label_table_offset = header.label_table_offset;
+      meta.language = (language != Language::UNKNOWN) ? language : ((static_cast<size_t>(header.language) < 8) ? header.language : Language::ENGLISH);
+      meta.name = header.name.decode(meta.language);
+      meta.short_description = header.short_description.decode(meta.language);
+      meta.long_description = header.long_description.decode(meta.language);
+      meta.text_offset = header.text_offset;
+      meta.label_table_offset = header.label_table_offset;
       break;
     }
     case Version::GC_NTE:
@@ -5086,31 +5057,34 @@ void populate_quest_metadata_from_script(
       if (meta.quest_number == 0xFFFFFFFF) {
         meta.quest_number = header.quest_number;
       }
-      meta.name = header.name.decode(language);
-      meta.short_description = header.short_description.decode(language);
-      meta.long_description = header.long_description.decode(language);
-      code_offset = header.code_offset;
-      label_table_offset = header.label_table_offset;
+      meta.language = (language != Language::UNKNOWN) ? language : ((static_cast<size_t>(header.language) < 5) ? header.language : Language::ENGLISH);
+      meta.name = header.name.decode(meta.language);
+      meta.short_description = header.short_description.decode(meta.language);
+      meta.long_description = header.long_description.decode(meta.language);
+      meta.text_offset = header.text_offset;
+      meta.label_table_offset = header.label_table_offset;
       break;
     }
     case Version::BB_V4: {
       const auto& header = r.get<PSOQuestHeaderBBBase>();
       meta.episode = episode_for_quest_episode_number(header.episode);
       meta.joinable |= header.joinable;
-      meta.max_players = 4;
+      meta.max_players = header.max_players ? header.max_players : 4;
       if (meta.quest_number == 0xFFFFFFFF) {
         meta.quest_number = header.quest_number;
       }
-      meta.name = header.name.decode(language);
-      meta.short_description = header.short_description.decode(language);
-      meta.long_description = header.long_description.decode(language);
+      meta.language = (language != Language::UNKNOWN) ? language : Language::ENGLISH;
+      meta.name = header.name.decode(meta.language);
+      meta.short_description = header.short_description.decode(meta.language);
+      meta.long_description = header.long_description.decode(meta.language);
       // Quests saved with Qedit may not have the full header, so only parse
       // the full header if the code and function table offsets don't point to
       // space within it
-      if ((header.code_offset >= sizeof(PSOQuestHeaderBB)) &&
+      if ((header.text_offset >= sizeof(PSOQuestHeaderBB)) &&
           (header.label_table_offset >= sizeof(PSOQuestHeaderBB))) {
         r.go(0);
         const auto& header = r.get<PSOQuestHeaderBB>();
+        meta.bb_unknown_a5 = std::make_shared<parray<uint8_t, 0x94>>(header.unknown_a5);
         for (size_t z = 0; z < header.create_item_mask_entries.size(); z++) {
           const auto& item = header.create_item_mask_entries[z];
           if (!item.is_valid()) {
@@ -5119,8 +5093,8 @@ void populate_quest_metadata_from_script(
           meta.create_item_mask_entries.emplace_back(item);
         }
       }
-      code_offset = header.code_offset;
-      label_table_offset = header.label_table_offset;
+      meta.text_offset = header.text_offset;
+      meta.label_table_offset = header.label_table_offset;
       break;
     }
     default:
@@ -5187,7 +5161,7 @@ void populate_quest_metadata_from_script(
   };
 
   auto get_label_offset = [&](size_t label) -> uint32_t {
-    return code_offset + r.pget_u32l(label_table_offset + 4 * label);
+    return meta.text_offset + r.pget_u32l(meta.label_table_offset + 4 * label);
   };
 
   // The set_episode opcode and floor remapping opcodes should always be in

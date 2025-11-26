@@ -21,12 +21,14 @@ struct QuestMetadata {
   // versions of the quest, except for the name and description strings. This
   // is used in both the Quest and VersionedQuest structures; in Quest, the
   // name and description are used only internally.
+
+  // Fields that must match across all quest versions
   uint32_t category_id = 0xFFFFFFFF;
   uint32_t quest_number = 0xFFFFFFFF;
   Episode episode = Episode::NONE;
   std::array<uint8_t, 0x12> area_for_floor;
   bool joinable = false;
-  uint8_t max_players = 0x00;
+  uint8_t max_players = 4;
   std::shared_ptr<const BattleRules> battle_rules;
   ssize_t challenge_template_index = -1;
   float challenge_exp_multiplier = -1.0f;
@@ -44,7 +46,8 @@ struct QuestMetadata {
   int16_t lock_status_register = -1;
   std::unordered_map<uint32_t, uint32_t> enemy_exp_overrides;
 
-  // Item create allowances (only used on BB)
+  // Extra header fields (only used on BB)
+  std::shared_ptr<parray<uint8_t, 0x94>> bb_unknown_a5;
   struct CreateItemMask {
     struct Range {
       uint8_t min = 0x00;
@@ -71,9 +74,13 @@ struct QuestMetadata {
   };
   std::vector<CreateItemMask> create_item_mask_entries;
 
+  // Fields that may be different across quest versions (and are only used on VersionedQuest, not Quest)
   std::string name;
   std::string short_description;
   std::string long_description;
+  size_t text_offset;
+  size_t label_table_offset;
+  Language language;
 
   static std::unordered_map<uint32_t, uint32_t> parse_enemy_exp_overrides(const phosg::JSON& json);
   static inline uint32_t exp_override_key(Difficulty difficulty, uint8_t floor, EnemyType enemy_type) {
