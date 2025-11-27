@@ -22,6 +22,9 @@ struct QuestMetadata {
   // is used in both the Quest and VersionedQuest structures; in Quest, the
   // name and description are used only internally.
 
+  Version version;
+  Language language;
+
   // Fields that must match across all quest versions
   uint32_t category_id = 0xFFFFFFFF;
   uint32_t quest_number = 0xFFFFFFFF;
@@ -38,8 +41,6 @@ struct QuestMetadata {
   std::shared_ptr<const IntegralExpression> enabled_expression;
   std::string common_item_set_name; // blank = use default
   std::string rare_item_set_name; // blank = use default
-  std::shared_ptr<const CommonItemSet> common_item_set;
-  std::shared_ptr<const RareItemSet> rare_item_set;
   uint8_t allowed_drop_modes = 0x00; // 0 = use server default
   ServerDropMode default_drop_mode = ServerDropMode::CLIENT; // Ignored if allowed_drop_modes == 0
   bool allow_start_from_chat_command = false;
@@ -47,7 +48,6 @@ struct QuestMetadata {
   std::unordered_map<uint32_t, uint32_t> enemy_exp_overrides;
 
   // Extra header fields (only used on BB)
-  std::shared_ptr<parray<uint8_t, 0x94>> bb_unknown_a5;
   struct CreateItemMask {
     struct Range {
       uint8_t min = 0x00;
@@ -74,18 +74,30 @@ struct QuestMetadata {
   };
   std::vector<CreateItemMask> create_item_mask_entries;
 
+  // Unknown header fields. These are not used by the client, so they are not required to match across quest versions;
+  // however, we still parse them in case we later discover that they had some server-side meaning.
+  uint16_t header_unknown_a1 = 0xFFFF; // All versions
+  uint16_t header_unknown_a2 = 0xFFFF; // All versions
+  uint8_t header_unknown_a3 = 0; // DCv1 - V3
+  uint8_t header_unknown_a4 = 0; // BB only
+  uint16_t header_unknown_a6 = 0; // BB only
+  int16_t header_episode = -1; // -1 = unspecified; BB only; newserv uses script analysis instead
+  int16_t header_language = -1; // -1 = unspecified; DCv1 and later; newserv uses the filename instead
+  std::shared_ptr<parray<uint8_t, 0x94>> header_unknown_a5; // BB only; null for non-BB quests
+
   // Fields that may be different across quest versions (and are only used on VersionedQuest, not Quest)
   std::string name;
   std::string short_description;
   std::string long_description;
   size_t text_offset;
   size_t label_table_offset;
-  Language language;
 
   static std::unordered_map<uint32_t, uint32_t> parse_enemy_exp_overrides(const phosg::JSON& json);
   static inline uint32_t exp_override_key(Difficulty difficulty, uint8_t floor, EnemyType enemy_type) {
     return (static_cast<uint32_t>(difficulty) << 24) | (static_cast<uint32_t>(floor) << 16) | static_cast<uint32_t>(enemy_type);
   }
+
+  void apply_json_overrides(const phosg::JSON& json);
 
   void assign_default_areas(Version version, Episode episode);
   void assert_compatible(const QuestMetadata& other) const;

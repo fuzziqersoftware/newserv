@@ -424,7 +424,7 @@ bool Client::can_play_quest(
   if (!q->has_version_any_language(this->version())) {
     return false;
   }
-  if (num_players > q->meta.max_players) {
+  if ((q->meta.max_players > 0) && (num_players > q->meta.max_players)) {
     return false;
   }
   return this->evaluate_quest_availability_expression(

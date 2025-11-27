@@ -2,6 +2,53 @@
 
 using namespace std;
 
+void QuestMetadata::apply_json_overrides(const phosg::JSON& json) {
+  try {
+    this->description_flag = json.at("DescriptionFlag").as_int();
+  } catch (const out_of_range&) {
+  }
+  try {
+    this->available_expression = make_shared<IntegralExpression>(json.get_string("AvailableIf"));
+  } catch (const out_of_range&) {
+  }
+  try {
+    this->enabled_expression = make_shared<IntegralExpression>(json.get_string("EnabledIf"));
+  } catch (const out_of_range&) {
+  }
+  try {
+    this->allow_start_from_chat_command = json.get_bool("AllowStartFromChatCommand");
+  } catch (const out_of_range&) {
+  }
+  try {
+    this->joinable = json.get_bool("Joinable");
+  } catch (const out_of_range&) {
+  }
+  try {
+    this->lock_status_register = json.get_int("LockStatusRegister");
+  } catch (const out_of_range&) {
+  }
+  try {
+    this->enemy_exp_overrides = QuestMetadata::parse_enemy_exp_overrides(json.at("EnemyEXPOverrides"));
+  } catch (const out_of_range&) {
+  }
+  try {
+    this->common_item_set_name = json.at("CommonItemSetName").as_string();
+  } catch (const out_of_range&) {
+  }
+  try {
+    this->rare_item_set_name = json.at("RareItemSetName").as_string();
+  } catch (const out_of_range&) {
+  }
+  try {
+    this->allowed_drop_modes = json.at("AllowedDropModes").as_int();
+  } catch (const out_of_range&) {
+  }
+  try {
+    this->default_drop_mode = phosg::enum_for_name<ServerDropMode>(json.at("DefaultDropMode").as_string());
+  } catch (const out_of_range&) {
+  }
+}
+
 void QuestMetadata::assign_default_areas(Version version, Episode episode) {
   for (size_t z = 0; z < 0x12; z++) {
     this->area_for_floor[z] = SetDataTableBase::default_area_for_floor(version, episode, z);
@@ -34,10 +81,11 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
         "quest version has a different joinability state (existing: {}, new: {})",
         this->joinable ? "true" : "false", other.joinable ? "true" : "false"));
   }
-  if (this->max_players != other.max_players) {
+  bool this_has_player_limit = (this->max_players != 0) && (this->max_players != 4);
+  bool other_has_player_limit = (other.max_players != 0) && (other.max_players != 4);
+  if ((this_has_player_limit || other_has_player_limit) && (this->max_players != other.max_players)) {
     throw runtime_error(std::format(
-        "quest version has a different maximum player count (existing: {}, new: {})",
-        this->max_players, other.max_players));
+        "quest version has a different maximum player count (existing: {}, new: {})", this->max_players, other.max_players));
   }
   if (this->lock_status_register != other.lock_status_register) {
     throw runtime_error(std::format(
@@ -136,16 +184,10 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
         "quest version has different common table name (existing: {}, new: {})",
         this->common_item_set_name, other.common_item_set_name));
   }
-  if (this->common_item_set != other.common_item_set) {
-    throw runtime_error("quest version has different common table");
-  }
   if (this->rare_item_set_name != other.rare_item_set_name) {
     throw runtime_error(std::format(
         "quest version has different rare table name (existing: {}, new: {})",
         this->rare_item_set_name, other.rare_item_set_name));
-  }
-  if (this->rare_item_set != other.rare_item_set) {
-    throw runtime_error("quest version has different rare table");
   }
   if (this->allowed_drop_modes != other.allowed_drop_modes) {
     throw runtime_error(format("quest version has different allowed drop modes (existing: {:02X}, new: {:02X})",
@@ -182,7 +224,7 @@ phosg::JSON QuestMetadata::json() const {
       {"Episode", name_for_episode(this->episode)},
       {"FloorAssignments", std::move(floors_json)},
       {"Joinable", this->joinable},
-      {"MaxPlayers", this->max_players},
+      {"MaxPlayers", this->max_players ? 4 : this->max_players},
       {"BattleRules", this->battle_rules ? this->battle_rules->json() : phosg::JSON(nullptr)},
       {"ChallengeTemplateIndex", (this->challenge_template_index >= 0) ? this->challenge_template_index : phosg::JSON(nullptr)},
       {"ChallengeEXPMultiplier", (this->challenge_exp_multiplier >= 0) ? this->challenge_exp_multiplier : phosg::JSON(nullptr)},

@@ -363,7 +363,7 @@ static asio::awaitable<void> on_login_complete(shared_ptr<Client> c) {
           lobby_data.guild_card_number = c->login->account->account_id;
           send_command_t(c, 0x64, 0x01, cmd);
         } else {
-          c->log.info_f("Sending {} version of quest \"{}\"", name_for_language(vq->language), vq->meta.name);
+          c->log.info_f("Sending {} version of quest \"{}\"", name_for_language(vq->meta.language), vq->meta.name);
           string bin_filename = vq->bin_filename();
           string dat_filename = vq->dat_filename();
           string xb_filename = vq->xb_filename();
@@ -2495,7 +2495,7 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q, bool substi
       lc->channel->disconnect();
       break;
     }
-    lc->log.info_f("Sending {} version of quest \"{}\"", name_for_language(vq->language), vq->meta.name);
+    lc->log.info_f("Sending {} version of quest \"{}\"", name_for_language(vq->meta.language), vq->meta.name);
 
     string bin_filename = vq->bin_filename();
     string dat_filename = vq->dat_filename();
@@ -4979,7 +4979,7 @@ static asio::awaitable<void> on_6F(shared_ptr<Client> c, Channel::Message& msg) 
     if (!vq) {
       throw std::logic_error("cannot find patch enable quest version after it was previously found during login");
     }
-    c->log.info_f("Sending {} version of quest \"{}\"", name_for_language(vq->language), vq->meta.name);
+    c->log.info_f("Sending {} version of quest \"{}\"", name_for_language(vq->meta.language), vq->meta.name);
     string bin_filename = vq->bin_filename();
     string dat_filename = vq->dat_filename();
     string xb_filename = vq->xb_filename();

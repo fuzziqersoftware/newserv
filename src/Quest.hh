@@ -71,12 +71,11 @@ struct VersionedQuest {
 
   // Most of these default values are intentionally invalid; we use these
   // values to check if each field was parsed during quest indexing.
-  Version version = Version::UNKNOWN;
-  Language language = Language::UNKNOWN;
   std::shared_ptr<const std::string> bin_contents;
   std::shared_ptr<const std::string> dat_contents;
   std::shared_ptr<const MapFile> map_file;
   std::shared_ptr<const std::string> pvr_contents;
+  std::shared_ptr<const phosg::JSON> json_contents;
   bool is_dlq_encoded = false;
 
   void assert_valid() const;
@@ -132,12 +131,7 @@ struct QuestIndex {
   std::map<std::string, std::shared_ptr<Quest>> quests_by_name;
   std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Quest>>> quests_by_category_id_and_number;
 
-  QuestIndex(
-      const std::string& directory,
-      std::shared_ptr<const QuestCategoryIndex> category_index,
-      const std::unordered_map<std::string, std::shared_ptr<const CommonItemSet>>& common_item_sets,
-      const std::unordered_map<std::string, std::shared_ptr<const RareItemSet>>& rare_item_sets,
-      bool raise_on_any_failure);
+  QuestIndex(const std::string& directory, std::shared_ptr<const QuestCategoryIndex> category_index, bool raise_on_any_failure);
   phosg::JSON json() const;
 
   std::shared_ptr<const Quest> get(uint32_t quest_number) const;

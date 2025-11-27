@@ -62,9 +62,7 @@ struct PSOQuestHeaderPC {
   /* 0394 */
 } __packed_ws__(PSOQuestHeaderPC, 0x394);
 
-// TODO: Is the XB quest header format the same as on GC? If not, make a
-// separate struct; if so, rename this struct to V3.
-struct PSOQuestHeaderGC {
+struct PSOQuestHeaderV3 {
   /* 0000 */ le_uint32_t text_offset = 0;
   /* 0004 */ le_uint32_t label_table_offset = 0;
   /* 0008 */ le_uint32_t size = 0;
@@ -81,7 +79,7 @@ struct PSOQuestHeaderGC {
   /* 0034 */ pstring<TextEncoding::MARKED, 0x80> short_description;
   /* 00B4 */ pstring<TextEncoding::MARKED, 0x120> long_description;
   /* 01D4 */
-} __packed_ws__(PSOQuestHeaderGC, 0x1D4);
+} __packed_ws__(PSOQuestHeaderV3, 0x1D4);
 
 struct CreateItemMaskEntry {
   parray<le_int32_t, 12> data1_fields;
@@ -104,7 +102,7 @@ struct PSOQuestHeaderBBBase {
   /* 000C */ le_uint16_t unknown_a1 = 0xFFFF;
   /* 000E */ le_uint16_t unknown_a2 = 0xFFFF;
   /* 0010 */ le_uint16_t quest_number = 0; // 0xFFFF for challenge quests
-  /* 0012 */ le_uint16_t unknown_a3 = 0;
+  /* 0012 */ le_uint16_t unknown_a6 = 0;
   /* 0014 */ uint8_t episode = 0; // 0 = Ep1, 1 = Ep2, 2 = Ep4
   /* 0015 */ uint8_t max_players = 0; // 0 means no limit (that is, 4)
   /* 0016 */ uint8_t joinable = 0;
@@ -136,15 +134,7 @@ std::string disassemble_quest_script(
 
 struct AssembledQuestScript {
   std::string data;
-  int64_t quest_number = -1;
-  Version version = Version::UNKNOWN;
-  Language language = Language::UNKNOWN;
-  Episode episode = Episode::NONE;
-  bool joinable = false;
-  uint8_t max_players = 4;
-  std::string name;
-  std::string short_description;
-  std::string long_description;
+  QuestMetadata meta;
 };
 AssembledQuestScript assemble_quest_script(
     const std::string& text,

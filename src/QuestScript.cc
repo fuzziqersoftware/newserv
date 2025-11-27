@@ -2251,7 +2251,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // regsE[0-2] = result point (x, y, z as floats)
     // regsE[3] = result code (0 = failed, 1 = success)
     // labelF = control point entries (array of valueA VectorXYZTF structures)
-    {0xF8DB, "get_vector_from_path", "unknownF8DB", {I32, FLOAT32, FLOAT32, I32, {W_REG_SET_FIXED, 4}, SCRIPT16}, F_V3_V4 | F_ARGS},
+    {0xF8DB, "get_vector_from_path", "unknownF8DB", {I32, FLOAT32, FLOAT32, I32, {W_REG_SET_FIXED, 4}, {LABEL16, Arg::DataType::VECTOR4F_LIST}}, F_V3_V4 | F_ARGS},
 
     // Same as npc_text, but only applies to a specific player slot.
     // valueA = client ID
@@ -3030,59 +3030,43 @@ std::string disassemble_quest_script(
 
   QuestMetadata meta;
   populate_quest_metadata_from_script(meta, bin_data, bin_size, version, language);
-  switch (version) {
-    case Version::DC_NTE:
-      lines.emplace_back(".name " + escape_string(meta.name));
-      break;
-    case Version::DC_11_2000:
-    case Version::DC_V1:
-    case Version::DC_V2:
-      lines.emplace_back(std::format(".quest_num {}", meta.quest_number));
-      lines.emplace_back(std::format(".language {}", char_for_language(meta.language)));
-      lines.emplace_back(".name " + escape_string(meta.name));
-      lines.emplace_back(".short_desc " + escape_string(meta.short_description));
-      lines.emplace_back(".long_desc " + escape_string(meta.long_description));
-      break;
-    case Version::PC_NTE:
-    case Version::PC_V2:
-      lines.emplace_back(std::format(".quest_num {}", meta.quest_number));
-      lines.emplace_back(std::format(".language {}", char_for_language(meta.language)));
-      lines.emplace_back(".name " + escape_string(meta.name));
-      lines.emplace_back(".short_desc " + escape_string(meta.short_description));
-      lines.emplace_back(".long_desc " + escape_string(meta.long_description));
-      break;
-    case Version::GC_NTE:
-    case Version::GC_V3:
-    case Version::GC_EP3_NTE:
-    case Version::GC_EP3:
-    case Version::XB_V3:
-      lines.emplace_back(std::format(".quest_num {}", meta.quest_number));
-      lines.emplace_back(std::format(".episode {}", token_name_for_episode(meta.episode)));
-      lines.emplace_back(std::format(".language {}", char_for_language(meta.language)));
-      lines.emplace_back(".name " + escape_string(meta.name));
-      lines.emplace_back(".short_desc " + escape_string(meta.short_description));
-      lines.emplace_back(".long_desc " + escape_string(meta.long_description));
-      break;
-    case Version::BB_V4:
-      lines.emplace_back(std::format(".quest_num {}", meta.quest_number));
-      lines.emplace_back(std::format(".episode {}", token_name_for_episode(meta.episode)));
-      lines.emplace_back(std::format(".language {}", char_for_language(meta.language)));
-      lines.emplace_back(std::format(".max_players {}", meta.max_players));
-      if (meta.joinable) {
-        lines.emplace_back(".joinable");
-      }
-      lines.emplace_back(std::format(".name {}", escape_string(meta.name)));
-      lines.emplace_back(std::format(".short_desc {}", escape_string(meta.short_description)));
-      lines.emplace_back(std::format(".long_desc {}", escape_string(meta.long_description)));
-      if (meta.bb_unknown_a5) {
-        lines.emplace_back(std::format(".bb_unknown_a5 {}", phosg::format_data_string(meta.bb_unknown_a5->data(), meta.bb_unknown_a5->size())));
-      }
-      for (const auto& mask : meta.create_item_mask_entries) {
-        lines.emplace_back(std::format(".allow_create_item {}", mask.str()));
-      }
-      break;
-    default:
-      throw logic_error("invalid quest version");
+  if (version != Version::DC_NTE) {
+    lines.emplace_back(std::format(".quest_num {}", meta.quest_number));
+  }
+  lines.emplace_back(".name " + escape_string(meta.name));
+  if (version != Version::DC_NTE) {
+    lines.emplace_back(std::format(".short_desc {}", escape_string(meta.short_description)));
+    lines.emplace_back(std::format(".long_desc {}", escape_string(meta.long_description)));
+  }
+  if (!is_v1_or_v2(version) || (version == Version::GC_NTE)) {
+    lines.emplace_back(std::format(".episode {}", token_name_for_episode(meta.episode)));
+    lines.emplace_back(std::format(".header_episode 0x{:02X}", meta.header_episode));
+  }
+  lines.emplace_back(std::format(".language {}", char_for_language(meta.language)));
+  if (!is_pre_v1(version) && !is_v4(version) && (static_cast<uint8_t>(meta.language) != meta.header_language)) {
+    lines.emplace_back(std::format(".header_language 0x{:02X}", meta.header_language));
+  }
+  if (is_v4(version)) {
+    lines.emplace_back(std::format(".max_players {}", meta.max_players));
+    if (meta.joinable) {
+      lines.emplace_back(".joinable");
+    }
+    for (const auto& mask : meta.create_item_mask_entries) {
+      lines.emplace_back(std::format(".allow_create_item {}", mask.str()));
+    }
+  }
+  lines.emplace_back(std::format(".header_unknown_a1 0x{:04X}", meta.header_unknown_a1));
+  lines.emplace_back(std::format(".header_unknown_a2 0x{:04X}", meta.header_unknown_a2));
+  if (!is_pre_v1(version) && !is_v4(version)) {
+    lines.emplace_back(std::format(".header_unknown_a3 0x{:02X}", meta.header_unknown_a3));
+  }
+  if (is_v4(version)) {
+    lines.emplace_back(std::format(".header_unknown_a4 0x{:02X}", meta.header_unknown_a4));
+    if (meta.header_unknown_a5) {
+      auto formatted = phosg::format_data_string(meta.header_unknown_a5->data(), meta.header_unknown_a5->size());
+      lines.emplace_back(std::format(".header_unknown_a5 {}", formatted));
+    }
+    lines.emplace_back(std::format(".header_unknown_a6 0x{:04X}", meta.header_unknown_a6));
   }
   lines.emplace_back();
 
@@ -3218,6 +3202,7 @@ std::string disassemble_quest_script(
         }
       }
       if (fs.enemy_sets) {
+        uint8_t area = meta.area_for_floor.at(floor);
         for (size_t z = 0; z < fs.enemy_set_count; z++) {
           // Only NPCs use script labels; no other enemies do
           const auto& ene_set = fs.enemy_sets[z];
@@ -3227,9 +3212,9 @@ std::string disassemble_quest_script(
                   ((ene_set.base_type >= 0x002B) && (ene_set.base_type <= 0x002D)) ||
                   ((ene_set.base_type >= 0x0030) && (ene_set.base_type <= 0x0033)) ||
                   ((ene_set.base_type >= 0x0045) && (ene_set.base_type <= 0x0047)) ||
-                  ((ene_set.base_type >= 0x00D0) && (ene_set.base_type <= 0x00D7)) ||
+                  ((ene_set.base_type >= 0x00D0) && (ene_set.base_type <= 0x00D7) && (area == 0)) ||
                   ((ene_set.base_type >= 0x00F0) && (ene_set.base_type <= 0x0100)) ||
-                  ((ene_set.base_type >= 0x0110) && (ene_set.base_type <= 0x0112)) ||
+                  ((ene_set.base_type >= 0x0110) && (ene_set.base_type <= 0x0112) && (area == 0)) ||
                   (ene_set.base_type == 0x00A9) ||
                   (ene_set.base_type == 0x0118)) &&
               (ene_set.param5 > 0) && (ene_set.param5 < label_table.size())) {
@@ -3553,12 +3538,20 @@ std::string disassemble_quest_script(
                   break;
                 }
                 case Type::R_REG:
-                case Type::W_REG: {
-                  uint8_t reg = label_r.get_u8();
+                case Type::R_REG32:
+                case Type::W_REG:
+                case Type::W_REG32: {
+                  uint32_t reg = ((arg.type == Type::R_REG32) || (arg.type == Type::W_REG32))
+                      ? label_r.get_u32l()
+                      : label_r.get_u8();
                   if (def->flags & F_PUSH_ARG) {
                     arg_stack_values.emplace_back((def->opcode == 0x004C) ? ArgStackValue::Type::REG_PTR : ArgStackValue::Type::REG, reg);
                   }
-                  dasm_arg = std::format("r{}", reg);
+                  if (reg > 0xFF) {
+                    dasm_arg = std::format("r{} /* warning: register number out of range */", reg);
+                  } else {
+                    dasm_arg = std::format("r{}", reg);
+                  }
                   break;
                 }
                 case Type::R_REG_SET: {
@@ -4257,17 +4250,7 @@ AssembledQuestScript assemble_quest_script(
   }
 
   // Collect metadata directives
-  Version quest_version = Version::UNKNOWN;
-  string quest_name;
-  string quest_short_desc;
-  string quest_long_desc;
-  int64_t quest_num = -1;
-  Language quest_language = Language::ENGLISH;
-  Episode quest_episode = Episode::EP1;
-  uint8_t quest_max_players = 4;
-  bool quest_joinable = false;
-  std::shared_ptr<parray<uint8_t, 0x94>> bb_unknown_a5;
-  std::vector<QuestMetadata::CreateItemMask> create_item_mask_entries;
+  AssembledQuestScript ret;
   for (const auto& line : lines) {
     if (line.text.empty()) {
       continue;
@@ -4279,15 +4262,18 @@ AssembledQuestScript assemble_quest_script(
         } else if (line.text.starts_with(".version ")) {
           string name = line.text.substr(9);
           phosg::strip_leading_whitespace(name);
-          quest_version = phosg::enum_for_name<Version>(name);
+          ret.meta.version = phosg::enum_for_name<Version>(name);
+          if ((ret.meta.episode == Episode::NONE) && is_v1_or_v2(ret.meta.version) && (ret.meta.version != Version::GC_NTE)) {
+            ret.meta.episode = Episode::EP1;
+          }
         } else if (line.text.starts_with(".name ")) {
-          quest_name = phosg::parse_data_string(line.text.substr(6));
+          ret.meta.name = phosg::parse_data_string(line.text.substr(6));
         } else if (line.text.starts_with(".short_desc ")) {
-          quest_short_desc = phosg::parse_data_string(line.text.substr(12));
+          ret.meta.short_description = phosg::parse_data_string(line.text.substr(12));
         } else if (line.text.starts_with(".long_desc ")) {
-          quest_long_desc = phosg::parse_data_string(line.text.substr(11));
+          ret.meta.long_description = phosg::parse_data_string(line.text.substr(11));
         } else if (line.text.starts_with(".allow_create_item ")) {
-          if (create_item_mask_entries.size() >= 0x40) {
+          if (ret.meta.create_item_mask_entries.size() >= 0x40) {
             throw std::runtime_error("too many .allow_create_item directives; at most 64 are allowed");
           }
 
@@ -4295,42 +4281,56 @@ AssembledQuestScript assemble_quest_script(
           phosg::strip_whitespace(args_str);
 
           QuestMetadata::CreateItemMask mask(line.text.substr(19));
-          create_item_mask_entries.emplace_back(mask);
+          ret.meta.create_item_mask_entries.emplace_back(mask);
 
         } else if (line.text.starts_with(".quest_num ")) {
-          quest_num = stoul(line.text.substr(11), nullptr, 0);
+          ret.meta.quest_number = stoul(line.text.substr(11), nullptr, 0);
         } else if (line.text.starts_with(".language ")) {
           auto code = line.text.substr(10);
           if (code.size() != 1) {
             throw runtime_error(".language directive argument is invalid");
           }
-          quest_language = language_for_char(code[0]);
+          ret.meta.language = language_for_char(code[0]);
         } else if (line.text.starts_with(".episode ")) {
-          quest_episode = episode_for_token_name(line.text.substr(9));
+          ret.meta.episode = episode_for_token_name(line.text.substr(9));
         } else if (line.text.starts_with(".max_players ")) {
-          quest_max_players = stoul(line.text.substr(12), nullptr, 0);
+          ret.meta.max_players = stoul(line.text.substr(12), nullptr, 0);
         } else if (line.text.starts_with(".joinable ")) {
-          quest_joinable = true;
-        } else if (line.text.starts_with(".bb_unknown_a5 ")) {
-          std::string data = phosg::parse_data_string(line.text.substr(15));
+          ret.meta.joinable = true;
+        } else if (line.text.starts_with(".header_language ")) {
+          ret.meta.header_language = stoul(line.text.substr(17), nullptr, 0);
+        } else if (line.text.starts_with(".header_episode ")) {
+          ret.meta.header_episode = stoul(line.text.substr(16), nullptr, 0);
+        } else if (line.text.starts_with(".header_unknown_a1 ")) {
+          ret.meta.header_unknown_a1 = stoul(line.text.substr(19), nullptr, 0);
+        } else if (line.text.starts_with(".header_unknown_a2 ")) {
+          ret.meta.header_unknown_a2 = stoul(line.text.substr(19), nullptr, 0);
+        } else if (line.text.starts_with(".header_unknown_a3 ")) {
+          ret.meta.header_unknown_a3 = stoul(line.text.substr(19), nullptr, 0);
+        } else if (line.text.starts_with(".header_unknown_a4 ")) {
+          ret.meta.header_unknown_a4 = stoul(line.text.substr(19), nullptr, 0);
+        } else if (line.text.starts_with(".header_unknown_a6 ")) {
+          ret.meta.header_unknown_a6 = stoul(line.text.substr(19), nullptr, 0);
+        } else if (line.text.starts_with(".header_unknown_a5 ")) {
+          std::string data = phosg::parse_data_string(line.text.substr(19));
           if (data.size() != 0x94) {
-            throw std::runtime_error(".bb_unknown_a5 directive must specify 0x94 bytes of data");
+            throw std::runtime_error(".header_unknown_a5 directive must specify 0x94 bytes of data");
           }
-          bb_unknown_a5 = std::make_shared<parray<uint8_t, 0x94>>();
+          ret.meta.header_unknown_a5 = std::make_shared<parray<uint8_t, 0x94>>();
           for (size_t z = 0; z < 0x94; z++) {
-            bb_unknown_a5->at(z) = static_cast<uint8_t>(data[z]);
+            ret.meta.header_unknown_a5->at(z) = static_cast<uint8_t>(data[z]);
           }
         }
       }
     });
   }
-  if (quest_version == Version::PC_PATCH || quest_version == Version::BB_PATCH || quest_version == Version::UNKNOWN) {
+  if (ret.meta.version == Version::PC_PATCH || ret.meta.version == Version::BB_PATCH || ret.meta.version == Version::UNKNOWN) {
     throw runtime_error(".version directive is missing or invalid");
   }
-  if (quest_num < 0) {
+  if (ret.meta.quest_number < 0) {
     throw runtime_error(".quest_num directive is missing or invalid");
   }
-  if (quest_name.empty()) {
+  if (ret.meta.name.empty()) {
     throw runtime_error(".name directive is missing or invalid");
   }
 
@@ -4488,8 +4488,8 @@ AssembledQuestScript assemble_quest_script(
     throw runtime_error("data not found for native include: " + filename);
   };
 
-  bool version_has_args = F_HAS_ARGS & v_flag(quest_version);
-  const auto& opcodes = opcodes_by_name_for_version(quest_version);
+  bool version_has_args = F_HAS_ARGS & v_flag(ret.meta.version);
+  const auto& opcodes = opcodes_by_name_for_version(ret.meta.version);
   phosg::StringWriter code_w;
   for (const auto& line : lines) {
     wrap_exceptions_with_line_ref(line, [&]() -> void {
@@ -4509,11 +4509,11 @@ AssembledQuestScript assemble_quest_script(
           code_w.write(phosg::parse_data_string(line.text.substr(6)));
         } else if (line.text.starts_with(".cstr ")) {
           string data = phosg::parse_data_string(line.text.substr(6));
-          if (uses_utf16(quest_version)) {
+          if (uses_utf16(ret.meta.version)) {
             code_w.write(tt_utf8_to_utf16(data));
             code_w.put_u16l(0);
           } else {
-            code_w.write((quest_language == Language::JAPANESE) ? tt_utf8_to_sega_sjis(data) : tt_utf8_to_8859(data));
+            code_w.write((ret.meta.language == Language::JAPANESE) ? tt_utf8_to_sega_sjis(data) : tt_utf8_to_8859(data));
             code_w.put_u8(0);
           }
         } else if (line.text.starts_with(".zero ")) {
@@ -4538,11 +4538,11 @@ AssembledQuestScript assemble_quest_script(
           phosg::strip_whitespace(filename);
           string native_text = get_native_include(filename);
           string code;
-          if (is_ppc(quest_version)) {
+          if (is_ppc(ret.meta.version)) {
             code = std::move(ResourceDASM::PPC32Emulator::assemble(native_text).code);
-          } else if (is_x86(quest_version)) {
+          } else if (is_x86(ret.meta.version)) {
             code = std::move(ResourceDASM::X86Emulator::assemble(native_text).code);
-          } else if (is_sh4(quest_version)) {
+          } else if (is_sh4(ret.meta.version)) {
             code = std::move(ResourceDASM::SH4Emulator::assemble(native_text).code);
           } else {
             throw runtime_error("unknown architecture");
@@ -4603,7 +4603,7 @@ AssembledQuestScript assemble_quest_script(
 
           try {
             auto add_cstr = [&](const string& text, bool bin) -> void {
-              switch (quest_version) {
+              switch (ret.meta.version) {
                 case Version::DC_NTE:
                   code_w.write(bin ? text : tt_utf8_to_sega_sjis(text));
                   code_w.put_u8(0);
@@ -4616,7 +4616,7 @@ AssembledQuestScript assemble_quest_script(
                 case Version::GC_EP3_NTE:
                 case Version::GC_EP3:
                 case Version::XB_V3:
-                  code_w.write(bin ? text : ((quest_language == Language::JAPANESE) ? tt_utf8_to_sega_sjis(text) : tt_utf8_to_8859(text)));
+                  code_w.write(bin ? text : ((ret.meta.language == Language::JAPANESE) ? tt_utf8_to_sega_sjis(text) : tt_utf8_to_8859(text)));
                   code_w.put_u8(0);
                   break;
                 case Version::PC_NTE:
@@ -4715,9 +4715,9 @@ AssembledQuestScript assemble_quest_script(
                 size_t label_index;
                 auto it = labels_by_name.find(name);
                 if (it == labels_by_name.end()) {
-                  if (strict) {
+                  if (strict || !name.starts_with("label")) {
                     throw runtime_error("label not defined: " + name);
-                  } else if (name.starts_with("label")) {
+                  } else {
                     size_t used_chars;
                     label_index = std::stoul(name.substr(5), &used_chars, 16);
                     if (used_chars != name.size() - 5) {
@@ -4831,8 +4831,12 @@ AssembledQuestScript assemble_quest_script(
       }
     });
   }
-  while (code_w.size() & 3) {
-    code_w.put_u8(0);
+
+  // Allow label table to be misaligned on x86 architectures in non-strict mode (some official quests do this)
+  if (strict || !is_x86(ret.meta.version)) {
+    while (code_w.size() & 3) {
+      code_w.put_u8(0);
+    }
   }
 
   // Assign all register numbers and patch the code section if needed
@@ -4871,43 +4875,55 @@ AssembledQuestScript assemble_quest_script(
   }
 
   // Generate header
+  auto set_basic_header_fields = [&]<typename HeaderT>(HeaderT& header) -> void {
+    ret.meta.text_offset = sizeof(header);
+    ret.meta.label_table_offset = ret.meta.text_offset + code_w.size();
+    header.text_offset = ret.meta.text_offset;
+    header.label_table_offset = ret.meta.label_table_offset;
+    header.size = ret.meta.label_table_offset + label_table.size() * sizeof(label_table[0]);
+    header.unknown_a1 = ret.meta.header_unknown_a1;
+    header.unknown_a2 = ret.meta.header_unknown_a2;
+  };
   phosg::StringWriter w;
-  switch (quest_version) {
+  switch (ret.meta.version) {
     case Version::DC_NTE: {
       PSOQuestHeaderDCNTE header;
-      header.text_offset = sizeof(header);
-      header.label_table_offset = sizeof(header) + code_w.size();
-      header.size = header.label_table_offset + label_table.size() * sizeof(label_table[0]);
-      header.name.encode(quest_name, Language::JAPANESE);
+      set_basic_header_fields(header);
+      header.name.encode(ret.meta.name, Language::JAPANESE);
       w.put(header);
       break;
     }
-    case Version::DC_11_2000:
+    case Version::DC_11_2000: {
+      PSOQuestHeaderDC112000 header;
+      set_basic_header_fields(header);
+      header.name.encode(ret.meta.name, ret.meta.language);
+      header.short_description.encode(ret.meta.short_description, ret.meta.language);
+      header.long_description.encode(ret.meta.long_description, ret.meta.language);
+      break;
+    }
     case Version::DC_V1:
     case Version::DC_V2: {
       PSOQuestHeaderDC header;
-      header.text_offset = sizeof(header);
-      header.label_table_offset = sizeof(header) + code_w.size();
-      header.size = header.label_table_offset + label_table.size() * sizeof(label_table[0]);
-      header.language = quest_language;
-      header.quest_number = quest_num;
-      header.name.encode(quest_name, quest_language);
-      header.short_description.encode(quest_short_desc, quest_language);
-      header.long_description.encode(quest_long_desc, quest_language);
+      set_basic_header_fields(header);
+      header.language = (ret.meta.header_language >= 0) ? static_cast<Language>(ret.meta.header_language) : ret.meta.language;
+      header.unknown_a3 = ret.meta.header_unknown_a3;
+      header.quest_number = ret.meta.quest_number;
+      header.name.encode(ret.meta.name, ret.meta.language);
+      header.short_description.encode(ret.meta.short_description, ret.meta.language);
+      header.long_description.encode(ret.meta.long_description, ret.meta.language);
       w.put(header);
       break;
     }
     case Version::PC_NTE:
     case Version::PC_V2: {
       PSOQuestHeaderPC header;
-      header.text_offset = sizeof(header);
-      header.label_table_offset = sizeof(header) + code_w.size();
-      header.size = header.label_table_offset + label_table.size() * sizeof(label_table[0]);
-      header.language = quest_language;
-      header.quest_number = quest_num;
-      header.name.encode(quest_name, quest_language);
-      header.short_description.encode(quest_short_desc, quest_language);
-      header.long_description.encode(quest_long_desc, quest_language);
+      set_basic_header_fields(header);
+      header.language = (ret.meta.header_language >= 0) ? static_cast<Language>(ret.meta.header_language) : ret.meta.language;
+      header.unknown_a3 = ret.meta.header_unknown_a3;
+      header.quest_number = ret.meta.quest_number;
+      header.name.encode(ret.meta.name, ret.meta.language);
+      header.short_description.encode(ret.meta.short_description, ret.meta.language);
+      header.long_description.encode(ret.meta.long_description, ret.meta.language);
       w.put(header);
       break;
     }
@@ -4916,43 +4932,44 @@ AssembledQuestScript assemble_quest_script(
     case Version::GC_EP3_NTE:
     case Version::GC_EP3:
     case Version::XB_V3: {
-      PSOQuestHeaderGC header;
-      header.text_offset = sizeof(header);
-      header.label_table_offset = sizeof(header) + code_w.size();
-      header.size = header.label_table_offset + label_table.size() * sizeof(label_table[0]);
-      header.language = quest_language;
-      header.quest_number = quest_num;
-      header.name.encode(quest_name, quest_language);
-      header.short_description.encode(quest_short_desc, quest_language);
-      header.long_description.encode(quest_long_desc, quest_language);
+      PSOQuestHeaderV3 header;
+      set_basic_header_fields(header);
+      header.language = (ret.meta.header_language >= 0) ? static_cast<Language>(ret.meta.header_language) : ret.meta.language;
+      header.unknown_a3 = ret.meta.header_unknown_a3;
+      header.quest_number = ret.meta.quest_number;
+      header.name.encode(ret.meta.name, ret.meta.language);
+      header.short_description.encode(ret.meta.short_description, ret.meta.language);
+      header.long_description.encode(ret.meta.long_description, ret.meta.language);
       w.put(header);
       break;
     }
     case Version::BB_V4: {
       PSOQuestHeaderBB header;
-      header.text_offset = sizeof(header);
-      header.label_table_offset = sizeof(header) + code_w.size();
-      header.size = header.label_table_offset + label_table.size() * sizeof(label_table[0]);
-      header.quest_number = quest_num;
-      if (quest_episode == Episode::EP4) {
+      set_basic_header_fields(header);
+      header.quest_number = ret.meta.quest_number;
+      header.unknown_a6 = ret.meta.header_unknown_a6;
+      if (ret.meta.header_episode >= 0) {
+        header.episode = ret.meta.header_episode;
+      } else if (ret.meta.episode == Episode::EP4) {
         header.episode = 2;
-      } else if (quest_episode == Episode::EP2) {
+      } else if (ret.meta.episode == Episode::EP2) {
         header.episode = 1;
       } else {
         header.episode = 0;
       }
-      header.max_players = (quest_max_players == 4) ? 0 : quest_max_players;
-      header.joinable = quest_joinable ? 1 : 0;
-      header.name.encode(quest_name, quest_language);
-      header.short_description.encode(quest_short_desc, quest_language);
-      header.long_description.encode(quest_long_desc, quest_language);
-      if (bb_unknown_a5) {
-        header.unknown_a5 = *bb_unknown_a5;
+      header.max_players = ret.meta.max_players;
+      header.joinable = ret.meta.joinable ? 1 : 0;
+      header.unknown_a4 = ret.meta.header_unknown_a4;
+      header.name.encode(ret.meta.name, ret.meta.language);
+      header.short_description.encode(ret.meta.short_description, ret.meta.language);
+      header.long_description.encode(ret.meta.long_description, ret.meta.language);
+      if (ret.meta.header_unknown_a5) {
+        header.unknown_a5 = *ret.meta.header_unknown_a5;
       } else {
         header.unknown_a5.clear(0);
       }
-      for (size_t z = 0; z < create_item_mask_entries.size(); z++) {
-        header.create_item_mask_entries[z] = create_item_mask_entries[z];
+      for (size_t z = 0; z < ret.meta.create_item_mask_entries.size(); z++) {
+        header.create_item_mask_entries[z] = ret.meta.create_item_mask_entries[z];
       }
       w.put(header);
       break;
@@ -4962,18 +4979,9 @@ AssembledQuestScript assemble_quest_script(
   }
   w.write(code_w.str());
   w.write(label_table.data(), label_table.size() * sizeof(label_table[0]));
-  return AssembledQuestScript{
-      .data = std::move(w.str()),
-      .quest_number = quest_num,
-      .version = quest_version,
-      .language = quest_language,
-      .episode = quest_episode,
-      .joinable = quest_joinable,
-      .max_players = quest_max_players,
-      .name = quest_name,
-      .short_description = quest_short_desc,
-      .long_description = quest_long_desc,
-  };
+  ret.data = std::move(w.str());
+
+  return ret;
 }
 
 void populate_quest_metadata_from_script(
@@ -4984,6 +4992,8 @@ void populate_quest_metadata_from_script(
   switch (version) {
     case Version::DC_NTE: {
       const auto& header = r.get<PSOQuestHeaderDCNTE>();
+      meta.header_unknown_a1 = header.unknown_a1;
+      meta.header_unknown_a2 = header.unknown_a2;
       meta.episode = Episode::EP1;
       meta.max_players = 4;
       meta.name = header.name.decode(language);
@@ -4997,6 +5007,8 @@ void populate_quest_metadata_from_script(
     }
     case Version::DC_11_2000: {
       const auto& header = r.get<PSOQuestHeaderDC112000>();
+      meta.header_unknown_a1 = header.unknown_a1;
+      meta.header_unknown_a2 = header.unknown_a2;
       meta.episode = Episode::EP1;
       meta.max_players = 4;
       meta.language = (language == Language::UNKNOWN) ? Language::JAPANESE : language;
@@ -5013,6 +5025,10 @@ void populate_quest_metadata_from_script(
     case Version::DC_V1:
     case Version::DC_V2: {
       const auto& header = r.get<PSOQuestHeaderDC>();
+      meta.header_language = static_cast<uint8_t>(header.language);
+      meta.header_unknown_a1 = header.unknown_a1;
+      meta.header_unknown_a2 = header.unknown_a2;
+      meta.header_unknown_a3 = header.unknown_a3;
       meta.episode = Episode::EP1;
       meta.max_players = 4;
       meta.language = (language != Language::UNKNOWN) ? language : ((static_cast<size_t>(header.language) < 5) ? header.language : Language::ENGLISH);
@@ -5029,6 +5045,10 @@ void populate_quest_metadata_from_script(
     case Version::PC_NTE:
     case Version::PC_V2: {
       const auto& header = r.get<PSOQuestHeaderPC>();
+      meta.header_language = static_cast<uint8_t>(header.language);
+      meta.header_unknown_a1 = header.unknown_a1;
+      meta.header_unknown_a2 = header.unknown_a2;
+      meta.header_unknown_a3 = header.unknown_a3;
       meta.episode = Episode::EP1;
       meta.max_players = 4;
       if (meta.quest_number == 0xFFFFFFFF) {
@@ -5051,7 +5071,11 @@ void populate_quest_metadata_from_script(
       // same as Episode 3 maps and download quests. Quest scripts (handled
       // here) are only used offline in story mode, but can be disassembled
       // with disassemble_quest_script, hence we need to be able to parse them.
-      const auto& header = r.get<PSOQuestHeaderGC>();
+      const auto& header = r.get<PSOQuestHeaderV3>();
+      meta.header_language = static_cast<uint8_t>(header.language);
+      meta.header_unknown_a1 = header.unknown_a1;
+      meta.header_unknown_a2 = header.unknown_a2;
+      meta.header_unknown_a3 = header.unknown_a3;
       meta.episode = Episode::EP1;
       meta.max_players = 4;
       if (meta.quest_number == 0xFFFFFFFF) {
@@ -5067,9 +5091,14 @@ void populate_quest_metadata_from_script(
     }
     case Version::BB_V4: {
       const auto& header = r.get<PSOQuestHeaderBBBase>();
+      meta.header_episode = header.episode;
+      meta.header_unknown_a1 = header.unknown_a1;
+      meta.header_unknown_a2 = header.unknown_a2;
+      meta.header_unknown_a4 = header.unknown_a4;
+      meta.header_unknown_a6 = header.unknown_a6;
       meta.episode = episode_for_quest_episode_number(header.episode);
       meta.joinable |= header.joinable;
-      meta.max_players = header.max_players ? header.max_players : 4;
+      meta.max_players = header.max_players;
       if (meta.quest_number == 0xFFFFFFFF) {
         meta.quest_number = header.quest_number;
       }
@@ -5084,7 +5113,7 @@ void populate_quest_metadata_from_script(
           (header.label_table_offset >= sizeof(PSOQuestHeaderBB))) {
         r.go(0);
         const auto& header = r.get<PSOQuestHeaderBB>();
-        meta.bb_unknown_a5 = std::make_shared<parray<uint8_t, 0x94>>(header.unknown_a5);
+        meta.header_unknown_a5 = std::make_shared<parray<uint8_t, 0x94>>(header.unknown_a5);
         for (size_t z = 0; z < header.create_item_mask_entries.size(); z++) {
           const auto& item = header.create_item_mask_entries[z];
           if (!item.is_valid()) {

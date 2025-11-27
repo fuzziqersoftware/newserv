@@ -200,10 +200,10 @@ void VersionedQuest::assert_valid() const {
   if (this->meta.quest_number == 0xFFFFFFFF) {
     throw runtime_error("quest number is not set");
   }
-  if (this->version == Version::UNKNOWN) {
+  if (this->meta.version == Version::UNKNOWN) {
     throw runtime_error("version is not set");
   }
-  if (this->language == Language::UNKNOWN) {
+  if (this->meta.language == Language::UNKNOWN) {
     throw runtime_error("language is not set");
   }
   switch (this->meta.episode) {
@@ -216,7 +216,7 @@ void VersionedQuest::assert_valid() const {
       }
       break;
     case Episode::EP2:
-      if (is_v1_or_v2(this->version)) {
+      if (is_v1_or_v2(this->meta.version)) {
         throw runtime_error("v1 or v2 quest specifies Episode 2");
       }
       for (size_t floor = 0; floor < this->meta.area_for_floor.size(); floor++) {
@@ -227,7 +227,7 @@ void VersionedQuest::assert_valid() const {
       }
       break;
     case Episode::EP3:
-      if (!is_ep3(this->version)) {
+      if (!is_ep3(this->meta.version)) {
         throw runtime_error("non-Ep3 quest specifies Episode 3");
       }
       for (size_t floor = 0; floor < this->meta.area_for_floor.size(); floor++) {
@@ -237,7 +237,7 @@ void VersionedQuest::assert_valid() const {
       }
       break;
     case Episode::EP4:
-      if (!is_v4(this->version)) {
+      if (!is_v4(this->meta.version)) {
         throw runtime_error("non-v4 quest specifies Episode 4");
       }
       for (size_t floor = 0; floor < this->meta.area_for_floor.size(); floor++) {
@@ -252,9 +252,6 @@ void VersionedQuest::assert_valid() const {
     default:
       throw runtime_error("episode is not valid");
   }
-  if (this->meta.max_players == 0) {
-    throw runtime_error("max players is not set");
-  }
   if (!this->bin_contents) {
     throw runtime_error("bin file is missing");
   }
@@ -263,12 +260,6 @@ void VersionedQuest::assert_valid() const {
   }
   if (!this->map_file) {
     throw runtime_error("parsed map file is missing");
-  }
-  if (this->meta.common_item_set_name.empty() != !this->meta.common_item_set) {
-    throw runtime_error("common item set name/pointer mismatch");
-  }
-  if (this->meta.rare_item_set_name.empty() != !this->meta.rare_item_set) {
-    throw runtime_error("rare item set name/pointer mismatch");
   }
   if (this->meta.allowed_drop_modes &&
       !(this->meta.allowed_drop_modes & (1 << static_cast<size_t>(this->meta.default_drop_mode)))) {
@@ -290,7 +281,7 @@ string VersionedQuest::pvr_filename() const {
 
 string VersionedQuest::xb_filename() const {
   return std::format("quest{}_{}.dat",
-      this->meta.quest_number, static_cast<char>(tolower(char_for_language(this->language))));
+      this->meta.quest_number, static_cast<char>(tolower(char_for_language(this->meta.language))));
 }
 
 string VersionedQuest::encode_qst() const {
@@ -301,8 +292,8 @@ string VersionedQuest::encode_qst() const {
     files.emplace(std::format("quest{}.pvr", this->meta.quest_number), this->pvr_contents);
   }
   string xb_filename = std::format("quest{}_{}.dat",
-      this->meta.quest_number, static_cast<char>(tolower(char_for_language(language))));
-  return encode_qst_file(files, this->meta.name, this->meta.quest_number, xb_filename, this->version, this->is_dlq_encoded);
+      this->meta.quest_number, static_cast<char>(tolower(char_for_language(this->meta.language))));
+  return encode_qst_file(files, this->meta.name, this->meta.quest_number, xb_filename, this->meta.version, this->is_dlq_encoded);
 }
 
 Quest::Quest(shared_ptr<const VersionedQuest> initial_version)
@@ -314,8 +305,8 @@ phosg::JSON Quest::json() const {
   auto versions_json = phosg::JSON::list();
   for (const auto& [_, vq] : this->versions) {
     versions_json.emplace_back(phosg::JSON::dict({
-        {"Version", phosg::name_for_enum(vq->version)},
-        {"Language", ::name_for_language(vq->language)},
+        {"Version", phosg::name_for_enum(vq->meta.version)},
+        {"Language", ::name_for_language(vq->meta.language)},
         {"Name", vq->meta.name},
         {"ShortDescription", vq->meta.short_description},
         {"LongDescription", vq->meta.long_description},
@@ -357,9 +348,9 @@ void Quest::add_version(shared_ptr<const VersionedQuest> vq) {
   if (this->meta.create_item_mask_entries.empty()) {
     this->meta.create_item_mask_entries = vq->meta.create_item_mask_entries;
   }
-  this->versions.emplace(this->versions_key(vq->version, vq->language), vq);
+  this->versions.emplace(this->versions_key(vq->meta.version, vq->meta.language), vq);
 
-  size_t lang_index = static_cast<size_t>(vq->language);
+  size_t lang_index = static_cast<size_t>(vq->meta.language);
   auto& name_by_language = this->names_by_language.at(lang_index);
   if (name_by_language.empty()) {
     name_by_language = vq->meta.name;
@@ -435,12 +426,7 @@ shared_ptr<const VersionedQuest> Quest::version(Version v, Language language) co
   return it->second;
 }
 
-QuestIndex::QuestIndex(
-    const string& directory,
-    shared_ptr<const QuestCategoryIndex> category_index,
-    const unordered_map<string, shared_ptr<const CommonItemSet>>& common_item_sets,
-    const unordered_map<string, shared_ptr<const RareItemSet>>& rare_item_sets,
-    bool raise_on_any_failure)
+QuestIndex::QuestIndex(const string& directory, shared_ptr<const QuestCategoryIndex> category_index, bool raise_on_any_failure)
     : directory(directory),
       category_index(category_index) {
 
@@ -600,6 +586,7 @@ QuestIndex::QuestIndex(
   // All quests have a bin file (even in Episode 3, though its format is
   // different), so we use bin_files as the primary list of all quests that
   // should be indexed
+  unordered_map<const FileData*, shared_ptr<const phosg::JSON>> parsed_json_files;
   for (auto& [basename, entry] : bin_files) {
     try {
       auto vq = make_shared<VersionedQuest>();
@@ -625,9 +612,9 @@ QuestIndex::QuestIndex(
       vq->meta.category_id = categories.at(basename);
 
       if (entry.assembled) {
-        vq->meta.quest_number = entry.assembled->quest_number;
-        vq->version = entry.assembled->version;
-        vq->language = entry.assembled->language;
+        vq->meta.quest_number = entry.assembled->meta.quest_number;
+        vq->meta.version = entry.assembled->meta.version;
+        vq->meta.language = entry.assembled->meta.language;
       } else {
         // Get the number from the first token
         if (quest_number_token.empty()) {
@@ -650,30 +637,17 @@ QuestIndex::QuestIndex(
             {"xb", Version::XB_V3},
             {"bb", Version::BB_V4},
         });
-        vq->version = name_to_version.at(version_token);
+        vq->meta.version = name_to_version.at(version_token);
 
         // Get the language from the last token
         if (language_token.size() != 1) {
           throw runtime_error("language token is not a single character");
         }
-        vq->language = language_for_char(language_token[0]);
+        vq->meta.language = language_for_char(language_token[0]);
       }
 
       auto bin_decompressed = prs_decompress(*entry.data);
-      populate_quest_metadata_from_script(vq->meta, bin_decompressed.data(), bin_decompressed.size(), vq->version, vq->language);
-
-      // If the quest was assembled (that is, if it came from a .bin.txt file),
-      // the metadata from the source file overrides any automatically-detected
-      // values from above
-      if (entry.assembled) {
-        vq->meta.quest_number = entry.assembled->quest_number;
-        vq->meta.episode = entry.assembled->episode;
-        vq->meta.joinable = entry.assembled->joinable;
-        vq->meta.max_players = entry.assembled->max_players;
-        vq->meta.name = entry.assembled->name;
-        vq->meta.short_description = entry.assembled->short_description;
-        vq->meta.long_description = entry.assembled->long_description;
-      }
+      populate_quest_metadata_from_script(vq->meta, bin_decompressed.data(), bin_decompressed.size(), vq->meta.version, vq->meta.language);
 
       // Find the corresponding dat and pvr files with the same basename as the
       // bin file; if not found, look for them without the language suffix
@@ -722,57 +696,13 @@ QuestIndex::QuestIndex(
         }
       }
       if (json_filedata) {
-        auto metadata_json = phosg::JSON::parse(*json_filedata->data);
         try {
-          vq->meta.description_flag = metadata_json.at("DescriptionFlag").as_int();
+          vq->json_contents = parsed_json_files.at(json_filedata);
         } catch (const out_of_range&) {
+          vq->json_contents = make_shared<phosg::JSON>(phosg::JSON::parse(*json_filedata->data));
+          parsed_json_files.emplace(json_filedata, vq->json_contents);
         }
-        try {
-          vq->meta.available_expression = make_shared<IntegralExpression>(metadata_json.get_string("AvailableIf"));
-        } catch (const out_of_range&) {
-        }
-        try {
-          vq->meta.enabled_expression = make_shared<IntegralExpression>(metadata_json.get_string("EnabledIf"));
-        } catch (const out_of_range&) {
-        }
-        try {
-          vq->meta.allow_start_from_chat_command = metadata_json.get_bool("AllowStartFromChatCommand");
-        } catch (const out_of_range&) {
-        }
-        try {
-          vq->meta.joinable = metadata_json.get_bool("Joinable");
-        } catch (const out_of_range&) {
-        }
-        try {
-          vq->meta.lock_status_register = metadata_json.get_int("LockStatusRegister");
-        } catch (const out_of_range&) {
-        }
-        try {
-          vq->meta.enemy_exp_overrides = QuestMetadata::parse_enemy_exp_overrides(metadata_json.at("EnemyEXPOverrides"));
-        } catch (const out_of_range&) {
-        }
-        try {
-          vq->meta.common_item_set_name = metadata_json.at("CommonItemSetName").as_string();
-        } catch (const out_of_range&) {
-        }
-        if (!vq->meta.common_item_set_name.empty()) {
-          vq->meta.common_item_set = common_item_sets.at(vq->meta.common_item_set_name);
-        }
-        try {
-          vq->meta.rare_item_set_name = metadata_json.at("RareItemSetName").as_string();
-        } catch (const out_of_range&) {
-        }
-        if (!vq->meta.rare_item_set_name.empty()) {
-          vq->meta.rare_item_set = rare_item_sets.at(vq->meta.rare_item_set_name);
-        }
-        try {
-          vq->meta.allowed_drop_modes = metadata_json.at("AllowedDropModes").as_int();
-        } catch (const out_of_range&) {
-        }
-        try {
-          vq->meta.default_drop_mode = phosg::enum_for_name<ServerDropMode>(metadata_json.at("DefaultDropMode").as_string());
-        } catch (const out_of_range&) {
-        }
+        vq->meta.apply_json_overrides(*vq->json_contents);
       }
 
       vq->assert_valid();
@@ -793,8 +723,8 @@ QuestIndex::QuestIndex(
         q_it->second->add_version(vq);
         static_game_data_log.debug_f("({}) Added {} {} version of quest {} ({})",
             filenames_str,
-            phosg::name_for_enum(vq->version),
-            char_for_language(vq->language),
+            phosg::name_for_enum(vq->meta.version),
+            char_for_language(vq->meta.language),
             vq->meta.quest_number,
             vq->meta.name);
       } else {
@@ -804,8 +734,8 @@ QuestIndex::QuestIndex(
         this->quests_by_category_id_and_number[q->meta.category_id].emplace(vq->meta.quest_number, q);
         static_game_data_log.debug_f("({}) Created {} {} quest {} ({}) ({}, {} ({}), {})",
             filenames_str,
-            phosg::name_for_enum(vq->version),
-            char_for_language(vq->language),
+            phosg::name_for_enum(vq->meta.version),
+            char_for_language(vq->meta.language),
             vq->meta.quest_number,
             vq->meta.name,
             name_for_episode(vq->meta.episode),
@@ -956,13 +886,12 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(Language overri
   string decompressed_bin = prs_decompress(*this->bin_contents);
 
   void* data_ptr = decompressed_bin.data();
-  switch (this->version) {
+  switch (this->meta.version) {
     case Version::DC_NTE:
       if (decompressed_bin.size() < sizeof(PSOQuestHeaderDCNTE)) {
         throw runtime_error("bin file is too small for header");
       }
-      // There's no known language field in this version, so we don't write
-      // anything here
+      // There's no known language field in this version, so we don't write anything here
       break;
     case Version::DC_11_2000:
     case Version::DC_V1:
@@ -986,11 +915,11 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(Language overri
     case Version::GC_NTE:
     case Version::GC_V3:
     case Version::XB_V3:
-      if (decompressed_bin.size() < sizeof(PSOQuestHeaderGC)) {
+      if (decompressed_bin.size() < sizeof(PSOQuestHeaderV3)) {
         throw runtime_error("bin file is too small for header");
       }
       if (override_language != Language::UNKNOWN) {
-        reinterpret_cast<PSOQuestHeaderGC*>(data_ptr)->language = override_language;
+        reinterpret_cast<PSOQuestHeaderV3*>(data_ptr)->language = override_language;
       }
       break;
     case Version::BB_V4:

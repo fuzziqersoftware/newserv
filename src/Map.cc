@@ -4583,7 +4583,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
     case 0x00FD: // TObjNpcNgcBase
     case 0x00FE: // TObjNpcNgcBase
     case 0x00FF: // TObjNpcNgcBase
-    case 0x0100: // Unknown NPC
+    case 0x0100: // Momoka
       // All of these have a default child count of zero
       add(EnemyType::NON_ENEMY_NPC);
       break;
@@ -4923,7 +4923,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
     case 0x00C4: // TBoss3VoloptCore or subclass
     case 0x00C6: // TBoss3VoloptMonitor
     case 0x00C7: // TBoss3VoloptHiraisin
-    case 0x0118:
+    case 0x0118: // __QUEST_NPC__
       add(EnemyType::UNKNOWN);
       break;
 

@@ -508,8 +508,8 @@ ItemData ServerState::parse_item_description(Version version, const string& desc
 }
 
 shared_ptr<const CommonItemSet> ServerState::common_item_set(Version logic_version, shared_ptr<const Quest> q) const {
-  if (q && q->meta.common_item_set) {
-    return q->meta.common_item_set;
+  if (q && !q->meta.common_item_set_name.empty()) {
+    return this->common_item_sets.at(q->meta.common_item_set_name);
   } else if (is_v1_or_v2(logic_version) && (logic_version != Version::GC_NTE)) {
     // TODO: We should probably have a v1 common item set at some point too
     return this->common_item_sets.at("common-table-v1-v2");
@@ -521,8 +521,8 @@ shared_ptr<const CommonItemSet> ServerState::common_item_set(Version logic_versi
 }
 
 shared_ptr<const RareItemSet> ServerState::rare_item_set(Version logic_version, shared_ptr<const Quest> q) const {
-  if (q && q->meta.rare_item_set) {
-    return q->meta.rare_item_set;
+  if (q && !q->meta.rare_item_set_name.empty()) {
+    return this->rare_item_sets.at(q->meta.rare_item_set_name);
   } else if (is_v1(logic_version)) {
     return this->rare_item_sets.at("rare-table-v1");
   } else if (is_v2(logic_version) && (logic_version != Version::GC_NTE)) {
@@ -2150,8 +2150,7 @@ void ServerState::load_ep3_tournament_state() {
 
 void ServerState::load_quest_index(bool raise_on_any_failure) {
   config_log.info_f("Collecting quests");
-  this->quest_index = make_shared<QuestIndex>(
-      "system/quests", this->quest_category_index, this->common_item_sets, this->rare_item_sets, raise_on_any_failure);
+  this->quest_index = make_shared<QuestIndex>("system/quests", this->quest_category_index, raise_on_any_failure);
 }
 
 void ServerState::compile_functions(bool raise_on_any_failure) {
