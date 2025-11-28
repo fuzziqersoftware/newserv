@@ -3489,9 +3489,7 @@ static string name_for_entity_type(
     ret += def->name;
   }
 
-  return ret.empty()
-      ? std::format("__UNKNOWN_ENTITY_{:04X}__", type)
-      : ret;
+  return ret.empty() ? std::format("__UNKNOWN_ENTITY_{:04X}__", type) : ret;
 }
 
 string MapFile::name_for_object_type(uint16_t type, Version version, uint8_t area) {
