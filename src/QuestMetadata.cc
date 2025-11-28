@@ -264,22 +264,30 @@ phosg::JSON QuestMetadata::json() const {
 
 QuestMetadata::CreateItemMask::CreateItemMask(const std::string& s) {
   phosg::StringReader r(s);
+  // Ignore all whitespace
+  auto get_ch = [&]() -> char {
+    char ch = r.get_s8();
+    while ((ch == ' ') || (ch == '\t')) {
+      ch = r.get_s8();
+    }
+    return ch;
+  };
   for (size_t z = 0; z < 12 && !r.eof(); z++) {
     auto& range = this->data1_ranges[z];
-    char c = r.get_s8();
+    char c = get_ch();
     if (c == '[') {
-      c = r.get_s8();
-      range.min = (phosg::value_for_hex_char(c) << 4) | phosg::value_for_hex_char(r.get_s8());
-      if (r.get_s8() != '-') {
+      c = get_ch();
+      range.min = (phosg::value_for_hex_char(c) << 4) | phosg::value_for_hex_char(get_ch());
+      if (get_ch() != '-') {
         throw std::runtime_error("invalid range spec");
       }
-      c = r.get_s8();
-      range.max = (phosg::value_for_hex_char(c) << 4) | phosg::value_for_hex_char(r.get_s8());
-      if (r.get_s8() != ']') {
+      c = get_ch();
+      range.max = (phosg::value_for_hex_char(c) << 4) | phosg::value_for_hex_char(get_ch());
+      if (get_ch() != ']') {
         throw std::runtime_error("invalid range spec");
       }
     } else {
-      range.min = (phosg::value_for_hex_char(c) << 4) | phosg::value_for_hex_char(r.get_s8());
+      range.min = (phosg::value_for_hex_char(c) << 4) | phosg::value_for_hex_char(get_ch());
       range.max = range.min;
     }
   }

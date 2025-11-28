@@ -4279,12 +4279,7 @@ AssembledQuestScript assemble_quest_script(
           if (ret.meta.create_item_mask_entries.size() >= 0x40) {
             throw std::runtime_error("too many .allow_create_item directives; at most 64 are allowed");
           }
-
-          string args_str = line.text.substr(19);
-          phosg::strip_whitespace(args_str);
-
-          QuestMetadata::CreateItemMask mask(line.text.substr(19));
-          ret.meta.create_item_mask_entries.emplace_back(mask);
+          ret.meta.create_item_mask_entries.emplace_back(line.text.substr(19));
 
         } else if (line.text.starts_with(".quest_num ")) {
           ret.meta.quest_number = stoul(line.text.substr(11), nullptr, 0);
