@@ -36,6 +36,7 @@ system/teams/*.json
 
 # Files fuzziqersoftware uses that don't make sense to be committed to the main
 # repository
+*.dec
 files
 make_release.py
 notes-private
