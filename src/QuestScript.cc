@@ -3058,6 +3058,9 @@ std::string disassemble_quest_script(
     if (meta.joinable) {
       lines.emplace_back(".joinable");
     }
+    for (uint16_t flag : meta.solo_unlock_flags) {
+      lines.emplace_back(std::format(".solo_unlock_flag 0x{:04X}", flag));
+    }
     for (const auto& mask : meta.create_item_mask_entries) {
       lines.emplace_back(std::format(".allow_create_item {}", mask.str()));
     }
@@ -3069,10 +3072,7 @@ std::string disassemble_quest_script(
   }
   if (is_v4(version)) {
     lines.emplace_back(std::format(".header_unknown_a4 0x{:02X}", meta.header_unknown_a4));
-    if (meta.header_unknown_a5) {
-      auto formatted = phosg::format_data_string(meta.header_unknown_a5->data(), meta.header_unknown_a5->size());
-      lines.emplace_back(std::format(".header_unknown_a5 {}", formatted));
-    }
+    lines.emplace_back(std::format(".header_unknown_a5 0x{:08X}", meta.header_unknown_a5));
     lines.emplace_back(std::format(".header_unknown_a6 0x{:04X}", meta.header_unknown_a6));
   }
   lines.emplace_back();
@@ -4290,7 +4290,11 @@ AssembledQuestScript assemble_quest_script(
             throw std::runtime_error("too many .allow_create_item directives; at most 64 are allowed");
           }
           ret.meta.create_item_mask_entries.emplace_back(line.text.substr(19));
-
+        } else if (line.text.starts_with(".solo_unlock_flag ")) {
+          if (ret.meta.solo_unlock_flags.size() >= 8) {
+            throw std::runtime_error("too many .solo_unlock_flag directives; at most 8 are allowed");
+          }
+          ret.meta.solo_unlock_flags.emplace_back(stoul(line.text.substr(18), nullptr, 0));
         } else if (line.text.starts_with(".quest_num ")) {
           ret.meta.quest_number = stoul(line.text.substr(11), nullptr, 0);
         } else if (line.text.starts_with(".language ")) {
@@ -4317,17 +4321,10 @@ AssembledQuestScript assemble_quest_script(
           ret.meta.header_unknown_a3 = stoul(line.text.substr(19), nullptr, 0);
         } else if (line.text.starts_with(".header_unknown_a4 ")) {
           ret.meta.header_unknown_a4 = stoul(line.text.substr(19), nullptr, 0);
+        } else if (line.text.starts_with(".header_unknown_a5 ")) {
+          ret.meta.header_unknown_a5 = stoul(line.text.substr(19), nullptr, 0);
         } else if (line.text.starts_with(".header_unknown_a6 ")) {
           ret.meta.header_unknown_a6 = stoul(line.text.substr(19), nullptr, 0);
-        } else if (line.text.starts_with(".header_unknown_a5 ")) {
-          std::string data = phosg::parse_data_string(line.text.substr(19));
-          if (data.size() != 0x14) {
-            throw std::runtime_error(".header_unknown_a5 directive must specify 0x14 bytes of data");
-          }
-          ret.meta.header_unknown_a5 = std::make_shared<parray<uint8_t, 0x14>>();
-          for (size_t z = 0; z < 0x14; z++) {
-            ret.meta.header_unknown_a5->at(z) = static_cast<uint8_t>(data[z]);
-          }
         }
       }
     });
@@ -4981,10 +4978,10 @@ AssembledQuestScript assemble_quest_script(
       header.name.encode(ret.meta.name, ret.meta.language);
       header.short_description.encode(ret.meta.short_description, ret.meta.language);
       header.long_description.encode(ret.meta.long_description, ret.meta.language);
-      if (ret.meta.header_unknown_a5) {
-        header.unknown_a5 = *ret.meta.header_unknown_a5;
-      } else {
-        header.unknown_a5.clear(0);
+      header.unknown_a5 = ret.meta.header_unknown_a5;
+      header.solo_unlock_flags.clear(0xFFFF);
+      for (size_t z = 0; z < ret.meta.solo_unlock_flags.size(); z++) {
+        header.solo_unlock_flags[z] = ret.meta.solo_unlock_flags[z];
       }
       phosg::StringReader code_r(code_w.str());
       for (size_t z = 0; z < bb_map_designate_args_offsets.size(); z++) {
@@ -5142,7 +5139,13 @@ void populate_quest_metadata_from_script(
       if ((header.text_offset >= sizeof(PSOQuestHeaderBB)) && (header.label_table_offset >= sizeof(PSOQuestHeaderBB))) {
         r.go(0);
         const auto& header = r.get<PSOQuestHeaderBB>();
-        meta.header_unknown_a5 = std::make_shared<parray<uint8_t, 0x14>>(header.unknown_a5);
+        meta.header_unknown_a5 = header.unknown_a5;
+        for (size_t z = 0; z < header.solo_unlock_flags.size(); z++) {
+          uint16_t flag = header.solo_unlock_flags[z];
+          if (flag != 0xFFFF) {
+            meta.solo_unlock_flags.emplace_back(flag);
+          }
+        }
         for (size_t z = 0; z < header.create_item_mask_entries.size(); z++) {
           const auto& item = header.create_item_mask_entries[z];
           if (!item.is_valid()) {

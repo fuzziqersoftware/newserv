@@ -95,6 +95,8 @@ struct CreateItemMaskEntry {
   operator QuestMetadata::CreateItemMask() const;
 } __packed_ws__(CreateItemMaskEntry, 0x38);
 
+// Some quest authoring tools don't generate the full quest header, hence the
+// split structure here.
 struct PSOQuestHeaderBBBase {
   /* 0000 */ le_uint32_t text_offset = 0;
   /* 0004 */ le_uint32_t label_table_offset = 0;
@@ -125,7 +127,8 @@ struct PSOQuestHeaderBB : PSOQuestHeaderBBBase {
     parray<uint8_t, 3> unused = 0xFF;
   } __packed_ws__(FloorAssignment, 8);
 
-  /* 0398 */ parray<uint8_t, 0x14> unknown_a5;
+  /* 0398 */ le_uint32_t unknown_a5;
+  /* 039C */ parray<le_uint16_t, 8> solo_unlock_flags;
   /* 03AC */ parray<FloorAssignment, 0x10> floor_assignments;
   /* 042C */ parray<CreateItemMaskEntry, 0x40> create_item_mask_entries;
   /* 122C */

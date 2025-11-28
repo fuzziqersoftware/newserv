@@ -87,6 +87,7 @@ struct QuestMetadata {
   };
   std::vector<FloorAssignment> bb_map_designate_opcodes;
   std::vector<CreateItemMask> create_item_mask_entries;
+  std::vector<uint16_t> solo_unlock_flags;
 
   // Unknown header fields. These are not used by the client, so they are not required to match across quest versions;
   // however, we still parse them in case we later discover that they had some server-side meaning.
@@ -95,9 +96,9 @@ struct QuestMetadata {
   uint8_t header_unknown_a3 = 0; // DCv1 - V3
   uint8_t header_unknown_a4 = 0; // BB only
   uint16_t header_unknown_a6 = 0; // BB only
+  uint32_t header_unknown_a5 = 0; // BB only
   int16_t header_episode = -1; // -1 = unspecified; BB only; newserv uses script analysis instead
   int16_t header_language = -1; // -1 = unspecified; DCv1 and later; newserv uses the filename instead
-  std::shared_ptr<parray<uint8_t, 0x14>> header_unknown_a5; // BB only; null for non-BB quests
 
   // Fields that may be different across quest versions (and are only used on VersionedQuest, not Quest)
   std::string name;

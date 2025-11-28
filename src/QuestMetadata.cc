@@ -115,6 +115,9 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
   if (this->enemy_exp_overrides != other.enemy_exp_overrides) {
     throw runtime_error("quest version has different enemy EXP overrides");
   }
+  if (this->solo_unlock_flags != other.solo_unlock_flags) {
+    throw runtime_error(std::format("quest version has a different set of solo unlock flags"));
+  }
   if (!this->create_item_mask_entries.empty() &&
       !other.create_item_mask_entries.empty() &&
       this->create_item_mask_entries != other.create_item_mask_entries) {
@@ -237,6 +240,11 @@ phosg::JSON QuestMetadata::json() const {
     create_item_mask_entries_json.emplace_back(item.str());
   }
 
+  auto solo_unlock_flags_json = phosg::JSON::list();
+  for (uint16_t flag : this->solo_unlock_flags) {
+    solo_unlock_flags_json.emplace_back(flag);
+  }
+
   return phosg::JSON::dict({
       {"CategoryID", this->category_id},
       {"QuestNumber", this->quest_number},
@@ -259,6 +267,7 @@ phosg::JSON QuestMetadata::json() const {
       {"LockStatusRegister", (this->lock_status_register >= 0) ? this->lock_status_register : phosg::JSON(nullptr)},
       {"EnemyEXPOverrides", std::move(enemy_exp_overrides_json)},
       {"CreateItemMasks", std::move(create_item_mask_entries_json)},
+      {"SoloUnlockFlags", std::move(solo_unlock_flags_json)},
   });
 }
 
