@@ -107,6 +107,8 @@ static string escape_string(const string& data, TextEncoding encoding = TextEnco
       ret += "\\\'";
     } else if (ch == '\"') {
       ret += "\\\"";
+    } else if (ch == '\\') {
+      ret += "\\\\";
     } else {
       ret += ch;
     }
@@ -2947,7 +2949,7 @@ static const unordered_map<string, const QuestScriptOpcodeDefinition*>& opcodes_
   return index;
 }
 
-void check_opcode_definitions() {
+void check_quest_opcode_definitions() {
   static const array<Version, 12> versions = {
       Version::DC_NTE,
       Version::DC_11_2000,
@@ -3043,10 +3045,12 @@ std::string disassemble_quest_script(
   }
   if (!is_v1_or_v2(version) || (version == Version::GC_NTE)) {
     lines.emplace_back(std::format(".episode {}", token_name_for_episode(meta.episode)));
-    lines.emplace_back(std::format(".header_episode 0x{:02X}", meta.header_episode));
+    if (meta.header_episode >= 0) {
+      lines.emplace_back(std::format(".header_episode 0x{:02X}", meta.header_episode));
+    }
   }
   lines.emplace_back(std::format(".language {}", char_for_language(meta.language)));
-  if (!is_pre_v1(version) && !is_v4(version) && (static_cast<uint8_t>(meta.language) != meta.header_language)) {
+  if (!is_pre_v1(version) && !is_v4(version) && (meta.header_language >= 0) && (static_cast<uint8_t>(meta.language) != meta.header_language)) {
     lines.emplace_back(std::format(".header_language 0x{:02X}", meta.header_language));
   }
   if (is_v4(version)) {
@@ -3894,7 +3898,13 @@ std::string disassemble_quest_script(
           disassemble_label_as_vector4f_list(l);
           break;
         case Arg::DataType::SCRIPT:
-          disassemble_label_as_script(l, false);
+          try {
+            disassemble_label_as_script(l, reassembly_mode);
+          } catch (const std::exception& e) {
+            l->lines.clear();
+            l->lines.emplace_back(std::format("  // Warning: label is code, but disassembly failed ({})", e.what()));
+            disassemble_label_as_data(l);
+          }
           break;
       }
 
@@ -3904,9 +3914,9 @@ std::string disassemble_quest_script(
         l->lines.clear();
         try {
           disassemble_label_as_script(l, true);
-        } catch (const std::runtime_error& e) {
+        } catch (const std::exception& e) {
           l->lines.clear();
-          l->lines.emplace_back(std::format("  // Could not disassemble as code ({})", e.what()));
+          l->lines.emplace_back(std::format("  // Label type is not known; could not disassemble as code ({})", e.what()));
           disassemble_label_as_data(l);
         }
       }
@@ -4293,7 +4303,7 @@ AssembledQuestScript assemble_quest_script(
           ret.meta.episode = episode_for_token_name(line.text.substr(9));
         } else if (line.text.starts_with(".max_players ")) {
           ret.meta.max_players = stoul(line.text.substr(12), nullptr, 0);
-        } else if (line.text.starts_with(".joinable ")) {
+        } else if (line.text.starts_with(".joinable")) {
           ret.meta.joinable = true;
         } else if (line.text.starts_with(".header_language ")) {
           ret.meta.header_language = stoul(line.text.substr(17), nullptr, 0);

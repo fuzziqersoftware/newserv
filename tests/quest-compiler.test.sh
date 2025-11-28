@@ -7,4 +7,4 @@ if [ -z "$EXECUTABLE" ]; then
   EXECUTABLE="./newserv"
 fi
 
-$EXECUTABLE check-quest-opcodes
+$EXECUTABLE check-quests --reassembly
