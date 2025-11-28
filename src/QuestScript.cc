@@ -4332,7 +4332,7 @@ AssembledQuestScript assemble_quest_script(
   if (ret.meta.version == Version::PC_PATCH || ret.meta.version == Version::BB_PATCH || ret.meta.version == Version::UNKNOWN) {
     throw runtime_error(".version directive is missing or invalid");
   }
-  if (ret.meta.quest_number < 0) {
+  if (ret.meta.quest_number == 0xFFFFFFFF) {
     throw runtime_error(".quest_num directive is missing or invalid");
   }
   if (ret.meta.name.empty()) {
