@@ -2,6 +2,21 @@
 
 using namespace std;
 
+phosg::JSON QuestMetadata::FloorAssignment::json() const {
+  return phosg::JSON::dict({
+      {"Floor", this->floor},
+      {"Area", this->area},
+      {"Type", this->type},
+      {"LayoutVariation", this->layout_var},
+      {"EntitiesVariation", this->entities_var},
+  });
+}
+
+std::string QuestMetadata::FloorAssignment::str() const {
+  return std::format("FloorAssignment(floor=0x{:02X}, area=0x{:02X}, type=0x{:02X}, layout_var=0x{:02X}, entities_var=0x{:02X})",
+      this->floor, this->area, this->type, this->layout_var, this->entities_var);
+}
+
 void QuestMetadata::apply_json_overrides(const phosg::JSON& json) {
   try {
     this->description_flag = json.at("DescriptionFlag").as_int();
@@ -49,9 +64,14 @@ void QuestMetadata::apply_json_overrides(const phosg::JSON& json) {
   }
 }
 
-void QuestMetadata::assign_default_areas(Version version, Episode episode) {
+void QuestMetadata::assign_default_floors() {
   for (size_t z = 0; z < 0x12; z++) {
-    this->area_for_floor[z] = SetDataTableBase::default_area_for_floor(version, episode, z);
+    auto& fa = this->floor_assignments[z];
+    fa.floor = z;
+    fa.area = SetDataTableBase::default_area_for_floor(this->version, this->episode, z);
+    fa.type = 0;
+    fa.layout_var = 0;
+    fa.entities_var = 0;
   }
 }
 
@@ -141,13 +161,12 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
         "quest version has different challenge difficulty (existing: {}, new: {})",
         name_for_difficulty(this->challenge_difficulty), name_for_difficulty(other.challenge_difficulty)));
   }
-  for (size_t z = 0; z < this->area_for_floor.size(); z++) {
-    const auto& this_fa = this->area_for_floor[z];
-    const auto& other_fa = other.area_for_floor[z];
-    if (this_fa != other_fa) {
+  for (size_t z = 0; z < this->floor_assignments.size(); z++) {
+    const auto& this_fa = this->floor_assignments[z];
+    const auto& other_fa = other.floor_assignments[z];
+    if (this_fa.area != other_fa.area) {
       throw runtime_error(std::format(
-          "quest version has different area on floor 0x{:02X} (existing: {}, new: {})",
-          z, phosg::format_data_string(this->area_for_floor.data(), 0x12), phosg::format_data_string(other.area_for_floor.data(), 0x12)));
+          "quest version has different area on floor 0x{:02X} (existing: {}, new: {})", z, this_fa.str(), other_fa.str()));
     }
   }
   if (this->description_flag != other.description_flag) {
@@ -201,8 +220,8 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
 
 phosg::JSON QuestMetadata::json() const {
   auto floors_json = phosg::JSON::list();
-  for (const auto& fa : this->area_for_floor) {
-    floors_json.emplace_back(fa);
+  for (const auto& fa : this->floor_assignments) {
+    floors_json.emplace_back(fa.json());
   }
   auto enemy_exp_overrides_json = phosg::JSON::dict();
   for (const auto& [key, exp_override] : this->enemy_exp_overrides) {
@@ -220,7 +239,7 @@ phosg::JSON QuestMetadata::json() const {
 
   return phosg::JSON::dict({
       {"CategoryID", this->category_id},
-      {"Number", this->quest_number},
+      {"QuestNumber", this->quest_number},
       {"Episode", name_for_episode(this->episode)},
       {"FloorAssignments", std::move(floors_json)},
       {"Joinable", this->joinable},

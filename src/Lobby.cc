@@ -171,7 +171,7 @@ void Lobby::reset_next_item_ids() {
 
 uint8_t Lobby::area_for_floor(Version version, uint8_t floor) const {
   if (this->quest) {
-    return this->quest->meta.area_for_floor.at(floor);
+    return this->quest->meta.floor_assignments.at(floor).area;
   }
   auto sdt = this->require_server_state()->set_data_table(version, this->episode, this->mode, this->difficulty);
   return sdt->default_area_for_floor(this->episode, floor);
@@ -224,7 +224,6 @@ void Lobby::create_item_creator(Version logic_version) {
       s->tekker_adjustment_set,
       s->item_parameter_table(logic_version),
       s->item_stack_limits(logic_version),
-      this->episode,
       (this->mode == GameMode::SOLO) ? GameMode::NORMAL : this->mode,
       this->difficulty,
       effective_section_id,

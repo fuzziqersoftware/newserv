@@ -206,45 +206,48 @@ void VersionedQuest::assert_valid() const {
   if (this->meta.language == Language::UNKNOWN) {
     throw runtime_error("language is not set");
   }
+
+  uint8_t num_floors = is_v1(this->meta.version) ? 0x10 : 0x12;
+  uint8_t num_areas;
+  if (is_v1(this->meta.version)) {
+    num_areas = 0x10;
+  } else if (is_v2(this->meta.version) && (this->meta.version != Version::GC_NTE)) {
+    num_areas = 0x12;
+  } else if (is_v3(this->meta.version) || (this->meta.version == Version::GC_NTE)) {
+    num_areas = 0x24;
+  } else if (is_ep3(this->meta.version)) {
+    num_areas = 0x00; // Floor overrides not allowed on Ep3
+  } else if (is_v4(this->meta.version)) {
+    num_areas = 0x2F;
+  } else {
+    throw std::logic_error("unhandled quest version");
+  }
+  for (size_t floor = 0; floor < num_floors; floor++) {
+    const auto& fa = this->meta.floor_assignments[floor];
+    if (fa.floor != floor) {
+      throw logic_error("floor assignment is inconsistent");
+    }
+    if ((fa.area != 0xFF) && (fa.area > num_areas)) {
+      throw runtime_error(std::format("floor assignment 0x{:02X} specifies invalid area 0x{:02X}", floor, fa.area));
+    }
+  }
+
   switch (this->meta.episode) {
     case Episode::EP1:
-      for (size_t floor = 0; floor < this->meta.area_for_floor.size(); floor++) {
-        uint8_t area = this->meta.area_for_floor[floor];
-        if (area >= 0x12) {
-          throw runtime_error("Episode 1 quest specifies invalid area");
-        }
-      }
       break;
     case Episode::EP2:
       if (is_v1_or_v2(this->meta.version)) {
         throw runtime_error("v1 or v2 quest specifies Episode 2");
-      }
-      for (size_t floor = 0; floor < this->meta.area_for_floor.size(); floor++) {
-        uint8_t area = this->meta.area_for_floor[floor];
-        if ((area < 0x12) || (area >= 0x24)) {
-          throw runtime_error("Episode 2 quest specifies invalid area");
-        }
       }
       break;
     case Episode::EP3:
       if (!is_ep3(this->meta.version)) {
         throw runtime_error("non-Ep3 quest specifies Episode 3");
       }
-      for (size_t floor = 0; floor < this->meta.area_for_floor.size(); floor++) {
-        if (this->meta.area_for_floor[floor] != 0xFF) {
-          throw runtime_error("Episode 3 quest specifies floor overrides");
-        }
-      }
       break;
     case Episode::EP4:
       if (!is_v4(this->meta.version)) {
         throw runtime_error("non-v4 quest specifies Episode 4");
-      }
-      for (size_t floor = 0; floor < this->meta.area_for_floor.size(); floor++) {
-        uint8_t area = this->meta.area_for_floor[floor];
-        if (area != 0xFF && (area < 0x24 || area >= 0x2F)) {
-          throw runtime_error("Episode 4 quest specifies invalid floor");
-        }
       }
       break;
     case Episode::NONE:
@@ -252,6 +255,7 @@ void VersionedQuest::assert_valid() const {
     default:
       throw runtime_error("episode is not valid");
   }
+
   if (!this->bin_contents) {
     throw runtime_error("bin file is missing");
   }

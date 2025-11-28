@@ -42,6 +42,7 @@ const char* name_for_episode(Episode ep);
 const char* token_name_for_episode(Episode ep);
 const char* abbreviation_for_episode(Episode ep);
 Episode episode_for_token_name(const std::string& name);
+Episode episode_for_area(uint8_t area);
 
 enum class GameMode {
   NORMAL = 0,

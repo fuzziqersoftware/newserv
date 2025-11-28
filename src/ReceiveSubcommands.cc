@@ -1805,8 +1805,7 @@ static asio::awaitable<void> on_switch_state_changed(shared_ptr<Client> c, Subco
     const auto& obj_st = l->map_state->object_state_for_index(
         c->version(), cmd.switch_flag_floor, cmd.header.entity_id - 0x4000);
     auto s = c->require_server_state();
-    auto sdt = s->set_data_table(c->version(), l->episode, l->mode, l->difficulty);
-    uint8_t area = sdt->default_area_for_floor(l->episode, c->floor);
+    uint8_t area = l->area_for_floor(c->version(), c->floor);
     auto type_name = obj_st->type_name(c->version(), area);
     send_text_message_fmt(c, "$C5K-{:03X} A {}", obj_st->k_id, type_name);
   }
@@ -2534,9 +2533,11 @@ static asio::awaitable<void> on_open_shop_bb_or_ep3_battle_subs(shared_ptr<Clien
       case 1:
         c->bb_shop_contents[1] = l->item_creator->generate_weapon_shop_contents(level);
         break;
-      case 2:
-        c->bb_shop_contents[2] = l->item_creator->generate_armor_shop_contents(level);
+      case 2: {
+        Episode episode = episode_for_area(l->area_for_floor(c->version(), 0));
+        c->bb_shop_contents[2] = l->item_creator->generate_armor_shop_contents(episode, level);
         break;
+      }
       default:
         throw runtime_error("invalid shop type");
     }
@@ -2947,7 +2948,8 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
   // mode, so that we can correctly mark enemies and objects as having dropped
   // their items in persistent games.
   G_SpecializableItemDropRequest_6xA2 cmd = normalize_drop_request(msg.data, msg.size);
-  auto rec = reconcile_drop_request_with_map(c, cmd, l->episode, l->difficulty, l->event, l->map_state, true);
+  Episode episode = episode_for_area(l->area_for_floor(c->version(), cmd.floor));
+  auto rec = reconcile_drop_request_with_map(c, cmd, episode, l->difficulty, l->event, l->map_state, true);
 
   ServerDropMode drop_mode = l->drop_mode;
   switch (drop_mode) {
@@ -3131,9 +3133,8 @@ static asio::awaitable<void> on_set_quest_flag(shared_ptr<Client> c, SubcommandM
 
   if (l->drop_mode != ServerDropMode::DISABLED) {
     EnemyType boss_enemy_type = EnemyType::NONE;
-    bool is_ep2 = (l->episode == Episode::EP2);
     uint8_t area = l->area_for_floor(c->version(), c->floor);
-    if ((l->episode == Episode::EP1) && (area == 0x0E)) {
+    if (area == 0x0E) {
       // On Normal, Dark Falz does not have a third phase, so send the drop
       // request after the end of the second phase. On all other difficulty
       // levels, send it after the third phase.
@@ -3142,21 +3143,19 @@ static asio::awaitable<void> on_set_quest_flag(shared_ptr<Client> c, SubcommandM
       } else if ((difficulty != Difficulty::NORMAL) && (flag_num == 0x0037)) {
         boss_enemy_type = EnemyType::DARK_FALZ_3;
       }
-    } else if (is_ep2 && (flag_num == 0x0057) && (area == 0x0D)) {
+    } else if ((flag_num == 0x0057) && (area == 0x1F)) {
       boss_enemy_type = EnemyType::OLGA_FLOW_2;
     }
 
     if (boss_enemy_type != EnemyType::NONE) {
       l->log.info_f("Creating item from final boss ({})", phosg::name_for_enum(boss_enemy_type));
       uint16_t enemy_index = 0xFFFF;
-      uint8_t enemy_floor = 0xFF;
       try {
         auto ene_st = l->map_state->enemy_state_for_floor_type(c->version(), c->floor, boss_enemy_type);
         if (ene_st->alias_target_ene_st) {
           ene_st = ene_st->alias_target_ene_st;
         }
         enemy_index = l->map_state->index_for_enemy_state(c->version(), ene_st);
-        enemy_floor = ene_st->super_ene->floor;
         if (c->floor != ene_st->super_ene->floor) {
           l->log.warning_f("Floor {:02X} from client does not match entity\'s expected floor {:02X}",
               c->floor, ene_st->super_ene->floor);
@@ -3184,7 +3183,6 @@ static asio::awaitable<void> on_set_quest_flag(shared_ptr<Client> c, SubcommandM
         }
 
         auto s = c->require_server_state();
-        auto sdt = s->set_data_table(c->version(), l->episode, l->mode, l->difficulty);
         G_StandardDropItemRequest_PC_V3_BB_6x60 drop_req = {
             {
                 {0x60, 0x06, 0x0000},
@@ -3195,8 +3193,7 @@ static asio::awaitable<void> on_set_quest_flag(shared_ptr<Client> c, SubcommandM
                 2,
                 0,
             },
-            sdt->default_area_for_floor(l->episode, enemy_floor),
-            {}};
+            area, {}};
         SubcommandMessage drop_msg{0x62, l->leader_id, &drop_req, sizeof(drop_req)};
         co_await on_entity_drop_item_request(c, drop_msg);
       }
@@ -3768,9 +3765,6 @@ static asio::awaitable<void> on_set_entity_pos_and_angle_6x17(shared_ptr<Client>
   // 6x17 is used to transport players to the other part of the Vol Opt boss
   // arena, so phase 2 can begin. We only allow 6x17 in the Monitor Room (Vol
   // Opt arena).
-  if (l->episode != Episode::EP1) {
-    throw runtime_error("client sent 6x17 command in non-Ep1 game");
-  }
   if (l->area_for_floor(c->version(), c->floor) != 0x0D) {
     throw runtime_error("client sent 6x17 command in area other than Vol Opt");
   }
@@ -3961,7 +3955,7 @@ static uint32_t base_exp_for_enemy_type(
     episode_order[2] = Episode::EP4;
   } else if (current_episode == Episode::EP4) {
     uint8_t area = quest
-        ? quest->meta.area_for_floor.at(floor)
+        ? quest->meta.floor_assignments.at(floor).area
         : SetDataTableBase::default_area_for_floor(Version::BB_V4, Episode::EP4, floor);
     if (area <= 0x28) { // Crater
       episode_order[1] = Episode::EP1;
@@ -4034,15 +4028,16 @@ static asio::awaitable<void> on_steal_exp_bb(shared_ptr<Client> c, SubcommandMes
     co_return;
   }
 
-  auto type = ene_st->type(c->version(), l->episode, l->difficulty, l->event);
+  auto episode = episode_for_area(l->area_for_floor(c->version(), ene_st->super_ene->floor));
+  auto type = ene_st->type(c->version(), episode, l->difficulty, l->event);
   uint32_t enemy_exp = base_exp_for_enemy_type(
-      s->battle_params, l->quest, type, l->episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
+      s->battle_params, l->quest, type, episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
 
   // Note: The original code checks if special.type is 9, 10, or 11, and skips
   // applying the android bonus if so. We don't do anything for those special
   // types, so we don't check for that here.
   float percent = special.amount + ((l->difficulty == Difficulty::ULTIMATE) && char_class_is_android(p->disp.visual.char_class) ? 30 : 0);
-  float ep2_factor = (l->episode == Episode::EP2) ? 1.3 : 1.0;
+  float ep2_factor = (episode == Episode::EP2) ? 1.3 : 1.0;
   uint32_t stolen_exp = max<uint32_t>(min<uint32_t>((enemy_exp * percent * ep2_factor) / 100.0f, (static_cast<size_t>(l->difficulty) + 1) * 20), 1);
   if (c->check_flag(Client::Flag::DEBUG_ENABLED)) {
     c->log.info_f("Stolen EXP from E-{:03X} with enemy_exp={} percent={:g} stolen_exp={}",
@@ -4084,9 +4079,10 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
   }
   ene_st->server_flags |= MapState::EnemyState::Flag::EXP_GIVEN;
 
-  auto type = ene_st->type(c->version(), l->episode, l->difficulty, l->event);
+  auto episode = episode_for_area(l->area_for_floor(c->version(), ene_st->super_ene->floor));
+  auto type = ene_st->type(c->version(), episode, l->difficulty, l->event);
   double base_exp = base_exp_for_enemy_type(
-      s->battle_params, l->quest, type, l->episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
+      s->battle_params, l->quest, type, episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
   l->log.info_f("Base EXP for this enemy ({}) is {:g}", phosg::name_for_enum(type), base_exp);
 
   for (size_t client_id = 0; client_id < 4; client_id++) {
@@ -4130,12 +4126,11 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
         // something far lazier instead: they just stuck an if statement in the
         // client's EXP request function. We, unfortunately, have to do the
         // same thing here.
-        bool is_ep2 = (l->episode == Episode::EP2);
         uint32_t player_exp = base_exp *
             rate_factor *
             l->base_exp_multiplier *
             l->challenge_exp_multiplier *
-            (is_ep2 ? 1.3 : 1.0);
+            ((episode == Episode::EP2) ? 1.3 : 1.0);
         l->log.info_f("Client in slot {} receives {} EXP", client_id, player_exp);
         if (lc->check_flag(Client::Flag::DEBUG_ENABLED)) {
           send_text_message_fmt(lc, "$C5+{} E-{:03X} {}", player_exp, ene_st->e_id, phosg::name_for_enum(type));
@@ -4183,16 +4178,23 @@ static asio::awaitable<void> on_adjust_player_meseta_bb(shared_ptr<Client> c, Su
 }
 
 static void assert_quest_item_create_allowed(shared_ptr<const Lobby> l, const ItemData& item) {
-  // We always enforce these restrictions, even if the client has cheat mode
-  // enabled or has debug enabled. If the client can cheat, there are much
-  // easier ways to create items (e.g. the $item chat command) than spoofing
-  // these quest item creation commands, so they should just do that instead.
+  // We always enforce these restrictions if the quest has any restrictions
+  // defined, even if the client has cheat mode enabled or has debug enabled.
+  // If the client can cheat, there are much easier ways to create items (e.g.
+  // the $item chat command) than spoofing these quest item creation commands,
+  // so they should just do that instead.
 
   if (!l->quest) {
     throw std::runtime_error("cannot create quest reward item with no quest loaded");
   }
+  if (l->quest->meta.create_item_mask_entries.empty()) {
+    l->log.warning_f("Player created quest item {}, but the loaded quest ({}) has no item creation masks", item.hex(), l->quest->meta.name);
+    return;
+  }
+
   for (const auto& mask : l->quest->meta.create_item_mask_entries) {
     if (mask.match(item)) {
+      l->log.info_f("Player created quest item {} which matches create item mask {}", item.hex(), mask.str());
       return;
     }
   }

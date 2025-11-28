@@ -2773,7 +2773,10 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF950, "bb_p2_menu", "BB_p2_menu", {I32}, F_V4 | F_ARGS},
 
     // Behaves exactly the same as map_designate_ex, but the arguments are
-    // specified as immediate values and not via registers or arg_push.
+    // specified as immediate values and not via registers or arg_push. Sega
+    // probably added this opcode so their quest authoring tools could easily
+    // generate the necessary header fields without doing any fancy script
+    // analysis.
     // valueA = floor number
     // valueB = area number
     // valueC = type (0: use layout, 1: use offline template, 2: use online
@@ -3202,7 +3205,7 @@ std::string disassemble_quest_script(
         }
       }
       if (fs.enemy_sets) {
-        uint8_t area = meta.area_for_floor.at(floor);
+        uint8_t area = meta.floor_assignments.at(floor).area;
         for (size_t z = 0; z < fs.enemy_set_count; z++) {
           // Only NPCs use script labels; no other enemies do
           const auto& ene_set = fs.enemy_sets[z];
@@ -4313,11 +4316,11 @@ AssembledQuestScript assemble_quest_script(
           ret.meta.header_unknown_a6 = stoul(line.text.substr(19), nullptr, 0);
         } else if (line.text.starts_with(".header_unknown_a5 ")) {
           std::string data = phosg::parse_data_string(line.text.substr(19));
-          if (data.size() != 0x94) {
-            throw std::runtime_error(".header_unknown_a5 directive must specify 0x94 bytes of data");
+          if (data.size() != 0x14) {
+            throw std::runtime_error(".header_unknown_a5 directive must specify 0x14 bytes of data");
           }
-          ret.meta.header_unknown_a5 = std::make_shared<parray<uint8_t, 0x94>>();
-          for (size_t z = 0; z < 0x94; z++) {
+          ret.meta.header_unknown_a5 = std::make_shared<parray<uint8_t, 0x14>>();
+          for (size_t z = 0; z < 0x14; z++) {
             ret.meta.header_unknown_a5->at(z) = static_cast<uint8_t>(data[z]);
           }
         }
@@ -4491,6 +4494,7 @@ AssembledQuestScript assemble_quest_script(
   bool version_has_args = F_HAS_ARGS & v_flag(ret.meta.version);
   const auto& opcodes = opcodes_by_name_for_version(ret.meta.version);
   phosg::StringWriter code_w;
+  std::vector<size_t> bb_map_designate_args_offsets;
   for (const auto& line : lines) {
     wrap_exceptions_with_line_ref(line, [&]() -> void {
       if (line.text.empty()) {
@@ -4567,6 +4571,15 @@ AssembledQuestScript assemble_quest_script(
         } else {
           code_w.put_u16b(opcode_def->opcode);
         }
+      }
+
+      // Hack: Collect bb_map_designate offsets during assembly, to generate
+      // the necessary server-side header field afterward
+      if (opcode_def->opcode == 0xF951) {
+        if (bb_map_designate_args_offsets.size() >= 0x10) {
+          throw std::runtime_error("bb_map_designate was used too many times; up to 16 uses are allowed");
+        }
+        bb_map_designate_args_offsets.emplace_back(code_w.size());
       }
 
       if (opcode_def->args.empty()) {
@@ -4968,6 +4981,17 @@ AssembledQuestScript assemble_quest_script(
       } else {
         header.unknown_a5.clear(0);
       }
+      phosg::StringReader code_r(code_w.str());
+      for (size_t z = 0; z < bb_map_designate_args_offsets.size(); z++) {
+        code_r.go(bb_map_designate_args_offsets[z]);
+        auto& fa = header.floor_assignments[z];
+        fa.floor = code_r.get_u8();
+        fa.area = code_r.get_u8();
+        fa.type = code_r.get_u8();
+        fa.layout_var = code_r.get_u8();
+        fa.entities_var = code_r.get_u8();
+        fa.unused.clear(0);
+      }
       for (size_t z = 0; z < ret.meta.create_item_mask_entries.size(); z++) {
         header.create_item_mask_entries[z] = ret.meta.create_item_mask_entries[z];
       }
@@ -4986,10 +5010,11 @@ AssembledQuestScript assemble_quest_script(
 
 void populate_quest_metadata_from_script(
     QuestMetadata& meta, const void* data, size_t size, Version version, Language language) {
+  meta.version = version;
   meta.language = language;
 
   phosg::StringReader r(data, size);
-  switch (version) {
+  switch (meta.version) {
     case Version::DC_NTE: {
       const auto& header = r.get<PSOQuestHeaderDCNTE>();
       meta.header_unknown_a1 = header.unknown_a1;
@@ -5109,11 +5134,10 @@ void populate_quest_metadata_from_script(
       // Quests saved with Qedit may not have the full header, so only parse
       // the full header if the code and function table offsets don't point to
       // space within it
-      if ((header.text_offset >= sizeof(PSOQuestHeaderBB)) &&
-          (header.label_table_offset >= sizeof(PSOQuestHeaderBB))) {
+      if ((header.text_offset >= sizeof(PSOQuestHeaderBB)) && (header.label_table_offset >= sizeof(PSOQuestHeaderBB))) {
         r.go(0);
         const auto& header = r.get<PSOQuestHeaderBB>();
-        meta.header_unknown_a5 = std::make_shared<parray<uint8_t, 0x94>>(header.unknown_a5);
+        meta.header_unknown_a5 = std::make_shared<parray<uint8_t, 0x14>>(header.unknown_a5);
         for (size_t z = 0; z < header.create_item_mask_entries.size(); z++) {
           const auto& item = header.create_item_mask_entries[z];
           if (!item.is_valid()) {
@@ -5130,8 +5154,8 @@ void populate_quest_metadata_from_script(
       throw logic_error("invalid quest version");
   }
 
-  const auto& opcodes = opcodes_for_version(version);
-  bool version_has_args = F_HAS_ARGS & v_flag(version);
+  const auto& opcodes = opcodes_for_version(meta.version);
+  bool version_has_args = F_HAS_ARGS & v_flag(meta.version);
 
   struct RegisterFile {
     // All registers are initially zero
@@ -5200,7 +5224,7 @@ void populate_quest_metadata_from_script(
   deque<uint32_t> pending_fn_offsets{get_label_offset(0)};
   unordered_set<uint32_t> done_fn_offsets;
   shared_ptr<BattleRules> battle_rules;
-  meta.assign_default_areas(version, meta.episode);
+  meta.assign_default_floors();
   while (!pending_fn_offsets.empty()) {
     uint32_t start_offset = pending_fn_offsets.front();
     pending_fn_offsets.pop_front();
@@ -5276,7 +5300,7 @@ void populate_quest_metadata_from_script(
           }
           case 0x000A: { // leta (v1/v2); letb (v3/v4)
             uint8_t a = r.get_u8();
-            if (is_v1_or_v2(version)) { // leta
+            if (is_v1_or_v2(meta.version)) { // leta
               regs.invalidate(a);
               r.skip(1);
             } else { // letb
@@ -5387,7 +5411,7 @@ void populate_quest_metadata_from_script(
             break;
           case 0x004E: // arg_pushs
             args_list.emplace_back(r.where());
-            if (uses_utf16(version)) {
+            if (uses_utf16(meta.version)) {
               while (r.get_u16l()) {
               }
             } else {
@@ -5412,9 +5436,14 @@ void populate_quest_metadata_from_script(
           }
 
           case 0x00C4: { // map_designate
-            uint32_t floor = regs.get(r.get_u8());
-            if (floor < meta.area_for_floor.size()) {
-              meta.area_for_floor[floor] = floor;
+            uint8_t base_reg = r.get_u8();
+            uint32_t floor = regs.get(base_reg);
+            if (floor < meta.floor_assignments.size()) {
+              auto& fa = meta.floor_assignments[floor];
+              fa.area = floor;
+              fa.type = regs.get(base_reg + 1);
+              fa.layout_var = regs.get(base_reg + 2);
+              fa.entities_var = 0;
             }
             // phosg::fwrite_fmt(stderr, ">>> Trace: map_designate fa[{}]={}\n", floor, floor);
             break;
@@ -5423,9 +5452,12 @@ void populate_quest_metadata_from_script(
           case 0xF80D: { // map_designate_ex
             uint8_t base_reg = r.get_u8();
             uint32_t floor = regs.get(base_reg);
-            uint32_t area = regs.get(base_reg + 1);
-            if (floor < meta.area_for_floor.size()) {
-              meta.area_for_floor[floor] = area;
+            if (floor < meta.floor_assignments.size()) {
+              auto& fa = meta.floor_assignments[floor];
+              fa.area = regs.get(base_reg + 1);
+              fa.type = regs.get(base_reg + 2);
+              fa.layout_var = regs.get(base_reg + 3);
+              fa.entities_var = regs.get(base_reg + 4);
             }
             // phosg::fwrite_fmt(stderr, ">>> Trace: map_designate_ex fa[{}]={}\n", floor, area);
             break;
@@ -5626,9 +5658,9 @@ void populate_quest_metadata_from_script(
             break;
 
           case 0xF88C: // get_game_version
-            if (is_v1_or_v2(version)) {
+            if (is_v1_or_v2(meta.version)) {
               regs.set(r.get_u8(), 2);
-            } else if (is_gc(version)) {
+            } else if (is_gc(meta.version)) {
               regs.set(r.get_u8(), 3);
             } else {
               regs.set(r.get_u8(), 4);
@@ -5652,7 +5684,7 @@ void populate_quest_metadata_from_script(
                 meta.episode = Episode::EP2;
                 break;
               case 2:
-                if (!is_v4(version)) {
+                if (!is_v4(meta.version)) {
                   throw runtime_error("invalid argument to set_episode");
                 }
                 meta.episode = Episode::EP4;
@@ -5660,8 +5692,7 @@ void populate_quest_metadata_from_script(
               default:
                 throw runtime_error("invalid argument to set_episode");
             }
-            meta.assign_default_areas(version, meta.episode);
-            // phosg::fwrite_fmt(stderr, ">>> Trace: meta.episode = {}\n", name_for_episode(meta.episode));
+            meta.assign_default_floors();
             break;
 
           case 0xF932: // set_episode2
@@ -5670,13 +5701,20 @@ void populate_quest_metadata_from_script(
 
           case 0xF951: { // bb_map_designate
             uint8_t floor = r.get_u8();
-            if (floor < meta.area_for_floor.size()) {
-              meta.area_for_floor.at(floor) = r.get_u8();
-              r.skip(3); // entities_list_type, vars.layout, vars.entities
+            if (floor < meta.floor_assignments.size()) {
+              auto& fa = meta.floor_assignments[floor];
+              if (fa.floor != floor) {
+                throw std::logic_error("FloorAssignment\'s floor field is incorrect");
+              }
+              fa.area = r.get_u8();
+              fa.type = r.get_u8();
+              fa.layout_var = r.get_u8();
+              fa.entities_var = r.get_u8();
+              meta.bb_map_designate_opcodes.emplace_back(fa);
               // phosg::fwrite_fmt(stderr, ">>> Trace: bb_map_designate fa[{}]={}\n", floor, meta.area_for_floor.at(floor));
             } else {
-              r.skip(4); // area, entities_list_type, vars.layout, vars.entities
-              // phosg::fwrite_fmt(stderr, ">>> Trace: bb_map_designate fa[{}]=(ignored)\n", floor);
+              // Maybe we should throw in this case?
+              r.skip(4);
             }
             break;
           }
@@ -5735,7 +5773,7 @@ void populate_quest_metadata_from_script(
                 break;
               case Type::CSTRING:
                 if (!use_args) {
-                  if (uses_utf16(version)) {
+                  if (uses_utf16(meta.version)) {
                     while (r.get_u16l()) {
                     }
                   } else {

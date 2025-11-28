@@ -26,10 +26,23 @@ struct QuestMetadata {
   Language language;
 
   // Fields that must match across all quest versions
+  struct FloorAssignment {
+    uint8_t floor = 0xFF;
+    uint8_t area = 0xFF;
+    uint8_t type = 0xFF;
+    uint8_t layout_var = 0xFF;
+    uint8_t entities_var = 0xFF;
+
+    bool operator==(const FloorAssignment& other) const = default;
+    bool operator!=(const FloorAssignment& other) const = default;
+
+    phosg::JSON json() const;
+    std::string str() const;
+  };
   uint32_t category_id = 0xFFFFFFFF;
   uint32_t quest_number = 0xFFFFFFFF;
   Episode episode = Episode::NONE;
-  std::array<uint8_t, 0x12> area_for_floor;
+  std::array<FloorAssignment, 0x12> floor_assignments;
   bool joinable = false;
   uint8_t max_players = 4;
   std::shared_ptr<const BattleRules> battle_rules;
@@ -72,6 +85,7 @@ struct QuestMetadata {
     bool match(const ItemData& item) const;
     uint32_t primary_identifier() const; // Raises if any of data1[0-2] are ambiguous
   };
+  std::vector<FloorAssignment> bb_map_designate_opcodes;
   std::vector<CreateItemMask> create_item_mask_entries;
 
   // Unknown header fields. These are not used by the client, so they are not required to match across quest versions;
@@ -83,7 +97,7 @@ struct QuestMetadata {
   uint16_t header_unknown_a6 = 0; // BB only
   int16_t header_episode = -1; // -1 = unspecified; BB only; newserv uses script analysis instead
   int16_t header_language = -1; // -1 = unspecified; DCv1 and later; newserv uses the filename instead
-  std::shared_ptr<parray<uint8_t, 0x94>> header_unknown_a5; // BB only; null for non-BB quests
+  std::shared_ptr<parray<uint8_t, 0x14>> header_unknown_a5; // BB only; null for non-BB quests
 
   // Fields that may be different across quest versions (and are only used on VersionedQuest, not Quest)
   std::string name;
@@ -99,7 +113,7 @@ struct QuestMetadata {
 
   void apply_json_overrides(const phosg::JSON& json);
 
-  void assign_default_areas(Version version, Episode episode);
+  void assign_default_floors();
   void assert_compatible(const QuestMetadata& other) const;
   phosg::JSON json() const;
   std::string areas_str() const;

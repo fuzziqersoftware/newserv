@@ -35,7 +35,6 @@ void ProxySession::set_drop_mode(
         s->tekker_adjustment_set,
         s->item_parameter_table(version),
         s->item_stack_limits(version),
-        this->lobby_episode,
         (this->lobby_mode == GameMode::SOLO) ? GameMode::NORMAL : this->lobby_mode,
         this->lobby_difficulty,
         this->lobby_section_id,

@@ -58,6 +58,18 @@ Episode episode_for_token_name(const string& name) {
   throw runtime_error("unknown episode");
 }
 
+Episode episode_for_area(uint8_t area) {
+  if (area < 0x12) {
+    return Episode::EP1;
+  } else if (area < 0x24) {
+    return Episode::EP2;
+  } else if (area < 0x2F) {
+    return Episode::EP4;
+  } else {
+    throw std::runtime_error("invalid area number");
+  }
+}
+
 const char* abbreviation_for_episode(Episode ep) {
   switch (ep) {
     case Episode::NONE:

@@ -30,16 +30,14 @@ ItemCreator::ItemCreator(
     shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set,
     shared_ptr<const ItemParameterTable> item_parameter_table,
     std::shared_ptr<const ItemData::StackLimits> stack_limits,
-    Episode episode,
     GameMode mode,
     Difficulty difficulty,
     uint8_t section_id,
     std::shared_ptr<RandomGenerator> rand_crypt,
     shared_ptr<const BattleRules> restrictions)
-    : log(std::format("[ItemCreator:{}/{}/{}/{}/{}] ", phosg::name_for_enum(stack_limits->version), abbreviation_for_episode(episode), abbreviation_for_mode(mode), abbreviation_for_difficulty(difficulty), section_id), lobby_log.min_level),
+    : log(std::format("[ItemCreator:{}/{}/{}/{}] ", phosg::name_for_enum(stack_limits->version), abbreviation_for_mode(mode), abbreviation_for_difficulty(difficulty), section_id), lobby_log.min_level),
       logic_version(stack_limits->version),
       stack_limits(stack_limits),
-      episode(episode),
       mode(mode),
       difficulty(difficulty),
       section_id(section_id),
@@ -50,7 +48,6 @@ ItemCreator::ItemCreator(
       tekker_adjustment_set(tekker_adjustment_set),
       item_parameter_table(item_parameter_table),
       common_item_set(common_item_set),
-      pt(common_item_set->get_table(this->episode, this->mode, this->difficulty, this->section_id)),
       restrictions(restrictions),
       rand_crypt(rand_crypt) {
   this->generate_unit_stars_tables();
@@ -59,13 +56,11 @@ ItemCreator::ItemCreator(
 void ItemCreator::set_section_id(uint8_t new_section_id) {
   if (this->section_id != new_section_id) {
     this->section_id = new_section_id;
-    this->log.prefix = std::format("[ItemCreator:{}/{}/{}/{}/{}] ",
+    this->log.prefix = std::format("[ItemCreator:{}/{}/{}/{}] ",
         phosg::name_for_enum(stack_limits->version),
-        abbreviation_for_episode(episode),
         abbreviation_for_mode(mode),
         abbreviation_for_difficulty(difficulty),
         this->section_id);
-    this->pt = common_item_set->get_table(this->episode, this->mode, this->difficulty, this->section_id);
   }
 }
 
@@ -80,71 +75,114 @@ bool ItemCreator::are_rare_drops_allowed() const {
   return (this->mode != GameMode::CHALLENGE);
 }
 
-uint8_t ItemCreator::normalize_area_number(uint8_t area) const {
+uint8_t ItemCreator::table_index_for_area(uint8_t area) const {
   if (this->restrictions && (this->restrictions->box_drop_area != 0)) {
     return this->restrictions->box_drop_area - 1;
-  } else {
-    switch (this->episode) {
-      case Episode::EP1:
-        if (area >= 0x11) {
-          throw runtime_error("invalid Episode 1 area number");
-        }
-        switch (area) {
-          case 0x0B: // Dragon -> Cave 1
-            return 2;
-          case 0x0C: // De Rol Le -> Mine 1
-            return 5;
-          case 0x0D: // Vol Opt -> Ruins 1
-            return 7;
-          case 0x0E: // Dark Falz -> Ruins 3
-          case 0x10: // Palace -> Ruins 3
-          case 0x11: // Spaceship -> Ruins 3
-            return 9;
-          case 0x0F: // Lobby
-            throw runtime_error("visual lobby does not have item drop tables");
-          default:
-            return area - 1;
-        }
-        throw logic_error("this should be impossible");
-      case Episode::EP2: {
-        static const array<uint8_t, 0x11> area_subs = {
-            0x00, // 13 (VR Temple Alpha)
-            0x01, // 14 (VR Temple Beta)
-            0x02, // 15 (VR Spaceship Alpha)
-            0x03, // 16 (VR Spaceship Beta)
-            0x07, // 17 (Central Control Area)
-            0x04, // 18 (Jungle North)
-            0x05, // 19 (Jungle South)
-            0x06, // 1A (Mountain)
-            0x07, // 1B (Seaside)
-            0x08, // 1C (Seabed Upper)
-            0x09, // 1D (Seabed Lower)
-            0x08, // 1E (Gal Gryphon)
-            0x09, // 1F (Olga Flow)
-            0x02, // 20 (Barba Ray)
-            0x04, // 21 (Gol Dragon)
-            0x07, // 22 (Seaside Night)
-            0x09, // 23 (Tower)
-        };
-        if ((area >= 0x13) && (area < 0x24)) {
-          return area_subs.at(area - 0x13);
-        }
-        throw runtime_error("invalid Episode 2 area number");
-      }
-      case Episode::EP4:
-        if (area >= 0x24 && area < 0x2D) {
-          return area - 0x23;
-        }
-        throw runtime_error("invalid Episode 4 area number");
-      default:
-        throw logic_error("invalid episode number");
-    }
   }
+  static constexpr std::array<uint8_t, 0x2F> data = {
+      // Episode 1
+      0xFF, // 00 => Pioneer 2 (no drops)
+      0x00, // 01 => Forest 1
+      0x01, // 02 => Forest 2
+      0x02, // 03 => Cave 1
+      0x03, // 04 => Cave 2
+      0x04, // 05 => Cave 3
+      0x05, // 06 => Mine 1
+      0x06, // 07 => Mine 2
+      0x07, // 08 => Ruins 1
+      0x08, // 09 => Ruins 2
+      0x09, // 0A => Ruins 3
+      0x02, // 0B => Dragon -> Cave 1
+      0x05, // 0C => De Rol Le -> Mine 1
+      0x07, // 0D => Vol Opt -> Ruins 1
+      0x09, // 0E => Dark Falz -> Ruins 3
+      0xFF, // 0F => Lobby (no drops)
+      0x09, // 10 => Palace -> Ruins 3
+      0x09, // 11 => Spaceship -> Ruins 3
+      // Episode 2
+      0xFF, // 12 => Lab (no drops)
+      0x00, // 13 => VR Temple Alpha
+      0x01, // 14 => VR Temple Beta
+      0x02, // 15 => VR Spaceship Alpha
+      0x03, // 16 => VR Spaceship Beta
+      0x07, // 17 => Central Control Area -> Seaside
+      0x04, // 18 => Jungle North
+      0x05, // 19 => Jungle South
+      0x06, // 1A => Mountain
+      0x07, // 1B => Seaside
+      0x08, // 1C => Seabed Upper
+      0x09, // 1D => Seabed Lower
+      0x08, // 1E => Gal Gryphon -> Seabed Upper
+      0x09, // 1F => Olga Flow -> Seabed Lower
+      0x02, // 20 => Barba Ray -> VR Spaceship Alpha
+      0x04, // 21 => Gol Dragon -> Jungle North
+      0x07, // 22 => Seaside Night -> Seaside
+      0x09, // 23 => Tower -> Seabed Lower
+      // Episode 4
+      0x01, // 24 => Crater East
+      0x02, // 25 => Crater West
+      0x03, // 26 => Crater South
+      0x04, // 27 => Crater North
+      0x05, // 28 => Crater Interior
+      0x06, // 29 => Subterranean Desert 1
+      0x07, // 2A => Subterranean Desert 2
+      0x08, // 2B => Subterranean Desert 3
+      0x09, // 2C => Saint-Milion
+      0xFF, // 2D => Pioneer 2 (no drops)
+      0xFF, // 2E => Test area (no drops)
+  };
+  if (area >= data.size() || data[area] == 0xFF) {
+    throw std::runtime_error("invalid area number");
+  }
+  return data[area];
 }
 
 ItemCreator::DropResult ItemCreator::on_box_item_drop(uint8_t area) {
   try {
-    return this->on_box_item_drop_with_area_norm(this->normalize_area_number(area));
+    uint8_t table_index = this->table_index_for_area(area);
+    this->log.info_f("Box drop checks for area {:02X} (table index {:02X})", area, table_index);
+
+    DropResult res;
+    res.item = this->check_rare_specs_and_create_rare_box_item(area);
+    if (!res.item.empty()) {
+      res.is_from_rare_table = true;
+    } else {
+      uint8_t item_class = this->get_rand_from_weighted_tables_2d_vertical(
+          this->pt(area)->box_item_class_prob_table, table_index);
+      this->log.info_f("Item class is {:02X}", item_class);
+      switch (item_class) {
+        case 0: // Weapon
+          res.item.data1[0] = 0;
+          break;
+        case 1: // Armor
+          res.item.data1[0] = 1;
+          res.item.data1[1] = 1;
+          break;
+        case 2: // Shield
+          res.item.data1[0] = 1;
+          res.item.data1[1] = 2;
+          break;
+        case 3: // Unit
+          res.item.data1[0] = 1;
+          res.item.data1[1] = 3;
+          break;
+        case 4: // Tool
+          res.item.data1[0] = 3;
+          break;
+        case 5: // Meseta
+          res.item.data1[0] = 4;
+          break;
+        case 6: // Nothing
+          break;
+        default:
+          throw logic_error("this should be impossible");
+      }
+      if (item_class < 6) {
+        this->generate_common_item_variances(res.item, area);
+      }
+    }
+    return res;
+
   } catch (const exception& e) {
     this->log.error_f("Exception in item creation: {}", e.what());
     return DropResult();
@@ -153,143 +191,99 @@ ItemCreator::DropResult ItemCreator::on_box_item_drop(uint8_t area) {
 
 ItemCreator::DropResult ItemCreator::on_monster_item_drop(uint32_t enemy_type, uint8_t area) {
   try {
-    return this->on_monster_item_drop_with_area_norm(enemy_type, this->normalize_area_number(area));
+    // Note: The original GC implementation uses (enemy_type > 0x58) here; we
+    // extend it to the full array size for BB
+    if (enemy_type >= 0x64) {
+      this->log.warning_f("Invalid enemy type: {:X}", enemy_type);
+      return DropResult();
+    }
+    this->log.info_f("Enemy type: {:X}", enemy_type);
+
+    auto pt = this->pt(area);
+    uint8_t type_drop_prob = pt->enemy_type_drop_probs.at(enemy_type);
+    uint8_t drop_sample = this->rand_int(100);
+    if (drop_sample >= type_drop_prob) {
+      this->log.info_f("Drop not chosen ({} >= {})", drop_sample, type_drop_prob);
+      return DropResult();
+    } else {
+      this->log.info_f("Drop chosen ({} < {})", drop_sample, type_drop_prob);
+    }
+
+    DropResult res;
+    res.item = this->check_rare_spec_and_create_rare_enemy_item(enemy_type, area);
+    if (!res.item.empty()) {
+      res.is_from_rare_table = true;
+    } else {
+      uint32_t item_class_determinant =
+          this->should_allow_meseta_drops()
+          ? this->rand_int(3)
+          : (this->rand_int(2) + 1);
+
+      uint32_t item_class;
+      switch (item_class_determinant) {
+        case 0:
+          item_class = 5;
+          break;
+        case 1:
+          item_class = 4;
+          break;
+        case 2:
+          item_class = pt->enemy_item_classes.at(enemy_type);
+          break;
+        default:
+          throw logic_error("invalid item class determinant");
+      }
+
+      this->log.info_f("Rare drop not chosen; item class determinant is {}; item class is {}", item_class_determinant, item_class);
+
+      switch (item_class) {
+        case 0: // Weapon
+          res.item.data1[0] = 0x00;
+          break;
+        case 1: // Armor
+          res.item.data1w[0] = 0x0101;
+          break;
+        case 2: // Shield
+          res.item.data1w[0] = 0x0201;
+          break;
+        case 3: // Unit
+          res.item.data1w[0] = 0x0301;
+          break;
+        case 4: // Tool
+          res.item.data1[0] = 0x03;
+          break;
+        case 5: // Meseta
+          res.item.data1[0] = 0x04;
+          res.item.data2d = this->choose_meseta_amount(pt->enemy_meseta_ranges, enemy_type) & 0xFFFF;
+          break;
+        default:
+          return res;
+      }
+
+      if (res.item.data1[0] != 0x04) {
+        this->generate_common_item_variances(res.item, area);
+      }
+    }
+
+    return res;
+
   } catch (const exception& e) {
     this->log.error_f("Exception in item creation: {}", e.what());
     return DropResult();
   }
 }
 
-ItemCreator::DropResult ItemCreator::on_box_item_drop_with_area_norm(uint8_t area_norm) {
-  this->log.info_f("Box drop checks for area_norm {:02X}", area_norm);
-  DropResult res;
-  res.item = this->check_rare_specs_and_create_rare_box_item(area_norm);
-  if (!res.item.empty()) {
-    res.is_from_rare_table = true;
-  } else {
-    uint8_t item_class = this->get_rand_from_weighted_tables_2d_vertical(this->pt->box_item_class_prob_table, area_norm);
-    this->log.info_f("Item class is {:02X}", item_class);
-    switch (item_class) {
-      case 0: // Weapon
-        res.item.data1[0] = 0;
-        break;
-      case 1: // Armor
-        res.item.data1[0] = 1;
-        res.item.data1[1] = 1;
-        break;
-      case 2: // Shield
-        res.item.data1[0] = 1;
-        res.item.data1[1] = 2;
-        break;
-      case 3: // Unit
-        res.item.data1[0] = 1;
-        res.item.data1[1] = 3;
-        break;
-      case 4: // Tool
-        res.item.data1[0] = 3;
-        break;
-      case 5: // Meseta
-        res.item.data1[0] = 4;
-        break;
-      case 6: // Nothing
-        break;
-      default:
-        throw logic_error("this should be impossible");
-    }
-    if (item_class < 6) {
-      this->generate_common_item_variances(area_norm, res.item);
-    }
-  }
-  return res;
-}
-
-ItemCreator::DropResult ItemCreator::on_monster_item_drop_with_area_norm(uint32_t enemy_type, uint8_t area_norm) {
-  // Note: The original GC implementation uses (enemy_type > 0x58) here; we
-  // extend it to the full array size for BB
-  if (enemy_type >= 0x64) {
-    this->log.warning_f("Invalid enemy type: {:X}", enemy_type);
-    return DropResult();
-  }
-  this->log.info_f("Enemy type: {:X}", enemy_type);
-
-  uint8_t type_drop_prob = this->pt->enemy_type_drop_probs.at(enemy_type);
-  uint8_t drop_sample = this->rand_int(100);
-  if (drop_sample >= type_drop_prob) {
-    this->log.info_f("Drop not chosen ({} >= {})", drop_sample, type_drop_prob);
-    return DropResult();
-  } else {
-    this->log.info_f("Drop chosen ({} < {})", drop_sample, type_drop_prob);
-  }
-
-  DropResult res;
-  res.item = this->check_rare_spec_and_create_rare_enemy_item(enemy_type, area_norm);
-  if (!res.item.empty()) {
-    res.is_from_rare_table = true;
-  } else {
-    uint32_t item_class_determinant =
-        this->should_allow_meseta_drops()
-        ? this->rand_int(3)
-        : (this->rand_int(2) + 1);
-
-    uint32_t item_class;
-    switch (item_class_determinant) {
-      case 0:
-        item_class = 5;
-        break;
-      case 1:
-        item_class = 4;
-        break;
-      case 2:
-        item_class = this->pt->enemy_item_classes.at(enemy_type);
-        break;
-      default:
-        throw logic_error("invalid item class determinant");
-    }
-
-    this->log.info_f("Rare drop not chosen; item class determinant is {}; item class is {}", item_class_determinant, item_class);
-
-    switch (item_class) {
-      case 0: // Weapon
-        res.item.data1[0] = 0x00;
-        break;
-      case 1: // Armor
-        res.item.data1w[0] = 0x0101;
-        break;
-      case 2: // Shield
-        res.item.data1w[0] = 0x0201;
-        break;
-      case 3: // Unit
-        res.item.data1w[0] = 0x0301;
-        break;
-      case 4: // Tool
-        res.item.data1[0] = 0x03;
-        break;
-      case 5: // Meseta
-        res.item.data1[0] = 0x04;
-        res.item.data2d = this->choose_meseta_amount(this->pt->enemy_meseta_ranges, enemy_type) & 0xFFFF;
-        break;
-      default:
-        return res;
-    }
-
-    if (res.item.data1[0] != 0x04) {
-      this->generate_common_item_variances(area_norm, res.item);
-    }
-  }
-
-  return res;
-}
-
-ItemData ItemCreator::check_rare_specs_and_create_rare_box_item(uint8_t area_norm) {
+ItemData ItemCreator::check_rare_specs_and_create_rare_box_item(uint8_t area) {
   ItemData item;
   if (!this->are_rare_drops_allowed()) {
     return item;
   }
 
-  auto rare_specs = this->rare_item_set->get_box_specs(
-      this->mode, this->episode, this->difficulty, this->section_id, area_norm);
+  uint8_t table_index = this->table_index_for_area(area);
+  Episode episode = episode_for_area(area);
+  auto rare_specs = this->rare_item_set->get_box_specs(this->mode, episode, this->difficulty, this->section_id, table_index);
   for (const auto& spec : rare_specs) {
-    item = this->check_rate_and_create_rare_item(spec, area_norm);
+    item = this->check_rate_and_create_rare_item(spec, area);
     if (!item.empty()) {
       if (this->log.should_log(phosg::LogLevel::L_INFO)) {
         auto hex = spec.data.hex();
@@ -340,17 +334,17 @@ bool ItemCreator::should_allow_meseta_drops() const {
   return (this->mode != GameMode::CHALLENGE);
 }
 
-ItemData ItemCreator::check_rare_spec_and_create_rare_enemy_item(uint32_t enemy_type, uint8_t area_norm) {
+ItemData ItemCreator::check_rare_spec_and_create_rare_enemy_item(uint32_t enemy_type, uint8_t area) {
   ItemData item;
   if (this->are_rare_drops_allowed() && (enemy_type > 0) && (enemy_type < 0x64)) {
     // Note: In the original implementation, enemies can only have one possible
     // rare drop. In our implementation, they can have multiple rare drops if
     // JSONRareItemSet is used (the other RareItemSet implementations never
     // return multiple drops for an enemy type).
-    auto rare_specs = this->rare_item_set->get_enemy_specs(
-        this->mode, this->episode, this->difficulty, this->section_id, enemy_type);
+    Episode episode = episode_for_area(area);
+    auto rare_specs = this->rare_item_set->get_enemy_specs(this->mode, episode, this->difficulty, this->section_id, enemy_type);
     for (const auto& spec : rare_specs) {
-      item = this->check_rate_and_create_rare_item(spec, area_norm);
+      item = this->check_rate_and_create_rare_item(spec, area);
       if (!item.empty()) {
         if (this->log.should_log(phosg::LogLevel::L_INFO)) {
           auto hex = spec.data.hex();
@@ -367,7 +361,7 @@ ItemData ItemCreator::check_rare_spec_and_create_rare_enemy_item(uint32_t enemy_
   return item;
 }
 
-ItemData ItemCreator::check_rate_and_create_rare_item(const RareItemSet::ExpandedDrop& drop, uint8_t area_norm) {
+ItemData ItemCreator::check_rate_and_create_rare_item(const RareItemSet::ExpandedDrop& drop, uint8_t area) {
   if (drop.probability == 0) {
     return ItemData();
   }
@@ -382,15 +376,15 @@ ItemData ItemCreator::check_rate_and_create_rare_item(const RareItemSet::Expande
   if (item.can_be_encoded_in_rel_rare_table()) {
     switch (item.data1[0]) {
       case 0:
-        if (this->pt->has_rare_bonus_value_prob_table) {
-          this->generate_rare_weapon_bonuses(item, this->rand_int(10));
+        if (this->pt(area)->has_rare_bonus_value_prob_table) {
+          this->generate_rare_weapon_bonuses(item, episode_for_area(area), this->rand_int(10));
         } else {
-          this->generate_common_weapon_bonuses(item, area_norm);
+          this->generate_common_weapon_bonuses(item, area);
         }
         this->set_item_unidentified_flag_if_not_challenge(item);
         break;
       case 1:
-        this->generate_common_armor_slots_and_bonuses(item);
+        this->generate_common_armor_slots_and_bonuses(item, episode_for_area(area));
         break;
       case 2:
         this->generate_common_mag_variances(item);
@@ -411,18 +405,19 @@ ItemData ItemCreator::check_rate_and_create_rare_item(const RareItemSet::Expande
   return item;
 }
 
-void ItemCreator::generate_rare_weapon_bonuses(ItemData& item, uint32_t random_sample) {
+void ItemCreator::generate_rare_weapon_bonuses(ItemData& item, Episode episode, uint32_t table_index) {
   if (item.data1[0] != 0) {
     return;
   }
 
-  if (!this->pt->has_rare_bonus_value_prob_table) {
+  auto pt = this->pt(episode);
+  if (!pt->has_rare_bonus_value_prob_table) {
     throw logic_error("generate_rare_weapon_bonuses called for common item table without rare bonus value probability table");
   }
 
   for (size_t z = 0; z < 6; z += 2) {
-    uint8_t bonus_type = this->get_rand_from_weighted_tables_2d_vertical(this->pt->bonus_type_prob_table, random_sample);
-    int16_t bonus_value = this->get_rand_from_weighted_tables_2d_vertical(this->pt->bonus_value_prob_table, 5);
+    uint8_t bonus_type = this->get_rand_from_weighted_tables_2d_vertical(pt->bonus_type_prob_table, table_index);
+    int16_t bonus_value = this->get_rand_from_weighted_tables_2d_vertical(pt->bonus_value_prob_table, 5);
     item.data1[z + 6] = bonus_type;
     item.data1[z + 7] = bonus_value * 5 - 10;
     // Note: The original code has a special case here, which divides
@@ -434,20 +429,22 @@ void ItemCreator::generate_rare_weapon_bonuses(ItemData& item, uint32_t random_s
   this->deduplicate_weapon_bonuses(item);
 }
 
-void ItemCreator::generate_common_weapon_bonuses(ItemData& item, uint8_t area_norm) {
+void ItemCreator::generate_common_weapon_bonuses(ItemData& item, uint8_t area) {
   if (item.data1[0] != 0) {
     return;
   }
 
+  auto pt = this->pt(area);
+  uint8_t table_index = this->table_index_for_area(area);
   for (size_t row = 0; row < 3; row++) {
-    uint8_t spec = this->pt->nonrare_bonus_prob_spec.at(row).at(area_norm);
+    uint8_t spec = pt->nonrare_bonus_prob_spec.at(row).at(table_index);
     if (spec == 0xFF) {
       this->log.info_f("Bonus {} is forbidden", row);
     } else {
-      item.data1[(row * 2) + 6] = this->get_rand_from_weighted_tables_2d_vertical(this->pt->bonus_type_prob_table, area_norm);
-      int16_t amount = this->get_rand_from_weighted_tables_2d_vertical(this->pt->bonus_value_prob_table, spec);
+      item.data1[(row * 2) + 6] = this->get_rand_from_weighted_tables_2d_vertical(pt->bonus_type_prob_table, table_index);
+      int16_t amount = this->get_rand_from_weighted_tables_2d_vertical(pt->bonus_value_prob_table, spec);
       item.data1[(row * 2) + 7] = amount * 5 - 10;
-      this->log.info_f("Bonus {} generated as {:02X} {:02X} from area_norm {:02X} and spec {:02X}", row, item.data1[(row * 2) + 6], item.data1[(row * 2) + 7], area_norm, spec);
+      this->log.info_f("Bonus {} generated as {:02X} {:02X} from table index {:02X} and spec {:02X}", row, item.data1[(row * 2) + 6], item.data1[(row * 2) + 7], table_index, spec);
     }
     // Note: The original code has a special case here, which divides
     // item.data1[z + 7] by 5 and multiplies it by 5 again if bonus_type is 5
@@ -605,14 +602,14 @@ void ItemCreator::clear_item_if_restricted(ItemData& item) const {
   }
 }
 
-void ItemCreator::generate_common_item_variances(uint32_t area_norm, ItemData& item) {
+void ItemCreator::generate_common_item_variances(ItemData& item, uint8_t area) {
   switch (item.data1[0]) {
     case 0:
-      this->generate_common_weapon_variances(area_norm, item);
+      this->generate_common_weapon_variances(item, area);
       break;
     case 1:
       if (item.data1[1] == 3) {
-        float f1 = 1.0 + this->pt->unit_max_stars_table.at(area_norm);
+        float f1 = 1.0 + this->pt(area)->unit_max_stars_table.at(this->table_index_for_area(area));
         float f2 = this->rand_float_0_1_from_crypt();
         uint8_t stars = static_cast<uint32_t>(f1 * f2) & 0xFF;
         this->log.info_f("Unit stars: {:g} * {:g} = {}", f1, f2, stars);
@@ -622,17 +619,17 @@ void ItemCreator::generate_common_item_variances(uint32_t area_norm, ItemData& i
           item.clear();
         }
       } else {
-        this->generate_common_armor_or_shield_type_and_variances(area_norm, item);
+        this->generate_common_armor_or_shield_type_and_variances(item, area);
       }
       break;
     case 2:
       this->generate_common_mag_variances(item);
       break;
     case 3:
-      this->generate_common_tool_variances(area_norm, item);
+      this->generate_common_tool_variances(item, area);
       break;
     case 4:
-      item.data2d = this->choose_meseta_amount(this->pt->box_meseta_ranges, area_norm) & 0xFFFF;
+      item.data2d = this->choose_meseta_amount(this->pt(area)->box_meseta_ranges, this->table_index_for_area(area)) & 0xFFFF;
       break;
     default:
       // Note: The original code does the following here:
@@ -645,27 +642,30 @@ void ItemCreator::generate_common_item_variances(uint32_t area_norm, ItemData& i
   this->set_item_kill_count_if_unsealable(item);
 }
 
-void ItemCreator::generate_common_armor_or_shield_type_and_variances(char area_norm, ItemData& item) {
-  this->generate_common_armor_slots_and_bonuses(item);
+void ItemCreator::generate_common_armor_or_shield_type_and_variances(ItemData& item, uint8_t area) {
+  this->generate_common_armor_slots_and_bonuses(item, episode_for_area(area));
 
-  uint8_t type = this->get_rand_from_weighted_tables_1d(this->pt->armor_shield_type_index_prob_table);
-  item.data1[2] = area_norm + type + this->pt->armor_or_shield_type_bias;
+  auto pt = this->pt(area);
+  uint8_t table_index = this->table_index_for_area(area);
+
+  uint8_t type = this->get_rand_from_weighted_tables_1d(pt->armor_shield_type_index_prob_table);
+  item.data1[2] = table_index + type + pt->armor_or_shield_type_bias;
   if (item.data1[2] < 3) {
     item.data1[2] = 0;
   } else {
     item.data1[2] -= 3;
   }
   this->log.info_f("Armor/shield type: max({:02X} + {:02X} + {:02X} - 3, 0) = {:02X}",
-      area_norm, type, this->pt->armor_or_shield_type_bias, item.data1[2]);
+      table_index, type, pt->armor_or_shield_type_bias, item.data1[2]);
 }
 
-void ItemCreator::generate_common_armor_slots_and_bonuses(ItemData& item) {
+void ItemCreator::generate_common_armor_slots_and_bonuses(ItemData& item, Episode episode) {
   if ((item.data1[0] != 0x01) || (item.data1[1] < 1) || (item.data1[1] > 2)) {
     return;
   }
 
   if (item.data1[1] == 1) {
-    this->generate_common_armor_slot_count(item);
+    this->generate_common_armor_slot_count(item, episode);
   }
 
   const auto& def = this->item_parameter_table->get_armor_or_shield(item.data1[1], item.data1[2]);
@@ -673,14 +673,17 @@ void ItemCreator::generate_common_armor_slots_and_bonuses(ItemData& item) {
   item.set_common_armor_evasion_bonus(def.evp_range * this->rand_float_0_1_from_crypt());
 }
 
-void ItemCreator::generate_common_armor_slot_count(ItemData& item) {
-  item.data1[5] = this->get_rand_from_weighted_tables_1d(this->pt->armor_slot_count_prob_table);
+void ItemCreator::generate_common_armor_slot_count(ItemData& item, Episode episode) {
+  item.data1[5] = this->get_rand_from_weighted_tables_1d(this->pt(episode)->armor_slot_count_prob_table);
 }
 
-void ItemCreator::generate_common_tool_variances(uint32_t area_norm, ItemData& item) {
+void ItemCreator::generate_common_tool_variances(ItemData& item, uint8_t area) {
   item.clear();
 
-  uint8_t tool_class = this->get_rand_from_weighted_tables_2d_vertical(this->pt->tool_class_prob_table, area_norm);
+  auto pt = this->pt(area);
+  uint8_t table_index = this->table_index_for_area(area);
+
+  uint8_t tool_class = this->get_rand_from_weighted_tables_2d_vertical(pt->tool_class_prob_table, table_index);
   if ((!is_v1_or_v2(this->logic_version) || (this->logic_version == Version::GC_NTE)) && (tool_class == 0x1A)) {
     tool_class = 0x73;
   }
@@ -705,15 +708,15 @@ void ItemCreator::generate_common_tool_variances(uint32_t area_norm, ItemData& i
   }
 
   if (item.data1[1] == 0x02) { // Tech disk
-    item.data1[4] = this->get_rand_from_weighted_tables_2d_vertical(this->pt->technique_index_prob_table, area_norm);
-    item.data1[2] = this->generate_tech_disk_level(item.data1[4], area_norm);
+    item.data1[4] = this->get_rand_from_weighted_tables_2d_vertical(pt->technique_index_prob_table, table_index);
+    item.data1[2] = this->generate_tech_disk_level(item.data1[4], area);
     this->clear_tool_item_if_invalid(item);
   }
   this->set_tool_item_amount_to_1(item);
 }
 
-uint8_t ItemCreator::generate_tech_disk_level(uint32_t tech_num, uint32_t area_norm) {
-  const auto& range = this->pt->technique_level_ranges.at(tech_num).at(area_norm);
+uint8_t ItemCreator::generate_tech_disk_level(uint32_t tech_num, uint8_t area) {
+  const auto& range = this->pt(area)->technique_level_ranges.at(tech_num).at(this->table_index_for_area(area));
   if (((range.min == 0xFF) || (range.max == 0xFF)) || (range.max < range.min)) {
     return 0xFF;
   } else if (range.min != range.max) {
@@ -739,20 +742,20 @@ void ItemCreator::generate_common_mag_variances(ItemData& item) {
   }
 }
 
-void ItemCreator::generate_common_weapon_variances(uint8_t area_norm, ItemData& item) {
+void ItemCreator::generate_common_weapon_variances(ItemData& item, uint8_t area) {
   item.clear();
   item.data1[0] = 0x00;
 
+  auto pt = this->pt(area);
+  uint8_t table_index = this->table_index_for_area(area);
+
   parray<uint8_t, 0x0D> weapon_type_prob_table;
   weapon_type_prob_table[0] = 0;
-  memmove(
-      weapon_type_prob_table.data() + 1,
-      this->pt->base_weapon_type_prob_table.data(),
-      0x0C);
+  memmove(weapon_type_prob_table.data() + 1, pt->base_weapon_type_prob_table.data(), 0x0C);
 
   for (size_t z = 1; z < 13; z++) {
     // Technically this should be `if (... < 0)`, but whatever
-    if ((area_norm + this->pt->subtype_base_table.at(z - 1)) & 0x80) {
+    if ((table_index + pt->subtype_base_table.at(z - 1)) & 0x80) {
       weapon_type_prob_table[z] = 0;
     }
   }
@@ -768,33 +771,35 @@ void ItemCreator::generate_common_weapon_variances(uint8_t area_norm, ItemData& 
     this->log.info_f("00 chosen from subtype table; skipping item");
     item.clear();
   } else {
-    int8_t subtype_base = this->pt->subtype_base_table.at(item.data1[1] - 1);
-    uint8_t area_length = this->pt->subtype_area_length_table.at(item.data1[1] - 1);
+    int8_t subtype_base = pt->subtype_base_table.at(item.data1[1] - 1);
+    uint8_t area_length = pt->subtype_area_length_table.at(item.data1[1] - 1);
     this->log.info_f("Subtype table yielded {:02X}; subtype base is {} with area length {}", item.data1[1], subtype_base, area_length);
     if (subtype_base < 0) {
-      item.data1[2] = (area_norm + subtype_base) / area_length;
-      this->log.info_f("Resulting subtype: ({:02X} + {:02X}) / {:02X} = {:02X}", area_norm, subtype_base, area_length, item.data1[2]);
-      this->generate_common_weapon_grind(item, (area_norm + subtype_base) - (item.data1[2] * area_length));
+      item.data1[2] = (table_index + subtype_base) / area_length;
+      this->log.info_f("Resulting subtype: ({:02X} + {:02X}) / {:02X} = {:02X}", table_index, subtype_base, area_length, item.data1[2]);
+      this->generate_common_weapon_grind(item, area, (table_index + subtype_base) - (item.data1[2] * area_length));
     } else {
-      item.data1[2] = subtype_base + (area_norm / area_length);
-      this->log.info_f("Resulting subtype: {:02X} + ({:02X} / {:02X}) = {:02X}", subtype_base, area_norm, area_length, item.data1[2]);
-      this->generate_common_weapon_grind(item, area_norm - (area_norm / area_length) * area_length);
+      item.data1[2] = subtype_base + (table_index / area_length);
+      this->log.info_f("Resulting subtype: {:02X} + ({:02X} / {:02X}) = {:02X}", subtype_base, table_index, area_length, item.data1[2]);
+      this->generate_common_weapon_grind(item, area, table_index - (table_index / area_length) * area_length);
     }
-    this->generate_common_weapon_bonuses(item, area_norm);
-    this->generate_common_weapon_special(item, area_norm);
+    this->generate_common_weapon_bonuses(item, area);
+    this->generate_common_weapon_special(item, area);
     this->set_item_unidentified_flag_if_not_challenge(item);
   }
 }
 
-void ItemCreator::generate_common_weapon_grind(ItemData& item, uint8_t offset_within_subtype_range) {
+void ItemCreator::generate_common_weapon_grind(ItemData& item, uint8_t area, uint8_t offset_within_subtype_range) {
   if (item.data1[0] == 0) {
     uint8_t offset = clamp<uint8_t>(offset_within_subtype_range, 0, 3);
-    item.data1[3] = this->get_rand_from_weighted_tables_2d_vertical(this->pt->grind_prob_table, offset);
+    item.data1[3] = this->get_rand_from_weighted_tables_2d_vertical(this->pt(area)->grind_prob_table, offset);
     this->log.info_f("Generated grind {:02X} from offset within subtype range {:02X}", item.data1[3], offset_within_subtype_range);
   }
 }
 
-void ItemCreator::generate_common_weapon_special(ItemData& item, uint8_t area_norm) {
+void ItemCreator::generate_common_weapon_special(ItemData& item, uint8_t area) {
+  auto pt = this->pt(area);
+  uint8_t table_index = this->table_index_for_area(area);
   if (item.data1[0] != 0) {
     return;
   }
@@ -802,13 +807,13 @@ void ItemCreator::generate_common_weapon_special(ItemData& item, uint8_t area_no
     this->log.info_f("Item is rare; skipping special generation");
     return;
   }
-  uint8_t special_mult = this->pt->special_mult.at(area_norm);
+  uint8_t special_mult = pt->special_mult.at(table_index);
   if (special_mult == 0) {
-    this->log.info_f("Special multiplier is zero for area_norm {:02X}; skipping special generation", area_norm);
+    this->log.info_f("Special multiplier is zero for table index {:02X}; skipping special generation", table_index);
     return;
   }
   uint8_t det = this->rand_int(100);
-  uint8_t prob = this->pt->special_percent.at(area_norm);
+  uint8_t prob = pt->special_percent.at(table_index);
   if (det >= prob) {
     this->log.info_f("Special not chosen ({:02X} > {:02X})", det, prob);
     return;
@@ -963,9 +968,9 @@ IntT ItemCreator::get_rand_from_weighted_tables_2d_vertical(const parray<parray<
   return ItemCreator::get_rand_from_weighted_tables<IntT>(tables[0].data(), offset, Y, X);
 }
 
-vector<ItemData> ItemCreator::generate_armor_shop_contents(size_t player_level) {
+vector<ItemData> ItemCreator::generate_armor_shop_contents(Episode episode, size_t player_level) {
   vector<ItemData> shop;
-  this->generate_armor_shop_armors(shop, player_level);
+  this->generate_armor_shop_armors(shop, episode, player_level);
   this->generate_armor_shop_shields(shop, player_level);
   this->generate_armor_shop_units(shop, player_level);
   return shop;
@@ -1044,7 +1049,7 @@ bool ItemCreator::shop_does_not_contain_duplicate_item_by_data1_0_1_2(
   return true;
 }
 
-void ItemCreator::generate_armor_shop_armors(vector<ItemData>& shop, size_t player_level) {
+void ItemCreator::generate_armor_shop_armors(vector<ItemData>& shop, Episode episode, size_t player_level) {
   size_t num_items;
   if (player_level < 11) {
     num_items = 4;
@@ -1080,7 +1085,7 @@ void ItemCreator::generate_armor_shop_armors(vector<ItemData>& shop, size_t play
       }
     }
 
-    this->generate_common_armor_slot_count(item);
+    this->generate_common_armor_slot_count(item, episode);
     if (this->shop_does_not_contain_duplicate_armor(shop, item)) {
       shop.emplace_back(std::move(item));
       items_generated++;
@@ -1711,7 +1716,7 @@ ItemCreator::DropResult ItemCreator::on_specialized_box_item_drop(
     uint16_t type = res.item.data1w[0];
     res.item.clear();
     res.item.data1w[0] = type;
-    this->generate_common_item_variances(this->normalize_area_number(area), res.item);
+    this->generate_common_item_variances(res.item, area);
   }
   return res;
 }

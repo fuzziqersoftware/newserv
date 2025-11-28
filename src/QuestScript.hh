@@ -114,12 +114,24 @@ struct PSOQuestHeaderBBBase {
 } __packed_ws__(PSOQuestHeaderBBBase, 0x0398);
 
 struct PSOQuestHeaderBB : PSOQuestHeaderBBBase {
-  /* 0398 */ parray<uint8_t, 0x94> unknown_a5;
+  struct FloorAssignment {
+    // These fields match the bb_map_designate arguments (see QuestScript.cc).
+    // Unused AreaAssignment structures should have all fields set to 0xFF.
+    uint8_t floor = 0xFF;
+    uint8_t area = 0xFF;
+    uint8_t type = 0xFF;
+    uint8_t layout_var = 0xFF;
+    uint8_t entities_var = 0xFF;
+    parray<uint8_t, 3> unused = 0xFF;
+  } __packed_ws__(FloorAssignment, 8);
+
+  /* 0398 */ parray<uint8_t, 0x14> unknown_a5;
+  /* 03AC */ parray<FloorAssignment, 0x10> floor_assignments;
   /* 042C */ parray<CreateItemMaskEntry, 0x40> create_item_mask_entries;
   /* 122C */
 } __packed_ws__(PSOQuestHeaderBB, 0x122C);
 
-void check_opcode_definitions();
+void check_quest_opcode_definitions();
 
 Episode episode_for_quest_episode_number(uint8_t episode_number);
 
