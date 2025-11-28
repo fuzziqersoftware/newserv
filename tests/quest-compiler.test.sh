@@ -7,4 +7,4 @@ if [ -z "$EXECUTABLE" ]; then
   EXECUTABLE="./newserv"
 fi
 
-$EXECUTABLE check-quests --reassembly
+$EXECUTABLE check-quests --reassembly --config=tests/config.json
