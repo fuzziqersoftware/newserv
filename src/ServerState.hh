@@ -52,6 +52,7 @@ struct CheatFlags {
   bool ep3_replace_assist = true;
   bool ep3_unset_field_character = true;
   bool infinite_hp_tp = true;
+  bool fast_kills = true;
   bool insufficient_minimum_level = true;
   bool override_random_seed = true;
   bool override_section_id = true;

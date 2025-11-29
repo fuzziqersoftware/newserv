@@ -1998,6 +1998,30 @@ asio::awaitable<HandlerResult> C_6x(shared_ptr<Client> c, Channel::Message& msg)
       }
       break;
 
+    case 0x0A: {
+      if (c->check_flag(Client::Flag::FAST_KILLS_ENABLED)) {
+        auto handle_6x0A = [&]<bool BE>() -> void {
+          auto& cmd = msg.check_size_t<G_UpdateEnemyStateT_6x0A<BE>>();
+          bool is_boss = false;
+          if (c->proxy_session->map_state) {
+            auto ene_st = c->proxy_session->map_state->enemy_state_for_index(c->version(), cmd.enemy_index);
+            is_boss = type_definition_for_enemy(ene_st->super_ene->type).is_boss();
+          }
+          if (!is_boss && !(cmd.game_flags & 0x00000800)) {
+            cmd.game_flags |= 0x00000800;
+            c->channel->send(0x60, 0x00, &cmd, sizeof(cmd));
+            modified = true;
+          }
+        };
+        if (is_gc(c->version())) {
+          handle_6x0A.template operator()<true>();
+        } else {
+          handle_6x0A.template operator()<false>();
+        }
+      }
+      break;
+    }
+
     case 0x0C:
       if (c->check_flag(Client::Flag::INFINITE_HP_ENABLED)) {
         co_await send_remove_negative_conditions(c);

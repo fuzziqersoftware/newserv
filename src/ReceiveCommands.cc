@@ -212,6 +212,8 @@ static shared_ptr<const Menu> proxy_options_menu_for_client(shared_ptr<const Cli
           "Infinite HP", "Enable automatic HP\nrestoration when\nyou are hit by an\nenemy or trap\n\nCannot revive you\nfrom one-hit kills");
       add_flag_option(ProxyOptionsMenuItemID::INFINITE_TP, Client::Flag::INFINITE_TP_ENABLED,
           "Infinite TP", "Enable automatic TP\nrestoration when\nyou cast any\ntechnique");
+      add_flag_option(ProxyOptionsMenuItemID::FAST_KILLS, Client::Flag::FAST_KILLS_ENABLED,
+          "Fast kills", "Enable one-hit kills\nfor all enemies\nexcept bosses");
     } else {
       add_flag_option(ProxyOptionsMenuItemID::EP3_INFINITE_MESETA, Client::Flag::PROXY_EP3_INFINITE_MESETA_ENABLED,
           "Inf Meseta", "Fix Meseta value\nat 1,000,000");
@@ -2677,6 +2679,9 @@ static asio::awaitable<void> on_10_proxy_options(shared_ptr<Client> c, uint32_t 
       break;
     case ProxyOptionsMenuItemID::INFINITE_TP:
       c->toggle_flag(Client::Flag::INFINITE_TP_ENABLED);
+      break;
+    case ProxyOptionsMenuItemID::FAST_KILLS:
+      c->toggle_flag(Client::Flag::FAST_KILLS_ENABLED);
       break;
     case ProxyOptionsMenuItemID::SWITCH_ASSIST:
       c->toggle_flag(Client::Flag::SWITCH_ASSIST_ENABLED);

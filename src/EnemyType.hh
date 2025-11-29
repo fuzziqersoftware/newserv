@@ -146,6 +146,7 @@ struct EnemyTypeDefinition {
     VALID_EP2 = 0x02,
     VALID_EP4 = 0x04,
     IS_RARE = 0x08,
+    IS_BOSS = 0x10,
   };
   EnemyType type;
   uint8_t flags;
@@ -169,6 +170,9 @@ struct EnemyTypeDefinition {
   }
   inline bool is_rare() const {
     return (this->flags & Flag::IS_RARE);
+  }
+  inline bool is_boss() const {
+    return (this->flags & Flag::IS_BOSS);
   }
   EnemyType rare_type(Episode episode, uint8_t event, uint8_t floor) const;
 };

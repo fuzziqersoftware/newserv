@@ -1,6 +1,6 @@
 .meta name="DMC"
 .meta description="Mitigates effects\nof enemy health\ndesync"
-.meta client_flag="0x2000000000000000"
+.meta client_flag="0x0000001000000000"
 
 .versions 4OJB 4OJD 4OJU 4OED 4OEU 4OPD 4OPU
 

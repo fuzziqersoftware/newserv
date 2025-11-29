@@ -75,13 +75,14 @@ constexpr uint32_t PLAYER_NOTIFICATIONS = 0xAA0202AA;
 constexpr uint32_t DROP_NOTIFICATIONS = 0xAA0303AA;
 constexpr uint32_t INFINITE_HP = 0xAA0404AA;
 constexpr uint32_t INFINITE_TP = 0xAA0505AA;
-constexpr uint32_t SWITCH_ASSIST = 0xAA0606AA;
-constexpr uint32_t BLOCK_EVENTS = 0xAA0707AA;
-constexpr uint32_t BLOCK_PATCHES = 0xAA0808AA;
-constexpr uint32_t SAVE_FILES = 0xAA0909AA;
-constexpr uint32_t EP3_INFINITE_MESETA = 0xAA0A0AAA;
-constexpr uint32_t EP3_INFINITE_TIME = 0xAA0B0BAA;
-constexpr uint32_t EP3_UNMASK_WHISPERS = 0xAA0C0CAA;
+constexpr uint32_t FAST_KILLS = 0xAA0606AA;
+constexpr uint32_t SWITCH_ASSIST = 0xAA0707AA;
+constexpr uint32_t BLOCK_EVENTS = 0xAA0808AA;
+constexpr uint32_t BLOCK_PATCHES = 0xAA0909AA;
+constexpr uint32_t SAVE_FILES = 0xAA0A0AAA;
+constexpr uint32_t EP3_INFINITE_MESETA = 0xAA0B0BAA;
+constexpr uint32_t EP3_INFINITE_TIME = 0xAA0C0CAA;
+constexpr uint32_t EP3_UNMASK_WHISPERS = 0xAA0D0DAA;
 } // namespace ProxyOptionsMenuItemID
 
 namespace TeamRewardMenuItemID {

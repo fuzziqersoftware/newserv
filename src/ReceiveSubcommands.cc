@@ -3466,8 +3466,19 @@ static asio::awaitable<void> on_update_enemy_state(shared_ptr<Client> c, Subcomm
         ene_st->alias_target_ene_st->e_id, ene_st->alias_target_ene_st->total_damage, ene_st->alias_target_ene_st->game_flags);
   }
 
+  // TODO: It'd be nice if this worked on bosses too, but it seems we have to
+  // use each boss' specific state-syncing command, or the cutscenes misbehave.
+  // Just setting flag 0x800 does work on Vol Opt (and the various parts), but
+  // doesn't work on other Episode 1 bosses. Other episodes are not yet tested.
+  bool is_fast_kill = c->check_flag(Client::Flag::FAST_KILLS_ENABLED) &&
+      !type_definition_for_enemy(ene_st->super_ene->type).is_boss() &&
+      !(ene_st->game_flags & 0x00000800);
+  if (is_fast_kill) {
+    ene_st->game_flags |= 0x00000800;
+  }
+
   for (auto lc : l->clients) {
-    if (lc && (lc != c)) {
+    if (lc && (is_fast_kill || (lc != c))) {
       cmd.enemy_index = l->map_state->index_for_enemy_state(lc->version(), ene_st);
       if (cmd.enemy_index != 0xFFFF) {
         cmd.header.entity_id = 0x1000 | cmd.enemy_index;

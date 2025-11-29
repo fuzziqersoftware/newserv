@@ -2196,6 +2196,25 @@ ChatCommandDefinition cc_quest(
       co_return;
     });
 
+ChatCommandDefinition cc_fastkill(
+    {"$fastkill"},
+    +[](const Args& a) -> asio::awaitable<void> {
+      if (!a.c->proxy_session) {
+        a.check_is_game(true);
+      }
+
+      if (a.c->check_flag(Client::Flag::FAST_KILLS_ENABLED)) {
+        a.c->clear_flag(Client::Flag::FAST_KILLS_ENABLED);
+        send_text_message(a.c, "$C6Fast kills disabled");
+      } else {
+        auto s = a.c->require_server_state();
+        a.check_cheats_enabled_or_allowed(s->cheat_flags.fast_kills);
+        a.c->set_flag(Client::Flag::FAST_KILLS_ENABLED);
+        send_text_message(a.c, "$C6Fast kills enabled");
+      }
+      co_return;
+    });
+
 ChatCommandDefinition cc_rand(
     {"$rand"},
     +[](const Args& a) -> asio::awaitable<void> {

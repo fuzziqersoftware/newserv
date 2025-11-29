@@ -88,6 +88,7 @@ HTTPServer::HTTPServer(shared_ptr<ServerState> state)
           {"SwitchAssistEnabled", (c->check_flag(Client::Flag::SWITCH_ASSIST_ENABLED) ? true : false)},
           {"InfiniteHPEnabled", (c->check_flag(Client::Flag::INFINITE_HP_ENABLED) ? true : false)},
           {"InfiniteTPEnabled", (c->check_flag(Client::Flag::INFINITE_TP_ENABLED) ? true : false)},
+          {"FastKillsEnabled", (c->check_flag(Client::Flag::FAST_KILLS_ENABLED) ? true : false)},
           {"DropNotificationMode", drop_notifications_mode},
           {"DebugEnabled", (c->check_flag(Client::Flag::DEBUG_ENABLED) ? true : false)},
           {"ProxySaveFilesEnabled", (c->check_flag(Client::Flag::PROXY_SAVE_FILES) ? true : false)},

@@ -1003,6 +1003,7 @@
     "Ep3ReplaceAssist", // Use of $setassist
     "Ep3UnsetFieldCharacter", // Use of $unset
     "InfiniteHPTP", // Use of $infhp and $inftp
+    "FastKills", // Use of $fastkill
     "InsufficientMinimumLevel", // Setting a $minlevel below the default
     "OverrideRandomSeed", // Use of $rand
     "OverrideSectionID", // Use of $secid

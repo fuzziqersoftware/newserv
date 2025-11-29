@@ -3069,10 +3069,10 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     //     stands still instead)
     //   param6 = type (0 = Booma, 1 = Gobooma, 2 = Gigobooma)
     //   param7 = group ID (if nonzero, it looks like this is used to cause
-    //     groups of enemies to band together and all attack the same player,
-    //     chosen by the highest-ranking enemy (by param6) in the group;
-    //     TODO: this explanation is unverified and param7 was never used by
-    //     Sega; see client code at 3OE1:800F6F3C)
+    //     groups of enemies in the same room to band together and all attack
+    //     the same player, chosen by the highest-ranking enemy (by param6) in
+    //     the group; TODO: this explanation is unverified and param7 was never
+    //     used by Sega; see client code at 3OE1:800F6F3C)
     {0x0044, F_V0_V4, 0x0000000000000006, "TObjEneBeast"},
 
     // Grass Assassin. Params:

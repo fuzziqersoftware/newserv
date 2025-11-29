@@ -40,6 +40,7 @@ CheatFlags::CheatFlags(const phosg::JSON& json) : CheatFlags() {
   this->ep3_replace_assist = enabled_keys.count("Ep3ReplaceAssist");
   this->ep3_unset_field_character = enabled_keys.count("Ep3UnsetFieldCharacter");
   this->infinite_hp_tp = enabled_keys.count("InfiniteHPTP");
+  this->fast_kills = enabled_keys.count("FastKills");
   this->insufficient_minimum_level = enabled_keys.count("InsufficientMinimumLevel");
   this->override_random_seed = enabled_keys.count("OverrideRandomSeed");
   this->override_section_id = enabled_keys.count("OverrideSectionID");
