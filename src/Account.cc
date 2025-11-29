@@ -329,6 +329,9 @@ string Account::str() const {
         flags_str += "CHEAT_ANYWHERE,";
       }
       if (this->check_flag(Flag::DISABLE_QUEST_REQUIREMENTS)) {
+        flags_str += "DISABLE_QUEST_REQUIREMENTS,";
+      }
+      if (this->check_flag(Flag::ALWAYS_ENABLE_CHAT_COMMANDS)) {
         flags_str += "ALWAYS_ENABLE_CHAT_COMMANDS,";
       }
       if (this->check_flag(Flag::IS_SHARED_ACCOUNT)) {
