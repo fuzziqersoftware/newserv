@@ -106,6 +106,7 @@ struct QuestMetadata {
   std::string long_description;
   size_t text_offset;
   size_t label_table_offset;
+  size_t total_size;
 
   static std::unordered_map<uint32_t, uint32_t> parse_enemy_exp_overrides(const phosg::JSON& json);
   static inline uint32_t exp_override_key(Difficulty difficulty, uint8_t floor, EnemyType enemy_type) {

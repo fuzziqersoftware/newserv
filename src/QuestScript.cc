@@ -3079,14 +3079,21 @@ std::string disassemble_quest_script(
 
   // Phase 1: Parse label table
 
-  phosg::StringReader text_r, label_table_r;
+  phosg::StringReader text_r, label_table_r, extra_r;
+  if (meta.label_table_offset >= meta.total_size) {
+    throw std::runtime_error("label table is beyond end of file");
+  }
+  if (meta.text_offset >= meta.total_size) {
+    throw std::runtime_error("text is beyond end of file");
+  }
   if (meta.text_offset < meta.label_table_offset) {
     text_r = r.sub(meta.text_offset, meta.label_table_offset - meta.text_offset);
-    label_table_r = r.sub(meta.label_table_offset);
+    label_table_r = r.sub(meta.label_table_offset, meta.total_size - meta.label_table_offset);
   } else {
-    text_r = r.sub(meta.text_offset);
     label_table_r = r.sub(meta.label_table_offset, meta.text_offset - meta.label_table_offset);
+    text_r = r.sub(meta.text_offset, meta.total_size - meta.text_offset);
   }
+  extra_r = r.sub(meta.total_size);
 
   struct Label {
     struct ObjectSetRef {
@@ -3976,6 +3983,17 @@ std::string disassemble_quest_script(
     lines.emplace_back();
   }
 
+  // Phase 6: Produce any extra (unused!) data if present
+  if (extra_r.size() > 0) {
+    if (reassembly_mode) {
+      lines.emplace_back(std::format("// Warning: 0x{:X} bytes of extra data after quest contents; ignoring it", extra_r.size()));
+    } else {
+      lines.emplace_back("// Warning: Extra data after quest contents");
+      lines.emplace_back(format_and_indent_data(extra_r.getv(extra_r.size()), extra_r.size(), meta.total_size));
+    }
+    lines.emplace_back();
+  }
+
   return phosg::join(lines, "\n");
 }
 
@@ -4766,6 +4784,12 @@ AssembledQuestScript assemble_quest_script(
                 if (values.size() > 0xFF) {
                   throw runtime_error("too many labels in set-valued argument");
                 }
+                for (auto& value : values) {
+                  phosg::strip_whitespace(value);
+                }
+                if (values.size() == 1 && values[0].empty()) {
+                  values.clear();
+                }
                 return values;
               };
 
@@ -4893,9 +4917,10 @@ AssembledQuestScript assemble_quest_script(
   auto set_basic_header_fields = [&]<typename HeaderT>(HeaderT& header) -> void {
     ret.meta.text_offset = sizeof(header);
     ret.meta.label_table_offset = ret.meta.text_offset + code_w.size();
+    ret.meta.total_size = ret.meta.label_table_offset + label_table.size() * sizeof(label_table[0]);
     header.text_offset = ret.meta.text_offset;
     header.label_table_offset = ret.meta.label_table_offset;
-    header.size = ret.meta.label_table_offset + label_table.size() * sizeof(label_table[0]);
+    header.size = ret.meta.total_size;
     header.unknown_a1 = ret.meta.header_unknown_a1;
     header.unknown_a2 = ret.meta.header_unknown_a2;
   };
@@ -5029,6 +5054,7 @@ void populate_quest_metadata_from_script(
       }
       meta.text_offset = header.text_offset;
       meta.label_table_offset = header.label_table_offset;
+      meta.total_size = header.size;
       meta.language = Language::JAPANESE;
       break;
     }
@@ -5047,6 +5073,7 @@ void populate_quest_metadata_from_script(
       }
       meta.text_offset = header.text_offset;
       meta.label_table_offset = header.label_table_offset;
+      meta.total_size = header.size;
       break;
     }
     case Version::DC_V1:
@@ -5067,6 +5094,7 @@ void populate_quest_metadata_from_script(
       }
       meta.text_offset = header.text_offset;
       meta.label_table_offset = header.label_table_offset;
+      meta.total_size = header.size;
       break;
     }
     case Version::PC_NTE:
@@ -5087,6 +5115,7 @@ void populate_quest_metadata_from_script(
       meta.long_description = header.long_description.decode(meta.language);
       meta.text_offset = header.text_offset;
       meta.label_table_offset = header.label_table_offset;
+      meta.total_size = header.size;
       break;
     }
     case Version::GC_NTE:
@@ -5114,6 +5143,7 @@ void populate_quest_metadata_from_script(
       meta.long_description = header.long_description.decode(meta.language);
       meta.text_offset = header.text_offset;
       meta.label_table_offset = header.label_table_offset;
+      meta.total_size = header.size;
       break;
     }
     case Version::BB_V4: {
@@ -5156,6 +5186,7 @@ void populate_quest_metadata_from_script(
       }
       meta.text_offset = header.text_offset;
       meta.label_table_offset = header.label_table_offset;
+      meta.total_size = header.size;
       break;
     }
     default:
