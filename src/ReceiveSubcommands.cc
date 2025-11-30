@@ -3674,7 +3674,7 @@ static asio::awaitable<void> on_dragon_actions_6x12(shared_ptr<Client> c, Subcom
   }
 
   G_DragonBossActions_GC_6x12 sw_cmd = {{cmd.header.subcommand, cmd.header.size, cmd.header.entity_id.load()},
-      cmd.unknown_a2.load(), cmd.unknown_a3.load(), cmd.unknown_a4.load(), cmd.x.load(), cmd.z.load()};
+      cmd.phase.load(), cmd.unknown_a3.load(), cmd.target_client_id.load(), cmd.x.load(), cmd.z.load()};
   bool sender_is_be = is_big_endian(c->version());
   for (auto lc : l->clients) {
     if (lc && (lc != c)) {
@@ -5471,7 +5471,7 @@ const vector<SubcommandDefinition> subcommand_definitions{
     /* 6x11 */ {0x0F, 0x0F, 0x11, forward_subcommand_with_entity_id_transcode_t<G_DragonBossActions_6x10_6x11>},
     /* 6x12 */ {0x10, 0x10, 0x12, on_dragon_actions_6x12},
     /* 6x13 */ {0x11, 0x11, 0x13, forward_subcommand_with_entity_id_transcode_t<G_DeRolLeBossActions_6x13>},
-    /* 6x14 */ {0x12, 0x12, 0x14, forward_subcommand_with_entity_id_transcode_t<G_DeRolLeBossActions_6x14>},
+    /* 6x14 */ {0x12, 0x12, 0x14, forward_subcommand_with_entity_id_transcode_t<G_DeRolLeBossActionsWithTarget_6x14>},
     /* 6x15 */ {0x13, 0x13, 0x15, forward_subcommand_with_entity_id_transcode_t<G_VolOptBossActions_6x15>},
     /* 6x16 */ {0x14, 0x14, 0x16, on_vol_opt_actions_t<G_VolOptBossActions_6x16>},
     /* 6x17 */ {0x15, 0x15, 0x17, on_set_entity_pos_and_angle_6x17},

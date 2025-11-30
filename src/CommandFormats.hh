@@ -4175,9 +4175,9 @@ struct G_DragonBossActions_6x10_6x11 {
 template <bool BE>
 struct G_DragonBossActionsT_6x12 {
   G_EntityIDHeader header;
-  le_uint16_t unknown_a2 = 0;
+  le_uint16_t phase = 0;
   le_uint16_t unknown_a3 = 0;
-  le_uint32_t unknown_a4 = 0;
+  le_uint32_t target_client_id = 0xFFFF; // 0xFFFF (not 0xFFFFFFFF) means no target
   F32T<BE> x = 0.0f;
   F32T<BE> z = 0.0f;
 } __attribute__((packed));
@@ -4190,30 +4190,31 @@ check_struct_size(G_DragonBossActions_GC_6x12, 0x14);
 
 struct G_DeRolLeBossActions_6x13 {
   G_EntityIDHeader header;
-  le_uint16_t unknown_a2 = 0;
+  le_uint16_t phase = 0;
   le_uint16_t unknown_a3 = 0;
 } __packed_ws__(G_DeRolLeBossActions_6x13, 8);
 
 // 6x14: De Rol Le boss actions (not valid on Episode 3)
 
-struct G_DeRolLeBossActions_6x14 {
+struct G_DeRolLeBossActionsWithTarget_6x14 {
   G_EntityIDHeader header;
-  le_uint16_t unknown_a2 = 0;
+  le_uint16_t phase = 0;
   le_uint16_t unknown_a3 = 0;
-  le_uint32_t unknown_a4 = 0;
-} __packed_ws__(G_DeRolLeBossActions_6x14, 0x0C);
+  le_uint32_t target_client_id = 0xFFFF; // See 6x12
+} __packed_ws__(G_DeRolLeBossActionsWithTarget_6x14, 0x0C);
 
 // 6x15: Vol Opt boss actions (not valid on Episode 3)
 
 struct G_VolOptBossActions_6x15 {
   G_EntityIDHeader header;
-  le_uint16_t unknown_a2 = 0;
+  le_uint16_t action = 0;
   le_uint16_t unknown_a3 = 0;
   le_uint16_t unknown_a4 = 0;
   le_uint16_t unknown_a5 = 0;
 } __packed_ws__(G_VolOptBossActions_6x15, 0x0C);
 
-// 6x16: Vol Opt boss actions (not valid on Episode 3)
+// 6x16: Set Vol Opt entity index table (not valid on Episode 3)
+// This command is used for shuffling the pillars during the first phase.
 
 struct G_VolOptBossActions_6x16 {
   G_EntityIDHeader header;
