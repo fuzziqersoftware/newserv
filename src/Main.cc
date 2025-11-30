@@ -1884,16 +1884,47 @@ Action a_extract_ppk("extract-ppk", "\
     a_extract_archive_fn);
 
 Action a_encode_sjis(
-    "encode-sjis", nullptr, +[](phosg::Arguments& args) {
+    "transcode-text", nullptr, +[](phosg::Arguments& args) {
+      TextTranscoder* tt_from = nullptr;
+      {
+        std::string from_name = args.get<std::string>("from");
+        if (from_name == "8859" || from_name == "iso8859") {
+          tt_from = &tt_8859_to_utf8;
+        } else if (from_name == "sjis") {
+          tt_from = &tt_sega_sjis_to_utf8;
+        } else if (from_name == "utf16") {
+          tt_from = &tt_utf16_to_utf8;
+        } else if (from_name == "ascii") {
+          tt_from = &tt_ascii_to_utf8;
+        } else if (from_name != "utf8") {
+          throw std::invalid_argument("invalid value for --from: " + from_name);
+        }
+      }
+
+      TextTranscoder* tt_to = nullptr;
+      {
+        std::string to_name = args.get<std::string>("to");
+        if (to_name == "8859" || to_name == "iso8859") {
+          tt_to = &tt_utf8_to_8859;
+        } else if (to_name == "sjis") {
+          tt_to = &tt_utf8_to_sega_sjis;
+        } else if (to_name == "utf16") {
+          tt_to = &tt_utf8_to_utf16;
+        } else if (to_name == "ascii") {
+          tt_to = &tt_utf8_to_ascii;
+        } else if (to_name != "utf8") {
+          throw std::invalid_argument("invalid value for --to: " + to_name);
+        }
+      }
+
       string data = read_input_data(args);
-      string result = tt_utf8_to_sega_sjis(data);
-      write_output_data(args, result.data(), result.size(), "txt");
-    });
-Action a_decode_sjis(
-    "decode-sjis", nullptr, +[](phosg::Arguments& args) {
-      string data = read_input_data(args);
-      string result = tt_sega_sjis_to_utf8(data);
-      write_output_data(args, result.data(), result.size(), "txt");
+      if (tt_from) {
+        data = (*tt_from)(data);
+      }
+      if (tt_to) {
+        data = (*tt_to)(data);
+      }
+      write_output_data(args, data.data(), data.size(), "txt");
     });
 
 Action a_decode_text_archive(
