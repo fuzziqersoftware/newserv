@@ -4102,6 +4102,11 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
       l->log.info_f("No client in slot {}", client_id);
       continue;
     }
+    if (lc->version() != Version::BB_V4) {
+      // EXP is handled on the client side in all non-BB versions
+      l->log.info_f("Client in slot {} is not BB", client_id);
+      continue;
+    }
 
     if (base_exp != 0.0) {
       // If this player killed the enemy, they get full EXP; if they tagged the
