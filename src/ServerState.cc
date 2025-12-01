@@ -1739,7 +1739,7 @@ shared_ptr<const SuperMap> ServerState::get_free_play_supermap(
     supermap = this->supermap_for_source_hash_sum.at(source_hash_sum);
     static_game_data_log.info_f("Linking existing free play supermap {:016X} for key {:08X}", source_hash_sum, free_play_key);
   } catch (const out_of_range&) {
-    supermap = make_shared<SuperMap>(episode, *map_files);
+    supermap = make_shared<SuperMap>(*map_files, SetDataTableBase::default_floor_to_area(Version::BB_V4, episode));
     this->supermap_for_source_hash_sum.emplace(source_hash_sum, supermap);
     static_game_data_log.info_f("Constructed free play supermap {:016X} for key {:08X}", source_hash_sum, free_play_key);
   }

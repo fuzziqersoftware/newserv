@@ -31,7 +31,6 @@ struct DropReconcileResult {
 DropReconcileResult reconcile_drop_request_with_map(
     std::shared_ptr<Client> c,
     G_SpecializableItemDropRequest_6xA2& cmd,
-    Episode episode,
     Difficulty difficulty,
     uint8_t event,
     std::shared_ptr<MapState> map,

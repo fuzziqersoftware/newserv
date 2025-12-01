@@ -2830,7 +2830,6 @@ G_SpecializableItemDropRequest_6xA2 normalize_drop_request(const void* data, siz
 DropReconcileResult reconcile_drop_request_with_map(
     shared_ptr<Client> c,
     G_SpecializableItemDropRequest_6xA2& cmd,
-    Episode episode,
     Difficulty difficulty,
     uint8_t event,
     shared_ptr<MapState> map,
@@ -2842,76 +2841,78 @@ DropReconcileResult reconcile_drop_request_with_map(
   res.effective_rt_index = 0xFF;
   res.should_drop = true;
   res.ignore_def = (cmd.ignore_def != 0);
+  if (!map) {
+    return res;
+  }
 
-  if (map) {
-    if (is_box) {
-      res.obj_st = map->object_state_for_index(version, cmd.floor, cmd.entity_index);
-      if (!res.obj_st->super_obj) {
-        throw std::runtime_error("referenced object from drop request is a player trap");
-      }
-      const auto* set_entry = res.obj_st->super_obj->version(version).set_entry;
-      if (!set_entry) {
-        throw std::runtime_error("object set entry is missing");
-      }
+  if (is_box) {
+    res.obj_st = map->object_state_for_index(version, cmd.floor, cmd.entity_index);
+    if (!res.obj_st->super_obj) {
+      throw std::runtime_error("referenced object from drop request is a player trap");
+    }
+    const auto* set_entry = res.obj_st->super_obj->version(version).set_entry;
+    if (!set_entry) {
+      throw std::runtime_error("object set entry is missing");
+    }
+    string type_name = MapFile::name_for_object_type(set_entry->base_type, version);
+    c->log.info_f("Drop check for K-{:03X} {} {}",
+        res.obj_st->k_id,
+        res.ignore_def ? 'G' : 'S',
+        type_name);
+    if (cmd.floor != res.obj_st->super_obj->floor) {
+      c->log.warning_f("Floor {:02X} from command does not match object\'s expected floor {:02X}",
+          cmd.floor, res.obj_st->super_obj->floor);
+    }
+    if (is_v1_or_v2(version) && (version != Version::GC_NTE)) {
+      // V1 and V2 don't have 6xA2, so we can't get ignore_def or the object
+      // parameters from the client on those versions
+      cmd.param3 = set_entry->param3;
+      cmd.param4 = set_entry->param4;
+      cmd.param5 = set_entry->param5;
+      cmd.param6 = set_entry->param6;
+    }
+    bool object_ignore_def = (set_entry->param1 > 0.0);
+    if (res.ignore_def != object_ignore_def) {
+      c->log.warning_f("ignore_def value {} from command does not match object\'s expected ignore_def {} (from p1={:g})",
+          res.ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", set_entry->param1);
+    }
+    if (c->check_flag(Client::Flag::DEBUG_ENABLED)) {
       string type_name = MapFile::name_for_object_type(set_entry->base_type, version);
-      c->log.info_f("Drop check for K-{:03X} {} {}",
-          res.obj_st->k_id,
-          res.ignore_def ? 'G' : 'S',
-          type_name);
-      if (cmd.floor != res.obj_st->super_obj->floor) {
-        c->log.warning_f("Floor {:02X} from command does not match object\'s expected floor {:02X}",
-            cmd.floor, res.obj_st->super_obj->floor);
-      }
-      if (is_v1_or_v2(version) && (version != Version::GC_NTE)) {
-        // V1 and V2 don't have 6xA2, so we can't get ignore_def or the object
-        // parameters from the client on those versions
-        cmd.param3 = set_entry->param3;
-        cmd.param4 = set_entry->param4;
-        cmd.param5 = set_entry->param5;
-        cmd.param6 = set_entry->param6;
-      }
-      bool object_ignore_def = (set_entry->param1 > 0.0);
-      if (res.ignore_def != object_ignore_def) {
-        c->log.warning_f("ignore_def value {} from command does not match object\'s expected ignore_def {} (from p1={:g})",
-            res.ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", set_entry->param1);
-      }
-      if (c->check_flag(Client::Flag::DEBUG_ENABLED)) {
-        string type_name = MapFile::name_for_object_type(set_entry->base_type, version);
-        send_text_message_fmt(c, "$C5K-{:03X} {} {}", res.obj_st->k_id, res.ignore_def ? 'G' : 'S', type_name);
-      }
+      send_text_message_fmt(c, "$C5K-{:03X} {} {}", res.obj_st->k_id, res.ignore_def ? 'G' : 'S', type_name);
+    }
 
-    } else {
-      res.ref_ene_st = map->enemy_state_for_index(version, cmd.floor, cmd.entity_index);
-      res.target_ene_st = res.ref_ene_st->alias_target_ene_st ? res.ref_ene_st->alias_target_ene_st : res.ref_ene_st;
-      EnemyType type = res.target_ene_st->type(version, episode, difficulty, event);
-      c->log.info_f("Drop check for E-{:03X} (target E-{:03X}, type {})",
-          res.ref_ene_st->e_id, res.target_ene_st->e_id, phosg::name_for_enum(type));
-      res.effective_rt_index = type_definition_for_enemy(type).rt_index;
-      // rt_indexes in Episode 4 don't match those sent in the command; we just
-      // ignore what the client sends.
-      if ((episode != Episode::EP4) && (cmd.rt_index != res.effective_rt_index)) {
-        // Special cases: BULCLAW => BULK and DARK_GUNNER => DEATH_GUNNER
-        if (cmd.rt_index == 0x27 && type == EnemyType::BULCLAW) {
-          c->log.info_f("E-{:03X} killed as BULK instead of BULCLAW", res.target_ene_st->e_id);
-          res.effective_rt_index = 0x27;
-        } else if (cmd.rt_index == 0x23 && type == EnemyType::DARK_GUNNER) {
-          c->log.info_f("E-{:03X} killed as DEATH_GUNNER instead of DARK_GUNNER", res.target_ene_st->e_id);
-          res.effective_rt_index = 0x23;
-        } else {
-          c->log.warning_f("rt_index {:02X} from command does not match entity\'s expected index {:02X}",
-              cmd.rt_index, res.effective_rt_index);
-          if (!is_v4(version)) {
-            res.effective_rt_index = cmd.rt_index;
-          }
+  } else {
+    res.ref_ene_st = map->enemy_state_for_index(version, cmd.floor, cmd.entity_index);
+    res.target_ene_st = res.ref_ene_st->alias_target_ene_st ? res.ref_ene_st->alias_target_ene_st : res.ref_ene_st;
+    uint8_t area = map->floor_to_area.at(res.target_ene_st->super_ene->floor);
+    EnemyType type = res.target_ene_st->type(version, area, difficulty, event);
+    c->log.info_f("Drop check for E-{:03X} (target E-{:03X}, type {})",
+        res.ref_ene_st->e_id, res.target_ene_st->e_id, phosg::name_for_enum(type));
+    res.effective_rt_index = type_definition_for_enemy(type).rt_index;
+    // rt_indexes in Episode 4 don't match those sent in the command; we just
+    // ignore what the client sends.
+    if ((area < 0x24) && (cmd.rt_index != res.effective_rt_index)) {
+      // Special cases: BULCLAW => BULK and DARK_GUNNER => DEATH_GUNNER
+      if (cmd.rt_index == 0x27 && type == EnemyType::BULCLAW) {
+        c->log.info_f("E-{:03X} killed as BULK instead of BULCLAW", res.target_ene_st->e_id);
+        res.effective_rt_index = 0x27;
+      } else if (cmd.rt_index == 0x23 && type == EnemyType::DARK_GUNNER) {
+        c->log.info_f("E-{:03X} killed as DEATH_GUNNER instead of DARK_GUNNER", res.target_ene_st->e_id);
+        res.effective_rt_index = 0x23;
+      } else {
+        c->log.warning_f("rt_index {:02X} from command does not match entity\'s expected index {:02X}",
+            cmd.rt_index, res.effective_rt_index);
+        if (!is_v4(version)) {
+          res.effective_rt_index = cmd.rt_index;
         }
       }
-      if (cmd.floor != res.target_ene_st->super_ene->floor) {
-        c->log.warning_f("Floor {:02X} from command does not match entity\'s expected floor {:02X}",
-            cmd.floor, res.target_ene_st->super_ene->floor);
-      }
-      if (c->check_flag(Client::Flag::DEBUG_ENABLED)) {
-        send_text_message_fmt(c, "$C5E-{:03X} {}", res.target_ene_st->e_id, phosg::name_for_enum(type));
-      }
+    }
+    if (cmd.floor != res.target_ene_st->super_ene->floor) {
+      c->log.warning_f("Floor {:02X} from command does not match entity\'s expected floor {:02X}",
+          cmd.floor, res.target_ene_st->super_ene->floor);
+    }
+    if (c->check_flag(Client::Flag::DEBUG_ENABLED)) {
+      send_text_message_fmt(c, "$C5E-{:03X} {}", res.target_ene_st->e_id, phosg::name_for_enum(type));
     }
   }
 
@@ -2948,8 +2949,7 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
   // mode, so that we can correctly mark enemies and objects as having dropped
   // their items in persistent games.
   G_SpecializableItemDropRequest_6xA2 cmd = normalize_drop_request(msg.data, msg.size);
-  Episode episode = episode_for_area(l->area_for_floor(c->version(), cmd.floor));
-  auto rec = reconcile_drop_request_with_map(c, cmd, episode, l->difficulty, l->event, l->map_state, true);
+  auto rec = reconcile_drop_request_with_map(c, cmd, l->difficulty, l->event, l->map_state, true);
 
   ServerDropMode drop_mode = l->drop_mode;
   switch (drop_mode) {
@@ -3228,7 +3228,20 @@ static asio::awaitable<void> on_sync_quest_register(shared_ptr<Client> c, Subcom
     }
   }
 
-  forward_subcommand(c, msg);
+  // NOCOMMIT: Add condition here for l->quest->meta.enable_schtserv_commands
+  if ((cmd.register_number == 0xF1) && (cmd.value.as_int == 0x52455650)) {
+    // PVER => respond with specific_version in schtserv's format
+    G_SyncQuestRegister_6x77 ret_cmd;
+    ret_cmd.header.subcommand = 0x77;
+    ret_cmd.header.size = sizeof(ret_cmd) / 4;
+    ret_cmd.header.unused = 0;
+    ret_cmd.register_number = 0xF2;
+    ret_cmd.value.as_int = is_v4(c->version()) ? 0x50 : c->sub_version;
+    send_command_t(c, 0x60, 0x00, ret_cmd);
+
+  } else {
+    forward_subcommand(c, msg);
+  }
 }
 
 static asio::awaitable<void> on_set_entity_set_flag(shared_ptr<Client> c, SubcommandMessage& msg) {
@@ -3967,7 +3980,7 @@ static uint32_t base_exp_for_enemy_type(
   } else if (current_episode == Episode::EP4) {
     uint8_t area = quest
         ? quest->meta.floor_assignments.at(floor).area
-        : SetDataTableBase::default_area_for_floor(Version::BB_V4, Episode::EP4, floor);
+        : SetDataTableBase::default_floor_to_area(Version::BB_V4, Episode::EP4).at(floor);
     if (area <= 0x28) { // Crater
       episode_order[1] = Episode::EP1;
       episode_order[2] = Episode::EP2;
@@ -4039,8 +4052,9 @@ static asio::awaitable<void> on_steal_exp_bb(shared_ptr<Client> c, SubcommandMes
     co_return;
   }
 
-  auto episode = episode_for_area(l->area_for_floor(c->version(), ene_st->super_ene->floor));
-  auto type = ene_st->type(c->version(), episode, l->difficulty, l->event);
+  uint8_t area = l->area_for_floor(c->version(), ene_st->super_ene->floor);
+  Episode episode = episode_for_area(area);
+  auto type = ene_st->type(c->version(), area, l->difficulty, l->event);
   uint32_t enemy_exp = base_exp_for_enemy_type(
       s->battle_params, l->quest, type, episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
 
@@ -4090,8 +4104,9 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
   }
   ene_st->server_flags |= MapState::EnemyState::Flag::EXP_GIVEN;
 
-  auto episode = episode_for_area(l->area_for_floor(c->version(), ene_st->super_ene->floor));
-  auto type = ene_st->type(c->version(), episode, l->difficulty, l->event);
+  uint8_t area = l->area_for_floor(c->version(), ene_st->super_ene->floor);
+  Episode episode = episode_for_area(area);
+  auto type = ene_st->type(c->version(), area, l->difficulty, l->event);
   double base_exp = base_exp_for_enemy_type(
       s->battle_params, l->quest, type, episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
   l->log.info_f("Base EXP for this enemy ({}) is {:g}", phosg::name_for_enum(type), base_exp);

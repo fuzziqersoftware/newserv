@@ -116,6 +116,14 @@ struct QuestMetadata {
   void apply_json_overrides(const phosg::JSON& json);
 
   void assign_default_floors();
+  inline std::array<uint8_t, 0x12> get_floor_to_area() const {
+    std::array<uint8_t, 0x12> ret;
+    for (size_t z = 0; z < 0x12; z++) {
+      ret[z] = this->floor_assignments[z].area;
+    }
+    return ret;
+  }
+
   void assert_compatible(const QuestMetadata& other) const;
   phosg::JSON json() const;
   std::string areas_str() const;

@@ -226,29 +226,28 @@ const vector<EnemyType>& enemy_types_for_battle_param_index(Episode episode, uin
   }
 }
 
-EnemyType EnemyTypeDefinition::rare_type(Episode episode, uint8_t event, uint8_t floor) const {
+EnemyType EnemyTypeDefinition::rare_type(uint8_t area, uint8_t event) const {
   switch (this->type) {
     case EnemyType::HILDEBEAR:
       return EnemyType::HILDEBLUE;
     case EnemyType::RAG_RAPPY:
-      switch (episode) {
-        case Episode::EP1:
-          return EnemyType::AL_RAPPY;
-        case Episode::EP2:
-          switch (event) {
-            case 0x01: // rappy_type 1
-              return EnemyType::SAINT_RAPPY;
-            case 0x04: // rappy_type 2
-              return EnemyType::EGG_RAPPY;
-            case 0x05: // rappy_type 3
-              return EnemyType::HALLO_RAPPY;
-            default:
-              return EnemyType::LOVE_RAPPY;
-          }
-        case Episode::EP4:
-          return (floor > 0x05) ? EnemyType::DEL_RAPPY_DESERT : EnemyType::DEL_RAPPY_CRATER;
-        default:
-          throw logic_error("invalid episode");
+      if (area < 0x12) {
+        return EnemyType::AL_RAPPY;
+      } else if (area < 0x24) {
+        switch (event) {
+          case 0x01: // rappy_type 1
+            return EnemyType::SAINT_RAPPY;
+          case 0x04: // rappy_type 2
+            return EnemyType::EGG_RAPPY;
+          case 0x05: // rappy_type 3
+            return EnemyType::HALLO_RAPPY;
+          default:
+            return EnemyType::LOVE_RAPPY;
+        }
+      } else if (area <= 0x28) {
+        return EnemyType::DEL_RAPPY_CRATER;
+      } else {
+        return EnemyType::DEL_RAPPY_DESERT;
       }
     case EnemyType::POISON_LILY:
       return EnemyType::NAR_LILY;

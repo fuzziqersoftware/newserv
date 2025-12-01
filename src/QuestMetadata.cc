@@ -68,7 +68,7 @@ void QuestMetadata::assign_default_floors() {
   for (size_t z = 0; z < 0x12; z++) {
     auto& fa = this->floor_assignments[z];
     fa.floor = z;
-    fa.area = SetDataTableBase::default_area_for_floor(this->version, this->episode, z);
+    fa.area = SetDataTableBase::default_floor_to_area(this->version, this->episode)[z];
     fa.type = 0;
     fa.layout_var = 0;
     fa.entities_var = 0;

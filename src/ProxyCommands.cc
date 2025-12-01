@@ -872,13 +872,7 @@ static asio::awaitable<HandlerResult> SC_6x60_6xA2(shared_ptr<Client> c, Channel
 
   G_SpecializableItemDropRequest_6xA2 cmd = normalize_drop_request(msg.data.data(), msg.data.size());
   auto rec = reconcile_drop_request_with_map(
-      c,
-      cmd,
-      c->proxy_session->lobby_episode,
-      c->proxy_session->lobby_difficulty,
-      c->proxy_session->lobby_event,
-      c->proxy_session->map_state,
-      false);
+      c, cmd, c->proxy_session->lobby_difficulty, c->proxy_session->lobby_event, c->proxy_session->map_state, false);
 
   ItemCreator::DropResult res;
   if (rec.obj_st) {
@@ -1342,28 +1336,47 @@ static asio::awaitable<HandlerResult> S_13_A7(shared_ptr<Client> c, Channel::Mes
       c->log.info_f("Download complete for file {}", sf->basename);
     }
 
-    if (!sf->is_download && sf->basename.ends_with(".dat")) {
-      auto quest_dat_data = make_shared<std::string>(prs_decompress(sf->data));
-      try {
-        auto map_file = make_shared<MapFile>(quest_dat_data);
-        auto materialized_map_file = map_file->materialize_random_sections(c->proxy_session->lobby_random_seed);
+    if (!sf->is_download) {
+      if (sf->basename.ends_with(".bin")) {
+        c->proxy_session->last_bin_contents = make_shared<std::string>(prs_decompress(sf->data));
+      } else if (sf->basename.ends_with(".dat")) {
+        c->proxy_session->last_dat_contents = make_shared<std::string>(prs_decompress(sf->data));
+      }
 
-        array<shared_ptr<const MapFile>, NUM_VERSIONS> map_files;
-        map_files.at(static_cast<size_t>(c->version())) = materialized_map_file;
-        auto supermap = make_shared<SuperMap>(c->proxy_session->lobby_episode, map_files);
+      if (c->proxy_session->last_bin_contents && c->proxy_session->last_dat_contents) {
+        try {
+          QuestMetadata meta;
+          populate_quest_metadata_from_script(
+              meta,
+              c->proxy_session->last_bin_contents->data(),
+              c->proxy_session->last_bin_contents->size(),
+              c->version(),
+              c->language());
 
-        c->proxy_session->map_state = make_shared<MapState>(
-            c->id,
-            c->proxy_session->lobby_difficulty,
-            c->proxy_session->lobby_event,
-            c->proxy_session->lobby_random_seed,
-            MapState::DEFAULT_RARE_ENEMIES,
-            make_shared<MT19937Generator>(c->proxy_session->lobby_random_seed),
-            supermap);
+          auto map_file = make_shared<MapFile>(c->proxy_session->last_dat_contents);
+          auto materialized_map_file = map_file->materialize_random_sections(c->proxy_session->lobby_random_seed);
 
-      } catch (const exception& e) {
-        c->log.warning_f("Failed to load quest map: {}", e.what());
-        c->proxy_session->map_state.reset();
+          array<shared_ptr<const MapFile>, NUM_VERSIONS> map_files;
+          map_files.at(static_cast<size_t>(c->version())) = materialized_map_file;
+          auto supermap = make_shared<SuperMap>(map_files, meta.get_floor_to_area());
+          supermap->print(stderr); // NOCOMMIT
+
+          c->proxy_session->map_state = make_shared<MapState>(
+              c->id,
+              c->proxy_session->lobby_difficulty,
+              c->proxy_session->lobby_event,
+              c->proxy_session->lobby_random_seed,
+              MapState::DEFAULT_RARE_ENEMIES,
+              make_shared<MT19937Generator>(c->proxy_session->lobby_random_seed),
+              supermap);
+
+        } catch (const exception& e) {
+          c->log.warning_f("Failed to load quest map: {}", e.what());
+          c->proxy_session->map_state.reset();
+        }
+
+        c->proxy_session->last_bin_contents.reset();
+        c->proxy_session->last_dat_contents.reset();
       }
     }
 

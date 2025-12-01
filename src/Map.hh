@@ -67,8 +67,8 @@ public:
   std::vector<std::string> map_filenames_for_variations(
       Episode episode, GameMode mode, const Variations& variations, FilenameType type) const;
 
-  static uint8_t default_area_for_floor(Version version, Episode episode, uint8_t floor);
-  uint8_t default_area_for_floor(Episode episode, uint8_t floor) const;
+  static std::array<uint8_t, 0x12> default_floor_to_area(Version version, Episode episode);
+  std::array<uint8_t, 0x12> default_floor_to_area(Episode episode) const;
 
 protected:
   explicit SetDataTableBase(Version version);
@@ -602,7 +602,9 @@ public:
     std::multimap<uint64_t, std::shared_ptr<Event>> event_for_floor_and_event_id;
   };
 
-  SuperMap(Episode episode, const std::array<std::shared_ptr<const MapFile>, NUM_VERSIONS>& map_files);
+  SuperMap(
+      const std::array<std::shared_ptr<const MapFile>, NUM_VERSIONS>& map_files,
+      const std::array<uint8_t, 0x12>& floor_to_area);
   ~SuperMap() = default;
 
   inline EntitiesForVersion& version(Version v) {
@@ -612,9 +614,6 @@ public:
     return this->entities_for_version.at(static_cast<size_t>(v));
   }
 
-  inline Episode get_episode() const {
-    return this->episode;
-  }
   inline int64_t get_random_seed() const {
     return this->random_seed;
   }
@@ -648,6 +647,10 @@ public:
 
   std::unordered_map<EnemyType, size_t> count_enemy_sets_for_version(Version version) const;
 
+  uint8_t area_for_floor(uint8_t floor) const {
+    return this->floor_to_area.at(floor);
+  }
+
   struct EfficiencyStats {
     size_t filled_object_slots = 0;
     size_t total_object_slots = 0;
@@ -664,9 +667,11 @@ public:
   void print(FILE* stream) const;
 
 protected:
+  friend class MapState;
+
   phosg::PrefixedLogger log;
 
-  Episode episode;
+  std::array<uint8_t, 0x12> floor_to_area = {};
   int64_t random_seed = -1;
   std::vector<std::shared_ptr<Object>> objects;
   std::vector<std::shared_ptr<Enemy>> enemies;
@@ -797,7 +802,7 @@ public:
     inline void set_mericarand_variant_flag(Version version) {
       this->mericarand_variant_flags |= (1 << static_cast<size_t>(version));
     }
-    inline EnemyType type(Version version, Episode episode, Difficulty difficulty, uint8_t event) const {
+    inline EnemyType type(Version version, uint8_t area, Difficulty difficulty, uint8_t event) const {
       if (this->super_ene->type == EnemyType::MERICARAND) {
         if (this->is_rare(version)) {
           return ((this->mericarand_variant_flags >> static_cast<size_t>(version)) & 1)
@@ -810,10 +815,10 @@ public:
         return ((difficulty == Difficulty::NORMAL) && !this->super_ene->alias_target_ene)
             ? EnemyType::DARK_FALZ_2
             : EnemyType::DARK_FALZ_3;
+      } else if (this->is_rare(version)) {
+        return type_definition_for_enemy(this->super_ene->type).rare_type(area, event);
       } else {
-        return this->is_rare(version)
-            ? type_definition_for_enemy(this->super_ene->type).rare_type(episode, event, this->super_ene->floor)
-            : this->super_ene->type;
+        return this->super_ene->type;
       }
     }
     inline bool ever_hit_by_client_id(uint8_t client_id) const {
@@ -929,6 +934,7 @@ public:
   };
 
   phosg::PrefixedLogger log;
+  std::array<uint8_t, 0x12> floor_to_area = {};
   std::vector<FloorConfig> floor_config_entries;
   Difficulty difficulty = Difficulty::NORMAL;
   uint8_t event = 0;

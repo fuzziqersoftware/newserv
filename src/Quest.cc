@@ -389,7 +389,7 @@ std::shared_ptr<const SuperMap> Quest::get_supermap(int64_t random_seed) const {
     return nullptr;
   }
 
-  auto supermap = make_shared<SuperMap>(this->meta.episode, map_files);
+  auto supermap = make_shared<SuperMap>(map_files, this->meta.get_floor_to_area());
   if (save_to_cache) {
     this->supermap = supermap;
   }

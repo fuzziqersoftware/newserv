@@ -174,7 +174,7 @@ uint8_t Lobby::area_for_floor(Version version, uint8_t floor) const {
     return this->quest->meta.floor_assignments.at(floor).area;
   }
   auto sdt = this->require_server_state()->set_data_table(version, this->episode, this->mode, this->difficulty);
-  return sdt->default_area_for_floor(this->episode, floor);
+  return sdt->default_floor_to_area(this->episode).at(floor);
 }
 
 shared_ptr<ServerState> Lobby::require_server_state() const {

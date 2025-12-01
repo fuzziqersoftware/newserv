@@ -174,7 +174,7 @@ struct EnemyTypeDefinition {
   inline bool is_boss() const {
     return (this->flags & Flag::IS_BOSS);
   }
-  EnemyType rare_type(Episode episode, uint8_t event, uint8_t floor) const;
+  EnemyType rare_type(uint8_t area, uint8_t event) const;
 };
 
 const EnemyTypeDefinition& type_definition_for_enemy(EnemyType type);

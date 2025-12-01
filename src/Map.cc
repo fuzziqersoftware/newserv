@@ -67,7 +67,7 @@ vector<string> SetDataTableBase::map_filenames_for_variations(
   return ret;
 }
 
-uint8_t SetDataTableBase::default_area_for_floor(Version version, Episode episode, uint8_t floor) {
+std::array<uint8_t, 0x12> SetDataTableBase::default_floor_to_area(Version version, Episode episode) {
   // For some inscrutable reason, Pioneer 2's area number in Episode 4 is
   // discontiguous with all the rest. Why, Sega??
   static const array<uint8_t, 0x12> areas_ep1 = {
@@ -76,24 +76,26 @@ uint8_t SetDataTableBase::default_area_for_floor(Version version, Episode episod
       0x00, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x21, 0xFF, 0xFF};
   static const array<uint8_t, 0x12> areas_ep2 = {
       0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x21, 0x22, 0x23};
+  static const array<uint8_t, 0x12> areas_ep3 = {
+      0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x0F, 0xFF, 0xFF};
   static const array<uint8_t, 0x12> areas_ep4 = {
       0x2D, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2E, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
   switch (episode) {
     case Episode::EP1:
-      return areas_ep1.at(floor);
-    case Episode::EP2: {
-      const auto& areas = ((version == Version::GC_NTE) ? areas_ep2_gc_nte : areas_ep2);
-      return areas.at(floor);
-    }
+      return areas_ep1;
+    case Episode::EP2:
+      return (version == Version::GC_NTE) ? areas_ep2_gc_nte : areas_ep2;
+    case Episode::EP3:
+      return areas_ep3;
     case Episode::EP4:
-      return areas_ep4.at(floor);
+      return areas_ep4;
     default:
       throw logic_error("incorrect episode");
   }
 }
 
-uint8_t SetDataTableBase::default_area_for_floor(Episode episode, uint8_t floor) const {
-  return this->default_area_for_floor(this->version, episode, floor);
+std::array<uint8_t, 0x12> SetDataTableBase::default_floor_to_area(Episode episode) const {
+  return this->default_floor_to_area(this->version, episode);
 }
 
 SetDataTable::SetDataTable(Version version, const string& data) : SetDataTableBase(version) {
@@ -138,7 +140,7 @@ void SetDataTable::load_table_t(const string& data) {
 }
 
 Variations::Entry SetDataTable::num_available_variations_for_floor(Episode episode, uint8_t floor) const {
-  uint8_t area = this->default_area_for_floor(episode, floor);
+  uint8_t area = this->default_floor_to_area(episode).at(floor);
   if (area == 0xFF) {
     return Variations::Entry{.layout = 1, .entities = 1};
   } else {
@@ -151,7 +153,7 @@ Variations::Entry SetDataTable::num_available_variations_for_floor(Episode episo
 }
 
 Variations::Entry SetDataTable::num_free_play_variations_for_floor(Episode episode, bool is_solo, uint8_t floor) const {
-  uint8_t area = this->default_area_for_floor(episode, floor);
+  uint8_t area = this->default_floor_to_area(episode).at(floor);
   if (area == 0xFF) {
     return Variations::Entry{.layout = 1, .entities = 1};
   }
@@ -188,7 +190,7 @@ Variations::Entry SetDataTable::num_free_play_variations_for_floor(Episode episo
 
 string SetDataTable::map_filename_for_variation(
     Episode episode, GameMode mode, uint8_t floor, uint32_t layout, uint32_t entities, FilenameType type) const {
-  uint8_t area = this->default_area_for_floor(episode, floor);
+  uint8_t area = this->default_floor_to_area(episode).at(floor);
   if (area == 0xFF) {
     return "";
   }
@@ -4365,9 +4367,11 @@ string SuperMap::Event::str() const {
   return ret;
 }
 
-SuperMap::SuperMap(Episode episode, const std::array<std::shared_ptr<const MapFile>, NUM_VERSIONS>& map_files)
+SuperMap::SuperMap(
+    const std::array<std::shared_ptr<const MapFile>, NUM_VERSIONS>& map_files,
+    const std::array<uint8_t, 0x12>& floor_to_area)
     : log("[SuperMap] "),
-      episode(episode) {
+      floor_to_area(floor_to_area) {
   for (const auto& map_file : map_files) {
     if (!map_file) {
       continue;
@@ -4400,9 +4404,7 @@ static uint64_t room_index_key(uint8_t floor, uint16_t room, uint16_t wave_numbe
 }
 
 shared_ptr<SuperMap::Object> SuperMap::add_object(
-    Version version,
-    uint8_t floor,
-    const MapFile::ObjectSetEntry* set_entry) {
+    Version version, uint8_t floor, const MapFile::ObjectSetEntry* set_entry) {
   auto obj = make_shared<Object>();
   obj->super_id = this->objects.size();
   obj->floor = floor;
@@ -4591,19 +4593,13 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       break;
     }
     case 0x0041: { // TObjEneLappy
-      bool is_rare_v123 = (set_entry->param6 != 0);
-      bool is_rare_bb = (set_entry->param6 & 1);
-      switch (this->episode) {
-        case Episode::EP1:
-        case Episode::EP2:
-          add(EnemyType::RAG_RAPPY, is_rare_v123, is_rare_bb);
-          break;
-        case Episode::EP4:
-          add((floor > 0x05) ? EnemyType::SAND_RAPPY_DESERT : EnemyType::SAND_RAPPY_CRATER, is_rare_v123, is_rare_bb);
-          break;
-        default:
-          throw logic_error("invalid episode");
-      }
+      uint8_t area = this->area_for_floor(floor);
+      EnemyType type = (area < 0x24)
+          ? EnemyType::RAG_RAPPY
+          : (area <= 0x28)
+          ? EnemyType::SAND_RAPPY_CRATER
+          : EnemyType::SAND_RAPPY_DESERT;
+      add(type, (set_entry->param6 != 0), (set_entry->param6 & 1));
       break;
     }
     case 0x0042: // TObjEneBm3FlyNest
@@ -4622,9 +4618,10 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
     case 0x0060: // TObjGrass
       add(EnemyType::GRASS_ASSASSIN);
       break;
-    case 0x0061: // TObjEneRe2Flower
-      add(((episode == Episode::EP2) && (floor == 0x11)) ? EnemyType::DEL_LILY : EnemyType::POISON_LILY);
+    case 0x0061: { // TObjEneRe2Flower
+      add((this->area_for_floor(floor) == 0x23) ? EnemyType::DEL_LILY : EnemyType::POISON_LILY);
       break;
+    }
     case 0x0062: // TObjEneNanoDrago
       add(EnemyType::NANO_DRAGON);
       break;
@@ -4711,15 +4708,17 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
     case 0x00A8: // Unnamed subclass of TObjEneBalClawClaw
       add(EnemyType::CLAW);
       break;
-    case 0x00C0: // TBoss1Dragon or TBoss5Gryphon
-      if (episode == Episode::EP1) {
+    case 0x00C0: { // TBoss1Dragon or TBoss5Gryphon
+      uint8_t area = this->area_for_floor(floor);
+      if (area < 0x12) {
         add(EnemyType::DRAGON);
-      } else if (episode == Episode::EP2) {
+      } else if (area < 0x24) {
         add(EnemyType::GAL_GRYPHON);
       } else {
-        throw runtime_error("DRAGON placed outside of Episode 1 or 2");
+        throw std::runtime_error("DRAGON placed outside of Episode 1 or 2");
       }
       break;
+    }
     case 0x00C1: // TBoss2DeRolLe
       if ((set_entry->num_children != 0) && (set_entry->num_children != 0x13)) {
         this->log.warning_f("DE_ROL_LE has an unusual num_children (0x{:X})", set_entry->num_children);
@@ -4787,7 +4786,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       default_num_children = 5;
       break;
     case 0x00D4: // TObjEneMe3StelthReal
-      if (this->episode == Episode::EP3) {
+      if (this->area_for_floor(floor) == 0xFF) { // Ep3
         add(EnemyType::NON_ENEMY_NPC);
       } else {
         add((set_entry->param6 > 0) ? EnemyType::SINOW_SPIGELL : EnemyType::SINOW_BERILL);
@@ -4795,14 +4794,14 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       }
       break;
     case 0x00D5: // TObjEneMerillLia
-      if (this->episode == Episode::EP3) {
+      if (this->area_for_floor(floor) == 0xFF) { // Ep3
         add(EnemyType::NON_ENEMY_NPC);
       } else {
         add((set_entry->param6 > 0) ? EnemyType::MERILTAS : EnemyType::MERILLIA);
       }
       break;
     case 0x00D6: // TObjEneBm9Mericarol
-      if (this->episode == Episode::EP3) {
+      if (this->area_for_floor(floor) == 0xFF) { // Ep3
         add(EnemyType::NON_ENEMY_NPC);
       } else {
         switch (set_entry->param6) {
@@ -4821,7 +4820,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       }
       break;
     case 0x00D7: // TObjEneBm5GibonU
-      if (this->episode == Episode::EP3) {
+      if (this->area_for_floor(floor) == 0xFF) { // Ep3
         add(EnemyType::NON_ENEMY_NPC);
       } else {
         add((set_entry->param6 > 0) ? EnemyType::ZOL_GIBBON : EnemyType::UL_GIBBON);
@@ -4852,8 +4851,9 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       add(EnemyType::RECOBOX);
       child_type = EnemyType::RECON;
       break;
-    case 0x00E0: // TObjEneMe3SinowZoaReal or TObjEneEpsilonBody
-      if ((episode == Episode::EP2) && (floor > 0x0F)) {
+    case 0x00E0: { // TObjEneMe3SinowZoaReal or TObjEneEpsilonBody
+      uint8_t area = this->area_for_floor(floor);
+      if ((area == 0x22) || (area == 0x23)) {
         add(EnemyType::EPSILON);
         default_num_children = 4;
         child_type = EnemyType::EPSIGARD;
@@ -4861,27 +4861,30 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
         add((set_entry->param6 > 0) ? EnemyType::SINOW_ZELE : EnemyType::SINOW_ZOA);
       }
       break;
+    }
     case 0x00E1: // TObjEneIllGill
       add(EnemyType::ILL_GILL);
       break;
     case 0x0110:
-      if (this->episode == Episode::EP3) {
+      if (this->area_for_floor(floor) == 0xFF) { // Ep3
         add(EnemyType::NON_ENEMY_NPC);
       } else {
         add(EnemyType::ASTARK);
       }
       break;
-    case 0x0111:
-      if (this->episode == Episode::EP3) {
+    case 0x0111: {
+      uint8_t area = this->area_for_floor(floor);
+      if (area == 0xFF) { // Ep3
         add(EnemyType::NON_ENEMY_NPC);
-      } else if (floor > 0x05) {
-        add(set_entry->param2 ? EnemyType::YOWIE_DESERT : EnemyType::SATELLITE_LIZARD_DESERT);
-      } else {
+      } else if (area <= 0x28) {
         add(set_entry->param2 ? EnemyType::YOWIE_CRATER : EnemyType::SATELLITE_LIZARD_CRATER);
+      } else {
+        add(set_entry->param2 ? EnemyType::YOWIE_DESERT : EnemyType::SATELLITE_LIZARD_DESERT);
       }
       break;
+    }
     case 0x0112:
-      if (this->episode == Episode::EP3) {
+      if (this->area_for_floor(floor) == 0xFF) { // Ep3
         add(EnemyType::NON_ENEMY_NPC);
       } else {
         bool is_rare = (set_entry->param6 & 1);
@@ -4893,7 +4896,7 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       break;
     case 0x0114: {
       bool is_rare = (set_entry->param6 & 1);
-      add((floor > 0x05) ? EnemyType::ZU_DESERT : EnemyType::ZU_CRATER, is_rare, is_rare);
+      add((this->area_for_floor(floor) <= 0x28) ? EnemyType::ZU_CRATER : EnemyType::ZU_DESERT, is_rare, is_rare);
       break;
     }
     case 0x0115: {
@@ -5804,7 +5807,8 @@ void SuperMap::verify() const {
 }
 
 void SuperMap::print(FILE* stream) const {
-  phosg::fwrite_fmt(stream, "SuperMap {} random={:08X}\n", name_for_episode(this->episode), this->random_seed);
+  phosg::fwrite_fmt(stream, "SuperMap areas=[{}] random={:08X}\n",
+      phosg::format_data_string(&this->floor_to_area, sizeof(this->floor_to_area)), this->random_seed);
 
   phosg::fwrite_fmt(stream, "               DCTE DCPR DCV1 DCV2 PCTE PCV2 GCTE GCV3 E3TE GCE3 XBV3 BBV4\n");
   phosg::fwrite_fmt(stream, "  MAP         ");
@@ -6066,6 +6070,11 @@ MapState::MapState(
       random_seed(random_seed),
       bb_rare_rates(bb_rare_rates) {
 
+  if (floor_map_defs.empty()) {
+    throw std::runtime_error("cannot construct a MapState with no floor maps");
+  }
+  this->floor_to_area = floor_map_defs[0]->floor_to_area;
+
   this->floor_config_entries.resize(0x12);
   for (size_t floor = 0; floor < this->floor_config_entries.size(); floor++) {
     auto& this_fc = this->floor_config_entries[floor];
@@ -6110,7 +6119,8 @@ MapState::MapState(
     std::shared_ptr<const RareEnemyRates> bb_rare_rates,
     std::shared_ptr<RandomGenerator> rand_crypt,
     std::shared_ptr<const SuperMap> quest_map_def)
-    : log(std::format("[MapState(free):{:08X}] ", lobby_or_session_id), lobby_log.min_level),
+    : log(std::format("[MapState(quest):{:08X}] ", lobby_or_session_id), lobby_log.min_level),
+      floor_to_area(quest_map_def->floor_to_area),
       difficulty(difficulty),
       event(event),
       random_seed(random_seed),
@@ -6141,6 +6151,9 @@ void MapState::reset() {
 void MapState::index_super_map(const FloorConfig& fc, shared_ptr<RandomGenerator> rand_crypt) {
   if (!fc.super_map) {
     throw logic_error("cannot index floor config with no map definition");
+  }
+  if (fc.super_map->floor_to_area != this->floor_to_area) {
+    throw runtime_error("supermaps have different floor configs");
   }
 
   for (const auto& obj : fc.super_map->all_objects()) {
@@ -6183,7 +6196,8 @@ void MapState::index_super_map(const FloorConfig& fc, shared_ptr<RandomGenerator
         type = ene->type;
     }
 
-    auto rare_type = type_definition_for_enemy(type).rare_type(fc.super_map->get_episode(), this->event, ene->floor);
+    uint8_t area = fc.super_map->area_for_floor(ene->floor);
+    auto rare_type = type_definition_for_enemy(type).rare_type(area, this->event);
     if ((type == EnemyType::MERICARAND) || (rare_type != type)) {
       unordered_map<uint32_t, float> det_cache;
       uint32_t bb_rare_rate = this->bb_rare_rates->get(type);

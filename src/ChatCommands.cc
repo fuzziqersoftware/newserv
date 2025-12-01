@@ -3003,8 +3003,9 @@ static void whatobj_whatene_fn(const Args& a, bool include_objs, bool include_en
   if (nearest_ene) {
     const auto* set_entry = nearest_ene->super_ene->version(a.c->version()).set_entry;
     string type_name = MapFile::name_for_enemy_type(set_entry->base_type, a.c->version(), area);
+    uint8_t area = l->area_for_floor(a.c->version(), a.c->floor);
     send_text_message_fmt(a.c, "$C5E-{:03X}\n$C6{}\n$C2{}\n$C7X:{:.2f} Z:{:.2f}",
-        nearest_ene->e_id, phosg::name_for_enum(nearest_ene->type(a.c->version(), l->episode, l->difficulty, l->event)),
+        nearest_ene->e_id, phosg::name_for_enum(nearest_ene->type(a.c->version(), area, l->difficulty, l->event)),
         type_name, nearest_worldspace_pos.x, nearest_worldspace_pos.z);
     auto set_str = set_entry->str(a.c->version(), area);
     a.c->log.info_f("Enemy found via $whatobj: E-{:03X} {} at x={:g} y={:g} z={:g}",
