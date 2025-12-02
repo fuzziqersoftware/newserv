@@ -1325,6 +1325,7 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     // used in Battle or Challenge mode. Params:
     //   param1-3 = destination (same as for TObjMapWarpForest)
     //   param4 = destination angle (same as for TObjMapWarpForest)
+    //   param5 = shape (0 = hexagonal, nonzero = "round" (12-sided))
     //   param6 = destination text (clamped to [0, 2]):
     //     00 = "The Principal"
     //     01 = "Pioneer 2"
