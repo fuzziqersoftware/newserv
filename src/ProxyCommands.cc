@@ -1359,7 +1359,6 @@ static asio::awaitable<HandlerResult> S_13_A7(shared_ptr<Client> c, Channel::Mes
           array<shared_ptr<const MapFile>, NUM_VERSIONS> map_files;
           map_files.at(static_cast<size_t>(c->version())) = materialized_map_file;
           auto supermap = make_shared<SuperMap>(map_files, meta.get_floor_to_area());
-          supermap->print(stderr); // NOCOMMIT
 
           c->proxy_session->map_state = make_shared<MapState>(
               c->id,
