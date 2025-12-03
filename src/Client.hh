@@ -199,8 +199,9 @@ public:
   ItemData bb_identify_result;
   std::array<std::vector<ItemData>, 3> bb_shop_contents;
 
-  // Miscellaneous (used by chat commands)
-  uint32_t next_exp_value = 0; // next EXP value to give
+  // Miscellaneous (used by chat commands / quest opcodes)
+  uint8_t schtserv_response_register = 0;
+  uint32_t next_exp_value = 0;
   bool can_chat = true;
   // NOTE: If you add any new optional promises here, make sure to also add
   // them to cancel_pending_promises.

@@ -62,6 +62,10 @@ void QuestMetadata::apply_json_overrides(const phosg::JSON& json) {
     this->default_drop_mode = phosg::enum_for_name<ServerDropMode>(json.at("DefaultDropMode").as_string());
   } catch (const out_of_range&) {
   }
+  try {
+    this->enable_schtserv_commands = json.at("EnableSchtservCommands").as_bool();
+  } catch (const out_of_range&) {
+  }
 }
 
 void QuestMetadata::assign_default_floors() {
@@ -218,6 +222,10 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
   if (this->default_drop_mode != other.default_drop_mode) {
     throw runtime_error(format("quest version has different default drop mode (existing: {}, new: {})",
         phosg::name_for_enum(this->default_drop_mode), phosg::name_for_enum(other.default_drop_mode)));
+  }
+  if (this->enable_schtserv_commands != other.enable_schtserv_commands) {
+    throw runtime_error(format("quest version has different value for enable_schtserv_commands (existing: {}, new: {})",
+        this->enable_schtserv_commands ? "true" : "false", other.enable_schtserv_commands ? "true" : "false"));
   }
 }
 

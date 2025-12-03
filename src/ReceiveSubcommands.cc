@@ -3228,18 +3228,29 @@ static asio::awaitable<void> on_sync_quest_register(shared_ptr<Client> c, Subcom
     }
   }
 
-  // NOCOMMIT: Add condition here for l->quest->meta.enable_schtserv_commands
-  if ((cmd.register_number == 0xF1) && (cmd.value.as_int == 0x52455650)) {
-    // PVER => respond with specific_version in schtserv's format
-    G_SyncQuestRegister_6x77 ret_cmd;
-    ret_cmd.header.subcommand = 0x77;
-    ret_cmd.header.size = sizeof(ret_cmd) / 4;
-    ret_cmd.header.unused = 0;
-    ret_cmd.register_number = 0xF2;
-    ret_cmd.value.as_int = is_v4(c->version()) ? 0x50 : c->sub_version;
-    send_command_t(c, 0x60, 0x00, ret_cmd);
+  bool should_forward = true;
+  if (l->quest->meta.enable_schtserv_commands) {
+    // We currently only implement one Schtserv server command here. There
+    // are likely many more which we don't support.
 
-  } else {
+    if (cmd.register_number == 0xF0) {
+      should_forward = false;
+      c->schtserv_response_register = cmd.value.as_int;
+
+    } else if ((cmd.register_number == 0xF1) && (cmd.value.as_int == 0x52455650)) {
+      // PVER => respond with specific_version in schtserv's format
+      should_forward = false;
+      G_SyncQuestRegister_6x77 ret_cmd;
+      ret_cmd.header.subcommand = 0x77;
+      ret_cmd.header.size = sizeof(ret_cmd) / 4;
+      ret_cmd.header.unused = 0;
+      ret_cmd.register_number = c->schtserv_response_register;
+      ret_cmd.value.as_int = is_v4(c->version()) ? 0x50 : c->sub_version;
+      send_command_t(c, 0x60, 0x00, ret_cmd);
+    }
+  }
+
+  if (should_forward) {
     forward_subcommand(c, msg);
   }
 }

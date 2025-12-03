@@ -59,6 +59,7 @@ struct QuestMetadata {
   bool allow_start_from_chat_command = false;
   int16_t lock_status_register = -1;
   std::unordered_map<uint32_t, uint32_t> enemy_exp_overrides;
+  bool enable_schtserv_commands = false;
 
   // Extra header fields (only used on BB)
   struct CreateItemMask {
