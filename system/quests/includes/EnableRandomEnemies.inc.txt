@@ -1,0 +1,103 @@
+// This include enables the use of evt2 events (Challenge mode random enemies)
+// in normal quests. The enable_random_enemies label must be called from the
+// start label during the first frame, or it will have no effect.
+// The v2 parts of this script are for documentation purposes only, since the
+// write4 opcode doesn't work properly on any v2 version.
+// Warning: This script is not tested; beware of bugs.
+
+enable_random_enemies:
+  get_game_version   r:game_version
+  jmpi_eq            r:game_version, 2, enable_random_enemies_v2
+  jmpi_eq            r:game_version, 3, enable_random_enemies_v3_gc
+  jmpi_eq            r:game_version, 4, enable_random_enemies_v4
+  jmp                enable_random_enemies_failure
+
+enable_random_enemies_v2:
+  leta               r0, r0
+  andi               r0, 0xFF000000
+  jmpi_eq            r0, 0x8C000000, enable_random_enemies_v2_dc
+  read4              r0, 0x00400080
+  leti               r1, 0x00710B48 // 2OJW
+  jmpi_eq            r0, 0x81EA106A, enable_random_enemies_success
+  leti               r1, 0x0070ECE8 // 2OJZ
+  jmpi_eq            r0, 0x53E8DF92, enable_random_enemies_success
+  jmp                enable_random_enemies_failure
+
+enable_random_enemies_v2_dc:
+  leti               r1, 0x8C4ED344 // 2OJ5
+  read4              r0, 0x8C2F3748
+  jmpi_eq            r0, 0x61657244, enable_random_enemies_success
+  leti               r1, 0x8C4E6DE4 // 2OJF
+  read4              r0, 0x324F4A46
+  jmpi_eq            r0, 0x61657244, enable_random_enemies_success
+  leti               r1, 0x8C4ED344 // 2OEF
+  read4              r0, 0x8C2F3738
+  jmpi_eq            r0, 0x61657244, enable_random_enemies_success
+  leti               r1, 0x8C4DC844 // 2OPF
+  read4              r0, 0x8C2E7CE0
+  jmpi_eq            r0, 0x61657244, enable_random_enemies_success
+  jmp                enable_random_enemies_failure
+
+enable_random_enemies_v3_gc:
+  read1              r0, 0x80000003
+  leti               r1, 8
+  shift_left         r0, r1
+  read1              r1, 0x80000007
+  or                 r0, r1
+  leti               r1, 0x805C4DE4 // 3OJ2
+  jmpi_eq            r0, 0x4A02, enable_random_enemies_success
+  leti               r1, 0x805CF3AC // 3OJ3
+  jmpi_eq            r0, 0x4A03, enable_random_enemies_success
+  leti               r1, 0x805D682C // 3OJ4
+  jmpi_eq            r0, 0x4A04, enable_random_enemies_success
+  leti               r1, 0x805D65CC // 3OJ5
+  jmpi_eq            r0, 0x4A05, enable_random_enemies_success
+  leti               r1, 0x805C56DC // 3OE0
+  jmpi_eq            r0, 0x4500, enable_random_enemies_success
+  leti               r1, 0x805CC6BC // 3OE1
+  jmpi_eq            r0, 0x4501, enable_random_enemies_success
+  leti               r1, 0x805D5EDC // 3OE2
+  jmpi_eq            r0, 0x4502, enable_random_enemies_success
+  leti               r1, 0x805D211C // 3OP0
+  jmpi_eq            r0, 0x5000, enable_random_enemies_success
+  jmp                enable_random_enemies_failure
+
+enable_random_enemies_v4:
+  leti               r1, 0x0062D370 // 4OJB
+  read4              r0, 0x0043D460
+  jmpi_eq            r0, 0x61657244, enable_random_enemies_success
+  leti               r1, 0x0062D910 // 4OJD
+  read4              r0, 0x0043D7D0
+  jmpi_eq            r0, 0x61657244, enable_random_enemies_success
+  leti               r1, 0x00635448 // 4OJU
+  read4              r0, 0x00440FE0
+  jmpi_eq            r0, 0x61657244, enable_random_enemies_success
+  leti               r1, 0x00632930 // 4OED
+  read4              r0, 0x0044174C
+  jmpi_eq            r0, 0x61657244, enable_random_enemies_success
+  leti               r1, 0x006321C8 // 4OEU
+  read4              r0, 0x00440FEC
+  jmpi_eq            r0, 0x61657244, enable_random_enemies_success
+  leti               r1, 0x00632930 // 4OPD
+  read4              r0, 0x00441768
+  jmpi_eq            r0, 0x61657244, enable_random_enemies_success
+  leti               r1, 0x00632CC8 // 4OPU
+  read4              r0, 0x00441AF8
+  jmpi_eq            r0, 0x61657244, enable_random_enemies_success
+
+  // TODO: We probably should do some kind of version detection here; currently
+  // we just assume it's 59NL if it's not any known DC version
+  read2              r0, 0x00400000
+  leti               r1, 0x00A955E0 // 59NL
+  jmpi_eq            r0, 0x5A4D, enable_random_enemies_success
+  jmp                enable_random_enemies_failure
+
+enable_random_enemies_success:
+  leti               r0, 4
+  write4             r1, r0
+  leti               r0, 1
+  ret
+
+enable_random_enemies_failure:
+  leti               r0, 0
+  ret
