@@ -3622,8 +3622,13 @@ string MapFile::Event2Entry::str() const {
       this->action_stream_offset);
 }
 
-string MapFile::RandomEnemyLocationEntry::str() const {
-  return std::format("[RandomEnemyLocationEntry x={:g} y={:g} z={:g} x_angle={:08X} y_angle={:08X} z_angle={:08X}a9={:04X} a10={:04X}]",
+string MapFile::RandomEnemyLocationSection::str() const {
+  return std::format("[RandomEnemyLocationSection room={:04X} count={:04X} offset={:08X} index={}]",
+      this->room, this->count, this->offset, this->offset / sizeof(RandomEnemyLocation));
+}
+
+string MapFile::RandomEnemyLocation::str() const {
+  return std::format("[RandomEnemyLocation x={:g} y={:g} z={:g} x_angle={:08X} y_angle={:08X} z_angle={:08X} a9={:04X} a10={:04X}]",
       this->pos.x,
       this->pos.y,
       this->pos.z,
@@ -3649,8 +3654,14 @@ string MapFile::RandomEnemyDefinition::str() const {
 }
 
 string MapFile::RandomEnemyWeight::str() const {
-  return std::format("[RandomEnemyWeight base_type_index={:02X} def_entry_num={:02X} weight={:02X} a4={:02X}]",
+  string base_type_index_str;
+  try {
+    base_type_index_str = std::format("(->{:04X})", MapFile::RAND_ENEMY_BASE_TYPES.at(this->base_type_index));
+  } catch (const std::out_of_range&) {
+  }
+  return std::format("[RandomEnemyWeight base_type_index={:02X}{} def_entry_num={} weight={:02X} a4={:02X}]",
       this->base_type_index,
+      base_type_index_str,
       this->def_entry_num,
       this->weight,
       this->unknown_a4);
@@ -3722,6 +3733,12 @@ void MapFile::RandomState::generate_shuffled_location_table(
     }
   }
 }
+
+const array<uint32_t, 41> MapFile::RAND_ENEMY_BASE_TYPES = {
+    0x44, 0x43, 0x41, 0x42, 0x40, 0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x80,
+    0x81, 0x82, 0x83, 0x84, 0x85, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6,
+    0xA7, 0xA8, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD,
+    0xDE, 0xDF, 0xE0, 0xE0, 0xE1};
 
 MapFile::MapFile(std::shared_ptr<const std::string> data) {
   this->quest_data = data;
@@ -3814,7 +3831,7 @@ void MapFile::set_enemy_sets_for_floor(uint8_t floor, size_t file_offset, const 
   if (floor_sections.enemy_sets) {
     throw runtime_error("multiple enemy sets sections for same floor");
   }
-  if (floor_sections.events2 || floor_sections.random_enemy_locations_data || floor_sections.random_enemy_definitions_data) {
+  if (floor_sections.events2 || floor_sections.random_enemy_definitions || floor_sections.random_enemy_locations) {
     throw runtime_error("floor already has random enemies and cannot also have fixed enemies");
   }
   if (size % sizeof(EnemySetEntry)) {
@@ -3870,6 +3887,25 @@ void MapFile::set_random_enemy_locations_for_floor(uint8_t floor, size_t file_of
   floor_sections.random_enemy_locations_file_offset = file_offset;
   floor_sections.random_enemy_locations_file_size = size;
   this->has_any_random_sections = true;
+
+  phosg::StringReader r(data, size);
+  const auto& header = r.get<RandomEnemyLocationsHeader>();
+  floor_sections.random_enemy_location_section_count = header.num_rooms;
+  floor_sections.random_enemy_location_sections = &r.pget<RandomEnemyLocationSection>(
+      header.room_table_offset, floor_sections.random_enemy_location_section_count * sizeof(RandomEnemyLocationSection));
+  size_t max_offset = 0;
+  for (size_t z = 0; z < floor_sections.random_enemy_location_section_count; z++) {
+    const auto& sec = floor_sections.random_enemy_location_sections[z];
+    if (sec.offset % sizeof(RandomEnemyLocation)) {
+      // TODO: We probably could support this if it's actually needed somewhere
+      throw std::runtime_error(std::format("random enemy location offset {:08X} is not a multiple of struct size {:08X}",
+          sec.offset, sizeof(RandomEnemyLocation)));
+    }
+    max_offset = std::max<size_t>(max_offset, sec.offset + sec.count * sizeof(RandomEnemyLocation));
+  }
+  floor_sections.random_enemy_location_count = max_offset / sizeof(RandomEnemyLocation);
+  floor_sections.random_enemy_locations = &r.pget<RandomEnemyLocation>(
+      header.entries_offset, floor_sections.random_enemy_location_count * sizeof(RandomEnemyLocation));
 }
 
 void MapFile::set_random_enemy_definitions_for_floor(uint8_t floor, size_t file_offset, const void* data, size_t size) {
@@ -3883,6 +3919,15 @@ void MapFile::set_random_enemy_definitions_for_floor(uint8_t floor, size_t file_
   floor_sections.random_enemy_definitions_file_offset = file_offset;
   floor_sections.random_enemy_definitions_file_size = size;
   this->has_any_random_sections = true;
+
+  phosg::StringReader r(data, size);
+  const auto& header = r.get<RandomEnemyDefinitionsHeader>();
+  floor_sections.random_enemy_definition_count = header.entry_count;
+  floor_sections.random_enemy_definitions = &r.pget<RandomEnemyDefinition>(
+      header.entries_offset, floor_sections.random_enemy_definition_count * sizeof(RandomEnemyDefinition));
+  floor_sections.random_enemy_definition_weight_count = header.weight_entry_count;
+  floor_sections.random_enemy_definition_weights = &r.pget<RandomEnemyWeight>(
+      header.weight_entries_offset, floor_sections.random_enemy_definition_weight_count * sizeof(RandomEnemyWeight));
 }
 
 std::shared_ptr<const MapFile> MapFile::materialize_random_sections(uint32_t random_seed) const {
@@ -3894,12 +3939,7 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
     return this->shared_from_this();
   }
 
-  static const array<uint32_t, 41> rand_enemy_base_types = {
-      0x44, 0x43, 0x41, 0x42, 0x40, 0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x80,
-      0x81, 0x82, 0x83, 0x84, 0x85, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6,
-      0xA7, 0xA8, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD,
-      0xDE, 0xDF, 0xE0, 0xE0, 0xE1};
-
+  static_game_data_log.debug_f("Generating random enemies using seed {:08X}", random_seed);
   auto new_map = make_shared<MapFile>(random_seed);
   RandomState random_state(random_seed);
 
@@ -3907,16 +3947,22 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
     const auto& this_sf = this->sections_for_floor[floor];
 
     if (this_sf.object_sets) {
+      static_game_data_log.debug_f("(Floor {}) Using existing object sets", floor);
       new_map->set_object_sets_for_floor(floor, 0, this_sf.object_sets, this_sf.object_set_count * sizeof(ObjectSetEntry));
     }
 
     if (this_sf.enemy_sets) {
+      static_game_data_log.debug_f("(Floor {}) Using existing enemy sets", floor);
       new_map->set_enemy_sets_for_floor(floor, 0, this_sf.enemy_sets, this_sf.enemy_set_count * sizeof(EnemySetEntry));
     }
 
     if (this_sf.events1) {
+      static_game_data_log.debug_f("(Floor {}) Using existing events (format 1; fixed)", floor);
       new_map->set_events_for_floor(floor, 0, this_sf.events_data, this_sf.events_data_size, false);
+
     } else if (this_sf.events2) {
+      static_game_data_log.debug_f("(Floor {}) Using existing events (format 2; random)", floor);
+
       if (!this_sf.random_enemy_locations_data || !this_sf.random_enemy_definitions_data) {
         throw runtime_error("cannot materialize random enemies; evt2 section present but one or both random data sections are missing");
       }
@@ -3924,28 +3970,29 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
         throw runtime_error("cannot materialize random enemies; action stream is missing");
       }
 
-      phosg::StringReader locations_sec_r(
-          this_sf.random_enemy_locations_data, this_sf.random_enemy_locations_data_size);
-      phosg::StringReader definitions_sec_r(
-          this_sf.random_enemy_definitions_data, this_sf.random_enemy_definitions_data_size);
+      phosg::StringReader locations_sec_r(this_sf.random_enemy_locations_data, this_sf.random_enemy_locations_data_size);
+      phosg::StringReader definitions_sec_r(this_sf.random_enemy_definitions_data, this_sf.random_enemy_definitions_data_size);
       const auto& locations_header = locations_sec_r.get<RandomEnemyLocationsHeader>();
       const auto& definitions_header = definitions_sec_r.get<RandomEnemyDefinitionsHeader>();
       auto definitions_r = definitions_sec_r.sub(
-          definitions_header.entries_offset,
-          definitions_header.entry_count * sizeof(RandomEnemyDefinition));
+          definitions_header.entries_offset, definitions_header.entry_count * sizeof(RandomEnemyDefinition));
       auto weights_r = definitions_sec_r.sub(
-          definitions_header.weight_entries_offset,
-          definitions_header.weight_entry_count * sizeof(RandomEnemyWeight));
+          definitions_header.weight_entries_offset, definitions_header.weight_entry_count * sizeof(RandomEnemyWeight));
 
       phosg::StringWriter enemy_sets_w;
       phosg::StringWriter events1_w;
       phosg::StringWriter action_stream_w;
       action_stream_w.write(this_sf.event_action_stream, this_sf.event_action_stream_bytes);
+      if (static_game_data_log.debug_f("(Floor {}) Added existing action stream data:", floor)) {
+        phosg::print_data(stderr, this_sf.event_action_stream, this_sf.event_action_stream_bytes);
+      }
 
       for (size_t source_event_index = 0; source_event_index < this_sf.event_count; source_event_index++) {
         const auto& source_event2 = this_sf.events2[source_event_index];
+        static_game_data_log.debug_f("(Floor {} event {}) ... {}", floor, source_event_index, source_event2.str());
 
         size_t remaining_waves = random_state.rand_int_biased(1, source_event2.max_waves);
+        static_game_data_log.debug_f("(Floor {} event {}) Chose {} waves", floor, source_event_index, remaining_waves);
         // Trace: at 0080E125 EAX is wave count
 
         le_uint32_t wave_next_event_id = source_event2.event_id;
@@ -3954,6 +4001,8 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
           remaining_waves--;
 
           size_t remaining_enemies = random_state.rand_int_biased(source_event2.min_enemies, source_event2.max_enemies);
+          static_game_data_log.debug_f("(Floor {} event {} wave {}) Chose {} enemies",
+              floor, source_event_index, remaining_waves, remaining_enemies);
           // Trace: at 0080E208 EDI is enemy count
 
           random_state.generate_shuffled_location_table(locations_header, locations_sec_r, source_event2.room);
@@ -3973,17 +4022,22 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
             size_t det = random_state.rand_int_biased(0, weight_total - 1);
             // Trace: at 0080E300 EDX is det
 
+            static_game_data_log.debug_f("(Floor {} event {} wave {} enemy {}) det={}, weight_total={}",
+                floor, source_event_index, remaining_waves, remaining_enemies, det, weight_total);
+
             weights_r.go(0);
             while (!weights_r.eof()) {
               const auto& weight_entry = weights_r.get<RandomEnemyWeight>();
               if (det < weight_entry.weight) {
+                static_game_data_log.debug_f("(Floor {} event {} wave {} enemy {}) This results in weight entry {}",
+                    floor, source_event_index, remaining_waves, remaining_enemies, weight_entry.str());
                 if ((weight_entry.base_type_index != 0xFF) && (weight_entry.def_entry_num != 0xFF)) {
                   if (definitions_header.entry_count == 0) {
                     throw runtime_error("no available random enemy definitions");
                   }
 
                   EnemySetEntry e;
-                  e.base_type = rand_enemy_base_types.at(weight_entry.base_type_index);
+                  e.base_type = this->RAND_ENEMY_BASE_TYPES.at(weight_entry.base_type_index);
                   e.wave_number = wave_number;
                   e.room = source_event2.room;
                   e.floor = floor;
@@ -4001,6 +4055,8 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
 
                   const auto& def = definitions_r.pget<RandomEnemyDefinition>(bs_min * sizeof(RandomEnemyDefinition));
                   if (def.entry_num == weight_entry.def_entry_num) {
+                    static_game_data_log.debug_f("(Floor {} event {} wave {} enemy {}) Using parameters from {}",
+                        floor, source_event_index, remaining_waves, remaining_enemies, def.str());
                     e.param1 = def.param1;
                     e.param2 = def.param2;
                     e.param3 = def.param3;
@@ -4013,8 +4069,8 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
                     throw runtime_error("random enemy definition not found");
                   }
 
-                  const auto& loc = locations_sec_r.pget<RandomEnemyLocationEntry>(
-                      locations_header.entries_offset + sizeof(RandomEnemyLocationEntry) * random_state.next_location_index());
+                  const auto& loc = locations_sec_r.pget<RandomEnemyLocation>(
+                      locations_header.entries_offset + sizeof(RandomEnemyLocation) * random_state.next_location_index());
                   e.pos = loc.pos;
                   e.angle = loc.angle;
 
@@ -4043,6 +4099,9 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
             action_stream_w.put_u32l(wave_next_event_id);
             action_stream_w.put_u8(0x01); // stop
 
+            static_game_data_log.debug_f("(Floor {} event {} wave {}) Added event {} which triggers {}",
+                floor, source_event_index, remaining_waves, event.str(), wave_next_event_id);
+
             wave_number++;
           }
         }
@@ -4056,6 +4115,9 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
         event.delay = random_state.rand_int_biased(source_event2.min_delay, source_event2.max_delay);
         event.action_stream_offset = source_event2.action_stream_offset;
         events1_w.put<Event1Entry>(event);
+
+        static_game_data_log.debug_f("(Floor {} event {} wave {}) Added final event {}",
+            floor, source_event_index, remaining_waves, event.str());
 
         wave_number++;
       }
@@ -4198,7 +4260,7 @@ string MapFile::disassemble(bool reassembly, Version version) const {
       if (reassembly) {
         ret.emplace_back(std::format(".object_sets {}", floor));
       } else {
-        ret.emplace_back(std::format(".object_sets {} /* 0x{:X} in file; 0x{:X} bytes */",
+        ret.emplace_back(std::format(".object_sets {} /* offset 0x{:X} in file; 0x{:X} bytes */",
             floor, sf.object_sets_file_offset, sf.object_sets_file_size));
       }
       for (size_t z = 0; z < sf.object_set_count; z++) {
@@ -4206,15 +4268,17 @@ string MapFile::disassemble(bool reassembly, Version version) const {
           ret.emplace_back(sf.object_sets[z].str(version));
         } else {
           size_t k_id = z + sf.first_object_set_index;
-          ret.emplace_back(std::format("/* K-{:03X} */ ", k_id) + sf.object_sets[z].str(version));
+          ret.emplace_back(std::format("/* K-{:03X} */ {}", k_id, sf.object_sets[z].str(version)));
         }
       }
+      ret.emplace_back();
     }
+
     if (sf.enemy_sets) {
       if (reassembly) {
         ret.emplace_back(std::format(".enemy_sets {}", floor));
       } else {
-        ret.emplace_back(std::format(".enemy_sets {} /* 0x{:X} in file; 0x{:X} bytes */",
+        ret.emplace_back(std::format(".enemy_sets {} /* offset 0x{:X} in file; 0x{:X} bytes */",
             floor, sf.enemy_sets_file_offset, sf.enemy_sets_file_size));
       }
       for (size_t z = 0; z < sf.enemy_set_count; z++) {
@@ -4222,15 +4286,17 @@ string MapFile::disassemble(bool reassembly, Version version) const {
           ret.emplace_back(sf.enemy_sets[z].str(version));
         } else {
           size_t s_id = z + sf.first_enemy_set_index;
-          ret.emplace_back(std::format("/* S-{:03X} */ ", s_id) + sf.enemy_sets[z].str(version));
+          ret.emplace_back(std::format("/* S-{:03X} */ {}", s_id, sf.enemy_sets[z].str(version)));
         }
       }
+      ret.emplace_back();
     }
+
     if (sf.events1) {
       if (reassembly) {
         ret.emplace_back(std::format(".events {}", floor));
       } else {
-        ret.emplace_back(std::format(".events {} /* 0x{:X} in file; 0x{:X} bytes; 0x{:X} bytes in action stream */",
+        ret.emplace_back(std::format(".events {} /* offset 0x{:X} in file; 0x{:X} bytes; 0x{:X} bytes in action stream */",
             floor, sf.events_file_offset, sf.events_file_size, sf.event_action_stream_bytes));
       }
       for (size_t z = 0; z < sf.event_count; z++) {
@@ -4239,7 +4305,7 @@ string MapFile::disassemble(bool reassembly, Version version) const {
           ret.emplace_back(ev.str());
         } else {
           size_t w_id = z + sf.first_event_set_index;
-          ret.emplace_back(std::format("/* W-{:03X} */ ", w_id) + ev.str());
+          ret.emplace_back(std::format("/* W-{:03X} */ {}", w_id, ev.str()));
         }
         if (ev.action_stream_offset >= sf.event_action_stream_bytes) {
           ret.emplace_back(std::format(
@@ -4249,13 +4315,15 @@ string MapFile::disassemble(bool reassembly, Version version) const {
         size_t as_size = as_r.size() - ev.action_stream_offset;
         ret.emplace_back(this->disassemble_action_stream(as_r.pgetv(ev.action_stream_offset, as_size), as_size));
       }
+      ret.emplace_back();
     }
+
     if (sf.events2) {
       if (reassembly) {
         ret.emplace_back(std::format(".random_events {}", floor));
       } else {
         ret.emplace_back(std::format(
-            ".random_events {} /* 0x{:X} in file; 0x{:X} bytes; 0x{:X} bytes in action stream */",
+            ".random_events {} /* offset 0x{:X} in file; 0x{:X} bytes; 0x{:X} bytes in action stream */",
             floor, sf.events_file_offset, sf.events_file_size, sf.event_action_stream_bytes));
       }
       for (size_t z = 0; z < sf.event_count; z++) {
@@ -4263,7 +4331,7 @@ string MapFile::disassemble(bool reassembly, Version version) const {
         if (reassembly) {
           ret.emplace_back(ev.str());
         } else {
-          ret.emplace_back(std::format("/* index {} */", z) + ev.str());
+          ret.emplace_back(std::format("/* index {} */ {}", z, ev.str()));
         }
         if (ev.action_stream_offset >= sf.event_action_stream_bytes) {
           ret.emplace_back(std::format(
@@ -4273,26 +4341,62 @@ string MapFile::disassemble(bool reassembly, Version version) const {
         size_t as_size = as_r.size() - ev.action_stream_offset;
         ret.emplace_back(this->disassemble_action_stream(as_r.pgetv(ev.action_stream_offset, as_size), as_size));
       }
+      ret.emplace_back();
     }
-    if (sf.random_enemy_locations_data) {
+
+    if (sf.random_enemy_locations_file_size > 0) {
       if (reassembly) {
         ret.emplace_back(std::format(".random_enemy_locations {}", floor));
       } else {
-        ret.emplace_back(std::format(".random_enemy_locations {} /* 0x{:X} in file; 0x{:X} bytes */",
+        ret.emplace_back(std::format(".random_enemy_locations {} /* offset 0x{:X} in file; 0x{:X} bytes */",
             floor, sf.random_enemy_locations_file_offset, sf.random_enemy_locations_file_size));
       }
-      ret.emplace_back(phosg::format_data(sf.random_enemy_locations_data, sf.random_enemy_locations_data_size));
+      for (size_t z = 0; z < sf.random_enemy_location_section_count; z++) {
+        const auto& sec = sf.random_enemy_location_sections[z];
+        if (reassembly) {
+          ret.emplace_back(sec.str());
+        } else {
+          ret.emplace_back(std::format("/* section index {} */ {}", z, sec.str()));
+        }
+      }
+      for (size_t z = 0; z < sf.random_enemy_location_count; z++) {
+        const auto& ent = sf.random_enemy_locations[z];
+        if (reassembly) {
+          ret.emplace_back(ent.str());
+        } else {
+          ret.emplace_back(std::format("/* entry index {} */ {}", z, ent.str()));
+        }
+      }
+      ret.emplace_back();
     }
-    if (sf.random_enemy_definitions_data) {
+
+    if (sf.random_enemy_definitions_file_size > 0) {
       if (reassembly) {
         ret.emplace_back(std::format(".random_enemy_definitions {}", floor));
       } else {
-        ret.emplace_back(std::format(".random_enemy_definitions {} /* 0x{:X} in file; 0x{:X} bytes */",
+        ret.emplace_back(std::format(".random_enemy_definitions {} /* offset 0x{:X} in file; 0x{:X} bytes */",
             floor, sf.random_enemy_definitions_file_offset, sf.random_enemy_definitions_file_size));
       }
-      ret.emplace_back(phosg::format_data(sf.random_enemy_definitions_data, sf.random_enemy_definitions_data_size));
+      for (size_t z = 0; z < sf.random_enemy_definition_count; z++) {
+        const auto& def = sf.random_enemy_definitions[z];
+        if (reassembly) {
+          ret.emplace_back(def.str());
+        } else {
+          ret.emplace_back(std::format("/* definition index {} */ {}", z, def.str()));
+        }
+      }
+      for (size_t z = 0; z < sf.random_enemy_definition_weight_count; z++) {
+        const auto& weight = sf.random_enemy_definition_weights[z];
+        if (reassembly) {
+          ret.emplace_back(weight.str());
+        } else {
+          ret.emplace_back(std::format("/* weight index {} */ {}", z, weight.str()));
+        }
+      }
+      ret.emplace_back();
     }
   }
+
   return phosg::join(ret, "\n");
 }
 

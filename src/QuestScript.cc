@@ -4268,7 +4268,7 @@ AssembledQuestScript assemble_quest_script(
         string include_path = include_dir + "/" + filename;
         if (std::filesystem::is_regular_file(include_path)) {
           found = true;
-          include_file(filename, phosg::load_file(filename), z);
+          include_file(filename, phosg::load_file(include_path), z);
           break;
         }
       }

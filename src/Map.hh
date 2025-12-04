@@ -321,8 +321,8 @@ public:
   } __packed_ws__(Event2Entry, 0x18);
 
   struct RandomEnemyLocationsHeader { // Section type 4 (RANDOM_ENEMY_LOCATIONS)
-    /* 00 */ le_uint32_t room_table_offset; // Offset to RandomEnemyLocationSegment structs, from start of this struct
-    /* 04 */ le_uint32_t entries_offset; // Offset to RandomEnemyLocationEntry structs, from start of this struct
+    /* 00 */ le_uint32_t room_table_offset; // Offset to RandomEnemyLocationSection structs, from start of this struct
+    /* 04 */ le_uint32_t entries_offset; // Offset to RandomEnemyLocation structs, from start of this struct
     /* 08 */ le_uint32_t num_rooms;
     /* 0C */
   } __packed_ws__(RandomEnemyLocationsHeader, 0x0C);
@@ -330,11 +330,13 @@ public:
   struct RandomEnemyLocationSection { // Section type 4 (RANDOM_ENEMY_LOCATIONS)
     /* 00 */ le_uint16_t room;
     /* 02 */ le_uint16_t count;
-    /* 04 */ le_uint32_t offset;
+    /* 04 */ le_uint32_t offset; // Bytes from start of RandomEnemyLocation section
     /* 08 */
+
+    std::string str() const;
   } __packed_ws__(RandomEnemyLocationSection, 8);
 
-  struct RandomEnemyLocationEntry { // Section type 4 (RANDOM_ENEMY_LOCATIONS)
+  struct RandomEnemyLocation { // Section type 4 (RANDOM_ENEMY_LOCATIONS)
     /* 00 */ VectorXYZF pos;
     /* 0C */ VectorXYZI angle;
     /* 18 */ le_uint16_t unknown_a9; // TODO: Verify these are actually little-endian
@@ -342,7 +344,7 @@ public:
     /* 1C */
 
     std::string str() const;
-  } __packed_ws__(RandomEnemyLocationEntry, 0x1C);
+  } __packed_ws__(RandomEnemyLocation, 0x1C);
 
   struct RandomEnemyDefinitionsHeader { // Section type 5 (RANDOM_ENEMY_DEFINITIONS)
     /* 00 */ le_uint32_t entries_offset; // Offset to RandomEnemyDefinition structs, from start of this struct
@@ -422,11 +424,19 @@ public:
     size_t random_enemy_locations_file_size = 0;
     const void* random_enemy_locations_data = nullptr;
     size_t random_enemy_locations_data_size = 0;
+    const RandomEnemyLocationSection* random_enemy_location_sections = nullptr;
+    size_t random_enemy_location_section_count = 0;
+    const RandomEnemyLocation* random_enemy_locations = nullptr;
+    size_t random_enemy_location_count = 0;
 
     size_t random_enemy_definitions_file_offset = 0;
     size_t random_enemy_definitions_file_size = 0;
     const void* random_enemy_definitions_data = nullptr;
     size_t random_enemy_definitions_data_size = 0;
+    const RandomEnemyDefinition* random_enemy_definitions = nullptr;
+    size_t random_enemy_definition_count = 0;
+    const RandomEnemyWeight* random_enemy_definition_weights = nullptr;
+    size_t random_enemy_definition_weight_count = 0;
   };
 
   // Quest constructor
@@ -478,6 +488,8 @@ public:
   std::string disassemble(bool reassembly = false, Version version = Version::UNKNOWN) const;
 
 protected:
+  static const std::array<uint32_t, 41> RAND_ENEMY_BASE_TYPES;
+
   void link_data(std::shared_ptr<const std::string> data);
 
   void set_object_sets_for_floor(uint8_t floor, size_t file_offset, const void* data, size_t size);
