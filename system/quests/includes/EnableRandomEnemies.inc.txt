@@ -86,7 +86,7 @@ enable_random_enemies_v4:
   jmpi_eq            r0, 0x61657244, enable_random_enemies_success
 
   // TODO: We probably should do some kind of version detection here; currently
-  // we just assume it's 59NL if it's not any known DC version
+  // we just assume it's 59NL if it's not any known Xbox version
   read2              r0, 0x00400000
   leti               r1, 0x00A955E0 // 59NL
   jmpi_eq            r0, 0x5A4D, enable_random_enemies_success
