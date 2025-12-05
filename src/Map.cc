@@ -3623,8 +3623,12 @@ string MapFile::Event2Entry::str() const {
 }
 
 string MapFile::RandomEnemyLocationSection::str() const {
-  return std::format("[RandomEnemyLocationSection room={:04X} count={:04X} offset={:08X} index={}]",
-      this->room, this->count, this->offset, this->offset / sizeof(RandomEnemyLocation));
+  string count_warning_str;
+  if (count > 0x20) {
+    count_warning_str = " /* warning: count is too large */";
+  }
+  return std::format("[RandomEnemyLocationSection room={:04X} count={:04X}{} offset={:08X} index={}]",
+      this->room, this->count, count_warning_str, this->offset, this->offset / sizeof(RandomEnemyLocation));
 }
 
 string MapFile::RandomEnemyLocation::str() const {
