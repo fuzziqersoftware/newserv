@@ -3809,10 +3809,8 @@ static asio::awaitable<void> on_E8_BB(shared_ptr<Client> c, Channel::Message& ms
     case 0x01E8: { // Check guild card file checksum
       const auto& cmd = check_size_t<C_GuildCardChecksum_01E8>(msg.data);
       uint32_t checksum = gcf->checksum();
-      c->log.info_f("(Guild card file) Server checksum = {:08X}, client checksum = {:08X}",
-          checksum, cmd.checksum);
-      S_GuildCardChecksumResponse_BB_02E8 response = {
-          (cmd.checksum != checksum), 0};
+      c->log.info_f("(Guild card file) Server checksum = {:08X}, client checksum = {:08X}", checksum, cmd.checksum);
+      S_GuildCardChecksumResponse_BB_02E8 response = {(cmd.checksum != checksum), 0};
       send_command_t(c, 0x02E8, 0x00000000, response);
       break;
     }
@@ -3820,13 +3818,14 @@ static asio::awaitable<void> on_E8_BB(shared_ptr<Client> c, Channel::Message& ms
       check_size_v(msg.data.size(), 0);
       send_guild_card_header_bb(c);
       break;
-    case 0x04E8: { // Add guild card
+    case 0x04E8: { // Add or replace guild card
       auto& new_gc = check_size_t<GuildCardBB>(msg.data);
       for (size_t z = 0; z < max_count; z++) {
-        if (!gcf->entries[z].data.present) {
-          gcf->entries[z].data = new_gc;
-          gcf->entries[z].unknown_a1.clear(0);
-          c->log.info_f("Added guild card {} at position {}", new_gc.guild_card_number, z);
+        auto& gcf_entry = gcf->entries[z];
+        if (!gcf_entry.data.present || (gcf_entry.data.guild_card_number == new_gc.guild_card_number)) {
+          gcf_entry.data = new_gc;
+          gcf_entry.unknown_a1.clear(0);
+          c->log.info_f("Added or replaced guild card {} at position {}", new_gc.guild_card_number, z);
           should_save = true;
           break;
         }
@@ -3836,10 +3835,11 @@ static asio::awaitable<void> on_E8_BB(shared_ptr<Client> c, Channel::Message& ms
     case 0x05E8: { // Delete guild card
       auto& cmd = check_size_t<C_DeleteGuildCard_BB_05E8_08E8>(msg.data);
       for (size_t z = 0; z < max_count; z++) {
-        if (gcf->entries[z].data.guild_card_number == cmd.guild_card_number) {
+        auto& gcf_entry = gcf->entries[z];
+        if (gcf_entry.data.guild_card_number == cmd.guild_card_number) {
           c->log.info_f("Deleted guild card {} at position {}", cmd.guild_card_number, z);
           for (z = 0; z < max_count - 1; z++) {
-            gcf->entries[z] = gcf->entries[z + 1];
+            gcf_entry = gcf->entries[z + 1];
           }
           gcf->entries[max_count - 1].clear();
           should_save = true;
@@ -3851,8 +3851,9 @@ static asio::awaitable<void> on_E8_BB(shared_ptr<Client> c, Channel::Message& ms
     case 0x06E8: { // Update guild card
       auto& new_gc = check_size_t<GuildCardBB>(msg.data);
       for (size_t z = 0; z < max_count; z++) {
-        if (gcf->entries[z].data.guild_card_number == new_gc.guild_card_number) {
-          gcf->entries[z].data = new_gc;
+        auto& gcf_entry = gcf->entries[z];
+        if (gcf_entry.data.guild_card_number == new_gc.guild_card_number) {
+          gcf_entry.data = new_gc;
           c->log.info_f("Updated guild card {} at position {}", new_gc.guild_card_number, z);
           should_save = true;
         }
@@ -3866,11 +3867,10 @@ static asio::awaitable<void> on_E8_BB(shared_ptr<Client> c, Channel::Message& ms
     case 0x07E8: { // Add blocked user
       auto& new_gc = check_size_t<GuildCardBB>(msg.data);
       for (size_t z = 0; z < max_blocked; z++) {
-        if (!gcf->blocked[z].present) {
-          gcf->blocked[z] = new_gc;
+        auto& gcf_blocked = gcf->blocked[z];
+        if (!gcf_blocked.present) {
+          gcf_blocked = new_gc;
           c->log.info_f("Added blocked guild card {} at position {}", new_gc.guild_card_number, z);
-          // Note: The client also sends a C6 command, so we don't have to
-          // manually sync the actual blocked senders list here
           should_save = true;
           break;
         }
@@ -3880,15 +3880,13 @@ static asio::awaitable<void> on_E8_BB(shared_ptr<Client> c, Channel::Message& ms
     case 0x08E8: { // Delete blocked user
       auto& cmd = check_size_t<C_DeleteGuildCard_BB_05E8_08E8>(msg.data);
       for (size_t z = 0; z < max_blocked; z++) {
-        if (gcf->blocked[z].guild_card_number == cmd.guild_card_number) {
-          c->log.info_f("Deleted blocked guild card {} at position {}",
-              cmd.guild_card_number, z);
+        auto& gcf_blocked = gcf->blocked[z];
+        if (gcf_blocked.guild_card_number == cmd.guild_card_number) {
+          c->log.info_f("Deleted blocked guild card {} at position {}", cmd.guild_card_number, z);
           for (z = 0; z < max_blocked - 1; z++) {
-            gcf->blocked[z] = gcf->blocked[z + 1];
+            gcf_blocked = gcf->blocked[z + 1];
           }
           gcf->blocked[max_blocked - 1].clear();
-          // Note: The client also sends a C6 command, so we don't have to
-          // manually sync the actual blocked senders list here
           should_save = true;
           break;
         }
@@ -3898,8 +3896,9 @@ static asio::awaitable<void> on_E8_BB(shared_ptr<Client> c, Channel::Message& ms
     case 0x09E8: { // Write comment
       auto& cmd = check_size_t<C_WriteGuildCardComment_BB_09E8>(msg.data);
       for (size_t z = 0; z < max_count; z++) {
-        if (gcf->entries[z].data.guild_card_number == cmd.guild_card_number) {
-          gcf->entries[z].comment = cmd.comment;
+        auto& gcf_entry = gcf->entries[z];
+        if (gcf_entry.data.guild_card_number == cmd.guild_card_number) {
+          gcf_entry.comment = cmd.comment;
           c->log.info_f("Updated comment on guild card {} at position {}", cmd.guild_card_number, z);
           should_save = true;
           break;
@@ -3912,14 +3911,15 @@ static asio::awaitable<void> on_E8_BB(shared_ptr<Client> c, Channel::Message& ms
       size_t index1 = max_count;
       size_t index2 = max_count;
       for (size_t z = 0; z < max_count; z++) {
-        if (gcf->entries[z].data.guild_card_number == cmd.guild_card_number1) {
+        auto& gcf_entry = gcf->entries[z];
+        if (gcf_entry.data.guild_card_number == cmd.guild_card_number1) {
           if (index1 >= max_count) {
             index1 = z;
           } else {
             throw runtime_error("guild card 1 appears multiple times in file");
           }
         }
-        if (gcf->entries[z].data.guild_card_number == cmd.guild_card_number2) {
+        if (gcf_entry.data.guild_card_number == cmd.guild_card_number2) {
           if (index2 >= max_count) {
             index2 = z;
           } else {
@@ -3935,8 +3935,7 @@ static asio::awaitable<void> on_E8_BB(shared_ptr<Client> c, Channel::Message& ms
         PSOBBGuildCardFile::Entry displaced_entry = gcf->entries[index1];
         gcf->entries[index1] = gcf->entries[index2];
         gcf->entries[index2] = displaced_entry;
-        c->log.info_f("Swapped positions of guild cards {} and {}",
-            cmd.guild_card_number1, cmd.guild_card_number2);
+        c->log.info_f("Swapped positions of guild cards {} and {}", cmd.guild_card_number1, cmd.guild_card_number2);
         should_save = true;
       }
       break;

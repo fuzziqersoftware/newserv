@@ -1045,6 +1045,7 @@ struct PSOBBGuildCardFile {
   PSOBBGuildCardFile() = default;
 
   uint32_t checksum() const;
+  void delete_duplicates();
 } __packed_ws__(PSOBBGuildCardFile, 0xD590);
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -327,6 +327,42 @@ uint32_t PSOBBGuildCardFile::checksum() const {
   return phosg::crc32(this, sizeof(*this));
 }
 
+void PSOBBGuildCardFile::delete_duplicates() {
+  {
+    unordered_set<uint32_t> seen;
+    size_t read_index = 0, write_index = 0;
+    for (read_index = 0; read_index < this->blocked.size(); read_index++) {
+      const auto& read_blocked = this->blocked[read_index];
+      if (seen.emplace(read_blocked.guild_card_number).second) {
+        if (write_index != read_index) {
+          this->blocked[write_index] = read_blocked;
+        }
+        write_index++;
+      }
+    }
+    for (; write_index < this->blocked.size(); write_index++) {
+      this->blocked[write_index].clear();
+    }
+  }
+
+  {
+    unordered_set<uint32_t> seen;
+    size_t read_index = 0, write_index = 0;
+    for (read_index = 0; read_index < this->entries.size(); read_index++) {
+      const auto& read_entry = this->entries[read_index];
+      if (seen.emplace(read_entry.data.guild_card_number).second) {
+        if (write_index != read_index) {
+          this->entries[write_index] = read_entry;
+        }
+        write_index++;
+      }
+    }
+    for (; write_index < this->entries.size(); write_index++) {
+      this->entries[write_index].clear();
+    }
+  }
+}
+
 PSOBBBaseSystemFile::PSOBBBaseSystemFile() {
   // This field is based on 1/1/2000, not 1/1/1970, so adjust appropriately
   this->creation_timestamp = (phosg::now() - 946684800000000ULL) / 1000000;

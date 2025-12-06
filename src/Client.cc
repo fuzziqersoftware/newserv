@@ -913,6 +913,7 @@ void Client::load_all_files() {
     string card_filename = this->guild_card_filename();
     if (std::filesystem::is_regular_file(card_filename)) {
       this->guild_card_data = make_shared<PSOBBGuildCardFile>(phosg::load_object_file<PSOBBGuildCardFile>(card_filename));
+      this->guild_card_data->delete_duplicates();
       this->log.info_f("Loaded Guild Card data from {}", card_filename);
     } else {
       this->log.info_f("Guild Card file is missing: {}", card_filename);
