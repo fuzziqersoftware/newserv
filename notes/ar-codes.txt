@@ -276,6 +276,21 @@ Enable Change Marker option in all lobbies
 3OE2 => 041385C8 4800004C
 3OP0 => 04138848 4800004C
 
+Lobby arrows rotation speed modifier
+3OE1 => 041C6B64 3804XXXX (default 0800)
+
+Change lobby arrow colors
+Note: All values as floats in [0, 1]
+3OE1 => 04443780 AAAAAAAA (slot 0)
+        04443784 RRRRRRRR (slot 0)
+        04443788 GGGGGGGG (slot 0)
+        0444378C BBBBBBBB (slot 0)
+        04443790 AAAAAAAA (slot 1)
+        04443794 RRRRRRRR (slot 1)
+        04443798 GGGGGGGG (slot 1)
+        0444379C BBBBBBBB (slot 1)
+        ...
+
 Change HUD color mask
 3SE0 => 0438CA8C 3C00RRGG
         0438CA90 6000BBAA
