@@ -7,11 +7,7 @@ using namespace std;
 
 namespace Episode3 {
 
-Card::Card(
-    uint16_t card_id,
-    uint16_t card_ref,
-    uint16_t client_id,
-    shared_ptr<Server> server)
+Card::Card(uint16_t card_id, uint16_t card_ref, uint16_t client_id, shared_ptr<Server> server)
     : w_server(server),
       w_player_state(server->get_player_state(client_id)),
       client_id(client_id),
@@ -132,8 +128,7 @@ ssize_t Card::apply_abnormal_condition(
     if (cond.type == eff.type) {
       existing_cond_index = z;
       if ((!is_nte && eff.type == ConditionType::MV_BONUS) ||
-          ((cond.card_definition_effect_index == def_effect_index) &&
-              (cond.card_ref == target_card_ref))) {
+          ((cond.card_definition_effect_index == def_effect_index) && (cond.card_ref == target_card_ref))) {
         break;
       }
     } else {
@@ -173,11 +168,7 @@ ssize_t Card::apply_abnormal_condition(
   cond.condition_giver_card_ref = sc_card_ref;
   cond.card_definition_effect_index = def_effect_index;
   cond.order = 10;
-  if (dice_roll_value < 0) {
-    cond.dice_roll_value = this->player_state()->roll_dice_with_effects(1);
-  } else {
-    cond.dice_roll_value = dice_roll_value;
-  }
+  cond.dice_roll_value = (dice_roll_value < 0) ? this->player_state()->roll_dice_with_effects(1) : dice_roll_value;
   cond.flags = 0;
   cond.value = value + existing_cond_value;
   cond.value8 = value + existing_cond_value;
@@ -309,8 +300,7 @@ void Card::commit_attack(
   size_t num_assists = s->assist_server->compute_num_assist_effects_for_client(this->client_id);
   for (size_t z = 0; z < num_assists; z++) {
     auto eff = s->assist_server->get_active_assist_by_index(z);
-    if ((eff == AssistEffect::RANSOM) &&
-        (attacker_card->action_chain.chain.attack_medium == AttackMedium::PHYSICAL)) {
+    if ((eff == AssistEffect::RANSOM) && (attacker_card->action_chain.chain.attack_medium == AttackMedium::PHYSICAL)) {
       uint8_t team_id = this->player_state()->get_team_id();
       int16_t exp_amount = clamp<int16_t>(s->team_exp[team_id], 0, effective_damage);
       s->team_exp[team_id] -= exp_amount;
@@ -339,8 +329,7 @@ void Card::commit_attack(
   this->current_hp = clamp<int16_t>(this->current_hp - effective_damage, 0, this->max_hp);
   log.debug_f("hp set to {}", this->current_hp);
 
-  if ((effective_damage > 0) &&
-      (attacker_ps->stats.max_attack_damage < effective_damage)) {
+  if ((effective_damage > 0) && (attacker_ps->stats.max_attack_damage < effective_damage)) {
     attacker_ps->stats.max_attack_damage = effective_damage;
     log.debug_f("attacker new max damage {}", effective_damage);
   }
@@ -396,8 +385,10 @@ int16_t Card::compute_defense_power_for_attacker_card(shared_ptr<const Card> att
     }
   }
 
-  s->card_special->apply_action_conditions(EffectWhen::BEFORE_ANY_CARD_ATTACK, attacker_card, this->shared_from_this(), 0x08, nullptr);
-  s->card_special->apply_action_conditions(EffectWhen::BEFORE_ANY_CARD_ATTACK, attacker_card, this->shared_from_this(), 0x10, nullptr);
+  s->card_special->apply_action_conditions(
+      EffectWhen::BEFORE_ANY_CARD_ATTACK, attacker_card, this->shared_from_this(), 0x08, nullptr);
+  s->card_special->apply_action_conditions(
+      EffectWhen::BEFORE_ANY_CARD_ATTACK, attacker_card, this->shared_from_this(), 0x10, nullptr);
   return this->action_metadata.defense_power + this->action_metadata.defense_bonus;
 }
 
@@ -439,8 +430,7 @@ void Card::destroy_set_card(shared_ptr<Card> attacker_card) {
         }
       }
 
-      if ((s->map_and_rules->rules.hp_type == HPType::DEFEAT_TEAM) &&
-          (ps->get_sc_card().get() == this)) {
+      if ((s->map_and_rules->rules.hp_type == HPType::DEFEAT_TEAM) && (ps->get_sc_card().get() == this)) {
         for (size_t set_index = 0; set_index < 8; set_index++) {
           auto card = ps->get_set_card(set_index);
           if (card) {
@@ -464,7 +454,7 @@ void Card::destroy_set_card(shared_ptr<Card> attacker_card) {
             uint8_t other_team_id = s->player_states[client_id]->get_team_id();
             uint8_t this_team_id = ps->get_team_id();
             if (this_team_id == other_team_id) {
-              s->add_team_exp(team_id, this->max_hp);
+              s->add_team_exp(this_team_id, this->max_hp);
             }
           }
         }
@@ -488,8 +478,7 @@ int32_t Card::error_code_for_move_to_location(const Location& loc) const {
   if (this->card_flags & 2) {
     return -0x60;
   }
-  if (!this->server()->ruler_server->card_ref_can_move(
-          this->client_id, this->card_ref, 1)) {
+  if (!this->server()->ruler_server->card_ref_can_move(this->client_id, this->card_ref, 1)) {
     return -0x7B;
   }
   // Note: The original code passes non-null pointers here but ignores the
@@ -529,9 +518,7 @@ void Card::execute_attack(shared_ptr<Card> attacker_card) {
   if (attacker_card->action_chain.chain.attack_medium == AttackMedium::UNKNOWN_03) {
     // Probably Resta
     for (size_t strike_num = 0; strike_num < attacker_card->action_chain.chain.strike_count; strike_num++) {
-      this->current_hp = min<int16_t>(
-          this->current_hp + attacker_card->action_chain.chain.effective_tp,
-          this->max_hp);
+      this->current_hp = min<int16_t>(this->current_hp + attacker_card->action_chain.chain.effective_tp, this->max_hp);
     }
     this->propagate_shared_hp_if_needed();
     cmd.effect.tp = attacker_card->action_chain.chain.effective_tp;
@@ -613,11 +600,7 @@ void Card::execute_attack(shared_ptr<Card> attacker_card) {
 }
 
 bool Card::get_condition_value(
-    ConditionType cond_type,
-    uint16_t card_ref,
-    uint8_t def_effect_index,
-    uint16_t value,
-    uint16_t* out_value) const {
+    ConditionType cond_type, uint16_t card_ref, uint8_t def_effect_index, uint16_t value, uint16_t* out_value) const {
   return this->action_chain.get_condition_value(cond_type, card_ref, def_effect_index, value, out_value);
 }
 
@@ -697,9 +680,7 @@ int32_t Card::move_to_location(const Location& loc) {
   this->card_flags = this->card_flags | 0x80;
 
   // On NTE, traps happen now, not after the Move phase
-  if (s->options.is_nte() &&
-      this->def_entry->def.is_sc() &&
-      ((s->overlay_state.tiles[loc.y][loc.x] & 0xF0) == 0x40)) {
+  if (s->options.is_nte() && this->def_entry->def.is_sc() && ((s->overlay_state.tiles[loc.y][loc.x] & 0xF0) == 0x40)) {
     for (size_t z = 0; z < 4; z++) {
       auto other_ps = s->player_states[z];
       if (!other_ps) {
@@ -752,8 +733,7 @@ void Card::propagate_shared_hp_if_needed() {
       ((this->def_entry->def.type == CardType::HUNTERS_SC) || (this->def_entry->def.type == CardType::ARKZ_SC))) {
     for (size_t other_client_id = 0; other_client_id < 4; other_client_id++) {
       auto other_ps = this->server()->player_states[other_client_id];
-      if ((other_client_id != this->client_id) && other_ps &&
-          (other_ps->get_team_id() == this->team_id)) {
+      if ((other_client_id != this->client_id) && other_ps && (other_ps->get_team_id() == this->team_id)) {
         other_ps->get_sc_card()->set_current_hp(this->current_hp, false);
       }
     }
@@ -906,7 +886,8 @@ void Card::clear_action_chain_and_metadata_and_most_flags() {
 
 void Card::compute_action_chain_results(bool apply_action_conditions, bool ignore_this_card_ap_tp) {
   auto s = this->server();
-  auto log = s->log_stack(std::format("compute_action_chain_results(@{:04X} #{:04X}): ", this->get_card_ref(), this->get_card_id()));
+  auto log = s->log_stack(std::format(
+      "compute_action_chain_results(@{:04X} #{:04X}): ", this->get_card_ref(), this->get_card_id()));
   bool is_nte = s->options.is_nte();
 
   this->action_chain.compute_attack_medium(s);
@@ -930,7 +911,8 @@ void Card::compute_action_chain_results(bool apply_action_conditions, bool ignor
   } else {
     stat_swap_type = s->card_special->compute_stat_swap_type(this->shared_from_this());
     log.debug_f("stat_swap_type = {} (0=none, 1=a/t, 2=a/h)", static_cast<size_t>(stat_swap_type));
-    s->card_special->get_effective_ap_tp(stat_swap_type, &effective_ap, &effective_tp, this->get_current_hp(), this->ap, this->tp);
+    s->card_special->get_effective_ap_tp(
+        stat_swap_type, &effective_ap, &effective_tp, this->get_current_hp(), this->ap, this->tp);
     log.debug_f("effective_ap = {}, effective_tp = {}", effective_ap, effective_tp);
   }
 
@@ -1082,8 +1064,7 @@ void Card::compute_action_chain_results(bool apply_action_conditions, bool ignor
             }
             auto other_sc_card = other_ps->get_sc_card();
             if (other_sc_card &&
-                (abs(this->loc.x - other_sc_card->loc.x) < 2) &&
-                (abs(this->loc.y - other_sc_card->loc.y) < 2)) {
+                (abs(this->loc.x - other_sc_card->loc.x) < 2) && (abs(this->loc.y - other_sc_card->loc.y) < 2)) {
               num_scs_in_range++;
             }
           }
@@ -1106,10 +1087,12 @@ void Card::compute_action_chain_results(bool apply_action_conditions, bool ignor
   int16_t damage = 0;
   if (this->action_chain.chain.attack_medium == AttackMedium::TECH) {
     damage = this->action_chain.chain.effective_tp + this->action_chain.chain.tp_effect_bonus;
-    log.debug_f("(tech) damage = {} (eff) + {} (bonus) = {}", this->action_chain.chain.effective_tp, this->action_chain.chain.tp_effect_bonus, damage);
+    log.debug_f("(tech) damage = {} (eff) + {} (bonus) = {}",
+        this->action_chain.chain.effective_tp, this->action_chain.chain.tp_effect_bonus, damage);
   } else if (this->action_chain.chain.attack_medium == AttackMedium::PHYSICAL) {
     damage = this->action_chain.chain.effective_ap + this->action_chain.chain.ap_effect_bonus;
-    log.debug_f("(physical) damage = {} (eff) + {} (bonus) = {}", this->action_chain.chain.effective_ap, this->action_chain.chain.ap_effect_bonus, damage);
+    log.debug_f("(physical) damage = {} (eff) + {} (bonus) = {}",
+        this->action_chain.chain.effective_ap, this->action_chain.chain.ap_effect_bonus, damage);
   } else {
     log.debug_f("(unknown attack medium) damage = 0");
   }
@@ -1117,7 +1100,8 @@ void Card::compute_action_chain_results(bool apply_action_conditions, bool ignor
   this->action_chain.chain.damage = is_nte
       ? (damage * this->action_chain.chain.damage_multiplier)
       : min<int16_t>(damage * this->action_chain.chain.damage_multiplier, 99);
-  log.debug_f("overall chain damage = {} (base) * {} (mult) = {}", damage, this->action_chain.chain.damage_multiplier, this->action_chain.chain.damage);
+  log.debug_f("overall chain damage = {} (base) * {} (mult) = {}",
+      damage, this->action_chain.chain.damage_multiplier, this->action_chain.chain.damage);
 
   if (apply_action_conditions) {
     auto this_sh = this->shared_from_this();
@@ -1271,8 +1255,7 @@ void Card::unknown_80236374(shared_ptr<Card> other_card, const ActionState* as) 
 }
 
 void Card::unknown_802379BC(uint16_t card_ref) {
-  this->action_chain.chain.unknown_card_ref_a3 =
-      (card_ref == 0xFFFF) ? this->card_ref : card_ref;
+  this->action_chain.chain.unknown_card_ref_a3 = (card_ref == 0xFFFF) ? this->card_ref : card_ref;
 }
 
 void Card::unknown_802379DC(const ActionState& pa) {
@@ -1359,8 +1342,7 @@ void Card::dice_phase_before() {
           cond.remaining_turns--;
         }
         if (cond.remaining_turns < 1) {
-          s->card_special->apply_stat_deltas_to_card_from_condition_and_clear_cond(
-              cond, this->shared_from_this());
+          s->card_special->apply_stat_deltas_to_card_from_condition_and_clear_cond(cond, this->shared_from_this());
         }
       }
     }
@@ -1382,8 +1364,7 @@ bool Card::unknown_80236554(shared_ptr<Card> other_card, const ActionState* as) 
           : std::format("unknown_80236554(@{:04X} #{:04X}, null): ", this->get_card_ref(), this->get_card_id()));
   if (log.should_log(phosg::LogLevel::L_DEBUG)) {
     if (as) {
-      string as_str = as->str(s);
-      log.debug_f("as = {}", as_str);
+      log.debug_f("as = {}", as->str(s));
     } else {
       log.debug_f("as = null");
     }

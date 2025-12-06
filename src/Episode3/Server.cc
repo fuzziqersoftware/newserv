@@ -12,12 +12,10 @@ using namespace std;
 namespace Episode3 {
 
 // This is (obviously) not the original string. The original string is:
-// "03/05/29 18:00 by K.Toya" (NTE)
-// "[V1][FINAL2.0] 03/09/13 15:30 by K.Toya" (Final)
-static const char* VERSION_SIGNATURE =
-    "newserv Ep3 based on [V1][FINAL2.0] 03/09/13 15:30 by K.Toya";
-static const char* VERSION_SIGNATURE_NTE =
-    "newserv Ep3 NTE based on 03/05/29 18:00 by K.Toya";
+//   NTE: "03/05/29 18:00 by K.Toya"
+//   Final: "[V1][FINAL2.0] 03/09/13 15:30 by K.Toya"
+static const char* VERSION_SIGNATURE = "newserv Ep3 based on [V1][FINAL2.0] 03/09/13 15:30 by K.Toya";
+static const char* VERSION_SIGNATURE_NTE = "newserv Ep3 NTE based on 03/05/29 18:00 by K.Toya";
 
 Server::PresenceEntry::PresenceEntry() {
   this->clear();
@@ -103,10 +101,9 @@ void Server::init() {
 
   this->card_special = make_shared<CardSpecial>(this->shared_from_this());
 
-  // Note: The original implementation calls the default PSOV2Encryption
-  // constructor for random_crypt, which just uses 0 as the seed. It then
-  // re-seeds the generator later. We instead expect the caller to provide a
-  // seeded generator, and we don't re-seed it at all.
+  // Note: The original implementation calls the default PSOV2Encryption constructor for random_crypt, which just uses
+  // 0 as the seed. It then re-seeds the generator later. We instead expect the caller to provide a seeded generator,
+  // and we don't re-seed it at all.
   // this->random_crypt = make_shared<PSOV2Encryption>(0);
 
   this->state_flags = make_shared<StateFlags>();
@@ -254,10 +251,9 @@ void Server::send(const void* data, size_t size, uint8_t command, bool enable_ma
       size = masked_data.size();
     }
 
-    // Note: Sega's servers sent battle commands with the 60 command. The handlers
-    // for 60, 62, and C9 on the client are identical, so we choose to use C9
-    // instead because it's unique to Episode 3, and therefore seems more
-    // appropriate to convey battle commands.
+    // Note: Sega's servers sent battle commands with the 60 command. The handlers for 60, 62, and C9 on the client are
+    // identical, so we choose to use C9 instead because it's unique to Episode 3, and therefore seems more appropriate
+    // to convey Episode 3 battle commands.
     send_command(l, command, 0x00, data, size);
     for (auto watcher_l : l->watcher_lobbies) {
       send_command_if_not_loading(watcher_l, command, 0x00, data, size);
@@ -273,14 +269,15 @@ void Server::send(const void* data, size_t size, uint8_t command, bool enable_ma
 }
 
 void Server::send_6xB4x46() const {
-  // Note: This function is not part of the original implementation; it was
-  // factored out from its callsites in this file and the strings were changed.
+  // Note: This function is not part of the original implementation; it was factored out from its callsites in this
+  // file and the strings were changed.
 
-  // NTE doesn't have the date_str2 field, but we send it anyway to make
-  // debugging easier.
+  // NTE doesn't have the date_str2 field, but we send it anyway to make debugging easier.
   G_ServerVersionStrings_Ep3_6xB4x46 cmd;
   cmd.version_signature.encode(this->options.is_nte() ? VERSION_SIGNATURE_NTE : VERSION_SIGNATURE, Language::ENGLISH);
-  cmd.date_str1.encode(std::format("Card definitions: {:016X}", this->options.card_index->definitions_hash()), Language::ENGLISH);
+  cmd.date_str1.encode(
+      std::format("Card definitions: {:016X}", this->options.card_index->definitions_hash()),
+      Language::ENGLISH);
   string build_date = phosg::format_time(BUILD_TIMESTAMP);
   cmd.date_str2.encode(std::format("newserv {} compiled at {}", GIT_REVISION_HASH, build_date), Language::ENGLISH);
   this->send(cmd);
@@ -293,7 +290,8 @@ string Server::prepare_6xB6x41_map_definition(shared_ptr<const MapIndex::Map> ma
 
   phosg::StringWriter w;
   uint32_t subcommand_size = (compressed->size() + sizeof(G_MapData_Ep3_6xB6x41) + 3) & (~3);
-  w.put<G_MapData_Ep3_6xB6x41>({{{{0xB6, 0, 0}, subcommand_size}, 0x41, {}}, vm->map->map_number.load(), compressed->size(), 0});
+  w.put<G_MapData_Ep3_6xB6x41>(
+      {{{{0xB6, 0, 0}, subcommand_size}, 0x41, {}}, vm->map->map_number.load(), compressed->size(), 0});
   w.write(*compressed);
   return std::move(w.str());
 }
@@ -311,7 +309,8 @@ void Server::send_commands_for_joining_spectator(std::shared_ptr<Channel> ch) co
 
   if (this->last_chosen_map) {
     string data = this->prepare_6xB6x41_map_definition(this->last_chosen_map, ch->language, this->options.is_nte());
-    this->log().info_f("Sending {} version of map {:08X}", name_for_language(ch->language), this->last_chosen_map->map_number);
+    this->log().info_f(
+        "Sending {} version of map {:08X}", name_for_language(ch->language), this->last_chosen_map->map_number);
     ch->send(0x6C, 0x00, data);
   }
 
@@ -339,8 +338,8 @@ void Server::send_commands_for_joining_spectator(std::shared_ptr<Channel> ch) co
     //   (send 6xB4x4F for client_id)
     // }
     ch->send(0xC9, 0x00, this->prepare_6xB4x07_decks_update());
-    // TODO: Sega sends 6xB4x05 here again; why? Is that necessary? They also
-    // send 6xB4x02 again for each player after that (but not 6xB4x04)
+    // TODO: Sega sends 6xB4x05 here again; why? Is that necessary? They also send 6xB4x02 again for each player after
+    // that (but not 6xB4x04)
     ch->send(0xC9, 0x00, this->prepare_6xB4x1C_names_update());
     ch->send(0xC9, 0x00, this->prepare_6xB4x50_trap_tile_locations());
     {
@@ -613,8 +612,8 @@ void Server::force_destroy_field_character(uint8_t client_id, size_t visible_ind
     throw runtime_error("player does not exist");
   }
 
-  // TODO: Is it possible for there to be gaps in the set cards array? If not,
-  // we could just do a direct array lookup here instead of this loop
+  // TODO: Is it possible for there to be gaps in the set cards array? If not, we could just do a direct array lookup
+  // here instead of this loop
   shared_ptr<Card> set_card = nullptr;
   for (size_t set_index = 0; set_index < 8; set_index++) {
     if (!ps->set_cards[set_index]) {
@@ -663,9 +662,7 @@ void Server::check_for_destroyed_cards_and_send_6xB4x05_6xB4x02() {
 }
 
 bool Server::check_presence_entry(uint8_t client_id) const {
-  return (client_id < 4)
-      ? this->presence_entries[client_id].player_present
-      : false;
+  return (client_id < 4) ? this->presence_entries[client_id].player_present : false;
 }
 
 void Server::clear_player_flags_after_dice_phase() {
@@ -826,9 +823,8 @@ void Server::draw_phase_after() {
 
   if (this->current_team_turn1 == this->first_team_turn) {
     if (this->map_and_rules->rules.overall_time_limit > 0) {
-      // Battle time limits are specified in increments of 5 minutes.
-      // Note: This part is not based on the original code because the timing
-      // facilities used are different.
+      // Battle time limits are specified in increments of 5 minutes. This part is not based on the original code
+      // because the timing facilities used are different.
       uint64_t limit_5mins = this->map_and_rules->rules.overall_time_limit;
       uint64_t end_usecs = this->battle_start_usecs + (limit_5mins * 300 * 1000 * 1000);
       if (phosg::now() >= end_usecs) {
@@ -924,9 +920,8 @@ void Server::end_attack_list_for_client(uint8_t client_id) {
 void Server::end_action_phase() {
   this->num_pending_attacks = 0;
   this->unknown_a15 = 1;
-  // Annoyingly, this is the original logic. We use an enum because it appears
-  // that this can only ever be 0 or 2, but we may have to delete the enum if
-  // that turns out to be false.
+  // Annoyingly, this is the original logic. We use an enum because it appears that this can only ever be 0 or 2, but
+  // we may have to delete the enum if that turns out to be false.
   this->action_subphase = static_cast<ActionSubphase>(static_cast<uint8_t>(this->action_subphase) + 2);
   if (this->options.is_nte()) {
     this->unknown_8023EEF4();
@@ -1005,8 +1000,7 @@ bool Server::enqueue_attack_or_defense(uint8_t client_id, ActionState* pa) {
       card_ps->send_6xB4x04_if_needed();
     }
   }
-  card = this->card_for_set_card_ref(this->send_6xB4x06_if_card_ref_invalid(
-      pa->original_attacker_card_ref, 2));
+  card = this->card_for_set_card_ref(this->send_6xB4x06_if_card_ref_invalid(pa->original_attacker_card_ref, 2));
   if (card) {
     card = this->card_for_set_card_ref(pa->target_card_refs[0]);
     if (card) {
@@ -1100,8 +1094,7 @@ void Server::move_phase_after() {
         auto ps = this->player_states[client_id];
         if (ps) {
           auto sc_card = ps->get_sc_card();
-          if (sc_card && (sc_card->card_flags & 0x80) &&
-              (sc_card->loc.x == trap_x) && (sc_card->loc.y == trap_y)) {
+          if (sc_card && (sc_card->card_flags & 0x80) && (sc_card->loc.x == trap_x) && (sc_card->loc.y == trap_y)) {
             should_trigger = true;
             break;
           }
@@ -1111,7 +1104,7 @@ void Server::move_phase_after() {
         continue;
       }
 
-      static const array<vector<uint16_t>, 5> default_trap_card_ids = {
+      static const array<vector<uint16_t>, 5> DEFAULT_TRAP_CARD_IDS = {
           // Red: Dice Fever, Heavy Fog, Muscular, Immortality, Snail Pace
           vector<uint16_t>{0x00F7, 0x010F, 0x012E, 0x013B, 0x013C},
           // Blue: Gold Rush, Charity, Requiem
@@ -1125,7 +1118,7 @@ void Server::move_phase_after() {
 
       const vector<uint16_t>* trap_card_ids = &this->options.trap_card_ids.at(trap_type);
       if (trap_card_ids->empty()) {
-        trap_card_ids = &default_trap_card_ids.at(trap_type);
+        trap_card_ids = &DEFAULT_TRAP_CARD_IDS.at(trap_type);
       }
 
       // This is the original implementation. We do something smarter instead.
@@ -1145,9 +1138,7 @@ void Server::move_phase_after() {
           auto ps = this->player_states[client_id];
           if (ps) {
             auto sc_card = ps->get_sc_card();
-            if (sc_card &&
-                (abs(sc_card->loc.x - trap_x) < 2) &&
-                (abs(sc_card->loc.y - trap_y) < 2) &&
+            if (sc_card && (abs(sc_card->loc.x - trap_x) < 2) && (abs(sc_card->loc.y - trap_y) < 2) &&
                 ps->replace_assist_card_by_id(trap_card_id)) {
               G_EnqueueAnimation_Ep3_6xB4x2C cmd;
               cmd.change_type = 0x01;
@@ -1173,14 +1164,12 @@ void Server::move_phase_after() {
       //   this->chosen_trap_tile_index_of_type[trap_type] = new_index;
       //   this->send_6xB4x50();
       // }
-      // We instead use an implementation that consumes a constant amount of
-      // randomness per pass.
+      // We instead use an implementation that consumes a constant amount of randomness per pass.
       if (this->num_trap_tiles_of_type[trap_type] == 2) {
         this->chosen_trap_tile_index_of_type[trap_type] ^= 1;
         this->send_6xB4x50_trap_tile_locations();
       } else if (this->num_trap_tiles_of_type[trap_type] > 2) {
-        // Generate a new random index, but forbid it from matching the existing
-        // index
+        // Generate a new random index, but forbid it from matching the existing index
         uint8_t new_index = this->get_random(this->num_trap_tiles_of_type[trap_type] - 1);
         if (new_index >= this->chosen_trap_tile_index_of_type[trap_type]) {
           new_index++;
@@ -1249,8 +1238,7 @@ int8_t Server::send_6xB4x33_remove_ally_atk_if_needed(const ActionState& pa) {
   for (size_t z = 0; z < 4; z++) {
     auto ally_ps = this->get_player_state(z);
     if ((z != setter_client_id) && ally_ps) {
-      if ((ally_ps->get_team_id() == setter_ps->get_team_id()) &&
-          (ally_ps->get_atk_points() >= ally_cost)) {
+      if ((ally_ps->get_team_id() == setter_ps->get_team_id()) && (ally_ps->get_atk_points() >= ally_cost)) {
         ally_has_sufficient_atk = true;
       }
     }
@@ -1376,11 +1364,10 @@ void Server::set_client_id_ready_to_advance_phase(uint8_t client_id, BattlePhase
           ps->assist_flags |= AssistFlag::ELIGIBLE_FOR_DICE_BOOST;
         }
       } else {
-        // TODO: It'd be nice to do this in a constant-randomness way, but I'm
-        // lazy, and this matches Sega's original implementation. The less-lazy
-        // way to do it would be to roll three dice: one in the range [1, N],
-        // one in the range [3, N], and one in the range [1, 2] to decide
-        // whether to swap the first two results.
+        // TODO: It'd be nice to do this in a constant-randomness way, but I'm lazy, and this matches Sega's original
+        // implementation. The less-lazy way to do it would be to roll three dice: one in the range [1, 2] to decide
+        // which of ATK or DEF will be boosted, then roll the ATK die in range [1, N] (or [3, N] if it's boosted), and
+        // do the same for the DEF die.
         for (size_t z = 0; z < 200; z++) {
           ps->roll_main_dice_or_apply_after_effects();
           if ((ps->get_atk_points() >= 3) || (ps->get_def_points() >= 3)) {
@@ -1431,12 +1418,14 @@ void Server::set_phase_after() {
     if (ps) {
       auto card = ps->get_sc_card();
       if (card) {
-        this->card_special->apply_action_conditions(EffectWhen::AFTER_SET_PHASE, nullptr, card, is_nte ? 0x1F : 0x04, nullptr);
+        this->card_special->apply_action_conditions(
+            EffectWhen::AFTER_SET_PHASE, nullptr, card, is_nte ? 0x1F : 0x04, nullptr);
       }
       for (size_t set_index = 0; set_index < 8; set_index++) {
         auto card = ps->get_set_card(set_index);
         if (card) {
-          this->card_special->apply_action_conditions(EffectWhen::AFTER_SET_PHASE, nullptr, card, is_nte ? 0x1F : 0x04, nullptr);
+          this->card_special->apply_action_conditions(
+              EffectWhen::AFTER_SET_PHASE, nullptr, card, is_nte ? 0x1F : 0x04, nullptr);
         }
       }
     }
@@ -1494,9 +1483,7 @@ void Server::set_phase_after() {
 
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto ps = this->player_states[client_id];
-    if (ps &&
-        (ps->get_assist_turns_remaining() == 90) &&
-        (ps->assist_delay_turns < 1)) {
+    if (ps && (ps->get_assist_turns_remaining() == 90) && (ps->assist_delay_turns < 1)) {
       ps->discard_set_assist_card();
       ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
     }
@@ -1630,8 +1617,7 @@ void Server::setup_and_start_battle() {
       size_t num_trap_tiles = 0;
       for (size_t y = 0; y < 0x10; y++) {
         for (size_t x = 0; x < 0x10; x++) {
-          if ((this->overlay_state.tiles[y][x] == (trap_type | 0x40)) &&
-              (num_trap_tiles < 8)) {
+          if ((this->overlay_state.tiles[y][x] == (trap_type | 0x40)) && (num_trap_tiles < 8)) {
             this->trap_tile_locs[trap_type][num_trap_tiles][0] = x;
             this->trap_tile_locs[trap_type][num_trap_tiles][1] = y;
             num_trap_tiles++;
@@ -1639,7 +1625,6 @@ void Server::setup_and_start_battle() {
         }
       }
       this->num_trap_tiles_of_type[trap_type] = num_trap_tiles;
-
       if (num_trap_tiles > 0) {
         this->chosen_trap_tile_index_of_type[trap_type] = this->get_random(num_trap_tiles);
       }
@@ -1684,8 +1669,7 @@ void Server::setup_and_start_battle() {
 
   this->send_6xB4x46();
 
-  // Re-send game metadata to spectator teams, since loading the battle scene
-  // seems to delete it
+  // Re-send game metadata to spectator teams, since loading the battle scene seems to delete it
   auto l = this->lobby.lock();
   if (l) {
     send_ep3_update_game_metadata(l);
@@ -1709,11 +1693,7 @@ G_SetStateFlags_Ep3_6xB4x03 Server::prepare_6xB4x03() const {
   cmd.state.tournament_flag = this->options.tournament ? 1 : 0;
   for (size_t z = 0; z < 4; z++) {
     auto ps = this->player_states[z];
-    if (!ps) {
-      cmd.state.client_sc_card_types[z] = CardType::INVALID_FF;
-    } else {
-      cmd.state.client_sc_card_types[z] = ps->get_sc_card_type();
-    }
+    cmd.state.client_sc_card_types[z] = ps ? ps->get_sc_card_type() : CardType::INVALID_FF;
   }
   return cmd;
 }
@@ -1726,9 +1706,8 @@ void Server::update_battle_state_flags_and_send_6xB4x03_if_needed(bool always_se
   }
 }
 
+// Returns true if the battle can begin
 bool Server::update_registration_phase() {
-  // Returns true if the battle can begin
-
   auto log = this->log_stack("update_registration_phase: ");
 
   if (this->setup_phase != SetupPhase::REGISTRATION) {
@@ -1801,7 +1780,8 @@ void Server::on_server_data_input(shared_ptr<Client> sender_c, const string& dat
   size_t expected_size = header.size * 4;
   if (expected_size < data.size()) {
     phosg::print_data(stderr, data);
-    throw runtime_error(std::format("command is incomplete: expected {:X} bytes, received {:X} bytes", expected_size, data.size()));
+    throw runtime_error(std::format(
+        "command is incomplete: expected {:X} bytes, received {:X} bytes", expected_size, data.size()));
   }
   if (header.subcommand != 0xB3) {
     throw runtime_error("server data command is not 6xB3");
@@ -1867,8 +1847,7 @@ void Server::handle_CAx0C_end_redraw_initial_hand_phase(shared_ptr<Client>, cons
   }
 
   int32_t error_code = 0;
-  if ((this->setup_phase != SetupPhase::HAND_REDRAW_OPTION) &&
-      (this->setup_phase != SetupPhase::STARTER_ROLLS)) {
+  if ((this->setup_phase != SetupPhase::HAND_REDRAW_OPTION) && (this->setup_phase != SetupPhase::STARTER_ROLLS)) {
     error_code = -0x5D;
   }
 
@@ -2138,15 +2117,14 @@ void Server::handle_CAx13_update_map_during_setup_t(shared_ptr<Client> c, const 
       (this->registration_phase != RegistrationPhase::REGISTERED) &&
       (this->registration_phase != RegistrationPhase::BATTLE_STARTED)) {
     *this->map_and_rules = in_cmd.map_and_rules_state;
-    // The client will likely send incorrect values for the extended rules (or
-    // in the case of NTE, no values at all, since the Rules structure is
-    // smaller). So, use the values from the last chosen map if applicable, or
-    // the values from the $dicerange command if available.
+    // The client will likely send incorrect values for the extended rules (or in the case of NTE, no values at all,
+    // since the Rules structure is smaller). So, use the values from the last chosen map if applicable, or the values
+    // from the $dicerange command if available.
     Language language = c ? c->language() : Language::ENGLISH;
     const Rules* map_rules = this->last_chosen_map ? &this->last_chosen_map->version(language)->map->default_rules : nullptr;
     auto& server_rules = this->map_and_rules->rules;
-    // NTE can specify the DEF dice value range in its Rules struct, so we use
-    // that unless the map or $dicerange overrides it.
+    // NTE can specify the DEF dice value range in its Rules struct, so we use that unless the map or $dicerange
+    // overrides it.
     server_rules.def_dice_value_range = (map_rules && (map_rules->def_dice_value_range != 0xFF))
         ? map_rules->def_dice_value_range
         : (this->def_dice_value_range_override != 0xFF)
@@ -2165,8 +2143,7 @@ void Server::handle_CAx13_update_map_during_setup_t(shared_ptr<Client> c, const 
         ? this->def_dice_value_range_2v1_override
         : 0;
 
-    // If this match is part of a tournament, ignore the rules sent by the
-    // client and use the tournament rules instead.
+    // If this match is part of a tournament, ignore the rules sent by the client and use the tournament rules instead.
     if (this->options.tournament) {
       this->map_and_rules->rules = this->options.tournament->get_rules();
     }
@@ -2248,10 +2225,9 @@ void Server::handle_CAx15_unused_hard_reset_server_state(shared_ptr<Client>, con
   const auto& in_cmd = check_size_t<G_HardResetServerState_Ep3_CAx15>(data);
   this->send_debug_command_received_message(in_cmd.header.subsubcommand, "HARD RESET");
 
-  // In the original implementation, this command recreates the server object.
-  // This is possible because the dispatch function is not part of the server
-  // object in the original implementation; however, in our implementation, it
-  // is, so we don't support this. The original implementation did this:
+  // In the original implementation, this command recreates the server object. This is possible because the dispatch
+  // function is not part of the server object in the original implementation; however, in our implementation, it is,
+  // so we don't support this. The original implementation did this:
   //   this->base()->recreate_server(); // Destroys *this, which we can't do
   //   root_card_server = this->server;
   //   *this->map_and_rules = *this->initial_map_and_rules;
@@ -2271,8 +2247,8 @@ void Server::handle_CAx1B_update_player_name(shared_ptr<Client>, const string& d
       this->name_entries_valid[in_cmd.entry.client_id] = false;
     }
 
-    // Note: This check is not part of the original code. This replaces a
-    // disconnecting player with a CPU if the battle is in progress.
+    // Note: This check is not part of the original code. This replaces a disconnecting player with a CPU if the battle
+    // is in progress.
     auto l = this->lobby.lock();
     if (l && !l->clients[in_cmd.entry.client_id]) {
       this->name_entries[in_cmd.entry.client_id].is_cpu_player = 1;
@@ -2325,8 +2301,8 @@ void Server::handle_CAx1D_start_battle(shared_ptr<Client>, const string& data) {
 
       auto l = this->lobby.lock();
       if (l) {
-        // Note: Sega's implementation doesn't set EX results values here; they
-        // did it at game join time instead. We do it here for code simplicity.
+        // Note: Sega's implementation doesn't set EX results values here; they did it at game join time instead. We do
+        // it here for code simplicity.
         if (!this->options.is_nte() && l->ep3_ex_result_values) {
           this->send(*l->ep3_ex_result_values);
         }
@@ -2370,8 +2346,7 @@ void Server::handle_CAx28_end_defense_list(shared_ptr<Client>, const string& dat
   for (size_t z = 0; z < 4; z++) {
     auto ps = this->player_states[z];
     if (ps && (this->current_team_turn1 != ps->get_team_id())) {
-      if (!ps->get_sc_card()->check_card_flag(2) &&
-          (this->defense_list_ended_for_client[z] == 0)) {
+      if (!ps->get_sc_card()->check_card_flag(2) && (this->defense_list_ended_for_client[z] == 0)) {
         all_defense_lists_ended = false;
         break;
       }
@@ -2517,8 +2492,7 @@ void Server::handle_CAx37_client_ready_to_advance_from_starter_roll_phase(shared
 void Server::handle_CAx3A_time_limit_expired(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_OverallTimeLimitExpired_Ep3_CAx3A>(data);
   this->send_debug_command_received_message(in_cmd.header.subsubcommand, "TIME EXPIRED");
-  // We don't need to do anything here because the overall time limit is tracked
-  // server-side instead.
+  // We don't need to do anything here because the overall time limit is tracked server-side instead.
 }
 
 void Server::handle_CAx40_map_list_request(shared_ptr<Client> sender_c, const string& data) {
@@ -2579,9 +2553,8 @@ void Server::send_6xB6x41_to_all_clients() const {
     }
 
     if (this->battle_record && this->battle_record->writable()) {
-      // TODO: It's not great that we just pick the first one; ideally we'd put
-      // all of them in the recording and send the appropriate one to the client
-      // in the playback lobby
+      // TODO: It's not great that we just pick the first one; ideally we'd put all of them in the recording and send
+      // the appropriate one to the client in the playback lobby
       for (string& data : map_commands_by_language) {
         if (!data.empty()) {
           this->battle_record->add_command(BattleRecord::Event::Type::BATTLE_COMMAND, std::move(data));
@@ -2626,8 +2599,7 @@ void Server::handle_CAx49_card_counts(shared_ptr<Client>, const string& data) {
   const auto& in_cmd = check_size_t<G_CardCounts_Ep3_CAx49>(data);
   this->send_debug_command_received_message(in_cmd.header.sender_client_id, in_cmd.header.subsubcommand, "CARD COUNTS");
 
-  // Note: Sega's implmentation completely ignores this command. This
-  // implementation is not based on the original code.
+  // Note: Sega's implmentation completely ignores this command. This implementation is not based on the original code.
   auto& dest_counts = this->client_card_counts[in_cmd.header.sender_client_id];
   dest_counts = in_cmd.card_id_to_count;
   decrypt_trivial_gci_data(dest_counts.data(), dest_counts.bytes(), in_cmd.basis);
@@ -2884,10 +2856,9 @@ void Server::execute_bomb_assist_effect() {
 
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto ps = this->player_states[client_id];
-    // Possible bug: shouldn't we check should_block_assist_effects_for_client
-    // here too? If the player has a card with the same HP as another one that
-    // would be destroyed, it looks like the card can be destroyed even if the
-    // client should be immune to assist effects here.
+    // Possible bug: shouldn't we check should_block_assist_effects_for_client here too? If the player has a card with
+    // the same HP as another one that would be destroyed, it looks like the card can be destroyed even if the client
+    // should be immune to assist effects here.
     if (ps) {
       for (size_t set_index = 0; set_index < 8; set_index++) {
         auto card = ps->get_set_card(set_index);
@@ -2917,10 +2888,7 @@ void Server::replace_targets_due_to_destruction_nte(ActionState* as) {
     shared_ptr<Card> found_guard_item;
     for (size_t z = 0; z < 8; z++) {
       auto set_card = ps->get_set_card(z);
-      if (set_card &&
-          (set_card != target_card) &&
-          !(set_card->card_flags & 2) &&
-          set_card->is_guard_item()) {
+      if (set_card && (set_card != target_card) && !(set_card->card_flags & 2) && set_card->is_guard_item()) {
         found_guard_item = set_card;
         break;
       }
@@ -3039,8 +3007,8 @@ void Server::replace_targets_due_to_destruction_or_conditions(ActionState* as) {
     }
   }
 
-  // Note: The original code only writes a single FFFF after the last card ref
-  // in this array; we instead clear the entire array.
+  // Note: The original code only writes a single FFFF after the last card ref in this array; we instead clear the
+  // entire array.
   as->target_card_refs.clear(0xFFFF);
   for (size_t z = 0; z < phase1_replaced_card_refs.size(); z++) {
     as->target_card_refs[z] = this->send_6xB4x06_if_card_ref_invalid(phase1_replaced_card_refs[z], 4);
@@ -3062,8 +3030,7 @@ void Server::replace_targets_due_to_destruction_or_conditions(ActionState* as) {
     }
   }
 
-  // Note: This is different from the original code in the same way as above: we
-  // clear the entire array first.
+  // Note: This is different from the original code in the same way as above: we clear the entire array first.
   as->target_card_refs.clear(0xFFFF);
   for (size_t z = 0; z < phase2_replaced_card_refs.size(); z++) {
     as->target_card_refs[z] = this->send_6xB4x06_if_card_ref_invalid(phase2_replaced_card_refs[z], 4);
@@ -3148,8 +3115,7 @@ void Server::unknown_802402F4() {
   }
 }
 
-vector<shared_ptr<Card>> Server::const_cast_set_cards_v(
-    const vector<shared_ptr<const Card>>& cards) {
+vector<shared_ptr<Card>> Server::const_cast_set_cards_v(const vector<shared_ptr<const Card>>& cards) {
   // TODO: This is dumb. Figure out a not-dumb way to do this.
   vector<shared_ptr<Card>> ret;
   for (auto const_card : cards) {

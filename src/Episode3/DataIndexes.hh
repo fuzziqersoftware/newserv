@@ -521,11 +521,31 @@ struct CardDefinition {
     /* 02 */ pstring<TextEncoding::ASCII, 0x0F> expr;
     // when specifies in which phase the effect should activate.
     /* 11 */ EffectWhen when;
-    // arg1 generally specifies how long the effect activates for.
+    // Arguments are encoded as 3-character null-terminated strings (why?!), and are used for adding conditions to
+    // effects (e.g. making them only trigger in certain situations) or otherwise customizing their results. The
+    // arguments are heterogeneous based on their position; that is, the first argument always has the same meaning,
+    // and meaning letters that are valid in arg1 are not necessarily valid in arg2, etc.
+    // arg1 specifies how long the effect activates for:
+    //   a01 = argument value (meaning depends on condition type)
+    //   eXX = effect lasts while equipped
+    //   fXX = TODO (remaining_turns=100)
+    //   rXX = TODO (remaining_turns=102)
+    //   tXX = effect lasts for XX (decimal) turns
     /* 12 */ pstring<TextEncoding::ASCII, 4> arg1;
-    // arg2 generally specifies a condition for when the effect activates.
+    // arg2 restricts a condition to only activate in certain conditions:
+    //   bXX = require attack doing not more than XX damage
+    //   cXY/CXY = linked items (require item with cYX/CYX to be equipped as well)
+    //   dXY = roll one die; require result between X and Y inclusive
+    //   hXX = require HP >= XX
+    //   iXX = require HP <= XX
+    //   mXX = require attack doing at least XX damage
+    //   nXX = require condition (see description_for_n_condition for values here)
+    //   oXY = require effect #Y to have occurred (if X != 1, on this card; if X = 1, on opponent card)
+    //   rXX = randomly pass with XX% chance
+    //   sXY = require card cost between X and Y ATK points (inclusive)
+    //   tXX = activate after XX turns from card set
     /* 16 */ pstring<TextEncoding::ASCII, 4> arg2;
-    // arg3 generally specifies who is targeted by the effect.
+    // arg3 specifies who is affected by the condition; see description_for_p_target for possible values.
     /* 1A */ pstring<TextEncoding::ASCII, 4> arg3;
     // apply_criterion can be used to apply an additional condition for when the effect should activate. For example,
     // it can be used to make the effect only activate if the target is not a Story Character.

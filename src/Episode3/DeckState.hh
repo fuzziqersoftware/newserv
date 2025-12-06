@@ -28,9 +28,8 @@ struct DeckEntry {
   /* 00 */ pstring<TextEncoding::MARKED, 0x10> name;
   /* 10 */ le_uint32_t team_id;
   /* 14 */ parray<le_uint16_t, 31> card_ids;
-  // If the following flag is not set to 3, then the God Whim assist effect can
-  // use cards that are hidden from the player during deck building. The client
-  // always sets this to 3, and it's not clear why this even exists.
+  // If the following flag is not set to 3, then the God Whim assist effect can use cards that are hidden from the
+  // player during deck building. The client always sets this to 3, and it's not clear why this even exists.
   /* 52 */ uint8_t god_whim_flag;
   /* 53 */ uint8_t unused1;
   /* 54 */ le_uint16_t player_level;
@@ -56,10 +55,7 @@ public:
   };
 
   template <typename CardIDT>
-  DeckState(
-      uint8_t client_id,
-      const parray<CardIDT, 0x1F>& card_ids,
-      std::shared_ptr<Server> server)
+  DeckState(uint8_t client_id, const parray<CardIDT, 0x1F>& card_ids, std::shared_ptr<Server> server)
       : server(server),
         client_id(client_id),
         draw_index(1),

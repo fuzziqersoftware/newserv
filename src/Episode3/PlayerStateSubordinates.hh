@@ -102,8 +102,7 @@ struct ActionState {
 } __packed_ws__(ActionState, 0x64);
 
 struct ActionChain {
-  // Note: Episode 3 Trial Edition has a different format for this structure.
-  // See ActionChainWithCondsTrial for details.
+  // Note: Trial Edition has a different format for this structure. See ActionChainWithCondsTrial for details.
   /* 00 */ int8_t effective_ap;
   /* 01 */ int8_t effective_tp;
   /* 02 */ int8_t ap_effect_bonus;
@@ -196,8 +195,7 @@ struct ActionChainWithCondsTrial {
   /* 0022 */ int8_t card_ap;
   /* 0023 */ int8_t card_tp;
   /* 0024 */ le_uint32_t flags;
-  // The only difference between this structure and ActionChainWithConds is that
-  // these two fields are in the opposite order.
+  // The only difference between this structure and ActionChainWithConds is that these two fields are swapped.
   /* 0028 */ parray<Condition, 9> conditions;
   /* 00B8 */ parray<le_uint16_t, 4 * 9> target_card_refs;
   /* 0100 */
@@ -236,9 +234,7 @@ struct ActionMetadata {
   void clear_target_card_refs();
   void add_target_card_ref(uint16_t card_ref);
   void add_defense_card_ref(
-      uint16_t defense_card_ref,
-      std::shared_ptr<Card> card,
-      uint16_t original_attacker_card_ref);
+      uint16_t defense_card_ref, std::shared_ptr<Card> card, uint16_t original_attacker_card_ref);
 
   std::string str(std::shared_ptr<const Server> s) const;
 } __packed_ws__(ActionMetadata, 0x74);

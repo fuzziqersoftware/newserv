@@ -152,8 +152,7 @@ public:
   uint32_t get_card_id_with_effective_range(
       uint16_t card_ref, uint16_t card_id_override, TargetMode* out_target_mode) const;
   uint8_t get_card_ref_max_hp(uint16_t card_ref) const;
-  bool get_creature_summon_area(
-      uint8_t client_id, Location* out_loc, uint8_t* out_region_size) const;
+  bool get_creature_summon_area(uint8_t client_id, Location* out_loc, uint8_t* out_region_size) const;
   std::shared_ptr<HandAndEquipState> get_hand_and_equip_state_for_client_id(uint8_t client_id);
   std::shared_ptr<const HandAndEquipState> get_hand_and_equip_state_for_client_id(uint8_t client_id) const;
   bool get_move_path_length_and_cost(
@@ -191,8 +190,7 @@ public:
   const CardShortStatus* short_status_for_card_ref(uint16_t card_ref) const;
   bool should_allow_attacks_on_current_turn() const;
   int32_t verify_deck(
-      const parray<le_uint16_t, 0x1F>& card_ids,
-      const parray<uint8_t, 0x2F0>* owned_card_counts = nullptr) const;
+      const parray<le_uint16_t, 0x1F>& card_ids, const parray<uint8_t, 0x2F0>* owned_card_counts = nullptr) const;
 
 private:
   std::weak_ptr<Server> w_server;

@@ -102,10 +102,8 @@ Location::Location(uint8_t x, uint8_t y, Direction direction)
       unused(0) {}
 
 bool Location::operator==(const Location& other) const {
-  return (this->x == other.x) &&
-      (this->y == other.y) &&
-      (this->direction == other.direction) &&
-      (this->unused == other.unused);
+  return (this->x == other.x) && (this->y == other.y) &&
+      (this->direction == other.direction) && (this->unused == other.unused);
 }
 bool Location::operator!=(const Location& other) const {
   return !this->operator==(other);
@@ -176,13 +174,9 @@ Direction turn_around(Direction d) {
 }
 
 bool card_class_is_tech_like(CardClass cc, bool is_nte) {
-  // NTE does not consider BOSS_TECH to be a tech-like card class, but that's
-  // probably because that card class just doesn't exist on NTE.
-  if (is_nte) {
-    return (cc == CardClass::TECH) || (cc == CardClass::PHOTON_BLAST);
-  } else {
-    return (cc == CardClass::TECH) || (cc == CardClass::PHOTON_BLAST) || (cc == CardClass::BOSS_TECH);
-  }
+  // NTE does not consider BOSS_TECH to be a tech-like card class, but that's probably because that card class just
+  // doesn't exist on NTE.
+  return (cc == CardClass::TECH) || (cc == CardClass::PHOTON_BLAST) || (!is_nte && (cc == CardClass::BOSS_TECH));
 }
 
 static const unordered_map<string, const char*> description_for_expr_token({
@@ -226,31 +220,6 @@ static const unordered_map<string, const char*> description_for_expr_token({
     {"ndm", "Unknown: ndm"}, // Unused
     {"ehp", "Attacker HP"},
 });
-
-// Arguments are encoded as 3-character null-terminated strings (why?!), and are
-// used for adding conditions to effects (e.g. making them only trigger in
-// certain situations) or otherwise customizing their results. The arguments are
-// heterogeneous based on their position; that is, the first argument always has
-// the same meaning, and meaning letters that are valid in arg1 are not
-// necessarily valid in arg2, etc.
-// Argument meanings:
-// a01 = ???
-// e00 = effect lasts while equipped? (in contrast to tXX)
-// pXX = who to target (see description_for_p_target)
-// In arg2:
-// bXX = require attack doing not more than XX damage
-// cXY/CXY = linked items (require item with cYX/CYX to be equipped as well)
-// dXY = roll one die; require result between X and Y inclusive
-// hXX = require HP >= XX
-// iXX = require HP <= XX
-// mXX = require attack doing at least XX damage
-// nXX = require condition (see description_for_n_condition below)
-// oXX = seems to be "require previous random-condition effect to have happened"
-//       TODO: this is used as both o01 (recovery) and o11 (reflection)
-//             conditions - why the difference?
-// rXX = randomly pass with XX% chance (if XX == 00, 100% chance?)
-// sXY = require card cost between X and Y ATK points (inclusive)
-// tXX = lasts XX turns, or activate after XX turns
 
 static const vector<const char*> description_for_n_condition({
     /* n00 */ "Always true",
@@ -730,8 +699,7 @@ void CardDefinition::decode_range() {
 }
 
 string name_for_rank(CardRank rank) {
-  static const vector<const char*> names(
-      {"N1", "R1", "S", "E", "N2", "N3", "N4", "R2", "R3", "R4", "SS", "D1", "D2"});
+  static const vector<const char*> names({"N1", "R1", "S", "E", "N2", "N3", "N4", "R2", "R3", "R4", "SS", "D1", "D2"});
   try {
     return names.at(static_cast<uint8_t>(rank) - 1);
   } catch (const out_of_range&) {
@@ -1155,9 +1123,7 @@ void PlayerConfig::decrypt() {
     return;
   }
   decrypt_trivial_gci_data(
-      &this->card_counts,
-      offsetof(PlayerConfig, decks) - offsetof(PlayerConfig, card_counts),
-      this->basis);
+      &this->card_counts, offsetof(PlayerConfig, decks) - offsetof(PlayerConfig, card_counts), this->basis);
   this->is_encrypted = 0;
   this->basis = 0;
 }
@@ -1170,9 +1136,7 @@ void PlayerConfig::encrypt(uint8_t basis) {
     this->decrypt();
   }
   decrypt_trivial_gci_data(
-      &this->card_counts,
-      offsetof(PlayerConfig, decks) - offsetof(PlayerConfig, card_counts),
-      basis);
+      &this->card_counts, offsetof(PlayerConfig, decks) - offsetof(PlayerConfig, card_counts), basis);
   this->is_encrypted = 1;
   this->basis = basis;
 }
@@ -1215,8 +1179,7 @@ PlayerConfigNTE::PlayerConfigNTE(const PlayerConfig& config)
       last_online_battle_start_timestamp(config.last_online_battle_start_timestamp),
       unknown_t3(config.unknown_t3),
       unknown_a14(config.unknown_a14) {
-  // TODO: Do we need to recompute card_count_checksums? (Here or in operator
-  // PlayerConfig?)
+  // TODO: Do we need to recompute card_count_checksums? (Here or in operator PlayerConfig?)
 }
 
 PlayerConfigNTE::operator PlayerConfig() const {
@@ -1390,8 +1353,7 @@ string Rules::str() const {
       if (static_cast<uint8_t>(this->hp_type) == 0xFF) {
         tokens.emplace_back("hp_type=(open)");
       } else {
-        tokens.emplace_back(std::format("hp_type=({:02X})",
-            static_cast<uint8_t>(this->hp_type)));
+        tokens.emplace_back(std::format("hp_type=({:02X})", static_cast<uint8_t>(this->hp_type)));
       }
       break;
   }
@@ -1439,8 +1401,7 @@ string Rules::str() const {
       if (static_cast<uint8_t>(this->dice_exchange_mode) == 0xFF) {
         tokens.emplace_back("dice_exchange=(open)");
       } else {
-        tokens.emplace_back(std::format("dice_exchange=({:02X})",
-            static_cast<uint8_t>(this->dice_exchange_mode)));
+        tokens.emplace_back(std::format("dice_exchange=({:02X})", static_cast<uint8_t>(this->dice_exchange_mode)));
       }
       break;
   }
@@ -1479,8 +1440,7 @@ string Rules::str() const {
       if (static_cast<uint8_t>(this->allowed_cards) == 0xFF) {
         tokens.emplace_back("allowed_cards=(open)");
       } else {
-        tokens.emplace_back(std::format("allowed_cards=({:02X})",
-            static_cast<uint8_t>(this->allowed_cards)));
+        tokens.emplace_back(std::format("allowed_cards=({:02X})", static_cast<uint8_t>(this->allowed_cards)));
       }
       break;
   }
@@ -1518,20 +1478,12 @@ RulesTrial::RulesTrial(const Rules& r)
       no_assist_cards(r.no_assist_cards),
       disable_dialogue(r.disable_dialogue),
       dice_exchange_mode(r.dice_exchange_mode) {
-  if (r.max_dice_value == r.min_dice_value) {
-    this->atk_die_behavior = r.max_dice_value;
-  } else {
-    this->atk_die_behavior = 0; // Random
-  }
+  this->atk_die_behavior = (r.max_dice_value == r.min_dice_value) ? r.max_dice_value : 0;
   if (r.def_dice_value_range == 0xFF) {
     this->def_die_behavior = 0xFF;
   } else {
     auto def_range = r.def_dice_range(false);
-    if (def_range.first == def_range.second) {
-      this->def_die_behavior = def_range.first;
-    } else {
-      this->def_die_behavior = 0;
-    }
+    this->def_die_behavior = (def_range.first == def_range.second) ? def_range.first : 0;
   }
 }
 
@@ -1795,10 +1747,7 @@ phosg::JSON MapDefinition::EntryState::json() const {
     default:
       deck_type_json = this->deck_type;
   }
-  return phosg::JSON::dict({
-      {"PlayerType", std::move(player_type_json)},
-      {"DeckType", std::move(deck_type_json)},
-  });
+  return phosg::JSON::dict({{"PlayerType", std::move(player_type_json)}, {"DeckType", std::move(deck_type_json)}});
 }
 
 // TODO:
@@ -1807,15 +1756,10 @@ phosg::JSON MapDefinition::EntryState::json() const {
 string MapDefinition::CameraSpec::str() const {
   return std::format(
       "CameraSpec[a1=({:g} {:g} {:g} {:g} {:g} {:g} {:g} {:g} {:g}) camera=({:g} {:g} {:g}) focus=({:g} {:g} {:g}) a2=({:g} {:g} {:g})]",
-      this->unknown_a1[0], this->unknown_a1[1],
-      this->unknown_a1[2], this->unknown_a1[3],
-      this->unknown_a1[4], this->unknown_a1[5],
-      this->unknown_a1[6], this->unknown_a1[7],
-      this->unknown_a1[8], this->camera_x,
-      this->camera_y, this->camera_z,
-      this->focus_x, this->focus_y,
-      this->focus_z, this->unknown_a2[0],
-      this->unknown_a2[1], this->unknown_a2[2]);
+      this->unknown_a1[0], this->unknown_a1[1], this->unknown_a1[2], this->unknown_a1[3], this->unknown_a1[4],
+      this->unknown_a1[5], this->unknown_a1[6], this->unknown_a1[7], this->unknown_a1[8],
+      this->camera_x, this->camera_y, this->camera_z, this->focus_x, this->focus_y, this->focus_z,
+      this->unknown_a2[0], this->unknown_a2[1], this->unknown_a2[2]);
 }
 
 string MapDefinition::str(const CardIndex* card_index, Language language) const {
@@ -1830,21 +1774,19 @@ string MapDefinition::str(const CardIndex* card_index, Language language) const 
     }
   };
 
-  lines.emplace_back(std::format("Map {:08X}: {}x{}",
-      this->map_number, this->width, this->height));
+  lines.emplace_back(std::format("Map {:08X}: {}x{}", this->map_number, this->width, this->height));
   lines.emplace_back(std::format("  tag: {:08X}", this->tag));
-  lines.emplace_back(std::format("  environment_number: {:02X} ({})", this->environment_number, name_for_environment_number(this->environment_number)));
+  lines.emplace_back(std::format("  environment_number: {:02X} ({})",
+      this->environment_number, name_for_environment_number(this->environment_number)));
   lines.emplace_back(std::format("  num_camera_zones: {:02X}", this->num_camera_zones));
   lines.emplace_back("  tiles:");
   add_map(this->map_tiles);
   lines.emplace_back(std::format(
       "  start_tile_definitions: A:[1p: {:02X}; 2p: {:02X},{:02X}; 3p: {:02X},{:02X},{:02X}], B:[1p: {:02X}; 2p: {:02X},{:02X}; 3p: {:02X},{:02X},{:02X}]",
-      this->start_tile_definitions[0][0], this->start_tile_definitions[0][1],
-      this->start_tile_definitions[0][2], this->start_tile_definitions[0][3],
-      this->start_tile_definitions[0][4], this->start_tile_definitions[0][5],
-      this->start_tile_definitions[1][0], this->start_tile_definitions[1][1],
-      this->start_tile_definitions[1][2], this->start_tile_definitions[1][3],
-      this->start_tile_definitions[1][4], this->start_tile_definitions[1][5]));
+      this->start_tile_definitions[0][0], this->start_tile_definitions[0][1], this->start_tile_definitions[0][2],
+      this->start_tile_definitions[0][3], this->start_tile_definitions[0][4], this->start_tile_definitions[0][5],
+      this->start_tile_definitions[1][0], this->start_tile_definitions[1][1], this->start_tile_definitions[1][2],
+      this->start_tile_definitions[1][3], this->start_tile_definitions[1][4], this->start_tile_definitions[1][5]));
   for (size_t z = 0; z < this->num_camera_zones; z++) {
     for (size_t w = 0; w < 2; w++) {
       lines.emplace_back(std::format("  camera zone {} (team {}):", z, w ? 'A' : 'B'));
@@ -1862,47 +1804,28 @@ string MapDefinition::str(const CardIndex* card_index, Language language) const 
   add_map(this->overlay_state.tiles);
   lines.emplace_back(std::format(
       "  unused1: {:08X} {:08X} {:08X} {:08X} {:08X}",
-      this->overlay_state.unused1[0],
-      this->overlay_state.unused1[1],
-      this->overlay_state.unused1[2],
-      this->overlay_state.unused1[3],
-      this->overlay_state.unused1[4]));
+      this->overlay_state.unused1[0], this->overlay_state.unused1[1], this->overlay_state.unused1[2],
+      this->overlay_state.unused1[3], this->overlay_state.unused1[4]));
   lines.emplace_back(std::format(
       "  trap_tile_colors_nte: {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X}",
-      this->overlay_state.trap_tile_colors_nte[0],
-      this->overlay_state.trap_tile_colors_nte[1],
-      this->overlay_state.trap_tile_colors_nte[2],
-      this->overlay_state.trap_tile_colors_nte[3],
-      this->overlay_state.trap_tile_colors_nte[4],
-      this->overlay_state.trap_tile_colors_nte[5],
-      this->overlay_state.trap_tile_colors_nte[6],
-      this->overlay_state.trap_tile_colors_nte[7],
-      this->overlay_state.trap_tile_colors_nte[8],
-      this->overlay_state.trap_tile_colors_nte[9],
-      this->overlay_state.trap_tile_colors_nte[10],
-      this->overlay_state.trap_tile_colors_nte[11],
-      this->overlay_state.trap_tile_colors_nte[12],
-      this->overlay_state.trap_tile_colors_nte[13],
-      this->overlay_state.trap_tile_colors_nte[14],
-      this->overlay_state.trap_tile_colors_nte[15]));
+      this->overlay_state.trap_tile_colors_nte[0], this->overlay_state.trap_tile_colors_nte[1],
+      this->overlay_state.trap_tile_colors_nte[2], this->overlay_state.trap_tile_colors_nte[3],
+      this->overlay_state.trap_tile_colors_nte[4], this->overlay_state.trap_tile_colors_nte[5],
+      this->overlay_state.trap_tile_colors_nte[6], this->overlay_state.trap_tile_colors_nte[7],
+      this->overlay_state.trap_tile_colors_nte[8], this->overlay_state.trap_tile_colors_nte[9],
+      this->overlay_state.trap_tile_colors_nte[10], this->overlay_state.trap_tile_colors_nte[11],
+      this->overlay_state.trap_tile_colors_nte[12], this->overlay_state.trap_tile_colors_nte[13],
+      this->overlay_state.trap_tile_colors_nte[14], this->overlay_state.trap_tile_colors_nte[15]));
   lines.emplace_back(std::format(
       "  trap_card_ids_nte: #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X} #{:04X}",
-      this->overlay_state.trap_card_ids_nte[0],
-      this->overlay_state.trap_card_ids_nte[1],
-      this->overlay_state.trap_card_ids_nte[2],
-      this->overlay_state.trap_card_ids_nte[3],
-      this->overlay_state.trap_card_ids_nte[4],
-      this->overlay_state.trap_card_ids_nte[5],
-      this->overlay_state.trap_card_ids_nte[6],
-      this->overlay_state.trap_card_ids_nte[7],
-      this->overlay_state.trap_card_ids_nte[8],
-      this->overlay_state.trap_card_ids_nte[9],
-      this->overlay_state.trap_card_ids_nte[10],
-      this->overlay_state.trap_card_ids_nte[11],
-      this->overlay_state.trap_card_ids_nte[12],
-      this->overlay_state.trap_card_ids_nte[13],
-      this->overlay_state.trap_card_ids_nte[14],
-      this->overlay_state.trap_card_ids_nte[15]));
+      this->overlay_state.trap_card_ids_nte[0], this->overlay_state.trap_card_ids_nte[1],
+      this->overlay_state.trap_card_ids_nte[2], this->overlay_state.trap_card_ids_nte[3],
+      this->overlay_state.trap_card_ids_nte[4], this->overlay_state.trap_card_ids_nte[5],
+      this->overlay_state.trap_card_ids_nte[6], this->overlay_state.trap_card_ids_nte[7],
+      this->overlay_state.trap_card_ids_nte[8], this->overlay_state.trap_card_ids_nte[9],
+      this->overlay_state.trap_card_ids_nte[10], this->overlay_state.trap_card_ids_nte[11],
+      this->overlay_state.trap_card_ids_nte[12], this->overlay_state.trap_card_ids_nte[13],
+      this->overlay_state.trap_card_ids_nte[14], this->overlay_state.trap_card_ids_nte[15]));
 
   lines.emplace_back("  default_rules: " + this->default_rules.str());
   lines.emplace_back("  name: " + this->name.decode(language));
@@ -2081,8 +2004,7 @@ string MapDefinition::str(const CardIndex* card_index, Language language) const 
         deck_type = std::format("({:02X})", this->entry_states[z].deck_type);
         break;
     }
-    lines.emplace_back(std::format(
-        "  entry_states[{}]: {} / {}", z, player_type, deck_type));
+    lines.emplace_back(std::format("  entry_states[{}]: {} / {}", z, player_type, deck_type));
   }
   return phosg::join(lines, "\n");
 }
@@ -2480,8 +2402,7 @@ CardIndex::CardIndex(
     const auto& footer = r.pget<RELFileFooterBE>(r.size() - sizeof(RELFileFooterBE));
     uint32_t offset = r.pget_u32b(footer.root_offset);
     uint32_t count = r.pget_u32b(footer.root_offset + 4);
-    if (offset > decompressed_data.size() ||
-        ((offset + count * sizeof(CardDefinition)) > decompressed_data.size())) {
+    if (offset > decompressed_data.size() || ((offset + count * sizeof(CardDefinition)) > decompressed_data.size())) {
       throw runtime_error("definitions array reference out of bounds");
     }
     CardDefinition* defs = reinterpret_cast<CardDefinition*>(decompressed_data.data() + offset);
@@ -2497,8 +2418,7 @@ CardIndex::CardIndex(
 
       auto entry = make_shared<CardEntry>(CardEntry{def, "", "", "", {}});
       if (!this->card_definitions.emplace(entry->def.card_id, entry).second) {
-        throw runtime_error(std::format(
-            "duplicate card id: {:08X}", entry->def.card_id));
+        throw runtime_error(std::format("duplicate card id: {:08X}", entry->def.card_id));
       }
 
       // Some cards intentionally have the same name, so we just leave them
@@ -2801,7 +2721,8 @@ MapIndex::MapIndex(const string& directory, bool raise_on_any_failure) {
             name);
       } else {
         if (map_it->second->visibility_flags != visibility_flags) {
-          throw std::runtime_error(std::format("visibility flags {:02X} for added map {} do not match existing flags {}",
+          throw std::runtime_error(std::format(
+              "visibility flags {:02X} for added map {} do not match existing flags {}",
               map_it->second->visibility_flags, file_path, visibility_flags));
         }
         map_it->second->add_version(vm);
@@ -2951,7 +2872,8 @@ const string& MapIndex::get_compressed_list(size_t num_players, Language languag
           is_trial ? "trial" : "final", num_players, compressed_map_list.size()));
     }
     size_t decompressed_size = sizeof(header) + entries_w.size() + strings_w.size();
-    static_game_data_log.info_f("Generated Episode 3 compressed {} map list for {} player(s) ({} maps; 0x{:X} -> 0x{:X} bytes)",
+    static_game_data_log.info_f(
+        "Generated Episode 3 compressed {} map list for {} player(s) ({} maps; 0x{:X} -> 0x{:X} bytes)",
         is_trial ? "trial" : "final", num_players, num_maps, decompressed_size, compressed_map_list.size());
   }
   return compressed_map_list;

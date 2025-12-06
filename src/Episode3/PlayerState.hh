@@ -15,9 +15,8 @@ namespace Episode3 {
 class Server;
 
 enum AssistFlag : uint32_t {
-  // Note: This enum is a uint32_t even though only 16 bits are used because
-  // the corresponding field in the protocol is a 32-bit field. There may also
-  // be bits used only by the client which are not documented here.
+  // Note: This enum is a uint32_t even though only 16 bits are used because the corresponding field in the protocol is
+  // a 32-bit field. There may also be bits used only by the client which are not documented here.
 
   // clang-format off
   NONE                                 = 0x0000,
@@ -70,14 +69,9 @@ public:
   void draw_hand(ssize_t override_count = 0);
   void draw_initial_hand();
   int32_t error_code_for_client_setting_card(
-      uint16_t card_ref,
-      uint8_t card_index,
-      const Location* loc,
-      uint8_t assist_target_client_id) const;
+      uint16_t card_ref, uint8_t card_index, const Location* loc, uint8_t assist_target_client_id) const;
   std::vector<uint16_t> get_all_cards_within_range(
-      const parray<uint8_t, 9 * 9>& range,
-      const Location& loc,
-      uint8_t target_team_id) const;
+      const parray<uint8_t, 9 * 9>& range, const Location& loc, uint8_t target_team_id) const;
   uint8_t get_atk_points() const;
   void get_short_status_for_card_index_in_hand(size_t hand_index, CardShortStatus* stat) const;
   std::shared_ptr<DeckState> get_deck();
@@ -128,9 +122,7 @@ public:
   G_UpdateShortStatuses_Ep3_6xB4x04 prepare_6xB4x04() const;
   void send_6xB4x04_if_needed(bool always_send = false);
   std::vector<uint16_t> get_card_refs_within_range_from_all_players(
-      const parray<uint8_t, 9 * 9>& range,
-      const Location& loc,
-      CardType type) const;
+      const parray<uint8_t, 9 * 9>& range, const Location& loc, CardType type) const;
   void draw_phase_before();
   void action_phase_before();
   void move_phase_before();
@@ -169,10 +161,10 @@ public:
   uint16_t sc_card_ref;
 
   // This array is unfortunately heterogeneous; specifically:
-  // [0] through [5] are hand refs
-  // [6] is the current assist card ref (which may belong to another player)
-  // [7] is the previous assist card ref
-  // [8] through [15] are set refs
+  //   [0] through [5] are hand refs
+  //   [6] is the current assist card ref (which may belong to another player)
+  //   [7] is the previous assist card ref
+  //   [8] through [15] are set refs
   parray<uint16_t, 0x10> card_refs;
 
   std::shared_ptr<DeckState> deck_state;
@@ -190,12 +182,12 @@ public:
   Direction start_facing_direction;
   std::shared_ptr<HandAndEquipState> hand_and_equip;
 
-  // Like card_refs above, these arrays are also heterogeneous, but the indices
-  // are not the same as for card_refs! THe indices here are:
-  // [0] is the SC card status
-  // [1] through [6] are hand cards
-  // [7] through [14] are set cards
-  // [15] is the assist card
+  // Like card_refs above, these arrays are also heterogeneous, but the indices are not the same as for card_refs! The
+  // indices here are:
+  //   [0] is the SC card status
+  //   [1] through [6] are hand cards
+  //   [7] through [14] are set cards
+  //   [15] is the assist card
   std::shared_ptr<parray<CardShortStatus, 0x10>> card_short_statuses;
   parray<CardShortStatus, 0x10> prev_card_short_statuses;
 

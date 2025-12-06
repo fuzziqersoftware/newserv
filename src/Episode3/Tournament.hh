@@ -62,16 +62,10 @@ public:
     size_t num_rounds_cleared;
     bool is_active;
 
-    Team(
-        std::shared_ptr<Tournament> tournament,
-        size_t index,
-        size_t max_players);
+    Team(std::shared_ptr<Tournament> tournament, size_t index, size_t max_players);
     std::string str() const;
 
-    void register_player(
-        std::shared_ptr<Client> c,
-        const std::string& team_name,
-        const std::string& password);
+    void register_player(std::shared_ptr<Client> c, const std::string& team_name, const std::string& password);
     bool unregister_player(uint32_t account_id);
 
     bool has_any_human_players() const;
@@ -91,9 +85,7 @@ public:
         std::shared_ptr<Tournament> tournament,
         std::shared_ptr<Match> preceding_a,
         std::shared_ptr<Match> preceding_b);
-    Match(
-        std::shared_ptr<Tournament> tournament,
-        std::shared_ptr<Team> winner_team);
+    Match(std::shared_ptr<Tournament> tournament, std::shared_ptr<Team> winner_team);
     std::string str() const;
 
     bool resolve_if_skippable();
@@ -180,14 +172,12 @@ private:
   std::set<uint32_t> all_player_account_ids;
   std::unordered_set<std::shared_ptr<Match>> pending_matches;
 
-  // This vector contains all teams in the original starting order of the
-  // tournament (that is, all teams in the first round). The order within this
-  // vector determines which team will play against which other team in the
-  // first round: [0] will play against [1], [2] will play against [3], etc.
+  // This vector contains all teams in the original starting order of the tournament (that is, all teams in the first
+  // round). The order within this vector determines which team will play against which other team in the first round:
+  // [0] will play against [1], [2] will play against [3], etc.
   std::vector<std::shared_ptr<Team>> teams;
-  // The tournament begins with a "zero round", in which each team automatically
-  // "wins" a match, putting them into the first round. This is just to make the
-  // data model easier to manage, so we don't have to have a type of match with
+  // The tournament begins with a "zero round", in which each team automatically "wins" a match, putting them into the
+  // first round. This is just to make the data model easier to manage, so we don't have to have a type of match with
   // no preceding round.
   std::vector<std::shared_ptr<Match>> zero_round_matches;
   std::shared_ptr<Match> final_match;

@@ -92,8 +92,7 @@ bool DeckState::draw_card_by_ref(uint16_t card_ref) {
 
   auto& entry = this->entries[index];
   if (entry.state == CardState::DISCARDED) {
-    // If the card is discarded, then it should be before the draw index, and we
-    // can just change its state.
+    // If the card is discarded, then it should be before the draw index, and we can just change its state.
     entry.state = CardState::IN_HAND;
     return true;
   }
@@ -102,9 +101,8 @@ bool DeckState::draw_card_by_ref(uint16_t card_ref) {
     return false;
   }
 
-  // If the card is still drawable, we need to move it so it's just in front of
-  // the draw index, then immediately draw it. Ep3 NTE does not handle this
-  // case, but we do even when playing NTE.
+  // If the card is still drawable, we need to move it so it's just in front of the draw index, then immediately draw
+  // it. Ep3 NTE does not handle this case, but we do even when playing NTE.
   size_t ref_index;
   for (ref_index = 0; ref_index < this->card_refs.size(); ref_index++) {
     if (this->card_refs[ref_index] == card_ref) {
@@ -131,13 +129,8 @@ uint16_t DeckState::card_id_for_card_ref(uint16_t card_ref) const {
   if (card_ref == 0xFFFF) {
     return 0xFFFF;
   }
-
   uint8_t index = index_for_card_ref(card_ref);
-  if (index < this->entries.size()) {
-    return this->entries[index].card_id;
-  } else {
-    return 0xFFFF;
-  }
+  return (index < this->entries.size()) ? this->entries[index].card_id : 0xFFFF;
 }
 
 uint16_t DeckState::sc_card_id() const {
@@ -167,8 +160,7 @@ void DeckState::restart() {
     }
   }
 
-  // For any cards that are still in hand or still in play, move their refs to
-  // the already-drawn part of the deck
+  // For any cards that are still in hand or still in play, move their refs to the already-drawn part of the deck
   this->draw_index = 0;
   for (size_t z = 0; z < this->entries.size(); z++) {
     if (this->entries[z].state != CardState::DRAWABLE) {
@@ -196,8 +188,7 @@ void DeckState::redraw_initial_hand(bool is_nte) {
   this->draw_index = 1;
 
   if (is_nte || this->shuffle_enabled) {
-    // Get the next 5 cards from the deck, and put the previous 5 cards after
-    // them (so they will be shuffled back in).
+    // Get the next 5 cards from the deck, and put the previous 5 cards after them (so they will be shuffled back in).
     for (uint8_t z = 0; z < 5; z++) {
       uint8_t index = z + this->draw_index;
       uint16_t temp_ref = this->card_refs[index];
@@ -274,11 +265,9 @@ void DeckState::shuffle() {
 
     size_t max = this->num_drawable_cards();
     for (size_t z = 0; z < this->card_refs.size(); z++) {
-      // Note: This is the way Sega originally implemented shuffling - they just
-      // do N swaps on the entire array. A more uniform way to do it would be to
-      // instead swap each item with another random item (possibly itself) that
-      // doesn't appear earlier than it in the array, but this is not what Sega
-      // did.
+      // Note: This is the way Sega originally implemented shuffling - they just do N swaps on the entire array. A more
+      // uniform way to do it would be to instead swap each item with another random item (possibly itself) that
+      // doesn't appear earlier than it in the array, but this is not what Sega did.
       uint8_t index1 = this->draw_index + s->get_random(max);
       uint8_t index2 = this->draw_index + s->get_random(max);
       uint16_t temp_ref = this->card_refs[index1];
@@ -309,7 +298,11 @@ static const char* name_for_card_state(DeckState::CardState st) {
 
 void DeckState::print(FILE* stream, std::shared_ptr<const CardIndex> card_index) const {
   phosg::fwrite_fmt(stream, "DeckState: client_id={} draw_index={} card_ref_base=@{:04X} shuffle={} loop={}\n",
-      this->client_id, this->draw_index, this->card_ref_base, this->shuffle_enabled ? "true" : "false", this->loop_enabled ? "true" : "false");
+      this->client_id,
+      this->draw_index,
+      this->card_ref_base,
+      this->shuffle_enabled ? "true" : "false",
+      this->loop_enabled ? "true" : "false");
   for (size_t z = 0; z < 31; z++) {
     const auto& e = this->entries[z];
     shared_ptr<const CardIndex::CardEntry> ce;

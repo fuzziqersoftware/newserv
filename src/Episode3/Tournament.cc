@@ -67,10 +67,7 @@ string Tournament::Team::str() const {
   return ret + "]";
 }
 
-void Tournament::Team::register_player(
-    shared_ptr<Client> c,
-    const string& team_name,
-    const string& password) {
+void Tournament::Team::register_player(shared_ptr<Client> c, const string& team_name, const string& password) {
   if (this->players.size() >= this->max_players) {
     throw runtime_error("team is full");
   }
@@ -104,8 +101,7 @@ void Tournament::Team::register_player(
 bool Tournament::Team::unregister_player(uint32_t account_id) {
   size_t index;
   for (index = 0; index < this->players.size(); index++) {
-    if (this->players[index].is_human() &&
-        (this->players[index].account_id == account_id)) {
+    if (this->players[index].is_human() && (this->players[index].account_id == account_id)) {
       break;
     }
   }
@@ -123,12 +119,10 @@ bool Tournament::Team::unregister_player(uint32_t account_id) {
       return false;
     }
 
-    // If the tournament has already started, make the team forfeit their game.
-    // If any player withdraws from a team after the registration phase, the
-    // entire team essentially forfeits their entry.
+    // If the tournament has already started, make the team forfeit their game. If any player withdraws from a team
+    // after the registration phase, the entire team essentially forfeits their entry.
     if (tournament->get_state() != Tournament::State::REGISTRATION) {
-      // Look through the pending matches to see if this team is involved in any
-      // of them
+      // Look through the pending matches to see if this team is involved in any of them
       for (auto match : tournament->pending_matches) {
         if (!match->preceding_a || !match->preceding_b) {
           throw logic_error("zero-round match is pending after tournament registration phase");
@@ -142,9 +136,8 @@ bool Tournament::Team::unregister_player(uint32_t account_id) {
         }
       }
 
-      // If the tournament has not started yet, just remove the player from the
-      // team
     } else {
+      // If the tournament has not started yet, just remove the player from the team
       if (!tournament->all_player_account_ids.erase(account_id)) {
         throw logic_error("player removed from team but not from tournament");
       }
@@ -183,9 +176,7 @@ size_t Tournament::Team::num_com_players() const {
 }
 
 Tournament::Match::Match(
-    shared_ptr<Tournament> tournament,
-    shared_ptr<Match> preceding_a,
-    shared_ptr<Match> preceding_b)
+    shared_ptr<Tournament> tournament, shared_ptr<Match> preceding_a, shared_ptr<Match> preceding_b)
     : tournament(tournament),
       preceding_a(preceding_a),
       preceding_b(preceding_b),
@@ -197,9 +188,7 @@ Tournament::Match::Match(
   this->round_num = this->preceding_a->round_num + 1;
 }
 
-Tournament::Match::Match(
-    shared_ptr<Tournament> tournament,
-    shared_ptr<Team> winner_team)
+Tournament::Match::Match(shared_ptr<Tournament> tournament, shared_ptr<Team> winner_team)
     : tournament(tournament),
       preceding_a(nullptr),
       preceding_b(nullptr),
@@ -228,9 +217,8 @@ bool Tournament::Match::resolve_if_skippable() {
     this->set_winner_team(winner_a->players.empty() ? winner_b : winner_a);
     return true;
   }
-  // If neither preceding winner team has any humans on it, skip this match
-  // entirely and just make one team advance arbitrarily (note that this also
-  // handles the case where both preceding winner teams are empty)
+  // If neither preceding winner team has any humans on it, skip this match entirely and just make one team advance
+  // arbitrarily (note that this also handles the case where both preceding winner teams are empty)
   if (!winner_a->has_any_human_players() && !winner_b->has_any_human_players()) {
     this->set_winner_team((phosg::random_object<uint8_t>() & 1) ? winner_b : winner_a);
     return true;
@@ -247,8 +235,8 @@ void Tournament::Match::on_winner_team_set() {
 
   tournament->pending_matches.erase(this->shared_from_this());
 
-  // Resolve the following match if possible (this skips CPU-only matches). If
-  // the following match can't be resolved, mark it pending.
+  // Resolve the following match if possible (this skips CPU-only matches). If the following match can't be resolved,
+  // mark it pending.
   auto following = this->following.lock();
   if (following && !following->resolve_if_skippable()) {
     tournament->pending_matches.emplace(following);
@@ -259,8 +247,8 @@ void Tournament::Match::on_winner_team_set() {
     tournament->current_state = Tournament::State::COMPLETE;
   }
 
-  // Unlink the losing team's players (if any) - this allows them to enter
-  // another tournament before this tournament has ended
+  // Unlink the losing team's players (if any) - this allows them to enter another tournament before this tournament
+  // has ended
   if (this->preceding_a && this->preceding_b) {
     auto losing_team = (this->winner_team == this->preceding_a->winner_team)
         ? this->preceding_b->winner_team
@@ -278,8 +266,7 @@ void Tournament::Match::set_winner_team_without_triggers(shared_ptr<Team> team) 
   if (!this->preceding_a || !this->preceding_b) {
     throw logic_error("set_winner_team called on zero-round match");
   }
-  if ((team != this->preceding_a->winner_team) &&
-      (team != this->preceding_b->winner_team)) {
+  if ((team != this->preceding_a->winner_team) && (team != this->preceding_b->winner_team)) {
     throw logic_error("winner team did not participate in match");
   }
 
@@ -298,8 +285,7 @@ void Tournament::Match::set_winner_team(shared_ptr<Team> team) {
   this->on_winner_team_set();
 }
 
-shared_ptr<Tournament::Team> Tournament::Match::opponent_team_for_team(
-    shared_ptr<Team> team) const {
+shared_ptr<Tournament::Team> Tournament::Match::opponent_team_for_team(shared_ptr<Team> team) const {
   if (!this->preceding_a || !this->preceding_b) {
     throw logic_error("zero-round matches do not have opponents");
   }
@@ -342,9 +328,7 @@ Tournament::Tournament(
 }
 
 Tournament::Tournament(
-    shared_ptr<const MapIndex> map_index,
-    shared_ptr<const COMDeckIndex> com_deck_index,
-    const phosg::JSON& json)
+    shared_ptr<const MapIndex> map_index, shared_ptr<const COMDeckIndex> com_deck_index, const phosg::JSON& json)
     : log(std::format("[Tournament:{}] ", json.get_string("name"))),
       map_index(map_index),
       com_deck_index(com_deck_index),
@@ -394,8 +378,7 @@ void Tournament::init() {
   } else {
     // Create empty teams
     while (this->teams.size() < this->num_teams) {
-      auto t = make_shared<Team>(
-          this->shared_from_this(), this->teams.size(), (this->flags & Flag::IS_2V2) ? 2 : 1);
+      auto t = make_shared<Team>(this->shared_from_this(), this->teams.size(), (this->flags & Flag::IS_2V2) ? 2 : 1);
       this->teams.emplace_back(t);
     }
     is_registration_complete = false;
@@ -444,9 +427,7 @@ void Tournament::init() {
         // If both preceding matches of the following match are resolved, put
         // the following match on the queue since it may be resolvable as well
         auto following = match->following.lock();
-        if (following &&
-            following->preceding_a->winner_team &&
-            following->preceding_b->winner_team) {
+        if (following && following->preceding_a->winner_team && following->preceding_b->winner_team) {
           match_queue.emplace(following);
         }
       }
@@ -477,8 +458,7 @@ void Tournament::create_bracket_matches() {
     throw logic_error("tournaments team count is not a power of 2");
   }
 
-  // Create the zero-round matches, and make them all pending if registration
-  // is still open
+  // Create the zero-round matches, and make them all pending if registration is still open
   this->zero_round_matches.clear();
   for (const auto& team : this->teams) {
     auto m = make_shared<Match>(this->shared_from_this(), team);
@@ -493,10 +473,7 @@ void Tournament::create_bracket_matches() {
   while (current_round_matches.size() > 1) {
     vector<shared_ptr<Match>> next_round_matches;
     for (size_t z = 0; z < current_round_matches.size(); z += 2) {
-      auto m = make_shared<Match>(
-          this->shared_from_this(),
-          current_round_matches[z],
-          current_round_matches[z + 1]);
+      auto m = make_shared<Match>(this->shared_from_this(), current_round_matches[z], current_round_matches[z + 1]);
       current_round_matches[z]->following = m;
       current_round_matches[z + 1]->following = m;
       next_round_matches.emplace_back(std::move(m));
@@ -552,8 +529,7 @@ shared_ptr<Tournament::Team> Tournament::get_winner_team() const {
   return this->final_match->winner_team;
 }
 
-shared_ptr<Tournament::Match> Tournament::next_match_for_team(
-    shared_ptr<Team> team) const {
+shared_ptr<Tournament::Match> Tournament::next_match_for_team(shared_ptr<Team> team) const {
   if (this->current_state == Tournament::State::REGISTRATION) {
     return nullptr;
   }
@@ -561,8 +537,7 @@ shared_ptr<Tournament::Match> Tournament::next_match_for_team(
     if (!match->preceding_a || !match->preceding_b) {
       throw logic_error("zero-round match is pending after tournament registration phase");
     }
-    if ((team == match->preceding_a->winner_team) ||
-        (team == match->preceding_b->winner_team)) {
+    if ((team == match->preceding_a->winner_team) || (team == match->preceding_b->winner_team)) {
       return match;
     }
   }
@@ -573,8 +548,7 @@ shared_ptr<Tournament::Match> Tournament::get_final_match() const {
   return this->final_match;
 }
 
-shared_ptr<Tournament::Team> Tournament::team_for_account_id(
-    uint32_t account_id) const {
+shared_ptr<Tournament::Team> Tournament::team_for_account_id(uint32_t account_id) const {
   if (!this->all_player_account_ids.count(account_id)) {
     return nullptr;
   }
@@ -601,9 +575,8 @@ void Tournament::start() {
 
   bool has_com_teams = (this->flags & Flag::HAS_COM_TEAMS);
 
-  // If there aren't enough entrants (1 if has_com_teams is false, else 2),
-  // don't allow the tournament to start (because it would enter the COMPLETE
-  // state immediately)
+  // If there aren't enough entrants (1 if has_com_teams is false, else 2), don't allow the tournament to start
+  // (because it would enter the COMPLETE state immediately)
   size_t num_human_teams = 0;
   for (size_t z = 0; z < this->teams.size(); z++) {
     if (this->teams[z]->has_any_human_players()) {
@@ -615,9 +588,8 @@ void Tournament::start() {
   }
 
   if ((this->flags & Flag::SHUFFLE_ENTRIES) && (this->flags & Flag::RESIZE_ON_START)) {
-    // If both of these flags are set, pack the human teams into the lowest part
-    // of the teams list so we can resize the tournament to the smallest
-    // possible size. This is OK since we're going to shuffle them later anyway
+    // If both of these flags are set, pack the human teams into the lowest part of the teams list so we can resize the
+    // tournament to the smallest possible size. This is OK since we're going to shuffle them later anyway
     size_t r_offset = 0, w_offset = 0;
     for (; r_offset < this->teams.size(); r_offset++) {
       if (this->teams[r_offset]->has_any_human_players()) {
@@ -630,8 +602,8 @@ void Tournament::start() {
   }
 
   if (this->flags & Flag::RESIZE_ON_START) {
-    // Resize the tournament by repeatedly deleting the second half of it, until
-    // the second half contains human players or the tournament size is 4
+    // Resize the tournament by repeatedly deleting the second half of it, until the second half contains human players
+    // or the tournament size is 4
     while (this->teams.size() > 4) {
       size_t z;
       for (z = this->teams.size() >> 1; z < this->teams.size(); z++) {
@@ -661,8 +633,7 @@ void Tournament::start() {
   this->current_state = State::IN_PROGRESS;
   this->create_bracket_matches();
 
-  // Assign names to COM teams, and assign COM decks to all empty slots unless
-  // has_com_teams is false
+  // Assign names to COM teams, and assign COM decks to all empty slots unless has_com_teams is false
   for (size_t z = 0; z < this->zero_round_matches.size(); z++) {
     auto m = this->zero_round_matches[z];
     auto t = m->winner_team;
@@ -677,11 +648,9 @@ void Tournament::start() {
     if (this->com_deck_index->num_decks() < t->max_players - t->players.size()) {
       throw runtime_error("not enough COM decks to complete team");
     }
-    // If we allow all-COM teams, or this is a 2v2 tournament and the team has
-    // only one human on it, add a COM
+    // If we allow all-COM teams, or this is a 2v2 tournament and the team has only one human on it, add a COM
     if (has_com_teams || !t->players.empty()) {
-      // TODO: Don't allow duplicate COM decks, nor duplicate COM SCs on the
-      // same team
+      // TODO: Don't allow duplicate COM decks, nor duplicate COM SCs on the same team
       while (t->players.size() < t->max_players) {
         t->players.emplace_back(this->com_deck_index->random_deck());
       }
@@ -698,9 +667,8 @@ void Tournament::send_all_state_updates() const {
   for (const auto& team : this->teams) {
     for (const auto& player : team->players) {
       auto c = player.client.lock();
-      // Note: The last check here is to make sure the client is still linked
-      // with this instance of the tournament - an intervening shell command
-      // `reload ep3` could have changed the client's linkage
+      // Note: The last check here is to make sure the client is still linked with this instance of the tournament - an
+      // intervening shell command `reload ep3` could have changed the client's linkage
       if (c && (c->version() == Version::GC_EP3) && (c->ep3_tournament_team.lock() == team)) {
         send_ep3_confirm_tournament_entry(c, this->shared_from_this());
       }
@@ -828,8 +796,7 @@ TournamentIndex::TournamentIndex(
       auto tourn = make_shared<Tournament>(this->map_index, this->com_deck_index, *it.second);
       tourn->init();
       if (!this->name_to_tournament.emplace(tourn->get_name(), tourn).second) {
-        // This is logic_error instead of runtime_error because phosg::JSON dicts are
-        // supposed to already have unique keys
+        // This is logic_error instead of runtime_error because phosg::JSON dicts already have unique keys
         throw logic_error("multiple tournaments have the same name: " + tourn->get_name());
       }
       tourn->set_menu_item_id(this->menu_item_id_to_tournament.size());
@@ -862,8 +829,7 @@ shared_ptr<Tournament> TournamentIndex::create_tournament(
     throw runtime_error("there can be at most 32 tournaments at a time");
   }
 
-  auto t = make_shared<Tournament>(
-      this->map_index, this->com_deck_index, name, map, rules, num_teams, flags);
+  auto t = make_shared<Tournament>(this->map_index, this->com_deck_index, name, map, rules, num_teams, flags);
   t->init();
   if (!this->name_to_tournament.emplace(t->get_name(), t).second) {
     throw runtime_error("a tournament with the same name already exists");
@@ -942,8 +908,7 @@ void TournamentIndex::link_client(shared_ptr<Client> c) {
 }
 
 void TournamentIndex::link_all_clients(std::shared_ptr<ServerState> s) {
-  // This can be called before the game server exists, so do nothing in that
-  // case
+  // This can be called before the game server exists, so do nothing in that case
   if (s->game_server) {
     for (const auto& c : s->game_server->all_clients()) {
       this->link_client(c);

@@ -20,53 +20,43 @@ struct Lobby;
 
 namespace Episode3 {
 
-/**
- * This implementation of Episode 3 battles is derived from Sega's original
- * server implementation, reverse-engineered from the Episode 3 client
- * executable. The control flow, function breakdown, and structure definitions
- * in these files map very closely to how their server implementation was
- * written; notable differences (due to necessary environment differences or bug
- * fixes) are described in the comments therein.
- *
- * The following files are direct reverse-engineerings of Sega's original code,
- * except where noted in the comments:
- *   AssistServer.hh/cc
- *   Card.hh/cc
- *   CardSpecial.hh/cc
- *   DeckState.hh/cc
- *   MapState.hh/cc
- *   PlayerState.hh/cc
- *   PlayerStateSubordinates.hh/cc
- *   RulerServer.hh/cc
- *   Server.hh/cc
- *
- * There are likely undiscovered bugs in this code, some originally written by
- * Sega, but more written by me as I manually transcribed and updated this code.
- *
- * Class ownership levels (classes may only contain weak_ptrs, not shared_ptrs,
- * to classes at the same or higher level):
- * - Server
- * - - RulerServer
- * - - - AssistServer
- * - - - CardSpecial
- * - - - - StateFlags
- * - - - - DeckEntry
- * - - - - PlayerState
- * - - - - - Card
- * - - - - - - CardShortStatus
- * - - - - - - DeckState
- * - - - - - - HandAndEquipState
- * - - - - - - MapAndRulesState / OverlayState
- * - - - - - - - Everything within DataIndexes
- */
+// This implementation of Episode 3 battles is derived from Sega's original server implementation, reverse-engineered
+// from the Episode 3 client executable. The control flow, function breakdown, and structure definitions in these files
+// map very closely to how their server implementation was written; notable differences (due to necessary environment
+// differences or bug fixes) are described in the comments therein. There are likely undiscovered bugs in this code,
+// some originally written by Sega, but more written by me as I manually transcribed and updated this code.
+
+// The following files are direct reverse-engineerings of Sega's original code, except where noted in the comments:
+//   AssistServer.hh/cc
+//   Card.hh/cc
+//   CardSpecial.hh/cc
+//   DeckState.hh/cc
+//   MapState.hh/cc
+//   PlayerState.hh/cc
+//   PlayerStateSubordinates.hh/cc
+//   RulerServer.hh/cc
+//   Server.hh/cc
+
+// Class ownership levels (classes may contain weak_ptrs but not shared_ptrs to classes at the same or higher level):
+// - Server
+// - - RulerServer
+// - - - AssistServer
+// - - - CardSpecial
+// - - - - StateFlags
+// - - - - DeckEntry
+// - - - - PlayerState
+// - - - - - Card
+// - - - - - - CardShortStatus
+// - - - - - - DeckState
+// - - - - - - HandAndEquipState
+// - - - - - - MapAndRulesState / OverlayState
+// - - - - - - - Everything within DataIndexes
 
 class Server : public std::enable_shared_from_this<Server> {
-  // In the original code, there is a TCardServerBase class and a TCardServer
-  // class, with the former containing some basic parts of the game state and
-  // a pointer to the latter. It seems these two classes exist (instead of one
-  // big class) so that the force reset command could be implemented; however,
-  // it appears that that command is never sent by the client, so we combine
-  // the two classes into one in our implementation.
+  // In the original code, there is a TCardServerBase class and a TCardServer class, with the former containing some
+  // basic parts of the game state and a pointer to the latter. It seems these two classes exist (instead of one big
+  // class) so that the force reset command could be implemented; however, it appears that that command is never sent
+  // by the client, so we combine the two classes into one in our implementation.
 public:
   struct Options {
     std::shared_ptr<const CardIndex> card_index;
@@ -241,7 +231,8 @@ public:
   void handle_CAx28_end_defense_list(std::shared_ptr<Client> sender_c, const std::string& data);
   void handle_CAx2B_legacy_set_card(std::shared_ptr<Client> sender_c, const std::string&);
   void handle_CAx34_subtract_ally_atk_points(std::shared_ptr<Client> sender_c, const std::string& data);
-  void handle_CAx37_client_ready_to_advance_from_starter_roll_phase(std::shared_ptr<Client> sender_c, const std::string& data);
+  void handle_CAx37_client_ready_to_advance_from_starter_roll_phase(
+      std::shared_ptr<Client> sender_c, const std::string& data);
   void handle_CAx3A_time_limit_expired(std::shared_ptr<Client> sender_c, const std::string& data);
   void handle_CAx40_map_list_request(std::shared_ptr<Client> sender_c, const std::string& data);
   void handle_CAx41_map_request(std::shared_ptr<Client> sender_c, const std::string& data);
@@ -266,12 +257,12 @@ public:
 
   G_UpdateDecks_Ep3_6xB4x07 prepare_6xB4x07_decks_update() const;
   G_SetPlayerNames_Ep3_6xB4x1C prepare_6xB4x1C_names_update() const;
-  static std::string prepare_6xB6x41_map_definition(std::shared_ptr<const MapIndex::Map> map, Language language, bool is_nte);
+  static std::string prepare_6xB6x41_map_definition(
+      std::shared_ptr<const MapIndex::Map> map, Language language, bool is_nte);
   void send_6xB6x41_to_all_clients() const;
   G_SetTrapTileLocations_Ep3_6xB4x50 prepare_6xB4x50_trap_tile_locations() const;
 
-  std::vector<std::shared_ptr<Card>> const_cast_set_cards_v(
-      const std::vector<std::shared_ptr<const Card>>& cards);
+  std::vector<std::shared_ptr<Card>> const_cast_set_cards_v(const std::vector<std::shared_ptr<const Card>>& cards);
 
 private:
   typedef void (Server::*handler_t)(std::shared_ptr<Client>, const std::string&);
@@ -326,9 +317,8 @@ public:
   parray<uint8_t, 4> player_ready_to_end_phase;
   uint32_t unknown_a10;
   uint32_t overall_time_expired;
-  // Note: In the original implementation, this is a uint32_t and is measured in
-  // seconds. In our environment, the simplest implementation uses now(), which
-  // returns microseconds, so we use a uint64_t instead.
+  // Note: In the original implementation, this is a uint32_t and is measured in seconds. In our environment, the
+  // simplest implementation uses now(), which returns microseconds, so we use a uint64_t instead.
   uint64_t battle_start_usecs;
   uint32_t should_copy_prev_states_to_current_states;
   std::shared_ptr<CardSpecial> card_special;

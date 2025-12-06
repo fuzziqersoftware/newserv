@@ -110,9 +110,7 @@ void PlayerState::init() {
       this->set_card_action_chains,
       this->set_card_action_metadatas);
   s->ruler_server->set_client_team_id(this->client_id, this->team_id);
-
   s->card_special->on_card_set(this->shared_from_this(), this->sc_card_ref);
-
   this->god_whim_can_use_hidden_cards = (s->deck_entries[this->client_id]->god_whim_flag != 3);
 }
 
@@ -153,8 +151,7 @@ bool PlayerState::draw_cards_allowed() const {
   return true;
 }
 
-void PlayerState::apply_assist_card_effect_on_set(
-    shared_ptr<PlayerState> setter_ps) {
+void PlayerState::apply_assist_card_effect_on_set(shared_ptr<PlayerState> setter_ps) {
   auto s = this->server();
 
   uint16_t assist_card_id = this->set_assist_card_id;
@@ -163,8 +160,7 @@ void PlayerState::apply_assist_card_effect_on_set(
   }
 
   auto assist_effect = assist_effect_number_for_card_id(assist_card_id, s->options.is_nte());
-  if ((assist_effect == AssistEffect::RESISTANCE) ||
-      (assist_effect == AssistEffect::INDEPENDENT)) {
+  if ((assist_effect == AssistEffect::RESISTANCE) || (assist_effect == AssistEffect::INDEPENDENT)) {
     this->assist_card_set_number = 0;
   }
 
@@ -314,8 +310,7 @@ void PlayerState::apply_assist_card_effect_on_set(
         auto other_ps = s->get_player_state(client_id);
         if (other_ps.get() != this) {
           other_ps->deck_state->draw_card_by_ref(this->card_refs[7]);
-          other_ps->set_card_from_hand(
-              this->card_refs[7], 0xF, nullptr, client_id, 1);
+          other_ps->set_card_from_hand(this->card_refs[7], 0xF, nullptr, client_id, 1);
         }
       }
       break;
@@ -362,9 +357,7 @@ void PlayerState::apply_assist_card_effect_on_set(
         }
 
         for (ssize_t set_index = is_nte ? 0 : -1; set_index < 8; set_index++) {
-          auto card = (set_index == -1)
-              ? other_ps->get_sc_card()
-              : other_ps->get_set_card(set_index);
+          auto card = (set_index == -1) ? other_ps->get_sc_card() : other_ps->get_set_card(set_index);
           if (card) {
             for (size_t cond_index = 0; cond_index < 9; cond_index++) {
               auto& cond = card->action_chain.conditions[cond_index];
@@ -404,9 +397,7 @@ void PlayerState::apply_assist_card_effect_on_set(
         }
 
         for (ssize_t set_index = is_nte ? 0 : -1; set_index < 8; set_index++) {
-          auto card = (set_index == -1)
-              ? other_ps->get_sc_card()
-              : other_ps->get_set_card(set_index);
+          auto card = (set_index == -1) ? other_ps->get_sc_card() : other_ps->get_set_card(set_index);
           if (card) {
             for (size_t cond_index = 0; cond_index < 9; cond_index++) {
               auto& cond = card->action_chain.conditions[cond_index];
@@ -577,8 +568,7 @@ void PlayerState::discard_all_attack_action_cards_from_hand() {
   for (size_t hand_index = 0; hand_index < 6; hand_index++) {
     uint16_t card_ref = temp_card_refs[hand_index];
     auto ce = s->definition_for_card_ref(card_ref);
-    if (ce && (ce->def.type == CardType::ACTION) &&
-        (ce->def.card_class() != CardClass::DEFENSE_ACTION)) {
+    if (ce && (ce->def.type == CardType::ACTION) && (ce->def.card_class() != CardClass::DEFENSE_ACTION)) {
       this->discard_ref_from_hand(card_ref);
     }
   }
@@ -771,9 +761,8 @@ void PlayerState::draw_hand(ssize_t override_count) {
 }
 
 void PlayerState::draw_initial_hand() {
-  // Note: The original code called this->deck_state->init_card_states here, but
-  // we don't because that logic is now in the DeckState constructor, and this
-  // function should only be called during PlayerState construction (so, shortly
+  // Note: The original code called this->deck_state->init_card_states here, but we don't because that logic is now in
+  // the DeckState constructor, and this function should only be called during PlayerState construction (so, shortly
   // after DeckState construction as well).
   this->deck_state->restart();
   this->card_refs.clear(0xFFFF);
@@ -782,10 +771,7 @@ void PlayerState::draw_initial_hand() {
 }
 
 int32_t PlayerState::error_code_for_client_setting_card(
-    uint16_t card_ref,
-    uint8_t card_index,
-    const Location* loc,
-    uint8_t assist_target_client_id) const {
+    uint16_t card_ref, uint8_t card_index, const Location* loc, uint8_t assist_target_client_id) const {
   auto s = this->server();
 
   int32_t code = s->ruler_server->error_code_for_client_setting_card(
@@ -816,8 +802,7 @@ int32_t PlayerState::error_code_for_client_setting_card(
       if (this->card_refs[card_index + 1] != 0xFFFF) {
         return -0x7E;
       }
-      if ((ce->def.type == CardType::CREATURE) &&
-          !s->map_and_rules->tile_is_vacant(loc->x, loc->y)) {
+      if ((ce->def.type == CardType::CREATURE) && !s->map_and_rules->tile_is_vacant(loc->x, loc->y)) {
         return -0x7A;
       }
       return 0;
@@ -834,9 +819,7 @@ int32_t PlayerState::error_code_for_client_setting_card(
 }
 
 vector<uint16_t> PlayerState::get_all_cards_within_range(
-    const parray<uint8_t, 9 * 9>& range,
-    const Location& loc,
-    uint8_t target_team_id) const {
+    const parray<uint8_t, 9 * 9>& range, const Location& loc, uint8_t target_team_id) const {
   auto s = this->server();
 
   auto log = s->log_stack("get_all_cards_within_range: ");
@@ -846,8 +829,7 @@ vector<uint16_t> PlayerState::get_all_cards_within_range(
   vector<uint16_t> ret;
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto other_ps = s->player_states[client_id];
-    if (other_ps &&
-        ((target_team_id == 0xFF) || (target_team_id == other_ps->get_team_id()))) {
+    if (other_ps && ((target_team_id == 0xFF) || (target_team_id == other_ps->get_team_id()))) {
       auto card_refs = get_card_refs_within_range(range, loc, *other_ps->card_short_statuses, &log);
       ret.insert(ret.end(), card_refs.begin(), card_refs.end());
     }
@@ -945,9 +927,8 @@ bool PlayerState::is_hand_redraw_allowed() const {
 
 bool PlayerState::is_team_turn() const {
   auto s = this->server();
-  // Note: The original code checks if this->w_server is null before doing this.
-  // We don't check because that should never happen, and server() will throw if
-  // it does.
+  // Note: The original code checks if this->w_server is null before doing this. We don't check because that should
+  // never happen, and server() will throw if it does.
   return s->get_current_team_turn() == this->team_id;
 }
 
@@ -961,9 +942,8 @@ void PlayerState::log_discard(uint16_t card_ref, uint16_t reason) {
 }
 
 uint16_t PlayerState::pop_from_discard_log(uint16_t) {
-  // NTE appears to have a bug here (or some obviated code): it searches for an
-  // entry with the given reason, then ignores the result of that search and
-  // always returns the first entry instead.
+  // NTE appears to have a bug here (or some obviated code): it searches for an entry with the given reason, then
+  // ignores the result of that search and always returns the first entry instead. That code is:
   // size_t z;
   // for (size_t z = 0; z < this->discard_log_card_refs.size(); z++) {
   //   if ((this->discard_log_card_refs[z] != 0xFFFF) && (this->discard_log_reasons[z] == reason)) {
@@ -1030,9 +1010,7 @@ void PlayerState::move_null_hand_refs_to_end() {
 void PlayerState::on_cards_destroyed() {
   auto s = this->server();
 
-  // {card_ref: should_return_to_hand}
-  unordered_multimap<uint16_t, bool> card_refs_map;
-
+  unordered_multimap<uint16_t, bool> card_refs_map; // {card_ref: should_return_to_hand}
   for (size_t z = 0; z < 8; z++) {
     auto card = this->set_cards[z];
     if (!card || !(card->card_flags & 2)) {
@@ -1106,8 +1084,7 @@ void PlayerState::replace_all_set_assists_with_random_assists() {
   const auto& assist_card_ids = all_assist_card_ids(is_nte);
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto other_ps = s->get_player_state(client_id);
-    if (other_ps &&
-        ((other_ps->card_refs[6] != 0xFFFF) || (!is_nte && (other_ps->set_assist_card_id != 0xFFFF)))) {
+    if (other_ps && ((other_ps->card_refs[6] != 0xFFFF) || (!is_nte && (other_ps->set_assist_card_id != 0xFFFF)))) {
       uint16_t card_id = 0x0130;
       while (card_id == 0x0130) { // God Whim
         size_t index = s->get_random(assist_card_ids.size());
@@ -1355,8 +1332,7 @@ bool PlayerState::set_card_from_hand(
       return 0;
     }
     this->card_refs[card_index + 1] = card_ref;
-    // Note: NTE doesn't call the destructor on the existing card, if there is
-    // one. Is that a bug?
+    // Note: NTE doesn't call the destructor on the existing card, if there is one. Is that a bug?
     this->set_cards[card_index - 7] = make_shared<Card>(s->card_id_for_card_ref(card_ref), card_ref, this->client_id, s);
     auto new_card = this->set_cards[card_index - 7];
     new_card->init();
@@ -1365,8 +1341,7 @@ bool PlayerState::set_card_from_hand(
       new_card->loc.x = loc->x;
       new_card->loc.y = loc->y;
     }
-    // Note: NTE doesn't track this, but NTE can't use it anyway, so we don't
-    // check for NTE here.
+    // Note: NTE doesn't track this, but NTE can't use it anyway, so we don't check for NTE here.
     this->stats.num_item_or_creature_cards_set++;
 
   } else if (ce->def.type == CardType::ASSIST) {
@@ -1436,7 +1411,6 @@ bool PlayerState::set_card_from_hand(
 
 void PlayerState::set_initial_location() {
   auto s = this->server();
-
   auto mr = s->map_and_rules;
 
   uint8_t num_team_players;
@@ -1485,8 +1459,7 @@ void PlayerState::set_initial_location() {
   }
 }
 
-void PlayerState::set_map_occupied_bit_for_card_on_warp_tile(
-    shared_ptr<const Card> card) {
+void PlayerState::set_map_occupied_bit_for_card_on_warp_tile(shared_ptr<const Card> card) {
   if (!card) {
     return;
   }
@@ -1498,8 +1471,7 @@ void PlayerState::set_map_occupied_bit_for_card_on_warp_tile(
       if ((s->warp_positions[warp_type][warp_end][0] == card->loc.x) &&
           (s->warp_positions[warp_type][warp_end][1] == card->loc.y)) {
         s->map_and_rules->set_occupied_bit_for_tile(
-            s->warp_positions[warp_type][warp_end ^ 1][0],
-            s->warp_positions[warp_type][warp_end ^ 1][1]);
+            s->warp_positions[warp_type][warp_end ^ 1][0], s->warp_positions[warp_type][warp_end ^ 1][1]);
       }
     }
   }
@@ -1509,8 +1481,7 @@ void PlayerState::set_map_occupied_bits_for_sc_and_creatures() {
   auto s = this->server();
 
   if (this->sc_card && !(this->sc_card->card_flags & 2)) {
-    s->map_and_rules->set_occupied_bit_for_tile(
-        this->sc_card->loc.x, this->sc_card->loc.y);
+    s->map_and_rules->set_occupied_bit_for_tile(this->sc_card->loc.x, this->sc_card->loc.y);
     this->set_map_occupied_bit_for_card_on_warp_tile(this->sc_card);
   }
 
@@ -1518,8 +1489,7 @@ void PlayerState::set_map_occupied_bits_for_sc_and_creatures() {
     for (size_t set_index = 0; set_index < 8; set_index++) {
       auto card = this->set_cards[set_index];
       if (card) {
-        s->map_and_rules->set_occupied_bit_for_tile(
-            card->loc.x, card->loc.y);
+        s->map_and_rules->set_occupied_bit_for_tile(card->loc.x, card->loc.y);
         this->set_map_occupied_bit_for_card_on_warp_tile(card);
       }
     }
@@ -1530,8 +1500,7 @@ void PlayerState::subtract_def_points(uint8_t cost) {
   this->def_points -= cost;
 }
 
-bool PlayerState::subtract_or_check_atk_or_def_points_for_action(
-    const ActionState& pa, bool deduct_points) {
+bool PlayerState::subtract_or_check_atk_or_def_points_for_action(const ActionState& pa, bool deduct_points) {
   auto s = this->server();
 
   int16_t cost = this->compute_attack_or_defense_atk_costs(pa);
@@ -1580,9 +1549,7 @@ G_UpdateHand_Ep3_6xB4x02 PlayerState::prepare_6xB4x02() const {
   cmd.state.assist_card_ref = this->card_refs[6];
   cmd.state.sc_card_ref = this->sc_card_ref;
   cmd.state.assist_card_ref2 = this->card_refs[6];
-  cmd.state.assist_card_set_number = (this->card_refs[6] == 0xFFFF)
-      ? 0
-      : this->assist_card_set_number;
+  cmd.state.assist_card_set_number = (this->card_refs[6] == 0xFFFF) ? 0 : this->assist_card_set_number;
   cmd.state.assist_card_id = this->set_assist_card_id;
   cmd.state.assist_remaining_turns = this->assist_remaining_turns;
   cmd.state.assist_delay_turns = this->assist_delay_turns;
@@ -1591,8 +1558,7 @@ G_UpdateHand_Ep3_6xB4x02 PlayerState::prepare_6xB4x02() const {
   return cmd;
 }
 
-void PlayerState::update_hand_and_equip_state_and_send_6xB4x02_if_needed(
-    bool always_send) {
+void PlayerState::update_hand_and_equip_state_and_send_6xB4x02_if_needed(bool always_send) {
   auto cmd = this->prepare_6xB4x02();
   if (always_send || memcmp(&this->hand_and_equip, &cmd.state, sizeof(this->hand_and_equip))) {
     *this->hand_and_equip = cmd.state;
@@ -1618,8 +1584,7 @@ void PlayerState::set_random_assist_card_from_hand_for_free() {
   if (!candidate_card_refs.empty()) {
     this->discard_set_assist_card();
     size_t index = s->get_random(candidate_card_refs.size());
-    this->set_card_from_hand(
-        candidate_card_refs[index], 15, nullptr, this->client_id, 1);
+    this->set_card_from_hand(candidate_card_refs[index], 15, nullptr, this->client_id, 1);
   }
 }
 
@@ -1641,11 +1606,9 @@ G_UpdateShortStatuses_Ep3_6xB4x04 PlayerState::prepare_6xB4x04() const {
   }
 
   for (size_t hand_index = 0; hand_index < 6; hand_index++) {
-    this->get_short_status_for_card_index_in_hand(
-        hand_index + 1, &cmd.card_statuses[hand_index + 1]);
-    // This write is required to mimic memset()'s effect from the original code.
-    // This field is probably ignored for hand refs anyway, but we might as well
-    // be as consistent as possible.
+    this->get_short_status_for_card_index_in_hand(hand_index + 1, &cmd.card_statuses[hand_index + 1]);
+    // This write is required to mimic memset()'s effect from the original code. This field is probably ignored for
+    // hand refs anyway, but we might as well be as consistent as possible.
     cmd.card_statuses[hand_index + 1].unused1 = 0;
   }
 
@@ -1674,9 +1637,7 @@ void PlayerState::send_6xB4x04_if_needed(bool always_send) {
 }
 
 vector<uint16_t> PlayerState::get_card_refs_within_range_from_all_players(
-    const parray<uint8_t, 9 * 9>& range,
-    const Location& loc,
-    CardType type) const {
+    const parray<uint8_t, 9 * 9>& range, const Location& loc, CardType type) const {
   auto s = this->server();
 
   vector<uint16_t> ret;
@@ -1726,8 +1687,7 @@ void PlayerState::move_phase_before() {
 void PlayerState::handle_before_turn_assist_effects() {
   auto s = this->server();
 
-  if ((this->assist_delay_turns > 0) &&
-      (--this->assist_delay_turns == 0)) {
+  if ((this->assist_delay_turns > 0) && (--this->assist_delay_turns == 0)) {
     this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
     size_t num_assists = s->assist_server->compute_num_assist_effects_for_client(this->client_id);
     for (size_t z = 0; z < num_assists; z++) {
@@ -1736,8 +1696,7 @@ void PlayerState::handle_before_turn_assist_effects() {
           s->execute_bomb_assist_effect();
           break;
         case AssistEffect::ATK_DICE_2:
-          // Note: This behavior doesn't match the card description. Is it
-          // supposed to add 2 or multiply by 2?
+          // Note: This behavior doesn't match the card description. Is it supposed to add 2 or multiply by 2?
           this->atk_points = min<int16_t>(this->atk_points + 2, 9);
           this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
           break;
@@ -1885,9 +1844,7 @@ void PlayerState::dice_phase_before() {
 
   this->compute_total_set_cards_cost();
   this->unknown_a14 = 0;
-  if ((this->assist_remaining_turns > 0) &&
-      (this->assist_remaining_turns < 90) &&
-      (this->assist_delay_turns == 0)) {
+  if ((this->assist_remaining_turns > 0) && (this->assist_remaining_turns < 90) && (this->assist_delay_turns == 0)) {
     this->assist_remaining_turns--;
     if (this->assist_remaining_turns < 1) {
       this->discard_set_assist_card();
@@ -1984,12 +1941,10 @@ void PlayerState::roll_main_dice_or_apply_after_effects() {
   auto s = this->server();
   const auto& rules = s->map_and_rules->rules;
 
-  // In NTE, the dice behave differently - there is no minimum, and instead the
-  // player can specify a fixed value for each die or a random value (1-6). The
-  // implementation of this function is therefore quite different on NTE, but
-  // since we already support custom ranges for ATK and DEF dice, we just use
-  // the non-NTE logic and assign the dice ranges at battle start time to yield
-  // the NTE behavior. (See RulesTrial in DataIndexes.cc for how this is done.)
+  // In NTE, the dice behave differently - there is no minimum, and instead the player can specify a fixed value for
+  // each die or a random value (1-6). The implementation of this function is therefore quite different on NTE, but
+  // since we already support custom ranges for ATK and DEF dice, we just use the non-NTE logic and assign the dice
+  // ranges at battle start time to yield the NTE behavior. (See RulesTrial in DataIndexes.cc for how this is done.)
 
   bool is_1p_2v1 = (s->team_client_count.at(this->get_team_id()) < s->team_client_count[this->get_team_id() ^ 1]);
 
@@ -2079,10 +2034,8 @@ void PlayerState::compute_team_dice_bonus_after_draw_phase() {
   }
 
   uint8_t current_team_turn = s->get_current_team_turn();
-  uint8_t dice_boost = s->get_team_exp(current_team_turn) /
-      (s->team_client_count[current_team_turn] * 12);
-  s->card_special->adjust_dice_boost_if_team_has_condition_52(
-      current_team_turn, &dice_boost, 0);
+  uint8_t dice_boost = s->get_team_exp(current_team_turn) / (s->team_client_count[current_team_turn] * 12);
+  s->card_special->adjust_dice_boost_if_team_has_condition_52(current_team_turn, &dice_boost, 0);
   s->team_dice_bonus[current_team_turn] = clamp<int16_t>(dice_boost, 0, 8);
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
 }
