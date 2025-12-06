@@ -3356,7 +3356,7 @@ void send_rare_enemy_index_list(shared_ptr<Client> c, const vector<size_t>& inde
 }
 
 void send_quest_function_call(std::shared_ptr<Channel> ch, uint16_t label) {
-  S_CallQuestFunction_V3_BB_AB cmd;
+  S_CallQuestLabel_V3_BB_AB cmd;
   cmd.label = label;
   ch->send(0xAB, 0x00, &cmd, sizeof(cmd));
 }
