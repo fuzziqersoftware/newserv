@@ -246,7 +246,7 @@ string SetDataTable::str() const {
       const auto& v2_v = v1_v[v1];
       for (size_t v2 = 0; v2 < v2_v.size(); v2++) {
         const auto& e = v2_v[v2];
-        lines.emplace_back(std::format("{:02X}/{:02X}/{:02X} => {:28} {:28} {:28}\n",
+        lines.emplace_back(std::format("{:02X}/{:02X}/{:02X} => {:>28} {:>28} {:>28}\n",
             a, v1, v2, e.object_list_basename, e.enemy_and_event_list_basename, e.area_setup_filename));
       }
     }
