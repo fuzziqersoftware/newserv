@@ -16,7 +16,7 @@
 #include "StaticGameData.hh"
 #include "Text.hh"
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Game structures (used in 6x6B/6x6C/6x6E handlers, and here)
 
 struct SyncEnemyStateEntry {
@@ -34,7 +34,7 @@ struct SyncObjectStateEntry {
   le_uint16_t item_drop_id = 0;
 } __packed_ws__(SyncObjectStateEntry, 0x04);
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Set data table (variations index)
 
 struct Variations {
@@ -98,8 +98,7 @@ private:
   template <bool BE>
   void load_table_t(const std::string& data);
 
-  // Indexes are [floor][variation1][variation2]
-  // floor is cumulative per episode, so Ep2 starts at floor=18.
+  // Indexes are [floor][variation1][variation2]; floor is cumulative per episode, so Ep2 starts at floor=18.
   std::vector<std::vector<std::vector<SetEntry>>> entries;
 };
 
@@ -131,12 +130,10 @@ private:
   static const std::array<std::vector<std::vector<std::string>>, 0x12> NAMES;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-// Map (DAT) file parser. This class is responsible for parsing individual
-// quest DAT files, or up to three individual free-play DAT files (object sets,
-// enemy sets, and events, each of which are optional). In the free-play case,
-// the MapFile represents entities for a single floor; in the quest case, it
-// represents the lists for all floors.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Map (DAT) file parser. This class is responsible for parsing individual quest DAT files, or up to three individual
+// free-play DAT files (object sets, enemy sets, and events, each of which are optional). In the free-play case, the
+// MapFile represents entities for a single floor; in the quest case, it represents the lists for all floors.
 
 class MapFile : public std::enable_shared_from_this<MapFile> {
 public:
@@ -171,14 +168,12 @@ public:
     /* 0A */ le_uint16_t group = 0;
     /* 0C */ le_uint16_t room = 0;
     /* 0E */ le_uint16_t unknown_a3 = 0;
-    // The position is relative to the room in which the object is placed; to
-    // get the actual world position, the object's position must be rotated
-    // around the room's origin by the room's angles, then translated by the
-    // room's offset. The room's angle and offset can be found in the area's
-    // n.rel file.
+    // The position is relative to the room in which the object is placed; to get the actual world position, the
+    // object's position must be rotated around the room's origin by the room's angles, then translated by the room's
+    // offset. The room's angle and offset can be found in the area's n.rel file.
     /* 10 */ VectorXYZF pos;
-    // Angles are specified as 16-bit integers, where 0 is no rotation around
-    // the axis and FFFF is almost a complete counterclockwise rotation.
+    // Angles are specified as 16-bit integers, where 0 is no rotation around the axis and FFFF is almost a complete
+    // counterclockwise rotation.
     /* 1C */ VectorXYZI angle;
     // See notes in dat_object_definitions in Map.cc for how these are used
     /* 28 */ le_float param1 = 0.0f;
@@ -198,7 +193,7 @@ public:
     /* 00 */ le_uint16_t base_type = 0;
     /* 02 */ le_uint16_t set_flags = 0; // Used by PSO at runtime, unused in DAT file
     /* 04 */ le_uint16_t index = 0; // Used by PSO at runtime, unused in DAT file
-    /* 06 */ le_uint16_t num_children = 0; // If == 0, use the default child count from the constructor table (which is often also 0)
+    /* 06 */ le_uint16_t num_children = 0; // If == 0, use the default child count from the constructor table
     /* 08 */ le_uint16_t floor = 0;
     /* 0A */ le_uint16_t entity_id = 0; // == index + 0x1000; used by PSO at runtime, unused in DAT file
     /* 0C */ le_uint16_t room = 0;
@@ -223,10 +218,9 @@ public:
   } __packed_ws__(EnemySetEntry, 0x48);
 
   struct EventsSectionHeader { // Section type 3 (EVENTS)
-    // The events section has three zones: the header (this structure), the
-    // event entries, and the action stream. The header specifies where to find
-    // each one in the section, and how many entries there are. The offsets
-    // here are relative to the beginning of the header.
+    // The events section has three zones: the header (this structure), the event entries, and the action stream. The
+    // header specifies where to find each one in the section, and how many entries there are. The offsets here are
+    // relative to the beginning of the header.
     /* 00 */ le_uint32_t action_stream_offset;
     /* 04 */ le_uint32_t entries_offset;
     /* 08 */ le_uint32_t entry_count;
@@ -239,62 +233,50 @@ public:
   } __packed_ws__(EventsSectionHeader, 0x10);
 
   struct Event1Entry { // Section type 3 (EVENTS) if format == 0
-    // A wave event consists of an event (this struct) and an action stream,
-    // which is a short script that runs when all enemies in the wave are
-    // killed. Generally, events work like this:
-    //   1. The event is triggered (e.g. via a quest script or trigger object).
-    //      This sets flag 0004 on the wave event.
-    //   2. The client constructs a TSetEvtDestroy object, which despite its
-    //      name, is also responsible for constructing enemies. This sets flag
-    //      0002 on the wave event. This object waits for the delay specified
-    //      in this structure (in frames), then constructs the wave's enemies.
+    // A wave event consists of an event (this struct) and an action stream, which is a short script that runs when all
+    // enemies in the wave are killed. Generally, events work like this:
+    //   1. The event is triggered (e.g. via a quest script or trigger object). This sets flag 0004 on the wave event.
+    //   2. The client constructs a TSetEvtDestroy object, which despite its name, is also responsible for constructing
+    //      enemies. This sets flag 0002 on the wave event. This object waits for the delay specified in this structure
+    //      (in frames), then constructs the wave's enemies.
     //   3. The player kills all the enemies.
     //   4. The TSetEvtDestroy object sets flag 0010 on the event.
-    //   5. The TSetEvtDestroy object sets flag 0008 on the event and runs the
-    //      post-wave actions. (This happens one frame after the above.) See
-    //      the implementation of MapFile::disassemble_action_stream for
-    //      details on the format of post-wave actions. It then clears flag
-    //      0004 (but not 0002).
+    //   5. The TSetEvtDestroy object sets flag 0008 on the event and runs the post-wave actions. (This happens one
+    //      frame after the above.) See the implementation of MapFile::disassemble_action_stream for details on the
+    //      format of post-wave actions. It then clears flag 0004 (but not 0002).
 
-    // The event ID identifies this event on the current floor. It is not
-    // required that all wave events have unique IDs; if multiple events have
-    // the same ID, they will all trigger at the same time when any one of them
-    // is triggered (since wave events can only be triggered by ID).
+    // The event ID identifies this event on the current floor. It is not required that all wave events have unique
+    // IDs; if multiple events have the same ID, they will all trigger at the same time when any one of them is
+    // triggered (since wave events can only be triggered by ID).
     /* 00 */ le_uint32_t event_id = 0;
 
-    // The flags field specifies the state of the event. This field is synced
-    // to a joining player as part of the 6x6E command during the game loading
-    // sequence. Known bits:
-    //   0002 = wave object constructor has been called (this flag is not
-    //          synced via 6x6E)
+    // The flags field specifies the state of the event. This field is synced to a joining player as part of the 6x6E
+    // command during the game loading sequence. Known bits:
+    //   0002 = wave object constructor has been called (this flag is not synced via 6x6E)
     //   0004 = is active (has been triggered)
     //   0008 = post-wave actions have been run
     //   0010 = all enemies killed
     /* 04 */ le_uint16_t flags = 0; // Used by PSO at runtime, unused in file
 
-    // It seems Sega originally wanted to support multiple types of events, and
-    // the event_type field controls which constructor is called when the event
-    // is triggered by a 6x67 command. It seems they never actually used this
-    // though; there are only two valid values: 0 makes the event do nothing
-    // (no object is constructed at all) and 1 uses the normal control object
-    // (TSetEvtDestroy). There is no bounds check here, so any other value
-    // causes undefined behavior.
+    // It seems Sega originally wanted to support multiple types of events, and the event_type field controls which
+    // constructor is called when the event is triggered by a 6x67 command. It seems they never actually used this
+    // though; there are only two valid values: 0 makes the event do nothing (no object is constructed at all) and 1
+    // uses the normal control object described above (TSetEvtDestroy). There is no bounds check here, so any other
+    // value causes undefined behavior.
     /* 06 */ le_uint16_t event_type = 1;
 
-    // The room and wave_number fields specify which enemies should be
-    // constructed when this event triggers. All enemies whose room and
-    // wave_number fields match these two fields are constructed at the same
-    // time when the event triggers (or after the delay below).
+    // The room and wave_number fields specify which enemies should be constructed when this event triggers. All
+    // enemies whose room and wave_number fields match these two fields are constructed at the same time when the event
+    // triggers (or after the delay below).
     /* 08 */ le_uint16_t room = 0;
     /* 0A */ le_uint16_t wave_number = 0;
 
-    // The delay field specified how long (in frames) to wait after the event's
-    // trigger time before constructing all the enemies.
+    // The delay field specified how long (in frames) to wait after the event's trigger time before constructing all
+    // the enemies.
     /* 0C */ le_uint32_t delay = 0;
 
-    // This field specifies where in the action stream data to start running
-    // commands for this event, when all enemies are defeated. This is relative
-    // to the beginning of the action stream, not the events section header.
+    // This field specifies where in the action stream data to start running commands for this event, when all enemies
+    // are defeated. This is relative to the beginning of the action stream, not the events section header.
     /* 10 */ le_uint32_t action_stream_offset = 0;
 
     /* 14 */
@@ -355,8 +337,8 @@ public:
   } __packed_ws__(RandomEnemyDefinitionsHeader, 0x10);
 
   struct RandomEnemyDefinition { // Section type 5 (RANDOM_ENEMY_DEFINITIONS)
-    // All fields through entry_num map to the corresponding fields in
-    // EnemySetEntry. Note that the order of param6 and param7 is switched!
+    // All fields through entry_num map to the corresponding fields in EnemySetEntry. Note that the order of param6 and
+    // param7 is switched!
     /* 00 */ le_float param1;
     /* 04 */ le_float param2;
     /* 08 */ le_float param3;
@@ -466,9 +448,8 @@ public:
     return this->has_any_random_sections;
   }
 
-  // If the map file has no random sections, does nothing and returns a
-  // shared_ptr to this. If it has any random sections, returns a new map with
-  // all non-random sections copied verbatim, and random sections replaced with
+  // If the map file has no random sections, does nothing and returns a shared_ptr to this. If it has any random
+  // sections, returns a new map with all non-random sections copied verbatim, and random sections replaced with
   // non-random sections according to the challenge mode generation algorithm.
   std::shared_ptr<MapFile> materialize_random_sections(uint32_t random_seed);
   std::shared_ptr<const MapFile> materialize_random_sections(uint32_t random_seed) const;
@@ -508,19 +489,15 @@ protected:
   int64_t generated_with_random_seed = -1;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-// Super map. This class is responsible for collecting entity lists across PSO
-// versions and diffing them to link together entities that don't line up
-// across versions. This class also generates enemy lists from enemy set lists,
-// which MapFile doesn't do. Like MapFile, a single SuperMap is either
-// responsible for all entities on all floors in a quest, or all entities on a
-// single floor in free play. Each entity is assigned a "super ID", which
-// uniquely identifies the entity on all PSO versions. (These are the IDs which
-// newserv formats as K-XXX, E-XXX, and W-XXX, though they are offset as needed
-// for floors beyond the first.)
-// There must not be any random enemy sections in any MapFile passed to
-// SuperMap; to resolve them, materialize_random_sections must be called on all
-// MapFiles first. This generally only is of concern in Challenge mode.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Super map. This class is responsible for collecting entity lists across PSO versions and diffing them to link
+// together entities that don't line up across versions. This class also generates enemy lists from enemy set lists,
+// which MapFile doesn't do. Like MapFile, a single SuperMap is either responsible for all entities on all floors in a
+// quest, or all entities on a single floor in free play. Each entity is assigned a "super ID", which uniquely
+// identifies the entity on all PSO versions. (These are the IDs which newserv formats as K-XXX, E-XXX, and W-XXX,
+// though they are offset as needed for floors beyond the first.)
+// There must not be any random enemy sections in any MapFile passed to SuperMap; to resolve them,
+// materialize_random_sections must be called on all MapFiles first. This generally only is needed in Challenge mode.
 
 class SuperMap {
 public:
@@ -714,11 +691,10 @@ protected:
   void add_map_file(Version v, std::shared_ptr<const MapFile> this_map_file);
 };
 
-////////////////////////////////////////////////////////////////////////////////
-// Map state. This class is responsible for keeping track of the in-game state
-// of objects, enemies, and events. This is the only class that's constructed
-// for every game; the others are essentially immutable data once loaded, which
-// this class refers to.
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Map state. This class is responsible for keeping track of the in-game state of objects, enemies, and events. This is
+// the only class that's constructed for every game; the others are essentially immutable data once loaded, and this
+// class refers to them.
 
 class MapState {
 public:
@@ -751,12 +727,10 @@ public:
   static const std::shared_ptr<const RareEnemyRates> DEFAULT_RARE_ENEMIES;
 
   struct ObjectState {
-    // WARNING: super_obj CAN BE NULL! This is not the case for enemies and
-    // events; their super entities are never null. In the case of objects,
-    // dynamic objects like player-set traps have object IDs past the end of
-    // the map's object list, and when queried, the MapState will return a
-    // temporary ObjectState with a null super_obj. (In these cases, only k_id
-    // is needed for correctness.)
+    // WARNING: super_obj CAN BE NULL! This is not the case for enemies and events; their super entities are never
+    // null. In the case of objects, dynamic objects like player-set traps have object IDs past the end of the map's
+    // object list, and when queried, the MapState will return a temporary ObjectState with a null super_obj. (In these
+    // cases, only k_id is needed for correctness.)
     std::shared_ptr<const SuperMap::Object> super_obj;
     size_t k_id = 0;
     uint16_t game_flags = 0;
@@ -992,8 +966,7 @@ public:
   inline const FloorConfig& floor_config(uint8_t floor) const {
     return this->floor_config_entries[std::min<uint8_t>(floor, this->floor_config_entries.size() - 1)];
   }
-  // Resets states of all entities to their initial values. Used when
-  // restarting battles/challenges.
+  // Resets states of all entities to their initial values. Used when restarting battles/challenges.
   void reset();
 
   inline Range<ObjectIterator> iter_object_states(Version version) {
