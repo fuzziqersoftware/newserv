@@ -24,7 +24,7 @@ static const vector<EnemyTypeDefinition> type_defs{
     {EnemyType::AL_RAPPY,                EP1 |             RARE,        0x06, 0x19, "AL_RAPPY",                "Al Rappy", "Pal Rappy"},
     {EnemyType::ASTARK,                              EP4,               0x41, 0x09, "ASTARK",                  "Astark", nullptr},
     {EnemyType::BA_BOOTA,                            EP4,               0x4F, 0x03, "BA_BOOTA",                "Ba Boota", nullptr},
-    {EnemyType::BARBA_RAY,                     EP2 |              BOSS,              0x49, 0x0F, "BARBA_RAY",               "Barba Ray", nullptr},
+    {EnemyType::BARBA_RAY,                     EP2 |              BOSS, 0x49, 0x0F, "BARBA_RAY",               "Barba Ray", nullptr},
     {EnemyType::BARBAROUS_WOLF,          EP1 | EP2,                     0x08, 0x03, "BARBAROUS_WOLF",          "Barbarous Wolf", "Gulgus-gue"},
     {EnemyType::BEE_L,                   EP1 | EP2,                     0xFF, 0xFF, "BEE_L",                   "Bee L", "Gee L"},
     {EnemyType::BEE_R,                   EP1 | EP2,                     0xFF, 0xFF, "BEE_R",                   "Bee R", "Gee R"},
