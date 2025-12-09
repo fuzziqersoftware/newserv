@@ -212,6 +212,9 @@ Auto-press A as fast as possible during loading screens
 3SJT => 040C2C48 60000000
 3SJ0 => 042F8B74 60000000
 
+CARD lobby battle tables react immediately
+3SE0 => 042C04D4 60000000
+
 Change type of all loading screens
 Values for X: 0 = lobby/game join, 1 = quest load, 3 = pipe up, 4 = pipe down, anything else = silent black screen
 3OE1 => 0401CA04 3BE0000X
