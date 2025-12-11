@@ -3064,6 +3064,21 @@ Action a_check_supermaps(
       phosg::fwrite_fmt(stderr, "ALL QUEST MAPS: {}\n", all_quests_eff_str);
     });
 
+Action a_materialize_map(
+    "materialize-map", nullptr,
+    +[](phosg::Arguments& args) {
+      if (args.get<bool>("debug")) {
+        static_game_data_log.min_level = phosg::LogLevel::L_DEBUG;
+      }
+      auto map_data = make_shared<string>(prs_decompress(read_input_data(args)));
+      auto map_file = make_shared<MapFile>(map_data);
+      uint32_t seed = args.get<uint32_t>("seed", phosg::Arguments::IntFormat::HEX);
+      Version version = get_cli_version(args);
+      auto materialized = map_file->materialize_random_sections(seed);
+      auto disassembly = materialized->disassemble(false, version);
+      write_output_data(args, disassembly.data(), disassembly.size(), "txt");
+    });
+
 Action a_print_free_supermap(
     "print-free-supermap", "\
   print-free-supermap [--psov2] [--seed=SEED] [--episode=1|2|4]\n\

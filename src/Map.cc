@@ -3345,7 +3345,7 @@ string MapFile::RandomEnemyLocation::str() const {
 }
 
 string MapFile::RandomEnemyDefinition::str() const {
-  return std::format("[RandomEnemyDefinition params=[{:g} {:g} {:g} {:g} {:g} {:04X} {:04X}] entry_num={:08X} min_children={:04X} max_children={:04X}]",
+  return std::format("[RandomEnemyDefinition params=[{:g} {:g} {:g} {:g} {:g} {:04X} {:04X}] entry_index={:08X} min_children={:04X} max_children={:04X}]",
       this->param1,
       this->param2,
       this->param3,
@@ -3353,7 +3353,7 @@ string MapFile::RandomEnemyDefinition::str() const {
       this->param5,
       this->param6,
       this->param7,
-      this->entry_num,
+      this->entry_index,
       this->min_children,
       this->max_children);
 }
@@ -3364,10 +3364,10 @@ string MapFile::RandomEnemyWeight::str() const {
     base_type_index_str = std::format("(->{:04X})", MapFile::RAND_ENEMY_BASE_TYPES.at(this->base_type_index));
   } catch (const std::out_of_range&) {
   }
-  return std::format("[RandomEnemyWeight base_type_index={:02X}{} def_entry_num={} weight={:02X} a4={:02X}]",
+  return std::format("[RandomEnemyWeight base_type_index={:02X}{} def_entry_index={} weight={:02X} a4={:02X}]",
       this->base_type_index,
       base_type_index_str,
-      this->def_entry_num,
+      this->def_entry_index,
       this->weight,
       this->unknown_a4);
 }
@@ -3735,7 +3735,7 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
               if (det < weight_entry.weight) {
                 static_game_data_log.debug_f("(Floor {} event {} wave {} enemy {}) This results in weight entry {}",
                     floor, source_event_index, remaining_waves, remaining_enemies, weight_entry.str());
-                if ((weight_entry.base_type_index != 0xFF) && (weight_entry.def_entry_num != 0xFF)) {
+                if ((weight_entry.base_type_index != 0xFF) && (weight_entry.def_entry_index != 0xFF)) {
                   if (definitions_header.entry_count == 0) {
                     throw runtime_error("no available random enemy definitions");
                   }
@@ -3750,7 +3750,7 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
                   size_t bs_max = definitions_header.entry_count - 1;
                   do {
                     size_t bs_mid = (bs_min + bs_max) / 2;
-                    if (definitions_r.pget<RandomEnemyDefinition>(bs_mid * sizeof(RandomEnemyDefinition)).entry_num < weight_entry.def_entry_num) {
+                    if (definitions_r.pget<RandomEnemyDefinition>(bs_mid * sizeof(RandomEnemyDefinition)).entry_index < weight_entry.def_entry_index) {
                       bs_min = bs_mid + 1;
                     } else {
                       bs_max = bs_mid;
@@ -3758,7 +3758,7 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
                   } while (bs_min < bs_max);
 
                   const auto& def = definitions_r.pget<RandomEnemyDefinition>(bs_min * sizeof(RandomEnemyDefinition));
-                  if (def.entry_num == weight_entry.def_entry_num) {
+                  if (def.entry_index == weight_entry.def_entry_index) {
                     static_game_data_log.debug_f("(Floor {} event {} wave {} enemy {}) Using parameters from {}",
                         floor, source_event_index, remaining_waves, remaining_enemies, def.str());
                     e.param1 = def.param1;
@@ -3768,6 +3768,8 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
                     e.param5 = def.param5;
                     e.param6 = def.param6;
                     e.param7 = def.param7;
+                    // Note: The original code calls this with (min_children, max_children + 1); we add 1 inside the
+                    // function instead, which is functionally equivalent.
                     e.num_children = random_state.rand_int_biased(def.min_children, def.max_children);
                   } else {
                     throw runtime_error("random enemy definition not found");

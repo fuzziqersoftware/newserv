@@ -337,8 +337,8 @@ public:
   } __packed_ws__(RandomEnemyDefinitionsHeader, 0x10);
 
   struct RandomEnemyDefinition { // Section type 5 (RANDOM_ENEMY_DEFINITIONS)
-    // All fields through entry_num map to the corresponding fields in EnemySetEntry. Note that the order of param6 and
-    // param7 is switched!
+    // All fields through entry_index map to the corresponding fields in EnemySetEntry. Note that the order of param6
+    // and param7 is switched!
     /* 00 */ le_float param1;
     /* 04 */ le_float param2;
     /* 08 */ le_float param3;
@@ -346,7 +346,8 @@ public:
     /* 10 */ le_float param5;
     /* 14 */ le_int16_t param7;
     /* 16 */ le_int16_t param6;
-    /* 18 */ le_uint32_t entry_num;
+    /* 18 */ le_uint16_t entry_index;
+    /* 1A */ le_uint16_t unknown_a1;
     /* 1C */ le_uint16_t min_children;
     /* 1E */ le_uint16_t max_children;
     /* 20 */
@@ -356,7 +357,7 @@ public:
 
   struct RandomEnemyWeight { // Section type 5 (RANDOM_ENEMY_DEFINITIONS)
     /* 00 */ uint8_t base_type_index;
-    /* 01 */ uint8_t def_entry_num;
+    /* 01 */ uint8_t def_entry_index;
     /* 02 */ uint8_t weight;
     /* 03 */ uint8_t unknown_a4;
     /* 04 */
