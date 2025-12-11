@@ -5306,6 +5306,25 @@ void populate_quest_metadata_from_script(
           }
         };
 
+        auto simulate_arithmetic_opcode = [&](bool is_imm, auto fn) {
+          uint8_t reg = r.get_u8();
+          uint32_t value;
+          if (is_imm) {
+            value = r.get_u32l();
+          } else {
+            uint8_t src_reg = r.get_u8();
+            if (regs.is_valid(src_reg)) {
+              value = regs.get(src_reg);
+            } else {
+              regs.invalidate(reg);
+              return;
+            }
+          }
+          if (regs.is_valid(reg)) {
+            regs.set(reg, fn(regs.get(reg), value));
+          }
+        };
+
         switch (opcode) {
           case 0x0000: // nop
             break;
@@ -5374,6 +5393,43 @@ void populate_quest_metadata_from_script(
             }
             break;
           }
+
+          case 0x0018: // add
+          case 0x0019: // addi
+            simulate_arithmetic_opcode(opcode & 1, [](uint32_t a, uint32_t b) -> uint32_t { return a + b; });
+            break;
+          case 0x001A: // sub
+          case 0x001B: // subi
+            simulate_arithmetic_opcode(opcode & 1, [](uint32_t a, uint32_t b) -> uint32_t { return a - b; });
+            break;
+          case 0x001C: // mul
+          case 0x001D: // muli
+            simulate_arithmetic_opcode(opcode & 1, [](uint32_t a, uint32_t b) -> uint32_t { return a * b; });
+            break;
+          case 0x001E: // div
+          case 0x001F: // divi
+            simulate_arithmetic_opcode(opcode & 1, [](uint32_t a, uint32_t b) -> uint32_t { return a / b; });
+            break;
+          case 0x0020: // and
+          case 0x0021: // andi
+            simulate_arithmetic_opcode(opcode & 1, [](uint32_t a, uint32_t b) -> uint32_t { return a & b; });
+            break;
+          case 0x0022: // or
+          case 0x0023: // ori
+            simulate_arithmetic_opcode(opcode & 1, [](uint32_t a, uint32_t b) -> uint32_t { return a | b; });
+            break;
+          case 0x0024: // xor
+          case 0x0025: // xori
+            simulate_arithmetic_opcode(opcode & 1, [](uint32_t a, uint32_t b) -> uint32_t { return a ^ b; });
+            break;
+          case 0x0026: // mod
+          case 0x0027: // modi
+            simulate_arithmetic_opcode((opcode & 1) ^ (opcode >> 7), [](uint32_t a, uint32_t b) -> uint32_t { return static_cast<int32_t>(a) % static_cast<int32_t>(b); });
+            break;
+          case 0x00E9: // mod2
+          case 0x00EA: // modi2
+            simulate_arithmetic_opcode((opcode & 1) ^ (opcode >> 7), [](uint32_t a, uint32_t b) -> uint32_t { return a % b; });
+            break;
 
           case 0x0028: { // jmp
             uint32_t offset = get_label_offset(r.get_u16l());
