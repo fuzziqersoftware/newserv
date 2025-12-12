@@ -957,3 +957,30 @@ Slow Gibbles fix
         042D8AB8 C022FDA8
 3OP0 => 042D8228 C022FDA8
         042D824C C022FDA8
+
+Override Challenge mode random enemy location tables limit
+2OJ5 => 8C2501B2 XXE5 (count as byte)
+2OJF => 8C24E98E XXE5 (count as byte)
+2OEF => 8C2501A2 XXE5 (count as byte)
+2OPF => 8C244C7E XXE5 (count as byte)
+2OJW => 005AA2FE XXXXXXXX (count * 4 as little-endian dword)
+        005AA30C XXXXXXXX (count as little-endian dword)
+2OJZ => 005A908E XXXXXXXX (count * 4 as little-endian dword)
+        005A909D XXXXXXXX (count as little-endian dword)
+3OE0 => 04209448 3880XXXX (count as big-endian word)
+3OE1 => 04209448 3880XXXX (count as big-endian word)
+3OE2 => 0420A330 3880XXXX (count as big-endian word)
+3OJ2 => 04208C4C 3880XXXX (count as big-endian word)
+3OJ3 => 042094C0 3880XXXX (count as big-endian word)
+3OJ4 => 0420A5A8 3880XXXX (count as big-endian word)
+3OJ5 => 04209FFC 3880XXXX (count as big-endian word)
+3OP0 => 04209D2C 3880XXXX (count as big-endian word)
+4OJB => 002E527C XXXXXXXX (count as little-endian dword)
+4OJD => 002E5DFC XXXXXXXX (count as little-endian dword)
+4OJU => 002E740C XXXXXXXX (count as little-endian dword)
+4OED => 002E71DC XXXXXXXX (count as little-endian dword)
+4OEU => 002E742C XXXXXXXX (count as little-endian dword)
+4OPD => 002E720C XXXXXXXX (count as little-endian dword)
+4OPU => 002E745C XXXXXXXX (count as little-endian dword)
+59NL => 0080ECB7 XXXXXXXX (count * 4 as little-endian dword)
+        0080ECD0 XXXXXXXX (count as little-endian dword)
