@@ -858,12 +858,17 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //   param6 = number of frames between trigger and explosion
     {0x000D, F_V0_V4, 0x00005FFC3FFB07FE, "TOMineIcon04"},
 
-    // Room ID. Params:
-    //   param1 = radius (actual radius = (param1 * 10) + 30)
-    //   param2 = next room ID
-    //   param3 = previous room ID
-    //   param5 = angle
-    //   param6 = TODO (debug info calls this "BLOCK ID"; seems it only matters whether this is 0x10000 or not)
+    // Room ID. This object sets each player's room ID to one of two different values when they're within the effective
+    // radius. Params:
+    //   param1 = radius delta (actual radius = param1 * 10)
+    //   param2 = room ID to use if player is facing the same direction as this object (as determined by the dot
+    //     product of the vector from this object to the player, and the vector (0, 0, -1) rotated by the angle in
+    //     param5; if the dot product is positive, param2 is used)
+    //   param3 = room ID to use if the dot product described above is zero or negative
+    //   param5 = angle (see param2)
+    //   param6 = if equal to 0x00010000, only the player's room_id field is set, and game flag 0x02000000 is set on
+    //     the player; if not equal to 0x00010000, then both room_id and room_id2 are set and no game flag is set
+    //     (TODO: What are the visible behavior differences due to this parameter?)
     {0x000E, F_V0_V4, 0x00005FFFFFF83FFE, "TObjRoomId"},
 
     // Sensor of some kind (TODO). Params:
