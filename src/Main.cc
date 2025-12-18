@@ -3065,7 +3065,13 @@ Action a_check_supermaps(
     });
 
 Action a_materialize_map(
-    "materialize-map", nullptr,
+    "materialize-map", "\
+  materialize-map [OPTIONS] [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Runs the Challenge Mode random enemy generation algorithm on the input map\n\
+    file, producing a new map file with no random sections. A version option\n\
+    is required, and the --seed=SEED option is also required (SEED is a 32-bit\n\
+    hex integer). The resulting map file is disassembled immediately, and the\n\
+    disassembly is written to the output file.\n",
     +[](phosg::Arguments& args) {
       if (args.get<bool>("debug")) {
         static_game_data_log.min_level = phosg::LogLevel::L_DEBUG;

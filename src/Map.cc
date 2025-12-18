@@ -3328,7 +3328,7 @@ string MapFile::RandomEnemyLocationSection::str() const {
   if (count > 0x20) {
     count_warning_str = " /* warning: count is too large */";
   }
-  return std::format("[RandomEnemyLocationSection room={:04X} count={:04X}{} offset={:08X} index={}]",
+  return std::format("[RandomEnemyLocationSection room={:04X} count={:04X}{} offset={:08X}(index={:04X})]",
       this->room, this->count, count_warning_str, this->offset, this->offset / sizeof(RandomEnemyLocation));
 }
 
@@ -3445,6 +3445,10 @@ const array<uint32_t, 41> MapFile::RAND_ENEMY_BASE_TYPES = {
     0xE0, 0xE0, 0xE1};
 
 MapFile::MapFile(std::shared_ptr<const std::string> data) {
+  for (uint8_t z = 0; z < this->sections_for_floor.size(); z++) {
+    this->sections_for_floor[z].floor = z;
+  }
+
   this->quest_data = data;
   this->link_data(data);
 
@@ -3492,6 +3496,9 @@ MapFile::MapFile(
     std::shared_ptr<const std::string> objects_data,
     std::shared_ptr<const std::string> enemies_data,
     std::shared_ptr<const std::string> events_data) {
+  for (uint8_t z = 0; z < this->sections_for_floor.size(); z++) {
+    this->sections_for_floor[z].floor = z;
+  }
   if (objects_data) {
     this->link_data(objects_data);
     this->set_object_sets_for_floor(floor, 0, objects_data->data(), objects_data->size());
@@ -3508,7 +3515,11 @@ MapFile::MapFile(
 }
 
 MapFile::MapFile(uint32_t generated_with_random_seed)
-    : generated_with_random_seed(generated_with_random_seed) {}
+    : generated_with_random_seed(generated_with_random_seed) {
+  for (uint8_t z = 0; z < this->sections_for_floor.size(); z++) {
+    this->sections_for_floor[z].floor = z;
+  }
+}
 
 void MapFile::link_data(std::shared_ptr<const string> data) {
   if (this->linked_data.emplace(data).second) {
@@ -4037,7 +4048,7 @@ string MapFile::disassemble(bool reassembly, Version version) const {
         if (reassembly) {
           ret.emplace_back(ev.str());
         } else {
-          ret.emplace_back(std::format("/* index {} */ {}", z, ev.str()));
+          ret.emplace_back(std::format("/* index {:04X} */ {}", z, ev.str()));
         }
         if (ev.action_stream_offset >= sf.event_action_stream_bytes) {
           ret.emplace_back(std::format(
@@ -4062,7 +4073,7 @@ string MapFile::disassemble(bool reassembly, Version version) const {
         if (reassembly) {
           ret.emplace_back(sec.str());
         } else {
-          ret.emplace_back(std::format("/* section index {} */ {}", z, sec.str()));
+          ret.emplace_back(std::format("/* section index {:04X} */ {}", z, sec.str()));
         }
       }
       for (size_t z = 0; z < sf.random_enemy_location_count; z++) {
@@ -4070,7 +4081,7 @@ string MapFile::disassemble(bool reassembly, Version version) const {
         if (reassembly) {
           ret.emplace_back(ent.str());
         } else {
-          ret.emplace_back(std::format("/* entry index {} */ {}", z, ent.str()));
+          ret.emplace_back(std::format("/* entry index {:04X} */ {}", z, ent.str()));
         }
       }
       ret.emplace_back();
@@ -4088,7 +4099,7 @@ string MapFile::disassemble(bool reassembly, Version version) const {
         if (reassembly) {
           ret.emplace_back(def.str());
         } else {
-          ret.emplace_back(std::format("/* definition index {} */ {}", z, def.str()));
+          ret.emplace_back(std::format("/* definition index {:04X} */ {}", z, def.str()));
         }
       }
       for (size_t z = 0; z < sf.random_enemy_definition_weight_count; z++) {
@@ -4096,7 +4107,7 @@ string MapFile::disassemble(bool reassembly, Version version) const {
         if (reassembly) {
           ret.emplace_back(weight.str());
         } else {
-          ret.emplace_back(std::format("/* weight index {} */ {}", z, weight.str()));
+          ret.emplace_back(std::format("/* weight index {:04X} */ {}", z, weight.str()));
         }
       }
       ret.emplace_back();

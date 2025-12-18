@@ -380,6 +380,8 @@ public:
   };
 
   struct FloorSections {
+    uint8_t floor = 0xFF;
+
     size_t object_sets_file_offset = 0;
     size_t object_sets_file_size = 0;
     const ObjectSetEntry* object_sets = nullptr;
