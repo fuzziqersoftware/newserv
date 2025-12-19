@@ -614,7 +614,7 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //   param4 = source type:
     //     0 = use this set when advancing from a lower floor
     //     1 = use this set when returning from a higher floor
-    //     anything else = set is unused (TODO: but maybe used by TObjAreaWarpQuest?)
+    //     any other positive number = set is unused by default, but may be used by TObjAreaWarpQuest
     {0x0000, F_V0_V4, 0x00007FFFFFFFFFFF, "TObjPlayerSet"},
     {0x0000, F_EP3, 0x0000000000008001, "TObjPlayerSet"},
 
@@ -962,7 +962,9 @@ static const vector<DATEntityDefinition> dat_object_definitions({
 
     // Quest floor warp. This appears similar to TObjAreaWarpForest except that the object is not destroyed immediately
     // if it's blue and the game is Challenge mode. Params:
-    //   param1 = player set ID (TODO: what does this do? Seems it does nothing unless it's >= 2; see TObjPlayerSet)
+    //   param1 = player set ID (if this is >= 2, specifies which set of TObjPlayerSets to use on the destination
+    //     floor, which overrides the default behavior of 0/1 depending on the source and destination floor numbers;
+    //     see TObjPlayerSet for details)
     //   param4 = destination floor
     //   param6 = color (0 = blue, 1 = red)
     {0x001B, F_V1_V4, 0x00005000000078FE, "TObjAreaWarpQuest"},
