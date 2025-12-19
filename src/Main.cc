@@ -2736,13 +2736,17 @@ Action a_generate_ep3_cards_html(
       deque<string> blocks;
       blocks.emplace_back("<html><head><title>Phantasy Star Online Episode III cards</title></head><body style=\"background-color:#222222; color: #EEEEEE\">");
       blocks.emplace_back("<table><tr><th style=\"text-align: left\">Legend:</th></tr><tr style=\"background-color: #663333\"><td>Card has no definition and is obviously incomplete</td></tr><tr style=\"background-color: #336633\"><td>Card is unobtainable in random draws but may be a quest or event reward</td></tr><tr style=\"background-color: #333333\"><td>Card is obtainable in random draws</td></tr></table><br /><br />");
-      blocks.emplace_back("<table><tr><th rowspan=\"2\" style=\"text-align: left; padding: 4px\">ID</th>");
 
-      for (const auto& vi : version_infos) {
-        blocks.emplace_back(std::format("<th colspan=\"{}\" style=\"text-align: left; padding: 4px\">{}</th>",
-            vi.num_output_columns, vi.name));
+      if (version_infos.size() > 1) {
+        blocks.emplace_back("<table><tr><th rowspan=\"2\" style=\"text-align: left; padding: 4px\">ID</th>");
+        for (const auto& vi : version_infos) {
+          blocks.emplace_back(std::format("<th colspan=\"{}\" style=\"text-align: left; padding: 4px\">{}</th>",
+              vi.num_output_columns, vi.name));
+        }
+        blocks.emplace_back("</tr><tr>");
+      } else {
+        blocks.emplace_back("<table><tr><th style=\"text-align: left; padding: 4px\">ID</th>");
       }
-      blocks.emplace_back("</tr><tr>");
       for (const auto& vi : version_infos) {
         if (vi.show_small_column) {
           blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Small</th>");

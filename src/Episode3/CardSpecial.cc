@@ -1686,6 +1686,8 @@ bool CardSpecial::evaluate_effect_arg2_condition(
 }
 
 int32_t CardSpecial::evaluate_effect_expr(const AttackEnvStats& ast, const char* expr, DiceRoll& dice_roll) const {
+  using ExprToken = CardDefinition::Effect::ExprToken;
+
   auto log = this->server()->log_stack("evaluate_effect_expr: ");
   if (log.min_level == phosg::LogLevel::L_DEBUG) {
     log.debug_f(
@@ -1699,75 +1701,65 @@ int32_t CardSpecial::evaluate_effect_expr(const AttackEnvStats& ast, const char*
     ast.print(stderr);
   }
 
-  // Note: This implementation is not based on the original code because the
-  // original code was hard to follow - it used a look-behind approach with lots
-  // of local variables instead of the look-ahead approach that this
-  // implementation uses. Hopefully this implementation is easier to follow.
-  vector<pair<ExpressionTokenType, int32_t>> tokens;
-  while (expr) {
-    ExpressionTokenType type;
-    int32_t value = 0;
-    expr = this->get_next_expr_token(expr, &type, &value);
-    if (expr) {
-      if (type == ExpressionTokenType::SPACE) {
-        throw runtime_error("expression contains space token");
+  // Note: This implementation is not based on the original code because the original code was hard to follow - it used
+  // look-behind approach with lots of local variables instead of the look-ahead approach that this implementation
+  // uses. Hopefully this implementation is easier to follow.
+  auto tokens = ExprToken::parse(expr);
+  for (auto& token : tokens) {
+    if (token.type == ExprToken::Type::SPACE) {
+      throw runtime_error("expression contains space token");
+    }
+    // Turn references into numbers, so only numbers and operators can appear in the tokens vector
+    if (token.type == ExprToken::Type::REFERENCE) {
+      if ((token.value == 1) || (token.value == 11)) {
+        dice_roll.value_used_in_expr = true;
       }
-      // Turn references into numbers, so only numbers and operators can appear
-      // in the tokens vector
-      if (type == ExpressionTokenType::REFERENCE) {
-        if ((value == 1) || (value == 11)) {
-          dice_roll.value_used_in_expr = true;
-        }
-        tokens.emplace_back(make_pair(ExpressionTokenType::NUMBER, ast.at(value)));
-      } else {
-        tokens.emplace_back(make_pair(type, value));
-      }
+      token.type = ExprToken::Type::NUMBER;
+      token.value = ast.at(token.value);
     }
   }
 
-  // Operators are evaluated left-to-right - there are no operator precedence
-  // rules
+  // Operators are evaluated left-to-right - there are no operator precedence rules
   int32_t value = 0;
   log.debug_f("value={} (start)", value);
   for (size_t token_index = 0; token_index < tokens.size(); token_index++) {
-    auto token_type = tokens[token_index].first;
-    int32_t token_value = tokens[token_index].second;
-    if ((token_type == ExpressionTokenType::SPACE) || (token_type == ExpressionTokenType::REFERENCE)) {
+    const auto& token = tokens[token_index];
+    if ((token.type == ExprToken::Type::SPACE) || (token.type == ExprToken::Type::REFERENCE)) {
       throw logic_error("space or reference token present in expr evaluation phase 2");
     }
-    if (token_type == ExpressionTokenType::NUMBER) {
-      value = token_value;
-      log.debug_f("value={} (token_type=NUMBER, token_value={})", value, token_value);
+    if (token.type == ExprToken::Type::NUMBER) {
+      value = token.value;
+      log.debug_f("value={} (token_type=NUMBER, token_value={})", value, token.value);
     } else {
       if (token_index >= tokens.size() - 1) {
         throw runtime_error("no token on right side of binary operator");
       }
       token_index++;
-      auto right_token_type = tokens[token_index].first;
-      auto right_value = tokens[token_index].second;
-      if (right_token_type != ExpressionTokenType::NUMBER) {
+      const auto& right_token = tokens[token_index];
+      if (right_token.type != ExprToken::Type::NUMBER) {
+        // REFERENCE was converted to NUMBER after parsing, based on the attack env stats
         throw runtime_error("non-number, non-reference token on right side of operator");
       }
-      switch (token_type) {
-        case ExpressionTokenType::ROUND_DIVIDE:
-          value = lround(static_cast<double>(value) / right_value);
-          log.debug_f("value={} (token_type=ROUND_DIVIDE, right_token_value={})", value, right_value);
+      switch (token.type) {
+        case ExprToken::Type::ROUND_DIVIDE:
+          value = lround(static_cast<double>(value) / right_token.value);
+          log.debug_f("value={} (token_type=ROUND_DIVIDE, right_token_value={})", value, right_token.value);
           break;
-        case ExpressionTokenType::SUBTRACT:
-          value -= right_value;
-          log.debug_f("value={} (token_type=SUBTRACT, right_token_value={})", value, right_value);
+        case ExprToken::Type::SUBTRACT:
+          value -= right_token.value;
+          log.debug_f("value={} (token_type=SUBTRACT, right_token_value={})", value, right_token.value);
           break;
-        case ExpressionTokenType::ADD:
-          value += right_value;
-          log.debug_f("value={} (token_type=ADD, right_token_value={})", value, right_value);
+        case ExprToken::Type::ADD:
+          value += right_token.value;
+          log.debug_f("value={} (token_type=ADD, right_token_value={})", value, right_token.value);
           break;
-        case ExpressionTokenType::MULTIPLY:
-          value *= right_value;
-          log.debug_f("value={} (token_type=MULTIPLY, right_token_value={})", value, right_value);
+        case ExprToken::Type::MULTIPLY:
+          value *= right_token.value;
+          log.debug_f("value={} (token_type=MULTIPLY, right_token_value={})", value, right_token.value);
           break;
-        case ExpressionTokenType::FLOOR_DIVIDE:
-          value = floor(value / right_value);
-          log.debug_f("value={} (token_type=FLOOR_DIVIDE, right_token_value={})", value, right_value);
+        case ExprToken::Type::FLOOR_DIVIDE:
+          value = floor(value / right_token.value);
+          log.debug_f("value={} (token_type=FLOOR_DIVIDE, right_token_value={})", value, right_token.value);
           break;
         default:
           throw logic_error("invalid binary operator");
@@ -2741,67 +2733,6 @@ void CardSpecial::get_effective_ap_tp(
     default:
       throw logic_error("invalid stat swap state");
   }
-}
-
-const char* CardSpecial::get_next_expr_token(
-    const char* expr, ExpressionTokenType* out_type, int32_t* out_value) const {
-  switch (*expr) {
-    case '\0':
-      *out_type = ExpressionTokenType::SPACE;
-      return nullptr;
-    case ' ':
-      *out_type = ExpressionTokenType::SPACE;
-      return expr + 1;
-    case '+':
-      *out_type = ExpressionTokenType::ADD;
-      return expr + 1;
-    case '-':
-      *out_type = ExpressionTokenType::SUBTRACT;
-      return expr + 1;
-    case '*':
-      *out_type = ExpressionTokenType::MULTIPLY;
-      return expr + 1;
-    case '/':
-      if (expr[1] == '/') {
-        *out_type = ExpressionTokenType::FLOOR_DIVIDE;
-        return expr + 2;
-      } else {
-        *out_type = ExpressionTokenType::ROUND_DIVIDE;
-        return expr + 1;
-      }
-  }
-
-  if ((*expr >= 'a') && (*expr <= 'z')) {
-    string token_buf;
-    for (; (*expr >= 'a') && (*expr <= 'z'); expr++) {
-      token_buf.push_back(*expr);
-    }
-
-    *out_type = ExpressionTokenType::SPACE;
-    *out_value = 0x27;
-
-    static const vector<const char*> tokens = {
-        "f", "d", "ap", "tp", "hp", "mhp", "dm", "tdm", "tf", "ac", "php",
-        "dc", "cs", "a", "kap", "ktp", "dn", "hf", "df", "ff", "ef", "bi",
-        "ab", "mc", "dk", "sa", "gn", "wd", "tt", "lv", "adm", "ddm", "sat",
-        "edm", "ldm", "rdm", "fdm", "ndm", "ehp"};
-    for (size_t z = 0; z < tokens.size(); z++) {
-      if (token_buf == tokens[z]) {
-        *out_type = ExpressionTokenType::REFERENCE;
-        *out_value = z;
-        return expr;
-      }
-    }
-    return expr;
-  }
-
-  if ((*expr >= '0') && (*expr <= '9')) {
-    *out_type = ExpressionTokenType::NUMBER;
-    *out_value = strtol(expr, const_cast<char**>(&expr), 10);
-    return expr;
-  }
-
-  throw runtime_error("invalid card effect expression");
 }
 
 vector<shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_condition(

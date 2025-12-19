@@ -510,6 +510,27 @@ struct CardDefinition {
   } __packed_ws__(Stat, 4);
 
   struct Effect {
+    // Parsed version of expr (see below)
+    struct ExprToken {
+      enum class Type : uint8_t {
+        SPACE = 0, // Also used for end of string (get_next_expr_token returns null)
+        REFERENCE = 1, // Reference to a value from the env stats (e.g. hp)
+        NUMBER = 2, // Constant value (e.g. 2)
+        SUBTRACT = 3, // "-" in input string
+        ADD = 4, // "+" in input string
+        ROUND_DIVIDE = 5, // "/" in input string
+        FLOOR_DIVIDE = 6, // "//" in input string
+        MULTIPLY = 7, // "*" in input string
+        UNKNOWN = 0xFF,
+      };
+      Type type = Type::UNKNOWN;
+      int32_t value = 0;
+      const char* text = nullptr;
+      size_t text_size = 0;
+
+      static std::vector<ExprToken> parse(const char* expr);
+    };
+
     // effect_num is the 1-based index of this effect within the card definition (that is, .effects[0] should have
     // effect_num == 1 if it is used).
     /* 00 */ uint8_t effect_num;

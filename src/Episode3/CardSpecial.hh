@@ -21,17 +21,6 @@ const InterferenceProbabilityEntry* get_interference_probability_entry(
 
 class CardSpecial {
 public:
-  enum class ExpressionTokenType {
-    SPACE = 0, // Also used for end of string (get_next_expr_token returns null)
-    REFERENCE = 1, // Reference to a value from the env stats (e.g. hp)
-    NUMBER = 2, // Constant value (e.g. 2)
-    SUBTRACT = 3, // "-" in input string
-    ADD = 4, // "+" in input string
-    ROUND_DIVIDE = 5, // "/" in input string
-    FLOOR_DIVIDE = 6, // "//" in input string
-    MULTIPLY = 7, // "*" in input string
-  };
-
   struct DiceRoll {
     uint8_t client_id;
     uint8_t unknown_a2;
@@ -192,7 +181,6 @@ public:
       std::shared_ptr<const Card> card1, uint16_t default_card_id, std::shared_ptr<const Card> card2) const;
   static void get_effective_ap_tp(
       StatSwapType type, int16_t* effective_ap, int16_t* effective_tp, int16_t hp, int16_t ap, int16_t tp);
-  const char* get_next_expr_token(const char* expr, ExpressionTokenType* out_type, int32_t* out_value) const;
   std::vector<std::shared_ptr<const Card>> get_targeted_cards_for_condition(
       uint16_t card_ref,
       uint8_t def_effect_index,

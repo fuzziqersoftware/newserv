@@ -179,47 +179,61 @@ bool card_class_is_tech_like(CardClass cc, bool is_nte) {
   return (cc == CardClass::TECH) || (cc == CardClass::PHOTON_BLAST) || (!is_nte && (cc == CardClass::BOSS_TECH));
 }
 
-static const unordered_map<string, const char*> description_for_expr_token({
-    {"f", "Number of FCs controlled by current SC"},
-    {"d", "Die roll"},
-    {"ap", "Attacker effective AP"},
-    {"tp", "Attacker effective TP"},
-    {"hp", "Current HP"},
-    {"mhp", "Maximum HP"},
-    {"dm", "Physical damage"},
-    {"tdm", "Technique damage"},
-    {"tf", "Number of SC\'s destroyed FCs"},
-    {"ac", "Remaining ATK points"},
-    {"php", "Maximum HP"},
-    {"dc", "Die roll"},
-    {"cs", "Card set cost"},
-    {"a", "Number of FCs on all teams"},
-    {"kap", "Action cards AP"},
-    {"ktp", "Action cards TP"},
-    {"dn", "Unknown: dn"},
-    {"hf", "Number of item or creature cards in hand"},
-    {"df", "Number of destroyed ally FCs (including SC\'s own)"},
-    {"ff", "Number of ally FCs (including SC\'s own)"},
-    {"ef", "Number of enemy FCs"},
-    {"bi", "Number of Native FCs on either team"},
-    {"ab", "Number of A.Beast FCs on either team"},
-    {"mc", "Number of Machine FCs on either team"},
-    {"dk", "Number of Dark FCs on either team"},
-    {"sa", "Number of Sword-type items on either team"},
-    {"gn", "Number of Gun-type items on either team"},
-    {"wd", "Number of Cane-type items on either team"},
-    {"tt", "Physical damage"},
-    {"lv", "Dice boost"},
-    {"adm", "SC attack damage"},
-    {"ddm", "Attack bonus"},
-    {"sat", "Number of Sword-type items on SC\'s team"},
-    {"edm", "Target attack bonus"},
-    {"ldm", "Last attack damage before defense"}, // Unused
-    {"rdm", "Last attack damage"},
-    {"fdm", "Final damage (after defense)"},
-    {"ndm", "Unknown: ndm"}, // Unused
-    {"ehp", "Attacker HP"},
-});
+struct ExprTokenDefinition {
+  int32_t value;
+  std::string token;
+  std::string description;
+};
+static const vector<ExprTokenDefinition> expr_token_defs{
+    {0x00, "f", "Number of FCs controlled by current SC"},
+    {0x01, "d", "Die roll"},
+    {0x02, "ap", "Attacker effective AP"},
+    {0x03, "tp", "Attacker effective TP"},
+    {0x04, "hp", "Current HP"},
+    {0x05, "mhp", "Maximum HP"},
+    {0x06, "dm", "Physical damage"},
+    {0x07, "tdm", "Technique damage"},
+    {0x08, "tf", "Number of SC\'s destroyed FCs"},
+    {0x09, "ac", "Remaining ATK points"},
+    {0x0A, "php", "Maximum HP"},
+    {0x0B, "dc", "Die roll"},
+    {0x0C, "cs", "Card set cost"},
+    {0x0D, "a", "Number of FCs on all teams"},
+    {0x0E, "kap", "Action cards AP"},
+    {0x0F, "ktp", "Action cards TP"},
+    {0x10, "dn", "Unknown: dn"},
+    {0x11, "hf", "Number of item or creature cards in hand"},
+    {0x12, "df", "Number of destroyed ally FCs (including SC\'s own)"},
+    {0x13, "ff", "Number of ally FCs (including SC\'s own)"},
+    {0x14, "ef", "Number of enemy FCs"},
+    {0x15, "bi", "Number of Native FCs on either team"},
+    {0x16, "ab", "Number of A.Beast FCs on either team"},
+    {0x17, "mc", "Number of Machine FCs on either team"},
+    {0x18, "dk", "Number of Dark FCs on either team"},
+    {0x19, "sa", "Number of Sword-type items on either team"},
+    {0x1A, "gn", "Number of Gun-type items on either team"},
+    {0x1B, "wd", "Number of Cane-type items on either team"},
+    {0x1C, "tt", "Physical damage"},
+    {0x1D, "lv", "Dice boost"},
+    {0x1E, "adm", "SC attack damage"},
+    {0x1F, "ddm", "Attack bonus"},
+    {0x20, "sat", "Number of Sword-type items on SC\'s team"},
+    {0x21, "edm", "Target attack bonus"},
+    {0x22, "ldm", "Last attack damage before defense"}, // Unused
+    {0x23, "rdm", "Last attack damage"},
+    {0x24, "fdm", "Final damage (after defense)"},
+    {0x25, "ndm", "Unknown: ndm"}, // Unused
+    {0x26, "ehp", "Attacker HP"},
+};
+const ExprTokenDefinition& def_for_expr_token(const std::string& token) {
+  static unordered_map<std::string, const ExprTokenDefinition*> index;
+  if (index.empty()) {
+    for (const auto& def : expr_token_defs) {
+      index.emplace(def.token, &def);
+    }
+  }
+  return *index.at(token);
+}
 
 static const vector<const char*> description_for_n_condition({
     /* n00 */ "Always true",
@@ -485,6 +499,71 @@ string CardDefinition::Stat::str() const {
   }
 }
 
+std::vector<CardDefinition::Effect::ExprToken> CardDefinition::Effect::ExprToken::parse(const char* expr) {
+  using T = ExprToken::Type;
+
+  std::vector<ExprToken> ret;
+  while (*expr) {
+    size_t ret_count = ret.size();
+    switch (*expr) {
+      case ' ':
+        ret.emplace_back(ExprToken{.type = T::SPACE, .value = 0, .text = expr, .text_size = 1});
+        break;
+      case '+':
+        ret.emplace_back(ExprToken{.type = T::ADD, .value = 0, .text = expr, .text_size = 1});
+        break;
+      case '-':
+        ret.emplace_back(ExprToken{.type = T::SUBTRACT, .value = 0, .text = expr, .text_size = 1});
+        break;
+      case '*':
+        ret.emplace_back(ExprToken{.type = T::MULTIPLY, .value = 0, .text = expr, .text_size = 1});
+        break;
+      case '/':
+        ret.emplace_back(ExprToken{
+            .type = ((expr[1] == '/') ? T::FLOOR_DIVIDE : T::ROUND_DIVIDE),
+            .value = 0,
+            .text = expr,
+            .text_size = static_cast<size_t>((expr[1] == '/') ? 2 : 1)});
+        break;
+
+      default:
+        if ((*expr >= 'a') && (*expr <= 'z')) {
+          string token_buf;
+          for (const char* z = expr; (*z >= 'a') && (*z <= 'z'); z++) {
+            token_buf.push_back(*z);
+          }
+
+          try {
+            const auto& def = def_for_expr_token(token_buf);
+            ret.emplace_back(ExprToken{
+                .type = T::REFERENCE,
+                .value = def.value,
+                .text = expr - token_buf.size(),
+                .text_size = token_buf.size()});
+          } catch (const std::out_of_range&) {
+            throw std::runtime_error("unknown token in card effect expression: " + token_buf);
+          }
+
+        } else if ((*expr >= '0') && (*expr <= '9')) {
+          const char* end_ptr;
+          int32_t value = strtol(expr, const_cast<char**>(&end_ptr), 10);
+          ret.emplace_back(ExprToken{
+              .type = T::NUMBER, .value = value, .text = expr, .text_size = static_cast<size_t>(end_ptr - expr)});
+
+        } else {
+          throw runtime_error("invalid card effect expression");
+        }
+    }
+
+    if (ret.size() != ret_count + 1) {
+      throw std::logic_error("expr parsing step did not add exactly one token");
+    }
+    expr += ret.back().text_size;
+  }
+
+  return ret;
+}
+
 bool CardDefinition::Effect::is_empty() const {
   return (this->effect_num == 0 &&
       this->type == ConditionType::NONE &&
@@ -573,7 +652,49 @@ string CardDefinition::Effect::str(const char* separator, const TextSet* text_ar
     tokens.emplace_back(std::move(cmd_str));
   }
   if (!this->expr.empty()) {
-    tokens.emplace_back("expr=" + this->expr.decode());
+    std::string expr_decoded = this->expr.decode();
+    std::vector<std::string> explanation_tokens;
+    try {
+      auto tokens = ExprToken::parse(expr_decoded.c_str());
+      for (const auto& token : tokens) {
+        switch (token.type) {
+          case ExprToken::Type::REFERENCE:
+            try {
+              explanation_tokens.emplace_back(expr_token_defs.at(token.value).description);
+            } catch (const out_of_range&) {
+              explanation_tokens.emplace_back(std::format("<<invalid reference: {:X}>>", token.value));
+            }
+            break;
+          case ExprToken::Type::NUMBER:
+            explanation_tokens.emplace_back(std::format("{}", token.value));
+            break;
+          case ExprToken::Type::SUBTRACT:
+            explanation_tokens.emplace_back("-");
+            break;
+          case ExprToken::Type::ADD:
+            explanation_tokens.emplace_back("+");
+            break;
+          case ExprToken::Type::ROUND_DIVIDE:
+            explanation_tokens.emplace_back("/ (round-divide)");
+            break;
+          case ExprToken::Type::FLOOR_DIVIDE:
+            explanation_tokens.emplace_back("/ (floor-divide)");
+            break;
+          case ExprToken::Type::MULTIPLY:
+            explanation_tokens.emplace_back("*");
+            break;
+          default:
+            explanation_tokens.emplace_back("<<invalid token>>");
+        }
+      }
+    } catch (const exception& e) {
+      explanation_tokens.emplace_back(std::format("failed to parse expr: {}", e.what()));
+    }
+    if ((explanation_tokens.size() == 1) && (explanation_tokens.front() == expr_decoded)) {
+      tokens.emplace_back(std::format("expr={}", expr_decoded));
+    } else {
+      tokens.emplace_back(std::format("expr={} ({})", expr_decoded, phosg::join(explanation_tokens, " ")));
+    }
   }
   tokens.emplace_back(std::format("when={:02X}:{}", static_cast<uint8_t>(this->when), phosg::name_for_enum(this->when)));
   tokens.emplace_back("arg1=" + this->str_for_arg(this->arg1.decode()));
