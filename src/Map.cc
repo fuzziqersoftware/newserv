@@ -3330,13 +3330,13 @@ string MapFile::Event2Entry::str() const {
       this->action_stream_offset);
 }
 
-string MapFile::RandomEnemyLocationSection::str() const {
+string MapFile::RandomEnemyRoom::str() const {
   string count_warning_str;
   if (count > 0x20) {
     count_warning_str = " /* warning: count is too large */";
   }
-  return std::format("[RandomEnemyLocationSection room={:04X} count={:04X}{} offset={:08X}(index={:04X})]",
-      this->room, this->count, count_warning_str, this->offset, this->offset / sizeof(RandomEnemyLocation));
+  return std::format("[RandomEnemyRoom room={:04X} count={:04X}{} offset={:08X}(index={:04X})]",
+      this->room_id, this->count, count_warning_str, this->offset, this->offset / sizeof(RandomEnemyRoom));
 }
 
 string MapFile::RandomEnemyLocation::str() const {
@@ -3405,26 +3405,26 @@ uint32_t MapFile::RandomState::next_location_index() {
 }
 
 void MapFile::RandomState::generate_shuffled_location_table(
-    const RandomEnemyLocationsHeader& header, phosg::StringReader r, uint16_t room) {
+    const RandomEnemyLocationsHeader& header, phosg::StringReader r, uint16_t room_id) {
   if (header.num_rooms == 0) {
     throw runtime_error("no locations defined");
   }
 
-  phosg::StringReader rooms_r = r.sub(header.room_table_offset, header.num_rooms * sizeof(RandomEnemyLocationSection));
+  phosg::StringReader rooms_r = r.sub(header.room_table_offset, header.num_rooms * sizeof(RandomEnemyRoom));
 
   size_t bs_min = 0;
   size_t bs_max = header.num_rooms - 1;
   do {
     size_t bs_mid = (bs_min + bs_max) / 2;
-    if (rooms_r.pget<RandomEnemyLocationSection>(bs_mid * sizeof(RandomEnemyLocationSection)).room < room) {
+    if (rooms_r.pget<RandomEnemyRoom>(bs_mid * sizeof(RandomEnemyRoom)).room_id < room_id) {
       bs_min = bs_mid + 1;
     } else {
       bs_max = bs_mid;
     }
   } while (bs_min < bs_max);
 
-  const auto& sec = rooms_r.pget<RandomEnemyLocationSection>(bs_min * sizeof(RandomEnemyLocationSection));
-  if (room != sec.room) {
+  const auto& sec = rooms_r.pget<RandomEnemyRoom>(bs_min * sizeof(RandomEnemyRoom));
+  if (room_id != sec.room_id) {
     return;
   }
 
@@ -3612,12 +3612,12 @@ void MapFile::set_random_enemy_locations_for_floor(uint8_t floor, size_t file_of
 
   phosg::StringReader r(data, size);
   const auto& header = r.get<RandomEnemyLocationsHeader>();
-  floor_sections.random_enemy_location_section_count = header.num_rooms;
-  floor_sections.random_enemy_location_sections = &r.pget<RandomEnemyLocationSection>(
-      header.room_table_offset, floor_sections.random_enemy_location_section_count * sizeof(RandomEnemyLocationSection));
+  floor_sections.random_enemy_room_count = header.num_rooms;
+  floor_sections.random_enemy_rooms = &r.pget<RandomEnemyRoom>(
+      header.room_table_offset, floor_sections.random_enemy_room_count * sizeof(RandomEnemyRoom));
   size_t max_offset = 0;
-  for (size_t z = 0; z < floor_sections.random_enemy_location_section_count; z++) {
-    const auto& sec = floor_sections.random_enemy_location_sections[z];
+  for (size_t z = 0; z < floor_sections.random_enemy_room_count; z++) {
+    const auto& sec = floor_sections.random_enemy_rooms[z];
     if (sec.offset % sizeof(RandomEnemyLocation)) {
       // TODO: We probably could support this if it's actually needed somewhere
       throw std::runtime_error(std::format("random enemy location offset {:08X} is not a multiple of struct size {:08X}",
@@ -3647,9 +3647,9 @@ void MapFile::set_random_enemy_definitions_for_floor(uint8_t floor, size_t file_
   floor_sections.random_enemy_definition_count = header.entry_count;
   floor_sections.random_enemy_definitions = &r.pget<RandomEnemyDefinition>(
       header.entries_offset, floor_sections.random_enemy_definition_count * sizeof(RandomEnemyDefinition));
-  floor_sections.random_enemy_definition_weight_count = header.weight_entry_count;
-  floor_sections.random_enemy_definition_weights = &r.pget<RandomEnemyWeight>(
-      header.weight_entries_offset, floor_sections.random_enemy_definition_weight_count * sizeof(RandomEnemyWeight));
+  floor_sections.random_enemy_weight_count = header.weight_entry_count;
+  floor_sections.random_enemy_weights = &r.pget<RandomEnemyWeight>(
+      header.weight_entries_offset, floor_sections.random_enemy_weight_count * sizeof(RandomEnemyWeight));
 }
 
 std::shared_ptr<const MapFile> MapFile::materialize_random_sections(uint32_t random_seed) const {
@@ -4075,12 +4075,15 @@ string MapFile::disassemble(bool reassembly, Version version) const {
         ret.emplace_back(std::format(".random_enemy_locations {} /* offset 0x{:X} in file; 0x{:X} bytes */",
             floor, sf.random_enemy_locations_file_offset, sf.random_enemy_locations_file_size));
       }
-      for (size_t z = 0; z < sf.random_enemy_location_section_count; z++) {
-        const auto& sec = sf.random_enemy_location_sections[z];
+      uint16_t last_room_id = 0;
+      for (size_t z = 0; z < sf.random_enemy_room_count; z++) {
+        const auto& sec = sf.random_enemy_rooms[z];
+        const std::string& warning_text = (sec.room_id < last_room_id) ? " /* warning: room IDs out of order */" : "";
+        last_room_id = sec.room_id;
         if (reassembly) {
-          ret.emplace_back(sec.str());
+          ret.emplace_back(std::format("{}{}", sec.str(), warning_text));
         } else {
-          ret.emplace_back(std::format("/* section index {:04X} */ {}", z, sec.str()));
+          ret.emplace_back(std::format("/* room index {:04X} */ {}{}", z, sec.str(), warning_text));
         }
       }
       for (size_t z = 0; z < sf.random_enemy_location_count; z++) {
@@ -4109,8 +4112,8 @@ string MapFile::disassemble(bool reassembly, Version version) const {
           ret.emplace_back(std::format("/* definition index {:04X} */ {}", z, def.str()));
         }
       }
-      for (size_t z = 0; z < sf.random_enemy_definition_weight_count; z++) {
-        const auto& weight = sf.random_enemy_definition_weights[z];
+      for (size_t z = 0; z < sf.random_enemy_weight_count; z++) {
+        const auto& weight = sf.random_enemy_weights[z];
         if (reassembly) {
           ret.emplace_back(weight.str());
         } else {
