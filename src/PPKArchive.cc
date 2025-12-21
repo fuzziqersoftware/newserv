@@ -19,7 +19,7 @@ struct Entry {
   le_uint32_t compressed_size;
   le_uint32_t checksum;
   // Data follows immediately here
-  // Trailer: le_uint32_t entry_size; //
+  // Trailer: le_uint32_t entry_size;
 };
 
 static void decrypt_ppk_data(std::string& data, const std::string& filename, const std::string& password) {

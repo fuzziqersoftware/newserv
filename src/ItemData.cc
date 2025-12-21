@@ -8,10 +8,8 @@
 
 using namespace std;
 
-const vector<uint8_t> ItemData::StackLimits::DEFAULT_TOOL_LIMITS_DC_NTE(
-    {10});
-const vector<uint8_t> ItemData::StackLimits::DEFAULT_TOOL_LIMITS_V1_V2(
-    {10, 10, 1, 10, 10, 10, 10, 10, 10, 1});
+const vector<uint8_t> ItemData::StackLimits::DEFAULT_TOOL_LIMITS_DC_NTE({10});
+const vector<uint8_t> ItemData::StackLimits::DEFAULT_TOOL_LIMITS_V1_V2({10, 10, 1, 10, 10, 10, 10, 10, 10, 1});
 const vector<uint8_t> ItemData::StackLimits::DEFAULT_TOOL_LIMITS_V3_V4(
     {10, 10, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 1, 99, 1});
 
@@ -28,8 +26,7 @@ ItemData::StackLimits::StackLimits(
       max_tool_stack_sizes_by_data1_1(max_tool_stack_sizes_by_data1_1),
       max_meseta_stack_size(max_meseta_stack_size) {}
 
-ItemData::StackLimits::StackLimits(Version version, const phosg::JSON& json)
-    : version(version) {
+ItemData::StackLimits::StackLimits(Version version, const phosg::JSON& json) : version(version) {
   this->max_tool_stack_sizes_by_data1_1.clear();
   for (const auto& limit_json : json.at("ToolLimits").as_list()) {
     this->max_tool_stack_sizes_by_data1_1.emplace_back(limit_json->as_int());
@@ -116,8 +113,7 @@ uint32_t ItemData::primary_identifier() const {
   // - 03TTSS00 = tool
   // - 04000000 = meseta
 
-  // The game treats any item starting with 04 as Meseta, and ignores the rest
-  // of data1 (the value is in data2)
+  // The game treats any item starting with 04 as Meseta, and ignores the rest of data1 (the value is in data2)
   if (this->data1[0] == 0x04) {
     return 0x04000000;
   }
@@ -150,17 +146,14 @@ void ItemData::change_primary_identifier(uint32_t primary_identifier) {
       }
       break;
     }
-    case 0x01: // Armor/shield/unit
-      // Apply data1[1] and data1[2]
+    case 0x01: // Armor/shield/unit; apply data1[1] and data1[2]
       this->data1[1] = (primary_identifier >> 16) & 0xFF;
       this->data1[2] = (primary_identifier >> 8) & 0xFF;
       break;
-    case 0x02: // Mag
-      // Apply data1[1] only
+    case 0x02: // Mag; apply data1[1] only
       this->data1[1] = (primary_identifier >> 16) & 0xFF;
       break;
-    case 0x03: // Tool
-      // Apply data1[1] and data1[2] (or data1[4] if it's a tech disk)
+    case 0x03: // Tool; apply data1[1] and data1[2] (or data1[4] if it's a tech disk)
       this->data1[1] = (primary_identifier >> 16) & 0xFF;
       if (this->data1[1] == 0x02) {
         this->data1[4] = (primary_identifier >> 8) & 0xFF;
@@ -169,8 +162,7 @@ void ItemData::change_primary_identifier(uint32_t primary_identifier) {
         this->data1[2] = (primary_identifier >> 8) & 0xFF;
       }
       break;
-    case 0x04: // Meseta
-      // Nothing to apply
+    case 0x04: // Meseta; nothing to apply
       break;
     default:
       throw std::runtime_error("invalid item class");
@@ -298,10 +290,7 @@ void ItemData::clear_mag_stats() {
 }
 
 uint16_t ItemData::compute_mag_level() const {
-  return (this->data1w[2] / 100) +
-      (this->data1w[3] / 100) +
-      (this->data1w[4] / 100) +
-      (this->data1w[5] / 100);
+  return (this->data1w[2] / 100) + (this->data1w[3] / 100) + (this->data1w[4] / 100) + (this->data1w[5] / 100);
 }
 
 uint16_t ItemData::compute_mag_strength_flags() const {
@@ -432,8 +421,7 @@ void ItemData::decode_for_version(Version from_version) {
       }
 
       if (is_v1(from_version) || is_v2(from_version)) {
-        // PSO PC and GC NTE encode mags in a tediously annoying manner. The
-        // first four bytes are the same, but then...
+        // PSO PC and GC NTE encode mags in a tediously annoying manner. The first four bytes are the same, but then:
         // V2: pHHHHHHHHHHHHHHc pIIIIIIIIIIIIIIc JJJJJJJJJJJJJJJc KKKKKKKKKKKKKKKc QQQQQQQQ QQQQQQQQ YYYYYYYY pYYYYYYY
         // V3: HHHHHHHHHHHHHHHH IIIIIIIIIIIIIIII JJJJJJJJJJJJJJJJ KKKKKKKKKKKKKKKK YYYYYYYY QQQQQQQQ PPPPPPPP CCCCCCCC
         // c = color in V2 (4 bits; low bit first)
@@ -455,10 +443,8 @@ void ItemData::decode_for_version(Version from_version) {
         this->data1w[5] &= 0xFFFE;
 
       } else if (is_big_endian(from_version)) {
-        // PSO GC (but not GC NTE, which uses the above logic) byteswaps the
-        // data2d field, since internally it's actually a uint32_t. We treat it
-        // as individual bytes instead, so we correct for the client's
-        // byteswapping here.
+        // PSO GC (but not GC NTE, which uses the above logic) byteswaps the data2d field, since internally it's
+        // actually a uint32_t. We treat it as individual bytes, so we correct for the client's byteswapping here.
         this->data2d = phosg::bswap32(this->data2d);
       }
       break;
@@ -529,9 +515,8 @@ void ItemData::encode_for_version(Version to_version, shared_ptr<const ItemParam
         this->data1[1] = 0x00;
       }
 
-      // This logic is the inverse of the corresponding logic in
-      // decode_for_version; see that function for a description of what's
-      // going on here.
+      // This logic is the inverse of the corresponding logic in decode_for_version; see that function for a
+      // description of what's going on here.
       if (is_v1(to_version) || is_v2(to_version)) {
         this->data1w[2] = (this->data1w[2] & 0x7FFE) | ((this->data2[2] << 14) & 0x8000) | (this->data2[3] & 1);
         this->data1w[3] = (this->data1w[3] & 0x7FFE) | ((this->data2[2] << 13) & 0x8000) | ((this->data2[3] >> 1) & 1);

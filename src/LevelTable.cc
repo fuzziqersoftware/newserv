@@ -19,24 +19,23 @@ void LevelTable::reset_to_base(PlayerStats& stats, uint8_t char_class) const {
 void LevelTable::advance_to_level(PlayerStats& stats, uint32_t level, uint8_t char_class) const {
   for (; stats.level < level; stats.level++) {
     const auto& level_stats = this->stats_delta_for_level(char_class, stats.level + 1);
-    // The original code clamps the resulting stat values to [0, max_stat]; we
-    // don't have max_stat handy so we just allow them to be unbounded
+    // The original code clamps the resulting stat values to [0, max_stat]; we don't have max_stat handy so we just
+    // allow them to be unbounded
     stats.char_stats.atp += level_stats.atp;
     stats.char_stats.mst += level_stats.mst;
     stats.char_stats.evp += level_stats.evp;
     stats.char_stats.hp += level_stats.hp;
     stats.char_stats.dfp += level_stats.dfp;
     stats.char_stats.ata += level_stats.ata;
-    // Note: It is not a bug that lck is ignored here; the original code
-    // ignores it too.
+    // Note: It is not a bug that lck is ignored here; the original code ignores it too.
     stats.experience = level_stats.experience;
   }
 }
 
 LevelTableV2::LevelTableV2(const string& data, bool compressed) {
   struct Offsets {
-    // TODO: The overall format of this file on V2 has much more data than we
-    // actually use. What's known of the structure so far:
+    // TODO: The overall format of this file on V2 has much more data than we actually use. What's known of the
+    // structure so far:
     le_uint32_t level_deltas; // (5468) -> u32[9] -> LevelStatsDelta[200]
     le_uint32_t unknown_a1; // (548C) -> float[6]
     le_uint32_t max_stats; // (54A4) -> PlayerStats[9]

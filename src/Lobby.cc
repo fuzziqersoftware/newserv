@@ -424,8 +424,7 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
     this->create_item_creator();
   }
 
-  // If this is a lobby or no one was here before this, reassign all the floor
-  // item IDs and reset the next item IDs
+  // If this is a lobby or no one was here before this, reassign all the floor item IDs and reset the next item IDs
   if (!this->is_game() || (leader_index >= this->max_clients)) {
     this->reset_next_item_ids();
     for (auto& m : this->floor_item_managers) {
@@ -433,19 +432,15 @@ void Lobby::add_client(shared_ptr<Client> c, ssize_t required_client_id) {
     }
   }
 
-  // If this is not a game or the joining client is the leader, they will assign
-  // their item IDs BEFORE they process any inbound commands (therefore a 6x6D
-  // command, which we will send during loading, should reflect the item state
-  // AFTER their IDs are assigned). If the joining client is not the leader,
-  // they will not assign their item IDs until they receive a 6x71 command,
-  // which is sent AFTER the 6x6D command, so the 6x6D should reflect the item
-  // state BEFORE their IDs are assigned. (In the latter case, we'll assign the
-  // IDs for real when they send a 6F command, or 6x1F equivalent in the case of
-  // DC NTE and 11/2000.)
+  // If this is not a game or the joining client is the leader, they will assign their item IDs BEFORE they process any
+  // inbound commands (therefore a 6x6D command, which we will send during loading, should reflect the item state AFTER
+  // their IDs are assigned). If the joining client is not the leader, they will not assign their item IDs until they
+  // receive a 6x71 command, which is sent AFTER the 6x6D command, so the 6x6D should reflect the item state BEFORE
+  // their IDs are assigned. (In the latter case, we'll assign the IDs for real when they send a 6F command, or 6x1F
+  // equivalent in the case of DC NTE and 11/2000.)
   this->assign_inventory_and_bank_item_ids(c, (!this->is_game() || (c->lobby_client_id == this->leader_id)));
 
-  // On BB, we send artificial flag state to fix an Episode 2 bug where the
-  // CCA door lock state is overwritten by quests.
+  // On BB, we send flag state to fix an Episode 2 bug where the CCA door lock state is overwritten by quests.
   if (this->is_game() && (c->version() == Version::BB_V4)) {
     c->set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_FLAG_STATE);
   }
@@ -492,9 +487,8 @@ void Lobby::remove_client(shared_ptr<Client> c) {
   }
   this->clients[c->lobby_client_id] = nullptr;
 
-  // Unassign the client's lobby if it matches the current lobby (it may not
-  // match if the client was already added to another lobby - this can happen
-  // during the lobby change procedure)
+  // Unassign the client's lobby if it matches the current lobby (it may not match if the client was already added to
+  // another lobby - this can happen during the lobby change procedure)
   {
     auto c_lobby = c->lobby.lock();
     if (c_lobby.get() == this) {
@@ -521,9 +515,8 @@ void Lobby::remove_client(shared_ptr<Client> c) {
     }
   }
 
-  // If there are still players left in the lobby, delete all items that only
-  // the leaving player could see. Don't do this if no one is left in the lobby,
-  // since that would mean items could not persist in empty lobbies.
+  // If there are still players left in the lobby, delete all items that only the leaving player could see. Don't do
+  // this if no one is left in the lobby, since that would mean items could not persist in empty lobbies.
   uint16_t remaining_clients_mask = 0;
   for (size_t z = 0; z < 12; z++) {
     if (this->clients[z]) {
@@ -544,8 +537,7 @@ void Lobby::remove_client(shared_ptr<Client> c) {
       this->check_flag(Flag::PERSISTENT) &&
       !this->check_flag(Flag::DEFAULT) &&
       (this->idle_timeout_usecs > 0)) {
-    // If the lobby is persistent but has an idle timeout, make it expire after
-    // the specified time
+    // If the lobby is persistent but has an idle timeout, make it expire after the specified time
     this->idle_timeout_timer.expires_after(std::chrono::microseconds(this->idle_timeout_usecs));
     this->idle_timeout_timer.async_wait([this](std::error_code ec) {
       if (!ec) {
@@ -561,10 +553,7 @@ void Lobby::remove_client(shared_ptr<Client> c) {
   }
 }
 
-void Lobby::move_client_to_lobby(
-    shared_ptr<Lobby> dest_lobby,
-    shared_ptr<Client> c,
-    ssize_t required_client_id) {
+void Lobby::move_client_to_lobby(shared_ptr<Lobby> dest_lobby, shared_ptr<Client> c, ssize_t required_client_id) {
   if (dest_lobby.get() == this) {
     return;
   }
@@ -648,8 +637,7 @@ Lobby::JoinError Lobby::join_error_for_client(std::shared_ptr<Client> c, const s
         }
       }
     }
-    // Only prevent joining during loading if the client is actually trying to
-    // join (not just loading the game list)
+    // Only prevent joining during loading if the client is actually trying to join (not just loading the game list)
     if (password && this->any_client_loading()) {
       return JoinError::LOADING;
     }
@@ -714,9 +702,8 @@ uint32_t Lobby::generate_item_id(uint8_t client_id) {
 }
 
 void Lobby::on_item_id_generated_externally(uint32_t item_id) {
-  // Note: The client checks for the range (0x00010000, 0x02010000) here, but
-  // server-side item drop logic uses 0x00810000 as its base ID, so we restrict
-  // the range further here.
+  // Note: The client checks for the range (0x00010000, 0x02010000) here, but server-side item drop logic uses
+  // 0x00810000 as its base ID, so we restrict the range further here.
   if ((item_id > 0x00010000) && (item_id < 0x00810000)) {
     uint16_t item_client_id = (item_id >> 21) & 0x7FF;
     uint32_t& next_item_id = this->next_item_id_for_client.at(item_client_id);

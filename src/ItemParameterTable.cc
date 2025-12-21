@@ -791,8 +791,8 @@ ItemParameterTable::definition_for_primary_identifier(uint32_t primary_identifie
     case 2:
       return &this->get_mag(data1_1);
     case 3:
-      // NOTE: Unlike in ItemData, the tech number comes first in primary
-      // identifiers, so we don't need to special-case 0302XXYY here
+      // NOTE: Unlike in ItemData, the tech number comes first in primary identifiers, so we don't need to special-case
+      // 0302XXYY here
       return &this->get_tool(data1_1, data1_2);
     default:
       throw runtime_error("invalid primary identifier");
@@ -908,9 +908,7 @@ uint8_t ItemParameterTable::get_item_stars(uint32_t item_id) const {
 }
 
 uint8_t ItemParameterTable::get_special_stars(uint8_t special) const {
-  return ((special & 0x3F) && !(special & 0x80))
-      ? this->get_item_stars(special + this->special_stars_begin_index)
-      : 0;
+  return ((special & 0x3F) && !(special & 0x80)) ? this->get_item_stars(special + this->special_stars_begin_index) : 0;
 }
 
 const ItemParameterTable::Special& ItemParameterTable::get_special(uint8_t special) const {
@@ -1029,9 +1027,7 @@ uint8_t ItemParameterTable::get_weapon_v1_replacement(uint8_t data1_1) const {
     throw logic_error("table is not v2, v3, or v4");
   }
 
-  return (data1_1 < this->num_weapon_classes)
-      ? this->r.pget_u8(offset + data1_1)
-      : 0x00;
+  return (data1_1 < this->num_weapon_classes) ? this->r.pget_u8(offset + data1_1) : 0x00;
 }
 
 uint32_t ItemParameterTable::get_item_id(const ItemData& item) const {
@@ -1157,9 +1153,7 @@ bool ItemParameterTable::is_unsealable_item(uint8_t data1_0, uint8_t data1_1, ui
 
   const auto* defs = &this->r.pget<UnsealableItem>(offset, count * sizeof(UnsealableItem));
   for (size_t z = 0; z < count; z++) {
-    if ((defs[z].item[0] == data1_0) &&
-        (defs[z].item[1] == data1_1) &&
-        (defs[z].item[2] == data1_2)) {
+    if ((defs[z].item[0] == data1_0) && (defs[z].item[1] == data1_1) && (defs[z].item[2] == data1_2)) {
       return true;
     }
   }

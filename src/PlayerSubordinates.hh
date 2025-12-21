@@ -32,10 +32,9 @@ struct PlayerVisualConfigT {
   /* 10 */ parray<uint8_t, 8> unknown_a2;
   /* 18 */ U32T<BE> name_color = 0xFFFFFFFF; // ARGB
   /* 1C */ uint8_t extra_model = 0;
-  // Some NPCs can crash the client if the character's class is incorrect. To
-  // handle this, we save the affected fields in the unused bytes after
-  // extra_model. This is a newserv-specific extension; it appears the
-  // following 15 bytes were simply never used by Sega.
+  // Some NPCs can crash the client if the character's class is incorrect. To handle this, we save the affected fields
+  // in the unused bytes after extra_model. This is a newserv-specific extension; it appears the following 15 bytes
+  // were simply never used by Sega.
   /* 1D */ uint8_t npc_saved_data_type = 0;
   /* 1E */ uint8_t npc_saved_costume = 0;
   /* 1F */ uint8_t npc_saved_skin = 0;
@@ -47,16 +46,13 @@ struct PlayerVisualConfigT {
   /* 25 */ uint8_t npc_saved_hair_b = 0;
   /* 26 */ parray<uint8_t, 2> unused;
   /* 28 */ F32T<BE> npc_saved_proportion_y = 0.0;
-  // See compute_name_color_checksum for details on how this is computed. If the
-  // value is incorrect, V1 and V2 will ignore the name_color field and use the
-  // default color instead. This field is ignored on GC; on BB (and presumably
-  // Xbox), if this has a nonzero value, the "Change Name" option appears in the
-  // character selection menu.
+  // See compute_name_color_checksum for details on how this is computed. If the value is incorrect, V1 and V2 will
+  // ignore the name_color field and use the default color instead. This field is ignored on GC; on BB (and presumably
+  // Xbox), if this has a nonzero value, the "Change Name" option appears in the character selection menu.
   /* 2C */ U32T<BE> name_color_checksum = 0;
   /* 30 */ uint8_t section_id = 0;
   /* 31 */ uint8_t char_class = 0;
-  // validation_flags specifies that some parts of this structure are not valid
-  // and should be ignored. The bits are:
+  // validation_flags specifies that some parts of this structure are not valid and should be ignored. The bits are:
   //   -----FCS
   //   F = class_flags is incorrect for the character's char_class value
   //   C = char_class is out of range
@@ -338,8 +334,8 @@ check_struct_size(PlayerDispDataDCPCV3BE, 0xD0);
 struct PlayerDispDataBBPreview {
   /* 00 */ le_uint32_t experience = 0;
   /* 04 */ le_uint32_t level = 0;
-  // The name field in this structure is used for the player's Guild Card
-  // number, apparently (possibly because it's a char array and this is BB)
+  // The name field in this structure is used for the player's Guild Card number, apparently (possibly because it's a
+  // char array and this is BB)
   /* 08 */ PlayerVisualConfig visual;
   /* 58 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> name;
   /* 78 */ uint32_t play_time_seconds = 0;
@@ -436,18 +432,6 @@ struct GuildCardPC {
   operator GuildCardBB() const;
 } __packed_ws__(GuildCardPC, 0xF0);
 
-// 0000 | 62 00 AC 00 06 2A 00 00 00 00 01 00 90 96 66 8C | b    *        f
-// 0010 | 31 31 31 31 00 00 00 00 00 00 00 00 00 00 00 00 | 1111
-// 0020 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
-// 0030 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
-// 0040 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
-// 0050 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
-// 0060 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
-// 0070 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
-// 0080 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
-// 0090 | 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |
-// 00A0 | 00 00 00 00 00 00 00 00 01 00 06 00             |
-
 template <bool BE, size_t DescriptionLength>
 struct GuildCardGCT {
   /* NTE:Final */
@@ -536,11 +520,9 @@ GuildCardGCT<BE, DescriptionLength>::operator GuildCardBB() const {
 struct PlayerLobbyDataPC {
   le_uint32_t player_tag = 0;
   le_uint32_t guild_card_number = 0;
-  // There's a strange behavior (bug? "feature"?) in Episode 3 where the start
-  // button does nothing in the lobby (hence you can't "quit game") if the
-  // client's IP address is zero. So, we fill it in with a fake nonzero value to
-  // avoid this behavior, and to be consistent, we make IP addresses fake and
-  // nonzero on all other versions too.
+  // There's a strange behavior (bug? "feature"?) in Episode 3 where the start button does nothing in the lobby (hence
+  // you can't "quit game") if the client's IP address is zero. So, we fill it in with a fake nonzero value to avoid
+  // this behavior, and to be consistent, we make IP addresses fake and nonzero on all other versions too.
   be_uint32_t ip_address = 0x7F000001;
   le_uint32_t client_id = 0;
   pstring<TextEncoding::UTF16, 0x10> name;
@@ -563,8 +545,7 @@ struct XBNetworkLocation {
   /* 04 */ le_uint32_t external_ipv4_address = 0x23232323;
   /* 08 */ le_uint16_t port = 9500;
   /* 0A */ parray<uint8_t, 6> mac_address = 0x77;
-  // The remainder of this struct appears to be private/opaque in the XDK (and
-  // newserv doesn't use it either)
+  // The remainder of this struct appears to be private/opaque in the XDK (and newserv doesn't use it either)
   /* 10 */ le_uint32_t sg_ip_address = 0x0B0B0B0B;
   /* 14 */ le_uint32_t spi = 0xCCCCCCCC;
   /* 18 */ le_uint64_t account_id = 0xFFFFFFFFFFFFFFFF;
@@ -593,8 +574,7 @@ struct PlayerLobbyDataBB {
   /* 10 */ parray<uint8_t, 0x0C> unknown_a1;
   /* 1C */ le_uint32_t client_id = 0;
   /* 20 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> name;
-  // If this field is zero, the "Press F1 for help" prompt appears in the corner
-  // of the screen in the lobby and on Pioneer 2.
+  // If this is zero, the "Press F1 for help" prompt appears in the corner of the screen in the lobby and Pioneer 2.
   /* 40 */ le_uint32_t hide_help_prompt = 1;
   /* 44 */
 
@@ -653,8 +633,7 @@ check_struct_size(PlayerRecordsChallengePC, 0xD8);
 
 template <bool BE>
 struct PlayerRecordsChallengeV3T {
-  // Offsets are (1) relative to start of C5 entry, and (2) relative to start
-  // of save file structure
+  // Offsets are (1) relative to start of C5 entry, and (2) relative to start of save file structure
   /* 0000:001C */ U16T<BE> title_color = 0x7FFF; // XRGB1555
   /* 0002:001E */ parray<uint8_t, 2> unknown_u0;
   /* 0004:0020 */ parray<ChallengeTimeT<BE>, 9> times_ep1_online;
@@ -679,9 +658,8 @@ struct PlayerRecordsChallengeV3T {
   /* 00C8:00E4 */ ChallengeAwardStateT<BE> ep2_online_award_state;
   /* 00D0:00EC */ ChallengeAwardStateT<BE> ep1_offline_award_state;
   /* 00D8:00F4 */
-  // On Episode 3, there are special cases that apply to this field - if the
-  // text ends with certain strings, the player will have particle effects
-  // emanate from their character in the lobby every 2 seconds. The effects are:
+  // On Episode 3, there are special cases that apply to this field - if the text ends with certain strings, the player
+  // will have particle effects emanate from their character in the lobby every 2 seconds. The effects are:
   //   Ends with ":GOD" => blue circle
   //   Ends with ":KING" => white particles
   //   Ends with ":LORD" => rising yellow sparkles
@@ -862,7 +840,8 @@ DestT convert_player_disp_data(const SrcT&, Language, Language) {
 }
 
 template <>
-inline PlayerDispDataDCPCV3 convert_player_disp_data<PlayerDispDataDCPCV3>(const PlayerDispDataDCPCV3& src, Language, Language) {
+inline PlayerDispDataDCPCV3 convert_player_disp_data<PlayerDispDataDCPCV3>(
+    const PlayerDispDataDCPCV3& src, Language, Language) {
   return src;
 }
 
@@ -879,8 +858,7 @@ inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB, PlayerDispDat
 }
 
 template <>
-inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB>(
-    const PlayerDispDataBB& src, Language, Language) {
+inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB>(const PlayerDispDataBB& src, Language, Language) {
   return src;
 }
 
@@ -1117,10 +1095,7 @@ struct SymbolChatT {
   /* 0C */ parray<SymbolChatFacePart, 12> face_parts;
   /* 3C */
 
-  SymbolChatT()
-      : spec(0),
-        corner_objects(0x00FF),
-        face_parts() {}
+  SymbolChatT() : spec(0), corner_objects(0x00FF), face_parts() {}
 
   operator SymbolChatT<!BE>() const {
     SymbolChatT<!BE> ret;

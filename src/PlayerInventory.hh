@@ -21,27 +21,22 @@
 class Client;
 class ItemParameterTable;
 
-// PSO V2 stored some extra data in the character structs in a format that I'm
-// sure Sega thought was very clever for backward compatibility, but for us is
-// just plain annoying. Specifically, they used the third and fourth bytes of
-// the InventoryItem struct to store some things not present in V1. The game
-// stores arrays of bytes striped across these structures. In newserv, we call
-// those fields extension_data. They contain:
+// PSO V2 stored some extra data in the character structs in a format that I'm sure Sega thought was very clever for
+// backward compatibility, but for us is just plain annoying. Specifically, they used the third and fourth bytes of the
+// InventoryItem struct to store some things not present in V1. The game stores arrays of bytes striped across these
+// structures. In newserv, we call those fields extension_data. They contain:
 //   items[0].extension_data1 through items[19].extension_data1:
-//       Extended technique levels. The values in the technique_levels_v1 array
-//       only go up to 14 (tech level 15); if the player has a technique above
-//       level 15, the corresponding extension_data1 field holds the remaining
-//       levels (so a level 20 tech would have 14 in technique_levels_v1 and 5
-//       in the corresponding item's extension_data1 field).
+//       Extended technique levels. The values in the technique_levels_v1 array only go up to 14 (tech level 15); if
+//       the player has a technique above level 15, the extension_data1 field holds the remaining levels (so a level 20
+//       technique would have 14 in technique_levels_v1 and 5 in the corresponding item's extension_data1 field).
 //   items[0].extension_data2 through items[3].extension_data2:
-//       The flags field from the PSOGCCharacterFile::Character struct; see
-//       SaveFileFormats.hh for details.
+//       The flags field from the PSOGCCharacterFile::Character struct; see SaveFileFormats.hh for details.
 //   items[4].extension_data2 through items[7].extension_data2:
-//       The timestamp when the character was last saved, in seconds since
-//       January 1, 2000. Stored little-endian, so items[4] contains the LSB.
+//       The timestamp when the character was last saved, in seconds since January 1, 2000. Stored little-endian, so
+//       items[4] contains the LSB.
 //   items[8].extension_data2 through items[12].extension_data2:
-//       Number of power materials, mind materials, evade materials, def
-//       materials, and luck materials (respectively) used by the player.
+//       Number of power materials, mind materials, evade materials, def materials, and luck materials (respectively)
+//       used by the player.
 //   items[13].extension_data2 through items[15].extension_data2:
 //       Unknown. These are not an array, but do appear to be related.
 
@@ -149,8 +144,7 @@ struct PlayerInventoryT {
         continue;
       }
 
-      // Units can be equipped in multiple slots, so the currently-equipped slot
-      // is stored in the item data itself.
+      // Units can be equipped in multiple slots, so the currently-equipped slot is stored in the item data itself.
       if (((slot == EquipSlot::UNIT_1) && (i.data.data1[4] != 0x00)) ||
           ((slot == EquipSlot::UNIT_2) && (i.data.data1[4] != 0x01)) ||
           ((slot == EquipSlot::UNIT_3) && (i.data.data1[4] != 0x02)) ||
@@ -258,11 +252,10 @@ struct PlayerInventoryT {
 
   void encode_for_client(Version v, std::shared_ptr<const ItemParameterTable> item_parameter_table) {
     if (v == Version::DC_NTE) {
-      // DC NTE has the item count as a 32-bit value here, whereas every other
-      // version uses a single byte. To stop DC NTE from crashing by trying to
-      // construct far more than 30 TItem objects, we clear the fields DC NTE
-      // doesn't know about. Note that the 11/2000 prototype does not have this
-      // issue - its inventory format matches the rest of the versions.
+      // DC NTE has the item count as a 32-bit value here, whereas every other version uses a single byte. To stop DC
+      // NTE from crashing by trying to construct far more than 30 TItem objects, we clear the fields DC NTE doesn't
+      // know about. Note that the 11/2000 prototype does not have this issue - its inventory format matches the rest
+      // of the versions.
       this->hp_from_materials = 0;
       this->tp_from_materials = 0;
       this->language = Language::JAPANESE;
@@ -276,8 +269,8 @@ struct PlayerInventoryT {
       }
     }
 
-    // For pre-V2 clients, use the V2 parameter table, since the V1 table
-    // doesn't have correct encodings for backward-compatible V2 items.
+    // For pre-V2 clients, use the V2 parameter table, since the V1 table doesn't have correct encodings for backward-
+    // compatible V2 items.
     for (size_t z = 0; z < this->items.size(); z++) {
       this->items[z].data.encode_for_version(v, item_parameter_table);
     }

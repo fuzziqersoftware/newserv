@@ -18,8 +18,8 @@
 #include "Types.hh"
 #include "Version.hh"
 
-// TODO: These don't really belong here, but putting them anywhere else creates
-// annoying dependency cycles. Find or make a better place for these.
+// TODO: These don't really belong here, but putting them anywhere else creates annoying dependency cycles. Find or
+// make a better place for these.
 enum class ServerDropMode {
   DISABLED = 0,
   CLIENT = 1, // Not allowed for BB games
@@ -40,14 +40,13 @@ const char* phosg::name_for_enum<ServerDropMode>(ServerDropMode value);
 
 class ItemParameterTable {
 public:
-  // TODO: This implementation is ugly. We should use real classes and virtual
-  // functions instead of manually branching on various offset table pointers
-  // being null or not in each public function. Rewrite this and make it better.
+  // TODO: This implementation is ugly. We should use real classes and virtual functions instead of manually branching
+  // on various offset table pointers being null or not in each public function. Rewrite this and make it better.
 
   template <bool BE>
   struct ItemBaseV2T {
-    // id specifies several things; notably, it doubles as the index of the
-    // item's name in the text archive (e.g. TextEnglish) collection 0.
+    // id specifies several things; notably, it doubles as the index of the item's name in the text archive (e.g.
+    // TextEnglish) collection 0.
     /* 00 */ U32T<BE> id = 0xFFFFFFFF;
     /* 04 */
   } __attribute__((packed));
@@ -291,15 +290,13 @@ public:
     /* 09 */ uint8_t on_low_hp = 0;
     /* 0A */ uint8_t on_death = 0;
     /* 0B */ uint8_t on_boss = 0;
-    // These flags control how likely each effect is to activate. First, the
-    // game computes step_synchro as follows:
+    // These flags control how likely each effect is to activate. First, the game computes step_synchro as follows:
     //   if synchro in [0, 30], step_synchro = 0
     //   if synchro in [31, 60], step_synchro = 15
     //   if synchro in [61, 80], step_synchro = 25
     //   if synchro in [81, 100], step_synchro = 30
     //   if synchro in [101, 120], step_synchro = 35
-    // Then, the percent chance of the effect occurring upon its trigger (e.g.
-    // entering a boss arena) is:
+    // Then, the percent chance of the effect occurring upon its trigger (e.g. entering a boss arena) is:
     //   flag == 0 => activation
     //   flag == 1 => activation + step_synchro
     //   flag == 2 => step_synchro
@@ -407,10 +404,9 @@ public:
 
   template <bool BE>
   struct StatBoostT {
-    // Only the first of these stat/amount pairs is used in most versions of
-    // the game. In DC 11/2000 Sega apparently changed the loop from
-    // `for (z = 0; z != 2; z++)` to `for (z = 0; z != 1; z++)`, so only the
-    // first stat/amount pair is used on all versions after DC NTE.
+    // Only the first of these stat/amount pairs is used in most versions of the game. In DC 11/2000 Sega apparently
+    // changed the loop from `for (z = 0; z != 2; z++)` to `for (z = 0; z != 1; z++)`, so only the first stat/amount
+    // pair is used on all versions after DC NTE.
     // Values for stats:
     //   01 = ATP bonus
     //   02 = ATA bonus
@@ -565,8 +561,7 @@ protected:
   } __packed_ws__(TableOffsetsDCProtos, 0x50);
 
   struct TableOffsetsV1V2 {
-    // TODO: Is weapon count 0x89 or 0x8A? It could be that the last entry in
-    // weapon_table is used for ???? items.
+    // TODO: Is weapon count 0x89 or 0x8A? It could be that the last entry in weapon_table is used for ???? items.
     /* ## / V1   / V2*/
     /* 00 / 0013 / 0013 */ le_uint32_t unknown_a0;
     /* 04 / 32E8 / 5AFC */ le_uint32_t weapon_table; // -> [{count, offset -> [WeaponV2]}](0x89)
@@ -652,8 +647,7 @@ protected:
   const TableOffsetsV3V4BE* offsets_v3_be;
   const TableOffsetsV3V4* offsets_v4;
 
-  // These are unused if offsets_v4 is not null (in that case, we just return
-  // references pointing inside the data string)
+  // These are unused if offsets_v4 is not null (in that case, we just return references to within the data string)
   mutable std::unordered_map<uint16_t, WeaponV4> parsed_weapons;
   mutable std::vector<ArmorOrShieldV4> parsed_armors;
   mutable std::vector<ArmorOrShieldV4> parsed_shields;
@@ -663,8 +657,8 @@ protected:
   mutable std::vector<Special> parsed_specials;
   mutable std::vector<StatBoost> parsed_stat_boosts;
 
-  // Key is used_item. We can't index on (used_item, equipped_item) because
-  // equipped_item may contain wildcards, and the matching order matters.
+  // Key is used_item. We can't index on (used_item, equipped_item) because equipped_item may contain wildcards, and
+  // the matching order matters.
   mutable std::map<uint32_t, std::vector<ItemCombination>> item_combination_index;
 
   template <typename ToolDefT, bool BE>
@@ -682,8 +676,8 @@ public:
   // TODO: V1 format is different! Offsets are 0438 0440 0498 0520 054C
   struct MotionReference {
     struct Side {
-      // This specifies which entry in ItemMagMotion.dat is used. The file is
-      // just a list of 0x64-byte structures. 0xFF = no TItemMagSub is created
+      // This specifies which entry in ItemMagMotion.dat is used. The file is just a list of 0x64-byte structures.
+      // 0xFF = no TItemMagSub is created
       uint8_t motion_table_entry = 0xFF;
       parray<uint8_t, 5> unknown_a1 = 0;
     } __packed_ws__(Side, 0x06);
@@ -691,37 +685,34 @@ public:
   } __packed_ws__(MotionReference, 0x0C);
 
   struct MotionReferenceTables {
-    // It seems that there are two definition tables, but only the first is
-    // used on any version of PSO. On v3 and later, the two offsets point to
-    // the same table, but on v2 they don't and the second table contains
-    // different data.
-    // TODO: Figure out what the deal is with the different v2 tables.
+    // It seems that there are two definition tables, but only the first is used on any version of PSO. On v3 and
+    // later, the two offsets point to the same table, but on v2 they don't and the second table contains different
+    // data. TODO: Figure out what the deal is with the different v2 tables.
     le_uint32_t ref_table; // -> MotionReference[num_mags]
     le_uint32_t unused_ref_table; // -> MotionReference[num_mags]
   } __packed_ws__(MotionReferenceTables, 0x08);
 
   struct ColorEntry {
-    // Colors are specified as 4 floats, each in the range [0, 1], for each
-    // color channel. The default colors are:
-    // alpha   red     green   blue    color (see StaticGameData.cc)
-    // 1.0     1.0     0.2     0.1     red
-    // 1.0     0.2     0.2     1.0     blue
-    // 1.0     1.0     0.9     0.1     yellow
-    // 1.0     0.1     1.0     0.1     green
-    // 1.0     0.8     0.1     1.0     purple
-    // 1.0     0.1     0.1     0.2     black
-    // 1.0     0.9     1.0     1.0     white
-    // 1.0     0.1     0.9     1.0     cyan
-    // 1.0     0.5     0.3     0.2     brown
-    // 1.0     1.0     0.4     0.0     orange (v3+)
-    // 1.0     0.502   0.545   0.977   light-blue (v3+)
-    // 1.0     0.502   0.502   0.0     olive (v3+)
-    // 1.0     0.0     0.941   0.714   turquoise (v3+)
-    // 1.0     0.8     0.098   0.392   fuchsia (v3+)
-    // 1.0     0.498   0.498   0.498   grey (v3+)
-    // 1.0     0.996   0.996   0.832   cream (v3+)
-    // 1.0     0.996   0.498   0.784   pink (v3+)
-    // 1.0     0.0     0.498   0.322   dark-green (v3+)
+    // Colors are specified as 4 floats, each in the range [0, 1], for each color channel. The default colors are:
+    //   alpha   red     green   blue    color (see StaticGameData.cc)
+    //   1.0     1.0     0.2     0.1     red
+    //   1.0     0.2     0.2     1.0     blue
+    //   1.0     1.0     0.9     0.1     yellow
+    //   1.0     0.1     1.0     0.1     green
+    //   1.0     0.8     0.1     1.0     purple
+    //   1.0     0.1     0.1     0.2     black
+    //   1.0     0.9     1.0     1.0     white
+    //   1.0     0.1     0.9     1.0     cyan
+    //   1.0     0.5     0.3     0.2     brown
+    //   1.0     1.0     0.4     0.0     orange (v3+)
+    //   1.0     0.502   0.545   0.977   light-blue (v3+)
+    //   1.0     0.502   0.502   0.0     olive (v3+)
+    //   1.0     0.0     0.941   0.714   turquoise (v3+)
+    //   1.0     0.8     0.098   0.392   fuchsia (v3+)
+    //   1.0     0.498   0.498   0.498   grey (v3+)
+    //   1.0     0.996   0.996   0.832   cream (v3+)
+    //   1.0     0.996   0.498   0.784   pink (v3+)
+    //   1.0     0.0     0.498   0.322   dark-green (v3+)
     le_float alpha;
     le_float red;
     le_float green;

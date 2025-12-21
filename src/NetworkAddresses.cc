@@ -103,8 +103,7 @@ uint32_t address_for_string(const char* address) {
 }
 
 uint64_t devolution_phone_number_for_netloc(uint32_t addr, uint16_t port) {
-  // It seems the address part of the number is fixed-width, but the port is
-  // not. Why did they do it this way?
+  // It seems the address part of the number is fixed-width, but the port is not. Why did they do it this way?
   if (port & 0xF000) {
     return (static_cast<uint64_t>(addr) << 16) | port;
   } else if (port & 0x0F00) {

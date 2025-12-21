@@ -51,8 +51,8 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
     patch_index_log.warning_f("Cannot load patch metadata cache from {}: {}", metadata_cache_filename, e.what());
   }
 
-  // Assuming it's rare for patch files to change, we skip writing the metadata
-  // cache if no files were changed at all (which should usually be the case)
+  // Assuming it's rare for patch files to change, we skip writing the metadata cache if no files were changed at all
+  // (which should usually be the case)
   bool should_write_metadata_cache = false;
   phosg::JSON new_metadata_cache_json = phosg::JSON::dict();
 
@@ -124,10 +124,8 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
           should_write_metadata_cache = true;
 
         } else {
-          // File was not modified and cache item was valid; just use the
-          // existing cache item
-          new_metadata_cache_json.emplace(
-              relative_item_path, std::move(cache_item_json));
+          // File was not modified and cache item was valid; just use the existing cache item
+          new_metadata_cache_json.emplace(relative_item_path, std::move(cache_item_json));
         }
 
         this->files_by_patch_order.emplace_back(f);
@@ -159,12 +157,10 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
   }
 }
 
-const vector<shared_ptr<PatchFileIndex::File>>&
-PatchFileIndex::all_files() const {
+const vector<shared_ptr<PatchFileIndex::File>>& PatchFileIndex::all_files() const {
   return this->files_by_patch_order;
 }
 
-shared_ptr<PatchFileIndex::File> PatchFileIndex::get(
-    const string& filename) const {
+shared_ptr<PatchFileIndex::File> PatchFileIndex::get(const string& filename) const {
   return this->files_by_name.at(filename);
 }

@@ -9,9 +9,8 @@ using namespace std;
 void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<RandomGenerator> rand_crypt) {
   auto s = c->require_server_state();
 
-  // On PC (and presumably DC), the client sends a 6x29 after this to delete the
-  // used item. On GC and later versions, this does not happen, so we should
-  // delete the item here.
+  // On PC (and presumably DC), the client sends a 6x29 after this to delete the used item. On GC and later versions,
+  // this does not happen, so we should delete the item here.
   bool is_v4 = ::is_v4(c->version());
   bool is_v3_or_later = is_v3(c->version()) || is_v4;
   bool should_delete_item = is_v3_or_later;
@@ -37,8 +36,7 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<RandomG
     }
 
     auto& weapon = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::WEAPON)];
-    // Only enforce grind limits on BB, since the server doesn't have direct
-    // control over players' inventories on other versions
+    // Only enforce grind limits on BB, since the server doesn't have direct control over inventories on other versions
     auto item_parameter_table = s->item_parameter_table(c->version());
     auto weapon_def = item_parameter_table->get_weapon(weapon.data.data1[1], weapon.data.data1[2]);
     if (is_v4 && (weapon.data.data1[3] >= weapon_def.max_grind)) {
@@ -77,8 +75,6 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<RandomG
       case 6: // Hit Material (v1/v2) or Luck Material (v3/v4)
         type = Type::LUCK;
         if (!is_v3_or_later && (c->version() != Version::GC_NTE)) {
-          // Hit material doesn't exist on v3/v4, but we'll ignore type anyway
-          // in this case because track_non_hp_tp_materials is false
           p->disp.stats.char_stats.ata += 2;
         } else {
           p->disp.stats.char_stats.lck += 2;
@@ -173,10 +169,9 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<RandomG
     if (sum == 0) {
       throw runtime_error("no unwrap results available for event");
     }
-    // TODO: It seems that on non-BB, clients don't synchronize this at all, so
-    // they could end up thinking the unwrapped item is something completely
-    // different. (They don't even use a fixed random seed, like for rares;
-    // they just call rand().) How does this actually work on console PSO?
+    // TODO: It seems that on non-BB, clients don't synchronize this at all, so they could end up thinking the
+    // unwrapped item is something completely different. (They don't even use a fixed random seed, like for rares; they
+    // just call rand().) How does this actually work on console PSO?
     size_t det = rand_crypt->next() % sum;
     for (size_t z = 0; z < table.second; z++) {
       const auto& entry = table.first[z];
@@ -264,8 +259,8 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<RandomG
   }
 
   if (should_delete_item) {
-    // Allow overdrafting meseta if the client is not BB, since the server isn't
-    // informed when meseta is added or removed from the bank.
+    // Allow overdrafting meseta if the client is not BB, since the server isn't informed when meseta is added or
+    // removed from the bank.
     player->remove_item(item.data.id, 1, *s->item_stack_limits(c->version()));
   }
 }
@@ -323,8 +318,8 @@ void apply_mag_feed_result(
   uint8_t evolution_number = mag_evolution_table->get_evolution_number(mag_item.data1[1]);
   uint8_t mag_number = mag_item.data1[1];
 
-  // Note: Sega really did just hardcode all these rules into the client. There
-  // is no data file describing these evolutions, unfortunately.
+  // Note: Sega really did just hardcode all these rules into the client. There is no data file describing these
+  // evolutions, unfortunately.
 
   if (mag_level < 10) {
     // Nothing to do
@@ -408,9 +403,8 @@ void apply_mag_feed_result(
           throw logic_error("char class is not any of the top-level classes");
         }
 
-        // Note: The original code checks the class (hunter/ranger/force) again
-        // here, and goes into 3 branches that each do these same checks.
-        // However, the result of all 3 branches is exactly the same!
+        // Note: The original code checks the class (hunter/ranger/force) again here, and goes into 3 branches that
+        // each do these same checks. However, the result of all 3 branches is exactly the same!
         if (((section_id_group == 0) && (pow + mind == def + dex)) ||
             ((section_id_group == 1) && (pow + dex == mind + def)) ||
             ((section_id_group == 2) && (pow + def == mind + dex))) {
@@ -443,54 +437,36 @@ void apply_mag_feed_result(
 
         if (is_hunter) {
           if (flags & 0x108) {
-            mag_item.data1[1] = (section_id & 1)
-                ? ((dex < mind) ? 0x08 : 0x06)
-                : ((dex < mind) ? 0x0C : 0x05);
+            mag_item.data1[1] = (section_id & 1) ? ((dex < mind) ? 0x08 : 0x06) : ((dex < mind) ? 0x0C : 0x05);
           } else if (flags & 0x010) {
-            mag_item.data1[1] = (section_id & 1)
-                ? ((mind < pow) ? 0x12 : 0x10)
-                : ((mind < pow) ? 0x17 : 0x13);
+            mag_item.data1[1] = (section_id & 1) ? ((mind < pow) ? 0x12 : 0x10) : ((mind < pow) ? 0x17 : 0x13);
           } else if (flags & 0x020) {
-            mag_item.data1[1] = (section_id & 1)
-                ? ((pow < dex) ? 0x16 : 0x24)
-                : ((pow < dex) ? 0x07 : 0x1E);
+            mag_item.data1[1] = (section_id & 1) ? ((pow < dex) ? 0x16 : 0x24) : ((pow < dex) ? 0x07 : 0x1E);
           }
         } else if (is_ranger) {
           if (flags & 0x110) {
-            mag_item.data1[1] = (section_id & 1)
-                ? ((mind < pow) ? 0x0A : 0x05)
-                : ((mind < pow) ? 0x0C : 0x06);
+            mag_item.data1[1] = (section_id & 1) ? ((mind < pow) ? 0x0A : 0x05) : ((mind < pow) ? 0x0C : 0x06);
           } else if (flags & 0x008) {
-            mag_item.data1[1] = (section_id & 1)
-                ? ((dex < mind) ? 0x0A : 0x26)
-                : ((dex < mind) ? 0x0C : 0x06);
+            mag_item.data1[1] = (section_id & 1) ? ((dex < mind) ? 0x0A : 0x26) : ((dex < mind) ? 0x0C : 0x06);
           } else if (flags & 0x020) {
-            mag_item.data1[1] = (section_id & 1)
-                ? ((pow < dex) ? 0x18 : 0x1E)
-                : ((pow < dex) ? 0x08 : 0x05);
+            mag_item.data1[1] = (section_id & 1) ? ((pow < dex) ? 0x18 : 0x1E) : ((pow < dex) ? 0x08 : 0x05);
           }
         } else if (is_force) {
           if (flags & 0x120) {
             if (def < 45) {
-              mag_item.data1[1] = (section_id & 1)
-                  ? ((pow < dex) ? 0x17 : 0x09)
-                  : ((pow < dex) ? 0x1E : 0x1C);
+              mag_item.data1[1] = (section_id & 1) ? ((pow < dex) ? 0x17 : 0x09) : ((pow < dex) ? 0x1E : 0x1C);
             } else {
               mag_item.data1[1] = 0x24;
             }
           } else if (flags & 0x008) {
             if (def < 45) {
-              mag_item.data1[1] = (section_id & 1)
-                  ? ((dex < mind) ? 0x1C : 0x20)
-                  : ((dex < mind) ? 0x1F : 0x25);
+              mag_item.data1[1] = (section_id & 1) ? ((dex < mind) ? 0x1C : 0x20) : ((dex < mind) ? 0x1F : 0x25);
             } else {
               mag_item.data1[1] = 0x23;
             }
           } else if (flags & 0x010) {
             if (def < 45) {
-              mag_item.data1[1] = (section_id & 1)
-                  ? ((mind < pow) ? 0x12 : 0x0C)
-                  : ((mind < pow) ? 0x15 : 0x11);
+              mag_item.data1[1] = (section_id & 1) ? ((mind < pow) ? 0x12 : 0x0C) : ((mind < pow) ? 0x15 : 0x11);
             } else {
               mag_item.data1[1] = 0x24;
             }

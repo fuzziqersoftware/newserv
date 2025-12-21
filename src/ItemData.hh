@@ -10,13 +10,11 @@
 class ItemParameterTable;
 
 enum class EquipSlot {
-  // When equipping items through the Item Pack pause menu, the client sends
-  // UNKNOWN for the slot. The receiving client (and server, in our case) have
-  // to analyze the item being equipped and put it in the appropriate slot in
-  // this case. See ItemData::default_equip_slot() for this computation.
+  // When equipping items through the Item Pack pause menu, the client sends UNKNOWN for the slot. The receiving client
+  // (and server, in our case) have to analyze the item being equipped and put it in the appropriate slot in this case.
+  // See ItemData::default_equip_slot() for this computation.
   UNKNOWN = 0x00,
-  // When equipping items through the quick menu or Equip pause menu, the client
-  // sends one of the slots below.
+  // When equipping items through the quick menu or Equip pause menu, the client sends one of the slots below.
   MAG = 0x01,
   ARMOR = 0x02,
   SHIELD = 0x03,
@@ -80,15 +78,15 @@ struct ItemData {
   };
 
   // QUICK ITEM FORMAT REFERENCE
-  //           data1/0  data1/4  data1/8  data2
-  //   Weapon:    00ZZZZGG SSNNAABB AABBAABB 00000000
-  //   Armor:     0101ZZ00 FFTTDDDD EEEEXXXX 00000000
-  //   Shield:    0102ZZ00 FFTTDDDD EEEEXXXX 00000000
-  //   Unit:      0103ZZ00 FF00RRRR 0000XXXX 00000000
-  //   Mag:       02ZZLLWW HHHHIIII JJJJKKKK YYQQPPVV
-  //   Tool:      03ZZZZUU 00CC0000 0000XXXX 00000000
-  //   Tech disk: 0302&&UU %%CC0000 0000XXXX 00000000
-  //   Meseta:    04000000 00000000 00000000 MMMMMMMM
+  //              data1/0  data1/4  data1/8  data2
+  // Weapon:    00ZZZZGG SSNNAABB AABBAABB 00000000
+  // Armor:     0101ZZ00 FFTTDDDD EEEEXXXX 00000000
+  // Shield:    0102ZZ00 FFTTDDDD EEEEXXXX 00000000
+  // Unit:      0103ZZ00 FF00RRRR 0000XXXX 00000000
+  // Mag:       02ZZLLWW HHHHIIII JJJJKKKK YYQQPPVV
+  // Tool:      03ZZZZUU 00CC0000 0000XXXX 00000000
+  // Tech disk: 0302&&UU %%CC0000 0000XXXX 00000000
+  // Meseta:    04000000 00000000 00000000 MMMMMMMM
   // A = attribute type (for S-ranks, custom name; last pair is kill count for some weapons)
   // B = attribute amount (for S-ranks, custom name; last pair is kill count for some weapons)
   // C = stack size (for tools)
@@ -116,13 +114,10 @@ struct ItemData {
   // Z = item ID
   // & = technique level
   // % = technique number
-  // Note: PSO GC erroneously byteswaps data2 even when the item is a mag. This
-  // makes it incompatible with little-endian versions of PSO (i.e. all other
-  // versions). We manually byteswap data2 upon receipt and immediately before
-  // sending where needed.
-  // Related note: PSO V2 has an annoyingly complicated format for mags that
-  // doesn't match the above table. We decode this upon receipt and encode it
-  // immediately before sending when interacting with V2 clients; see the
+  // Note: PSO GC byteswaps data2 even when the item is a mag. This makes it incompatible with little-endian versions
+  // of PSO (i.e. all other versions). We manually byteswap data2 upon receipt and before sending where needed.
+  // Related note: PSO V2 has an annoyingly complicated format for mags that doesn't match the above table. We decode
+  // this upon receipt and encode it immediately before sending when interacting with V2 clients; see the
   // implementation of decode_for_version() for details.
 
   union {

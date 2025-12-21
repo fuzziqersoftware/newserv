@@ -54,12 +54,6 @@
 
 using namespace std;
 
-#ifdef PHOSG_WINDOWS
-static constexpr bool IS_WINDOWS = true;
-#else
-static constexpr bool IS_WINDOWS = false;
-#endif
-
 bool use_terminal_colors = false;
 
 void print_version_info();
@@ -210,8 +204,7 @@ void write_output_data(phosg::Arguments& args, const void* data, size_t size, co
     phosg::save_file(output_filename, data, size);
 
   } else if (output_filename.empty() && (output_filename != "-") && !input_filename.empty() && (input_filename != "-")) {
-    // If no output filename is given and an input filename is given, write to
-    // <input_filename>.<extension>
+    // If no output filename is given and an input filename is given, write to <input_filename>.<extension>
     if (!extension) {
       throw runtime_error("an output filename is required");
     }
@@ -221,8 +214,7 @@ void write_output_data(phosg::Arguments& args, const void* data, size_t size, co
     phosg::save_file(filename, data, size);
 
   } else if (isatty(fileno(stdout)) && (!extension || !is_text_extension(extension))) {
-    // If stdout is a terminal and the data is not known to be text, use
-    // print_data to write the result
+    // If stdout is a terminal and the data is not known to be text, use print_data to write the result
     phosg::print_data(stdout, data, size);
     fflush(stdout);
 
@@ -832,8 +824,8 @@ static void a_encrypt_decrypt_vms_save_fn(phosg::Arguments& args) {
     phosg::fwrite_fmt(stderr, "File type: DC v2 character\n");
     process_file.template operator()<PSODCV2CharacterFile, true>();
   } else if (header.data_size == sizeof(PSODCV1V2GuildCardFile)) {
-    // There appears to be a copy/paste error here: the game uses the character
-    // file size when checksumming the Guild Card file, so we must do the same
+    // There appears to be a copy/paste error here: the game uses the character file size when checksumming the Guild
+    // Card file, so we must do the same
     if (!is_v2) {
       phosg::fwrite_fmt(stderr, "File type: DC v1 Guild Card list\n");
       static_assert(sizeof(PSODCV1CharacterFile) <= sizeof(PSODCV1V2GuildCardFile::EncryptedSection));
@@ -1343,15 +1335,12 @@ Action a_salvage_gci(
               0, 0x100000000, 0x1000, num_threads);
 
         } else if (!exhaustive) {
-          // The pseudorandom number generator used by PSO to encrypt its save
-          // files has a weakness: if the low bits of the seed are correct, the
-          // low bits of each 32-bit integer in the plaintext will also be
-          // correct, even if the high bits of the seed are wrong. Using this,
-          // we can brute-force the low half of the seed, then the high half,
-          // which is much faster than trying all possible seeds.
-          // Unfortunately, this relies on the distribution of values in the
-          // plaintext, so it only works for the round-2 seed - the decrypted
-          // data after round 1 is still essentially random.
+          // The pseudorandom number generator used by PSO to encrypt its save files has a weakness: if the low bits of
+          // the seed are correct, the low bits of each 32-bit integer in the plaintext will also be correct, even if
+          // the high bits of the seed are wrong. Using this, we can brute-force the low half of the seed, then the
+          // high half, which is much faster than trying all possible seeds. Unfortunately, this relies on the
+          // distribution of values in the plaintext, so it only works for the round-2 seed - the decrypted data after
+          // round 1 is still essentially random.
           phosg::parallel_range_blocks<uint64_t>(try_round2_seed, 0, 0x100000, 0x1000, num_threads);
           auto intermediate_top_seeds = merge_top_seeds(top_seeds_by_thread);
           if (intermediate_top_seeds.empty()) {
@@ -1370,8 +1359,7 @@ Action a_salvage_gci(
               0, 0x10000, 0x80, num_threads);
 
         } else {
-          // The user requested not to take any shortcuts, so burn a lot of CPU
-          // power
+          // The user requested not to take any shortcuts, so burn a lot of CPU power
           phosg::parallel_range_blocks<uint64_t>(try_round2_seed, 0, 0x100000000, 0x1000, num_threads);
         }
 
@@ -1446,14 +1434,10 @@ Action a_find_decryption_seed(
         string le_decrypt_buf = ciphertext.substr(0, max_plaintext_size);
         if (uses_v3_encryption(version)) {
           PSOV3Encryption(seed).encrypt_both_endian(
-              le_decrypt_buf.data(),
-              be_decrypt_buf.data(),
-              be_decrypt_buf.size());
+              le_decrypt_buf.data(), be_decrypt_buf.data(), be_decrypt_buf.size());
         } else {
           PSOV2Encryption(seed).encrypt_both_endian(
-              le_decrypt_buf.data(),
-              be_decrypt_buf.data(),
-              be_decrypt_buf.size());
+              le_decrypt_buf.data(), be_decrypt_buf.data(), be_decrypt_buf.size());
         }
 
         for (const auto& plaintext : plaintexts) {
@@ -3554,8 +3538,7 @@ Action a_replay_ep3_battle_record(
       auto server = make_shared<Episode3::Server>(nullptr, std::move(options));
       server->init();
 
-      // Ignore commands generated by the server when it's constructed (these
-      // are not included in the battle record)
+      // Ignore commands generated by the server when it's constructed (these are not included in the battle record)
       output_queue->clear();
 
       std::array<bool, 4> players_present = {false, false, false, false};
@@ -3576,8 +3559,7 @@ Action a_replay_ep3_battle_record(
             ev.print(stdout);
             break;
           case Episode3::BattleRecord::Event::Type::BATTLE_COMMAND:
-            // Ignore the map command (this is handled separately) and 6xB4x4B
-            // (which is only generated when a lobby is present)
+            // Ignore the map command (handled separately) and 6xB4x4B (only needed when a lobby is present)
             if (ev.data.empty() || (static_cast<uint8_t>(ev.data[0]) == 0xB6) || (ev.data.at(4) == 0x4B)) {
               ev.print(stdout);
             } else {
@@ -3594,8 +3576,7 @@ Action a_replay_ep3_battle_record(
                 phosg::print_data(stderr, ev.data, 0, nullptr, phosg::PrintDataFlags::OFFSET_16_BITS | phosg::PrintDataFlags::PRINT_ASCII);
                 throw std::runtime_error("Output did not match expectations");
               }
-              // Hack: don't check the last field in 6xB4x46 since it contains
-              // a timestamp on non-NTE
+              // Hack: don't check the last field in 6xB4x46 since it contains a timestamp on non-NTE
               bool matched = false;
               if ((ev.data.at(4) == 0x46) && !is_nte) {
                 auto received_cmd = check_size_t<G_ServerVersionStrings_Ep3_6xB4x46>(output_queue->front());
@@ -3631,9 +3612,8 @@ Action a_replay_ep3_battle_record(
               phosg::print_data(stderr, output_queue->front());
               throw std::runtime_error("Output did not match expectations");
             }
-            // Hack: Set the CPU player flag if the player isn't present in the
-            // recording (normally this is done by checking the Lobby, but
-            // there's no Lobby during a replay)
+            // Hack: Set the CPU player flag if the player isn't present in the recording (normally this is done by
+            // checking the Lobby, but there's no Lobby during a replay)
             if (ev.data.at(4) == 0x1B) {
               string mutable_data = ev.data;
               auto& cmd = check_size_t<G_SetPlayerName_Ep3_CAx1B>(mutable_data);
@@ -3894,30 +3874,6 @@ int main(int argc, char** argv) {
     phosg::log_error_f("Unknown or invalid action; try --help");
     return 1;
   }
-  if (IS_WINDOWS) {
-    // Cygwin just gives a stackdump when an exception falls out of main(), so
-    // unlike Linux and macOS, we have to manually catch exceptions here just to
-    // see what the exception message was.
-    try {
-      a->run(args);
-    } catch (const phosg::cannot_open_file& e) {
-      phosg::log_error_f("Top-level exception (cannot_open_file): {}", e.what());
-      throw;
-    } catch (const invalid_argument& e) {
-      phosg::log_error_f("Top-level exception (invalid_argument): {}", e.what());
-      throw;
-    } catch (const out_of_range& e) {
-      phosg::log_error_f("Top-level exception (out_of_range): {}", e.what());
-      throw;
-    } catch (const runtime_error& e) {
-      phosg::log_error_f("Top-level exception (runtime_error): {}", e.what());
-      throw;
-    } catch (const exception& e) {
-      phosg::log_error_f("Top-level exception: {}", e.what());
-      throw;
-    }
-  } else {
-    a->run(args);
-  }
+  a->run(args);
   return 0;
 }

@@ -7,11 +7,10 @@
 #include <string>
 #include <vector>
 
-// Note: These aren't enums because neither enum nor enum class does what we
-// want. Specifically, we need GO_BACK to be valid in multiple enums (and enums
-// aren't namespaced unless they're enum classes), so we can't use enums. But we
-// also want to be able to use non-enum values in switch statements without
-// casting values all over the place, so we can't use enum classes either.
+// Note: These aren't enums because neither enum nor enum class does what we want. Specifically, we need GO_BACK to be
+// valid in multiple enums (and enums aren't namespaced unless they're enum classes), so we can't use enums. But we
+// also want to be able to use non-enum values in switch statements without casting values all over the place, so we
+// can't use enum classes either.
 
 namespace MenuID {
 constexpr uint32_t MAIN = 0x11000011;
@@ -22,8 +21,7 @@ constexpr uint32_t GAME = 0x44000044;
 constexpr uint32_t QUEST_EP1 = 0x55010155;
 constexpr uint32_t QUEST_EP2 = 0x55020255;
 constexpr uint32_t QUEST_EP3 = 0x55030355;
-// See the decsription of the A2 command in CommandFormats.hh for why these
-// menu IDs don't fit the rest of the pattern.
+// See the decsription of the A2 command in CommandFormats.hh for why these menu IDs don't fit the rest of the pattern.
 constexpr uint32_t QUEST_CATEGORIES_EP1_EP3_EP4 = 0x01000001;
 constexpr uint32_t QUEST_CATEGORIES_EP2 = 0x02000002;
 constexpr uint32_t PROXY_DESTINATIONS = 0x77000077;
@@ -92,20 +90,10 @@ constexpr uint32_t MEMBERS_20_LEADERS_3 = 0x03030303;
 constexpr uint32_t MEMBERS_40_LEADERS_5 = 0x04040404;
 constexpr uint32_t MEMBERS_70_LEADERS_8 = 0x05050505;
 constexpr uint32_t MEMBERS_100_LEADERS_10 = 0x06060606;
-// constexpr uint32_t POINT_OF_DISASTER = ...;
-// constexpr uint32_t TOYS_TWILIGHT = ...;
-// constexpr uint32_t COMMANDER_BLADE = ...;
-// constexpr uint32_t UNION_GUARD = ...;
-// constexpr uint32_t TEAM_POINTS_500 = ...;
-// constexpr uint32_t TEAM_POINTS_1000 = ...;
-// constexpr uint32_t TEAM_POINTS_5000 = ...;
-// constexpr uint32_t TEAM_POINTS_10000 = ...;
 } // namespace TeamRewardMenuItemID
 
 struct MenuItem {
   enum Flag {
-    // For menu items to be visible on DC NTE, they must not have either of the
-    // following two flags. (The INVISIBLE_ON_GC_NTE flag behaves similarly.)
     INVISIBLE_ON_DC_PROTOS = 0x001,
     INVISIBLE_ON_DC = 0x002,
     INVISIBLE_ON_PC_NTE = 0x004,
@@ -131,16 +119,8 @@ struct MenuItem {
   std::function<std::string()> get_description;
   uint32_t flags;
 
-  MenuItem(
-      uint32_t item_id,
-      const std::string& name,
-      const std::string& description,
-      uint32_t flags);
-  MenuItem(
-      uint32_t item_id,
-      const std::string& name,
-      std::function<std::string()> get_description,
-      uint32_t flags);
+  MenuItem(uint32_t item_id, const std::string& name, const std::string& description, uint32_t flags);
+  MenuItem(uint32_t item_id, const std::string& name, std::function<std::string()> get_description, uint32_t flags);
 };
 
 struct Menu {

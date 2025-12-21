@@ -47,8 +47,6 @@ struct PatchFileChecksumRequest {
         size(0),
         response_received(false) {}
   inline bool needs_update() const {
-    return !this->response_received ||
-        (this->crc32 != this->file->crc32) ||
-        (this->size != this->file->size);
+    return !this->response_received || (this->crc32 != this->file->crc32) || (this->size != this->file->size);
   }
 };

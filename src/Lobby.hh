@@ -30,12 +30,10 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     // At most one of the following will be non-null
     std::shared_ptr<const MapState::ObjectState> from_obj;
     std::shared_ptr<const MapState::EnemyState> from_ene;
-    // The low 12 bits of flags are visibility flags, specifying which clients
-    // can see the item. (In practice, only the lowest 4 of these bits are used,
-    // but the game has fields for 12 players so we do too.)
-    // The 13th bit (0x1000) specifies whether a rare item notification should
-    // be sent to all players when the item is picked up. This has no effect for
-    // non-rare items.
+    // The low 12 bits of flags are visibility flags, specifying which clients can see the item. (In practice, only the
+    // lowest 4 of these bits are used, but the game has fields for 12 players so we do too.) The 13th bit (0x1000)
+    // specifies whether a rare item notification should be sent to all players when the item is picked up. This has no
+    // effect for non-rare items.
     uint16_t flags;
 
     bool visible_to_client(uint8_t client_id) const;
@@ -43,8 +41,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   struct FloorItemManager {
     phosg::PrefixedLogger log;
     uint64_t next_drop_number;
-    // It's important that this is a map and not an unordered_map. See the
-    // comment in send_game_item_state for more details.
+    // It's important that this is a map and not an unordered_map. See the comment in send_game_item_state for details.
     std::map<uint32_t, std::shared_ptr<FloorItem>> items; // Keyed on item_id
     std::array<std::map<uint64_t, std::shared_ptr<FloorItem>>, 12> queue_for_client;
 
@@ -111,9 +108,8 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   std::unique_ptr<SwitchFlags> switch_flags;
 
   // Game config
-  // Bits in allowed_versions specify who is allowed to join this game. The
-  // bits are indexed as (1 << version), where version is a value from the
-  // Version enum.
+  // Bits in allowed_versions specify who is allowed to join this game. The bits are indexed as (1 << version), where
+  // version is a value from the Version enum.
   uint16_t allowed_versions = 0x0000;
   uint8_t creator_section_id = 0xFF;
   uint8_t override_section_id = 0xFF;
@@ -145,16 +141,14 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   std::shared_ptr<ChallengeParameters> challenge_params;
 
   // Ep3 stuff
-  // There are three kinds of Episode 3 games. All of these types have episode
-  // set to EP3; types 2 and 3 additionally have the IS_SPECTATOR_TEAM flag.
+  // There are three kinds of Episode 3 games. All of these types have episode set to EP3; types 2 and 3 additionally
+  // have the IS_SPECTATOR_TEAM flag.
   // 1. Primary games. These are the lobbies where battles may take place.
-  // 2. Watcher games. These lobbies receive all the battle and chat commands
-  //    from a primary game. (This the implementation of spectator teams.)
-  // 3. Replay games. These lobbies replay a sequence of battle commands and
-  //    chat commands from a previous primary game.
-  // Types 2 and 3 may be distinguished by the presence of the battle_record
-  // field - in replay games, it will be present; in watcher games it will be
-  // absent.
+  // 2. Watcher games. These lobbies receive all the battle and chat commands from a primary game. (This the
+  //    implementation of spectator teams.)
+  // 3. Replay games. These lobbies replay a sequence of battle and chat commands from a previous primary game.
+  // Types 2 and 3 are distinguished by the presence of the battle_record field - in replay games, it will be present;
+  // in watcher games it will be absent.
   std::shared_ptr<Episode3::Server> ep3_server; // Only used in primary games
   std::weak_ptr<Lobby> watched_lobby; // Only used in watcher games
   std::unordered_set<std::shared_ptr<Lobby>> watcher_lobbies; // Only used in primary games
@@ -174,8 +168,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   // Keys in this map are client_id
   std::unordered_map<size_t, std::weak_ptr<Client>> clients_to_add;
 
-  // This is only used when the PERSISTENT flag is set and idle_timeout_usecs
-  // is not zero
+  // This is only used when the PERSISTENT flag is set and idle_timeout_usecs is not zero
   uint64_t idle_timeout_usecs = 0;
   asio::steady_timer idle_timeout_timer;
 
@@ -239,9 +232,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   void remove_client(std::shared_ptr<Client> c);
 
   void move_client_to_lobby(
-      std::shared_ptr<Lobby> dest_lobby,
-      std::shared_ptr<Client> c,
-      ssize_t required_client_id = -1);
+      std::shared_ptr<Lobby> dest_lobby, std::shared_ptr<Client> c, ssize_t required_client_id = -1);
 
   std::shared_ptr<Client> find_client(const std::string* identifier = nullptr, uint64_t account_id = 0);
 

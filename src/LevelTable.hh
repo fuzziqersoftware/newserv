@@ -96,11 +96,9 @@ check_struct_size(LevelStatsDelta, 0x0C);
 check_struct_size(LevelStatsDeltaBE, 0x0C);
 
 class LevelTable {
-  // This is the base class for all the LevelTable implementations. The public
-  // interface here only defines functions that the server needs to handle
-  // requests, but some subclasses implement more functionality. See the
-  // comments and Offsets structures inside the subclasses' constructor
-  // implementations for more details on the file formats.
+  // This is the base class for all the LevelTable implementations. The public interface here only defines functions
+  // that the server needs to handle requests, but some subclasses implement more functionality. See the comments and
+  // Offsets structures inside the subclasses' constructor implementations for more details on the file formats.
 public:
   virtual ~LevelTable() = default;
   virtual const CharacterStats& base_stats_for_class(uint8_t char_class) const = 0;

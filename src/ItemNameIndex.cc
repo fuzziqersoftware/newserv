@@ -146,9 +146,8 @@ std::string ItemNameIndex::describe_item(const ItemData& item, uint8_t flags) co
     }
   }
 
-  // Armors, shields, and units (0x01) can be wrapped, as can mags (0x02) and
-  // non-stackable tools (0x03). However, each of these item classes has its
-  // flags in a different location.
+  // Armors, shields, and units (0x01) can be wrapped, as can mags (0x02) and non-stackable tools (0x03). However, each
+  // of these item classes has its flags in a different location.
   if (!name_only &&
       (((item.data1[0] == 0x01) && (item.data1[4] & 0x40)) ||
           ((item.data1[0] == 0x02) && (item.data2[2] & 0x40)) ||
@@ -188,12 +187,10 @@ std::string ItemNameIndex::describe_item(const ItemData& item, uint8_t flags) co
     }
 
     if (item.is_s_rank_weapon()) {
-      // S-rank weapons have names instead of percent bonuses. The name is
-      // encoded as 9 5-bit characters in the bytes where the bonuses usually
-      // go. The first character does not appear when the name is rendered;
-      // instead, it's used to determine if the weapon type name should appear
-      // or not. Unlike the client, we check the first character directly and
-      // don't bother decoding it.
+      // S-rank weapons have names instead of percent bonuses. The name is encoded as 9 5-bit characters in the bytes
+      // where the bonuses usually go. The first character does not appear when the name is rendered; instead, it's
+      // used to determine if the weapon type name should appear or not. Unlike the client, we check the first
+      // character directly and don't bother decoding it.
       uint16_t be_data1w3 = phosg::bswap16(item.data1w[3]);
       uint16_t be_data1w4 = phosg::bswap16(item.data1w[4]);
       uint16_t be_data1w5 = phosg::bswap16(item.data1w[5]);
@@ -324,8 +321,7 @@ std::string ItemNameIndex::describe_item(const ItemData& item, uint8_t flags) co
 
     uint8_t flags = item.data2[2];
     if (flags & 7) {
-      static const vector<const char*> pb_shortnames = {
-          "F", "E", "G", "P", "L", "M&Y", "MG", "GR"};
+      static const vector<const char*> pb_shortnames = {"F", "E", "G", "P", "L", "M&Y", "MG", "GR"};
 
       const char* pb_names[3] = {nullptr, nullptr, nullptr};
       uint8_t left_pb = item.mag_photon_blast_for_slot(2);
@@ -587,9 +583,8 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
   }
 
   auto name_it = this->name_index.lower_bound(desc);
-  // Look up to 3 places before the lower bound. We have to do this to catch
-  // cases like Sange vs. Sange & Yasha - if the input is like "Sange 0/...",
-  // then we'll see Sange & Yasha first, which we should skip.
+  // Look up to 3 places before the lower bound. We have to do this to catch cases like Sange vs. Sange & Yasha - if
+  // the input is like "Sange 0/...", then we'll see Sange & Yasha first, which we should skip.
   size_t lookback = 0;
   while (lookback < 4) {
     if (name_it != this->name_index.end() && desc.starts_with(name_it->first)) {
@@ -610,16 +605,14 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
     desc = desc.substr(1);
   }
 
-  // Tech disks should have already been handled above, so we don't need to
-  // special-case 0302xxxx identifiers here.
+  // Tech disks should have already been handled above, so we don't need to special-case 0302xxxx identifiers here.
   uint32_t primary_identifier = name_it->second->primary_identifier;
   ret.data1[0] = (primary_identifier >> 24) & 0xFF;
   ret.data1[1] = (primary_identifier >> 16) & 0xFF;
   ret.data1[2] = (primary_identifier >> 8) & 0xFF;
 
   if (ret.data1[0] == 0x00) {
-    // Weapons: add special, grind and percentages (or name, if S-rank) and
-    // kill count if unsealable
+    // Weapons: add special, grind and percentages (or name, if S-rank) and kill count if unsealable
     ret.data1[4] = weapon_special | (is_wrapped ? 0x40 : 0x00) | (is_unidentified ? 0x80 : 0x00);
 
     bool kill_count_set = false;
@@ -728,16 +721,8 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
         if (pb_tokens.size() > 3) {
           throw runtime_error("too many photon blasts specified");
         }
-        static const unordered_map<string, uint8_t> name_to_pb_num({
-            {"f", 0},
-            {"e", 1},
-            {"g", 2},
-            {"p", 3},
-            {"l", 4},
-            {"m", 5},
-            {"my", 5},
-            {"m&y", 5},
-        });
+        static const unordered_map<string, uint8_t> name_to_pb_num(
+            {{"f", 0}, {"e", 1}, {"g", 2}, {"p", 3}, {"l", 4}, {"m", 5}, {"my", 5}, {"m&y", 5}});
         for (const auto& pb_token : pb_tokens) {
           ret.add_mag_photon_blast(name_to_pb_num.at(pb_token));
         }
@@ -1044,8 +1029,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
   phosg::fwrite_fmt(stream, "MAG FEED TABLES\n");
   for (size_t table_index = 0; table_index < 8; table_index++) {
     static const char* names[11] = {
-        "Monomate", "Dimate", "Trimate", "Monofluid",
-        "Difluid", "Trifluid", "Antidote", "Antiparalysis",
+        "Monomate", "Dimate", "Trimate", "Monofluid", "Difluid", "Trifluid", "Antidote", "Antiparalysis",
         "Sol Atomizer", "Moon Atomizer", "Star Atomizer"};
     phosg::fwrite_fmt(stream, "  TABLE {:02X}         => -DEF -POW -DEX MIND -IQ- SYNC\n", table_index);
     for (size_t which = 0; which < 11; which++) {
