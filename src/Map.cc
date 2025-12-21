@@ -4127,6 +4127,136 @@ string MapFile::disassemble(bool reassembly, Version version) const {
   return phosg::join(ret, "\n");
 }
 
+std::string MapFile::serialize() const {
+  using T = SectionHeader::Type;
+  phosg::StringWriter w;
+
+  auto write_section_header = [&](T type, uint32_t floor, uint32_t data_size) -> void {
+    uint32_t section_size = data_size + sizeof(SectionHeader);
+    w.put<SectionHeader>({static_cast<uint32_t>(type), section_size, floor, data_size});
+  };
+
+  // Try to serialize the sections in the same order as the input file; if the offsets are missing, serialize in
+  // (floor, type) order
+  struct SectionOrderEntry {
+    T type;
+    uint8_t floor;
+    size_t file_offset;
+    bool operator<(const SectionOrderEntry& other) const {
+      if (this->file_offset < other.file_offset) {
+        return true;
+      } else if (this->file_offset > other.file_offset) {
+        return false;
+      }
+      if (this->floor < other.floor) {
+        return true;
+      } else if (this->floor > other.floor) {
+        return false;
+      }
+      return static_cast<uint8_t>(this->type) < static_cast<uint8_t>(other.type);
+    }
+  };
+  std::set<SectionOrderEntry> sections_to_serialize;
+  for (uint8_t floor = 0; floor < this->sections_for_floor.size(); floor++) {
+    const auto& sf = this->sections_for_floor[floor];
+    if (sf.object_sets) {
+      sections_to_serialize.emplace(SectionOrderEntry{T::OBJECT_SETS, floor, sf.object_sets_file_offset});
+    }
+    if (sf.enemy_sets) {
+      sections_to_serialize.emplace(SectionOrderEntry{T::ENEMY_SETS, floor, sf.enemy_sets_file_offset});
+    }
+    if (sf.events1 || sf.events2) {
+      sections_to_serialize.emplace(SectionOrderEntry{T::EVENTS, floor, sf.events_file_offset});
+    }
+    if (sf.random_enemy_room_count && sf.random_enemy_locations) {
+      sections_to_serialize.emplace(SectionOrderEntry{
+          T::RANDOM_ENEMY_LOCATIONS, floor, sf.random_enemy_locations_file_offset});
+    }
+    if (sf.random_enemy_definitions && sf.random_enemy_weights) {
+      sections_to_serialize.emplace(SectionOrderEntry{
+          T::RANDOM_ENEMY_DEFINITIONS, floor, sf.random_enemy_definitions_file_offset});
+    }
+  }
+
+  for (const auto& section : sections_to_serialize) {
+    const auto& sf = this->sections_for_floor[section.floor];
+
+    switch (section.type) {
+      case T::OBJECT_SETS: {
+        size_t data_size = sizeof(ObjectSetEntry) * sf.object_set_count;
+        write_section_header(T::OBJECT_SETS, section.floor, data_size);
+        w.write(sf.object_sets, data_size);
+        break;
+      }
+      case T::ENEMY_SETS: {
+        size_t data_size = sizeof(EnemySetEntry) * sf.enemy_set_count;
+        write_section_header(T::ENEMY_SETS, section.floor, data_size);
+        w.write(sf.enemy_sets, data_size);
+        break;
+      }
+      case T::EVENTS: {
+        auto serialize_events_section = [&]<typename EventT>(const EventT* events) -> void {
+          EventsSectionHeader ev_header = {
+              .action_stream_offset = sizeof(EventsSectionHeader) + sizeof(EventT) * sf.event_count,
+              .entries_offset = sizeof(EventsSectionHeader),
+              .entry_count = sf.event_count,
+              .format = std::is_same_v<EventT, Event2Entry> ? 0x65767432 : 0x00000000,
+          };
+          size_t data_size = ev_header.action_stream_offset + sf.event_action_stream_bytes;
+          data_size = (data_size + 3) & (~3);
+          write_section_header(T::EVENTS, section.floor, data_size);
+          w.put(ev_header);
+          w.write(events, sf.event_count * sizeof(EventT));
+          w.write(sf.event_action_stream, sf.event_action_stream_bytes);
+          while (w.size() & 3) {
+            w.put_u8(0x00);
+          }
+        };
+        if (sf.events1) {
+          serialize_events_section(sf.events1);
+        } else if (sf.events2) {
+          serialize_events_section(sf.events2);
+        }
+        break;
+      }
+      case T::RANDOM_ENEMY_LOCATIONS: {
+        size_t data_size = sizeof(RandomEnemyLocationsHeader) +
+            sf.random_enemy_room_count * sizeof(RandomEnemyRoom) +
+            sf.random_enemy_location_count * sizeof(RandomEnemyLocation);
+        write_section_header(T::RANDOM_ENEMY_LOCATIONS, section.floor, data_size);
+        w.put(RandomEnemyLocationsHeader{
+            .room_table_offset = sizeof(RandomEnemyLocationsHeader),
+            .entries_offset = sizeof(RandomEnemyLocationsHeader) + sf.random_enemy_room_count * sizeof(RandomEnemyRoom),
+            .num_rooms = sf.random_enemy_room_count,
+        });
+        w.write(sf.random_enemy_rooms, sf.random_enemy_room_count * sizeof(RandomEnemyRoom));
+        w.write(sf.random_enemy_locations, sf.random_enemy_location_count * sizeof(RandomEnemyLocation));
+        break;
+      }
+      case T::RANDOM_ENEMY_DEFINITIONS: {
+        size_t data_size = sizeof(RandomEnemyDefinitionsHeader) +
+            sf.random_enemy_definition_count * sizeof(RandomEnemyDefinition) +
+            sf.random_enemy_weight_count * sizeof(RandomEnemyWeight);
+        write_section_header(T::RANDOM_ENEMY_DEFINITIONS, section.floor, data_size);
+        w.put(RandomEnemyDefinitionsHeader{
+            .entries_offset = sizeof(RandomEnemyDefinitionsHeader),
+            .weight_entries_offset = sizeof(RandomEnemyDefinitionsHeader) + sf.random_enemy_definition_count * sizeof(RandomEnemyDefinition),
+            .entry_count = sf.random_enemy_definition_count,
+            .weight_entry_count = sf.random_enemy_weight_count,
+        });
+        w.write(sf.random_enemy_definitions, sf.random_enemy_definition_count * sizeof(RandomEnemyDefinition));
+        w.write(sf.random_enemy_weights, sf.random_enemy_weight_count * sizeof(RandomEnemyWeight));
+        break;
+      }
+      default:
+        throw std::logic_error("invalid section type descriptor");
+    }
+  }
+
+  w.put<SectionHeader>({static_cast<uint32_t>(T::END), 0, 0, 0});
+  return std::move(w.str());
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Super map
 

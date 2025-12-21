@@ -431,7 +431,7 @@ public:
 
   // Quest constructor
   MapFile(std::shared_ptr<const std::string> quest_data);
-  // Non-quest constructor
+  // Free-play constructor
   MapFile(
       uint8_t floor,
       std::shared_ptr<const std::string> objects_data,
@@ -475,6 +475,8 @@ public:
 
   static std::string disassemble_action_stream(const void* data, size_t size);
   std::string disassemble(bool reassembly = false, Version version = Version::UNKNOWN) const;
+
+  std::string serialize() const;
 
 protected:
   static const std::array<uint32_t, 41> RAND_ENEMY_BASE_TYPES;
