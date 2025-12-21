@@ -266,10 +266,10 @@ void CommonItemSet::Table::print(FILE* stream) const {
         this->special_mult[z], this->special_percent[z]);
   }
 
-  phosg::fwrite_fmt(stream, "  Tool class table:\n");
-  phosg::fwrite_fmt(stream, "    CS     A1     A2     A3     A4     A5     A6     A7     A8     A9    A10\n");
+  phosg::fwrite_fmt(stream, "Tool class table:\n");
+  phosg::fwrite_fmt(stream, "  CS     A1     A2     A3     A4     A5     A6     A7     A8     A9    A10\n");
   for (size_t tool_class = 0; tool_class < this->tool_class_prob_table.size(); tool_class++) {
-    phosg::fwrite_fmt(stream, "    {:02X}", tool_class);
+    phosg::fwrite_fmt(stream, "  {:02X}", tool_class);
     for (size_t area_norm = 0; area_norm < 10; area_norm++) {
       phosg::fwrite_fmt(stream, "  {:5}", this->tool_class_prob_table[tool_class][area_norm]);
     }
@@ -298,10 +298,10 @@ void CommonItemSet::Table::print(FILE* stream) const {
       "MEGID   ",
   };
 
-  phosg::fwrite_fmt(stream, "  Technique table:\n");
-  phosg::fwrite_fmt(stream, "    TECH                   A1            A2            A3            A4            A5            A6            A7            A8            A9           A10\n");
+  phosg::fwrite_fmt(stream, "Technique table:\n");
+  phosg::fwrite_fmt(stream, "  TECH                   A1            A2            A3            A4            A5            A6            A7            A8            A9           A10\n");
   for (size_t tech_num = 0; tech_num < this->technique_index_prob_table.size(); tech_num++) {
-    phosg::fwrite_fmt(stream, "    {:02X}:{}", tech_num, technique_names[tech_num]);
+    phosg::fwrite_fmt(stream, "  {:02X}:{}", tech_num, technique_names[tech_num]);
     for (size_t area_norm = 0; area_norm < 10; area_norm++) {
       uint16_t prob = this->technique_index_prob_table[tech_num][area_norm];
       if (prob) {
@@ -316,24 +316,24 @@ void CommonItemSet::Table::print(FILE* stream) const {
     fputc('\n', stream);
   }
 
-  phosg::fwrite_fmt(stream, "  Armor/shield type bias: {}\n", this->armor_or_shield_type_bias);
+  phosg::fwrite_fmt(stream, "Armor/shield type bias: {}\n", this->armor_or_shield_type_bias);
 
-  phosg::fwrite_fmt(stream, "  Armor/shield type index table:\n");
-  phosg::fwrite_fmt(stream, "    TY  PROB\n");
+  phosg::fwrite_fmt(stream, "Armor/shield type index table:\n");
+  phosg::fwrite_fmt(stream, "  TY  PROB\n");
   for (size_t z = 0; z < 5; z++) {
-    phosg::fwrite_fmt(stream, "    {:02X}  {:3}%\n", z, this->armor_shield_type_index_prob_table[z]);
+    phosg::fwrite_fmt(stream, "  {:02X}  {:3}%\n", z, this->armor_shield_type_index_prob_table[z]);
   }
 
-  phosg::fwrite_fmt(stream, "  Armor/shield slot count table:\n");
-  phosg::fwrite_fmt(stream, "    #S  PROB\n");
+  phosg::fwrite_fmt(stream, "Armor/shield slot count table:\n");
+  phosg::fwrite_fmt(stream, "  #S  PROB\n");
   for (size_t z = 0; z < 5; z++) {
-    phosg::fwrite_fmt(stream, "    {:02X}  {:3}%\n", z, this->armor_slot_count_prob_table[z]);
+    phosg::fwrite_fmt(stream, "  {:02X}  {:3}%\n", z, this->armor_slot_count_prob_table[z]);
   }
 
-  phosg::fwrite_fmt(stream, "  Unit maximum stars table:\n");
-  phosg::fwrite_fmt(stream, "    AR   #*\n");
+  phosg::fwrite_fmt(stream, "Unit maximum stars table:\n");
+  phosg::fwrite_fmt(stream, "  AR   #*\n");
   for (size_t z = 0; z < 10; z++) {
-    phosg::fwrite_fmt(stream, "    {:02X}  {:3}\n", z, this->unit_max_stars_table[z]);
+    phosg::fwrite_fmt(stream, "  {:02X}  {:3}\n", z, this->unit_max_stars_table[z]);
   }
 }
 
@@ -534,7 +534,10 @@ void CommonItemSet::print(FILE* stream) const {
           try {
             auto table = this->get_table(episode, mode, difficulty, section_id);
             phosg::fwrite_fmt(stream, "============ {} {} {} {}\n",
-                name_for_mode(mode), name_for_episode(episode), name_for_difficulty(difficulty), name_for_section_id(section_id));
+                name_for_mode(mode),
+                name_for_episode(episode),
+                name_for_difficulty(difficulty),
+                name_for_section_id(section_id));
             table->print(stream);
           } catch (const runtime_error&) {
           }
@@ -564,13 +567,22 @@ void CommonItemSet::print_diff(FILE* stream, const CommonItemSet& other) const {
             continue;
           } else if (!this_table) {
             phosg::fwrite_fmt(stream, "> Table present in other but not this: {} {} {} {}\n",
-                name_for_mode(mode), name_for_episode(episode), name_for_difficulty(difficulty), name_for_section_id(section_id));
+                name_for_mode(mode),
+                name_for_episode(episode),
+                name_for_difficulty(difficulty),
+                name_for_section_id(section_id));
           } else if (!other_table) {
             phosg::fwrite_fmt(stream, "> Table present in this but not other: {} {} {} {}\n",
-                name_for_mode(mode), name_for_episode(episode), name_for_difficulty(difficulty), name_for_section_id(section_id));
+                name_for_mode(mode),
+                name_for_episode(episode),
+                name_for_difficulty(difficulty),
+                name_for_section_id(section_id));
           } else if (*this_table != *other_table) {
             phosg::fwrite_fmt(stream, "> Tables do not match: {} {} {} {}\n",
-                name_for_mode(mode), name_for_episode(episode), name_for_difficulty(difficulty), name_for_section_id(section_id));
+                name_for_mode(mode),
+                name_for_episode(episode),
+                name_for_difficulty(difficulty),
+                name_for_section_id(section_id));
             this_table->print_diff(stream, *other_table);
           }
         }
@@ -665,8 +677,7 @@ shared_ptr<const CommonItemSet::Table> CommonItemSet::get_table(
 
 AFSV2CommonItemSet::AFSV2CommonItemSet(
     std::shared_ptr<const std::string> pt_afs_data, std::shared_ptr<const std::string> ct_afs_data) {
-  // Each AFS file has 40 entries (30 on v1); the first 10 are for Normal, then
-  // Hard, etc.
+  // Each AFS file has 40 entries (30 on v1); the first 10 are for Normal, then Hard, etc.
   {
     AFSArchive pt_afs(pt_afs_data);
     bool include_ultimate;
@@ -692,8 +703,7 @@ AFSV2CommonItemSet::AFSV2CommonItemSet(
     }
   }
 
-  // ItemCT AFS files also have 40 entries, but only the 0th, 10th, 20th, and
-  // 30th are used (section_id is ignored)
+  // ItemCT AFS files also have 40 entries, but only the 0th, 10th, 20th, and 30th are used (section_id is ignored)
   if (ct_afs_data) {
     AFSArchive ct_afs(ct_afs_data);
     bool include_ultimate;

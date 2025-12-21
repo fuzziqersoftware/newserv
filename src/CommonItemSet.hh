@@ -64,54 +64,43 @@ public:
 
     template <bool BE>
     struct OffsetsT {
-      // This data structure uses index probability tables in multiple places. An
-      // index probability table is a table where each entry holds the probability
-      // that that entry's index is used. For example, if the armor slot count
-      // probability table contains [77, 17, 5, 1, 0], this means there is a 77%
-      // chance of no slots, 17% chance of 1 slot, 5% chance of 2 slots, 1% chance
-      // of 3 slots, and no chance of 4 slots. The values in index probability
-      // tables do not have to add up to 100; the game sums all of them and
-      // chooses a random number less than that maximum.
+      // This data structure uses index probability tables in multiple places. An index probability table is a table
+      // where each entry holds the probability that that entry's index is used. For example, if the armor slot count
+      // probability table contains [77, 17, 5, 1, 0], this means there is a 77% chance of no slots, 17% chance of 1
+      // slot, 5% chance of 2 slots, 1% chance of 3 slots, and no chance of 4 slots. The values in index probability
+      // tables do not have to add up to 100; the game sums all of them and chooses a random number less than that
+      // maximum.
 
-      // The area (floor) number is used in many places as well. Unlike the normal
-      // area numbers, which start with Pioneer 2, the area numbers in this
-      // structure start with Forest 1, and boss areas are treated as the first
-      // area of the next section (so De Rol Le has Mines 1 drops, for example).
-      // Final boss areas are treated as the last non-boss area (so Dark Falz
-      // boxes are like Ruins 3 boxes). We refer to these adjusted area numbers as
-      // (area - 1).
+      // The area (floor) number is used in many places as well. Unlike the normal area numbers, which start with
+      // Pioneer 2, the area numbers in this structure start with Forest 1, and boss areas are treated as the first
+      // area of the next section (so De Rol Le has Mines 1 drops, for example). Final boss areas are treated as the
+      // last non-boss area (so Dark Falz boxes are like Ruins 3 boxes). We refer to these adjusted area numbers as
+      // (area - 1), or area_norm.
 
-      // This index probability table determines the types of non-rare weapons.
-      // The indexes in this table correspond to the non-rare weapon types 01
-      // through 0C (Saber through Wand).
+      // This index probability table determines the types of non-rare weapons. The indexes in this table correspond to
+      // the non-rare weapon types 01 through 0C (Saber through Wand).
       // V2/V3: -> parray<uint8_t, 0x0C>
       /* 00 */ U32T<BE> base_weapon_type_prob_table_offset;
 
-      // This table specifies the base subtype for each weapon type. Negative
-      // values here mean that the weapon cannot be found in the first N areas (so
-      // -2, for example, means that the weapon never appears in Forest 1 or 2 at
-      // all). Nonnegative values here mean the subtype can be found in all areas,
-      // and specify the base subtype (usually in the range [0, 4]). The subtype
-      // of weapon that actually appears depends on this value and a value from
-      // the following table.
+      // This table specifies the base subtype for each weapon type. Negative values here mean that the weapon cannot
+      // be found in the first N areas (so -2, for example, means that the weapon never appears in Forest 1 or 2 at
+      // all). Nonnegative values here mean the subtype can be found in all areas, and specify the base subtype
+      // (usually in the range [0, 4]). The subtype of weapon that actually appears depends on this value and a value
+      // from the following table.
       // V2/V3: -> parray<int8_t, 0x0C>
       /* 04 */ U32T<BE> subtype_base_table_offset;
 
-      // This table specifies how many areas each weapon subtype appears in. For
-      // example, if Sword (subtype 02, which is index 1 in this table and the
-      // table above) has a subtype base of -2 and a subtype area length of 4,
-      // then Sword items can be found when area - 1 is 2, 3, 4, or 5 (Cave 1
-      // through Mine 1), and Gigush (the next sword subtype) can be found in Mine
-      // 1 through Ruins 3.
+      // This table specifies how many areas each weapon subtype appears in. For example, if Sword (subtype 02, which
+      // is index 1 in this table and the table above) has a subtype base of -2 and a subtype area length of 4, then
+      // Sword items can be found when area - 1 is 2, 3, 4, or 5 (Cave 1 through Mine 1), and Gigush (the next sword
+      // subtype) can be found in Mine 1 through Ruins 3.
       // V2/V3: -> parray<uint8_t, 0x0C>
       /* 08 */ U32T<BE> subtype_area_length_table_offset;
 
-      // This index probability table specifies how likely each possible grind
-      // value is. The table is indexed as [grind][subtype_area_index], where the
-      // subtype area index is how many areas the player is beyond the first area
-      // in which the subtype can first be found (clamped to [0, 3]). To continue
-      // the example above, in Cave 3, subtype_area_index would be 2, since Swords
-      // can first be found two areas earlier in Cave 1.
+      // This index probability table specifies how likely each possible grind value is. The table is indexed as
+      // [grind][subtype_area_index], where the subtype area index is how many areas the player is beyond the first
+      // area in which the subtype can first be found (clamped to [0, 3]). To continue the example above, in Cave 3,
+      // subtype_area_index would be 2, since Swords can first be found two areas earlier in Cave 1.
       // For example, this table could look like this:
       //   [64 1E 19 14] // Chance of getting a grind +0
       //   [00 1E 17 0F] // Chance of getting a grind +1
@@ -121,74 +110,66 @@ public:
       // V2/V3: -> parray<parray<uint8_t, 4>, 9>
       /* 0C */ U32T<BE> grind_prob_table_offset;
 
-      // TODO: Figure out exactly how this table is used. Anchor: 80106D34
+      // This index probability table specifies how likely each type of armor or shield is. The general formula is:
+      //   data1[2] = max((area_norm + (result from this table) + armor_or_shield_type_bias - 3), 0)
+      // In this way, (armor_or_shield_type_bias + area_norm - 3) can be thought of as the "base" value for each area,
+      // and this table specifies how likely the armor/shield is to be "upgraded" from that value.
       // V2/V3: -> parray<uint8_t, 0x05>
       /* 10 */ U32T<BE> armor_shield_type_index_prob_table_offset;
 
-      // This index probability table specifies how common each possible slot
-      // count is for armor drops.
+      // This index probability table specifies how common each possible slot count is for armor drops.
       // V2/V3: -> parray<uint8_t, 0x05>
       /* 14 */ U32T<BE> armor_slot_count_prob_table_offset;
 
-      // This array (indexed by enemy_type) specifies the range of meseta values
-      // that each enemy can drop.
+      // This array (indexed by enemy_type) specifies the range of meseta values that each enemy can drop.
       // V2/V3: -> parray<Range<U16T>, 0x64>
       /* 18 */ U32T<BE> enemy_meseta_ranges_offset;
 
-      // Each byte in this table (indexed by enemy_type) represents the percent
-      // chance that the enemy drops anything at all. (This check is done before
-      // the rare drop check, so the chance of getting a rare item from an enemy
-      // is essentially this probability multiplied by the rare drop rate.)
+      // Each byte in this table (indexed by enemy_type) represents the percent chance that the enemy drops anything at
+      // all. (This check is done before the rare drop check, so the chance of getting a rare item from an enemy is
+      // essentially this probability multiplied by the rare drop rate.)
       // V2/V3: -> parray<uint8_t, 0x64>
       /* 1C */ U32T<BE> enemy_type_drop_probs_offset;
 
-      // Each byte in this table (indexed by enemy_type) represents the class of
-      // item that the enemy can drop. The values are:
-      // 00 = weapon
-      // 01 = armor
-      // 02 = shield
-      // 03 = unit
-      // 04 = tool
-      // 05 = meseta
-      // Anything else = no item
+      // Each byte in this table (indexed by enemy_type) represents the class of item that can drop. The values are:
+      //   00 = weapon
+      //   01 = armor
+      //   02 = shield
+      //   03 = unit
+      //   04 = tool
+      //   05 = meseta
+      //   Anything else = no item
       // V2/V3: -> parray<uint8_t, 0x64>
       /* 20 */ U32T<BE> enemy_item_classes_offset;
 
-      // This table (indexed by area - 1) specifies the ranges of meseta values
-      // that can drop from boxes.
+      // This table (indexed by area - 1) specifies the ranges of meseta values that can drop from boxes.
       // V2/V3: -> parray<Range<U16T>, 0x0A>
       /* 24 */ U32T<BE> box_meseta_ranges_offset;
 
-      // This array specifies the chance that a rare weapon will have each
-      // possible bonus value. This is indexed as [(bonus_value - 10 / 5)][spec],
-      // so the first row refers the probability of getting a -10% bonus, the next
-      // row is the chance of getting -5%, etc., all the way up to +100%. For
-      // non-rare items, spec is determined randomly based on the following field;
-      // for rare items, spec is always 5.
+      // This array specifies the chance that a rare weapon will have each possible bonus value. This is indexed as
+      // [(bonus_value - 10 / 5)][spec], so the first row refers the probability of getting a -10% bonus, the next row
+      // is the chance of getting -5%, etc., all the way up to +100%. For non-rare items (or all items on v1/v2), spec
+      // is determined randomly based on the following field; for rare items on v3+, spec is always 5.
       // V2: -> parray<parray<uint8_t, 5>, 0x17>
       // V3: -> parray<parray<U16T, 6>, 0x17>
       /* 28 */ U32T<BE> bonus_value_prob_table_offset;
 
-      // This array specifies the value of spec to be used in the above lookup for
-      // non-rare items. This is NOT an index probability table; this is a direct
-      // lookup with indexes [bonus_index][area - 1]. A value of 0xFF in any byte
-      // of this array prevents any weapon from having a bonus in that slot.
-      // For example, the array might look like this:
+      // This array specifies the value of spec to be used in the above lookup for non-rare items. This is NOT an index
+      // probability table; this is a direct lookup with indexes [bonus_index][area - 1]. A value of 0xFF in any byte
+      // of this array prevents any weapon from having a bonus in that slot. An example table might look like this:
       //   [00 00 00 01 01 01 01 02 02 02]
       //   [FF FF FF 00 00 00 01 01 01 01]
       //   [FF FF FF FF FF FF FF FF FF 00]
       //    F1 F2 C1 C2 C3 M1 M2 R1 R2 R3  // (Episode 1 areas, for reference)
-      // In this example, spec is 0, 1, or 2 in all cases where a weapon can have
-      // a bonus. In Forest 1 and 2 and Cave 1, weapons may have at most one
-      // bonus; in all other areas except Ruins 3, they can have at most two
-      // bonuses, and in Ruins 3, they can have up to three bonuses.
+      // In this example, spec is 0, 1, or 2 in all cases where a weapon can have a bonus. In Forest 1 and 2 and Cave
+      // 1, weapons may have at most one bonus; in all other areas except Ruins 3, they can have at most two bonuses,
+      // and in Ruins 3, they can have up to three bonuses.
       // V2/V3: // -> parray<parray<uint8_t, 10>, 3>
       /* 2C */ U32T<BE> nonrare_bonus_prob_spec_offset;
 
-      // This array specifies the chance that a weapon will have each bonus type.
-      // The table is indexed as [bonus_type][area - 1] for non-rare items; for
-      // rare items, a random value in the range [0, 9] is used instead of
-      // (area - 1).
+      // This array specifies the chance that a weapon will have each bonus type. The table is indexed as
+      // [bonus_type][area - 1] for non-rare items; for rare items, a random value in the range [0, 9] is used instead
+      // of (area - 1).
       // For example, the table might look like this:
       //   [46 46 3F 3E 3E 3D 3C 3C 3A 3A] // Chance of getting no bonus
       //   [14 14 0A 0A 09 02 02 04 05 05] // Chance of getting Native bonus
@@ -200,54 +181,50 @@ public:
       // V2/V3: -> parray<parray<uint8_t, 10>, 6>
       /* 30 */ U32T<BE> bonus_type_prob_table_offset;
 
-      // This array (indexed by area - 1) specifies a multiplier of used in
-      // special ability determination. It seems this uses the star values from
-      // ItemPMT, but not yet clear exactly in what way.
-      // TODO: Figure out exactly what this does. Anchor: 80106FEC
+      // This array (indexed by area - 1) specifies a parameter used in weapon special generation. If the sampled value
+      // from this table is 0, no special is generated. Otherwise, a random floating-point value W in the range [0,
+      // special_mult] is generated and truncated to an integer. If this value is greater than 3, no special is
+      // generated; otherwise, a random special worth (W + 1) stars is chosen. It seems Sega only intended special_mult
+      // to be in the range [0, 4], but values greater than 4 will work, and will simply increase the probability of
+      // getting no special.
       // V2/V3: -> parray<uint8_t, 0x0A>
       /* 34 */ U32T<BE> special_mult_offset;
 
-      // This array (indexed by area - 1) specifies the probability that any
-      // non-rare weapon will have a special ability.
+      // This array (indexed by area - 1) specifies the probability that a non-rare weapon will have a special ability.
       // V2/V3: -> parray<uint8_t, 0x0A>
       /* 38 */ U32T<BE> special_percent_offset;
 
-      // This index probability table is indexed by [tool_class][area - 1]. The
-      // tool class refers to an entry in ItemPMT, which links it to the actual
-      // item code.
+      // This index probability table is indexed by [tool_class][area - 1]. The tool class refers to an entry in
+      // ItemPMT, which links it to the actual item code.
       // V2/V3: -> parray<parray<U16T, 0x0A>, 0x1C>
       /* 3C */ U32T<BE> tool_class_prob_table_offset;
 
-      // This index probability table determines how likely each technique is to
-      // appear. The table is indexed as [technique_num][area - 1].
+      // This index probability table determines how likely each technique is to appear. The table is indexed as
+      // [technique_num][area - 1].
       // V2/V3: -> parray<parray<uint8_t, 0x0A>, 0x13>
       /* 40 */ U32T<BE> technique_index_prob_table_offset;
 
-      // This table specifies the ranges for technique disk levels. The table is
-      // indexed as [technique_num][area - 1]. If either min or max in the range
-      // is 0xFF, or if max < min, technique disks are not dropped for that
-      // technique and area pair.
+      // This table specifies the ranges for technique disk levels. The table is indexed as [technique_num][area - 1].
+      // If either min or max in the range is 0xFF, or if max < min, technique disks are not dropped for that technique
+      // and area pair.
       // V2/V3: -> parray<parray<Range<uint8_t>, 0x0A>, 0x13>
       /* 44 */ U32T<BE> technique_level_ranges_offset;
 
+      // See comments on armor_shield_type_index_prob_table_offset for how this is used.
       /* 48 */ uint8_t armor_or_shield_type_bias;
       /* 49 */ parray<uint8_t, 3> unused1;
 
-      // These values specify the maximum number of stars any generated unit can
-      // have in each area. The values here are not inclusive; that is, a value
-      // of 7 means that only units with 1-6 stars can drop in that area. The
-      // game uniformly chooses a random number of stars in the acceptable
-      // range, then uniformly chooses a random unit with that many stars.
+      // These values specify the maximum number of stars any generated unit can have in each area. The values here are
+      // not inclusive; that is, a value of 7 means that only units with 1-6 stars can drop in that area. The game
+      // uniformly chooses a random number of stars in the acceptable range, then uniformly chooses a random unit with
+      // that many stars.
       // V2/V3: -> parray<uint8_t, 0x0A>
       /* 4C */ U32T<BE> unit_max_stars_offset;
 
-      // This index probability table determines which type of items drop from
-      // boxes. The table is indexed as [item_class][area - 1], with item_class
-      // as the result value (that is, in the example below, the game looks at a
-      // single column and sums the values going down, then the chosen item
-      // class is one of the row indexes based on the weight values in the
-      // column.) The resulting item_class value has the same meaning as in
-      // enemy_item_classes above.
+      // This index probability table determines which type of items drop from boxes. The table is indexed as
+      // [item_class][area - 1], with item_class as the result value (that is, in the example below, the game looks at
+      // a single column and sums the values going down, then the chosen item class is one of the row indexes based on
+      // the weight values in the column.) The resulting value has the same meaning as in enemy_item_classes above.
       // For example, this array might look like the following:
       //   [07 07 08 08 06 07 08 09 09 0A] // Chances per area of a weapon drop
       //   [02 02 02 02 03 02 02 02 03 03] // Chances per area of an armor drop
@@ -299,8 +276,8 @@ public:
   explicit JSONCommonItemSet(const phosg::JSON& json);
 };
 
-// Note: There are clearly better ways of doing this, but this implementation
-// closely follows what the original code in the client does.
+// Note: There are clearly better ways of doing this, but this implementation closely follows what the original code in
+// the client does.
 template <typename ItemT, size_t MaxCount>
 struct ProbabilityTable {
   ItemT items[MaxCount];
@@ -368,11 +345,9 @@ protected:
   RELFileSet(std::shared_ptr<const std::string> data);
 
   template <typename T>
-  std::pair<const T*, size_t> get_table(
-      const TableSpec& spec, size_t index) const {
+  std::pair<const T*, size_t> get_table(const TableSpec& spec, size_t index) const {
     const T* entries = &r.pget<T>(
-        spec.offset + index * spec.entries_per_table * sizeof(T),
-        spec.entries_per_table * sizeof(T));
+        spec.offset + index * spec.entries_per_table * sizeof(T), spec.entries_per_table * sizeof(T));
     return std::make_pair(entries, spec.entries_per_table);
   }
 };
@@ -485,17 +460,14 @@ private:
   } __packed_ws__(LuckTableEntry, 2);
 
   struct Offsets {
-    // Each section ID's favored weapon class has different probabilities than
-    // those used for all other weapons. The tables are labeled with (D) for the
-    // default values and (F) for the favored-class values.
+    // Each section ID's favored weapon class has different probabilities than those used for all other weapons. The
+    // tables are labeled with (D) for the default values and (F) for the favored-class values.
 
-    // Note that the favored bonuses for Redria are all zero; these values are
-    // unused because Redria does not have a favored weapon type. Curiously,
-    // Yellowboze also does not have a favored weapon type, but the values for
+    // Note that the favored bonuses for Redria are all zero; these values are unused because Redria does not have a
+    // favored weapon type. Curiously, Yellowboze also does not have a favored weapon type, but the values for
     // Yellowboze are not all zero.
 
-    // This table specifies how likely a special is to be upgraded or
-    // downgraded by one level.
+    // This table specifies how likely a special is to be upgraded or downgraded by one level.
     // In PSO V3, the special upgrade table is:
     //   Viridia    => (D) +1=10%, 0=60%, -1=30%
     //   Viridia    => (F) +1=25%, 0=50%, -1=25%
@@ -519,9 +491,8 @@ private:
     //   Whitill    => (F) +1=25%, 0=50%, -1=25%
     be_uint32_t special_upgrade_prob_table_offset; // [{c, o -> (DeltaProbabilityEntry)[10][c]})
 
-    // This table specifies how likely a weapon's grind is to be upgraded or
-    // downgraded, and by how much. The final grind value is clamped to the
-    // range between 0 and the weapon's maximum grind from ItemPMT, inclusive.
+    // This table specifies how likely a weapon's grind is to be upgraded or downgraded, and by how much. The final
+    // grind value is clamped to the range between 0 and the weapon's maximum grind from ItemPMT, inclusive.
     // In PSO V3, the grind delta table is:
     //   Viridia    => (D) +3=3%,  +2=7%,  +1=13%, 0=60%, -1=10%, -2=7%,  -3=0%
     //   Viridia    => (F) +3=5%,  +2=13%, +1=25%, 0=50%, -1=7%,  -2=0%,  -3=0%
@@ -545,9 +516,8 @@ private:
     //   Whitill    => (F) +3=5%,  +2=13%, +1=25%, 0=50%, -1=7%,  -2=0%,  -3=0%
     be_uint32_t grind_delta_prob_table_offset; // [{c, o -> (DeltaProbabilityEntry)[10][c]})
 
-    // This table specifies how likely a weapon's bonuses are to be upgraded
-    // or downgraded, and by how much. The final bonuses are capped above at
-    // 100, but there is no lower limit (so negative results are possible).
+    // This table specifies how likely a weapon's bonuses are to be upgraded or downgraded, and by how much. The final
+    // bonuses are capped above at 100, but there is no lower limit (so negative results are possible).
     // In PSO V3, the bonus delta table is:
     //   Viridia    => (D) +10=5%,  +5=15%, 0=60%, -5=15%, -10=5%
     //   Viridia    => (F) +10=8%,  +5=20%, 0=60%, -5=10%, -10=2%
@@ -571,11 +541,10 @@ private:
     //   Whitill    => (F) +10=8%,  +5=20%, 0=60%, -5=10%, -10=2%
     be_uint32_t bonus_delta_prob_table_offset; // [{c, o -> (DeltaProbabilityEntry)[10][c]})
 
-    // There is a secondary computation done during weapon adjustment that
-    // appears to determine how "good" the resulting weapon is compared to its
-    // original state. If the result of this computation is positive, the game
-    // plays a jingle when the tekker result is accepted. These tables describe
-    // how much each delta affects this value, which we call luck.
+    // There is a secondary computation done during weapon adjustment that appears to determine how "good" the
+    // resulting weapon is compared to its original state. If the result of this computation is positive, the game
+    // plays a jingle when the tekker result is accepted. These tables describe how much each delta affects this value,
+    // which we call luck.
 
     // In PSO V3, the special upgrade luck table is:
     //   +1 => +20, 0 => 0, -1 => -20

@@ -32,7 +32,8 @@ void Channel::send(uint16_t cmd, uint32_t flag, bool silent) {
   this->send(cmd, flag, nullptr, 0, silent);
 }
 
-void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<const void*, size_t>> blocks, bool silent) {
+void Channel::send(
+    uint16_t cmd, uint32_t flag, const std::vector<std::pair<const void*, size_t>> blocks, bool silent) {
   if (!this->connected()) {
     channel_exceptions_log.warning_f("Attempted to send command on closed channel; dropping data");
     return;
@@ -57,10 +58,7 @@ void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<cons
     case Version::GC_EP3:
     case Version::XB_V3: {
       PSOCommandHeaderDCV3 header;
-      if (this->crypt_out.get() &&
-          (this->version != Version::DC_NTE) &&
-          (this->version != Version::DC_11_2000) &&
-          (this->version != Version::DC_V1)) {
+      if (this->crypt_out.get() && !is_v1(this->version)) {
         send_data_size = (sizeof(header) + size + 3) & ~3;
       } else {
         send_data_size = (sizeof(header) + size);
@@ -90,13 +88,11 @@ void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<cons
       break;
     }
     case Version::BB_V4: {
-      // BB has an annoying behavior here: command lengths must be multiples of
-      // 4, but the actual data length must be a multiple of 8. If the size
-      // field is not divisible by 8, 4 extra bytes are sent anyway. This
-      // behavior only applies when encryption is enabled - any commands sent
-      // before encryption is enabled have no size restrictions (except they
-      // must include a full header and must fit in the client's receive
-      // buffer), and no implicit extra bytes are sent.
+      // BB has an annoying behavior here: command lengths must be multiples of 4, but the actual data length must be a
+      // multiple of 8. If the size field is not divisible by 8, 4 extra bytes are sent anyway. This behavior only
+      // applies when encryption is enabled - any commands sent before encryption is enabled have no size restrictions
+      // (except they must include a full header and must fit in the client's receive buffer), and no implicit extra
+      // bytes are sent.
       PSOCommandHeaderBB header;
       if (this->crypt_out.get()) {
         send_data_size = (sizeof(header) + size + 7) & ~7;
@@ -115,8 +111,7 @@ void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<cons
       throw logic_error("unimplemented game version in send_command");
   }
 
-  // All versions of PSO I've seen (so far) have a receive buffer 0x7C00
-  // bytes in size
+  // All versions of PSO I've seen (so far) have a receive buffer 0x7C00 bytes in size
   if (send_data_size > 0x7C00) {
     throw runtime_error("outbound command too large");
   }
@@ -132,8 +127,7 @@ void Channel::send(uint16_t cmd, uint32_t flag, const std::vector<std::pair<cons
       print_color_escape(stderr, phosg::TerminalFormat::FG_YELLOW, phosg::TerminalFormat::BOLD, phosg::TerminalFormat::END);
     }
     if (version == Version::BB_V4) {
-      command_data_log.info_f("Sending to {} (version=BB command={:04X} flag={:08X})",
-          this->name, cmd, flag);
+      command_data_log.info_f("Sending to {} (version=BB command={:04X} flag={:08X})", this->name, cmd, flag);
     } else {
       command_data_log.info_f("Sending to {} (version={} command={:02X} flag={:02X})",
           this->name, phosg::name_for_enum(version), cmd, flag);
@@ -187,9 +181,8 @@ asio::awaitable<Channel::Message> Channel::recv() {
     throw runtime_error("header size field is smaller than header");
   }
 
-  // If encryption is enabled, BB pads commands to 8-byte boundaries, and this
-  // is not reflected in the size field. This logic does not occur if encryption
-  // is not yet enabled.
+  // If encryption is enabled, BB pads commands to 8-byte boundaries, and this is not reflected in the size field. This
+  // logic does not occur if encryption is not yet enabled.
   size_t command_physical_size = (this->crypt_in.get() && (version == Version::BB_V4))
       ? ((command_logical_size + 7) & ~7)
       : command_logical_size;
@@ -198,10 +191,9 @@ asio::awaitable<Channel::Message> Channel::recv() {
   co_await this->recv_raw(command_data.data(), command_data.size());
 
   if (this->crypt_in.get()) {
-    // Some versions of PSO DC can send commands whose sizes are not a multiple
-    // of 4, but the server is expected to always use a multiple of 4 bytes when
-    // decrypting (the extra cipher bytes are lost). To emulate this behavior,
-    // we have to round up the size for DC commands here.
+    // Some versions of PSO DC can send commands whose sizes are not a multiple of 4, but the server is expected to
+    // always use a multiple of 4 bytes when decrypting (the extra cipher bytes are lost). To emulate this behavior, we
+    // have to round up the size for DC commands here.
     size_t orig_size = command_data.size();
     command_data.resize((orig_size + 3) & (~3), 0);
     this->crypt_in->decrypt(command_data.data(), command_data.size());

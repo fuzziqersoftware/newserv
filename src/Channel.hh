@@ -60,9 +60,8 @@ public:
   // Returns whether the channel is connected or not.
   virtual bool connected() const = 0;
 
-  // Disconnects the channel. Any pending data will still be sent before the
-  // underlying transport (e.g. socket) is closed, but further send calls will
-  // do nothing.
+  // Disconnects the channel. Any pending data will still be sent before the underlying transport (e.g. socket) is
+  // closed, but further send calls will do nothing.
   virtual void disconnect() = 0;
 
   // Sends a message with an automatically-constructed header.
@@ -76,8 +75,7 @@ public:
     this->send(cmd, flag, &data, sizeof(data), silent);
   }
 
-  // Sends a message with a pre-existing header (as the first few bytes in the
-  // data)
+  // Sends a message with a pre-existing header (as the first few bytes in the data)
   void send(const void* data, size_t size, bool silent = false);
   void send(const std::string& data, bool silent = false);
 
@@ -96,27 +94,22 @@ protected:
   Channel& operator=(const Channel& other) = delete;
   Channel& operator=(Channel&& other) = delete;
 
-  // Sends raw data on the underlying transport. If the channel is already
-  // disconnected, silently drops the data.
+  // Sends raw data on the underlying transport. If the channel is already disconnected, silently drops the data.
   virtual void send_raw(std::string&& data) = 0;
-  // Receives raw data on the underlying transport. Raises when the channel is
-  // disconnected.
+  // Receives raw data on the underlying transport. Raises when the channel is disconnected.
   virtual asio::awaitable<void> recv_raw(void* data, size_t size) = 0;
 };
 
-// Standard channel type, used for most PSO clients. Represents an open TCP
-// socket.
+// Standard channel type, used for most PSO clients. Represents an open TCP socket.
 class SocketChannel : public Channel, public std::enable_shared_from_this<SocketChannel> {
 public:
   std::unique_ptr<asio::ip::tcp::socket> sock;
   asio::ip::tcp::endpoint local_addr;
   asio::ip::tcp::endpoint remote_addr;
 
-  // SocketChannel has a static constructor because it has an internal task,
-  // which is necessary to support flushing before disconnection (for example)
-  // and also to make send_raw not a coroutine, which keeps the rest of the
-  // code cleaner. The task needs to hold a shared_ptr to the SocketChannel
-  // whilc it's open
+  // SocketChannel has a static constructor because it has an internal task, which is necessary to support flushing
+  // before disconnection (for example) and also to make send_raw not a coroutine, which keeps the rest of the code
+  // cleaner.
   static std::shared_ptr<SocketChannel> create(std::shared_ptr<asio::io_context> io_context,
       std::unique_ptr<asio::ip::tcp::socket>&& sock,
       Version version,

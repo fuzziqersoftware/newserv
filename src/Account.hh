@@ -72,8 +72,7 @@ struct Account {
     ADMINISTRATOR               = 0x000000FF,
     ROOT                        = 0x7FFFFFFF,
     IS_SHARED_ACCOUNT           = 0x80000000,
-    // NOTE: When adding or changing license flags, don't forget to change the
-    // documentation in the shell's help text.
+    // NOTE: When adding or changing license flags, don't forget to change the documentation in the shell's help text.
     UNUSED_BITS                 = 0x70FFFF00,
     // clang-format on
   };
@@ -149,8 +148,7 @@ struct Login {
   bool account_was_created = false;
   // This field will never be null
   std::shared_ptr<Account> account;
-  // Exactly one of the following will be non-null, representing the license
-  // that the client logged in with
+  // Exactly one of the following will be non-null, representing the license that the client logged in with
   std::shared_ptr<DCNTELicense> dc_nte_license;
   std::shared_ptr<V1V2License> dc_license;
   std::shared_ptr<V1V2License> pc_license;
@@ -210,22 +208,12 @@ public:
 
   std::shared_ptr<Account> from_account_id(uint32_t account_id) const;
   std::shared_ptr<Login> from_dc_nte_credentials(
-      const std::string& serial_number,
-      const std::string& access_key,
-      bool allow_create);
+      const std::string& serial_number, const std::string& access_key, bool allow_create);
   std::shared_ptr<Login> from_dc_credentials(
-      uint32_t serial_number,
-      const std::string& access_key,
-      const std::string& character_name,
-      bool allow_create);
-  std::shared_ptr<Login> from_pc_nte_credentials(
-      uint32_t guild_card_number,
-      bool allow_create);
+      uint32_t serial_number, const std::string& access_key, const std::string& character_name, bool allow_create);
+  std::shared_ptr<Login> from_pc_nte_credentials(uint32_t guild_card_number, bool allow_create);
   std::shared_ptr<Login> from_pc_credentials(
-      uint32_t serial_number,
-      const std::string& access_key,
-      const std::string& character_name,
-      bool allow_create);
+      uint32_t serial_number, const std::string& access_key, const std::string& character_name, bool allow_create);
   std::shared_ptr<Login> from_gc_credentials(
       uint32_t serial_number,
       const std::string& access_key,
@@ -233,14 +221,9 @@ public:
       const std::string& character_name,
       bool allow_create);
   std::shared_ptr<Login> from_xb_credentials(
-      const std::string& gamertag,
-      uint64_t user_id,
-      uint64_t account_id,
-      bool allow_create);
+      const std::string& gamertag, uint64_t user_id, uint64_t account_id, bool allow_create);
   std::shared_ptr<Login> from_bb_credentials(
-      const std::string& username,
-      const std::string* password,
-      bool allow_create);
+      const std::string& username, const std::string* password, bool allow_create);
 
   std::shared_ptr<Account> create_temporary_account_for_shared_account(
       std::shared_ptr<const Account> src_a, const std::string& variation_data) const;
@@ -248,8 +231,6 @@ public:
 protected:
   bool force_all_temporary;
 
-  // This class must be thread-safe because it's used by both the patch server
-  // and game server threads
   mutable std::shared_mutex lock;
   std::unordered_map<uint32_t, std::shared_ptr<Account>> by_account_id;
   std::unordered_map<std::string, std::shared_ptr<Account>> by_dc_nte_serial_number;
@@ -262,23 +243,16 @@ protected:
   void add_locked(std::shared_ptr<Account> a);
 
   std::shared_ptr<Login> from_dc_nte_credentials_locked(
-      const std::string& serial_number,
-      const std::string& access_key);
+      const std::string& serial_number, const std::string& access_key);
   std::shared_ptr<Login> from_dc_credentials_locked(
-      uint32_t serial_number,
-      const std::string& access_key,
-      const std::string& character_name);
+      uint32_t serial_number, const std::string& access_key, const std::string& character_name);
   std::shared_ptr<Login> from_pc_credentials_locked(
-      uint32_t serial_number,
-      const std::string& access_key,
-      const std::string& character_name);
+      uint32_t serial_number, const std::string& access_key, const std::string& character_name);
   std::shared_ptr<Login> from_gc_credentials_locked(
       uint32_t serial_number,
       const std::string& access_key,
       const std::string* password,
       const std::string& character_name);
   std::shared_ptr<Login> from_xb_credentials_locked(uint64_t user_id);
-  std::shared_ptr<Login> from_bb_credentials_locked(
-      const std::string& username,
-      const std::string* password);
+  std::shared_ptr<Login> from_bb_credentials_locked(const std::string& username, const std::string* password);
 };

@@ -63,14 +63,11 @@ struct WindowIndex {
     return match_iter - match_offset;
   };
 
-  // The data structure we want is a binary-searchable set of all strings
-  // starting at all possible offsets within the sliding window, and we need
-  // to be able to search lexicographically but insert and delete by offset.
-  // A std::map<std::string, size_t> would accomplish this, but would be
-  // horrendously inefficient: we'd have to copy strings far too much. We can
-  // solve this by instead storing the offset of each string as keys in a set
-  // and using a custom comparator to treat them as references to binary
-  // strings within the data.
+  // The data structure we want is a binary-searchable set of all strings starting at all possible offsets within the
+  // sliding window, and we need to be able to search lexicographically but insert and delete by offset. A
+  // std::map<std::string, size_t> would accomplish this, but would be horrendously inefficient: we'd have to copy
+  // strings far too much. We can solve this by instead storing the offset of each string as keys in a set and using a
+  // custom comparator to treat them as references to binary strings within the data.
   bool set_comparator(size_t a, size_t b) const {
     size_t max_length = min<size_t>(MaxMatchLength, this->size - max<size_t>(a, b));
     size_t end_a = a + max_length;
@@ -87,11 +84,9 @@ struct WindowIndex {
   };
 
   pair<size_t, size_t> get_best_match() const {
-    // Find the best match from the index. It's unlikely that we'll get an
-    // exact match, so check the entry before the upper_bound result too.
-    // Note: We use upper_bound rather than lower_bound because in PRS, a
-    // backreference can be encoded with fewer bits if it's close to the
-    // decompression offset, and this makes us pick the latest match by
+    // Find the best match from the index. It's unlikely that we'll get an exact match, so check the entry before the
+    // upper_bound result too. Note: We use upper_bound rather than lower_bound because in PRS, a backreference can be
+    // encoded with fewer bits if it's close to the decompression offset, and this makes us pick the latest match by
     // default.
     size_t match_offset = 0;
     size_t match_size = 0;
@@ -123,9 +118,7 @@ struct LZSSInterleavedWriter {
   uint8_t next_control_bit;
   uint8_t buf[0x19];
 
-  LZSSInterleavedWriter()
-      : buf_offset(1),
-        next_control_bit(1) {
+  LZSSInterleavedWriter() : buf_offset(1), next_control_bit(1) {
     this->buf[0] = 0;
   }
 
@@ -166,9 +159,7 @@ struct LZSSInterleavedWriter {
 
 class ControlStreamReader {
 public:
-  ControlStreamReader(phosg::StringReader& r)
-      : r(r),
-        bits(0x0000) {}
+  ControlStreamReader(phosg::StringReader& r) : r(r), bits(0x0000) {}
 
   bool read() {
     if (!(this->bits & 0x0100)) {
@@ -285,8 +276,7 @@ string prs_compress_optimal(const void* in_data_v, size_t in_size, ProgressCallb
   long_window_thread.join();
   extended_window_thread.join();
 
-  // For each node, populate the literal value, and the best ways to get to the
-  // following nodes
+  // For each node, populate the literal value, and the best ways to get to the following nodes
   for (size_t z = 0; z < in_size; z++) {
     if ((z & 0xFFF) == 0 && progress_fn) {
       progress_fn(CompressPhase::CONSTRUCT_PATHS, z, in_size, 0);
@@ -441,9 +431,8 @@ string prs_compress_optimal(const string& data, ProgressCallback progress_fn) {
 string prs_compress_pessimal(const void* vdata, size_t size) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(vdata);
 
-  // The worst possible encoding we can do is a literal byte when no byte with
-  // the same value is within the window, or an extended copy if there is a byte
-  // with the same value in the window.
+  // The worst possible encoding we can do is a literal byte when no byte with the same value is within the window, or
+  // an extended copy if there is a byte with the same value in the window.
   WindowIndex<0x1FFF, 1> window(in_data, size);
   LZSSInterleavedWriter w;
   for (size_t z = 0; z < size; z++) {
@@ -539,9 +528,8 @@ void PRSCompressor::advance() {
         match_size++;
       }
 
-      // If there are multiple matches of the longest length, use the latest one,
-      // since it's more likely that it can be expressed as a short copy instead
-      // of a long copy.
+      // If there are multiple matches of the longest length, use the latest one, since it's more likely that it can be
+      // expressed as a short copy instead of a long copy.
       if (match_size >= (best_match_size + best_match_literals)) {
         best_match_offset = match_offset;
         best_match_size = match_size;
@@ -558,15 +546,13 @@ void PRSCompressor::advance() {
     this->advance_literal();
   }
 
-  // If there is a suitable match, write a backreference; otherwise, write a
-  // literal. The backreference should be encoded:
+  // If there is a match, write a backreference; otherwise, write a literal. The backreference should be encoded:
   // - As a short copy if offset in [-0x100, -1] and size in [2, 5]
   // - As a long copy if offset in [-0x1FFF, -1] and size in [3, 9]
   // - As an extended copy if offset in [-0x1FFF, -1] and size in [10, 0x100]
-  // Technically an extended copy can be used for sizes 1-9 as well, but if
-  // size is 1 or 2, writing literals is better (since it uses fewer data
-  // bytes and control bits), and a long copy can cover sizes 3-9 (and also
-  // uses fewer data bytes and control bits).
+  // Technically an extended copy can be used for sizes 1-9 as well, but if size is 1 or 2, writing literals is better
+  // (since it uses fewer data bytes and control bits), and a long copy can cover sizes 3-9 (and also uses fewer data
+  // bytes and control bits).
   ssize_t backreference_offset = best_match_offset - this->reverse_log.end_offset();
   if (best_match_size < 2) {
     // The match is too small; a literal would use fewer bits
@@ -576,8 +562,8 @@ void PRSCompressor::advance() {
     this->advance_short_copy(backreference_offset, best_match_size);
 
   } else if (best_match_size < 3) {
-    // We can't use a long copy for size 2, and it's not worth it to use an
-    // extended copy for this either (as noted above), so write a literal
+    // We can't use a long copy for size 2, and it's not worth it to use an extended copy for this either (as noted
+    // above), so write a literal
     this->advance_literal();
 
   } else if ((backreference_offset >= -0x1FFF) && (best_match_size <= 9)) {
@@ -655,14 +641,12 @@ string& PRSCompressor::close() {
 
 void PRSCompressor::write_control(bool z) {
   if (this->pending_control_bits & 0x0100) {
-    this->output.pput_u8(
-        this->control_byte_offset, this->pending_control_bits & 0xFF);
+    this->output.pput_u8(this->control_byte_offset, this->pending_control_bits & 0xFF);
     this->control_byte_offset = this->output.size();
     this->output.put_u8(0);
     this->pending_control_bits = z ? 0x8080 : 0x8000;
   } else {
-    this->pending_control_bits =
-        (this->pending_control_bits >> 1) | (z ? 0x8080 : 0x8000);
+    this->pending_control_bits = (this->pending_control_bits >> 1) | (z ? 0x8080 : 0x8000);
   }
 }
 
@@ -671,8 +655,7 @@ void PRSCompressor::flush_control() {
     while (!(this->pending_control_bits & 0x0100)) {
       this->pending_control_bits >>= 1;
     }
-    this->output.pput_u8(
-        this->control_byte_offset, this->pending_control_bits & 0xFF);
+    this->output.pput_u8(this->control_byte_offset, this->pending_control_bits & 0xFF);
   } else {
     if (this->control_byte_offset != this->output.size() - 1) {
       throw logic_error("data written without control bits");
@@ -681,25 +664,17 @@ void PRSCompressor::flush_control() {
   }
 }
 
-string prs_compress(
-    const void* vdata,
-    size_t size,
-    ssize_t compression_level,
-    ProgressCallback progress_fn) {
+string prs_compress(const void* vdata, size_t size, ssize_t compression_level, ProgressCallback progress_fn) {
   PRSCompressor prs(compression_level, progress_fn);
   prs.add(vdata, size);
   return std::move(prs.close());
 }
 
-string prs_compress(
-    const string& data,
-    ssize_t compression_level,
-    ProgressCallback progress_fn) {
+string prs_compress(const string& data, ssize_t compression_level, ProgressCallback progress_fn) {
   return prs_compress(data.data(), data.size(), compression_level, progress_fn);
 }
 
-string prs_compress_indexed(
-    const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
+string prs_compress_indexed(const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
   LZSSInterleavedWriter w;
@@ -718,14 +693,11 @@ string prs_compress_indexed(
     auto m_long = w_long.get_best_match();
     auto m_extended = w_extended.get_best_match();
 
-    // Write the match that achieves the best ratio of output bytes to
-    // compressed bits used. To do this without floating-point math, we multiply
-    // the output byte count for each type of command by 468 / (command_bits),
-    // since 468 is the least common multiple of the number of bits for each
-    // command type. The command type with the highest score is the one we'll
-    // use, breaking ties by choosing the shorter command type. Note that the
-    // size of any copy type can be zero if no match was found; if no matches
-    // were found at all, then we can always write a literal.
+    // Write the match that achieves the best ratio of output bytes to compressed bits used. To do this without
+    // floating-point math, we multiply the output byte count for each type of command by 468 / (command_bits), since
+    // 468 is the least common multiple of the number of bits for each command type. The command type with the highest
+    // score is the one we'll use, breaking ties by choosing the shorter command type. Note that the size of any copy
+    // type can be zero if no match was found; if no matches were found at all, then we can always write a literal.
     size_t score_literal = 52;
     size_t score_short = m_short.second * 39;
     size_t score_long = m_long.second * 26;
@@ -838,41 +810,30 @@ string prs_compress_indexed(const string& data, ProgressCallback progress_fn) {
 
 PRSDecompressResult prs_decompress_with_meta(
     const void* data, size_t size, size_t max_output_size, bool allow_unterminated) {
-  // PRS is an LZ77-based compression algorithm. Compressed data is split into
-  // two streams: a control stream and a data stream. The control stream is read
-  // one bit at a time, and the data stream is read one byte at a time. The
-  // streams are interleaved such that the decompressor never has to move
-  // backward in the input stream - when the decompressor needs a control bit
-  // and there are no unused bits from the previous byte of the control stream,
-  // it reads a byte from the input and treats it as the next 8 control bits.
+  // PRS is an LZ77-based compression algorithm. Compressed data is split into two streams: a control stream and a data
+  // stream. The control stream is read one bit at a time, and the data stream is read one byte at a time. The streams
+  // are interleaved such that the decompressor never has to move backward in the input stream - when the decompressor
+  // needs a control bit and there are no unused bits from the previous byte of the control stream, it reads a byte
+  // from the input and treats it as the next 8 control bits.
 
   // There are 3 distinct commands in PRS, labeled here with their control bits:
-  // 1 - Literal byte. The decompressor copies one byte from the input data
-  //     stream to the output.
-  // 00 - Short backreference. The decompressor reads two control bits and adds
-  //      2 to this value to determine the number of bytes to copy, then reads
-  //      one byte from the data stream to determine how far back in the output
-  //      to copy from. This byte is treated as an 8-bit negative number - so
-  //      0xF7, for example, means to start copying data from 9 bytes before the
-  //      end of the output. The range must start before the end of the output,
-  //      but the end of the range may be beyond the end of the output. In this
-  //      case, the bytes between the beginning of the range and original end of
-  //      the output are simply repeated.
-  // 01 - Long backreference. The decompressor reads two bytes from the data and
-  //      byteswaps the resulting 16-bit value (that is, the low byte is read
-  //      first). The start offset (again, as a negative number) is the top 13
-  //      bits of this value; the size is the low 3 bits of this value, plus 2.
-  //      If the size bits are all zero, an additional byte is read from the
-  //      data stream and 1 is added to it to determine the backreference size
-  //      (we call this an extended backreference). Therefore, the maximum
-  //      backreference size is 256 bytes.
-  // Decompression ends when either there are no more input bytes to read, or
-  // when a long backreference is read with all zeroes in its offset field. The
-  // original implementation stops decompression successfully when any attempt
-  // to read from the input encounters the end of the stream, but newserv's
-  // implementation only allows this at the end of an opcode - if end-of-stream
-  // is encountered partway through an opcode, we throw instead, because it's
-  // likely the input has been truncated or is malformed in some way.
+  // 1  - Literal byte. The decompressor copies one byte from the input data stream to the output.
+  // 00 - Short backreference. The decompressor reads two control bits and adds 2 to this value to determine the number
+  //      of bytes to copy, then reads one byte from the data stream to determine how far back in the output to copy
+  //      from. This byte is treated as an 8-bit negative number - so 0xF7, for example, means to start copying data
+  //      from 9 bytes before the end of the output. The range must start before the end of the output, but the end of
+  //      the range may be beyond the end of the output. In this case, the bytes between the beginning of the range and
+  //      original end of the output are simply repeated.
+  // 01 - Long backreference. The decompressor reads two bytes from the data and byteswaps the resulting 16-bit value
+  //      (that is, the low byte is read first). The start offset (again, as a negative number) is the top 13 bits of
+  //      this value; the size is the low 3 bits of this value, plus 2. If the size bits are all zero, an additional
+  //      byte is read from the data stream and 1 is added to it to determine the backreference size (we call this an
+  //      extended backreference). Therefore, the maximum backreference size is 256 bytes.
+  // Decompression ends when either there are no more input bytes to read, or when a long backreference is read with
+  // all zeroes in its offset field. The original implementation stops decompression successfully when any attempt to
+  // read from the input encounters the end of the stream, but newserv's implementation only allows this at the end of
+  // an opcode - if end-of-stream is encountered partway through an opcode, we throw instead, because it's likely the
+  // input has been truncated or is malformed in some way.
 
   phosg::StringWriter w;
   phosg::StringReader r(data, size);
@@ -894,10 +855,9 @@ PRSDecompressResult prs_decompress_with_meta(
       ssize_t offset;
       size_t count;
 
-      // Control 01 = long backreference
       if (cr.read()) {
-        // The bits stored in the data stream are AAAAABBBCCCCCCCC, which we
-        // rearrange into offset = CCCCCCCCAAAAA and size = BBB.
+        // Control 01 = long backreference
+        // The bits from the data stream are AAAAABBBCCCCCCCC, which we rearrange as offset=CCCCCCCCAAAAA and size=BBB.
         uint16_t a = r.get_u8();
         a |= (r.get_u8() << 8);
         offset = (a >> 3) | (~0x1FFF);
@@ -905,24 +865,21 @@ PRSDecompressResult prs_decompress_with_meta(
         if (offset == ~0x1FFF) {
           break;
         }
-        // If the size field is zero, it's an extended backreference (size comes
-        // from another byte in the data stream)
+        // If the size field is zero, it's an extended backreference (size comes from another byte in the data stream)
         count = (a & 7) ? ((a & 7) + 2) : (r.get_u8() + 1);
 
-        // Control 00 = short backreference
       } else {
-        // Count comes from 2 bits in the control stream instead of from the
-        // data stream (and 2 is added). Importantly, the control stream bits
-        // are read first - this may involve reading another control stream
-        // byte, which happens before the offset is read from the data stream.
+        // Control 00 = short backreference
+        // Count comes from 2 bits in the control stream instead of from the data stream (and 2 is added). Importantly,
+        // the control stream bits are read first - this may involve reading another control stream byte, which happens
+        // before the offset is read from the data stream.
         count = cr.read() << 1;
         count = (count | cr.read()) + 2;
         offset = r.get_u8() | (~0xFF);
       }
 
-      // Copy bytes from the referenced location in the output. Importantly,
-      // copy only one byte at a time, in order to support ranges that cover the
-      // current end of the output.
+      // Copy bytes from the referenced location in the output. Importantly, copy only one byte at a time, in order to
+      // support ranges that cover the current end of the output.
       size_t read_offset = w.size() + offset;
       if (read_offset >= w.size()) {
         throw runtime_error("backreference offset beyond beginning of output");
@@ -1069,11 +1026,10 @@ void prs_disassemble(FILE* stream, const std::string& data) {
   return prs_disassemble(stream, data.data(), data.size());
 }
 
-// BC0 is a compression algorithm fairly similar to PRS, but with a simpler set
-// of commands. Like PRS, there is a control stream, indicating when to copy a
-// literal byte from the input and when to copy from a backreference; unlike
-// PRS, there is only one type of backreference. Also, there is no stop opcode;
-// the decompressor simply stops when there are no more input bytes to read.
+// BC0 is a compression algorithm fairly similar to PRS, but with a simpler set of commands. Like PRS, there is a
+// control stream, indicating when to copy a literal byte from the input and when to copy from a backreference; unlike
+// PRS, there is only one type of backreference. Also, there is no stop opcode; the decompressor simply stops when
+// there are no more input bytes to read.
 
 struct BC0PathNode {
   uint16_t memo_offset = 0;
@@ -1112,8 +1068,7 @@ string bc0_compress_optimal(
     }
   }
 
-  // For each node, populate the literal value, and the best ways to get to the
-  // following nodes
+  // For each node, populate the literal value, and the best ways to get to the following nodes
   for (size_t z = 0; z < in_size; z++) {
     if ((z & 0xFFF) == 0 && progress_fn) {
       progress_fn(CompressPhase::CONSTRUCT_PATHS, z, in_size, 0);
@@ -1238,11 +1193,9 @@ string bc0_encode(const void* in_data_v, size_t in_size) {
   return std::move(w.close());
 }
 
-// The BC0 decompression implementation in PSO GC is vulnerable to overflow
-// attacks - there is no bounds checking on the output buffer. It is unlikely
-// that this can be usefully exploited (e.g. for RCE) because the output pointer
-// is loaded from memory before every byte is written, so we cannot change the
-// output pointer to any arbitrary address.
+// The BC0 decompression implementation in PSO GC is vulnerable to overflow attacks - there is no bounds checking on
+// the output buffer. It is unlikely that this can be usefully exploited (e.g. for RCE) because the output pointer is
+// loaded from memory before every byte is written, so we cannot change the output pointer to any arbitrary address.
 
 string bc0_decompress(const string& data) {
   return bc0_decompress(data.data(), data.size());
@@ -1252,22 +1205,18 @@ string bc0_decompress(const void* data, size_t size) {
   phosg::StringReader r(data, size);
   phosg::StringWriter w;
 
-  // Unlike PRS, BC0 uses a memo which "rolls over" every 0x1000 bytes. The
-  // boundaries of these "memo pages" are offset by -0x12 bytes for some reason,
-  // so the first output byte corresponds to position 0xFEE on the first memo
-  // page. Backreferences refer to offsets based on the start of memo pages; for
-  // example, if the current output offset is 0x1234, a backreference with
-  // offset 0x123 refers to the byte that was written at offset 0x1111 (because
-  // that byte is at offset 0x111 in the memo, because the memo rolls over every
-  // 0x1000 bytes and the first memo byte was 0x12 bytes before the beginning of
-  // the next page). The memo is initially zeroed from 0 to 0xFEE; it seems PSO
-  // GC doesn't initialize the last 0x12 bytes of the first memo page.
+  // Unlike PRS, BC0 uses a memo which "rolls over" every 0x1000 bytes. The boundaries of these "memo pages" are offset
+  // by -0x12 bytes for some reason, so the first output byte corresponds to position 0xFEE on the first memo page.
+  // Backreferences refer to offsets based on the start of memo pages; for example, if the current output offset is
+  // 0x1234, a backreference with offset 0x123 refers to the byte that was written at offset 0x1111 (because that byte
+  // is at offset 0x111 in the memo, because the memo rolls over every 0x1000 bytes and the first memo byte was 0x12
+  // bytes before the beginning of the next page). The memo is initially zeroed from 0 to 0xFEE; it seems PSO GC
+  // doesn't initialize the last 0x12 bytes of the first memo page.
   parray<uint8_t, 0x1000> memo;
   uint16_t memo_offset = 0x0FEE;
 
-  // The low byte of this value contains the control stream data; the high bits
-  // specify which low bits are valid. When the last 1 is shifted out of the
-  // high byte, we need to read a new control stream byte to get the next set of
+  // The low byte of this value contains the control stream data; the high bits specify which low bits are valid. When
+  // the last 1 is shifted out of the high byte, we need to read a new control stream byte to get the next set of
   // control bits.
   uint16_t control_stream_bits = 0x0000;
 
@@ -1282,14 +1231,13 @@ string bc0_decompress(const void* data, size_t size) {
     }
 
     if ((control_stream_bits & 1) == 0) {
-      // Control bit 0 means to perform a backreference copy. The offset and
-      // size are stored in two bytes in the input stream, laid out as follows:
-      // a1 = 0bBBBBBBBB
-      // a2 = 0bAAAACCCC
-      // The offset is the concatenation of bits AAAABBBBBBBB, which refers to
-      // a position in the memo; the number of bytes to copy is (CCCC + 3). The
-      // decompressor copies that many bytes from that offset in the memo, and
-      // writes them to the output and to the current position in the memo.
+      // Control bit 0 means to perform a backreference copy. The offset and size are stored in two bytes in the input
+      // stream, laid out as follows:
+      //   a1 = 0bBBBBBBBB
+      //   a2 = 0bAAAACCCC
+      // The offset is the concatenation of bits AAAABBBBBBBB, which refers to a position in the memo; the number of
+      // bytes to copy is (CCCC + 3). The decompressor copies that many bytes from that offset in the memo, and writes
+      // them to the output and to the current position in the memo.
       uint8_t a1 = r.get_u8();
       if (r.eof()) {
         break;
@@ -1305,8 +1253,8 @@ string bc0_decompress(const void* data, size_t size) {
       }
 
     } else {
-      // Control bit 1 means to write a byte directly from the input to the
-      // output. As above, the byte is also written to the memo.
+      // Control bit 1 means to write a byte directly from the input to the output. As above, the byte is also written
+      // to the memo.
       uint8_t v = r.get_u8();
       w.put_u8(v);
       memo[memo_offset] = v;

@@ -38,9 +38,8 @@ struct HTTPRequest {
   std::unordered_multimap<std::string, std::string> query_params;
   std::string data;
 
-  // Header name should be entirely lowercase for this function. Returns
-  // nullptr if the header doesn't exist; throws http_error(400) if multiple
-  // instances of it exist.
+  // Header name should be entirely lowercase for this function. Returns nullptr if the header doesn't exist; throws
+  // http_error(400) if multiple instances of it exist.
   const std::string* get_header(const std::string& name) const;
 
   const std::string* get_query_param(const std::string& name) const;
@@ -49,8 +48,7 @@ struct HTTPRequest {
 struct HTTPResponse {
   std::string http_version;
   int response_code = 200;
-  // Content-Length should NOT be specified in headers; it is automatically
-  // added in async_write() if data is not blank.
+  // Content-Length should NOT be specified in headers; it is automatically added in async_write() if data isn't blank.
   std::unordered_multimap<std::string, std::string> headers;
   std::string data;
 };
@@ -244,9 +242,8 @@ protected:
     }
   }
 
-  // Attempts to switch the client to WebSockets. Returns true if this is done
-  // successfully (and the caller should then receive/send WebSocket messages),
-  // or false if this failed (and the caller should send an HTTP response).
+  // Attempts to switch the client to WebSockets. Returns true if this is done successfully (and the caller should then
+  // receive/send WebSocket messages), or false if this failed (and the caller should send an HTTP response).
   asio::awaitable<bool> enable_websockets(std::shared_ptr<ClientT> c, const HTTPRequest& req) {
     if (req.method != HTTPRequest::Method::GET) {
       co_return false;
@@ -287,13 +284,10 @@ protected:
 
   // handle_request must do one of the following three things:
   // 1. Return an HTTP response.
-  // 2. Call enable_websockets, and if it returns true, return nullptr. After
-  //    this point, handle_request will not be called again for this client;
-  //    handle_websocket_message will be called instead when any WebSocket
-  //    messages are received. If enable_websockets returns false,
-  //    handle_request must still return an HTTP response.
-  // 3. Throw an exception. In this case, the client receives an HTTP 500
-  //    response.
+  // 2. Call enable_websockets, and if it returns true, return nullptr. After this point, handle_request will not be
+  //    called again for this client; handle_websocket_message will be called instead when any WebSocket messages are
+  //    received. If enable_websockets returns false, handle_request must still return an HTTP response.
+  // 3. Throw an exception. In this case, the client receives an HTTP 500 response.
   virtual asio::awaitable<std::unique_ptr<HTTPResponse>> handle_request(std::shared_ptr<ClientT> c, HTTPRequest&& req) = 0;
   virtual asio::awaitable<void> handle_websocket_message(std::shared_ptr<ClientT>, WebSocketMessage&&) {
     co_return;

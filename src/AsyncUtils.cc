@@ -73,8 +73,7 @@ asio::awaitable<string> AsyncSocketReader::read_line(const char* delimiter, size
     throw runtime_error("line exceeds max length");
   }
 
-  // TODO: It's not great that we copy the data here. There's probably a more
-  // idiomatic and efficient way to do this.
+  // TODO: It's not great that we copy the data here. There's probably a more idiomatic and efficient way to do this.
   string ret = this->pending_data.substr(0, delimiter_pos);
   this->pending_data = this->pending_data.substr(delimiter_pos + delimiter_size);
   co_return ret;

@@ -15,7 +15,6 @@ struct BMLHeaderT {
   U32T<BE> num_entries;
   parray<uint8_t, 0x38> unknown_a2;
 } __attribute__((packed));
-
 using BMLHeader = BMLHeaderT<false>;
 using BMLHeaderBE = BMLHeaderT<true>;
 check_struct_size(BMLHeader, 0x40);
@@ -31,7 +30,6 @@ struct BMLHeaderEntryT {
   U32T<BE> decompressed_gvm_size;
   parray<uint8_t, 0x0C> unknown_a2;
 } __attribute__((packed));
-
 using BMLHeaderEntry = BMLHeaderEntryT<false>;
 using BMLHeaderEntryBE = BMLHeaderEntryT<true>;
 check_struct_size(BMLHeaderEntry, 0x40);

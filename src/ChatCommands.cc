@@ -25,7 +25,7 @@
 
 using namespace std;
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Tools
 
 string str_for_flag_ranges(const vector<bool>& flags) {
@@ -60,7 +60,7 @@ string str_for_flag_ranges(const vector<bool>& flags) {
   return ret;
 }
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Checks
 
 class precondition_failed {
@@ -165,7 +165,7 @@ struct Args {
   }
 };
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Command definitions
 
 struct ChatCommandDefinition {
@@ -188,7 +188,7 @@ struct ChatCommandDefinition {
 
 unordered_map<string, const ChatCommandDefinition*> ChatCommandDefinition::all_defs;
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // All commands (in alphabetical order)
 
 ChatCommandDefinition cc_allevent(
@@ -265,8 +265,8 @@ ChatCommandDefinition cc_announce_rares(
 
       a.c->login->account->toggle_user_flag(Account::UserFlag::DISABLE_DROP_NOTIFICATION_BROADCAST);
       a.c->login->account->save();
-      send_text_message_fmt(a.c, "$C6Rare announcements\n{} for your\nitems",
-          a.c->login->account->check_user_flag(Account::UserFlag::DISABLE_DROP_NOTIFICATION_BROADCAST) ? "disabled" : "enabled");
+      bool enabled = a.c->login->account->check_user_flag(Account::UserFlag::DISABLE_DROP_NOTIFICATION_BROADCAST);
+      send_text_message_fmt(a.c, "$C6Rare announcements\n{} for your\nitems", enabled ? "disabled" : "enabled");
       co_return;
     });
 
@@ -370,9 +370,8 @@ ChatCommandDefinition cc_ban(
         throw precondition_failed("$C6You do not have\nsufficient privileges.");
       }
       if (a.c == target) {
-        // This shouldn't be possible because you need BAN_USER to get here,
-        // but the target can't have BAN_USER if we get here, so if a.c and
-        // target are the same, one of the preceding conditions must be false.
+        // This shouldn't be possible because you need BAN_USER to get here, but the target can't have BAN_USER if we
+        // get here, so if a.c and target are the same, one of the preceding conditions must be false.
         throw logic_error("client attempts to ban themself");
       }
 
@@ -482,8 +481,7 @@ static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool 
     dest_account = a.c->login->account;
   }
 
-  // If the client isn't BB, request the player info. (If they are BB, the
-  // server already has it)
+  // If the client isn't BB, request the player info. (If they are BB, the server already has it)
   GetPlayerInfoResult ch;
   if (a.c->version() == Version::BB_V4) {
     ch.character = a.c->character_file();
@@ -516,8 +514,7 @@ static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool 
     }
 
   } else {
-    // Client sent 61; generate a BB-format player from the information we have
-    // and save that instead
+    // Client sent 61; generate a BB-format player from the information we have and save that instead
     if (ch.character) {
       auto bb_player = PSOBBCharacterFile::create_from_config(
           a.c->login->account->account_id,
@@ -528,9 +525,8 @@ static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool 
       bb_player->disp.visual.version = 4;
       bb_player->disp.visual.name_color_checksum = 0x00000000;
       bb_player->inventory = ch.character->inventory;
-      // Before V3, player stats can't be correctly computed from other fields
-      // because material usage isn't stored anywhere. For these versions, we
-      // have to trust the stats field from the player's data.
+      // Before V3, player stats can't be correctly computed from other fields because material usage isn't stored
+      // anywhere. For these versions, we have to trust the stats field from the player's data.
       auto level_table = s->level_table(a.c->version());
       if (is_v1_or_v2(a.c->version())) {
         bb_player->disp.stats = ch.character->disp.stats;
@@ -1074,9 +1070,7 @@ ChatCommandDefinition cc_event(
 ChatCommandDefinition cc_exit(
     {"$exit"},
     +[](const Args& a) -> asio::awaitable<void> {
-      if (!(a.c->proxy_session
-                  ? a.c->proxy_session->is_in_game
-                  : a.c->require_lobby()->is_game())) {
+      if (!(a.c->proxy_session ? a.c->proxy_session->is_in_game : a.c->require_lobby()->is_game())) {
         // Client is in the lobby; send them to the login server (main menu)
         if (a.c->proxy_session) {
           if (is_v4(a.c->version())) {
@@ -1181,8 +1175,6 @@ ChatCommandDefinition cc_infhp(
 ChatCommandDefinition cc_inftime(
     {"$inftime"},
     +[](const Args& a) -> asio::awaitable<void> {
-      // TODO: We could implement this in proxy sessions by rewriting the rules
-      // struct from the server in various 6xB4 commands.
       a.check_is_proxy(false);
       a.check_is_game(true);
       a.check_is_ep3(true);
@@ -1301,9 +1293,8 @@ ChatCommandDefinition cc_kick(
         throw precondition_failed("$C6You do not have\nsufficient privileges.");
       }
       if (a.c == target) {
-        // This shouldn't be possible because you need KICK_USER to get here,
-        // but the target can't have KICK_USER if we get here, so if a.c and
-        // target are the same, one of the preceding conditions must be false.
+        // This shouldn't be possible because you need KICK_USER to get here, but the target can't have KICK_USER if we
+        // get here, so if a.c and target are the same, one of the preceding conditions must be false.
         throw logic_error("client attempts to kick themself off");
       }
 
@@ -1332,13 +1323,10 @@ ChatCommandDefinition cc_killcount(
         throw precondition_failed("No equipped items\nhave kill counts");
 
       } else {
-        // Kill counts are only accurate on the server side at all times on BB.
-        // On other versions, we update the server's view of the client's
-        // inventory during games, but we can't track kills because the client
-        // doesn't inform the server whether it counted a kill for any
-        // individual enemy. So, on non-BB versions, the kill count is accurate
-        // at all times in the lobby (since kills can't occur there), or at the
-        // beginning of a game.
+        // Kill counts are only accurate on the server side at all times on BB. On other versions, we update the
+        // server's view of the client's inventory during games, but we can't track kills because the client doesn't
+        // inform the server whether it counted a kill for any individual enemy. So, on non-BB versions, the kill count
+        // is accurate at all times in the lobby (since kills can't occur there), or at the beginning of a game.
         if ((a.c->version() == Version::BB_V4) || !a.c->require_lobby()->is_game()) {
           send_text_message(a.c, "As of now:");
         } else {
@@ -1361,9 +1349,8 @@ ChatCommandDefinition cc_lobby_info(
     +[](const Args& a) -> asio::awaitable<void> {
       if (a.c->proxy_session) {
         string msg;
-        // On non-masked-GC sessions (BB), there is no remote Guild Card number, so we
-        // don't show it. (The user can see it in the pause menu, unlike in masked-GC
-        // sessions like GC.)
+        // On non-masked-GC sessions (BB), there is no remote Guild Card number, so we don't show it. (The user can see
+        // it in the pause menu, unlike in masked-GC sessions like GC.)
         if (a.c->proxy_session->remote_guild_card_number >= 0) {
           msg = std::format("$C7GC: $C6{}$C7\n", a.c->proxy_session->remote_guild_card_number);
         }
@@ -1612,8 +1599,8 @@ ChatCommandDefinition cc_loadchar(
         }
 
       } else {
-        // On v1 and v2, the client will assign its character data from the lobby
-        // join command, so it suffices to just resend the join notification.
+        // On v1 and v2, the client will assign its character data from the lobby join command, so it suffices to just
+        // resend the join notification.
         auto s = a.c->require_server_state();
         send_player_leave_notification(l, a.c->lobby_client_id);
         s->send_lobby_join_notifications(l, a.c);
@@ -1788,9 +1775,7 @@ ChatCommandDefinition cc_next(
       auto s = a.c->require_server_state();
       a.check_cheats_enabled_or_allowed(s->cheat_flags.warp);
 
-      auto episode = a.c->proxy_session
-          ? a.c->proxy_session->lobby_episode
-          : a.c->require_lobby()->episode;
+      auto episode = a.c->proxy_session ? a.c->proxy_session->lobby_episode : a.c->require_lobby()->episode;
       size_t limit = FloorDefinition::limit_for_episode(episode);
       if (limit > 0) {
         send_warp(a.c, (a.c->floor + 1) % limit, true);
@@ -1835,8 +1820,7 @@ ChatCommandDefinition cc_patch(
       co_await prepare_client_for_patches(a.c);
       try {
         auto s = a.c->require_server_state();
-        // Note: We can't look this up before prepare_client_for_patches
-        // because specific_version may not be set at that point
+        // Note: We can't look this up before prepare_client_for_patches because specific_version may not be set
         auto fn = s->function_code_index->get_patch(patch_name, a.c->specific_version);
         co_await send_function_call(a.c, fn, label_writes);
       } catch (const out_of_range&) {
@@ -1874,9 +1858,7 @@ ChatCommandDefinition cc_ping(
       if (a.c->proxy_session) {
         a.c->proxy_session->server_ping_start_time = a.c->ping_start_time;
         C_GuildCardSearch_40 cmd = {
-            0x00010000,
-            a.c->proxy_session->remote_guild_card_number,
-            a.c->proxy_session->remote_guild_card_number};
+            0x00010000, a.c->proxy_session->remote_guild_card_number, a.c->proxy_session->remote_guild_card_number};
         a.c->proxy_session->server_channel->send(0x40, 0x00, &cmd, sizeof(cmd));
       }
       co_return;
@@ -1914,7 +1896,8 @@ ChatCommandDefinition cc_playrec(
           data = phosg::load_file(file_path_for_recording(filename, a.c->login->account->account_id, false));
         } catch (const phosg::cannot_open_file&) {
           try {
-            data = prs_decompress(phosg::load_file(file_path_for_recording(filename, a.c->login->account->account_id, true)));
+            data = prs_decompress(phosg::load_file(file_path_for_recording(
+                filename, a.c->login->account->account_id, true)));
           } catch (const phosg::cannot_open_file&) {
             throw precondition_failed("$C4The recording does\nnot exist");
           }
@@ -2304,8 +2287,7 @@ ChatCommandDefinition cc_savechar(
 ChatCommandDefinition cc_saverec(
     {"$saverec"},
     +[](const Args& a) -> asio::awaitable<void> {
-      // TODO: We can probably support this on the proxy server, but it would
-      // only include CA commands from the local player
+      // TODO: We can support this on the proxy server, but it would only include CA commands from the local player
       a.check_is_proxy(false);
       if (!a.c->ep3_prev_battle_record) {
         throw precondition_failed("$C4No finished\nrecording is\npresent");
@@ -2452,7 +2434,7 @@ ChatCommandDefinition cc_silence(
       auto s = a.c->require_server_state();
       auto target = s->find_client(&a.text);
       if (!target->login) {
-        // this should be impossible, but I'll bet it's not actually
+        // This should be impossible, but I'll bet it's not actually
         throw precondition_failed("$C6Client not logged in");
       }
 
@@ -2512,9 +2494,8 @@ ChatCommandDefinition cc_spec(
         throw logic_error("Episode 3 client in non-Episode 3 game");
       }
 
-      // In non-tournament games, only the leader can do this; in a tournament
-      // match, the players don't have control over who the leader is, so we allow
-      // all players to use this command
+      // In non-tournament games, only the leader can do this; in a tournament match, the players don't have control
+      // over who the leader is, so we allow all players to use this command
       if (!l->tournament_match) {
         a.check_is_leader();
       }
@@ -2662,8 +2643,8 @@ ChatCommandDefinition cc_swa(
       a.check_is_game(true);
 
       a.c->toggle_flag(Client::Flag::SWITCH_ASSIST_ENABLED);
-      send_text_message_fmt(a.c, "$C6Switch assist {}",
-          a.c->check_flag(Client::Flag::SWITCH_ASSIST_ENABLED) ? "enabled" : "disabled");
+      bool enabled = a.c->check_flag(Client::Flag::SWITCH_ASSIST_ENABLED);
+      send_text_message_fmt(a.c, "$C6Switch assist {}", enabled ? "enabled" : "disabled");
       co_return;
     });
 
@@ -2775,15 +2756,12 @@ ChatCommandDefinition cc_switchchar(
       a.c->bb_character_index = index;
       a.c->bb_bank_character_index = index;
 
-      // TODO: This can trigger a client bug where the previous character's
-      // name label object isn't deleted if the leave and join notifications
-      // are received on the same frame. This results in the receiving player
-      // seeing both labels over the new character, with the latest one
-      // appearing on top. We could fix this by requiring each recipient to
-      // reply to a ping between the two commands, similar to how the 64 and
-      // 6x6D commands are split during game joining, but implementing that
-      // here seems not worth the effort given the low likelihood and impact of
-      // this bug.
+      // TODO: This can trigger a client bug where the previous character's name label object isn't deleted if the
+      // leave and join notifications are received on the same frame. This results in the receiving player seeing both
+      // labels over the new character, with the latest one appearing on top. We could fix this by requiring each
+      // recipient to reply to a ping between the two commands, similar to how the 64 and 6x6D commands are split
+      // during game joining, but implementing that here seems not worth the effort given the low likelihood and impact
+      // of this bug.
       send_complete_player_bb(a.c);
       send_player_leave_notification(l, a.c->lobby_client_id);
       s->send_lobby_join_notifications(l, a.c);
@@ -2822,9 +2800,7 @@ ChatCommandDefinition cc_unset(
 ChatCommandDefinition cc_variations(
     {"$variations"},
     +[](const Args& a) -> asio::awaitable<void> {
-      // Note: This command is intentionally undocumented, since it's primarily used
-      // for testing. If we ever make it public, we should add some kind of user
-      // feedback (currently it sends no message when it runs).
+      // Note: This command is intentionally undocumented, since it's primarily used for testing
       a.check_is_proxy(false);
       a.check_is_game(false);
       auto s = a.c->require_server_state();
@@ -2854,9 +2830,7 @@ static void command_warp(const Args& a, bool is_warpall) {
     return;
   }
 
-  Episode episode = a.c->proxy_session
-      ? a.c->proxy_session->lobby_episode
-      : a.c->require_lobby()->episode;
+  Episode episode = a.c->proxy_session ? a.c->proxy_session->lobby_episode : a.c->require_lobby()->episode;
   size_t limit = FloorDefinition::limit_for_episode(episode);
   if (limit == 0) {
     return;
@@ -2922,15 +2896,16 @@ ChatCommandDefinition cc_what(
         throw precondition_failed("$C4No items are near you");
       } else {
         auto s = a.c->require_server_state();
-        string name = s->describe_item(a.c->version(), nearest_fi->data, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
+        string name = s->describe_item(
+            a.c->version(), nearest_fi->data, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
         send_text_message(a.c, name);
       }
       co_return;
     });
 
 static void whatobj_whatene_fn(const Args& a, bool include_objs, bool include_enes) {
-  // TODO: This probably wouldn't be too hard to implement for proxy sessions.
-  // We already have the map and most of the lobby metadata (episode, etc.)
+  // TODO: This probably wouldn't be too hard to implement for proxy sessions. We already have the map and most of the
+  // lobby metadata (episode, etc.)
   a.check_is_proxy(false);
   a.check_is_game(true);
   auto l = a.c->require_lobby();
@@ -2997,9 +2972,8 @@ static void whatobj_whatene_fn(const Args& a, bool include_objs, bool include_en
     }
   }
 
-  // Since we check all objects first, nearest_ene will only be set if
-  // there is an enemy closer than all objects. So, we print that if it's
-  // set, and print the object if not.
+  // Since we check all objects first, nearest_ene will only be set if there is an enemy closer than all objects. So,
+  // we print that if it's set, and print the object if not.
   if (nearest_ene) {
     const auto* set_entry = nearest_ene->super_ene->version(a.c->version()).set_entry;
     string type_name = MapFile::name_for_enemy_type(set_entry->base_type, a.c->version(), area);
@@ -3116,10 +3090,9 @@ ChatCommandDefinition cc_nativecall(
     +[](const Args& a) -> asio::awaitable<void> {
       a.check_debug_enabled();
 
-      // TODO: $nativecall is not implemented on x86 (yet) because there are
-      // multiple calling conventions used within the executable (at least on
-      // Xbox and BB), so we would need a way to specify which calling
-      // convention to use, which would be annoying
+      // TODO: $nativecall is not implemented on x86 (yet) because there are multiple calling conventions used within
+      // the executable (at least on Xbox and BB), so we would need a way to specify which calling convention to use,
+      // which would be annoying
       if (is_x86(a.c->version())) {
         throw precondition_failed("Command not supported\non x86 clients");
       }
@@ -3156,7 +3129,7 @@ ChatCommandDefinition cc_nativecall(
       co_return;
     });
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Dispatch methods
 
 struct SplitCommand {
@@ -3174,15 +3147,13 @@ struct SplitCommand {
   }
 };
 
-// This function is called every time any player sends a chat beginning with a
-// dollar sign. It is this function's responsibility to see if the chat is a
-// command, and to execute the command and block the chat if it is.
+// This function is called every time any player sends a chat message beginning with $. It is this function's
+// responsibility to see if the chat is a command, and to execute the command and block the chat if it is.
 asio::awaitable<void> on_chat_command(std::shared_ptr<Client> c, const std::string& text, bool check_permissions) {
   SplitCommand cmd(text);
 
-  // This function is only called by on_06 if it looks like a chat command
-  // (starts with $, or @ on 11/2000), so we just normalize all commands to $
-  // here
+  // This function is only called by on_06 if it looks like a chat command (starts with $, or @ on 11/2000), so we just
+  // normalize all commands to $ here
   if (!cmd.name.empty() && cmd.name[0] == '@') {
     cmd.name[0] = '$';
   }

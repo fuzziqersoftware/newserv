@@ -267,20 +267,16 @@ public:
 
   // Returns {type: {constructor_addr: [(start_area, end_area), ...]}}
   template <typename EntryT>
-  map<uint32_t, map<uint32_t, vector<pair<size_t, size_t>>>>
-  parse_dat_constructor_table_t(
-      shared_ptr<const ResourceDASM::MemoryContext>& mem,
-      const ParseDATConstructorTableSpec& spec) {
+  map<uint32_t, map<uint32_t, vector<pair<size_t, size_t>>>> parse_dat_constructor_table_t(
+      shared_ptr<const ResourceDASM::MemoryContext>& mem, const ParseDATConstructorTableSpec& spec) {
     if (!mem) {
       throw runtime_error("no file selected");
     }
 
-    // On some of the x86 builds of the game (PCv2 and Xbox), the constructor
-    // tables aren't entirely static in the data sections - some parts are
-    // written during static initialization instead. To handle this, we make a
-    // copy of the immutable MemoryContext and run the static initialization
-    // functions using resource_dasm's emulator before parsing the constructor
-    // table.
+    // On some of the x86 builds of the game (PCv2 and Xbox), the constructor tables aren't entirely static in the data
+    // sections - some parts are written during static initialization instead. To handle this, we make a copy of the
+    // immutable MemoryContext and run the static initialization functions using resource_dasm's emulator before
+    // parsing the constructor table.
     shared_ptr<const ResourceDASM::MemoryContext> effective_mem = mem;
     if (!spec.x86_constructor_calls.empty()) {
       auto constructed_mem = make_shared<ResourceDASM::MemoryContext>(mem->duplicate());
@@ -455,9 +451,7 @@ public:
         }
       }
       line.push_back(' ');
-      line += is_enemies
-          ? MapFile::name_for_enemy_type(type)
-          : MapFile::name_for_object_type(type);
+      line += is_enemies ? MapFile::name_for_enemy_type(type) : MapFile::name_for_object_type(type);
 
       if ((formatted_lines.size() % 40) == 0) {
         formatted_lines.emplace_back(header_line);
@@ -732,9 +726,7 @@ public:
   }
 
   uint32_t find_be_to_le_data_match(
-      shared_ptr<const ResourceDASM::MemoryContext> dest_mem,
-      uint32_t src_addr,
-      uint32_t src_size) const {
+      shared_ptr<const ResourceDASM::MemoryContext> dest_mem, uint32_t src_addr, uint32_t src_size) const {
     if (src_size == 0) {
       src_size = 4;
     }

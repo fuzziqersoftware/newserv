@@ -25,8 +25,7 @@ static atomic<uint64_t> next_id(1);
 void Client::set_flags_for_version(Version version, int64_t sub_version) {
   this->set_flag(Flag::PROXY_CHAT_COMMANDS_ENABLED);
 
-  // BB shares some sub_version values with GC Episode 3, so we handle it
-  // separately first.
+  // BB shares some sub_version values with GC Episode 3, so we handle it separately first.
   if (version == Version::BB_V4) {
     this->set_flag(Flag::NO_D6);
     this->set_flag(Flag::SAVE_ENABLED);
@@ -72,8 +71,8 @@ void Client::set_flags_for_version(Version version, int64_t sub_version) {
           break;
         case Version::GC_V3:
         case Version::GC_EP3:
-          // Some of these versions have send_function_call and some don't; we
-          // have to set these flags later when we get sub_version
+          // Some of these versions have send_function_call and some don't; we have to set these flags later when we
+          // get sub_version
           break;
         case Version::XB_V3:
           // TODO: Do all versions of XB need this flag? US does, at least.
@@ -142,8 +141,8 @@ void Client::set_flags_for_version(Version version, int64_t sub_version) {
       this->set_flag(Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE);
       this->set_flag(Flag::ENCRYPTED_SEND_FUNCTION_CALL);
       this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
-      // sub_version can't be used to tell JP final and Trial Edition apart; we
-      // instead look at header.flag in the 61 command and set the version then.
+      // sub_version can't be used to tell JP final and Trial Edition apart; we instead look at header.flag in the 61
+      // command and set the version then.
       break;
     case 0x41: // GC Ep3 US (and BB, but BB is handled above)
     case 0x42: // GC Ep3 EU 50Hz
@@ -191,9 +190,8 @@ Client::Client(
       should_update_play_time(false) {
   this->update_channel_name();
 
-  // Don't print data sent to patch clients to the logs. The patch server
-  // protocol is fully understood and data logs for patch clients are generally
-  // more annoying than helpful at this point.
+  // Don't print data sent to patch clients to the logs. The patch server protocol is fully understood and data logs
+  // for patch clients are generally more annoying than helpful at this point.
   auto s = server->get_state();
   if (is_patch(this->version()) && s->hide_download_commands) {
     this->channel->terminal_recv_color = phosg::TerminalFormat::END;
@@ -212,9 +210,8 @@ Client::Client(
   this->reschedule_save_game_data_timer();
   this->reschedule_ping_and_timeout_timers();
 
-  // Don't print data sent to patch clients to the logs. The patch server
-  // protocol is fully understood and data logs for patch clients are generally
-  // more annoying than helpful at this point.
+  // Don't print data sent to patch clients to the logs. The patch server protocol is fully understood and data logs
+  // for patch clients are generally more annoying than helpful at this point.
   if ((s->hide_download_commands) &&
       ((this->version() == Version::PC_PATCH) || (this->version() == Version::BB_PATCH))) {
     this->channel->terminal_recv_color = phosg::TerminalFormat::END;
@@ -298,9 +295,8 @@ void Client::reschedule_ping_and_timeout_timers() {
 }
 
 void Client::convert_account_to_temporary_if_nte() {
-  // If the session is a prototype version and the account was created and we
-  // should use a temporary account instead, delete the permanent account and
-  // replace it with a temporary account.
+  // If the session is a prototype version and the account was created and we should use a temporary account instead,
+  // delete the permanent account and replace it with a temporary account.
   auto s = this->require_server_state();
   if (s->use_temp_accounts_for_prototypes && this->login->account_was_created && is_any_nte(this->version())) {
     this->log.info_f("Client is a prototype version and the account was created during this session; converting permanent account to temporary account");
@@ -353,8 +349,7 @@ shared_ptr<const TeamIndex::Team> Client::team() const {
     return nullptr;
   }
 
-  // The team membership is valid, but the player name may be different; update
-  // the team membership if needed
+  // The team membership is valid, but the player name may be different; update the team membership if needed
   if (p) {
     auto& m = member_it->second;
     string name = p->disp.name.decode(this->language());
@@ -601,8 +596,8 @@ void Client::save_character_file() {
     throw logic_error("no character file loaded");
   }
   if (this->should_update_play_time) {
-    // This is slightly inaccurate, since fractions of a second are truncated
-    // off each time we save. I'm lazy, so insert shrug emoji here.
+    // This is slightly inaccurate, since fractions of a second are truncated off each time we save. I'm lazy, so
+    // insert shrug emoji here
     uint64_t t = phosg::now();
     uint64_t seconds = (t - this->last_play_time_update) / 1000000;
     this->character_data->play_time_seconds += seconds;
@@ -642,8 +637,7 @@ void Client::create_battle_overlay(shared_ptr<const BattleRules> rules, shared_p
     this->overlay_character_data->inventory.remove_all_items_of_type(3);
   }
   if (rules->replace_char) {
-    // TODO: Shouldn't we clear other material usage here? It looks like the
-    // original code doesn't, but that seems wrong.
+    // TODO: Shouldn't we clear other material usage here? Looks like the original code doesn't, but that seems wrong.
     this->overlay_character_data->inventory.hp_from_materials = 0;
     this->overlay_character_data->inventory.tp_from_materials = 0;
 
@@ -678,7 +672,8 @@ void Client::create_battle_overlay(shared_ptr<const BattleRules> rules, shared_p
   }
 }
 
-void Client::create_challenge_overlay(Version version, size_t template_index, shared_ptr<const LevelTable> level_table) {
+void Client::create_challenge_overlay(
+    Version version, size_t template_index, shared_ptr<const LevelTable> level_table) {
   auto p = this->character_file(true, false);
   const auto& tpl = get_challenge_template_definition(version, p->disp.visual.class_flags, template_index);
 
@@ -700,9 +695,11 @@ void Client::create_challenge_overlay(Version version, size_t template_index, sh
   level_table->reset_to_base(overlay->disp.stats, overlay->disp.visual.char_class);
   level_table->advance_to_level(overlay->disp.stats, tpl.level, overlay->disp.visual.char_class);
 
+  const auto& stats_delta = level_table->stats_delta_for_level(
+      overlay->disp.visual.char_class, overlay->disp.stats.level);
   overlay->disp.stats.esp = 40;
   overlay->disp.stats.unknown_a3 = 10.0;
-  overlay->disp.stats.experience = level_table->stats_delta_for_level(overlay->disp.visual.char_class, overlay->disp.stats.level).experience;
+  overlay->disp.stats.experience = stats_delta.experience;
   overlay->disp.stats.meseta = 0;
   overlay->clear_all_material_usage();
   for (size_t z = 0; z < 0x13; z++) {
@@ -762,10 +759,9 @@ std::shared_ptr<PlayerBank> Client::bank_file(bool allow_load) {
       this->bank_data->load(f.get());
       this->log.info_f("Loaded bank data from {}", filename);
     } catch (const phosg::cannot_open_file&) {
-      // If there isn't a psobank file, use the loaded character data if the
-      // bank character index matches the current character index (that is, we
-      // should use the current character's bank); otherwise, load the
-      // corresponding character and parse the bank from that character file
+      // If there isn't a psobank file, use the loaded character data if the bank character index matches the current
+      // character index (that is, we should use the current character's bank); otherwise, load the corresponding
+      // character and parse the bank from that character file
       if (this->bb_bank_character_index == this->bb_character_index) {
         this->bank_data = std::make_shared<PlayerBank>(this->character_file(true, false)->bank);
         this->log.info_f("Using bank data from loaded character");
@@ -891,8 +887,7 @@ void Client::load_all_files() {
       this->character_data = psochar.character_file;
       this->log.info_f("Loaded character data from {}", char_filename);
 
-      // If there was no .psosys file, use the system file from the .psochar
-      // file instead
+      // If there was no .psosys file, use the system file from the .psochar file instead
       if (!this->system_data) {
         if (!psochar.system_file) {
           throw logic_error("account system data not present, and also not loaded from psochar file");
@@ -920,8 +915,7 @@ void Client::load_all_files() {
     }
   }
 
-  // If any of the above files are still missing, try to load from .nsa/.nsc
-  // files instead
+  // If any of the above files are still missing, try to load from .nsa/.nsc files instead
   if (!this->system_data || (!this->character_data && (this->bb_character_index >= 0)) || !this->guild_card_data) {
     string nsa_filename = this->legacy_account_filename();
     shared_ptr<LegacySavedAccountDataBB> nsa_data;
@@ -987,9 +981,8 @@ void Client::load_all_files() {
     }
   }
 
-  // The system and Guild Card files can be auto-created if they can't be
-  // loaded. After this, system_data and guild_card_data are always non-null,
-  // but character_data may still be null
+  // The system and Guild Card files can be auto-created if they can't be loaded. After this, system_data and
+  // guild_card_data are always non-null, but character_data may still be null
   if (!this->system_data) {
     this->system_data = make_shared<PSOBBBaseSystemFile>();
     auto s = this->require_server_state();
@@ -1024,8 +1017,8 @@ void Client::load_all_files() {
     this->login->account->save();
     this->last_play_time_update = phosg::now();
     if (this->bb_character_index >= 0) {
-      // Note that bank_file() can't recur infinitely here because
-      // character_file is already set; it will not call load_all_files() again
+      // Note that bank_file() can't recur infinitely here because character_file is already set; it will not call
+      // load_all_files() again
       this->bank_file()->enforce_stack_limits(stack_limits);
     }
   }

@@ -458,7 +458,7 @@ public:
 
   // If the map file has no random sections, does nothing and returns a shared_ptr to this. If it has any random
   // sections, returns a new map with all non-random sections copied verbatim, and random sections replaced with
-  // non-random sections according to the challenge mode generation algorithm.
+  // non-random sections according to the challenge mode enemy generation algorithm.
   std::shared_ptr<MapFile> materialize_random_sections(uint32_t random_seed);
   std::shared_ptr<const MapFile> materialize_random_sections(uint32_t random_seed) const;
 

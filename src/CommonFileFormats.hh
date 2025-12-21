@@ -86,26 +86,17 @@ struct VectorXYZF {
   inline VectorXYZF rotate_x(double angle) const {
     double s = sin(angle);
     double c = cos(angle);
-    return VectorXYZF{
-        this->x,
-        this->y * c - this->z * s,
-        this->y * s + this->z * c};
+    return VectorXYZF{this->x, this->y * c - this->z * s, this->y * s + this->z * c};
   }
   inline VectorXYZF rotate_y(double angle) const {
     double s = sin(angle);
     double c = cos(angle);
-    return VectorXYZF{
-        this->x * c + this->z * s,
-        this->y,
-        -this->x * s + this->z * c};
+    return VectorXYZF{this->x * c + this->z * s, this->y, -this->x * s + this->z * c};
   }
   inline VectorXYZF rotate_z(double angle) const {
     double s = sin(angle);
     double c = cos(angle);
-    return VectorXYZF{
-        this->x * c - this->y * s,
-        this->x * s + this->y * c,
-        this->z};
+    return VectorXYZF{this->x * c - this->y * s, this->x * s + this->y * c, this->z};
   }
 
   inline std::string str() const {
@@ -141,23 +132,20 @@ check_struct_size(ArrayRefBE, 8);
 template <bool BE>
 struct RELFileFooterT {
   static constexpr bool IsBE = BE;
-  // Relocations is a list of words (le_uint16_t on DC/PC/XB/BB, be_uint16_t on
-  // GC) containing the number of doublewords (uint32_t) to skip for each
-  // relocation. The relocation pointer starts at the beginning of the file
-  // data, and advances by the value of one relocation word (times 4) before
-  // each relocation. At each relocated doubleword, the address of the first
-  // byte of the file is added to the existing value.
-  // For example, if the file data contains the following data (where R
-  // specifies doublewords to relocate):
+  // Relocations is a list of words (le_uint16_t on DC/PC/XB/BB, be_uint16_t on GC) containing the number of
+  // doublewords (uint32_t) to skip for each relocation. The relocation pointer starts at the beginning of the file
+  // data, and advances by the value of one relocation word (times 4) before each relocation. At each relocated
+  // doubleword, the address of the first byte of the file is added to the existing value.
+  //
+  // For example, if the file data contains the following data (where R specifies doublewords to relocate):
   //   RR RR RR RR ?? ?? ?? ?? ?? ?? ?? ?? RR RR RR RR
   //   RR RR RR RR ?? ?? ?? ?? RR RR RR RR
   // then the relocation words should be 0000, 0003, 0001, and 0002.
-  // If there is a small number of relocations, they may be placed in the unused
-  // fields of this structure to save space and/or confuse reverse engineers.
-  // The game never accesses the last 12 bytes of this structure unless
-  // relocations_offset points there, so those 12 bytes may also be omitted
-  // entirely in situations (e.g. in the B2 command, without changing code_size,
-  // so code_size would technically extend beyond the end of the B2 command).
+  //
+  // If there is a small number of relocations, they may be placed in the unused fields of this structure to save space
+  // and/or confuse reverse engineers. The game never accesses the last 12 bytes of this structure unless
+  // relocations_offset points there, so those 12 bytes may also be omitted entirely in some situations (e.g. in the B2
+  // command, without changing code_size, so code_size would technically extend beyond the end of the B2 command).
   U32T<BE> relocations_offset = 0;
   U32T<BE> num_relocations = 0;
   parray<U32T<BE>, 2> unused1;

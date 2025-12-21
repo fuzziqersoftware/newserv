@@ -32,10 +32,7 @@ shared_ptr<DCNTELicense> DCNTELicense::from_json(const phosg::JSON& json) {
 }
 
 phosg::JSON DCNTELicense::json() const {
-  return phosg::JSON::dict({
-      {"SerialNumber", this->serial_number},
-      {"AccessKey", this->access_key},
-  });
+  return phosg::JSON::dict({{"SerialNumber", this->serial_number}, {"AccessKey", this->access_key}});
 }
 
 shared_ptr<V1V2License> V1V2License::from_json(const phosg::JSON& json) {
@@ -52,10 +49,7 @@ shared_ptr<V1V2License> V1V2License::from_json(const phosg::JSON& json) {
 }
 
 phosg::JSON V1V2License::json() const {
-  return phosg::JSON::dict({
-      {"SerialNumber", this->serial_number},
-      {"AccessKey", this->access_key},
-  });
+  return phosg::JSON::dict({{"SerialNumber", this->serial_number}, {"AccessKey", this->access_key}});
 }
 
 shared_ptr<GCLicense> GCLicense::from_json(const phosg::JSON& json) {
@@ -101,11 +95,7 @@ shared_ptr<XBLicense> XBLicense::from_json(const phosg::JSON& json) {
 }
 
 phosg::JSON XBLicense::json() const {
-  return phosg::JSON::dict({
-      {"GamerTag", this->gamertag},
-      {"UserID", this->user_id},
-      {"AccountID", this->account_id},
-  });
+  return phosg::JSON::dict({{"GamerTag", this->gamertag}, {"UserID", this->user_id}, {"AccountID", this->account_id}});
 }
 
 shared_ptr<BBLicense> BBLicense::from_json(const phosg::JSON& json) {
@@ -128,10 +118,7 @@ shared_ptr<BBLicense> BBLicense::from_json(const phosg::JSON& json) {
 }
 
 phosg::JSON BBLicense::json() const {
-  return phosg::JSON::dict({
-      {"UserName", this->username},
-      {"Password", this->password},
-  });
+  return phosg::JSON::dict({{"UserName", this->username}, {"Password", this->password}});
 }
 
 Account::Account(const phosg::JSON& json)
@@ -412,7 +399,8 @@ string Account::str() const {
 void Account::save() const {
   if (!this->is_temporary) {
     auto json = this->json();
-    string json_data = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::HEX_INTEGERS);
+    string json_data = json.serialize(
+        phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::HEX_INTEGERS);
     string filename = std::format("system/licenses/{:010}.json", this->account_id);
     phosg::save_file(filename, json_data);
   }
@@ -656,7 +644,11 @@ shared_ptr<Login> AccountIndex::from_gc_credentials_locked(
 }
 
 shared_ptr<Login> AccountIndex::from_gc_credentials(
-    uint32_t serial_number, const string& access_key, const string* password, const string& character_name, bool allow_create) {
+    uint32_t serial_number,
+    const string& access_key,
+    const string* password,
+    const string& character_name,
+    bool allow_create) {
   if (serial_number == 0) {
     throw no_username();
   }
@@ -750,7 +742,8 @@ shared_ptr<Login> AccountIndex::from_bb_credentials_locked(const string& usernam
   return login;
 }
 
-shared_ptr<Login> AccountIndex::from_bb_credentials(const string& username, const string* password, bool allow_create) {
+shared_ptr<Login> AccountIndex::from_bb_credentials(
+    const string& username, const string* password, bool allow_create) {
   if (username.empty() || (password && password->empty())) {
     throw no_username();
   }

@@ -324,8 +324,8 @@ asio::awaitable<WebSocketMessage> HTTPClient::recv_websocket_message(size_t max_
 
     this->last_communication_time = phosg::now();
 
-    // If the current message is a control message, respond appropriately
-    // (these can be sent in the middle of fragmented messages)
+    // If the current message is a control message, respond appropriately (these can be sent in the middle of
+    // fragmented messages)
     uint8_t opcode = msg.header[0] & 0x0F;
     if (opcode & 0x08) {
       if (opcode == 0x0A) {
@@ -347,8 +347,8 @@ asio::awaitable<WebSocketMessage> HTTPClient::recv_websocket_message(size_t max_
       continue;
     }
 
-    // If there's an existing fragment, the current message's opcode should be
-    // zero; if there's no pending message, it must not be zero
+    // If there's an existing fragment, the current message's opcode should be zero; if there's no pending message, it
+    // must not be zero
     if (prev_msg_present == (opcode != 0)) {
       this->r.close();
       continue;
@@ -372,10 +372,9 @@ asio::awaitable<WebSocketMessage> HTTPClient::recv_websocket_message(size_t max_
       prev_msg.data += msg.data;
     }
 
-    // If the FIN bit is set, then the frame is complete - append the payload
-    // to any pending payloads and call the message handler. If the FIN bit
-    // isn't set, we need to receive at least one continuation frame to
-    // complete the message.
+    // If the FIN bit is set, then the frame is complete - append the payload to any pending payloads and call the
+    // message handler. If the FIN bit isn't set, we need to receive at least one continuation frame to complete the
+    // message.
     if (prev_msg.header[0] & 0x80) {
       co_return prev_msg;
     }

@@ -41,7 +41,6 @@ struct ChoiceSearchConfigT {
     return ret;
   }
 } __attribute__((packed));
-
 using ChoiceSearchConfig = ChoiceSearchConfigT<false>;
 using ChoiceSearchConfigBE = ChoiceSearchConfigT<true>;
 check_struct_size(ChoiceSearchConfig, 0x18);

@@ -67,8 +67,8 @@ string AFSArchive::generate_t(const vector<string>& files) {
   w.put_u32b(0x41465300); // 'AFS\0'
   w.put<U32T<BE>>(files.size());
 
-  // It seems entries are aligned to 0x800-byte boundaries, and the file's
-  // header is always 0x80000 (!) bytes, most of which is unused
+  // It seems entries are aligned to 0x800-byte boundaries, and the file's header is always 0x80000 (!) bytes, most of
+  // which is unused
   uint32_t data_offset = 0x80000;
   for (const auto& file : files) {
     w.put<U32T<BE>>(data_offset);

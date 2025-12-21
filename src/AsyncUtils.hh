@@ -175,16 +175,15 @@ public:
   AsyncSocketReader& operator=(AsyncSocketReader&&) = delete;
   ~AsyncSocketReader() = default;
 
-  // Reads one line from the socket, buffering any extra data read. The
-  // delimiter is not included in the returned line. max_length = 0 means no
-  // maximum length is enforced.
+  // Reads one line from the socket, buffering any extra data read. The delimiter is not included in the returned line.
+  // max_length = 0 means no maximum length is enforced.
   asio::awaitable<std::string> read_line(
       const char* delimiter = "\n", size_t max_length = 0);
   asio::awaitable<std::string> read_data(size_t size);
   asio::awaitable<void> read_data_into(void* data, size_t size);
 
-  // The caller cannot know what the socket's read state is, so this should
-  // only be used when the caller intends to write to the socket, not read
+  // The caller cannot know what the socket's read state is, so this should only be used when the caller intends to
+  // write to the socket, not read
   inline asio::ip::tcp::socket& get_socket() {
     return this->sock;
   }
@@ -215,8 +214,8 @@ public:
 
   void add(std::string&& data);
 
-  // When using add_reference, it is the caller's responsibility to ensure that
-  // the buffer is valid until *this is destroyed or write() returns.
+  // When using add_reference, it is the caller's responsibility to ensure that the buffer is valid until *this is
+  // destroyed or write() returns.
   void add_reference(const void* data, size_t size);
 
   asio::awaitable<void> write(asio::ip::tcp::socket& sock);
@@ -260,9 +259,8 @@ asio::awaitable<std::invoke_result_t<FnT, ArgTs...>> call_on_thread_pool(asio::t
   using ReturnT = std::invoke_result_t<FnT, ArgTs...>;
   auto bound = std::bind(std::forward<FnT>(f), std::forward<ArgTs>(args)...);
 
-  // We have to use a shared_ptr here in case call_on_thread_pool is canceled
-  // (in that case, the posted callback will try to use promise after the
-  // call_on_thread_pool coroutine has been destroyed)
+  // We have to use a shared_ptr here in case call_on_thread_pool is canceled (in that case, the posted callback will
+  // try to use promise after the call_on_thread_pool coroutine has been destroyed)
   auto promise = std::make_shared<AsyncPromise<ReturnT>>();
   asio::post(pool, [bound = std::move(bound), promise]() mutable {
     try {

@@ -189,8 +189,7 @@ public:
   std::unordered_set<uint32_t> blocked_senders;
   std::unique_ptr<PlayerDispDataDCPCV3> v1_v2_last_reported_disp;
   std::shared_ptr<Parsed6x70Data> last_reported_6x70;
-  // These are null unless the client is within the trade sequence (D0-D4 or EE
-  // commands)
+  // These are null unless the client is within the trade sequence (D0-D4 or EE commands)
   std::unique_ptr<PendingItemTrade> pending_item_trade;
   std::unique_ptr<PendingCardTrade> pending_card_trade;
   uint32_t telepipe_lobby_id = 0;
@@ -203,12 +202,10 @@ public:
   uint8_t schtserv_response_register = 0;
   uint32_t next_exp_value = 0;
   bool can_chat = true;
-  // NOTE: If you add any new optional promises here, make sure to also add
-  // them to cancel_pending_promises.
-  // NOTE: Entries in this queue can be nullptr; that represents a B2 command
-  // sent by the remote server during a proxy session. We can't just omit those
-  // from the queue entirely, because if we did, we could end up sending the
-  // wrong B3 response back.
+  // NOTE: If you add any new optional promises here, make sure to also add them to cancel_pending_promises.
+  // NOTE: Entries in this queue can be nullptr; that represents a B2 command sent by the remote server during a proxy
+  // session. We can't just omit those from the queue entirely, because if we did, we could end up sending the wrong B3
+  // response back.
   std::deque<std::shared_ptr<AsyncPromise<C_ExecuteCodeResult_B3>>> function_call_response_queue;
   std::shared_ptr<AsyncPromise<GetPlayerInfoResult>> character_data_ready_promise;
   std::shared_ptr<AsyncPromise<void>> enable_save_promise;
@@ -216,10 +213,7 @@ public:
   // File loading state
   std::unordered_map<std::string, std::shared_ptr<const std::string>> sending_files;
 
-  Client(
-      std::shared_ptr<GameServer> server,
-      std::shared_ptr<Channel> channel,
-      ServerBehavior server_behavior);
+  Client(std::shared_ptr<GameServer> server, std::shared_ptr<Channel> channel, ServerBehavior server_behavior);
   ~Client();
 
   void update_channel_name();
@@ -257,8 +251,6 @@ public:
   void set_drop_notification_mode(ItemDropNotificationMode new_mode);
 
   void convert_account_to_temporary_if_nte();
-
-  void sync_config();
 
   std::shared_ptr<ServerState> require_server_state() const;
   std::shared_ptr<Lobby> require_lobby() const;
@@ -353,9 +345,8 @@ public:
   void cancel_pending_promises();
 
 private:
-  // The overlay character data is used in battle and challenge modes, when
-  // character data is temporarily replaced in-game. In other play modes and in
-  // lobbies, overlay_character_data is null.
+  // The overlay character data is used in battle and challenge modes, when character data is temporarily replaced
+  // in-game. In other play modes and in lobbies, overlay_character_data is null.
   std::shared_ptr<PSOBBBaseSystemFile> system_data;
   std::shared_ptr<PSOBBCharacterFile> overlay_character_data;
   std::shared_ptr<PSOBBCharacterFile> character_data;
