@@ -3701,6 +3701,15 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
       auto weights_r = definitions_sec_r.sub(
           definitions_header.weight_entries_offset, definitions_header.weight_entry_count * sizeof(RandomEnemyWeight));
 
+      // Note: The original implementation (Sega's) computes this sum within the `while (remaining_enemies)` loop
+      // below; however, this sum depends only on the event data section and not the wave number, room ID, or anything
+      // else that could change during the below code, so compute it only once here instead.
+      weights_r.go(0);
+      size_t weight_total = 0;
+      while (!weights_r.eof()) {
+        weight_total += weights_r.get<RandomEnemyWeight>().weight;
+      }
+
       phosg::StringWriter enemy_sets_w;
       phosg::StringWriter events1_w;
       phosg::StringWriter action_stream_w;
@@ -3715,7 +3724,6 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
 
         size_t remaining_waves = random_state.rand_int_biased(1, source_event2.max_waves);
         static_game_data_log.debug_f("(Floor {} event {}) Chose {} waves", floor, source_event_index, remaining_waves);
-        // Trace: at 0080E125 EAX is wave count
 
         le_uint32_t wave_next_event_id = source_event2.event_id;
         uint32_t wave_number = source_event2.wave_number;
@@ -3725,25 +3733,13 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
           size_t remaining_enemies = random_state.rand_int_biased(source_event2.min_enemies, source_event2.max_enemies);
           static_game_data_log.debug_f("(Floor {} event {} wave {}) Chose {} enemies",
               floor, source_event_index, remaining_waves, remaining_enemies);
-          // Trace: at 0080E208 EDI is enemy count
 
           random_state.generate_shuffled_location_table(locations_header, locations_sec_r, source_event2.room);
-          // Trace: at 0080EBB0 *(EBP + 4) points to table (0x20 uint32_ts)
 
           while (remaining_enemies) {
             remaining_enemies--;
 
-            // TODO: Factor this sum out of the loops
-            weights_r.go(0);
-            size_t weight_total = 0;
-            while (!weights_r.eof()) {
-              weight_total += weights_r.get<RandomEnemyWeight>().weight;
-            }
-            // Trace: at 0080E2C2 EBX is weight_total
-
             size_t det = random_state.rand_int_biased(0, weight_total - 1);
-            // Trace: at 0080E300 EDX is det
-
             static_game_data_log.debug_f("(Floor {} event {} wave {} enemy {}) det={}, weight_total={}",
                 floor, source_event_index, remaining_waves, remaining_enemies, det, weight_total);
 
@@ -3798,7 +3794,6 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
                   e.pos = loc.pos;
                   e.angle = loc.angle;
 
-                  // Trace: at 0080E6FE CX is base_type
                   enemy_sets_w.put<EnemySetEntry>(e);
                 }
                 break;
@@ -3866,8 +3861,8 @@ std::shared_ptr<MapFile> MapFile::materialize_random_sections(uint32_t random_se
     }
   }
 
-  // Add everything in this->linked_data to the new map's linked_data, since it
-  // likely is referenced by pointers in sections_for_floor
+  // Add everything in this->linked_data to the new map's linked_data, since it likely is referenced by pointers in
+  // sections_for_floor
   new_map->quest_data = this->quest_data;
   for (const auto& it : this->linked_data) {
     new_map->link_data(it);
