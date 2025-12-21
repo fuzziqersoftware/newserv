@@ -471,9 +471,10 @@ HTTPServer::HTTPServer(shared_ptr<ServerState> state)
                 {"BattleStartTimeUsecs", ep3s->battle_start_usecs},
                 {"TeamEXP", phosg::JSON::list({ep3s->team_exp[0], ep3s->team_exp[1]})},
                 {"TeamDiceBonus", phosg::JSON::list({ep3s->team_dice_bonus[0], ep3s->team_dice_bonus[1]})},
+                // TODO: Include information from these too?
+                // std::shared_ptr<StateFlags> state_flags;
+                // std::array<std::shared_ptr<PlayerState>, 4> player_states;
             });
-            // std::shared_ptr<StateFlags> state_flags;
-            // std::array<std::shared_ptr<PlayerState>, 4> player_states;
             lobby_json.emplace("Episode3BattleState", std::move(battle_state_json));
           } else {
             lobby_json.emplace("Episode3BattleState", nullptr);
@@ -660,7 +661,51 @@ HTTPServer::HTTPServer(shared_ptr<ServerState> state)
     }
   });
 
-  // TODO: Add /y/data/ep3/maps, /y/data/ep3/map/:map_number and /y/data/ep3/map/:map_number/raw
+  this->router.add(HTTPRequest::Method::GET, "/y/data/ep3/maps", [this](ArgsT&& args) -> RetT {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> shared_ptr<phosg::JSON> {
+      auto ret = make_shared<phosg::JSON>(phosg::JSON::dict());
+      for (const auto& [map_number, map] : this->state->ep3_map_index->all_maps()) {
+        auto languages_json = phosg::JSON::list();
+        for (const auto& vm : map->all_versions()) {
+          if (vm) {
+            languages_json.emplace_back(name_for_language(vm->language));
+          }
+        }
+        auto map_json = phosg::JSON::dict({
+            {"Name", map->version(Language::ENGLISH)->map->name.decode(Language::ENGLISH)},
+            {"VisibilityFlags", map->visibility_flags},
+            {"Languages", std::move(languages_json)},
+        });
+        ret->emplace(std::format("{:08X}", map_number), std::move(map_json));
+      }
+      return ret;
+    });
+  });
+
+  this->router.add(HTTPRequest::Method::GET, "/y/data/ep3/map/:map_number/:language", [this](ArgsT&& args) -> RetT {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> shared_ptr<phosg::JSON> {
+      try {
+        auto map = this->state->ep3_map_index->map_for_id(args.get_param<uint32_t>("map_number", true));
+        auto vm = map->version(language_for_name(args.params.at("language")));
+        return make_shared<phosg::JSON>(vm->map->json(vm->language));
+      } catch (const std::out_of_range&) {
+        throw HTTPError(404, "Map version does not exist");
+      }
+    });
+  });
+
+  this->router.add(HTTPRequest::Method::GET, "/y/data/ep3/map/:map_number/:language/raw", [this](ArgsT&& args) -> RetT {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> RawResponse {
+      try {
+        auto map = this->state->ep3_map_index->map_for_id(args.get_param<uint32_t>("map_number"));
+        auto vm = map->version(language_for_name(args.params.at("language")));
+        string data(reinterpret_cast<const char*>(vm->map.get()), sizeof(Episode3::MapDefinition));
+        return RawResponse{.content_type = "application/octet-stream", .data = std::move(data)};
+      } catch (const std::out_of_range&) {
+        throw HTTPError(404, "Map version does not exist");
+      }
+    });
+  });
 
   this->router.add(HTTPRequest::Method::GET, "/y/data/common-tables", [this](ArgsT&&) -> RetT {
     auto ret = make_shared<phosg::JSON>(phosg::JSON::list());
@@ -731,8 +776,8 @@ asio::awaitable<void> HTTPServer::send_rare_drop_notification(shared_ptr<const p
   if (!this->rare_drop_subscribers.empty()) {
     string data = message->serialize();
 
-    // Make a copy of the rare drop subscribers set, so we can guarantee that
-    // the client objects are all valid until this coroutine returns
+    // Make a copy of the rare drop subscribers set, so we can guarantee that the client objects are all valid until
+    // this coroutine returns
     unordered_set<shared_ptr<HTTPClient>> subscribers = this->rare_drop_subscribers;
 
     size_t expected_results = subscribers.size();

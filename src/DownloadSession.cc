@@ -544,8 +544,8 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
     }
 
     case 0x67: {
-      // Technically we should assign item IDs here, but the server will never
-      // be able to see that we didn't, so we don't bother
+      // Technically we should assign item IDs here, but the server will never be able to see that we didn't, so we
+      // don't bother
 
       const auto& game_config = this->game_configs[this->current_game_config_index];
       if (this->version == Version::PC_V2) {
@@ -688,9 +688,7 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
       }
       auto& f = this->open_files.at(cmd.filename.decode());
       size_t block_offset = msg.flag * 0x400;
-      size_t allowed_block_size = (block_offset < f.total_size)
-          ? min<size_t>(f.total_size - block_offset, 0x400)
-          : 0;
+      size_t allowed_block_size = (block_offset < f.total_size) ? min<size_t>(f.total_size - block_offset, 0x400) : 0;
       size_t data_size = min<size_t>(cmd.data_size, allowed_block_size);
       size_t block_end_offset = block_offset + data_size;
       if (block_end_offset > f.data.size()) {

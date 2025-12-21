@@ -25,7 +25,8 @@ public:
   explicit GameServer(std::shared_ptr<ServerState> state);
   virtual ~GameServer() = default;
 
-  void listen(const std::string& name, const std::string& addr, uint16_t port, Version version, ServerBehavior initial_state);
+  void listen(
+      const std::string& name, const std::string& addr, uint16_t port, Version version, ServerBehavior initial_state);
 
   std::shared_ptr<Client> connect_channel(std::shared_ptr<Channel> ch, uint16_t port, ServerBehavior initial_state);
 

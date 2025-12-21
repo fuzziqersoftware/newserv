@@ -21,8 +21,7 @@
 using namespace std;
 using namespace std::placeholders;
 
-GameServer::GameServer(shared_ptr<ServerState> state)
-    : Server(state->io_context, "[GameServer] "), state(state) {}
+GameServer::GameServer(shared_ptr<ServerState> state) : Server(state->io_context, "[GameServer] "), state(state) {}
 
 void GameServer::listen(
     const std::string& name,
@@ -75,8 +74,8 @@ vector<shared_ptr<Client>> GameServer::get_clients_by_identifier(const string& i
   } catch (const invalid_argument&) {
   }
 
-  // TODO: It's kind of not great that we do a linear search here, but this is
-  // only used in the shell, so it should be pretty rare.
+  // TODO: It's kind of not great that we do a linear search here, but this is only used in the shell, so it should be
+  // pretty rare.
   vector<shared_ptr<Client>> results;
   for (const auto& c : this->clients) {
     if (c->login && c->login->account->account_id == account_id_hex) {
@@ -115,7 +114,8 @@ vector<shared_ptr<Client>> GameServer::get_clients_by_identifier(const string& i
   return results;
 }
 
-shared_ptr<Client> GameServer::create_client(shared_ptr<GameServerSocket> listen_sock, asio::ip::tcp::socket&& client_sock) {
+shared_ptr<Client> GameServer::create_client(
+    shared_ptr<GameServerSocket> listen_sock, asio::ip::tcp::socket&& client_sock) {
   uint32_t addr = ipv4_addr_for_asio_addr(client_sock.remote_endpoint().address());
   if (this->state->banned_ipv4_ranges->check(addr)) {
     if (client_sock.is_open()) {
@@ -166,8 +166,7 @@ asio::awaitable<void> GameServer::handle_client(shared_ptr<Client> c) {
 asio::awaitable<void> GameServer::destroy_client(std::shared_ptr<Client> c) {
   this->log.info_f("Running cleanup tasks for {}", c->channel->name);
 
-  // The client may not actually be disconnected yet if an uncaught exception
-  // occurred in a handler task
+  // The client may not actually be disconnected yet if an uncaught exception occurred in a handler task
   c->channel->disconnect();
 
   // Close the proxy session, if any
@@ -184,9 +183,8 @@ asio::awaitable<void> GameServer::destroy_client(std::shared_ptr<Client> c) {
     this->log.warning_f("Error during client disconnect cleanup: {}", e.what());
   }
 
-  // Note: It's important to move the disconnect hooks out of the client here
-  // because the hooks could modify c->disconnect_hooks while it's being
-  // iterated here, which would invalidate these iterators.
+  // Note: It's important to move the disconnect hooks out of the client here because the hooks could modify
+  // c->disconnect_hooks while it's being iterated here, which would invalidate these iterators.
   unordered_map<string, function<void()>> hooks = std::move(c->disconnect_hooks);
   for (auto h_it : hooks) {
     try {

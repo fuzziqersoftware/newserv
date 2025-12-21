@@ -78,9 +78,8 @@ static string escape_hdlc_frame(const string& data, uint32_t escape_control_char
   return escape_hdlc_frame(data.data(), data.size(), escape_control_character_flags);
 }
 
-// Note: these functions exist because seq nums are allowed to wrap around the
-// 32-bit integer space by design. We have to do the subtraction before the
-// comparison to allow integer overflow to occur if needed.
+// Note: these functions exist because seq nums are allowed to wrap around the 32-bit integer space by design. We have
+// to do the subtraction before the comparison to allow integer overflow to occur if needed.
 
 static inline bool seq_num_less(uint32_t a, uint32_t b) {
   return (a - b) & 0x80000000;
@@ -200,9 +199,8 @@ void IPSSChannel::disconnect() {
 }
 
 void IPSSChannel::add_inbound_data(const void* data, size_t size) {
-  // If recv_buf is not null, there is a coroutine waiting to receive data, and
-  // inbound_data must be empty. Copy the data directly to the waiting
-  // coroutine's buffer, and put the rest in this->inbound_data if needed.
+  // If recv_buf is not null, there is a coroutine waiting to receive data, and inbound_data must be empty. Copy the
+  // data directly to the waiting coroutine's buffer, and put the rest in this->inbound_data if needed.
   if (this->recv_buf) {
     size_t direct_size = min<size_t>(this->recv_buf_size, size);
     memcpy(this->recv_buf, data, direct_size);
@@ -212,8 +210,7 @@ void IPSSChannel::add_inbound_data(const void* data, size_t size) {
     this->recv_buf = this->recv_buf_size ? (reinterpret_cast<uint8_t*>(this->recv_buf) + direct_size) : nullptr;
   }
 
-  // If there is still data left after the above, add it to the pending inbound
-  // data buffer
+  // If there is still data left after the above, add it to the pending inbound data buffer
   if (size > 0) {
     this->inbound_data.emplace_back(reinterpret_cast<const char*>(data), size);
   }
@@ -239,10 +236,9 @@ void IPSSChannel::send_raw(string&& data) {
   conn->outbound_data_bytes += data.size();
   conn->outbound_data.emplace_back(std::move(data));
 
-  // If we're already waiting for an ACK from the remote client, don't send
-  // another PSH right now - we will either send another PSH when we receive
-  // the ACK or will retry sending the PSH soon (which will then include the
-  // new data, if it's within the MTU from the last acked sequence number).
+  // If we're already waiting for an ACK from the remote client, don't send another PSH right now - we will either send
+  // another PSH when we receive the ACK or will retry sending the PSH soon (which will then include the new data, if
+  // it's within the MTU from the last acked sequence number).
   if (!conn->awaiting_ack) {
     sim->schedule_send_pending_push_frame(conn, 0);
   }
@@ -270,8 +266,7 @@ asio::awaitable<void> IPSSChannel::recv_raw(void* data, size_t size) {
     }
   }
 
-  // If there's still more data to read, block until it's available
-  // (add_inbound_data is responsible for waking this coroutine)
+  // If there's still more data to read, block until it's available (add_inbound_data will wake this coroutine)
   if (size > 0) {
     this->recv_buf = data;
     this->recv_buf_size = size;
@@ -304,9 +299,8 @@ void IPStackSimulator::listen(const std::string& name, const string& addr, int p
 }
 
 uint32_t IPStackSimulator::connect_address_for_remote_address(uint32_t remote_addr) {
-  // Use an address not on the same subnet as the client, so that PSO Plus and
-  // Episode III will think they're talking to a remote network and won't
-  // reject the connection.
+  // Use an address not on the same subnet as the client, so that PSO Plus and Episode III will think they're talking
+  // to a remote network and won't reject the connection.
   return ((remote_addr & 0xFF000000) == 0x23000000) ? 0x24242424 : 0x23232323;
 }
 
@@ -555,10 +549,9 @@ asio::awaitable<void> IPStackSimulator::on_client_lcp_frame(shared_ptr<IPSSClien
             throw runtime_error("unknown LCP option");
         }
       }
-      // Technically, we should implement the LCP state machine, but I'm too
-      // lazy to do this right now. In our situation, it should suffice to
-      // simply always send a Configure-Request to the client with a magic
-      // number not equal to the one we received.
+      // Technically, we should implement the LCP state machine, but I'm too lazy to do this right now. In our
+      // situation, it should suffice to simply always send a Configure-Request to the client with a magic number not
+      // equal to the one we received.
       phosg::StringWriter opts_w;
       opts_w.put_u8(0x01); // Maximum receive unit
       opts_w.put_u8(0x04);
@@ -700,8 +693,7 @@ asio::awaitable<void> IPStackSimulator::on_client_ipcp_frame(shared_ptr<IPSSClie
       } else if ((remote_ip != 0x1E1E1E1E) ||
           (remote_primary_dns != 0x23232323) ||
           (remote_secondary_dns != 0x24242424)) {
-        // Send a Configure-Nak if the client's request doesn't exactly match
-        // what we want them to use.
+        // Send a Configure-Nak if the client's request doesn't exactly match what we want them to use.
         phosg::StringWriter opts_w;
         opts_w.put_u8(0x03); // IP address
         opts_w.put_u8(0x06);
@@ -725,8 +717,7 @@ asio::awaitable<void> IPStackSimulator::on_client_ipcp_frame(shared_ptr<IPSSClie
       } else { // Options OK
         c->ipv4_addr = remote_ip;
 
-        // As with LCP, we technically should implement the state machine, but I
-        // continue to be lazy.
+        // As with LCP, we technically should implement the state machine, but I continue to be lazy.
         phosg::StringWriter opts_w;
         opts_w.put_u8(0x03); // IP address
         opts_w.put_u8(0x06);
@@ -806,15 +797,15 @@ asio::awaitable<void> IPStackSimulator::on_client_arp_frame(shared_ptr<IPSSClien
   });
 
   // The incoming payload is:
-  // uint8_t src_mac[6]; // MAC address of client
-  // uint8_t src_ip[4]; // IP address of client
-  // uint8_t dest_mac[6]; // MAC address of host (all zeroes)
-  // uint8_t dest_ip[4]; // IP address of host
+  //   uint8_t src_mac[6]; // MAC address of client
+  //   uint8_t src_ip[4]; // IP address of client
+  //   uint8_t dest_mac[6]; // MAC address of host (all zeroes)
+  //   uint8_t dest_ip[4]; // IP address of host
   // The outgoing payload is:
-  // uint8_t dest_mac[6]; // MAC address of host (from configuration)
-  // uint8_t dest_ip[4]; // IP address of host
-  // uint8_t src_mac[6]; // MAC address of client
-  // uint8_t src_ip[4]; // IP address of client
+  //   uint8_t dest_mac[6]; // MAC address of host (from configuration)
+  //   uint8_t dest_ip[4]; // IP address of host
+  //   uint8_t src_mac[6]; // MAC address of client
+  //   uint8_t src_ip[4]; // IP address of client
   const char* payload_bytes = reinterpret_cast<const char*>(fi.payload);
   w.write(this->host_mac_address_bytes.data(), 6);
   w.write(payload_bytes + 16, 4);
@@ -826,9 +817,7 @@ asio::awaitable<void> IPStackSimulator::on_client_arp_frame(shared_ptr<IPSSClien
 asio::awaitable<void> IPStackSimulator::on_client_udp_frame(shared_ptr<IPSSClient> c, const FrameInfo& fi) {
   // We only implement DHCP and newserv's DNS server here.
 
-  // Every received UDP packet will elicit exactly one UDP response from
-  // newserv, so we prepare the response headers in advance
-
+  // Every received UDP packet will elicit exactly one UDP response from newserv, so we prepare the headers in advance
   IPv4Header r_ipv4;
   r_ipv4.version_ihl = 0x45;
   r_ipv4.tos = 0;
@@ -888,8 +877,8 @@ asio::awaitable<void> IPStackSimulator::on_client_udp_frame(shared_ptr<IPSSClien
       // Populate the client's addresses
       c->mac_addr = dhcp.client_hardware_address.data();
       c->ipv4_addr = 0x0A000105; // 10.0.1.5
-      // In this case, the client doesn't know its IPv4 address or ours yet,
-      // so we overwrite the existing fields with the appropriate addresses.
+      // In this case, the client doesn't know its IPv4 address or ours yet, so we overwrite the existing fields with
+      // the appropriate addresses.
       r_ipv4.src_addr = 0x0A000101; // 10.0.1.1
       r_ipv4.dest_addr = c->ipv4_addr;
 
@@ -1005,8 +994,8 @@ asio::awaitable<void> IPStackSimulator::on_client_tcp_frame(shared_ptr<IPSSClien
   }
 
   if (fi.tcp->flags & TCPHeader::Flag::SYN) {
-    // We never make connections back to the client, so we should never receive
-    // a SYN+ACK. Essentially, no other flags should be set in any received SYN.
+    // We never make connections back to the client, so we should never receive a SYN+ACK. Essentially, no other flags
+    // should be set in any received SYN.
     if ((fi.tcp->flags & 0x0FFF) != TCPHeader::Flag::SYN) {
       throw runtime_error("TCP SYN contains extra flags");
     }
@@ -1081,8 +1070,7 @@ asio::awaitable<void> IPStackSimulator::on_client_tcp_frame(shared_ptr<IPSSClien
       if (!conn->awaiting_first_ack) {
         throw logic_error("SYN received on already-open connection after initial phase");
       }
-      // TODO: We should check the syn/ack numbers here instead of just assuming
-      // they're correct
+      // TODO: We should check the syn/ack numbers here instead of just assuming they're correct
       conn_str = this->str_for_tcp_connection(c, conn);
       this->log.debug_f("Client resent SYN for TCP connection {}", conn_str);
     }
@@ -1093,8 +1081,7 @@ asio::awaitable<void> IPStackSimulator::on_client_tcp_frame(shared_ptr<IPSSClien
         conn_str, conn->acked_server_seq, conn->next_client_seq);
 
   } else {
-    // This frame isn't a SYN, so a connection object should already exist;
-    // ignore the frame if there's no connection
+    // This frame isn't a SYN, so a connection object should already exist; ignore the frame if there's no connection
     uint64_t key = this->tcp_conn_key_for_client_frame(fi);
     auto conn_it = c->tcp_connections.find(key);
     if (conn_it == c->tcp_connections.end()) {
@@ -1158,24 +1145,20 @@ asio::awaitable<void> IPStackSimulator::on_client_tcp_frame(shared_ptr<IPSSClien
         conn->server_channel.reset();
       }
 
-      // TODO: Are we supposed to send a response to an RST? Here we do, and the
-      // client probably just ignores it anyway
+      // TODO: Are we supposed to send a response to an RST? Here we do, and the client probably just ignores it anyway
       co_await this->send_tcp_frame(c, conn, fi.tcp->flags & (TCPHeader::Flag::RST | TCPHeader::Flag::FIN));
 
-      // Delete the connection object. The unique_ptr destructor flushes the
-      // bufferevent, and thereby sends an EOF to the server's end.
+      // Delete the connection object. The unique_ptr destructor flushes the bufferevent, and thereby sends an EOF to
+      // the server's end.
       c->tcp_connections.erase(key);
       conn_valid = false;
 
     } else if (fi.payload_size != 0) {
-      // Note: The PSH flag isn't required to be set on all packets that
-      // contain data. The PSH flag just means "tell the application that data
-      // is available", so some senders only set the PSH flag on the last frame
-      // of a large segment of data, since the application wouldn't be able to
-      // process the segment until all of it is available. newserv can handle
-      // incomplete commands, so we just ignore the PSH flag and forward any
-      // data to the server immediately (hence the lack of a flag check in the
-      // above condition).
+      // Note: The PSH flag isn't required to be set on all packets that contain data. The PSH flag just means "tell
+      // the application that data is available", so some senders only set the PSH flag on the last frame of a large
+      // segment of data, since the application wouldn't be able to process the segment until all of it is available.
+      // newserv can handle incomplete commands, so we just ignore the PSH flag and forward any data to the server
+      // immediately (hence the lack of a flag check in the above condition).
 
       string conn_str = this->log.should_log(phosg::LogLevel::L_WARNING)
           ? this->str_for_tcp_connection(c, conn)
@@ -1186,8 +1169,8 @@ asio::awaitable<void> IPStackSimulator::on_client_tcp_frame(shared_ptr<IPSSClien
         payload_skip_bytes = 0;
 
       } else if (seq_num_less(fi.tcp->seq_num, conn->next_client_seq)) {
-        // If the frame overlaps an existing boundary, we'll accept some of the
-        // data; otherwise we'll ignore it entirely (but still send an ACK)
+        // If the frame overlaps an existing boundary, we'll accept some of the data; otherwise we'll ignore it
+        // entirely (but still send an ACK)
         uint32_t end_seq = fi.tcp->seq_num + fi.payload_size;
         if (seq_num_less_or_equal(end_seq, conn->next_client_seq)) { // Fully "in the past"
           payload_skip_bytes = fi.payload_size;
@@ -1196,9 +1179,8 @@ asio::awaitable<void> IPStackSimulator::on_client_tcp_frame(shared_ptr<IPSSClien
         }
 
       } else {
-        // Payload is in the future - we must have missed a data frame. We'll
-        // ignore it (but warn) and send an ACK later, and the client should
-        // retransmit the lost data
+        // Payload is in the future - we must have missed a data frame. We'll ignore it (but warn) and send an ACK
+        // later, and the client should retransmit the lost data
         this->log.warning_f(
             "Client sent out-of-order sequence number (expected {:08X}, received {:08X}, 0x{:X} data bytes)",
             conn->next_client_seq, fi.tcp->seq_num, fi.payload_size);
@@ -1288,10 +1270,8 @@ asio::awaitable<void> IPStackSimulator::send_pending_push_frame(
 
   size_t bytes_to_send = min<size_t>(conn->outbound_data_bytes, conn->next_push_max_frame_size);
   if (c->protocol == VirtualNetworkProtocol::HDLC_TAPSERVER) {
-    // There is a bug in Dolphin's modem implementation (which I wrote, so it's
-    // my fault) that causes commands to be dropped when too much data is sent
-    // at once. To work around this, we only send up to 200 bytes in each push
-    // frame.
+    // There is a bug in Dolphin's modem implementation (which I wrote, so it's my fault) that causes commands to be
+    // dropped when too much data is sent. To work around this, we only send up to 200 bytes in each push frame.
     bytes_to_send = min<size_t>(bytes_to_send, 200);
   }
 
@@ -1300,23 +1280,20 @@ asio::awaitable<void> IPStackSimulator::send_pending_push_frame(
 
   conn->linearize_outbound_data(bytes_to_send);
   if (conn->outbound_data.empty() || conn->outbound_data.front().size() < bytes_to_send) {
-    // This should never happen because bytes_to_send should always be less
-    // than or equal to conn->outbound_data_bytes, which itself should be equal
-    // to the number of bytes that can be linearized
+    // This should never happen because bytes_to_send should always be less than or equal to conn->outbound_data_bytes,
+    // which itself should be equal to the number of bytes that can be linearized
     throw logic_error("failed to linearize enough bytes before sending TCP PSH");
   }
   co_await this->send_tcp_frame(c, conn, TCPHeader::Flag::PSH, conn->outbound_data.front().data(), bytes_to_send);
   conn->awaiting_ack = true;
 
-  // Schedule the timer for sending another PSH, in case the client doesn't
-  // respond quickly enough
+  // Schedule the timer for sending another PSH, in case the client doesn't respond quickly enough
   this->schedule_send_pending_push_frame(conn, conn->resend_push_usecs);
 
-  // If the client isn't responding to our PSHes, back off exponentially up to
-  // a limit of 5 seconds between PSH frames. This window is reset when
-  // acked_server_seq changes (that is, when the client has acknowledged any new
-  // data). It seems some situations cause GameCube clients to drop packets more
-  // often; to alleviate this, we also try to resend less data.
+  // If the client isn't responding to our PSHes, back off exponentially up to a limit of 5 seconds between PSH frames.
+  // This window is reset when acked_server_seq changes (that is, when the client has acknowledged any new data). It
+  // seems some situations cause GameCube clients to drop packets more often; to alleviate this, we also try to resend
+  // less data.
   conn->resend_push_usecs *= 2;
   if (conn->resend_push_usecs > 5000000) {
     conn->resend_push_usecs = 5000000;
@@ -1401,9 +1378,8 @@ asio::awaitable<void> IPStackSimulator::open_server_connection(
 
 asio::awaitable<void> IPStackSimulator::close_tcp_connection(
     shared_ptr<IPSSClient> c, shared_ptr<IPSSClient::TCPConnection> conn) {
-  // Send an RST to the client. This is kind of rude (we really should use FIN)
-  // but the PSO network stack always sends an RST to us when disconnecting, so
-  // whatever
+  // Send an RST to the client. This is kind of rude (we really should use FIN) but the PSO network stack always sends
+  // an RST to us when disconnecting, so whatever
   co_await this->send_tcp_frame(c, conn, TCPHeader::Flag::RST);
 
   // Delete the connection object

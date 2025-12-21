@@ -1814,7 +1814,7 @@ phosg::JSON MapDefinition::AIParams::json(Language language) const {
   return phosg::JSON::dict({
       {"IsArkz", this->is_arkz ? true : false},
       {"Name", this->ai_name.decode(language)},
-      {"CardIDs", std::move(params_json)},
+      {"Params", std::move(params_json)},
   });
 }
 
@@ -1826,7 +1826,7 @@ phosg::JSON MapDefinition::DialogueSet::json(Language language) const {
   return phosg::JSON::dict({
       {"When", this->when.load()},
       {"PercentChance", this->percent_chance.load()},
-      {"CardIDs", std::move(strings_json)},
+      {"Strings", std::move(strings_json)},
   });
 }
 
@@ -1871,9 +1871,6 @@ phosg::JSON MapDefinition::EntryState::json() const {
   return phosg::JSON::dict({{"PlayerType", std::move(player_type_json)}, {"DeckType", std::move(deck_type_json)}});
 }
 
-// TODO:
-// phosg::JSON MapDefinition::json() const { ... }
-
 string MapDefinition::CameraSpec::str() const {
   return std::format(
       "CameraSpec[a1=({:g} {:g} {:g} {:g} {:g} {:g} {:g} {:g} {:g}) camera=({:g} {:g} {:g}) focus=({:g} {:g} {:g}) a2=({:g} {:g} {:g})]",
@@ -1882,6 +1879,57 @@ string MapDefinition::CameraSpec::str() const {
       this->camera_x, this->camera_y, this->camera_z, this->focus_x, this->focus_y, this->focus_z,
       this->unknown_a2[0], this->unknown_a2[1], this->unknown_a2[2]);
 }
+
+struct UnavailableSCCardDefinition {
+  size_t index;
+  uint16_t card_id;
+  const char* internal_name;
+};
+
+static const array<UnavailableSCCardDefinition, 0x2A> unavailable_sc_card_defs = {
+    UnavailableSCCardDefinition{0x00, 0x0005, "Guykild"},
+    UnavailableSCCardDefinition{0x01, 0x0006, "Kylria"},
+    UnavailableSCCardDefinition{0x02, 0x0110, "Saligun"},
+    UnavailableSCCardDefinition{0x03, 0x0111, "Relmitos"},
+    UnavailableSCCardDefinition{0x04, 0x0002, "Kranz"},
+    UnavailableSCCardDefinition{0x05, 0x0004, "Sil'fer"},
+    UnavailableSCCardDefinition{0x06, 0x0003, "Ino'lis"},
+    UnavailableSCCardDefinition{0x07, 0x0112, "Viviana"},
+    UnavailableSCCardDefinition{0x08, 0x0113, "Teifu"},
+    UnavailableSCCardDefinition{0x09, 0x0001, "Orland"},
+    UnavailableSCCardDefinition{0x0A, 0x0114, "Stella"},
+    UnavailableSCCardDefinition{0x0B, 0x0115, "Glustar"},
+    UnavailableSCCardDefinition{0x0C, 0x0117, "Hyze"},
+    UnavailableSCCardDefinition{0x0D, 0x0118, "Rufina"},
+    UnavailableSCCardDefinition{0x0E, 0x0119, "Peko"},
+    UnavailableSCCardDefinition{0x0F, 0x011A, "Creinu"},
+    UnavailableSCCardDefinition{0x10, 0x011B, "Reiz"},
+    UnavailableSCCardDefinition{0x11, 0x0007, "Lura"},
+    UnavailableSCCardDefinition{0x12, 0x0008, "Break"},
+    UnavailableSCCardDefinition{0x13, 0x011C, "Rio"},
+    UnavailableSCCardDefinition{0x14, 0x0116, "Endu"},
+    UnavailableSCCardDefinition{0x15, 0x011D, "Memoru"},
+    UnavailableSCCardDefinition{0x16, 0x011E, "K.C."},
+    UnavailableSCCardDefinition{0x17, 0x011F, "Ohgun"},
+    UnavailableSCCardDefinition{0x18, 0x02AA, "HERO_1"},
+    UnavailableSCCardDefinition{0x19, 0x02AB, "HERO_2"},
+    UnavailableSCCardDefinition{0x1A, 0x02AC, "HERO_3"},
+    UnavailableSCCardDefinition{0x1B, 0x02AD, "HERO_4"},
+    UnavailableSCCardDefinition{0x1C, 0x02AE, "HERO_5"},
+    UnavailableSCCardDefinition{0x1D, 0x02AF, "HERO_6"},
+    UnavailableSCCardDefinition{0x1E, 0x02B0, "DARK_1"},
+    UnavailableSCCardDefinition{0x1F, 0x02B1, "DARK_2"},
+    UnavailableSCCardDefinition{0x20, 0x02B2, "DARK_3"},
+    UnavailableSCCardDefinition{0x21, 0x02B3, "DARK_4"},
+    UnavailableSCCardDefinition{0x22, 0x02B4, "DARK_5"},
+    UnavailableSCCardDefinition{0x23, 0x02B5, "DARK_6"},
+    UnavailableSCCardDefinition{0x24, 0x029B, "LEUKON"},
+    UnavailableSCCardDefinition{0x25, 0x029C, "CASTOR"},
+    UnavailableSCCardDefinition{0x26, 0x029D, "POLLUX"},
+    UnavailableSCCardDefinition{0x27, 0x029E, "AMPLUM"},
+    UnavailableSCCardDefinition{0x28, 0x02BE, "CASTOR_USR"},
+    UnavailableSCCardDefinition{0x29, 0x02BF, "POLLUX_USR"},
+};
 
 string MapDefinition::str(const CardIndex* card_index, Language language) const {
   deque<string> lines;
@@ -2043,32 +2091,6 @@ string MapDefinition::str(const CardIndex* card_index, Language language) const 
   lines.emplace_back(std::format("  map_category: {:02X}", this->map_category));
   lines.emplace_back(std::format("  cyber_block_type: {:02X}", this->cyber_block_type));
   lines.emplace_back(std::format("  a11: {:04X}", this->unknown_a11));
-  static const array<const char*, 0x18> sc_card_entry_names = {
-      "00 (Guykild; 0005)",
-      "01 (Kylria; 0006)",
-      "02 (Saligun; 0110)",
-      "03 (Relmitos; 0111)",
-      "04 (Kranz; 0002)",
-      "05 (Sil'fer; 0004)",
-      "06 (Ino'lis; 0003)",
-      "07 (Viviana; 0112)",
-      "08 (Teifu; 0113)",
-      "09 (Orland; 0001)",
-      "0A (Stella; 0114)",
-      "0B (Glustar; 0115)",
-      "0C (Hyze; 0117)",
-      "0D (Rufina; 0118)",
-      "0E (Peko; 0119)",
-      "0F (Creinu; 011A)",
-      "10 (Reiz; 011B)",
-      "11 (Lura; 0007)",
-      "12 (Break; 0008)",
-      "13 (Rio; 011C)",
-      "14 (Endu; 0116)",
-      "15 (Memoru; 011D)",
-      "16 (K.C.; 011E)",
-      "17 (Ohgun; 011F)",
-  };
   string unavailable_sc_cards = "  unavailable_sc_cards: [";
   for (size_t z = 0; z < 0x18; z++) {
     if (this->unavailable_sc_cards[z] == 0xFFFF) {
@@ -2077,10 +2099,11 @@ string MapDefinition::str(const CardIndex* card_index, Language language) const 
     if (unavailable_sc_cards.size() > 25) {
       unavailable_sc_cards += ", ";
     }
-    if (this->unavailable_sc_cards[z] >= sc_card_entry_names.size()) {
+    if (this->unavailable_sc_cards[z] >= unavailable_sc_card_defs.size()) {
       unavailable_sc_cards += std::format("{:04X} (invalid)", this->unavailable_sc_cards[z]);
     } else {
-      unavailable_sc_cards += sc_card_entry_names[this->unavailable_sc_cards[z]];
+      const auto& def = unavailable_sc_card_defs[this->unavailable_sc_cards[z]];
+      unavailable_sc_cards += std::format("{:04X} ({}; {:04X})", def.index, def.internal_name, def.card_id);
     }
   }
   unavailable_sc_cards += ']';
@@ -2128,6 +2151,134 @@ string MapDefinition::str(const CardIndex* card_index, Language language) const 
     lines.emplace_back(std::format("  entry_states[{}]: {} / {}", z, player_type, deck_type));
   }
   return phosg::join(lines, "\n");
+}
+
+phosg::JSON MapDefinition::json(Language language) const {
+  phosg::JSON camera_zones_json = phosg::JSON::list();
+  for (size_t team_id = 0; team_id < 2; team_id++) {
+    phosg::JSON team_camera_zones_json = phosg::JSON::list();
+    for (size_t camera_zone_id = 0; camera_zone_id < std::min<size_t>(this->num_camera_zones, 10); camera_zone_id++) {
+      team_camera_zones_json.emplace_back(phosg::JSON::dict({
+          {"Map", this->camera_zone_maps[team_id][camera_zone_id].json()},
+          {"Spec", this->camera_zone_specs[team_id][camera_zone_id].json()},
+      }));
+    }
+    camera_zones_json.emplace_back(std::move(team_camera_zones_json));
+  }
+  phosg::JSON overview_specs_json = phosg::JSON::list();
+  for (size_t team_id = 0; team_id < 2; team_id++) {
+    phosg::JSON team_overview_specs_json = phosg::JSON::list();
+    for (size_t spec_id = 0; spec_id < 3; spec_id++) {
+      team_overview_specs_json.emplace_back(this->overview_specs[spec_id][team_id].json());
+    }
+    overview_specs_json.emplace_back(std::move(team_overview_specs_json));
+  }
+
+  auto overlay_state_json = phosg::JSON::dict({
+      {"Tiles", this->overlay_state.tiles.json()},
+      {"NTETrapTileColors", this->overlay_state.trap_tile_colors_nte.json()},
+      {"NTETrapCardIDs", this->overlay_state.trap_card_ids_nte.json()},
+  });
+
+  // Note: All typos/errors here are from AIPrm.dat
+  static const array<string, 30> default_ai_names = {
+      "Sample_Hunter", "Glustar", "Guykild", "Inolis", "Kilia", "Kranz", "Orland", "Relmitos", "Saligun", "Silfer",
+      "Sample_Hunter", "Teifu", "Viviana", "Sample_Dark", "Break", "Creinu", "Endu", "Heiz", "KC", "Lura",
+      "memoru", "Ohgun", "Peko", "Reiz", "Rio", "Rufina", "LKnight", "Boss_Castor", "Boss_Pollux", "Sample_Dark"};
+
+  auto npcs_json = phosg::JSON::list();
+  for (size_t npc_index = 0; npc_index < 3; npc_index++) {
+    auto npc = phosg::JSON::dict();
+
+    const auto& deck = this->npc_decks[npc_index];
+    if (deck.deck_name.at(0)) {
+      npc.emplace("Deck", deck.json(language));
+    } else {
+      npc.emplace("Deck", nullptr);
+    }
+
+    int32_t entry_index = this->npc_ai_params_entry_index[npc_index];
+    if (entry_index < 0) {
+      const auto& ai_params = this->npc_ai_params[npc_index];
+      if (ai_params.ai_name.at(0)) {
+        npc.emplace("AIParams", ai_params.json(language));
+      } else {
+        npc.emplace("AIParams", nullptr);
+      }
+    } else if (static_cast<uint32_t>(entry_index) < default_ai_names.size()) {
+      npc.emplace("AIParams", default_ai_names[entry_index]);
+    } else {
+      npc.emplace("AIParams", entry_index);
+    }
+
+    auto dialogue_set_json = phosg::JSON::list();
+    for (size_t ds_index = 0; ds_index < this->dialogue_sets[npc_index].size(); ds_index++) {
+      const auto& ds = this->dialogue_sets[npc_index][ds_index];
+      if (ds.when >= 0) {
+        dialogue_set_json.emplace_back(ds.json(language));
+      }
+    }
+    npc.emplace("DialogueSet", std::move(dialogue_set_json));
+  }
+
+  auto unavailable_sc_cards_json = phosg::JSON::list();
+  for (size_t z = 0; z < this->unavailable_sc_cards.size(); z++) {
+    uint16_t index = this->unavailable_sc_cards[z];
+    if (index < unavailable_sc_card_defs.size()) {
+      const auto& def = unavailable_sc_card_defs[index];
+      unavailable_sc_cards_json.emplace_back(phosg::JSON::dict({
+          {"Index", def.index},
+          {"Name", def.internal_name},
+          {"CardID", def.card_id},
+      }));
+    } else if (index != 0xFFFF) {
+      unavailable_sc_cards_json.emplace_back(index);
+    }
+  }
+
+  auto reward_card_ids_json = phosg::JSON::list();
+  for (size_t z = 0; z < this->reward_card_ids.size(); z++) {
+    if (this->reward_card_ids[z] != 0xFFFF) {
+      reward_card_ids_json.emplace_back(this->reward_card_ids[z].load());
+    }
+  }
+
+  auto entry_states_json = phosg::JSON::list();
+  for (size_t z = 0; z < this->entry_states.size(); z++) {
+    entry_states_json.emplace_back(this->entry_states[z].json());
+  }
+
+  return phosg::JSON::dict({
+      {"Tag", this->tag.load()},
+      {"MapNumber", this->map_number.load()},
+      {"Width", this->width},
+      {"Height", this->height},
+      {"EnvironmentNumber", this->environment_number},
+      {"EnvironmentName", name_for_environment_number(this->environment_number)},
+      {"MapTiles", this->map_tiles.json()},
+      {"StartTileDefinitions", this->start_tile_definitions.json()},
+      {"CameraZones", std::move(camera_zones_json)},
+      {"OverviewSpecs", std::move(overview_specs_json)},
+      {"OverlayState", std::move(overlay_state_json)},
+      {"Rules", this->default_rules.json()},
+      {"Name", this->name.decode(language)},
+      {"LocationName", this->location_name.decode(language)},
+      {"QuestName", this->quest_name.decode(language)},
+      {"Description", this->description.decode(language)},
+      {"WorldMapCoords", phosg::JSON::list({this->map_x.load(), this->map_y.load()})},
+      {"NPCs", std::move(npcs_json)},
+      {"BeforeMessage", this->before_message.decode(language)},
+      {"AfterMessage", this->after_message.decode(language)},
+      {"DispatchMessage", this->dispatch_message.decode(language)},
+      {"UnavailableSCCards", std::move(unavailable_sc_cards_json)},
+      {"RewardCardIDs", std::move(reward_card_ids_json)},
+      {"WinLevelOverride", this->win_level_override.load()},
+      {"LossLevelOverride", this->loss_level_override.load()},
+      {"FieldOffset", phosg::JSON::list({this->field_offset_x.load(), this->field_offset_y.load()})},
+      {"MapCategory", this->map_category},
+      {"CyberBlockType", this->cyber_block_type},
+      {"EntryStates", std::move(entry_states_json)},
+  });
 }
 
 MapDefinitionTrial::MapDefinitionTrial(const MapDefinition& map)

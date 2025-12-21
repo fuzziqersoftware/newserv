@@ -32,6 +32,7 @@ protected:
   void require_GET(const HTTPRequest& req);
   phosg::JSON require_POST(const HTTPRequest& req);
 
-  virtual asio::awaitable<std::unique_ptr<HTTPResponse>> handle_request(std::shared_ptr<HTTPClient> c, HTTPRequest&& req);
+  virtual asio::awaitable<std::unique_ptr<HTTPResponse>> handle_request(
+      std::shared_ptr<HTTPClient> c, HTTPRequest&& req);
   virtual asio::awaitable<void> destroy_client(std::shared_ptr<HTTPClient> c);
 };

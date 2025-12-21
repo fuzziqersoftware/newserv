@@ -105,7 +105,7 @@ string CompiledFunctionCode::generate_client_command(
 }
 
 bool CompiledFunctionCode::is_big_endian() const {
-  return this->arch == Architecture::POWERPC;
+  return (this->arch == Architecture::POWERPC);
 }
 
 static unordered_map<uint32_t, std::string> preprocess_function_code(const std::string& text) {
@@ -483,8 +483,7 @@ bool FunctionCodeIndex::patch_menu_empty(uint32_t specific_version) const {
 
 std::shared_ptr<const CompiledFunctionCode> FunctionCodeIndex::get_patch(
     const std::string& name, uint32_t specific_version) const {
-  return this->name_and_specific_version_to_patch_function.at(
-      std::format("{}-{:08X}", name, specific_version));
+  return this->name_and_specific_version_to_patch_function.at(std::format("{}-{:08X}", name, specific_version));
 }
 
 DOLFileIndex::DOLFileIndex(const string& directory) {

@@ -164,8 +164,7 @@ string IntegralExpression::UnaryOperatorNode::str() const {
   }
 }
 
-IntegralExpression::FlagLookupNode::FlagLookupNode(uint16_t flag_index)
-    : flag_index(flag_index) {}
+IntegralExpression::FlagLookupNode::FlagLookupNode(uint16_t flag_index) : flag_index(flag_index) {}
 
 bool IntegralExpression::FlagLookupNode::operator==(const Node& other) const {
   try {
@@ -187,10 +186,8 @@ string IntegralExpression::FlagLookupNode::str() const {
   return std::format("F_{:04X}", this->flag_index);
 }
 
-IntegralExpression::ChallengeCompletionLookupNode::ChallengeCompletionLookupNode(
-    Episode episode, uint8_t stage_index)
-    : episode(episode),
-      stage_index(stage_index) {}
+IntegralExpression::ChallengeCompletionLookupNode::ChallengeCompletionLookupNode(Episode episode, uint8_t stage_index)
+    : episode(episode), stage_index(stage_index) {}
 
 bool IntegralExpression::ChallengeCompletionLookupNode::operator==(const Node& other) const {
   try {
@@ -217,8 +214,7 @@ string IntegralExpression::ChallengeCompletionLookupNode::str() const {
   return std::format("CC_{}_{}", abbreviation_for_episode(this->episode), static_cast<uint8_t>(this->stage_index + 1));
 }
 
-IntegralExpression::TeamRewardLookupNode::TeamRewardLookupNode(const string& reward_name)
-    : reward_name(reward_name) {}
+IntegralExpression::TeamRewardLookupNode::TeamRewardLookupNode(const string& reward_name) : reward_name(reward_name) {}
 
 bool IntegralExpression::TeamRewardLookupNode::operator==(const Node& other) const {
   try {
@@ -310,9 +306,8 @@ unique_ptr<const IntegralExpression::Node> IntegralExpression::parse_expr(string
       text = text.substr(0, text.size() - 1);
     }
     if (text.at(0) == '(' && text.at(text.size() - 1) == ')') {
-      // It doesn't suffice to just check the first ant last characters, since
-      // text could be like "(a) && (b)". Instead, we ignore the first and last
-      // characters, and don't strip anything if the internal parentheses are
+      // It doesn't suffice to just check the first and last characters, since text could be like "(a) && (b)".
+      // Instead, we ignore the first and last characters, and don't strip anything if the internal parentheses are
       // unbalanced.
       size_t paren_level = 1;
       for (size_t z = 1; z < text.size() - 1; z++) {
@@ -363,10 +358,8 @@ unique_ptr<const IntegralExpression::Node> IntegralExpression::parse_expr(string
       }
       if (!paren_level) {
         for (const auto& oper : operators) {
-          // Awful hack (because I'm too lazy to add a tokenization step): if
-          // the operator is followed or preceded by another copy of itself,
-          // don't match it (this prevents us from matching & when the token is
-          // actually &&)
+          // Awful hack (because I'm too lazy to add a tokenization step): if the operator is followed or preceded by
+          // another copy of itself, don't match it (this prevents us from matching & when the token is actually &&)
           if ((text.size() > z + oper.first.size()) &&
               ((z < oper.first.size()) || (text.compare(z - oper.first.size(), oper.first.size(), oper.first) != 0)) &&
               (text.compare(z, oper.first.size(), oper.first) == 0) &&

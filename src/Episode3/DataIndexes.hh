@@ -1257,7 +1257,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     /* 58 */
     phosg::JSON json(Language language) const;
   } __packed_ws__(NPCDeck, 0x58);
-  /* 1FE8 */ parray<NPCDeck, 3> npc_decks; // Unused if name[0] == 0
+  /* 1FE8 */ parray<NPCDeck, 3> npc_decks; // Unused if deck_name[0] == 0
 
   // These are not quite the same format as the entries in aiprm.dat. These entries are only used if the corresponding
   // NPC exists (if .name[0] is not 0) and if the corresponding entry in the npc_ai_params_entry_index is -1.
@@ -1271,7 +1271,7 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
     /* 0114 */
     phosg::JSON json(Language language) const;
   } __packed_ws__(AIParams, 0x114);
-  /* 20F0 */ parray<AIParams, 3> npc_ai_params; // Unused if name[0] == 0
+  /* 20F0 */ parray<AIParams, 3> npc_ai_params; // Unused if ai_name[0] == 0
 
   /* 242C */ parray<uint8_t, 8> unknown_a7;
 

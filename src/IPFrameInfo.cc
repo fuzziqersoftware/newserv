@@ -7,8 +7,7 @@
 using namespace std;
 
 static inline uint16_t collapse_checksum(uint32_t sum) {
-  // It's impossible for this to be necessary more than twice: the first
-  // addition can carry out at most a single bit.
+  // It's impossible for this to be necessary more than twice: the first addition can carry out at most a single bit.
   sum = (sum & 0xFFFF) + (sum >> 16);
   return (sum & 0xFFFF) + (sum >> 16);
 }

@@ -91,6 +91,7 @@ char abbreviation_for_difficulty(Difficulty difficulty);
 const char* name_for_language(Language language);
 char char_for_language(Language language);
 Language language_for_char(char language_char);
+Language language_for_name(const std::string& name);
 
 extern const std::vector<const char*> name_for_mag_color;
 extern const std::unordered_map<std::string, uint8_t> mag_color_for_name;

@@ -7,6 +7,7 @@
 
 #include <initializer_list>
 #include <phosg/Encoding.hh>
+#include <phosg/JSON.hh>
 #include <phosg/Strings.hh>
 #include <stdexcept>
 #include <string>
@@ -302,6 +303,20 @@ struct parray {
       }
     }
     return true;
+  }
+
+  phosg::JSON json() const {
+    auto ret = phosg::JSON::list();
+    for (size_t z = 0; z < Count; z++) {
+      if constexpr (requires(ItemT x) { x.json(); }) {
+        ret.emplace_back(this->items[z].json());
+      } else if constexpr (requires(ItemT x) { x.load(); }) {
+        ret.emplace_back(this->items[z].load());
+      } else {
+        ret.emplace_back(this->items[z]);
+      }
+    }
+    return ret;
   }
 } __attribute__((packed));
 

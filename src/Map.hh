@@ -507,7 +507,7 @@ protected:
 // identifies the entity on all PSO versions. (These are the IDs which newserv formats as K-XXX, E-XXX, and W-XXX,
 // though they are offset as needed for floors beyond the first.)
 // There must not be any random enemy sections in any MapFile passed to SuperMap; to resolve them,
-// materialize_random_sections must be called on all MapFiles first. This generally only is needed in Challenge mode.
+// materialize_random_sections must be called on all MapFiles first. This is generally only needed in Challenge mode.
 
 class SuperMap {
 public:

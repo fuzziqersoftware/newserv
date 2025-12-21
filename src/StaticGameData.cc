@@ -566,6 +566,38 @@ Language language_for_char(char language_char) {
   }
 }
 
+Language language_for_name(const string& name) {
+  if (name.size() == 1) {
+    return language_for_char(name[0]);
+  }
+  string lower_name = phosg::tolower(name);
+  if (lower_name == "japanese") {
+    return Language::JAPANESE;
+  }
+  if (lower_name == "english") {
+    return Language::ENGLISH;
+  }
+  if (lower_name == "german") {
+    return Language::GERMAN;
+  }
+  if (lower_name == "french") {
+    return Language::FRENCH;
+  }
+  if (lower_name == "spanish") {
+    return Language::SPANISH;
+  }
+  if (lower_name == "simplified chinese") {
+    return Language::SIMPLIFIED_CHINESE;
+  }
+  if (lower_name == "traditional chinese") {
+    return Language::TRADITIONAL_CHINESE;
+  }
+  if (lower_name == "korean") {
+    return Language::KOREAN;
+  }
+  throw runtime_error("unknown language");
+}
+
 const vector<string> tech_id_to_name = {
     "foie", "gifoie", "rafoie",
     "barta", "gibarta", "rabarta",

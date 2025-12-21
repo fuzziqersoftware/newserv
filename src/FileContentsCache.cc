@@ -44,16 +44,14 @@ FileContentsCache::GetResult FileContentsCache::get_or_load(const char* name) {
   return this->get_or_load(string(name));
 }
 
-shared_ptr<const FileContentsCache::File> FileContentsCache::get_or_throw(
-    const std::string& name) {
+shared_ptr<const FileContentsCache::File> FileContentsCache::get_or_throw(const std::string& name) {
   auto throw_fn = +[](const std::string&) -> string {
     throw out_of_range("file missing from cache");
   };
   return this->get(name, throw_fn).file;
 }
 
-shared_ptr<const FileContentsCache::File> FileContentsCache::get_or_throw(
-    const char* name) {
+shared_ptr<const FileContentsCache::File> FileContentsCache::get_or_throw(const char* name) {
   return this->get_or_throw(string(name));
 }
 

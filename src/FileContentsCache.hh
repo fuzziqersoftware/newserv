@@ -114,9 +114,9 @@ public:
   ThreadSafeFileCache& operator=(ThreadSafeFileCache&&) = delete;
   ~ThreadSafeFileCache() = default;
 
-  // Warning: generate() is called while the lock is held for writing, so it
-  // will block other threads.
-  std::shared_ptr<const std::string> get(const std::string& name, std::function<std::shared_ptr<const std::string>(const std::string&)> generate);
+  // generate() is called while the lock is held for writing, so it will block other threads.
+  std::shared_ptr<const std::string> get(
+      const std::string& name, std::function<std::shared_ptr<const std::string>(const std::string&)> generate);
 
 private:
   std::shared_mutex lock;

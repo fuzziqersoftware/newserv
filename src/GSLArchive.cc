@@ -39,8 +39,7 @@ void GSLArchive::load_t() {
   }
 }
 
-GSLArchive::GSLArchive(shared_ptr<const string> data, bool big_endian)
-    : data(data) {
+GSLArchive::GSLArchive(shared_ptr<const string> data, bool big_endian) : data(data) {
   if (big_endian) {
     this->load_t<true>();
   } else {
@@ -87,8 +86,7 @@ template <bool BE>
 string GSLArchive::generate_t(const unordered_map<string, string>& files) {
   phosg::StringWriter w;
 
-  // Make sure there's enough space for a blank header entry before any file's
-  // data pages begin
+  // Make sure there's enough space for a blank header entry before any file's data pages begin
   uint32_t data_start_offset = ((sizeof(GSLHeaderEntryT<BE>) * (files.size() + 1)) + 0x7FF) & (~0x7FF);
   uint32_t data_offset = data_start_offset;
   for (const auto& file : files) {
