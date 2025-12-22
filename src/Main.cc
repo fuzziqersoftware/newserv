@@ -424,6 +424,51 @@ Action a_disassemble_bc0(
       bc0_disassemble(stdout, read_input_data(args));
     });
 
+Action a_psov2_encrypt_single_test(
+    "psov2-encrypt-single-test", nullptr,
+    [](phosg::Arguments& args) {
+      size_t num_threads = args.get<size_t>("threads", std::thread::hardware_concurrency());
+
+      vector<uint64_t> crypt_times(num_threads, 0);
+      vector<uint64_t> single_times(num_threads, 0);
+      uint64_t num_mismatches = 0;
+      mutex output_lock;
+      auto thread_fn = [&](uint64_t seed, size_t thread_index) -> bool {
+        uint64_t start_t = phosg::now();
+        uint32_t crypt_v = PSOV2Encryption(seed).next();
+        uint64_t mid_t = phosg::now();
+        uint32_t single_v = PSOV2Encryption::single(seed);
+        uint64_t end_t = phosg::now();
+
+        crypt_times[thread_index] += (mid_t - start_t);
+        single_times[thread_index] += (end_t - mid_t);
+
+        if (crypt_v != single_v) {
+          lock_guard g(output_lock);
+          phosg::fwrite_fmt(stderr, "Mismatched result on seed {:08X}: crypt={:08X}, single={:08X}\n",
+              seed, crypt_v, single_v);
+          num_mismatches++;
+        }
+        return false;
+      };
+      auto progress_fn = [&](uint64_t, uint64_t, uint64_t current_value, uint64_t) -> void {
+        uint64_t crypt_time = 0, single_time = 0;
+        for (uint64_t t : crypt_times) {
+          crypt_time += t;
+        }
+        for (uint64_t t : single_times) {
+          single_time += t;
+        }
+        lock_guard g(output_lock);
+        phosg::log_info_f("... {:08X} => {} mismatches, {} crypt, {} single ({:g}x)",
+            current_value, num_mismatches, phosg::format_duration(crypt_time), phosg::format_duration(single_time),
+            static_cast<float>(crypt_time) / single_time);
+      };
+      phosg::parallel_range_blocks<uint64_t>(thread_fn, 0, 0x100000000, 0x1000, num_threads, progress_fn);
+
+      progress_fn(0, 0, 0xFFFFFFFF, 0);
+    });
+
 static void a_encrypt_decrypt_fn(phosg::Arguments& args) {
   bool is_decrypt = (args.get<string>(0) == "decrypt-data");
   string seed = args.get<string>("seed");

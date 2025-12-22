@@ -6163,10 +6163,7 @@ void MapState::index_super_map(const FloorConfig& fc, shared_ptr<RandomGenerator
           try {
             det = det_cache.at(seed);
           } catch (const out_of_range&) {
-            // TODO: We only need the first value from this crypt, so it's unfortunate that we have to initialize the
-            // entire thing. Find a way to make this faster.
-            PSOV2Encryption crypt(seed);
-            det = (static_cast<float>((crypt.next() >> 16) & 0xFFFF) / 65536.0f);
+            det = (static_cast<float>((PSOV2Encryption::single(seed) >> 16) & 0xFFFF) / 65536.0f);
             det_cache.emplace(seed, det);
           }
 

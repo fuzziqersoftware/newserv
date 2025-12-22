@@ -132,6 +132,9 @@ public:
   explicit PSOV2Encryption(uint32_t seed);
   virtual Type type() const;
 
+  // Optimized implementation of `PSOV2Encryption(seed).next()` for when the caller needs only the first value
+  static uint32_t single(uint32_t seed);
+
 protected:
   virtual void update_stream();
 
