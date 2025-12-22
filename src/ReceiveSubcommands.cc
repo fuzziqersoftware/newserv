@@ -4303,15 +4303,17 @@ static asio::awaitable<void> on_exchange_item_for_team_points_bb(shared_ptr<Clie
 
   auto s = c->require_server_state();
   auto p = c->character_file();
-  auto item = p->remove_item(cmd.item_id, cmd.amount, *s->item_stack_limits(c->version()));
+  const auto& limits = *s->item_stack_limits(c->version());
+  auto item = p->remove_item(cmd.item_id, cmd.amount, limits);
+  size_t amount = item.stack_size(limits);
 
   size_t points = s->item_parameter_table(Version::BB_V4)->get_item_team_points(item);
-  s->team_index->add_member_points(c->login->account->account_id, points);
+  s->team_index->add_member_points(c->login->account->account_id, points * amount);
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
     auto name = s->describe_item(c->version(), item);
-    l->log.info_f("Player {} exchanged inventory item {}:{:08X} ({}) for {} team points",
-        c->lobby_client_id, cmd.header.client_id, cmd.item_id, name, points);
+    l->log.info_f("Player {} exchanged inventory item {}:{:08X} ({}) x{} for {} * {} = {} team points",
+        c->lobby_client_id, cmd.header.client_id, cmd.item_id, name, amount, points, amount, points * amount);
     c->print_inventory();
   }
 
