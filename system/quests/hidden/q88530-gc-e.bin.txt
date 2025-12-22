@@ -7,11 +7,10 @@
 .long_desc ""
 
 start:
-  // Create quest opcode handlers for F9FE to call flush_code and F9FF to call
-  // the copied code. Fortunately, quest_call_l leaves the byteswapped value of
-  // the opcode argument in r4, so as long as the address ends with 00, it will
-  // be valid as the size argument to flush_code. We'll end up flushing many
-  // more bytes than needed, but this isn't a problem.
+  // Create quest opcode handlers for F9FE to call flush_code and F9FF to call the copied code. Fortunately,
+  // quest_call_l leaves the byteswapped value of the opcode argument in r4, so as long as the address ends with 00,
+  // it will be valid as the size argument to flush_code. We'll end up flushing many more bytes than needed, but this
+  // isn't a problem.
   leti               r3, 0x80004000  // dest addr
   write4             0x804C81C8, 0x801F2A14  // quest_call_l
   write4             0x804C81CC, 0x8000C274  // flush_code
@@ -40,10 +39,9 @@ copy_done:
   // Call the copied native code
   .data              F9FF
 
-  // This script runs on the first frame during the quest loading procedure,
-  // but this procedure is started from the lobby overview, not from a game!
-  // To make the result of loading a quest sane, we need to set some extra
-  // state that will take effect when loading is done.
+  // This script runs on the first frame during the quest loading procedure, but this procedure is started from the
+  // lobby overview, not from a game! To make the result of loading a quest sane, we need to set some extra state that
+  // will take effect when loading is done.
   ba_initial_floor   17  // Make player spawn in lobby (for one frame)
   write2             0x805D5CE8, 1  // Leave "game" immediately (sends 98)
 

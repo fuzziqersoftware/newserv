@@ -55,9 +55,8 @@ struct ProxySession {
   std::shared_ptr<MapState> map_state;
   std::shared_ptr<const std::string> last_bin_contents;
   std::shared_ptr<const std::string> last_dat_contents;
-  // Note: We intentionally don't use the client's item ID space because the
-  // client may create items at the same time as the proxy, so server/client
-  // state could go out of sync
+  // Note: We intentionally don't use the client's item ID space because the client may create items at the same time
+  // as the proxy, so server/client state could go out of sync
   uint32_t next_item_id = 0x44000000;
 
   struct PersistentConfig {

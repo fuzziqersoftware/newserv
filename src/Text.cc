@@ -14,8 +14,7 @@ using namespace std;
 const iconv_t TextTranscoder::INVALID_IC = (iconv_t)(-1);
 const size_t TextTranscoder::FAILURE_RESULT = static_cast<size_t>(-1);
 
-TextTranscoder::TextTranscoder(const char* to, const char* from)
-    : ic(iconv_open(to, from)) {
+TextTranscoder::TextTranscoder(const char* to, const char* from) : ic(iconv_open(to, from)) {
   if (ic == this->INVALID_IC) {
     string error_str = phosg::string_for_error(errno);
     throw runtime_error(std::format("failed to initialize {} -> {} text converter: {}", from, to, error_str));
@@ -77,10 +76,7 @@ TextTranscoder::Result TextTranscoder::operator()(
 
   size_t bytes_read = reinterpret_cast<const char*>(src) - reinterpret_cast<const char*>(orig_src);
   size_t bytes_written = reinterpret_cast<char*>(dest) - reinterpret_cast<char*>(orig_dest);
-  return Result{
-      .bytes_read = bytes_read,
-      .bytes_written = bytes_written,
-  };
+  return Result{.bytes_read = bytes_read, .bytes_written = bytes_written};
 }
 
 string TextTranscoder::operator()(const void* src, size_t src_bytes) {
@@ -198,15 +194,14 @@ uint32_t decode_utf8_char(const void** vdata, size_t* size) {
 }
 
 std::string TextTranscoderCustomSJISToUTF8::on_untranslatable(const void** vsrc, size_t* size) const {
-  // Sega implemented some nonstandard Shift-JIS characters on PSO GC (and
-  // probably XB as well): the heart symbol, encoded as F040, and the PSO font,
-  // encoded as F041-F064. Understandably, libiconv doesn't know what to do
-  // with these because they're not actually part of Shift-JIS, so we have to
-  // handle them manually here. We convert them to actual UTF-8 symbols:
-  // F040 (heart symbol) -> U+2665 (heart suit symbol)
-  // F041 (PSO font number 0) -> 24EA (circled digit zero)
-  // F042-F04A (PSO font numbers 1-9) -> 2460-2468 (circled digits 1-9)
-  // F04B-F064 (PSO font letters) -> 1D4D0-1D4E9 (script letters A-Z)
+  // Sega implemented some nonstandard Shift-JIS characters on PSO GC (and probably XB as well): the heart symbol,
+  // encoded as F040, and the PSO font, encoded as F041-F064. Understandably, libiconv doesn't know what to do with
+  // these because they're not actually part of Shift-JIS, so we have to handle them manually here. We convert them to
+  // actual UTF-8 symbols:
+  //   F040 (heart symbol) -> U+2665 (heart suit symbol)
+  //   F041 (PSO font number 0) -> 24EA (circled digit zero)
+  //   F042-F04A (PSO font numbers 1-9) -> 2460-2468 (circled digits 1-9)
+  //   F04B-F064 (PSO font letters) -> 1D4D0-1D4E9 (script letters A-Z)
 
   const uint8_t* src = reinterpret_cast<const uint8_t*>(*vsrc);
   if ((*size < 2) || (src[0] != 0xF0)) {
@@ -394,8 +389,7 @@ size_t add_color_inplace(char* a, size_t max_chars) {
     a++;
   }
   *d = 0;
-  // TODO: we should clear the chars after the null if the new string is shorter
-  // than the original
+  // TODO: we should clear the chars after the null if the new string is shorter than the original
 
   return d - orig_d;
 }

@@ -43,13 +43,11 @@ asio::awaitable<void> on_connect(std::shared_ptr<Client> c) {
       uint16_t pc_port = s->name_to_port_config.at("pc")->port;
       uint16_t console_port = s->name_to_port_config.at("gc-us3")->port;
       send_pc_console_split_reconnect(c, s->connect_address_for_client(c), pc_port, console_port);
-      // TODO: There appears to be a bug that occurs rarely when a client
-      // connects to this port; sometimes it disconnects before receiving the
-      // data it needs. My hypothesis is that there's either a bug in Channel
-      // where the data isn't being sent before the RST, or there's a bug in
-      // AVE-TCP where it doesn't forward the last data to the app if the RST
-      // is received on the same frame as the last PSH. In either case, waiting
-      // a short amount of time here should mitigate it.
+      // TODO: There appears to be a bug that occurs rarely when a client connects to this port; sometimes it
+      // disconnects before receiving the data it needs. My hypothesis is that there's either a bug in Channel where
+      // the data isn't being sent before the RST, or there's a bug in AVE-TCP where it doesn't forward the last data
+      // to the app if the RST is received on the same frame as the last PSH. In either case, waiting a short amount of
+      // time here should mitigate it.
       co_await async_sleep(std::chrono::seconds(2));
       c->channel->disconnect();
       break;
@@ -81,8 +79,7 @@ asio::awaitable<void> on_disconnect(shared_ptr<Client> c) {
     }
   }
 
-  // Note: The client's GameData destructor should save their player data
-  // shortly after this point
+  // Note: The client's GameData destructor should save their player data shortly after this point
   co_return;
 }
 
@@ -297,9 +294,8 @@ asio::awaitable<void> start_login_server_procedure(shared_ptr<Client> c) {
     send_complete_player_bb(c);
     c->should_update_play_time = true;
   } else if (!is_pre_v1(c->version())) {
-    // send_get_player_info is required to differentiate Ep3 from Ep3 NTE. We
-    // send it early in the login procedure because the contents of the card
-    // list update and the tournament entry depend on this difference.
+    // send_get_player_info is required to differentiate Ep3 from Ep3 NTE. We send it early in the login procedure
+    // because the contents of the card list update and the tournament entry depend on this difference.
     co_await send_get_player_info(c, false);
   }
 
@@ -356,8 +352,8 @@ static asio::awaitable<void> on_login_complete(shared_ptr<Client> c) {
         c->set_flag(Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
         c->set_flag(Client::Flag::AWAITING_ENABLE_B2_QUEST);
 
-        // PCv2 will crash if it receives an online quest file while it's
-        // not in a game, so we have to put it into a fake game first
+        // PCv2 will crash if it receives an online quest file while it's not in a game, so we have to put it into a
+        // fake game first
         if (c->version() == Version::PC_V2) {
           S_JoinGame_PC_64 cmd;
           auto& lobby_data = cmd.lobby_data[0];
@@ -382,9 +378,8 @@ static asio::awaitable<void> on_login_complete(shared_ptr<Client> c) {
     }
   }
 
-  // TODO: It'd be nice to use response_futures to wait for the eventual 84
-  // command instead of using flags and calling start_login_server_procedure in
-  // on_84 too.
+  // TODO: It'd be nice to use response_futures to wait for the eventual 84 command instead of using flags and calling
+  // start_login_server_procedure in on_84 too.
   if (!c->check_flag(Client::Flag::AWAITING_ENABLE_B2_QUEST)) {
     co_await start_login_server_procedure(c);
   }
@@ -402,8 +397,7 @@ static asio::awaitable<void> enable_save_if_needed(shared_ptr<Client> c) {
   if (c->check_flag(Client::Flag::SHOULD_SEND_ENABLE_SAVE)) {
     c->set_flag(Client::Flag::SAVE_ENABLED);
     c->clear_flag(Client::Flag::SHOULD_SEND_ENABLE_SAVE);
-    // DC NTE and 11/2000 crash if they receive 97, so we do nothing on those
-    // versions
+    // DC NTE and 11/2000 crash if they receive 97, so we do nothing on those versions
     if (!is_pre_v1(c->version())) {
       send_command(c, 0x97, 0x01);
       auto promise = make_shared<AsyncPromise<void>>();
@@ -420,8 +414,8 @@ asio::awaitable<void> start_proxy_session(shared_ptr<Client> c, const string& ho
 
   auto s = c->require_server_state();
 
-  // We don't send any preamble commands for BB clients since proxy sessions
-  // are created at connection time instead of during the main session
+  // We don't send any preamble commands for BB clients since proxy sessions are created at connection time instead of
+  // during the main session
   if (!is_patch(c->version()) && !is_v4(c->version())) {
     if (!c->login) {
       throw logic_error("Cannot start proxy session with preamble on logged-out client");
@@ -550,7 +544,7 @@ asio::awaitable<void> end_proxy_session(shared_ptr<Client> c, const std::string&
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static asio::awaitable<void> on_02_U(shared_ptr<Client> c, Channel::Message& msg) {
   check_size_v(msg.data.size(), 0);
@@ -624,8 +618,8 @@ static asio::awaitable<void> on_04_U(shared_ptr<Client> c, Channel::Message& msg
       c->channel->send(0x0D, 0x00); // End of checksum requests
 
     } else {
-      // No patch index present: just do something that will satisfy the client
-      // without actually checking or downloading any files
+      // No patch index present: just do something that will satisfy the client without actually checking or
+      // downloading any files
       send_patch_enter_directory(c, ".");
       send_patch_enter_directory(c, "data");
       send_patch_enter_directory(c, "scene");
@@ -694,7 +688,7 @@ asio::awaitable<void> on_10_U(shared_ptr<Client> c, Channel::Message&) {
   co_return;
 }
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static asio::awaitable<void> on_1D(shared_ptr<Client> c, Channel::Message&) {
   if (c->ping_start_time) {
@@ -704,8 +698,7 @@ static asio::awaitable<void> on_1D(shared_ptr<Client> c, Channel::Message&) {
     send_text_message_fmt(c, "To server: {:g}ms", ping_ms);
   }
 
-  // See the comment on the 6x6D command in CommandFormats.hh to understand why
-  // we do this.
+  // See the comment on the 6x6D command in CommandFormats.hh to understand why we do this.
   if (c->game_join_command_queue) {
     c->log.info_f("Sending {} queued command(s)", c->game_join_command_queue->size());
     while (!c->game_join_command_queue->empty()) {
@@ -740,9 +733,8 @@ static asio::awaitable<void> on_1D(shared_ptr<Client> c, Channel::Message&) {
     auto l = c->require_lobby();
     if (l->is_game()) {
       for (auto lc : l->clients) {
-        // If we haven't received a 6x70 from this client, maybe they're VERY
-        // far behind and wil lstll send it, or maybe they'll time out and be
-        // disconnected soon - either way, we shouldn't fail if it's missing.
+        // If we haven't received a 6x70 from this client, maybe they're VERY far behind and wil lstll send it, or
+        // maybe they'll time out and be disconnected soon - either way, we shouldn't fail if it's missing.
         if (lc && (lc != c) && lc->last_reported_6x70) {
           send_game_player_state(c, lc, true); // 6x70
         }
@@ -753,10 +745,9 @@ static asio::awaitable<void> on_1D(shared_ptr<Client> c, Channel::Message&) {
 }
 
 static asio::awaitable<void> on_05_XB(shared_ptr<Client> c, Channel::Message&) {
-  // The Xbox Live service doesn't close the TCP connection when the player
-  // chooses Quit Game, so we manually disconnect the client when they send this
-  // command instead. We could let the idle timeout take care of it, but this is
-  // cleaner overall.
+  // The Xbox Live service doesn't close the TCP connection when the player chooses Quit Game, so we manually
+  // disconnect the client when they send this command instead. We could let the idle timeout take care of it, but this
+  // is cleaner overall.
   c->channel->disconnect();
   co_return;
 }
@@ -767,7 +758,7 @@ static void set_console_client_flags(shared_ptr<Client> c, uint32_t sub_version)
       c->channel->version = Version::DC_V1;
       c->log.info_f("Game version changed to DC_V1");
       if (specific_version_is_indeterminate(c->specific_version) ||
-          c->specific_version == SPECIFIC_VERSION_DC_11_2000_PROTOTYPE) {
+          (c->specific_version == SPECIFIC_VERSION_DC_11_2000_PROTOTYPE)) {
         c->specific_version = SPECIFIC_VERSION_DC_V1_INDETERMINATE;
       }
     } else if (sub_version <= 0x28) {
@@ -975,9 +966,8 @@ static asio::awaitable<void> on_92_DC(shared_ptr<Client> c, Channel::Message& ms
   c->serial_number2 = cmd.serial_number2.decode();
   c->access_key2 = cmd.access_key2.decode();
   c->email_address = cmd.email_address.decode();
-  // It appears that in response to 90 01, 11/2000 sends 93 rather than 92, so
-  // we use the presence of a 92 command to determine that the client is
-  // actually DCv1 and not the prototype.
+  // It appears that in response to 90 01, 11/2000 sends 93 rather than 92, so we use the presence of a 92 command to
+  // determine that the client is actually DCv1 and not the prototype.
   c->set_flag(Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE);
   c->channel->version = Version::DC_V1;
   if (specific_version_is_indeterminate(c->specific_version) ||
@@ -1043,12 +1033,10 @@ static asio::awaitable<void> on_93_DC(shared_ptr<Client> c, Channel::Message& ms
     }
   }
 
-  // The first time we receive a 93 from a DC client, we set this flag and send
-  // a 92. The IS_DC_V1_PROTOTYPE flag will be removed if the client sends a 92
-  // command (which it seems the prototype never does). This is why we always
-  // respond with 90 01 here - that's the only case where actual DCv1 sends a
-  // 92 command. The IS_DC_V1_PROTOTYPE flag will be removed if the client does
-  // indeed send a 92.
+  // The first time we receive a 93 from a DC client, we set this flag and send a 92. The IS_DC_V1_PROTOTYPE flag will
+  // be removed if the client sends a 92 command (which it seems the prototype never does). This is why we always
+  // respond with 90 01 here - that's the only case where actual DCv1 sends a 92 command. The IS_DC_V1_PROTOTYPE flag
+  // will be removed if the client does indeed send a 92.
   if (!c->check_flag(Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE)) {
     send_command(c, 0x90, 0x01);
     c->set_flag(Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE);
@@ -1110,10 +1098,9 @@ static asio::awaitable<void> on_9A(shared_ptr<Client> c, Channel::Message& msg) 
       case Version::GC_EP3_NTE:
       case Version::GC_EP3: {
         uint32_t serial_number = stoul(c->serial_number, nullptr, 16);
-        // On V3, the client should have sent a DB command containing the
-        // password already, which should have created an account if needed. So
-        // if no account exists at this point, disconnect the client even if
-        // unregistered users are allowed.
+        // On V3, the client should have sent a DB command containing the password already, which should have created
+        // an account if needed. So if no account exists at this point, disconnect the client even if unregistered
+        // users are allowed.
         c->set_login(s->account_index->from_gc_credentials(serial_number, c->access_key, nullptr, "", false));
         break;
       }
@@ -1171,8 +1158,8 @@ static asio::awaitable<void> on_9C(shared_ptr<Client> c, Channel::Message& msg) 
         break;
       }
       default:
-        // TODO: PC_NTE can probably send 9C, but due to the way we've
-        // implemented PC_NTE's login sequence, it never should send 9C.
+        // TODO: PC_NTE can probably send 9C, but due to the way we've implemented PC_NTE's login sequence, it never
+        // should send 9C.
         throw logic_error("unsupported versioned command");
     }
     send_command(c, 0x9C, 0x01);
@@ -1311,9 +1298,8 @@ static asio::awaitable<void> on_9D_9E(shared_ptr<Client> c, Channel::Message& ms
   if (!c->login) {
     c->channel->disconnect();
   } else {
-    // On PCv2, we send a B2 command to get the client's specific_version and
-    // check whether it has patch support or not; we'll call on_login_complete
-    // once we receive the B3 response
+    // On PCv2, we send a B2 command to get the client's specific_version and check whether it has patch support or
+    // not; we'll call on_login_complete once we receive the B3 response
     if (c->version() == Version::PC_V2) {
       try {
         auto code = s->function_code_index->name_to_function.at("ReturnTokenX86");
@@ -1442,13 +1428,11 @@ static asio::awaitable<void> on_93_BB(shared_ptr<Client> c, Channel::Message& ms
 
   string version_string = c->bb_client_config.as_string();
   phosg::strip_trailing_zeroes(version_string);
-  // If the version string starts with "Ver.", assume it's Sega and apply the
-  // normal version encoding logic. Otherwise, assume it's a community mod,
-  // almost all of which are based on TethVer12513, so assume that version.
+  // If the version string starts with "Ver.", assume it's Sega and apply the normal version encoding logic. Otherwise,
+  // assume it's a community mod, almost all of which are based on TethVer12513, so assume that version.
   if (version_string.starts_with("Ver.")) {
-    // Basic algorithm: take all numeric characters from the version string
-    // and ignore everything else. Treat that as a decimal integer, then
-    // base36-encode it into the low 3 bytes of specific_version.
+    // Basic algorithm: take all numeric characters from the version string and ignore everything else. Treat that as a
+    // decimal integer, then base36-encode it into the low 3 bytes of specific_version.
     uint64_t version = 0;
     for (char ch : version_string) {
       if (isdigit(ch)) {
@@ -1483,9 +1467,8 @@ static asio::awaitable<void> on_93_BB(shared_ptr<Client> c, Channel::Message& ms
   } else {
     c->specific_version = 0x35394E4C; // 59NL
 
-    // Note: Tethealla PSOBB is actually Japanese PSOBB, but with most of the
-    // files replaced with English text/graphics/etc. For this reason, it still
-    // reports its language as Japanese, so we have to account for that
+    // Note: Tethealla PSOBB is actually Japanese PSOBB, but with most of the files replaced with English
+    // text/graphics/etc. For this reason, it still reports its language as Japanese, so we have to account for that
     // manually here.
     if (version_string.starts_with("TethVer")) {
       c->log.info_f("Client is TethVer subtype; forcing English language");
@@ -1499,23 +1482,19 @@ static asio::awaitable<void> on_93_BB(shared_ptr<Client> c, Channel::Message& ms
   }
 
   if (base_cmd.guild_card_number == 0) {
-    // There is a (bug? feature?) in the BB client such that it has to receive
-    // a reconnect command during the data server phase, or else it won't know
-    // where to connect to during character selection. It's not clear why they
+    // There is a (bug? feature?) in the BB client such that it has to receive a reconnect command during the data
+    // server phase, or else it won't know where to connect to during character selection. It's not clear why they
     // didn't just make it use the initial connection address by default...
     send_client_init_bb(c, 0);
     send_reconnect(c, s->connect_address_for_client(c), s->name_to_port_config.at("bb-data1")->port);
     co_return;
 
   } else if (s->proxy_destination_bb.has_value()) {
-    // Start a proxy session immediately if there's a destination set. Two
-    // things to watch out for:
-    // - Ignore the persistent config if this is the first data server
-    //   connection, to prevent quick reconnects from incorrectly reusing the
-    //   old session's state.
-    // - We don't send 00E6 (send_client_init_bb) in this case. This is because
-    //   the login command is resent to the remote server, and we forward its
-    //   response back to the client directly.
+    // Start a proxy session immediately if there's a destination set. Two things to watch out for:
+    // - Ignore the persistent config if this is the first data server connection, to prevent quick reconnects from
+    //   incorrectly reusing the old session's state.
+    // - We don't send 00E6 (send_client_init_bb) in this case. This is because the login command is resent to the
+    //   remote server, and we forward its response back to the client directly.
     const auto& [host, port] = *s->proxy_destination_bb;
     co_await start_proxy_session(c, host, port, c->bb_connection_phase != 0);
     c->proxy_session->remote_client_config_data = c->bb_client_config;
@@ -1526,14 +1505,13 @@ static asio::awaitable<void> on_93_BB(shared_ptr<Client> c, Channel::Message& ms
   }
 
   if (c->bb_connection_phase >= 0x04) {
-    // This means the client is done with the data server phase and is in the
-    // game server phase; we should send the ship select menu or a lobby join
-    // command.
+    // This means the client is done with the data server phase and is in the game server phase; we should send the
+    // ship select menu or a lobby join command.
     co_await on_login_complete(c);
 
   } else if (s->hide_download_commands) {
-    // The BB data server protocol is fairly well-understood and has some large
-    // commands, so we omit data logging for clients on the data server.
+    // The BB data server protocol is fairly well-understood and has some large commands, so we omit data logging for
+    // clients on the data server.
     c->log.info_f("Client is in the BB data server phase; disabling command data logging for the rest of this client\'s session");
     c->channel->terminal_recv_color = phosg::TerminalFormat::END;
     c->channel->terminal_send_color = phosg::TerminalFormat::END;
@@ -1555,8 +1533,7 @@ static asio::awaitable<void> on_B1(shared_ptr<Client> c, Channel::Message& msg) 
 static asio::awaitable<void> on_B7_Ep3(shared_ptr<Client> c, Channel::Message& msg) {
   check_size_v(msg.data.size(), 0);
 
-  // If the client is not in any lobby, assume they're at the main menu and
-  // send the menu song (if any).
+  // If the client is not in any lobby, assume they're at the main menu and send the menu song (if any).
   auto s = c->require_server_state();
   auto l = c->lobby.lock();
   if (!l && (s->ep3_menu_song >= 0)) {
@@ -1581,9 +1558,7 @@ static asio::awaitable<void> on_BA_Ep3(shared_ptr<Client> c, Channel::Message& m
   } else {
     if (c->login->account->ep3_current_meseta < in_cmd.value) {
       S_MesetaTransaction_Ep3_BA out_cmd = {
-          c->login->account->ep3_current_meseta,
-          c->login->account->ep3_total_meseta_earned,
-          in_cmd.request_token};
+          c->login->account->ep3_current_meseta, c->login->account->ep3_total_meseta_earned, in_cmd.request_token};
       send_command(c, msg.command, 0x04, &out_cmd, sizeof(out_cmd));
       co_return;
     }
@@ -1611,8 +1586,8 @@ static bool add_next_game_client(shared_ptr<Lobby> l) {
 
   auto tourn = l->tournament_match ? l->tournament_match->tournament.lock() : nullptr;
 
-  // If the game is a tournament match and the client has disconnected before
-  // they could join the match, disband the entire game
+  // If the game is a tournament match and the client has disconnected before they could join the match, disband the
+  // entire game
   if (!c && l->tournament_match) {
     l->log.info_f("Client in slot {} has disconnected before joining the game; disbanding it", target_client_id);
     send_command(l, 0xED, 0x00);
@@ -1660,15 +1635,13 @@ static bool add_next_game_client(shared_ptr<Lobby> l) {
 
 static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t table_number) {
   if (table_number < 0) {
-    // Negative numbers are supposed to mean the client is not seated at a
-    // table, so it's an error for this function to be called with a negative
-    // table number
+    // Negative numbers are supposed to mean the client is not seated at a table, so it's an error for this function to
+    // be called with a negative table number
     throw runtime_error("negative table number");
   }
 
-  // Figure out which clients are at this table. If any client has declined, we
-  // never start a match, but we may start a match even if all clients have not
-  // yet accepted (in case of a tournament match).
+  // Figure out which clients are at this table. If any client has declined, we never start a match, but we may start a
+  // match even if all clients have not yet accepted (in case of a tournament match).
   Version game_version = Version::UNKNOWN;
   unordered_map<size_t, shared_ptr<Client>> table_clients;
   bool all_clients_accepted = true;
@@ -1685,8 +1658,8 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
     if (c->card_battle_table_seat_number >= 4) {
       throw runtime_error("invalid seat number");
     }
-    // Apparently this can actually happen; just prevent them from starting a
-    // battle if multiple players are in the same seat
+    // Apparently this can actually happen; just prevent them from starting a battle if multiple players are in the
+    // same seat
     if (!table_clients.emplace(c->card_battle_table_seat_number, c).second) {
       return false;
     }
@@ -1707,16 +1680,14 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
     auto team = it.second->ep3_tournament_team.lock();
     auto tourn = team ? team->tournament.lock() : nullptr;
     auto match = tourn ? tourn->next_match_for_team(team) : nullptr;
-    // Note: We intentionally don't check for null here. This is to handle the
-    // case where a tournament-registered player steps into a seat at a table
-    // where a non-tournament-registered player is already present - we should
-    // NOT start any match until the non-tournament-registered player leaves,
+    // Note: We intentionally don't check for null here. This is to handle the case where a tournament-registered
+    // player steps into a seat at a table where a non-tournament-registered player is already present - we should NOT
+    // start any match until the non-tournament-registered player leaves,
     // or they both accept (and we start a non-tournament match).
     tourn_matches.emplace(match);
   }
 
-  // Get the tournament. Invariant: both tourn_match and tourn are null, or
-  // neither are null.
+  // Get the tournament. Invariant: both tourn_match and tourn are null, or neither are null.
   auto tourn_match = (tourn_matches.size() == 1) ? *tourn_matches.begin() : nullptr;
   auto tourn = tourn_match ? tourn_match->tournament.lock() : nullptr;
   if (!tourn || !tourn_match->preceding_a->winner_team || !tourn_match->preceding_b->winner_team) {
@@ -1724,8 +1695,8 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
     tourn_match.reset();
   }
 
-  // If this is a tournament match setup, check if all required players are
-  // present and rearrange their client IDs to match their team positions
+  // If this is a tournament match setup, check if all required players are present and rearrange their client IDs to
+  // match their team positions
   unordered_map<size_t, shared_ptr<Client>> game_clients;
   if (tourn_match) {
     unordered_map<size_t, uint32_t> required_account_ids;
@@ -1744,24 +1715,30 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
     add_team_players(tourn_match->preceding_a->winner_team, 0);
     add_team_players(tourn_match->preceding_b->winner_team, 2);
 
+    // Only count the players if they're all the same version (GC_EP3 or GC_EP3_NTE)
+    Version version = Version::UNKNOWN;
     for (const auto& it : required_account_ids) {
       size_t client_id = it.first;
       uint32_t account_id = it.second;
-      for (const auto& it : table_clients) {
-        if (it.second->login->account->account_id == account_id) {
-          game_clients.emplace(client_id, it.second);
+      for (const auto& [_, table_c] : table_clients) {
+        if (table_c->login->account->account_id == account_id) {
+          if (version == Version::UNKNOWN) {
+            version = table_c->version();
+          }
+          if (version == table_c->version()) {
+            game_clients.emplace(client_id, table_c);
+          }
         }
       }
     }
 
     if (game_clients.size() != required_account_ids.size()) {
-      // Not all tournament match participants are present, so we can't start
-      // the tournament match. (But they can still use the battle table)
+      // Not all tournament match participants are present, so we can't start the tournament match. (But they can still
+      // use the battle table)
       tourn_match.reset();
       tourn.reset();
     } else {
-      // If there is already a game for this match, don't allow a new one to
-      // start
+      // If there is already a game for this match, don't allow a new one to start
       auto s = l->require_server_state();
       for (auto l : s->all_lobbies()) {
         if (l->tournament_match == tourn_match) {
@@ -1772,9 +1749,8 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
     }
   }
 
-  // In the non-tournament case (or if the tournament case was rejected above),
-  // only start the game if all players have accepted. If they have, just put
-  // them in the clients map in seat order.
+  // In the non-tournament case (or if the tournament case was rejected above), only start the game if all players have
+  // accepted. If they have, just put them in the clients map in seat order.
   if (!tourn_match) {
     if (!all_clients_accepted) {
       return false;
@@ -1782,15 +1758,13 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
     game_clients = std::move(table_clients);
   }
 
-  // If there are no clients, do nothing (this happens when the last player
-  // leaves a battle table without starting a game)
+  // If there are no clients, do nothing (happens when the last player leaves a battle table without starting a game)
   if (game_clients.empty()) {
     return false;
   }
 
-  // At this point, we've checked all the necessary conditions for a game to
-  // begin, but create_game_generic can still return null if an internal
-  // precondition fails (though this should never happen for Episode 3 games).
+  // At this point, we've checked all the necessary conditions for a game to begin, but create_game_generic can still
+  // return null if an internal precondition fails (though this should never happen for Episode 3 games).
 
   auto c = game_clients.begin()->second;
   auto s = c->require_server_state();
@@ -1816,8 +1790,8 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
     other_c->disconnect_hooks.erase(BATTLE_TABLE_DISCONNECT_HOOK_NAME);
   }
 
-  // If there's only one client in the match, skip the wait phase - they'll be
-  // added to the match immediately by add_next_game_client anyway
+  // If there's only one client in the match, skip the wait phase - they'll be added to the match immediately by
+  // add_next_game_client anyway
   if (game_clients.empty()) {
     throw logic_error("no clients to add to battle table match");
 
@@ -1828,8 +1802,7 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
       string message;
       if (tourn) {
         message = std::format(
-            "$C7Waiting to begin match in tournament\n$C6{}$C7...\n\n(Hold B+X+START to abort)",
-            tourn->get_name());
+            "$C7Waiting to begin match in tournament\n$C6{}$C7...\n\n(Hold B+X+START to abort)", tourn->get_name());
       } else {
         message = "$C7Waiting to begin battle table match...\n\n(Hold B+X+START to abort)";
       }
@@ -1837,8 +1810,7 @@ static bool start_ep3_battle_table_game_if_ready(shared_ptr<Lobby> l, int16_t ta
     }
   }
 
-  // Add the first client to the game (the remaining clients will be added when
-  // the previous is done loading)
+  // Add the first client to the game (the remaining clients will be added when the previous is done loading)
   add_next_game_client(game);
 
   return true;
@@ -1852,9 +1824,8 @@ static void on_ep3_battle_table_state_updated(shared_ptr<Lobby> l, int16_t table
 static asio::awaitable<void> on_E4_Ep3(shared_ptr<Client> c, Channel::Message& msg) {
   const auto& cmd = check_size_t<C_CardBattleTableState_Ep3_E4>(msg.data);
 
-  // This command can be received shortly after a proxy session closes if the
-  // player uses $exit while standing on a battle table pad. In that situation,
-  // the player will not be in any lobby, so we just ignore the command.
+  // This command can be received shortly after a proxy session closes if the player uses $exit while standing on a
+  // battle table pad. In that situation, the player will not be in any lobby, so we just ignore the command.
   auto l = c->lobby.lock();
   if (!l) {
     co_return;
@@ -1955,9 +1926,8 @@ static void on_tournament_bracket_updated(shared_ptr<ServerState> s, shared_ptr<
 static asio::awaitable<void> on_CA_Ep3(shared_ptr<Client> c, Channel::Message& msg) {
   auto l = c->lobby.lock();
   if (!l) {
-    // In rare cases (e.g. when two players end a tournament's match results
-    // screens at exactly the same time), the client can send a server data
-    // command when it's not in any lobby at all. We just ignore such commands.
+    // In rare cases (e.g. when two players end a tournament's match results screens at exactly the same time), the
+    // client can send a server data command when it's not in any lobby at all. We just ignore such commands.
     co_return;
   }
   if (!l->is_game() || !l->is_ep3()) {
@@ -2013,8 +1983,7 @@ static asio::awaitable<void> on_CA_Ep3(shared_ptr<Client> c, Channel::Message& m
     throw;
   }
 
-  // If the battle has finished, finalize the recording and link it to all
-  // participating players and spectators
+  // If the battle has finished, finalize the recording and link it to all participating players and spectators
   if (!battle_finished_before && l->ep3_server->battle_finished && l->battle_record) {
     l->battle_record->set_battle_end_timestamp();
     unordered_set<shared_ptr<Lobby>> lobbies;
@@ -2156,9 +2125,8 @@ static asio::awaitable<void> on_09(shared_ptr<Client> c, Channel::Message& msg) 
   switch (cmd.menu_id) {
     case MenuID::QUEST_CATEGORIES_EP1_EP3_EP4:
     case MenuID::QUEST_CATEGORIES_EP2:
-      // Don't send anything here. The quest filter menu already has short
-      // descriptions included with the entries, which the client shows in the
-      // usual location on the screen.
+      // Don't send anything here. The quest filter menu already has short descriptions included with the entries,
+      // which the client shows in the usual location on the screen.
       break;
     case MenuID::QUEST_EP1:
     case MenuID::QUEST_EP2: {
@@ -2218,21 +2186,8 @@ static asio::awaitable<void> on_09(shared_ptr<Client> c, Channel::Message& msg) 
             if (game_c.get()) {
               static_assert(NUM_VERSIONS == 14, "Don\'t forget to update the game player listing version tokens");
               static const array<const char*, NUM_VERSIONS> version_tokens = {
-                  " $C4P2$C7",
-                  " $C4P4$C7",
-                  " $C5DCN$C7",
-                  " $C5DCP$C7",
-                  " $C2DC1$C7",
-                  " $C2DC2$C7",
-                  " $C5PCN$C7",
-                  " $C2PC$C7",
-                  " $C5GCN$C7",
-                  " $C2GC$C7",
-                  " $C5Ep3N$C7",
-                  " $C2Ep3$C7",
-                  " $C2XB$C7",
-                  " $C2BB$C7",
-              };
+                  " $C4P2$C7", " $C4P4$C7", " $C5DCN$C7", " $C5DCP$C7", " $C2DC1$C7", " $C2DC2$C7", " $C5PCN$C7",
+                  " $C2PC$C7", " $C5GCN$C7", " $C2GC$C7", " $C5Ep3N$C7", " $C2Ep3$C7", " $C2XB$C7", " $C2BB$C7"};
               const char* version_token = (game_c->version() != c->version())
                   ? version_tokens.at(static_cast<size_t>(game_c->version()))
                   : "";
@@ -2248,8 +2203,7 @@ static asio::awaitable<void> on_09(shared_ptr<Client> c, Channel::Message& msg) 
           }
         }
 
-        // If page 1 is blank (there are no players) or we sent page 1 last
-        // time, send page 2 (extended info)
+        // If page 1 is blank (there are no players) or we sent page 1 last time, send page 2 (extended info)
         if (info.empty()) {
           c->last_game_info_requested = 0;
           uint8_t effective_section_id = game->effective_section_id();
@@ -2423,9 +2377,8 @@ static void on_quest_loaded(shared_ptr<Lobby> l) {
     lc->delete_overlay();
 
     if ((l->quest->meta.challenge_template_index >= 0) && !is_v4(leader_c->version())) {
-      // If the leader is BB, they will send an 02DF command that will create
-      // the overlays later; on other versions, we do it at quest start time
-      // (now) instead, hence the version check above.
+      // If the leader is BB, they will send an 02DF command that will create the overlays later; on other versions, we
+      // do it at quest start time (now) instead, hence the version check above.
       if (is_v4(lc->version())) {
         lc->change_bank(lc->bb_character_index);
       }
@@ -2507,16 +2460,13 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q, bool substi
     send_open_quest_file(
         lc, dat_filename, dat_filename, xb_filename, vq->meta.quest_number, QuestFileType::ONLINE, vq->dat_contents);
 
-    // There is no such thing as command AC (quest barrier) on PSO V1 and V2;
-    // quests just start immediately when they're done downloading. (This is
-    // also the case on GC Trial Edition.) There are also no chunk
-    // acknowledgements (C->S 13 commands) like there are on v3 and later. So,
-    // for pre-V3 clients, we can just not set the loading flag, since we
-    // won't be told when to clear it later.
-    // TODO: For V3 and V4 clients, the quest doesn't finish loading here, so
-    // technically we should queue up commands sent by pre-V3 clients, since
-    // they might start the quest before V3/V4 clients do. We can probably use
-    // a method similar to game_join_command_queue.
+    // There is no such thing as command AC (quest barrier) on PSO V1 and V2; quests just start immediately when
+    // they're done downloading. (This is also the case on GC Trial Edition.) There are also no chunk acknowledgements
+    // (C->S 13 commands) like there are on v3 and later. So, for pre-V3 clients, we can just not set the loading flag,
+    // since we won't be told when to clear it later.
+    // TODO: For V3 and V4 clients, the quest doesn't finish loading here, so technically we should queue up commands
+    // sent by pre-V3 clients, since they might start the quest before V3/V4 clients do. We can probably use a method
+    // similar to game_join_command_queue.
     if (!is_v1_or_v2(lc->version())) {
       num_clients_with_loading_flag++;
       lc->set_flag(Client::Flag::LOADING_QUEST);
@@ -2571,9 +2521,8 @@ static asio::awaitable<void> on_10_main_menu(shared_ptr<Client> c, uint32_t item
       if (!c->check_flag(Client::Flag::HAS_SEND_FUNCTION_CALL)) {
         throw runtime_error("client does not support send_function_call");
       }
-      // We have to prepare the client for patches here, even though we
-      // don't send them from this mennu, because we need to know the
-      // client's specific_version before sending the menu.
+      // We have to prepare the client for patches here, even though we don't send them from this mennu, because we
+      // need to know the client's specific_version before sending the menu.
       co_await prepare_client_for_patches(c);
       send_menu(c, c->require_server_state()->function_code_index->patch_switches_menu(c->specific_version, s->auto_patches, c->login->account->auto_patches_enabled));
       break;
@@ -2590,8 +2539,7 @@ static asio::awaitable<void> on_10_main_menu(shared_ptr<Client> c, uint32_t item
 
     case MainMenuItemID::DISCONNECT:
       if (c->version() == Version::XB_V3) {
-        // On XB (at least via Insignia) the server has to explicitly tell
-        // the client to disconnect by sending this command.
+        // On XB (at least via Insignia) the server has to explicitly tell the client to disconnect using this command.
         send_command(c, 0x05, 0x00);
       }
       c->channel->disconnect();
@@ -2730,9 +2678,8 @@ static asio::awaitable<void> on_10_proxy_destinations(shared_ptr<Client> c, uint
       send_message_box(c, "$C6No such destination exists.");
       c->channel->disconnect();
     } else {
-      // Clear Check Tactics menu so client won't see newserv tournament
-      // state while logically on another server. There is no such command
-      // on Trial Edition though, so only do this on Ep3 final.
+      // Clear Check Tactics menu so client won't see newserv tournament state while logically on another server. There
+      // is no such command on Trial Edition though, so only do this on Ep3 final.
       if (c->version() == Version::GC_EP3) {
         send_ep3_confirm_tournament_entry(c, nullptr);
       }
@@ -2759,9 +2706,8 @@ static asio::awaitable<void> on_10_game_menu(shared_ptr<Client> c, uint32_t item
         c->set_flag(Client::Flag::LOADING);
         c->log.info_f("LOADING flag set");
 
-        // If no one was in the game before, then there's no leader to send
-        // the game state - send it to the joining player (who is now the
-        // leader)
+        // If no one was in the game before, then there's no leader to send the game state - send it to the joining
+        // player (who is now the leader)
         if (game->count_clients() == 1) {
           c->set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE);
           c->set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ENEMY_AND_SET_STATE);
@@ -2860,8 +2806,7 @@ static asio::awaitable<void> on_10_quest_menu(shared_ptr<Client> c, uint32_t ite
     co_return;
   }
 
-  // If the client is not in a lobby, send the quest as a download quest.
-  // Otherwise, they must be in a game to load a quest.
+  // If the client is not in a lobby, send it as a download quest; otherwise, they must be in a game to load a quest.
   auto l = c->lobby.lock();
   if (l && !l->is_game()) {
     send_lobby_message_box(c, "$C7Quests cannot be\nloaded in lobbies.");
@@ -3119,15 +3064,15 @@ static asio::awaitable<void> on_84(shared_ptr<Client> c, Channel::Message& msg) 
     co_return;
   }
 
-  // If the client isn't in any lobby, then they just left a game. Add them to
-  // the lobby they requested, but fall back to another lobby if it's full.
   if (!c->lobby.lock()) {
+    // If the client isn't in any lobby, then they just left a game. Add them to the lobby they requested, but fall
+    // back to another lobby if it's full.
     c->preferred_lobby_id = cmd.item_id;
     s->add_client_to_available_lobby(c);
 
-    // If the client already is in a lobby, then they're using the lobby
-    // teleporter; add them to the lobby they requested or send a failure message.
   } else {
+    // If the client already is in a lobby, then they're using the lobby teleporter; add them to the lobby they
+    // requested or send a failure message.
     auto new_lobby = s->find_lobby(cmd.item_id);
     if (!new_lobby) {
       send_lobby_message_box(c, "$C6Can't change lobby\n\n$C7The lobby does not\nexist.");
@@ -3164,18 +3109,16 @@ static asio::awaitable<void> on_1F(shared_ptr<Client> c, Channel::Message& msg) 
 }
 
 static asio::awaitable<void> on_A0(shared_ptr<Client> c, Channel::Message&) {
-  // The client sends data in this command, but none of it is important. We
-  // intentionally don't call check_size here, but just ignore the data.
+  // The client sends data in this command, but none of it is important. We intentionally don't call check_size here,
+  // but just ignore the data.
 
-  // Delete the player from the lobby they're in (but only visible to themself).
-  // This makes it safe to allow the player to choose download quests from the
-  // main menu again - if we didn't do this, they could move in the lobby after
+  // Delete the player from the lobby they're in (but only visible to themself). This makes it safe to allow the player
+  // to choose download quests from the main menu again - if we didn't do this, they could move in the lobby after
   // canceling the download quests menu, which looks really bad.
   send_self_leave_notification(c);
 
-  // Sending a blank message box here works around the bug where the log window
-  // contents appear prepended to the next large message box. But, we don't have
-  // to do this if we're not going to show the welcome message or information
+  // Sending a blank message box here works around the bug where the log window contents appear prepended to the next
+  // large message box. But, we don't have to do this if we're not going to show the welcome message or information
   // menu (that is, if the client will not send a close confirmation).
   if (!c->check_flag(Client::Flag::NO_D6)) {
     send_message_box(c, "");
@@ -3278,11 +3221,9 @@ static void on_joinable_quest_loaded(shared_ptr<Client> c) {
     throw logic_error("lobby leader is missing");
   }
 
-  // On BB, ask the leader to send the quest state to the joining player (and
-  // we'll need to use the game join command queue to avoid any item ID races).
-  // On other versions, the server will have to generate the state commands;
-  // this happens when the response to the ping (1D) is received, so we don't
-  // need the game join command queue in that case.
+  // On BB, ask the leader to send the quest state to the joining player (and we'll need to use the game join command
+  // queue to avoid any item ID races). On other versions, the server will have to generate the state commands; this
+  // happens when the response to the ping (1D) is received, so we don't need the game join command queue in that case.
   if (leader_c->version() == Version::BB_V4) {
     send_command(leader_c, 0xDD, c->lobby_client_id);
     c->log.info_f("Creating game join command queue");
@@ -3381,8 +3322,8 @@ static asio::awaitable<void> on_13_A7_V3_V4(shared_ptr<Client> c, Channel::Messa
 static asio::awaitable<void> on_61_98(shared_ptr<Client> c, Channel::Message& msg) {
   auto s = c->require_server_state();
 
-  // 98 should only be sent when leaving a game, and we should leave the client
-  // in no lobby (they will send an 84 soon afterward to choose a lobby).
+  // 98 should only be sent when leaving a game, and we should leave the client in no lobby (they will send an 84 soon
+  // afterward to choose a lobby).
   if (msg.command == 0x98) {
     // Clear all temporary state from the game
     c->delete_overlay();
@@ -3542,8 +3483,8 @@ static asio::awaitable<void> on_61_98(shared_ptr<Client> c, Channel::Message& ms
     }
     case Version::BB_V4: {
       const auto& cmd = check_size_t<C_CharacterData_BB_61_98>(msg.data, 0xFFFF);
-      // Note: we don't copy the inventory and disp here because we already have
-      // them (we sent the player data to the client in the first place)
+      // Note: we don't copy the inventory and disp here because we already have them (we sent the player data to the
+      // client in the first place)
       player->battle_records = cmd.records.battle;
       player->challenge_records = cmd.records.challenge;
       player->choice_search_config = cmd.choice_search_config;
@@ -3577,8 +3518,7 @@ static asio::awaitable<void> on_61_98(shared_ptr<Client> c, Channel::Message& ms
 
   c->update_channel_name();
 
-  // If the player is BB and has just left a game, sync their save file to the
-  // client to make sure it's up to date
+  // If the player is BB and has just left a game, sync their save file to the client to make sure it's up to date
   if ((c->version() == Version::BB_V4) && (msg.command == 0x98)) {
     send_complete_player_bb(c);
   }
@@ -3621,9 +3561,8 @@ static asio::awaitable<void> on_30(shared_ptr<Client> c, Channel::Message& msg) 
         break;
       case Version::GC_V3:
         ch = PSOBBCharacterFile::create_from_file(msg.check_size_t<PSOGCCharacterFile::Character>());
-        // Note: We don't call ch->inventory.decode_from_client here because
-        // the data is sent in the game's native byte order, which is already
-        // correct on GC (unlike for 61/98)
+        // Note: We don't call ch->inventory.decode_from_client here because the data is sent in the game's native byte
+        // order, which is already correct on GC (unlike for 61/98)
         break;
       case Version::XB_V3:
         ch = PSOBBCharacterFile::create_from_file(msg.check_size_t<PSOXBCharacterFile::Character>());
@@ -4070,9 +4009,8 @@ static asio::awaitable<void> on_ED_BB(shared_ptr<Client> c, Channel::Message& ms
 static asio::awaitable<void> on_E7_BB(shared_ptr<Client> c, Channel::Message& msg) {
   const auto& cmd = check_size_t<SC_SyncSaveFiles_BB_E7>(msg.data);
 
-  // TODO: In the future, we shouldn't need to trust any of the client's data
-  // here. We should instead verify our copy of the player against what the
-  // client sent, and alert on anything that's out of sync.
+  // TODO: In the future, we shouldn't need to trust any of the client's data here. We should instead verify our copy
+  // of the player against what the client sent, and alert on anything that's out of sync.
   auto p = c->character_file();
   p->challenge_records = cmd.char_file.challenge_records;
   p->battle_records = cmd.char_file.battle_records;
@@ -4132,9 +4070,8 @@ static asio::awaitable<void> on_DF_BB(shared_ptr<Client> c, Channel::Message& ms
       }
 
       for (auto lc : l->clients) {
-        // See comment in on_quest_loaded about when the leader is responsible
-        // for creating challenge overlays vs. when the server should do it at
-        // quest load time
+        // See comment in on_quest_loaded about when the leader is responsible for creating challenge overlays vs. when
+        // the server should do it at quest load time
         if (lc) {
           if (is_v4(lc->version())) {
             lc->change_bank(lc->bb_character_index);
@@ -4314,12 +4251,10 @@ static void on_choice_search_t(shared_ptr<Client> c, const ChoiceSearchConfig& c
   }
 
   if (results.empty()) {
-    // There is a client bug that causes garbage to appear in the info window
-    // when the server returns no entries in this command, since the client
-    // tries to display the first entry in the list even if the list contains
-    // "No player". If the server sends no entries at all, the entry will
-    // uninitialized memory which can cause crashes on v2, so we send a blank
-    // entry to prevent this.
+    // There is a client bug that causes garbage to appear in the info window when the server returns no entries in
+    // this command, since the client tries to display the first entry in the list even if the list contains "No
+    // player". If the server sends no entries at all, the entry will uninitialized memory which can cause crashes on
+    // v2, so we send a blank aentry to prevent this.
     auto& result = results.emplace_back();
     result.reconnect_command_header.command = 0x00;
     result.reconnect_command_header.flag = 0x00;
@@ -4398,17 +4333,13 @@ static asio::awaitable<void> on_81(shared_ptr<Client> c, Channel::Message& msg) 
   }
 
   if (!target || !target->login) {
-    // TODO: We should store pending messages for accounts somewhere, and send
-    // them when the player signs on again.
+    // TODO: We should store pending messages for accounts somewhere, and send them when the player signs on again.
     if (!c->blocked_senders.count(to_guild_card_number)) {
       try {
         auto target_account = s->account_index->from_account_id(to_guild_card_number);
         if (!target_account->auto_reply_message.empty()) {
           send_simple_mail(
-              c,
-              target_account->account_id,
-              target_account->last_player_name,
-              target_account->auto_reply_message);
+              c, target_account->account_id, target_account->last_player_name, target_account->auto_reply_message);
         }
       } catch (const AccountIndex::missing_account&) {
       }
@@ -4421,8 +4352,7 @@ static asio::awaitable<void> on_81(shared_ptr<Client> c, Channel::Message& msg) 
       co_return;
     }
 
-    // If the target has auto-reply enabled, send the autoreply. Note that we also
-    // forward the message in this case.
+    // If the target has auto-reply enabled, send the autoreply. Note that we also forward the message in this case.
     if (!c->blocked_senders.count(target->login->account->account_id)) {
       auto target_p = target->character_file();
       if (!target_p->auto_reply.empty()) {
@@ -4436,10 +4366,7 @@ static asio::awaitable<void> on_81(shared_ptr<Client> c, Channel::Message& msg) 
 
     // Forward the message
     send_simple_mail(
-        target,
-        c->login->account->account_id,
-        c->character_file()->disp.name.decode(c->language()),
-        message);
+        target, c->login->account->account_id, c->character_file()->disp.name.decode(c->language()), message);
   }
 }
 
@@ -4532,8 +4459,7 @@ shared_ptr<Lobby> create_game_generic(
 
   auto p = creator_c->character_file();
   if (!creator_c->login->account->check_flag(Account::Flag::FREE_JOIN_GAMES) && (min_level > p->disp.stats.level)) {
-    // Note: We don't throw here because this is a situation players might
-    // actually encounter while playing the game normally
+    // Note: We don't throw here because this is a situation players might encounter while playing the game normally
     string msg = std::format("You must be level {}\nor above to play\nthis difficulty.", static_cast<size_t>(min_level + 1));
     send_lobby_message_box(creator_c, msg);
     return nullptr;
@@ -4880,13 +4806,11 @@ static asio::awaitable<void> on_0C_C1_E7_EC(shared_ptr<Client> c, Channel::Messa
     c->set_flag(Client::Flag::LOADING);
     c->log.info_f("LOADING flag set");
 
-    // There is a bug in DC NTE and 11/2000 that causes them to assign item IDs
-    // twice when joining a game. If there are other players in the game, this
-    // isn't an issue because the equivalent of the 6x6D command resets the next
-    // item ID before the second assignment, so the item IDs stay in sync with
-    // the server. If there was no one else in the game, however (as in this
-    // case, when it was just created), we need to artificially change the next
-    // item IDs during the client's loading procedure.
+    // There is a bug in DC NTE and 11/2000 that causes them to assign item IDs twice when joining a game. If there are
+    // other players in the game, this isn't an issue because the equivalent of the 6x6D command resets the next item
+    // ID before the second assignment, so the item IDs stay in sync with the server. If there was no one else in the
+    // game, however (as in this case, when it was just created), we need to artificially change the next item IDs
+    // during the client's loading procedure.
     if (is_pre_v1(c->version())) {
       c->set_flag(Client::Flag::SHOULD_SEND_ARTIFICIAL_ITEM_STATE);
     }
@@ -4997,16 +4921,14 @@ static asio::awaitable<void> on_6F(shared_ptr<Client> c, Channel::Message& msg) 
     throw runtime_error("client sent ready command outside of game");
   }
 
-  // Episode 3 sends a 6F after a CAx21 (end battle) command, so we shouldn't
-  // reassign the item IDs again in that case (even though item IDs really
-  // don't matter for Ep3)
+  // Episode 3 sends a 6F after a CAx21 (end battle) command, so we shouldn't reassign the item IDs again in that case
+  // (even though item IDs really don't matter for Ep3)
   if (c->check_flag(Client::Flag::LOADING)) {
     c->clear_flag(Client::Flag::LOADING);
     c->log.info_f("LOADING flag cleared");
 
-    // The client sends 6F when it has created its TObjPlayer and assigned its
-    // item IDs. For the leader, however, this happens before any inbound commands
-    // are processed, so we already did it when the client was added to the lobby.
+    // The client sends 6F when it has created its TObjPlayer and assigned its item IDs. For the leader, however, this
+    // happens before any inbound commands are processed, so we already did it when the client was added to the lobby.
     // So, we only assign item IDs here if the client is not the leader.
     if ((msg.command == 0x006F) && (c->lobby_client_id != l->leader_id)) {
       l->assign_inventory_and_bank_item_ids(c, true);
@@ -5042,11 +4964,9 @@ static asio::awaitable<void> on_6F(shared_ptr<Client> c, Channel::Message& msg) 
     send_update_team_reward_flags(c);
     send_all_nearby_team_metadatas_to_client(c, false);
 
-    // On BB, send the joinable quest file as soon as the client is ready (6F).
-    // On other versions, we send joinable quests in the 99 handler instead,
-    // since we need to wait for the client's save to complete.
-    // BB sends 016F when the client is done loading a quest. In that case, we
-    // shouldn't send the quest to them again!
+    // On BB, send the joinable quest file as soon as the client is ready (6F). On other versions, we send joinable
+    // quests in the 99 handler instead, since we need to wait for the client's save to complete. BB sends 016F when
+    // the client is done loading a quest. In that case, we shouldn't send the quest to them again!
     if ((msg.command == 0x006F) && l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
       if (!l->quest) {
         throw runtime_error("JOINABLE_QUEST_IN_PROGRESS is set, but lobby has no quest");
@@ -5097,14 +5017,11 @@ static asio::awaitable<void> on_6F(shared_ptr<Client> c, Channel::Message& msg) 
 static asio::awaitable<void> on_99(shared_ptr<Client> c, Channel::Message& msg) {
   check_size_v(msg.data.size(), 0);
 
-  // This is an odd place to send 6xB4x52, but there's a reason for it. If the
-  // client receives 6xB4x52 while it's loading the battlefield, it won't set
-  // the spectator count or top-bar text. But the client doesn't send anything
-  // when it's done loading the battlefield, so we have to have some other way
-  // of knowing when it's ready. We do this by sending a B1 (server time)
-  // command immediately after the E8 (join spectator team) command, which
-  // allows us to delay sending the 6xB4x52 until the server responds with a 99
-  // command after loading is done.
+  // This is an odd place to send 6xB4x52, but there's a reason for it. If the client receives 6xB4x52 while it's
+  // loading the battlefield, it won't set the spectator count or top-bar text. But the client doesn't send anything
+  // when it's done loading the battlefield, so we have to have some other way of knowing when it's ready. We do this
+  // by sending a B1 (server time) command immediately after the E8 (join spectator team) command, which allows us to
+  // delay sending the 6xB4x52 until the server responds with a 99 command after loading is done.
   auto l = c->lobby.lock();
   if (l && l->is_game() && (l->episode == Episode::EP3) && l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM)) {
     auto watched_l = l->watched_lobby.lock();
@@ -5113,8 +5030,7 @@ static asio::awaitable<void> on_99(shared_ptr<Client> c, Channel::Message& msg) 
     }
   }
 
-  // See the comment in on_6F about why we do this here, but only for non-BB
-  // versions.
+  // See the comment in on_6F about why we do this here, but only for non-BB versions.
   if (l && l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS) && (c->version() != Version::BB_V4)) {
     if (!l->quest) {
       throw runtime_error("JOINABLE_QUEST_IN_PROGRESS is set, but lobby has no quest");
@@ -5131,11 +5047,9 @@ static asio::awaitable<void> on_99(shared_ptr<Client> c, Channel::Message& msg) 
     c->set_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST);
     c->log.info_f("LOADING_RUNNING_JOINABLE_QUEST flag set");
 
-    // On v1 and v2, there is no confirmation when the client is done
-    // downloading the quest file, so just set the in-quest state immediately.
-    // On v3 and later, we do this when we receive the AC command.
-    // TODO: This might not work for GC NTE, since we wait for file chunk
-    // confirmations (13 commands) but there is no AC command.
+    // On v1 and v2, there is no confirmation when the client is done downloading the quest file, so just set the in-
+    // quest state immediately. On v3 and later, we do this when we receive the AC command.
+    // TODO: This might not work for GC NTE, since we wait for file chunk confirmations but there is no AC command.
     if (is_v1_or_v2(c->version())) {
       on_joinable_quest_loaded(c);
     }
@@ -5175,13 +5089,10 @@ static asio::awaitable<void> on_D0_V3_BB(shared_ptr<Client> c, Channel::Message&
     item.decode_for_version(c->version());
   }
 
-  // If the other player has a pending trade as well, assume this is the second
-  // half of the trade sequence, and send a D1 to both clients (which should
-  // cause them to delete the appropriate inventory items and send D2s). If the
-  // other player does not have a pending trade, assume this is the first half
-  // of the trade sequence, and send a D1 only to the target player (to request
-  // its D0 command).
-  // See the description of the D0 command in CommandFormats.hh for more
+  // If the other player has a pending trade as well, assume this is the second half of the trade sequence, and send a
+  // D1 to both clients (which should cause them to delete the appropriate inventory items and send D2s). If the other
+  // player does not have a pending trade, assume this is the first half of the trade sequence, and send a D1 only to
+  // the target player (to request its D0 command). See the description of the D0 command in CommandFormats.hh for more
   // information on how this sequence is supposed to work.
   send_command(target_c, 0xD1, 0x00);
   if (target_c->pending_item_trade) {
@@ -5221,10 +5132,9 @@ static asio::awaitable<void> on_D2_V3_BB(shared_ptr<Client> c, Channel::Message&
         size_t amount = item.stack_size(*s->item_stack_limits(c->version()));
         p->remove_item(item.id, amount, *s->item_stack_limits(c->version()));
 
-        // This is a special case: when the trade is executed, the client
-        // deletes the traded items from its own inventory automatically, so we
-        // should NOT send the 6x29 to that client; we should only send it to
-        // the other clients in the game.
+        // This is a special case: when the trade is executed, the client deletes the traded items from its own
+        // inventory automatically, so we should NOT send the 6x29 to that client; we should only send it to the other
+        // clients in the game.
         G_DeleteInventoryItem_6x29 cmd = {{0x29, 0x03, c->lobby_client_id}, item.id, amount};
         for (auto lc : l->clients) {
           if (lc && (lc != c)) {
@@ -5242,8 +5152,7 @@ static asio::awaitable<void> on_D2_V3_BB(shared_ptr<Client> c, Channel::Message&
       send_command(c, 0xD3, 0x00);
 
     } else {
-      // On V3, the client will handle it; we just have to forward the other
-      // client's trade list
+      // On V3, the client will handle it; we just have to forward the other client's trade list
       send_execute_item_trade(c, other_c->pending_item_trade->items);
     }
 
@@ -5263,10 +5172,9 @@ static asio::awaitable<void> on_D2_V3_BB(shared_ptr<Client> c, Channel::Message&
 static asio::awaitable<void> on_D4_V3_BB(shared_ptr<Client> c, Channel::Message& msg) {
   check_size_v(msg.data.size(), 0);
 
-  // Annoyingly, if the other client disconnects at a certain point during the
-  // trade sequence, the client can get into a state where it sends this command
-  // many times in a row. To deal with this, we just do nothing if the client
-  // has no trade pending.
+  // Annoyingly, if the other client disconnects at a certain point during the trade sequence, the client can get into
+  // a state where it sends this command many times in a row. To deal with this, we just do nothing if the client has
+  // no trade pending.
   if (!c->pending_item_trade) {
     co_return;
   }
@@ -5321,14 +5229,11 @@ static asio::awaitable<void> on_EE_Ep3(shared_ptr<Client> c, Channel::Message& m
           make_pair(cmd.entries[x].card_type, cmd.entries[x].count));
     }
 
-    // If the other player has a pending trade as well, assume this is the
-    // second half of the trade sequence, and send an EE D1 to both clients. If
-    // the other player does not have a pending trade, assume this is the first
-    // half of the trade sequence, and send an EE D1 only to the target player
-    // (to request its EE D0 command).
-    // See the description of the D0 command in CommandFormats.hh for more
-    // information on how this sequence is supposed to work. (The EE D0 command
-    // is analogous to Episodes 1&2's D0 command.)
+    // If the other player has a pending trade as well, assume this is the second half of the trade sequence, and send
+    // an EE D1 to both clients. If the other player does not have a pending trade, assume this is the first half of
+    // the trade sequence, and send an EE D1 only to the target player (to request its EE D0 command). See the
+    // description of the D0 command in CommandFormats.hh for more information on how this sequence is supposed to
+    // work. (The EE D0 command is analogous to Episodes 1&2's D0 command.)
     S_AdvanceCardTradeState_Ep3_EE_FlagD1 resp = {0};
     send_command_t(target_c, 0xEE, 0xD1, resp);
     if (target_c->pending_card_trade) {
@@ -5650,13 +5555,12 @@ static asio::awaitable<void> on_ignored(shared_ptr<Client>, Channel::Message&) {
 
 typedef asio::awaitable<void> (*on_command_t)(shared_ptr<Client> c, Channel::Message& msg);
 
-// Command handler table, indexed by command number and game version. Null
-// entries in this table cause on_unimplemented_command to be called, which
-// disconnects the client.
+// Command handler table, indexed by command number and game version. Null entries in this table cause
+// on_unimplemented_command to be called, which disconnects the client.
 static_assert(NUM_VERSIONS == 14, "Don\'t forget to update the ReceiveCommands handler table");
 static on_command_t handlers[0x100][NUM_VERSIONS] = {
     // clang-format off
-//        nullptr, nullptr, DC_NTE          DC_112000       DCV1            DCV2            PC_NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
+//        PC_PATCH BB_PATCH DC_NTE          DC_112000       DCV1            DCV2            PC_NTE       PC           GCNTE           GC              EP3TE           EP3             XB              BB
 /* 00 */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 01 */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* 02 */ {on_02_U, on_02_U, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
@@ -5941,9 +5845,8 @@ static void check_logged_out_command(Version version, uint8_t command) {
     case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
-      // newserv doesn't actually know that DC clients are DC until it receives
-      // an appropriate login command (93, 9A, or 9D), but those commands also
-      // log the client in, so this case should never be executed.
+      // newserv doesn't actually know that DC clients are DC until it receives an appropriate login command (93, 9A,
+      // or 9D), but those commands also log the client in, so this case should never be executed.
       throw logic_error("cannot check logged-out command for DC client");
     case Version::PC_NTE:
     case Version::PC_V2:
@@ -5986,9 +5889,8 @@ static void check_logged_out_command(Version version, uint8_t command) {
 asio::awaitable<void> on_command(shared_ptr<Client> c, unique_ptr<Channel::Message> msg) {
   c->reschedule_ping_and_timeout_timers();
 
-  // Most of the command handlers assume the client is registered, logged in,
-  // and not banned (and therefore that c->login is not null), so the client is
-  // allowed to access normal functionality. This check prevents clients from
+  // Most of the command handlers assume the client is registered, logged in, and not banned (and therefore that
+  // c->login is not null), so the client is allowed to access normal functionality. This check prevents clients from
   // sneakily sending commands to access functionality without logging in.
   if (!c->login) {
     check_logged_out_command(c->version(), msg->command);

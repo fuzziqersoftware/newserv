@@ -51,7 +51,8 @@ CheatFlags::CheatFlags(const phosg::JSON& json) : CheatFlags() {
 }
 
 ServerState::QuestF960Result::QuestF960Result(const phosg::JSON& json, shared_ptr<const ItemNameIndex> name_index) {
-  static const array<string, 7> day_names = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+  static const array<string, 7> day_names = {
+      "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
   this->meseta_cost = json.get_int("MesetaCost", 0);
   this->base_probability = json.get_int("BaseProbability", 0);
   this->probability_upgrade = json.get_int("ProbabilityUpgrade", 0);
@@ -60,7 +61,8 @@ ServerState::QuestF960Result::QuestF960Result(const phosg::JSON& json, shared_pt
       try {
         this->results[day].emplace_back(name_index->parse_item_description(item_it->as_string()));
       } catch (const exception& e) {
-        config_log.warning_f("Cannot parse item description \"{}\": {} (skipping entry)", item_it->as_string(), e.what());
+        config_log.warning_f(
+            "Cannot parse item description \"{}\": {} (skipping entry)", item_it->as_string(), e.what());
       }
     }
   }
@@ -81,10 +83,7 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
   if (c->preferred_lobby_id >= 0) {
     try {
       auto l = this->find_lobby(c->preferred_lobby_id);
-      if (l &&
-          !l->is_game() &&
-          l->check_flag(Lobby::Flag::PUBLIC) &&
-          l->version_is_allowed(c->version())) {
+      if (l && !l->is_game() && l->check_flag(Lobby::Flag::PUBLIC) && l->version_is_allowed(c->version())) {
         l->add_client(c);
         added_to_lobby = l;
       }
@@ -96,10 +95,7 @@ void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
     for (const auto& lobby_id : this->public_lobby_search_order(c)) {
       try {
         auto l = this->find_lobby(lobby_id);
-        if (l &&
-            !l->is_game() &&
-            l->check_flag(Lobby::Flag::PUBLIC) &&
-            l->version_is_allowed(c->version())) {
+        if (l && !l->is_game() && l->check_flag(Lobby::Flag::PUBLIC) && l->version_is_allowed(c->version())) {
           l->add_client(c);
           added_to_lobby = l;
           break;
@@ -135,10 +131,7 @@ void ServerState::remove_client_from_lobby(shared_ptr<Client> c) {
 }
 
 bool ServerState::change_client_lobby(
-    shared_ptr<Client> c,
-    shared_ptr<Lobby> new_lobby,
-    bool send_join_notification,
-    ssize_t required_client_id) {
+    shared_ptr<Client> c, shared_ptr<Lobby> new_lobby, bool send_join_notification, ssize_t required_client_id) {
   uint8_t old_lobby_client_id = c->lobby_client_id;
 
   auto current_lobby = c->lobby.lock();
@@ -161,8 +154,7 @@ bool ServerState::change_client_lobby(
   return true;
 }
 
-void ServerState::send_lobby_join_notifications(shared_ptr<Lobby> l,
-    shared_ptr<Client> joining_client) {
+void ServerState::send_lobby_join_notifications(shared_ptr<Lobby> l, shared_ptr<Client> joining_client) {
   for (auto& other_client : l->clients) {
     if (!other_client) {
       continue;
@@ -243,9 +235,8 @@ void ServerState::on_player_left_lobby(shared_ptr<Lobby> l, uint8_t leaving_clie
 }
 
 shared_ptr<Client> ServerState::find_client(const string* identifier, uint64_t account_id, shared_ptr<Lobby> l) {
-  // WARNING: There are multiple callsites where we assume this function never
-  // returns a client that isn't in any lobby. If this behavior changes, we will
-  // need to audit all callsites to ensure correctness.
+  // WARNING: There are multiple callsites where we assume this function never returns a client that isn't in any
+  // lobby. If this behavior changes, we will need to audit all callsites to ensure correctness.
 
   if ((account_id == 0) && identifier) {
     try {
@@ -298,8 +289,7 @@ uint32_t ServerState::connect_address_for_client(shared_ptr<Client> c) const {
   {
     auto peer_channel = dynamic_pointer_cast<PeerChannel>(c->channel);
     if (peer_channel) {
-      // This is used during replays; the "client" will ignore this and
-      // reconnect via another PeerChannel
+      // This is used during replays; the "client" will ignore this and reconnect via another PeerChannel
       return 0xEEEEEEEE;
     }
   }
@@ -517,7 +507,8 @@ shared_ptr<const CommonItemSet> ServerState::common_item_set(Version logic_versi
   } else if ((logic_version == Version::GC_NTE) || is_v3(logic_version) || is_v4(logic_version)) {
     return this->common_item_sets.at("common-table-v3-v4");
   } else {
-    throw runtime_error(std::format("no default common item set is available for {}", phosg::name_for_enum(logic_version)));
+    throw runtime_error(std::format(
+        "no default common item set is available for {}", phosg::name_for_enum(logic_version)));
   }
 }
 
@@ -545,11 +536,9 @@ void ServerState::set_port_configuration(const vector<PortConfiguration>& port_c
   for (const auto& pc : port_configs) {
     auto spc = make_shared<PortConfiguration>(pc);
     if (!this->name_to_port_config.emplace(spc->name, spc).second) {
-      // Note: This is a logic_error instead of a runtime_error because
-      // port_configs comes from a JSON map, so the names should already all be
-      // unique. In contrast, the user can define port configurations with the
-      // same number while still writing valid JSON, so only one of these cases
-      // can reasonably occur as a result of user behavior.
+      // Note: This is a logic_error instead of a runtime_error because port_configs comes from a JSON map, so the
+      // names should already all be unique. In contrast, the user can define port configurations with the same number
+      // while still writing valid JSON, so only one of these cases can reasonably occur as a result of user behavior.
       throw logic_error("duplicate name in port configuration");
     }
     if (!this->number_to_port_config.emplace(spc->port, spc).second) {
@@ -571,9 +560,7 @@ void ServerState::set_port_configuration(const vector<PortConfiguration>& port_c
 }
 
 shared_ptr<const string> ServerState::load_bb_file(
-    const string& patch_index_filename,
-    const string& gsl_filename,
-    const string& bb_directory_filename) const {
+    const string& patch_index_filename, const string& gsl_filename, const string& bb_directory_filename) const {
 
   if (this->bb_patch_file_index) {
     // First, look in the patch tree's data directory
@@ -588,8 +575,7 @@ shared_ptr<const string> ServerState::load_bb_file(
     // Second, look in the patch tree's data.gsl file
     const string& effective_gsl_filename = gsl_filename.empty() ? patch_index_filename : gsl_filename;
     try {
-      // TODO: It's kinda not great that we copy the data here; find a way to
-      // avoid doing this (also in the below case)
+      // TODO: It's kinda not great that we copy the data here; find a way to avoid doing this (also in the below case)
       return make_shared<string>(this->bb_data_gsl->get_copy(effective_gsl_filename));
     } catch (const out_of_range&) {
     }
@@ -782,8 +768,7 @@ void ServerState::load_config_early() {
     try {
       this->local_address = this->all_addresses.at(local_address_str);
       string addr_str = string_for_address(this->local_address);
-      config_log.info_f("Added local address: {} ({})", addr_str,
-          local_address_str);
+      config_log.info_f("Added local address: {} ({})", addr_str, local_address_str);
     } catch (const out_of_range&) {
       this->local_address = address_for_string(local_address_str.c_str());
       config_log.info_f("Added local address: {}", local_address_str);
@@ -810,8 +795,7 @@ void ServerState::load_config_early() {
     try {
       this->external_address = this->all_addresses.at(external_address_str);
       string addr_str = string_for_address(this->external_address);
-      config_log.info_f("Added external address: {} ({})", addr_str,
-          external_address_str);
+      config_log.info_f("Added external address: {} ({})", addr_str, external_address_str);
     } catch (const out_of_range&) {
       this->external_address = address_for_string(external_address_str.c_str());
       config_log.info_f("Added external address: {}", external_address_str);
@@ -830,7 +814,8 @@ void ServerState::load_config_early() {
       string addr_str = string_for_address(this->external_address);
       config_log.warning_f("External address not specified; using {} as default", addr_str);
     } else {
-      config_log.warning_f("External address not specified and no default is available; only local clients will be able to connect");
+      config_log.warning_f(
+          "External address not specified and no default is available; only local clients will be able to connect");
     }
   }
 
@@ -1003,16 +988,21 @@ void ServerState::load_config_early() {
         ? prs_decompress_size(compressed_gvm_data)
         : decompressed_gvm_data.size();
     if (decompressed_size > 0x37000) {
-      throw runtime_error(std::format("banner {} is too large (0x{:X} bytes; maximum size is 0x37000 bytes)", path, decompressed_size));
+      throw runtime_error(std::format(
+          "banner {} is too large (0x{:X} bytes; maximum size is 0x37000 bytes)", path, decompressed_size));
     }
 
     if (compressed_gvm_data.empty()) {
       compressed_gvm_data = prs_compress_optimal(decompressed_gvm_data);
     }
     if (compressed_gvm_data.size() > 0x3800) {
-      throw runtime_error(std::format("banner {} cannot be compressed small enough (0x{:X} bytes; maximum size is 0x3800 bytes compressed)", it->at(2).as_string(), compressed_gvm_data.size()));
+      throw runtime_error(std::format(
+          "banner {} cannot be compressed small enough (0x{:X} bytes; maximum size is 0x3800 bytes compressed)",
+          it->at(2).as_string(), compressed_gvm_data.size()));
     }
-    config_log.info_f("Loaded Episode 3 lobby banner {} (0x{:X} -> 0x{:X} bytes)", path, decompressed_size, compressed_gvm_data.size());
+    config_log.info_f(
+        "Loaded Episode 3 lobby banner {} (0x{:X} -> 0x{:X} bytes)",
+        path, decompressed_size, compressed_gvm_data.size());
     this->ep3_lobby_banners.emplace_back(
         Ep3LobbyBannerEntry{.type = static_cast<uint32_t>(it->at(0).as_int()),
             .which = static_cast<uint32_t>(it->at(1).as_int()),
@@ -1182,7 +1172,7 @@ void ServerState::load_config_early() {
     this->quest_category_index = make_shared<QuestCategoryIndex>(this->config_json->at("QuestCategories"));
   } catch (const exception& e) {
     throw runtime_error(std::format(
-        "QuestCategories is missing or invalid in config.json ({}) - see config.example.json for an example", e.what()));
+        "QuestCategories is missing or invalid in config ({}); see config.example.json for an example", e.what()));
   }
 
   config_log.info_f("Creating menus");
@@ -1455,7 +1445,8 @@ void ServerState::load_config_late() {
         auto& list = it->as_list();
         size_t price = list.at(0)->as_int();
         try {
-          this->quest_F95F_results.emplace_back(make_pair(price, this->parse_item_description(Version::BB_V4, list.at(1)->as_string())));
+          this->quest_F95F_results.emplace_back(make_pair(
+              price, this->parse_item_description(Version::BB_V4, list.at(1)->as_string())));
         } catch (const exception& e) {
           config_log.warning_f("Cannot parse item description \"{}\": {} (skipping entry)", list.at(1)->as_string(), e.what());
         }
@@ -1463,7 +1454,8 @@ void ServerState::load_config_late() {
     } catch (const out_of_range&) {
     }
     try {
-      this->quest_F960_failure_results = QuestF960Result(this->config_json->at("QuestF960FailureResultItems"), this->item_name_index(Version::BB_V4));
+      this->quest_F960_failure_results = QuestF960Result(
+          this->config_json->at("QuestF960FailureResultItems"), this->item_name_index(Version::BB_V4));
       for (const auto& it : this->config_json->get_list("QuestF960SuccessResultItems")) {
         this->quest_F960_success_results.emplace_back(*it, this->item_name_index(Version::BB_V4));
       }
@@ -1585,8 +1577,7 @@ void ServerState::load_maps() {
   unordered_map<uint64_t, shared_ptr<const MapFile>> new_map_file_for_source_hash;
   map<uint32_t, array<shared_ptr<const MapFile>, NUM_VERSIONS>> new_map_files_for_free_play_key;
   {
-    // TODO: Ep3 NTE loads map_city00_on, but it appears there are some
-    // variants. Figure this out and load those maps too.
+    // TODO: Ep3 NTE loads map_city00_on, but it appears there are variants. Figure this out and load those maps too.
     auto objects_data = this->load_map_file(Version::GC_EP3, "map_city_on_battle_o.dat");
     auto enemies_data = this->load_map_file(Version::GC_EP3, "map_city_on_battle_e.dat");
     if (objects_data || enemies_data) {
@@ -1964,8 +1955,6 @@ void ServerState::load_drop_tables() {
       string path = "system/item-tables/" + filename;
       size_t ext_offset = filename.rfind('.');
       string basename = (ext_offset == string::npos) ? filename : filename.substr(0, ext_offset);
-
-      // AFSV2CommonItemSet(std::shared_ptr<const std::string> pt_afs_data, std::shared_ptr<const std::string> ct_afs_data);
 
       if (filename.ends_with(".json")) {
         config_log.info_f("Loading JSON common item table {}", filename);

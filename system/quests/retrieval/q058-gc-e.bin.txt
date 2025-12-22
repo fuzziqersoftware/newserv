@@ -1,32 +1,26 @@
-// This file documents newserv's quest assembler syntax and format. This is a
-// slightly modified copy of the English version of Sega's Lost HEAT SWORD quest
-// for PSO GC.
+// This file documents newserv's quest assembler syntax and format. This is a slightly modified copy of the English
+// version of Sega's Lost HEAT SWORD quest for PSO GC.
 
-// Generally the metadata directives should appear before the quest's code.
-// These specify the quest's name, description, and other information.
+// Generally the metadata directives should appear before the quest's code. These specify the quest's name,
+// description, and other information.
 
-// The .version directive specifies which version of the game the quest is for.
-// The values are DC_NTE, DC_11_2000, DC_V1, DC_V2, PC_V2, GC_NTE, GC_V3,
-// GC_EP3_NTE, GC_EP3, XB_V3, and BB_V4. This determines which set of opcodes
-// to use during compilation, and also specifies the header format and string
-// encoding. This does not affect where the quest appears in menus, so for
-// versions that use the same opcodes, headers, and string encodings, it is OK
-// to use a symbolic link (hence q058-xb-e.bin.txt is a link to this file).
+// The .version directive specifies which version of the game the quest is for. The values are DC_NTE, DC_11_2000,
+// DC_V1, DC_V2, PC_V2, GC_NTE, GC_V3, GC_EP3_NTE, GC_EP3, XB_V3, and BB_V4. This determines which set of opcodes to
+// use during compilation, and also specifies the header format and string encoding. This does not affect where the
+// quest appears in menus, so for versions that use the same opcodes, headers, and string encodings, it is OK to use a
+// symbolic link (hence q058-xb-e.bin.txt is a link to this file).
 .version GC_V3
 
-// The .quest_num directive specifies the internal number of the quest. This
-// has no meaning for online quests, though it's recommended for this value to
-// match the number in the filename. For download quests, the game deduplicates
-// quest files with the same number, so download quests should all have unique
-// numbers in this field. On Episodes 1&2, this field must be in the range
-// 0-255; on other versions, it can be 0-65535, but generally numbers less than
-// 1000 are recommended.
+// The .quest_num directive specifies the internal number of the quest. This has no meaning for online quests, though
+// it's recommended for this value to match the number in the filename. For download quests, the game deduplicates
+// quest files with the same number, so download quests should all have unique numbers in this field. On Episodes 1&2,
+// this field must be in the range 0-255; on other versions, it can be 0-65535, but generally numbers less than 1000
+// are recommended.
 .quest_num 58
 
-// The .language field specifies the internal language of the quest. On console
-// versions (DC, GC, and XB), this affects how strings are encoded - Japanese
-// uses Shift-JIS and other languages use ISO8859. (On PC V2 and BB, UTF-16 is
-// used for strings in all languages.) The language values are:
+// The .language field specifies the internal language of the quest. On console versions (DC, GC, and XB), this affects
+// how strings are encoded - Japanese uses Shift-JIS and other languages use ISO8859. (On PC V2 and BB, UTF-16 is used
+// for strings in all languages.) The language values are:
 //   J = Japanese
 //   E = English
 //   G = German
@@ -37,96 +31,89 @@
 //   K = Korean
 .language E
 
-// The .episode directive specifies the quest's episode. The server ignores this
-// if a set_episode or set_episode2 opcode is present in the code following the
-// start label.
+// The .episode directive specifies the quest's episode. The server ignores this if a set_episode or set_episode2
+// opcode is present in the code following the start label.
 .episode Episode1
 
-// These directives specify the quest's name, short description, and long
-// description. Non-ASCII characters can be used here and in the script below;
-// this entire file is encoded as UTF-8 and strings are transcoded to the
-// encoding the client expects based on the .version and .language directives.
-// Common escape codes (e.g. \n for a newline) are supported in these strings.
+// These directives specify the quest's name, short description, and long description. Non-ASCII characters can be used
+// here and in the script below; this entire file is encoded as UTF-8 and strings are transcoded to the encoding the
+// client expects based on the .version and .language directives. Common escape codes (e.g. \n for a newline) are
+// supported in these strings.
 .name "Lost HEAT SWORD"
 .short_desc "Retrieve a\nweapon from\na Dragon!"
 .long_desc "Client:  Hopkins, hunter\nQuest:\n My weapon was taken\n from me when I was\n fighting a Dragon.\nReward:  ??? Meseta\n\n\n"
 
-// On BB, quests may specify a maximum number of players with this directive. If
-// not given, the default is 4. On non-BB versions, this directive is ignored.
+// On BB, quests may specify a maximum number of players with this directive. If not given, the default is 4. On non-BB
+// versions, this directive is ignored.
 // .max_players 4
 
-// On BB, quests may be joinable while in progress. This directive enables that
-// capability.
+// On BB, quests may be joinable while in progress. This directive enables that capability.
 // .joinable
 
-// On BB, quests that create items via the script must specify which items are
-// allowed to be created. To do so, use this directive one or more times, which
-// instructs the server to allow creation of that item. These masks can specify
-// each byte of the item's data1 as ranges, to allow for parameters in the item
-// data. For example, this directive allows the quest to create Trifluids
-// (030102) with stack sizes of 1-10:
+// On BB, quests that create items via the script must specify which items are allowed to be created. To do so, use
+// this directive one or more times, which instructs the server to allow creation of that item. These masks can specify
+// each byte of the item's data1 as ranges, to allow for parameters in the item data. For example, this directive
+// allows the quest to create Trifluids (030102) with stack sizes of 1-10:
 // .allow_create_item 0301020000[01-0A]000000000000
-// Another example: this directive allows the quest to create any weapon in the
-// basic rifle series, not including the rares in that series, with a grind
-// value of up to 5 and up to two bonuses between 0 and 30% each:
+// Another example: this directive allows the quest to create any weapon in the basic rifle series, not including the
+// rares in that series, with a grind value of up to 5 and up to two bonuses between 0 and 30% each:
 // .allow_create_item 0007[00-04][00-05]0000[00-05][00-1E][00-05][00-1E]0000
 
-// The quest script begins after the header directives. A quest script is a
-// sequence of opcodes, and labels denoting positions within that sequence that
-// can be jumped to or called like a function. All labels have names, and some
-// have numbers. (In the compiled format, labels have only numbers and no names;
-// during compilation, each label that doesn't have a number is assigned a
-// number that isn't in use by another label.) To explicitly specify a label
-// number (for example, if an object or NPC refers to a label by number), use an
-// @ sign followed by the desired number. Note that numbers can be specified in
-// decimal or hexadecimal; see on_talk_to_npc1 and on_talk_to_npc2 for examples.
+// The quest script begins after the header directives. A quest script is a sequence of opcodes, and labels denoting
+// positions within that sequence that can be jumped to or called like a function. All labels have names, and some have
+// numbers. (In the compiled format, labels have only numbers and no names; during compilation, each label that doesn't
+// have a number is assigned a number that isn't in use by another label.) To explicitly specify a label number (for
+// example, if an object or NPC refers to a label by number), use an @ sign followed by the desired number. Note that
+// numbers can be specified in decimal or hexadecimal; see on_talk_to_npc1 and on_talk_to_npc2 for examples.
 
-// Registers may be named as well as labels. (In the compiled script, registers
-// do not have names, so disassembling a quest script always produces only
-// numbered registers.) When compiling, all of the following are valid:
+// Registers may be named as well as labels. (In the compiled script, registers do not have names, so disassembling a
+// quest script always produces only numbered registers.) When compiling, all of the following are valid:
 //   r83                    (explicitly numbered register)
 //   r:difficulty_level     (the compiler will assign an unused register number)
 //   r:difficulty_level@83  (named and explicitly numbered)
-// You don't always have to use the same form for each register; for example,
-// if you use r:difficulty_level@83 anywhere in the quest script, you can also
-// use r:difficulty_level and r83 in other places and they will all refer to the
-// same register. (However, if you don't use r:difficulty_level@83 anywhere, but
-// you do use r83 and r:difficulty_level, the compiler will assign these to two
-// different registers since there is nothing linking the name to the number.)
+// You don't always have to use the same form for each register; for example, if you use r:difficulty_level@83 anywhere
+// in the quest script, you can also use r:difficulty_level and r83 in other places and they will all refer to the same
+// register. (However, if you don't use r:difficulty_level@83 anywhere, but you do use r83 and r:difficulty_level, the
+// compiler will assign these to two different registers since there is nothing linking the name to the number.)
 
-// Using opcodes that take a consecutive sequence of registers, such as
-// map_designate which takes 4, introduces constraints on which registers may be
-// assigned to which numbers. For example, before one of the map_designate
-// opcodes after the start label, we explicitly assign one register's number,
-// but leave the nearby registers' numbers unassigned. The compiler assigns
-// those four registers to r60-r63, because they are used in a map_designate
-// call. If we didn't explicitly number any of those registers, the compiler
-// would instead choose a consecutive sequence of register numbers that aren't
-// used anywhere else in the script.
+// There are a few registers that have predefined names, since they have hardcoded behaviors on the client. These are:
+//   r:quest_board_item1 = r74
+//   r:quest_board_item2 = r75
+//   r:quest_board_item3 = r76
+//   r:quest_board_item4 = r77
+//   r:quest_board_item5 = r78
+//   r:quest_board_item6 = r79
+//   r:quest_board_item7 = r80
+//   r:quest_failed = r253
+//   r:quest_succeeded = r255
 
-// This quest does not contain any examples of non-script data, but such data
-// can be included in the quest script using the .data directive, like this:
+// Using opcodes that take a consecutive sequence of registers, such as map_designate which takes 4, introduces
+// constraints on which registers may be assigned to which numbers. For example, before one of the map_designate
+// opcodes after the start label, we explicitly assign one register's number, but leave the nearby registers' numbers
+// unassigned. The compiler assigns those four registers to r60-r63, because they are used in a map_designate call. If
+// we didn't explicitly number any of those registers, the compiler would instead choose a consecutive sequence of
+// register numbers that aren't used anywhere else in the script.
+
+// This quest does not contain any examples of non-script data, but such data can be included in the quest script using
+// the .data directive, like this:
 //   hello_symbol_chat:
 //     .data 28000000 FFFF 0D00 FFFF FFFF 05 18 1D 00 05 28 1D 01 36 20 2A 00 3C 00 32 00 FF 00 00 00 FF 00 00 00 FF 00 00 00 FF 00 00 02 FF 00 00 02 FF 00 00 02 FF 00 00 02 FF 00 00 02
-// You can also include binary data from another file in the same directory
-// (the contents of the file are "pasted" into the assembled script, as if you
-// had pasted in the hex along with a .data directive):
+// You can also include binary data from another file in the same directory (the contents of the file are "pasted" into
+// the assembled script, as if you had pasted in the hex along with a .data directive):
 //   movement_data:
 //     .include_bin  movement_data.bin
 // There is also a directive for including a large number of zero bytes:
 //   lots_of_zeroes:
 //     .zero 0x400  // 1024 bytes of zeroes
 
-// There is also a way for quest scripts to include other files. This works by
-// simply "pasting" the contents of the file in place of the include directive,
-// so all labels in the included file will be accessible from the file that
-// included it. newserv looks for the included file in the same directory as
-// the quest file, then looks in the system/quest/includes directory. Here's
-// the syntax:
-//     .include my-function.txt
+// There is also a way for quest scripts to include other files. This works by simply "pasting" the contents of the
+// file in place of the include directive, so all labels in the included file will be accessible from the file that
+// included it. newserv looks for the included file in the same directory as the quest file, then looks in the
+// system/quest/includes directory. The syntax for this is:
+//   .include my-function.txt
 
-// Every quest must have a start label; this is the main thread that starts when
-// the quest begins. The start label is always assigned number 0.
+// Every quest must have a start label; this is the main thread that starts when the quest begins. The start label is
+// always assigned number 0.
 start:
   gget                            0x0091, r:flag_0091_value@252
   set_floor_handler               0, floor_handler_pioneer_2
@@ -135,26 +122,26 @@ start:
   set_floor_handler               11, floor_handler_dragon
   set_qt_success                  on_quest_success
   get_difficulty_level_v2         r:difficulty_level@83
-  leti                            r:op_arg1, 0 // Pioneer 2
+  leti                            r:op_arg1, 0
   leti                            r:op_arg2, 0
   leti                            r:op_arg3@62, 0 // See comment above about register assignment
   leti                            r:op_arg4, 0
-  map_designate                   (r:op_arg1, r:op_arg2, r:op_arg3, r:op_arg4)
-  leti                            r:op_arg1, 1 // Forest 1
+  map_designate                   (r:op_arg1, r:op_arg2, r:op_arg3, r:op_arg4) // Pioneer 2
+  leti                            r:op_arg1, 1
   leti                            r:op_arg2, 0
   leti                            r:op_arg3, 0
   leti                            r:op_arg4, 0
-  map_designate                   (r:op_arg1, r:op_arg2, r:op_arg3, r:op_arg4)
-  leti                            r:op_arg1, 2 // Forest 2
+  map_designate                   (r:op_arg1, r:op_arg2, r:op_arg3, r:op_arg4) // Forest 1
+  leti                            r:op_arg1, 2
   leti                            r:op_arg2, 0
   leti                            r:op_arg3, 0
   leti                            r:op_arg4, 0
-  map_designate                   (r:op_arg1, r:op_arg2, r:op_arg3, r:op_arg4)
-  leti                            r:op_arg1, 11  // Dragon
+  map_designate                   (r:op_arg1, r:op_arg2, r:op_arg3, r:op_arg4) // Forest 2
+  leti                            r:op_arg1, 11
   leti                            r:op_arg2, 0
   leti                            r:op_arg3, 0
   leti                            r:op_arg4, 0
-  map_designate                   (r:op_arg1, r:op_arg2, r:op_arg3, r:op_arg4)
+  map_designate                   (r:op_arg1, r:op_arg2, r:op_arg3, r:op_arg4) // Dragon
   ret
 
 return_immediately:

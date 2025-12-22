@@ -45,8 +45,7 @@ public:
     };
 
     enum class RewardFlag {
-      // Only 0x00000001 and 0x00000002 are used by the client; the rest are
-      // free to be used however the server chooses.
+      // Only 0x00000001 and 0x00000002 are used by the client; the rest are free to be used however the server chooses
       NONE = 0x00000000,
       TEAM_FLAG = 0x00000001,
       DRESSING_ROOM = 0x00000002,
@@ -130,7 +129,8 @@ public:
   std::shared_ptr<const Team> get_by_account_id(uint32_t account_id) const;
   std::vector<std::shared_ptr<const Team>> all() const;
 
-  std::shared_ptr<const Team> create(const std::string& name, uint32_t master_account_id, const std::string& master_name);
+  std::shared_ptr<const Team> create(
+      const std::string& name, uint32_t master_account_id, const std::string& master_name);
   void disband(uint32_t team_id);
   void rename(uint32_t team_id, const std::string& new_name);
 

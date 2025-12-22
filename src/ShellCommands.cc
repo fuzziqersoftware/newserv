@@ -49,13 +49,8 @@ shared_ptr<Client> ShellCommand::Args::get_proxy_client() const {
   return c;
 }
 
-ShellCommand::ShellCommand(
-    const char* name,
-    const char* help_text,
-    asio::awaitable<deque<string>> (*run)(Args&))
-    : name(name),
-      help_text(help_text),
-      run(run) {
+ShellCommand::ShellCommand(const char* name, const char* help_text, asio::awaitable<deque<string>> (*run)(Args&))
+    : name(name), help_text(help_text), run(run) {
   ShellCommand::commands_by_order.emplace_back(this);
   ShellCommand::commands_by_name.emplace(this->name, this);
 }
@@ -413,8 +408,8 @@ ShellCommand c_update_account(
       auto account = args.s->account_index->from_account_id(stoul(tokens[0], nullptr, 16));
       tokens.erase(tokens.begin());
 
-      // Do all the parsing first, then the updates afterward, so we won't
-      // partially update the account if parsing a later option fails
+      // Do all the parsing first, then the updates afterward, so we won't partially update the account if parsing a
+      // later option fails
       int64_t new_ep3_current_meseta = -1;
       int64_t new_ep3_total_meseta = -1;
       int64_t new_flags = -1;

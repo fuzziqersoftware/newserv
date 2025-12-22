@@ -210,9 +210,8 @@ WordSelectTable::WordSelectTable(
 
   static_assert(NUM_NON_PATCH_VERSIONS == 12, "Don\'t forget to update the WordSelectTable constructor");
   array<const WordSelectSet*, NUM_NON_PATCH_VERSIONS> ws_sets = {
-      &dc_nte_ws, &dc_112000_ws, &dc_v1_ws, &dc_v2_ws,
-      &pc_nte_ws, &pc_v2_ws, &gc_nte_ws, &gc_v3_ws,
-      &gc_ep3_nte_ws, &gc_ep3_ws, &xb_v3_ws, &bb_v4_ws};
+      &dc_nte_ws, &dc_112000_ws, &dc_v1_ws, &dc_v2_ws, &pc_nte_ws, &pc_v2_ws, &gc_nte_ws, &gc_v3_ws, &gc_ep3_nte_ws,
+      &gc_ep3_ws, &xb_v3_ws, &bb_v4_ws};
 
   for (size_t s_version = 0; s_version < ws_sets.size(); s_version++) {
     Version version = static_cast<Version>(static_cast<size_t>(Version::DC_NTE) + s_version);
@@ -297,9 +296,7 @@ void WordSelectTable::validate(const WordSelectMessage& msg, Version version) co
 }
 
 WordSelectMessage WordSelectTable::translate(
-    const WordSelectMessage& msg,
-    Version from_version,
-    Version to_version) const {
+    const WordSelectMessage& msg, Version from_version, Version to_version) const {
   const auto& index = this->tokens_for_version(from_version);
 
   WordSelectMessage ret;

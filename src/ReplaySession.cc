@@ -111,8 +111,7 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
         case 0x17:
         case 0x91:
         case 0x9B: {
-          auto& mask = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(
-              mask_data, mask_size, 0xFFFF);
+          auto& mask = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(mask_data, mask_size, 0xFFFF);
           mask.server_key = 0;
           mask.client_key = 0;
           break;
@@ -370,7 +369,8 @@ ReplaySession::ReplaySession(shared_ptr<ServerState> state, FILE* input_log, boo
       // ### cc $<chat command>
       if (this->clients.size() != 1) {
         throw runtime_error(std::format(
-            "(ev-line {}) cc shortcut cannot be used with multiple clients connected; use on C-X cc instead", line_num));
+            "(ev-line {}) cc shortcut cannot be used with multiple clients connected; use on C-X cc instead",
+            line_num));
       }
       shared_ptr<Event> event;
       try {
@@ -468,9 +468,7 @@ ReplaySession::ReplaySession(shared_ptr<ServerState> state, FILE* input_log, boo
         uint64_t client_id = stoull(tokens[8].substr(2), nullptr, 16);
         try {
           parsing_command = this->create_event(
-              from_client ? Event::Type::SEND : Event::Type::RECEIVE,
-              this->clients.at(client_id),
-              line_num);
+              from_client ? Event::Type::SEND : Event::Type::RECEIVE, this->clients.at(client_id), line_num);
           num_events++;
         } catch (const out_of_range&) {
           throw runtime_error(std::format("(ev-line {}) input log contains command for missing client", line_num));
@@ -554,8 +552,7 @@ asio::awaitable<void> ReplaySession::run() {
             this->reschedule_idle_timeout();
             auto msg = co_await c->channel->recv();
 
-            // TODO: Use the iovec form of phosg::print_data here instead of
-            // prepend_command_header (which copies the string)
+            // TODO: Use the iovec form of phosg::print_data here instead of prepend_command_header (which copies data)
             string full_command = prepend_command_header(
                 c->version, (c->channel->crypt_in.get() != nullptr), msg.command, msg.flag, msg.data);
             this->commands_received++;
@@ -622,8 +619,8 @@ asio::awaitable<void> ReplaySession::run() {
               case Version::BB_V4:
                 if (msg.command == 0x03 || msg.command == 0x9B) {
                   auto& cmd = msg.check_size_t<S_ServerInitDefault_BB_03_9B>(0xFFFF);
-                  // TODO: At some point it may matter which BB private key file we use.
-                  // Don't just blindly use the first one here.
+                  // TODO: At some point it may matter which BB private key file we use. Don't just blindly use the
+                  // first one here.
                   c->channel->crypt_in = make_shared<PSOBBEncryption>(
                       *this->state->bb_private_keys[0], cmd.server_key.data(), cmd.server_key.size());
                   c->channel->crypt_out = make_shared<PSOBBEncryption>(
@@ -664,8 +661,7 @@ asio::awaitable<void> ReplaySession::run() {
   this->state->use_psov2_rand_crypt = this->prev_psov2_crypt_enabled;
 
   if (!this->run_failed) {
-    // Wait a bit longer to ensure that any command sent at the end of the replay
-    // session don't crash the server
+    // Wait a bit longer to ensure that any command sent at the end of the replay session don't crash the server
     co_await async_sleep(std::chrono::seconds(2));
     replay_log.info_f("Replay complete: {} commands sent ({} bytes), {} commands received ({} bytes)",
         this->commands_sent, this->bytes_sent, this->commands_received, this->bytes_received);

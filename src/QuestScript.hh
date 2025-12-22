@@ -70,10 +70,9 @@ struct PSOQuestHeaderV3 {
   /* 000E */ le_uint16_t unknown_a2 = 0xFFFF;
   /* 0010 */ Language language = Language::JAPANESE;
   /* 0011 */ uint8_t unknown_a3 = 0;
-  // Note: The GC client byteswaps this field, then loads it as a byte, so
-  // technically the high byte of this is what the client uses as the quest
-  // number. In practice, this only matters if the quest runs send_statistic
-  // without running prepare_statistic first, which is not the intended usage.
+  // Note: The GC client byteswaps this field, then loads it as a byte, so technically the high byte of this is what
+  // the client uses as the quest number. In practice, this only matters if the quest runs send_statistic without
+  // running prepare_statistic first, which is not the intended usage.
   /* 0012 */ le_uint16_t quest_number = 0;
   /* 0014 */ pstring<TextEncoding::MARKED, 0x20> name;
   /* 0034 */ pstring<TextEncoding::MARKED, 0x80> short_description;
@@ -95,8 +94,7 @@ struct CreateItemMaskEntry {
   operator QuestMetadata::CreateItemMask() const;
 } __packed_ws__(CreateItemMaskEntry, 0x38);
 
-// Some quest authoring tools don't generate the full quest header, hence the
-// split structure here.
+// Some quest authoring tools don't generate the full quest header, hence the split structure here.
 struct PSOQuestHeaderBBBase {
   /* 0000 */ le_uint32_t text_offset = 0;
   /* 0004 */ le_uint32_t label_table_offset = 0;
@@ -117,8 +115,8 @@ struct PSOQuestHeaderBBBase {
 
 struct PSOQuestHeaderBB : PSOQuestHeaderBBBase {
   struct FloorAssignment {
-    // These fields match the bb_map_designate arguments (see QuestScript.cc).
-    // Unused AreaAssignment structures should have all fields set to 0xFF.
+    // These fields match the bb_map_designate arguments (see QuestScript.cc). Unused AreaAssignment structures should
+    // have all fields set to 0xFF.
     uint8_t floor = 0xFF;
     uint8_t area = 0xFF;
     uint8_t type = 0xFF;

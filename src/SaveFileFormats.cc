@@ -74,9 +74,8 @@ static const array<uint8_t, 0x0038> DEFAULT_JOYSTICK_CONFIG = {
     0x08, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00,
     0x00, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00};
 
-// Originally there was going to be a language-based header for .nsc files, but
-// then I decided against it. This string was already in use for that parser,
-// so I didn't bother changing it.
+// Originally there was going to be a language-based header for .nsc files, but then I decided against it. This string
+// was already in use for that parser, so I didn't bother changing it.
 const char* LegacySavedAccountDataBB::SIGNATURE = "newserv account file format; 7 sections present; sequential;";
 
 ShuffleTables::ShuffleTables(PSOV2Encryption& crypt) {
@@ -195,14 +194,8 @@ bool PSOGCIFileHeader::is_nte() const {
 }
 
 uint32_t compute_psogc_timestamp(
-    uint16_t year,
-    uint8_t month,
-    uint8_t day,
-    uint8_t hour,
-    uint8_t minute,
-    uint8_t second) {
-  static uint16_t month_start_day[12] = {
-      0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
+    uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t second) {
+  static uint16_t month_start_day[12] = {0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334};
 
   uint32_t year_start_day = ((year - 1998) >> 2) + (year - 2000) * 365;
   if ((((year - 1998) & 3) == 0) && (month < 3)) {
@@ -740,10 +733,9 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOGCN
       src.disp.visual.name.decode(Language::JAPANESE),
       nullptr);
   ret->inventory = src.inventory;
-  // Note: We intentionally do not call ret->inventory.decode_from_client here.
-  // This is because the GC client byteswaps data2 in each item before sending
-  // it to the server in the 61 and 98 commands, but GetExtendedPlayerInfo does
-  // not do this, so the data2 fields are already in the correct order here.
+  // Note: We intentionally do not call ret->inventory.decode_from_client here. This is because the GC client byteswaps
+  // data2 in each item before sending it to the server in the 61 and 98 commands, but GetExtendedPlayerInfo does not
+  // do this, so the data2 fields are already in the correct order here.
   Language language = ret->inventory.language;
   ret->disp = src.disp.to_bb(language, language);
   ret->validation_flags = src.validation_flags;
@@ -781,10 +773,9 @@ shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOGCC
       src.disp.visual.name.decode(Language::JAPANESE),
       nullptr);
   ret->inventory = src.inventory;
-  // Note: We intentionally do not call ret->inventory.decode_from_client here.
-  // This is because the GC client byteswaps data2 in each item before sending
-  // it to the server in the 61 and 98 commands, but GetExtendedPlayerInfo does
-  // not do this, so the data2 fields are already in the correct order here.
+  // Note: We intentionally do not call ret->inventory.decode_from_client here. This is because the GC client byteswaps
+  // data2 in each item before sending it to the server in the 61 and 98 commands, but GetExtendedPlayerInfo does not
+  // do this, so the data2 fields are already in the correct order here.
   Language language = ret->inventory.language;
   ret->disp = src.disp.to_bb(language, language);
   ret->validation_flags = src.validation_flags;
@@ -926,8 +917,8 @@ PSODCNTECharacterFile::Character PSOBBCharacterFile::as_dc_nte(uint64_t hardware
 
   PSODCNTECharacterFile::Character ret;
   ret.inventory = this->inventory;
-  // We don't need to do the v1-compatible encoding (hence it is OK to pass
-  // nullptr here) but we do need to encode mag stats in the v2 format
+  // We don't need to do the v1-compatible encoding (hence it is OK to pass nullptr here) but we do need to encode mag
+  // stats in the v2 format
   ret.inventory.encode_for_client(Version::DC_NTE, nullptr);
   ret.disp = this->disp.to_dcpcv3<false>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::DC_V2);
@@ -952,8 +943,8 @@ PSODC112000CharacterFile::Character PSOBBCharacterFile::as_11_2000(uint64_t hard
 
   PSODC112000CharacterFile::Character ret;
   ret.inventory = this->inventory;
-  // We don't need to do the v1-compatible encoding (hence it is OK to pass
-  // nullptr here) but we do need to encode mag stats in the v2 format
+  // We don't need to do the v1-compatible encoding (hence it is OK to pass nullptr here) but we do need to encode mag
+  // stats in the v2 format
   ret.inventory.encode_for_client(Version::DC_11_2000, nullptr);
   ret.disp = this->disp.to_dcpcv3<false>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::DC_V2);
@@ -989,8 +980,8 @@ PSOBBCharacterFile::operator PSODCV1CharacterFile::Character() const {
 
   PSODCV1CharacterFile::Character ret;
   ret.inventory = this->inventory;
-  // We don't need to do the v1-compatible encoding (hence it is OK to pass
-  // nullptr here) but we do need to encode mag stats in the v2 format
+  // We don't need to do the v1-compatible encoding (hence it is OK to pass nullptr here) but we do need to encode mag
+  // stats in the v2 format
   ret.inventory.encode_for_client(Version::DC_V1, nullptr);
   ret.disp = this->disp.to_dcpcv3<false>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::DC_V2);
@@ -1021,8 +1012,8 @@ PSOBBCharacterFile::operator PSODCV2CharacterFile::Character() const {
 
   PSODCV2CharacterFile::Character ret;
   ret.inventory = this->inventory;
-  // We don't need to do the v1-compatible encoding (hence it is OK to pass
-  // nullptr here) but we do need to encode mag stats in the v2 format
+  // We don't need to do the v1-compatible encoding (hence it is OK to pass nullptr here) but we do need to encode mag
+  // stats in the v2 format
   ret.inventory.encode_for_client(Version::DC_V2, nullptr);
   ret.disp = this->disp.to_dcpcv3<false>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::DC_V2);
@@ -1062,10 +1053,9 @@ PSOBBCharacterFile::operator PSOGCNTECharacterFileCharacter() const {
 
   PSOGCNTECharacterFileCharacter ret;
   ret.inventory = this->inventory;
-  // Note: We intentionally do not call ret.inventory.encode_for_client here.
-  // This is because the GC client byteswaps data2 in each item before sending
-  // it to the server in the 61 and 98 commands, but GetExtendedPlayerInfo does
-  // not do this, so the data2 fields are already in the correct order here.
+  // Note: We intentionally do not call ret.inventory.encode_for_client here. This is because the GC client byteswaps
+  // data2 in each item before sending it to the server in the 61 and 98 commands, but GetExtendedPlayerInfo does not
+  // do this, so the data2 fields are already in the correct order here.
   ret.disp = this->disp.to_dcpcv3<true>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::GC_V3);
   ret.validation_flags = this->validation_flags;
@@ -1100,10 +1090,9 @@ PSOBBCharacterFile::operator PSOGCCharacterFile::Character() const {
 
   PSOGCCharacterFile::Character ret;
   ret.inventory = this->inventory;
-  // Note: We intentionally do not call ret.inventory.encode_for_client here.
-  // This is because the GC client byteswaps data2 in each item before sending
-  // it to the server in the 61 and 98 commands, but GetExtendedPlayerInfo does
-  // not do this, so the data2 fields are already in the correct order here.
+  // Note: We intentionally do not call ret.inventory.encode_for_client here. This is because the GC client byteswaps
+  // data2 in each item before sending it to the server in the 61 and 98 commands, but GetExtendedPlayerInfo does not
+  // do this, so the data2 fields are already in the correct order here.
   ret.disp = this->disp.to_dcpcv3<true>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::GC_V3);
   ret.validation_flags = this->validation_flags;
@@ -1220,27 +1209,22 @@ void PSOCHARFile::save(
   phosg::fwritex(f.get(), header);
   phosg::fwritex(f.get(), *character);
   phosg::fwritex(f.get(), *system);
-  // TODO: Technically, we should write the actual team membership struct to
-  // the file here, but that would cause Client to depend on Account, which it
-  // currently does not. This data doesn't matter at all for correctness within
-  // newserv, since it ignores this data entirely and instead generates the
-  // membership struct from the team ID in the Account and the team's state.
-  // So, writing correct data here would mostly be for compatibility with other
-  // PSO servers. But if the other server is newserv, then this data wouldn't
-  // be used anyway, and if it's not, then it would presumably have a different
-  // set of teams with a different set of team IDs anyway, so the membership
-  // struct here would be useless either way.
+  // TODO: Technically, we should write the actual team membership struct to the file here, but that would cause Client
+  // to depend on Account, which it currently does not. This data doesn't matter at all for correctness within newserv,
+  // since it ignores this data entirely and instead generates the membership struct from the team ID in the Account
+  // and the team's state. So, writing correct data here would mostly be for compatibility with other PSO servers. But
+  // if the other server is newserv, then this data wouldn't be used anyway, and if it's not, then it would presumably
+  // have a different set of teams with a different set of team IDs anyway, so the membership struct here would be
+  // useless either way.
   static const PSOBBFullTeamMembership empty_membership;
   phosg::fwritex(f.get(), empty_membership);
 }
 
-// TODO: Eliminate duplication between this function and the parallel function
-// in PlayerBankT
+// TODO: Eliminate duplication between this function and the parallel function in PlayerBankT
 void PSOBBCharacterFile::add_item(const ItemData& item, const ItemData::StackLimits& limits) {
   uint32_t primary_identifier = item.primary_identifier();
 
-  // Annoyingly, meseta is in the disp data, not in the inventory struct. If the
-  // item is meseta, we have to modify disp instead.
+  // Meseta is in the disp data, not in the inventory struct. If the item is meseta, we have to modify disp instead.
   if (primary_identifier == 0x04000000) {
     this->add_meseta(item.data2d);
     return;
@@ -1249,8 +1233,7 @@ void PSOBBCharacterFile::add_item(const ItemData& item, const ItemData::StackLim
   // Handle combinable items
   size_t combine_max = item.max_stack_size(limits);
   if (combine_max > 1) {
-    // Get the item index if there's already a stack of the same item in the
-    // player's inventory
+    // Get the item index if there's already a stack of the same item in the player's inventory
     size_t y;
     for (y = 0; y < this->inventory.num_items; y++) {
       if (this->inventory.items[y].data.primary_identifier() == primary_identifier) {
@@ -1269,8 +1252,7 @@ void PSOBBCharacterFile::add_item(const ItemData& item, const ItemData::StackLim
     }
   }
 
-  // If we get here, then it's not meseta and not a combine item, so it needs to
-  // go into an empty inventory slot
+  // If we get here, then it's not meseta and not a combine item, so it needs to go into an empty inventory slot
   if (this->inventory.num_items >= 30) {
     throw out_of_range("inventory is full");
   }
@@ -1282,13 +1264,11 @@ void PSOBBCharacterFile::add_item(const ItemData& item, const ItemData::StackLim
   this->inventory.num_items++;
 }
 
-// TODO: Eliminate code duplication between this function and the parallel
-// function in PlayerBankT
+// TODO: Eliminate code duplication between this function and the parallel function in PlayerBankT
 ItemData PSOBBCharacterFile::remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits) {
   ItemData ret;
 
-  // If we're removing meseta (signaled by an invalid item ID), then create a
-  // meseta item.
+  // If we're removing meseta (signaled by an invalid item ID), then create a meseta item.
   if (item_id == 0xFFFFFFFF) {
     this->remove_meseta(amount, !is_v4(limits.version));
     ret.data1[0] = 0x04;
@@ -1300,10 +1280,9 @@ ItemData PSOBBCharacterFile::remove_item(uint32_t item_id, uint32_t amount, cons
   auto& inventory_item = this->inventory.items[index];
   bool is_equipped = (inventory_item.flags & 0x00000008);
 
-  // If the item is a combine item and are we removing less than we have of it,
-  // then create a new item and reduce the amount of the existing stack. Note
-  // that passing amount == 0 means to remove the entire stack, so this only
-  // applies if amount is nonzero.
+  // If the item is a combine item and are we removing less than we have of it, then create a new item and reduce the
+  // amount of the existing stack. Note that passing amount == 0 means to remove the entire stack, so this only applies
+  // if amount is nonzero.
   if (amount && (inventory_item.data.stack_size(limits) > 1) && (amount < inventory_item.data.data1[5])) {
     if (is_equipped) {
       throw runtime_error("character has a combine item equipped");
@@ -1315,9 +1294,8 @@ ItemData PSOBBCharacterFile::remove_item(uint32_t item_id, uint32_t amount, cons
     return ret;
   }
 
-  // If we get here, then it's not meseta, and either it's not a combine item or
-  // we're removing the entire stack. Delete the item from the inventory slot
-  // and return the deleted item.
+  // If we get here, then it's not meseta, and either it's not a combine item or we're removing the entire stack.
+  // Delete the item from the inventory slot and return the deleted item.
   if (is_equipped) {
     this->inventory.unequip_item_index(index);
   }
@@ -1418,10 +1396,9 @@ void PSOBBCharacterFile::clear_all_material_usage() {
 }
 
 void PSOBBCharacterFile::import_tethealla_material_usage(std::shared_ptr<const LevelTable> level_table) {
-  // Tethealla (Ephinea) doesn't store material counts anywhere in the file,
-  // so if the material counts in the inventory extension data are all zero,
-  // check the current stats against the expected stats for the character's
-  // current level and set the material counts if they make sense.
+  // Tethealla (Ephinea) doesn't store material counts anywhere in the file, so if the material counts in the inventory
+  // extension data are all zero, check the current stats against the expected stats for the character's current level
+  // and set the material counts if they make sense.
   if (this->get_material_usage(PSOBBCharacterFile::MaterialType::POWER) |
       this->get_material_usage(PSOBBCharacterFile::MaterialType::MIND) |
       this->get_material_usage(PSOBBCharacterFile::MaterialType::EVADE) |
@@ -1440,9 +1417,8 @@ void PSOBBCharacterFile::import_tethealla_material_usage(std::shared_ptr<const L
   uint64_t def = (this->disp.stats.char_stats.dfp - level_base_stats.char_stats.dfp) / 2;
   uint64_t luck = (this->disp.stats.char_stats.lck - level_base_stats.char_stats.lck) / 2;
 
-  // We intentionally do not check any limits here. This is because on pre-v3,
-  // there are no limits, and we don't want to reject legitimate characters
-  // that have used more than 250 materials.
+  // We intentionally do not check any limits here. This is because on pre-v3, there are no limits, and we don't want
+  // to reject legitimate characters that have used more than 250 materials.
 
   this->set_material_usage(MaterialType::POWER, pow);
   this->set_material_usage(MaterialType::MIND, mind);

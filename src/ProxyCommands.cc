@@ -48,16 +48,12 @@ static void forward_command(shared_ptr<Client> c, bool to_server, const Channel:
   }
 }
 
-// Command handlers. These are called to preprocess or react to specific
-// commands in either direction. The functions have abbreviated names in order
-// to make the massive table more readable. The functions' names are, in
-// general, <SC>_[VERSIONS]_<COMMAND-NUMBERS>, where <SC> denotes who sent the
-// command, VERSIONS denotes which versions this handler is for (with shortcuts
-// - so v123 refers to all non-BB versions, for example, and DGX refers to all
-// console versions), and COMMAND-NUMBERS are the hexadecimal value in the
-// command header field that this handler is called for. If VERSIONS is omitted,
-// the command handler is for all versions (for example, the 97 handler is like
-// this).
+// Command handlers. These are called to preprocess or react to specific commands in either direction. The functions
+// have abbreviated names in order to make the massive table more readable. The functions' names are, in general,
+// <SC>_[VERSIONS]_<COMMAND-NUMBERS>, where <SC> denotes who sent the command, VERSIONS denotes which versions this
+// handler is for (with shortcuts - so v123 refers to all non-BB versions, for example, and DGX refers to all console
+// versions), and COMMAND-NUMBERS are the hexadecimal value in the command header field that this handler is called
+// for. If VERSIONS is omitted, the command handler is for all versions (for example, the 97 handler is like this).
 
 static asio::awaitable<HandlerResult> default_handler(shared_ptr<Client>, Channel::Message&) {
   co_return HandlerResult::FORWARD;
@@ -88,8 +84,8 @@ static asio::awaitable<HandlerResult> S_1D(shared_ptr<Client> c, Channel::Messag
 }
 
 static asio::awaitable<HandlerResult> S_97(shared_ptr<Client> c, Channel::Message&) {
-  // We always assume a 97 has already been received by the client - we should
-  // have sent 97 01 before sending the client to the proxy server.
+  // We always assume a 97 has already been received by the client - we should have sent 97 01 before sending the
+  // client to the proxy server.
   c->proxy_session->server_channel->send(0xB1, 0x00);
   co_return HandlerResult::SUPPRESS;
 }
@@ -208,9 +204,8 @@ static void send_9E_XB_to_server(std::shared_ptr<Client> c) {
 }
 
 static asio::awaitable<HandlerResult> S_G_9A(shared_ptr<Client> c, Channel::Message&) {
-  // TODO: Either delete this handler or finish implementing it (flag=00/02
-  // should do the below, 01 should send 9C, anything else should end the
-  // session)
+  // TODO: Either delete this handler or finish implementing it (flag=00/02 should do the below, 01 should send 9C,
+  // anything else should end the session)
   C_LoginExtended_GC_9E cmd;
   if (c->proxy_session->remote_guild_card_number < 0) {
     cmd.player_tag = 0xFFFF0000;
@@ -232,8 +227,7 @@ static asio::awaitable<HandlerResult> S_G_9A(shared_ptr<Client> c, Channel::Mess
   cmd.login_character_name.encode(c->login_character_name, c->language());
   cmd.client_config = c->proxy_session->remote_client_config_data;
 
-  // If there's a guild card number, a shorter 9E is sent that ends
-  // right after the client config data
+  // If there's a guild card number, a shorter 9E is sent that ends right after the client config data
   c->proxy_session->server_channel->send(
       0x9E, 0x01, &cmd,
       cmd.is_extended ? sizeof(C_LoginExtended_GC_9E) : sizeof(C_Login_PC_GC_9E));
@@ -246,8 +240,7 @@ static asio::awaitable<HandlerResult> S_V123U_02_17(shared_ptr<Client> c, Channe
     throw invalid_argument("patch server sent 17 server init");
   }
 
-  // Most servers don't include after_message or have a shorter
-  // after_message than newserv does, so don't require it
+  // Most servers don't include after_message or have a shorter after_message than newserv does, so don't require it
   const auto& cmd = msg.check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(0xFFFF);
 
   // This isn't forwarded to the client, so don't recreate the client's crypts
@@ -259,9 +252,8 @@ static asio::awaitable<HandlerResult> S_V123U_02_17(shared_ptr<Client> c, Channe
     c->proxy_session->server_channel->crypt_out = make_shared<PSOV2Encryption>(cmd.client_key);
   }
 
-  // Respond with an appropriate login command. We don't let the client do this
-  // because it believes it already did (when it was in an unlinked session, or
-  // in the patch server case, during the current session due to a hidden
+  // Respond with an appropriate login command. We don't let the client do this because it believes it already did
+  // (when it was in an unlinked session, or in the patch server case, during the current session due to a hidden
   // redirect).
   switch (c->version()) {
     case Version::PC_PATCH:
@@ -332,15 +324,12 @@ static asio::awaitable<HandlerResult> S_U_04(shared_ptr<Client> c, Channel::Mess
 }
 
 static asio::awaitable<HandlerResult> S_B_03(shared_ptr<Client> c, Channel::Message& msg) {
-  // Most servers don't include after_message or have a shorter after_message
-  // than newserv does, so don't require it
+  // Most servers don't include after_message or have a shorter after_message than newserv does, so don't require it
   const auto& cmd = msg.check_size_t<S_ServerInitDefault_BB_03_9B>(0xFFFF);
 
-  // This isn't forwarded to the client, so only recreate the server's crypts.
-  // Use the same crypt type as the client... the server has the luxury of
-  // being able to try all the crypts it knows to detect what type the client
-  // uses, but the client can't do this since it sends the first encrypted
-  // data on the connection.
+  // This isn't forwarded to the client, so only recreate the server's crypts. Use the same crypt type as the client...
+  // the server has the luxury of being able to try all the crypts it knows to detect what type the client uses, but
+  // the client can't do this since it sends the first encrypted data on the connection.
   if (!c->bb_detector_crypt) {
     throw logic_error("Client proxy session started with missing detector crypt");
   }
@@ -394,44 +383,38 @@ static asio::awaitable<HandlerResult> S_V123_04(shared_ptr<Client> c, Channel::M
     co_return HandlerResult::SUPPRESS;
   }
 
-  // Some servers send a short 04 command if they don't use all of the 0x20
-  // bytes available. We should be prepared to handle that.
+  // Some servers send a short 04 command if they don't use all of the 0x20 bytes available. We should be prepared to
+  // handle that.
   auto& cmd = msg.check_size_t<S_UpdateClientConfig_V3_04>(
-      offsetof(S_UpdateClientConfig_V3_04, client_config),
-      sizeof(S_UpdateClientConfig_V3_04));
+      offsetof(S_UpdateClientConfig_V3_04, client_config), sizeof(S_UpdateClientConfig_V3_04));
 
-  // If this is a logged-in session, hide the guild card number assigned by the
-  // remote server so the client doesn't see it change. If this is a logged-out
-  // session, then the client never received a guild card number from newserv
+  // If this is a logged-in session, hide the guild card number assigned by the remote server so the client doesn't see
+  // it change. If this is a logged-out session, then the client never received a guild card number from newserv
   // anyway, so we can let the client see the number from the remote server.
   bool had_guild_card_number = (c->proxy_session->remote_guild_card_number >= 0);
   if (c->proxy_session->remote_guild_card_number != cmd.guild_card_number) {
     c->proxy_session->remote_guild_card_number = cmd.guild_card_number;
     c->log.info_f("Remote guild card number set to {}", c->proxy_session->remote_guild_card_number);
     string message = std::format(
-        "The remote server\nhas assigned your\nGuild Card number:\n$C6{}",
-        c->proxy_session->remote_guild_card_number);
+        "The remote server\nhas assigned your\nGuild Card number:\n$C6{}", c->proxy_session->remote_guild_card_number);
     send_ship_info(c->channel, message);
   }
   if (c->login) {
     cmd.guild_card_number = c->login->account->account_id;
   }
 
-  // It seems the client ignores the length of the 04 command, and always copies
-  // 0x20 bytes to its config data. So if the server sends a short 04 command,
-  // part of the previous command ends up in the security data (usually part of
-  // the copyright string from the server init command). We simulate that here.
-  // If there was previously a guild card number, assume we got the lobby server
-  // init text instead of the port map init text.
+  // It seems the client ignores the length of the 04 command, and always copies 0x20 bytes to its config data. So if
+  // the server sends a short 04 command, part of the previous command ends up in the security data (usually part of
+  // the copyright string from the server init command), which we simulate here. If there was previously a guild card
+  // number, assume we got the lobby server init text instead of the port map init text.
   memcpy(c->proxy_session->remote_client_config_data.data(),
       had_guild_card_number ? "t Lobby Server. Copyright SEGA E" : "t Port Map. Copyright SEGA Enter", 0x20);
   memcpy(c->proxy_session->remote_client_config_data.data(), &cmd.client_config,
       min<size_t>(msg.data.size() - offsetof(S_UpdateClientConfig_V3_04, client_config),
           c->proxy_session->remote_client_config_data.bytes()));
 
-  // If the guild card number was not set, pretend (to the server) that this is
-  // the first 04 command the client has received. The client responds with a 96
-  // (checksum) in that case.
+  // If the guild card number was not set, pretend (to the server) that this is the first 04 command the client has
+  // received. The client responds with a 96 (checksum) in that case.
   if (!had_guild_card_number) {
     le_uint64_t checksum = phosg::random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
     c->proxy_session->server_channel->send(0x96, 0x00, &checksum, sizeof(checksum));
@@ -450,9 +433,8 @@ static asio::awaitable<HandlerResult> S_V123_06(shared_ptr<Client> c, Channel::M
     }
   }
 
-  // If the session is Ep3, and Unmask Whispers is on, and there's enough data,
-  // and the message has private_flags, and the private_flags say that you
-  // shouldn't see the message, then change the private_flags
+  // If the session is Ep3, and Unmask Whispers is on, and there's enough data, and the message has private_flags, and
+  // the private_flags say that you shouldn't see the message, then change the private_flags
   if (is_ep3(c->version()) &&
       c->check_flag(Client::Flag::PROXY_EP3_UNMASK_WHISPERS) &&
       (msg.data.size() >= 12) &&
@@ -523,8 +505,8 @@ constexpr on_message_t S_P_81 = &S_81<SC_SimpleMail_PC_81>;
 constexpr on_message_t S_B_81 = &S_81<SC_SimpleMail_BB_81>;
 
 static asio::awaitable<HandlerResult> S_88(shared_ptr<Client> c, Channel::Message& msg) {
-  // If the client isn't in the lobby, suppress the command (Ep3 can crash if
-  // it receives this while loading; other versions probably also will crash)
+  // If the client isn't in the lobby, suppress the command (Ep3 can crash if it receives this while loading; other
+  // versions probably also will crash)
   if (!c->proxy_session->is_in_lobby) {
     co_return HandlerResult::SUPPRESS;
   }
@@ -544,8 +526,7 @@ static asio::awaitable<HandlerResult> S_88(shared_ptr<Client> c, Channel::Messag
 }
 
 static asio::awaitable<HandlerResult> S_B1(shared_ptr<Client> c, Channel::Message&) {
-  // Block all time updates from the remote server, so client's time remains
-  // consistent
+  // Block all time updates from the remote server, so client's time remains consistent
   c->proxy_session->server_channel->send(0x99, 0x00);
   co_return HandlerResult::SUPPRESS;
 }
@@ -597,7 +578,6 @@ static asio::awaitable<HandlerResult> S_B2(shared_ptr<Client> c, Channel::Messag
 
     using FooterT = RELFileFooterT<BE>;
 
-    // TODO: Support SH-4 disassembly too
     bool is_ppc = ::is_ppc(c->version());
     bool is_x86 = ::is_x86(c->version());
     bool is_sh4 = ::is_sh4(c->version());
@@ -713,8 +693,7 @@ static asio::awaitable<HandlerResult> S_C4(shared_ptr<Client> c, Channel::Messag
   bool modified = false;
   if (c->login && c->login->account->account_id != c->proxy_session->remote_guild_card_number) {
     size_t expected_size = sizeof(CmdT) * msg.flag;
-    // Some servers (e.g. Schtserv) send extra data on the end of this command;
-    // the client ignores it so we can ignore it too
+    // Schtserv sends extra data on the end of this command; the client ignores it so we can ignore it too
     auto* entries = &msg.check_size_t<CmdT>(expected_size, 0xFFFF);
     for (size_t x = 0; x < msg.flag; x++) {
       if (entries[x].guild_card_number == c->proxy_session->remote_guild_card_number) {
@@ -745,15 +724,12 @@ static asio::awaitable<HandlerResult> S_G_E4(shared_ptr<Client> c, Channel::Mess
 }
 
 static asio::awaitable<HandlerResult> S_B_22(shared_ptr<Client> c, Channel::Message& msg) {
-  // We use this command (which is sent before the init encryption command) to
-  // detect a particular server behavior that we'll have to work around later.
-  // It looks like this command's existence is an anti-proxy measure, since
-  // this command is 0x34 bytes in total, and the logic that adds padding bytes
-  // when the command size isn't a multiple of 8 is only active when encryption
-  // is enabled. Presumably some simpler proxies would get this wrong.
-  // Editor's note: There's an unsavory message in this command's data field,
-  // hence the hash here instead of a direct string comparison. I'd love to
-  // hear the story behind why they put that string there.
+  // We use this command (which is sent before the init encryption command) to detect a particular server behavior that
+  // we'll have to work around later. It looks like this command's existence is an anti-proxy measure, since this
+  // command is 0x34 bytes in total, and the logic that adds padding bytes when the command size isn't a multiple of 8
+  // is only active when encryption is enabled. Presumably some simpler proxies would get this wrong.
+  // Editor's note: There's an unsavory message in this command's data field, hence the hash here instead of a direct
+  // string comparison. I'd love to hear the story behind why they put that string there.
   if ((msg.data.size() == 0x2C) && (phosg::fnv1a64(msg.data.data(), msg.data.size()) == 0x8AF8314316A27994)) {
     c->log.info_f("Enabling remote IP CRC patch");
     c->proxy_session->enable_remote_ip_crc_patch = true;
@@ -762,12 +738,10 @@ static asio::awaitable<HandlerResult> S_B_22(shared_ptr<Client> c, Channel::Mess
 }
 
 static asio::awaitable<HandlerResult> S_19_U_14(shared_ptr<Client> c, Channel::Message& msg) {
-  // If the command is shorter than 6 bytes, use the previous server command to
-  // fill it in. This simulates a behavior used by some private servers where a
-  // longer previous command is used to fill part of the client's receive buffer
-  // with meaningful data, then an intentionally undersize 19 command is sent
-  // which results in the client using the previous command's data as part of
-  // the 19 command's contents. They presumably do this in an attempt to prevent
+  // If the command is shorter than 6 bytes, use the previous server command to fill it in. This simulates a behavior
+  // used by some private servers where a longer previous command is used to fill part of the client's receive buffer
+  // with meaningful data, then an intentionally undersize 19 command is sent which results in the client using the
+  // previous command's data as part of the 19 command's contents. They presumably do this in an attempt to prevent
   // people from using proxies.
   if (msg.data.size() < sizeof(c->proxy_session->prev_server_command_bytes)) {
     msg.data.append(
@@ -792,8 +766,8 @@ static asio::awaitable<HandlerResult> S_19_U_14(shared_ptr<Client> c, Channel::M
     auto& cmd = msg.check_size_t<S_ReconnectIPv6_Extension_19>(0xFFFF);
     new_ep = make_endpoint_ipv6(cmd.address.data(), cmd.port);
   } else {
-    // This weird maximum size is here to properly handle the version-split
-    // command that some servers (including newserv) use on port 9100
+    // This weird maximum size is here to properly handle the version-split command that some servers (including
+    // newserv) use on port 9100
     auto& cmd = msg.check_size_t<S_Reconnect_19>(0xFFFF);
     new_ep = make_endpoint_ipv4(cmd.address, cmd.port);
   }
@@ -824,9 +798,8 @@ static asio::awaitable<HandlerResult> S_19_U_14(shared_ptr<Client> c, Channel::M
 }
 
 static asio::awaitable<HandlerResult> S_V3_1A_D5(shared_ptr<Client> c, Channel::Message&) {
-  // If the client is a version that sends close confirmations and the client
-  // has the no-close-confirmation flag set in its newserv client config, send a
-  // fake confirmation to the remote server immediately.
+  // If the client is a version that sends close confirmations and the client has the no-close-confirmation flag set in
+  // its newserv client config, send a fake confirmation to the remote server immediately.
   if (is_v3(c->version()) && c->check_flag(Client::Flag::NO_D6)) {
     c->proxy_session->server_channel->send(0xD6);
   }
@@ -1160,8 +1133,7 @@ static asio::awaitable<HandlerResult> S_6x(shared_ptr<Client> c, Channel::Messag
 
 static asio::awaitable<HandlerResult> C_GXB_61(shared_ptr<Client> c, Channel::Message& msg) {
   bool modified = false;
-  // TODO: We should check if the info board text was actually modified and
-  // return MODIFIED if so.
+  // TODO: We should check if the info board text was actually modified and return MODIFIED if so.
 
   if (is_v4(c->version())) {
     auto& pd = msg.check_size_t<C_CharacterData_BB_61_98>(0xFFFF);
@@ -1171,9 +1143,8 @@ static asio::awaitable<HandlerResult> C_GXB_61(shared_ptr<Client> c, Channel::Me
     C_CharacterData_V3_61_98* pd;
     if (msg.flag == 4) { // Episode 3
       auto& ep3_pd = msg.check_size_t<C_CharacterData_Ep3_61_98>();
-      // Technically we could decrypt the Ep3 config struct within the player
-      // data, but this may confuse some non-newserv upstream servers if they
-      // implement this structure incorrectly. The decryption would go like:
+      // Technically we could decrypt the Ep3 config struct within the player data, but this may confuse the upstream
+      // server if it implements this structure incorrectly. The decryption would go like:
       // if (ep3_pd.ep3_config.is_encrypted) {
       //   decrypt_trivial_gci_data(
       //       &ep3_pd.ep3_config.card_counts,
@@ -1206,8 +1177,7 @@ static asio::awaitable<HandlerResult> C_GX_D9(shared_ptr<Client>, Channel::Messa
   while (msg.data.size() & 3) {
     msg.data.push_back(0);
   }
-  // TODO: We should check if the info board text was actually modified and
-  // return FORWARD if not.
+  // TODO: We should check if the info board text was actually modified and return FORWARD if not.
   co_return HandlerResult::MODIFIED;
 }
 
@@ -1226,8 +1196,7 @@ static asio::awaitable<HandlerResult> C_B_D9(shared_ptr<Client> c, Channel::Mess
   } catch (const runtime_error& e) {
     c->log.warning_f("Failed to decode and unescape D9 command: {}", e.what());
   }
-  // TODO: We should check if the info board text was actually modified and
-  // return HandlerResult::FORWARD if not.
+  // TODO: We should check if the info board text was actually modified and return HandlerResult::FORWARD if not.
   co_return HandlerResult::MODIFIED;
 }
 
@@ -1250,8 +1219,8 @@ static asio::awaitable<HandlerResult> S_44_A6(shared_ptr<Client> c, Channel::Mes
     } else {
       basename = filename;
     }
-    output_filename = std::format("{}.{}.{}{}",
-        basename, is_download ? "download" : "online", phosg::now(), extension);
+    output_filename = std::format(
+        "{}.{}.{}{}", basename, is_download ? "download" : "online", phosg::now(), extension);
 
     for (size_t x = 0; x < output_filename.size(); x++) {
       if (output_filename[x] < 0x20 || output_filename[x] > 0x7E || output_filename[x] == '/') {
@@ -1420,8 +1389,8 @@ static asio::awaitable<HandlerResult> S_G_B8(shared_ptr<Client> c, Channel::Mess
     c->log.info_f("Wrote {} bytes to {}", size, output_filename);
   }
 
-  // Unset the flag specifying that the client has newserv's card definitions,
-  // so the file sill be sent again if the client returns to newserv.
+  // Unset the flag specifying that the client has newserv's card definitions, so the file sill be sent again if the
+  // client returns to newserv.
   c->clear_flag(Client::Flag::HAS_EP3_CARD_DEFS);
 
   co_return is_ep3(c->version()) ? HandlerResult::FORWARD : HandlerResult::SUPPRESS;
@@ -1454,8 +1423,7 @@ static asio::awaitable<HandlerResult> S_G_B9(shared_ptr<Client> c, Channel::Mess
     }
   }
 
-  // This command exists only in final Episode 3 and not in Trial Edition
-  // (hence not using is_ep3() here)
+  // This command exists only in final Episode 3 and not in Trial Edition (hence not using is_ep3() here)
   co_return (c->version() == Version::GC_EP3) ? HandlerResult::FORWARD : HandlerResult::SUPPRESS;
 }
 
@@ -1483,8 +1451,7 @@ static asio::awaitable<HandlerResult> S_G_EF(shared_ptr<Client> c, Channel::Mess
 }
 
 static asio::awaitable<HandlerResult> S_B_EF(shared_ptr<Client>, Channel::Message&) {
-  // See the comments on EF in CommandFormats.hh for why we unconditionally
-  // suppress these.
+  // See the comments on EF in CommandFormats.hh for why we unconditionally suppress these.
   co_return HandlerResult::SUPPRESS;
 }
 
@@ -1526,11 +1493,6 @@ static asio::awaitable<HandlerResult> S_65_67_68_EB(shared_ptr<Client> c, Channe
     c->proxy_session->item_creator.reset();
     c->proxy_session->map_state.reset();
 
-    // This command can cause the client to no longer send D6 responses when
-    // 1A/D5 large message boxes are closed. newserv keeps track of this
-    // behavior in the client config, so if it happens during a proxy session,
-    // update the client config that we'll restore if the client uses the change
-    // ship or change block command.
     if (c->check_flag(Client::Flag::NO_D6_AFTER_LOBBY)) {
       c->set_flag(Client::Flag::NO_D6);
     }
@@ -1557,8 +1519,7 @@ static asio::awaitable<HandlerResult> S_65_67_68_EB(shared_ptr<Client> c, Channe
           modified = true;
         }
       } else if (c->check_flag(Client::Flag::PROXY_PLAYER_NOTIFICATIONS_ENABLED) && (msg.command != 0x67)) {
-        send_text_message_fmt(c->channel, "$C6Join: {}/{}\n{}",
-            index, entry.lobby_data.guild_card_number, name);
+        send_text_message_fmt(c->channel, "$C6Join: {}/{}\n{}", index, entry.lobby_data.guild_card_number, name);
       }
       auto& p = c->proxy_session->lobby_players[index];
       p.guild_card_number = entry.lobby_data.guild_card_number;
@@ -1566,8 +1527,7 @@ static asio::awaitable<HandlerResult> S_65_67_68_EB(shared_ptr<Client> c, Channe
       p.language = entry.inventory.language;
       p.section_id = entry.disp.visual.section_id;
       p.char_class = entry.disp.visual.char_class;
-      c->log.info_f("Added lobby player: ({}) {} {}",
-          index, p.guild_card_number, p.name);
+      c->log.info_f("Added lobby player: ({}) {} {}", index, p.guild_card_number, p.name);
     }
   }
   if (num_replacements > 1) {
@@ -1647,8 +1607,7 @@ static asio::awaitable<HandlerResult> S_64(shared_ptr<Client> c, Channel::Messag
     cmd = &msg.check_size_t<CmdT>(sizeof(S_JoinGame_Ep3_64));
     cmd_ep3 = &msg.check_size_t<S_JoinGame_Ep3_64>();
   } else if (c->version() == Version::XB_V3) {
-    // Schtserv doesn't send the unknown_a1 field in this command, and we don't
-    // use it here, so we allow it to be omitted.
+    // Schtserv doesn't send the unknown_a1 field here, and we don't use it, so we allow it to be omitted.
     cmd = &msg.check_size_t<CmdT>(sizeof(CmdT) - 0x18, sizeof(CmdT));
   } else {
     cmd = &msg.check_size_t<CmdT>(0xFFFF);
@@ -1665,8 +1624,8 @@ static asio::awaitable<HandlerResult> S_64(shared_ptr<Client> c, Channel::Messag
     c->proxy_session->lobby_event = cmd->event;
     c->proxy_session->lobby_difficulty = cmd->difficulty;
     c->proxy_session->lobby_section_id = cmd->section_id;
-    // We only need the game mode for overriding drops, and SOLO behaves the same
-    // as NORMAL in that regard, so we can conveniently ignore SOLO here
+    // We only need the game mode for overriding drops, and SOLO behaves the same as NORMAL in that regard, so we can
+    // conveniently ignore SOLO here
     if (cmd->battle_mode) {
       c->proxy_session->lobby_mode = GameMode::BATTLE;
     } else if (cmd->challenge_mode) {
@@ -1703,8 +1662,7 @@ static asio::awaitable<HandlerResult> S_64(shared_ptr<Client> c, Channel::Messag
   }
 
   if (c->version() == Version::GC_NTE) {
-    // GC NTE ignores the variations field entirely, so clear the array to
-    // ensure we'll load the correct maps
+    // GC NTE ignores the variations field entirely, so clear the array to ensure we'll load the correct maps
     cmd->variations = Variations();
   }
 
@@ -1713,7 +1671,10 @@ static asio::awaitable<HandlerResult> S_64(shared_ptr<Client> c, Channel::Messag
   c->proxy_session->set_drop_mode(s, c->version(), c->override_random_seed, c->proxy_session->drop_mode);
   if (!is_ep3(c->version()) && (c->proxy_session->lobby_mode != GameMode::CHALLENGE)) {
     auto supermaps = s->supermaps_for_variations(
-        c->proxy_session->lobby_episode, c->proxy_session->lobby_mode, c->proxy_session->lobby_difficulty, cmd->variations);
+        c->proxy_session->lobby_episode,
+        c->proxy_session->lobby_mode,
+        c->proxy_session->lobby_difficulty,
+        cmd->variations);
     c->proxy_session->map_state = make_shared<MapState>(
         c->id,
         c->proxy_session->lobby_difficulty,
@@ -1831,8 +1792,8 @@ static asio::awaitable<HandlerResult> S_AC(shared_ptr<Client> c, Channel::Messag
 }
 
 static asio::awaitable<HandlerResult> S_66_69_E9(shared_ptr<Client> c, Channel::Message& msg) {
-  // Schtserv sends a large command here for unknown reasons. The client ignores
-  // the extra data, so we allow the large command here.
+  // Schtserv sends a large command here for unknown reasons. The client ignores the extra data, so we allow the large
+  // command here.
   const auto& cmd = msg.check_size_t<S_LeaveLobby_66_69_Ep3_E9>(0xFFFF);
   size_t index = cmd.client_id;
   if (index >= c->proxy_session->lobby_players.size()) {
@@ -1996,9 +1957,8 @@ asio::awaitable<HandlerResult> C_6x(shared_ptr<Client> c, Channel::Message& msg)
       break;
 
     case 0x06:
-      // On BB, the 6x06 command is blank - the server generates the actual
-      // Guild Card contents and sends it to the target client, so we only
-      // expect data here if the client isn't BB.
+      // On BB, the 6x06 command is blank - the server generates the actual Guild Card contents and sends it to the
+      // target client, so we only expect data here if the client isn't BB.
       if (!is_v4(c->version()) &&
           c->login &&
           c->login->account->account_id != c->proxy_session->remote_guild_card_number) {
@@ -2134,8 +2094,8 @@ constexpr on_message_t C_X_6x = &C_6x<G_SendGuildCard_XB_6x06>;
 constexpr on_message_t C_B_6x = &C_6x<G_SendGuildCard_BB_6x06>;
 
 static asio::awaitable<HandlerResult> C_V123_A0_A1(shared_ptr<Client> c, Channel::Message&) {
-  // We override Change Ship and Change Block to send the player back to the
-  // original server (ending the proxy session), except on BB.
+  // We override Change Ship and Change Block to send the player back to the original server (ending the proxy
+  // session), except on BB.
   c->proxy_session->server_channel->disconnect();
   co_return HandlerResult::SUPPRESS;
 }
@@ -2454,8 +2414,7 @@ asio::awaitable<void> on_proxy_command(shared_ptr<Client> c, bool from_server, u
 asio::awaitable<void> handle_proxy_server_commands(
     shared_ptr<Client> c, shared_ptr<ProxySession> ses, shared_ptr<Channel> channel) {
   std::string error_str;
-  // server_channel can be changed by receiving a 19 command, hence the
-  // exception handler is inside the loop here
+  // server_channel can be changed by receiving a 19 command, hence the exception handler is inside the loop here
   while ((c->proxy_session == ses) && (ses->server_channel == channel) && channel->connected()) {
     unique_ptr<Channel::Message> msg;
     try {
@@ -2472,8 +2431,7 @@ asio::awaitable<void> handle_proxy_server_commands(
       if (ec == asio::error::eof || ec == asio::error::connection_reset) {
         error_str = "Server channel\ndisconnected";
       } else if (ec == asio::error::operation_aborted) {
-        // This happens when the player chooses Change Ship/Change Block, so we
-        // don't show an error message
+        // This happens when the player chooses Change Ship/Change Block, so we don't show an error message
       } else {
         error_str = e.what();
       }

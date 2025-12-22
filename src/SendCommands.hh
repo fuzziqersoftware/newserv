@@ -24,27 +24,25 @@ extern const std::unordered_set<std::string> bb_crypt_initial_client_commands;
 
 constexpr size_t V3_V4_QUEST_LOAD_MAX_CHUNKS_IN_FLIGHT = 4;
 
-// TODO: Many of these functions should take a shared_ptr<Channel> instead of a
-// shared_ptr<Client>. Refactor functions appropriately.
+// TODO: Many of these functions should take a shared_ptr<Channel> instead of a shared_ptr<Client>. Refactor functions
+// appropriately.
 
 // Note: There are so many versions of this function for a few reasons:
-// - There are a lot of different target types (sometimes we want to send a
-//   command to one client, sometimes to everyone in a lobby, etc.)
-// - For the const void* versions, the data and size arguments should not be
-//   independently optional - this can lead to bugs where a non-null data
-//   pointer is given but size is accidentally not given (e.g. if the type of
-//   data in the calling function is changed from string to void*).
+// - There are a lot of different target types (sometimes we want to send a command to one client, sometimes to
+//   everyone in a lobby, etc.)
+// - For the const void* versions, the data and size arguments should not be independently optional - this can lead to
+//   bugs where a non-null data pointer is given but size is accidentally not given (e.g. if the type of data in the
+//   calling function is changed from string to void*).
 
 template <typename CmdT>
-void send_or_enqueue_command(
-    std::shared_ptr<Client> c, uint16_t command, uint32_t flag, const CmdT& cmd) {
+void send_or_enqueue_command(std::shared_ptr<Client> c, uint16_t command, uint32_t flag, const CmdT& cmd) {
   if (c->game_join_command_queue) {
     c->log.info_f("Client not ready to receive game commands; adding to queue");
     auto& q_cmd = c->game_join_command_queue->emplace_back();
     q_cmd.command = command;
     q_cmd.flag = flag;
-    // TODO: It'd be nice to avoid this copy. Maybe take in a pointer to cmd
-    // and move it into q_cmd somehow, so q_cmd can free it when needed?
+    // TODO: It'd be nice to avoid this copy. Maybe take in a pointer to cmd and move it into q_cmd somehow, so q_cmd
+    // can free it when needed?
     q_cmd.data.assign(reinterpret_cast<const char*>(&cmd), sizeof(cmd));
   } else {
     send_command(c, command, flag, &cmd, sizeof(cmd));
@@ -125,8 +123,7 @@ void send_command_t_vt(
     const StructT& data,
     const std::vector<EntryT>& array_data) {
   std::string all_data(reinterpret_cast<const char*>(&data), sizeof(StructT));
-  all_data.append(reinterpret_cast<const char*>(array_data.data()),
-      array_data.size() * sizeof(EntryT));
+  all_data.append(reinterpret_cast<const char*>(array_data.data()), array_data.size() * sizeof(EntryT));
   send_command(c, command, flag, all_data.data(), all_data.size());
 }
 
@@ -138,13 +135,10 @@ enum SendServerInitFlag {
 };
 
 S_ServerInitWithAfterMessageT_DC_PC_V3_02_17_91_9B<0xB4>
-prepare_server_init_contents_console(
-    uint32_t server_key, uint32_t client_key, uint8_t flags);
+prepare_server_init_contents_console(uint32_t server_key, uint32_t client_key, uint8_t flags);
 S_ServerInitWithAfterMessageT_BB_03_9B<0xB4>
 prepare_server_init_contents_bb(
-    const parray<uint8_t, 0x30>& server_key,
-    const parray<uint8_t, 0x30>& client_key,
-    uint8_t flags);
+    const parray<uint8_t, 0x30>& server_key, const parray<uint8_t, 0x30>& client_key, uint8_t flags);
 void send_server_init(std::shared_ptr<Client> c, uint8_t flags);
 void send_set_guild_card_number(std::shared_ptr<Client> c);
 
@@ -164,9 +158,8 @@ std::string prepare_send_function_call_data(
     uint32_t checksum_size,
     uint32_t override_relocations_offset,
     bool use_encrypted_format);
-// NOTE: The two versions of send_function_call behave differently. The version
-// that takes a Channel returns immediately; the version that takes a Client
-// does not return until the client has sent the response.
+// NOTE: The two versions of send_function_call behave differently. The version that takes a Channel returns
+// immediately; the version that takes a Client does not return until the client has sent the response.
 void send_function_call(
     std::shared_ptr<Channel> ch,
     uint64_t client_enabled_flags,
@@ -189,17 +182,13 @@ asio::awaitable<C_ExecuteCodeResult_B3> send_function_call(
     uint32_t override_relocations_offset = 0,
     bool ignore_actually_runs_code_flag = false);
 asio::awaitable<void> send_function_call_multi(
-    std::shared_ptr<Client> c,
-    std::unordered_set<std::shared_ptr<const CompiledFunctionCode>> codes);
+    std::shared_ptr<Client> c, std::unordered_set<std::shared_ptr<const CompiledFunctionCode>> codes);
 asio::awaitable<bool> send_protected_command(std::shared_ptr<Client> c, const void* data, size_t size, bool echo_to_lobby);
 asio::awaitable<void> send_dol_file(std::shared_ptr<Client> c, std::shared_ptr<DOLFileIndex::File> dol);
 
 void send_reconnect(std::shared_ptr<Client> c, uint32_t address, uint16_t port);
 void send_pc_console_split_reconnect(
-    std::shared_ptr<Client> c,
-    uint32_t address,
-    uint16_t pc_port,
-    uint16_t console_port);
+    std::shared_ptr<Client> c, uint32_t address, uint16_t pc_port, uint16_t console_port);
 
 void send_client_init_bb(std::shared_ptr<Client> c, uint32_t error);
 void send_system_file_bb(std::shared_ptr<Client> c);
@@ -227,7 +216,8 @@ void send_scrolling_message_bb(std::shared_ptr<Client> c, const std::string& tex
 void send_text_or_scrolling_message(std::shared_ptr<Client> c, const std::string& text, const std::string& scrolling);
 void send_text_or_scrolling_message(
     std::shared_ptr<Lobby> l, std::shared_ptr<Client> exclude_c, const std::string& text, const std::string& scrolling);
-void send_text_or_scrolling_message(std::shared_ptr<ServerState> s, const std::string& text, const std::string& scrolling);
+void send_text_or_scrolling_message(
+    std::shared_ptr<ServerState> s, const std::string& text, const std::string& scrolling);
 
 std::string prepare_chat_data(
     Version version,
@@ -236,18 +226,11 @@ std::string prepare_chat_data(
     const std::string& from_name,
     const std::string& text,
     char private_flags);
-void send_chat_message_from_client(
-    std::shared_ptr<Channel> ch,
-    const std::string& text,
-    char private_flags);
+void send_chat_message_from_client(std::shared_ptr<Channel> ch, const std::string& text, char private_flags);
 void send_prepared_chat_message(
-    std::shared_ptr<Client> c,
-    uint32_t from_guild_card_number,
-    const std::string& prepared_data);
+    std::shared_ptr<Client> c, uint32_t from_guild_card_number, const std::string& prepared_data);
 void send_prepared_chat_message(
-    std::shared_ptr<Lobby> l,
-    uint32_t from_guild_card_number,
-    const std::string& prepared_data);
+    std::shared_ptr<Lobby> l, uint32_t from_guild_card_number, const std::string& prepared_data);
 void send_chat_message(
     std::shared_ptr<Client> c,
     uint32_t from_guild_card_number,
@@ -255,10 +238,7 @@ void send_chat_message(
     const std::string& text,
     char private_flags);
 void send_simple_mail(
-    std::shared_ptr<Client> c,
-    uint32_t from_guild_card_number,
-    const std::string& from_name,
-    const std::string& text);
+    std::shared_ptr<Client> c, uint32_t from_guild_card_number, const std::string& from_name, const std::string& text);
 void send_simple_mail(
     std::shared_ptr<ServerState> s,
     uint32_t from_guild_card_number,
@@ -287,9 +267,7 @@ void send_info_board(std::shared_ptr<Client> c);
 void send_choice_search_choices(std::shared_ptr<Client> c);
 
 void send_card_search_result(
-    std::shared_ptr<Client> c,
-    std::shared_ptr<Client> result,
-    std::shared_ptr<Lobby> result_lobby);
+    std::shared_ptr<Client> c, std::shared_ptr<Client> result, std::shared_ptr<Lobby> result_lobby);
 
 void send_guild_card(
     std::shared_ptr<Channel> ch,
@@ -302,12 +280,8 @@ void send_guild_card(
     uint8_t section_id,
     uint8_t char_class);
 void send_guild_card(std::shared_ptr<Client> c, std::shared_ptr<Client> source);
-void send_menu(
-    std::shared_ptr<Client> c, std::shared_ptr<const Menu> menu, bool is_info_menu = false);
-void send_game_menu(
-    std::shared_ptr<Client> c,
-    bool is_spectator_team_list,
-    bool is_tournament_game_list);
+void send_menu(std::shared_ptr<Client> c, std::shared_ptr<const Menu> menu, bool is_info_menu = false);
+void send_game_menu(std::shared_ptr<Client> c, bool is_spectator_team_list, bool is_tournament_game_list);
 void send_quest_menu(
     std::shared_ptr<Client> c,
     const std::vector<std::pair<QuestIndex::IncludeState, std::shared_ptr<const Quest>>>& quests,
@@ -408,35 +382,21 @@ void send_quest_function_call(std::shared_ptr<Client> c, uint16_t label);
 
 void send_ep3_card_list_update(std::shared_ptr<Client> c);
 void send_ep3_media_update(
-    std::shared_ptr<Client> c,
-    uint32_t type,
-    uint32_t which,
-    const std::string& compressed_data);
+    std::shared_ptr<Client> c, uint32_t type, uint32_t which, const std::string& compressed_data);
 void send_ep3_rank_update(std::shared_ptr<Client> c);
 void send_ep3_card_battle_table_state(std::shared_ptr<Lobby> l, uint16_t table_number);
 void send_ep3_set_context_token(std::shared_ptr<Client> c, uint32_t context_token);
 
-void send_ep3_confirm_tournament_entry(
-    std::shared_ptr<Client> c,
-    std::shared_ptr<const Episode3::Tournament> t);
-void send_ep3_tournament_list(
-    std::shared_ptr<Client> c,
-    bool is_for_spectator_team_create);
+void send_ep3_confirm_tournament_entry(std::shared_ptr<Client> c, std::shared_ptr<const Episode3::Tournament> t);
+void send_ep3_tournament_list(std::shared_ptr<Client> c, bool is_for_spectator_team_create);
 void send_ep3_tournament_entry_list(
-    std::shared_ptr<Client> c,
-    std::shared_ptr<const Episode3::Tournament> t,
-    bool is_for_spectator_team_create);
-void send_ep3_tournament_info(
-    std::shared_ptr<Client> c,
-    std::shared_ptr<const Episode3::Tournament> t);
+    std::shared_ptr<Client> c, std::shared_ptr<const Episode3::Tournament> t, bool is_for_spectator_team_create);
+void send_ep3_tournament_info(std::shared_ptr<Client> c, std::shared_ptr<const Episode3::Tournament> t);
 void send_ep3_set_tournament_player_decks(std::shared_ptr<Client> c);
 void send_ep3_tournament_match_result(std::shared_ptr<Lobby> l, uint32_t meseta_reward);
 
-void send_ep3_tournament_details(
-    std::shared_ptr<Client> c,
-    std::shared_ptr<const Episode3::Tournament> t);
-void send_ep3_game_details(
-    std::shared_ptr<Client> c, std::shared_ptr<Lobby> l);
+void send_ep3_tournament_details(std::shared_ptr<Client> c, std::shared_ptr<const Episode3::Tournament> t);
+void send_ep3_game_details(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l);
 void send_ep3_update_game_metadata(std::shared_ptr<Lobby> l);
 void send_ep3_card_auction(std::shared_ptr<Lobby> l);
 void send_ep3_disband_watcher_lobbies(std::shared_ptr<Lobby> primary_l);

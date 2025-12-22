@@ -14,9 +14,7 @@
 using namespace std;
 
 TeamIndex::Team::Member::Member(const phosg::JSON& json)
-    : flags(json.get_int("Flags", 0)),
-      points(json.get_int("Points", 0)),
-      name(json.get_string("Name", "")) {
+    : flags(json.get_int("Flags", 0)), points(json.get_int("Points", 0)), name(json.get_string("Name", "")) {
   try {
     this->account_id = json.get_int("AccountID");
   } catch (const out_of_range&) {
@@ -26,12 +24,8 @@ TeamIndex::Team::Member::Member(const phosg::JSON& json)
 }
 
 phosg::JSON TeamIndex::Team::Member::json() const {
-  return phosg::JSON::dict({
-      {"AccountID", this->account_id},
-      {"Flags", this->flags},
-      {"Points", this->points},
-      {"Name", this->name},
-  });
+  return phosg::JSON::dict(
+      {{"AccountID", this->account_id}, {"Flags", this->flags}, {"Points", this->points}, {"Name", this->name}});
 }
 
 uint32_t TeamIndex::Team::Member::privilege_level() const {
@@ -472,10 +466,10 @@ void TeamIndex::add_to_indexes(shared_ptr<Team> team) {
     this->id_to_team.erase(team->team_id);
     throw runtime_error("team name is already in use");
   }
-  for (const auto& it : team->members) {
-    if (!this->account_id_to_team.emplace(it.second.account_id, team).second) {
+  for (const auto& [_, member] : team->members) {
+    if (!this->account_id_to_team.emplace(member.account_id, team).second) {
       static_game_data_log.warning_f("Serial number {:08X} ({:010}) exists in multiple teams",
-          it.second.account_id, it.second.account_id);
+          member.account_id, member.account_id);
     }
   }
 }

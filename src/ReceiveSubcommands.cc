@@ -23,6 +23,8 @@
 
 using namespace std;
 
+// The functions in this file are called when a client sends a game command (60, 62, 6C, 6D, C9, or CB).
+
 struct SubcommandMessage {
   uint16_t command;
   uint32_t flag;
@@ -127,22 +129,6 @@ uint8_t translate_subcommand_number(Version to_version, Version from_version, ui
     return def->final_subcommand;
   }
 }
-
-// The functions in this file are called when a client sends a game command
-// (60, 62, 6C, 6D, C9, or CB).
-
-// There are three different sets of subcommand numbers: the DC NTE set, the
-// November 2000 prototype set, and the set used by all other versions of the
-// game (starting from the December 2000 prototype, all the way through BB).
-// Currently we do not support the November 2000 prototype, but we do support
-// DC NTE. In general, DC NTE clients can only interact with non-NTE players in
-// very limited ways, since most subcommand-based actions take place in games,
-// and non-NTE players cannot join NTE games. Commands sent by DC NTE clients
-// are not handled by the functions defined in subcommand_handlers, but are
-// instead handled by handle_subcommand_dc_nte. This means we only have to
-// consider sending to DC NTE clients in a small subset of the command handlers
-// (those that can occur in the lobby), and we can skip sending most
-// subcommands to DC NTE by default.
 
 bool command_is_private(uint8_t command) {
   return (command == 0x62) || (command == 0x6D);
@@ -263,11 +249,9 @@ static void forward_subcommand(shared_ptr<Client> c, SubcommandMessage& msg) {
       }
     }
 
-    // Before battle, forward only chat commands to watcher lobbies; during
-    // battle, forward everything to watcher lobbies. (This is necessary because
-    // if we forward everything before battle, the blocking menu subcommands
-    // cause the battle setup menu to appear in the spectator room, which looks
-    // weird and is generally undesirable.)
+    // Before battle, forward only chat commands to watcher lobbies; during battle, forward everything to watcher
+    // lobbies. (This is necessary because if we forward everything before battle, the blocking menu subcommands cause
+    // the battle setup menu to appear in the spectator room, which looks weird and is generally undesirable.)
     if ((l->ep3_server && (l->ep3_server->setup_phase != Episode3::SetupPhase::REGISTRATION)) ||
         (def_flags & SDF::ALWAYS_FORWARD_TO_WATCHERS)) {
       for (const auto& watcher_lobby : l->watcher_lobbies) {
@@ -333,8 +317,7 @@ static asio::awaitable<void> on_forward_check_game_quest(shared_ptr<Client> c, S
 
 template <typename CmdT>
 void forward_subcommand_with_item_transcode_t(shared_ptr<Client> c, uint8_t command, uint8_t flag, const CmdT& cmd) {
-  // I'm lazy and this should never happen for item commands (since all players
-  // need to stay in sync)
+  // I'm lazy and this should never happen for item commands (since all players need to stay in sync)
   if (command_is_private(command)) {
     throw runtime_error("item subcommand sent via private command");
   }
@@ -363,8 +346,7 @@ void forward_subcommand_with_item_transcode_t(shared_ptr<Client> c, uint8_t comm
 
 template <typename CmdT, bool ForwardIfMissing = false, size_t EntityIDOffset = offsetof(G_EntityIDHeader, entity_id)>
 asio::awaitable<void> forward_subcommand_with_entity_id_transcode_t(shared_ptr<Client> c, SubcommandMessage& msg) {
-  // I'm lazy and this should never happen for item commands (since all players
-  // need to stay in sync)
+  // I'm lazy and this should never happen for item commands (since all players need to stay in sync)
   if (command_is_private(msg.command)) {
     throw runtime_error("entity subcommand sent via private command");
   }
@@ -416,8 +398,7 @@ asio::awaitable<void> forward_subcommand_with_entity_id_transcode_t(shared_ptr<C
 
 template <typename HeaderT>
 asio::awaitable<void> forward_subcommand_with_entity_targets_transcode_t(shared_ptr<Client> c, SubcommandMessage& msg) {
-  // I'm lazy and this should never happen for item commands (since all players
-  // need to stay in sync)
+  // I'm lazy and this should never happen for item commands (since all players need to stay in sync)
   if (command_is_private(msg.command)) {
     throw runtime_error("entity subcommand sent via private command");
   }
@@ -490,7 +471,8 @@ asio::awaitable<void> forward_subcommand_with_entity_targets_transcode_t(shared_
   co_return;
 }
 
-static shared_ptr<Client> get_sync_target(shared_ptr<Client> sender_c, uint8_t command, uint8_t flag, bool allow_if_not_loading) {
+static shared_ptr<Client> get_sync_target(
+    shared_ptr<Client> sender_c, uint8_t command, uint8_t flag, bool allow_if_not_loading) {
   if (!command_is_private(command)) {
     throw runtime_error("sync data sent via public command");
   }
@@ -541,8 +523,7 @@ static asio::awaitable<void> on_sync_joining_player_compressed_state(shared_ptr<
   }
 
   // Assume all v1 and v2 versions are the same, and assume GC/XB are the same.
-  // TODO: We should do this by checking if the supermaps are the same instead
-  // of hardcoding this here.
+  // TODO: We should do this by checking if the supermaps are the same instead of hardcoding this here.
   auto collapse_version = +[](Version v) -> Version {
     // Collapse DC v1/v2 and PC into PC_V2
     if (is_v1_or_v2(v) && !is_pre_v1(v) && (v != Version::GC_NTE)) {
@@ -635,9 +616,8 @@ static asio::awaitable<void> on_sync_joining_player_compressed_state(shared_ptr<
         }
       }
 
-      // The leader's item state is never forwarded since the leader may be able
-      // to see items that the joining player should not see. We always generate
-      // a new item state for the joining player instead.
+      // The leader's item state is never forwarded since the leader may be able to see items that the joining player
+      // should not see. We always generate a new item state for the joining player instead.
       send_game_item_state(target);
       break;
     }
@@ -663,8 +643,7 @@ static asio::awaitable<void> on_sync_joining_player_compressed_state(shared_ptr<
           true, set_flags_header.num_enemy_sets * sizeof(le_uint16_t));
       size_t event_set_flags_count = dec_header.event_set_flags_size / sizeof(le_uint16_t);
       const auto* event_set_flags = &r.pget<le_uint16_t>(
-          r.where() + dec_header.entity_set_flags_size,
-          event_set_flags_count * sizeof(le_uint16_t));
+          r.where() + dec_header.entity_set_flags_size, event_set_flags_count * sizeof(le_uint16_t));
       l->map_state->import_flag_states_from_sync(
           c->version(),
           object_set_flags,
@@ -685,19 +664,17 @@ static asio::awaitable<void> on_sync_joining_player_compressed_state(shared_ptr<
       if (l->switch_flags) {
         phosg::StringReader switch_flags_r = r.sub(r.where() + dec_header.entity_set_flags_size + dec_header.event_set_flags_size);
         for (size_t floor = 0; floor < expected_switch_flag_num_floors; floor++) {
-          // There is a bug in most (perhaps all) versions of the game, which
-          // causes this array to be too small. It looks like Sega forgot to
-          // account for the header (G_SyncSetFlagState_6x6E_Decompressed)
-          // before compressing the buffer, so the game cuts off the last 8
-          // bytes of the switch flags. Since this only affects the last floor,
-          // which rarely has any switches on it (or is even accessible by the
-          // player), it's not surprising that no one noticed this. But it does
-          // mean we have to check switch_flags_r.eof() here.
+          // There is a bug in most (perhaps all) versions of the game, which causes this array to be too small. It
+          // looks like Sega forgot to account for the header (G_SyncSetFlagState_6x6E_Decompressed) before compressing
+          // the buffer, so the game cuts off the last 8 bytes of the switch flags. Since this only affects the last
+          // floor, which rarely has any switches on it (or is even accessible by the player), it's not surprising that
+          // no one noticed this. But it does mean we have to check switch_flags_r.eof() here.
           for (size_t z = 0; (z < 0x20) && !switch_flags_r.eof(); z++) {
             uint8_t& l_flags = l->switch_flags->array(floor).data[z];
             uint8_t r_flags = switch_flags_r.get_u8();
             if (l_flags != r_flags) {
-              l->log.warning_f("Switch flags do not match at floor {:02X} byte {:02X} (expected {:02X}, received {:02X})",
+              l->log.warning_f(
+                  "Switch flags do not match at floor {:02X} byte {:02X} (expected {:02X}, received {:02X})",
                   floor, z, l_flags, r_flags);
               l_flags = r_flags;
             }
@@ -942,7 +919,11 @@ G_SyncPlayerDispAndInventory_DCNTE_6x70 Parsed6x70Data::as_dc_nte(shared_ptr<Ser
   ret.items = this->items;
 
   transcode_inventory_items(
-      ret.items, ret.num_items, this->item_version, Version::DC_NTE, s->item_parameter_table_for_encode(Version::DC_NTE));
+      ret.items,
+      ret.num_items,
+      this->item_version,
+      Version::DC_NTE,
+      s->item_parameter_table_for_encode(Version::DC_NTE));
   ret.visual.enforce_lobby_join_limits_for_version(Version::DC_NTE);
 
   uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
@@ -970,7 +951,11 @@ G_SyncPlayerDispAndInventory_DC112000_6x70 Parsed6x70Data::as_dc_112000(shared_p
   ret.items = this->items;
 
   transcode_inventory_items(
-      ret.items, ret.num_items, this->item_version, Version::DC_11_2000, s->item_parameter_table_for_encode(Version::DC_11_2000));
+      ret.items,
+      ret.num_items,
+      this->item_version,
+      Version::DC_11_2000,
+      s->item_parameter_table_for_encode(Version::DC_11_2000));
   ret.visual.enforce_lobby_join_limits_for_version(Version::DC_11_2000);
 
   uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
@@ -1156,18 +1141,15 @@ G_6x70_Base_V1 Parsed6x70Data::base_v1(bool is_v3) const {
 }
 
 uint32_t Parsed6x70Data::convert_game_flags(uint32_t game_flags, bool to_v3) {
-  // The format of game_flags for players was changed significantly between v2
-  // and v3, and not accounting for this results in odd effects like other
-  // characters not appearing when joining a game. Unfortunately, some bits
-  // were deleted on v3 and other bits were added, so it doesn't suffice to
-  // simply store the most complete format of this field - we have to be able
-  // to convert between the two.
+  // The format of game_flags for players was changed significantly between v2 and v3, and not accounting for this
+  // results in odd effects like other characters not appearing when joining a game. Unfortunately, some bits were
+  // deleted on v3 and other bits were added, so it doesn't suffice to simply store the most complete format of this
+  // field - we have to be able to convert between the two.
 
   // Bits on v2: JIHCBAzy xwvutsrq ponmlkji hgfedcba
   // Bits on v3: JIHGFEDC BAzyxwvu srqponkj hgfedcba
-  // The bits ilmt were removed in v3 and the bits to their left were shifted
-  // right. The bits DEFG were added in v3 and do not exist on v2.
-  // Known meanings for these bits:
+  // The bits ilmt were removed in v3 and the bits to their left were shifted right. The bits DEFG were added in v3 and
+  // do not exist on v2. Known meanings for these bits so far:
   //   o = is dead
   //   n = should play hit animation
   //   y = is near enemy
@@ -1198,17 +1180,16 @@ static asio::awaitable<void> on_sync_joining_player_disp_and_inventory(
     shared_ptr<Client> c, SubcommandMessage& msg) {
   auto s = c->require_server_state();
 
-  // In V1/V2 games, this command sometimes is sent after the new client has
-  // finished loading, so we don't check l->any_client_loading() here.
+  // In V1/V2 games, this command sometimes is sent after the new client has finished loading, so we don't check
+  // l->any_client_loading() here.
   auto target = get_sync_target(c, msg.command, msg.flag, true);
   if (!target) {
     co_return;
   }
 
-  // If the sender is the leader and is pre-V1, and the target is V1 or later,
-  // we need to synthesize a 6x71 command to tell the target all state has been
-  // sent. (If both are pre-V1, the target won't expect this command; if both
-  // are V1 or later, the leader will send this command itself.)
+  // If the sender is the leader and is pre-V1, and the target is V1 or later, we need to synthesize a 6x71 command to
+  // tell the target all state has been sent. (If both are pre-V1, the target won't expect this command; if both are V1
+  // or later, the leader will send this command itself.)
   Version target_v = target->version();
   Version c_v = c->version();
   if (is_pre_v1(c_v) && !is_pre_v1(target_v)) {
@@ -1327,7 +1308,7 @@ static asio::awaitable<void> on_forward_check_ep3_lobby(shared_ptr<Client> c, Su
   co_return;
 }
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Ep3 subcommands
 
 static asio::awaitable<void> on_ep3_battle_subs(shared_ptr<Client> c, SubcommandMessage& msg) {
@@ -1342,8 +1323,7 @@ static asio::awaitable<void> on_ep3_battle_subs(shared_ptr<Client> c, Subcommand
   if (c->version() != Version::GC_EP3_NTE) {
     set_mask_for_ep3_game_command(msg.data, msg.size, 0);
   } else {
-    // Ep3 NTE sends uninitialized data in this field; clear it so we know the
-    // command isn't masked
+    // Ep3 NTE sends uninitialized data in this field; clear it so we know the command isn't masked
     msg.check_size_t<G_CardBattleCommandHeader>(0xFFFF).mask_key = 0;
   }
 
@@ -1408,7 +1388,7 @@ static asio::awaitable<void> on_ep3_trade_card_counts(shared_ptr<Client> c, Subc
   forward_subcommand(c, msg);
 }
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Chat commands and the like
 
 static asio::awaitable<void> on_send_guild_card(shared_ptr<Client> c, SubcommandMessage& msg) {
@@ -1450,8 +1430,7 @@ static asio::awaitable<void> on_send_guild_card(shared_ptr<Client> c, Subcommand
       break;
     }
     case Version::BB_V4:
-      // Nothing to do... the command is blank; the server generates the guild
-      // card to be sent
+      // Nothing to do... the command is blank; the server generates the guild card to be sent
       break;
     default:
       throw logic_error("unsupported game version");
@@ -1543,8 +1522,8 @@ static asio::awaitable<void> on_word_select_t(shared_ptr<Client> c, SubcommandMe
 
 static asio::awaitable<void> on_word_select(shared_ptr<Client> c, SubcommandMessage& msg) {
   if (is_pre_v1(c->version())) {
-    // The Word Select command is a different size in final vs. NTE and
-    // proto, so handle that here by appending FFFFFFFF0000000000000000
+    // The Word Select command is a different size in final vs. NTE and proto, so handle that here by appending
+    // FFFFFFFF0000000000000000
     string effective_data(reinterpret_cast<const char*>(msg.data), msg.size);
     effective_data.resize(0x20, 0x00);
     effective_data[0x01] = 0x08;
@@ -1596,13 +1575,12 @@ static asio::awaitable<void> on_set_player_visible(shared_ptr<Client> c, Subcomm
   co_return;
 }
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 static asio::awaitable<void> on_change_floor_6x1F(shared_ptr<Client> c, SubcommandMessage& msg) {
   if (is_pre_v1(c->version())) {
     msg.check_size_t<G_SetPlayerFloor_DCNTE_6x1F>();
-    // DC NTE and 11/2000 don't send 6F when they're done loading, so we clear
-    // the loading flag here instead.
+    // DC NTE and 11/2000 don't send 6F when they're done loading, so we clear the loading flag here instead.
     if (c->check_flag(Client::Flag::LOADING)) {
       c->clear_flag(Client::Flag::LOADING);
       c->log.info_f("LOADING flag cleared");
@@ -1670,9 +1648,8 @@ static asio::awaitable<void> on_player_revivable(shared_ptr<Client> c, Subcomman
     const void* c_data = (!is_v1_or_v2(c->version()) || (c->version() == Version::GC_NTE))
         ? static_cast<const void*>(&v3_cmd)
         : static_cast<const void*>(&v2_cmd);
-    // TODO: We might need to send different versions of the command here to
-    // different clients in certain crossplay scenarios, so just using
-    // echo_to_lobby would not suffice. Figure out a way to handle this.
+    // TODO: We might need to send different versions of the command here to different clients in certain crossplay
+    // scenarios, so just using echo_to_lobby would not suffice. Figure out a way to handle this.
     co_await send_protected_command(c, c_data, sizeof(v3_cmd), true);
   }
 }
@@ -1810,10 +1787,9 @@ static asio::awaitable<void> on_switch_state_changed(shared_ptr<Client> c, Subco
     send_text_message_fmt(c, "$C5K-{:03X} A {}", obj_st->k_id, type_name);
   }
 
-  // Apparently sometimes 6x05 is sent with an invalid switch flag number. The
-  // client seems to just ignore the command in that case, so we go ahead and
-  // forward it (in case the client's object update function is meaningful
-  // somehow) and just don't update our view of the switch flags.
+  // Apparently sometimes 6x05 is sent with an invalid switch flag number. The client seems to just ignore the command
+  // in that case, so we go ahead and forward it (in case the client's object update function is meaningful somehow)
+  // and just don't update our view of the switch flags.
   if (l->switch_flags && (cmd.switch_flag_num < 0x100)) {
     if (cmd.flags & 1) {
       l->switch_flags->set(cmd.switch_flag_floor, cmd.switch_flag_num);
@@ -1834,15 +1810,15 @@ static asio::awaitable<void> on_switch_state_changed(shared_ptr<Client> c, Subco
 
 static asio::awaitable<void> on_play_sound_from_player(shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_PlaySoundFromPlayer_6xB2>();
-  // This command can be used to play arbitrary sounds, but the client only
-  // ever sends it for the camera shutter sound, so we only allow that one.
+  // This command can be used to play arbitrary sounds, but the client only ever sends it for the camera shutter sound,
+  // so we only allow that one.
   if (cmd.sound_id == 0x00051720) {
     forward_subcommand(c, msg);
   }
   co_return;
 }
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename CmdT>
 static asio::awaitable<void> on_movement_xz(shared_ptr<Client> c, SubcommandMessage& msg) {
@@ -1906,9 +1882,8 @@ static asio::awaitable<void> on_set_animation_state(shared_ptr<Client> c, Subcom
     co_return;
   }
 
-  // The animation numbers were changed on V3. This is the most common one to
-  // see in the lobby (it occurs when a player talks to the counter), so we
-  // take care to translate it specifically.
+  // The animation numbers were changed on V3. This is the most common one to see in the lobby (it occurs when a player
+  // talks to the counter), so we take care to translate it specifically.
   bool c_is_v1_or_v2 = is_v1_or_v2(c->version());
   if (!((c_is_v1_or_v2 && (cmd.animation == 0x000A)) || (!c_is_v1_or_v2 && (cmd.animation == 0x0000)))) {
     forward_subcommand(c, msg);
@@ -1926,7 +1901,7 @@ static asio::awaitable<void> on_set_animation_state(shared_ptr<Client> c, Subcom
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Item commands
 
 static asio::awaitable<void> on_player_drop_item(shared_ptr<Client> c, SubcommandMessage& msg) {
@@ -1966,14 +1941,11 @@ static asio::awaitable<void> on_create_inventory_item_t(shared_ptr<Client> c, Su
   item.decode_for_version(c->version());
   l->on_item_id_generated_externally(item.id);
 
-  // Players cannot send this on behalf of another player, but they can send it
-  // on behalf of an NPC; we don't track items for NPCs so in that case we just
-  // mark the item ID as used and ignore it. This works for the most part,
-  // because when NPCs use or equip items, we ignore the command since it has
-  // the wrong client ID.
-  // TODO: This won't work if NPCs ever drop items that players can interact
-  // with. Presumably we would have to track all NPCs' inventory items to handle
-  // this.
+  // Players cannot send this on behalf of another player, but they can send it on behalf of an NPC; we don't track
+  // items for NPCs so in that case we just mark the item ID as used and ignore it. This works for the most part,
+  // because when NPCs use or equip items, we ignore the command since it has the wrong client ID.
+  // TODO: This won't work if NPCs ever drop items that players can interact with. Presumably we would have to track
+  // all NPCs' inventory items to handle that.
   auto s = c->require_server_state();
   if (cmd.header.client_id != c->lobby_client_id) {
     // Don't allow creating items in other players' inventories, only in NPCs'
@@ -2023,8 +1995,7 @@ static void on_drop_partial_stack_t(shared_ptr<Client> c, SubcommandMessage& msg
   }
   // TODO: Should we check the client ID here too?
 
-  // We don't delete anything from the inventory here; the client will send a
-  // 6x29 to do so immediately following this command.
+  // We don't delete anything from the inventory here; the client will send a 6x29 to do so following this command.
 
   ItemData item = cmd.item_data;
   item.decode_for_version(c->version());
@@ -2071,16 +2042,14 @@ static asio::awaitable<void> on_drop_partial_stack_bb(shared_ptr<Client> c, Subc
   const auto& limits = *s->item_stack_limits(c->version());
   auto item = p->remove_item(cmd.item_id, cmd.amount, limits);
 
-  // If a stack was split, the original item still exists, so the dropped item
-  // needs a new ID. remove_item signals this by returning an item with an ID
-  // of 0xFFFFFFFF.
+  // If a stack was split, the original item still exists, so the dropped item needs a new ID. remove_item signals this
+  // by returning an item with an ID of 0xFFFFFFFF.
   if (item.id == 0xFFFFFFFF) {
     item.id = l->generate_item_id(c->lobby_client_id);
   }
 
-  // PSOBB sends a 6x29 command after it receives the 6x5D, so we need to add
-  // the item back to the player's inventory to correct for this (it will get
-  // removed again by the 6x29 handler)
+  // PSOBB sends a 6x29 command after it receives the 6x5D, so we need to add the item back to the player's inventory
+  // to correct for this (it will get removed again by the 6x29 handler)
   p->add_item(item, limits);
 
   l->add_item(cmd.floor, item, cmd.pos, nullptr, nullptr, 0x00F);
@@ -2161,8 +2130,7 @@ void send_item_notification_if_needed(shared_ptr<Client> c, const ItemData& item
 
 template <typename CmdT>
 static void on_box_or_enemy_item_drop_t(shared_ptr<Client> c, SubcommandMessage& msg) {
-  // I'm lazy and this should never happen for item commands (since all players
-  // need to stay in sync)
+  // I'm lazy and this should never happen for item commands (since all players need to stay in sync)
   if (command_is_private(msg.command)) {
     throw runtime_error("item subcommand sent via private command");
   }
@@ -2242,15 +2210,13 @@ static asio::awaitable<void> on_pick_up_item_generic(
   }
 
   if (!l->item_exists(floor, item_id)) {
-    // This can happen if the network is slow, and the client tries to pick up
-    // the same item multiple times. Or multiple clients could try to pick up
-    // the same item at approximately the same time; only one should get it.
+    // This can happen if the network is slow, and the client tries to pick up the same item multiple times. Or
+    // multiple clients could try to pick up the same item at approximately the same time; only one should get it.
     l->log.warning_f("Player {} requests to pick up {:08X}, but the item does not exist; dropping command", client_id, item_id);
 
   } else {
-    // This is handled by the server on BB, and by the leader on other versions.
-    // However, the client's logic is to simply always send a 6x59 command when
-    // it receives a 6x5A and the floor item exists, so we just implement that
+    // This is handled by the server on BB, and by the leader on other versions. However, the client's logic is to
+    // simply always send a 6x59 command when it receives a 6x5A and the floor item exists, so we just implement that
     // logic here instead of forwarding the 6x5A to the leader.
 
     auto p = c->character_file();
@@ -2429,8 +2395,7 @@ static asio::awaitable<void> on_feed_mag(shared_ptr<Client> c, SubcommandMessage
   size_t fed_index = p->inventory.find_item(cmd.fed_item_id);
   string mag_name, fed_name;
   {
-    // Note: We do this weird scoping thing because player_feed_mag will
-    // likely delete the items, which will break the references here.
+    // Note: We downscope these because player_feed_mag will likely delete the items, which will break these references
     const auto& fed_item = p->inventory.items[fed_index].data;
     fed_name = s->describe_item(c->version(), fed_item);
     const auto& mag_item = p->inventory.items[mag_index].data;
@@ -2438,10 +2403,9 @@ static asio::awaitable<void> on_feed_mag(shared_ptr<Client> c, SubcommandMessage
   }
   player_feed_mag(c, mag_index, fed_index);
 
-  // On BB, the player only sends a 6x28; on other versions, the player sends
-  // a 6x29 immediately after to destroy the fed item. So on BB, we should
-  // remove the fed item here, but on other versions, we allow the following
-  // 6x29 command to do that.
+  // On BB, the player only sends a 6x28; on other versions, the player sends a 6x29 immediately after to destroy the
+  // fed item. So on BB, we should remove the fed item here, but on other versions, we allow the following 6x29 command
+  // to do that.
   if (c->version() == Version::BB_V4) {
     p->remove_item(cmd.fed_item_id, 1, *s->item_stack_limits(c->version()));
   }
@@ -2488,8 +2452,8 @@ static asio::awaitable<void> on_gc_nte_exclusive(shared_ptr<Client> c, Subcomman
     co_return;
   }
 
-  // Command should not be forwarded across the GC NTE boundary, but may be
-  // forwarded to other clients within that boundary
+  // Command should not be forwarded across the GC NTE boundary, but may be forwarded to other clients within that
+  // boundary
   bool c_is_nte = (c->version() == Version::GC_NTE);
 
   auto l = c->require_lobby();
@@ -2555,8 +2519,7 @@ bool validate_6xBB(G_SyncCardTradeServerState_Ep3_6xBB& cmd) {
     return false;
   }
 
-  // TTradeCardServer uses 4 to indicate the slot is empty, so we allow 4 in
-  // the client ID checks below
+  // TTradeCardServer uses 4 to indicate the slot is empty, so we allow 4 in the client ID checks below
   switch (cmd.what) {
     case 1:
       if (cmd.args[0] >= 5) {
@@ -2684,10 +2647,9 @@ static asio::awaitable<void> on_ep3_private_word_select_bb_bank_action(
       } else { // Deposit item
         const auto& limits = *s->item_stack_limits(c->version());
         auto item = p->remove_item(cmd.item_id, cmd.item_amount, limits);
-        // If a stack was split, the bank item retains the same item ID as the
-        // inventory item. This is annoying but doesn't cause any problems
-        // because we always generate a new item ID when withdrawing from the
-        // bank, so there's no chance of conflict later.
+        // If a stack was split, the bank item retains the same item ID as the inventory item. This is annoying but
+        // doesn't cause any problems because we always generate a new item ID when withdrawing from the bank, so
+        // there's no chance of conflict later.
         if (item.id == 0xFFFFFFFF) {
           item.id = cmd.item_id;
         }
@@ -2746,8 +2708,7 @@ static void on_sort_inventory_bb_inner(shared_ptr<Client> c, const SubcommandMes
   const auto& cmd = msg.check_size_t<G_SortInventory_BB_6xC4>();
   auto p = c->character_file();
 
-  // Make sure the set of item IDs passed in by the client exactly matches the
-  // set of item IDs present in the inventory
+  // Make sure the set of item IDs passed in by the client exactly matches the set of item IDs present in the inventory
   unordered_set<uint32_t> sorted_item_ids;
   size_t expected_count = 0;
   for (size_t x = 0; x < 30; x++) {
@@ -2780,8 +2741,8 @@ static void on_sort_inventory_bb_inner(shared_ptr<Client> c, const SubcommandMes
       sorted[x] = p->inventory.items[index];
     }
   }
-  // It's annoying that extension data is stored in the inventory items array,
-  // because we have to be careful to avoid sorting it here too.
+  // It's annoying that extension data is stored in the inventory items array, because we have to be careful to avoid
+  // sorting it here too.
   for (size_t x = 0; x < 30; x++) {
     sorted[x].extension_data1 = p->inventory.items[x].extension_data1;
     sorted[x].extension_data2 = p->inventory.items[x].extension_data2;
@@ -2790,15 +2751,14 @@ static void on_sort_inventory_bb_inner(shared_ptr<Client> c, const SubcommandMes
 }
 
 static asio::awaitable<void> on_sort_inventory_bb(shared_ptr<Client> c, SubcommandMessage& msg) {
-  // There is a GCC bug that causes this function to not compile properly
-  // unless the sorting implementation is in a separate function. I think it's
-  // something to do with how it allocates the coroutine's locals, but it's
-  // enough to avoid for now.
+  // There is a GCC bug that causes this function to not compile properly unless the sorting implementation is in a
+  // separate function. I think it's something to do with how it allocates the coroutine's locals, but it's enough to
+  // avoid for now.
   on_sort_inventory_bb_inner(c, msg);
   co_return;
 }
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // EXP/Drop Item commands
 
 G_SpecializableItemDropRequest_6xA2 normalize_drop_request(const void* data, size_t size) {
@@ -2864,8 +2824,7 @@ DropReconcileResult reconcile_drop_request_with_map(
           cmd.floor, res.obj_st->super_obj->floor);
     }
     if (is_v1_or_v2(version) && (version != Version::GC_NTE)) {
-      // V1 and V2 don't have 6xA2, so we can't get ignore_def or the object
-      // parameters from the client on those versions
+      // V1/V2 don't have 6xA2, so we can't get ignore_def or the object parameters from the client on those versions
       cmd.param3 = set_entry->param3;
       cmd.param4 = set_entry->param4;
       cmd.param5 = set_entry->param5;
@@ -2889,8 +2848,7 @@ DropReconcileResult reconcile_drop_request_with_map(
     c->log.info_f("Drop check for E-{:03X} (target E-{:03X}, type {})",
         res.ref_ene_st->e_id, res.target_ene_st->e_id, phosg::name_for_enum(type));
     res.effective_rt_index = type_definition_for_enemy(type).rt_index;
-    // rt_indexes in Episode 4 don't match those sent in the command; we just
-    // ignore what the client sends.
+    // rt_indexes in Episode 4 don't match those sent in the command; we just ignore what the client sends.
     if ((area < 0x24) && (cmd.rt_index != res.effective_rt_index)) {
       // Special cases: BULCLAW => BULK and DARK_GUNNER => DEATH_GUNNER
       if (cmd.rt_index == 0x27 && type == EnemyType::BULCLAW) {
@@ -2945,9 +2903,8 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
     co_return;
   }
 
-  // Note: We always call reconcile_drop_request_with_map, even in client drop
-  // mode, so that we can correctly mark enemies and objects as having dropped
-  // their items in persistent games.
+  // Note: We always call reconcile_drop_request_with_map, even in client drop mode, so that we can correctly mark
+  // enemies and objects as having dropped their items in persistent games.
   G_SpecializableItemDropRequest_6xA2 cmd = normalize_drop_request(msg.data, msg.size);
   auto rec = reconcile_drop_request_with_map(c, cmd, l->difficulty, l->event, l->map_state, true);
 
@@ -2957,9 +2914,8 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
       co_return;
     case ServerDropMode::CLIENT: {
       // If the leader is BB, use SERVER_SHARED instead
-      // TODO: We should also use server drops if any clients have incompatible
-      // object lists, since they might generate incorrect IDs for items and we
-      // can't override them
+      // TODO: We should also use server drops if any clients have incompatible object lists, since they might generate
+      // incorrect IDs for items and we can't override them
       auto leader = l->clients[l->leader_id];
       if (leader && leader->version() == Version::BB_V4) {
         drop_mode = ServerDropMode::SERVER_SHARED;
@@ -2985,9 +2941,9 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
               cmd.entity_index, rec.obj_st->k_id, cmd.effective_area);
           return l->item_creator->on_box_item_drop(cmd.effective_area);
         } else {
-          l->log.info_f("Creating item from box {:04X} => K-{:03X} (area {:02X}; specialized with {:g} {:08X} {:08X} {:08X})",
-              cmd.entity_index, rec.obj_st->k_id, cmd.effective_area,
-              cmd.param3, cmd.param4, cmd.param5, cmd.param6);
+          l->log.info_f(
+              "Creating item from box {:04X} => K-{:03X} (area {:02X}; specialized with {:g} {:08X} {:08X} {:08X})",
+              cmd.entity_index, rec.obj_st->k_id, cmd.effective_area, cmd.param3, cmd.param4, cmd.param5, cmd.param6);
           return l->item_creator->on_specialized_box_item_drop(
               cmd.effective_area, cmd.param3, cmd.param4, cmd.param5, cmd.param6);
         }
@@ -3016,8 +2972,6 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
         throw logic_error("unhandled simple drop mode");
       case ServerDropMode::SERVER_SHARED:
       case ServerDropMode::SERVER_DUPLICATE: {
-        // TODO: In SERVER_DUPLICATE mode, should we reduce the rates for rare
-        // items? Maybe by a factor of l->count_clients()?
         auto res = generate_item();
         if (res.item.empty()) {
           l->log.info_f("No item was created");
@@ -3100,8 +3054,7 @@ static asio::awaitable<void> on_set_quest_flag(shared_ptr<Client> c, SubcommandM
     difficulty = static_cast<Difficulty>(cmd.difficulty16.load());
   }
 
-  // The client explicitly checks action for both 0 and 1 - any other value
-  // means no operation is performed.
+  // The client explicitly checks action for both 0 and 1 - any other value means no operation is performed.
   if ((flag_num >= 0x400) || (static_cast<size_t>(difficulty) > 3) || (action > 1)) {
     co_return;
   }
@@ -3135,9 +3088,8 @@ static asio::awaitable<void> on_set_quest_flag(shared_ptr<Client> c, SubcommandM
     EnemyType boss_enemy_type = EnemyType::NONE;
     uint8_t area = l->area_for_floor(c->version(), c->floor);
     if (area == 0x0E) {
-      // On Normal, Dark Falz does not have a third phase, so send the drop
-      // request after the end of the second phase. On all other difficulty
-      // levels, send it after the third phase.
+      // On Normal, Dark Falz does not have a third phase, so send the drop request after the end of the second phase.
+      // On all other difficulty levels, send it after the third phase.
       if ((difficulty == Difficulty::NORMAL) && (flag_num == 0x0035)) {
         boss_enemy_type = EnemyType::DARK_FALZ_2;
       } else if ((difficulty != Difficulty::NORMAL) && (flag_num == 0x0037)) {
@@ -3212,8 +3164,7 @@ static asio::awaitable<void> on_sync_quest_register(shared_ptr<Client> c, Subcom
     throw runtime_error("invalid register number");
   }
 
-  // If the lock status register is being written, change the game's flags to
-  // allow or forbid joining
+  // If the lock status register is being written, change the game's flags to allow or forbid joining
   if (l->quest &&
       l->quest->meta.joinable &&
       (l->quest->meta.lock_status_register >= 0) &&
@@ -3230,8 +3181,7 @@ static asio::awaitable<void> on_sync_quest_register(shared_ptr<Client> c, Subcom
 
   bool should_forward = true;
   if (l->quest->meta.enable_schtserv_commands) {
-    // We currently only implement one Schtserv server command here. There
-    // are likely many more which we don't support.
+    // We currently only implement one Schtserv server command here. There are likely many more which we don't support.
 
     if (cmd.register_number == 0xF0) {
       should_forward = false;
@@ -3301,9 +3251,8 @@ static asio::awaitable<void> on_set_entity_set_flag(shared_ptr<Client> c, Subcom
     }
 
     if ((room >= 0) && (wave_number >= 0)) {
-      // When all enemies in a wave event have (set_flags & 8), which means
-      // they are defeated, set event_flags = (event_flags | 0x18) & (~4),
-      // which means it is done and should not trigger
+      // When all enemies in a wave event have (set_flags & 8), which means they are defeated, set event_flags =
+      // (event_flags | 0x18) & (~4), which means it is done and should not trigger again
       bool all_enemies_defeated = true;
       l->log.info_f("Checking for defeated enemies with room={:04X} wave_number={:04X}", room, wave_number);
       for (auto ene_st : l->map_state->enemy_states_for_floor_room_wave(c->version(), cmd.floor, room, wave_number)) {
@@ -3370,16 +3319,14 @@ static asio::awaitable<void> on_set_entity_set_flag(shared_ptr<Client> c, Subcom
               }
               case 0x0A: // set_switch_flag
               case 0x0B: { // clear_switch_flag
-                // These opcodes cause the client to send 6x05 commands, so
-                // we don't have to do anything here.
+                // These opcodes cause the client to send 6x05 commands, so we don't have to do anything here.
                 uint16_t switch_flag_num = actions_r.get_u16l();
                 l->log.info_f("(W-{:03X} script) {}able_switch_flag {:04X}",
                     ev_st->w_id, (opcode & 1) ? "dis" : "en", switch_flag_num);
                 break;
               }
               case 0x0C: { // trigger_event
-                // This opcode causes the client to send a 6x67 command, so
-                // we don't have to do anything here.
+                // This opcode causes the client to send a 6x67 command, so we don't have to do anything here.
                 uint32_t event_id = actions_r.get_u32l();
                 l->log.info_f("(W-{:03X} script) trigger_event {:08X}", ev_st->w_id, event_id);
                 break;
@@ -3438,8 +3385,7 @@ static asio::awaitable<void> on_update_telepipe_state(shared_ptr<Client> c, Subc
   c->telepipe_state = cmd.state;
   c->telepipe_lobby_id = l->lobby_id;
 
-  // See the comments in G_SetTelepipeState_6x68 in CommandsFormats.hh for
-  // why we have to do this
+  // See the comments in G_SetTelepipeState_6x68 in CommandsFormats.hh for why we have to do this
   if (is_big_endian(c->version())) {
     c->telepipe_state.room_id = bswap32_high16(phosg::bswap32(c->telepipe_state.room_id));
   }
@@ -3490,10 +3436,9 @@ static asio::awaitable<void> on_update_enemy_state(shared_ptr<Client> c, Subcomm
         ene_st->alias_target_ene_st->e_id, ene_st->alias_target_ene_st->total_damage, ene_st->alias_target_ene_st->game_flags);
   }
 
-  // TODO: It'd be nice if this worked on bosses too, but it seems we have to
-  // use each boss' specific state-syncing command, or the cutscenes misbehave.
-  // Just setting flag 0x800 does work on Vol Opt (and the various parts), but
-  // doesn't work on other Episode 1 bosses. Other episodes are not yet tested.
+  // TODO: It'd be nice if this worked on bosses too, but it seems we have to use each boss' specific state-syncing
+  // command, or the cutscenes misbehave. Just setting flag 0x800 does work on Vol Opt (and the various parts), but
+  // doesn't work on other Episode 1 bosses. Other episodes' bosses are not yet tested.
   bool is_fast_kill = c->check_flag(Client::Flag::FAST_KILLS_ENABLED) &&
       !type_definition_for_enemy(ene_st->super_ene->type).is_boss() &&
       !(ene_st->game_flags & 0x00000800);
@@ -3797,15 +3742,14 @@ static asio::awaitable<void> on_set_entity_pos_and_angle_6x17(shared_ptr<Client>
     co_return;
   }
 
-  // 6x17 is used to transport players to the other part of the Vol Opt boss
-  // arena, so phase 2 can begin. We only allow 6x17 in the Monitor Room (Vol
-  // Opt arena).
+  // 6x17 is used to transport players to the other part of the Vol Opt boss arena, so phase 2 can begin. We only allow
+  // 6x17 in the Monitor Room (Vol Opt arena).
   if (l->area_for_floor(c->version(), c->floor) != 0x0D) {
     throw runtime_error("client sent 6x17 command in area other than Vol Opt");
   }
 
-  // If the target is on a different floor or does not exist, just drop the
-  // command instead of raising; this could have been due to a data race
+  // If the target is on a different floor or does not exist, just drop the command instead of raising; this could have
+  // been due to a data race
   if (cmd.header.entity_id < 0x1000) {
     auto target = l->clients.at(cmd.header.entity_id);
     if (!target || target->floor != c->floor) {
@@ -3902,8 +3846,7 @@ static asio::awaitable<void> on_level_up(shared_ptr<Client> c, SubcommandMessage
     co_return;
   }
 
-  // On the DC prototypes, this command doesn't include any stats - it just
-  // increments the player's level by 1.
+  // On the DC prototypes, this command doesn't include any stats - it just increments the player's level by 1.
   auto p = c->character_file();
   if (is_pre_v1(c->version())) {
     msg.check_size_t<G_ChangePlayerLevel_DCNTE_6x30>();
@@ -3977,9 +3920,8 @@ static uint32_t base_exp_for_enemy_type(
     }
   }
 
-  // Always try the current episode first. If the current episode is Ep4, try
-  // Ep1 next if in Crater and Ep2 next if in Desert (this mirrors the logic in
-  // BB Patch Project's omnispawn patch).
+  // Always try the current episode first. If the current episode is Ep4, try Ep1 next if in Crater and Ep2 next if in
+  // Desert (this mirrors the logic in BB Patch Project's omnispawn patch).
   array<Episode, 3> episode_order;
   episode_order[0] = current_episode;
   if (current_episode == Episode::EP1) {
@@ -4069,9 +4011,8 @@ static asio::awaitable<void> on_steal_exp_bb(shared_ptr<Client> c, SubcommandMes
   uint32_t enemy_exp = base_exp_for_enemy_type(
       s->battle_params, l->quest, type, episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
 
-  // Note: The original code checks if special.type is 9, 10, or 11, and skips
-  // applying the android bonus if so. We don't do anything for those special
-  // types, so we don't check for that here.
+  // Note: The original code checks if special.type is 9, 10, or 11, and skips applying the android bonus if so. We
+  // don't do anything for those special types, so we don't check for that here.
   float percent = special.amount + ((l->difficulty == Difficulty::ULTIMATE) && char_class_is_android(p->disp.visual.char_class) ? 30 : 0);
   float ep2_factor = (episode == Episode::EP2) ? 1.3 : 1.0;
   uint32_t stolen_exp = max<uint32_t>(min<uint32_t>((enemy_exp * percent * ep2_factor) / 100.0f, (static_cast<size_t>(l->difficulty) + 1) * 20), 1);
@@ -4104,10 +4045,9 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
     ene_st = ene_st->alias_target_ene_st;
   }
 
-  // If the requesting player never hit this enemy, they are probably cheating;
-  // ignore the command. Also, each player sends a 6xC8 if they ever hit the
-  // enemy; we only react to the first 6xC8 for each enemy (and give all
-  // relevant players EXP then, if they deserve it).
+  // If the requesting player never hit this enemy, they are probably cheating; ignore the command. Also, each player
+  // sends a 6xC8 if they ever hit the enemy; we only react to the first 6xC8 for each enemy (and give all relevant
+  // players EXP then, if they deserve it).
   if (!ene_st->ever_hit_by_client_id(c->lobby_client_id) ||
       (ene_st->server_flags & MapState::EnemyState::Flag::EXP_GIVEN)) {
     l->log.info_f("EXP already given for this enemy; ignoring request");
@@ -4135,11 +4075,9 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
     }
 
     if (base_exp != 0.0) {
-      // If this player killed the enemy, they get full EXP; if they tagged the
-      // enemy, they get 80% EXP; if auto EXP share is enabled and they are
-      // close enough to the monster, they get a smaller share; if none of
-      // these situations apply, they get no EXP. In Battle and Challenge
-      // modes, if a quest is loaded, EXP share is disabled.
+      // If this player killed the enemy, they get full EXP; if they tagged the enemy, they get 80% EXP; if auto EXP
+      // share is enabled and they are close enough to the monster, they get a smaller share; if none of these
+      // situations apply, they get no EXP. In Battle and Challenge modes, if a quest is loaded, EXP share is disabled.
       float exp_share_multiplier = (((l->mode == GameMode::BATTLE) || (l->mode == GameMode::CHALLENGE)) && l->quest)
           ? 0.0f
           : l->exp_share_multiplier;
@@ -4162,12 +4100,10 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
       }
 
       if (rate_factor > 0.0) {
-        // In PSOBB, Sega decided to add a 30% EXP boost for Episode 2. They
-        // could have done something reasonable, like edit the BattleParamEntry
-        // files so the monsters would all give more EXP, but they did
-        // something far lazier instead: they just stuck an if statement in the
-        // client's EXP request function. We, unfortunately, have to do the
-        // same thing here.
+        // In PSOBB, Sega decided to add a 30% EXP boost for Episode 2. They could have done something reasonable, like
+        // edit the BattleParamEntry files so the monsters would all give more EXP, but they did something far lazier
+        // instead: they just stuck an if statement in the client's EXP request function. We, unfortunately, have to do
+        // the same thing here.
         uint32_t player_exp = base_exp *
             rate_factor *
             l->base_exp_multiplier *
@@ -4181,8 +4117,7 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
       }
     }
 
-    // Update kill counts on unsealable items, but only for the player who
-    // actually killed the enemy
+    // Update kill counts on unsealable items, but only for the player who actually killed the enemy
     if (ene_st->last_hit_by_client_id(client_id)) {
       auto& inventory = lc->character_file()->inventory;
       for (size_t z = 0; z < inventory.num_items; z++) {
@@ -4220,11 +4155,9 @@ static asio::awaitable<void> on_adjust_player_meseta_bb(shared_ptr<Client> c, Su
 }
 
 static void assert_quest_item_create_allowed(shared_ptr<const Lobby> l, const ItemData& item) {
-  // We always enforce these restrictions if the quest has any restrictions
-  // defined, even if the client has cheat mode enabled or has debug enabled.
-  // If the client can cheat, there are much easier ways to create items (e.g.
-  // the $item chat command) than spoofing these quest item creation commands,
-  // so they should just do that instead.
+  // We always enforce these restrictions if the quest has any restrictions defined, even if the client has cheat mode
+  // enabled or has debug enabled. If the client can cheat, there are much easier ways to create items (e.g. the $item
+  // chat command) than spoofing these quest item creation commands, so they should just do that instead.
 
   if (!l->quest) {
     throw std::runtime_error("cannot create quest reward item with no quest loaded");
@@ -4256,23 +4189,19 @@ static asio::awaitable<void> on_quest_create_item_bb(shared_ptr<Client> c, Subco
 
   ItemData item;
   item = cmd.item_data;
-  // enforce_stack_size_limits must come after this assert since quests may
-  // attempt to create stackable items with a count of zero
+  // enforce_stack_size_limits must come after this assert since quests may attempt to create stackable items with a
+  // count of zero
   assert_quest_item_create_allowed(l, item);
   item.enforce_stack_size_limits(limits);
   item.id = l->generate_item_id(c->lobby_client_id);
 
-  // The logic for the item_create and item_create2 quest opcodes (B3 and B4)
-  // includes a precondition check to see if the player can actually add the
-  // item to their inventory or not, and the entire command is skipped if not.
-  // However, on BB, the implementation performs this check and sends a 6xCA
-  // command instead - the item is not immediately added to the inventory, and
-  // is instead added when the server sends back a 6xBE command. So if a quest
-  // creates multiple items in quick succession, there may be another 6xCA/6xBE
-  // sequence in flight, and the client's check if an item can be created may
-  // pass when a 6xBE command that would make it fail is already on the way
-  // from the server. To handle this, we simply ignore any 6xCA command if the
-  // item can't be created.
+  // The logic for the item_create and item_create2 quest opcodes (B3 and B4) includes a precondition check to see if
+  // the player can actually add the item to their inventory or not, and the entire command is skipped if not. However,
+  // on BB, the implementation performs this check and sends a 6xCA command instead - the item is not immediately added
+  // to the inventory, and is instead added when the server sends back a 6xBE command. So if a quest creates multiple
+  // items in quick succession, there may be another 6xCA/6xBE sequence in flight, and the client's check if an item
+  // can be created may pass when a 6xBE command that would make it fail is already on the way from the server. To
+  // handle this, we simply ignore any 6xCA command if the item can't be created.
   try {
     c->character_file()->add_item(item, limits);
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
@@ -4322,9 +4251,8 @@ asio::awaitable<void> on_transfer_item_via_mail_message_bb(shared_ptr<Client> c,
     c->print_inventory();
   }
 
-  // To receive an item, the player must be online, using BB, have a character
-  // loaded (that is, be in a lobby or game), not be at the bank counter at the
-  // moment, and there must be room in their bank to receive the item.
+  // To receive an item, the player must be online, using BB, have a character loaded (that is, be in a lobby or game),
+  // not be at the bank counter at the moment, and there must be room in their bank to receive the item.
   bool item_sent = false;
   auto target_c = s->find_client(nullptr, cmd.target_guild_card_number);
   if (target_c &&
@@ -4339,10 +4267,8 @@ asio::awaitable<void> on_transfer_item_via_mail_message_bb(shared_ptr<Client> c,
   }
 
   if (item_sent) {
-    // See the comment in the 6xCC handler about why we do this. Similar to
-    // that case, the 6xCB handler on the client side does exactly the same
-    // thing as 6x29, but 6x29 is backward-compatible with other PSO versions
-    // and 6xCB is not.
+    // See the comment in the 6xCC handler about why we do this. Similar to that case, the 6xCB handler on the client
+    // side does exactly the same thing as 6x29, but 6x29 is backward-compatible with other versions and 6xCB is not.
     G_DeleteInventoryItem_6x29 cmd29 = {{0x29, 0x03, cmd.header.client_id}, cmd.item_id, cmd.amount};
     SubcommandMessage delete_item_msg{msg.command, msg.flag, &cmd29, sizeof(cmd29)};
     forward_subcommand(c, delete_item_msg);
@@ -4389,11 +4315,10 @@ static asio::awaitable<void> on_exchange_item_for_team_points_bb(shared_ptr<Clie
     c->print_inventory();
   }
 
-  // The original implementation forwarded the 6xCC command to all other
-  // clients. However, the handler does exactly the same thing as 6x29 if the
-  // affected client isn't the local client. Since the sender has already
-  // processed the 6xCC that they sent by the time we receive this, we pretend
-  // that they sent 6x29 instead and send that to the others in the game.
+  // The original implementation forwarded the 6xCC command to all other clients. However, the handler does exactly the
+  // same thing as 6x29 if the affected client isn't the local client. Since the sender has already processed the 6xCC
+  // that they sent by the time we receive this, we pretend that they sent 6x29 instead and send that to the others in
+  // the game.
   G_DeleteInventoryItem_6x29 cmd29 = {{0x29, 0x03, cmd.header.client_id}, cmd.item_id, cmd.amount};
   SubcommandMessage delete_item_msg{msg.command, msg.flag, &cmd29, sizeof(cmd29)};
   forward_subcommand(c, delete_item_msg);
@@ -4452,18 +4377,15 @@ static asio::awaitable<void> on_destroy_floor_item(shared_ptr<Client> c, Subcomm
   }
 
   if (!fi) {
-    // There are generally two data races that could occur here. Either the
-    // player attempted to evict the item at the same time the server did (that
-    // is, the client's and server's 6x63 commands crossed paths on the
-    // network), or the player attempted to evict an item that was already
-    // picked up. The former case is easy to handle; we can just ignore the
-    // command. The latter case is more difficult - we have to know which
-    // player picked up the item and send a 6x2B command to the sender, to sync
-    // their item state with the server's again. We can't just look through the
-    // players' inventories to find the item ID, since item IDs can be
-    // destroyed when stackable items or Meseta are picked up.
-    // TODO: We don't actually handle the evict/pickup conflict case. This case
-    // is probably quite rare, but we should eventually handle it.
+    // There are generally two data races that could occur here. Either the player attempted to evict the item at the
+    // same time the server did (that is, the client's and server's 6x63 commands crossed paths on the network), or the
+    // player attempted to evict an item that was already picked up. The former case is easy to handle; we can just
+    // ignore the command. The latter case is more difficult - we have to know which player picked up the item and send
+    // a 6x2B command to the sender, to sync their item state with the server's again. We can't just look through the
+    // players' inventories to find the item ID, since item IDs can be destroyed when stackable items or Meseta are
+    // picked up.
+    // TODO: We don't actually handle the evict/pickup conflict case. This case is probably quite rare, but we should
+    // eventually handle it.
     l->log.info_f("Player {} attempted to destroy floor item {:08X}, but it is missing",
         c->lobby_client_id, cmd.item_id);
 
@@ -4514,10 +4436,9 @@ static asio::awaitable<void> on_identify_item_bb(shared_ptr<Client> c, Subcomman
       throw runtime_error("non-weapon items cannot be unidentified");
     }
 
-    // It seems the client expects an item ID to be consumed here, even though
-    // the returned item has the same ID as the original item. Perhaps this was
-    // not the case on Sega's original server, and the returned item had a new
-    // ID instead.
+    // It seems the client expects an item ID to be consumed here, even though the returned item has the same ID as the
+    // original item. Perhaps this was not the case on Sega's original server, and the returned item had a new ID
+    // instead.
     l->generate_item_id(c->lobby_client_id);
     p->disp.stats.meseta -= 100;
     c->bb_identify_result = p->inventory.items[x].data;
@@ -4765,8 +4686,7 @@ static asio::awaitable<void> on_challenge_mode_retry_or_quit(shared_ptr<Client> 
       m.clear();
     }
 
-    // If the leader (c) is BB, they are expected to send 02DF later, which
-    // will recreate the overlays.
+    // If the leader (c) is BB, they are expected to send 02DF later, which will recreate the overlays.
     if (!is_v4(c->version())) {
       for (auto lc : l->clients) {
         if (lc) {
@@ -5202,9 +5122,8 @@ static asio::awaitable<void> on_quest_F95E_result_bb(shared_ptr<Client> c, Subco
     }
     ItemData item = (results.size() == 1) ? results[0] : results[l->rand_crypt->next() % results.size()];
     if (item.data1[0] == 0x04) { // Meseta
-      // TODO: What is the right amount of Meseta to use here? Presumably it
-      // should be random within a certain range, but it's not obvious what
-      // that range should be.
+      // TODO: What is the right amount of Meseta to use here? Presumably it should be random within a certain range,
+      // but it's not obvious what that range should be.
       item.data2d = 100;
     } else if (item.data1[0] == 0x00) {
       item.data1[4] |= 0x80; // Unidentified
@@ -5244,8 +5163,7 @@ static asio::awaitable<void> on_quest_F95F_result_bb(shared_ptr<Client> c, Subco
   const auto& limits = *s->item_stack_limits(c->version());
   size_t index = p->inventory.find_item_by_primary_identifier(0x03100400); // Photon Ticket
   auto ticket_item = p->remove_item(p->inventory.items[index].data.id, result.first, limits);
-  // TODO: Shouldn't we send a 6x29 here? Check if this causes desync in an
-  // actual game
+  // TODO: Shouldn't we send a 6x29 here? Check if this causes desync in an actual game
 
   G_ExchangeItemInQuest_BB_6xDB cmd_6xDB;
   cmd_6xDB.header = {0xDB, 0x04, c->lobby_client_id};
@@ -5315,8 +5233,7 @@ static asio::awaitable<void> on_quest_F960_result_bb(shared_ptr<Client> c, Subco
     throw runtime_error("no item produced, even from failure tier");
   }
 
-  // The client sends a 6xC9 to remove Meseta before sending 6xE2, so we don't
-  // have to deal with Meseta here.
+  // The client sends a 6xC9 to remove Meseta before sending 6xE2, so we don't have to deal with Meseta here.
 
   item.id = l->generate_item_id(c->lobby_client_id);
   // If it's a weapon, make it unidentified
@@ -5325,21 +5242,20 @@ static asio::awaitable<void> on_quest_F960_result_bb(shared_ptr<Client> c, Subco
     item.data1[4] |= 0x80;
   }
 
-  // The 6xE3 handler on the client fails if the item already exists, so we
-  // need to send 6xE3 before we call send_create_inventory_item_to_lobby.
+  // The 6xE3 handler on the client fails if the item already exists, so we need to send 6xE3 before we call
+  // send_create_inventory_item_to_lobby.
   G_SetMesetaSlotPrizeResult_BB_6xE3 cmd_6xE3 = {
       {0xE3, sizeof(G_SetMesetaSlotPrizeResult_BB_6xE3) >> 2, c->lobby_client_id}, item};
   send_command_t(c, 0x60, 0x00, cmd_6xE3);
 
-  // Add the item to the player's inventory if possible; if not, drop it on the
-  // floor where the player is standing
+  // Add the item to the player's inventory if possible; if not, drop it on the floor where the player is standing
   bool added_to_inventory;
   try {
     p->add_item(item, *s->item_stack_limits(c->version()));
     added_to_inventory = true;
   } catch (const out_of_range&) {
-    // If the game's drop mode is private or duplicate, make the item visible
-    // only to this player; in other modes, make it visible to everyone
+    // If the game's drop mode is private or duplicate, make the item visible only to this player; in other modes, make
+    // it visible to everyone
     uint16_t flags = ((l->drop_mode == ServerDropMode::SERVER_PRIVATE) || (l->drop_mode == ServerDropMode::SERVER_DUPLICATE))
         ? (1 << c->lobby_client_id)
         : 0x000F;
@@ -5474,10 +5390,9 @@ static asio::awaitable<void> on_write_quest_counter_bb(shared_ptr<Client> c, Sub
   co_return;
 }
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// This makes it easier to see which handlers exist on which prototypes via
-// syntax highlighting
+// This makes it easier to see which handlers exist on which prototypes via syntax highlighting
 constexpr uint8_t NONE = 0x00;
 
 const vector<SubcommandDefinition> subcommand_definitions{

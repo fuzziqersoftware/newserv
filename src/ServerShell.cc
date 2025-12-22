@@ -16,8 +16,7 @@
 using namespace std;
 
 ServerShell::ServerShell(shared_ptr<ServerState> state)
-    : state(state),
-      th(&ServerShell::thread_fn, this) {}
+    : state(state), th(&ServerShell::thread_fn, this) {}
 
 ServerShell::~ServerShell() {
   if (this->th.joinable()) {
@@ -34,10 +33,8 @@ void ServerShell::thread_fn() {
     try {
       command = phosg::fgets(stdin);
     } catch (const phosg::io_error& e) {
-      // Cygwin sometimes causes fgets() to fail with errno -1 when the
-      // terminal window is resized. We ignore these events unless the read
-      // failed immediately (which probably means it would fail again if we
-      // retried immediately).
+      // Cygwin sometimes causes fgets() to fail with errno -1 when the terminal window is resized. We ignore these
+      // events unless the read failed immediately (which probably means it would fail again if we retried immediately)
       if (phosg::now() - read_start_usecs < 1000000 || e.error != -1) {
         throw;
       }

@@ -22,8 +22,7 @@
 
 using namespace std;
 
-QuestCategoryIndex::Category::Category(uint32_t category_id, const phosg::JSON& json)
-    : category_id(category_id) {
+QuestCategoryIndex::Category::Category(uint32_t category_id, const phosg::JSON& json) : category_id(category_id) {
   this->enabled_flags = json.get_int(0);
   this->directory_name = json.get_string(1);
   this->name = json.get_string(2);
@@ -46,9 +45,8 @@ shared_ptr<const QuestCategoryIndex::Category> QuestCategoryIndex::at(uint32_t c
 template <bool BE>
 struct PSOMemCardDLQFileEncryptedHeaderT {
   U32T<BE> round2_seed;
-  // To compute checksum, set checksum to zero, then compute the CRC32 of the
-  // entire data section, including this header struct (but not the unencrypted
-  // header struct).
+  // To compute checksum, set checksum to zero, then compute the CRC32 of the entire data section, including this
+  // header struct (but not the unencrypted header struct).
   U32T<BE> checksum;
   le_uint32_t decompressed_size;
   le_uint32_t round3_seed;
@@ -67,15 +65,12 @@ string decrypt_download_quest_data_section(
   size_t orig_size = decrypted.size();
   decrypted.resize((decrypted.size() + 3) & (~3));
 
-  // Note: Other PSO save files have the round 2 seed at the end of the data,
-  // not at the beginning. Presumably they did this because the system,
-  // character, and Guild Card files are a constant size, but download quest
-  // files can vary in size.
+  // Other PSO save files have the round 2 seed at the end, not at the beginning. Presumably this is because the
+  // system, character, and Guild Card files are a constant size, but download quest files can vary in size.
   using HeaderT = PSOMemCardDLQFileEncryptedHeaderT<BE>;
   auto* header = reinterpret_cast<HeaderT*>(decrypted.data());
   PSOV2Encryption round2_crypt(header->round2_seed);
-  round2_crypt.encrypt_t<BE>(
-      decrypted.data() + 4, (decrypted.size() - 4));
+  round2_crypt.encrypt_t<BE>(decrypted.data() + 4, (decrypted.size() - 4));
 
   if (is_ep3_trial) {
     phosg::StringReader r(decrypted);
@@ -85,9 +80,8 @@ string decrypt_download_quest_data_section(
     }
     r.skip(9);
 
-    // Some Ep3 trial download quests don't have a stop opcode in the PRS
-    // stream; it seems the client just automatically stops when the correct
-    // amount of data has been produced. To handle this, we allow the PRS stream
+    // Some Ep3 trial download quests don't have a stop opcode in the PRS stream; it seems the client just
+    // automatically stops when the correct amount of data has been produced. To handle this, we allow the PRS stream
     // to be unterminated here.
     size_t decompressed_size = prs_decompress_size(
         r.getv(r.remaining(), false), r.remaining(), sizeof(Episode3::MapDefinitionTrial), true);
@@ -100,8 +94,7 @@ string decrypt_download_quest_data_section(
 
   } else {
     if (header->decompressed_size & 0xFFF00000) {
-      throw runtime_error(std::format(
-          "decompressed_size too large ({:08X})", header->decompressed_size));
+      throw runtime_error(std::format("decompressed_size too large ({:08X})", header->decompressed_size));
     }
 
     if (!skip_checksum) {
@@ -111,29 +104,23 @@ string decrypt_download_quest_data_section(
       header->checksum = expected_crc;
       if (expected_crc != actual_crc && expected_crc != phosg::bswap32(actual_crc)) {
         throw runtime_error(std::format(
-            "incorrect decrypted data section checksum: expected {:08X}; received {:08X}",
-            expected_crc, actual_crc));
+            "incorrect decrypted data section checksum: expected {:08X}; received {:08X}", expected_crc, actual_crc));
       }
     }
 
-    // Unlike the above rounds, round 3 is always little-endian (it corresponds to
-    // the round of encryption done on the server before sending the file to the
-    // client in the first place)
+    // Unlike the above rounds, round 3 is always little-endian (it corresponds to the round of encryption done on the
+    // server before sending the file to the client in the first place)
     PSOV2Encryption(header->round3_seed).decrypt(decrypted.data() + sizeof(HeaderT), decrypted.size() - sizeof(HeaderT));
     decrypted.resize(orig_size);
 
-    // Some download quest GCI files have decompressed_size fields that are 8
-    // bytes smaller than the actual decompressed size of the data. They seem to
-    // work fine, so we accept both cases as correct.
+    // Some download quest GCI files have decompressed_size fields that are 8 bytes smaller than the actual
+    // decompressed size of the data. They seem to work fine, so we accept both cases as correct.
     size_t decompressed_size = prs_decompress_size(
-        decrypted.data() + sizeof(HeaderT),
-        decrypted.size() - sizeof(HeaderT));
+        decrypted.data() + sizeof(HeaderT), decrypted.size() - sizeof(HeaderT));
     size_t expected_decompressed_size = header->decompressed_size;
-    if ((decompressed_size != expected_decompressed_size) &&
-        (decompressed_size != expected_decompressed_size - 8)) {
+    if ((decompressed_size != expected_decompressed_size) && (decompressed_size != expected_decompressed_size - 8)) {
       throw runtime_error(std::format(
-          "decompressed size ({}) does not match expected size ({})",
-          decompressed_size, expected_decompressed_size));
+          "decompressed size ({}) does not match expected size ({})", decompressed_size, expected_decompressed_size));
     }
 
     return decrypted.substr(sizeof(HeaderT));
@@ -169,8 +156,7 @@ string find_seed_and_decrypt_download_quest_data_section(
   string result;
   uint64_t result_seed = phosg::parallel_range_blocks<uint64_t>([&](uint64_t seed, size_t) {
     try {
-      string ret = decrypt_download_quest_data_section<BE>(
-          data_section, size, seed, skip_checksum, is_ep3_trial);
+      string ret = decrypt_download_quest_data_section<BE>(data_section, size, seed, skip_checksum, is_ep3_trial);
       lock_guard<mutex> g(result_lock);
       result = std::move(ret);
       return true;
@@ -300,8 +286,7 @@ string VersionedQuest::encode_qst() const {
   return encode_qst_file(files, this->meta.name, this->meta.quest_number, xb_filename, this->meta.version, this->is_dlq_encoded);
 }
 
-Quest::Quest(shared_ptr<const VersionedQuest> initial_version)
-    : meta(initial_version->meta), supermap(nullptr) {
+Quest::Quest(shared_ptr<const VersionedQuest> initial_version) : meta(initial_version->meta), supermap(nullptr) {
   this->add_version(initial_version);
 }
 
@@ -320,10 +305,7 @@ phosg::JSON Quest::json() const {
     }));
   }
 
-  return phosg::JSON::dict({
-      {"Metadata", this->meta.json()},
-      {"Versions", std::move(versions_json)},
-  });
+  return phosg::JSON::dict({{"Metadata", this->meta.json()}, {"Versions", std::move(versions_json)}});
 }
 
 uint32_t Quest::versions_key(Version v, Language language) {
@@ -430,9 +412,9 @@ shared_ptr<const VersionedQuest> Quest::version(Version v, Language language) co
   return it->second;
 }
 
-QuestIndex::QuestIndex(const string& directory, shared_ptr<const QuestCategoryIndex> category_index, bool raise_on_any_failure)
-    : directory(directory),
-      category_index(category_index) {
+QuestIndex::QuestIndex(
+    const string& directory, shared_ptr<const QuestCategoryIndex> category_index, bool raise_on_any_failure)
+    : directory(directory), category_index(category_index) {
 
   struct FileData {
     string filename;
@@ -462,9 +444,8 @@ QuestIndex::QuestIndex(const string& directory, shared_ptr<const QuestCategoryIn
       if (!files.emplace(basename, FileData{filename, data_ptr}).second) {
         throw runtime_error("file " + basename + " already exists");
       }
-      // There is a bug in the client that prevents quests from loading properly
-      // if any file's size is a multiple of 0x400. See the comments on the 13
-      // command in CommandFormats.hh for more details.
+      // There is a bug in the client that prevents quests from loading properly if any file's size is a multiple of
+      // 0x400. See the comments on the 13 command in CommandFormats.hh for more details.
       if (check_chunk_size && !(data_ptr->size() & 0x3FF)) {
         data_ptr->push_back(0x00);
       }
@@ -587,9 +568,8 @@ QuestIndex::QuestIndex(const string& directory, shared_ptr<const QuestCategoryIn
     }
   }
 
-  // All quests have a bin file (even in Episode 3, though its format is
-  // different), so we use bin_files as the primary list of all quests that
-  // should be indexed
+  // All quests have a bin file (even in Episode 3, though its format is different), so we use bin_files as the primary
+  // list of all quests that should be indexed
   unordered_map<const FileData*, shared_ptr<const phosg::JSON>> parsed_json_files;
   for (auto& [basename, entry] : bin_files) {
     try {
@@ -601,8 +581,7 @@ QuestIndex::QuestIndex(const string& directory, shared_ptr<const QuestCategoryIn
       //   VERS = PSO version that the quest is for (dc, pc, gc, etc.)
       //   LANG = client language (j, e, g, f, s)
       //   EXT = file type (bin, bind, bin.dlq, qst, etc.)
-      // EXT has already been stripped off by the time we get here, so we just
-      // parse the remaining fields.
+      // EXT has already been stripped off by the time we get here, so we just parse the remaining fields.
       string quest_number_token, version_token, language_token;
       {
         vector<string> filename_tokens = phosg::split(basename, '-');
@@ -653,8 +632,8 @@ QuestIndex::QuestIndex(const string& directory, shared_ptr<const QuestCategoryIn
       auto bin_decompressed = prs_decompress(*entry.data);
       populate_quest_metadata_from_script(vq->meta, bin_decompressed.data(), bin_decompressed.size(), vq->meta.version, vq->meta.language);
 
-      // Find the corresponding dat and pvr files with the same basename as the
-      // bin file; if not found, look for them without the language suffix
+      // Find the corresponding dat and pvr files with the same basename as the bin file; if not found, look for them
+      // without the language suffix
       const DATFileData* dat_filedata = nullptr;
       const FileData* pvr_filedata = nullptr;
       try {
@@ -672,8 +651,7 @@ QuestIndex::QuestIndex(const string& directory, shared_ptr<const QuestCategoryIn
         try {
           pvr_filedata = &pvr_files.at(quest_number_token + "-" + version_token);
         } catch (const out_of_range&) {
-          // pvr files aren't required (and most quests do not have them), so
-          // don't fail if it's missing
+          // pvr files aren't required (and most quests do not have them), so don't fail if it's missing
         }
       }
       vq->bin_contents = entry.data;
@@ -798,10 +776,7 @@ shared_ptr<const Quest> QuestIndex::get(const std::string& name) const {
 }
 
 vector<shared_ptr<const QuestCategoryIndex::Category>> QuestIndex::categories(
-    QuestMenuType menu_type,
-    Episode episode,
-    uint16_t version_flags,
-    IncludeCondition include_condition) const {
+    QuestMenuType menu_type, Episode episode, uint16_t version_flags, IncludeCondition include_condition) const {
   vector<shared_ptr<const QuestCategoryIndex::Category>> ret;
   for (const auto& cat : this->category_index->categories) {
     if (cat->check_flag(menu_type) && !this->filter(episode, version_flags, cat->category_id, include_condition, 1).empty()) {
@@ -852,9 +827,8 @@ vector<pair<QuestIndex::IncludeState, shared_ptr<const Quest>>> QuestIndex::filt
 }
 
 string encode_download_quest_data(const string& compressed_data, size_t decompressed_size, uint32_t encryption_seed) {
-  // Download quest files are like normal (PRS-compressed) quest files, but they
-  // are encrypted with PSO V2 encryption (even on V3 / PSO GC), and a small
-  // header (PSODownloadQuestHeader) is prepended to the encrypted data.
+  // Download quest files are like normal (PRS-compressed) quest files, but they are encrypted with PSO V2 encryption
+  // (even on V3 / PSO GC), and a small header (PSODownloadQuestHeader) is prepended to the encrypted data.
 
   if (encryption_seed == 0) {
     encryption_seed = phosg::random_object<uint32_t>();
@@ -869,8 +843,7 @@ string encode_download_quest_data(const string& compressed_data, size_t decompre
   header->encryption_seed = encryption_seed;
   data += compressed_data;
 
-  // Add temporary extra bytes if necessary so encryption won't fail - the data
-  // size must be a multiple of 4 for PSO V2 encryption.
+  // Add extra bytes if necessary so encryption won't fail; the data size must be a multiple of 4 for PSO V2 encryption
   size_t original_size = data.size();
   data.resize((data.size() + 3) & (~3));
 
@@ -882,9 +855,8 @@ string encode_download_quest_data(const string& compressed_data, size_t decompre
 }
 
 shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(Language override_language) const {
-  // The download flag needs to be set in the bin header, or else the client
-  // will ignore it when scanning for download quests in an offline game. To set
-  // this flag, we need to decompress the quest's .bin file, set the flag, then
+  // The download flag needs to be set in the bin header, or else the client will ignore it when scanning for download
+  // quests in an offline game. To set this flag, we need to decompress the quest's .bin file, set the flag, then
   // recompress it again.
 
   string decompressed_bin = prs_decompress(*this->bin_contents);
@@ -934,8 +906,7 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(Language overri
 
   string compressed_bin = prs_compress(decompressed_bin);
 
-  // Return a new VersionedQuest object with appropriately-processed .bin and
-  // .dat file contents
+  // Return a new VersionedQuest object with appropriately-processed .bin and .dat file contents
   auto dlq = make_shared<VersionedQuest>(*this);
   dlq->bin_contents = make_shared<string>(encode_download_quest_data(compressed_bin, decompressed_bin.size()));
   dlq->dat_contents = make_shared<string>(encode_download_quest_data(*this->dat_contents));
@@ -944,20 +915,15 @@ shared_ptr<VersionedQuest> VersionedQuest::create_download_quest(Language overri
   return dlq;
 }
 
-string decode_gci_data(
-    const string& data,
-    ssize_t find_seed_num_threads,
-    int64_t known_seed,
-    bool skip_checksum) {
+string decode_gci_data(const string& data, ssize_t find_seed_num_threads, int64_t known_seed, bool skip_checksum) {
   phosg::StringReader r(data);
   const auto& header = r.get<PSOGCIFileHeader>();
   header.check();
 
   if (header.is_ep12()) {
     const auto& dlq_header = r.get<PSOGCIDLQFileEncryptedHeader>(false);
-    // Unencrypted GCI files appear to always have zeroes in these fields.
-    // Encrypted GCI files are highly unlikely to have zeroes in ALL of these
-    // fields, so assume it's encrypted if any of them are nonzero.
+    // Unencrypted GCI files appear to always have zeroes in these fields. Encrypted GCI files are highly unlikely to
+    // have zeroes in ALL of these fields, so assume it's encrypted if any of them are nonzero.
     if (dlq_header.round2_seed || dlq_header.checksum || dlq_header.round3_seed) {
       if (known_seed >= 0) {
         return decrypt_download_quest_data_section<true>(
@@ -1010,14 +976,13 @@ string decode_gci_data(
       }
 
     } else {
-      // The first 0x10 bytes in the data segment appear to be unused. In most
-      // files I've seen, the last half of it (8 bytes) are duplicates of the
-      // first 8 bytes of the unscrambled, compressed data, though this is the
-      // result of an uninitialized memory bug when the client encodes the file
-      // and not an actual constraint on what should be in these 8 bytes.
+      // The first 0x10 bytes in the data segment appear to be unused. In most files I've seen, the last half of it (8
+      // bytes) are duplicates of the first 8 bytes of the unscrambled, compressed data, though this is the result of
+      // an uninitialized memory bug when the client encodes the file and not an actual constraint on what should be in
+      // these 8 bytes.
       r.skip(16);
-      // The game treats this field as a 16-byte string (including the \0). The 8
-      // bytes after it appear to be completely unused.
+      // The game treats this field as a 16-byte string (including the \0). The 8 bytes after it appear to be
+      // completely unused.
       if (r.readx(15) != "SONICTEAM,SEGA.") {
         throw runtime_error("Episode 3 GCI file is not a quest");
       }
@@ -1025,9 +990,8 @@ string decode_gci_data(
 
       string decrypted = r.readx(header.data_size - 40);
 
-      // For some reason, Sega decided not to encrypt Episode 3 quest files in the
-      // same way as Episodes 1&2 quest files (see above). Instead, they just
-      // wrote a fairly trivial XOR loop over the first 0x100 bytes, leaving the
+      // For some reason, Sega decided not to encrypt Episode 3 quest files in the same way as Episodes 1&2 quest files
+      // (see above). Instead, they just wrote a fairly trivial XOR loop over the first 0x100 bytes, leaving the
       // remaining bytes completely unencrypted (but still compressed).
       size_t unscramble_size = min<size_t>(0x100, data.size());
       decrypt_trivial_gci_data(decrypted.data(), unscramble_size, 0);
@@ -1046,11 +1010,7 @@ string decode_gci_data(
   }
 }
 
-string decode_vms_data(
-    const string& data,
-    ssize_t find_seed_num_threads,
-    int64_t known_seed,
-    bool skip_checksum) {
+string decode_vms_data(const string& data, ssize_t find_seed_num_threads, int64_t known_seed, bool skip_checksum) {
   phosg::StringReader r(data);
   const auto& header = r.get<PSOVMSFileHeader>();
   if (!header.checksum_correct()) {
@@ -1065,8 +1025,7 @@ string decode_vms_data(
   }
 
   if (known_seed >= 0) {
-    return decrypt_download_quest_data_section<false>(
-        data_section, header.data_size, known_seed);
+    return decrypt_download_quest_data_section<false>(data_section, header.data_size, known_seed);
 
   } else {
     if (find_seed_num_threads < 0) {
@@ -1085,10 +1044,9 @@ string decode_dlq_data(const string& data) {
   uint32_t decompressed_size = r.get_u32l();
   uint32_t key = r.get_u32l();
 
-  // The compressed data size does not need to be a multiple of 4, but the V2
-  // encryption (which is used for all download quests, even in V3) requires the
-  // data size to be a multiple of 4. We'll just temporarily stick a few bytes
-  // on the end, then throw them away later if needed.
+  // The compressed data size does not need to be a multiple of 4, but the V2 encryption (which is used for all
+  // download quests, even in V3) requires the data size to be a multiple of 4. We'll just temporarily stick a few
+  // bytes on the end, then throw them away later if needed.
   string decrypted = r.read(r.remaining());
   PSOV2Encryption encr(key);
   size_t original_size = data.size();
@@ -1150,9 +1108,8 @@ static unordered_map<string, string> decode_qst_data_t(const string& data) {
       }
 
     } else if (header.command == 0x13 || header.command == 0xA7) {
-      // We have to allow larger commands here, because it seems some tools
-      // encoded QST files with BB's extra 4 padding bytes included in the
-      // command size.
+      // We have to allow larger commands here, because it seems some tools encoded QST files with BB's extra 4 padding
+      // bytes included in the command size.
       if (header.size < sizeof(HeaderT) + sizeof(S_WriteFile_13_A7)) {
         throw runtime_error("qst write file command has incorrect size");
       }
@@ -1195,9 +1152,8 @@ static unordered_map<string, string> decode_qst_data_t(const string& data) {
 }
 
 unordered_map<string, string> decode_qst_data(const string& data) {
-  // QST files start with an open file command, but the format differs depending
-  // on the PSO version that the qst file is for. We can detect the format from
-  // the first 4 bytes in the file:
+  // QST files start with an open file command, but the format differs depending on the PSO version that the qst file
+  // is for. We can detect the format from the first 4 bytes in the file:
   // - BB:    58 00 44 00 or 58 00 A6 00
   // - PC:    3C 00 44 ?? or 3C 00 A6 ??
   // - DC/GC: 44 ?? 3C 00 or A6 ?? 3C 00
@@ -1209,10 +1165,9 @@ unordered_map<string, string> decode_qst_data(const string& data) {
   } else if (((signature & 0xFFFFFF00) == 0x3C004400) || ((signature & 0xFFFFFF00) == 0x3C00A600)) {
     return decode_qst_data_t<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(data);
   } else if (((signature & 0xFF00FFFF) == 0x44003C00) || ((signature & 0xFF00FFFF) == 0xA6003C00)) {
-    // In PSO DC, the type field is only one byte, but in V3 it's two bytes and
-    // the filename was shifted over by one byte. To detect this, we check if
-    // the V3 type field has a reasonable value, and if not, we assume the file
-    // is for PSO DC.
+    // In PSO DC, the type field is only one byte, but in V3 it's two bytes and the filename was shifted over by one
+    // byte. To detect this, we check if the V3 type field has a reasonable value, and if not, we assume the file is
+    // for PSO DC.
     if (r.pget_u16l(sizeof(PSOCommandHeaderDCV3) + offsetof(S_OpenFile_PC_GC_44_A6, type)) > 3) {
       return decode_qst_data_t<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(data);
     } else {
@@ -1249,8 +1204,7 @@ void add_open_file_command_t(
   cmd.filename.encode(filename);
   cmd.type = 0;
   cmd.file_size = file_size;
-  // TODO: It'd be nice to have something like w.emplace(...) to avoid copying
-  // the command structs into the StringWriter.
+  // TODO: It'd be nice to have something like w.emplace(...) to avoid copying the structs into the StringWriter.
   w.put(cmd);
 }
 
@@ -1289,9 +1243,8 @@ void add_write_file_commands_t(
     memcpy(cmd.data.data(), &data[z], chunk_size);
     cmd.data_size = chunk_size;
     w.put(cmd);
-    // On BB, the write file command size is a multiple of 4 but not a multiple
-    // of 8; in QST format the implicit extra 4 bytes are apparently stored in
-    // the file.
+    // On BB, the write file command size is a multiple of 4 but not a multiple of 8; in QST format the implicit extra
+    // 4 bytes are apparently stored in the file.
     if (bb_alignment) {
       w.put_u32(0);
     }
@@ -1307,15 +1260,15 @@ string encode_qst_file(
     bool is_dlq_encoded) {
   phosg::StringWriter w;
 
-  // Some tools expect both open file commands at the beginning, hence this
-  // unfortunate abstraction-breaking.
+  // Some tools expect both open file commands at the beginning, hence this unfortunate abstraction-breaking.
   switch (version) {
     case Version::DC_NTE: // DC NTE doesn't support quests, but we support encoding QST files anyway
     case Version::DC_11_2000:
     case Version::DC_V1:
     case Version::DC_V2:
       for (const auto& it : files) {
-        add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
+        add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_DC_44_A6>(
+            w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
       }
       for (const auto& it : files) {
         add_write_file_commands_t<PSOCommandHeaderDCV3>(w, it.first, *it.second, is_dlq_encoded, false);
@@ -1324,7 +1277,8 @@ string encode_qst_file(
     case Version::PC_NTE:
     case Version::PC_V2:
       for (const auto& it : files) {
-        add_open_file_command_t<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
+        add_open_file_command_t<PSOCommandHeaderPC, S_OpenFile_PC_GC_44_A6>(
+            w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
       }
       for (const auto& it : files) {
         add_write_file_commands_t<PSOCommandHeaderPC>(w, it.first, *it.second, is_dlq_encoded, false);
@@ -1335,7 +1289,8 @@ string encode_qst_file(
     case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       for (const auto& it : files) {
-        add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
+        add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_PC_GC_44_A6>(
+            w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
       }
       for (const auto& it : files) {
         add_write_file_commands_t<PSOCommandHeaderDCV3>(w, it.first, *it.second, is_dlq_encoded, false);
@@ -1343,7 +1298,8 @@ string encode_qst_file(
       break;
     case Version::XB_V3:
       for (const auto& it : files) {
-        add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_XB_44_A6>(w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
+        add_open_file_command_t<PSOCommandHeaderDCV3, S_OpenFile_XB_44_A6>(
+            w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
       }
       for (const auto& it : files) {
         add_write_file_commands_t<PSOCommandHeaderDCV3>(w, it.first, *it.second, is_dlq_encoded, false);
@@ -1351,7 +1307,8 @@ string encode_qst_file(
       break;
     case Version::BB_V4:
       for (const auto& it : files) {
-        add_open_file_command_t<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
+        add_open_file_command_t<PSOCommandHeaderBB, S_OpenFile_BB_44_A6>(
+            w, name, it.first, xb_filename, quest_number, it.second->size(), is_dlq_encoded);
       }
       for (const auto& it : files) {
         add_write_file_commands_t<PSOCommandHeaderBB>(w, it.first, *it.second, is_dlq_encoded, true);

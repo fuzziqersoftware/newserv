@@ -18,7 +18,7 @@
 #include "PlayerSubordinates.hh"
 #include "Text.hh"
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Memory card / VMU structures
 
 struct PSOVMSFileHeader {
@@ -45,12 +45,10 @@ struct PSOVMSFileHeader {
 } __packed_ws__(PSOVMSFileHeader, 0x80);
 
 struct PSOGCIFileHeader {
-  // Every PSOGC save file begins with a PSOGCIFileHeader. The first 0x40 bytes
-  // of this structure are the .gci file header; the remaining bytes after that
-  // are the actual data from the memory card. For save files (system /
-  // character / Guild Card), one of the structures below immediately follows
-  // the PSOGCIFileHeader. The system file is not encrypted, but the character
-  // and Guild Card files are encrypted using a seed stored in the system file.
+  // Every PSOGC save file begins with a PSOGCIFileHeader. The first 0x40 bytes of this structure are the .gci file
+  // header; the remaining bytes after that are the actual data from the memory card. For save files (system /
+  // character / Guild Card), one of the structures below immediately follows the PSOGCIFileHeader. The system file is
+  // not encrypted, but the character and Guild Card files are encrypted using a seed stored in the system file.
   /* 0000 */ parray<char, 4> game_id; // 'GPOE', 'GPSP', etc.
   /* 0004 */ parray<char, 2> developer_id; // '8P' for Sega
   // There is a structure for this part of the header, but we don't use it.
@@ -67,19 +65,17 @@ struct PSOGCIFileHeader {
   /* 0038 */ be_uint16_t num_blocks = 0;
   /* 003A */ parray<uint8_t, 2> unused2;
   /* 003C */ be_uint32_t comment_offset = 0;
-  // GCI header ends here (and memcard file data begins here)
-  // game_name is e.g. "PSO EPISODE I & II" or "PSO EPISODE III"
-  /* 0040 */ pstring<TextEncoding::MARKED, 0x1C> game_name;
+  // GCI header ends here (and memcard data begins here)
+  /* 0040 */ pstring<TextEncoding::MARKED, 0x1C> game_name; // e.g. "PSO EPISODE I & II" or "PSO EPISODE III"
   /* 005C */ be_uint32_t embedded_seed = 0; // Used in some of Ralf's quest packs
   /* 0060 */ pstring<TextEncoding::MARKED, 0x20> file_name;
   /* 0080 */ parray<uint8_t, 0x1800> banner;
   /* 1880 */ parray<uint8_t, 0x800> icon;
-  // data_size specifies the number of bytes remaining in the file. In all cases
-  // except for the system file, this data is encrypted.
+  // data_size specifies the number of bytes remaining in the file. In all cases except for the system file, this data
+  // is encrypted.
   /* 2080 */ be_uint32_t data_size = 0;
-  // To compute checksum, set checksum to zero, then compute the CRC32 of all
-  // fields in this struct starting with gci_header.game_name. (Yes, including
-  // the checksum field, which is temporarily zero.) See checksum_correct below.
+  // To compute checksum, set checksum to zero, then compute the CRC32 of all fields in this struct starting with
+  // gci_header.game_name. (Yes, including the checksum field, which is temporarily zero.) See checksum_correct below.
   /* 2084 */ be_uint32_t checksum = 0;
   /* 2088 */
 
@@ -93,13 +89,9 @@ struct PSOGCIFileHeader {
 
 struct PSOXBFileHeader {
   // The signature is computed by doing the following:
-  //   // TODO: Should flags be 0 or 1? It looks like it should be 0 for
-  //   // character files, but not sure about this
+  //   // TODO: Should flags be 0 or 1? It looks like it should be 0 for character files, but not sure about this
   //   auto handle = XCalculateSignatureBegin(flags);
-  //   XCalculateSignatureUpdate(
-  //       handle,
-  //       &header.source_size,
-  //       total_size - offsetof(PSOXBFileHeader, source_size));
+  //   XCalculateSignatureUpdate(handle, &header.source_size, total_size - offsetof(PSOXBFileHeader, source_size));
   //   XCalculateSignatureEnd(handle, header.signature);
   /* 0000 */ parray<uint8_t, 0x14> signature;
   /* 0014 */ le_uint32_t source_size = 0; // == total file size - 0x4000
@@ -116,7 +108,7 @@ struct PSOXBFileHeader {
   void check() const;
 } __packed_ws__(PSOXBFileHeader, 0x6048);
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Subordinate structures
 
 struct ShuffleTables {
@@ -247,15 +239,13 @@ struct PSOBBFullTeamMembership {
   PSOBBFullTeamMembership() = default;
 } __packed_ws__(PSOBBFullTeamMembership, 0x838);
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // System files
 
 struct PSOPCCreationTimeFile { // PSO______FLS
-  // The game creates this file if necessary and fills it with random data.
-  // Most of the random data appears to be a decoy; only one field is used.
-  // As in other PSO versions, creation_timestamp is used as an encryption key
-  // for the other save files, but only if the serial number isn't set in the
-  // Windows registry.
+  // The game creates this file if necessary and fills it with random data. Most of the random data appears to be a
+  // decoy; only one field is used. As in other PSO versions, creation_timestamp is used as an encryption key for the
+  // other save files, but only if the serial number isn't set in the Windows registry.
   /* 0000 */ parray<uint8_t, 0x624> unused1;
   /* 0624 */ le_uint32_t creation_timestamp = 0;
   /* 0628 */ parray<uint8_t, 0xDD8> unused2;
@@ -264,8 +254,8 @@ struct PSOPCCreationTimeFile { // PSO______FLS
 
 struct PSOPCSystemFile { // PSO______COM
   /* 0000 */ le_uint32_t checksum = 0;
-  // Most of these fields are guesses based on the format used in GC and the
-  // assumption that Sega didn't change much between versions.
+  // Most of these fields are guesses based on the format used in GC and the assumption that Sega didn't change much
+  // between versions.
   /* 0004 */ le_int16_t music_volume = 0;
   /* 0006 */ int8_t sound_volume = 0;
   /* 0007 */ Language language = Language::ENGLISH;
@@ -282,17 +272,15 @@ struct PSOGCSystemFile {
   /* 0004 */ be_int16_t music_volume = 0; // 0 = full volume; -250 = min volume
   /* 0006 */ int8_t sound_volume = 0; // 0 = full volume; -100 = min volume
   /* 0007 */ Language language = Language::ENGLISH;
-  // This field stores the effective time zone offset between the server and
-  // client, in frames. The default value is 1728000, which corresponds to 16
-  // hours. This is recomputed when the client receives a B1 command.
+  // This field stores the effective time zone offset between the server and client, in frames. The default value is
+  // 1728000, which corresponds to 16 hours. This is recomputed when the client receives a B1 command.
   /* 0008 */ be_int32_t server_time_delta_frames = 1728000;
   /* 000C */ be_uint16_t udp_behavior = 0; // 0 = auto, 1 = on, 2 = off
   /* 000E */ be_uint16_t surround_sound_enabled = 0;
   /* 0010 */ parray<uint8_t, 0x100> event_flags; // Can be set by quest opcode D8 or E8
   /* 0110 */ parray<uint8_t, 8> unknown_a7;
-  // This timestamp is the number of seconds since 12:00AM on 1 January 2000.
-  // This field is also used as the round1 seed for encrypting the character and
-  // Guild Card files.
+  // This timestamp is the number of seconds since 12:00AM on 1 January 2000. This field is also used as the round1
+  // seed for encrypting the character and Guild Card files.
   /* 0118 */ be_uint32_t creation_timestamp = 0;
   /* 011C */
 } __packed_ws__(PSOGCSystemFile, 0x11C);
@@ -355,7 +343,7 @@ struct PSOBBBaseSystemFile : PSOBBMinimalSystemFile {
   PSOBBBaseSystemFile();
 } __packed_ws__(PSOBBBaseSystemFile, 0x2B8);
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Character files
 
 struct PSODCNTECharacterFile {
@@ -364,14 +352,12 @@ struct PSODCNTECharacterFile {
     // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
     /* 0000:---- */ PlayerInventory inventory;
     /* 034C:---- */ PlayerDispDataDCPCV3 disp;
-    // masked_creation_timestamp is expected to contain the value
-    // (creation_timestamp ^ hardware_id_mid), where hardware_id_mid contains
-    // the middle 32 bits of the 64-bit hardware ID returned by the SYSINFO_ID
-    // syscall (the top and bottom 16 bits are ignored for this purpose).
+    // masked_creation_timestamp is expected to contain the value (creation_timestamp ^ hardware_id_mid), where
+    // hardware_id_mid contains the middle 32 bits of the 64-bit hardware ID returned by the SYSINFO_ID syscall (the
+    // top and bottom 16 bits are ignored for this purpose).
     /* 041C:0000 */ le_uint32_t masked_creation_timestamp = 0;
     /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
-    // The value of signature is approximately pi * 1e9, but they got a couple
-    // of digits wrong (3141562653)
+    // The value of signature is approximately pi * 1e9, but they got a couple of digits wrong (3141562653)
     /* 0424:0008 */ le_uint32_t signature = 0xBB40711D;
     /* 0428:000C */ le_uint32_t play_time_seconds = 0;
     /* 042C:0010 */ le_uint32_t option_flags = 0x00040058;
@@ -379,9 +365,8 @@ struct PSODCNTECharacterFile {
     /* 0432:0016 */ le_uint16_t inventory_erasure_count = 0;
     /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
     /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
-    // TODO: Figure out how quest flags work; it's obviously different from 0x80
-    // bytes per difficulty like in v1. Is it just 2048 flags shared across all
-    // difficulties, instead of 1024 in each difficulty?
+    // TODO: Figure out how quest flags work; it's obviously different from 0x80 bytes per difficulty like in v1. Is it
+    // just 2048 flags shared across all difficulties, instead of 1024 in each difficulty?
     /* 0460:0044 */ parray<uint8_t, 0x100> quest_flags;
     /* 0560:0144 */ le_uint16_t bank_meseta;
     /* 0562:0146 */ le_uint16_t num_bank_items;
@@ -482,11 +467,9 @@ struct PSODCV2CharacterFile {
     /* 15C8:11AC */ PlayerRecordsBattle battle_records;
     /* 15E0:11C4 */ PlayerRecordsChallengeDC challenge_records;
     /* 1680:1264 */ parray<le_uint16_t, 20> tech_menu_shortcut_entries;
-    // The Choice Search config is stored here as 32-bit integers, even though
-    // it's represented with 16-bit integers in the various commands that send it
-    // to and from the server. The order of the entries here is the same (that
-    // is, the first two of these ints are entries[0], the second two are
-    // entries[1], etc.).
+    // The Choice Search config is stored here as 32-bit integers, even though it's represented with 16-bit integers in
+    // the various commands that send it to and from the server. The order of the entries here is the same (that is,
+    // the first two of these ints are entries[0], the second two are entries[1], etc.).
     /* 16A8:128C */ parray<le_uint32_t, 10> choice_search_config;
     /* 16D0:12B4 */ parray<uint8_t, 4> unknown_a2;
     /* 16D4:12B8 */ pstring<TextEncoding::ASCII, 0x10> v2_serial_number;
@@ -565,9 +548,8 @@ struct PSOGCNTECharacterFileCharacter {
   /* 2494:2078 */ parray<uint8_t, 4> unknown_a4;
   /* 2498:207C */ PlayerRecordsChallengeDC challenge_records;
   /* 2538:211C */ parray<be_uint16_t, 20> tech_menu_shortcut_entries;
-  // TODO: choice_search_config and offline_battle_records may be in here
-  // somewhere. When they are found, don't forget to update the conversion
-  // functions in PSOBBCharacterFile.
+  // TODO: choice_search_config and offline_battle_records may be in here somewhere. When they are found, don't forget
+  // to update the conversion functions in PSOBBCharacterFile.
   /* 2560:2144 */ parray<uint8_t, 0x130> unknown_n2;
   /* 2690:2274 */
 } __packed_ws__(PSOGCNTECharacterFileCharacter, 0x2690);
@@ -575,58 +557,45 @@ struct PSOGCNTECharacterFileCharacter {
 struct PSOGCCharacterFile {
   /* 00000 */ be_uint32_t checksum = 0;
   struct Character {
-    // This structure is internally split into two by the game. The offsets
-    // here are relative to the start of this structure (first column), and
-    // relative to the start of the second internal structure (second column).
+    // This structure is internally split into two by the game. The offsets here are relative to the start of this
+    // structure (first column), and relative to the start of the second internal structure (second column).
     /* 0000:---- */ PlayerInventoryBE inventory;
     /* 034C:---- */ PlayerDispDataDCPCV3BE disp;
     // Known bits in the validation_flags field:
-    //   00000001: Character was not saved after disconnecting (and the message
-    //     about items being deleted is shown in the select menu)
+    //   00000001: Character was not saved after disconnecting (and the message about items being deleted is shown in
+    //     the select menu)
     //   00000002: Character has level out of range (< 0 or > max)
     //   00000004: Character has EXP out of range for their current level
     //   00000008: Character has one or more stats out of range (< 0 or > max)
-    //   00000010: Character has ever possessed a hacked item, according to the
-    //     check_for_hacked_item function in DCv2. It appears this logic was
-    //     removed in v3, so this flag is unused on v3+.
+    //   00000010: Character has ever possessed a hacked item, according to the check_for_hacked_item function in DCv2.
+    //     It appears this logic was removed in v3, so this flag is unused on v3+.
     //   00000020: Character has meseta out of range (< 0 or > 999999)
-    //   00000040: Character was loaded on a client that has "important" files
-    //     modified (on GC, these files are ending_normal.sfd, psogc_j.sfd,
-    //     psogc_j2.sfd, ult01.sfd, ult02.sfd, ult03.sfd, ult04.sfd,
-    //     ItemPMT.prs, itemrt.gsl, itempt.gsl, and PlyLevelTbl.cpt). For files
-    //     larger than 1000000 bytes (decimal), the game only checks the file's
-    //     size and skips checksumming its contents.
-    // PSO v3 and later only use flag 00000001; all logic that checks or sets
-    // the other flags was removed in v3. Curiously, there is logic in v3 that
-    // clears flags 00000001 and 00000002 at the same time, but 00000002 is
-    // never set.
+    //   00000040: Character was loaded on a client that has "important" files modified (on GC, these files are
+    //     ending_normal.sfd, psogc_j.sfd, psogc_j2.sfd, ult01.sfd, ult02.sfd, ult03.sfd, ult04.sfd, ItemPMT.prs,
+    //     itemrt.gsl, itempt.gsl, and PlyLevelTbl.cpt). For files larger than 1000000 bytes (decimal), the game only
+    //     checks the file's size and skips checksumming its contents.
+    // PSO v3 and later only use flag 00000001; all logic that checks or sets the other flags was removed in v3.
+    // Curiously, there is logic in v3 that clears 00000001 and 00000002 at the same time, but 00000002 is never set.
     /* 041C:0000 */ be_uint32_t validation_flags = 0;
-    // The creation timestamp is measured in seconds since midnight on 1
-    // January 2000.
+    // The creation timestamp is measured in seconds since midnight on 1 January 2000.
     /* 0420:0004 */ be_uint32_t creation_timestamp = 0;
-    // The signature field holds the value 0xA205B064, which is 2718281828 in
-    // decimal - approximately e * 10^9. It's unknown why Sega chose this
-    // value. On some other versions, this field has a different value; see the
-    // defaults in the other versions' structures.
+    // The signature field holds the value 0xA205B064, which is 2718281828 in decimal - approximately e * 10^9. It's
+    // unknown why Sega chose this value. On some other versions, this field has a different value; see the defaults in
+    // the other versions' structures.
     /* 0424:0008 */ be_uint32_t signature = 0xA205B064;
     /* 0428:000C */ be_uint32_t play_time_seconds = 0;
-    // This field is a collection of several flags and small values. The known
-    // fields are:
+    // This field is a collection of several flags and small values. The known fields are:
     //   ------AB -----CDD EEEFFFGG HIJKLMNO
-    //   A = Function key setting (BB; 0 = menu shortcuts; 1 = chat shortcuts).
-    //       This bit is unused by PSO GC.
-    //   B = Keyboard controls (BB; 0 = on; 1 = off). This field is also used
-    //       by PSO GC, but its function is currently unknown.
+    //   A = Function key setting (BB; 0 = menu shortcuts; 1 = chat shortcuts). This bit is unused by PSO GC.
+    //   B = Keyboard controls (BB; 0 = on; 1 = off). PSO GC uses this field, but its function is currently unknown.
     //   C = Choice search setting (0 = enabled; 1 = disabled)
     //   D = Which pane of the shortcut menu was last used
-    //   E = Player lobby labels (0 = name; 1 = name, language, and level;
-    //       2 = W/D counts; 3 = challenge rank; 4 = nothing)
-    //   F = Idle disconnect time (0 = 15 mins; 1 = 30 mins; 2 = 45 mins;
-    //       3 = 60 mins; 4: never; 5-7: undefined behavior due to a missing
-    //       bounds check).
+    //   E = Player labels (0 = name; 1 = name, language, and level; 2 = W/D counts; 3 = challenge rank; 4 = nothing)
+    //   F = Idle disconnect time (0 = 15 mins; 1 = 30 mins; 2 = 45 mins; 3 = 60 mins; 4: never; 5-7: undefined
+    //       behavior due to a missing bounds check).
     //   G = Message speed (0 = slow; 1 = normal; 2 = fast; 3 = very fast)
-    //   H, I, J, K = unknown; these appear to be used only during Japanese
-    //       text input. See TWindowKeyBoardBase_read_option_flags
+    //   H, I, J, K = unknown; these appear to be used only during Japanese text input.
+    //       See TWindowKeyBoardBase_read_option_flags
     //   L = Rumble enabled
     //   M = Cursor position (0 = saved; 1 = non-saved)
     //   N = Button config (0 = normal; 1 = L/R reversed)
@@ -668,9 +637,8 @@ struct PSOGCCharacterFile {
 } __packed_ws__(PSOGCCharacterFile, 0x1156C);
 
 struct PSOGCEp3NTECharacter {
-  // This structure is internally split into two by the game. The offsets here
-  // are relative to the start of this structure (first column), and relative
-  // to the start of the second internal structure (second column).
+  // This structure is internally split into two by the game. The offsets here are relative to the start of this
+  // structure (first column), and relative to the start of the second internal structure (second column).
   /* 0000:---- */ PlayerInventoryBE inventory;
   /* 034C:---- */ PlayerDispDataDCPCV3BE disp;
   /* 041C:0000 */ be_uint32_t validation_flags = 0;
@@ -704,9 +672,8 @@ struct PSOGCEp3NTECharacter {
 struct PSOGCEp3CharacterFile {
   /* 00000 */ be_uint32_t checksum = 0; // crc32 of this field (as 0) through end of struct
   struct Character {
-    // This structure is internally split into two by the game. The offsets here
-    // are relative to the start of this structure (first column), and relative
-    // to the start of the second internal structure (second column).
+    // This structure is internally split into two by the game. The offsets here are relative to the start of this
+    // structure (first column), and relative to the start of the second internal structure (second column).
     /* 0000:---- */ PlayerInventoryBE inventory;
     /* 034C:---- */ PlayerDispDataDCPCV3BE disp;
     /* 041C:0000 */ be_uint32_t validation_flags = 0;
@@ -717,16 +684,13 @@ struct PSOGCEp3CharacterFile {
     /* 0430:0014 */ be_uint32_t save_count = 1;
     /* 0434:0018 */ pstring<TextEncoding::ASCII, 0x1C> ppp_username;
     /* 0450:0034 */ pstring<TextEncoding::ASCII, 0x10> ppp_password;
-    // seq_vars is an array of 8192 bits, which contain all the Episode 3 quest
-    // progress flags. This includes things like which maps are unlocked, which
-    // NPC decks are unlocked, and whether the player has a VIP card or not.
-    // Logically, this structure maps to quest_flags in other versions, but is
-    // a different size.
+    // seq_vars is an array of 8192 bits, which contain all the Episode 3 quest progress flags. This includes things
+    // like which maps are unlocked, which NPC decks are unlocked, and whether the player has a VIP card or not.
+    // Logically, this structure maps to quest_flags in other versions, but is a different size.
     /* 0460:0044 */ Ep3SeqVars seq_vars;
     /* 0860:0444 */ be_uint32_t death_count = 0;
-    // Curiously, Episode 3 characters do have item banks, but there are only 4
-    // item slots. Presumably Sega didn't completely remove the bank in Ep3
-    // because they would have had to change too much code.
+    // Curiously, Episode 3 characters do have item banks, but there are only 4 item slots. Presumably Sega didn't
+    // completely remove the bank in Ep3 because they would have had to change too much code.
     /* 0864:0448 */ PlayerBankT<4, true> bank;
     /* 08CC:04B0 */ GuildCardGCBE guild_card;
     /* 095C:0540 */ parray<SaveFileSymbolChatEntryGC, 12> symbol_chats;
@@ -751,21 +715,17 @@ struct PSOGCEp3CharacterFile {
   /* 193F0 */ pstring<TextEncoding::ASCII, 0x10> serial_number; // As {:08X} (not decimal)
   /* 19400 */ pstring<TextEncoding::ASCII, 0x10> access_key; // As 12 ASCII characters (decimal)
   /* 19410 */ pstring<TextEncoding::ASCII, 0x10> password;
-  // In Episode 3, this field still exists, but is unused since BGM test was
-  // removed from the options menu in favor of the jukebox. The jukebox is
-  // accessible online only, and which songs are available there is controlled
-  // by the B7 command sent by the server instead.
+  // In Episode 3, this field still exists, but is unused since BGM test was removed from the options menu in favor of
+  // the jukebox. The jukebox is accessible online only, and which songs are available there is controlled by the B7
+  // command sent by the server instead.
   /* 19420 */ be_uint64_t bgm_test_songs_unlocked = 0;
   /* 19428 */ be_uint32_t save_count = 1;
-  // This is an array of 999 bits, represented here as 128 bytes (the last 25
-  // bits are not used). Each bit corresponds to a card ID with the bit's index;
-  // if the bit is set, then during offline play, the card's rank is replaced
-  // with D2 if its original rank is S, SS, E, or D2, or with D1 if the original
-  // rank is any other value. Upon receiving a B8 command (server card
-  // definitions), the game clears this array, and sets all bits whose
-  // corresponding cards from the server have the D1 or D2 ranks. This could
-  // have been used by Sega to prevent broken cards from being used offline, but
-  // there's no indication that they ever used this functionality.
+  // This is an array of 999 bits, represented here as 128 bytes (the last 25 bits are not used). Each bit corresponds
+  // to a card ID with the bit's index; if the bit is set, then during offline play, the card's rank is replaced with
+  // D2 if its original rank is S, SS, E, or D2, or with D1 if the original rank is any other value. Upon receiving a
+  // B8 command (server card definitions), the game clears this array, and sets all bits whose corresponding cards from
+  // the server have the D1 or D2 ranks. This could have been used by Sega to prevent broken cards from being used
+  // offline, but there's no indication that they ever used this functionality.
   /* 1942C */ parray<uint8_t, 0x80> card_rank_override_flags;
   /* 194AC */ be_uint32_t round2_seed = 0;
   /* 194B0 */
@@ -773,10 +733,9 @@ struct PSOGCEp3CharacterFile {
 
 struct PSOXBCharacterFile {
   struct Character {
-    // This structure is internally split into two by the game. The offsets here
-    // are relative to the start of this structure (first column), and relative
-    // to the start of the second internal structure (second column).
-    // Most fields have the same meanings as in PSOGCCharacterFile::Character.
+    // This structure is internally split into two by the game. The offsets here are relative to the start of this
+    // structure (first column), and relative to the start of the second internal structure (second column). Most
+    // fields have the same meanings as in PSOGCCharacterFile::Character.
     /* 0000:---- */ PlayerInventory inventory;
     /* 034C:---- */ PlayerDispDataDCPCV3 disp;
     /* 041C:0000 */ le_uint32_t validation_flags = 0;
@@ -832,10 +791,9 @@ struct PSOXBCharacterFile {
 } __packed_ws__(PSOXBCharacterFile, 0x26564);
 
 struct PSOBBCharacterFile {
-  // Most fields have the same meanings as in PSOGCCharacterFile::Character.
-  // This is part of the .psochar file format, but it is not the first member
-  // of that structure, so add 8 to all the offsets here if you're working with
-  // a .psochar file. See PSOCHARFile below for the full file format.
+  // Most fields have the same meanings as in PSOGCCharacterFile::Character. This is part of the .psochar file format,
+  // but it is not the first member of that structure, so add 8 to all the offsets here if you're working with a
+  // .psochar file. See PSOCHARFile below for the full file format.
 
   /* 0000 */ PlayerInventory inventory;
   /* 034C */ PlayerDispDataBB disp;
@@ -924,9 +882,8 @@ struct PSOBBCharacterFile {
 } __packed_ws__(PSOBBCharacterFile, 0x2EA4);
 
 struct PSOCHARFile {
-  // This is the format of .psochar files used by newserv and Ephinea (and
-  // perhaps other servers as well). newserv doesn't actually use this
-  // structure in its logic, so it's here primarily for documentation.
+  // This is the format of .psochar files used by newserv and Ephinea (and perhaps other servers as well). newserv
+  // doesn't actually use this structure in its logic, so it's here primarily for documentation.
 
   /* 0000 */ PSOCommandHeaderBB header; // command = 0x00E7, size = 0x399C, flag = 0
   /* 0008 */ PSOBBCharacterFile character;
@@ -946,7 +903,7 @@ struct PSOCHARFile {
       std::shared_ptr<const PSOBBCharacterFile> character);
 } __packed_ws__(PSOCHARFile, 0x399C);
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Guild Card files
 
 struct PSODCNTEGuildCardFile {
@@ -1048,15 +1005,14 @@ struct PSOBBGuildCardFile {
   void delete_duplicates();
 } __packed_ws__(PSOBBGuildCardFile, 0xD590);
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Snapshot files
 
 struct PSOGCSnapshotFile {
   /* 00000 */ be_uint32_t checksum = 0;
   /* 00004 */ be_uint16_t width = 0x100;
   /* 00006 */ be_uint16_t height = 0xC0;
-  // Pixels are stored as 4x4 blocks of RGB565 values. See the implementation
-  // of decode_image for details.
+  // Pixels are stored as 4x4 blocks of RGB565 values. See the implementation of decode_image for details.
   /* 00008 */ parray<be_uint16_t, 0xC000> pixels;
   /* 18008 */ uint8_t unknown_a1 = 0x18; // Always 0x18?
   /* 18009 */ uint8_t unknown_a2 = 0;
@@ -1070,7 +1026,7 @@ struct PSOGCSnapshotFile {
   phosg::ImageRGB888 decode_image() const;
 } __packed_ws__(PSOGCSnapshotFile, 0x1818C);
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Obsolete newserv-specific formats (for backward compatibility only)
 
 struct LegacySavedPlayerDataBB { // .nsc file format
@@ -1112,7 +1068,7 @@ struct LegacySavedAccountDataBB { // .nsa file format
   /* F080 */
 } __packed_ws__(LegacySavedAccountDataBB, 0xF080);
 
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Encoding/decoding functions
 
 template <bool BE>
@@ -1184,8 +1140,7 @@ std::string decrypt_fixed_size_data_section_s(
     checksum = expected_crc;
     if (expected_crc != actual_crc) {
       throw std::runtime_error(std::format(
-          "incorrect decrypted data section checksum: expected {:08X}; received {:08X}",
-          expected_crc, actual_crc));
+          "incorrect decrypted data section checksum: expected {:08X}; received {:08X}", expected_crc, actual_crc));
     }
   }
 
@@ -1220,8 +1175,7 @@ StructT decrypt_fixed_size_data_section_t(
     ret.checksum = expected_crc;
     if (expected_crc != actual_crc) {
       throw std::runtime_error(std::format(
-          "incorrect decrypted data section checksum: expected {:08X}; received {:08X}",
-          expected_crc, actual_crc));
+          "incorrect decrypted data section checksum: expected {:08X}; received {:08X}", expected_crc, actual_crc));
     }
   }
 
@@ -1269,12 +1223,7 @@ std::string encrypt_fixed_size_data_section_t(const StructT& s, uint32_t round1_
 }
 
 uint32_t compute_psogc_timestamp(
-    uint16_t year,
-    uint8_t month,
-    uint8_t day,
-    uint8_t hour,
-    uint8_t minute,
-    uint8_t second);
+    uint16_t year, uint8_t month, uint8_t day, uint8_t hour, uint8_t minute, uint8_t second);
 
 std::string encode_psobb_hangame_credentials(
     const std::string& user_id, const std::string& token, const std::string& unused = "");

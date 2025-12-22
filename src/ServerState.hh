@@ -42,10 +42,9 @@ struct PortConfiguration {
 };
 
 struct CheatFlags {
-  // This structure describes which behaviors are considered cheating (that is,
-  // require cheat mode to be enabled or the user to have the CHEAT_ANYWHERE
-  // account flag). A false value here means that that particular behavior is
-  // NOT cheating, so cheat mode is NOT required.
+  // This structure describes which behaviors are considered cheating (that is, require cheat mode to be enabled or the
+  // user to have the CHEAT_ANYWHERE account flag). A false value here means that that particular behavior is NOT
+  // cheating, so cheat mode is NOT required.
   bool create_items = true;
   bool edit_section_id = true;
   bool edit_stats = true;
@@ -332,9 +331,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void on_player_left_lobby(std::shared_ptr<Lobby> l, uint8_t leaving_client_id);
 
   std::shared_ptr<Client> find_client(
-      const std::string* identifier = nullptr,
-      uint64_t account_id = 0,
-      std::shared_ptr<Lobby> l = nullptr);
+      const std::string* identifier = nullptr, uint64_t account_id = 0, std::shared_ptr<Lobby> l = nullptr);
 
   uint32_t connect_address_for_client(std::shared_ptr<Client> c) const;
   uint16_t game_server_port_for_version(Version v) const;
@@ -408,10 +405,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const SuperMap> get_free_play_supermap(
       Episode episode, GameMode mode, Difficulty difficulty, uint8_t floor, uint32_t layout, uint32_t entities);
   std::vector<std::shared_ptr<const SuperMap>> supermaps_for_variations(
-      Episode episode,
-      GameMode mode,
-      Difficulty difficulty,
-      const Variations& variations);
+      Episode episode, GameMode mode, Difficulty difficulty, const Variations& variations);
 
   void create_default_lobbies();
   void collect_network_addresses();

@@ -13,7 +13,8 @@ phosg::JSON QuestMetadata::FloorAssignment::json() const {
 }
 
 std::string QuestMetadata::FloorAssignment::str() const {
-  return std::format("FloorAssignment(floor=0x{:02X}, area=0x{:02X}, type=0x{:02X}, layout_var=0x{:02X}, entities_var=0x{:02X})",
+  return std::format(
+      "FloorAssignment(floor=0x{:02X}, area=0x{:02X}, type=0x{:02X}, layout_var=0x{:02X}, entities_var=0x{:02X})",
       this->floor, this->area, this->type, this->layout_var, this->entities_var);
 }
 
@@ -82,8 +83,7 @@ void QuestMetadata::assign_default_floors() {
 void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
   if (this->quest_number != other.quest_number) {
     throw logic_error(std::format(
-        "incorrect versioned quest number (existing: {:08X}, new: {:08X})",
-        this->quest_number, other.quest_number));
+        "incorrect versioned quest number (existing: {:08X}, new: {:08X})", this->quest_number, other.quest_number));
   }
   if (this->category_id != other.category_id) {
     throw runtime_error(std::format(
@@ -98,7 +98,8 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
   if (this->allow_start_from_chat_command != other.allow_start_from_chat_command) {
     throw runtime_error(std::format(
         "quest version has a different allow_start_from_chat_command state (existing: {}, new: {})",
-        this->allow_start_from_chat_command ? "true" : "false", other.allow_start_from_chat_command ? "true" : "false"));
+        this->allow_start_from_chat_command ? "true" : "false",
+        other.allow_start_from_chat_command ? "true" : "false"));
   }
   if (this->joinable != other.joinable) {
     throw runtime_error(std::format(
@@ -109,7 +110,8 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
   bool other_has_player_limit = (other.max_players != 0) && (other.max_players != 4);
   if ((this_has_player_limit || other_has_player_limit) && (this->max_players != other.max_players)) {
     throw runtime_error(std::format(
-        "quest version has a different maximum player count (existing: {}, new: {})", this->max_players, other.max_players));
+        "quest version has a different maximum player count (existing: {}, new: {})",
+        this->max_players, other.max_players));
   }
   if (this->lock_status_register != other.lock_status_register) {
     throw runtime_error(std::format(
@@ -122,8 +124,7 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
   if (this->solo_unlock_flags != other.solo_unlock_flags) {
     throw runtime_error(std::format("quest version has a different set of solo unlock flags"));
   }
-  if (!this->create_item_mask_entries.empty() &&
-      !other.create_item_mask_entries.empty() &&
+  if (!this->create_item_mask_entries.empty() && !other.create_item_mask_entries.empty() &&
       this->create_item_mask_entries != other.create_item_mask_entries) {
     string this_str, other_str;
     for (const auto& item : this->create_item_mask_entries) {
@@ -150,8 +151,7 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
     string existing_str = this->battle_rules->json().serialize();
     string new_str = other.battle_rules->json().serialize();
     throw runtime_error(std::format(
-        "quest version has different battle rules (existing: {}, new: {})",
-        existing_str, new_str));
+        "quest version has different battle rules (existing: {}, new: {})", existing_str, new_str));
   }
   if (this->challenge_template_index != other.challenge_template_index) {
     throw runtime_error(std::format(
@@ -173,7 +173,8 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
     const auto& other_fa = other.floor_assignments[z];
     if (this_fa.area != other_fa.area) {
       throw runtime_error(std::format(
-          "quest version has different area on floor 0x{:02X} (existing: {}, new: {})", z, this_fa.str(), other_fa.str()));
+          "quest version has different area on floor 0x{:02X} (existing: {}, new: {})",
+          z, this_fa.str(), other_fa.str()));
     }
   }
   if (this->description_flag != other.description_flag) {
@@ -190,8 +191,7 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
     string existing_str = this->available_expression->str();
     string new_str = other.available_expression->str();
     throw runtime_error(std::format(
-        "quest version has a different available expression (existing: {}, new: {})",
-        existing_str, new_str));
+        "quest version has a different available expression (existing: {}, new: {})", existing_str, new_str));
   }
   if (!this->enabled_expression != !other.enabled_expression) {
     throw runtime_error(std::format(
@@ -202,8 +202,7 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
     string existing_str = this->enabled_expression->str();
     string new_str = other.enabled_expression->str();
     throw runtime_error(std::format(
-        "quest version has a different enabled expression (existing: {}, new: {})",
-        existing_str, new_str));
+        "quest version has a different enabled expression (existing: {}, new: {})", existing_str, new_str));
   }
   if (this->common_item_set_name != other.common_item_set_name) {
     throw runtime_error(std::format(
@@ -224,7 +223,8 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
         phosg::name_for_enum(this->default_drop_mode), phosg::name_for_enum(other.default_drop_mode)));
   }
   if (this->enable_schtserv_commands != other.enable_schtserv_commands) {
-    throw runtime_error(format("quest version has different value for enable_schtserv_commands (existing: {}, new: {})",
+    throw runtime_error(format(
+        "quest version has different value for enable_schtserv_commands (existing: {}, new: {})",
         this->enable_schtserv_commands ? "true" : "false", other.enable_schtserv_commands ? "true" : "false"));
   }
 }
@@ -239,7 +239,8 @@ phosg::JSON QuestMetadata::json() const {
     auto difficulty = static_cast<Difficulty>((key >> 24) & 3);
     auto floor = static_cast<uint8_t>((key >> 16) & 0xFF);
     auto enemy_type = static_cast<EnemyType>(key & 0xFFFF);
-    auto key_str = std::format("{}:0x{:02X}:{}", name_for_difficulty(difficulty), floor, phosg::name_for_enum(enemy_type));
+    auto key_str = std::format(
+        "{}:0x{:02X}:{}", name_for_difficulty(difficulty), floor, phosg::name_for_enum(enemy_type));
     enemy_exp_overrides_json.emplace(key_str, exp_override);
   }
 

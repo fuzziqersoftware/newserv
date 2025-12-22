@@ -34,6 +34,7 @@ struct ShellCommand {
 
   ShellCommand(const char* name, const char* help_text, asio::awaitable<std::deque<std::string>> (*run)(Args&));
 
-  static asio::awaitable<std::deque<std::string>> dispatch_str(std::shared_ptr<ServerState> s, const std::string& command);
+  static asio::awaitable<std::deque<std::string>> dispatch_str(
+      std::shared_ptr<ServerState> s, const std::string& command);
   static asio::awaitable<std::deque<std::string>> dispatch(Args& args);
 };

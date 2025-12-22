@@ -155,8 +155,8 @@ struct parray {
     if (index >= Count) {
       throw std::out_of_range("array index out of bounds");
     }
-    // Note: This looks really dumb, but apparently works around an issue in GCC
-    // that causes a "returning address of temporary" error here.
+    // Note: This looks really dumb, but apparently works around an issue in GCC that causes a "returning address of
+    // temporary" error here.
     return *&this->items[index];
   }
   const ItemT& operator[](size_t index) const {
@@ -463,8 +463,8 @@ void decrypt_challenge_rank_text_t(void* vdata, size_t count) {
   }
 }
 
-// This struct does not inherit from parray, even though it's semantically
-// similar, because we want to enforce that the correct encoding is used.
+// This struct does not inherit from parray, even though it's semantically similar, because we want to enforce that the
+// correct encoding is used.
 template <
     TextEncoding Encoding,
     size_t Chars,
@@ -737,8 +737,7 @@ struct pstring {
     return this->data[pos];
   }
 
-  // Note: The contents of a pstring do not have to be null-terminated, so there
-  // is no  function.
+  // Note: The contents of a pstring do not have to be null-terminated, so there is no .c_str() function.
 } __attribute__((packed));
 
 // Helper functions
@@ -751,8 +750,8 @@ std::string add_color(const std::string& s);
 size_t add_color_inplace(char* a, size_t max_chars);
 void add_color_inplace(std::string& s);
 
-// remove_color does the opposite of add_color (it changes \t into $, for
-// example). strip_color is irreversible; it deletes color escape sequences.
+// remove_color does the opposite of add_color (it changes \t into $, for example). strip_color is irreversible; it
+// deletes color escape sequences.
 void remove_color(phosg::StringWriter& w, const char* src, size_t max_input_chars);
 std::string remove_color(const std::string& s);
 

@@ -29,9 +29,8 @@ public:
   Server& operator=(Server&&) = delete;
   virtual ~Server() = default;
 
-  // Generally subclasses will implement listen(), which should create a
-  // SocketT object (of their desired type) with a valid endpoint and call
-  // add_socket to actually listen on that endpoint
+  // Generally subclasses will implement listen(), which should create a SocketT object (of their desired type) with a
+  // valid endpoint and call add_socket to actually listen on that endpoint
   void add_socket(std::shared_ptr<SocketT> sock) {
     sock->acceptor = std::make_unique<asio::ip::tcp::acceptor>(*this->io_context, sock->endpoint);
     asio::co_spawn(*this->io_context, this->accept_connections(sock), asio::detached);
@@ -56,19 +55,16 @@ protected:
   std::unordered_set<std::shared_ptr<SocketT>> sockets;
   std::unordered_set<std::shared_ptr<ClientT>> clients;
 
-  // create_client is called when a new socket is opened. It should create (and
-  // return) the ClientT object, or may close client_sock and return nullptr if
-  // it decides to reject the connection. create_client should NOT send or
+  // create_client is called when a new socket is opened. It should create (and return) the ClientT object, or may
+  // close client_sock and return nullptr if it decides to reject the connection. create_client should NOT send or
   // receive any data, hence it is not a coroutine.
   [[nodiscard]] virtual std::shared_ptr<ClientT> create_client(
       std::shared_ptr<SocketT> sock, asio::ip::tcp::socket&& client_sock) = 0;
-  // handle_client is called immediately after create_client if create_client
-  // did not return nullptr. It should handle all sending and receiving of data
-  // on the client's connection.
+  // handle_client is called immediately after create_client if create_client did not return nullptr. It should handle
+  // all sending and receiving of data on the client's connection.
   virtual asio::awaitable<void> handle_client(std::shared_ptr<ClientT> c) = 0;
-  // destroy_client is called when the client is about to be destroyed, often
-  // after it has disconnected (hence, it cannot assume that it can send or
-  // receive any data). Additionally, the client has already been removed from
+  // destroy_client is called when the client is about to be destroyed, often after it has disconnected (hence, it
+  // cannot assume that it can send or receive any data). Additionally, the client has already been removed from
   // this->clients at the time this is called.
   virtual asio::awaitable<void> destroy_client(std::shared_ptr<ClientT> c) {
     (void)c;

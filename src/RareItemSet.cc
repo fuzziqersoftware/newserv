@@ -32,10 +32,9 @@ uint32_t RareItemSet::expand_rate(uint8_t pc) {
   //   pc = bits SSSSSVVV
   //   shift = S - 4 (so shift is 0-27)
   //   value = V + 7 (so value is 7-14)
-  // Then, take the value 0x00000002, shift it left by shift (0-27), and
-  // multiply the result by value (7-14) to get the actual drop rate. The result
-  // is a probability out of 0xFFFFFFFF (so 0x40000000 means the item will drop
-  // 25% of the time, for example).
+  // Then, take the value 0x00000002, shift it left by shift (0-27), and multiply the result by value (7-14) to get the
+  // actual drop rate. The result is a probability out of 0xFFFFFFFF (so 0x40000000 means the item will drop 25% of the
+  // time, for example).
   int8_t shift = ((pc >> 3) & 0x1F) - 4;
   if (shift < 0) {
     shift = 0;
@@ -44,8 +43,7 @@ uint32_t RareItemSet::expand_rate(uint8_t pc) {
 }
 
 uint8_t RareItemSet::compress_rate(uint32_t probability) {
-  // I'm too lazy to figure out the reverse bitwise math, so we just compute all
-  // the expansions and take the closest one
+  // I'm too lazy to figure out the reverse math, so we just compute all the expansions and take the closest one
   static std::map<uint32_t, uint8_t> inverse_map;
   if (inverse_map.empty()) {
     for (size_t z = 0; z < 0x100; z++) {
@@ -269,8 +267,7 @@ RareItemSet::RareItemSet(const GSLArchive& gsl, bool is_big_endian) {
             string filename = this->gsl_entry_name_for_table(mode, episode, difficulty, section_id);
             ParsedRELData rel(gsl.get_reader(filename), is_big_endian, false);
             this->collections.emplace(
-                this->key_for_params(mode, episode, difficulty, section_id),
-                rel.as_collection());
+                this->key_for_params(mode, episode, difficulty, section_id), rel.as_collection());
           } catch (const out_of_range&) {
           }
         }
@@ -290,8 +287,7 @@ RareItemSet::RareItemSet(const string& rel_data, bool is_big_endian) {
           size_t index = (ep_index * 40) + static_cast<size_t>(difficulty) * 10 + section_id;
           ParsedRELData rel(r.sub(0x280 * index, 0x280), is_big_endian, false);
           this->collections.emplace(
-              this->key_for_params(GameMode::NORMAL, episode, difficulty, section_id),
-              rel.as_collection());
+              this->key_for_params(GameMode::NORMAL, episode, difficulty, section_id), rel.as_collection());
         } catch (const out_of_range&) {
         }
       }
@@ -715,9 +711,8 @@ string RareItemSet::serialize_html(
 
         ItemData example_item = spec.data;
         if (example_item.can_be_encoded_in_rel_rare_table()) {
-          // Apparently Return to Ragol has a patch that allows it to use the
-          // value 5 in data1[0] to specify a specific tech disk, so we handle
-          // that here.
+          // Apparently Return to Ragol has a patch that allows it to use the value 5 in data1[0] to specify a specific
+          // tech disk, so we handle that here.
           if (example_item.data1[0] == 5) {
             example_item.data1[4] = example_item.data1[1];
             example_item.data1[0] = 0x03;

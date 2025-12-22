@@ -119,10 +119,7 @@ public:
 
 protected:
   Parsed6x70Data(
-      const G_6x70_Base_V1& base,
-      uint32_t guild_card_number,
-      Version from_version,
-      bool from_client_customization);
+      const G_6x70_Base_V1& base, uint32_t guild_card_number, Version from_version, bool from_client_customization);
   G_6x70_Base_V1 base_v1(bool is_v3) const;
   static uint32_t convert_game_flags(uint32_t game_flags, bool to_v3);
   uint32_t get_game_flags(bool is_v3) const;

@@ -189,25 +189,19 @@ void PSOCommandHeader::set_flag(Version version, uint32_t flag) {
 void check_size_v(size_t size, size_t min_size, size_t max_size) {
   if (size < min_size) {
     throw std::runtime_error(std::format(
-        "command too small (expected at least 0x{:X} bytes, received 0x{:X} bytes)",
-        min_size, size));
+        "command too small (expected at least 0x{:X} bytes, received 0x{:X} bytes)", min_size, size));
   }
   if (max_size < min_size) {
     max_size = min_size;
   }
   if (size > max_size) {
     throw std::runtime_error(std::format(
-        "command too large (expected at most 0x{:X} bytes, received 0x{:X} bytes)",
-        max_size, size));
+        "command too large (expected at most 0x{:X} bytes, received 0x{:X} bytes)", max_size, size));
   }
 }
 
 std::string prepend_command_header(
-    Version version,
-    bool encryption_enabled,
-    uint16_t cmd,
-    uint32_t flag,
-    const std::string& data) {
+    Version version, bool encryption_enabled, uint16_t cmd, uint32_t flag, const std::string& data) {
   phosg::StringWriter ret;
   switch (version) {
     case Version::DC_NTE:

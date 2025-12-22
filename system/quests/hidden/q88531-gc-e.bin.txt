@@ -7,8 +7,7 @@
 .long_desc ""
 
 start:
-  // This script is identical to q88530-gc-e.bin.txt, except the addresses are
-  // changed to be suitable for JP v1.5.
+  // This script is identical to q88530-gc-e.bin.txt, except the addresses are changed to be suitable for JP v1.5.
   leti               r3, 0x80004000
 
   write4             0x804C88F0, 0x801F29C0

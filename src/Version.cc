@@ -138,11 +138,9 @@ uint32_t default_sub_version_for_version(Version version) {
 }
 
 uint32_t default_specific_version_for_version(Version version, int64_t sub_version) {
-  // For versions that don't support send_function_call by default, we need
-  // to set the specific_version based on sub_version. Fortunately, all
-  // versions that share sub_version values also support send_function_call,
-  // so for those versions we get the specific_version later by sending the
-  // VersionDetectDC, VersionDetectGC, or VersionDetectXB call.
+  // For versions that don't support send_function_call by default, we need to set the specific_version based on
+  // sub_version. Fortunately, all versions that share sub_version values also support send_function_call, so for those
+  // versions we get the specific_version later by sending VersionDetectDC, VersionDetectGC, or VersionDetectXB.
   switch (version) {
     case Version::DC_NTE:
       return SPECIFIC_VERSION_DC_NTE; // 1OJ1 (NTE)
@@ -151,7 +149,7 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
     case Version::DC_V1:
       switch (sub_version) {
         case 0x20:
-          return SPECIFIC_VERSION_DC_V1_JP; // 1OJF (1OJ1 and 1OJ2 use 0x20 as well, but are detected without using sub_version)
+          return SPECIFIC_VERSION_DC_V1_JP; // 1OJF (1OJ1 and 1OJ2 use 0x20 also, but are detected without sub_version)
         case 0x21:
           return SPECIFIC_VERSION_DC_V1_US; // 1OEF
         case 0x22:
@@ -301,8 +299,7 @@ uint64_t generate_random_hardware_id(Version version) {
     case Version::PC_V2:
       return 0x0000FFFFFFFFFFFF;
     case Version::GC_NTE:
-      // On GC NTE, the low byte is uninitialized memory from the TProtocol
-      // constructor's stack
+      // On GC NTE, the low byte is uninitialized memory from the TProtocol constructor's stack
       return phosg::random_object<uint8_t>();
     case Version::GC_V3:
     case Version::GC_EP3_NTE:

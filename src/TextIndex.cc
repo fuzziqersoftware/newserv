@@ -174,9 +174,8 @@ BinaryTextSet::BinaryTextSet(const std::string& pr2_data, size_t collection_coun
   auto decompressed = prs_decompress(pr2_decrypted.compressed_data);
   phosg::StringReader r(decompressed);
 
-  // Annoyingly, there doesn't appear to be any bounds-checking on the language
-  // functions, so there are no counts of strings in each collection. We have to
-  // figure out where each collection ends by collecting all the relevant
+  // Annoyingly, there doesn't appear to be any bounds-checking on the language functions, so there are no counts of
+  // strings in each collection. We have to figure out where each collection ends by collecting all the relevant
   // offsets in the file instead.
   ::set<uint32_t> used_offsets;
   size_t root_offset = has_rel_footer
@@ -195,8 +194,8 @@ BinaryTextSet::BinaryTextSet(const std::string& pr2_data, size_t collection_coun
   while (!collection_offsets_r.eof()) {
     auto& collection = this->collections.emplace_back();
     uint32_t first_string_offset_offset = collection_offsets_r.get_u32l();
-    // TODO: Apparently the early formats do actually include keyboards, but
-    // they're just in the middle of the collections list. Sigh...
+    // TODO: Apparently the early formats do actually include keyboards, but they're just in the middle of the
+    // collections list. Sigh...
     try {
       for (uint32_t string_offset_offset = first_string_offset_offset;
           (string_offset_offset == first_string_offset_offset) || !used_offsets.count(string_offset_offset);
@@ -306,9 +305,8 @@ void BinaryTextAndKeyboardsSet::parse_t(const string& pr2_data, bool is_sjis) {
   auto decompressed = prs_decompress(pr2_decrypted.compressed_data);
   phosg::StringReader r(decompressed);
 
-  // Annoyingly, there doesn't appear to be any bounds-checking on the language
-  // functions, so there are no counts of strings in each collection. We have to
-  // figure out where each collection ends by collecting all the relevant
+  // Annoyingly, there doesn't appear to be any bounds-checking on the language functions, so there are no counts of
+  // strings in each collection. We have to figure out where each collection ends by collecting all the relevant
   // offsets in the file instead.
   ::set<uint32_t> used_offsets;
   used_offsets.emplace(r.size() - 8);
@@ -449,8 +447,7 @@ pair<string, string> BinaryTextAndKeyboardsSet::serialize_t(bool is_sjis) const 
 }
 
 TextIndex::TextIndex(
-    const string& directory,
-    function<shared_ptr<const string>(Version, const string&)> get_patch_file)
+    const string& directory, function<shared_ptr<const string>(Version, const string&)> get_patch_file)
     : log("[TextIndex] ", static_game_data_log.min_level) {
   if (!directory.empty()) {
     auto add_version = [&](Version version, const string& subdirectory, function<shared_ptr<TextSet>(const string&, bool)> make_set) -> void {

@@ -17,10 +17,9 @@
 #include "StaticGameData.hh"
 
 struct QuestMetadata {
-  // This structure contains configuration that should be the same across all
-  // versions of the quest, except for the name and description strings. This
-  // is used in both the Quest and VersionedQuest structures; in Quest, the
-  // name and description are used only internally.
+  // This structure contains configuration that should be the same across all versions of the quest, except for the
+  // name and description strings. This is used in both the Quest and VersionedQuest structures; in Quest, the name and
+  // description are used only internally.
 
   Version version;
   Language language;

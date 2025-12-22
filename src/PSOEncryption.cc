@@ -11,8 +11,6 @@
 
 using namespace std;
 
-// TODO: fix style in this file, especially in psobb functions
-
 RandomGenerator::RandomGenerator(uint32_t seed) : initial_seed(seed) {}
 
 DisabledRandomGenerator::DisabledRandomGenerator() : RandomGenerator(0) {}
@@ -77,8 +75,7 @@ void PSOLFGEncryption::encrypt_both_endian(void* le_vdata, void* be_vdata, size_
   }
 }
 
-PSOV2Encryption::PSOV2Encryption(uint32_t seed)
-    : PSOLFGEncryption(seed, STREAM_LENGTH + 1, STREAM_LENGTH) {
+PSOV2Encryption::PSOV2Encryption(uint32_t seed) : PSOLFGEncryption(seed, STREAM_LENGTH + 1, STREAM_LENGTH) {
   uint32_t a = 1, b = this->initial_seed;
   this->stream[0x37] = b;
   for (uint16_t virtual_index = 0x15; virtual_index <= 0x36 * 0x15; virtual_index += 0x15) {
@@ -106,8 +103,7 @@ PSOEncryption::Type PSOV2Encryption::type() const {
   return Type::V2;
 }
 
-PSOV3Encryption::PSOV3Encryption(uint32_t seed)
-    : PSOLFGEncryption(seed, STREAM_LENGTH, STREAM_LENGTH) {
+PSOV3Encryption::PSOV3Encryption(uint32_t seed) : PSOLFGEncryption(seed, STREAM_LENGTH, STREAM_LENGTH) {
   uint32_t x, y, basekey, source1, source2, source3;
   basekey = 0;
 
@@ -154,9 +150,7 @@ PSOEncryption::Type PSOV3Encryption::type() const {
   return Type::V3;
 }
 
-PSOBBEncryption::PSOBBEncryption(
-    const KeyFile& key, const void* original_seed, size_t seed_size)
-    : state(key) {
+PSOBBEncryption::PSOBBEncryption(const KeyFile& key, const void* original_seed, size_t seed_size) : state(key) {
   this->apply_seed(original_seed, seed_size);
 }
 
@@ -361,11 +355,10 @@ void PSOBBEncryption::tfs1_scramble(uint32_t* out1, uint32_t* out2) const {
 }
 
 void PSOBBEncryption::apply_seed(const void* original_seed, size_t seed_size) {
-  // Note: This part is done in the 03 command handler in the BB client, and
-  // isn't actually part of the encryption library. (Why did they do this?)
+  // Note: This part is done in the 03 command handler in the BB client, and isn't actually part of the encryption
+  // library. (Why did they do this?)
   string seed;
-  const uint8_t* original_seed_data = reinterpret_cast<const uint8_t*>(
-      original_seed);
+  const uint8_t* original_seed_data = reinterpret_cast<const uint8_t*>(original_seed);
   for (size_t x = 0; x < seed_size; x += 3) {
     seed.push_back(original_seed_data[x] ^ 0x19);
     seed.push_back(original_seed_data[x + 1] ^ 0x16);
@@ -614,12 +607,8 @@ void PSOBBEncryption::apply_seed(const void* original_seed, size_t seed_size) {
 }
 
 PSOV2OrV3DetectorEncryption::PSOV2OrV3DetectorEncryption(
-    uint32_t key,
-    const std::unordered_set<uint32_t>& v2_matches,
-    const std::unordered_set<uint32_t>& v3_matches)
-    : key(key),
-      v2_matches(v2_matches),
-      v3_matches(v3_matches) {}
+    uint32_t key, const std::unordered_set<uint32_t>& v2_matches, const std::unordered_set<uint32_t>& v3_matches)
+    : key(key), v2_matches(v2_matches), v3_matches(v3_matches) {}
 
 void PSOV2OrV3DetectorEncryption::encrypt(void* data, size_t size) {
   if (!this->active_crypt) {
@@ -641,7 +630,8 @@ void PSOV2OrV3DetectorEncryption::encrypt(void* data, size_t size) {
     bool v3_match = this->v3_matches.count(decrypted_v3);
     if (!v2_match && !v3_match) {
       throw runtime_error(std::format(
-          "unable to determine crypt version (input={:08X}, v2={:08X}, v3={:08X})", encrypted, decrypted_v2, decrypted_v3));
+          "unable to determine crypt version (input={:08X}, v2={:08X}, v3={:08X})",
+          encrypted, decrypted_v2, decrypted_v3));
     } else if (v2_match && v3_match) {
       throw runtime_error(std::format("ambiguous crypt version (v2={:08X}, v3={:08X})", decrypted_v2, decrypted_v3));
     } else if (v2_match) {
@@ -665,8 +655,7 @@ PSOEncryption::Type PSOV2OrV3DetectorEncryption::type() const {
 
 PSOV2OrV3ImitatorEncryption::PSOV2OrV3ImitatorEncryption(
     uint32_t key, std::shared_ptr<PSOV2OrV3DetectorEncryption> detector_crypt)
-    : key(key),
-      detector_crypt(detector_crypt) {}
+    : key(key), detector_crypt(detector_crypt) {}
 
 void PSOV2OrV3ImitatorEncryption::encrypt(void* data, size_t size) {
   if (!this->active_crypt) {
@@ -761,9 +750,8 @@ shared_ptr<PSOBBEncryption> PSOBBMultiKeyImitatorEncryption::ensure_crypt() {
     if (!key.get()) {
       throw logic_error("server crypt cannot be initialized because client crypt is not ready");
     }
-    // Hack: JSD1 uses the client seed for both ends of the connection and
-    // ignores the server seed (though each end has its own state after that).
-    // To handle this, we use the other crypt's seed if the type is JSD1.
+    // Hack: JSD1 uses the client seed for both ends of the connection and ignores the server seed (though each end has
+    // its own state after that). To handle this, we use the other crypt's seed if the type is JSD1.
     if ((key->subtype == PSOBBEncryption::Subtype::JSD1) && this->jsd1_use_detector_seed) {
       const auto& detector_seed = this->detector_crypt->get_seed();
       this->active_crypt = make_shared<PSOBBEncryption>(*key, detector_seed.data(), detector_seed.size());
@@ -837,9 +825,7 @@ uint32_t encrypt_challenge_time(uint16_t value) {
 uint16_t decrypt_challenge_time(uint32_t value) {
   uint16_t mask = (value >> 0x10);
   uint8_t mask_one_bits = count_one_bits(mask);
-  return ((mask_one_bits < 4) || (mask_one_bits > 12))
-      ? 0xFFFF
-      : ((mask ^ value) & 0xFFFF);
+  return ((mask_one_bits < 4) || (mask_one_bits > 12)) ? 0xFFFF : ((mask ^ value) & 0xFFFF);
 }
 
 string decrypt_v2_registry_value(const void* data, size_t size) {
