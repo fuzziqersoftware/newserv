@@ -661,7 +661,7 @@ HTTPServer::HTTPServer(shared_ptr<ServerState> state)
     }
   });
 
-  this->router.add(HTTPRequest::Method::GET, "/y/data/ep3/maps", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/ep3/maps", [this](ArgsT&&) -> RetT {
     co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> shared_ptr<phosg::JSON> {
       auto ret = make_shared<phosg::JSON>(phosg::JSON::dict());
       for (const auto& [map_number, map] : this->state->ep3_map_index->all_maps()) {
