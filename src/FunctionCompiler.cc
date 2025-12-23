@@ -152,6 +152,11 @@ static unordered_map<uint32_t, std::string> preprocess_function_code(const std::
   size_t line_num = 1;
   vector<uint32_t> current_only_versions;
   unordered_set<uint32_t> current_only_versions_set;
+  auto add_blank_line = [&]() -> void {
+    for (size_t vers_index = 0; vers_index < specific_versions.size(); vers_index++) {
+      version_lines[vers_index].emplace_back("");
+    }
+  };
   for (auto& line : lines) {
     phosg::strip_whitespace(line);
     if (line.starts_with(".only_versions ")) {
@@ -160,10 +165,12 @@ static unordered_map<uint32_t, std::string> preprocess_function_code(const std::
       for (uint32_t specific_version : current_only_versions) {
         current_only_versions_set.emplace(specific_version);
       }
+      add_blank_line();
 
     } else if (line == ".all_versions") {
       current_only_versions.clear();
       current_only_versions_set.clear();
+      add_blank_line();
 
     } else {
       size_t vers_offset = line.find("<VERS ");
