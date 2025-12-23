@@ -5520,6 +5520,7 @@ static asio::awaitable<void> on_EA_BB(shared_ptr<Client> c, Channel::Message& ms
         }
         if (!reward.reward_item.empty()) {
           c->bank_file()->add_item(reward.reward_item, *s->item_stack_limits(c->version()));
+          c->print_bank();
         }
       }
       break;
