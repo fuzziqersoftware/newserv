@@ -878,8 +878,7 @@ g12_hook_end:
 
 
 
-  # Tsumikiri J-Sword special attack + rapid weapon switch bug fix (this part
-  # by fuzziqersoftware)
+  # Tsumikiri J-Sword special attack + rapid weapon switch bug fix (this part by fuzziqersoftware)
 
   .label    tjs_switch_fix_hook_call, <VERS 0x8034CFA8 0x8034E3AC 0x8034F908 0x8034F6BC 0x8034DE5C 0x8034DEA0 0x8034FA88 0x8034EE7C>
   .label    tjs_switch_fix_hook_loc, 0x8000B050
@@ -901,6 +900,35 @@ tjs_switch_fix_hook_end:
   .address  tjs_switch_fix_hook_call
   beq       +0x108
   bl        tjs_switch_fix_hook_loc
+
+
+
+  # Battle param reload bug fix (this part by fuzziqersoftware)
+
+  .only_versions 3OJ2 3OE0 3OE1
+  .label    end_loading_screen, <VERS 0x8001C6D0 0x8001C8F0 0x8001C8F0>
+  .label    load_battle_params, <VERS 0x8001DA48 0x8001DC68 0x8001DC68>
+  .label    bp_reload_hook_loc, 0x8000E1BC
+  .label    bp_reload_hook_call, <VERS 0x801A3A70 0x801A3E4C 0x801A3E4C>
+  .data     bp_reload_hook_loc
+  .deltaof  bp_reload_hook_start, bp_reload_hook_end
+  .address  bp_reload_hook_loc
+bp_reload_hook_start:
+  mflr      r0
+  stwu      [r1 - 0x20], r1
+  stw       [r1 + 0x24], r0
+  bl        end_loading_screen
+  bl        load_battle_params
+  lwz       r0, [r1 + 0x24]
+  addi      r1, r1, 0x20
+  mtlr      r0
+  blr
+bp_reload_hook_end:
+  .data     bp_reload_hook_call
+  .data     4
+  .address  bp_reload_hook_call
+  bl        bp_reload_hook_start
+  .all_versions
 
 
 
