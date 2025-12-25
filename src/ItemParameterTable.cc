@@ -164,7 +164,7 @@ set<uint32_t> ItemParameterTable::compute_all_valid_primary_identifiers() const 
   };
   auto find_items_2d = [&](uint64_t data1) {
     for (size_t x = 0; x < 0x100; x++) {
-      size_t effective_data1 = data1 | (static_cast<uint64_t>(x) << 48);
+      uint64_t effective_data1 = data1 | (static_cast<uint64_t>(x) << 48);
       size_t data2_position = (effective_data1 == 0x0302000000000000) ? 4 : 2;
       if (find_items_1d(effective_data1, data2_position) == 0) {
         break;
