@@ -1977,7 +1977,11 @@ asio::awaitable<HandlerResult> C_6x(shared_ptr<Client> c, Channel::Message& msg)
           bool is_boss = false;
           if (c->proxy_session->map_state) {
             auto ene_st = c->proxy_session->map_state->enemy_state_for_index(c->version(), cmd.enemy_index);
-            is_boss = type_definition_for_enemy(ene_st->super_ene->type).is_boss();
+            const auto& def = type_definition_for_enemy(ene_st->super_ene->type);
+            if (c->check_flag(Client::Flag::DEBUG_ENABLED)) {
+              send_text_message_fmt(c, "$C5E-{:03X} {}", ene_st->e_id, phosg::name_for_enum(ene_st->super_ene->type));
+            }
+            is_boss = def.is_boss();
           }
           if (!is_boss && !(cmd.game_flags & 0x00000800)) {
             cmd.game_flags |= 0x00000800;
