@@ -805,9 +805,11 @@ struct SC_GameGuardCheck_BB_0022 {
 } __packed_ws__(SC_GameGuardCheck_BB_0022, 0x10);
 
 // 0122 (C->S): Time deviation (BB)
-// This command is sent when the client executes a quest opcode 5D (gettime) and the returned timestamp is before the
-// previous timestamp returned, but not by too much - it seems the game only considers deltas between 3 seconds and 30
-// minutes suspicious for these purposes. This command is not valid on BB Trial Edition.
+// This command is not valid on BB Trial Edition.
+// This command is sent when all of the following happen:
+// 1. The client executes a quest opcode 5D (gettime).
+// 2. The timestamp is at least 30 seconds before (less than) the value returned by gettime the last time it was run.
+// 3. Conditions (1) and (2) were both true at least one other time within the past 30 minutes.
 // header.flag is always 1. It may be that this is actually a more general "set cheating flag" command, but it's only
 // used in the case described above; there are no other conditions that cause it to be sent.
 
