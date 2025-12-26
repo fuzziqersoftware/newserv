@@ -259,7 +259,7 @@ void Client::reschedule_save_game_data_timer() {
   this->save_game_data_timer.expires_after(std::chrono::seconds(60));
   this->save_game_data_timer.async_wait([this](std::error_code ec) {
     if (!ec) {
-      if (this->character_file(false)) {
+      if (this->login && this->character_file(false)) {
         this->save_all();
       }
       this->reschedule_save_game_data_timer();
