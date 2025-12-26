@@ -783,6 +783,7 @@ std::shared_ptr<PlayerBank> Client::bank_file(bool allow_load) {
     auto s = this->require_server_state();
     this->bank_data->max_items = s->bb_max_bank_items;
     this->bank_data->max_meseta = s->bb_max_bank_meseta;
+    this->update_bank_data_after_load(this->bank_data);
   }
   return this->bank_data;
 }
@@ -1031,6 +1032,23 @@ void Client::update_character_data_after_load(shared_ptr<PSOBBCharacterFile> cha
   this->log.info_f("Overriding language fields in save files with {}", name_for_language(lang));
   charfile->inventory.language = lang;
   charfile->guild_card.language = lang;
+}
+
+void Client::update_bank_data_after_load(shared_ptr<PlayerBank> bank) {
+  auto s = this->require_server_state();
+  auto limits = s->item_stack_limits(this->version());
+  for (auto& item : bank->items) {
+    if (item.data.is_stackable(*limits)) {
+      if (item.data.data1[5] != item.amount) {
+        this->log.info_f("Updating item data stack count from bank stack count ({} -> {}) for {}",
+            item.data.data1[5], item.amount, item.data.hex());
+        item.data.data1[5] = item.amount;
+      }
+    } else if (item.amount != 1) {
+      this->log.info_f("Clearing bank stack count ({}) for {}", item.amount, item.data.hex());
+      item.amount = 1;
+    }
+  }
 }
 
 void Client::save_all() {

@@ -356,4 +356,5 @@ private:
 
   void load_all_files();
   void update_character_data_after_load(std::shared_ptr<PSOBBCharacterFile> character_data);
+  void update_bank_data_after_load(std::shared_ptr<PlayerBank> bank_data);
 };
