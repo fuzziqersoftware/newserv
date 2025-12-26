@@ -5293,30 +5293,43 @@ static asio::awaitable<void> on_momoka_item_exchange_bb(shared_ptr<Client> c, Su
   const auto& cmd = msg.check_size_t<G_MomokaItemExchange_BB_6xD9>(0xFFFF);
   auto s = c->require_server_state();
   auto p = c->character_file();
+
+  const auto& limits = *s->item_stack_limits(c->version());
+
+  ItemData new_item = cmd.replace_item;
+  assert_quest_item_create_allowed(l, new_item);
+  new_item.enforce_stack_size_limits(limits);
+
+  bool failed = false;
+  ItemData found_item;
   try {
-    const auto& limits = *s->item_stack_limits(c->version());
-
-    ItemData new_item = cmd.replace_item;
-    assert_quest_item_create_allowed(l, new_item);
-    new_item.enforce_stack_size_limits(limits);
-
     size_t found_index = p->inventory.find_item_by_primary_identifier(cmd.find_item.primary_identifier());
-    auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 1, limits);
+    found_item = p->remove_item(p->inventory.items[found_index].data.id, 1, limits);
+  } catch (const std::out_of_range& e) {
+    failed = true;
+  }
+  if (failed) {
+    send_command(c, 0x23, 0x01);
+    co_return;
+  }
 
-    G_ExchangeItemInQuest_BB_6xDB cmd_6xDB = {{0xDB, 0x04, c->lobby_client_id}, 1, found_item.id, 1};
-    send_command_t(c, 0x60, 0x00, cmd_6xDB);
-
-    send_destroy_item_to_lobby(c, found_item.id, 1);
-
+  try {
     new_item.id = l->generate_item_id(c->lobby_client_id);
     p->add_item(new_item, limits);
-    send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
-
-    send_command(c, 0x23, 0x00);
-  } catch (const exception& e) {
-    c->log.warning_f("Momoka item exchange failed: {}", e.what());
-    send_command(c, 0x23, 0x01);
+  } catch (const std::out_of_range& e) {
+    failed = true;
   }
+  if (failed) {
+    p->add_item(found_item, limits); // Add found_item back since we're cancelling the exchange
+    send_command(c, 0x23, 0x02);
+    co_return;
+  }
+
+  G_ExchangeItemInQuest_BB_6xDB cmd_6xDB = {{0xDB, 0x04, c->lobby_client_id}, 1, found_item.id, 1};
+  send_command_t(c, 0x60, 0x00, cmd_6xDB);
+  send_destroy_item_to_lobby(c, found_item.id, 1);
+  send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
+  send_command(c, 0x23, 0x00);
   co_return;
 }
 

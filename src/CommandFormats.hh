@@ -812,8 +812,12 @@ struct SC_GameGuardCheck_BB_0022 {
 // used in the case described above; there are no other conditions that cause it to be sent.
 
 // 23 (S->C): Momoka Item Exchange result (BB)
-// Sent in response to a 6xD9 command from the client. header.flag indicates if an item was exchanged: 0 means success,
-// 1 means failure. This command is not valid on BB Trial Edition.
+// Sent in response to a 6xD9 command from the client. This command is not valid on BB Trial Edition. header.flag
+// indicates the result code:
+//   0 = success
+//   1 = currency item not found
+//   2 = inventory is full
+//   Anything else = generic failure
 
 // 24 (S->C): Secret Lottery Ticket exchange result (BB)
 // Sent in response to a 6xDE command from the client. The client sets 8 sequential quest registers, starting with

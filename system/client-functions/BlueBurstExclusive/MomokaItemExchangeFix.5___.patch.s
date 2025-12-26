@@ -54,7 +54,7 @@ send_6xD9_start:  # [std](void* this @ ecx) -> void
   call      <VERS 0x00801150 0x008003E0>  # send_and_handle_60[std](void* cmd @ ecx) -> void
   add       esp, 0x38
 
-  mov       dword [ebx], 6
+  mov       dword [ebx + 0x20], 6
   push      0
   call      <VERS 0x0083746D 0x00859D2D>  # time[std](void* t @ [esp + 4] = nullptr) -> uint32_t @ eax
   add       esp, 4
