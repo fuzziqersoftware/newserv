@@ -2587,12 +2587,16 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF95E, "bb_box_create_bp", "BB_box_create_BP", {I32, FLOAT32, FLOAT32}, F_V4 | F_ARGS},
 
     // Requests an exchange of Photon Tickets for items. Sends 6xE1.
-    //   valueA = unknown_a1
-    //   valueB = unknown_a2
+    //   regA = result code reg (set to result code upon server response); the result codes are:
+    //     0 = success
+    //     1 = player doesn't have enough Photon Tickets
+    //     2 = inventory is full
+    //     3, 4, or 5 = "server send error" (from Gallon's Plan script; newserv never sends these)
+    //   regB = result index reg (set to valueC upon server response)
     //   valueC = result index (index into QuestF95FResultItems in config.json)
     //   labelD = label to call on success
     //   labelE = label to call on failure
-    {0xF95F, "bb_exchange_pt", "BB_exchage_PT", {I32, I32, I32, I32, I32}, F_V4 | F_ARGS},
+    {0xF95F, "bb_exchange_pt", "BB_exchage_PT", {W_REG32, W_REG32, I32, I32, I32}, F_V4 | F_ARGS},
 
     // Requests a prize from the Meseta gambling prize list. Sends 6xE2. The server responds with 6xE3, which sets the
     // <meseta_slot_prize> replacement token in message strings. The status of this can be checked with

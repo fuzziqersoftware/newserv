@@ -3307,6 +3307,22 @@ void send_quest_function_call(shared_ptr<Client> c, uint16_t label) {
   send_quest_function_call(c->channel, label);
 }
 
+void send_gallon_plan_result(
+    shared_ptr<Client> c,
+    uint16_t label,
+    uint8_t result_code_reg,
+    uint32_t result_code,
+    uint8_t result_index_reg,
+    uint32_t result_index) {
+  S_GallonPlanResult_BB_25 cmd;
+  cmd.label = label;
+  cmd.result_code_reg = result_code_reg;
+  cmd.result_index_reg = result_index_reg;
+  cmd.result_code_value = result_code;
+  cmd.result_index_value = result_index;
+  send_command_t(c, 0x25, 0x00, cmd);
+}
+
 void send_ep3_card_list_update(shared_ptr<Client> c) {
   if (!c->check_flag(Client::Flag::HAS_EP3_CARD_DEFS)) {
     auto s = c->require_server_state();

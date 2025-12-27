@@ -5058,16 +5058,9 @@ static asio::awaitable<void> on_secret_lottery_ticket_exchange_bb(shared_ptr<Cli
 
     uint32_t slt_item_id = p->inventory.items[currency_index].data.id;
 
-    G_ExchangeItemInQuest_BB_6xDB exchange_cmd;
-    exchange_cmd.header.subcommand = 0xDB;
-    exchange_cmd.header.size = 4;
-    exchange_cmd.header.client_id = c->lobby_client_id;
-    exchange_cmd.unknown_a1 = 1;
-    exchange_cmd.item_id = slt_item_id;
-    exchange_cmd.amount = 1;
-    send_command_t(c, 0x60, 0x00, exchange_cmd);
-
+    // Note: It seems Sega used 6xDB here; we use 6x29 instead.
     p->remove_item(slt_item_id, 1, limits);
+    send_destroy_item_to_lobby(c, slt_item_id, 1);
 
     item.id = l->generate_item_id(c->lobby_client_id);
     p->add_item(item, limits);
@@ -5163,30 +5156,38 @@ static asio::awaitable<void> on_quest_F95F_result_bb(shared_ptr<Client> c, Subco
   }
 
   const auto& limits = *s->item_stack_limits(c->version());
-  size_t index = p->inventory.find_item_by_primary_identifier(0x03100400); // Photon Ticket
-  auto ticket_item = p->remove_item(p->inventory.items[index].data.id, result.first, limits);
-  // TODO: Shouldn't we send a 6x29 here? Check if this causes desync in an actual game
 
-  G_ExchangeItemInQuest_BB_6xDB cmd_6xDB;
-  cmd_6xDB.header = {0xDB, 0x04, c->lobby_client_id};
-  cmd_6xDB.unknown_a1 = 1;
-  cmd_6xDB.item_id = ticket_item.id;
-  cmd_6xDB.amount = result.first;
-  send_command_t(c, 0x60, 0x00, cmd_6xDB);
+  bool failed = false;
+  ItemData ticket_item;
+  try {
+    size_t index = p->inventory.find_item_by_primary_identifier(0x03100400); // Photon Ticket
+    ticket_item = p->remove_item(p->inventory.items[index].data.id, result.first, limits);
+  } catch (const out_of_range&) {
+    failed = true;
+  }
+  if (failed) {
+    send_gallon_plan_result(c, cmd.failure_label, cmd.result_code_reg, 1, cmd.result_index_reg, cmd.result_index);
+    co_return;
+  }
 
   ItemData new_item = result.second;
-  new_item.enforce_stack_size_limits(limits);
-  new_item.id = l->generate_item_id(c->lobby_client_id);
-  p->add_item(new_item, limits);
-  send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
+  try {
+    new_item.enforce_stack_size_limits(limits);
+    new_item.id = l->generate_item_id(c->lobby_client_id);
+    p->add_item(new_item, limits);
+  } catch (const out_of_range&) {
+    failed = true;
+  }
+  if (failed) {
+    p->add_item(ticket_item, limits);
+    send_gallon_plan_result(c, cmd.failure_label, cmd.result_code_reg, 2, cmd.result_index_reg, cmd.result_index);
+    co_return;
+  }
 
-  S_GallonPlanResult_BB_25 out_cmd;
-  out_cmd.label = cmd.success_label;
-  out_cmd.reg_num1 = 0x3C;
-  out_cmd.reg_num2 = 0x08;
-  out_cmd.value1 = 0x00;
-  out_cmd.value2 = cmd.result_index;
-  send_command_t(c, 0x25, 0x00, out_cmd);
+  // Note: It seems Sega used 6xDB here; we use 6x29 instead.
+  send_destroy_item_to_lobby(c, ticket_item.id, result.first);
+  send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
+  send_gallon_plan_result(c, cmd.success_label, cmd.result_code_reg, 0, cmd.result_index_reg, cmd.result_index);
   co_return;
 }
 
@@ -5325,8 +5326,7 @@ static asio::awaitable<void> on_momoka_item_exchange_bb(shared_ptr<Client> c, Su
     co_return;
   }
 
-  G_ExchangeItemInQuest_BB_6xDB cmd_6xDB = {{0xDB, 0x04, c->lobby_client_id}, 1, found_item.id, 1};
-  send_command_t(c, 0x60, 0x00, cmd_6xDB);
+  // Note: It seems Sega used 6xDB here; we use 6x29 instead.
   send_destroy_item_to_lobby(c, found_item.id, 1);
   send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
   send_command(c, 0x23, 0x00);

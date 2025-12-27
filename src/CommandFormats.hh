@@ -814,19 +814,20 @@ struct SC_GameGuardCheck_BB_0022 {
 // used in the case described above; there are no other conditions that cause it to be sent.
 
 // 23 (S->C): Momoka Item Exchange result (BB)
-// Sent in response to a 6xD9 command from the client. This command is not valid on BB Trial Edition. header.flag
-// indicates the result code:
+// This command is not valid on BB Trial Edition.
+// Sent in response to a 6xD9 command from the client. header.flag indicates the result code:
 //   0 = success
 //   1 = currency item not found
 //   2 = inventory is full
 //   Anything else = generic failure
 
 // 24 (S->C): Secret Lottery Ticket exchange result (BB)
+// This command is not valid on BB Trial Edition.
 // Sent in response to a 6xDE command from the client. The client sets 8 sequential quest registers, starting with
 // start_reg_num, to the values specified in reg_values. Then it starts a new quest thread at the specified label.
-// header.flag indicates whether the client had any Secret Lottery Tickets in their inventory (and hence could
-// participate): 0 means success, 1 means failure. However, this value is unused by the client.
-// This command is not valid on BB Trial Edition.
+// According to logs from Sega's servers, header.flag indicates whether the client had any Secret Lottery Tickets in
+// their inventory (and hence could participate): 0 means success, 1 means failure. However, this value is unused by
+// the client.
 
 struct S_ExchangeSecretLotteryTicketResult_BB_24 {
   le_uint16_t label = 0;
@@ -836,16 +837,17 @@ struct S_ExchangeSecretLotteryTicketResult_BB_24 {
 } __packed_ws__(S_ExchangeSecretLotteryTicketResult_BB_24, 0x24);
 
 // 25 (S->C): Gallon's Plan result (BB)
-// Sent in response to a 6xE1 command from the client. The client sets the quest registers reg_num1 and reg_num2 to
-// value1 and value2 respectively, then starts a new quest thread at the specified label.
 // This command is not valid on BB Trial Edition.
+// Sent in response to a 6xE1 command from the client. The client sets the quest registers result_code_reg and
+// result_index_reg to result_code_value and result_index_value respectively, then starts a new quest thread at the
+// specified label.
 
 struct S_GallonPlanResult_BB_25 {
   le_uint16_t label = 0;
-  uint8_t reg_num1 = 0;
-  uint8_t reg_num2 = 0;
-  uint8_t value1 = 0;
-  uint8_t value2 = 0;
+  uint8_t result_code_reg = 0;
+  uint8_t result_index_reg = 0;
+  uint8_t result_code_value = 0; // See description of F95F (bb_exchange_pt) in QuestScript.cc for values here
+  uint8_t result_index_value = 0;
   le_uint16_t unused = 0;
 } __packed_ws__(S_GallonPlanResult_BB_25, 8);
 
@@ -3969,7 +3971,7 @@ struct G_FeedMag_6x28 {
   le_uint32_t fed_item_id = 0;
 } __packed_ws__(G_FeedMag_6x28, 0x0C);
 
-// 6x29: Delete inventory item (via bank deposit / sale / feeding MAG) (protected on GC NTE/V3 but not on V4)
+// 6x29: Delete inventory item (via bank deposit / sale / feeding MAG) (protected on GC NTE/V3 but not on BB)
 // This subcommand is also used for reducing the size of stacks - if amount is less than the stack count, the item is
 // not deleted and its ID remains valid.
 
@@ -5957,16 +5959,17 @@ struct G_UpgradeWeaponAttribute_BB_6xDA {
   le_uint16_t failure_label = 0; // labelH
 } __packed_ws__(G_UpgradeWeaponAttribute_BB_6xDA, 0x2C);
 
-// 6xDB: Exchange item in quest (BB)
+// 6xDB: Extended delete inventory item (BB)
 
-struct G_ExchangeItemInQuest_BB_6xDB {
+struct G_ExtendedDeleteInventoryItem_BB_6xDB {
   G_ClientIDHeader header;
-  // If this is 0, the command is identical to 6x29. If this is 1, a function similar to find_item_by_id is called
-  // instead of find_item_by_id, but I don't yet know what exactly the logic differences are (TODO).
-  le_uint32_t unknown_a1 = 0;
+  // If exclude_wrapped is 0, the command is identical to 6x29; if this is 1, the command won't delete any item which
+  // is wrapped. This seems like an odd feature; shouldn't we expect that the server and client have the same item
+  // state, so the server would already know if the item was wrapped or not before sending this?
+  le_uint32_t exclude_wrapped = 0;
   le_uint32_t item_id = 0;
   le_uint32_t amount = 0;
-} __packed_ws__(G_ExchangeItemInQuest_BB_6xDB, 0x10);
+} __packed_ws__(G_ExtendedDeleteInventoryItem_BB_6xDB, 0x10);
 
 // 6xDC: Saint-Milion/Shambertin/Kondrieu boss actions (BB)
 
@@ -6027,8 +6030,8 @@ struct G_RequestItemDropFromQuest_BB_6xE0 {
 
 struct G_ExchangePhotonTickets_BB_6xE1 {
   G_ClientIDHeader header;
-  uint8_t unknown_a1 = 0; // valueA
-  uint8_t unknown_a2 = 0; // valueB
+  uint8_t result_code_reg = 0; // valueA
+  uint8_t result_index_reg = 0; // valueB
   uint8_t result_index = 0; // valueC
   uint8_t unused = 0;
   le_uint16_t success_label = 0; // valueD

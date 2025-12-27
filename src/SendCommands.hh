@@ -380,6 +380,14 @@ void send_rare_enemy_index_list(std::shared_ptr<Client> c, const std::vector<siz
 void send_quest_function_call(std::shared_ptr<Channel> ch, uint16_t label);
 void send_quest_function_call(std::shared_ptr<Client> c, uint16_t label);
 
+void send_gallon_plan_result(
+    std::shared_ptr<Client> c,
+    uint16_t label,
+    uint8_t result_code_reg,
+    uint32_t result_code,
+    uint8_t result_index_reg,
+    uint32_t result_index);
+
 void send_ep3_card_list_update(std::shared_ptr<Client> c);
 void send_ep3_media_update(
     std::shared_ptr<Client> c, uint32_t type, uint32_t which, const std::string& compressed_data);
