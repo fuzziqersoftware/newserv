@@ -1253,6 +1253,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   valueA = 1: Spaceship (floor 0x11)
     //   valueA > 1 and < 0x12: Episode 1 areas (Pioneer 2, Forest 1, etc.)
     //   valueA >= 0x12: No effect
+    // Note that if the player doesn't start in the city (Pioneer 2 or Lab), the client will not reload the common and
+    // rare item tables (ItemPT and ItemRT). This means, for example, that starting an Episode 2 quest from an Episode
+    // 1 game will result in Episode 2 enemies' drop-anything rates being all zeroes, since the Episode 1 ItemPT is
+    // still loaded. This is only an issue in client drop mode; on newserv, you can forbid client drop mode in the
+    // quest's metadata JSON file if needed. (See q058.json for documentation on how to do this.)
     {0xF810, "ba_initial_floor", nullptr, {I32}, F_V2_V4 | F_ARGS},
 
     // Clears all battle rules.
@@ -2427,7 +2432,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Sets the floor where the players will start. This generally should be used in the start label (where
     // map_designate, etc. are used). This is exactly the same as ba_initial_floor, except the floor numbers are not
-    // remapped: in Episode 1, 0 means Pioneer 2, 1 means Forest 1, etc.
+    // remapped: in Episode 1, 0 means Pioneer 2, 1 means Forest 1, etc. The warning on ba_initial_floor about common
+    // and rare item tables also applies to this opcode.
     {0xF945, "initial_floor", nullptr, {I32}, F_V3_V4 | F_ARGS},
 
     // Computes the sine, cosine, or tangent of the input angle. Angles are in the range [0, 65535].

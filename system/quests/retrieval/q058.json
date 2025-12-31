@@ -1,86 +1,72 @@
 {
-  // Each quest may have an optional JSON file (like this one) that defines
-  // server-side behaviors for the quest.
+  // Each quest may have an optional JSON file (like this one) that defines server-side behaviors for the quest.
 
-  // Quests may be set to be unavailable until a preceding quest has been
-  // cleared or a team reward has been purchased. To enable this behavior, set
-  // a value for AvailableIf in the quest's JSON file. (This is ignored if the
-  // player has the DISABLE_QUEST_REQUIREMENTS flag in their account.) This
-  // field's value should be an expression that tests any of the following:
+  // Quests may be set to be unavailable until a preceding quest has been cleared or a team reward has been purchased.
+  // Quests that are considered unavailable don't appear in the quest menu at all. To set a condition for a quest to be
+  // available, you can set AvailableIf in the quest's JSON file. The value for AvailableIf should be an expression
+  // that tests any of the following:
   //   F_XXXX: Quest flag specified in hex (e.g. F_014D)
-  //   CC_EpX_Y: Whether or not Challenge stage X in Episode Y is complete
-  //   T_ZZZ: Whether or not the player's BB team has reward ZZZ
+  //   CC_EpX_Y: Whether or not Challenge stage X in Episode Y is complete (e.g. CC_Ep1_7)
+  //   T_ZZZ: Whether or not the player's BB team has reward with key ZZZ (as defined in TeamRewards in config.json)
   //   V_NumPlayers: The number of players in the current game
   //   V_Event: The holiday event in the current game
-  //   V_V1Present: Whether there are any V1 players in the current game
-  // You can also use constants, parentheses, and many common integer and
-  // boolean operators. An example expression with random values is shown here.
+  //   V_V1Present: Whether there are any V1 players in the current game (true or false)
+  // You can also use constants, parentheses, and many common integer and boolean operators. An example expression with
+  // random values is shown here.
   // "AvailableIf": "(F_016D || T_MyCustomQuest || (V_NumPlayers <= 2)) && !F_0173",
 
-  // On BB, quests may be disabled but still visible to the player. This
-  // expression controls when that should be the case. If AvailableIf evaluates
-  // to false, this is ignored. This field is also ignored if the player has
-  // the DISABLE_QUEST_REQUIREMENTS flag in their account.
+  // On BB, quests may be disabled but still visible to the player. This expression controls when that should be the
+  // case. This field is ignored if AvailableIf evaluates to false, since the quest isn't even shown to the player.
   // "EnabledIf": "!F_0169",
 
-  // On BB, a quest's joinability flag is part of the quest file header, but
-  // other versions don't natively support joining quests in progress. This
-  // flag, if present, enables non-BB quests to be joined when already in
-  // progress. Note that this will likely not work properly unless the quest
-  // script is designed to support joining players.
+  // On BB, a quest's joinability flag is part of the quest file header, but other versions don't natively support
+  // joining quests in progress. This flag, if present, enables non-BB quests to be joined when already in progress.
+  // Note that this will likely not work properly unless the quest script is designed to support players joining after
+  // it has already started.
   // "Joinable": true,
 
-  // If a quest is joinable and this field is specified, then setting this
-  // register to a nonzero value via the sync_register opcode will cause the
-  // game to be locked and not allow any further joins. If the register is set
-  // to zero again, joining will be allowed again. This field is ignored for
-  // quests that do not have the Joinable option set above.
+  // If a quest is joinable and this field is specified, then setting this register to a nonzero value via the
+  // sync_register opcode will cause the game to be locked and not allow any further joins. If the register is set to
+  // zero again, joining will be allowed again. This field is ignored for quests that do not have the Joinable option
+  // set above. (If the quest is joinable and this field is not set, players may join at any time during the quest.)
   // "LockStatusRegister": 249,
 
-  // Normally, the $quest command requires $debug to be enabled, but if this
-  // option is set, this quest may be loaded via $quest even if $debug is off
-  // if there are no other players present in the game. When a quest is loaded
-  // via $quest, AvailableIf and EnabledIf are not checked, so it's inadvisable
-  // to use this option if either of those options are also used.
+  // Normally, the $quest command requires $debug to be enabled, but if this option is set, this quest may be loaded
+  // via $quest even if $debug is off if there are no other players present in the game. When a quest is loaded
+  // via $quest, AvailableIf and EnabledIf are not checked, so it's inadvisable to use this option if either of those
+  // options are also used.
   // "AllowStartFromChatCommand": true,
 
-  // If this field is specified, it overrides the default common item table for
-  // the duration of the quest. The common item table name must begin with
-  // either "common-table-" or "ItemPT-", and the corresponding file should be
-  // in system/item-tables/ and should be in .json, .afs, .gsl, or .gslb
-  // format. The file extension (.json, etc.) should not be included here. If
-  // you use this, make sure to set AllowedDropModes appropriately below.
+  // If this field is specified, it overrides the default common item table for the duration of the quest. The common
+  // item table name must begin with either "common-table-" or "ItemPT-", and the corresponding file should be in
+  // system/item-tables/ and should be in .json, .afs, .gsl, or .gslb format. The file extension (.json, etc.) should
+  // not be included here. If you use this, make sure to set AllowedDropModes appropriately below so the CLIENT drop
+  // mode is not allowed (since the client won't use the custom table).
   // "CommonItemSetName": "common-table-custom1",
 
-  // If this field is specified, it overrides the default rare item table for
-  // the duration of the quest. The rare item table name must begin with either
-  // "rare-table-" or "ItemRT-". As for common item sets, the rare table must
-  // be in system/item-tables/. If it's in JSON format, the table name must end
-  // with -v1, -v2, -v3, or -v4. If you use this, make sure to set
-  // AllowedDropModes appropriately below.
+  // If this field is specified, it overrides the default rare item table for the duration of the quest. The rare item
+  // table name must begin with either "rare-table-" or "ItemRT-". As for common item sets, the rare table must be in
+  // system/item-tables/. If it's in JSON format, the table name must end with -v1, -v2, -v3, or -v4. If you use this,
+  // make sure to set AllowedDropModes appropriately below so the CLIENT drop mode is not allowed (since the client
+  // won't use the custom table).
   // "RareItemSetName": "rare-table-custom1",
 
-  // If these fields are specified, they override the allowed drop modes and
-  // the default drop mode for the game when the quest is loaded. These
-  // function analogously to the drop mode fields in config.json; see the
-  // comments there for more information. If a custom common or rare table is
-  // also specified above, the client drop mode should be disallowed here (by
-  // clearing the 0x02 bit of AllowedDropModes).
+  // If these fields are specified, they override the allowed drop modes and the default drop mode for the game when
+  // the quest is loaded. These function analogously to the drop mode fields in config.json; see the comments there for
+  // more information. If a custom common or rare table is also specified above, the client drop mode should be
+  // disallowed here (by clearing the 0x02 bit of AllowedDropModes).
   // "AllowedDropModes": 0x1D,
   // "DefaultDropMode": "SERVER_PRIVATE",
 
-  // Quests may override enemies' stats, which may result in a different amount
-  // of experience than the enemy would give by default. If the quest uses the
-  // set_enemy_physical_data opcode (or get_physical_data in qedit), then the
-  // EXP values should be set in this dictionary. Each entry here applies to a
-  // specific enemy type in a specific difficulty level on a specific floor (or
-  // on all floors).
+  // Quests may override enemies' stats, which may result in a different amount of experience than the enemy would give
+  // by default. If the quest uses the set_enemy_physical_data opcode (or get_physical_data in qedit), then the EXP
+  // values should be set in this dictionary. Each entry here applies to a specific enemy type in a specific difficulty
+  // level on a specific floor (or on all floors).
   // "EnemyEXPOverrides": {
-  //   // Key is like "Difficulty:Floor:EnemyType" or "Difficulty:EnemyType",
-  //   // where floor is a decimal or hexadecimal integer and EnemyType matches
-  //   // one of the values in the EnemyType enum in EnemyType.hh. For example:
-  //   "Normal:1:GOBOOMA": 100, // Normal difficulty, floor 1 (Forest 1) only
-  //   "VeryHard:0x0B:DRAGON": 10000, // Very Hard difficulty, floor 11 (Dragon)
-  //   "Ultimate:DELSABER": 200, // Ultimate difficulty, all floors
+  //   // Key is like "Difficulty:Floor:EnemyType" or "Difficulty:EnemyType", where floor is a decimal or hexadecimal
+  //   // integer and EnemyType matches one of the values in the EnemyType enum in EnemyType.hh. For example:
+  //   "Normal:1:GOBOOMA": 100, // Normal difficulty, floor 1 (Forest 1) only, Gobooma
+  //   "VeryHard:0x0B:DRAGON": 10000, // Very Hard difficulty, floor 11 (Under the Dome), Dragon
+  //   "Ultimate:DELSABER": 200, // Ultimate difficulty, all floors, Delsaber
   // },
 }
