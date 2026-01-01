@@ -669,9 +669,14 @@ static asio::awaitable<HandlerResult> C_B_E0(shared_ptr<Client> c, Channel::Mess
 
 static asio::awaitable<HandlerResult> S_B_E2(shared_ptr<Client> c, Channel::Message& msg) {
   if (c->check_flag(Client::Flag::PROXY_SAVE_FILES)) {
-    string output_filename = std::format("system.{}.psosys", phosg::now());
-    phosg::save_object_file<PSOBBBaseSystemFile>(output_filename, msg.check_size_t<PSOBBBaseSystemFile>());
-    c->log.info_f("Wrote system file to {}", output_filename);
+    const auto& cmd = msg.check_size_t<S_SyncSystemFile_BB_E2>();
+    uint64_t ts = phosg::now();
+    string system_filename = std::format("system.{}.psosys", ts);
+    string team_membership_filename = std::format("system.{}.psosysteam", ts);
+    phosg::save_object_file(system_filename, cmd.system_file);
+    phosg::save_object_file(team_membership_filename, cmd.team_membership);
+    c->log.info_f("Wrote system file to {}", system_filename);
+    c->log.info_f("Wrote team membership to {}", team_membership_filename);
   }
   co_return HandlerResult::FORWARD;
 }
@@ -684,6 +689,96 @@ static asio::awaitable<HandlerResult> S_B_E7(shared_ptr<Client> c, Channel::Mess
     phosg::fwritex(f.get(), &header, sizeof(header));
     phosg::fwritex(f.get(), msg.data);
     c->log.info_f("Wrote player data to {}", output_filename);
+  }
+  co_return HandlerResult::FORWARD;
+}
+
+static asio::awaitable<HandlerResult> S_B_DC(shared_ptr<Client> c, Channel::Message& msg) {
+  if (c->check_flag(Client::Flag::PROXY_SAVE_FILES) && (msg.command == 0x02DC)) {
+    const auto& cmd = msg.check_size_t<S_GuildCardFileChunk_02DC>(8, sizeof(S_GuildCardFileChunk_02DC));
+    size_t chunk_size = msg.data.size() - 8;
+    size_t chunk_offset = cmd.chunk_index * 0x6800;
+    if (chunk_offset >= sizeof(PSOBBGuildCardFile)) {
+      throw std::runtime_error("Guild Card file chunk offset out of range");
+    }
+    if (chunk_offset + chunk_size > sizeof(PSOBBGuildCardFile)) {
+      throw std::runtime_error("Guild Card file chunk extends beyond end of file");
+    }
+
+    if (!c->proxy_session->bb_guild_card_data) {
+      c->proxy_session->bb_guild_card_data = std::make_shared<PSOBBGuildCardFile>();
+    }
+    memcpy(
+        reinterpret_cast<uint8_t*>(c->proxy_session->bb_guild_card_data.get()) + chunk_offset,
+        cmd.data.data(), chunk_size);
+  }
+  co_return HandlerResult::FORWARD;
+}
+
+static asio::awaitable<HandlerResult> C_B_DC(shared_ptr<Client> c, Channel::Message& msg) {
+  if (c->check_flag(Client::Flag::PROXY_SAVE_FILES) && (msg.command == 0x03DC)) {
+    const auto& cmd = msg.check_size_t<C_GuildCardDataRequest_BB_03DC>();
+    if ((cmd.cont == 0) && c->proxy_session->bb_guild_card_data) {
+      string output_filename = std::format("guildcard.{}.psocard", phosg::now());
+      phosg::save_object_file(output_filename, *c->proxy_session->bb_guild_card_data);
+      c->log.info_f("Wrote Guild Card data to {}", output_filename);
+    }
+  }
+  co_return HandlerResult::FORWARD;
+}
+
+static asio::awaitable<HandlerResult> S_B_EB(shared_ptr<Client> c, Channel::Message& msg) {
+  if (c->check_flag(Client::Flag::PROXY_SAVE_FILES)) {
+    if (msg.command == 0x01EB) {
+      const auto* entries = &msg.check_size_t<S_StreamFileIndexEntry_BB_01EB>(
+          sizeof(S_StreamFileIndexEntry_BB_01EB) * msg.flag);
+      c->proxy_session->bb_stream_file_entries.clear();
+      size_t total_size = 0;
+      for (size_t z = 0; z < msg.flag; z++) {
+        c->proxy_session->bb_stream_file_entries.emplace_back(entries[z]);
+        total_size += entries[z].size;
+      }
+      c->proxy_session->bb_stream_file_data.clear();
+      c->proxy_session->bb_stream_file_data.resize(total_size, '\xFF');
+      c->proxy_session->bb_stream_file_data_received = 0;
+
+    } else if (msg.command == 0x02EB) {
+      const auto& cmd = msg.check_size_t<S_StreamFileChunk_BB_02EB>(4, sizeof(S_StreamFileChunk_BB_02EB));
+      size_t chunk_offset = cmd.chunk_index * 0x6800;
+      size_t chunk_size = msg.data.size() - 4;
+      if (chunk_offset >= c->proxy_session->bb_stream_file_data.size()) {
+        throw std::runtime_error("Stream file chunk offset out of range");
+      }
+      if (chunk_offset + chunk_size > c->proxy_session->bb_stream_file_data.size()) {
+        throw std::runtime_error(std::format(
+            "Stream file chunk extends beyond end of file (received 0x{:X} bytes at offset 0x{:X}; limit is 0x{:X})",
+            chunk_size, chunk_offset, c->proxy_session->bb_stream_file_data.size()));
+      }
+      memcpy(c->proxy_session->bb_stream_file_data.data() + chunk_offset, cmd.data.data(), chunk_size);
+      c->proxy_session->bb_stream_file_data_received += chunk_size;
+      if (c->proxy_session->bb_stream_file_data_received == c->proxy_session->bb_stream_file_data.size()) {
+        string output_prefix = std::format("streamfile.{}.", phosg::now());
+        for (const auto& entry : c->proxy_session->bb_stream_file_entries) {
+          std::string filename = entry.filename.decode();
+          std::string sanitized_filename = filename;
+          for (char& ch : sanitized_filename) {
+            if (((ch < '0') || (ch > '9')) && ((ch < 'A') || (ch > 'Z')) && ((ch < 'a') || (ch > 'z')) && (ch != '.')) {
+              ch = '_';
+            }
+          }
+          if (entry.offset >= c->proxy_session->bb_stream_file_data.size()) {
+            c->log.warning_f("BB stream file entry {} begins beyond end of data", filename);
+          } else if (entry.offset + entry.size > c->proxy_session->bb_stream_file_data.size()) {
+            c->log.warning_f("BB stream file entry {} ends beyond end of data", filename);
+          } else {
+            std::string output_filename = output_prefix + sanitized_filename;
+            auto f = phosg::fopen_unique(output_filename, "wb");
+            phosg::fwritex(f.get(), c->proxy_session->bb_stream_file_data.data() + entry.offset, entry.size);
+            c->log.info_f("Wrote stream file entry {}", output_filename);
+          }
+        }
+      }
+    }
   }
   co_return HandlerResult::FORWARD;
 }
@@ -2356,7 +2451,7 @@ static on_message_t handlers[0x100][NUM_VERSIONS][2] = {
 /* D9 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        C_GX_D9},      {S_invalid,        C_GX_D9},      {S_invalid,        C_GX_D9},      {S_invalid,     C_GX_D9},      {S_invalid,    C_B_D9}},
 /* DA */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_V3_BB_DA,       nullptr},      {S_V3_BB_DA,       nullptr},      {S_V3_BB_DA,       nullptr},      {S_V3_BB_DA,    nullptr},      {S_V3_BB_DA,   nullptr}},
 /* DB */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
-/* DC */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {nullptr,          nullptr},      {nullptr,          nullptr},      {nullptr,          nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* DC */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {nullptr,          nullptr},      {nullptr,          nullptr},      {nullptr,          nullptr},      {S_invalid,     nullptr},      {S_B_DC,       C_B_DC}},
 /* DD */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
 /* DE */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
 /* DF */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
@@ -2372,7 +2467,7 @@ static on_message_t handlers[0x100][NUM_VERSIONS][2] = {
 /* E8 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_E8,             nullptr},      {S_E8,             nullptr},      {S_E8,             nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
 /* E9 */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_66_69_E9,       nullptr},      {S_66_69_E9,       nullptr},      {S_66_69_E9,       nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
 /* EA */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {nullptr,          nullptr},      {nullptr,          nullptr},      {nullptr,          nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
-/* EB */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_DG_65_67_68_EB, nullptr},      {S_DG_65_67_68_EB, nullptr},      {S_DG_65_67_68_EB, nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
+/* EB */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_DG_65_67_68_EB, nullptr},      {S_DG_65_67_68_EB, nullptr},      {S_DG_65_67_68_EB, nullptr},      {S_invalid,     nullptr},      {S_B_EB,       nullptr}},
 /* EC */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,    nullptr}},
 /* ED */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {nullptr,          nullptr},      {nullptr,          nullptr},      {nullptr,          nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
 /* EE */ {{S_invalid,     nullptr}, {S_invalid,     nullptr}, {S_invalid,     nullptr},  {S_invalid,     nullptr},     {S_invalid,        nullptr},     {S_invalid,        nullptr},      {S_invalid,     nullptr},      {S_invalid,     nullptr},      {S_invalid,        nullptr},     {nullptr,          nullptr},      {nullptr,          nullptr},      {nullptr,          nullptr},      {S_invalid,     nullptr},      {nullptr,      nullptr}},
@@ -2408,7 +2503,7 @@ static on_message_t get_handler(Version version, bool from_server, uint8_t comma
 }
 
 asio::awaitable<void> on_proxy_command(shared_ptr<Client> c, bool from_server, unique_ptr<Channel::Message> msg) {
-  auto fn = get_handler(c->version(), from_server, msg->command);
+  auto fn = get_handler(c->version(), from_server, msg->command & 0xFF);
   try {
     auto res = co_await fn(c, *msg);
     if (res == HandlerResult::FORWARD) {

@@ -8,8 +8,10 @@
 #include <vector>
 
 #include "Channel.hh"
+#include "CommandFormats.hh"
 #include "ItemCreator.hh"
 #include "Map.hh"
+#include "SaveFileFormats.hh"
 
 struct ServerState;
 
@@ -78,6 +80,10 @@ struct ProxySession {
     std::string data;
   };
   std::unordered_map<std::string, SavingFile> saving_files;
+  std::shared_ptr<PSOBBGuildCardFile> bb_guild_card_data; // Only used if save files is enabled
+  std::vector<S_StreamFileIndexEntry_BB_01EB> bb_stream_file_entries; // Only used if save files is enabled
+  std::string bb_stream_file_data; // Only used if save files is enabled
+  size_t bb_stream_file_data_received = 0;
 
   void set_drop_mode(std::shared_ptr<ServerState> s, Version version, int64_t override_random_seed, ProxyDropMode new_mode);
 

@@ -3342,6 +3342,7 @@ struct S_StreamFileIndexEntry_BB_01EB {
 } __packed_ws__(S_StreamFileIndexEntry_BB_01EB, 0x4C);
 
 // 02EB (S->C): Send stream file chunk (BB)
+// The command may be shorter than this structure for the last chunk.
 
 struct S_StreamFileChunk_BB_02EB {
   le_uint32_t chunk_index = 0;

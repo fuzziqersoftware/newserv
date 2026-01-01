@@ -1490,11 +1490,9 @@ static asio::awaitable<void> on_93_BB(shared_ptr<Client> c, Channel::Message& ms
     co_return;
 
   } else if (s->proxy_destination_bb.has_value()) {
-    // Start a proxy session immediately if there's a destination set. Two things to watch out for:
-    // - Ignore the persistent config if this is the first data server connection, to prevent quick reconnects from
-    //   incorrectly reusing the old session's state.
-    // - We don't send 00E6 (send_client_init_bb) in this case. This is because the login command is resent to the
-    //   remote server, and we forward its response back to the client directly.
+    // Start a proxy session immediately if there's a destination set. We don't send 00E6 (send_client_init_bb) in this
+    // case. This is because the login command is resent to the remote server, and we forward its response back to the
+    // client directly.
     const auto& [host, port] = *s->proxy_destination_bb;
     co_await start_proxy_session(c, host, port, c->bb_connection_phase != 0);
     c->proxy_session->remote_client_config_data = c->bb_client_config;
