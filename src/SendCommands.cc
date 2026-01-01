@@ -4183,8 +4183,10 @@ void send_server_time(shared_ptr<Client> c) {
 }
 
 void send_change_event(shared_ptr<Client> c, uint8_t new_event) {
-  // This command isn't supported on versions before V3, nor on Trial Edition.
-  if (!is_v1_or_v2(c->version())) {
+  // This command isn't supported on versions before V3 (including GC NTE), nor on the BB data server
+  if (((c->version() != Version::BB_V4) || (c->bb_connection_phase >= 0x04)) &&
+      !is_v1_or_v2(c->version()) &&
+      !is_patch(c->version())) {
     send_command(c, 0xDA, new_event);
   }
 }
