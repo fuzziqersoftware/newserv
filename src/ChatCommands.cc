@@ -1224,17 +1224,25 @@ ChatCommandDefinition cc_item(
       a.check_cheats_enabled_or_allowed(s->cheat_flags.create_items);
 
       ItemData item;
+      bool was_enqueued = false;
       if (a.c->proxy_session) {
         if (a.c->version() == Version::BB_V4) {
           throw precondition_failed("$C6This command cannot\nbe used in proxy\nsessions in BB games");
         }
         a.check_is_leader();
 
-        item = s->parse_item_description(a.c->version(), a.text);
-        item.id = phosg::random_object<uint32_t>() | 0x80000000;
+        if (a.text.starts_with("!")) {
+          item = s->parse_item_description(a.c->version(), a.text.substr(1));
+          a.c->proxy_session->next_drop_item = item;
+          was_enqueued = true;
 
-        send_drop_stacked_item_to_channel(s, a.c->channel, item, a.c->floor, a.c->pos);
-        send_drop_stacked_item_to_channel(s, a.c->proxy_session->server_channel, item, a.c->floor, a.c->pos);
+        } else {
+          item = s->parse_item_description(a.c->version(), a.text);
+          item.id = phosg::random_object<uint32_t>() | 0x80000000;
+
+          send_drop_stacked_item_to_channel(s, a.c->channel, item, a.c->floor, a.c->pos);
+          send_drop_stacked_item_to_channel(s, a.c->proxy_session->server_channel, item, a.c->floor, a.c->pos);
+        }
 
       } else {
         auto l = a.c->require_lobby();
@@ -1251,7 +1259,11 @@ ChatCommandDefinition cc_item(
       }
 
       string name = s->describe_item(a.c->version(), item, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
-      send_text_message(a.c, "$C7Item created:\n" + name);
+      if (was_enqueued) {
+        send_text_message(a.c, "$C7Next item:\n" + name);
+      } else {
+        send_text_message(a.c, "$C7Item created:\n" + name);
+      }
       co_return;
     });
 

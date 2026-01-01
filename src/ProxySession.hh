@@ -58,6 +58,7 @@ struct ProxySession {
   // Note: We intentionally don't use the client's item ID space because the client may create items at the same time
   // as the proxy, so server/client state could go out of sync
   uint32_t next_item_id = 0x44000000;
+  ItemData next_drop_item;
 
   struct PersistentConfig {
     uint32_t account_id;

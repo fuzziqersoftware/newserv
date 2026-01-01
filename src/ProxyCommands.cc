@@ -823,6 +823,21 @@ static asio::awaitable<HandlerResult> SC_6x60_6xA2(shared_ptr<Client> c, Channel
     co_return HandlerResult::FORWARD;
   }
 
+  G_SpecializableItemDropRequest_6xA2 cmd = normalize_drop_request(msg.data.data(), msg.data.size());
+
+  if (!c->proxy_session->next_drop_item.empty()) {
+    c->log.info_f("An override item is waiting; creating it");
+    auto s = c->require_server_state();
+    bool is_obj = (cmd.rt_index == 0x30);
+    c->proxy_session->next_drop_item.id = 0x06010000 | cmd.entity_index | (is_obj ? 0x4000 : 0x1000);
+    send_drop_item_to_channel(
+        s, c->channel, c->proxy_session->next_drop_item, is_obj ? 2 : 1, cmd.floor, cmd.pos, cmd.entity_index);
+    send_drop_item_to_channel(
+        s, c->proxy_session->server_channel, c->proxy_session->next_drop_item, is_obj ? 2 : 1, cmd.floor, cmd.pos, cmd.entity_index);
+    c->proxy_session->next_drop_item.clear();
+    co_return HandlerResult::SUPPRESS;
+  }
+
   switch (c->proxy_session->drop_mode) {
     case ProxyDropMode::DISABLED:
       co_return HandlerResult::SUPPRESS;
@@ -843,7 +858,6 @@ static asio::awaitable<HandlerResult> SC_6x60_6xA2(shared_ptr<Client> c, Channel
     co_return HandlerResult::FORWARD;
   }
 
-  G_SpecializableItemDropRequest_6xA2 cmd = normalize_drop_request(msg.data.data(), msg.data.size());
   auto rec = reconcile_drop_request_with_map(
       c, cmd, c->proxy_session->lobby_difficulty, c->proxy_session->lobby_event, c->proxy_session->map_state, false);
 
