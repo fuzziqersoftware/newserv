@@ -2296,6 +2296,25 @@ ChatCommandDefinition cc_savechar(
       co_return;
     });
 
+ChatCommandDefinition cc_savefiles(
+    {"$savefiles"},
+    +[](const Args& a) -> asio::awaitable<void> {
+      a.check_is_proxy(true);
+
+      auto s = a.c->require_server_state();
+      if (!s->proxy_allow_save_files) {
+        send_text_message(a.c, "$C6Save files is not\nallowed");
+      } else if (a.c->check_flag(Client::Flag::PROXY_SAVE_FILES)) {
+        a.c->clear_flag(Client::Flag::PROXY_SAVE_FILES);
+        send_text_message(a.c, "$C6Save files disabled");
+      } else {
+        auto s = a.c->require_server_state();
+        a.c->set_flag(Client::Flag::PROXY_SAVE_FILES);
+        send_text_message(a.c, "$C6Save files enabled");
+      }
+      co_return;
+    });
+
 ChatCommandDefinition cc_saverec(
     {"$saverec"},
     +[](const Args& a) -> asio::awaitable<void> {
