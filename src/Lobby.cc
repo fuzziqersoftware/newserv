@@ -330,6 +330,12 @@ void Lobby::reassign_leader_on_client_departure(size_t leaving_client_index) {
     }
     if (this->clients[x]) {
       this->leader_id = x;
+      // PSO GC's behavior is to reload the ItemPT and ItemRT tables only when the player returns to the city (Pioneer
+      // 2 or Lab). This means the game's effective section ID should only change after the new leader is assigned, and
+      // that new leader returns to the city. On BB, however, there is no evidence that this behavior was preserved;
+      // it's more likely that Sega's server either switched drop tables instantly when the leader changed, or never
+      // switched drop tables after game creation. We implement both of these behaviors (via the USE_CREATOR_SECTION_ID
+      // lobby flag), and we intentionally don't implement the more complex pre-BB behavior.
       this->create_item_creator();
       return;
     }
