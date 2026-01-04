@@ -1,4 +1,21 @@
 {
+  // This file specifies how non-rare items should be generated. For details on how each field works, see the comments
+  // in CommonItemSet::Table::OffsetsT (in CommonItemSet.hh).
+  // Each scenario has defaults which are automatically propagated from the previous scenario unless overridden. The
+  // order of precedence is:
+  // - If the section ID is not Viridia, the defaults are from the same episode, game mode, and difficulty, but
+  //   previous section ID
+  // - If the section ID is Viridia but the difficulty is not Normal, the defaults are from the same episode and game
+  //   mode, but previous difficulty
+  // - If the game mode is not Normal, the defaults are from the same episode in Normal mode
+  // - For Viridia in Normal mode and Normal difficulty, there are no defaults - all fields must be specified
+  // For example:
+  // - Keys not specified in Ep1:Battle:VeryHard:Bluefull are inherited from Ep1:Battle:VeryHard:Skyly, since Skyly is
+  //   the section ID before Bluefull
+  // - Keys not specified in Ep1:Battle:VeryHard:Viridia are inherited from Ep1:Battle:Hard:Viridia, since Hard is the
+  //   difficulty before Very Hard
+  // - Keys not specified in Ep1:Battle:Normal:Viridia are inherited from Ep1:Normal:Normal:Viridia, since all
+  //   non-Normal modes inherit from Normal mode
   "Ep1:Battle:Hard:Bluefull": {
     "BaseWeaponTypeProbTable": [13, 7, 6, 13, 6, 13, 7, 7, 4, 13, 10, 1],
     "SubtypeAreaLengthTable": [4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 7, 10]
