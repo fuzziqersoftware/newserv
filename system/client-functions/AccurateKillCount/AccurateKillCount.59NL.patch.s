@@ -24,10 +24,11 @@ TItemUnitUnsealable_count_kill:  # [std] (TItemUnitUnsealable* this @ ecx) -> vo
 TItemUnitUnsealable_count_kill_skip_incr:
   mov       [ecx + 0x1E4], ax  # this->last_owner_player_kill_count = this->owner_player->num_kills_since_map_load
 TItemUnitUnsealable_count_kill_skip_update:
+  xor       edx, edx
   cmp       word [ecx + 0xE8], 20000
-  jb        TItemUnitUnsealable_count_kill_skip_set_flag
-  or        dword [ecx + 0xDC], 0x200
-TItemUnitUnsealable_count_kill_skip_set_flag:
+  setae     dh
+  shl       edx, 1
+  or        dword [ecx + 0xDC], edx
   jmp       0x005E2C34
 TItemUnitUnsealable_count_kill_end:
 
@@ -48,10 +49,11 @@ TItemWeapon_LameDArgent_count_kill:
 TItemWeapon_LameDArgent_count_kill_skip_incr:
   mov       [ecx + 0x240], ax
 TItemWeapon_LameDArgent_count_kill_skip_update:
+  xor       edx, edx
   cmp       word [ecx + 0xE8], 10000
-  jb        TItemWeapon_LameDArgent_count_kill_skip_set_flag
-  or        dword [ecx + 0xDC], 0x200
-TItemWeapon_LameDArgent_count_kill_skip_set_flag:
+  setae     dh
+  shl       edx, 1
+  or        dword [ecx + 0xDC], edx
   ret
 TItemWeapon_LameDArgent_count_kill_end:
 
@@ -72,10 +74,11 @@ TItemWeapon_SealedJSword_count_kill:
 TItemWeapon_SealedJSword_count_kill_skip_incr:
   mov       [ecx + 0x240], ax
 TItemWeapon_SealedJSword_count_kill_skip_update:
+  xor       edx, edx
   cmp       word [ecx + 0xE8], 23000
-  jb        TItemWeapon_SealedJSword_count_kill_skip_set_flag
-  or        dword [ecx + 0xDC], 0x200
-TItemWeapon_SealedJSword_count_kill_skip_set_flag:
+  setae     dh
+  shl       edx, 1
+  or        dword [ecx + 0xDC], edx
   ret
 TItemWeapon_SealedJSword_count_kill_end:
 
