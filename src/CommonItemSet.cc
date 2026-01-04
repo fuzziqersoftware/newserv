@@ -96,45 +96,87 @@ void from_json_into(const phosg::JSON& json, parray<parray<CommonItemSet::Table:
   }
 }
 
-CommonItemSet::Table::Table(const phosg::JSON& json, Episode episode)
+CommonItemSet::Table::Table(std::shared_ptr<const Table> prev_table, const phosg::JSON& json, Episode episode)
     : episode(episode) {
-  from_json_into(json.at("BaseWeaponTypeProbTable"), this->base_weapon_type_prob_table);
-  from_json_into(json.at("SubtypeBaseTable"), this->subtype_base_table);
-  from_json_into(json.at("SubtypeAreaLengthTable"), this->subtype_area_length_table);
-  from_json_into(json.at("GrindProbTable"), this->grind_prob_table);
-  from_json_into(json.at("ArmorShieldTypeIndexProbTable"), this->armor_shield_type_index_prob_table);
-  from_json_into(json.at("ArmorSlotCountProbTable"), this->armor_slot_count_prob_table);
-  from_json_into(json.at("BoxMesetaRanges"), this->box_meseta_ranges);
-  this->has_rare_bonus_value_prob_table = json.at("HasRareBonusValueProbTable").as_bool();
-  from_json_into(json.at("BonusValueProbTable"), this->bonus_value_prob_table);
-  from_json_into(json.at("NonRareBonusProbSpec"), this->nonrare_bonus_prob_spec);
-  from_json_into(json.at("BonusTypeProbTable"), this->bonus_type_prob_table);
-  from_json_into(json.at("SpecialMult"), this->special_mult);
-  from_json_into(json.at("SpecialPercent"), this->special_percent);
-  from_json_into(json.at("ToolClassProbTable"), this->tool_class_prob_table);
-  from_json_into(json.at("TechniqueIndexProbTable"), this->technique_index_prob_table);
-  from_json_into(json.at("TechniqueLevelRanges"), this->technique_level_ranges);
-  this->armor_or_shield_type_bias = json.at("ArmorOrShieldTypeBias").as_int();
-  from_json_into(json.at("UnitMaxStarsTable"), this->unit_max_stars_table);
-  from_json_into(json.at("BoxItemClassProbTable"), this->box_item_class_prob_table);
+  auto parse_field = [&]<typename T>(const std::string& key, T& field, const T* prev_field) {
+    if (json.count(key)) {
+      from_json_into(json.at(key), field);
+    } else if (prev_field) {
+      field = *prev_field;
+    }
+  };
 
-  const auto& enemy_meseta_ranges_json = json.at("EnemyMesetaRanges").as_dict();
-  const auto& enemy_type_drop_probs_json = json.at("EnemyTypeDropProbs").as_dict();
-  const auto& enemy_item_classes_json = json.at("EnemyItemClasses").as_dict();
-  for (size_t z = 0; z < 0x64; z++) {
-    auto types = enemy_types_for_rare_table_index(episode, z);
+  parse_field("BaseWeaponTypeProbTable", this->base_weapon_type_prob_table, prev_table ? &prev_table->base_weapon_type_prob_table : nullptr);
+  parse_field("SubtypeBaseTable", this->subtype_base_table, prev_table ? &prev_table->subtype_base_table : nullptr);
+  parse_field("SubtypeAreaLengthTable", this->subtype_area_length_table, prev_table ? &prev_table->subtype_area_length_table : nullptr);
+  parse_field("GrindProbTable", this->grind_prob_table, prev_table ? &prev_table->grind_prob_table : nullptr);
+  parse_field("ArmorShieldTypeIndexProbTable", this->armor_shield_type_index_prob_table, prev_table ? &prev_table->armor_shield_type_index_prob_table : nullptr);
+  parse_field("ArmorSlotCountProbTable", this->armor_slot_count_prob_table, prev_table ? &prev_table->armor_slot_count_prob_table : nullptr);
+  parse_field("BoxMesetaRanges", this->box_meseta_ranges, prev_table ? &prev_table->box_meseta_ranges : nullptr);
+  if (json.count("HasRareBonusValueProbTable")) {
+    this->has_rare_bonus_value_prob_table = json.at("HasRareBonusValueProbTable").as_bool();
+  } else if (prev_table) {
+    this->has_rare_bonus_value_prob_table = prev_table->has_rare_bonus_value_prob_table;
+  }
+  parse_field("BonusValueProbTable", this->bonus_value_prob_table, prev_table ? &prev_table->bonus_value_prob_table : nullptr);
+  parse_field("NonRareBonusProbSpec", this->nonrare_bonus_prob_spec, prev_table ? &prev_table->nonrare_bonus_prob_spec : nullptr);
+  parse_field("BonusTypeProbTable", this->bonus_type_prob_table, prev_table ? &prev_table->bonus_type_prob_table : nullptr);
+  parse_field("SpecialMult", this->special_mult, prev_table ? &prev_table->special_mult : nullptr);
+  parse_field("SpecialPercent", this->special_percent, prev_table ? &prev_table->special_percent : nullptr);
+  parse_field("ToolClassProbTable", this->tool_class_prob_table, prev_table ? &prev_table->tool_class_prob_table : nullptr);
+  parse_field("TechniqueIndexProbTable", this->technique_index_prob_table, prev_table ? &prev_table->technique_index_prob_table : nullptr);
+  parse_field("TechniqueLevelRanges", this->technique_level_ranges, prev_table ? &prev_table->technique_level_ranges : nullptr);
+  if (json.count("ArmorOrShieldTypeBias")) {
+    this->armor_or_shield_type_bias = json.at("ArmorOrShieldTypeBias").as_int();
+  } else if (prev_table) {
+    this->armor_or_shield_type_bias = prev_table->armor_or_shield_type_bias;
+  }
+  parse_field("UnitMaxStarsTable", this->unit_max_stars_table, prev_table ? &prev_table->unit_max_stars_table : nullptr);
+  parse_field("BoxItemClassProbTable", this->box_item_class_prob_table, prev_table ? &prev_table->box_item_class_prob_table : nullptr);
+
+  const auto* enemy_meseta_ranges_json = json.count("EnemyMesetaRanges") ? &json.at("EnemyMesetaRanges").as_dict() : nullptr;
+  const auto* enemy_type_drop_probs_json = json.count("EnemyTypeDropProbs") ? &json.at("EnemyTypeDropProbs").as_dict() : nullptr;
+  const auto* enemy_item_classes_json = json.count("EnemyItemClasses") ? &json.at("EnemyItemClasses").as_dict() : nullptr;
+  if (enemy_item_classes_json) {
+    // Unspecified is 0xFF, not 0, unlike the other enemy-indexed arrays (except for [0], apparently... sigh)
+    this->enemy_item_classes[0] = 0;
+    this->enemy_item_classes.clear_after(1, 0xFF);
+  }
+  for (size_t z = 0; z < NUM_RT_INDEXES_V4; z++) {
+    auto types = enemy_types_for_rare_table_index(this->episode, z);
     vector<string> names;
     if (types.empty()) {
-      names.emplace_back(std::format("{}:!{:02X}", abbreviation_for_episode(episode), z));
+      names.emplace_back(std::format("!{:02X}", z));
     } else {
       for (auto type : types) {
-        names.emplace_back(std::format("{}:{}", abbreviation_for_episode(episode), phosg::name_for_enum(type)));
+        names.emplace_back(phosg::name_for_enum(type));
       }
     }
     for (const auto& name : names) {
-      from_json_into(*enemy_meseta_ranges_json.at(name), this->enemy_meseta_ranges[z]);
-      this->enemy_type_drop_probs[z] = enemy_type_drop_probs_json.at(name)->as_int();
-      this->enemy_item_classes[z] = enemy_item_classes_json.at(name)->as_int();
+      if (enemy_meseta_ranges_json) {
+        try {
+          from_json_into(*enemy_meseta_ranges_json->at(name), this->enemy_meseta_ranges[z]);
+        } catch (const out_of_range&) {
+        }
+      } else if (prev_table) {
+        this->enemy_meseta_ranges = prev_table->enemy_meseta_ranges;
+      }
+      if (enemy_type_drop_probs_json) {
+        try {
+          this->enemy_type_drop_probs[z] = enemy_type_drop_probs_json->at(name)->as_int();
+        } catch (const out_of_range&) {
+        }
+      } else if (prev_table) {
+        this->enemy_type_drop_probs = prev_table->enemy_type_drop_probs;
+      }
+      if (enemy_item_classes_json) {
+        try {
+          this->enemy_item_classes[z] = enemy_item_classes_json->at(name)->as_int();
+        } catch (const out_of_range&) {
+        }
+      } else if (prev_table) {
+        this->enemy_item_classes = prev_table->enemy_item_classes;
+      }
     }
   }
 }
@@ -166,7 +208,7 @@ void CommonItemSet::Table::print(FILE* stream) const {
   const auto& item_classes = this->enemy_item_classes;
   phosg::fwrite_fmt(stream, "Enemy tables:\n");
   phosg::fwrite_fmt(stream, "  ##   $LOW  $HIGH  DAR%  ITEM        ENEMIES\n");
-  for (size_t z = 0; z < 0x64; z++) {
+  for (size_t z = 0; z < NUM_RT_INDEXES_V4; z++) {
     string enemies_str;
     for (EnemyType enemy_type : enemy_types_for_rare_table_index(this->episode, z)) {
       if (!enemies_str.empty()) {
@@ -174,12 +216,12 @@ void CommonItemSet::Table::print(FILE* stream) const {
       }
       enemies_str += phosg::name_for_enum(enemy_type);
     }
-    if (drop_probs[z]) {
+    if (drop_probs[z] || !enemies_str.empty()) {
       phosg::fwrite_fmt(stream, "  {:02X}  {:5}  {:5}  {:3}%  {:02X}:{}  {}\n",
           z, meseta_ranges[z].min, meseta_ranges[z].max, drop_probs[z], item_classes[z],
           name_for_common_item_class(item_classes[z]), enemies_str);
     } else {
-      phosg::fwrite_fmt(stream, "  {:02X}  -----  -----    0%  --          {}\n", z, enemies_str);
+      phosg::fwrite_fmt(stream, "  {:02X}  -----  -----    0%  --\n", z);
     }
   }
 
@@ -453,89 +495,142 @@ void CommonItemSet::Table::print_diff(FILE* stream, const Table& other) const {
   }
 }
 
-phosg::JSON CommonItemSet::Table::json() const {
-  phosg::JSON enemy_meseta_ranges_json = phosg::JSON::dict();
-  phosg::JSON enemy_type_drop_probs_json = phosg::JSON::dict();
-  phosg::JSON enemy_item_classes_json = phosg::JSON::dict();
-  for (size_t z = 0; z < 0x64; z++) {
-    for (Episode episode : ALL_EPISODES_V4) {
-      auto types = enemy_types_for_rare_table_index(episode, z);
+phosg::JSON CommonItemSet::Table::json(std::shared_ptr<const Table> prev_table) const {
+  auto ret = phosg::JSON::dict();
+
+  if (!prev_table || (this->base_weapon_type_prob_table != prev_table->base_weapon_type_prob_table)) {
+    ret.emplace("BaseWeaponTypeProbTable", to_json(this->base_weapon_type_prob_table));
+  }
+  if (!prev_table || (this->subtype_base_table != prev_table->subtype_base_table)) {
+    ret.emplace("SubtypeBaseTable", to_json(this->subtype_base_table));
+  }
+  if (!prev_table || (this->subtype_area_length_table != prev_table->subtype_area_length_table)) {
+    ret.emplace("SubtypeAreaLengthTable", to_json(this->subtype_area_length_table));
+  }
+  if (!prev_table || (this->grind_prob_table != prev_table->grind_prob_table)) {
+    ret.emplace("GrindProbTable", to_json(this->grind_prob_table));
+  }
+  if (!prev_table || (this->armor_shield_type_index_prob_table != prev_table->armor_shield_type_index_prob_table)) {
+    ret.emplace("ArmorShieldTypeIndexProbTable", to_json(this->armor_shield_type_index_prob_table));
+  }
+  if (!prev_table || (this->armor_slot_count_prob_table != prev_table->armor_slot_count_prob_table)) {
+    ret.emplace("ArmorSlotCountProbTable", to_json(this->armor_slot_count_prob_table));
+  }
+
+  bool needs_enemy_meseta_ranges = (!prev_table || (this->enemy_meseta_ranges != prev_table->enemy_meseta_ranges));
+  bool needs_enemy_type_drop_probs = (!prev_table || (this->enemy_type_drop_probs != prev_table->enemy_type_drop_probs));
+  bool needs_enemy_item_classes = (!prev_table || (this->enemy_item_classes != prev_table->enemy_item_classes));
+  if (needs_enemy_meseta_ranges || needs_enemy_type_drop_probs || needs_enemy_item_classes) {
+    phosg::JSON enemy_meseta_ranges_json = phosg::JSON::dict();
+    phosg::JSON enemy_type_drop_probs_json = phosg::JSON::dict();
+    phosg::JSON enemy_item_classes_json = phosg::JSON::dict();
+    for (size_t z = 0; z < NUM_RT_INDEXES_V4; z++) {
+      auto types = enemy_types_for_rare_table_index(this->episode, z);
       vector<string> names;
       if (types.empty()) {
-        names.emplace_back(std::format("{}:!{:02X}", abbreviation_for_episode(episode), z));
+        names.emplace_back(std::format("!{:02X}", z));
       } else {
         for (auto type : types) {
-          names.emplace_back(std::format("{}:{}", abbreviation_for_episode(episode), phosg::name_for_enum(type)));
+          names.emplace_back(phosg::name_for_enum(type));
         }
       }
       for (const auto& name : names) {
-        enemy_meseta_ranges_json.emplace(name, to_json(this->enemy_meseta_ranges[z]));
-        enemy_type_drop_probs_json.emplace(name, this->enemy_type_drop_probs[z]);
-        enemy_item_classes_json.emplace(name, this->enemy_item_classes[z]);
+        if (needs_enemy_meseta_ranges && (!types.empty() || !this->enemy_meseta_ranges[z].empty())) {
+          enemy_meseta_ranges_json.emplace(name, to_json(this->enemy_meseta_ranges[z]));
+        }
+        if (needs_enemy_type_drop_probs && (!types.empty() || this->enemy_type_drop_probs[z])) {
+          enemy_type_drop_probs_json.emplace(name, this->enemy_type_drop_probs[z]);
+        }
+        if (needs_enemy_item_classes && (!types.empty() || (this->enemy_item_classes[z] != ((z == 0) ? 0x00 : 0xFF)))) {
+          enemy_item_classes_json.emplace(name, this->enemy_item_classes[z]);
+        }
       }
     }
+
+    if (needs_enemy_meseta_ranges) {
+      ret.emplace("EnemyMesetaRanges", std::move(enemy_meseta_ranges_json));
+    }
+    if (needs_enemy_type_drop_probs) {
+      ret.emplace("EnemyTypeDropProbs", std::move(enemy_type_drop_probs_json));
+    }
+    if (needs_enemy_item_classes) {
+      ret.emplace("EnemyItemClasses", std::move(enemy_item_classes_json));
+    }
   }
-  return phosg::JSON::dict({
-      {"BaseWeaponTypeProbTable", to_json(this->base_weapon_type_prob_table)},
-      {"SubtypeBaseTable", to_json(this->subtype_base_table)},
-      {"SubtypeAreaLengthTable", to_json(this->subtype_area_length_table)},
-      {"GrindProbTable", to_json(this->grind_prob_table)},
-      {"ArmorShieldTypeIndexProbTable", to_json(this->armor_shield_type_index_prob_table)},
-      {"ArmorSlotCountProbTable", to_json(this->armor_slot_count_prob_table)},
-      {"EnemyMesetaRanges", std::move(enemy_meseta_ranges_json)},
-      {"EnemyTypeDropProbs", std::move(enemy_type_drop_probs_json)},
-      {"EnemyItemClasses", std::move(enemy_item_classes_json)},
-      {"BoxMesetaRanges", to_json(this->box_meseta_ranges)},
-      {"HasRareBonusValueProbTable", this->has_rare_bonus_value_prob_table},
-      {"BonusValueProbTable", to_json(this->bonus_value_prob_table)},
-      {"NonRareBonusProbSpec", to_json(this->nonrare_bonus_prob_spec)},
-      {"BonusTypeProbTable", to_json(this->bonus_type_prob_table)},
-      {"SpecialMult", to_json(this->special_mult)},
-      {"SpecialPercent", to_json(this->special_percent)},
-      {"ToolClassProbTable", to_json(this->tool_class_prob_table)},
-      {"TechniqueIndexProbTable", to_json(this->technique_index_prob_table)},
-      {"TechniqueLevelRanges", to_json(this->technique_level_ranges)},
-      {"ArmorOrShieldTypeBias", this->armor_or_shield_type_bias},
-      {"UnitMaxStarsTable", to_json(this->unit_max_stars_table)},
-      {"BoxItemClassProbTable", to_json(this->box_item_class_prob_table)},
-  });
+
+  if (!prev_table || (this->box_meseta_ranges != prev_table->box_meseta_ranges)) {
+    ret.emplace("BoxMesetaRanges", to_json(this->box_meseta_ranges));
+  }
+  if (!prev_table || (this->has_rare_bonus_value_prob_table != prev_table->has_rare_bonus_value_prob_table)) {
+    ret.emplace("HasRareBonusValueProbTable", this->has_rare_bonus_value_prob_table);
+  }
+  if (!prev_table || (this->bonus_value_prob_table != prev_table->bonus_value_prob_table)) {
+    ret.emplace("BonusValueProbTable", to_json(this->bonus_value_prob_table));
+  }
+  if (!prev_table || (this->nonrare_bonus_prob_spec != prev_table->nonrare_bonus_prob_spec)) {
+    ret.emplace("NonRareBonusProbSpec", to_json(this->nonrare_bonus_prob_spec));
+  }
+  if (!prev_table || (this->bonus_type_prob_table != prev_table->bonus_type_prob_table)) {
+    ret.emplace("BonusTypeProbTable", to_json(this->bonus_type_prob_table));
+  }
+  if (!prev_table || (this->special_mult != prev_table->special_mult)) {
+    ret.emplace("SpecialMult", to_json(this->special_mult));
+  }
+  if (!prev_table || (this->special_percent != prev_table->special_percent)) {
+    ret.emplace("SpecialPercent", to_json(this->special_percent));
+  }
+  if (!prev_table || (this->tool_class_prob_table != prev_table->tool_class_prob_table)) {
+    ret.emplace("ToolClassProbTable", to_json(this->tool_class_prob_table));
+  }
+  if (!prev_table || (this->technique_index_prob_table != prev_table->technique_index_prob_table)) {
+    ret.emplace("TechniqueIndexProbTable", to_json(this->technique_index_prob_table));
+  }
+  if (!prev_table || (this->technique_level_ranges != prev_table->technique_level_ranges)) {
+    ret.emplace("TechniqueLevelRanges", to_json(this->technique_level_ranges));
+  }
+  if (!prev_table || (this->armor_or_shield_type_bias != prev_table->armor_or_shield_type_bias)) {
+    ret.emplace("ArmorOrShieldTypeBias", this->armor_or_shield_type_bias);
+  }
+  if (!prev_table || (this->unit_max_stars_table != prev_table->unit_max_stars_table)) {
+    ret.emplace("UnitMaxStarsTable", to_json(this->unit_max_stars_table));
+  }
+  if (!prev_table || (this->box_item_class_prob_table != prev_table->box_item_class_prob_table)) {
+    ret.emplace("BoxItemClassProbTable", to_json(this->box_item_class_prob_table));
+  }
+
+  return ret;
 }
 
 phosg::JSON CommonItemSet::json() const {
-  auto modes_dict = phosg::JSON::dict();
-  for (const auto& mode : ALL_GAME_MODES_V4) {
-    auto episodes_dict = phosg::JSON::dict();
-    for (const auto& episode : ALL_EPISODES_V4) {
-      auto difficulty_dict = phosg::JSON::dict();
+  auto ret = phosg::JSON::dict();
+  for (const auto& episode : ALL_EPISODES_V4) {
+    for (const auto& mode : ALL_GAME_MODES_V4) {
       for (const auto& difficulty : ALL_DIFFICULTIES_V234) {
-        auto section_id_dict = phosg::JSON::dict();
         for (uint8_t section_id = 0; section_id < 10; section_id++) {
+          auto json_key = this->json_key_for_table(episode, mode, difficulty, section_id);
           try {
+            auto prev_table = this->get_prev_table(episode, mode, difficulty, section_id);
             auto table = this->get_table(episode, mode, difficulty, section_id);
-            section_id_dict.emplace(name_for_section_id(section_id), table->json());
+            ret.emplace(json_key, table->json(prev_table));
           } catch (const runtime_error&) {
           }
         }
-        difficulty_dict.emplace(token_name_for_difficulty(difficulty), std::move(section_id_dict));
       }
-      episodes_dict.emplace(token_name_for_episode(episode), std::move(difficulty_dict));
     }
-    modes_dict.emplace(name_for_mode(mode), std::move(episodes_dict));
   }
-
-  return modes_dict;
+  return ret;
 }
 
 void CommonItemSet::print(FILE* stream) const {
-  for (const auto& mode : ALL_GAME_MODES_V4) {
-    for (const auto& episode : ALL_EPISODES_V4) {
+  for (const auto& episode : ALL_EPISODES_V4) {
+    for (const auto& mode : ALL_GAME_MODES_V4) {
       for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
         for (uint8_t section_id = 0; section_id < 10; section_id++) {
           try {
             auto table = this->get_table(episode, mode, difficulty, section_id);
             phosg::fwrite_fmt(stream, "============ {} {} {} {}\n",
-                name_for_mode(mode),
                 name_for_episode(episode),
+                name_for_mode(mode),
                 name_for_difficulty(difficulty),
                 name_for_section_id(section_id));
             table->print(stream);
@@ -548,8 +643,8 @@ void CommonItemSet::print(FILE* stream) const {
 }
 
 void CommonItemSet::print_diff(FILE* stream, const CommonItemSet& other) const {
-  for (const auto& mode : ALL_GAME_MODES_V4) {
-    for (const auto& episode : ALL_EPISODES_V4) {
+  for (const auto& episode : ALL_EPISODES_V4) {
+    for (const auto& mode : ALL_GAME_MODES_V4) {
       for (const auto& difficulty : ALL_DIFFICULTIES_V234) {
         for (uint8_t section_id = 0; section_id < 10; section_id++) {
           shared_ptr<const Table> this_table;
@@ -567,20 +662,20 @@ void CommonItemSet::print_diff(FILE* stream, const CommonItemSet& other) const {
             continue;
           } else if (!this_table) {
             phosg::fwrite_fmt(stream, "> Table present in other but not this: {} {} {} {}\n",
-                name_for_mode(mode),
                 name_for_episode(episode),
+                name_for_mode(mode),
                 name_for_difficulty(difficulty),
                 name_for_section_id(section_id));
           } else if (!other_table) {
             phosg::fwrite_fmt(stream, "> Table present in this but not other: {} {} {} {}\n",
-                name_for_mode(mode),
                 name_for_episode(episode),
+                name_for_mode(mode),
                 name_for_difficulty(difficulty),
                 name_for_section_id(section_id));
           } else if (*this_table != *other_table) {
             phosg::fwrite_fmt(stream, "> Tables do not match: {} {} {} {}\n",
-                name_for_mode(mode),
                 name_for_episode(episode),
+                name_for_mode(mode),
                 name_for_difficulty(difficulty),
                 name_for_section_id(section_id));
             this_table->print_diff(stream, *other_table);
@@ -610,12 +705,13 @@ void CommonItemSet::Table::parse_itempt_t(const phosg::StringReader& r, bool is_
   this->grind_prob_table = r.pget<parray<parray<uint8_t, 4>, 9>>(offsets.grind_prob_table_offset);
   this->armor_shield_type_index_prob_table = r.pget<parray<uint8_t, 0x05>>(offsets.armor_shield_type_index_prob_table_offset);
   this->armor_slot_count_prob_table = r.pget<parray<uint8_t, 0x05>>(offsets.armor_slot_count_prob_table_offset);
-  const auto& data = r.pget<parray<Range<U16T<BE>>, 0x64>>(offsets.enemy_meseta_ranges_offset);
+  const auto& data = r.pget<parray<Range<U16T<BE>>, NUM_RT_INDEXES_V3>>(offsets.enemy_meseta_ranges_offset);
   for (size_t z = 0; z < data.size(); z++) {
     this->enemy_meseta_ranges[z] = Range<uint16_t>{data[z].min, data[z].max};
   }
-  this->enemy_type_drop_probs = r.pget<parray<uint8_t, 0x64>>(offsets.enemy_type_drop_probs_offset);
-  this->enemy_item_classes = r.pget<parray<uint8_t, 0x64>>(offsets.enemy_item_classes_offset);
+  this->enemy_type_drop_probs = r.pget<parray<uint8_t, NUM_RT_INDEXES_V3>>(offsets.enemy_type_drop_probs_offset);
+  this->enemy_item_classes = r.pget<parray<uint8_t, NUM_RT_INDEXES_V3>>(offsets.enemy_item_classes_offset);
+  this->enemy_item_classes.clear_after(NUM_RT_INDEXES_V3, 0xFF);
   {
     const auto& data = r.pget<parray<Range<U16T<BE>>, 0x0A>>(offsets.box_meseta_ranges_offset);
     for (size_t z = 0; z < data.size(); z++) {
@@ -665,13 +761,37 @@ uint16_t CommonItemSet::key_for_table(Episode episode, GameMode mode, Difficulty
       (static_cast<uint16_t>(secid) & 0x000F));
 }
 
+std::string CommonItemSet::json_key_for_table(
+    Episode episode, GameMode mode, Difficulty difficulty, uint8_t section_id) {
+  return std::format("{}:{}:{}:{}", abbreviation_for_episode(episode), name_for_mode(mode),
+      token_name_for_difficulty(difficulty), name_for_section_id(section_id));
+}
+
 shared_ptr<const CommonItemSet::Table> CommonItemSet::get_table(
-    Episode episode, GameMode mode, Difficulty difficulty, uint8_t secid) const {
+    Episode episode, GameMode mode, Difficulty difficulty, uint8_t section_id) const {
   try {
-    return this->tables.at(this->key_for_table(episode, mode, difficulty, secid));
+    return this->tables.at(this->key_for_table(episode, mode, difficulty, section_id));
   } catch (const out_of_range&) {
     throw runtime_error(std::format("common item table not available for episode={}, mode={}, difficulty={}, secid={}",
-        name_for_episode(episode), name_for_mode(mode), name_for_difficulty(difficulty), secid));
+        name_for_episode(episode), name_for_mode(mode), name_for_difficulty(difficulty), section_id));
+  }
+}
+
+shared_ptr<const CommonItemSet::Table> CommonItemSet::get_prev_table(
+    Episode episode, GameMode mode, Difficulty difficulty, uint8_t section_id) const {
+  if (section_id != 0) {
+    // All section IDs are based on the previous, except Viridia
+    return this->get_table(episode, mode, difficulty, section_id - 1);
+  } else if (difficulty != Difficulty::NORMAL) {
+    // All Viridia tables are based on the previous difficulty, except Normal
+    auto prev_difficulty = static_cast<Difficulty>(static_cast<uint8_t>(difficulty) - 1);
+    return this->get_table(episode, mode, prev_difficulty, 0);
+  } else if (mode != GameMode::NORMAL) {
+    // All Normal Viridia tables are based on the Normal game mode, except Normal itself
+    return this->get_table(episode, GameMode::NORMAL, Difficulty::NORMAL, 0);
+  } else {
+    // There's no previous table
+    return nullptr;
   }
 }
 
@@ -795,37 +915,27 @@ GSLV3V4CommonItemSet::GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gs
 }
 
 JSONCommonItemSet::JSONCommonItemSet(const phosg::JSON& json) {
-  for (const auto& mode_it : json.as_dict()) {
-    static const unordered_map<string, GameMode> mode_keys(
-        {{"Normal", GameMode::NORMAL}, {"Battle", GameMode::BATTLE}, {"Challenge", GameMode::CHALLENGE}, {"Solo", GameMode::SOLO}});
-    GameMode mode = mode_keys.at(mode_it.first);
-
-    for (const auto& episode_it : mode_it.second->as_dict()) {
-      static const unordered_map<string, Episode> episode_keys(
-          {{"Episode1", Episode::EP1}, {"Episode2", Episode::EP2}, {"Episode4", Episode::EP4}});
-      Episode episode = episode_keys.at(episode_it.first);
-
-      for (const auto& difficulty_it : episode_it.second->as_dict()) {
-        static const unordered_map<string, Difficulty> difficulty_keys(
-            {{"Normal", Difficulty::NORMAL}, {"Hard", Difficulty::HARD}, {"VeryHard", Difficulty::VERY_HARD}, {"Ultimate", Difficulty::ULTIMATE}});
-        Difficulty difficulty = difficulty_keys.at(difficulty_it.first);
-
-        for (const auto& section_id_it : difficulty_it.second->as_dict()) {
-          uint8_t section_id = section_id_for_name(section_id_it.first);
-          this->tables.emplace(
-              this->key_for_table(episode, mode, difficulty, section_id),
-              make_shared<Table>(*section_id_it.second, episode));
+  for (const auto& episode : ALL_EPISODES_V4) {
+    for (const auto& mode : ALL_GAME_MODES_V4) {
+      for (const auto& difficulty : ALL_DIFFICULTIES_V234) {
+        for (uint8_t section_id = 0; section_id < 10; section_id++) {
+          try {
+            auto prev_table = this->get_prev_table(episode, mode, difficulty, section_id);
+            auto json_key = this->json_key_for_table(episode, mode, difficulty, section_id);
+            auto key = this->key_for_table(episode, mode, difficulty, section_id);
+            this->tables.emplace(key, make_shared<Table>(prev_table, json.at(json_key), episode));
+          } catch (const runtime_error&) {
+          } catch (const out_of_range&) {
+          }
         }
       }
     }
   }
 }
 
-RELFileSet::RELFileSet(std::shared_ptr<const std::string> data)
-    : data(data), r(*this->data) {}
+RELFileSet::RELFileSet(std::shared_ptr<const std::string> data) : data(data), r(*this->data) {}
 
-ArmorRandomSet::ArmorRandomSet(std::shared_ptr<const std::string> data)
-    : RELFileSet(data) {
+ArmorRandomSet::ArmorRandomSet(std::shared_ptr<const std::string> data) : RELFileSet(data) {
   // For some reason the footer tables are doubly indirect in this file
   uint32_t specs_offset_offset = this->r.pget_u32b(data->size() - 0x10);
   uint32_t specs_offset = this->r.pget_u32b(specs_offset_offset);
@@ -847,8 +957,7 @@ ArmorRandomSet::get_unit_table(size_t index) const {
   return this->get_table<WeightTableEntry8>(this->tables->at(2), index);
 }
 
-ToolRandomSet::ToolRandomSet(std::shared_ptr<const std::string> data)
-    : RELFileSet(data) {
+ToolRandomSet::ToolRandomSet(std::shared_ptr<const std::string> data) : RELFileSet(data) {
   uint32_t specs_offset = r.pget_u32b(data->size() - 0x10);
   this->common_recovery_table_spec = &r.pget<TableSpec>(r.pget_u32b(specs_offset));
   this->rare_recovery_table_spec = &r.pget<TableSpec>(r.pget_u32b(specs_offset + sizeof(uint32_t)), 2 * sizeof(TableSpec));
@@ -875,8 +984,7 @@ ToolRandomSet::get_tech_disk_level_table(size_t index) const {
   return this->get_table<TechDiskLevelEntry>(*this->tech_disk_level_table_spec, index);
 }
 
-WeaponRandomSet::WeaponRandomSet(std::shared_ptr<const std::string> data)
-    : RELFileSet(data) {
+WeaponRandomSet::WeaponRandomSet(std::shared_ptr<const std::string> data) : RELFileSet(data) {
   uint32_t offsets_offset = this->r.pget_u32b(data->size() - 0x10);
   this->offsets = &this->r.pget<Offsets>(offsets_offset);
 }
@@ -916,8 +1024,7 @@ WeaponRandomSet::get_favored_grind_range(size_t index) const {
   return &this->r.pget<RangeTableEntry>(this->offsets->favored_grind_range_table + sizeof(RangeTableEntry) * index);
 }
 
-TekkerAdjustmentSet::TekkerAdjustmentSet(std::shared_ptr<const std::string> data)
-    : data(data), r(*data) {
+TekkerAdjustmentSet::TekkerAdjustmentSet(std::shared_ptr<const std::string> data) : data(data), r(*data) {
   this->offsets = &this->r.pget<Offsets>(this->r.pget_u32b(this->r.size() - 0x10));
 }
 

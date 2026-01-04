@@ -469,7 +469,7 @@ string RareItemSet::serialize_html(
         EnemyType::DARK_BELRA,
         EnemyType::DARK_GUNNER, EnemyType::DARK_GUNNER_CONTROL, EnemyType::DEATH_GUNNER,
         EnemyType::CHAOS_BRINGER,
-        EnemyType::DARVANT, EnemyType::DARVANT_ULTIMATE, EnemyType::DARK_FALZ_1, EnemyType::DARK_FALZ_2, EnemyType::DARK_FALZ_3,
+        EnemyType::DARVANT, EnemyType::DARK_FALZ_1, EnemyType::DARK_FALZ_2, EnemyType::DARK_FALZ_3,
       }},
   }},
   {Episode::EP2, {

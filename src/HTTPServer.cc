@@ -218,7 +218,9 @@ HTTPServer::HTTPServer(shared_ptr<ServerState> state)
           }
           string grave_enemy_types;
           if (p->challenge_records.grave_defeated_by_enemy_rt_index) {
-            for (EnemyType type : enemy_types_for_rare_table_index(p->challenge_records.grave_is_ep2 ? Episode::EP2 : Episode::EP1, p->challenge_records.grave_defeated_by_enemy_rt_index)) {
+            for (EnemyType type : enemy_types_for_rare_table_index(
+                     p->challenge_records.grave_is_ep2 ? Episode::EP2 : Episode::EP1,
+                     p->challenge_records.grave_defeated_by_enemy_rt_index)) {
               if (!grave_enemy_types.empty()) {
                 grave_enemy_types += "/";
               }

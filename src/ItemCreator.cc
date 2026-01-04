@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 
+#include "EnemyType.hh"
 #include "Loggers.hh"
 
 using namespace std;
@@ -190,7 +191,7 @@ ItemCreator::DropResult ItemCreator::on_box_item_drop(uint8_t area) {
 ItemCreator::DropResult ItemCreator::on_monster_item_drop(uint32_t enemy_type, uint8_t area) {
   try {
     // Note: The original GC implementation uses (enemy_type > 0x58) here; we extend it to the full array size for BB
-    if (enemy_type >= 0x64) {
+    if (enemy_type >= NUM_RT_INDEXES_V4) {
       this->log.warning_f("Invalid enemy type: {:X}", enemy_type);
       return DropResult();
     }
@@ -331,7 +332,7 @@ bool ItemCreator::should_allow_meseta_drops() const {
 
 ItemData ItemCreator::check_rare_spec_and_create_rare_enemy_item(uint32_t enemy_type, uint8_t area) {
   ItemData item;
-  if (this->are_rare_drops_allowed() && (enemy_type > 0) && (enemy_type < 0x64)) {
+  if (this->are_rare_drops_allowed() && (enemy_type > 0) && (enemy_type < NUM_RT_INDEXES_V4)) {
     // Note: In the original implementation, enemies can only have one possible rare drop. In our implementation, they
     // can have multiple rare drops if JSONRareItemSet is used (the other RareItemSet implementations never return
     // multiple drops for an enemy type).

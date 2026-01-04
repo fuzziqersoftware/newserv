@@ -2176,7 +2176,6 @@ Action a_convert_rare_item_set(
       .gsl (PSO BB little-endian GSL archive)\n\
       .gslb (PSO GC big-endian GSL archive)\n\
       .afs (PSO V2 little-endian AFS archive)\n\
-      .rel (Schtserv rare table; cannot be used in output filename)\n\
       .html (HTML rare table; cannot be used in input filename)\n\
     If the --multiply=X option is given, multiplies all drop rates by X (given\n\
     as a decimal value). The HTML drop tables will account for each enemy\'s\n\
@@ -2283,7 +2282,13 @@ Action a_convert_common_item_set(
       .json (newserv JSON common item table)\n\
       .afs (PSO v2 AFS archive; --ct-filename is required in this case)\n\
       .gsl (PSO BB little-endian GSL archive)\n\
-      .gslb (PSO GC big-endian GSL archive)\n",
+      .gslb (PSO GC big-endian GSL archive)\n\
+    Options:\n\
+      --ct-filename=FILENAME: Required if the input is an AFS archive.\n\
+          Specifies where to read the ItemCT (Challenge Mode) tables from.\n\
+          Should be another AFS file.\n\
+      --big-endian: If input is a GSL file, always decode it as big-endian\n\
+          even if the file extension is not gslb.\n",
     +[](phosg::Arguments& args) {
       string input_filename = args.get<string>(1, false);
       if (input_filename.empty() || (input_filename == "-")) {
@@ -2569,9 +2574,9 @@ Action a_print_level_stats(
       print_stats_set(level_200_limit_v4, "v4 limit    ");
     });
 
-Action a_print_item_parameter_tables(
-    "show-item-tables", "\
-  show-item-tables\n\
+Action a_show_item_parameter_tables(
+    "show-item-parameter-tables", "\
+  show-item-parameter-tables\n\
     Print the item parameter tables for each version in a semi-human-reatable\n\
     format.\n",
     +[](phosg::Arguments& args) {
@@ -2955,41 +2960,6 @@ Action a_check_supermaps(
 
       auto rand_crypt = make_shared<MT19937Generator>(phosg::random_object<uint32_t>());
 
-      SuperMap::EfficiencyStats all_free_maps_eff;
-      for (const auto& it : s->supermap_for_free_play_key) {
-        auto episode = static_cast<Episode>((it.first >> 28) & 7);
-        auto mode = static_cast<GameMode>((it.first >> 26) & 3);
-        Difficulty difficulty = static_cast<Difficulty>((it.first >> 24) & 3);
-        uint8_t floor = (it.first >> 16) & 0xFF;
-        uint8_t layout = (it.first >> 8) & 0xFF;
-        uint8_t entities = (it.first >> 0) & 0xFF;
-
-        string filename_token;
-        if (save_disassembly) {
-          string filename = std::format(
-              "supermap_{}_{}_{}_{:02X}_{:02X}_{:02X}.txt",
-              abbreviation_for_episode(episode),
-              abbreviation_for_mode(mode),
-              abbreviation_for_difficulty(difficulty),
-              floor, layout, entities);
-          auto f = phosg::fopen_unique(filename, "wt");
-          it.second->print(f.get());
-          filename_token = " => " + filename;
-        }
-
-        auto eff = it.second->efficiency();
-        all_free_maps_eff += eff;
-        auto eff_str = eff.str();
-        phosg::fwrite_fmt(stderr, "FREE MAP: {:08X} => {} {} {} floor={:02X} layout={:02X} entities={:02X} => {}{}\n",
-            it.first,
-            abbreviation_for_episode(episode),
-            abbreviation_for_mode(mode),
-            abbreviation_for_difficulty(difficulty),
-            floor, layout, entities, eff_str, filename_token);
-      }
-      string all_free_maps_eff_str = all_free_maps_eff.str();
-      phosg::fwrite_fmt(stderr, "ALL FREE MAPS: {}\n", all_free_maps_eff_str);
-
       // Generate MapStates for a few random variations
       for (size_t z = 0; z < 0x20; z++) {
         Episode episode = ALL_EPISODES_V4[phosg::random_object<uint32_t>() % ALL_EPISODES_V4.size()];
@@ -3015,6 +2985,52 @@ Action a_check_supermaps(
             map_state->enemy_set_states.size(),
             map_state->event_states.size());
       }
+
+      SuperMap::EfficiencyStats all_free_maps_eff;
+      for (const auto& [key, supermap] : s->supermap_for_free_play_key) {
+        auto episode = static_cast<Episode>((key >> 28) & 7);
+        auto mode = static_cast<GameMode>((key >> 26) & 3);
+        Difficulty difficulty = static_cast<Difficulty>((key >> 24) & 3);
+        uint8_t floor = (key >> 16) & 0xFF;
+        uint8_t layout = (key >> 8) & 0xFF;
+        uint8_t entities = (key >> 0) & 0xFF;
+
+        if (supermap) {
+          string filename_token;
+          if (save_disassembly) {
+            string filename = std::format(
+                "supermap_{}_{}_{}_{:02X}_{:02X}_{:02X}.txt",
+                abbreviation_for_episode(episode),
+                abbreviation_for_mode(mode),
+                abbreviation_for_difficulty(difficulty),
+                floor, layout, entities);
+            auto f = phosg::fopen_unique(filename, "wt");
+            supermap->print(f.get());
+            filename_token = " => " + filename;
+          }
+
+          auto eff = supermap->efficiency();
+          all_free_maps_eff += eff;
+          auto eff_str = eff.str();
+          phosg::fwrite_fmt(stderr, "FREE MAP: {:08X} => {} {} {} floor={:02X} layout={:02X} entities={:02X} => {}{}\n",
+              key,
+              abbreviation_for_episode(episode),
+              abbreviation_for_mode(mode),
+              abbreviation_for_difficulty(difficulty),
+              floor, layout, entities, eff_str, filename_token);
+
+        } else {
+          phosg::fwrite_fmt(stderr, "FREE MAP: {:08X} => {} {} {} floor={:02X} layout={:02X} entities={:02X} => NO MAP\n",
+              key,
+              abbreviation_for_episode(episode),
+              abbreviation_for_mode(mode),
+              abbreviation_for_difficulty(difficulty),
+              floor, layout, entities);
+        }
+      }
+
+      string all_free_maps_eff_str = all_free_maps_eff.str();
+      phosg::fwrite_fmt(stderr, "ALL FREE MAPS: {}\n", all_free_maps_eff_str);
 
       s->load_quest_index();
 

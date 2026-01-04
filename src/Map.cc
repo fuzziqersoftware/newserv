@@ -4367,7 +4367,8 @@ shared_ptr<SuperMap::Object> SuperMap::add_object(
   return obj;
 }
 
-void SuperMap::link_object_version(std::shared_ptr<Object> obj, Version version, const MapFile::ObjectSetEntry* set_entry) {
+void SuperMap::link_object_version(
+    std::shared_ptr<Object> obj, Version version, const MapFile::ObjectSetEntry* set_entry) {
   // Add to version's entities list and set the object's per-version info
   auto& entities = this->version(version);
   auto& obj_ver = obj->version(version);
@@ -6124,16 +6125,9 @@ void MapState::index_super_map(const FloorConfig& fc, shared_ptr<RandomGenerator
     }
 
     // Handle random rare enemies and difficulty-based effects
-    EnemyType type;
-    switch (ene->type) {
-      case EnemyType::DARK_FALZ_3:
-        type = (this->difficulty == Difficulty::NORMAL) ? EnemyType::DARK_FALZ_2 : EnemyType::DARK_FALZ_3;
-        break;
-      case EnemyType::DARVANT:
-        type = (this->difficulty == Difficulty::ULTIMATE) ? EnemyType::DARVANT_ULTIMATE : EnemyType::DARVANT;
-        break;
-      default:
-        type = ene->type;
+    EnemyType type = ene->type;
+    if ((type == EnemyType::DARK_FALZ_3) && (this->difficulty == Difficulty::NORMAL)) {
+      type = EnemyType::DARK_FALZ_2;
     }
 
     uint8_t area = fc.super_map->area_for_floor(ene->floor);

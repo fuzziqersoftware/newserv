@@ -2848,8 +2848,8 @@ DropReconcileResult reconcile_drop_request_with_map(
     c->log.info_f("Drop check for E-{:03X} (target E-{:03X}, type {})",
         res.ref_ene_st->e_id, res.target_ene_st->e_id, phosg::name_for_enum(type));
     res.effective_rt_index = type_definition_for_enemy(type).rt_index;
-    // rt_indexes in Episode 4 don't match those sent in the command; we just ignore what the client sends.
-    if ((area < 0x24) && (cmd.rt_index != res.effective_rt_index)) {
+    bool mismatched_rt_index = false;
+    if (cmd.rt_index != res.effective_rt_index) {
       // Special cases: BULCLAW => BULK and DARK_GUNNER => DEATH_GUNNER
       if (cmd.rt_index == 0x27 && type == EnemyType::BULCLAW) {
         c->log.info_f("E-{:03X} killed as BULK instead of BULCLAW", res.target_ene_st->e_id);
@@ -2860,9 +2860,7 @@ DropReconcileResult reconcile_drop_request_with_map(
       } else {
         c->log.warning_f("rt_index {:02X} from command does not match entity\'s expected index {:02X}",
             cmd.rt_index, res.effective_rt_index);
-        if (!is_v4(version)) {
-          res.effective_rt_index = cmd.rt_index;
-        }
+        mismatched_rt_index = true;
       }
     }
     if (cmd.floor != res.target_ene_st->super_ene->floor) {
@@ -2870,7 +2868,10 @@ DropReconcileResult reconcile_drop_request_with_map(
           cmd.floor, res.target_ene_st->super_ene->floor);
     }
     if (c->check_flag(Client::Flag::DEBUG_ENABLED)) {
-      send_text_message_fmt(c, "$C5E-{:03X} {}", res.target_ene_st->e_id, phosg::name_for_enum(type));
+      std::string rt_index_str = mismatched_rt_index
+          ? std::format(" $C4{:02X}->{:02X}$C5", cmd.rt_index, res.effective_rt_index)
+          : std::format(" {:02X}", res.effective_rt_index);
+      send_text_message_fmt(c, "$C5E-{:03X}{} {}", res.target_ene_st->e_id, rt_index_str, phosg::name_for_enum(type));
     }
   }
 
@@ -3948,8 +3949,10 @@ static uint32_t base_exp_for_enemy_type(
   for (const auto& episode : episode_order) {
     try {
       const auto& bp_table = bp_index->get_table(is_solo, episode);
-      uint32_t bp_index = type_definition_for_enemy(enemy_type).bp_index;
-      return bp_table.stats_for_index(difficulty, bp_index).experience;
+      const auto& bp_stats_indexes = type_definition_for_enemy(enemy_type).bp_stats_indexes;
+      if (!bp_stats_indexes.empty()) {
+        return bp_table.stats_for_index(difficulty, bp_stats_indexes.back()).experience;
+      }
     } catch (const out_of_range&) {
     }
   }
