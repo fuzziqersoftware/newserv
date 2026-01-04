@@ -5249,8 +5249,54 @@ static double enemy_set_delete_cost(const MapFile::EnemySetEntry&) {
   return 100.0;
 }
 static double enemy_set_edit_cost(const MapFile::EnemySetEntry& prev, const MapFile::EnemySetEntry& current) {
-  // A change of type or num_children is not tolerated and should never be better than an add + delete
+  // A change of type or num_children is not tolerated and should never be better than an add + delete. Unlike for
+  // objects, we have to look at params to determine the type in some cases too
   if ((prev.base_type != current.base_type) || (prev.num_children != current.num_children)) {
+    return 500.0;
+  }
+  bool is_mismatched = false;
+  switch (prev.base_type) {
+    case 0x0064: // TObjEneSlime
+      is_mismatched = ((prev.param7 & 1) != (current.param7 & 1));
+      break;
+    case 0x0041: // TObjEneLappy
+    case 0x0080: // TObjEneDubchik
+      is_mismatched = ((prev.param6 == 0) != (current.param6 == 0));
+      break;
+    case 0x0043: // TObjEneBm5Wolf
+    case 0x0082: // TObjEneMe3ShinowaReal
+      is_mismatched = ((prev.param2 >= 1) != (current.param2 >= 1));
+      break;
+    case 0x00D6: // TObjEneBm9Mericarol
+      // If 0, 1, or 2, must match exactly; otherwise, both must just be > 2
+      is_mismatched = (prev.param6 > 2) ? (current.param6 <= 2) : (prev.param6 != current.param6);
+      break;
+    case 0x0040: // TObjEneMoja
+    case 0x00D4: // TObjEneMe3StelthReal
+    case 0x00D5: // TObjEneMerillLia
+    case 0x00D7: // TObjEneBm5GibonU
+    case 0x00DD: // TObjEneDolmOlm
+    case 0x00E0: // TObjEneMe3SinowZoaReal or TObjEneEpsilonBody
+      is_mismatched = ((prev.param6 > 0) != (current.param6 > 0));
+      break;
+    case 0x0111:
+      is_mismatched = ((prev.param2 == 0) != (current.param2 == 0));
+      break;
+    case 0x0044: // TObjEneBeast
+    case 0x0063: // TObjEneShark
+    case 0x00A6: // TObjEneDimedian
+    case 0x0115:
+    case 0x0117:
+      is_mismatched = (clamp<int16_t>(prev.param6, 0, 2) != clamp<int16_t>(current.param6, 0, 2));
+      break;
+    case 0x0112:
+    case 0x0114:
+    case 0x0116:
+    case 0x0119:
+      is_mismatched = ((prev.param6 & 1) != (current.param6 & 1));
+      break;
+  }
+  if (is_mismatched) {
     return 500.0;
   }
   // Room or wave_number changes are pretty bad, but small variances in position and params are tolerated
