@@ -4678,7 +4678,7 @@ struct G_6x70_Base_DCNTE {
   /* 0004 */ le_uint32_t flags1 = 0;
   /* 0008 */ VectorXYZF pos;
   /* 0014 */ VectorXYZI angle;
-  /* 0020 */ le_uint16_t unknown_a3a = 0;
+  /* 0020 */ le_uint16_t phase = 0;
   /* 0022 */ le_uint16_t current_hp = 0;
 } __packed_ws__(G_6x70_Base_DCNTE, 0x24);
 

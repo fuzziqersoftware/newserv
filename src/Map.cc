@@ -2146,6 +2146,8 @@ static const vector<DATEntityDefinition> dat_object_definitions({
 
     // Small cryotube. Params:
     //   param4 = model number (clamped to [0, 3])
+    //   param5 high word = number of consecutive switch flags (only used if param4 = 3)
+    //   param5 low word = first switch flag number (clamped to [0, 0x100 - num flags]; only used if param4 = 3)
     {0x0223, F_V3_V4, 0x0000400830000000, "TObjSeabedSuiso_CH"},
 
     // Breakable glass wall. Params:
@@ -2181,7 +2183,7 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     {0x0240, F_V3_V4, 0x0000400040000000, "TObjParticle"},
 
     // Teleporter after Barba Ray. This object behaves exactly the same as 0x0002 (TObjAreaWarpForest), except it's
-    // invisible until the boss is defeated.
+    // invisible until the platform has docked after the boss is defeated.
     {0x0280, F_V3_V4, 0x0000400100000000, "__BARBA_RAY_TELEPORTER__"},
 
     // TODO: Describe this object. There appear to be no parameters.
@@ -4726,9 +4728,18 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       break;
     }
     case 0x00CB: // TBoss7DeRolLeC
+      if ((set_entry->num_children != 0) && (set_entry->num_children != 0x2F)) {
+        this->log.warning_f("BARBA_RAY has an unusual num_children (0x{:X})", set_entry->num_children);
+      }
+      default_num_children = -1; // Skip adding children (because we do it here)
       add(EnemyType::BARBA_RAY);
-      child_type = EnemyType::PIG_RAY;
-      default_num_children = 0x2F;
+      for (size_t z = 0; z < 0x0A; z++) {
+        add(EnemyType::BARBA_RAY_JOINT);
+      }
+      for (size_t z = 0; z < 0x24; z++) {
+        add(EnemyType::PIG_RAY);
+      }
+      add(EnemyType::BARBA_RAY); // TODO: What is this actually?
       break;
     case 0x00CC: // TBoss8Dragon
       add(EnemyType::GOL_DRAGON);
@@ -4863,11 +4874,25 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
       add(types[clamp<int16_t>(set_entry->param6, 0, 2)]);
       break;
     }
-    case 0x0119:
+    case 0x0119: {
+      if ((set_entry->num_children != 0) && (set_entry->num_children != 0x18)) {
+        this->log.warning_f("SAINT_MILION or SHAMBERTIN has an unusual num_children (0x{:X})", set_entry->num_children);
+      }
+      default_num_children = -1; // Skip adding children (because we do it here)
+
       // There isn't a way to create Kondrieu via constructor args
-      add((set_entry->param6 & 1) ? EnemyType::SHAMBERTIN : EnemyType::SAINT_MILION);
-      default_num_children = 0x18;
+      bool is_shambertin = (set_entry->param6 & 1);
+      EnemyType base_type = is_shambertin ? EnemyType::SHAMBERTIN : EnemyType::SAINT_MILION;
+      EnemyType spinner_type = is_shambertin ? EnemyType::SHAMBERTIN_SPINNER : EnemyType::SAINT_MILION_SPINNER;
+      auto root_ene = add(base_type);
+      for (size_t z = 0; z < 8; z++) {
+        add(base_type);
+      }
+      for (size_t z = 0; z < 0x10; z++) { // 16 spinners
+        add(spinner_type);
+      }
       break;
+    }
 
     case 0x00C3: // TBoss3VoloptP01
     case 0x00C4: // TBoss3VoloptCore or subclass
