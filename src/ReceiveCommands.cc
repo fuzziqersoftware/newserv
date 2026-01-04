@@ -3628,7 +3628,10 @@ static asio::awaitable<void> on_06(shared_ptr<Client> c, Channel::Message& msg) 
     co_return;
   }
 
-  char command_sentinel = (c->version() == Version::DC_11_2000) ? '@' : '$';
+  auto s = c->require_server_state();
+  char command_sentinel = s->chat_command_sentinel
+      ? s->chat_command_sentinel
+      : ((c->version() == Version::DC_11_2000) ? '@' : '$');
   if ((text[0] == command_sentinel) && c->can_use_chat_commands()) {
     if (text[1] == command_sentinel) {
       text = text.substr(1);

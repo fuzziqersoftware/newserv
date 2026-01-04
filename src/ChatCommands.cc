@@ -3183,9 +3183,9 @@ struct SplitCommand {
 asio::awaitable<void> on_chat_command(std::shared_ptr<Client> c, const std::string& text, bool check_permissions) {
   SplitCommand cmd(text);
 
-  // This function is only called by on_06 if it looks like a chat command (starts with $, or @ on 11/2000), so we just
-  // normalize all commands to $ here
-  if (!cmd.name.empty() && cmd.name[0] == '@') {
+  // This function is only called by on_06 if it looks like a chat command (starts with $, or @ on 11/2000, or
+  // s->chat_command_sentinel if overridden), so we just normalize all commands to $ here
+  if (!cmd.name.empty()) {
     cmd.name[0] = '$';
   }
 

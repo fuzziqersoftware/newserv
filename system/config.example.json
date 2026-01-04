@@ -279,6 +279,10 @@
   // use chat commands.
   "EnableChatCommands": true,
 
+  // Sentinel to use for chat commands. If this is specified, chat commands are
+  // prefixed by this character instead of $.
+  // "ChatCommandSentinel": "/",
+
   // Number of backup character slots for each account, accessible with the
   // $savechar, $loadchar, and $checkchar commands. This can be any value, but
   // it's recommended to use a small number such as 16.

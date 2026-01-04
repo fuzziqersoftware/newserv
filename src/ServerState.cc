@@ -1114,6 +1114,14 @@ void ServerState::load_config_early() {
   }
 
   this->enable_chat_commands = this->config_json->get_bool("EnableChatCommands", true);
+  try {
+    const auto& s = this->config_json->get_string("ChatCommandSentinel");
+    if (s.size() != 1) {
+      throw std::runtime_error("ChatCommandSentinel must be a string of length 1");
+    }
+    this->chat_command_sentinel = s[0];
+  } catch (const std::out_of_range&) {
+  }
   this->num_backup_character_slots = this->config_json->get_int("BackupCharacterSlots", 16);
 
   this->version_name_colors.reset();

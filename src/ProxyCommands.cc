@@ -1972,7 +1972,10 @@ static asio::awaitable<HandlerResult> C_06(shared_ptr<Client> c, Channel::Messag
       co_return HandlerResult::FORWARD;
     }
 
-    char command_sentinel = (c->version() == Version::DC_11_2000) ? '@' : '$';
+    auto s = c->require_server_state();
+    char command_sentinel = s->chat_command_sentinel
+        ? s->chat_command_sentinel
+        : ((c->version() == Version::DC_11_2000) ? '@' : '$');
     bool is_command = (text[0] == command_sentinel) ||
         (text[0] == '\t' && text[1] != 'C' && text[2] == command_sentinel);
     if (is_command && c->check_flag(Client::Flag::PROXY_CHAT_COMMANDS_ENABLED)) {
