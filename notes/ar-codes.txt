@@ -984,3 +984,14 @@ Override Challenge mode random enemy location tables limit
 4OPU => 002E745C XXXXXXXX (count as little-endian dword)
 59NL => 0080ECB7 XXXXXXXX (count * 4 as little-endian dword)
         0080ECD0 XXXXXXXX (count as little-endian dword)
+
+Disable dust effect in CCA
+3OJT => 042F4EE8 48000010
+3OJ2 => 04297ECC 48000010
+3OJ3 => 04298C94 48000010
+3OJ4 => 04299DAC 48000010
+3OJ5 => 04299B60 48000010
+3OE0 => 042987EC 48000010
+3OE1 => 04298830 48000010
+3OE2 => 04299D14 48000010
+3OP0 => 042994BC 48000010
