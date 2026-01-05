@@ -161,7 +161,6 @@ HTTPServer::HTTPServer(shared_ptr<ServerState> state)
           }
           client_json.emplace("TechniqueLevels", std::move(tech_levels_json));
         }
-        client_json.emplace("Height", p->disp.stats.height.load());
         client_json.emplace("Level", p->disp.stats.level.load() + 1);
         client_json.emplace("NameColor", p->disp.visual.name_color.load());
         client_json.emplace("ExtraModel", (p->disp.visual.validation_flags & 2) ? p->disp.visual.extra_model : phosg::JSON(nullptr));

@@ -19,12 +19,12 @@ public:
   // These files are little-endian, even on PSO GC.
 
   struct AttackData {
-    /* 00 */ le_int16_t unknown_a1;
-    /* 02 */ le_int16_t atp;
-    /* 04 */ le_int16_t ata_bonus;
-    /* 06 */ le_uint16_t unknown_a4;
+    /* 00 */ le_int16_t min_atp;
+    /* 02 */ le_int16_t max_atp;
+    /* 04 */ le_int16_t min_ata;
+    /* 06 */ le_int16_t max_ata;
     /* 08 */ le_float distance_x;
-    /* 0C */ le_uint32_t angle_x; // Out of 0x10000 (high 16 bits are unused)
+    /* 0C */ le_uint32_t angle; // Out of 0x10000 (high 16 bits are unused)
     /* 10 */ le_float distance_y;
     /* 14 */ le_uint16_t unknown_a8;
     /* 16 */ le_uint16_t unknown_a9;
@@ -54,18 +54,18 @@ public:
   } __packed_ws__(ResistData, 0x20);
 
   struct MovementData {
-    /* 00 */ le_float idle_move_speed;
-    /* 04 */ le_float idle_animation_speed;
-    /* 08 */ le_float move_speed;
-    /* 0C */ le_float animation_speed;
-    /* 10 */ le_float unknown_a1;
-    /* 14 */ le_float unknown_a2;
-    /* 18 */ le_uint32_t unknown_a3;
-    /* 1C */ le_uint32_t unknown_a4;
-    /* 20 */ le_uint32_t unknown_a5;
-    /* 24 */ le_uint32_t unknown_a6;
-    /* 28 */ le_uint32_t unknown_a7;
-    /* 2C */ le_uint32_t unknown_a8;
+    /* 00 */ le_float fparam0;
+    /* 04 */ le_float fparam1;
+    /* 03 */ le_float fparam2;
+    /* 0C */ le_float fparam3;
+    /* 10 */ le_float fparam4;
+    /* 14 */ le_float fparam5;
+    /* 18 */ le_uint32_t iparam0;
+    /* 1C */ le_uint32_t iparam1;
+    /* 20 */ le_uint32_t iparam2;
+    /* 24 */ le_uint32_t iparam3;
+    /* 28 */ le_uint32_t iparam4;
+    /* 2C */ le_uint32_t iparam5;
     /* 30 */
   } __packed_ws__(MovementData, 0x30);
 

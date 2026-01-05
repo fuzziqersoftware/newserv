@@ -43,19 +43,19 @@ template <bool BE>
 struct PlayerStatsT {
   /* 00 */ CharacterStatsT<BE> char_stats;
   /* 0E */ U16T<BE> esp = 0;
-  /* 10 */ F32T<BE> height = 0.0;
-  /* 14 */ F32T<BE> unknown_a3 = 0.0;
-  /* 18 */ U32T<BE> level = 0;
+  /* 10 */ F32T<BE> attack_range = 0.0;
+  /* 14 */ F32T<BE> knockback_range = 0.0;
+  /* 18 */ U32T<BE> level = 0; // Qedit specifies this as tech level when used for enemies
   /* 1C */ U32T<BE> experience = 0;
-  /* 20 */ U32T<BE> meseta = 0;
+  /* 20 */ U32T<BE> meseta = 0; // Qedit specifies this as TP when used for enemies
   /* 24 */
 
   operator PlayerStatsT<!BE>() const {
     PlayerStatsT<!BE> ret;
     ret.char_stats = this->char_stats;
     ret.esp = this->esp;
-    ret.height = this->height;
-    ret.unknown_a3 = this->unknown_a3;
+    ret.attack_range = this->attack_range;
+    ret.knockback_range = this->knockback_range;
     ret.level = this->level;
     ret.experience = this->experience;
     ret.meseta = this->meseta;

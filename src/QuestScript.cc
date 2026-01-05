@@ -3060,8 +3060,8 @@ std::string disassemble_quest_script(
       l->lines.emplace_back(std::format("  {:04X}  ata               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.ata), stats.char_stats.ata, stats.char_stats.ata));
       l->lines.emplace_back(std::format("  {:04X}  lck               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.lck), stats.char_stats.lck, stats.char_stats.lck));
       l->lines.emplace_back(std::format("  {:04X}  esp               {:04X} /* {} */", l->offset + offsetof(PlayerStats, esp), stats.esp, stats.esp));
-      l->lines.emplace_back(std::format("  {:04X}  height            {:08X} /* {:g} */", l->offset + offsetof(PlayerStats, height), stats.height.load_raw(), stats.height));
-      l->lines.emplace_back(std::format("  {:04X}  a3                {:08X} /* {:g} */", l->offset + offsetof(PlayerStats, unknown_a3), stats.unknown_a3.load_raw(), stats.unknown_a3));
+      l->lines.emplace_back(std::format("  {:04X}  attack_range      {:08X} /* {:g} */", l->offset + offsetof(PlayerStats, attack_range), stats.attack_range.load_raw(), stats.attack_range));
+      l->lines.emplace_back(std::format("  {:04X}  knockback_range   {:08X} /* {:g} */", l->offset + offsetof(PlayerStats, knockback_range), stats.knockback_range.load_raw(), stats.knockback_range));
       l->lines.emplace_back(std::format("  {:04X}  level             {:08X} /* level {} */", l->offset + offsetof(PlayerStats, level), stats.level, stats.level + 1));
       l->lines.emplace_back(std::format("  {:04X}  experience        {:08X} /* {} */", l->offset + offsetof(PlayerStats, experience), stats.experience, stats.experience));
       l->lines.emplace_back(std::format("  {:04X}  meseta            {:08X} /* {} */", l->offset + offsetof(PlayerStats, meseta), stats.meseta, stats.meseta));
@@ -3086,12 +3086,12 @@ std::string disassemble_quest_script(
   auto disassemble_label_as_attack_data = [&](shared_ptr<Label> l) -> void {
     disassemble_label_as_struct.template operator()<AttackData>(l, [&](const AttackData& attack) -> void {
       l->lines.emplace_back("  // As AttackData");
-      l->lines.emplace_back(std::format("  {:04X}  a1                {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a1), attack.unknown_a1, attack.unknown_a1));
-      l->lines.emplace_back(std::format("  {:04X}  atp               {:04X} /* {} */", l->offset + offsetof(AttackData, atp), attack.atp, attack.atp));
-      l->lines.emplace_back(std::format("  {:04X}  ata_bonus         {:04X} /* {} */", l->offset + offsetof(AttackData, ata_bonus), attack.ata_bonus, attack.ata_bonus));
-      l->lines.emplace_back(std::format("  {:04X}  a4                {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a4), attack.unknown_a4, attack.unknown_a4));
+      l->lines.emplace_back(std::format("  {:04X}  atp_min           {:04X} /* {} */", l->offset + offsetof(AttackData, min_atp), attack.min_atp, attack.min_atp));
+      l->lines.emplace_back(std::format("  {:04X}  atp_max           {:04X} /* {} */", l->offset + offsetof(AttackData, max_atp), attack.max_atp, attack.max_atp));
+      l->lines.emplace_back(std::format("  {:04X}  ata_min           {:04X} /* {} */", l->offset + offsetof(AttackData, min_ata), attack.min_ata, attack.min_ata));
+      l->lines.emplace_back(std::format("  {:04X}  ata_max           {:04X} /* {} */", l->offset + offsetof(AttackData, max_ata), attack.max_ata, attack.max_ata));
       l->lines.emplace_back(std::format("  {:04X}  distance_x        {:08X} /* {:g} */", l->offset + offsetof(AttackData, distance_x), attack.distance_x.load_raw(), attack.distance_x));
-      l->lines.emplace_back(std::format("  {:04X}  angle_x           {:08X} /* {}/65536 */", l->offset + offsetof(AttackData, angle_x), attack.angle_x.load_raw(), attack.angle_x));
+      l->lines.emplace_back(std::format("  {:04X}  angle             {:08X} /* {}/65536 */", l->offset + offsetof(AttackData, angle), attack.angle.load_raw(), attack.angle));
       l->lines.emplace_back(std::format("  {:04X}  distance_y        {:08X} /* {:g} */", l->offset + offsetof(AttackData, distance_y), attack.distance_y.load_raw(), attack.distance_y));
       l->lines.emplace_back(std::format("  {:04X}  a8                {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a8), attack.unknown_a8, attack.unknown_a8));
       l->lines.emplace_back(std::format("  {:04X}  a9                {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a9), attack.unknown_a9, attack.unknown_a9));
@@ -3107,18 +3107,18 @@ std::string disassemble_quest_script(
   auto disassemble_label_as_movement_data = [&](shared_ptr<Label> l) -> void {
     disassemble_label_as_struct.template operator()<MovementData>(l, [&](const MovementData& movement) -> void {
       l->lines.emplace_back("  // As MovementData");
-      l->lines.emplace_back(std::format("  {:04X}  idle_move_speed   {:08X} /* {:g} */", l->offset + offsetof(MovementData, idle_move_speed), movement.idle_move_speed.load_raw(), movement.idle_move_speed));
-      l->lines.emplace_back(std::format("  {:04X}  idle_anim_speed   {:08X} /* {:g} */", l->offset + offsetof(MovementData, idle_animation_speed), movement.idle_animation_speed.load_raw(), movement.idle_animation_speed));
-      l->lines.emplace_back(std::format("  {:04X}  move_speed        {:08X} /* {:g} */", l->offset + offsetof(MovementData, move_speed), movement.move_speed.load_raw(), movement.move_speed));
-      l->lines.emplace_back(std::format("  {:04X}  animation_speed   {:08X} /* {:g} */", l->offset + offsetof(MovementData, animation_speed), movement.animation_speed.load_raw(), movement.animation_speed));
-      l->lines.emplace_back(std::format("  {:04X}  a1                {:08X} /* {:g} */", l->offset + offsetof(MovementData, unknown_a1), movement.unknown_a1.load_raw(), movement.unknown_a1));
-      l->lines.emplace_back(std::format("  {:04X}  a2                {:08X} /* {:g} */", l->offset + offsetof(MovementData, unknown_a2), movement.unknown_a2.load_raw(), movement.unknown_a2));
-      l->lines.emplace_back(std::format("  {:04X}  a3                {:08X} /* {} */", l->offset + offsetof(MovementData, unknown_a3), movement.unknown_a3, movement.unknown_a3));
-      l->lines.emplace_back(std::format("  {:04X}  a4                {:08X} /* {} */", l->offset + offsetof(MovementData, unknown_a4), movement.unknown_a4, movement.unknown_a4));
-      l->lines.emplace_back(std::format("  {:04X}  a5                {:08X} /* {} */", l->offset + offsetof(MovementData, unknown_a5), movement.unknown_a5, movement.unknown_a5));
-      l->lines.emplace_back(std::format("  {:04X}  a6                {:08X} /* {} */", l->offset + offsetof(MovementData, unknown_a6), movement.unknown_a6, movement.unknown_a6));
-      l->lines.emplace_back(std::format("  {:04X}  a7                {:08X} /* {} */", l->offset + offsetof(MovementData, unknown_a7), movement.unknown_a7, movement.unknown_a7));
-      l->lines.emplace_back(std::format("  {:04X}  a8                {:08X} /* {} */", l->offset + offsetof(MovementData, unknown_a8), movement.unknown_a8, movement.unknown_a8));
+      l->lines.emplace_back(std::format("  {:04X}  fparam0           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam0), movement.fparam0.load_raw(), movement.fparam0));
+      l->lines.emplace_back(std::format("  {:04X}  fparam1           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam1), movement.fparam1.load_raw(), movement.fparam1));
+      l->lines.emplace_back(std::format("  {:04X}  fparam2           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam2), movement.fparam2.load_raw(), movement.fparam2));
+      l->lines.emplace_back(std::format("  {:04X}  fparam3           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam3), movement.fparam3.load_raw(), movement.fparam3));
+      l->lines.emplace_back(std::format("  {:04X}  fparam4           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam4), movement.fparam4.load_raw(), movement.fparam4));
+      l->lines.emplace_back(std::format("  {:04X}  fparam5           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam5), movement.fparam5.load_raw(), movement.fparam5));
+      l->lines.emplace_back(std::format("  {:04X}  iparam0           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam0), movement.iparam0, movement.iparam0));
+      l->lines.emplace_back(std::format("  {:04X}  iparam1           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam1), movement.iparam1, movement.iparam1));
+      l->lines.emplace_back(std::format("  {:04X}  iparam2           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam2), movement.iparam2, movement.iparam2));
+      l->lines.emplace_back(std::format("  {:04X}  iparam3           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam3), movement.iparam3, movement.iparam3));
+      l->lines.emplace_back(std::format("  {:04X}  iparam4           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam4), movement.iparam4, movement.iparam4));
+      l->lines.emplace_back(std::format("  {:04X}  iparam5           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam5), movement.iparam5, movement.iparam5));
     });
   };
   auto disassemble_label_as_image_data = [&](shared_ptr<Label> l) -> void {

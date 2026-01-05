@@ -698,7 +698,7 @@ void Client::create_challenge_overlay(
   const auto& stats_delta = level_table->stats_delta_for_level(
       overlay->disp.visual.char_class, overlay->disp.stats.level);
   overlay->disp.stats.esp = 40;
-  overlay->disp.stats.unknown_a3 = 10.0;
+  overlay->disp.stats.attack_range = 10.0;
   overlay->disp.stats.experience = stats_delta.experience;
   overlay->disp.stats.meseta = 0;
   overlay->clear_all_material_usage();

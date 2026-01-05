@@ -34,13 +34,13 @@ void BattleParamsIndex::Table::print(FILE* stream, Episode episode) const {
 
   phosg::fwrite_fmt(stream, "========== ATTACK DATA\n");
   for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
-    phosg::fwrite_fmt(stream, "{} ZZ -A1- ATP- ATA+ -A4- -DIST-X- ANGLE-X- -DIST-Y- -A8- -A9- A10- A11- --A12--- --A13--- --A14--- --A15--- --A16---\n",
+    phosg::fwrite_fmt(stream, "{} ZZ ATP- ATP+ ATA- ATA+ -DIST-X- -ANGLE-- -DIST-Y- -A8- -A9- A10- A11- --A12--- --A13--- --A14--- --A15--- --A16---\n",
         abbreviation_for_difficulty(difficulty));
     for (size_t z = 0; z < 0x60; z++) {
       const auto& e = this->attack_data[static_cast<size_t>(difficulty)][z];
       phosg::fwrite_fmt(stream,
           "  {:02X} {:04X} {:04X} {:04X} {:04X} {:8.3f} {:08X} {:8.3f} {:04X} {:04X} {:04X} {:04X} {:08X} {:08X} {:08X} {:08X} {:08X}",
-          z, e.unknown_a1, e.atp, e.ata_bonus, e.unknown_a4, e.distance_x, e.angle_x, e.distance_y, e.unknown_a8,
+          z, e.min_atp, e.max_atp, e.min_ata, e.max_ata, e.distance_x, e.angle, e.distance_y, e.unknown_a8,
           e.unknown_a9, e.unknown_a10, e.unknown_a11, e.unknown_a12, e.unknown_a13, e.unknown_a14, e.unknown_a15,
           e.unknown_a16);
       fputc('\n', stream);
@@ -63,14 +63,14 @@ void BattleParamsIndex::Table::print(FILE* stream, Episode episode) const {
 
   phosg::fwrite_fmt(stream, "========== MOVEMENT DATA\n");
   for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
-    phosg::fwrite_fmt(stream, "{} ZZ IDLEMOVE IDLEANIM MOVE-SPD ANIM-SPD ---A1--- ---A2--- ---A3--- ---A4--- ---A5--- ---A6--- ---A7--- ---A8---\n",
+    phosg::fwrite_fmt(stream, "{} ZZ FPARAM-0 FPARAM-1 FPARAM-2 FPARAM-3 FPARAM-4 FPARAM-5 IPARAM-0 IPARAM-1 IPARAM-2 IPARAM-3 IPARAM-4 IPARAM-5\n",
         abbreviation_for_difficulty(difficulty));
     for (size_t z = 0; z < 0x60; z++) {
       const auto& e = this->movement_data[static_cast<size_t>(difficulty)][z];
       phosg::fwrite_fmt(stream,
           "  {:02X} {:8.3f} {:8.3f} {:8.3f} {:8.3f} {:8.3f} {:8.3f} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X}",
-          z, e.idle_move_speed, e.idle_animation_speed, e.move_speed, e.animation_speed, e.unknown_a1, e.unknown_a2,
-          e.unknown_a3, e.unknown_a4, e.unknown_a5, e.unknown_a6, e.unknown_a7, e.unknown_a8);
+          z, e.fparam0, e.fparam1, e.fparam2, e.fparam3, e.fparam4, e.fparam5,
+          e.iparam0, e.iparam1, e.iparam2, e.iparam3, e.iparam4, e.iparam5);
       fputc('\n', stream);
     }
   }
