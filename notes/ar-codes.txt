@@ -254,16 +254,6 @@ Unlock all COM decks
 3SP0 => 042CB414 38600001
 3SE0 => 042CA908 38600001
 
-Enable marker color menu in all lobbies
-3OJ2 => 04138200 3800000E
-3OJ3 => 04138508 3800000E
-3OJ4 => 041390AC 3800000E
-3OJ5 => 041385B0 3800000E
-3OE0 => 041384BC 3800000E
-3OE1 => 041384BC 3800000E
-3OE2 => 041385C0 3800000E
-3OP0 => 04138840 3800000E
-
 Enable all lobby counter options in non-CARD lobbies
 3SE0 => 04096A8C 480000C0
         04096B4C 38800007
@@ -995,3 +985,25 @@ Disable dust effect in CCA
 3OE1 => 04298830 48000010
 3OE2 => 04299D14 48000010
 3OP0 => 042994BC 48000010
+
+Inventory debugging code
+(makes a copy of player 1's inventory at 8000A04C, updated every frame)
+3OE2 => 0400A000 9421FFE0  // stwu    [r1 - 0x20], r1
+        0400A004 7C0802A6  // mflr    r0
+        0400A008 90010024  // stw     [r1 + 0x24], r0
+        0400A00C 3C608051  // lis     r3, 0x8051
+        0400A010 8063EA10  // lwz     r3, [r3 - 0x15F0] // r3 = TObjPlayer_objs[0]
+        0400A014 3C808000  // lis     r4, 0x8000
+        0400A018 6084A050  // ori     r4, r4, 0xA050
+        0400A01C 9064FFFC  // stw     [r4 - 4], r3 // 8000A04C = 0 (in case player is null)
+        0400A020 28030000  // cmplwi  r3, 0
+        0400A024 41820014  // beq     +0x10
+        0400A028 481AE2E9  // bl      TObjPlayer_export_inventory // (TObjPlayer_objs[0], 0x8000A050)
+        0400A02C 3C808000  // lis     r4, 0x8000
+        0400A030 6084A04C  // ori     r4, r4, 0xA04C
+        0400A034 90640000  // stw     [r4], r3 // 8000A04C = inventory item count
+        0400A038 80010024  // lwz     r0, [r1 + 0x24]
+        0400A03C 7C0803A6  // mtlr    r0
+        0400A040 38210020  // addi    r1, r1, 0x20
+        0400A044 4E800020  // blr
+        041A39B8 4BE66648  // b       8000A000 // main_phase_0E_exec_frame return - chain to hook at 8000A000
