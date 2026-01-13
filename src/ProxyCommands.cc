@@ -2638,7 +2638,7 @@ static std::array<std::array<MessageHandler, NUM_VERSIONS>, 0x100> client_handle
 /* 7F */ {nullptr, nullptr, nullptr,  nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr},
 // CMD    PC_PATCH BB_PATCH DC_NTE    DC_11_2000 DC_V1      DC_V2      PC_NTE     PC_V2      GC_NTE     GC_V3      GC_EP3_NTE GC_EP3     XB_V3      BB_V4
 /* 80 */ {nullptr, nullptr, nullptr,  nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr},
-/* 81 */ {nullptr, nullptr, C_DGX_81, C_DGX_81, C_DGX_81,  C_DGX_81,  C_P_81,    C_P_81,    C_DGX_81,  C_DGX_81,  C_DGX_81,  C_DGX_81,  C_DGX_81,  C_B_81},
+/* 81 */ {nullptr, nullptr, C_DGX_81, C_DGX_81,  C_DGX_81,  C_DGX_81,  C_P_81,    C_P_81,    C_DGX_81,  C_DGX_81,  C_DGX_81,  C_DGX_81,  C_DGX_81,  C_B_81},
 /* 82 */ {nullptr, nullptr, nullptr,  nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr},
 /* 83 */ {nullptr, nullptr, nullptr,  nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr},
 /* 84 */ {nullptr, nullptr, nullptr,  nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr,   nullptr},
