@@ -5231,8 +5231,8 @@ struct G_GalGryphonBossActions_6x9F {
 struct G_GalGryphonBossActions_6xA0 {
   G_EntityIDHeader header;
   VectorXYZF pos;
-  le_uint32_t unknown_a1 = 0;
-  le_uint16_t unknown_a2 = 0;
+  le_uint32_t angle_y = 0;
+  le_uint16_t phase = 0;
   le_uint16_t unknown_a3 = 0;
   parray<le_uint32_t, 4> unknown_a4;
 } __packed_ws__(G_GalGryphonBossActions_6xA0, 0x28);
@@ -5306,9 +5306,9 @@ struct G_ModifyTradeProposal_6xA6 {
 template <bool BE>
 struct G_GolDragonBossActionsT_6xA8 {
   G_EntityIDHeader header;
-  le_uint16_t unknown_a2 = 0;
+  le_uint16_t phase = 0;
   le_uint16_t unknown_a3 = 0;
-  le_uint32_t unknown_a4 = 0;
+  le_uint32_t target_client_id = 0;
   F32T<BE> x = 0.0f;
   F32T<BE> z = 0.0f;
   uint8_t unknown_a5 = 0;
@@ -5323,7 +5323,7 @@ check_struct_size(G_GolDragonBossActions_GC_6xA8, 0x18);
 
 struct G_BarbaRayBossActions_6xA9 {
   G_EntityIDHeader header;
-  le_uint16_t unknown_a1 = 0;
+  le_uint16_t what = 0;
   le_uint16_t unknown_a2 = 0;
 } __packed_ws__(G_BarbaRayBossActions_6xA9, 0x08);
 
@@ -5331,9 +5331,9 @@ struct G_BarbaRayBossActions_6xA9 {
 
 struct G_BarbaRayBossActions_6xAA {
   G_EntityIDHeader header;
-  le_uint16_t unknown_a1 = 0;
+  le_uint16_t what = 0;
   le_uint16_t unknown_a2 = 0;
-  le_uint32_t unknown_a3 = 0;
+  le_uint32_t target_client_id = 0;
 } __packed_ws__(G_BarbaRayBossActions_6xAA, 0x0C);
 
 // 6xAB: Create lobby chair (not valid on pre-V3) (protected on V3/V4)

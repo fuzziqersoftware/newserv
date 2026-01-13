@@ -54,18 +54,18 @@ public:
   } __packed_ws__(ResistData, 0x20);
 
   struct MovementData {
-    /* 00 */ le_float fparam0;
-    /* 04 */ le_float fparam1;
-    /* 03 */ le_float fparam2;
-    /* 0C */ le_float fparam3;
-    /* 10 */ le_float fparam4;
-    /* 14 */ le_float fparam5;
-    /* 18 */ le_uint32_t iparam0;
-    /* 1C */ le_uint32_t iparam1;
-    /* 20 */ le_uint32_t iparam2;
-    /* 24 */ le_uint32_t iparam3;
-    /* 28 */ le_uint32_t iparam4;
-    /* 2C */ le_uint32_t iparam5;
+    /* 00 */ le_float fparam1;
+    /* 04 */ le_float fparam2;
+    /* 03 */ le_float fparam3;
+    /* 0C */ le_float fparam4;
+    /* 10 */ le_float fparam5;
+    /* 14 */ le_float fparam6;
+    /* 18 */ le_uint32_t iparam1;
+    /* 1C */ le_uint32_t iparam2;
+    /* 20 */ le_uint32_t iparam3;
+    /* 24 */ le_uint32_t iparam4;
+    /* 28 */ le_uint32_t iparam5;
+    /* 2C */ le_uint32_t iparam6;
     /* 30 */
   } __packed_ws__(MovementData, 0x30);
 

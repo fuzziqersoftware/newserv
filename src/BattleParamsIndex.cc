@@ -63,14 +63,14 @@ void BattleParamsIndex::Table::print(FILE* stream, Episode episode) const {
 
   phosg::fwrite_fmt(stream, "========== MOVEMENT DATA\n");
   for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
-    phosg::fwrite_fmt(stream, "{} ZZ FPARAM-0 FPARAM-1 FPARAM-2 FPARAM-3 FPARAM-4 FPARAM-5 IPARAM-0 IPARAM-1 IPARAM-2 IPARAM-3 IPARAM-4 IPARAM-5\n",
+    phosg::fwrite_fmt(stream, "{} ZZ FPARAM-1 FPARAM-2 FPARAM-3 FPARAM-4 FPARAM-5 FPARAM-6 IPARAM-1 IPARAM-2 IPARAM-3 IPARAM-4 IPARAM-5 IPARAM-6\n",
         abbreviation_for_difficulty(difficulty));
     for (size_t z = 0; z < 0x60; z++) {
       const auto& e = this->movement_data[static_cast<size_t>(difficulty)][z];
       phosg::fwrite_fmt(stream,
           "  {:02X} {:8.3f} {:8.3f} {:8.3f} {:8.3f} {:8.3f} {:8.3f} {:08X} {:08X} {:08X} {:08X} {:08X} {:08X}",
-          z, e.fparam0, e.fparam1, e.fparam2, e.fparam3, e.fparam4, e.fparam5,
-          e.iparam0, e.iparam1, e.iparam2, e.iparam3, e.iparam4, e.iparam5);
+          z, e.fparam1, e.fparam2, e.fparam3, e.fparam4, e.fparam5, e.fparam6,
+          e.iparam1, e.iparam2, e.iparam3, e.iparam4, e.iparam5, e.iparam6);
       fputc('\n', stream);
     }
   }

@@ -164,7 +164,8 @@ struct EnemyTypeDefinition {
   std::vector<uint8_t> bp_stats_indexes;
   std::vector<uint8_t> bp_attack_data_indexes;
   std::vector<uint8_t> bp_resist_data_indexes;
-  std::vector<uint8_t> bp_movement_data_indexes;
+  // Note: movement data isn't bound as strongly to the enemy types; some enemies use many entries and some use none at
+  // all, so we don't list them here. See notes/movement-data.txt for a listing of which enemies use which entries.
   const char* enum_name;
   const char* in_game_name;
   const char* ultimate_name; // May be null if same as in_game_name

@@ -3107,18 +3107,18 @@ std::string disassemble_quest_script(
   auto disassemble_label_as_movement_data = [&](shared_ptr<Label> l) -> void {
     disassemble_label_as_struct.template operator()<MovementData>(l, [&](const MovementData& movement) -> void {
       l->lines.emplace_back("  // As MovementData");
-      l->lines.emplace_back(std::format("  {:04X}  fparam0           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam0), movement.fparam0.load_raw(), movement.fparam0));
       l->lines.emplace_back(std::format("  {:04X}  fparam1           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam1), movement.fparam1.load_raw(), movement.fparam1));
       l->lines.emplace_back(std::format("  {:04X}  fparam2           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam2), movement.fparam2.load_raw(), movement.fparam2));
       l->lines.emplace_back(std::format("  {:04X}  fparam3           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam3), movement.fparam3.load_raw(), movement.fparam3));
       l->lines.emplace_back(std::format("  {:04X}  fparam4           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam4), movement.fparam4.load_raw(), movement.fparam4));
       l->lines.emplace_back(std::format("  {:04X}  fparam5           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam5), movement.fparam5.load_raw(), movement.fparam5));
-      l->lines.emplace_back(std::format("  {:04X}  iparam0           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam0), movement.iparam0, movement.iparam0));
+      l->lines.emplace_back(std::format("  {:04X}  fparam6           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam6), movement.fparam6.load_raw(), movement.fparam6));
       l->lines.emplace_back(std::format("  {:04X}  iparam1           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam1), movement.iparam1, movement.iparam1));
       l->lines.emplace_back(std::format("  {:04X}  iparam2           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam2), movement.iparam2, movement.iparam2));
       l->lines.emplace_back(std::format("  {:04X}  iparam3           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam3), movement.iparam3, movement.iparam3));
       l->lines.emplace_back(std::format("  {:04X}  iparam4           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam4), movement.iparam4, movement.iparam4));
       l->lines.emplace_back(std::format("  {:04X}  iparam5           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam5), movement.iparam5, movement.iparam5));
+      l->lines.emplace_back(std::format("  {:04X}  iparam6           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam6), movement.iparam6, movement.iparam6));
     });
   };
   auto disassemble_label_as_image_data = [&](shared_ptr<Label> l) -> void {

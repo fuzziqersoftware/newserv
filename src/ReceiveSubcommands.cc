@@ -3683,9 +3683,9 @@ static asio::awaitable<void> on_gol_dragon_actions(shared_ptr<Client> c, Subcomm
   }
 
   G_GolDragonBossActions_GC_6xA8 sw_cmd = {{cmd.header.subcommand, cmd.header.size, cmd.header.entity_id},
-      cmd.unknown_a2.load(),
+      cmd.phase.load(),
       cmd.unknown_a3.load(),
-      cmd.unknown_a4.load(),
+      cmd.target_client_id.load(),
       cmd.x.load(),
       cmd.z.load(),
       cmd.unknown_a5,

@@ -2929,7 +2929,8 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     //   param6 = type (0 = Dimenian, 1 = La Dimenian, 2 = So Dimenian)
     {0x00A6, F_V0_V4, 0x0000000000180700, "TObjEneDimedian"},
 
-    // Bulclaw. There appear to be no parameters.
+    // Bulclaw. There appear to be no parameters. It appears that param6 may have been used to select a different model
+    // or set of movement data in a previous version, but in PSO GC at least, both movement datas are the same (1F).
     {0x00A7, F_V0_V4, 0x0000000000000700, "TObjEneBalClawBody"},
 
     // Claw. There appear to be no parameters.
@@ -3127,14 +3128,9 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     {0x0115, F_V4, 0x000041F000000000, "__BOOTA_FAMILY__"},
 
     // Dorphon. Params:
-    //   param1 = TODO (value is param1 + 0.3)
-    //   param2 = TODO (value is param2 + 0.3)
-    //   param3 = TODO (value is param3 + 30, clamped below to 10)
-    //   param4 = TODO (value is param4 + 0.3)
-    //   param5 = TODO (value is param5 + 0.05)
+    //   param1-5 = same as TObjEneDellBiter
     //   param6 = flags (bit field):
     //     0001 = always rare (Dorphon Eclair)
-    // TODO: The values above make it look like param1-5 are the same as for TObjEneDellBiter. Verify if this is true.
     {0x0116, F_V4, 0x000041F000000000, "__DORPHON__"},
 
     // Goran / Pyro Goran / Goran Detonator. Same parameters as TObjEneBeast, but also:

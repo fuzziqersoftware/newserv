@@ -1,0 +1,586 @@
+NOTE: The NNF descriptions are from Kayak's movement data notes: https://qedit.info/index.php?title=Get_movement_data
+
+
+
+MOVEMENT DATA 00 (BOOTA)
+MOVEMENT DATA 01 (ZE_BOOTA)
+MOVEMENT DATA 03 (BA_BOOTA)
+MOVEMENT DATA 11 (GORAN)
+MOVEMENT DATA 12 (PYRO_GORAN)
+MOVEMENT DATA 13 (GORAN_DETONATOR)
+MOVEMENT DATA 4A (BOOMA, MERILLIA)
+MOVEMENT DATA 4B (GOBOOMA, MERILTAS)
+MOVEMENT DATA 4C (GIGOBOOMA)
+MOVEMENT DATA 4E (EVIL_SHARK, DOLMOLM)
+MOVEMENT DATA 4F (PAL_SHARK, DOLMDARL)
+MOVEMENT DATA 50 (GUIL_SHARK)
+MOVEMENT DATA 52 (DIMENIAN)
+MOVEMENT DATA 53 (LA_DIMENIAN)
+MOVEMENT DATA 54 (SO_DIMENIAN)
+fparam1 = idle move speed (when returning to initial position)
+fparam2 = idle animation speed
+fparam3 = engaged move speed (when approaching a player)
+fparam4 = engaged animation speed
+fparam5 = MERILLIA, MERILTAS; TODO: 3OE1:800D5750; poison cloud damage
+fparam5 = DOLMOLM, DOLMDARL; TODO: 3OE1:802FFA70; max distance to notice player?; NNF: Possibly frames before getting trapped
+fparam5 = BOOTA, ZE_BOOTA, BA_BOOTA; TODO: 59NL:005A56B5, 59NL:005A5361
+fparam5 = GORAN, PYRO_GORAN, GORAN_DETONATOR; TODO: 59NL:005ACDD2
+fparam6 = MERILLIA, MERILTAS; TODO: 3OE1:800D7074; NNF: run away speed
+fparam6 = GORAN, PYRO_GORAN, GORAN_DETONATOR; TODO: 59NL:005AD31E, 59NL:005ACC23, 59NL:005ACB4A; length of a vector (speed?)
+iparam1 = MERILLIA, MERILTAS; low HP threshold percentage (0-100); controls how often it runs away
+iparam1 = DOLMOLM, DOLMDARL; TODO: 3OE1:802FFFBC; NNF: Angle to use Trap (Cannot exceed Attack data angle)
+iparam1 = BOOTA, ZE_BOOTA, BA_BOOTA; TODO: 59NL:005A53D7, 59NL:005A531C, 59NL:005A5092 (special case for 01 only apparently?)
+iparam1 = GORAN, PYRO_GORAN, GORAN_DETONATOR; TODO: 59NL:005AD0CF, 59NL:005ACE95; looks like an angle in degrees (range [0, 359])
+iparam2 = DOLMOLM, DOLMDARL; TODO: 3OE1:80300154; NNF: Length of time in seconds Dolmolm trap lasts
+iparam2 = BOOTA, ZE_BOOTA, BA_BOOTA; TODO: 59NL:005A5580
+iparam2 = GORAN, PYRO_GORAN, GORAN_DETONATOR; TODO: 59NL:005ACD0F
+
+MOVEMENT DATA 00 (MOTHMANT)
+fparam1 = TODO: 3OE1:800B184C; NNF: chase speed
+iparam2 = TODO: 3OE1:800B07E8; frames between attacks?; NNF: attack speed
+
+MOVEMENT DATA 01 (MONEST)
+(loaded with assets but not used)
+
+MOVEMENT DATA 02 (SAVAGE_WOLF)
+MOVEMENT DATA 03 (BARBAROUS_WOLF)
+(loaded with assets but not used)
+
+MOVEMENT DATA 04 (POISON_LILY)
+MOVEMENT DATA 05 (NAR_LILY)
+MOVEMENT DATA 25 (DEL_LILY)
+fparam1 = DEL_LILY; TODO: 3OE1:800C25C8; damage for some kind of attack
+iparam1 = POISON_LILY, NAR_LILY; Megid level, only used in Ultimate
+
+MOVEMENT DATA 05 (SAND_RAPPY_CRATER)
+MOVEMENT DATA 06 (DEL_RAPPY_CRATER)
+MOVEMENT DATA 17 (SAND_RAPPY_DESERT)
+MOVEMENT DATA 18 (RAG_RAPPY, DEL_RAPPY_DESERT)
+MOVEMENT DATA 19 (AL_RAPPY, LOVE_RAPPY, SAINT_RAPPY, EGG_RAPPY, HALLO_RAPPY)
+fparam1 = hitbox radius
+fparam2 = TODO: 3OE1:TObjEneLappy_set_params_from_movement_data, 59NL:FUN_00526A7C; NNF: Flinch time (higher number is less flinch time)
+fparam3 = TODO: 3OE1:TObjEneLappy_set_params_from_movement_data, 59NL:FUN_00526A7C; NNF: Animation speed at which their legs move after getting hit once they fake die (negative values make them run underground, 0 makes it so their legs don't move along and they just slide across the ground lol.)
+
+MOVEMENT DATA 06 (SINOW_BEAT, SINOW_BERILL)
+MOVEMENT DATA 10 (SINOW_GOLD, SINOW_SPIGELL)
+fparam1 = TODO: 3OE1:800E63F0, 3OE1:800F38D8; NNF: Movement speed
+fparam2 = SINOW_BEAT, SINOW_GOLD; TODO: 3OE1:800E6410; NNF: Clone movement speed (invisible flag must be set to 0 to get clones)
+fparam3 = TODO: 3OE1:800E5D0C, 3OE1:800F3234; NNF: The speed (and amount) it moves forward right when it is about to attack you
+fparam4 = TODO: 3OE1:800E7BA0, 3OE1:800E7DA8, 3OE1:800F53E4
+fparam5 = TODO: 3OE1:800E7BA8, 3OE1:800F53EC
+fparam6 = SINOW_BERILL, SINOW_SPIGELL; TODO: 3OE1:800F21D4, 3OE1:800F2E84; probability of something (0-1)
+iparam1 = Shifta/Deband/Resta level
+iparam2 = TODO: 3OE1:800E5200, 3OE1:800F2B8C
+iparam3 = TODO: 3OE1:800E5D78, 3OE1:800F32A0; NNF: Amount of time (in frames) that the sinow pauses after it attacks
+iparam4 = SINOW_BERILL, SINOW_SPIGELL; attack tech level (Rafoie in Ultimate, Gifoie otherwise)
+
+MOVEMENT DATA 07 (CANADINE)
+MOVEMENT DATA 08 (CANADINE_RING)
+MOVEMENT DATA 09 (CANANE)
+fparam1 = TODO: 3OE1:8009CEF4; NNF: Movement speed of animation perfomed just before melee attack
+fparam2 = electrical attack damage
+fparam3 = explosion damage
+iparam1 = TODO: 3OE1:8009D4AC; NNF: Zonde attack charge time (higher is longer)
+iparam2 = TODO: 3OE1:8009D508; NNF: Delay after laser targetting ends before shooting Zonde
+iparam3 = TODO: 3OE1:8009D59C; NNF: Delay after casting Zonde
+iparam4 = TODO: 3OE1:8009D5B8; NNF: Number of times Zonde is cast before they go to the next cycle
+iparam5 = TODO: 3OE1:8009C5C8; NNF: stun frames after being hit
+iparam6 = TODO: 3OE1:8009B148; number of out-fighters (see CANADINE description in Map.cc); NNF: How many of the 8 ring Canadines will cast Zonde (numbers greater than 8 are treated as 8). The remaining number out of 8 will perform melee attacks instead. Value of 0 causes FSOD.
+
+MOVEMENT DATA 07 (GEE)
+iparam5 = TODO: 3OE1:800C9778; probably same as CANADINE (movement data 07 iparam5)
+
+MOVEMENT DATA 07 (ZU_CRATER)
+MOVEMENT DATA 08 (PAZUZU_CRATER)
+MOVEMENT DATA 1B (ZU_CRATER)
+MOVEMENT DATA 1C (PAZUZU_CRATER)
+fparam1 = TODO: 59NL:005B4A3C
+
+MOVEMENT DATA 08 (PIG_RAY)
+MOVEMENT DATA 09 (UL_RAY)
+fparam1 = TODO: 3OE1:803072B0, 3OE1:80307354; speed?
+iparam1 = TODO: 3OE1:803075FC; frame count for something
+
+MOVEMENT DATA 09 (ASTARK)
+fparam1 = TODO: 59NL:005A2B8F
+fparam2 = TODO: 59NL:005A2E1E
+fparam3 = TODO: 59NL:005A31D1
+fparam4 = TODO: 59NL:005A3124
+fparam5 = TODO: 59NL:005A4992
+fparam6 = TODO: 59NL:005A2B79
+iparam1 = TODO: 59NL:005A4947
+iparam2 = TODO: 59NL:005A499D
+
+MOVEMENT DATA 0A (CHAOS_SORCERER)
+iparam1 = attack tech 1 level (Grants in Ultimate, Gizonde in non-Ultimate Ep2, Rafoie in non-Ultimate Ep1)
+iparam2 = attack teck 2 level (Megid in Ultimate, Gibarta otherwise)
+iparam3 = Resta level
+
+MOVEMENT DATA 0B (BEE_R)
+MOVEMENT DATA 0C (BEE_L)
+(loaded with assets but not used)
+
+MOVEMENT DATA 0D (SATELLITE_LIZARD_CRATER)
+MOVEMENT DATA 0E (YOWIE_CRATER)
+MOVEMENT DATA 1D (SATELLITE_LIZARD_DESERT)
+MOVEMENT DATA 1E (YOWIE_DESERT)
+fparam1 = TODO: 59NL:005AEBC5; looks like an angle in degrees (range [0, 359])
+fparam2 = TODO: 59NL:005AEBEE
+
+MOVEMENT DATA 0D (DARK_BRINGER)
+fparam1 = TODO: 3OE1:FUN_80097F98; NNF: charge speed
+fparam2 = TODO: 3OE1:FUN_800983F8; NNF: movement speed
+fparam6 = TODO: 3OE1:80097F3C; NNF: Regular attack cooldown. Delay between going red and shooting.
+iparam2 = TODO: 3OE1:FUN_80097F98; NNF: cooldown time after shooting
+iparam3 = damage for charge attack; 3OE1:80099128
+iparam4 = TODO: 3OE1:80097A30; NNF: laser attack damage
+iparam5 = TODO: 3OE1:FUN_800983F8; NNF: swing attack radius
+iparam6 = TODO: 3OE1:FUN_800983F8; NNF: charge attack radius (if player is outside this range)
+
+MOVEMENT DATA 0D (DELBITER)
+fparam1 = TODO: 3OE1:80302D1C, 3OE1:80302B38, 3OE1:803033C8, 3OE1:8030344C; NNF: Charge speed
+fparam2 = TODO: 3OE1:80303124; NNF: Walking speed
+fparam3 = TODO: 3OE1:80304F00
+fparam4 = TODO: 3OE1:80304F10
+fparam5 = TODO: 3OE1:80302E34
+fparam6 = TODO: 3OE1:80302FD8; NNF: Charge radius (how far away you have to be before it charges).
+iparam1 = TODO: 3OE1:80302A6C
+iparam2 = TODO: 3OE1:803042F8
+iparam3 = TODO: 3OE1:80304368; NNF: Charge damage.
+iparam4 = TODO: 3OE1:80302414; related to TP absorption; NNF: Laser damage.
+iparam5 = TODO: 3OE1:803030A4; NNF: Radius at which Delbiter attempts foot stomp attack (the range at which that attack can hit you, however, is not modified).
+iparam6 = TODO: 3OE1:8030267C
+
+MOVEMENT DATA 0E (DARK_BELRA)
+(loaded with assets but not used)
+
+MOVEMENT DATA 0F (DE_ROL_LE, BARBA_RAY)
+fparam1 = DE_ROL_LE; TODO: damage amount; 3OE1:800304A4
+fparam1 = BARBA_RAY; TODO: 3OE1:802E7980; damage for some attack; NNF: laser damage
+fparam2 = DE_ROL_LE; TODO: TObjectV8047ec78 which has no constructor, so this is unused?; 3OE1:80038FD8
+fparam2 = BARBA_RAY; TODO: 3OE1:802EDA38; TBoss7PhotonBullet_update; NNF: missile damage
+fparam3 = DE_ROL_LE; TODO: TBoss2Mine, appears to be mine explosion damage; 3OE1:800385E4; NNF: Missile damage
+fparam4 = DE_ROL_LE; TODO: multiplied by a random number in range [-1, 1] and added to pos.x; only happens if param5 passes
+fparam5 = DE_ROL_LE; TODO: probability of some kind (range [0, 1]); 3OE1:80030C80
+iparam1 = total HP
+iparam2 = HP until armor on joints falls off
+iparam3 = HP until mask falls off
+iparam4 = DE_ROL_LE; TODO: only used in Ultimate, in other difficulties 180 is used instead
+iparam5 = DE_ROL_LE; TODO: only used in Ultimate, in other difficulties 120 is used instead
+
+MOVEMENT DATA 0F (DORPHON)
+MOVEMENT DATA 10 (DORPHON_ECLAIR)
+fparam1 = TODO: 59NL:005A832F, 59NL:005A8364, 59NL:005A8388, 59NL:005A8A9A, 59NL:005A9643, 59NL:005A96E5
+fparam2 = TODO: 59NL:005A8EC2, 59NL:005A903D
+fparam3 = TODO: 59NL:FUN_005A9ADC; minimum 0.1
+fparam4 = TODO: 59NL:FUN_005A9ADC; minimum 0.1
+fparam5 = TODO: 59NL:005A85AB
+fparam6 = TODO: 59NL:005A8F2D
+iparam1 = TODO: 59NL:005A8082
+iparam2 = TODO: 59NL:005A89C6 and many others
+iparam3 = TODO: 59NL:005A8477 and many others
+iparam4 = TODO: 59NL:005A79E6; looks like same as for DELBITER
+iparam5 = TODO: 59NL:005A8E4D
+iparam6 = TODO: 59NL:005A71DA; multiplied by 30
+
+MOVEMENT DATA 11 (DRAGON, GOL_DRAGON)
+fparam1 = DRAGON; TODO: TBoss1DragonEffBreath
+fparam1 = GOL_DRAGON; TODO: 3OE1:802F98EC; damage for some attack
+fparam2 = DRAGON; TODO: TObjBoss1Crater_update, multiplied by 0.666 internally; TBoss1Dragon @ 3OE1:800276E0
+fparam2 = GOL_DRAGON; TODO: 3OE1:802F987C; damage for some attack
+fparam3 = DRAGON; TODO: 3OE1:8002787C
+fparam3 = GOL_DRAGON; TODO: 3OE1:802F9810; damage for some attack
+fparam4 = DRAGON; TODO: hitbox radius for something
+fparam4 = GOL_DRAGON; TODO: 3OE1:802F9DBC; range for some attack
+fparam5 = DRAGON; TODO: only used in Ultimate, in other difficulties 0.8 is used instead
+fparam5 = GOL_DRAGON; TODO: 3OE1:802F2FDC, 3OE1:802F38A8, 3OE1:802F3AFC, 3OE1:802F8800
+fparam6 = DRAGON; TODO: only used in Ultimate, in other difficulties 2.0 is used instead
+fparam6 = GOL_DRAGON; TODO: 3OE1:802F7BBC, 3OE1:802F7C34
+iparam1 = TODO: 3OE1:TBoss8Dragon_v58; damage amount for 1 hitbox
+iparam2 = TODO: 3OE1:TBoss8Dragon_v58; damage amount for 2 hitboxes
+iparam3 = TODO: 3OE1:TBoss8Dragon_v58; damage amount for 4 hitboxes
+iparam4 = GOL_DRAGON; clone HP
+iparam5 = GOL_DRAGON; TODO: 3OE1:802F32C8; which clone to create? (should be in range [0, 5])
+
+MOVEMENT DATA 12 (GOL_DRAGON)
+fparam1 = TODO: 3OE1:FUN_802FC22C
+fparam2 = TODO: 3OE1:FUN_802FC22C
+fparam3 = TODO: 3OE1:FUN_802FC22C
+fparam4 = TODO: 3OE1:FUN_802FC22C
+fparam5 = TODO: 3OE1:FUN_802FC22C; same function as fparam1 but used when no clones exist?
+fparam6 = TODO: 3OE1:FUN_802FC22C; same function as fparam2 but used when no clones exist?
+
+MOVEMENT DATA 13 (GOL_DRAGON)
+fparam1 = TODO: 3OE1:FUN_802FC22C; same function as movement data 12 fparam3 but used when no clones exist?
+fparam2 = TODO: 3OE1:FUN_802FC22C; same function as movement data 12 fparam4 but used when no clones exist?
+fparam3 = TODO: 3OE1:802FBDBC; HP for phase 2 to begin?
+fparam4 = TODO: 3OE1:802F6F24; scaling factor for a vector (speed/range?)
+
+MOVEMENT DATA 19 (MERISSA_A)
+MOVEMENT DATA 1A (MERISSA_AA)
+fparam1 = TODO: 59NL:005B70AC
+fparam2 = TODO: 59NL:005B70AC
+fparam3 = TODO: 59NL:005B70AC
+fparam4 = TODO: 59NL:005B5750, 59NL:005B6101
+iparam1 = TODO: 59NL:005B56F8, 59NL:005B61DE; looks like an angle in degrees (range [0, 359])
+iparam2 = TODO: 59NL:005B5824; looks like an angle in degrees (range [0, 359])
+
+MOVEMENT DATA 1A (NANO_DRAGON)
+fparam1 = TODO: 3OE1:800DAC68; NNF: flight speed
+fparam2 = TODO: 3OE1:800D9C70; NNF: Straight laser speed.
+fparam3 = TODO: 3OE1:800D9C70; NNF: Homing laser speed (if set too low, it will go backwards).
+fparam4 = TODO: 3OE1:800D9C70; NNF: Homing laser projectile count (projectile number = number given).
+fparam5 = TODO: 3OE1:800D9C70; NNF: Homing laser arc.
+iparam1 = TODO: 3OE1:800D9C70; NNF: Straight laser damage.
+iparam2 = TODO: 3OE1:800D9C70; NNF: Homing laser damage.
+
+MOVEMENT DATA 1A (GI_GUE)
+fparam1 = TODO: 3OE1:802CA8F4, 3OE1:802CAA04; looks like a scape factor; NNF: Speed when flying away.
+fparam2 = TODO: 3OE1:TObjEneMe1GiGue_FUN_802C98FC; NNF: missile speed
+fparam3 = TODO: 3OE1:TObjEneMe1GiGue_FUN_802C98FC; NNF: confuse projectile speed
+fparam4 = TODO: 3OE1:802CCA18
+fparam5 = TODO: 3OE1:802CC640
+fparam6 = TODO: 3OE1:802CA274; probability in range [0, 1]
+iparam1 = TODO: 3OE1:TObjEneMe1GiGue_FUN_802C98FC; minimum value 40; NNF: Rafoie bomb attack damage
+iparam2 = TODO: 3OE1:TObjEneMe1GiGue_FUN_802C98FC; NNF: Confusion projectile damage (affected by EFR).
+iparam3 = Jellen/Zalure level
+iparam4 = TODO: 3OE1:TObjEneMe1GiGue_FUN_802C98FC
+iparam5 = TODO: 3OE1:TObjEneMe1GiGue_FUN_802C98FC; minimum value 20 in one scenario, 40 in another
+
+MOVEMENT DATA 1B (DUBCHIC)
+MOVEMENT DATA 1C (GILLCHIC)
+fparam1 = TODO: 3OE1:FUN_800A89D4; NNF: Punch speed. Higher values means faster punches.
+fparam2 = punch attack range when not damaged
+fparam3 = TODO: 3OE1:800A8B64, 3OE1:800A9E98; only used when damaged, values when not damaged are 0.37037036 for DUBCHIC, 0.57037038 for GILLCHIC (unused since GILLCHIC dies instead of being damaged)
+fparam4 = TODO: 3OE1:FUN_800A89D4
+fparam5 = TODO: 3OE1:FUN_800A89D4; NNF: Punch speed and movement speed when damaged
+fparam6 = punch attack range when damaged
+iparam1 = number of frames after kill before revive sequence starts (Dubchic only)
+iparam2 = TODO: 3OE1:800A8F9C; NNF: Laser charge time
+iparam3 = TODO: 3OE1:800A9B40; NNF: Number of invicibility frames after knockdown
+iparam4 = laser damage
+
+MOVEMENT DATA 1D (GARANZ)
+fparam1 = TODO: 3OE1:800D320C; NNF: Distance travelled every movement phase. Speed is unaffected, so it can take a long time before it stops to shoot.
+fparam2 = TODO: 3OE1:TObjEneGyaranzo_set_movement_params; NNF: Movement speed. This not only makes the Garanz faster, but ends the movement phase sooner, so it gets around to shooting missiles faster too. Doesn't work well without a value in fparam1.
+fparam3 = TODO: 3OE1:TObjEneGyaranzo_set_movement_params; NNF: TODO
+fparam4 = missile speed
+fparam5 = TODO: 3OE1:TObjEneGyaranzo_set_movement_params; NNF: Missile launch arc. Defines how tight the downward curve of the missile (once launched) towards the player is. Set to 0, missiles travel straight into the ceiling and cannot hit the player.
+iparam1 = TODO: 3OE1:800D2C4C; NNF: Number of frames waited after shooting before commencing movement again. Garanz does have a lower limit and will not wait 0 frames before starting again.
+iparam2 = TODO: 3OE1:800D2254; NNF: Missile launch cooldown
+iparam3 = TODO: 3OE1:800D46A8; missile damage
+iparam4 = TODO: 3OE1:800D40FC; NNF: Mine Damage
+
+MOVEMENT DATA 1E (DARK_GUNNER)
+fparam1 = TODO: 3OE1:800A0F44, 3OE1:800A11D0
+fparam2 = TODO: 3OE1:800A24F8
+fparam3 = TODO: 3OE1:800A1C4C; seems to be a distance limit / radius of some sort
+fparam4 = TODO: 3OE1:800A1104; NNF: laser speed
+iparam1 = charge time after windup sound and before laser shot
+iparam2 = TODO: 3OE1:800A12A4; NNF: Length of time vulnerability remains after being damaged (lower=shorter)
+iparam3 = TODO: 3OE1:800A3190; NNF: Duration of invincibility (close to 0 will be no invincibility).
+iparam4 = laser shot damage
+
+MOVEMENT DATA 1E (GAL_GRYPHON)
+fparam1 = TODO: 3OE1:80065DEC; NNF: Y Value Camera adjustment when Gal lands
+fparam2 = TODO: 3OE1:80065DEC; NNF: X Value Camera adjustment when Gal lands
+fparam3 = TODO: 3OE1:80065DEC; NNF: Y Value Camera adjustment when Gal lands (cam location)
+fparam4 = TODO: 3OE1:80065DEC; NNF: Adjusts Camera near or far to player
+fparam5 = TODO: 3OE1:80065DEC; same as fparam1 but for a different situation (A); NNF: Lowers/Raises the Camera when Gal is flying
+fparam6 = TODO: 3OE1:80065DEC; same as fparam2 but for a different situation (A)
+
+MOVEMENT DATA 1F (BULCLAW)
+iparam1 = TODO: 3OE1:8008F8C8; percentage (0-100) of max HP; NNF: % chance it does it's suicide attack once split into a Bulk, you need to attack it once
+
+MOVEMENT DATA 1F (GAL_GRYPHON)
+fparam1 = TODO: 3OE1:80065DEC; same as data 1E fparam3 but for a different situation (A); NNF: (BULCLAW) Aggro Range?
+fparam2 = TODO: 3OE1:80065DEC; same as data 1E fparam4 but for a different situation (A)
+fparam3 = TODO: 3OE1:80065DEC; same as data 1E fparam1 but for a different situation (B)
+fparam4 = TODO: 3OE1:80065DEC; same as data 1E fparam2 but for a different situation (B)
+fparam5 = TODO: 3OE1:80065DEC; same as data 1E fparam3 but for a different situation (B)
+fparam6 = TODO: 3OE1:80065DEC; same as data 1E fparam4 but for a different situation (B)
+
+MOVEMENT DATA 1F (GIRTABLULU)
+fparam1 = TODO: 59NL:005ABDBD
+fparam2 = TODO: 59NL:005ABDB1
+fparam4 = TODO: 59NL:005ABD3C
+fparam5 = TODO: 59NL:005ABD45
+fparam6 = TODO: 59NL:005ABD08; looks like an angle in degrees (range [0, 359])
+iparam1 = TODO: 59NL:005AAB66, 59NL:005AAD18
+iparam3 = TODO: 59NL:005AA9FA
+iparam4 = TODO: 59NL:005AA85B
+iparam5 = TODO: 59NL:005AAF20; length of time in frames?
+iparam6 = TODO: 59NL:005AA5FD
+
+MOVEMENT DATA 20 (BULCLAW)
+(loaded with assets but not used)
+
+MOVEMENT DATA 20 (GAL_GRYPHON)
+fparam1 = TODO: 3OE1:FUN_80064064; damage scaling factor for some attack (TBoss5GryphonSnarl)
+fparam2 = TODO: 3OE1:80064130; damage amount for shock wave attack (TBoss5GryphonShockWave)
+fparam3 = TODO: 3OE1:80064130; damage amount for tornado attack (TBoss5GryphonTornado)
+fparam4 = TODO: 3OE1:80064044; damage amount for some attack
+fparam5 = TODO: 3OE1:8006475C; hitbox radius for some attack?
+iparam1 = TODO: 3OE1:TBoss5Gryphon_V58; damage amount for 1 hitbox
+iparam2 = TODO: 3OE1:TBoss5Gryphon_V58; damage amount for 4 hitboxes
+iparam3 = TODO: 3OE1:TBoss5Gryphon_V58; damage amount for 1 hitbox
+iparam4 = TODO: 3OE1:TBoss5Gryphon_V58; damage amount for 4 hitboxes
+iparam5 = TODO: 3OE1:TBoss5Gryphon_FUN_8005F0F0, 3OE1:800609D0
+
+MOVEMENT DATA 20 (SAINT_MILLION_1)
+MOVEMENT DATA 22 (SAINT_MILLION_2)
+MOVEMENT DATA 24 (SHAMBERTIN_1)
+MOVEMENT DATA 26 (SHAMBERTIN_2)
+MOVEMENT DATA 28 (KONDRIEU_1)
+MOVEMENT DATA 2A (KONDRIEU_2)
+iparam1 = TODO: 59NL:00768990, 59NL:00768A84
+iparam2 = TODO: 59NL:00768990, 59NL:00768A84
+iparam3 = TODO: 59NL:00768990, 59NL:00768A84
+iparam4 = TODO: 59NL:00768990, 59NL:00768A84
+iparam5 = TODO: 59NL:00768990, 59NL:00768A84
+
+MOVEMENT DATA 21 (SAINT_MILION_SPINNER, 0/4/8/12)
+MOVEMENT DATA 23 (SAINT_MILION_SPINNER, other indexes)
+MOVEMENT DATA 25 (SHAMBERTIN_SPINNER, 0/4/8/12)
+MOVEMENT DATA 27 (SHAMBERTIN_SPINNER, other indexes)
+MOVEMENT DATA 29 (KONDRIEU_SPINNER, 0/4/8/12)
+MOVEMENT DATA 2B (KONDRIEU_SPINNER, other indexes)
+iparam1 = TODO: 59NL:0076D40D
+
+MOVEMENT DATA 21 (VOL_OPT_1)
+iparam1 = speed of moving around in the screens
+
+MOVEMENT DATA 22 (VOL_OPT_1)
+iparam1 = damage for electrical attack
+
+MOVEMENT DATA 23 (VOL_OPT_1)
+iparam1 = large monitors' HP
+iparam2 = small monitors' HP
+
+MOVEMENT DATA 23 (EPSILON)
+fparam2 = TODO: 3OE1:8035FDB4; scale factor for vector; NNF: Laser tracking speed.
+fparam3 = TODO: 3OE1:8035FF08; NNF: Rafoie damage (based on MST).
+iparam1 = TODO: 3OE1:8035FD60; NNF: Controls how long the laser tracks players before casting Rafoie (number of Rafoies shot is tied to this - shorter tracking time means more Rafoies).
+iparam2 = TODO: 3OE1:8035FE40; NNF: Delay between when Rafoie stops and next laser begins.
+iparam3 = TODO: 3OE1:8035E44C, 3OE1:803608C0; NNF: Cooldown on Epsigard tech activation.
+iparam4 = TODO: 3OE1:8035F850; NNF: Epsigard attack radius.
+
+MOVEMENT DATA 24 (VOL_OPT)
+(loaded with assets but not used)
+
+MOVEMENT DATA 24 (EPSIGARD)
+fparam1 = TODO: 3OE1:8035CB58, 3OE1:8035CD1C, 3OE1:8035D3B4; NNF: Epsigard circle radius.
+fparam2 = TODO: 3OE1:8035CD20; NNF: Speed at which Epsigards eject from Epsilon. Epsigards always eject for a second, so fast eject speeds will project them far. They will then spin come back in to fparam1 radius.
+fparam3 = TODO: 3OE1:8035CB50, 3OE1:8035CBFC; NNF: Epsigard rotation speed.
+fparam4 = TODO: 3OE1:8035D0CC; NNF: Damage dealt per Epsigard hit.
+iparam1 = TODO: 3OE1:8035CF28; NNF: Seems to affect Epsigard damage radius. At 120, can't get hit from the front, can only gt hit from a specific position from the back and to the side.
+
+MOVEMENT DATA 25 (VOL_OPT_2)
+fparam1 = TODO: specifies length of a vector; NNF: missile speed; 3OE1:80049CB0
+fparam2 = TODO: specifies length of a vector; 3OE1:80049C94
+fparam3 = TODO: NNF: knockback distance when hit by pillar; player gets rotated in a random direction, and then moved backwards from that direction
+fparam4 = TODO: 3OE1:80049FE0; NNF: Homing pillar stomp: Affects cooldown of third pillar ('fast' pillar variants only).
+fparam5 = TODO: add param for random generation for pillar stomp; NNF: Homing pillar stomp: Affects cooldown of second pillar ('fast' pillar variants only).
+fparam6 = TODO: mult param for random generation for pillar stomp; final value is (random(0, 1) * fparam5) + fparam4; 3 values generated in total; NNF: Homing pillar stomp: Affects cooldown of first pillar ('fast' pillar variants only).
+iparam1 = TODO: NNF: missile damage
+iparam2 = TODO: NNF: pillar damage
+iparam3 = TODO: NNF: trap laser damage
+iparam4 = HP recovery amount * 5 (so e.g. 2500 here means 500HP)
+iparam5 = TODO: NNF: Charge time of trap laser attack; value used is max(10, iparam5 + 120); but used in multiple places! which is which? 3OE1:800490D0 3OE1:8004661C
+iparam6 = TODO: related to TObjVoloptPillar; 3OE1:80044ACC, 3OE1:80047110, 3OE1:8004A24C; NNF: Homing pillar stomp: Cooldown for each pillar drop. Longer is higher.
+
+MOVEMENT DATA 26 (VOL_OPT_2)
+fparam1 = TODO: specifies length of a vector; 3OE1:80049778, 3OE1:800499E8; NNF: Ball speed for laser floor trap
+fparam2 = TODO: specifies length of a vector; 3OE1:8004975C
+iparam1 = TODO: looks like lifetime in frames for a subordinate; 3OE1:80049A14; NNF: Ball chase duration
+iparam2 = TODO: 3OE1:8004490C; looks like an angular velocity?; NNF: Amount of wait time taken for rotating pillars to first attack
+
+MOVEMENT DATA 26 (ILL_GILL)
+fparam1 = TODO: 3OE1:803642E8, 3OE1:80363DBC, 3OE1:80363FCC; NNF: Affects charge speed and cooldown time.
+fparam2 = TODO: 3OE1:80364F3C; NNF: Scythe attack speed.
+iparam1 = TODO: 3OE1:80365324, 3OE1:803652CC; weapon special amount; NNF: Seems to affect how much damage the lightning scythe attack does, and how effective the megid scythe attack is (lower is less effective)
+iparam2 = TODO: 3OE1:8036537C; weapon special amount; NNF: Seems to affect how much damage the lightning scythe attack does, and how effective the megid scythe attack is (lower is less effective)
+
+MOVEMENT DATA 27 (VOL_OPT; used in Vol Opt phase 1?)
+MOVEMENT DATA 28 (VOL_OPT; used when no player is caught by the Vol Opt cage)
+MOVEMENT DATA 29 (VOL_OPT; used when any player is caught by the Vol Opt cage)
+fparam1 = TODO: param to some camera logic
+fparam2 = TODO: param to some camera logic
+fparam3 = TODO: param to some camera logic
+fparam4 = TODO: param to some camera logic
+iparam1 = TODO: entire movement data is unused if this is zero; 3OE1:TBoss3Volopt_FUN_8003EB6C
+
+MOVEMENT DATA 2A (VOL_OPT_2)
+iparam1 = TODO: only has effect if nonzero; 3OE1:80048074
+
+MOVEMENT DATA 2B (OLGA_FLOW_1)
+fparam1 = TODO: 3OE1:802B6190, 3OE1:803547F4; must be >0, default 20; NNF: sword damage
+fparam2 = TODO: 3OE1:80320F84; NNF: Olga Flow 1 shot (ball) damage
+fparam3 = TODO: 3OE1:802B5DD0; must be >0, default 20; NNF: tail swipe damage
+fparam4 = TODO: 3OE1:802B5980; must be >0, default 20; NNF: shot (beam) damage
+fparam5 = TODO: 3OE1:802B5668; must be >0, default 20; NNF: gravity trap attack damage
+fparam6 = TODO: 3OE1:802B2620; must be >0, default 7; NNF: delay between attacks (lower is faster)
+iparam1 = TODO: 3OE1:802B4970; looks like damage threshold; must be >0, default 200; NNF: Docile Mode HP Threshold
+iparam2 = TODO: 3OE1:802B4A50; looks like damage threshold; must be >0, default 200; NNF: Sky/Floor Sword HP to trigger
+iparam3 = TODO: 3OE1:802B49C0; must be >0, default 200; NNF: Sky/Floor Sword HP to cancel
+iparam4 = TODO: 3OE1:802B4924; must be >0, default 200; NNF: Gravity Trap Attack HP Threshold
+iparam5 = TODO: 3OE1:802B694C; seems to not be read - missing label?; must be >0, default 90; NNF: Shot charge-up duration (lower is shorter)
+iparam6 = TODO: 3OE1:TBoss6Type1_FUN_802B1CA8; must be >0, default 180; NNF: Movement speed and duration during charge-up shot (lower is faster/shorter)
+
+MOVEMENT DATA 2C (OLGA_FLOW_2)
+fparam1 = TODO: 3OE1:80354FBC; NNF: Olga Flow 2 sword damage (lower is less)
+fparam2 = TODO: 3OE1:802BB218; must be >0, default is 20; NNF: Foot damage
+fparam5 = TODO: 3OE1:802BB218; must be >0, default is 20; NNF: Wrong attribute damage dealt during soul steal (physical - lower is less)
+fparam3 = TODO: 3OE1:80354FEC, 3OE1:8035BF80; NNF: Olga Flow 2 Divine Punishment damage (lower is less)
+fparam4 = rock damage; must be > 0; default 20
+fparam6 = TODO: 3OE1:802BB218; must be >0, default is 60; NNF: Rock fall duration during soul steal (lower is less)
+iparam1 = TODO: 3OE1:802BB218; must be >0, default is 200; NNF: Amount of damage to trigger Divine Punishment
+iparam2 = TODO: 3OE1:802BB218; must be >0, default is 200; NNF: Amount of damage it takes to go into soul steal state
+iparam3 = TODO: 3OE1:802BB218; must be >0, default is 200; NNF: Amount of damage to knock Olga Flow out of soul steal state
+iparam4 = TODO: 3OE1:802BB218; must be >0, default is 60; NNF: Delay between attacks (lower is faster)
+iparam5 = TODO: 3OE1:802BB218; must be in range [0, 100] with iparam5 + iparam6 <= 100, default is 25, used as a probability along with iparam6; NNF: Form 1's Total HP% Trigger to halve Attack delays
+iparam6 = TODO: 3OE1:802BB218; must be in range [0, 100] with iparam5 + iparam6 <= 100, default is 10, used as a probability along with iparam5
+
+MOVEMENT DATA 2D (OLGA_FLOW_1, OLGA_FLOW_2)
+fparam1 = OLGA_FLOW_1; TODO: 3OE1:80323128; TBoss6Mine; default 20; NNF: Trap damage Form 1
+fparam2 = OLGA_FLOW_2; TODO: 3OE1:8036773C; TBoss6MagMine; must be >0, default 20; NNF: Trap damage Form 2
+fparam3 = OLGA_FLOW_2; TODO: 3OE1:8036778C; TBoss6MagMine; must be in range [0, 100], default 0
+
+MOVEMENT DATA 2E (OLGA_FLOW_2)
+fparam1 = TODO: 3OE1:8032EE24; TBoss6Mag; NNF: Amount of time Gael/Giel stays dead (lower is shorter)
+fparam2 = TODO: 3OE1:8032EE74; TBoss6Mag; NNF: Gael/Giel Chase speed during Divine Punishment
+fparam3 = TODO: 3OE1:802BB218; must be >0, default 1; used instead of movement data 2F fparam1 if a certain flag is set; NNF: Olga Flow's normal movement speed after some threshold
+fparam4 = TODO: 3OE1:802BB218; must be >0, default 1; used instead of movement data 2F fparam2 if a certain flag is set; NNF: Olga Flow's movement speed during soul steal after some threshold
+
+MOVEMENT DATA 2F (OLGA_FLOW_1, OLGA_FLOW_2)
+fparam1 = OLGA_FLOW_2; TODO: 3OE1:802BB218; must be >0, default 1
+fparam2 = OLGA_FLOW_2; TODO: 3OE1:802BB218; must be >0, default 1
+fparam3 = OLGA_FLOW_2; TODO: 3OE1:802BB218, 3OE1:8035BFB0; must be >0, default 1; damage reduction for movement data 2C fparam2?, only applies if a certain flag is set
+fparam4 = OLGA_FLOW_2; TODO: 3OE1:802BB218; must be >0, default 120; looks like duration for something
+fparam5 = OLGA_FLOW_1; TODO: 3OE1:80320FB4; also related to shot/ball attack
+fparam6 = OLGA_FLOW_1; TODO: 3OE1:802B694C; must be >0, default 7; same as movement data 2B fparam6 but used when a certain flag is enabled
+
+MOVEMENT DATA 30 (POFUILLY_SLIME)
+MOVEMENT DATA 34 (POUILLY_SLIME)
+fparam1 = TODO: 3OE1:800E8EB4; value is max(0, fparam1); NNF: Spit damage
+
+MOVEMENT DATA 30 (DELDEPTH)
+fparam1 = TODO: 3OE1:80312E04; NNF: Movement speed (Disk form).
+fparam2 = TODO: 3OE1:80312E1C; NNF: Distance travelled per movement (Disk form).
+iparam1 = attack tech level (Megid in Ultimate; Barta in other difficulties); also bomb power? (TODO: 3OE1:80312490)
+iparam2 = TODO: 3OE1:80312AE0; NNF: Rotation speed (Unfolded form) - lower is slower.
+
+MOVEMENT DATA 31 (PAN_ARMS)
+fparam1 = TODO: 3OE1:800DF31C
+fparam2 = TODO: 3OE1:800E36DC; NNF: Blue laser damage
+fparam3 = TODO: 3OE1:800E36DC; NNF: Red laser damage
+iparam1 = TODO: 3OE1:800DF32C; value is max(iparam1, 5); NNF: spawn radius
+iparam2 = TODO: 3OE1:800DF350; value is max(iparam2, 0); NNF: spawn speed in frames
+
+MOVEMENT DATA 32 (HIDOOM)
+MOVEMENT DATA 33 (MIGIUM)
+fparam1 = TODO: 3OE1:800E2640
+fparam2 = TODO: 3OE1:800E2650; NNF: stab damage
+fparam3 = MIGIUM; TODO: 3OE1:800E26AC
+iparam1 = MIGIUM; Resta level, must be in range [0, 14]; NNF: Jellen level
+iparam2 = MIGIUM; Jellen level, must be in range [0, 14]; NNF: Zalure level
+iparam3 = MIGIUM; Zalure level, must be in range [0, 14]; NNF: Resta level
+
+MOVEMENT DATA 35 (DARVANT)
+fparam1 = TODO: must be in range [0.33333334, 5.833333]; 3OE1:8005D5E0; NNF: Attack speed
+iparam1 = number of Darvants that must be killed before phase ends (actual value is player count * iparam1); must be in range [1, 19]
+
+MOVEMENT DATA 36 (DARK_FALZ_1)
+fparam1 = NNF: movement speed; must be in range [1, 60]; used as reciprocal (see 3OE1:80052F60) so lower is faster
+iparam1 = Rafoie level, expected to be in range [0, 14]
+iparam2 = Rabarta level, expected to be in range [0, 14]
+iparam3 = TODO: 3OE1:FUN_80054DE0; NNF: Dark Falz 1 Divine Punishment strength (Also based on MST)
+
+MOVEMENT DATA 37 (DARK_FALZ_2)
+fparam1 = TODO: 3OE1:80057BE4; value used is clamp(floor(fparam1), 1, 25) * 75 - 7; appears angle-related; 3OE1:8005653C; NNF: Movement speed (backwards, lower is faster).
+iparam1 = TODO: must be in range [1, 4], chooses between 4 different actions in a certain situation, named MD_STOP1 through MD_STOP4; 3OE1:80056358
+iparam2 = TODO: Resta level; 3OE1:80056994
+
+MOVEMENT DATA 38 (DARK_FALZ_3)
+fparam1 = TODO: 3OE1:80050CA4
+iparam1 = Grants level
+iparam2 = Megid level
+iparam3 = number of pairs of homing attacks (TObjDFHorming) to launch at once; must be in range [1, 8]
+iparam4 = TODO: 3OE1:8005B14C; NNF: HP threshold to soul steal
+iparam5 = TODO: 3OE1:80050C94; NNF: Ball attack damage. (with 3000/10 MST, does 700 Damage)
+
+MOVEMENT DATA 39 (DARVANT, DARK_FALZ_1)
+fparam1 = DARVANT; TODO: must be in range [0.33333334, 10.208332]; 3OE1:8005D618; NNF: Attack speed
+iparam1 = DARK_FALZ_1; TODO: number of Darvants to spawn at a time?; clamped to [1, 6]; 3OE1:80054CF0
+
+MOVEMENT DATA 3A (MERICAROL)
+MOVEMENT DATA 45 (MERIKLE)
+MOVEMENT DATA 46 (MERICUS)
+fparam1 = TODO: 3OE1:802CE110; NNF: rush damage
+fparam2 = poison cloud damage
+fparam3 = TODO: 3OE1:802CEAA8; NNF: Spit 'attack capability'. Set to 1, attack does nothing and does not register as a hit.
+fparam4 = TODO: 3OE1:802CEAB0; NNF: Projectile speed; also affects the cooldown time between each shot.
+fparam5 = poison cloud radius
+fparam6 = TODO: 3OE1:802CD890; probability in range [0, 1]; NNF: Level of 'Megidness'. Value of 1 treats the attack as megid, despite fparam3.
+iparam3 = TODO: 3OE1:802CED14; NNF: Projectile fire rate.
+iparam4 = TODO: 3OE1:802CD7FC; NNF: Charge up time for poison cloud attack.
+iparam5 = TODO: 3OE1:802CE850; NNF: Melee attack cooldown time.
+iparam6 = TODO: 3OE1:802CEA30
+
+MOVEMENT DATA 3B (UL_GIBBON)
+MOVEMENT DATA 3C (ZOL_GIBBON)
+(loaded with assets but not used)
+
+MOVEMENT DATA 3D (GIBBLES)
+fparam2 = TODO: 3OE1:802D7F5C; NNF: Triple-punch attack cooldown.
+fparam3 = TODO: 3OE1:802D8BC0; NNF: Movement speed.
+fparam4 = TODO: 3OE1:802D7490; NNF: Jump cooldown time (Higher value = less waiting time).
+iparam1 = TODO: 3OE1:802D7484
+
+MOVEMENT DATA 40 (MORFOS)
+fparam1 = TODO: 3OE1:80335A98, 3OE1:80335DBC; NNF: Laser speed (also affects hitbox property - needs retest with others for opinion).
+fparam2 = TODO: 3OE1:80335ADC; NNF: Laser damage.
+iparam1 = TODO: 3OE1:80332298, 3OE1:803321C4; NNF: Firing rate of regular laser attack. Laser attack when aggressive (charging) is unaffected.
+iparam2 = TODO: 3OE1:8033161C, 3OE1:8033192C, 3OE1:80331B4C, 3OE1:80331D00, 3OE1:80331FA0; NNF: Speed at which Morphos spins after firing laser.
+iparam3 = TODO: 3OE1:80331F04; NNF: Interval in frames of attacks
+iparam4 = TODO: 3OE1:803318EC; NNF: Charge frames before attacking without hitstun.
+iparam5 = TODO: 3OE1:803318CC; NNF: Affects charge laser tracking. Too high and doesnt lock-on. Need Research
+
+MOVEMENT DATA 41 (RECOBOX)
+(loaded with assets but not used)
+
+MOVEMENT DATA 42 (RECON)
+fparam1 = TODO: 3OE1:8031C31C; NNF: Chase speed for buzzsaw attack
+fparam2 = bomb explosion radius
+fparam3 = bomb damage
+fparam4 = TODO: 3OE1:8031A144; NNF: bomb throw distance
+iparam1 = TODO: 3OE1:80319DCC; bomb frames until explosion?; NNF: Speed recon comes out of the recobox. As it always takes the same amount of 'time' to come out, higher values make it go high up as well as fast.
+iparam2 = TODO: 3OE1:8031B68C; NNF: Frame delay from when Recon gets in position to when it activates buzzsaw.
+
+MOVEMENT DATA 43 (SINOW_ZOA)
+MOVEMENT DATA 44 (SINOW_ZELE)
+fparam1 = TODO: 3OE1:80317B7C; NNF: Movement speed
+fparam3 = TODO: 3OE1:803173F4; NNF: Speed at which Sinow Zoa/Zele reappears after warping.
+fparam4 = TODO: 3OE1:80319960; NNF: Attack speed
+fparam5 = TODO: 3OE1:80319968
+fparam6 = TODO: 3OE1:80316F84
+iparam1 = Resta/Shifta/Deband/Jellen/Zalure level
+iparam2 = TODO: 3OE1:80316BE8
+iparam3 = TODO: 3OE1:80317458; NNF: Cooldown time for all attacks.
+iparam4 = attack tech level (Rabarta in Ultimate, Gibarta otherwise)
+
+MOVEMENT DATA 48 (HILDEBEAR)
+MOVEMENT DATA 49 (HILDEBLUE)
+fparam1 = TODO: 3OE1:800AD9A4; NNF: attack speed
+fparam2 = TODO: 3OE1:800ADBE0; NNF: tech range
+fparam3 = TODO: 3OE1:800AE17C; NNF: movement speed
+fparam4 = TODO: 3OE1:800AE0D0; NNF: walking animation speed
+
+MOVEMENT DATA 4D (GRASS_ASSASSIN)
+(loaded with assets but not used)
+
+MOVEMENT DATA 51 (DELSABER)
+fparam1 = TODO: 3OE1:800A5454
+fparam2 = TODO: 3OE1:800A5708
+fparam3 = TODO: 3OE1:800A5CA4
+fparam4 = TODO: 3OE1:800A5D04
