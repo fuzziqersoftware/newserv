@@ -18,7 +18,7 @@ MOVEMENT DATA 52 (DIMENIAN)
 MOVEMENT DATA 53 (LA_DIMENIAN)
 MOVEMENT DATA 54 (SO_DIMENIAN)
 fparam1 = idle move speed (when returning to initial position)
-fparam2 = idle animation speed
+fparam2 = idle walking animation speed
 fparam3 = engaged move speed (when approaching a player)
 fparam4 = engaged animation speed
 fparam5 = MERILLIA, MERILTAS; TODO: 3OE1:800D5750; poison cloud damage
@@ -36,8 +36,8 @@ iparam2 = BOOTA, ZE_BOOTA, BA_BOOTA; TODO: 59NL:005A5580
 iparam2 = GORAN, PYRO_GORAN, GORAN_DETONATOR; TODO: 59NL:005ACD0F
 
 MOVEMENT DATA 00 (MOTHMANT)
-fparam1 = TODO: 3OE1:800B184C; NNF: chase speed
-iparam2 = TODO: 3OE1:800B07E8; frames between attacks?; NNF: attack speed
+fparam1 = speed when low to the ground (chase mode)
+iparam2 = delay before attack (applies when in chase mode and reached target, or between attacks when near target)
 
 MOVEMENT DATA 01 (MONEST)
 (loaded with assets but not used)
@@ -85,7 +85,7 @@ iparam2 = TODO: 3OE1:8009D508; NNF: Delay after laser targetting ends before sho
 iparam3 = TODO: 3OE1:8009D59C; NNF: Delay after casting Zonde
 iparam4 = TODO: 3OE1:8009D5B8; NNF: Number of times Zonde is cast before they go to the next cycle
 iparam5 = TODO: 3OE1:8009C5C8; NNF: stun frames after being hit
-iparam6 = TODO: 3OE1:8009B148; number of out-fighters (see CANADINE description in Map.cc); NNF: How many of the 8 ring Canadines will cast Zonde (numbers greater than 8 are treated as 8). The remaining number out of 8 will perform melee attacks instead. Value of 0 causes FSOD.
+iparam6 = CANANE; TODO: 3OE1:8009B148; number of out-fighters (see CANADINE description in Map.cc); NNF: How many of the 8 ring Canadines will cast Zonde (numbers greater than 8 are treated as 8). The remaining number out of 8 will perform melee attacks instead. Value of 0 causes FSOD.
 
 MOVEMENT DATA 07 (GEE)
 iparam5 = TODO: 3OE1:800C9778; probably same as CANADINE (movement data 07 iparam5)
@@ -226,13 +226,13 @@ iparam1 = TODO: 59NL:005B56F8, 59NL:005B61DE; looks like an angle in degrees (ra
 iparam2 = TODO: 59NL:005B5824; looks like an angle in degrees (range [0, 359])
 
 MOVEMENT DATA 1A (NANO_DRAGON)
-fparam1 = TODO: 3OE1:800DAC68; NNF: flight speed
-fparam2 = TODO: 3OE1:800D9C70; NNF: Straight laser speed.
-fparam3 = TODO: 3OE1:800D9C70; NNF: Homing laser speed (if set too low, it will go backwards).
+fparam1 = horizontal flight speed
+fparam2 = straight laser speed
+fparam3 = homing laser speed (if set too low, it will go backwards)
 fparam4 = TODO: 3OE1:800D9C70; NNF: Homing laser projectile count (projectile number = number given).
 fparam5 = TODO: 3OE1:800D9C70; NNF: Homing laser arc.
-iparam1 = TODO: 3OE1:800D9C70; NNF: Straight laser damage.
-iparam2 = TODO: 3OE1:800D9C70; NNF: Homing laser damage.
+iparam1 = straight laser damage
+iparam2 = homing laser damage
 
 MOVEMENT DATA 1A (GI_GUE)
 fparam1 = TODO: 3OE1:802CA8F4, 3OE1:802CAA04; looks like a scape factor; NNF: Speed when flying away.
@@ -462,7 +462,7 @@ fparam6 = OLGA_FLOW_1; TODO: 3OE1:802B694C; must be >0, default 7; same as movem
 
 MOVEMENT DATA 30 (POFUILLY_SLIME)
 MOVEMENT DATA 34 (POUILLY_SLIME)
-fparam1 = TODO: 3OE1:800E8EB4; value is max(0, fparam1); NNF: Spit damage
+fparam1 = spit attack damage * 5 (so e.g. 1000 here means 200 damange)
 
 MOVEMENT DATA 30 (DELDEPTH)
 fparam1 = TODO: 3OE1:80312E04; NNF: Movement speed (Disk form).
@@ -571,10 +571,10 @@ iparam4 = attack tech level (Rabarta in Ultimate, Gibarta otherwise)
 
 MOVEMENT DATA 48 (HILDEBEAR)
 MOVEMENT DATA 49 (HILDEBLUE)
-fparam1 = TODO: 3OE1:800AD9A4; NNF: attack speed
+fparam1 = punch attack speed
 fparam2 = TODO: 3OE1:800ADBE0; NNF: tech range
-fparam3 = TODO: 3OE1:800AE17C; NNF: movement speed
-fparam4 = TODO: 3OE1:800AE0D0; NNF: walking animation speed
+fparam3 = movement speed (does not affect animation speed)
+fparam4 = walking animation speed
 
 MOVEMENT DATA 4D (GRASS_ASSASSIN)
 (loaded with assets but not used)

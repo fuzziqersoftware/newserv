@@ -33,6 +33,7 @@ struct CompiledFunctionCode {
   uint64_t client_flag = 0; // From .meta client_flag directive
   uint32_t menu_item_id = 0;
   bool hide_from_patches_menu = false;
+  bool show_return_value = false;
   uint32_t specific_version = 0; // 0 = not a client-selectable patch
 
   bool is_big_endian() const;

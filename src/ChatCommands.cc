@@ -1826,7 +1826,21 @@ ChatCommandDefinition cc_patch(
       string patch_name = std::move(tokens[0]);
       unordered_map<string, uint32_t> label_writes;
       for (size_t z = 0; z < tokens.size() - 1; z++) {
-        label_writes.emplace(std::format("arg{}", z), stoul(tokens[z + 1], nullptr, 0));
+        const auto& token = tokens[z + 1];
+        size_t equals_pos = token.find('=');
+        string key, value;
+        if (equals_pos == std::string::npos) {
+          key = std::format("arg{}", z);
+          value = token;
+        } else {
+          key = token.substr(0, equals_pos);
+          value = token.substr(equals_pos + 1);
+        }
+        if (value.contains('.')) { // float
+          label_writes.emplace(std::move(key), std::bit_cast<uint32_t>(stof(value, nullptr)));
+        } else { // int
+          label_writes.emplace(std::move(key), stoul(value, nullptr, 0));
+        }
       }
 
       co_await prepare_client_for_patches(a.c);
@@ -1834,7 +1848,11 @@ ChatCommandDefinition cc_patch(
         auto s = a.c->require_server_state();
         // Note: We can't look this up before prepare_client_for_patches because specific_version may not be set
         auto fn = s->function_code_index->get_patch(patch_name, a.c->specific_version);
-        co_await send_function_call(a.c, fn, label_writes);
+        auto ret = co_await send_function_call(a.c, fn, label_writes);
+        if (fn->show_return_value) {
+          send_text_message_fmt(a.c, "$C6Return value:$C7\nInt: {}\nHex: {:08X}\nFloat: {:g}",
+              ret.return_value.load(), ret.return_value.load(), std::bit_cast<float>(ret.return_value.load()));
+        }
       } catch (const out_of_range&) {
         send_text_message(a.c, "$C6Invalid patch name");
       }
