@@ -1096,29 +1096,34 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xDE, "delete_bank_item", "unknownDE", {{R_REG_SET_FIXED, 6}, W_REG}, F_V1_V4},
 
     // Sets NPC AI behaviors.
-    //   regsA[0] = unknown (TODO)
+    //   regsA[0] = TODO: this doesn't appear to be used anywhere internally; official quests used it for the NPC ID?
     //   regsA[1] = base level. NPC's actual level depends on difficulty:
     //     Normal: min(base level + 1, 199)
     //     Hard: min(base level + 26, 199)
     //     Very Hard: min(base level + 51, 199)
     //     Ultimate: min(base level + 151, 199)
-    //   regsA[2] = technique flags; bit field:
-    //     04 = has Foie and Gifoie (overrides 08 and 10)
-    //     08 = has Barta and Gibarta (overrides 10)
-    //     10 = has Zonde and Razonde
-    //     40 = unknown (TODO)
-    //     80 = unknown (TODO)
+    //   regsA[2] = sets value of technique_flags in the TNpcPlayer object:
+    //     00 = technique_flags=40 (no techniques)
+    //     01 = technique_flags=04 (has Resta, Anti, Foie, and Gifoie)
+    //     02 = technique_flags=08 (has Resta, Anti, Barta, and Gibarta)
+    //     03, 0A = technique_flags=C0 (no techniques, doesn't back off (see regsA[13]))
+    //     0B = technique_flags=84 (has Resta, Anti, Foie, and Gifoie, doesn't back off (see regsA[13]))
+    //     0C = technique_flags=88 (has Resta, Anti, Barta, and Gibarta, doesn't back off (see regsA[13]))
+    //     0D = technique_flags=90 (has Resta, Anti, Zonde, and Razonde, doesn't back off (see regsA[13]))
+    //     Anything else = uninitialized value written to technique_flags
     //   regsA[3] = enemy lock-on range
     //   regsA[4] = unknown (TODO)
     //   regsA[5] = max distance from player
     //   regsA[6] = enemy unlock range
     //   regsA[7] = block range
     //   regsA[8] = attack range (not necessarily equal to weapon range)
-    //   regsA[9] = attack technique level (specified by technique flags)
+    //   regsA[9] = attack technique level (which techniques is specified by technique_flags)
     //   regsA[10] = support technique level (Resta/Anti)
     //   regsA[11] = attack probability (in range [0, 100])
     //   regsA[12] = attack technique probability (in range [0, 100])
-    //   regsA[13] = unknown (TODO); appears to be a distance range
+    //   regsA[13] = unknown (TODO: see TNpcPlayer_FUN_801514c0); appears to be a distance range, and applies only for
+    //     NPCs that attack the player and do not have technique_flags & 0x80; could be backoff distance when attacked
+    //     by a player
     //   valueB = NPC template to modify (00-3F)
     {0xDF, "npc_param", "npc_param_V1", {{R_REG32_SET_FIXED, 14}, I32}, F_V1_V2},
     {0xDF, "npc_param", "npc_param_V3", {{R_REG_SET_FIXED, 14}, I32}, F_V3_V4 | F_ARGS},

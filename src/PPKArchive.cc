@@ -61,8 +61,7 @@ std::unordered_map<std::string, std::string> decode_ppk_file(const std::string& 
     uint32_t checksum = phosg::crc32(data.data(), data.size());
     if (checksum != entry.checksum) {
       throw runtime_error(std::format(
-          "incorrect checksum for file {} (expected {:08X}; received {:08X})",
-          filename, entry.checksum, checksum));
+          "incorrect checksum for file {} (expected {:08X}; received {:08X})", filename, entry.checksum, checksum));
     }
     if (entry.compressed_size < entry.decompressed_size) {
       data = prs_decompress(data);

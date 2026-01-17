@@ -1156,7 +1156,7 @@ template <typename LobbyDataT>
 struct S_JoinGameT_DC_PC {
   // Note: It seems Sega servers sent uninitialized memory in the variations field when sending this command to start
   // an Episode 3 tournament game. This can be misleading when reading old logs from those days, but the Episode 3
-  // client really does ignore it.
+  // client ignores it.
   /* 0004 */ Variations variations;
   // Unlike lobby join commands, these are filled in in their slot positions. That is, if there's only one player in a
   // game with ID 2, then the first two of these are blank and the player's data is in the third entry here.
@@ -5983,7 +5983,7 @@ struct G_Episode4BossActions_BB_6xDC {
 // 6xDD: Set EXP multiplier (BB)
 // header.param specifies the EXP multiplier. It is 1-based, so the value 2 means all EXP is doubled, for example. This
 // only affects what the client shows when an enemy is killed; actual EXP gains are controlled by the server in
-// response to the 6xC8 command.
+// response to the 6xC8 command. The ServerEXPDisplay patch obviates this command.
 
 struct G_SetEXPMultiplier_BB_6xDD {
   G_ParameterHeader header;
