@@ -1839,11 +1839,16 @@ void a_extract_archive_fn(phosg::Arguments& args) {
     throw invalid_argument("output prefix cannot be stdout");
   } else if (output_prefix.empty()) {
     output_prefix = args.get<string>(1, false);
-    if (output_prefix.empty() || (output_prefix == "-")) {
-      throw invalid_argument("an input filename must be given");
+    if (output_prefix == "-") {
+      output_prefix = "./";
+    } else {
+      output_prefix += ".out/";
     }
-    output_prefix += "_";
+  } else if (!output_prefix.ends_with("/")) {
+    output_prefix += "/";
   }
+
+  std::filesystem::create_directories(output_prefix);
 
   string data = read_input_data(args);
   auto data_shared = make_shared<string>(std::move(data));
@@ -1900,14 +1905,14 @@ Action a_extract_afs("extract-afs", nullptr, a_extract_archive_fn);
 Action a_extract_gsl("extract-gsl", nullptr, a_extract_archive_fn);
 Action a_extract_bml("extract-bml", nullptr, a_extract_archive_fn);
 Action a_extract_ppk("extract-ppk", "\
-  extract-afs [INPUT-FILENAME] [--big-endian]\n\
-  extract-gsl [INPUT-FILENAME] [--big-endian]\n\
-  extract-bml [INPUT-FILENAME] [--big-endian]\n\
-  extract-ppk [INPUT-FILENAME] [--big-endian]\n\
+  extract-afs [INPUT-FILENAME [OUTPUT-DIRECTORY]] [OPTIONS]\n\
+  extract-gsl [INPUT-FILENAME [OUTPUT-DIRECTORY]] [OPTIONS]\n\
+  extract-bml [INPUT-FILENAME [OUTPUT-DIRECTORY]] [OPTIONS]\n\
+  extract-ppk [INPUT-FILENAME [OUTPUT-DIRECTORY]] [OPTIONS]\n\
     Extract all files from an AFS, GSL, BML, or PPK archive into the current\n\
-    directory. input-filename may be specified. If output-filename is\n\
-    specified, then it is treated as a prefix which is prepended to the\n\
-    filename of each file contained in the archive. If --big-endian is given,\n\
+    directory. input-filename may be specified. If OUTPUT-DIRECTORY is\n\
+    specified, files are written to that directory; if not, then they are\n\
+    written to the directory INPUT-FILENAME.out. If --big-endian is given,\n\
     the archive header is read in GameCube format; otherwise it is read in\n\
     PC/BB format. For PPK archives, the --password= option is required.\n",
     a_extract_archive_fn);
