@@ -2302,8 +2302,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // overlay is not deleted until the player changes areas or leaves the game, but it can be overwritten with another
     // overlay with this same opcode. The overlay is under 2-dimensional objects like the HUD, pause menu, minimap, and
     // text messages from the server, but is above everything else.
-    //   regA, regB, regC, regD = red, green, blue, alpha components of color (00-FF each)
-    //   regE = fade speed (number of frames; 30 frames/sec)
+    //   valueA, valueB, valueC, valueD = red, green, blue, alpha components of color (00-FF each)
+    //   valueE = fade speed (number of frames; 30 frames/sec)
     {0xF92D, "add_color_overlay", "color_change", {I32, I32, I32, I32, I32}, F_V3_V4 | F_ARGS},
 
     // Sends a statistic to the server via the AA command. The server is expected to respond with an AB command

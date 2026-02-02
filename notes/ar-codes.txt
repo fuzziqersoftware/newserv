@@ -1007,3 +1007,69 @@ Inventory debugging code
         0400A040 38210020  // addi    r1, r1, 0x20
         0400A044 4E800020  // blr
         041A39B8 4BE66648  // b       8000A000 // main_phase_0E_exec_frame return - chain to hook at 8000A000
+
+Load qdefault.bin quest script from disk in offline free play
+(Don't use this on a disc image where qdefault.bin doesn't exist; there is a bug in the quest script environment constructor that will leave the current directory set incorrectly if the file doesn't exist, and the game will softlock)
+3OE1 => 041A3A30 4BE6656D
+        041A3088 4BE66F1D
+        04009F9C 38600002
+        04009FA0 48000008
+        04009FA4 38600000
+        04009FA8 7C0802A6
+        04009FAC 9421FFE0
+        04009FB0 90010024
+        04009FB4 90610008
+        04009FB8 386001A4
+        04009FBC 4821F581
+        04009FC0 28030000
+        04009FC4 41820018
+        04009FC8 808DBD20
+        04009FCC 3CA08000
+        04009FD0 60A59FF0
+        04009FD4 38C00000
+        04009FD8 481EC171
+        04009FDC 80610008
+        04009FE0 80010024
+        04009FE4 38210020
+        04009FE8 7C0803A6
+        04009FEC 4E800020
+        04009FF0 71646566
+        04009FF4 61756C74
+        04009FF8 2E62696E
+        04009FFC 00000000
+3OE2 => 041A3B5C 4BE66441
+        041A31B0 4BE66DF5
+        04009F9C 38600002
+        04009FA0 48000008
+        04009FA4 38600000
+        04009FA8 7C0802A6
+        04009FAC 9421FFE0
+        04009FB0 90010024
+        04009FB4 90610008
+        04009FB8 386001A4
+        04009FBC 48220635
+        04009FC0 28030000
+        04009FC4 41820018
+        04009FC8 808DBD40
+        04009FCC 3CA08000
+        04009FD0 60A59FF0
+        04009FD4 38C00000
+        04009FD8 481EC309
+        04009FDC 80610008
+        04009FE0 80010024
+        04009FE4 38210020
+        04009FE8 7C0803A6
+        04009FEC 4E800020
+        04009FF0 71646566
+        04009FF4 61756C74
+        04009FF8 2E62696E
+        04009FFC 00000000
+
+Enable quest board menu in free play (for use with the above code)
+3OE0 => 04262B44 38600001
+3OE1 => 04262B44 38600001
+3OE2 => 04263F04 38600001
+3OJ2 => 0426226C 38600001
+3OJ3 => 04262E44 38600001
+3OJ4 => 04263EB8 38600001
+3OP0 => 0426374C 38600001
