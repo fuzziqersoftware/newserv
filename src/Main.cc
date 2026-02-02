@@ -1628,7 +1628,7 @@ Action a_disassemble_quest_script(
     QEdit. If you intend to reassemble the script, after editing it, use the\n\
     --reassembly option to add explicit label numbers and remove offsets and\n\
     data in code sections. To include script references from the map, use the\n\
-    --map-file=FILENAME option.",
+    --map-file=FILENAME option.\n",
     +[](phosg::Arguments& args) {
       string data = read_input_data(args);
       auto version = get_cli_version(args);
@@ -1720,7 +1720,7 @@ Action a_assemble_quest_script(
     Assemble the input quest script (.txt file) into a compressed .bin file\n\
     usable as an online quest script. If --decompressed is given, produces an\n\
     uncompressed .bind file instead. If --disable-strict is given, allows some\n\
-    invalid behaviors (e.g. calling an undefined label by number).",
+    invalid behaviors (e.g. calling an undefined label by number).\n",
     +[](phosg::Arguments& args) {
       string text = read_input_data(args);
 
@@ -2033,6 +2033,35 @@ Action a_encode_unicode_text_set(
       UnicodeTextSet uts(phosg::JSON::parse(read_input_data(args)));
       string encoded = uts.serialize();
       write_output_data(args, encoded.data(), encoded.size(), "prs");
+    });
+
+Action a_decode_credits_text_archive(
+    "decode-credits-text-archive", "\
+  decode-credits-text-archive [OPTIONS] [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Decode a credits text archive (AdEnding.rel) to JSON. Use the --big-endian\n\
+    option if the file is for PSO GC.\n",
+    +[](phosg::Arguments& args) {
+      auto ret = decode_credits_text_set(read_input_data(args), args.get<bool>("big-endian"));
+      auto json = phosg::JSON::list();
+      for (const auto& it : ret) {
+        json.emplace_back(it);
+      }
+      string out_data = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY | phosg::JSON::SerializeOption::EXPAND_LEAF_CONTAINERS);
+      write_output_data(args, out_data.data(), out_data.size(), "json");
+    });
+Action a_encode_credits_text_archive(
+    "encode-credits-text-archive", "\
+  encode-credits-text-archive [OPTIONS] [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
+    Encode a credits text archive (AdEnding.rel) from JSON. Use the\n\
+    --big-endian option if the file is for PSO GC.\n",
+    +[](phosg::Arguments& args) {
+      auto json = phosg::JSON::parse(read_input_data(args));
+      std::vector<std::string> data;
+      for (const auto& it : json.as_list()) {
+        data.emplace_back(it->as_string());
+      }
+      auto ret = encode_credits_text_set(data, args.get<bool>("big-endian"));
+      write_output_data(args, ret.data(), ret.size(), "rel");
     });
 
 Action a_decode_word_select_set(

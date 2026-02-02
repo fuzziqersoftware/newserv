@@ -551,3 +551,79 @@ std::shared_ptr<const TextSet> TextIndex::get(Version version, Language language
 uint32_t TextIndex::key_for_set(Version version, Language language) {
   return (static_cast<uint32_t>(version) << 8) | static_cast<size_t>(language);
 }
+
+template <bool BE>
+std::vector<std::string> decode_credits_text_set_t(const std::string& data) {
+  std::vector<std::string> ret;
+  phosg::StringReader r(data);
+  const auto& footer = r.pget<RELFileFooterT<BE>>(r.size() - sizeof(RELFileFooterT<BE>));
+  r.go(footer.root_offset);
+  for (;;) {
+    ret.emplace_back(tt_sega_sjis_to_utf8(r.pget_cstr(r.get<U32T<BE>>())));
+    if (!ret.back().empty() && (ret.back()[0] == '*')) {
+      break;
+    }
+  }
+  return ret;
+}
+
+std::vector<std::string> decode_credits_text_set(const std::string& data, bool big_endian) {
+  if (big_endian) {
+    return decode_credits_text_set_t<true>(data);
+  } else {
+    return decode_credits_text_set_t<false>(data);
+  }
+}
+
+template <bool BE>
+std::string encode_credits_text_set_t(const std::vector<std::string>& data) {
+  if (data.empty() || (data.back() != "*")) {
+    throw std::runtime_error("the last string in a credits text set must be \"*\"");
+  }
+
+  phosg::StringWriter strings_w;
+  phosg::StringWriter offsets_w;
+  std::unordered_map<std::string, uint32_t> existing_offsets;
+  for (const auto& str : data) {
+    try {
+      offsets_w.put<U32T<BE>>(existing_offsets.at(str));
+    } catch (const std::out_of_range&) {
+      existing_offsets.emplace(str, strings_w.size());
+      offsets_w.put<U32T<BE>>(strings_w.size());
+      strings_w.write(tt_utf8_to_sega_sjis(str));
+      strings_w.put_u8(0);
+      while (strings_w.size() & 3) {
+        strings_w.put_u8(0);
+      }
+    }
+  }
+
+  phosg::StringWriter w;
+  RELFileFooterT<BE> footer;
+  w.write(strings_w.str());
+  footer.root_offset = w.size();
+  w.write(offsets_w.str());
+  while (w.size() & 0x1F) {
+    w.put_u8(0);
+  }
+  footer.relocations_offset = w.size();
+  footer.num_relocations = data.size();
+  w.put<U16T<BE>>(strings_w.size() / 4);
+  for (size_t z = 1; z < data.size(); z++) {
+    w.put<U16T<BE>>(1);
+  }
+  while (w.size() & 0x1F) {
+    w.put_u8(0);
+  }
+  w.put(footer);
+
+  return std::move(w.str());
+}
+
+std::string encode_credits_text_set(const std::vector<std::string>& data, bool big_endian) {
+  if (big_endian) {
+    return encode_credits_text_set_t<true>(data);
+  } else {
+    return encode_credits_text_set_t<false>(data);
+  }
+}

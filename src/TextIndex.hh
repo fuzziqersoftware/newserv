@@ -109,3 +109,6 @@ protected:
   phosg::PrefixedLogger log;
   std::unordered_map<uint32_t, std::shared_ptr<const TextSet>> sets;
 };
+
+std::vector<std::string> decode_credits_text_set(const std::string& data, bool big_endian);
+std::string encode_credits_text_set(const std::vector<std::string>& data, bool big_endian);
