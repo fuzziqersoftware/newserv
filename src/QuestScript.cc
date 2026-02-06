@@ -4011,6 +4011,13 @@ AssembledQuestScript assemble_quest_script(
   }
 
   // Collect metadata directives
+
+  std::unordered_set<std::string> metadata_directive_names{
+      ".include", ".version", ".name", ".short_desc", ".long_desc", ".allow_create_item", ".solo_unlock_flag",
+      ".quest_num", ".language", ".episode", ".max_players", ".joinable", ".header_language", ".header_episode",
+      ".header_unknown_a1", ".header_unknown_a2", ".header_unknown_a3", ".header_unknown_a4", ".header_unknown_a5",
+      ".header_unknown_a6"};
+
   AssembledQuestScript ret;
   for (const auto& line : lines) {
     if (line.text.empty()) {
@@ -4259,10 +4266,20 @@ AssembledQuestScript assemble_quest_script(
       }
 
       if (line.text[0] == '.') {
-        if (line.text.starts_with(".data ")) {
-          code_w.write(phosg::parse_data_string(line.text.substr(6)));
-        } else if (line.text.starts_with(".cstr ")) {
-          string data = phosg::parse_data_string(line.text.substr(6));
+        string directive, args;
+        size_t space_loc = line.text.find(' ');
+        if (space_loc == string::npos) {
+          directive = line.text;
+        } else {
+          directive = line.text.substr(0, space_loc);
+          args = line.text.substr(space_loc + 1);
+          phosg::strip_whitespace(args);
+        }
+
+        if ((directive == ".data") || (directive == ".binary")) {
+          code_w.write(phosg::parse_data_string(args));
+        } else if (directive == ".cstr") {
+          string data = phosg::parse_data_string(args);
           if (uses_utf16(ret.meta.version)) {
             code_w.write(tt_utf8_to_utf16(data));
             code_w.put_u16l(0);
@@ -4270,27 +4287,23 @@ AssembledQuestScript assemble_quest_script(
             code_w.write((ret.meta.language == Language::JAPANESE) ? tt_utf8_to_sega_sjis(data) : tt_utf8_to_8859(data));
             code_w.put_u8(0);
           }
-        } else if (line.text.starts_with(".zero ")) {
-          size_t size = stoull(line.text.substr(6), nullptr, 0);
+        } else if (directive == ".zero") {
+          size_t size = stoull(args, nullptr, 0);
           code_w.extend_by(size, 0x00);
-        } else if (line.text.starts_with(".zero_until ")) {
-          size_t size = stoull(line.text.substr(12), nullptr, 0);
+        } else if (directive == ".zero_until") {
+          size_t size = stoull(args, nullptr, 0);
           code_w.extend_to(size, 0x00);
-        } else if (line.text.starts_with(".align ")) {
-          size_t alignment = stoull(line.text.substr(7), nullptr, 0);
+        } else if (directive == ".align") {
+          size_t alignment = stoull(args, nullptr, 0);
           while (code_w.size() % alignment) {
             code_w.put_u8(0);
           }
-        } else if (line.text.starts_with(".include ")) {
+        } else if (directive == ".include") {
           // This was already handled in a previous phase
-        } else if (line.text.starts_with(".include_bin ")) {
-          string filename = line.text.substr(13);
-          phosg::strip_whitespace(filename);
-          code_w.write(get_native_include(filename));
-        } else if (line.text.starts_with(".include_native ")) {
-          string filename = line.text.substr(16);
-          phosg::strip_whitespace(filename);
-          string native_text = get_native_include(filename);
+        } else if (directive == ".include_bin ") {
+          code_w.write(get_native_include(args));
+        } else if (directive == ".include_native") {
+          string native_text = get_native_include(args);
           string code;
           if (is_ppc(ret.meta.version)) {
             code = std::move(ResourceDASM::PPC32Emulator::assemble(native_text).code);
@@ -4302,6 +4315,8 @@ AssembledQuestScript assemble_quest_script(
             throw runtime_error("unknown architecture");
           }
           code_w.write(code);
+        } else if (!metadata_directive_names.count(directive)) { // These were handled in an earlier phase
+          throw runtime_error("unknown directive: " + directive);
         }
         return;
       }
