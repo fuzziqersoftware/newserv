@@ -50,7 +50,8 @@ CheatFlags::CheatFlags(const phosg::JSON& json) : CheatFlags() {
   this->warp = enabled_keys.count("Warp");
 }
 
-ServerState::QuestF960Result::QuestF960Result(const phosg::JSON& json, shared_ptr<const ItemNameIndex> name_index) {
+ServerState::QuestF960Result::QuestF960Result(
+    const phosg::JSON& json, shared_ptr<const ItemNameIndex> name_index, const ItemData::StackLimits& limits) {
   static const array<string, 7> day_names = {
       "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
   this->meseta_cost = json.get_int("MesetaCost", 0);
@@ -58,11 +59,15 @@ ServerState::QuestF960Result::QuestF960Result(const phosg::JSON& json, shared_pt
   this->probability_upgrade = json.get_int("ProbabilityUpgrade", 0);
   for (size_t day = 0; day < 7; day++) {
     for (const auto& item_it : json.get_list(day_names[day])) {
-      try {
-        this->results[day].emplace_back(name_index->parse_item_description(item_it->as_string()));
-      } catch (const exception& e) {
-        config_log.warning_f(
-            "Cannot parse item description \"{}\": {} (skipping entry)", item_it->as_string(), e.what());
+      if (item_it->is_int()) {
+        this->results[day].emplace_back(ItemData::from_primary_identifier(limits, item_it->as_int()));
+      } else {
+        try {
+          this->results[day].emplace_back(name_index->parse_item_description(item_it->as_string()));
+        } catch (const exception& e) {
+          config_log.warning_f(
+              "Cannot parse item description \"{}\": {} (skipping entry)", item_it->as_string(), e.what());
+        }
       }
     }
   }
@@ -1408,15 +1413,32 @@ void ServerState::load_config_late() {
         for (size_t trap_type = 0; trap_type < 5; trap_type++) {
           auto& trap_card_ids = this->ep3_trap_card_ids[trap_type];
           for (const auto& card_it : ep3_trap_cards_json.at(trap_type)->as_list()) {
-            const string& card_name = card_it->as_string();
-            try {
-              const auto& card = this->ep3_card_index->definition_for_name_normalized(card_name);
-              if (card->def.type != Episode3::CardType::ASSIST) {
-                throw runtime_error(std::format("Ep3 card \"{}\" in trap card list is not an assist card", card_name));
+            if (card_it->is_int()) {
+              int64_t card_id = card_it->as_int();
+              try {
+                const auto& card = this->ep3_card_index->definition_for_id(card_id);
+                if (card->def.type != Episode3::CardType::ASSIST) {
+                  throw runtime_error(std::format(
+                      "Ep3 card \"{}\" ({:04X}) in trap card list is not an assist card",
+                      card->def.en_name.decode(), card->def.card_id));
+                }
+                trap_card_ids.emplace_back(card->def.card_id);
+              } catch (const out_of_range&) {
+                throw runtime_error(std::format("Ep3 card {:04X} in trap card list does not exist", card_id));
               }
-              trap_card_ids.emplace_back(card->def.card_id);
-            } catch (const out_of_range&) {
-              throw runtime_error(std::format("Ep3 card \"{}\" in trap card list does not exist", card_name));
+            } else {
+              const string& card_name = card_it->as_string();
+              try {
+                const auto& card = this->ep3_card_index->definition_for_name_normalized(card_name);
+                if (card->def.type != Episode3::CardType::ASSIST) {
+                  throw runtime_error(std::format(
+                      "Ep3 card \"{}\" ({:04X}) in trap card list is not an assist card",
+                      card->def.en_name.decode(), card->def.card_id));
+                }
+                trap_card_ids.emplace_back(card->def.card_id);
+              } catch (const out_of_range&) {
+                throw runtime_error(std::format("Ep3 card \"{}\" in trap card list does not exist", card_name));
+              }
             }
           }
         }
@@ -1438,10 +1460,15 @@ void ServerState::load_config_late() {
         for (const auto& difficulty_it : type_it->as_list()) {
           auto& difficulty_res = type_res.emplace_back();
           for (const auto& item_it : difficulty_it->as_list()) {
-            try {
-              difficulty_res.emplace_back(this->parse_item_description(Version::BB_V4, item_it->as_string()));
-            } catch (const exception& e) {
-              config_log.warning_f("Cannot parse item description \"{}\": {} (skipping entry)", item_it->as_string(), e.what());
+            if (item_it->is_int()) {
+              difficulty_res.emplace_back(ItemData::from_primary_identifier(
+                  *this->item_stack_limits(Version::BB_V4), item_it->as_int()));
+            } else {
+              try {
+                difficulty_res.emplace_back(this->parse_item_description(Version::BB_V4, item_it->as_string()));
+              } catch (const exception& e) {
+                config_log.warning_f("Cannot parse item description \"{}\": {} (skipping entry)", item_it->as_string(), e.what());
+              }
             }
           }
         }
@@ -1452,20 +1479,28 @@ void ServerState::load_config_late() {
       for (const auto& it : this->config_json->get_list("QuestF95FResultItems")) {
         auto& list = it->as_list();
         size_t price = list.at(0)->as_int();
-        try {
+        const auto& desc = list.at(1);
+        if (desc->is_int()) {
           this->quest_F95F_results.emplace_back(make_pair(
-              price, this->parse_item_description(Version::BB_V4, list.at(1)->as_string())));
-        } catch (const exception& e) {
-          config_log.warning_f("Cannot parse item description \"{}\": {} (skipping entry)", list.at(1)->as_string(), e.what());
+              price, ItemData::from_primary_identifier(*this->item_stack_limits(Version::BB_V4), desc->as_int())));
+        } else {
+          try {
+            this->quest_F95F_results.emplace_back(make_pair(
+                price, this->parse_item_description(Version::BB_V4, list.at(1)->as_string())));
+          } catch (const exception& e) {
+            config_log.warning_f("Cannot parse item description \"{}\": {} (skipping entry)", list.at(1)->as_string(), e.what());
+          }
         }
       }
     } catch (const out_of_range&) {
     }
     try {
+      auto name_index = this->item_name_index(Version::BB_V4);
+      auto stack_limits = this->item_stack_limits(Version::BB_V4);
       this->quest_F960_failure_results = QuestF960Result(
-          this->config_json->at("QuestF960FailureResultItems"), this->item_name_index(Version::BB_V4));
+          this->config_json->at("QuestF960FailureResultItems"), name_index, *stack_limits);
       for (const auto& it : this->config_json->get_list("QuestF960SuccessResultItems")) {
-        this->quest_F960_success_results.emplace_back(*it, this->item_name_index(Version::BB_V4));
+        this->quest_F960_success_results.emplace_back(*it, name_index, *stack_limits);
       }
     } catch (const out_of_range&) {
     }

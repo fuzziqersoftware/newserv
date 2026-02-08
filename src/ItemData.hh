@@ -92,7 +92,7 @@ struct ItemData {
   // C = stack size (for tools)
   // D = DEF bonus
   // E = EVP bonus
-  // F = armor/shield/unit flags (40=present; low 4 bits are present color)
+  // F = armor/shield/unit flags (40=wrapped; low 4 bits are present color)
   // G = weapon grind
   // H = mag DEF
   // I = mag POW
@@ -101,12 +101,12 @@ struct ItemData {
   // L = mag level
   // M = meseta amount
   // N = present color (weapon only; for other types this is in the flags field)
-  // P = mag flags (40=present, 04=has left pb, 02=has right pb, 01=has center pb)
+  // P = mag flags (40=wrapped, 04=has left pb, 02=has right pb, 01=has center pb)
   // Q = mag IQ
   // R = unit modifier (little-endian)
-  // S = weapon flags (80=unidentified, 40=present) and special (low 6 bits)
+  // S = weapon flags (80=unidentified, 40=wrapped) and special (low 6 bits)
   // T = slot count
-  // U = tool flags (40=present; unused if item is stackable)
+  // U = tool flags (40=wrapped; unused if item is stackable)
   // V = mag color
   // W = photon blasts
   // X = kill count (big-endian; high bit always set)

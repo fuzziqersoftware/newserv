@@ -232,7 +232,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
     std::array<std::vector<ItemData>, 7> results;
 
     QuestF960Result() = default;
-    QuestF960Result(const phosg::JSON& json, std::shared_ptr<const ItemNameIndex> name_index);
+    QuestF960Result(
+        const phosg::JSON& json, std::shared_ptr<const ItemNameIndex> name_index, const ItemData::StackLimits& limits);
   };
 
   // Indexed as [type][difficulty][random_choice]
