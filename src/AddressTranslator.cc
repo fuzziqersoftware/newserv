@@ -855,6 +855,15 @@ public:
       this->set_source_file(tokens.at(1));
     } else if (tokens[0] == "find") {
       this->find_data(phosg::parse_data_string(tokens.at(1)));
+    } else if (tokens[0] == "only") {
+      unordered_set<string> to_keep{tokens.begin() + 1, tokens.end()};
+      for (auto it = this->mems.begin(); it != this->mems.end();) {
+        if (to_keep.count(it->first)) {
+          it++;
+        } else {
+          it = this->mems.erase(it);
+        }
+      }
     } else if (tokens[0] == "match") {
       this->find_all_matches(
           stoul(tokens.at(1), nullptr, 16),
