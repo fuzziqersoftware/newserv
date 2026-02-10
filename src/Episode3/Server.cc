@@ -297,16 +297,6 @@ string Server::prepare_6xB6x41_map_definition(shared_ptr<const MapIndex::Map> ma
 }
 
 void Server::send_commands_for_joining_spectator(std::shared_ptr<Channel> ch) const {
-  bool should_send_state = true;
-  if (this->setup_phase == SetupPhase::REGISTRATION) {
-    // If registration is still in progress, we only need to send the map data
-    // (if a map is even chosen yet)
-    if ((this->registration_phase != RegistrationPhase::REGISTERED) &&
-        (this->registration_phase != RegistrationPhase::BATTLE_STARTED)) {
-      should_send_state = false;
-    }
-  }
-
   if (this->last_chosen_map) {
     string data = this->prepare_6xB6x41_map_definition(this->last_chosen_map, ch->language, this->options.is_nte());
     this->log().info_f(
@@ -314,7 +304,10 @@ void Server::send_commands_for_joining_spectator(std::shared_ptr<Channel> ch) co
     ch->send(0x6C, 0x00, data);
   }
 
-  if (should_send_state) {
+  // If registration is still in progress, we don't need to send the battle state
+  if ((this->setup_phase != SetupPhase::REGISTRATION) ||
+      (this->registration_phase == RegistrationPhase::REGISTERED) ||
+      (this->registration_phase == RegistrationPhase::BATTLE_STARTED)) {
     ch->send(0xC9, 0x00, this->prepare_6xB4x03());
     for (uint8_t client_id = 0; client_id < 4; client_id++) {
       auto ps = this->player_states[client_id];
