@@ -50,7 +50,7 @@ data_start:
   .data   0x314F4546  # 1OEF
   .data   0x8C28B3F4  # v1 EU
   .data   0x314F5046  # 1OPF
-  .data   0x8C2F3748  # v2 08/2001
+  .data   0x8C2F3748  # v2 08/06/2001 AND v2 08/22/2001 (TODO: Find a way to tell these apart)
   .data   0x324F4A35  # 2OJ5
   .data   0x8C2F11D0  # v2 JP
   .data   0x324F4A46  # 2OJF

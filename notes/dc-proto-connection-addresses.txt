@@ -2,4 +2,5 @@
 1OJ2 (11/2000): test1.st-pso.games.sega.net
 1OJ3 (12/2000): sg107634.csrd.sega.co.jp OR master.pso.dream-key.com
 1OJ4 (01/2001): master.pso.dream-key.com
-2OJ5 (08/2001; v2): game01.st-pso.games.sega.net
+2OJ4 (08/06/2001; v2): game01.st-pso.games.sega.net
+2OJ5 (08/22/2001; v2): game01.st-pso.games.sega.net

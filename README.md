@@ -476,7 +476,8 @@ The specific versions are:
 | PSO DC v1 JP                 | 1OJF | Client functions not supported |
 | PSO DC v1 US                 | 1OEF | Client functions not supported |
 | PSO DC v1 EU                 | 1OPF | Client functions not supported |
-| PSO DC 08/2001 prototype     | 2OJ5 | SH-4                           |
+| PSO DC 08/06/2001 prototype  | 2OJ4 | SH-4                           |
+| PSO DC 08/22/2001 prototype  | 2OJ5 | SH-4                           |
 | PSO DC v2 JP                 | 2OJF | SH-4                           |
 | PSO DC v2 US                 | 2OEF | SH-4                           |
 | PSO DC v2 EU                 | 2OPF | SH-4                           |

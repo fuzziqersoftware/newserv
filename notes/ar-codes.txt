@@ -13,6 +13,7 @@ Version codes (from README.md):
   1OJF: PSO DC v1 JP
   1OEF: PSO DC v1 US
   1OPF: PSO DC v1 EU
+  2OJ4: PSO DC 08/2001 prototype
   2OJ5: PSO DC 08/2001 prototype
   2OJF: PSO DC v2 JP
   2OEF: PSO DC v2 US
