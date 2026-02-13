@@ -3161,6 +3161,10 @@ Action a_materialize_map(
       }
       auto map_data = make_shared<string>(prs_decompress(read_input_data(args)));
       auto map_file = make_shared<MapFile>(map_data);
+      if (!map_file->has_random_sections()) {
+        throw std::runtime_error("input map file does not have any random sections");
+      }
+
       uint32_t seed = args.get<uint32_t>("seed", phosg::Arguments::IntFormat::HEX);
       auto materialized = map_file->materialize_random_sections(seed);
       if (args.get<bool>("disassemble")) {
@@ -3171,6 +3175,90 @@ Action a_materialize_map(
         auto new_data = prs_compress_optimal(materialized->serialize());
         write_output_data(args, new_data.data(), new_data.size(), "dat");
       }
+    });
+Action a_optimize_materialized_map(
+    "optimize-materialized-map", "\
+  optimize-materialized-map [OPTIONS] [INPUT-FILENAME]\n\
+    Runs the Challenge Mode random enemy generation algorithm on the input map\n\
+    file, looking for the seed that results in the fewest extra events and the\n\
+    fewest enemies overall, optionally restricting to specific enemy types. A\n\
+    version option is required. The --minimize=TYPE option may be used\n\
+    (possibly multiple times) to specify enemies that are undesirable in the\n\
+    resulting map, and the optimizer will try to minimize occurrences of those\n\
+    enemies. TYPE should be specified as an integer (for example, 0x0040 for\n\
+    Hildebears; see Map.cc for a full listing). Event count always takes\n\
+    precedence; that is, a map with fewer events is always considered better\n\
+    than any map with more events, regardless of the enemy counts. The\n\
+    --threads=NUM-THREADS option may be used to limit parallelism; by default,\n\
+    uses one thread per CPU core.\n",
+    +[](phosg::Arguments& args) {
+      if (args.get<bool>("debug")) {
+        static_game_data_log.min_level = phosg::LogLevel::L_DEBUG;
+      }
+      auto map_data = make_shared<string>(prs_decompress(read_input_data(args)));
+      auto map_file = make_shared<MapFile>(map_data);
+      if (!map_file->has_random_sections()) {
+        throw std::runtime_error("input map file does not have any random sections");
+      }
+
+      std::unordered_set<uint16_t> minimize_types;
+      for (const auto& arg : args.get_multi<std::string>("minimize")) {
+        minimize_types.emplace(std::stoul(arg, nullptr, 16));
+      }
+
+      size_t num_threads = args.get<size_t>("threads", 0);
+      mutex output_lock;
+      size_t min_counts = 0xFFFFFFFF;
+      auto thread_fn = [&](uint64_t seed, size_t) -> bool {
+        auto materialized = map_file->materialize_random_sections(seed);
+
+        size_t extra_event_count = 0;
+        size_t total_event_count = 0;
+        size_t total_enemy_set_count = 0;
+        size_t minimized_enemy_set_count = 0;
+        map<uint16_t, size_t> enemy_set_counts;
+        for (size_t floor = 0; floor < 0x12; floor++) {
+          const auto& fs = materialized->floor(floor);
+          if (!fs.enemy_sets || !fs.events1) {
+            continue;
+          }
+          total_event_count += fs.event_count;
+          for (size_t z = 0; z < fs.event_count; z++) {
+            const auto& ev = fs.events1[z];
+            if (ev.event_id >= 10000) {
+              extra_event_count++;
+            }
+          }
+
+          total_enemy_set_count += fs.enemy_set_count;
+          for (size_t z = 0; z < fs.enemy_set_count; z++) {
+            uint16_t base_type = fs.enemy_sets[z].base_type;
+            enemy_set_counts.emplace(base_type, 0).first->second++;
+            if (minimize_types.empty() || minimize_types.count(base_type)) {
+              minimized_enemy_set_count++;
+            }
+          }
+        }
+
+        size_t this_count = (total_event_count << 16) | minimized_enemy_set_count;
+        {
+          lock_guard g(output_lock);
+          if (this_count < min_counts) {
+            min_counts = this_count;
+            string line = std::format("SEED {:08X}: event_count={} (extra={}) enemy_sets=[",
+                seed, total_event_count, extra_event_count);
+            for (const auto& it : enemy_set_counts) {
+              line += std::format("{:04X}={}, ", it.first, it.second);
+            }
+            line.resize(line.size() - 2);
+            line += std::format("] (count={}, minimized={})\n", total_enemy_set_count, minimized_enemy_set_count);
+            phosg::fwritex(stdout, line);
+          }
+        }
+
+        return false;
+      };
+      phosg::parallel_range_blocks<uint64_t>(thread_fn, 0, 0x100000000, 0x100, num_threads);
     });
 
 Action a_print_free_supermap(
