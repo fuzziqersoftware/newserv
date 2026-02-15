@@ -4107,12 +4107,15 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
         // edit the BattleParamEntry files so the monsters would all give more EXP, but they did something far lazier
         // instead: they just stuck an if statement in the client's EXP request function. We, unfortunately, have to do
         // the same thing here.
+        float episode_multiplier = ((episode == Episode::EP2) ? 1.3 : 1.0);
         uint32_t player_exp = base_exp *
             rate_factor *
             l->base_exp_multiplier *
             l->challenge_exp_multiplier *
-            ((episode == Episode::EP2) ? 1.3 : 1.0);
-        l->log.info_f("Client in slot {} receives {} EXP", client_id, player_exp);
+            episode_multiplier;
+        l->log.info_f(
+            "Client in slot {} receives {} EXP (base={:g}, factor={:g} base_mult={:g}, challenge={:g}, episode={:g})",
+            client_id, player_exp, base_exp, rate_factor, l->base_exp_multiplier, l->challenge_exp_multiplier, episode_multiplier);
         if (lc->check_flag(Client::Flag::DEBUG_ENABLED)) {
           send_text_message_fmt(lc, "$C5+{} E-{:03X} {}", player_exp, ene_st->e_id, phosg::name_for_enum(type));
         }
