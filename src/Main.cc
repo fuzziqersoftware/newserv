@@ -3182,16 +3182,19 @@ Action a_optimize_materialized_map(
     Runs the Challenge Mode random enemy generation algorithm on the input map\n\
     file, looking for the seed that results in the fewest extra events and the\n\
     fewest enemies overall, optionally restricting to specific enemy types. A\n\
-    version option is required. The --minimize=TYPE[:PARAM:VALUE] option may\n\
-    be used (possibly multiple times) to specify enemies that are undesirable\n\
-    in the resulting map, and the optimizer will try to minimize occurrences\n\
-    of those enemies. TYPE should be specified as an integer (for example,\n\
-    0x0040 for Hildebears and Hildeblues, or 0x0044:6:2 for Gigobooma; see\n\
-    Map.cc for a full listing of types and parameters). Event count always\n\
-    takes precedence; that is, a map with fewer events is always considered\n\
-    better than any map with more events, regardless of the enemy counts. The\n\
-    --threads=NUM-THREADS option may be used to limit parallelism; by default,\n\
-    uses one thread per CPU core.\n",
+    version option is required. Other options:\n\
+      --minimize=TYPE[:PARAM:VALUE]: Try to find seeds that result in the\n\
+          fewest instances of this enemy (may be given multiple times). TYPE\n\
+          should be an integer (for example, 0x0040 for Hildebears and\n\
+          Hildeblues). This can also filter by a param value (for example,\n\
+          0x0044:6:2 for Gigoboomas). See Map.cc for a full listing of types\n\
+          and parameters). Event count always takes precedence; that is, a map\n\
+          with fewer events is always considered better than any map with more\n\
+          events, regardless of the enemy counts.\n\
+      --threads=NUM-THREADS: Limits parallelism; by default, uses one thread\n\
+          per CPU core.\n\
+      --debug: Enables debug logging.\n\
+      --pessimize: Finds the worst seeds instead of the best seeds.\n",
     +[](phosg::Arguments& args) {
       if (args.get<bool>("debug")) {
         static_game_data_log.min_level = phosg::LogLevel::L_DEBUG;
@@ -3213,8 +3216,9 @@ Action a_optimize_materialized_map(
       }
 
       size_t num_threads = args.get<size_t>("threads", 0);
+      bool pessimize = args.get<bool>("pessimize");
       mutex output_lock;
-      size_t min_counts = 0xFFFFFFFF;
+      size_t min_counts = pessimize ? 0 : 0xFFFFFFFF;
       auto thread_fn = [&](uint64_t seed, size_t) -> bool {
         auto materialized = map_file->materialize_random_sections(seed);
 
@@ -3278,7 +3282,7 @@ Action a_optimize_materialized_map(
         size_t this_count = (total_event_count << 16) | minimized_enemy_set_count;
         {
           lock_guard g(output_lock);
-          if (this_count <= min_counts) {
+          if (pessimize ? (this_count >= min_counts) : (this_count <= min_counts)) {
             min_counts = this_count;
             string line = std::format("SEED {:08X}: event_count={} (extra={}) enemy_sets=[",
                 seed, total_event_count, extra_event_count);
@@ -3286,7 +3290,8 @@ Action a_optimize_materialized_map(
               line += std::format("{:04X}={}, ", it.first, it.second);
             }
             line.resize(line.size() - 2);
-            line += std::format("] (count={}, minimized={})\n", total_enemy_set_count, minimized_enemy_set_count);
+            line += std::format("] (count={}, {}={})\n",
+                total_enemy_set_count, pessimize ? "maximized" : "minimized", minimized_enemy_set_count);
             phosg::fwritex(stdout, line);
           }
         }
