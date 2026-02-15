@@ -3191,6 +3191,8 @@ Action a_optimize_materialized_map(
           and parameters). Event count always takes precedence; that is, a map\n\
           with fewer events is always considered better than any map with more\n\
           events, regardless of the enemy counts.\n\
+      --restrict-room=ROOM-ID: Ignore all enemies outside of this room (may be\n\
+          given multiple times).\n\
       --threads=NUM-THREADS: Limits parallelism; by default, uses one thread\n\
           per CPU core.\n\
       --debug: Enables debug logging.\n\
@@ -3209,10 +3211,15 @@ Action a_optimize_materialized_map(
       for (const auto& arg : args.get_multi<std::string>("minimize")) {
         auto tokens = phosg::split(arg, ':');
         if (tokens.size() == 1) {
-          minimize_types.emplace(std::stoul(arg, nullptr, 16), std::make_pair(0xFF, 0));
+          minimize_types.emplace(std::stoul(arg, nullptr, 0), std::make_pair(0xFF, 0));
         } else if (tokens.size() == 3) {
-          minimize_types.emplace(std::stoul(tokens[0], nullptr, 16), std::make_pair(std::stoul(tokens[1], nullptr, 16), std::stoul(tokens[2], nullptr, 16)));
+          minimize_types.emplace(std::stoul(tokens[0], nullptr, 0), std::make_pair(std::stoul(tokens[1], nullptr, 0), std::stoul(tokens[2], nullptr, 0)));
         }
+      }
+
+      std::unordered_set<uint16_t> room_ids;
+      for (const auto& arg : args.get_multi<std::string>("restrict-room")) {
+        room_ids.emplace(std::stoul(arg, nullptr, 0));
       }
 
       size_t num_threads = args.get<size_t>("threads", 0);
@@ -3223,6 +3230,9 @@ Action a_optimize_materialized_map(
         auto materialized = map_file->materialize_random_sections(seed);
 
         auto is_minimize_target = [&](const MapFile::EnemySetEntry& ene) -> bool {
+          if (!room_ids.empty() && !room_ids.count(ene.room)) {
+            return false;
+          }
           if (minimize_types.empty()) {
             return true;
           }
