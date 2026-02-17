@@ -3215,7 +3215,7 @@ Action a_optimize_materialized_map(
         } else if (tokens.size() == 3) {
           minimize_types.emplace(std::stoul(tokens[0], nullptr, 0), std::make_pair(std::stoul(tokens[1], nullptr, 0), std::stoul(tokens[2], nullptr, 0)));
         } else {
-          throw std::runtime_error("invalid vlaue for --minimize");
+          throw std::runtime_error("invalid value for --minimize");
         }
       }
 
@@ -3223,7 +3223,7 @@ Action a_optimize_materialized_map(
       for (const auto& arg : args.get_multi<std::string>("restrict-room")) {
         auto tokens = phosg::split(arg, ':');
         if (tokens.size() != 2) {
-          throw std::runtime_error("invalid vlaue for --restrict-room");
+          throw std::runtime_error("invalid value for --restrict-room");
         }
         uint8_t floor = std::stoul(tokens[0], nullptr, 0);
         uint16_t room_id = std::stoul(tokens[1], nullptr, 0);
