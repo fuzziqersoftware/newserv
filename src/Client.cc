@@ -619,8 +619,12 @@ void Client::create_character_file(
     Language language,
     const PlayerDispDataBBPreview& preview,
     shared_ptr<const LevelTable> level_table) {
+  this->log.info_f("Creating new character file");
   this->character_data = PSOBBCharacterFile::create_from_preview(guild_card_number, language, preview, level_table);
   this->save_character_file();
+  this->log.info_f("Deleting bank file");
+  this->bank_data.reset();
+  std::filesystem::remove(this->bank_filename());
 }
 
 void Client::create_battle_overlay(shared_ptr<const BattleRules> rules, shared_ptr<const LevelTable> level_table) {
