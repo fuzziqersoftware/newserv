@@ -990,7 +990,7 @@ void Card::compute_action_chain_results(bool apply_action_conditions, bool ignor
         break;
       case AssistEffect::INFLUENCE:
         if (!is_nte && this->card_type_is_sc_or_creature()) {
-          int16_t count = ps->count_set_refs();
+          int16_t count = ps->count_hand_refs();
           this->action_chain.chain.ap_effect_bonus += (count >> 1);
         }
         break;

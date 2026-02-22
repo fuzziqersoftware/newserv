@@ -528,9 +528,9 @@ size_t PlayerState::count_set_cards() const {
   return ret;
 }
 
-size_t PlayerState::count_set_refs() const {
+size_t PlayerState::count_hand_refs() const {
   size_t ret = 0;
-  for (size_t set_index = 0; set_index < 8; set_index++) {
+  for (size_t set_index = 8; set_index < 16; set_index++) {
     if (this->card_refs[set_index] != 0xFFFF) {
       ret++;
     }

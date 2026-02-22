@@ -56,7 +56,7 @@ public:
   void compute_total_set_cards_cost();
   size_t count_set_cards_for_env_stats_nte() const;
   size_t count_set_cards() const;
-  size_t count_set_refs() const;
+  size_t count_hand_refs() const;
   void discard_all_assist_cards_from_hand();
   void discard_all_attack_action_cards_from_hand();
   void discard_all_item_and_creature_cards_from_hand();
