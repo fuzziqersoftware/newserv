@@ -1048,7 +1048,7 @@ asio::awaitable<deque<string>> fn_info_board(ShellCommand::Args& args) {
   if (args.command == "info-board-data") {
     data += phosg::parse_data_string(args.args, nullptr, phosg::ParseDataFlags::ALLOW_FILES);
   } else {
-    data += args.args;
+    data += add_color(args.args);
   }
   data.push_back('\0');
   data.resize((data.size() + 3) & (~3));
@@ -1058,7 +1058,8 @@ asio::awaitable<deque<string>> fn_info_board(ShellCommand::Args& args) {
 }
 ShellCommand c_info_board("info-board", "info-board TEXT\n\
     Set your info board contents. This will affect the current session only,\n\
-    and will not be saved for future sessions.",
+    and will not be saved for future sessions. Escape codes (e.g. $C4) can be\n\
+    used.",
     fn_info_board);
 ShellCommand c_info_board_data("info-board-data", "info-board-data DATA\n\
     Set your info board contents with arbitrary data. Like the above, affects\n\
