@@ -121,6 +121,9 @@ public:
 
   int8_t get_winner_team_id() const;
 
+  // Note: Sega's servers sent battle commands with the 60 command. The handlers for 60, 62, and C9 on the client are
+  // identical, so we choose to use C9 instead because it's unique to Episode 3, and therefore seems more appropriate
+  // to convey Episode 3 battle commands.
   template <typename T>
   void send(const T& cmd, uint8_t command = 0xC9, bool enable_masking = true) const {
     if (cmd.header.size != sizeof(cmd) / 4) {

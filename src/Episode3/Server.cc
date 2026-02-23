@@ -251,9 +251,6 @@ void Server::send(const void* data, size_t size, uint8_t command, bool enable_ma
       size = masked_data.size();
     }
 
-    // Note: Sega's servers sent battle commands with the 60 command. The handlers for 60, 62, and C9 on the client are
-    // identical, so we choose to use C9 instead because it's unique to Episode 3, and therefore seems more appropriate
-    // to convey Episode 3 battle commands.
     send_command(l, command, 0x00, data, size);
     for (auto watcher_l : l->watcher_lobbies) {
       send_command_if_not_loading(watcher_l, command, 0x00, data, size);
