@@ -538,8 +538,8 @@ fparam4 = TODO: 3OE1:802D7490; NNF: Jump cooldown time (Higher value = less wait
 iparam1 = TODO: 3OE1:802D7484
 
 MOVEMENT DATA 40 (MORFOS)
-fparam1 = TODO: 3OE1:80335A98, 3OE1:80335DBC; NNF: Laser speed (also affects hitbox property - needs retest with others for opinion).
-fparam2 = TODO: 3OE1:80335ADC; NNF: Laser damage.
+fparam1 = laser speed; hitbox radius is fparam1 * 1.5
+fparam2 = laser damage
 iparam1 = TODO: 3OE1:80332298, 3OE1:803321C4; NNF: Firing rate of regular laser attack. Laser attack when aggressive (charging) is unaffected.
 iparam2 = TODO: 3OE1:8033161C, 3OE1:8033192C, 3OE1:80331B4C, 3OE1:80331D00, 3OE1:80331FA0; NNF: Speed at which Morphos spins after firing laser.
 iparam3 = TODO: 3OE1:80331F04; NNF: Interval in frames of attacks
