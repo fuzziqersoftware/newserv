@@ -1139,16 +1139,25 @@ void send_simple_mail(shared_ptr<ServerState> s, uint32_t from_guild_card_number
 template <TextEncoding NameEncoding, TextEncoding MessageEncoding>
 void send_info_board_t(shared_ptr<Client> c) {
   vector<S_InfoBoardEntryT_D8<NameEncoding, MessageEncoding>> entries;
-  auto l = c->require_lobby();
-  for (const auto& other_c : l->clients) {
-    if (!other_c.get()) {
-      continue;
+
+  auto add_clients_from_lobby = [&](std::shared_ptr<Lobby> l) -> void {
+    for (const auto& lc : l->clients) {
+      if (lc) {
+        auto lp = lc->character_file(true, false);
+        auto& e = entries.emplace_back();
+        e.name.encode(lp->disp.name.decode(lp->inventory.language), c->language());
+        e.message.encode(add_color(lp->info_board.decode(lp->inventory.language)), c->language());
+      }
     }
-    auto other_p = other_c->character_file(true, false);
-    auto& e = entries.emplace_back();
-    e.name.encode(other_p->disp.name.decode(other_p->inventory.language), c->language());
-    e.message.encode(add_color(other_p->info_board.decode(other_p->inventory.language)), c->language());
+  };
+
+  auto l = c->require_lobby();
+  auto watched_l = l->watched_lobby.lock();
+  if (watched_l) {
+    add_clients_from_lobby(watched_l);
   }
+  add_clients_from_lobby(l);
+
   send_command_vt(c, 0xD8, entries.size(), entries);
 }
 
