@@ -1622,13 +1622,17 @@ Action a_disassemble_quest_script(
   disassemble-quest-script [OPTIONS] [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Disassemble the input quest script (.bin file) into a text representation\n\
     of the commands and metadata it contains. Specify the quest\'s game version\n\
-    with one of the --dc-nte, --dc-v1, --dc-v2, --pc, --gc-nte, --gc, --gc-ep3,\n\
-    --xb, or --bb options. newserv uses more descriptive opcode mnemonics by\n\
-    default; the --qedit option will result in names matching those used by\n\
-    QEdit. If you intend to reassemble the script, after editing it, use the\n\
-    --reassembly option to add explicit label numbers and remove offsets and\n\
-    data in code sections. To include script references from the map, use the\n\
-    --map-file=FILENAME option.\n",
+    with one of the --dc-nte, --dc-v1, --dc-v2, --pc, --gc-nte, --gc,\n\
+    --gc-ep3, --xb, or --bb options. Other options:\n\
+      --qedit: newserv uses more descriptive opcode mnemonics by default; this\n\
+          option will result in names matching those used by QEdit.\n\
+      --reassembly: If you intend to reassemble the script after editing it,\n\
+          use this option to add explicit label numbers and remove offsets and\n\
+          data in code sections.\n\
+      --map-file=FILENAME: Include references to script labels from this map.\n\
+      --language=L: Decode strings using this language. L may be J, E, G, F,\n\
+          S, B, T, or K, for Japanese, English, German, French, Spanish,\n\
+          Simplified Chinese, Traditional Chinese, or Korean respectively.\n",
     +[](phosg::Arguments& args) {
       string data = read_input_data(args);
       auto version = get_cli_version(args);
@@ -1641,7 +1645,8 @@ Action a_disassemble_quest_script(
         auto map_data = make_shared<string>(prs_decompress(phosg::load_file(map_filename)));
         map_file = make_shared<MapFile>(map_data);
       }
-      Language language = static_cast<Language>(args.get<uint8_t>("language", 0xFF));
+      const auto& language_str = args.get<string>("language");
+      Language language = language_str.empty() ? Language::ENGLISH : language_for_name(language_str);
       bool reassembly_mode = args.get<bool>("reassembly");
       bool use_qedit_names = args.get<bool>("qedit");
       string result = disassemble_quest_script(
