@@ -134,11 +134,12 @@ set(SOURCES
 
 add_executable(newserv ${SOURCES})
 target_include_directories(newserv PUBLIC ${ASIO_INCLUDE_DIR} ${Iconv_INCLUDE_DIRS})
-target_link_libraries(newserv phosg::phosg ${Iconv_LIBRARIES} pthread resource_file::resource_file)
+target_link_libraries(newserv phosg::phosg ${Iconv_LIBRARIES} resource_file::resource_file)
 if (WIN32)
-    target_compile_definitions(newserv PUBLIC -DWINVER=0x0A00 -D_WIN32_WINNT=0x0A00)
-    target_link_libraries(newserv ws2_32 mswsock bcrypt iphlpapi -static -static-libgcc -static-libstdc++)
-    target_compile_options(newserv PRIVATE -Wa,-mbig-obj)
+    target_compile_definitions(newserv PUBLIC WINVER=0x0A00 _WIN32_WINNT=0x0A00)
+    target_compile_options(newserv PRIVATE -Wa,-mbig-obj -Wno-mismatched-new-delete)
+    target_link_options(newserv PRIVATE -static -static-libgcc -static-libstdc++)
+    target_link_libraries(newserv ws2_32 mswsock bcrypt iphlpapi)
 endif()
 add_dependencies(newserv newserv-Revision-cc)
 
