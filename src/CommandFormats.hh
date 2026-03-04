@@ -2457,21 +2457,33 @@ struct S_ConfirmTournamentEntry_Ep3_CC {
 // CF: Invalid command
 
 // D0 (C->S): Start trade sequence (V3/BB)
-// The trade window sequence is a bit complicated. On pre-BB versions, the normal flow is:
+// The trade window sequence is a bit complicated. On pre-BB versions, the sequence is:
 // - Clients sync trade state with 6xA6 commands
-// - When both have confirmed, one client (the initiator) sends D0
-// - The server sends D1 to the other client (the responder)
-// - The responder sends D0
+// - When both have confirmed, one client (the initiator) sends D0 with the items it intends to give to the other
+//   player (the responder)
+// - The server sends D1 to the responder
+// - The responder sends D0 with its own item list
 // - The server sends D1 to both clients
-// - Both clients delete the sent items from their inventories and send the appropriate subcommand (6x29)
+// - Both clients delete the sent items from their inventories and send the appropriate subcommands (6x29)
 // - Both clients send D2; similarly to how AC works, the server doesn't proceed until both D2 commands are received
 // - The server sends D3 to both clients with each other's data from their D0 commands, followed immediately by D4 01
 //   to both clients, which completes the trade
-// - Both clients send the appropriate subcommand to create inventory items
-// On BB, the flow is similar, except after both D2 commands are received, the server instead handles the rest of the
-// process - it sends 6x29 commands to delete the inventory items and 6xBE to create the traded items.
-// At any point if an error occurs, either client may send a D4 00, which cancels the entire sequence. The server
-// should then send D4 00 to both clients.
+// - Both clients send the appropriate subcommands to create inventory items (6x5E)
+// On BB, the sequence is:
+// - Clients sync trade state with 6xA6 commands
+// - When both have confirmed, one client (the initiator) sends D0 with the items it intends to give to the other
+//   player (the responder)
+// - The server sends D1 to the responder
+// - The responder sends D0 with its own item list
+// - The server sends D1 to both clients
+// - Both clients send D2; similarly to how AC works, the server doesn't proceed until both D2 commands are received
+// - The server executes the trade by sending 6x29 for each item given away from each player, followed by 6xBE to
+//   create each item in the other player's inventory (note that all 6x29 commands must be sent before any 6xBE
+//   command, since the client's item state may desync if one player's inventory is full and they receive a 6xBE)
+// - The server sends D3 followed immediately by D4 01 to both clients, which completes the trade; unlike in the pre-BB
+//   case, the D3 commands are empty (no item list is sent)
+// At any point if an error occurs, either client may send D4 00, which cancels the entire sequence. The server should
+// then send D4 00 to both clients.
 
 struct SC_TradeItems_D0_D3 { // D0 when sent by client, D3 when sent by server
   le_uint16_t target_client_id = 0;
