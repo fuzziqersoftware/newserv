@@ -2004,7 +2004,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8CB, "clear_slot_invincible", "set_slot_targetable?", {R_REG}, F_V3_V4},
 
     // These opcodes inflict various status conditions on a player. In the case of Shifta/Deband/Jellen/Zalure, the
-    // effective technicuqe level is 21.
+    // effective technique level is 21.
     //   regA = client ID
     {0xF8CC, "set_slot_poison", nullptr, {R_REG}, F_V3_V4},
     {0xF8CD, "set_slot_paralyze", nullptr, {R_REG}, F_V3_V4},

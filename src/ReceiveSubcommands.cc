@@ -5377,10 +5377,8 @@ static asio::awaitable<void> on_upgrade_weapon_attribute_bb(shared_ptr<Client> c
     if (payment_item.stack_size(*s->item_stack_limits(c->version())) < cmd.payment_count) {
       throw runtime_error("not enough payment items present");
     }
-    p->remove_item(payment_item.id, cmd.payment_count, *s->item_stack_limits(c->version()));
-    send_destroy_item_to_lobby(c, payment_item.id, cmd.payment_count);
 
-    uint8_t attribute_amount = 0;
+    int8_t attribute_amount = 0;
     if (cmd.payment_type == 1 && cmd.payment_count == 1) {
       attribute_amount = 30;
     } else if (cmd.payment_type == 0 && cmd.payment_count == 4) {
@@ -5401,8 +5399,16 @@ static asio::awaitable<void> on_upgrade_weapon_attribute_bb(shared_ptr<Client> c
     if (attribute_index == 0) {
       throw runtime_error("no available attribute slots");
     }
+    int8_t new_attr_value = static_cast<int8_t>(item.data1[attribute_index + 1]) + attribute_amount;
+    if (new_attr_value > 100) {
+      throw runtime_error("bonus value exceeds 100");
+    }
+
+    p->remove_item(payment_item.id, cmd.payment_count, *s->item_stack_limits(c->version()));
+    send_destroy_item_to_lobby(c, payment_item.id, cmd.payment_count);
+
     item.data1[attribute_index] = cmd.attribute;
-    item.data1[attribute_index + 1] += attribute_amount;
+    item.data1[attribute_index + 1] += new_attr_value;
 
     send_destroy_item_to_lobby(c, item.id, 1);
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
