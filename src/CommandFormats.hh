@@ -144,7 +144,7 @@ struct S_ServerInit_Patch_02 {
 } __packed_ws__(S_ServerInit_Patch_02, 0x48);
 
 // 02 (C->S): Encryption started
-// No arguments
+// No arguments.
 
 // 03: Invalid command
 
@@ -163,7 +163,7 @@ struct C_Login_Patch_04 {
 } __packed_ws__(C_Login_Patch_04, 0x6C);
 
 // 05 (S->C): Disconnect
-// No arguments
+// No arguments.
 // This command is not used in the normal flow (described above). Generally the server should disconnect after sending
 // a 12 or 15 command instead of an 05.
 
@@ -203,10 +203,10 @@ struct S_EnterDirectory_Patch_09 {
 } __packed_ws__(S_EnterDirectory_Patch_09, 0x40);
 
 // 0A (S->C): Exit directory
-// No arguments
+// No arguments.
 
 // 0B (S->C): Start patch session and go to patch root directory
-// No arguments
+// No arguments.
 
 // 0C (S->C): File checksum request
 
@@ -216,7 +216,7 @@ struct S_FileChecksumRequest_Patch_0C {
 } __packed_ws__(S_FileChecksumRequest_Patch_0C, 0x24);
 
 // 0D (S->C): End of file checksum requests
-// No arguments
+// No arguments.
 
 // 0E: Invalid command
 
@@ -229,7 +229,7 @@ struct C_FileInformation_Patch_0F {
 } __packed_ws__(C_FileInformation_Patch_0F, 0x0C);
 
 // 10 (C->S): End of file information command list
-// No arguments
+// No arguments.
 
 // 11 (S->C): Start file downloads
 
@@ -239,7 +239,7 @@ struct S_StartFileDownloads_Patch_11 {
 } __packed_ws__(S_StartFileDownloads_Patch_11, 0x08);
 
 // 12 (S->C): End patch session successfully
-// No arguments
+// No arguments.
 
 // 13 (S->C): Message box
 // Same format and usage as commands 1A/D5 on the game server (described below). On PSOBB, the message box appears in
@@ -513,7 +513,7 @@ check_struct_size(S_MenuItem_DC_V3_08_Ep3_E6, 0x1C);
 
 // 08 (C->S): Request game list
 // Internal name: SndGameList
-// No arguments
+// No arguments.
 
 // 08 (S->C): Game list
 // Internal name: RcvGameList
@@ -1523,7 +1523,7 @@ struct C_ConnectionInfo_DCNTE_8A {
 // client responds with an 8B command.
 
 // 8A (C->S): Request lobby/game name (except DC NTE)
-// No arguments
+// No arguments.
 
 // 8A (S->C): Lobby/game name (except DC NTE)
 // Contents is a string containing the lobby or game name. All versions after DCv1 send an 8A command to request the
@@ -1674,7 +1674,7 @@ struct C_LoginWithHardwareInfo_BB_93 : C_LoginBase_BB_93 {
 
 // 95 (S->C): Request player data
 // Internal name: RcvRecognition
-// No arguments
+// No arguments.
 // For some reason, some servers send high values in the header.flag field here. The header.flag field is completely
 // unused by the client, however - sending zero works just fine. The original Sega servers had some uninitialized
 // memory bugs, of which that may have been one, and other private servers may have just duplicated Sega's behavior.
@@ -1698,7 +1698,7 @@ struct C_CharSaveInfo_DCv2_PC_V3_BB_96 {
 
 // 97 (S->C): Save to memory card
 // Internal name: RcvSaveCountCheck
-// No arguments
+// No arguments.
 // Internally, this command is called RcvSaveCountCheck, even though the counter in the 96 command (to which 97 is a
 // reply) counts more events than saves. Sending this command with header.flag == 0 will show a message saying that
 // "character data was improperly saved", and will delete the character's items and challenge mode records. newserv
@@ -1718,7 +1718,7 @@ struct C_CharSaveInfo_DCv2_PC_V3_BB_96 {
 
 // 99 (C->S): Server time accepted
 // Internal name: SndPsoDirList
-// No arguments
+// No arguments.
 // This command's internal name suggests that it's actually a request for the ship select menu, but it's only sent as
 // the response to a B1 command (server time) and the client doesn't set any state to indicate it's waiting for a ship
 // select menu, so we just treat it as confirmation of a received B1 command instead.
@@ -1936,7 +1936,7 @@ struct C_ChangeShipOrBlock_A0_A1 {
 // Same as 07 command.
 
 // A2 (C->S): Request quest menu
-// No arguments
+// No arguments.
 
 // A2 (S->C): Quest menu
 // Client will respond with an 09, 10, or A9 command. For 09, the server should send the category or quest description
@@ -2014,7 +2014,7 @@ struct S_QuestMenuEntry_BB_A2_A4 {
 
 // A9 (C->S): Quest menu closed (canceled)
 // Internal name: SndQuestEnd
-// No arguments
+// No arguments.
 // This command is sent when the in-game quest menu (A2) is closed. This is used by the server to unlock the game if
 // the players don't select a quest, since players are forbidden from joining while the quest menu is open. When the
 // download quest menu is closed, either by downloading a quest or canceling, the client sends A0 instead.
@@ -2148,7 +2148,7 @@ struct S_RankUpdate_Ep3_B7 {
 } __packed_ws__(S_RankUpdate_Ep3_B7, 0x1C);
 
 // B7 (C->S): Confirm rank update (Episode 3)
-// No arguments
+// No arguments.
 // The client sends this after it receives a B7 from the server.
 
 // B8 (S->C): Update card definitions (Episode 3)
@@ -2159,7 +2159,7 @@ struct S_RankUpdate_Ep3_B7 {
 // Note: PSO BB accepts this command as well, but ignores it.
 
 // B8 (C->S): Confirm updated card definitions (Episode 3)
-// No arguments
+// No arguments.
 // The client sends this after it receives a B8 from the server.
 
 // B8 (C->S): Valid but ignored (BB)
@@ -2504,19 +2504,20 @@ struct SC_TradeItems_D0_D3 { // D0 when sent by client, D3 when sent by server
 // On BB, this command has no arguments (and the server generates the appropriate delete and create inventory item
 // commands), but the D3 command must still must be sent before the D4 command to advance the trade state.
 
-// D4 (C->S): Trade failed (V3/BB)
+// D4 (C->S): Cancel/fail trade sequence (V3/BB)
 // No arguments. See the description of D0 for usage information.
 
 // D4 (S->C): Trade complete (V3/BB)
 // header.flag must be 0 (trade failed) or 1 (trade complete). See the description of D0 for usage information.
 
-// D5: Large message box (V3/BB)
+// D5 (S->C): Large message box (V3/BB)
 // Same as 1A command, except the maximum length of the message is 0x1000 bytes. On BB, this command is not valid
 // during the data server phase (whereas 1A is valid there). The BB client ignores all D5 commands after the first one
-// sent in each connection; this logic does not apply to 1A.
+// sent in each connection; this logic does not apply to 1A. This logic was added for some reason in BB; V3 does not
+// have this restriction.
 
 // D6 (C->S): Large message box closed (V3)
-// No arguments
+// No arguments.
 // DC, PC, and BB do not send this command at all. GC US v1.0 and v1.1 will send this command when any large message
 // box (1A/D5) is closed; GC Plus and Episode 3 will send D6 only for large message boxes that occur before the client
 // has joined a lobby. (After joining a lobby, large message boxes will still be displayed if sent by the server, but
@@ -2535,7 +2536,7 @@ struct C_GBAGameRequest_V3_D7 {
 } __packed_ws__(C_GBAGameRequest_V3_D7, 0x10);
 
 // D7 (S->C): GBA file not found (V3/BB)
-// No arguments
+// No arguments.
 // This command is not valid on PSO GC Episodes 1&2 Trial Edition. PSO BB accepts but completely ignores this command.
 // This command tells the client that the file it requested via a D7 command does not exist. This causes the F8C1
 // (get_dl_status) quest opcode to return 0 (file not found), rather than 1 (download in progress) or 2 (complete).
@@ -3173,7 +3174,7 @@ struct SC_TeamChat_BB_07EA {
 } __packed_ws__(SC_TeamChat_BB_07EA, 0x20);
 
 // 08EA (C->S): Get team member list
-// No arguments
+// No arguments.
 
 // 09EA (S->C): Team member list
 
@@ -3200,7 +3201,7 @@ struct S_Unknown_BB_0CEA {
 } __packed_ws__(S_Unknown_BB_0CEA, 0x20);
 
 // 0DEA (C->S): Get team name
-// No arguments
+// No arguments.
 
 // 0EEA (S->C): Team name
 
@@ -3263,7 +3264,7 @@ struct S_TeamInfoForPlayer_BB_13EA_15EA_Entry {
 // No arguments except header.flag, which is zero if the transfer failed or nonzero if it succeeded.
 
 // 18EA: Intra-team ranking information
-// No arguments (C->S)
+// No arguments (C->S).
 
 struct S_IntraTeamRanking_BB_18EA {
   /* 0000 */ le_uint32_t ranking_points = 0;
@@ -3283,7 +3284,7 @@ struct S_IntraTeamRanking_BB_18EA {
 } __packed_ws__(S_IntraTeamRanking_BB_18EA, 0x10);
 
 // 19EA: Team reward list
-// No arguments (C->S)
+// No arguments (C->S).
 
 struct S_TeamRewardList_BB_19EA_1AEA {
   le_uint32_t num_entries;
@@ -3446,7 +3447,7 @@ struct S_AdvanceCardTradeState_Ep3_EE_FlagD1 {
 } __packed_ws__(S_AdvanceCardTradeState_Ep3_EE_FlagD1, 4);
 
 // EE D2 (C->S): Trade can proceed
-// No arguments
+// No arguments.
 
 // EE D3 (S->C): Execute trade
 // Same format as EE D0
@@ -6337,7 +6338,7 @@ struct G_SetPlayerDeck_Ep3_CAx14 {
 
 struct G_HardResetServerState_Ep3_CAx15 {
   G_CardServerDataCommandHeader header = {0xB3, sizeof(G_HardResetServerState_Ep3_CAx15) / 4, 0, 0x15, 0, 0, 0, 0, 0};
-  // No arguments
+  // No arguments.
 } __packed_ws__(G_HardResetServerState_Ep3_CAx15, 0x10);
 
 // 6xB5x17: Unknown
@@ -6345,7 +6346,7 @@ struct G_HardResetServerState_Ep3_CAx15 {
 
 struct G_Unknown_Ep3_6xB5x17 {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_Ep3_6xB5x17) / 4, 0, 0x17, 0, 0, 0};
-  // No arguments
+  // No arguments.
 } __packed_ws__(G_Unknown_Ep3_6xB5x17, 8);
 
 // 6xB5x1A: Force disconnect
@@ -6355,7 +6356,7 @@ struct G_Unknown_Ep3_6xB5x17 {
 
 struct G_ForceDisconnect_Ep3_6xB5x1A {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_ForceDisconnect_Ep3_6xB5x1A) / 4, 0, 0x1A, 0, 0, 0};
-  // No arguments
+  // No arguments.
 } __packed_ws__(G_ForceDisconnect_Ep3_6xB5x1A, 8);
 
 // 6xB3x1B / CAx1B: Set player name
@@ -6428,7 +6429,7 @@ struct G_EndBattle_Ep3_CAx21 {
 
 struct G_Unknown_Ep3_6xB4x22 {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_Unknown_Ep3_6xB4x22) / 4, 0, 0x22, 0, 0, 0};
-  // No arguments
+  // No arguments.
 } __packed_ws__(G_Unknown_Ep3_6xB4x22, 8);
 
 // 6xB4x23: Unknown
@@ -6571,7 +6572,7 @@ struct G_SetDeckInBattleSetupMenu_Ep3_6xB5x2F {
 
 struct G_Unused_Ep3_6xB5x30 {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unused_Ep3_6xB5x30) / 4, 0, 0x30, 0, 0, 0};
-  // No arguments
+  // No arguments.
 } __packed_ws__(G_Unused_Ep3_6xB5x30, 8);
 
 // 6xB5x31: Confirm deck selection

@@ -780,6 +780,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   regsA[0-2] = location (x, y, z as integers)
     //   regsA[3] = radius
     //   regsA[4] = label index where thread should start
+    // After executing this opcode, regsA[0] is replaced with the object's token, which can be used in del_obj_param,
+    // move_coords_object, etc.
     {0x8C, "at_coords_call", nullptr, {{R_REG_SET_FIXED, 5}}, F_V0_V4},
 
     // Like at_coords_call, but the thread is not started automatically. Instead, the player's primary action button
@@ -890,7 +892,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xB1, "thread_stg", nullptr, {SCRIPT16}, F_V0_V4},
 
     // Deletes an interactable object previously created by set_obj_param. valueA is the object's token, as returned by
-    // regB from set_obj_param.
+    // regB from set_obj_param, or regsA[0] from e.g. at_coords_call.
     {0xB2, "del_obj_param", nullptr, {R_REG}, F_V0_V4},
 
     // Creates an item in the player's inventory. If the item is successfully created, this opcode sends 6x2B on all
@@ -2089,9 +2091,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   regsB[0-2] = location (x, y, z as integers)
     {0xF8E6, "move_coords_object", nullptr, {R_REG, {R_REG_SET_FIXED, 3}}, F_V3_V4},
 
-    // These are the same as their counterparts without _ex, but these return an object token in regB which can be used
-    // with del_obj_param, move_coords_object, etc. set_obj_param_ex is the same as set_obj_param, since set_obj_param
-    // already returns an object token.
+    // These are the same as their counterparts without _ex, but these also return the object ID (which is distinct
+    // from the object token) in regB. There is a bug in set_obj_param_ex - the object token is not returned anywhere,
+    // and only the object ID is returned in regB.
     {0xF8E7, "at_coords_call_ex", nullptr, {{R_REG_SET_FIXED, 5}, W_REG}, F_V3_V4},
     {0xF8E8, "at_coords_talk_ex", nullptr, {{R_REG_SET_FIXED, 5}, W_REG}, F_V3_V4},
     {0xF8E9, "npc_coords_call_ex", "walk_to_coord_call_ex", {{R_REG_SET_FIXED, 5}, W_REG}, F_V3_V4},
