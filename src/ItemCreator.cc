@@ -188,17 +188,23 @@ ItemCreator::DropResult ItemCreator::on_box_item_drop(uint8_t area) {
   }
 }
 
-ItemCreator::DropResult ItemCreator::on_monster_item_drop(uint32_t enemy_type, uint8_t area) {
+ItemCreator::DropResult ItemCreator::on_monster_item_drop(EnemyType enemy_type, uint8_t area) {
   try {
-    // Note: The original GC implementation uses (enemy_type > 0x58) here; we extend it to the full array size for BB
-    if (enemy_type >= NUM_RT_INDEXES_V4) {
-      this->log.warning_f("Invalid enemy type: {:X}", enemy_type);
-      return DropResult();
-    }
-    this->log.info_f("Enemy type: {:X}", enemy_type);
+    // Note: The original implementation has a bounds check for enemy_type here, because it uses rt_index instead
+    // if (enemy_type >= NUM_RT_INDEXES_V4) {
+    //   this->log.warning_f("Invalid enemy type: {:X}", enemy_type);
+    //   return DropResult();
+    // }
+    this->log.info_f("Enemy type: {}", phosg::name_for_enum(enemy_type));
 
     auto pt = this->pt(area);
-    uint8_t type_drop_prob = pt->enemy_type_drop_probs.at(enemy_type);
+    uint8_t type_drop_prob = 0;
+    try {
+      type_drop_prob = pt->enemy_type_drop_probs.at(enemy_type);
+    } catch (const std::out_of_range&) {
+      this->log.info_f("No drop probability is set for this enemy type");
+      return DropResult();
+    }
     uint8_t drop_sample = this->rand_int(100);
     if (drop_sample >= type_drop_prob) {
       this->log.info_f("Drop not chosen ({} >= {})", drop_sample, type_drop_prob);
@@ -212,10 +218,8 @@ ItemCreator::DropResult ItemCreator::on_monster_item_drop(uint32_t enemy_type, u
     if (!res.item.empty()) {
       res.is_from_rare_table = true;
     } else {
-      uint32_t item_class_determinant =
-          this->should_allow_meseta_drops() ? this->rand_int(3) : (this->rand_int(2) + 1);
-
-      uint32_t item_class;
+      uint8_t item_class_determinant = this->should_allow_meseta_drops() ? this->rand_int(3) : (this->rand_int(2) + 1);
+      uint8_t item_class;
       switch (item_class_determinant) {
         case 0:
           item_class = 5;
@@ -224,7 +228,12 @@ ItemCreator::DropResult ItemCreator::on_monster_item_drop(uint32_t enemy_type, u
           item_class = 4;
           break;
         case 2:
-          item_class = pt->enemy_item_classes.at(enemy_type);
+          try {
+            item_class = pt->enemy_type_item_classes.at(enemy_type);
+          } catch (const out_of_range&) {
+            this->log.info_f("Item class is not set for this enemy type");
+            item_class = 0xFF;
+          }
           break;
         default:
           throw logic_error("invalid item class determinant");
@@ -251,7 +260,12 @@ ItemCreator::DropResult ItemCreator::on_monster_item_drop(uint32_t enemy_type, u
           break;
         case 5: // Meseta
           res.item.data1[0] = 0x04;
-          res.item.data2d = this->choose_meseta_amount(pt->enemy_meseta_ranges, enemy_type) & 0xFFFF;
+          try {
+            res.item.data2d = this->choose_meseta_amount(pt->enemy_type_meseta_ranges.at(enemy_type)) & 0xFFFF;
+          } catch (const out_of_range&) {
+            this->log.info_f("Meseta range is not set for this enemy type");
+            return DropResult();
+          }
           break;
         default:
           return res;
@@ -305,24 +319,18 @@ float ItemCreator::rand_float_0_1_from_crypt() {
   return (static_cast<double>(this->rand_crypt->next() >> 16) / 65536.0);
 }
 
-template <size_t NumRanges>
-uint32_t ItemCreator::choose_meseta_amount(
-    const parray<CommonItemSet::Table::Range<uint16_t>, NumRanges> ranges,
-    size_t table_index) {
-  uint16_t min = ranges[table_index].min;
-  uint16_t max = ranges[table_index].max;
-
+uint32_t ItemCreator::choose_meseta_amount(const CommonItemSet::Table::Range<uint16_t>& range) {
   // Note: The original code returns 0xFF here if either limit is equal to 0xFF (despite them being 16-bit integers!)
   uint16_t ret;
-  if (min == max) {
-    ret = min;
-  } else if (max < min) {
-    ret = this->rand_int((min - max) + 1) + max;
+  if (range.min == range.max) {
+    ret = range.min;
+  } else if (range.max < range.min) {
+    ret = this->rand_int((range.min - range.max) + 1) + range.max;
   } else {
-    ret = this->rand_int((max - min) + 1) + min;
+    ret = this->rand_int((range.max - range.min) + 1) + range.min;
   }
 
-  this->log.info_f("Chose {} Meseta from range [{}, {}]", ret, min, max);
+  this->log.info_f("Chose {} Meseta from range [{}, {}]", ret, range.min, range.max);
   return ret;
 }
 
@@ -330,28 +338,32 @@ bool ItemCreator::should_allow_meseta_drops() const {
   return (this->mode != GameMode::CHALLENGE);
 }
 
-ItemData ItemCreator::check_rare_spec_and_create_rare_enemy_item(uint32_t enemy_type, uint8_t area) {
+ItemData ItemCreator::check_rare_spec_and_create_rare_enemy_item(EnemyType enemy_type, uint8_t area) {
+  // Note: The original implementation has a bounds check for enemy_type here, since it uses rt_index instead.
+  // if ((enemy_type <= 0) || (enemy_type >= NUM_RT_INDEXES_V4)) return ItemData{};
+  if (!this->are_rare_drops_allowed()) {
+    return ItemData{};
+  }
+
+  // Note: In the original implementation, enemies can only have one possible rare drop. In our implementation, they
+  // can have multiple rare drops if JSONRareItemSet is used (the other RareItemSet implementations never return
+  // multiple drops for an enemy type).
+  Episode episode = episode_for_area(area);
+  auto rare_specs = this->rare_item_set->get_enemy_specs(
+      this->mode, episode, this->difficulty, this->section_id, enemy_type);
   ItemData item;
-  if (this->are_rare_drops_allowed() && (enemy_type > 0) && (enemy_type < NUM_RT_INDEXES_V4)) {
-    // Note: In the original implementation, enemies can only have one possible rare drop. In our implementation, they
-    // can have multiple rare drops if JSONRareItemSet is used (the other RareItemSet implementations never return
-    // multiple drops for an enemy type).
-    Episode episode = episode_for_area(area);
-    auto rare_specs = this->rare_item_set->get_enemy_specs(
-        this->mode, episode, this->difficulty, this->section_id, enemy_type);
-    for (const auto& spec : rare_specs) {
-      item = this->check_rate_and_create_rare_item(spec, area);
-      if (!item.empty()) {
-        if (this->log.should_log(phosg::LogLevel::L_INFO)) {
-          auto hex = spec.data.hex();
-          this->log.info_f("Enemy spec {:08X} produced item {}", spec.probability, hex);
-        }
-        break;
-      }
+  for (const auto& spec : rare_specs) {
+    item = this->check_rate_and_create_rare_item(spec, area);
+    if (!item.empty()) {
       if (this->log.should_log(phosg::LogLevel::L_INFO)) {
         auto hex = spec.data.hex();
-        this->log.info_f("Enemy spec {:08X} did not produce item {}", spec.probability, hex);
+        this->log.info_f("Enemy spec {:08X} produced item {}", spec.probability, hex);
       }
+      break;
+    }
+    if (this->log.should_log(phosg::LogLevel::L_INFO)) {
+      auto hex = spec.data.hex();
+      this->log.info_f("Enemy spec {:08X} did not produce item {}", spec.probability, hex);
     }
   }
   return item;
@@ -617,9 +629,11 @@ void ItemCreator::generate_common_item_variances(ItemData& item, uint8_t area) {
     case 3:
       this->generate_common_tool_variances(item, area);
       break;
-    case 4:
-      item.data2d = this->choose_meseta_amount(this->pt(area)->box_meseta_ranges, this->table_index_for_area(area)) & 0xFFFF;
+    case 4: {
+      const auto& range = this->pt(area)->box_meseta_ranges.at(this->table_index_for_area(area));
+      item.data2d = this->choose_meseta_amount(range) & 0xFFFF;
       break;
+    }
     default:
       // Note: The original code does the following here:
       //   item.clear();

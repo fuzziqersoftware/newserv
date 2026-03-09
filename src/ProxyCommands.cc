@@ -970,7 +970,7 @@ static asio::awaitable<HandlerResult> SC_6x60_6xA2(shared_ptr<Client> c, Channel
     }
   } else {
     c->log.info_f("Creating item from enemy {:04X} (area {:02X})", cmd.entity_index, cmd.effective_area);
-    res = c->proxy_session->item_creator->on_monster_item_drop(rec.effective_rt_index, cmd.effective_area);
+    res = c->proxy_session->item_creator->on_monster_item_drop(rec.effective_enemy_type, cmd.effective_area);
   }
 
   if (res.item.empty()) {

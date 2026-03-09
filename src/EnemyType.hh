@@ -13,6 +13,7 @@ static constexpr size_t NUM_RT_INDEXES_V3 = 0x64;
 static constexpr size_t NUM_RT_INDEXES_V4 = 0x70;
 
 enum class EnemyType : uint8_t {
+  MIN_VALUE = 0,
   UNKNOWN = 0,
   NONE,
   NON_ENEMY_NPC,
@@ -146,7 +147,7 @@ enum class EnemyType : uint8_t {
   ZOL_GIBBON,
   ZU_CRATER,
   ZU_DESERT,
-  MAX_ENEMY_TYPE,
+  MAX_VALUE,
 };
 
 struct EnemyTypeDefinition {

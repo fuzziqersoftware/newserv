@@ -134,67 +134,57 @@ CommonItemSet::Table::Table(std::shared_ptr<const Table> prev_table, const phosg
   parse_field("UnitMaxStarsTable", this->unit_max_stars_table, prev_table ? &prev_table->unit_max_stars_table : nullptr);
   parse_field("BoxItemClassProbTable", this->box_item_class_prob_table, prev_table ? &prev_table->box_item_class_prob_table : nullptr);
 
-  const auto* enemy_meseta_ranges_json = json.count("EnemyMesetaRanges") ? &json.at("EnemyMesetaRanges").as_dict() : nullptr;
-  const auto* enemy_type_drop_probs_json = json.count("EnemyTypeDropProbs") ? &json.at("EnemyTypeDropProbs").as_dict() : nullptr;
-  const auto* enemy_item_classes_json = json.count("EnemyItemClasses") ? &json.at("EnemyItemClasses").as_dict() : nullptr;
-  if (enemy_item_classes_json) {
-    // Unspecified is 0xFF, not 0, unlike the other enemy-indexed arrays (except for [0], apparently... sigh)
-    this->enemy_item_classes[0] = 0;
-    this->enemy_item_classes.clear_after(1, 0xFF);
+  if (json.count("EnemyMesetaRanges")) {
+    const auto& dict = json.at("EnemyMesetaRanges").as_dict();
+    for (auto enemy_type : phosg::EnumRange<EnemyType>()) {
+      try {
+        from_json_into(*dict.at(phosg::name_for_enum(enemy_type)), this->enemy_type_meseta_ranges[enemy_type]);
+      } catch (const out_of_range&) {
+      }
+    }
+  } else {
+    this->enemy_type_meseta_ranges = prev_table->enemy_type_meseta_ranges;
   }
-  for (size_t z = 0; z < NUM_RT_INDEXES_V4; z++) {
-    auto types = enemy_types_for_rare_table_index(this->episode, z);
-    vector<string> names;
-    if (types.empty()) {
-      names.emplace_back(std::format("!{:02X}", z));
-    } else {
-      for (auto type : types) {
-        names.emplace_back(phosg::name_for_enum(type));
+
+  if (json.count("EnemyTypeDropProbs")) {
+    const auto& dict = json.at("EnemyTypeDropProbs").as_dict();
+    for (auto enemy_type : phosg::EnumRange<EnemyType>()) {
+      try {
+        this->enemy_type_drop_probs[enemy_type] = dict.at(phosg::name_for_enum(enemy_type))->as_int();
+      } catch (const out_of_range&) {
       }
     }
-    for (const auto& name : names) {
-      if (enemy_meseta_ranges_json) {
-        try {
-          from_json_into(*enemy_meseta_ranges_json->at(name), this->enemy_meseta_ranges[z]);
-        } catch (const out_of_range&) {
-        }
-      } else if (prev_table) {
-        this->enemy_meseta_ranges = prev_table->enemy_meseta_ranges;
-      }
-      if (enemy_type_drop_probs_json) {
-        try {
-          this->enemy_type_drop_probs[z] = enemy_type_drop_probs_json->at(name)->as_int();
-        } catch (const out_of_range&) {
-        }
-      } else if (prev_table) {
-        this->enemy_type_drop_probs = prev_table->enemy_type_drop_probs;
-      }
-      if (enemy_item_classes_json) {
-        try {
-          this->enemy_item_classes[z] = enemy_item_classes_json->at(name)->as_int();
-        } catch (const out_of_range&) {
-        }
-      } else if (prev_table) {
-        this->enemy_item_classes = prev_table->enemy_item_classes;
+  } else {
+    this->enemy_type_drop_probs = prev_table->enemy_type_drop_probs;
+  }
+
+  if (json.count("EnemyItemClasses")) {
+    const auto& dict = json.at("EnemyItemClasses").as_dict();
+    for (auto enemy_type : phosg::EnumRange<EnemyType>()) {
+      try {
+        this->enemy_type_item_classes[enemy_type] = dict.at(phosg::name_for_enum(enemy_type))->as_int();
+      } catch (const out_of_range&) {
       }
     }
+  } else {
+    this->enemy_type_item_classes = prev_table->enemy_type_item_classes;
   }
 }
 
 static const char* name_for_common_item_class(uint8_t item_class) {
   switch (item_class) {
     case 0x00:
-      return "WEAPON ";
+      return "WEAPON";
     case 0x01:
-      return "ARMOR  ";
+      return "ARMOR";
     case 0x02:
-      return "SHIELD ";
+      return "SHIELD";
     case 0x03:
-      return "UNIT   ";
+      return "UNIT";
     case 0x04:
-      return "TOOL   ";
+      return "TOOL";
     case 0x05:
-      return "MESETA ";
+      return "MESETA";
     case 0x06:
       return "NOTHING";
     default:
@@ -203,42 +193,29 @@ static const char* name_for_common_item_class(uint8_t item_class) {
 }
 
 void CommonItemSet::Table::print(FILE* stream) const {
-  const auto& meseta_ranges = this->enemy_meseta_ranges;
+  const auto& meseta_ranges = this->enemy_type_meseta_ranges;
   const auto& drop_probs = this->enemy_type_drop_probs;
-  const auto& item_classes = this->enemy_item_classes;
+  const auto& item_classes = this->enemy_type_item_classes;
   phosg::fwrite_fmt(stream, "Enemy tables:\n");
-  phosg::fwrite_fmt(stream, "  ##   $LOW  $HIGH  DAR%  ITEM        ENEMIES\n");
-  for (size_t z = 0; z < NUM_RT_INDEXES_V4; z++) {
-    string enemies_str;
-    for (EnemyType enemy_type : enemy_types_for_rare_table_index(this->episode, z)) {
-      if (!enemies_str.empty()) {
-        enemies_str += ", ";
-      }
-      enemies_str += phosg::name_for_enum(enemy_type);
-    }
-    if (drop_probs[z] || !enemies_str.empty()) {
-      phosg::fwrite_fmt(stream, "  {:02X}  {:5}  {:5}  {:3}%  {:02X}:{}  {}\n",
-          z, meseta_ranges[z].min, meseta_ranges[z].max, drop_probs[z], item_classes[z],
-          name_for_common_item_class(item_classes[z]), enemies_str);
-    } else {
-      phosg::fwrite_fmt(stream, "  {:02X}  -----  -----    0%  --\n", z);
+  phosg::fwrite_fmt(stream, "  ##:ENEMY                     $LOW  $HIGH  DAR%  ITEM\n");
+  for (auto enemy_type : phosg::EnumRange<EnemyType>()) {
+    const auto& def = type_definition_for_enemy(enemy_type);
+    try {
+      const auto& meseta_range = meseta_ranges.at(enemy_type);
+      const auto& drop_prob = drop_probs.at(enemy_type);
+      const auto& item_class = item_classes.at(enemy_type);
+      phosg::fwrite_fmt(stream, "  {:02X}:{:<23}  {:5}  {:5}  {:3}%  {:02X}:{:<7}\n",
+          def.rt_index, phosg::name_for_enum(enemy_type),
+          meseta_range.min, meseta_range.max, drop_prob, item_class,
+          name_for_common_item_class(item_class));
+    } catch (const out_of_range&) {
+      phosg::fwrite_fmt(stream, "  {:02X}:{:<23}  -----  -----  ----  --:-------\n",
+          def.rt_index, phosg::name_for_enum(enemy_type));
     }
   }
 
   static const array<const char*, 12> base_weapon_type_names = {
-      "SABER   ",
-      "SWORD   ",
-      "DAGGER  ",
-      "PARTISAN",
-      "SLICER  ",
-      "HANDGUN ",
-      "RIFLE   ",
-      "MECHGUN ",
-      "SHOT    ",
-      "CANE    ",
-      "ROD     ",
-      "WAND    ",
-  };
+      "SABER", "SWORD", "DAGGER", "PARTISAN", "SLICER", "HANDGUN", "RIFLE", "MECHGUN", "SHOT", "CANE", "ROD", "WAND"};
   phosg::fwrite_fmt(stream, "Base weapon config:\n");
   phosg::fwrite_fmt(stream, "  TYPE         PROB  [SB  AL]  FLOORS\n");
   for (size_t z = 0; z < 12; z++) {
@@ -256,7 +233,7 @@ void CommonItemSet::Table::print(FILE* stream) const {
         floor_to_class[x] = this->subtype_base_table[z] + (x / this->subtype_area_length_table[z]);
       }
     }
-    phosg::fwrite_fmt(stream, "  {:02X}:{}  {:3}%  [{:02X}  {:02X}]  {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X}\n",
+    phosg::fwrite_fmt(stream, "  {:02X}:{:<8}  {:3}%  [{:02X}  {:02X}]  {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X} {:02X}\n",
         z, base_weapon_type_names[z], this->base_weapon_type_prob_table[z],
         this->subtype_base_table[z], this->subtype_area_length_table[z],
         floor_to_class[0], floor_to_class[1], floor_to_class[2], floor_to_class[3], floor_to_class[4],
@@ -413,20 +390,50 @@ void CommonItemSet::Table::print_diff(FILE* stream, const Table& other) const {
         phosg::format_data_string(&this->armor_slot_count_prob_table, sizeof(this->armor_slot_count_prob_table)),
         phosg::format_data_string(&other.armor_slot_count_prob_table, sizeof(other.armor_slot_count_prob_table)));
   }
-  if (this->enemy_meseta_ranges != other.enemy_meseta_ranges) {
-    phosg::fwrite_fmt(stream, ">   enemy_meseta_ranges: {} -> {}\n",
-        phosg::format_data_string(&this->enemy_meseta_ranges, sizeof(this->enemy_meseta_ranges)),
-        phosg::format_data_string(&other.enemy_meseta_ranges, sizeof(other.enemy_meseta_ranges)));
+
+  auto format_enemy_range_table = [&](const std::unordered_map<EnemyType, Range<uint16_t>>& table) -> std::string {
+    string ret = "";
+    for (auto enemy_type : phosg::EnumRange<EnemyType>()) {
+      try {
+        const auto& range = table.at(enemy_type);
+        if (!ret.empty()) {
+          ret += ",";
+        }
+        ret += std::format("{}=[{},{}]", phosg::name_for_enum(enemy_type), range.min, range.max);
+      } catch (const out_of_range&) {
+      }
+    }
+    return ret;
+  };
+  auto format_enemy_u8_table = [&](const std::unordered_map<EnemyType, uint8_t>& table) -> std::string {
+    string ret = "";
+    for (auto enemy_type : phosg::EnumRange<EnemyType>()) {
+      try {
+        uint8_t value = table.at(enemy_type);
+        if (!ret.empty()) {
+          ret += ",";
+        }
+        ret += std::format("{}={}", phosg::name_for_enum(enemy_type), value);
+      } catch (const out_of_range&) {
+      }
+    }
+    return ret;
+  };
+
+  if (this->enemy_type_meseta_ranges != other.enemy_type_meseta_ranges) {
+    phosg::fwrite_fmt(stream, ">   enemy_type_meseta_ranges: {} -> {}\n",
+        format_enemy_range_table(this->enemy_type_meseta_ranges),
+        format_enemy_range_table(other.enemy_type_meseta_ranges));
   }
   if (this->enemy_type_drop_probs != other.enemy_type_drop_probs) {
     phosg::fwrite_fmt(stream, ">   enemy_type_drop_probs: {} -> {}\n",
-        phosg::format_data_string(&this->enemy_type_drop_probs, sizeof(this->enemy_type_drop_probs)),
-        phosg::format_data_string(&other.enemy_type_drop_probs, sizeof(other.enemy_type_drop_probs)));
+        format_enemy_u8_table(this->enemy_type_drop_probs),
+        format_enemy_u8_table(other.enemy_type_drop_probs));
   }
-  if (this->enemy_item_classes != other.enemy_item_classes) {
-    phosg::fwrite_fmt(stream, ">   enemy_item_classes: {} -> {}\n",
-        phosg::format_data_string(&this->enemy_item_classes, sizeof(this->enemy_item_classes)),
-        phosg::format_data_string(&other.enemy_item_classes, sizeof(other.enemy_item_classes)));
+  if (this->enemy_type_item_classes != other.enemy_type_item_classes) {
+    phosg::fwrite_fmt(stream, ">   enemy_type_item_classes: {} -> {}\n",
+        format_enemy_u8_table(this->enemy_type_item_classes),
+        format_enemy_u8_table(other.enemy_type_item_classes));
   }
   if (this->box_meseta_ranges != other.box_meseta_ranges) {
     phosg::fwrite_fmt(stream, ">   box_meseta_ranges: {} -> {}\n",
@@ -517,44 +524,45 @@ phosg::JSON CommonItemSet::Table::json(std::shared_ptr<const Table> prev_table) 
     ret.emplace("ArmorSlotCountProbTable", to_json(this->armor_slot_count_prob_table));
   }
 
-  bool needs_enemy_meseta_ranges = (!prev_table || (this->enemy_meseta_ranges != prev_table->enemy_meseta_ranges));
-  bool needs_enemy_type_drop_probs = (!prev_table || (this->enemy_type_drop_probs != prev_table->enemy_type_drop_probs));
-  bool needs_enemy_item_classes = (!prev_table || (this->enemy_item_classes != prev_table->enemy_item_classes));
-  if (needs_enemy_meseta_ranges || needs_enemy_type_drop_probs || needs_enemy_item_classes) {
-    phosg::JSON enemy_meseta_ranges_json = phosg::JSON::dict();
+  bool needs_enemy_type_meseta_ranges = (!prev_table ||
+      (this->enemy_type_meseta_ranges != prev_table->enemy_type_meseta_ranges));
+  bool needs_enemy_type_drop_probs = (!prev_table ||
+      (this->enemy_type_drop_probs != prev_table->enemy_type_drop_probs));
+  bool needs_enemy_type_item_classes = (!prev_table ||
+      (this->enemy_type_item_classes != prev_table->enemy_type_item_classes));
+  if (needs_enemy_type_meseta_ranges || needs_enemy_type_drop_probs || needs_enemy_type_item_classes) {
+    phosg::JSON enemy_type_meseta_ranges_json = phosg::JSON::dict();
     phosg::JSON enemy_type_drop_probs_json = phosg::JSON::dict();
-    phosg::JSON enemy_item_classes_json = phosg::JSON::dict();
-    for (size_t z = 0; z < NUM_RT_INDEXES_V4; z++) {
-      auto types = enemy_types_for_rare_table_index(this->episode, z);
-      vector<string> names;
-      if (types.empty()) {
-        names.emplace_back(std::format("!{:02X}", z));
-      } else {
-        for (auto type : types) {
-          names.emplace_back(phosg::name_for_enum(type));
+    phosg::JSON enemy_type_item_classes_json = phosg::JSON::dict();
+    for (auto enemy_type : phosg::EnumRange<EnemyType>()) {
+      auto name = phosg::name_for_enum(enemy_type);
+      if (needs_enemy_type_meseta_ranges) {
+        try {
+          enemy_type_meseta_ranges_json.emplace(name, to_json(this->enemy_type_meseta_ranges.at(enemy_type)));
+        } catch (const std::out_of_range&) {
         }
       }
-      for (const auto& name : names) {
-        if (needs_enemy_meseta_ranges && (!types.empty() || !this->enemy_meseta_ranges[z].empty())) {
-          enemy_meseta_ranges_json.emplace(name, to_json(this->enemy_meseta_ranges[z]));
+      if (needs_enemy_type_drop_probs) {
+        try {
+          enemy_type_drop_probs_json.emplace(name, this->enemy_type_drop_probs.at(enemy_type));
+        } catch (const std::out_of_range&) {
         }
-        if (needs_enemy_type_drop_probs && (!types.empty() || this->enemy_type_drop_probs[z])) {
-          enemy_type_drop_probs_json.emplace(name, this->enemy_type_drop_probs[z]);
-        }
-        if (needs_enemy_item_classes && (!types.empty() || (this->enemy_item_classes[z] != ((z == 0) ? 0x00 : 0xFF)))) {
-          enemy_item_classes_json.emplace(name, this->enemy_item_classes[z]);
+      }
+      if (needs_enemy_type_item_classes) {
+        try {
+          enemy_type_item_classes_json.emplace(name, this->enemy_type_item_classes.at(enemy_type));
+        } catch (const std::out_of_range&) {
         }
       }
     }
-
-    if (needs_enemy_meseta_ranges) {
-      ret.emplace("EnemyMesetaRanges", std::move(enemy_meseta_ranges_json));
+    if (needs_enemy_type_meseta_ranges) {
+      ret.emplace("EnemyMesetaRanges", std::move(enemy_type_meseta_ranges_json));
     }
     if (needs_enemy_type_drop_probs) {
       ret.emplace("EnemyTypeDropProbs", std::move(enemy_type_drop_probs_json));
     }
-    if (needs_enemy_item_classes) {
-      ret.emplace("EnemyItemClasses", std::move(enemy_item_classes_json));
+    if (needs_enemy_type_item_classes) {
+      ret.emplace("EnemyItemClasses", std::move(enemy_type_item_classes_json));
     }
   }
 
@@ -705,13 +713,27 @@ void CommonItemSet::Table::parse_itempt_t(const phosg::StringReader& r, bool is_
   this->grind_prob_table = r.pget<parray<parray<uint8_t, 4>, 9>>(offsets.grind_prob_table_offset);
   this->armor_shield_type_index_prob_table = r.pget<parray<uint8_t, 0x05>>(offsets.armor_shield_type_index_prob_table_offset);
   this->armor_slot_count_prob_table = r.pget<parray<uint8_t, 0x05>>(offsets.armor_slot_count_prob_table_offset);
-  const auto& data = r.pget<parray<Range<U16T<BE>>, NUM_RT_INDEXES_V3>>(offsets.enemy_meseta_ranges_offset);
-  for (size_t z = 0; z < data.size(); z++) {
-    this->enemy_meseta_ranges[z] = Range<uint16_t>{data[z].min, data[z].max};
+  const auto& enemy_rt_index_meseta_ranges = r.pget<parray<Range<U16T<BE>>, NUM_RT_INDEXES_V3>>(
+      offsets.enemy_rt_index_meseta_ranges_offset);
+  const auto& enemy_rt_index_drop_probs = r.pget<parray<uint8_t, NUM_RT_INDEXES_V3>>(
+      offsets.enemy_rt_index_drop_probs_offset);
+  const auto& enemy_rt_index_item_classes = r.pget<parray<uint8_t, NUM_RT_INDEXES_V3>>(
+      offsets.enemy_rt_index_item_classes_offset);
+  for (auto enemy_type : phosg::EnumRange<EnemyType>()) {
+    const auto& def = type_definition_for_enemy(enemy_type);
+    if (def.valid_in_episode(this->episode) && (def.rt_index < enemy_rt_index_meseta_ranges.size())) {
+      const auto& meseta_range = enemy_rt_index_meseta_ranges[def.rt_index];
+      if (meseta_range.max > 0) {
+        this->enemy_type_meseta_ranges.emplace(enemy_type, Range<uint16_t>{meseta_range.min, meseta_range.max});
+      }
+      if (enemy_rt_index_drop_probs[def.rt_index] > 0) {
+        this->enemy_type_drop_probs.emplace(enemy_type, enemy_rt_index_drop_probs[def.rt_index]);
+      }
+      if (enemy_rt_index_item_classes[def.rt_index] != 0xFF) {
+        this->enemy_type_item_classes.emplace(enemy_type, enemy_rt_index_item_classes[def.rt_index]);
+      }
+    }
   }
-  this->enemy_type_drop_probs = r.pget<parray<uint8_t, NUM_RT_INDEXES_V3>>(offsets.enemy_type_drop_probs_offset);
-  this->enemy_item_classes = r.pget<parray<uint8_t, NUM_RT_INDEXES_V3>>(offsets.enemy_item_classes_offset);
-  this->enemy_item_classes.clear_after(NUM_RT_INDEXES_V3, 0xFF);
   {
     const auto& data = r.pget<parray<Range<U16T<BE>>, 0x0A>>(offsets.box_meseta_ranges_offset);
     for (size_t z = 0; z < data.size(); z++) {
@@ -873,7 +895,7 @@ GSLV3V4CommonItemSet::GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gs
         section_id);
   };
 
-  for (Episode episode : ALL_EPISODES_V4) {
+  for (Episode episode : ALL_EPISODES_V3) {
     for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
       for (size_t section_id = 0; section_id < 10; section_id++) {
         phosg::StringReader r;
@@ -898,17 +920,15 @@ GSLV3V4CommonItemSet::GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gs
       }
     }
 
-    if (episode != Episode::EP4) {
-      for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
-        try {
-          auto r = gsl.get_reader(filename_for_table(episode, difficulty, 0, true));
-          auto table = make_shared<Table>(r, is_big_endian, true, episode);
-          for (size_t section_id = 0; section_id < 10; section_id++) {
-            this->tables.emplace(this->key_for_table(episode, GameMode::CHALLENGE, difficulty, section_id), table);
-          }
-        } catch (const out_of_range&) {
-          // GC NTE doesn't have Ep2 challenge; just skip adding the table
+    for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
+      try {
+        auto r = gsl.get_reader(filename_for_table(episode, difficulty, 0, true));
+        auto table = make_shared<Table>(r, is_big_endian, true, episode);
+        for (size_t section_id = 0; section_id < 10; section_id++) {
+          this->tables.emplace(this->key_for_table(episode, GameMode::CHALLENGE, difficulty, section_id), table);
         }
+      } catch (const out_of_range&) {
+        // GC NTE doesn't have Ep2 challenge; just skip adding the table
       }
     }
   }

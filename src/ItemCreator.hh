@@ -37,7 +37,7 @@ public:
     bool is_from_rare_table = false;
   };
 
-  DropResult on_monster_item_drop(uint32_t enemy_type, uint8_t area);
+  DropResult on_monster_item_drop(EnemyType enemy_type, uint8_t area);
   DropResult on_box_item_drop(uint8_t area);
   // Note: param3-6 refer to the corresponding fields of the object definition
   DropResult on_specialized_box_item_drop(uint8_t area, float param3, uint32_t param4, uint32_t param5, uint32_t param6);
@@ -116,12 +116,11 @@ private:
   uint32_t rand_int(uint64_t max);
   float rand_float_0_1_from_crypt();
 
-  template <size_t NumRanges>
-  uint32_t choose_meseta_amount(const parray<CommonItemSet::Table::Range<uint16_t>, NumRanges> ranges, size_t table_index);
+  uint32_t choose_meseta_amount(const CommonItemSet::Table::Range<uint16_t>& range);
 
   bool should_allow_meseta_drops() const;
 
-  ItemData check_rare_spec_and_create_rare_enemy_item(uint32_t enemy_type, uint8_t area);
+  ItemData check_rare_spec_and_create_rare_enemy_item(EnemyType enemy_type, uint8_t area);
   ItemData check_rare_specs_and_create_rare_box_item(uint8_t area);
   ItemData check_rate_and_create_rare_item(const RareItemSet::ExpandedDrop& drop, uint8_t area);
 

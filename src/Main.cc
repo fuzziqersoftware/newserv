@@ -1922,8 +1922,7 @@ Action a_extract_ppk("extract-ppk", "\
     PC/BB format. For PPK archives, the --password= option is required.\n",
     a_extract_archive_fn);
 
-Action a_encode_sjis(
-    "transcode-text", nullptr, +[](phosg::Arguments& args) {
+Action a_transcode_text("transcode-text", nullptr, +[](phosg::Arguments& args) {
       TextTranscoder* tt_from = nullptr;
       {
         std::string from_name = args.get<std::string>("from");
@@ -1963,8 +1962,7 @@ Action a_encode_sjis(
       if (tt_to) {
         data = (*tt_to)(data);
       }
-      write_output_data(args, data.data(), data.size(), "txt");
-    });
+      write_output_data(args, data.data(), data.size(), "txt"); });
 
 Action a_decode_text_archive(
     "decode-text-archive", "\
@@ -2204,6 +2202,25 @@ Action a_download_files(
       io_context->run();
     });
 
+std::shared_ptr<RareItemSet> load_rare_item_set(
+    const std::string& filename, bool is_v1, std::shared_ptr<const ItemNameIndex> v4_item_name_index) {
+  string filename_lower = phosg::tolower(filename);
+  auto data = make_shared<string>(phosg::load_file(filename));
+  if (filename_lower.ends_with(".json")) {
+    return make_shared<RareItemSet>(phosg::JSON::parse(*data), v4_item_name_index);
+  } else if (filename_lower.ends_with(".gsl")) {
+    return make_shared<RareItemSet>(GSLArchive(data, false), false);
+  } else if (filename_lower.ends_with(".gslb")) {
+    return make_shared<RareItemSet>(GSLArchive(data, true), true);
+  } else if (filename_lower.ends_with(".afs")) {
+    return make_shared<RareItemSet>(AFSArchive(data), is_v1);
+  } else if (filename_lower.ends_with(".rel")) {
+    return make_shared<RareItemSet>(*data, true);
+  } else {
+    throw runtime_error("cannot determine input format; use a filename ending with .json, .gsl, .gslb, .afs, or .rel");
+  }
+}
+
 Action a_convert_rare_item_set(
     "convert-rare-item-set", "\
   convert-rare-item-set INPUT-FILENAME [OUTPUT-FILENAME] [OPTIONS]\n\
@@ -2233,24 +2250,8 @@ Action a_convert_rare_item_set(
       if (input_filename.empty() || (input_filename == "-")) {
         throw runtime_error("input filename must be given");
       }
-
-      string input_filename_lower = phosg::tolower(input_filename);
-      auto data = make_shared<string>(read_input_data(args));
-      shared_ptr<RareItemSet> rs;
-      if (input_filename_lower.ends_with(".json")) {
-        rs = make_shared<RareItemSet>(phosg::JSON::parse(*data), s->item_name_index_opt(get_cli_version(args, Version::BB_V4)));
-      } else if (input_filename_lower.ends_with(".gsl")) {
-        rs = make_shared<RareItemSet>(GSLArchive(data, false), false);
-      } else if (input_filename_lower.ends_with(".gslb")) {
-        rs = make_shared<RareItemSet>(GSLArchive(data, true), true);
-      } else if (input_filename_lower.ends_with(".afs")) {
-        rs = make_shared<RareItemSet>(AFSArchive(data), is_v1(get_cli_version(args, Version::DC_V2)));
-      } else if (input_filename_lower.ends_with(".rel")) {
-        rs = make_shared<RareItemSet>(*data, true);
-      } else {
-        throw runtime_error("cannot determine input format; use a filename ending with .json, .gsl, .gslb, .afs, or .rel");
-      }
-
+      auto rs = load_rare_item_set(
+          input_filename, is_v1(get_cli_version(args, Version::BB_V4)), s->item_name_index(Version::BB_V4));
       if (rate_factor != 1.0) {
         rs->multiply_all_rates(rate_factor);
       }
@@ -2293,6 +2294,32 @@ Action a_convert_rare_item_set(
       } else {
         throw runtime_error("cannot determine output format; use a filename ending with .json, .gsl, .gslb, or .afs");
       }
+    });
+Action a_compare_rare_item_set(
+    "compare-rare-item-set", nullptr,
+    +[](phosg::Arguments& args) {
+      string input_filename1 = args.get<string>(1, false);
+      if (input_filename1.empty() || (input_filename1 == "-")) {
+        throw runtime_error("two input filenames must be given");
+      }
+      string input_filename2 = args.get<string>(2, false);
+      if (input_filename2.empty() || (input_filename2 == "-")) {
+        throw runtime_error("two input filenames must be given");
+      }
+
+      auto s = make_shared<ServerState>(get_config_filename(args));
+      s->load_config_early();
+      s->load_patch_indexes();
+      s->load_text_index();
+      s->load_item_definitions();
+      s->load_item_name_indexes();
+      s->load_drop_tables();
+
+      bool is_v1 = ::is_v1(get_cli_version(args, Version::BB_V4));
+      auto rs1 = load_rare_item_set(input_filename1, is_v1, s->item_name_index(Version::BB_V4));
+      auto rs2 = load_rare_item_set(input_filename2, is_v1, s->item_name_index(Version::BB_V4));
+
+      rs1->print_diff(stdout, *rs2);
     });
 
 static shared_ptr<CommonItemSet> load_common_item_set(
@@ -3098,8 +3125,7 @@ Action a_check_supermaps(
           auto f = phosg::fopen_unique(filename, "wt");
           phosg::fwrite_fmt(f.get(), "QUEST {} ({})\n", it.first, it.second->meta.name);
           phosg::fwrite_fmt(f.get(), "ENEMY---------------  DCNTE  11/2K  DC-V1  DC-V2  PCNTE  PC-V2  GCNTE  GC-V3  XB-V3  BB-V4\n");
-          for (size_t type_ss = 0; type_ss < static_cast<size_t>(EnemyType::MAX_ENEMY_TYPE); type_ss++) {
-            EnemyType type = static_cast<EnemyType>(type_ss);
+          for (auto type : phosg::EnumRange<EnemyType>()) {
             bool any_count_nonzero = false;
             array<size_t, NUM_VERSIONS> counts;
             for (Version v : ALL_NON_PATCH_VERSIONS) {

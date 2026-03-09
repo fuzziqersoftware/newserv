@@ -2810,7 +2810,7 @@ DropReconcileResult reconcile_drop_request_with_map(
   bool is_box = (cmd.rt_index == 0x30);
 
   DropReconcileResult res;
-  res.effective_rt_index = 0xFF;
+  res.effective_enemy_type = EnemyType::UNKNOWN;
   res.should_drop = true;
   res.ignore_def = (cmd.ignore_def != 0);
   if (!map) {
@@ -2856,22 +2856,22 @@ DropReconcileResult reconcile_drop_request_with_map(
     res.ref_ene_st = map->enemy_state_for_index(version, cmd.floor, cmd.entity_index);
     res.target_ene_st = res.ref_ene_st->alias_target_ene_st ? res.ref_ene_st->alias_target_ene_st : res.ref_ene_st;
     uint8_t area = map->floor_to_area.at(res.target_ene_st->super_ene->floor);
-    EnemyType type = res.target_ene_st->type(version, area, difficulty, event);
+    res.effective_enemy_type = res.target_ene_st->type(version, area, difficulty, event);
     c->log.info_f("Drop check for E-{:03X} (target E-{:03X}, type {})",
-        res.ref_ene_st->e_id, res.target_ene_st->e_id, phosg::name_for_enum(type));
-    res.effective_rt_index = type_definition_for_enemy(type).rt_index;
+        res.ref_ene_st->e_id, res.target_ene_st->e_id, phosg::name_for_enum(res.effective_enemy_type));
+    uint8_t expected_rt_index = type_definition_for_enemy(res.effective_enemy_type).rt_index;
     bool mismatched_rt_index = false;
-    if (cmd.rt_index != res.effective_rt_index) {
+    if (cmd.rt_index != expected_rt_index) {
       // Special cases: BULCLAW => BULK and DARK_GUNNER => DEATH_GUNNER
-      if (cmd.rt_index == 0x27 && type == EnemyType::BULCLAW) {
+      if ((cmd.rt_index == 0x27) && (res.effective_enemy_type == EnemyType::BULCLAW)) {
         c->log.info_f("E-{:03X} killed as BULK instead of BULCLAW", res.target_ene_st->e_id);
-        res.effective_rt_index = 0x27;
-      } else if (cmd.rt_index == 0x23 && type == EnemyType::DARK_GUNNER) {
+        res.effective_enemy_type = EnemyType::BULK;
+      } else if ((cmd.rt_index == 0x23) && (res.effective_enemy_type == EnemyType::DARK_GUNNER)) {
         c->log.info_f("E-{:03X} killed as DEATH_GUNNER instead of DARK_GUNNER", res.target_ene_st->e_id);
-        res.effective_rt_index = 0x23;
+        res.effective_enemy_type = EnemyType::DEATH_GUNNER;
       } else {
         c->log.warning_f("rt_index {:02X} from command does not match entity\'s expected index {:02X}",
-            cmd.rt_index, res.effective_rt_index);
+            cmd.rt_index, expected_rt_index);
         mismatched_rt_index = true;
       }
     }
@@ -2881,9 +2881,10 @@ DropReconcileResult reconcile_drop_request_with_map(
     }
     if (c->check_flag(Client::Flag::DEBUG_ENABLED)) {
       std::string rt_index_str = mismatched_rt_index
-          ? std::format(" $C4{:02X}->{:02X}$C5", cmd.rt_index, res.effective_rt_index)
-          : std::format(" {:02X}", res.effective_rt_index);
-      send_text_message_fmt(c, "$C5E-{:03X}{} {}", res.target_ene_st->e_id, rt_index_str, phosg::name_for_enum(type));
+          ? std::format(" $C4{:02X}->{:02X}$C5", cmd.rt_index, expected_rt_index)
+          : std::format(" {:02X}", expected_rt_index);
+      send_text_message_fmt(c, "$C5E-{:03X}{} {}",
+          res.target_ene_st->e_id, rt_index_str, phosg::name_for_enum(res.effective_enemy_type));
     }
   }
 
@@ -2963,7 +2964,7 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
       } else if (rec.target_ene_st) {
         l->log.info_f("Creating item from enemy {:04X} => E-{:03X} (area {:02X})",
             cmd.entity_index, rec.target_ene_st->e_id, cmd.effective_area);
-        return l->item_creator->on_monster_item_drop(rec.effective_rt_index, cmd.effective_area);
+        return l->item_creator->on_monster_item_drop(rec.effective_enemy_type, cmd.effective_area);
       } else {
         throw runtime_error("neither object nor enemy were present");
       }

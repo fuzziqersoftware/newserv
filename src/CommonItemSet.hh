@@ -42,9 +42,10 @@ public:
     parray<parray<uint8_t, 4>, 9> grind_prob_table;
     parray<uint8_t, 0x05> armor_shield_type_index_prob_table;
     parray<uint8_t, 0x05> armor_slot_count_prob_table;
-    parray<Range<uint16_t>, NUM_RT_INDEXES_V4> enemy_meseta_ranges;
-    parray<uint8_t, NUM_RT_INDEXES_V4> enemy_type_drop_probs;
-    parray<uint8_t, NUM_RT_INDEXES_V4> enemy_item_classes;
+    // Note: PSO originally uses arrays indexed by rt_index here, but we index enemies by the EnemyType enum instead
+    std::unordered_map<EnemyType, Range<uint16_t>> enemy_type_meseta_ranges;
+    std::unordered_map<EnemyType, uint8_t> enemy_type_drop_probs;
+    std::unordered_map<EnemyType, uint8_t> enemy_type_item_classes;
     parray<Range<uint16_t>, 0x0A> box_meseta_ranges;
     bool has_rare_bonus_value_prob_table;
     parray<parray<uint16_t, 6>, 0x17> bonus_value_prob_table;
@@ -126,17 +127,17 @@ public:
       // V2/V3: -> parray<uint8_t, 0x05>
       /* 14 */ U32T<BE> armor_slot_count_prob_table_offset;
 
-      // This array (indexed by enemy_type) specifies the range of meseta values that each enemy can drop.
+      // This array (indexed by rt_index) specifies the range of meseta values that each enemy can drop.
       // V2/V3: -> parray<Range<U16T>, NUM_RT_INDEXES_V3>
-      /* 18 */ U32T<BE> enemy_meseta_ranges_offset;
+      /* 18 */ U32T<BE> enemy_rt_index_meseta_ranges_offset;
 
-      // Each byte in this table (indexed by enemy_type) represents the percent chance that the enemy drops anything at
+      // Each byte in this table (indexed by rt_index) represents the percent chance that the enemy drops anything at
       // all. (This check is done before the rare drop check, so the chance of getting a rare item from an enemy is
       // essentially this probability multiplied by the rare drop rate.)
       // V2/V3: -> parray<uint8_t, NUM_RT_INDEXES_V3>
-      /* 1C */ U32T<BE> enemy_type_drop_probs_offset;
+      /* 1C */ U32T<BE> enemy_rt_index_drop_probs_offset;
 
-      // Each byte in this table (indexed by enemy_type) represents the class of item that can drop. The values are:
+      // Each byte in this table (indexed by rt_index) represents the class of item that can drop. The values are:
       //   00 = weapon
       //   01 = armor
       //   02 = shield
@@ -145,7 +146,7 @@ public:
       //   05 = meseta
       //   Anything else = no item
       // V2/V3: -> parray<uint8_t, NUM_RT_INDEXES_V3>
-      /* 20 */ U32T<BE> enemy_item_classes_offset;
+      /* 20 */ U32T<BE> enemy_rt_index_item_classes_offset;
 
       // This table (indexed by area - 1) specifies the ranges of meseta values that can drop from boxes.
       // V2/V3: -> parray<Range<U16T>, 0x0A>
@@ -229,7 +230,7 @@ public:
       // This index probability table determines which type of items drop from boxes. The table is indexed as
       // [item_class][area - 1], with item_class as the result value (that is, in the example below, the game looks at
       // a single column and sums the values going down, then the chosen item class is one of the row indexes based on
-      // the weight values in the column.) The resulting value has the same meaning as in enemy_item_classes above.
+      // the weight values in the column.) The resulting value has the same meaning as in enemy_rt_index_item_classes.
       // For example, this array might look like the following:
       //   [07 07 08 08 06 07 08 09 09 0A] // Chances per area of a weapon drop
       //   [02 02 02 02 03 02 02 02 03 03] // Chances per area of an armor drop

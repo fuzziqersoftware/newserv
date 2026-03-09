@@ -23,7 +23,7 @@ struct DropReconcileResult {
   // for drop computation (which may be the result of following an alias from the ref ene_st)
   std::shared_ptr<MapState::EnemyState> ref_ene_st;
   std::shared_ptr<MapState::EnemyState> target_ene_st;
-  uint8_t effective_rt_index;
+  EnemyType effective_enemy_type;
   bool should_drop;
   bool ignore_def;
 };
