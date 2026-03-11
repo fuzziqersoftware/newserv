@@ -4440,7 +4440,7 @@ static asio::awaitable<void> on_destroy_floor_item(shared_ptr<Client> c, Subcomm
 static asio::awaitable<void> on_identify_item_bb(shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    throw runtime_error("6xDA command sent in non-game lobby");
+    throw runtime_error("6xB8 command sent in non-game lobby");
   }
 
   if (c->version() == Version::BB_V4) {
@@ -5391,7 +5391,7 @@ static asio::awaitable<void> on_upgrade_weapon_attribute_bb(shared_ptr<Client> c
     }
 
     size_t attribute_index = 0;
-    for (size_t z = 6; z <= (item.has_kill_count() ? 10 : 8); z += 2) {
+    for (size_t z = 6; z <= (item.has_kill_count() ? 8 : 10); z += 2) {
       if ((item.data1[z] == 0) || (!(item.data1[z] & 0x80) && (item.data1[z] == cmd.attribute))) {
         attribute_index = z;
         break;
