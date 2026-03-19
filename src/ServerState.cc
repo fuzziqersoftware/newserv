@@ -73,10 +73,11 @@ ServerState::QuestF960Result::QuestF960Result(
   }
 }
 
-ServerState::ServerState(const string& config_filename)
+ServerState::ServerState(const string& config_filename, bool is_replay)
     : creation_time(phosg::now()),
       io_context(make_shared<asio::io_context>(1)),
       config_filename(config_filename),
+      is_replay(is_replay),
       thread_pool(make_unique<asio::thread_pool>()),
       bb_stream_files_cache(new FileContentsCache(3600000000ULL)),
       bb_system_cache(new FileContentsCache(3600000000ULL)),

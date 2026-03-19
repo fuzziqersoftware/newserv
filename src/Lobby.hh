@@ -91,6 +91,8 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   std::weak_ptr<ServerState> server_state;
   phosg::PrefixedLogger log;
 
+  uint64_t creation_time;
+
   uint32_t lobby_id;
 
   uint32_t min_level = 0;

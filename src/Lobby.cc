@@ -145,6 +145,7 @@ uint32_t Lobby::FloorItemManager::reassign_all_item_ids(uint32_t next_item_id) {
 Lobby::Lobby(shared_ptr<ServerState> s, uint32_t id, bool is_game)
     : server_state(s),
       log(std::format("[{}:{:X}] ", is_game ? "Game" : "Lobby", id), lobby_log.min_level),
+      creation_time(phosg::now()),
       lobby_id(id),
       random_seed(phosg::random_object<uint32_t>()),
       rand_crypt(make_shared<DisabledRandomGenerator>()),

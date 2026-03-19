@@ -91,6 +91,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const phosg::JSON> config_json;
   bool one_time_config_loaded = false;
   bool default_lobbies_created = false;
+  bool is_replay = false;
 
   size_t num_worker_threads = 0;
   std::unique_ptr<asio::thread_pool> thread_pool;
@@ -308,7 +309,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
 
   std::unordered_map<uint32_t, ProxySession::PersistentConfig> proxy_persistent_configs;
 
-  explicit ServerState(const std::string& config_filename = "");
+  explicit ServerState(const std::string& config_filename = "", bool is_replay = false);
   ServerState(const ServerState&) = delete;
   ServerState(ServerState&&) = delete;
   ServerState& operator=(const ServerState&) = delete;

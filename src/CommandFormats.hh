@@ -3738,10 +3738,10 @@ struct G_UpdateEnemyStateT_6x0A {
   //   00000800 = is dead (when set for most enemies, plays the death animation and then destroys the enemy)
   //   00001000 = unknown (TODO: see TObjEnemyV8048ee80_v1C, TObjEnemyV8048ee80_v3B, TObjEneDolmOlm_v3B)
   //   00002000 = unknown (TODO: see TObjGrass_v1E, 8011EA08, TObjEneIllGill_v1E, TObjEneIllGill_init)
-  //   00004000 = unknown (TODO: has status effect in slot 5; see TObjectV8047c128_v24_update_paralysis_effect; De Rol
-  //              Le uses this; Vol Opt uses it too at TBoss3Volopt_update, TBoss3VoloptCore_update,
-  //              TBoss3VoloptP01_update, TBoss3VolOptP02_update, TObjectV8047c128_v39, TObjectV8047c128_v38; related
-  //              to paralysis somehow? see TObjectV8047c128_v24_update_paralysis_effect)
+  //   00004000 = unknown (TODO: has status effect in slot 5; De Rol Le uses this; Vol Opt uses it too at
+  //              TBoss3Volopt_update, TBoss3VoloptCore_update, TBoss3VoloptP01_update, TBoss3VolOptP02_update,
+  //              TObjectV8047c128_v39, TObjectV8047c128_v38; related to paralysis somehow? see
+  //              TObjectV8047c128_v24_update_paralysis_effect)
   //   00008000 = immune to freeze (TODO: see TBoss3VolOptP02_init_inner; maybe other things use it too)
   //   00010000 = unknown (TODO: see 801BA1F8)
   //   00020000 = can't attack, cast techs, or use items (e.g. Vol Opt cage and Ruins falling traps set this)

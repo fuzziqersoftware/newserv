@@ -3936,7 +3936,7 @@ Action a_run_server_replay_log(
         use_terminal_colors = true;
       }
 
-      auto state = make_shared<ServerState>(get_config_filename(args));
+      auto state = make_shared<ServerState>(get_config_filename(args), !replay_log_filename.empty());
       if (args.get<bool>("debug")) {
         state->is_debug = true;
       }

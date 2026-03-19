@@ -2204,6 +2204,27 @@ static asio::awaitable<void> on_09(shared_ptr<Client> c, Channel::Message& msg) 
         // If page 1 is blank (there are no players) or we sent page 1 last time, send page 2 (extended info)
         if (info.empty()) {
           c->last_game_info_requested = 0;
+
+          // Suppress the time field during replays, since it will not contain the same value as when the test was
+          // recorded
+          if (!s->is_replay) {
+            uint64_t seconds_ago = (phosg::now() - game->creation_time) / 1000000ULL;
+            uint64_t minutes_ago = seconds_ago / 60;
+            uint64_t hours_ago = minutes_ago / 60;
+            uint64_t days_ago = hours_ago / 24;
+            if (seconds_ago < 1) {
+              info = "Time: <1s\n";
+            } else if (seconds_ago < 60) {
+              info = std::format("Time: {}s\n", seconds_ago);
+            } else if (minutes_ago < 60) {
+              info = std::format("Time: {}m{}s\n", minutes_ago, seconds_ago);
+            } else if (hours_ago < 24) {
+              info = std::format("Time: {}h{}m{}s\n", hours_ago, minutes_ago, seconds_ago);
+            } else {
+              info = std::format("Time: {}d{}h{}m{}s\n", days_ago, hours_ago, minutes_ago, seconds_ago);
+            }
+          }
+
           uint8_t effective_section_id = game->effective_section_id();
           if (effective_section_id < 10) {
             info += std::format("Section ID: {}\n", name_for_section_id(effective_section_id));
