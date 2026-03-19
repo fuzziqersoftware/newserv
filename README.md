@@ -605,6 +605,7 @@ Some commands only work for clients not in proxy sessions. The chat commands are
     * `$swsetall`: Set all switch flags on your current floor. This unlocks all doors, disables all laser fences, triggers all light/poison switches, etc.
     * `$gc` (non-proxy only): Send your own Guild Card to yourself.
     * `$sc <data>`: Send a command to yourself.
+    * `$scp <data>`: Send a protected command to yourself.
     * `$ss <data>`: Send a command to the remote server (if in a proxy session) or to the game server.
     * `$sb <data>`: Send a command to yourself, and to the remote server or game server.
     * `$auction` (Episode 3 only): Bring up the CARD Auction menu, even if there are fewer than 4 players are in the game or you don't have a VIP card.

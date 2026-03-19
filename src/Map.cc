@@ -1372,10 +1372,10 @@ static const vector<DATEntityDefinition> dat_object_definitions({
 
     // Item box. Params:
     //   param1 = if positive, box is specialized to drop a specific item or type of item; if zero or negative, box
-    //     drops any common item or none at all (and param3-6 are all ignored)
-    //   param3 = if zero, then only data1[0-1] are used and the rest of the ItemData is cleared, then bonuses, grinds,
-    //     etc. are applied to the item; if nonzero, the item is not randomized at all and drops exactly as specified
-    //     in param4-6
+    //     drops any item (including box rares for the current floor), or nothing at all, and param3-6 are all ignored
+    //   param3 = if zero, then only data1[0-1] (the high 2 bytes of param4) are used and the rest of the ItemData is
+    //     cleared, then bonuses, grinds, etc. are applied to the item; if nonzero, the item is not randomized at all
+    //     and drops exactly as specified in param4-6
     //   param4-6 = item definition (see below)
     // Not all fields in ItemData can be specified in the item definition here. The field order here does not match the
     // field order in ItemData! The item definition is encoded here as follows:
@@ -2822,7 +2822,8 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     //   param2 = if less than 1, this is a Savage Wolf; otherwise it's a Barbarous Wolf
     {0x0043, F_V0_V4, 0x0000000000600006, "TObjEneBm5Wolf"},
 
-    // Booma, Gobooma, or Gigobooma. Params:
+    // Booma, Gobooma, or Gigobooma. The activation radius is fixed and cannot be changed: 50 for Hunters, 100 for
+    // Rangers and Forces; the deactivation radius is 100 for Hunters and 150 for Rangers and Forces. Params:
     //   param1 = TODO (fraction of max HP; see TObjEnemyV8048ee80_v5A)
     //   param2 = idle walk radius (when there's no target, it will walk around its spawn location within this radius;
     //     if this is zero, it stands still instead)

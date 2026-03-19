@@ -397,7 +397,7 @@ asio::awaitable<void> forward_subcommand_with_entity_id_transcode_t(shared_ptr<C
 }
 
 template <typename HeaderT>
-asio::awaitable<void> forward_subcommand_with_entity_targets_transcode_and_track_hits_t(
+asio::awaitable<void> forward_subcommand_with_entity_targets_transcode_t(
     shared_ptr<Client> c, SubcommandMessage& msg) {
   // I'm lazy and this should never happen for item commands (since all players need to stay in sync)
   if (command_is_private(msg.command)) {
@@ -430,16 +430,6 @@ asio::awaitable<void> forward_subcommand_with_entity_targets_transcode_and_track
     if ((res.entity_id >= 0x1000) && (res.entity_id < 0x4000)) {
       auto ene_st = l->map_state->enemy_state_for_index(c->version(), res.entity_id - 0x1000);
       res.ene_st = ene_st;
-
-      // Track hits for all resolved enemies
-      c->log.info_f("Claiming last hit on E-{:03X}", ene_st->e_id);
-      ene_st->set_last_hit_by_client_id(c->lobby_client_id);
-      if (ene_st->alias_target_ene_st) {
-        c->log.info_f("Claiming last hit on E-{:03X} (alias of E-{:03X})",
-            ene_st->alias_target_ene_st->e_id, ene_st->e_id);
-        ene_st->alias_target_ene_st->set_last_hit_by_client_id(c->lobby_client_id);
-      }
-
     } else if ((res.entity_id >= 0x4000) && (res.entity_id < 0xFFFF)) {
       res.obj_st = l->map_state->object_state_for_index(c->version(), res.entity_id - 0x4000);
     }
@@ -803,8 +793,8 @@ Parsed6x70Data::Parsed6x70Data(
       death_flags(cmd.death_flags),
       hold_state(cmd.hold_state),
       area(cmd.area),
-      game_flags(cmd.game_flags),
-      game_flags_is_v3(false),
+      player_flags(cmd.player_flags),
+      player_flags_is_v3(false),
       visual(cmd.visual),
       stats(cmd.stats),
       num_items(cmd.num_items),
@@ -839,8 +829,8 @@ Parsed6x70Data::Parsed6x70Data(
       death_flags(cmd.death_flags),
       hold_state(cmd.hold_state),
       area(cmd.area),
-      game_flags(cmd.game_flags),
-      game_flags_is_v3(false),
+      player_flags(cmd.player_flags),
+      player_flags_is_v3(false),
       visual(cmd.visual),
       stats(cmd.stats),
       num_items(cmd.num_items),
@@ -872,7 +862,7 @@ Parsed6x70Data::Parsed6x70Data(
     Version from_version,
     bool from_client_customization)
     : Parsed6x70Data(cmd.base, guild_card_number, from_version, from_client_customization) {
-  this->game_flags_is_v3 = true;
+  this->player_flags_is_v3 = true;
   this->stats = cmd.stats;
   this->num_items = cmd.num_items;
   this->items = cmd.items;
@@ -888,7 +878,7 @@ Parsed6x70Data::Parsed6x70Data(
     Version from_version,
     bool from_client_customization)
     : Parsed6x70Data(cmd.base, guild_card_number, from_version, from_client_customization) {
-  this->game_flags_is_v3 = true;
+  this->player_flags_is_v3 = true;
   this->stats = cmd.stats;
   this->num_items = cmd.num_items;
   this->items = cmd.items;
@@ -904,7 +894,7 @@ Parsed6x70Data::Parsed6x70Data(
     Version from_version,
     bool from_client_customization)
     : Parsed6x70Data(cmd.base, guild_card_number, from_version, from_client_customization) {
-  this->game_flags_is_v3 = true;
+  this->player_flags_is_v3 = true;
   this->stats = cmd.stats;
   this->num_items = cmd.num_items;
   this->items = cmd.items;
@@ -924,7 +914,7 @@ G_SyncPlayerDispAndInventory_DCNTE_6x70 Parsed6x70Data::as_dc_nte(shared_ptr<Ser
   ret.death_flags = this->death_flags;
   ret.hold_state = this->hold_state;
   ret.area = this->area;
-  ret.game_flags = this->get_game_flags(false);
+  ret.player_flags = this->get_player_flags(false);
   ret.visual = this->visual;
   ret.stats = this->stats;
   ret.num_items = this->num_items;
@@ -956,7 +946,7 @@ G_SyncPlayerDispAndInventory_DC112000_6x70 Parsed6x70Data::as_dc_112000(shared_p
   ret.death_flags = this->death_flags;
   ret.hold_state = this->hold_state;
   ret.area = this->area;
-  ret.game_flags = this->get_game_flags(false);
+  ret.player_flags = this->get_player_flags(false);
   ret.visual = this->visual;
   ret.stats = this->stats;
   ret.num_items = this->num_items;
@@ -1112,7 +1102,7 @@ Parsed6x70Data::Parsed6x70Data(
       temporary_status_effect(base.temporary_status_effect),
       attack_status_effect(base.attack_status_effect),
       defense_status_effect(base.defense_status_effect),
-      unused_status_effect(base.unused_status_effect),
+      unknown_a1_status_effect(base.unknown_a1_status_effect),
       language(static_cast<Language>(base.language32.load())),
       player_tag(base.player_tag),
       guild_card_number(guild_card_number), // Ignore the client's GC#
@@ -1122,8 +1112,8 @@ Parsed6x70Data::Parsed6x70Data(
       death_flags(base.death_flags),
       hold_state(base.hold_state),
       area(base.area),
-      game_flags(base.game_flags),
-      game_flags_is_v3(!is_v1_or_v2(from_version)),
+      player_flags(base.player_flags),
+      player_flags_is_v3(!is_v1_or_v2(from_version)),
       technique_levels_v1(base.technique_levels_v1),
       visual(base.visual) {}
 
@@ -1136,7 +1126,7 @@ G_6x70_Base_V1 Parsed6x70Data::base_v1(bool is_v3) const {
   ret.temporary_status_effect = this->temporary_status_effect;
   ret.attack_status_effect = this->attack_status_effect;
   ret.defense_status_effect = this->defense_status_effect;
-  ret.unused_status_effect = this->unused_status_effect;
+  ret.unknown_a1_status_effect = this->unknown_a1_status_effect;
   ret.language32 = static_cast<size_t>(this->language);
   ret.player_tag = this->player_tag;
   ret.guild_card_number = this->guild_card_number;
@@ -1146,46 +1136,69 @@ G_6x70_Base_V1 Parsed6x70Data::base_v1(bool is_v3) const {
   ret.death_flags = this->death_flags;
   ret.hold_state = this->hold_state;
   ret.area = this->area;
-  ret.game_flags = this->get_game_flags(is_v3);
+  ret.player_flags = this->get_player_flags(is_v3);
   ret.technique_levels_v1 = this->technique_levels_v1;
   ret.visual = this->visual;
   return ret;
 }
 
-uint32_t Parsed6x70Data::convert_game_flags(uint32_t game_flags, bool to_v3) {
-  // The format of game_flags for players was changed significantly between v2 and v3, and not accounting for this
-  // results in odd effects like other characters not appearing when joining a game. Unfortunately, some bits were
-  // deleted on v3 and other bits were added, so it doesn't suffice to simply store the most complete format of this
-  // field - we have to be able to convert between the two.
-
-  // Bits on v2: JIHCBAzy xwvutsrq ponmlkji hgfedcba
-  // Bits on v3: JIHGFEDC BAzyxwvu srqponkj hgfedcba
-  // The bits ilmt were removed in v3 and the bits to their left were shifted right. The bits DEFG were added in v3 and
-  // do not exist on v2. Known meanings for these bits so far:
-  //   o = is dead
-  //   n = should play hit animation
-  //   y = is near enemy
-  //   H = is enemy?
-  //   I = is object? (some entities have both H and I set though)
-  //   J = is item
+uint32_t Parsed6x70Data::convert_player_flags(uint32_t player_flags, bool to_v3) {
+  // The format of player_flags was changed significantly between v2 and v3, and not accounting for this results in odd
+  // effects like other characters not appearing when joining a game. Unfortunately, some bits were deleted on v3 and
+  // other bits were added, so it doesn't suffice to simply store the most complete format of this field - we have to
+  // be able to convert between the two. What's known about these bits (? indicates meaning/behavior is unverified):
+  //   * V1/V2    * V3/V4
+  //   ? 00000001   00000001 = player hold is set (see notes on 6x2C and 6x2D in CommandFormats.hh)
+  //   ? 00000002 ? 00000002 = unknown (TODO)
+  //   ? 00000004 ? 00000004 = loading? (allows 6x3E to update room ID and near-enemy flag; TODO: what does this do?)
+  //   ? 00000008 ? 00000008 = unknown (TODO)
+  //   ? 00000010   00000010 = should send position update? (6x3E, 6x40, or 6x42)
+  //   ? 00000020 ? 00000020 = unknown (TODO)
+  //   ? 00000040 ? 00000040 = unknown (TODO)
+  //   ? 00000080 ? 00000080 = seems to affect some particle effects? (TODO)
+  //   ? 00000100   -------- = unknown (TODO)
+  //   ? 00000200   00000100 = chat or pause menu is open (suppresses action palette)
+  //   ? 00000400 ? 00000200 = unknown (TODO)
+  //   ? 00000800   -------- = unknown (TODO)
+  //   ? 00001000   -------- = unknown (TODO)
+  //   ? 00002000   00000400 = action palette is disabled by p_action_disable or one of the TObjQuestColA* objects
+  //   ? 00004000   00000800 = is about to return to Pioneer 2 after a death (TODO: also set by p_return_guild)
+  //   ? 00008000   00001000 = cannot use telepipe / Ryuker (e.g. boss warps set this flag when the player is nearby)
+  //   ? 00010000 ? 00002000 = unknown (TODO)
+  //   ? 00020000   00004000 = is teleporting as a result of 6x24 (set only briefly after appearing at destination)
+  //   ? 00040000 ? 00008000 = is dead NPC? (set by e.g. npc_crptalk_id when regsA[4] == 1)
+  //   ? 00080000   -------- = unknown (TODO)
+  //   ? 00100000   00010000 = has permanent trap vision (e.g. is android)
+  //   ? 00200000 ? 00020000 = related to items; seems always set for the local player in P2 but not other players?
+  //   ? 00400000 ? 00040000 = warping? (TODO: set by 6x21 and 6x22)
+  //   ? 00800000 ? 00080000 = unknown (TODO)
+  //   ? 01000000 ? 00100000 = unknown (TODO)
+  //   ? 02000000   00200000 = is visible (set shortly after warping into a floor; remains set until next warp)
+  //   ? 04000000 ? 00400000 = position is valid (therefore player can be rendered)
+  //   ? 08000000   00800000 = player is invisible, but items are visible (TODO: is this used for Stealth Suit on BB?)
+  //   ? 10000000   01000000 = if set, player does not drop weapon on death
+  //     -------- ? 02000000 = used by TObjRoomId when param6 == 0x00010000 (TODO: figure out what this does)
+  //     --------   04000000 = is sitting in lobby chair
+  //     -------- ? 08000000 = related to lobby chairs (TODO: see handle_6xAE)
+  //     --------   10000000 = using alternate lobby chair pose (X+B instead of X+A on GC, for example)
 
   if (to_v3) {
-    return (game_flags & 0xE00000FF) |
-        ((game_flags & 0x00000600) >> 1) |
-        ((game_flags & 0x0007E000) >> 3) |
-        ((game_flags & 0x1FF00000) >> 4);
+    return (player_flags & 0x000000FF) |
+        ((player_flags & 0x00000600) >> 1) |
+        ((player_flags & 0x0007E000) >> 3) |
+        ((player_flags & 0x1FF00000) >> 4);
   } else {
-    return (game_flags & 0xE00000FF) |
-        ((game_flags << 1) & 0x00000600) |
-        ((game_flags << 3) & 0x0007E000) |
-        ((game_flags << 4) & 0x1FF00000);
+    return (player_flags & 0x000000FF) |
+        ((player_flags << 1) & 0x00000600) |
+        ((player_flags << 3) & 0x0007E000) |
+        ((player_flags << 4) & 0x1FF00000);
   }
 }
 
-uint32_t Parsed6x70Data::get_game_flags(bool is_v3) const {
-  return (this->game_flags_is_v3 == is_v3)
-      ? this->game_flags
-      : Parsed6x70Data::convert_game_flags(this->game_flags, is_v3);
+uint32_t Parsed6x70Data::get_player_flags(bool is_v3) const {
+  return (this->player_flags_is_v3 == is_v3)
+      ? this->player_flags
+      : Parsed6x70Data::convert_player_flags(this->player_flags, is_v3);
 }
 
 static asio::awaitable<void> on_sync_joining_player_disp_and_inventory(
@@ -3435,17 +3448,29 @@ static asio::awaitable<void> on_update_enemy_state(shared_ptr<Client> c, Subcomm
   }
   auto ene_st = l->map_state->enemy_state_for_index(c->version(), cmd.enemy_index);
   uint32_t src_flags = is_big_endian(c->version()) ? bswap32(cmd.game_flags) : cmd.game_flags.load();
+  if (src_flags & 0xD0000000) { // Don't allow player, object, or item flags to be set
+    throw std::runtime_error("incorrect entity type flags in 6x0A command");
+  }
   if (l->difficulty == Difficulty::ULTIMATE) {
     src_flags = (src_flags & 0xFFFFFFC0) | (ene_st->game_flags & 0x0000003F);
   }
+
+  bool should_track_hit = (src_flags & 0x00000200); // "Enemy was hit" flag (see 6x0A comments in CommandFormats.hh)
+  if (should_track_hit) {
+    ene_st->set_last_hit_by_client_id(c->lobby_client_id);
+  }
   ene_st->game_flags = src_flags;
   ene_st->total_damage = cmd.total_damage;
-  l->log.info_f("E-{:03X} updated to damage={} game_flags={:08X}", ene_st->e_id, ene_st->total_damage, ene_st->game_flags);
+  l->log.info_f("E-{:03X} updated to damage={} game_flags={:08X}; last hit {}",
+      ene_st->e_id, ene_st->total_damage, ene_st->game_flags, should_track_hit ? "claimed" : "not claimed");
   if (ene_st->alias_target_ene_st) {
+    if (should_track_hit) {
+      ene_st->alias_target_ene_st->set_last_hit_by_client_id(c->lobby_client_id);
+    }
     ene_st->alias_target_ene_st->game_flags = src_flags;
     ene_st->alias_target_ene_st->total_damage = cmd.total_damage;
-    l->log.info_f("Alias target E-{:03X} updated to damage={} game_flags={:08X}",
-        ene_st->alias_target_ene_st->e_id, ene_st->alias_target_ene_st->total_damage, ene_st->alias_target_ene_st->game_flags);
+    l->log.info_f("Alias target E-{:03X} updated to damage={} game_flags={:08X}; last hit {}",
+        ene_st->alias_target_ene_st->e_id, ene_st->alias_target_ene_st->total_damage, ene_st->alias_target_ene_st->game_flags, should_track_hit ? "claimed" : "not claimed");
   }
 
   // TODO: It'd be nice if this worked on bosses too, but it seems we have to use each boss' specific state-syncing
@@ -3493,8 +3518,18 @@ static asio::awaitable<void> on_incr_enemy_damage(shared_ptr<Client> c, Subcomma
       cmd.total_damage_before_hit.load(),
       cmd.current_hp_before_hit.load(),
       cmd.max_hp.load());
+
+  if (cmd.hit_amount > 0) {
+    c->log.info_f("Claiming last hit on E-{:03X}", ene_st->e_id);
+    ene_st->set_last_hit_by_client_id(c->lobby_client_id);
+  }
   ene_st->total_damage = std::min<uint32_t>(ene_st->total_damage + cmd.hit_amount, cmd.max_hp);
   if (ene_st->alias_target_ene_st) {
+    if (cmd.hit_amount > 0) {
+      c->log.info_f("Claiming last hit on E-{:03X} (alias of E-{:03X})",
+          ene_st->alias_target_ene_st->e_id, ene_st->e_id);
+      ene_st->alias_target_ene_st->set_last_hit_by_client_id(c->lobby_client_id);
+    }
     ene_st->alias_target_ene_st->total_damage = std::min<uint32_t>(
         ene_st->alias_target_ene_st->total_damage + cmd.hit_amount, cmd.max_hp);
   }
@@ -3502,13 +3537,13 @@ static asio::awaitable<void> on_incr_enemy_damage(shared_ptr<Client> c, Subcomma
   co_await forward_subcommand_with_entity_id_transcode_t<G_IncrementEnemyDamage_Extension_6xE4>(c, msg);
 }
 
-static asio::awaitable<void> on_set_enemy_low_game_flags_ultimate(shared_ptr<Client> c, SubcommandMessage& msg) {
+static asio::awaitable<void> on_set_enemy_status_effect_flags_ultimate(shared_ptr<Client> c, SubcommandMessage& msg) {
   auto& cmd = msg.check_size_t<G_SetEnemyLowGameFlagsUltimate_6x9C>();
 
   if (command_is_private(msg.command) ||
       (cmd.header.entity_id < 0x1000) ||
       (cmd.header.entity_id >= 0x4000) ||
-      (cmd.low_game_flags & 0xFFFFFFC0) ||
+      (cmd.status_effect_flags & 0xFFFFFFC0) ||
       (c->lobby_client_id > 3)) {
     co_return;
   }
@@ -3518,12 +3553,12 @@ static asio::awaitable<void> on_set_enemy_low_game_flags_ultimate(shared_ptr<Cli
   }
 
   auto ene_st = l->map_state->enemy_state_for_index(c->version(), cmd.header.entity_id - 0x1000);
-  if (!(ene_st->game_flags & cmd.low_game_flags)) {
-    ene_st->game_flags |= cmd.low_game_flags;
+  if (!(ene_st->game_flags & cmd.status_effect_flags)) {
+    ene_st->game_flags |= cmd.status_effect_flags;
     l->log.info_f("E-{:03X} updated to game_flags={:08X}", ene_st->e_id, ene_st->game_flags);
   }
-  if (ene_st->alias_target_ene_st && !(ene_st->alias_target_ene_st->game_flags & cmd.low_game_flags)) {
-    ene_st->alias_target_ene_st->game_flags |= cmd.low_game_flags;
+  if (ene_st->alias_target_ene_st && !(ene_st->alias_target_ene_st->game_flags & cmd.status_effect_flags)) {
+    ene_st->alias_target_ene_st->game_flags |= cmd.status_effect_flags;
     l->log.info_f("Alias E-{:03X} updated to game_flags={:08X}",
         ene_st->alias_target_ene_st->e_id, ene_st->alias_target_ene_st->game_flags);
   }
@@ -4062,8 +4097,11 @@ static asio::awaitable<void> on_enemy_exp_request_bb(shared_ptr<Client> c, Subco
   // If the requesting player never hit this enemy, they are probably cheating; ignore the command. Also, each player
   // sends a 6xC8 if they ever hit the enemy; we only react to the first 6xC8 for each enemy (and give all relevant
   // players EXP then, if they deserve it).
-  if (!ene_st->ever_hit_by_client_id(c->lobby_client_id) ||
-      (ene_st->server_flags & MapState::EnemyState::Flag::EXP_GIVEN)) {
+  if (!ene_st->ever_hit_by_client_id(c->lobby_client_id)) {
+    l->log.warning_f("The requesting player did not hit this enemy; ignoring request");
+    co_return;
+  }
+  if (ene_st->server_flags & MapState::EnemyState::Flag::EXP_GIVEN) {
     l->log.info_f("EXP already given for this enemy; ignoring request");
     co_return;
   }
@@ -5506,10 +5544,10 @@ const vector<SubcommandDefinition> subcommand_definitions{
     /* 6x43 */ {0x3A, 0x3F, 0x43, on_forward_check_game_client},
     /* 6x44 */ {0x3B, 0x40, 0x44, on_forward_check_game_client},
     /* 6x45 */ {0x3C, 0x41, 0x45, on_forward_check_game_client},
-    /* 6x46 */ {NONE, 0x42, 0x46, forward_subcommand_with_entity_targets_transcode_and_track_hits_t<G_AttackFinished_Header_6x46>},
-    /* 6x47 */ {0x3D, 0x43, 0x47, forward_subcommand_with_entity_targets_transcode_and_track_hits_t<G_CastTechnique_Header_6x47>},
+    /* 6x46 */ {NONE, 0x42, 0x46, forward_subcommand_with_entity_targets_transcode_t<G_AttackFinished_Header_6x46>},
+    /* 6x47 */ {0x3D, 0x43, 0x47, forward_subcommand_with_entity_targets_transcode_t<G_CastTechnique_Header_6x47>},
     /* 6x48 */ {NONE, NONE, 0x48, on_cast_technique_finished},
-    /* 6x49 */ {0x3E, 0x44, 0x49, forward_subcommand_with_entity_targets_transcode_and_track_hits_t<G_ExecutePhotonBlast_Header_6x49>},
+    /* 6x49 */ {0x3E, 0x44, 0x49, forward_subcommand_with_entity_targets_transcode_t<G_ExecutePhotonBlast_Header_6x49>},
     /* 6x4A */ {0x3F, 0x45, 0x4A, on_change_hp<G_ClientIDHeader>},
     /* 6x4B */ {0x40, 0x46, 0x4B, on_change_hp<G_ClientIDHeader>},
     /* 6x4C */ {0x41, 0x47, 0x4C, on_change_hp<G_ClientIDHeader>},
@@ -5592,7 +5630,7 @@ const vector<SubcommandDefinition> subcommand_definitions{
     /* 6x99 */ {NONE, NONE, 0x99, on_forward_check_game},
     /* 6x9A */ {NONE, NONE, 0x9A, on_forward_check_game_client},
     /* 6x9B */ {NONE, NONE, 0x9B, on_forward_check_game},
-    /* 6x9C */ {NONE, NONE, 0x9C, on_set_enemy_low_game_flags_ultimate},
+    /* 6x9C */ {NONE, NONE, 0x9C, on_set_enemy_status_effect_flags_ultimate},
     /* 6x9D */ {NONE, NONE, 0x9D, on_forward_check_game},
     /* 6x9E */ {NONE, NONE, 0x9E, forward_subcommand_m},
     /* 6x9F */ {NONE, NONE, 0x9F, forward_subcommand_with_entity_id_transcode_t<G_GalGryphonBossActions_6x9F>},

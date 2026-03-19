@@ -2349,14 +2349,18 @@ ChatCommandDefinition cc_saverec(
       co_return;
     });
 
-static asio::awaitable<void> command_send_command(const Args& a, bool to_client, bool to_server) {
+static asio::awaitable<void> command_send_command(const Args& a, bool to_client, bool to_server, bool send_protected) {
   if (!a.c->proxy_session) {
     a.check_debug_enabled();
   }
   string data = phosg::parse_data_string(a.text);
   data.resize((data.size() + 3) & (~3));
   if (to_client) {
-    a.c->channel->send(data);
+    if (send_protected) {
+      co_await send_protected_command(a.c, data.data(), data.size(), false);
+    } else {
+      a.c->channel->send(data);
+    }
   }
   if (to_server) {
     if (a.c->proxy_session) {
@@ -2371,13 +2375,19 @@ static asio::awaitable<void> command_send_command(const Args& a, bool to_client,
 ChatCommandDefinition cc_sb(
     {"$sb"},
     +[](const Args& a) -> asio::awaitable<void> {
-      return command_send_command(a, true, true);
+      return command_send_command(a, true, true, false);
     });
 
 ChatCommandDefinition cc_sc(
     {"$sc"},
     +[](const Args& a) -> asio::awaitable<void> {
-      return command_send_command(a, true, false);
+      return command_send_command(a, true, false, false);
+    });
+
+ChatCommandDefinition cc_scp(
+    {"$scp"},
+    +[](const Args& a) -> asio::awaitable<void> {
+      return command_send_command(a, true, false, true);
     });
 
 ChatCommandDefinition cc_secid(
@@ -2571,7 +2581,7 @@ ChatCommandDefinition cc_spec(
 ChatCommandDefinition cc_ss(
     {"$ss"},
     +[](const Args& a) -> asio::awaitable<void> {
-      return command_send_command(a, false, true);
+      return command_send_command(a, false, true, false);
     });
 
 ChatCommandDefinition cc_stat(

@@ -64,6 +64,12 @@ struct PlayerVisualConfigT {
   //   F = force, R = ranger, H = hunter
   //   A = android, N = newman, M = human
   //   f = female, m = male
+  // Enemies also have a class_flags field, though it isn't part of PlayerVisualConfig. The bits for enemies are:
+  //   -------- -------- -------- ----DMAN
+  //   D = Dark attribute
+  //   M = Machine attribute
+  //   A = Altered Beast attribute
+  //   N = Native attribute
   /* 34 */ U32T<BE> class_flags = 0;
   /* 38 */ U16T<BE> costume = 0;
   /* 3A */ U16T<BE> skin = 0;

@@ -3723,6 +3723,49 @@ struct G_UpdateEnemyStateT_6x0A {
   G_EntityIDHeader header;
   le_uint16_t enemy_index = 0; // [0, 0xB50)
   le_uint16_t total_damage = 0;
+  // The bits in game_flags mean (all addresses in TODOs are for 3OE1):
+  //   00000001 = is poisoned
+  //   00000002 = is paralyzed
+  //   00000004 = is shocked
+  //   00000008 = is slow
+  //   00000010 = is confused
+  //   00000020 = is frozen
+  //   00000040 = cures and prevents all negative status effects
+  //   00000080 = appears to be unused (TODO: look for any usage of this flag)
+  //   00000100 = missed by attack (often set immediately before showing red "MISS" text)
+  //   00000200 = hit by attack (causes flinch for most enemies)
+  //   00000400 = last hit did damage greater than 25% of enemy's max HP (some enemies don't clear this)
+  //   00000800 = is dead (when set for most enemies, plays the death animation and then destroys the enemy)
+  //   00001000 = unknown (TODO: see TObjEnemyV8048ee80_v1C, TObjEnemyV8048ee80_v3B, TObjEneDolmOlm_v3B)
+  //   00002000 = unknown (TODO: see TObjGrass_v1E, 8011EA08, TObjEneIllGill_v1E, TObjEneIllGill_init)
+  //   00004000 = unknown (TODO: has status effect in slot 5; see TObjectV8047c128_v24_update_paralysis_effect; De Rol
+  //              Le uses this; Vol Opt uses it too at TBoss3Volopt_update, TBoss3VoloptCore_update,
+  //              TBoss3VoloptP01_update, TBoss3VolOptP02_update, TObjectV8047c128_v39, TObjectV8047c128_v38; related
+  //              to paralysis somehow? see TObjectV8047c128_v24_update_paralysis_effect)
+  //   00008000 = immune to freeze (TODO: see TBoss3VolOptP02_init_inner; maybe other things use it too)
+  //   00010000 = unknown (TODO: see 801BA1F8)
+  //   00020000 = can't attack, cast techs, or use items (e.g. Vol Opt cage and Ruins falling traps set this)
+  //   00040000 = untargetable (e.g. TObjEneBeast sets this at construction time; it's cleared when it roars)
+  //   00080000 = appears to be unused (TODO: look for any usage of this flag)
+  //   00100000 = for players, is near enemy; for some enemies, is activated (not set if in idle animations, e.g. for
+  //              TObjEneBeast and related classes) (unverified on v2)
+  //   00200000 = is attacking? (TODO: also set when TObjEneMoja is jumping though; also see TObjEnemyV8048ee80_v3C,
+  //              TObjEneMerillLia_v3C, TObjEneSaver_v3A)
+  //   00400000 = unknown (TODO: see TOSensor_vF, 801CC358, 801CD224)
+  //   00800000 = affected by gravity? can be aerial? (wolves don't have this, perhaps their jumps are hardcoded; see
+  //              TObjEnemyV8048ee80_v5B) (unverified on v2)
+  //   01000000 = immune to shock and freeze and paralysis (for Canadine/Mothmant/etc, only set when they're higher
+  //              than player level; TODO: maybe other things too; also used by TObjPlayer, see 801B84B4; also has a
+  //              meaning for weapons, see TItemWeapon_v10) (unverified on v2)
+  //   02000000 = invisible (also suppresses particles, some sounds, and hit/miss text)
+  //   04000000 = temporarily invincible (e.g. Dragon while it roars to advance to phase 2) (unverified on v2)
+  //   08000000 = unknown (TODO; see 80113384, TItemMag_v1B, TItemMag_v1A, 801182B0, TObjPlayer_render; probably
+  //              graphical effects only)
+  //   10000000 = entity is player
+  //   20000000 = entity is enemy
+  //   40000000 = entity is object (some entities have both this and 20000000 set; this appears to make TWindowLockOn
+  //              not show anything but the entity is still attackable, see TWindowLockOn_should_show_for_entity)
+  //   80000000 = entity is item
   typename std::conditional_t<BE, be_uint32_t, le_uint32_t> game_flags = 0;
 } __attribute__((packed));
 using G_UpdateEnemyState_GC_6x0A = G_UpdateEnemyStateT_6x0A<true>;
@@ -4125,7 +4168,7 @@ struct G_Unknown_6x36 {
 
 struct G_PhotonBlast_6x37 {
   G_ClientIDHeader header;
-  le_uint16_t unknown_a1 = 0;
+  le_uint16_t amount = 0; // Amount of PB energy to expend (ignored by client upon receipt)
   le_uint16_t unused = 0;
 } __packed_ws__(G_PhotonBlast_6x37, 8);
 
@@ -4212,7 +4255,9 @@ struct G_SetPosition_6x3F {
 struct G_WalkToPosition_6x40 {
   G_ClientIDHeader header;
   VectorXZF pos;
-  le_uint32_t action = 0;
+  // In the flags field, bit 00000008 is set if game_flag 00100000 is set (same as is_near_enemy in 6x3E and 6x3F). The
+  // meanings of the other bits are unknown.
+  le_uint32_t flags = 0;
 } __packed_ws__(G_WalkToPosition_6x40, 0x10);
 
 // 6x41: Move to position (v1)
@@ -4290,8 +4335,8 @@ struct G_ShieldAttack_6x4A {
   G_ClientIDHeader header;
 } __packed_ws__(G_ShieldAttack_6x4A, 4);
 
-// 6x4B: Hit by enemy (protected on GC NTE/V3/V4)
-// 6x4C: Hit by enemy (protected on GC NTE/V3/V4)
+// 6x4B: Minor hit by enemy (<= 25% of max HP; protected on GC NTE/V3/V4)
+// 6x4C: Major hit by enemy (> 25% of max HP; protected on GC NTE/V3/V4)
 
 struct G_HitByEnemy_6x4B_6x4C {
   G_ClientIDHeader header;
@@ -4393,7 +4438,7 @@ struct G_Unknown_6x57 {
 struct G_LobbyAnimation_6x58 {
   G_ClientIDHeader header;
   le_uint16_t animation_number = 0;
-  le_uint16_t unused = 0;
+  le_uint16_t flags = 0; // Only lowest bit appears to be used
 } __packed_ws__(G_LobbyAnimation_6x58, 8);
 
 // 6x59: Pick up item
@@ -4688,7 +4733,7 @@ struct G_6x70_Sub_Telepipe {
 struct G_6x70_Base_DCNTE {
   /* 0000 */ le_uint16_t client_id = 0;
   /* 0002 */ le_uint16_t room_id = 0;
-  /* 0004 */ le_uint32_t flags1 = 0;
+  /* 0004 */ le_uint32_t game_flags = 0;
   /* 0008 */ VectorXYZF pos;
   /* 0014 */ VectorXYZI angle;
   /* 0020 */ le_uint16_t phase = 0;
@@ -4696,41 +4741,39 @@ struct G_6x70_Base_DCNTE {
 } __packed_ws__(G_6x70_Base_DCNTE, 0x24);
 
 struct G_SyncPlayerDispAndInventory_DCNTE_6x70 {
-  // Offsets in this struct are relative to the overall command header
-  /* 0004 */ G_ExtendedHeaderT<G_ClientIDHeader> header = {{0x60, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_DCNTE_6x70)};
-  /* 000C */ G_6x70_Base_DCNTE base;
+  /* 0000 */ G_ExtendedHeaderT<G_ClientIDHeader> header = {{0x60, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_DCNTE_6x70)};
+  /* 0008 */ G_6x70_Base_DCNTE base;
   // The following two fields appear to contain uninitialized data
-  /* 0030 */ le_uint32_t unknown_a5 = 0;
-  /* 0034 */ le_uint32_t unknown_a6 = 0;
-  /* 0038 */ G_6x70_Sub_Telepipe telepipe;
-  /* 0054 */ le_uint32_t death_flags = 0;
-  /* 0058 */ PlayerHoldState_DCProtos hold_state;
-  /* 0068 */ le_uint32_t area = 0;
-  /* 006C */ le_uint32_t game_flags = 0;
-  /* 0070 */ PlayerVisualConfig visual;
-  /* 00C0 */ PlayerStats stats;
-  /* 00E4 */ le_uint32_t num_items = 0;
-  /* 00E8 */ parray<PlayerInventoryItem, 0x1E> items;
-  /* 0430 */
+  /* 002C */ le_uint32_t unknown_a5 = 0;
+  /* 0030 */ le_uint32_t unknown_a6 = 0;
+  /* 0034 */ G_6x70_Sub_Telepipe telepipe;
+  /* 0050 */ le_uint32_t death_flags = 0;
+  /* 0054 */ PlayerHoldState_DCProtos hold_state;
+  /* 0064 */ le_uint32_t area = 0;
+  /* 0068 */ le_uint32_t player_flags = 0;
+  /* 006C */ PlayerVisualConfig visual;
+  /* 00BC */ PlayerStats stats;
+  /* 00E0 */ le_uint32_t num_items = 0;
+  /* 00E4 */ parray<PlayerInventoryItem, 0x1E> items;
+  /* 042C */
 } __packed_ws__(G_SyncPlayerDispAndInventory_DCNTE_6x70, 0x42C);
 
 struct G_SyncPlayerDispAndInventory_DC112000_6x70 {
-  // Offsets in this struct are relative to the overall command header
-  /* 0004 */ G_ExtendedHeaderT<G_ClientIDHeader> header = {{0x67, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_DC112000_6x70)};
-  /* 000C */ G_6x70_Base_DCNTE base;
-  /* 0030 */ le_uint16_t bonus_hp_from_materials = 0;
-  /* 0032 */ le_uint16_t bonus_tp_from_materials = 0;
-  /* 0034 */ parray<uint8_t, 0x10> unknown_a5;
-  /* 0044 */ G_6x70_Sub_Telepipe telepipe;
-  /* 0060 */ le_uint32_t death_flags = 0;
-  /* 0064 */ PlayerHoldState_DCProtos hold_state;
-  /* 0074 */ le_uint32_t area = 0;
-  /* 0078 */ le_uint32_t game_flags = 0;
-  /* 007C */ PlayerVisualConfig visual;
-  /* 00CC */ PlayerStats stats;
-  /* 00F0 */ le_uint32_t num_items = 0;
-  /* 00F4 */ parray<PlayerInventoryItem, 0x1E> items;
-  /* 043C */
+  /* 0000 */ G_ExtendedHeaderT<G_ClientIDHeader> header = {{0x67, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_DC112000_6x70)};
+  /* 0008 */ G_6x70_Base_DCNTE base;
+  /* 002C */ le_uint16_t bonus_hp_from_materials = 0;
+  /* 002E */ le_uint16_t bonus_tp_from_materials = 0;
+  /* 0030 */ parray<uint8_t, 0x10> unknown_a5;
+  /* 0040 */ G_6x70_Sub_Telepipe telepipe;
+  /* 005C */ le_uint32_t death_flags = 0;
+  /* 0060 */ PlayerHoldState_DCProtos hold_state;
+  /* 0070 */ le_uint32_t area = 0;
+  /* 0074 */ le_uint32_t player_flags = 0;
+  /* 0078 */ PlayerVisualConfig visual;
+  /* 00C8 */ PlayerStats stats;
+  /* 00EC */ le_uint32_t num_items = 0;
+  /* 00F0 */ parray<PlayerInventoryItem, 0x1E> items;
+  /* 0438 */
 } __packed_ws__(G_SyncPlayerDispAndInventory_DC112000_6x70, 0x438);
 
 struct G_6x70_Base_V1 {
@@ -4741,71 +4784,71 @@ struct G_6x70_Base_V1 {
   /* 0034 */ StatusEffectState temporary_status_effect;
   /* 0040 */ StatusEffectState attack_status_effect;
   /* 004C */ StatusEffectState defense_status_effect;
-  /* 0058 */ StatusEffectState unused_status_effect;
+  /* 0058 */ StatusEffectState unknown_a1_status_effect;
   /* 0064 */ le_uint32_t language32 = 0;
   /* 0068 */ le_uint32_t player_tag = 0;
   /* 006C */ le_uint32_t guild_card_number = 0;
   /* 0070 */ le_uint32_t unknown_a6 = 0; // Probably battle-related (assigned together with battle_team_number)
   /* 0074 */ le_uint32_t battle_team_number = 0;
   /* 0078 */ G_6x70_Sub_Telepipe telepipe;
-  /* 0094 */ le_uint32_t death_flags = 0; // Only a few bits are used. 4 = player is dead
+  // Only a few bits appear to be used in death_flags. Known values:
+  //   00000001 = should drop weapon/item on death
+  //   00000002 = has automatic revival item (Scape Doll or Ragol Ring)
+  //   00000004 = unknown (TODO; causes client to send 6x31 instead of 6xA1 when revived)
+  /* 0094 */ le_uint32_t death_flags = 0;
   /* 0098 */ PlayerHoldState hold_state;
   /* 00AC */ le_uint32_t area = 0;
-  /* 00B0 */ le_uint32_t game_flags = 0;
+  /* 00B0 */ le_uint32_t player_flags = 0;
   /* 00B4 */ parray<uint8_t, 0x14> technique_levels_v1 = 0xFF; // Last byte is uninitialized
   /* 00C8 */ PlayerVisualConfig visual;
   /* 0118 */
 } __packed_ws__(G_6x70_Base_V1, 0x118);
 
 struct G_SyncPlayerDispAndInventory_DC_PC_6x70 {
-  // Offsets in this struct are relative to the overall command header
-  /* 0004 */ G_ExtendedHeaderT<G_ClientIDHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_DC_PC_6x70)};
-  /* 000C */ G_6x70_Base_V1 base;
-  /* 0124 */ PlayerStats stats;
-  /* 0148 */ le_uint32_t num_items = 0;
-  /* 014C */ parray<PlayerInventoryItem, 0x1E> items;
-  /* 0494 */
+  /* 0000 */ G_ExtendedHeaderT<G_ClientIDHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_DC_PC_6x70)};
+  /* 0008 */ G_6x70_Base_V1 base;
+  /* 0120 */ PlayerStats stats;
+  /* 0144 */ le_uint32_t num_items = 0;
+  /* 0148 */ parray<PlayerInventoryItem, 0x1E> items;
+  /* 0490 */
 } __packed_ws__(G_SyncPlayerDispAndInventory_DC_PC_6x70, 0x490);
 
-// GC NTE also uses this format.
+// GC NTE also uses this format
 struct G_SyncPlayerDispAndInventory_GC_6x70 {
-  // Offsets in this struct are relative to the overall command header
-  /* 0004 */ G_ExtendedHeaderT<G_ClientIDHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_GC_6x70)};
-  /* 000C */ G_6x70_Base_V1 base;
-  /* 0124 */ PlayerStats stats;
-  /* 0148 */ le_uint32_t num_items = 0;
-  /* 014C */ parray<PlayerInventoryItem, 0x1E> items;
-  /* 0494 */ le_uint32_t floor = 0;
-  /* 0498 */
+  /* 0000 */ G_ExtendedHeaderT<G_ClientIDHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_GC_6x70)};
+  /* 0008 */ G_6x70_Base_V1 base;
+  /* 0120 */ PlayerStats stats;
+  /* 0144 */ le_uint32_t num_items = 0;
+  /* 0148 */ parray<PlayerInventoryItem, 0x1E> items;
+  /* 0490 */ le_uint32_t floor = 0;
+  /* 0494 */
 } __packed_ws__(G_SyncPlayerDispAndInventory_GC_6x70, 0x494);
 
 struct G_SyncPlayerDispAndInventory_XB_6x70 {
-  // Offsets in this struct are relative to the overall command header
-  /* 0004 */ G_ExtendedHeaderT<G_ClientIDHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_XB_6x70)};
-  /* 000C */ G_6x70_Base_V1 base;
-  /* 0124 */ PlayerStats stats;
-  /* 0148 */ le_uint32_t num_items = 0;
-  /* 014C */ parray<PlayerInventoryItem, 0x1E> items;
-  /* 0494 */ le_uint32_t floor = 0;
-  /* 0498 */ le_uint32_t xb_user_id_high = 0;
-  /* 049C */ le_uint32_t xb_user_id_low = 0;
-  /* 04A0 */ le_uint32_t unknown_a16 = 0;
-  /* 04A4 */
+  /* 0000 */ G_ExtendedHeaderT<G_ClientIDHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_XB_6x70)};
+  /* 0008 */ G_6x70_Base_V1 base;
+  /* 0120 */ PlayerStats stats;
+  /* 0144 */ le_uint32_t num_items = 0;
+  /* 0148 */ parray<PlayerInventoryItem, 0x1E> items;
+  /* 0490 */ le_uint32_t floor = 0;
+  /* 0494 */ le_uint32_t xb_user_id_high = 0;
+  /* 0498 */ le_uint32_t xb_user_id_low = 0;
+  /* 049C */ le_uint32_t unknown_a16 = 0;
+  /* 04A0 */
 } __packed_ws__(G_SyncPlayerDispAndInventory_XB_6x70, 0x4A0);
 
 struct G_SyncPlayerDispAndInventory_BB_6x70 {
-  // Offsets in this struct are relative to the overall command header
-  /* 0008 */ G_ExtendedHeaderT<G_ClientIDHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_BB_6x70)};
-  /* 0010 */ G_6x70_Base_V1 base;
-  /* 0128 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> name;
-  /* 0148 */ PlayerStats stats;
-  /* 016C */ le_uint32_t num_items = 0;
-  /* 0170 */ parray<PlayerInventoryItem, 0x1E> items;
-  /* 04B8 */ le_uint32_t floor = 0;
-  /* 04BC */ le_uint32_t xb_user_id_high = 0;
-  /* 04C0 */ le_uint32_t xb_user_id_low = 0;
-  /* 04C4 */ le_uint32_t unknown_a16 = 0;
-  /* 04C8 */
+  /* 0000 */ G_ExtendedHeaderT<G_ClientIDHeader> header = {{0x70, 0x00, 0x0000}, sizeof(G_SyncPlayerDispAndInventory_BB_6x70)};
+  /* 0008 */ G_6x70_Base_V1 base;
+  /* 0120 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> name;
+  /* 0140 */ PlayerStats stats;
+  /* 0164 */ le_uint32_t num_items = 0;
+  /* 0168 */ parray<PlayerInventoryItem, 0x1E> items;
+  /* 04B0 */ le_uint32_t floor = 0;
+  /* 04B4 */ le_uint32_t xb_user_id_high = 0;
+  /* 04B8 */ le_uint32_t xb_user_id_low = 0;
+  /* 04BC */ le_uint32_t unknown_a16 = 0;
+  /* 04C0 */
 } __packed_ws__(G_SyncPlayerDispAndInventory_BB_6x70, 0x4C0);
 
 // 6x71: Unblock game join (used while loading into game)
@@ -5007,6 +5050,8 @@ struct G_EnableDropWeaponOnDeath_6x82 {
 struct G_PlaceTrap_6x83 {
   G_ClientIDHeader header;
   le_uint16_t trap_type = 0;
+  // trap_index is actually the number of traps remaining for this client after setting this one (so it counts backward
+  // from their total trap count)
   le_uint16_t trap_index = 0;
 } __packed_ws__(G_PlaceTrap_6x83, 8);
 
@@ -5205,13 +5250,18 @@ struct G_LevelUpAllTechniques_6x9B {
   parray<uint8_t, 3> unused;
 } __packed_ws__(G_LevelUpAllTechniques_6x9B, 8);
 
-// 6x9C: Set enemy low game flags (not valid on Episode 3)
-// This command only has an effect in Ultimate mode; it sets the low 6 bits of game_flags (those that match 0x3F).
+// 6x9C: Set enemy status effect flags (not valid on Episode 3)
+// This command only has an effect in Ultimate mode; it sets the low 6 bits of game_flags (those that match 0x3F). This
+// essentially separates status effects from the 6x0A command. It's not clear why Sega did this only in Ultimate mode.
 
 struct G_SetEnemyLowGameFlagsUltimate_6x9C {
   G_EntityIDHeader header;
-  // A virtual function is called on the enemy if low_game_flags is equal to any of 0x02, 0x04, 0x10, or 0x20.
-  le_uint32_t low_game_flags = 0;
+  // This field is expected to have one of these values (it should not actually be treated as a bit field):
+  //   0x00000002 = add paralysis status
+  //   0x00000004 = add shock status
+  //   0x00000010 = add confuse status
+  //   0x00000020 = add freeze status
+  le_uint32_t status_effect_flags = 0;
 } __packed_ws__(G_SetEnemyLowGameFlagsUltimate_6x9C, 8);
 
 // 6x9D: Set dead flag (Challenge mode; not valid on Episode 3)
@@ -5409,18 +5459,12 @@ struct G_SetAnimationState_6xAE {
 } __packed_ws__(G_SetAnimationState_6xAE, 0x10);
 
 // 6xAF: Turn lobby chair (not valid on pre-V3 or GC Trial Edition) (protected on V3/V4)
-
-struct G_TurnLobbyChair_6xAF {
-  G_ClientIDHeader header;
-  le_uint32_t angle = 0; // In range [0x0000, 0xFFFF]
-} __packed_ws__(G_TurnLobbyChair_6xAF, 8);
-
 // 6xB0: Move lobby chair (not valid on pre-V3 or GC Trial Edition) (protected on V3/V4)
 
-struct G_MoveLobbyChair_6xB0 {
+struct G_TurnOrMoveLobbyChair_6xAF_6xB0 {
   G_ClientIDHeader header;
-  le_uint32_t unknown_a1 = 0;
-} __packed_ws__(G_MoveLobbyChair_6xB0, 8);
+  le_uint32_t angle = 0; // In range [0x0000, 0xFFFF]
+} __packed_ws__(G_TurnOrMoveLobbyChair_6xAF_6xB0, 8);
 
 // 6xB1: Unknown (not valid on pre-V3 or GC Trial Edition)
 // This subcommand is completely ignored.
@@ -5686,7 +5730,7 @@ struct G_BankAction_BB_6xBD {
   G_UnusedHeader header;
   le_uint32_t item_id = 0;
   le_uint32_t meseta_amount = 0;
-  uint8_t action = 0; // 0 = deposit, 1 = take, 3 = done (close bank window)
+  uint8_t action = 0; // 0 = deposit, 1 = take, 2 = unknown (compact contents?), 3 = commit (close bank window)
   uint8_t item_amount = 0;
   le_uint16_t item_index = 0; // 0xFFFF = meseta
 } __packed_ws__(G_BankAction_BB_6xBD, 0x10);

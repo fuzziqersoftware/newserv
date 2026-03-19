@@ -52,7 +52,7 @@ public:
   StatusEffectState temporary_status_effect;
   StatusEffectState attack_status_effect;
   StatusEffectState defense_status_effect;
-  StatusEffectState unused_status_effect;
+  StatusEffectState unknown_a1_status_effect; // De Rol Le uses this?
   Language language = Language::JAPANESE;
   uint32_t player_tag = 0;
   uint32_t guild_card_number = 0;
@@ -62,8 +62,8 @@ public:
   uint32_t death_flags = 0;
   PlayerHoldState hold_state;
   uint32_t area = 0;
-  uint32_t game_flags = 0;
-  bool game_flags_is_v3 = false;
+  uint32_t player_flags = 0;
+  bool player_flags_is_v3 = false;
   parray<uint8_t, 0x14> technique_levels_v1 = 0xFF;
   PlayerVisualConfig visual;
   std::string name;
@@ -121,8 +121,8 @@ protected:
   Parsed6x70Data(
       const G_6x70_Base_V1& base, uint32_t guild_card_number, Version from_version, bool from_client_customization);
   G_6x70_Base_V1 base_v1(bool is_v3) const;
-  static uint32_t convert_game_flags(uint32_t game_flags, bool to_v3);
-  uint32_t get_game_flags(bool is_v3) const;
+  static uint32_t convert_player_flags(uint32_t player_flags, bool to_v3);
+  uint32_t get_player_flags(bool is_v3) const;
 };
 
 bool validate_6xBB(G_SyncCardTradeServerState_Ep3_6xBB& cmd);
