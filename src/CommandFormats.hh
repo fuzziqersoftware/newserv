@@ -3782,13 +3782,14 @@ struct G_UpdateObjectState_6x0B {
 } __packed_ws__(G_UpdateObjectState_6x0B, 0x0C);
 
 // 6x0C: Add status effect (poison/slow/etc.) (protected on V3/V4)
+// 6x0D: Remove status effect (protected on V3/V4)
 
-struct G_AddStatusEffect_6x0C {
+struct G_AddOrRemoveStatusEffect_6x0C_6x0D {
   G_ClientIDHeader header;
   // Each status effect has an assigned slot; there are 5 slots and each slot may only hold one effect at a time. (The
-  // last slot, slot 4, is unused.) If a new status effect is added to a slot that already contains one, the existing
-  // status effect is replaced. Non-technique status effects have fixed or indefinite durations; technique-based
-  // effects have durations based on the technique's level.
+  // last slot, slot 4, may be used by certain boss effects; this is unconfirmed.) If a new status effect is added to a
+  // slot that already contains one, the existing status effect is replaced. Non-technique status effects have fixed or
+  // indefinite durations; technique-based effects have durations based on the technique's level.
   // Values for effect_type:
   //   02 = Freeze (slot 1; 5 seconds)
   //   03 = Shock (slot 1; 10 seconds)
@@ -3803,16 +3804,8 @@ struct G_AddStatusEffect_6x0C {
   //   12 = Confuse (slot 1; 10 seconds)
   //   Anything else = command is ignored
   le_uint32_t effect_type = 0;
-  le_float amount = 0; // Only used for Shifta/Deband/Jellen/Zalure
-} __packed_ws__(G_AddStatusEffect_6x0C, 0x0C);
-
-// 6x0D: Clear status effect slot (protected on V3/V4)
-
-struct G_RemoveStatusEffect_6x0D {
-  G_ClientIDHeader header;
-  le_uint32_t slot = 0; // See 6x0C description for slot values
-  le_uint32_t unused = 0;
-} __packed_ws__(G_RemoveStatusEffect_6x0D, 0x0C);
+  le_float amount = 0; // Only used in 6x0C for Shifta/Deband/Jellen/Zalure; unused in 6x0D
+} __packed_ws__(G_AddOrRemoveStatusEffect_6x0C_6x0D, 0x0C);
 
 // 6x0E: Clear all negative status effects (protected on V3/V4)
 // It seems that the client never sends this command.
@@ -5452,9 +5445,10 @@ struct G_SetAnimationState_6xAE {
   G_ClientIDHeader header;
   le_uint16_t animation_number = 0;
   le_uint16_t unused = 0;
-  // This field contains the flags field on the sender's TObjPlayer object. If the bit 04000000 is set in this field,
-  // then (flags & 1C000000) is or'ed into the TObjPlayer's flags field. All other bits are ignored.
-  le_uint32_t flags = 0;
+  // This field contains the player_flags field on the sender's TObjPlayer object. If the bit 04000000 is set in this
+  // field, then (flags & 1C000000) is or'ed into the TObjPlayer's player_flags field on the receiver's end; all other
+  // bits are ignored. (For the meanings of these bits, see Parsed6x70Data::convert_player_flags.)
+  le_uint32_t player_flags = 0;
   le_float animation_timer = 0;
 } __packed_ws__(G_SetAnimationState_6xAE, 0x10);
 

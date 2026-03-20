@@ -34,10 +34,10 @@ hook_again:
   mr        r3, r30
   bl        TObjPlayer_for_client_id
   cmplwi    r3, 0
-  beq       hook_player_missing
+  beq       hook_skip_player
   lwz       r6, [r3 + 0x0334]  # player_flags
-  lwz       r3, [r13 - 0x5280]  # local_client_id
-  cmp       r3, r30
+  lwz       r4, [r13 - 0x5280]  # local_client_id
+  cmp       r4, r30
   bne       hook_not_local_player
   lis       r3, 0xFFFF
   ori       r3, r3, 0x00FF
@@ -45,15 +45,11 @@ hook_again:
 hook_not_local_player:
   lis       r3, 0xFFFF
   ori       r3, r3, 0xFFFF
-  b         hook_player_flags_ok
-hook_player_missing:
-  lis       r3, 0xFF00
-  ori       r3, r3, 0x00FF
 hook_player_flags_ok:
   bl        set_debug_text_color
 
   lis       r3, 0x0002
-  ori       r3, r3, 0x0018
+  ori       r3, r3, 0x000B
   add       r3, r3, r30
   bl        hook_get_fmt_string
   .binary   "Player %2d: %08X"00000000
@@ -62,6 +58,7 @@ hook_get_fmt_string:
   mr        r5, r30
   bl        render_debug_printf
 
+hook_skip_player:
   addi      r30, r30, 1
   cmplwi    r30, 0x0C
   blt       hook_again

@@ -676,7 +676,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Sets a player's starting position.
     //   valueA = client ID
     //   regsB[0-2] = position (x, y, z as integers)
-    // r  egsB[3] = angle
+    //   regsB[3] = angle
     {0x76, "set_player_start_position", "p_setpos", {CLIENT_ID, {R_REG_SET_FIXED, 4}}, F_V0_V4 | F_ARGS},
 
     // Returns players to the Hunter's Guild counter.

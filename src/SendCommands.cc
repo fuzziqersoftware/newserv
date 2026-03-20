@@ -2663,16 +2663,16 @@ asio::awaitable<void> send_change_player_hp(
 }
 
 asio::awaitable<void> send_remove_negative_conditions(shared_ptr<Client> c) {
-  G_AddStatusEffect_6x0C cmd;
-  cmd.header = {0x0C, sizeof(G_AddStatusEffect_6x0C) >> 2, c->lobby_client_id};
+  G_AddOrRemoveStatusEffect_6x0C_6x0D cmd;
+  cmd.header = {0x0C, sizeof(G_AddOrRemoveStatusEffect_6x0C_6x0D) >> 2, c->lobby_client_id};
   cmd.effect_type = 7; // Healing ring
   cmd.amount = 0;
   co_await send_protected_command(c, &cmd, sizeof(cmd), true);
 }
 
 void send_remove_negative_conditions(std::shared_ptr<Channel> ch, uint16_t client_id) {
-  G_AddStatusEffect_6x0C cmd;
-  cmd.header = {0x0C, sizeof(G_AddStatusEffect_6x0C) >> 2, client_id};
+  G_AddOrRemoveStatusEffect_6x0C_6x0D cmd;
+  cmd.header = {0x0C, sizeof(G_AddOrRemoveStatusEffect_6x0C_6x0D) >> 2, client_id};
   cmd.effect_type = 7; // Healing ring
   cmd.amount = 0;
   ch->send(0x60, 0x00, &cmd, sizeof(cmd));

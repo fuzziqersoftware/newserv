@@ -3446,9 +3446,48 @@ void MapFile::RandomState::generate_shuffled_location_table(
 }
 
 const array<uint32_t, 41> MapFile::RAND_ENEMY_BASE_TYPES = {
-    0x44, 0x43, 0x41, 0x42, 0x40, 0x60, 0x61, 0x62, 0x63, 0x64, 0x65, 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0xA0, 0xA1,
-    0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xD4, 0xD5, 0xD6, 0xD7, 0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD, 0xDE, 0xDF,
-    0xE0, 0xE0, 0xE1};
+    0x0044, /* TObjEneBeast */
+    0x0043, /* TObjEneBm5Wolf */
+    0x0041, /* TObjEneLappy */
+    0x0042, /* TObjEneBm3FlyNest */
+    0x0040, /* TObjEneMoja */
+    0x0060, /* TObjGrass */
+    0x0061, /* TObjEneRe2Flower */
+    0x0062, /* TObjEneNanoDrago */
+    0x0063, /* TObjEneShark */
+    0x0064, /* TObjEneSlime */
+    0x0065, /* TObjEnePanarms */
+    0x0080, /* TObjEneDubchik */
+    0x0081, /* TObjEneGyaranzo */
+    0x0082, /* TObjEneMe3ShinowaReal */
+    0x0083, /* TObjEneMe1Canadin */
+    0x0084, /* TObjEneMe1CanadinLeader */
+    0x0085, /* TOCtrlDubchik */
+    0x00A0, /* TObjEneSaver */
+    0x00A1, /* TObjEneRe4Sorcerer */
+    0x00A2, /* TObjEneDarkGunner */
+    0x00A3, /* TObjEneDarkGunCenter */
+    0x00A4, /* TObjEneDf2Bringer */
+    0x00A5, /* TObjEneRe7Berura */
+    0x00A6, /* TObjEneDimedian */
+    0x00A7, /* TObjEneBalClawBody */
+    0x00A8, /* TObjEneBalClawClaw */
+    0x00D4, /* TObjEneMe3StelthReal */
+    0x00D5, /* TObjEneMerillLia */
+    0x00D6, /* TObjEneBm9Mericarol */
+    0x00D7, /* TObjEneBm5GibonU */
+    0x00D8, /* TObjEneGibbles */
+    0x00D9, /* TObjEneMe1Gee */
+    0x00DA, /* TObjEneMe1GiGue */
+    0x00DB, /* TObjEneDelDepth */
+    0x00DC, /* TObjEneDellBiter */
+    0x00DD, /* TObjEneDolmOlm */
+    0x00DE, /* TObjEneMorfos */
+    0x00DF, /* TObjEneRecobox */
+    0x00E0, /* TObjEneMe3SinowZoaReal/TObjEneEpsilonBody (depending on area) */
+    0x00E0, /* TObjEneMe3SinowZoaReal/TObjEneEpsilonBody (depending on area) */
+    0x00E1, /* TObjEneIllGill */
+};
 
 MapFile::MapFile(std::shared_ptr<const std::string> data) {
   for (uint8_t z = 0; z < this->sections_for_floor.size(); z++) {
