@@ -4431,7 +4431,7 @@ struct G_Unknown_6x57 {
 struct G_LobbyAnimation_6x58 {
   G_ClientIDHeader header;
   le_uint16_t animation_number = 0;
-  le_uint16_t flags = 0; // Only lowest bit appears to be used
+  le_uint16_t flags = 0; // 0 = normal, 1 = use opposite gender's animation
 } __packed_ws__(G_LobbyAnimation_6x58, 8);
 
 // 6x59: Pick up item

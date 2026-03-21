@@ -1149,12 +1149,12 @@ uint32_t Parsed6x70Data::convert_player_flags(uint32_t player_flags, bool to_v3)
   // be able to convert between the two. What's known about these bits (? indicates meaning/behavior is unverified):
   //   V1/V2    V3/V4
   //   00000001 00000001   = player hold is set (see notes on 6x2C and 6x2D in CommandFormats.hh)
-  //   00000002 00000002 ? = unknown (TODO: related to player holds; client sends 6x2D when this is set)
+  //   00000002 00000002   = player hold is set for the purpose of dropping an item
   //   00000004 00000004   = is on a different floor from the local player (or is loading into game)
-  //   00000008 00000008 ? = unknown (TODO)
+  //   00000008 00000008 ? = unknown (TODO: appears to be entirely unused, at least in v3)
   //   00000010 00000010   = player has sent any update command (position, attack, etc.) this frame
-  //   00000020 00000020 ? = unknown (TODO)
-  //   00000040 00000040 ? = unknown (TODO)
+  //   00000020 00000020 ? = unknown (TODO: appears to be entirely unused, at least in v3)
+  //   00000040 00000040 ? = unknown (TODO: appears to be entirely unused, at least in v3)
   //   00000080 00000080   = is in windup animation for technique or PB
   //   00000100 -------- ? = unknown (TODO)
   //   00000200 00000100   = chat, pause, or quick menu is open (suppresses action palette)
@@ -1164,7 +1164,7 @@ uint32_t Parsed6x70Data::convert_player_flags(uint32_t player_flags, bool to_v3)
   //   00002000 00000400   = action palette is disabled by p_action_disable or one of the TObjQuestColA* objects
   //   00004000 00000800   = is about to return to Pioneer 2 after a death (TODO: also set by p_return_guild)
   //   00008000 00001000   = cannot use telepipe / Ryuker (e.g. boss warps set this flag when the player is nearby)
-  //   00010000 00002000 ? = unknown (TODO)
+  //   00010000 00002000 ? = unknown (TODO: appears to be entirely unused, at least in v3)
   //   00020000 00004000   = is teleporting as a result of 6x24 (set only briefly after appearing at destination)
   //   00040000 00008000   = is dead NPC (set by e.g. npc_crptalk_id when regsA[4] == 1)
   //   00080000 -------- ? = unknown (TODO)
@@ -1172,7 +1172,7 @@ uint32_t Parsed6x70Data::convert_player_flags(uint32_t player_flags, bool to_v3)
   //   00200000 00020000   = equipped items are invisible / intangible (e.g. in Pioneer 2)
   //   00400000 00040000   = is loading / changing floors (set by 6x22 and at game join, cleared by 6x23)
   //   00800000 00080000   = player data is in the process of being exported to save file format
-  //   01000000 00100000   = initial free-play cutscene with the Principal has started in offline free-play single-mode
+  //   01000000 00100000   = initial cutscene with the Principal has started in offline free-play single-mode
   //   02000000 00200000   = is visible (set shortly after warping into a floor; remains set until next warp)
   //   04000000 00400000   = position is valid (therefore player can be rendered)
   //   08000000 00800000   = player is invisible if not local, but items are still visible (TODO: what about on BB?)
@@ -1181,7 +1181,8 @@ uint32_t Parsed6x70Data::convert_player_flags(uint32_t player_flags, bool to_v3)
   //   -------- 04000000   = is sitting in lobby chair
   //   -------- 08000000   = using male animations / poses in lobby chair
   //   -------- 10000000   = using alternate lobby chair pose (X+B instead of X+A on GC, for example)
-  //   -------- 20000000 ? = is doing lobby animation? (TODO: verify this)
+  //   -------- 20000000 ? = if set, the player will freeze when attempting any lobby animation (TODO: what does this
+  //                         actually do? it doesn't appear to be set anywhere normally)
   //   -------- 40000000 ? = unknown (TODO: used in offline multi-player Challenge mode; see tree from 3OE1:801BE594)
 
   if (to_v3) {
