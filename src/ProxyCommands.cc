@@ -960,7 +960,8 @@ static asio::awaitable<HandlerResult> SC_6x60_6xA2(shared_ptr<Client> c, Channel
   if (rec.obj_st) {
     if (rec.ignore_def) {
       c->log.info_f("Creating item from box {:04X} (area {:02X})", cmd.entity_index, cmd.effective_area);
-      res = c->proxy_session->item_creator->on_box_item_drop(cmd.effective_area);
+      res = c->proxy_session->item_creator->on_box_item_drop(
+          cmd.effective_area, c->check_flag(Client::Flag::ALL_RARES_ENABLED));
     } else {
       c->log.info_f("Creating item from box {:04X} (area {:02X}; specialized with {:g} {:08X} {:08X} {:08X})",
           cmd.entity_index, cmd.effective_area,
@@ -970,7 +971,8 @@ static asio::awaitable<HandlerResult> SC_6x60_6xA2(shared_ptr<Client> c, Channel
     }
   } else {
     c->log.info_f("Creating item from enemy {:04X} (area {:02X})", cmd.entity_index, cmd.effective_area);
-    res = c->proxy_session->item_creator->on_monster_item_drop(rec.effective_enemy_type, cmd.effective_area);
+    res = c->proxy_session->item_creator->on_monster_item_drop(
+        rec.effective_enemy_type, cmd.effective_area, c->check_flag(Client::Flag::ALL_RARES_ENABLED));
   }
 
   if (res.item.empty()) {

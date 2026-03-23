@@ -37,10 +37,11 @@ public:
     bool is_from_rare_table = false;
   };
 
-  DropResult on_monster_item_drop(EnemyType enemy_type, uint8_t area);
-  DropResult on_box_item_drop(uint8_t area);
+  DropResult on_monster_item_drop(EnemyType enemy_type, uint8_t area, bool force_rare);
+  DropResult on_box_item_drop(uint8_t area, bool force_rare);
   // Note: param3-6 refer to the corresponding fields of the object definition
-  DropResult on_specialized_box_item_drop(uint8_t area, float param3, uint32_t param4, uint32_t param5, uint32_t param6);
+  DropResult on_specialized_box_item_drop(
+      uint8_t area, float param3, uint32_t param4, uint32_t param5, uint32_t param6);
   ItemData base_item_for_specialized_box(uint32_t param4, uint32_t param5, uint32_t param6) const;
 
   std::vector<ItemData> generate_armor_shop_contents(Episode episode, size_t player_level);
@@ -120,9 +121,9 @@ private:
 
   bool should_allow_meseta_drops() const;
 
-  ItemData check_rare_spec_and_create_rare_enemy_item(EnemyType enemy_type, uint8_t area);
-  ItemData check_rare_specs_and_create_rare_box_item(uint8_t area);
-  ItemData check_rate_and_create_rare_item(const RareItemSet::ExpandedDrop& drop, uint8_t area);
+  ItemData check_rare_spec_and_create_rare_enemy_item(EnemyType enemy_type, uint8_t area, bool force_rare);
+  ItemData check_rare_specs_and_create_rare_box_item(uint8_t area, bool force_rare);
+  ItemData check_rate_and_create_rare_item(const RareItemSet::ExpandedDrop& drop, uint8_t area, bool force_rare);
 
   void generate_rare_weapon_bonuses(ItemData& item, Episode episode, uint32_t random_sample);
   void deduplicate_weapon_bonuses(ItemData& item) const;

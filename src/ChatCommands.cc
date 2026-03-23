@@ -2227,6 +2227,15 @@ ChatCommandDefinition cc_fastkill(
       }
       co_return;
     });
+ChatCommandDefinition cc_allrare(
+    {"$allrare"},
+    +[](const Args& a) -> asio::awaitable<void> {
+      a.check_debug_enabled();
+      a.c->toggle_flag(Client::Flag::ALL_RARES_ENABLED);
+      send_text_message_fmt(
+          a.c, "$C6All-rares {}", a.c->check_flag(Client::Flag::ALL_RARES_ENABLED) ? "enabled" : "disabled");
+      co_return;
+    });
 
 ChatCommandDefinition cc_rand(
     {"$rand"},

@@ -3484,6 +3484,7 @@ const array<uint32_t, 41> MapFile::RAND_ENEMY_BASE_TYPES = {
     0x00DD, /* TObjEneDolmOlm */
     0x00DE, /* TObjEneMorfos */
     0x00DF, /* TObjEneRecobox */
+    // This is not a bug; 0x00E0 really does appear twice in this list on the client.
     0x00E0, /* TObjEneMe3SinowZoaReal/TObjEneEpsilonBody (depending on area) */
     0x00E0, /* TObjEneMe3SinowZoaReal/TObjEneEpsilonBody (depending on area) */
     0x00E1, /* TObjEneIllGill */

@@ -2964,12 +2964,13 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
   }
 
   if (rec.should_drop) {
-    auto generate_item = [&]() -> ItemCreator::DropResult {
+    auto generate_item_for_client = [&](std::shared_ptr<Client> c) -> ItemCreator::DropResult {
+      bool force_rare = c->check_flag(Client::Flag::ALL_RARES_ENABLED);
       if (rec.obj_st) {
         if (rec.ignore_def) {
           l->log.info_f("Creating item from box {:04X} => K-{:03X} (area {:02X})",
               cmd.entity_index, rec.obj_st->k_id, cmd.effective_area);
-          return l->item_creator->on_box_item_drop(cmd.effective_area);
+          return l->item_creator->on_box_item_drop(cmd.effective_area, force_rare);
         } else {
           l->log.info_f(
               "Creating item from box {:04X} => K-{:03X} (area {:02X}; specialized with {:g} {:08X} {:08X} {:08X})",
@@ -2980,7 +2981,7 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
       } else if (rec.target_ene_st) {
         l->log.info_f("Creating item from enemy {:04X} => E-{:03X} (area {:02X})",
             cmd.entity_index, rec.target_ene_st->e_id, cmd.effective_area);
-        return l->item_creator->on_monster_item_drop(rec.effective_enemy_type, cmd.effective_area);
+        return l->item_creator->on_monster_item_drop(rec.effective_enemy_type, cmd.effective_area, force_rare);
       } else {
         throw runtime_error("neither object nor enemy were present");
       }
@@ -3002,7 +3003,7 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
         throw logic_error("unhandled simple drop mode");
       case ServerDropMode::SERVER_SHARED:
       case ServerDropMode::SERVER_DUPLICATE: {
-        auto res = generate_item();
+        auto res = generate_item_for_client(c);
         if (res.item.empty()) {
           l->log.info_f("No item was created");
         } else {
@@ -3040,7 +3041,7 @@ static asio::awaitable<void> on_entity_drop_item_request(shared_ptr<Client> c, S
       case ServerDropMode::SERVER_PRIVATE: {
         for (const auto& lc : l->clients) {
           if (lc && (rec.obj_st || (lc->floor == cmd.floor))) {
-            auto res = generate_item();
+            auto res = generate_item_for_client(lc);
             if (res.item.empty()) {
               l->log.info_f("No item was created for {}", lc->channel->name);
             } else {

@@ -78,6 +78,7 @@ public:
     INFINITE_HP_ENABLED                        = 0x0000000040000000,
     INFINITE_TP_ENABLED                        = 0x0000000080000000,
     FAST_KILLS_ENABLED                         = 0x0000000100000000,
+    ALL_RARES_ENABLED                          = 0x0000100000000000,
     DEBUG_ENABLED                              = 0x0000000200000000,
     ITEM_DROP_NOTIFICATIONS_1                  = 0x0000000400000000,
     ITEM_DROP_NOTIFICATIONS_2                  = 0x0000000800000000,
