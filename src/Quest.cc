@@ -154,7 +154,7 @@ string find_seed_and_decrypt_download_quest_data_section(
     const void* data_section, size_t size, bool skip_checksum, bool is_ep3_trial, size_t num_threads) {
   mutex result_lock;
   string result;
-  uint64_t result_seed = phosg::parallel_range_blocks<uint64_t>([&](uint64_t seed, size_t) {
+  uint64_t result_seed = phosg::parallel_blocks<uint64_t>([&](uint64_t seed, size_t) {
     try {
       string ret = decrypt_download_quest_data_section<BE>(data_section, size, seed, skip_checksum, is_ep3_trial);
       lock_guard<mutex> g(result_lock);

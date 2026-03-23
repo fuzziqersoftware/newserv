@@ -464,7 +464,7 @@ Action a_psov2_encrypt_single_test(
             current_value, num_mismatches, phosg::format_duration(crypt_time), phosg::format_duration(single_time),
             static_cast<float>(crypt_time) / single_time);
       };
-      phosg::parallel_range_blocks<uint64_t>(thread_fn, 0, 0x100000000, 0x1000, num_threads, progress_fn);
+      phosg::parallel_blocks<uint64_t>(thread_fn, 0, 0x100000000, 0x1000, num_threads, progress_fn);
 
       progress_fn(0, 0, 0xFFFFFFFF, 0);
     });
@@ -813,7 +813,7 @@ static void a_encrypt_decrypt_vms_save_fn(phosg::Arguments& args) {
           }
 
         } else {
-          uint64_t seed = phosg::parallel_range_blocks<uint64_t>([&](uint64_t serial_number, size_t) -> bool {
+          uint64_t seed = phosg::parallel_blocks<uint64_t>([&](uint64_t serial_number, size_t) -> bool {
             try {
               auto decrypted = decrypt_fixed_size_data_section_t<StructT, false, ChecksumLength>(
                   data_section, sizeof(StructT), serial_number, skip_checksum, override_round2_seed);
@@ -1366,7 +1366,7 @@ Action a_salvage_gci(
         };
 
         if (!round2) {
-          phosg::parallel_range_blocks<uint64_t>(
+          phosg::parallel_blocks<uint64_t>(
               [&](uint64_t seed, size_t thread_num) -> bool {
                 auto decrypted = decrypt_fixed_size_data_section_t<StructT, true>(
                     data_section, header.data_size, seed, true);
@@ -1386,7 +1386,7 @@ Action a_salvage_gci(
           // high half, which is much faster than trying all possible seeds. Unfortunately, this relies on the
           // distribution of values in the plaintext, so it only works for the round-2 seed - the decrypted data after
           // round 1 is still essentially random.
-          phosg::parallel_range_blocks<uint64_t>(try_round2_seed, 0, 0x100000, 0x1000, num_threads);
+          phosg::parallel_blocks<uint64_t>(try_round2_seed, 0, 0x100000, 0x1000, num_threads);
           auto intermediate_top_seeds = merge_top_seeds(top_seeds_by_thread);
           if (intermediate_top_seeds.empty()) {
             throw logic_error("no intermediate seeds were found");
@@ -1397,7 +1397,7 @@ Action a_salvage_gci(
           for (auto& top_seeds : top_seeds_by_thread) {
             top_seeds.clear();
           }
-          phosg::parallel_range_blocks<uint64_t>(
+          phosg::parallel_blocks<uint64_t>(
               [&](uint64_t seed, size_t thread_num) -> bool {
                 return try_round2_seed((seed << 16) | round2_lower_half, thread_num);
               },
@@ -1405,7 +1405,7 @@ Action a_salvage_gci(
 
         } else {
           // The user requested not to take any shortcuts, so burn a lot of CPU power
-          phosg::parallel_range_blocks<uint64_t>(try_round2_seed, 0, 0x100000000, 0x1000, num_threads);
+          phosg::parallel_blocks<uint64_t>(try_round2_seed, 0, 0x100000000, 0x1000, num_threads);
         }
 
         print_top_seeds(merge_top_seeds(top_seeds_by_thread));
@@ -1474,7 +1474,7 @@ Action a_find_decryption_seed(
         return true;
       };
 
-      uint64_t seed = phosg::parallel_range_blocks<uint64_t>([&](uint64_t seed, size_t) -> bool {
+      uint64_t seed = phosg::parallel_blocks<uint64_t>([&](uint64_t seed, size_t) -> bool {
         string be_decrypt_buf = ciphertext.substr(0, max_plaintext_size);
         string le_decrypt_buf = ciphertext.substr(0, max_plaintext_size);
         if (uses_v3_encryption(version)) {
@@ -2791,26 +2791,26 @@ Action a_generate_ep3_cards_html(
               }
             }
 
-            phosg::parallel_range<uint32_t>([&](uint32_t index, size_t) -> bool {
-              auto& info = this->card_infos[index];
-              if (!info.large_filename.empty()) {
-                auto img = phosg::ImageRGBA8888N::from_file_data(phosg::load_file(info.large_filename));
-                img.resize(512, 399);
-                info.large_data_url = img.serialize(phosg::ImageFormat::PNG_DATA_URL);
-              }
-              if (!info.medium_filename.empty()) {
-                auto img = phosg::ImageRGBA8888N::from_file_data(phosg::load_file(info.medium_filename));
-                img.resize(184, 144);
-                info.medium_data_url = img.serialize(phosg::ImageFormat::PNG_DATA_URL);
-              }
-              if (!info.small_filename.empty()) {
-                auto img = phosg::ImageRGBA8888N::from_file_data(phosg::load_file(info.small_filename));
-                img.resize(58, 43);
-                info.small_data_url = img.serialize(phosg::ImageFormat::PNG_DATA_URL);
-              }
-              return false;
-            },
-                0, this->card_infos.size(), num_threads);
+            phosg::parallel_range(
+                this->card_infos, [&](CardInfo& info, size_t) -> bool {
+                  if (!info.large_filename.empty()) {
+                    auto img = phosg::ImageRGBA8888N::from_file_data(phosg::load_file(info.large_filename));
+                    img.resize(512, 399);
+                    info.large_data_url = img.serialize(phosg::ImageFormat::PNG_DATA_URL);
+                  }
+                  if (!info.medium_filename.empty()) {
+                    auto img = phosg::ImageRGBA8888N::from_file_data(phosg::load_file(info.medium_filename));
+                    img.resize(184, 144);
+                    info.medium_data_url = img.serialize(phosg::ImageFormat::PNG_DATA_URL);
+                  }
+                  if (!info.small_filename.empty()) {
+                    auto img = phosg::ImageRGBA8888N::from_file_data(phosg::load_file(info.small_filename));
+                    img.resize(58, 43);
+                    info.small_data_url = img.serialize(phosg::ImageFormat::PNG_DATA_URL);
+                  }
+                  return false;
+                },
+                num_threads);
           }
 
           this->num_output_columns = 1 + (!no_disassembly) + this->show_small_column + this->show_medium_column + this->show_large_column;
@@ -3350,7 +3350,7 @@ Action a_optimize_materialized_map(
 
         return false;
       };
-      phosg::parallel_range_blocks<uint64_t>(thread_fn, 0, 0x100000000, 0x100, num_threads);
+      phosg::parallel_blocks<uint64_t>(thread_fn, 0, 0x100000000, 0x100, num_threads);
     });
 
 Action a_print_free_supermap(
@@ -3636,7 +3636,7 @@ Action a_generate_all_dc_serial_numbers(
             found_counts[7].load(), serial_numbers[7].size(),
             found_counts[8].load(), serial_numbers[8].size());
       };
-      phosg::parallel_range_blocks<uint64_t>(thread_fn, 0, 0x100000000, 0x1000, num_threads, progress_fn);
+      phosg::parallel_blocks<uint64_t>(thread_fn, 0, 0x100000000, 0x1000, num_threads, progress_fn);
 
       if (num_mismatches > 0) {
         throw logic_error("mismatches occurred during test");
@@ -3780,7 +3780,7 @@ Action a_replay_ep3_battle_commands(
         run_replay(base_seed, 0);
       } else {
         size_t num_threads = args.get<size_t>("threads", 0);
-        phosg::parallel_range_blocks<int64_t>(run_replay, 0, 0x100000000, 0x1000, num_threads);
+        phosg::parallel_blocks<int64_t>(run_replay, 0, 0x100000000, 0x1000, num_threads);
       }
     });
 
