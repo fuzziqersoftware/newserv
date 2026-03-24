@@ -675,8 +675,8 @@ struct CardDefinition {
   // - (rate / 10) % 100 (that is, the tens and hundreds decimal places) specify the environment number + 1. For
   //   example, if this field contains 5, then this drop only applies if the battle took place at Molae Venti
   //   (environment number 4). If this field is zero, the drop applies regardless of where the battle took place.
-  // - rate / 1000 (the thousands decimal place) specifies the rarity class. This can be any number in the range [0,
-  //   9], and affects how likely the card is to appear based on the player's level. See below for details.
+  // - (rate / 1000) % 10 (the thousands decimal place) specifies the rarity class. This can be any number in the range
+  //   [0, 9], and affects how likely the card is to appear based on the player's level. See below for details.
   // - rate / 10000 (the ten-thousands decimal place) specifies if the drop rate applies only if the player used a
   //   Hunters deck (1), only if they used an Arkz deck (2), or if they used any deck (0).
   //
@@ -684,16 +684,16 @@ struct CardDefinition {
   // that applies, the game adds the card ID into an appropriate bucket based on the rarity class. (If both drop rates
   // for a card apply, the card ID is added twice.) The player's level class is then computed according to the
   // following table:
-  //             1     2     3       4       5       6       7       8       9     10
-  //   CLvOff   1-2   3-4   5-9    10-14   15-19   20-25   26-29   30-39   40-49   50+
-  //   CLvOn    1-2   3-4   5-10   11-16   17-23   24-32   33-39   40-49   50-99   100+
+  //   Level class    1     2     3       4       5       6       7       8       9      10
+  //   CLvOff        1-2   3-4   5-9    10-14   15-19   20-25   26-29   30-39   40-49    50+
+  //   CLvOn         1-2   3-4   5-10   11-16   17-23   24-32   33-39   40-49   50-99   100+
   // For the purposes of this computation, the player's level is used by default (CLvOn or CLvOff), but the map may
   // override it - see win_level_override and loss_level_override in MapDefinition. This specifies which row in the
   // following tables will be used.
   //
   // Cards are then chosen from the buckets with a weighted distribution according to these tables (row is player's
   // level class, column is card's rarity class):
-  //   Offline:
+  //   Offline ---------------------------------------------------------------
   //     LC | RC = 0       1       2       3       4       5     6     7  8  9
   //      1 |   8000    2000      50
   //      2 |   6000    3500     500      20
@@ -705,7 +705,7 @@ struct CardDefinition {
   //      8 |   1789    2100    2100    2100    1100     800    10     1
   //      9 |  14620   20000   21000   22000   13000    9000   300    80
   //     10 | 133997  190000  200000  200000  150000  120000  5000  1000  2  1
-  //   Online:
+  //   Online --------------------------------------------------------------------
   //     LC | RC = 0       1       2       3       4       5       6      7   8  9
   //      1 |   8000    2000      50
   //      2 |   6000    3500     500      50
@@ -729,31 +729,33 @@ struct CardDefinition {
   // - In the blue pack, the restricted cards must be creature cards.
   // - In the red pack, the restricted cards must be item cards.
   // - In the green pack, the restricted cards must be action cards.
+  // - In the black pack, the restricted cards may be any card type.
   // For example, if you get a B+ rank after winning a battle and pick the green pack, you will always get at least two
-  // action cards.
+  // action cards. The remaining cards can be any type, so this restriction essentially biases the blue, red, and green
+  // packs toward specific card types.
   //
-  // The game then samples N card IDs from the appropriate buckets (where N is the number chosen above), but for the
-  // first 1 or 2 cards, it applies the restriction described above and re-draws if the card is the wrong type. After
-  // sampling the N card IDs, it sorts them and presents them to the player.
+  // The game then samples N card IDs from the appropriate buckets (where N is the number chosen above based on the
+  // post-battle rank), but for the first 1 or 2 cards, it applies the restriction described above and re-draws if the
+  // card is the wrong type. After sampling the N card IDs, it sorts them and presents them to the player.
   //
   // There is one more effect to consider after cards are chosen: cards may randomly transform into VIP cards or into
-  // stronger (and rarer) cards. The chance of each of these occurring is based on the rarity of that card that may
+  // stronger (and rarer) cards. The chance of each of these occurring is based on the rarity of the card that may
   // transform, and the number of copies of that card which the player already has. In the below table, P(activate) is
   // the probability that any transformation is attempted at all; if this check passes, the player sees the glow effect
   // and "The change will occur..." text. P(vip) is the probability that the card becomes a VIP card, after the glow
   // effect plays. P(rare) is the probability of the card becoming a rarer card after the glow effect. Therefore, the
   // final probability that a card will transform into a VIP card is P(activate) * P(vip), and the final probability of
   // transforming into a rarer card is P(activate) * P(rare).
-  //          ======== Card rank N4-N1 ========  ======== Card rank R4-R1 ========
-  //   Count  P(activate)  P(rare)  P(vip)       P(activate)  P(rare)  P(vip)
-  //    0-4   0%            0%      0%           0%            0%      0%
-  //    5-10  1.923077%    55%      0.5%         2.0408163%   55%      0.5%
-  //   11-16  2.1276595%   60%      0.45454544%  2.2727273%   60%      0.4761905%
-  //   17-24  2.3809524%   70%      0.4347826%   2.5641026%   70%      0.45454544%
-  //   25-32  2.7027028%   70%      0.4%         2.9411765%   70%      0.5%
-  //   33-40  3.125%       80%      0.38461538%  3.448276%    70%      0.5%
-  //   41-52  3.7037037%   80%      0.35714286%  4.1666668%   80%      0.45454544%
-  //   53-99  5%           90%      0.33333334%  5.263158%    90%      0.4347826%
+  //           ========= Card rank N4-N1 =========   ========= Card rank R4-R1 =========
+  //   Count   P(activate)   P(rare)   P(vip)        P(activate)   P(rare)   P(vip)
+  //    0-4    0%             0%       0%            0%             0%       0%
+  //    5-10   1.923077%     55%       0.5%          2.0408163%    55%       0.5%
+  //   11-16   2.1276595%    60%       0.45454544%   2.2727273%    60%       0.4761905%
+  //   17-24   2.3809524%    70%       0.4347826%    2.5641026%    70%       0.45454544%
+  //   25-32   2.7027028%    70%       0.4%          2.9411765%    70%       0.5%
+  //   33-40   3.125%        80%       0.38461538%   3.448276%     70%       0.5%
+  //   41-52   3.7037037%    80%       0.35714286%   4.1666668%    80%       0.45454544%
+  //   53-99   5%            90%       0.33333334%   5.263158%     90%       0.4347826%
   //
   // If a transformation occurs, the card transforms to a card of a different rank. First, the game consults the
   // following table to determine the rank of the resulting card (original card's rank on the left, new card's rank
