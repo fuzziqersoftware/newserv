@@ -702,7 +702,11 @@ string RareItemSet::serialize_html(
         std::string exact_token = std::format("Exact rate: {} / {}", frac.first, frac.second);
         if (common_item_set && type_def && type_def->rt_index != 0xFF) {
           auto table = common_item_set->get_table(episode, mode, difficulty, section_id);
-          uint8_t dar = table->enemy_type_drop_probs.at(type_def->type);
+          uint8_t dar = 0;
+          try {
+            dar = table->enemy_type_drop_probs.at(type_def->type);
+          } catch (const out_of_range&) {
+          }
           exact_token += std::format(" (DAR: {}%)", dar);
           frac.first *= dar;
           frac.second *= 100;
