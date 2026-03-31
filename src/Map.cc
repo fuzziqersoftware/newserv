@@ -866,9 +866,10 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //     param5; if the dot product is positive, param2 is used)
     //   param3 = room ID to use if the dot product described above is zero or negative
     //   param5 = angle (see param2)
-    //   param6 = if equal to 0x00010000, only the player's room_id field is set, and game flag 0x02000000 is set on
-    //     the player; if not equal to 0x00010000, then both room_id and room_id2 are set and no game flag is set
-    //     (TODO: What are the visible behavior differences due to this parameter?)
+    //   param6 = on v2 and before, this is ignored; on v3 and later, if param6 is equal to 0x00010000, only the
+    //     player's room_id field is set, and player flag 0x02000000 is set on the player; if not equal to 0x00010000,
+    //     then both room_id and room_id_in_custom_area (if in a non-rearrangeable area, like Pioneer 2 or Forest) are
+    //     set and no game flag is set (TODO: What are the visible behavior differences due to this parameter?)
     {0x000E, F_V0_V4, 0x00005FFFFFF83FFE, "TObjRoomId"},
 
     // Sensor of some kind (TODO). Params:
@@ -6607,7 +6608,7 @@ void MapState::import_enemy_states_from_sync(Version from_version, const SyncEne
       // Only set the state if it's not an alias
       if (ene_st->super_ene == ene) {
         if (ene_st->game_flags != entry.flags) {
-          this->log.warning_f("({:04X} => E-{:03X}) Flags from client ({:08X}) do not match game flags from map ({:08X})",
+          this->log.warning_f("({:04X} => E-{:03X}) Game flags from client ({:08X}) do not match game flags from map ({:08X})",
               enemy_index, ene_st->e_id, entry.flags, ene_st->game_flags);
           ene_st->game_flags = entry.flags;
         }

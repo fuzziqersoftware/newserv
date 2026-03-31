@@ -721,7 +721,7 @@ const ChallengeTemplateDefinition& get_challenge_template_definition(Version ver
 }
 
 PlayerHoldState::PlayerHoldState(const PlayerHoldState_DCProtos& proto)
-    : unknown_a1(proto.unknown_a1),
+    : expiration_frames(proto.expiration_frames),
       unknown_a2(proto.unknown_a2),
       unknown_a3(0),
       trigger_radius2(proto.trigger_radius2),
@@ -730,7 +730,7 @@ PlayerHoldState::PlayerHoldState(const PlayerHoldState_DCProtos& proto)
 
 PlayerHoldState::operator PlayerHoldState_DCProtos() const {
   PlayerHoldState_DCProtos ret;
-  ret.unknown_a1 = this->unknown_a1;
+  ret.expiration_frames = this->expiration_frames;
   ret.unknown_a2 = this->unknown_a2;
   ret.trigger_radius2 = this->trigger_radius2;
   ret.x = this->x;

@@ -1129,7 +1129,7 @@ struct TelepipeState {
 
 struct PlayerHoldState_DCProtos {
   // This is used in all versions of this command except DCNTE and 11/2000.
-  /* 00 */ le_uint16_t unknown_a1 = 0;
+  /* 00 */ le_uint16_t expiration_frames = 0;
   /* 02 */ le_uint16_t unknown_a2 = 0;
   // unknown_a3 is missing in this format, unlike the v1+ format below
   /* 04 */ le_float trigger_radius2 = 0.0f;
@@ -1140,7 +1140,7 @@ struct PlayerHoldState_DCProtos {
 
 struct PlayerHoldState {
   // This is used in all versions of this command except DCNTE and 11/2000.
-  /* 00 */ le_uint16_t unknown_a1 = 0;
+  /* 00 */ le_uint16_t expiration_frames = 0;
   /* 02 */ le_uint16_t unknown_a2 = 0;
   /* 04 */ le_uint32_t unknown_a3 = 0;
   /* 08 */ le_float trigger_radius2 = 0.0f;

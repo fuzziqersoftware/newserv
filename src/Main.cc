@@ -1136,9 +1136,8 @@ Action a_decrypt_dcv2_executable(
     executable (DP_ADDRESS.JPN), INDEXES should be the path to the index fixup\n\
     table (KATSUO.SEA), and VALUES should be the path to the value fixup table\n\
     (IWASHI.SEA). The output is written to EXEC.dec.\n\
-    If --simple is given, uses the simpler encryption method used in some\n\
-    community modifications of the game (Enhancement Pack, for example). In\n\
-    this case, --seed is not required; if not given, finds the seed\n\
+    If --simple is given, uses the encryption method used in Ives\' Enhancement\n\
+    Pack. In this case, --seed is not required; if not given, finds the seed\n\
     automatically, and prints it to stderr so you will be able to use it when\n\
     re-encrypting.\n",
     +[](phosg::Arguments& args) {
@@ -1166,8 +1165,8 @@ Action a_encrypt_dcv2_executable(
     executable (DP_ADDRESS.JPN) and INDEXES should be the path to the index\n\
     fixup table (KATSUO.SEA). The output is written to EXEC.enc and\n\
     INDEXES.enc.\n\
-    If --simple is given, uses the simpler encryption method used in some\n\
-    community modifications of the game. In this case, --seed is required.\n",
+    If --simple is given, uses the simpler encryption method used in Ives\'\n\
+    Enhancement Pack. In this case, --seed is required.\n",
     +[](phosg::Arguments& args) {
       string executable_filename = args.get<string>("executable", true);
       string executable_data = phosg::load_file(executable_filename);
@@ -1188,7 +1187,7 @@ Action a_encrypt_dcv2_executable(
 Action a_decode_gci_snapshot(
     "decode-gci-snapshot", "\
   decode-gci-snapshot [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
-    Decode a PSO GC snapshot file into a Windows BMP image.\n",
+    Decode a PSO GC snapshot file (in GCI format) into a Windows BMP image.\n",
     +[](phosg::Arguments& args) {
       auto data = read_input_data(args);
       phosg::StringReader r(data);
