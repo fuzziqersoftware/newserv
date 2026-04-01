@@ -4786,8 +4786,8 @@ struct G_6x70_Base_V1 {
   /* 0078 */ G_6x70_Sub_Telepipe telepipe;
   // Only a few bits appear to be used in death_flags. Known values:
   //   00000001 = should drop weapon/item on death
-  //   00000002 = has automatic revival item (Scape Doll or Ragol Ring)
-  //   00000004 = unknown (TODO; causes client to send 6x31 instead of 6xA1 when revived)
+  //   00000002 = does not have any automatic revival item (Scape Doll or Ragol Ring)
+  //   00000004 = was revived by automatic revival item
   /* 0094 */ le_uint32_t death_flags = 0;
   /* 0098 */ PlayerHoldState hold_state;
   /* 00AC */ le_uint32_t area = 0;
