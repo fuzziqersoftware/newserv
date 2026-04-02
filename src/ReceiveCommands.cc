@@ -788,7 +788,7 @@ static void set_console_client_flags(shared_ptr<Client> c, uint32_t sub_version)
   }
 }
 
-static asio::awaitable<void> on_DB_V3(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<void> on_DB_GC(shared_ptr<Client> c, Channel::Message& msg) {
   if (c->channel->crypt_in->type() == PSOEncryption::Type::V2) {
     throw runtime_error("GC trial edition client sent V3 verify account command");
   }
@@ -799,10 +799,10 @@ static asio::awaitable<void> on_DB_V3(shared_ptr<Client> c, Channel::Message& ms
   c->serial_number = cmd.serial_number.decode();
   c->access_key = cmd.access_key.decode();
   c->hardware_id = cmd.hardware_id;
-  set_console_client_flags(c, cmd.sub_version);
   c->serial_number2 = cmd.serial_number2.decode();
   c->access_key2 = cmd.access_key2.decode();
   c->password = cmd.password.decode();
+  set_console_client_flags(c, cmd.sub_version);
 
   uint32_t serial_number = stoul(c->serial_number, nullptr, 16);
   try {
@@ -831,6 +831,17 @@ static asio::awaitable<void> on_DB_V3(shared_ptr<Client> c, Channel::Message& ms
   if (!c->login) {
     c->channel->disconnect();
   }
+  co_return;
+}
+
+static asio::awaitable<void> on_DB_XB(shared_ptr<Client> c, Channel::Message& msg) {
+  check_size_t<C_VerifyAccount_V3_DB>(msg.data);
+  // Just like on GC, the XBox client sends DB in response to 17. But Insignia's proxy never sends DB to the remote
+  // server, so we'll only see this command from an Xbox client if it's connected through a different Xbox Live
+  // implementation. Unfortunately, we can't verify the account yet - we need the account ID, which isn't in this
+  // command and is sent later in the 9E command. To make the client send 9E (which will actually perform the
+  // credential checks and log the client in), we unconditionally send 9A 02 here.
+  send_command(c, 0x9A, 0x02);
   co_return;
 }
 
@@ -5816,7 +5827,7 @@ static on_command_t handlers[0x100][NUM_VERSIONS] = {
 /* D8 */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        on_D8,       on_D8,       on_D8,          on_D8,          on_D8,          on_D8,          on_D8,          on_D8},
 /* D9 */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        on_D9,       on_D9,       on_D9,          on_D9,          on_D9,          on_D9,          on_D9,          on_D9},
 /* DA */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* DB */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     on_DB_V3,       on_DB_V3,       on_DB_V3,       on_DB_V3,       on_DB_V3,       nullptr},
+/* DB */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     on_DB_GC,       on_DB_GC,       on_DB_GC,       on_DB_GC,       on_DB_XB,       nullptr},
 /* DC */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        on_DC_Ep3,      on_DC_Ep3,      nullptr,        on_DC_BB},
 /* DD */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* DE */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
@@ -5882,20 +5893,20 @@ static void check_logged_out_command(Version version, uint8_t command) {
     case Version::GC_EP3_NTE:
     case Version::GC_EP3:
       // See comment in the DC case above for why DC commands are included here.
-      if (command != 0x88 && // DC NTE
-          command != 0x8B && // DC NTE
-          command != 0x90 && // DC v1
-          command != 0x93 && // DC v1
-          command != 0x9A && // DC v2
-          command != 0x9C && // DC v2, GC
-          command != 0x9D && // DC v2, GC trial edition
-          command != 0x9E && // GC non-trial
-          command != 0xDB) { // GC non-trial
+      if ((command != 0x88) && // DC NTE
+          (command != 0x8B) && // DC NTE
+          (command != 0x90) && // DC v1
+          (command != 0x93) && // DC v1
+          (command != 0x9A) && // DC v2
+          (command != 0x9C) && // DC v2, GC
+          (command != 0x9D) && // DC v2, GC trial edition
+          (command != 0x9E) && // GC non-trial
+          (command != 0xDB)) { // GC non-trial
         throw runtime_error("only commands 88, 8B, 90, 93, 9A, 9C, 9D, 9E, and DB may be sent before login");
       }
       break;
     case Version::XB_V3:
-      if (command != 0x9E && command != 0x9F) {
+      if ((command != 0x9E) && (command != 0x9F) && (command != 0xDB)) {
         throw runtime_error("only commands 9E and 9F may be sent before login");
       }
       break;
