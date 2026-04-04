@@ -230,6 +230,9 @@ void Lobby::create_item_creator(Version logic_version) {
       effective_section_id,
       rand_crypt,
       this->quest ? this->quest->meta.battle_rules : nullptr);
+  if (s->use_legacy_item_random_behavior) {
+    this->item_creator->set_legacy_replay();
+  }
 }
 
 uint8_t Lobby::effective_section_id() const {

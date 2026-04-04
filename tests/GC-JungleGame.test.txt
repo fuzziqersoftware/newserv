@@ -1,4 +1,5 @@
 ### use psov2 crypt
+### use legacy item random behavior
 I 39471 2025-05-21 23:39:20 - [IPStackSimulator] Virtual network N-2 connected via T-IPS-5059
 I 39471 2025-05-21 23:39:20 - [IPStackSimulator] Client opened TCP connection 23232323238C062D (10.0.1.535:1581 -> 35.35.35.35:9100) (acked_server_seq=BD656BE7, next_client_seq=4F6748DF)
 I 39471 2025-05-21 23:39:20 - [C-9] Channel name updated: C-9 @ ipss:N-2:127.0.0.1:57072

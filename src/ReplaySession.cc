@@ -365,6 +365,9 @@ ReplaySession::ReplaySession(shared_ptr<ServerState> state, FILE* input_log, boo
     if (line == "### use psov2 crypt") {
       this->state->use_psov2_rand_crypt = true;
     }
+    if (line == "### use legacy item random behavior") {
+      this->state->use_legacy_item_random_behavior = true;
+    }
     if (line.starts_with("### cc ")) {
       // ### cc $<chat command>
       if (this->clients.size() != 1) {

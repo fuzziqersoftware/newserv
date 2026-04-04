@@ -1,4 +1,5 @@
 ### use psov2 crypt
+### use legacy item random behavior
 I 35932 2025-05-22 21:56:44 - [C-1] Channel name updated: C-1 @ ip:10.37.129.2:49620
 I 35932 2025-05-22 21:56:44 - [C-1] Created
 I 35932 2025-05-22 21:56:44 - [GameServer] Client connected: C-1 via TG-9300-PC_V2-pc-game_server

@@ -157,6 +157,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool default_switch_assist_enabled = false;
   bool use_game_creator_section_id = false;
   bool use_psov2_rand_crypt = false; // Used in some tests
+  bool use_legacy_item_random_behavior = false; // Used in some tests
   bool rare_notifs_enabled_for_client_drops = false;
   bool default_rare_notifs_enabled_v1_v2 = false;
   bool default_rare_notifs_enabled_v3_v4 = false;

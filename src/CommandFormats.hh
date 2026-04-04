@@ -1826,13 +1826,13 @@ struct C_Login_DC_PC_GC_9D {
   /* 08 */ be_uint64_t hardware_id;
   /* 10 */ le_uint32_t sub_version = 0;
   /* 14 */ uint8_t is_extended = 0; // If 1, structure has extended format
-  /* 15 */ Language language = Language::JAPANESE; // 0 = JP, 1 = EN, 2 = DE, 3 = FR, 4 = ES
+  /* 15 */ Language language = Language::JAPANESE;
   /* 16 */ parray<uint8_t, 0x2> unused3; // Always zeroes
   /* 18 */ pstring<TextEncoding::ASCII, 0x10> v1_serial_number;
   /* 28 */ pstring<TextEncoding::ASCII, 0x10> v1_access_key;
   /* 38 */ pstring<TextEncoding::ASCII, 0x10> serial_number; // On XB, this is the XBL gamertag
   /* 48 */ pstring<TextEncoding::ASCII, 0x10> access_key; // On XB, this is the XBL user ID
-  /* 58 */ pstring<TextEncoding::ASCII, 0x30> serial_number2; // On DCv2, this is the hardware ID; on XB, this is the XBL gamertag
+  /* 58 */ pstring<TextEncoding::ASCII, 0x30> serial_number2; // DCv2: hardware ID; XB: XBL gamertag
   /* 88 */ pstring<TextEncoding::ASCII, 0x30> access_key2; // On XB, this is the XBL user ID
   /* B8 */ pstring<TextEncoding::ASCII, 0x10> login_character_name;
   /* C8 */

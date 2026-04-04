@@ -37,6 +37,10 @@ public:
     bool is_from_rare_table = false;
   };
 
+  inline void set_legacy_replay() {
+    this->is_legacy_replay = true;
+  }
+
   DropResult on_monster_item_drop(EnemyType enemy_type, uint8_t area, bool force_rare);
   DropResult on_box_item_drop(uint8_t area, bool force_rare);
   // Note: param3-6 refer to the corresponding fields of the object definition
@@ -70,6 +74,7 @@ private:
 
   phosg::PrefixedLogger log;
   Version logic_version;
+  bool is_legacy_replay;
   std::shared_ptr<const ItemData::StackLimits> stack_limits;
   GameMode mode;
   Difficulty difficulty;
@@ -123,7 +128,9 @@ private:
 
   ItemData check_rare_spec_and_create_rare_enemy_item(EnemyType enemy_type, uint8_t area, bool force_rare);
   ItemData check_rare_specs_and_create_rare_box_item(uint8_t area, bool force_rare);
-  ItemData check_rate_and_create_rare_item(const RareItemSet::ExpandedDrop& drop, uint8_t area, bool force_rare);
+  ItemData check_rare_specs_and_create_rare_item(
+      const std::vector<RareItemSet::ExpandedDrop>& specs, uint8_t area, bool force_rare);
+  ItemData create_rare_item(const ItemData& drop_item, uint8_t area);
 
   void generate_rare_weapon_bonuses(ItemData& item, Episode episode, uint32_t random_sample);
   void deduplicate_weapon_bonuses(ItemData& item) const;

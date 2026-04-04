@@ -38,6 +38,7 @@ ItemCreator::ItemCreator(
     shared_ptr<const BattleRules> restrictions)
     : log(std::format("[ItemCreator:{}/{}/{}/{}] ", phosg::name_for_enum(stack_limits->version), abbreviation_for_mode(mode), abbreviation_for_difficulty(difficulty), section_id), lobby_log.min_level),
       logic_version(stack_limits->version),
+      is_legacy_replay(false),
       stack_limits(stack_limits),
       mode(mode),
       difficulty(difficulty),
@@ -286,30 +287,48 @@ ItemCreator::DropResult ItemCreator::on_monster_item_drop(EnemyType enemy_type, 
   }
 }
 
+ItemData ItemCreator::check_rare_specs_and_create_rare_item(
+    const std::vector<RareItemSet::ExpandedDrop>& specs, uint8_t area, bool force_rare) {
+  if (specs.empty()) {
+    return ItemData();
+  }
+
+  // This logic differs from the original client logic. This logic "stacks" all rare rates into a single probability
+  // space, whereas the original client logic chooses a new random number for each rare spec that it checks. The
+  // stacking logic makes the order of specs irrelevant, whereas the original client logic means that later specs are
+  // actually more rare than they should be. In the original client, this only matters for boxes, because enemies could
+  // not have multiple specs. Also, the original code uses 0xFFFFFFFF as the maximum here; we use 0x100000000 instead,
+  // which makes all rare items SLIGHTLY more rare.
+  int64_t det = force_rare ? 0 : this->rand_int(0x100000000);
+  if (this->is_legacy_replay) {
+    // For some old tests, we waste a few replay values because they used the old (non-stacked) logic. New tests should
+    // not use this codepath.
+    for (size_t z = 1; z < specs.size(); z++) {
+      this->rand_int(0x100000000);
+    }
+  }
+  this->log.info_f("{} specs to check with det={:08X}", specs.size(), det);
+  for (const auto& spec : specs) {
+    if (this->log.should_log(phosg::LogLevel::L_INFO)) {
+      this->log.info_f("Checking spec {:08X} => {} with det={:08X}", spec.probability, spec.data.hex(), det);
+    }
+    det -= spec.probability;
+    if (det < 0) {
+      return this->create_rare_item(spec.data, area);
+    }
+  }
+  return ItemData();
+}
+
 ItemData ItemCreator::check_rare_specs_and_create_rare_box_item(uint8_t area, bool force_rare) {
-  ItemData item;
   if (!this->are_rare_drops_allowed()) {
-    return item;
+    return ItemData();
   }
 
   uint8_t table_index = this->table_index_for_area(area);
   Episode episode = episode_for_area(area);
-  auto rare_specs = this->rare_item_set->get_box_specs(this->mode, episode, this->difficulty, this->section_id, table_index);
-  for (const auto& spec : rare_specs) {
-    item = this->check_rate_and_create_rare_item(spec, area, force_rare);
-    if (!item.empty()) {
-      if (this->log.should_log(phosg::LogLevel::L_INFO)) {
-        auto hex = spec.data.hex();
-        this->log.info_f("Box spec {:08X} produced item {}", spec.probability, hex);
-      }
-      break;
-    }
-    if (this->log.should_log(phosg::LogLevel::L_INFO)) {
-      auto hex = spec.data.hex();
-      this->log.info_f("Box spec {:08X} did not produce item {}", spec.probability, hex);
-    }
-  }
-  return item;
+  auto specs = this->rare_item_set->get_box_specs(this->mode, episode, this->difficulty, this->section_id, table_index);
+  return this->check_rare_specs_and_create_rare_item(specs, area, force_rare);
 }
 
 uint32_t ItemCreator::rand_int(uint64_t max) {
@@ -351,35 +370,13 @@ ItemData ItemCreator::check_rare_spec_and_create_rare_enemy_item(EnemyType enemy
   // can have multiple rare drops if JSONRareItemSet is used (the other RareItemSet implementations never return
   // multiple drops for an enemy type).
   Episode episode = episode_for_area(area);
-  auto rare_specs = this->rare_item_set->get_enemy_specs(
+  auto specs = this->rare_item_set->get_enemy_specs(
       this->mode, episode, this->difficulty, this->section_id, enemy_type);
-  ItemData item;
-  for (const auto& spec : rare_specs) {
-    item = this->check_rate_and_create_rare_item(spec, area, force_rare);
-    if (!item.empty()) {
-      if (this->log.should_log(phosg::LogLevel::L_INFO)) {
-        auto hex = spec.data.hex();
-        this->log.info_f("Enemy spec {:08X} produced item {}", spec.probability, hex);
-      }
-      break;
-    }
-    if (this->log.should_log(phosg::LogLevel::L_INFO)) {
-      auto hex = spec.data.hex();
-      this->log.info_f("Enemy spec {:08X} did not produce item {}", spec.probability, hex);
-    }
-  }
-  return item;
+  return this->check_rare_specs_and_create_rare_item(specs, area, force_rare);
 }
 
-ItemData ItemCreator::check_rate_and_create_rare_item(
-    const RareItemSet::ExpandedDrop& drop, uint8_t area, bool force_rare) {
-  // Note: The original code uses 0xFFFFFFFF as the maximum here. We use 0x100000000 instead, which makes all rare
-  // items SLIGHTLY more rare.
-  if (!force_rare && ((drop.probability == 0) || (this->rand_int(0x100000000) >= drop.probability))) {
-    return ItemData();
-  }
-
-  ItemData item = drop.data;
+ItemData ItemCreator::create_rare_item(const ItemData& drop_item, uint8_t area) {
+  ItemData item = drop_item;
   if (item.can_be_encoded_in_rel_rare_table()) {
     switch (item.data1[0]) {
       case 0:
