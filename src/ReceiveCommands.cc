@@ -2594,7 +2594,7 @@ static asio::awaitable<void> on_10_main_menu(shared_ptr<Client> c, uint32_t item
   }
 }
 
-static asio::awaitable<void> on_10_clear_license_confirmation(shared_ptr<Client> c, uint32_t item_id) {
+static void on_10_clear_license_confirmation(shared_ptr<Client> c, uint32_t item_id) {
   switch (item_id) {
     case ClearLicenseConfirmationMenuItemID::CANCEL:
       send_main_menu(c);
@@ -2603,10 +2603,9 @@ static asio::awaitable<void> on_10_clear_license_confirmation(shared_ptr<Client>
       send_command(c, 0x9A, 0x04);
       c->channel->disconnect();
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_10_information(shared_ptr<Client> c, uint32_t item_id) {
+static void on_10_information(shared_ptr<Client> c, uint32_t item_id) {
   if (item_id == InformationMenuItemID::GO_BACK) {
     c->clear_flag(Client::Flag::IN_INFORMATION_MENU);
     send_main_menu(c);
@@ -2618,14 +2617,13 @@ static asio::awaitable<void> on_10_information(shared_ptr<Client> c, uint32_t it
       send_message_box(c, "$C6No such information exists.");
     }
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_10_proxy_options(shared_ptr<Client> c, uint32_t item_id) {
+static void on_10_proxy_options(shared_ptr<Client> c, uint32_t item_id) {
   switch (item_id) {
     case ProxyOptionsMenuItemID::GO_BACK:
       send_proxy_destinations_menu(c);
-      co_return;
+      return;
     case ProxyOptionsMenuItemID::CHAT_COMMANDS:
       if (c->can_use_chat_commands()) {
         c->toggle_flag(Client::Flag::PROXY_CHAT_COMMANDS_ENABLED);
@@ -2684,7 +2682,7 @@ static asio::awaitable<void> on_10_proxy_options(shared_ptr<Client> c, uint32_t 
       break;
     default:
       send_message_box(c, "Incorrect menu item ID.");
-      co_return;
+      return;
   }
   send_menu(c, proxy_options_menu_for_client(c));
 }
@@ -2720,12 +2718,12 @@ static asio::awaitable<void> on_10_proxy_destinations(shared_ptr<Client> c, uint
   }
 }
 
-static asio::awaitable<void> on_10_game_menu(shared_ptr<Client> c, uint32_t item_id, const std::string& password) {
+static void on_10_game_menu(shared_ptr<Client> c, uint32_t item_id, const std::string& password) {
   auto s = c->require_server_state();
   auto game = s->find_lobby(item_id);
   if (!game) {
     send_lobby_message_box(c, "$C7You cannot join this\ngame because it no\nlonger exists.");
-    co_return;
+    return;
   }
   switch (game->join_error_for_client(c, &password)) {
     case Lobby::JoinError::ALLOWED:
@@ -2791,12 +2789,12 @@ static asio::awaitable<void> on_10_game_menu(shared_ptr<Client> c, uint32_t item
   }
 }
 
-static asio::awaitable<void> on_10_quest_categories(shared_ptr<Client> c, uint32_t item_id) {
+static void on_10_quest_categories(shared_ptr<Client> c, uint32_t item_id) {
   if (is_ep3(c->version())) {
     auto s = c->require_server_state();
     if (!s->ep3_map_index) {
       send_lobby_message_box(c, "$C7Quests are not available.");
-      co_return;
+      return;
     }
     send_ep3_download_quest_menu(c, item_id);
 
@@ -2804,7 +2802,7 @@ static asio::awaitable<void> on_10_quest_categories(shared_ptr<Client> c, uint32
     auto s = c->require_server_state();
     if (!s->quest_index) {
       send_lobby_message_box(c, "$C7Quests are not available.");
-      co_return;
+      return;
     }
 
     shared_ptr<Lobby> l = c->lobby.lock();
@@ -2820,7 +2818,7 @@ static asio::awaitable<void> on_10_quest_categories(shared_ptr<Client> c, uint32
   }
 }
 
-static asio::awaitable<void> on_10_quest_menu(shared_ptr<Client> c, uint32_t item_id) {
+static void on_10_quest_menu(shared_ptr<Client> c, uint32_t item_id) {
   if (is_ep3(c->version())) {
     throw runtime_error("Episode 1/2/4 quests cannot be downloaded by Ep3 clients");
   }
@@ -2828,33 +2826,33 @@ static asio::awaitable<void> on_10_quest_menu(shared_ptr<Client> c, uint32_t ite
   auto s = c->require_server_state();
   if (!s->quest_index) {
     send_lobby_message_box(c, "$C7Quests are not\navailable.");
-    co_return;
+    return;
   }
   auto q = s->quest_index->get(item_id);
   if (!q) {
     send_lobby_message_box(c, "$C7Quest does not exist.");
-    co_return;
+    return;
   }
 
   // If the client is not in a lobby, send it as a download quest; otherwise, they must be in a game to load a quest.
   auto l = c->lobby.lock();
   if (l && !l->is_game()) {
     send_lobby_message_box(c, "$C7Quests cannot be\nloaded in lobbies.");
-    co_return;
+    return;
   }
 
   if (l) {
     if (q->meta.episode == Episode::EP3) {
       send_lobby_message_box(c, "$C7Episode 3 quests\ncannot be loaded\nvia this interface.");
-      co_return;
+      return;
     }
     if (l->quest) {
       send_lobby_message_box(c, "$C7A quest is already\nin progress.");
-      co_return;
+      return;
     }
     if (l->quest_include_condition()(q) != QuestIndex::IncludeState::AVAILABLE) {
       send_lobby_message_box(c, "$C7This quest has not\nbeen unlocked for\nall players in this\ngame.");
-      co_return;
+      return;
     }
     set_lobby_quest(l, q);
 
@@ -2862,7 +2860,7 @@ static asio::awaitable<void> on_10_quest_menu(shared_ptr<Client> c, uint32_t ite
     auto vq = q->version(c->version(), c->language());
     if (!vq) {
       send_lobby_message_box(c, "$C7Quest does not exist\nfor this game version.");
-      co_return;
+      return;
     }
     vq = vq->create_download_quest(c->language());
     string xb_filename = vq->xb_filename();
@@ -2875,7 +2873,7 @@ static asio::awaitable<void> on_10_quest_menu(shared_ptr<Client> c, uint32_t ite
   }
 }
 
-static asio::awaitable<void> on_10_ep3_download_quest_menu(shared_ptr<Client> c, uint32_t item_id) {
+static void on_10_ep3_download_quest_menu(shared_ptr<Client> c, uint32_t item_id) {
   auto s = c->require_server_state();
   if (!is_ep3(c->version())) {
     throw runtime_error("Episode 3 quests can only be downloaded by Ep3 clients");
@@ -2898,10 +2896,9 @@ static asio::awaitable<void> on_10_ep3_download_quest_menu(shared_ptr<Client> c,
   string filename = std::format("m{:06}p_{:c}.bin", map->map_number, tolower(char_for_language(vm->language)));
   auto data = (c->version() == Version::GC_EP3_NTE) ? vm->trial_download() : vm->compressed(false);
   send_open_quest_file(c, name, filename, "", map->map_number, QuestFileType::EPISODE_3, data);
-  co_return;
 }
 
-static asio::awaitable<void> on_10_patch_switches(shared_ptr<Client> c, uint32_t item_id) {
+static void on_10_patch_switches(shared_ptr<Client> c, uint32_t item_id) {
   if (item_id == PatchesMenuItemID::GO_BACK) {
     send_main_menu(c);
 
@@ -2919,7 +2916,6 @@ static asio::awaitable<void> on_10_patch_switches(shared_ptr<Client> c, uint32_t
     c->login->account->save();
     send_menu(c, s->function_code_index->patch_switches_menu(c->specific_version, s->auto_patches, c->login->account->auto_patches_enabled));
   }
-  co_return;
 }
 
 static asio::awaitable<void> on_10_programs(shared_ptr<Client> c, uint32_t item_id) {
@@ -2937,7 +2933,7 @@ static asio::awaitable<void> on_10_programs(shared_ptr<Client> c, uint32_t item_
   }
 }
 
-static asio::awaitable<void> on_10_tournaments(shared_ptr<Client> c, uint32_t menu_id, uint32_t item_id) {
+static void on_10_tournaments(shared_ptr<Client> c, uint32_t menu_id, uint32_t item_id) {
   if (!is_ep3(c->version())) {
     throw runtime_error("non-Episode 3 client attempted to join tournament");
   }
@@ -2946,17 +2942,16 @@ static asio::awaitable<void> on_10_tournaments(shared_ptr<Client> c, uint32_t me
   if (tourn) {
     send_ep3_tournament_entry_list(c, tourn, (menu_id == MenuID::TOURNAMENTS_FOR_SPEC));
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_10_tournament_entries(
+static void on_10_tournament_entries(
     shared_ptr<Client> c, uint32_t item_id, std::string&& team_name, std::string&& password) {
   if (!is_ep3(c->version())) {
     throw runtime_error("non-Episode 3 client attempted to join tournament");
   }
   if (c->ep3_tournament_team.lock()) {
     send_lobby_message_box(c, "$C7You are registered\nin a different\ntournament already");
-    co_return;
+    return;
   }
   if (team_name.empty()) {
     team_name = c->character_file()->disp.name.decode(c->language());
@@ -3035,43 +3030,43 @@ static asio::awaitable<void> on_10(shared_ptr<Client> c, Channel::Message& msg) 
       co_await on_10_main_menu(c, base_cmd.item_id);
       break;
     case MenuID::CLEAR_LICENSE_CONFIRMATION:
-      co_await on_10_clear_license_confirmation(c, base_cmd.item_id);
+      on_10_clear_license_confirmation(c, base_cmd.item_id);
       break;
     case MenuID::INFORMATION:
-      co_await on_10_information(c, base_cmd.item_id);
+      on_10_information(c, base_cmd.item_id);
       break;
     case MenuID::PROXY_OPTIONS:
-      co_await on_10_proxy_options(c, base_cmd.item_id);
+      on_10_proxy_options(c, base_cmd.item_id);
       break;
     case MenuID::PROXY_DESTINATIONS:
       co_await on_10_proxy_destinations(c, base_cmd.item_id);
       break;
     case MenuID::GAME:
-      co_await on_10_game_menu(c, base_cmd.item_id, std::move(password));
+      on_10_game_menu(c, base_cmd.item_id, std::move(password));
       break;
     case MenuID::QUEST_CATEGORIES_EP1_EP3_EP4:
     case MenuID::QUEST_CATEGORIES_EP2:
-      co_await on_10_quest_categories(c, base_cmd.item_id);
+      on_10_quest_categories(c, base_cmd.item_id);
       break;
     case MenuID::QUEST_EP1:
     case MenuID::QUEST_EP2:
-      co_await on_10_quest_menu(c, base_cmd.item_id);
+      on_10_quest_menu(c, base_cmd.item_id);
       break;
     case MenuID::QUEST_EP3:
-      co_await on_10_ep3_download_quest_menu(c, base_cmd.item_id);
+      on_10_ep3_download_quest_menu(c, base_cmd.item_id);
       break;
     case MenuID::PATCH_SWITCHES:
-      co_await on_10_patch_switches(c, base_cmd.item_id);
+      on_10_patch_switches(c, base_cmd.item_id);
       break;
     case MenuID::PROGRAMS:
       co_await on_10_programs(c, base_cmd.item_id);
       break;
     case MenuID::TOURNAMENTS_FOR_SPEC:
     case MenuID::TOURNAMENTS:
-      co_await on_10_tournaments(c, base_cmd.menu_id, base_cmd.item_id);
+      on_10_tournaments(c, base_cmd.menu_id, base_cmd.item_id);
       break;
     case MenuID::TOURNAMENT_ENTRIES:
-      co_await on_10_tournament_entries(c, base_cmd.item_id, std::move(name), std::move(password));
+      on_10_tournament_entries(c, base_cmd.item_id, std::move(name), std::move(password));
       break;
     default:
       send_message_box(c, "Incorrect menu ID");
