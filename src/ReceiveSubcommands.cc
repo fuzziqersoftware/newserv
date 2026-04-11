@@ -397,9 +397,9 @@ asio::awaitable<void> forward_subcommand_with_entity_id_transcode_t(shared_ptr<C
 }
 
 template <typename HeaderT>
-asio::awaitable<void> forward_subcommand_with_entity_targets_transcode_t(
+asio::awaitable<void> forward_subcommand_with_entity_targets_transcode_and_track_hits_t(
     shared_ptr<Client> c, SubcommandMessage& msg) {
-  // I'm lazy and this should never happen for item commands (since all players need to stay in sync)
+  // I'm lazy and this should never happen for private commands
   if (command_is_private(msg.command)) {
     throw runtime_error("entity subcommand sent via private command");
   }
@@ -430,6 +430,12 @@ asio::awaitable<void> forward_subcommand_with_entity_targets_transcode_t(
     if ((res.entity_id >= 0x1000) && (res.entity_id < 0x4000)) {
       auto ene_st = l->map_state->enemy_state_for_index(c->version(), res.entity_id - 0x1000);
       res.ene_st = ene_st;
+      ene_st->set_last_hit_by_client_id(c->lobby_client_id);
+      l->log.info_f("E-{:03X} last hit claimed", ene_st->e_id);
+      if (ene_st->alias_target_ene_st) {
+        ene_st->alias_target_ene_st->set_last_hit_by_client_id(c->lobby_client_id);
+        l->log.info_f("Alias target E-{:03X} last hit claimed", ene_st->alias_target_ene_st->e_id);
+      }
     } else if ((res.entity_id >= 0x4000) && (res.entity_id < 0xFFFF)) {
       res.obj_st = l->map_state->object_state_for_index(c->version(), res.entity_id - 0x4000);
     }
@@ -5549,10 +5555,10 @@ const vector<SubcommandDefinition> subcommand_definitions{
     /* 6x43 */ {0x3A, 0x3F, 0x43, on_forward_check_game_client},
     /* 6x44 */ {0x3B, 0x40, 0x44, on_forward_check_game_client},
     /* 6x45 */ {0x3C, 0x41, 0x45, on_forward_check_game_client},
-    /* 6x46 */ {NONE, 0x42, 0x46, forward_subcommand_with_entity_targets_transcode_t<G_AttackFinished_Header_6x46>},
-    /* 6x47 */ {0x3D, 0x43, 0x47, forward_subcommand_with_entity_targets_transcode_t<G_CastTechnique_Header_6x47>},
+    /* 6x46 */ {NONE, 0x42, 0x46, forward_subcommand_with_entity_targets_transcode_and_track_hits_t<G_AttackFinished_Header_6x46>},
+    /* 6x47 */ {0x3D, 0x43, 0x47, forward_subcommand_with_entity_targets_transcode_and_track_hits_t<G_CastTechnique_Header_6x47>},
     /* 6x48 */ {NONE, NONE, 0x48, on_cast_technique_finished},
-    /* 6x49 */ {0x3E, 0x44, 0x49, forward_subcommand_with_entity_targets_transcode_t<G_ExecutePhotonBlast_Header_6x49>},
+    /* 6x49 */ {0x3E, 0x44, 0x49, forward_subcommand_with_entity_targets_transcode_and_track_hits_t<G_ExecutePhotonBlast_Header_6x49>},
     /* 6x4A */ {0x3F, 0x45, 0x4A, on_change_hp<G_ClientIDHeader>},
     /* 6x4B */ {0x40, 0x46, 0x4B, on_change_hp<G_ClientIDHeader>},
     /* 6x4C */ {0x41, 0x47, 0x4C, on_change_hp<G_ClientIDHeader>},
