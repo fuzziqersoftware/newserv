@@ -37,6 +37,14 @@ struct VectorXZF {
   inline double norm2() const {
     return ((this->x * this->x) + (this->z * this->z));
   }
+  inline double dist(const VectorXZF& other) const {
+    return sqrt(this->dist2(other));
+  }
+  inline double dist2(const VectorXZF& other) const {
+    double x = this->x - other.x;
+    double z = this->z - other.z;
+    return ((x * x) + (z * z));
+  }
 
   inline VectorXZF rotate_y(double angle) const {
     double s = sin(angle);

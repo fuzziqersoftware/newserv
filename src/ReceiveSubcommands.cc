@@ -2264,6 +2264,15 @@ static asio::awaitable<void> on_pick_up_item_generic(
       co_return;
     }
 
+    // TODO: Figure out what the actual max range is; 30 is an overestimate
+    double dist2 = fi->pos.dist2(c->pos);
+    if (dist2 > 900.0) {
+      l->log.warning_f("Player {} requests to pick up {:08X}, but it is too far away (dist2={})",
+          client_id, item_id, dist2);
+      l->add_item(floor, fi);
+      co_return;
+    }
+
     try {
       p->add_item(fi->data, *s->item_stack_limits(c->version()));
     } catch (const out_of_range&) {
