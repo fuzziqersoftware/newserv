@@ -3,6 +3,7 @@
 
 # Build products
 newserv
+newserv.exe
 src/Revision.cc
 
 # CMake files
@@ -37,12 +38,22 @@ system/teams/*.json
 # Files fuzziqersoftware uses that don't make sense to be committed to the main
 # repository
 *.dec
+*.WIP-s
 files
-make_release.py
 notes-private
 old-khyller
 old-newserv
 release
 release.zip
+all-quests
 system/dol
 system/patch-bb/data
+system/client-functions/Debug-Private
+system/config.2.json
+system/ep3/banners
+system/ep3/cardtex
+system/ep3/cardtex-trial
+system/players
+system/quests/includes
+system/quests/private
+.vscode
