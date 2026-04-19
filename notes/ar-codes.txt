@@ -1102,3 +1102,8 @@ All classes' footsteps sound like RAcast's
         040D4320 4E800020
 3SP0 => 040D07BC 38600002
         040D07C0 4E800020
+
+Rappy size modifier
+3OE1 => 040C1E24 48000020 // Disable flag check in render
+        045D0718 40800000 // X/Z scale as float (here, 4.0)
+        045D071C 40800000 // Y scale as float (here, 4.0)
