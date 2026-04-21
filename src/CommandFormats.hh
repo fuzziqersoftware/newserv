@@ -4094,8 +4094,8 @@ struct G_ChangePlayerHP_6x2F {
 } __packed_ws__(G_ChangePlayerHP_6x2F, 0x0C);
 
 // 6x30: Change player level (protected on GC NTE/V3 but not V4)
-// On DC NTE, the updated stats aren't sent, and the client may only gain a single level at once. On other versions,
-// this is not the case.
+// On DC NTE and 11/2000, the updated stats aren't sent, and the client may only gain a single level at once. On other
+// versions, this is not the case.
 
 struct G_ChangePlayerLevel_DCNTE_6x30 {
   G_ClientIDHeader header;
