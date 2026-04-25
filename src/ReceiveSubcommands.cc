@@ -4307,9 +4307,6 @@ asio::awaitable<void> on_transfer_item_via_mail_message_bb(shared_ptr<Client> c,
   if (!l->is_game()) {
     throw runtime_error("6xCB command sent in non-game lobby");
   }
-  if (!l->check_flag(Lobby::Flag::QUEST_IN_PROGRESS) && !l->check_flag(Lobby::Flag::JOINABLE_QUEST_IN_PROGRESS)) {
-    throw runtime_error("6xCB command sent during free play");
-  }
   if (cmd.header.client_id != c->lobby_client_id) {
     throw runtime_error("6xCB command sent by incorrect client");
   }
