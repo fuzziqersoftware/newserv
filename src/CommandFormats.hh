@@ -293,10 +293,10 @@ struct SC_TextHeader_01_06_11_B0_EE {
 // Command 17 should be used instead for the first connection.
 // All commands after this command will be encrypted with PSO V2 encryption on DC, PC, and GC Episodes 1&2 Trial
 // Edition, or PSO V3 encryption on other V3 versions. The (encrypted) response depends on the client's version:
-// - DC NTE clients will respond with 8B.
-// - DC 11/2000 and DCv1 clients will respond with 93.
-// - DCv2, PCv2, and GC NTE clients will respond with an 9A, 9D, or 9E.
-// - V3 clients will respond with 9A or 9E command.
+// - DC NTE clients will respond with an 8B command.
+// - DC 11/2000 and DCv1 clients will respond with a 93 command.
+// - DCv2, PCv2, and GC NTE clients will respond with a 9A, 9D, or 9E command.
+// - V3 clients will respond with a 9A or 9E command.
 // The copyright field in the below structure must contain "DreamCast Lobby Server. Copyright SEGA Enterprises. 1999".
 // (The above text is required on all versions that use this command, including those versions that don't run on the
 // DreamCast.)
@@ -494,16 +494,16 @@ struct S_MenuItemT {
   // - On BB, 0x40/0x41 mean Episodes 1/2 as on GC, and 0x43 means Episode 4.
   uint8_t episode = 0;
   // Flags (01 and 02 are used for all menus; the rest are only used for the game menu):
-  // 01 = Send name? (client sends the name field in the 10 command if this item is chosen, but it's blank)
-  // 02 = Locked (lock icon appears in the menu; player is prompted for a password if they choose this game)
-  // 04 = In battle (Episode 3 only; a sword icon appears in the menu)
-  // 04 = Disabled (BB only; used for solo games)
-  // 10 = Is battle mode
-  // 20 = Is challenge mode
-  // 40 = Is v2 only (DCv2/PC); game name renders in orange
-  // 40 = Is Episode 1 (V3/BB)
-  // 80 = Is Episode 2 (V3/BB)
-  // C0 = Is Episode 4 (BB)
+  //   01 = Send name? (client sends the name field in the 10 command if this item is chosen, but it's blank)
+  //   02 = Locked (lock icon appears in the menu; player is prompted for a password if they choose this game)
+  //   04 = In battle (Episode 3 only; a sword icon appears in the menu)
+  //   04 = Disabled (BB only; used for solo games)
+  //   10 = Is battle mode
+  //   20 = Is challenge mode
+  //   40 = Is v2 only (DCv2/PC); game name renders in orange
+  //   40 = Is Episode 1 (V3/BB)
+  //   80 = Is Episode 2 (V3/BB)
+  //   C0 = Is Episode 4 (BB)
   uint8_t flags = 0;
 } __attribute__((packed));
 using S_MenuItem_PC_BB_08 = S_MenuItemT<TextEncoding::UTF16>;
@@ -530,6 +530,7 @@ struct C_MenuItemInfoRequest_09 {
   le_uint32_t item_id = 0;
 } __packed_ws__(C_MenuItemInfoRequest_09, 8);
 
+// 0A: Invalid command
 // 0B: Invalid command
 
 // 0C (C->S): Create game (DCv1)
@@ -709,10 +710,10 @@ struct C_WriteFileConfirmation_V3_BB_13_A7 {
 // Internal name: RcvPsoRegistConnectV2
 // Same format as 02 command, but a different copyright: "DreamCast Port Map. Copyright SEGA Enterprises. 1999"
 // The response depends on the client's version:
-// - DC NTE will respond with 8B.
-// - DC 11/2000 and DCv1 will respond with 90.
-// - DCv2, PCv2, and GC NTE clients will respond with 9A or 9D.
-// - V3 (GC/Xbox) clients will respond with a DB command when they receive a 17 command in any online
+// - DC NTE will respond with an 8B command.
+// - DC 11/2000 and DCv1 will respond with a 90 command.
+// - DCv2, PCv2, and GC NTE clients will respond with a 9A or 9D command.
+// - V3 (GC/Xbox) clients will respond with a DB command (but see the notes on DB for Xbox clients).
 
 // 18 (S->C): Account verification result (PC/V3)
 // Behaves exactly the same as 9A (S->C). No arguments except header.flag.
@@ -861,7 +862,7 @@ struct S_GallonPlanResult_BB_25 {
 // 2D: Invalid command
 // 2E: Invalid command
 // 2F: Invalid command
-// 30: Invalid command
+// 30: Invalid command (but used as a newserv extension; see end of this file)
 // 31: Invalid command
 // 32: Invalid command
 // 33: Invalid command
@@ -1576,7 +1577,7 @@ struct C_LoginV1_DC_PC_V3_90 {
   // despite its size not being a multiple of 4. This is fixed in later versions, so we have to handle both cases.
 } __packed_ws__(C_LoginV1_DC_PC_V3_90, 0x22);
 
-// 90 (S->C): Account verification result (V3)
+// 90 (S->C): Account verification result (DC/PC/V3)
 // Behaves exactly the same as 9A (S->C). No arguments except header.flag.
 
 // 91 (S->C): Start encryption at login server (legacy; non-BB only)
@@ -1604,7 +1605,7 @@ struct C_RegisterV1_DC_92 {
 // Internal name: RcvPsoRegist
 // Same format and usage as 9C (S->C) command.
 
-// 93 (C->S): Log in (DCv1)
+// 93 (C->S): Log in (DCv1, BB)
 
 struct C_LoginV1_DC_93 {
   /* 00 */ le_uint32_t player_tag = 0x00010000;
@@ -1626,8 +1627,6 @@ struct C_LoginV1_DC_93 {
 struct C_LoginExtendedV1_DC_93 : C_LoginV1_DC_93 {
   SC_MeetUserExtension_DC_V3 extension;
 } __packed_ws__(C_LoginExtendedV1_DC_93, 0x110);
-
-// 93 (C->S): Log in (BB)
 
 struct C_LoginBase_BB_93 {
   /* 00 */ le_uint32_t player_tag = 0x00010000;
@@ -1763,14 +1762,13 @@ struct C_Login_DC_PC_V3_9A {
 //   13 = servers under maintenance (118)
 // Seems like most (all?) of the rest of the codes are "network error" (119).
 
-// 9B (S->C): Secondary server init (non-BB, non-DCv1)
-// Behaves exactly the same as 17 (S->C).
-
-// 9B (S->C): Secondary server init (BB)
-// Format is the same as 03 (and the client uses the same encryption afterward). The only differences:
+// 9B (S->C): Secondary server init (DCv2 and later)
+// On versions before BB, this command behaves exactly the same as 17 (S->C).
+// On BB, the format of this command is the same as 03 (and the client uses the same encryption afterward). The only
+// differences are:
 // - 9B does not work during the data-server phase (before the client has reached the ship select menu), but 03 does.
 // - For command 9B, the copyright string must be "PSO NEW PM Server. Copyright 1999-2002 SONICTEAM.".
-// - The client will respond to 9B with DB instead of 93.
+// - The client will respond to this command with a DB command instead of a 93 command.
 
 // 9C (C->S): Register
 // Internal name: SndPsoRegist
@@ -2567,7 +2565,10 @@ check_struct_size(S_InfoBoardEntry_BB_D8, 0x178);
 // This command is not valid on PSO GC Episodes 1&2 Trial Edition.
 
 // DB (C->S): Verify license (V3/BB)
-// Server should respond with a 9A command.
+// Server should respond with a 9A command. But Insignia's proxy never sends this command to the remote server, so
+// newserv will only see this command from an Xbox client if it's connected through a different Xbox Live
+// implementation. For this reason, newserv does not check the credentials when it receives DB from an Xbox client; it
+// instead sends 9A and checks the credentials when the client subsequently sends 9E.
 
 struct C_VerifyAccount_V3_DB {
   pstring<TextEncoding::ASCII, 0x10> v1_serial_number; // Unused
@@ -3922,7 +3923,7 @@ struct G_DisablePKModeForPlayer_6x1C {
 // 6x1D: Request partial player data (pre-v1 only)
 // The subcommand number 6x1D is not used in any final version of PSO; this number is assigned based on what the
 // command number would be if it were. On DC NTE, this is subcommand 6x19; on 11/2000, it's 6x1B. This command does not
-// appear to ever be sent by the client; however, it will respond with 6x1E if it receives this command.
+// appear to ever be sent by the client; however, it will respond with a 6x1E command if it receives this command.
 
 struct G_RequestPartialPlayerData_DCProtos_6x1D {
   G_UnusedHeader header;
@@ -6110,7 +6111,7 @@ struct G_SetMesetaSlotPrizeResult_BB_6xE3 {
   ItemData item;
 } __packed_ws__(G_SetMesetaSlotPrizeResult_BB_6xE3, 0x18);
 
-// 6xE4: Invalid subcommand (but used as an extension; see end of this file)
+// 6xE4: Invalid subcommand (but used as a newserv extension; see end of this file)
 // 6xE5: Invalid subcommand
 // 6xE6: Invalid subcommand
 // 6xE7: Invalid subcommand
@@ -7115,7 +7116,7 @@ struct G_RejectBattleStartRequest_Ep3_6xB4x53 {
 // 30 (C->S): Extended player info
 // Requested with the GetExtendedPlayerInfo patch. Format depends on version:
 //   DC v2: PSODCV2CharacterFile
-//   GC v3: PSOGCCharacterFile::Character
+//   GC v3: PSOGCCharacterFile::Character (including big-endian fields, unlike 61)
 //   XB v3: PSOXBCharacterFile::Character
 
 // 6xE4: Increment enemy damage

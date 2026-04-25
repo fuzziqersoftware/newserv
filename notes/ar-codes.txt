@@ -1076,6 +1076,7 @@ Enable quest board menu in free play (for use with the above code)
 3OP0 => 0426374C 38600001
 
 All classes' footsteps sound like RAcast's
+(Change the 2 in 38600002 to 0 for human/Newman, 1 for lighter androids, or 3 if you want to be annoyed)
 3OE0 => 041B3ED0 38600002
         041B3ED4 4E800020
 3OE1 => 041B3ED0 38600002
