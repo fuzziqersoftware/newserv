@@ -994,7 +994,7 @@ struct PSOBBGuildCardFile {
   } __packed_ws__(Entry, 0x1BC);
 
   /* 0000 */ PSOBBMinimalSystemFile system_file;
-  /* 0114 */ parray<GuildCardBB, 0x1C> blocked;
+  /* 0114 */ parray<GuildCardBB, 0x1C> blocked_senders;
   /* 1DF4 */ parray<uint8_t, 0x180> unknown_a2;
   /* 1F74 */ parray<Entry, 0x69> entries;
   /* D590 */

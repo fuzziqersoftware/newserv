@@ -1645,7 +1645,7 @@ static asio::awaitable<HandlerResult> S_65_67_68_EB(shared_ptr<Client> c, Channe
     c->log.warning_f("Proxied player appears multiple times in lobby");
   }
 
-  if constexpr (sizeof(cmd.lobby_flags) > sizeof(LobbyFlags_DCNTE)) {
+  if constexpr (sizeof(cmd.lobby_flags) > sizeof(LobbyFlagsDCNTE)) {
     c->proxy_session->lobby_event = cmd.lobby_flags.event;
     if (c->override_lobby_event != 0xFF) {
       cmd.lobby_flags.event = c->override_lobby_event;

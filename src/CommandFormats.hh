@@ -1235,12 +1235,12 @@ struct S_JoinGame_BB_64 : S_JoinGameT_DC_PC<PlayerLobbyDataBB> {
 // Similarly to 64, the client will ignore 64 and 65 commands while loading, and will buffer all other commands except
 // 1D until loading is done.
 
-struct LobbyFlags_DCNTE {
+struct LobbyFlagsDCNTE {
   uint8_t client_id = 0;
   uint8_t leader_id = 0;
   uint8_t disable_udp = 1;
   uint8_t unused = 0;
-} __packed_ws__(LobbyFlags_DCNTE, 4);
+} __packed_ws__(LobbyFlagsDCNTE, 4);
 
 struct LobbyFlags {
   uint8_t client_id = 0;
@@ -1274,7 +1274,7 @@ struct S_JoinLobbyT {
     return offsetof(S_JoinLobbyT, entries) + used_entries * sizeof(Entry);
   }
 } __attribute__((packed));
-using S_JoinLobby_DCNTE_65_67_68 = S_JoinLobbyT<LobbyFlags_DCNTE, PlayerLobbyDataDCGC, PlayerDispDataDCPCV3>;
+using S_JoinLobby_DCNTE_65_67_68 = S_JoinLobbyT<LobbyFlagsDCNTE, PlayerLobbyDataDCGC, PlayerDispDataDCPCV3>;
 using S_JoinLobby_PC_65_67_68 = S_JoinLobbyT<LobbyFlags, PlayerLobbyDataPC, PlayerDispDataDCPCV3>;
 using S_JoinLobby_DC_GC_65_67_68_Ep3_EB = S_JoinLobbyT<LobbyFlags, PlayerLobbyDataDCGC, PlayerDispDataDCPCV3>;
 using S_JoinLobby_BB_65_67_68 = S_JoinLobbyT<LobbyFlags, PlayerLobbyDataBB, PlayerDispDataBB>;

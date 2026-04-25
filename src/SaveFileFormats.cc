@@ -324,17 +324,17 @@ void PSOBBGuildCardFile::delete_duplicates() {
   {
     unordered_set<uint32_t> seen;
     size_t read_index = 0, write_index = 0;
-    for (read_index = 0; read_index < this->blocked.size(); read_index++) {
-      const auto& read_blocked = this->blocked[read_index];
-      if (seen.emplace(read_blocked.guild_card_number).second) {
+    for (read_index = 0; read_index < this->blocked_senders.size(); read_index++) {
+      const auto& read_blocked_senders = this->blocked_senders[read_index];
+      if (seen.emplace(read_blocked_senders.guild_card_number).second) {
         if (write_index != read_index) {
-          this->blocked[write_index] = read_blocked;
+          this->blocked_senders[write_index] = read_blocked_senders;
         }
         write_index++;
       }
     }
-    for (; write_index < this->blocked.size(); write_index++) {
-      this->blocked[write_index].clear();
+    for (; write_index < this->blocked_senders.size(); write_index++) {
+      this->blocked_senders[write_index].clear();
     }
   }
 

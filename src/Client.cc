@@ -1008,9 +1008,9 @@ void Client::load_all_files() {
   auto stack_limits = s->item_stack_limits(this->version());
 
   this->blocked_senders.clear();
-  for (size_t z = 0; z < this->guild_card_data->blocked.size(); z++) {
-    if (this->guild_card_data->blocked[z].present) {
-      this->blocked_senders.emplace(this->guild_card_data->blocked[z].guild_card_number);
+  for (size_t z = 0; z < this->guild_card_data->blocked_senders.size(); z++) {
+    if (this->guild_card_data->blocked_senders[z].present) {
+      this->blocked_senders.emplace(this->guild_card_data->blocked_senders[z].guild_card_number);
     }
   }
 

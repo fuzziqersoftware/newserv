@@ -260,7 +260,7 @@ shared_ptr<Client> ServerState::find_client(const string* identifier, uint64_t a
 
   for (auto& other_l : this->all_lobbies()) {
     if (l == other_l) {
-      continue; // don't bother looking again
+      continue; // Don't bother looking again
     }
     try {
       return other_l->find_client(identifier, account_id);

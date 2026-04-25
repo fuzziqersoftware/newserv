@@ -3769,7 +3769,7 @@ static asio::awaitable<void> on_E3_BB(shared_ptr<Client> c, Channel::Message& ms
 
 static asio::awaitable<void> on_E8_BB(shared_ptr<Client> c, Channel::Message& msg) {
   constexpr size_t max_count = sizeof(PSOBBGuildCardFile::entries) / sizeof(PSOBBGuildCardFile::Entry);
-  constexpr size_t max_blocked = sizeof(PSOBBGuildCardFile::blocked) / sizeof(GuildCardBB);
+  constexpr size_t max_blocked_senders = sizeof(PSOBBGuildCardFile::blocked_senders) / sizeof(GuildCardBB);
   auto gcf = c->guild_card_file();
   bool should_save = false;
   switch (msg.command) {
@@ -3833,11 +3833,12 @@ static asio::awaitable<void> on_E8_BB(shared_ptr<Client> c, Channel::Message& ms
     }
     case 0x07E8: { // Add blocked user
       auto& new_gc = check_size_t<GuildCardBB>(msg.data);
-      for (size_t z = 0; z < max_blocked; z++) {
-        auto& gcf_blocked = gcf->blocked[z];
-        if (!gcf_blocked.present) {
-          gcf_blocked = new_gc;
+      for (size_t z = 0; z < max_blocked_senders; z++) {
+        auto& gcf_blocked_senders = gcf->blocked_senders[z];
+        if (!gcf_blocked_senders.present) {
+          gcf_blocked_senders = new_gc;
           c->log.info_f("Added blocked guild card {} at position {}", new_gc.guild_card_number, z);
+          c->blocked_senders.emplace(new_gc.guild_card_number);
           should_save = true;
           break;
         }
@@ -3846,14 +3847,15 @@ static asio::awaitable<void> on_E8_BB(shared_ptr<Client> c, Channel::Message& ms
     }
     case 0x08E8: { // Delete blocked user
       auto& cmd = check_size_t<C_DeleteGuildCard_BB_05E8_08E8>(msg.data);
-      for (size_t z = 0; z < max_blocked; z++) {
-        auto& gcf_blocked = gcf->blocked[z];
-        if (gcf_blocked.guild_card_number == cmd.guild_card_number) {
+      for (size_t z = 0; z < max_blocked_senders; z++) {
+        auto& gcf_blocked_senders = gcf->blocked_senders[z];
+        if (gcf_blocked_senders.guild_card_number == cmd.guild_card_number) {
           c->log.info_f("Deleted blocked guild card {} at position {}", cmd.guild_card_number, z);
-          for (z = 0; z < max_blocked - 1; z++) {
-            gcf_blocked = gcf->blocked[z + 1];
+          for (z = 0; z < max_blocked_senders - 1; z++) {
+            gcf_blocked_senders = gcf->blocked_senders[z + 1];
           }
-          gcf->blocked[max_blocked - 1].clear();
+          gcf->blocked_senders[max_blocked_senders - 1].clear();
+          c->blocked_senders.erase(cmd.guild_card_number);
           should_save = true;
           break;
         }
@@ -4192,16 +4194,34 @@ static asio::awaitable<void> on_89(shared_ptr<Client> c, Channel::Message& msg) 
 
 static asio::awaitable<void> on_40(shared_ptr<Client> c, Channel::Message& msg) {
   const auto& cmd = check_size_t<C_GuildCardSearch_40>(msg.data);
+  if (!c->login) {
+    throw std::logic_error("Login required for 40 command");
+  }
+  if (cmd.searcher_guild_card_number != c->login->account->account_id) {
+    throw std::runtime_error(std::format(
+        "Client sent incorrect source Guild Card number ({:08X}) in card search",
+        cmd.searcher_guild_card_number.load()));
+  }
   try {
     auto s = c->require_server_state();
     auto result = s->find_client(nullptr, cmd.target_guild_card_number);
     if (!result->blocked_senders.count(c->login->account->account_id)) {
       auto result_lobby = result->lobby.lock();
       if (result_lobby) {
+        c->log.info_f("Guild Card search ({} for {}) found {}",
+            cmd.searcher_guild_card_number.load(), cmd.target_guild_card_number.load(), result->channel->name);
         send_card_search_result(c, result, result_lobby);
+      } else {
+        c->log.info_f("Guild Card search ({} for {}) found {} but player is not in any lobby",
+            cmd.searcher_guild_card_number.load(), cmd.target_guild_card_number.load(), result->channel->name);
       }
+    } else {
+      c->log.info_f("Guild Card search ({} for {}) found {} but searcher is blocked",
+          cmd.searcher_guild_card_number.load(), cmd.target_guild_card_number.load(), result->channel->name);
     }
   } catch (const out_of_range&) {
+    c->log.info_f("Guild Card search ({} for {}) did not find any player",
+        cmd.searcher_guild_card_number.load(), cmd.target_guild_card_number.load());
   }
   co_return;
 }
