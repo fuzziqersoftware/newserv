@@ -316,7 +316,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   ServerState& operator=(const ServerState&) = delete;
   ServerState& operator=(ServerState&&) = delete;
 
-  void add_client_to_available_lobby(std::shared_ptr<Client> c);
+  void add_client_to_available_lobby(std::shared_ptr<Client> c, bool allow_games);
   void remove_client_from_lobby(std::shared_ptr<Client> c);
   bool change_client_lobby(
       std::shared_ptr<Client> c,

@@ -83,30 +83,45 @@ ServerState::ServerState(const string& config_filename, bool is_replay)
       bb_system_cache(new FileContentsCache(3600000000ULL)),
       gba_files_cache(new FileContentsCache(3600000000ULL)) {}
 
-void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
+void ServerState::add_client_to_available_lobby(shared_ptr<Client> c, bool allow_games) {
   shared_ptr<Lobby> added_to_lobby;
 
-  if (c->preferred_lobby_id >= 0) {
-    try {
-      auto l = this->find_lobby(c->preferred_lobby_id);
-      if (l && !l->is_game() && l->check_flag(Lobby::Flag::PUBLIC) && l->version_is_allowed(c->version())) {
-        l->add_client(c);
-        added_to_lobby = l;
-      }
-    } catch (const out_of_range&) {
+  auto try_join_lobby = [&](uint32_t lobby_id) -> std::shared_ptr<Lobby> {
+    auto l = this->find_lobby(lobby_id);
+    if (!l) {
+      c->log.info_f("Cannot join lobby {:08X}: lobby does not exist", lobby_id);
+      return nullptr;
     }
+    if (!allow_games && l->is_game()) {
+      c->log.info_f("Cannot join lobby {:08X}: lobby is a game", lobby_id);
+      return nullptr;
+    }
+    static const std::string password = "";
+    auto join_error = l->join_error_for_client(c, &password);
+    if (join_error == Lobby::JoinError::ALLOWED) {
+      try {
+        l->add_client(c);
+        c->log.info_f("Joined lobby {:08X}", lobby_id);
+        return l;
+      } catch (const out_of_range& e) {
+        c->log.info_f("Cannot join lobby {:08X}: {}", lobby_id, e.what());
+        return nullptr;
+      }
+    }
+    c->log.info_f("Cannot join lobby {:08X}: {}", lobby_id, phosg::name_for_enum(join_error));
+    return nullptr;
+  };
+
+  if (c->preferred_lobby_id >= 0) {
+    added_to_lobby = try_join_lobby(c->preferred_lobby_id);
+    c->preferred_lobby_id = -1;
   }
 
-  if (!added_to_lobby.get()) {
+  if (!added_to_lobby) {
     for (const auto& lobby_id : this->public_lobby_search_order(c)) {
-      try {
-        auto l = this->find_lobby(lobby_id);
-        if (l && !l->is_game() && l->check_flag(Lobby::Flag::PUBLIC) && l->version_is_allowed(c->version())) {
-          l->add_client(c);
-          added_to_lobby = l;
-          break;
-        }
-      } catch (const out_of_range&) {
+      added_to_lobby = try_join_lobby(lobby_id);
+      if (added_to_lobby) {
+        break;
       }
     }
   }

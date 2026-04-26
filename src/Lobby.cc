@@ -835,3 +835,35 @@ bool Lobby::compare_shared(const shared_ptr<const Lobby>& a, const shared_ptr<co
 
   return a->name < b->name;
 }
+
+template <>
+const char* phosg::name_for_enum<Lobby::JoinError>(Lobby::JoinError value) {
+  switch (value) {
+    case Lobby::JoinError::ALLOWED:
+      return "ALLOWED";
+    case Lobby::JoinError::FULL:
+      return "FULL";
+    case Lobby::JoinError::VERSION_CONFLICT:
+      return "VERSION_CONFLICT";
+    case Lobby::JoinError::QUEST_SELECTION_IN_PROGRESS:
+      return "QUEST_SELECTION_IN_PROGRESS";
+    case Lobby::JoinError::QUEST_IN_PROGRESS:
+      return "QUEST_IN_PROGRESS";
+    case Lobby::JoinError::BATTLE_IN_PROGRESS:
+      return "BATTLE_IN_PROGRESS";
+    case Lobby::JoinError::LOADING:
+      return "LOADING";
+    case Lobby::JoinError::SOLO:
+      return "SOLO";
+    case Lobby::JoinError::INCORRECT_PASSWORD:
+      return "INCORRECT_PASSWORD";
+    case Lobby::JoinError::LEVEL_TOO_LOW:
+      return "LEVEL_TOO_LOW";
+    case Lobby::JoinError::LEVEL_TOO_HIGH:
+      return "LEVEL_TOO_HIGH";
+    case Lobby::JoinError::NO_ACCESS_TO_QUEST:
+      return "NO_ACCESS_TO_QUEST";
+    default:
+      throw runtime_error("invalid drop mode");
+  }
+}
