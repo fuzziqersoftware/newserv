@@ -4202,9 +4202,15 @@ static asio::awaitable<void> on_40(shared_ptr<Client> c, Channel::Message& msg) 
         "Client sent incorrect source Guild Card number ({:08X}) in card search",
         cmd.searcher_guild_card_number.load()));
   }
+
+  shared_ptr<Client> result;
   try {
     auto s = c->require_server_state();
-    auto result = s->find_client(nullptr, cmd.target_guild_card_number);
+    result = s->find_client(nullptr, cmd.target_guild_card_number);
+  } catch (const out_of_range&) {
+  }
+
+  if (result) {
     if (!result->blocked_senders.count(c->login->account->account_id)) {
       auto result_lobby = result->lobby.lock();
       if (result_lobby) {
@@ -4219,10 +4225,11 @@ static asio::awaitable<void> on_40(shared_ptr<Client> c, Channel::Message& msg) 
       c->log.info_f("Guild Card search ({} for {}) found {} but searcher is blocked",
           cmd.searcher_guild_card_number.load(), cmd.target_guild_card_number.load(), result->channel->name);
     }
-  } catch (const out_of_range&) {
+  } else {
     c->log.info_f("Guild Card search ({} for {}) did not find any player",
         cmd.searcher_guild_card_number.load(), cmd.target_guild_card_number.load());
   }
+
   co_return;
 }
 

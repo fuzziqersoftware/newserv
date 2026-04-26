@@ -320,7 +320,7 @@ uint16_t ServerState::game_server_port_for_version(Version v) const {
     case Version::XB_V3:
       return this->name_to_port_config.at("xb")->port;
     case Version::BB_V4:
-      return this->name_to_port_config.at("xb")->port;
+      return this->name_to_port_config.at("bb-data1")->port;
     default:
       throw runtime_error("unknown version");
   }
