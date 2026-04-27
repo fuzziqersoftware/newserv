@@ -131,11 +131,9 @@ struct ArrayRefT {
   /* 00 */ U32T<BE> count;
   /* 04 */ U32T<BE> offset;
   /* 08 */
-} __attribute__((packed));
+} __packed_ws_be__(ArrayRefT, 8);
 using ArrayRef = ArrayRefT<false>;
 using ArrayRefBE = ArrayRefT<true>;
-check_struct_size(ArrayRef, 8);
-check_struct_size(ArrayRefBE, 8);
 
 template <bool BE>
 struct RELFileFooterT {
@@ -159,8 +157,6 @@ struct RELFileFooterT {
   parray<U32T<BE>, 2> unused1;
   U32T<BE> root_offset = 0;
   parray<U32T<BE>, 3> unused2;
-} __attribute__((packed));
+} __packed_ws_be__(RELFileFooterT, 0x20);
 using RELFileFooter = RELFileFooterT<false>;
 using RELFileFooterBE = RELFileFooterT<true>;
-check_struct_size(RELFileFooter, 0x20);
-check_struct_size(RELFileFooterBE, 0x20);

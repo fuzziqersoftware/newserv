@@ -312,11 +312,9 @@ struct PlayerVisualConfigT {
     ret.proportion_y = this->proportion_y;
     return ret;
   }
-} __attribute__((packed));
+} __packed_ws_be__(PlayerVisualConfigT, 0x50);
 using PlayerVisualConfig = PlayerVisualConfigT<false>;
 using PlayerVisualConfigBE = PlayerVisualConfigT<true>;
-check_struct_size(PlayerVisualConfig, 0x50);
-check_struct_size(PlayerVisualConfigBE, 0x50);
 
 template <bool BE>
 struct PlayerDispDataDCPCV3T {
@@ -331,11 +329,9 @@ struct PlayerDispDataDCPCV3T {
   }
 
   PlayerDispDataBB to_bb(Language to_language, Language from_language) const;
-} __attribute__((packed));
+} __packed_ws_be__(PlayerDispDataDCPCV3T, 0xD0);
 using PlayerDispDataDCPCV3 = PlayerDispDataDCPCV3T<false>;
 using PlayerDispDataDCPCV3BE = PlayerDispDataDCPCV3T<true>;
-check_struct_size(PlayerDispDataDCPCV3, 0xD0);
-check_struct_size(PlayerDispDataDCPCV3BE, 0xD0);
 
 struct PlayerDispDataBBPreview {
   /* 00 */ le_uint32_t experience = 0;
@@ -598,11 +594,9 @@ struct ChallengeAwardStateT {
     ret.maximum_rank = this->maximum_rank;
     return ret;
   }
-} __attribute__((packed));
+} __packed_ws_be__(ChallengeAwardStateT, 8);
 using ChallengeAwardState = ChallengeAwardStateT<false>;
 using ChallengeAwardStateBE = ChallengeAwardStateT<true>;
-check_struct_size(ChallengeAwardState, 8);
-check_struct_size(ChallengeAwardStateBE, 8);
 
 template <TextEncoding UnencryptedEncoding, TextEncoding EncryptedEncoding>
 struct PlayerRecordsChallengeDCPCT {
@@ -673,11 +667,9 @@ struct PlayerRecordsChallengeV3T {
   /* 00D8:00F4 */ pstring<TextEncoding::CHALLENGE8, 0x0C> rank_title;
   /* 00E4:0100 */ parray<uint8_t, 0x1C> unknown_l7;
   /* 0100:011C */
-} __attribute__((packed));
+} __packed_ws_be__(PlayerRecordsChallengeV3T, 0x100);
 using PlayerRecordsChallengeV3 = PlayerRecordsChallengeV3T<false>;
 using PlayerRecordsChallengeV3BE = PlayerRecordsChallengeV3T<true>;
-check_struct_size(PlayerRecordsChallengeV3, 0x100);
-check_struct_size(PlayerRecordsChallengeV3BE, 0x100);
 
 struct PlayerRecordsChallengeEp3 {
   /* 00:1C */ be_uint16_t title_color = 0x7FFF; // XRGB1555
@@ -704,8 +696,7 @@ struct PlayerRecordsChallengeEp3 {
   /* C8:E4 */ ChallengeAwardStateT<true> ep2_online_award_state;
   /* D0:EC */ ChallengeAwardStateT<true> ep1_offline_award_state;
   /* D8:F4 */
-} __attribute__((packed));
-check_struct_size(PlayerRecordsChallengeEp3, 0xD8);
+} __packed_ws__(PlayerRecordsChallengeEp3, 0xD8);
 
 struct PlayerRecordsChallengeBB {
   /* 0000 */ le_uint16_t title_color = 0x7FFF; // XRGB1555
@@ -833,11 +824,9 @@ struct PlayerRecordsBattleT {
     }
     return ret;
   }
-} __attribute__((packed));
+} __packed_ws_be__(PlayerRecordsBattleT, 0x18);
 using PlayerRecordsBattle = PlayerRecordsBattleT<false>;
 using PlayerRecordsBattleBE = PlayerRecordsBattleT<true>;
-check_struct_size(PlayerRecordsBattle, 0x18);
-check_struct_size(PlayerRecordsBattleBE, 0x18);
 
 template <typename DestT, typename SrcT = DestT>
 DestT convert_player_disp_data(const SrcT&, Language, Language) {
@@ -1112,11 +1101,9 @@ struct SymbolChatT {
     ret.face_parts = this->face_parts;
     return ret;
   }
-} __attribute__((packed));
+} __packed_ws_be__(SymbolChatT, 0x3C);
 using SymbolChat = SymbolChatT<false>;
 using SymbolChatBE = SymbolChatT<true>;
-check_struct_size(SymbolChat, 0x3C);
-check_struct_size(SymbolChatBE, 0x3C);
 
 struct TelepipeState {
   /* 00 */ le_uint16_t owner_client_id = 0xFFFF;

@@ -15,12 +15,9 @@ struct GSLHeaderEntryT {
   U32T<BE> offset; // In pages, so actual offset is this * 0x800
   U32T<BE> size;
   uint64_t unused;
-} __attribute__((packed));
-
+} __packed_ws_be__(GSLHeaderEntryT, 0x30);
 using GSLHeaderEntry = GSLHeaderEntryT<false>;
 using GSLHeaderEntryBE = GSLHeaderEntryT<true>;
-check_struct_size(GSLHeaderEntry, 0x30);
-check_struct_size(GSLHeaderEntryBE, 0x30);
 
 template <bool BE>
 void GSLArchive::load_t() {
