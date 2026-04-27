@@ -39,114 +39,664 @@ const char* phosg::name_for_enum<ServerDropMode>(ServerDropMode value) {
   }
 }
 
-ItemParameterTable::ItemParameterTable(shared_ptr<const string> data, Version version)
-    : version(version),
-      data(data),
-      r(*data),
-      offsets_dc_protos(nullptr),
-      offsets_v1_v2(nullptr),
-      offsets_gc_nte(nullptr),
-      offsets_v3_le(nullptr),
-      offsets_v3_be(nullptr),
-      offsets_v4(nullptr) {
-  size_t offset_table_offset = is_big_endian(version)
-      ? this->r.pget_u32b(this->data->size() - 0x10)
-      : this->r.pget_u32l(this->data->size() - 0x10);
-
-  switch (this->version) {
-    case Version::DC_NTE: {
-      this->offsets_dc_protos = &this->r.pget<TableOffsetsDCProtos>(offset_table_offset);
-      this->num_weapon_classes = 0x27;
-      this->num_tool_classes = 0x0D;
-      this->item_stars_first_id = 0x22;
-      this->item_stars_last_id = 0x168;
-      this->special_stars_begin_index = 0xAA;
-      this->num_specials = 0x28;
-      // TODO: Check if first_rare_mag_index is the same on this version
-      break;
-    }
-    case Version::DC_11_2000: {
-      this->offsets_dc_protos = &this->r.pget<TableOffsetsDCProtos>(offset_table_offset);
-      this->num_weapon_classes = 0x27;
-      this->num_tool_classes = 0x0E;
-      this->item_stars_first_id = 0x26;
-      this->item_stars_last_id = 0x16C;
-      this->special_stars_begin_index = 0xAE;
-      this->num_specials = 0x28;
-      // TODO: Check if first_rare_mag_index is the same on this version
-      break;
-    }
-    case Version::DC_V1: {
-      this->offsets_v1_v2 = &this->r.pget<TableOffsetsV1V2>(offset_table_offset);
-      this->num_weapon_classes = 0x27;
-      this->num_tool_classes = 0x0E;
-      this->item_stars_first_id = 0x26;
-      this->item_stars_last_id = 0x16C;
-      this->special_stars_begin_index = 0xAE;
-      this->num_specials = 0x29;
-      // TODO: Check if first_rare_mag_index is the same on this version
-      break;
-    }
-    case Version::DC_V2:
-    case Version::PC_NTE:
-    case Version::PC_V2: {
-      this->offsets_v1_v2 = &this->r.pget<TableOffsetsV1V2>(offset_table_offset);
-      this->num_weapon_classes = 0x89;
-      this->num_tool_classes = 0x10;
-      this->item_stars_first_id = 0x4E;
-      this->item_stars_last_id = 0x215;
-      this->special_stars_begin_index = 0x138;
-      this->num_specials = 0x29;
-      break;
-    }
-
-    case Version::GC_NTE: {
-      this->offsets_gc_nte = &this->r.pget<TableOffsetsGCNTE>(offset_table_offset);
-      this->num_weapon_classes = 0x8D;
-      this->num_tool_classes = 0x13;
-      this->item_stars_first_id = 0x76;
-      this->item_stars_last_id = 0x298;
-      this->special_stars_begin_index = 0x1A3;
-      this->num_specials = 0x29;
-      break;
-    }
-
-    case Version::GC_EP3_NTE:
-    case Version::GC_EP3:
-    case Version::GC_V3:
-    case Version::XB_V3: {
-      if (is_big_endian(this->version)) {
-        this->offsets_v3_be = &this->r.pget<TableOffsetsV3V4BE>(offset_table_offset);
-      } else {
-        this->offsets_v3_le = &this->r.pget<TableOffsetsV3V4>(offset_table_offset);
-      }
-      this->num_weapon_classes = 0xAA;
-      this->num_tool_classes = 0x18;
-      this->item_stars_first_id = 0x94;
-      this->item_stars_last_id = 0x2F7;
-      this->special_stars_begin_index = 0x1CB;
-      this->num_specials = 0x29;
-      break;
-    }
-
-    case Version::BB_V4: {
-      this->offsets_v4 = &this->r.pget<TableOffsetsV3V4>(offset_table_offset);
-      this->num_weapon_classes = 0xED;
-      this->num_tool_classes = 0x1B;
-      this->item_stars_first_id = 0xB1;
-      this->item_stars_last_id = 0x437;
-      this->special_stars_begin_index = 0x256;
-      this->num_specials = 0x29;
-      break;
-    }
-    default:
-      throw logic_error("invalid item parameter table version");
+template <bool BE>
+struct ItemBaseV2T {
+  /* 00 */ U32T<BE> id = 0xFFFFFFFF;
+  /* 04 */
+  void parse_into(ItemParameterTable::ItemBase& ret) const {
+    ret.id = this->id;
   }
+} __packed_ws_be__(ItemBaseV2T, 4);
 
-  this->first_rare_mag_index = 0x28;
-}
+template <bool BE>
+struct ItemBaseV3T : ItemBaseV2T<BE> {
+  /* 04 */ U16T<BE> type = 0;
+  /* 06 */ U16T<BE> skin = 0;
+  /* 08 */
+  void parse_into(ItemParameterTable::ItemBase& ret) const {
+    this->ItemBaseV2T<BE>::parse_into(ret);
+    ret.type = this->type;
+    ret.skin = this->skin;
+  }
+} __packed_ws_be__(ItemBaseV3T, 8);
 
-set<uint32_t> ItemParameterTable::compute_all_valid_primary_identifiers() const {
+struct ItemBaseV4 : ItemBaseV3T<false> {
+  /* 08 */ le_uint32_t team_points = 0;
+  /* 0C */
+  void parse_into(ItemParameterTable::ItemBase& ret) const {
+    this->ItemBaseV3T<false>::parse_into(ret);
+    ret.team_points = this->team_points;
+  }
+} __packed_ws__(ItemBaseV4, 0x0C);
+
+struct WeaponDCProtos {
+  /* 00 */ ItemBaseV2T<false> base;
+  /* 04 */ le_uint16_t class_flags = 0;
+  /* 06 */ le_uint16_t atp_min = 0;
+  /* 08 */ le_uint16_t atp_max = 0;
+  /* 0A */ le_uint16_t atp_required = 0;
+  /* 0C */ le_uint16_t mst_required = 0;
+  /* 0E */ le_uint16_t ata_required = 0;
+  /* 10 */ uint8_t max_grind = 0;
+  /* 11 */ uint8_t photon = 0;
+  /* 12 */ uint8_t special = 0;
+  /* 13 */ uint8_t ata = 0;
+  /* 14 */
+  operator ItemParameterTable::Weapon() const {
+    ItemParameterTable::Weapon ret;
+    this->base.parse_into(ret);
+    ret.class_flags = this->class_flags;
+    ret.atp_min = this->atp_min;
+    ret.atp_max = this->atp_max;
+    ret.atp_required = this->atp_required;
+    ret.mst_required = this->mst_required;
+    ret.ata_required = this->ata_required;
+    ret.max_grind = this->max_grind;
+    ret.photon = this->photon;
+    ret.special = this->special;
+    ret.ata = this->ata;
+    return ret;
+  }
+} __packed_ws__(WeaponDCProtos, 0x14);
+
+struct WeaponV1V2 : WeaponDCProtos {
+  /* 14 */ uint8_t stat_boost_entry_index = 0; // TODO: This could be larger (16 or 32 bits)
+  /* 15 */ parray<uint8_t, 3> unknown_a9;
+  /* 18 */
+  operator ItemParameterTable::Weapon() const {
+    ItemParameterTable::Weapon ret = this->WeaponDCProtos::operator ItemParameterTable::Weapon();
+    ret.stat_boost_entry_index = this->stat_boost_entry_index;
+    return ret;
+  }
+} __packed_ws__(WeaponV1V2, 0x18);
+
+template <bool BE>
+struct WeaponGCNTET {
+  /* 00 */ ItemBaseV3T<BE> base;
+  /* 08 */ U16T<BE> class_flags = 0;
+  /* 0A */ U16T<BE> atp_min = 0;
+  /* 0C */ U16T<BE> atp_max = 0;
+  /* 0E */ U16T<BE> atp_required = 0;
+  /* 10 */ U16T<BE> mst_required = 0;
+  /* 12 */ U16T<BE> ata_required = 0;
+  /* 14 */ U16T<BE> mst = 0;
+  /* 16 */ uint8_t max_grind = 0;
+  /* 17 */ uint8_t photon = 0;
+  /* 18 */ uint8_t special = 0;
+  /* 19 */ uint8_t ata = 0;
+  /* 1A */ uint8_t stat_boost_entry_index = 0;
+  /* 1B */ uint8_t projectile = 0;
+  /* 1C */ int8_t trail1_x = 0;
+  /* 1D */ int8_t trail1_y = 0;
+  /* 1E */ int8_t trail2_x = 0;
+  /* 1F */ int8_t trail2_y = 0;
+  /* 20 */ int8_t color = 0;
+  /* 21 */ parray<uint8_t, 3> unknown_a1 = 0;
+  /* 24 */
+  operator ItemParameterTable::Weapon() const {
+    ItemParameterTable::Weapon ret;
+    this->base.parse_into(ret);
+    ret.class_flags = this->class_flags;
+    ret.atp_min = this->atp_min;
+    ret.atp_max = this->atp_max;
+    ret.atp_required = this->atp_required;
+    ret.mst_required = this->mst_required;
+    ret.ata_required = this->ata_required;
+    ret.mst = this->mst;
+    ret.max_grind = this->max_grind;
+    ret.photon = this->photon;
+    ret.special = this->special;
+    ret.ata = this->ata;
+    ret.stat_boost_entry_index = this->stat_boost_entry_index;
+    ret.projectile = this->projectile;
+    ret.trail1_x = this->trail1_x;
+    ret.trail1_y = this->trail1_y;
+    ret.trail2_x = this->trail2_x;
+    ret.trail2_y = this->trail2_y;
+    ret.color = this->color;
+    ret.unknown_a1 = this->unknown_a1;
+    return ret;
+  }
+} __packed_ws_be__(WeaponGCNTET, 0x24);
+using WeaponGCNTE = WeaponGCNTET<true>;
+
+template <bool BE>
+struct WeaponV3T : WeaponGCNTET<BE> {
+  /* 24 */ uint8_t unknown_a4 = 0;
+  /* 25 */ uint8_t unknown_a5 = 0;
+  /* 26 */ uint8_t tech_boost = 0;
+  /* 27 */ uint8_t behavior_flags = 0;
+  /* 28 */
+  operator ItemParameterTable::Weapon() const {
+    ItemParameterTable::Weapon ret = this->WeaponGCNTET<BE>::operator ItemParameterTable::Weapon();
+    ret.unknown_a4 = this->unknown_a4;
+    ret.unknown_a5 = this->unknown_a5;
+    ret.tech_boost = this->tech_boost;
+    ret.behavior_flags = this->behavior_flags;
+    return ret;
+  }
+} __packed_ws_be__(WeaponV3T, 0x28);
+using WeaponGC = WeaponV3T<true>;
+using WeaponXB = WeaponV3T<false>;
+
+struct WeaponV4 {
+  /* 00 */ ItemBaseV4 base;
+  /* 0C */ le_uint16_t class_flags = 0x00FF;
+  /* 0E */ le_uint16_t atp_min = 0;
+  /* 10 */ le_uint16_t atp_max = 0;
+  /* 12 */ le_uint16_t atp_required = 0;
+  /* 14 */ le_uint16_t mst_required = 0;
+  /* 16 */ le_uint16_t ata_required = 0;
+  /* 18 */ le_uint16_t mst = 0;
+  /* 1A */ uint8_t max_grind = 0;
+  /* 1B */ uint8_t photon = 0;
+  /* 1C */ uint8_t special = 0;
+  /* 1D */ uint8_t ata = 0;
+  /* 1E */ uint8_t stat_boost_entry_index = 0;
+  /* 1F */ uint8_t projectile = 0;
+  /* 20 */ int8_t trail1_x = 0;
+  /* 21 */ int8_t trail1_y = 0;
+  /* 22 */ int8_t trail2_x = 0;
+  /* 23 */ int8_t trail2_y = 0;
+  /* 24 */ int8_t color = 0;
+  /* 25 */ parray<uint8_t, 3> unknown_a1 = 0;
+  /* 28 */ uint8_t unknown_a4 = 0;
+  /* 29 */ uint8_t unknown_a5 = 0;
+  /* 2A */ uint8_t tech_boost = 0;
+  /* 2B */ uint8_t behavior_flags = 0;
+  /* 2C */
+  operator ItemParameterTable::Weapon() const {
+    ItemParameterTable::Weapon ret;
+    this->base.parse_into(ret);
+    ret.class_flags = this->class_flags;
+    ret.atp_min = this->atp_min;
+    ret.atp_max = this->atp_max;
+    ret.atp_required = this->atp_required;
+    ret.mst_required = this->mst_required;
+    ret.ata_required = this->ata_required;
+    ret.mst = this->mst;
+    ret.max_grind = this->max_grind;
+    ret.photon = this->photon;
+    ret.special = this->special;
+    ret.ata = this->ata;
+    ret.stat_boost_entry_index = this->stat_boost_entry_index;
+    ret.projectile = this->projectile;
+    ret.trail1_x = this->trail1_x;
+    ret.trail1_y = this->trail1_y;
+    ret.trail2_x = this->trail2_x;
+    ret.trail2_y = this->trail2_y;
+    ret.color = this->color;
+    ret.unknown_a1 = this->unknown_a1;
+    ret.unknown_a4 = this->unknown_a4;
+    ret.unknown_a5 = this->unknown_a5;
+    ret.tech_boost = this->tech_boost;
+    ret.behavior_flags = this->behavior_flags;
+    return ret;
+  }
+} __packed_ws__(WeaponV4, 0x2C);
+
+template <typename BaseT, bool BE>
+struct ArmorOrShieldT {
+  /* V1/V2 offsets */
+  /* 00 */ BaseT base;
+  /* 04 */ U16T<BE> dfp = 0;
+  /* 06 */ U16T<BE> evp = 0;
+  /* 08 */ uint8_t block_particle = 0;
+  /* 09 */ uint8_t block_effect = 0;
+  /* 0A */ U16T<BE> class_flags = 0x00FF;
+  /* 0C */ uint8_t required_level = 0;
+  /* 0D */ uint8_t efr = 0;
+  /* 0E */ uint8_t eth = 0;
+  /* 0F */ uint8_t eic = 0;
+  /* 10 */ uint8_t edk = 0;
+  /* 11 */ uint8_t elt = 0;
+  /* 12 */ uint8_t dfp_range = 0;
+  /* 13 */ uint8_t evp_range = 0;
+  /* 14 */
+  operator ItemParameterTable::ArmorOrShield() const {
+    ItemParameterTable::ArmorOrShield ret;
+    this->base.parse_into(ret);
+    ret.dfp = this->dfp;
+    ret.evp = this->evp;
+    ret.block_particle = this->block_particle;
+    ret.block_effect = this->block_effect;
+    ret.class_flags = this->class_flags;
+    ret.required_level = this->required_level;
+    ret.efr = this->efr;
+    ret.eth = this->eth;
+    ret.eic = this->eic;
+    ret.edk = this->edk;
+    ret.elt = this->elt;
+    ret.dfp_range = this->dfp_range;
+    ret.evp_range = this->evp_range;
+    return ret;
+  }
+} __attribute__((packed));
+static_assert(sizeof(ArmorOrShieldT<ItemBaseV2T<false>, false>) == 0x14, "Structure size is incorrect");
+static_assert(sizeof(ArmorOrShieldT<ItemBaseV2T<true>, true>) == 0x14, "Structure size is incorrect");
+static_assert(sizeof(ArmorOrShieldT<ItemBaseV3T<false>, false>) == 0x18, "Structure size is incorrect");
+static_assert(sizeof(ArmorOrShieldT<ItemBaseV3T<true>, true>) == 0x18, "Structure size is incorrect");
+static_assert(sizeof(ArmorOrShieldT<ItemBaseV4, false>) == 0x1C, "Structure size is incorrect");
+using ArmorOrShieldDCProtos = ArmorOrShieldT<ItemBaseV2T<false>, false>;
+
+template <typename BaseT, bool BE>
+struct ArmorOrShieldFinalT : ArmorOrShieldT<BaseT, BE> {
+  /* 14 */ uint8_t stat_boost_entry_index = 0;
+  /* 15 */ uint8_t tech_boost = 0;
+  /* 16 */ uint8_t flags_type = 0;
+  /* 17 */ uint8_t unknown_a4 = 0;
+  /* 18 */
+  operator ItemParameterTable::ArmorOrShield() const {
+    ItemParameterTable::ArmorOrShield ret = this->ArmorOrShieldT<BaseT, BE>::operator ItemParameterTable::ArmorOrShield();
+    ret.stat_boost_entry_index = this->stat_boost_entry_index;
+    ret.tech_boost = this->tech_boost;
+    ret.flags_type = this->flags_type;
+    ret.unknown_a4 = this->unknown_a4;
+    return ret;
+  }
+} __attribute__((packed));
+static_assert(sizeof(ArmorOrShieldFinalT<ItemBaseV2T<false>, false>) == 0x18, "Structure size is incorrect");
+static_assert(sizeof(ArmorOrShieldFinalT<ItemBaseV2T<true>, true>) == 0x18, "Structure size is incorrect");
+static_assert(sizeof(ArmorOrShieldFinalT<ItemBaseV3T<false>, false>) == 0x1C, "Structure size is incorrect");
+static_assert(sizeof(ArmorOrShieldFinalT<ItemBaseV3T<true>, true>) == 0x1C, "Structure size is incorrect");
+static_assert(sizeof(ArmorOrShieldFinalT<ItemBaseV4, false>) == 0x20, "Structure size is incorrect");
+using ArmorOrShieldV1V2 = ArmorOrShieldFinalT<ItemBaseV2T<false>, false>;
+using ArmorOrShieldGC = ArmorOrShieldFinalT<ItemBaseV3T<true>, true>;
+using ArmorOrShieldXB = ArmorOrShieldFinalT<ItemBaseV3T<false>, false>;
+using ArmorOrShieldV4 = ArmorOrShieldFinalT<ItemBaseV4, false>;
+
+template <typename BaseT, bool BE>
+struct UnitT {
+  /* V1/V2 offsets */
+  /* 00 */ BaseT base;
+  /* 04 */ U16T<BE> stat = 0;
+  /* 06 */ U16T<BE> stat_amount = 0;
+  /* 08 */
+  operator ItemParameterTable::Unit() const {
+    ItemParameterTable::Unit ret;
+    this->base.parse_into(ret);
+    ret.stat = this->stat;
+    ret.stat_amount = this->stat_amount;
+    return ret;
+  }
+} __attribute__((packed));
+static_assert(sizeof(UnitT<ItemBaseV2T<false>, false>) == 8, "Structure size is incorrect");
+static_assert(sizeof(UnitT<ItemBaseV2T<true>, true>) == 8, "Structure size is incorrect");
+static_assert(sizeof(UnitT<ItemBaseV3T<false>, false>) == 0x0C, "Structure size is incorrect");
+static_assert(sizeof(UnitT<ItemBaseV3T<true>, true>) == 0x0C, "Structure size is incorrect");
+static_assert(sizeof(UnitT<ItemBaseV4, false>) == 0x10, "Structure size is incorrect");
+using UnitDCProtos = UnitT<ItemBaseV2T<false>, false>;
+
+template <typename BaseT, bool BE>
+struct UnitFinalT : UnitT<BaseT, BE> {
+  /* 08 */ S16T<BE> modifier_amount = 0;
+  /* 0A */ parray<uint8_t, 2> unused;
+  /* 0C */
+  operator ItemParameterTable::Unit() const {
+    ItemParameterTable::Unit ret = this->UnitT<BaseT, BE>::operator ItemParameterTable::Unit();
+    ret.modifier_amount = this->modifier_amount;
+    return ret;
+  }
+} __attribute__((packed));
+static_assert(sizeof(UnitFinalT<ItemBaseV2T<false>, false>) == 0x0C, "Structure size is incorrect");
+static_assert(sizeof(UnitFinalT<ItemBaseV2T<true>, true>) == 0x0C, "Structure size is incorrect");
+static_assert(sizeof(UnitFinalT<ItemBaseV3T<false>, false>) == 0x10, "Structure size is incorrect");
+static_assert(sizeof(UnitFinalT<ItemBaseV3T<true>, true>) == 0x10, "Structure size is incorrect");
+static_assert(sizeof(UnitFinalT<ItemBaseV4, false>) == 0x14, "Structure size is incorrect");
+using UnitV1V2 = UnitFinalT<ItemBaseV2T<false>, false>;
+using UnitGC = UnitFinalT<ItemBaseV3T<true>, true>;
+using UnitXB = UnitFinalT<ItemBaseV3T<false>, false>;
+using UnitV4 = UnitFinalT<ItemBaseV4, false>;
+
+template <typename BaseT, bool BE>
+struct MagT {
+  /* V1/V2 offsets */
+  /* 00 */ BaseT base;
+  /* 04 */ U16T<BE> feed_table = 0;
+  /* 06 */ uint8_t photon_blast = 0;
+  /* 07 */ uint8_t activation = 0;
+  /* 08 */ uint8_t on_pb_full = 0;
+  /* 09 */ uint8_t on_low_hp = 0;
+  /* 0A */ uint8_t on_death = 0;
+  /* 0B */ uint8_t on_boss = 0;
+  /* 0C */ uint8_t on_pb_full_flag = 0;
+  /* 0D */ uint8_t on_low_hp_flag = 0;
+  /* 0E */ uint8_t on_death_flag = 0;
+  /* 0F */ uint8_t on_boss_flag = 0;
+  /* 10 */
+  operator ItemParameterTable::Mag() const {
+    ItemParameterTable::Mag ret;
+    this->base.parse_into(ret);
+    ret.feed_table = this->feed_table;
+    ret.photon_blast = this->photon_blast;
+    ret.activation = this->activation;
+    ret.on_pb_full = this->on_pb_full;
+    ret.on_low_hp = this->on_low_hp;
+    ret.on_death = this->on_death;
+    ret.on_boss = this->on_boss;
+    ret.on_pb_full_flag = this->on_pb_full_flag;
+    ret.on_low_hp_flag = this->on_low_hp_flag;
+    ret.on_death_flag = this->on_death_flag;
+    ret.on_boss_flag = this->on_boss_flag;
+    return ret;
+  }
+} __attribute__((packed));
+static_assert(sizeof(MagT<ItemBaseV2T<false>, false>) == 0x10, "Structure size is incorrect");
+static_assert(sizeof(MagT<ItemBaseV2T<true>, true>) == 0x10, "Structure size is incorrect");
+static_assert(sizeof(MagT<ItemBaseV3T<false>, false>) == 0x14, "Structure size is incorrect");
+static_assert(sizeof(MagT<ItemBaseV3T<true>, true>) == 0x14, "Structure size is incorrect");
+static_assert(sizeof(MagT<ItemBaseV4, true>) == 0x18, "Structure size is incorrect");
+using MagV1 = MagT<ItemBaseV2T<false>, false>;
+
+template <typename BaseT, bool BE>
+struct MagV2V3V4T : MagT<BaseT, BE> {
+  U16T<BE> class_flags = 0x00FF;
+  parray<uint8_t, 2> unused;
+  operator ItemParameterTable::Mag() const {
+    ItemParameterTable::Mag ret = this->MagT<BaseT, BE>::operator ItemParameterTable::Mag();
+    ret.class_flags = this->class_flags;
+    return ret;
+  }
+} __attribute__((packed));
+static_assert(sizeof(MagV2V3V4T<ItemBaseV2T<false>, false>) == 0x14, "Structure size is incorrect");
+static_assert(sizeof(MagV2V3V4T<ItemBaseV2T<true>, true>) == 0x14, "Structure size is incorrect");
+static_assert(sizeof(MagV2V3V4T<ItemBaseV3T<false>, false>) == 0x18, "Structure size is incorrect");
+static_assert(sizeof(MagV2V3V4T<ItemBaseV3T<true>, true>) == 0x18, "Structure size is incorrect");
+static_assert(sizeof(MagV2V3V4T<ItemBaseV4, false>) == 0x1C, "Structure size is incorrect");
+using MagV2 = MagV2V3V4T<ItemBaseV2T<false>, false>;
+using MagGC = MagV2V3V4T<ItemBaseV3T<true>, true>;
+using MagXB = MagV2V3V4T<ItemBaseV3T<false>, false>;
+using MagV4 = MagV2V3V4T<ItemBaseV4, false>;
+
+template <typename BaseT, bool BE>
+struct ToolT {
+  /* V1/V2 offsets */
+  /* 00 */ BaseT base;
+  /* 04 */ U16T<BE> amount = 0;
+  /* 06 */ U16T<BE> tech = 0;
+  /* 08 */ S32T<BE> cost = 0;
+  /* 0C */ U32T<BE> item_flags = 0;
+  /* 10 */
+  operator ItemParameterTable::Tool() const {
+    ItemParameterTable::Tool ret;
+    this->base.parse_into(ret);
+    ret.amount = this->amount;
+    ret.tech = this->tech;
+    ret.cost = this->cost;
+    ret.item_flags = this->item_flags;
+    return ret;
+  }
+} __attribute__((packed));
+static_assert(sizeof(ToolT<ItemBaseV2T<false>, false>) == 0x10, "Structure size is incorrect");
+static_assert(sizeof(ToolT<ItemBaseV2T<true>, true>) == 0x10, "Structure size is incorrect");
+static_assert(sizeof(ToolT<ItemBaseV3T<false>, false>) == 0x14, "Structure size is incorrect");
+static_assert(sizeof(ToolT<ItemBaseV3T<true>, true>) == 0x14, "Structure size is incorrect");
+static_assert(sizeof(ToolT<ItemBaseV4, false>) == 0x18, "Structure size is incorrect");
+using ToolV1V2 = ToolT<ItemBaseV2T<false>, false>;
+using ToolGC = ToolT<ItemBaseV3T<true>, true>;
+using ToolXB = ToolT<ItemBaseV3T<false>, false>;
+using ToolV4 = ToolT<ItemBaseV4, false>;
+
+using MagFeedResultsList = parray<ItemParameterTable::MagFeedResult, 11>;
+
+template <bool BE>
+using MagFeedResultsListOffsetsT = parray<U32T<BE>, 8>;
+
+template <bool BE>
+struct SpecialT {
+  U16T<BE> type = 0xFFFF;
+  U16T<BE> amount = 0;
+  operator ItemParameterTable::Special() const {
+    return {this->type, this->amount};
+  }
+} __packed_ws_be__(SpecialT, 4);
+
+template <bool BE>
+struct StatBoostT {
+  parray<uint8_t, 2> stats = 0;
+  parray<U16T<BE>, 2> amounts;
+  operator ItemParameterTable::StatBoost() const {
+    return {this->stats[0], this->amounts[0], this->stats[1], this->amounts[1]};
+  }
+} __packed_ws_be__(StatBoostT, 6);
+
+template <bool BE>
+struct TechniqueBoostEntryT {
+  uint8_t tech_num = 0;
+  uint8_t flags = 0;
+  parray<uint8_t, 2> unused;
+  F32T<BE> amount = 0.0f;
+  operator ItemParameterTable::TechniqueBoost() const {
+    return {this->tech_num, this->flags, this->amount};
+  }
+} __packed_ws_be__(TechniqueBoostEntryT, 8);
+
+struct NonWeaponSaleDivisorsDCProtos {
+  uint8_t armor_divisor = 0;
+  uint8_t shield_divisor = 0;
+  uint8_t unit_divisor = 0;
+  operator ItemParameterTable::NonWeaponSaleDivisors() const {
+    return {
+        static_cast<float>(this->armor_divisor),
+        static_cast<float>(this->shield_divisor),
+        static_cast<float>(this->unit_divisor),
+        0.0f};
+  }
+} __packed_ws__(NonWeaponSaleDivisorsDCProtos, 3);
+
+template <bool BE>
+struct NonWeaponSaleDivisorsT {
+  F32T<BE> armor_divisor = 0.0f;
+  F32T<BE> shield_divisor = 0.0f;
+  F32T<BE> unit_divisor = 0.0f;
+  F32T<BE> mag_divisor = 0.0f;
+  operator ItemParameterTable::NonWeaponSaleDivisors() const {
+    return {this->armor_divisor, this->shield_divisor, this->unit_divisor, this->mag_divisor};
+  }
+} __packed_ws_be__(NonWeaponSaleDivisorsT, 0x10);
+
+template <bool BE>
+struct ShieldEffectT {
+  U32T<BE> sound_id;
+  U32T<BE> unknown_a1;
+  operator ItemParameterTable::ShieldEffect() const {
+    return {this->sound_id, this->unknown_a1};
+  }
+} __packed_ws_be__(ShieldEffectT, 8);
+
+template <bool BE>
+struct PhotonColorEntryT {
+  /* 00 */ U32T<BE> unknown_a1;
+  /* 04 */ parray<F32T<BE>, 4> unknown_a2;
+  /* 14 */ parray<F32T<BE>, 4> unknown_a3;
+  /* 24 */
+  operator ItemParameterTable::PhotonColorEntry() const {
+    ItemParameterTable::PhotonColorEntry ret;
+    ret.unknown_a1 = this->unknown_a1;
+    ret.unknown_a2.x = this->unknown_a2[0];
+    ret.unknown_a2.y = this->unknown_a2[1];
+    ret.unknown_a2.z = this->unknown_a2[2];
+    ret.unknown_a2.t = this->unknown_a2[3];
+    ret.unknown_a3.x = this->unknown_a3[0];
+    ret.unknown_a3.y = this->unknown_a3[1];
+    ret.unknown_a3.z = this->unknown_a3[2];
+    ret.unknown_a3.t = this->unknown_a3[3];
+    return ret;
+  }
+} __packed_ws_be__(PhotonColorEntryT, 0x24);
+
+template <bool BE>
+struct UnknownA1T {
+  U16T<BE> unknown_a1;
+  U16T<BE> unknown_a2;
+  operator ItemParameterTable::UnknownA1() const {
+    return {this->unknown_a1, this->unknown_a2};
+  }
+} __packed_ws_be__(UnknownA1T, 4);
+
+template <bool BE>
+struct UnknownA5T {
+  U32T<BE> target_param;
+  U32T<BE> unknown_a2;
+  U32T<BE> unknown_a3;
+  operator ItemParameterTable::UnknownA5() const {
+    return {this->target_param, this->unknown_a2, this->unknown_a3};
+  }
+} __packed_ws_be__(UnknownA5T, 0x0C);
+
+template <bool BE>
+struct WeaponRangeT {
+  F32T<BE> unknown_a1;
+  F32T<BE> unknown_a2;
+  U32T<BE> unknown_a3;
+  U32T<BE> unknown_a4;
+  U32T<BE> unknown_a5;
+  operator ItemParameterTable::WeaponRange() const {
+    return {this->unknown_a1, this->unknown_a2, this->unknown_a3, this->unknown_a4, this->unknown_a5};
+  }
+} __packed_ws_be__(WeaponRangeT, 0x14);
+
+template <bool BE>
+struct WeaponEffect {
+  U32T<BE> sound_id1;
+  U32T<BE> eff_value1;
+  U32T<BE> sound_id2;
+  U32T<BE> eff_value2;
+  parray<uint8_t, 0x10> unknown_a5;
+  operator ItemParameterTable::WeaponEffect() const {
+    return {this->sound_id1, this->eff_value1, this->sound_id2, this->eff_value2, this->unknown_a5};
+  }
+} __packed_ws_be__(WeaponEffect, 0x20);
+
+/* The fields in the root structure are:
+ * DCTE / 112K / V1   / V2   / GCTE / V3   / V4
+ * 0013 / 0013 / 0013 / 0013 /      /      /       entry_count // Count of pointers in root struct; unused
+ * 0668 / 0668 /      /      /      /      /       armor_stat_boost_index_table // -> [uint8_t]
+ * 2D94 / 2E28 / 3258 / 5A5C / 6E4C / EF90 / 1478C armor_table // -> [{count, offset -> [ArmorOrShieldV*]}](2; armors and shields)
+ *      /      /      /      / 737C / F5D0 / 14FF4 combination_table // -> {count, offset -> [ItemCombination]}
+ * 2F54 / 2FF0 / 3420 / 5F4C / 7384 / F608 / 1502C mag_feed_table // -> MagFeedResultsTable
+ * 2DAC / 2E40 / 3270 / 5A74 / 6E64 / EFA8 / 147A4 mag_table // -> {count, offset -> [MagV*]}
+ *      /      /      /      / 69D8 / DF88 / 12894 max_tech_level_table // -> MaxTechniqueLevels
+ * 1FE6 / 207A / 248C / 40A8 / 4A80 / BBCC / 0F83C non_weapon_sale_divisor_table // -> NonWeaponSaleDivisors
+ * 1994 / 1A28 / 1DB0 / 2E4C / 37A4 / A7FC / 0DE7C photon_color_table // -> PhotonColorEntry[...]
+ *      /      /      /      /      / F600 / 15024 ranged_special_table // -> {count, offset -> [RangedSpecial]}
+ *      /      / 3198 / 5704 / 61B8 / D6E4 / 11C80 shield_effect_table // -> ShieldEffect[...] (indexed by data1[2])
+ * 030C / 030C /      /      /      /      /       shield_stat_boost_index_table // -> [uint8_t]
+ * 275E / 27F4 / 2C12 / 4540 / 4F72 / C100 / 0FE3C special_table // -> [Special]
+ * 22A9 / 233D / 275C / 4378 / 4D50 / BE9C / 0FB0C star_value_table // -> [uint8_t] (indexed by .id from weapon, armor, etc.)
+ * 2CE4 / 2D78 / 2CB8 / 58DC / 68B8 / DE50 / 1275C stat_boost_table // -> [StatBoost]
+ *      /      /      /      / 6B1C / EB8C / 14278 tech_boost_table // -> [TechniqueBoostEntry[3]]
+ * 2DB4 / 2E48 / 3278 / 5A7C / 6E6C / EFB0 / 147AC tool_table // -> [{count, offset -> [ToolV*]}] (last if out of range)
+ * 2DA4 / 2E38 / 3268 / 5A6C / 6E5C / EFA0 / 1479C unit_table // -> {count, offset -> [UnitV*]} (last if out of range)
+ * 23EE / 2484 / 28A2 / 45E4 /      /      /       unknown_a1 // TODO
+ *      /      /      /      / 68B0 / DE48 / 12754 unknown_a5 // -> {count, offset -> [UnknownA5]}
+ *      /      /      /      /      / F5F8 / 1501C unsealable_table // -> {count, offset -> [UnsealableItem]}
+ *      /      /      /      /      / F5F0 / 15014 unwrap_table // -> {count, offset -> [{count, offset -> [EventItem]}]}
+ * 1F98 / 202C / 23C8 / 3DF8 / 47BC / B88C / 0F4B8 weapon_class_table // -> [uint8_t](0x89)
+ * 2804 / 2898 /      /      / 5018 / C1A4 / 0FEE0 weapon_effect_table // -> [WeaponEffect]
+ * 1C64 / 1CF8 / 2080 / 32CC / 3A74 / AACC / 0E194 weapon_range_table // -> WeaponRange[...]
+ * 1FBF / 2053 / 23F0 / 3E84 / 484C / B938 / 0F5A8 weapon_sale_divisor_table // -> [uint8_t] on DC protos; [float] on all other versions
+ * 1908 / 199C /      /      /      /      /       weapon_stat_boost_index_table // -> [StatBoost]
+ * 2E1C / 2EB8 / 32E8 / 5AFC / 6F0C / F078 / 14884 weapon_table // -> [{count, offset -> [WeaponV*]}]
+ */
+
+struct RootDCProtos {
+  /* 00 */ le_uint32_t entry_count;
+  /* 04 */ le_uint32_t weapon_table;
+  /* 08 */ le_uint32_t armor_table;
+  /* 0C */ le_uint32_t unit_table;
+  /* 10 */ le_uint32_t tool_table;
+  /* 14 */ le_uint32_t mag_table;
+  /* 18 */ le_uint32_t weapon_class_table;
+  /* 1C */ le_uint32_t photon_color_table;
+  /* 20 */ le_uint32_t weapon_range_table;
+  /* 24 */ le_uint32_t weapon_integral_sale_divisor_table;
+  /* 28 */ le_uint32_t non_weapon_integral_sale_divisor_table;
+  /* 2C */ le_uint32_t mag_feed_table;
+  /* 30 */ le_uint32_t star_value_table;
+  /* 34 */ le_uint32_t unknown_a1;
+  /* 38 */ le_uint32_t special_table;
+  /* 3C */ le_uint32_t weapon_effect_table;
+  /* 40 */ le_uint32_t weapon_stat_boost_index_table;
+  /* 44 */ le_uint32_t armor_stat_boost_index_table;
+  /* 48 */ le_uint32_t shield_stat_boost_index_table;
+  /* 4C */ le_uint32_t stat_boost_table;
+} __packed_ws__(RootDCProtos, 0x50);
+
+struct RootV1V2 {
+  /* 00 */ le_uint32_t entry_count;
+  /* 04 */ le_uint32_t weapon_table;
+  /* 08 */ le_uint32_t armor_table;
+  /* 0C */ le_uint32_t unit_table;
+  /* 10 */ le_uint32_t tool_table;
+  /* 14 */ le_uint32_t mag_table;
+  /* 18 */ le_uint32_t weapon_class_table;
+  /* 1C */ le_uint32_t photon_color_table;
+  /* 20 */ le_uint32_t weapon_range_table;
+  /* 24 */ le_uint32_t weapon_sale_divisor_table;
+  /* 28 */ le_uint32_t non_weapon_sale_divisor_table;
+  /* 2C */ le_uint32_t mag_feed_table;
+  /* 30 */ le_uint32_t star_value_table;
+  /* 34 */ le_uint32_t unknown_a1;
+  /* 38 */ le_uint32_t special_table;
+  /* 3C */ le_uint32_t stat_boost_table;
+  /* 40 */ le_uint32_t shield_effect_table;
+} __packed_ws__(RootV1V2, 0x44);
+
+struct RootGCNTE {
+  /* 00 */ be_uint32_t weapon_table;
+  /* 04 */ be_uint32_t armor_table;
+  /* 08 */ be_uint32_t unit_table;
+  /* 0C */ be_uint32_t tool_table;
+  /* 10 */ be_uint32_t mag_table;
+  /* 14 */ be_uint32_t weapon_class_table;
+  /* 18 */ be_uint32_t photon_color_table;
+  /* 1C */ be_uint32_t weapon_range_table;
+  /* 20 */ be_uint32_t weapon_sale_divisor_table;
+  /* 24 */ be_uint32_t non_weapon_sale_divisor_table;
+  /* 28 */ be_uint32_t mag_feed_table;
+  /* 2C */ be_uint32_t star_value_table;
+  /* 30 */ be_uint32_t special_table;
+  /* 34 */ be_uint32_t weapon_effect_table;
+  /* 38 */ be_uint32_t stat_boost_table;
+  /* 3C */ be_uint32_t shield_effect_table;
+  /* 40 */ be_uint32_t max_tech_level_table;
+  /* 44 */ be_uint32_t combination_table;
+  /* 48 */ be_uint32_t unknown_a5;
+  /* 4C */ be_uint32_t tech_boost_table;
+} __packed_ws__(RootGCNTE, 0x50);
+
+template <bool BE>
+struct RootV3V4T {
+  /* 00 */ U32T<BE> weapon_table;
+  /* 04 */ U32T<BE> armor_table;
+  /* 08 */ U32T<BE> unit_table;
+  /* 0C */ U32T<BE> tool_table;
+  /* 10 */ U32T<BE> mag_table;
+  /* 14 */ U32T<BE> weapon_class_table;
+  /* 18 */ U32T<BE> photon_color_table;
+  /* 1C */ U32T<BE> weapon_range_table;
+  /* 20 */ U32T<BE> weapon_sale_divisor_table;
+  /* 24 */ U32T<BE> non_weapon_sale_divisor_table;
+  /* 28 */ U32T<BE> mag_feed_table;
+  /* 2C */ U32T<BE> star_value_table;
+  /* 30 */ U32T<BE> special_table;
+  /* 34 */ U32T<BE> weapon_effect_table;
+  /* 38 */ U32T<BE> stat_boost_table;
+  /* 3C */ U32T<BE> shield_effect_table;
+  /* 40 */ U32T<BE> max_tech_level_table;
+  /* 44 */ U32T<BE> combination_table;
+  /* 48 */ U32T<BE> unknown_a5;
+  /* 4C */ U32T<BE> tech_boost_table;
+  /* 50 */ U32T<BE> unwrap_table;
+  /* 54 */ U32T<BE> unsealable_table;
+  /* 58 */ U32T<BE> ranged_special_table;
+} __packed_ws_be__(RootV3V4T, 0x5C);
+
+ItemParameterTable::ItemParameterTable(std::shared_ptr<const std::string> data)
+    : data(data), r(*this->data) {}
+
+std::set<uint32_t> ItemParameterTable::compute_all_valid_primary_identifiers() const {
   set<uint32_t> ret;
 
   auto find_items_1d = [&](uint64_t data1, size_t position) -> size_t {
@@ -181,596 +731,12 @@ set<uint32_t> ItemParameterTable::compute_all_valid_primary_identifiers() const 
   return ret;
 }
 
-ItemParameterTable::WeaponV4 ItemParameterTable::WeaponDCProtos::to_v4() const {
-  WeaponV4 ret;
-  ret.base.id = this->base.id;
-  ret.class_flags = this->class_flags;
-  ret.atp_min = this->atp_min;
-  ret.atp_max = this->atp_max;
-  ret.atp_required = this->atp_required;
-  ret.mst_required = this->mst_required;
-  ret.ata_required = this->ata_required;
-  ret.max_grind = this->max_grind;
-  ret.photon = this->photon;
-  ret.special = this->special;
-  ret.ata = this->ata;
-  return ret;
-}
-
-ItemParameterTable::WeaponV4 ItemParameterTable::WeaponV1V2::to_v4() const {
-  WeaponV4 ret;
-  ret.base.id = this->base.id;
-  ret.class_flags = this->class_flags;
-  ret.atp_min = this->atp_min;
-  ret.atp_max = this->atp_max;
-  ret.atp_required = this->atp_required;
-  ret.mst_required = this->mst_required;
-  ret.ata_required = this->ata_required;
-  ret.max_grind = this->max_grind;
-  ret.photon = this->photon;
-  ret.special = this->special;
-  ret.ata = this->ata;
-  ret.stat_boost_entry_index = this->stat_boost_entry_index;
-  return ret;
-}
-
-ItemParameterTable::WeaponV4 ItemParameterTable::WeaponGCNTE::to_v4() const {
-  WeaponV4 ret;
-  ret.base.id = this->base.id;
-  ret.base.type = this->base.type;
-  ret.base.skin = this->base.skin;
-  ret.class_flags = this->class_flags;
-  ret.atp_min = this->atp_min;
-  ret.atp_max = this->atp_max;
-  ret.atp_required = this->atp_required;
-  ret.mst_required = this->mst_required;
-  ret.ata_required = this->ata_required;
-  ret.mst = this->mst;
-  ret.max_grind = this->max_grind;
-  ret.photon = this->photon;
-  ret.special = this->special;
-  ret.ata = this->ata;
-  ret.stat_boost_entry_index = this->stat_boost_entry_index;
-  ret.projectile = this->projectile;
-  ret.trail1_x = this->trail1_x;
-  ret.trail1_y = this->trail1_y;
-  ret.trail2_x = this->trail2_x;
-  ret.trail2_y = this->trail2_y;
-  ret.color = this->color;
-  ret.unknown_a1 = this->unknown_a1;
-  return ret;
-}
-
-template <bool BE>
-ItemParameterTable::WeaponV4 ItemParameterTable::WeaponV3T<BE>::to_v4() const {
-  WeaponV4 ret;
-  ret.base.id = this->base.id;
-  ret.base.type = this->base.type;
-  ret.base.skin = this->base.skin;
-  ret.class_flags = this->class_flags;
-  ret.atp_min = this->atp_min;
-  ret.atp_max = this->atp_max;
-  ret.atp_required = this->atp_required;
-  ret.mst_required = this->mst_required;
-  ret.ata_required = this->ata_required;
-  ret.mst = this->mst;
-  ret.max_grind = this->max_grind;
-  ret.photon = this->photon;
-  ret.special = this->special;
-  ret.ata = this->ata;
-  ret.stat_boost_entry_index = this->stat_boost_entry_index;
-  ret.projectile = this->projectile;
-  ret.trail1_x = this->trail1_x;
-  ret.trail1_y = this->trail1_y;
-  ret.trail2_x = this->trail2_x;
-  ret.trail2_y = this->trail2_y;
-  ret.color = this->color;
-  ret.unknown_a1 = this->unknown_a1;
-  ret.unknown_a4 = this->unknown_a4;
-  ret.unknown_a5 = this->unknown_a5;
-  ret.tech_boost = this->tech_boost;
-  ret.behavior_flags = this->behavior_flags;
-  return ret;
-}
-
-ItemParameterTable::ArmorOrShieldV4 ItemParameterTable::ArmorOrShieldDCProtos::to_v4() const {
-  ArmorOrShieldV4 ret;
-  ret.base.id = this->base.id;
-  ret.dfp = this->dfp;
-  ret.evp = this->evp;
-  ret.block_particle = this->block_particle;
-  ret.block_effect = this->block_effect;
-  ret.class_flags = this->class_flags;
-  ret.required_level = this->required_level;
-  ret.efr = this->efr;
-  ret.eth = this->eth;
-  ret.eic = this->eic;
-  ret.edk = this->edk;
-  ret.elt = this->elt;
-  ret.dfp_range = this->dfp_range;
-  ret.evp_range = this->evp_range;
-  return ret;
-}
-
-ItemParameterTable::ArmorOrShieldV4 ItemParameterTable::ArmorOrShieldV1V2::to_v4() const {
-  ArmorOrShieldV4 ret;
-  ret.base.id = this->base.id;
-  ret.dfp = this->dfp;
-  ret.evp = this->evp;
-  ret.block_particle = this->block_particle;
-  ret.block_effect = this->block_effect;
-  ret.class_flags = this->class_flags;
-  ret.required_level = this->required_level;
-  ret.efr = this->efr;
-  ret.eth = this->eth;
-  ret.eic = this->eic;
-  ret.edk = this->edk;
-  ret.elt = this->elt;
-  ret.dfp_range = this->dfp_range;
-  ret.evp_range = this->evp_range;
-  ret.stat_boost_entry_index = this->stat_boost_entry_index;
-  ret.tech_boost = this->tech_boost;
-  ret.flags_type = this->flags_type;
-  ret.unknown_a4 = this->unknown_a4;
-  return ret;
-}
-
-template <bool BE>
-ItemParameterTable::ArmorOrShieldV4 ItemParameterTable::ArmorOrShieldV3T<BE>::to_v4() const {
-  ArmorOrShieldV4 ret;
-  ret.base.id = this->base.id;
-  ret.base.type = this->base.type;
-  ret.base.skin = this->base.skin;
-  ret.dfp = this->dfp;
-  ret.evp = this->evp;
-  ret.block_particle = this->block_particle;
-  ret.block_effect = this->block_effect;
-  ret.class_flags = this->class_flags;
-  ret.required_level = this->required_level;
-  ret.efr = this->efr;
-  ret.eth = this->eth;
-  ret.eic = this->eic;
-  ret.edk = this->edk;
-  ret.elt = this->elt;
-  ret.dfp_range = this->dfp_range;
-  ret.evp_range = this->evp_range;
-  ret.stat_boost_entry_index = this->stat_boost_entry_index;
-  ret.tech_boost = this->tech_boost;
-  ret.flags_type = this->flags_type;
-  ret.unknown_a4 = this->unknown_a4;
-  return ret;
-}
-
-ItemParameterTable::UnitV4 ItemParameterTable::UnitDCProtos::to_v4() const {
-  UnitV4 ret;
-  ret.base.id = this->base.id;
-  ret.stat = this->stat;
-  ret.stat_amount = this->stat_amount;
-  return ret;
-}
-
-ItemParameterTable::UnitV4 ItemParameterTable::UnitV1V2::to_v4() const {
-  UnitV4 ret;
-  ret.base.id = this->base.id;
-  ret.stat = this->stat;
-  ret.stat_amount = this->stat_amount;
-  ret.modifier_amount = this->modifier_amount;
-  return ret;
-}
-
-template <bool BE>
-ItemParameterTable::UnitV4 ItemParameterTable::UnitV3T<BE>::to_v4() const {
-  UnitV4 ret;
-  ret.base.id = this->base.id;
-  ret.base.type = this->base.type;
-  ret.base.skin = this->base.skin;
-  ret.stat = this->stat;
-  ret.stat_amount = this->stat_amount;
-  ret.modifier_amount = this->modifier_amount;
-  return ret;
-}
-
-ItemParameterTable::MagV4 ItemParameterTable::MagV1::to_v4() const {
-  MagV4 ret;
-  ret.base.id = this->base.id;
-  ret.feed_table = this->feed_table;
-  ret.photon_blast = this->photon_blast;
-  ret.activation = this->activation;
-  ret.on_pb_full = this->on_pb_full;
-  ret.on_low_hp = this->on_low_hp;
-  ret.on_death = this->on_death;
-  ret.on_boss = this->on_boss;
-  ret.on_pb_full_flag = this->on_pb_full_flag;
-  ret.on_low_hp_flag = this->on_low_hp_flag;
-  ret.on_death_flag = this->on_death_flag;
-  ret.on_boss_flag = this->on_boss_flag;
-  return ret;
-}
-
-ItemParameterTable::MagV4 ItemParameterTable::MagV2::to_v4() const {
-  MagV4 ret;
-  ret.base.id = this->base.id;
-  ret.feed_table = this->feed_table;
-  ret.photon_blast = this->photon_blast;
-  ret.activation = this->activation;
-  ret.on_pb_full = this->on_pb_full;
-  ret.on_low_hp = this->on_low_hp;
-  ret.on_death = this->on_death;
-  ret.on_boss = this->on_boss;
-  ret.on_pb_full_flag = this->on_pb_full_flag;
-  ret.on_low_hp_flag = this->on_low_hp_flag;
-  ret.on_death_flag = this->on_death_flag;
-  ret.on_boss_flag = this->on_boss_flag;
-  ret.class_flags = this->class_flags;
-  return ret;
-}
-
-template <bool BE>
-ItemParameterTable::MagV4 ItemParameterTable::MagV3T<BE>::to_v4() const {
-  MagV4 ret;
-  ret.base.id = this->base.id;
-  ret.base.type = this->base.type;
-  ret.base.skin = this->base.skin;
-  ret.feed_table = this->feed_table;
-  ret.photon_blast = this->photon_blast;
-  ret.activation = this->activation;
-  ret.on_pb_full = this->on_pb_full;
-  ret.on_low_hp = this->on_low_hp;
-  ret.on_death = this->on_death;
-  ret.on_boss = this->on_boss;
-  ret.on_pb_full_flag = this->on_pb_full_flag;
-  ret.on_low_hp_flag = this->on_low_hp_flag;
-  ret.on_death_flag = this->on_death_flag;
-  ret.on_boss_flag = this->on_boss_flag;
-  ret.class_flags = this->class_flags;
-  return ret;
-}
-
-ItemParameterTable::ToolV4 ItemParameterTable::ToolV1V2::to_v4() const {
-  ToolV4 ret;
-  ret.base.id = this->base.id;
-  ret.amount = this->amount;
-  ret.tech = this->tech;
-  ret.cost = this->cost;
-  ret.item_flags = this->item_flags;
-  return ret;
-}
-
-template <bool BE>
-ItemParameterTable::ToolV4 ItemParameterTable::ToolV3T<BE>::to_v4() const {
-  ToolV4 ret;
-  ret.base.id = this->base.id;
-  ret.base.type = this->base.type;
-  ret.base.skin = this->base.skin;
-  ret.amount = this->amount;
-  ret.tech = this->tech;
-  ret.cost = this->cost;
-  ret.item_flags = this->item_flags;
-  return ret;
-}
-
-template <bool BE>
-size_t indirect_lookup_2d_count(const phosg::StringReader& r, size_t root_offset, size_t co_index) {
-  return r.pget<ArrayRefT<BE>>(root_offset + sizeof(ArrayRefT<BE>) * co_index).count;
-}
-
-template <typename T, bool BE>
-const T& indirect_lookup_2d(const phosg::StringReader& r, size_t root_offset, size_t co_index, size_t item_index) {
-  const auto& co = r.pget<ArrayRefT<BE>>(root_offset + sizeof(ArrayRefT<BE>) * co_index);
-  if (item_index >= co.count) {
-    throw out_of_range("item ID out of range");
-  }
-  return r.pget<T>(co.offset + sizeof(T) * item_index);
-}
-
-size_t ItemParameterTable::num_weapons_in_class(uint8_t data1_1) const {
-  if (data1_1 >= this->num_weapon_classes) {
-    throw out_of_range("weapon ID out of range");
-  }
-  if (this->offsets_dc_protos) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_dc_protos->weapon_table, data1_1);
-  } else if (this->offsets_v1_v2) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_v1_v2->weapon_table, data1_1);
-  } else if (this->offsets_gc_nte) {
-    return indirect_lookup_2d_count<true>(this->r, this->offsets_gc_nte->weapon_table, data1_1);
-  } else if (this->offsets_v3_le) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_v3_le->weapon_table, data1_1);
-  } else if (this->offsets_v3_be) {
-    return indirect_lookup_2d_count<true>(this->r, this->offsets_v3_be->weapon_table, data1_1);
-  } else if (this->offsets_v4) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_v4->weapon_table, data1_1);
-  } else {
-    throw logic_error("table is not v2, v3, or v4");
-  }
-}
-
-const ItemParameterTable::WeaponV4& ItemParameterTable::get_weapon(uint8_t data1_1, uint8_t data1_2) const {
-  if (data1_1 >= this->num_weapon_classes) {
-    throw out_of_range("weapon ID out of range");
-  }
-
-  if (this->offsets_v4) {
-    return indirect_lookup_2d<WeaponV4, false>(this->r, this->offsets_v4->weapon_table, data1_1, data1_2);
-  }
-
-  uint16_t key = (data1_1 << 8) | data1_2;
-  try {
-    return this->parsed_weapons.at(key);
-  } catch (const std::out_of_range&) {
-    WeaponV4 def_v4;
-    if (this->offsets_dc_protos) {
-      def_v4 = indirect_lookup_2d<WeaponDCProtos, false>(this->r, this->offsets_dc_protos->weapon_table, data1_1, data1_2).to_v4();
-    } else if (this->offsets_v1_v2) {
-      def_v4 = indirect_lookup_2d<WeaponV1V2, false>(this->r, this->offsets_v1_v2->weapon_table, data1_1, data1_2).to_v4();
-    } else if (this->offsets_gc_nte) {
-      def_v4 = indirect_lookup_2d<WeaponGCNTE, true>(this->r, this->offsets_gc_nte->weapon_table, data1_1, data1_2).to_v4();
-    } else if (this->offsets_v3_le) {
-      def_v4 = indirect_lookup_2d<WeaponV3, false>(this->r, this->offsets_v3_le->weapon_table, data1_1, data1_2).to_v4();
-    } else if (this->offsets_v3_be) {
-      def_v4 = indirect_lookup_2d<WeaponV3BE, true>(this->r, this->offsets_v3_be->weapon_table, data1_1, data1_2).to_v4();
-    } else {
-      throw logic_error("table is not v2, v3, or v4");
-    }
-    return this->parsed_weapons.emplace(key, def_v4).first->second;
-  }
-}
-
-size_t ItemParameterTable::num_armors_or_shields_in_class(uint8_t data1_1) const {
-  if ((data1_1 < 1) || (data1_1 > 2)) {
-    throw out_of_range("armor/shield class ID out of range");
-  }
-  if (this->offsets_dc_protos) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_dc_protos->armor_table, data1_1 - 1);
-  } else if (this->offsets_v1_v2) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_v1_v2->armor_table, data1_1 - 1);
-  } else if (this->offsets_gc_nte) {
-    return indirect_lookup_2d_count<true>(this->r, this->offsets_gc_nte->armor_table, data1_1 - 1);
-  } else if (this->offsets_v3_le) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_v3_le->armor_table, data1_1 - 1);
-  } else if (this->offsets_v3_be) {
-    return indirect_lookup_2d_count<true>(this->r, this->offsets_v3_be->armor_table, data1_1 - 1);
-  } else if (this->offsets_v4) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_v4->armor_table, data1_1 - 1);
-  } else {
-    throw logic_error("table is not v2, v3, or v4");
-  }
-}
-
-const ItemParameterTable::ArmorOrShieldV4& ItemParameterTable::get_armor_or_shield(uint8_t data1_1, uint8_t data1_2) const {
-  if ((data1_1 < 1) || (data1_1 > 2)) {
-    throw out_of_range("armor/shield class ID out of range");
-  }
-
-  if (this->offsets_v4) {
-    return indirect_lookup_2d<ArmorOrShieldV4, false>(this->r, this->offsets_v4->armor_table, data1_1 - 1, data1_2);
-  }
-
-  auto& parsed_vec = (data1_1 == 2) ? this->parsed_shields : this->parsed_armors;
-  try {
-    const auto& ret = parsed_vec.at(data1_2);
-    if (ret.base.id == 0xFFFFFFFF) {
-      throw out_of_range("cache entry not populated");
-    }
-    return ret;
-  } catch (const std::out_of_range&) {
-    while (data1_2 >= parsed_vec.size()) {
-      auto& def_v4 = parsed_vec.emplace_back();
-      if (this->offsets_dc_protos) {
-        def_v4 = indirect_lookup_2d<ArmorOrShieldDCProtos, false>(this->r, this->offsets_dc_protos->armor_table, data1_1 - 1, parsed_vec.size() - 1).to_v4();
-      } else if (this->offsets_v1_v2) {
-        def_v4 = indirect_lookup_2d<ArmorOrShieldV1V2, false>(this->r, this->offsets_v1_v2->armor_table, data1_1 - 1, parsed_vec.size() - 1).to_v4();
-      } else if (this->offsets_gc_nte) {
-        def_v4 = indirect_lookup_2d<ArmorOrShieldV3BE, true>(this->r, this->offsets_gc_nte->armor_table, data1_1 - 1, parsed_vec.size() - 1).to_v4();
-      } else if (this->offsets_v3_le) {
-        def_v4 = indirect_lookup_2d<ArmorOrShieldV3, false>(this->r, this->offsets_v3_le->armor_table, data1_1 - 1, parsed_vec.size() - 1).to_v4();
-      } else if (this->offsets_v3_be) {
-        def_v4 = indirect_lookup_2d<ArmorOrShieldV3BE, true>(this->r, this->offsets_v3_be->armor_table, data1_1 - 1, parsed_vec.size() - 1).to_v4();
-      } else {
-        throw logic_error("table is not v2, v3, or v4");
-      }
-    }
-    return parsed_vec[data1_2];
-  }
-}
-
-size_t ItemParameterTable::num_units() const {
-  if (this->offsets_dc_protos) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_dc_protos->unit_table, 0);
-  } else if (this->offsets_v1_v2) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_v1_v2->unit_table, 0);
-  } else if (this->offsets_gc_nte) {
-    return indirect_lookup_2d_count<true>(this->r, this->offsets_gc_nte->unit_table, 0);
-  } else if (this->offsets_v3_le) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_v3_le->unit_table, 0);
-  } else if (this->offsets_v3_be) {
-    return indirect_lookup_2d_count<true>(this->r, this->offsets_v3_be->unit_table, 0);
-  } else if (this->offsets_v4) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_v4->unit_table, 0);
-  } else {
-    throw logic_error("table is not v2, v3, or v4");
-  }
-}
-
-const ItemParameterTable::UnitV4& ItemParameterTable::get_unit(uint8_t data1_2) const {
-  if (this->offsets_v4) {
-    return indirect_lookup_2d<UnitV4, false>(this->r, this->offsets_v4->unit_table, 0, data1_2);
-  }
-
-  try {
-    const auto& ret = this->parsed_units.at(data1_2);
-    if (ret.base.id == 0xFFFFFFFF) {
-      throw out_of_range("cache entry not populated");
-    }
-    return ret;
-  } catch (const std::out_of_range&) {
-    while (data1_2 >= this->parsed_units.size()) {
-      auto& def_v4 = this->parsed_units.emplace_back();
-      if (this->offsets_dc_protos) {
-        def_v4 = indirect_lookup_2d<UnitDCProtos, false>(this->r, this->offsets_dc_protos->unit_table, 0, this->parsed_units.size() - 1).to_v4();
-      } else if (this->offsets_v1_v2) {
-        def_v4 = indirect_lookup_2d<UnitV1V2, false>(this->r, this->offsets_v1_v2->unit_table, 0, this->parsed_units.size() - 1).to_v4();
-      } else if (this->offsets_gc_nte) {
-        def_v4 = indirect_lookup_2d<UnitV3BE, true>(this->r, this->offsets_gc_nte->unit_table, 0, this->parsed_units.size() - 1).to_v4();
-      } else if (this->offsets_v3_le) {
-        def_v4 = indirect_lookup_2d<UnitV3, false>(this->r, this->offsets_v3_le->unit_table, 0, this->parsed_units.size() - 1).to_v4();
-      } else if (this->offsets_v3_be) {
-        def_v4 = indirect_lookup_2d<UnitV3BE, true>(this->r, this->offsets_v3_be->unit_table, 0, this->parsed_units.size() - 1).to_v4();
-      } else {
-        throw logic_error("table is not v2, v3, or v4");
-      }
-    }
-    return this->parsed_units[data1_2];
-  }
-}
-
-size_t ItemParameterTable::num_mags() const {
-  if (this->offsets_dc_protos) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_dc_protos->mag_table, 0);
-  } else if (this->offsets_v1_v2) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_v1_v2->mag_table, 0);
-  } else if (this->offsets_gc_nte) {
-    return indirect_lookup_2d_count<true>(this->r, this->offsets_gc_nte->mag_table, 0);
-  } else if (this->offsets_v3_le) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_v3_le->mag_table, 0);
-  } else if (this->offsets_v3_be) {
-    return indirect_lookup_2d_count<true>(this->r, this->offsets_v3_be->mag_table, 0);
-  } else if (this->offsets_v4) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_v4->mag_table, 0);
-  } else {
-    throw logic_error("table is not v2, v3, or v4");
-  }
-}
-
-const ItemParameterTable::MagV4& ItemParameterTable::get_mag(uint8_t data1_1) const {
-  if (this->offsets_v4) {
-    return indirect_lookup_2d<MagV4, false>(this->r, this->offsets_v4->mag_table, 0, data1_1);
-  }
-
-  try {
-    const auto& ret = this->parsed_mags.at(data1_1);
-    if (ret.base.id == 0xFFFFFFFF) {
-      throw out_of_range("cache entry not populated");
-    }
-    return ret;
-  } catch (const std::out_of_range&) {
-    while (data1_1 >= this->parsed_mags.size()) {
-      auto& def_v4 = this->parsed_mags.emplace_back();
-      if (this->offsets_dc_protos) {
-        def_v4 = indirect_lookup_2d<MagV1, false>(this->r, this->offsets_dc_protos->mag_table, 0, this->parsed_mags.size() - 1).to_v4();
-      } else if (this->offsets_v1_v2) {
-        if (is_v1(this->version)) {
-          def_v4 = indirect_lookup_2d<MagV1, false>(this->r, this->offsets_v1_v2->mag_table, 0, this->parsed_mags.size() - 1).to_v4();
-        } else {
-          def_v4 = indirect_lookup_2d<MagV2, false>(this->r, this->offsets_v1_v2->mag_table, 0, this->parsed_mags.size() - 1).to_v4();
-        }
-      } else if (this->offsets_gc_nte) {
-        def_v4 = indirect_lookup_2d<MagV3BE, true>(this->r, this->offsets_gc_nte->mag_table, 0, this->parsed_mags.size() - 1).to_v4();
-      } else if (this->offsets_v3_le) {
-        def_v4 = indirect_lookup_2d<MagV3, false>(this->r, this->offsets_v3_le->mag_table, 0, this->parsed_mags.size() - 1).to_v4();
-      } else if (this->offsets_v3_be) {
-        def_v4 = indirect_lookup_2d<MagV3BE, true>(this->r, this->offsets_v3_be->mag_table, 0, this->parsed_mags.size() - 1).to_v4();
-      } else {
-        throw logic_error("table is not v2, v3, or v4");
-      }
-    }
-    return this->parsed_mags[data1_1];
-  }
-}
-
-size_t ItemParameterTable::num_tools_in_class(uint8_t data1_1) const {
-  if (data1_1 >= this->num_tool_classes) {
-    throw out_of_range("tool class ID out of range");
-  }
-  if (this->offsets_dc_protos) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_dc_protos->tool_table, data1_1);
-  } else if (this->offsets_v1_v2) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_v1_v2->tool_table, data1_1);
-  } else if (this->offsets_gc_nte) {
-    return indirect_lookup_2d_count<true>(this->r, this->offsets_gc_nte->tool_table, data1_1);
-  } else if (this->offsets_v3_le) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_v3_le->tool_table, data1_1);
-  } else if (this->offsets_v3_be) {
-    return indirect_lookup_2d_count<true>(this->r, this->offsets_v3_be->tool_table, data1_1);
-  } else if (this->offsets_v4) {
-    return indirect_lookup_2d_count<false>(this->r, this->offsets_v4->tool_table, data1_1);
-  } else {
-    throw logic_error("table is not v2, v3, or v4");
-  }
-}
-
-const ItemParameterTable::ToolV4& ItemParameterTable::get_tool(uint8_t data1_1, uint8_t data1_2) const {
-  if (data1_1 >= this->num_tool_classes) {
-    throw out_of_range("tool class ID out of range");
-  }
-
-  if (this->offsets_v4) {
-    return indirect_lookup_2d<ToolV4, false>(this->r, this->offsets_v4->tool_table, data1_1, data1_2);
-  }
-
-  uint16_t key = (data1_1 << 8) | data1_2;
-  try {
-    return this->parsed_tools.at(key);
-  } catch (const std::out_of_range&) {
-    ToolV4 def_v4;
-
-    if (this->offsets_dc_protos) {
-      def_v4 = indirect_lookup_2d<ToolV1V2, false>(this->r, this->offsets_dc_protos->tool_table, data1_1, data1_2).to_v4();
-    } else if (this->offsets_v1_v2) {
-      def_v4 = indirect_lookup_2d<ToolV1V2, false>(this->r, this->offsets_v1_v2->tool_table, data1_1, data1_2).to_v4();
-    } else if (this->offsets_gc_nte) {
-      def_v4 = indirect_lookup_2d<ToolV3BE, true>(this->r, this->offsets_gc_nte->tool_table, data1_1, data1_2).to_v4();
-    } else if (this->offsets_v3_le) {
-      def_v4 = indirect_lookup_2d<ToolV3, false>(this->r, this->offsets_v3_le->tool_table, data1_1, data1_2).to_v4();
-    } else if (this->offsets_v3_be) {
-      def_v4 = indirect_lookup_2d<ToolV3BE, true>(this->r, this->offsets_v3_be->tool_table, data1_1, data1_2).to_v4();
-    } else {
-      throw logic_error("table is not v2, v3, or v4");
-    }
-
-    return this->parsed_tools.emplace(key, def_v4).first->second;
-  }
-}
-
-template <typename ToolDefT, bool BE>
-pair<uint8_t, uint8_t> ItemParameterTable::find_tool_by_id_t(uint32_t tool_table_offset, uint32_t item_id) const {
-  const auto* cos = &this->r.pget<ArrayRefT<BE>>(
-      tool_table_offset, this->num_tool_classes * sizeof(ArrayRefT<BE>));
-  for (size_t z = 0; z < this->num_tool_classes; z++) {
-    const auto& co = cos[z];
-    const auto* defs = &this->r.pget<ToolDefT>(co.offset, sizeof(ToolDefT) * co.count);
-    for (size_t y = 0; y < co.count; y++) {
-      if (defs[y].base.id == item_id) {
-        return make_pair(z, y);
-      }
-    }
-  }
-  throw out_of_range(std::format("invalid tool class {:08X}", item_id));
-}
-
-pair<uint8_t, uint8_t> ItemParameterTable::find_tool_by_id(uint32_t item_id) const {
-  if (this->offsets_dc_protos) {
-    return this->find_tool_by_id_t<ToolV1V2, false>(this->offsets_dc_protos->tool_table, item_id);
-  } else if (this->offsets_v1_v2) {
-    return this->find_tool_by_id_t<ToolV1V2, false>(this->offsets_v1_v2->tool_table, item_id);
-  } else if (this->offsets_gc_nte) {
-    return this->find_tool_by_id_t<ToolV3BE, true>(this->offsets_gc_nte->tool_table, item_id);
-  } else if (this->offsets_v3_le) {
-    return this->find_tool_by_id_t<ToolV3, false>(this->offsets_v3_le->tool_table, item_id);
-  } else if (this->offsets_v3_be) {
-    return this->find_tool_by_id_t<ToolV3BE, true>(this->offsets_v3_be->tool_table, item_id);
-  } else if (this->offsets_v4) {
-    return this->find_tool_by_id_t<ToolV4, false>(this->offsets_v4->tool_table, item_id);
-  } else {
-    throw logic_error("table is not v2, v3, or v4");
-  }
-}
-
-variant<
-    const ItemParameterTable::WeaponV4*,
-    const ItemParameterTable::ArmorOrShieldV4*,
-    const ItemParameterTable::UnitV4*,
-    const ItemParameterTable::MagV4*,
-    const ItemParameterTable::ToolV4*>
+std::variant<
+    const ItemParameterTable::Weapon*,
+    const ItemParameterTable::ArmorOrShield*,
+    const ItemParameterTable::Unit*,
+    const ItemParameterTable::Mag*,
+    const ItemParameterTable::Tool*>
 ItemParameterTable::definition_for_primary_identifier(uint32_t primary_identifier) const {
   uint8_t data1_0 = (primary_identifier >> 24) & 0xFF;
   uint8_t data1_1 = (primary_identifier >> 16) & 0xFF;
@@ -799,255 +765,24 @@ ItemParameterTable::definition_for_primary_identifier(uint32_t primary_identifie
   }
 }
 
-template <bool BE, typename OffsetsT>
-float ItemParameterTable::get_sale_divisor_t(const OffsetsT* offsets, uint8_t data1_0, uint8_t data1_1) const {
-  switch (data1_0) {
-    case 0:
-      if (data1_1 >= this->num_weapon_classes) {
-        return 0.0f;
-      }
-      return this->r.pget<F32T<BE>>(offsets->weapon_sale_divisor_table + data1_1 * sizeof(F32T<BE>));
-
-    case 1: {
-      const auto& divisors = this->r.pget<NonWeaponSaleDivisorsT<BE>>(offsets->sale_divisor_table);
-      switch (data1_1) {
-        case 1:
-          return divisors.armor_divisor;
-        case 2:
-          return divisors.shield_divisor;
-        case 3:
-          return divisors.unit_divisor;
-      }
-      return 0.0f;
-    }
-
-    case 2: {
-      const auto& divisors = this->r.pget<NonWeaponSaleDivisorsT<BE>>(offsets->sale_divisor_table);
-      return divisors.mag_divisor;
-    }
-
-    default:
-      return 0.0f;
-  }
-}
-
-float ItemParameterTable::get_sale_divisor(uint8_t data1_0, uint8_t data1_1) const {
-  if (this->offsets_dc_protos) {
-    return this->get_sale_divisor_t<false>(this->offsets_dc_protos, data1_0, data1_1);
-  } else if (this->offsets_v1_v2) {
-    return this->get_sale_divisor_t<false>(this->offsets_v1_v2, data1_0, data1_1);
-  } else if (this->offsets_gc_nte) {
-    return this->get_sale_divisor_t<true>(this->offsets_gc_nte, data1_0, data1_1);
-  } else if (this->offsets_v3_le) {
-    return this->get_sale_divisor_t<false>(this->offsets_v3_le, data1_0, data1_1);
-  } else if (this->offsets_v3_be) {
-    return this->get_sale_divisor_t<true>(this->offsets_v3_be, data1_0, data1_1);
-  } else if (this->offsets_v4) {
-    return this->get_sale_divisor_t<false>(this->offsets_v4, data1_0, data1_1);
-  } else {
-    throw logic_error("table is not v2, v3, or v4");
-  }
-}
-
-const ItemParameterTable::MagFeedResult& ItemParameterTable::get_mag_feed_result(
-    uint8_t table_index, uint8_t item_index) const {
-  if (table_index >= 8) {
-    throw out_of_range("invalid mag feed table index");
-  }
-  if (item_index >= 11) {
-    throw out_of_range("invalid mag feed item index");
-  }
-
-  uint32_t offset;
-  if (this->offsets_dc_protos) {
-    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsets>(this->offsets_dc_protos->mag_feed_table);
-    offset = table_offsets.offsets[table_index];
-  } else if (this->offsets_v1_v2) {
-    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsets>(this->offsets_v1_v2->mag_feed_table);
-    offset = table_offsets.offsets[table_index];
-  } else if (this->offsets_gc_nte) {
-    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsetsBE>(this->offsets_gc_nte->mag_feed_table);
-    offset = table_offsets.offsets[table_index];
-  } else if (this->offsets_v3_le) {
-    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsets>(this->offsets_v3_le->mag_feed_table);
-    offset = table_offsets.offsets[table_index];
-  } else if (this->offsets_v3_be) {
-    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsetsBE>(this->offsets_v3_be->mag_feed_table);
-    offset = table_offsets.offsets[table_index];
-  } else if (this->offsets_v4) {
-    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsets>(this->offsets_v4->mag_feed_table);
-    offset = table_offsets.offsets[table_index];
-  } else {
-    throw logic_error("table is not v2, v3, or v4");
-  }
-
-  return this->r.pget<MagFeedResultsList>(offset)[item_index];
-}
-
-uint8_t ItemParameterTable::get_item_stars(uint32_t item_id) const {
-  uint32_t base_offset;
-  if (this->offsets_dc_protos) {
-    base_offset = this->offsets_dc_protos->star_value_table;
-  } else if (this->offsets_v1_v2) {
-    base_offset = this->offsets_v1_v2->star_value_table;
-  } else if (this->offsets_gc_nte) {
-    base_offset = this->offsets_gc_nte->star_value_table;
-  } else if (this->offsets_v3_le) {
-    base_offset = this->offsets_v3_le->star_value_table;
-  } else if (this->offsets_v3_be) {
-    base_offset = this->offsets_v3_be->star_value_table;
-  } else if (this->offsets_v4) {
-    base_offset = this->offsets_v4->star_value_table;
-  } else {
-    throw logic_error("table is not v2, v3, or v4");
-  }
-
-  return ((item_id >= this->item_stars_first_id) && (item_id < this->item_stars_last_id))
-      ? this->r.pget_u8(base_offset + item_id - this->item_stars_first_id)
-      : 0;
-}
-
-uint8_t ItemParameterTable::get_special_stars(uint8_t special) const {
-  return ((special & 0x3F) && !(special & 0x80)) ? this->get_item_stars(special + this->special_stars_begin_index) : 0;
-}
-
-const ItemParameterTable::Special& ItemParameterTable::get_special(uint8_t special) const {
-  special &= 0x3F;
-  if (special >= this->num_specials) {
-    throw out_of_range("invalid special index");
-  }
-
-  if (this->offsets_dc_protos) {
-    return this->r.pget<Special>(this->offsets_dc_protos->special_data_table + sizeof(Special) * special);
-  } else if (this->offsets_v1_v2) {
-    return this->r.pget<Special>(this->offsets_v1_v2->special_data_table + sizeof(Special) * special);
-  } else if (this->offsets_v3_le) {
-    return this->r.pget<Special>(this->offsets_v3_le->special_data_table + sizeof(Special) * special);
-  } else if (this->offsets_gc_nte) {
-    if ((special >= this->parsed_specials.size()) || (this->parsed_specials[special].type != 0xFFFF)) {
-      if (special >= this->parsed_specials.size()) {
-        this->parsed_specials.resize(special + 1);
-      }
-      const auto& sp_be = this->r.pget<SpecialBE>(this->offsets_gc_nte->special_data_table + sizeof(SpecialBE) * special);
-      this->parsed_specials[special].type = sp_be.type;
-      this->parsed_specials[special].amount = sp_be.amount;
-    }
-    return this->parsed_specials[special];
-  } else if (this->offsets_v3_be) {
-    if ((special >= this->parsed_specials.size()) || (this->parsed_specials[special].type != 0xFFFF)) {
-      if (special >= this->parsed_specials.size()) {
-        this->parsed_specials.resize(special + 1);
-      }
-      const auto& sp_be = this->r.pget<SpecialBE>(this->offsets_v3_be->special_data_table + sizeof(SpecialBE) * special);
-      this->parsed_specials[special].type = sp_be.type;
-      this->parsed_specials[special].amount = sp_be.amount;
-    }
-    return this->parsed_specials[special];
-  } else if (this->offsets_v4) {
-    return this->r.pget<Special>(this->offsets_v4->special_data_table + sizeof(Special) * special);
-  } else {
-    throw logic_error("table is not v2, v3, or v4");
-  }
-}
-
-const ItemParameterTable::StatBoost& ItemParameterTable::get_stat_boost(uint8_t entry_index) const {
-  if (this->offsets_dc_protos) {
-    return this->r.pget<StatBoost>(this->offsets_dc_protos->stat_boost_table + sizeof(StatBoost) * entry_index);
-  } else if (this->offsets_v1_v2) {
-    return this->r.pget<StatBoost>(this->offsets_v1_v2->stat_boost_table + sizeof(StatBoost) * entry_index);
-  } else if (this->offsets_v3_le) {
-    return this->r.pget<StatBoost>(this->offsets_v3_le->stat_boost_table + sizeof(StatBoost) * entry_index);
-  } else if (this->offsets_gc_nte) {
-    while (entry_index >= this->parsed_stat_boosts.size()) {
-      const auto& sb_be = this->r.pget<StatBoostBE>(this->offsets_gc_nte->stat_boost_table + sizeof(StatBoostBE) * this->parsed_stat_boosts.size());
-      auto& sb = this->parsed_stat_boosts.emplace_back();
-      sb.stats = sb_be.stats;
-      sb.amounts[0] = sb_be.amounts[0];
-      sb.amounts[1] = sb_be.amounts[1];
-    }
-    return this->parsed_stat_boosts[entry_index];
-  } else if (this->offsets_v3_be) {
-    while (entry_index >= this->parsed_stat_boosts.size()) {
-      const auto& sb_be = this->r.pget<StatBoostBE>(this->offsets_v3_be->stat_boost_table + sizeof(StatBoostBE) * this->parsed_stat_boosts.size());
-      auto& sb = this->parsed_stat_boosts.emplace_back();
-      sb.stats = sb_be.stats;
-      sb.amounts[0] = sb_be.amounts[0];
-      sb.amounts[1] = sb_be.amounts[1];
-    }
-    return this->parsed_stat_boosts[entry_index];
-  } else if (this->offsets_v4) {
-    return this->r.pget<StatBoost>(this->offsets_v4->stat_boost_table + sizeof(StatBoost) * entry_index);
-  } else {
-    throw logic_error("table is not v2, v3, or v4");
-  }
-}
-
-uint8_t ItemParameterTable::get_max_tech_level(uint8_t char_class, uint8_t tech_num) const {
-  if (char_class >= 12) {
-    throw out_of_range("invalid character class");
-  }
-  if (tech_num >= 19) {
-    throw out_of_range("invalid technique number");
-  }
-
-  if (this->offsets_dc_protos || this->offsets_v1_v2) {
-    if ((tech_num == 14) || (tech_num == 17)) { // Ryuker or Reverser
-      return 0;
-    } else {
-      return ((char_class == 6) || (char_class == 7) || (char_class == 8) || (char_class == 10)) ? 29 : 14;
-    }
-  } else if (this->offsets_gc_nte) {
-    return r.pget_u8(this->offsets_gc_nte->max_tech_level_table + tech_num * 12 + char_class);
-  } else if (this->offsets_v3_le) {
-    return r.pget_u8(this->offsets_v3_le->max_tech_level_table + tech_num * 12 + char_class);
-  } else if (this->offsets_v3_be) {
-    return r.pget_u8(this->offsets_v3_be->max_tech_level_table + tech_num * 12 + char_class);
-  } else if (this->offsets_v4) {
-    return r.pget_u8(this->offsets_v4->max_tech_level_table + tech_num * 12 + char_class);
-  } else {
-    throw logic_error("table is not v2, v3, or v4");
-  }
-}
-
-uint8_t ItemParameterTable::get_weapon_v1_replacement(uint8_t data1_1) const {
-  uint32_t offset;
-  if (this->offsets_dc_protos) {
-    offset = this->offsets_dc_protos->v1_replacement_table;
-  } else if (this->offsets_v1_v2) {
-    offset = this->offsets_v1_v2->v1_replacement_table;
-  } else if (this->offsets_gc_nte) {
-    offset = this->offsets_gc_nte->v1_replacement_table;
-  } else if (this->offsets_v3_le) {
-    offset = this->offsets_v3_le->v1_replacement_table;
-  } else if (this->offsets_v3_be) {
-    offset = this->offsets_v3_be->v1_replacement_table;
-  } else if (this->offsets_v4) {
-    offset = this->offsets_v4->v1_replacement_table;
-  } else {
-    throw logic_error("table is not v2, v3, or v4");
-  }
-
-  return (data1_1 < this->num_weapon_classes) ? this->r.pget_u8(offset + data1_1) : 0x00;
-}
-
 uint32_t ItemParameterTable::get_item_id(const ItemData& item) const {
   switch (item.data1[0]) {
     case 0:
-      return this->get_weapon(item.data1[1], item.data1[2]).base.id;
+      return this->get_weapon(item.data1[1], item.data1[2]).id;
     case 1:
       if (item.data1[1] == 3) {
-        return this->get_unit(item.data1[2]).base.id;
+        return this->get_unit(item.data1[2]).id;
       } else if ((item.data1[1] == 1) || (item.data1[1] == 2)) {
-        return this->get_armor_or_shield(item.data1[1], item.data1[2]).base.id;
+        return this->get_armor_or_shield(item.data1[1], item.data1[2]).id;
       }
       throw runtime_error("invalid item");
     case 2:
-      return this->get_mag(item.data1[1]).base.id;
+      return this->get_mag(item.data1[1]).id;
     case 3:
       if (item.data1[1] == 2) {
-        return this->get_tool(2, item.data1[4]).base.id;
+        return this->get_tool(2, item.data1[4]).id;
       } else {
-        return this->get_tool(item.data1[1], item.data1[2]).base.id;
+        return this->get_tool(item.data1[1], item.data1[2]).id;
       }
       throw logic_error("this should be impossible");
     case 4:
@@ -1060,21 +795,21 @@ uint32_t ItemParameterTable::get_item_id(const ItemData& item) const {
 uint32_t ItemParameterTable::get_item_team_points(const ItemData& item) const {
   switch (item.data1[0]) {
     case 0:
-      return this->get_weapon(item.data1[1], item.data1[2]).base.team_points;
+      return this->get_weapon(item.data1[1], item.data1[2]).team_points;
     case 1:
       if (item.data1[1] == 3) {
-        return this->get_unit(item.data1[2]).base.team_points;
+        return this->get_unit(item.data1[2]).team_points;
       } else if ((item.data1[1] == 1) || (item.data1[1] == 2)) {
-        return this->get_armor_or_shield(item.data1[1], item.data1[2]).base.team_points;
+        return this->get_armor_or_shield(item.data1[1], item.data1[2]).team_points;
       }
       throw runtime_error("invalid item");
     case 2:
-      return this->get_mag(item.data1[1]).base.team_points;
+      return this->get_mag(item.data1[1]).team_points;
     case 3:
       if (item.data1[1] == 2) {
-        return this->get_tool(2, item.data1[4]).base.team_points;
+        return this->get_tool(2, item.data1[4]).team_points;
       } else {
-        return this->get_tool(item.data1[1], item.data1[2]).base.team_points;
+        return this->get_tool(item.data1[1], item.data1[2]).team_points;
       }
       throw logic_error("this should be impossible");
     case 4:
@@ -1085,17 +820,20 @@ uint32_t ItemParameterTable::get_item_team_points(const ItemData& item) const {
 }
 
 uint8_t ItemParameterTable::get_item_base_stars(const ItemData& item) const {
-  if (item.data1[0] == 2) {
-    return (item.data1[1] >= this->first_rare_mag_index) ? 12 : 0;
-  } else if (item.data1[0] < 2) {
-    return this->get_item_stars(this->get_item_id(item));
-  } else if (item.data1[0] == 3) {
-    const auto& def = (item.data1[1] == 2)
-        ? this->get_tool(2, item.data1[4])
-        : this->get_tool(item.data1[1], item.data1[2]);
-    return (def.item_flags & 0x80) ? 12 : 0;
-  } else {
-    return 0;
+  switch (item.data1[0]) {
+    case 0:
+    case 1:
+      return this->get_item_stars(this->get_item_id(item));
+    case 2:
+      return (item.data1[1] >= 0x28) ? 12 : 0;
+    case 3: {
+      const auto& def = (item.data1[1] == 2)
+          ? this->get_tool(2, item.data1[4])
+          : this->get_tool(item.data1[1], item.data1[2]);
+      return (def.item_flags & 0x80) ? 12 : 0;
+    }
+    default:
+      return 0;
   }
 }
 
@@ -1131,35 +869,6 @@ bool ItemParameterTable::is_item_rare(const ItemData& item) const {
   }
 }
 
-bool ItemParameterTable::is_unsealable_item(uint8_t data1_0, uint8_t data1_1, uint8_t data1_2) const {
-  uint32_t offset, count;
-  if (this->offsets_dc_protos || this->offsets_v1_v2 || this->offsets_gc_nte) {
-    return false;
-  } else if (this->offsets_v3_le) {
-    const auto& co = this->r.pget<ArrayRef>(this->offsets_v3_le->unsealable_table);
-    offset = co.offset;
-    count = co.count;
-  } else if (this->offsets_v3_be) {
-    const auto& co = this->r.pget<ArrayRefBE>(this->offsets_v3_be->unsealable_table);
-    offset = co.offset;
-    count = co.count;
-  } else if (this->offsets_v4) {
-    const auto& co = this->r.pget<ArrayRef>(this->offsets_v4->unsealable_table);
-    offset = co.offset;
-    count = co.count;
-  } else {
-    throw logic_error("table is not v2, v3, or v4");
-  }
-
-  const auto* defs = &this->r.pget<UnsealableItem>(offset, count * sizeof(UnsealableItem));
-  for (size_t z = 0; z < count; z++) {
-    if ((defs[z].item[0] == data1_0) && (defs[z].item[1] == data1_1) && (defs[z].item[2] == data1_2)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 bool ItemParameterTable::is_unsealable_item(const ItemData& item) const {
   return this->is_unsealable_item(item.data1[0], item.data1[1], item.data1[2]);
 }
@@ -1184,83 +893,6 @@ const std::vector<ItemParameterTable::ItemCombination>& ItemParameterTable::get_
   } catch (const out_of_range&) {
     static const vector<ItemCombination> ret;
     return ret;
-  }
-}
-
-const std::map<uint32_t, std::vector<ItemParameterTable::ItemCombination>>& ItemParameterTable::get_all_item_combinations() const {
-  if (this->item_combination_index.empty()) {
-    uint32_t offset, count;
-    if (this->offsets_dc_protos || this->offsets_v1_v2 || this->offsets_gc_nte) {
-      static const std::map<uint32_t, std::vector<ItemParameterTable::ItemCombination>> empty_map;
-      return empty_map;
-    } else if (this->offsets_v3_le) {
-      const auto& co = this->r.pget<ArrayRef>(this->offsets_v3_le->combination_table);
-      offset = co.offset;
-      count = co.count;
-    } else if (this->offsets_v3_be) {
-      const auto& co = this->r.pget<ArrayRefBE>(this->offsets_v3_be->combination_table);
-      offset = co.offset;
-      count = co.count;
-    } else if (this->offsets_v4) {
-      const auto& co = this->r.pget<ArrayRef>(this->offsets_v4->combination_table);
-      offset = co.offset;
-      count = co.count;
-    } else {
-      throw logic_error("table is not v2, v3, or v4");
-    }
-
-    const auto* defs = &this->r.pget<ItemCombination>(offset, count * sizeof(ItemCombination));
-    for (size_t z = 0; z < count; z++) {
-      const auto& def = defs[z];
-      uint32_t key = (def.used_item[0] << 16) | (def.used_item[1] << 8) | def.used_item[2];
-      this->item_combination_index[key].emplace_back(def);
-    }
-  }
-  return this->item_combination_index;
-}
-
-template <bool BE>
-size_t ItemParameterTable::num_events_t(uint32_t base_offset) const {
-  return this->r.pget<ArrayRefT<BE>>(base_offset).count;
-}
-
-size_t ItemParameterTable::num_events() const {
-  if (this->offsets_dc_protos || this->offsets_v1_v2 || this->offsets_gc_nte) {
-    return 0;
-  } else if (this->offsets_v3_le) {
-    return this->num_events_t<false>(this->offsets_v3_le->unwrap_table);
-  } else if (this->offsets_v3_be) {
-    return this->num_events_t<true>(this->offsets_v3_be->unwrap_table);
-  } else if (this->offsets_v4) {
-    return this->num_events_t<false>(this->offsets_v4->unwrap_table);
-  } else {
-    throw logic_error("table is not v2, v3, or v4");
-  }
-}
-
-template <bool BE>
-std::pair<const ItemParameterTable::EventItem*, size_t> ItemParameterTable::get_event_items_t(
-    uint32_t base_offset, uint8_t event_number) const {
-  const auto& co = this->r.pget<ArrayRefT<BE>>(base_offset);
-  if (event_number >= co.count) {
-    throw out_of_range("invalid event number");
-  }
-  const auto& event_co = this->r.pget<ArrayRefT<BE>>(co.offset + sizeof(ArrayRefT<BE>) * event_number);
-  const auto* defs = &this->r.pget<EventItem>(event_co.offset, event_co.count * sizeof(EventItem));
-  return make_pair(defs, event_co.count);
-}
-
-std::pair<const ItemParameterTable::EventItem*, size_t> ItemParameterTable::get_event_items(uint8_t event_number) const {
-  if (this->offsets_dc_protos || this->offsets_v1_v2 || this->offsets_gc_nte) {
-    return make_pair(nullptr, 0);
-  } else if (this->offsets_v3_le) {
-    return this->get_event_items_t<false>(this->offsets_v3_le->unwrap_table, event_number);
-  } else if (this->offsets_v3_be) {
-    return this->get_event_items_t<true>(this->offsets_v3_be->unwrap_table, event_number);
-  } else if (this->offsets_v4) {
-    return this->get_event_items_t<false>(this->offsets_v4->unwrap_table, event_number);
-  } else {
-    throw logic_error("table is not v2, v3, or v4");
   }
 }
 
@@ -1338,6 +970,451 @@ size_t ItemParameterTable::price_for_item(const ItemData& item) const {
       throw runtime_error("invalid item");
   }
   throw logic_error("this should be impossible");
+}
+
+template <
+    typename RootT,
+    typename WeaponT,
+    size_t NumWeaponClasses,
+    typename ArmorOrShieldT,
+    typename UnitT,
+    typename ToolT,
+    size_t NumToolClasses,
+    typename MagT,
+    size_t ItemStarsFirstID,
+    size_t ItemStarsLastID,
+    size_t SpecialStarsBeginIndex,
+    size_t NumSpecials,
+    bool BE>
+class ItemParameterTableT : public ItemParameterTable {
+public:
+  explicit ItemParameterTableT(std::shared_ptr<const std::string> data)
+      : ItemParameterTable(data),
+        root(&this->r.pget<RootT>(BE ? r.pget_u32b(r.size() - 0x10) : r.pget_u32l(r.size() - 0x10))) {}
+  ~ItemParameterTableT() = default;
+
+  inline size_t indirect_lookup_2d_count(size_t base_offset, size_t co_index) const {
+    return this->r.pget<ArrayRefT<BE>>(base_offset + sizeof(ArrayRefT<BE>) * co_index).count;
+  }
+
+  template <typename T>
+  const T& indirect_lookup_2d(size_t base_offset, size_t co_index, size_t item_index) const {
+    const auto& co = this->r.pget<ArrayRefT<BE>>(base_offset + sizeof(ArrayRefT<BE>) * co_index);
+    if (item_index >= co.count) {
+      throw out_of_range("2-D array index out of range");
+    }
+    return this->r.pget<T>(co.offset + sizeof(T) * item_index);
+  }
+
+  virtual size_t num_weapon_classes() const {
+    return NumWeaponClasses;
+  }
+
+  virtual size_t num_weapons_in_class(uint8_t data1_1) const {
+    if (data1_1 >= NumWeaponClasses) {
+      throw out_of_range("weapon ID out of range");
+    }
+    return this->indirect_lookup_2d_count(this->root->weapon_table, data1_1);
+  }
+
+  virtual const Weapon& get_weapon(uint8_t data1_1, uint8_t data1_2) const {
+    if (data1_1 >= NumWeaponClasses) {
+      throw out_of_range("weapon ID out of range");
+    }
+    uint16_t key = (data1_1 << 8) | data1_2;
+    auto it = this->weapons.find(key);
+    if (it == this->weapons.end()) {
+      const auto& weapon = this->indirect_lookup_2d<WeaponT>(this->root->weapon_table, data1_1, data1_2);
+      it = this->weapons.emplace(key, weapon).first;
+    }
+    return it->second;
+  }
+
+  virtual size_t num_armors_or_shields_in_class(uint8_t data1_1) const {
+    if ((data1_1 < 1) || (data1_1 > 2)) {
+      throw out_of_range("armor/shield class ID out of range");
+    }
+    return this->indirect_lookup_2d_count(this->root->armor_table, data1_1 - 1);
+  }
+
+  virtual const ArmorOrShield& get_armor_or_shield(uint8_t data1_1, uint8_t data1_2) const {
+    if ((data1_1 < 1) || (data1_1 > 2)) {
+      throw out_of_range("armor/shield class ID out of range");
+    }
+    auto& vec = (data1_1 == 1) ? this->armors : this->shields;
+    while (vec.size() <= data1_2) {
+      vec.emplace_back(this->indirect_lookup_2d<ArmorOrShieldT>(this->root->armor_table, data1_1 - 1, vec.size()));
+    }
+    return vec[data1_2];
+  }
+
+  virtual size_t num_units() const {
+    return this->indirect_lookup_2d_count(this->root->unit_table, 0);
+  }
+
+  virtual const Unit& get_unit(uint8_t data1_2) const {
+    while (this->units.size() <= data1_2) {
+      this->units.emplace_back(this->indirect_lookup_2d<UnitT>(this->root->unit_table, 0, this->units.size()));
+    }
+    return this->units[data1_2];
+  }
+
+  virtual size_t num_mags() const {
+    return this->indirect_lookup_2d_count(this->root->mag_table, 0);
+  }
+
+  virtual const Mag& get_mag(uint8_t data1_1) const {
+    while (this->mags.size() <= data1_1) {
+      this->mags.emplace_back(this->indirect_lookup_2d<MagT>(this->root->mag_table, 0, data1_1));
+    }
+    return this->mags[data1_1];
+  }
+
+  virtual size_t num_tool_classes() const {
+    return NumToolClasses;
+  }
+
+  virtual size_t num_tools_in_class(uint8_t data1_1) const {
+    if (data1_1 >= NumToolClasses) {
+      throw out_of_range("tool class ID out of range");
+    }
+    return this->indirect_lookup_2d_count(this->root->tool_table, data1_1);
+  }
+
+  virtual const Tool& get_tool(uint8_t data1_1, uint8_t data1_2) const {
+    if (data1_1 >= NumToolClasses) {
+      throw out_of_range("tool class ID out of range");
+    }
+    uint16_t key = (data1_1 << 8) | data1_2;
+    auto it = this->tools.find(key);
+    if (it == this->tools.end()) {
+      const auto& tool = this->indirect_lookup_2d<ToolT>(this->root->tool_table, data1_1, data1_2);
+      it = this->tools.emplace(key, tool).first;
+    }
+    return it->second;
+  }
+
+  virtual std::pair<uint8_t, uint8_t> find_tool_by_id(uint32_t id) const {
+    const auto* cos = &this->r.pget<ArrayRefT<BE>>(
+        this->root->tool_table, NumToolClasses * sizeof(ArrayRefT<BE>));
+    for (size_t z = 0; z < NumToolClasses; z++) {
+      const auto& co = cos[z];
+      const auto* defs = &this->r.pget<ToolT>(co.offset, sizeof(ToolT) * co.count);
+      for (size_t y = 0; y < co.count; y++) {
+        if (defs[y].base.id == id) {
+          return make_pair(z, y);
+        }
+      }
+    }
+    throw out_of_range(std::format("invalid tool class {:08X}", id));
+  }
+
+  virtual float get_sale_divisor(uint8_t data1_0, uint8_t data1_1) const {
+    if (data1_0 == 0) {
+      if (data1_1 >= NumWeaponClasses) {
+        return 0.0f;
+      }
+      if constexpr (requires { this->root->weapon_sale_divisor_table; }) {
+        return this->r.pget<F32T<BE>>(this->root->weapon_sale_divisor_table + data1_1 * sizeof(F32T<BE>));
+      } else {
+        return this->r.pget<uint8_t>(this->root->weapon_integral_sale_divisor_table + data1_1 * sizeof(uint8_t));
+      }
+    }
+
+    if constexpr (requires { this->root->non_weapon_sale_divisor_table; }) {
+      const auto& divisors = this->r.pget<NonWeaponSaleDivisorsT<BE>>(this->root->non_weapon_sale_divisor_table);
+      if (data1_0 == 1) {
+        switch (data1_1) {
+          case 1:
+            return divisors.armor_divisor;
+          case 2:
+            return divisors.shield_divisor;
+          case 3:
+            return divisors.unit_divisor;
+        }
+      } else if (data1_0 == 2) {
+        return divisors.mag_divisor;
+      }
+    } else {
+      if (data1_0 == 1) {
+        const auto& divisors = this->r.pget<NonWeaponSaleDivisorsDCProtos>(
+            this->root->non_weapon_integral_sale_divisor_table);
+        switch (data1_1) {
+          case 1:
+            return divisors.armor_divisor;
+          case 2:
+            return divisors.shield_divisor;
+          case 3:
+            return divisors.unit_divisor;
+        }
+      }
+    }
+
+    return 0.0f;
+  }
+
+  virtual const MagFeedResult& get_mag_feed_result(uint8_t table_index, uint8_t item_index) const {
+    if (table_index >= 8) {
+      throw out_of_range("invalid mag feed table index");
+    }
+    if (item_index >= 11) {
+      throw out_of_range("invalid mag feed item index");
+    }
+    const auto& table_offsets = this->r.pget<MagFeedResultsListOffsetsT<BE>>(this->root->mag_feed_table);
+    return this->r.pget<MagFeedResultsList>(table_offsets[table_index])[item_index];
+  }
+
+  virtual uint8_t get_item_stars(uint32_t id) const {
+    return ((id >= ItemStarsFirstID) && (id < ItemStarsLastID))
+        ? this->r.pget_u8(this->root->star_value_table + id - ItemStarsFirstID)
+        : 0;
+  }
+
+  virtual uint8_t get_special_stars(uint8_t special) const {
+    return ((special & 0x3F) && !(special & 0x80)) ? this->get_item_stars(special + SpecialStarsBeginIndex) : 0;
+  }
+
+  virtual size_t num_specials() const {
+    return NumSpecials;
+  }
+
+  virtual const Special& get_special(uint8_t special) const {
+    special &= 0x3F;
+    if (special >= NumSpecials) {
+      throw out_of_range("invalid special index");
+    }
+    while (this->specials.size() <= special) {
+      this->specials.emplace_back(this->r.pget<SpecialT<BE>>(
+          this->root->special_table + sizeof(SpecialT<BE>) * this->specials.size()));
+    }
+    return this->specials[special];
+  }
+
+  virtual const StatBoost& get_stat_boost(uint8_t entry_index) const {
+    while (this->stat_boosts.size() <= entry_index) {
+      this->stat_boosts.emplace_back(this->r.pget<StatBoostT<BE>>(
+          this->root->stat_boost_table + sizeof(StatBoostT<BE>) * this->stat_boosts.size()));
+    }
+    return this->stat_boosts[entry_index];
+  }
+
+  virtual uint8_t get_max_tech_level(uint8_t char_class, uint8_t tech_num) const {
+    if (char_class >= 12) {
+      throw out_of_range("invalid character class");
+    }
+    if (tech_num >= 19) {
+      throw out_of_range("invalid technique number");
+    }
+    if constexpr (requires { this->root->max_tech_level_table; }) {
+      return r.pget_u8(this->root->max_tech_level_table + tech_num * 12 + char_class);
+    } else {
+      if ((tech_num == 14) || (tech_num == 17)) { // Ryuker or Reverser
+        return 0;
+      } else {
+        return ((char_class == 6) || (char_class == 7) || (char_class == 8) || (char_class == 10)) ? 29 : 14;
+      }
+    }
+  }
+
+  virtual uint8_t get_weapon_class(uint8_t data1_1) const {
+    return (data1_1 < NumWeaponClasses) ? this->r.pget_u8(this->root->weapon_class_table + data1_1) : 0x00;
+  }
+
+  virtual bool is_unsealable_item(uint8_t data1_0, uint8_t data1_1, uint8_t data1_2) const {
+    if constexpr (requires { this->root->unsealable_table; }) {
+      const auto& co = this->r.pget<ArrayRefT<BE>>(this->root->unsealable_table);
+      const auto* defs = &this->r.pget<UnsealableItem>(co.offset, co.count * sizeof(UnsealableItem));
+      for (size_t z = 0; z < co.count; z++) {
+        if ((defs[z].item[0] == data1_0) && (defs[z].item[1] == data1_1) && (defs[z].item[2] == data1_2)) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  virtual const std::map<uint32_t, std::vector<ItemCombination>>& get_all_item_combinations() const {
+    if constexpr (requires { this->root->combination_table; }) {
+      if (this->item_combination_index.empty()) {
+        const auto& co = this->r.pget<ArrayRefT<BE>>(this->root->combination_table);
+        const auto* defs = &this->r.pget<ItemCombination>(co.offset, co.count * sizeof(ItemCombination));
+        for (size_t z = 0; z < co.count; z++) {
+          const auto& def = defs[z];
+          uint32_t key = (def.used_item[0] << 16) | (def.used_item[1] << 8) | def.used_item[2];
+          this->item_combination_index[key].emplace_back(def);
+        }
+      }
+      return this->item_combination_index;
+    }
+    static const std::map<uint32_t, std::vector<ItemParameterTable::ItemCombination>> empty_map;
+    return empty_map;
+  }
+
+  virtual size_t num_events() const {
+    if constexpr (requires { this->root->unwrap_table; }) {
+      return this->r.pget<ArrayRefT<BE>>(this->root->unwrap_table).count;
+    } else {
+      return 0;
+    }
+  }
+
+  virtual std::pair<const EventItem*, size_t> get_event_items(uint8_t event_number) const {
+    if constexpr (requires { this->root->unwrap_table; }) {
+      const auto& co = this->r.pget<ArrayRefT<BE>>(this->root->unwrap_table);
+      if (event_number >= co.count) {
+        throw out_of_range("invalid event number");
+      }
+      const auto& event_co = this->r.pget<ArrayRefT<BE>>(co.offset + sizeof(ArrayRefT<BE>) * event_number);
+      const auto* defs = &this->r.pget<EventItem>(event_co.offset, event_co.count * sizeof(EventItem));
+      return make_pair(defs, event_co.count);
+    } else {
+      return make_pair(nullptr, 0);
+    }
+  }
+
+protected:
+  const RootT* root;
+};
+
+using ItemParameterTableDCNTE = ItemParameterTableT<
+    RootDCProtos, // typename RootT
+    WeaponDCProtos, // typename WeaponT
+    0x27, // size_t NumWeaponClasses
+    ArmorOrShieldDCProtos, // typename ArmorOrShieldT
+    UnitDCProtos, // typename UnitT
+    ToolV1V2, // typename ToolT
+    0x0D, // size_t NumToolClasses
+    MagV1, // typename MagT
+    0x22, // size_t ItemStarsFirstID
+    0x168, // size_t ItemStarsLastID
+    0xAA, // size_t SpecialStarsBeginIndex
+    0x28, // size_t NumSpecials
+    false>; // bool BE
+using ItemParameterTableDC112000 = ItemParameterTableT<
+    RootDCProtos, // typename RootT
+    WeaponDCProtos, // typename WeaponT
+    0x27, // size_t NumWeaponClasses
+    ArmorOrShieldDCProtos, // typename ArmorOrShieldT
+    UnitDCProtos, // typename UnitT
+    ToolV1V2, // typename ToolT
+    0x0E, // size_t NumToolClasses
+    MagV1, // typename MagT
+    0x26, // size_t ItemStarsFirstID
+    0x16C, // size_t ItemStarsLastID
+    0xAE, // size_t SpecialStarsBeginIndex
+    0x28, // size_t NumSpecials
+    false>; // bool BE
+using ItemParameterTableV1 = ItemParameterTableT<
+    RootV1V2, // typename RootT
+    WeaponV1V2, // typename WeaponT
+    0x27, // size_t NumWeaponClasses
+    ArmorOrShieldV1V2, // typename ArmorOrShieldT
+    UnitV1V2, // typename UnitT
+    ToolV1V2, // typename ToolT
+    0x0E, // size_t NumToolClasses
+    MagV1, // typename MagT
+    0x26, // size_t ItemStarsFirstID
+    0x16C, // size_t ItemStarsLastID
+    0xAE, // size_t SpecialStarsBeginIndex
+    0x29, // size_t NumSpecials
+    false>; // bool BE
+using ItemParameterTableV2 = ItemParameterTableT<
+    RootV1V2, // typename RootT
+    WeaponV1V2, // typename WeaponT
+    0x89, // size_t NumWeaponClasses
+    ArmorOrShieldV1V2, // typename ArmorOrShieldT
+    UnitV1V2, // typename UnitT
+    ToolV1V2, // typename ToolT
+    0x10, // size_t NumToolClasses
+    MagV2, // typename MagT
+    0x4E, // size_t ItemStarsFirstID
+    0x215, // size_t ItemStarsLastID
+    0x138, // size_t SpecialStarsBeginIndex
+    0x29, // size_t NumSpecials
+    false>; // bool BE
+using ItemParameterTableGCNTE = ItemParameterTableT<
+    RootGCNTE, // typename RootT
+    WeaponGCNTE, // typename WeaponT
+    0x8D, // size_t NumWeaponClasses
+    ArmorOrShieldGC, // typename ArmorOrShieldT
+    UnitGC, // typename UnitT
+    ToolGC, // typename ToolT
+    0x13, // size_t NumToolClasses
+    MagGC, // typename MagT
+    0x76, // size_t ItemStarsFirstID
+    0x298, // size_t ItemStarsLastID
+    0x1A3, // size_t SpecialStarsBeginIndex
+    0x29, // size_t NumSpecials
+    true>; // bool BE
+using ItemParameterTableGC = ItemParameterTableT<
+    RootV3V4T<true>, // typename RootT
+    WeaponGC, // typename WeaponT
+    0xAA, // size_t NumWeaponClasses
+    ArmorOrShieldGC, // typename ArmorOrShieldT
+    UnitGC, // typename UnitT
+    ToolGC, // typename ToolT
+    0x18, // size_t NumToolClasses
+    MagGC, // typename MagT
+    0x94, // size_t ItemStarsFirstID
+    0x2F7, // size_t ItemStarsLastID
+    0x1CB, // size_t SpecialStarsBeginIndex
+    0x29, // size_t NumSpecials
+    true>; // bool BE
+using ItemParameterTableXB = ItemParameterTableT<
+    RootV3V4T<false>, // typename RootT
+    WeaponXB, // typename WeaponT
+    0xAA, // size_t NumWeaponClasses
+    ArmorOrShieldXB, // typename ArmorOrShieldT
+    UnitXB, // typename UnitT
+    ToolXB, // typename ToolT
+    0x18, // size_t NumToolClasses
+    MagXB, // typename MagT
+    0x94, // size_t ItemStarsFirstID
+    0x2F7, // size_t ItemStarsLastID
+    0x1CB, // size_t SpecialStarsBeginIndex
+    0x29, // size_t NumSpecials
+    false>; // bool BE
+using ItemParameterTableV4 = ItemParameterTableT<
+    RootV3V4T<false>, // typename RootT
+    WeaponV4, // typename WeaponT
+    0xED, // size_t NumWeaponClasses
+    ArmorOrShieldV4, // typename ArmorOrShieldT
+    UnitV4, // typename UnitT
+    ToolV4, // typename ToolT
+    0x1B, // size_t NumToolClasses
+    MagV4, // typename MagT
+    0xB1, // size_t ItemStarsFirstID
+    0x437, // size_t ItemStarsLastID
+    0x256, // size_t SpecialStarsBeginIndex
+    0x29, // size_t NumSpecials
+    false>; // bool BE
+
+std::shared_ptr<ItemParameterTable> ItemParameterTable::create(
+    std::shared_ptr<const std::string> data, Version version) {
+  switch (version) {
+    case Version::DC_NTE:
+      return std::make_shared<ItemParameterTableDCNTE>(data);
+    case Version::DC_11_2000:
+      return std::make_shared<ItemParameterTableDC112000>(data);
+    case Version::DC_V1:
+      return std::make_shared<ItemParameterTableV1>(data);
+    case Version::DC_V2:
+    case Version::PC_NTE:
+    case Version::PC_V2:
+      return std::make_shared<ItemParameterTableV2>(data);
+    case Version::GC_NTE:
+      return std::make_shared<ItemParameterTableGCNTE>(data);
+    case Version::GC_V3:
+    case Version::GC_EP3:
+    case Version::GC_EP3_NTE:
+      return std::make_shared<ItemParameterTableGC>(data);
+    case Version::XB_V3:
+      return std::make_shared<ItemParameterTableXB>(data);
+    case Version::BB_V4:
+      return std::make_shared<ItemParameterTableV4>(data);
+    default:
+      throw std::logic_error("Cannot create item parameter table for this version");
+  }
 }
 
 MagEvolutionTable::MagEvolutionTable(shared_ptr<const string> data, size_t num_mags)
