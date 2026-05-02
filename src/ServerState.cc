@@ -915,6 +915,22 @@ void ServerState::load_config_early() {
   this->cheat_mode_behavior = parse_behavior_switch("CheatModeBehavior", BehaviorSwitch::OFF_BY_DEFAULT);
   this->default_switch_assist_enabled = this->config_json->get_bool("EnableSwitchAssistByDefault", false);
   this->use_game_creator_section_id = this->config_json->get_bool("UseGameCreatorSectionID", false);
+  this->enable_bb_ship_selection_menu = this->config_json->get_bool("EnableBBShipSelectionMenu", false);
+  this->enable_blueballz = this->config_json->get_bool("EnableBlueballz", false);
+  this->enable_hardcore_mode = this->config_json->get_bool("EnableHardcoreMode", false);
+  this->blueballz_max_tier = std::min<int64_t>(10, std::max<int64_t>(0, this->config_json->get_int("BlueballzMaxTier", 10)));
+  this->blueballz_unlocked_tier_v2 = std::min<int64_t>(
+      this->blueballz_max_tier,
+      std::max<int64_t>(-1, this->config_json->get_int("BlueballzUnlockedTierV2", -1)));
+  this->blueballz_unlocked_tier_v3 = std::min<int64_t>(
+      this->blueballz_max_tier,
+      std::max<int64_t>(-1, this->config_json->get_int("BlueballzUnlockedTierV3", -1)));
+  this->blueballz_unlocked_tier_v4 = std::min<int64_t>(
+      this->blueballz_max_tier,
+      std::max<int64_t>(-1, this->config_json->get_int("BlueballzUnlockedTierV4", -1)));
+  this->blueballz_enemy_hp_scale_tier = std::min<int64_t>(
+      this->blueballz_max_tier,
+      std::max<int64_t>(-1, this->config_json->get_int("BlueballzEnemyHPScaleTier", -1)));
   this->rare_notifs_enabled_for_client_drops = this->config_json->get_bool("RareNotificationsEnabledForClientDrops", false);
   this->default_rare_notifs_enabled_v1_v2 = this->config_json->get_bool("RareNotificationsEnabledByDefault", false);
   this->default_rare_notifs_enabled_v3_v4 = this->default_rare_notifs_enabled_v1_v2;

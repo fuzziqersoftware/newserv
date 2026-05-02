@@ -5,6 +5,7 @@
 
 #include <phosg/Network.hh>
 #include <string>
+#include <map>
 #include <vector>
 
 #include "GameServer.hh"
@@ -52,6 +53,156 @@ HTTPServer::HTTPServer(shared_ptr<ServerState> state)
     this->rare_drop_subscribers.emplace(args.client);
     co_await args.client->send_websocket_message(generate_server_version_json().serialize());
     co_return nullptr;
+  });
+
+  this->router.add(HTTPRequest::Method::GET, "/metrics", [this](ArgsT&&) -> RetT {
+    auto version_label = +[](Version v) -> const char* {
+      if (is_patch(v)) {
+        return "patch";
+      } else if (is_v4(v)) {
+        return "v4";
+      } else if (is_v3(v)) {
+        return "v3";
+      } else if (is_v1_or_v2(v)) {
+        return "v2";
+      } else {
+        return "other";
+      }
+    };
+
+    auto escape_label = +[](const string& in) -> string {
+      string out;
+      for (char ch : in) {
+        if (ch == '\\') {
+          out += "\\\\";
+        } else if (ch == '"') {
+          out += "\\\"";
+        } else if (ch == '\n') {
+          out += "\\n";
+        } else {
+          out += ch;
+        }
+      }
+      return out;
+    };
+
+    auto add_metric = [](string& out, const string& name, uint64_t value) -> void {
+      out += name;
+      out += " ";
+      out += std::to_string(value);
+      out += "\n";
+    };
+
+    auto add_metric_1label = [](string& out, const string& name, const string& label_name, const string& label_value, uint64_t value) -> void {
+      out += name;
+      out += "{";
+      out += label_name;
+      out += "=\"";
+      out += label_value;
+      out += "\"} ";
+      out += std::to_string(value);
+      out += "\n";
+    };
+
+    map<string, uint64_t> connected_by_version;
+    map<string, uint64_t> lobby_players_by_version;
+    map<string, uint64_t> game_players_by_version;
+
+    uint64_t connected_total = 0;
+    uint64_t lobbies_total = 0;
+    uint64_t games_total = 0;
+    uint64_t players_in_lobbies_total = 0;
+    uint64_t players_in_games_total = 0;
+
+    for (const auto& c : this->state->game_server->all_clients()) {
+      connected_total++;
+      connected_by_version[version_label(c->version())]++;
+    }
+
+    for (const auto& [_, l] : this->state->id_to_lobby) {
+      if (l->is_game()) {
+        games_total++;
+      } else {
+        lobbies_total++;
+      }
+
+      for (size_t z = 0; z < l->max_clients; z++) {
+        auto lc = l->clients[z];
+        if (!lc) {
+          continue;
+        }
+
+        const char* v = version_label(lc->version());
+        if (l->is_game()) {
+          players_in_games_total++;
+          game_players_by_version[v]++;
+        } else {
+          players_in_lobbies_total++;
+          lobby_players_by_version[v]++;
+        }
+      }
+    }
+
+    string server_name = escape_label(this->state->name);
+    string revision = escape_label(GIT_REVISION_HASH);
+
+    string out;
+    out += "# HELP pso_newserv_up Whether this newserv HTTP metrics endpoint is reachable\n";
+    out += "# TYPE pso_newserv_up gauge\n";
+    add_metric(out, "pso_newserv_up", 1);
+
+    out += "# HELP pso_newserv_build_info Build and server identity info\n";
+    out += "# TYPE pso_newserv_build_info gauge\n";
+    out += "pso_newserv_build_info{server_name=\"";
+    out += server_name;
+    out += "\",revision=\"";
+    out += revision;
+    out += "\",build_time=\"";
+    out += std::to_string(BUILD_TIMESTAMP);
+    out += "\"} 1\n";
+
+    out += "# HELP pso_newserv_clients_connected_total Connected clients, including patch/proxy/menu states\n";
+    out += "# TYPE pso_newserv_clients_connected_total gauge\n";
+    add_metric(out, "pso_newserv_clients_connected_total", connected_total);
+
+    out += "# HELP pso_newserv_clients_connected Connected clients by coarse version family\n";
+    out += "# TYPE pso_newserv_clients_connected gauge\n";
+    for (const auto& [version, count] : connected_by_version) {
+      add_metric_1label(out, "pso_newserv_clients_connected", "version", version, count);
+    }
+
+    out += "# HELP pso_newserv_lobbies_total Non-game lobby count\n";
+    out += "# TYPE pso_newserv_lobbies_total gauge\n";
+    add_metric(out, "pso_newserv_lobbies_total", lobbies_total);
+
+    out += "# HELP pso_newserv_games_total Game room count\n";
+    out += "# TYPE pso_newserv_games_total gauge\n";
+    add_metric(out, "pso_newserv_games_total", games_total);
+
+    out += "# HELP pso_newserv_players_in_lobbies_total Players currently in non-game lobbies\n";
+    out += "# TYPE pso_newserv_players_in_lobbies_total gauge\n";
+    add_metric(out, "pso_newserv_players_in_lobbies_total", players_in_lobbies_total);
+
+    out += "# HELP pso_newserv_players_in_games_total Players currently in game rooms\n";
+    out += "# TYPE pso_newserv_players_in_games_total gauge\n";
+    add_metric(out, "pso_newserv_players_in_games_total", players_in_games_total);
+
+    out += "# HELP pso_newserv_players_in_lobbies Players currently in non-game lobbies by coarse version family\n";
+    out += "# TYPE pso_newserv_players_in_lobbies gauge\n";
+    for (const auto& [version, count] : lobby_players_by_version) {
+      add_metric_1label(out, "pso_newserv_players_in_lobbies", "version", version, count);
+    }
+
+    out += "# HELP pso_newserv_players_in_games Players currently in game rooms by coarse version family\n";
+    out += "# TYPE pso_newserv_players_in_games gauge\n";
+    for (const auto& [version, count] : game_players_by_version) {
+      add_metric_1label(out, "pso_newserv_players_in_games", "version", version, count);
+    }
+
+    co_return RouterRetT(RawResponse{
+        .content_type = "text/plain; version=0.0.4; charset=utf-8",
+        .data = std::move(out),
+    });
   });
 
   this->router.add(HTTPRequest::Method::GET, "/y/clients", [this](ArgsT&&) -> RetT {

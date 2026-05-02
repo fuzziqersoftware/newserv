@@ -140,6 +140,7 @@ public:
   std::shared_ptr<Channel> channel;
   std::shared_ptr<PSOBBMultiKeyDetectorEncryption> bb_detector_crypt;
   ServerBehavior server_behavior;
+  uint16_t listener_port = 0;
   std::unordered_map<std::string, std::function<void()>> disconnect_hooks;
   uint64_t ping_start_time = 0;
 
@@ -150,6 +151,7 @@ public:
   uint8_t override_lobby_event = 0xFF; // FF = no override
   uint8_t override_lobby_number = 0x80; // 80 = no override
   int64_t override_random_seed = -1;
+  int8_t selected_blueballz_tier = -1; // -1 = normal lobby/game; 0..10 = requested Blueballz tier
   std::unique_ptr<Variations> override_variations;
   VectorXYZF pos;
   uint32_t floor = 0x0F;

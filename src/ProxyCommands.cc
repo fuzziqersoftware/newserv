@@ -1024,8 +1024,15 @@ static asio::awaitable<HandlerResult> S_6x(shared_ptr<Client> c, Channel::Messag
     case 0x17: {
       const auto& cmd = msg.check_size_t<G_SetEntityPositionAndAngle_6x17>();
       if (cmd.header.entity_id == c->lobby_client_id) {
-        c->log.warning_f("Blocking subcommand 6x17 targeting local client");
-        co_return HandlerResult::SUPPRESS;
+        // Vol Opt phase 1 -> phase 2 uses 6x17 targeting the local client to move
+        // players into the second arena phase. Allow this only while the proxy-side
+        // client is already on the Vol Opt floor.
+        if (c->floor == 0x0D) {
+          c->log.info_f("Allowing subcommand 6x17 targeting local client on Vol Opt floor");
+        } else {
+          c->log.warning_f("Blocking subcommand 6x17 targeting local client outside Vol Opt floor");
+          co_return HandlerResult::SUPPRESS;
+        }
       }
       break;
     }
@@ -2830,7 +2837,12 @@ asio::awaitable<void> handle_proxy_server_commands(
       if (ec == asio::error::eof || ec == asio::error::connection_reset) {
         error_str = "Server channel\ndisconnected";
       } else if (ec == asio::error::operation_aborted) {
-        // This happens when the player chooses Change Ship/Change Block, so we don't show an error message
+        // If this is the currently-active backend channel, treat the abort as a backend disconnect.
+        // Normal Change Ship/Change Block reconnects replace ses->server_channel first; the old
+        // aborted channel will not match here, so those expected aborts stay silent.
+        if ((c->proxy_session == ses) && (ses->server_channel == channel)) {
+          error_str = "Server channel\ndisconnected";
+        }
       } else {
         error_str = e.what();
       }

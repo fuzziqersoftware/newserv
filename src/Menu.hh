@@ -42,6 +42,12 @@ constexpr uint32_t PATCH_SWITCHES = 0x11666611;
 constexpr uint32_t PROGRAMS = 0x11777711;
 constexpr uint32_t DISCONNECT = 0x11888811;
 constexpr uint32_t CLEAR_LICENSE = 0x11999911;
+constexpr uint32_t BB_LIVE_SHIP = 0x11AAAA11;
+constexpr uint32_t BB_TEST_SHIP = 0x11BBBB11;
+constexpr uint32_t BB_VANILLA_SHIP = 0x11CCCC11;
+constexpr uint32_t BB_HARDCORE_SHIP = 0x11F00D11;
+constexpr uint32_t BB_DEV_SHIP = 0x11EEEE11;
+constexpr uint32_t BLUEBALLZ_PLUS0 = 0x11DDDD11;
 } // namespace MainMenuItemID
 
 namespace ClearLicenseConfirmationMenuItemID {

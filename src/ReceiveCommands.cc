@@ -3,6 +3,7 @@
 #include <inttypes.h>
 #include <string.h>
 
+#include <fstream>
 #include <memory>
 #include <phosg/Filesystem.hh>
 #include <phosg/Hash.hh>
@@ -32,6 +33,138 @@ const char* BATTLE_TABLE_DISCONNECT_HOOK_NAME = "battle_table_state";
 const char* QUEST_BARRIER_DISCONNECT_HOOK_NAME = "quest_barrier";
 const char* ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME = "add_next_game_client";
 
+static string bb_test_taint_filename(shared_ptr<Client> c) {
+  return c->character_filename() + ".test-tainted";
+}
+
+static string bb_test_taint_grandfather_filename(shared_ptr<Client> c) {
+  return c->character_filename() + ".grandfathered-before-test-taint";
+}
+
+static bool file_exists_for_bb_taint(const string& filename) {
+  ifstream f(filename);
+  return f.good();
+}
+
+static bool bb_character_is_test_tainted(shared_ptr<Client> c) {
+  return file_exists_for_bb_taint(bb_test_taint_filename(c));
+}
+
+static bool bb_character_is_test_taint_grandfathered(shared_ptr<Client> c) {
+  return file_exists_for_bb_taint(bb_test_taint_grandfather_filename(c));
+}
+
+static bool mark_bb_character_test_tainted(shared_ptr<Client> c) {
+  string filename = bb_test_taint_filename(c);
+  ofstream f(filename, ios::out | ios::trunc);
+  if (!f.good()) {
+    return false;
+  }
+
+  f << "status=test-tainted\n";
+  f << "reason=entered-test-ship\n";
+  f << "account_id=" << c->login->account->account_id << "\n";
+  f << "character_file=" << c->character_filename() << "\n";
+  return f.good();
+}
+
+
+static string bb_hardcore_filename(shared_ptr<Client> c) {
+  return c->character_filename() + ".hardcore";
+}
+
+static string bb_hardcore_ineligible_filename(shared_ptr<Client> c) {
+  return c->character_filename() + ".hardcore-ineligible";
+}
+
+static string bb_hardcore_dead_filename(shared_ptr<Client> c) {
+  return c->character_filename() + ".hardcore-dead";
+}
+
+static bool bb_character_is_hardcore(shared_ptr<Client> c) {
+  return file_exists_for_bb_taint(bb_hardcore_filename(c));
+}
+
+static bool bb_character_is_hardcore_ineligible(shared_ptr<Client> c) {
+  return file_exists_for_bb_taint(bb_hardcore_ineligible_filename(c));
+}
+
+static bool bb_character_is_hardcore_dead(shared_ptr<Client> c) {
+  return file_exists_for_bb_taint(bb_hardcore_dead_filename(c));
+}
+
+static bool write_bb_hardcore_marker(shared_ptr<Client> c, const string& filename, const char* status, const char* reason) {
+  ofstream f(filename, ios::out | ios::trunc);
+  if (!f.good()) {
+    return false;
+  }
+
+  uint32_t account_id = 0;
+  if (c->login && c->login->account) {
+    account_id = c->login->account->account_id;
+  }
+
+  f << "status=" << status << "\n";
+  f << "reason=" << reason << "\n";
+  f << "account_id=" << account_id << "\n";
+  f << "character_file=" << c->character_filename() << "\n";
+  return f.good();
+}
+
+static bool mark_bb_character_hardcore(shared_ptr<Client> c) {
+  return write_bb_hardcore_marker(c, bb_hardcore_filename(c), "hardcore", "entered-hardcore-ship");
+}
+
+static bool mark_bb_character_hardcore_ineligible(shared_ptr<Client> c) {
+  return write_bb_hardcore_marker(c, bb_hardcore_ineligible_filename(c), "hardcore-ineligible", "entered-non-hardcore-ship");
+}
+
+static bool enforce_bb_hardcore_ship_lock(shared_ptr<Client> c, bool current_ship_is_hardcore) {
+  if (bb_character_is_hardcore_dead(c)) {
+    send_message_box(c, "$C6This Hardcore character is dead.\n\n$C7The character remains in your list, but cannot be loaded.");
+    return false;
+  }
+
+  if (current_ship_is_hardcore) {
+    if (bb_character_is_hardcore_ineligible(c) ||
+        bb_character_is_test_tainted(c) ||
+        bb_character_is_test_taint_grandfathered(c)) {
+      if (!bb_character_is_hardcore_ineligible(c)) {
+        mark_bb_character_hardcore_ineligible(c);
+      }
+      send_message_box(c, "$C6This BB character has already entered a non-Hardcore ship.\n\n$C7Create a new character and enter Hardcore first.");
+      return false;
+    }
+
+    if (!bb_character_is_hardcore(c)) {
+      if (!mark_bb_character_hardcore(c)) {
+        send_message_box(c, "$C6Could not mark this character for Hardcore.\n\n$C7Please report this.");
+        return false;
+      }
+      c->log.info_f("Marked BB character as Hardcore: {}", c->character_filename());
+    }
+
+    return true;
+
+  } else {
+    if (bb_character_is_hardcore(c)) {
+      send_message_box(c, "$C6This BB character is locked to Hardcore.\n\n$C7Hardcore characters cannot enter non-Hardcore ships.");
+      return false;
+    }
+
+    if (!bb_character_is_hardcore_ineligible(c)) {
+      if (!mark_bb_character_hardcore_ineligible(c)) {
+        send_message_box(c, "$C6Could not mark this character as non-Hardcore.\n\n$C7Please report this.");
+        return false;
+      }
+      c->log.info_f("Marked BB character as Hardcore-ineligible: {}", c->character_filename());
+    }
+
+    return true;
+  }
+}
+
+
 asio::awaitable<void> on_connect(std::shared_ptr<Client> c) {
   auto s = c->require_server_state();
   if (s->default_switch_assist_enabled) {
@@ -42,6 +175,16 @@ asio::awaitable<void> on_connect(std::shared_ptr<Client> c) {
     case ServerBehavior::PC_CONSOLE_DETECT: {
       uint16_t pc_port = s->name_to_port_config.at("pc")->port;
       uint16_t console_port = s->name_to_port_config.at("gc-us3")->port;
+
+      // PSO Peeps: keep GC normal/x5/x10 discs separated after pc_console_detect.
+      // Without this, all GC discs collapse to gc-us3 and ship select cannot tell
+      // whether the player entered through normal, x5, or x10.
+      if (c->listener_port == 19105) {
+        console_port = s->name_to_port_config.at("gc-us3-x5")->port;
+      } else if (c->listener_port == 19110) {
+        console_port = s->name_to_port_config.at("gc-us3-x10")->port;
+      }
+
       send_pc_console_split_reconnect(c, s->connect_address_for_client(c), pc_port, console_port);
       // TODO: There appears to be a bug that occurs rarely when a client connects to this port; sometimes it
       // disconnects before receiving the data it needs. My hypothesis is that there's either a bug in Channel where
@@ -87,6 +230,21 @@ static void send_main_menu(shared_ptr<Client> c) {
   auto s = c->require_server_state();
 
   auto main_menu = make_shared<Menu>(MenuID::MAIN, s->name);
+
+  bool is_bb_ship_menu_client =
+      ((c->version() == Version::BB_V4) || (c->version() == Version::BB_PATCH));
+  bool bb_frontdoor_ship_menu = s->enable_bb_ship_selection_menu && is_bb_ship_menu_client;
+  bool bb_destination_transport_menu = !s->enable_bb_ship_selection_menu && is_bb_ship_menu_client;
+  bool show_bb_live_test_menu_items = bb_frontdoor_ship_menu || bb_destination_transport_menu;
+  bool show_bb_restricted_ship_menu_items = bb_frontdoor_ship_menu;
+
+  uint32_t go_to_lobby_menu_item_flags =
+      (s->proxy_destinations_dc.empty() ? 0 : MenuItem::Flag::INVISIBLE_ON_DC) |
+      (s->proxy_destinations_pc.empty() ? 0 : MenuItem::Flag::INVISIBLE_ON_PC) |
+      (s->proxy_destinations_gc.empty() ? 0 : MenuItem::Flag::INVISIBLE_ON_GC) |
+      (s->proxy_destinations_xb.empty() ? 0 : MenuItem::Flag::INVISIBLE_ON_XB) |
+      (bb_frontdoor_ship_menu ? MenuItem::Flag::INVISIBLE_ON_BB : 0);
+
   main_menu->items.emplace_back(
       MainMenuItemID::GO_TO_LOBBY, "Go to lobby",
       [wc = weak_ptr<Client>(c)]() -> string {
@@ -117,9 +275,61 @@ static void send_main_menu(shared_ptr<Client> c) {
             "$C6{}$C7 players online\n$C6{}$C7 games\n$C6{}$C7 compatible games",
             num_players, num_games, num_compatible_games);
       },
-      0);
+      go_to_lobby_menu_item_flags);
+  bool show_blueballz_menu_items =
+      bb_destination_transport_menu &&
+      s->enable_blueballz &&
+      (s->blueballz_unlocked_tier_v4 >= 0);
+
+  if (show_blueballz_menu_items) {
+    int64_t max_blueballz_menu_tier = min<int64_t>(
+        s->blueballz_max_tier,
+        s->blueballz_unlocked_tier_v4);
+
+    for (int64_t tier = 0; tier <= max_blueballz_menu_tier; tier++) {
+      main_menu->items.emplace_back(
+          MainMenuItemID::BLUEBALLZ_PLUS0 + static_cast<uint32_t>(tier),
+          std::format("Blueballz +{}", tier),
+          std::format("Enter Blueballz\n+{}", tier),
+          MenuItem::Flag::BB_ONLY);
+    }
+  }
+
   main_menu->items.emplace_back(MainMenuItemID::INFORMATION, "Information",
       "View server\ninformation", MenuItem::Flag::INVISIBLE_ON_DC_PROTOS | MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
+
+  // PSO Peeps: BB uses this same cached MAIN menu for the destination
+  // pre-lobby page and the lobby counter Transport list. Keep the frontdoor
+  // as the full ship selector, but only expose safe transport choices on
+  // destination ships.
+  uint32_t bb_live_test_menu_item_flags =
+      show_bb_live_test_menu_items
+          ? MenuItem::Flag::BB_ONLY
+          : (MenuItem::Flag::INVISIBLE_ON_DC |
+                MenuItem::Flag::INVISIBLE_ON_PC |
+                MenuItem::Flag::INVISIBLE_ON_GC |
+                MenuItem::Flag::INVISIBLE_ON_XB |
+                MenuItem::Flag::INVISIBLE_ON_BB);
+
+  uint32_t bb_restricted_ship_menu_item_flags =
+      show_bb_restricted_ship_menu_items
+          ? MenuItem::Flag::BB_ONLY
+          : (MenuItem::Flag::INVISIBLE_ON_DC |
+                MenuItem::Flag::INVISIBLE_ON_PC |
+                MenuItem::Flag::INVISIBLE_ON_GC |
+                MenuItem::Flag::INVISIBLE_ON_XB |
+                MenuItem::Flag::INVISIBLE_ON_BB);
+
+  main_menu->items.emplace_back(MainMenuItemID::BB_LIVE_SHIP, "PSO-Peeps Live",
+      "Join the live\nPSO-Peeps ship", bb_live_test_menu_item_flags);
+  main_menu->items.emplace_back(MainMenuItemID::BB_TEST_SHIP, "Test Ship",
+      "Join the test\nconfiguration ship", bb_live_test_menu_item_flags);
+  main_menu->items.emplace_back(MainMenuItemID::BB_DEV_SHIP, "Dev Ship",
+      "Join the dev\nexperimental ship", bb_restricted_ship_menu_item_flags);
+  main_menu->items.emplace_back(MainMenuItemID::BB_VANILLA_SHIP, "Vanilla Ship",
+      "Join the vanilla\ndefault-settings ship", bb_restricted_ship_menu_item_flags);
+  main_menu->items.emplace_back(MainMenuItemID::BB_HARDCORE_SHIP, "Hardcore Ship",
+      "Join the hardcore\npermadeath ship", bb_restricted_ship_menu_item_flags);
 
   uint32_t proxy_destinations_menu_item_flags =
       (s->proxy_destinations_dc.empty() ? MenuItem::Flag::INVISIBLE_ON_DC : 0) |
@@ -127,8 +337,8 @@ static void send_main_menu(shared_ptr<Client> c) {
       (s->proxy_destinations_gc.empty() ? MenuItem::Flag::INVISIBLE_ON_GC : 0) |
       (s->proxy_destinations_xb.empty() ? MenuItem::Flag::INVISIBLE_ON_XB : 0) |
       MenuItem::Flag::INVISIBLE_ON_BB;
-  main_menu->items.emplace_back(MainMenuItemID::PROXY_DESTINATIONS, "Proxy server",
-      "Connect to another\nserver through the\nproxy", proxy_destinations_menu_item_flags);
+  main_menu->items.emplace_back(MainMenuItemID::PROXY_DESTINATIONS, "Select ship",
+      "Choose Live,\nVanilla, or Test", proxy_destinations_menu_item_flags);
 
   main_menu->items.emplace_back(MainMenuItemID::DOWNLOAD_QUESTS, "Download quests",
       "Download quests", MenuItem::Flag::INVISIBLE_ON_DC_PROTOS | MenuItem::Flag::INVISIBLE_ON_PC_NTE | MenuItem::Flag::INVISIBLE_ON_BB);
@@ -524,6 +734,7 @@ asio::awaitable<void> end_proxy_session(shared_ptr<Client> c, const std::string&
   }
 
   bool is_in_game = c->proxy_session->is_in_game;
+  bool force_client_disconnect = !error_message.empty();
   c->proxy_session->server_channel->disconnect();
   c->proxy_session.reset();
 
@@ -532,9 +743,14 @@ asio::awaitable<void> end_proxy_session(shared_ptr<Client> c, const std::string&
     co_return;
   }
 
-  if (is_in_game) {
-    string msg = std::format("You cannot return\nto $C6{}$C7\nwhile in a game.\n\n{}",
-        s->name, error_message);
+  if (is_in_game || force_client_disconnect) {
+    string msg;
+    if (is_in_game) {
+      msg = std::format("You cannot return\nto $C6{}$C7\nwhile in a game.\n\n{}",
+          s->name, error_message);
+    } else {
+      msg = std::format("Disconnected from\nremote ship.\n\n{}", error_message);
+    }
     send_ship_info(c, msg);
     c->channel->disconnect();
   } else {
@@ -2518,14 +2734,55 @@ void set_lobby_quest(shared_ptr<Lobby> l, shared_ptr<const Quest> q, bool substi
 static asio::awaitable<void> on_10_main_menu(shared_ptr<Client> c, uint32_t item_id) {
   auto s = c->require_server_state();
 
+  if ((item_id >= MainMenuItemID::BLUEBALLZ_PLUS0) &&
+      (item_id <= (MainMenuItemID::BLUEBALLZ_PLUS0 + 10))) {
+    int64_t tier = item_id - MainMenuItemID::BLUEBALLZ_PLUS0;
+
+    if (!s->enable_blueballz ||
+        !is_v4(c->version()) ||
+        (tier < 0) ||
+        (tier > s->blueballz_max_tier) ||
+        (tier > s->blueballz_unlocked_tier_v4)) {
+      send_message_box(c, std::format("$C6Blueballz +{} is not available.", tier));
+      co_return;
+    }
+
+    c->selected_blueballz_tier = tier;
+    c->log.info_f("Blueballz +{} selected from BB menu", tier);
+
+    co_await send_auto_patches_if_needed(c);
+    co_await enable_save_if_needed(c);
+    send_lobby_list(c);
+    if (!c->lobby.lock()) {
+      s->add_client_to_available_lobby(c);
+    }
+    co_return;
+  }
+
   switch (item_id) {
     case MainMenuItemID::GO_TO_LOBBY: {
+      c->selected_blueballz_tier = -1;
       co_await send_auto_patches_if_needed(c);
       co_await enable_save_if_needed(c);
       send_lobby_list(c);
       if (is_pre_v1(c->version())) {
         co_await send_get_player_info(c);
       }
+      if (!c->lobby.lock()) {
+        s->add_client_to_available_lobby(c);
+      }
+      break;
+    }
+
+    case MainMenuItemID::BLUEBALLZ_PLUS0: {
+      if (!s->enable_blueballz || (c->version() != Version::DC_V2) || (s->blueballz_unlocked_tier_v2 < 0)) {
+        send_message_box(c, "$C6Blueballz +0 is not available.");
+        break;
+      }
+      c->selected_blueballz_tier = 0;
+      co_await send_auto_patches_if_needed(c);
+      co_await enable_save_if_needed(c);
+      send_lobby_list(c);
       if (!c->lobby.lock()) {
         s->add_client_to_available_lobby(c);
       }
@@ -2541,6 +2798,149 @@ static asio::awaitable<void> on_10_main_menu(shared_ptr<Client> c, uint32_t item
     case MainMenuItemID::PROXY_DESTINATIONS:
       send_proxy_destinations_menu(c);
       break;
+
+    case MainMenuItemID::BB_LIVE_SHIP: {
+      if (c->version() != Version::BB_V4) {
+        send_message_box(c, "$C6This ship option is only for Blue Burst.");
+        break;
+      }
+      if ((c->listener_port == 19145) || (c->listener_port == 19146)) {
+        c->selected_blueballz_tier = -1;
+        co_await send_auto_patches_if_needed(c);
+        co_await enable_save_if_needed(c);
+        send_lobby_list(c);
+        if (!c->lobby.lock()) {
+          s->add_client_to_available_lobby(c);
+        }
+        break;
+      }
+      send_reconnect(c, s->connect_address_for_client(c), 19145);
+      break;
+    }
+
+    case MainMenuItemID::BB_TEST_SHIP: {
+      if (c->version() != Version::BB_V4) {
+        send_message_box(c, "$C6This ship option is only for Blue Burst.");
+        break;
+      }
+      if ((c->listener_port == 19345) || (c->listener_port == 19346)) {
+        c->selected_blueballz_tier = -1;
+        co_await send_auto_patches_if_needed(c);
+        co_await enable_save_if_needed(c);
+        send_lobby_list(c);
+        if (!c->lobby.lock()) {
+          s->add_client_to_available_lobby(c);
+        }
+        break;
+      }
+
+      // PSO Peeps alpha test: entering Test taints only non-grandfathered BB characters.
+      // Existing characters were grandfathered before this feature was enabled.
+      if (!bb_character_is_test_taint_grandfathered(c)) {
+        if (!mark_bb_character_test_tainted(c)) {
+          send_message_box(c, "$C6Could not mark this character for Test access.\n\n$C7Please report this.");
+          break;
+        }
+      }
+
+      send_reconnect(c, s->connect_address_for_client(c), 19345);
+      break;
+    }
+
+    case MainMenuItemID::BB_DEV_SHIP: {
+      if (c->version() != Version::BB_V4) {
+        send_message_box(c, "$C6This ship option is only for Blue Burst.");
+        break;
+      }
+      if ((c->listener_port == 19445) || (c->listener_port == 19446)) {
+        c->selected_blueballz_tier = -1;
+        co_await send_auto_patches_if_needed(c);
+        co_await enable_save_if_needed(c);
+        send_lobby_list(c);
+        if (!c->lobby.lock()) {
+          s->add_client_to_available_lobby(c);
+        }
+        break;
+      }
+
+      // PSO Peeps dev/test isolation: entering Dev taints only non-grandfathered BB characters.
+      if (!bb_character_is_test_taint_grandfathered(c)) {
+        if (!mark_bb_character_test_tainted(c)) {
+          send_message_box(c, "$C6Could not mark this character for Dev access.\n\n$C7Please report this.");
+          break;
+        }
+      }
+
+      send_reconnect(c, s->connect_address_for_client(c), 19445);
+      break;
+    }
+
+    case MainMenuItemID::BB_VANILLA_SHIP: {
+      if (c->version() != Version::BB_V4) {
+        send_message_box(c, "$C6This ship option is only for Blue Burst.");
+        break;
+      }
+      if ((c->listener_port == 19245) || (c->listener_port == 19246)) {
+        c->selected_blueballz_tier = -1;
+        co_await send_auto_patches_if_needed(c);
+        co_await enable_save_if_needed(c);
+        send_lobby_list(c);
+        if (!c->lobby.lock()) {
+          s->add_client_to_available_lobby(c);
+        }
+        break;
+      }
+
+      if (bb_character_is_test_tainted(c)) {
+        send_message_box(c, "$C6This character has been used outside of Vanilla and cannot enter Vanilla.\n\n$C7Use Live/Test with this character, or create a fresh Vanilla character.");
+        c->channel->disconnect();
+        break;
+      }
+
+      send_reconnect(c, s->connect_address_for_client(c), 19245);
+      break;
+    }
+    case MainMenuItemID::BB_HARDCORE_SHIP: {
+      if (c->version() != Version::BB_V4) {
+        send_message_box(c, "$C6This ship option is only for Blue Burst.");
+        break;
+      }
+      if ((c->listener_port == 19545) || (c->listener_port == 19546)) {
+        send_message_box(c, "$C6You are already on Hardcore Ship.\n\n$C7Choose Go to lobby or another ship.");
+        break;
+      }
+
+      // Gate Hardcore before reconnecting. The BB ship-menu flow can transfer
+      // an already-loaded character, so the backend character-select gate alone
+      // is not enough.
+      if (bb_character_is_hardcore_dead(c)) {
+        send_message_box(c, "$C6This Hardcore character is dead.\n\n$C7The character remains in your list, but cannot be loaded.");
+        c->channel->disconnect();
+        break;
+      }
+
+      if (bb_character_is_hardcore_ineligible(c) ||
+          bb_character_is_test_tainted(c) ||
+          bb_character_is_test_taint_grandfathered(c)) {
+        if (!bb_character_is_hardcore_ineligible(c)) {
+          mark_bb_character_hardcore_ineligible(c);
+        }
+        send_message_box(c, "$C6This BB character is tainted and cannot enter Hardcore.\n\n$C7Create a new character and enter Hardcore first.");
+        c->channel->disconnect();
+        break;
+      }
+
+      if (!bb_character_is_hardcore(c)) {
+        if (!mark_bb_character_hardcore(c)) {
+          send_message_box(c, "$C6Could not mark this character for Hardcore.\n\n$C7Please report this.");
+          break;
+        }
+        c->log.info_f("Marked BB character as Hardcore from menu: {}", c->character_filename());
+      }
+
+      send_reconnect(c, s->connect_address_for_client(c), 19545);
+      break;
+    }
 
     case MainMenuItemID::DOWNLOAD_QUESTS: {
       send_quest_categories_menu(c, QuestMenuType::DOWNLOAD, Episode::NONE);
@@ -2706,6 +3106,14 @@ static asio::awaitable<void> on_10_proxy_destinations(shared_ptr<Client> c, uint
       send_message_box(c, "$C6No such destination exists.");
       c->channel->disconnect();
     } else {
+      // PSO Peeps: boosted GC discs enter through separate frontdoor ports after
+      // pc_console_detect. Do not allow x5/x10 GC discs into Vanilla.
+      if ((c->listener_port == 9105 || c->listener_port == 9110 ||
+           c->listener_port == 9201 || c->listener_port == 9202) && dest->second == 19203) {
+        send_message_box(c, "$C6Vanilla Ship is not available from boosted discs.\n\n$C7Use the normal disc for Vanilla.");
+        co_return;
+      }
+
       // Clear Check Tactics menu so client won't see newserv tournament state while logically on another server. There
       // is no such command on Trial Edition though, so only do this on Ep3 final.
       if (c->version() == Version::GC_EP3) {
@@ -3727,6 +4135,13 @@ static asio::awaitable<void> on_E3_BB(shared_ptr<Client> c, Channel::Message& ms
     c->unload_character(false);
     c->bb_character_index = cmd.character_index;
     c->bb_bank_character_index = cmd.character_index;
+
+    auto s = c->require_server_state();
+    if (!enforce_bb_hardcore_ship_lock(c, s->enable_hardcore_mode)) {
+      c->unload_character(false);
+      co_return;
+    }
+
     send_approve_player_choice_bb(c);
 
   } else {
@@ -4575,6 +4990,70 @@ shared_ptr<Lobby> create_game_generic(
   if (creator_c->check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION)) {
     game->set_flag(Lobby::Flag::IS_CLIENT_CUSTOMIZATION);
   }
+  game->log.info_f("PSO Peeps BBZ debug: created game name=[{}] version={} difficulty={} enable_blueballz={} unlocked_v4={} max_tier={}",
+      name,
+      static_cast<size_t>(creator_c->version()),
+      name_for_difficulty(difficulty),
+      s->enable_blueballz,
+      s->blueballz_unlocked_tier_v4,
+      s->blueballz_max_tier);
+  int8_t requested_blueballz_tier = -1;
+  bool requested_blueballz = false;
+  string requested_blueballz_source = "none";
+
+  if (creator_c->selected_blueballz_tier >= 0) {
+    requested_blueballz = true;
+    requested_blueballz_tier = creator_c->selected_blueballz_tier;
+    requested_blueballz_source = "BB menu selection";
+
+  } else {
+    size_t bb_prefix_offset = name.find("[BB+");
+    if (bb_prefix_offset != string::npos) {
+      requested_blueballz = true;
+      requested_blueballz_source = "room prefix";
+      size_t tier_start_offset = bb_prefix_offset + 4;
+      size_t close_offset = name.find(']', tier_start_offset);
+      if (close_offset != string::npos) {
+        string tier_str = name.substr(tier_start_offset, close_offset - tier_start_offset);
+        bool tier_str_valid = !tier_str.empty();
+        for (char ch : tier_str) {
+          if ((ch < '0') || (ch > '9')) {
+            tier_str_valid = false;
+            break;
+          }
+        }
+        if (tier_str_valid) {
+          int64_t parsed_tier = stoll(tier_str);
+          if ((parsed_tier >= 0) && (parsed_tier <= s->blueballz_max_tier)) {
+            requested_blueballz_tier = parsed_tier;
+          }
+        }
+      }
+    }
+  }
+
+  if (requested_blueballz_tier >= 0) {
+    if (s->enable_blueballz &&
+        is_v4(creator_c->version()) &&
+        (difficulty == Difficulty::ULTIMATE) &&
+        (requested_blueballz_tier <= s->blueballz_unlocked_tier_v4)) {
+      game->blueballz_tier = requested_blueballz_tier;
+      game->set_flag(Lobby::Flag::BLUEBALLZ_PLUS0);
+      game->log.info_f("Blueballz +{} enabled for BB Ultimate game via {}",
+          static_cast<int>(game->blueballz_tier),
+          requested_blueballz_source);
+    } else {
+      game->log.info_f("Blueballz +{} room prefix ignored; enable={}, version={}, difficulty={}, unlocked_v4={}, max_tier={}",
+          static_cast<int>(requested_blueballz_tier),
+          s->enable_blueballz,
+          static_cast<size_t>(creator_c->version()),
+          name_for_difficulty(difficulty),
+          s->blueballz_unlocked_tier_v4,
+          s->blueballz_max_tier);
+    }
+  } else if (requested_blueballz) {
+    game->log.info_f("Blueballz room prefix ignored; invalid prefix in room name: {}", name);
+  }
 
   while (game->floor_item_managers.size() < 0x12) {
     game->floor_item_managers.emplace_back(game->lobby_id, game->floor_item_managers.size());
@@ -4618,6 +5097,15 @@ shared_ptr<Lobby> create_game_generic(
     battle_player->set_lobby(game);
   }
   game->base_exp_multiplier = s->bb_global_exp_multiplier;
+  if (game->blueballz_tier >= 0) {
+    float blueballz_exp_multiplier = 1.0f + (static_cast<float>(game->blueballz_tier) * 0.25f);
+    game->base_exp_multiplier *= blueballz_exp_multiplier;
+    game->log.info_f("Blueballz +{} EXP multiplier set to {:g}x total (BBGlobalEXPMultiplier={:g}, blueballz={:g})",
+        static_cast<int>(game->blueballz_tier),
+        game->base_exp_multiplier,
+        s->bb_global_exp_multiplier,
+        blueballz_exp_multiplier);
+  }
   game->exp_share_multiplier = s->exp_share_multiplier;
 
   const unordered_map<uint16_t, IntegralExpression>* quest_flag_rewrites;

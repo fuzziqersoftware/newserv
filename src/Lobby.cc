@@ -230,6 +230,11 @@ void Lobby::create_item_creator(Version logic_version) {
       effective_section_id,
       rand_crypt,
       this->quest ? this->quest->meta.battle_rules : nullptr);
+  if (this->blueballz_tier >= 0) {
+    double rare_mult = 1.25 + (static_cast<double>(this->blueballz_tier) * 0.25);
+    this->item_creator->set_rare_drop_rate_multiplier(rare_mult);
+    this->log.info_f("Blueballz +{} rare drop rate multiplier set to {:g}x", this->blueballz_tier, rare_mult);
+  }
   if (s->use_legacy_item_random_behavior) {
     this->item_creator->set_legacy_replay();
   }

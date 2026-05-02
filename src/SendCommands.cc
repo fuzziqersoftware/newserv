@@ -1,4 +1,5 @@
 #include "SendCommands.hh"
+#include "BattleParamsIndex.hh"
 
 #include <inttypes.h>
 #include <stdarg.h>
@@ -690,6 +691,68 @@ void send_guild_card_chunk_bb(shared_ptr<Client> c, size_t chunk_index) {
   send_command(c, 0x02DC, 0x00000000, &cmd, sizeof(cmd) - sizeof(cmd.data) + data_size);
 }
 
+
+static bool is_battle_param_stream_file_for_blueballz(const string& filename) {
+  return (filename == "BattleParamEntry.dat") ||
+      (filename == "BattleParamEntry_on.dat") ||
+      (filename == "BattleParamEntry_lab.dat") ||
+      (filename == "BattleParamEntry_lab_on.dat") ||
+      (filename == "BattleParamEntry_ep4.dat") ||
+      (filename == "BattleParamEntry_ep4_on.dat");
+}
+
+static shared_ptr<const string> bb_stream_file_data_for_client(shared_ptr<Client> c, const string& filename) {
+  auto s = c->require_server_state();
+
+  auto raw_data = s->bb_stream_files_cache->get_or_load("system/blueburst/" + filename).file->data;
+
+  int64_t effective_blueballz_hp_scale_tier = (c->selected_blueballz_tier >= 0)
+      ? c->selected_blueballz_tier
+      : s->blueballz_enemy_hp_scale_tier;
+
+  if (!is_battle_param_stream_file_for_blueballz(filename) || (effective_blueballz_hp_scale_tier < 0)) {
+    return raw_data;
+  }
+
+  effective_blueballz_hp_scale_tier = std::min<int64_t>(
+      s->blueballz_max_tier,
+      effective_blueballz_hp_scale_tier);
+
+  string scaled_data = *raw_data;
+  if (scaled_data.size() < sizeof(BattleParamsIndex::Table)) {
+    c->log.warning_f("Blueballz enemy HP scaling skipped for {}; file is too small", filename);
+    return raw_data;
+  }
+
+  double mult = 1.0 + (static_cast<double>(effective_blueballz_hp_scale_tier) * 0.25);
+  auto* table = reinterpret_cast<BattleParamsIndex::Table*>(scaled_data.data());
+  size_t ultimate_index = static_cast<size_t>(Difficulty::ULTIMATE);
+
+  auto scale_u16 = [mult](uint32_t v) -> uint16_t {
+    if (v == 0) {
+      return 0;
+    }
+    uint32_t scaled = static_cast<uint32_t>(static_cast<double>(v) * mult);
+    if (scaled < 1) {
+      scaled = 1;
+    }
+    if (scaled > 0xFFFF) {
+      scaled = 0xFFFF;
+    }
+    return static_cast<uint16_t>(scaled);
+  };
+
+  for (size_t z = 0; z < 0x60; z++) {
+    auto& stats = table->stats[ultimate_index][z];
+    stats.char_stats.hp = scale_u16(stats.char_stats.hp);
+  }
+
+  c->log.info_f("Blueballz enemy HP scaling: serving {} with tier {} ({:g}x Ultimate HP)",
+      filename, effective_blueballz_hp_scale_tier, mult);
+
+  return make_shared<string>(std::move(scaled_data));
+}
+
 static const vector<string> stream_file_entries = {
     "ItemMagEdit.prs",
     "ItemPMT.prs",
@@ -705,24 +768,15 @@ static const vector<string> stream_file_entries = {
 void send_stream_file_index_bb(shared_ptr<Client> c) {
   auto s = c->require_server_state();
 
+  c->log.info_f("PSO Peeps BBZ stream debug: send_stream_file_index_bb called");
+
   vector<S_StreamFileIndexEntry_BB_01EB> entries;
   size_t offset = 0;
   for (const string& filename : stream_file_entries) {
-    string key = "system/blueburst/" + filename;
-    auto cache_res = s->bb_stream_files_cache->get_or_load(key);
+    auto file_data = bb_stream_file_data_for_client(c, filename);
     auto& e = entries.emplace_back();
-    e.size = cache_res.file->data->size();
-    // Computing the checksum can be slow, so we cache it along with the file data. If the cache result was just
-    // populated, then it may be different, so we always recompute the checksum in that case.
-    if (cache_res.generate_called) {
-      e.checksum = crc32(cache_res.file->data->data(), e.size);
-      s->bb_stream_files_cache->replace_obj<uint32_t>(key + ".crc32", e.checksum);
-    } else {
-      auto compute_checksum = [&](const string&) -> uint32_t {
-        return crc32(cache_res.file->data->data(), e.size);
-      };
-      e.checksum = s->bb_stream_files_cache->get_obj<uint32_t>(key + ".crc32", compute_checksum).obj;
-    }
+    e.size = file_data->size();
+    e.checksum = crc32(file_data->data(), e.size);
     e.offset = offset;
     e.filename.encode(filename);
     offset += e.size;
@@ -733,30 +787,27 @@ void send_stream_file_index_bb(shared_ptr<Client> c) {
 void send_stream_file_chunk_bb(shared_ptr<Client> c, uint32_t chunk_index) {
   auto s = c->require_server_state();
 
-  auto cache_result = s->bb_stream_files_cache->get(
-      "<BB stream file>", [&](const string&) -> string {
-        size_t bytes = 0;
-        for (const auto& name : stream_file_entries) {
-          bytes += s->bb_stream_files_cache->get_or_load("system/blueburst/" + name).file->data->size();
-        }
+  c->log.info_f("PSO Peeps BBZ stream debug: send_stream_file_chunk_bb called for chunk {}", chunk_index);
 
-        string ret;
-        ret.reserve(bytes);
-        for (const auto& name : stream_file_entries) {
-          ret += *s->bb_stream_files_cache->get_or_load("system/blueburst/" + name).file->data;
-        }
-        return ret;
-      });
-  const auto& contents = cache_result.file->data;
+  size_t total_bytes = 0;
+  for (const auto& name : stream_file_entries) {
+    total_bytes += bb_stream_file_data_for_client(c, name)->size();
+  }
+
+  string contents;
+  contents.reserve(total_bytes);
+  for (const auto& name : stream_file_entries) {
+    contents += *bb_stream_file_data_for_client(c, name);
+  }
 
   S_StreamFileChunk_BB_02EB chunk_cmd;
   chunk_cmd.chunk_index = chunk_index;
   size_t offset = sizeof(chunk_cmd.data) * chunk_index;
-  if (offset > contents->size()) {
+  if (offset > contents.size()) {
     throw runtime_error("client requested chunk beyond end of stream file");
   }
-  size_t bytes = min<size_t>(contents->size() - offset, sizeof(chunk_cmd.data));
-  chunk_cmd.data.assign_range(reinterpret_cast<const uint8_t*>(contents->data() + offset), bytes, 0);
+  size_t bytes = min<size_t>(contents.size() - offset, sizeof(chunk_cmd.data));
+  chunk_cmd.data.assign_range(reinterpret_cast<const uint8_t*>(contents.data() + offset), bytes, 0);
 
   size_t cmd_size = offsetof(S_StreamFileChunk_BB_02EB, data) + bytes;
   cmd_size = (cmd_size + 3) & ~3;

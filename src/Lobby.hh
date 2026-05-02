@@ -81,6 +81,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
     START_BATTLE_PLAYER_IMMEDIATELY = 0x00010000,
     CANNOT_CHANGE_CHEAT_MODE        = 0x00020000,
     USE_CREATOR_SECTION_ID          = 0x00040000,
+    BLUEBALLZ_PLUS0                 = 0x00080000,
     // Flags used only for lobbies
     PUBLIC                          = 0x01000000,
     DEFAULT                         = 0x02000000,
@@ -118,6 +119,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   Episode episode = Episode::NONE;
   GameMode mode = GameMode::NORMAL;
   Difficulty difficulty = Difficulty::NORMAL;
+  int8_t blueballz_tier = -1; // -1 = disabled; 0..10 = Blueballz +0..+10
   float base_exp_multiplier = 1.0f;
   float exp_share_multiplier = 0.5f;
   float challenge_exp_multiplier = 1.0f;

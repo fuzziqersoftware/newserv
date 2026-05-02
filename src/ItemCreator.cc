@@ -307,12 +307,20 @@ ItemData ItemCreator::check_rare_specs_and_create_rare_item(
       this->rand_int(0x100000000);
     }
   }
-  this->log.info_f("{} specs to check with det={:08X}", specs.size(), det);
+  this->log.info_f("{} specs to check with det={:08X} rare_mult={:g}", specs.size(), det, this->rare_drop_rate_multiplier);
   for (const auto& spec : specs) {
-    if (this->log.should_log(phosg::LogLevel::L_INFO)) {
-      this->log.info_f("Checking spec {:08X} => {} with det={:08X}", spec.probability, spec.data.hex(), det);
+    uint64_t effective_probability = spec.probability;
+    if (this->rare_drop_rate_multiplier != 1.0) {
+      double multiplied_probability = static_cast<double>(spec.probability) * this->rare_drop_rate_multiplier;
+      effective_probability = (multiplied_probability >= 4294967296.0)
+          ? 0x100000000ULL
+          : static_cast<uint64_t>(multiplied_probability);
     }
-    det -= spec.probability;
+    if (this->log.should_log(phosg::LogLevel::L_INFO)) {
+      this->log.info_f("Checking spec {:08X} => effective {:08X} => {} with det={:08X}",
+          spec.probability, effective_probability, spec.data.hex(), det);
+    }
+    det -= effective_probability;
     if (det < 0) {
       return this->create_rare_item(spec.data, area);
     }

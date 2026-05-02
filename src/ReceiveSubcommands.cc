@@ -2,7 +2,9 @@
 
 #include <math.h>
 #include <string.h>
+#include <time.h>
 
+#include <fstream>
 #include <memory>
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
@@ -75,6 +77,184 @@ struct SubcommandDefinition {
 using SDF = SubcommandDefinition::Flag;
 
 extern const vector<SubcommandDefinition> subcommand_definitions;
+
+
+
+static string json_escape_for_hardcore_ledger(const string& text) {
+  string ret;
+  ret.reserve(text.size() + 16);
+  for (char ch : text) {
+    switch (ch) {
+      case '\\':
+        ret += "\\\\";
+        break;
+      case '"':
+        ret += "\\\"";
+        break;
+      case '\n':
+        ret += "\\n";
+        break;
+      case '\r':
+        ret += "\\r";
+        break;
+      case '\t':
+        ret += "\\t";
+        break;
+      default:
+        ret += ch;
+    }
+  }
+  return ret;
+}
+
+static string hardcore_death_character_name_for_ledger(shared_ptr<Client> c) {
+  try {
+    auto p = c->character_file(false);
+    if (p) {
+      string name = p->disp.name.decode(c->language());
+      if (!name.empty()) {
+        return name;
+      }
+    }
+  } catch (const exception&) {
+  }
+  return "";
+}
+
+static string hardcore_death_ledger_filename(shared_ptr<Client> c) {
+  string char_filename = c->character_filename();
+  size_t slash_offset = char_filename.find_last_of('/');
+  if (slash_offset == string::npos) {
+    return "hardcore-deaths.jsonl";
+  }
+  return char_filename.substr(0, slash_offset + 1) + "hardcore-deaths.jsonl";
+}
+
+
+static string hardcore_zone_name(shared_ptr<Client> c) {
+  // Basic Episode 1 floor names. Unknown Episode 2/4 floors will fall back safely for now.
+  switch (c->floor) {
+    case 0:
+      return "Pioneer 2";
+    case 1:
+      return "Forest 1";
+    case 2:
+      return "Forest 2";
+    case 3:
+      return "Caves 1";
+    case 4:
+      return "Caves 2";
+    case 5:
+      return "Caves 3";
+    case 6:
+      return "Mines 1";
+    case 7:
+      return "Mines 2";
+    case 8:
+      return "Ruins 1";
+    case 9:
+      return "Ruins 2";
+    case 10:
+      return "Ruins 3";
+    case 11:
+      return "Dragon";
+    case 12:
+      return "De Rol Le";
+    case 13:
+      return "Vol Opt";
+    case 14:
+      return "Dark Falz";
+    default:
+      return std::format("unknown zone {}", c->floor);
+  }
+}
+
+static bool append_hardcore_death_ledger(shared_ptr<Client> c, const char* reason) {
+  string filename = hardcore_death_ledger_filename(c);
+  ofstream f(filename, ios::out | ios::app);
+  if (!f.good()) {
+    return false;
+  }
+
+  uint32_t account_id = 0;
+  string username;
+  if (c->login) {
+    if (c->login->account) {
+      account_id = c->login->account->account_id;
+    }
+    if (c->login->bb_license) {
+      username = c->login->bb_license->username;
+    }
+  }
+
+  string character_file = c->character_filename();
+  string character_name = hardcore_death_character_name_for_ledger(c);
+  string zone = hardcore_zone_name(c);
+
+  f << "{"
+    << "\"time_epoch\":" << static_cast<long long>(time(nullptr)) << ","
+    << "\"account_id\":" << account_id << ","
+    << "\"username\":\"" << json_escape_for_hardcore_ledger(username) << "\","
+    << "\"character_file\":\"" << json_escape_for_hardcore_ledger(character_file) << "\","
+    << "\"character_name\":\"" << json_escape_for_hardcore_ledger(character_name) << "\","
+    << "\"zone\":\"" << json_escape_for_hardcore_ledger(zone) << "\","
+    << "\"reason\":\"" << json_escape_for_hardcore_ledger(reason ? reason : "") << "\""
+    << "}\n";
+
+  return f.good();
+}
+
+static string bb_hardcore_dead_filename_for_subcommands(shared_ptr<Client> c) {
+  return c->character_filename() + ".hardcore-dead";
+}
+
+static bool current_ship_is_hardcore_bb(shared_ptr<Client> c) {
+  try {
+    auto s = c->require_server_state();
+    return s->enable_hardcore_mode && (c->version() == Version::BB_V4);
+  } catch (const exception&) {
+    return false;
+  }
+}
+
+static bool mark_bb_character_hardcore_dead_for_subcommands(shared_ptr<Client> c, const char* reason) {
+  string filename = bb_hardcore_dead_filename_for_subcommands(c);
+
+  bool already_dead = false;
+  {
+    ifstream existing_f(filename);
+    already_dead = existing_f.good();
+  }
+
+  ofstream f(filename, ios::out | ios::trunc);
+  if (!f.good()) {
+    return false;
+  }
+
+  uint32_t account_id = 0;
+  if (c->login && c->login->account) {
+    account_id = c->login->account->account_id;
+  }
+
+  f << "status=hardcore-dead\n";
+  f << "reason=" << reason << "\n";
+  f << "account_id=" << account_id << "\n";
+  f << "character_file=" << c->character_filename() << "\n";
+
+  bool ok = f.good();
+  f.close();
+
+  if (ok && !already_dead) {
+    if (append_hardcore_death_ledger(c, reason)) {
+      c->log.info_f("Hardcore permadeath: appended death ledger entry for {}", c->character_filename());
+    } else {
+      c->log.warning_f("Hardcore permadeath: FAILED to append death ledger entry for {}", c->character_filename());
+    }
+
+  }
+
+  return ok;
+}
 
 const SubcommandDefinition* def_for_subcommand(Version version, uint8_t subcommand) {
   static bool populated = false;
@@ -1659,7 +1839,21 @@ static asio::awaitable<void> on_player_died(shared_ptr<Client> c, SubcommandMess
   } catch (const out_of_range&) {
   }
 
+  bool hardcore_death = current_ship_is_hardcore_bb(c);
+  if (hardcore_death) {
+    if (mark_bb_character_hardcore_dead_for_subcommands(c, "player-death-subcommand")) {
+      c->log.warning_f("Hardcore permadeath: marked BB character dead: {}", c->character_filename());
+    } else {
+      c->log.error_f("Hardcore permadeath: FAILED to mark BB character dead: {}", c->character_filename());
+    }
+  }
+
   forward_subcommand(c, msg);
+
+  if (hardcore_death) {
+    send_message_box(c, "DADDY FALZ WINS");
+    c->channel->disconnect();
+  }
 }
 
 static asio::awaitable<void> on_player_revivable(shared_ptr<Client> c, SubcommandMessage& msg) {
@@ -1670,7 +1864,22 @@ static asio::awaitable<void> on_player_revivable(shared_ptr<Client> c, Subcomman
     co_return;
   }
 
+  bool hardcore_death = current_ship_is_hardcore_bb(c);
+  if (hardcore_death) {
+    if (mark_bb_character_hardcore_dead_for_subcommands(c, "player-revivable-subcommand")) {
+      c->log.warning_f("Hardcore permadeath: marked BB character dead from revivable state: {}", c->character_filename());
+    } else {
+      c->log.error_f("Hardcore permadeath: FAILED to mark BB character dead from revivable state: {}", c->character_filename());
+    }
+  }
+
   forward_subcommand(c, msg);
+
+  if (hardcore_death) {
+    send_message_box(c, "DADDY FALZ WINS");
+    c->channel->disconnect();
+    co_return;
+  }
 
   // Revive if infinite HP is enabled
   bool player_cheats_enabled = l->check_flag(Lobby::Flag::CHEATS_ENABLED) ||
@@ -1694,6 +1903,17 @@ static asio::awaitable<void> on_player_revived(shared_ptr<Client> c, SubcommandM
 
   auto l = c->require_lobby();
   if (l->is_game()) {
+    if (current_ship_is_hardcore_bb(c)) {
+      if (mark_bb_character_hardcore_dead_for_subcommands(c, "player-revived-subcommand")) {
+        c->log.warning_f("Hardcore permadeath: blocked revive and marked BB character dead: {}", c->character_filename());
+      } else {
+        c->log.error_f("Hardcore permadeath: FAILED to mark BB character dead while blocking revive: {}", c->character_filename());
+      }
+      send_message_box(c, "DADDY FALZ WINS");
+      c->channel->disconnect();
+      co_return;
+    }
+
     forward_subcommand(c, msg);
     if ((l->check_flag(Lobby::Flag::CHEATS_ENABLED) || (c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE))) &&
         c->check_flag(Client::Flag::INFINITE_HP_ENABLED)) {

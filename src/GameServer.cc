@@ -44,6 +44,7 @@ void GameServer::listen(
 
 shared_ptr<Client> GameServer::connect_channel(shared_ptr<Channel> ch, uint16_t port, ServerBehavior initial_state) {
   auto c = make_shared<Client>(this->shared_from_this(), ch, initial_state);
+  c->listener_port = port;
 
   this->log.info_f("Client connected: C-{:X} via TSI-{}-{}-{}",
       c->id, port, phosg::name_for_enum(ch->version), phosg::name_for_enum(initial_state));
@@ -133,6 +134,7 @@ shared_ptr<Client> GameServer::create_client(
       phosg::TerminalFormat::FG_YELLOW,
       phosg::TerminalFormat::FG_GREEN);
   auto c = make_shared<Client>(this->shared_from_this(), channel, listen_sock->behavior);
+  c->listener_port = listen_sock->endpoint.port();
   this->log.info_f("Client connected: C-{:X} via {}", c->id, listen_sock->name);
 
   return c;

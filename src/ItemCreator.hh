@@ -40,6 +40,9 @@ public:
   inline void set_legacy_replay() {
     this->is_legacy_replay = true;
   }
+  inline void set_rare_drop_rate_multiplier(double multiplier) {
+    this->rare_drop_rate_multiplier = multiplier;
+  }
 
   DropResult on_monster_item_drop(EnemyType enemy_type, uint8_t area, bool force_rare);
   DropResult on_box_item_drop(uint8_t area, bool force_rare);
@@ -75,6 +78,7 @@ private:
   phosg::PrefixedLogger log;
   Version logic_version;
   bool is_legacy_replay;
+  double rare_drop_rate_multiplier = 1.0;
   std::shared_ptr<const ItemData::StackLimits> stack_limits;
   GameMode mode;
   Difficulty difficulty;

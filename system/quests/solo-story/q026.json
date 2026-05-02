@@ -1,3 +1,2 @@
 {
-  "AvailableIf": "F_0073 && (V_NumPlayers == 1)",
 }
