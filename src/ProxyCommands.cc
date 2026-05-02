@@ -1023,8 +1023,8 @@ static asio::awaitable<HandlerResult> S_6x(shared_ptr<Client> c, Channel::Messag
 
     case 0x17: {
       const auto& cmd = msg.check_size_t<G_SetEntityPositionAndAngle_6x17>();
-      if (cmd.header.entity_id == c->lobby_client_id) {
-        c->log.warning_f("Blocking subcommand 6x17 targeting local client");
+      if ((cmd.header.entity_id == c->lobby_client_id) && (c->floor != 0x0D)) {
+        c->log.warning_f("Blocking subcommand 6x17 targeting local client on incorrect floor");
         co_return HandlerResult::SUPPRESS;
       }
       break;
