@@ -133,7 +133,8 @@ void player_use_item(shared_ptr<Client> c, size_t item_index, shared_ptr<RandomG
 
   } else if ((primary_identifier & 0xFFFF0000) == 0x030C0000) { // Non-combo mag cells
     auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
-    if (s->mag_evolution_table(c->version())->get_evolution_number(mag.data.data1[1]) < 4) {
+    uint8_t evolution_number = s->mag_evolution_table(c->version())->get_evolution_number(mag.data.data1[1]);
+    if (evolution_number < 4) {
       switch (item.data.data1[2]) {
         case 0x00: // Cell of MAG 502
           mag.data.data1[1] = (player->disp.visual.section_id & 1) ? 0x1D : 0x21;

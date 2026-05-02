@@ -476,8 +476,10 @@ shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_encod
 }
 
 shared_ptr<const MagEvolutionTable> ServerState::mag_evolution_table(Version version) const {
-  if (is_v1_or_v2(version)) {
-    return this->mag_evolution_table_v1_v2;
+  if (is_v1(version)) {
+    return this->mag_evolution_table_v1;
+  } else if (is_v2(version)) {
+    return this->mag_evolution_table_v2;
   } else if (!is_v4(version)) {
     return this->mag_evolution_table_v3;
   } else {
@@ -2155,20 +2157,23 @@ void ServerState::load_item_definitions() {
   auto json = phosg::JSON::parse(phosg::load_file("system/item-tables/translation-table.json"));
   auto new_item_translation_table = make_shared<ItemTranslationTable>(json, new_item_parameter_tables);
 
-  // TODO: We should probably load the tables for other versions too.
-  config_log.info_f("Loading v1/v2 mag evolution table");
-  auto mag_data_v1_v2 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-dc-v2.prs")));
-  auto new_table_v1_v2 = make_shared<MagEvolutionTable>(mag_data_v1_v2, 0x3A);
+  config_log.info_f("Loading v1 mag evolution table");
+  auto mag_data_v1 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-dc-v1.prs")));
+  auto new_table_v1 = MagEvolutionTable::create(mag_data_v1, Version::DC_V1);
+  config_log.info_f("Loading v2 mag evolution table");
+  auto mag_data_v2 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-dc-v2.prs")));
+  auto new_table_v2 = MagEvolutionTable::create(mag_data_v2, Version::DC_V2);
   config_log.info_f("Loading v3 mag evolution table");
   auto mag_data_v3 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-xb-v3.prs")));
-  auto new_table_v3 = make_shared<MagEvolutionTable>(mag_data_v3, 0x43);
+  auto new_table_v3 = MagEvolutionTable::create(mag_data_v3, Version::XB_V3);
   config_log.info_f("Loading v4 mag evolution table");
   auto mag_data_v4 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-bb-v4.prs")));
-  auto new_table_v4 = make_shared<MagEvolutionTable>(mag_data_v4, 0x53);
+  auto new_table_v4 = MagEvolutionTable::create(mag_data_v4, Version::BB_V4);
 
   this->item_parameter_tables = std::move(new_item_parameter_tables);
   this->item_translation_table = std::move(new_item_translation_table);
-  this->mag_evolution_table_v1_v2 = std::move(new_table_v1_v2);
+  this->mag_evolution_table_v1 = std::move(new_table_v1);
+  this->mag_evolution_table_v2 = std::move(new_table_v2);
   this->mag_evolution_table_v3 = std::move(new_table_v3);
   this->mag_evolution_table_v4 = std::move(new_table_v4);
 }

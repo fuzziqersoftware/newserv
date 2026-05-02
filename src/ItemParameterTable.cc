@@ -1416,18 +1416,3 @@ std::shared_ptr<ItemParameterTable> ItemParameterTable::create(
       throw std::logic_error("Cannot create item parameter table for this version");
   }
 }
-
-MagEvolutionTable::MagEvolutionTable(shared_ptr<const string> data, size_t num_mags)
-    : data(data),
-      num_mags(num_mags),
-      r(*data) {
-  size_t offset_table_offset = this->r.pget_u32l(this->data->size() - 0x10);
-  this->offsets = &r.pget<TableOffsets>(offset_table_offset);
-}
-
-uint8_t MagEvolutionTable::get_evolution_number(uint8_t data1_1) const {
-  if (data1_1 >= this->num_mags) {
-    throw runtime_error("invalid mag number");
-  }
-  return this->r.pget_u8(this->offsets->evolution_number + data1_1);
-}

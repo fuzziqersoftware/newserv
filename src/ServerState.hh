@@ -23,6 +23,7 @@
 #include "ItemTranslationTable.hh"
 #include "LevelTable.hh"
 #include "Lobby.hh"
+#include "MagEvolutionTable.hh"
 #include "Menu.hh"
 #include "Quest.hh"
 #include "TeamIndex.hh"
@@ -208,7 +209,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::array<std::shared_ptr<const ItemData::StackLimits>, NUM_VERSIONS> item_stack_limits_tables;
   size_t bb_max_bank_items = 200;
   size_t bb_max_bank_meseta = 999999;
-  std::shared_ptr<const MagEvolutionTable> mag_evolution_table_v1_v2;
+  std::shared_ptr<const MagEvolutionTable> mag_evolution_table_v1;
+  std::shared_ptr<const MagEvolutionTable> mag_evolution_table_v2;
   std::shared_ptr<const MagEvolutionTable> mag_evolution_table_v3;
   std::shared_ptr<const MagEvolutionTable> mag_evolution_table_v4;
   std::shared_ptr<const TextIndex> text_index;
