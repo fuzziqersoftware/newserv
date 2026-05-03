@@ -439,12 +439,14 @@ ChatCommandDefinition cc_bank(
     });
 
 static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool is_bb_conversion) {
-  // TODO: We could support this in proxy sessions; we'd just have to handle the 61/30 correctly
-  a.check_is_proxy(false);
+  // Allow $savechar in proxy sessions for character migration/testing.
+  // Keep $bbchar blocked in proxy sessions because it writes to BB account slots.
+  if (is_bb_conversion) {
+    a.check_is_proxy(false);
+  }
   a.check_is_game(false);
 
   auto s = a.c->require_server_state();
-  auto l = a.c->require_lobby();
 
   if (is_bb_conversion && is_ep3(a.c->version())) {
     throw precondition_failed("$C6Episode 3 players\ncannot be converted\nto BB format");
