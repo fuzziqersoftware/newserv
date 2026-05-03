@@ -23,6 +23,11 @@
   __attribute__((packed));           \
   check_struct_size(StructT, Size)
 
+#define __packed_ws_be__(StructT, Size)    \
+  __attribute__((packed));                 \
+  check_struct_size(StructT<false>, Size); \
+  check_struct_size(StructT<true>, Size)
+
 // Conversion functions
 
 std::string encode_utf8_char(uint32_t ch);

@@ -40,12 +40,9 @@ struct NonWindowsRootT {
   U32T<BE> table4;
   U32T<BE> article_types_table;
   U32T<BE> table6;
-} __attribute__((packed));
-
+} __packed_ws_be__(NonWindowsRootT, 0x1C);
 using NonWindowsRoot = NonWindowsRootT<false>;
 using NonWindowsRootBE = NonWindowsRootT<true>;
-check_struct_size(NonWindowsRoot, 0x1C);
-check_struct_size(NonWindowsRootBE, 0x1C);
 
 struct PCV2Root {
   le_uint32_t unknown_a1;

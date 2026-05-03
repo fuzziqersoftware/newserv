@@ -835,7 +835,7 @@ uint8_t ItemCreator::choose_weapon_special(uint8_t det) {
   uint8_t det2 = this->rand_int(maxes[det]);
   this->log.info_f("Choosing special with det {:02X} and det2 {:02X}", det, det2);
   size_t index = 0;
-  for (size_t z = 1; z < this->item_parameter_table->num_specials; z++) {
+  for (size_t z = 1; z < this->item_parameter_table->num_specials(); z++) {
     if (det + 1 == this->item_parameter_table->get_special_stars(z)) {
       if (index == det2) {
         this->log.info_f("Chose special {:02X}", z);

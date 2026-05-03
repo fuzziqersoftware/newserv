@@ -524,7 +524,13 @@ asio::awaitable<void> start_login_server_procedure(shared_ptr<Client> c) {
     s->ep3_tournament_index->link_client(c);
   }
 
-  if (s->welcome_message.empty() ||
+  if (c->preferred_lobby_id >= 0) {
+    s->add_client_to_available_lobby(c, true);
+    if (c->require_lobby()->is_game()) {
+      c->set_flag(Client::Flag::LOADING);
+      c->log.info_f("LOADING flag set");
+    }
+  } else if (s->welcome_message.empty() ||
       c->check_flag(Client::Flag::NO_D6) ||
       !c->check_flag(Client::Flag::AT_WELCOME_MESSAGE)) {
     c->clear_flag(Client::Flag::AT_WELCOME_MESSAGE);
@@ -2754,7 +2760,7 @@ static asio::awaitable<void> on_10_main_menu(shared_ptr<Client> c, uint32_t item
     co_await enable_save_if_needed(c);
     send_lobby_list(c);
     if (!c->lobby.lock()) {
-      s->add_client_to_available_lobby(c);
+      s->add_client_to_available_lobby(c, false);
     }
     co_return;
   }
@@ -2769,7 +2775,7 @@ static asio::awaitable<void> on_10_main_menu(shared_ptr<Client> c, uint32_t item
         co_await send_get_player_info(c);
       }
       if (!c->lobby.lock()) {
-        s->add_client_to_available_lobby(c);
+        s->add_client_to_available_lobby(c, false);
       }
       break;
     }
@@ -2784,7 +2790,7 @@ static asio::awaitable<void> on_10_main_menu(shared_ptr<Client> c, uint32_t item
       co_await enable_save_if_needed(c);
       send_lobby_list(c);
       if (!c->lobby.lock()) {
-        s->add_client_to_available_lobby(c);
+        s->add_client_to_available_lobby(c, false);
       }
       break;
     }
@@ -2810,7 +2816,7 @@ static asio::awaitable<void> on_10_main_menu(shared_ptr<Client> c, uint32_t item
         co_await enable_save_if_needed(c);
         send_lobby_list(c);
         if (!c->lobby.lock()) {
-          s->add_client_to_available_lobby(c);
+          s->add_client_to_available_lobby(c, false);
         }
         break;
       }
@@ -2829,7 +2835,7 @@ static asio::awaitable<void> on_10_main_menu(shared_ptr<Client> c, uint32_t item
         co_await enable_save_if_needed(c);
         send_lobby_list(c);
         if (!c->lobby.lock()) {
-          s->add_client_to_available_lobby(c);
+          s->add_client_to_available_lobby(c, false);
         }
         break;
       }
@@ -2858,7 +2864,7 @@ static asio::awaitable<void> on_10_main_menu(shared_ptr<Client> c, uint32_t item
         co_await enable_save_if_needed(c);
         send_lobby_list(c);
         if (!c->lobby.lock()) {
-          s->add_client_to_available_lobby(c);
+          s->add_client_to_available_lobby(c, false);
         }
         break;
       }
@@ -2886,7 +2892,7 @@ static asio::awaitable<void> on_10_main_menu(shared_ptr<Client> c, uint32_t item
         co_await enable_save_if_needed(c);
         send_lobby_list(c);
         if (!c->lobby.lock()) {
-          s->add_client_to_available_lobby(c);
+          s->add_client_to_available_lobby(c, false);
         }
         break;
       }
@@ -3501,7 +3507,7 @@ static asio::awaitable<void> on_84(shared_ptr<Client> c, Channel::Message& msg) 
     // If the client isn't in any lobby, then they just left a game. Add them to the lobby they requested, but fall
     // back to another lobby if it's full.
     c->preferred_lobby_id = cmd.item_id;
-    s->add_client_to_available_lobby(c);
+    s->add_client_to_available_lobby(c, false);
 
   } else {
     // If the client already is in a lobby, then they're using the lobby teleporter; add them to the lobby they

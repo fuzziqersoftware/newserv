@@ -33,11 +33,9 @@ struct CharacterStatsT {
     ret.lck = this->lck;
     return ret;
   }
-} __attribute__((packed));
+} __packed_ws_be__(CharacterStatsT, 0x0E);
 using CharacterStats = CharacterStatsT<false>;
 using CharacterStatsBE = CharacterStatsT<true>;
-check_struct_size(CharacterStats, 0x0E);
-check_struct_size(CharacterStatsBE, 0x0E);
 
 template <bool BE>
 struct PlayerStatsT {
@@ -61,11 +59,9 @@ struct PlayerStatsT {
     ret.meseta = this->meseta;
     return ret;
   }
-} __attribute__((packed));
+} __packed_ws_be__(PlayerStatsT, 0x24);
 using PlayerStats = PlayerStatsT<false>;
 using PlayerStatsBE = PlayerStatsT<true>;
-check_struct_size(PlayerStats, 0x24);
-check_struct_size(PlayerStatsBE, 0x24);
 
 template <bool BE>
 struct LevelStatsDeltaT {
@@ -89,11 +85,9 @@ struct LevelStatsDeltaT {
     ps.mst += this->mst;
     ps.lck += this->lck;
   }
-} __attribute__((packed));
+} __packed_ws_be__(LevelStatsDeltaT, 0x0C);
 using LevelStatsDelta = LevelStatsDeltaT<false>;
 using LevelStatsDeltaBE = LevelStatsDeltaT<true>;
-check_struct_size(LevelStatsDelta, 0x0C);
-check_struct_size(LevelStatsDeltaBE, 0x0C);
 
 class LevelTable {
   // This is the base class for all the LevelTable implementations. The public interface here only defines functions

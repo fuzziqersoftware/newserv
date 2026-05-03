@@ -158,11 +158,9 @@ struct WordSelectMessageT {
     ret.unknown_a4 = this->unknown_a4;
     return ret;
   }
-} __attribute__((packed));
+} __packed_ws_be__(WordSelectMessageT, 0x1C);
 using WordSelectMessage = WordSelectMessageT<false>;
 using WordSelectMessageBE = WordSelectMessageT<true>;
-check_struct_size(WordSelectMessage, 0x1C);
-check_struct_size(WordSelectMessageBE, 0x1C);
 
 template <bool BE, TextEncoding Encoding, size_t MaxChars>
 struct SaveFileChatShortcutEntryT {

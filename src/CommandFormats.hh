@@ -251,14 +251,13 @@ struct S_StartFileDownloads_Patch_11 {
 // 14 (S->C): Reconnect
 // Same format and usage as command 19 on the game server (described below), except the port field is big-endian.
 
-template <typename PortT>
+template <bool BE>
 struct S_ReconnectT {
   be_uint32_t address = 0;
-  PortT port = 0;
+  U16T<BE> port = 0;
   le_uint16_t unused = 0;
-} __attribute__((packed));
-using S_Reconnect_Patch_14 = S_ReconnectT<be_uint16_t>;
-check_struct_size(S_Reconnect_Patch_14, 0x08);
+} __packed_ws_be__(S_ReconnectT, 0x08);
+using S_Reconnect_Patch_14 = S_ReconnectT<false>;
 
 // 15 (S->C): Login failure
 // No arguments. The client shows a message like "Incorrect game ID or password" and disconnects.
@@ -724,8 +723,7 @@ struct C_WriteFileConfirmation_V3_BB_13_A7 {
 // connection; the server should send an appropriate command to enable it when the client connects. PSO Xbox seems to
 // ignore the address field, which makes sense given its networking architecture.
 
-using S_Reconnect_19 = S_ReconnectT<le_uint16_t>;
-check_struct_size(S_Reconnect_19, 8);
+using S_Reconnect_19 = S_ReconnectT<false>;
 
 // Sylverant implements an IPv6 version of this command, but it's not obvious why. IPv6 technically did exist as a
 // draft standard at the time of PSO's development, but it wasn't widely used until over a decade later. IPv6 support
@@ -3767,12 +3765,10 @@ struct G_UpdateEnemyStateT_6x0A {
   //   40000000 = entity is object (some entities have both this and 20000000 set; this appears to make TWindowLockOn
   //              not show anything but the entity is still attackable, see TWindowLockOn_should_show_for_entity)
   //   80000000 = entity is item
-  typename std::conditional_t<BE, be_uint32_t, le_uint32_t> game_flags = 0;
-} __attribute__((packed));
+  U32T<BE> game_flags = 0;
+} __packed_ws_be__(G_UpdateEnemyStateT_6x0A, 0x0C);
 using G_UpdateEnemyState_GC_6x0A = G_UpdateEnemyStateT_6x0A<true>;
 using G_UpdateEnemyState_DC_PC_XB_BB_6x0A = G_UpdateEnemyStateT_6x0A<false>;
-check_struct_size(G_UpdateEnemyState_GC_6x0A, 0x0C);
-check_struct_size(G_UpdateEnemyState_DC_PC_XB_BB_6x0A, 0x0C);
 
 // 6x0B: Update object state
 
@@ -3838,11 +3834,9 @@ struct G_DragonBossActionsT_6x12 {
   le_uint32_t target_client_id = 0xFFFF; // 0xFFFF (not 0xFFFFFFFF) means no target
   F32T<BE> x = 0.0f;
   F32T<BE> z = 0.0f;
-} __attribute__((packed));
+} __packed_ws_be__(G_DragonBossActionsT_6x12, 0x14);
 using G_DragonBossActions_DC_PC_XB_BB_6x12 = G_DragonBossActionsT_6x12<false>;
 using G_DragonBossActions_GC_6x12 = G_DragonBossActionsT_6x12<true>;
-check_struct_size(G_DragonBossActions_DC_PC_XB_BB_6x12, 0x14);
-check_struct_size(G_DragonBossActions_GC_6x12, 0x14);
 
 // 6x13: De Rol Le boss actions (not valid on Episode 3)
 
@@ -4875,11 +4869,9 @@ struct G_WordSelectT_6x74 {
   uint8_t size = 0;
   U16T<BE> client_id = 0;
   WordSelectMessage message;
-} __attribute__((packed));
+} __packed_ws_be__(G_WordSelectT_6x74, 0x20);
 using G_WordSelect_6x74 = G_WordSelectT_6x74<false>;
 using G_WordSelectBE_6x74 = G_WordSelectT_6x74<true>;
-check_struct_size(G_WordSelect_6x74, 0x20);
-check_struct_size(G_WordSelectBE_6x74, 0x20);
 
 // 6x75: Update quest flag
 // This command does nothing on Episode 3.
@@ -5007,11 +4999,9 @@ struct G_BattleScoresT_6x7F {
   } __packed_ws__(Entry, 8);
   G_UnusedHeader header;
   parray<Entry, 4> entries;
-} __attribute__((packed));
+} __packed_ws_be__(G_BattleScoresT_6x7F, 0x24);
 using G_BattleScores_6x7F = G_BattleScoresT_6x7F<false>;
 using G_BattleScoresBE_6x7F = G_BattleScoresT_6x7F<true>;
-check_struct_size(G_BattleScores_6x7F, 0x24);
-check_struct_size(G_BattleScoresBE_6x7F, 0x24);
 
 // 6x80: Trigger trap (not valid on Episode 3)
 
@@ -5370,11 +5360,9 @@ struct G_GolDragonBossActionsT_6xA8 {
   F32T<BE> z = 0.0f;
   uint8_t unknown_a5 = 0;
   parray<uint8_t, 3> unused;
-} __attribute__((packed));
+} __packed_ws_be__(G_GolDragonBossActionsT_6xA8, 0x18);
 using G_GolDragonBossActions_XB_BB_6xA8 = G_GolDragonBossActionsT_6xA8<false>;
 using G_GolDragonBossActions_GC_6xA8 = G_GolDragonBossActionsT_6xA8<true>;
-check_struct_size(G_GolDragonBossActions_XB_BB_6xA8, 0x18);
-check_struct_size(G_GolDragonBossActions_GC_6xA8, 0x18);
 
 // 6xA9: Barba Ray boss actions (not valid on pre-V3 or Episode 3)
 

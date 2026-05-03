@@ -51,11 +51,9 @@ struct PSOMemCardDLQFileEncryptedHeaderT {
   le_uint32_t decompressed_size;
   le_uint32_t round3_seed;
   // Data follows here.
-} __attribute__((packed));
+} __packed_ws_be__(PSOMemCardDLQFileEncryptedHeaderT, 0x10);
 using PSOVMSDLQFileEncryptedHeader = PSOMemCardDLQFileEncryptedHeaderT<false>;
 using PSOGCIDLQFileEncryptedHeader = PSOMemCardDLQFileEncryptedHeaderT<true>;
-check_struct_size(PSOVMSDLQFileEncryptedHeader, 0x10);
-check_struct_size(PSOGCIDLQFileEncryptedHeader, 0x10);
 
 template <bool BE>
 string decrypt_download_quest_data_section(

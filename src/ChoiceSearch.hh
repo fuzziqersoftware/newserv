@@ -40,11 +40,9 @@ struct ChoiceSearchConfigT {
     }
     return ret;
   }
-} __attribute__((packed));
+} __packed_ws_be__(ChoiceSearchConfigT, 0x18);
 using ChoiceSearchConfig = ChoiceSearchConfigT<false>;
 using ChoiceSearchConfigBE = ChoiceSearchConfigT<true>;
-check_struct_size(ChoiceSearchConfig, 0x18);
-check_struct_size(ChoiceSearchConfigBE, 0x18);
 
 struct ChoiceSearchCategory {
   struct Choice {

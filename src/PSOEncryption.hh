@@ -343,11 +343,9 @@ public:
     ret.store_raw(this->value);
     return ret;
   }
-} __attribute__((packed));
+} __packed_ws_be__(ChallengeTimeT, 4);
 using ChallengeTime = ChallengeTimeT<false>;
 using ChallengeTimeBE = ChallengeTimeT<true>;
-check_struct_size(ChallengeTime, 4);
-check_struct_size(ChallengeTimeBE, 4);
 
 std::string decrypt_v2_registry_value(const void* data, size_t size);
 
