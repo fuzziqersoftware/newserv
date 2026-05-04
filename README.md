@@ -77,13 +77,16 @@ If you want to use parts of newserv in your project, there are two easy ways to 
 * If you're only using a few files from newserv, you can copy and paste the contents of the LICENSE file into a comment at the beginning of each copied file.
 
 Some of the more likely useful files are:
+* **src/BattleParamsIndex.hh**: Format of BattleParamEntry files
 * **src/CommandFormats.hh**: Complete listing of all network commands used in all known versions of the game, and their formats
 * **src/CommonItemSet.hh/cc**: Format of ItemPT files, shop definition files, and tekker adjustment tables
+* **src/Compression.hh/cc**: PRS and BC0 compression and decompression algorithms
 * **src/DCSerialNumbers.hh/cc**: PSO DC serial number validation algorithm and serial number generator
 * **src/ItemData.hh**: Item format reference
 * **src/ItemCreator.hh/cc**: Reverse-engineered item generator from Episodes 1&2 (used for all versions)
-* **src/ItemParameterTable.hh**: Format of many structures in ItemPMT.prs
+* **src/ItemParameterTable.cc**: Format of many structures in ItemPMT.prs (see BinaryItemParameterTableT)
 * **src/Map.hh/cc**: Map file (.dat/.evt) structure, listing of object/enemy types and parameters, and reverse-engineered Challenge Mode random enemy generation algorithm
+* **src/MagEvolutionTable.cc**: Format of ItemMagEdit.prs
 * **src/QuestScript.cc**: Complete listing of all quest opcodes on all versions, along with their arguments and behavior
 * **src/RareItemSet.hh/cc**: Format of ItemRT files (rare item drop tables)
 * **src/SaveFileFormats.hh**: Definitions of save file structures for all versions

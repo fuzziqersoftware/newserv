@@ -2151,7 +2151,7 @@ void ServerState::load_item_definitions() {
     string path = std::format("system/item-tables/ItemPMT-{}.prs", file_path_token_for_version(v));
     config_log.debug_f("Loading item definition table {}", path);
     auto data = make_shared<string>(prs_decompress(phosg::load_file(path)));
-    new_item_parameter_tables[v_s] = ItemParameterTable::create(data, v);
+    new_item_parameter_tables[v_s] = ItemParameterTable::from_binary(data, v);
   }
 
   auto json = phosg::JSON::parse(phosg::load_file("system/item-tables/translation-table.json"));

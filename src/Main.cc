@@ -2387,6 +2387,18 @@ Action a_compare_common_item_set(
       cs1->print_diff(stdout, *cs2);
     });
 
+Action a_convert_item_parameter_table(
+    "decode-item-parameter-table", nullptr,
+    +[](phosg::Arguments& args) {
+      auto data = std::make_shared<string>(read_input_data(args));
+      auto pmt = ItemParameterTable::from_binary(data, get_cli_version(args, Version::BB_V4));
+      auto json = pmt->json();
+      uint32_t hex_option = args.get<bool>("hex") ? phosg::JSON::SerializeOption::HEX_INTEGERS : 0;
+      string json_data = json.serialize(
+          phosg::JSON::SerializeOption::FORMAT | hex_option | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
+      write_output_data(args, json_data.data(), json_data.size(), nullptr);
+    });
+
 Action a_describe_item(
     "describe-item", "\
   describe-item DATA-OR-DESCRIPTION\n\
