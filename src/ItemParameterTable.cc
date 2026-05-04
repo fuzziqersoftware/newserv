@@ -940,10 +940,11 @@ public:
           case 3:
             return this->unit_sale_divisor;
         }
+        throw runtime_error("invalid defensive item type");
       case 2:
         return this->mag_sale_divisor;
       default:
-        throw logic_error("item type does not have a sale divisor");
+        throw runtime_error("item type does not have a sale divisor");
     }
   }
 
