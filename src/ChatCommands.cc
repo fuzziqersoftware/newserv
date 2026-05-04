@@ -483,9 +483,14 @@ static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool 
     dest_account = a.c->login->account;
   }
 
-  // If the client isn't BB, request the player info. (If they are BB, the server already has it)
+  // In direct sessions, request player info from the client.
+  // In proxy sessions, don't use the 61/30 request path; use the server-side
+  // character state already tracked for the proxied client.
   GetPlayerInfoResult ch;
-  if (a.c->version() == Version::BB_V4) {
+  if ((a.c->version() == Version::BB_V4) || a.c->proxy_session) {
+    if (is_ep3(a.c->version())) {
+      throw precondition_failed("$C6Proxy savechar for\nEpisode 3 is not\nimplemented yet");
+    }
     ch.character = a.c->character_file();
     ch.is_full_info = true;
   } else {
