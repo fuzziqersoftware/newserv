@@ -14,11 +14,9 @@ struct BMLHeaderT {
   parray<uint8_t, 0x04> unknown_a1;
   U32T<BE> num_entries;
   parray<uint8_t, 0x38> unknown_a2;
-} __attribute__((packed));
+} __packed_ws_be__(BMLHeaderT, 0x40);
 using BMLHeader = BMLHeaderT<false>;
 using BMLHeaderBE = BMLHeaderT<true>;
-check_struct_size(BMLHeader, 0x40);
-check_struct_size(BMLHeaderBE, 0x40);
 
 template <bool BE>
 struct BMLHeaderEntryT {
@@ -29,11 +27,9 @@ struct BMLHeaderEntryT {
   U32T<BE> compressed_gvm_size;
   U32T<BE> decompressed_gvm_size;
   parray<uint8_t, 0x0C> unknown_a2;
-} __attribute__((packed));
+} __packed_ws_be__(BMLHeaderEntryT, 0x40);
 using BMLHeaderEntry = BMLHeaderEntryT<false>;
 using BMLHeaderEntryBE = BMLHeaderEntryT<true>;
-check_struct_size(BMLHeaderEntry, 0x40);
-check_struct_size(BMLHeaderEntryBE, 0x40);
 
 template <bool BE>
 void BMLArchive::load_t() {

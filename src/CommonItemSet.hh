@@ -244,11 +244,9 @@ public:
       /* 50 */ U32T<BE> box_item_class_prob_table_offset;
 
       // There are several unused fields here.
-    } __attribute__((packed));
+    } __packed_ws_be__(OffsetsT, 0x54);
     using Offsets = OffsetsT<false>;
     using OffsetsBE = OffsetsT<true>;
-    check_struct_size(Offsets, 0x54);
-    check_struct_size(OffsetsBE, 0x54);
   };
 
   bool operator==(const CommonItemSet& other) const = default;
@@ -337,7 +335,6 @@ public:
     ValueT value;
     WeightT weight;
   } __attribute__((packed));
-
   using WeightTableEntry8 = WeightTableEntry<uint8_t>;
   using WeightTableEntry32 = WeightTableEntry<be_uint32_t>;
   check_struct_size(WeightTableEntry8, 2);

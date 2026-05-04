@@ -93,11 +93,9 @@ protected:
       /* 08 */ U32T<BE> box_areas_offset; // -> parray<uint8_t, 0x1E>
       /* 0C */ U32T<BE> box_rares_offset; // -> parray<PackedDrop, 0x1E>
       /* 10 */
-    } __attribute__((packed));
+    } __packed_ws_be__(OffsetsT, 0x10);
     using Offsets = OffsetsT<false>;
     using OffsetsBE = OffsetsT<true>;
-    check_struct_size(Offsets, 0x10);
-    check_struct_size(OffsetsBE, 0x10);
 
     struct BoxRare {
       uint8_t area_norm_plus_1;

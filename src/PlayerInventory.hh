@@ -76,11 +76,9 @@ struct PlayerInventoryItemT {
   bool is_equipped() const {
     return (this->flags & 8);
   }
-} __attribute__((packed));
+} __packed_ws_be__(PlayerInventoryItemT, 0x1C);
 using PlayerInventoryItem = PlayerInventoryItemT<false>;
 using PlayerInventoryItemBE = PlayerInventoryItemT<true>;
-check_struct_size(PlayerInventoryItem, 0x1C);
-check_struct_size(PlayerInventoryItemBE, 0x1C);
 
 template <bool BE>
 struct PlayerBankItemT {
@@ -100,11 +98,9 @@ struct PlayerBankItemT {
     ret.present = this->present;
     return ret;
   }
-} __attribute__((packed));
+} __packed_ws_be__(PlayerBankItemT, 0x18);
 using PlayerBankItem = PlayerBankItemT<false>;
 using PlayerBankItemBE = PlayerBankItemT<true>;
-check_struct_size(PlayerBankItem, 0x18);
-check_struct_size(PlayerBankItemBE, 0x18);
 
 template <bool BE>
 struct PlayerInventoryT {
@@ -291,11 +287,9 @@ struct PlayerInventoryT {
     ret.items = this->items;
     return ret;
   }
-} __attribute__((packed));
+} __packed_ws_be__(PlayerInventoryT, 0x34C);
 using PlayerInventory = PlayerInventoryT<false>;
 using PlayerInventoryBE = PlayerInventoryT<true>;
-check_struct_size(PlayerInventory, 0x34C);
-check_struct_size(PlayerInventoryBE, 0x34C);
 
 template <size_t SlotCount, bool BE>
 struct PlayerBankT {

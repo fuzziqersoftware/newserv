@@ -486,7 +486,7 @@ void ItemData::encode_for_version(Version to_version, shared_ptr<const ItemParam
       if (should_encode_v2_data && (this->data1[1] > 0x26)) {
         if (this->data1[1] < 0x89) {
           this->data1[5] = this->data1[1];
-          this->data1[1] = item_parameter_table->get_weapon_v1_replacement(this->data1[1]);
+          this->data1[1] = item_parameter_table->get_weapon_class(this->data1[1]);
           if (this->data1[1] == 0x00) {
             this->data1[1] = 0x0F;
           }

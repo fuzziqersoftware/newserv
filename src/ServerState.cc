@@ -83,30 +83,45 @@ ServerState::ServerState(const string& config_filename, bool is_replay)
       bb_system_cache(new FileContentsCache(3600000000ULL)),
       gba_files_cache(new FileContentsCache(3600000000ULL)) {}
 
-void ServerState::add_client_to_available_lobby(shared_ptr<Client> c) {
+void ServerState::add_client_to_available_lobby(shared_ptr<Client> c, bool allow_games) {
   shared_ptr<Lobby> added_to_lobby;
 
-  if (c->preferred_lobby_id >= 0) {
-    try {
-      auto l = this->find_lobby(c->preferred_lobby_id);
-      if (l && !l->is_game() && l->check_flag(Lobby::Flag::PUBLIC) && l->version_is_allowed(c->version())) {
-        l->add_client(c);
-        added_to_lobby = l;
-      }
-    } catch (const out_of_range&) {
+  auto try_join_lobby = [&](uint32_t lobby_id) -> std::shared_ptr<Lobby> {
+    auto l = this->find_lobby(lobby_id);
+    if (!l) {
+      c->log.info_f("Cannot join lobby {:08X}: lobby does not exist", lobby_id);
+      return nullptr;
     }
+    if (!allow_games && l->is_game()) {
+      c->log.info_f("Cannot join lobby {:08X}: lobby is a game", lobby_id);
+      return nullptr;
+    }
+    static const std::string password = "";
+    auto join_error = l->join_error_for_client(c, &password);
+    if (join_error == Lobby::JoinError::ALLOWED) {
+      try {
+        l->add_client(c);
+        c->log.info_f("Joined lobby {:08X}", lobby_id);
+        return l;
+      } catch (const out_of_range& e) {
+        c->log.info_f("Cannot join lobby {:08X}: {}", lobby_id, e.what());
+        return nullptr;
+      }
+    }
+    c->log.info_f("Cannot join lobby {:08X}: {}", lobby_id, phosg::name_for_enum(join_error));
+    return nullptr;
+  };
+
+  if (c->preferred_lobby_id >= 0) {
+    added_to_lobby = try_join_lobby(c->preferred_lobby_id);
+    c->preferred_lobby_id = -1;
   }
 
-  if (!added_to_lobby.get()) {
+  if (!added_to_lobby) {
     for (const auto& lobby_id : this->public_lobby_search_order(c)) {
-      try {
-        auto l = this->find_lobby(lobby_id);
-        if (l && !l->is_game() && l->check_flag(Lobby::Flag::PUBLIC) && l->version_is_allowed(c->version())) {
-          l->add_client(c);
-          added_to_lobby = l;
-          break;
-        }
-      } catch (const out_of_range&) {
+      added_to_lobby = try_join_lobby(lobby_id);
+      if (added_to_lobby) {
+        break;
       }
     }
   }
@@ -461,8 +476,10 @@ shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_encod
 }
 
 shared_ptr<const MagEvolutionTable> ServerState::mag_evolution_table(Version version) const {
-  if (is_v1_or_v2(version)) {
-    return this->mag_evolution_table_v1_v2;
+  if (is_v1(version)) {
+    return this->mag_evolution_table_v1;
+  } else if (is_v2(version)) {
+    return this->mag_evolution_table_v2;
   } else if (!is_v4(version)) {
     return this->mag_evolution_table_v3;
   } else {
@@ -2150,26 +2167,29 @@ void ServerState::load_item_definitions() {
     string path = std::format("system/item-tables/ItemPMT-{}.prs", file_path_token_for_version(v));
     config_log.debug_f("Loading item definition table {}", path);
     auto data = make_shared<string>(prs_decompress(phosg::load_file(path)));
-    new_item_parameter_tables[v_s] = make_shared<ItemParameterTable>(data, v);
+    new_item_parameter_tables[v_s] = ItemParameterTable::create(data, v);
   }
 
   auto json = phosg::JSON::parse(phosg::load_file("system/item-tables/translation-table.json"));
   auto new_item_translation_table = make_shared<ItemTranslationTable>(json, new_item_parameter_tables);
 
-  // TODO: We should probably load the tables for other versions too.
-  config_log.info_f("Loading v1/v2 mag evolution table");
-  auto mag_data_v1_v2 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-dc-v2.prs")));
-  auto new_table_v1_v2 = make_shared<MagEvolutionTable>(mag_data_v1_v2, 0x3A);
+  config_log.info_f("Loading v1 mag evolution table");
+  auto mag_data_v1 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-dc-v1.prs")));
+  auto new_table_v1 = MagEvolutionTable::create(mag_data_v1, Version::DC_V1);
+  config_log.info_f("Loading v2 mag evolution table");
+  auto mag_data_v2 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-dc-v2.prs")));
+  auto new_table_v2 = MagEvolutionTable::create(mag_data_v2, Version::DC_V2);
   config_log.info_f("Loading v3 mag evolution table");
   auto mag_data_v3 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-xb-v3.prs")));
-  auto new_table_v3 = make_shared<MagEvolutionTable>(mag_data_v3, 0x43);
+  auto new_table_v3 = MagEvolutionTable::create(mag_data_v3, Version::XB_V3);
   config_log.info_f("Loading v4 mag evolution table");
   auto mag_data_v4 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-bb-v4.prs")));
-  auto new_table_v4 = make_shared<MagEvolutionTable>(mag_data_v4, 0x53);
+  auto new_table_v4 = MagEvolutionTable::create(mag_data_v4, Version::BB_V4);
 
   this->item_parameter_tables = std::move(new_item_parameter_tables);
   this->item_translation_table = std::move(new_item_translation_table);
-  this->mag_evolution_table_v1_v2 = std::move(new_table_v1_v2);
+  this->mag_evolution_table_v1 = std::move(new_table_v1);
+  this->mag_evolution_table_v2 = std::move(new_table_v2);
   this->mag_evolution_table_v3 = std::move(new_table_v3);
   this->mag_evolution_table_v4 = std::move(new_table_v4);
 }

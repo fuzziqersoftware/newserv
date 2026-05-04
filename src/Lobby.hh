@@ -281,6 +281,4 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
 };
 
 template <>
-ServerDropMode phosg::enum_for_name<ServerDropMode>(const char* name);
-template <>
-const char* phosg::name_for_enum<ServerDropMode>(ServerDropMode value);
+const char* phosg::name_for_enum<Lobby::JoinError>(Lobby::JoinError value);
