@@ -68,7 +68,7 @@ struct RootV2V3V4 {
   /* 08 / 0498 / 0498 / 0608 / 03CE / 04AE */ U32T<BE> unknown_a3; // -> UnknownA3Entry[max(unknown_a2) + 1]
   /* 0C / 0510 / 0520 / 06B0 / 0476 / 0556 */ U32T<BE> unknown_a4; // -> uint8_t[NumMags]
   /* 10 / 053C / 054C / 06EC / 04BC / 05AC */ U32T<BE> color_table; // -> ColorEntry[NumColors]
-  /* 14 /      /      / 077C / 05DC / 06CC */ U32T<BE> evolution_number; // -> uint8_t[NumMags]
+  /* 14 /      /      / 077C / 05DC / 06CC */ U32T<BE> evolution_number_table; // -> uint8_t[NumMags]
 } __packed_ws_be__(RootV2V3V4, 0x18);
 
 struct RootV1 {
