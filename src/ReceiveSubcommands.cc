@@ -3719,8 +3719,10 @@ static asio::awaitable<void> on_update_enemy_state(shared_ptr<Client> c, Subcomm
     ene_st->set_last_hit_by_client_id(c->lobby_client_id);
   }
   if (blocked_damage_rollback) {
-    l->log.warning_f("Blocked boss state rollback via 6x0A from C-{} on E-{:03X}: incoming_damage={} current_damage={} incoming_flags={:08X} current_flags={:08X}",
-        c->lobby_client_id, ene_st->e_id, incoming_total_damage, ene_st->total_damage, src_flags, ene_st->game_flags);
+    uint32_t old_game_flags = ene_st->game_flags;
+    ene_st->game_flags |= src_flags;
+    l->log.warning_f("Blocked boss damage rollback and merged flags via 6x0A from C-{} on E-{:03X}: incoming_damage={} current_damage={} incoming_flags={:08X} old_flags={:08X} merged_flags={:08X}",
+        c->lobby_client_id, ene_st->e_id, incoming_total_damage, ene_st->total_damage, src_flags, old_game_flags, ene_st->game_flags);
   } else {
     ene_st->game_flags = src_flags;
     ene_st->total_damage = incoming_total_damage;
@@ -3744,12 +3746,15 @@ static asio::awaitable<void> on_update_enemy_state(shared_ptr<Client> c, Subcomm
       ene_st->alias_target_ene_st->set_last_hit_by_client_id(c->lobby_client_id);
     }
     if (alias_blocked_damage_rollback) {
-      l->log.warning_f("Blocked boss state rollback via 6x0A from C-{} on alias target E-{:03X}: incoming_damage={} current_damage={} incoming_flags={:08X} current_flags={:08X}",
+      uint32_t old_alias_game_flags = ene_st->alias_target_ene_st->game_flags;
+      ene_st->alias_target_ene_st->game_flags |= src_flags;
+      l->log.warning_f("Blocked boss damage rollback and merged flags via 6x0A from C-{} on alias target E-{:03X}: incoming_damage={} current_damage={} incoming_flags={:08X} old_flags={:08X} merged_flags={:08X}",
           c->lobby_client_id,
           ene_st->alias_target_ene_st->e_id,
           incoming_total_damage,
           ene_st->alias_target_ene_st->total_damage,
           src_flags,
+          old_alias_game_flags,
           ene_st->alias_target_ene_st->game_flags);
     } else {
       ene_st->alias_target_ene_st->game_flags = src_flags;
