@@ -3112,25 +3112,26 @@ static asio::awaitable<void> on_10_proxy_destinations(shared_ptr<Client> c, uint
       send_message_box(c, "$C6No such destination exists.");
       c->channel->disconnect();
     } else {
-      // PSO Peeps: boosted GC discs enter through separate frontdoor ports after
-      // pc_console_detect. Do not allow x5/x10 GC discs into Vanilla.
-      if ((c->listener_port == 9105 || c->listener_port == 9110 ||
-           c->listener_port == 9201 || c->listener_port == 9202) && dest->second == 19203) {
-        send_message_box(c, "$C6Vanilla Ship is not available from boosted discs.\n\n$C7Use the normal disc for Vanilla.");
-        co_return;
-      }
-      // PSO Peeps: boosted GC discs enter through separate frontdoor ports after
-      // pc_console_detect. Do not allow x5/x10 GC discs into Vanilla.
-      if ((c->listener_port == 9105 || c->listener_port == 9110 ||
-           c->listener_port == 9201 || c->listener_port == 9202) && dest->second == 19203) {
-        send_message_box(c, "$C6Vanilla Ship is not available from boosted discs.\n\n$C7Use the normal disc for Vanilla.");
-        co_return;
-      }
-      // PSO Peeps: PC v2 clients receive boosted BattleParams via the patch
-      // server. Vanilla and Hardcore run base XP rates and are incompatible.
-      if (c->version() == Version::PC_V2 &&
-          (dest->second == 19230 || dest->second == 19530)) {
-        send_message_box(c, "$C6This ship is not available\nfor PSO PC.\n\n$C7Vanilla and Hardcore run\nbase XP rates.");
+      // PSO Peeps: boosted clients may not enter Vanilla/Hardcore.
+      // PC v2 receives boosted BattleParams via the patch server. DC/GC can be
+      // boosted either by old boosted-disc listener ports or by the PSO Peeps XP
+      // client-function patch, which sets HAS_PSO_PEEPS_XP_PATCH.
+      const bool is_vanilla_or_hardcore_dest =
+          (dest->second == 19203 || dest->second == 19230 || dest->second == 19530);
+      const bool is_boosted_disc =
+          (c->listener_port == 9105 || c->listener_port == 9110 ||
+           c->listener_port == 9201 || c->listener_port == 9202 ||
+           c->listener_port == 19105 || c->listener_port == 19110);
+      const bool is_pc_v2_boosted = (c->version() == Version::PC_V2);
+      const bool has_psopeeps_xp_patch =
+          c->check_flag(Client::Flag::HAS_PSO_PEEPS_XP_PATCH);
+
+      if (is_vanilla_or_hardcore_dest &&
+          (is_boosted_disc || is_pc_v2_boosted || has_psopeeps_xp_patch)) {
+        send_message_box(c,
+            "$C6Vanilla and Hardcore are not available\n"
+            "while boosted XP is active.\n\n"
+            "$C7Use Live, Test, or Dev.");
         co_return;
       }
 
