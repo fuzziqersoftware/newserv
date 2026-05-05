@@ -2487,10 +2487,25 @@ static asio::awaitable<void> on_pick_up_item_generic(
     // TODO: Figure out what the actual max range is; 30 is an overestimate
     double dist2 = fi->pos.dist2(c->pos);
     if (dist2 > 900.0) {
-      l->log.warning_f("Player {} requests to pick up {:08X}, but it is too far away (dist2={})",
-          client_id, item_id, dist2);
-      l->add_item(floor, fi);
-      co_return;
+      const bool allow_dcv2_falz_pickup_distance_recovery =
+          is_request &&
+          (c->version() == Version::DC_V2) &&
+          (l->episode == Episode::EP1) &&
+          (floor == 0x0E) &&
+          (fi->from_obj == nullptr) &&
+          (fi->from_ene == nullptr) &&
+          fi->visible_to_client(c->lobby_client_id);
+
+      if (allow_dcv2_falz_pickup_distance_recovery) {
+        l->log.warning_f(
+            "DC V2 Falz floor item pickup distance recovery: Player {} picking up {:08X}; dist2={} item_floor={} player_floor={}",
+            client_id, item_id, dist2, static_cast<uint64_t>(floor), static_cast<uint64_t>(c->floor));
+      } else {
+        l->log.warning_f("Player {} requests to pick up {:08X}, but it is too far away (dist2={})",
+            client_id, item_id, dist2);
+        l->add_item(floor, fi);
+        co_return;
+      }
     }
 
     try {
