@@ -3711,21 +3711,54 @@ static asio::awaitable<void> on_update_enemy_state(shared_ptr<Client> c, Subcomm
   }
 
   bool should_track_hit = (src_flags & 0x00000200); // "Enemy was hit" flag (see 6x0A comments in CommandFormats.hh)
+  uint16_t incoming_total_damage = cmd.total_damage.load();
+  bool is_boss = type_definition_for_enemy(ene_st->super_ene->type).is_boss();
+  bool blocked_damage_rollback = is_boss && (incoming_total_damage < ene_st->total_damage);
+
   if (should_track_hit) {
     ene_st->set_last_hit_by_client_id(c->lobby_client_id);
   }
   ene_st->game_flags = src_flags;
-  ene_st->total_damage = cmd.total_damage;
-  l->log.info_f("E-{:03X} updated to damage={} game_flags={:08X}; last hit {}",
-      ene_st->e_id, ene_st->total_damage, ene_st->game_flags, should_track_hit ? "claimed" : "not claimed");
+  if (blocked_damage_rollback) {
+    l->log.warning_f("Blocked boss damage rollback via 6x0A from C-{} on E-{:03X}: incoming={} current={} game_flags={:08X}",
+        c->lobby_client_id, ene_st->e_id, incoming_total_damage, ene_st->total_damage, src_flags);
+  } else {
+    ene_st->total_damage = incoming_total_damage;
+  }
+
+  // Forward the server-authoritative damage value, not a stale lower value from the sender.
+  cmd.total_damage = ene_st->total_damage;
+
+  l->log.info_f("E-{:03X} updated to damage={} game_flags={:08X}; last hit {}{}",
+      ene_st->e_id,
+      ene_st->total_damage,
+      ene_st->game_flags,
+      should_track_hit ? "claimed" : "not claimed",
+      blocked_damage_rollback ? " (damage rollback blocked)" : "");
   if (ene_st->alias_target_ene_st) {
+    bool alias_is_boss = type_definition_for_enemy(ene_st->alias_target_ene_st->super_ene->type).is_boss();
+    bool alias_blocked_damage_rollback = alias_is_boss && (incoming_total_damage < ene_st->alias_target_ene_st->total_damage);
+
     if (should_track_hit) {
       ene_st->alias_target_ene_st->set_last_hit_by_client_id(c->lobby_client_id);
     }
     ene_st->alias_target_ene_st->game_flags = src_flags;
-    ene_st->alias_target_ene_st->total_damage = cmd.total_damage;
-    l->log.info_f("Alias target E-{:03X} updated to damage={} game_flags={:08X}; last hit {}",
-        ene_st->alias_target_ene_st->e_id, ene_st->alias_target_ene_st->total_damage, ene_st->alias_target_ene_st->game_flags, should_track_hit ? "claimed" : "not claimed");
+    if (alias_blocked_damage_rollback) {
+      l->log.warning_f("Blocked boss damage rollback via 6x0A from C-{} on alias target E-{:03X}: incoming={} current={} game_flags={:08X}",
+          c->lobby_client_id,
+          ene_st->alias_target_ene_st->e_id,
+          incoming_total_damage,
+          ene_st->alias_target_ene_st->total_damage,
+          src_flags);
+    } else {
+      ene_st->alias_target_ene_st->total_damage = incoming_total_damage;
+    }
+    l->log.info_f("Alias target E-{:03X} updated to damage={} game_flags={:08X}; last hit {}{}",
+        ene_st->alias_target_ene_st->e_id,
+        ene_st->alias_target_ene_st->total_damage,
+        ene_st->alias_target_ene_st->game_flags,
+        should_track_hit ? "claimed" : "not claimed",
+        alias_blocked_damage_rollback ? " (damage rollback blocked)" : "");
   }
 
   // TODO: It'd be nice if this worked on bosses too, but it seems we have to use each boss' specific state-syncing
