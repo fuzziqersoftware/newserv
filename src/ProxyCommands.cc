@@ -74,7 +74,14 @@ static asio::awaitable<HandlerResult> C_1D(shared_ptr<Client> c, Channel::Messag
     c->ping_start_time = 0;
     double ping_ms = static_cast<double>(ping_usecs) / 1000.0;
     send_text_message_fmt(c->channel, "To proxy: {:g}ms", ping_ms);
+    co_return HandlerResult::SUPPRESS;
   }
+
+  if (c->proxy_session->is_in_game) {
+    c->log.info_f("Forwarding in-game command 1D through proxy");
+    co_return HandlerResult::FORWARD;
+  }
+
   co_return HandlerResult::SUPPRESS;
 }
 
