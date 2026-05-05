@@ -3718,16 +3718,17 @@ static asio::awaitable<void> on_update_enemy_state(shared_ptr<Client> c, Subcomm
   if (should_track_hit) {
     ene_st->set_last_hit_by_client_id(c->lobby_client_id);
   }
-  ene_st->game_flags = src_flags;
   if (blocked_damage_rollback) {
-    l->log.warning_f("Blocked boss damage rollback via 6x0A from C-{} on E-{:03X}: incoming={} current={} game_flags={:08X}",
-        c->lobby_client_id, ene_st->e_id, incoming_total_damage, ene_st->total_damage, src_flags);
+    l->log.warning_f("Blocked boss state rollback via 6x0A from C-{} on E-{:03X}: incoming_damage={} current_damage={} incoming_flags={:08X} current_flags={:08X}",
+        c->lobby_client_id, ene_st->e_id, incoming_total_damage, ene_st->total_damage, src_flags, ene_st->game_flags);
   } else {
+    ene_st->game_flags = src_flags;
     ene_st->total_damage = incoming_total_damage;
   }
 
-  // Forward the server-authoritative damage value, not a stale lower value from the sender.
+  // Forward the server-authoritative damage/flags, not stale lower state from the sender.
   cmd.total_damage = ene_st->total_damage;
+  cmd.game_flags = is_big_endian(c->version()) ? phosg::bswap32(ene_st->game_flags) : ene_st->game_flags;
 
   l->log.info_f("E-{:03X} updated to damage={} game_flags={:08X}; last hit {}{}",
       ene_st->e_id,
@@ -3742,15 +3743,16 @@ static asio::awaitable<void> on_update_enemy_state(shared_ptr<Client> c, Subcomm
     if (should_track_hit) {
       ene_st->alias_target_ene_st->set_last_hit_by_client_id(c->lobby_client_id);
     }
-    ene_st->alias_target_ene_st->game_flags = src_flags;
     if (alias_blocked_damage_rollback) {
-      l->log.warning_f("Blocked boss damage rollback via 6x0A from C-{} on alias target E-{:03X}: incoming={} current={} game_flags={:08X}",
+      l->log.warning_f("Blocked boss state rollback via 6x0A from C-{} on alias target E-{:03X}: incoming_damage={} current_damage={} incoming_flags={:08X} current_flags={:08X}",
           c->lobby_client_id,
           ene_st->alias_target_ene_st->e_id,
           incoming_total_damage,
           ene_st->alias_target_ene_st->total_damage,
-          src_flags);
+          src_flags,
+          ene_st->alias_target_ene_st->game_flags);
     } else {
+      ene_st->alias_target_ene_st->game_flags = src_flags;
       ene_st->alias_target_ene_st->total_damage = incoming_total_damage;
     }
     l->log.info_f("Alias target E-{:03X} updated to damage={} game_flags={:08X}; last hit {}{}",
