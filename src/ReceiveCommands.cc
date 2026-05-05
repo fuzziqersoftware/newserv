@@ -3119,6 +3119,20 @@ static asio::awaitable<void> on_10_proxy_destinations(shared_ptr<Client> c, uint
         send_message_box(c, "$C6Vanilla Ship is not available from boosted discs.\n\n$C7Use the normal disc for Vanilla.");
         co_return;
       }
+      // PSO Peeps: boosted GC discs enter through separate frontdoor ports after
+      // pc_console_detect. Do not allow x5/x10 GC discs into Vanilla.
+      if ((c->listener_port == 9105 || c->listener_port == 9110 ||
+           c->listener_port == 9201 || c->listener_port == 9202) && dest->second == 19203) {
+        send_message_box(c, "$C6Vanilla Ship is not available from boosted discs.\n\n$C7Use the normal disc for Vanilla.");
+        co_return;
+      }
+      // PSO Peeps: PC v2 clients receive boosted BattleParams via the patch
+      // server. Vanilla and Hardcore run base XP rates and are incompatible.
+      if (c->version() == Version::PC_V2 &&
+          (dest->second == 19230 || dest->second == 19530)) {
+        send_message_box(c, "$C6This ship is not available\nfor PSO PC.\n\n$C7Vanilla and Hardcore run\nbase XP rates.");
+        co_return;
+      }
 
       // Clear Check Tactics menu so client won't see newserv tournament state while logically on another server. There
       // is no such command on Trial Edition though, so only do this on Ep3 final.
