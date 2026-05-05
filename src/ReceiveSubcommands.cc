@@ -3984,6 +3984,18 @@ static asio::awaitable<void> on_dragon_actions_6x12(shared_ptr<Client> c, Subcom
     throw runtime_error("DRAGON enemy is an alias");
   }
 
+  l->log.info_f("Dragon 6x12 from C-{} on E-{:03X}: phase={:04X} unknown_a3={:04X} target_client_id={:08X} pos=({:g}, {:g}) damage={} game_flags={:08X} set_flags={:04X}",
+      c->lobby_client_id,
+      ene_st->e_id,
+      cmd.phase.load(),
+      cmd.unknown_a3.load(),
+      cmd.target_client_id.load(),
+      cmd.x.load(),
+      cmd.z.load(),
+      ene_st->total_damage,
+      ene_st->game_flags,
+      ene_st->set_flags);
+
   G_DragonBossActions_GC_6x12 sw_cmd = {{cmd.header.subcommand, cmd.header.size, cmd.header.entity_id.load()},
       cmd.phase.load(), cmd.unknown_a3.load(), cmd.target_client_id.load(), cmd.x.load(), cmd.z.load()};
   bool sender_is_be = is_big_endian(c->version());
