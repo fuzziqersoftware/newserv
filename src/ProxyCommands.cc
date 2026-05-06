@@ -2230,6 +2230,7 @@ static asio::awaitable<HandlerResult> C_V123_A0(shared_ptr<Client> c, Channel::M
   // Change Ship from the lobby counter menu. We override the Change Ship action to end the proxy session, but we only
   // do so if the player is in a lobby in order to properly handle the download quest case.
   if (c->proxy_session->is_in_lobby) {
+    c->proxy_session->ending_intentionally = true;
     c->proxy_session->server_channel->disconnect();
     co_return HandlerResult::SUPPRESS;
   } else {
@@ -2847,7 +2848,7 @@ asio::awaitable<void> handle_proxy_server_commands(
         // If this is the currently-active backend channel, treat the abort as a backend disconnect.
         // Normal Change Ship/Change Block reconnects replace ses->server_channel first; the old
         // aborted channel will not match here, so those expected aborts stay silent.
-        if ((c->proxy_session == ses) && (ses->server_channel == channel)) {
+        if ((c->proxy_session == ses) && (ses->server_channel == channel) && !ses->ending_intentionally) {
           error_str = "Server channel\ndisconnected";
         }
       } else {

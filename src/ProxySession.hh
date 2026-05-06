@@ -16,6 +16,7 @@
 struct ServerState;
 
 struct ProxySession {
+  bool ending_intentionally = false;
   static size_t num_proxy_sessions;
 
   std::shared_ptr<Channel> server_channel;
