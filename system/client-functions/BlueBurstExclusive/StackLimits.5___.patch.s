@@ -10,6 +10,8 @@
 .meta description=""
 .meta hide_from_patches_menu
 
+.versions 59NJ 59NL
+
 entry_ptr:
 reloc0:
   .offsetof start
@@ -17,7 +19,7 @@ start:
   .include  WriteCodeBlocksBB
 
   # Patch 1: rewrite item_is_stackable
-  .data     0x005C502C
+  .data     <VERS 0x005C5020 0x005C502C>
   .deltaof  item_is_stackable_start, item_is_stackable_end
 
 item_is_stackable_start:
@@ -32,7 +34,7 @@ item_is_stackable_start:
   push      eax
   mov       ecx, esp
 
-  .binary   E8EC130100  # call max_stack_size_for_tool_start
+  .binary   <VERS E8D8130100 E8EC130100>  # call max_stack_size_for_tool_start
   pop       ecx
   cmp       eax, 1
   jg        return_1
@@ -48,7 +50,7 @@ return_1:
 item_is_stackable_end:
 
   # Patch 2: rewrite max_stack_size_for_tool
-  .data     0x005D6430
+  .data     <VERS 0x005D6410 0x005D6430>
   .deltaof  max_stack_size_for_tool_start, max_stack_size_for_tool_end
 
 max_stack_size_for_tool_start:
