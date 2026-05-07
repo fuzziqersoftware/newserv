@@ -13,7 +13,7 @@ start:
   # is easy because there are easily-patchable opcodes within branches that
   # return a constant price for rare items.
   xor       eax, eax
-  mov       [0x005D26EB], eax      # Rare armors
+  mov       [0x005D258F], eax      # Rare armors
   mov       [0x005D26D1], eax      # Unidentified weapons
   mov       [0x005D26E6], eax      # Rare weapons
 
@@ -40,4 +40,4 @@ patch_code:
   ret
 patch_code_end:
   push      ecx
-  .include  WriteCallToCode-59NL
+  .include  WriteCallToCode-59NJ
