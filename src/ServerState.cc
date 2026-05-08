@@ -79,7 +79,6 @@ ServerState::ServerState(const string& config_filename, bool is_replay)
       config_filename(config_filename),
       is_replay(is_replay),
       thread_pool(make_unique<asio::thread_pool>()),
-      bb_stream_files_cache(new FileContentsCache(3600000000ULL)),
       bb_system_cache(new FileContentsCache(3600000000ULL)),
       gba_files_cache(new FileContentsCache(3600000000ULL)) {}
 
@@ -1831,8 +1830,6 @@ vector<shared_ptr<const SuperMap>> ServerState::supermaps_for_variations(
 }
 
 void ServerState::clear_file_caches() {
-  config_log.info_f("Clearing BB stream file cache");
-  this->bb_stream_files_cache.reset(new FileContentsCache(3600000000ULL));
   config_log.info_f("Clearing BB system cache");
   this->bb_system_cache.reset(new FileContentsCache(3600000000ULL));
   config_log.info_f("Clearing GBA file cache");
@@ -2148,10 +2145,9 @@ void ServerState::load_item_definitions() {
   config_log.info_f("Loading item definition tables");
   for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
     Version v = static_cast<Version>(v_s);
-    string path = std::format("system/item-tables/ItemPMT-{}.prs", file_path_token_for_version(v));
+    string path = std::format("system/item-tables/item-parameter-table-{}.json", file_path_token_for_version(v));
     config_log.debug_f("Loading item definition table {}", path);
-    auto data = make_shared<string>(prs_decompress(phosg::load_file(path)));
-    new_item_parameter_tables[v_s] = ItemParameterTable::from_binary(data, v);
+    new_item_parameter_tables[v_s] = ItemParameterTable::from_json(phosg::JSON::parse(phosg::load_file(path)));
   }
 
   auto json = phosg::JSON::parse(phosg::load_file("system/item-tables/translation-table.json"));
@@ -2225,6 +2221,39 @@ void ServerState::compile_functions(bool raise_on_any_failure) {
 void ServerState::load_dol_files() {
   config_log.info_f("Loading DOL files");
   this->dol_file_index = make_shared<DOLFileIndex>("system/dol");
+}
+
+void ServerState::generate_bb_stream_file() {
+  config_log.info_f("Generating BB stream file");
+  auto sf = std::make_shared<BBStreamFile>();
+
+  auto add_file = [&](const std::string& filename, std::string&& file_data = "") -> void {
+    if (file_data.empty()) {
+      file_data = phosg::load_file("system/blueburst/" + filename);
+    }
+    auto& e = sf->entries.emplace_back();
+    e.size = file_data.size();
+    e.checksum = phosg::crc32(file_data.data(), file_data.size());
+    e.offset = sf->data.size();
+    e.filename = filename;
+    sf->data += file_data;
+    config_log.debug_f(
+        "[BBStreamFile] Added file {} at offset {:08X} ({:08X} bytes) with checksum {:08X}; total size is now {:08X}",
+        filename, e.offset, e.size, e.checksum, sf->data.size());
+  };
+
+  add_file("BattleParamEntry.dat");
+  add_file("BattleParamEntry_on.dat");
+  add_file("BattleParamEntry_lab.dat");
+  add_file("BattleParamEntry_lab_on.dat");
+  add_file("BattleParamEntry_ep4.dat");
+  add_file("BattleParamEntry_ep4_on.dat");
+  add_file("PlyLevelTbl.prs");
+  add_file("ItemMagEdit.prs");
+  auto pmt = this->item_parameter_table(Version::BB_V4);
+  add_file("ItemPMT.prs", prs_compress_optimal(pmt->serialize_binary(Version::BB_V4)));
+
+  this->bb_stream_file = sf;
 }
 
 void ServerState::create_default_lobbies() {
@@ -2306,6 +2335,7 @@ void ServerState::load_all(bool enable_thread_pool) {
   this->load_config_late();
   this->load_teams();
   this->load_quest_index();
+  this->generate_bb_stream_file();
 }
 
 void ServerState::disconnect_all_banned_clients() {

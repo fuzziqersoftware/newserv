@@ -68,6 +68,7 @@ public:
     uint8_t special = 0;
     uint8_t ata = 0;
     uint8_t stat_boost_entry_index = 0;
+    parray<uint8_t, 3> v2_unknown_a9;
     uint8_t projectile = 0;
     int8_t trail1_x = 0;
     int8_t trail1_y = 0;
@@ -361,7 +362,7 @@ public:
   static std::shared_ptr<ItemParameterTable> from_json(const phosg::JSON& json);
 
   phosg::JSON json() const;
-  // std::string serialize_binary() const; // TODO
+  std::string serialize_binary(Version version) const;
 
   std::set<uint32_t> compute_all_valid_primary_identifiers() const;
 
@@ -389,6 +390,7 @@ public:
   virtual const Mag& get_mag(uint8_t data1_1) const = 0;
 
   // weapon_kind_table accessors (data1_1 in [0, num_weapon_classes()])
+  virtual size_t num_weapon_kinds() const = 0;
   virtual uint8_t get_weapon_kind(uint8_t data1_1) const = 0;
 
   // photon_color_table accessors
@@ -401,6 +403,7 @@ public:
 
   // weapon_sale_divisor_table and non_weapon_sale_divisor_table accessors (data1_0 in [0, 1, 2]; data1_1 in [0,
   // num_weapon_classes()] for weapons or ignored otherwise)
+  virtual size_t num_weapon_sale_divisors() const = 0;
   virtual float get_sale_divisor(uint8_t data1_0, uint8_t data1_1) const = 0;
 
   // mag_feed_table accessors (table_index in [0, 7], item_index in [0, 10])
@@ -451,12 +454,14 @@ public:
   virtual uint8_t get_max_tech_level(uint8_t char_class, uint8_t tech_num) const = 0;
 
   // combination_table accessors
-  virtual const std::map<uint32_t, std::vector<ItemCombination>>& all_item_combinations() const = 0;
+  virtual size_t num_item_combinations() const = 0;
+  virtual const ItemCombination& get_item_combination(size_t index) const = 0;
+  const std::map<uint32_t, std::vector<ItemCombination>>& item_combinations_index() const;
   const std::vector<ItemCombination>& all_combinations_for_used_item(const ItemData& used_item) const;
   const ItemCombination& get_item_combination(const ItemData& used_item, const ItemData& equipped_item) const;
 
   // sound_remap_table accessors
-  virtual const std::unordered_map<uint32_t, SoundRemaps>& get_all_sound_remaps() const = 0;
+  virtual const std::vector<SoundRemaps>& get_all_sound_remaps() const = 0;
 
   // tech_boost_table accessors
   virtual size_t num_tech_boosts() const = 0;
@@ -487,4 +492,6 @@ public:
 
 protected:
   ItemParameterTable() = default;
+
+  mutable std::optional<std::map<uint32_t, std::vector<ItemCombination>>> item_combination_index;
 };

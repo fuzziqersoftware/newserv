@@ -780,36 +780,37 @@ newserv has many CLI options, which can be used to access functionality other th
 
 The data formats that newserv can convert to/from are:
 
-| Format                              | Encode/compress action    | Decode/extract action        |
-|-------------------------------------|---------------------------|------------------------------|
-| PRS compression                     | `compress-prs`            | `decompress-prs`             |
-| PR2/PRC compression                 | `compress-pr2`            | `decompress-pr2`             |
-| BC0 compression                     | `compress-bc0`            | `decompress-bc0`             |
-| Raw encrypted data                  | `encrypt-data`            | `decrypt-data`               |
-| Episode 3 command mask              | `encrypt-trivial-data`    | `decrypt-trivial-data`       |
-| Challenge Mode rank text            | `encrypt-challenge-data`  | `decrypt-challenge-data`     |
-| PSO DC quest file (.vms)            | None                      | `decode-vms`                 |
-| PSO GC quest file (.gci)            | None                      | `decode-gci`                 |
-| Download quest file (.dlq)          | None                      | `decode-dlq`                 |
-| Server quest file (.qst)            | `encode-qst`              | `decode-qst`                 |
-| PSO DC save file (.vms)             | `encrypt-vms-save`        | `decrypt-vms-save`           |
-| PSO PC save file                    | `encrypt-pc-save`         | `decrypt-pc-save`            |
-| PSO GC save file (.gci)             | `encrypt-gci-save`        | `decrypt-gci-save`           |
-| PSO Xbox save file                  | None                      | `decrypt-xbox-save`          |
-| PSO GC snapshot file                | None                      | `decode-gci-snapshot`        |
-| Quest script (.bin)                 | `assemble-quest-script`   | `disassemble-quest-script`   |
-| Quest map (.dat)                    | None                      | `disassemble-quest-map`      |
-| AFS archive (.afs)                  | None                      | `extract-afs`                |
-| BML archive (.bml)                  | None                      | `extract-bml`                |
-| PPK archive (.ppk)                  | None                      | `extract-ppk`                |
-| GSL archive (.gsl)                  | `generate-gsl`            | `extract-gsl`                |
-| GVM texture (.gvm)                  | `encode-gvm`              | None                         |
-| Bitmap font (.fon)                  | `encode-bitmap-font`      | `decode-bitmap-font`         |
-| Text archive                        | `encode-text-archive`     | `decode-text-archive`        |
-| Unicode text set                    | `encode-unicode-text-set` | `decode-unicode-text-set`    |
-| Word Select data set                | None                      | `decode-word-select-set`     |
-| Set data table                      | None                      | `disassemble-set-data-table` |
-| Rare item table (AFS/GSL/JSON/HTML) | `convert-rare-item-set`   | `convert-rare-item-set`      |
+| Format                              | Encode/compress action        | Decode/extract action         |
+|-------------------------------------|-------------------------------|-------------------------------|
+| PRS compression                     | `compress-prs`                | `decompress-prs`              |
+| PR2/PRC compression                 | `compress-pr2`                | `decompress-pr2`              |
+| BC0 compression                     | `compress-bc0`                | `decompress-bc0`              |
+| Raw encrypted data                  | `encrypt-data`                | `decrypt-data`                |
+| Episode 3 command mask              | `encrypt-trivial-data`        | `decrypt-trivial-data`        |
+| Challenge Mode rank text            | `encrypt-challenge-data`      | `decrypt-challenge-data`      |
+| PSO DC quest file (.vms)            | None                          | `decode-vms`                  |
+| PSO GC quest file (.gci)            | None                          | `decode-gci`                  |
+| Download quest file (.dlq)          | None                          | `decode-dlq`                  |
+| Server quest file (.qst)            | `encode-qst`                  | `decode-qst`                  |
+| PSO DC save file (.vms)             | `encrypt-vms-save`            | `decrypt-vms-save`            |
+| PSO PC save file                    | `encrypt-pc-save`             | `decrypt-pc-save`             |
+| PSO GC save file (.gci)             | `encrypt-gci-save`            | `decrypt-gci-save`            |
+| PSO Xbox save file                  | None                          | `decrypt-xbox-save`           |
+| PSO GC snapshot file                | None                          | `decode-gci-snapshot`         |
+| Quest script (.bin)                 | `assemble-quest-script`       | `disassemble-quest-script`    |
+| Quest map (.dat)                    | None                          | `disassemble-quest-map`       |
+| AFS archive (.afs)                  | None                          | `extract-afs`                 |
+| BML archive (.bml)                  | None                          | `extract-bml`                 |
+| PPK archive (.ppk)                  | None                          | `extract-ppk`                 |
+| GSL archive (.gsl)                  | `generate-gsl`                | `extract-gsl`                 |
+| GVM texture (.gvm)                  | `encode-gvm`                  | None (use resource_dasm)      |
+| Bitmap font (.fon)                  | `encode-bitmap-font`          | `decode-bitmap-font`          |
+| Text archive                        | `encode-text-archive`         | `decode-text-archive`         |
+| Unicode text set                    | `encode-unicode-text-set`     | `decode-unicode-text-set`     |
+| Word Select data set                | None                          | `decode-word-select-set`      |
+| Set data table                      | None                          | `disassemble-set-data-table`  |
+| Rare item table (AFS/GSL/JSON/HTML) | `convert-rare-item-set`       | `convert-rare-item-set`       |
+| Item definitions (ItemPMT)          | `encode-item-parameter-table` | `decode-item-parameter-table` |
 
 There are several actions that don't fit well into the table above, which let you do other things:
 

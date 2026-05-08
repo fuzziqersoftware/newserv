@@ -1086,7 +1086,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
 
   phosg::fwrite_fmt(stream, "ITEM COMBINATIONS\n");
   phosg::fwrite_fmt(stream, "  ---USE + -EQUIP => RESULT MLV GND LVL CLS\n");
-  for (const auto& combo_list_it : pmt->all_item_combinations()) {
+  for (const auto& combo_list_it : pmt->item_combinations_index()) {
     for (const auto& combo : combo_list_it.second) {
       phosg::fwrite_fmt(stream, "  {:02X}{:02X}{:02X} + {:02X}{:02X}{:02X} => {:02X}{:02X}{:02X}",
           combo.used_item[0], combo.used_item[1], combo.used_item[2],
@@ -1222,22 +1222,22 @@ void ItemNameIndex::print_table(FILE* stream) const {
 
   phosg::fwrite_fmt(stream, "SOUND REMAPS\n");
   phosg::fwrite_fmt(stream, "  -SOUND1- => RT:[...] CC:[...]\n");
-  for (const auto& [sound_id, remaps] : pmt->get_all_sound_remaps()) {
+  for (const auto& remap : pmt->get_all_sound_remaps()) {
     std::string rt_str;
-    for (uint32_t rt_sound_id : remaps.by_rt_index) {
+    for (uint32_t rt_sound_id : remap.by_rt_index) {
       if (!rt_str.empty()) {
         rt_str += ",";
       }
       rt_str += std::format("{:08X}", rt_sound_id);
     }
     std::string cc_str;
-    for (uint32_t cc_sound_id : remaps.by_char_class) {
+    for (uint32_t cc_sound_id : remap.by_char_class) {
       if (!cc_str.empty()) {
         cc_str += ",";
       }
       cc_str += std::format("{:08X}", cc_sound_id);
     }
-    phosg::fwrite_fmt(stream, "  {:08X} => RT:[{}] CC:[{}]\n", sound_id, rt_str, cc_str);
+    phosg::fwrite_fmt(stream, "  {:08X} => RT:[{}] CC:[{}]\n", remap.sound_id, rt_str, cc_str);
   }
 
   phosg::fwrite_fmt(stream, "TECH BOOSTS\n");
