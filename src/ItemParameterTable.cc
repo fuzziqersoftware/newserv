@@ -2826,8 +2826,11 @@ public:
           }
         }
       }
+      return *this->sound_remaps;
+    } else {
+      static const std::vector<SoundRemaps> empty_vec{};
+      return empty_vec;
     }
-    return *this->sound_remaps;
   }
 
   virtual size_t num_tech_boosts() const {
