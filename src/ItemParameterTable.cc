@@ -2465,7 +2465,7 @@ public:
   }
 
   virtual size_t num_weapon_classes() const {
-    return this->get_data_array_count<ArrayRefT<BE>>(this->root->weapon_table);
+    return get_rel_array_count<ArrayRefT<BE>>(this->all_start_offsets(), this->root->weapon_table);
   }
 
   virtual size_t num_weapons_in_class(uint8_t data1_1) const {
@@ -2512,7 +2512,7 @@ public:
   }
 
   virtual size_t num_tool_classes() const {
-    return this->get_data_array_count<ArrayRefT<BE>>(this->root->tool_table);
+    return get_rel_array_count<ArrayRefT<BE>>(this->all_start_offsets(), this->root->tool_table);
   }
 
   virtual size_t num_tools_in_class(uint8_t data1_1) const {
@@ -2559,7 +2559,7 @@ public:
   }
 
   virtual size_t num_weapon_kinds() const {
-    return this->get_data_array_count<uint8_t>(this->root->weapon_kind_table);
+    return get_rel_array_count<uint8_t>(this->all_start_offsets(), this->root->weapon_kind_table);
   }
 
   virtual uint8_t get_weapon_kind(uint8_t data1_1) const {
@@ -2567,7 +2567,7 @@ public:
   }
 
   virtual size_t num_photon_colors() const {
-    return this->get_data_array_count<PhotonColorEntryT<BE>>(this->root->photon_color_table);
+    return get_rel_array_count<PhotonColorEntryT<BE>>(this->all_start_offsets(), this->root->photon_color_table);
   }
 
   virtual const PhotonColorEntry& get_photon_color(size_t index) const {
@@ -2575,7 +2575,7 @@ public:
   }
 
   virtual size_t num_weapon_ranges() const {
-    return this->get_data_array_count<WeaponRangeT<BE>>(this->root->weapon_range_table);
+    return get_rel_array_count<WeaponRangeT<BE>>(this->all_start_offsets(), this->root->weapon_range_table);
   }
 
   virtual const WeaponRange& get_weapon_range(size_t index) const {
@@ -2584,9 +2584,9 @@ public:
 
   virtual size_t num_weapon_sale_divisors() const {
     if constexpr (requires { this->root->weapon_integral_sale_divisor_table; }) {
-      return this->get_data_array_count<uint8_t>(this->root->weapon_integral_sale_divisor_table);
+      return get_rel_array_count<uint8_t>(this->all_start_offsets(), this->root->weapon_integral_sale_divisor_table);
     } else {
-      return this->get_data_array_count<F32T<BE>>(this->root->weapon_sale_divisor_table);
+      return get_rel_array_count<F32T<BE>>(this->all_start_offsets(), this->root->weapon_sale_divisor_table);
     }
   }
 
@@ -2647,7 +2647,7 @@ public:
 
   virtual std::pair<uint32_t, uint32_t> get_star_value_index_range() const {
     return std::make_pair(
-        ItemStarsFirstID, this->get_data_array_count<uint8_t>(this->root->star_value_table) + ItemStarsFirstID);
+        ItemStarsFirstID, get_rel_array_count<uint8_t>(this->all_start_offsets(), this->root->star_value_table) + ItemStarsFirstID);
   }
 
   virtual uint32_t get_special_stars_base_index() const {
@@ -2667,14 +2667,15 @@ public:
 
   virtual std::string get_unknown_a1() const {
     if constexpr (requires { this->root->unknown_a1; }) {
-      return this->r.pread(this->root->unknown_a1, this->get_data_range_size(this->root->unknown_a1));
+      return this->r.pread(
+          this->root->unknown_a1, get_rel_array_count<uint8_t>(this->all_start_offsets(), this->root->unknown_a1));
     } else {
       return "";
     }
   }
 
   virtual size_t num_specials() const {
-    return this->get_data_array_count<SpecialT<BE>>(this->root->special_table);
+    return get_rel_array_count<SpecialT<BE>>(this->all_start_offsets(), this->root->special_table);
   }
 
   virtual const Special& get_special(uint8_t special) const {
@@ -2690,7 +2691,7 @@ public:
   }
 
   virtual size_t num_weapon_effects() const {
-    return this->get_data_array_count<WeaponEffectT<BE>>(this->root->weapon_effect_table);
+    return get_rel_array_count<WeaponEffectT<BE>>(this->all_start_offsets(), this->root->weapon_effect_table);
   }
 
   virtual const WeaponEffect& get_weapon_effect(size_t index) const {
@@ -2699,7 +2700,7 @@ public:
 
   virtual size_t num_weapon_stat_boost_indexes() const {
     if constexpr (requires { this->root->weapon_stat_boost_index_table; }) {
-      return this->get_data_range_size(this->root->weapon_stat_boost_index_table);
+      return get_rel_array_count<uint8_t>(this->all_start_offsets(), this->root->weapon_stat_boost_index_table);
     } else {
       return 0;
     }
@@ -2715,7 +2716,7 @@ public:
 
   virtual size_t num_armor_stat_boost_indexes() const {
     if constexpr (requires { this->root->armor_stat_boost_index_table; }) {
-      return this->get_data_range_size(this->root->armor_stat_boost_index_table);
+      return get_rel_array_count<uint8_t>(this->all_start_offsets(), this->root->armor_stat_boost_index_table);
     } else {
       return 0;
     }
@@ -2731,7 +2732,7 @@ public:
 
   virtual size_t num_shield_stat_boost_indexes() const {
     if constexpr (requires { this->root->shield_stat_boost_index_table; }) {
-      return this->get_data_range_size(this->root->shield_stat_boost_index_table);
+      return get_rel_array_count<uint8_t>(this->all_start_offsets(), this->root->shield_stat_boost_index_table);
     } else {
       return 0;
     }
@@ -2746,7 +2747,7 @@ public:
   }
 
   virtual size_t num_stat_boosts() const {
-    return this->get_data_array_count<StatBoostT<BE>>(this->root->stat_boost_table);
+    return get_rel_array_count<StatBoostT<BE>>(this->all_start_offsets(), this->root->stat_boost_table);
   }
 
   virtual const StatBoost& get_stat_boost(size_t index) const {
@@ -2755,7 +2756,7 @@ public:
 
   virtual size_t num_shield_effects() const {
     if constexpr (requires { this->root->shield_effect_table; }) {
-      return this->get_data_array_count<ShieldEffectT<BE>>(this->root->shield_effect_table);
+      return get_rel_array_count<ShieldEffectT<BE>>(this->all_start_offsets(), this->root->shield_effect_table);
     } else {
       return 0;
     }
@@ -2835,7 +2836,7 @@ public:
 
   virtual size_t num_tech_boosts() const {
     if constexpr (requires { this->root->tech_boost_table; }) {
-      return this->get_data_array_count<TechBoostT<BE>>(this->root->tech_boost_table);
+      return get_rel_array_count<TechBoostT<BE>>(this->all_start_offsets(), this->root->tech_boost_table);
     } else {
       return 0;
     }
@@ -2909,26 +2910,6 @@ public:
       this->start_offsets = all_relocation_offsets_for_rel_file<BE>(r.pgetv(0, r.size()), r.size());
     }
     return this->start_offsets;
-  }
-
-  size_t get_data_range_size(size_t start_offset) const {
-    const auto& offsets = this->all_start_offsets();
-    auto it = offsets.lower_bound(start_offset);
-    if (it == offsets.end()) {
-      throw std::out_of_range("start offset out of range");
-    }
-    if (*it == start_offset) {
-      it++;
-    }
-    if (it == offsets.end()) {
-      throw std::out_of_range("no further offset beyond start offset");
-    }
-    return *it - start_offset;
-  }
-
-  template <typename T>
-  size_t get_data_array_count(size_t start_offset) const {
-    return this->get_data_range_size(start_offset) / sizeof(T);
   }
 
   static std::string serialize(const ItemParameterTable& pmt) {

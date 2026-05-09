@@ -23,6 +23,7 @@
 
 #include "AddressTranslator.hh"
 #include "BMLArchive.hh"
+#include "CommonFileFormats.hh"
 #include "Compression.hh"
 #include "DCSerialNumbers.hh"
 #include "DNSServer.hh"
@@ -2426,6 +2427,18 @@ Action a_encode_item_parameter_table(
         data = prs_compress_optimal(data);
       }
       write_output_data(args, data.data(), data.size(), nullptr);
+    });
+
+Action a_find_rel_sectionr(
+    "find-rel-sections", nullptr,
+    +[](phosg::Arguments& args) {
+      auto data = read_input_data(args);
+      auto offsets = args.get<bool>("big-endian")
+          ? all_relocation_offsets_for_rel_file<true>(data.data(), data.size())
+          : all_relocation_offsets_for_rel_file<false>(data.data(), data.size());
+      for (uint32_t offset : offsets) {
+        phosg::fwrite_fmt(stdout, "{:08X}\n", offset);
+      }
     });
 
 Action a_describe_item(

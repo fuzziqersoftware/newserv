@@ -182,3 +182,18 @@ std::set<uint32_t> all_relocation_offsets_for_rel_file(const void* data, size_t 
 
   return ret;
 }
+
+template <typename T>
+size_t get_rel_array_count(const std::set<uint32_t>& offsets, size_t start_offset) {
+  auto it = offsets.lower_bound(start_offset);
+  if (it == offsets.end()) {
+    throw std::out_of_range("start offset out of range");
+  }
+  if (*it == start_offset) {
+    it++;
+  }
+  if (it == offsets.end()) {
+    throw std::out_of_range("no further offset beyond start offset");
+  }
+  return (*it - start_offset) / sizeof(T);
+}
