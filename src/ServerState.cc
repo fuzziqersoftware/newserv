@@ -1888,9 +1888,9 @@ void ServerState::load_battle_params() {
 
 void ServerState::load_level_tables() {
   config_log.info_f("Loading level tables");
-  this->level_table_v1_v2 = make_shared<LevelTableV2>(phosg::load_file("system/level-tables/PlayerTable-pc-v2.prs"), true);
-  this->level_table_v3 = make_shared<LevelTableV3BE>(phosg::load_file("system/level-tables/PlyLevelTbl-gc-v3.cpt"), true);
-  this->level_table_v4 = make_shared<LevelTableV4>(*this->load_bb_file("PlyLevelTbl.prs"), true);
+  this->level_table_v1_v2 = make_shared<JSONLevelTable>(phosg::JSON::parse(phosg::load_file("system/level-tables/level-table-v1-v2.json")));
+  this->level_table_v3 = make_shared<JSONLevelTable>(phosg::JSON::parse(phosg::load_file("system/level-tables/level-table-v3.json")));
+  this->level_table_v4 = make_shared<JSONLevelTable>(phosg::JSON::parse(phosg::load_file("system/level-tables/level-table-v4.json")));
 }
 
 void ServerState::load_text_index() {
@@ -2248,7 +2248,7 @@ void ServerState::generate_bb_stream_file() {
   add_file("BattleParamEntry_lab_on.dat");
   add_file("BattleParamEntry_ep4.dat");
   add_file("BattleParamEntry_ep4_on.dat");
-  add_file("PlyLevelTbl.prs");
+  add_file("PlyLevelTbl.prs", prs_compress_optimal(this->level_table_v4->serialize_binary_v4()));
   add_file("ItemMagEdit.prs");
   auto pmt = this->item_parameter_table(Version::BB_V4);
   add_file("ItemPMT.prs", prs_compress_optimal(pmt->serialize_binary(Version::BB_V4)));

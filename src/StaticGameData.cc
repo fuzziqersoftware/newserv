@@ -293,18 +293,18 @@ uint8_t npc_for_name(const string& name, Version version) {
 
 const char* name_for_char_class(uint8_t cls) {
   static const array<const char*, 12> names = {
-      /* 00 */ "HUmar", // 0
-      /* 01 */ "HUnewearl", // 0
-      /* 02 */ "HUcast", // 1
-      /* 03 */ "RAmar", // 0
-      /* 04 */ "RAcast", // 2
-      /* 05 */ "RAcaseal", // 1
-      /* 06 */ "FOmarl", // 0
-      /* 07 */ "FOnewm", // 0
-      /* 08 */ "FOnewearl", // 0
-      /* 09 */ "HUcaseal", // 1
-      /* 0A */ "FOmar", // 0
-      /* 0B */ "RAmarl"}; // 0
+      /* 00 */ "HUmar",
+      /* 01 */ "HUnewearl",
+      /* 02 */ "HUcast",
+      /* 03 */ "RAmar",
+      /* 04 */ "RAcast",
+      /* 05 */ "RAcaseal",
+      /* 06 */ "FOmarl",
+      /* 07 */ "FOnewm",
+      /* 08 */ "FOnewearl",
+      /* 09 */ "HUcaseal",
+      /* 0A */ "FOmar",
+      /* 0B */ "RAmarl"};
   try {
     return names.at(cls);
   } catch (const out_of_range&) {

@@ -2429,6 +2429,50 @@ Action a_encode_item_parameter_table(
       write_output_data(args, data.data(), data.size(), nullptr);
     });
 
+Action a_decode_level_table(
+    "decode-level-table", nullptr,
+    +[](phosg::Arguments& args) {
+      auto input_data = read_input_data(args);
+      std::shared_ptr<LevelTable> table;
+      bool decompressed = args.get<bool>("decompressed");
+      switch (get_cli_version(args)) {
+        case Version::PC_V2:
+          table = std::make_shared<LevelTableV2>(decompressed ? input_data : prs_decompress(input_data));
+          break;
+        case Version::GC_V3:
+          table = std::make_shared<LevelTableGC>(
+              decompressed ? input_data : decrypt_and_decompress_pr2_data<true>(input_data));
+          break;
+        case Version::XB_V3:
+          table = std::make_shared<LevelTableXB>(
+              decompressed ? input_data : decrypt_and_decompress_pr2_data<false>(input_data));
+          break;
+        case Version::BB_V4:
+          table = std::make_shared<LevelTableV4>(decompressed ? input_data : prs_decompress(input_data));
+          break;
+        default:
+          throw std::runtime_error("This version does not have a level table");
+      }
+      auto json = table->json();
+      uint32_t serialize_options = phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS;
+      if (args.get<bool>("hex")) {
+        serialize_options |= phosg::JSON::SerializeOption::HEX_INTEGERS;
+      }
+      string json_data = json.serialize(serialize_options);
+      write_output_data(args, json_data.data(), json_data.size(), nullptr);
+    });
+
+Action a_encode_level_table(
+    "encode-level-table-v4", nullptr,
+    +[](phosg::Arguments& args) {
+      JSONLevelTable table(phosg::JSON::parse(read_input_data(args)));
+      string data = table.serialize_binary_v4();
+      if (!args.get<bool>("decompressed")) {
+        data = prs_compress_optimal(data);
+      }
+      write_output_data(args, data.data(), data.size(), nullptr);
+    });
+
 Action a_find_rel_sectionr(
     "find-rel-sections", nullptr,
     +[](phosg::Arguments& args) {
@@ -2616,7 +2660,6 @@ Action a_print_level_stats(
 
       vector<PlayerStats> level_1_v1_v2;
       vector<PlayerStats> level_100_v1_v2;
-      vector<PlayerStats> level_100_limit_v1_v2;
       vector<PlayerStats> level_200_v1_v2;
       vector<PlayerStats> level_200_limit_v1_v2;
       vector<PlayerStats> level_1_v3;
@@ -2628,7 +2671,6 @@ Action a_print_level_stats(
       for (size_t z = 0; z < 12; z++) {
         if (z < 9) {
           level_1_v1_v2.emplace_back().char_stats = s->level_table_v1_v2->base_stats_for_class(z);
-          level_100_limit_v1_v2.emplace_back(s->level_table_v1_v2->level_100_stats_for_class(z));
           level_200_limit_v1_v2.emplace_back(s->level_table_v1_v2->max_stats_for_class(z));
           s->level_table_v1_v2->advance_to_level(level_100_v1_v2.emplace_back(level_1_v1_v2.back()), 99, z);
           s->level_table_v1_v2->advance_to_level(level_200_v1_v2.emplace_back(level_1_v1_v2.back()), 199, z);
@@ -2682,7 +2724,6 @@ Action a_print_level_stats(
 
       print_stats_set(level_1_v1_v2, "v1/v2 Lv.1  ");
       print_stats_set(level_100_v1_v2, "v1/v2 Lv.100");
-      print_stats_set(level_100_limit_v1_v2, "v1 limit    ");
       print_stats_set(level_200_v1_v2, "v2 Lv.200   ");
       print_stats_set(level_200_limit_v1_v2, "v2 limit    ");
       print_stats_set(level_1_v3, "v3 Lv.1     ");

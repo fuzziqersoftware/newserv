@@ -4269,7 +4269,9 @@ struct G_Attack_6x43_6x44_6x45 {
   le_uint16_t unknown_a2 = 0;
 } __packed_ws__(G_Attack_6x43_6x44_6x45, 8);
 
-// 6x46: Attack finished (sent after each of 43, 44, and 45) (protected on GC NTE/V3/V4)
+// 6x46: Set attack strike targets (sent after each of 43, 44, and 45) (protected on GC NTE/V3/V4)
+// This command sets the targets of each strike of an attack (e.g. each pair of mechgun bullets, or each swing of a
+// pair of daggers). For multi-strike attacks, this is sent multiple times.
 // The number of targets is not bounds-checked during byteswapping on GC clients. The client only expects up to 10
 // entries here, so if the number of targets is too large, the client will byteswap the function's return address on
 // the stack, and it will crash.

@@ -540,7 +540,7 @@ static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool 
         bb_player->disp.stats.char_stats.dfp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::DEF) * 2;
         bb_player->disp.stats.char_stats.lck += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::LUCK) * 2;
         bb_player->disp.stats.char_stats.hp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::HP) * 2;
-        bb_player->disp.stats.experience = ch.character->disp.stats.experience;
+        bb_player->disp.stats.exp = ch.character->disp.stats.exp;
         bb_player->disp.stats.meseta = ch.character->disp.stats.meseta;
       }
       bb_player->disp.technique_levels_v1 = ch.character->disp.technique_levels_v1;
@@ -915,7 +915,7 @@ ChatCommandDefinition cc_edit(
         } else if (tokens.at(0) == "meseta" && (cheats_allowed || !s->cheat_flags.edit_stats)) {
           p->disp.stats.meseta = stoul(tokens.at(1));
         } else if (tokens.at(0) == "exp" && (cheats_allowed || !s->cheat_flags.edit_stats)) {
-          p->disp.stats.experience = stoul(tokens.at(1));
+          p->disp.stats.exp = stoul(tokens.at(1));
         } else if (tokens.at(0) == "level" && (cheats_allowed || !s->cheat_flags.edit_stats)) {
           p->disp.stats.level = stoul(tokens.at(1)) - 1;
           p->recompute_stats(s->level_table(a.c->version()), true);

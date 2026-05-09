@@ -703,7 +703,7 @@ void Client::create_challenge_overlay(
       overlay->disp.visual.char_class, overlay->disp.stats.level);
   overlay->disp.stats.esp = 40;
   overlay->disp.stats.attack_range = 10.0;
-  overlay->disp.stats.experience = stats_delta.experience;
+  overlay->disp.stats.exp = stats_delta.exp;
   overlay->disp.stats.meseta = 0;
   overlay->clear_all_material_usage();
   for (size_t z = 0; z < 0x13; z++) {

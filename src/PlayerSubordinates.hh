@@ -334,7 +334,7 @@ using PlayerDispDataDCPCV3 = PlayerDispDataDCPCV3T<false>;
 using PlayerDispDataDCPCV3BE = PlayerDispDataDCPCV3T<true>;
 
 struct PlayerDispDataBBPreview {
-  /* 00 */ le_uint32_t experience = 0;
+  /* 00 */ le_uint32_t exp = 0;
   /* 04 */ le_uint32_t level = 0;
   // The name field in this structure is used for the player's Guild Card number, apparently (possibly because it's a
   // char array and this is BB)

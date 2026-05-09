@@ -3070,7 +3070,7 @@ std::string disassemble_quest_script(
       l->lines.emplace_back(std::format("  {:04X}  attack_range      {:08X} /* {:g} */", l->offset + offsetof(PlayerStats, attack_range), stats.attack_range.load_raw(), stats.attack_range));
       l->lines.emplace_back(std::format("  {:04X}  knockback_range   {:08X} /* {:g} */", l->offset + offsetof(PlayerStats, knockback_range), stats.knockback_range.load_raw(), stats.knockback_range));
       l->lines.emplace_back(std::format("  {:04X}  level             {:08X} /* level {} */", l->offset + offsetof(PlayerStats, level), stats.level, stats.level + 1));
-      l->lines.emplace_back(std::format("  {:04X}  experience        {:08X} /* {} */", l->offset + offsetof(PlayerStats, experience), stats.experience, stats.experience));
+      l->lines.emplace_back(std::format("  {:04X}  exp               {:08X} /* {} */", l->offset + offsetof(PlayerStats, exp), stats.exp, stats.exp));
       l->lines.emplace_back(std::format("  {:04X}  meseta            {:08X} /* {} */", l->offset + offsetof(PlayerStats, meseta), stats.meseta, stats.meseta));
     });
   };

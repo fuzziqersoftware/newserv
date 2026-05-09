@@ -1,4 +1,6 @@
 {
+  // Unlike all other PSO versions, this file is serialized and sent to the client. Making changes in here WILL affect
+  // BB clients.
   "ArmorSaleDivisor": 0.79999995231628418,
   "ArmorStatBoostIndexes": [],
   "ItemCombinations": [

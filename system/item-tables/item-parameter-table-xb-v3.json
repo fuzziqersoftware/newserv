@@ -1,4 +1,6 @@
 {
+  // This file matches what's in the client's ItemPMT file. Modifying this file will not affect the client; it only
+  // exists so the server can match the client's behavior.
   "ArmorSaleDivisor": 0.79999995231628418,
   "ArmorStatBoostIndexes": [],
   "ItemCombinations": [

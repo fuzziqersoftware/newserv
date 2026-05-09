@@ -3947,7 +3947,7 @@ static void add_player_exp(shared_ptr<Client> c, uint32_t exp, uint16_t from_ene
   auto s = c->require_server_state();
   auto p = c->character_file();
 
-  p->disp.stats.experience += exp;
+  p->disp.stats.exp += exp;
   if (c->version() == Version::BB_V4) {
     send_give_experience(c, exp, from_enemy_id);
   }
@@ -3955,7 +3955,7 @@ static void add_player_exp(shared_ptr<Client> c, uint32_t exp, uint16_t from_ene
   bool leveled_up = false;
   do {
     const auto& level = s->level_table(c->version())->stats_delta_for_level(p->disp.visual.char_class, p->disp.stats.level + 1);
-    if (p->disp.stats.experience >= level.experience) {
+    if (p->disp.stats.exp >= level.exp) {
       leveled_up = true;
       level.apply(p->disp.stats.char_stats);
       p->disp.stats.level++;
@@ -4017,7 +4017,7 @@ static uint32_t base_exp_for_enemy_type(
       const auto& bp_table = bp_index->get_table(is_solo, episode);
       const auto& bp_stats_indexes = type_definition_for_enemy(enemy_type).bp_stats_indexes;
       if (!bp_stats_indexes.empty()) {
-        return bp_table.stats_for_index(difficulty, bp_stats_indexes.back()).experience;
+        return bp_table.stats_for_index(difficulty, bp_stats_indexes.back()).exp;
       }
     } catch (const out_of_range&) {
     }
@@ -4700,8 +4700,8 @@ static asio::awaitable<void> on_battle_level_up_bb(shared_ptr<Client> c, Subcomm
     auto s = c->require_server_state();
     auto lp = lc->character_file();
     uint32_t target_level = min<uint32_t>(lp->disp.stats.level + cmd.num_levels, 199);
-    uint32_t before_exp = lp->disp.stats.experience;
-    int32_t exp_delta = lp->disp.stats.experience - before_exp;
+    uint32_t before_exp = lp->disp.stats.exp;
+    int32_t exp_delta = lp->disp.stats.exp - before_exp;
     if (exp_delta > 0) {
       s->level_table(lc->version())->advance_to_level(lp->disp.stats, target_level, lp->disp.visual.char_class);
       if (lc->version() == Version::BB_V4) {

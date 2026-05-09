@@ -204,7 +204,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const G_SetEXResultValues_Ep3_6xB4x4B> ep3_tournament_final_round_ex_values;
   std::shared_ptr<const QuestCategoryIndex> quest_category_index;
   std::shared_ptr<const QuestIndex> quest_index;
-  std::shared_ptr<const LevelTableV2> level_table_v1_v2;
+  std::shared_ptr<const LevelTable> level_table_v1_v2;
   std::shared_ptr<const LevelTable> level_table_v3;
   std::shared_ptr<const LevelTable> level_table_v4;
   std::shared_ptr<const BattleParamsIndex> battle_params;

@@ -27,7 +27,7 @@ void BattleParamsIndex::Table::print(FILE* stream, Episode episode) const {
       phosg::fwrite_fmt(stream,
           "{:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5} {:5}  {}",
           e.char_stats.atp, e.char_stats.mst, e.char_stats.evp, e.char_stats.hp, e.char_stats.dfp, e.char_stats.ata,
-          e.char_stats.lck, e.esp, e.experience, e.meseta, names_str);
+          e.char_stats.lck, e.esp, e.exp, e.meseta, names_str);
       fputc('\n', stream);
     }
   }

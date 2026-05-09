@@ -370,7 +370,7 @@ PSOBBBaseSystemFile::PSOBBBaseSystemFile() {
 PlayerDispDataBBPreview PSOBBCharacterFile::to_preview() const {
   PlayerDispDataBBPreview pre;
   pre.level = this->disp.stats.level;
-  pre.experience = this->disp.stats.experience;
+  pre.exp = this->disp.stats.exp;
   pre.visual = this->disp.visual;
   pre.name = this->disp.name;
   pre.play_time_seconds = this->play_time_seconds;
@@ -1429,11 +1429,11 @@ void PSOBBCharacterFile::import_tethealla_material_usage(std::shared_ptr<const L
 
 void PSOBBCharacterFile::recompute_stats(std::shared_ptr<const LevelTable> level_table, bool reset_exp) {
   uint32_t level = this->disp.stats.level;
-  uint32_t exp = this->disp.stats.experience;
+  uint32_t exp = this->disp.stats.exp;
   level_table->reset_to_base(this->disp.stats, this->disp.visual.char_class);
   level_table->advance_to_level(this->disp.stats, level, this->disp.visual.char_class);
   if (!reset_exp) {
-    this->disp.stats.experience = exp;
+    this->disp.stats.exp = exp;
   }
 
   this->disp.stats.char_stats.atp += (this->get_material_usage(MaterialType::POWER) * 2);
