@@ -692,6 +692,7 @@ void send_guild_card_chunk_bb(shared_ptr<Client> c, size_t chunk_index) {
 }
 
 
+
 static bool is_battle_param_stream_file_for_blueballz(const string& filename) {
   return (filename == "BattleParamEntry.dat") ||
       (filename == "BattleParamEntry_on.dat") ||
@@ -701,31 +702,23 @@ static bool is_battle_param_stream_file_for_blueballz(const string& filename) {
       (filename == "BattleParamEntry_ep4_on.dat");
 }
 
-static shared_ptr<const string> bb_stream_file_data_for_client(shared_ptr<Client> c, const string& filename) {
+static string bb_stream_file_data_for_client(shared_ptr<Client> c) {
   auto s = c->require_server_state();
-
-  auto raw_data = s->bb_stream_files_cache->get_or_load("system/blueburst/" + filename).file->data;
 
   int64_t effective_blueballz_hp_scale_tier = (c->selected_blueballz_tier >= 0)
       ? c->selected_blueballz_tier
       : s->blueballz_enemy_hp_scale_tier;
 
-  if (!is_battle_param_stream_file_for_blueballz(filename) || (effective_blueballz_hp_scale_tier < 0)) {
-    return raw_data;
+  if (effective_blueballz_hp_scale_tier < 0) {
+    return s->bb_stream_file->data;
   }
 
   effective_blueballz_hp_scale_tier = std::min<int64_t>(
       s->blueballz_max_tier,
       effective_blueballz_hp_scale_tier);
 
-  string scaled_data = *raw_data;
-  if (scaled_data.size() < sizeof(BattleParamsIndex::Table)) {
-    c->log.warning_f("Blueballz enemy HP scaling skipped for {}; file is too small", filename);
-    return raw_data;
-  }
-
+  string scaled_data = s->bb_stream_file->data;
   double mult = 1.0 + (static_cast<double>(effective_blueballz_hp_scale_tier) * 0.25);
-  auto* table = reinterpret_cast<BattleParamsIndex::Table*>(scaled_data.data());
   size_t ultimate_index = static_cast<size_t>(Difficulty::ULTIMATE);
 
   auto scale_u16 = [mult](uint32_t v) -> uint16_t {
@@ -742,28 +735,39 @@ static shared_ptr<const string> bb_stream_file_data_for_client(shared_ptr<Client
     return static_cast<uint16_t>(scaled);
   };
 
-  for (size_t z = 0; z < 0x60; z++) {
-    auto& stats = table->stats[ultimate_index][z];
-    stats.char_stats.hp = scale_u16(stats.char_stats.hp);
+  for (const auto& sf_entry : s->bb_stream_file->entries) {
+    if (!is_battle_param_stream_file_for_blueballz(sf_entry.filename)) {
+      continue;
+    }
+
+    if ((sf_entry.offset > scaled_data.size()) ||
+        (sf_entry.size > (scaled_data.size() - sf_entry.offset))) {
+      c->log.warning_f("Blueballz enemy HP scaling skipped for {}; invalid stream-file range",
+          sf_entry.filename);
+      continue;
+    }
+
+    if (sf_entry.size < sizeof(BattleParamsIndex::Table)) {
+      c->log.warning_f("Blueballz enemy HP scaling skipped for {}; file is too small",
+          sf_entry.filename);
+      continue;
+    }
+
+    auto* table = reinterpret_cast<BattleParamsIndex::Table*>(
+        scaled_data.data() + sf_entry.offset);
+
+    for (size_t z = 0; z < 0x60; z++) {
+      auto& stats = table->stats[ultimate_index][z];
+      stats.char_stats.hp = scale_u16(stats.char_stats.hp);
+    }
+
+    c->log.info_f("Blueballz enemy HP scaling: serving {} with tier {} ({:g}x Ultimate HP)",
+        sf_entry.filename, effective_blueballz_hp_scale_tier, mult);
   }
 
-  c->log.info_f("Blueballz enemy HP scaling: serving {} with tier {} ({:g}x Ultimate HP)",
-      filename, effective_blueballz_hp_scale_tier, mult);
-
-  return make_shared<string>(std::move(scaled_data));
+  return scaled_data;
 }
 
-static const vector<string> stream_file_entries = {
-    "ItemMagEdit.prs",
-    "ItemPMT.prs",
-    "BattleParamEntry.dat",
-    "BattleParamEntry_on.dat",
-    "BattleParamEntry_lab.dat",
-    "BattleParamEntry_lab_on.dat",
-    "BattleParamEntry_ep4.dat",
-    "BattleParamEntry_ep4_on.dat",
-    "PlyLevelTbl.prs",
-};
 
 void send_stream_file_index_bb(shared_ptr<Client> c) {
   auto s = c->require_server_state();
@@ -771,15 +775,19 @@ void send_stream_file_index_bb(shared_ptr<Client> c) {
   c->log.info_f("PSO Peeps BBZ stream debug: send_stream_file_index_bb called");
 
   vector<S_StreamFileIndexEntry_BB_01EB> entries;
-  size_t offset = 0;
-  for (const string& filename : stream_file_entries) {
-    auto file_data = bb_stream_file_data_for_client(c, filename);
+  string contents = bb_stream_file_data_for_client(c);
+  for (const auto& sf_entry : s->bb_stream_file->entries) {
+    if ((sf_entry.offset > contents.size()) ||
+        (sf_entry.size > (contents.size() - sf_entry.offset))) {
+      throw runtime_error("invalid BB stream file entry range");
+    }
+
     auto& e = entries.emplace_back();
-    e.size = file_data->size();
-    e.checksum = crc32(file_data->data(), e.size);
-    e.offset = offset;
-    e.filename.encode(filename);
-    offset += e.size;
+    e.size = sf_entry.size;
+    e.checksum = crc32(contents.data() + sf_entry.offset, e.size);
+    e.offset = sf_entry.offset;
+    e.filename.encode(sf_entry.filename);
+
   }
   send_command_vt(c, 0x01EB, entries.size(), entries);
 }
@@ -787,18 +795,7 @@ void send_stream_file_index_bb(shared_ptr<Client> c) {
 void send_stream_file_chunk_bb(shared_ptr<Client> c, uint32_t chunk_index) {
   auto s = c->require_server_state();
 
-  c->log.info_f("PSO Peeps BBZ stream debug: send_stream_file_chunk_bb called for chunk {}", chunk_index);
-
-  size_t total_bytes = 0;
-  for (const auto& name : stream_file_entries) {
-    total_bytes += bb_stream_file_data_for_client(c, name)->size();
-  }
-
-  string contents;
-  contents.reserve(total_bytes);
-  for (const auto& name : stream_file_entries) {
-    contents += *bb_stream_file_data_for_client(c, name);
-  }
+  string contents = bb_stream_file_data_for_client(c);
 
   S_StreamFileChunk_BB_02EB chunk_cmd;
   chunk_cmd.chunk_index = chunk_index;
@@ -808,6 +805,7 @@ void send_stream_file_chunk_bb(shared_ptr<Client> c, uint32_t chunk_index) {
   }
   size_t bytes = min<size_t>(contents.size() - offset, sizeof(chunk_cmd.data));
   chunk_cmd.data.assign_range(reinterpret_cast<const uint8_t*>(contents.data() + offset), bytes, 0);
+
 
   size_t cmd_size = offsetof(S_StreamFileChunk_BB_02EB, data) + bytes;
   cmd_size = (cmd_size + 3) & ~3;

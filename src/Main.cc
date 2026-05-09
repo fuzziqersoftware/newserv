@@ -2387,6 +2387,47 @@ Action a_compare_common_item_set(
       cs1->print_diff(stdout, *cs2);
     });
 
+Action a_decode_item_parameter_table(
+    "decode-item-parameter-table", "\
+  decode-item-parameter-table [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS...]\n\
+    Converts an ItemPMT file into a JSON item parameter table. A version\n\
+    option is required. Use --hex to make item codes in the output readable;\n\
+    however, this option also uses nonstandard JSON syntax - newserv can parse\n\
+    it, but many other JSON parsers can\'t. Expects compressed input (a .prs\n\
+    file) by default; use --decompressed if the input is not compressed.\n",
+    +[](phosg::Arguments& args) {
+      auto input_data = read_input_data(args);
+      if (!args.get<bool>("decompressed")) {
+        input_data = prs_decompress(input_data);
+      }
+      auto data = std::make_shared<string>(std::move(input_data));
+      auto pmt = ItemParameterTable::from_binary(data, get_cli_version(args, Version::BB_V4));
+      auto json = pmt->json();
+      uint32_t serialize_options = phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS;
+      if (args.get<bool>("hex")) {
+        serialize_options |= phosg::JSON::SerializeOption::HEX_INTEGERS;
+      }
+      string json_data = json.serialize(serialize_options);
+      write_output_data(args, json_data.data(), json_data.size(), nullptr);
+    });
+
+Action a_encode_item_parameter_table(
+    "encode-item-parameter-table", "\
+  encode-item-parameter-table [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS...]\n\
+    Converts a JSON item parameter table into an ItemPMT file compatible with\n\
+    the game client. A version option is required. By default the output will\n\
+    be compressed, as the client expects; use --decompressed to get\n\
+    uncompressed output.\n",
+    +[](phosg::Arguments& args) {
+      auto json = phosg::JSON::parse(read_input_data(args));
+      auto pmt = ItemParameterTable::from_json(json);
+      string data = pmt->serialize_binary(get_cli_version(args, Version::BB_V4));
+      if (!args.get<bool>("decompressed")) {
+        data = prs_compress_optimal(data);
+      }
+      write_output_data(args, data.data(), data.size(), nullptr);
+    });
+
 Action a_describe_item(
     "describe-item", "\
   describe-item DATA-OR-DESCRIPTION\n\

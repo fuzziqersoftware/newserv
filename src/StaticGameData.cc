@@ -478,8 +478,8 @@ Language language_for_name(const string& name) {
 }
 
 const vector<string> tech_id_to_name = {
-    "foie", "gifoie", "rafoie", "barta", "gibarta", "rabarta", "zonde", "gizonde", "razonde", "grants", "deband",
-    "jellen", "zalure", "shifta", "ryuker", "resta", "anti", "reverser", "megid"};
+    "Foie", "Gifoie", "Rafoie", "Barta", "Gibarta", "Rabarta", "Zonde", "Gizonde", "Razonde", "Grants", "Deband",
+    "Jellen", "Zalure", "Shifta", "Ryuker", "Resta", "Anti", "Reverser", "Megid"};
 
 const unordered_map<string, uint8_t> name_to_tech_id = {
     {"foie", 0}, {"gifoie", 1}, {"rafoie", 2}, {"barta", 3}, {"gibarta", 4}, {"rabarta", 5}, {"zonde", 6},
@@ -497,7 +497,7 @@ const string& name_for_technique(uint8_t tech) {
 
 uint8_t technique_for_name(const string& name) {
   try {
-    return name_to_tech_id.at(name);
+    return name_to_tech_id.at(phosg::tolower(name));
   } catch (const out_of_range&) {
   }
   try {

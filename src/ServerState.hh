@@ -65,6 +65,17 @@ struct CheatFlags {
   explicit CheatFlags(const phosg::JSON& json);
 };
 
+struct BBStreamFile {
+  struct Entry {
+    uint32_t offset;
+    uint32_t size;
+    uint32_t checksum; // crc32
+    std::string filename;
+  };
+  std::vector<Entry> entries;
+  std::string data;
+};
+
 struct ServerState : public std::enable_shared_from_this<ServerState> {
   enum class RunShellBehavior {
     DEFAULT = 0,
@@ -188,7 +199,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::unordered_map<uint64_t, std::shared_ptr<const SuperMap>> supermap_for_source_hash_sum;
   std::unordered_map<uint32_t, std::shared_ptr<const SuperMap>> supermap_for_free_play_key;
   std::shared_ptr<const RoomLayoutIndex> room_layout_index;
-  std::shared_ptr<FileContentsCache> bb_stream_files_cache;
+  std::shared_ptr<const BBStreamFile> bb_stream_file;
   std::shared_ptr<FileContentsCache> bb_system_cache;
   std::shared_ptr<FileContentsCache> gba_files_cache;
   std::shared_ptr<const DOLFileIndex> dol_file_index;
@@ -450,6 +461,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void load_quest_index(bool raise_on_any_failure = false);
   void compile_functions(bool raise_on_any_failure = false);
   void load_dol_files();
+  void generate_bb_stream_file();
 
   void load_all(bool enable_thread_pool);
 

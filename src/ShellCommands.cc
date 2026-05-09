@@ -211,14 +211,17 @@ ShellCommand c_reload(
           args.s->load_set_data_tables();
         } else if (type == "battle-params") {
           args.s->load_battle_params();
+          args.s->generate_bb_stream_file();
         } else if (type == "level-tables") {
           args.s->load_level_tables();
+          args.s->generate_bb_stream_file();
         } else if (type == "text-index") {
           args.s->load_text_index();
         } else if (type == "word-select") {
           args.s->load_word_select_table();
         } else if (type == "item-definitions") {
           args.s->load_item_definitions();
+          args.s->generate_bb_stream_file();
         } else if (type == "item-name-index") {
           args.s->load_item_name_indexes();
         } else if (type == "drop-tables") {
