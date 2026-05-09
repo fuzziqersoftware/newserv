@@ -1,7 +1,9 @@
 #pragma once
 
 #include <phosg/Encoding.hh>
+#include <phosg/Strings.hh>
 #include <phosg/Vector.hh>
+#include <set>
 
 #include "Text.hh"
 
@@ -160,3 +162,23 @@ struct RELFileFooterT {
 } __packed_ws_be__(RELFileFooterT, 0x20);
 using RELFileFooter = RELFileFooterT<false>;
 using RELFileFooterBE = RELFileFooterT<true>;
+
+template <bool BE>
+std::set<uint32_t> all_relocation_offsets_for_rel_file(const void* data, size_t size) {
+  phosg::StringReader r(data, size);
+
+  std::set<uint32_t> ret;
+  ret.emplace(r.size() - 0x20); // REL footer
+  ret.emplace(r.pget<U32T<BE>>(r.size() - 0x10)); // root
+  ret.emplace(r.pget<U32T<BE>>(r.size() - 0x20)); // relocations
+
+  const auto& footer = r.pget<RELFileFooterT<BE>>(r.size() - sizeof(RELFileFooterT<BE>));
+  auto sub_r = r.sub(footer.relocations_offset, footer.num_relocations * sizeof(U16T<BE>));
+  uint32_t offset = 0;
+  while (!sub_r.eof()) {
+    offset += sub_r.template get<U16T<BE>>() * 4;
+    ret.emplace(r.pget<U32T<BE>>(offset));
+  }
+
+  return ret;
+}

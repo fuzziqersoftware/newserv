@@ -2902,21 +2902,10 @@ public:
   }
 
   const std::set<uint32_t>& all_start_offsets() const {
-    if (!this->start_offsets.has_value()) {
-      auto& ret = this->start_offsets.emplace();
-      ret.emplace(r.size() - 0x20); // REL footer
-      ret.emplace(BE ? r.pget_u32b(r.size() - 0x10) : r.pget_u32l(r.size() - 0x10)); // root
-      ret.emplace(BE ? r.pget_u32b(r.size() - 0x20) : r.pget_u32l(r.size() - 0x20)); // relocations
-
-      const auto& footer = r.pget<RELFileFooterT<BE>>(r.size() - sizeof(RELFileFooterT<BE>));
-      auto sub_r = r.sub(footer.relocations_offset, footer.num_relocations * sizeof(U16T<BE>));
-      uint32_t offset = 0;
-      while (!sub_r.eof()) {
-        offset += sub_r.template get<U16T<BE>>() * 4;
-        ret.emplace(r.pget<U32T<BE>>(offset));
-      }
+    if (this->start_offsets.empty()) {
+      this->start_offsets = all_relocation_offsets_for_rel_file<BE>(r.pgetv(0, r.size()), r.size());
     }
-    return *this->start_offsets;
+    return this->start_offsets;
   }
 
   size_t get_data_range_size(size_t start_offset) const {
@@ -3270,7 +3259,7 @@ protected:
   phosg::StringReader r;
   const RootT* root;
 
-  mutable std::optional<std::set<uint32_t>> start_offsets;
+  mutable std::set<uint32_t> start_offsets;
 
   mutable std::unordered_map<uint16_t, Weapon> weapons;
   mutable std::vector<ArmorOrShield> armors;
