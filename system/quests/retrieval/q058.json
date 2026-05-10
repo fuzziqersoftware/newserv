@@ -39,16 +39,16 @@
 
   // If this field is specified, it overrides the default common item table for the duration of the quest. The common
   // item table name must begin with either "common-table-" or "ItemPT-", and the corresponding file should be in
-  // system/item-tables/ and should be in .json, .afs, .gsl, or .gslb format. The file extension (.json, etc.) should
-  // not be included here. If you use this, make sure to set AllowedDropModes appropriately below so the CLIENT drop
-  // mode is not allowed (since the client won't use the custom table).
+  // system/tables/ and should be in .json, .afs, .gsl, or .gslb format. The file extension (.json, etc.) should not be
+  // included here. If you use this, make sure to set AllowedDropModes appropriately below so the CLIENT drop mode is
+  // not allowed (since the client won't use the custom table).
   // "CommonItemSetName": "common-table-custom1",
 
   // If this field is specified, it overrides the default rare item table for the duration of the quest. The rare item
   // table name must begin with either "rare-table-" or "ItemRT-". As for common item sets, the rare table must be in
-  // system/item-tables/. If it's in JSON format, the table name must end with -v1, -v2, -v3, or -v4. If you use this,
-  // make sure to set AllowedDropModes appropriately below so the CLIENT drop mode is not allowed (since the client
-  // won't use the custom table).
+  // system/tables/. If it's in JSON format, the table name must end with -v1, -v2, -v3, or -v4. If you use this, make
+  // sure to set AllowedDropModes appropriately below so the CLIENT drop mode is not allowed (since the client won't
+  // use the custom table).
   // "RareItemSetName": "rare-table-custom1",
 
   // If these fields are specified, they override the allowed drop modes and the default drop mode for the game when

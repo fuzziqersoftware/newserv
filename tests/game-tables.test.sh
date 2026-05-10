@@ -10,6 +10,16 @@ fi
 DIR=tests/game-tables
 PMT_PREFIX=$DIR/item-parameter-table
 
+echo "... (battle-params)"
+$EXECUTABLE decode-battle-params tests/game-tables/battle-params-ep1-on.dat tests/game-tables/battle-params-ep2-on.dat tests/game-tables/battle-params-ep4-on.dat tests/game-tables/battle-params-ep1-off.dat tests/game-tables/battle-params-ep2-off.dat tests/game-tables/battle-params-ep4-off.dat tests/game-tables/battle-params.json
+$EXECUTABLE encode-battle-params tests/game-tables/battle-params.json tests/game-tables/battle-params-encoded
+bindiff tests/game-tables/battle-params-ep1-on.dat tests/game-tables/battle-params-encoded_on.dat
+bindiff tests/game-tables/battle-params-ep2-on.dat tests/game-tables/battle-params-encoded_lab_on.dat
+bindiff tests/game-tables/battle-params-ep4-on.dat tests/game-tables/battle-params-encoded_ep4_on.dat
+bindiff tests/game-tables/battle-params-ep1-off.dat tests/game-tables/battle-params-encoded.dat
+bindiff tests/game-tables/battle-params-ep2-off.dat tests/game-tables/battle-params-encoded_lab.dat
+bindiff tests/game-tables/battle-params-ep4-off.dat tests/game-tables/battle-params-encoded_ep4.dat
+
 echo "... (level-table) BB"
 $EXECUTABLE decode-level-table --bb-v4 $DIR/level-table-bb-v4.expected.bin --decompressed $DIR/level-table-bb-v4.json --hex
 $EXECUTABLE encode-level-table-v4 $DIR/level-table-bb-v4.json $DIR/level-table-bb-v4.encoded.bin --decompressed
@@ -76,4 +86,4 @@ $EXECUTABLE encode-item-parameter-table --bb-v4 $PMT_PREFIX-bb-v4.json $PMT_PREF
 bindiff $PMT_PREFIX-bb-v4.expected.bin $PMT_PREFIX-bb-v4.encoded.bin
 
 echo "... clean up"
-rm -f $DIR/*.encoded.bin $DIR/*.json
+rm -f $DIR/*.encoded.bin $DIR/*.json $DIR/battle-params.json.enc* $DIR/battle-params-encoded*

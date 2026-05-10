@@ -3,6 +3,7 @@
 #include <inttypes.h>
 
 #include <phosg/Tools.hh>
+#include <set>
 
 #include "StaticGameData.hh"
 #include "Types.hh"
@@ -165,6 +166,7 @@ struct EnemyTypeDefinition {
   std::vector<uint8_t> bp_stats_indexes;
   std::vector<uint8_t> bp_attack_data_indexes;
   std::vector<uint8_t> bp_resist_data_indexes;
+  std::vector<uint8_t> bp_movement_data_indexes;
   // Note: movement data isn't bound as strongly to the enemy types; some enemies use many entries and some use none at
   // all, so we don't list them here. See notes/movement-data.txt for a listing of which enemies use which entries.
   const char* enum_name;
@@ -200,4 +202,7 @@ template <>
 EnemyType phosg::enum_for_name<EnemyType>(const char* name);
 
 const std::vector<EnemyType>& enemy_types_for_rare_table_index(Episode episode, uint8_t rt_index);
-const std::vector<EnemyType>& enemy_types_for_battle_param_stats_index(Episode episode, uint8_t bp_index);
+const std::set<EnemyType>& enemy_types_for_battle_param_stats_index(Episode episode, uint8_t bp_index);
+const std::set<EnemyType>& enemy_types_for_battle_param_attack_data_index(Episode episode, uint8_t bp_index);
+const std::set<EnemyType>& enemy_types_for_battle_param_resist_data_index(Episode episode, uint8_t bp_index);
+const std::set<EnemyType>& enemy_types_for_battle_param_movement_data_index(Episode episode, uint8_t bp_index);

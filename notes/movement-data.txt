@@ -127,7 +127,7 @@ MOVEMENT DATA 1E (YOWIE_DESERT)
 fparam1 = TODO: 59NL:005AEBC5; looks like an angle in degrees (range [0, 359])
 fparam2 = TODO: 59NL:005AEBEE
 
-MOVEMENT DATA 0D (DARK_BRINGER)
+MOVEMENT DATA 0D (CHAOS_BRINGER)
 fparam1 = TODO: 3OE1:FUN_80097F98; NNF: charge speed
 fparam2 = TODO: 3OE1:FUN_800983F8; NNF: movement speed
 fparam6 = TODO: 3OE1:80097F3C; NNF: Regular attack cooldown. Delay between going red and shooting.

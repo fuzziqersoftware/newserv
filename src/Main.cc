@@ -2473,7 +2473,38 @@ Action a_encode_level_table(
       write_output_data(args, data.data(), data.size(), nullptr);
     });
 
-Action a_find_rel_sectionr(
+Action a_decode_battle_params(
+    "decode-battle-params", nullptr,
+    +[](phosg::Arguments& args) {
+      auto data_on_ep1 = std::make_shared<std::string>(phosg::load_file(args.get<std::string>(1)));
+      auto data_on_ep2 = std::make_shared<std::string>(phosg::load_file(args.get<std::string>(2)));
+      auto data_on_ep4 = std::make_shared<std::string>(phosg::load_file(args.get<std::string>(3)));
+      auto data_off_ep1 = std::make_shared<std::string>(phosg::load_file(args.get<std::string>(4)));
+      auto data_off_ep2 = std::make_shared<std::string>(phosg::load_file(args.get<std::string>(5)));
+      auto data_off_ep4 = std::make_shared<std::string>(phosg::load_file(args.get<std::string>(6)));
+      BinaryBattleParamsIndex index(data_on_ep1, data_on_ep2, data_on_ep4, data_off_ep1, data_off_ep2, data_off_ep4);
+      auto json = index.json();
+      uint32_t serialize_options = phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS;
+      if (args.get<bool>("hex")) {
+        serialize_options |= phosg::JSON::SerializeOption::HEX_INTEGERS;
+      }
+      phosg::save_file(args.get<std::string>(7), json.serialize(serialize_options));
+    });
+
+Action a_encode_battle_params(
+    "encode-battle-params", nullptr,
+    +[](phosg::Arguments& args) {
+      JSONBattleParamsIndex index(phosg::JSON::parse(read_input_data(args)));
+      std::string pfx = args.get<string>(2);
+      phosg::save_file(pfx + "_on.dat", &index.get_table(false, Episode::EP1), sizeof(BattleParamsIndex::Table));
+      phosg::save_file(pfx + "_lab_on.dat", &index.get_table(false, Episode::EP2), sizeof(BattleParamsIndex::Table));
+      phosg::save_file(pfx + "_ep4_on.dat", &index.get_table(false, Episode::EP4), sizeof(BattleParamsIndex::Table));
+      phosg::save_file(pfx + ".dat", &index.get_table(true, Episode::EP1), sizeof(BattleParamsIndex::Table));
+      phosg::save_file(pfx + "_lab.dat", &index.get_table(true, Episode::EP2), sizeof(BattleParamsIndex::Table));
+      phosg::save_file(pfx + "_ep4.dat", &index.get_table(true, Episode::EP4), sizeof(BattleParamsIndex::Table));
+    });
+
+Action a_find_rel_section(
     "find-rel-sections", nullptr,
     +[](phosg::Arguments& args) {
       auto data = read_input_data(args);

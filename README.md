@@ -91,7 +91,7 @@ Some of the more likely useful files are:
 * **src/RareItemSet.hh/cc**: Format of ItemRT files (rare item drop tables)
 * **src/SaveFileFormats.hh**: Definitions of save file structures for all versions
 * **src/Episode3/DataIndexes.hh**: Episode 3 file structures, including card definition format and map/quest format
-* **system/item-tables/names-v4.json**: Names of all items, indexed by the first 3 bytes of data1
+* **system/tables/names-v4.json**: Names of all items, indexed by the first 3 bytes of data1
 
 ## Contributing to newserv
 
@@ -379,7 +379,7 @@ In the `private` and `duplicate` modes, there is no incentive to pick up items b
 
 The drop mode can be changed at any time during a game with the `$dropmode` chat command. If the mode is changed after some items have already been dropped, the existing items retain their visibility (that is, items dropped in private mode still can't be picked up by other players since they were dropped before the mode was changed). You can configure which drop modes are used by default, and which modes players are allowed to choose, in config.json. See the comments above the AllowedDropModes and DefaultDropMode keys.
 
-In the server drop modes, the item tables used to generate common items are in the `system/item-tables/ItemPT-*` files. (The V2 files are used for V1 as well.) The rare item tables are in the `rare-table-*.json` files. Unlike the original formats, it's possible to make each enemy drop multiple different rare items at different rates, though the default tables never do this.
+In the server drop modes, the item tables used to generate common items are in the `system/tables/common-table-*` files. The rare item tables are in the `rare-table-*.json` files. Unlike the original formats, it's possible to make each enemy drop multiple different rare items at different rates, though the default tables never do this.
 
 ## Cross-version play
 
