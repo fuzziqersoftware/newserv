@@ -472,7 +472,7 @@ public:
   virtual std::pair<const EventItem*, size_t> get_event_items(uint8_t event_number) const = 0;
 
   // unsealable_table accessors
-  virtual const std::unordered_set<uint32_t>& all_unsealable_items() const = 0;
+  virtual const std::set<uint32_t>& all_unsealable_items() const = 0;
   bool is_unsealable_item(uint8_t data1_0, uint8_t data1_1, uint8_t data1_2) const;
   bool is_unsealable_item(const ItemData& item) const;
 

@@ -1134,7 +1134,7 @@ public:
     return std::make_pair(event_table.data(), event_table.size());
   }
 
-  virtual const std::unordered_set<uint32_t>& all_unsealable_items() const {
+  virtual const std::set<uint32_t>& all_unsealable_items() const {
     return this->unsealable_items;
   }
 
@@ -1178,7 +1178,7 @@ protected:
   std::vector<SoundRemaps> sound_remaps;
   std::vector<TechBoost> tech_boosts;
   std::vector<std::vector<EventItem>> unwrap_table;
-  std::unordered_set<uint32_t> unsealable_items;
+  std::set<uint32_t> unsealable_items;
   std::vector<RangedSpecial> ranged_specials;
 };
 
@@ -2872,7 +2872,7 @@ public:
     }
   }
 
-  virtual const std::unordered_set<uint32_t>& all_unsealable_items() const {
+  virtual const std::set<uint32_t>& all_unsealable_items() const {
     if constexpr (requires { this->root->unsealable_table; }) {
       if (!this->unsealable_table.has_value()) {
         auto& ret = this->unsealable_table.emplace();
@@ -2884,7 +2884,7 @@ public:
       }
       return *this->unsealable_table;
     } else {
-      static const std::unordered_set<uint32_t> empty_set{};
+      static const std::set<uint32_t> empty_set{};
       return empty_set;
     }
   }
@@ -3215,7 +3215,7 @@ protected:
   // the matching order matters.
   mutable std::optional<std::map<uint32_t, std::vector<ItemCombination>>> item_combination_index;
 
-  mutable std::optional<std::unordered_set<uint32_t>> unsealable_table;
+  mutable std::optional<std::set<uint32_t>> unsealable_table;
 };
 
 using ItemParameterTableDCNTE = BinaryItemParameterTableT<
