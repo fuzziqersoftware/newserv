@@ -132,7 +132,7 @@ static void send_main_menu(shared_ptr<Client> c) {
 
   main_menu->items.emplace_back(MainMenuItemID::DOWNLOAD_QUESTS, "Download quests",
       "Download quests", MenuItem::Flag::INVISIBLE_ON_DC_PROTOS | MenuItem::Flag::INVISIBLE_ON_PC_NTE | MenuItem::Flag::INVISIBLE_ON_BB);
-  if (!s->function_code_index->patch_menu_empty(c->specific_version)) {
+  if (!s->client_functions->patch_menu_empty(c->specific_version)) {
     main_menu->items.emplace_back(MainMenuItemID::PATCH_SWITCHES, "Patches",
         "Change game\nbehaviors", MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL_RUNS_CODE);
   }
@@ -240,14 +240,14 @@ static asio::awaitable<void> send_auto_patches_if_needed(shared_ptr<Client> c) {
     c->set_flag(Client::Flag::HAS_AUTO_PATCHES);
     co_await prepare_client_for_patches(c);
 
-    unordered_set<shared_ptr<const CompiledFunctionCode>> functions_to_send;
+    unordered_set<shared_ptr<const ClientFunctionIndex::Function>> functions_to_send;
     if (c->version() == Version::BB_V4) {
       for (const auto& patch_name : s->bb_required_patches) {
         try {
-          functions_to_send.emplace(s->function_code_index->get_patch(patch_name, c->specific_version));
+          functions_to_send.emplace(s->client_functions->get(patch_name, c->specific_version));
         } catch (const out_of_range&) {
           string message = std::format(
-              "Your client is not compatible with a\nrequired patch on this server.\n\nClient version: {:08X}\nPatch name: {}", c->specific_version, patch_name);
+              "Your client is not compatible with a\nrequired patch on this server.\n\nClient version: {}\nPatch name: {}", str_for_specific_version(c->specific_version), patch_name);
           send_message_box(c, message);
           c->channel->disconnect();
           co_return;
@@ -256,18 +256,18 @@ static asio::awaitable<void> send_auto_patches_if_needed(shared_ptr<Client> c) {
     }
     for (const auto& patch_name : s->auto_patches) {
       try {
-        functions_to_send.emplace(s->function_code_index->get_patch(patch_name, c->specific_version));
+        functions_to_send.emplace(s->client_functions->get(patch_name, c->specific_version));
       } catch (const out_of_range&) {
-        c->log.warning_f("Server has auto patch {} enabled, but it is not available for specific_version {:08X}",
-            patch_name, c->specific_version);
+        c->log.warning_f("Server has auto patch {} enabled, but it is not available for specific_version {}",
+            patch_name, str_for_specific_version(c->specific_version));
       }
     }
     for (const auto& patch_name : c->login->account->auto_patches_enabled) {
       try {
-        functions_to_send.emplace(s->function_code_index->get_patch(patch_name, c->specific_version));
+        functions_to_send.emplace(s->client_functions->get(patch_name, c->specific_version));
       } catch (const out_of_range&) {
-        c->log.warning_f("Client has auto patch {} enabled, but it is not available for specific_version {:08X}",
-            patch_name, c->specific_version);
+        c->log.warning_f("Client has auto patch {} enabled, but it is not available for specific_version {}",
+            patch_name, str_for_specific_version(c->specific_version));
       }
     }
 
@@ -1319,7 +1319,7 @@ static asio::awaitable<void> on_9D_9E(shared_ptr<Client> c, Channel::Message& ms
     // not; we'll call on_login_complete once we receive the B3 response
     if (c->version() == Version::PC_V2) {
       try {
-        auto code = s->function_code_index->name_to_function.at("ReturnTokenX86");
+        auto code = s->client_functions->get("ReturnToken", SPECIFIC_VERSION_X86_INDETERMINATE);
         unordered_map<string, uint32_t> label_writes{{"token", c->login->account->account_id}};
         auto resp = co_await send_function_call(c, code, label_writes, nullptr, 0, 0x00400000, 0x0000E000, 0, true);
 
@@ -1342,7 +1342,8 @@ static asio::awaitable<void> on_9D_9E(shared_ptr<Client> c, Channel::Message& ms
           c->specific_version = SPECIFIC_VERSION_PC_V2_INDETERMINATE;
           c->log.info_f("Version cannot be determined from PE header checksum {:08X}", resp.checksum);
         }
-      } catch (const out_of_range&) {
+      } catch (const out_of_range& e) {
+        c->log.info_f("Cannot determine PSO PC specific version: {}", e.what());
       }
     }
     co_await on_login_complete(c);
@@ -2560,7 +2561,7 @@ static asio::awaitable<void> on_10_main_menu(shared_ptr<Client> c, uint32_t item
       // We have to prepare the client for patches here, even though we don't send them from this mennu, because we
       // need to know the client's specific_version before sending the menu.
       co_await prepare_client_for_patches(c);
-      send_menu(c, c->require_server_state()->function_code_index->patch_switches_menu(c->specific_version, s->auto_patches, c->login->account->auto_patches_enabled));
+      send_menu(c, c->require_server_state()->client_functions->patch_switches_menu(c->specific_version, s->auto_patches, c->login->account->auto_patches_enabled));
       break;
     }
 
@@ -2914,13 +2915,12 @@ static void on_10_patch_switches(shared_ptr<Client> c, uint32_t item_id) {
     }
 
     auto s = c->require_server_state();
-    uint64_t key = (static_cast<uint64_t>(item_id) << 32) | c->specific_version;
-    auto fn = s->function_code_index->menu_item_id_and_specific_version_to_patch_function.at(key);
+    auto fn = s->client_functions->get_by_menu_item_id(item_id);
     if (!c->login->account->auto_patches_enabled.emplace(fn->short_name).second) {
       c->login->account->auto_patches_enabled.erase(fn->short_name);
     }
     c->login->account->save();
-    send_menu(c, s->function_code_index->patch_switches_menu(c->specific_version, s->auto_patches, c->login->account->auto_patches_enabled));
+    send_menu(c, s->client_functions->patch_switches_menu(c->specific_version, s->auto_patches, c->login->account->auto_patches_enabled));
   }
 }
 

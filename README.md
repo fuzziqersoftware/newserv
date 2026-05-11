@@ -594,6 +594,7 @@ Some commands only work for clients not in proxy sessions. The chat commands are
         * You'll see in-game messages from the server when you take some actions, like killing enemies, opening boxes, or flipping switches.
         * You'll see the rare seed value and floor variations when you join a game.
         * You'll be placed into the last available slot in lobbies and games instead of the first, unless you're joining a BB solo-mode game.
+        * You'll be able to run any client function with `$patch`, not only those that are marked visible.
         * You'll be able to join games with any PSO version, not only those for which cross-version play is normally enabled. See the "Cross-version play" section above for details on this.
     * `$readmem <address>`: Read 4 bytes from the given address and show you the values.
     * `$writemem <address> <data>`: Write data to the given address. Data is not required to be any specific size.
@@ -622,7 +623,7 @@ Some commands only work for clients not in proxy sessions. The chat commands are
     * `$ln [name-or-type]`: Set the lobby number. Visible only to you. This command exists because some non-lobby maps can be loaded as lobbies with invalid lobby numbers. See the "GC lobby types" and "Ep3 lobby types" entries in the information menu for acceptable values here. Note that non-lobby maps do not have a lobby counter, so there's no way to exit the lobby without using either `$ln` again or `$exit`. On the game server, `$ln` reloads the lobby immediately; on the proxy, it doesn't take effect until you load another lobby yourself (which means you'll like have to use `$exit` to escape). Run this command with no argument to return to the default lobby.
     * `$swa`: Enable or disable switch assist. When enabled, the server will unlock two-player and four-player doors in non-quest games when you step on any of the required switches.
     * `$exit`: If you're in a lobby, send you to the main menu (which ends your proxy session, if you're in one). If you're in a game or spectator team, send you to the lobby (but does not end your proxy session if you're in one). Does nothing if you're in a non-Episode 3 game and no quest is in progress.
-    * `$patch <name>`: Run a patch on your client. `<name>` must exactly match the name of a patch on the server.
+    * `$patch <name>`: Run a client function. `<name>` must exactly match the name of a client function on the server.
 
 * Character data commands (non-proxy only)
     * `$switchchar <slot>` (BB only): Switch to a different character from your account without logging out.

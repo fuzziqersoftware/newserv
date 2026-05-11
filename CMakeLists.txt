@@ -60,10 +60,12 @@ set(SOURCES
     src/ChatCommands.cc
     src/ChoiceSearch.cc
     src/Client.cc
+    src/ClientFunctionIndex.cc
     src/CommonItemSet.cc
     src/Compression.cc
     src/DCSerialNumbers.cc
     src/DNSServer.cc
+    src/DOLFileIndex.cc
     src/DownloadSession.cc
     src/EnemyType.cc
     src/Episode3/AssistServer.cc
@@ -79,7 +81,6 @@ set(SOURCES
     src/Episode3/Server.cc
     src/Episode3/Tournament.cc
     src/FileContentsCache.cc
-    src/FunctionCompiler.cc
     src/GameServer.cc
     src/GSLArchive.cc
     src/HTTPServer.cc

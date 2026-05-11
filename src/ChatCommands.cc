@@ -1111,9 +1111,9 @@ ChatCommandDefinition cc_exit(
           a.c->check_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE)) {
         co_await prepare_client_for_patches(a.c);
         auto s = a.c->require_server_state();
-        shared_ptr<const CompiledFunctionCode> fn;
+        shared_ptr<const ClientFunctionIndex::Function> fn;
         try {
-          fn = s->function_code_index->get_patch("ExitAnywhere", a.c->specific_version);
+          fn = s->client_functions->get("ExitAnywhere", a.c->specific_version);
         } catch (const out_of_range&) {
         }
         if (fn) {
@@ -1571,7 +1571,7 @@ ChatCommandDefinition cc_loadchar(
         auto send_set_extended_player_info = [&a, &s]<typename CharT>(const CharT& char_file) -> asio::awaitable<void> {
           co_await prepare_client_for_patches(a.c);
           try {
-            auto fn = s->function_code_index->get_patch("SetExtendedPlayerInfo", a.c->specific_version);
+            auto fn = s->client_functions->get("SetExtendedPlayerInfo", a.c->specific_version);
             co_await send_function_call(a.c, fn, {}, &char_file, sizeof(CharT));
             auto l = a.c->lobby.lock();
             if (l) {
@@ -1707,7 +1707,7 @@ ChatCommandDefinition cc_makeobj(
 
       co_await prepare_client_for_patches(a.c);
       auto s = a.c->require_server_state();
-      auto fn = s->function_code_index->get_patch("CreateObject", a.c->specific_version);
+      auto fn = s->client_functions->get("CreateObject", a.c->specific_version);
       co_await send_function_call(a.c, fn, label_writes);
     });
 
@@ -1847,14 +1847,31 @@ ChatCommandDefinition cc_patch(
       try {
         auto s = a.c->require_server_state();
         // Note: We can't look this up before prepare_client_for_patches because specific_version may not be set
-        auto fn = s->function_code_index->get_patch(patch_name, a.c->specific_version);
+        auto fn = s->client_functions->get(patch_name, a.c->specific_version);
+
+        switch (fn->visibility) {
+          case ClientFunctionIndex::Function::Visibility::DEBUG_ONLY:
+          case ClientFunctionIndex::Function::Visibility::PATCHES_MENU_ONLY:
+            a.check_debug_enabled();
+            break;
+          case ClientFunctionIndex::Function::Visibility::CHAT_COMMAND_ONLY_WITH_CHEAT_MODE:
+            a.check_cheats_enabled_or_allowed(true);
+            break;
+          case ClientFunctionIndex::Function::Visibility::CHAT_COMMAND_ONLY:
+          case ClientFunctionIndex::Function::Visibility::PATCHES_MENU_AND_CHAT_COMMAND:
+            break;
+          default:
+            throw std::logic_error("Invalid client function visibility");
+        }
+
         auto ret = co_await send_function_call(a.c, fn, label_writes);
         if (fn->show_return_value) {
           send_text_message_fmt(a.c, "$C6Return value:$C7\nInt: {}\nHex: {:08X}\nFloat: {:g}",
               ret.return_value.load(), ret.return_value.load(), std::bit_cast<float>(ret.return_value.load()));
         }
+
       } catch (const out_of_range&) {
-        send_text_message(a.c, "$C6Invalid patch name");
+        send_text_message(a.c, "$C6Invalid function");
       }
       co_return;
     });
@@ -2277,15 +2294,10 @@ ChatCommandDefinition cc_readmem(
 
       co_await prepare_client_for_patches(a.c);
 
-      shared_ptr<const CompiledFunctionCode> fn;
+      shared_ptr<const ClientFunctionIndex::Function> fn;
       try {
         auto s = a.c->require_server_state();
-        const char* function_name = is_dc(a.c->version())
-            ? "ReadMemoryWordDC"
-            : is_gc(a.c->version())
-            ? "ReadMemoryWordGC"
-            : "ReadMemoryWordX86";
-        fn = s->function_code_index->name_to_function.at(function_name);
+        fn = s->client_functions->get("ReadMemoryWord", a.c->specific_version);
       } catch (const out_of_range&) {
         throw precondition_failed("Invalid patch name");
       }
@@ -3139,12 +3151,7 @@ ChatCommandDefinition cc_writemem(
 
       try {
         auto s = a.c->require_server_state();
-        const char* function_name = is_dc(a.c->version())
-            ? "WriteMemoryDC"
-            : is_gc(a.c->version())
-            ? "WriteMemoryGC"
-            : "WriteMemoryX86";
-        auto fn = s->function_code_index->name_to_function.at(function_name);
+        auto fn = s->client_functions->get("WriteMemory", a.c->specific_version);
         unordered_map<string, uint32_t> label_writes{{"dest_addr", addr}, {"size", data.size()}};
         co_await send_function_call(a.c, fn, label_writes, data.data(), data.size());
       } catch (const out_of_range&) {
@@ -3184,12 +3191,7 @@ ChatCommandDefinition cc_nativecall(
 
       try {
         auto s = a.c->require_server_state();
-        const char* function_name = is_dc(a.c->version())
-            ? "CallNativeFunctionDC"
-            : is_gc(a.c->version())
-            ? "CallNativeFunctionGC"
-            : "CallNativeFunctionX86";
-        auto fn = s->function_code_index->name_to_function.at(function_name);
+        auto fn = s->client_functions->get("CallNativeFunction", a.c->specific_version);
         co_await send_function_call(a.c, fn, label_writes);
       } catch (const out_of_range&) {
         throw precondition_failed("Invalid patch name");

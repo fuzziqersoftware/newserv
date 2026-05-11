@@ -9,8 +9,8 @@
 #include <unordered_set>
 
 #include "Client.hh"
+#include "ClientFunctionIndex.hh"
 #include "CommandFormats.hh"
-#include "FunctionCompiler.hh"
 #include "Lobby.hh"
 #include "Menu.hh"
 #include "Quest.hh"
@@ -150,7 +150,7 @@ void send_patch_change_to_directory(
 
 asio::awaitable<void> prepare_client_for_patches(std::shared_ptr<Client> c);
 std::string prepare_send_function_call_data(
-    std::shared_ptr<const CompiledFunctionCode> code,
+    std::shared_ptr<const ClientFunctionIndex::Function> code,
     const std::unordered_map<std::string, uint32_t>& label_writes,
     const void* suffix_data,
     size_t suffix_size,
@@ -163,7 +163,7 @@ std::string prepare_send_function_call_data(
 void send_function_call(
     std::shared_ptr<Channel> ch,
     uint64_t client_enabled_flags,
-    std::shared_ptr<const CompiledFunctionCode> code,
+    std::shared_ptr<const ClientFunctionIndex::Function> code,
     const std::unordered_map<std::string, uint32_t>& label_writes = {},
     const void* suffix_data = nullptr,
     size_t suffix_size = 0,
@@ -173,7 +173,7 @@ void send_function_call(
     bool ignore_actually_runs_code_flag = false);
 asio::awaitable<C_ExecuteCodeResult_B3> send_function_call(
     std::shared_ptr<Client> c,
-    std::shared_ptr<const CompiledFunctionCode> code,
+    std::shared_ptr<const ClientFunctionIndex::Function> code,
     const std::unordered_map<std::string, uint32_t>& label_writes = {},
     const void* suffix_data = nullptr,
     size_t suffix_size = 0,
@@ -182,7 +182,7 @@ asio::awaitable<C_ExecuteCodeResult_B3> send_function_call(
     uint32_t override_relocations_offset = 0,
     bool ignore_actually_runs_code_flag = false);
 asio::awaitable<void> send_function_call_multi(
-    std::shared_ptr<Client> c, std::unordered_set<std::shared_ptr<const CompiledFunctionCode>> codes);
+    std::shared_ptr<Client> c, std::unordered_set<std::shared_ptr<const ClientFunctionIndex::Function>> codes);
 asio::awaitable<bool> send_protected_command(std::shared_ptr<Client> c, const void* data, size_t size, bool echo_to_lobby);
 asio::awaitable<void> send_dol_file(std::shared_ptr<Client> c, std::shared_ptr<DOLFileIndex::File> dol);
 

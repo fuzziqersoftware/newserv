@@ -2231,7 +2231,7 @@ void ServerState::load_quest_index(bool raise_on_any_failure) {
 
 void ServerState::compile_functions(bool raise_on_any_failure) {
   config_log.info_f("Compiling client functions");
-  this->function_code_index = make_shared<FunctionCodeIndex>("system/client-functions", raise_on_any_failure);
+  this->client_functions = make_shared<ClientFunctionIndex>("system/client-functions", raise_on_any_failure);
 }
 
 void ServerState::load_dol_files() {

@@ -11,11 +11,12 @@
 
 #include "Account.hh"
 #include "Client.hh"
+#include "ClientFunctionIndex.hh"
 #include "CommonItemSet.hh"
 #include "DNSServer.hh"
+#include "DOLFileIndex.hh"
 #include "Episode3/DataIndexes.hh"
 #include "Episode3/Tournament.hh"
-#include "FunctionCompiler.hh"
 #include "GSLArchive.hh"
 #include "IPV4RangeSet.hh"
 #include "ItemNameIndex.hh"
@@ -183,7 +184,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> bb_private_keys;
   std::shared_ptr<const parray<uint8_t, 0x16C>> bb_default_keyboard_config;
   std::shared_ptr<const parray<uint8_t, 0x38>> bb_default_joystick_config;
-  std::shared_ptr<const FunctionCodeIndex> function_code_index;
+  std::shared_ptr<const ClientFunctionIndex> client_functions;
   std::shared_ptr<const PatchFileIndex> pc_patch_file_index;
   std::shared_ptr<const PatchFileIndex> bb_patch_file_index;
   std::unordered_map<uint64_t, std::shared_ptr<const MapFile>> map_file_for_source_hash;

@@ -175,7 +175,7 @@
     "CommandData": "ERROR",
     "Config": "WARNING",
     "DNSServer": "WARNING",
-    "FunctionCompiler": "WARNING",
+    "ClientFunctionIndex": "WARNING",
     "IPStackSimulator": "WARNING",
     "Lobbies": "WARNING",
     "Replay": "INFO",

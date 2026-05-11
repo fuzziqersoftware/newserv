@@ -177,9 +177,9 @@
     // DNS server messages describe erroneous queries that the DNS server does not respond to. Normal DNS queries do
     // not generate any log messages.
     "DNSServer": "INFO",
-    // Function compiler messages are generated when building client functions, which only happens at startup time or
-    // when `reload functions` is used in the shell.
-    "FunctionCompiler": "INFO",
+    // Client function index messages are generated when building client functions, which only happens at startup time
+    // or when `reload functions` is used in the shell.
+    "ClientFunctionIndex": "INFO",
     // IP stack simulator messages describe clients connecting and disconnecting via the IP stack interface, and errors
     // that occur at the simulated network level within the simulator.
     "IPStackSimulator": "INFO",

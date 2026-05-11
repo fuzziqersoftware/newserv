@@ -184,6 +184,10 @@ constexpr bool uses_utf16(Version version) {
       (version == Version::BB_V4);
 }
 
+constexpr uint32_t SPECIFIC_VERSION_SH4_INDETERMINATE = 0x53483400; // SH4_
+constexpr uint32_t SPECIFIC_VERSION_PPC_INDETERMINATE = 0x50504300; // PPC_
+constexpr uint32_t SPECIFIC_VERSION_X86_INDETERMINATE = 0x58383600; // X86_
+
 constexpr uint32_t SPECIFIC_VERSION_DC_NTE = 0x314F4A31; // 1OJ1
 constexpr uint32_t SPECIFIC_VERSION_DC_11_2000_PROTOTYPE = 0x314F4A32; // 1OJ2
 constexpr uint32_t SPECIFIC_VERSION_DC_V1_JP = 0x314F4A46; // 1OJF
@@ -220,6 +224,7 @@ bool specific_version_is_gc(uint32_t specific_version);
 bool specific_version_is_xb(uint32_t specific_version);
 bool specific_version_is_bb(uint32_t specific_version);
 
+uint32_t specific_version_for_str(const std::string& specific_version);
 std::string str_for_specific_version(uint32_t specific_version);
 
 enum class ServerBehavior {

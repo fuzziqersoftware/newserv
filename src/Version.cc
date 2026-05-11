@@ -140,7 +140,7 @@ uint32_t default_sub_version_for_version(Version version) {
 uint32_t default_specific_version_for_version(Version version, int64_t sub_version) {
   // For versions that don't support send_function_call by default, we need to set the specific_version based on
   // sub_version. Fortunately, all versions that share sub_version values also support send_function_call, so for those
-  // versions we get the specific_version later by sending VersionDetectDC, VersionDetectGC, or VersionDetectXB.
+  // versions we get the specific_version later by sending VersionDetect.
   switch (version) {
     case Version::DC_NTE:
       return SPECIFIC_VERSION_DC_NTE; // 1OJ1 (NTE)
@@ -159,7 +159,7 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
           return SPECIFIC_VERSION_DC_V1_INDETERMINATE;
       }
     case Version::DC_V2:
-      return SPECIFIC_VERSION_DC_V2_INDETERMINATE; // 2___; need to send VersionDetectDC
+      return SPECIFIC_VERSION_DC_V2_INDETERMINATE; // 2___; need to send VersionDetect
     case Version::PC_NTE:
       return SPECIFIC_VERSION_PC_V2_NTE; // 2OJT
     case Version::PC_V2:
@@ -184,7 +184,7 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
         case 0x30: // GC Ep1&2 GameJam demo, GC Ep1&2 Trial Edition, GC Ep1&2 JP v1.2, at least one version of PSO XB
         case 0x31: // GC Ep1&2 US v1.0, GC US v1.1, XB US
         default:
-          return SPECIFIC_VERSION_GC_V3_INDETERMINATE; // 3O__; need to send VersionDetectGC
+          return SPECIFIC_VERSION_GC_V3_INDETERMINATE; // 3O__; need to send VersionDetect
       }
       throw logic_error("this should be impossible");
     case Version::GC_EP3_NTE:
@@ -199,10 +199,10 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
         case -1: // Initial check (before sub_version recognition)
         case 0x40: // GC Ep3 trial and GC Ep3 JP
         default:
-          return SPECIFIC_VERSION_GC_EP3_INDETERMINATE; // 3SJ_; need to send VersionDetectGC
+          return SPECIFIC_VERSION_GC_EP3_INDETERMINATE; // 3SJ_; need to send VersionDetect
       }
     case Version::XB_V3:
-      return SPECIFIC_VERSION_XB_V3_INDETERMINATE; // 4O__; need to send VersionDetectXB
+      return SPECIFIC_VERSION_XB_V3_INDETERMINATE; // 4O__; need to send VersionDetect
     case Version::BB_V4:
       return SPECIFIC_VERSION_BB_V4_INDETERMINATE; // 5___; we should be able to determine version from initial login
     default:
@@ -242,6 +242,23 @@ bool specific_version_is_xb(uint32_t specific_version) {
 bool specific_version_is_bb(uint32_t specific_version) {
   // BB specific_versions are 5XXX, where X is an encoding of the revision number
   return ((specific_version & 0xFF000000) == 0x35000000);
+}
+
+uint32_t specific_version_for_str(const std::string& s) {
+  switch (s.size()) {
+    case 0:
+      return 0;
+    case 1:
+      return (s[0] << 24);
+    case 2:
+      return (s[0] << 24) | (s[1] << 16);
+    case 3:
+      return (s[0] << 24) | (s[1] << 16) | (s[2] << 8);
+    case 4:
+      return (s[0] << 24) | (s[1] << 16) | (s[2] << 8) | s[3];
+    default:
+      throw std::runtime_error("Invalid specific_version string");
+  }
 }
 
 string str_for_specific_version(uint32_t specific_version) {

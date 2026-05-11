@@ -27,6 +27,7 @@
 #include "Compression.hh"
 #include "DCSerialNumbers.hh"
 #include "DNSServer.hh"
+#include "DOLFileIndex.hh"
 #include "DownloadSession.hh"
 #include "GSLArchive.hh"
 #include "GameServer.hh"
@@ -1751,18 +1752,22 @@ Action a_assemble_quest_script(
       write_output_data(args, result_data.data(), result_data.size(), compress ? "bin" : "bind");
     });
 
-Action a_assemble_all_patches(
-    "assemble-all-patches", "\
-  assemble-all-patches [--skip-encrypted]\n\
+Action a_assemble_all_client_functions(
+    "assemble-all-client-functions", "\
+  assemble-all-client-functions [--skip-encrypted] OUTPUT-DIRECTORY\n\
     Assemble all patches in the system/client-functions directory, and produce\n\
-    two compiled .bin files for each patch (one unencrypted, for most PSO\n\
+    two compiled .bin files for each patch: one unencrypted, for most PSO\n\
     versions, and one encrypted, for PSO GC JP v1.4, JP Ep3, and Ep3 Trial\n\
-    Edition). The output files are saved in system/client-functions.\n",
+    Edition. If --skip-encrypted is given, only the unencrypted .bin files are\n\
+    created.\n",
     +[](phosg::Arguments& args) {
-      auto fci = make_shared<FunctionCodeIndex>("system/client-functions", false);
+      auto fci = make_shared<ClientFunctionIndex>("system/client-functions", false);
+
+      const std::string& output_dir = args.get<string>(1);
+      std::filesystem::create_directories(output_dir);
 
       bool skip_encrypted = args.get<bool>("skip-encrypted");
-      auto process_code = [&](shared_ptr<const CompiledFunctionCode> code,
+      auto process_code = [&](shared_ptr<const ClientFunctionIndex::Function> code,
                               uint32_t checksum_addr,
                               uint32_t checksum_size,
                               uint32_t override_start_addr) -> void {
@@ -1775,34 +1780,18 @@ Action a_assemble_all_patches(
               code, {}, nullptr, 0, checksum_addr, checksum_size, override_start_addr, encrypted);
           w.put(PSOCommandHeaderDCV3{.command = 0xB2, .flag = 0x00, .size = data.size() + 4});
           w.write(data);
-          string out_path = std::format("{}.{}.{}.bin",
-              code->source_path, str_for_specific_version(code->specific_version), (encrypted ? "enc" : "std"));
+          string out_path = std::format("{}/{}.{}.{}.bin",
+              output_dir, code->short_name, str_for_specific_version(code->specific_version), (encrypted ? "enc" : "std"));
           phosg::save_file(out_path, w.str());
           phosg::fwrite_fmt(stderr, "... {}\n", out_path);
         }
       };
 
-      for (const auto& it : fci->name_and_specific_version_to_patch_function) {
-        process_code(it.second, 0, 0, 0);
+      for (const auto& [_, fn] : fci->all_functions) {
+        process_code(fn, 0, 0, 0);
       }
       try {
-        process_code(fci->name_to_function.at("VersionDetectDC"), 0, 0, 0);
-      } catch (const out_of_range&) {
-      }
-      try {
-        process_code(fci->name_to_function.at("VersionDetectGC"), 0, 0, 0);
-      } catch (const out_of_range&) {
-      }
-      try {
-        process_code(fci->name_to_function.at("VersionDetectXB"), 0, 0, 0);
-      } catch (const out_of_range&) {
-      }
-      try {
-        process_code(fci->name_to_function.at("CacheClearFix-Phase1"), 0x80000000, 8, 0x7F2734EC);
-      } catch (const out_of_range&) {
-      }
-      try {
-        process_code(fci->name_to_function.at("CacheClearFix-Phase2"), 0, 0, 0);
+        process_code(fci->get("CacheClearFix-Phase1", SPECIFIC_VERSION_PPC_INDETERMINATE), 0x80000000, 8, 0x7F2734EC);
       } catch (const out_of_range&) {
       }
     });
@@ -3685,7 +3674,7 @@ Action a_check_client_functions(
     "check-client-functions", nullptr,
     +[](phosg::Arguments&) {
       set_all_log_levels(phosg::LogLevel::L_DEBUG);
-      FunctionCodeIndex fci("system/client-functions", true);
+      ClientFunctionIndex index("system/client-functions", true);
       phosg::fwrite_fmt(stdout, "All client functions compiled\n");
     });
 
