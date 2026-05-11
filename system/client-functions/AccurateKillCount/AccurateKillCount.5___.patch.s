@@ -1,6 +1,8 @@
 .meta name="Kill count fix"
 .meta description="Fixes client-side\nkill counts when\nmultiple enemies are\nkilled on the same\nframe"
 
+.versions 59NJ 59NL
+
 entry_ptr:
 reloc0:
   .offsetof start
@@ -9,9 +11,9 @@ start:
 
 
 
-  .data     0x005E32C8
+  .data     <VERS 0x005E32A4 0x005E32C8>
   .deltaof  TItemUnitUnsealable_count_kill, TItemUnitUnsealable_count_kill_end
-  .address  0x005E32C8
+  .address  <VERS 0x005E32A4 0x005E32C8>
 TItemUnitUnsealable_count_kill:  # [std] (TItemUnitUnsealable* this @ ecx) -> void
   mov       eax, [ecx + 0xF8]
   movsx     eax, word [eax + 0x11A]  # eax = this->owner_player->num_kills_since_map_load
@@ -29,14 +31,14 @@ TItemUnitUnsealable_count_kill_skip_update:
   setae     dh
   shl       edx, 1
   or        dword [ecx + 0xDC], edx
-  jmp       0x005E2C34
+  jmp       <VERS 0x005E2C10 0x005E2C34>
 TItemUnitUnsealable_count_kill_end:
 
 
 
-  .data     0x005F3EFC
+  .data     <VERS 0x005F3E94 0x005F3EFC>
   .deltaof  TItemWeapon_LameDArgent_count_kill, TItemWeapon_LameDArgent_count_kill_end
-  .address  0x005F3EFC
+  .address  <VERS 0x005F3E94 0x005F3EFC>
 TItemWeapon_LameDArgent_count_kill:
   mov       eax, [ecx + 0xF8]
   movsx     eax, word [eax + 0x11A]
@@ -59,9 +61,9 @@ TItemWeapon_LameDArgent_count_kill_end:
 
 
 
-  .data     0x005FCA74
+  .data     <VERS 0x005FC95C 0x005FCA74>
   .deltaof  TItemWeapon_SealedJSword_count_kill, TItemWeapon_SealedJSword_count_kill_end
-  .address  0x005FCA74
+  .address  <VERS 0x005FC95C 0x005FCA74>
 TItemWeapon_SealedJSword_count_kill:
   mov       eax, [ecx + 0xF8]
   movsx     eax, word [eax + 0x11A]

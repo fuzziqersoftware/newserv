@@ -576,14 +576,14 @@
   ],
 
   // BB bank size. If you change either of these values, you must also add "BankSize" to BBRequiredPatches, and change
-  // the patch contents in system/client-functions/BlueBurstExclusive/BankSize.59NL.patch.s to reflect the counts here.
+  // the patch contents in system/client-functions/BlueBurstExclusive/BankSize.5___.patch.s to reflect the counts here.
   "BBMaxBankItems": 200,
   "BBMaxBankMeseta": 999999,
 
   // Item stack limits. Note that changing these does not affect the client's behavior automatically - this only exists
   // to allow the server to understand the behavior of clients that are already patched with different stack limits.
   // If you want to use an unpatched BB client but still have custom stack limits, you can use the StackLimits runtime
-  // patch by editing system/client-functions/BlueBurstExclusive/StackLimits.59NL.patch.s to match the BB stack limits
+  // patch by editing system/client-functions/BlueBurstExclusive/StackLimits.5___.patch.s to match the BB stack limits
   // and adding "StackLimits" to the BBRequiredPatches list.
   // It's important that all players in the same game have the same stack limits, both on the client and server! So, if
   // you change the BB stack limits, you must either prevent BB from playing with other versions (see
