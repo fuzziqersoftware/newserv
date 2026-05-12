@@ -30,9 +30,14 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
   this->menu = menu;
   menu->items.emplace_back(ProgramsMenuItemID::GO_BACK, "Go back", "Return to the\nmain menu", 0);
 
-  uint32_t next_menu_item_id = 0;
+  std::vector<std::string> filenames;
   for (const auto& item : std::filesystem::directory_iterator(directory)) {
-    string filename = item.path().filename().string();
+    filenames.emplace_back(item.path().filename().string());
+  }
+  std::sort(filenames.begin(), filenames.end());
+
+  uint32_t next_menu_item_id = 0;
+  for (const auto& filename : filenames) {
     bool is_dol = filename.ends_with(".dol");
     bool is_compressed_dol = filename.ends_with(".dol.prs");
     if (!is_dol && !is_compressed_dol) {
@@ -82,9 +87,7 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
         description = std::format("$C6{}$C7\n{}", dol->name, size_str);
       }
 
-      this->name_to_file.emplace(dol->name, dol);
       this->item_id_to_file.emplace_back(dol);
-
       menu->items.emplace_back(dol->menu_item_id, dol->name, description, MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL_RUNS_CODE);
 
     } catch (const exception& e) {

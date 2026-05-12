@@ -20,13 +20,12 @@ struct DOLFileIndex {
   };
 
   std::vector<std::shared_ptr<File>> item_id_to_file;
-  std::unordered_map<std::string, std::shared_ptr<File>> name_to_file;
   std::shared_ptr<const Menu> menu;
 
   DOLFileIndex() = default;
   explicit DOLFileIndex(const std::string& directory);
 
   inline bool empty() const {
-    return this->name_to_file.empty() && this->item_id_to_file.empty();
+    return this->item_id_to_file.empty();
   }
 };
