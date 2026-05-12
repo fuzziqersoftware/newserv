@@ -9,14 +9,13 @@
 # This file is a general function (it does not appear in the Patches menu). General functions are used to implement
 # various server operations; this one is used to write arbitrary data to the client's memory space. For example, to use
 # this function to write the bytes 38 00 00 05 to the address 8010521C, send_function_call could be called like this:
-#   auto fn = s->client_functions->name_to_function.at("WriteMemoryGC");
-#   unordered_map<string, uint32_t> label_writes({{"dest_addr", 0x8010521C}, {"size", 4}});
-#   string suffix("\x38\x00\x00\x05", 4);
-#   send_function_call(
+#   auto fn = s->client_functions->get("WriteMemory", c->specific_version);
+#   co_await send_function_call(
 #       c,  // Client to send function call to
 #       fn,  // The function's code
-#       label_writes,  // Variables to pass in to the function's code
-#       suffix);  // Data to append after the code (not all functions use this)
+#       {{"dest_addr", 0x8010521C}, {"size", 4}},  // Variables to pass in to the function's code (see below)
+#       "\x38\x00\x00\x05",  // Data to append after the code (not all functions use this)
+#       4);  // Size of data to append after the code
 # The meanings of label_writes and suffix are described in the comments below.
 
 # The .versions directive is required for all client functions that can be called by the server or the player. This
@@ -179,11 +178,12 @@ get_block_ptr:
 .all_versions
 
 # These fields are filled in right before the command is sent to the client. Specifically, the label_writes argument to
-# send_function_call is responsible for this. The label_writes argument is a map of label name to value, and
-# send_function_call simply writes the given values after the given labels. This is a way to pass arbitrary arguments
-# to a function at call time.
+# send_function_call is responsible for this. The label_writes argument is a map of label name to value, and it simply
+# writes the given values to the locations of the given labels before sending the function to the client. (Notice that
+# these label names match the keys in the map passed in the example at the beginning of this file.) This is a way to
+# pass arbitrary arguments to a function at call time.
 dest_addr:
-  .data   0
+  .data   0  # There must be space (32 bits) allocated for the actual value after the label, hence these placeholders
 size:
   .data   0
 
