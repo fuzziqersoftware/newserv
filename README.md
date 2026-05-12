@@ -99,7 +99,7 @@ The goals of this project are:
 * Build stable, extensible PSO server software that includes all vanilla functionality as well as optional modern conveniences, features, and cheats.
 * Document the internals of PSO's network protocol, file formats, and game mechanics. This is mainly done through comments in the code.
 
-This is a personal project; there is no official development team, official website, or official instance of newserv. Issues and pull requests are certainly welcome, but please only add content (e.g. quests or patches) that you've created, is already public, or you have permission to release publicly.
+This is a personal project; there is no official development team, official website, or official instance of newserv. Issues and pull requests are certainly welcome, but please only add content (e.g. quests, patches, client functions) that you've created, is already public, or you have permission to release publicly.
 
 # Compatibility
 
@@ -464,9 +464,9 @@ Like quests, Episode 3 card definitions, maps, and quests are cached in memory. 
 
 ## Memory patches and client functions
 
-You can put assembly files in the system/client-functions directory with filenames like PatchName.VERS.patch.s and they will appear in the Patches menu for clients that support client functions. Client functions are written in SH-4, PowerPC, or x86 assembly and are compiled when newserv is started. The assembly system's features are documented in the comments in system/client-functions/System/WriteMemoryGC.ppc.s.
+newserv supports sending compiled functions to run on the client, for most PSO versions. These functions are written in SH-4, PowerPC, or x86 assembly and compiled during server startup. This is generally used for applying code patches to the client, but can also be used to implement new functionality, since the functions may be run at any time. There are many options that control client function behavior (including whether they appear in the Patches menu or can be run via the `$patch` chat command); see system/client-functions/System/WriteMemory.s for full documentation.
 
-The VERS token in client function filenames refers to the specific version of the game that the client function applies to. Some versions do not support receiving client functions at all. *Note: newserv uses the shorter GameCube versioning convention, where discs labeled DOL-XXXX-0-0Y are version 1.Y. The PSO community seems to use the convention 1.0Y in some places instead, but these are the same version. For example, the version that newserv calls v1.4 is the same as v1.04, and is labeled DOL-GPOJ-0-04 on the underside of the disc.*
+In these files, you'll see `.versions` lines specifying which specific versions of the game the client function is compatible with. Some versions do not support receiving client functions at all. *Note: newserv uses the shorter GameCube versioning convention, where discs labeled DOL-XXXX-0-0Y are version 1.Y. The PSO community seems to use the convention 1.0Y in some places instead, but these are the same version. For example, the version that newserv calls v1.4 is the same as v1.04, and is labeled DOL-GPOJ-0-04 on the underside of the disc.*
 
 The specific versions are:
 
@@ -514,7 +514,7 @@ The specific versions are:
 *Notes:*
 1. *Client functions are only supported on these versions if EnableSendFunctionCallQuestNumbers is set in config.json. See the comments there for more information.*
 
-newserv comes with a set of patches for many of the above versions. These are organized in subdirectories within system/client-functions/.
+newserv comes with a set of patches for many of the above versions, in system/client-functions/.
 
 ### DOL loader
 
@@ -544,11 +544,11 @@ There are many options available when starting a proxy session. All options are 
 * **Switch assist**: unlocks doors that require two or four players in a one-player game, when you step on one of the switches.
 * **Infinite Meseta** (Episode 3 only): gives you 1,000,000 Meseta, regardless of the value sent by the remote server.
 * **Block events**: disables holiday events sent by the remote server.
-* **Block patches**: prevents any B2 (patch) commands from reaching the client.
+* **Block patches**: prevents any B2 (client function / patch) commands from reaching the client.
 * **Save files**: saves copies of several kinds of files when they're sent by the remote server. The files are written to the current directory (which is usually the directory containing the system/ directory). Saved files can then be used with newserv by just moving the file into the appropriate place in the system/ directory and renaming it appropriately. These kinds of files can be saved:
     * Online quests and download quests (saved as .bin/.dat files)
     * GBA games (saved as .gba files)
-    * Patches (saved as .bin files and disassembled as .txt files)
+    * Client functions / patches (saved as .bin files and disassembled as .txt files)
     * Player, system, and Guild Card data from BB sessions (saved as .psochar, .psosys, .psosysteam, and .psocard files)
     * Stream file data from BB sessions (saved as ItemPMT, BattleParamEntry, ItemMagEdit, and PlyLevelTbl files)
     * Episode 3 online quests and maps (saved as .mnmd files)
