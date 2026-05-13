@@ -458,7 +458,7 @@ shared_ptr<const Menu> ClientFunctionIndex::patch_switches_menu(
   auto map_it = this->functions_by_specific_version.find(specific_version);
   if (map_it != this->functions_by_specific_version.end()) {
     for (auto [name, fn] : map_it->second) {
-      if (fn->appears_in_patches_menu() && server_auto_patches_enabled.count(fn->short_name)) {
+      if (fn->appears_in_patches_menu() && !server_auto_patches_enabled.count(fn->short_name)) {
         string item_text;
         item_text.push_back(client_auto_patches_enabled.count(fn->short_name) ? '*' : '-');
         item_text += fn->long_name.empty() ? fn->short_name : fn->long_name;
