@@ -101,6 +101,8 @@ The goals of this project are:
 
 This is a personal project; there is no official development team, official website, or official instance of newserv. Issues and pull requests are certainly welcome, but please only add content (e.g. quests, patches, client functions) that you've created, is already public, or you have permission to release publicly.
 
+No AI agents have been used in building, documenting, testing, or debugging this project, and any PRs authored by AI agents will be rejected.
+
 # Compatibility
 
 newserv supports all known versions of PSO, including various development prototypes. This table lists all versions that newserv supports. (NTE stands for Network Trial Edition; the GameCube beta versions were called Trial Edition instead, but we use the NTE abbreviation anyway for consistency.)
