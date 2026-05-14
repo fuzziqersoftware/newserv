@@ -3718,7 +3718,7 @@ static asio::awaitable<void> on_trigger_set_event(shared_ptr<Client> c, Subcomma
     }
   }
 
-  forward_subcommand(c, msg);
+  co_await forward_subcommand_with_entity_id_transcode_t<G_TriggerSetEvent_6x67, true>(c, msg);
 }
 
 static inline uint32_t bswap32_high16(uint32_t v) {
