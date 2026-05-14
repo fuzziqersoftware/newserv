@@ -1463,6 +1463,49 @@ static asio::awaitable<void> on_sync_joining_player_disp_and_inventory(
   send_game_player_state(target, c, false);
 }
 
+
+static asio::awaitable<void> on_photon_blast_direct(shared_ptr<Client> c, SubcommandMessage& msg) {
+  const auto& cmd = msg.check_size_t<G_PhotonBlast_6x37>();
+  c->log.info_f(
+      "Direct PB start: command={:02X} flag={:02X} subcommand=6x{:02X} size={} sender_client={}",
+      static_cast<unsigned>(msg.command),
+      static_cast<unsigned>(msg.flag),
+      static_cast<unsigned>(cmd.header.subcommand),
+      msg.size,
+      static_cast<unsigned>(cmd.header.client_id));
+  forward_subcommand(c, msg);
+  co_return;
+}
+
+static asio::awaitable<void> on_execute_photon_blast_direct(shared_ptr<Client> c, SubcommandMessage& msg) {
+  const auto& header = msg.check_size_t<G_ExecutePhotonBlast_Header_6x49>(0xFFFF);
+  c->log.info_f(
+      "Direct PB execute: command={:02X} flag={:02X} subcommand=6x{:02X} size={} sender_client={} target_count={} pb_meter={}",
+      static_cast<unsigned>(msg.command),
+      static_cast<unsigned>(msg.flag),
+      static_cast<unsigned>(header.header.subcommand),
+      msg.size,
+      static_cast<unsigned>(header.header.client_id),
+      header.target_count.load(),
+      header.pb_meter_value.load());
+
+  auto l = c->lobby.lock();
+  if (l) {
+    for (const auto& lc : l->clients) {
+      if (!lc || lc == c) {
+        continue;
+      }
+      c->log.info_f(
+          "Direct PB execute recipient: sender_client={} recipient_client={} recipient_version={}",
+          static_cast<unsigned>(c->lobby_client_id),
+          static_cast<unsigned>(lc->lobby_client_id),
+          static_cast<int>(lc->version()));
+    }
+  }
+
+  co_await forward_subcommand_with_entity_targets_transcode_and_track_hits_t<G_ExecutePhotonBlast_Header_6x49>(c, msg);
+}
+
 static asio::awaitable<void> on_forward_check_client(shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_ClientIDHeader>(0xFFFF);
   if (cmd.client_id == c->lobby_client_id) {
@@ -5832,7 +5875,7 @@ const vector<SubcommandDefinition> subcommand_definitions{
     /* 6x34 */ {0x2F, 0x31, 0x34, on_forward_check_game},
     /* 6x35 */ {0x30, NONE, 0x35, on_invalid},
     /* 6x36 */ {0x31, 0x32, 0x36, on_forward_check_game},
-    /* 6x37 */ {0x32, 0x33, 0x37, on_forward_check_game},
+    /* 6x37 */ {0x32, 0x33, 0x37, on_photon_blast_direct},
     /* 6x38 */ {NONE, 0x34, 0x38, on_forward_check_game},
     /* NONE */ {0x33, 0x35, NONE, on_forward_check_game},
     /* 6x39 */ {NONE, 0x36, 0x39, on_forward_check_game},
@@ -5851,7 +5894,7 @@ const vector<SubcommandDefinition> subcommand_definitions{
     /* 6x46 */ {NONE, 0x42, 0x46, forward_subcommand_with_entity_targets_transcode_and_track_hits_t<G_AttackFinished_Header_6x46>},
     /* 6x47 */ {0x3D, 0x43, 0x47, forward_subcommand_with_entity_targets_transcode_and_track_hits_t<G_CastTechnique_Header_6x47>},
     /* 6x48 */ {NONE, NONE, 0x48, on_cast_technique_finished},
-    /* 6x49 */ {0x3E, 0x44, 0x49, forward_subcommand_with_entity_targets_transcode_and_track_hits_t<G_ExecutePhotonBlast_Header_6x49>},
+    /* 6x49 */ {0x3E, 0x44, 0x49, on_execute_photon_blast_direct},
     /* 6x4A */ {0x3F, 0x45, 0x4A, on_change_hp<G_ClientIDHeader>},
     /* 6x4B */ {0x40, 0x46, 0x4B, on_change_hp<G_ClientIDHeader>},
     /* 6x4C */ {0x41, 0x47, 0x4C, on_change_hp<G_ClientIDHeader>},
