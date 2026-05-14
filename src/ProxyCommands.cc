@@ -74,13 +74,14 @@ static asio::awaitable<HandlerResult> C_1D(shared_ptr<Client> c, Channel::Messag
     c->ping_start_time = 0;
     double ping_ms = static_cast<double>(ping_usecs) / 1000.0;
     send_text_message_fmt(c->channel, "To proxy: {:g}ms", ping_ms);
+    co_return HandlerResult::SUPPRESS;
+  } else {
+    co_return HandlerResult::FORWARD;
   }
-  co_return HandlerResult::SUPPRESS;
 }
 
-static asio::awaitable<HandlerResult> S_1D(shared_ptr<Client> c, Channel::Message&) {
-  c->proxy_session->server_channel->send(0x1D);
-  co_return HandlerResult::SUPPRESS;
+static asio::awaitable<HandlerResult> S_1D(shared_ptr<Client>, Channel::Message&) {
+  co_return HandlerResult::FORWARD;
 }
 
 static asio::awaitable<HandlerResult> S_97(shared_ptr<Client> c, Channel::Message&) {
