@@ -621,10 +621,41 @@ asio::awaitable<void> forward_subcommand_with_entity_targets_transcode_and_track
     }
   }
 
+  auto is_v1_or_v2 = [](Version v) -> bool {
+    switch (v) {
+      case Version::DC_NTE:
+      case Version::DC_11_2000:
+      case Version::DC_V1:
+      case Version::DC_V2:
+      case Version::PC_NTE:
+      case Version::PC_V2:
+        return true;
+      default:
+        return false;
+    }
+  };
+
+  const auto sender_version = c->version();
+
   for (auto& lc : l->clients) {
     if (!lc || lc == c) {
       continue;
     }
+
+    const auto recipient_version = lc->version();
+
+    if ((header.header.subcommand == 0x49) &&
+        !is_v1_or_v2(sender_version) &&
+        is_v1_or_v2(recipient_version)) {
+      c->log.warning_f(
+          "Skipping direct remote PB execute subcommand 6x49 to V1/V2 recipient "
+          "(sender_client={} recipient_client={} recipient_version={})",
+          static_cast<unsigned>(c->lobby_client_id),
+          static_cast<unsigned>(lc->lobby_client_id),
+          static_cast<int>(recipient_version));
+      continue;
+    }
+
     if (c->version() != lc->version()) {
       HeaderT out_header = header;
       vector<TargetEntry> out_targets;
@@ -1500,47 +1531,6 @@ static asio::awaitable<void> on_execute_photon_blast_direct(shared_ptr<Client> c
           static_cast<unsigned>(c->lobby_client_id),
           static_cast<unsigned>(lc->lobby_client_id),
           static_cast<int>(lc->version()));
-    }
-  }
-
-  auto is_v1_or_v2 = [](Version v) -> bool {
-    switch (v) {
-      case Version::DC_NTE:
-      case Version::DC_11_2000:
-      case Version::DC_V1:
-      case Version::DC_V2:
-      case Version::PC_NTE:
-      case Version::PC_V2:
-        return true;
-      default:
-        return false;
-    }
-  };
-
-  if (!is_v1_or_v2(c->version()) && l) {
-    for (const auto& lc : l->clients) {
-      if (!lc || lc == c || !is_v1_or_v2(lc->version())) {
-        continue;
-      }
-
-      G_PhotonBlast_6x37 pb_start;
-      pb_start.header.subcommand = translate_subcommand_number(lc->version(), c->version(), 0x37);
-      pb_start.header.size = sizeof(G_PhotonBlast_6x37) / 4;
-      pb_start.header.client_id = header.header.client_id;
-      pb_start.amount = header.pb_meter_value;
-      pb_start.unused = 0;
-
-      if (pb_start.header.subcommand) {
-        c->log.warning_f(
-            "Translating direct remote PB for V1/V2 recipient: sending synthetic 6x37 before 6x49 "
-            "(sender_client={} recipient_client={} recipient_version={} pb_meter={})",
-            static_cast<unsigned>(c->lobby_client_id),
-            static_cast<unsigned>(lc->lobby_client_id),
-            static_cast<int>(lc->version()),
-            header.pb_meter_value.load());
-
-        send_command_t(lc, msg.command, msg.flag, pb_start);
-      }
     }
   }
 
