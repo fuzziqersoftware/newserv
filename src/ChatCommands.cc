@@ -439,14 +439,12 @@ ChatCommandDefinition cc_bank(
     });
 
 static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool is_bb_conversion) {
-  // Allow $savechar in proxy sessions for character migration/testing.
-  // Keep $bbchar blocked in proxy sessions because it writes to BB account slots.
-  if (is_bb_conversion) {
-    a.check_is_proxy(false);
-  }
+  // TODO: We could support this in proxy sessions; we'd just have to handle the 61/30 correctly
+  a.check_is_proxy(false);
   a.check_is_game(false);
 
   auto s = a.c->require_server_state();
+  auto l = a.c->require_lobby();
 
   if (is_bb_conversion && is_ep3(a.c->version())) {
     throw precondition_failed("$C6Episode 3 players\ncannot be converted\nto BB format");
@@ -483,14 +481,9 @@ static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool 
     dest_account = a.c->login->account;
   }
 
-  // In direct sessions, request player info from the client.
-  // In proxy sessions, don't use the 61/30 request path; use the server-side
-  // character state already tracked for the proxied client.
+  // If the client isn't BB, request the player info. (If they are BB, the server already has it)
   GetPlayerInfoResult ch;
-  if ((a.c->version() == Version::BB_V4) || a.c->proxy_session) {
-    if (is_ep3(a.c->version())) {
-      throw precondition_failed("$C6Proxy savechar for\nEpisode 3 is not\nimplemented yet");
-    }
+  if (a.c->version() == Version::BB_V4) {
     ch.character = a.c->character_file();
     ch.is_full_info = true;
   } else {
@@ -1535,32 +1528,14 @@ ChatCommandDefinition cc_ln(
 ChatCommandDefinition cc_loadchar(
     {"$loadchar"},
     +[](const Args& a) -> asio::awaitable<void> {
-      if (a.c->proxy_session && (a.c->version() == Version::BB_V4)) {
-        throw precondition_failed("$C6This command cannot\nbe used in proxy\nsessions in BB games");
-      }
+      a.check_is_proxy(false);
       a.check_is_game(false);
       if (a.check_permissions && a.c->login->account->check_flag(Account::Flag::IS_SHARED_ACCOUNT)) {
         throw precondition_failed("$C7This command cannot\nbe used on a shared\naccount");
       }
 
       auto s = a.c->require_server_state();
-      shared_ptr<Lobby> l;
-      if (a.c->proxy_session) {
-        if (!a.c->proxy_session->is_in_lobby) {
-          throw precondition_failed("$C6This command can\nonly be used from\nthe lobby");
-        }
-      } else {
-        l = a.c->require_lobby();
-      }
-
-      auto send_proxy_lobby_refresh = [&]() {
-        auto temp_l = make_shared<Lobby>(s, 0xFFFFFFFF, false);
-        temp_l->block = 1;
-        temp_l->event = a.c->proxy_session ? a.c->proxy_session->lobby_event : 0;
-        temp_l->leader_id = a.c->lobby_client_id;
-        temp_l->clients.at(a.c->lobby_client_id) = a.c;
-        send_join_lobby(a.c, temp_l);
-      };
+      auto l = a.c->require_lobby();
 
       size_t index = stoull(a.text, nullptr, 0) - 1;
       if (index >= s->num_backup_character_slots) {
@@ -1593,7 +1568,7 @@ ChatCommandDefinition cc_loadchar(
           throw precondition_failed("Can\'t load character\ndata on this game\nversion");
         }
 
-        auto send_set_extended_player_info = [&a, &s, &send_proxy_lobby_refresh]<typename CharT>(const CharT& char_file) -> asio::awaitable<void> {
+        auto send_set_extended_player_info = [&a, &s]<typename CharT>(const CharT& char_file) -> asio::awaitable<void> {
           co_await prepare_client_for_patches(a.c);
           try {
             auto fn = s->function_code_index->get_patch("SetExtendedPlayerInfo", a.c->specific_version);
@@ -1602,8 +1577,6 @@ ChatCommandDefinition cc_loadchar(
             if (l) {
               send_player_leave_notification(l, a.c->lobby_client_id);
               s->send_lobby_join_notifications(l, a.c);
-            } else if (a.c->proxy_session) {
-              send_proxy_lobby_refresh();
             }
           } catch (const exception& e) {
             a.c->log.warning_f("Failed to set extended player info: {}", e.what());
@@ -1638,15 +1611,11 @@ ChatCommandDefinition cc_loadchar(
         }
 
       } else {
-        // On PC V2 and older DC versions, the client will assign its character data
-        // from the lobby join command, so resend a lobby join notification.
-        if (a.c->proxy_session) {
-          send_proxy_lobby_refresh();
-        } else {
-          auto s = a.c->require_server_state();
-          send_player_leave_notification(l, a.c->lobby_client_id);
-          s->send_lobby_join_notifications(l, a.c);
-        }
+        // On v1 and v2, the client will assign its character data from the lobby join command, so it suffices to just
+        // resend the join notification.
+        auto s = a.c->require_server_state();
+        send_player_leave_notification(l, a.c->lobby_client_id);
+        s->send_lobby_join_notifications(l, a.c);
       }
       co_return;
     });
