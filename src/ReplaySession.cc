@@ -321,9 +321,8 @@ void ReplaySession::apply_default_mask(shared_ptr<Event> ev) {
   }
 }
 
-ReplaySession::ReplaySession(shared_ptr<ServerState> state, FILE* input_log, bool is_interactive)
+ReplaySession::ReplaySession(shared_ptr<ServerState> state, FILE* input_log)
     : state(state),
-      is_interactive(is_interactive),
       prev_psov2_crypt_enabled(this->state->use_psov2_rand_crypt),
       commands_sent(0),
       bytes_sent(0),
@@ -668,9 +667,6 @@ asio::awaitable<void> ReplaySession::run() {
     co_await async_sleep(std::chrono::seconds(2));
     replay_log.info_f("Replay complete: {} commands sent ({} bytes), {} commands received ({} bytes)",
         this->commands_sent, this->bytes_sent, this->commands_received, this->bytes_received);
-  }
-  if (!this->is_interactive) {
-    this->state->io_context->stop();
   }
 }
 

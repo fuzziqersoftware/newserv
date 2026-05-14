@@ -13,7 +13,7 @@
 
 class ReplaySession {
 public:
-  ReplaySession(std::shared_ptr<ServerState> state, FILE* input_log, bool is_interactive);
+  ReplaySession(std::shared_ptr<ServerState> state, FILE* input_log);
   ReplaySession(const ReplaySession&) = delete;
   ReplaySession(ReplaySession&&) = delete;
   ReplaySession& operator=(const ReplaySession&) = delete;
@@ -62,7 +62,6 @@ private:
   };
 
   std::shared_ptr<ServerState> state;
-  bool is_interactive;
   bool prev_psov2_crypt_enabled;
 
   std::unordered_map<uint64_t, std::shared_ptr<Client>> clients;

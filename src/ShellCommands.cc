@@ -1095,15 +1095,3 @@ ShellCommand c_create_item(
       send_text_message(c->channel, "$C7Item created:\n" + name);
       co_return deque<string>{};
     });
-
-ShellCommand c_replay_log(
-    "replay-log", nullptr,
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
-      if (args.s->allow_saving_accounts) {
-        throw runtime_error("Replays cannot be run when account saving is enabled");
-      }
-      auto log_f = phosg::fopen_shared(args.args, "rt");
-      auto replay_session = make_shared<ReplaySession>(args.s, log_f.get(), true);
-      co_await replay_session->run();
-      co_return deque<string>{};
-    });

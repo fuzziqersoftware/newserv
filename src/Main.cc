@@ -4041,7 +4041,7 @@ Action a_run_server_replay_log(
         std::filesystem::create_directories("system/players");
       }
 
-      const string& replay_log_filename = args.get<string>("replay-log");
+      const auto& replay_log_filenames = args.get_multi<string>("replay-log");
 
 #ifndef PHOSG_WINDOWS
       signal(SIGPIPE, SIG_IGN);
@@ -4050,7 +4050,7 @@ Action a_run_server_replay_log(
         use_terminal_colors = true;
       }
 
-      auto state = make_shared<ServerState>(get_config_filename(args), !replay_log_filename.empty());
+      auto state = make_shared<ServerState>(get_config_filename(args), !replay_log_filenames.empty());
       if (args.get<bool>("debug")) {
         state->is_debug = true;
       }
@@ -4069,19 +4069,39 @@ Action a_run_server_replay_log(
       }
 
       shared_ptr<ServerShell> shell;
-      shared_ptr<ReplaySession> replay_session;
       shared_ptr<SignalWatcher> signal_watcher;
-      if (!replay_log_filename.empty()) {
+      shared_ptr<ReplaySession> last_running_replay;
+      if (!replay_log_filenames.empty()) {
         config_log.info_f("Starting game server");
         state->game_server = make_shared<GameServer>(state);
 
         // TODO: Do this properly via a config option, you lazy bum
         state->dol_file_index = make_shared<DOLFileIndex>();
 
-        auto log_f = phosg::fopen_shared(replay_log_filename, "rt");
-
-        replay_session = make_shared<ReplaySession>(state, log_f.get(), false);
-        asio::co_spawn(*state->io_context, replay_session->run(), asio::detached);
+        auto run_replays = [&]() -> asio::awaitable<void> {
+          try {
+            for (const auto& log_filename : replay_log_filenames) {
+              phosg::log_info_f("[Replay] {} ...", log_filename);
+              auto log_f = phosg::fopen_shared(log_filename, "rt");
+              last_running_replay = make_shared<ReplaySession>(state, log_f.get());
+              co_await last_running_replay->run();
+              if (last_running_replay->failed()) {
+                phosg::log_error_f("[Replay] {} failed", log_filename);
+                break;
+              }
+              phosg::log_info_f("[Replay] {} OK", log_filename);
+              state->reset_between_replays();
+            }
+            phosg::log_info_f("[Replay] All replays complete");
+          } catch (const std::exception& e) {
+            phosg::log_info_f("[Replay] Replays failed: {}", e.what());
+          }
+          if (!last_running_replay->failed()) {
+            last_running_replay.reset();
+          }
+          state->io_context->stop();
+        };
+        asio::co_spawn(*state->io_context, run_replays, asio::detached);
 
       } else {
         config_log.info_f("Opening sockets");
@@ -4174,7 +4194,7 @@ Action a_run_server_replay_log(
         should_run_shell = false;
       }
       if (should_run_shell) {
-        should_run_shell = !replay_session.get();
+        should_run_shell = replay_log_filenames.empty();
       }
 
       config_log.info_f("Ready");
@@ -4185,7 +4205,7 @@ Action a_run_server_replay_log(
       state->io_context->run();
       config_log.info_f("Normal shutdown");
 
-      if (replay_session && replay_session->failed()) {
+      if (last_running_replay) {
         throw runtime_error("Replay failed");
       }
     });

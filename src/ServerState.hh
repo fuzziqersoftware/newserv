@@ -458,5 +458,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
 
   void load_all(bool enable_thread_pool);
 
+  void reset_between_replays();
+
   void disconnect_all_banned_clients();
 };

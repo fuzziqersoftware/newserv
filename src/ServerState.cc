@@ -2361,6 +2361,27 @@ void ServerState::load_all(bool enable_thread_pool) {
   this->generate_bb_stream_file();
 }
 
+void ServerState::reset_between_replays() {
+  if (this->allow_saving_accounts) {
+    throw std::logic_error("Account saving is enabled during replay");
+  }
+  this->account_index = make_shared<AccountIndex>(true);
+
+  this->next_lobby_id = 0;
+  std::vector<std::shared_ptr<Lobby>> lobbies_to_delete;
+  for (const auto& l : this->all_lobbies()) {
+    if (l->is_game()) {
+      lobbies_to_delete.emplace_back(l);
+    } else {
+      this->next_lobby_id = std::max<uint32_t>(this->next_lobby_id, l->lobby_id + 1);
+    }
+  }
+  for (const auto& l : lobbies_to_delete) {
+    phosg::log_warning_f("Previous replay left a game open ({:08X}); destroying it", l->lobby_id);
+    this->remove_lobby(l);
+  }
+}
+
 void ServerState::disconnect_all_banned_clients() {
   uint64_t now_usecs = phosg::now();
 
