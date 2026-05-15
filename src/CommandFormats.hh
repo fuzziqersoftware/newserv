@@ -257,7 +257,7 @@ struct S_ReconnectT {
   U16T<BE> port = 0;
   le_uint16_t unused = 0;
 } __packed_ws_be__(S_ReconnectT, 0x08);
-using S_Reconnect_Patch_14 = S_ReconnectT<false>;
+using S_Reconnect_Patch_14 = S_ReconnectT<true>;
 
 // 15 (S->C): Login failure
 // No arguments. The client shows a message like "Incorrect game ID or password" and disconnects.
