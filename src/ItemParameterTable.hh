@@ -56,7 +56,16 @@ public:
     phosg::JSON json() const;
   };
   struct Weapon : ItemBase {
-    uint16_t class_flags = 0;
+    // Bits in usability_flags (to be usable, all bits corresponding to the character's attributes must be set):
+    //   01 = hunter
+    //   02 = ranger
+    //   04 = force
+    //   08 = human
+    //   10 = android
+    //   20 = newman
+    //   40 = male
+    //   80 = female
+    uint16_t usability_flags = 0;
     uint16_t atp_min = 0;
     uint16_t atp_max = 0;
     uint16_t atp_required = 0;
@@ -95,7 +104,7 @@ public:
     uint16_t evp = 0;
     uint8_t block_particle = 0;
     uint8_t block_effect = 0;
-    uint16_t class_flags = 0x00FF;
+    uint16_t usability_flags = 0x00FF; // See Weapon::usability_flags for details
     uint8_t required_level = 0;
     uint8_t efr = 0;
     uint8_t eth = 0;
@@ -154,7 +163,7 @@ public:
     uint8_t on_low_hp_flag = 0;
     uint8_t on_death_flag = 0;
     uint8_t on_boss_flag = 0;
-    uint16_t class_flags = 0x00FF;
+    uint16_t usability_flags = 0x00FF; // See Weapon::usability_flags for details
 
     static Mag from_json(const phosg::JSON& json);
     phosg::JSON json() const;

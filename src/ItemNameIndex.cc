@@ -832,7 +832,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
           w.type,
           w.skin,
           w.team_points,
-          w.class_flags,
+          w.usability_flags,
           w.atp_min,
           w.atp_max,
           w.atp_required,
@@ -910,7 +910,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
           a.evp,
           a.block_particle,
           a.block_effect,
-          a.class_flags,
+          a.usability_flags,
           static_cast<uint8_t>(a.required_level + 1),
           a.efr,
           a.eth,
@@ -1001,7 +1001,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
           m.on_low_hp_flag,
           m.on_death_flag,
           m.on_boss_flag,
-          m.class_flags,
+          m.usability_flags,
           divisor_str,
           name);
     }

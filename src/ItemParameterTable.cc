@@ -143,7 +143,7 @@ phosg::JSON ItemParameterTable::ItemBase::json() const {
 ItemParameterTable::Weapon ItemParameterTable::Weapon::from_json(const phosg::JSON& json) {
   ItemParameterTable::Weapon ret;
   ret.parse_base_from_json(json);
-  ret.class_flags = json.get_int("ClassFlags");
+  ret.usability_flags = json.get_int("UsabilityFlags");
   ret.atp_min = json.get_int("ATPMin");
   ret.atp_max = json.get_int("ATPMax");
   ret.atp_required = json.get_int("ATPRequired");
@@ -173,7 +173,7 @@ ItemParameterTable::Weapon ItemParameterTable::Weapon::from_json(const phosg::JS
 }
 phosg::JSON ItemParameterTable::Weapon::json() const {
   phosg::JSON ret = this->ItemBase::json();
-  ret.emplace("ClassFlags", this->class_flags);
+  ret.emplace("UsabilityFlags", this->usability_flags);
   ret.emplace("ATPMin", this->atp_min);
   ret.emplace("ATPMax", this->atp_max);
   ret.emplace("ATPRequired", this->atp_required);
@@ -206,7 +206,7 @@ ItemParameterTable::ArmorOrShield ItemParameterTable::ArmorOrShield::from_json(c
   ret.evp = json.get_int("EVP");
   ret.block_particle = json.get_int("BlockParticle");
   ret.block_effect = json.get_int("BlockEffect");
-  ret.class_flags = json.get_int("ClassFlags");
+  ret.usability_flags = json.get_int("UsabilityFlags");
   ret.required_level = json.get_int("RequiredLevel");
   ret.efr = json.get_int("EFR");
   ret.eth = json.get_int("ETH");
@@ -227,7 +227,7 @@ phosg::JSON ItemParameterTable::ArmorOrShield::json() const {
   ret.emplace("EVP", this->evp);
   ret.emplace("BlockParticle", this->block_particle);
   ret.emplace("BlockEffect", this->block_effect);
-  ret.emplace("ClassFlags", this->class_flags);
+  ret.emplace("UsabilityFlags", this->usability_flags);
   ret.emplace("RequiredLevel", this->required_level);
   ret.emplace("EFR", this->efr);
   ret.emplace("ETH", this->eth);
@@ -273,7 +273,7 @@ ItemParameterTable::Mag ItemParameterTable::Mag::from_json(const phosg::JSON& js
   ret.on_low_hp_flag = json.get_int("OnLowHPFlag");
   ret.on_death_flag = json.get_int("OnDeathFlag");
   ret.on_boss_flag = json.get_int("OnBossFlag");
-  ret.class_flags = json.get_int("ClassFlags");
+  ret.usability_flags = json.get_int("UsabilityFlags");
   return ret;
 }
 phosg::JSON ItemParameterTable::Mag::json() const {
@@ -289,7 +289,7 @@ phosg::JSON ItemParameterTable::Mag::json() const {
   ret.emplace("OnLowHPFlag", this->on_low_hp_flag);
   ret.emplace("OnDeathFlag", this->on_death_flag);
   ret.emplace("OnBossFlag", this->on_boss_flag);
-  ret.emplace("ClassFlags", this->class_flags);
+  ret.emplace("UsabilityFlags", this->usability_flags);
   return ret;
 }
 
@@ -1223,7 +1223,7 @@ struct ItemBaseV4 : ItemBaseV3T<false> {
 
 struct WeaponDCProtos {
   /* 00 */ ItemBaseV2T<false> base;
-  /* 04 */ le_uint16_t class_flags = 0;
+  /* 04 */ le_uint16_t usability_flags = 0;
   /* 06 */ le_uint16_t atp_min = 0;
   /* 08 */ le_uint16_t atp_max = 0;
   /* 0A */ le_uint16_t atp_required = 0;
@@ -1237,7 +1237,7 @@ struct WeaponDCProtos {
   WeaponDCProtos() = default;
   WeaponDCProtos(const ItemParameterTable::Weapon& w)
       : base(w),
-        class_flags(w.class_flags),
+        usability_flags(w.usability_flags),
         atp_min(w.atp_min),
         atp_max(w.atp_max),
         atp_required(w.atp_required),
@@ -1250,7 +1250,7 @@ struct WeaponDCProtos {
   operator ItemParameterTable::Weapon() const {
     ItemParameterTable::Weapon ret;
     this->base.parse_into(ret);
-    ret.class_flags = this->class_flags;
+    ret.usability_flags = this->usability_flags;
     ret.atp_min = this->atp_min;
     ret.atp_max = this->atp_max;
     ret.atp_required = this->atp_required;
@@ -1282,7 +1282,7 @@ struct WeaponV1V2 : WeaponDCProtos {
 template <bool BE>
 struct WeaponGCNTET {
   /* 00 */ ItemBaseV3T<BE> base;
-  /* 08 */ U16T<BE> class_flags = 0;
+  /* 08 */ U16T<BE> usability_flags = 0;
   /* 0A */ U16T<BE> atp_min = 0;
   /* 0C */ U16T<BE> atp_max = 0;
   /* 0E */ U16T<BE> atp_required = 0;
@@ -1305,7 +1305,7 @@ struct WeaponGCNTET {
   WeaponGCNTET() = default;
   WeaponGCNTET(const ItemParameterTable::Weapon& w)
       : base(w),
-        class_flags(w.class_flags),
+        usability_flags(w.usability_flags),
         atp_min(w.atp_min),
         atp_max(w.atp_max),
         atp_required(w.atp_required),
@@ -1327,7 +1327,7 @@ struct WeaponGCNTET {
   operator ItemParameterTable::Weapon() const {
     ItemParameterTable::Weapon ret;
     this->base.parse_into(ret);
-    ret.class_flags = this->class_flags;
+    ret.usability_flags = this->usability_flags;
     ret.atp_min = this->atp_min;
     ret.atp_max = this->atp_max;
     ret.atp_required = this->atp_required;
@@ -1379,7 +1379,7 @@ using WeaponXB = WeaponV3T<false>;
 
 struct WeaponV4 {
   /* 00 */ ItemBaseV4 base;
-  /* 0C */ le_uint16_t class_flags = 0x00FF;
+  /* 0C */ le_uint16_t usability_flags = 0x00FF;
   /* 0E */ le_uint16_t atp_min = 0;
   /* 10 */ le_uint16_t atp_max = 0;
   /* 12 */ le_uint16_t atp_required = 0;
@@ -1406,7 +1406,7 @@ struct WeaponV4 {
   WeaponV4() = default;
   WeaponV4(const ItemParameterTable::Weapon& w)
       : base(w),
-        class_flags(w.class_flags),
+        usability_flags(w.usability_flags),
         atp_min(w.atp_min),
         atp_max(w.atp_max),
         atp_required(w.atp_required),
@@ -1432,7 +1432,7 @@ struct WeaponV4 {
   operator ItemParameterTable::Weapon() const {
     ItemParameterTable::Weapon ret;
     this->base.parse_into(ret);
-    ret.class_flags = this->class_flags;
+    ret.usability_flags = this->usability_flags;
     ret.atp_min = this->atp_min;
     ret.atp_max = this->atp_max;
     ret.atp_required = this->atp_required;
@@ -1467,7 +1467,7 @@ struct ArmorOrShieldT {
   /* 06 */ U16T<BE> evp = 0;
   /* 08 */ uint8_t block_particle = 0;
   /* 09 */ uint8_t block_effect = 0;
-  /* 0A */ U16T<BE> class_flags = 0x00FF;
+  /* 0A */ U16T<BE> usability_flags = 0x00FF;
   /* 0C */ uint8_t required_level = 0;
   /* 0D */ uint8_t efr = 0;
   /* 0E */ uint8_t eth = 0;
@@ -1484,7 +1484,7 @@ struct ArmorOrShieldT {
         evp(as.evp),
         block_particle(as.block_particle),
         block_effect(as.block_effect),
-        class_flags(as.class_flags),
+        usability_flags(as.usability_flags),
         required_level(as.required_level),
         efr(as.efr),
         eth(as.eth),
@@ -1500,7 +1500,7 @@ struct ArmorOrShieldT {
     ret.evp = this->evp;
     ret.block_particle = this->block_particle;
     ret.block_effect = this->block_effect;
-    ret.class_flags = this->class_flags;
+    ret.usability_flags = this->usability_flags;
     ret.required_level = this->required_level;
     ret.efr = this->efr;
     ret.eth = this->eth;
@@ -1655,13 +1655,13 @@ using MagV1 = MagT<ItemBaseV2T<false>, false>;
 
 template <typename BaseT, bool BE>
 struct MagV2V3V4T : MagT<BaseT, BE> {
-  U16T<BE> class_flags = 0x00FF;
+  U16T<BE> usability_flags = 0x00FF;
   parray<uint8_t, 2> unused = 0;
   MagV2V3V4T() = default;
-  MagV2V3V4T(const ItemParameterTable::Mag& m) : MagT<BaseT, BE>(m), class_flags(m.class_flags) {}
+  MagV2V3V4T(const ItemParameterTable::Mag& m) : MagT<BaseT, BE>(m), usability_flags(m.usability_flags) {}
   operator ItemParameterTable::Mag() const {
     ItemParameterTable::Mag ret = this->MagT<BaseT, BE>::operator ItemParameterTable::Mag();
-    ret.class_flags = this->class_flags;
+    ret.usability_flags = this->usability_flags;
     return ret;
   }
 } __attribute__((packed));
