@@ -185,6 +185,7 @@
     "StaticGameData": "WARNING",
   },
   "HideDownloadCommands": true,
+  "CensorCredentials": true,
 
   "AllowUnregisteredUsers": true,
   "UseTemporaryAccountsForPrototypes": true,

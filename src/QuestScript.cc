@@ -107,24 +107,18 @@ static string escape_string(const string& data, TextEncoding encoding = TextEnco
 }
 
 static string format_and_indent_data(const void* data, size_t size, uint64_t start_address) {
-  struct iovec iov;
-  iov.iov_base = const_cast<void*>(data);
-  iov.iov_len = size;
-
   string ret = "  ";
-  phosg::format_data(
-      [&ret](const void* vdata, size_t size) -> void {
-        const char* data = reinterpret_cast<const char*>(vdata);
-        for (size_t z = 0; z < size; z++) {
-          if (data[z] == '\n') {
-            ret += "\n  ";
-          } else {
-            ret.push_back(data[z]);
-          }
-        }
-      },
-      &iov, 1, start_address, nullptr, 0, phosg::PrintDataFlags::PRINT_ASCII);
-
+  auto write_fn = [&ret](const void* vdata, size_t size) -> void {
+    const char* data = reinterpret_cast<const char*>(vdata);
+    for (size_t z = 0; z < size; z++) {
+      if (data[z] == '\n') {
+        ret += "\n  ";
+      } else {
+        ret.push_back(data[z]);
+      }
+    }
+  };
+  phosg::format_data_custom(write_fn, data, size, start_address, phosg::FormatDataFlags::PRINT_ASCII);
   phosg::strip_trailing_whitespace(ret);
   return ret;
 }
@@ -3533,7 +3527,7 @@ std::string disassemble_quest_script(
         line_text = std::format("  {}", dasm_line);
       } else {
         size_t opcode_size = label_r.where() - opcode_start_offset;
-        string hex_data = phosg::format_data_string(label_r.preadx(opcode_start_offset, opcode_size), nullptr, phosg::FormatDataFlags::HEX_ONLY);
+        string hex_data = phosg::format_data_string(label_r.preadx(opcode_start_offset, opcode_size), nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
         if (hex_data.size() > 14) {
           hex_data.resize(12);
           hex_data += "...";

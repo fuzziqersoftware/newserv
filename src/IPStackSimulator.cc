@@ -165,8 +165,10 @@ IPSSChannel::IPSSChannel(
     Language language,
     const std::string& name,
     phosg::TerminalFormat terminal_send_color,
-    phosg::TerminalFormat terminal_recv_color)
-    : Channel(version, language, name, terminal_send_color, terminal_recv_color),
+    phosg::TerminalFormat terminal_recv_color,
+    bool censor_received_credentials,
+    bool censor_sent_credentials)
+    : Channel(version, language, name, terminal_send_color, terminal_recv_color, censor_received_credentials, censor_sent_credentials),
       sim(sim),
       ipss_client(ipss_client),
       tcp_conn(tcp_conn),
@@ -1364,7 +1366,17 @@ asio::awaitable<void> IPStackSimulator::open_server_connection(
   }
   const auto& port_config = port_config_it->second;
 
-  conn->server_channel = make_shared<IPSSChannel>(this->shared_from_this(), c, conn, port_config->version, Language::ENGLISH);
+  conn->server_channel = make_shared<IPSSChannel>(
+      this->shared_from_this(),
+      c,
+      conn,
+      port_config->version,
+      Language::ENGLISH,
+      "",
+      phosg::TerminalFormat::END,
+      phosg::TerminalFormat::END,
+      false,
+      this->state->censor_credentials);
 
   if (!this->state->game_server.get()) {
     this->log.error_f("No server available for TCP connection {}", conn_str);

@@ -50,7 +50,15 @@ ReplaySession::Client::Client(shared_ptr<asio::io_context> io_context, uint64_t 
     : id(id),
       port(port),
       version(version),
-      channel(make_shared<PeerChannel>(io_context, this->version, Language::ENGLISH, std::format("R-{:X}", this->id))) {}
+      channel(make_shared<PeerChannel>(
+          io_context,
+          this->version,
+          Language::ENGLISH,
+          std::format("R-{:X}", this->id),
+          phosg::TerminalFormat::END,
+          phosg::TerminalFormat::END,
+          false,
+          false)) {}
 
 string ReplaySession::Client::str() const {
   return std::format("Client[{}, T-{}, {}]", this->id, this->port, phosg::name_for_enum(this->version));
@@ -516,7 +524,7 @@ asio::awaitable<void> ReplaySession::run() {
                   "(ev-line {}) client connected to port missing from configuration", this->first_event->line_num));
             }
 
-            auto server_channel = make_shared<PeerChannel>(this->state->io_context, port_config->version, c->channel->language);
+            auto server_channel = make_shared<PeerChannel>(this->state->io_context, port_config->version, c->channel->language, "", phosg::TerminalFormat::END, phosg::TerminalFormat::END, false, false);
             PeerChannel::link_peers(c->channel, server_channel);
 
             if (this->state->game_server.get()) {
@@ -561,24 +569,24 @@ asio::awaitable<void> ReplaySession::run() {
             this->bytes_received += full_command.size();
 
             if (c->receive_events.empty()) {
-              phosg::print_data(stderr, full_command, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::OFFSET_16_BITS);
+              phosg::print_data(stderr, full_command, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
               throw runtime_error("received unexpected command for client");
             }
 
             auto& ev = c->receive_events.front();
             if ((full_command.size() != ev->data.size()) && !ev->allow_size_disparity) {
               replay_log.error_f("Expected command:");
-              phosg::print_data(stderr, ev->data, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::OFFSET_16_BITS);
+              phosg::print_data(stderr, ev->data, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
               replay_log.error_f("Received command:");
-              phosg::print_data(stderr, full_command, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::OFFSET_16_BITS);
+              phosg::print_data(stderr, full_command, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
               throw runtime_error(std::format("(ev-line {}) received command sizes do not match", ev->line_num));
             }
             for (size_t x = 0; x < min<size_t>(full_command.size(), ev->data.size()); x++) {
               if ((full_command[x] & ev->mask[x]) != (ev->data[x] & ev->mask[x])) {
                 replay_log.error_f("Expected command:");
-                phosg::print_data(stderr, ev->data, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::OFFSET_16_BITS);
+                phosg::print_data(stderr, ev->data, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
                 replay_log.error_f("Received command:");
-                phosg::print_data(stderr, full_command, 0, ev->data.data(), phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::OFFSET_16_BITS);
+                phosg::print_data(stderr, full_command, 0, ev->data, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
                 throw runtime_error(std::format("(ev-line {}) received command data does not match expected data", ev->line_num));
               }
             }

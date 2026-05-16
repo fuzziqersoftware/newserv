@@ -318,7 +318,7 @@ struct S_ServerInitWithAfterMessageT_DC_PC_V3_02_17_91_9B {
 // Internal name: SndRegist
 
 struct C_LegacyLogin_PC_V3_03 {
-  /* 00 */ be_uint64_t hardware_id;
+  /* 00 */ be_uint64_t hardware_id = 0;
   /* 08 */ le_uint32_t sub_version = 0;
   /* 0C */ uint8_t is_extended = 0;
   /* 0D */ Language language = Language::JAPANESE;
@@ -364,7 +364,7 @@ struct S_ServerInitWithAfterMessageT_BB_03_9B {
 // likely a relic of an older, now-unused sequence. Like 03, this command isn't used by any known PSO version.
 
 struct C_LegacyLogin_PC_V3_04 {
-  /* 00 */ be_uint64_t hardware_id;
+  /* 00 */ be_uint64_t hardware_id = 0;
   /* 08 */ le_uint32_t sub_version = 0;
   /* 0C */ uint8_t is_extended = 0;
   /* 0D */ Language language = Language::JAPANESE;
@@ -1509,7 +1509,7 @@ struct S_ArrowUpdateEntry_88 {
 // The server should respond with an 8A command.
 
 struct C_ConnectionInfo_DCNTE_8A {
-  be_uint64_t hardware_id;
+  be_uint64_t hardware_id = 0;
   le_uint32_t sub_version = 0x20;
   le_uint32_t unused = 0;
   pstring<TextEncoding::ASCII, 0x30> username;
@@ -1536,7 +1536,7 @@ struct C_ConnectionInfo_DCNTE_8A {
 struct C_Login_DCNTE_8B {
   le_uint32_t player_tag = 0x00010000;
   le_uint32_t guild_card_number = 0;
-  be_uint64_t hardware_id;
+  be_uint64_t hardware_id = 0;
   le_uint32_t sub_version = 0x20;
   uint8_t is_extended = 0;
   Language language = Language::JAPANESE;
@@ -1589,7 +1589,7 @@ struct C_LoginV1_DC_PC_V3_90 {
 // 92 (C->S): Register (DC)
 
 struct C_RegisterV1_DC_92 {
-  be_uint64_t hardware_id;
+  be_uint64_t hardware_id = 0;
   le_uint32_t sub_version;
   uint8_t unused1 = 0;
   Language language = Language::JAPANESE;
@@ -1608,7 +1608,7 @@ struct C_RegisterV1_DC_92 {
 struct C_LoginV1_DC_93 {
   /* 00 */ le_uint32_t player_tag = 0x00010000;
   /* 04 */ le_uint32_t guild_card_number = 0;
-  /* 08 */ be_uint64_t hardware_id;
+  /* 08 */ be_uint64_t hardware_id = 0;
   /* 10 */ le_uint32_t sub_version = 0;
   /* 14 */ uint8_t is_extended = 0;
   /* 15 */ Language language = Language::JAPANESE;
@@ -1662,7 +1662,7 @@ struct C_LoginWithoutHardwareInfo_BB_93 : C_LoginBase_BB_93 {
 
 struct C_LoginWithHardwareInfo_BB_93 : C_LoginBase_BB_93 {
   // See the comment in the above structure. This format is used on newer client versions.
-  /* 7C */ be_uint64_t hardware_id;
+  /* 7C */ be_uint64_t hardware_id = 0;
   /* 84 */ parray<uint8_t, 0x28> client_config;
   /* AC */
 } __packed_ws__(C_LoginWithHardwareInfo_BB_93, 0xAC);
@@ -1773,7 +1773,7 @@ struct C_Login_DC_PC_V3_9A {
 // It appears PSO GC sends uninitialized data in the header.flag field here.
 
 struct C_Register_DC_PC_V3_9C {
-  /* 00 */ be_uint64_t hardware_id;
+  /* 00 */ be_uint64_t hardware_id = 0;
   /* 08 */ le_uint32_t sub_version = 0;
   /* 0C */ uint8_t unused1 = 0;
   /* 0D */ Language language = Language::JAPANESE;
@@ -1819,7 +1819,7 @@ struct C_Login_DC_PC_GC_9D {
   //   other bytes are all zeroes.
   // - V3: the hardware ID is all zeroes.
   // On the client, this is actually an array of 8 bytes, but we treat it as a single integer for simplicity.
-  /* 08 */ be_uint64_t hardware_id;
+  /* 08 */ be_uint64_t hardware_id = 0;
   /* 10 */ le_uint32_t sub_version = 0;
   /* 14 */ uint8_t is_extended = 0; // If 1, structure has extended format
   /* 15 */ Language language = Language::JAPANESE;

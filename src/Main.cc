@@ -3579,7 +3579,7 @@ Action a_check_quests(
                 phosg::fwritex(stdout, vq->map_file->disassemble(false, vq->meta.version));
                 phosg::log_info_f("... BINDIFF:");
                 phosg::print_binary_diff(
-                    stdout, dat.data(), dat.size(), serialized.data(), serialized.size(), isatty(fileno(stdout)), 3);
+                    stdout, dat.data(), dat.size(), serialized.data(), serialized.size(), isatty(fileno(stdout)));
                 phosg::log_info_f("... {} {} {} ({}) MAP FAILED",
                     phosg::name_for_enum(vq->meta.version),
                     name_for_language(vq->meta.language),
@@ -3821,9 +3821,9 @@ Action a_diff_executables(
         throw runtime_error("the two files are not the same type of executable, or are neither dol nor xbe");
       }
       for (const auto& it : result) {
-        string b_str = phosg::format_data_string(it.b_data, nullptr, phosg::FormatDataFlags::HEX_ONLY);
+        string b_str = phosg::format_data_string(it.b_data, nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
         if (show_pre) {
-          string a_str = phosg::format_data_string(it.a_data, nullptr, phosg::FormatDataFlags::HEX_ONLY);
+          string a_str = phosg::format_data_string(it.a_data, nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
           phosg::fwrite_fmt(stdout, "{:08X}: {} => {}\n", it.address, a_str, b_str);
         } else {
           phosg::fwrite_fmt(stdout, "{:08X} {}\n", it.address, b_str);
@@ -3962,7 +3962,7 @@ Action a_replay_ep3_battle_record(
               }
               if (output_queue->empty()) {
                 phosg::fwrite_fmt(stderr, "Output queue is empty, but expected battle command:\n");
-                phosg::print_data(stderr, ev.data, 0, nullptr, phosg::PrintDataFlags::OFFSET_16_BITS | phosg::PrintDataFlags::PRINT_ASCII);
+                phosg::print_data(stderr, ev.data, 0, phosg::FormatDataFlags::OFFSET_16_BITS | phosg::FormatDataFlags::PRINT_ASCII);
                 throw std::runtime_error("Output did not match expectations");
               }
               // Hack: don't check the last field in 6xB4x46 since it contains a timestamp on non-NTE
@@ -3977,11 +3977,10 @@ Action a_replay_ep3_battle_record(
                 matched = (output_queue->front() == ev.data);
               }
               if (!matched) {
-                const void* prev = (ev.data.size() == output_queue->front().size()) ? ev.data.data() : nullptr;
                 phosg::fwrite_fmt(stderr, "Output queue front did not match expected command; expected:\n");
-                phosg::print_data(stderr, ev.data, 0, nullptr, phosg::PrintDataFlags::OFFSET_16_BITS | phosg::PrintDataFlags::PRINT_ASCII);
+                phosg::print_data(stderr, ev.data, 0, phosg::FormatDataFlags::OFFSET_16_BITS | phosg::FormatDataFlags::PRINT_ASCII);
                 phosg::fwrite_fmt(stderr, "Received:\n");
-                phosg::print_data(stderr, output_queue->front(), 0, prev, phosg::PrintDataFlags::OFFSET_16_BITS | phosg::PrintDataFlags::PRINT_ASCII);
+                phosg::print_data(stderr, output_queue->front(), 0, ev.data, phosg::FormatDataFlags::OFFSET_16_BITS | phosg::FormatDataFlags::PRINT_ASCII);
                 throw std::runtime_error("Output did not match expectations");
               }
               output_queue->pop_front();

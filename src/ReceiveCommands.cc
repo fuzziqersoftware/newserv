@@ -480,7 +480,9 @@ asio::awaitable<void> start_proxy_session(shared_ptr<Client> c, const string& ho
         c->channel->language,
         std::format("C-{} proxy remote server at {}", c->id, netloc_str),
         phosg::TerminalFormat::FG_YELLOW,
-        phosg::TerminalFormat::FG_RED);
+        phosg::TerminalFormat::FG_RED,
+        false,
+        s->censor_credentials);
     c->proxy_session = make_shared<ProxySession>(channel, pc);
 
     if (c->version() == Version::GC_EP3) {

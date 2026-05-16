@@ -131,7 +131,9 @@ shared_ptr<Client> GameServer::create_client(
       Language::ENGLISH,
       "",
       phosg::TerminalFormat::FG_YELLOW,
-      phosg::TerminalFormat::FG_GREEN);
+      phosg::TerminalFormat::FG_GREEN,
+      this->state->censor_credentials,
+      false);
   auto c = make_shared<Client>(this->shared_from_this(), channel, listen_sock->behavior);
   this->log.info_f("Client connected: C-{:X} via {}", c->id, listen_sock->name);
 

@@ -165,6 +165,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool ep3_jukebox_is_free = false;
   uint32_t ep3_behavior_flags = 0;
   bool hide_download_commands = true;
+  bool censor_credentials = true;
   RunShellBehavior run_shell_behavior = RunShellBehavior::DEFAULT;
   BehaviorSwitch cheat_mode_behavior = BehaviorSwitch::OFF_BY_DEFAULT;
   bool default_switch_assist_enabled = false;

@@ -883,7 +883,9 @@ static asio::awaitable<HandlerResult> S_19_U_14(shared_ptr<Client> c, Channel::M
       old_channel->language,
       std::format("C-{} proxy remote server at {}", c->id, netloc_str),
       old_channel->terminal_send_color,
-      old_channel->terminal_recv_color);
+      old_channel->terminal_recv_color,
+      old_channel->censor_received_credentials,
+      old_channel->censor_sent_credentials);
   c->proxy_session->server_channel = new_channel;
   asio::co_spawn(*s->io_context, handle_proxy_server_commands(c, c->proxy_session, new_channel), asio::detached);
   c->log.info_f("Server channel connected");

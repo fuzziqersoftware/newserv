@@ -204,6 +204,10 @@
   // default. If you're investigating or submitting a bug report that occurs on BB clients, set this to false to get a
   // full session log before submitting your report.
   "HideDownloadCommands": true,
+  // Some commands include user information such as passwords and access keys. By default, these are not shown in the
+  // log, but in certain debugging situations you may need to log them. Set this to false to show credentials in the
+  // command log.
+  "CensorCredentials": true,
 
   // If this option is disabled, the server only allows users who have accounts on the server to connect. If this is
   // enabled, all users will be allowed to connect even if they don't have accounts. When a user connects with an

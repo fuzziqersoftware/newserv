@@ -61,6 +61,7 @@ set(SOURCES
     src/ChoiceSearch.cc
     src/Client.cc
     src/ClientFunctionIndex.cc
+    src/CommandCensorData.cc
     src/CommonItemSet.cc
     src/Compression.cc
     src/DCSerialNumbers.cc

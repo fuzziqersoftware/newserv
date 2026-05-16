@@ -2247,7 +2247,7 @@ static asio::awaitable<void> on_pick_up_item_generic(
   if (!l->item_exists(floor, item_id)) {
     // This can happen if the network is slow, and the client tries to pick up the same item multiple times. Or
     // multiple clients could try to pick up the same item at approximately the same time; only one should get it.
-    l->log.warning_f("Player {} requests to pick up {:08X}, but the item does not exist; dropping command", client_id, item_id);
+    l->log.info_f("Player {} requests to pick up {:08X}, but the item does not exist; dropping command", client_id, item_id);
 
   } else {
     // This is handled by the server on BB, and by the leader on other versions. However, the client's logic is to
