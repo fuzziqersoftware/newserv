@@ -5231,7 +5231,7 @@ struct G_UpdateEntityStat_6x9A {
 // Used in battle mode if the rules specify that techniques should level up upon character death.
 
 struct G_LevelUpAllTechniques_6x9B {
-  G_UnusedHeader header;
+  G_ClientIDHeader header;
   uint8_t num_levels = 0;
   parray<uint8_t, 3> unused;
 } __packed_ws__(G_LevelUpAllTechniques_6x9B, 8);
