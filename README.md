@@ -26,7 +26,8 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
     * [Cross-version play](#cross-version-play)
     * [Server-side saves](#server-side-saves)
     * [Episode 3 features](#episode-3-features)
-    * [Memory patches, client functions, and DOL files](#memory-patches-and-client-functions)
+    * [Memory patches and client functions](#memory-patches-and-client-functions)
+    * [DOL loader](#dol-loader)
     * [Using newserv as a proxy](#using-newserv-as-a-proxy)
     * [Chat commands](#chat-commands)
     * [REST API](#rest-api)
@@ -105,33 +106,12 @@ No AI agents have been used in building, documenting, testing, or debugging this
 
 # Compatibility
 
-newserv supports all known versions of PSO, including various development prototypes. This table lists all versions that newserv supports. (NTE stands for Network Trial Edition; the GameCube beta versions were called Trial Edition instead, but we use the NTE abbreviation anyway for consistency.)
+newserv is compatible with all versions of PSO, including all known development prototypes. For a full list of versions, see the [memory patches and client functions](#memory-patches-and-client-functions) section.
 
-| Version         | Lobbies  | Games    | Proxy    |
-|-----------------|----------|----------|----------|
-| DC NTE          | Yes      | Yes      | Yes      |
-| DC 11/2000      | Yes      | Yes      | Yes      |
-| DC 12/2000      | Yes      | Yes      | Yes      |
-| DC 01/2001      | Yes      | Yes      | Yes      |
-| DC V1           | Yes      | Yes      | Yes      |
-| DC 08/2001      | Yes      | Yes      | Yes      |
-| DC V2           | Yes      | Yes      | Yes      |
-| PC NTE          | Yes (1)  | Yes      | Yes      |
-| PC              | Yes      | Yes      | Yes      |
-| GC Ep1&2 NTE    | Yes      | Yes      | Yes      |
-| GC Ep1&2        | Yes      | Yes      | Yes      |
-| GC Ep1&2 Plus   | Yes      | Yes      | Yes      |
-| GC Ep3 NTE      | Yes      | Yes (2)  | Yes      |
-| GC Ep3          | Yes      | Yes      | Yes      |
-| Xbox Ep1&2 Beta | Yes (3)  | Yes (3)  | Yes (3)  |
-| Xbox Ep1&2      | Yes (3)  | Yes (3)  | Yes (3)  |
-| BB (vanilla)    | Yes      | Yes      | Yes      |
-| BB (Tethealla)  | Yes      | Yes      | Yes      |
-
-*Notes:*
-1. *This is the only version of PSO that doesn't have any way to identify the player's account - there is no serial number or username. For this reason, AllowUnregisteredUsers must be enabled in config.json to support PC NTE, and PC NTE players receive a random Guild Card number every time they connect. To prevent abuse, PC NTE support can be disabled in config.json.*
-2. *Episode 3 NTE battles are not well-tested; some things may not work. See notes/ep3-nte-differences.txt for a list of known differences between NTE and the final version. NTE and non-NTE players cannot battle each other.*
-3. *PSO Xbox connects through Xbox Live, so you can't easily host a private server for this version of the game. See the [How to connect](#pso-xbox) section.*
+There are a few version-specific quirks to be aware of:
+* PC NTE is the only version of PSO that doesn't have any way to identify the player's account - there is no serial number or username. For this reason, AllowUnregisteredUsers must be enabled in config.json to support PC NTE, and PC NTE players receive a random Guild Card number every time they connect. To prevent abuse, PC NTE support can be disabled in config.json.
+* Episode 3 Trial Edition battles are not well-tested; some things may not work. See notes/ep3-nte-differences.txt for a list of known differences between Trial Edition and the final version. Trial Edition and non-Trial-Edition players cannot battle each other.
+* PSO Xbox connects through Xbox Live, so you can't easily host a private server for the Xbox version of the game. See the [how to connect](#pso-xbox) section.
 
 # Setup
 
