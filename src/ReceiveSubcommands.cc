@@ -2876,7 +2876,7 @@ DropReconcileResult reconcile_drop_request_with_map(
     }
     bool object_ignore_def = (set_entry->param1 > 0.0);
     if (res.ignore_def != object_ignore_def) {
-      c->log.warning_f("ignore_def value {} from command does not match object\'s expected ignore_def {} (from p1={:g})",
+      c->log.info_f("ignore_def value {} from command does not match object\'s expected ignore_def {} (from p1={:g})",
           res.ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", set_entry->param1);
     }
     if (c->check_flag(Client::Flag::DEBUG_ENABLED)) {
