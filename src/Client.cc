@@ -686,7 +686,7 @@ void Client::create_challenge_overlay(
 
   for (size_t z = 0; z < overlay->inventory.items.size(); z++) {
     auto& i = overlay->inventory.items[z];
-    i.present = 0;
+    i.state = 0;
     i.unknown_a1 = 0;
     i.extension_data1 = 0;
     i.extension_data2 = 0;
@@ -712,7 +712,7 @@ void Client::create_challenge_overlay(
 
   for (size_t z = 0; z < tpl.items.size(); z++) {
     auto& inv_item = overlay->inventory.items[z];
-    inv_item.present = tpl.items[z].present;
+    inv_item.state = tpl.items[z].state;
     inv_item.unknown_a1 = tpl.items[z].unknown_a1;
     inv_item.flags = tpl.items[z].flags;
     inv_item.data = tpl.items[z].data;

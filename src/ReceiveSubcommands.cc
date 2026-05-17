@@ -756,7 +756,7 @@ static void transcode_inventory_items(
   }
   for (size_t z = num_items; z < 30; z++) {
     auto& item = items[z];
-    item.present = 0;
+    item.state = 0;
     item.unknown_a1 = 0;
     item.flags = 0;
     item.data.clear();

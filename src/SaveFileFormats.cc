@@ -1257,7 +1257,7 @@ void PSOBBCharacterFile::add_item(const ItemData& item, const ItemData::StackLim
     throw out_of_range("inventory is full");
   }
   auto& inv_item = this->inventory.items[this->inventory.num_items];
-  inv_item.present = 1;
+  inv_item.state = 1;
   inv_item.unknown_a1 = 0;
   inv_item.flags = 0;
   inv_item.data = item;
@@ -1304,13 +1304,13 @@ ItemData PSOBBCharacterFile::remove_item(uint32_t item_id, uint32_t amount, cons
   for (size_t x = index; x < this->inventory.num_items; x++) {
     auto& to_item = this->inventory.items[x];
     const auto& from_item = this->inventory.items[x + 1];
-    to_item.present = from_item.present;
+    to_item.state = from_item.state;
     to_item.unknown_a1 = from_item.unknown_a1;
     to_item.flags = from_item.flags;
     to_item.data = from_item.data;
   }
   auto& last_item = this->inventory.items[this->inventory.num_items];
-  last_item.present = 0;
+  last_item.state = 0;
   last_item.unknown_a1 = 0;
   last_item.flags = 0;
   last_item.data.clear();
