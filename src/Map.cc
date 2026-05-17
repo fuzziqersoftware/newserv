@@ -4608,10 +4608,9 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
     case 0x0060: // TObjGrass
       add(EnemyType::GRASS_ASSASSIN);
       break;
-    case 0x0061: { // TObjEneRe2Flower
+    case 0x0061: // TObjEneRe2Flower
       add((this->area_for_floor(floor) == 0x23) ? EnemyType::DEL_LILY : EnemyType::POISON_LILY);
       break;
-    }
     case 0x0062: // TObjEneNanoDrago
       add(EnemyType::NANO_DRAGON);
       break;
