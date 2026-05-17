@@ -438,9 +438,21 @@ bool Client::can_use_chat_commands() const {
 
 void Client::set_login(shared_ptr<Login> login) {
   this->login = login;
+
+  auto s = this->require_server_state();
+  if (!s->allow_same_account_concurrent_logins) {
+    auto it = s->client_for_account.find(login->account->account_id);
+    if ((it != s->client_for_account.end()) && (it->second.get() != this)) {
+      if (it->second->channel) {
+        it->second->channel->disconnect();
+      }
+      s->client_for_account.erase(it);
+    }
+    s->client_for_account.emplace(this->login->account->account_id, this->shared_from_this());
+  }
+
   if (this->log.should_log(phosg::LogLevel::L_INFO)) {
-    string login_str = this->login->str();
-    this->log.info_f("Login: {}", login_str);
+    this->log.info_f("Login: {}", this->login->str());
   }
 }
 

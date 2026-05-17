@@ -195,4 +195,11 @@ asio::awaitable<void> GameServer::destroy_client(std::shared_ptr<Client> c) {
       c->log.warning_f("Disconnect hook {} failed: {}", h_it.first, e.what());
     }
   }
+
+  if (c->login) {
+    auto it = this->state->client_for_account.find(c->login->account->account_id);
+    if ((it != this->state->client_for_account.end()) && (it->second == c)) {
+      this->state->client_for_account.erase(it);
+    }
+  }
 }

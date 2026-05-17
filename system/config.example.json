@@ -226,6 +226,11 @@
   // Guild Card numbers every time they connect and cannot be banned by serial number or username.
   "AllowPCNTE": true,
 
+  // If this is enabled, players can log in multiple times on the same account at the same time. If this is disabled,
+  // only one login is allowed per account at a time; when a new session is opened, any existing sessions on the same
+  // account are disconnected.
+  "AllowSameAccountConcurrentLogins": true,
+
   // Whether to enable chat commands for all players. If this is true, all players will be able to use chat commands as
   // normal; if this is false, only players with the ALWAYS_ENABLE_CHAT_COMMANDS account flag will be able to use chat
   // commands.
