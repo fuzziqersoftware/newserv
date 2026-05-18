@@ -39,7 +39,7 @@ tool_check_hook_start:
   lwz       r29, [r3 + 0x10]  # Flags
   xori      r29, r29, 0x0080
   andi.     r29, r29, 0x0080
-  bnelr     # Not rare; r29 (returned price) is zero already
+  beqlr     # Not rare; r29 (returned price) is zero already
   lwz       r29, [r3 + 0x0C]  # Cost
   blr
 tool_check_hook_end:
