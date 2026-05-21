@@ -323,7 +323,7 @@ void PlayerState::apply_assist_card_effect_on_set(shared_ptr<PlayerState> setter
       if (!s->options.is_nte()) {
         s->team_num_cards_destroyed[this->team_id] = 0;
         for (size_t client_id = 0; client_id < 4; client_id++) {
-          const auto other_ps = s->get_player_state(client_id);
+          auto other_ps = s->get_player_state(client_id);
           if (other_ps && (this->team_id == other_ps->get_team_id())) {
             auto card = other_ps->get_sc_card();
             if (card) {

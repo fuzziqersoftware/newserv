@@ -64,7 +64,9 @@ asio::awaitable<void> PatchDownloadSession::run() {
       Language::ENGLISH,
       netloc_str,
       this->show_command_data ? phosg::TerminalFormat::FG_GREEN : phosg::TerminalFormat::END,
-      this->show_command_data ? phosg::TerminalFormat::FG_YELLOW : phosg::TerminalFormat::END);
+      this->show_command_data ? phosg::TerminalFormat::FG_YELLOW : phosg::TerminalFormat::END,
+      false,
+      false);
   this->log.info_f("Server channel connected");
 
   while (this->channel->connected()) {
@@ -267,7 +269,9 @@ asio::awaitable<void> PatchDownloadSession::on_message(Channel::Message& msg) {
           this->channel->language,
           netloc_str,
           this->channel->terminal_send_color,
-          this->channel->terminal_recv_color);
+          this->channel->terminal_recv_color,
+          false,
+          false);
       this->channel = new_channel;
       old_channel->disconnect();
       this->log.info_f("Server channel connected");

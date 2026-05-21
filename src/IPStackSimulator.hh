@@ -94,10 +94,8 @@ struct IPSSClient : std::enable_shared_from_this<IPSSClient> {
   void reschedule_idle_timeout();
 };
 
-// IPSSChannel provides an "unwrapped" connection to the rest of the server. It
-// implements the Channel interface and can be used in place of an
-// SocketChannel, so the rest of the server doesn't have to know about
-// IPStackSimulator.
+// IPSSChannel provides an "unwrapped" connection to the rest of the server. It implements the Channel interface and
+// can be used in place of an SocketChannel, so the rest of the server doesn't have to know about IPStackSimulator.
 class IPSSChannel : public Channel {
 public:
   std::shared_ptr<IPStackSimulator> sim;
@@ -110,18 +108,19 @@ public:
       std::weak_ptr<IPSSClient::TCPConnection> tcp_conn,
       Version version,
       Language language,
-      const std::string& name = "",
-      phosg::TerminalFormat terminal_send_color = phosg::TerminalFormat::END,
-      phosg::TerminalFormat terminal_recv_color = phosg::TerminalFormat::END);
+      const std::string& name,
+      phosg::TerminalFormat terminal_send_color,
+      phosg::TerminalFormat terminal_recv_color,
+      bool censor_received_credentials,
+      bool censor_sent_credentials);
 
   virtual std::string default_name() const;
 
   virtual bool connected() const;
   virtual void disconnect();
 
-  // Adds inbound data, which will then be available via recv_raw(). This
-  // function is called by IPStackSimulator to forward "unwrapped" data to
-  // the game/proxy servers.
+  // Adds inbound data, which will then be available via recv_raw(). This function is called by IPStackSimulator to
+  // forward "unwrapped" data to the game/proxy servers.
   void add_inbound_data(const void* data, size_t size);
 
   virtual void send_raw(std::string&& data);
@@ -134,9 +133,7 @@ private:
   size_t recv_buf_size = 0;
 };
 
-class IPStackSimulator
-    : public Server<IPSSClient, IPSSSocket>,
-      public std::enable_shared_from_this<IPStackSimulator> {
+class IPStackSimulator : public Server<IPSSClient, IPSSSocket>, public std::enable_shared_from_this<IPStackSimulator> {
 public:
   IPStackSimulator(std::shared_ptr<ServerState> state);
   ~IPStackSimulator() = default;

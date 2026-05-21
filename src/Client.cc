@@ -438,9 +438,21 @@ bool Client::can_use_chat_commands() const {
 
 void Client::set_login(shared_ptr<Login> login) {
   this->login = login;
+
+  auto s = this->require_server_state();
+  if (!s->allow_same_account_concurrent_logins) {
+    auto it = s->client_for_account.find(login->account->account_id);
+    if ((it != s->client_for_account.end()) && (it->second.get() != this)) {
+      if (it->second->channel) {
+        it->second->channel->disconnect();
+      }
+      s->client_for_account.erase(it);
+    }
+    s->client_for_account.emplace(this->login->account->account_id, this->shared_from_this());
+  }
+
   if (this->log.should_log(phosg::LogLevel::L_INFO)) {
-    string login_str = this->login->str();
-    this->log.info_f("Login: {}", login_str);
+    this->log.info_f("Login: {}", this->login->str());
   }
 }
 
@@ -686,7 +698,7 @@ void Client::create_challenge_overlay(
 
   for (size_t z = 0; z < overlay->inventory.items.size(); z++) {
     auto& i = overlay->inventory.items[z];
-    i.present = 0;
+    i.state = 0;
     i.unknown_a1 = 0;
     i.extension_data1 = 0;
     i.extension_data2 = 0;
@@ -703,7 +715,7 @@ void Client::create_challenge_overlay(
       overlay->disp.visual.char_class, overlay->disp.stats.level);
   overlay->disp.stats.esp = 40;
   overlay->disp.stats.attack_range = 10.0;
-  overlay->disp.stats.experience = stats_delta.experience;
+  overlay->disp.stats.exp = stats_delta.exp;
   overlay->disp.stats.meseta = 0;
   overlay->clear_all_material_usage();
   for (size_t z = 0; z < 0x13; z++) {
@@ -712,7 +724,7 @@ void Client::create_challenge_overlay(
 
   for (size_t z = 0; z < tpl.items.size(); z++) {
     auto& inv_item = overlay->inventory.items[z];
-    inv_item.present = tpl.items[z].present;
+    inv_item.state = tpl.items[z].state;
     inv_item.unknown_a1 = tpl.items[z].unknown_a1;
     inv_item.flags = tpl.items[z].flags;
     inv_item.data = tpl.items[z].data;

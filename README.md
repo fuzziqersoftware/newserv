@@ -26,7 +26,8 @@ See TODO.md for a list of known issues and future work I've curated, or go to th
     * [Cross-version play](#cross-version-play)
     * [Server-side saves](#server-side-saves)
     * [Episode 3 features](#episode-3-features)
-    * [Memory patches, client functions, and DOL files](#memory-patches-and-client-functions)
+    * [Memory patches and client functions](#memory-patches-and-client-functions)
+    * [DOL loader](#dol-loader)
     * [Using newserv as a proxy](#using-newserv-as-a-proxy)
     * [Chat commands](#chat-commands)
     * [REST API](#rest-api)
@@ -91,7 +92,7 @@ Some of the more likely useful files are:
 * **src/RareItemSet.hh/cc**: Format of ItemRT files (rare item drop tables)
 * **src/SaveFileFormats.hh**: Definitions of save file structures for all versions
 * **src/Episode3/DataIndexes.hh**: Episode 3 file structures, including card definition format and map/quest format
-* **system/item-tables/names-v4.json**: Names of all items, indexed by the first 3 bytes of data1
+* **system/tables/names-v4.json**: Names of all items, indexed by the first 3 bytes of data1
 
 ## Contributing to newserv
 
@@ -99,37 +100,18 @@ The goals of this project are:
 * Build stable, extensible PSO server software that includes all vanilla functionality as well as optional modern conveniences, features, and cheats.
 * Document the internals of PSO's network protocol, file formats, and game mechanics. This is mainly done through comments in the code.
 
-This is a personal project; there is no official development team, official website, or official instance of newserv. Issues and pull requests are certainly welcome, but please only add content (e.g. quests or patches) that you've created, is already public, or you have permission to release publicly.
+This is a personal project; there is no official development team, official website, or official instance of newserv. Issues and pull requests are certainly welcome, but please only add content (e.g. quests, patches, client functions) that you've created, is already public, or you have permission to release publicly.
+
+No AI agents have been used in building, documenting, testing, or debugging this project, and any PRs authored by AI agents will be rejected.
 
 # Compatibility
 
-newserv supports all known versions of PSO, including various development prototypes. This table lists all versions that newserv supports. (NTE stands for Network Trial Edition; the GameCube beta versions were called Trial Edition instead, but we use the NTE abbreviation anyway for consistency.)
+newserv is compatible with all versions of PSO, including all known development prototypes. For a full list of versions, see the [memory patches and client functions](#memory-patches-and-client-functions) section.
 
-| Version         | Lobbies  | Games    | Proxy    |
-|-----------------|----------|----------|----------|
-| DC NTE          | Yes      | Yes      | Yes      |
-| DC 11/2000      | Yes      | Yes      | Yes      |
-| DC 12/2000      | Yes      | Yes      | Yes      |
-| DC 01/2001      | Yes      | Yes      | Yes      |
-| DC V1           | Yes      | Yes      | Yes      |
-| DC 08/2001      | Yes      | Yes      | Yes      |
-| DC V2           | Yes      | Yes      | Yes      |
-| PC NTE          | Yes (1)  | Yes      | Yes      |
-| PC              | Yes      | Yes      | Yes      |
-| GC Ep1&2 NTE    | Yes      | Yes      | Yes      |
-| GC Ep1&2        | Yes      | Yes      | Yes      |
-| GC Ep1&2 Plus   | Yes      | Yes      | Yes      |
-| GC Ep3 NTE      | Yes      | Yes (2)  | Yes      |
-| GC Ep3          | Yes      | Yes      | Yes      |
-| Xbox Ep1&2 Beta | Yes (3)  | Yes (3)  | Yes (3)  |
-| Xbox Ep1&2      | Yes (3)  | Yes (3)  | Yes (3)  |
-| BB (vanilla)    | Yes      | Yes      | Yes      |
-| BB (Tethealla)  | Yes      | Yes      | Yes      |
-
-*Notes:*
-1. *This is the only version of PSO that doesn't have any way to identify the player's account - there is no serial number or username. For this reason, AllowUnregisteredUsers must be enabled in config.json to support PC NTE, and PC NTE players receive a random Guild Card number every time they connect. To prevent abuse, PC NTE support can be disabled in config.json.*
-2. *Episode 3 NTE battles are not well-tested; some things may not work. See notes/ep3-nte-differences.txt for a list of known differences between NTE and the final version. NTE and non-NTE players cannot battle each other.*
-3. *PSO Xbox connects through Xbox Live, so you can't easily host a private server for this version of the game. See the [How to connect](#pso-xbox) section.*
+There are a few version-specific quirks to be aware of:
+* PC NTE is the only version of PSO that doesn't have any way to identify the player's account - there is no serial number or username. For this reason, AllowUnregisteredUsers must be enabled in config.json to support PC NTE, and PC NTE players receive a random Guild Card number every time they connect. To prevent abuse, PC NTE support can be disabled in config.json.
+* Episode 3 Trial Edition battles are not well-tested; some things may not work. See notes/ep3-nte-differences.txt for a list of known differences between Trial Edition and the final version. Trial Edition and non-Trial-Edition players cannot battle each other.
+* PSO Xbox connects through Xbox Live, so you can't easily host a private server for the Xbox version of the game. See the [how to connect](#pso-xbox) section.
 
 # Setup
 
@@ -379,7 +361,7 @@ In the `private` and `duplicate` modes, there is no incentive to pick up items b
 
 The drop mode can be changed at any time during a game with the `$dropmode` chat command. If the mode is changed after some items have already been dropped, the existing items retain their visibility (that is, items dropped in private mode still can't be picked up by other players since they were dropped before the mode was changed). You can configure which drop modes are used by default, and which modes players are allowed to choose, in config.json. See the comments above the AllowedDropModes and DefaultDropMode keys.
 
-In the server drop modes, the item tables used to generate common items are in the `system/item-tables/ItemPT-*` files. (The V2 files are used for V1 as well.) The rare item tables are in the `rare-table-*.json` files. Unlike the original formats, it's possible to make each enemy drop multiple different rare items at different rates, though the default tables never do this.
+In the server drop modes, the item tables used to generate common items are in the `system/tables/common-table-*` files. The rare item tables are in the `rare-table-*.json` files. Unlike the original formats, it's possible to make each enemy drop multiple different rare items at different rates, though the default tables never do this.
 
 ## Cross-version play
 
@@ -464,9 +446,9 @@ Like quests, Episode 3 card definitions, maps, and quests are cached in memory. 
 
 ## Memory patches and client functions
 
-You can put assembly files in the system/client-functions directory with filenames like PatchName.VERS.patch.s and they will appear in the Patches menu for clients that support client functions. Client functions are written in SH-4, PowerPC, or x86 assembly and are compiled when newserv is started. The assembly system's features are documented in the comments in system/client-functions/System/WriteMemoryGC.ppc.s.
+newserv supports sending compiled functions to run on the client, for most PSO versions. These functions are written in SH-4, PowerPC, or x86 assembly and compiled during server startup. This is generally used for applying code patches to the client, but can also be used to implement new functionality, since the functions may be run at any time. There are many options that control client function behavior (including whether they appear in the Patches menu or can be run via the `$patch` chat command); see system/client-functions/System/WriteMemory.s for full documentation.
 
-The VERS token in client function filenames refers to the specific version of the game that the client function applies to. Some versions do not support receiving client functions at all. *Note: newserv uses the shorter GameCube versioning convention, where discs labeled DOL-XXXX-0-0Y are version 1.Y. The PSO community seems to use the convention 1.0Y in some places instead, but these are the same version. For example, the version that newserv calls v1.4 is the same as v1.04, and is labeled DOL-GPOJ-0-04 on the underside of the disc.*
+In these files, you'll see `.versions` lines specifying which specific versions of the game the client function is compatible with. Some versions do not support receiving client functions at all. *Note: newserv uses the shorter GameCube versioning convention, where discs labeled DOL-XXXX-0-0Y are version 1.Y. The PSO community seems to use the convention 1.0Y in some places instead, but these are the same version. For example, the version that newserv calls v1.4 is the same as v1.04, and is labeled DOL-GPOJ-0-04 on the underside of the disc.*
 
 The specific versions are:
 
@@ -514,7 +496,7 @@ The specific versions are:
 *Notes:*
 1. *Client functions are only supported on these versions if EnableSendFunctionCallQuestNumbers is set in config.json. See the comments there for more information.*
 
-newserv comes with a set of patches for many of the above versions. These are organized in subdirectories within system/client-functions/.
+newserv comes with a set of patches for many of the above versions, in system/client-functions/.
 
 ### DOL loader
 
@@ -544,11 +526,11 @@ There are many options available when starting a proxy session. All options are 
 * **Switch assist**: unlocks doors that require two or four players in a one-player game, when you step on one of the switches.
 * **Infinite Meseta** (Episode 3 only): gives you 1,000,000 Meseta, regardless of the value sent by the remote server.
 * **Block events**: disables holiday events sent by the remote server.
-* **Block patches**: prevents any B2 (patch) commands from reaching the client.
+* **Block patches**: prevents any B2 (client function / patch) commands from reaching the client.
 * **Save files**: saves copies of several kinds of files when they're sent by the remote server. The files are written to the current directory (which is usually the directory containing the system/ directory). Saved files can then be used with newserv by just moving the file into the appropriate place in the system/ directory and renaming it appropriately. These kinds of files can be saved:
     * Online quests and download quests (saved as .bin/.dat files)
     * GBA games (saved as .gba files)
-    * Patches (saved as .bin files and disassembled as .txt files)
+    * Client functions / patches (saved as .bin files and disassembled as .txt files)
     * Player, system, and Guild Card data from BB sessions (saved as .psochar, .psosys, .psosysteam, and .psocard files)
     * Stream file data from BB sessions (saved as ItemPMT, BattleParamEntry, ItemMagEdit, and PlyLevelTbl files)
     * Episode 3 online quests and maps (saved as .mnmd files)
@@ -594,6 +576,7 @@ Some commands only work for clients not in proxy sessions. The chat commands are
         * You'll see in-game messages from the server when you take some actions, like killing enemies, opening boxes, or flipping switches.
         * You'll see the rare seed value and floor variations when you join a game.
         * You'll be placed into the last available slot in lobbies and games instead of the first, unless you're joining a BB solo-mode game.
+        * You'll be able to run any client function with `$patch`, not only those that are marked visible.
         * You'll be able to join games with any PSO version, not only those for which cross-version play is normally enabled. See the "Cross-version play" section above for details on this.
     * `$readmem <address>`: Read 4 bytes from the given address and show you the values.
     * `$writemem <address> <data>`: Write data to the given address. Data is not required to be any specific size.
@@ -622,7 +605,7 @@ Some commands only work for clients not in proxy sessions. The chat commands are
     * `$ln [name-or-type]`: Set the lobby number. Visible only to you. This command exists because some non-lobby maps can be loaded as lobbies with invalid lobby numbers. See the "GC lobby types" and "Ep3 lobby types" entries in the information menu for acceptable values here. Note that non-lobby maps do not have a lobby counter, so there's no way to exit the lobby without using either `$ln` again or `$exit`. On the game server, `$ln` reloads the lobby immediately; on the proxy, it doesn't take effect until you load another lobby yourself (which means you'll like have to use `$exit` to escape). Run this command with no argument to return to the default lobby.
     * `$swa`: Enable or disable switch assist. When enabled, the server will unlock two-player and four-player doors in non-quest games when you step on any of the required switches.
     * `$exit`: If you're in a lobby, send you to the main menu (which ends your proxy session, if you're in one). If you're in a game or spectator team, send you to the lobby (but does not end your proxy session if you're in one). Does nothing if you're in a non-Episode 3 game and no quest is in progress.
-    * `$patch <name>`: Run a patch on your client. `<name>` must exactly match the name of a patch on the server.
+    * `$patch <name>`: Run a client function. `<name>` must exactly match the name of a client function on the server.
 
 * Character data commands (non-proxy only)
     * `$switchchar <slot>` (BB only): Switch to a different character from your account without logging out.
@@ -780,36 +763,37 @@ newserv has many CLI options, which can be used to access functionality other th
 
 The data formats that newserv can convert to/from are:
 
-| Format                              | Encode/compress action    | Decode/extract action        |
-|-------------------------------------|---------------------------|------------------------------|
-| PRS compression                     | `compress-prs`            | `decompress-prs`             |
-| PR2/PRC compression                 | `compress-pr2`            | `decompress-pr2`             |
-| BC0 compression                     | `compress-bc0`            | `decompress-bc0`             |
-| Raw encrypted data                  | `encrypt-data`            | `decrypt-data`               |
-| Episode 3 command mask              | `encrypt-trivial-data`    | `decrypt-trivial-data`       |
-| Challenge Mode rank text            | `encrypt-challenge-data`  | `decrypt-challenge-data`     |
-| PSO DC quest file (.vms)            | None                      | `decode-vms`                 |
-| PSO GC quest file (.gci)            | None                      | `decode-gci`                 |
-| Download quest file (.dlq)          | None                      | `decode-dlq`                 |
-| Server quest file (.qst)            | `encode-qst`              | `decode-qst`                 |
-| PSO DC save file (.vms)             | `encrypt-vms-save`        | `decrypt-vms-save`           |
-| PSO PC save file                    | `encrypt-pc-save`         | `decrypt-pc-save`            |
-| PSO GC save file (.gci)             | `encrypt-gci-save`        | `decrypt-gci-save`           |
-| PSO Xbox save file                  | None                      | `decrypt-xbox-save`          |
-| PSO GC snapshot file                | None                      | `decode-gci-snapshot`        |
-| Quest script (.bin)                 | `assemble-quest-script`   | `disassemble-quest-script`   |
-| Quest map (.dat)                    | None                      | `disassemble-quest-map`      |
-| AFS archive (.afs)                  | None                      | `extract-afs`                |
-| BML archive (.bml)                  | None                      | `extract-bml`                |
-| PPK archive (.ppk)                  | None                      | `extract-ppk`                |
-| GSL archive (.gsl)                  | `generate-gsl`            | `extract-gsl`                |
-| GVM texture (.gvm)                  | `encode-gvm`              | None                         |
-| Bitmap font (.fon)                  | `encode-bitmap-font`      | `decode-bitmap-font`         |
-| Text archive                        | `encode-text-archive`     | `decode-text-archive`        |
-| Unicode text set                    | `encode-unicode-text-set` | `decode-unicode-text-set`    |
-| Word Select data set                | None                      | `decode-word-select-set`     |
-| Set data table                      | None                      | `disassemble-set-data-table` |
-| Rare item table (AFS/GSL/JSON/HTML) | `convert-rare-item-set`   | `convert-rare-item-set`      |
+| Format                              | Encode/compress action        | Decode/extract action         |
+|-------------------------------------|-------------------------------|-------------------------------|
+| PRS compression                     | `compress-prs`                | `decompress-prs`              |
+| PR2/PRC compression                 | `compress-pr2`                | `decompress-pr2`              |
+| BC0 compression                     | `compress-bc0`                | `decompress-bc0`              |
+| Raw encrypted data                  | `encrypt-data`                | `decrypt-data`                |
+| Episode 3 command mask              | `encrypt-trivial-data`        | `decrypt-trivial-data`        |
+| Challenge Mode rank text            | `encrypt-challenge-data`      | `decrypt-challenge-data`      |
+| PSO DC quest file (.vms)            | None                          | `decode-vms`                  |
+| PSO GC quest file (.gci)            | None                          | `decode-gci`                  |
+| Download quest file (.dlq)          | None                          | `decode-dlq`                  |
+| Server quest file (.qst)            | `encode-qst`                  | `decode-qst`                  |
+| PSO DC save file (.vms)             | `encrypt-vms-save`            | `decrypt-vms-save`            |
+| PSO PC save file                    | `encrypt-pc-save`             | `decrypt-pc-save`             |
+| PSO GC save file (.gci)             | `encrypt-gci-save`            | `decrypt-gci-save`            |
+| PSO Xbox save file                  | None                          | `decrypt-xbox-save`           |
+| PSO GC snapshot file                | None                          | `decode-gci-snapshot`         |
+| Quest script (.bin)                 | `assemble-quest-script`       | `disassemble-quest-script`    |
+| Quest map (.dat)                    | None                          | `disassemble-quest-map`       |
+| AFS archive (.afs)                  | None                          | `extract-afs`                 |
+| BML archive (.bml)                  | None                          | `extract-bml`                 |
+| PPK archive (.ppk)                  | None                          | `extract-ppk`                 |
+| GSL archive (.gsl)                  | `generate-gsl`                | `extract-gsl`                 |
+| GVM texture (.gvm)                  | `encode-gvm`                  | None (use resource_dasm)      |
+| Bitmap font (.fon)                  | `encode-bitmap-font`          | `decode-bitmap-font`          |
+| Text archive                        | `encode-text-archive`         | `decode-text-archive`         |
+| Unicode text set                    | `encode-unicode-text-set`     | `decode-unicode-text-set`     |
+| Word Select data set                | None                          | `decode-word-select-set`      |
+| Set data table                      | None                          | `disassemble-set-data-table`  |
+| Rare item table (AFS/GSL/JSON/HTML) | `convert-rare-item-set`       | `convert-rare-item-set`       |
+| Item definitions (ItemPMT)          | `encode-item-parameter-table` | `decode-item-parameter-table` |
 
 There are several actions that don't fit well into the table above, which let you do other things:
 

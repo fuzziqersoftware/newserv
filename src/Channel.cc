@@ -7,6 +7,7 @@
 #include <phosg/Network.hh>
 #include <phosg/Time.hh>
 
+#include "CommandCensorData.hh"
 #include "Loggers.hh"
 #include "StaticGameData.hh"
 #include "Version.hh"
@@ -20,12 +21,16 @@ Channel::Channel(
     Language language,
     const string& name,
     phosg::TerminalFormat terminal_send_color,
-    phosg::TerminalFormat terminal_recv_color)
+    phosg::TerminalFormat terminal_recv_color,
+    bool censor_received_credentials,
+    bool censor_sent_credentials)
     : version(version),
       language(language),
       name(name),
       terminal_send_color(terminal_send_color),
-      terminal_recv_color(terminal_recv_color) {
+      terminal_recv_color(terminal_recv_color),
+      censor_received_credentials(censor_received_credentials),
+      censor_sent_credentials(censor_sent_credentials) {
 }
 
 void Channel::send(uint16_t cmd, uint32_t flag, bool silent) {
@@ -132,7 +137,20 @@ void Channel::send(
       command_data_log.info_f("Sending to {} (version={} command={:02X} flag={:02X})",
           this->name, phosg::name_for_enum(version), cmd, flag);
     }
-    phosg::print_data(stderr, send_data.data(), logical_size, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
+
+    struct iovec iov{.iov_base = send_data.data(), .iov_len = send_data.size()};
+
+    if (this->censor_sent_credentials) {
+      auto [censor_data, censor_size] = censor_data_for_client_command(this->version, cmd);
+      struct iovec censor_iovs[2] = {
+          // const_casts are OK here because print_data does not modify the buffers
+          {.iov_base = const_cast<char*>("\0\0\0\0\0\0\0\0"), .iov_len = static_cast<size_t>(is_v4(this->version) ? 8 : 4)},
+          {.iov_base = const_cast<void*>(censor_data), .iov_len = censor_size}};
+      phosg::print_data(stderr, &iov, 1, 0, nullptr, 0, censor_iovs, 2, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
+    } else {
+      phosg::print_data(stderr, &iov, 1, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
+    }
+
     if (use_terminal_colors && this->terminal_send_color != phosg::TerminalFormat::NORMAL) {
       print_color_escape(stderr, phosg::TerminalFormat::NORMAL, phosg::TerminalFormat::END);
     }
@@ -201,6 +219,7 @@ asio::awaitable<Channel::Message> Channel::recv() {
   }
   command_data.resize(command_logical_size - header_size);
 
+  uint16_t command = header.command(this->version);
   if (command_data_log.should_log(phosg::LogLevel::L_INFO) && (this->terminal_recv_color != phosg::TerminalFormat::END)) {
     if (use_terminal_colors && this->terminal_recv_color != phosg::TerminalFormat::NORMAL) {
       print_color_escape(stderr, this->terminal_recv_color, phosg::TerminalFormat::BOLD, phosg::TerminalFormat::END);
@@ -221,10 +240,20 @@ asio::awaitable<Channel::Message> Channel::recv() {
           header.flag(this->version));
     }
 
-    vector<struct iovec> iovs;
-    iovs.emplace_back(iovec{.iov_base = &header, .iov_len = header_size});
-    iovs.emplace_back(iovec{.iov_base = command_data.data(), .iov_len = command_data.size()});
-    phosg::print_data(stderr, iovs, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
+    struct iovec iovs[2] = {
+        {.iov_base = &header, .iov_len = header_size},
+        {.iov_base = command_data.data(), .iov_len = command_data.size()}};
+
+    if (this->censor_received_credentials) {
+      auto [censor_data, censor_size] = censor_data_for_client_command(this->version, command);
+      struct iovec censor_iovs[2] = {
+          // const_casts are OK here because print_data does not modify the buffers
+          {.iov_base = const_cast<char*>("\0\0\0\0\0\0\0\0"), .iov_len = header_size},
+          {.iov_base = const_cast<void*>(censor_data), .iov_len = censor_size}};
+      phosg::print_data(stderr, iovs, 2, 0, nullptr, 0, censor_iovs, 2, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
+    } else {
+      phosg::print_data(stderr, iovs, 2, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
+    }
 
     if (use_terminal_colors && this->terminal_recv_color != phosg::TerminalFormat::NORMAL) {
       phosg::print_color_escape(stderr, phosg::TerminalFormat::NORMAL, phosg::TerminalFormat::END);
@@ -232,7 +261,7 @@ asio::awaitable<Channel::Message> Channel::recv() {
   }
 
   co_return Message{
-      .command = header.command(this->version),
+      .command = command,
       .flag = header.flag(this->version),
       .data = std::move(command_data),
   };
@@ -245,9 +274,19 @@ shared_ptr<SocketChannel> SocketChannel::create(
     Language language,
     const string& name,
     phosg::TerminalFormat terminal_send_color,
-    phosg::TerminalFormat terminal_recv_color) {
+    phosg::TerminalFormat terminal_recv_color,
+    bool censor_received_credentials,
+    bool censor_sent_credentials) {
   shared_ptr<SocketChannel> ret(new SocketChannel(
-      io_context, std::move(sock), version, language, name, terminal_send_color, terminal_recv_color));
+      io_context,
+      std::move(sock),
+      version,
+      language,
+      name,
+      terminal_send_color,
+      terminal_recv_color,
+      censor_received_credentials,
+      censor_sent_credentials));
   asio::co_spawn(*io_context, ret->send_task(), asio::detached);
   return ret;
 }
@@ -259,8 +298,10 @@ SocketChannel::SocketChannel(
     Language language,
     const string& name,
     phosg::TerminalFormat terminal_send_color,
-    phosg::TerminalFormat terminal_recv_color)
-    : Channel(version, language, name, terminal_send_color, terminal_recv_color),
+    phosg::TerminalFormat terminal_recv_color,
+    bool censor_received_credentials,
+    bool censor_sent_credentials)
+    : Channel(version, language, name, terminal_send_color, terminal_recv_color, censor_received_credentials, censor_sent_credentials),
       sock(std::move(sock)),
       local_addr(this->sock->local_endpoint()),
       remote_addr(this->sock->remote_endpoint()),
@@ -327,8 +368,10 @@ PeerChannel::PeerChannel(
     Language language,
     const std::string& name,
     phosg::TerminalFormat terminal_send_color,
-    phosg::TerminalFormat terminal_recv_color)
-    : Channel(version, language, name, terminal_send_color, terminal_recv_color),
+    phosg::TerminalFormat terminal_recv_color,
+    bool censor_received_credentials,
+    bool censor_sent_credentials)
+    : Channel(version, language, name, terminal_send_color, terminal_recv_color, censor_received_credentials, censor_sent_credentials),
       send_buffer_nonempty_signal(io_context->get_executor()) {}
 
 void PeerChannel::link_peers(std::shared_ptr<PeerChannel> peer1, std::shared_ptr<PeerChannel> peer2) {

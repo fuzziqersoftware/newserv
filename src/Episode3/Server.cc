@@ -261,7 +261,7 @@ void Server::send(const void* data, size_t size, uint8_t command, bool enable_ma
 
   } else if ((this->options.behavior_flags & BehaviorFlag::LOG_COMMANDS_IF_LOBBY_MISSING) &&
       this->log().info_f("Generated command")) {
-    phosg::print_data(stderr, data, size, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
+    phosg::print_data(stderr, data, size, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
   }
 }
 

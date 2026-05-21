@@ -370,7 +370,7 @@ PSOBBBaseSystemFile::PSOBBBaseSystemFile() {
 PlayerDispDataBBPreview PSOBBCharacterFile::to_preview() const {
   PlayerDispDataBBPreview pre;
   pre.level = this->disp.stats.level;
-  pre.experience = this->disp.stats.experience;
+  pre.exp = this->disp.stats.exp;
   pre.visual = this->disp.visual;
   pre.name = this->disp.name;
   pre.play_time_seconds = this->play_time_seconds;
@@ -1257,7 +1257,7 @@ void PSOBBCharacterFile::add_item(const ItemData& item, const ItemData::StackLim
     throw out_of_range("inventory is full");
   }
   auto& inv_item = this->inventory.items[this->inventory.num_items];
-  inv_item.present = 1;
+  inv_item.state = 1;
   inv_item.unknown_a1 = 0;
   inv_item.flags = 0;
   inv_item.data = item;
@@ -1304,13 +1304,13 @@ ItemData PSOBBCharacterFile::remove_item(uint32_t item_id, uint32_t amount, cons
   for (size_t x = index; x < this->inventory.num_items; x++) {
     auto& to_item = this->inventory.items[x];
     const auto& from_item = this->inventory.items[x + 1];
-    to_item.present = from_item.present;
+    to_item.state = from_item.state;
     to_item.unknown_a1 = from_item.unknown_a1;
     to_item.flags = from_item.flags;
     to_item.data = from_item.data;
   }
   auto& last_item = this->inventory.items[this->inventory.num_items];
-  last_item.present = 0;
+  last_item.state = 0;
   last_item.unknown_a1 = 0;
   last_item.flags = 0;
   last_item.data.clear();
@@ -1429,11 +1429,11 @@ void PSOBBCharacterFile::import_tethealla_material_usage(std::shared_ptr<const L
 
 void PSOBBCharacterFile::recompute_stats(std::shared_ptr<const LevelTable> level_table, bool reset_exp) {
   uint32_t level = this->disp.stats.level;
-  uint32_t exp = this->disp.stats.experience;
+  uint32_t exp = this->disp.stats.exp;
   level_table->reset_to_base(this->disp.stats, this->disp.visual.char_class);
   level_table->advance_to_level(this->disp.stats, level, this->disp.visual.char_class);
   if (!reset_exp) {
-    this->disp.stats.experience = exp;
+    this->disp.stats.exp = exp;
   }
 
   this->disp.stats.char_stats.atp += (this->get_material_usage(MaterialType::POWER) * 2);

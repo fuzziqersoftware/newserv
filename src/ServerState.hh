@@ -11,11 +11,12 @@
 
 #include "Account.hh"
 #include "Client.hh"
+#include "ClientFunctionIndex.hh"
 #include "CommonItemSet.hh"
 #include "DNSServer.hh"
+#include "DOLFileIndex.hh"
 #include "Episode3/DataIndexes.hh"
 #include "Episode3/Tournament.hh"
-#include "FunctionCompiler.hh"
 #include "GSLArchive.hh"
 #include "IPV4RangeSet.hh"
 #include "ItemNameIndex.hh"
@@ -63,6 +64,17 @@ struct CheatFlags {
 
   CheatFlags() = default;
   explicit CheatFlags(const phosg::JSON& json);
+};
+
+struct BBStreamFile {
+  struct Entry {
+    uint32_t offset;
+    uint32_t size;
+    uint32_t checksum; // crc32
+    std::string filename;
+  };
+  std::vector<Entry> entries;
+  std::string data;
 };
 
 struct ServerState : public std::enable_shared_from_this<ServerState> {
@@ -115,6 +127,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool allow_unregistered_users = false;
   bool allow_pc_nte = false;
   bool use_temp_accounts_for_prototypes = true;
+  bool allow_same_account_concurrent_logins = true;
   std::array<uint16_t, NUM_VERSIONS> compatibility_groups = {};
   bool enable_chat_commands = true;
   char chat_command_sentinel = '\0'; // 0 = default (@ on 11/2000; $ on all other versions)
@@ -153,6 +166,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool ep3_jukebox_is_free = false;
   uint32_t ep3_behavior_flags = 0;
   bool hide_download_commands = true;
+  bool censor_credentials = true;
   RunShellBehavior run_shell_behavior = RunShellBehavior::DEFAULT;
   BehaviorSwitch cheat_mode_behavior = BehaviorSwitch::OFF_BY_DEFAULT;
   bool default_switch_assist_enabled = false;
@@ -172,7 +186,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>> bb_private_keys;
   std::shared_ptr<const parray<uint8_t, 0x16C>> bb_default_keyboard_config;
   std::shared_ptr<const parray<uint8_t, 0x38>> bb_default_joystick_config;
-  std::shared_ptr<const FunctionCodeIndex> function_code_index;
+  std::shared_ptr<const ClientFunctionIndex> client_functions;
   std::shared_ptr<const PatchFileIndex> pc_patch_file_index;
   std::shared_ptr<const PatchFileIndex> bb_patch_file_index;
   std::unordered_map<uint64_t, std::shared_ptr<const MapFile>> map_file_for_source_hash;
@@ -180,7 +194,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::unordered_map<uint64_t, std::shared_ptr<const SuperMap>> supermap_for_source_hash_sum;
   std::unordered_map<uint32_t, std::shared_ptr<const SuperMap>> supermap_for_free_play_key;
   std::shared_ptr<const RoomLayoutIndex> room_layout_index;
-  std::shared_ptr<FileContentsCache> bb_stream_files_cache;
+  std::shared_ptr<const BBStreamFile> bb_stream_file;
   std::shared_ptr<FileContentsCache> bb_system_cache;
   std::shared_ptr<FileContentsCache> gba_files_cache;
   std::shared_ptr<const DOLFileIndex> dol_file_index;
@@ -193,7 +207,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const G_SetEXResultValues_Ep3_6xB4x4B> ep3_tournament_final_round_ex_values;
   std::shared_ptr<const QuestCategoryIndex> quest_category_index;
   std::shared_ptr<const QuestIndex> quest_index;
-  std::shared_ptr<const LevelTableV2> level_table_v1_v2;
+  std::shared_ptr<const LevelTable> level_table_v1_v2;
   std::shared_ptr<const LevelTable> level_table_v3;
   std::shared_ptr<const LevelTable> level_table_v4;
   std::shared_ptr<const BattleParamsIndex> battle_params;
@@ -298,6 +312,8 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::atomic<int32_t> next_lobby_id = 1;
   uint8_t pre_lobby_event = 0;
   int32_t ep3_menu_song = -1;
+
+  std::unordered_map<uint32_t, std::shared_ptr<Client>> client_for_account;
 
   std::map<std::string, uint32_t> all_addresses;
   uint32_t local_address = 0;
@@ -442,8 +458,11 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   void load_quest_index(bool raise_on_any_failure = false);
   void compile_functions(bool raise_on_any_failure = false);
   void load_dol_files();
+  void generate_bb_stream_file();
 
   void load_all(bool enable_thread_pool);
+
+  void reset_between_replays();
 
   void disconnect_all_banned_clients();
 };

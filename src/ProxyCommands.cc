@@ -74,13 +74,14 @@ static asio::awaitable<HandlerResult> C_1D(shared_ptr<Client> c, Channel::Messag
     c->ping_start_time = 0;
     double ping_ms = static_cast<double>(ping_usecs) / 1000.0;
     send_text_message_fmt(c->channel, "To proxy: {:g}ms", ping_ms);
+    co_return HandlerResult::SUPPRESS;
+  } else {
+    co_return HandlerResult::FORWARD;
   }
-  co_return HandlerResult::SUPPRESS;
 }
 
-static asio::awaitable<HandlerResult> S_1D(shared_ptr<Client> c, Channel::Message&) {
-  c->proxy_session->server_channel->send(0x1D);
-  co_return HandlerResult::SUPPRESS;
+static asio::awaitable<HandlerResult> S_1D(shared_ptr<Client>, Channel::Message&) {
+  co_return HandlerResult::FORWARD;
 }
 
 static asio::awaitable<HandlerResult> S_97(shared_ptr<Client> c, Channel::Message&) {
@@ -882,7 +883,9 @@ static asio::awaitable<HandlerResult> S_19_U_14(shared_ptr<Client> c, Channel::M
       old_channel->language,
       std::format("C-{} proxy remote server at {}", c->id, netloc_str),
       old_channel->terminal_send_color,
-      old_channel->terminal_recv_color);
+      old_channel->terminal_recv_color,
+      old_channel->censor_received_credentials,
+      old_channel->censor_sent_credentials);
   c->proxy_session->server_channel = new_channel;
   asio::co_spawn(*s->io_context, handle_proxy_server_commands(c, c->proxy_session, new_channel), asio::detached);
   c->log.info_f("Server channel connected");

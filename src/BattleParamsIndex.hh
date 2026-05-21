@@ -35,7 +35,8 @@ public:
     /* 24 */ le_uint32_t unknown_a14;
     /* 28 */ le_uint32_t unknown_a15;
     /* 2C */ le_uint32_t unknown_a16;
-    /* 30 */
+    static AttackData from_json(const phosg::JSON& json);
+    phosg::JSON json() const;
   } __packed_ws__(AttackData, 0x30);
 
   struct ResistData {
@@ -50,7 +51,8 @@ public:
     /* 14 */ le_uint32_t unknown_a8;
     /* 18 */ le_uint32_t unknown_a9;
     /* 1C */ le_int32_t dfp_bonus;
-    /* 20 */
+    static ResistData from_json(const phosg::JSON& json);
+    phosg::JSON json() const;
   } __packed_ws__(ResistData, 0x20);
 
   struct MovementData {
@@ -66,7 +68,8 @@ public:
     /* 24 */ le_uint32_t iparam4;
     /* 28 */ le_uint32_t iparam5;
     /* 2C */ le_uint32_t iparam6;
-    /* 30 */
+    static MovementData from_json(const phosg::JSON& json);
+    phosg::JSON json() const;
   } __packed_ws__(MovementData, 0x30);
 
   struct Table {
@@ -76,23 +79,48 @@ public:
     /* AE00 */ parray<parray<MovementData, 0x60>, 4> movement_data; // [difficulty][bp_index]
     /* F600 */
 
-    const PlayerStats& stats_for_index(Difficulty difficulty, uint8_t index) const {
+    inline const PlayerStats& stats_for_index(Difficulty difficulty, uint8_t index) const {
       return this->stats.at(static_cast<size_t>(difficulty)).at(index);
     }
-    const AttackData& attack_data_for_index(Difficulty difficulty, uint8_t index) const {
+    inline const AttackData& attack_data_for_index(Difficulty difficulty, uint8_t index) const {
       return this->attack_data.at(static_cast<size_t>(difficulty)).at(index);
     }
-    const ResistData& resist_data_for_index(Difficulty difficulty, uint8_t index) const {
+    inline const ResistData& resist_data_for_index(Difficulty difficulty, uint8_t index) const {
       return this->resist_data.at(static_cast<size_t>(difficulty)).at(index);
     }
-    const MovementData& movement_data_for_index(Difficulty difficulty, uint8_t index) const {
+    inline const MovementData& movement_data_for_index(Difficulty difficulty, uint8_t index) const {
       return this->movement_data.at(static_cast<size_t>(difficulty)).at(index);
     }
+
+    static Table from_json(const phosg::JSON& json);
+    phosg::JSON json() const;
 
     void print(FILE* stream, Episode episode) const;
   } __packed_ws__(Table, 0xF600);
 
-  BattleParamsIndex(
+  virtual ~BattleParamsIndex() = default;
+
+  virtual const Table& get_table(bool solo, Episode episode) const = 0;
+  phosg::JSON json() const;
+
+protected:
+  BattleParamsIndex() = default;
+};
+
+class JSONBattleParamsIndex : public BattleParamsIndex {
+public:
+  explicit JSONBattleParamsIndex(const phosg::JSON& json);
+
+  virtual const Table& get_table(bool solo, Episode episode) const;
+
+protected:
+  // Indexed as [online/offline][episode]
+  std::array<std::array<Table, 3>, 2> tables;
+};
+
+class BinaryBattleParamsIndex : public BattleParamsIndex {
+public:
+  BinaryBattleParamsIndex(
       std::shared_ptr<const std::string> data_on_ep1, // BattleParamEntry_on.dat
       std::shared_ptr<const std::string> data_on_ep2, // BattleParamEntry_lab_on.dat
       std::shared_ptr<const std::string> data_on_ep4, // BattleParamEntry_ep4_on.dat
@@ -100,9 +128,9 @@ public:
       std::shared_ptr<const std::string> data_off_ep2, // BattleParamEntry_lab.dat
       std::shared_ptr<const std::string> data_off_ep4); // BattleParamEntry_ep4.dat
 
-  const Table& get_table(bool solo, Episode episode) const;
+  virtual const Table& get_table(bool solo, Episode episode) const;
 
-private:
+protected:
   struct File {
     std::shared_ptr<const std::string> data;
     const Table* table = nullptr;

@@ -10,9 +10,8 @@ using namespace std;
 namespace Episode3 {
 
 void BattleRecord::PlayerEntry::print(FILE* stream) const {
-  // TODO: Format this nicely somehow. Maybe factor out the functions in
-  // QuestScript that format some of these structures
-  phosg::print_data(stream, this, sizeof(*this), 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
+  // TODO: Format this nicely somehow. Maybe factor out the functions in QuestScript that format some of these structs
+  phosg::print_data(stream, this, sizeof(*this), 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
 }
 
 BattleRecord::Event::Event(phosg::StringReader& r) {
@@ -103,23 +102,23 @@ void BattleRecord::Event::print(FILE* stream) const {
       break;
     case Type::BATTLE_COMMAND:
       phosg::fwrite_fmt(stream, "BATTLE_COMMAND\n");
-      phosg::print_data(stream, this->data, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
+      phosg::print_data(stream, this->data, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
       break;
     case Type::GAME_COMMAND:
       phosg::fwrite_fmt(stream, "GAME_COMMAND\n");
-      phosg::print_data(stream, this->data, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
+      phosg::print_data(stream, this->data, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
       break;
     case Type::EP3_GAME_COMMAND:
       phosg::fwrite_fmt(stream, "EP3_GAME_COMMAND\n");
-      phosg::print_data(stream, this->data, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
+      phosg::print_data(stream, this->data, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
       break;
     case Type::CHAT_MESSAGE:
       phosg::fwrite_fmt(stream, "CHAT_MESSAGE {:08X}\n", this->guild_card_number);
-      phosg::print_data(stream, this->data, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
+      phosg::print_data(stream, this->data, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
       break;
     case Type::SERVER_DATA_COMMAND:
       phosg::fwrite_fmt(stream, "SERVER_DATA_COMMAND\n");
-      phosg::print_data(stream, this->data, 0, nullptr, phosg::PrintDataFlags::PRINT_ASCII | phosg::PrintDataFlags::DISABLE_COLOR | phosg::PrintDataFlags::OFFSET_16_BITS);
+      phosg::print_data(stream, this->data, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
       break;
     default:
       throw runtime_error("unknown event type in battle record");

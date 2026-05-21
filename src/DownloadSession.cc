@@ -128,7 +128,9 @@ asio::awaitable<void> DownloadSession::run() {
       this->language,
       netloc_str,
       this->show_command_data ? phosg::TerminalFormat::FG_GREEN : phosg::TerminalFormat::END,
-      this->show_command_data ? phosg::TerminalFormat::FG_YELLOW : phosg::TerminalFormat::END);
+      this->show_command_data ? phosg::TerminalFormat::FG_YELLOW : phosg::TerminalFormat::END,
+      false,
+      false);
   this->log.info_f("Server channel connected");
 
   while (this->channel->connected()) {
@@ -529,7 +531,9 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
           this->language,
           netloc_str,
           this->show_command_data ? phosg::TerminalFormat::FG_GREEN : phosg::TerminalFormat::END,
-          this->show_command_data ? phosg::TerminalFormat::FG_YELLOW : phosg::TerminalFormat::END);
+          this->show_command_data ? phosg::TerminalFormat::FG_YELLOW : phosg::TerminalFormat::END,
+          false,
+          false);
       this->log.info_f("Server channel connected");
       break;
     }

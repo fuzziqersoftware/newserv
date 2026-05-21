@@ -1,7 +1,9 @@
 #pragma once
 
 #include <phosg/Encoding.hh>
+#include <phosg/Strings.hh>
 #include <phosg/Vector.hh>
+#include <set>
 
 #include "Text.hh"
 
@@ -160,3 +162,114 @@ struct RELFileFooterT {
 } __packed_ws_be__(RELFileFooterT, 0x20);
 using RELFileFooter = RELFileFooterT<false>;
 using RELFileFooterBE = RELFileFooterT<true>;
+
+template <bool BE>
+std::set<uint32_t> all_relocation_offsets_for_rel_file(const void* data, size_t size) {
+  phosg::StringReader r(data, size);
+
+  std::set<uint32_t> ret;
+  ret.emplace(r.size() - 0x20); // REL footer
+  ret.emplace(r.pget<U32T<BE>>(r.size() - 0x10)); // root
+  ret.emplace(r.pget<U32T<BE>>(r.size() - 0x20)); // relocations
+
+  const auto& footer = r.pget<RELFileFooterT<BE>>(r.size() - sizeof(RELFileFooterT<BE>));
+  auto sub_r = r.sub(footer.relocations_offset, footer.num_relocations * sizeof(U16T<BE>));
+  uint32_t offset = 0;
+  while (!sub_r.eof()) {
+    offset += sub_r.template get<U16T<BE>>() * 4;
+    ret.emplace(r.pget<U32T<BE>>(offset));
+  }
+
+  return ret;
+}
+
+template <typename T>
+size_t get_rel_array_count(const std::set<uint32_t>& offsets, size_t start_offset) {
+  auto it = offsets.lower_bound(start_offset);
+  if (it == offsets.end()) {
+    throw std::out_of_range("start offset out of range");
+  }
+  if (*it == start_offset) {
+    it++;
+  }
+  if (it == offsets.end()) {
+    throw std::out_of_range("no further offset beyond start offset");
+  }
+  return (*it - start_offset) / sizeof(T);
+}
+
+template <bool BE>
+class RELFileWriter {
+public:
+  RELFileWriter() = default;
+  ~RELFileWriter() = default;
+
+  template <typename T>
+  uint32_t put(const T& obj) {
+    uint32_t ret = this->w.size();
+    this->w.put<T>(obj);
+    return ret;
+  }
+
+  uint32_t write(const void* data, size_t size) {
+    uint32_t ret = this->w.size();
+    this->w.write(data, size);
+    return ret;
+  }
+
+  uint32_t write(const std::string& data) {
+    uint32_t ret = this->w.size();
+    this->w.write(data);
+    return ret;
+  }
+
+  uint32_t write_offset(uint32_t value) {
+    uint32_t ret = this->w.size();
+    this->relocations.emplace(ret);
+    this->w.put<U32T<BE>>(value);
+    return ret;
+  }
+
+  uint32_t write_ref(const ArrayRefT<BE>& ref) {
+    uint32_t ret = this->w.size();
+    this->w.put<ArrayRefT<BE>>(ref);
+    this->relocations.emplace(ret + offsetof(ArrayRefT<BE>, offset));
+    return ret;
+  }
+
+  void align(size_t alignment) {
+    while (this->w.size() & (alignment - 1)) {
+      this->w.put_u8(0);
+    }
+  }
+
+  std::string finalize(uint32_t root_offset) {
+    RELFileFooterT<BE> footer;
+    footer.root_offset = root_offset;
+
+    this->align(0x20);
+    footer.relocations_offset = this->w.size();
+    footer.num_relocations = this->relocations.size();
+    footer.unused1[0] = 1;
+    uint32_t last_offset = 0;
+    for (uint32_t reloc_offset : this->relocations) {
+      if (reloc_offset & 3) {
+        throw std::logic_error("Relocation is not 4-byte aligned");
+      }
+      size_t reloc_value = (reloc_offset - last_offset) >> 2;
+      if (reloc_value > 0xFFFF) {
+        throw std::runtime_error("Relocation offset is too far away from previous");
+      }
+      this->w.put<U16T<BE>>(reloc_value);
+      last_offset = reloc_offset;
+    }
+
+    align(0x20);
+    this->w.put<RELFileFooterT<BE>>(footer);
+
+    return std::move(this->w.str());
+  }
+
+  phosg::StringWriter w;
+  std::set<uint32_t> relocations;
+};

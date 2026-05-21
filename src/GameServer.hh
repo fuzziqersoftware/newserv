@@ -15,9 +15,7 @@ struct GameServerSocket : ServerSocket {
   ServerBehavior behavior;
 };
 
-class GameServer
-    : public Server<Client, GameServerSocket>,
-      public std::enable_shared_from_this<GameServer> {
+class GameServer : public Server<Client, GameServerSocket>, public std::enable_shared_from_this<GameServer> {
 public:
   GameServer() = delete;
   GameServer(const GameServer&) = delete;

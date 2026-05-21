@@ -19,6 +19,8 @@ public:
   std::string name;
   phosg::TerminalFormat terminal_send_color;
   phosg::TerminalFormat terminal_recv_color;
+  bool censor_received_credentials;
+  bool censor_sent_credentials;
 
   struct Message {
     uint16_t command;
@@ -87,8 +89,10 @@ protected:
       Version version,
       Language language,
       const std::string& name,
-      phosg::TerminalFormat terminal_send_color = phosg::TerminalFormat::END,
-      phosg::TerminalFormat terminal_recv_color = phosg::TerminalFormat::END);
+      phosg::TerminalFormat terminal_send_color,
+      phosg::TerminalFormat terminal_recv_color,
+      bool censor_received_credentials,
+      bool censor_sent_credentials);
   Channel(const Channel& other) = delete;
   Channel(Channel&& other) = delete;
   Channel& operator=(const Channel& other) = delete;
@@ -114,9 +118,11 @@ public:
       std::unique_ptr<asio::ip::tcp::socket>&& sock,
       Version version,
       Language language,
-      const std::string& name = "",
-      phosg::TerminalFormat terminal_send_color = phosg::TerminalFormat::END,
-      phosg::TerminalFormat terminal_recv_color = phosg::TerminalFormat::END);
+      const std::string& name,
+      phosg::TerminalFormat terminal_send_color,
+      phosg::TerminalFormat terminal_recv_color,
+      bool censor_received_credentials,
+      bool censor_sent_credentials);
 
   virtual std::string default_name() const;
 
@@ -134,7 +140,9 @@ private:
       Language language,
       const std::string& name,
       phosg::TerminalFormat terminal_send_color,
-      phosg::TerminalFormat terminal_recv_color);
+      phosg::TerminalFormat terminal_recv_color,
+      bool censor_received_credentials,
+      bool censor_sent_credentials);
 
   std::deque<std::string> outbound_data;
   bool should_disconnect = false;
@@ -152,9 +160,11 @@ public:
       std::shared_ptr<asio::io_context> io_context,
       Version version,
       Language language,
-      const std::string& name = "",
-      phosg::TerminalFormat terminal_send_color = phosg::TerminalFormat::END,
-      phosg::TerminalFormat terminal_recv_color = phosg::TerminalFormat::END);
+      const std::string& name,
+      phosg::TerminalFormat terminal_send_color,
+      phosg::TerminalFormat terminal_recv_color,
+      bool censor_received_credentials,
+      bool censor_sent_credentials);
 
   static void link_peers(std::shared_ptr<PeerChannel> peer1, std::shared_ptr<PeerChannel> peer2);
 

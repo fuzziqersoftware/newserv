@@ -79,7 +79,6 @@ ServerState::ServerState(const string& config_filename, bool is_replay)
       config_filename(config_filename),
       is_replay(is_replay),
       thread_pool(make_unique<asio::thread_pool>()),
-      bb_stream_files_cache(new FileContentsCache(3600000000ULL)),
       bb_system_cache(new FileContentsCache(3600000000ULL)),
       gba_files_cache(new FileContentsCache(3600000000ULL)) {}
 
@@ -866,6 +865,7 @@ void ServerState::load_config_early() {
   this->ip_stack_debug = this->config_json->get_bool("IPStackDebug", false);
   this->allow_unregistered_users = this->config_json->get_bool("AllowUnregisteredUsers", false);
   this->allow_pc_nte = this->config_json->get_bool("AllowPCNTE", false);
+  this->allow_same_account_concurrent_logins = this->config_json->get_bool("AllowSameAccountConcurrentLogins", false);
   this->allow_saving_accounts = this->config_json->get_bool("AllowSavingAccounts", true);
   this->use_temp_accounts_for_prototypes = this->config_json->get_bool("UseTemporaryAccountsForPrototypes", true);
   this->notify_server_for_max_level_achieved = this->config_json->get_bool("NotifyServerForMaxLevelAchieved", false);
@@ -977,6 +977,7 @@ void ServerState::load_config_early() {
   this->ep3_behavior_flags = this->config_json->get_int("Episode3BehaviorFlags", 0);
   this->ep3_card_auction_points = this->config_json->get_int("CardAuctionPoints", 0);
   this->hide_download_commands = this->config_json->get_bool("HideDownloadCommands", true);
+  this->censor_credentials = this->config_json->get_bool("CensorCredentials", true);
   this->proxy_allow_save_files = this->config_json->get_bool("ProxyAllowSaveFiles", true);
 
   try {
@@ -1831,8 +1832,6 @@ vector<shared_ptr<const SuperMap>> ServerState::supermaps_for_variations(
 }
 
 void ServerState::clear_file_caches() {
-  config_log.info_f("Clearing BB stream file cache");
-  this->bb_stream_files_cache.reset(new FileContentsCache(3600000000ULL));
   config_log.info_f("Clearing BB system cache");
   this->bb_system_cache.reset(new FileContentsCache(3600000000ULL));
   config_log.info_f("Clearing GBA file cache");
@@ -1879,21 +1878,30 @@ void ServerState::load_set_data_tables() {
 }
 
 void ServerState::load_battle_params() {
-  config_log.info_f("Loading battle parameters");
-  this->battle_params = make_shared<BattleParamsIndex>(
-      this->load_bb_file("BattleParamEntry_on.dat"),
-      this->load_bb_file("BattleParamEntry_lab_on.dat"),
-      this->load_bb_file("BattleParamEntry_ep4_on.dat"),
-      this->load_bb_file("BattleParamEntry.dat"),
-      this->load_bb_file("BattleParamEntry_lab.dat"),
-      this->load_bb_file("BattleParamEntry_ep4.dat"));
+  config_log.info_f("Loading JSON battle parameters");
+  try {
+    this->battle_params = make_shared<JSONBattleParamsIndex>(phosg::JSON::parse(phosg::load_file(
+        "system/tables/battle-params.json")));
+  } catch (const std::exception& e) {
+    config_log.info_f("Cannot load JSON battle parameters ({}); loading binary battle parameters", e.what());
+    this->battle_params = make_shared<BinaryBattleParamsIndex>(
+        this->load_bb_file("BattleParamEntry_on.dat"),
+        this->load_bb_file("BattleParamEntry_lab_on.dat"),
+        this->load_bb_file("BattleParamEntry_ep4_on.dat"),
+        this->load_bb_file("BattleParamEntry.dat"),
+        this->load_bb_file("BattleParamEntry_lab.dat"),
+        this->load_bb_file("BattleParamEntry_ep4.dat"));
+  }
 }
 
 void ServerState::load_level_tables() {
   config_log.info_f("Loading level tables");
-  this->level_table_v1_v2 = make_shared<LevelTableV2>(phosg::load_file("system/level-tables/PlayerTable-pc-v2.prs"), true);
-  this->level_table_v3 = make_shared<LevelTableV3BE>(phosg::load_file("system/level-tables/PlyLevelTbl-gc-v3.cpt"), true);
-  this->level_table_v4 = make_shared<LevelTableV4>(*this->load_bb_file("PlyLevelTbl.prs"), true);
+  this->level_table_v1_v2 = make_shared<JSONLevelTable>(phosg::JSON::parse(phosg::load_file(
+      "system/tables/level-table-v1-v2.json")));
+  this->level_table_v3 = make_shared<JSONLevelTable>(phosg::JSON::parse(phosg::load_file(
+      "system/tables/level-table-v3.json")));
+  this->level_table_v4 = make_shared<JSONLevelTable>(phosg::JSON::parse(phosg::load_file(
+      "system/tables/level-table-v4.json")));
 }
 
 void ServerState::load_text_index() {
@@ -2019,11 +2027,11 @@ void ServerState::load_drop_tables() {
 
   unordered_map<string, shared_ptr<const RareItemSet>> new_rare_item_sets;
   unordered_map<string, shared_ptr<const CommonItemSet>> new_common_item_sets;
-  for (const auto& item : std::filesystem::directory_iterator("system/item-tables")) {
+  for (const auto& item : std::filesystem::directory_iterator("system/tables")) {
     string filename = item.path().filename().string();
 
     if (filename.starts_with("common-table-") || filename.starts_with("ItemPT-")) {
-      string path = "system/item-tables/" + filename;
+      string path = "system/tables/" + filename;
       size_t ext_offset = filename.rfind('.');
       string basename = (ext_offset == string::npos) ? filename : filename.substr(0, ext_offset);
 
@@ -2042,7 +2050,7 @@ void ServerState::load_drop_tables() {
         auto data = make_shared<string>(phosg::load_file(path));
         shared_ptr<string> ct_data;
         try {
-          string ct_path = "system/item-tables/" + ct_filename;
+          string ct_path = "system/tables/" + ct_filename;
           ct_data = make_shared<string>(phosg::load_file(ct_path));
           config_log.info_f("Loading AFS common item table {} with challenge table {}", filename, ct_filename);
         } catch (const phosg::cannot_open_file&) {
@@ -2062,7 +2070,7 @@ void ServerState::load_drop_tables() {
       }
 
     } else if (filename.starts_with("rare-table-") || filename.starts_with("ItemRT-")) {
-      string path = "system/item-tables/" + filename;
+      string path = "system/tables/" + filename;
       size_t ext_offset = filename.rfind('.');
       string basename = (ext_offset == string::npos) ? filename : filename.substr(0, ext_offset);
 
@@ -2111,20 +2119,20 @@ void ServerState::load_drop_tables() {
   }
 
   config_log.info_f("Loading armor table");
-  auto armor_data = make_shared<string>(phosg::load_file("system/item-tables/ArmorRandom-gc-v3.rel"));
+  auto armor_data = make_shared<string>(phosg::load_file("system/tables/ArmorRandom-gc-v3.rel"));
   auto new_armor_random_set = make_shared<ArmorRandomSet>(armor_data);
 
   config_log.info_f("Loading tool table");
-  auto tool_data = make_shared<string>(phosg::load_file("system/item-tables/ToolRandom-gc-v3.rel"));
+  auto tool_data = make_shared<string>(phosg::load_file("system/tables/ToolRandom-gc-v3.rel"));
   auto new_tool_random_set = make_shared<ToolRandomSet>(tool_data);
 
   config_log.info_f("Loading weapon tables");
   array<shared_ptr<const WeaponRandomSet>, 4> new_weapon_random_sets;
   const char* filenames[4] = {
-      "system/item-tables/WeaponRandomNormal-gc-v3.rel",
-      "system/item-tables/WeaponRandomHard-gc-v3.rel",
-      "system/item-tables/WeaponRandomVeryHard-gc-v3.rel",
-      "system/item-tables/WeaponRandomUltimate-gc-v3.rel",
+      "system/tables/WeaponRandomNormal-gc-v3.rel",
+      "system/tables/WeaponRandomHard-gc-v3.rel",
+      "system/tables/WeaponRandomVeryHard-gc-v3.rel",
+      "system/tables/WeaponRandomUltimate-gc-v3.rel",
   };
   for (size_t z = 0; z < 4; z++) {
     auto weapon_data = make_shared<string>(phosg::load_file(filenames[z]));
@@ -2132,7 +2140,7 @@ void ServerState::load_drop_tables() {
   }
 
   config_log.info_f("Loading tekker adjustment table");
-  auto tekker_data = make_shared<string>(phosg::load_file("system/item-tables/JudgeItem-gc-v3.rel"));
+  auto tekker_data = make_shared<string>(phosg::load_file("system/tables/JudgeItem-gc-v3.rel"));
   auto new_tekker_adjustment_set = make_shared<TekkerAdjustmentSet>(tekker_data);
 
   this->rare_item_sets = std::move(new_rare_item_sets);
@@ -2148,26 +2156,32 @@ void ServerState::load_item_definitions() {
   config_log.info_f("Loading item definition tables");
   for (size_t v_s = NUM_PATCH_VERSIONS; v_s < NUM_VERSIONS; v_s++) {
     Version v = static_cast<Version>(v_s);
-    string path = std::format("system/item-tables/ItemPMT-{}.prs", file_path_token_for_version(v));
-    config_log.debug_f("Loading item definition table {}", path);
-    auto data = make_shared<string>(prs_decompress(phosg::load_file(path)));
-    new_item_parameter_tables[v_s] = ItemParameterTable::from_binary(data, v);
+    string json_path = std::format("system/tables/item-parameter-table-{}.json", file_path_token_for_version(v));
+    try {
+      config_log.debug_f("Loading item definition table {}", json_path);
+      new_item_parameter_tables[v_s] = ItemParameterTable::from_json(phosg::JSON::parse(phosg::load_file(json_path)));
+    } catch (const std::exception& e) {
+      string path = std::format("system/tables/ItemPMT-{}.prs", file_path_token_for_version(v));
+      config_log.debug_f("Cannot load {} ({}); loading item definition table {}", json_path, e.what(), path);
+      auto data = std::make_shared<std::string>(prs_decompress(phosg::load_file(path)));
+      new_item_parameter_tables[v_s] = ItemParameterTable::from_binary(data, v);
+    }
   }
 
-  auto json = phosg::JSON::parse(phosg::load_file("system/item-tables/translation-table.json"));
+  auto json = phosg::JSON::parse(phosg::load_file("system/tables/translation-table.json"));
   auto new_item_translation_table = make_shared<ItemTranslationTable>(json, new_item_parameter_tables);
 
   config_log.info_f("Loading v1 mag evolution table");
-  auto mag_data_v1 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-dc-v1.prs")));
+  auto mag_data_v1 = make_shared<string>(prs_decompress(phosg::load_file("system/tables/ItemMagEdit-dc-v1.prs")));
   auto new_table_v1 = MagEvolutionTable::create(mag_data_v1, Version::DC_V1);
   config_log.info_f("Loading v2 mag evolution table");
-  auto mag_data_v2 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-dc-v2.prs")));
+  auto mag_data_v2 = make_shared<string>(prs_decompress(phosg::load_file("system/tables/ItemMagEdit-dc-v2.prs")));
   auto new_table_v2 = MagEvolutionTable::create(mag_data_v2, Version::DC_V2);
   config_log.info_f("Loading v3 mag evolution table");
-  auto mag_data_v3 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-xb-v3.prs")));
+  auto mag_data_v3 = make_shared<string>(prs_decompress(phosg::load_file("system/tables/ItemMagEdit-xb-v3.prs")));
   auto new_table_v3 = MagEvolutionTable::create(mag_data_v3, Version::XB_V3);
   config_log.info_f("Loading v4 mag evolution table");
-  auto mag_data_v4 = make_shared<string>(prs_decompress(phosg::load_file("system/item-tables/ItemMagEdit-bb-v4.prs")));
+  auto mag_data_v4 = make_shared<string>(prs_decompress(phosg::load_file("system/tables/ItemMagEdit-bb-v4.prs")));
   auto new_table_v4 = MagEvolutionTable::create(mag_data_v4, Version::BB_V4);
 
   this->item_parameter_tables = std::move(new_item_parameter_tables);
@@ -2219,12 +2233,52 @@ void ServerState::load_quest_index(bool raise_on_any_failure) {
 
 void ServerState::compile_functions(bool raise_on_any_failure) {
   config_log.info_f("Compiling client functions");
-  this->function_code_index = make_shared<FunctionCodeIndex>("system/client-functions", raise_on_any_failure);
+  this->client_functions = make_shared<ClientFunctionIndex>("system/client-functions", raise_on_any_failure);
 }
 
 void ServerState::load_dol_files() {
   config_log.info_f("Loading DOL files");
   this->dol_file_index = make_shared<DOLFileIndex>("system/dol");
+}
+
+void ServerState::generate_bb_stream_file() {
+  config_log.info_f("Generating BB stream file");
+  auto sf = std::make_shared<BBStreamFile>();
+
+  auto add_file = [&](const std::string& filename, const void* data = nullptr, size_t size = 0) -> void {
+    auto& e = sf->entries.emplace_back();
+    e.offset = sf->data.size();
+    e.filename = filename;
+    if (!data) {
+      std::string file_data = phosg::load_file("system/blueburst/" + filename);
+      e.size = file_data.size();
+      e.checksum = phosg::crc32(file_data.data(), file_data.size());
+      sf->data += file_data;
+    } else {
+      e.size = size;
+      e.checksum = phosg::crc32(data, size);
+      sf->data.append(reinterpret_cast<const char*>(data), size);
+    }
+    config_log.debug_f(
+        "[BBStreamFile] Added file {} at offset {:08X} ({:08X} bytes) with checksum {:08X}; total size is now {:08X}",
+        filename, e.offset, e.size, e.checksum, sf->data.size());
+  };
+
+  auto level_table_data = prs_compress_optimal(this->level_table_v4->serialize_binary_v4());
+  auto pmt_data = prs_compress_optimal(this->item_parameter_table(Version::BB_V4)->serialize_binary(Version::BB_V4));
+
+  const auto& bps = *this->battle_params;
+  add_file("BattleParamEntry.dat", &bps.get_table(true, Episode::EP1), sizeof(BattleParamsIndex::Table));
+  add_file("BattleParamEntry_lab.dat", &bps.get_table(true, Episode::EP2), sizeof(BattleParamsIndex::Table));
+  add_file("BattleParamEntry_ep4.dat", &bps.get_table(true, Episode::EP4), sizeof(BattleParamsIndex::Table));
+  add_file("BattleParamEntry_on.dat", &bps.get_table(false, Episode::EP1), sizeof(BattleParamsIndex::Table));
+  add_file("BattleParamEntry_lab_on.dat", &bps.get_table(false, Episode::EP2), sizeof(BattleParamsIndex::Table));
+  add_file("BattleParamEntry_ep4_on.dat", &bps.get_table(false, Episode::EP4), sizeof(BattleParamsIndex::Table));
+  add_file("PlyLevelTbl.prs", level_table_data.data(), level_table_data.size());
+  add_file("ItemMagEdit.prs");
+  add_file("ItemPMT.prs", pmt_data.data(), pmt_data.size());
+
+  this->bb_stream_file = sf;
 }
 
 void ServerState::create_default_lobbies() {
@@ -2306,6 +2360,28 @@ void ServerState::load_all(bool enable_thread_pool) {
   this->load_config_late();
   this->load_teams();
   this->load_quest_index();
+  this->generate_bb_stream_file();
+}
+
+void ServerState::reset_between_replays() {
+  if (this->allow_saving_accounts) {
+    throw std::logic_error("Account saving is enabled during replay");
+  }
+  this->account_index = make_shared<AccountIndex>(true);
+
+  this->next_lobby_id = 0;
+  std::vector<std::shared_ptr<Lobby>> lobbies_to_delete;
+  for (const auto& l : this->all_lobbies()) {
+    if (l->is_game()) {
+      lobbies_to_delete.emplace_back(l);
+    } else {
+      this->next_lobby_id = std::max<uint32_t>(this->next_lobby_id, l->lobby_id + 1);
+    }
+  }
+  for (const auto& l : lobbies_to_delete) {
+    phosg::log_warning_f("Previous replay left a game open ({:08X}); destroying it", l->lobby_id);
+    this->remove_lobby(l);
+  }
 }
 
 void ServerState::disconnect_all_banned_clients() {

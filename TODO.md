@@ -30,8 +30,6 @@
 
 ## PSOBB
 
-- Figure out why Pouilly Slime EXP doesn't work
 - Make server-specified rare enemies work with maps loaded by the proxy
-- Implement serialization for various table types (ItemPMT, ItemPT, etc.)
 - Record some BB tests
 - Add all necessary Guild Card number rewrites in BB commands on the proxy

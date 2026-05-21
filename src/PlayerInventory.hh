@@ -42,19 +42,34 @@ class ItemParameterTable;
 
 template <bool BE>
 struct PlayerInventoryItemT {
-  /* 00 */ uint8_t present = 0;
+  // Values for state:
+  //   0 = on floor (used in TItem; not used in PlayerInventoryItem)
+  //   1 = in player's inventory, not equipped
+  //   2 = in player's inventory, equipped
+  //   3 = destroying
+  /* 00 */ uint8_t state = 0;
   /* 01 */ uint8_t unknown_a1 = 0;
   // See note above about these fields
   /* 02 */ uint8_t extension_data1 = 0;
   /* 03 */ uint8_t extension_data2 = 0;
-  /* 04 */ U32T<BE> flags = 0; // 8 = equipped
+  // Bits in the flags field:
+  //   0004 = is equippable item type ("Equip" appears in menu)
+  //   0008 = is equipped
+  //   0010 = is consumable item type (item is automatically deleted when used; also applies to Present)
+  //   0020 = TODO (3OE1:8010B2DC, 3OE1:80120744)
+  //   0040 = hidden (model does not render, no related effects are created, no related sounds are played)
+  //   0080 = TODO (3OE1:TItem_check_flag80; pssibly temp flag only used in Tekker sequence)
+  //   0100 = has kill count
+  //   0200 = kill count limit has been reached (item can be unsealed)
+  //   0400 = wrapped
+  /* 04 */ U32T<BE> flags = 0;
   /* 08 */ ItemData data;
   /* 1C */
 
   PlayerInventoryItemT() = default;
 
   PlayerInventoryItemT(const ItemData& item, bool equipped)
-      : present(1),
+      : state(1),
         unknown_a1(0),
         extension_data1(0),
         extension_data2(0),
@@ -63,7 +78,7 @@ struct PlayerInventoryItemT {
 
   operator PlayerInventoryItemT<!BE>() const {
     PlayerInventoryItemT<!BE> ret;
-    ret.present = this->present;
+    ret.state = this->state;
     ret.unknown_a1 = this->unknown_a1;
     ret.extension_data1 = this->extension_data1;
     ret.extension_data2 = this->extension_data2;
@@ -227,7 +242,7 @@ struct PlayerInventoryT {
           ((data1_1 < 0) || (this->items[read_offset].data.data1[1] == static_cast<uint8_t>(data1_1))));
       if (!should_delete) {
         if (read_offset != write_offset) {
-          this->items[write_offset].present = this->items[read_offset].present;
+          this->items[write_offset].state = this->items[read_offset].state;
           this->items[write_offset].unknown_a1 = this->items[read_offset].unknown_a1;
           this->items[write_offset].flags = this->items[read_offset].flags;
           this->items[write_offset].data = this->items[read_offset].data;

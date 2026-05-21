@@ -177,9 +177,9 @@
     // DNS server messages describe erroneous queries that the DNS server does not respond to. Normal DNS queries do
     // not generate any log messages.
     "DNSServer": "INFO",
-    // Function compiler messages are generated when building client functions, which only happens at startup time or
-    // when `reload functions` is used in the shell.
-    "FunctionCompiler": "INFO",
+    // Client function index messages are generated when building client functions, which only happens at startup time
+    // or when `reload functions` is used in the shell.
+    "ClientFunctionIndex": "INFO",
     // IP stack simulator messages describe clients connecting and disconnecting via the IP stack interface, and errors
     // that occur at the simulated network level within the simulator.
     "IPStackSimulator": "INFO",
@@ -204,6 +204,10 @@
   // default. If you're investigating or submitting a bug report that occurs on BB clients, set this to false to get a
   // full session log before submitting your report.
   "HideDownloadCommands": true,
+  // Some commands include user information such as passwords and access keys. By default, these are not shown in the
+  // log, but in certain debugging situations you may need to log them. Set this to false to show credentials in the
+  // command log.
+  "CensorCredentials": true,
 
   // If this option is disabled, the server only allows users who have accounts on the server to connect. If this is
   // enabled, all users will be allowed to connect even if they don't have accounts. When a user connects with an
@@ -221,6 +225,11 @@
   // does not have any way to identify the player (no serial number, username, etc.), so PC NTE players receive random
   // Guild Card numbers every time they connect and cannot be banned by serial number or username.
   "AllowPCNTE": true,
+
+  // If this is enabled, players can log in multiple times on the same account at the same time. If this is disabled,
+  // only one login is allowed per account at a time; when a new session is opened, any existing sessions on the same
+  // account are disconnected.
+  "AllowSameAccountConcurrentLogins": true,
 
   // Whether to enable chat commands for all players. If this is true, all players will be able to use chat commands as
   // normal; if this is false, only players with the ALWAYS_ENABLE_CHAT_COMMANDS account flag will be able to use chat

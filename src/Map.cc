@@ -1375,11 +1375,11 @@ static const vector<DATEntityDefinition> dat_object_definitions({
     //   param1 = if positive, box is specialized to drop a specific item or type of item; if zero or negative, box
     //     drops any item (including box rares for the current floor), or nothing at all, and param3-6 are all ignored
     //   param3 = if zero, then only data1[0-1] (the high 2 bytes of param4) are used and the rest of the ItemData is
-    //     cleared, then bonuses, grinds, etc. are applied to the item; if nonzero, the item is not randomized at all
-    //     and drops exactly as specified in param4-6
+    //     cleared, then the usual randomized bonuses, grinds, etc. are applied to the item; if nonzero, the item is
+    //     not randomized at all and drops exactly as specified in param4-6
     //   param4-6 = item definition (see below)
-    // Not all fields in ItemData can be specified in the item definition here. The field order here does not match the
-    // field order in ItemData! The item definition is encoded here as follows:
+    // Not all fields in ItemData can be specified in the item definition for this object. The field order here does
+    // not match the field order in ItemData! The item definition is encoded as follows:
     //               -param4-  -param5-  -param6-
     //   Weapon:     00wwZZSS  GG--PPQQ  PPQQPPQQ
     //   Armor:      0100ZZTT  00VV----  --------
@@ -2508,7 +2508,7 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     // - TObjEneRe7Berura (param1, param2)
     // - TBoss1Dragon (param1, param2)
     // - TBoss5Gryphon (param1, param2)
-    // - TBoss2DeRolLe (param1, param2)
+    // - TBoss2DeRolLe (param1, param2, param3)
     // - TBoss8Dragon (param1, param2)
     // - TObjEneBm5GibonU (param4, param5; these params also have non-debug meanings)
     // - TObjEneMorfos (oaram1, param2; these params also have non-debug meanings)
@@ -2902,8 +2902,9 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     //     6 = rangers
     //     7 = forces
     //     8 = no prejudice
-    // If any player is within 30 units of a Delsaber, it will target that player. Otherwise, the Delsaber will target
-    // the nearest player that matches its prejudice flag; if no player matches, it will target the nearest player.
+    // By default, the Delsaber will target the nearest player that matches its prejudice flag. If no players match the
+    // flag or there is any player less than 30 units away from the Delsaber, then the Delsaber will target the nearest
+    // player overall and ignore its prejudice flag.
     {0x00A0, F_V0_V4, 0x0000000000630300, "TObjEneSaver"},
 
     // Chaos Sorceror. There appear to be no parameters.
@@ -2918,7 +2919,7 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
 
     // Dark Gunner control enemy. This enemy doesn't actually exist in-game; it only has logic for choosing a Dark
     // Gunner from its group to be the leader, and then changing this leader periodically. Params:
-    //   param1 = group number (see above)
+    //   param1 = group number (see TObjEneDarkGunner above)
     {0x00A3, F_V0_V4, 0x0000000000000600, "TObjEneDarkGunCenter"},
 
     // Dark Bringer. There appear to be no parameters.
@@ -2938,10 +2939,14 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     // Claw. There appear to be no parameters.
     {0x00A8, F_V0_V4, 0x0000000000000700, "TObjEneBalClawClaw"},
 
-    // Early bosses. None of these take any parameters.
+    // Dragon-like bosses. None of these take any parameters.
     {0x00C0, F_V0_V4, 0x0000000000000800, "TBoss1Dragon"}, // Dragon
     {0x00C0, F_V3_V4, 0x0000000040000000, "TBoss5Gryphon"}, // Gal Gryphon
+    {0x00CC, F_V3_V4, 0x0000000200000000, "TBoss8Dragon"}, // Gol Dragon
+
+    // De Rol Le-like bosses. Neither of these take any parameters.
     {0x00C1, F_V0_V4, 0x0000000000001000, "TBoss2DeRolLe"}, // De Rol Le
+    {0x00CB, F_V3_V4, 0x0000000100000000, "TBoss7DeRolLeC"}, // Barba Ray
 
     // Vol Opt and various pieces thereof. Generally only TBoss3Volopt and TBoss3VoloptP02 should be specified in map
     // files; the other enemies are automatically created by TBoss3Volopt. None of these take any parameters.
@@ -2952,11 +2957,9 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     {0x00C6, F_V0_V4, 0x0000000000002000, "TBoss3VoloptMonitor"}, // Monitor (x24; 4 for each wall)
     {0x00C7, F_V0_V4, 0x0000000000002000, "TBoss3VoloptHiraisin"}, // Pillar (lightning rod)
 
-    // More bosses. None of these take any parameters.
+    // Dark Falz-like bosses. Neither of these take any parameters.
     {0x00C8, F_V0_V4, 0x0000000000004000, "TBoss4DarkFalz"}, // Dark Falz
     {0x00CA, F_V3_V4, 0x0000000080000000, "TBoss6PlotFalz"}, // Olga Flow
-    {0x00CB, F_V3_V4, 0x0000000100000000, "TBoss7DeRolLeC"}, // Barba Ray
-    {0x00CC, F_V3_V4, 0x0000000200000000, "TBoss8Dragon"}, // Gol Dragon
 
     // Sinow Berill or Sinow Spigell. Params:
     //   param1 = spawn type:
@@ -2998,7 +3001,7 @@ static const vector<DATEntityDefinition> dat_enemy_definitions({
     //     1 = Mericus
     //     2 = Merikle
     //     anything else = Mericarand (see below)
-    // If this is a Mericarand, it is "randomly" chosen to be one of the three subtypes at construction time. On v1-v3,
+    // If this is a Mericarand, it is "randomly" chosen to be one of the three subtypes at construction time. On v3,
     // the client chooses randomly (but consistently, based on the entity ID) between Mericarol (80%), Mericus (10%) or
     // Merikle (10%). On v4, if the entity ID isn't marked rare by the server, the Mericarand becomes a Mericarol;
     // otherwise, it becomes a Mericus if its entity ID is even or a Merikle if it's odd.
@@ -4608,10 +4611,9 @@ shared_ptr<SuperMap::Enemy> SuperMap::add_enemy_and_children(
     case 0x0060: // TObjGrass
       add(EnemyType::GRASS_ASSASSIN);
       break;
-    case 0x0061: { // TObjEneRe2Flower
+    case 0x0061: // TObjEneRe2Flower
       add((this->area_for_floor(floor) == 0x23) ? EnemyType::DEL_LILY : EnemyType::POISON_LILY);
       break;
-    }
     case 0x0062: // TObjEneNanoDrago
       add(EnemyType::NANO_DRAGON);
       break;
@@ -6573,7 +6575,7 @@ void MapState::import_object_states_from_sync(
         throw logic_error("super object link is incorrect");
       }
       if (obj_st->game_flags != entry.flags) {
-        this->log.warning_f("({:04X} => K-{:03X}) Game flags from client ({:04X}) do not match game flags from map ({:04X})",
+        this->log.info_f("({:04X} => K-{:03X}) Game flags from client ({:04X}) do not match game flags from map ({:04X})",
             object_index, obj_st->k_id, entry.flags, obj_st->game_flags);
         obj_st->game_flags = entry.flags;
       }
@@ -6608,12 +6610,12 @@ void MapState::import_enemy_states_from_sync(Version from_version, const SyncEne
       // Only set the state if it's not an alias
       if (ene_st->super_ene == ene) {
         if (ene_st->game_flags != entry.flags) {
-          this->log.warning_f("({:04X} => E-{:03X}) Game flags from client ({:08X}) do not match game flags from map ({:08X})",
+          this->log.info_f("({:04X} => E-{:03X}) Game flags from client ({:08X}) do not match game flags from map ({:08X})",
               enemy_index, ene_st->e_id, entry.flags, ene_st->game_flags);
           ene_st->game_flags = entry.flags;
         }
         if (ene_st->total_damage != entry.total_damage) {
-          this->log.warning_f("({:04X} => E-{:03X}) Total damage from client ({}) does not match total damage from map ({})",
+          this->log.info_f("({:04X} => E-{:03X}) Total damage from client ({}) does not match total damage from map ({})",
               enemy_index, ene_st->e_id, entry.total_damage, ene_st->total_damage);
           ene_st->total_damage = entry.total_damage;
         }
@@ -6665,7 +6667,7 @@ void MapState::import_flag_states_from_sync(
           throw logic_error("super object link is incorrect");
         }
         if (obj_st->set_flags != set_flags) {
-          this->log.warning_f("({:04X} => K-{:03X}) Set flags from client ({:04X}) do not match set flags from map ({:04X})",
+          this->log.info_f("({:04X} => K-{:03X}) Set flags from client ({:04X}) do not match set flags from map ({:04X})",
               object_index, obj_st->k_id, set_flags, obj_st->set_flags);
           obj_st->set_flags = set_flags;
         }
@@ -6701,7 +6703,7 @@ void MapState::import_flag_states_from_sync(
           throw logic_error("super enemy link is incorrect");
         }
         if (ene_st->set_flags != set_flags) {
-          this->log.warning_f("({:04X} => E-{:03X}) Set flags from client ({:04X}) do not match set flags from map ({:04X})",
+          this->log.info_f("({:04X} => E-{:03X}) Set flags from client ({:04X}) do not match set flags from map ({:04X})",
               enemy_set_index, ene_st->e_id, set_flags, ene_st->set_flags);
           ene_st->set_flags = set_flags;
         }
@@ -6733,7 +6735,7 @@ void MapState::import_flag_states_from_sync(
         const auto& ev = entities.events.at(event_index - base_indexes.base_event_index);
         auto& ev_st = this->event_states.at(fc.base_super_ids.base_event_index + ev->super_id);
         if (ev_st->flags != flags) {
-          this->log.warning_f("({:04X} => W-{:03X}) Set flags from client ({:04X}) do not match flags from map ({:04X})",
+          this->log.info_f("({:04X} => W-{:03X}) Set flags from client ({:04X}) do not match flags from map ({:04X})",
               event_index, ev_st->w_id, flags, ev_st->flags);
           ev_st->flags = flags;
         }

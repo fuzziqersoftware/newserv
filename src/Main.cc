@@ -23,9 +23,11 @@
 
 #include "AddressTranslator.hh"
 #include "BMLArchive.hh"
+#include "CommonFileFormats.hh"
 #include "Compression.hh"
 #include "DCSerialNumbers.hh"
 #include "DNSServer.hh"
+#include "DOLFileIndex.hh"
 #include "DownloadSession.hh"
 #include "GSLArchive.hh"
 #include "GameServer.hh"
@@ -1750,18 +1752,22 @@ Action a_assemble_quest_script(
       write_output_data(args, result_data.data(), result_data.size(), compress ? "bin" : "bind");
     });
 
-Action a_assemble_all_patches(
-    "assemble-all-patches", "\
-  assemble-all-patches [--skip-encrypted]\n\
+Action a_assemble_all_client_functions(
+    "assemble-all-client-functions", "\
+  assemble-all-client-functions [--skip-encrypted] OUTPUT-DIRECTORY\n\
     Assemble all patches in the system/client-functions directory, and produce\n\
-    two compiled .bin files for each patch (one unencrypted, for most PSO\n\
+    two compiled .bin files for each patch: one unencrypted, for most PSO\n\
     versions, and one encrypted, for PSO GC JP v1.4, JP Ep3, and Ep3 Trial\n\
-    Edition). The output files are saved in system/client-functions.\n",
+    Edition. If --skip-encrypted is given, only the unencrypted .bin files are\n\
+    created.\n",
     +[](phosg::Arguments& args) {
-      auto fci = make_shared<FunctionCodeIndex>("system/client-functions", false);
+      auto fci = make_shared<ClientFunctionIndex>("system/client-functions", false);
+
+      const std::string& output_dir = args.get<string>(1);
+      std::filesystem::create_directories(output_dir);
 
       bool skip_encrypted = args.get<bool>("skip-encrypted");
-      auto process_code = [&](shared_ptr<const CompiledFunctionCode> code,
+      auto process_code = [&](shared_ptr<const ClientFunctionIndex::Function> code,
                               uint32_t checksum_addr,
                               uint32_t checksum_size,
                               uint32_t override_start_addr) -> void {
@@ -1774,34 +1780,18 @@ Action a_assemble_all_patches(
               code, {}, nullptr, 0, checksum_addr, checksum_size, override_start_addr, encrypted);
           w.put(PSOCommandHeaderDCV3{.command = 0xB2, .flag = 0x00, .size = data.size() + 4});
           w.write(data);
-          string out_path = std::format("{}.{}.{}.bin",
-              code->source_path, str_for_specific_version(code->specific_version), (encrypted ? "enc" : "std"));
+          string out_path = std::format("{}/{}.{}.{}.bin",
+              output_dir, code->short_name, str_for_specific_version(code->specific_version), (encrypted ? "enc" : "std"));
           phosg::save_file(out_path, w.str());
           phosg::fwrite_fmt(stderr, "... {}\n", out_path);
         }
       };
 
-      for (const auto& it : fci->name_and_specific_version_to_patch_function) {
-        process_code(it.second, 0, 0, 0);
+      for (const auto& [_, fn] : fci->all_functions) {
+        process_code(fn, 0, 0, 0);
       }
       try {
-        process_code(fci->name_to_function.at("VersionDetectDC"), 0, 0, 0);
-      } catch (const out_of_range&) {
-      }
-      try {
-        process_code(fci->name_to_function.at("VersionDetectGC"), 0, 0, 0);
-      } catch (const out_of_range&) {
-      }
-      try {
-        process_code(fci->name_to_function.at("VersionDetectXB"), 0, 0, 0);
-      } catch (const out_of_range&) {
-      }
-      try {
-        process_code(fci->name_to_function.at("CacheClearFix-Phase1"), 0x80000000, 8, 0x7F2734EC);
-      } catch (const out_of_range&) {
-      }
-      try {
-        process_code(fci->name_to_function.at("CacheClearFix-Phase2"), 0, 0, 0);
+        process_code(fci->get("CacheClearFix-Phase1", SPECIFIC_VERSION_PPC_INDETERMINATE), 0x80000000, 8, 0x7F2734EC);
       } catch (const out_of_range&) {
       }
     });
@@ -2387,10 +2377,20 @@ Action a_compare_common_item_set(
       cs1->print_diff(stdout, *cs2);
     });
 
-Action a_convert_item_parameter_table(
-    "decode-item-parameter-table", nullptr,
+Action a_decode_item_parameter_table(
+    "decode-item-parameter-table", "\
+  decode-item-parameter-table [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS...]\n\
+    Converts an ItemPMT file into a JSON item parameter table. A version\n\
+    option is required. Use --hex to make item codes in the output readable;\n\
+    however, this option also uses nonstandard JSON syntax - newserv can parse\n\
+    it, but many other JSON parsers can\'t. Expects compressed input (a .prs\n\
+    file) by default; use --decompressed if the input is not compressed.\n",
     +[](phosg::Arguments& args) {
-      auto data = std::make_shared<string>(read_input_data(args));
+      auto input_data = read_input_data(args);
+      if (!args.get<bool>("decompressed")) {
+        input_data = prs_decompress(input_data);
+      }
+      auto data = std::make_shared<string>(std::move(input_data));
       auto pmt = ItemParameterTable::from_binary(data, get_cli_version(args, Version::BB_V4));
       auto json = pmt->json();
       uint32_t serialize_options = phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS;
@@ -2399,6 +2399,110 @@ Action a_convert_item_parameter_table(
       }
       string json_data = json.serialize(serialize_options);
       write_output_data(args, json_data.data(), json_data.size(), nullptr);
+    });
+
+Action a_encode_item_parameter_table(
+    "encode-item-parameter-table", "\
+  encode-item-parameter-table [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS...]\n\
+    Converts a JSON item parameter table into an ItemPMT file compatible with\n\
+    the game client. A version option is required. By default the output will\n\
+    be compressed, as the client expects; use --decompressed to get\n\
+    uncompressed output.\n",
+    +[](phosg::Arguments& args) {
+      auto json = phosg::JSON::parse(read_input_data(args));
+      auto pmt = ItemParameterTable::from_json(json);
+      string data = pmt->serialize_binary(get_cli_version(args, Version::BB_V4));
+      if (!args.get<bool>("decompressed")) {
+        data = prs_compress_optimal(data);
+      }
+      write_output_data(args, data.data(), data.size(), nullptr);
+    });
+
+Action a_decode_level_table(
+    "decode-level-table", nullptr,
+    +[](phosg::Arguments& args) {
+      auto input_data = read_input_data(args);
+      std::shared_ptr<LevelTable> table;
+      bool decompressed = args.get<bool>("decompressed");
+      switch (get_cli_version(args)) {
+        case Version::PC_V2:
+          table = std::make_shared<LevelTableV2>(decompressed ? input_data : prs_decompress(input_data));
+          break;
+        case Version::GC_V3:
+          table = std::make_shared<LevelTableGC>(
+              decompressed ? input_data : decrypt_and_decompress_pr2_data<true>(input_data));
+          break;
+        case Version::XB_V3:
+          table = std::make_shared<LevelTableXB>(
+              decompressed ? input_data : decrypt_and_decompress_pr2_data<false>(input_data));
+          break;
+        case Version::BB_V4:
+          table = std::make_shared<LevelTableV4>(decompressed ? input_data : prs_decompress(input_data));
+          break;
+        default:
+          throw std::runtime_error("This version does not have a level table");
+      }
+      auto json = table->json();
+      uint32_t serialize_options = phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS;
+      if (args.get<bool>("hex")) {
+        serialize_options |= phosg::JSON::SerializeOption::HEX_INTEGERS;
+      }
+      string json_data = json.serialize(serialize_options);
+      write_output_data(args, json_data.data(), json_data.size(), nullptr);
+    });
+
+Action a_encode_level_table(
+    "encode-level-table-v4", nullptr,
+    +[](phosg::Arguments& args) {
+      JSONLevelTable table(phosg::JSON::parse(read_input_data(args)));
+      string data = table.serialize_binary_v4();
+      if (!args.get<bool>("decompressed")) {
+        data = prs_compress_optimal(data);
+      }
+      write_output_data(args, data.data(), data.size(), nullptr);
+    });
+
+Action a_decode_battle_params(
+    "decode-battle-params", nullptr,
+    +[](phosg::Arguments& args) {
+      auto data_on_ep1 = std::make_shared<std::string>(phosg::load_file(args.get<std::string>(1)));
+      auto data_on_ep2 = std::make_shared<std::string>(phosg::load_file(args.get<std::string>(2)));
+      auto data_on_ep4 = std::make_shared<std::string>(phosg::load_file(args.get<std::string>(3)));
+      auto data_off_ep1 = std::make_shared<std::string>(phosg::load_file(args.get<std::string>(4)));
+      auto data_off_ep2 = std::make_shared<std::string>(phosg::load_file(args.get<std::string>(5)));
+      auto data_off_ep4 = std::make_shared<std::string>(phosg::load_file(args.get<std::string>(6)));
+      BinaryBattleParamsIndex index(data_on_ep1, data_on_ep2, data_on_ep4, data_off_ep1, data_off_ep2, data_off_ep4);
+      auto json = index.json();
+      uint32_t serialize_options = phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS;
+      if (args.get<bool>("hex")) {
+        serialize_options |= phosg::JSON::SerializeOption::HEX_INTEGERS;
+      }
+      phosg::save_file(args.get<std::string>(7), json.serialize(serialize_options));
+    });
+
+Action a_encode_battle_params(
+    "encode-battle-params", nullptr,
+    +[](phosg::Arguments& args) {
+      JSONBattleParamsIndex index(phosg::JSON::parse(read_input_data(args)));
+      std::string pfx = args.get<string>(2);
+      phosg::save_file(pfx + "_on.dat", &index.get_table(false, Episode::EP1), sizeof(BattleParamsIndex::Table));
+      phosg::save_file(pfx + "_lab_on.dat", &index.get_table(false, Episode::EP2), sizeof(BattleParamsIndex::Table));
+      phosg::save_file(pfx + "_ep4_on.dat", &index.get_table(false, Episode::EP4), sizeof(BattleParamsIndex::Table));
+      phosg::save_file(pfx + ".dat", &index.get_table(true, Episode::EP1), sizeof(BattleParamsIndex::Table));
+      phosg::save_file(pfx + "_lab.dat", &index.get_table(true, Episode::EP2), sizeof(BattleParamsIndex::Table));
+      phosg::save_file(pfx + "_ep4.dat", &index.get_table(true, Episode::EP4), sizeof(BattleParamsIndex::Table));
+    });
+
+Action a_find_rel_section(
+    "find-rel-sections", nullptr,
+    +[](phosg::Arguments& args) {
+      auto data = read_input_data(args);
+      auto offsets = args.get<bool>("big-endian")
+          ? all_relocation_offsets_for_rel_file<true>(data.data(), data.size())
+          : all_relocation_offsets_for_rel_file<false>(data.data(), data.size());
+      for (uint32_t offset : offsets) {
+        phosg::fwrite_fmt(stdout, "{:08X}\n", offset);
+      }
     });
 
 Action a_describe_item(
@@ -2576,7 +2680,6 @@ Action a_print_level_stats(
 
       vector<PlayerStats> level_1_v1_v2;
       vector<PlayerStats> level_100_v1_v2;
-      vector<PlayerStats> level_100_limit_v1_v2;
       vector<PlayerStats> level_200_v1_v2;
       vector<PlayerStats> level_200_limit_v1_v2;
       vector<PlayerStats> level_1_v3;
@@ -2588,7 +2691,6 @@ Action a_print_level_stats(
       for (size_t z = 0; z < 12; z++) {
         if (z < 9) {
           level_1_v1_v2.emplace_back().char_stats = s->level_table_v1_v2->base_stats_for_class(z);
-          level_100_limit_v1_v2.emplace_back(s->level_table_v1_v2->level_100_stats_for_class(z));
           level_200_limit_v1_v2.emplace_back(s->level_table_v1_v2->max_stats_for_class(z));
           s->level_table_v1_v2->advance_to_level(level_100_v1_v2.emplace_back(level_1_v1_v2.back()), 99, z);
           s->level_table_v1_v2->advance_to_level(level_200_v1_v2.emplace_back(level_1_v1_v2.back()), 199, z);
@@ -2642,7 +2744,6 @@ Action a_print_level_stats(
 
       print_stats_set(level_1_v1_v2, "v1/v2 Lv.1  ");
       print_stats_set(level_100_v1_v2, "v1/v2 Lv.100");
-      print_stats_set(level_100_limit_v1_v2, "v1 limit    ");
       print_stats_set(level_200_v1_v2, "v2 Lv.200   ");
       print_stats_set(level_200_limit_v1_v2, "v2 limit    ");
       print_stats_set(level_1_v3, "v3 Lv.1     ");
@@ -3478,7 +3579,7 @@ Action a_check_quests(
                 phosg::fwritex(stdout, vq->map_file->disassemble(false, vq->meta.version));
                 phosg::log_info_f("... BINDIFF:");
                 phosg::print_binary_diff(
-                    stdout, dat.data(), dat.size(), serialized.data(), serialized.size(), isatty(fileno(stdout)), 3);
+                    stdout, dat.data(), dat.size(), serialized.data(), serialized.size(), isatty(fileno(stdout)));
                 phosg::log_info_f("... {} {} {} ({}) MAP FAILED",
                     phosg::name_for_enum(vq->meta.version),
                     name_for_language(vq->meta.language),
@@ -3573,7 +3674,7 @@ Action a_check_client_functions(
     "check-client-functions", nullptr,
     +[](phosg::Arguments&) {
       set_all_log_levels(phosg::LogLevel::L_DEBUG);
-      FunctionCodeIndex fci("system/client-functions", true);
+      ClientFunctionIndex index("system/client-functions", true);
       phosg::fwrite_fmt(stdout, "All client functions compiled\n");
     });
 
@@ -3720,9 +3821,9 @@ Action a_diff_executables(
         throw runtime_error("the two files are not the same type of executable, or are neither dol nor xbe");
       }
       for (const auto& it : result) {
-        string b_str = phosg::format_data_string(it.b_data, nullptr, phosg::FormatDataFlags::HEX_ONLY);
+        string b_str = phosg::format_data_string(it.b_data, nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
         if (show_pre) {
-          string a_str = phosg::format_data_string(it.a_data, nullptr, phosg::FormatDataFlags::HEX_ONLY);
+          string a_str = phosg::format_data_string(it.a_data, nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
           phosg::fwrite_fmt(stdout, "{:08X}: {} => {}\n", it.address, a_str, b_str);
         } else {
           phosg::fwrite_fmt(stdout, "{:08X} {}\n", it.address, b_str);
@@ -3861,7 +3962,7 @@ Action a_replay_ep3_battle_record(
               }
               if (output_queue->empty()) {
                 phosg::fwrite_fmt(stderr, "Output queue is empty, but expected battle command:\n");
-                phosg::print_data(stderr, ev.data, 0, nullptr, phosg::PrintDataFlags::OFFSET_16_BITS | phosg::PrintDataFlags::PRINT_ASCII);
+                phosg::print_data(stderr, ev.data, 0, phosg::FormatDataFlags::OFFSET_16_BITS | phosg::FormatDataFlags::PRINT_ASCII);
                 throw std::runtime_error("Output did not match expectations");
               }
               // Hack: don't check the last field in 6xB4x46 since it contains a timestamp on non-NTE
@@ -3876,11 +3977,10 @@ Action a_replay_ep3_battle_record(
                 matched = (output_queue->front() == ev.data);
               }
               if (!matched) {
-                const void* prev = (ev.data.size() == output_queue->front().size()) ? ev.data.data() : nullptr;
                 phosg::fwrite_fmt(stderr, "Output queue front did not match expected command; expected:\n");
-                phosg::print_data(stderr, ev.data, 0, nullptr, phosg::PrintDataFlags::OFFSET_16_BITS | phosg::PrintDataFlags::PRINT_ASCII);
+                phosg::print_data(stderr, ev.data, 0, phosg::FormatDataFlags::OFFSET_16_BITS | phosg::FormatDataFlags::PRINT_ASCII);
                 phosg::fwrite_fmt(stderr, "Received:\n");
-                phosg::print_data(stderr, output_queue->front(), 0, prev, phosg::PrintDataFlags::OFFSET_16_BITS | phosg::PrintDataFlags::PRINT_ASCII);
+                phosg::print_data(stderr, output_queue->front(), 0, ev.data, phosg::FormatDataFlags::OFFSET_16_BITS | phosg::FormatDataFlags::PRINT_ASCII);
                 throw std::runtime_error("Output did not match expectations");
               }
               output_queue->pop_front();
@@ -3940,7 +4040,7 @@ Action a_run_server_replay_log(
         std::filesystem::create_directories("system/players");
       }
 
-      const string& replay_log_filename = args.get<string>("replay-log");
+      const auto& replay_log_filenames = args.get_multi<string>("replay-log");
 
 #ifndef PHOSG_WINDOWS
       signal(SIGPIPE, SIG_IGN);
@@ -3949,7 +4049,7 @@ Action a_run_server_replay_log(
         use_terminal_colors = true;
       }
 
-      auto state = make_shared<ServerState>(get_config_filename(args), !replay_log_filename.empty());
+      auto state = make_shared<ServerState>(get_config_filename(args), !replay_log_filenames.empty());
       if (args.get<bool>("debug")) {
         state->is_debug = true;
       }
@@ -3968,19 +4068,39 @@ Action a_run_server_replay_log(
       }
 
       shared_ptr<ServerShell> shell;
-      shared_ptr<ReplaySession> replay_session;
       shared_ptr<SignalWatcher> signal_watcher;
-      if (!replay_log_filename.empty()) {
+      shared_ptr<ReplaySession> last_running_replay;
+      if (!replay_log_filenames.empty()) {
         config_log.info_f("Starting game server");
         state->game_server = make_shared<GameServer>(state);
 
         // TODO: Do this properly via a config option, you lazy bum
         state->dol_file_index = make_shared<DOLFileIndex>();
 
-        auto log_f = phosg::fopen_shared(replay_log_filename, "rt");
-
-        replay_session = make_shared<ReplaySession>(state, log_f.get(), false);
-        asio::co_spawn(*state->io_context, replay_session->run(), asio::detached);
+        auto run_replays = [&]() -> asio::awaitable<void> {
+          try {
+            for (const auto& log_filename : replay_log_filenames) {
+              phosg::log_info_f("[Replay] {} ...", log_filename);
+              auto log_f = phosg::fopen_shared(log_filename, "rt");
+              last_running_replay = make_shared<ReplaySession>(state, log_f.get());
+              co_await last_running_replay->run();
+              if (last_running_replay->failed()) {
+                phosg::log_error_f("[Replay] {} failed", log_filename);
+                break;
+              }
+              phosg::log_info_f("[Replay] {} OK", log_filename);
+              state->reset_between_replays();
+            }
+            phosg::log_info_f("[Replay] All replays complete");
+          } catch (const std::exception& e) {
+            phosg::log_info_f("[Replay] Replays failed: {}", e.what());
+          }
+          if (!last_running_replay->failed()) {
+            last_running_replay.reset();
+          }
+          state->io_context->stop();
+        };
+        asio::co_spawn(*state->io_context, run_replays, asio::detached);
 
       } else {
         config_log.info_f("Opening sockets");
@@ -4073,7 +4193,7 @@ Action a_run_server_replay_log(
         should_run_shell = false;
       }
       if (should_run_shell) {
-        should_run_shell = !replay_session.get();
+        should_run_shell = replay_log_filenames.empty();
       }
 
       config_log.info_f("Ready");
@@ -4084,7 +4204,7 @@ Action a_run_server_replay_log(
       state->io_context->run();
       config_log.info_f("Normal shutdown");
 
-      if (replay_session && replay_session->failed()) {
+      if (last_running_replay) {
         throw runtime_error("Replay failed");
       }
     });

@@ -131,7 +131,9 @@ shared_ptr<Client> GameServer::create_client(
       Language::ENGLISH,
       "",
       phosg::TerminalFormat::FG_YELLOW,
-      phosg::TerminalFormat::FG_GREEN);
+      phosg::TerminalFormat::FG_GREEN,
+      this->state->censor_credentials,
+      false);
   auto c = make_shared<Client>(this->shared_from_this(), channel, listen_sock->behavior);
   this->log.info_f("Client connected: C-{:X} via {}", c->id, listen_sock->name);
 
@@ -191,6 +193,13 @@ asio::awaitable<void> GameServer::destroy_client(std::shared_ptr<Client> c) {
       h_it.second();
     } catch (const exception& e) {
       c->log.warning_f("Disconnect hook {} failed: {}", h_it.first, e.what());
+    }
+  }
+
+  if (c->login) {
+    auto it = this->state->client_for_account.find(c->login->account->account_id);
+    if ((it != this->state->client_for_account.end()) && (it->second == c)) {
+      this->state->client_for_account.erase(it);
     }
   }
 }

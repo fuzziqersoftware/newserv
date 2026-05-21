@@ -3,6 +3,7 @@
 #include <inttypes.h>
 
 #include <phosg/Tools.hh>
+#include <set>
 
 #include "StaticGameData.hh"
 #include "Types.hh"
@@ -20,8 +21,8 @@ enum class EnemyType : uint8_t {
   AL_RAPPY,
   ASTARK,
   BA_BOOTA,
-  BARBA_RAY,
   BARBA_RAY_JOINT,
+  BARBA_RAY,
   BARBAROUS_WOLF,
   BEE_L,
   BEE_R,
@@ -29,8 +30,8 @@ enum class EnemyType : uint8_t {
   BOOTA,
   BULCLAW,
   BULK,
-  CANADINE,
   CANADINE_GROUP,
+  CANADINE,
   CANANE,
   CHAOS_BRINGER,
   CHAOS_SORCERER,
@@ -39,12 +40,12 @@ enum class EnemyType : uint8_t {
   DARK_FALZ_1,
   DARK_FALZ_2,
   DARK_FALZ_3,
-  DARK_GUNNER,
   DARK_GUNNER_CONTROL,
+  DARK_GUNNER,
   DARVANT,
-  DE_ROL_LE,
   DE_ROL_LE_BODY,
   DE_ROL_LE_MINE,
+  DE_ROL_LE,
   DEATH_GUNNER,
   DEL_LILY,
   DEL_RAPPY_CRATER,
@@ -55,8 +56,8 @@ enum class EnemyType : uint8_t {
   DIMENIAN,
   DOLMDARL,
   DOLMOLM,
-  DORPHON,
   DORPHON_ECLAIR,
+  DORPHON,
   DRAGON,
   DUBCHIC,
   DUBWITCH, // Has no entry in battle params
@@ -75,8 +76,8 @@ enum class EnemyType : uint8_t {
   GIRTABLULU,
   GOBOOMA,
   GOL_DRAGON,
-  GORAN,
   GORAN_DETONATOR,
+  GORAN,
   GRASS_ASSASSIN,
   GUIL_SHARK,
   HALLO_RAPPY,
@@ -84,8 +85,8 @@ enum class EnemyType : uint8_t {
   HILDEBEAR,
   HILDEBLUE,
   ILL_GILL,
-  KONDRIEU,
   KONDRIEU_SPINNER,
+  KONDRIEU,
   LA_DIMENIAN,
   LOVE_RAPPY,
   MERICARAND,
@@ -110,22 +111,22 @@ enum class EnemyType : uint8_t {
   PAZUZU_DESERT,
   PIG_RAY,
   POFUILLY_SLIME,
-  POUILLY_SLIME,
   POISON_LILY,
+  POUILLY_SLIME,
   PYRO_GORAN,
   RAG_RAPPY,
   RECOBOX,
   RECON,
-  SAINT_MILION,
   SAINT_MILION_SPINNER,
+  SAINT_MILION,
   SAINT_RAPPY,
   SAND_RAPPY_CRATER,
   SAND_RAPPY_DESERT,
   SATELLITE_LIZARD_CRATER,
   SATELLITE_LIZARD_DESERT,
   SAVAGE_WOLF,
-  SHAMBERTIN,
   SHAMBERTIN_SPINNER,
+  SHAMBERTIN,
   SINOW_BEAT,
   SINOW_BERILL,
   SINOW_GOLD,
@@ -165,6 +166,7 @@ struct EnemyTypeDefinition {
   std::vector<uint8_t> bp_stats_indexes;
   std::vector<uint8_t> bp_attack_data_indexes;
   std::vector<uint8_t> bp_resist_data_indexes;
+  std::vector<uint8_t> bp_movement_data_indexes;
   // Note: movement data isn't bound as strongly to the enemy types; some enemies use many entries and some use none at
   // all, so we don't list them here. See notes/movement-data.txt for a listing of which enemies use which entries.
   const char* enum_name;
@@ -200,4 +202,7 @@ template <>
 EnemyType phosg::enum_for_name<EnemyType>(const char* name);
 
 const std::vector<EnemyType>& enemy_types_for_rare_table_index(Episode episode, uint8_t rt_index);
-const std::vector<EnemyType>& enemy_types_for_battle_param_stats_index(Episode episode, uint8_t bp_index);
+const std::set<EnemyType>& enemy_types_for_battle_param_stats_index(Episode episode, uint8_t bp_index);
+const std::set<EnemyType>& enemy_types_for_battle_param_attack_data_index(Episode episode, uint8_t bp_index);
+const std::set<EnemyType>& enemy_types_for_battle_param_resist_data_index(Episode episode, uint8_t bp_index);
+const std::set<EnemyType>& enemy_types_for_battle_param_movement_data_index(Episode episode, uint8_t bp_index);

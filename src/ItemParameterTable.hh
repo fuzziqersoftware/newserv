@@ -56,7 +56,16 @@ public:
     phosg::JSON json() const;
   };
   struct Weapon : ItemBase {
-    uint16_t class_flags = 0;
+    // Bits in usability_flags (to be usable, all bits corresponding to the character's attributes must be set):
+    //   01 = hunter
+    //   02 = ranger
+    //   04 = force
+    //   08 = human
+    //   10 = android
+    //   20 = newman
+    //   40 = male
+    //   80 = female
+    uint16_t usability_flags = 0;
     uint16_t atp_min = 0;
     uint16_t atp_max = 0;
     uint16_t atp_required = 0;
@@ -68,6 +77,7 @@ public:
     uint8_t special = 0;
     uint8_t ata = 0;
     uint8_t stat_boost_entry_index = 0;
+    parray<uint8_t, 3> v2_unknown_a9;
     uint8_t projectile = 0;
     int8_t trail1_x = 0;
     int8_t trail1_y = 0;
@@ -94,7 +104,7 @@ public:
     uint16_t evp = 0;
     uint8_t block_particle = 0;
     uint8_t block_effect = 0;
-    uint16_t class_flags = 0x00FF;
+    uint16_t usability_flags = 0x00FF; // See Weapon::usability_flags for details
     uint8_t required_level = 0;
     uint8_t efr = 0;
     uint8_t eth = 0;
@@ -153,7 +163,7 @@ public:
     uint8_t on_low_hp_flag = 0;
     uint8_t on_death_flag = 0;
     uint8_t on_boss_flag = 0;
-    uint16_t class_flags = 0x00FF;
+    uint16_t usability_flags = 0x00FF; // See Weapon::usability_flags for details
 
     static Mag from_json(const phosg::JSON& json);
     phosg::JSON json() const;
@@ -361,7 +371,7 @@ public:
   static std::shared_ptr<ItemParameterTable> from_json(const phosg::JSON& json);
 
   phosg::JSON json() const;
-  // std::string serialize_binary() const; // TODO
+  std::string serialize_binary(Version version) const;
 
   std::set<uint32_t> compute_all_valid_primary_identifiers() const;
 
@@ -389,6 +399,7 @@ public:
   virtual const Mag& get_mag(uint8_t data1_1) const = 0;
 
   // weapon_kind_table accessors (data1_1 in [0, num_weapon_classes()])
+  virtual size_t num_weapon_kinds() const = 0;
   virtual uint8_t get_weapon_kind(uint8_t data1_1) const = 0;
 
   // photon_color_table accessors
@@ -401,6 +412,7 @@ public:
 
   // weapon_sale_divisor_table and non_weapon_sale_divisor_table accessors (data1_0 in [0, 1, 2]; data1_1 in [0,
   // num_weapon_classes()] for weapons or ignored otherwise)
+  virtual size_t num_weapon_sale_divisors() const = 0;
   virtual float get_sale_divisor(uint8_t data1_0, uint8_t data1_1) const = 0;
 
   // mag_feed_table accessors (table_index in [0, 7], item_index in [0, 10])
@@ -451,12 +463,14 @@ public:
   virtual uint8_t get_max_tech_level(uint8_t char_class, uint8_t tech_num) const = 0;
 
   // combination_table accessors
-  virtual const std::map<uint32_t, std::vector<ItemCombination>>& all_item_combinations() const = 0;
+  virtual size_t num_item_combinations() const = 0;
+  virtual const ItemCombination& get_item_combination(size_t index) const = 0;
+  const std::map<uint32_t, std::vector<ItemCombination>>& item_combinations_index() const;
   const std::vector<ItemCombination>& all_combinations_for_used_item(const ItemData& used_item) const;
   const ItemCombination& get_item_combination(const ItemData& used_item, const ItemData& equipped_item) const;
 
   // sound_remap_table accessors
-  virtual const std::unordered_map<uint32_t, SoundRemaps>& get_all_sound_remaps() const = 0;
+  virtual const std::vector<SoundRemaps>& get_all_sound_remaps() const = 0;
 
   // tech_boost_table accessors
   virtual size_t num_tech_boosts() const = 0;
@@ -467,7 +481,7 @@ public:
   virtual std::pair<const EventItem*, size_t> get_event_items(uint8_t event_number) const = 0;
 
   // unsealable_table accessors
-  virtual const std::unordered_set<uint32_t>& all_unsealable_items() const = 0;
+  virtual const std::set<uint32_t>& all_unsealable_items() const = 0;
   bool is_unsealable_item(uint8_t data1_0, uint8_t data1_1, uint8_t data1_2) const;
   bool is_unsealable_item(const ItemData& item) const;
 
@@ -487,4 +501,6 @@ public:
 
 protected:
   ItemParameterTable() = default;
+
+  mutable std::optional<std::map<uint32_t, std::vector<ItemCombination>>> item_combination_index;
 };

@@ -152,7 +152,7 @@ HTTPServer::HTTPServer(shared_ptr<ServerState> state)
           client_json.emplace("DFP", p->disp.stats.char_stats.dfp.load());
           client_json.emplace("ATA", p->disp.stats.char_stats.ata.load());
           client_json.emplace("LCK", p->disp.stats.char_stats.lck.load());
-          client_json.emplace("EXP", p->disp.stats.experience.load());
+          client_json.emplace("EXP", p->disp.stats.exp.load());
           client_json.emplace("Meseta", p->disp.stats.meseta.load());
           auto tech_levels_json = phosg::JSON::dict();
           for (size_t z = 0; z < 0x13; z++) {

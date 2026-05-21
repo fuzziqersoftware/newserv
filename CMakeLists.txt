@@ -60,10 +60,13 @@ set(SOURCES
     src/ChatCommands.cc
     src/ChoiceSearch.cc
     src/Client.cc
+    src/ClientFunctionIndex.cc
+    src/CommandCensorData.cc
     src/CommonItemSet.cc
     src/Compression.cc
     src/DCSerialNumbers.cc
     src/DNSServer.cc
+    src/DOLFileIndex.cc
     src/DownloadSession.cc
     src/EnemyType.cc
     src/Episode3/AssistServer.cc
@@ -79,7 +82,6 @@ set(SOURCES
     src/Episode3/Server.cc
     src/Episode3/Tournament.cc
     src/FileContentsCache.cc
-    src/FunctionCompiler.cc
     src/GameServer.cc
     src/GSLArchive.cc
     src/HTTPServer.cc
@@ -153,23 +155,25 @@ add_dependencies(newserv newserv-Revision-cc)
 
 enable_testing()
 
-file(GLOB LogTestCases ${CMAKE_SOURCE_DIR}/tests/*.test.txt)
-file(GLOB LogRDTestCases ${CMAKE_SOURCE_DIR}/tests/*.rdtest.txt)
-
-foreach(LogTestCase IN ITEMS ${LogTestCases})
+file(GLOB LOG_TEST_CASES ${CMAKE_SOURCE_DIR}/tests/*.test.txt)
+foreach(LOG_TEST_CASE IN ITEMS ${LOG_TEST_CASES})
     add_test(
-        NAME ${LogTestCase}
+        NAME ${LOG_TEST_CASE}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMAND ${CMAKE_BINARY_DIR}/newserv --replay-log=${LogTestCase} --config=${CMAKE_SOURCE_DIR}/tests/config.json)
+        COMMAND ${CMAKE_BINARY_DIR}/newserv --replay-log=${LOG_TEST_CASE} --config=${CMAKE_SOURCE_DIR}/tests/config.json)
 endforeach()
+# list(TRANSFORM LOG_TEST_CASES PREPEND "--replay-log=" OUTPUT_VARIABLE LOG_REPLAY_ARGS)
+# add_test(
+#     NAME "log-replays"
+#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+#     COMMAND ${CMAKE_BINARY_DIR}/newserv --config=${CMAKE_SOURCE_DIR}/tests/config.json ${LOG_REPLAY_ARGS})
 
-file(GLOB ScriptTestCases ${CMAKE_SOURCE_DIR}/tests/*.test.sh)
-
-foreach(ScriptTestCase IN ITEMS ${ScriptTestCases})
+file(GLOB SCRIPT_TEST_CASES ${CMAKE_SOURCE_DIR}/tests/*.test.sh)
+foreach(SCRIPT_TEST_CASE IN ITEMS ${SCRIPT_TEST_CASES})
     add_test(
-        NAME ${ScriptTestCase}
+        NAME ${SCRIPT_TEST_CASE}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMAND ${ScriptTestCase} ${CMAKE_BINARY_DIR}/newserv)
+        COMMAND ${SCRIPT_TEST_CASE} ${CMAKE_BINARY_DIR}/newserv)
 endforeach()
 
 

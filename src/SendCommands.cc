@@ -335,7 +335,7 @@ asio::awaitable<void> prepare_client_for_patches(shared_ptr<Client> c) {
   auto s = c->require_server_state();
 
   if (!c->check_flag(Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH)) {
-    auto fn = s->function_code_index->name_to_function.at("CacheClearFix-Phase1");
+    auto fn = s->client_functions->get("CacheClearFix-Phase1", ClientFunctionIndex::Function::Architecture::POWERPC);
     unordered_map<string, uint32_t> label_writes;
     auto call1_res = co_await send_function_call(c, fn, label_writes, nullptr, 0, 0x80000000, 8, 0x7F2734EC);
     try {
@@ -344,29 +344,29 @@ asio::awaitable<void> prepare_client_for_patches(shared_ptr<Client> c) {
     } catch (const out_of_range&) {
       c->log.info_f("Could not detect specific version from header checksum {:08X}", call1_res.checksum);
     }
-    co_await send_function_call(c, s->function_code_index->name_to_function.at("CacheClearFix-Phase2"));
+    co_await send_function_call(c, s->client_functions->get("CacheClearFix-Phase2", ClientFunctionIndex::Function::Architecture::POWERPC));
     c->log.info_f("Client cache behavior patched");
     c->set_flag(Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
   }
 
-  const char* version_detect_name = nullptr;
+  ClientFunctionIndex::Function::Architecture arch = ClientFunctionIndex::Function::Architecture::UNKNOWN;
   if (c->version() == Version::DC_V2) {
-    version_detect_name = "VersionDetectDC";
+    arch = ClientFunctionIndex::Function::Architecture::SH4;
   } else if (is_gc(c->version())) {
-    version_detect_name = "VersionDetectGC";
+    arch = ClientFunctionIndex::Function::Architecture::POWERPC;
   } else if (c->version() == Version::XB_V3) {
-    version_detect_name = "VersionDetectXB";
+    arch = ClientFunctionIndex::Function::Architecture::X86;
   }
-  if (version_detect_name && specific_version_is_indeterminate(c->specific_version)) {
-    auto vers_detect_res = co_await send_function_call(
-        c, s->function_code_index->name_to_function.at(version_detect_name));
+  if ((arch != ClientFunctionIndex::Function::Architecture::UNKNOWN) &&
+      specific_version_is_indeterminate(c->specific_version)) {
+    auto vers_detect_res = co_await send_function_call(c, s->client_functions->get("VersionDetect", arch));
     c->specific_version = vers_detect_res.return_value;
     c->log.info_f("Version detected as {:08X}", c->specific_version);
   }
 }
 
 string prepare_send_function_call_data(
-    shared_ptr<const CompiledFunctionCode> code,
+    shared_ptr<const ClientFunctionIndex::Function> code,
     const unordered_map<string, uint32_t>& label_writes,
     const void* suffix_data,
     size_t suffix_size,
@@ -416,7 +416,7 @@ string prepare_send_function_call_data(
 
 asio::awaitable<C_ExecuteCodeResult_B3> send_function_call(
     shared_ptr<Client> c,
-    shared_ptr<const CompiledFunctionCode> code,
+    shared_ptr<const ClientFunctionIndex::Function> code,
     const unordered_map<string, uint32_t>& label_writes,
     const void* suffix_data,
     size_t suffix_size,
@@ -445,7 +445,7 @@ asio::awaitable<C_ExecuteCodeResult_B3> send_function_call(
 }
 
 asio::awaitable<void> send_function_call_multi(
-    shared_ptr<Client> c, unordered_set<shared_ptr<const CompiledFunctionCode>> codes) {
+    shared_ptr<Client> c, unordered_set<shared_ptr<const ClientFunctionIndex::Function>> codes) {
   if (codes.empty()) {
     co_return;
   }
@@ -468,7 +468,7 @@ asio::awaitable<void> send_function_call_multi(
 void send_function_call(
     shared_ptr<Channel> ch,
     uint64_t client_enabled_flags,
-    shared_ptr<const CompiledFunctionCode> code,
+    shared_ptr<const ClientFunctionIndex::Function> code,
     const unordered_map<string, uint32_t>& label_writes,
     const void* suffix_data,
     size_t suffix_size,
@@ -525,7 +525,7 @@ asio::awaitable<bool> send_protected_command(std::shared_ptr<Client> c, const vo
       co_await prepare_client_for_patches(c);
 
       try {
-        auto fn = s->function_code_index->get_patch("CallProtectedHandler", c->specific_version);
+        auto fn = s->client_functions->get("CallProtectedHandler", c->specific_version);
         unordered_map<string, uint32_t> label_writes{{"size", size}};
         co_await send_function_call(c, fn, label_writes, data, size);
         auto l = echo_to_lobby ? c->lobby.lock() : nullptr;
@@ -549,7 +549,7 @@ asio::awaitable<void> send_dol_file(shared_ptr<Client> c, shared_ptr<DOLFileInde
   // Determine the necessary start address for the data
   unordered_map<string, uint32_t> label_writes{{"address", 0x80000034}}; // ArenaHigh from GC globals
   auto addr_ret = co_await send_function_call(
-      c, s->function_code_index->name_to_function.at("ReadMemoryWordGC"), label_writes);
+      c, s->client_functions->get("ReadMemoryWord", c->specific_version), label_writes);
   uint32_t dol_base_addr = (addr_ret.return_value - dol->data.size()) & (~3);
 
   // Write the file in multiple chunks
@@ -561,7 +561,7 @@ asio::awaitable<void> send_dol_file(shared_ptr<Client> c, shared_ptr<DOLFileInde
     string data_to_send = dol->data.substr(offset, bytes_to_send);
 
     auto s = c->require_server_state();
-    auto fn = s->function_code_index->name_to_function.at("WriteMemoryGC");
+    auto fn = s->client_functions->get("WriteMemory", c->specific_version);
     label_writes = {{"dest_addr", (dol_base_addr + offset)}, {"size", bytes_to_send}};
     co_await send_function_call(c, fn, label_writes, data_to_send.data(), data_to_send.size());
 
@@ -572,7 +572,7 @@ asio::awaitable<void> send_dol_file(shared_ptr<Client> c, shared_ptr<DOLFileInde
   }
 
   // Send the final function, which moves the DOL's sections into place and calls the entrypoint
-  auto fn = s->function_code_index->name_to_function.at("RunDOL");
+  auto fn = s->client_functions->get("RunDOL", c->specific_version);
   label_writes = {{"dol_base_ptr", dol_base_addr}};
   co_await send_function_call(c, fn, label_writes);
   // The client will stop running PSO after this, so disconnect them
@@ -628,12 +628,17 @@ static void scramble_bb_security_data(parray<uint8_t, 0x28>& data, uint8_t which
 }
 
 void send_client_init_bb(shared_ptr<Client> c, uint32_t error_code) {
-  auto team = c->team();
   S_ClientInit_BB_00E6 cmd;
   cmd.error_code = error_code;
   cmd.player_tag = 0x00010000;
-  cmd.guild_card_number = c->login->account->account_id;
-  cmd.security_token = team ? team->team_id : 0;
+  if (c->login) {
+    auto team = c->team();
+    cmd.guild_card_number = c->login->account->account_id;
+    cmd.security_token = team ? team->team_id : 0;
+  } else {
+    cmd.guild_card_number = 0xFFFFFFFF;
+    cmd.security_token = 0xFFFFFFFF;
+  }
   cmd.client_config = c->bb_client_config;
   cmd.can_create_team = 1;
   cmd.episode_4_unlocked = 1;
@@ -690,42 +695,16 @@ void send_guild_card_chunk_bb(shared_ptr<Client> c, size_t chunk_index) {
   send_command(c, 0x02DC, 0x00000000, &cmd, sizeof(cmd) - sizeof(cmd.data) + data_size);
 }
 
-static const vector<string> stream_file_entries = {
-    "ItemMagEdit.prs",
-    "ItemPMT.prs",
-    "BattleParamEntry.dat",
-    "BattleParamEntry_on.dat",
-    "BattleParamEntry_lab.dat",
-    "BattleParamEntry_lab_on.dat",
-    "BattleParamEntry_ep4.dat",
-    "BattleParamEntry_ep4_on.dat",
-    "PlyLevelTbl.prs",
-};
-
 void send_stream_file_index_bb(shared_ptr<Client> c) {
   auto s = c->require_server_state();
 
   vector<S_StreamFileIndexEntry_BB_01EB> entries;
-  size_t offset = 0;
-  for (const string& filename : stream_file_entries) {
-    string key = "system/blueburst/" + filename;
-    auto cache_res = s->bb_stream_files_cache->get_or_load(key);
+  for (const auto& sf_entry : s->bb_stream_file->entries) {
     auto& e = entries.emplace_back();
-    e.size = cache_res.file->data->size();
-    // Computing the checksum can be slow, so we cache it along with the file data. If the cache result was just
-    // populated, then it may be different, so we always recompute the checksum in that case.
-    if (cache_res.generate_called) {
-      e.checksum = crc32(cache_res.file->data->data(), e.size);
-      s->bb_stream_files_cache->replace_obj<uint32_t>(key + ".crc32", e.checksum);
-    } else {
-      auto compute_checksum = [&](const string&) -> uint32_t {
-        return crc32(cache_res.file->data->data(), e.size);
-      };
-      e.checksum = s->bb_stream_files_cache->get_obj<uint32_t>(key + ".crc32", compute_checksum).obj;
-    }
-    e.offset = offset;
-    e.filename.encode(filename);
-    offset += e.size;
+    e.size = sf_entry.size;
+    e.checksum = sf_entry.checksum;
+    e.offset = sf_entry.offset;
+    e.filename.encode(sf_entry.filename);
   }
   send_command_vt(c, 0x01EB, entries.size(), entries);
 }
@@ -733,30 +712,14 @@ void send_stream_file_index_bb(shared_ptr<Client> c) {
 void send_stream_file_chunk_bb(shared_ptr<Client> c, uint32_t chunk_index) {
   auto s = c->require_server_state();
 
-  auto cache_result = s->bb_stream_files_cache->get(
-      "<BB stream file>", [&](const string&) -> string {
-        size_t bytes = 0;
-        for (const auto& name : stream_file_entries) {
-          bytes += s->bb_stream_files_cache->get_or_load("system/blueburst/" + name).file->data->size();
-        }
-
-        string ret;
-        ret.reserve(bytes);
-        for (const auto& name : stream_file_entries) {
-          ret += *s->bb_stream_files_cache->get_or_load("system/blueburst/" + name).file->data;
-        }
-        return ret;
-      });
-  const auto& contents = cache_result.file->data;
-
   S_StreamFileChunk_BB_02EB chunk_cmd;
   chunk_cmd.chunk_index = chunk_index;
   size_t offset = sizeof(chunk_cmd.data) * chunk_index;
-  if (offset > contents->size()) {
+  if (offset > s->bb_stream_file->data.size()) {
     throw runtime_error("client requested chunk beyond end of stream file");
   }
-  size_t bytes = min<size_t>(contents->size() - offset, sizeof(chunk_cmd.data));
-  chunk_cmd.data.assign_range(reinterpret_cast<const uint8_t*>(contents->data() + offset), bytes, 0);
+  size_t bytes = min<size_t>(s->bb_stream_file->data.size() - offset, sizeof(chunk_cmd.data));
+  chunk_cmd.data.assign_range(reinterpret_cast<const uint8_t*>(s->bb_stream_file->data.data() + offset), bytes, 0);
 
   size_t cmd_size = offsetof(S_StreamFileChunk_BB_02EB, data) + bytes;
   cmd_size = (cmd_size + 3) & ~3;
@@ -2498,7 +2461,7 @@ asio::awaitable<GetPlayerInfoResult> send_get_player_info(shared_ptr<Client> c, 
     }
     try {
       auto s = c->require_server_state();
-      auto fn = s->function_code_index->get_patch("GetExtendedPlayerInfo", c->specific_version);
+      auto fn = s->client_functions->get("GetExtendedPlayerInfo", c->specific_version);
       send_function_call(c->channel, c->enabled_flags, fn);
       c->function_call_response_queue.emplace_back(make_shared<AsyncPromise<C_ExecuteCodeResult_B3>>());
       full_req_sent = true;

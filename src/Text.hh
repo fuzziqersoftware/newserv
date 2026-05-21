@@ -486,8 +486,14 @@ struct pstring {
 
   uint8_t data[Bytes];
 
-  pstring() {
-    memset(this->data, 0, Bytes);
+  pstring(uint8_t v = 0) {
+    memset(this->data, v, Bytes);
+  }
+  pstring(const void* data, size_t size) {
+    memcpy(this->data, data, std::min<size_t>(size, Bytes));
+    if (size < Bytes) {
+      memset(this->data + size, 0, Bytes - size);
+    }
   }
   pstring(const pstring<Encoding, Chars, BytesPerChar>& other) {
     memcpy(this->data, other.data, Bytes);
