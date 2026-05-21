@@ -628,12 +628,17 @@ static void scramble_bb_security_data(parray<uint8_t, 0x28>& data, uint8_t which
 }
 
 void send_client_init_bb(shared_ptr<Client> c, uint32_t error_code) {
-  auto team = c->team();
   S_ClientInit_BB_00E6 cmd;
   cmd.error_code = error_code;
   cmd.player_tag = 0x00010000;
-  cmd.guild_card_number = c->login->account->account_id;
-  cmd.security_token = team ? team->team_id : 0;
+  if (c->login) {
+    auto team = c->team();
+    cmd.guild_card_number = c->login->account->account_id;
+    cmd.security_token = team ? team->team_id : 0;
+  } else {
+    cmd.guild_card_number = 0xFFFFFFFF;
+    cmd.security_token = 0xFFFFFFFF;
+  }
   cmd.client_config = c->bb_client_config;
   cmd.can_create_team = 1;
   cmd.episode_4_unlocked = 1;
