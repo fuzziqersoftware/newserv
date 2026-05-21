@@ -1,0 +1,73 @@
+########################################################################
+                	        DOWNLOAD
+########################################################################
+
+The official installer for this client is seemingly lost to time.
+However, we do still have access to a download link to a directory of
+the game client. Located at the bottom of this post:
+https://github.com/fuzziqersoftware/newserv/discussions/734
+
+The correct client exe to use, would be PsoBB.pat inside the
+"3. PSOBB Executable" directory. While the file extension is .pat, it
+can be renamed and changed to .exe .
+
+However, PsoBB.exe in its current state will not work on its own.
+As it is packed with a version of ASProtect. Which will impede you from
+removing GameGuard, as well as modifying the client to connect to a desired
+IP address.
+
+There are two ways around this.
+
+1. Use a code injection dll
+2. Unpack the exe
+
+As far as I know, There is currently not any code injection dll projects
+available for use with this client. So our main option is going to be
+unpacking the client.
+
+There are several ways to unpack a client. For the sake of simplicity, we
+will use a automated program. 
+Something like:
+https://github.com/Hendi48/ASpirin
+Originally found in this issue:
+https://github.com/fuzziqersoftware/newserv/issues/748
+
+You will know the process was successful if the new resulting exe file
+has a much larger file size than the original.
+
+########################################################################
+                	    REMOVE GAMEGUARD
+########################################################################
+
+The first step in being able to use this client, is removing GameGuard.
+
+In order to do this, we will prevent GameGuard from initializing by
+forcing the responsible function to return.
+
+00844A9C - ret (or C3 in hex)
+
+This will effectively stop GameGuard from ever starting.
+However, the client has checks on startup to see if GameGuard is running,
+and will close the game if it detects otherwise.
+
+008444BB - jmp 008444DD
+
+Now there is nothing in the way from starting up the game.
+Find and edit the client's IP addresses, and have fun.
+
+
+########################################################################
+                	         NOTES
+########################################################################
+
+Despite being a US client primarily using english, the client seems to
+still have a reliance on having Japanese-IME enabled.
+You can get around any kind of issue with this by patching out the need
+for IME.
+
+008582CC - call dword ptr ds:[0x008E0228]
+
+Alternatively, in a hex editor, you can search for:
+"EB 1A 6A 00 FF 15 9C C3"
+Once found, replace with:
+"EB 1A 6A 00 FF 15 28 02"
