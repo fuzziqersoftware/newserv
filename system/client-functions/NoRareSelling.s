@@ -88,22 +88,22 @@ tool_check_end:
 
 
 
-.versions 59NJ 59NL
+.versions 50YJ 59NJ 59NL
 
 start:
   # This works by setting the item price to zero if it's rare, which causes the game to prevent you from selling the
   # item. For armors and weapons, this is easy because there are easily-patchable opcodes within branches that return a
   # constant price for rare items.
   xor       eax, eax
-  mov       [<VERS 0x005D258F 0x005D25AF>], eax      # Rare armors
-  mov       [<VERS 0x005D26D1 0x005D26F1>], eax      # Unidentified weapons
-  mov       [<VERS 0x005D26E6 0x005D2706>], eax      # Rare weapons
+  mov       [<VERS 0x005D12D7 0x005D258F 0x005D25AF>], eax      # Rare armors
+  mov       [<VERS 0x005D1419 0x005D26D1 0x005D26F1>], eax      # Unidentified weapons
+  mov       [<VERS 0x005D142E 0x005D26E6 0x005D2706>], eax      # Rare weapons
 
   # For tools, it's harder to implement this, because the price comes from the ItemPMT tools table and there is no
   # branch for rares. Still, we can add a branch to a stub to handle tools.
   pop       ecx
   push      5
-  push      <VERS 0x005D2508 0x005D2528>
+  push      <VERS 0x005D1250 0x005D2508 0x005D2528>
   call      get_code_size
   .deltaof  patch_code, patch_code_end
 get_code_size:
@@ -113,7 +113,7 @@ get_code_size:
 patch_code:
   # TODO: It'd be nice to have something like WriteJumpToAndFromCode, since this hook is supposed to return to a
   # different place than where it was called, hence this mov [esp].
-  mov       dword [esp], <VERS 0x005D2556 0x005D2576>
+  mov       dword [esp], <VERS 0x005D129E 0x005D2556 0x005D2576>
   xor       edi, edi
   test      byte [eax + 0x14], 0x80  # flags & 0x80 = is rare
   cmovz     edi, [eax + 0x10]  # Use price from table if not rare

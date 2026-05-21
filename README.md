@@ -489,6 +489,7 @@ The specific versions are:
 | PSO Xbox US TU               | 4OEU | x86                            |
 | PSO Xbox EU Disc             | 4OPD | x86                            |
 | PSO Xbox EU TU               | 4OPU | x86                            |
+| PSO BB US 1.24.3             | 50YJ | x86                            |
 | PSO BB JP 1.25.11            | 59NJ | x86                            |
 | PSO BB JP 1.25.13            | 59NL | x86                            |
 | PSO BB Tethealla             | 59NL | x86                            |

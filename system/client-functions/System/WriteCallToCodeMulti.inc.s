@@ -14,7 +14,7 @@
 
 
 
-.versions 59NJ 59NL
+.versions 50YJ 59NJ 59NL
 
 write_call_to_code:
   # [esp + 0x04] = code ptr
@@ -25,9 +25,9 @@ write_call_to_code:
   # ... (further callsite address/size pairs)
 
   # Allocate memory for the copied code
-  mov       ecx, [<VERS 0x00AA8F84 0x00AAB404>]
+  mov       ecx, [<VERS 0x00A9EF44 0x00AA8F84 0x00AAB404>]
   push      dword [esp + 0x08]
-  mov       eax, <VERS 0x007A984C 0x007A8A38>
+  mov       eax, <VERS 0x007A2254 0x007A984C 0x007A8A38>
   call      eax  # malloc7
   test      eax, eax
   je        done

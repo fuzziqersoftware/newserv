@@ -52,11 +52,11 @@ start:
 
 
 
-.versions 59NJ 59NL
+.versions 50YJ 59NJ 59NL
 start:
   xor    eax, eax
-  mov    [<VERS 0x00A931A4 0x00A95624>], eax  # is_in_quest = false
-  mov    [<VERS 0x00A93160 0x00A955E0>], eax  # dat_source_type = NONE
+  mov    [<VERS 0x00A89164 0x00A931A4 0x00A95624>], eax  # is_in_quest = false
+  mov    [<VERS 0x00A89120 0x00A93160 0x00A955E0>], eax  # dat_source_type = NONE
   inc    eax
-  mov    [<VERS 0x00AAC254 0x00AAE6D4>], ax  # should_leave_game = true
+  mov    [<VERS 0x00AA2214 0x00AAC254 0x00AAE6D4>], ax  # should_leave_game = true
   ret

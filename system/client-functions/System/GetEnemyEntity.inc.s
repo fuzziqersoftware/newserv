@@ -1,7 +1,7 @@
 # (uint16_t entity_id @ eax) -> TObjectV00b441c0* @ eax
 # Preserves all registers except eax
 
-.versions 59NJ 59NL
+.versions 50YJ 59NJ 59NL
 
 get_enemy_entity:
   push      esi
@@ -15,15 +15,15 @@ get_enemy_entity:
   cmp       edx, 0x4000
   jge       done
 
-  mov       esi, [<VERS 0x00AABCE8 0x00AAE168>]  # bs_low = next_player_entity_index
-  mov       edi, [<VERS 0x00AABCE4 0x00AAE164>]
+  mov       esi, [<VERS 0x00AA1CA8 0x00AABCE8 0x00AAE168>]  # bs_low = next_player_entity_index
+  mov       edi, [<VERS 0x00AA1CA4 0x00AABCE4 0x00AAE164>]
   lea       edi, [edi + esi - 1]  # bs_high = next_player_entity_index + next_enemy_entity_index - 1
 bs_again:
   cmp       esi, edi
   jge       bs_done
   lea       ecx, [esi + edi]
   shr       ecx, 1
-  mov       eax, [ecx * 4 + <VERS 0x00AAB2A0 0x00AAD720>]  # all_entities[ecx]
+  mov       eax, [ecx * 4 + <VERS 0x00AA1260 0x00AAB2A0 0x00AAD720>]  # all_entities[ecx]
   cmp       [eax + 0x1C], dx
   jge       bs_not_less
   lea       esi, [ecx + 1]
@@ -33,7 +33,7 @@ bs_not_less:
   jmp       bs_again
 bs_done:
 
-  mov       eax, [esi * 4 + <VERS 0x00AAB2A0 0x00AAD720>]  # all_entities[bs_low]
+  mov       eax, [esi * 4 + <VERS 0x00AA1260 0x00AAB2A0 0x00AAD720>]  # all_entities[bs_low]
   test      eax, eax
   je        done
   xor       ecx, ecx

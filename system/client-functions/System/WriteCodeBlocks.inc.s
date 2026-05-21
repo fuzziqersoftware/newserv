@@ -118,7 +118,7 @@ first_patch_header:
 
 
 
-.versions 2OJW 2OJZ 59NJ 59NL
+.versions 2OJW 2OJZ 50YJ 59NJ 59NL
 
 start:
   push    ebx

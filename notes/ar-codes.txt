@@ -41,6 +41,7 @@ Version codes (from README.md):
   4OEU: PSO Xbox US TU
   4OPD: PSO Xbox EU Disc
   4OPU: PSO Xbox EU TU
+  50YJ: PSO BB US 1.24.3
   59NJ: PSO BB JP 1.25.11
   59NL: PSO BB JP 1.25.13 (including the Tethealla client)
 
@@ -81,6 +82,7 @@ Disable item equip restrictions ("God of equip")
 3OJ5 => 041050D4 38000005
 3OJT => 0415BF50 38000005
 3OP0 => 041052D4 38000005
+5OYJ => 005C8C8F E9A7000000
 59NJ => 005C9F35 E9A7000000
 59NL => 005C9F31 E9A7000000
 
@@ -88,6 +90,7 @@ All items visible in Pioneer 2
 3OE1 => 04102D88 38600000
 
 Mags visible in Pioneer 2
+5OYJ => 005D7053 EB04
 59NJ => 005D8F27 EB04
 59NL => 005D8F4B EB04
 
@@ -96,6 +99,9 @@ Disable pause menu background + offset
         0428735C 4800000C
 3OE2 => 0424CED8 48000370
         042887D8 4800000C
+5OYJ => 00713758 9090
+        0072D417 9090
+        0072D27E 90E9
 59NJ => 00719C58 9090
         00733C57 9090
         00733ABE 90E9
@@ -642,6 +648,8 @@ Fast tekker (skips wind-up jingle)
         0023EF77 jmp    +0x0A
 4OPU => 0023F14C mov    dword [ebp + 0x14C], 1
         0023F167 jmp    +0x0A
+5OYJ => 006D3F7B mov    dword [edi + 0x14C], 1
+        006D3F98 jmp    +0x0B
 59NJ => 006DA14B mov    dword [edi + 0x14C], 1
         006DA168 jmp    +0x0B
 59NL => 006DA113 mov    dword [edi + 0x14C], 1
@@ -980,6 +988,8 @@ Override Challenge mode random enemy location tables limit
 4OEU => 002E742C XXXXXXXX (count as little-endian dword)
 4OPD => 002E720C XXXXXXXX (count as little-endian dword)
 4OPU => 002E745C XXXXXXXX (count as little-endian dword)
+5OYJ => 008075C3 XXXXXXXX (count * 4 as little-endian dword)
+        008075DC XXXXXXXX (count as little-endian dword)
 59NJ => 0080FA3F XXXXXXXX (count * 4 as little-endian dword)
         0080FA58 XXXXXXXX (count as little-endian dword)
 59NL => 0080ECB7 XXXXXXXX (count * 4 as little-endian dword)

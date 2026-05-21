@@ -5747,7 +5747,7 @@ struct G_ChangeLobbyMusic_Ep3_6xBF {
 // 6xBF: Give EXP (BB) (server->client only)
 // newserv implements an extension that causes this command to show the purple EXP numbers which are normally generated
 // by the client instead. This requires the server to also send the enemy ID that generated the EXP, hence the
-// extension struct here. See ServerEXPDisplay.59NL.patch.s for details.
+// extension struct here. See ServerEXPDisplay.s for details.
 
 struct G_GiveExperience_BB_6xBF {
   G_ClientIDHeader header;
