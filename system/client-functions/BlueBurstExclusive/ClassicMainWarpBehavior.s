@@ -7,23 +7,23 @@
 .meta name="Classic main warp behavior"
 .meta description=""
 
-.versions 59NJ 59NL
+.versions 50YJ 59NJ 59NL
 
 entry_ptr:
 reloc0:
   .offsetof start
 start:
   .include  WriteCodeBlocks
-  .data     <VERS 0x0064A642 0x0064A5DE>  # Episode 1
+  .data     <VERS 0x0064527E 0x0064A642 0x0064A5DE>  # Episode 1
   .data     1
   .binary   01
-  .data     <VERS 0x0064A4AC 0x0064A448>  # Episode 2
+  .data     <VERS 0x006450E8 0x0064A4AC 0x0064A448>  # Episode 2
   .data     2
   .binary   0100
-  .data     <VERS 0x0064A58D 0x0064A529>  # Episode 4
+  .data     <VERS 0x006451C9 0x0064A58D 0x0064A529>  # Episode 4
   .data     1
   .binary   01
-  .data     <VERS 0x0064A6BC 0x0064A658>  # Non-Normal difficulty check
+  .data     <VERS 0x006452F8 0x0064A6BC 0x0064A658>  # Non-Normal difficulty check
   .data     2
   nop
   nop

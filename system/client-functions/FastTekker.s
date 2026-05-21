@@ -64,15 +64,15 @@ patch2_end:
 
 
 
-  .versions 59NJ 59NL
+  .versions 50YJ 59NJ 59NL
 
-  .data     <VERS 0x006DA14B 0x006DA113>
+  .data     <VERS 0x006D3F7B 0x006DA14B 0x006DA113>
   .deltaof  patch1_start, patch1_end
 patch1_start:
   mov       dword [edi + 0x14C], 1
 patch1_end:
 
-  .data     <VERS 0x006DA168 0x006DA130>
+  .data     <VERS 0x006D3F98 0x006DA168 0x006DA130>
   .deltaof  patch2_start, patch2_end
 patch2_start:
   nop

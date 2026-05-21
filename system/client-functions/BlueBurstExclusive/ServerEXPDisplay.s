@@ -5,7 +5,7 @@
 .meta name="Server EXP display"
 .meta description=""
 
-.versions 59NJ 59NL
+.versions 50YJ 59NJ 59NL
 
 entry_ptr:
 reloc0:
@@ -20,7 +20,7 @@ start:
 install_hook:
   pop       ecx
   push      0  # Write address instead of a call/jmp opcode
-  push      <VERS 0x00A0DC54 0x00A0FC54>
+  push      <VERS 0x00A03CB4 0x00A0DC54 0x00A0FC54>
   call      get_code_size
   .deltaof  handle_6xBF_start, handle_6xBF_end
 get_code_size:
@@ -30,7 +30,7 @@ get_code_size:
 handle_6xBF_start:  # [std](G_6xBF* cmd @ [esp + 4]) -> void
   mov       edx, [esp + 4]
 
-  mov       ecx, [<VERS 0x00A9A074 0x00A9C4F4>]  # local_client_id
+  mov       ecx, [<VERS 0x00A90034 0x00A9A074 0x00A9C4F4>]  # local_client_id
   cmp       [edx + 2], cx
   jne       skip_text
 
@@ -47,25 +47,25 @@ handle_6xBF_start:  # [std](G_6xBF* cmd @ [esp + 4]) -> void
   jnz       enemy_entity_ok
 
   # Use player entity if enemy entity is already gone
-  mov       eax, <VERS 0x0068D618 0x0068D5AC>
+  mov       eax, <VERS 0x00687EDC 0x0068D618 0x0068D5AC>
   xchg      eax, ecx
   call      ecx  # eax = TObjPlayer::for_client_id(local_client_id); conveniently, this function preserves all regs except eax
 
 enemy_entity_ok:
   push      0x0000FFFF  # entity_id; ignored by TFontSmallTask if not a player
   push      dword [edx + 4]  # amount = cmd.amount
-  push      <VERS 0x00976380 0x009783A0>  # prefix = L"EXP"
+  push      <VERS 0x0096BCC0 0x00976380 0x009783A0>  # prefix = L"EXP"
   push      0x14
   push      0x14
   push      0xFFFF00FF  # color (ARGB)
   add       eax, 0x300
   push      eax  # position
-  mov       eax, <VERS 0x0078B8E8 0x0078AABC>
+  mov       eax, <VERS 0x0078460C 0x0078B8E8 0x0078AABC>
   call      eax  # TFontSmallTask___new__(...)
   add       esp, 0x1C
 
 skip_text:
-  mov       eax, <VERS 0x0069292C 0x006928C0>  # Original handle_6xBF
+  mov       eax, <VERS 0x0068D194 0x0069292C 0x006928C0>  # Original handle_6xBF
   jmp       eax  # original_handle_6xBF(cmd)
 
 get_enemy_entity:
@@ -81,7 +81,7 @@ handle_6xBF_end:
 apply_static_patches:
   .include  WriteCodeBlocks
 
-  .data     <VERS 0x0078827D 0x0078749D>
+  .data     <VERS 0x00780FA1 0x0078827D 0x0078749D>
   .deltaof  disable_kill_enemy_callsite_start, disable_kill_enemy_callsite_end
 disable_kill_enemy_callsite_start:
   nop
@@ -91,7 +91,7 @@ disable_kill_enemy_callsite_start:
   nop
 disable_kill_enemy_callsite_end:
 
-  .data     <VERS 0x00777381 0x007765A5>
+  .data     <VERS 0x007702DD 0x00777381 0x007765A5>
   .deltaof  disable_exp_steal_callsite_start, disable_exp_steal_callsite_end
 disable_exp_steal_callsite_start:
   add       esp, 0x0C  # Original function has `ret 0x0C`

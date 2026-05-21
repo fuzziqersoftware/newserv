@@ -18,7 +18,7 @@
 .meta name="More save slots"
 .meta description=""
 
-.versions 59NJ 59NL
+.versions 50YJ 59NJ 59NL
 
 entry_ptr:
 reloc0:
@@ -52,7 +52,7 @@ start:
 apply_enable_scroll_patch:
   # This patch enables scrolling behavior within the character list
   push      -5          # Jump size (negative = jmp instead of call)
-  push      <VERS 0x00413B77 0x00413B7F>  # Jump address
+  push      <VERS 0x0041370B 0x00413B77 0x00413B7F>  # Jump address
   call      get_code_size_for_enable_scroll
   .deltaof  enable_scroll_start, enable_scroll_end
 get_code_size_for_enable_scroll:
@@ -62,7 +62,7 @@ get_code_size_for_enable_scroll:
 enable_scroll_start:
   mov       eax, dword ptr [edi + 0x28]  # cursor = char_select_menu->cursor_obj (TAdSelectCurGC*)
   or        dword [eax + 0x01F8], 3  # cursor->flags |= 3  # Enable scrolling
-  mov       eax, [<VERS 0x00A38BD0 0x00A3B050>]  # scroll_bar = TAdScrollBarXb_objs[0]
+  mov       eax, [<VERS 0x00A2EC50 0x00A38BD0 0x00A3B050>]  # scroll_bar = TAdScrollBarXb_objs[0]
   mov       ecx, [eax + 0xEC]  # ecx = scroll_bar->client_id
   imul      ecx, ecx, 0x24
   # Set up scroll bar graphics (in struct at scroll_bar + 0x1C)
@@ -93,7 +93,7 @@ enable_scroll_end:
 apply_fix_scroll_patch1:
   # This patch fixes character selection cursor object so it will take the scroll offset into account
   push      6           # Call size
-  push      <VERS 0x00413C30 0x00413C38>  # Call address
+  push      <VERS 0x004137C4 0x00413C30 0x00413C38>  # Call address
   call      get_code_size_for_fix_scroll_patch1
   .deltaof  fix_scroll_patch1_start, fix_scroll_patch1_end
 get_code_size_for_fix_scroll_patch1:
@@ -103,7 +103,7 @@ get_code_size_for_fix_scroll_patch1:
 fix_scroll_patch1_start:
   mov       edx, [edi + 0x28]  # cursor = this->ad_select_cur_obj (TAdSelectCurGC*)
   mov       ebp, [edx + 0x44]  # ebp = cursor->selected_index_within_view
-  mov       eax, [<VERS 0x00A38BD0 0x00A3B050>]  # scroll_bar = TAdScrollBarXb_objs[0]
+  mov       eax, [<VERS 0x00A2EC50 0x00A38BD0 0x00A3B050>]  # scroll_bar = TAdScrollBarXb_objs[0]
   add       ebp, [eax + 0xAC]  # ebp += scroll_bar->selection_state[0].scroll_offset
   ret
 fix_scroll_patch1_end:
@@ -116,7 +116,7 @@ apply_fix_scroll_patch2:
   # This patch changes the TAdSinglePlyChrSelectGC::selected_index_within_view to be the selected character's absolute
   # index (including scroll_offset), not the index only within the displayed four characters
   push      6           # Call size
-  push      <VERS 0x00413CD0 0x00413CD8>  # Call address
+  push      <VERS 0x00413864 0x00413CD0 0x00413CD8>  # Call address
   call      get_code_size_for_fix_scroll_patch2
   .deltaof  fix_scroll_patch2_start, fix_scroll_patch2_end
 get_code_size_for_fix_scroll_patch2:
@@ -124,7 +124,7 @@ get_code_size_for_fix_scroll_patch2:
   push      dword [eax]
   call      fix_scroll_patch2_end
 fix_scroll_patch2_start:
-  mov       eax, [<VERS 0x00A38BD0 0x00A3B050>]  # scroll_bar = TAdScrollBarXb_objs[0]
+  mov       eax, [<VERS 0x00A2EC50 0x00A38BD0 0x00A3B050>]  # scroll_bar = TAdScrollBarXb_objs[0]
   mov       eax, [eax + 0xAC]  # eax = scroll_bar->selection_state[0].scroll_offset
   mov       edx, [edi + 0x28]  # cursor = this->ad_select_cur_obj (TAdSelectCurGC*)
   add       eax, [edx + 0x44]  # eax += cursor->selected_index_within_view
@@ -138,7 +138,7 @@ fix_scroll_patch2_end:
 apply_fix_file_index:
   # This patch fixes the character file indexing so it will account for the scroll position
   push      5           # Call size
-  push      <VERS 0x00413CE8 0x00413CF0>  # Call address
+  push      <VERS 0x0041387C 0x00413CE8 0x00413CF0>  # Call address
   call      get_code_size_for_selection_index_fix2
   .deltaof  selection_index_fix2_start, selection_index_fix2_end
 get_code_size_for_selection_index_fix2:
@@ -146,11 +146,11 @@ get_code_size_for_selection_index_fix2:
   push      dword [eax]
   call      selection_index_fix2_end
 selection_index_fix2_start:
-  mov       eax, [<VERS 0x00A38BD0 0x00A3B050>]
+  mov       eax, [<VERS 0x00A2EC50 0x00A38BD0 0x00A3B050>]
   mov       eax, [eax + 0xAC]  # eax = TAdScrollBarXb_objs[0]->selection_state[0].scroll_offset
   add       ebp, eax  # arg0 += eax
   mov       [esp + 4], ebp
-  mov       eax, <VERS 0x006C1ABC 0x006C1A80>
+  mov       eax, <VERS 0x006BB954 0x006C1ABC 0x006C1A80>
   jmp       eax  # set_current_char_slot
 selection_index_fix2_end:
   call      write_call_to_code
@@ -169,10 +169,10 @@ get_code_size_for_preview_window_fix:
   push      dword [eax]
   call      preview_window_fix_end
 preview_window_fix_start:
-  mov       eax, [<VERS 0x00A38BD0 0x00A3B050>]  # scroll_bar = TAdScrollBarXb_objs[0]
+  mov       eax, [<VERS 0x00A2EC50 0x00A38BD0 0x00A3B050>]  # scroll_bar = TAdScrollBarXb_objs[0]
   mov       eax, [eax + 0xAC]  # eax = scroll_bar->selection_state[0].scroll_offset
   add       [esp + 4], eax
-  mov       eax, <VERS 0x006C4514 0x006C44D0>  # get_player_preview_info
+  mov       eax, <VERS 0x006BE37C 0x006C4514 0x006C44D0>  # get_player_preview_info
   jmp       eax
 preview_window_fix_end:
   # This patch applies in two places, so push the second set of args now, then
@@ -190,265 +190,266 @@ preview_window_fix_end:
 apply_static_patches:
   .include WriteCodeBlocks
   # These patches change various places where the character data size and slot count are referenced
-  .data    <VERS 0x00475294 0x004751A4>
+  .data    <VERS 0x00474E1C 0x00475294 0x004751A4>
   .data    0x00000001
   .binary  0C  # slot count; TDataProtocol::handle_E5
-  .data    <VERS 0x0047534B 0x0047525B>
+  .data    <VERS 0x00474ED3 0x0047534B 0x0047525B>
   .data    0x00000001
   .binary  0C  # slot count; import_player_preview
-  .data    <VERS 0x004786D1 0x004785E1>
+  .data    <VERS 0x00478259 0x004786D1 0x004785E1>
   .data    0x00000001
   .binary  0C  # slot count; TDataProtocol::handle_E4
-  .data    <VERS 0x00482559 0x0048242D>
+  .data    <VERS 0x0048208D 0x00482559 0x0048242D>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C17FB 0x006C17BF>
+  .data    <VERS 0x006BB693 0x006C17FB 0x006C17BF>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C1D07 0x006C1CCB>
+  .data    <VERS 0x006BBB77 0x006C1D07 0x006C1CCB>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C1D3A 0x006C1CFE>
+  .data    <VERS 0x006BBBAA 0x006C1D3A 0x006C1CFE>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C1D58 0x006C1D1C>
+  .data    <VERS 0x006BBBC8 0x006C1D58 0x006C1D1C>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C1E13 0x006C1DD7>
+  .data    <VERS 0x006BBC83 0x006C1E13 0x006C1DD7>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C226A 0x006C222E>
+  .data    <VERS 0x006BC0DA 0x006C226A 0x006C222E>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C22A9 0x006C226D>
+  .data    <VERS 0x006BC119 0x006C22A9 0x006C226D>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C22CA 0x006C228E>
+  .data    <VERS 0x006BC13A 0x006C22CA 0x006C228E>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C22DA 0x006C229E>
+  .data    <VERS 0x006BC14A 0x006C22DA 0x006C229E>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C2517 0x006C24DB>
+  .data    <VERS 0x006BC387 0x006C2517 0x006C24DB>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C267F 0x006C2643>
+  .data    <VERS 0x006BC4EF 0x006C267F 0x006C2643>
   .data    0x00000004
   .data    0x00022FBC  # save_count offset
-  .data    <VERS 0x006C2689 0x006C264D>
+  .data    <VERS 0x006BC4F9 0x006C2689 0x006C264D>
   .data    0x00000004
   .data    0x00022FBC  # save_count offset
-  .data    <VERS 0x006C272B 0x006C26EF>
+  .data    <VERS 0x006BC59B 0x006C272B 0x006C26EF>
   .data    0x00000004
   .data    0x00022FBC  # save_count offset
-  .data    <VERS 0x006C2741 0x006C2705>
+  .data    <VERS 0x006BC5B1 0x006C2741 0x006C2705>
   .data    0x00000004
   .data    0x00022FC0  # round2_seed offset
-  .data    <VERS 0x006C27CF 0x006C2793>
+  .data    <VERS 0x006BC63F 0x006C27CF 0x006C2793>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C28A8 0x006C286C>
+  .data    <VERS 0x006BC718 0x006C28A8 0x006C286C>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C314F 0x006C3113>
+  .data    <VERS 0x006BCFBE 0x006C314F 0x006C3113>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C357B 0x006C353F>
+  .data    <VERS 0x006BD3EB 0x006C357B 0x006C353F>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C35BA 0x006C357E>
+  .data    <VERS 0x006BD42A 0x006C35BA 0x006C357E>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C35E6 0x006C35AA>
+  .data    <VERS 0x006BD456 0x006C35E6 0x006C35AA>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C35F3 0x006C35B7>
+  .data    <VERS 0x006BD463 0x006C35F3 0x006C35B7>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C360E 0x006C35D2>
+  .data    <VERS 0x006BD47E 0x006C360E 0x006C35D2>
   .data    0x00000004
   .data    0x00022FBC  # save_count offset
-  .data    <VERS 0x006C3617 0x006C35DB>
+  .data    <VERS 0x006BD487 0x006C3617 0x006C35DB>
   .data    0x00000004
   .data    0x00022FBC  # save_count offset
-  .data    <VERS 0x006C371C 0x006C36E0>
+  .data    <VERS 0x006BD58C 0x006C371C 0x006C36E0>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C3B5A 0x006C3B1E>
+  .data    <VERS 0x006BD9CA 0x006C3B5A 0x006C3B1E>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C424D 0x006C4209>
+  .data    <VERS 0x006BE0B5 0x006C424D 0x006C4209>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C4833 0x006C47EF>
+  .data    <VERS 0x006BE69B 0x006C4833 0x006C47EF>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C486A 0x006C4826>
+  .data    <VERS 0x006BE6D2 0x006C486A 0x006C4826>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C49A6 0x006C4962>
+  .data    <VERS 0x006BE80E 0x006C49A6 0x006C4962>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C49DD 0x006C4999>
+  .data    <VERS 0x006BE845 0x006C49DD 0x006C4999>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C4AC5 0x006C4A81>
+  .data    <VERS 0x006BE92D 0x006C4AC5 0x006C4A81>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C4AFE 0x006C4ABA>
+  .data    <VERS 0x006BE966 0x006C4AFE 0x006C4ABA>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C4CDE 0x006C4C9A>
+  .data    <VERS 0x006BEB46 0x006C4CDE 0x006C4C9A>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C4D15 0x006C4CD1>
+  .data    <VERS 0x006BEB7D 0x006C4D15 0x006C4CD1>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C4DFD 0x006C4DB9>
+  .data    <VERS 0x006BEC65 0x006C4DFD 0x006C4DB9>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C4E36 0x006C4DF2>
+  .data    <VERS 0x006BEC9E 0x006C4E36 0x006C4DF2>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C4F9C 0x006C4F58>
+  .data    <VERS 0x006BEE04 0x006C4F9C 0x006C4F58>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C4FD7 0x006C4F94>
+  .data    <VERS 0x006BEE40 0x006C4FD7 0x006C4F94>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C51C5 0x006C5181>
+  .data    <VERS 0x006BF02D 0x006C51C5 0x006C5181>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C5201 0x006C51BD>
+  .data    <VERS 0x006BF069 0x006C5201 0x006C51BD>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C5376 0x006C5332>
+  .data    <VERS 0x006BF1DE 0x006C5376 0x006C5332>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C53B0 0x006C536C>
+  .data    <VERS 0x006BF218 0x006C53B0 0x006C536C>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C5545 0x006C5501>
+  .data    <VERS 0x006BF3AD 0x006C5545 0x006C5501>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C5581 0x006C553D>
+  .data    <VERS 0x006BF3E9 0x006C5581 0x006C553D>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C56F6 0x006C56B2>
+  .data    <VERS 0x006BF55E 0x006C56F6 0x006C56B2>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C5730 0x006C56EC>
+  .data    <VERS 0x006BF598 0x006C5730 0x006C56EC>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C58B6 0x006C5872>
+  .data    <VERS 0x006BF71E 0x006C58B6 0x006C5872>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C58F0 0x006C58AC>
+  .data    <VERS 0x006BF758 0x006C58F0 0x006C58AC>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C5A85 0x006C5A41>
+  .data    <VERS 0x006BF8ED 0x006C5A85 0x006C5A41>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C5AC1 0x006C5A7D>
+  .data    <VERS 0x006BF929 0x006C5AC1 0x006C5A7D>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C5BB2 0x006C5B6E>
+  .data    <VERS 0x006BFA1A 0x006C5BB2 0x006C5B6E>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C5BEC 0x006C5BA8>
+  .data    <VERS 0x006BFA54 0x006C5BEC 0x006C5BA8>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C5D72 0x006C5D2E>
+  .data    <VERS 0x006BFBDA 0x006C5D72 0x006C5D2E>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C5DAC 0x006C5D68>
+  .data    <VERS 0x006BFC14 0x006C5DAC 0x006C5D68>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C5F32 0x006C5EEE>
+  .data    <VERS 0x006BFD9A 0x006C5F32 0x006C5EEE>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C5F6C 0x006C5F28>
+  .data    <VERS 0x006BFDD4 0x006C5F6C 0x006C5F28>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C60F2 0x006C60AE>
+  .data    <VERS 0x006BFF5A 0x006C60F2 0x006C60AE>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C612C 0x006C60E8>
+  .data    <VERS 0x006BFF94 0x006C612C 0x006C60E8>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C6346 0x006C6303>
+  .data    <VERS 0x006C01AF 0x006C6346 0x006C6303>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C6381 0x006C633D>
+  .data    <VERS 0x006C01E9 0x006C6381 0x006C633D>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C6505 0x006C64C1>
+  .data    <VERS 0x006C036D 0x006C6505 0x006C64C1>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C6541 0x006C64FD>
+  .data    <VERS 0x006C03A9 0x006C6541 0x006C64FD>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C6632 0x006C65EE>
+  .data    <VERS 0x006C049A 0x006C6632 0x006C65EE>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C666C 0x006C6628>
+  .data    <VERS 0x006C04D4 0x006C666C 0x006C6628>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C67F2 0x006C67AE>
+  .data    <VERS 0x006C065A 0x006C67F2 0x006C67AE>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C682C 0x006C67E8>
+  .data    <VERS 0x006C0694 0x006C682C 0x006C67E8>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C69B2 0x006C696E>
+  .data    <VERS 0x006C081A 0x006C69B2 0x006C696E>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C69EC 0x006C69A8>
+  .data    <VERS 0x006C0854 0x006C69EC 0x006C69A8>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C6B87 0x006C6B43>
+  .data    <VERS 0x006C09EF 0x006C6B87 0x006C6B43>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C6BB8 0x006C6B74>
+  .data    <VERS 0x006C0A20 0x006C6BB8 0x006C6B74>
   .data    0x00000004
   .data    0x0000005D  # memcard block count
-  .data    <VERS 0x006C6C3A 0x006C6BF6>
+  .data    <VERS 0x006C0AA2 0x006C6C3A 0x006C6BF6>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C6C74 0x006C6C30>
+  .data    <VERS 0x006C0ADC 0x006C6C74 0x006C6C30>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C6E82 0x006C6E3E>
+  .data    <VERS 0x006C0CEA 0x006C6E82 0x006C6E3E>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C6EBC 0x006C6E78>
+  .data    <VERS 0x006C0D24 0x006C6EBC 0x006C6E78>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C70B9 0x006C7075>
+  .data    <VERS 0x006C0F21 0x006C70B9 0x006C7075>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C70F3 0x006C70AF>
+  .data    <VERS 0x006C0F5B 0x006C70F3 0x006C70AF>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C7A46 0x006C7A02>
+  .data    <VERS 0x006C18AE 0x006C7A46 0x006C7A02>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C7D66 0x006C7D22>
+  .data    <VERS 0x006C1BCE 0x006C7D66 0x006C7D22>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x006C7D7C 0x006C7D5E>
+  .data    <VERS 0x006C1C0A 0x006C7D7C 0x006C7D5E>
   .data    0x00000001
   .binary  0C  # slot count
-  .data    <VERS 0x006C7DC0 0x006C7D7C>
+  .data    <VERS 0x006C1C28 0x006C7DC0 0x006C7D7C>
   .data    0x00000004
   .data    0x00022FC4  # total file size
-  .data    <VERS 0x0077CC72 0x0077BE92>
+  .data    <VERS 0x00775BCE 0x0077CC72 0x0077BE92>
   .data    0x00000004
   .data    0x00022FB4  # bgm_test_songs_unlocked offset
 
   # Signature check on all save files (rewritten as loop)
-  .data    <VERS 0x006C1C69 0x006C1C2D>
+  .data    <VERS 0x006BBB04 0x006C1C69 0x006C1C2D> 
   .deltaof sig_check_begin, sig_check_end
+
 sig_check_begin:
   mov      edx, 0xC87ED5B1   # Expected signature value
   add      eax, 0x04E8       # &char_file_list->chars[0].part2.signature
@@ -469,10 +470,10 @@ sig_bad:
   inc      eax
   jmp      sig_check_end
   .binary  CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-sig_check_end:  # <VERS 006C1CB2 006C1C76>
+sig_check_end:  # <VERS 006BBB25 006C1CB2 006C1C76>
 
   # Send slot count in E3 command
-  .data    <VERS 0x0046EC10 0x0046EB20>  # TDataProtocol::send_E3_for_index
+  .data    <VERS 0x0046E798 0x0046EC10 0x0046EB20>  # TDataProtocol::send_E3_for_index
   .deltaof send_slot_count_in_E3_begin, send_slot_count_in_E3_end
 send_slot_count_in_E3_begin:
   # ecx = this (TDataProtocol*)
@@ -487,7 +488,7 @@ send_slot_count_in_E3_begin:
   mov      eax, [ecx]
   call     [eax + 0x20]  # this->send_command(&cmd, 0x10)  // ret 8
   add      esp, 8
-  mov      eax, <VERS 0x006C1ABC 0x006C1A80>
+  mov      eax, <VERS 0x006BB954 0x006C1ABC 0x006C1A80>
   call     eax  # set_current_char_slot(slot_index)  // ret 0
   add      esp, 8
   ret      4
@@ -515,7 +516,7 @@ show_slot_number_strend_again:
   jmp      show_slot_number_strend_again
 show_slot_number_strend_done:
   # Format the slot number and append it to the string
-  mov      ecx, [<VERS 0x00A38BD0 0x00A3B050>]  # scroll_bar = TAdScrollBarXb_objs[0]
+  mov      ecx, [<VERS 0x00A2EC50 0x00A38BD0 0x00A3B050>]  # scroll_bar = TAdScrollBarXb_objs[0]
   mov      ecx, [ecx + 0xAC]  # ecx = scroll_bar->selection_state[0].scroll_offset
   lea      ecx, [ecx + ebp + 1]
   push     ecx  # Slot number (scroll_offset + z)
@@ -523,7 +524,7 @@ show_slot_number_strend_done:
   .binary  20002800230025006400290020000000  # L" (#%d) "
 get_show_slot_number_suffix_fmt:
   push     eax  # Destination buffer
-  mov      eax, <VERS 0x00835578 0x00857E29>  # _swprintf
+  mov      eax, <VERS 0x0082C2F9 0x00835578 0x00857E29>  # _swprintf
   call     eax
   add      esp, 0x0C
   jmp      show_slot_number_end
@@ -541,11 +542,11 @@ update_existing_char_file_list:
   # patch is applied statically to the executable; this is only necessary when used as a server patch because the
   # character list is already allocated at the time the patch is applied.
   push      0x00022FC4  # total file size
-  mov       eax, <VERS 0x00835915 0x008581C5>  # operator_new
+  mov       eax, <VERS 0x0082C695 0x00835915 0x008581C5>  # operator_new
   call      eax
   add       esp, 4
-  mov       edx, [<VERS 0x00A939C4 0x00A95E44>]  # edx = old char_file_list
-  mov       [<VERS 0x00A939C4 0x00A95E44>], eax
+  mov       edx, [<VERS 0x00A89A04 0x00A939C4 0x00A95E44>]  # edx = old char_file_list
+  mov       [<VERS 0x00A89A04 0x00A939C4 0x00A95E44>], eax
   mov       ecx, [edx + 0xBA94]  # Copy bgm_test_songs_unlocked_high to new file
   mov       [eax + 0x00022FB4], ecx
   mov       ecx, [edx + 0xBA98]  # Copy bgm_test_songs_unlocked_low to new file
@@ -558,7 +559,7 @@ update_existing_char_file_list:
   add       edx, 4
   mov       ecx, 0xBA90
   call      memcpy  # Copy the existing 4 characters over
-  mov       eax, [<VERS 0x00A939C4 0x00A95E44>]
+  mov       eax, [<VERS 0x00A89A04 0x00A939C4 0x00A95E44>]
   add       eax, 0xBA94
   mov       ecx, 4
 clear_next_char:
@@ -578,19 +579,19 @@ clear_next_char_done:
   #   countof(char_file_list.chars) - 4,
   #   PSOCharacterFile::init,
   #   PSOCharacterFile::destroy)
-  push      <VERS 0x006C197C 0x006C1940>  # PSOCharacterFile::destroy
-  push      <VERS 0x006C182C 0x006C17F0>  # PSOCharacterFile::init
+  push      <VERS 0x006BB814 0x006C197C 0x006C1940>  # PSOCharacterFile::destroy
+  push      <VERS 0x006BB6C4 0x006C182C 0x006C17F0>  # PSOCharacterFile::init
   push      0x08  # slot count - 4
   push      0x2EA4  # sizeof(PSOCharacterFile)
-  mov       eax, [<VERS 0x00A939C4 0x00A95E44>]
+  mov       eax, [<VERS 0x00A89A04 0x00A939C4 0x00A95E44>]
   add       eax, 0xBA94
   push      eax
-  mov       eax, <VERS 0x00835E86 0x00858736>
+  mov       eax, <VERS 0x0082CC06 0x00835E86 0x00858736>
   call      eax
 
   # Fix the file's checksum
-  mov       eax, [<VERS 0x00A939C4 0x00A95E44>]
-  mov       ecx, <VERS 0x006C2738 0x006C26FC>
+  mov       eax, [<VERS 0x00A89A04 0x00A939C4 0x00A95E44>]
+  mov       ecx, <VERS 0x006BC5A8 0x006C2738 0x006C26FC>
   jmp       ecx  # PSOBBCharacterFileList::checksum(char_file_list)
 
 
@@ -605,10 +606,10 @@ update_existing_char_file_list_memcard:
   add       eax, 0x0000FFFF
   and       eax, 0xFFFFC000
   push      eax
-  mov       eax, <VERS 0x0084F258 0x0082E940>
+  mov       eax, <VERS 0x00845D80 0x0084F258 0x0082E940>
   call      eax  # malloc10(total file size)
   add       esp, 4
-  mov       [<VERS 0x00A939AC 0x00A95E2C>], eax
-  mov       edx, [<VERS 0x00A939C4 0x00A95E44>]
+  mov       [<VERS 0x00A899EC 0x00A939AC 0x00A95E2C>], eax
+  mov       edx, [<VERS 0x00A89A04 0x00A939C4 0x00A95E44>]
   mov       ecx, 0x00022FC4  # total file size
   jmp       memcpy

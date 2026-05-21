@@ -122,12 +122,12 @@ hook6_end:
 
 
 
-.versions 59NJ 59NL
+.versions 50YJ 59NJ 59NL
 
 start:
   pop       ecx
   push      6
-  push      <VERS 0x005D91BE 0x005D91E2>
+  push      <VERS 0x005D72EA 0x005D91BE 0x005D91E2>
   call      get_code_size
   .deltaof  patch_code, patch_code_end
 get_code_size:
@@ -135,16 +135,16 @@ get_code_size:
   push      dword [eax]
   call      patch_code_end
 patch_code:  # [eax] (TItemMag* this @ ecx) -> void
-  mov       dword [ecx + 0x01B8], eax
+  mov       dword [ecx + <VERS 0x01B4 0x01B8 0x01B8>], eax
   mov       eax, [ecx + 0x00F8]
   movzx     eax, word [eax + 0x001C]  # eax = this->owner_player->entity_id
-  cmp       [<VERS 0x00A9A074 0x00A9C4F4>], eax
+  cmp       [<VERS 0x00A90034 0x00A9A074 0x00A9C4F4>], eax
   jne       patch_code_skip_sound
   push      0
   push      0
   push      0
   push      0xAC
-  mov       eax, <VERS 0x00815020 0x00814298>
+  mov       eax, <VERS 0x0080CAB4 0x00815020 0x00814298>
   call      eax
   add       esp, 0x10
 patch_code_skip_sound:

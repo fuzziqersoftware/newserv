@@ -4,7 +4,7 @@
 .meta description="Mitigates effects\nof enemy health\ndesync"
 .meta client_flag="0x0000001000000000"
 
-.versions 59NJ 59NL
+.versions 50YJ 59NJ 59NL
 
 entry_ptr:
 reloc0:
@@ -18,8 +18,8 @@ write_address_of_code:
 start:
 
   # Replace 6x09 with 6xE4 in subcommand handler table
-  mov       dword [<VERS 0x00A0DC30 0x00A0FC30>], 0x000600E4  # subcommand=0xE4, flags=6
-  push      <VERS 0x00A0DC34 0x00A0FC34>
+  mov       dword [<VERS 0x00A03C90 0x00A0DC30 0x00A0FC30>], 0x000600E4  # subcommand=0xE4, flags=6
+  push      <VERS 0x00A03C94 0x00A0DC34 0x00A0FC34>
   call      +4
   .deltaof  handle_6xE4_start, handle_6xE4_end
   pop       eax
@@ -31,7 +31,7 @@ handle_6xE4_start:  # (G_6xE4* cmd @ [esp + 4]) -> void
   push      esi
   push      edi
 
-  test      byte [<VERS 0x00AA8DFC 0x00AAB27C>], 0x80
+  test      byte [<VERS 0x00A9EDBC 0x00AA8DFC 0x00AAB27C>], 0x80 #0x2480
   jz        handle_6xE4_return
   mov       ebx, [esp + 0x10]  # cmd
   movzx     eax, word [ebx + 2]
@@ -47,7 +47,7 @@ handle_6xE4_start:  # (G_6xE4* cmd @ [esp + 4]) -> void
   movzx     eax, word [ebx + 2]
   and       eax, 0x0FFF
   imul      eax, eax, 0x0C
-  add       eax, [<VERS 0x00AADE38 0x00AB02B8>]  # eax = state_for_enemy(cmd->header.entity_id)
+  add       eax, [<VERS 0x00AA3DF8 0x00AADE38 0x00AB02B8>]  # eax = state_for_enemy(cmd->header.entity_id)
 
   cmp       dword [ebx + 0x0C], 0
   jl        handle_6xE4_not_proportional
@@ -94,7 +94,7 @@ handle_6xE4_not_proportional:
   mov       [esp + 4], si  # out_cmd.entity_index
   mov       [esp + 6], di  # out_cmd.total_damage
   mov       ecx, esp
-  mov       edx, <VERS 0x00801150 0x008003E0>
+  mov       edx, <VERS 0x007F9160 0x00801150 0x008003E0>
   call      edx  # send_and_handle_60(&out_cmd);
   add       esp, 0x10
   jmp       handle_6xE4_return
@@ -130,41 +130,41 @@ handle_6xE4_end:
   # Note: in 59NJ this object is TObjectV00b421c0 (it's the same as 3OE1's TObjectV8047c128)
   # Write TObjectV00b441c0::incr_hp_with_sync
   push      5
-  push      <VERS 0x00775224 0x00774448>  # TObjectV00b441c0::v18_accept_hit (presumably Resta) - this is add_hp, not subtract_hp!
+  push      <VERS 0x0076E17C 0x00775224 0x00774448>  # TObjectV00b441c0::v18_accept_hit (presumably Resta) - this is add_hp, not subtract_hp!
   push      5
-  push      <VERS 0x00778063 0x00777287>  # TObjectV00b441c0::subtract_hp_if_not_in_state_2
+  push      <VERS 0x00770FBF 0x00778063 0x00777287>  # TObjectV00b441c0::subtract_hp_if_not_in_state_2
   push      5
-  push      <VERS 0x00777AB2 0x00776CD6>  # TObjectV00b441c0::v19_handle_hit_special_effects
+  push      <VERS 0x007709DD 0x00777AB2 0x00776CD6>  # TObjectV00b441c0::v19_handle_hit_special_effects
   push      5
-  push      <VERS 0x00777B2B 0x00776D4F>  # TObjectV00b441c0::v19_handle_hit_special_effects
+  push      <VERS 0x00770A56 0x00777B2B 0x00776D4F>  # TObjectV00b441c0::v19_handle_hit_special_effects
   push      5
-  push      <VERS 0x00777BFC 0x00776E20>  # TObjectV00b441c0::v19_handle_hit_special_effects
+  push      <VERS 0x00770B27 0x00777BFC 0x00776E20>  # TObjectV00b441c0::v19_handle_hit_special_effects
   push      5
-  push      <VERS 0x00777C75 0x00776E99>  # TObjectV00b441c0::v19_handle_hit_special_effects
+  push      <VERS 0x00770BA0 0x00777C75 0x00776E99>  # TObjectV00b441c0::v19_handle_hit_special_effects
   push      5
-  push      <VERS 0x00776D2D 0x00775F51>  # TObjectV00b441c0::v19_handle_hit_special_effects
+  push      <VERS 0x0076FC85 0x00776D2D 0x00775F51>  # TObjectV00b441c0::v19_handle_hit_special_effects
   push      5
-  push      <VERS 0x007769C2 0x00775BE6>  # TObjectV00b441c0::v19_handle_hit_special_effects
+  push      <VERS 0x0076F91A 0x007769C2 0x00775BE6>  # TObjectV00b441c0::v19_handle_hit_special_effects
   push      5
-  push      <VERS 0x0077683C 0x00775A60>  # TObjectV00b441c0::v19_handle_hit_special_effects
+  push      <VERS 0x0076F794 0x0077683C 0x00775A60>  # TObjectV00b441c0::v19_handle_hit_special_effects
   push      5
-  push      <VERS 0x00776502 0x00775726>  # TObjectV00b441c0::v19_handle_hit_special_effects (Devil's/Demon's)
+  push      <VERS 0x0076F45A 0x00776502 0x00775726>  # TObjectV00b441c0::v19_handle_hit_special_effects (Devil's/Demon's)
   push      5
-  push      <VERS 0x00775B57 0x00774D7B>  # TObjectV00b441c0::v18_accept_hit
+  push      <VERS 0x0076EAB9 0x00775B57 0x00774D7B>  # TObjectV00b441c0::v18_accept_hit
   push      5
-  push      <VERS 0x00775A23 0x00774C47>  # TObjectV00b441c0::v18_accept_hit
+  push      <VERS 0x0076E985 0x00775A23 0x00774C47>  # TObjectV00b441c0::v18_accept_hit
   push      5
-  push      <VERS 0x007757F0 0x00774A14>  # TObjectV00b441c0::v18_accept_hit
+  push      <VERS 0x0076E752 0x007757F0 0x00774A14>  # TObjectV00b441c0::v18_accept_hit
   push      5
-  push      <VERS 0x00775606 0x0077482A>  # TObjectV00b441c0::v18_accept_hit
+  push      <VERS 0x0076E568 0x00775606 0x0077482A>  # TObjectV00b441c0::v18_accept_hit
   push      5
-  push      <VERS 0x007754BC 0x007746E0>  # TObjectV00b441c0::v18_accept_hit
+  push      <VERS 0x0076E41E 0x007754BC 0x007746E0>  # TObjectV00b441c0::v18_accept_hit
   push      5
-  push      <VERS 0x00774E3D 0x00774061>  # TObjectV00b441c0::v18_accept_hit
+  push      <VERS 0x0076DD95 0x00774E3D 0x00774061>  # TObjectV00b441c0::v18_accept_hit
   push      5
-  push      <VERS 0x00774CD6 0x00773EFA>  # TObjectV00b441c0::v18_accept_hit
+  push      <VERS 0x0076DC2E 0x00774CD6 0x00773EFA>  # TObjectV00b441c0::v18_accept_hit
   push      5
-  push      <VERS 0x00774713 0x00773937>  # TObjectV00b441c0::v17
+  push      <VERS 0x0076D675 0x00774713 0x00773937>  # TObjectV00b441c0::v17
   push      18
   call      +4
   .deltaof  on_add_or_subtract_hp_start, on_add_or_subtract_hp_end
@@ -173,7 +173,7 @@ handle_6xE4_end:
   call      on_add_or_subtract_hp_end
 
 on_add_or_subtract_hp_start:  # (TObjectV00b441c0* this @ ecx, int16_t amount @ [esp + 4]) -> bool @ eax
-  test      byte [<VERS 0x00AA8DFC 0x00AAB27C>], 0x80
+  test      byte [<VERS 0x00A9EDBC 0x00AA8DFC 0x00AAB27C>], 0x80
   jz        on_add_or_subtract_hp_skip_send
   movzx     eax, word [ecx + 0x1C]  # ene->entity_id
   cmp       eax, 0x1000
@@ -183,14 +183,14 @@ on_add_or_subtract_hp_start:  # (TObjectV00b441c0* this @ ecx, int16_t amount @ 
 
   and       eax, 0x0FFF
   imul      eax, eax, 0x0C
-  add       eax, [<VERS 0x00AADE38 0x00AB02B8>]  # eax = state_for_enemy(cmd->header.entity_id)
+  add       eax, [<VERS 0x00AA3DF8 0x00AADE38 0x00AB02B8>]  # eax = state_for_enemy(cmd->header.entity_id)
 
   sub       esp, 0x10
   mov       word [esp], 0x04E4
   mov       dx, [ecx + 0x1C]
   mov       [esp + 0x02], dx  # cmd.entity_id
   mov       dx, [esp + 0x14]
-  cmp       dword [esp + 0x10], <VERS 0x00775229 0x0077444D>  # Check if callsite is add_hp
+  cmp       dword [esp + 0x10], <VERS 0x0076E181 0x00775229 0x0077444D>  # Check if callsite is add_hp
   jne       on_add_or_subtract_hp_skip_negate_amount
   neg       dx
 on_add_or_subtract_hp_skip_negate_amount:
@@ -203,7 +203,7 @@ on_add_or_subtract_hp_skip_negate_amount:
   mov       [esp + 0x0A], dx  # cmd.max_hp
   mov       dword [esp + 0x0C], 0xBF800000  # cmd.factor
 
-  cmp       dword [esp + 0x10], <VERS 0x00776507 0x0077572B>  # Check if callsite is Devil's/Demon's
+  cmp       dword [esp + 0x10], <VERS 0x0076F45F 0x00776507 0x0077572B>  # Check if callsite is Devil's/Demon's
   jne       on_add_or_subtract_hp_not_proportional
   # esp is 0x18 down from where it is in caller's context
   mov       edx, 100
@@ -221,16 +221,16 @@ on_add_or_subtract_hp_not_proportional:
   push      ecx
   push      0x10
   push      edx
-  mov       ecx, [<VERS 0x00AA8E04 0x00AAB284>]
-  mov       edx, <VERS 0x007D4CBC 0x007D3F38>
+  mov       ecx, [<VERS 0x00A9EDC4 0x00AA8E04 0x00AAB284>]
+  mov       edx, <VERS 0x007CCCCC 0x007D4CBC 0x007D3F38>
   call      edx  # send_60(root_protocol, &cmd, sizeof(cmd));
   pop       ecx
   add       esp, 0x10
 
 on_add_or_subtract_hp_skip_send:
-  mov       eax, <VERS 0x007781F0 0x00777414>  # subtract_hp
-  mov       edx, <VERS 0x007781B0 0x007773D4>  # add_hp
-  cmp       dword [esp], <VERS 0x00775229 0x0077444D>  # Check if callsite is add_hp
+  mov       eax, <VERS 0x0077114C 0x007781F0 0x00777414>  # subtract_hp
+  mov       edx, <VERS 0x0077110C 0x007781B0 0x007773D4>  # add_hp
+  cmp       dword [esp], <VERS 0x0076E181 0x00775229 0x0077444D>  # Check if callsite is add_hp
   cmove     eax, edx
   jmp       eax
 
@@ -240,7 +240,7 @@ on_add_or_subtract_hp_end:
 
 
   push      5
-  push      <VERS 0x0078864B 0x0078781F>
+  push      <VERS 0x0078136F 0x0078864B 0x0078781F>
   push      1
   call      +4
   .deltaof  on_6x0A_patch_start, on_6x0A_patch_end
@@ -249,7 +249,7 @@ on_add_or_subtract_hp_end:
   call      on_6x0A_patch_end
 
 on_6x0A_patch_start:  # (TObjectV00b441c0* this @ ecx, int16_t amount @ [esp + 4]) -> bool @ eax
-  test      byte [<VERS 0x00AA8DFC 0x00AAB27C>], 0x80
+  test      byte [<VERS 0x00A9EDBC 0x00AA8DFC 0x00AAB27C>], 0x80
   jz        on_6x0A_patch_skip_write
   mov       [esp + 0x0A], cx
 on_6x0A_patch_skip_write:

@@ -34,8 +34,8 @@ start:
 
 
 
-  .versions 59NJ 59NL
-  .data     <VERS 0x007A1233 0x007A03F7>
+  .versions 50YJ 59NJ 59NL
+  .data     <VERS 0x00799D0B 0x007A1233 0x007A03F7>
   .data     0x00000005
   mov       eax, 0
 

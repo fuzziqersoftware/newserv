@@ -77,7 +77,7 @@ get_data_addr:
 
 
 
-.versions 59NJ 59NL
+.versions 50YJ 59NJ 59NL
 
 start:
   jmp    get_data_addr
@@ -103,8 +103,8 @@ resume:
 get_data_addr:
   call   resume
 
-  .data  <VERS 0x00AAC870 0x00AAECF0>  # should_allow_protected_commands
-  .data  <VERS 0x008015D0 0x00800860>  # RcvPsoData2[std](void* data @ [esp + 4], uint32_t size @ [esp + 8])
+  .data  <VERS 0x00AA2830 0x00AAC870 0x00AAECF0>  # should_allow_protected_commands
+  .data  <VERS 0x007F95E0 0x008015D0 0x00800860>  # RcvPsoData2[std](void* data @ [esp + 4], uint32_t size @ [esp + 8])
 
 
 
