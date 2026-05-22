@@ -50,6 +50,7 @@ struct XBLicense {
 struct BBLicense {
   std::string username;
   std::string password;
+  std::string hardware_id;
 
   static std::shared_ptr<BBLicense> from_json(const phosg::JSON& json);
   phosg::JSON json() const;
@@ -172,6 +173,10 @@ public:
   class incorrect_access_key : public std::invalid_argument {
   public:
     incorrect_access_key() : invalid_argument("incorrect access key") {}
+  };
+  class incorrect_hardware_id : public std::invalid_argument {
+  public:
+    incorrect_hardware_id() : invalid_argument("mismatched hardware id") {}
   };
   class missing_account : public std::invalid_argument {
   public:

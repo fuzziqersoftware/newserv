@@ -102,6 +102,7 @@ shared_ptr<BBLicense> BBLicense::from_json(const phosg::JSON& json) {
   auto ret = make_shared<BBLicense>();
   ret->username = json.get_string("UserName");
   ret->password = json.get_string("Password");
+  ret->hardware_id = "";
   if (ret->username.size() > 16) {
     throw runtime_error("username is too long");
   }
@@ -114,11 +115,22 @@ shared_ptr<BBLicense> BBLicense::from_json(const phosg::JSON& json) {
   if (ret->password.empty()) {
     throw runtime_error("password is too short");
   }
+  try {
+    ret->hardware_id = json.get_string("HardwareID");
+  } catch (const out_of_range&) {
+  }
+  if (ret->hardware_id.size() > 16) {
+    throw runtime_error("hardware id is not valid (over 16 characters)");
+  }
   return ret;
 }
 
 phosg::JSON BBLicense::json() const {
-  return phosg::JSON::dict({{"UserName", this->username}, {"Password", this->password}});
+  return phosg::JSON::dict({
+    {"UserName", this->username},
+    {"Password", this->password},
+    {"HardwareID", this->hardware_id}
+  });
 }
 
 Account::Account(const phosg::JSON& json)
@@ -179,6 +191,7 @@ Account::Account(const phosg::JSON& json)
       auto lic = make_shared<BBLicense>();
       lic->username = bb_username;
       lic->password = bb_password;
+      lic->hardware_id = "";
       this->bb_licenses.emplace(lic->username, lic);
     }
   } else {
@@ -388,8 +401,8 @@ string Account::str() const {
         it.second->gamertag, it.second->user_id, it.second->account_id);
   }
   for (const auto& it : this->bb_licenses) {
-    ret += std::format("  BB license: username={} password={}\n",
-        it.second->username, it.second->password);
+    ret += std::format("  BB license: username={} password={} hardware_id={}\n",
+        it.second->username, it.second->password, it.second->hardware_id);
   }
 
   phosg::strip_trailing_whitespace(ret);
