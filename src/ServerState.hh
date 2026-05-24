@@ -128,6 +128,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   bool allow_pc_nte = false;
   bool use_temp_accounts_for_prototypes = true;
   bool allow_same_account_concurrent_logins = true;
+  bool bind_hardware_ids_on_login = false;
   std::array<uint16_t, NUM_VERSIONS> compatibility_groups = {};
   bool enable_chat_commands = true;
   char chat_command_sentinel = '\0'; // 0 = default (@ on 11/2000; $ on all other versions)

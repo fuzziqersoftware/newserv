@@ -231,6 +231,12 @@
   // account are disconnected.
   "AllowSameAccountConcurrentLogins": true,
 
+  // Automatically binds a license to a Hardware ID during login if the license has no Hardware ID defined.
+  // This locks the license to a specific Hardware ID. Mismatching Hardware IDs are rejected during login.
+  // To unbind a license, replace the HardwareID value to an empty string ("") and reload accounts from the
+  // server shell.
+  "BindHardwareIDsOnLogin": false,
+
   // Whether to enable chat commands for all players. If this is true, all players will be able to use chat commands as
   // normal; if this is false, only players with the ALWAYS_ENABLE_CHAT_COMMANDS account flag will be able to use chat
   // commands.

@@ -102,6 +102,7 @@ shared_ptr<BBLicense> BBLicense::from_json(const phosg::JSON& json) {
   auto ret = make_shared<BBLicense>();
   ret->username = json.get_string("UserName");
   ret->password = json.get_string("Password");
+  ret->hardware_id = "";
   if (ret->username.size() > 16) {
     throw runtime_error("username is too long");
   }
@@ -114,11 +115,22 @@ shared_ptr<BBLicense> BBLicense::from_json(const phosg::JSON& json) {
   if (ret->password.empty()) {
     throw runtime_error("password is too short");
   }
+  try {
+    ret->hardware_id = json.get_string("HardwareID");
+  } catch (const out_of_range&) {
+  }
+  if (ret->hardware_id.size() > 16) {
+    throw runtime_error("hardware id is not valid (over 16 characters)");
+  }
   return ret;
 }
 
 phosg::JSON BBLicense::json() const {
-  return phosg::JSON::dict({{"UserName", this->username}, {"Password", this->password}});
+  return phosg::JSON::dict({
+    {"UserName", this->username},
+    {"Password", this->password},
+    {"HardwareID", this->hardware_id}
+  });
 }
 
 Account::Account(const phosg::JSON& json)
@@ -179,6 +191,7 @@ Account::Account(const phosg::JSON& json)
       auto lic = make_shared<BBLicense>();
       lic->username = bb_username;
       lic->password = bb_password;
+      lic->hardware_id = "";
       this->bb_licenses.emplace(lic->username, lic);
     }
   } else {
@@ -388,8 +401,8 @@ string Account::str() const {
         it.second->gamertag, it.second->user_id, it.second->account_id);
   }
   for (const auto& it : this->bb_licenses) {
-    ret += std::format("  BB license: username={} password={}\n",
-        it.second->username, it.second->password);
+    ret += std::format("  BB license: username={} password={} hardware_id={}\n",
+        it.second->username, it.second->password, it.second->hardware_id);
   }
 
   phosg::strip_trailing_whitespace(ret);
@@ -729,7 +742,8 @@ shared_ptr<Login> AccountIndex::from_xb_credentials(
   }
 }
 
-shared_ptr<Login> AccountIndex::from_bb_credentials_locked(const string& username, const string* password) {
+shared_ptr<Login> AccountIndex::from_bb_credentials_locked(
+  const string& username, const string* password, const uint64_t* hardware_id, bool bind_hardware_id) {
   auto login = make_shared<Login>();
   login->account = this->by_bb_username.at(username);
   login->bb_license = login->account->bb_licenses.at(username);
@@ -739,24 +753,33 @@ shared_ptr<Login> AccountIndex::from_bb_credentials_locked(const string& usernam
   if (login->account->ban_end_time && (login->account->ban_end_time >= phosg::now())) {
     throw account_banned();
   }
+  if (hardware_id) {
+    string hardware_id_str = format("{:016X}", *hardware_id);
+    if (!login->bb_license->hardware_id.empty() && login->bb_license->hardware_id != hardware_id_str) {
+      throw incorrect_hardware_id();
+    }
+    if (login->bb_license->hardware_id.empty() && bind_hardware_id) {
+      login->bb_license->hardware_id = hardware_id_str;
+    }
+  }
   return login;
 }
 
 shared_ptr<Login> AccountIndex::from_bb_credentials(
-    const string& username, const string* password, bool allow_create) {
+    const string& username, const string* password, const uint64_t* hardware_id, bool allow_create, bool bind_hardware_id) {
   if (username.empty() || (password && password->empty())) {
     throw no_username();
   }
 
   try {
     shared_lock g(this->lock);
-    return this->from_bb_credentials_locked(username, password);
+    return this->from_bb_credentials_locked(username, password, hardware_id, bind_hardware_id);
   } catch (const out_of_range&) {
   }
 
   unique_lock g(this->lock);
   try {
-    return this->from_bb_credentials_locked(username, password);
+    return this->from_bb_credentials_locked(username, password, hardware_id, bind_hardware_id);
   } catch (const out_of_range&) {
   }
 
@@ -768,6 +791,10 @@ shared_ptr<Login> AccountIndex::from_bb_credentials(
     auto lic = make_shared<BBLicense>();
     lic->username = username;
     lic->password = *password;
+    lic->hardware_id = "";
+    if (bind_hardware_id) {
+      lic->hardware_id = format("{:016X}", *hardware_id);
+    }
     login->account->bb_licenses.emplace(lic->username, lic);
     login->bb_license = lic;
     this->add_locked(login->account);

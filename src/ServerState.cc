@@ -866,6 +866,7 @@ void ServerState::load_config_early() {
   this->allow_unregistered_users = this->config_json->get_bool("AllowUnregisteredUsers", false);
   this->allow_pc_nte = this->config_json->get_bool("AllowPCNTE", false);
   this->allow_same_account_concurrent_logins = this->config_json->get_bool("AllowSameAccountConcurrentLogins", false);
+  this->bind_hardware_ids_on_login = this->config_json->get_bool("BindHardwareIDsOnLogin", false);
   this->allow_saving_accounts = this->config_json->get_bool("AllowSavingAccounts", true);
   this->use_temp_accounts_for_prototypes = this->config_json->get_bool("UseTemporaryAccountsForPrototypes", true);
   this->notify_server_for_max_level_achieved = this->config_json->get_bool("NotifyServerForMaxLevelAchieved", false);

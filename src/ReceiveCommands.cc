@@ -575,7 +575,7 @@ static asio::awaitable<void> on_04_U(shared_ptr<Client> c, Channel::Message& msg
   auto s = c->require_server_state();
   if (!c->username.empty() && !c->password.empty()) {
     try {
-      s->account_index->from_bb_credentials(c->username, &c->password, false);
+      s->account_index->from_bb_credentials(c->username, &c->password, nullptr, false, false);
     } catch (const AccountIndex::incorrect_password& e) {
       result_code = 0x03;
     } catch (const AccountIndex::missing_account& e) {
@@ -585,7 +585,7 @@ static asio::awaitable<void> on_04_U(shared_ptr<Client> c, Channel::Message& msg
     }
   } else if (!c->username.empty() && !s->allow_unregistered_users) {
     try {
-      s->account_index->from_bb_credentials(c->username, nullptr, false);
+      s->account_index->from_bb_credentials(c->username, nullptr, nullptr, false, false);
     } catch (const AccountIndex::missing_account& e) {
       result_code = 0x08;
     }
@@ -1427,13 +1427,17 @@ static asio::awaitable<void> on_93_BB(shared_ptr<Client> c, Channel::Message& ms
 
   auto s = c->require_server_state();
   try {
-    c->set_login(s->account_index->from_bb_credentials(c->username, &c->password, s->allow_unregistered_users));
+    c->set_login(s->account_index->from_bb_credentials(
+        c->username, &c->password, &c->hardware_id, s->allow_unregistered_users, s->bind_hardware_ids_on_login));
   } catch (const AccountIndex::no_username& e) {
     c->log.info_f("Login failed (no username)");
     send_client_init_bb(c, 0x08);
   } catch (const AccountIndex::incorrect_password& e) {
     c->log.info_f("Login failed (incorrect password)");
     send_client_init_bb(c, 0x03);
+  } catch (const AccountIndex::incorrect_hardware_id& e) {
+    c->log.info_f("Login failed (mismatched hardware id)");
+    send_client_init_bb(c, 0x02);
   } catch (const AccountIndex::missing_account& e) {
     c->log.info_f("Login failed (missing account)");
     send_client_init_bb(c, 0x08);

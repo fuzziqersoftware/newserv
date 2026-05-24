@@ -466,7 +466,7 @@ static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool 
     }
 
     try {
-      auto dest_login = s->account_index->from_bb_credentials(tokens[0], &tokens[1], false);
+      auto dest_login = s->account_index->from_bb_credentials(tokens[0], &tokens[1], nullptr, false, false);
       dest_account = dest_login->account;
       dest_bb_license = dest_login->bb_license;
     } catch (const exception& e) {

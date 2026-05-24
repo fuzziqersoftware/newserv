@@ -50,6 +50,7 @@ struct XBLicense {
 struct BBLicense {
   std::string username;
   std::string password;
+  std::string hardware_id;
 
   static std::shared_ptr<BBLicense> from_json(const phosg::JSON& json);
   phosg::JSON json() const;
@@ -173,6 +174,10 @@ public:
   public:
     incorrect_access_key() : invalid_argument("incorrect access key") {}
   };
+  class incorrect_hardware_id : public std::invalid_argument {
+  public:
+    incorrect_hardware_id() : invalid_argument("mismatched hardware id") {}
+  };
   class missing_account : public std::invalid_argument {
   public:
     missing_account() : invalid_argument("missing account") {}
@@ -223,7 +228,8 @@ public:
   std::shared_ptr<Login> from_xb_credentials(
       const std::string& gamertag, uint64_t user_id, uint64_t account_id, bool allow_create);
   std::shared_ptr<Login> from_bb_credentials(
-      const std::string& username, const std::string* password, bool allow_create);
+      const std::string& username, const std::string* password, const uint64_t* hardware_id, bool allow_create,
+      bool bind_hardware_id);
 
   std::shared_ptr<Account> create_temporary_account_for_shared_account(
       std::shared_ptr<const Account> src_a, const std::string& variation_data) const;
@@ -245,7 +251,7 @@ protected:
   std::shared_ptr<Login> from_dc_nte_credentials_locked(
       const std::string& serial_number, const std::string& access_key);
   std::shared_ptr<Login> from_dc_credentials_locked(
-      uint32_t serial_number, const std::string& access_key, const std::string& character_name);
+    uint32_t serial_number, const std::string& access_key, const std::string& character_name);
   std::shared_ptr<Login> from_pc_credentials_locked(
       uint32_t serial_number, const std::string& access_key, const std::string& character_name);
   std::shared_ptr<Login> from_gc_credentials_locked(
@@ -254,5 +260,6 @@ protected:
       const std::string* password,
       const std::string& character_name);
   std::shared_ptr<Login> from_xb_credentials_locked(uint64_t user_id);
-  std::shared_ptr<Login> from_bb_credentials_locked(const std::string& username, const std::string* password);
+  std::shared_ptr<Login> from_bb_credentials_locked(
+    const std::string& username, const std::string* password, const uint64_t* hardware_id, bool bind_hardware_id);
 };
