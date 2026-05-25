@@ -3606,8 +3606,6 @@ I 33336 2025-07-21 23:41:21 - [C-3] Bank is empty
 I 33336 2025-07-21 23:41:21 - [Commands] Sending to C-3 (Jess Lv.51) @ ip:127.0.0.1:53992 (version=XB_V3 command=B1 flag=00)
 0000 | B1 00 20 00 32 30 32 35 3A 30 37 3A 32 32 3A 20 |     2025:07:22:
 0010 | 30 36 3A 34 31 3A 32 31 2E 30 30 30 00 01 00 00 | 06:41:21.000
-I 33336 2025-07-21 23:41:21 - [Commands] Sending to C-2 (Tali Lv.60) @ ipss:N-1:127.0.0.1:53977 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 08 00 72 01 00 00                         | `   r
 I 33336 2025-07-21 23:41:22 - [Commands] Received from C-2 (Tali Lv.60) @ ipss:N-1:127.0.0.1:53977 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 14 00 40 04 00 00 2E 3D FF 43 05 2E F3 43 | `   @   .= C . C
 0010 | 00 00 00 00                                     |

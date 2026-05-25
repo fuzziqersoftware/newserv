@@ -4277,7 +4277,7 @@ I 56583 2025-05-23 21:20:33 - [Commands] Sending to C-5 (Tali Lv.1) @ ip:127.0.0
 0490 | 00 00 00 00 00 00 00 00 00 00 00 AE 1E B1 05 17 |
 04A0 | 00 00 00 00                                     |
 I 56583 2025-05-23 21:20:33 - [Commands] Sending to C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=60 flag=00)
-0000 | 60 00 08 00 72 01 60 CA                         | `   r `
+0000 | 60 00 08 00 72 01 00 00                         | `   r `
 I 56583 2025-05-23 21:20:33 - [Commands] Received from C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=8A flag=00)
 0000 | 8A 00 04 00                                     |
 I 56583 2025-05-23 21:20:33 - [Commands] Sending to C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=8A flag=00)
@@ -4319,8 +4319,6 @@ I 56583 2025-05-23 21:20:38 - [C-5] Bank is empty
 I 56583 2025-05-23 21:20:38 - [Commands] Sending to C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=B1 flag=00)
 0000 | B1 00 20 00 32 30 32 35 3A 30 35 3A 32 34 3A 20 |     2025:05:24:
 0010 | 30 34 3A 32 30 3A 33 38 2E 30 30 30 00 01 00 00 | 04:20:38.000
-I 56583 2025-05-23 21:20:38 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 08 00 72 01 00 00                         | `   r
 I 56583 2025-05-23 21:20:38 - [Commands] Received from C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=62 flag=00)
 0000 | 62 00 0C 00 B4 02 01 00 00 00 00 00             | b
 I 56583 2025-05-23 21:20:39 - [Commands] Received from C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=99 flag=00)
@@ -7136,7 +7134,7 @@ I 56583 2025-05-23 21:21:04 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:
 I 56583 2025-05-23 21:21:04 - [Commands] Received from C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=60 flag=00)
 0000 | 60 00 08 00 72 01 13 FD                         | `   r
 I 56583 2025-05-23 21:21:04 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 08 00 72 01 13 FD                         | `   r
+0000 | 60 00 08 00 72 01 00 00                         | `   r
 I 56583 2025-05-23 21:21:04 - [Commands] Received from C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=62 flag=00)
 0000 | 62 00 0C 00 B4 02 01 00 00 00 00 00             | b
 I 56583 2025-05-23 21:21:05 - [Commands] Received from C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=60 flag=00)
@@ -7168,8 +7166,6 @@ I 56583 2025-05-23 21:21:05 - [C-4] Bank is empty
 I 56583 2025-05-23 21:21:05 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=B1 flag=00)
 0000 | B1 00 20 00 32 30 32 35 3A 30 35 3A 32 34 3A 20 |     2025:05:24:
 0010 | 30 34 3A 32 31 3A 30 35 2E 30 30 30 00 01 00 00 | 04:21:05.000
-I 56583 2025-05-23 21:21:05 - [Commands] Sending to C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=60 flag=00)
-0000 | 60 00 08 00 72 01 00 00                         | `   r
 I 56583 2025-05-23 21:21:06 - [Commands] Received from C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=60 flag=00)
 0000 | 60 00 1C 00 20 06 01 00 00 00 00 00 3D 00 67 43 | `           = gC
 0010 | 00 00 AC B4 66 80 85 43 00 C6 FF FF             |     f  C
@@ -9941,9 +9937,9 @@ I 56583 2025-05-23 21:21:38 - [Commands] Sending to C-2 (NN Lv.1) @ ipss:N-2:127
 I 56583 2025-05-23 21:21:38 - [Commands] Received from C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=60 flag=00)
 0000 | 60 00 08 00 72 01 13 FD                         | `   r
 I 56583 2025-05-23 21:21:38 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 08 00 72 01 13 FD                         | `   r
+0000 | 60 00 08 00 72 01 00 00                         | `   r
 I 56583 2025-05-23 21:21:38 - [Commands] Sending to C-2 (NN Lv.1) @ ipss:N-2:127.0.0.1:49220 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 08 00 72 01 13 FD                         | `   r
+0000 | 60 00 08 00 72 01 00 00                         | `   r
 I 56583 2025-05-23 21:21:38 - [Commands] Received from C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=62 flag=02)
 0000 | 62 02 0C 00 B4 02 01 00 00 00 00 00             | b
 I 56583 2025-05-23 21:21:39 - [Commands] Received from C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=60 flag=00)
@@ -10067,10 +10063,6 @@ I 56583 2025-05-23 21:21:42 - [C-2] Bank is empty
 I 56583 2025-05-23 21:21:42 - [Commands] Sending to C-2 (NN Lv.1) @ ipss:N-2:127.0.0.1:49220 (version=GC_V3 command=B1 flag=00)
 0000 | B1 00 20 00 32 30 32 35 3A 30 35 3A 32 34 3A 20 |     2025:05:24:
 0010 | 30 34 3A 32 31 3A 34 32 2E 30 30 30 00 01 00 00 | 04:21:42.000
-I 56583 2025-05-23 21:21:42 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 08 00 72 01 00 00                         | `   r
-I 56583 2025-05-23 21:21:42 - [Commands] Sending to C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=60 flag=00)
-0000 | 60 00 08 00 72 01 00 00                         | `   r
 I 56583 2025-05-23 21:21:42 - [Commands] Received from C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 20 06 00 00 01 00 00 00 CA AB DE 43 | `              C
 0010 | EF 8D 47 41 36 DD 01 44 00 D0 00 00             |   GA6  D
@@ -16610,9 +16602,9 @@ I 56583 2025-05-23 21:24:52 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:
 I 56583 2025-05-23 21:24:52 - [Commands] Received from C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=60 flag=00)
 0000 | 60 00 08 00 72 01 13 FD                         | `   r
 I 56583 2025-05-23 21:24:52 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 08 00 72 01 13 FD                         | `   r
+0000 | 60 00 08 00 72 01 00 00                         | `   r
 I 56583 2025-05-23 21:24:52 - [Commands] Sending to C-2 (NN Lv.1) @ ipss:N-2:127.0.0.1:49220 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 08 00 72 01 13 FD                         | `   r
+0000 | 60 00 08 00 72 01 00 00                         | `   r
 I 56583 2025-05-23 21:24:52 - [Commands] Received from C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=62 flag=00)
 0000 | 62 00 0C 00 B4 02 01 00 00 00 00 00             | b
 I 56583 2025-05-23 21:24:52 - [Commands] Received from C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=60 flag=00)
@@ -16651,10 +16643,6 @@ I 56583 2025-05-23 21:24:52 - [C-4] Bank is empty
 I 56583 2025-05-23 21:24:52 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=B1 flag=00)
 0000 | B1 00 20 00 32 30 32 35 3A 30 35 3A 32 34 3A 20 |     2025:05:24:
 0010 | 30 34 3A 32 34 3A 35 32 2E 30 30 30 00 01 00 00 | 04:24:52.000
-I 56583 2025-05-23 21:24:52 - [Commands] Sending to C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=60 flag=00)
-0000 | 60 00 08 00 72 01 00 00                         | `   r
-I 56583 2025-05-23 21:24:52 - [Commands] Sending to C-2 (NN Lv.1) @ ipss:N-2:127.0.0.1:49220 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 08 00 72 01 00 00                         | `   r
 I 56583 2025-05-23 21:24:52 - [Commands] Received from C-2 (NN Lv.1) @ ipss:N-2:127.0.0.1:49220 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 20 06 02 00 01 00 00 00 48 99 58 43 | `           H XC
 0010 | 83 12 CD 41 B9 98 F9 43 B5 83 FF FF             |    A   C

@@ -8600,7 +8600,7 @@ I 40093 2025-05-20 22:23:57 - [Commands] Sending to C-2 (Dono Lv.1) @ ipss:N-2:1
 I 40093 2025-05-20 22:23:57 - [Commands] Received from C-1 (Tali Lv.5) @ ipss:N-1:127.0.0.1:61866 (version=GC_EP3 command=60 flag=00)
 0000 | 60 00 08 00 72 01 00 55                         | `   r  U
 I 40093 2025-05-20 22:23:57 - [Commands] Sending to C-2 (Dono Lv.1) @ ipss:N-2:127.0.0.1:61901 (version=GC_EP3 command=60 flag=00)
-0000 | 60 00 08 00 72 01 00 55                         | `   r  U
+0000 | 60 00 08 00 72 01 00 00                         | `   r  U
 I 40093 2025-05-20 22:23:58 - [Commands] Received from C-2 (Dono Lv.1) @ ipss:N-2:127.0.0.1:61901 (version=GC_EP3 command=C9 flag=00)
 0000 | C9 00 10 00 B5 03 00 00 47 01 00 00 00 00 00 00 |         G
 I 40093 2025-05-20 22:23:58 - [Commands] Sending to C-1 (Tali Lv.5) @ ipss:N-1:127.0.0.1:61866 (version=GC_EP3 command=C9 flag=00)
@@ -8699,8 +8699,6 @@ I 40093 2025-05-20 22:24:03 - [C-2] Bank is empty
 I 40093 2025-05-20 22:24:03 - [Commands] Sending to C-2 (Dono Lv.1) @ ipss:N-2:127.0.0.1:61901 (version=GC_EP3 command=B1 flag=00)
 0000 | B1 00 20 00 32 30 32 35 3A 30 35 3A 7B 7D 3A 20 |     2025:05:{}:
 0010 | 30 35 3A 32 34 3A 30 33 2E 30 30 30 00 01 00 00 | 05:24:03.000
-I 40093 2025-05-20 22:24:03 - [Commands] Sending to C-1 (Tali Lv.5) @ ipss:N-1:127.0.0.1:61866 (version=GC_EP3 command=60 flag=00)
-0000 | 60 00 08 00 72 01 00 00                         | `   r
 I 40093 2025-05-20 22:24:03 - [Commands] Received from C-2 (Dono Lv.1) @ ipss:N-2:127.0.0.1:61901 (version=GC_EP3 command=99 flag=00)
 0000 | 99 00 04 00                                     |
 I 40093 2025-05-20 22:24:03 - [Commands] Received from C-1 (Tali Lv.5) @ ipss:N-1:127.0.0.1:61866 (version=GC_EP3 command=60 flag=00)

@@ -3259,6 +3259,12 @@ static void on_joinable_quest_loaded(shared_ptr<Client> c) {
   // happens when the response to the ping (1D) is received, so we don't need the game join command queue in that case.
   if (leader_c->version() == Version::BB_V4) {
     send_command(leader_c, 0xDD, c->lobby_client_id);
+    l->log.info_f("Expecting {} to send 6x6B, 6x6C, 6x6D, and 6x6E to {}, and 6x72 to all",
+        leader_c->channel->name, c->channel->name);
+    leader_c->expected_game_state_sync_commands.emplace(0x6B00 | (c->lobby_client_id));
+    leader_c->expected_game_state_sync_commands.emplace(0x6C00 | (c->lobby_client_id));
+    leader_c->expected_game_state_sync_commands.emplace(0x6D00 | (c->lobby_client_id));
+    leader_c->expected_game_state_sync_commands.emplace(0x6E00 | (c->lobby_client_id));
     c->log.info_f("Creating game join command queue");
     c->game_join_command_queue = make_unique<deque<Client::JoinCommand>>();
   } else {
@@ -4998,6 +5004,16 @@ static asio::awaitable<void> on_6F(shared_ptr<Client> c, Channel::Message& msg) 
     }
   }
 
+  // DC NTE creates players in the invisible state by default; if the joiner is not DC NTE, it won't send 6x23 to make
+  // itself visible, so we have to do it
+  for (const auto& lc : l->clients) {
+    if (lc && (lc != c) && is_pre_v1(lc->version())) {
+      G_EntityIDHeader cmd = {
+          translate_subcommand_number(lc->version(), Version::BB_V4, 0x23), 0x01, c->lobby_client_id};
+      send_command_t(lc, 0x60, 0x00, cmd);
+    }
+  }
+
   if (l->ep3_server && l->ep3_server->battle_finished) {
     auto s = l->require_server_state();
     l->log.info_f("Deleting Episode 3 server state");
@@ -5021,7 +5037,6 @@ static asio::awaitable<void> on_6F(shared_ptr<Client> c, Channel::Message& msg) 
     send_text_message_fmt(c, "Rare seed: {:08X}/{:c}\nVariations:{}\n", l->random_seed, type_ch, variations_str);
   }
 
-  bool should_resume_game = true;
   if (c->version() == Version::BB_V4) {
     send_set_exp_multiplier(l);
     send_update_team_reward_flags(c);
@@ -5045,20 +5060,12 @@ static asio::awaitable<void> on_6F(shared_ptr<Client> c, Channel::Message& msg) 
       send_open_quest_file(c, dat_filename, dat_filename, "", vq->meta.quest_number, QuestFileType::ONLINE, vq->dat_contents);
       c->set_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST);
       c->log.info_f("LOADING_RUNNING_JOINABLE_QUEST flag set");
-      should_resume_game = false;
 
     } else if ((msg.command == 0x016F) && c->check_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST)) {
       c->clear_flag(Client::Flag::LOADING_RUNNING_JOINABLE_QUEST);
       c->log.info_f("LOADING_RUNNING_JOINABLE_QUEST flag cleared");
     }
     send_rare_enemy_index_list(c, l->map_state->bb_rare_enemy_indexes);
-  }
-
-  // We should resume the game if:
-  // - command is 016F and a joinable quest is in progress
-  // - command is 006F and a joinable quest is NOT in progress
-  if (should_resume_game) {
-    send_resume_game(l, c);
   }
 
   // Handle initial commands for spectator teams

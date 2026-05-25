@@ -3132,8 +3132,6 @@ I 24986 2026-03-02 22:34:26 - [C-3] [PlayerInventory] 0 items
 I 24986 2026-03-02 22:34:26 - [Commands] Sending to C-3 (Tali Lv.1) @ ipss:N-2:127.0.0.1:50375 (version=GC_V3 command=B1 flag=00)
 0000 | B1 00 20 00 32 30 32 36 3A 30 33 3A 30 33 3A 20 |     2026:03:03:
 0010 | 30 36 3A 33 34 3A 32 36 2E 30 30 30 00 01 00 00 | 06:34:26.000
-I 24986 2026-03-02 22:34:26 - [Commands] Sending to C-2 (Jess Lv.70) @ ipss:N-1:127.0.0.1:50351 (version=GC_V3 command=60 flag=00)
-0000 | 60 00 08 00 72 01 00 00                         | `   r
 I 24986 2026-03-02 22:34:26 - [Commands] Received from C-2 (Jess Lv.70) @ ipss:N-1:127.0.0.1:50351 (version=GC_V3 command=60 flag=00)
 0000 | 60 00 1C 00 20 06 00 00 00 00 00 00 CE FE 64 43 | `             dC
 0010 | 00 00 E8 34 B8 FF 7D 43 00 C0 FF FF             |    4  }C

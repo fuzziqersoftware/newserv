@@ -2545,6 +2545,7 @@ void send_arrow_update(shared_ptr<Lobby> l) {
 }
 
 void send_unblock_join(shared_ptr<Client> c) {
+  // Pre-V1 clients don't have 6x71 at all
   if (!is_pre_v1(c->version())) {
     static const be_uint32_t data = 0x71010000;
     send_command(c, 0x60, 0x00, &data, sizeof(be_uint32_t));
@@ -2553,9 +2554,16 @@ void send_unblock_join(shared_ptr<Client> c) {
 
 void send_resume_game(shared_ptr<Lobby> l, shared_ptr<Client> ready_client) {
   for (auto lc : l->clients) {
-    if (lc && (lc != ready_client) && !is_pre_v1(lc->version())) {
-      static const be_uint32_t data = 0x72010000;
-      send_command(lc, 0x60, 0x00, &data, sizeof(be_uint32_t));
+    if (lc && (lc != ready_client)) {
+      G_UnusedHeader cmd = {0x00, 0x01, 0x0000};
+      if (lc->version() == Version::DC_NTE) {
+        cmd.subcommand = 0x61;
+      } else if (lc->version() == Version::DC_11_2000) {
+        cmd.subcommand = 0x68;
+      } else {
+        cmd.subcommand = 0x72;
+      }
+      send_command_t(lc, 0x60, 0x00, cmd);
     }
   }
 }

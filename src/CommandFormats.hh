@@ -1139,16 +1139,36 @@ struct C_CharacterData_BB_61_98 {
 // 64 (S->C): Join game
 // Internal name: RcvStartGame3
 
-// This is sent to the joining player; the other players get a 65 instead. Note that (except on Episode 3) this command
-// does not include the player's disp or inventory data. The clients in the game are responsible for sending that data
-// to each other during the join process with 60/62/6C/6D commands.
-
-// After receiving a 64 command, the client starts the game loading procedure, during which it will completely ignore
-// other 64 or 65 commands, and will delay processing of all other commands except 1D until loading is done. If more
-// than 0x10000 bytes of commands are sent during loading, any commands that don't fit in the buffer are lost.
-
 // Curiously, this command is named RcvStartGame3 internally, while 0E is named RcvStartGame. The string RcvStartGame2
 // appears in the DC versions, but it seems the relevant code was deleted - there are no references to the string.
+
+// The game joining procedure goes as follows:
+// 1. The server sends 64 to the joining player, and 65 to all other players in the game. This pauses the game and
+//    brings up the "please wait" message box for all players. The joining player unloads the lobby assets and begins
+//    loading Pioneer 2 assets. On v2 and later, the joining player sends 8A near the beginning of this procedure.
+//    During this time, the joining player will completely ignore other 64 or 65 commands, and will delay processing of
+//    all other commands except 1D until loading is done. If more than 0x10000 bytes of commands are sent during
+//    loading, any commands that don't fit in the buffer are lost.
+// 2. If the joining player is not the only player in the game:
+//    a. If the leader is DC v1 or later, the leader sends 6x6D (item state).
+//    b. The leader sends 6x6B (enemy state).
+//    c. The leader sends 6x6C (object state).
+//    d. If the leader is DC NTE or DC 11/2000, the leader sends 6x6D (item state).
+//    e. The leader sends 6x6E (set flag state).
+//    f. If the leader is DC v1 or later, the leader sends 6x6F (quest flag state).
+//    g. If the leader is DC v1 or later, the leader sends 6x71 (construct player).
+//    h. All players except the joining player send 6x70 to the joining player. (This is not synchronized; non-leader
+//       players do not wait for any of the above things to happen, so their 6x70 commands may be interleaved with the
+//       preceding commands from the leader, or may arrive after the following 6x72.) Character data is sent in a
+//       different format here (6x70 instead of 65) because it contains ephemeral fields that the server doesn't know
+//       about - things like current HP, state, game flags, player flags, etc. which are not present in 65.
+//    i. If the leader is not BB, the leader sends 6x72 to all players, which resumes the game. If the leader is BB,
+//       the server is responsible for sending 6x72, and should do so here. (There is no sequence-breaking risk here,
+//       since the 6x72 sent to other players will always be ordered after the 65 from the server, so they will always
+//       send a 6x70 containing their player state at the time the game was paused.)
+// 3. Once the joining player has fully loaded, the player processes all the commands sent during loading, which sets
+//    up the game state and constructs all the other players. Once the local player is constructed, the joining player
+//    sends 6F, which notifies the server that it can unlock the game and allow more players to join.
 
 // Header flag = entry count
 template <typename LobbyDataT>
@@ -1521,10 +1541,10 @@ struct C_ConnectionInfo_DCNTE_8A {
 // header.flag is a success flag. If it's zero, the client shows an error message and disconnects. Otherwise, the
 // client responds with an 8B command.
 
-// 8A (C->S): Request lobby/game name (except DC NTE)
+// 8A (C->S): Request lobby/game name (DCv2 and later)
 // No arguments.
 
-// 8A (S->C): Lobby/game name (except DC NTE)
+// 8A (S->C): Lobby/game name (DCv2 and later)
 // Contents is a string containing the lobby or game name. All versions after DCv1 send an 8A command to request the
 // team name after joining a game. The response is used to handle the team_name token in quest strings, and appears in
 // some Challenge Mode information windows.
@@ -2623,7 +2643,7 @@ struct C_GuildCardDataRequest_BB_03DC {
 // DD (S->C): Send quest state to joining player (BB)
 // When a player joins a game with a quest already in progress, the server should send this command to the leader.
 // No arguments except header.flag, which is the client ID that the leader should send quest state to. The leader will
-// then send a series of target commands (62/6D) that the server can forward to the joining player.
+// then send 6x6D, 6x6B, 6x6C, and 6x6E, in that order, targeted at the client specified in header.flag.
 
 // DE (S->C): Rare monster list (BB)
 

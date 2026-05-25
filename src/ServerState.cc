@@ -192,6 +192,26 @@ void ServerState::send_lobby_join_notifications(shared_ptr<Lobby> l, shared_ptr<
       send_player_join_notification(watcher_c, watcher_l, joining_client);
     }
   }
+
+  if (l->is_game()) {
+    for (auto lc : l->clients) {
+      if (!lc || (lc == joining_client)) {
+        continue;
+      }
+      if (lc->lobby_client_id == l->leader_id) {
+        l->log.info_f("Expecting {} to send game state to {}", lc->channel->name, joining_client->channel->name);
+        lc->expected_game_state_sync_commands.emplace(0x6B00 | (joining_client->lobby_client_id));
+        lc->expected_game_state_sync_commands.emplace(0x6C00 | (joining_client->lobby_client_id));
+        lc->expected_game_state_sync_commands.emplace(0x6D00 | (joining_client->lobby_client_id));
+        lc->expected_game_state_sync_commands.emplace(0x6E00 | (joining_client->lobby_client_id));
+        lc->expected_game_state_sync_commands.emplace(0x6F00 | (joining_client->lobby_client_id));
+        lc->expected_game_state_sync_commands.emplace(0x7100 | (joining_client->lobby_client_id));
+        lc->expected_game_state_sync_commands.emplace(0x7200);
+      }
+      l->log.info_f("Expecting {} to send 6x70 to {}", lc->channel->name, joining_client->channel->name);
+      lc->expected_game_state_sync_commands.emplace(0x7000 | (joining_client->lobby_client_id));
+    }
+  }
 }
 
 shared_ptr<Lobby> ServerState::find_lobby(uint32_t lobby_id) {

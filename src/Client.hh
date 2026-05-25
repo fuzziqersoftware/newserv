@@ -190,6 +190,7 @@ public:
   std::unordered_set<uint32_t> blocked_senders;
   std::unique_ptr<PlayerDispDataDCPCV3> v1_v2_last_reported_disp;
   std::shared_ptr<Parsed6x70Data> last_reported_6x70;
+  std::unordered_set<uint16_t> expected_game_state_sync_commands; // (command_num << 8) | target_client_id
   // These are null unless the client is within the trade sequence (D0-D4 or EE commands)
   std::unique_ptr<PendingItemTrade> pending_item_trade;
   std::unique_ptr<PendingCardTrade> pending_card_trade;

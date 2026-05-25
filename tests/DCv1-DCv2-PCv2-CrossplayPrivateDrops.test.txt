@@ -6155,8 +6155,6 @@ I 35932 2025-05-22 21:59:56 - [C-2] Bank is empty
 I 35932 2025-05-22 21:59:56 - [Commands] Sending to C-2 (%% Lv.1) @ ip:172.16.0.30:49631 (version=DC_V2 command=B1 flag=00)
 0000 | B1 00 20 00 32 30 32 35 3A 30 35 3A 32 33 3A 20 |     2025:05:23:
 0010 | 30 34 3A 35 39 3A 35 36 2E 30 30 30 00 01 00 00 | 04:59:56.000
-I 35932 2025-05-22 21:59:56 - [Commands] Sending to C-3 (ELENOR Lv.2) @ ip:172.16.0.30:49632 (version=DC_V1 command=60 flag=00)
-0000 | 60 00 08 00 72 01 00 00                         | `   r
 I 35932 2025-05-22 21:59:56 - [Commands] Received from C-3 (ELENOR Lv.2) @ ip:172.16.0.30:49632 (version=DC_V1 command=60 flag=00)
 0000 | 60 00 1C 00 20 06 00 00 00 00 00 00 CE FE 64 43 | `             dC
 0010 | 00 00 00 00 B8 FF 7D 43 00 C0 FF FF             |       }C
@@ -8482,10 +8480,6 @@ I 35932 2025-05-22 22:00:17 - [C-1] Bank is empty
 I 35932 2025-05-22 22:00:17 - [Commands] Sending to C-1 (Tali Lv.185) @ ip:10.37.129.2:49620 (version=PC_V2 command=B1 flag=00)
 0000 | 20 00 B1 00 32 30 32 35 3A 30 35 3A 32 33 3A 20 |     2025:05:23:
 0010 | 30 35 3A 30 30 3A 31 37 2E 30 30 30 00 01 00 00 | 05:00:17.000
-I 35932 2025-05-22 22:00:17 - [Commands] Sending to C-3 (ELENOR Lv.2) @ ip:172.16.0.30:49632 (version=DC_V1 command=60 flag=00)
-0000 | 60 00 08 00 72 01 00 00                         | `   r
-I 35932 2025-05-22 22:00:17 - [Commands] Sending to C-2 (%% Lv.1) @ ip:172.16.0.30:49631 (version=DC_V2 command=60 flag=00)
-0000 | 60 00 08 00 72 01 00 00                         | `   r
 I 35932 2025-05-22 22:00:17 - [Commands] Received from C-1 (Tali Lv.185) @ ip:10.37.129.2:49620 (version=PC_V2 command=99 flag=00)
 0000 | 04 00 99 00                                     |
 I 35932 2025-05-22 22:00:17 - [Commands] Received from C-2 (%% Lv.1) @ ip:172.16.0.30:49631 (version=DC_V2 command=60 flag=00)
@@ -8649,6 +8643,10 @@ I 35932 2025-05-22 22:00:17 - [Commands] Sending to C-1 (Tali Lv.185) @ ip:10.37
 0490 | 00 00 00 00                                     |
 I 35932 2025-05-22 22:00:17 - [Commands] Received from C-3 (ELENOR Lv.2) @ ip:172.16.0.30:49632 (version=DC_V1 command=60 flag=00)
 0000 | 60 00 08 00 72 01 00 00                         | `   r
+I 35932 2025-05-22 22:00:17 - [Commands] Sending to C-2 (%% Lv.1) @ peer:0x7b673a898->0x7b673a598 (version=DC_V2 command=60 flag=00)
+0000 | 60 00 08 00 72 01 00 00                         | `   r
+I 35932 2025-05-22 22:00:17 - [Commands] Sending to C-1 (Tali Lv.185) @ peer:0x7b673a298->0x7b673a418 (version=PC_V2 command=60 flag=00)
+0000 | 08 00 60 00 72 01 00 00                         |   ` r
 I 35932 2025-05-22 22:00:17 - [Commands] Received from C-3 (ELENOR Lv.2) @ ip:172.16.0.30:49632 (version=DC_V1 command=60 flag=00)
 0000 | 60 00 1C 00 20 06 00 00 00 00 00 00 CE FE 64 43 | `             dC
 0010 | 00 00 00 00 B8 FF 7D 43 00 C0 FF FF             |       }C

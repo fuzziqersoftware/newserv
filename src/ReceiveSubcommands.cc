@@ -299,9 +299,19 @@ static asio::awaitable<void> on_debug_info(shared_ptr<Client>, SubcommandMessage
   co_return;
 }
 
-static asio::awaitable<void> on_forward_check_game_loading(shared_ptr<Client> c, SubcommandMessage& msg) {
+void check_expected_loading_command(shared_ptr<Client> c, const SubcommandMessage& msg) {
+  const auto& base_header = msg.check_size_t<G_UnusedHeader>(0xFFFF);
+  uint8_t subcommand = translate_subcommand_number(Version::BB_V4, c->version(), base_header.subcommand);
+  if (!c->expected_game_state_sync_commands.erase((subcommand << 8) | (msg.flag & 0xFF))) {
+    throw std::runtime_error("client sent unexpected game state sync command");
+  }
+}
+
+static asio::awaitable<void> on_forward_check_game_loading_expected(shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
-  if (l->is_game() && l->any_client_loading()) {
+  if (l->is_game()) {
+    check_expected_loading_command(c, msg);
+    msg.check_size_t<G_UnusedHeader>().unused = 0;
     forward_subcommand(c, msg);
   }
   co_return;
@@ -492,6 +502,8 @@ static shared_ptr<Client> get_sync_target(
 }
 
 static asio::awaitable<void> on_sync_joining_player_compressed_state(shared_ptr<Client> c, SubcommandMessage& msg) {
+  check_expected_loading_command(c, msg);
+
   auto target = get_sync_target(c, msg.command, msg.flag, false); // Checks l->is_game
   if (!target) {
     co_return;
@@ -702,6 +714,15 @@ static asio::awaitable<void> on_sync_joining_player_compressed_state(shared_ptr<
       } else {
         send_game_set_state(target);
       }
+
+      // If the sender is the leader and is pre-V1, and the target is V1 or later, we need to synthesize a 6x71 command
+      // to tell the target to construct its TObjPlayer. (If both are pre-V1, the target won't expect this command; if
+      // both are V1 or later, the leader will send this command itself.)
+      if (is_pre_v1(c->version()) && !is_pre_v1(target->version())) {
+        G_UnusedHeader cmd = {0x71, 0x01, 0x0000};
+        send_command_t(target, 0x62, target->lobby_client_id, cmd);
+      }
+
       break;
     }
 
@@ -712,8 +733,9 @@ static asio::awaitable<void> on_sync_joining_player_compressed_state(shared_ptr<
 
 template <typename CmdT>
 static asio::awaitable<void> on_sync_joining_player_quest_flags_t(shared_ptr<Client> c, SubcommandMessage& msg) {
-  const auto& cmd = msg.check_size_t<CmdT>();
+  check_expected_loading_command(c, msg);
 
+  const auto& cmd = msg.check_size_t<CmdT>();
   if (!command_is_private(msg.command)) {
     co_return;
   }
@@ -1211,9 +1233,9 @@ uint32_t Parsed6x70Data::get_player_flags(bool is_v3) const {
       : Parsed6x70Data::convert_player_flags(this->player_flags, is_v3);
 }
 
-static asio::awaitable<void> on_sync_joining_player_disp_and_inventory(
-    shared_ptr<Client> c, SubcommandMessage& msg) {
+static asio::awaitable<void> on_sync_joining_player_disp_and_inventory(shared_ptr<Client> c, SubcommandMessage& msg) {
   auto s = c->require_server_state();
+  check_expected_loading_command(c, msg);
 
   // In V1/V2 games, this command sometimes is sent after the new client has finished loading, so we don't check
   // l->any_client_loading() here.
@@ -1222,28 +1244,18 @@ static asio::awaitable<void> on_sync_joining_player_disp_and_inventory(
     co_return;
   }
 
-  // If the sender is the leader and is pre-V1, and the target is V1 or later, we need to synthesize a 6x71 command to
-  // tell the target all state has been sent. (If both are pre-V1, the target won't expect this command; if both are V1
-  // or later, the leader will send this command itself.)
-  Version target_v = target->version();
-  Version c_v = c->version();
-  if (is_pre_v1(c_v) && !is_pre_v1(target_v)) {
-    static const be_uint32_t data = 0x71010000;
-    send_command(target, 0x62, target->lobby_client_id, &data, sizeof(data));
-  }
-
   bool is_client_customisation = c->check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION);
-  switch (c_v) {
+  switch (c->version()) {
     case Version::DC_NTE:
       c->last_reported_6x70.reset(new Parsed6x70Data(
           msg.check_size_t<G_SyncPlayerDispAndInventory_DCNTE_6x70>(),
-          c->login->account->account_id, c_v, is_client_customisation));
+          c->login->account->account_id, c->version(), is_client_customisation));
       c->last_reported_6x70->clear_dc_protos_unused_item_fields();
       break;
     case Version::DC_11_2000:
       c->last_reported_6x70.reset(new Parsed6x70Data(
           msg.check_size_t<G_SyncPlayerDispAndInventory_DC112000_6x70>(),
-          c->login->account->account_id, c->language(), c_v, is_client_customisation));
+          c->login->account->account_id, c->language(), c->version(), is_client_customisation));
       c->last_reported_6x70->clear_dc_protos_unused_item_fields();
       break;
     case Version::DC_V1:
@@ -1252,8 +1264,8 @@ static asio::awaitable<void> on_sync_joining_player_disp_and_inventory(
     case Version::PC_V2:
       c->last_reported_6x70.reset(new Parsed6x70Data(
           msg.check_size_t<G_SyncPlayerDispAndInventory_DC_PC_6x70>(),
-          c->login->account->account_id, c_v, is_client_customisation));
-      if (c_v == Version::DC_V1) {
+          c->login->account->account_id, c->version(), is_client_customisation));
+      if (c->version() == Version::DC_V1) {
         c->last_reported_6x70->clear_v1_unused_item_fields();
       }
       break;
@@ -1263,17 +1275,17 @@ static asio::awaitable<void> on_sync_joining_player_disp_and_inventory(
     case Version::GC_EP3:
       c->last_reported_6x70.reset(new Parsed6x70Data(
           msg.check_size_t<G_SyncPlayerDispAndInventory_GC_6x70>(),
-          c->login->account->account_id, c_v, is_client_customisation));
+          c->login->account->account_id, c->version(), is_client_customisation));
       break;
     case Version::XB_V3:
       c->last_reported_6x70.reset(new Parsed6x70Data(
           msg.check_size_t<G_SyncPlayerDispAndInventory_XB_6x70>(),
-          c->login->account->account_id, c_v, is_client_customisation));
+          c->login->account->account_id, c->version(), is_client_customisation));
       break;
     case Version::BB_V4:
       c->last_reported_6x70.reset(new Parsed6x70Data(
           msg.check_size_t<G_SyncPlayerDispAndInventory_BB_6x70>(),
-          c->login->account->account_id, c_v, is_client_customisation));
+          c->login->account->account_id, c->version(), is_client_customisation));
       break;
     default:
       throw logic_error("6x70 command from unknown game version");
@@ -1281,6 +1293,15 @@ static asio::awaitable<void> on_sync_joining_player_disp_and_inventory(
 
   c->pos = c->last_reported_6x70->base.pos;
   send_game_player_state(target, c, false);
+
+  // On BB, the server is expected to send 6x72 rather than the client. We just do it at the same time the client did
+  // on previous versions (the leader sends it immediately after its own 6x70).
+  if (c->version() == Version::BB_V4) {
+    auto l = c->require_lobby();
+    if (c->lobby_client_id == l->leader_id) {
+      send_resume_game(l, target);
+    }
+  }
 }
 
 static asio::awaitable<void> on_forward_check_client(shared_ptr<Client> c, SubcommandMessage& msg) {
@@ -1619,7 +1640,6 @@ static asio::awaitable<void> on_change_floor_6x1F(shared_ptr<Client> c, Subcomma
     if (c->check_flag(Client::Flag::LOADING)) {
       c->clear_flag(Client::Flag::LOADING);
       c->log.info_f("LOADING flag cleared");
-      send_resume_game(c->require_lobby(), c);
       c->require_lobby()->assign_inventory_and_bank_item_ids(c, true);
     }
 
@@ -5653,8 +5673,8 @@ const vector<SubcommandDefinition> subcommand_definitions{
     /* 6x6E */ {0x5F, 0x66, 0x6E, on_sync_joining_player_compressed_state},
     /* 6x6F */ {NONE, NONE, 0x6F, on_sync_joining_player_quest_flags},
     /* 6x70 */ {0x60, 0x67, 0x70, on_sync_joining_player_disp_and_inventory},
-    /* 6x71 */ {NONE, NONE, 0x71, on_forward_check_game_loading},
-    /* 6x72 */ {0x61, 0x68, 0x72, on_forward_check_game_loading},
+    /* 6x71 */ {NONE, NONE, 0x71, on_forward_check_game_loading_expected},
+    /* 6x72 */ {0x61, 0x68, 0x72, on_forward_check_game_loading_expected},
     /* 6x73 */ {NONE, NONE, 0x73, on_forward_check_game_quest},
     /* 6x74 */ {0x62, 0x69, 0x74, on_word_select, SDF::ALWAYS_FORWARD_TO_WATCHERS},
     /* 6x75 */ {NONE, NONE, 0x75, on_set_quest_flag},
