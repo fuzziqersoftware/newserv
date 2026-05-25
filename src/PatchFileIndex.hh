@@ -8,7 +8,8 @@
 #include <unordered_map>
 #include <vector>
 
-struct PatchFileIndex {
+class PatchFileIndex {
+public:
   static constexpr size_t CHUNK_SIZE = 0x6000;
 
   explicit PatchFileIndex(const std::string& root_dir);

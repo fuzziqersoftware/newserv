@@ -283,15 +283,14 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::vector<Ep3LobbyBannerEntry> ep3_lobby_banners;
 
   std::shared_ptr<AccountIndex> account_index;
-  bool allow_saving_accounts = true;
-  std::shared_ptr<IPV4RangeSet> banned_ipv4_ranges;
+  std::shared_ptr<const IPV4RangeSet> banned_ipv4_ranges;
   std::shared_ptr<TeamIndex> team_index;
   phosg::JSON team_reward_defs_json;
 
   std::shared_ptr<const Menu> information_menu_v2;
   std::shared_ptr<const Menu> information_menu_v3;
-  std::shared_ptr<std::vector<std::string>> information_contents_v2;
-  std::shared_ptr<std::vector<std::string>> information_contents_v3;
+  std::shared_ptr<const std::vector<std::string>> information_contents_v2;
+  std::shared_ptr<const std::vector<std::string>> information_contents_v3;
   std::shared_ptr<const Menu> proxy_destinations_menu_dc;
   std::shared_ptr<const Menu> proxy_destinations_menu_pc;
   std::shared_ptr<const Menu> proxy_destinations_menu_gc;
