@@ -3320,8 +3320,8 @@ static asio::awaitable<void> on_D7_GC(shared_ptr<Client> c, Channel::Message& ms
   } else {
     try {
       auto s = c->require_server_state();
-      auto f = s->gba_files_cache->get_or_load("system/gba/" + filename).file;
-      send_open_quest_file(c, "", filename, "", 0, QuestFileType::GBA_DEMO, f->data);
+      auto data = std::make_shared<std::string>(phosg::load_file("system/gba/" + filename));
+      send_open_quest_file(c, "", filename, "", 0, QuestFileType::GBA_DEMO, data);
     } catch (const out_of_range&) {
       send_command(c, 0xD7, 0x00);
     } catch (const phosg::cannot_open_file&) {

@@ -2587,7 +2587,6 @@ Action a_describe_item(
 Action a_name_all_items(
     "name-all-items", nullptr, +[](phosg::Arguments& args) {
       auto s = make_shared<ServerState>(get_config_filename(args));
-      s->clear_file_caches();
       s->load_config_early();
       s->load_patch_indexes();
       s->load_text_index();
@@ -2674,7 +2673,6 @@ Action a_print_level_stats(
     +[](phosg::Arguments& args) {
       auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
-      s->clear_file_caches();
       s->load_patch_indexes();
       s->load_level_tables();
 
@@ -2835,7 +2833,6 @@ Action a_generate_ep3_cards_html(
       bool no_disassembly = args.get<bool>("no-disassembly");
 
       auto s = make_shared<ServerState>(get_config_filename(args));
-      s->clear_file_caches();
       s->load_patch_indexes();
       s->load_text_index();
       s->load_ep3_cards();
@@ -3133,7 +3130,6 @@ Action a_check_supermaps(
 
       auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
-      s->clear_file_caches();
       s->load_patch_indexes();
       s->load_set_data_tables();
       s->load_maps();
@@ -3534,7 +3530,6 @@ Action a_print_free_supermap(
 
       auto s = make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
-      s->clear_file_caches();
       s->load_patch_indexes();
       s->load_set_data_tables();
       s->load_maps();
@@ -3560,7 +3555,6 @@ Action a_check_quests(
       auto s = make_shared<ServerState>(get_config_filename(args));
       s->is_debug = true;
       s->load_config_early();
-      s->clear_file_caches();
       s->load_patch_indexes();
       s->load_set_data_tables();
       s->load_maps();

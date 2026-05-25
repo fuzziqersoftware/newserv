@@ -78,9 +78,7 @@ ServerState::ServerState(const string& config_filename, bool is_replay)
       io_context(make_shared<asio::io_context>(1)),
       config_filename(config_filename),
       is_replay(is_replay),
-      thread_pool(make_unique<asio::thread_pool>()),
-      bb_system_cache(new FileContentsCache(3600000000ULL)),
-      gba_files_cache(new FileContentsCache(3600000000ULL)) {}
+      thread_pool(make_unique<asio::thread_pool>()) {}
 
 void ServerState::add_client_to_available_lobby(shared_ptr<Client> c, bool allow_games) {
   shared_ptr<Lobby> added_to_lobby;
@@ -611,12 +609,11 @@ void ServerState::set_port_configuration(const vector<PortConfiguration>& port_c
   }
 }
 
-shared_ptr<const string> ServerState::load_bb_file(
-    const string& patch_index_filename, const string& gsl_filename, const string& bb_directory_filename) const {
+shared_ptr<const string> ServerState::load_bb_file(const string& filename) const {
 
   if (this->bb_patch_file_index) {
     // First, look in the patch tree's data directory
-    string patch_index_path = "./data/" + patch_index_filename;
+    string patch_index_path = "./data/" + filename;
     try {
       return this->bb_patch_file_index->get(patch_index_path)->load_data();
     } catch (const out_of_range&) {
@@ -625,17 +622,16 @@ shared_ptr<const string> ServerState::load_bb_file(
 
   if (this->bb_data_gsl) {
     // Second, look in the patch tree's data.gsl file
-    const string& effective_gsl_filename = gsl_filename.empty() ? patch_index_filename : gsl_filename;
     try {
       // TODO: It's kinda not great that we copy the data here; find a way to avoid doing this (also in the below case)
-      return std::make_shared<string>(this->bb_data_gsl->get_copy(effective_gsl_filename));
+      return std::make_shared<string>(this->bb_data_gsl->get_copy(filename));
     } catch (const out_of_range&) {
     }
 
     // Third, look in data.gsl without the filename extension
-    size_t dot_offset = effective_gsl_filename.rfind('.');
+    size_t dot_offset = filename.rfind('.');
     if (dot_offset != string::npos) {
-      string no_ext_gsl_filename = effective_gsl_filename.substr(0, dot_offset);
+      string no_ext_gsl_filename = filename.substr(0, dot_offset);
       try {
         return std::make_shared<string>(this->bb_data_gsl->get_copy(no_ext_gsl_filename));
       } catch (const out_of_range&) {
@@ -644,13 +640,7 @@ shared_ptr<const string> ServerState::load_bb_file(
   }
 
   // Finally, look in system/blueburst
-  const string& effective_bb_directory_filename = bb_directory_filename.empty() ? patch_index_filename : bb_directory_filename;
-  try {
-    auto ret = this->bb_system_cache->get_or_load("system/blueburst/" + effective_bb_directory_filename);
-    return ret.file->data;
-  } catch (const exception& e) {
-    throw phosg::cannot_open_file(patch_index_filename);
-  }
+  return std::make_shared<std::string>(phosg::load_file("system/blueburst/" + filename));
 }
 
 shared_ptr<const string> ServerState::load_map_file(Version version, const string& filename) const {
@@ -1853,13 +1843,6 @@ vector<shared_ptr<const SuperMap>> ServerState::supermaps_for_variations(
   return ret;
 }
 
-void ServerState::clear_file_caches() {
-  config_log.info_f("Clearing BB system cache");
-  this->bb_system_cache.reset(new FileContentsCache(3600000000ULL));
-  config_log.info_f("Clearing GBA file cache");
-  this->gba_files_cache.reset(new FileContentsCache(300 * 1000 * 1000));
-}
-
 void ServerState::load_set_data_tables() {
   config_log.info_f("Loading set data tables");
 
@@ -1901,19 +1884,8 @@ void ServerState::load_set_data_tables() {
 
 void ServerState::load_battle_params() {
   config_log.info_f("Loading JSON battle parameters");
-  try {
-    this->battle_params = std::make_shared<JSONBattleParamsIndex>(phosg::JSON::parse(phosg::load_file(
-        "system/tables/battle-params.json")));
-  } catch (const std::exception& e) {
-    config_log.info_f("Cannot load JSON battle parameters ({}); loading binary battle parameters", e.what());
-    this->battle_params = std::make_shared<BinaryBattleParamsIndex>(
-        this->load_bb_file("BattleParamEntry_on.dat"),
-        this->load_bb_file("BattleParamEntry_lab_on.dat"),
-        this->load_bb_file("BattleParamEntry_ep4_on.dat"),
-        this->load_bb_file("BattleParamEntry.dat"),
-        this->load_bb_file("BattleParamEntry_lab.dat"),
-        this->load_bb_file("BattleParamEntry_ep4.dat"));
-  }
+  this->battle_params = std::make_shared<JSONBattleParamsIndex>(phosg::JSON::parse(phosg::load_file(
+      "system/tables/battle-params.json")));
 }
 
 void ServerState::load_level_tables() {
@@ -2362,7 +2334,6 @@ void ServerState::load_all(bool enable_thread_pool) {
   this->load_bb_private_keys();
   this->load_bb_system_defaults();
   this->load_accounts();
-  this->clear_file_caches();
   this->load_patch_indexes();
   this->load_ep3_cards();
   this->load_ep3_maps();
