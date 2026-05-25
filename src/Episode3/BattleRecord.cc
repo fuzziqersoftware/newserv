@@ -5,8 +5,6 @@
 #include "../CommandFormats.hh"
 #include "../SendCommands.hh"
 
-using namespace std;
-
 namespace Episode3 {
 
 void BattleRecord::PlayerEntry::print(FILE* stream) const {
@@ -41,7 +39,7 @@ BattleRecord::Event::Event(phosg::StringReader& r) {
       this->data = r.read(r.get_u16l());
       break;
     default:
-      throw logic_error("unknown event type");
+      throw std::logic_error("unknown event type");
   }
 }
 
@@ -51,7 +49,7 @@ void BattleRecord::Event::serialize(phosg::StringWriter& w) const {
   switch (this->type) {
     case Event::Type::PLAYER_JOIN:
       if (this->players.size() != 1) {
-        throw logic_error("player join event does not contain 1 player entry");
+        throw std::logic_error("player join event does not contain 1 player entry");
       }
       w.put(this->players[0]);
       break;
@@ -75,13 +73,12 @@ void BattleRecord::Event::serialize(phosg::StringWriter& w) const {
       w.write(this->data);
       break;
     default:
-      throw logic_error("unknown event type");
+      throw std::logic_error("unknown event type");
   }
 }
 
 void BattleRecord::Event::print(FILE* stream) const {
-  string time_str = phosg::format_time(this->timestamp);
-  phosg::fwrite_fmt(stream, "Event @{:016X} ({}) ", this->timestamp, time_str);
+  phosg::fwrite_fmt(stream, "Event @{:016X} ({}) ", this->timestamp, phosg::format_time(this->timestamp));
   switch (this->type) {
     case Type::PLAYER_JOIN:
       phosg::fwrite_fmt(stream, "PLAYER_JOIN {:02X}\n", this->players[0].lobby_data.client_id);
@@ -121,7 +118,7 @@ void BattleRecord::Event::print(FILE* stream) const {
       phosg::print_data(stream, this->data, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
       break;
     default:
-      throw runtime_error("unknown event type in battle record");
+      throw std::runtime_error("unknown event type in battle record");
   }
 }
 
@@ -131,11 +128,8 @@ BattleRecord::BattleRecord(uint32_t behavior_flags)
       battle_start_timestamp(0),
       battle_end_timestamp(0) {}
 
-BattleRecord::BattleRecord(const string& data)
-    : is_writable(false),
-      behavior_flags(0),
-      battle_start_timestamp(0),
-      battle_end_timestamp(0) {
+BattleRecord::BattleRecord(const std::string& data)
+    : is_writable(false), behavior_flags(0), battle_start_timestamp(0), battle_end_timestamp(0) {
   phosg::StringReader r(data);
 
   uint64_t signature = r.get_u64l();
@@ -145,7 +139,7 @@ BattleRecord::BattleRecord(const string& data)
   } else if (signature == this->SIGNATURE_V2) {
     has_random_stream = true;
   } else {
-    throw runtime_error("incorrect battle record signature");
+    throw std::runtime_error("incorrect battle record signature");
   }
 
   this->battle_start_timestamp = r.get_u64l();
@@ -159,7 +153,7 @@ BattleRecord::BattleRecord(const string& data)
   }
 }
 
-string BattleRecord::serialize() const {
+std::string BattleRecord::serialize() const {
   phosg::StringWriter w;
   w.put_u64l(this->SIGNATURE_V2);
   w.put_u64l(this->battle_start_timestamp);
@@ -179,10 +173,10 @@ void BattleRecord::add_player(
     const PlayerDispDataDCPCV3& disp,
     uint32_t level) {
   if (!this->is_writable) {
-    throw logic_error("cannot write to battle record");
+    throw std::logic_error("cannot write to battle record");
   }
   if (this->battle_start_timestamp != 0) {
-    throw runtime_error("cannot add player during battle");
+    throw std::runtime_error("cannot add player during battle");
   }
   Event& ev = this->events.emplace_back();
   ev.type = Event::Type::PLAYER_JOIN;
@@ -196,7 +190,7 @@ void BattleRecord::add_player(
 
 void BattleRecord::delete_player(uint8_t client_id) {
   if (!this->is_writable) {
-    throw logic_error("cannot write to battle record");
+    throw std::logic_error("cannot write to battle record");
   }
   Event& ev = this->events.emplace_back();
   ev.type = Event::Type::PLAYER_LEAVE;
@@ -206,7 +200,7 @@ void BattleRecord::delete_player(uint8_t client_id) {
 
 void BattleRecord::add_command(Event::Type type, const void* data, size_t size) {
   if (!this->is_writable) {
-    throw logic_error("cannot write to battle record");
+    throw std::logic_error("cannot write to battle record");
   }
   Event& ev = this->events.emplace_back();
   ev.type = type;
@@ -214,9 +208,9 @@ void BattleRecord::add_command(Event::Type type, const void* data, size_t size) 
   ev.data.assign(reinterpret_cast<const char*>(data), size);
 }
 
-void BattleRecord::add_command(Event::Type type, string&& data) {
+void BattleRecord::add_command(Event::Type type, std::string&& data) {
   if (!this->is_writable) {
-    throw logic_error("cannot write to battle record");
+    throw std::logic_error("cannot write to battle record");
   }
   Event& ev = this->events.emplace_back();
   ev.type = type;
@@ -224,10 +218,9 @@ void BattleRecord::add_command(Event::Type type, string&& data) {
   ev.data = std::move(data);
 }
 
-void BattleRecord::add_chat_message(
-    uint32_t guild_card_number, string&& data) {
+void BattleRecord::add_chat_message(uint32_t guild_card_number, std::string&& data) {
   if (!this->is_writable) {
-    throw logic_error("cannot write to battle record");
+    throw std::logic_error("cannot write to battle record");
   }
   Event& ev = this->events.emplace_back();
   ev.type = Event::Type::CHAT_MESSAGE;
@@ -240,7 +233,7 @@ void BattleRecord::add_random_data(const void* data, size_t size) {
   this->random_stream.append(reinterpret_cast<const char*>(data), size);
 }
 
-const string& BattleRecord::get_random_stream() const {
+const std::string& BattleRecord::get_random_stream() const {
   return this->random_stream;
 }
 
@@ -259,7 +252,7 @@ bool BattleRecord::is_map_definition_event(const Event& ev) {
 
 void BattleRecord::set_battle_start_timestamp() {
   if (this->battle_start_timestamp != 0) {
-    throw logic_error("battle start timestamp is already set");
+    throw std::logic_error("battle start timestamp is already set");
   }
   this->battle_start_timestamp = phosg::now();
 
@@ -271,30 +264,30 @@ void BattleRecord::set_battle_start_timestamp() {
   for (auto& ev : this->events) {
     if (ev.type == Event::Type::PLAYER_JOIN) {
       if (ev.players.size() != 1) {
-        throw logic_error("player join event does not contain 1 player entry");
+        throw std::logic_error("player join event does not contain 1 player entry");
       }
       auto& player = ev.players[0];
       if (player.lobby_data.client_id >= 4) {
-        throw runtime_error("invalid client ID");
+        throw std::runtime_error("invalid client ID");
       }
       players[player.lobby_data.client_id] = player;
       players_present[player.lobby_data.client_id] = true;
 
     } else if (ev.type == Event::Type::PLAYER_LEAVE) {
       if (ev.leaving_client_id >= 4) {
-        throw logic_error("invalid client ID");
+        throw std::logic_error("invalid client ID");
       }
       players_present[ev.leaving_client_id] = false;
 
     } else if (ev.type == Event::Type::SET_INITIAL_PLAYERS) {
-      throw logic_error("BattleRecord::set_battle_start_timestamp called twice");
+      throw std::logic_error("BattleRecord::set_battle_start_timestamp called twice");
 
     } else if (this->is_map_definition_event(ev)) {
       num_map_events++;
     }
   }
 
-  deque<Event> new_events;
+  std::deque<Event> new_events;
 
   // Generate the initial players event
   Event initial_ev;
@@ -335,32 +328,31 @@ void BattleRecord::set_battle_end_timestamp() {
 }
 
 void BattleRecord::print(FILE* stream) const {
-  string start_str = phosg::format_time(this->battle_start_timestamp);
-  string end_str = phosg::format_time(this->battle_end_timestamp);
   phosg::fwrite_fmt(stream, "BattleRecord {} behavior_flags={:08X} start={:016X} ({}) end={:016X} ({}); {} events\n",
       this->is_writable ? "writable" : "read-only",
       this->behavior_flags,
       this->battle_start_timestamp,
-      start_str,
+      phosg::format_time(this->battle_start_timestamp),
       this->battle_end_timestamp,
-      end_str, this->events.size());
+      phosg::format_time(this->battle_end_timestamp),
+      this->events.size());
   for (const auto& event : this->events) {
     event.print(stream);
   }
 }
 
-BattleRecordPlayer::BattleRecordPlayer(std::shared_ptr<asio::io_context> io_context, shared_ptr<const BattleRecord> rec)
+BattleRecordPlayer::BattleRecordPlayer(std::shared_ptr<asio::io_context> io_context, std::shared_ptr<const BattleRecord> rec)
     : io_context(io_context),
       record(rec),
       event_it(this->record->events.begin()),
       play_start_timestamp(0),
       next_command_timer(*this->io_context) {}
 
-shared_ptr<const BattleRecord> BattleRecordPlayer::get_record() const {
+std::shared_ptr<const BattleRecord> BattleRecordPlayer::get_record() const {
   return this->record;
 }
 
-void BattleRecordPlayer::set_lobby(shared_ptr<Lobby> l) {
+void BattleRecordPlayer::set_lobby(std::shared_ptr<Lobby> l) {
   this->lobby = l;
 }
 
@@ -406,7 +398,7 @@ asio::awaitable<void> BattleRecordPlayer::play_task() {
         switch (ev.type) {
           case BattleRecord::Event::Type::PLAYER_JOIN:
             // Technically we can support this, but it should never happen
-            throw runtime_error("player join event during battle replay");
+            throw std::runtime_error("player join event during battle replay");
           case BattleRecord::Event::Type::PLAYER_LEAVE:
             send_player_leave_notification(l, ev.leaving_client_id);
             break;

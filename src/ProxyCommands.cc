@@ -29,17 +29,15 @@
 #include "ReceiveSubcommands.hh"
 #include "SendCommands.hh"
 
-using namespace std;
-
 enum class HandlerResult {
   FORWARD = 0,
   SUPPRESS,
   MODIFIED,
 };
 
-typedef asio::awaitable<HandlerResult> (*MessageHandler)(shared_ptr<Client> c, Channel::Message& msg);
+typedef asio::awaitable<HandlerResult> (*MessageHandler)(std::shared_ptr<Client> c, Channel::Message& msg);
 
-static void forward_command(shared_ptr<Client> c, bool to_server, const Channel::Message& msg, bool print_contents = true) {
+static void forward_command(std::shared_ptr<Client> c, bool to_server, const Channel::Message& msg, bool print_contents = true) {
   auto ch = to_server ? (c->proxy_session ? c->proxy_session->server_channel : nullptr) : c->channel;
   if (!ch || !ch->connected()) {
     proxy_server_log.warning_f("No endpoint is present; dropping command");
@@ -55,20 +53,20 @@ static void forward_command(shared_ptr<Client> c, bool to_server, const Channel:
 // versions), and COMMAND-NUMBERS are the hexadecimal value in the command header field that this handler is called
 // for. If VERSIONS is omitted, the command handler is for all versions (for example, the 97 handler is like this).
 
-static asio::awaitable<HandlerResult> default_handler(shared_ptr<Client>, Channel::Message&) {
+static asio::awaitable<HandlerResult> default_handler(std::shared_ptr<Client>, Channel::Message&) {
   co_return HandlerResult::FORWARD;
 }
 
-static asio::awaitable<HandlerResult> S_invalid(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_invalid(std::shared_ptr<Client> c, Channel::Message& msg) {
   c->log.error_f("Server sent invalid command");
-  string error_str = is_v4(c->version())
+  std::string error_str = is_v4(c->version())
       ? std::format("Server sent invalid\ncommand: {:04X} {:08X}", msg.command, msg.flag)
       : std::format("Server sent invalid\ncommand: {:02X} {:02X}", msg.command, msg.flag);
   c->proxy_session->server_channel->disconnect();
   co_return HandlerResult::SUPPRESS;
 }
 
-static asio::awaitable<HandlerResult> C_1D(shared_ptr<Client> c, Channel::Message&) {
+static asio::awaitable<HandlerResult> C_1D(std::shared_ptr<Client> c, Channel::Message&) {
   if (c->ping_start_time) {
     uint64_t ping_usecs = phosg::now() - c->ping_start_time;
     c->ping_start_time = 0;
@@ -80,11 +78,11 @@ static asio::awaitable<HandlerResult> C_1D(shared_ptr<Client> c, Channel::Messag
   }
 }
 
-static asio::awaitable<HandlerResult> S_1D(shared_ptr<Client>, Channel::Message&) {
+static asio::awaitable<HandlerResult> S_1D(std::shared_ptr<Client>, Channel::Message&) {
   co_return HandlerResult::FORWARD;
 }
 
-static asio::awaitable<HandlerResult> S_97(shared_ptr<Client> c, Channel::Message&) {
+static asio::awaitable<HandlerResult> S_97(std::shared_ptr<Client> c, Channel::Message&) {
   // We always assume a 97 has already been received by the client - we should have sent 97 01 before sending the
   // client to the proxy server.
   c->proxy_session->server_channel->send(0xB1, 0x00);
@@ -204,7 +202,7 @@ static void send_9E_XB_to_server(std::shared_ptr<Client> c) {
   c->proxy_session->server_channel->send(0x9E, 0x01, &cmd, sizeof(C_LoginExtended_XB_9E));
 }
 
-static asio::awaitable<HandlerResult> S_G_9A(shared_ptr<Client> c, Channel::Message&) {
+static asio::awaitable<HandlerResult> S_G_9A(std::shared_ptr<Client> c, Channel::Message&) {
   // TODO: Either delete this handler or finish implementing it (flag=00/02 should do the below, 01 should send 9C,
   // anything else should end the session)
   C_LoginExtended_GC_9E cmd;
@@ -236,9 +234,9 @@ static asio::awaitable<HandlerResult> S_G_9A(shared_ptr<Client> c, Channel::Mess
   co_return HandlerResult::SUPPRESS;
 }
 
-static asio::awaitable<HandlerResult> S_V123U_02_17(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_V123U_02_17(std::shared_ptr<Client> c, Channel::Message& msg) {
   if (is_patch(c->version()) && msg.command == 0x17) {
-    throw invalid_argument("patch server sent 17 server init");
+    throw std::invalid_argument("patch server sent 17 server init");
   }
 
   // Most servers don't include after_message or have a shorter after_message than newserv does, so don't require it
@@ -246,11 +244,11 @@ static asio::awaitable<HandlerResult> S_V123U_02_17(shared_ptr<Client> c, Channe
 
   // This isn't forwarded to the client, so don't recreate the client's crypts
   if (uses_v3_encryption(c->version())) {
-    c->proxy_session->server_channel->crypt_in = make_shared<PSOV3Encryption>(cmd.server_key);
-    c->proxy_session->server_channel->crypt_out = make_shared<PSOV3Encryption>(cmd.client_key);
+    c->proxy_session->server_channel->crypt_in = std::make_shared<PSOV3Encryption>(cmd.server_key);
+    c->proxy_session->server_channel->crypt_out = std::make_shared<PSOV3Encryption>(cmd.client_key);
   } else {
-    c->proxy_session->server_channel->crypt_in = make_shared<PSOV2Encryption>(cmd.server_key);
-    c->proxy_session->server_channel->crypt_out = make_shared<PSOV2Encryption>(cmd.client_key);
+    c->proxy_session->server_channel->crypt_in = std::make_shared<PSOV2Encryption>(cmd.server_key);
+    c->proxy_session->server_channel->crypt_out = std::make_shared<PSOV2Encryption>(cmd.client_key);
   }
 
   // Respond with an appropriate login command. We don't let the client do this because it believes it already did
@@ -264,7 +262,7 @@ static asio::awaitable<HandlerResult> S_V123U_02_17(shared_ptr<Client> c, Channe
 
     case Version::DC_NTE:
       // TODO
-      throw runtime_error("DC NTE proxy is not implemented");
+      throw std::runtime_error("DC NTE proxy is not implemented");
 
     case Version::DC_11_2000:
     case Version::DC_V1:
@@ -301,7 +299,7 @@ static asio::awaitable<HandlerResult> S_V123U_02_17(shared_ptr<Client> c, Channe
         // For command 02, send the same as if we had received 9A from the server
         co_return co_await S_G_9A(c, msg);
       }
-      throw logic_error("GC init command not handled");
+      throw std::logic_error("GC init command not handled");
 
     case Version::XB_V3: {
       send_9E_XB_to_server(c);
@@ -309,13 +307,13 @@ static asio::awaitable<HandlerResult> S_V123U_02_17(shared_ptr<Client> c, Channe
     }
 
     case Version::BB_V4:
-      throw logic_error("v1/v2/v3 server init handler should not be called on BB");
+      throw std::logic_error("v1/v2/v3 server init handler should not be called on BB");
     default:
-      throw logic_error("invalid game version in server init handler");
+      throw std::logic_error("invalid game version in server init handler");
   }
 }
 
-static asio::awaitable<HandlerResult> S_U_04(shared_ptr<Client> c, Channel::Message&) {
+static asio::awaitable<HandlerResult> S_U_04(std::shared_ptr<Client> c, Channel::Message&) {
   C_Login_Patch_04 ret;
   ret.username.encode(c->username);
   ret.password.encode(c->password);
@@ -324,7 +322,7 @@ static asio::awaitable<HandlerResult> S_U_04(shared_ptr<Client> c, Channel::Mess
   co_return HandlerResult::SUPPRESS;
 }
 
-static asio::awaitable<HandlerResult> S_B_03(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_B_03(std::shared_ptr<Client> c, Channel::Message& msg) {
   // Most servers don't include after_message or have a shorter after_message than newserv does, so don't require it
   const auto& cmd = msg.check_size_t<S_ServerInitDefault_BB_03_9B>(0xFFFF);
 
@@ -332,11 +330,11 @@ static asio::awaitable<HandlerResult> S_B_03(shared_ptr<Client> c, Channel::Mess
   // the server has the luxury of being able to try all the crypts it knows to detect what type the client uses, but
   // the client can't do this since it sends the first encrypted data on the connection.
   if (!c->bb_detector_crypt) {
-    throw logic_error("Client proxy session started with missing detector crypt");
+    throw std::logic_error("Client proxy session started with missing detector crypt");
   }
-  c->proxy_session->server_channel->crypt_in = make_shared<PSOBBMultiKeyImitatorEncryption>(
+  c->proxy_session->server_channel->crypt_in = std::make_shared<PSOBBMultiKeyImitatorEncryption>(
       c->bb_detector_crypt, cmd.server_key.data(), sizeof(cmd.server_key), false);
-  c->proxy_session->server_channel->crypt_out = make_shared<PSOBBMultiKeyImitatorEncryption>(
+  c->proxy_session->server_channel->crypt_out = std::make_shared<PSOBBMultiKeyImitatorEncryption>(
       c->bb_detector_crypt, cmd.client_key.data(), sizeof(cmd.client_key), false);
 
   C_LoginWithHardwareInfo_BB_93 resp;
@@ -360,7 +358,7 @@ static asio::awaitable<HandlerResult> S_B_03(shared_ptr<Client> c, Channel::Mess
   co_return HandlerResult::SUPPRESS;
 }
 
-static asio::awaitable<HandlerResult> S_B_E6(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_B_E6(std::shared_ptr<Client> c, Channel::Message& msg) {
   const auto& cmd = msg.check_size_t<S_ClientInit_BB_00E6>(0xFFFF);
   c->proxy_session->remote_guild_card_number = cmd.guild_card_number;
   c->bb_security_token = cmd.security_token;
@@ -376,7 +374,7 @@ static asio::awaitable<HandlerResult> S_B_E6(shared_ptr<Client> c, Channel::Mess
   co_return HandlerResult::FORWARD;
 }
 
-static asio::awaitable<HandlerResult> S_V123_04(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_V123_04(std::shared_ptr<Client> c, Channel::Message& msg) {
   // Suppress extremely short commands from the server instead of disconnecting
   if (msg.data.size() < offsetof(S_UpdateClientConfig_V3_04, client_config)) {
     le_uint64_t checksum = phosg::random_object<uint64_t>() & 0x0000FFFFFFFFFFFF;
@@ -396,7 +394,7 @@ static asio::awaitable<HandlerResult> S_V123_04(shared_ptr<Client> c, Channel::M
   if (c->proxy_session->remote_guild_card_number != cmd.guild_card_number) {
     c->proxy_session->remote_guild_card_number = cmd.guild_card_number;
     c->log.info_f("Remote guild card number set to {}", c->proxy_session->remote_guild_card_number);
-    string message = std::format(
+    std::string message = std::format(
         "The remote server\nhas assigned your\nGuild Card number:\n$C6{}", c->proxy_session->remote_guild_card_number);
     send_ship_info(c->channel, message);
   }
@@ -411,7 +409,7 @@ static asio::awaitable<HandlerResult> S_V123_04(shared_ptr<Client> c, Channel::M
   memcpy(c->proxy_session->remote_client_config_data.data(),
       had_guild_card_number ? "t Lobby Server. Copyright SEGA E" : "t Port Map. Copyright SEGA Enter", 0x20);
   memcpy(c->proxy_session->remote_client_config_data.data(), &cmd.client_config,
-      min<size_t>(msg.data.size() - offsetof(S_UpdateClientConfig_V3_04, client_config),
+      std::min<size_t>(msg.data.size() - offsetof(S_UpdateClientConfig_V3_04, client_config),
           c->proxy_session->remote_client_config_data.bytes()));
 
   // If the guild card number was not set, pretend (to the server) that this is the first 04 command the client has
@@ -424,7 +422,7 @@ static asio::awaitable<HandlerResult> S_V123_04(shared_ptr<Client> c, Channel::M
   co_return c->login ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
 }
 
-static asio::awaitable<HandlerResult> S_V123_06(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_V123_06(std::shared_ptr<Client> c, Channel::Message& msg) {
   bool modified = false;
   if (c->login && c->login->account->account_id != c->proxy_session->remote_guild_card_number) {
     auto& cmd = msg.check_size_t<SC_TextHeader_01_06_11_B0_EE>(0xFFFF);
@@ -449,7 +447,7 @@ static asio::awaitable<HandlerResult> S_V123_06(shared_ptr<Client> c, Channel::M
 }
 
 template <typename CmdT>
-static asio::awaitable<HandlerResult> S_41(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_41(std::shared_ptr<Client> c, Channel::Message& msg) {
   if (c->login) {
     auto& cmd = msg.check_size_t<CmdT>();
     if ((cmd.searcher_guild_card_number == c->proxy_session->remote_guild_card_number) &&
@@ -485,7 +483,7 @@ constexpr MessageHandler S_P_41 = &S_41<S_GuildCardSearchResult_PC_41>;
 constexpr MessageHandler S_B_41 = &S_41<S_GuildCardSearchResult_BB_41>;
 
 template <typename CmdT>
-static asio::awaitable<HandlerResult> S_81(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_81(std::shared_ptr<Client> c, Channel::Message& msg) {
   bool modified = false;
   if (c->login && c->login->account->account_id != c->proxy_session->remote_guild_card_number) {
     auto& cmd = msg.check_size_t<CmdT>();
@@ -505,7 +503,7 @@ constexpr MessageHandler S_DGX_81 = &S_81<SC_SimpleMail_DC_V3_81>;
 constexpr MessageHandler S_P_81 = &S_81<SC_SimpleMail_PC_81>;
 constexpr MessageHandler S_B_81 = &S_81<SC_SimpleMail_BB_81>;
 
-static asio::awaitable<HandlerResult> S_88(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_88(std::shared_ptr<Client> c, Channel::Message& msg) {
   // If the client isn't in the lobby, suppress the command (Ep3 can crash if it receives this while loading; other
   // versions probably also will crash)
   if (!c->proxy_session->is_in_lobby) {
@@ -526,19 +524,19 @@ static asio::awaitable<HandlerResult> S_88(shared_ptr<Client> c, Channel::Messag
   co_return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
 }
 
-static asio::awaitable<HandlerResult> S_B1(shared_ptr<Client> c, Channel::Message&) {
+static asio::awaitable<HandlerResult> S_B1(std::shared_ptr<Client> c, Channel::Message&) {
   // Block all time updates from the remote server, so client's time remains consistent
   c->proxy_session->server_channel->send(0x99, 0x00);
   co_return HandlerResult::SUPPRESS;
 }
 
 template <bool BE>
-static asio::awaitable<HandlerResult> S_B2(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_B2(std::shared_ptr<Client> c, Channel::Message& msg) {
   const auto& cmd = msg.check_size_t<S_ExecuteCode_B2>(0xFFFF);
 
   if (cmd.code_size && c->check_flag(Client::Flag::PROXY_SAVE_FILES)) {
     uint64_t filename_timestamp = phosg::now();
-    string code = msg.data.substr(sizeof(S_ExecuteCode_B2));
+    std::string code = msg.data.substr(sizeof(S_ExecuteCode_B2));
 
     if (c->check_flag(Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL)) {
       phosg::StringReader r(code);
@@ -547,7 +545,7 @@ static asio::awaitable<HandlerResult> S_B2(shared_ptr<Client> c, Channel::Messag
       uint32_t key = is_big_endian ? r.get_u32b() : r.get_u32l();
 
       PSOV2Encryption crypt(key);
-      string decrypted_data;
+      std::string decrypted_data;
       if (is_big_endian) {
         phosg::StringWriter w;
         while (!r.eof()) {
@@ -563,7 +561,7 @@ static asio::awaitable<HandlerResult> S_B2(shared_ptr<Client> c, Channel::Messag
       if (decompressed_size < code.size()) {
         code.resize(decompressed_size);
       } else if (decompressed_size > code.size()) {
-        throw runtime_error("decompressed code smaller than expected");
+        throw std::runtime_error("decompressed code smaller than expected");
       }
 
     } else {
@@ -573,7 +571,7 @@ static asio::awaitable<HandlerResult> S_B2(shared_ptr<Client> c, Channel::Messag
       }
     }
 
-    string output_filename = std::format("code.{}.bin", filename_timestamp);
+    std::string output_filename = std::format("code.{}.bin", filename_timestamp);
     phosg::save_file(output_filename, msg.data);
     c->log.info_f("Wrote code from server to file {}", output_filename);
 
@@ -585,7 +583,7 @@ static asio::awaitable<HandlerResult> S_B2(shared_ptr<Client> c, Channel::Messag
     if (is_ppc || is_x86 || is_sh4) {
       try {
         if (code.size() < sizeof(FooterT)) {
-          throw runtime_error("code section is too small");
+          throw std::runtime_error("code section is too small");
         }
 
         size_t footer_offset = code.size() - sizeof(FooterT);
@@ -593,7 +591,7 @@ static asio::awaitable<HandlerResult> S_B2(shared_ptr<Client> c, Channel::Messag
         phosg::StringReader r(code.data(), code.size());
         const auto& footer = r.pget<FooterT>(footer_offset);
 
-        multimap<uint32_t, string> labels;
+        std::multimap<uint32_t, std::string> labels;
         r.go(footer.relocations_offset);
         uint32_t reloc_offset = 0;
         for (size_t x = 0; x < footer.num_relocations; x++) {
@@ -604,7 +602,7 @@ static asio::awaitable<HandlerResult> S_B2(shared_ptr<Client> c, Channel::Messag
         labels.emplace(footer_offset, "footer");
         labels.emplace(r.pget<U32T<BE>>(footer.root_offset), "start");
 
-        string disassembly;
+        std::string disassembly;
         if (is_ppc) {
           disassembly = ResourceDASM::PPC32Emulator::disassemble(&r.pget<uint8_t>(0, code.size()), code.size(), 0, &labels);
         } else if (is_x86) {
@@ -613,7 +611,7 @@ static asio::awaitable<HandlerResult> S_B2(shared_ptr<Client> c, Channel::Messag
           disassembly = ResourceDASM::SH4Emulator::disassemble(&r.pget<uint8_t>(0, code.size()), code.size(), 0, &labels);
         } else {
           // We shouldn't have entered the outer if statement if this happens
-          throw logic_error("unsupported architecture");
+          throw std::logic_error("unsupported architecture");
         }
 
         output_filename = std::format("code.{}.txt", filename_timestamp);
@@ -626,7 +624,7 @@ static asio::awaitable<HandlerResult> S_B2(shared_ptr<Client> c, Channel::Messag
         }
         c->log.info_f("Wrote disassembly to file {}", output_filename);
 
-      } catch (const exception& e) {
+      } catch (const std::exception& e) {
         c->log.info_f("Failed to disassemble code from server: {}", e.what());
       }
     }
@@ -645,10 +643,10 @@ static asio::awaitable<HandlerResult> S_B2(shared_ptr<Client> c, Channel::Messag
   }
 }
 
-static asio::awaitable<HandlerResult> C_B3(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> C_B3(std::shared_ptr<Client> c, Channel::Message& msg) {
   auto cmd = msg.check_size_t<C_ExecuteCodeResult_B3>();
 
-  shared_ptr<AsyncPromise<C_ExecuteCodeResult_B3>> promise;
+  std::shared_ptr<AsyncPromise<C_ExecuteCodeResult_B3>> promise;
   if (!c->function_call_response_queue.empty()) {
     promise = std::move(c->function_call_response_queue.front());
     c->function_call_response_queue.pop_front();
@@ -662,18 +660,18 @@ static asio::awaitable<HandlerResult> C_B3(shared_ptr<Client> c, Channel::Messag
   }
 }
 
-static asio::awaitable<HandlerResult> C_B_E0(shared_ptr<Client> c, Channel::Message&) {
+static asio::awaitable<HandlerResult> C_B_E0(std::shared_ptr<Client> c, Channel::Message&) {
   auto ret = c->proxy_session->bb_client_sent_E0 ? HandlerResult::FORWARD : HandlerResult::SUPPRESS;
   c->proxy_session->bb_client_sent_E0 = true;
   co_return ret;
 }
 
-static asio::awaitable<HandlerResult> S_B_E2(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_B_E2(std::shared_ptr<Client> c, Channel::Message& msg) {
   if (c->check_flag(Client::Flag::PROXY_SAVE_FILES)) {
     const auto& cmd = msg.check_size_t<S_SyncSystemFile_BB_E2>();
     uint64_t ts = phosg::now();
-    string system_filename = std::format("system.{}.psosys", ts);
-    string team_membership_filename = std::format("system.{}.psosysteam", ts);
+    std::string system_filename = std::format("system.{}.psosys", ts);
+    std::string team_membership_filename = std::format("system.{}.psosysteam", ts);
     phosg::save_object_file(system_filename, cmd.system_file);
     phosg::save_object_file(team_membership_filename, cmd.team_membership);
     c->log.info_f("Wrote system file to {}", system_filename);
@@ -682,9 +680,9 @@ static asio::awaitable<HandlerResult> S_B_E2(shared_ptr<Client> c, Channel::Mess
   co_return HandlerResult::FORWARD;
 }
 
-static asio::awaitable<HandlerResult> S_B_E7(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_B_E7(std::shared_ptr<Client> c, Channel::Message& msg) {
   if (c->check_flag(Client::Flag::PROXY_SAVE_FILES)) {
-    string output_filename = std::format("player.{}.psochar", phosg::now());
+    std::string output_filename = std::format("player.{}.psochar", phosg::now());
     auto f = phosg::fopen_unique(output_filename, "wb");
     PSOCommandHeaderBB header = {msg.data.size() + sizeof(PSOCommandHeaderBB), msg.command, msg.flag};
     phosg::fwritex(f.get(), &header, sizeof(header));
@@ -694,7 +692,7 @@ static asio::awaitable<HandlerResult> S_B_E7(shared_ptr<Client> c, Channel::Mess
   co_return HandlerResult::FORWARD;
 }
 
-static asio::awaitable<HandlerResult> S_B_DC(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_B_DC(std::shared_ptr<Client> c, Channel::Message& msg) {
   if (c->check_flag(Client::Flag::PROXY_SAVE_FILES) && (msg.command == 0x02DC)) {
     const auto& cmd = msg.check_size_t<S_GuildCardFileChunk_02DC>(8, sizeof(S_GuildCardFileChunk_02DC));
     size_t chunk_size = msg.data.size() - 8;
@@ -716,11 +714,11 @@ static asio::awaitable<HandlerResult> S_B_DC(shared_ptr<Client> c, Channel::Mess
   co_return HandlerResult::FORWARD;
 }
 
-static asio::awaitable<HandlerResult> C_B_DC(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> C_B_DC(std::shared_ptr<Client> c, Channel::Message& msg) {
   if (c->check_flag(Client::Flag::PROXY_SAVE_FILES) && (msg.command == 0x03DC)) {
     const auto& cmd = msg.check_size_t<C_GuildCardDataRequest_BB_03DC>();
     if ((cmd.cont == 0) && c->proxy_session->bb_guild_card_data) {
-      string output_filename = std::format("guildcard.{}.psocard", phosg::now());
+      std::string output_filename = std::format("guildcard.{}.psocard", phosg::now());
       phosg::save_object_file(output_filename, *c->proxy_session->bb_guild_card_data);
       c->log.info_f("Wrote Guild Card data to {}", output_filename);
     }
@@ -728,7 +726,7 @@ static asio::awaitable<HandlerResult> C_B_DC(shared_ptr<Client> c, Channel::Mess
   co_return HandlerResult::FORWARD;
 }
 
-static asio::awaitable<HandlerResult> S_B_EB(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_B_EB(std::shared_ptr<Client> c, Channel::Message& msg) {
   if (c->check_flag(Client::Flag::PROXY_SAVE_FILES)) {
     if (msg.command == 0x01EB) {
       const auto* entries = &msg.check_size_t<S_StreamFileIndexEntry_BB_01EB>(
@@ -758,7 +756,7 @@ static asio::awaitable<HandlerResult> S_B_EB(shared_ptr<Client> c, Channel::Mess
       memcpy(c->proxy_session->bb_stream_file_data.data() + chunk_offset, cmd.data.data(), chunk_size);
       c->proxy_session->bb_stream_file_data_received += chunk_size;
       if (c->proxy_session->bb_stream_file_data_received == c->proxy_session->bb_stream_file_data.size()) {
-        string output_prefix = std::format("streamfile.{}.", phosg::now());
+        std::string output_prefix = std::format("streamfile.{}.", phosg::now());
         for (const auto& entry : c->proxy_session->bb_stream_file_entries) {
           std::string filename = entry.filename.decode();
           std::string sanitized_filename = filename;
@@ -785,7 +783,7 @@ static asio::awaitable<HandlerResult> S_B_EB(shared_ptr<Client> c, Channel::Mess
 }
 
 template <typename CmdT>
-static asio::awaitable<HandlerResult> S_C4(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_C4(std::shared_ptr<Client> c, Channel::Message& msg) {
   bool modified = false;
   if (c->login && c->login->account->account_id != c->proxy_session->remote_guild_card_number) {
     size_t expected_size = sizeof(CmdT) * msg.flag;
@@ -805,7 +803,7 @@ constexpr MessageHandler S_DGX_C4 = &S_C4<S_ChoiceSearchResultEntry_DC_V3_C4>;
 constexpr MessageHandler S_P_C4 = &S_C4<S_ChoiceSearchResultEntry_PC_C4>;
 constexpr MessageHandler S_B_C4 = &S_C4<S_ChoiceSearchResultEntry_BB_C4>;
 
-static asio::awaitable<HandlerResult> S_G_E4(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_G_E4(std::shared_ptr<Client> c, Channel::Message& msg) {
   auto& cmd = msg.check_size_t<S_CardBattleTableState_Ep3_E4>();
   bool modified = false;
   if (c->login && c->login->account->account_id != c->proxy_session->remote_guild_card_number) {
@@ -819,7 +817,7 @@ static asio::awaitable<HandlerResult> S_G_E4(shared_ptr<Client> c, Channel::Mess
   co_return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
 }
 
-static asio::awaitable<HandlerResult> S_B_22(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_B_22(std::shared_ptr<Client> c, Channel::Message& msg) {
   // We use this command (which is sent before the init encryption command) to detect a particular server behavior that
   // we'll have to work around later. It looks like this command's existence is an anti-proxy measure, since this
   // command is 0x34 bytes in total, and the logic that adds padding bytes when the command size isn't a multiple of 8
@@ -833,7 +831,7 @@ static asio::awaitable<HandlerResult> S_B_22(shared_ptr<Client> c, Channel::Mess
   co_return HandlerResult::SUPPRESS;
 }
 
-static asio::awaitable<HandlerResult> S_19_U_14(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_19_U_14(std::shared_ptr<Client> c, Channel::Message& msg) {
   // If the command is shorter than 6 bytes, use the previous server command to fill it in. This simulates a behavior
   // used by some private servers where a longer previous command is used to fill part of the client's receive buffer
   // with meaningful data, then an intentionally undersize 19 command is sent which results in the client using the
@@ -869,9 +867,9 @@ static asio::awaitable<HandlerResult> S_19_U_14(shared_ptr<Client> c, Channel::M
   }
 
   // Replace the server channel with a new channel to the new endpoint
-  string netloc_str = str_for_endpoint(new_ep);
+  std::string netloc_str = str_for_endpoint(new_ep);
   c->log.info_f("Connecting to {}", netloc_str);
-  auto sock = make_unique<asio::ip::tcp::socket>(co_await async_connect_tcp(new_ep));
+  auto sock = std::make_unique<asio::ip::tcp::socket>(co_await async_connect_tcp(new_ep));
 
   // Close the old channel only after replacing it with the new one
   auto s = c->require_server_state();
@@ -895,7 +893,7 @@ static asio::awaitable<HandlerResult> S_19_U_14(shared_ptr<Client> c, Channel::M
   co_return HandlerResult::SUPPRESS;
 }
 
-static asio::awaitable<HandlerResult> S_V3_1A_D5(shared_ptr<Client> c, Channel::Message&) {
+static asio::awaitable<HandlerResult> S_V3_1A_D5(std::shared_ptr<Client> c, Channel::Message&) {
   // If the client is a version that sends close confirmations and the client has the no-close-confirmation flag set in
   // its newserv client config, send a fake confirmation to the remote server immediately.
   if (is_v3(c->version()) && c->check_flag(Client::Flag::NO_D6)) {
@@ -904,7 +902,7 @@ static asio::awaitable<HandlerResult> S_V3_1A_D5(shared_ptr<Client> c, Channel::
   co_return HandlerResult::FORWARD;
 }
 
-static asio::awaitable<HandlerResult> S_V3_BB_DA(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_V3_BB_DA(std::shared_ptr<Client> c, Channel::Message& msg) {
   // This command is supported on all V3 and V4 versions except Ep1&2 Trial
   if (c->version() == Version::GC_NTE) {
     co_return HandlerResult::SUPPRESS;
@@ -916,7 +914,7 @@ static asio::awaitable<HandlerResult> S_V3_BB_DA(shared_ptr<Client> c, Channel::
   }
 }
 
-static asio::awaitable<HandlerResult> SC_6x60_6xA2(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> SC_6x60_6xA2(std::shared_ptr<Client> c, Channel::Message& msg) {
   if (!c->proxy_session->is_in_game) {
     co_return HandlerResult::FORWARD;
   }
@@ -944,7 +942,7 @@ static asio::awaitable<HandlerResult> SC_6x60_6xA2(shared_ptr<Client> c, Channel
     case ProxyDropMode::INTERCEPT:
       break;
     default:
-      throw logic_error("invalid drop mode");
+      throw std::logic_error("invalid drop mode");
   }
 
   if (!c->proxy_session->item_creator) {
@@ -982,7 +980,7 @@ static asio::awaitable<HandlerResult> SC_6x60_6xA2(shared_ptr<Client> c, Channel
     c->log.info_f("No item was created");
   } else {
     auto s = c->require_server_state();
-    string name = s->describe_item(c->version(), res.item);
+    std::string name = s->describe_item(c->version(), res.item);
     c->log.info_f("Entity {:04X} (area {:02X}) created item {}", cmd.entity_index, cmd.effective_area, name);
     res.item.id = c->proxy_session->next_item_id++;
     c->log.info_f("Creating item {:08X} at {:02X}:{:g},{:g} for all clients",
@@ -994,7 +992,7 @@ static asio::awaitable<HandlerResult> SC_6x60_6xA2(shared_ptr<Client> c, Channel
   co_return HandlerResult::SUPPRESS;
 }
 
-static asio::awaitable<HandlerResult> S_6x(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_6x(std::shared_ptr<Client> c, Channel::Message& msg) {
   auto s = c->require_server_state();
 
   if (msg.data.size() < 4) {
@@ -1044,7 +1042,7 @@ static asio::awaitable<HandlerResult> S_6x(shared_ptr<Client> c, Channel::Messag
 
     case 0x46: {
       const auto& header = msg.check_size_t<G_AttackFinished_Header_6x46>(0xFFFF);
-      if (header.target_count > min<size_t>(header.header.size - sizeof(G_AttackFinished_Header_6x46) / 4, 10)) {
+      if (header.target_count > std::min<size_t>(header.header.size - sizeof(G_AttackFinished_Header_6x46) / 4, 10)) {
         c->log.warning_f("Blocking subcommand 6x46 with invalid count");
         co_return HandlerResult::SUPPRESS;
       }
@@ -1053,7 +1051,7 @@ static asio::awaitable<HandlerResult> S_6x(shared_ptr<Client> c, Channel::Messag
 
     case 0x47: {
       const auto& header = msg.check_size_t<G_CastTechnique_Header_6x47>(0xFFFF);
-      if (header.target_count > min<size_t>(header.header.size - sizeof(G_CastTechnique_Header_6x47) / 4, 10)) {
+      if (header.target_count > std::min<size_t>(header.header.size - sizeof(G_CastTechnique_Header_6x47) / 4, 10)) {
         c->log.warning_f("Blocking subcommand 6x47 with invalid count");
         co_return HandlerResult::SUPPRESS;
       }
@@ -1062,7 +1060,7 @@ static asio::awaitable<HandlerResult> S_6x(shared_ptr<Client> c, Channel::Messag
 
     case 0x49: {
       const auto& header = msg.check_size_t<G_ExecutePhotonBlast_Header_6x49>(0xFFFF);
-      if (header.target_count > min<size_t>(header.header.size - sizeof(G_ExecutePhotonBlast_Header_6x49) / 4, 10)) {
+      if (header.target_count > std::min<size_t>(header.header.size - sizeof(G_ExecutePhotonBlast_Header_6x49) / 4, 10)) {
         c->log.warning_f("Blocking subcommand 6x49 with invalid count");
         co_return HandlerResult::SUPPRESS;
       }
@@ -1084,10 +1082,10 @@ static asio::awaitable<HandlerResult> S_6x(shared_ptr<Client> c, Channel::Messag
     case 0x6A: {
       auto& cmd = msg.check_size_t<G_SetBossWarpFlags_6x6A>();
       if (c->proxy_session->map_state) {
-        shared_ptr<MapState::ObjectState> obj_st;
+        std::shared_ptr<MapState::ObjectState> obj_st;
         try {
           obj_st = c->proxy_session->map_state->object_state_for_index(c->version(), cmd.header.entity_id - 0x4000);
-        } catch (const exception& e) {
+        } catch (const std::exception& e) {
           c->log.warning_f("Invalid object reference ({})", e.what());
         }
 
@@ -1203,8 +1201,8 @@ static asio::awaitable<HandlerResult> S_6x(shared_ptr<Client> c, Channel::Messag
         const auto& header = msg.check_size_t<G_MapSubsubcommand_Ep3_6xB6>(0xFFFF);
         if (header.subsubcommand == 0x00000041) {
           const auto& cmd = msg.check_size_t<G_MapData_Ep3_6xB6x41>(0xFFFF);
-          string filename = std::format("map{:08X}.{}.mnmd", cmd.map_number, phosg::now());
-          string map_data = prs_decompress(msg.data.data() + sizeof(cmd), msg.data.size() - sizeof(cmd));
+          std::string filename = std::format("map{:08X}.{}.mnmd", cmd.map_number, phosg::now());
+          std::string map_data = prs_decompress(msg.data.data() + sizeof(cmd), msg.data.size() - sizeof(cmd));
           phosg::save_file(filename, map_data);
           if ((map_data.size() != sizeof(Episode3::MapDefinition)) &&
               (map_data.size() != sizeof(Episode3::MapDefinitionTrial))) {
@@ -1245,7 +1243,7 @@ static asio::awaitable<HandlerResult> S_6x(shared_ptr<Client> c, Channel::Messag
   co_return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
 }
 
-static asio::awaitable<HandlerResult> C_GXB_61(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> C_GXB_61(std::shared_ptr<Client> c, Channel::Message& msg) {
   bool modified = false;
   // TODO: We should check if the info board text was actually modified and return MODIFIED if so.
 
@@ -1284,7 +1282,7 @@ static asio::awaitable<HandlerResult> C_GXB_61(shared_ptr<Client> c, Channel::Me
   co_return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
 }
 
-static asio::awaitable<HandlerResult> C_GX_D9(shared_ptr<Client>, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> C_GX_D9(std::shared_ptr<Client>, Channel::Message& msg) {
   phosg::strip_trailing_zeroes(msg.data);
   msg.data = add_color(msg.data);
   msg.data.push_back(0);
@@ -1295,19 +1293,19 @@ static asio::awaitable<HandlerResult> C_GX_D9(shared_ptr<Client>, Channel::Messa
   co_return HandlerResult::MODIFIED;
 }
 
-static asio::awaitable<HandlerResult> C_B_D9(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> C_B_D9(std::shared_ptr<Client> c, Channel::Message& msg) {
   try {
     phosg::strip_trailing_zeroes(msg.data);
     if (msg.data.size() & 1) {
       msg.data.push_back(0);
     }
-    string decoded = tt_utf16_to_utf8(msg.data.data(), msg.data.size());
+    std::string decoded = tt_utf16_to_utf8(msg.data.data(), msg.data.size());
     add_color_inplace(decoded);
     msg.data = tt_utf8_to_utf16(decoded.data(), decoded.size());
     while (msg.data.size() & 3) {
       msg.data.push_back(0);
     }
-  } catch (const runtime_error& e) {
+  } catch (const std::runtime_error& e) {
     c->log.warning_f("Failed to decode and unescape D9 command: {}", e.what());
   }
   // TODO: We should check if the info board text was actually modified and return HandlerResult::FORWARD if not.
@@ -1315,16 +1313,16 @@ static asio::awaitable<HandlerResult> C_B_D9(shared_ptr<Client> c, Channel::Mess
 }
 
 template <typename T>
-static asio::awaitable<HandlerResult> S_44_A6(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_44_A6(std::shared_ptr<Client> c, Channel::Message& msg) {
   const auto& cmd = msg.check_size_t<T>();
 
-  string filename = cmd.filename.decode();
-  string output_filename;
+  std::string filename = cmd.filename.decode();
+  std::string output_filename;
   bool is_download = (msg.command == 0xA6);
   if (c->check_flag(Client::Flag::PROXY_SAVE_FILES)) {
     size_t extension_offset = filename.rfind('.');
-    string basename, extension;
-    if (extension_offset != string::npos) {
+    std::string basename, extension;
+    if (extension_offset != std::string::npos) {
       basename = filename.substr(0, extension_offset);
       extension = filename.substr(extension_offset);
       if (extension == ".bin" && is_ep3(c->version())) {
@@ -1368,15 +1366,15 @@ constexpr MessageHandler S_PG_44_A6 = &S_44_A6<S_OpenFile_PC_GC_44_A6>;
 constexpr MessageHandler S_X_44_A6 = &S_44_A6<S_OpenFile_XB_44_A6>;
 constexpr MessageHandler S_B_44_A6 = &S_44_A6<S_OpenFile_BB_44_A6>;
 
-static asio::awaitable<HandlerResult> S_13_A7(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_13_A7(std::shared_ptr<Client> c, Channel::Message& msg) {
   auto& cmd = msg.check_size_t<S_WriteFile_13_A7>();
   bool modified = false;
 
   ProxySession::SavingFile* sf = nullptr;
   try {
     sf = &c->proxy_session->saving_files.at(cmd.filename.decode());
-  } catch (const out_of_range&) {
-    string filename = cmd.filename.decode();
+  } catch (const std::out_of_range&) {
+    std::string filename = cmd.filename.decode();
     c->log.warning_f("Received data for non-open file {}", filename);
   }
   if (!sf) {
@@ -1386,7 +1384,7 @@ static asio::awaitable<HandlerResult> S_13_A7(shared_ptr<Client> c, Channel::Mes
   bool is_last_block = (cmd.data_size != 0x400);
   size_t block_offset = msg.flag * 0x400;
   size_t allowed_block_size = (block_offset < sf->total_size)
-      ? min<size_t>(sf->total_size - block_offset, 0x400)
+      ? std::min<size_t>(sf->total_size - block_offset, 0x400)
       : 0;
 
   if (cmd.data_size > allowed_block_size) {
@@ -1421,9 +1419,9 @@ static asio::awaitable<HandlerResult> S_13_A7(shared_ptr<Client> c, Channel::Mes
 
     if (!sf->is_download) {
       if (sf->basename.ends_with(".bin")) {
-        c->proxy_session->last_bin_contents = make_shared<std::string>(prs_decompress(sf->data));
+        c->proxy_session->last_bin_contents = std::make_shared<std::string>(prs_decompress(sf->data));
       } else if (sf->basename.ends_with(".dat")) {
-        c->proxy_session->last_dat_contents = make_shared<std::string>(prs_decompress(sf->data));
+        c->proxy_session->last_dat_contents = std::make_shared<std::string>(prs_decompress(sf->data));
       }
 
       if (c->proxy_session->last_bin_contents && c->proxy_session->last_dat_contents) {
@@ -1436,23 +1434,23 @@ static asio::awaitable<HandlerResult> S_13_A7(shared_ptr<Client> c, Channel::Mes
               c->version(),
               c->language());
 
-          auto map_file = make_shared<MapFile>(c->proxy_session->last_dat_contents);
+          auto map_file = std::make_shared<MapFile>(c->proxy_session->last_dat_contents);
           auto materialized_map_file = map_file->materialize_random_sections(c->proxy_session->lobby_random_seed);
 
-          array<shared_ptr<const MapFile>, NUM_VERSIONS> map_files;
+          std::array<std::shared_ptr<const MapFile>, NUM_VERSIONS> map_files;
           map_files.at(static_cast<size_t>(c->version())) = materialized_map_file;
-          auto supermap = make_shared<SuperMap>(map_files, meta.get_floor_to_area());
+          auto supermap = std::make_shared<SuperMap>(map_files, meta.get_floor_to_area());
 
-          c->proxy_session->map_state = make_shared<MapState>(
+          c->proxy_session->map_state = std::make_shared<MapState>(
               c->id,
               c->proxy_session->lobby_difficulty,
               c->proxy_session->lobby_event,
               c->proxy_session->lobby_random_seed,
               MapState::DEFAULT_RARE_ENEMIES,
-              make_shared<MT19937Generator>(c->proxy_session->lobby_random_seed),
+              std::make_shared<MT19937Generator>(c->proxy_session->lobby_random_seed),
               supermap);
 
-        } catch (const exception& e) {
+        } catch (const std::exception& e) {
           c->log.warning_f("Failed to load quest map: {}", e.what());
           c->proxy_session->map_state.reset();
         }
@@ -1468,7 +1466,7 @@ static asio::awaitable<HandlerResult> S_13_A7(shared_ptr<Client> c, Channel::Mes
   co_return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
 }
 
-static asio::awaitable<HandlerResult> S_G_B7(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_G_B7(std::shared_ptr<Client> c, Channel::Message& msg) {
   if (is_ep3(c->version())) {
     if (c->check_flag(Client::Flag::PROXY_EP3_INFINITE_MESETA_ENABLED)) {
       auto& cmd = msg.check_size_t<S_RankUpdate_Ep3_B7>();
@@ -1484,7 +1482,7 @@ static asio::awaitable<HandlerResult> S_G_B7(shared_ptr<Client> c, Channel::Mess
   }
 }
 
-static asio::awaitable<HandlerResult> S_G_B8(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_G_B8(std::shared_ptr<Client> c, Channel::Message& msg) {
   if (c->check_flag(Client::Flag::PROXY_SAVE_FILES)) {
     if (msg.data.size() < 4) {
       c->log.warning_f("Card list data size is too small; not saving file");
@@ -1498,7 +1496,7 @@ static asio::awaitable<HandlerResult> S_G_B8(shared_ptr<Client> c, Channel::Mess
       co_return HandlerResult::FORWARD;
     }
 
-    string output_filename = std::format("card-definitions.{}.mnr", phosg::now());
+    std::string output_filename = std::format("card-definitions.{}.mnr", phosg::now());
     phosg::save_file(output_filename, r.read(size));
     c->log.info_f("Wrote {} bytes to {}", size, output_filename);
   }
@@ -1510,19 +1508,19 @@ static asio::awaitable<HandlerResult> S_G_B8(shared_ptr<Client> c, Channel::Mess
   co_return is_ep3(c->version()) ? HandlerResult::FORWARD : HandlerResult::SUPPRESS;
 }
 
-static asio::awaitable<HandlerResult> S_G_B9(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_G_B9(std::shared_ptr<Client> c, Channel::Message& msg) {
   if (c->check_flag(Client::Flag::PROXY_SAVE_FILES)) {
     try {
       const auto& header = msg.check_size_t<S_UpdateMediaHeader_Ep3_B9>(0xFFFF);
 
       if (msg.data.size() - sizeof(header) < header.size) {
-        throw runtime_error("Media data size extends beyond end of command; not saving file");
+        throw std::runtime_error("Media data size extends beyond end of command; not saving file");
       }
 
-      string decompressed_data = prs_decompress(
+      std::string decompressed_data = prs_decompress(
           msg.data.data() + sizeof(header), msg.data.size() - sizeof(header));
 
-      string output_filename = std::format("media-update.{}", phosg::now());
+      std::string output_filename = std::format("media-update.{}", phosg::now());
       if (header.type == 1) {
         output_filename += ".gvm";
       } else if (header.type == 2 || header.type == 3) {
@@ -1532,7 +1530,7 @@ static asio::awaitable<HandlerResult> S_G_B9(shared_ptr<Client> c, Channel::Mess
       }
       phosg::save_file(output_filename, decompressed_data);
       c->log.info_f("Wrote {} bytes to {}", decompressed_data.size(), output_filename);
-    } catch (const exception& e) {
+    } catch (const std::exception& e) {
       c->log.warning_f("Failed to save file: {}", e.what());
     }
   }
@@ -1541,7 +1539,7 @@ static asio::awaitable<HandlerResult> S_G_B9(shared_ptr<Client> c, Channel::Mess
   co_return (c->version() == Version::GC_EP3) ? HandlerResult::FORWARD : HandlerResult::SUPPRESS;
 }
 
-static asio::awaitable<HandlerResult> C_G_B9(shared_ptr<Client> c, Channel::Message&) {
+static asio::awaitable<HandlerResult> C_G_B9(std::shared_ptr<Client> c, Channel::Message&) {
   if (c->proxy_session->suppress_next_ep3_media_update_confirmation) {
     c->proxy_session->suppress_next_ep3_media_update_confirmation = false;
     co_return HandlerResult::SUPPRESS;
@@ -1549,7 +1547,7 @@ static asio::awaitable<HandlerResult> C_G_B9(shared_ptr<Client> c, Channel::Mess
   co_return HandlerResult::FORWARD;
 }
 
-static asio::awaitable<HandlerResult> S_G_EF(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_G_EF(std::shared_ptr<Client> c, Channel::Message& msg) {
   if (is_ep3(c->version())) {
     if (c->check_flag(Client::Flag::PROXY_EP3_INFINITE_MESETA_ENABLED)) {
       auto& cmd = msg.check_size_t<S_StartCardAuction_Ep3_EF>(offsetof(S_StartCardAuction_Ep3_EF, unused), 0xFFFF);
@@ -1564,12 +1562,12 @@ static asio::awaitable<HandlerResult> S_G_EF(shared_ptr<Client> c, Channel::Mess
   }
 }
 
-static asio::awaitable<HandlerResult> S_B_EF(shared_ptr<Client>, Channel::Message&) {
+static asio::awaitable<HandlerResult> S_B_EF(std::shared_ptr<Client>, Channel::Message&) {
   // See the comments on EF in CommandFormats.hh for why we unconditionally suppress these.
   co_return HandlerResult::SUPPRESS;
 }
 
-static asio::awaitable<HandlerResult> S_G_BA(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_G_BA(std::shared_ptr<Client> c, Channel::Message& msg) {
   if (c->check_flag(Client::Flag::PROXY_EP3_INFINITE_MESETA_ENABLED)) {
     auto& cmd = msg.check_size_t<S_MesetaTransaction_Ep3_BA>();
     if (cmd.current_meseta != 1000000) {
@@ -1580,7 +1578,7 @@ static asio::awaitable<HandlerResult> S_G_BA(shared_ptr<Client> c, Channel::Mess
   co_return HandlerResult::FORWARD;
 }
 
-static void update_leader_id(shared_ptr<Client> c, uint8_t leader_id) {
+static void update_leader_id(std::shared_ptr<Client> c, uint8_t leader_id) {
   if (c->proxy_session->leader_client_id != leader_id) {
     c->proxy_session->leader_client_id = leader_id;
     c->log.info_f("Changed room leader to {:X}", c->proxy_session->leader_client_id);
@@ -1592,7 +1590,7 @@ static void update_leader_id(shared_ptr<Client> c, uint8_t leader_id) {
 }
 
 template <typename CmdT>
-static asio::awaitable<HandlerResult> S_65_67_68_EB(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_65_67_68_EB(std::shared_ptr<Client> c, Channel::Message& msg) {
   if (msg.command == 0x67) {
     c->proxy_session->clear_lobby_players(12);
     c->proxy_session->is_in_lobby = true;
@@ -1625,7 +1623,7 @@ static asio::awaitable<HandlerResult> S_65_67_68_EB(shared_ptr<Client> c, Channe
     if (index >= c->proxy_session->lobby_players.size()) {
       c->log.warning_f("Ignoring invalid player index {} at position {}", index, x);
     } else {
-      string name = escape_player_name(entry.disp.visual.name.decode(entry.inventory.language));
+      std::string name = escape_player_name(entry.disp.visual.name.decode(entry.inventory.language));
       if (c->login && (entry.lobby_data.guild_card_number == c->proxy_session->remote_guild_card_number)) {
         num_replacements++;
         if (c->login->account->account_id != c->proxy_session->remote_guild_card_number) {
@@ -1714,7 +1712,7 @@ Episode get_episode<S_JoinGame_Ep3_64>(const S_JoinGame_Ep3_64&) {
 }
 
 template <typename CmdT>
-static asio::awaitable<HandlerResult> S_64(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_64(std::shared_ptr<Client> c, Channel::Message& msg) {
   CmdT* cmd;
   S_JoinGame_Ep3_64* cmd_ep3 = nullptr;
   if ((c->sub_version >= 0x40) && is_v3(c->version())) {
@@ -1789,13 +1787,13 @@ static asio::awaitable<HandlerResult> S_64(shared_ptr<Client> c, Channel::Messag
         c->proxy_session->lobby_mode,
         c->proxy_session->lobby_difficulty,
         cmd->variations);
-    c->proxy_session->map_state = make_shared<MapState>(
+    c->proxy_session->map_state = std::make_shared<MapState>(
         c->id,
         c->proxy_session->lobby_difficulty,
         c->proxy_session->lobby_event,
         c->proxy_session->lobby_random_seed,
         MapState::DEFAULT_RARE_ENEMIES,
-        make_shared<MT19937Generator>(c->proxy_session->lobby_random_seed),
+        std::make_shared<MT19937Generator>(c->proxy_session->lobby_random_seed),
         supermaps);
   } else {
     c->proxy_session->map_state.reset();
@@ -1834,7 +1832,7 @@ constexpr MessageHandler S_G_64 = &S_64<S_JoinGame_GC_64>;
 constexpr MessageHandler S_X_64 = &S_64<S_JoinGame_XB_64>;
 constexpr MessageHandler S_B_64 = &S_64<S_JoinGame_BB_64>;
 
-static asio::awaitable<HandlerResult> S_E8(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_E8(std::shared_ptr<Client> c, Channel::Message& msg) {
   auto& cmd = msg.check_size_t<S_JoinSpectatorTeam_Ep3_E8>();
 
   c->floor = 0;
@@ -1896,7 +1894,7 @@ static asio::awaitable<HandlerResult> S_E8(shared_ptr<Client> c, Channel::Messag
   co_return modified ? HandlerResult::MODIFIED : HandlerResult::FORWARD;
 }
 
-static asio::awaitable<HandlerResult> S_AC(shared_ptr<Client> c, Channel::Message&) {
+static asio::awaitable<HandlerResult> S_AC(std::shared_ptr<Client> c, Channel::Message&) {
   if (!c->proxy_session->is_in_game) {
     co_return HandlerResult::SUPPRESS;
   } else {
@@ -1905,7 +1903,7 @@ static asio::awaitable<HandlerResult> S_AC(shared_ptr<Client> c, Channel::Messag
   }
 }
 
-static asio::awaitable<HandlerResult> S_66_69_E9(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> S_66_69_E9(std::shared_ptr<Client> c, Channel::Message& msg) {
   // Schtserv sends a large command here for unknown reasons. The client ignores the extra data, so we allow the large
   // command here.
   const auto& cmd = msg.check_size_t<S_LeaveLobby_66_69_Ep3_E9>(0xFFFF);
@@ -1914,7 +1912,7 @@ static asio::awaitable<HandlerResult> S_66_69_E9(shared_ptr<Client> c, Channel::
     c->log.warning_f("Lobby leave command references missing position");
   } else {
     auto& p = c->proxy_session->lobby_players[index];
-    string name = escape_player_name(p.name);
+    std::string name = escape_player_name(p.name);
     if (c->check_flag(Client::Flag::PROXY_PLAYER_NOTIFICATIONS_ENABLED)) {
       send_text_message_fmt(c->channel, "$C4Leave: {}/{}\n{}", index, p.guild_card_number, name);
     }
@@ -1926,7 +1924,7 @@ static asio::awaitable<HandlerResult> S_66_69_E9(shared_ptr<Client> c, Channel::
   co_return HandlerResult::FORWARD;
 }
 
-static asio::awaitable<HandlerResult> C_98(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> C_98(std::shared_ptr<Client> c, Channel::Message& msg) {
   c->floor = 0x0F;
   c->proxy_session->is_in_lobby = false;
   c->proxy_session->is_in_game = false;
@@ -1948,11 +1946,11 @@ static asio::awaitable<HandlerResult> C_98(shared_ptr<Client> c, Channel::Messag
   }
 }
 
-static asio::awaitable<HandlerResult> C_06(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> C_06(std::shared_ptr<Client> c, Channel::Message& msg) {
   if (msg.data.size() >= 0x0C) {
     const auto& cmd = msg.check_size_t<SC_TextHeader_01_06_11_B0_EE>(0xFFFF);
 
-    string text = msg.data.substr(sizeof(cmd));
+    std::string text = msg.data.substr(sizeof(cmd));
     phosg::strip_trailing_zeroes(text);
 
     uint8_t private_flags = 0;
@@ -1968,7 +1966,7 @@ static asio::awaitable<HandlerResult> C_06(shared_ptr<Client> c, Channel::Messag
       } else {
         text = tt_decode_marked(text, c->language(), false);
       }
-    } catch (const runtime_error& e) {
+    } catch (const std::runtime_error& e) {
       c->log.warning_f("Failed to decode and unescape chat text: {}", e.what());
       text.clear();
     }
@@ -2002,7 +2000,7 @@ static asio::awaitable<HandlerResult> C_06(shared_ptr<Client> c, Channel::Messag
   }
 }
 
-static asio::awaitable<HandlerResult> C_40(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> C_40(std::shared_ptr<Client> c, Channel::Message& msg) {
   bool modified = false;
   if (c->login && c->login->account->account_id != c->proxy_session->remote_guild_card_number) {
     auto& cmd = msg.check_size_t<C_GuildCardSearch_40>();
@@ -2019,7 +2017,7 @@ static asio::awaitable<HandlerResult> C_40(shared_ptr<Client> c, Channel::Messag
 }
 
 template <typename CmdT>
-static asio::awaitable<HandlerResult> C_81(shared_ptr<Client> c, Channel::Message& msg) {
+static asio::awaitable<HandlerResult> C_81(std::shared_ptr<Client> c, Channel::Message& msg) {
   auto& cmd = msg.check_size_t<CmdT>();
   if (c->login && c->login->account->account_id != c->proxy_session->remote_guild_card_number) {
     if (cmd.from_guild_card_number == c->login->account->account_id) {
@@ -2039,7 +2037,7 @@ constexpr MessageHandler C_P_81 = &C_81<SC_SimpleMail_PC_81>;
 constexpr MessageHandler C_B_81 = &C_81<SC_SimpleMail_BB_81>;
 
 template <typename SendGuildCardCmdT>
-asio::awaitable<HandlerResult> C_6x(shared_ptr<Client> c, Channel::Message& msg) {
+asio::awaitable<HandlerResult> C_6x(std::shared_ptr<Client> c, Channel::Message& msg) {
   if (msg.data.size() < 4) {
     co_return HandlerResult::FORWARD;
   }
@@ -2214,7 +2212,7 @@ constexpr MessageHandler C_G_6x = &C_6x<G_SendGuildCard_GC_6x06>;
 constexpr MessageHandler C_X_6x = &C_6x<G_SendGuildCard_XB_6x06>;
 constexpr MessageHandler C_B_6x = &C_6x<G_SendGuildCard_BB_6x06>;
 
-static asio::awaitable<HandlerResult> C_V123_A0(shared_ptr<Client> c, Channel::Message&) {
+static asio::awaitable<HandlerResult> C_V123_A0(std::shared_ptr<Client> c, Channel::Message&) {
   // A0 is sent after downloading a quest (either successfully, or by backing out of the menu), and when choosing
   // Change Ship from the lobby counter menu. We override the Change Ship action to end the proxy session, but we only
   // do so if the player is in a lobby in order to properly handle the download quest case.
@@ -2785,13 +2783,14 @@ static MessageHandler get_handler(Version version, bool from_server, uint8_t com
   const auto& handlers = from_server ? server_handlers : client_handlers;
   size_t version_index = static_cast<size_t>(version);
   if (version_index >= handlers[command].size()) {
-    throw logic_error("invalid game version on proxy server");
+    throw std::logic_error("invalid game version on proxy server");
   }
   auto ret = handlers[command][version_index];
   return ret ? ret : default_handler;
 }
 
-asio::awaitable<void> on_proxy_command(shared_ptr<Client> c, bool from_server, unique_ptr<Channel::Message> msg) {
+asio::awaitable<void> on_proxy_command(
+    std::shared_ptr<Client> c, bool from_server, std::unique_ptr<Channel::Message> msg) {
   auto fn = get_handler(c->version(), from_server, msg->command & 0xFF);
   try {
     auto res = co_await fn(c, *msg);
@@ -2803,9 +2802,9 @@ asio::awaitable<void> on_proxy_command(shared_ptr<Client> c, bool from_server, u
     } else if (res == HandlerResult::SUPPRESS) {
       c->log.info_f("The preceding command from the {} was not forwarded", from_server ? "server" : "client");
     } else {
-      throw logic_error("invalid handler result");
+      throw std::logic_error("invalid handler result");
     }
-  } catch (const exception& e) {
+  } catch (const std::exception& e) {
     c->log.error_f("Error in proxy command handler: {}", e.what());
     if (c->proxy_session && c->proxy_session->server_channel) {
       c->proxy_session->server_channel->disconnect();
@@ -2814,13 +2813,13 @@ asio::awaitable<void> on_proxy_command(shared_ptr<Client> c, bool from_server, u
 }
 
 asio::awaitable<void> handle_proxy_server_commands(
-    shared_ptr<Client> c, shared_ptr<ProxySession> ses, shared_ptr<Channel> channel) {
+    std::shared_ptr<Client> c, std::shared_ptr<ProxySession> ses, std::shared_ptr<Channel> channel) {
   std::string error_str;
   // server_channel can be changed by receiving a 19 command, hence the exception handler is inside the loop here
   while ((c->proxy_session == ses) && (ses->server_channel == channel) && channel->connected()) {
-    unique_ptr<Channel::Message> msg;
+    std::unique_ptr<Channel::Message> msg;
     try {
-      msg = make_unique<Channel::Message>(co_await channel->recv());
+      msg = std::make_unique<Channel::Message>(co_await channel->recv());
       if (c->proxy_session == ses) {
         for (size_t z = 0; z < std::min<size_t>(c->proxy_session->prev_server_command_bytes.size(), msg->data.size()); z++) {
           c->proxy_session->prev_server_command_bytes[z] = msg->data[z];
@@ -2838,7 +2837,7 @@ asio::awaitable<void> handle_proxy_server_commands(
         error_str = e.what();
       }
       channel->disconnect();
-    } catch (const exception& e) {
+    } catch (const std::exception& e) {
       c->log.info_f("Error in proxy server channel handler (command {:04X}): {}", msg ? msg->command : 0, e.what());
       error_str = e.what();
       channel->disconnect();

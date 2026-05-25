@@ -2,8 +2,6 @@
 
 #include "Text.hh"
 
-using namespace std;
-
 struct TObjectVTable {
   phosg::be_uint32_t unused_a1;
   phosg::be_uint32_t unused_a2;
@@ -24,19 +22,19 @@ struct TObject {
   phosg::be_uint32_t vtable_addr;
 } __packed_ws__(TObject, 0x1C);
 
-PSOGCObjectGraph::PSOGCObjectGraph(const string& memory_data, uint32_t root_address) {
+PSOGCObjectGraph::PSOGCObjectGraph(const std::string& memory_data, uint32_t root_address) {
   phosg::StringReader r(memory_data);
   this->root = this->parse_object_memo(r, root_address);
 }
 
-shared_ptr<PSOGCObjectGraph::VTable> PSOGCObjectGraph::parse_vtable_memo(phosg::StringReader& r, uint32_t addr) {
+std::shared_ptr<PSOGCObjectGraph::VTable> PSOGCObjectGraph::parse_vtable_memo(phosg::StringReader& r, uint32_t addr) {
   try {
     return this->all_vtables.at(addr);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
 
   const auto& vt = r.pget<TObjectVTable>(addr & 0x01FFFFFF);
-  auto ret = this->all_vtables.emplace(addr, make_shared<VTable>()).first->second;
+  auto ret = this->all_vtables.emplace(addr, std::make_shared<VTable>()).first->second;
   ret->address = addr;
   ret->destroy_addr = vt.destroy;
   ret->update_addr = vt.update;
@@ -45,16 +43,16 @@ shared_ptr<PSOGCObjectGraph::VTable> PSOGCObjectGraph::parse_vtable_memo(phosg::
   return ret;
 }
 
-shared_ptr<PSOGCObjectGraph::Object> PSOGCObjectGraph::parse_object_memo(phosg::StringReader& r, uint32_t addr) {
+std::shared_ptr<PSOGCObjectGraph::Object> PSOGCObjectGraph::parse_object_memo(phosg::StringReader& r, uint32_t addr) {
   try {
     return this->all_objects.at(addr);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
 
   const auto& obj = r.pget<TObject>(addr & 0x01FFFFFF);
-  string type_name = r.pget_cstr(obj.type_name_addr & 0x01FFFFFF);
+  std::string type_name = r.pget_cstr(obj.type_name_addr & 0x01FFFFFF);
 
-  auto ret = this->all_objects.emplace(addr, make_shared<Object>()).first->second;
+  auto ret = this->all_objects.emplace(addr, std::make_shared<Object>()).first->second;
   ret->address = addr;
   ret->flags = obj.flags;
   ret->type_name = std::move(type_name);

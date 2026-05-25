@@ -2,8 +2,6 @@
 
 #include <phosg/Strings.hh>
 
-using namespace std;
-
 phosg::PrefixedLogger channel_exceptions_log("[Channel] ", phosg::LogLevel::L_USE_DEFAULT);
 phosg::PrefixedLogger client_functions_log("[ClientFunctionIndex] ", phosg::LogLevel::L_USE_DEFAULT);
 phosg::PrefixedLogger client_log("", phosg::LogLevel::L_USE_DEFAULT);
@@ -22,9 +20,9 @@ phosg::PrefixedLogger static_game_data_log("[StaticGameData] ", phosg::LogLevel:
 static void set_log_level_from_json(
     phosg::PrefixedLogger& log, const phosg::JSON& d, const char* json_key) {
   try {
-    string name = phosg::toupper(d.at(json_key).as_string());
+    std::string name = phosg::toupper(d.at(json_key).as_string());
     log.min_level = phosg::enum_for_name<phosg::LogLevel>(name);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
 }
 

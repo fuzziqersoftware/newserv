@@ -51,7 +51,7 @@ send_again:  # while (remaining_bytes != 0)
   mov    ecx, 0x550
   mov    edx, [esp + 4]
   cmp    edx, ecx
-  cmovg  edx, ecx  # this_chunk_size = min<uint32_t>(remaining_bytes, 0x550)
+  cmovg  edx, ecx  # this_chunk_size = std::min<uint32_t>(remaining_bytes, 0x550)
   push   edx  # this_chunk_size (for after return)
   push   edx
   push   edi

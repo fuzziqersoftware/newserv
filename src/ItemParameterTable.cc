@@ -2,8 +2,6 @@
 
 #include "CommonFileFormats.hh"
 
-using namespace std;
-
 /* General notes on the ItemPMT formats:
  *
  * Sega apparently serialized the fields in this order, so we do the same in BinaryItemParameterTableT::serialize.
@@ -91,7 +89,7 @@ ServerDropMode phosg::enum_for_name<ServerDropMode>(const char* name) {
   } else if (!strcmp(name, "SERVER_DUPLICATE")) {
     return ServerDropMode::SERVER_DUPLICATE;
   } else {
-    throw runtime_error("invalid drop mode");
+    throw std::runtime_error("invalid drop mode");
   }
 }
 
@@ -109,7 +107,7 @@ const char* phosg::name_for_enum<ServerDropMode>(ServerDropMode value) {
     case ServerDropMode::SERVER_DUPLICATE:
       return "SERVER_DUPLICATE";
     default:
-      throw runtime_error("invalid drop mode");
+      throw std::runtime_error("invalid drop mode");
   }
 }
 
@@ -1027,11 +1025,11 @@ public:
           case 3:
             return this->unit_sale_divisor;
         }
-        throw runtime_error("invalid defensive item type");
+        throw std::runtime_error("invalid defensive item type");
       case 2:
         return this->mag_sale_divisor;
       default:
-        throw runtime_error("item type does not have a sale divisor");
+        throw std::runtime_error("item type does not have a sale divisor");
     }
   }
 
@@ -2088,7 +2086,7 @@ struct HeaderV4 : HeaderV3V4Base<false> {
 // Reader implementation
 
 std::set<uint32_t> ItemParameterTable::compute_all_valid_primary_identifiers() const {
-  set<uint32_t> ret;
+  std::set<uint32_t> ret;
 
   auto find_items_1d = [&](uint64_t data1, size_t position) -> size_t {
     ItemData item(data1, 0);
@@ -2096,7 +2094,7 @@ std::set<uint32_t> ItemParameterTable::compute_all_valid_primary_identifiers() c
       item.data1[position] = x;
       try {
         this->get_item_id(item);
-      } catch (const out_of_range&) {
+      } catch (const std::out_of_range&) {
         return x;
       }
       ret.emplace(item.primary_identifier());
@@ -2143,7 +2141,7 @@ ItemParameterTable::definition_for_primary_identifier(uint32_t primary_identifie
         case 3:
           return &this->get_unit(data1_2);
         default:
-          throw runtime_error("invalid primary identifier");
+          throw std::runtime_error("invalid primary identifier");
       }
     case 2:
       return &this->get_mag(data1_1);
@@ -2152,7 +2150,7 @@ ItemParameterTable::definition_for_primary_identifier(uint32_t primary_identifie
       // 0302XXYY here
       return &this->get_tool(data1_1, data1_2);
     default:
-      throw runtime_error("invalid primary identifier");
+      throw std::runtime_error("invalid primary identifier");
   }
 }
 
@@ -2166,7 +2164,7 @@ uint32_t ItemParameterTable::get_item_id(const ItemData& item) const {
       } else if ((item.data1[1] == 1) || (item.data1[1] == 2)) {
         return this->get_armor_or_shield(item.data1[1], item.data1[2]).id;
       }
-      throw runtime_error("invalid item");
+      throw std::runtime_error("invalid item");
     case 2:
       return this->get_mag(item.data1[1]).id;
     case 3:
@@ -2175,11 +2173,11 @@ uint32_t ItemParameterTable::get_item_id(const ItemData& item) const {
       } else {
         return this->get_tool(item.data1[1], item.data1[2]).id;
       }
-      throw logic_error("this should be impossible");
+      throw std::logic_error("this should be impossible");
     case 4:
-      throw runtime_error("item is meseta and therefore has no definition");
+      throw std::runtime_error("item is meseta and therefore has no definition");
     default:
-      throw runtime_error("invalid item");
+      throw std::runtime_error("invalid item");
   }
 }
 
@@ -2193,7 +2191,7 @@ uint32_t ItemParameterTable::get_item_team_points(const ItemData& item) const {
       } else if ((item.data1[1] == 1) || (item.data1[1] == 2)) {
         return this->get_armor_or_shield(item.data1[1], item.data1[2]).team_points;
       }
-      throw runtime_error("invalid item");
+      throw std::runtime_error("invalid item");
     case 2:
       return this->get_mag(item.data1[1]).team_points;
     case 3:
@@ -2202,11 +2200,11 @@ uint32_t ItemParameterTable::get_item_team_points(const ItemData& item) const {
       } else {
         return this->get_tool(item.data1[1], item.data1[2]).team_points;
       }
-      throw logic_error("this should be impossible");
+      throw std::logic_error("this should be impossible");
     case 4:
-      throw runtime_error("item is meseta and therefore has no definition");
+      throw std::runtime_error("item is meseta and therefore has no definition");
     default:
-      throw runtime_error("invalid item");
+      throw std::runtime_error("invalid item");
   }
 }
 
@@ -2249,7 +2247,7 @@ uint8_t ItemParameterTable::get_item_adjusted_stars(const ItemData& item, bool i
       }
     }
   }
-  return min<uint8_t>(ret, 12);
+  return std::min<uint8_t>(ret, 12);
 }
 
 std::string ItemParameterTable::get_star_value_table() const {
@@ -2288,7 +2286,7 @@ std::string ItemParameterTable::get_shield_stat_boost_index_table() const {
 bool ItemParameterTable::is_item_rare(const ItemData& item) const {
   try {
     return (this->get_item_base_stars(item) >= 9);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     return false;
   }
 }
@@ -2317,8 +2315,8 @@ const std::vector<ItemParameterTable::ItemCombination>& ItemParameterTable::all_
   try {
     return this->item_combinations_index().at(item_code_to_u32(
         used_item.data1[0], used_item.data1[1], used_item.data1[2]));
-  } catch (const out_of_range&) {
-    static const vector<ItemCombination> ret;
+  } catch (const std::out_of_range&) {
+    static const std::vector<ItemCombination> ret;
     return ret;
   }
 }
@@ -2332,7 +2330,7 @@ const ItemParameterTable::ItemCombination& ItemParameterTable::get_item_combinat
       return def;
     }
   }
-  throw out_of_range("no item combination applies");
+  throw std::out_of_range("no item combination applies");
 }
 
 size_t ItemParameterTable::price_for_item(const ItemData& item) const {
@@ -2347,7 +2345,7 @@ size_t ItemParameterTable::price_for_item(const ItemData& item) const {
 
       float sale_divisor = this->get_sale_divisor(0, item.data1[1]);
       if (sale_divisor == 0.0) {
-        throw runtime_error("item sale divisor is zero");
+        throw std::runtime_error("item sale divisor is zero");
       }
 
       const auto& def = this->get_weapon(item.data1[1], item.data1[2]);
@@ -2380,7 +2378,7 @@ size_t ItemParameterTable::price_for_item(const ItemData& item) const {
 
       double sale_divisor = (double)this->get_sale_divisor(1, item.data1[1]);
       if (sale_divisor == 0.0) {
-        throw runtime_error("item sale divisor is zero");
+        throw std::runtime_error("item sale divisor is zero");
       }
 
       int16_t def_bonus = item.get_armor_or_shield_defense_bonus();
@@ -2406,9 +2404,9 @@ size_t ItemParameterTable::price_for_item(const ItemData& item) const {
       return item.data2d;
 
     default:
-      throw runtime_error("invalid item");
+      throw std::runtime_error("invalid item");
   }
-  throw logic_error("this should be impossible");
+  throw std::logic_error("this should be impossible");
 }
 
 template <
@@ -2442,7 +2440,7 @@ public:
   const T& indirect_lookup_2d(size_t base_offset, size_t co_index, size_t item_index) const {
     const auto& co = this->r.pget<ArrayRefT<BE>>(base_offset + sizeof(ArrayRefT<BE>) * co_index);
     if (item_index >= (co.count + HasImplicitPlaceholders)) {
-      throw out_of_range("2-D array index out of range");
+      throw std::out_of_range("2-D array index out of range");
     }
     return this->r.pget<T>(co.offset + sizeof(T) * item_index);
   }
@@ -2470,14 +2468,14 @@ public:
 
   virtual size_t num_weapons_in_class(uint8_t data1_1) const {
     if (data1_1 >= this->num_weapon_classes()) {
-      throw out_of_range("weapon ID out of range");
+      throw std::out_of_range("weapon ID out of range");
     }
     return this->indirect_lookup_2d_count(this->root->weapon_table, data1_1);
   }
 
   virtual const Weapon& get_weapon(uint8_t data1_1, uint8_t data1_2) const {
     if (data1_1 >= this->num_weapon_classes()) {
-      throw out_of_range("weapon ID out of range");
+      throw std::out_of_range("weapon ID out of range");
     }
     uint16_t key = (data1_1 << 8) | data1_2;
     auto it = this->weapons.find(key);
@@ -2490,14 +2488,14 @@ public:
 
   virtual size_t num_armors_or_shields_in_class(uint8_t data1_1) const {
     if ((data1_1 < 1) || (data1_1 > 2)) {
-      throw out_of_range("armor/shield class ID out of range");
+      throw std::out_of_range("armor/shield class ID out of range");
     }
     return this->indirect_lookup_2d_count(this->root->armor_table, data1_1 - 1) + HasImplicitPlaceholders;
   }
 
   virtual const ArmorOrShield& get_armor_or_shield(uint8_t data1_1, uint8_t data1_2) const {
     if ((data1_1 < 1) || (data1_1 > 2)) {
-      throw out_of_range("armor/shield class ID out of range");
+      throw std::out_of_range("armor/shield class ID out of range");
     }
     auto& vec = (data1_1 == 1) ? this->armors : this->shields;
     return this->add_to_vector_cache_2d_indirect<ArmorOrShieldT>(vec, this->root->armor_table, data1_1 - 1, data1_2);
@@ -2517,14 +2515,14 @@ public:
 
   virtual size_t num_tools_in_class(uint8_t data1_1) const {
     if (data1_1 >= this->num_tool_classes()) {
-      throw out_of_range("tool class ID out of range");
+      throw std::out_of_range("tool class ID out of range");
     }
     return this->indirect_lookup_2d_count(this->root->tool_table, data1_1);
   }
 
   virtual const Tool& get_tool(uint8_t data1_1, uint8_t data1_2) const {
     if (data1_1 >= this->num_tool_classes()) {
-      throw out_of_range("tool class ID out of range");
+      throw std::out_of_range("tool class ID out of range");
     }
     uint16_t key = (data1_1 << 8) | data1_2;
     auto it = this->tools.find(key);
@@ -2543,11 +2541,11 @@ public:
       const auto* defs = &this->r.pget<ToolT>(co.offset, sizeof(ToolT) * co.count);
       for (size_t y = 0; y < co.count; y++) {
         if (defs[y].base.id == id) {
-          return make_pair(z, y);
+          return std::make_pair(z, y);
         }
       }
     }
-    throw out_of_range(std::format("invalid tool class {:08X}", id));
+    throw std::out_of_range(std::format("invalid tool class {:08X}", id));
   }
 
   virtual size_t num_mags() const {
@@ -2636,10 +2634,10 @@ public:
 
   virtual const MagFeedResult& get_mag_feed_result(uint8_t table_index, uint8_t item_index) const {
     if (table_index >= 8) {
-      throw out_of_range("invalid mag feed table index");
+      throw std::out_of_range("invalid mag feed table index");
     }
     if (item_index >= 11) {
-      throw out_of_range("invalid mag feed item index");
+      throw std::out_of_range("invalid mag feed item index");
     }
     const auto& table_offsets = this->r.pget<MagFeedResultsListOffsetsT<BE>>(this->root->mag_feed_table);
     return this->r.pget<MagFeedResultsList>(table_offsets[table_index])[item_index];
@@ -2681,7 +2679,7 @@ public:
   virtual const Special& get_special(uint8_t special) const {
     special &= 0x3F;
     if (special >= this->num_specials()) {
-      throw out_of_range("invalid special index");
+      throw std::out_of_range("invalid special index");
     }
     while (this->specials.size() <= special) {
       this->specials.emplace_back(this->r.pget<SpecialT<BE>>(
@@ -2772,10 +2770,10 @@ public:
 
   virtual uint8_t get_max_tech_level(uint8_t char_class, uint8_t tech_num) const {
     if (char_class >= 12) {
-      throw out_of_range("invalid character class");
+      throw std::out_of_range("invalid character class");
     }
     if (tech_num >= 19) {
-      throw out_of_range("invalid technique number");
+      throw std::out_of_range("invalid technique number");
     }
     if constexpr (requires { this->root->max_tech_level_table; }) {
       return r.pget_u8(this->root->max_tech_level_table + tech_num * 12 + char_class);
@@ -2862,13 +2860,13 @@ public:
     if constexpr (requires { this->root->unwrap_table; }) {
       const auto& co = this->r.pget<ArrayRefT<BE>>(this->root->unwrap_table);
       if (event_number >= co.count) {
-        throw out_of_range("invalid event number");
+        throw std::out_of_range("invalid event number");
       }
       const auto& event_co = this->r.pget<ArrayRefT<BE>>(co.offset + sizeof(ArrayRefT<BE>) * event_number);
       const auto* defs = &this->r.pget<EventItem>(event_co.offset, event_co.count * sizeof(EventItem));
-      return make_pair(defs, event_co.count);
+      return std::make_pair(defs, event_co.count);
     } else {
-      return make_pair(nullptr, 0);
+      return std::make_pair(nullptr, 0);
     }
   }
 

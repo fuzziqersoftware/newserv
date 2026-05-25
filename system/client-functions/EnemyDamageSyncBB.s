@@ -58,7 +58,7 @@ handle_6xE4_start:  # (G_6xE4* cmd @ [esp + 4]) -> void
   cmp       ecx, edx
   cmovl     ecx, edx
   push      ecx
-  fild      st0, dword [esp]  # current_hp = static_cast<float>(max<int32_t>(cmd->max_hp - st.total_damage, 0))
+  fild      st0, dword [esp]  # current_hp = static_cast<float>(std::max<int32_t>(cmd->max_hp - st.total_damage, 0))
   fld       st0, dword [ebx + 0x0C]
   fmulp     st1, st0
   fistp     dword [esp], st0
@@ -68,7 +68,7 @@ handle_6xE4_start:  # (G_6xE4* cmd @ [esp + 4]) -> void
   inc       edx
   cmp       ecx, edx
   cmovl     ecx, edx
-  mov       [ebx + 0x04], cx  # cmd->hit_amount = min<int32_t>(1, adjusted_hit_amount)
+  mov       [ebx + 0x04], cx  # cmd->hit_amount = std::min<int32_t>(1, adjusted_hit_amount)
 handle_6xE4_not_proportional:
 
   movzx     edx, word [eax + 0x06]  # st.total_damage

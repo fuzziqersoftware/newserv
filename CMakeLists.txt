@@ -81,7 +81,6 @@ set(SOURCES
     src/Episode3/RulerServer.cc
     src/Episode3/Server.cc
     src/Episode3/Tournament.cc
-    src/FileContentsCache.cc
     src/GameServer.cc
     src/GSLArchive.cc
     src/HTTPServer.cc

@@ -4,8 +4,6 @@
 
 #include <phosg/Strings.hh>
 
-using namespace std;
-
 static inline uint16_t collapse_checksum(uint32_t sum) {
   // It's impossible for this to be necessary more than twice: the first addition can carry out at most a single bit.
   sum = (sum & 0xFFFF) + (sum >> 16);
@@ -65,13 +63,13 @@ FrameInfo::FrameInfo(LinkType link_type, const void* header_start, size_t size)
       break;
 
     default:
-      throw logic_error("invalid link type");
+      throw std::logic_error("invalid link type");
   }
 
   // Parse inner protocol headers
   switch (proto) {
     case Protocol::NONE:
-      throw runtime_error("unknown protocol");
+      throw std::runtime_error("unknown protocol");
     case Protocol::LCP:
       this->payload_size -= sizeof(LCPHeader);
       this->lcp = &r.get<LCPHeader>();
@@ -87,7 +85,7 @@ FrameInfo::FrameInfo(LinkType link_type, const void* header_start, size_t size)
     case Protocol::IPV4:
       this->ipv4 = &r.get<IPv4Header>();
       if (this->payload_size < this->ipv4->size) {
-        throw invalid_argument("ipv4 header specifies size larger than frame");
+        throw std::invalid_argument("ipv4 header specifies size larger than frame");
       }
       this->payload_size = this->ipv4->size - sizeof(IPv4Header);
 
@@ -95,7 +93,7 @@ FrameInfo::FrameInfo(LinkType link_type, const void* header_start, size_t size)
         this->tcp = &r.get<TCPHeader>();
         size_t tcp_header_size = (this->tcp->flags >> 12) * 4;
         if (tcp_header_size < sizeof(TCPHeader) || tcp_header_size > this->payload_size) {
-          throw invalid_argument("frame is too small for tcp4 header with options");
+          throw std::invalid_argument("frame is too small for tcp4 header with options");
         }
         this->tcp_options_size = tcp_header_size - sizeof(TCPHeader);
         this->payload_size -= tcp_header_size;
@@ -115,12 +113,12 @@ FrameInfo::FrameInfo(LinkType link_type, const void* header_start, size_t size)
   this->payload = r.getv(this->payload_size);
 }
 
-string FrameInfo::header_str() const {
+std::string FrameInfo::header_str() const {
   if (!this->ether && !this->hdlc) {
     return "<invalid-frame-info>";
   }
 
-  string ret;
+  std::string ret;
   if (this->ether) {
     ret = std::format(
         "ETHER:{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}->{:02X}{:02X}{:02X}{:02X}{:02X}{:02X}",
@@ -187,10 +185,10 @@ string FrameInfo::header_str() const {
 
 void FrameInfo::truncate(size_t new_total_size) {
   if (new_total_size > this->total_size) {
-    throw logic_error("truncate call expands frame size");
+    throw std::logic_error("truncate call expands frame size");
   }
   if (new_total_size < this->payload_size) {
-    throw logic_error("truncate call destroys part of header");
+    throw std::logic_error("truncate call destroys part of header");
   }
   size_t delta_bytes = this->total_size - new_total_size;
   this->total_size -= delta_bytes;
@@ -222,7 +220,7 @@ uint16_t FrameInfo::computed_ipv4_header_checksum(const IPv4Header& ipv4) {
 
 uint16_t FrameInfo::computed_ipv4_header_checksum() const {
   if (!this->ipv4) {
-    throw logic_error("cannot compute ipv4 header checksum for non-ipv4 frame");
+    throw std::logic_error("cannot compute ipv4 header checksum for non-ipv4 frame");
   }
   return this->computed_ipv4_header_checksum(*this->ipv4);
 }
@@ -252,10 +250,10 @@ uint16_t FrameInfo::computed_udp4_checksum(
 
 uint16_t FrameInfo::computed_udp4_checksum() const {
   if (!this->ipv4) {
-    throw logic_error("cannot compute udp header checksum for non-ipv4 frame");
+    throw std::logic_error("cannot compute udp header checksum for non-ipv4 frame");
   }
   if (!this->udp) {
-    throw logic_error("cannot compute udp header checksum for non-udp frame");
+    throw std::logic_error("cannot compute udp header checksum for non-udp frame");
   }
   return this->computed_udp4_checksum(
       *this->ipv4, *this->udp, this->payload, this->payload_size);
@@ -293,10 +291,10 @@ uint16_t FrameInfo::computed_tcp4_checksum(
 
 uint16_t FrameInfo::computed_tcp4_checksum() const {
   if (!this->ipv4) {
-    throw logic_error("cannot compute tcp header checksum for non-ipv4 frame");
+    throw std::logic_error("cannot compute tcp header checksum for non-ipv4 frame");
   }
   if (!this->tcp) {
-    throw logic_error("cannot compute tcp header checksum for non-tcp frame");
+    throw std::logic_error("cannot compute tcp header checksum for non-tcp frame");
   }
   return this->computed_tcp4_checksum(
       *this->ipv4, *this->tcp, this->tcp + 1,
@@ -317,7 +315,7 @@ uint16_t FrameInfo::computed_hdlc_checksum(const void* vdata, size_t size) {
 
 uint16_t FrameInfo::computed_hdlc_checksum() const {
   if (!this->hdlc) {
-    throw logic_error("cannot compute HDLC checksum for non-HDLC frame");
+    throw std::logic_error("cannot compute HDLC checksum for non-HDLC frame");
   }
   return this->computed_hdlc_checksum(&this->hdlc->address, this->total_size - 4);
 }

@@ -9,8 +9,6 @@
 #include <stdexcept>
 #include <string>
 
-using namespace std;
-
 RandomGenerator::RandomGenerator(uint32_t seed) : initial_seed(seed) {}
 
 DisabledRandomGenerator::DisabledRandomGenerator() : RandomGenerator(0) {}
@@ -62,7 +60,7 @@ void PSOLFGEncryption::encrypt_big_endian_minus(void* vdata, size_t size) {
 
 void PSOLFGEncryption::encrypt_both_endian(void* le_vdata, void* be_vdata, size_t size) {
   if (size & 3) {
-    throw invalid_argument("size must be a multiple of 4");
+    throw std::invalid_argument("size must be a multiple of 4");
   }
   size >>= 2;
 
@@ -185,7 +183,7 @@ PSOBBEncryption::PSOBBEncryption(const KeyFile& key, const void* original_seed, 
 void PSOBBEncryption::encrypt(void* vdata, size_t size) {
   if (this->state.subtype == Subtype::TFS1) {
     if (size & 7) {
-      throw invalid_argument("size must be a multiple of 8");
+      throw std::invalid_argument("size must be a multiple of 8");
     }
 
     le_uint32_t* dwords = reinterpret_cast<le_uint32_t*>(vdata);
@@ -212,7 +210,7 @@ void PSOBBEncryption::encrypt(void* vdata, size_t size) {
 
   } else if (this->state.subtype == Subtype::JSD1) {
     if (size & 1) {
-      throw invalid_argument("size must be a multiple of 2");
+      throw std::invalid_argument("size must be a multiple of 2");
     }
     uint8_t* bytes = reinterpret_cast<uint8_t*>(vdata);
     for (size_t z = 0; z < size; z++) {
@@ -230,7 +228,7 @@ void PSOBBEncryption::encrypt(void* vdata, size_t size) {
 
   } else { // STANDARD or MOCB1
     if (size & 7) {
-      throw invalid_argument("size must be a multiple of 8");
+      throw std::invalid_argument("size must be a multiple of 8");
     }
 
     size_t num_dwords = size >> 2;
@@ -274,7 +272,7 @@ void PSOBBEncryption::encrypt(void* vdata, size_t size) {
 void PSOBBEncryption::decrypt(void* vdata, size_t size) {
   if (this->state.subtype == Subtype::TFS1) {
     if (size & 7) {
-      throw invalid_argument("size must be a multiple of 8");
+      throw std::invalid_argument("size must be a multiple of 8");
     }
 
     le_uint32_t* dwords = reinterpret_cast<le_uint32_t*>(vdata);
@@ -301,7 +299,7 @@ void PSOBBEncryption::decrypt(void* vdata, size_t size) {
 
   } else if (this->state.subtype == Subtype::JSD1) {
     if (size & 1) {
-      throw invalid_argument("size must be a multiple of 2");
+      throw std::invalid_argument("size must be a multiple of 2");
     }
     uint8_t* bytes = reinterpret_cast<uint8_t*>(vdata);
     for (size_t z = 0; z < size; z += 2) {
@@ -318,7 +316,7 @@ void PSOBBEncryption::decrypt(void* vdata, size_t size) {
 
   } else { // STANDARD or MOCB1
     if (size & 7) {
-      throw invalid_argument("size must be a multiple of 8");
+      throw std::invalid_argument("size must be a multiple of 8");
     }
     size_t num_dwords = size >> 2;
     le_uint32_t* dwords = reinterpret_cast<le_uint32_t*>(vdata);
@@ -385,7 +383,7 @@ void PSOBBEncryption::tfs1_scramble(uint32_t* out1, uint32_t* out2) const {
 void PSOBBEncryption::apply_seed(const void* original_seed, size_t seed_size) {
   // Note: This part is done in the 03 command handler in the BB client, and isn't actually part of the encryption
   // library. (Why did they do this?)
-  string seed;
+  std::string seed;
   const uint8_t* original_seed_data = reinterpret_cast<const uint8_t*>(original_seed);
   for (size_t x = 0; x < seed_size; x += 3) {
     seed.push_back(original_seed_data[x] ^ 0x19);
@@ -431,7 +429,7 @@ void PSOBBEncryption::apply_seed(const void* original_seed, size_t seed_size) {
 
   } else { // STANDARD or MOCB1 (they share most of their logic)
     if (seed_size % 3) {
-      throw invalid_argument("seed size must be divisible by 3");
+      throw std::invalid_argument("seed size must be divisible by 3");
     }
 
     if (this->state.subtype == Subtype::MOCB1) {
@@ -641,27 +639,27 @@ PSOV2OrV3DetectorEncryption::PSOV2OrV3DetectorEncryption(
 void PSOV2OrV3DetectorEncryption::encrypt(void* data, size_t size) {
   if (!this->active_crypt) {
     if (size != 4) {
-      throw logic_error("initial detector decrypt size must be 4");
+      throw std::logic_error("initial detector decrypt size must be 4");
     }
 
     le_uint32_t encrypted = *reinterpret_cast<le_uint32_t*>(data);
 
     le_uint32_t decrypted_v2 = encrypted;
-    auto v2_crypt = make_unique<PSOV2Encryption>(this->key);
+    auto v2_crypt = std::make_unique<PSOV2Encryption>(this->key);
     v2_crypt->decrypt(&decrypted_v2, sizeof(decrypted_v2));
 
     le_uint32_t decrypted_v3 = encrypted;
-    auto v3_crypt = make_unique<PSOV3Encryption>(this->key);
+    auto v3_crypt = std::make_unique<PSOV3Encryption>(this->key);
     v3_crypt->decrypt(&decrypted_v3, sizeof(decrypted_v3));
 
     bool v2_match = this->v2_matches.count(decrypted_v2);
     bool v3_match = this->v3_matches.count(decrypted_v3);
     if (!v2_match && !v3_match) {
-      throw runtime_error(std::format(
+      throw std::runtime_error(std::format(
           "unable to determine crypt version (input={:08X}, v2={:08X}, v3={:08X})",
           encrypted, decrypted_v2, decrypted_v3));
     } else if (v2_match && v3_match) {
-      throw runtime_error(std::format("ambiguous crypt version (v2={:08X}, v3={:08X})", decrypted_v2, decrypted_v3));
+      throw std::runtime_error(std::format("ambiguous crypt version (v2={:08X}, v3={:08X})", decrypted_v2, decrypted_v3));
     } else if (v2_match) {
       this->active_crypt = std::move(v2_crypt);
       *reinterpret_cast<le_uint32_t*>(data) = decrypted_v2;
@@ -676,7 +674,7 @@ void PSOV2OrV3DetectorEncryption::encrypt(void* data, size_t size) {
 
 PSOEncryption::Type PSOV2OrV3DetectorEncryption::type() const {
   if (!this->active_crypt) {
-    throw logic_error("detector encryption state is indeterminate");
+    throw std::logic_error("detector encryption state is indeterminate");
   }
   return this->active_crypt->type();
 }
@@ -689,11 +687,11 @@ void PSOV2OrV3ImitatorEncryption::encrypt(void* data, size_t size) {
   if (!this->active_crypt) {
     auto t = this->detector_crypt->type();
     if (t == Type::V2) {
-      this->active_crypt = make_shared<PSOV2Encryption>(this->key);
+      this->active_crypt = std::make_shared<PSOV2Encryption>(this->key);
     } else if (t == Type::V3) {
-      this->active_crypt = make_shared<PSOV3Encryption>(this->key);
+      this->active_crypt = std::make_shared<PSOV3Encryption>(this->key);
     } else {
-      throw logic_error("detector crypt is not V2 or V3");
+      throw std::logic_error("detector crypt is not V2 or V3");
     }
   }
   this->active_crypt->encrypt(data, size);
@@ -707,8 +705,8 @@ PSOEncryption::Type PSOV2OrV3ImitatorEncryption::type() const {
 }
 
 PSOBBMultiKeyDetectorEncryption::PSOBBMultiKeyDetectorEncryption(
-    const vector<shared_ptr<const PSOBBEncryption::KeyFile>>& possible_keys,
-    const unordered_set<string>& expected_first_data,
+    const std::vector<std::shared_ptr<const PSOBBEncryption::KeyFile>>& possible_keys,
+    const std::unordered_set<std::string>& expected_first_data,
     const void* seed,
     size_t seed_size)
     : possible_keys(possible_keys),
@@ -717,7 +715,7 @@ PSOBBMultiKeyDetectorEncryption::PSOBBMultiKeyDetectorEncryption(
 
 void PSOBBMultiKeyDetectorEncryption::encrypt(void* data, size_t size) {
   if (!this->active_crypt.get()) {
-    throw logic_error("PSOBB multi-key encryption requires client input first");
+    throw std::logic_error("PSOBB multi-key encryption requires client input first");
   }
   this->active_crypt->encrypt(data, size);
 }
@@ -729,13 +727,13 @@ void PSOBBMultiKeyDetectorEncryption::decrypt(void* data, size_t size) {
   }
 
   if (size != 8) {
-    throw logic_error("initial decryption size does not match expected first data size");
+    throw std::logic_error("initial decryption size does not match expected first data size");
   }
 
   for (const auto& key : this->possible_keys) {
     this->active_key = key;
-    this->active_crypt = make_shared<PSOBBEncryption>(*this->active_key, this->seed.data(), this->seed.size());
-    string test_data(reinterpret_cast<const char*>(data), size);
+    this->active_crypt = std::make_shared<PSOBBEncryption>(*this->active_key, this->seed.data(), this->seed.size());
+    std::string test_data(reinterpret_cast<const char*>(data), size);
     this->active_crypt->decrypt(test_data.data(), test_data.size());
     if (this->expected_first_data.count(test_data)) {
       memcpy(data, test_data.data(), size);
@@ -744,7 +742,7 @@ void PSOBBMultiKeyDetectorEncryption::decrypt(void* data, size_t size) {
     this->active_key.reset();
     this->active_crypt.reset();
   }
-  throw runtime_error("none of the registered private keys are valid for this client");
+  throw std::runtime_error("none of the registered private keys are valid for this client");
 }
 
 PSOEncryption::Type PSOBBMultiKeyDetectorEncryption::type() const {
@@ -752,7 +750,7 @@ PSOEncryption::Type PSOBBMultiKeyDetectorEncryption::type() const {
 }
 
 PSOBBMultiKeyImitatorEncryption::PSOBBMultiKeyImitatorEncryption(
-    shared_ptr<const PSOBBMultiKeyDetectorEncryption> detector_crypt,
+    std::shared_ptr<const PSOBBMultiKeyDetectorEncryption> detector_crypt,
     const void* seed,
     size_t seed_size,
     bool jsd1_use_detector_seed)
@@ -772,19 +770,19 @@ PSOEncryption::Type PSOBBMultiKeyImitatorEncryption::type() const {
   return Type::BB;
 }
 
-shared_ptr<PSOBBEncryption> PSOBBMultiKeyImitatorEncryption::ensure_crypt() {
+std::shared_ptr<PSOBBEncryption> PSOBBMultiKeyImitatorEncryption::ensure_crypt() {
   if (!this->active_crypt.get()) {
     auto key = this->detector_crypt->get_active_key();
     if (!key.get()) {
-      throw logic_error("server crypt cannot be initialized because client crypt is not ready");
+      throw std::logic_error("server crypt cannot be initialized because client crypt is not ready");
     }
     // Hack: JSD1 uses the client seed for both ends of the connection and ignores the server seed (though each end has
     // its own state after that). To handle this, we use the other crypt's seed if the type is JSD1.
     if ((key->subtype == PSOBBEncryption::Subtype::JSD1) && this->jsd1_use_detector_seed) {
       const auto& detector_seed = this->detector_crypt->get_seed();
-      this->active_crypt = make_shared<PSOBBEncryption>(*key, detector_seed.data(), detector_seed.size());
+      this->active_crypt = std::make_shared<PSOBBEncryption>(*key, detector_seed.data(), detector_seed.size());
     } else {
-      this->active_crypt = make_shared<PSOBBEncryption>(*key, this->seed.data(), this->seed.size());
+      this->active_crypt = std::make_shared<PSOBBEncryption>(*key, this->seed.data(), this->seed.size());
     }
   }
   return this->active_crypt;
@@ -836,7 +834,7 @@ static uint8_t count_one_bits(uint16_t v) {
 }
 
 uint32_t encrypt_challenge_time(uint16_t value) {
-  vector<uint8_t> available_bits({0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
+  std::vector<uint8_t> available_bits({0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15});
 
   uint16_t mask = 0;
   uint8_t num_one_bits = (phosg::random_object<uint8_t>() % 9) + 4; // Range [4, 12]
@@ -856,8 +854,8 @@ uint16_t decrypt_challenge_time(uint32_t value) {
   return ((mask_one_bits < 4) || (mask_one_bits > 12)) ? 0xFFFF : ((mask ^ value) & 0xFFFF);
 }
 
-string decrypt_v2_registry_value(const void* data, size_t size) {
-  string ret(reinterpret_cast<const char*>(data), size);
+std::string decrypt_v2_registry_value(const void* data, size_t size) {
+  std::string ret(reinterpret_cast<const char*>(data), size);
   PSOV2Encryption crypt(0x66);
   for (size_t z = 0; z < size; z++) {
     ret[z] ^= (crypt.next() & 0x7F);

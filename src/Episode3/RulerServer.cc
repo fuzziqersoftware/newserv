@@ -5,20 +5,17 @@
 #include "DataIndexes.hh"
 #include "Server.hh"
 
-using namespace std;
-
 namespace Episode3 {
 
 void compute_effective_range(
     parray<uint8_t, 9 * 9>& ret,
-    shared_ptr<const CardIndex> card_index,
+    std::shared_ptr<const CardIndex> card_index,
     uint16_t card_id,
     const Location& loc,
-    shared_ptr<const MapAndRulesState> map_and_rules,
+    std::shared_ptr<const MapAndRulesState> map_and_rules,
     phosg::PrefixedLogger* log) {
   if (log && log->should_log(phosg::LogLevel::L_DEBUG)) {
-    string loc_str = loc.str();
-    log->debug_f("compute_effective_range: card_id=#{:04X}, loc={}", card_id, loc_str);
+    log->debug_f("compute_effective_range: card_id=#{:04X}, loc={}", card_id, loc.str());
     log->debug_f("compute_effective_range: map_and_rules->map:");
     map_and_rules->map.print(stderr);
   }
@@ -28,10 +25,10 @@ void compute_effective_range(
   if (card_id == 0xFFFE) { // Heavy Fog: one tile directly in front
     range_def[3] = 0x00000100;
   } else {
-    shared_ptr<const CardIndex::CardEntry> ce;
+    std::shared_ptr<const CardIndex::CardEntry> ce;
     try {
       ce = card_index->definition_for_id(card_id);
-    } catch (const out_of_range&) {
+    } catch (const std::out_of_range&) {
       return;
     }
     for (size_t z = 0; z < 6; z++) {
@@ -95,7 +92,7 @@ void compute_effective_range(
               up_y = 9 - y - 1;
               break;
             default:
-              throw logic_error("invalid direction");
+              throw std::logic_error("invalid direction");
           }
           ret[y * 9 + x] = decoded_range[up_y * 9 + up_x];
           if (log) {
@@ -117,9 +114,9 @@ void compute_effective_range(
 }
 
 bool card_linkage_is_valid(
-    shared_ptr<const CardIndex::CardEntry> right_ce,
-    shared_ptr<const CardIndex::CardEntry> left_ce,
-    shared_ptr<const CardIndex::CardEntry> sc_ce,
+    std::shared_ptr<const CardIndex::CardEntry> right_ce,
+    std::shared_ptr<const CardIndex::CardEntry> left_ce,
+    std::shared_ptr<const CardIndex::CardEntry> sc_ce,
     bool has_permission_effect) {
   if (!right_ce) {
     return false;
@@ -173,31 +170,27 @@ bool card_linkage_is_valid(
   return false;
 }
 
-RulerServer::RulerServer(shared_ptr<Server> server)
-    : w_server(server),
-      team_id_for_client_id(0xFF),
-      error_code1(0),
-      error_code2(0),
-      error_code3(0) {}
+RulerServer::RulerServer(std::shared_ptr<Server> server)
+    : w_server(server), team_id_for_client_id(0xFF), error_code1(0), error_code2(0), error_code3(0) {}
 
-shared_ptr<Server> RulerServer::server() {
+std::shared_ptr<Server> RulerServer::server() {
   auto s = this->w_server.lock();
   if (!s) {
-    throw runtime_error("server is deleted");
+    throw std::runtime_error("server is deleted");
   }
   return s;
 }
 
-shared_ptr<const Server> RulerServer::server() const {
+std::shared_ptr<const Server> RulerServer::server() const {
   auto s = this->w_server.lock();
   if (!s) {
-    throw runtime_error("server is deleted");
+    throw std::runtime_error("server is deleted");
   }
   return s;
 }
 
 ActionChainWithConds* RulerServer::action_chain_with_conds_for_card_ref(uint16_t card_ref) {
-  return const_cast<ActionChainWithConds*>(as_const(*this).action_chain_with_conds_for_card_ref(card_ref));
+  return const_cast<ActionChainWithConds*>(std::as_const(*this).action_chain_with_conds_for_card_ref(card_ref));
 }
 
 const ActionChainWithConds* RulerServer::action_chain_with_conds_for_card_ref(uint16_t card_ref) const {
@@ -398,7 +391,7 @@ bool RulerServer::attack_action_has_pierce_and_not_rampage(const ActionState& pa
     last_action_card_index = z;
   }
 
-  auto check_chain = [&]() -> optional<bool> {
+  auto check_chain = [&]() -> std::optional<bool> {
     const auto* chain = this->action_chain_with_conds_for_card_ref(pa.attacker_card_ref);
     if (chain) {
       for (ssize_t cond_index = 8; cond_index >= 0; cond_index--) {
@@ -415,7 +408,7 @@ bool RulerServer::attack_action_has_pierce_and_not_rampage(const ActionState& pa
         }
       }
     }
-    return nullopt;
+    return std::nullopt;
   };
 
   if (is_nte) {
@@ -767,7 +760,7 @@ bool RulerServer::check_move_path_and_get_cost(
   if (max_dist < 1) {
     return false;
   }
-  max_dist = min<uint8_t>(max_dist, 9);
+  max_dist = std::min<uint8_t>(max_dist, 9);
 
   const auto* short_status = this->short_status_for_card_ref(card_ref);
   if (!short_status) {
@@ -1030,7 +1023,7 @@ bool RulerServer::check_usability_or_condition_apply(
       }
       break;
     case CriterionCode::HUNTER_NON_ANDROID_SC: {
-      static const unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids = {
           0x0001, // Orland
           0x0002, // Kranz
           0x0003, // Ino'lis
@@ -1059,7 +1052,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_HU_CLASS_MALE_SC: {
-      static const unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids = {
           0x0001, // Orland
           0x0113, // Teifu
           0x02AA, // H-HUmar
@@ -1070,7 +1063,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_FEMALE_SC: {
-      static const unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids = {
           0x0003, // Ino'lis
           0x0004, // Sil'fer
           0x0006, // Kylria
@@ -1094,7 +1087,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_NON_RA_CLASS_HUMAN_SC: {
-      static const unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids = {
           0x0001, // Orland
           0x0003, // Ino'lis
           0x0004, // Sil'fer
@@ -1117,7 +1110,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_HU_CLASS_ANDROID_SC: {
-      static const unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids = {
           0x0110, // Saligun
           0x0113, // Teifu
           0x02AC, // H-HUcast
@@ -1128,7 +1121,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_NON_RA_CLASS_NON_NEWMAN_SC: {
-      static const unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids = {
           0x0001, // Orland
           0x0003, // Ino'lis
           0x0110, // Saligun
@@ -1148,7 +1141,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_NON_NEWMAN_NON_FORCE_MALE_SC: {
-      static const unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids = {
           0x0001, // Orland
           0x0002, // Kranz
           0x0005, // Guykild
@@ -1166,7 +1159,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_HUNEWEARL_CLASS_SC: {
-      static const unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids = {
           0x0004, // Sil'fer
           0x02AB, // H-HUnewearl
           0x02CF, // H-HUnewearl
@@ -1174,7 +1167,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_RA_CLASS_MALE_SC: {
-      static const unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids = {
           0x0002, // Kranz
           0x0005, // Guykild
           0x02AE, // H-RAmar
@@ -1185,7 +1178,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_RA_CLASS_FEMALE_SC: {
-      static const unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids = {
           0x0006, // Kylria
           0x0114, // Stella
           0x02AF, // H-RAmarl
@@ -1196,7 +1189,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_RA_OR_FO_CLASS_FEMALE_SC: {
-      static const unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids = {
           0x0003, // Ino'lis
           0x0006, // Kylria
           0x0112, // Viviana
@@ -1213,7 +1206,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_HU_OR_RA_CLASS_HUMAN_SC: {
-      static const unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids = {
           0x0001, // Orland
           0x0002, // Kranz
           0x0004, // Sil'fer
@@ -1230,7 +1223,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_RA_CLASS_ANDROID_SC: {
-      static const unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids = {
           0x0005, // Guykild
           0x0114, // Stella
           0x02B0, // H-RAcast
@@ -1241,7 +1234,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_FO_CLASS_FEMALE_SC: {
-      static const unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids = {
           0x0003, // Ino'lis
           0x0112, // Viviana
           0x02B3, // H-FOmarl
@@ -1252,7 +1245,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_HUMAN_FEMALE_SC: {
-      static const unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids = {
           0x0003, // Ino'lis
           0x0004, // Sil'fer
           0x0006, // Kylria
@@ -1269,7 +1262,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_ANDROID_SC: {
-      static const unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids = {
           0x0005, // Guykild
           0x0110, // Saligun
           0x0113, // Teifu
@@ -1433,14 +1426,14 @@ uint16_t RulerServer::compute_attack_or_defense_costs(
         final_cost = 0;
       }
     } else {
-      final_cost = max<int16_t>(final_cost, this->hand_and_equip_states[pa.client_id]->atk_points);
+      final_cost = std::max<int16_t>(final_cost, this->hand_and_equip_states[pa.client_id]->atk_points);
     }
   }
 
   if (out_ally_cost) {
     *out_ally_cost = total_ally_cost;
   }
-  return max<int16_t>(final_cost, total_cost + assist_cost_bias);
+  return std::max<int16_t>(final_cost, total_cost + assist_cost_bias);
 }
 
 bool RulerServer::compute_effective_range_and_target_mode_for_attack(
@@ -1627,7 +1620,7 @@ bool RulerServer::defense_card_can_apply_to_attack(
 bool RulerServer::defense_card_matches_any_attack_card_top_color(const ActionState& pa) const {
   auto ce = this->definition_for_card_ref(pa.action_card_refs[0]);
   if (!ce) {
-    throw runtime_error("defense card definition is missing");
+    throw std::runtime_error("defense card definition is missing");
   }
   const auto* chain = this->action_chain_with_conds_for_card_ref(pa.original_attacker_card_ref);
   if (chain->chain.attack_action_card_ref_count < 1) {
@@ -1646,7 +1639,7 @@ bool RulerServer::defense_card_matches_any_attack_card_top_color(const ActionSta
   return false;
 }
 
-shared_ptr<const CardIndex::CardEntry> RulerServer::definition_for_card_ref(uint16_t card_ref) const {
+std::shared_ptr<const CardIndex::CardEntry> RulerServer::definition_for_card_ref(uint16_t card_ref) const {
   uint16_t card_id = this->card_id_for_card_ref(card_ref);
   if (card_id == 0xFFFF) {
     return nullptr;
@@ -1841,7 +1834,7 @@ int32_t RulerServer::error_code_for_client_setting_card(
           return -0x7E;
         }
       } else {
-        int16_t diff = max<int16_t>(summon_area_size - summon_cost, 0);
+        int16_t diff = std::max<int16_t>(summon_area_size - summon_cost, 0);
         if (x_offset > 0) {
           if (loc->x < summon_area_loc.x) {
             return -0x7E;
@@ -1860,7 +1853,7 @@ int32_t RulerServer::error_code_for_client_setting_card(
           return -0x7E;
         }
       } else {
-        int16_t diff = max<int16_t>(summon_area_size - summon_cost, 0);
+        int16_t diff = std::max<int16_t>(summon_area_size - summon_cost, 0);
         if (y_offset > 0) {
           if (loc->y < summon_area_loc.y) {
             return -0x7E;
@@ -1974,7 +1967,7 @@ bool RulerServer::flood_fill_move_path(
     Direction dirs[3] = {direction, turn_left(direction), turn_right(direction)};
     for (size_t dir_index = 0; dir_index < 3; dir_index++) {
       if (static_cast<uint8_t>(dirs[dir_index]) > 3) {
-        throw logic_error("invalid direction");
+        throw std::logic_error("invalid direction");
       }
       ret |= this->flood_fill_move_path(
           chain,
@@ -2017,7 +2010,7 @@ uint16_t RulerServer::get_ally_sc_card_ref(uint16_t card_ref) const {
   return 0xFFFF;
 }
 
-shared_ptr<const CardIndex::CardEntry> RulerServer::definition_for_card_id(uint32_t card_id) const {
+std::shared_ptr<const CardIndex::CardEntry> RulerServer::definition_for_card_id(uint32_t card_id) const {
   return this->server()->definition_for_card_id(card_id);
 }
 
@@ -2130,11 +2123,11 @@ bool RulerServer::get_creature_summon_area(uint8_t client_id, Location* out_loc,
   return true;
 }
 
-shared_ptr<HandAndEquipState> RulerServer::get_hand_and_equip_state_for_client_id(uint8_t client_id) {
+std::shared_ptr<HandAndEquipState> RulerServer::get_hand_and_equip_state_for_client_id(uint8_t client_id) {
   return (client_id < 4) ? this->hand_and_equip_states[client_id] : nullptr;
 }
 
-shared_ptr<const HandAndEquipState> RulerServer::get_hand_and_equip_state_for_client_id(uint8_t client_id) const {
+std::shared_ptr<const HandAndEquipState> RulerServer::get_hand_and_equip_state_for_client_id(uint8_t client_id) const {
   return (client_id < 4) ? this->hand_and_equip_states[client_id] : nullptr;
 }
 
@@ -2171,7 +2164,7 @@ ssize_t RulerServer::get_path_cost(
       path_length *= cond.value;
     }
   }
-  return clamp<ssize_t>(path_length + cost_penalty, 0, 99);
+  return std::clamp<ssize_t>(path_length + cost_penalty, 0, 99);
 }
 
 ActionType RulerServer::get_pending_action_type(const ActionState& pa) const {
@@ -2440,9 +2433,9 @@ bool RulerServer::is_defense_valid(const ActionState& pa) {
 }
 
 void RulerServer::link_objects(
-    shared_ptr<MapAndRulesState> map_and_rules,
-    shared_ptr<StateFlags> state_flags,
-    shared_ptr<AssistServer> assist_server) {
+    std::shared_ptr<MapAndRulesState> map_and_rules,
+    std::shared_ptr<StateFlags> state_flags,
+    std::shared_ptr<AssistServer> assist_server) {
   this->map_and_rules = map_and_rules;
   this->state_flags = state_flags;
   this->assist_server = assist_server;
@@ -2491,7 +2484,7 @@ size_t RulerServer::max_move_distance_for_card_ref(uint32_t card_ref) const {
     if (this->find_condition_on_card_ref(card_ref, ConditionType::SET_MV, &cond, nullptr, true)) {
       ret = cond.value;
     }
-    ret = max<ssize_t>(0, ret);
+    ret = std::max<ssize_t>(0, ret);
 
     size_t num_assists = this->assist_server->compute_num_assist_effects_for_client(client_id);
     bool has_stamina_effect = false;
@@ -2505,7 +2498,7 @@ size_t RulerServer::max_move_distance_for_card_ref(uint32_t card_ref) const {
       }
     }
 
-    return has_stamina_effect ? 9 : min<ssize_t>(9, ret);
+    return has_stamina_effect ? 9 : std::min<ssize_t>(9, ret);
   }
 }
 
@@ -2566,11 +2559,11 @@ void RulerServer::offsets_for_direction(
 
 void RulerServer::register_player(
     uint8_t client_id,
-    shared_ptr<HandAndEquipState> hes,
-    shared_ptr<parray<CardShortStatus, 0x10>> short_statuses,
-    shared_ptr<DeckEntry> deck_entry,
-    shared_ptr<parray<ActionChainWithConds, 9>> set_card_action_chains,
-    shared_ptr<parray<ActionMetadata, 9>> set_card_action_metadatas) {
+    std::shared_ptr<HandAndEquipState> hes,
+    std::shared_ptr<parray<CardShortStatus, 0x10>> short_statuses,
+    std::shared_ptr<DeckEntry> deck_entry,
+    std::shared_ptr<parray<ActionChainWithConds, 9>> set_card_action_chains,
+    std::shared_ptr<parray<ActionMetadata, 9>> set_card_action_metadatas) {
   this->hand_and_equip_states[client_id] = hes;
   this->short_statuses[client_id] = short_statuses;
   this->deck_entries[client_id] = deck_entry;
@@ -2656,7 +2649,7 @@ int32_t RulerServer::set_cost_for_card(uint8_t client_id, uint16_t card_ref) con
       // In NTE, Land Price is apparently 2x rather than 1.5x
       ret = is_nte ? (ret << 1) : (ret + (ret >> 1));
     } else if (eff == AssistEffect::DEFLATION) {
-      ret = max<int32_t>(0, ret - 1);
+      ret = std::max<int32_t>(0, ret - 1);
     } else if (eff == AssistEffect::INFLATION) {
       ret++;
     }

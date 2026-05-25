@@ -18,15 +18,13 @@
 #include "Compression.hh"
 #include "Loggers.hh"
 
-using namespace std;
-
-DOLFileIndex::DOLFileIndex(const string& directory) {
+DOLFileIndex::DOLFileIndex(const std::string& directory) {
   if (!std::filesystem::is_directory(directory)) {
     client_functions_log.info_f("DOL file directory is missing");
     return;
   }
 
-  auto menu = make_shared<Menu>(MenuID::PROGRAMS, "Programs");
+  auto menu = std::make_shared<Menu>(MenuID::PROGRAMS, "Programs");
   this->menu = menu;
   menu->items.emplace_back(ProgramsMenuItemID::GO_BACK, "Go back", "Return to the\nmain menu", 0);
 
@@ -43,17 +41,17 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
     if (!is_dol && !is_compressed_dol) {
       continue;
     }
-    string name = filename.substr(0, filename.size() - (is_compressed_dol ? 8 : 4));
+    std::string name = filename.substr(0, filename.size() - (is_compressed_dol ? 8 : 4));
 
     try {
-      auto dol = make_shared<File>();
+      auto dol = std::make_shared<File>();
       dol->menu_item_id = next_menu_item_id++;
       dol->name = name;
 
-      string path = directory + "/" + filename;
-      string file_data = phosg::load_file(path);
+      std::string path = directory + "/" + filename;
+      std::string file_data = phosg::load_file(path);
 
-      string description;
+      std::string description;
       if (is_compressed_dol) {
         size_t decompressed_size = prs_decompress_size(file_data);
 
@@ -66,8 +64,8 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
         }
         dol->data = std::move(w.str());
 
-        string compressed_size_str = phosg::format_size(file_data.size());
-        string decompressed_size_str = phosg::format_size(decompressed_size);
+        std::string compressed_size_str = phosg::format_size(file_data.size());
+        std::string decompressed_size_str = phosg::format_size(decompressed_size);
         client_functions_log.debug_f("Loaded compressed DOL file {} ({} -> {})",
             dol->name, compressed_size_str, decompressed_size_str);
         description = std::format("$C6{}$C7\n{}\n{} (orig)", dol->name, compressed_size_str, decompressed_size_str);
@@ -82,7 +80,7 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
         }
         dol->data = std::move(w.str());
 
-        string size_str = phosg::format_size(dol->data.size());
+        std::string size_str = phosg::format_size(dol->data.size());
         client_functions_log.debug_f("Loaded DOL file {} ({})", filename, size_str);
         description = std::format("$C6{}$C7\n{}", dol->name, size_str);
       }
@@ -90,7 +88,7 @@ DOLFileIndex::DOLFileIndex(const string& directory) {
       this->item_id_to_file.emplace_back(dol);
       menu->items.emplace_back(dol->menu_item_id, dol->name, description, MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL_RUNS_CODE);
 
-    } catch (const exception& e) {
+    } catch (const std::exception& e) {
       client_functions_log.warning_f("Failed to load DOL file {}: {}", filename, e.what());
     }
   }

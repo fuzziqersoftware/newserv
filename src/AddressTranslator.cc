@@ -14,8 +14,6 @@
 #include "Text.hh"
 #include "Types.hh"
 
-using namespace std;
-
 class AddressTranslator {
 public:
   enum class ExpandMethod {
@@ -63,7 +61,7 @@ public:
       case ExpandMethod::RAW_BOTH:
         return "RAW_BOTH";
       default:
-        throw logic_error("invalid expand method");
+        throw std::logic_error("invalid expand method");
     }
   }
 
@@ -85,7 +83,7 @@ public:
       case ExpandMethod::RAW_BOTH:
         return false;
       default:
-        throw logic_error("invalid expand method");
+        throw std::logic_error("invalid expand method");
     }
   }
 
@@ -107,46 +105,46 @@ public:
       case ExpandMethod::RAW_BOTH:
         return false;
       default:
-        throw logic_error("invalid expand method");
+        throw std::logic_error("invalid expand method");
     }
   }
 
-  AddressTranslator(const string& directory)
+  AddressTranslator(const std::string& directory)
       : log("[addr-trans] "),
         directory(directory) {
     while (this->directory.ends_with("/")) {
       this->directory.pop_back();
     }
     for (const auto& item : std::filesystem::directory_iterator(this->directory)) {
-      string filename = item.path().filename().string();
+      std::string filename = item.path().filename().string();
       if (filename.size() < 4) {
         continue;
       }
-      string name = filename.substr(0, filename.size() - 4);
-      string path = directory + "/" + filename;
+      std::string name = filename.substr(0, filename.size() - 4);
+      std::string path = directory + "/" + filename;
 
       if (filename.ends_with(".dol")) {
         ResourceDASM::DOLFile dol(path.c_str());
-        auto mem = make_shared<ResourceDASM::MemoryContext>();
+        auto mem = std::make_shared<ResourceDASM::MemoryContext>();
         dol.load_into(mem);
         this->mems.emplace(name, mem);
         this->ppc_mems.emplace(mem);
         this->log.info_f("Loaded {}", name);
       } else if (filename.ends_with(".xbe")) {
         ResourceDASM::XBEFile xbe(path.c_str());
-        auto mem = make_shared<ResourceDASM::MemoryContext>();
+        auto mem = std::make_shared<ResourceDASM::MemoryContext>();
         xbe.load_into(mem);
         this->mems.emplace(name, mem);
         this->log.info_f("Loaded {}", name);
       } else if (filename.ends_with(".exe")) {
         ResourceDASM::PEFile pe(path.c_str());
-        auto mem = make_shared<ResourceDASM::MemoryContext>();
+        auto mem = std::make_shared<ResourceDASM::MemoryContext>();
         pe.load_into(mem);
         this->mems.emplace(name, mem);
         this->log.info_f("Loaded {}", name);
       } else if (filename.ends_with(".bin")) {
-        string data = phosg::load_file(path);
-        auto mem = make_shared<ResourceDASM::MemoryContext>();
+        std::string data = phosg::load_file(path);
+        auto mem = std::make_shared<ResourceDASM::MemoryContext>();
         mem->allocate_at(0x8C010000, data.size());
         mem->memcpy(0x8C010000, data.data(), data.size());
         this->mems.emplace(name, mem);
@@ -156,10 +154,10 @@ public:
   }
   ~AddressTranslator() = default;
 
-  const string& get_source_filename() const {
+  const std::string& get_source_filename() const {
     return this->src_filename;
   }
-  void set_source_file(const string& filename) {
+  void set_source_file(const std::string& filename) {
     this->src_filename = filename;
     this->src_mem = this->mems.at(this->src_filename);
   }
@@ -178,25 +176,25 @@ public:
           uint32_t opcode = r.get_u32b();
           if ((opcode & 0xFFFF0000) == 0x3DA00000) {
             if (r13_high_found) {
-              throw runtime_error("multiple values for r13_high");
+              throw std::runtime_error("multiple values for r13_high");
             }
             r13_high_found = true;
             r13 |= (opcode << 16);
           } else if ((opcode & 0xFFFF0000) == 0x3C400000) {
             if (r2_high_found) {
-              throw runtime_error("multiple values for r2_high");
+              throw std::runtime_error("multiple values for r2_high");
             }
             r2_high_found = true;
             r2 |= (opcode << 16);
           } else if ((opcode & 0xFFFF0000) == 0x61AD0000) {
             if (r13_low_found) {
-              throw runtime_error("multiple values for r13_low");
+              throw std::runtime_error("multiple values for r13_low");
             }
             r13_low_found = true;
             r13 |= (opcode & 0xFFFF);
           } else if ((opcode & 0xFFFF0000) == 0x60420000) {
             if (r2_low_found) {
-              throw runtime_error("multiple values for r2_low");
+              throw std::runtime_error("multiple values for r2_low");
             }
             r2_low_found = true;
             r2 |= (opcode & 0xFFFF);
@@ -217,11 +215,11 @@ public:
   }
 
   struct ParseDATConstructorTableSpec {
-    string src_name;
+    std::string src_name;
     uint32_t index_addr;
     size_t num_areas;
     bool has_names;
-    vector<uint32_t> x86_constructor_calls;
+    std::vector<uint32_t> x86_constructor_calls;
 
     ParseDATConstructorTableSpec(const phosg::JSON& json) {
       this->src_name = json.at("SourceName").as_string();
@@ -233,8 +231,8 @@ public:
       }
     }
 
-    static vector<ParseDATConstructorTableSpec> from_json_list(const phosg::JSON& json) {
-      vector<ParseDATConstructorTableSpec> ret;
+    static std::vector<ParseDATConstructorTableSpec> from_json_list(const phosg::JSON& json) {
+      std::vector<ParseDATConstructorTableSpec> ret;
       for (const auto& z : json.as_list()) {
         ret.emplace_back(*z);
       }
@@ -267,25 +265,25 @@ public:
 
   // Returns {type: {constructor_addr: [(start_area, end_area), ...]}}
   template <typename EntryT>
-  map<uint32_t, map<uint32_t, vector<pair<size_t, size_t>>>> parse_dat_constructor_table_t(
-      shared_ptr<const ResourceDASM::MemoryContext>& mem, const ParseDATConstructorTableSpec& spec) {
+  std::map<uint32_t, std::map<uint32_t, std::vector<std::pair<size_t, size_t>>>> parse_dat_constructor_table_t(
+      std::shared_ptr<const ResourceDASM::MemoryContext>& mem, const ParseDATConstructorTableSpec& spec) {
     if (!mem) {
-      throw runtime_error("no file selected");
+      throw std::runtime_error("no file selected");
     }
 
     // On some of the x86 builds of the game (PCv2 and Xbox), the constructor tables aren't entirely static in the data
     // sections - some parts are written during static initialization instead. To handle this, we make a copy of the
     // immutable MemoryContext and run the static initialization functions using resource_dasm's emulator before
     // parsing the constructor table.
-    shared_ptr<const ResourceDASM::MemoryContext> effective_mem = mem;
+    std::shared_ptr<const ResourceDASM::MemoryContext> effective_mem = mem;
     if (!spec.x86_constructor_calls.empty()) {
-      auto constructed_mem = make_shared<ResourceDASM::MemoryContext>(mem->duplicate());
+      auto constructed_mem = std::make_shared<ResourceDASM::MemoryContext>(mem->duplicate());
       uint32_t esp = constructed_mem->allocate(0x1000) + 0x1000;
       for (uint32_t constructor_addr : spec.x86_constructor_calls) {
         ResourceDASM::X86Emulator emu(constructed_mem);
 
         // Uncomment for debugging
-        // auto debugger = make_shared<ResourceDASM::EmulatorDebugger<ResourceDASM::X86Emulator>>();
+        // auto debugger = std::make_shared<ResourceDASM::EmulatorDebugger<ResourceDASM::X86Emulator>>();
         // debugger->bind(emu);
         // debugger->state.mode = ResourceDASM::DebuggerMode::TRACE;
 
@@ -295,7 +293,7 @@ public:
         constructed_mem->write_u32l(esp - 4, 0xFFFFFFFF); // Return addr
         try {
           emu.execute();
-        } catch (const out_of_range&) {
+        } catch (const std::out_of_range&) {
           if (regs.eip != 0xFFFFFFFF) {
             throw;
           }
@@ -304,7 +302,7 @@ public:
       effective_mem = constructed_mem;
     }
 
-    map<uint32_t, map<uint32_t, vector<pair<size_t, size_t>>>> table;
+    std::map<uint32_t, std::map<uint32_t, std::vector<std::pair<size_t, size_t>>>> table;
 
     auto index_r = effective_mem->reader(spec.index_addr, spec.num_areas * sizeof(uint32_t));
     for (size_t area = 0; area < spec.num_areas; area++) {
@@ -322,18 +320,18 @@ public:
         if (!group.empty() && (group.back().second == (area - 1))) {
           group.back().second = area;
         } else {
-          group.emplace_back(make_pair(area, area));
+          group.emplace_back(std::make_pair(area, area));
         }
       }
       if (entries_r.eof()) {
-        throw runtime_error("did not find end-of-entries marker");
+        throw std::runtime_error("did not find end-of-entries marker");
       }
     }
 
     return table;
   }
 
-  static uint64_t area_mask_for_ranges(const vector<pair<size_t, size_t>>& ranges) {
+  static uint64_t area_mask_for_ranges(const std::vector<std::pair<size_t, size_t>>& ranges) {
     uint64_t ret = 0;
     for (const auto& [start, end] : ranges) {
       for (size_t z = start; z <= end; z++) {
@@ -344,7 +342,7 @@ public:
   }
 
   void parse_dat_constructor_table(const ParseDATConstructorTableSpec& spec) {
-    map<uint32_t, map<uint32_t, vector<pair<size_t, size_t>>>> table;
+    std::map<uint32_t, std::map<uint32_t, std::vector<std::pair<size_t, size_t>>>> table;
     auto spec_mem = this->mems.at(spec.src_name);
     if (this->ppc_mems.count(spec_mem)) {
       table = this->parse_dat_constructor_table_t<DATConstructorTableEntry<true>>(spec_mem, spec);
@@ -374,10 +372,10 @@ public:
   }
 
   void parse_dat_constructor_table_multi(
-      const vector<ParseDATConstructorTableSpec>& specs, bool is_enemies, bool print_area_masks) {
-    map<string, map<uint32_t, map<uint32_t, vector<pair<size_t, size_t>>>>> all_tables;
+      const std::vector<ParseDATConstructorTableSpec>& specs, bool is_enemies, bool print_area_masks) {
+    std::map<std::string, std::map<uint32_t, std::map<uint32_t, std::vector<std::pair<size_t, size_t>>>>> all_tables;
     for (const auto& spec : specs) {
-      map<uint32_t, map<uint32_t, vector<pair<size_t, size_t>>>> table;
+      std::map<uint32_t, std::map<uint32_t, std::vector<std::pair<size_t, size_t>>>> table;
       auto spec_mem = this->mems.at(spec.src_name);
       if (this->ppc_mems.count(spec_mem)) {
         table = this->parse_dat_constructor_table_t<DATConstructorTableEntry<true>>(spec_mem, spec);
@@ -389,14 +387,14 @@ public:
       all_tables.emplace(spec.src_name, std::move(table));
     }
 
-    map<string, size_t> version_widths;
-    map<uint32_t, map<string, string>> formatted_cells_for_type;
+    std::map<std::string, size_t> version_widths;
+    std::map<uint32_t, std::map<std::string, std::string>> formatted_cells_for_type;
     for (const auto& spec : specs) {
       const auto& table = all_tables.at(spec.src_name);
       size_t max_width = 0;
 
       for (const auto& [type, constructor_to_area_ranges] : table) {
-        string cell_data;
+        std::string cell_data;
         for (const auto& [constructor, area_ranges] : constructor_to_area_ranges) {
           if (!cell_data.empty()) {
             cell_data.push_back(' ');
@@ -417,14 +415,14 @@ public:
             }
           }
         }
-        max_width = max<size_t>(max_width, cell_data.size());
+        max_width = std::max<size_t>(max_width, cell_data.size());
         formatted_cells_for_type[type][spec.src_name] = std::move(cell_data);
       }
       version_widths[spec.src_name] = max_width;
     }
 
-    vector<string> formatted_lines;
-    string header_line = "TYPE =>";
+    std::vector<std::string> formatted_lines;
+    std::string header_line = "TYPE =>";
     for (const auto& spec : specs) {
       size_t width = version_widths.at(spec.src_name);
       header_line.push_back(' ');
@@ -436,7 +434,7 @@ public:
     header_line += " NAME";
 
     for (const auto& [type, formatted_cells] : formatted_cells_for_type) {
-      string line = std::format("{:04X} =>", type);
+      std::string line = std::format("{:04X} =>", type);
       for (const auto& spec : specs) {
         size_t width = version_widths.at(spec.src_name);
         try {
@@ -446,7 +444,7 @@ public:
           if (width > cell_data.size()) {
             line.resize(line.size() + (width - cell_data.size()), ' ');
           }
-        } catch (const out_of_range&) {
+        } catch (const std::out_of_range&) {
           line.resize(line.size() + (width + 1), ' ');
         }
       }
@@ -466,21 +464,21 @@ public:
   }
 
   uint32_t find_match(
-      shared_ptr<const ResourceDASM::MemoryContext> dest_mem,
+      std::shared_ptr<const ResourceDASM::MemoryContext> dest_mem,
       uint32_t src_addr,
       uint32_t src_size,
       ExpandMethod expand_method) const {
     bool is_ppc = this->is_ppc_expand_method(expand_method);
     bool is_ppc_data = this->is_ppc_data_expand_method(expand_method);
     if (!this->src_mem) {
-      throw runtime_error("no source file selected");
+      throw std::runtime_error("no source file selected");
     }
 
     if (src_size == 0) {
       src_size = is_ppc ? 4 : 1;
     }
 
-    pair<uint32_t, uint32_t> src_section = make_pair(0, 0);
+    std::pair<uint32_t, uint32_t> src_section = std::make_pair(0, 0);
     for (const auto& sec : this->src_mem->allocated_blocks()) {
       if (src_addr >= sec.first && src_addr + src_size <= sec.first + sec.second) {
         src_section = sec;
@@ -488,7 +486,7 @@ public:
       }
     }
     if (!src_section.second) {
-      throw runtime_error("source address not within any section");
+      throw std::runtime_error("source address not within any section");
     }
 
     const char* method_token = this->name_for_expand_method(expand_method);
@@ -570,7 +568,7 @@ public:
       if (num_matches == 1) {
         return last_match_address;
       } else if (num_matches == 0) {
-        throw runtime_error("did not find exactly one match");
+        throw std::runtime_error("did not find exactly one match");
       }
       bool can_expand_backward = false;
       bool can_expand_forward = false;
@@ -614,10 +612,10 @@ public:
           can_expand_forward = (src_bytes_available_after > match_bytes_after);
           break;
         default:
-          throw logic_error("invalid expand method");
+          throw std::logic_error("invalid expand method");
       }
       if (!can_expand_backward && !can_expand_forward) {
-        throw runtime_error("no further expansion is allowed");
+        throw std::runtime_error("no further expansion is allowed");
       }
       if (can_expand_backward) {
         match_bytes_before += (is_ppc ? 4 : 1);
@@ -626,7 +624,7 @@ public:
         match_bytes_after += (is_ppc ? 4 : 1);
       }
     }
-    throw runtime_error("scan field too long; too many matches");
+    throw std::runtime_error("scan field too long; too many matches");
   }
 
   enum class MatchType {
@@ -637,18 +635,18 @@ public:
 
   void find_all_matches(uint32_t src_addr, uint32_t src_size, MatchType type) const {
     if (!this->src_mem) {
-      throw runtime_error("no source file selected");
+      throw std::runtime_error("no source file selected");
     }
 
-    map<string, uint32_t> results;
+    std::map<std::string, uint32_t> results;
     for (const auto& it : this->mems) {
       if (it.second == this->src_mem) {
         log.info_f("({}) {:08X} (from source)", it.first, src_addr);
         results.emplace(it.first, src_addr);
 
       } else {
-        vector<future<uint32_t>> futures;
-        static const vector<ExpandMethod> ppc_methods = {
+        std::vector<std::future<uint32_t>> futures;
+        static const std::vector<ExpandMethod> ppc_methods = {
             ExpandMethod::PPC_TEXT_FORWARD,
             ExpandMethod::PPC_TEXT_FORWARD_WITH_BARRIER,
             ExpandMethod::PPC_TEXT_BACKWARD,
@@ -660,7 +658,7 @@ public:
             ExpandMethod::PPC_DATA_BACKWARD,
             ExpandMethod::PPC_DATA_BOTH,
         };
-        static const vector<ExpandMethod> ppc_text_methods = {
+        static const std::vector<ExpandMethod> ppc_text_methods = {
             ExpandMethod::PPC_TEXT_FORWARD,
             ExpandMethod::PPC_TEXT_FORWARD_WITH_BARRIER,
             ExpandMethod::PPC_TEXT_BACKWARD,
@@ -669,18 +667,18 @@ public:
             ExpandMethod::PPC_TEXT_BOTH_WITH_BARRIER,
             ExpandMethod::PPC_TEXT_BOTH_IGNORE_ORIGIN,
         };
-        static const vector<ExpandMethod> ppc_data_methods = {
+        static const std::vector<ExpandMethod> ppc_data_methods = {
             ExpandMethod::PPC_DATA_FORWARD,
             ExpandMethod::PPC_DATA_BACKWARD,
             ExpandMethod::PPC_DATA_BOTH,
         };
-        static const vector<ExpandMethod> raw_methods = {
+        static const std::vector<ExpandMethod> raw_methods = {
             ExpandMethod::RAW_FORWARD,
             ExpandMethod::RAW_BACKWARD,
             ExpandMethod::RAW_BOTH,
         };
 
-        const vector<ExpandMethod>* methods;
+        const std::vector<ExpandMethod>* methods;
         if (this->ppc_mems.count(it.second)) {
           if (type == MatchType::ANY) {
             methods = &ppc_methods;
@@ -689,7 +687,7 @@ public:
           } else if (type == MatchType::DATA) {
             methods = &ppc_data_methods;
           } else {
-            throw logic_error("invalid match type");
+            throw std::logic_error("invalid match type");
           }
         } else {
           methods = &raw_methods;
@@ -699,14 +697,14 @@ public:
           futures.emplace_back(async(&AddressTranslator::find_match, this, it.second, src_addr, src_size, methods->at(z)));
         }
 
-        unordered_set<uint32_t> match_addrs;
+        std::unordered_set<uint32_t> match_addrs;
         for (size_t z = 0; z < futures.size(); z++) {
           const char* method_name = this->name_for_expand_method(methods->at(z));
           try {
             uint32_t ret = futures[z].get();
             log.info_f("({}) ({}) {:08X}", it.first, method_name, ret);
             match_addrs.emplace(ret);
-          } catch (const exception& e) {
+          } catch (const std::exception& e) {
             log.error_f("({}) ({}) failed: {}", it.first, method_name, e.what());
           }
         }
@@ -726,12 +724,12 @@ public:
   }
 
   uint32_t find_be_to_le_data_match(
-      shared_ptr<const ResourceDASM::MemoryContext> dest_mem, uint32_t src_addr, uint32_t src_size) const {
+      std::shared_ptr<const ResourceDASM::MemoryContext> dest_mem, uint32_t src_addr, uint32_t src_size) const {
     if (src_size == 0) {
       src_size = 4;
     }
 
-    pair<uint32_t, uint32_t> src_section = make_pair(0, 0);
+    std::pair<uint32_t, uint32_t> src_section = std::make_pair(0, 0);
     for (const auto& sec : this->src_mem->allocated_blocks()) {
       if (src_addr >= sec.first && src_addr + src_size <= sec.first + sec.second) {
         src_section = sec;
@@ -739,7 +737,7 @@ public:
       }
     }
     if (!src_section.second) {
-      throw runtime_error("source address not within any section");
+      throw std::runtime_error("source address not within any section");
     }
 
     size_t src_offset = src_addr - src_section.first;
@@ -782,12 +780,12 @@ public:
       if (num_matches == 1) {
         return last_match_address;
       } else if (num_matches == 0) {
-        throw runtime_error("did not find exactly one match");
+        throw std::runtime_error("did not find exactly one match");
       }
       bool can_expand_backward = (src_bytes_available_before >= match_bytes_before + 4);
       bool can_expand_forward = (src_bytes_available_after >= match_bytes_after + 4);
       if (!can_expand_backward && !can_expand_forward) {
-        throw runtime_error("no further expansion is allowed");
+        throw std::runtime_error("no further expansion is allowed");
       }
       if (can_expand_backward) {
         match_bytes_before += 4;
@@ -796,15 +794,15 @@ public:
         match_bytes_after += 4;
       }
     }
-    throw runtime_error("scan field too long; too many matches");
+    throw std::runtime_error("scan field too long; too many matches");
   }
 
   void find_all_be_to_le_data_matches(uint32_t src_addr, uint32_t src_size) const {
     if (!this->src_mem) {
-      throw runtime_error("no source file selected");
+      throw std::runtime_error("no source file selected");
     }
 
-    map<string, uint32_t> results;
+    std::map<std::string, uint32_t> results;
     for (const auto& it : this->mems) {
       if (it.second == this->src_mem) {
         log.info_f("({}) {:08X} (from source)", it.first, src_addr);
@@ -815,7 +813,7 @@ public:
         try {
           ret = this->find_be_to_le_data_match(it.second, src_addr, src_size);
           log.info_f("({}) {:08X}", it.first, ret);
-        } catch (const exception& e) {
+        } catch (const std::exception& e) {
           log.error_f("({}) failed: {}", it.first, e.what());
         }
 
@@ -831,7 +829,7 @@ public:
     }
   }
 
-  void find_data(const string& data) const {
+  void find_data(const std::string& data) const {
     for (const auto& [name, mem] : this->mems) {
       for (const auto& [sec_addr, sec_size] : mem->allocated_blocks()) {
         uint32_t last_addr = sec_addr + sec_size - data.size();
@@ -844,10 +842,10 @@ public:
     }
   }
 
-  void handle_command(const string& command) {
+  void handle_command(const std::string& command) {
     auto tokens = phosg::split(command, ' ');
     if (tokens.empty()) {
-      throw runtime_error("no command given");
+      throw std::runtime_error("no command given");
     }
     phosg::strip_trailing_whitespace(tokens[tokens.size() - 1]);
 
@@ -856,7 +854,7 @@ public:
     } else if (tokens[0] == "find") {
       this->find_data(phosg::parse_data_string(tokens.at(1)));
     } else if (tokens[0] == "only") {
-      unordered_set<string> to_keep{tokens.begin() + 1, tokens.end()};
+      std::unordered_set<std::string> to_keep{tokens.begin() + 1, tokens.end()};
       for (auto it = this->mems.begin(); it != this->mems.end();) {
         if (to_keep.count(it->first)) {
           it++;
@@ -891,7 +889,7 @@ public:
       auto specs = ParseDATConstructorTableSpec::from_json_list(phosg::JSON::parse(phosg::load_file(tokens.at(1))));
       this->parse_dat_constructor_table_multi(specs, is_enemies, true);
     } else if (!tokens[0].empty()) {
-      throw runtime_error("unknown command");
+      throw std::runtime_error("unknown command");
     }
   }
 
@@ -904,10 +902,10 @@ public:
       }
       fflush(stdout);
 
-      string command = phosg::fgets(stdin);
+      std::string command = phosg::fgets(stdin);
       try {
         this->handle_command(command);
-      } catch (const exception& e) {
+      } catch (const std::exception& e) {
         this->log.error_f("Failed: {}", e.what());
       }
     }
@@ -916,14 +914,14 @@ public:
 
 private:
   phosg::PrefixedLogger log;
-  string directory;
-  unordered_map<string, shared_ptr<const ResourceDASM::MemoryContext>> mems;
-  unordered_set<shared_ptr<const ResourceDASM::MemoryContext>> ppc_mems;
-  string src_filename;
-  shared_ptr<const ResourceDASM::MemoryContext> src_mem;
+  std::string directory;
+  std::unordered_map<std::string, std::shared_ptr<const ResourceDASM::MemoryContext>> mems;
+  std::unordered_set<std::shared_ptr<const ResourceDASM::MemoryContext>> ppc_mems;
+  std::string src_filename;
+  std::shared_ptr<const ResourceDASM::MemoryContext> src_mem;
 };
 
-void run_address_translator(const string& directory, const string& use_filename, const string& command) {
+void run_address_translator(const std::string& directory, const std::string& use_filename, const std::string& command) {
   AddressTranslator trans(directory);
   if (!use_filename.empty()) {
     trans.set_source_file(use_filename);
@@ -936,32 +934,32 @@ void run_address_translator(const string& directory, const string& use_filename,
   }
 }
 
-vector<DiffEntry> diff_dol_files(const string& a_filename, const string& b_filename) {
+std::vector<DiffEntry> diff_dol_files(const std::string& a_filename, const std::string& b_filename) {
   ResourceDASM::DOLFile a(a_filename.c_str());
   ResourceDASM::DOLFile b(b_filename.c_str());
-  auto a_mem = make_shared<ResourceDASM::MemoryContext>();
-  auto b_mem = make_shared<ResourceDASM::MemoryContext>();
+  auto a_mem = std::make_shared<ResourceDASM::MemoryContext>();
+  auto b_mem = std::make_shared<ResourceDASM::MemoryContext>();
   a.load_into(a_mem);
   b.load_into(b_mem);
 
   uint32_t min_addr = 0xFFFFFFFF;
   uint32_t max_addr = 0x00000000;
   for (const auto& sec : a.sections) {
-    min_addr = min<uint32_t>(min_addr, sec.address);
-    max_addr = max<uint32_t>(max_addr, sec.address + sec.data.size());
+    min_addr = std::min<uint32_t>(min_addr, sec.address);
+    max_addr = std::max<uint32_t>(max_addr, sec.address + sec.data.size());
   }
   for (const auto& sec : b.sections) {
-    min_addr = min<uint32_t>(min_addr, sec.address);
-    max_addr = max<uint32_t>(max_addr, sec.address + sec.data.size());
+    min_addr = std::min<uint32_t>(min_addr, sec.address);
+    max_addr = std::max<uint32_t>(max_addr, sec.address + sec.data.size());
   }
 
-  vector<DiffEntry> ret;
+  std::vector<DiffEntry> ret;
   for (uint32_t addr = min_addr; addr < max_addr; addr += 4) {
     bool a_exists = a_mem->exists(addr, 4);
     bool b_exists = b_mem->exists(addr, 4);
     if (a_exists && b_exists) {
-      string a_value = a_mem->read(addr, 4);
-      string b_value = b_mem->read(addr, 4);
+      std::string a_value = a_mem->read(addr, 4);
+      std::string b_value = b_mem->read(addr, 4);
       if (a_value != b_value) {
         if (!ret.empty() && (ret.back().address + ret.back().b_data.size() == addr)) {
           ret.back().a_data += a_value;
@@ -975,26 +973,26 @@ vector<DiffEntry> diff_dol_files(const string& a_filename, const string& b_filen
   return ret;
 }
 
-vector<DiffEntry> diff_xbe_files(const string& a_filename, const string& b_filename) {
+std::vector<DiffEntry> diff_xbe_files(const std::string& a_filename, const std::string& b_filename) {
   ResourceDASM::XBEFile a(a_filename.c_str());
   ResourceDASM::XBEFile b(b_filename.c_str());
-  auto a_mem = make_shared<ResourceDASM::MemoryContext>();
-  auto b_mem = make_shared<ResourceDASM::MemoryContext>();
+  auto a_mem = std::make_shared<ResourceDASM::MemoryContext>();
+  auto b_mem = std::make_shared<ResourceDASM::MemoryContext>();
   a.load_into(a_mem);
   b.load_into(b_mem);
 
   uint32_t min_addr = 0xFFFFFFFF;
   uint32_t max_addr = 0x00000000;
   for (const auto& sec : a.sections) {
-    min_addr = min<uint32_t>(min_addr, sec.addr);
-    max_addr = max<uint32_t>(max_addr, sec.addr + sec.size);
+    min_addr = std::min<uint32_t>(min_addr, sec.addr);
+    max_addr = std::max<uint32_t>(max_addr, sec.addr + sec.size);
   }
   for (const auto& sec : b.sections) {
-    min_addr = min<uint32_t>(min_addr, sec.addr);
-    max_addr = max<uint32_t>(max_addr, sec.addr + sec.size);
+    min_addr = std::min<uint32_t>(min_addr, sec.addr);
+    max_addr = std::max<uint32_t>(max_addr, sec.addr + sec.size);
   }
 
-  vector<DiffEntry> ret;
+  std::vector<DiffEntry> ret;
   for (uint32_t addr = min_addr; addr < max_addr; addr++) {
     bool a_exists = a_mem->exists(addr, 1);
     bool b_exists = b_mem->exists(addr, 1);

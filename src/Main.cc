@@ -54,21 +54,19 @@
 #include "Text.hh"
 #include "TextIndex.hh"
 
-using namespace std;
-
 bool use_terminal_colors = false;
 
 void print_version_info();
 void print_usage();
 
 std::string get_config_filename(phosg::Arguments& args) {
-  string config_filename = args.get<string>("config");
+  std::string config_filename = args.get<std::string>("config");
   return config_filename.empty() ? "system/config.json" : config_filename;
 }
 
 template <typename T>
-vector<T> parse_int_vector(const phosg::JSON& o) {
-  vector<T> ret;
+std::vector<T> parse_int_vector(const phosg::JSON& o) {
+  std::vector<T> ret;
   for (const auto& x : o.as_list()) {
     ret.emplace_back(x->as_int());
   }
@@ -76,29 +74,24 @@ vector<T> parse_int_vector(const phosg::JSON& o) {
 }
 
 #ifndef PHOSG_WINDOWS
-void drop_privileges(const string& username) {
+void drop_privileges(const std::string& username) {
   if ((getuid() != 0) || (getgid() != 0)) {
-    throw runtime_error(std::format(
+    throw std::runtime_error(std::format(
         "newserv was not started as root; can\'t switch to user {}",
         username));
   }
 
   struct passwd* pw = getpwnam(username.c_str());
   if (!pw) {
-    string error = phosg::string_for_error(errno);
-    throw runtime_error(std::format("user {} not found ({})",
-        username, error));
+    throw std::runtime_error(std::format("user {} not found ({})", username, phosg::string_for_error(errno)));
   }
 
   if (setgid(pw->pw_gid) != 0) {
-    string error = phosg::string_for_error(errno);
-    throw runtime_error(std::format("can\'t switch to group {} ({})",
-        pw->pw_gid, error));
+    throw std::runtime_error(std::format("can\'t switch to group {} ({})",
+        pw->pw_gid, phosg::string_for_error(errno)));
   }
   if (setuid(pw->pw_uid) != 0) {
-    string error = phosg::string_for_error(errno);
-    throw runtime_error(std::format("can\'t switch to user {} ({})",
-        pw->pw_uid, error));
+    throw std::runtime_error(std::format("can\'t switch to user {} ({})", pw->pw_uid, phosg::string_for_error(errno)));
   }
   config_log.info_f("Switched to user {} ({}:{})", username, pw->pw_uid, pw->pw_gid);
 }
@@ -136,7 +129,7 @@ Version get_cli_version(phosg::Arguments& args, Version default_value = Version:
   } else if (default_value != Version::UNKNOWN) {
     return default_value;
   } else {
-    throw runtime_error("a version option is required");
+    throw std::runtime_error("a version option is required");
   }
 }
 
@@ -150,7 +143,7 @@ Episode get_cli_episode(phosg::Arguments& args) {
   } else if (args.get<bool>("ep4")) {
     return Episode::EP4;
   } else {
-    throw runtime_error("an episode option is required");
+    throw std::runtime_error("an episode option is required");
   }
 }
 
@@ -178,10 +171,10 @@ uint8_t get_cli_difficulty(phosg::Arguments& args) {
   }
 }
 
-string read_input_data(phosg::Arguments& args) {
-  const string& input_filename = args.get<string>(1, false);
+std::string read_input_data(phosg::Arguments& args) {
+  const std::string& input_filename = args.get<std::string>(1, false);
 
-  string data;
+  std::string data;
   if (!input_filename.empty() && (input_filename != "-")) {
     data = phosg::load_file(input_filename);
   } else {
@@ -198,8 +191,8 @@ bool is_text_extension(const char* extension) {
 }
 
 void write_output_data(phosg::Arguments& args, const void* data, size_t size, const char* extension) {
-  const string& input_filename = args.get<string>(1, false);
-  const string& output_filename = args.get<string>(2, false);
+  const std::string& input_filename = args.get<std::string>(1, false);
+  const std::string& output_filename = args.get<std::string>(2, false);
 
   if (!output_filename.empty() && (output_filename != "-")) {
     // If the output is to a specified file, write it there
@@ -208,9 +201,9 @@ void write_output_data(phosg::Arguments& args, const void* data, size_t size, co
   } else if (output_filename.empty() && (output_filename != "-") && !input_filename.empty() && (input_filename != "-")) {
     // If no output filename is given and an input filename is given, write to <input_filename>.<extension>
     if (!extension) {
-      throw runtime_error("an output filename is required");
+      throw std::runtime_error("an output filename is required");
     }
-    string filename = input_filename;
+    std::string filename = input_filename;
     filename += ".";
     filename += extension;
     phosg::save_file(filename, data, size);
@@ -227,25 +220,24 @@ void write_output_data(phosg::Arguments& args, const void* data, size_t size, co
   }
 }
 
+void write_output_data(phosg::Arguments& args, const std::string& data, const char* extension) {
+  write_output_data(args, data.data(), data.size(), extension);
+}
+
 struct Action;
-unordered_map<string, const Action*> all_actions;
-vector<const Action*> action_order;
+std::unordered_map<std::string, const Action*> all_actions;
+std::vector<const Action*> action_order;
 
 struct Action {
   const char* name;
   const char* help_text; // May be null
-  function<void(phosg::Arguments& args)> run;
+  std::function<void(phosg::Arguments& args)> run;
 
-  Action(
-      const char* name,
-      const char* help_text,
-      function<void(phosg::Arguments& args)> run)
-      : name(name),
-        help_text(help_text),
-        run(run) {
+  Action(const char* name, const char* help_text, std::function<void(phosg::Arguments& args)> run)
+      : name(name), help_text(help_text), run(run) {
     auto emplace_ret = all_actions.emplace(this->name, this);
     if (!emplace_ret.second) {
-      throw logic_error(std::format("multiple actions with the same name: {}", this->name));
+      throw std::logic_error(std::format("multiple actions with the same name: {}", this->name));
     }
     action_order.emplace_back(this);
   }
@@ -268,7 +260,7 @@ Action a_version(
     });
 
 static void a_compress_decompress_fn(phosg::Arguments& args) {
-  const auto& action = args.get<string>(0);
+  const auto& action = args.get<std::string>(0);
   bool is_prs = action.ends_with("-prs");
   bool is_bc0 = action.ends_with("-bc0");
   bool is_pr2 = action.ends_with("-pr2");
@@ -279,9 +271,9 @@ static void a_compress_decompress_fn(phosg::Arguments& args) {
   bool is_pessimal = args.get<bool>("pessimal");
   int8_t compression_level = args.get<int8_t>("compression-level", 0);
   size_t bytes = args.get<size_t>("bytes", 0);
-  string seed = args.get<string>("seed");
+  std::string seed = args.get<std::string>("seed");
 
-  string data = read_input_data(args);
+  std::string data = read_input_data(args);
 
   size_t pr2_expected_size = 0;
   if (is_decompress && (is_pr2 || is_prc)) {
@@ -327,14 +319,14 @@ static void a_compress_decompress_fn(phosg::Arguments& args) {
   } else if (is_decompress && is_bc0) {
     data = bc0_decompress(data);
   } else {
-    throw logic_error("invalid behavior");
+    throw std::logic_error("invalid behavior");
   }
   uint64_t end = phosg::now();
-  string time_str = phosg::format_duration(end - start);
+  std::string time_str = phosg::format_duration(end - start);
 
   float size_ratio = static_cast<float>(data.size() * 100) / input_bytes;
   double bytes_per_sec = input_bytes / (static_cast<double>(end - start) / 1000000.0);
-  string bytes_per_sec_str = phosg::format_size(bytes_per_sec);
+  std::string bytes_per_sec_str = phosg::format_size(bytes_per_sec);
   phosg::log_info_f("{} (0x{:X}) bytes input => {} (0x{:X}) bytes output ({:g}%) in {} ({} / sec)",
       input_bytes, input_bytes, data.size(), data.size(), size_ratio, time_str, bytes_per_sec_str);
 
@@ -361,9 +353,9 @@ static void a_compress_decompress_fn(phosg::Arguments& args) {
   } else if (is_pr2) {
     extension = "pr2";
   } else {
-    throw logic_error("unknown action");
+    throw std::logic_error("unknown action");
   }
-  write_output_data(args, data.data(), data.size(), extension);
+  write_output_data(args, data, extension);
 }
 
 Action a_compress_prs("compress-prs", nullptr, a_compress_decompress_fn);
@@ -404,7 +396,7 @@ Action a_prs_size(
     Compute the decompressed size of the PRS-compressed input data, but don\'t\n\
     write the decompressed data anywhere.\n",
     +[](phosg::Arguments& args) {
-      string data = read_input_data(args);
+      std::string data = read_input_data(args);
       size_t input_bytes = data.size();
       size_t output_bytes = prs_decompress_size(data);
       phosg::log_info_f("{} (0x{:X}) bytes input => {} (0x{:X}) bytes output",
@@ -431,10 +423,10 @@ Action a_psov2_encrypt_single_test(
     [](phosg::Arguments& args) {
       size_t num_threads = args.get<size_t>("threads", std::thread::hardware_concurrency());
 
-      vector<uint64_t> crypt_times(num_threads, 0);
-      vector<uint64_t> single_times(num_threads, 0);
+      std::vector<uint64_t> crypt_times(num_threads, 0);
+      std::vector<uint64_t> single_times(num_threads, 0);
       uint64_t num_mismatches = 0;
-      mutex output_lock;
+      std::mutex output_lock;
       auto thread_fn = [&](uint64_t seed, size_t thread_index) -> bool {
         uint64_t start_t = phosg::now();
         uint32_t crypt_v = PSOV2Encryption(seed).next();
@@ -446,7 +438,7 @@ Action a_psov2_encrypt_single_test(
         single_times[thread_index] += (end_t - mid_t);
 
         if (crypt_v != single_v) {
-          lock_guard g(output_lock);
+          std::lock_guard g(output_lock);
           phosg::fwrite_fmt(stderr, "Mismatched result on seed {:08X}: crypt={:08X}, single={:08X}\n",
               seed, crypt_v, single_v);
           num_mismatches++;
@@ -461,7 +453,7 @@ Action a_psov2_encrypt_single_test(
         for (uint64_t t : single_times) {
           single_time += t;
         }
-        lock_guard g(output_lock);
+        std::lock_guard g(output_lock);
         phosg::log_info_f("... {:08X} => {} mismatches, {} crypt, {} single ({:g}x)",
             current_value, num_mismatches, phosg::format_duration(crypt_time), phosg::format_duration(single_time),
             static_cast<float>(crypt_time) / single_time);
@@ -472,12 +464,12 @@ Action a_psov2_encrypt_single_test(
     });
 
 static void a_encrypt_decrypt_fn(phosg::Arguments& args) {
-  bool is_decrypt = (args.get<string>(0) == "decrypt-data");
-  string seed = args.get<string>("seed");
+  bool is_decrypt = (args.get<std::string>(0) == "decrypt-data");
+  std::string seed = args.get<std::string>("seed");
   bool is_big_endian = args.get<bool>("big-endian");
   auto version = get_cli_version(args);
 
-  shared_ptr<PSOEncryption> crypt;
+  std::shared_ptr<PSOEncryption> crypt;
   switch (version) {
     case Version::DC_NTE:
     case Version::DC_11_2000:
@@ -486,29 +478,29 @@ static void a_encrypt_decrypt_fn(phosg::Arguments& args) {
     case Version::PC_NTE:
     case Version::PC_V2:
     case Version::GC_NTE:
-      crypt = make_shared<PSOV2Encryption>(stoul(seed, nullptr, 16));
+      crypt = std::make_shared<PSOV2Encryption>(stoul(seed, nullptr, 16));
       break;
     case Version::GC_V3:
     case Version::XB_V3:
     case Version::GC_EP3_NTE:
     case Version::GC_EP3:
-      crypt = make_shared<PSOV3Encryption>(stoul(seed, nullptr, 16));
+      crypt = std::make_shared<PSOV3Encryption>(stoul(seed, nullptr, 16));
       break;
     case Version::BB_V4: {
-      string key_name = args.get<string>("key");
+      std::string key_name = args.get<std::string>("key");
       if (key_name.empty()) {
-        throw runtime_error("the --key option is required for BB");
+        throw std::runtime_error("the --key option is required for BB");
       }
       seed = phosg::parse_data_string(seed, nullptr, phosg::ParseDataFlags::ALLOW_FILES);
       auto key = phosg::load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + key_name + ".nsk");
-      crypt = make_shared<PSOBBEncryption>(key, seed.data(), seed.size());
+      crypt = std::make_shared<PSOBBEncryption>(key, seed.data(), seed.size());
       break;
     }
     default:
-      throw logic_error("invalid game version");
+      throw std::logic_error("invalid game version");
   }
 
-  string data = read_input_data(args);
+  std::string data = read_input_data(args);
 
   size_t original_size = data.size();
   data.resize((data.size() + 7) & (~7), '\0');
@@ -535,7 +527,7 @@ static void a_encrypt_decrypt_fn(phosg::Arguments& args) {
 
   data.resize(original_size);
 
-  write_output_data(args, data.data(), data.size(), "dec");
+  write_output_data(args, data, "dec");
 }
 
 Action a_encrypt_data("encrypt-data", nullptr, a_encrypt_decrypt_fn);
@@ -554,19 +546,19 @@ Action a_decrypt_data("decrypt-data", "\
     a_encrypt_decrypt_fn);
 
 static void a_encrypt_decrypt_trivial_fn(phosg::Arguments& args) {
-  bool is_decrypt = (args.get<string>(0) == "decrypt-trivial-data");
-  string seed = args.get<string>("seed");
+  bool is_decrypt = (args.get<std::string>(0) == "decrypt-trivial-data");
+  std::string seed = args.get<std::string>("seed");
 
   if (seed.empty() && !is_decrypt) {
-    throw logic_error("--seed is required when encrypting data");
+    throw std::logic_error("--seed is required when encrypting data");
   }
-  string data = read_input_data(args);
+  std::string data = read_input_data(args);
   uint8_t basis;
   if (seed.empty()) {
     uint8_t best_seed = 0x00;
     size_t best_seed_score = 0;
     for (size_t z = 0; z < 0x100; z++) {
-      string decrypted = data;
+      std::string decrypted = data;
       decrypt_trivial_gci_data(decrypted.data(), decrypted.size(), z);
       size_t score = 0;
       for (size_t x = 0; x < decrypted.size(); x++) {
@@ -586,7 +578,7 @@ static void a_encrypt_decrypt_trivial_fn(phosg::Arguments& args) {
     basis = stoul(seed, nullptr, 16);
   }
   decrypt_trivial_gci_data(data.data(), data.size(), basis);
-  write_output_data(args, data.data(), data.size(), "dec");
+  write_output_data(args, data, "dec");
 }
 
 Action a_encrypt_trivial_data("encrypt-trivial-data", nullptr, a_encrypt_decrypt_trivial_fn);
@@ -603,9 +595,9 @@ Action a_decrypt_trivial_data("decrypt-trivial-data", "\
 
 Action a_decrypt_registry_value(
     "decrypt-registry-value", nullptr, +[](phosg::Arguments& args) {
-      string data = read_input_data(args);
-      string out_data = decrypt_v2_registry_value(data.data(), data.size());
-      write_output_data(args, out_data.data(), out_data.size(), "dec");
+      std::string data = read_input_data(args);
+      std::string out_data = decrypt_v2_registry_value(data.data(), data.size());
+      write_output_data(args, out_data, "dec");
     });
 
 Action a_parse_pc_v2_registry(
@@ -615,7 +607,7 @@ Action a_parse_pc_v2_registry(
     from the given registry export. The input file should be a .reg file\n\
     exported from the HKEY_CURRENT_USER\\Software\\SonicTeam\\PSOV2 key.\n",
     +[](phosg::Arguments& args) {
-      string data = read_input_data(args);
+      std::string data = read_input_data(args);
       if (data.starts_with("\xFF\xFE")) {
         data = tt_utf16_to_utf8(data.substr(2));
       }
@@ -623,8 +615,8 @@ Action a_parse_pc_v2_registry(
       data = phosg::str_replace_all(data, "\\\n", "");
 
       bool in_psov2_section = false;
-      string serial_data, access_data, email_data;
-      for (string line : phosg::split(data, '\n')) {
+      std::string serial_data, access_data, email_data;
+      for (const auto& line : phosg::split(data, '\n')) {
         if (line.starts_with("[")) {
           in_psov2_section = (line == "[HKEY_CURRENT_USER\\Software\\SonicTeam\\PSOV2]");
         } else if (!in_psov2_section) {
@@ -667,11 +659,11 @@ Action a_generate_pc_v2_registry(
       --access-key=ACCESS-KEY (access key, 8 characters)\n\
       --email=EMAIL (email address)\n",
     +[](phosg::Arguments& args) {
-      auto hex_str_for_data = +[](const string& data) -> string {
+      auto hex_str_for_data = +[](const std::string& data) -> std::string {
         if (data.size() == 0) {
-          return string();
+          return "";
         }
-        string ret = std::format("{:02x}", data[0]);
+        std::string ret = std::format("{:02x}", data[0]);
         for (size_t z = 1; z < data.size(); z++) {
           ret += std::format(",{:02x}", data[z]);
         }
@@ -679,8 +671,8 @@ Action a_generate_pc_v2_registry(
       };
 
       uint32_t serial_number = args.get<uint32_t>("serial-number", 0);
-      string access_key = args.get<string>("access-key", true);
-      string email = args.get<string>("email", true);
+      std::string access_key = args.get<std::string>("access-key", true);
+      std::string email = args.get<std::string>("email", true);
       if (access_key.size() != 8) {
         throw std::runtime_error("access key is not exactly 8 characters");
       }
@@ -689,18 +681,18 @@ Action a_generate_pc_v2_registry(
       }
       email.resize(0x40, '\0');
 
-      string serial_data = decrypt_v2_registry_value(std::format("{:08X}", serial_number));
-      string access_data = decrypt_v2_registry_value(access_key);
-      string email_data = decrypt_v2_registry_value(email);
+      std::string serial_data = decrypt_v2_registry_value(std::format("{:08X}", serial_number));
+      std::string access_data = decrypt_v2_registry_value(access_key);
+      std::string email_data = decrypt_v2_registry_value(email);
 
-      string serial_hex = hex_str_for_data(serial_data);
-      string access_hex = hex_str_for_data(access_data);
-      string email_hex = hex_str_for_data(email_data);
+      std::string serial_hex = hex_str_for_data(serial_data);
+      std::string access_hex = hex_str_for_data(access_data);
+      std::string email_hex = hex_str_for_data(email_data);
 
-      string output_data = std::format("Windows Registry Editor Version 5.00\r\n\r\n[HKEY_CURRENT_USER\\Software\\SonicTeam\\PSOV2]\r\n\r\n\"SERIAL\"=hex:{}\r\n\"ACCESS\"=hex:{}\r\n\"E-MAIL\"=hex:{}\r\n",
+      std::string output_data = std::format("Windows Registry Editor Version 5.00\r\n\r\n[HKEY_CURRENT_USER\\Software\\SonicTeam\\PSOV2]\r\n\r\n\"SERIAL\"=hex:{}\r\n\"ACCESS\"=hex:{}\r\n\"E-MAIL\"=hex:{}\r\n",
           serial_hex, access_hex, email_hex);
 
-      write_output_data(args, output_data.data(), output_data.size(), "reg");
+      write_output_data(args, output_data, "reg");
     });
 
 Action a_encrypt_challenge_time(
@@ -718,9 +710,9 @@ Action a_decrypt_challenge_time(
 
 Action a_encrypt_challenge_data(
     "encrypt-challenge-data", nullptr, +[](phosg::Arguments& args) {
-      string data = read_input_data(args);
+      std::string data = read_input_data(args);
       encrypt_challenge_rank_text_t<uint8_t>(data.data(), data.size());
-      write_output_data(args, data.data(), data.size(), "dec");
+      write_output_data(args, data, "dec");
     });
 Action a_decrypt_challenge_data(
     "decrypt-challenge-data", "\
@@ -728,15 +720,15 @@ Action a_decrypt_challenge_data(
   decrypt-challenge-data [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Encrypt or decrypt data using the challenge mode trivial algorithm.\n",
     +[](phosg::Arguments& args) {
-      string data = read_input_data(args);
+      std::string data = read_input_data(args);
       decrypt_challenge_rank_text_t<uint8_t>(data.data(), data.size());
-      write_output_data(args, data.data(), data.size(), "dec");
+      write_output_data(args, data, "dec");
     });
 
 static void a_encrypt_decrypt_vms_save_fn(phosg::Arguments& args) {
-  bool is_decrypt = (args.get<string>(0) == "decrypt-vms-save");
+  bool is_decrypt = (args.get<std::string>(0) == "decrypt-vms-save");
   bool skip_checksum = args.get<bool>("skip-checksum");
-  string serial_number_str = args.get<string>("serial-number");
+  std::string serial_number_str = args.get<std::string>("serial-number");
   int64_t override_round2_seed = args.get<int64_t>("round2-seed", -1, phosg::Arguments::IntFormat::HEX);
 
   int64_t round1_seed = serial_number_str.empty() ? -1 : stoul(serial_number_str, nullptr, 16);
@@ -755,19 +747,19 @@ static void a_encrypt_decrypt_vms_save_fn(phosg::Arguments& args) {
       if (round1_seed < 0) {
         size_t num_threads = args.get<size_t>("threads", 0);
         if (num_threads == 0) {
-          num_threads = thread::hardware_concurrency();
+          num_threads = std::thread::hardware_concurrency();
         }
 
-        mutex output_lock;
+        std::mutex output_lock;
         if (UseIterator) {
           DCSerialNumberIterator iter;
-          mutex iter_lock;
-          atomic<bool> seed_found = false;
+          std::mutex iter_lock;
+          std::atomic<bool> seed_found = false;
           auto thread_fn = [&]() -> void {
             for (;;) {
               uint32_t serial_number;
               {
-                lock_guard g(iter_lock);
+                std::lock_guard g(iter_lock);
                 serial_number = iter.next();
               }
               if (serial_number == 0) {
@@ -779,25 +771,25 @@ static void a_encrypt_decrypt_vms_save_fn(phosg::Arguments& args) {
 
                 seed_found = true;
                 {
-                  lock_guard g(iter_lock);
+                  std::lock_guard g(iter_lock);
                   iter.complete = true;
                 }
-                lock_guard g(output_lock);
+                std::lock_guard g(output_lock);
                 phosg::fwrite_fmt(stderr, "\nFound serial number: {:08X}\n", serial_number);
                 *reinterpret_cast<StructT*>(data.data() + data_start_offset) = decrypted;
 
-              } catch (const runtime_error&) {
+              } catch (const std::runtime_error&) {
               }
             }
           };
 
-          vector<thread> threads;
+          std::vector<std::thread> threads;
           while (threads.size() < num_threads) {
             threads.emplace_back(thread_fn);
           }
           for (;;) {
             usleep(1000000);
-            lock_guard g(iter_lock);
+            std::lock_guard g(iter_lock);
             size_t progress = iter.progress();
             size_t total_count = iter.total_count();
             float progress_percent = static_cast<float>(progress * 100) / total_count;
@@ -811,7 +803,7 @@ static void a_encrypt_decrypt_vms_save_fn(phosg::Arguments& args) {
             th.join();
           }
           if (!seed_found) {
-            throw runtime_error("no seed found");
+            throw std::runtime_error("no seed found");
           }
 
         } else {
@@ -820,18 +812,18 @@ static void a_encrypt_decrypt_vms_save_fn(phosg::Arguments& args) {
               auto decrypted = decrypt_fixed_size_data_section_t<StructT, false, ChecksumLength>(
                   data_section, sizeof(StructT), serial_number, skip_checksum, override_round2_seed);
 
-              lock_guard g(output_lock);
+              std::lock_guard g(output_lock);
               phosg::fwrite_fmt(stderr, "\nFound serial number: {:08X}\n", serial_number);
               *reinterpret_cast<StructT*>(data.data() + data_start_offset) = decrypted;
               return true;
 
-            } catch (const runtime_error&) {
+            } catch (const std::runtime_error&) {
               return false;
             }
           },
               0, 0x100000000, 0x1000, num_threads);
           if (seed >= 0x100000000) {
-            throw runtime_error("no seed found");
+            throw std::runtime_error("no seed found");
           }
         }
 
@@ -845,7 +837,7 @@ static void a_encrypt_decrypt_vms_save_fn(phosg::Arguments& args) {
       const auto& s = r.get<StructT>();
       auto encrypted = encrypt_fixed_size_data_section_t<StructT, false, ChecksumLength>(s, round1_seed);
       if (data_start_offset + encrypted.size() > data.size()) {
-        throw runtime_error("encrypted result exceeds file size");
+        throw std::runtime_error("encrypted result exceeds file size");
       }
       memcpy(data.data() + data_start_offset, encrypted.data(), encrypted.size());
     }
@@ -857,13 +849,13 @@ static void a_encrypt_decrypt_vms_save_fn(phosg::Arguments& args) {
     process_file.template operator()<PSODCNTECharacterFile, false>();
   } else if (!is_v2 && (header.data_size == sizeof(PSODCNTEGuildCardFile))) {
     phosg::fwrite_fmt(stderr, "File type: DC NTE Guild Card list\n");
-    throw runtime_error("DC NTE Guild Card files are not encrypted");
+    throw std::runtime_error("DC NTE Guild Card files are not encrypted");
   } else if (!is_v2 && (header.data_size == sizeof(PSODC112000CharacterFile))) {
     phosg::fwrite_fmt(stderr, "File type: DC 11/2000 character\n");
     process_file.template operator()<PSODC112000CharacterFile, false>();
   } else if (!is_v2 && (header.data_size == sizeof(PSODC112000GuildCardFile))) {
     phosg::fwrite_fmt(stderr, "File type: DC 11/2000 Guild Card list\n");
-    throw runtime_error("DC 11/2000 Guild Card files are not encrypted");
+    throw std::runtime_error("DC 11/2000 Guild Card files are not encrypted");
   } else if (!is_v2 && (header.data_size == sizeof(PSODCV1CharacterFile))) {
     phosg::fwrite_fmt(stderr, "File type: DC v1 character\n");
     process_file.template operator()<PSODCV1CharacterFile, true>();
@@ -883,10 +875,10 @@ static void a_encrypt_decrypt_vms_save_fn(phosg::Arguments& args) {
       process_file.template operator()<PSODCV1V2GuildCardFile::EncryptedSection, true, sizeof(PSODCV2CharacterFile)>();
     }
   } else {
-    throw runtime_error("unrecognized save type");
+    throw std::runtime_error("unrecognized save type");
   }
 
-  write_output_data(args, data.data(), data.size(), is_decrypt ? "vmsd" : "vms");
+  write_output_data(args, data, is_decrypt ? "vmsd" : "vms");
 }
 
 Action a_decrypt_vms_save("decrypt-vms-save", nullptr, a_encrypt_decrypt_vms_save_fn);
@@ -900,13 +892,13 @@ Action a_encrypt_vms_save("encrypt-vms-save", "\
     a_encrypt_decrypt_vms_save_fn);
 
 static void a_encrypt_decrypt_pc_save_fn(phosg::Arguments& args) {
-  bool is_decrypt = (args.get<string>(0) == "decrypt-pc-save");
+  bool is_decrypt = (args.get<std::string>(0) == "decrypt-pc-save");
   bool skip_checksum = args.get<bool>("skip-checksum");
-  string seed = args.get<string>("seed");
+  std::string seed = args.get<std::string>("seed");
   int64_t override_round2_seed = args.get<int64_t>("round2-seed", -1, phosg::Arguments::IntFormat::HEX);
 
   if (seed.empty()) {
-    throw runtime_error("--seed must be given to specify the serial number");
+    throw std::runtime_error("--seed must be given to specify the serial number");
   }
   uint32_t round1_seed = stoul(seed, nullptr, 16);
 
@@ -928,7 +920,7 @@ static void a_encrypt_decrypt_pc_save_fn(phosg::Arguments& args) {
           try {
             charfile->entries[z].encrypted = decrypt_fixed_size_data_section_t<PSOPCCharacterFile::CharacterEntry::EncryptedSection, false>(
                 &charfile->entries[z].encrypted, sizeof(charfile->entries[z].encrypted), round1_seed, skip_checksum, override_round2_seed);
-          } catch (const exception& e) {
+          } catch (const std::exception& e) {
             phosg::fwrite_fmt(stderr, "warning: cannot decrypt character {}: {}\n", z, e.what());
           }
         }
@@ -936,24 +928,24 @@ static void a_encrypt_decrypt_pc_save_fn(phosg::Arguments& args) {
     } else {
       for (size_t z = 0; z < charfile->entries.size(); z++) {
         if (charfile->entries[z].present) {
-          string encrypted = encrypt_fixed_size_data_section_t<PSOPCCharacterFile::CharacterEntry::EncryptedSection, false>(
+          std::string encrypted = encrypt_fixed_size_data_section_t<PSOPCCharacterFile::CharacterEntry::EncryptedSection, false>(
               charfile->entries[z].encrypted, round1_seed);
           if (encrypted.size() != sizeof(PSOPCCharacterFile::CharacterEntry::EncryptedSection)) {
-            throw logic_error("incorrect encrypted result size");
+            throw std::logic_error("incorrect encrypted result size");
           }
           charfile->entries[z].encrypted = *reinterpret_cast<const PSOPCCharacterFile::CharacterEntry::EncryptedSection*>(encrypted.data());
         }
       }
     }
   } else if (data.size() == sizeof(PSOPCCreationTimeFile)) {
-    throw runtime_error("the PSO______FLS file is not encrypted; it is just random data");
+    throw std::runtime_error("the PSO______FLS file is not encrypted; it is just random data");
   } else if (data.size() == sizeof(PSOPCSystemFile)) {
-    throw runtime_error("the PSO______COM file is not encrypted");
+    throw std::runtime_error("the PSO______COM file is not encrypted");
   } else {
-    throw runtime_error("unknown save file type");
+    throw std::runtime_error("unknown save file type");
   }
 
-  write_output_data(args, data.data(), data.size(), "dec");
+  write_output_data(args, data, "dec");
 }
 
 Action a_decrypt_pc_save("decrypt-pc-save", nullptr, a_encrypt_decrypt_pc_save_fn);
@@ -966,23 +958,23 @@ Action a_encrypt_pc_save("encrypt-pc-save", "\
     a_encrypt_decrypt_pc_save_fn);
 
 static void a_encrypt_decrypt_save_data_fn(phosg::Arguments& args) {
-  bool is_decrypt = (args.get<string>(0) == "decrypt-save-data");
+  bool is_decrypt = (args.get<std::string>(0) == "decrypt-save-data");
   bool skip_checksum = args.get<bool>("skip-checksum");
   bool is_big_endian = args.get<bool>("big-endian");
-  string seed = args.get<string>("seed");
+  std::string seed = args.get<std::string>("seed");
   int64_t override_round2_seed = args.get<int64_t>("round2-seed", -1, phosg::Arguments::IntFormat::HEX);
   size_t bytes = args.get<size_t>("bytes", 0);
 
   if (seed.empty()) {
-    throw runtime_error("--seed must be given to specify the round1 seed");
+    throw std::runtime_error("--seed must be given to specify the round1 seed");
   }
   uint32_t round1_seed = stoul(seed, nullptr, 16);
 
   auto data = read_input_data(args);
   phosg::StringReader r(data);
 
-  string output_data;
-  size_t effective_size = bytes ? min<size_t>(bytes, data.size()) : data.size();
+  std::string output_data;
+  size_t effective_size = bytes ? std::min<size_t>(bytes, data.size()) : data.size();
   if (is_decrypt) {
     output_data = is_big_endian
         ? decrypt_fixed_size_data_section_s<true>(data.data(), effective_size, round1_seed, skip_checksum, override_round2_seed)
@@ -992,19 +984,19 @@ static void a_encrypt_decrypt_save_data_fn(phosg::Arguments& args) {
         ? encrypt_fixed_size_data_section_s<true>(data.data(), effective_size, round1_seed)
         : encrypt_fixed_size_data_section_s<false>(data.data(), effective_size, round1_seed);
   }
-  write_output_data(args, output_data.data(), output_data.size(), "dec");
+  write_output_data(args, output_data, "dec");
 }
 
 static void a_encrypt_decrypt_gci_save_fn(phosg::Arguments& args) {
-  bool is_decrypt = (args.get<string>(0) == "decrypt-gci-save");
+  bool is_decrypt = (args.get<std::string>(0) == "decrypt-gci-save");
   bool skip_checksum = args.get<bool>("skip-checksum");
-  string seed = args.get<string>("seed");
-  string system_filename = args.get<string>("sys");
+  std::string seed = args.get<std::string>("seed");
+  std::string system_filename = args.get<std::string>("sys");
   int64_t override_round2_seed = args.get<int64_t>("round2-seed", -1, phosg::Arguments::IntFormat::HEX);
 
   uint32_t round1_seed;
   if (!system_filename.empty()) {
-    string system_data = phosg::load_file(system_filename);
+    std::string system_data = phosg::load_file(system_filename);
     phosg::StringReader r(system_data);
     const auto& header = r.get<PSOGCIFileHeader>();
     header.check();
@@ -1013,7 +1005,7 @@ static void a_encrypt_decrypt_gci_save_fn(phosg::Arguments& args) {
   } else if (!seed.empty()) {
     round1_seed = stoul(seed, nullptr, 16);
   } else {
-    throw runtime_error("either --sys or --seed must be given");
+    throw std::runtime_error("either --sys or --seed must be given");
   }
 
   auto data = read_input_data(args);
@@ -1033,7 +1025,7 @@ static void a_encrypt_decrypt_gci_save_fn(phosg::Arguments& args) {
       const auto& s = r.get<StructT>();
       auto encrypted = encrypt_fixed_size_data_section_t<StructT, true>(s, round1_seed);
       if (data_start_offset + encrypted.size() > data.size()) {
-        throw runtime_error("encrypted result exceeds file size");
+        throw std::runtime_error("encrypted result exceeds file size");
       }
       memcpy(data.data() + data_start_offset, encrypted.data(), encrypted.size());
     }
@@ -1057,10 +1049,10 @@ static void a_encrypt_decrypt_gci_save_fn(phosg::Arguments& args) {
       }
     }
   } else {
-    throw runtime_error("unrecognized save type");
+    throw std::runtime_error("unrecognized save type");
   }
 
-  write_output_data(args, data.data(), data.size(), is_decrypt ? "gcid" : "gci");
+  write_output_data(args, data, is_decrypt ? "gcid" : "gci");
 }
 
 Action a_decrypt_gci_save("decrypt-gci-save", nullptr, a_encrypt_decrypt_gci_save_fn);
@@ -1083,13 +1075,13 @@ Action a_decrypt_xbox_save(
     32-bit hexadecimal number).\n",
     +[](phosg::Arguments& args) {
       bool skip_checksum = args.get<bool>("skip-checksum");
-      string seed = args.get<string>("seed");
-      string system_filename = args.get<string>("sys");
+      std::string seed = args.get<std::string>("seed");
+      std::string system_filename = args.get<std::string>("sys");
       int64_t override_round2_seed = args.get<int64_t>("round2-seed", -1, phosg::Arguments::IntFormat::HEX);
 
       uint32_t round1_seed;
       if (!system_filename.empty()) {
-        string system_data = phosg::load_file(system_filename);
+        std::string system_data = phosg::load_file(system_filename);
         phosg::StringReader r(system_data);
         const auto& header = r.get<PSOXBFileHeader>();
         header.check();
@@ -1098,7 +1090,7 @@ Action a_decrypt_xbox_save(
       } else if (!seed.empty()) {
         round1_seed = stoul(seed, nullptr, 16);
       } else {
-        throw runtime_error("either --sys or --seed must be given");
+        throw std::runtime_error("either --sys or --seed must be given");
       }
 
       auto data = read_input_data(args);
@@ -1120,10 +1112,10 @@ Action a_decrypt_xbox_save(
       } else if (header.data_size == sizeof(PSOXBCharacterFile)) {
         process_file.template operator()<PSOXBCharacterFile>();
       } else {
-        throw runtime_error("unrecognized save type");
+        throw std::runtime_error("unrecognized save type");
       }
 
-      write_output_data(args, data.data(), data.size(), "dec");
+      write_output_data(args, data, "dec");
     });
 
 // TODO: Write usage text for these actions
@@ -1143,18 +1135,18 @@ Action a_decrypt_dcv2_executable(
     automatically, and prints it to stderr so you will be able to use it when\n\
     re-encrypting.\n",
     +[](phosg::Arguments& args) {
-      string executable_filename = args.get<string>("executable", true);
-      string executable_data = phosg::load_file(executable_filename);
-      string decrypted;
+      std::string executable_filename = args.get<std::string>("executable", true);
+      std::string executable_data = phosg::load_file(executable_filename);
+      std::string decrypted;
       if (args.get<bool>("simple")) {
-        string seed_str = args.get<string>("seed");
+        std::string seed_str = args.get<std::string>("seed");
         int64_t seed = seed_str.empty() ? -1 : stoull(seed_str, nullptr, 16);
         decrypted = crypt_dp_address_jpn_simple(executable_data, seed);
       } else {
-        string values_filename = args.get<string>("values", true);
-        string indexes_filename = args.get<string>("indexes", true);
-        string values_data = phosg::load_file(values_filename);
-        string indexes_data = phosg::load_file(indexes_filename);
+        std::string values_filename = args.get<std::string>("values", true);
+        std::string indexes_filename = args.get<std::string>("indexes", true);
+        std::string values_data = phosg::load_file(values_filename);
+        std::string indexes_data = phosg::load_file(indexes_filename);
         decrypted = decrypt_dp_address_jpn(executable_data, values_data, indexes_data);
       }
       phosg::save_file(executable_filename + ".dec", decrypted);
@@ -1170,15 +1162,15 @@ Action a_encrypt_dcv2_executable(
     If --simple is given, uses the simpler encryption method used in Ives\'\n\
     Enhancement Pack. In this case, --seed is required.\n",
     +[](phosg::Arguments& args) {
-      string executable_filename = args.get<string>("executable", true);
-      string executable_data = phosg::load_file(executable_filename);
-      string encrypted_executable;
+      std::string executable_filename = args.get<std::string>("executable", true);
+      std::string executable_data = phosg::load_file(executable_filename);
+      std::string encrypted_executable;
       if (args.get<bool>("simple")) {
-        int64_t seed = stoull(args.get<string>("seed", true), nullptr, 16);
+        int64_t seed = stoull(args.get<std::string>("seed", true), nullptr, 16);
         encrypted_executable = crypt_dp_address_jpn_simple(executable_data, seed);
       } else {
-        string indexes_filename = args.get<string>("indexes", true);
-        string indexes_data = phosg::load_file(indexes_filename);
+        std::string indexes_filename = args.get<std::string>("indexes", true);
+        std::string indexes_data = phosg::load_file(indexes_filename);
         auto encrypted = encrypt_dp_address_jpn(executable_data, indexes_data);
         phosg::save_file(indexes_filename + ".enc", encrypted.indexes);
         encrypted_executable = std::move(encrypted.executable);
@@ -1196,17 +1188,14 @@ Action a_decode_gci_snapshot(
       const auto& header = r.get<PSOGCIFileHeader>();
       try {
         header.check();
-      } catch (const exception& e) {
+      } catch (const std::exception& e) {
         phosg::log_warning_f("File header failed validation ({})", e.what());
       }
       const auto& file = r.get<PSOGCSnapshotFile>();
       if (!file.checksum_correct()) {
         phosg::log_warning_f("File internal checksum is incorrect");
       }
-
-      auto img = file.decode_image();
-      string saved = img.serialize(phosg::ImageFormat::WINDOWS_BITMAP);
-      write_output_data(args, saved.data(), saved.size(), "bmp");
+      write_output_data(args, file.decode_image().serialize(phosg::ImageFormat::WINDOWS_BITMAP), "bmp");
     });
 
 Action a_encode_gvm(
@@ -1215,8 +1204,8 @@ Action a_encode_gvm(
     Encode an image in BMP or PPM/PNM format into a GVM texture. The resulting\n\
     GVM file can be used as an Episode 3 lobby banner.\n",
     +[](phosg::Arguments& args) {
-      const string& input_filename = args.get<string>(1, false);
-      string data;
+      const std::string& input_filename = args.get<std::string>(1, false);
+      std::string data;
       if (!input_filename.empty() && (input_filename != "-")) {
         data = phosg::load_file(input_filename);
       } else {
@@ -1224,9 +1213,9 @@ Action a_encode_gvm(
       }
       auto img = phosg::ImageRGBA8888N::from_file_data(data);
       // If the image has any transparent pixels at all, use RGB5A3
-      string encoded = encode_gvm(
+      std::string encoded = encode_gvm(
           img, has_any_transparent_pixels(img) ? GVRDataFormat::RGB5A3 : GVRDataFormat::RGB565, "image.gvr", 0);
-      write_output_data(args, encoded.data(), encoded.size(), "gvm");
+      write_output_data(args, encoded, "gvm");
     });
 
 Action a_decode_bitmap_font(
@@ -1242,7 +1231,7 @@ Action a_decode_bitmap_font(
       size_t width = args.get<size_t>("width");
       phosg::Image res = decode_fon(data, width);
       if (width == 20 && args.get<bool>("show-unused")) {
-        static const array<uint8_t, 0xBF> iso8859_widths{7, 9, 13, 11, 15, 14, 7, 8, 8, 11, 11, 7, 11, 7, 11, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 7, 7, 9, 11, 9, 10, 15, 13, 12, 13, 12, 11, 11, 13, 12, 8, 11, 12, 11, 15, 12, 13, 11, 13, 12, 11, 13, 12, 13, 15, 12, 13, 11, 8, 11, 8, 8, 9, 8, 12, 11, 12, 11, 12, 10, 12, 11, 6, 9, 11, 6, 14, 11, 12, 11, 11, 9, 11, 10, 11, 12, 15, 11, 11, 11, 9, 8, 9, 9, 9, 12, 7, 10, 13, 10, 10, 7, 10, 8, 17, 9, 12, 11, 9, 17, 9, 7, 11, 8, 8, 8, 11, 11, 8, 7, 6, 9, 12, 13, 13, 13, 10, 13, 13, 13, 13, 13, 13, 17, 13, 11, 11, 11, 11, 8, 8, 8, 8, 12, 12, 13, 13, 13, 13, 13, 11, 13, 12, 12, 12, 12, 15, 11, 10, 12, 12, 12, 12, 12, 12, 17, 12, 12, 12, 12, 12, 6, 6, 6, 6, 11, 11, 12, 12, 12, 12, 12, 11, 12, 11, 11, 11, 11, 11, 11, 11};
+        static const std::array<uint8_t, 0xBF> iso8859_widths{7, 9, 13, 11, 15, 14, 7, 8, 8, 11, 11, 7, 11, 7, 11, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 7, 7, 9, 11, 9, 10, 15, 13, 12, 13, 12, 11, 11, 13, 12, 8, 11, 12, 11, 15, 12, 13, 11, 13, 12, 11, 13, 12, 13, 15, 12, 13, 11, 8, 11, 8, 8, 9, 8, 12, 11, 12, 11, 12, 10, 12, 11, 6, 9, 11, 6, 14, 11, 12, 11, 11, 9, 11, 10, 11, 12, 15, 11, 11, 11, 9, 8, 9, 9, 9, 12, 7, 10, 13, 10, 10, 7, 10, 8, 17, 9, 12, 11, 9, 17, 9, 7, 11, 8, 8, 8, 11, 11, 8, 7, 6, 9, 12, 13, 13, 13, 10, 13, 13, 13, 13, 13, 13, 17, 13, 11, 11, 11, 11, 8, 8, 8, 8, 12, 12, 13, 13, 13, 13, 13, 11, 13, 12, 12, 12, 12, 15, 11, 10, 12, 12, 12, 12, 12, 12, 17, 12, 12, 12, 12, 12, 6, 6, 6, 6, 11, 11, 12, 12, 12, 12, 12, 11, 12, 11, 11, 11, 11, 11, 11, 11};
         for (size_t z = 0; z < iso8859_widths.size(); z++) {
           for (size_t y = (z + 1) * 0x12; y < (z + 2) * 0x12; y++) {
             for (size_t x = iso8859_widths.at(z); x < width; x++) {
@@ -1251,8 +1240,7 @@ Action a_decode_bitmap_font(
           }
         }
       }
-      string bmp_data = res.serialize(phosg::ImageFormat::WINDOWS_BITMAP);
-      write_output_data(args, bmp_data.data(), bmp_data.size(), "bmp");
+      write_output_data(args, res.serialize(phosg::ImageFormat::WINDOWS_BITMAP), "bmp");
     });
 Action a_encode_bitmap_font(
     "encode-bitmap-font", "\
@@ -1261,16 +1249,14 @@ Action a_encode_bitmap_font(
     with the console PSO versions. The image dimensions must match the\n\
     original fon\'s dimensions.\n",
     +[](phosg::Arguments& args) {
-      const string& input_filename = args.get<string>(1, false);
-      string data;
+      const std::string& input_filename = args.get<std::string>(1, false);
+      std::string data;
       if (!input_filename.empty() && (input_filename != "-")) {
         data = phosg::load_file(input_filename);
       } else {
         data = phosg::read_all(stdin);
       }
-      auto img = phosg::ImageRGB888::from_file_data(data);
-      string encoded = encode_fon(img);
-      write_output_data(args, encoded.data(), encoded.size(), "fon");
+      write_output_data(args, encode_fon(phosg::ImageRGB888::from_file_data(data)), "fon");
     });
 
 Action a_salvage_gci(
@@ -1282,8 +1268,8 @@ Action a_salvage_gci(
     +[](phosg::Arguments& args) {
       bool round2 = args.get<bool>("round2");
       bool exhaustive = args.get<bool>("exhaustive");
-      string seed = args.get<string>("seed");
-      string system_filename = args.get<string>("sys");
+      std::string seed = args.get<std::string>("seed");
+      std::string system_filename = args.get<std::string>("sys");
       size_t num_threads = args.get<size_t>("threads", 0);
       size_t offset = args.get<size_t>("offset", 0);
       size_t stride = args.get<size_t>("stride", 1);
@@ -1292,14 +1278,14 @@ Action a_salvage_gci(
       uint64_t likely_round1_seed = 0xFFFFFFFFFFFFFFFF;
       if (!system_filename.empty()) {
         try {
-          string system_data = phosg::load_file(system_filename);
+          std::string system_data = phosg::load_file(system_filename);
           phosg::StringReader r(system_data);
           const auto& header = r.get<PSOGCIFileHeader>();
           header.check();
           const auto& system = r.get<PSOGCSystemFile>();
           likely_round1_seed = system.creation_timestamp;
           phosg::log_info_f("System file appears to be in order; round1 seed is {:08X}", likely_round1_seed);
-        } catch (const exception& e) {
+        } catch (const std::exception& e) {
           phosg::log_warning_f("Cannot parse system file ({}); ignoring it", e.what());
         }
       } else if (!seed.empty()) {
@@ -1308,7 +1294,7 @@ Action a_salvage_gci(
       }
 
       if (round2 && likely_round1_seed > 0x100000000) {
-        throw invalid_argument("cannot find round2 seed without known round1 seed");
+        throw std::invalid_argument("cannot find round2 seed without known round1 seed");
       }
 
       auto data = read_input_data(args);
@@ -1318,7 +1304,7 @@ Action a_salvage_gci(
 
       const void* data_section = r.getv(header.data_size);
 
-      string round1_decrypted;
+      std::string round1_decrypted;
       if (round2) {
         round1_decrypted = decrypt_data_section<true>(data_section, header.data_size, likely_round1_seed, 0);
         if (bytes > 0) {
@@ -1327,9 +1313,9 @@ Action a_salvage_gci(
       }
 
       auto process_file = [&]<typename StructT>() {
-        vector<multimap<size_t, uint32_t>> top_seeds_by_thread(
-            num_threads ? num_threads : thread::hardware_concurrency());
-        auto add_top_seed = +[](multimap<size_t, uint32_t>& top_seeds, uint32_t seed, size_t zero_count) -> void {
+        std::vector<std::multimap<size_t, uint32_t>> top_seeds_by_thread(
+            num_threads ? num_threads : std::thread::hardware_concurrency());
+        auto add_top_seed = +[](std::multimap<size_t, uint32_t>& top_seeds, uint32_t seed, size_t zero_count) -> void {
           if (top_seeds.size() < 10 || (zero_count >= top_seeds.begin()->first)) {
             top_seeds.emplace(zero_count, seed);
             if (top_seeds.size() > 10) {
@@ -1337,8 +1323,8 @@ Action a_salvage_gci(
             }
           }
         };
-        auto merge_top_seeds = +[](const vector<multimap<size_t, uint32_t>>& top_seeds_by_thread) -> multimap<size_t, uint32_t> {
-          multimap<size_t, uint32_t> ret;
+        auto merge_top_seeds = +[](const std::vector<std::multimap<size_t, uint32_t>>& top_seeds_by_thread) -> std::multimap<size_t, uint32_t> {
+          std::multimap<size_t, uint32_t> ret;
           for (const auto& thread_top_seeds : top_seeds_by_thread) {
             for (const auto& it : thread_top_seeds) {
               ret.emplace(it.first, it.second);
@@ -1346,7 +1332,7 @@ Action a_salvage_gci(
           }
           return ret;
         };
-        auto print_top_seeds = [&](const multimap<size_t, uint32_t>& top_seeds) -> void {
+        auto print_top_seeds = [&](const std::multimap<size_t, uint32_t>& top_seeds) -> void {
           for (const auto& it : top_seeds) {
             const char* sys_seed_str = (!round2 && (it.second == likely_round1_seed))
                 ? " (this is the seed from the system file)"
@@ -1359,7 +1345,7 @@ Action a_salvage_gci(
         uint32_t round2_lower_half = 0;
         auto try_round2_seed = [&](uint64_t seed, size_t thread_num) -> bool {
           seed |= round2_lower_half;
-          string decrypted = round1_decrypted;
+          std::string decrypted = round1_decrypted;
           PSOV2Encryption(seed).encrypt_big_endian(decrypted.data(), decrypted.size());
           size_t zero_count = phosg::count_zeroes(decrypted.data() + offset, decrypted.size() - offset, stride);
           add_top_seed(top_seeds_by_thread[thread_num], seed, zero_count);
@@ -1390,7 +1376,7 @@ Action a_salvage_gci(
           phosg::parallel_blocks<uint64_t>(try_round2_seed, 0, 0x100000, 0x1000, num_threads);
           auto intermediate_top_seeds = merge_top_seeds(top_seeds_by_thread);
           if (intermediate_top_seeds.empty()) {
-            throw logic_error("no intermediate seeds were found");
+            throw std::logic_error("no intermediate seeds were found");
           }
           print_top_seeds(intermediate_top_seeds);
           round2_lower_half = intermediate_top_seeds.rbegin()->second & 0xFFFF;
@@ -1419,7 +1405,7 @@ Action a_salvage_gci(
       } else if (header.is_ep3() && (header.data_size == sizeof(PSOGCEp3CharacterFile))) {
         process_file.template operator()<PSOGCEp3CharacterFile>();
       } else {
-        throw runtime_error("unrecognized save type");
+        throw std::runtime_error("unrecognized save type");
       }
     });
 
@@ -1437,31 +1423,31 @@ Action a_find_decryption_seed(
     of CPU cores in the system, but this can be overridden with the\n\
     --threads=NUM-THREADS option.\n",
     +[](phosg::Arguments& args) {
-      const auto& plaintexts_ascii = args.get_multi<string>("decrypted");
-      const auto& ciphertext_ascii = args.get<string>("encrypted");
+      const auto& plaintexts_ascii = args.get_multi<std::string>("decrypted");
+      const auto& ciphertext_ascii = args.get<std::string>("encrypted");
       auto version = get_cli_version(args);
       if (plaintexts_ascii.empty() || ciphertext_ascii.empty()) {
-        throw runtime_error("both --encrypted and --decrypted must be specified");
+        throw std::runtime_error("both --encrypted and --decrypted must be specified");
       }
       if (uses_v4_encryption(version)) {
-        throw runtime_error("--find-decryption-seed cannot be used for BB ciphers");
+        throw std::runtime_error("--find-decryption-seed cannot be used for BB ciphers");
       }
       bool skip_little_endian = args.get<bool>("skip-little-endian");
       bool skip_big_endian = args.get<bool>("skip-big-endian");
       size_t num_threads = args.get<size_t>("threads", 0);
 
       size_t max_plaintext_size = 0;
-      vector<pair<string, string>> plaintexts;
+      std::vector<std::pair<std::string, std::string>> plaintexts;
       for (const auto& plaintext_ascii : plaintexts_ascii) {
-        string mask;
-        string data = phosg::parse_data_string(plaintext_ascii, &mask, phosg::ParseDataFlags::ALLOW_FILES);
+        std::string mask;
+        std::string data = phosg::parse_data_string(plaintext_ascii, &mask, phosg::ParseDataFlags::ALLOW_FILES);
         if (data.size() != mask.size()) {
-          throw logic_error("plaintext and mask are not the same size");
+          throw std::logic_error("plaintext and mask are not the same size");
         }
-        max_plaintext_size = max<size_t>(max_plaintext_size, data.size());
+        max_plaintext_size = std::max<size_t>(max_plaintext_size, data.size());
         plaintexts.emplace_back(std::move(data), std::move(mask));
       }
-      string ciphertext = phosg::parse_data_string(ciphertext_ascii, nullptr, phosg::ParseDataFlags::ALLOW_FILES);
+      std::string ciphertext = phosg::parse_data_string(ciphertext_ascii, nullptr, phosg::ParseDataFlags::ALLOW_FILES);
 
       auto mask_match = +[](const void* a, const void* b, const void* m, size_t size) -> bool {
         const uint8_t* a8 = reinterpret_cast<const uint8_t*>(a);
@@ -1476,8 +1462,8 @@ Action a_find_decryption_seed(
       };
 
       uint64_t seed = phosg::parallel_blocks<uint64_t>([&](uint64_t seed, size_t) -> bool {
-        string be_decrypt_buf = ciphertext.substr(0, max_plaintext_size);
-        string le_decrypt_buf = ciphertext.substr(0, max_plaintext_size);
+        std::string be_decrypt_buf = ciphertext.substr(0, max_plaintext_size);
+        std::string le_decrypt_buf = ciphertext.substr(0, max_plaintext_size);
         if (uses_v3_encryption(version)) {
           PSOV3Encryption(seed).encrypt_both_endian(
               le_decrypt_buf.data(), be_decrypt_buf.data(), be_decrypt_buf.size());
@@ -1511,11 +1497,11 @@ Action a_find_decryption_seed(
 
 Action a_decode_gci(
     "decode-gci", nullptr, +[](phosg::Arguments& args) {
-      string input_filename = args.get<string>(1, false);
+      std::string input_filename = args.get<std::string>(1, false);
       if (input_filename.empty() || (input_filename == "-")) {
-        throw invalid_argument("an input filename is required");
+        throw std::invalid_argument("an input filename is required");
       }
-      string seed = args.get<string>("seed");
+      std::string seed = args.get<std::string>("seed");
       size_t num_threads = args.get<size_t>("threads", 0);
       bool skip_checksum = args.get<bool>("skip-checksum");
       int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
@@ -1524,11 +1510,11 @@ Action a_decode_gci(
     });
 Action a_decode_vms(
     "decode-vms", nullptr, +[](phosg::Arguments& args) {
-      string input_filename = args.get<string>(1, false);
+      std::string input_filename = args.get<std::string>(1, false);
       if (input_filename.empty() || (input_filename == "-")) {
-        throw invalid_argument("an input filename is required");
+        throw std::invalid_argument("an input filename is required");
       }
-      string seed = args.get<string>("seed");
+      std::string seed = args.get<std::string>("seed");
       size_t num_threads = args.get<size_t>("threads", 0);
       bool skip_checksum = args.get<bool>("skip-checksum");
       int64_t dec_seed = seed.empty() ? -1 : stoul(seed, nullptr, 16);
@@ -1537,9 +1523,9 @@ Action a_decode_vms(
     });
 Action a_decode_dlq(
     "decode-dlq", nullptr, +[](phosg::Arguments& args) {
-      string input_filename = args.get<string>(1, false);
+      std::string input_filename = args.get<std::string>(1, false);
       if (input_filename.empty() || (input_filename == "-")) {
-        throw invalid_argument("an input filename is required");
+        throw std::invalid_argument("an input filename is required");
       }
       auto decoded = decode_dlq_data(read_input_data(args));
       phosg::save_file(input_filename + ".dec", decoded);
@@ -1562,9 +1548,9 @@ Action a_decode_qst(
     a hex-encoded 32-bit integer). If you don\'t know the serial number,\n\
     newserv will find it via a brute-force search, which will take a long time.\n",
     +[](phosg::Arguments& args) {
-      string input_filename = args.get<string>(1, false);
+      std::string input_filename = args.get<std::string>(1, false);
       if (input_filename.empty() || (input_filename == "-")) {
-        throw invalid_argument("an input filename is required");
+        throw std::invalid_argument("an input filename is required");
       }
       bool decompress = args.get<bool>("decompress");
       auto files = decode_qst_data(read_input_data(args));
@@ -1583,29 +1569,29 @@ Action a_encode_qst(
     Specify the quest\'s game version with one of the --dc-nte, --dc-v1,\n\
     --dc-v2, --pc, --gc-nte, --gc, --gc-ep3, --xb, or --bb options.\n",
     +[](phosg::Arguments& args) {
-      string input_filename = args.get<string>(1, false);
+      std::string input_filename = args.get<std::string>(1, false);
       if (input_filename.empty() || (input_filename == "-")) {
-        throw invalid_argument("an input filename is required");
+        throw std::invalid_argument("an input filename is required");
       }
       auto version = get_cli_version(args);
       bool download = args.get<bool>("download");
 
-      string bin_filename = input_filename;
-      string dat_filename = bin_filename.ends_with(".bin")
+      std::string bin_filename = input_filename;
+      std::string dat_filename = bin_filename.ends_with(".bin")
           ? (bin_filename.substr(0, bin_filename.size() - 3) + "dat")
           : (bin_filename + ".dat");
-      string pvr_filename = bin_filename.ends_with(".bin")
+      std::string pvr_filename = bin_filename.ends_with(".bin")
           ? (bin_filename.substr(0, bin_filename.size() - 3) + "pvr")
           : (bin_filename + ".pvr");
-      auto bin_data = make_shared<string>(phosg::load_file(bin_filename));
-      auto dat_data = make_shared<string>(phosg::load_file(dat_filename));
-      shared_ptr<string> pvr_data;
+      auto bin_data = std::make_shared<std::string>(phosg::load_file(bin_filename));
+      auto dat_data = std::make_shared<std::string>(phosg::load_file(dat_filename));
+      std::shared_ptr<std::string> pvr_data;
       try {
-        pvr_data = make_shared<string>(phosg::load_file(pvr_filename));
+        pvr_data = std::make_shared<std::string>(phosg::load_file(pvr_filename));
       } catch (const phosg::cannot_open_file&) {
       }
 
-      auto vq = make_shared<VersionedQuest>();
+      auto vq = std::make_shared<VersionedQuest>();
       vq->meta.version = version;
       vq->bin_contents = bin_data;
       vq->dat_contents = dat_data;
@@ -1613,9 +1599,8 @@ Action a_encode_qst(
       if (download) {
         vq = vq->create_download_quest();
       }
-      string qst_data = vq->encode_qst();
 
-      write_output_data(args, qst_data.data(), qst_data.size(), "qst");
+      write_output_data(args, vq->encode_qst(), "qst");
     });
 
 Action a_disassemble_quest_script(
@@ -1635,24 +1620,24 @@ Action a_disassemble_quest_script(
           S, B, T, or K, for Japanese, English, German, French, Spanish,\n\
           Simplified Chinese, Traditional Chinese, or Korean respectively.\n",
     +[](phosg::Arguments& args) {
-      string data = read_input_data(args);
+      std::string data = read_input_data(args);
       auto version = get_cli_version(args);
       if (!args.get<bool>("decompressed")) {
         data = prs_decompress(data);
       }
-      shared_ptr<MapFile> map_file;
-      string map_filename = args.get<string>("map-file", false);
+      std::shared_ptr<MapFile> map_file;
+      std::string map_filename = args.get<std::string>("map-file", false);
       if (!map_filename.empty()) {
-        auto map_data = make_shared<string>(prs_decompress(phosg::load_file(map_filename)));
-        map_file = make_shared<MapFile>(map_data);
+        auto map_data = std::make_shared<std::string>(prs_decompress(phosg::load_file(map_filename)));
+        map_file = std::make_shared<MapFile>(map_data);
       }
-      const auto& language_str = args.get<string>("language");
+      const auto& language_str = args.get<std::string>("language");
       Language language = language_str.empty() ? Language::ENGLISH : language_for_name(language_str);
       bool reassembly_mode = args.get<bool>("reassembly");
       bool use_qedit_names = args.get<bool>("qedit");
-      string result = disassemble_quest_script(
+      std::string result = disassemble_quest_script(
           data.data(), data.size(), version, language, map_file, reassembly_mode, use_qedit_names);
-      write_output_data(args, result.data(), result.size(), "txt");
+      write_output_data(args, result, "txt");
     });
 Action a_disassemble_quest_map(
     "disassemble-quest-map", "\
@@ -1661,13 +1646,13 @@ Action a_disassemble_quest_map(
     the data it contains. If --decompressed is given, don\'t decompress before\n\
     disassembling.\n",
     +[](phosg::Arguments& args) {
-      auto data = make_shared<string>(read_input_data(args));
+      auto data = std::make_shared<std::string>(read_input_data(args));
       if (!args.get<bool>("decompressed")) {
         *data = prs_decompress(*data);
       }
       bool reassembly = args.get<bool>("reassembly");
-      string result = MapFile(data).disassemble(reassembly, get_cli_version(args, Version::UNKNOWN));
-      write_output_data(args, result.data(), result.size(), "txt");
+      std::string result = MapFile(data).disassemble(reassembly, get_cli_version(args, Version::UNKNOWN));
+      write_output_data(args, result, "txt");
     });
 Action a_disassemble_free_map(
     "disassemble-free-map", "\
@@ -1679,23 +1664,23 @@ Action a_disassemble_free_map(
     input must be from a file (that is, INPUT-FILENAME is required and cannot\n\
     be \"-\").\n",
     +[](phosg::Arguments& args) {
-      const string& input_filename = args.get<string>(1, true);
-      string input_filename_lower = phosg::tolower(input_filename);
+      const std::string& input_filename = args.get<std::string>(1, true);
+      std::string input_filename_lower = phosg::tolower(input_filename);
       bool is_events = input_filename_lower.ends_with(".evt");
       bool is_enemies = input_filename_lower.ends_with("e.dat") || input_filename_lower.ends_with("e_s.dat") || input_filename_lower.ends_with("e_c1.dat") || input_filename_lower.ends_with("e_d.dat");
       bool is_objects = input_filename_lower.ends_with("o.dat") || input_filename_lower.ends_with("o_s.dat") || input_filename_lower.ends_with("o_c1.dat") || input_filename_lower.ends_with("o_d.dat");
       if (!is_objects && !is_enemies && !is_events) {
-        throw runtime_error("cannot determine input file type");
+        throw std::runtime_error("cannot determine input file type");
       }
 
-      auto data = make_shared<string>(read_input_data(args));
+      auto data = std::make_shared<std::string>(read_input_data(args));
       if (args.get<bool>("compressed")) {
         *data = prs_decompress(*data);
       }
 
       uint8_t floor = args.get<uint8_t>("floor", 0);
       bool reassembly = args.get<bool>("reassembly");
-      string result;
+      std::string result;
       if (is_objects) {
         result = MapFile(floor, data, nullptr, nullptr).disassemble(reassembly, get_cli_version(args, Version::UNKNOWN));
       } else if (is_enemies) {
@@ -1703,21 +1688,18 @@ Action a_disassemble_free_map(
       } else if (is_events) {
         result = MapFile(floor, nullptr, nullptr, data).disassemble(reassembly, get_cli_version(args, Version::UNKNOWN));
       } else {
-        throw logic_error("unhandled input type");
+        throw std::logic_error("unhandled input type");
       }
       result.push_back('\n');
 
-      write_output_data(args, result.data(), result.size(), "txt");
+      write_output_data(args, result, "txt");
     });
 Action a_disassemble_set_data_table(
     "disassemble-set-data-table", "\
   disassemble-set-data-table [INPUT-FILENAME]\n\
     Show the contents of a SetDataTable.rel file. A version option is required.\n",
     +[](phosg::Arguments& args) {
-      Version version = get_cli_version(args);
-      SetDataTable sdt(version, read_input_data(args));
-      string str = sdt.str();
-      write_output_data(args, str.data(), str.size(), "txt");
+      write_output_data(args, SetDataTable(get_cli_version(args), read_input_data(args)).str(), "txt");
     });
 
 Action a_assemble_quest_script(
@@ -1728,10 +1710,10 @@ Action a_assemble_quest_script(
     uncompressed .bind file instead. If --disable-strict is given, allows some\n\
     invalid behaviors (e.g. calling an undefined label by number).\n",
     +[](phosg::Arguments& args) {
-      string text = read_input_data(args);
+      std::string text = read_input_data(args);
 
-      const string& input_filename = args.get<string>(1, false);
-      string include_dir = (!input_filename.empty() && (input_filename != "-"))
+      const std::string& input_filename = args.get<std::string>(1, false);
+      std::string include_dir = (!input_filename.empty() && (input_filename != "-"))
           ? phosg::dirname(input_filename)
           : ".";
 
@@ -1740,7 +1722,7 @@ Action a_assemble_quest_script(
           {include_dir, "system/quests/includes"},
           {include_dir, "system/quests/includes", "system/client-functions/System"},
           !args.get<bool>("disable-strict"));
-      string result_data = std::move(result.data);
+      std::string result_data = std::move(result.data);
       bool compress = !args.get<bool>("decompressed");
       if (compress) {
         if (args.get<bool>("optimal")) {
@@ -1749,7 +1731,7 @@ Action a_assemble_quest_script(
           result_data = prs_compress(result_data);
         }
       }
-      write_output_data(args, result_data.data(), result_data.size(), compress ? "bin" : "bind");
+      write_output_data(args, result_data, compress ? "bin" : "bind");
     });
 
 Action a_assemble_all_client_functions(
@@ -1761,13 +1743,13 @@ Action a_assemble_all_client_functions(
     Edition. If --skip-encrypted is given, only the unencrypted .bin files are\n\
     created.\n",
     +[](phosg::Arguments& args) {
-      auto fci = make_shared<ClientFunctionIndex>("system/client-functions", false);
+      auto fci = std::make_shared<ClientFunctionIndex>("system/client-functions", false);
 
-      const std::string& output_dir = args.get<string>(1);
+      const std::string& output_dir = args.get<std::string>(1);
       std::filesystem::create_directories(output_dir);
 
       bool skip_encrypted = args.get<bool>("skip-encrypted");
-      auto process_code = [&](shared_ptr<const ClientFunctionIndex::Function> code,
+      auto process_code = [&](std::shared_ptr<const ClientFunctionIndex::Function> code,
                               uint32_t checksum_addr,
                               uint32_t checksum_size,
                               uint32_t override_start_addr) -> void {
@@ -1776,11 +1758,11 @@ Action a_assemble_all_client_functions(
             continue;
           }
           phosg::StringWriter w;
-          string data = prepare_send_function_call_data(
+          std::string data = prepare_send_function_call_data(
               code, {}, nullptr, 0, checksum_addr, checksum_size, override_start_addr, encrypted);
           w.put(PSOCommandHeaderDCV3{.command = 0xB2, .flag = 0x00, .size = data.size() + 4});
           w.write(data);
-          string out_path = std::format("{}/{}.{}.{}.bin",
+          std::string out_path = std::format("{}/{}.{}.{}.bin",
               output_dir, code->short_name, str_for_specific_version(code->specific_version), (encrypted ? "enc" : "std"));
           phosg::save_file(out_path, w.str());
           phosg::fwrite_fmt(stderr, "... {}\n", out_path);
@@ -1792,7 +1774,7 @@ Action a_assemble_all_client_functions(
       }
       try {
         process_code(fci->get("CacheClearFix-Phase1", SPECIFIC_VERSION_PPC_INDETERMINATE), 0x80000000, 8, 0x7F2734EC);
-      } catch (const out_of_range&) {
+      } catch (const std::out_of_range&) {
       }
     });
 
@@ -1803,8 +1785,8 @@ Action a_generate_gsl(
     is given, the archive header is generated in GameCube format; otherwise it\n\
     is generated in PC/BB format.\n",
     +[](phosg::Arguments& args) {
-      string input_directory = args.get<string>(1, true);
-      string output_filename = args.get<string>(2, false);
+      std::string input_directory = args.get<std::string>(1, true);
+      std::string output_filename = args.get<std::string>(2, false);
       if (output_filename.empty()) {
         output_filename = input_directory;
         while (output_filename.ends_with("/")) {
@@ -1813,26 +1795,26 @@ Action a_generate_gsl(
         output_filename += ".gsl";
       }
 
-      unordered_map<string, string> files;
+      std::unordered_map<std::string, std::string> files;
       for (const auto& item : std::filesystem::directory_iterator(input_directory)) {
-        string filename = item.path().filename().string();
-        string file_path = input_directory + "/" + filename;
+        std::string filename = item.path().filename().string();
+        std::string file_path = input_directory + "/" + filename;
         if (!std::filesystem::is_regular_file(file_path)) {
           throw std::runtime_error(std::format(
               "input directory contains {} which is not a file", filename));
         }
         files.emplace(filename, phosg::load_file(file_path));
       }
-      string gsl_contents = GSLArchive::generate(files, args.get<bool>("big-endian"));
+      std::string gsl_contents = GSLArchive::generate(files, args.get<bool>("big-endian"));
       phosg::save_file(output_filename, gsl_contents);
     });
 
 void a_extract_archive_fn(phosg::Arguments& args) {
-  string output_prefix = args.get<string>(2, false);
+  std::string output_prefix = args.get<std::string>(2, false);
   if (output_prefix == "-") {
-    throw invalid_argument("output prefix cannot be stdout");
+    throw std::invalid_argument("output prefix cannot be stdout");
   } else if (output_prefix.empty()) {
-    output_prefix = args.get<string>(1, false);
+    output_prefix = args.get<std::string>(1, false);
     if (output_prefix == "-") {
       output_prefix = "./";
     } else {
@@ -1844,54 +1826,54 @@ void a_extract_archive_fn(phosg::Arguments& args) {
 
   std::filesystem::create_directories(output_prefix);
 
-  string data = read_input_data(args);
-  auto data_shared = make_shared<string>(std::move(data));
+  std::string data = read_input_data(args);
+  auto data_shared = std::make_shared<std::string>(std::move(data));
 
-  if (args.get<string>(0) == "extract-afs") {
+  if (args.get<std::string>(0) == "extract-afs") {
     AFSArchive arch(data_shared);
     const auto& all_entries = arch.all_entries();
     for (size_t z = 0; z < all_entries.size(); z++) {
       auto e = arch.get(z);
-      string out_file = std::format("{}-{}", output_prefix, z);
+      std::string out_file = std::format("{}-{}", output_prefix, z);
       phosg::save_file(out_file, e.first, e.second);
       phosg::fwrite_fmt(stderr, "... {}\n", out_file);
     }
-  } else if (args.get<string>(0) == "extract-gsl") {
+  } else if (args.get<std::string>(0) == "extract-gsl") {
     GSLArchive arch(data_shared, args.get<bool>("big-endian"));
     for (const auto& entry_it : arch.all_entries()) {
       auto e = arch.get(entry_it.first);
-      string out_file = output_prefix + entry_it.first;
+      std::string out_file = output_prefix + entry_it.first;
       phosg::save_file(out_file, e.first, e.second);
       phosg::fwrite_fmt(stderr, "... {}\n", out_file);
     }
-  } else if (args.get<string>(0) == "extract-bml") {
+  } else if (args.get<std::string>(0) == "extract-bml") {
     BMLArchive arch(data_shared, args.get<bool>("big-endian"));
     for (const auto& entry_it : arch.all_entries()) {
       {
         auto e = arch.get(entry_it.first);
-        string data = prs_decompress(e.first, e.second);
-        string out_file = output_prefix + entry_it.first;
+        std::string data = prs_decompress(e.first, e.second);
+        std::string out_file = output_prefix + entry_it.first;
         phosg::save_file(out_file, data);
         phosg::fwrite_fmt(stderr, "... {}\n", out_file);
       }
 
       auto gvm_e = arch.get_gvm(entry_it.first);
       if (gvm_e.second) {
-        string data = prs_decompress(gvm_e.first, gvm_e.second);
-        string out_file = output_prefix + entry_it.first + ".gvm";
+        std::string data = prs_decompress(gvm_e.first, gvm_e.second);
+        std::string out_file = output_prefix + entry_it.first + ".gvm";
         phosg::save_file(out_file, data);
         phosg::fwrite_fmt(stderr, "... {}\n", out_file);
       }
     }
-  } else if (args.get<string>(0) == "extract-ppk") {
-    auto files = decode_ppk_file(*data_shared, args.get<string>("password", true));
+  } else if (args.get<std::string>(0) == "extract-ppk") {
+    auto files = decode_ppk_file(*data_shared, args.get<std::string>("password", true));
     for (const auto& [filename, data] : files) {
-      string out_file = output_prefix + filename;
+      std::string out_file = output_prefix + filename;
       phosg::save_file(out_file, data);
       phosg::fwrite_fmt(stderr, "... {}\n", out_file);
     }
   } else {
-    throw logic_error("unimplemented archive type");
+    throw std::logic_error("unimplemented archive type");
   }
 }
 
@@ -1944,14 +1926,14 @@ Action a_transcode_text("transcode-text", nullptr, +[](phosg::Arguments& args) {
         }
       }
 
-      string data = read_input_data(args);
+      std::string data = read_input_data(args);
       if (tt_from) {
         data = (*tt_from)(data);
       }
       if (tt_to) {
         data = (*tt_to)(data);
       }
-      write_output_data(args, data.data(), data.size(), "txt"); });
+      write_output_data(args, data, "txt"); });
 
 Action a_decode_text_archive(
     "decode-text-archive", "\
@@ -1961,10 +1943,10 @@ Action a_decode_text_archive(
     NTE and 11/2000). If --has-pr3 is given, expects the input not to have a\n\
     REL footer.\n",
     +[](phosg::Arguments& args) {
-      string data = read_input_data(args);
+      std::string data = read_input_data(args);
       bool is_sjis = args.get<bool>("japanese");
 
-      unique_ptr<TextSet> ts;
+      std::unique_ptr<TextSet> ts;
       size_t collection_count = args.get<size_t>("collections", 0);
       if (collection_count) {
         ts = make_unique<BinaryTextSet>(data, collection_count, !args.get<bool>("has-pr3"), is_sjis);
@@ -1972,16 +1954,16 @@ Action a_decode_text_archive(
         ts = make_unique<BinaryTextAndKeyboardsSet>(data, args.get<bool>("big-endian"), is_sjis);
       }
       phosg::JSON j = ts->json();
-      string out_data = j.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY | phosg::JSON::SerializeOption::EXPAND_LEAF_CONTAINERS);
-      write_output_data(args, out_data.data(), out_data.size(), "json");
+      std::string out_data = j.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY | phosg::JSON::SerializeOption::EXPAND_LEAF_CONTAINERS);
+      write_output_data(args, out_data, "json");
     });
 Action a_encode_text_archive(
     "encode-text-archive", "\
   encode-text-archive [INPUT-FILENAME [OUTPUT-FILENAME]]\n\
     Encode a text archive. Currently only supports GC and Xbox format.\n",
     +[](phosg::Arguments& args) {
-      const string& input_filename = args.get<string>(1, false);
-      const string& output_filename = args.get<string>(2, false);
+      const std::string& input_filename = args.get<std::string>(1, false);
+      const std::string& output_filename = args.get<std::string>(2, false);
       bool is_sjis = args.get<bool>("japanese");
 
       auto json = phosg::JSON::parse(read_input_data(args));
@@ -1989,14 +1971,14 @@ Action a_encode_text_archive(
       auto result = a.serialize(args.get<bool>("big-endian"), is_sjis);
       if (output_filename.empty()) {
         if (input_filename.empty() || (input_filename == "-")) {
-          throw runtime_error("encoded text archive cannot be written to stdout");
+          throw std::runtime_error("encoded text archive cannot be written to stdout");
         }
         phosg::save_file(std::format("{}.pr2", input_filename), result.first);
         phosg::save_file(std::format("{}.pr3", input_filename), result.second);
       } else if (output_filename == "-") {
-        throw runtime_error("encoded text archive cannot be written to stdout");
+        throw std::runtime_error("encoded text archive cannot be written to stdout");
       } else {
-        string out_filename = output_filename;
+        std::string out_filename = output_filename;
         if (out_filename.ends_with(".pr2")) {
           phosg::save_file(out_filename, result.first);
           out_filename[out_filename.size() - 1] = '3';
@@ -2012,8 +1994,8 @@ Action a_decode_unicode_text_set(
     "decode-unicode-text-set", nullptr, +[](phosg::Arguments& args) {
       UnicodeTextSet uts(read_input_data(args));
       phosg::JSON j = uts.json();
-      string out_data = j.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY | phosg::JSON::SerializeOption::EXPAND_LEAF_CONTAINERS);
-      write_output_data(args, out_data.data(), out_data.size(), "json");
+      std::string out_data = j.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY | phosg::JSON::SerializeOption::EXPAND_LEAF_CONTAINERS);
+      write_output_data(args, out_data, "json");
     });
 Action a_encode_unicode_text_set(
     "encode-unicode-text-set", "\
@@ -2022,9 +2004,7 @@ Action a_encode_unicode_text_set(
     Decode a Unicode text set (e.g. unitxt_e.prs) to JSON for easy editing, or\n\
     encode a JSON file to a Unicode text set.\n",
     +[](phosg::Arguments& args) {
-      UnicodeTextSet uts(phosg::JSON::parse(read_input_data(args)));
-      string encoded = uts.serialize();
-      write_output_data(args, encoded.data(), encoded.size(), "prs");
+      write_output_data(args, UnicodeTextSet(phosg::JSON::parse(read_input_data(args))).serialize(), "prs");
     });
 
 Action a_decode_credits_text_archive(
@@ -2038,8 +2018,8 @@ Action a_decode_credits_text_archive(
       for (const auto& it : ret) {
         json.emplace_back(it);
       }
-      string out_data = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY | phosg::JSON::SerializeOption::EXPAND_LEAF_CONTAINERS);
-      write_output_data(args, out_data.data(), out_data.size(), "json");
+      std::string out_data = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY | phosg::JSON::SerializeOption::EXPAND_LEAF_CONTAINERS);
+      write_output_data(args, out_data, "json");
     });
 Action a_encode_credits_text_archive(
     "encode-credits-text-archive", "\
@@ -2052,8 +2032,7 @@ Action a_encode_credits_text_archive(
       for (const auto& it : json.as_list()) {
         data.emplace_back(it->as_string());
       }
-      auto ret = encode_credits_text_set(data, args.get<bool>("big-endian"));
-      write_output_data(args, ret.data(), ret.size(), "rel");
+      write_output_data(args, encode_credits_text_set(data, args.get<bool>("big-endian")), "rel");
     });
 
 Action a_decode_word_select_set(
@@ -2067,16 +2046,16 @@ Action a_decode_word_select_set(
     +[](phosg::Arguments& args) {
       auto version = get_cli_version(args);
 
-      string unitxt_filename = args.get<string>("unitxt");
-      const vector<string>* unitxt_collection;
+      std::string unitxt_filename = args.get<std::string>("unitxt");
+      const std::vector<std::string>* unitxt_collection;
       if (!unitxt_filename.empty()) {
-        unique_ptr<UnicodeTextSet> uts;
+        std::unique_ptr<UnicodeTextSet> uts;
         if (unitxt_filename.ends_with(".prs")) {
-          uts = make_unique<UnicodeTextSet>(phosg::load_file(unitxt_filename));
+          uts = std::make_unique<UnicodeTextSet>(phosg::load_file(unitxt_filename));
         } else if (unitxt_filename.ends_with(".json")) {
-          uts = make_unique<UnicodeTextSet>(phosg::JSON::parse(phosg::load_file(unitxt_filename)));
+          uts = std::make_unique<UnicodeTextSet>(phosg::JSON::parse(phosg::load_file(unitxt_filename)));
         } else {
-          throw runtime_error("unitxt filename must end in .prs or .json");
+          throw std::runtime_error("unitxt filename must end in .prs or .json");
         }
         unitxt_collection = &uts->get((version == Version::BB_V4) ? 0 : 35);
       } else {
@@ -2093,14 +2072,14 @@ Action a_print_word_select_table(
     given, prints the table sorted by token ID for that version. If no version\n\
     option is given, prints the token table sorted by canonical name.\n",
     +[](phosg::Arguments& args) {
-      auto s = make_shared<ServerState>(get_config_filename(args));
+      auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->load_patch_indexes();
       s->load_text_index();
       s->load_word_select_table();
       Version v;
       try {
         v = get_cli_version(args);
-      } catch (const runtime_error&) {
+      } catch (const std::runtime_error&) {
         v = Version::UNKNOWN;
       }
       if (v != Version::UNKNOWN) {
@@ -2114,48 +2093,48 @@ Action a_download_files(
     "download-files", nullptr,
     +[](phosg::Arguments& args) {
       auto version = get_cli_version(args);
-      shared_ptr<PSOBBEncryption::KeyFile> key;
+      std::shared_ptr<PSOBBEncryption::KeyFile> key;
       if (uses_v4_encryption(version)) {
-        string key_file_name = args.get<string>("key");
+        std::string key_file_name = args.get<std::string>("key");
         if (key_file_name.empty()) {
-          throw runtime_error("a key filename is required for BB client emulation");
+          throw std::runtime_error("a key filename is required for BB client emulation");
         }
-        key = make_shared<PSOBBEncryption::KeyFile>(
+        key = std::make_shared<PSOBBEncryption::KeyFile>(
             phosg::load_object_file<PSOBBEncryption::KeyFile>("system/blueburst/keys/" + key_file_name + ".nsk"));
       }
-      auto [remote_host, remote_port] = phosg::parse_netloc(args.get<string>(1));
+      auto [remote_host, remote_port] = phosg::parse_netloc(args.get<std::string>(1));
 
-      auto io_context = make_shared<asio::io_context>();
-      unique_ptr<DownloadSession> download_session;
-      unique_ptr<PatchDownloadSession> patch_download_session;
+      auto io_context = std::make_shared<asio::io_context>();
+      std::unique_ptr<DownloadSession> download_session;
+      std::unique_ptr<PatchDownloadSession> patch_download_session;
       if (is_patch(version)) {
         patch_download_session = std::make_unique<PatchDownloadSession>(
             io_context,
             remote_host,
             remote_port,
-            args.get<string>("output-dir", true),
+            args.get<std::string>("output-dir", true),
             version,
-            args.get<string>("username", false),
-            args.get<string>("password", false),
-            args.get<string>("email", false),
+            args.get<std::string>("username", false),
+            args.get<std::string>("password", false),
+            args.get<std::string>("email", false),
             args.get<bool>("show-command-data"));
         asio::co_spawn(*io_context, patch_download_session->run(), asio::detached);
 
       } else {
-        auto character = PSOCHARFile::load_shared(args.get<string>("character", true), false).character_file;
-        auto ship_menu_selections_str = args.get<string>("ship-menu-selections", false);
+        auto character = PSOCHARFile::load_shared(args.get<std::string>("character", true), false).character_file;
+        auto ship_menu_selections_str = args.get<std::string>("ship-menu-selections", false);
 
-        unordered_set<string> ship_menu_selections;
+        std::unordered_set<std::string> ship_menu_selections;
         if (!ship_menu_selections_str.empty()) {
-          for (const string& s : phosg::split(ship_menu_selections_str, ',')) {
+          for (const std::string& s : phosg::split(ship_menu_selections_str, ',')) {
             ship_menu_selections.emplace(s);
           }
         }
 
-        vector<string> on_request_complete_commands;
-        string on_request_complete_arg = args.get<string>("on-request-complete-command", false);
+        std::vector<std::string> on_request_complete_commands;
+        std::string on_request_complete_arg = args.get<std::string>("on-request-complete-command", false);
         if (!on_request_complete_arg.empty()) {
-          for (const string& command : phosg::split(on_request_complete_arg, ',')) {
+          for (const std::string& command : phosg::split(on_request_complete_arg, ',')) {
             on_request_complete_commands.emplace_back(phosg::parse_data_string(command));
           }
         }
@@ -2169,16 +2148,16 @@ Action a_download_files(
             io_context,
             remote_host,
             remote_port,
-            args.get<string>("output-dir", true),
+            args.get<std::string>("output-dir", true),
             version,
             static_cast<Language>(args.get<uint8_t>("language")),
             key,
             phosg::random_object<uint32_t>(),
             serial_number,
-            args.get<string>("access-key", false),
-            args.get<string>("username", false),
-            args.get<string>("password", false),
-            args.get<string>("xb-gamertag", false),
+            args.get<std::string>("access-key", false),
+            args.get<std::string>("username", false),
+            args.get<std::string>("password", false),
+            args.get<std::string>("xb-gamertag", false),
             args.get<uint64_t>("xb-user-id", 0, phosg::Arguments::IntFormat::HEX),
             args.get<uint64_t>("xb-account-id", 0, phosg::Arguments::IntFormat::HEX),
             character,
@@ -2193,20 +2172,20 @@ Action a_download_files(
 
 std::shared_ptr<RareItemSet> load_rare_item_set(
     const std::string& filename, bool is_v1, std::shared_ptr<const ItemNameIndex> v4_item_name_index) {
-  string filename_lower = phosg::tolower(filename);
-  auto data = make_shared<string>(phosg::load_file(filename));
+  std::string filename_lower = phosg::tolower(filename);
+  auto data = std::make_shared<std::string>(phosg::load_file(filename));
   if (filename_lower.ends_with(".json")) {
-    return make_shared<RareItemSet>(phosg::JSON::parse(*data), v4_item_name_index);
+    return std::make_shared<RareItemSet>(phosg::JSON::parse(*data), v4_item_name_index);
   } else if (filename_lower.ends_with(".gsl")) {
-    return make_shared<RareItemSet>(GSLArchive(data, false), false);
+    return std::make_shared<RareItemSet>(GSLArchive(data, false), false);
   } else if (filename_lower.ends_with(".gslb")) {
-    return make_shared<RareItemSet>(GSLArchive(data, true), true);
+    return std::make_shared<RareItemSet>(GSLArchive(data, true), true);
   } else if (filename_lower.ends_with(".afs")) {
-    return make_shared<RareItemSet>(AFSArchive(data), is_v1);
+    return std::make_shared<RareItemSet>(AFSArchive(data), is_v1);
   } else if (filename_lower.ends_with(".rel")) {
-    return make_shared<RareItemSet>(*data, true);
+    return std::make_shared<RareItemSet>(*data, true);
   } else {
-    throw runtime_error("cannot determine input format; use a filename ending with .json, .gsl, .gslb, .afs, or .rel");
+    throw std::runtime_error("cannot determine input format; use a filename ending with .json, .gsl, .gslb, .afs, or .rel");
   }
 }
 
@@ -2227,7 +2206,7 @@ Action a_convert_rare_item_set(
     drop-anything rate; the true drop rates are shown in tooltips.\n",
     +[](phosg::Arguments& args) {
       double rate_factor = args.get<double>("multiply", 1.0);
-      auto s = make_shared<ServerState>(get_config_filename(args));
+      auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
       s->load_patch_indexes();
       s->load_text_index();
@@ -2235,9 +2214,9 @@ Action a_convert_rare_item_set(
       s->load_item_name_indexes();
       s->load_drop_tables();
 
-      string input_filename = args.get<string>(1, false);
+      std::string input_filename = args.get<std::string>(1, false);
       if (input_filename.empty() || (input_filename == "-")) {
-        throw runtime_error("input filename must be given");
+        throw std::runtime_error("input filename must be given");
       }
       auto rs = load_rare_item_set(
           input_filename, is_v1(get_cli_version(args, Version::BB_V4)), s->item_name_index(Version::BB_V4));
@@ -2245,24 +2224,21 @@ Action a_convert_rare_item_set(
         rs->multiply_all_rates(rate_factor);
       }
 
-      string output_filename = args.get<string>(2, false);
-      string output_filename_lower = phosg::tolower(output_filename);
+      std::string output_filename = args.get<std::string>(2, false);
+      std::string output_filename_lower = phosg::tolower(output_filename);
       if (output_filename.empty() || (output_filename == "-")) {
         rs->print_all_collections(stdout, s->item_name_index_opt(get_cli_version(args, Version::BB_V4)));
       } else if (output_filename_lower.ends_with(".json")) {
         auto json = rs->json(s->item_name_index_opt(get_cli_version(args, Version::BB_V4)));
-        string data = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::HEX_INTEGERS | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
-        write_output_data(args, data.data(), data.size(), nullptr);
+        std::string data = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::HEX_INTEGERS | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
+        write_output_data(args, data, nullptr);
       } else if (output_filename_lower.ends_with(".gsl")) {
-        string data = rs->serialize_gsl(args.get<bool>("big-endian"));
-        write_output_data(args, data.data(), data.size(), nullptr);
+        write_output_data(args, rs->serialize_gsl(args.get<bool>("big-endian")), nullptr);
       } else if (output_filename_lower.ends_with(".gslb")) {
-        string data = rs->serialize_gsl(true);
-        write_output_data(args, data.data(), data.size(), nullptr);
+        write_output_data(args, rs->serialize_gsl(true), nullptr);
       } else if (output_filename_lower.ends_with(".afs")) {
         bool is_v1 = ::is_v1(get_cli_version(args, Version::DC_V2));
-        string data = rs->serialize_afs(is_v1);
-        write_output_data(args, data.data(), data.size(), nullptr);
+        write_output_data(args, rs->serialize_afs(is_v1), nullptr);
       } else if (output_filename_lower.ends_with(".html")) {
         Version cli_version = get_cli_version(args, Version::BB_V4);
         bool is_v1 = ::is_v1(cli_version);
@@ -2273,30 +2249,30 @@ Action a_convert_rare_item_set(
                 continue;
               }
               auto item_name_index = s->item_name_index(cli_version);
-              string data = rs->serialize_html(mode, episode, difficulty, item_name_index, s->common_item_set(cli_version, nullptr));
-              string out_filename = output_filename.substr(0, output_filename.size() - 5) + "." + name_for_mode(mode) + "." + abbreviation_for_episode(episode) + "." + abbreviation_for_difficulty(difficulty) + output_filename.substr(output_filename.size() - 5);
+              std::string data = rs->serialize_html(mode, episode, difficulty, item_name_index, s->common_item_set(cli_version, nullptr));
+              std::string out_filename = output_filename.substr(0, output_filename.size() - 5) + "." + name_for_mode(mode) + "." + abbreviation_for_episode(episode) + "." + abbreviation_for_difficulty(difficulty) + output_filename.substr(output_filename.size() - 5);
               phosg::save_file(out_filename, data);
               phosg::log_info_f("... {}", out_filename);
             }
           }
         }
       } else {
-        throw runtime_error("cannot determine output format; use a filename ending with .json, .gsl, .gslb, or .afs");
+        throw std::runtime_error("cannot determine output format; use a filename ending with .json, .gsl, .gslb, or .afs");
       }
     });
 Action a_compare_rare_item_set(
     "compare-rare-item-set", nullptr,
     +[](phosg::Arguments& args) {
-      string input_filename1 = args.get<string>(1, false);
+      std::string input_filename1 = args.get<std::string>(1, false);
       if (input_filename1.empty() || (input_filename1 == "-")) {
-        throw runtime_error("two input filenames must be given");
+        throw std::runtime_error("two input filenames must be given");
       }
-      string input_filename2 = args.get<string>(2, false);
+      std::string input_filename2 = args.get<std::string>(2, false);
       if (input_filename2.empty() || (input_filename2 == "-")) {
-        throw runtime_error("two input filenames must be given");
+        throw std::runtime_error("two input filenames must be given");
       }
 
-      auto s = make_shared<ServerState>(get_config_filename(args));
+      auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
       s->load_patch_indexes();
       s->load_text_index();
@@ -2311,20 +2287,20 @@ Action a_compare_rare_item_set(
       rs1->print_diff(stdout, *rs2);
     });
 
-static shared_ptr<CommonItemSet> load_common_item_set(
+static std::shared_ptr<CommonItemSet> load_common_item_set(
     const std::string& filename, const std::string& ct_filename, bool big_endian) {
-  auto data = make_shared<string>(phosg::load_file(filename));
+  auto data = std::make_shared<std::string>(phosg::load_file(filename));
   if (filename.ends_with(".json")) {
-    return make_shared<JSONCommonItemSet>(phosg::JSON::parse(*data));
+    return std::make_shared<JSONCommonItemSet>(phosg::JSON::parse(*data));
   } else if (filename.ends_with(".afs")) {
-    auto ct_data = make_shared<string>(phosg::load_file(ct_filename));
-    return make_shared<AFSV2CommonItemSet>(data, ct_data);
+    auto ct_data = std::make_shared<std::string>(phosg::load_file(ct_filename));
+    return std::make_shared<AFSV2CommonItemSet>(data, ct_data);
   } else if (filename.ends_with(".gsl")) {
-    return make_shared<GSLV3V4CommonItemSet>(data, big_endian);
+    return std::make_shared<GSLV3V4CommonItemSet>(data, big_endian);
   } else if (filename.ends_with(".gslb")) {
-    return make_shared<GSLV3V4CommonItemSet>(data, true);
+    return std::make_shared<GSLV3V4CommonItemSet>(data, true);
   } else {
-    throw runtime_error("cannot determine input format; use a filename ending with .json, .afs, .gsl, or .gslb");
+    throw std::runtime_error("cannot determine input format; use a filename ending with .json, .afs, .gsl, or .gslb");
   }
 }
 
@@ -2345,35 +2321,35 @@ Action a_convert_common_item_set(
       --big-endian: If input is a GSL file, always decode it as big-endian\n\
           even if the file extension is not gslb.\n",
     +[](phosg::Arguments& args) {
-      string input_filename = args.get<string>(1, false);
+      std::string input_filename = args.get<std::string>(1, false);
       if (input_filename.empty() || (input_filename == "-")) {
-        throw runtime_error("input filename must be given");
+        throw std::runtime_error("input filename must be given");
       }
 
-      auto cs = load_common_item_set(input_filename, args.get<string>("ct-filename", false), args.get<bool>("big-endian"));
-      const string& output_filename = args.get<string>(2, false);
+      auto cs = load_common_item_set(input_filename, args.get<std::string>("ct-filename", false), args.get<bool>("big-endian"));
+      const std::string& output_filename = args.get<std::string>(2, false);
       if (output_filename.empty()) {
         cs->print(stdout);
       } else {
         auto json = cs->json();
-        string json_data = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
-        write_output_data(args, json_data.data(), json_data.size(), "json");
+        std::string json_data = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
+        write_output_data(args, json_data, "json");
       }
     });
 Action a_compare_common_item_set(
     "compare-common-item-set", nullptr,
     +[](phosg::Arguments& args) {
-      string input_filename1 = args.get<string>(1, false);
+      std::string input_filename1 = args.get<std::string>(1, false);
       if (input_filename1.empty() || (input_filename1 == "-")) {
-        throw runtime_error("two input filenames must be given");
+        throw std::runtime_error("two input filenames must be given");
       }
-      string input_filename2 = args.get<string>(2, false);
+      std::string input_filename2 = args.get<std::string>(2, false);
       if (input_filename2.empty() || (input_filename2 == "-")) {
-        throw runtime_error("two input filenames must be given");
+        throw std::runtime_error("two input filenames must be given");
       }
 
-      auto cs1 = load_common_item_set(input_filename1, args.get<string>("ct-filename1", false), args.get<bool>("big-endian1"));
-      auto cs2 = load_common_item_set(input_filename2, args.get<string>("ct-filename2", false), args.get<bool>("big-endian2"));
+      auto cs1 = load_common_item_set(input_filename1, args.get<std::string>("ct-filename1", false), args.get<bool>("big-endian1"));
+      auto cs2 = load_common_item_set(input_filename2, args.get<std::string>("ct-filename2", false), args.get<bool>("big-endian2"));
       cs1->print_diff(stdout, *cs2);
     });
 
@@ -2390,15 +2366,14 @@ Action a_decode_item_parameter_table(
       if (!args.get<bool>("decompressed")) {
         input_data = prs_decompress(input_data);
       }
-      auto data = std::make_shared<string>(std::move(input_data));
+      auto data = std::make_shared<std::string>(std::move(input_data));
       auto pmt = ItemParameterTable::from_binary(data, get_cli_version(args, Version::BB_V4));
       auto json = pmt->json();
       uint32_t serialize_options = phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS;
       if (args.get<bool>("hex")) {
         serialize_options |= phosg::JSON::SerializeOption::HEX_INTEGERS;
       }
-      string json_data = json.serialize(serialize_options);
-      write_output_data(args, json_data.data(), json_data.size(), nullptr);
+      write_output_data(args, json.serialize(serialize_options), nullptr);
     });
 
 Action a_encode_item_parameter_table(
@@ -2411,11 +2386,11 @@ Action a_encode_item_parameter_table(
     +[](phosg::Arguments& args) {
       auto json = phosg::JSON::parse(read_input_data(args));
       auto pmt = ItemParameterTable::from_json(json);
-      string data = pmt->serialize_binary(get_cli_version(args, Version::BB_V4));
+      std::string data = pmt->serialize_binary(get_cli_version(args, Version::BB_V4));
       if (!args.get<bool>("decompressed")) {
         data = prs_compress_optimal(data);
       }
-      write_output_data(args, data.data(), data.size(), nullptr);
+      write_output_data(args, data, nullptr);
     });
 
 Action a_decode_level_table(
@@ -2447,19 +2422,18 @@ Action a_decode_level_table(
       if (args.get<bool>("hex")) {
         serialize_options |= phosg::JSON::SerializeOption::HEX_INTEGERS;
       }
-      string json_data = json.serialize(serialize_options);
-      write_output_data(args, json_data.data(), json_data.size(), nullptr);
+      write_output_data(args, json.serialize(serialize_options), nullptr);
     });
 
 Action a_encode_level_table(
     "encode-level-table-v4", nullptr,
     +[](phosg::Arguments& args) {
       JSONLevelTable table(phosg::JSON::parse(read_input_data(args)));
-      string data = table.serialize_binary_v4();
+      std::string data = table.serialize_binary_v4();
       if (!args.get<bool>("decompressed")) {
         data = prs_compress_optimal(data);
       }
-      write_output_data(args, data.data(), data.size(), nullptr);
+      write_output_data(args, data, nullptr);
     });
 
 Action a_decode_battle_params(
@@ -2484,7 +2458,7 @@ Action a_encode_battle_params(
     "encode-battle-params", nullptr,
     +[](phosg::Arguments& args) {
       JSONBattleParamsIndex index(phosg::JSON::parse(read_input_data(args)));
-      std::string pfx = args.get<string>(2);
+      std::string pfx = args.get<std::string>(2);
       phosg::save_file(pfx + "_on.dat", &index.get_table(false, Episode::EP1), sizeof(BattleParamsIndex::Table));
       phosg::save_file(pfx + "_lab_on.dat", &index.get_table(false, Episode::EP2), sizeof(BattleParamsIndex::Table));
       phosg::save_file(pfx + "_ep4_on.dat", &index.get_table(false, Episode::EP4), sizeof(BattleParamsIndex::Table));
@@ -2512,10 +2486,10 @@ Action a_describe_item(
     description of the item. If the description contains spaces, it must be\n\
     quoted, such as \"L&K14 COMBAT +10 0/10/15/0/35\".\n",
     +[](phosg::Arguments& args) {
-      string description = args.get<string>(1);
+      std::string description = args.get<std::string>(1);
       auto version = get_cli_version(args);
 
-      auto s = make_shared<ServerState>(get_config_filename(args));
+      auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
       s->load_patch_indexes();
       s->load_text_index();
@@ -2529,8 +2503,8 @@ Action a_describe_item(
         item.decode_for_version(version);
       }
 
-      string desc = name_index->describe_item(item);
-      string desc_colored = name_index->describe_item(item, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
+      std::string desc = name_index->describe_item(item);
+      std::string desc_colored = name_index->describe_item(item, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
 
       phosg::log_info_f("Data (decoded):        {:02X}{:02X}{:02X}{:02X} {:02X}{:02X}{:02X}{:02X} {:02X}{:02X}{:02X}{:02X} -------- {:02X}{:02X}{:02X}{:02X}",
           item.data1[0], item.data1[1], item.data1[2], item.data1[3],
@@ -2586,7 +2560,7 @@ Action a_describe_item(
 
 Action a_name_all_items(
     "name-all-items", nullptr, +[](phosg::Arguments& args) {
-      auto s = make_shared<ServerState>(get_config_filename(args));
+      auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
       s->load_patch_indexes();
       s->load_text_index();
@@ -2595,7 +2569,7 @@ Action a_name_all_items(
       s->load_ep3_cards();
       s->load_config_late();
 
-      set<uint32_t> all_primary_identifiers;
+      std::set<uint32_t> all_primary_identifiers;
       for (const auto& index : s->item_name_indexes) {
         if (index) {
           for (const auto& it : index->all_by_primary_identifier()) {
@@ -2612,11 +2586,11 @@ Action a_name_all_items(
             if (index) {
               auto pmt = s->item_parameter_table(v);
               ItemData item = ItemData::from_primary_identifier(*s->item_stack_limits(v), primary_identifier);
-              string name = index->describe_item(item);
+              std::string name = index->describe_item(item);
               try {
                 bool is_rare = pmt->is_item_rare(item);
                 phosg::fwrite_fmt(stdout, "  {:10}: {} {}\n", phosg::name_for_enum(v), is_rare ? "+++" : "---", name);
-              } catch (const out_of_range&) {
+              } catch (const std::out_of_range&) {
                 phosg::fwrite_fmt(stdout, "  {:10}:     (missing)\n", phosg::name_for_enum(v));
               }
             }
@@ -2653,7 +2627,7 @@ Action a_name_all_items(
               auto pmt = s->item_parameter_table(v);
               ItemData item = ItemData::from_primary_identifier(*s->item_stack_limits(v), primary_identifier);
               if (index->exists(item)) {
-                string name = index->describe_item(item);
+                std::string name = index->describe_item(item);
                 bool is_rare = pmt->is_item_rare(item);
                 phosg::fwrite_fmt(stdout, " {:30}{}", name, is_rare ? " ***" : " ...");
               } else {
@@ -2671,21 +2645,21 @@ Action a_print_level_stats(
   show-level-tables\n\
     Print the level tables for each version in a semi-human-reatable format.\n",
     +[](phosg::Arguments& args) {
-      auto s = make_shared<ServerState>(get_config_filename(args));
+      auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
       s->load_patch_indexes();
       s->load_level_tables();
 
-      vector<PlayerStats> level_1_v1_v2;
-      vector<PlayerStats> level_100_v1_v2;
-      vector<PlayerStats> level_200_v1_v2;
-      vector<PlayerStats> level_200_limit_v1_v2;
-      vector<PlayerStats> level_1_v3;
-      vector<PlayerStats> level_200_v3;
-      vector<PlayerStats> level_200_limit_v3;
-      vector<PlayerStats> level_1_v4;
-      vector<PlayerStats> level_200_v4;
-      vector<PlayerStats> level_200_limit_v4;
+      std::vector<PlayerStats> level_1_v1_v2;
+      std::vector<PlayerStats> level_100_v1_v2;
+      std::vector<PlayerStats> level_200_v1_v2;
+      std::vector<PlayerStats> level_200_limit_v1_v2;
+      std::vector<PlayerStats> level_1_v3;
+      std::vector<PlayerStats> level_200_v3;
+      std::vector<PlayerStats> level_200_limit_v3;
+      std::vector<PlayerStats> level_1_v4;
+      std::vector<PlayerStats> level_200_v4;
+      std::vector<PlayerStats> level_200_limit_v4;
       for (size_t z = 0; z < 12; z++) {
         if (z < 9) {
           level_1_v1_v2.emplace_back().char_stats = s->level_table_v1_v2->base_stats_for_class(z);
@@ -2703,7 +2677,7 @@ Action a_print_level_stats(
         level_200_limit_v4.emplace_back(s->level_table_v4->max_stats_for_class(z));
       }
 
-      auto print_stats_set = [](const vector<PlayerStats>& stats_vec, const char* name) -> void {
+      auto print_stats_set = [](const std::vector<PlayerStats>& stats_vec, const char* name) -> void {
         phosg::fwrite_fmt(stdout, "{}      ", name);
         for (size_t z = 0; z < stats_vec.size(); z++) {
           phosg::fwrite_fmt(stdout, "  {}", abbreviation_for_char_class(z));
@@ -2758,7 +2732,7 @@ Action a_show_item_parameter_tables(
     Print the item parameter tables for each version in a semi-human-reatable\n\
     format.\n",
     +[](phosg::Arguments& args) {
-      auto s = make_shared<ServerState>(get_config_filename(args));
+      auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->load_all(false);
       for (Version v : ALL_VERSIONS) {
         const auto& index = s->item_name_index_opt(v);
@@ -2777,27 +2751,24 @@ Action a_show_ep3_cards(
     +[](phosg::Arguments& args) {
       bool one_line = args.get<bool>("one-line");
 
-      auto s = make_shared<ServerState>(get_config_filename(args));
+      auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->load_ep3_cards();
 
-      unique_ptr<BinaryTextSet> text_english;
+      std::unique_ptr<BinaryTextSet> text_english;
       try {
         phosg::JSON json = phosg::JSON::parse(phosg::load_file("system/ep3/text-english.json"));
-        text_english = make_unique<BinaryTextSet>(json);
-      } catch (const exception& e) {
+        text_english = std::make_unique<BinaryTextSet>(json);
+      } catch (const std::exception& e) {
       }
 
       auto card_ids = s->ep3_card_index->all_ids();
       phosg::log_info_f("{} card definitions", card_ids.size());
       for (uint32_t card_id : card_ids) {
         auto entry = s->ep3_card_index->definition_for_id(card_id);
-        string def_str = entry->def.str(one_line, text_english.get());
-        if (one_line) {
-          phosg::fwrite_fmt(stdout, "{}\n", def_str);
-        } else {
-          phosg::fwrite_fmt(stdout, "{}\n", def_str);
+        phosg::fwrite_fmt(stdout, "{}\n", entry->def.str(one_line, text_english.get()));
+        if (!one_line) {
           if (!entry->debug_tags.empty()) {
-            string tags = phosg::join(entry->debug_tags, ", ");
+            std::string tags = phosg::join(entry->debug_tags, ", ");
             phosg::fwrite_fmt(stdout, "  Tags: {}\n", tags);
           }
           if (!entry->dice_caption.empty()) {
@@ -2807,7 +2778,7 @@ Action a_show_ep3_cards(
             phosg::fwrite_fmt(stdout, "  Dice text: {}\n", entry->dice_text);
           }
           if (!entry->text.empty()) {
-            string text = phosg::str_replace_all(entry->text, "\n", "\n    ");
+            std::string text = phosg::str_replace_all(entry->text, "\n", "\n    ");
             phosg::strip_trailing_whitespace(text);
             phosg::fwrite_fmt(stdout, "  Text:\n    {}\n", text);
           }
@@ -2832,26 +2803,26 @@ Action a_generate_ep3_cards_html(
       bool no_large_images = args.get<bool>("no-large-images");
       bool no_disassembly = args.get<bool>("no-disassembly");
 
-      auto s = make_shared<ServerState>(get_config_filename(args));
+      auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->load_patch_indexes();
       s->load_text_index();
       s->load_ep3_cards();
 
-      shared_ptr<const TextSet> text_english;
+      std::shared_ptr<const TextSet> text_english;
       try {
         text_english = s->text_index->get(Version::GC_EP3, Language::ENGLISH);
-      } catch (const out_of_range&) {
+      } catch (const std::out_of_range&) {
       }
 
       struct VersionInfo {
         struct CardInfo {
-          shared_ptr<const Episode3::CardIndex::CardEntry> ce;
-          string small_filename;
-          string medium_filename;
-          string large_filename;
-          string small_data_url;
-          string medium_data_url;
-          string large_data_url;
+          std::shared_ptr<const Episode3::CardIndex::CardEntry> ce;
+          std::string small_filename;
+          std::string medium_filename;
+          std::string large_filename;
+          std::string small_data_url;
+          std::string medium_data_url;
+          std::string large_data_url;
 
           bool is_empty() const {
             return (this->ce == nullptr) && this->small_data_url.empty() && this->medium_data_url.empty() && this->large_data_url.empty();
@@ -2859,7 +2830,7 @@ Action a_generate_ep3_cards_html(
         };
 
         const char* name;
-        vector<CardInfo> card_infos;
+        std::vector<CardInfo> card_infos;
         bool show_large_column = false;
         bool show_medium_column = false;
         bool show_small_column = false;
@@ -2867,7 +2838,7 @@ Action a_generate_ep3_cards_html(
 
         VersionInfo(
             const char* name,
-            shared_ptr<const Episode3::CardIndex> card_index,
+            std::shared_ptr<const Episode3::CardIndex> card_index,
             const char* cardtex_directory,
             bool no_large_images,
             size_t num_threads,
@@ -2882,7 +2853,7 @@ Action a_generate_ep3_cards_html(
 
           if (cardtex_directory) {
             for (const auto& item : std::filesystem::directory_iterator(cardtex_directory)) {
-              string filename = item.path().filename().string();
+              std::string filename = item.path().filename().string();
               if ((filename[0] == 'C' || filename[0] == 'M' || filename[0] == 'L') && (filename[1] == '_')) {
                 size_t card_id = stoull(filename.substr(2, 3), nullptr, 10);
                 if (this->card_infos.size() <= card_id) {
@@ -2890,13 +2861,13 @@ Action a_generate_ep3_cards_html(
                 }
                 auto& info = this->card_infos[card_id];
                 if (filename[0] == 'C' && !no_large_images) {
-                  info.large_filename = string(cardtex_directory) + "/" + filename;
+                  info.large_filename = std::string(cardtex_directory) + "/" + filename;
                   this->show_large_column = true;
                 } else if (filename[0] == 'L') {
-                  info.medium_filename = string(cardtex_directory) + "/" + filename;
+                  info.medium_filename = std::string(cardtex_directory) + "/" + filename;
                   this->show_medium_column = true;
                 } else if (filename[0] == 'M') {
-                  info.small_filename = string(cardtex_directory) + "/" + filename;
+                  info.small_filename = std::string(cardtex_directory) + "/" + filename;
                   this->show_small_column = true;
                 }
               }
@@ -2936,7 +2907,7 @@ Action a_generate_ep3_cards_html(
         }
       };
 
-      vector<VersionInfo> version_infos;
+      std::vector<VersionInfo> version_infos;
       if (include_nte) {
         version_infos.emplace_back("NTE", s->ep3_card_index_trial, no_images ? nullptr : "system/ep3/cardtex-trial", no_large_images, num_threads, no_disassembly);
       }
@@ -2944,7 +2915,7 @@ Action a_generate_ep3_cards_html(
         version_infos.emplace_back("Final", s->ep3_card_index, no_images ? nullptr : "system/ep3/cardtex", no_large_images, num_threads, no_disassembly);
       }
 
-      deque<string> blocks;
+      std::deque<std::string> blocks;
       blocks.emplace_back("<html><head><title>Phantasy Star Online Episode III cards</title></head><body style=\"background-color:#222222; color: #EEEEEE\">");
       blocks.emplace_back("<table><tr><th style=\"text-align: left\">Legend:</th></tr><tr style=\"background-color: #663333\"><td>Card has no definition and is obviously incomplete</td></tr><tr style=\"background-color: #336633\"><td>Card is unobtainable in random draws but may be a quest or event reward</td></tr><tr style=\"background-color: #333333\"><td>Card is obtainable in random draws</td></tr></table><br /><br />");
 
@@ -3011,7 +2982,7 @@ Action a_generate_ep3_cards_html(
             background_color = "#333333";
           }
 
-          string td_tag = std::format("<td style=\"padding: 4px; vertical-align: top; background-color: {}\">", background_color);
+          std::string td_tag = std::format("<td style=\"padding: 4px; vertical-align: top; background-color: {}\">", background_color);
           if (vi.show_small_column) {
             blocks.emplace_back(td_tag);
             if (!entry->small_data_url.empty()) {
@@ -3074,7 +3045,7 @@ Action a_show_ep3_maps(
     +[](phosg::Arguments& args) {
       config_log.info_f("Collecting Episode 3 data");
 
-      auto s = make_shared<ServerState>(get_config_filename(args));
+      auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->load_ep3_cards();
       s->load_ep3_maps();
 
@@ -3087,7 +3058,7 @@ Action a_show_ep3_maps(
             continue;
           }
           Language language = static_cast<Language>(lang_index);
-          string map_s = vms[lang_index]->map->str(s->ep3_card_index.get(), language);
+          std::string map_s = vms[lang_index]->map->str(s->ep3_card_index.get(), language);
           phosg::fwrite_fmt(stdout, "({}) {}\n", char_for_language(language), map_s);
         }
       }
@@ -3099,7 +3070,7 @@ Action a_show_battle_params(
     Print the Blue Burst battle parameters from the system/blueburst directory\n\
     in a human-readable format.\n",
     +[](phosg::Arguments& args) {
-      auto s = make_shared<ServerState>(get_config_filename(args));
+      auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->load_patch_indexes();
       s->load_battle_params();
 
@@ -3128,13 +3099,13 @@ Action a_check_supermaps(
       bool save_disassembly = args.get<bool>("disassemble");
       bool generate_enemy_stats = args.get<bool>("generate-enemy-stats");
 
-      auto s = make_shared<ServerState>(get_config_filename(args));
+      auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
       s->load_patch_indexes();
       s->load_set_data_tables();
       s->load_maps();
 
-      auto rand_crypt = make_shared<MT19937Generator>(phosg::random_object<uint32_t>());
+      auto rand_crypt = std::make_shared<MT19937Generator>(phosg::random_object<uint32_t>());
 
       // Generate MapStates for a few random variations
       for (size_t z = 0; z < 0x20; z++) {
@@ -3151,7 +3122,7 @@ Action a_check_supermaps(
         auto sdt = s->set_data_table(Version::BB_V4, episode, mode, difficulty);
         auto variations = sdt->generate_variations(episode, (mode == GameMode::SOLO), rand_crypt);
         auto supermaps = s->supermaps_for_variations(episode, mode, difficulty, variations);
-        auto map_state = make_shared<MapState>(
+        auto map_state = std::make_shared<MapState>(
             0, difficulty, event, random_seed, MapState::DEFAULT_RARE_ENEMIES, rand_crypt, supermaps);
         map_state->verify();
 
@@ -3172,9 +3143,9 @@ Action a_check_supermaps(
         uint8_t entities = (key >> 0) & 0xFF;
 
         if (supermap) {
-          string filename_token;
+          std::string filename_token;
           if (save_disassembly) {
-            string filename = std::format(
+            std::string filename = std::format(
                 "supermap_{}_{}_{}_{:02X}_{:02X}_{:02X}.txt",
                 abbreviation_for_episode(episode),
                 abbreviation_for_mode(mode),
@@ -3205,8 +3176,7 @@ Action a_check_supermaps(
         }
       }
 
-      string all_free_maps_eff_str = all_free_maps_eff.str();
-      phosg::fwrite_fmt(stderr, "ALL FREE MAPS: {}\n", all_free_maps_eff_str);
+      phosg::fwrite_fmt(stderr, "ALL FREE MAPS: {}\n", all_free_maps_eff.str());
 
       s->load_quest_index();
 
@@ -3215,34 +3185,34 @@ Action a_check_supermaps(
       for (const auto& it : s->quest_index->quests_by_number) {
         auto supermap = it.second->get_supermap(random_seed);
         if (!supermap) {
-          throw logic_error("quest does not have a supermap, even with a specified random seed");
+          throw std::logic_error("quest does not have a supermap, even with a specified random seed");
         }
 
-        string filename_token;
+        std::string filename_token;
         if (save_disassembly) {
-          string filename = std::format("supermap_quest_{}_{:08X}.txt", it.first, random_seed);
+          std::string filename = std::format("supermap_quest_{}_{:08X}.txt", it.first, random_seed);
           auto f = phosg::fopen_unique(filename, "wt");
           phosg::fwrite_fmt(f.get(), "QUEST {} ({})\n", it.first, it.second->meta.name);
           supermap->print(f.get());
           filename_token = " => " + filename;
         }
         if (generate_enemy_stats) {
-          array<unordered_map<EnemyType, size_t>, NUM_VERSIONS> counts_for_version;
+          std::array<std::unordered_map<EnemyType, size_t>, NUM_VERSIONS> counts_for_version;
           for (Version v : ALL_NON_PATCH_VERSIONS) {
             counts_for_version[static_cast<size_t>(v)] = supermap->count_enemy_sets_for_version(v);
           }
-          string filename = std::format("supermap_quest_{}_{:08X}_enemy_counts.txt", it.first, random_seed);
+          std::string filename = std::format("supermap_quest_{}_{:08X}_enemy_counts.txt", it.first, random_seed);
           auto f = phosg::fopen_unique(filename, "wt");
           phosg::fwrite_fmt(f.get(), "QUEST {} ({})\n", it.first, it.second->meta.name);
           phosg::fwrite_fmt(f.get(), "ENEMY---------------  DCNTE  11/2K  DC-V1  DC-V2  PCNTE  PC-V2  GCNTE  GC-V3  XB-V3  BB-V4\n");
           for (auto type : phosg::EnumRange<EnemyType>()) {
             bool any_count_nonzero = false;
-            array<size_t, NUM_VERSIONS> counts;
+            std::array<size_t, NUM_VERSIONS> counts;
             for (Version v : ALL_NON_PATCH_VERSIONS) {
               size_t& count = counts[static_cast<size_t>(v)];
               try {
                 count = counts_for_version[static_cast<size_t>(v)].at(type);
-              } catch (const out_of_range&) {
+              } catch (const std::out_of_range&) {
                 count = 0;
               }
               if (count != 0) {
@@ -3268,7 +3238,7 @@ Action a_check_supermaps(
         auto eff_str = eff.str();
         phosg::fwrite_fmt(stderr, "QUEST MAP: {:08X} => {}{}\n", it.first, eff_str, filename_token);
 
-        auto map_state = make_shared<MapState>(
+        auto map_state = std::make_shared<MapState>(
             0,
             static_cast<Difficulty>(phosg::random_object<uint8_t>() & 3),
             0,
@@ -3284,8 +3254,7 @@ Action a_check_supermaps(
             map_state->enemy_set_states.size(),
             map_state->event_states.size());
       }
-      string all_quests_eff_str = all_quests_eff.str();
-      phosg::fwrite_fmt(stderr, "ALL QUEST MAPS: {}\n", all_quests_eff_str);
+      phosg::fwrite_fmt(stderr, "ALL QUEST MAPS: {}\n", all_quests_eff.str());
     });
 
 Action a_materialize_map(
@@ -3300,8 +3269,8 @@ Action a_materialize_map(
       if (args.get<bool>("debug")) {
         static_game_data_log.min_level = phosg::LogLevel::L_DEBUG;
       }
-      auto map_data = make_shared<string>(prs_decompress(read_input_data(args)));
-      auto map_file = make_shared<MapFile>(map_data);
+      auto map_data = std::make_shared<std::string>(prs_decompress(read_input_data(args)));
+      auto map_file = std::make_shared<MapFile>(map_data);
       if (!map_file->has_random_sections()) {
         throw std::runtime_error("input map file does not have any random sections");
       }
@@ -3309,12 +3278,9 @@ Action a_materialize_map(
       uint32_t seed = args.get<uint32_t>("seed", phosg::Arguments::IntFormat::HEX);
       auto materialized = map_file->materialize_random_sections(seed);
       if (args.get<bool>("disassemble")) {
-        Version version = get_cli_version(args);
-        auto disassembly = materialized->disassemble(false, version);
-        write_output_data(args, disassembly.data(), disassembly.size(), "txt");
+        write_output_data(args, materialized->disassemble(false, get_cli_version(args)), "txt");
       } else {
-        auto new_data = prs_compress_optimal(materialized->serialize());
-        write_output_data(args, new_data.data(), new_data.size(), "dat");
+        write_output_data(args, prs_compress_optimal(materialized->serialize()), "dat");
       }
     });
 Action a_optimize_materialized_map(
@@ -3342,8 +3308,8 @@ Action a_optimize_materialized_map(
       if (args.get<bool>("debug")) {
         static_game_data_log.min_level = phosg::LogLevel::L_DEBUG;
       }
-      auto map_data = make_shared<string>(prs_decompress(read_input_data(args)));
-      auto map_file = make_shared<MapFile>(map_data);
+      auto map_data = std::make_shared<std::string>(prs_decompress(read_input_data(args)));
+      auto map_file = std::make_shared<MapFile>(map_data);
       if (!map_file->has_random_sections()) {
         throw std::runtime_error("input map file does not have any random sections");
       }
@@ -3373,7 +3339,7 @@ Action a_optimize_materialized_map(
 
       size_t num_threads = args.get<size_t>("threads", 0);
       bool pessimize = args.get<bool>("pessimize");
-      mutex output_lock;
+      std::mutex output_lock;
       size_t min_counts = pessimize ? 0 : 0xFFFFFFFF;
       auto thread_fn = [&](uint64_t seed, size_t) -> bool {
         auto materialized = map_file->materialize_random_sections(seed);
@@ -3417,7 +3383,7 @@ Action a_optimize_materialized_map(
         size_t total_event_count = 0;
         size_t total_enemy_set_count = 0;
         size_t minimized_enemy_set_count = 0;
-        map<uint16_t, size_t> enemy_set_counts;
+        std::map<uint16_t, size_t> enemy_set_counts;
         for (size_t floor = 0; floor < 0x12; floor++) {
           const auto& fs = materialized->floor(floor);
           if (!fs.enemy_sets || !fs.events1) {
@@ -3443,10 +3409,10 @@ Action a_optimize_materialized_map(
 
         size_t this_count = (total_event_count << 16) | minimized_enemy_set_count;
         {
-          lock_guard g(output_lock);
+          std::lock_guard g(output_lock);
           if (pessimize ? (this_count >= min_counts) : (this_count <= min_counts)) {
             min_counts = this_count;
-            string line = std::format("SEED {:08X}: event_count={} (extra={}) enemy_sets=[",
+            std::string line = std::format("SEED {:08X}: event_count={} (extra={}) enemy_sets=[",
                 seed, total_event_count, extra_event_count);
             for (const auto& it : enemy_set_counts) {
               line += std::format("{:04X}={}, ", it.first, it.second);
@@ -3471,7 +3437,7 @@ Action a_print_free_supermap(
     +[](phosg::Arguments& args) {
       Episode episode;
       {
-        const string& episode_str = args.get<string>("episode", false);
+        const std::string& episode_str = args.get<std::string>("episode", false);
         if (episode_str == "1" || episode_str == "") {
           episode = Episode::EP1;
         } else if (episode_str == "2") {
@@ -3485,7 +3451,7 @@ Action a_print_free_supermap(
 
       GameMode mode;
       {
-        string mode_str = phosg::tolower(args.get<string>("mode", false));
+        std::string mode_str = phosg::tolower(args.get<std::string>("mode", false));
         if (mode_str == "n" || mode_str == "") {
           mode = GameMode::NORMAL;
         } else if (mode_str == "b") {
@@ -3501,7 +3467,7 @@ Action a_print_free_supermap(
 
       Difficulty difficulty;
       {
-        string mode_str = phosg::tolower(args.get<string>("difficulty", false));
+        std::string mode_str = phosg::tolower(args.get<std::string>("difficulty", false));
         if (mode_str == "n" || mode_str == "") {
           difficulty = Difficulty::NORMAL;
         } else if (mode_str == "h") {
@@ -3518,7 +3484,7 @@ Action a_print_free_supermap(
       uint8_t event = args.get<uint8_t>("event", 0, phosg::Arguments::IntFormat::HEX);
       uint32_t random_seed = args.get<uint32_t>("seed", phosg::random_object<uint32_t>(), phosg::Arguments::IntFormat::HEX);
 
-      string variations_str = args.get<string>(1);
+      std::string variations_str = args.get<std::string>(1);
       Variations variations;
       for (size_t z = 0; z < variations_str.size(); z++) {
         if (z & 1) {
@@ -3528,13 +3494,13 @@ Action a_print_free_supermap(
         }
       }
 
-      auto s = make_shared<ServerState>(get_config_filename(args));
+      auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
       s->load_patch_indexes();
       s->load_set_data_tables();
       s->load_maps();
 
-      shared_ptr<RandomGenerator> rand_crypt;
+      std::shared_ptr<RandomGenerator> rand_crypt;
       if (args.get<bool>("--psov2")) {
         rand_crypt = std::make_shared<MT19937Generator>(random_seed);
       } else {
@@ -3552,7 +3518,7 @@ Action a_check_quests(
     +[](phosg::Arguments& args) {
       check_quest_opcode_definitions();
 
-      auto s = make_shared<ServerState>(get_config_filename(args));
+      auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->is_debug = true;
       s->load_config_early();
       s->load_patch_indexes();
@@ -3589,7 +3555,7 @@ Action a_check_quests(
                   bin.data(), bin.size(), vq->meta.version, vq->meta.language, vq->map_file, false, false);
               auto reassembly = disassemble_quest_script(
                   bin.data(), bin.size(), vq->meta.version, vq->meta.language, vq->map_file, true, false);
-              string include_dir = phosg::dirname(vq->bin_filename());
+              std::string include_dir = phosg::dirname(vq->bin_filename());
               AssembledQuestScript assembled;
               try {
                 assembled = assemble_quest_script(
@@ -3659,7 +3625,7 @@ Action a_check_ep3_maps(
     "check-ep3-maps", nullptr,
     +[](phosg::Arguments& args) {
       config_log.info_f("Collecting Episode 3 data");
-      auto s = make_shared<ServerState>(get_config_filename(args));
+      auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->is_debug = true;
       s->load_ep3_maps(true);
     });
@@ -3675,7 +3641,7 @@ Action a_check_client_functions(
 Action a_parse_object_graph(
     "parse-object-graph", nullptr, +[](phosg::Arguments& args) {
       uint32_t root_object_address = args.get<uint32_t>("root", phosg::Arguments::IntFormat::HEX);
-      string data = read_input_data(args);
+      std::string data = read_input_data(args);
       PSOGCObjectGraph g(data, root_object_address);
       g.print(stdout);
     });
@@ -3688,7 +3654,7 @@ Action a_generate_dc_serial_number(
     +[](phosg::Arguments& args) {
       uint8_t domain = args.get<uint8_t>(1);
       uint8_t subdomain = args.get<uint8_t>(2);
-      string serial_number = generate_dc_serial_number(domain, subdomain);
+      std::string serial_number = generate_dc_serial_number(domain, subdomain);
       phosg::fwrite_fmt(stdout, "{}\n", serial_number);
     });
 Action a_generate_all_dc_serial_numbers(
@@ -3696,7 +3662,7 @@ Action a_generate_all_dc_serial_numbers(
     +[](phosg::Arguments& args) {
       size_t num_threads = args.get<size_t>("threads", 0);
 
-      vector<unordered_set<uint32_t>> serial_numbers;
+      std::vector<std::unordered_set<uint32_t>> serial_numbers;
       serial_numbers.resize(9);
 
       DCSerialNumberIterator iter;
@@ -3713,16 +3679,16 @@ Action a_generate_all_dc_serial_numbers(
         }
       }
 
-      array<atomic<size_t>, 9> found_counts = {0, 0, 0, 0, 0, 0, 0, 0, 0};
-      atomic<uint64_t> num_mismatches = 0;
-      mutex output_lock;
+      std::array<std::atomic<size_t>, 9> found_counts = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+      std::atomic<uint64_t> num_mismatches = 0;
+      std::mutex output_lock;
       auto thread_fn = [&](uint64_t serial_number, size_t) -> bool {
         for (uint8_t domain = 0; domain < 3; domain++) {
           for (uint8_t subdomain = 0; subdomain < 3; subdomain++) {
             bool is_valid = dc_serial_number_is_valid_fast(serial_number, domain, subdomain);
             bool was_iterated = serial_numbers[domain * 3 + subdomain].count(serial_number);
             if (is_valid != was_iterated) {
-              lock_guard g(output_lock);
+              std::lock_guard g(output_lock);
               phosg::fwrite_fmt(stdout, "Mismatch at {:08X} (domain={}, subdomain={}): is_valid={}, was_iterated={}\n",
                   serial_number, domain, subdomain, is_valid ? "true" : "false", was_iterated ? "true" : "false");
             } else if (is_valid && was_iterated) {
@@ -3747,7 +3713,7 @@ Action a_generate_all_dc_serial_numbers(
       phosg::parallel_blocks<uint64_t>(thread_fn, 0, 0x100000000, 0x1000, num_threads, progress_fn);
 
       if (num_mismatches > 0) {
-        throw logic_error("mismatches occurred during test");
+        throw std::logic_error("mismatches occurred during test");
       }
     });
 
@@ -3758,9 +3724,9 @@ Action a_inspect_dc_serial_number(
     generate-dc-serial-number, described above, this will tell you which PSO\n\
     version it is valid for.)\n",
     +[](phosg::Arguments& args) {
-      const string& serial_number_str = args.get<string>(1, false);
+      const std::string& serial_number_str = args.get<std::string>(1, false);
       if (serial_number_str.empty()) {
-        throw invalid_argument("no serial number given");
+        throw std::invalid_argument("no serial number given");
       }
       size_t num_valid_subdomains = 0;
       for (uint8_t domain = 0; domain < 3; domain++) {
@@ -3780,7 +3746,7 @@ Action a_dc_serial_number_speed_test(
   dc-serial-number-speed-test\n\
     Run a speed test of the two DC serial number validation functions.\n",
     +[](phosg::Arguments& args) {
-      const string& seed = args.get<string>("seed");
+      const std::string& seed = args.get<std::string>("seed");
       if (seed.empty()) {
         dc_serial_number_speed_test();
       } else {
@@ -3790,17 +3756,17 @@ Action a_dc_serial_number_speed_test(
 
 Action a_address_translator(
     "address-translator", nullptr, +[](phosg::Arguments& args) {
-      const string& dir = args.get<string>(1, false);
+      const std::string& dir = args.get<std::string>(1, false);
       if (dir.empty() || (dir == "-")) {
-        throw invalid_argument("a directory name is required");
+        throw std::invalid_argument("a directory name is required");
       }
-      run_address_translator(dir, args.get<string>(2, false), args.get<string>(3, false));
+      run_address_translator(dir, args.get<std::string>(2, false), args.get<std::string>(3, false));
     });
 
 Action a_diff_executables(
     "diff-executables", nullptr, +[](phosg::Arguments& args) {
-      const string& a_filename = args.get<string>(1);
-      const string& b_filename = args.get<string>(2);
+      const std::string& a_filename = args.get<std::string>(1);
+      const std::string& b_filename = args.get<std::string>(2);
       bool show_pre = args.get<bool>("show-pre");
       bool a_is_dol = a_filename.ends_with(".dol");
       bool b_is_dol = b_filename.ends_with(".dol");
@@ -3812,12 +3778,12 @@ Action a_diff_executables(
       } else if (a_is_xbe && b_is_xbe) {
         result = diff_xbe_files(a_filename, b_filename);
       } else {
-        throw runtime_error("the two files are not the same type of executable, or are neither dol nor xbe");
+        throw std::runtime_error("the two files are not the same type of executable, or are neither dol nor xbe");
       }
       for (const auto& it : result) {
-        string b_str = phosg::format_data_string(it.b_data, nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
+        std::string b_str = phosg::format_data_string(it.b_data, nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
         if (show_pre) {
-          string a_str = phosg::format_data_string(it.a_data, nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
+          std::string a_str = phosg::format_data_string(it.a_data, nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
           phosg::fwrite_fmt(stdout, "{:08X}: {} => {}\n", it.address, a_str, b_str);
         } else {
           phosg::fwrite_fmt(stdout, "{:08X} {}\n", it.address, b_str);
@@ -3827,23 +3793,23 @@ Action a_diff_executables(
 
 Action a_generate_hangame_creds(
     "generate-hangame-creds", nullptr, +[](phosg::Arguments& args) {
-      const string& user_id = args.get<string>(1);
-      const string& token = args.get<string>(2);
-      const string& unused = args.get<string>(3, false);
-      string hex = phosg::format_data_string(encode_psobb_hangame_credentials(user_id, token, unused));
+      const std::string& user_id = args.get<std::string>(1);
+      const std::string& token = args.get<std::string>(2);
+      const std::string& unused = args.get<std::string>(3, false);
+      std::string hex = phosg::format_data_string(encode_psobb_hangame_credentials(user_id, token, unused));
       phosg::fwrite_fmt(stdout, "psobb.exe 1196310600 {}\n", hex);
     });
 
 Action a_format_ep3_battle_record(
     "format-ep3-battle-record", nullptr, +[](phosg::Arguments& args) {
-      string data = read_input_data(args);
+      std::string data = read_input_data(args);
       Episode3::BattleRecord rec(data);
       rec.print(stdout);
     });
 
 Action a_replay_ep3_battle_commands(
     "replay-ep3-battle-commands", nullptr, +[](phosg::Arguments& args) {
-      auto s = make_shared<ServerState>(get_config_filename(args));
+      auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->load_ep3_cards();
       s->load_ep3_maps();
 
@@ -3851,9 +3817,9 @@ Action a_replay_ep3_battle_commands(
       bool is_trial = (get_cli_version(args, Version::GC_EP3) == Version::GC_EP3_NTE);
 
       auto input = read_input_data(args);
-      vector<string> commands;
+      std::vector<std::string> commands;
       for (const auto& line : phosg::split(input, '\n')) {
-        string data = phosg::parse_data_string(line);
+        std::string data = phosg::parse_data_string(line);
         if (!data.empty()) {
           commands.emplace_back(std::move(data));
         }
@@ -3865,7 +3831,7 @@ Action a_replay_ep3_battle_commands(
             .map_index = s->ep3_map_index,
             .behavior_flags = 0x0092,
             .opt_rand_stream = nullptr,
-            .rand_crypt = make_shared<MT19937Generator>(seed),
+            .rand_crypt = std::make_shared<MT19937Generator>(seed),
             .tournament = nullptr,
             .trap_card_ids = {},
             .output_queue = nullptr,
@@ -3876,7 +3842,7 @@ Action a_replay_ep3_battle_commands(
         if (base_seed >= 0) {
           options.behavior_flags |= Episode3::BehaviorFlag::LOG_COMMANDS_IF_LOBBY_MISSING;
         }
-        auto server = make_shared<Episode3::Server>(nullptr, std::move(options));
+        auto server = std::make_shared<Episode3::Server>(nullptr, std::move(options));
         server->init();
         for (const auto& command : commands) {
           server->on_server_data_input(nullptr, command);
@@ -3898,11 +3864,11 @@ Action a_replay_ep3_battle_record(
       if (args.get<bool>("compressed")) {
         record_data = prs_decompress(record_data);
       }
-      auto rec = make_shared<Episode3::BattleRecord>(record_data);
+      auto rec = std::make_shared<Episode3::BattleRecord>(record_data);
 
       bool use_color = isatty(fileno(stdout));
 
-      auto s = make_shared<ServerState>(get_config_filename(args));
+      auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->load_ep3_cards();
       s->load_ep3_maps();
 
@@ -3912,13 +3878,13 @@ Action a_replay_ep3_battle_record(
           .card_index = s->ep3_card_index,
           .map_index = s->ep3_map_index,
           .behavior_flags = rec->get_behavior_flags() & ~(Episode3::BehaviorFlag::LOG_COMMANDS_IF_LOBBY_MISSING),
-          .opt_rand_stream = make_shared<phosg::StringReader>(rec->get_random_stream()),
-          .rand_crypt = make_shared<DisabledRandomGenerator>(),
+          .opt_rand_stream = std::make_shared<phosg::StringReader>(rec->get_random_stream()),
+          .rand_crypt = std::make_shared<DisabledRandomGenerator>(),
           .tournament = nullptr,
           .trap_card_ids = {},
           .output_queue = output_queue,
       };
-      auto server = make_shared<Episode3::Server>(nullptr, std::move(options));
+      auto server = std::make_shared<Episode3::Server>(nullptr, std::move(options));
       server->init();
 
       // Ignore commands generated by the server when it's constructed (these are not included in the battle record)
@@ -3997,7 +3963,7 @@ Action a_replay_ep3_battle_record(
             // Hack: Set the CPU player flag if the player isn't present in the recording (normally this is done by
             // checking the Lobby, but there's no Lobby during a replay)
             if (ev.data.at(4) == 0x1B) {
-              string mutable_data = ev.data;
+              std::string mutable_data = ev.data;
               auto& cmd = check_size_t<G_SetPlayerName_Ep3_CAx1B>(mutable_data);
               cmd.entry.is_cpu_player = !players_present.at(cmd.entry.client_id);
               phosg::fwrite_fmt(stderr, "Overriding is_cpu_player with {}\n", cmd.entry.is_cpu_player ? "true" : "false");
@@ -4025,7 +3991,7 @@ Action a_disassemble_ep3_battle_record(
 Action a_run_server_replay_log(
     "", nullptr, +[](phosg::Arguments& args) {
       {
-        string build_date = phosg::format_time(BUILD_TIMESTAMP);
+        std::string build_date = phosg::format_time(BUILD_TIMESTAMP);
         config_log.info_f("newserv {} compiled at {}", GIT_REVISION_HASH, build_date);
       }
 
@@ -4034,7 +4000,7 @@ Action a_run_server_replay_log(
         std::filesystem::create_directories("system/players");
       }
 
-      const auto& replay_log_filenames = args.get_multi<string>("replay-log");
+      const auto& replay_log_filenames = args.get_multi<std::string>("replay-log");
 
 #ifndef PHOSG_WINDOWS
       signal(SIGPIPE, SIG_IGN);
@@ -4043,7 +4009,7 @@ Action a_run_server_replay_log(
         use_terminal_colors = true;
       }
 
-      auto state = make_shared<ServerState>(get_config_filename(args), !replay_log_filenames.empty());
+      auto state = std::make_shared<ServerState>(get_config_filename(args), !replay_log_filenames.empty());
       if (args.get<bool>("debug")) {
         state->is_debug = true;
       }
@@ -4055,28 +4021,28 @@ Action a_run_server_replay_log(
         } else {
           config_log.info_f("Starting DNS server on port {}", state->dns_server_port);
         }
-        state->dns_server = make_shared<DNSServer>(state);
+        state->dns_server = std::make_shared<DNSServer>(state);
         state->dns_server->listen(state->dns_server_addr, state->dns_server_port);
       } else {
         config_log.info_f("DNS server is disabled");
       }
 
-      shared_ptr<ServerShell> shell;
-      shared_ptr<SignalWatcher> signal_watcher;
-      shared_ptr<ReplaySession> last_running_replay;
+      std::shared_ptr<ServerShell> shell;
+      std::shared_ptr<SignalWatcher> signal_watcher;
+      std::shared_ptr<ReplaySession> last_running_replay;
       if (!replay_log_filenames.empty()) {
         config_log.info_f("Starting game server");
-        state->game_server = make_shared<GameServer>(state);
+        state->game_server = std::make_shared<GameServer>(state);
 
         // TODO: Do this properly via a config option, you lazy bum
-        state->dol_file_index = make_shared<DOLFileIndex>();
+        state->dol_file_index = std::make_shared<DOLFileIndex>();
 
         auto run_replays = [&]() -> asio::awaitable<void> {
           try {
             for (const auto& log_filename : replay_log_filenames) {
               phosg::log_info_f("[Replay] {} ...", log_filename);
               auto log_f = phosg::fopen_shared(log_filename, "rt");
-              last_running_replay = make_shared<ReplaySession>(state, log_f.get());
+              last_running_replay = std::make_shared<ReplaySession>(state, log_f.get());
               co_await last_running_replay->run();
               if (last_running_replay->failed()) {
                 phosg::log_error_f("[Replay] {} failed", log_filename);
@@ -4101,31 +4067,31 @@ Action a_run_server_replay_log(
         for (const auto& [_, pc] : state->name_to_port_config) {
           if (!state->game_server.get()) {
             config_log.info_f("Starting game server");
-            state->game_server = make_shared<GameServer>(state);
+            state->game_server = std::make_shared<GameServer>(state);
           }
-          string spec = std::format("TG-{}-{}-{}-{}",
+          std::string spec = std::format("TG-{}-{}-{}-{}",
               pc->port, phosg::name_for_enum(pc->version), pc->name, phosg::name_for_enum(pc->behavior));
           state->game_server->listen(spec, pc->addr, pc->port, pc->version, pc->behavior);
         }
 
         if (!state->ip_stack_addresses.empty() || !state->ppp_stack_addresses.empty() || !state->ppp_raw_addresses.empty()) {
           config_log.info_f("Starting IP/PPP stack simulator");
-          state->ip_stack_simulator = make_shared<IPStackSimulator>(state);
+          state->ip_stack_simulator = std::make_shared<IPStackSimulator>(state);
           for (const auto& it : state->ip_stack_addresses) {
             auto netloc = phosg::parse_netloc(it);
-            string spec = (netloc.second == 0) ? ("T-IPS-" + netloc.first) : std::format("T-IPS-{}", netloc.second);
+            std::string spec = (netloc.second == 0) ? ("T-IPS-" + netloc.first) : std::format("T-IPS-{}", netloc.second);
             state->ip_stack_simulator->listen(
                 spec, netloc.first, netloc.second, VirtualNetworkProtocol::ETHERNET_TAPSERVER);
           }
           for (const auto& it : state->ppp_stack_addresses) {
             auto netloc = phosg::parse_netloc(it);
-            string spec = (netloc.second == 0) ? ("T-PPPST-" + netloc.first) : std::format("T-PPPST-{}", netloc.second);
+            std::string spec = (netloc.second == 0) ? ("T-PPPST-" + netloc.first) : std::format("T-PPPST-{}", netloc.second);
             state->ip_stack_simulator->listen(
                 spec, netloc.first, netloc.second, VirtualNetworkProtocol::HDLC_TAPSERVER);
           }
           for (const auto& it : state->ppp_raw_addresses) {
             auto netloc = phosg::parse_netloc(it);
-            string spec = (netloc.second == 0) ? ("T-PPPSR-" + netloc.first) : std::format("T-PPPSR-{}", netloc.second);
+            std::string spec = (netloc.second == 0) ? ("T-PPPSR-" + netloc.first) : std::format("T-PPPSR-{}", netloc.second);
             state->ip_stack_simulator->listen(
                 spec, netloc.first, netloc.second, VirtualNetworkProtocol::HDLC_RAW);
             if (netloc.second) {
@@ -4158,7 +4124,7 @@ Action a_run_server_replay_log(
 
         if (!state->http_addresses.empty() || !state->http_addresses.empty()) {
           config_log.info_f("Starting HTTP server");
-          state->http_server = make_shared<HTTPServer>(state);
+          state->http_server = std::make_shared<HTTPServer>(state);
           for (const auto& it : state->http_addresses) {
             auto netloc = phosg::parse_netloc(it);
             state->http_server->listen(netloc.first, netloc.second);
@@ -4167,7 +4133,7 @@ Action a_run_server_replay_log(
 
 #ifndef PHOSG_WINDOWS
         config_log.info_f("Enabling signal watcher");
-        signal_watcher = make_shared<SignalWatcher>(state);
+        signal_watcher = std::make_shared<SignalWatcher>(state);
 #endif
       }
 
@@ -4192,19 +4158,19 @@ Action a_run_server_replay_log(
 
       config_log.info_f("Ready");
       if (should_run_shell) {
-        shell = make_shared<ServerShell>(state);
+        shell = std::make_shared<ServerShell>(state);
       }
 
       state->io_context->run();
       config_log.info_f("Normal shutdown");
 
       if (last_running_replay) {
-        throw runtime_error("Replay failed");
+        throw std::runtime_error("Replay failed");
       }
     });
 
 void print_version_info() {
-  string build_date = phosg::format_time(BUILD_TIMESTAMP);
+  std::string build_date = phosg::format_time(BUILD_TIMESTAMP);
   phosg::fwrite_fmt(stderr, "newserv-{} built {} UTC\n", GIT_REVISION_HASH, build_date);
 }
 
@@ -4268,11 +4234,11 @@ int main(int argc, char** argv) {
     return 0;
   }
 
-  string action_name = args.get<string>(0, false);
+  std::string action_name = args.get<std::string>(0, false);
   const Action* a;
   try {
     a = all_actions.at(action_name);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     phosg::log_error_f("Unknown or invalid action; try --help");
     return 1;
   }

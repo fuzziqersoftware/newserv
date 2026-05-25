@@ -7,8 +7,6 @@
 
 #include "Text.hh"
 
-using namespace std;
-
 struct GVMFileEntry {
   be_uint16_t file_num;
   pstring<TextEncoding::ASCII, 0x1C> name;
@@ -35,21 +33,25 @@ struct GVRHeader {
   be_uint16_t height;
 } __packed_ws__(GVRHeader, 0x10);
 
-string encode_gvm(const phosg::ImageRGBA8888N& img, GVRDataFormat data_format, const string& internal_name, uint32_t global_index) {
+std::string encode_gvm(
+    const phosg::ImageRGBA8888N& img,
+    GVRDataFormat data_format,
+    const std::string& internal_name,
+    uint32_t global_index) {
   int8_t dimensions_field = -2;
   {
     size_t h = img.get_height();
     size_t w = img.get_width();
     if ((h != w) || (w & (w - 1)) || (h & (h - 1))) {
-      throw runtime_error("image must be square and dimensions must be powers of 2");
+      throw std::runtime_error("image must be square and dimensions must be powers of 2");
     }
     for (w >>= 1; w; w >>= 1, dimensions_field++) {
     }
     if (dimensions_field < 1) {
-      throw runtime_error("image is too small");
+      throw std::runtime_error("image is too small");
     }
     if (dimensions_field > 0xF) {
-      throw runtime_error("image is too large");
+      throw std::runtime_error("image is too large");
     }
   }
 
@@ -64,7 +66,7 @@ string encode_gvm(const phosg::ImageRGBA8888N& img, GVRDataFormat data_format, c
       pixel_bytes = pixel_count * 2;
       break;
     default:
-      throw invalid_argument("cannot encode pixel format");
+      throw std::invalid_argument("cannot encode pixel format");
   }
 
   phosg::StringWriter w;
@@ -102,7 +104,7 @@ string encode_gvm(const phosg::ImageRGBA8888N& img, GVRDataFormat data_format, c
               w.put_u32b(phosg::argb8888_for_rgba8888(c));
               break;
             default:
-              throw logic_error("cannot encode pixel format");
+              throw std::logic_error("cannot encode pixel format");
           }
         }
       }
@@ -112,9 +114,9 @@ string encode_gvm(const phosg::ImageRGBA8888N& img, GVRDataFormat data_format, c
   return std::move(w.str());
 }
 
-static const array<uint32_t, 4> fon_colors = {0x000000FF, 0x555555FF, 0xAAAAAAFF, 0xFFFFFFFF};
+static const std::array<uint32_t, 4> fon_colors = {0x000000FF, 0x555555FF, 0xAAAAAAFF, 0xFFFFFFFF};
 
-phosg::ImageRGB888 decode_fon(const string& data, size_t width) {
+phosg::ImageRGB888 decode_fon(const std::string& data, size_t width) {
   size_t num_pixels = data.size() * 4;
   size_t height = num_pixels / width;
   phosg::ImageRGB888 ret(width, height);
@@ -132,7 +134,7 @@ constexpr size_t uabs(size_t a, size_t b) {
   return (a > b) ? (a - b) : (b - a);
 }
 
-string encode_fon(const phosg::ImageRGB888& img) {
+std::string encode_fon(const phosg::ImageRGB888& img) {
   phosg::BitWriter w;
   for (size_t y = 0; y < img.get_height(); y++) {
     for (size_t x = 0; x < img.get_width(); x++) {

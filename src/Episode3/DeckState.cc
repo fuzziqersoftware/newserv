@@ -2,8 +2,6 @@
 
 #include "Server.hh"
 
-using namespace std;
-
 namespace Episode3 {
 
 NameEntry::NameEntry() {
@@ -198,7 +196,7 @@ void DeckState::redraw_initial_hand(bool is_nte) {
 
     auto s = this->server.lock();
     if (!s) {
-      throw runtime_error("server is missing");
+      throw std::runtime_error("server is missing");
     }
 
     // Shuffle the deck, except the first 5 cards (which are about to be drawn).
@@ -260,7 +258,7 @@ void DeckState::shuffle() {
   if (this->shuffle_enabled) {
     auto s = this->server.lock();
     if (!s) {
-      throw runtime_error("server is missing");
+      throw std::runtime_error("server is missing");
     }
 
     size_t max = this->num_drawable_cards();
@@ -305,17 +303,17 @@ void DeckState::print(FILE* stream, std::shared_ptr<const CardIndex> card_index)
       this->loop_enabled ? "true" : "false");
   for (size_t z = 0; z < 31; z++) {
     const auto& e = this->entries[z];
-    shared_ptr<const CardIndex::CardEntry> ce;
+    std::shared_ptr<const CardIndex::CardEntry> ce;
     if (card_index) {
       try {
         ce = card_index->definition_for_id(e.card_id);
-      } catch (const out_of_range&) {
+      } catch (const std::out_of_range&) {
       }
     }
     if (ce) {
-      string name = ce->def.en_name.decode(Language::ENGLISH);
       phosg::fwrite_fmt(stream, "  ({:02}) index={:02X} ref=@{:04X} card_id=#{:04X} \"{}\" {}\n",
-          z, e.deck_index, this->card_refs[z], e.card_id, name, name_for_card_state(e.state));
+          z, e.deck_index, this->card_refs[z], e.card_id, ce->def.en_name.decode(Language::ENGLISH),
+          name_for_card_state(e.state));
     } else {
       phosg::fwrite_fmt(stream, "  ({:02}) index={:02X} ref=@{:04X} card_id=#{:04X} {}\n",
           z, e.deck_index, this->card_refs[z], e.card_id, name_for_card_state(e.state));

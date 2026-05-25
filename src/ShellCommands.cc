@@ -14,48 +14,48 @@
 #include "ServerState.hh"
 #include "StaticGameData.hh"
 
-using namespace std;
-
-vector<const ShellCommand*> ShellCommand::commands_by_order;
-unordered_map<string, const ShellCommand*> ShellCommand::commands_by_name;
+std::vector<const ShellCommand*> ShellCommand::commands_by_order;
+std::unordered_map<std::string, const ShellCommand*> ShellCommand::commands_by_name;
 
 exit_shell::exit_shell() : runtime_error("shell exited") {}
 
-shared_ptr<Client> ShellCommand::Args::get_client() const {
+std::shared_ptr<Client> ShellCommand::Args::get_client() const {
   if (!s->game_server) {
-    throw logic_error("game server is missing");
+    throw std::logic_error("game server is missing");
   }
 
-  shared_ptr<Client> c;
+  std::shared_ptr<Client> c;
   if (this->session_name.empty()) {
     return this->s->game_server->get_client();
   } else {
     auto clients = this->s->game_server->get_clients_by_identifier(this->session_name);
     if (clients.empty()) {
-      throw runtime_error("no such client");
+      throw std::runtime_error("no such client");
     }
     if (clients.size() > 1) {
-      throw runtime_error("multiple clients found");
+      throw std::runtime_error("multiple clients found");
     }
     return clients[0];
   }
 }
 
-shared_ptr<Client> ShellCommand::Args::get_proxy_client() const {
+std::shared_ptr<Client> ShellCommand::Args::get_proxy_client() const {
   auto c = this->get_client();
   if (!c->proxy_session) {
-    throw runtime_error("client is not in a proxy session");
+    throw std::runtime_error("client is not in a proxy session");
   }
   return c;
 }
 
-ShellCommand::ShellCommand(const char* name, const char* help_text, asio::awaitable<deque<string>> (*run)(Args&))
+ShellCommand::ShellCommand(
+    const char* name, const char* help_text, asio::awaitable<std::deque<std::string>> (*run)(Args&))
     : name(name), help_text(help_text), run(run) {
   ShellCommand::commands_by_order.emplace_back(this);
   ShellCommand::commands_by_name.emplace(this->name, this);
 }
 
-asio::awaitable<deque<string>> ShellCommand::dispatch_str(shared_ptr<ServerState> s, const string& command) {
+asio::awaitable<std::deque<std::string>> ShellCommand::dispatch_str(
+    std::shared_ptr<ServerState> s, const std::string& command) {
   size_t command_end = phosg::skip_non_whitespace(command, 0);
   size_t args_begin = phosg::skip_whitespace(command, command_end);
   Args args;
@@ -65,21 +65,21 @@ asio::awaitable<deque<string>> ShellCommand::dispatch_str(shared_ptr<ServerState
   co_return co_await ShellCommand::dispatch(args);
 }
 
-asio::awaitable<deque<string>> ShellCommand::dispatch(Args& args) {
+asio::awaitable<std::deque<std::string>> ShellCommand::dispatch(Args& args) {
   const ShellCommand* def = nullptr;
   try {
     def = commands_by_name.at(args.command);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
   if (!def) {
-    throw runtime_error("no such command; try 'help'");
+    throw std::runtime_error("no such command; try 'help'");
   } else {
     return def->run(args);
   }
 }
 
-static string get_quoted_string(string& s) {
-  string ret;
+static std::string get_quoted_string(std::string& s) {
+  std::string ret;
   char end_char = (s.at(0) == '\"') ? '\"' : ' ';
   size_t z = (s.at(0) == '\"') ? 1 : 0;
   for (; (z < s.size()) && (s[z] != end_char); z++) {
@@ -87,7 +87,7 @@ static string get_quoted_string(string& s) {
       if (z + 1 < s.size()) {
         ret.push_back(s[z + 1]);
       } else {
-        throw runtime_error("incomplete escape sequence");
+        throw std::runtime_error("incomplete escape sequence");
       }
     } else {
       ret.push_back(s[z]);
@@ -95,7 +95,7 @@ static string get_quoted_string(string& s) {
   }
   if (end_char != ' ') {
     if (z >= s.size()) {
-      throw runtime_error("unterminated quoted string");
+      throw std::runtime_error("unterminated quoted string");
     }
     s = s.substr(phosg::skip_whitespace(s, z + 1));
   } else {
@@ -104,8 +104,8 @@ static string get_quoted_string(string& s) {
   return ret;
 }
 
-static asio::awaitable<deque<string>> empty_handler(ShellCommand::Args&) {
-  co_return deque<string>();
+static asio::awaitable<std::deque<std::string>> empty_handler(ShellCommand::Args&) {
+  co_return std::deque<std::string>();
 }
 
 ShellCommand c_nop1("", nullptr, empty_handler);
@@ -115,8 +115,8 @@ ShellCommand c_nop3("#", nullptr, empty_handler);
 ShellCommand c_help(
     "help", "help\n\
     You\'re reading it now.",
-    +[](ShellCommand::Args&) -> asio::awaitable<deque<string>> {
-      deque<string> ret({"Commands:"});
+    +[](ShellCommand::Args&) -> asio::awaitable<std::deque<std::string>> {
+      std::deque<std::string> ret({"Commands:"});
       for (const auto& def : ShellCommand::commands_by_order) {
         if (def->help_text) {
           // TODO: It's not great that we copy the text here.
@@ -129,7 +129,7 @@ ShellCommand c_help(
 ShellCommand c_exit(
     "exit", "exit (or ctrl+d)\n\
     Shut down the server.",
-    +[](ShellCommand::Args&) -> asio::awaitable<deque<string>> {
+    +[](ShellCommand::Args&) -> asio::awaitable<std::deque<std::string>> {
       throw exit_shell();
     });
 ShellCommand c_on(
@@ -141,7 +141,7 @@ ShellCommand c_on(
     gamertag, or a BB account username. For proxy commands, SESSION should be\n\
     the session ID, which generally is the same as the player\'s account ID\n\
     and appears after \"LinkedSession:\" in the log output.",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
       size_t session_name_end = phosg::skip_non_whitespace(args.args, 0);
       size_t command_begin = phosg::skip_whitespace(args.args, session_name_end);
       size_t command_end = phosg::skip_non_whitespace(args.args, command_begin);
@@ -181,7 +181,7 @@ ShellCommand c_reload(
     disconnect or reload the battle parameters, so if these are changed without\n\
     restarting, clients may see (for example) EXP messages inconsistent with\n\
     the amounts of EXP actually received.",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
       auto types = phosg::split(args.args, ' ');
       for (const auto& type : types) {
         if (type == "all") {
@@ -231,18 +231,18 @@ ShellCommand c_reload(
         } else if (type == "quests") {
           args.s->load_quest_index();
         } else {
-          throw runtime_error("invalid data type: " + type);
+          throw std::runtime_error("invalid data type: " + type);
         }
       }
 
-      co_return deque<string>{};
+      co_return std::deque<std::string>{};
     });
 
 ShellCommand c_list_accounts(
     "list-accounts", "list-accounts\n\
     List all accounts registered on the server.",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
-      deque<string> ret;
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
+      std::deque<std::string> ret;
       auto accounts = args.s->account_index->all();
       if (accounts.empty()) {
         ret.emplace_back("No accounts registered");
@@ -254,20 +254,20 @@ ShellCommand c_list_accounts(
       co_return ret;
     });
 
-uint32_t parse_account_flags(const string& flags_str) {
+uint32_t parse_account_flags(const std::string& flags_str) {
   try {
     size_t end_pos = 0;
-    uint32_t ret = stoul(flags_str, &end_pos, 16);
+    uint32_t ret = std::stoul(flags_str, &end_pos, 16);
     if (end_pos == flags_str.size()) {
       return ret;
     }
-  } catch (const exception&) {
+  } catch (const std::exception&) {
   }
 
   uint32_t ret = 0;
   auto tokens = phosg::split(flags_str, ',');
   for (const auto& token : tokens) {
-    string token_upper = phosg::toupper(token);
+    std::string token_upper = phosg::toupper(token);
     if (token_upper == "NONE") {
       // Nothing to do
     } else if (token_upper == "KICK_USER") {
@@ -299,32 +299,32 @@ uint32_t parse_account_flags(const string& flags_str) {
     } else if (token_upper == "IS_SHARED_ACCOUNT") {
       ret |= static_cast<uint32_t>(Account::Flag::IS_SHARED_ACCOUNT);
     } else {
-      throw runtime_error("invalid flag name: " + token_upper);
+      throw std::runtime_error("invalid flag name: " + token_upper);
     }
   }
   return ret;
 }
 
-uint32_t parse_account_user_flags(const string& user_flags_str) {
+uint32_t parse_account_user_flags(const std::string& user_flags_str) {
   try {
     size_t end_pos = 0;
-    uint32_t ret = stoul(user_flags_str, &end_pos, 16);
+    uint32_t ret = std::stoul(user_flags_str, &end_pos, 16);
     if (end_pos == user_flags_str.size()) {
       return ret;
     }
-  } catch (const exception&) {
+  } catch (const std::exception&) {
   }
 
   uint32_t ret = 0;
   auto tokens = phosg::split(user_flags_str, ',');
   for (const auto& token : tokens) {
-    string token_upper = phosg::toupper(token);
+    std::string token_upper = phosg::toupper(token);
     if (token_upper == "NONE") {
       // Nothing to do
     } else if (token_upper == "DISABLE_DROP_NOTIFICATION_BROADCAST") {
       ret |= static_cast<uint32_t>(Account::UserFlag::DISABLE_DROP_NOTIFICATION_BROADCAST);
     } else {
-      throw runtime_error("invalid user flag name: " + token_upper);
+      throw std::runtime_error("invalid user flag name: " + token_upper);
     }
   }
   return ret;
@@ -360,15 +360,15 @@ ShellCommand c_add_account(
       IS_SHARED_ACCOUNT: Account is a shared serial (disables Access Key and\n\
           password checks; players will get Guild Cards based on their player\n\
           names)",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
-      auto account = make_shared<Account>();
-      for (const string& token : phosg::split(args.args, ' ')) {
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
+      auto account = std::make_shared<Account>();
+      for (const std::string& token : phosg::split(args.args, ' ')) {
         if (token.starts_with("id=")) {
-          account->account_id = stoul(token.substr(3), nullptr, 16);
+          account->account_id = std::stoul(token.substr(3), nullptr, 16);
         } else if (token.starts_with("ep3-current-meseta=")) {
-          account->ep3_current_meseta = stoul(token.substr(19), nullptr, 0);
+          account->ep3_current_meseta = std::stoul(token.substr(19), nullptr, 0);
         } else if (token.starts_with("ep3-total-meseta=")) {
-          account->ep3_total_meseta_earned = stoul(token.substr(17), nullptr, 0);
+          account->ep3_total_meseta_earned = std::stoul(token.substr(17), nullptr, 0);
         } else if (token == "temporary") {
           account->is_temporary = true;
         } else if (token.starts_with("flags=")) {
@@ -376,12 +376,12 @@ ShellCommand c_add_account(
         } else if (token.starts_with("user-flags=")) {
           account->user_flags = parse_account_user_flags(token.substr(11));
         } else {
-          throw invalid_argument("invalid account field: " + token);
+          throw std::invalid_argument("invalid account field: " + token);
         }
       }
       args.s->account_index->add(account);
       account->save();
-      co_return deque<string>{format("Account {:08X} added", account->account_id)};
+      co_return std::deque<std::string>{std::format("Account {:08X} added", account->account_id)};
     });
 ShellCommand c_update_account(
     "update-account", "update-account ACCOUNT-ID PARAMETERS...\n\
@@ -400,10 +400,10 @@ ShellCommand c_update_account(
       temporary: Marks the account as temporary; it is not saved to disk and\n\
           therefore will be deleted when the server shuts down.\n\
       permanent: If the account was temporary, makes it non-temporary.",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
       auto tokens = phosg::split(args.args, ' ');
       if (tokens.size() < 2) {
-        throw runtime_error("not enough arguments");
+        throw std::runtime_error("not enough arguments");
       }
       auto account = args.s->account_index->from_account_id(stoul(tokens[0], nullptr, 16));
       tokens.erase(tokens.begin());
@@ -416,11 +416,11 @@ ShellCommand c_update_account(
       int64_t new_user_flags = -1;
       uint8_t new_is_temporary = 0xFF;
       int64_t new_ban_duration = -1;
-      for (const string& token : tokens) {
+      for (const std::string& token : tokens) {
         if (token.starts_with("ep3-current-meseta=")) {
-          new_ep3_current_meseta = stoul(token.substr(19), nullptr, 0);
+          new_ep3_current_meseta = std::stoul(token.substr(19), nullptr, 0);
         } else if (token.starts_with("ep3-total-meseta=")) {
-          new_ep3_total_meseta = stoul(token.substr(17), nullptr, 0);
+          new_ep3_total_meseta = std::stoul(token.substr(17), nullptr, 0);
         } else if (token == "temporary") {
           new_is_temporary = 1;
         } else if (token == "permanent") {
@@ -448,10 +448,10 @@ ShellCommand c_update_account(
           } else if (duration_str.ends_with("y")) {
             new_ban_duration = stoull(duration_str.substr(0, duration_str.size() - 1)) * 31536000000000LL;
           } else {
-            throw runtime_error("invalid time unit");
+            throw std::runtime_error("invalid time unit");
           }
         } else {
-          throw invalid_argument("invalid account field: " + token);
+          throw std::invalid_argument("invalid account field: " + token);
         }
       }
 
@@ -479,18 +479,18 @@ ShellCommand c_update_account(
         args.s->disconnect_all_banned_clients();
       }
 
-      co_return deque<string>{format("Account {:08X} updated", account->account_id)};
+      co_return std::deque<std::string>{std::format("Account {:08X} updated", account->account_id)};
     });
 ShellCommand c_delete_account(
     "delete-account", "delete-account ACCOUNT-ID\n\
     Delete an account from the server. If a player is online with the deleted\n\
     account, they will not be automatically disconnected.",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
       auto account = args.s->account_index->from_account_id(stoul(args.args, nullptr, 16));
       args.s->account_index->remove(account->account_id);
       account->is_temporary = true;
       account->delete_file();
-      co_return deque<string>{"Account deleted"};
+      co_return std::deque<std::string>{"Account deleted"};
     });
 
 ShellCommand c_add_license(
@@ -509,57 +509,57 @@ ShellCommand c_add_license(
       add-license 385A92C4 DC 107862F9 d38XTu2p\n\
       add-license 385A92C4 GC 0418572923 282949185033 hunter2\n\
       add-license 385A92C4 BB user1 trustno1",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
       auto tokens = phosg::split(args.args, ' ');
       if (tokens.size() < 3) {
-        throw runtime_error("not enough arguments");
+        throw std::runtime_error("not enough arguments");
       }
 
       auto account = args.s->account_index->from_account_id(stoul(tokens[0], nullptr, 16));
 
-      string type_str = phosg::toupper(tokens[1]);
+      std::string type_str = phosg::toupper(tokens[1]);
       if (type_str == "DC-NTE") {
         if (tokens.size() != 4) {
-          throw runtime_error("incorrect number of parameters");
+          throw std::runtime_error("incorrect number of parameters");
         }
-        auto license = make_shared<DCNTELicense>();
+        auto license = std::make_shared<DCNTELicense>();
         license->serial_number = std::move(tokens[2]);
         license->access_key = std::move(tokens[3]);
         args.s->account_index->add_dc_nte_license(account, license);
 
       } else if (type_str == "DC") {
         if (tokens.size() != 4) {
-          throw runtime_error("incorrect number of parameters");
+          throw std::runtime_error("incorrect number of parameters");
         }
-        auto license = make_shared<V1V2License>();
-        license->serial_number = stoul(tokens[2], nullptr, 16);
+        auto license = std::make_shared<V1V2License>();
+        license->serial_number = std::stoul(tokens[2], nullptr, 16);
         license->access_key = std::move(tokens[3]);
         args.s->account_index->add_dc_license(account, license);
 
       } else if (type_str == "PC") {
         if (tokens.size() != 4) {
-          throw runtime_error("incorrect number of parameters");
+          throw std::runtime_error("incorrect number of parameters");
         }
-        auto license = make_shared<V1V2License>();
-        license->serial_number = stoul(tokens[2], nullptr, 16);
+        auto license = std::make_shared<V1V2License>();
+        license->serial_number = std::stoul(tokens[2], nullptr, 16);
         license->access_key = std::move(tokens[3]);
         args.s->account_index->add_pc_license(account, license);
 
       } else if (type_str == "GC") {
         if (tokens.size() != 5) {
-          throw runtime_error("incorrect number of parameters");
+          throw std::runtime_error("incorrect number of parameters");
         }
-        auto license = make_shared<GCLicense>();
-        license->serial_number = stoul(tokens[2], nullptr, 10);
+        auto license = std::make_shared<GCLicense>();
+        license->serial_number = std::stoul(tokens[2], nullptr, 10);
         license->access_key = std::move(tokens[3]);
         license->password = std::move(tokens[4]);
         args.s->account_index->add_gc_license(account, license);
 
       } else if (type_str == "XB") {
         if (tokens.size() != 5) {
-          throw runtime_error("incorrect number of parameters");
+          throw std::runtime_error("incorrect number of parameters");
         }
-        auto license = make_shared<XBLicense>();
+        auto license = std::make_shared<XBLicense>();
         license->gamertag = std::move(tokens[2]);
         license->user_id = stoull(tokens[3], nullptr, 16);
         license->account_id = stoull(tokens[4], nullptr, 16);
@@ -567,19 +567,19 @@ ShellCommand c_add_license(
 
       } else if (type_str == "BB") {
         if (tokens.size() != 4) {
-          throw runtime_error("incorrect number of parameters");
+          throw std::runtime_error("incorrect number of parameters");
         }
-        auto license = make_shared<BBLicense>();
+        auto license = std::make_shared<BBLicense>();
         license->username = std::move(tokens[2]);
         license->password = std::move(tokens[3]);
         args.s->account_index->add_bb_license(account, license);
 
       } else {
-        throw runtime_error("invalid license type");
+        throw std::runtime_error("invalid license type");
       }
 
       account->save();
-      co_return deque<string>{format("Account {:08X} updated", account->account_id)};
+      co_return std::deque<std::string>{std::format("Account {:08X} updated", account->account_id)};
     });
 ShellCommand c_delete_license(
     "delete-license", "delete-license ACCOUNT-ID TYPE PRIMARY-CREDENTIAL\n\
@@ -598,46 +598,46 @@ ShellCommand c_delete_license(
       delete-license 385A92C4 GC 0418572923\n\
       delete-license 385A92C4 XB 7E29A2950019EB20\n\
       delete-license 385A92C4 BB user1",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
       auto tokens = phosg::split(args.args, ' ');
       if (tokens.size() != 3) {
-        throw runtime_error("incorrect argument count");
+        throw std::runtime_error("incorrect argument count");
       }
 
       auto account = args.s->account_index->from_account_id(stoul(tokens[0], nullptr, 16));
 
-      string type_str = phosg::toupper(tokens[1]);
+      std::string type_str = phosg::toupper(tokens[1]);
       if (type_str == "DC-NTE") {
         args.s->account_index->remove_dc_nte_license(account, tokens[2]);
       } else if (type_str == "DC") {
-        args.s->account_index->remove_dc_license(account, stoul(tokens[2], nullptr, 16));
+        args.s->account_index->remove_dc_license(account, std::stoul(tokens[2], nullptr, 16));
       } else if (type_str == "PC") {
-        args.s->account_index->remove_pc_license(account, stoul(tokens[2], nullptr, 16));
+        args.s->account_index->remove_pc_license(account, std::stoul(tokens[2], nullptr, 16));
       } else if (type_str == "GC") {
-        args.s->account_index->remove_gc_license(account, stoul(tokens[2], nullptr, 0));
+        args.s->account_index->remove_gc_license(account, std::stoul(tokens[2], nullptr, 0));
       } else if (type_str == "XB") {
         args.s->account_index->remove_xb_license(account, stoull(tokens[2], nullptr, 16));
       } else if (type_str == "BB") {
         args.s->account_index->remove_bb_license(account, tokens[2]);
       } else {
-        throw runtime_error("invalid license type");
+        throw std::runtime_error("invalid license type");
       }
 
       account->save();
-      co_return deque<string>{format("Account {:08X} updated", account->account_id)};
+      co_return std::deque<std::string>{std::format("Account {:08X} updated", account->account_id)};
     });
 
 ShellCommand c_lookup(
     "lookup", "lookup USER\n\
     Find the account for a logged-in user.",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
       auto target = args.s->find_client(&args.args);
       if (target->login) {
-        co_return deque<string>{format("Found client {} with account ID {:08X}",
+        co_return std::deque<std::string>{format("Found client {} with account ID {:08X}",
             target->channel->name, target->login->account->account_id)};
       } else {
         // This should be impossible
-        throw logic_error("find_client found user who is not logged in");
+        throw std::logic_error("find_client found user who is not logged in");
       }
     });
 ShellCommand c_kick(
@@ -645,26 +645,26 @@ ShellCommand c_kick(
     Disconnect a user from the server. USER may be an account ID, player name,\n\
     or client ID (beginning with \"C-\"). This does not ban the user; they are\n\
     free to reconnect after doing this.",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
       auto target = args.s->find_client(&args.args);
       send_message_box(target, "$C6You have been kicked off the server.");
       target->channel->disconnect();
-      co_return deque<string>{format("Client C-{:X} disconnected from server", target->id)};
+      co_return std::deque<std::string>{std::format("Client C-{:X} disconnected from server", target->id)};
     });
 
 ShellCommand c_announce(
     "announce", "announce MESSAGE\n\
     Send an announcement message to all players.",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
       send_text_or_scrolling_message(args.s, args.args, args.args);
-      co_return deque<string>{};
+      co_return std::deque<std::string>{};
     });
 ShellCommand c_announce_mail(
     "announce-mail", "announce-mail MESSAGE\n\
     Send an announcement message via Simple Mail to all players.",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
       send_simple_mail(args.s, 0, args.s->name, args.args);
-      co_return deque<string>{};
+      co_return std::deque<std::string>{};
     });
 
 ShellCommand c_create_tournament(
@@ -695,11 +695,11 @@ ShellCommand c_create_tournament(
       dialogue=ON/OFF: Enable/disable dialogue\n\
       dice-exchange=ATK/DEF/NONE: Set dice exchange mode\n\
       dice-boost=ON/OFF: Enable/disable dice boost",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
-      string name = get_quoted_string(args.args);
-      string map_name = get_quoted_string(args.args);
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
+      std::string name = get_quoted_string(args.args);
+      std::string map_name = get_quoted_string(args.args);
       auto map = args.s->ep3_map_index->map_for_name(map_name);
-      uint32_t num_teams = stoul(get_quoted_string(args.args), nullptr, 0);
+      uint32_t num_teams = std::stoul(get_quoted_string(args.args), nullptr, 0);
       Episode3::Rules rules;
       rules.set_defaults();
       uint8_t flags = Episode3::Tournament::Flag::HAS_COM_TEAMS;
@@ -716,24 +716,24 @@ ShellCommand c_create_tournament(
           } else if (token == "resize") {
             flags |= Episode3::Tournament::Flag::RESIZE_ON_START;
           } else if (token.starts_with("dice=")) {
-            auto parse_range_c = +[](const string& s) -> uint8_t {
+            auto parse_range_c = +[](const std::string& s) -> uint8_t {
               auto tokens = phosg::split(s, '-');
               if (tokens.size() != 2) {
-                throw runtime_error("dice spec must be of the form MIN-MAX");
+                throw std::runtime_error("dice spec must be of the form MIN-MAX");
               }
               return (stoul(tokens[0]) << 4) | (stoul(tokens[1]) & 0x0F);
             };
-            auto parse_range_p = +[](const string& s) -> pair<uint8_t, uint8_t> {
+            auto parse_range_p = +[](const std::string& s) -> std::pair<uint8_t, uint8_t> {
               auto tokens = phosg::split(s, '-');
               if (tokens.size() != 2) {
-                throw runtime_error("dice spec must be of the form MIN-MAX");
+                throw std::runtime_error("dice spec must be of the form MIN-MAX");
               }
-              return make_pair(stoul(tokens[0]), stoul(tokens[1]));
+              return std::make_pair(stoul(tokens[0]), std::stoul(tokens[1]));
             };
 
             auto subtokens = phosg::split(token.substr(5), ':');
             if (subtokens.size() < 1) {
-              throw runtime_error("no dice ranges specified in dice= option");
+              throw std::runtime_error("no dice ranges specified in dice= option");
             }
             auto atk_range = parse_range_p(subtokens[0]);
             rules.min_dice_value = atk_range.first;
@@ -747,7 +747,7 @@ ShellCommand c_create_tournament(
                 } else if (subtokens.size() == 4) {
                   rules.def_dice_value_range_2v1 = parse_range_c(subtokens[3]);
                 } else {
-                  throw runtime_error("too many range specs given");
+                  throw std::runtime_error("too many range specs given");
                 }
               } else {
                 rules.atk_dice_value_range_2v1 = 0;
@@ -759,18 +759,18 @@ ShellCommand c_create_tournament(
               rules.def_dice_value_range_2v1 = 0;
             }
           } else if (token.starts_with("overall-time-limit=")) {
-            uint32_t limit = stoul(token.substr(19));
+            uint32_t limit = std::stoul(token.substr(19));
             if (limit > 600) {
-              throw runtime_error("overall-time-limit must be 600 or fewer minutes");
+              throw std::runtime_error("overall-time-limit must be 600 or fewer minutes");
             }
             if (limit % 5) {
-              throw runtime_error("overall-time-limit must be a multiple of 5 minutes");
+              throw std::runtime_error("overall-time-limit must be a multiple of 5 minutes");
             }
             rules.overall_time_limit = limit;
           } else if (token.starts_with("phase-time-limit=")) {
-            rules.phase_time_limit = stoul(token.substr(17));
+            rules.phase_time_limit = std::stoul(token.substr(17));
           } else if (token.starts_with("hp=")) {
-            rules.char_hp = stoul(token.substr(3));
+            rules.char_hp = std::stoul(token.substr(3));
           } else if (token == "allowed-cards=all") {
             rules.allowed_cards = Episode3::AllowedCards::ALL;
           } else if (token == "allowed-cards=n") {
@@ -812,11 +812,11 @@ ShellCommand c_create_tournament(
           } else if (token == "dice-exchange=none") {
             rules.dice_exchange_mode = Episode3::DiceExchangeMode::NONE;
           } else {
-            throw runtime_error("invalid rules option: " + token);
+            throw std::runtime_error("invalid rules option: " + token);
           }
         }
       }
-      deque<string> ret;
+      std::deque<std::string> ret;
       if (rules.check_and_reset_invalid_fields()) {
         ret.emplace_back("Warning: Some rules were invalid and reset to defaults");
       }
@@ -829,19 +829,19 @@ ShellCommand c_delete_tournament(
     "delete-tournament", "delete-tournament TOURNAMENT-NAME\n\
     Delete a tournament. Quotes are required around the tournament name unless\n\
     the name contains no spaces.",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
-      string name = get_quoted_string(args.args);
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
+      std::string name = get_quoted_string(args.args);
       if (args.s->ep3_tournament_index->delete_tournament(name)) {
-        co_return deque<string>{"Deleted tournament"};
+        co_return std::deque<std::string>{"Deleted tournament"};
       } else {
-        throw runtime_error("tournament does not exist");
+        throw std::runtime_error("tournament does not exist");
       }
     });
 ShellCommand c_list_tournaments(
     "list-tournaments", "list-tournaments\n\
     List the names and numbers of all existing tournaments.",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
-      deque<string> ret;
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
+      std::deque<std::string> ret;
       for (const auto& it : args.s->ep3_tournament_index->all_tournaments()) {
         ret.emplace_back("  " + it.second->get_name());
       }
@@ -851,30 +851,30 @@ ShellCommand c_start_tournament(
     "start-tournament", "start-tournament TOURNAMENT-NAME\n\
     End registration for a tournament and allow matches to begin. Quotes are\n\
     required around the tournament name unless the name contains no spaces.",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
-      string name = get_quoted_string(args.args);
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
+      std::string name = get_quoted_string(args.args);
       auto tourn = args.s->ep3_tournament_index->get_tournament(name);
       if (tourn) {
         tourn->start();
         args.s->ep3_tournament_index->save();
         tourn->send_all_state_updates();
         send_ep3_text_message_fmt(args.s, "$C7The tournament\n$C6{}$C7\nhas begun", tourn->get_name());
-        co_return deque<string>{"Tournament started"};
+        co_return std::deque<std::string>{"Tournament started"};
       } else {
-        throw runtime_error("tournament does not exist");
+        throw std::runtime_error("tournament does not exist");
       }
     });
 ShellCommand c_describe_tournament(
     "describe-tournament", "describe-tournament TOURNAMENT-NAME\n\
     Show the current state of a tournament. Quotes are required around the\n\
     tournament name unless the name contains no spaces.",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
-      string name = get_quoted_string(args.args);
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
+      std::string name = get_quoted_string(args.args);
       auto tourn = args.s->ep3_tournament_index->get_tournament(name);
       if (tourn) {
-        co_return deque<string>{tourn->bracket_str()};
+        co_return std::deque<std::string>{tourn->bracket_str()};
       } else {
-        throw runtime_error("tournament does not exist");
+        throw std::runtime_error("tournament does not exist");
       }
     });
 
@@ -888,16 +888,16 @@ ShellCommand c_cc(
     via this command are exempt from permission checks, so commands that\n\
     require cheat mode or debug mode are always available via cc even if the\n\
     player cannot normamlly use them.",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
       auto c = args.get_client();
       co_await on_chat_command(c, args.args, false);
-      co_return deque<string>{};
+      co_return std::deque<std::string>{};
     });
 
-asio::awaitable<deque<string>> f_sc_ss(ShellCommand::Args& args) {
-  string data = phosg::parse_data_string(args.args, nullptr, phosg::ParseDataFlags::ALLOW_FILES);
+asio::awaitable<std::deque<std::string>> f_sc_ss(ShellCommand::Args& args) {
+  std::string data = phosg::parse_data_string(args.args, nullptr, phosg::ParseDataFlags::ALLOW_FILES);
   if (data.size() == 0) {
-    throw invalid_argument("no data given");
+    throw std::invalid_argument("no data given");
   }
   data.resize((data.size() + 3) & (~3));
 
@@ -912,7 +912,7 @@ asio::awaitable<deque<string>> f_sc_ss(ShellCommand::Args& args) {
     send_command_with_header(c->channel, data.data(), data.size());
   }
 
-  co_return deque<string>{};
+  co_return std::deque<std::string>{};
 }
 
 ShellCommand c_sc("sc", "sc DATA\n\
@@ -926,10 +926,10 @@ ShellCommand c_show_slots(
     "show-slots", "show-slots\n\
     Show the player names, Guild Card numbers, and client IDs of all players in\n\
     the current lobby or game.",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
       auto c = args.get_proxy_client();
 
-      deque<string> ret;
+      std::deque<std::string> ret;
       for (size_t z = 0; z < c->proxy_session->lobby_players.size(); z++) {
         const auto& player = c->proxy_session->lobby_players[z];
         if (player.guild_card_number) {
@@ -939,13 +939,13 @@ ShellCommand c_show_slots(
               name_for_char_class(player.char_class),
               name_for_section_id(player.section_id)));
         } else {
-          ret.emplace_back(format("  {}: (no player)", z));
+          ret.emplace_back(std::format("  {}: (no player)", z));
         }
       }
       co_return ret;
     });
 
-asio::awaitable<deque<string>> fn_chat(ShellCommand::Args& args) {
+asio::awaitable<std::deque<std::string>> fn_chat(ShellCommand::Args& args) {
   auto c = args.get_client();
   bool is_dchat = (args.command == "dchat");
 
@@ -953,7 +953,7 @@ asio::awaitable<deque<string>> fn_chat(ShellCommand::Args& args) {
     if (!is_dchat && uses_utf16(c->version())) {
       send_chat_message_from_client(c->proxy_session->server_channel, args.args, 0);
     } else {
-      string data(8, '\0');
+      std::string data(8, '\0');
       data.push_back('\x09');
       data.push_back('E');
       if (is_dchat) {
@@ -966,7 +966,9 @@ asio::awaitable<deque<string>> fn_chat(ShellCommand::Args& args) {
       c->proxy_session->server_channel->send(0x06, 0x00, data);
     }
   } else if (c->login) {
-    string text = is_dchat ? phosg::parse_data_string(args.args, nullptr, phosg::ParseDataFlags::ALLOW_FILES) : args.args;
+    std::string text = is_dchat
+        ? phosg::parse_data_string(args.args, nullptr, phosg::ParseDataFlags::ALLOW_FILES)
+        : args.args;
     auto l = c->require_lobby();
     for (auto& lc : l->clients) {
       if (lc) {
@@ -975,7 +977,7 @@ asio::awaitable<deque<string>> fn_chat(ShellCommand::Args& args) {
     }
   }
 
-  co_return deque<string>{};
+  co_return std::deque<std::string>{};
 }
 ShellCommand c_c("c", "c TEXT", fn_chat);
 ShellCommand c_chat("chat", "chat TEXT\n\
@@ -985,13 +987,13 @@ ShellCommand c_dchat("dchat", "dchat DATA\n\
     Send a chat message to the server with arbitrary data in it.",
     fn_chat);
 
-asio::awaitable<deque<string>> fn_wchat(ShellCommand::Args& args) {
+asio::awaitable<std::deque<std::string>> fn_wchat(ShellCommand::Args& args) {
   auto c = args.get_client();
   if (!is_ep3(c->version())) {
-    throw runtime_error("wchat can only be used on Episode 3");
+    throw std::runtime_error("wchat can only be used on Episode 3");
   }
   if (c->proxy_session) {
-    string data(8, '\0');
+    std::string data(8, '\0');
     data.push_back('\x40'); // private_flags: visible to all
     data.push_back('\x09');
     data.push_back('E');
@@ -1008,7 +1010,7 @@ asio::awaitable<deque<string>> fn_wchat(ShellCommand::Args& args) {
       }
     }
   }
-  co_return deque<string>{};
+  co_return std::deque<std::string>{};
 }
 ShellCommand c_wc("wc", "wc TEXT", fn_wchat);
 ShellCommand c_wchat("wchat", "wchat TEXT\n\
@@ -1018,20 +1020,20 @@ ShellCommand c_wchat("wchat", "wchat TEXT\n\
 ShellCommand c_marker(
     "marker", "marker COLOR-ID\n\
     Change your lobby marker color.",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
       auto c = args.get_proxy_client();
-      c->proxy_session->server_channel->send(0x89, stoul(args.args));
-      co_return deque<string>{};
+      c->proxy_session->server_channel->send(0x89, std::stoul(args.args));
+      co_return std::deque<std::string>{};
     });
 
-asio::awaitable<deque<string>> fn_warp(ShellCommand::Args& args) {
+asio::awaitable<std::deque<std::string>> fn_warp(ShellCommand::Args& args) {
   auto c = args.get_proxy_client();
-  uint8_t floor = stoul(args.args);
+  uint8_t floor = std::stoul(args.args);
   send_warp(c->channel, c->lobby_client_id, floor, true);
   if (args.command == "warpall") {
     send_warp(c->proxy_session->server_channel, c->lobby_client_id, floor, false);
   }
-  co_return deque<string>{};
+  co_return std::deque<std::string>{};
 }
 ShellCommand c_warp("warp", "warp FLOOR-ID", fn_warp);
 ShellCommand c_warpme("warpme", "warpme FLOOR-ID\n\
@@ -1041,10 +1043,10 @@ ShellCommand c_warpall("warpall", "warpall FLOOR-ID\n\
     Send everyone to a specific floor.",
     fn_warp);
 
-asio::awaitable<deque<string>> fn_info_board(ShellCommand::Args& args) {
+asio::awaitable<std::deque<std::string>> fn_info_board(ShellCommand::Args& args) {
   auto c = args.get_proxy_client();
 
-  string data;
+  std::string data;
   if (args.command == "info-board-data") {
     data += phosg::parse_data_string(args.args, nullptr, phosg::ParseDataFlags::ALLOW_FILES);
   } else {
@@ -1054,7 +1056,7 @@ asio::awaitable<deque<string>> fn_info_board(ShellCommand::Args& args) {
   data.resize((data.size() + 3) & (~3));
 
   c->proxy_session->server_channel->send(0xD9, 0x00, data);
-  co_return deque<string>{};
+  co_return std::deque<std::string>{};
 }
 ShellCommand c_info_board("info-board", "info-board TEXT\n\
     Set your info board contents. This will affect the current session only,\n\
@@ -1069,17 +1071,17 @@ ShellCommand c_info_board_data("info-board-data", "info-board-data DATA\n\
 ShellCommand c_create_item(
     "create-item", "create-item DATA\n\
     Create an item as if the client had run the $item command.",
-    +[](ShellCommand::Args& args) -> asio::awaitable<deque<string>> {
+    +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
       auto c = args.get_proxy_client();
 
       if (c->version() == Version::BB_V4) {
-        throw runtime_error("proxy session is BB");
+        throw std::runtime_error("proxy session is BB");
       }
       if (!c->proxy_session->is_in_game) {
-        throw runtime_error("proxy session is not in a game");
+        throw std::runtime_error("proxy session is not in a game");
       }
       if (c->lobby_client_id != c->proxy_session->leader_client_id) {
-        throw runtime_error("proxy session is not game leader");
+        throw std::runtime_error("proxy session is not game leader");
       }
 
       ItemData item = args.s->parse_item_description(c->version(), args.args);
@@ -1088,7 +1090,7 @@ ShellCommand c_create_item(
       send_drop_stacked_item_to_channel(args.s, c->channel, item, c->floor, c->pos);
       send_drop_stacked_item_to_channel(args.s, c->proxy_session->server_channel, item, c->floor, c->pos);
 
-      string name = args.s->describe_item(c->version(), item, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
+      std::string name = args.s->describe_item(c->version(), item, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
       send_text_message(c->channel, "$C7Item created:\n" + name);
-      co_return deque<string>{};
+      co_return std::deque<std::string>{};
     });

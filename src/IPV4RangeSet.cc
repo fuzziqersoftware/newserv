@@ -1,7 +1,5 @@
 #include "IPV4RangeSet.hh"
 
-using namespace std;
-
 IPV4RangeSet::IPV4RangeSet(const phosg::JSON& json) {
   for (const auto& it : json.as_list()) {
     // String should be of the form a.b.c.d or a.b.c.d/e
@@ -13,22 +11,22 @@ IPV4RangeSet::IPV4RangeSet(const phosg::JSON& json) {
     } else if (tokens.size() == 2) {
       mask_bits = stoul(tokens[1], nullptr, 10);
       if (mask_bits > 32) {
-        throw runtime_error("invalid IPv4 address range");
+        throw std::runtime_error("invalid IPv4 address range");
       }
     } else {
-      throw runtime_error("invalid IPv4 address range");
+      throw std::runtime_error("invalid IPv4 address range");
     }
 
     auto addr_tokens = phosg::split(tokens[0], '.');
     if (addr_tokens.size() != 4) {
-      throw runtime_error("invalid IPv4 address");
+      throw std::runtime_error("invalid IPv4 address");
     }
     uint32_t addr = 0;
     for (size_t z = 0; z < 4; z++) {
       size_t end_pos = 0;
       size_t new_byte = stoul(addr_tokens[z], &end_pos, 10);
       if (end_pos != addr_tokens[z].size() || new_byte > 0xFF) {
-        throw runtime_error("invalid IPv4 address");
+        throw std::runtime_error("invalid IPv4 address");
       }
       addr = (addr << 8) | new_byte;
     }

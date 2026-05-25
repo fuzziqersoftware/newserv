@@ -21,8 +21,6 @@
 #include "Compression.hh"
 #include "StaticGameData.hh"
 
-using namespace std;
-
 // This file documents PSO's quest script execution system.
 
 // The quest execution system has several relevant data structures:
@@ -55,8 +53,8 @@ static TextEncoding encoding_for_language(Language language) {
   return ((language == Language::JAPANESE) ? TextEncoding::SJIS : TextEncoding::ISO8859);
 }
 
-static string escape_string(const string& data, TextEncoding encoding = TextEncoding::UTF8) {
-  string decoded;
+static std::string escape_string(const std::string& data, TextEncoding encoding = TextEncoding::UTF8) {
+  std::string decoded;
   try {
     switch (encoding) {
       case TextEncoding::UTF8:
@@ -78,11 +76,11 @@ static string escape_string(const string& data, TextEncoding encoding = TextEnco
       default:
         return phosg::format_data_string(data);
     }
-  } catch (const runtime_error&) {
+  } catch (const std::runtime_error&) {
     return phosg::format_data_string(data);
   }
 
-  string ret = "\"";
+  std::string ret = "\"";
   for (char ch : decoded) {
     if (ch == '\n') {
       ret += "\\n";
@@ -106,8 +104,8 @@ static string escape_string(const string& data, TextEncoding encoding = TextEnco
   return ret;
 }
 
-static string format_and_indent_data(const void* data, size_t size, uint64_t start_address) {
-  string ret = "  ";
+static std::string format_and_indent_data(const void* data, size_t size, uint64_t start_address) {
+  std::string ret = "  ";
   auto write_fn = [&ret](const void* vdata, size_t size) -> void {
     const char* data = reinterpret_cast<const char*>(vdata);
     for (size_t z = 0; z < size; z++) {
@@ -2614,9 +2612,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF961, {"bb_get_6xE3_status", "unknownF961"}, {W_REG}, F_V4},
 };
 
-static const unordered_map<uint16_t, const QuestScriptOpcodeDefinition*>& opcodes_for_version(Version v) {
-  static array<
-      unordered_map<uint16_t, const QuestScriptOpcodeDefinition*>,
+static const std::unordered_map<uint16_t, const QuestScriptOpcodeDefinition*>& opcodes_for_version(Version v) {
+  static std::array<
+      std::unordered_map<uint16_t, const QuestScriptOpcodeDefinition*>,
       static_cast<size_t>(Version::BB_V4) + 1>
       indexes;
 
@@ -2629,15 +2627,15 @@ static const unordered_map<uint16_t, const QuestScriptOpcodeDefinition*>& opcode
         continue;
       }
       if (!index.emplace(def.opcode, &def).second) {
-        throw logic_error(std::format("duplicate definition for opcode {:04X}", def.opcode));
+        throw std::logic_error(std::format("duplicate definition for opcode {:04X}", def.opcode));
       }
     }
   }
   return index;
 }
 
-static const unordered_map<string, const QuestScriptOpcodeDefinition*>& opcodes_by_name_for_version(Version v) {
-  static array<unordered_map<string, const QuestScriptOpcodeDefinition*>, static_cast<size_t>(Version::BB_V4) + 1> indexes;
+static const std::unordered_map<std::string, const QuestScriptOpcodeDefinition*>& opcodes_by_name_for_version(Version v) {
+  static std::array<std::unordered_map<std::string, const QuestScriptOpcodeDefinition*>, static_cast<size_t>(Version::BB_V4) + 1> indexes;
 
   auto& index = indexes.at(static_cast<size_t>(v));
   if (index.empty()) {
@@ -2650,7 +2648,7 @@ static const unordered_map<string, const QuestScriptOpcodeDefinition*>& opcodes_
       for (const char* name : def.names) {
         auto emplace_ret = index.emplace(phosg::tolower(name), &def);
         if (!emplace_ret.second && (emplace_ret.first->second->opcode != def.opcode)) {
-          throw logic_error(std::format("name conflict for opcode {} (existing: {:04X}, new: {:04X})",
+          throw std::logic_error(std::format("name conflict for opcode {} (existing: {:04X}, new: {:04X})",
               name, emplace_ret.first->second->opcode, def.opcode));
         }
       }
@@ -2660,7 +2658,7 @@ static const unordered_map<string, const QuestScriptOpcodeDefinition*>& opcodes_
 }
 
 void check_quest_opcode_definitions() {
-  static const array<Version, 12> versions = {
+  static const std::array<Version, 12> versions = {
       Version::DC_NTE,
       Version::DC_11_2000,
       Version::DC_V1,
@@ -2733,12 +2731,12 @@ std::string disassemble_quest_script(
     size_t bin_size,
     Version version,
     Language language,
-    shared_ptr<const MapFile> dat,
+    std::shared_ptr<const MapFile> dat,
     bool reassembly_mode,
     bool use_qedit_names) {
 
   phosg::StringReader r(bin_data, bin_size);
-  deque<string> lines;
+  std::deque<std::string> lines;
   lines.emplace_back(std::format(".version {}", phosg::name_for_enum(version)));
 
   // Phase 0: Parse the header and generate the metadata section
@@ -2817,28 +2815,28 @@ std::string disassemble_quest_script(
       const MapFile::EnemySetEntry* ene_set;
     };
 
-    set<uint32_t> label_nums;
+    std::set<uint32_t> label_nums;
     uint32_t offset;
     uint32_t size = 0;
-    set<size_t> script_refs;
-    vector<ObjectSetRef> object_refs;
-    vector<EnemySetRef> enemy_refs;
+    std::set<size_t> script_refs;
+    std::vector<ObjectSetRef> object_refs;
+    std::vector<EnemySetRef> enemy_refs;
     Arg::DataType type = Arg::DataType::NONE;
-    deque<string> lines;
+    std::deque<std::string> lines;
   };
 
-  vector<shared_ptr<Label>> label_table;
-  map<size_t, shared_ptr<Label>> offset_to_label;
-  deque<pair<shared_ptr<Label>, Arg::DataType>> pending_labels;
+  std::vector<std::shared_ptr<Label>> label_table;
+  std::map<size_t, std::shared_ptr<Label>> offset_to_label;
+  std::deque<std::pair<std::shared_ptr<Label>, Arg::DataType>> pending_labels;
   while (!label_table_r.eof()) {
     try {
       uint32_t offset = label_table_r.get_u32l();
       if (offset < text_r.size()) {
-        shared_ptr<Label> l;
+        std::shared_ptr<Label> l;
         try {
           l = offset_to_label.at(offset);
         } catch (const std::out_of_range&) {
-          l = make_shared<Label>();
+          l = std::make_shared<Label>();
           l->offset = offset;
           if (label_table.size() == 0) {
             pending_labels.emplace_back(make_pair(l, Arg::DataType::SCRIPT));
@@ -2850,14 +2848,14 @@ std::string disassemble_quest_script(
       } else {
         label_table.emplace_back(nullptr);
       }
-    } catch (const out_of_range&) {
+    } catch (const std::out_of_range&) {
       label_table_r.skip(label_table_r.remaining());
     }
   }
   // If there's no label at offset 0, make a fake one, but don't put it in the label table because the script cannot
   // reference it
   if (!offset_to_label.count(0)) {
-    auto l = make_shared<Label>();
+    auto l = std::make_shared<Label>();
     l->offset = 0;
     offset_to_label.emplace(l->offset, l);
   }
@@ -2958,7 +2956,7 @@ std::string disassemble_quest_script(
 
   // Phase 4: Disassemble all referenced label regions, starting with label 0
 
-  auto disassemble_label_as_struct = [&]<typename StructT>(shared_ptr<Label> l, auto print_fn) {
+  auto disassemble_label_as_struct = [&]<typename StructT>(std::shared_ptr<Label> l, auto print_fn) {
     if (reassembly_mode) {
       l->lines.emplace_back("  .data " + phosg::format_data_string(text_r.pgetv(l->offset, l->size), l->size));
     } else if (l->size >= sizeof(StructT)) {
@@ -2975,7 +2973,7 @@ std::string disassemble_quest_script(
     }
   };
 
-  auto disassemble_label_as_data = [&](shared_ptr<Label> l) -> void {
+  auto disassemble_label_as_data = [&](std::shared_ptr<Label> l) -> void {
     l->lines.emplace_back(std::format("  // As raw data (0x{:X} bytes)", l->size));
     if (reassembly_mode) {
       l->lines.emplace_back("  .data " + phosg::format_data_string(text_r.pgetv(l->offset, l->size), l->size));
@@ -2984,13 +2982,13 @@ std::string disassemble_quest_script(
     }
   };
 
-  auto disassemble_label_as_cstring = [&](shared_ptr<Label> l) -> void {
+  auto disassemble_label_as_cstring = [&](std::shared_ptr<Label> l) -> void {
     l->lines.emplace_back("  // As C string");
 
-    string str_data = text_r.pread(l->offset, l->size);
+    std::string str_data = text_r.pread(l->offset, l->size);
     phosg::strip_trailing_zeroes(str_data);
 
-    string formatted;
+    std::string formatted;
     size_t extra_zero_bytes;
     if (uses_utf16(version)) {
       if (str_data.size() & 1) {
@@ -3011,17 +3009,17 @@ std::string disassemble_quest_script(
     if (reassembly_mode) {
       l->lines.emplace_back(std::format("  .cstr {}", formatted));
       if (extra_zero_bytes) {
-        l->lines.emplace_back(std::format("  .data {}", string(extra_zero_bytes * 2, '0')));
+        l->lines.emplace_back(std::format("  .data {}", std::string(extra_zero_bytes * 2, '0')));
       }
     } else {
       l->lines.emplace_back(std::format("  {:04X}  .cstr {}", l->offset, formatted));
       if (extra_zero_bytes) {
-        l->lines.emplace_back(std::format("  {:04X}  .data {}", l->offset + l->size - extra_zero_bytes, string(extra_zero_bytes * 2, '0')));
+        l->lines.emplace_back(std::format("  {:04X}  .data {}", l->offset + l->size - extra_zero_bytes, std::string(extra_zero_bytes * 2, '0')));
       }
     }
   };
 
-  auto disassemble_label_as_player_visual_config = [&](shared_ptr<Label> l) -> void {
+  auto disassemble_label_as_player_visual_config = [&](std::shared_ptr<Label> l) -> void {
     disassemble_label_as_struct.template operator()<PlayerVisualConfig>(l, [&](const PlayerVisualConfig& visual) -> void {
       l->lines.emplace_back("  // As PlayerVisualConfig");
       l->lines.emplace_back(std::format("  {:04X}  name              {}", l->offset + offsetof(PlayerVisualConfig, name), escape_string(visual.name.decode(language))));
@@ -3044,7 +3042,7 @@ std::string disassemble_quest_script(
       l->lines.emplace_back(std::format("  {:04X}  proportion        {:g}, {:g}", l->offset + offsetof(PlayerVisualConfig, proportion_x), visual.proportion_x, visual.proportion_y));
     });
   };
-  auto disassemble_label_as_player_stats = [&](shared_ptr<Label> l) -> void {
+  auto disassemble_label_as_player_stats = [&](std::shared_ptr<Label> l) -> void {
     disassemble_label_as_struct.template operator()<PlayerStats>(l, [&](const PlayerStats& stats) -> void {
       l->lines.emplace_back("  // As PlayerStats");
       l->lines.emplace_back(std::format("  {:04X}  atp               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.atp), stats.char_stats.atp, stats.char_stats.atp));
@@ -3062,7 +3060,7 @@ std::string disassemble_quest_script(
       l->lines.emplace_back(std::format("  {:04X}  meseta            {:08X} /* {} */", l->offset + offsetof(PlayerStats, meseta), stats.meseta, stats.meseta));
     });
   };
-  auto disassemble_label_as_resist_data = [&](shared_ptr<Label> l) -> void {
+  auto disassemble_label_as_resist_data = [&](std::shared_ptr<Label> l) -> void {
     disassemble_label_as_struct.template operator()<ResistData>(l, [&](const ResistData& resist) -> void {
       l->lines.emplace_back("  // As ResistData");
       l->lines.emplace_back(std::format("  {:04X}  evp_bonus         {:04X} /* {} */", l->offset + offsetof(ResistData, evp_bonus), resist.evp_bonus, resist.evp_bonus));
@@ -3078,7 +3076,7 @@ std::string disassemble_quest_script(
       l->lines.emplace_back(std::format("  {:04X}  dfp_bonus         {:08X} /* {} */", l->offset + offsetof(ResistData, dfp_bonus), resist.dfp_bonus, resist.dfp_bonus));
     });
   };
-  auto disassemble_label_as_attack_data = [&](shared_ptr<Label> l) -> void {
+  auto disassemble_label_as_attack_data = [&](std::shared_ptr<Label> l) -> void {
     disassemble_label_as_struct.template operator()<AttackData>(l, [&](const AttackData& attack) -> void {
       l->lines.emplace_back("  // As AttackData");
       l->lines.emplace_back(std::format("  {:04X}  atp_min           {:04X} /* {} */", l->offset + offsetof(AttackData, min_atp), attack.min_atp, attack.min_atp));
@@ -3099,7 +3097,7 @@ std::string disassemble_quest_script(
       l->lines.emplace_back(std::format("  {:04X}  a16               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a16), attack.unknown_a16, attack.unknown_a16));
     });
   };
-  auto disassemble_label_as_movement_data = [&](shared_ptr<Label> l) -> void {
+  auto disassemble_label_as_movement_data = [&](std::shared_ptr<Label> l) -> void {
     disassemble_label_as_struct.template operator()<MovementData>(l, [&](const MovementData& movement) -> void {
       l->lines.emplace_back("  // As MovementData");
       l->lines.emplace_back(std::format("  {:04X}  fparam1           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam1), movement.fparam1.load_raw(), movement.fparam1));
@@ -3116,7 +3114,7 @@ std::string disassemble_quest_script(
       l->lines.emplace_back(std::format("  {:04X}  iparam6           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam6), movement.iparam6, movement.iparam6));
     });
   };
-  auto disassemble_label_as_image_data = [&](shared_ptr<Label> l) -> void {
+  auto disassemble_label_as_image_data = [&](std::shared_ptr<Label> l) -> void {
     if (reassembly_mode) {
       l->lines.emplace_back(std::format("  // As compressed image data (0x{:X} bytes)", l->size));
       l->lines.emplace_back("  .data " + phosg::format_data_string(text_r.pgetv(l->offset, l->size), l->size));
@@ -3133,7 +3131,7 @@ std::string disassemble_quest_script(
       }
     }
   };
-  auto disassemble_label_as_vector4f_list = [&](shared_ptr<Label> l) -> void {
+  auto disassemble_label_as_vector4f_list = [&](std::shared_ptr<Label> l) -> void {
     if (reassembly_mode) {
       l->lines.emplace_back(std::format("  // As VectorXYZTF list (0x{:X} bytes)", l->size));
       l->lines.emplace_back("  .data " + phosg::format_data_string(text_r.pgetv(l->offset, l->size), l->size));
@@ -3153,7 +3151,7 @@ std::string disassemble_quest_script(
       }
     }
   };
-  auto disassemble_label_as_script = [&](shared_ptr<Label> l, bool fail_on_invalid) -> void {
+  auto disassemble_label_as_script = [&](std::shared_ptr<Label> l, bool fail_on_invalid) -> void {
     struct ArgStackValue {
       enum class Type {
         REG,
@@ -3180,10 +3178,10 @@ std::string disassemble_quest_script(
     bool version_has_args = F_HAS_ARGS & v_flag(version);
 
     auto label_r = text_r.sub(l->offset, l->size);
-    vector<ArgStackValue> arg_stack_values;
+    std::vector<ArgStackValue> arg_stack_values;
     while (!label_r.eof()) {
       size_t opcode_start_offset = label_r.where();
-      string dasm_line;
+      std::string dasm_line;
       try {
         uint16_t opcode = label_r.get_u8();
         if ((opcode & 0xFE) == 0xF8) {
@@ -3193,10 +3191,10 @@ std::string disassemble_quest_script(
         const QuestScriptOpcodeDefinition* def = nullptr;
         try {
           def = opcodes.at(opcode);
-        } catch (const out_of_range&) {
+        } catch (const std::out_of_range&) {
         }
 
-        auto dasm_label = [&](uint32_t label_id, Arg::DataType type) -> string {
+        auto dasm_label = [&](uint32_t label_id, Arg::DataType type) -> std::string {
           if (label_id >= label_table.size()) {
             if (fail_on_invalid) {
               throw std::runtime_error(std::format("script refers to label{:04X} which is out of range", label_id));
@@ -3233,7 +3231,7 @@ std::string disassemble_quest_script(
             for (const auto& arg : def->args) {
               using Type = QuestScriptOpcodeDefinition::Argument::Type;
 
-              string dasm_arg;
+              std::string dasm_arg;
               switch (arg.type) {
                 case Type::LABEL16:
                 case Type::LABEL32: {
@@ -3246,7 +3244,7 @@ std::string disassemble_quest_script(
                 }
                 case Type::LABEL16_SET: {
                   if (def->flags & F_PUSH_ARG) {
-                    throw logic_error("LABEL16_SET cannot be pushed to arg list");
+                    throw std::logic_error("LABEL16_SET cannot be pushed to arg list");
                   }
                   uint8_t num_functions = label_r.get_u8();
                   for (size_t z = 0; z < num_functions; z++) {
@@ -3279,7 +3277,7 @@ std::string disassemble_quest_script(
                 }
                 case Type::R_REG_SET: {
                   if (def->flags & F_PUSH_ARG) {
-                    throw logic_error("REG_SET cannot be pushed to arg list");
+                    throw std::logic_error("REG_SET cannot be pushed to arg list");
                   }
                   uint8_t num_regs = label_r.get_u8();
                   for (size_t z = 0; z < num_regs; z++) {
@@ -3295,7 +3293,7 @@ std::string disassemble_quest_script(
                 case Type::R_REG_SET_FIXED:
                 case Type::W_REG_SET_FIXED: {
                   if (def->flags & F_PUSH_ARG) {
-                    throw logic_error("REG_SET_FIXED cannot be pushed to arg list");
+                    throw std::logic_error("REG_SET_FIXED cannot be pushed to arg list");
                   }
                   uint8_t first_reg = label_r.get_u8();
                   dasm_arg = std::format("r{}-r{}", first_reg, static_cast<uint8_t>(first_reg + arg.count - 1));
@@ -3304,7 +3302,7 @@ std::string disassemble_quest_script(
                 case Type::R_REG32_SET_FIXED:
                 case Type::W_REG32_SET_FIXED: {
                   if (def->flags & F_PUSH_ARG) {
-                    throw logic_error("REG32_SET_FIXED cannot be pushed to arg list");
+                    throw std::logic_error("REG32_SET_FIXED cannot be pushed to arg list");
                   }
                   uint32_t first_reg = label_r.get_u32l();
                   dasm_arg = std::format("r{}-r{}", first_reg, static_cast<uint32_t>(first_reg + arg.count - 1));
@@ -3353,7 +3351,7 @@ std::string disassemble_quest_script(
                     }
                     dasm_arg = escape_string(w.str(), TextEncoding::UTF16);
                   } else {
-                    string s = label_r.get_cstr();
+                    std::string s = label_r.get_cstr();
                     if (def->flags & F_PUSH_ARG) {
                       arg_stack_values.emplace_back((language == Language::JAPANESE) ? tt_sega_sjis_to_utf8(s) : tt_8859_to_utf8(s));
                     }
@@ -3361,7 +3359,7 @@ std::string disassemble_quest_script(
                   }
                   break;
                 default:
-                  throw logic_error("invalid argument type");
+                  throw std::logic_error("invalid argument type");
               }
               if (!is_first_arg) {
                 dasm_line += ", ";
@@ -3394,7 +3392,7 @@ std::string disassemble_quest_script(
                 const auto& arg_def = def->args[z];
                 const auto& arg_value = arg_stack_values[z];
 
-                string dasm_arg;
+                std::string dasm_arg;
                 switch (arg_def.type) {
                   case Arg::Type::LABEL16:
                   case Arg::Type::LABEL32:
@@ -3497,7 +3495,7 @@ std::string disassemble_quest_script(
                   case Arg::Type::LABEL16_SET:
                   case Arg::Type::R_REG_SET:
                   default:
-                    throw logic_error("set-type arg found on arg list");
+                    throw std::logic_error("set-type arg found on arg list");
                 }
 
                 if (!is_first_arg) {
@@ -3514,7 +3512,7 @@ std::string disassemble_quest_script(
             arg_stack_values.clear();
           }
         }
-      } catch (const exception& e) {
+      } catch (const std::exception& e) {
         if (fail_on_invalid) {
           throw;
         }
@@ -3522,12 +3520,12 @@ std::string disassemble_quest_script(
       }
       phosg::strip_trailing_whitespace(dasm_line);
 
-      string line_text;
+      std::string line_text;
       if (reassembly_mode) {
         line_text = std::format("  {}", dasm_line);
       } else {
         size_t opcode_size = label_r.where() - opcode_start_offset;
-        string hex_data = phosg::format_data_string(label_r.preadx(opcode_start_offset, opcode_size), nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
+        std::string hex_data = phosg::format_data_string(label_r.preadx(opcode_start_offset, opcode_size), nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
         if (hex_data.size() > 14) {
           hex_data.resize(12);
           hex_data += "...";
@@ -3663,7 +3661,7 @@ std::string disassemble_quest_script(
       if (l->script_refs.size() == 1) {
         lines.emplace_back(std::format("  // Referenced by instruction at {:04X}", *l->script_refs.begin()));
       } else if (!l->script_refs.empty()) {
-        vector<string> tokens;
+        std::vector<std::string> tokens;
         tokens.reserve(l->script_refs.size());
         for (size_t ref_offset : l->script_refs) {
           tokens.emplace_back(std::format("{:04X}", ref_offset));
@@ -3712,17 +3710,17 @@ Episode episode_for_quest_episode_number(uint8_t episode_number) {
     case 0x02:
       return Episode::EP4;
     default:
-      throw runtime_error(std::format("invalid episode number {:02X}", episode_number));
+      throw std::runtime_error(std::format("invalid episode number {:02X}", episode_number));
   }
 }
 
 struct RegisterAssigner {
   struct Register {
-    string name;
+    std::string name;
     int16_t number = -1; // -1 = unassigned (any number)
-    shared_ptr<Register> prev;
-    shared_ptr<Register> next;
-    unordered_set<size_t> offsets;
+    std::shared_ptr<Register> prev;
+    std::shared_ptr<Register> next;
+    std::unordered_set<size_t> offsets;
 
     std::string str() const {
       return std::format("Register(name=\"{}\", number={})", this->name, this->number);
@@ -3744,7 +3742,7 @@ struct RegisterAssigner {
 
   RegisterAssigner() {
     // Map registers that have hardcoded behaviors so we don't assign named registers to them
-    static const map<string, uint8_t> special_regs = {
+    static const std::map<std::string, uint8_t> special_regs = {
         // Registers used by va_start and va_end
         {"va_arg1", 1}, {"va_arg2", 2}, {"va_arg3", 3}, {"va_arg4", 4}, {"va_arg5", 5}, {"va_arg6", 6}, {"va_arg7", 7},
         // Registers that control item visibility on the Quest Board
@@ -3758,16 +3756,16 @@ struct RegisterAssigner {
     }
   }
 
-  shared_ptr<Register> get_or_create(const string& name, int16_t number) {
+  std::shared_ptr<Register> get_or_create(const std::string& name, int16_t number) {
     if ((number < -1) || (number >= 0x100)) {
-      throw runtime_error("invalid register number");
+      throw std::runtime_error("invalid register number");
     }
 
-    shared_ptr<Register> reg;
+    std::shared_ptr<Register> reg;
     if (!name.empty()) {
       try {
         reg = this->named_regs.at(name);
-      } catch (const out_of_range&) {
+      } catch (const std::out_of_range&) {
       }
     }
     if (!reg && number >= 0) {
@@ -3775,7 +3773,7 @@ struct RegisterAssigner {
     }
 
     if (!reg) {
-      reg = make_shared<Register>();
+      reg = std::make_shared<Register>();
     }
 
     if (number >= 0) {
@@ -3783,11 +3781,11 @@ struct RegisterAssigner {
         reg->number = number;
         auto& numbered_reg = this->numbered_regs.at(reg->number);
         if (numbered_reg) {
-          throw runtime_error(reg->str() + " cannot be assigned due to conflict with " + numbered_reg->str());
+          throw std::runtime_error(reg->str() + " cannot be assigned due to conflict with " + numbered_reg->str());
         }
         this->numbered_regs.at(reg->number) = reg;
       } else if (reg->number != number) {
-        throw runtime_error(std::format("register {} is assigned multiple numbers", reg->name));
+        throw std::runtime_error(std::format("register {} is assigned multiple numbers", reg->name));
       }
     }
 
@@ -3795,48 +3793,48 @@ struct RegisterAssigner {
       if (reg->name.empty()) {
         reg->name = name;
         if (!this->named_regs.emplace(reg->name, reg).second) {
-          throw runtime_error(std::format("name {} is already assigned to a different register", reg->name));
+          throw std::runtime_error(std::format("name {} is already assigned to a different register", reg->name));
         }
       } else if (reg->name != name) {
-        throw runtime_error(std::format("register {} is assigned multiple names", reg->number));
+        throw std::runtime_error(std::format("register {} is assigned multiple names", reg->number));
       }
     }
 
     return reg;
   }
 
-  void assign_number(shared_ptr<Register> reg, uint8_t number) {
+  void assign_number(std::shared_ptr<Register> reg, uint8_t number) {
     if (reg->number < 0) {
       reg->number = number;
       if (this->numbered_regs.at(reg->number)) {
-        throw logic_error(std::format("register number {} assigned multiple times", reg->number));
+        throw std::logic_error(std::format("register number {} assigned multiple times", reg->number));
       }
       this->numbered_regs.at(reg->number) = reg;
     } else if (reg->number != static_cast<int16_t>(number)) {
-      throw runtime_error(std::format("assigning different register number {} over existing register number {}", number, reg->number));
+      throw std::runtime_error(std::format("assigning different register number {} over existing register number {}", number, reg->number));
     }
   }
 
-  void constrain(shared_ptr<Register> first_reg, shared_ptr<Register> second_reg) {
+  void constrain(std::shared_ptr<Register> first_reg, std::shared_ptr<Register> second_reg) {
     if (!first_reg->next) {
       first_reg->next = second_reg;
     } else if (first_reg->next != second_reg) {
-      throw runtime_error(std::format("register {} must come after {}, but is already constrained to another register", second_reg->name, first_reg->name));
+      throw std::runtime_error(std::format("register {} must come after {}, but is already constrained to another register", second_reg->name, first_reg->name));
     }
     if (!second_reg->prev) {
       second_reg->prev = first_reg;
     } else if (second_reg->prev != first_reg) {
-      throw runtime_error(std::format("register {} must come before {}, but is already constrained to another register", first_reg->name, second_reg->name));
+      throw std::runtime_error(std::format("register {} must come before {}, but is already constrained to another register", first_reg->name, second_reg->name));
     }
     if ((first_reg->number >= 0) && (second_reg->number >= 0) && (first_reg->number != ((second_reg->number - 1) & 0xFF))) {
-      throw runtime_error(std::format("register {} must come before {}, but both registers already have non-consecutive numbers", first_reg->name, second_reg->name));
+      throw std::runtime_error(std::format("register {} must come before {}, but both registers already have non-consecutive numbers", first_reg->name, second_reg->name));
     }
   }
 
   void assign_all() {
     // TODO: Technically, we should assign the biggest blocks first to minimize fragmentation. I am lazy and haven't
     // implemented this yet.
-    vector<shared_ptr<Register>> unassigned;
+    std::vector<std::shared_ptr<Register>> unassigned;
     for (auto it : this->named_regs) {
       if (it.second->number < 0) {
         unassigned.emplace_back(it.second);
@@ -3885,13 +3883,13 @@ struct RegisterAssigner {
     // At this point, all registers should be assigned
     for (const auto& it : this->named_regs) {
       if (it.second->number < 0) {
-        throw logic_error(std::format("register {} was not assigned", it.second->name));
+        throw std::logic_error(std::format("register {} was not assigned", it.second->name));
       }
     }
     for (size_t z = 0; z < 0x100; z++) {
       auto reg = this->numbered_regs[z];
       if (reg && (reg->number != static_cast<int16_t>(z))) {
-        throw logic_error(std::format("register {} has incorrect number {}", z, reg->number));
+        throw std::logic_error(std::format("register {} has incorrect number {}", z, reg->number));
       }
     }
   }
@@ -3908,34 +3906,34 @@ struct RegisterAssigner {
         return candidate;
       }
     }
-    throw runtime_error("not enough space to assign registers");
+    throw std::runtime_error("not enough space to assign registers");
   }
 
-  map<string, shared_ptr<Register>> named_regs;
-  array<shared_ptr<Register>, 0x100> numbered_regs;
+  std::map<std::string, std::shared_ptr<Register>> named_regs;
+  std::array<std::shared_ptr<Register>, 0x100> numbered_regs;
 };
 
 AssembledQuestScript assemble_quest_script(
     const std::string& text,
-    const vector<string>& script_include_directories,
-    const vector<string>& native_include_directories,
+    const std::vector<std::string>& script_include_directories,
+    const std::vector<std::string>& native_include_directories,
     bool strict) {
 
   struct Line {
-    string filename; // Empty if this is the main file
+    std::string filename; // Empty if this is the main file
     size_t number; // 1-based (there is no line 0)
-    string text;
+    std::string text;
     ssize_t parent_index; // -1 if it's from the root file
   };
 
   auto wrap_exceptions_with_line_ref = [](const Line& line, auto fn) -> void {
     try {
       fn();
-    } catch (const exception& e) {
+    } catch (const std::exception& e) {
       if (line.filename.empty()) {
-        throw runtime_error(std::format("(__main__:{}) {}", line.number, e.what()));
+        throw std::runtime_error(std::format("(__main__:{}) {}", line.number, e.what()));
       } else {
-        throw runtime_error(std::format("({}:{}) {}", line.filename, line.number, e.what()));
+        throw std::runtime_error(std::format("({}:{}) {}", line.filename, line.number, e.what()));
       }
     }
   };
@@ -3946,7 +3944,7 @@ AssembledQuestScript assemble_quest_script(
     std::string text = orig_text;
     phosg::strip_comments_inplace(text);
 
-    vector<Line> new_lines;
+    std::vector<Line> new_lines;
     auto text_lines = phosg::split(text, '\n');
     for (size_t z = 0; z < text_lines.size(); z++) {
       auto& line = new_lines.emplace_back();
@@ -3972,20 +3970,20 @@ AssembledQuestScript assemble_quest_script(
   // Process all includes
   for (size_t z = 0; z < lines.size(); z++) {
     if (lines[z].text.starts_with(".include ")) {
-      string filename = lines[z].text.substr(9);
+      std::string filename = lines[z].text.substr(9);
       phosg::strip_leading_whitespace(filename);
 
       // Make sure there's not a cycle
-      unordered_set<string> seen_filenames;
+      std::unordered_set<std::string> seen_filenames;
       for (ssize_t index = lines[z].parent_index; index >= 0; index = lines[index].parent_index) {
         if (!seen_filenames.emplace(lines.at(index).filename).second) {
-          throw runtime_error(std::format("detected cycle while including {}", filename));
+          throw std::runtime_error(std::format("detected cycle while including {}", filename));
         }
       }
 
       bool found = false;
       for (const auto& include_dir : script_include_directories) {
-        string include_path = include_dir + "/" + filename;
+        std::string include_path = include_dir + "/" + filename;
         if (std::filesystem::is_regular_file(include_path)) {
           found = true;
           include_file(filename, phosg::load_file(include_path), z);
@@ -3993,7 +3991,7 @@ AssembledQuestScript assemble_quest_script(
         }
       }
       if (!found) {
-        throw runtime_error(std::format("included file {} not found in any include directory", filename));
+        throw std::runtime_error(std::format("included file {} not found in any include directory", filename));
       }
 
       // We leave the .include line there; it will be ignored in the logic below
@@ -4018,7 +4016,7 @@ AssembledQuestScript assemble_quest_script(
         if (line.text.starts_with(".include ")) {
           // Nothing to do (see above)
         } else if (line.text.starts_with(".version ")) {
-          string name = line.text.substr(9);
+          std::string name = line.text.substr(9);
           phosg::strip_leading_whitespace(name);
           ret.meta.version = phosg::enum_for_name<Version>(name);
           if ((ret.meta.episode == Episode::NONE) && is_v1_or_v2(ret.meta.version) && (ret.meta.version != Version::GC_NTE)) {
@@ -4045,7 +4043,7 @@ AssembledQuestScript assemble_quest_script(
         } else if (line.text.starts_with(".language ")) {
           auto code = line.text.substr(10);
           if (code.size() != 1) {
-            throw runtime_error(".language directive argument is invalid");
+            throw std::runtime_error(".language directive argument is invalid");
           }
           ret.meta.language = language_for_char(code[0]);
         } else if (line.text.starts_with(".episode ")) {
@@ -4075,13 +4073,13 @@ AssembledQuestScript assemble_quest_script(
     });
   }
   if (ret.meta.version == Version::PC_PATCH || ret.meta.version == Version::BB_PATCH || ret.meta.version == Version::UNKNOWN) {
-    throw runtime_error(".version directive is missing or invalid");
+    throw std::runtime_error(".version directive is missing or invalid");
   }
   if (ret.meta.quest_number == 0xFFFFFFFF) {
-    throw runtime_error(".quest_num directive is missing or invalid");
+    throw std::runtime_error(".quest_num directive is missing or invalid");
   }
   if (ret.meta.name.empty()) {
-    throw runtime_error(".name directive is missing or invalid");
+    throw std::runtime_error(".name directive is missing or invalid");
   }
 
   // Find all label names
@@ -4090,34 +4088,34 @@ AssembledQuestScript assemble_quest_script(
     ssize_t index = -1;
     ssize_t offset = -1;
   };
-  map<string, shared_ptr<Label>> labels_by_name;
-  map<ssize_t, shared_ptr<Label>> labels_by_index;
+  std::map<std::string, std::shared_ptr<Label>> labels_by_name;
+  std::map<ssize_t, std::shared_ptr<Label>> labels_by_index;
   for (const auto& line : lines) {
     wrap_exceptions_with_line_ref(line, [&]() -> void {
       if (line.text.ends_with(":")) {
-        auto label = make_shared<Label>();
+        auto label = std::make_shared<Label>();
         label->name = line.text.substr(0, line.text.size() - 1);
         size_t at_offset = label->name.find('@');
-        if (at_offset != string::npos) {
+        if (at_offset != std::string::npos) {
           try {
             label->index = stoul(label->name.substr(at_offset + 1), nullptr, 0);
-          } catch (const exception& e) {
-            throw runtime_error(std::format("invalid index in label ({})", e.what()));
+          } catch (const std::exception& e) {
+            throw std::runtime_error(std::format("invalid index in label ({})", e.what()));
           }
           label->name.resize(at_offset);
           if (label->name == "start" && label->index != 0) {
-            throw runtime_error("start label cannot have a nonzero label ID");
+            throw std::runtime_error("start label cannot have a nonzero label ID");
           }
         } else if (label->name == "start") {
           label->index = 0;
         }
         if (!labels_by_name.emplace(label->name, label).second) {
-          throw runtime_error("duplicate label name: " + label->name);
+          throw std::runtime_error("duplicate label name: " + label->name);
         }
         if (label->index >= 0) {
           auto index_emplace_ret = labels_by_index.emplace(label->index, label);
           if (label->index >= 0 && !index_emplace_ret.second) {
-            throw runtime_error(std::format(
+            throw std::runtime_error(std::format(
                 "duplicate label index: {} (0x{:X}) from {} and {}",
                 label->index, label->index, label->name, index_emplace_ret.first->second->name));
           }
@@ -4126,7 +4124,7 @@ AssembledQuestScript assemble_quest_script(
     });
   }
   if (!labels_by_name.count("start")) {
-    throw runtime_error("start label is not defined");
+    throw std::runtime_error("start label is not defined");
   }
 
   // Assign indexes to labels without explicit indexes
@@ -4146,14 +4144,14 @@ AssembledQuestScript assemble_quest_script(
 
   // Prepare to collect named registers
   RegisterAssigner reg_assigner;
-  auto parse_reg = [&reg_assigner](const string& arg, bool allow_unnumbered = true) -> shared_ptr<RegisterAssigner::Register> {
+  auto parse_reg = [&reg_assigner](const std::string& arg, bool allow_unnumbered = true) -> std::shared_ptr<RegisterAssigner::Register> {
     if (arg.size() < 2) {
-      throw runtime_error("register argument is too short");
+      throw std::runtime_error("register argument is too short");
     }
     if ((arg[0] != 'r') && (arg[0] != 'f')) {
-      throw runtime_error("a register is required");
+      throw std::runtime_error("a register is required");
     }
-    string name;
+    std::string name;
     ssize_t number = -1;
     if (arg[1] == ':') {
       auto tokens = phosg::split(arg.substr(2), '@');
@@ -4163,31 +4161,31 @@ AssembledQuestScript assemble_quest_script(
         name = std::move(tokens[0]);
         number = stoull(tokens[1], nullptr, 0);
       } else {
-        throw runtime_error("invalid register specification");
+        throw std::runtime_error("invalid register specification");
       }
     } else {
       number = stoull(arg.substr(1), nullptr, 0);
     }
     if (!allow_unnumbered && (number < 0)) {
-      throw runtime_error("a numbered register is required");
+      throw std::runtime_error("a numbered register is required");
     }
     if (number > 0xFF) {
-      throw runtime_error("invalid register number");
+      throw std::runtime_error("invalid register number");
     }
     return reg_assigner.get_or_create(name, number);
   };
-  auto parse_reg_set_fixed = [&reg_assigner, &parse_reg](const string& name, size_t expected_count) -> vector<shared_ptr<RegisterAssigner::Register>> {
+  auto parse_reg_set_fixed = [&reg_assigner, &parse_reg](const std::string& name, size_t expected_count) -> std::vector<std::shared_ptr<RegisterAssigner::Register>> {
     if (expected_count == 0) {
-      throw logic_error("REG_SET_FIXED argument expects no registers");
+      throw std::logic_error("REG_SET_FIXED argument expects no registers");
     }
     if (name.empty()) {
-      throw runtime_error("no register specified for REG_SET_FIXED argument");
+      throw std::runtime_error("no register specified for REG_SET_FIXED argument");
     }
-    vector<shared_ptr<RegisterAssigner::Register>> regs;
+    std::vector<std::shared_ptr<RegisterAssigner::Register>> regs;
     if ((name[0] == '(') && (name.back() == ')')) {
       auto tokens = phosg::split(name.substr(1, name.size() - 2), ',');
       if (tokens.size() != expected_count) {
-        throw runtime_error("incorrect number of registers in REG_SET_FIXED");
+        throw std::runtime_error("incorrect number of registers in REG_SET_FIXED");
       }
       for (auto& token : tokens) {
         phosg::strip_trailing_whitespace(token);
@@ -4213,15 +4211,15 @@ AssembledQuestScript assemble_quest_script(
         }
         regs.emplace_back(parse_reg(tokens[1], false));
         if (static_cast<size_t>(regs.back()->number - regs.front()->number + 1) != expected_count) {
-          throw runtime_error("incorrect number of registers used");
+          throw std::runtime_error("incorrect number of registers used");
         }
         reg_assigner.constrain(regs.at(regs.size() - 2), regs.back());
       } else {
-        throw runtime_error("invalid fixed register set syntax");
+        throw std::runtime_error("invalid fixed register set syntax");
       }
     }
     if (regs.empty() || regs.size() != expected_count) {
-      throw logic_error("incorrect register count in REG_SET_FIXED after parsing");
+      throw std::logic_error("incorrect register count in REG_SET_FIXED after parsing");
     }
     return regs;
   };
@@ -4230,12 +4228,12 @@ AssembledQuestScript assemble_quest_script(
 
   auto get_native_include = [&](const std::string& filename) -> std::string {
     for (const auto& include_dir : native_include_directories) {
-      string path = include_dir + "/" + filename;
+      std::string path = include_dir + "/" + filename;
       if (std::filesystem::is_regular_file(path)) {
         return phosg::load_file(path);
       }
     }
-    throw runtime_error("data not found for native include: " + filename);
+    throw std::runtime_error("data not found for native include: " + filename);
   };
 
   bool version_has_args = F_HAS_ARGS & v_flag(ret.meta.version);
@@ -4250,15 +4248,16 @@ AssembledQuestScript assemble_quest_script(
 
       if (line.text.ends_with(":")) {
         size_t at_offset = line.text.find('@');
-        string label_name = line.text.substr(0, (at_offset == string::npos) ? (line.text.size() - 1) : at_offset);
+        std::string label_name = line.text.substr(
+            0, (at_offset == std::string::npos) ? (line.text.size() - 1) : at_offset);
         labels_by_name.at(label_name)->offset = code_w.size();
         return;
       }
 
       if (line.text[0] == '.') {
-        string directive, args;
+        std::string directive, args;
         size_t space_loc = line.text.find(' ');
-        if (space_loc == string::npos) {
+        if (space_loc == std::string::npos) {
           directive = line.text;
         } else {
           directive = line.text.substr(0, space_loc);
@@ -4269,7 +4268,7 @@ AssembledQuestScript assemble_quest_script(
         if ((directive == ".data") || (directive == ".binary")) {
           code_w.write(phosg::parse_data_string(args));
         } else if (directive == ".cstr") {
-          string data = phosg::parse_data_string(args);
+          std::string data = phosg::parse_data_string(args);
           if (uses_utf16(ret.meta.version)) {
             code_w.write(tt_utf8_to_utf16(data));
             code_w.put_u16l(0);
@@ -4278,13 +4277,13 @@ AssembledQuestScript assemble_quest_script(
             code_w.put_u8(0);
           }
         } else if (directive == ".zero") {
-          size_t size = stoull(args, nullptr, 0);
+          size_t size = std::stoull(args, nullptr, 0);
           code_w.extend_by(size, 0x00);
         } else if (directive == ".zero_until") {
-          size_t size = stoull(args, nullptr, 0);
+          size_t size = std::stoull(args, nullptr, 0);
           code_w.extend_to(size, 0x00);
         } else if (directive == ".align") {
-          size_t alignment = stoull(args, nullptr, 0);
+          size_t alignment = std::stoull(args, nullptr, 0);
           while (code_w.size() % alignment) {
             code_w.put_u8(0);
           }
@@ -4293,8 +4292,8 @@ AssembledQuestScript assemble_quest_script(
         } else if (directive == ".include_bin ") {
           code_w.write(get_native_include(args));
         } else if (directive == ".include_native") {
-          string native_text = get_native_include(args);
-          string code;
+          std::string native_text = get_native_include(args);
+          std::string code;
           if (is_ppc(ret.meta.version)) {
             code = std::move(ResourceDASM::PPC32Emulator::assemble(native_text).code);
           } else if (is_x86(ret.meta.version)) {
@@ -4302,11 +4301,11 @@ AssembledQuestScript assemble_quest_script(
           } else if (is_sh4(ret.meta.version)) {
             code = std::move(ResourceDASM::SH4Emulator::assemble(native_text).code);
           } else {
-            throw runtime_error("unknown architecture");
+            throw std::runtime_error("unknown architecture");
           }
           code_w.write(code);
         } else if (!metadata_directive_names.count(directive)) { // These were handled in an earlier phase
-          throw runtime_error("unknown directive: " + directive);
+          throw std::runtime_error("unknown directive: " + directive);
         }
         return;
       }
@@ -4315,7 +4314,7 @@ AssembledQuestScript assemble_quest_script(
       const QuestScriptOpcodeDefinition* opcode_def;
       try {
         opcode_def = opcodes.at(phosg::tolower(line_tokens.at(0)));
-      } catch (const out_of_range&) {
+      } catch (const std::out_of_range&) {
         throw std::runtime_error(std::format("invalid opcode name: {}", line_tokens.at(0)));
       }
 
@@ -4338,38 +4337,38 @@ AssembledQuestScript assemble_quest_script(
 
       if (opcode_def->args.empty()) {
         if (line_tokens.size() > 1) {
-          throw runtime_error(std::format("arguments not allowed for {}", opcode_def->names.front()));
+          throw std::runtime_error(std::format("arguments not allowed for {}", opcode_def->names.front()));
         }
         return;
       }
 
       if (line_tokens.size() < 2) {
-        throw runtime_error(std::format("arguments required for {}", opcode_def->names.front()));
+        throw std::runtime_error(std::format("arguments required for {}", opcode_def->names.front()));
       }
       phosg::strip_trailing_whitespace(line_tokens[1]);
       phosg::strip_leading_whitespace(line_tokens[1]);
 
       if (line_tokens[1].starts_with("...")) {
         if (!use_args) {
-          throw runtime_error("\'...\' can only be used with F_ARGS opcodes");
+          throw std::runtime_error("\'...\' can only be used with F_ARGS opcodes");
         }
 
       } else { // Not "..."
         auto args = phosg::split_context(line_tokens[1], ',');
         if (args.size() != opcode_def->args.size()) {
-          throw runtime_error("incorrect argument count");
+          throw std::runtime_error("incorrect argument count");
         }
 
         for (size_t z = 0; z < args.size(); z++) {
           using Type = QuestScriptOpcodeDefinition::Argument::Type;
 
-          string& arg = args[z];
+          std::string& arg = args[z];
           const auto& arg_def = opcode_def->args[z];
           phosg::strip_trailing_whitespace(arg);
           phosg::strip_leading_whitespace(arg);
 
           try {
-            auto add_cstr = [&](const string& text, bool bin) -> void {
+            auto add_cstr = [&](const std::string& text, bool bin) -> void {
               switch (ret.meta.version) {
                 case Version::DC_NTE:
                   code_w.write(bin ? text : tt_utf8_to_sega_sjis(text));
@@ -4393,14 +4392,14 @@ AssembledQuestScript assemble_quest_script(
                   code_w.put_u16(0);
                   break;
                 default:
-                  throw logic_error("invalid game version");
+                  throw std::logic_error("invalid game version");
               }
             };
 
             if (use_args) {
               auto label_it = labels_by_name.find(arg);
               if (arg.empty()) {
-                throw runtime_error("argument is empty");
+                throw std::runtime_error("argument is empty");
               } else if (label_it != labels_by_name.end()) {
                 code_w.put_u8(0x4B); // arg_pushw
                 code_w.put_u16l(label_it->second->index);
@@ -4459,7 +4458,7 @@ AssembledQuestScript assemble_quest_script(
                     code_w.put_u8(0x4A); // arg_pushb
                     code_w.put_u8(value);
                   }
-                } catch (const exception&) {
+                } catch (const std::exception&) {
                   write_as_str = true;
                 }
                 if (write_as_str) {
@@ -4471,23 +4470,23 @@ AssembledQuestScript assemble_quest_script(
                       add_cstr(phosg::parse_data_string(arg), false);
                     }
                   } else {
-                    throw runtime_error("invalid argument syntax");
+                    throw std::runtime_error("invalid argument syntax");
                   }
                 }
               }
 
             } else { // Not use_args
-              auto add_label = [&](const string& name, bool is32) -> void {
+              auto add_label = [&](const std::string& name, bool is32) -> void {
                 size_t label_index;
                 auto it = labels_by_name.find(name);
                 if (it == labels_by_name.end()) {
                   if (strict || !name.starts_with("label")) {
-                    throw runtime_error("label not defined: " + name);
+                    throw std::runtime_error("label not defined: " + name);
                   } else {
                     size_t used_chars;
                     label_index = std::stoul(name.substr(5), &used_chars, 16);
                     if (used_chars != name.size() - 5) {
-                      throw runtime_error("label not defined: " + name);
+                      throw std::runtime_error("label not defined: " + name);
                     }
                   }
                 } else {
@@ -4500,7 +4499,7 @@ AssembledQuestScript assemble_quest_script(
                   code_w.put_u16(label_index);
                 }
               };
-              auto add_reg = [&](shared_ptr<RegisterAssigner::Register> reg, bool is32) -> void {
+              auto add_reg = [&](std::shared_ptr<RegisterAssigner::Register> reg, bool is32) -> void {
                 reg->offsets.emplace(code_w.size());
                 if (is32) {
                   code_w.put_u32l(reg->number & 0xFF);
@@ -4509,13 +4508,13 @@ AssembledQuestScript assemble_quest_script(
                 }
               };
 
-              auto split_set = [&](const string& text) -> vector<string> {
+              auto split_set = [&](const std::string& text) -> std::vector<std::string> {
                 if (!text.starts_with("[") || !text.ends_with("]")) {
-                  throw runtime_error("incorrect syntax for set-valued argument");
+                  throw std::runtime_error("incorrect syntax for set-valued argument");
                 }
                 auto values = phosg::split(text.substr(1, text.size() - 2), ',');
                 if (values.size() > 0xFF) {
-                  throw runtime_error("too many labels in set-valued argument");
+                  throw std::runtime_error("too many labels in set-valued argument");
                 }
                 for (auto& value : values) {
                   phosg::strip_whitespace(value);
@@ -4575,7 +4574,7 @@ AssembledQuestScript assemble_quest_script(
                   code_w.put_u32l(stoll(arg, nullptr, 0));
                   break;
                 case Type::FLOAT32:
-                  code_w.put_f32l(stof(arg, nullptr));
+                  code_w.put_f32l(std::stof(arg, nullptr));
                   break;
                 case Type::CSTRING:
                   if (arg.starts_with("bin:")) {
@@ -4585,11 +4584,11 @@ AssembledQuestScript assemble_quest_script(
                   }
                   break;
                 default:
-                  throw logic_error("unknown argument type");
+                  throw std::logic_error("unknown argument type");
               }
             }
-          } catch (const exception& e) {
-            throw runtime_error(std::format("(arg {}) {}", z + 1, e.what()));
+          } catch (const std::exception& e) {
+            throw std::runtime_error(std::format("(arg {}) {}", z + 1, e.what()));
           }
         }
       }
@@ -4625,23 +4624,23 @@ AssembledQuestScript assemble_quest_script(
 
   // Generate label table
   ssize_t label_table_size = labels_by_index.rbegin()->first + 1;
-  vector<le_uint32_t> label_table;
+  std::vector<le_uint32_t> label_table;
   label_table.reserve(label_table_size);
   {
     auto it = labels_by_index.begin();
     for (ssize_t z = 0; z < label_table_size; z++) {
       if (it == labels_by_index.end()) {
-        throw logic_error("function table size exceeds maximum function ID");
+        throw std::logic_error("function table size exceeds maximum function ID");
       } else if (it->first > z) {
         label_table.emplace_back(0xFFFFFFFF);
       } else if (it->first == z) {
         if (it->second->offset < 0) {
-          throw runtime_error("label " + it->second->name + " does not have a valid offset");
+          throw std::runtime_error("label " + it->second->name + " does not have a valid offset");
         }
         label_table.emplace_back(it->second->offset);
         it++;
       } else if (it->first < z) {
-        throw logic_error("missed label " + it->second->name + " when compiling function table");
+        throw std::logic_error("missed label " + it->second->name + " when compiling function table");
       }
     }
   }
@@ -4759,7 +4758,7 @@ AssembledQuestScript assemble_quest_script(
       break;
     }
     default:
-      throw logic_error("invalid quest version");
+      throw std::logic_error("invalid quest version");
   }
   w.write(code_w.str());
   w.write(label_table.data(), label_table.size() * sizeof(label_table[0]));
@@ -4921,7 +4920,7 @@ void populate_quest_metadata_from_script(
       break;
     }
     default:
-      throw logic_error("invalid quest version");
+      throw std::logic_error("invalid quest version");
   }
 
   const auto& opcodes = opcodes_for_version(meta.version);
@@ -4938,7 +4937,7 @@ void populate_quest_metadata_from_script(
     std::array<Register, 0x100> regs;
 
     std::string str() const {
-      string ret = "[";
+      std::string ret = "[";
       for (size_t z = 0; z < this->regs.size(); z++) {
         if (this->is_valid(z) && this->regs[z].written) {
           if (ret.size() > 1) {
@@ -4956,7 +4955,7 @@ void populate_quest_metadata_from_script(
       if (reg.checkpoint >= this->current_checkpoint) {
         return reg.known_value;
       }
-      throw runtime_error(std::format("value for r{} not known", which));
+      throw std::runtime_error(std::format("value for r{} not known", which));
     }
     inline void set(size_t which, uint32_t value) {
       auto& reg = this->regs[which & 0xFF];
@@ -4969,7 +4968,7 @@ void populate_quest_metadata_from_script(
     }
     inline void invalidate_sequence(size_t first, size_t count) {
       if (count > 0x100) {
-        throw runtime_error("invalid count in invalidate_sequence");
+        throw std::runtime_error("invalid count in invalidate_sequence");
       }
       for (size_t z = 0; z < count; z++) {
         this->invalidate(first);
@@ -4990,9 +4989,9 @@ void populate_quest_metadata_from_script(
   // The set_episode opcode and floor remapping opcodes should always be in the first function (0), so we simulate
   // that. But battle and challenge quests can also have setup opcodes in the floor handlers, so we have to simulate
   // those too.
-  deque<uint32_t> pending_fn_offsets{get_label_offset(0)};
-  unordered_set<uint32_t> done_fn_offsets;
-  shared_ptr<BattleRules> battle_rules;
+  std::deque<uint32_t> pending_fn_offsets{get_label_offset(0)};
+  std::unordered_set<uint32_t> done_fn_offsets;
+  std::shared_ptr<BattleRules> battle_rules;
   meta.assign_default_floors();
   while (!pending_fn_offsets.empty()) {
     uint32_t start_offset = pending_fn_offsets.front();
@@ -5002,7 +5001,7 @@ void populate_quest_metadata_from_script(
     }
     // phosg::fwrite_fmt(stderr, "Trace: examining function starting at {:X}\n", start_offset - code_offset);
 
-    vector<uint32_t> args_list;
+    std::vector<uint32_t> args_list;
     RegisterFile regs;
     r.go(start_offset);
     try {
@@ -5015,10 +5014,10 @@ void populate_quest_metadata_from_script(
         const QuestScriptOpcodeDefinition* def = nullptr;
         try {
           def = opcodes.at(opcode);
-        } catch (const out_of_range&) {
+        } catch (const std::out_of_range&) {
         }
         if (def == nullptr) {
-          throw runtime_error(std::format("unknown quest opcode {:04X}", opcode));
+          throw std::runtime_error(std::format("unknown quest opcode {:04X}", opcode));
         }
         // phosg::fwrite_fmt(stderr, "... Trace: {:08X} -> {:04X} {} with {}\n", r.where() - (opcode > 0x100 ? 2 : 1) - code_offset, opcode, def->name, regs.str());
 
@@ -5028,7 +5027,7 @@ void populate_quest_metadata_from_script(
         auto get_single_int32_arg = [&]() -> uint32_t {
           if (use_args) {
             if (args_list.size() != 1) {
-              throw runtime_error(std::format("incorrect argument count to {}", def->names.front()));
+              throw std::runtime_error(std::format("incorrect argument count to {}", def->names.front()));
             }
             return args_list[0];
           } else {
@@ -5250,7 +5249,7 @@ void populate_quest_metadata_from_script(
             // We have to follow these because battle quests define rules in the floor handler, not in the start label
             if (use_args) {
               if (args_list.size() != 2) {
-                throw runtime_error("incorrect argument count for set_floor_handler");
+                throw std::runtime_error("incorrect argument count for set_floor_handler");
               }
               pending_fn_offsets.emplace_back(get_label_offset(args_list[1]));
             } else {
@@ -5289,7 +5288,7 @@ void populate_quest_metadata_from_script(
           }
 
           case 0xF811: // clear_ba_rules
-            battle_rules = make_shared<BattleRules>();
+            battle_rules = std::make_shared<BattleRules>();
             meta.battle_rules = battle_rules;
             break;
 
@@ -5305,7 +5304,7 @@ void populate_quest_metadata_from_script(
                 battle_rules->tech_disk_mode = BattleRules::TechDiskMode::LIMIT_LEVEL;
                 break;
               default:
-                throw runtime_error("invalid battle tech disk mode");
+                throw std::runtime_error("invalid battle tech disk mode");
             }
             break;
 
@@ -5324,7 +5323,7 @@ void populate_quest_metadata_from_script(
                 battle_rules->weapon_and_armor_mode = BattleRules::WeaponAndArmorMode::FORBID_RARES;
                 break;
               default:
-                throw runtime_error("invalid battle weapon and armor mode");
+                throw std::runtime_error("invalid battle weapon and armor mode");
             }
             break;
 
@@ -5337,7 +5336,7 @@ void populate_quest_metadata_from_script(
                 battle_rules->mag_mode = BattleRules::MagMode::ALLOW;
                 break;
               default:
-                throw runtime_error("invalid battle mag mode");
+                throw std::runtime_error("invalid battle mag mode");
             }
             break;
 
@@ -5353,7 +5352,7 @@ void populate_quest_metadata_from_script(
                 battle_rules->tool_mode = BattleRules::ToolMode::CLEAR_AND_ALLOW;
                 break;
               default:
-                throw runtime_error("invalid battle tool mode");
+                throw std::runtime_error("invalid battle tool mode");
             }
             break;
 
@@ -5366,7 +5365,7 @@ void populate_quest_metadata_from_script(
                 battle_rules->trap_mode = BattleRules::TrapMode::ALL_PLAYERS;
                 break;
               default:
-                throw runtime_error("invalid battle trap mode");
+                throw std::runtime_error("invalid battle trap mode");
             }
             break;
 
@@ -5386,7 +5385,7 @@ void populate_quest_metadata_from_script(
                 battle_rules->respawn_mode = BattleRules::RespawnMode::LIMIT_LIVES;
                 break;
               default:
-                throw runtime_error("invalid battle tech disk mode");
+                throw std::runtime_error("invalid battle tech disk mode");
             }
             break;
 
@@ -5418,7 +5417,7 @@ void populate_quest_metadata_from_script(
                 battle_rules->meseta_mode = BattleRules::MesetaMode::CLEAR_AND_ALLOW;
                 break;
               default:
-                throw runtime_error("invalid battle meseta mode");
+                throw std::runtime_error("invalid battle meseta mode");
             }
             break;
 
@@ -5510,19 +5509,19 @@ void populate_quest_metadata_from_script(
                 break;
               case 2:
                 if (!is_v4(meta.version)) {
-                  throw runtime_error("invalid argument to set_episode");
+                  throw std::runtime_error("invalid argument to set_episode");
                 }
                 meta.episode = Episode::EP4;
                 break;
               default:
-                throw runtime_error("invalid argument to set_episode");
+                throw std::runtime_error("invalid argument to set_episode");
             }
             meta.assign_default_floors();
             break;
 
           case 0xF932: // set_episode2
             // This takes a register as an argument, so we can't handle it here
-            throw runtime_error("quest uses set_episode2");
+            throw std::runtime_error("quest uses set_episode2");
 
           case 0xF951: { // bb_map_designate
             uint8_t floor = r.get_u8();
@@ -5586,13 +5585,13 @@ void populate_quest_metadata_from_script(
                 break;
               case Type::LABEL16_SET:
                 if (use_args) {
-                  throw logic_error("LABEL16_SET cannot be encoded with F_ARGS");
+                  throw std::logic_error("LABEL16_SET cannot be encoded with F_ARGS");
                 }
                 r.skip(r.get_u8() * 2);
                 break;
               case Type::R_REG_SET:
                 if (use_args) {
-                  throw logic_error("R_REG_SET cannot be encoded with F_ARGS");
+                  throw std::logic_error("R_REG_SET cannot be encoded with F_ARGS");
                 }
                 r.skip(r.get_u8());
                 break;
@@ -5608,7 +5607,7 @@ void populate_quest_metadata_from_script(
                 }
                 break;
               default:
-                throw logic_error("invalid argument type");
+                throw std::logic_error("invalid argument type");
             }
           }
         }
@@ -5617,7 +5616,7 @@ void populate_quest_metadata_from_script(
           args_list.clear();
         }
       }
-    } catch (const runtime_error& e) {
+    } catch (const std::runtime_error& e) {
       // phosg::fwrite_fmt(stderr, "!!! Trace: function skipped: {}\n", e.what());
     }
   }

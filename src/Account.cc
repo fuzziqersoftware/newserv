@@ -10,23 +10,21 @@
 
 #include "Account.hh"
 
-using namespace std;
-
-shared_ptr<DCNTELicense> DCNTELicense::from_json(const phosg::JSON& json) {
-  auto ret = make_shared<DCNTELicense>();
+std::shared_ptr<DCNTELicense> DCNTELicense::from_json(const phosg::JSON& json) {
+  auto ret = std::make_shared<DCNTELicense>();
   ret->serial_number = json.get_string("SerialNumber");
   ret->access_key = json.get_string("AccessKey");
   if (ret->serial_number.size() > 16) {
-    throw runtime_error("serial number is too long");
+    throw std::runtime_error("serial number is too long");
   }
   if (ret->serial_number.empty()) {
-    throw runtime_error("serial number is too short");
+    throw std::runtime_error("serial number is too short");
   }
   if (ret->access_key.size() > 16) {
-    throw runtime_error("access key is too long");
+    throw std::runtime_error("access key is too long");
   }
   if (ret->access_key.empty()) {
-    throw runtime_error("access key is too short");
+    throw std::runtime_error("access key is too short");
   }
   return ret;
 }
@@ -35,15 +33,15 @@ phosg::JSON DCNTELicense::json() const {
   return phosg::JSON::dict({{"SerialNumber", this->serial_number}, {"AccessKey", this->access_key}});
 }
 
-shared_ptr<V1V2License> V1V2License::from_json(const phosg::JSON& json) {
-  auto ret = make_shared<V1V2License>();
+std::shared_ptr<V1V2License> V1V2License::from_json(const phosg::JSON& json) {
+  auto ret = std::make_shared<V1V2License>();
   ret->serial_number = json.get_int("SerialNumber");
   ret->access_key = json.get_string("AccessKey");
   if (ret->serial_number == 0) {
-    throw runtime_error("serial number is zero");
+    throw std::runtime_error("serial number is zero");
   }
   if (ret->access_key.size() != 8) {
-    throw runtime_error("access key length is incorrect");
+    throw std::runtime_error("access key length is incorrect");
   }
   return ret;
 }
@@ -52,19 +50,19 @@ phosg::JSON V1V2License::json() const {
   return phosg::JSON::dict({{"SerialNumber", this->serial_number}, {"AccessKey", this->access_key}});
 }
 
-shared_ptr<GCLicense> GCLicense::from_json(const phosg::JSON& json) {
-  auto ret = make_shared<GCLicense>();
+std::shared_ptr<GCLicense> GCLicense::from_json(const phosg::JSON& json) {
+  auto ret = std::make_shared<GCLicense>();
   ret->serial_number = json.get_int("SerialNumber");
   ret->access_key = json.get_string("AccessKey");
   ret->password = json.get_string("Password");
   if (ret->serial_number == 0) {
-    throw runtime_error("serial number is zero");
+    throw std::runtime_error("serial number is zero");
   }
   if (ret->access_key.size() != 12) {
-    throw runtime_error("access key length is incorrect");
+    throw std::runtime_error("access key length is incorrect");
   }
   if (ret->password.empty()) {
-    throw runtime_error("password is too short");
+    throw std::runtime_error("password is too short");
   }
   return ret;
 }
@@ -77,19 +75,19 @@ phosg::JSON GCLicense::json() const {
   });
 }
 
-shared_ptr<XBLicense> XBLicense::from_json(const phosg::JSON& json) {
-  auto ret = make_shared<XBLicense>();
+std::shared_ptr<XBLicense> XBLicense::from_json(const phosg::JSON& json) {
+  auto ret = std::make_shared<XBLicense>();
   ret->gamertag = json.get_string("GamerTag");
   ret->user_id = json.get_int("UserID");
   ret->account_id = json.get_int("AccountID");
   if (ret->gamertag.empty()) {
-    throw runtime_error("gamertag is too short");
+    throw std::runtime_error("gamertag is too short");
   }
   if (ret->user_id == 0) {
-    throw runtime_error("user ID is zero");
+    throw std::runtime_error("user ID is zero");
   }
   if (ret->account_id == 0) {
-    throw runtime_error("account ID is zero");
+    throw std::runtime_error("account ID is zero");
   }
   return ret;
 }
@@ -98,21 +96,21 @@ phosg::JSON XBLicense::json() const {
   return phosg::JSON::dict({{"GamerTag", this->gamertag}, {"UserID", this->user_id}, {"AccountID", this->account_id}});
 }
 
-shared_ptr<BBLicense> BBLicense::from_json(const phosg::JSON& json) {
-  auto ret = make_shared<BBLicense>();
+std::shared_ptr<BBLicense> BBLicense::from_json(const phosg::JSON& json) {
+  auto ret = std::make_shared<BBLicense>();
   ret->username = json.get_string("UserName");
   ret->password = json.get_string("Password");
   if (ret->username.size() > 16) {
-    throw runtime_error("username is too long");
+    throw std::runtime_error("username is too long");
   }
   if (ret->username.empty()) {
-    throw runtime_error("username is too short");
+    throw std::runtime_error("username is too short");
   }
   if (ret->password.size() > 16) {
-    throw runtime_error("password is too long");
+    throw std::runtime_error("password is too long");
   }
   if (ret->password.empty()) {
-    throw runtime_error("password is too short");
+    throw std::runtime_error("password is too short");
   }
   return ret;
 }
@@ -132,51 +130,51 @@ Account::Account(const phosg::JSON& json)
   uint64_t format_version = 0;
   try {
     format_version = json.get_int("FormatVersion");
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
 
   if (format_version == 0) {
     // Original format - no account ID
     this->account_id = json.get_int("SerialNumber");
-    string access_key = json.get_string("AccessKey", "");
-    string dc_nte_serial_number = json.get_string("DCNTESerialNumber", "");
-    string dc_nte_access_key = json.get_string("DCNTEAccessKey", "");
-    string gc_password = json.get_string("GCPassword", "");
-    string xb_gamertag = json.get_string("XBGamerTag", "");
+    std::string access_key = json.get_string("AccessKey", "");
+    std::string dc_nte_serial_number = json.get_string("DCNTESerialNumber", "");
+    std::string dc_nte_access_key = json.get_string("DCNTEAccessKey", "");
+    std::string gc_password = json.get_string("GCPassword", "");
+    std::string xb_gamertag = json.get_string("XBGamerTag", "");
     uint64_t xb_user_id = json.get_int("XBUserID", 0);
     uint64_t xb_account_id = json.get_int("XBAccountID", 0);
-    string bb_username = json.get_string("BBUsername", "");
-    string bb_password = json.get_string("BBPassword", "");
+    std::string bb_username = json.get_string("BBUsername", "");
+    std::string bb_password = json.get_string("BBPassword", "");
     if (access_key.size() == 12) {
       if (!gc_password.empty()) {
-        auto lic = make_shared<GCLicense>();
+        auto lic = std::make_shared<GCLicense>();
         lic->serial_number = this->account_id;
         lic->access_key = access_key;
         lic->password = gc_password;
         this->gc_licenses.emplace(lic->serial_number, lic);
       }
     } else if (access_key.size() >= 8) {
-      auto lic = make_shared<V1V2License>();
+      auto lic = std::make_shared<V1V2License>();
       lic->serial_number = this->account_id;
       lic->access_key = access_key.substr(0, 8);
       this->dc_licenses.emplace(lic->serial_number, lic);
       this->pc_licenses.emplace(lic->serial_number, lic);
     }
     if (!dc_nte_serial_number.empty() && !dc_nte_access_key.empty()) {
-      auto lic = make_shared<DCNTELicense>();
+      auto lic = std::make_shared<DCNTELicense>();
       lic->serial_number = dc_nte_serial_number;
       lic->access_key = dc_nte_access_key;
       this->dc_nte_licenses.emplace(lic->serial_number, lic);
     }
     if (!xb_gamertag.empty() && xb_user_id && xb_account_id) {
-      auto lic = make_shared<XBLicense>();
+      auto lic = std::make_shared<XBLicense>();
       lic->gamertag = xb_gamertag;
       lic->user_id = xb_user_id;
       lic->account_id = xb_account_id;
       this->xb_licenses.emplace(lic->user_id, lic);
     }
     if (!bb_username.empty() && !bb_password.empty()) {
-      auto lic = make_shared<BBLicense>();
+      auto lic = std::make_shared<BBLicense>();
       lic->username = bb_username;
       lic->password = bb_password;
       this->bb_licenses.emplace(lic->username, lic);
@@ -223,7 +221,7 @@ Account::Account(const phosg::JSON& json)
     for (const auto& it : json.get_list("AutoPatchesEnabled")) {
       this->auto_patches_enabled.emplace(it->as_string());
     }
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
 }
 
@@ -279,11 +277,11 @@ phosg::JSON Account::json() const {
   });
 }
 
-string Account::str() const {
+std::string Account::str() const {
   std::string ret = std::format("Account: {:010}/{:08X}\n", this->account_id, this->account_id);
 
   if (this->flags) {
-    string flags_str = "";
+    std::string flags_str = "";
     if (this->flags == static_cast<uint32_t>(Flag::ROOT)) {
       flags_str = "ROOT";
     } else if (this->flags == static_cast<uint32_t>(Flag::ADMINISTRATOR)) {
@@ -334,7 +332,7 @@ string Account::str() const {
   }
 
   if (this->user_flags) {
-    string user_flags_str = "";
+    std::string user_flags_str = "";
     if (this->check_user_flag(UserFlag::DISABLE_DROP_NOTIFICATION_BROADCAST)) {
       user_flags_str += "DISABLE_DROP_NOTIFICATION_BROADCAST,";
     }
@@ -347,8 +345,7 @@ string Account::str() const {
   }
 
   if (this->ban_end_time) {
-    string time_str = phosg::format_time(this->ban_end_time);
-    ret += std::format("  Banned until: {} ({})\n", this->ban_end_time, time_str);
+    ret += std::format("  Banned until: {} ({})\n", this->ban_end_time, phosg::format_time(this->ban_end_time));
   }
   if (this->ep3_current_meseta || this->ep3_total_meseta_earned) {
     ret += std::format("  Episode 3 meseta: {} (total earned: {})\n",
@@ -399,20 +396,19 @@ string Account::str() const {
 void Account::save() const {
   if (!this->is_temporary) {
     auto json = this->json();
-    string json_data = json.serialize(
+    std::string json_data = json.serialize(
         phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::HEX_INTEGERS);
-    string filename = std::format("system/licenses/{:010}.json", this->account_id);
+    std::string filename = std::format("system/licenses/{:010}.json", this->account_id);
     phosg::save_file(filename, json_data);
   }
 }
 
 void Account::delete_file() const {
-  string filename = std::format("system/licenses/{:010}.json", this->account_id);
-  remove(filename.c_str());
+  std::filesystem::remove(std::format("system/licenses/{:010}.json", this->account_id));
 }
 
-string Login::str() const {
-  string ret = std::format("Account:{:08X}", this->account->account_id);
+std::string Login::str() const {
+  std::string ret = std::format("Account:{:08X}", this->account->account_id);
   if (this->account_was_created) {
     ret += " (new)";
   }
@@ -435,21 +431,21 @@ string Login::str() const {
 }
 
 size_t AccountIndex::count() const {
-  shared_lock g(this->lock);
+  std::shared_lock g(this->lock);
   return this->by_account_id.size();
 }
 
-shared_ptr<Account> AccountIndex::from_account_id(uint32_t account_id) const {
+std::shared_ptr<Account> AccountIndex::from_account_id(uint32_t account_id) const {
   try {
-    shared_lock g(this->lock);
+    std::shared_lock g(this->lock);
     return this->by_account_id.at(account_id);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     throw missing_account();
   }
 }
 
-shared_ptr<Login> AccountIndex::from_dc_nte_credentials_locked(const string& serial_number, const string& access_key) {
-  auto login = make_shared<Login>();
+std::shared_ptr<Login> AccountIndex::from_dc_nte_credentials_locked(const std::string& serial_number, const std::string& access_key) {
+  auto login = std::make_shared<Login>();
   login->account = this->by_dc_nte_serial_number.at(serial_number);
   login->dc_nte_license = login->account->dc_nte_licenses.at(serial_number);
   if (login->dc_nte_license->access_key != access_key) {
@@ -461,30 +457,30 @@ shared_ptr<Login> AccountIndex::from_dc_nte_credentials_locked(const string& ser
   return login;
 }
 
-shared_ptr<Login> AccountIndex::from_dc_nte_credentials(
-    const string& serial_number, const string& access_key, bool allow_create) {
+std::shared_ptr<Login> AccountIndex::from_dc_nte_credentials(
+    const std::string& serial_number, const std::string& access_key, bool allow_create) {
   if (serial_number.empty()) {
     throw no_username();
   }
 
   try {
-    shared_lock g(this->lock);
+    std::shared_lock g(this->lock);
     return this->from_dc_nte_credentials_locked(serial_number, access_key);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
 
-  unique_lock g(this->lock);
+  std::unique_lock g(this->lock);
   try {
     return this->from_dc_nte_credentials_locked(serial_number, access_key);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
 
   if (allow_create) {
-    auto login = make_shared<Login>();
+    auto login = std::make_shared<Login>();
     login->account_was_created = true;
-    login->account = make_shared<Account>();
+    login->account = std::make_shared<Account>();
     login->account->account_id = phosg::fnv1a32(serial_number) & 0x7FFFFFFF;
-    auto lic = make_shared<DCNTELicense>();
+    auto lic = std::make_shared<DCNTELicense>();
     lic->serial_number = serial_number;
     lic->access_key = access_key;
     login->account->dc_nte_licenses.emplace(lic->serial_number, lic);
@@ -496,9 +492,9 @@ shared_ptr<Login> AccountIndex::from_dc_nte_credentials(
   }
 }
 
-shared_ptr<Login> AccountIndex::from_dc_credentials_locked(
-    uint32_t serial_number, const string& access_key, const string& character_name) {
-  auto login = make_shared<Login>();
+std::shared_ptr<Login> AccountIndex::from_dc_credentials_locked(
+    uint32_t serial_number, const std::string& access_key, const std::string& character_name) {
+  auto login = std::make_shared<Login>();
   login->account = this->by_dc_serial_number.at(serial_number);
   login->dc_license = login->account->dc_licenses.at(serial_number);
   bool is_shared = login->account->check_flag(Account::Flag::IS_SHARED_ACCOUNT);
@@ -514,30 +510,30 @@ shared_ptr<Login> AccountIndex::from_dc_credentials_locked(
   return login;
 }
 
-shared_ptr<Login> AccountIndex::from_dc_credentials(
-    uint32_t serial_number, const string& access_key, const string& character_name, bool allow_create) {
+std::shared_ptr<Login> AccountIndex::from_dc_credentials(
+    uint32_t serial_number, const std::string& access_key, const std::string& character_name, bool allow_create) {
   if (serial_number == 0) {
     throw no_username();
   }
 
   try {
-    shared_lock g(this->lock);
+    std::shared_lock g(this->lock);
     return this->from_dc_credentials_locked(serial_number, access_key, character_name);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
 
-  unique_lock g(this->lock);
+  std::unique_lock g(this->lock);
   try {
     return this->from_dc_credentials_locked(serial_number, access_key, character_name);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
 
   if (allow_create) {
-    auto login = make_shared<Login>();
+    auto login = std::make_shared<Login>();
     login->account_was_created = true;
-    login->account = make_shared<Account>();
+    login->account = std::make_shared<Account>();
     login->account->account_id = serial_number;
-    auto lic = make_shared<V1V2License>();
+    auto lic = std::make_shared<V1V2License>();
     lic->serial_number = serial_number;
     lic->access_key = access_key;
     login->account->dc_licenses.emplace(lic->serial_number, lic);
@@ -549,19 +545,19 @@ shared_ptr<Login> AccountIndex::from_dc_credentials(
   }
 }
 
-shared_ptr<Login> AccountIndex::from_pc_nte_credentials(uint32_t guild_card_number, bool allow_create) {
+std::shared_ptr<Login> AccountIndex::from_pc_nte_credentials(uint32_t guild_card_number, bool allow_create) {
   if (!allow_create) {
     throw missing_account();
   }
   if (guild_card_number == 0xFFFFFFFF) {
     guild_card_number = phosg::random_object<uint32_t>() & 0x7FFFFFFF;
   }
-  auto login = make_shared<Login>();
+  auto login = std::make_shared<Login>();
   login->account_was_created = true;
-  login->account = make_shared<Account>();
+  login->account = std::make_shared<Account>();
   login->account->account_id = guild_card_number;
   login->account->is_temporary = true;
-  auto lic = make_shared<V1V2License>();
+  auto lic = std::make_shared<V1V2License>();
   lic->serial_number = guild_card_number;
   login->account->pc_licenses.emplace(lic->serial_number, lic);
   login->pc_license = lic;
@@ -569,9 +565,9 @@ shared_ptr<Login> AccountIndex::from_pc_nte_credentials(uint32_t guild_card_numb
   return login;
 }
 
-shared_ptr<Login> AccountIndex::from_pc_credentials_locked(
-    uint32_t serial_number, const string& access_key, const string& character_name) {
-  auto login = make_shared<Login>();
+std::shared_ptr<Login> AccountIndex::from_pc_credentials_locked(
+    uint32_t serial_number, const std::string& access_key, const std::string& character_name) {
+  auto login = std::make_shared<Login>();
   login->account = this->by_pc_serial_number.at(serial_number);
   login->pc_license = login->account->pc_licenses.at(serial_number);
   bool is_shared = login->account->check_flag(Account::Flag::IS_SHARED_ACCOUNT);
@@ -587,30 +583,30 @@ shared_ptr<Login> AccountIndex::from_pc_credentials_locked(
   return login;
 }
 
-shared_ptr<Login> AccountIndex::from_pc_credentials(
-    uint32_t serial_number, const string& access_key, const string& character_name, bool allow_create) {
+std::shared_ptr<Login> AccountIndex::from_pc_credentials(
+    uint32_t serial_number, const std::string& access_key, const std::string& character_name, bool allow_create) {
   if (serial_number == 0) {
     throw no_username();
   }
 
   try {
-    shared_lock g(this->lock);
+    std::shared_lock g(this->lock);
     return this->from_pc_credentials_locked(serial_number, access_key, character_name);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
 
-  unique_lock g(this->lock);
+  std::unique_lock g(this->lock);
   try {
     return this->from_pc_credentials_locked(serial_number, access_key, character_name);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
 
   if (allow_create) {
-    auto login = make_shared<Login>();
+    auto login = std::make_shared<Login>();
     login->account_was_created = true;
-    login->account = make_shared<Account>();
+    login->account = std::make_shared<Account>();
     login->account->account_id = serial_number;
-    auto lic = make_shared<V1V2License>();
+    auto lic = std::make_shared<V1V2License>();
     lic->serial_number = serial_number;
     lic->access_key = access_key;
     login->account->pc_licenses.emplace(lic->serial_number, lic);
@@ -622,9 +618,12 @@ shared_ptr<Login> AccountIndex::from_pc_credentials(
   }
 }
 
-shared_ptr<Login> AccountIndex::from_gc_credentials_locked(
-    uint32_t serial_number, const string& access_key, const string* password, const string& character_name) {
-  auto login = make_shared<Login>();
+std::shared_ptr<Login> AccountIndex::from_gc_credentials_locked(
+    uint32_t serial_number,
+    const std::string& access_key,
+    const std::string* password,
+    const std::string& character_name) {
+  auto login = std::make_shared<Login>();
   login->account = this->by_gc_serial_number.at(serial_number);
   login->gc_license = login->account->gc_licenses.at(serial_number);
   bool is_shared = login->account->check_flag(Account::Flag::IS_SHARED_ACCOUNT);
@@ -643,34 +642,34 @@ shared_ptr<Login> AccountIndex::from_gc_credentials_locked(
   return login;
 }
 
-shared_ptr<Login> AccountIndex::from_gc_credentials(
+std::shared_ptr<Login> AccountIndex::from_gc_credentials(
     uint32_t serial_number,
-    const string& access_key,
-    const string* password,
-    const string& character_name,
+    const std::string& access_key,
+    const std::string* password,
+    const std::string& character_name,
     bool allow_create) {
   if (serial_number == 0) {
     throw no_username();
   }
 
   try {
-    shared_lock g(this->lock);
+    std::shared_lock g(this->lock);
     return this->from_gc_credentials_locked(serial_number, access_key, password, character_name);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
 
-  unique_lock g(this->lock);
+  std::unique_lock g(this->lock);
   try {
     return this->from_gc_credentials_locked(serial_number, access_key, password, character_name);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
 
   if (allow_create && password) {
-    auto login = make_shared<Login>();
+    auto login = std::make_shared<Login>();
     login->account_was_created = true;
-    login->account = make_shared<Account>();
+    login->account = std::make_shared<Account>();
     login->account->account_id = serial_number;
-    auto lic = make_shared<GCLicense>();
+    auto lic = std::make_shared<GCLicense>();
     lic->serial_number = serial_number;
     lic->access_key = access_key;
     lic->password = *password;
@@ -683,8 +682,8 @@ shared_ptr<Login> AccountIndex::from_gc_credentials(
   }
 }
 
-shared_ptr<Login> AccountIndex::from_xb_credentials_locked(uint64_t user_id) {
-  auto login = make_shared<Login>();
+std::shared_ptr<Login> AccountIndex::from_xb_credentials_locked(uint64_t user_id) {
+  auto login = std::make_shared<Login>();
   login->account = this->by_xb_user_id.at(user_id);
   login->xb_license = login->account->xb_licenses.at(user_id);
   if (login->account->ban_end_time && (login->account->ban_end_time >= phosg::now())) {
@@ -693,30 +692,30 @@ shared_ptr<Login> AccountIndex::from_xb_credentials_locked(uint64_t user_id) {
   return login;
 }
 
-shared_ptr<Login> AccountIndex::from_xb_credentials(
-    const string& gamertag, uint64_t user_id, uint64_t account_id, bool allow_create) {
+std::shared_ptr<Login> AccountIndex::from_xb_credentials(
+    const std::string& gamertag, uint64_t user_id, uint64_t account_id, bool allow_create) {
   if (user_id == 0 || account_id == 0) {
     throw incorrect_access_key();
   }
 
   try {
-    shared_lock g(this->lock);
+    std::shared_lock g(this->lock);
     return this->from_xb_credentials_locked(user_id);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
 
-  unique_lock g(this->lock);
+  std::unique_lock g(this->lock);
   try {
     return this->from_xb_credentials_locked(user_id);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
 
   if (allow_create) {
-    auto login = make_shared<Login>();
+    auto login = std::make_shared<Login>();
     login->account_was_created = true;
-    login->account = make_shared<Account>();
+    login->account = std::make_shared<Account>();
     login->account->account_id = phosg::fnv1a32(gamertag) & 0x7FFFFFFF;
-    auto lic = make_shared<XBLicense>();
+    auto lic = std::make_shared<XBLicense>();
     lic->gamertag = gamertag;
     lic->user_id = user_id;
     lic->account_id = account_id;
@@ -729,8 +728,9 @@ shared_ptr<Login> AccountIndex::from_xb_credentials(
   }
 }
 
-shared_ptr<Login> AccountIndex::from_bb_credentials_locked(const string& username, const string* password) {
-  auto login = make_shared<Login>();
+std::shared_ptr<Login> AccountIndex::from_bb_credentials_locked(
+    const std::string& username, const std::string* password) {
+  auto login = std::make_shared<Login>();
   login->account = this->by_bb_username.at(username);
   login->bb_license = login->account->bb_licenses.at(username);
   if (password && (login->bb_license->password != *password)) {
@@ -742,30 +742,30 @@ shared_ptr<Login> AccountIndex::from_bb_credentials_locked(const string& usernam
   return login;
 }
 
-shared_ptr<Login> AccountIndex::from_bb_credentials(
-    const string& username, const string* password, bool allow_create) {
+std::shared_ptr<Login> AccountIndex::from_bb_credentials(
+    const std::string& username, const std::string* password, bool allow_create) {
   if (username.empty() || (password && password->empty())) {
     throw no_username();
   }
 
   try {
-    shared_lock g(this->lock);
+    std::shared_lock g(this->lock);
     return this->from_bb_credentials_locked(username, password);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
 
-  unique_lock g(this->lock);
+  std::unique_lock g(this->lock);
   try {
     return this->from_bb_credentials_locked(username, password);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
 
   if (allow_create && password) {
-    auto login = make_shared<Login>();
+    auto login = std::make_shared<Login>();
     login->account_was_created = true;
-    login->account = make_shared<Account>();
+    login->account = std::make_shared<Account>();
     login->account->account_id = phosg::fnv1a32(username) & 0x7FFFFFFF;
-    auto lic = make_shared<BBLicense>();
+    auto lic = std::make_shared<BBLicense>();
     lic->username = username;
     lic->password = *password;
     login->account->bb_licenses.emplace(lic->username, lic);
@@ -777,9 +777,9 @@ shared_ptr<Login> AccountIndex::from_bb_credentials(
   }
 }
 
-vector<shared_ptr<Account>> AccountIndex::all() const {
-  shared_lock g(this->lock);
-  vector<shared_ptr<Account>> ret;
+std::vector<std::shared_ptr<Account>> AccountIndex::all() const {
+  std::shared_lock g(this->lock);
+  std::vector<std::shared_ptr<Account>> ret;
   ret.reserve(this->by_account_id.size());
   for (const auto& it : this->by_account_id) {
     ret.emplace_back(it.second);
@@ -787,44 +787,44 @@ vector<shared_ptr<Account>> AccountIndex::all() const {
   return ret;
 }
 
-void AccountIndex::add(shared_ptr<Account> a) {
-  unique_lock g(this->lock);
+void AccountIndex::add(std::shared_ptr<Account> a) {
+  std::unique_lock g(this->lock);
   this->add_locked(a);
 }
 
-void AccountIndex::add_locked(shared_ptr<Account> a) {
+void AccountIndex::add_locked(std::shared_ptr<Account> a) {
   if (this->force_all_temporary) {
     a->is_temporary = true;
   }
 
   for (const auto& it : a->dc_nte_licenses) {
     if (this->by_dc_nte_serial_number.count(it.second->serial_number)) {
-      throw runtime_error("account already exists with this DC NTE serial number");
+      throw std::runtime_error("account already exists with this DC NTE serial number");
     }
   }
   for (const auto& it : a->dc_licenses) {
     if (this->by_dc_serial_number.count(it.second->serial_number)) {
-      throw runtime_error("account already exists with this DC serial number");
+      throw std::runtime_error("account already exists with this DC serial number");
     }
   }
   for (const auto& it : a->pc_licenses) {
     if (this->by_pc_serial_number.count(it.second->serial_number)) {
-      throw runtime_error("account already exists with this PC NTE serial number");
+      throw std::runtime_error("account already exists with this PC NTE serial number");
     }
   }
   for (const auto& it : a->gc_licenses) {
     if (this->by_gc_serial_number.count(it.second->serial_number)) {
-      throw runtime_error("account already exists with this GC serial number");
+      throw std::runtime_error("account already exists with this GC serial number");
     }
   }
   for (const auto& it : a->xb_licenses) {
     if (this->by_xb_user_id.count(it.second->user_id)) {
-      throw runtime_error("account already exists with this XB user ID");
+      throw std::runtime_error("account already exists with this XB user ID");
     }
   }
   for (const auto& it : a->bb_licenses) {
     if (this->by_bb_username.count(it.second->username)) {
-      throw runtime_error("account already exists with this BB username");
+      throw std::runtime_error("account already exists with this BB username");
     }
   }
 
@@ -854,10 +854,10 @@ void AccountIndex::add_locked(shared_ptr<Account> a) {
 }
 
 void AccountIndex::remove(uint32_t account_id) {
-  unique_lock g(this->lock);
+  std::unique_lock g(this->lock);
   auto acc_it = this->by_account_id.find(account_id);
   if (acc_it == this->by_account_id.end()) {
-    throw out_of_range("account does not exist");
+    throw std::out_of_range("account does not exist");
   }
   auto a = std::move(acc_it->second);
   this->by_account_id.erase(acc_it);
@@ -882,135 +882,135 @@ void AccountIndex::remove(uint32_t account_id) {
   }
 }
 
-void AccountIndex::add_dc_nte_license(shared_ptr<Account> account, shared_ptr<DCNTELicense> license) {
+void AccountIndex::add_dc_nte_license(std::shared_ptr<Account> account, std::shared_ptr<DCNTELicense> license) {
   if (!this->by_dc_nte_serial_number.emplace(license->serial_number, account).second) {
-    throw runtime_error("serial number already registered");
+    throw std::runtime_error("serial number already registered");
   }
   if (!account->dc_nte_licenses.emplace(license->serial_number, license).second) {
     this->by_dc_nte_serial_number.erase(license->serial_number);
-    throw logic_error("serial number registered in account but not in account index");
+    throw std::logic_error("serial number registered in account but not in account index");
   }
 }
 
-void AccountIndex::add_dc_license(shared_ptr<Account> account, shared_ptr<V1V2License> license) {
+void AccountIndex::add_dc_license(std::shared_ptr<Account> account, std::shared_ptr<V1V2License> license) {
   if (!this->by_dc_serial_number.emplace(license->serial_number, account).second) {
-    throw runtime_error("serial number already registered");
+    throw std::runtime_error("serial number already registered");
   }
   if (!account->dc_licenses.emplace(license->serial_number, license).second) {
     this->by_dc_serial_number.erase(license->serial_number);
-    throw logic_error("serial number registered in account but not in account index");
+    throw std::logic_error("serial number registered in account but not in account index");
   }
 }
 
-void AccountIndex::add_pc_license(shared_ptr<Account> account, shared_ptr<V1V2License> license) {
+void AccountIndex::add_pc_license(std::shared_ptr<Account> account, std::shared_ptr<V1V2License> license) {
   if (!this->by_pc_serial_number.emplace(license->serial_number, account).second) {
-    throw runtime_error("serial number already registered");
+    throw std::runtime_error("serial number already registered");
   }
   if (!account->pc_licenses.emplace(license->serial_number, license).second) {
     this->by_pc_serial_number.erase(license->serial_number);
-    throw logic_error("serial number registered in account but not in account index");
+    throw std::logic_error("serial number registered in account but not in account index");
   }
 }
 
-void AccountIndex::add_gc_license(shared_ptr<Account> account, shared_ptr<GCLicense> license) {
+void AccountIndex::add_gc_license(std::shared_ptr<Account> account, std::shared_ptr<GCLicense> license) {
   if (!this->by_gc_serial_number.emplace(license->serial_number, account).second) {
-    throw runtime_error("serial number already registered");
+    throw std::runtime_error("serial number already registered");
   }
   if (!account->gc_licenses.emplace(license->serial_number, license).second) {
     this->by_gc_serial_number.erase(license->serial_number);
-    throw logic_error("serial number registered in account but not in account index");
+    throw std::logic_error("serial number registered in account but not in account index");
   }
 }
 
-void AccountIndex::add_xb_license(shared_ptr<Account> account, shared_ptr<XBLicense> license) {
+void AccountIndex::add_xb_license(std::shared_ptr<Account> account, std::shared_ptr<XBLicense> license) {
   if (!this->by_xb_user_id.emplace(license->user_id, account).second) {
-    throw runtime_error("user ID already registered");
+    throw std::runtime_error("user ID already registered");
   }
   if (!account->xb_licenses.emplace(license->user_id, license).second) {
     this->by_xb_user_id.erase(license->user_id);
-    throw logic_error("user ID registered in account but not in account index");
+    throw std::logic_error("user ID registered in account but not in account index");
   }
 }
 
-void AccountIndex::add_bb_license(shared_ptr<Account> account, shared_ptr<BBLicense> license) {
+void AccountIndex::add_bb_license(std::shared_ptr<Account> account, std::shared_ptr<BBLicense> license) {
   if (!this->by_bb_username.emplace(license->username, account).second) {
-    throw runtime_error("username already registered");
+    throw std::runtime_error("username already registered");
   }
   if (!account->bb_licenses.emplace(license->username, license).second) {
     this->by_bb_username.erase(license->username);
-    throw logic_error("username registered in account but not in account index");
+    throw std::logic_error("username registered in account but not in account index");
   }
 }
 
-void AccountIndex::remove_dc_nte_license(shared_ptr<Account> account, const string& serial_number) {
+void AccountIndex::remove_dc_nte_license(std::shared_ptr<Account> account, const std::string& serial_number) {
   auto it = account->dc_nte_licenses.find(serial_number);
   if (it == account->dc_nte_licenses.end()) {
-    throw runtime_error("license not registered to account");
+    throw std::runtime_error("license not registered to account");
   }
   if (!this->by_dc_nte_serial_number.erase(it->second->serial_number)) {
-    throw runtime_error("license registered in account but not in account index");
+    throw std::runtime_error("license registered in account but not in account index");
   }
   account->dc_nte_licenses.erase(it);
 }
 
-void AccountIndex::remove_dc_license(shared_ptr<Account> account, uint32_t serial_number) {
+void AccountIndex::remove_dc_license(std::shared_ptr<Account> account, uint32_t serial_number) {
   auto it = account->dc_licenses.find(serial_number);
   if (it == account->dc_licenses.end()) {
-    throw runtime_error("license not registered to account");
+    throw std::runtime_error("license not registered to account");
   }
   if (!this->by_dc_serial_number.erase(it->second->serial_number)) {
-    throw runtime_error("license registered in account but not in account index");
+    throw std::runtime_error("license registered in account but not in account index");
   }
   account->dc_licenses.erase(it);
 }
 
-void AccountIndex::remove_pc_license(shared_ptr<Account> account, uint32_t serial_number) {
+void AccountIndex::remove_pc_license(std::shared_ptr<Account> account, uint32_t serial_number) {
   auto it = account->pc_licenses.find(serial_number);
   if (it == account->pc_licenses.end()) {
-    throw runtime_error("license not registered to account");
+    throw std::runtime_error("license not registered to account");
   }
   if (!this->by_pc_serial_number.erase(it->second->serial_number)) {
-    throw runtime_error("license registered in account but not in account index");
+    throw std::runtime_error("license registered in account but not in account index");
   }
   account->pc_licenses.erase(it);
 }
 
-void AccountIndex::remove_gc_license(shared_ptr<Account> account, uint32_t serial_number) {
+void AccountIndex::remove_gc_license(std::shared_ptr<Account> account, uint32_t serial_number) {
   auto it = account->gc_licenses.find(serial_number);
   if (it == account->gc_licenses.end()) {
-    throw runtime_error("license not registered to account");
+    throw std::runtime_error("license not registered to account");
   }
   if (!this->by_gc_serial_number.erase(it->second->serial_number)) {
-    throw runtime_error("license registered in account but not in account index");
+    throw std::runtime_error("license registered in account but not in account index");
   }
   account->gc_licenses.erase(it);
 }
 
-void AccountIndex::remove_xb_license(shared_ptr<Account> account, uint64_t user_id) {
+void AccountIndex::remove_xb_license(std::shared_ptr<Account> account, uint64_t user_id) {
   auto it = account->xb_licenses.find(user_id);
   if (it == account->xb_licenses.end()) {
-    throw runtime_error("license not registered to account");
+    throw std::runtime_error("license not registered to account");
   }
   if (!this->by_xb_user_id.erase(it->second->user_id)) {
-    throw runtime_error("license registered in account but not in account index");
+    throw std::runtime_error("license registered in account but not in account index");
   }
   account->xb_licenses.erase(it);
 }
 
-void AccountIndex::remove_bb_license(shared_ptr<Account> account, const string& username) {
+void AccountIndex::remove_bb_license(std::shared_ptr<Account> account, const std::string& username) {
   auto it = account->bb_licenses.find(username);
   if (it == account->bb_licenses.end()) {
-    throw runtime_error("license not registered to account");
+    throw std::runtime_error("license not registered to account");
   }
   if (!this->by_bb_username.erase(it->second->username)) {
-    throw runtime_error("license registered in account but not in account index");
+    throw std::runtime_error("license registered in account but not in account index");
   }
   account->bb_licenses.erase(it);
 }
 
-shared_ptr<Account> AccountIndex::create_temporary_account_for_shared_account(
-    shared_ptr<const Account> src_a, const string& variation_data) const {
-  auto ret = make_shared<Account>(*src_a);
+std::shared_ptr<Account> AccountIndex::create_temporary_account_for_shared_account(
+    std::shared_ptr<const Account> src_a, const std::string& variation_data) const {
+  auto ret = std::make_shared<Account>(*src_a);
   ret->is_temporary = true;
   ret->account_id = phosg::fnv1a32(&src_a->account_id, sizeof(src_a->account_id));
   ret->account_id = phosg::fnv1a32(variation_data, ret->account_id);
@@ -1023,12 +1023,12 @@ AccountIndex::AccountIndex(bool force_all_temporary) : force_all_temporary(force
       std::filesystem::create_directories("system/licenses");
     } else {
       for (const auto& item : std::filesystem::directory_iterator("system/licenses")) {
-        string filename = item.path().filename().string();
+        std::string filename = item.path().filename().string();
         if (filename.ends_with(".json")) {
           try {
             phosg::JSON json = phosg::JSON::parse(phosg::load_file("system/licenses/" + filename));
-            this->add(make_shared<Account>(json));
-          } catch (const exception& e) {
+            this->add(std::make_shared<Account>(json));
+          } catch (const std::exception& e) {
             phosg::log_error_f("Failed to index account {}", filename);
             throw;
           }

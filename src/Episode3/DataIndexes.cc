@@ -17,12 +17,10 @@
 #include "../Quest.hh"
 #include "../Text.hh"
 
-using namespace std;
-
 namespace Episode3 {
 
 const char* name_for_environment_number(uint8_t environment_number) {
-  static constexpr array<const char*, 0x1C> names = {
+  static constexpr std::array<const char*, 0x1C> names = {
       "Unguis Lapis",
       "Nebula Montana 1",
       "Lupus Silva 1",
@@ -79,7 +77,7 @@ const char* name_for_link_color(uint8_t color) {
     case 9:
       return "green"; // Status effects
     default:
-      throw invalid_argument("unknown color");
+      throw std::invalid_argument("unknown color");
   }
 }
 
@@ -184,7 +182,7 @@ struct ExprTokenDefinition {
   std::string token;
   std::string description;
 };
-static const vector<ExprTokenDefinition> expr_token_defs{
+static const std::vector<ExprTokenDefinition> expr_token_defs{
     {0x00, "f", "Number of FCs controlled by current SC"},
     {0x01, "d", "Die roll"},
     {0x02, "ap", "Attacker effective AP"},
@@ -226,7 +224,7 @@ static const vector<ExprTokenDefinition> expr_token_defs{
     {0x26, "ehp", "Attacker HP"},
 };
 const ExprTokenDefinition& def_for_expr_token(const std::string& token) {
-  static unordered_map<std::string, const ExprTokenDefinition*> index;
+  static std::unordered_map<std::string, const ExprTokenDefinition*> index;
   if (index.empty()) {
     for (const auto& def : expr_token_defs) {
       index.emplace(def.token, &def);
@@ -235,7 +233,7 @@ const ExprTokenDefinition& def_for_expr_token(const std::string& token) {
   return *index.at(token);
 }
 
-static const vector<const char*> description_for_n_condition({
+static const std::vector<const char*> description_for_n_condition({
     /* n00 */ "Always true",
     /* n01 */ "Card is Hunters-side SC",
     /* n02 */ "Destroyed with a single attack",
@@ -261,7 +259,7 @@ static const vector<const char*> description_for_n_condition({
     /* n22 */ "Target is affected by Rampage",
 });
 
-static const vector<const char*> description_for_p_target({
+static const std::vector<const char*> description_for_p_target({
     /* p00 */ "(Invalid)",
     /* p01 */ "SC / FC who set the card",
     /* p02 */ "Attacking SC / FC",
@@ -320,7 +318,7 @@ struct ConditionDescription {
   const char* description;
 };
 
-static const vector<ConditionDescription> description_for_condition_type({
+static const std::vector<ConditionDescription> description_for_condition_type({
     /* 0x00 */ {false, "NONE", nullptr},
     /* 0x01 */ {true, "AP_BOOST", "Temporarily increase AP"},
     /* 0x02 */ {false, "RAMPAGE", "Rampage"},
@@ -466,7 +464,7 @@ void CardDefinition::Stat::decode_code() {
         this->stat = -value;
         break;
       default:
-        throw runtime_error("invalid card stat type");
+        throw std::runtime_error("invalid card stat type");
     }
   } else {
     this->stat = 0;
@@ -474,7 +472,7 @@ void CardDefinition::Stat::decode_code() {
   }
 }
 
-string CardDefinition::Stat::str() const {
+std::string CardDefinition::Stat::str() const {
   switch (this->type) {
     case Type::BLANK:
       return "(blank)";
@@ -528,7 +526,7 @@ std::vector<CardDefinition::Effect::ExprToken> CardDefinition::Effect::ExprToken
 
       default:
         if ((*expr >= 'a') && (*expr <= 'z')) {
-          string token_buf;
+          std::string token_buf;
           for (const char* z = expr; (*z >= 'a') && (*z <= 'z'); z++) {
             token_buf.push_back(*z);
           }
@@ -551,7 +549,7 @@ std::vector<CardDefinition::Effect::ExprToken> CardDefinition::Effect::ExprToken
               .type = T::NUMBER, .value = value, .text = expr, .text_size = static_cast<size_t>(end_ptr - expr)});
 
         } else {
-          throw runtime_error("invalid card effect expression");
+          throw std::runtime_error("invalid card effect expression");
         }
     }
 
@@ -576,7 +574,7 @@ bool CardDefinition::Effect::is_empty() const {
       this->name_index == 0);
 }
 
-string CardDefinition::Effect::str_for_arg(const string& arg) {
+std::string CardDefinition::Effect::str_for_arg(const std::string& arg) {
   if (arg.empty()) {
     return arg;
   }
@@ -585,8 +583,8 @@ string CardDefinition::Effect::str_for_arg(const string& arg) {
   }
   size_t value;
   try {
-    value = stoul(arg.c_str() + 1, nullptr, 10);
-  } catch (const invalid_argument&) {
+    value = std::stoul(arg.c_str() + 1, nullptr, 10);
+  } catch (const std::invalid_argument&) {
     return arg + " (invalid)";
   }
 
@@ -607,7 +605,7 @@ string CardDefinition::Effect::str_for_arg(const string& arg) {
     case 'n':
       try {
         return std::format("{} (Req. condition: {})", arg, description_for_n_condition.at(value));
-      } catch (const out_of_range&) {
+      } catch (const std::out_of_range&) {
         return arg + " (Req. condition: unknown)";
       }
     case 'o': {
@@ -621,7 +619,7 @@ string CardDefinition::Effect::str_for_arg(const string& arg) {
     case 'p':
       try {
         return std::format("{} (Target: {})", arg, description_for_p_target.at(value));
-      } catch (const out_of_range&) {
+      } catch (const std::out_of_range&) {
         return arg + " (Target: unknown)";
       }
     case 'r':
@@ -635,19 +633,19 @@ string CardDefinition::Effect::str_for_arg(const string& arg) {
   }
 }
 
-string CardDefinition::Effect::str(const char* separator, const TextSet* text_archive) const {
-  vector<string> tokens;
+std::string CardDefinition::Effect::str(const char* separator, const TextSet* text_archive) const {
+  std::vector<std::string> tokens;
   tokens.emplace_back(std::format("{}:", this->effect_num));
   {
     uint8_t type = static_cast<uint8_t>(this->type);
-    string cmd_str = std::format("cmd={:02X}", type);
+    std::string cmd_str = std::format("cmd={:02X}", type);
     try {
       const char* name = description_for_condition_type.at(type).name;
       if (name) {
         cmd_str += ':';
         cmd_str += name;
       }
-    } catch (const out_of_range&) {
+    } catch (const std::out_of_range&) {
     }
     tokens.emplace_back(std::move(cmd_str));
   }
@@ -661,7 +659,7 @@ string CardDefinition::Effect::str(const char* separator, const TextSet* text_ar
           case ExprToken::Type::REFERENCE:
             try {
               explanation_tokens.emplace_back(expr_token_defs.at(token.value).description);
-            } catch (const out_of_range&) {
+            } catch (const std::out_of_range&) {
               explanation_tokens.emplace_back(std::format("<<invalid reference: {:X}>>", token.value));
             }
             break;
@@ -687,7 +685,7 @@ string CardDefinition::Effect::str(const char* separator, const TextSet* text_ar
             explanation_tokens.emplace_back("<<invalid token>>");
         }
       }
-    } catch (const exception& e) {
+    } catch (const std::exception& e) {
       explanation_tokens.emplace_back(std::format("failed to parse expr: {}", e.what()));
     }
     if ((explanation_tokens.size() == 1) && (explanation_tokens.front() == expr_decoded)) {
@@ -702,12 +700,12 @@ string CardDefinition::Effect::str(const char* separator, const TextSet* text_ar
   tokens.emplace_back("arg3=" + this->str_for_arg(this->arg3.decode()));
   {
     uint8_t type = static_cast<uint8_t>(this->apply_criterion);
-    string cond_str = std::format("cond={:02X}", type);
+    std::string cond_str = std::format("cond={:02X}", type);
     try {
       const char* name = phosg::name_for_enum(this->apply_criterion);
       cond_str += ':';
       cond_str += name;
-    } catch (const invalid_argument&) {
+    } catch (const std::invalid_argument&) {
     }
     tokens.emplace_back(std::move(cond_str));
   }
@@ -716,11 +714,11 @@ string CardDefinition::Effect::str(const char* separator, const TextSet* text_ar
   if (this->name_index && text_archive) {
     try {
       name = text_archive->get(45, this->name_index).c_str();
-    } catch (const exception&) {
+    } catch (const std::exception&) {
     }
   }
   if (name) {
-    string formatted_name = name;
+    std::string formatted_name = name;
     for (char& ch : formatted_name) {
       if (ch == '\t') {
         ch = '$';
@@ -743,7 +741,7 @@ bool CardDefinition::is_fc() const {
 }
 
 bool CardDefinition::is_named_android_sc() const {
-  static const unordered_set<uint16_t> TARGET_IDS({0x0005, 0x0007, 0x0110, 0x0113, 0x0114, 0x0117, 0x011B, 0x011F});
+  static const std::unordered_set<uint16_t> TARGET_IDS({0x0005, 0x0007, 0x0110, 0x0113, 0x0114, 0x0117, 0x011B, 0x011F});
   return TARGET_IDS.count(this->card_id);
 }
 
@@ -814,22 +812,22 @@ void CardDefinition::decode_range() {
       // some pointers immediately after. So probably if a card specified A-F,
       // its range would be filled in with garbage in the original game.
       default:
-        throw runtime_error("invalid fixed range index");
+        throw std::runtime_error("invalid fixed range index");
     }
   }
 }
 
-string name_for_rank(CardRank rank) {
-  static const vector<const char*> names({"N1", "R1", "S", "E", "N2", "N3", "N4", "R2", "R3", "R4", "SS", "D1", "D2"});
+std::string name_for_rank(CardRank rank) {
+  static const std::vector<const char*> names({"N1", "R1", "S", "E", "N2", "N3", "N4", "R2", "R3", "R4", "SS", "D1", "D2"});
   try {
     return names.at(static_cast<uint8_t>(rank) - 1);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     return std::format("({:02X})", static_cast<uint8_t>(rank));
   }
 }
 
 const char* name_for_target_mode(TargetMode target_mode) {
-  static const vector<const char*> names({
+  static const std::vector<const char*> names({
       "NONE",
       "SINGLE_RANGE",
       "MULTI_RANGE",
@@ -843,13 +841,13 @@ const char* name_for_target_mode(TargetMode target_mode) {
   });
   try {
     return names.at(static_cast<uint8_t>(target_mode));
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     return "__UNKNOWN__";
   }
 }
 
-string string_for_colors(const parray<uint8_t, 8>& colors) {
-  string ret;
+std::string string_for_colors(const parray<uint8_t, 8>& colors) {
+  std::string ret;
   for (size_t x = 0; x < 8; x++) {
     if (colors[x]) {
       if (!ret.empty()) {
@@ -857,7 +855,7 @@ string string_for_colors(const parray<uint8_t, 8>& colors) {
       }
       try {
         ret += name_for_link_color(colors[x]);
-      } catch (const invalid_argument&) {
+      } catch (const std::invalid_argument&) {
         ret += std::format("{:02X}", colors[x]);
       }
     }
@@ -868,7 +866,7 @@ string string_for_colors(const parray<uint8_t, 8>& colors) {
   return ret;
 }
 
-string string_for_assist_turns(uint8_t turns) {
+std::string string_for_assist_turns(uint8_t turns) {
   if (turns == 90) {
     return "ONCE";
   } else if (turns == 99) {
@@ -878,8 +876,8 @@ string string_for_assist_turns(uint8_t turns) {
   }
 }
 
-string string_for_range(const parray<be_uint32_t, 6>& range) {
-  string ret;
+std::string string_for_range(const parray<be_uint32_t, 6>& range) {
+  std::string ret;
   for (size_t x = 0; x < 6; x++) {
     ret += std::format("{:05X}/", range[x]);
   }
@@ -892,8 +890,8 @@ string string_for_range(const parray<be_uint32_t, 6>& range) {
   return ret;
 }
 
-string string_for_drop_rate(uint16_t drop_rate) {
-  vector<string> tokens;
+std::string string_for_drop_rate(uint16_t drop_rate) {
+  std::vector<std::string> tokens;
   switch (drop_rate % 10) {
     case 0:
       tokens.emplace_back("mode=ANY");
@@ -939,8 +937,7 @@ string string_for_drop_rate(uint16_t drop_rate) {
     default:
       tokens.emplace_back("deck_type=__UNKNOWN__");
   }
-  string description = phosg::join(tokens, ", ");
-  return std::format("[{}: {}]", drop_rate, description);
+  return std::format("[{}: {}]", drop_rate, phosg::join(tokens, ", "));
 }
 
 static const char* short_name_for_assist_ai_param_target(uint8_t target) {
@@ -973,21 +970,17 @@ static const char* name_for_assist_ai_param_target(uint8_t target) {
   }
 }
 
-string CardDefinition::str(bool single_line, const TextSet* text_archive) const {
-  string type_str = phosg::name_for_enum(this->type);
-  string criterion_str = phosg::name_for_enum(this->usable_criterion);
-  string card_class_str = phosg::name_for_enum(this->card_class());
-  string rank_str = name_for_rank(this->rank);
+std::string CardDefinition::str(bool single_line, const TextSet* text_archive) const {
+  std::string type_str = phosg::name_for_enum(this->type);
+  std::string criterion_str = phosg::name_for_enum(this->usable_criterion);
+  std::string card_class_str = phosg::name_for_enum(this->card_class());
+  std::string rank_str = name_for_rank(this->rank);
   const char* target_mode_str = name_for_target_mode(this->target_mode);
-  string assist_turns_str = string_for_assist_turns(this->assist_turns);
-  string hp_str = this->hp.str();
-  string ap_str = this->ap.str();
-  string tp_str = this->tp.str();
-  string mv_str = this->mv.str();
-  string left_str = string_for_colors(this->left_colors);
-  string right_str = string_for_colors(this->right_colors);
-  string top_str = string_for_colors(this->top_colors);
-  string effects_str;
+  std::string assist_turns_str = string_for_assist_turns(this->assist_turns);
+  std::string left_str = string_for_colors(this->left_colors);
+  std::string right_str = string_for_colors(this->right_colors);
+  std::string top_str = string_for_colors(this->top_colors);
+  std::string effects_str;
   for (size_t x = 0; x < 3; x++) {
     if (this->effects[x].is_empty()) {
       continue;
@@ -1003,10 +996,10 @@ string CardDefinition::str(bool single_line, const TextSet* text_archive) const 
     effects_str = " (none)";
   }
 
-  string drop0_str = string_for_drop_rate(this->drop_rates[0]);
-  string drop1_str = string_for_drop_rate(this->drop_rates[1]);
+  std::string drop0_str = string_for_drop_rate(this->drop_rates[0]);
+  std::string drop1_str = string_for_drop_rate(this->drop_rates[1]);
 
-  string cost_str = std::format("{:X}", this->self_cost);
+  std::string cost_str = std::format("{:X}", this->self_cost);
   if (this->ally_cost) {
     if (single_line) {
       cost_str += std::format("+{:X}", this->ally_cost);
@@ -1015,9 +1008,8 @@ string CardDefinition::str(bool single_line, const TextSet* text_archive) const 
     }
   }
 
-  string en_name_s = this->en_name.decode();
+  std::string en_name_s = this->en_name.decode();
   if (single_line) {
-    string range_str = string_for_range(this->range);
     return std::format(
         "[Card: {:04X} name={} type={} usable_condition={} rank={} "
         "cost={} target={} range={} assist_turns={} cannot_move={} "
@@ -1030,15 +1022,15 @@ string CardDefinition::str(bool single_line, const TextSet* text_archive) const 
         rank_str,
         cost_str,
         target_mode_str,
-        range_str,
+        string_for_range(this->range),
         assist_turns_str,
         this->cannot_move ? "true" : "false",
         this->cannot_attack ? "true" : "false",
         this->cannot_drop ? "true" : "false",
-        hp_str,
-        ap_str,
-        tp_str,
-        mv_str,
+        this->hp.str(),
+        this->ap.str(),
+        this->tp.str(),
+        this->mv.str(),
         left_str,
         right_str,
         top_str,
@@ -1051,7 +1043,7 @@ string CardDefinition::str(bool single_line, const TextSet* text_archive) const 
         effects_str);
 
   } else { // Not single-line
-    string range_str;
+    std::string range_str;
     if (this->range[0] == 0x000FFFFF) {
       range_str = " (entire field)";
     } else {
@@ -1067,10 +1059,10 @@ string CardDefinition::str(bool single_line, const TextSet* text_archive) const 
         }
       }
     }
-    string jp_name_s = this->jp_name.decode();
-    string en_name_short_s = this->en_short_name.decode();
-    string jp_name_short_s = this->jp_short_name.decode();
-    string names_str;
+    std::string jp_name_s = this->jp_name.decode();
+    std::string en_name_short_s = this->en_short_name.decode();
+    std::string jp_name_short_s = this->jp_short_name.decode();
+    std::string names_str;
     if (!en_name_s.empty()) {
       names_str += std::format(" EN: \"{}\"", en_name_s);
       if (!en_name_short_s.empty() && en_name_short_s != en_name_s) {
@@ -1117,10 +1109,10 @@ Card: {:04X}{}\n\
         assist_turns_str,
         this->cannot_move ? "cannot" : "can",
         this->cannot_attack ? "cannot" : "can",
-        hp_str,
-        ap_str,
-        tp_str,
-        mv_str,
+        this->hp.str(),
+        this->ap.str(),
+        this->tp.str(),
+        this->mv.str(),
         left_str,
         right_str,
         top_str,
@@ -1411,12 +1403,12 @@ void Rules::clear() {
   this->unused.clear(0);
 }
 
-pair<uint8_t, uint8_t> Rules::atk_dice_range(bool is_1p_2v1) const {
-  pair<uint8_t, uint8_t> ret;
+std::pair<uint8_t, uint8_t> Rules::atk_dice_range(bool is_1p_2v1) const {
+  std::pair<uint8_t, uint8_t> ret;
   if (is_1p_2v1 && this->atk_dice_value_range_2v1 && (this->atk_dice_value_range_2v1 != 0xFF)) {
-    ret = make_pair((this->atk_dice_value_range_2v1 >> 4) & 0x0F, this->atk_dice_value_range_2v1 & 0x0F);
+    ret = std::make_pair((this->atk_dice_value_range_2v1 >> 4) & 0x0F, this->atk_dice_value_range_2v1 & 0x0F);
   } else {
-    ret = make_pair(this->min_dice_value, this->max_dice_value);
+    ret = std::make_pair(this->min_dice_value, this->max_dice_value);
   }
   if (ret.first == 0) {
     ret.first = 1;
@@ -1425,19 +1417,19 @@ pair<uint8_t, uint8_t> Rules::atk_dice_range(bool is_1p_2v1) const {
     ret.second = 6;
   }
   if (ret.first > ret.second) {
-    ret = make_pair(ret.second, ret.first);
+    ret = std::make_pair(ret.second, ret.first);
   }
   return ret;
 }
 
-pair<uint8_t, uint8_t> Rules::def_dice_range(bool is_1p_2v1) const {
-  pair<uint8_t, uint8_t> ret;
+std::pair<uint8_t, uint8_t> Rules::def_dice_range(bool is_1p_2v1) const {
+  std::pair<uint8_t, uint8_t> ret;
   if (is_1p_2v1 && this->def_dice_value_range_2v1 && (this->def_dice_value_range_2v1 != 0xFF)) {
-    ret = make_pair((this->def_dice_value_range_2v1 >> 4) & 0x0F, this->def_dice_value_range_2v1 & 0x0F);
+    ret = std::make_pair((this->def_dice_value_range_2v1 >> 4) & 0x0F, this->def_dice_value_range_2v1 & 0x0F);
   } else if (this->def_dice_value_range && (this->def_dice_value_range != 0xFF)) {
-    ret = make_pair((this->def_dice_value_range >> 4) & 0x0F, this->def_dice_value_range & 0x0F);
+    ret = std::make_pair((this->def_dice_value_range >> 4) & 0x0F, this->def_dice_value_range & 0x0F);
   } else {
-    ret = make_pair(this->min_dice_value, this->max_dice_value);
+    ret = std::make_pair(this->min_dice_value, this->max_dice_value);
   }
   if (ret.first == 0) {
     ret.first = 1;
@@ -1446,13 +1438,13 @@ pair<uint8_t, uint8_t> Rules::def_dice_range(bool is_1p_2v1) const {
     ret.second = 6;
   }
   if (ret.first > ret.second) {
-    ret = make_pair(ret.second, ret.first);
+    ret = std::make_pair(ret.second, ret.first);
   }
   return ret;
 }
 
-string Rules::str() const {
-  vector<string> tokens;
+std::string Rules::str() const {
+  std::vector<std::string> tokens;
 
   if (this->char_hp == 0xFF) {
     tokens.emplace_back("char_hp=(open)");
@@ -1479,8 +1471,8 @@ string Rules::str() const {
       break;
   }
 
-  auto format_dice_range = +[](std::pair<uint8_t, uint8_t> range) -> string {
-    string s = "[";
+  auto format_dice_range = +[](std::pair<uint8_t, uint8_t> range) -> std::string {
+    std::string s = "[";
     if (range.first == 0xFF) {
       s += "min=(open), ";
     } else if (range.first == 0x00) {
@@ -1497,7 +1489,7 @@ string Rules::str() const {
     }
     return s;
   };
-  tokens.emplace_back("dice_range=" + format_dice_range(make_pair(this->min_dice_value, this->max_dice_value)));
+  tokens.emplace_back("dice_range=" + format_dice_range(std::make_pair(this->min_dice_value, this->max_dice_value)));
   if (this->def_dice_value_range) {
     tokens.emplace_back("def_dice_range=" + format_dice_range(this->def_dice_range(false)));
   }
@@ -1527,7 +1519,7 @@ string Rules::str() const {
       break;
   }
 
-  auto str_for_disable_bool = +[](uint8_t v) -> string {
+  auto str_for_disable_bool = +[](uint8_t v) -> std::string {
     switch (v) {
       case 0x00:
         return "on";
@@ -1706,83 +1698,83 @@ void OverlayState::clear() {
 
 void MapDefinition::assert_semantically_equivalent(const MapDefinition& other) const {
   if (this->map_number != other.map_number) {
-    throw runtime_error("map number not equal");
+    throw std::runtime_error("map number not equal");
   }
   if (this->width != other.width) {
-    throw runtime_error("width not equal");
+    throw std::runtime_error("width not equal");
   }
   if (this->height != other.height) {
-    throw runtime_error("width not equal");
+    throw std::runtime_error("width not equal");
   }
   if (this->environment_number != other.environment_number) {
-    throw runtime_error("environment number not equal");
+    throw std::runtime_error("environment number not equal");
   }
   if (this->map_tiles != other.map_tiles) {
-    throw runtime_error("tiles not equal");
+    throw std::runtime_error("tiles not equal");
   }
   if (this->start_tile_definitions != other.start_tile_definitions) {
-    throw runtime_error("start tile definitions not equal");
+    throw std::runtime_error("start tile definitions not equal");
   }
   if (this->overlay_state.tiles != other.overlay_state.tiles) {
-    throw runtime_error("modification tiles not equal");
+    throw std::runtime_error("modification tiles not equal");
   }
   if (this->default_rules != other.default_rules) {
-    throw runtime_error("default rules not equal");
+    throw std::runtime_error("default rules not equal");
   }
   for (size_t z = 0; z < this->npc_decks.size(); z++) {
     if (this->npc_decks[z].card_ids != other.npc_decks[z].card_ids) {
-      throw runtime_error("npc deck card IDs not equal");
+      throw std::runtime_error("npc deck card IDs not equal");
     }
     const auto& this_ai_params = this->npc_ai_params[z];
     const auto& other_ai_params = other.npc_ai_params[z];
     if (this_ai_params.unknown_a1 != other_ai_params.unknown_a1) {
-      throw runtime_error("npc AI params unknown_a1 not equal");
+      throw std::runtime_error("npc AI params unknown_a1 not equal");
     }
     if (this_ai_params.is_arkz != other_ai_params.is_arkz) {
-      throw runtime_error("npc AI params is_arkz not equal");
+      throw std::runtime_error("npc AI params is_arkz not equal");
     }
     if (this_ai_params.unknown_a2 != other_ai_params.unknown_a2) {
-      throw runtime_error("npc AI params unknown_a2 not equal");
+      throw std::runtime_error("npc AI params unknown_a2 not equal");
     }
     if (this_ai_params.params != other_ai_params.params) {
-      throw runtime_error("npc AI params not equal");
+      throw std::runtime_error("npc AI params not equal");
     }
   }
   if (this->unknown_a7 != other.unknown_a7) {
-    throw runtime_error("unknown_a7 not equal");
+    throw std::runtime_error("unknown_a7 not equal");
   }
   if (this->npc_ai_params_entry_index != other.npc_ai_params_entry_index) {
-    throw runtime_error("npc AI params entry indexes not equal");
+    throw std::runtime_error("npc AI params entry indexes not equal");
   }
   if (this->reward_card_ids != other.reward_card_ids) {
-    throw runtime_error("reward card IDs not equal");
+    throw std::runtime_error("reward card IDs not equal");
   }
   if (this->win_level_override != other.win_level_override) {
-    throw runtime_error("win level override not equal");
+    throw std::runtime_error("win level override not equal");
   }
   if (this->loss_level_override != other.loss_level_override) {
-    throw runtime_error("loss level override not equal");
+    throw std::runtime_error("loss level override not equal");
   }
   if (this->field_offset_x != other.field_offset_x) {
-    throw runtime_error("field x offset not equal");
+    throw std::runtime_error("field x offset not equal");
   }
   if (this->field_offset_y != other.field_offset_y) {
-    throw runtime_error("field y offset not equal");
+    throw std::runtime_error("field y offset not equal");
   }
   if (this->map_category != other.map_category) {
-    throw runtime_error("map category not equal");
+    throw std::runtime_error("map category not equal");
   }
   if (this->cyber_block_type != other.cyber_block_type) {
-    throw runtime_error("cyber block type not equal");
+    throw std::runtime_error("cyber block type not equal");
   }
   if (this->unknown_a11 != other.unknown_a11) {
-    throw runtime_error("unknown_a11 not equal");
+    throw std::runtime_error("unknown_a11 not equal");
   }
   if (this->unavailable_sc_cards != other.unavailable_sc_cards) {
-    throw runtime_error("unavailable SC cards not equal");
+    throw std::runtime_error("unavailable SC cards not equal");
   }
   if (this->entry_states != other.entry_states) {
-    throw runtime_error("entry states not equal");
+    throw std::runtime_error("entry states not equal");
   }
 }
 
@@ -1871,7 +1863,7 @@ phosg::JSON MapDefinition::EntryState::json() const {
   return phosg::JSON::dict({{"PlayerType", std::move(player_type_json)}, {"DeckType", std::move(deck_type_json)}});
 }
 
-string MapDefinition::CameraSpec::str() const {
+std::string MapDefinition::CameraSpec::str() const {
   return std::format(
       "CameraSpec[a1=({:g} {:g} {:g} {:g} {:g} {:g} {:g} {:g} {:g}) camera=({:g} {:g} {:g}) focus=({:g} {:g} {:g}) a2=({:g} {:g} {:g})]",
       this->unknown_a1[0], this->unknown_a1[1], this->unknown_a1[2], this->unknown_a1[3], this->unknown_a1[4],
@@ -1886,7 +1878,7 @@ struct UnavailableSCCardDefinition {
   const char* internal_name;
 };
 
-static const array<UnavailableSCCardDefinition, 0x2A> unavailable_sc_card_defs = {
+static const std::array<UnavailableSCCardDefinition, 0x2A> unavailable_sc_card_defs = {
     UnavailableSCCardDefinition{0x00, 0x0005, "Guykild"},
     UnavailableSCCardDefinition{0x01, 0x0006, "Kylria"},
     UnavailableSCCardDefinition{0x02, 0x0110, "Saligun"},
@@ -1931,11 +1923,11 @@ static const array<UnavailableSCCardDefinition, 0x2A> unavailable_sc_card_defs =
     UnavailableSCCardDefinition{0x29, 0x02BF, "POLLUX_USR"},
 };
 
-string MapDefinition::str(const CardIndex* card_index, Language language) const {
-  deque<string> lines;
+std::string MapDefinition::str(const CardIndex* card_index, Language language) const {
+  std::deque<std::string> lines;
   auto add_map = [&](const parray<parray<uint8_t, 0x10>, 0x10>& tiles) {
     for (size_t y = 0; y < this->height; y++) {
-      string line = "   ";
+      std::string line = "   ";
       for (size_t x = 0; x < this->width; x++) {
         line += std::format(" {:02X}", tiles[y][x]);
       }
@@ -1965,8 +1957,7 @@ string MapDefinition::str(const CardIndex* card_index, Language language) const 
   }
   for (size_t w = 0; w < 3; w++) {
     for (size_t z = 0; z < 2; z++) {
-      string spec_str = this->overview_specs[w][z].str();
-      lines.emplace_back(std::format("  overview_specs[{}][team {}]: {}", w, z, spec_str));
+      lines.emplace_back(std::format("  overview_specs[{}][team {}]: {}", w, z, this->overview_specs[w][z].str()));
     }
   }
   lines.emplace_back("  overlay tiles:");
@@ -2028,16 +2019,16 @@ string MapDefinition::str(const CardIndex* card_index, Language language) const 
     lines.emplace_back("    name: " + this->npc_decks[z].deck_name.decode(language));
     for (size_t w = 0; w < 0x20; w++) {
       uint16_t card_id = this->npc_decks[z].card_ids[w];
-      shared_ptr<const CardIndex::CardEntry> entry;
+      std::shared_ptr<const CardIndex::CardEntry> entry;
       if (card_index) {
         try {
           entry = card_index->definition_for_id(card_id);
-        } catch (const out_of_range&) {
+        } catch (const std::out_of_range&) {
         }
       }
       if (entry) {
-        string name = entry->def.en_name.decode(language);
-        lines.emplace_back(std::format("    cards[{:02}]: #{:04X} ({})", w, card_id, name));
+        lines.emplace_back(std::format("    cards[{:02}]: #{:04X} ({})",
+            w, card_id, entry->def.en_name.decode(language)));
       } else {
         lines.emplace_back(std::format("    cards[{:02}]: #{:04X}", w, card_id));
       }
@@ -2051,8 +2042,7 @@ string MapDefinition::str(const CardIndex* card_index, Language language) const 
           z, x, set.when, set.percent_chance));
       for (size_t w = 0; w < 4; w++) {
         if (!set.strings[w].empty() && set.strings[w].at(0) != 0xFF) {
-          string s = set.strings[w].decode(language);
-          lines.emplace_back(std::format("    strings[{}]: {}", w, s));
+          lines.emplace_back(std::format("    strings[{}]: {}", w, set.strings[w].decode(language)));
         }
       }
     }
@@ -2071,16 +2061,16 @@ string MapDefinition::str(const CardIndex* card_index, Language language) const 
   }
   for (size_t z = 0; z < 0x10; z++) {
     uint16_t card_id = this->reward_card_ids[z];
-    shared_ptr<const CardIndex::CardEntry> entry;
+    std::shared_ptr<const CardIndex::CardEntry> entry;
     if (card_index) {
       try {
         entry = card_index->definition_for_id(card_id);
-      } catch (const out_of_range&) {
+      } catch (const std::out_of_range&) {
       }
     }
     if (entry) {
-      string name = entry->def.en_name.decode(language);
-      lines.emplace_back(std::format("  reward_cards[{:02}]: #{:04X} ({})", z, card_id, name));
+      lines.emplace_back(std::format("  reward_cards[{:02}]: #{:04X} ({})",
+          z, card_id, entry->def.en_name.decode(language)));
     } else {
       lines.emplace_back(std::format("  reward_cards[{:02}]: #{:04X}", z, card_id));
     }
@@ -2091,7 +2081,7 @@ string MapDefinition::str(const CardIndex* card_index, Language language) const 
   lines.emplace_back(std::format("  map_category: {:02X}", this->map_category));
   lines.emplace_back(std::format("  cyber_block_type: {:02X}", this->cyber_block_type));
   lines.emplace_back(std::format("  a11: {:04X}", this->unknown_a11));
-  string unavailable_sc_cards = "  unavailable_sc_cards: [";
+  std::string unavailable_sc_cards = "  unavailable_sc_cards: [";
   for (size_t z = 0; z < 0x18; z++) {
     if (this->unavailable_sc_cards[z] == 0xFFFF) {
       continue;
@@ -2109,7 +2099,7 @@ string MapDefinition::str(const CardIndex* card_index, Language language) const 
   unavailable_sc_cards += ']';
   lines.emplace_back(std::move(unavailable_sc_cards));
   for (size_t z = 0; z < 4; z++) {
-    string player_type;
+    std::string player_type;
     switch (this->entry_states[z].player_type) {
       case 0x00:
         player_type = "Player";
@@ -2133,7 +2123,7 @@ string MapDefinition::str(const CardIndex* card_index, Language language) const 
         player_type = std::format("({:02X})", this->entry_states[z].player_type);
         break;
     }
-    string deck_type;
+    std::string deck_type;
     switch (this->entry_states[z].deck_type) {
       case 0x00:
         deck_type = "HERO ONLY";
@@ -2181,7 +2171,7 @@ phosg::JSON MapDefinition::json(Language language) const {
   });
 
   // Note: All typos/errors here are from AIPrm.dat
-  static const array<string, 30> default_ai_names = {
+  static const std::array<std::string, 30> default_ai_names = {
       "Sample_Hunter", "Glustar", "Guykild", "Inolis", "Kilia", "Kranz", "Orland", "Relmitos", "Saligun", "Silfer",
       "Sample_Hunter", "Teifu", "Viviana", "Sample_Dark", "Break", "Creinu", "Endu", "Heiz", "KC", "Lura",
       "memoru", "Ohgun", "Peko", "Reiz", "Rio", "Rufina", "LKnight", "Boss_Castor", "Boss_Pollux", "Sample_Dark"};
@@ -2419,7 +2409,7 @@ MapDefinitionTrial::operator MapDefinition() const {
       ret.entry_states[3].player_type = 0x03;
       break;
     default: // Should be impossible
-      throw logic_error("too many NPC decks in trial map definition");
+      throw std::logic_error("too many NPC decks in trial map definition");
   }
   return ret;
 }
@@ -2525,16 +2515,16 @@ bool Rules::check_and_reset_invalid_fields() {
 }
 
 CardIndex::CardIndex(
-    const string& filename,
-    const string& decompressed_filename,
-    const string& text_filename,
-    const string& decompressed_text_filename,
-    const string& dice_text_filename,
-    const string& decompressed_dice_text_filename) {
-  unordered_map<uint32_t, vector<string>> card_tags;
-  unordered_map<uint32_t, string> card_text;
+    const std::string& filename,
+    const std::string& decompressed_filename,
+    const std::string& text_filename,
+    const std::string& decompressed_text_filename,
+    const std::string& dice_text_filename,
+    const std::string& decompressed_dice_text_filename) {
+  std::unordered_map<uint32_t, std::vector<std::string>> card_tags;
+  std::unordered_map<uint32_t, std::string> card_text;
   try {
-    string text_bin_data;
+    std::string text_bin_data;
     if (!decompressed_text_filename.empty() && std::filesystem::is_regular_file(decompressed_text_filename)) {
       text_bin_data = phosg::load_file(decompressed_text_filename);
     } else if (!text_filename.empty() && std::filesystem::is_regular_file(text_filename)) {
@@ -2544,7 +2534,7 @@ CardIndex::CardIndex(
       phosg::StringReader r(text_bin_data);
 
       while (!r.eof()) {
-        string card_id_str = r.get_cstr();
+        std::string card_id_str = r.get_cstr();
         if (card_id_str.empty() || (static_cast<uint8_t>(card_id_str[0]) == 0xFF)) {
           break;
         }
@@ -2552,10 +2542,10 @@ CardIndex::CardIndex(
         uint32_t card_id = stoul(card_id_str);
 
         // Read all pages for this card
-        string text;
-        string first_page;
+        std::string text;
+        std::string first_page;
         for (;;) {
-          string line = r.get_cstr();
+          std::string line = r.get_cstr();
           if (line.empty()) {
             break;
           }
@@ -2567,7 +2557,7 @@ CardIndex::CardIndex(
         }
 
         // In orig_text, turn all \t into $ (following newserv conventions)
-        string orig_text = text;
+        std::string orig_text = text;
         for (char& ch : orig_text) {
           if (ch == '\t') {
             ch = '$';
@@ -2576,13 +2566,13 @@ CardIndex::CardIndex(
 
         // Preprocess first page: first, delete all color markers
         size_t offset = first_page.find("\tC");
-        while (offset != string::npos) {
+        while (offset != std::string::npos) {
           first_page = first_page.substr(0, offset) + first_page.substr(offset + 3);
           offset = first_page.find("\tC");
         }
         // Preprocess first page: delete all lines that don't start with \t
         offset = first_page.find('\t');
-        if (offset == string::npos) {
+        if (offset == std::string::npos) {
           first_page.clear();
         } else {
           first_page = first_page.substr(offset);
@@ -2596,17 +2586,17 @@ CardIndex::CardIndex(
         }
 
         // Split first page into tags, and collapse whitespace in the tag names
-        vector<string> tags;
+        std::vector<std::string> tags;
         auto lines = phosg::split(first_page, '\n');
         for (const auto& line : lines) {
-          string tag;
+          std::string tag;
           if (line[0] == '\t' && line[1] == 'D') {
             tag = "D: " + line.substr(2);
           } else if (line[0] == '\t' && line[1] == 'S') {
             tag = "S: " + line.substr(2);
           }
           if (!tag.empty()) {
-            for (size_t offset = tag.find("  "); offset != string::npos; offset = tag.find("  ")) {
+            for (size_t offset = tag.find("  "); offset != std::string::npos; offset = tag.find("  ")) {
               tag = tag.substr(0, offset) + tag.substr(offset + 1);
             }
             tags.emplace_back(std::move(tag));
@@ -2615,22 +2605,22 @@ CardIndex::CardIndex(
         phosg::strip_leading_whitespace(orig_text);
 
         if (!card_text.emplace(card_id, std::move(orig_text)).second) {
-          throw runtime_error("duplicate card text id");
+          throw std::runtime_error("duplicate card text id");
         }
         if (!card_tags.emplace(card_id, std::move(tags)).second) {
-          throw logic_error("duplicate card tags id");
+          throw std::logic_error("duplicate card tags id");
         }
 
         r.go((r.where() + 0x3FF) & (~0x3FF));
       }
     }
-  } catch (const exception& e) {
+  } catch (const std::exception& e) {
     static_game_data_log.warning_f("Failed to load card text: {}", e.what());
   }
 
-  unordered_map<uint32_t, pair<string, string>> card_dice_text;
+  std::unordered_map<uint32_t, std::pair<std::string, std::string>> card_dice_text;
   try {
-    string text_bin_data;
+    std::string text_bin_data;
     if (!decompressed_dice_text_filename.empty() && std::filesystem::is_regular_file(decompressed_dice_text_filename)) {
       text_bin_data = phosg::load_file(decompressed_dice_text_filename);
     } else if (!dice_text_filename.empty() && std::filesystem::is_regular_file(dice_text_filename)) {
@@ -2641,19 +2631,19 @@ CardIndex::CardIndex(
 
       while (!r.eof()) {
         uint32_t card_id = r.get_u32l();
-        string dice_caption = r.read(0xFE);
-        string dice_text = r.read(0xFE);
+        std::string dice_caption = r.read(0xFE);
+        std::string dice_text = r.read(0xFE);
         phosg::strip_trailing_zeroes(dice_caption);
         phosg::strip_trailing_zeroes(dice_text);
         card_dice_text.emplace(card_id, make_pair(std::move(dice_caption), std::move(dice_text)));
       }
     }
-  } catch (const exception& e) {
+  } catch (const std::exception& e) {
     static_game_data_log.warning_f("Failed to load card dice text: {}", e.what());
   }
 
   try {
-    string decompressed_data;
+    std::string decompressed_data;
     try {
       decompressed_data = phosg::load_file(decompressed_filename);
       this->compressed_card_definitions.clear();
@@ -2664,7 +2654,7 @@ CardIndex::CardIndex(
 
     // The client can't handle files larger than this
     if (decompressed_data.size() > 0x36EC0) {
-      throw runtime_error("decompressed card list data is too long");
+      throw std::runtime_error("decompressed card list data is too long");
     }
     this->defs_hash = phosg::fnv1a64(decompressed_data);
 
@@ -2675,7 +2665,7 @@ CardIndex::CardIndex(
     uint32_t offset = r.pget_u32b(footer.root_offset);
     uint32_t count = r.pget_u32b(footer.root_offset + 4);
     if (offset > decompressed_data.size() || ((offset + count * sizeof(CardDefinition)) > decompressed_data.size())) {
-      throw runtime_error("definitions array reference out of bounds");
+      throw std::runtime_error("definitions array reference out of bounds");
     }
     CardDefinition* defs = reinterpret_cast<CardDefinition*>(decompressed_data.data() + offset);
     for (size_t x = 0; x < count; x++) {
@@ -2688,14 +2678,14 @@ CardIndex::CardIndex(
         continue;
       }
 
-      auto entry = make_shared<CardEntry>(CardEntry{def, "", "", "", {}});
+      auto entry = std::make_shared<CardEntry>(CardEntry{def, "", "", "", {}});
       if (!this->card_definitions.emplace(entry->def.card_id, entry).second) {
-        throw runtime_error(std::format("duplicate card id: {:08X}", entry->def.card_id));
+        throw std::runtime_error(std::format("duplicate card id: {:08X}", entry->def.card_id));
       }
 
       // Some cards intentionally have the same name, so we just leave them
       // unindexed (they can still be looked up by ID, of course)
-      string name = entry->def.en_name.decode(Language::ENGLISH);
+      std::string name = entry->def.en_name.decode(Language::ENGLISH);
       this->card_definitions_by_name.emplace(name, entry);
       this->card_definitions_by_name_normalized.emplace(this->normalize_card_name(name), entry);
 
@@ -2708,11 +2698,11 @@ CardIndex::CardIndex(
       if (!text_filename.empty() || !decompressed_text_filename.empty()) {
         try {
           entry->text = std::move(card_text.at(def.card_id));
-        } catch (const out_of_range&) {
+        } catch (const std::out_of_range&) {
         }
         try {
           entry->debug_tags = std::move(card_tags.at(def.card_id));
-        } catch (const out_of_range&) {
+        } catch (const std::out_of_range&) {
         }
       }
       if (!dice_text_filename.empty() || !decompressed_dice_text_filename.empty()) {
@@ -2720,7 +2710,7 @@ CardIndex::CardIndex(
           auto& dice_text_it = card_dice_text.at(def.card_id);
           entry->dice_caption = std::move(dice_text_it.first);
           entry->dice_text = std::move(dice_text_it.second);
-        } catch (const out_of_range&) {
+        } catch (const std::out_of_range&) {
         }
       }
     }
@@ -2753,36 +2743,36 @@ CardIndex::CardIndex(
     }
 
     if (this->compressed_card_definitions.size() > 0x7BF8) {
-      throw runtime_error("compressed card list data is too long");
+      throw std::runtime_error("compressed card list data is too long");
     }
 
     static_game_data_log.info_f("Indexed {} Episode 3 card definitions", this->card_definitions.size());
-  } catch (const exception& e) {
+  } catch (const std::exception& e) {
     static_game_data_log.warning_f("Failed to load Episode 3 card update: {}", e.what());
   }
 }
 
-const string& CardIndex::get_compressed_definitions() const {
+const std::string& CardIndex::get_compressed_definitions() const {
   if (this->compressed_card_definitions.empty()) {
-    throw runtime_error("card definitions are not available");
+    throw std::runtime_error("card definitions are not available");
   }
   return this->compressed_card_definitions;
 }
 
-shared_ptr<const CardIndex::CardEntry> CardIndex::definition_for_id(uint32_t id) const {
+std::shared_ptr<const CardIndex::CardEntry> CardIndex::definition_for_id(uint32_t id) const {
   return this->card_definitions.at(id);
 }
 
-shared_ptr<const CardIndex::CardEntry> CardIndex::definition_for_name(const string& name) const {
+std::shared_ptr<const CardIndex::CardEntry> CardIndex::definition_for_name(const std::string& name) const {
   return this->card_definitions_by_name.at(name);
 }
 
-shared_ptr<const CardIndex::CardEntry> CardIndex::definition_for_name_normalized(const string& name) const {
+std::shared_ptr<const CardIndex::CardEntry> CardIndex::definition_for_name_normalized(const std::string& name) const {
   return this->card_definitions_by_name_normalized.at(this->normalize_card_name(name));
 }
 
-set<uint32_t> CardIndex::all_ids() const {
-  set<uint32_t> ret;
+std::set<uint32_t> CardIndex::all_ids() const {
+  std::set<uint32_t> ret;
   for (const auto& it : this->card_definitions) {
     ret.emplace(it.first);
   }
@@ -2801,8 +2791,8 @@ phosg::JSON CardIndex::definitions_json() const {
   return ret;
 }
 
-string CardIndex::normalize_card_name(const string& name) {
-  string ret;
+std::string CardIndex::normalize_card_name(const std::string& name) {
+  std::string ret;
   for (char ch : name) {
     if (ch == ' ') {
       continue;
@@ -2812,28 +2802,27 @@ string CardIndex::normalize_card_name(const string& name) {
   return ret;
 }
 
-MapIndex::VersionedMap::VersionedMap(shared_ptr<const MapDefinition> map, Language language)
+MapIndex::VersionedMap::VersionedMap(std::shared_ptr<const MapDefinition> map, Language language)
     : map(map),
       language(language) {}
 
 MapIndex::VersionedMap::VersionedMap(std::string&& compressed_data, Language language)
-    : language(language),
-      compressed_data(make_shared<string>(std::move(compressed_data))) {
-  string decompressed = prs_decompress(*this->compressed_data);
+    : language(language), compressed_data(std::make_shared<std::string>(std::move(compressed_data))) {
+  std::string decompressed = prs_decompress(*this->compressed_data);
   if (decompressed.size() == sizeof(MapDefinitionTrial)) {
-    this->map = make_shared<MapDefinition>(*reinterpret_cast<const MapDefinitionTrial*>(decompressed.data()));
+    this->map = std::make_shared<MapDefinition>(*reinterpret_cast<const MapDefinitionTrial*>(decompressed.data()));
   } else if (decompressed.size() == sizeof(MapDefinition)) {
-    this->map = make_shared<MapDefinition>(*reinterpret_cast<const MapDefinition*>(decompressed.data()));
+    this->map = std::make_shared<MapDefinition>(*reinterpret_cast<const MapDefinition*>(decompressed.data()));
   } else {
-    throw runtime_error(std::format(
+    throw std::runtime_error(std::format(
         "decompressed data size is incorrect (expected {} bytes, read {} bytes)",
         sizeof(MapDefinition), decompressed.size()));
   }
 }
 
-shared_ptr<const MapDefinitionTrial> MapIndex::VersionedMap::trial() const {
+std::shared_ptr<const MapDefinitionTrial> MapIndex::VersionedMap::trial() const {
   if (!this->trial_map) {
-    this->trial_map = make_shared<MapDefinitionTrial>(*this->map);
+    this->trial_map = std::make_shared<MapDefinitionTrial>(*this->map);
   }
   return this->trial_map;
 }
@@ -2842,12 +2831,12 @@ std::shared_ptr<const std::string> MapIndex::VersionedMap::compressed(bool trial
   if (trial) {
     if (!this->compressed_data_trial) {
       auto md = this->trial();
-      this->compressed_data_trial = make_shared<string>(prs_compress(md.get(), sizeof(*md)));
+      this->compressed_data_trial = std::make_shared<std::string>(prs_compress(md.get(), sizeof(*md)));
     }
     return this->compressed_data_trial;
   } else {
     if (!this->compressed_data) {
-      this->compressed_data = make_shared<string>(prs_compress(this->map.get(), sizeof(*this->map)));
+      this->compressed_data = std::make_shared<std::string>(prs_compress(this->map.get(), sizeof(*this->map)));
     }
     return this->compressed_data;
   }
@@ -2857,12 +2846,12 @@ std::shared_ptr<const std::string> MapIndex::VersionedMap::trial_download() cons
   if (!this->download_data_trial) {
     MapDefinitionTrial trial_map = *this->map;
     trial_map.tag = 0x96;
-    this->download_data_trial = make_shared<string>(prs_compress(&trial_map, sizeof(trial_map)));
+    this->download_data_trial = std::make_shared<std::string>(prs_compress(&trial_map, sizeof(trial_map)));
   }
   return this->download_data_trial;
 }
 
-MapIndex::Map::Map(shared_ptr<const VersionedMap> initial_version, uint8_t visibility_flags)
+MapIndex::Map::Map(std::shared_ptr<const VersionedMap> initial_version, uint8_t visibility_flags)
     : map_number(initial_version->map->map_number),
       visibility_flags(visibility_flags),
       initial_version(initial_version) {
@@ -2877,7 +2866,7 @@ void MapIndex::Map::add_version(std::shared_ptr<const VersionedMap> vm) {
     this->versions.resize(lang_index + 1);
   }
   if (this->versions[lang_index]) {
-    throw runtime_error("map version already exists");
+    throw std::runtime_error("map version already exists");
   }
   this->initial_version->map->assert_semantically_equivalent(*vm->map);
   this->versions[lang_index] = vm;
@@ -2888,7 +2877,7 @@ bool MapIndex::Map::has_version(Language language) const {
   return (this->versions.size() > lang_index) && !!this->versions[lang_index];
 }
 
-shared_ptr<const MapIndex::VersionedMap> MapIndex::Map::version(Language language) const {
+std::shared_ptr<const MapIndex::VersionedMap> MapIndex::Map::version(Language language) const {
   size_t lang_index = static_cast<size_t>(language);
 
   // If the requested language exists, return it
@@ -2908,7 +2897,7 @@ shared_ptr<const MapIndex::VersionedMap> MapIndex::Map::version(Language languag
   }
   // This should never happen because Map cannot be constructed without an
   // initial_version
-  throw logic_error("no map versions exist");
+  throw std::logic_error("no map versions exist");
 }
 
 MapIndex::Category::Category(uint32_t category_id, const phosg::JSON& json)
@@ -2917,17 +2906,17 @@ MapIndex::Category::Category(uint32_t category_id, const phosg::JSON& json)
       name(json.get_string("Name", "")),
       description(json.get_string("Description", "")) {}
 
-MapIndex::MapIndex(const string& directory, bool raise_on_any_failure) {
-  map<uint32_t, shared_ptr<Map>> mutable_maps;
+MapIndex::MapIndex(const std::string& directory, bool raise_on_any_failure) {
+  std::map<uint32_t, std::shared_ptr<Map>> mutable_maps;
 
   auto try_add_map_file = [&](std::shared_ptr<Category> category, const std::string& file_path) -> void {
     try {
-      string filename = phosg::basename(file_path);
-      string base_filename;
-      string compressed_data;
-      shared_ptr<MapDefinition> decompressed_data;
+      std::string filename = phosg::basename(file_path);
+      std::string base_filename;
+      std::string compressed_data;
+      std::shared_ptr<MapDefinition> decompressed_data;
       if (filename.ends_with(".mnmd") || filename.ends_with(".bind")) {
-        decompressed_data = make_shared<MapDefinition>(phosg::load_object_file<MapDefinition>(file_path));
+        decompressed_data = std::make_shared<MapDefinition>(phosg::load_object_file<MapDefinition>(file_path));
         base_filename = filename.substr(0, filename.size() - 5);
       } else if (filename.ends_with(".mnm") || filename.ends_with(".bin")) {
         compressed_data = phosg::load_file(file_path);
@@ -2955,31 +2944,31 @@ MapIndex::MapIndex(const string& directory, bool raise_on_any_failure) {
       }
 
       if (base_filename.size() < 2) {
-        throw runtime_error("filename too short for language code");
+        throw std::runtime_error("filename too short for language code");
       }
       if (base_filename[base_filename.size() - 2] != '-') {
-        throw runtime_error("language code not present");
+        throw std::runtime_error("language code not present");
       }
       Language language = language_for_char(base_filename[base_filename.size() - 1]);
 
-      shared_ptr<VersionedMap> vm;
+      std::shared_ptr<VersionedMap> vm;
       if (decompressed_data) {
-        vm = make_shared<VersionedMap>(decompressed_data, language);
+        vm = std::make_shared<VersionedMap>(decompressed_data, language);
       } else if (!compressed_data.empty()) {
-        vm = make_shared<VersionedMap>(std::move(compressed_data), language);
+        vm = std::make_shared<VersionedMap>(std::move(compressed_data), language);
       } else {
-        throw runtime_error("unknown map file format");
+        throw std::runtime_error("unknown map file format");
       }
 
       uint8_t visibility_flags = category ? category->visibility_flags : 0x00;
 
-      string name = vm->map->name.decode(vm->language);
+      std::string name = vm->map->name.decode(vm->language);
       auto map_it = mutable_maps.find(vm->map->map_number);
       if (map_it == mutable_maps.end()) {
-        map_it = mutable_maps.emplace(vm->map->map_number, make_shared<Map>(vm, visibility_flags)).first;
+        map_it = mutable_maps.emplace(vm->map->map_number, std::make_shared<Map>(vm, visibility_flags)).first;
         this->maps.emplace(vm->map->map_number, map_it->second);
 
-        string in_category_str;
+        std::string in_category_str;
         if (category) {
           in_category_str = std::format(" in category {}", category->name);
           category->add_map(map_it->second);
@@ -3007,7 +2996,7 @@ MapIndex::MapIndex(const string& directory, bool raise_on_any_failure) {
       }
       this->maps_by_name.emplace(vm->map->name.decode(vm->language), map_it->second);
 
-    } catch (const exception& e) {
+    } catch (const std::exception& e) {
       if (raise_on_any_failure) {
         throw;
       }
@@ -3025,15 +3014,15 @@ MapIndex::MapIndex(const string& directory, bool raise_on_any_failure) {
   sort(cat_items.begin(), cat_items.end(), sort_fn);
 
   for (const auto& cat_item : cat_items) {
-    string cat_dir_path = cat_item.path().string();
+    std::string cat_dir_path = cat_item.path().string();
 
     if (cat_item.is_directory()) {
-      shared_ptr<Category> category;
+      std::shared_ptr<Category> category;
       try {
-        string json_filename = std::format("{}/{}", cat_item.path().string(), "category.json");
+        std::string json_filename = std::format("{}/{}", cat_item.path().string(), "category.json");
         auto category_json = phosg::JSON::parse(phosg::load_file(json_filename));
         uint32_t category_id = this->categories.size() + 1;
-        auto category = make_shared<Category>(category_id, category_json);
+        auto category = std::make_shared<Category>(category_id, category_json);
         this->categories.emplace(category_id, category);
         static_game_data_log.debug_f("({}) Created Episode 3 map category {:08X} ({})",
             cat_item.path().filename().string(), category_id, category->name);
@@ -3042,7 +3031,7 @@ MapIndex::MapIndex(const string& directory, bool raise_on_any_failure) {
           try_add_map_file(category, map_item.path().string());
         }
 
-      } catch (const exception& e) {
+      } catch (const std::exception& e) {
         if (raise_on_any_failure) {
           throw;
         }
@@ -3055,12 +3044,12 @@ MapIndex::MapIndex(const string& directory, bool raise_on_any_failure) {
   }
 }
 
-const string& MapIndex::get_compressed_list(size_t num_players, Language language, bool is_trial) const {
+const std::string& MapIndex::get_compressed_list(size_t num_players, Language language, bool is_trial) const {
   if (num_players == 0) {
-    throw runtime_error("cannot generate map list for no players");
+    throw std::runtime_error("cannot generate map list for no players");
   }
   if (num_players > 4) {
-    throw logic_error("player count is too high in map list generation");
+    throw std::logic_error("player count is too high in map list generation");
   }
 
   auto& compressed_lists = is_trial ? this->compressed_map_lists_trial : this->compressed_map_lists_final;
@@ -3069,7 +3058,7 @@ const string& MapIndex::get_compressed_list(size_t num_players, Language languag
   if (lang_index >= compressed_lists.size()) {
     compressed_lists.resize(lang_index + 1);
   }
-  string& compressed_map_list = compressed_lists[lang_index].at(num_players - 1);
+  std::string& compressed_map_list = compressed_lists[lang_index].at(num_players - 1);
   if (compressed_map_list.empty()) {
     phosg::StringWriter entries_w;
     phosg::StringWriter strings_w;
@@ -3140,7 +3129,7 @@ const string& MapIndex::get_compressed_list(size_t num_players, Language languag
     compressed_w.write(prs.close());
     compressed_map_list = std::move(compressed_w.str());
     if (compressed_map_list.size() > 0x7BEC) {
-      throw runtime_error(std::format("compressed {} map list for {} players is too large (0x{:X} bytes)",
+      throw std::runtime_error(std::format("compressed {} map list for {} players is too large (0x{:X} bytes)",
           is_trial ? "trial" : "final", num_players, compressed_map_list.size()));
     }
     size_t decompressed_size = sizeof(header) + entries_w.size() + strings_w.size();
@@ -3151,11 +3140,11 @@ const string& MapIndex::get_compressed_list(size_t num_players, Language languag
   return compressed_map_list;
 }
 
-COMDeckIndex::COMDeckIndex(const string& filename) {
+COMDeckIndex::COMDeckIndex(const std::string& filename) {
   try {
     auto json = phosg::JSON::parse(phosg::load_file(filename));
     for (const auto& def_json : json.as_list()) {
-      auto& def = this->decks.emplace_back(make_shared<COMDeckDefinition>());
+      auto& def = this->decks.emplace_back(std::make_shared<COMDeckDefinition>());
       def->index = this->decks.size() - 1;
       def->player_name = def_json->at(0).as_string();
       def->deck_name = def_json->at(1).as_string();
@@ -3164,10 +3153,10 @@ COMDeckIndex::COMDeckIndex(const string& filename) {
         def->card_ids[z] = card_ids_json.at(z).as_int();
       }
       if (!this->decks_by_name.emplace(def->deck_name, def).second) {
-        throw runtime_error("duplicate COM deck name: " + def->deck_name);
+        throw std::runtime_error("duplicate COM deck name: " + def->deck_name);
       }
     }
-  } catch (const exception& e) {
+  } catch (const std::exception& e) {
     static_game_data_log.warning_f("Failed to load Episode 3 COM decks: {}", e.what());
   }
 }
@@ -3176,15 +3165,15 @@ size_t COMDeckIndex::num_decks() const {
   return this->decks.size();
 }
 
-shared_ptr<const COMDeckDefinition> COMDeckIndex::deck_for_index(size_t which) const {
+std::shared_ptr<const COMDeckDefinition> COMDeckIndex::deck_for_index(size_t which) const {
   return this->decks.at(which);
 }
 
-shared_ptr<const COMDeckDefinition> COMDeckIndex::deck_for_name(const string& which) const {
+std::shared_ptr<const COMDeckDefinition> COMDeckIndex::deck_for_name(const std::string& which) const {
   return this->decks_by_name.at(which);
 }
 
-shared_ptr<const COMDeckDefinition> COMDeckIndex::random_deck() const {
+std::shared_ptr<const COMDeckDefinition> COMDeckIndex::random_deck() const {
   return this->decks[phosg::random_object<size_t>() % this->decks.size()];
 }
 
@@ -3199,7 +3188,7 @@ Episode3::HPType phosg::enum_for_name<Episode3::HPType>(const char* name) {
   } else if (!strcmp(name, "COMMON_HP")) {
     return Episode3::HPType::COMMON_HP;
   } else {
-    throw out_of_range("invalid HP type name");
+    throw std::out_of_range("invalid HP type name");
   }
 }
 
@@ -3213,7 +3202,7 @@ const char* phosg::name_for_enum<Episode3::HPType>(Episode3::HPType hp_type) {
     case Episode3::HPType::COMMON_HP:
       return "COMMON_HP";
     default:
-      throw out_of_range("invalid HP type");
+      throw std::out_of_range("invalid HP type");
   }
 }
 
@@ -3226,7 +3215,7 @@ Episode3::DiceExchangeMode phosg::enum_for_name<Episode3::DiceExchangeMode>(cons
   } else if (!strcmp(name, "NONE")) {
     return Episode3::DiceExchangeMode::NONE;
   } else {
-    throw out_of_range("invalid dice exchange mode name");
+    throw std::out_of_range("invalid dice exchange mode name");
   }
 }
 
@@ -3240,7 +3229,7 @@ const char* phosg::name_for_enum<Episode3::DiceExchangeMode>(Episode3::DiceExcha
     case Episode3::DiceExchangeMode::NONE:
       return "NONE";
     default:
-      throw out_of_range("invalid dice exchange mode");
+      throw std::out_of_range("invalid dice exchange mode");
   }
 }
 
@@ -3255,7 +3244,7 @@ Episode3::AllowedCards phosg::enum_for_name<Episode3::AllowedCards>(const char* 
   } else if (!strcmp(name, "N_R_S_ONLY")) {
     return Episode3::AllowedCards::N_R_S_ONLY;
   } else {
-    throw out_of_range("invalid allowed cards name");
+    throw std::out_of_range("invalid allowed cards name");
   }
 }
 
@@ -3521,7 +3510,7 @@ template <>
 const char* phosg::name_for_enum<Episode3::ConditionType>(Episode3::ConditionType cond_type) {
   try {
     return Episode3::description_for_condition_type.at(static_cast<size_t>(cond_type)).name;
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     return "__INVALID__";
   }
 }

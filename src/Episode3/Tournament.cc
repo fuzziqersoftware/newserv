@@ -7,23 +7,18 @@
 #include "../SendCommands.hh"
 #include "../ServerState.hh"
 
-using namespace std;
-
 namespace Episode3 {
 
-Tournament::PlayerEntry::PlayerEntry(uint32_t account_id, const string& player_name)
-    : account_id(account_id),
-      player_name(player_name) {}
+Tournament::PlayerEntry::PlayerEntry(uint32_t account_id, const std::string& player_name)
+    : account_id(account_id), player_name(player_name) {}
 
-Tournament::PlayerEntry::PlayerEntry(shared_ptr<Client> c)
+Tournament::PlayerEntry::PlayerEntry(std::shared_ptr<Client> c)
     : account_id(c->login->account->account_id),
       client(c),
       player_name(c->character_file()->disp.name.decode(c->language())) {}
 
-Tournament::PlayerEntry::PlayerEntry(
-    shared_ptr<const COMDeckDefinition> com_deck)
-    : account_id(0),
-      com_deck(com_deck) {}
+Tournament::PlayerEntry::PlayerEntry(std::shared_ptr<const COMDeckDefinition> com_deck)
+    : account_id(0), com_deck(com_deck) {}
 
 bool Tournament::PlayerEntry::is_com() const {
   return (this->com_deck != nullptr);
@@ -33,8 +28,7 @@ bool Tournament::PlayerEntry::is_human() const {
   return (this->account_id != 0);
 }
 
-Tournament::Team::Team(
-    shared_ptr<Tournament> tournament, size_t index, size_t max_players)
+Tournament::Team::Team(std::shared_ptr<Tournament> tournament, size_t index, size_t max_players)
     : tournament(tournament),
       index(index),
       max_players(max_players),
@@ -43,7 +37,7 @@ Tournament::Team::Team(
       num_rounds_cleared(0),
       is_active(true) {}
 
-string Tournament::Team::str() const {
+std::string Tournament::Team::str() const {
   size_t num_human_players = 0;
   size_t num_com_players = 0;
   for (const auto& player : this->players) {
@@ -51,7 +45,7 @@ string Tournament::Team::str() const {
     num_com_players += player.is_com();
   }
 
-  string ret = std::format("[Team/{} {} {}H/{}C/{}P name={} pass={} rounds={}",
+  std::string ret = std::format("[Team/{} {} {}H/{}C/{}P name={} pass={} rounds={}",
       this->index, this->is_active ? "active" : "inactive",
       num_human_players, num_com_players, this->max_players, this->name,
       this->password, this->num_rounds_cleared);
@@ -67,26 +61,27 @@ string Tournament::Team::str() const {
   return ret + "]";
 }
 
-void Tournament::Team::register_player(shared_ptr<Client> c, const string& team_name, const string& password) {
+void Tournament::Team::register_player(
+    std::shared_ptr<Client> c, const std::string& team_name, const std::string& password) {
   if (this->players.size() >= this->max_players) {
-    throw runtime_error("team is full");
+    throw std::runtime_error("team is full");
   }
 
   if (!this->name.empty() && (password != this->password)) {
-    throw runtime_error("incorrect password");
+    throw std::runtime_error("incorrect password");
   }
 
   auto tournament = this->tournament.lock();
   if (!tournament) {
-    throw runtime_error("tournament has been deleted");
+    throw std::runtime_error("tournament has been deleted");
   }
   if (!tournament->all_player_account_ids.emplace(c->login->account->account_id).second) {
-    throw runtime_error("player already registered in same tournament");
+    throw std::runtime_error("player already registered in same tournament");
   }
 
   for (const auto& player : this->players) {
     if (player.is_human() && (player.account_id == c->login->account->account_id)) {
-      throw logic_error("player already registered in team but not in tournament");
+      throw std::logic_error("player already registered in team but not in tournament");
     }
   }
 
@@ -125,7 +120,7 @@ bool Tournament::Team::unregister_player(uint32_t account_id) {
       // Look through the pending matches to see if this team is involved in any of them
       for (auto match : tournament->pending_matches) {
         if (!match->preceding_a || !match->preceding_b) {
-          throw logic_error("zero-round match is pending after tournament registration phase");
+          throw std::logic_error("zero-round match is pending after tournament registration phase");
         }
         if (match->preceding_a->winner_team.get() == this) {
           match->set_winner_team(match->preceding_b->winner_team);
@@ -139,7 +134,7 @@ bool Tournament::Team::unregister_player(uint32_t account_id) {
     } else {
       // If the tournament has not started yet, just remove the player from the team
       if (!tournament->all_player_account_ids.erase(account_id)) {
-        throw logic_error("player removed from team but not from tournament");
+        throw std::logic_error("player removed from team but not from tournament");
       }
     }
 
@@ -176,27 +171,19 @@ size_t Tournament::Team::num_com_players() const {
 }
 
 Tournament::Match::Match(
-    shared_ptr<Tournament> tournament, shared_ptr<Match> preceding_a, shared_ptr<Match> preceding_b)
-    : tournament(tournament),
-      preceding_a(preceding_a),
-      preceding_b(preceding_b),
-      winner_team(nullptr),
-      round_num(0) {
+    std::shared_ptr<Tournament> tournament, std::shared_ptr<Match> preceding_a, std::shared_ptr<Match> preceding_b)
+    : tournament(tournament), preceding_a(preceding_a), preceding_b(preceding_b), winner_team(nullptr), round_num(0) {
   if (this->preceding_a->round_num != this->preceding_b->round_num) {
-    throw logic_error("preceding matches have different round numbers");
+    throw std::logic_error("preceding matches have different round numbers");
   }
   this->round_num = this->preceding_a->round_num + 1;
 }
 
-Tournament::Match::Match(shared_ptr<Tournament> tournament, shared_ptr<Team> winner_team)
-    : tournament(tournament),
-      preceding_a(nullptr),
-      preceding_b(nullptr),
-      winner_team(winner_team),
-      round_num(0) {}
+Tournament::Match::Match(std::shared_ptr<Tournament> tournament, std::shared_ptr<Team> winner_team)
+    : tournament(tournament), preceding_a(nullptr), preceding_b(nullptr), winner_team(winner_team), round_num(0) {}
 
-string Tournament::Match::str() const {
-  string winner_str = this->winner_team ? this->winner_team->str() : "(none)";
+std::string Tournament::Match::str() const {
+  std::string winner_str = this->winner_team ? this->winner_team->str() : "(none)";
   return std::format("[Match round={} winner={}]", this->round_num, winner_str);
 }
 
@@ -262,12 +249,12 @@ void Tournament::Match::on_winner_team_set() {
   }
 }
 
-void Tournament::Match::set_winner_team_without_triggers(shared_ptr<Team> team) {
+void Tournament::Match::set_winner_team_without_triggers(std::shared_ptr<Team> team) {
   if (!this->preceding_a || !this->preceding_b) {
-    throw logic_error("set_winner_team called on zero-round match");
+    throw std::logic_error("set_winner_team called on zero-round match");
   }
   if ((team != this->preceding_a->winner_team) && (team != this->preceding_b->winner_team)) {
-    throw logic_error("winner team did not participate in match");
+    throw std::logic_error("winner team did not participate in match");
   }
 
   this->winner_team = team;
@@ -280,29 +267,29 @@ void Tournament::Match::set_winner_team_without_triggers(shared_ptr<Team> team) 
   }
 }
 
-void Tournament::Match::set_winner_team(shared_ptr<Team> team) {
+void Tournament::Match::set_winner_team(std::shared_ptr<Team> team) {
   this->set_winner_team_without_triggers(team);
   this->on_winner_team_set();
 }
 
-shared_ptr<Tournament::Team> Tournament::Match::opponent_team_for_team(shared_ptr<Team> team) const {
+std::shared_ptr<Tournament::Team> Tournament::Match::opponent_team_for_team(std::shared_ptr<Team> team) const {
   if (!this->preceding_a || !this->preceding_b) {
-    throw logic_error("zero-round matches do not have opponents");
+    throw std::logic_error("zero-round matches do not have opponents");
   }
   if (team == this->preceding_a->winner_team) {
     return this->preceding_b->winner_team;
   } else if (team == this->preceding_b->winner_team) {
     return this->preceding_a->winner_team;
   } else {
-    throw logic_error("team is not registered for this match");
+    throw std::logic_error("team is not registered for this match");
   }
 }
 
 Tournament::Tournament(
-    shared_ptr<const MapIndex> map_index,
-    shared_ptr<const COMDeckIndex> com_deck_index,
-    const string& name,
-    shared_ptr<const MapIndex::Map> map,
+    std::shared_ptr<const MapIndex> map_index,
+    std::shared_ptr<const COMDeckIndex> com_deck_index,
+    const std::string& name,
+    std::shared_ptr<const MapIndex::Map> map,
     const Rules& rules,
     size_t num_teams,
     uint8_t flags)
@@ -317,18 +304,20 @@ Tournament::Tournament(
       current_state(State::REGISTRATION),
       menu_item_id(0xFFFFFFFF) {
   if (this->num_teams < 4) {
-    throw invalid_argument("team count must be 4 or more");
+    throw std::invalid_argument("team count must be 4 or more");
   }
   if (this->num_teams > 32) {
-    throw invalid_argument("team count must be 32 or fewer");
+    throw std::invalid_argument("team count must be 32 or fewer");
   }
   if (this->num_teams & (this->num_teams - 1)) {
-    throw invalid_argument("team count must be a power of 2");
+    throw std::invalid_argument("team count must be a power of 2");
   }
 }
 
 Tournament::Tournament(
-    shared_ptr<const MapIndex> map_index, shared_ptr<const COMDeckIndex> com_deck_index, const phosg::JSON& json)
+    std::shared_ptr<const MapIndex> map_index,
+    std::shared_ptr<const COMDeckIndex> com_deck_index,
+    const phosg::JSON& json)
     : log(std::format("[Tournament:{}] ", json.get_string("name"))),
       map_index(map_index),
       com_deck_index(com_deck_index),
@@ -336,7 +325,7 @@ Tournament::Tournament(
       current_state(State::REGISTRATION) {}
 
 void Tournament::init() {
-  vector<size_t> team_index_to_rounds_cleared;
+  std::vector<size_t> team_index_to_rounds_cleared;
 
   bool is_registration_complete;
   if (!this->source_json.is_null()) {
@@ -350,7 +339,7 @@ void Tournament::init() {
     is_registration_complete = this->source_json.get_bool("is_registration_complete");
 
     for (const auto& team_json : this->source_json.get_list("teams")) {
-      auto& team = this->teams.emplace_back(make_shared<Team>(
+      auto& team = this->teams.emplace_back(std::make_shared<Team>(
           this->shared_from_this(), this->teams.size(), team_json->get_int("max_players")));
       team->name = team_json->get_string("name");
       team->password = team_json->get_string("password");
@@ -367,7 +356,7 @@ void Tournament::init() {
         } else if (player_json->is_string()) {
           team->players.emplace_back(this->com_deck_index->deck_for_name(player_json->as_string()));
         } else {
-          throw runtime_error("invalid player spec");
+          throw std::runtime_error("invalid player spec");
         }
       }
     }
@@ -378,7 +367,7 @@ void Tournament::init() {
   } else {
     // Create empty teams
     while (this->teams.size() < this->num_teams) {
-      auto t = make_shared<Team>(this->shared_from_this(), this->teams.size(), (this->flags & Flag::IS_2V2) ? 2 : 1);
+      auto t = std::make_shared<Team>(this->shared_from_this(), this->teams.size(), (this->flags & Flag::IS_2V2) ? 2 : 1);
       this->teams.emplace_back(t);
     }
     is_registration_complete = false;
@@ -390,12 +379,12 @@ void Tournament::init() {
     this->create_bracket_matches();
 
     // Start with all zero-round matches in the match queue
-    unordered_set<shared_ptr<Match>> match_queue;
+    std::unordered_set<std::shared_ptr<Match>> match_queue;
     for (auto match : this->zero_round_matches) {
       match_queue.emplace(match->following.lock());
     }
     if (match_queue.count(nullptr)) {
-      throw logic_error("null match in match queue");
+      throw std::logic_error("null match in match queue");
     }
 
     // For each match in the queue, either resolve it from the previous state or
@@ -406,12 +395,12 @@ void Tournament::init() {
       match_queue.erase(match_it);
 
       if (!match->preceding_a->winner_team || !match->preceding_b->winner_team) {
-        throw logic_error("preceding matches are not resolved");
+        throw std::logic_error("preceding matches are not resolved");
       }
       size_t& a_rounds_cleared = team_index_to_rounds_cleared[match->preceding_a->winner_team->index];
       size_t& b_rounds_cleared = team_index_to_rounds_cleared[match->preceding_b->winner_team->index];
       if (a_rounds_cleared && b_rounds_cleared) {
-        throw runtime_error("both teams won the same match");
+        throw std::runtime_error("both teams won the same match");
       }
       if (!a_rounds_cleared && !b_rounds_cleared) {
         this->pending_matches.emplace(match); // Neither team has won yet
@@ -434,7 +423,7 @@ void Tournament::init() {
     }
 
     if (!this->final_match->winner_team == this->pending_matches.empty()) {
-      throw logic_error("there must be pending matches if and only if the final match is not resolved");
+      throw std::logic_error("there must be pending matches if and only if the final match is not resolved");
     }
 
     // If all matches are resolved, then the tournament is complete
@@ -449,19 +438,19 @@ void Tournament::init() {
 
 void Tournament::create_bracket_matches() {
   if (this->teams.size() < 4) {
-    throw logic_error("tournaments must have at least 4 teams");
+    throw std::logic_error("tournaments must have at least 4 teams");
   }
   if (this->teams.size() > 32) {
-    throw logic_error("tournaments must have at most 32 teams");
+    throw std::logic_error("tournaments must have at most 32 teams");
   }
   if (this->teams.size() & (this->teams.size() - 1)) {
-    throw logic_error("tournaments team count is not a power of 2");
+    throw std::logic_error("tournaments team count is not a power of 2");
   }
 
   // Create the zero-round matches, and make them all pending if registration is still open
   this->zero_round_matches.clear();
   for (const auto& team : this->teams) {
-    auto m = make_shared<Match>(this->shared_from_this(), team);
+    auto m = std::make_shared<Match>(this->shared_from_this(), team);
     this->zero_round_matches.emplace_back(m);
     if (this->current_state == State::REGISTRATION) {
       this->pending_matches.emplace(m);
@@ -469,11 +458,11 @@ void Tournament::create_bracket_matches() {
   }
 
   // Create the bracket matches
-  vector<shared_ptr<Match>> current_round_matches = this->zero_round_matches;
+  std::vector<std::shared_ptr<Match>> current_round_matches = this->zero_round_matches;
   while (current_round_matches.size() > 1) {
-    vector<shared_ptr<Match>> next_round_matches;
+    std::vector<std::shared_ptr<Match>> next_round_matches;
     for (size_t z = 0; z < current_round_matches.size(); z += 2) {
-      auto m = make_shared<Match>(this->shared_from_this(), current_round_matches[z], current_round_matches[z + 1]);
+      auto m = std::make_shared<Match>(this->shared_from_this(), current_round_matches[z], current_round_matches[z + 1]);
       current_round_matches[z]->following = m;
       current_round_matches[z + 1]->following = m;
       next_round_matches.emplace_back(std::move(m));
@@ -516,26 +505,26 @@ phosg::JSON Tournament::json() const {
   });
 }
 
-shared_ptr<Tournament::Team> Tournament::get_winner_team() const {
+std::shared_ptr<Tournament::Team> Tournament::get_winner_team() const {
   if (this->current_state != State::COMPLETE) {
     return nullptr;
   }
   if (!this->final_match) {
-    throw logic_error("tournament is complete but final match is missing");
+    throw std::logic_error("tournament is complete but final match is missing");
   }
   if (!this->final_match->winner_team) {
-    throw logic_error("tournament is complete but winner is not set");
+    throw std::logic_error("tournament is complete but winner is not set");
   }
   return this->final_match->winner_team;
 }
 
-shared_ptr<Tournament::Match> Tournament::next_match_for_team(shared_ptr<Team> team) const {
+std::shared_ptr<Tournament::Match> Tournament::next_match_for_team(std::shared_ptr<Team> team) const {
   if (this->current_state == Tournament::State::REGISTRATION) {
     return nullptr;
   }
   for (auto match : this->pending_matches) {
     if (!match->preceding_a || !match->preceding_b) {
-      throw logic_error("zero-round match is pending after tournament registration phase");
+      throw std::logic_error("zero-round match is pending after tournament registration phase");
     }
     if ((team == match->preceding_a->winner_team) || (team == match->preceding_b->winner_team)) {
       return match;
@@ -544,11 +533,11 @@ shared_ptr<Tournament::Match> Tournament::next_match_for_team(shared_ptr<Team> t
   return nullptr;
 }
 
-shared_ptr<Tournament::Match> Tournament::get_final_match() const {
+std::shared_ptr<Tournament::Match> Tournament::get_final_match() const {
   return this->final_match;
 }
 
-shared_ptr<Tournament::Team> Tournament::team_for_account_id(uint32_t account_id) const {
+std::shared_ptr<Tournament::Team> Tournament::team_for_account_id(uint32_t account_id) const {
   if (!this->all_player_account_ids.count(account_id)) {
     return nullptr;
   }
@@ -561,16 +550,16 @@ shared_ptr<Tournament::Team> Tournament::team_for_account_id(uint32_t account_id
     }
   }
 
-  throw logic_error("account ID registered in tournament but not in any team");
+  throw std::logic_error("account ID registered in tournament but not in any team");
 }
 
-const set<uint32_t>& Tournament::get_all_player_account_ids() const {
+const std::set<uint32_t>& Tournament::get_all_player_account_ids() const {
   return this->all_player_account_ids;
 }
 
 void Tournament::start() {
   if (this->current_state != State::REGISTRATION) {
-    throw runtime_error("tournament has already started");
+    throw std::runtime_error("tournament has already started");
   }
 
   bool has_com_teams = (this->flags & Flag::HAS_COM_TEAMS);
@@ -584,7 +573,7 @@ void Tournament::start() {
     }
   }
   if (num_human_teams < (has_com_teams ? 1 : 2)) {
-    throw runtime_error("not enough registrants to start tournament");
+    throw std::runtime_error("not enough registrants to start tournament");
   }
 
   if ((this->flags & Flag::SHUFFLE_ENTRIES) && (this->flags & Flag::RESIZE_ON_START)) {
@@ -642,11 +631,11 @@ void Tournament::start() {
     }
     for (const auto& player : t->players) {
       if (player.is_com()) {
-        throw logic_error("non-human player on team before tournament start");
+        throw std::logic_error("non-human player on team before tournament start");
       }
     }
     if (this->com_deck_index->num_decks() < t->max_players - t->players.size()) {
-      throw runtime_error("not enough COM decks to complete team");
+      throw std::runtime_error("not enough COM decks to complete team");
     }
     // If we allow all-COM teams, or this is a 2v2 tournament and the team has only one human on it, add a COM
     if (has_com_teams || !t->players.empty()) {
@@ -687,10 +676,10 @@ void Tournament::send_all_state_updates_on_deletion() const {
   }
 }
 
-string Tournament::bracket_str() const {
-  string ret = std::format("Tournament \"{}\"\n", this->name);
+std::string Tournament::bracket_str() const {
+  std::string ret = std::format("Tournament \"{}\"\n", this->name);
 
-  function<void(shared_ptr<Match>, size_t)> add_match = [&](shared_ptr<Match> m, size_t indent_level) -> void {
+  std::function<void(std::shared_ptr<Match>, size_t)> add_match = [&](std::shared_ptr<Match> m, size_t indent_level) -> void {
     ret.append(2 * indent_level, ' ');
     ret += m->str();
     if (this->pending_matches.count(m)) {
@@ -707,13 +696,12 @@ string Tournament::bracket_str() const {
 
   auto en_vm = this->map->version(Language::ENGLISH);
   if (en_vm) {
-    string map_name = en_vm->map->name.decode(en_vm->language);
+    std::string map_name = en_vm->map->name.decode(en_vm->language);
     ret += std::format("  Map: {:08X} ({})\n", this->map->map_number, map_name);
   } else {
     ret += std::format("  Map: {:08X}\n", this->map->map_number);
   }
-  string rules_str = this->rules.str();
-  ret += std::format("  Rules: {}\n", rules_str);
+  ret += std::format("  Rules: {}\n", this->rules.str());
   ret += std::format("  Structure: {}, {} entries\n", (this->flags & Flag::IS_2V2) ? "2v2" : "1v1", this->num_teams);
   ret += std::format("  COM teams: {}\n", (this->flags & Flag::HAS_COM_TEAMS) ? "allowed" : "forbidden");
   ret += std::format("  Shuffle entries: {}\n", (this->flags & Flag::SHUFFLE_ENTRIES) ? "yes" : "no");
@@ -739,14 +727,12 @@ string Tournament::bracket_str() const {
   if (this->current_state == State::REGISTRATION) {
     ret += "  Teams:\n";
     for (const auto& team : this->teams) {
-      string team_str = team->str();
-      ret += std::format("    {}\n", team_str);
+      ret += std::format("    {}\n", team->str());
     }
   } else {
     ret += "  Pending matches:\n";
     for (const auto& match : this->pending_matches) {
-      string match_str = match->str();
-      ret += std::format("    {}\n", match_str);
+      ret += std::format("    {}\n", match->str());
     }
   }
 
@@ -755,13 +741,11 @@ string Tournament::bracket_str() const {
 }
 
 TournamentIndex::TournamentIndex(
-    shared_ptr<const MapIndex> map_index,
-    shared_ptr<const COMDeckIndex> com_deck_index,
-    const string& state_filename,
+    std::shared_ptr<const MapIndex> map_index,
+    std::shared_ptr<const COMDeckIndex> com_deck_index,
+    const std::string& state_filename,
     bool skip_load_state)
-    : map_index(map_index),
-      com_deck_index(com_deck_index),
-      state_filename(state_filename) {
+    : map_index(map_index), com_deck_index(com_deck_index), state_filename(state_filename) {
   if (this->state_filename.empty() || skip_load_state) {
     return;
   }
@@ -775,14 +759,14 @@ TournamentIndex::TournamentIndex(
 
   if (json.is_list()) {
     if (json.size() > 0x20) {
-      throw runtime_error("tournament phosg::JSON list length is incorrect");
+      throw std::runtime_error("tournament phosg::JSON list length is incorrect");
     }
-    for (size_t z = 0; z < min<size_t>(json.size(), 0x20); z++) {
+    for (size_t z = 0; z < std::min<size_t>(json.size(), 0x20); z++) {
       if (!json.at(z).is_null()) {
-        auto tourn = make_shared<Tournament>(this->map_index, this->com_deck_index, json.at(z));
+        auto tourn = std::make_shared<Tournament>(this->map_index, this->com_deck_index, json.at(z));
         tourn->init();
         if (!this->name_to_tournament.emplace(tourn->get_name(), tourn).second) {
-          throw runtime_error("multiple tournaments have the same name: " + tourn->get_name());
+          throw std::runtime_error("multiple tournaments have the same name: " + tourn->get_name());
         }
         tourn->set_menu_item_id(this->menu_item_id_to_tournament.size());
         this->menu_item_id_to_tournament.emplace_back(tourn);
@@ -790,20 +774,20 @@ TournamentIndex::TournamentIndex(
     }
   } else if (json.is_dict()) {
     if (json.size() > 0x20) {
-      throw runtime_error("tournament phosg::JSON dict length is incorrect");
+      throw std::runtime_error("tournament phosg::JSON dict length is incorrect");
     }
     for (const auto& it : json.as_dict()) {
-      auto tourn = make_shared<Tournament>(this->map_index, this->com_deck_index, *it.second);
+      auto tourn = std::make_shared<Tournament>(this->map_index, this->com_deck_index, *it.second);
       tourn->init();
       if (!this->name_to_tournament.emplace(tourn->get_name(), tourn).second) {
         // This is logic_error instead of runtime_error because phosg::JSON dicts already have unique keys
-        throw logic_error("multiple tournaments have the same name: " + tourn->get_name());
+        throw std::logic_error("multiple tournaments have the same name: " + tourn->get_name());
       }
       tourn->set_menu_item_id(this->menu_item_id_to_tournament.size());
       this->menu_item_id_to_tournament.emplace_back(tourn);
     }
   } else {
-    throw runtime_error("tournament state root phosg::JSON is not a list or dict");
+    throw std::runtime_error("tournament state root phosg::JSON is not a list or dict");
   }
 }
 
@@ -819,20 +803,20 @@ void TournamentIndex::save() const {
   phosg::save_file(this->state_filename, json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::HEX_INTEGERS | phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY));
 }
 
-shared_ptr<Tournament> TournamentIndex::create_tournament(
-    const string& name,
-    shared_ptr<const MapIndex::Map> map,
+std::shared_ptr<Tournament> TournamentIndex::create_tournament(
+    const std::string& name,
+    std::shared_ptr<const MapIndex::Map> map,
     const Rules& rules,
     size_t num_teams,
     uint8_t flags) {
   if (this->name_to_tournament.size() >= 0x20) {
-    throw runtime_error("there can be at most 32 tournaments at a time");
+    throw std::runtime_error("there can be at most 32 tournaments at a time");
   }
 
-  auto t = make_shared<Tournament>(this->map_index, this->com_deck_index, name, map, rules, num_teams, flags);
+  auto t = std::make_shared<Tournament>(this->map_index, this->com_deck_index, name, map, rules, num_teams, flags);
   t->init();
   if (!this->name_to_tournament.emplace(t->get_name(), t).second) {
-    throw runtime_error("a tournament with the same name already exists");
+    throw std::runtime_error("a tournament with the same name already exists");
   }
 
   size_t z;
@@ -852,7 +836,7 @@ shared_ptr<Tournament> TournamentIndex::create_tournament(
   return t;
 }
 
-bool TournamentIndex::delete_tournament(const string& name) {
+bool TournamentIndex::delete_tournament(const std::string& name) {
   auto it = this->name_to_tournament.find(name);
   if (it == this->name_to_tournament.end()) {
     return false;
@@ -869,7 +853,7 @@ bool TournamentIndex::delete_tournament(const string& name) {
   return true;
 }
 
-shared_ptr<Tournament::Team> TournamentIndex::team_for_account_id(uint32_t account_id) const {
+std::shared_ptr<Tournament::Team> TournamentIndex::team_for_account_id(uint32_t account_id) const {
   for (const auto& it : this->name_to_tournament) {
     const auto& tourn = it.second;
     auto team = tourn->team_for_account_id(account_id);
@@ -880,7 +864,7 @@ shared_ptr<Tournament::Team> TournamentIndex::team_for_account_id(uint32_t accou
   return nullptr;
 }
 
-void TournamentIndex::link_client(shared_ptr<Client> c) {
+void TournamentIndex::link_client(std::shared_ptr<Client> c) {
   if (!is_ep3(c->version())) {
     return;
   }
@@ -898,7 +882,7 @@ void TournamentIndex::link_client(shared_ptr<Client> c) {
         return;
       }
     }
-    throw logic_error("tournament team found for player, but player not found on team");
+    throw std::logic_error("tournament team found for player, but player not found on team");
   } else {
     c->ep3_tournament_team.reset();
     if (c->version() == Version::GC_EP3) {

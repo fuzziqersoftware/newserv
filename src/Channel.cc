@@ -12,14 +12,12 @@
 #include "StaticGameData.hh"
 #include "Version.hh"
 
-using namespace std;
-
 extern bool use_terminal_colors;
 
 Channel::Channel(
     Version version,
     Language language,
-    const string& name,
+    const std::string& name,
     phosg::TerminalFormat terminal_send_color,
     phosg::TerminalFormat terminal_recv_color,
     bool censor_received_credentials,
@@ -49,7 +47,7 @@ void Channel::send(
     size += b.second;
   }
 
-  string send_data;
+  std::string send_data;
   size_t logical_size;
   size_t send_data_size = 0;
   switch (this->version) {
@@ -113,12 +111,12 @@ void Channel::send(
     }
 
     default:
-      throw logic_error("unimplemented game version in send_command");
+      throw std::logic_error("unimplemented game version in send_command");
   }
 
   // All versions of PSO I've seen (so far) have a receive buffer 0x7C00 bytes in size
   if (send_data_size > 0x7C00) {
-    throw runtime_error("outbound command too large");
+    throw std::runtime_error("outbound command too large");
   }
 
   send_data.reserve(send_data_size);
@@ -164,10 +162,10 @@ void Channel::send(
 }
 
 void Channel::send(uint16_t cmd, uint32_t flag, const void* data, size_t size, bool silent) {
-  this->send(cmd, flag, {make_pair(data, size)}, silent);
+  this->send(cmd, flag, {std::make_pair(data, size)}, silent);
 }
 
-void Channel::send(uint16_t cmd, uint32_t flag, const string& data, bool silent) {
+void Channel::send(uint16_t cmd, uint32_t flag, const std::string& data, bool silent) {
   this->send(cmd, flag, data.data(), data.size(), silent);
 }
 
@@ -182,7 +180,7 @@ void Channel::send(const void* data, size_t size, bool silent) {
       silent);
 }
 
-void Channel::send(const string& data, bool silent) {
+void Channel::send(const std::string& data, bool silent) {
   this->send(data.data(), data.size(), silent);
 }
 
@@ -196,7 +194,7 @@ asio::awaitable<Channel::Message> Channel::recv() {
 
   size_t command_logical_size = header.size(version);
   if (command_logical_size < header_size) {
-    throw runtime_error("header size field is smaller than header");
+    throw std::runtime_error("header size field is smaller than header");
   }
 
   // If encryption is enabled, BB pads commands to 8-byte boundaries, and this is not reflected in the size field. This
@@ -205,7 +203,7 @@ asio::awaitable<Channel::Message> Channel::recv() {
       ? ((command_logical_size + 7) & ~7)
       : command_logical_size;
 
-  string command_data(command_physical_size - header_size, '\0');
+  std::string command_data(command_physical_size - header_size, '\0');
   co_await this->recv_raw(command_data.data(), command_data.size());
 
   if (this->crypt_in.get()) {
@@ -267,17 +265,17 @@ asio::awaitable<Channel::Message> Channel::recv() {
   };
 }
 
-shared_ptr<SocketChannel> SocketChannel::create(
+std::shared_ptr<SocketChannel> SocketChannel::create(
     std::shared_ptr<asio::io_context> io_context,
     std::unique_ptr<asio::ip::tcp::socket>&& sock,
     Version version,
     Language language,
-    const string& name,
+    const std::string& name,
     phosg::TerminalFormat terminal_send_color,
     phosg::TerminalFormat terminal_recv_color,
     bool censor_received_credentials,
     bool censor_sent_credentials) {
-  shared_ptr<SocketChannel> ret(new SocketChannel(
+  std::shared_ptr<SocketChannel> ret(new SocketChannel(
       io_context,
       std::move(sock),
       version,
@@ -296,7 +294,7 @@ SocketChannel::SocketChannel(
     std::unique_ptr<asio::ip::tcp::socket>&& sock,
     Version version,
     Language language,
-    const string& name,
+    const std::string& name,
     phosg::TerminalFormat terminal_send_color,
     phosg::TerminalFormat terminal_recv_color,
     bool censor_received_credentials,
@@ -320,7 +318,7 @@ void SocketChannel::disconnect() {
   this->send_buffer_nonempty_signal.set();
 }
 
-void SocketChannel::send_raw(string&& data) {
+void SocketChannel::send_raw(std::string&& data) {
   if (this->sock && !this->should_disconnect) {
     this->outbound_data.emplace_back(std::move(data));
     this->send_buffer_nonempty_signal.set();
@@ -329,7 +327,7 @@ void SocketChannel::send_raw(string&& data) {
 
 asio::awaitable<void> SocketChannel::recv_raw(void* data, size_t size) {
   if (!this->sock || this->should_disconnect) {
-    throw runtime_error("Cannot receive on closed channel");
+    throw std::runtime_error("Cannot receive on closed channel");
   }
   co_await asio::async_read(*this->sock, asio::buffer(data, size), asio::use_awaitable);
 }
@@ -339,11 +337,11 @@ asio::awaitable<void> SocketChannel::send_task() {
   auto this_sh = this->shared_from_this();
 
   while (this->sock->is_open()) {
-    deque<string> to_send;
+    std::deque<std::string> to_send;
     to_send.swap(this->outbound_data);
 
     if (!to_send.empty()) {
-      vector<asio::const_buffer> bufs;
+      std::vector<asio::const_buffer> bufs;
       bufs.reserve(to_send.size());
       for (const auto& it : to_send) {
         bufs.emplace_back(asio::buffer(it.data(), it.size()));
@@ -376,7 +374,7 @@ PeerChannel::PeerChannel(
 
 void PeerChannel::link_peers(std::shared_ptr<PeerChannel> peer1, std::shared_ptr<PeerChannel> peer2) {
   if (peer1->connected() || peer2->connected()) {
-    throw logic_error("Cannot link already-connected peer channels");
+    throw std::logic_error("Cannot link already-connected peer channels");
   }
   peer1->peer = peer2;
   peer2->peer = peer1;
@@ -400,7 +398,7 @@ void PeerChannel::disconnect() {
   this->send_buffer_nonempty_signal.set();
 }
 
-void PeerChannel::send_raw(string&& data) {
+void PeerChannel::send_raw(std::string&& data) {
   auto peer = this->peer.lock();
   if (peer) {
     peer->inbound_data.emplace_back(std::move(data));
@@ -428,7 +426,7 @@ asio::awaitable<void> PeerChannel::recv_raw(void* data, size_t size) {
         this->inbound_data.pop_front();
       }
     } else if (!this->peer.lock()) {
-      throw runtime_error("Channel peer has disconnected");
+      throw std::runtime_error("Channel peer has disconnected");
     }
   }
 }

@@ -9,8 +9,6 @@
 
 #include "PSOEncryption.hh"
 
-using namespace std;
-
 static const uint32_t primes1[] = {
     0x65, 0x67, 0x6B, 0x6D, 0x71, 0x7F, 0x83, 0x89, 0x8B, 0x95, 0x97, 0x9D, 0xA3, 0xA7, 0xAD, 0xB3, 0xB5, 0xBF, 0xC1,
     0xC5, 0xC7, 0xD3, 0xDF, 0xE3, 0xE5, 0xE9, 0xEF, 0xF1, 0xFB, 0x101, 0x107, 0x10D, 0x10F, 0x115, 0x119, 0x11B, 0x125,
@@ -735,10 +733,10 @@ static const uint32_t primes3[] = {
 static constexpr size_t num_primes3 = sizeof(primes3) / sizeof(primes3[0]);
 
 static bool check_prime3(uint64_t prime3) {
-  static vector<bool> primes3_set;
-  static mutex primes3_init_mutex;
+  static std::vector<bool> primes3_set;
+  static std::mutex primes3_init_mutex;
   if (primes3_set.empty()) {
-    lock_guard g(primes3_init_mutex);
+    std::lock_guard g(primes3_init_mutex);
     if (primes3_set.empty()) {
       size_t primes3_set_size = primes3[num_primes3 - 1] - primes3[0] + 1;
       primes3_set.resize(primes3_set_size, false);
@@ -790,7 +788,7 @@ static char replace_char_reverse(char ch) {
 
 static constexpr uint64_t INVALID_PRODUCT = 0xFFFFFFFFFFFFFFFF;
 
-static uint64_t decode_dc_serial_number_str(const string& s) {
+static uint64_t decode_dc_serial_number_str(const std::string& s) {
   if (s.size() != 8) {
     return INVALID_PRODUCT;
   }
@@ -828,20 +826,20 @@ static uint32_t encode_dc_serial_number_int(uint32_t v) {
       (replace_nybble_reverse(v));
 }
 
-static pair<size_t, size_t> compute_offset1_and_limit1(uint8_t domain, uint8_t subdomain) {
+static std::pair<size_t, size_t> compute_offset1_and_limit1(uint8_t domain, uint8_t subdomain) {
   if (domain > 2) {
-    return make_pair(0, 0);
+    return std::make_pair(0, 0);
   }
   size_t domain_base = domain * 30;
   if (subdomain != 0xFF) {
     size_t subdomain_base = domain_base + (subdomain % 3);
-    return make_pair(subdomain_base, subdomain_base + 1);
+    return std::make_pair(subdomain_base, subdomain_base + 1);
   } else {
-    return make_pair(domain_base, domain_base + 3);
+    return std::make_pair(domain_base, domain_base + 3);
   }
 }
 
-bool dc_serial_number_is_valid_slow(const string& s, uint8_t domain, uint8_t subdomain) {
+bool dc_serial_number_is_valid_slow(const std::string& s, uint8_t domain, uint8_t subdomain) {
   uint64_t serial_number = decode_dc_serial_number_str(s);
   if (serial_number == INVALID_PRODUCT) {
     return false;
@@ -890,7 +888,7 @@ bool decoded_dc_serial_number_is_valid_fast(uint32_t serial_number, uint8_t doma
   return false;
 }
 
-bool dc_serial_number_is_valid_fast(const string& s, uint8_t domain, uint8_t subdomain) {
+bool dc_serial_number_is_valid_fast(const std::string& s, uint8_t domain, uint8_t subdomain) {
   uint64_t serial_number = decode_dc_serial_number_str(s);
   if (serial_number == INVALID_PRODUCT) {
     return false;
@@ -902,7 +900,7 @@ bool dc_serial_number_is_valid_fast(uint32_t serial_number, uint8_t domain, uint
   return decoded_dc_serial_number_is_valid_fast(decode_dc_serial_number_int(serial_number), domain, subdomain);
 }
 
-string generate_dc_serial_number(uint8_t domain, uint8_t subdomain) {
+std::string generate_dc_serial_number(uint8_t domain, uint8_t subdomain) {
   size_t offset1, limit1;
   if (domain == 0) {
     offset1 = 0x00;
@@ -914,7 +912,7 @@ string generate_dc_serial_number(uint8_t domain, uint8_t subdomain) {
     offset1 = 0x3C;
     limit1 = 0x3F;
   } else {
-    throw runtime_error("invalid domain");
+    throw std::runtime_error("invalid domain");
   }
 
   size_t det1 = (subdomain == 0xFF) ? phosg::random_object<uint32_t>() : subdomain;
@@ -922,23 +920,23 @@ string generate_dc_serial_number(uint8_t domain, uint8_t subdomain) {
   size_t index2 = phosg::random_object<uint32_t>() % num_primes2;
   size_t index3 = phosg::random_object<uint32_t>() % num_primes3;
   uint32_t value = primes1[index1] * primes2[index2] * primes3[index3];
-  string s = std::format("{:08X}", value);
+  std::string s = std::format("{:08X}", value);
 
-  string ret;
+  std::string ret;
   for (char ch : s) {
     ret.push_back(replace_char_reverse(ch));
   }
   return ret;
 }
 
-unordered_map<uint32_t, string> generate_all_dc_serial_numbers(uint8_t domain, uint8_t subdomain) {
+std::unordered_map<uint32_t, std::string> generate_all_dc_serial_numbers(uint8_t domain, uint8_t subdomain) {
   DCSerialNumberIterator iter;
 
   if (domain < 3) {
     iter.domain = domain;
     iter.end_domain = domain + 1;
   } else if (domain != 0xFF) {
-    throw runtime_error("invalid domain");
+    throw std::runtime_error("invalid domain");
   }
 
   if (subdomain < 3) {
@@ -946,11 +944,11 @@ unordered_map<uint32_t, string> generate_all_dc_serial_numbers(uint8_t domain, u
     iter.start_subdomain = subdomain;
     iter.end_subdomain = subdomain + 1;
   } else if (subdomain != 0xFF) {
-    throw runtime_error("invalid subdomain");
+    throw std::runtime_error("invalid subdomain");
   }
 
   uint32_t serial_number;
-  unordered_map<uint32_t, string> ret;
+  std::unordered_map<uint32_t, std::string> ret;
   while ((serial_number = iter.next()) != 0) {
     ret[serial_number].push_back(((iter.domain << 2) & 3) | (iter.subdomain & 3));
     if (iter.index3 == 0) {
@@ -1015,7 +1013,7 @@ void dc_serial_number_speed_test(uint64_t seed) {
   size_t num_disagreements = 0;
   static constexpr size_t count = 0x1000;
   for (size_t z = 0; z < count; z++) {
-    string s = std::format("{:08X}", crypt.next());
+    std::string s = std::format("{:08X}", crypt.next());
 
     uint64_t start = phosg::now();
     bool is_valid_fast = dc_serial_number_is_valid_fast(s, 1, 0xFF);
@@ -1041,7 +1039,8 @@ void dc_serial_number_speed_test(uint64_t seed) {
   phosg::fwrite_fmt(stderr, "Disagreements: {}\n", num_disagreements);
 }
 
-string decrypt_dp_address_jpn(const string& executable, const string& values, const string& indexes) {
+std::string decrypt_dp_address_jpn(
+    const std::string& executable, const std::string& values, const std::string& indexes) {
   phosg::StringReader values_r(values);
   phosg::StringReader indexes_r(indexes);
 
@@ -1056,7 +1055,7 @@ string decrypt_dp_address_jpn(const string& executable, const string& values, co
     fixup_offset += (fixup_steps_r.get_u8() << 2);
     fixup_steps_r.skip(1);
     if (fixup_offset + 4 > decrypted.compressed_data.size()) {
-      throw runtime_error("fixup beyond end of compressed data");
+      throw std::runtime_error("fixup beyond end of compressed data");
     }
     *reinterpret_cast<le_uint32_t*>(decrypted.compressed_data.data() + fixup_offset) = fixup_values_r.get_u32l();
   }
@@ -1064,10 +1063,10 @@ string decrypt_dp_address_jpn(const string& executable, const string& values, co
   return prs_decompress(decrypted.compressed_data);
 }
 
-EncryptedDCv2Executables encrypt_dp_address_jpn(const string& executable, const string& indexes) {
+EncryptedDCv2Executables encrypt_dp_address_jpn(const std::string& executable, const std::string& indexes) {
   EncryptedDCv2Executables ret;
 
-  string compressed = prs_compress(executable);
+  std::string compressed = prs_compress(executable);
   ret.executable = encrypt_pr2_data<false>(compressed, executable.size(), phosg::random_object<uint32_t>() & 0x7FFFFF7F);
 
   phosg::StringReader indexes_r(indexes);
@@ -1079,12 +1078,12 @@ EncryptedDCv2Executables encrypt_dp_address_jpn(const string& executable, const 
 
 std::string crypt_dp_address_jpn_simple(const std::string& data, int64_t mask_key) {
   if (data.size() & 3) {
-    throw runtime_error("size is not a multiple of 4");
+    throw std::runtime_error("size is not a multiple of 4");
   }
 
   phosg::StringReader r(data);
   if (mask_key < 0) {
-    unordered_map<uint32_t, size_t> key_freq;
+    std::unordered_map<uint32_t, size_t> key_freq;
     while (!r.eof()) {
       key_freq[r.get_u32l()] += 1;
     }
@@ -1096,7 +1095,7 @@ std::string crypt_dp_address_jpn_simple(const std::string& data, int64_t mask_ke
       }
     }
     if (mask_key < 0) {
-      throw runtime_error("cannot determine mask key");
+      throw std::runtime_error("cannot determine mask key");
     }
     phosg::log_info_f("Determined {:08X} to be the most likely mask key", mask_key);
     r.go(0);

@@ -259,7 +259,7 @@ asio::awaitable<std::invoke_result_t<FnT, ArgTs...>> call_on_thread_pool(asio::t
   using ReturnT = std::invoke_result_t<FnT, ArgTs...>;
   auto bound = std::bind(std::forward<FnT>(f), std::forward<ArgTs>(args)...);
 
-  // We have to use a shared_ptr here in case call_on_thread_pool is canceled (in that case, the posted callback will
+  // We have to use a std::shared_ptr here in case call_on_thread_pool is canceled (in that case, the posted callback will
   // try to use promise after the call_on_thread_pool coroutine has been destroyed)
   auto promise = std::make_shared<AsyncPromise<ReturnT>>();
   asio::post(pool, [bound = std::move(bound), promise]() mutable {

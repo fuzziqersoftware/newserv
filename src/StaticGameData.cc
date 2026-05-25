@@ -4,8 +4,6 @@
 
 #include "Text.hh"
 
-using namespace std;
-
 bool episode_has_arpg_semantics(Episode ep) {
   return (ep == Episode::EP1) || (ep == Episode::EP2) || (ep == Episode::EP4);
 }
@@ -38,11 +36,11 @@ const char* token_name_for_episode(Episode ep) {
     case Episode::EP4:
       return "Episode4";
     default:
-      throw logic_error("invalid episode");
+      throw std::logic_error("invalid episode");
   }
 }
 
-Episode episode_for_token_name(const string& name) {
+Episode episode_for_token_name(const std::string& name) {
   if (name == "Episode1") {
     return Episode::EP1;
   }
@@ -55,7 +53,7 @@ Episode episode_for_token_name(const string& name) {
   if (name == "Episode4") {
     return Episode::EP4;
   }
-  throw runtime_error("unknown episode");
+  throw std::runtime_error("unknown episode");
 }
 
 Episode episode_for_area(uint8_t area) {
@@ -117,13 +115,13 @@ const char* abbreviation_for_mode(GameMode mode) {
   }
 }
 
-static const array<const char*, 10> section_id_to_name = {
+static const std::array<const char*, 10> section_id_to_name = {
     "Viridia", "Greennill", "Skyly", "Bluefull", "Purplenum", "Pinkal", "Redria", "Oran", "Yellowboze", "Whitill"};
 
-static const array<const char*, 10> section_id_to_abbreviation = {
+static const std::array<const char*, 10> section_id_to_abbreviation = {
     "Vir", "Grn", "Sky", "Blu", "Prp", "Pnk", "Red", "Orn", "Ylw", "Wht"};
 
-const unordered_map<string, uint8_t> name_to_section_id({{"viridia", 0},
+const std::unordered_map<std::string, uint8_t> name_to_section_id({{"viridia", 0},
     // Greennill is spelled Greenill in some places, so we accept both spellings
     {"greennill", 1}, {"greenill", 1}, {"skyly", 2}, {"bluefull", 3}, {"purplenum", 4}, {"pinkal", 5}, {"redria", 6},
     {"oran", 7}, {"yellowboze", 8}, {"whitill", 9},
@@ -131,32 +129,32 @@ const unordered_map<string, uint8_t> name_to_section_id({{"viridia", 0},
     // Shortcuts for chat commands
     {"b", 3}, {"g", 1}, {"o", 7}, {"pi", 5}, {"pu", 4}, {"r", 6}, {"s", 2}, {"v", 0}, {"w", 9}, {"y", 8}});
 
-const vector<string> lobby_event_to_name = {
+const std::vector<std::string> lobby_event_to_name = {
     "none", "xmas", "none", "val", "easter", "hallo", "sonic", "newyear",
     "summer", "white", "wedding", "fall", "s-spring", "s-summer", "spring"};
 
-const unordered_map<string, uint8_t> name_to_lobby_event = {
+const std::unordered_map<std::string, uint8_t> name_to_lobby_event = {
     {"none", 0}, {"xmas", 1}, {"val", 3}, {"easter", 4}, {"hallo", 5}, {"sonic", 6}, {"newyear", 7}, {"summer", 8},
     {"white", 9}, {"wedding", 10}, {"fall", 11}, {"s-spring", 12}, {"s-summer", 13}, {"spring", 14}};
 
-const unordered_map<uint8_t, string> lobby_type_to_name = {
+const std::unordered_map<uint8_t, std::string> lobby_type_to_name = {
     {0x00, "normal"}, {0x0F, "inormal"}, {0x10, "ipc"}, {0x11, "iball"}, {0x67, "cave2u"}, {0xD4, "cave1"},
     {0xE9, "planet"}, {0xEA, "clouds"}, {0xED, "cave"}, {0xEE, "jungle"}, {0xEF, "forest2-2"}, {0xF0, "forest2-1"},
     {0xF1, "windpower"}, {0xF2, "overview"}, {0xF3, "seaside"}, {0xF4, "fons"}, {0xF5, "dmorgue"}, {0xF6, "caelum"},
     {0xF8, "cyber"}, {0xF9, "boss1"}, {0xFA, "boss2"}, {0xFB, "dolor"}, {0xFC, "dragon"}, {0xFD, "derolle"},
     {0xFE, "volopt"}, {0xFF, "darkfalz"}};
 
-const unordered_map<string, uint8_t> name_to_lobby_type = {
+const std::unordered_map<std::string, uint8_t> name_to_lobby_type = {
     {"normal", 0x00}, {"inormal", 0x0F}, {"ipc", 0x10}, {"iball", 0x11}, {"cave1", 0xD4}, {"cave2u", 0x67},
     {"dragon", 0xFC}, {"derolle", 0xFD}, {"volopt", 0xFE}, {"darkfalz", 0xFF}, {"planet", 0xE9}, {"clouds", 0xEA},
     {"cave", 0xED}, {"jungle", 0xEE}, {"forest2-2", 0xEF}, {"forest2-1", 0xF0}, {"windpower", 0xF1},
     {"overview", 0xF2}, {"seaside", 0xF3}, {"fons", 0xF4}, {"dmorgue", 0xF5}, {"caelum", 0xF6}, {"cyber", 0xF8},
     {"boss1", 0xF9}, {"boss2", 0xFA}, {"dolor", 0xFB}, {"ravum", 0xFC}, {"sky", 0xFE}, {"morgue", 0xFF}};
 
-const vector<string> npc_id_to_name = {
+const std::vector<std::string> npc_id_to_name = {
     "ninja", "rico", "sonic", "knuckles", "tails", "flowen", "elly", "momoka", "irene", "guild", "nurse"};
 
-const unordered_map<string, uint8_t> name_to_npc_id = {
+const std::unordered_map<std::string, uint8_t> name_to_npc_id = {
     {"ninja", 0}, {"rico", 1}, {"sonic", 2}, {"knuckles", 3}, {"tails", 4}, {"flowen", 5}, {"elly", 6}, {"momoka", 7},
     {"irene", 8}, {"guild", 9}, {"nurse", 10}};
 
@@ -199,100 +197,100 @@ const char* name_for_section_id(uint8_t section_id) {
   }
 }
 
-uint8_t section_id_for_name(const string& name) {
-  string lower_name = phosg::tolower(name);
+uint8_t section_id_for_name(const std::string& name) {
+  std::string lower_name = phosg::tolower(name);
   try {
     return name_to_section_id.at(lower_name);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
   try {
-    uint64_t x = stoul(name);
+    uint64_t x = std::stoul(name);
     if (x < section_id_to_name.size()) {
       return x;
     }
-  } catch (const invalid_argument&) {
-  } catch (const out_of_range&) {
+  } catch (const std::invalid_argument&) {
+  } catch (const std::out_of_range&) {
   }
   return 0xFF;
 }
 
-const string& name_for_event(uint8_t event) {
+const std::string& name_for_event(uint8_t event) {
   if (event < lobby_event_to_name.size()) {
     return lobby_event_to_name[event];
   } else {
-    static const string ret = "Unknown lobby event";
+    static const std::string ret = "Unknown lobby event";
     return ret;
   }
 }
 
-uint8_t event_for_name(const string& name) {
+uint8_t event_for_name(const std::string& name) {
   try {
     return name_to_lobby_event.at(name);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
   try {
     uint64_t x = stoul(name);
     if (x < lobby_event_to_name.size()) {
       return x;
     }
-  } catch (const invalid_argument&) {
-  } catch (const out_of_range&) {
+  } catch (const std::invalid_argument&) {
+  } catch (const std::out_of_range&) {
   }
   return 0xFF;
 }
 
-const string& name_for_lobby_type(uint8_t type) {
+const std::string& name_for_lobby_type(uint8_t type) {
   try {
     return lobby_type_to_name.at(type);
-  } catch (const out_of_range&) {
-    static const string ret = "Unknown lobby type";
+  } catch (const std::out_of_range&) {
+    static const std::string ret = "Unknown lobby type";
     return ret;
   }
 }
 
-uint8_t lobby_type_for_name(const string& name) {
+uint8_t lobby_type_for_name(const std::string& name) {
   try {
     return name_to_lobby_type.at(name);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
   try {
-    uint64_t x = stoul(name, nullptr, 0);
+    uint64_t x = std::stoul(name, nullptr, 0);
     if (lobby_type_to_name.count(x)) {
       return x;
     }
-  } catch (const invalid_argument&) {
-  } catch (const out_of_range&) {
+  } catch (const std::invalid_argument&) {
+  } catch (const std::out_of_range&) {
   }
   return 0x80;
 }
 
-const string& name_for_npc(uint8_t npc) {
+const std::string& name_for_npc(uint8_t npc) {
   try {
     return npc_id_to_name.at(npc);
-  } catch (const out_of_range&) {
-    static const string ret = "Unknown NPC";
+  } catch (const std::out_of_range&) {
+    static const std::string ret = "Unknown NPC";
     return ret;
   }
 }
 
-uint8_t npc_for_name(const string& name, Version version) {
+uint8_t npc_for_name(const std::string& name, Version version) {
   uint8_t npc_id = 0xFF;
   try {
     npc_id = name_to_npc_id.at(name);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
   if (npc_id == 0xFF) {
     try {
-      npc_id = stoul(name);
-    } catch (const invalid_argument&) {
-    } catch (const out_of_range&) {
+      npc_id = std::stoul(name);
+    } catch (const std::invalid_argument&) {
+    } catch (const std::out_of_range&) {
     }
   }
   return npc_valid_for_version(npc_id, version) ? npc_id : 0xFF;
 }
 
 const char* name_for_char_class(uint8_t cls) {
-  static const array<const char*, 12> names = {
+  static const std::array<const char*, 12> names = {
       /* 00 */ "HUmar",
       /* 01 */ "HUnewearl",
       /* 02 */ "HUcast",
@@ -307,17 +305,17 @@ const char* name_for_char_class(uint8_t cls) {
       /* 0B */ "RAmarl"};
   try {
     return names.at(cls);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     return "Unknown";
   }
 }
 
 const char* abbreviation_for_char_class(uint8_t cls) {
-  static const array<const char*, 12> names = {
+  static const std::array<const char*, 12> names = {
       "HUmr", "HUnl", "HUct", "RAmr", "RAct", "RAcl", "FOml", "FOnm", "FOnl", "HUcl", "FOmr", "RAml"};
   try {
     return names.at(cls);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     return "???";
   }
 }
@@ -332,7 +330,7 @@ enum ClassFlag {
   FORCE = 0x40,
 };
 
-static array<uint8_t, 12> class_flags = {
+static std::array<uint8_t, 12> class_flags = {
     ClassFlag::HUNTER | ClassFlag::HUMAN | ClassFlag::MALE, // HUmar
     ClassFlag::HUNTER | ClassFlag::NEWMAN, // HUnewearl
     ClassFlag::HUNTER | ClassFlag::ANDROID | ClassFlag::MALE, // HUcast
@@ -376,34 +374,34 @@ bool char_class_is_force(uint8_t cls) {
 }
 
 const char* name_for_difficulty(Difficulty difficulty) {
-  static const array<const char*, 4> names = {"Normal", "Hard", "Very Hard", "Ultimate"};
+  static const std::array<const char*, 4> names = {"Normal", "Hard", "Very Hard", "Ultimate"};
   try {
     return names.at(static_cast<size_t>(difficulty));
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     return "Unknown";
   }
 }
 
 const char* token_name_for_difficulty(Difficulty difficulty) {
-  static const array<const char*, 4> names = {"Normal", "Hard", "VeryHard", "Ultimate"};
+  static const std::array<const char*, 4> names = {"Normal", "Hard", "VeryHard", "Ultimate"};
   try {
     return names.at(static_cast<size_t>(difficulty));
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     return "Unknown";
   }
 }
 
 char abbreviation_for_difficulty(Difficulty difficulty) {
-  static const array<char, 4> names = {'N', 'H', 'V', 'U'};
+  static const std::array<char, 4> names = {'N', 'H', 'V', 'U'};
   try {
     return names.at(static_cast<size_t>(difficulty));
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     return '?';
   }
 }
 
 const char* name_for_language(Language language) {
-  array<const char*, 8> names = {
+  std::array<const char*, 8> names = {
       "Japanese", "English", "German", "French", "Spanish", "Simplified Chinese", "Traditional Chinese", "Korean"};
   size_t lang_index = static_cast<size_t>(language);
   return (lang_index < 8) ? names[lang_index] : "Unknown";
@@ -441,15 +439,15 @@ Language language_for_char(char language_char) {
     case 'k':
       return Language::KOREAN;
     default:
-      throw runtime_error("unknown language");
+      throw std::runtime_error("unknown language");
   }
 }
 
-Language language_for_name(const string& name) {
+Language language_for_name(const std::string& name) {
   if (name.size() == 1) {
     return language_for_char(name[0]);
   }
-  string lower_name = phosg::tolower(name);
+  std::string lower_name = phosg::tolower(name);
   if (lower_name == "japanese") {
     return Language::JAPANESE;
   }
@@ -474,48 +472,48 @@ Language language_for_name(const string& name) {
   if (lower_name == "korean") {
     return Language::KOREAN;
   }
-  throw runtime_error("unknown language");
+  throw std::runtime_error("unknown language");
 }
 
-const vector<string> tech_id_to_name = {
+const std::vector<std::string> tech_id_to_name = {
     "Foie", "Gifoie", "Rafoie", "Barta", "Gibarta", "Rabarta", "Zonde", "Gizonde", "Razonde", "Grants", "Deband",
     "Jellen", "Zalure", "Shifta", "Ryuker", "Resta", "Anti", "Reverser", "Megid"};
 
-const unordered_map<string, uint8_t> name_to_tech_id = {
+const std::unordered_map<std::string, uint8_t> name_to_tech_id = {
     {"foie", 0}, {"gifoie", 1}, {"rafoie", 2}, {"barta", 3}, {"gibarta", 4}, {"rabarta", 5}, {"zonde", 6},
     {"gizonde", 7}, {"razonde", 8}, {"grants", 9}, {"deband", 10}, {"jellen", 11}, {"zalure", 12}, {"shifta", 13},
     {"ryuker", 14}, {"resta", 15}, {"anti", 16}, {"reverser", 17}, {"megid", 18}};
 
-const string& name_for_technique(uint8_t tech) {
+const std::string& name_for_technique(uint8_t tech) {
   try {
     return tech_id_to_name.at(tech);
-  } catch (const out_of_range&) {
-    static const string ret = "Unknown technique";
+  } catch (const std::out_of_range&) {
+    static const std::string ret = "Unknown technique";
     return ret;
   }
 }
 
-uint8_t technique_for_name(const string& name) {
+uint8_t technique_for_name(const std::string& name) {
   try {
     return name_to_tech_id.at(phosg::tolower(name));
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
   try {
-    uint64_t x = stoul(name);
+    uint64_t x = std::stoul(name);
     if (x < tech_id_to_name.size()) {
       return x;
     }
-  } catch (const invalid_argument&) {
-  } catch (const out_of_range&) {
+  } catch (const std::invalid_argument&) {
+  } catch (const std::out_of_range&) {
   }
   return 0xFF;
 }
 
-const vector<const char*> name_for_mag_color = {
+const std::vector<const char*> name_for_mag_color = {
     "red", "blue", "yellow", "green", "purple", "black", "white", "cyan", "brown", "orange", "light-blue", "olive",
     "turquoise", "fuchsia", "grey", "cream", "pink", "dark-green", "costume"};
 
-const unordered_map<string, uint8_t> mag_color_for_name = {
+const std::unordered_map<std::string, uint8_t> mag_color_for_name = {
     {"red", 0x00}, {"blue", 0x01}, {"yellow", 0x02}, {"green", 0x03}, {"purple", 0x04}, {"black", 0x05},
     {"white", 0x06}, {"cyan", 0x07}, {"brown", 0x08}, {"orange", 0x09}, {"light-blue", 0x0A}, {"olive", 0x0B},
     {"turquoise", 0x0C}, {"fuchsia", 0x0D}, {"grey", 0x0E}, {"cream", 0x0F}, {"pink", 0x10}, {"dark-green", 0x11},
@@ -586,7 +584,7 @@ static const std::vector<FloorDefinition> floor_defs{
 
 const FloorDefinition& FloorDefinition::get(Episode episode, uint8_t floor) {
   if (floor >= FloorDefinition::limit_for_episode(episode)) {
-    throw runtime_error("invalid floor number");
+    throw std::runtime_error("invalid floor number");
   }
   switch (episode) {
     case Episode::EP1:
@@ -596,7 +594,7 @@ const FloorDefinition& FloorDefinition::get(Episode episode, uint8_t floor) {
     case Episode::EP4:
       return floor_defs.at(floor + 0x24);
     default:
-      throw logic_error("invalid episode");
+      throw std::logic_error("invalid episode");
   }
 }
 
@@ -609,16 +607,16 @@ const FloorDefinition& FloorDefinition::get_by_drop_area_norm(Episode episode, u
     case Episode::EP4:
       return floor_defs[area_norm + 0x24];
     default:
-      throw logic_error("invalid episode number");
+      throw std::logic_error("invalid episode number");
   }
 }
 
 const FloorDefinition& FloorDefinition::get(Episode episode, const std::string& name) {
-  static unordered_map<std::string, size_t> index_ep1;
-  static unordered_map<std::string, size_t> index_ep2;
-  static unordered_map<std::string, size_t> index_ep4;
+  static std::unordered_map<std::string, size_t> index_ep1;
+  static std::unordered_map<std::string, size_t> index_ep2;
+  static std::unordered_map<std::string, size_t> index_ep4;
 
-  unordered_map<std::string, size_t>* index;
+  std::unordered_map<std::string, size_t>* index;
   switch (episode) {
     case Episode::EP1:
       index = &index_ep1;
@@ -630,7 +628,7 @@ const FloorDefinition& FloorDefinition::get(Episode episode, const std::string& 
       index = &index_ep4;
       break;
     default:
-      throw logic_error("invalid episode");
+      throw std::logic_error("invalid episode");
   }
 
   if (index->empty()) {
@@ -663,7 +661,7 @@ size_t FloorDefinition::limit_for_episode(Episode ep) {
 uint32_t class_flags_for_class(uint8_t char_class) {
   static constexpr uint8_t flags[12] = {0x25, 0x2A, 0x31, 0x45, 0x51, 0x52, 0x86, 0x89, 0x8A, 0x32, 0x85, 0x46};
   if (char_class >= 12) {
-    throw runtime_error("invalid character class");
+    throw std::runtime_error("invalid character class");
   }
   return flags[char_class];
 }
@@ -675,16 +673,16 @@ char char_for_challenge_rank(uint8_t rank) {
   return "BAS"[rank];
 }
 
-const array<size_t, 4> DEFAULT_MIN_LEVELS_V123({0, 19, 39, 79});
-const array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP1({0, 19, 39, 79});
-const array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP2({0, 29, 49, 89});
-const array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP4({0, 39, 79, 109});
+const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V123({0, 19, 39, 79});
+const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP1({0, 19, 39, 79});
+const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP2({0, 29, 49, 89});
+const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP4({0, 39, 79, 109});
 
-const array<GameMode, 2> ALL_GAME_MODES_V1 = {GameMode::NORMAL, GameMode::BATTLE};
-const array<GameMode, 3> ALL_GAME_MODES_V23 = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE};
-const array<GameMode, 4> ALL_GAME_MODES_V4 = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
-const array<Episode, 1> ALL_EPISODES_V12 = {Episode::EP1};
-const array<Episode, 2> ALL_EPISODES_V3 = {Episode::EP1, Episode::EP2};
-const array<Episode, 3> ALL_EPISODES_V4 = {Episode::EP1, Episode::EP2, Episode::EP4};
-const array<Difficulty, 3> ALL_DIFFICULTIES_V1 = {Difficulty::NORMAL, Difficulty::HARD, Difficulty::VERY_HARD};
-const array<Difficulty, 4> ALL_DIFFICULTIES_V234 = {Difficulty::NORMAL, Difficulty::HARD, Difficulty::VERY_HARD, Difficulty::ULTIMATE};
+const std::array<GameMode, 2> ALL_GAME_MODES_V1 = {GameMode::NORMAL, GameMode::BATTLE};
+const std::array<GameMode, 3> ALL_GAME_MODES_V23 = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE};
+const std::array<GameMode, 4> ALL_GAME_MODES_V4 = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE, GameMode::SOLO};
+const std::array<Episode, 1> ALL_EPISODES_V12 = {Episode::EP1};
+const std::array<Episode, 2> ALL_EPISODES_V3 = {Episode::EP1, Episode::EP2};
+const std::array<Episode, 3> ALL_EPISODES_V4 = {Episode::EP1, Episode::EP2, Episode::EP4};
+const std::array<Difficulty, 3> ALL_DIFFICULTIES_V1 = {Difficulty::NORMAL, Difficulty::HARD, Difficulty::VERY_HARD};
+const std::array<Difficulty, 4> ALL_DIFFICULTIES_V234 = {Difficulty::NORMAL, Difficulty::HARD, Difficulty::VERY_HARD, Difficulty::ULTIMATE};

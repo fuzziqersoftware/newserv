@@ -7,8 +7,6 @@
 #include "CommonFileFormats.hh"
 #include "StaticGameData.hh"
 
-using namespace std;
-
 void LevelTable::reset_to_base(PlayerStats& stats, uint8_t char_class) const {
   stats.level = 0;
   stats.exp = 0;
@@ -82,7 +80,7 @@ const LevelStatsDelta& JSONLevelTable::stats_delta_for_level(uint8_t char_class,
   return this->level_deltas.at(char_class).at(level);
 }
 
-LevelTableV2::LevelTableV2(const string& data) {
+LevelTableV2::LevelTableV2(const std::string& data) {
   struct Root {
     // The overall format of this file on V2 has much more data than we actually use. This table is sorted by the
     // offset in the PlayerTable.prs file; note that the offset fields in this structure do not match that order.
@@ -165,7 +163,7 @@ size_t LevelTableV3::num_char_classes() const {
 }
 
 const CharacterStats& LevelTableV3::base_stats_for_class(uint8_t char_class) const {
-  static const array<CharacterStats, 12> data = {
+  static const std::array<CharacterStats, 12> data = {
       //                ATP     MST     EVP      HP     DFP     ATA     LCK
       CharacterStats{0x0023, 0x001D, 0x002D, 0x0014, 0x0011, 0x001E, 0x000A},
       CharacterStats{0x001E, 0x0028, 0x003C, 0x0013, 0x0016, 0x0019, 0x000A},
@@ -183,7 +181,7 @@ const CharacterStats& LevelTableV3::base_stats_for_class(uint8_t char_class) con
   return data.at(char_class);
 }
 
-static const array<PlayerStats, 12> max_stats_v3_v4 = {
+static const std::array<PlayerStats, 12> max_stats_v3_v4 = {
     //              ATP     MST     EVP      HP     DFP     ATA     LCK      ESP   PRX   PRY  L  E  M
     PlayerStats{{0x056B, 0x02DC, 0x02F4, 0x0265, 0x0243, 0x054B, 0x0064}, 0x0064, 0.0f, 0.0f, 0, 0, 0},
     PlayerStats{{0x04CB, 0x0499, 0x032B, 0x0254, 0x024D, 0x056C, 0x0064}, 0x0064, 0.0f, 0.0f, 0, 0, 0},
@@ -208,7 +206,7 @@ const LevelStatsDelta& LevelTableV3::stats_delta_for_level(uint8_t char_class, u
 }
 
 template <bool BE>
-void parse_level_deltas_t(std::array<std::array<LevelStatsDelta, 200>, 12>& deltas, const string& data) {
+void parse_level_deltas_t(std::array<std::array<LevelStatsDelta, 200>, 12>& deltas, const std::string& data) {
   // The V3 format is very simple:
   //   root:
   //     u32 offset:
@@ -225,11 +223,11 @@ void parse_level_deltas_t(std::array<std::array<LevelStatsDelta, 200>, 12>& delt
   }
 }
 
-LevelTableGC::LevelTableGC(const string& data) {
+LevelTableGC::LevelTableGC(const std::string& data) {
   parse_level_deltas_t<true>(this->level_deltas, data);
 }
 
-LevelTableXB::LevelTableXB(const string& data) {
+LevelTableXB::LevelTableXB(const std::string& data) {
   parse_level_deltas_t<false>(this->level_deltas, data);
 }
 
@@ -274,7 +272,7 @@ std::string LevelTable::serialize_binary_v4() const {
   return rel.finalize(root_offset);
 }
 
-LevelTableV4::LevelTableV4(const string& data) {
+LevelTableV4::LevelTableV4(const std::string& data) {
 
   phosg::StringReader r(data);
   const auto& footer = r.pget<RELFileFooter>(r.size() - sizeof(RELFileFooter));

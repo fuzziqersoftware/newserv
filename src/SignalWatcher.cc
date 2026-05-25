@@ -12,12 +12,8 @@
 #include "ServerState.hh"
 #include "StaticGameData.hh"
 
-using namespace std;
-
-SignalWatcher::SignalWatcher(shared_ptr<ServerState> state)
-    : log("[SignalWatcher] "),
-      state(state),
-      signals(*this->state->io_context) {
+SignalWatcher::SignalWatcher(std::shared_ptr<ServerState> state)
+    : log("[SignalWatcher] "), state(state), signals(*this->state->io_context) {
   asio::co_spawn(*this->state->io_context, this->signal_handler_task(), asio::detached);
 }
 
@@ -34,7 +30,7 @@ asio::awaitable<void> SignalWatcher::signal_handler_task() {
           this->state->load_config_early();
           this->state->load_config_late();
           phosg::fwrite_fmt(stderr, "Configuration update complete\n");
-        } catch (const exception& e) {
+        } catch (const std::exception& e) {
           phosg::fwrite_fmt(stderr, "FAILED: {}\n", e.what());
           phosg::fwrite_fmt(stderr, "Some configuration may have been reloaded. Fix the underlying issue and try again.\n");
         }
@@ -44,7 +40,7 @@ asio::awaitable<void> SignalWatcher::signal_handler_task() {
         try {
           this->state->load_all(true);
           phosg::fwrite_fmt(stderr, "Configuration update complete\n");
-        } catch (const exception& e) {
+        } catch (const std::exception& e) {
           phosg::fwrite_fmt(stderr, "FAILED: {}\n", e.what());
           phosg::fwrite_fmt(stderr, "Some configuration may have been reloaded. Fix the underlying issue and try again.\n");
         }

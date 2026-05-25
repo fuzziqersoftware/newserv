@@ -5,8 +5,6 @@
 
 #include "Text.hh"
 
-using namespace std;
-
 extern bool use_terminal_colors;
 
 PSOCommandHeader::PSOCommandHeader() {
@@ -37,7 +35,7 @@ uint16_t PSOCommandHeader::command(Version version) const {
     case Version::BB_V4:
       return this->bb.command;
     default:
-      throw logic_error("unknown game version");
+      throw std::logic_error("unknown game version");
   }
 }
 
@@ -68,7 +66,7 @@ void PSOCommandHeader::set_command(Version version, uint16_t command) {
       this->bb.command = command;
       break;
     default:
-      throw logic_error("unknown game version");
+      throw std::logic_error("unknown game version");
   }
 }
 
@@ -94,7 +92,7 @@ uint16_t PSOCommandHeader::size(Version version) const {
     case Version::BB_V4:
       return this->bb.size;
     default:
-      throw logic_error("unknown game version");
+      throw std::logic_error("unknown game version");
   }
 }
 
@@ -125,7 +123,7 @@ void PSOCommandHeader::set_size(Version version, uint32_t size) {
       this->bb.size = size;
       break;
     default:
-      throw logic_error("unknown game version");
+      throw std::logic_error("unknown game version");
   }
 }
 
@@ -151,7 +149,7 @@ uint32_t PSOCommandHeader::flag(Version version) const {
     case Version::BB_V4:
       return this->bb.flag;
     default:
-      throw logic_error("unknown game version");
+      throw std::logic_error("unknown game version");
   }
 }
 
@@ -182,7 +180,7 @@ void PSOCommandHeader::set_flag(Version version, uint32_t flag) {
       this->bb.flag = flag;
       break;
     default:
-      throw logic_error("unknown game version");
+      throw std::logic_error("unknown game version");
   }
 }
 
@@ -255,7 +253,7 @@ std::string prepend_command_header(
     }
 
     default:
-      throw logic_error("unimplemented game version in prepend_command_header");
+      throw std::logic_error("unimplemented game version in prepend_command_header");
   }
   ret.write(data);
   return std::move(ret.str());

@@ -2,8 +2,6 @@
 
 #include "CommonFileFormats.hh"
 
-using namespace std;
-
 template <bool BE>
 struct MotionReferenceTables {
   // It seems that there are two definition tables, but only the first is used on any version of PSO. On v3 and later,
@@ -125,7 +123,7 @@ static uint8_t get_v1_mag_evolution_number(uint8_t data1_1) {
       /* 10 */ 3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 2, 2, 3, 4, 3, 3,
       /* 20 */ 3, 4, 4, 3, 3, 3, 3, 4, 4, 4, 4, 4};
   if (data1_1 >= v1_evolution_number_table.size()) {
-    throw runtime_error("invalid mag number");
+    throw std::runtime_error("invalid mag number");
   }
   return v1_evolution_number_table[data1_1];
 }
@@ -196,7 +194,7 @@ public:
 
   virtual const VectorXYZTF& get_color_rgba(size_t index) const {
     if (index >= NumColors) {
-      throw runtime_error("invalid mag color index");
+      throw std::runtime_error("invalid mag color index");
     }
     return this->add_to_vector_cache<ColorEntry<BE>>(this->colors, this->root->color_table, index);
   }
@@ -241,29 +239,29 @@ public:
     return 0;
   }
   virtual const MotionReference& get_motion_reference(bool, size_t) const {
-    throw runtime_error("Mag tables not available on DC NTE");
+    throw std::runtime_error("Mag tables not available on DC NTE");
   }
 
   virtual std::pair<uint8_t, uint8_t> get_unknown_a2(size_t) const {
-    throw runtime_error("Mag tables not available on DC NTE");
+    throw std::runtime_error("Mag tables not available on DC NTE");
   }
 
   virtual size_t num_unknown_a3_entries() const {
     return 0;
   }
   virtual const UnknownA3Entry& get_unknown_a3(size_t) const {
-    throw runtime_error("Mag tables not available on DC NTE");
+    throw std::runtime_error("Mag tables not available on DC NTE");
   }
 
   virtual uint8_t get_unknown_a4(size_t) const {
-    throw runtime_error("Mag tables not available on DC NTE");
+    throw std::runtime_error("Mag tables not available on DC NTE");
   }
 
   virtual size_t num_colors() const {
     return 0;
   }
   virtual const VectorXYZTF& get_color_rgba(size_t) const {
-    throw runtime_error("Mag tables not available on DC NTE");
+    throw std::runtime_error("Mag tables not available on DC NTE");
   }
 
   virtual uint8_t get_evolution_number(uint8_t data1_1) const {

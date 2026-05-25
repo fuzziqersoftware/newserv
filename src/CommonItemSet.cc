@@ -6,8 +6,6 @@
 #include "StaticGameData.hh"
 #include "Types.hh"
 
-using namespace std;
-
 template <typename IntT, size_t Count>
 phosg::JSON to_json(const parray<IntT, Count>& v) {
   auto ret = phosg::JSON::list();
@@ -20,7 +18,7 @@ phosg::JSON to_json(const parray<IntT, Count>& v) {
 template <typename IntT, size_t Count>
 void from_json_into(const phosg::JSON& json, parray<IntT, Count>& ret) {
   if (json.size() != Count) {
-    throw runtime_error("incorrect array length");
+    throw std::runtime_error("incorrect array length");
   }
   for (size_t z = 0; z < Count; z++) {
     ret[z] = json.at(z).as_int();
@@ -39,7 +37,7 @@ phosg::JSON to_json(const parray<CommonItemSet::Table::Range<IntT>, Count>& v) {
 template <typename IntT, size_t Count>
 void from_json_into(const phosg::JSON& json, parray<CommonItemSet::Table::Range<IntT>, Count>& ret) {
   if (json.size() != Count) {
-    throw runtime_error("incorrect array length");
+    throw std::runtime_error("incorrect array length");
   }
   for (size_t z = 0; z < Count; z++) {
     from_json_into(json.at(z), ret[z]);
@@ -60,7 +58,7 @@ void from_json_into(const phosg::JSON& json, CommonItemSet::Table::Range<IntT>& 
   } else {
     const auto& l = json.as_list();
     if (l.size() != 2) {
-      throw runtime_error("incorrect range list length");
+      throw std::runtime_error("incorrect range list length");
     }
     ret.min = l.at(0)->as_int();
     ret.max = l.at(1)->as_int();
@@ -79,7 +77,7 @@ phosg::JSON to_json(const parray<parray<IntT, Count2>, Count1>& v) {
 template <typename IntT, size_t Count1, size_t Count2>
 void from_json_into(const phosg::JSON& json, parray<parray<IntT, Count2>, Count1>& ret) {
   if (json.size() != Count1) {
-    throw runtime_error("incorrect array length");
+    throw std::runtime_error("incorrect array length");
   }
   for (size_t z = 0; z < Count1; z++) {
     from_json_into(json.at(z), ret[z]);
@@ -89,7 +87,7 @@ void from_json_into(const phosg::JSON& json, parray<parray<IntT, Count2>, Count1
 template <typename IntT, size_t Count1, size_t Count2>
 void from_json_into(const phosg::JSON& json, parray<parray<CommonItemSet::Table::Range<IntT>, Count2>, Count1>& ret) {
   if (json.size() != Count1) {
-    throw runtime_error("incorrect array length");
+    throw std::runtime_error("incorrect array length");
   }
   for (size_t z = 0; z < Count1; z++) {
     from_json_into(json.at(z), ret[z]);
@@ -139,7 +137,7 @@ CommonItemSet::Table::Table(std::shared_ptr<const Table> prev_table, const phosg
     for (auto enemy_type : phosg::EnumRange<EnemyType>()) {
       try {
         from_json_into(*dict.at(phosg::name_for_enum(enemy_type)), this->enemy_type_meseta_ranges[enemy_type]);
-      } catch (const out_of_range&) {
+      } catch (const std::out_of_range&) {
       }
     }
   } else {
@@ -151,7 +149,7 @@ CommonItemSet::Table::Table(std::shared_ptr<const Table> prev_table, const phosg
     for (auto enemy_type : phosg::EnumRange<EnemyType>()) {
       try {
         this->enemy_type_drop_probs[enemy_type] = dict.at(phosg::name_for_enum(enemy_type))->as_int();
-      } catch (const out_of_range&) {
+      } catch (const std::out_of_range&) {
       }
     }
   } else {
@@ -163,7 +161,7 @@ CommonItemSet::Table::Table(std::shared_ptr<const Table> prev_table, const phosg
     for (auto enemy_type : phosg::EnumRange<EnemyType>()) {
       try {
         this->enemy_type_item_classes[enemy_type] = dict.at(phosg::name_for_enum(enemy_type))->as_int();
-      } catch (const out_of_range&) {
+      } catch (const std::out_of_range&) {
       }
     }
   } else {
@@ -208,13 +206,13 @@ void CommonItemSet::Table::print(FILE* stream) const {
           def.rt_index, phosg::name_for_enum(enemy_type),
           meseta_range.min, meseta_range.max, drop_prob, item_class,
           name_for_common_item_class(item_class));
-    } catch (const out_of_range&) {
+    } catch (const std::out_of_range&) {
       phosg::fwrite_fmt(stream, "  {:02X}:{:<23}  -----  -----  ----  --:-------\n",
           def.rt_index, phosg::name_for_enum(enemy_type));
     }
   }
 
-  static const array<const char*, 12> base_weapon_type_names = {
+  static const std::array<const char*, 12> base_weapon_type_names = {
       "SABER", "SWORD", "DAGGER", "PARTISAN", "SLICER", "HANDGUN", "RIFLE", "MECHGUN", "SHOT", "CANE", "ROD", "WAND"};
   phosg::fwrite_fmt(stream, "Base weapon config:\n");
   phosg::fwrite_fmt(stream, "  TYPE         PROB  [SB  AL]  FLOORS\n");
@@ -295,7 +293,7 @@ void CommonItemSet::Table::print(FILE* stream) const {
     fputc('\n', stream);
   }
 
-  static const array<const char*, 19> technique_names = {
+  static const std::array<const char*, 19> technique_names = {
       "FOIE    ",
       "GIFOIE  ",
       "RAFOIE  ",
@@ -392,7 +390,7 @@ void CommonItemSet::Table::print_diff(FILE* stream, const Table& other) const {
   }
 
   auto format_enemy_range_table = [&](const std::unordered_map<EnemyType, Range<uint16_t>>& table) -> std::string {
-    string ret = "";
+    std::string ret = "";
     for (auto enemy_type : phosg::EnumRange<EnemyType>()) {
       try {
         const auto& range = table.at(enemy_type);
@@ -400,13 +398,13 @@ void CommonItemSet::Table::print_diff(FILE* stream, const Table& other) const {
           ret += ",";
         }
         ret += std::format("{}=[{},{}]", phosg::name_for_enum(enemy_type), range.min, range.max);
-      } catch (const out_of_range&) {
+      } catch (const std::out_of_range&) {
       }
     }
     return ret;
   };
   auto format_enemy_u8_table = [&](const std::unordered_map<EnemyType, uint8_t>& table) -> std::string {
-    string ret = "";
+    std::string ret = "";
     for (auto enemy_type : phosg::EnumRange<EnemyType>()) {
       try {
         uint8_t value = table.at(enemy_type);
@@ -414,7 +412,7 @@ void CommonItemSet::Table::print_diff(FILE* stream, const Table& other) const {
           ret += ",";
         }
         ret += std::format("{}={}", phosg::name_for_enum(enemy_type), value);
-      } catch (const out_of_range&) {
+      } catch (const std::out_of_range&) {
       }
     }
     return ret;
@@ -620,7 +618,7 @@ phosg::JSON CommonItemSet::json() const {
             auto prev_table = this->get_prev_table(episode, mode, difficulty, section_id);
             auto table = this->get_table(episode, mode, difficulty, section_id);
             ret.emplace(json_key, table->json(prev_table));
-          } catch (const runtime_error&) {
+          } catch (const std::runtime_error&) {
           }
         }
       }
@@ -642,7 +640,7 @@ void CommonItemSet::print(FILE* stream) const {
                 name_for_difficulty(difficulty),
                 name_for_section_id(section_id));
             table->print(stream);
-          } catch (const runtime_error&) {
+          } catch (const std::runtime_error&) {
           }
         }
       }
@@ -655,15 +653,15 @@ void CommonItemSet::print_diff(FILE* stream, const CommonItemSet& other) const {
     for (const auto& mode : ALL_GAME_MODES_V4) {
       for (const auto& difficulty : ALL_DIFFICULTIES_V234) {
         for (uint8_t section_id = 0; section_id < 10; section_id++) {
-          shared_ptr<const Table> this_table;
-          shared_ptr<const Table> other_table;
+          std::shared_ptr<const Table> this_table;
+          std::shared_ptr<const Table> other_table;
           try {
             this_table = this->get_table(episode, mode, difficulty, section_id);
-          } catch (const runtime_error&) {
+          } catch (const std::runtime_error&) {
           }
           try {
             other_table = other.get_table(episode, mode, difficulty, section_id);
-          } catch (const runtime_error&) {
+          } catch (const std::runtime_error&) {
           }
 
           if (!this_table && !other_table) {
@@ -789,17 +787,17 @@ std::string CommonItemSet::json_key_for_table(
       token_name_for_difficulty(difficulty), name_for_section_id(section_id));
 }
 
-shared_ptr<const CommonItemSet::Table> CommonItemSet::get_table(
+std::shared_ptr<const CommonItemSet::Table> CommonItemSet::get_table(
     Episode episode, GameMode mode, Difficulty difficulty, uint8_t section_id) const {
   try {
     return this->tables.at(this->key_for_table(episode, mode, difficulty, section_id));
-  } catch (const out_of_range&) {
-    throw runtime_error(std::format("common item table not available for episode={}, mode={}, difficulty={}, secid={}",
+  } catch (const std::out_of_range&) {
+    throw std::runtime_error(std::format("common item table not available for episode={}, mode={}, difficulty={}, secid={}",
         name_for_episode(episode), name_for_mode(mode), name_for_difficulty(difficulty), section_id));
   }
 }
 
-shared_ptr<const CommonItemSet::Table> CommonItemSet::get_prev_table(
+std::shared_ptr<const CommonItemSet::Table> CommonItemSet::get_prev_table(
     Episode episode, GameMode mode, Difficulty difficulty, uint8_t section_id) const {
   if (section_id != 0) {
     // All section IDs are based on the previous, except Viridia
@@ -837,7 +835,7 @@ AFSV2CommonItemSet::AFSV2CommonItemSet(
       for (size_t section_id = 0; section_id < 10; section_id++) {
         auto entry = pt_afs.get(static_cast<size_t>(difficulty) * 10 + section_id);
         phosg::StringReader r(entry.first, entry.second);
-        auto table = make_shared<Table>(r, false, false, Episode::EP1);
+        auto table = std::make_shared<Table>(r, false, false, Episode::EP1);
         this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::NORMAL, difficulty, section_id), table);
         this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::BATTLE, difficulty, section_id), table);
         this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::SOLO, difficulty, section_id), table);
@@ -861,7 +859,7 @@ AFSV2CommonItemSet::AFSV2CommonItemSet(
         continue;
       }
       auto r = ct_afs.get_reader(static_cast<size_t>(difficulty) * 10);
-      auto table = make_shared<Table>(r, false, false, Episode::EP1);
+      auto table = std::make_shared<Table>(r, false, false, Episode::EP1);
       for (size_t section_id = 0; section_id < 10; section_id++) {
         this->tables.emplace(this->key_for_table(Episode::EP1, GameMode::CHALLENGE, difficulty, section_id), table);
       }
@@ -872,7 +870,7 @@ AFSV2CommonItemSet::AFSV2CommonItemSet(
 GSLV3V4CommonItemSet::GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gsl_data, bool is_big_endian) {
   GSLArchive gsl(gsl_data, is_big_endian);
 
-  auto filename_for_table = +[](Episode episode, Difficulty difficulty, uint8_t section_id, bool is_challenge) -> string {
+  auto filename_for_table = +[](Episode episode, Difficulty difficulty, uint8_t section_id, bool is_challenge) -> std::string {
     const char* episode_token = "";
     switch (episode) {
       case Episode::EP1:
@@ -885,7 +883,7 @@ GSLV3V4CommonItemSet::GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gs
         episode_token = "s";
         break;
       default:
-        throw runtime_error("invalid episode");
+        throw std::runtime_error("invalid episode");
     }
     return std::format(
         "ItemPT{}{}{}{}.rel",
@@ -901,7 +899,7 @@ GSLV3V4CommonItemSet::GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gs
         phosg::StringReader r;
         try {
           r = gsl.get_reader(filename_for_table(episode, difficulty, section_id, false));
-        } catch (const exception&) {
+        } catch (const std::exception&) {
           // Fall back to Episode 1 if Episode 4 data is missing
           if (episode == Episode::EP4) {
             auto ep1_table = this->tables.at(this->key_for_table(Episode::EP1, GameMode::NORMAL, difficulty, section_id));
@@ -913,7 +911,7 @@ GSLV3V4CommonItemSet::GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gs
             throw;
           }
         }
-        auto table = make_shared<Table>(r, is_big_endian, true, episode);
+        auto table = std::make_shared<Table>(r, is_big_endian, true, episode);
         this->tables.emplace(this->key_for_table(episode, GameMode::NORMAL, difficulty, section_id), table);
         this->tables.emplace(this->key_for_table(episode, GameMode::BATTLE, difficulty, section_id), table);
         this->tables.emplace(this->key_for_table(episode, GameMode::SOLO, difficulty, section_id), table);
@@ -923,11 +921,11 @@ GSLV3V4CommonItemSet::GSLV3V4CommonItemSet(std::shared_ptr<const std::string> gs
     for (Difficulty difficulty : ALL_DIFFICULTIES_V234) {
       try {
         auto r = gsl.get_reader(filename_for_table(episode, difficulty, 0, true));
-        auto table = make_shared<Table>(r, is_big_endian, true, episode);
+        auto table = std::make_shared<Table>(r, is_big_endian, true, episode);
         for (size_t section_id = 0; section_id < 10; section_id++) {
           this->tables.emplace(this->key_for_table(episode, GameMode::CHALLENGE, difficulty, section_id), table);
         }
-      } catch (const out_of_range&) {
+      } catch (const std::out_of_range&) {
         // GC NTE doesn't have Ep2 challenge; just skip adding the table
       }
     }
@@ -943,9 +941,9 @@ JSONCommonItemSet::JSONCommonItemSet(const phosg::JSON& json) {
             auto prev_table = this->get_prev_table(episode, mode, difficulty, section_id);
             auto json_key = this->json_key_for_table(episode, mode, difficulty, section_id);
             auto key = this->key_for_table(episode, mode, difficulty, section_id);
-            this->tables.emplace(key, make_shared<Table>(prev_table, json.at(json_key), episode));
-          } catch (const runtime_error&) {
-          } catch (const out_of_range&) {
+            this->tables.emplace(key, std::make_shared<Table>(prev_table, json.at(json_key), episode));
+          } catch (const std::runtime_error&) {
+          } catch (const std::out_of_range&) {
           }
         }
       }
@@ -985,21 +983,21 @@ ToolRandomSet::ToolRandomSet(std::shared_ptr<const std::string> data) : RELFileS
   this->tech_disk_level_table_spec = &r.pget<TableSpec>(r.pget_u32b(specs_offset + 2 * sizeof(uint32_t)));
 }
 
-pair<const uint8_t*, size_t> ToolRandomSet::get_common_recovery_table(size_t index) const {
+std::pair<const uint8_t*, size_t> ToolRandomSet::get_common_recovery_table(size_t index) const {
   return this->get_table<uint8_t>(*this->common_recovery_table_spec, index);
 }
 
-pair<const ToolRandomSet::WeightTableEntry8*, size_t>
+std::pair<const ToolRandomSet::WeightTableEntry8*, size_t>
 ToolRandomSet::get_rare_recovery_table(size_t index) const {
   return this->get_table<WeightTableEntry8>(*this->rare_recovery_table_spec, index);
 }
 
-pair<const ToolRandomSet::WeightTableEntry8*, size_t>
+std::pair<const ToolRandomSet::WeightTableEntry8*, size_t>
 ToolRandomSet::get_tech_disk_table(size_t index) const {
   return this->get_table<WeightTableEntry8>(*this->tech_disk_table_spec, index);
 }
 
-pair<const ToolRandomSet::TechDiskLevelEntry*, size_t>
+std::pair<const ToolRandomSet::TechDiskLevelEntry*, size_t>
 ToolRandomSet::get_tech_disk_level_table(size_t index) const {
   return this->get_table<TechDiskLevelEntry>(*this->tech_disk_level_table_spec, index);
 }
@@ -1013,7 +1011,7 @@ std::pair<const WeaponRandomSet::WeightTableEntry8*, size_t>
 WeaponRandomSet::get_weapon_type_table(size_t index) const {
   const auto& spec = this->r.pget<TableSpec>(this->offsets->weapon_type_table + index * sizeof(TableSpec));
   const auto* data = &this->r.pget<WeightTableEntry8>(spec.offset, spec.entries_per_table * sizeof(WeightTableEntry8));
-  return make_pair(data, spec.entries_per_table);
+  return std::make_pair(data, spec.entries_per_table);
 }
 
 const parray<WeaponRandomSet::WeightTableEntry32, 6>*
@@ -1055,7 +1053,7 @@ const ProbabilityTable<uint8_t, 100>& TekkerAdjustmentSet::get_table(
     bool favored,
     uint8_t section_id) const {
   if (section_id >= 10) {
-    throw runtime_error("invalid section ID");
+    throw std::runtime_error("invalid section ID");
   }
   ProbabilityTable<uint8_t, 100>& table = favored ? tables_favored[section_id] : tables_default[section_id];
   if (table.count == 0) {

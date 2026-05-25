@@ -11,13 +11,11 @@
 #include "Loggers.hh"
 #include "StaticGameData.hh"
 
-using namespace std;
-
 TeamIndex::Team::Member::Member(const phosg::JSON& json)
     : flags(json.get_int("Flags", 0)), points(json.get_int("Points", 0)), name(json.get_string("Name", "")) {
   try {
     this->account_id = json.get_int("AccountID");
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     // Old format
     this->account_id = json.get_int("SerialNumber");
   }
@@ -42,11 +40,11 @@ TeamIndex::Team::Team(uint32_t team_id) : Team() {
   this->team_id = team_id;
 }
 
-string TeamIndex::Team::json_filename() const {
+std::string TeamIndex::Team::json_filename() const {
   return std::format("system/teams/{:08X}.json", this->team_id);
 }
 
-string TeamIndex::Team::flag_filename() const {
+std::string TeamIndex::Team::flag_filename() const {
   return std::format("system/teams/{:08X}.bmp", this->team_id);
 }
 
@@ -68,7 +66,7 @@ void TeamIndex::Team::load_config() {
     for (const auto& it : json.get_list("RewardKeys")) {
       this->reward_keys.emplace(it->as_string());
     }
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
   this->reward_flags = json.get_int("RewardFlags");
 }
@@ -98,7 +96,7 @@ void TeamIndex::Team::save_config() const {
 void TeamIndex::Team::load_flag() {
   auto img = phosg::ImageRGBA8888N::from_file_data(phosg::load_file(this->flag_filename()));
   if (img.get_width() != 32 || img.get_height() != 32) {
-    throw runtime_error("incorrect flag image dimensions");
+    throw std::runtime_error("incorrect flag image dimensions");
   }
   this->flag_data.reset(new parray<le_uint16_t, 0x20 * 0x20>());
   for (size_t y = 0; y < 32; y++) {
@@ -127,10 +125,8 @@ void TeamIndex::Team::save_flag() const {
 }
 
 void TeamIndex::Team::delete_files() const {
-  string json_filename = this->json_filename();
-  string flag_filename = this->flag_filename();
-  remove(json_filename.c_str());
-  remove(flag_filename.c_str());
+  std::filesystem::remove(this->json_filename());
+  std::filesystem::remove(this->flag_filename());
 }
 
 PSOBBBaseTeamMembership TeamIndex::Team::base_membership_for_member(uint32_t account_id) const {
@@ -161,7 +157,7 @@ PSOBBFullTeamMembership TeamIndex::Team::full_membership_for_member(uint32_t acc
   return ret;
 }
 
-bool TeamIndex::Team::has_reward(const string& key) const {
+bool TeamIndex::Team::has_reward(const std::string& key) const {
   return this->reward_keys.count(key);
 }
 
@@ -226,21 +222,20 @@ TeamIndex::Reward::Reward(uint32_t menu_item_id, const phosg::JSON& def_json)
     for (const auto& it : def_json.get_list("PrerequisiteKeys")) {
       this->prerequisite_keys.emplace(it->as_string());
     }
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
   try {
     this->reward_flag = static_cast<Team::RewardFlag>(def_json.get_int("RewardFlag"));
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
   try {
     this->reward_item = ItemData::from_data(phosg::parse_data_string(def_json.get_string("RewardItem")));
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
   }
 }
 
-TeamIndex::TeamIndex(const string& directory, const phosg::JSON& reward_defs_json)
-    : directory(directory),
-      next_team_id(1) {
+TeamIndex::TeamIndex(const std::string& directory, const phosg::JSON& reward_defs_json)
+    : directory(directory), next_team_id(1) {
   uint32_t reward_menu_item_id = 0;
   for (const auto& it : reward_defs_json.as_list()) {
     this->reward_defs.emplace_back(reward_menu_item_id++, *it);
@@ -251,24 +246,24 @@ TeamIndex::TeamIndex(const string& directory, const phosg::JSON& reward_defs_jso
     return;
   }
   for (const auto& item : std::filesystem::directory_iterator(this->directory)) {
-    string filename = item.path().filename().string();
-    string file_path = this->directory + "/" + filename;
+    std::string filename = item.path().filename().string();
+    std::string file_path = this->directory + "/" + filename;
     if (filename == "base.json") {
       auto json = phosg::JSON::parse(phosg::load_file(file_path));
       this->next_team_id = json.get_int("NextTeamID");
     } else if (filename.ends_with(".json")) {
       try {
         uint32_t team_id = stoul(filename.substr(0, filename.size() - 5), nullptr, 16);
-        auto team = make_shared<Team>(team_id);
+        auto team = std::make_shared<Team>(team_id);
         team->load_config();
         try {
           team->load_flag();
-        } catch (const exception& e) {
+        } catch (const std::exception& e) {
           static_game_data_log.warning_f("Failed to load flag for team {:08X}: {}", team_id, e.what());
         }
         this->add_to_indexes(team);
         static_game_data_log.info_f("Indexed team {:08X} ({}) ({} members)", team_id, team->name, team->num_members());
-      } catch (const exception& e) {
+      } catch (const std::exception& e) {
         static_game_data_log.warning_f("Failed to index team from {}: {}", filename, e.what());
       }
     }
@@ -279,40 +274,41 @@ size_t TeamIndex::count() const {
   return this->id_to_team.size();
 }
 
-shared_ptr<const TeamIndex::Team> TeamIndex::get_by_id(uint32_t team_id) const {
+std::shared_ptr<const TeamIndex::Team> TeamIndex::get_by_id(uint32_t team_id) const {
   try {
     return this->id_to_team.at(team_id);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     return nullptr;
   }
 }
 
-shared_ptr<const TeamIndex::Team> TeamIndex::get_by_name(const string& name) const {
+std::shared_ptr<const TeamIndex::Team> TeamIndex::get_by_name(const std::string& name) const {
   try {
     return this->name_to_team.at(name);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     return nullptr;
   }
 }
 
-shared_ptr<const TeamIndex::Team> TeamIndex::get_by_account_id(uint32_t account_id) const {
+std::shared_ptr<const TeamIndex::Team> TeamIndex::get_by_account_id(uint32_t account_id) const {
   try {
     return this->account_id_to_team.at(account_id);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     return nullptr;
   }
 }
 
-vector<shared_ptr<const TeamIndex::Team>> TeamIndex::all() const {
-  vector<shared_ptr<const Team>> ret;
+std::vector<std::shared_ptr<const TeamIndex::Team>> TeamIndex::all() const {
+  std::vector<std::shared_ptr<const Team>> ret;
   for (const auto& it : this->id_to_team) {
     ret.emplace_back(it.second);
   }
   return ret;
 }
 
-shared_ptr<const TeamIndex::Team> TeamIndex::create(const string& name, uint32_t master_account_id, const string& master_name) {
-  auto team = make_shared<Team>(this->next_team_id++);
+std::shared_ptr<const TeamIndex::Team> TeamIndex::create(
+    const std::string& name, uint32_t master_account_id, const std::string& master_name) {
+  auto team = std::make_shared<Team>(this->next_team_id++);
   phosg::save_file(this->directory + "/base.json", phosg::JSON::dict({{"NextTeamID", this->next_team_id}}).serialize());
 
   Team::Member m;
@@ -338,17 +334,17 @@ void TeamIndex::disband(uint32_t team_id) {
 void TeamIndex::rename(uint32_t team_id, const std::string& new_team_name) {
   auto team = this->id_to_team.at(team_id);
   if (!this->name_to_team.emplace(new_team_name, team).second) {
-    throw runtime_error("team name is already in use");
+    throw std::runtime_error("team name is already in use");
   }
   this->name_to_team.erase(team->name);
   team->name = new_team_name;
   team->save_config();
 }
 
-void TeamIndex::add_member(uint32_t team_id, uint32_t account_id, const string& name) {
+void TeamIndex::add_member(uint32_t team_id, uint32_t account_id, const std::string& name) {
   auto team = this->id_to_team.at(team_id);
   if (!this->account_id_to_team.emplace(account_id, team).second) {
-    throw runtime_error("user is already in a different team");
+    throw std::runtime_error("user is already in a different team");
   }
 
   Team::Member m;
@@ -364,7 +360,7 @@ void TeamIndex::add_member(uint32_t team_id, uint32_t account_id, const string& 
 void TeamIndex::remove_member(uint32_t account_id) {
   auto team_it = this->account_id_to_team.find(account_id);
   if (team_it == this->account_id_to_team.end()) {
-    throw runtime_error("client is not in any team");
+    throw std::runtime_error("client is not in any team");
   }
   auto team = std::move(team_it->second);
   this->account_id_to_team.erase(team_it);
@@ -401,7 +397,7 @@ bool TeamIndex::promote_leader(uint32_t master_account_id, uint32_t leader_accou
   auto team = this->account_id_to_team.at(master_account_id);
   auto& master_m = team->members.at(master_account_id);
   if (!master_m.check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
-    throw runtime_error("incorrect master account ID");
+    throw std::runtime_error("incorrect master account ID");
   }
   auto& other_m = team->members.at(leader_account_id);
 
@@ -417,7 +413,7 @@ bool TeamIndex::demote_leader(uint32_t master_account_id, uint32_t leader_accoun
   auto team = this->account_id_to_team.at(master_account_id);
   auto& master_m = team->members.at(master_account_id);
   if (!master_m.check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
-    throw runtime_error("incorrect master account ID");
+    throw std::runtime_error("incorrect master account ID");
   }
   auto& other_m = team->members.at(leader_account_id);
 
@@ -433,7 +429,7 @@ void TeamIndex::change_master(uint32_t master_account_id, uint32_t new_master_ac
   auto team = this->account_id_to_team.at(master_account_id);
   auto& master_m = team->members.at(master_account_id);
   if (!master_m.check_flag(TeamIndex::Team::Member::Flag::IS_MASTER)) {
-    throw runtime_error("incorrect master account ID");
+    throw std::runtime_error("incorrect master account ID");
   }
   auto& new_master_m = team->members.at(new_master_account_id);
 
@@ -445,10 +441,10 @@ void TeamIndex::change_master(uint32_t master_account_id, uint32_t new_master_ac
   team->save_config();
 }
 
-void TeamIndex::buy_reward(uint32_t team_id, const string& key, uint32_t points, Team::RewardFlag reward_flag) {
+void TeamIndex::buy_reward(uint32_t team_id, const std::string& key, uint32_t points, Team::RewardFlag reward_flag) {
   auto team = this->id_to_team.at(team_id);
   if (team->spent_points + points > team->points) {
-    throw runtime_error("not enough points available");
+    throw std::runtime_error("not enough points available");
   }
   team->reward_keys.emplace(key);
   team->spent_points += points;
@@ -458,13 +454,13 @@ void TeamIndex::buy_reward(uint32_t team_id, const string& key, uint32_t points,
   team->save_config();
 }
 
-void TeamIndex::add_to_indexes(shared_ptr<Team> team) {
+void TeamIndex::add_to_indexes(std::shared_ptr<Team> team) {
   if (!this->id_to_team.emplace(team->team_id, team).second) {
-    throw runtime_error("team ID is already in use");
+    throw std::runtime_error("team ID is already in use");
   }
   if (!this->name_to_team.emplace(team->name, team).second) {
     this->id_to_team.erase(team->team_id);
-    throw runtime_error("team name is already in use");
+    throw std::runtime_error("team name is already in use");
   }
   for (const auto& [_, member] : team->members) {
     if (!this->account_id_to_team.emplace(member.account_id, team).second) {
@@ -474,7 +470,7 @@ void TeamIndex::add_to_indexes(shared_ptr<Team> team) {
   }
 }
 
-void TeamIndex::remove_from_indexes(shared_ptr<Team> team) {
+void TeamIndex::remove_from_indexes(std::shared_ptr<Team> team) {
   this->id_to_team.erase(team->team_id);
   this->name_to_team.erase(team->name);
   for (const auto& it : team->members) {

@@ -6,8 +6,6 @@
 
 #include "Client.hh"
 
-using namespace std;
-
 template <>
 const char* phosg::name_for_enum<Version>(Version v) {
   switch (v) {
@@ -40,7 +38,7 @@ const char* phosg::name_for_enum<Version>(Version v) {
     case Version::BB_V4:
       return "BB_V4";
     default:
-      throw runtime_error("unknown version");
+      throw std::runtime_error("unknown version");
   }
 }
 
@@ -75,7 +73,7 @@ Version phosg::enum_for_name<Version>(const char* name) {
   } else if (!strcmp(name, "BB_V4") || !strcasecmp(name, "bb")) {
     return Version::BB_V4;
   } else {
-    throw invalid_argument("incorrect version name");
+    throw std::invalid_argument("incorrect version name");
   }
 }
 
@@ -91,7 +89,7 @@ const char* phosg::name_for_enum<ServerBehavior>(ServerBehavior behavior) {
     case ServerBehavior::PATCH_SERVER_BB:
       return "patch_server_bb";
   }
-  throw logic_error("invalid server behavior");
+  throw std::logic_error("invalid server behavior");
 }
 
 template <>
@@ -105,7 +103,7 @@ ServerBehavior phosg::enum_for_name<ServerBehavior>(const char* name) {
   } else if (!strcasecmp(name, "patch_server_bb") || !strcasecmp(name, "patch_bb")) {
     return ServerBehavior::PATCH_SERVER_BB;
   } else {
-    throw invalid_argument(std::format("incorrect server behavior name: {}", name));
+    throw std::invalid_argument(std::format("incorrect server behavior name: {}", name));
   }
 }
 
@@ -186,7 +184,7 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
         default:
           return SPECIFIC_VERSION_GC_V3_INDETERMINATE; // 3O__; need to send VersionDetect
       }
-      throw logic_error("this should be impossible");
+      throw std::logic_error("this should be impossible");
     case Version::GC_EP3_NTE:
       return SPECIFIC_VERSION_GC_EP3_NTE; // 3SJT
     case Version::GC_EP3:
@@ -261,8 +259,8 @@ uint32_t specific_version_for_str(const std::string& s) {
   }
 }
 
-string str_for_specific_version(uint32_t specific_version) {
-  string ret;
+std::string str_for_specific_version(uint32_t specific_version) {
+  std::string ret;
   for (size_t z = 0; z < 4; z++) {
     char ch = specific_version >> (24 - (z << 3));
     ret.push_back(isalnum(ch) ? ch : '_');
@@ -301,7 +299,7 @@ const char* file_path_token_for_version(Version version) {
     case Version::BB_V4:
       return "bb-v4";
     default:
-      throw runtime_error("invalid game version");
+      throw std::runtime_error("invalid game version");
   }
 }
 
@@ -325,6 +323,6 @@ uint64_t generate_random_hardware_id(Version version) {
     case Version::BB_V4:
       return 0;
     default:
-      throw runtime_error("invalid game version");
+      throw std::runtime_error("invalid game version");
   }
 }

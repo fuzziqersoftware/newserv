@@ -18,14 +18,11 @@
 #include "PSOProtocol.hh"
 #include "ReceiveCommands.hh"
 
-using namespace std;
-using namespace std::placeholders;
-
-GameServer::GameServer(shared_ptr<ServerState> state) : Server(state->io_context, "[GameServer] "), state(state) {}
+GameServer::GameServer(std::shared_ptr<ServerState> state) : Server(state->io_context, "[GameServer] "), state(state) {}
 
 void GameServer::listen(
     const std::string& name,
-    const string& addr,
+    const std::string& addr,
     uint16_t port,
     Version version,
     ServerBehavior behavior) {
@@ -34,7 +31,7 @@ void GameServer::listen(
   }
 
   asio::ip::address asio_addr = addr.empty() ? asio::ip::address_v4::any() : asio::ip::make_address(addr);
-  auto sock = make_shared<GameServerSocket>();
+  auto sock = std::make_shared<GameServerSocket>();
   sock->name = name;
   sock->endpoint = asio::ip::tcp::endpoint(asio_addr, port);
   sock->version = version;
@@ -42,8 +39,8 @@ void GameServer::listen(
   this->add_socket(std::move(sock));
 }
 
-shared_ptr<Client> GameServer::connect_channel(shared_ptr<Channel> ch, uint16_t port, ServerBehavior initial_state) {
-  auto c = make_shared<Client>(this->shared_from_this(), ch, initial_state);
+std::shared_ptr<Client> GameServer::connect_channel(std::shared_ptr<Channel> ch, uint16_t port, ServerBehavior initial_state) {
+  auto c = std::make_shared<Client>(this->shared_from_this(), ch, initial_state);
 
   this->log.info_f("Client connected: C-{:X} via TSI-{}-{}-{}",
       c->id, port, phosg::name_for_enum(ch->version), phosg::name_for_enum(initial_state));
@@ -52,31 +49,31 @@ shared_ptr<Client> GameServer::connect_channel(shared_ptr<Channel> ch, uint16_t 
   return c;
 }
 
-shared_ptr<Client> GameServer::get_client() const {
+std::shared_ptr<Client> GameServer::get_client() const {
   if (this->clients.empty()) {
-    throw runtime_error("no clients on game server");
+    throw std::runtime_error("no clients on game server");
   }
   if (this->clients.size() > 1) {
-    throw runtime_error("multiple clients on game server");
+    throw std::runtime_error("multiple clients on game server");
   }
   return *this->clients.begin();
 }
 
-vector<shared_ptr<Client>> GameServer::get_clients_by_identifier(const string& ident) const {
+std::vector<std::shared_ptr<Client>> GameServer::get_clients_by_identifier(const std::string& ident) const {
   int64_t account_id_hex = -1;
   int64_t account_id_dec = -1;
   try {
     account_id_dec = stoul(ident, nullptr, 10);
-  } catch (const invalid_argument&) {
+  } catch (const std::invalid_argument&) {
   }
   try {
     account_id_hex = stoul(ident, nullptr, 16);
-  } catch (const invalid_argument&) {
+  } catch (const std::invalid_argument&) {
   }
 
   // TODO: It's kind of not great that we do a linear search here, but this is only used in the shell, so it should be
   // pretty rare.
-  vector<shared_ptr<Client>> results;
+  std::vector<std::shared_ptr<Client>> results;
   for (const auto& c : this->clients) {
     if (c->login && c->login->account->account_id == account_id_hex) {
       results.emplace_back(c);
@@ -114,8 +111,8 @@ vector<shared_ptr<Client>> GameServer::get_clients_by_identifier(const string& i
   return results;
 }
 
-shared_ptr<Client> GameServer::create_client(
-    shared_ptr<GameServerSocket> listen_sock, asio::ip::tcp::socket&& client_sock) {
+std::shared_ptr<Client> GameServer::create_client(
+    std::shared_ptr<GameServerSocket> listen_sock, asio::ip::tcp::socket&& client_sock) {
   uint32_t addr = ipv4_addr_for_asio_addr(client_sock.remote_endpoint().address());
   if (this->state->banned_ipv4_ranges->check(addr)) {
     if (client_sock.is_open()) {
@@ -126,7 +123,7 @@ shared_ptr<Client> GameServer::create_client(
 
   auto channel = SocketChannel::create(
       this->io_context,
-      make_unique<asio::ip::tcp::socket>(std::move(client_sock)),
+      std::make_unique<asio::ip::tcp::socket>(std::move(client_sock)),
       listen_sock->version,
       Language::ENGLISH,
       "",
@@ -134,27 +131,28 @@ shared_ptr<Client> GameServer::create_client(
       phosg::TerminalFormat::FG_GREEN,
       this->state->censor_credentials,
       false);
-  auto c = make_shared<Client>(this->shared_from_this(), channel, listen_sock->behavior);
+  auto c = std::make_shared<Client>(this->shared_from_this(), channel, listen_sock->behavior);
   this->log.info_f("Client connected: C-{:X} via {}", c->id, listen_sock->name);
 
   return c;
 }
 
-asio::awaitable<void> GameServer::handle_client_command(shared_ptr<Client> c, unique_ptr<Channel::Message> msg) {
+asio::awaitable<void> GameServer::handle_client_command(
+    std::shared_ptr<Client> c, std::unique_ptr<Channel::Message> msg) {
   try {
     co_await on_command(c, std::move(msg));
-  } catch (const exception& e) {
+  } catch (const std::exception& e) {
     this->log.warning_f("Error processing client command: {}", e.what());
     c->channel->disconnect();
   }
 }
 
-asio::awaitable<void> GameServer::handle_client(shared_ptr<Client> c) {
+asio::awaitable<void> GameServer::handle_client(std::shared_ptr<Client> c) {
   auto g = phosg::on_close_scope(std::bind(&Client::cancel_pending_promises, c.get()));
 
   try {
     co_await on_connect(c);
-  } catch (const exception& e) {
+  } catch (const std::exception& e) {
     this->log.warning_f("Error in client initialization: {}", e.what());
     c->channel->disconnect();
   }
@@ -181,17 +179,17 @@ asio::awaitable<void> GameServer::destroy_client(std::shared_ptr<Client> c) {
 
   try {
     co_await on_disconnect(c);
-  } catch (const exception& e) {
+  } catch (const std::exception& e) {
     this->log.warning_f("Error during client disconnect cleanup: {}", e.what());
   }
 
   // Note: It's important to move the disconnect hooks out of the client here because the hooks could modify
   // c->disconnect_hooks while it's being iterated here, which would invalidate these iterators.
-  unordered_map<string, function<void()>> hooks = std::move(c->disconnect_hooks);
+  std::unordered_map<std::string, std::function<void()>> hooks = std::move(c->disconnect_hooks);
   for (auto h_it : hooks) {
     try {
       h_it.second();
-    } catch (const exception& e) {
+    } catch (const std::exception& e) {
       c->log.warning_f("Disconnect hook {} failed: {}", h_it.first, e.what());
     }
   }

@@ -12,7 +12,6 @@
 #include <vector>
 
 #include "ChoiceSearch.hh"
-#include "FileContentsCache.hh"
 #include "ItemData.hh"
 #include "PSOEncryption.hh"
 #include "Text.hh"

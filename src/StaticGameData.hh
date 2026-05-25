@@ -6,7 +6,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "FileContentsCache.hh"
 #include "Version.hh"
 
 enum class Episode {

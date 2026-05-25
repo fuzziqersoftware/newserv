@@ -41,7 +41,7 @@ struct Lobby : public std::enable_shared_from_this<Lobby> {
   struct FloorItemManager {
     phosg::PrefixedLogger log;
     uint64_t next_drop_number;
-    // It's important that this is a map and not an unordered_map. See the comment in send_game_item_state for details.
+    // It's important that this is a map and not an std::unordered_map. See the comment in send_game_item_state for details.
     std::map<uint32_t, std::shared_ptr<FloorItem>> items; // Keyed on item_id
     std::array<std::map<uint64_t, std::shared_ptr<FloorItem>>, 12> queue_for_client;
 

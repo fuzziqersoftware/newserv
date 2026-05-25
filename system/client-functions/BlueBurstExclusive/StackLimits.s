@@ -66,7 +66,7 @@ max_stack_size_for_tool_start:
   .binary   0A 0A 01 0A 0A 0A 0A 0A 0A 01 01 01 01 01 01 01 63 01 01 01 01 01
 data_end:
 
-  # eax = min<uint8_t>(data1[1], 0x15)
+  # eax = std::min<uint8_t>(data1[1], 0x15)
   mov       al, [ecx + 1]
   xor       edx, edx
   mov       dl, 0x15

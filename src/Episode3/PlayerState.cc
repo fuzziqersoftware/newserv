@@ -2,11 +2,9 @@
 
 #include "Server.hh"
 
-using namespace std;
-
 namespace Episode3 {
 
-PlayerState::PlayerState(uint8_t client_id, shared_ptr<Server> server)
+PlayerState::PlayerState(uint8_t client_id, std::shared_ptr<Server> server)
     : w_server(server),
       client_id(client_id),
       num_hand_redraws_allowed(1),
@@ -46,10 +44,10 @@ void PlayerState::init() {
   if (s->player_states.at(this->client_id).get() != this) {
     // Note: The original code handles this, but we don't. This appears not to
     // ever happen, so we didn't bother implementing it.
-    throw logic_error("replacing a player state object is not permitted");
+    throw std::logic_error("replacing a player state object is not permitted");
   }
 
-  this->deck_state = make_shared<DeckState>(this->client_id, s->deck_entries[client_id]->card_ids, s);
+  this->deck_state = std::make_shared<DeckState>(this->client_id, s->deck_entries[client_id]->card_ids, s);
   if (s->map_and_rules->rules.disable_deck_shuffle) {
     this->deck_state->disable_shuffle();
   }
@@ -62,7 +60,7 @@ void PlayerState::init() {
   this->team_id = s->deck_entries[this->client_id]->team_id;
   auto sc_ce = s->definition_for_card_ref(this->sc_card_ref);
   if (!sc_ce) {
-    throw runtime_error("SC card definition is missing");
+    throw std::runtime_error("SC card definition is missing");
   }
   if (sc_ce->def.type == CardType::HUNTERS_SC) {
     this->sc_card_type = CardType::HUNTERS_SC;
@@ -72,13 +70,13 @@ void PlayerState::init() {
     // In the original code, sc_card_type gets left as 0xFFFFFFFF (yes, it's a
     // uint32_t). This probably breaks some things later on, so we instead
     // prevent it upfront.
-    throw runtime_error("SC card is not a Hunters or Arkz SC");
+    throw std::runtime_error("SC card is not a Hunters or Arkz SC");
   }
 
-  this->hand_and_equip = make_shared<HandAndEquipState>();
-  this->card_short_statuses = make_shared<parray<CardShortStatus, 0x10>>();
-  this->set_card_action_chains = make_shared<parray<ActionChainWithConds, 9>>();
-  this->set_card_action_metadatas = make_shared<parray<ActionMetadata, 9>>();
+  this->hand_and_equip = std::make_shared<HandAndEquipState>();
+  this->card_short_statuses = std::make_shared<parray<CardShortStatus, 0x10>>();
+  this->set_card_action_chains = std::make_shared<parray<ActionChainWithConds, 9>>();
+  this->set_card_action_metadatas = std::make_shared<parray<ActionMetadata, 9>>();
 
   this->hand_and_equip->clear_FF();
   for (size_t z = 0; z < 0x10; z++) {
@@ -89,7 +87,7 @@ void PlayerState::init() {
     this->set_card_action_metadatas->at(z).clear_FF();
   }
 
-  this->sc_card = make_shared<Card>(this->deck_state->sc_card_id(), this->sc_card_ref, this->client_id, s);
+  this->sc_card = std::make_shared<Card>(this->deck_state->sc_card_id(), this->sc_card_ref, this->client_id, s);
   this->sc_card->init();
   this->draw_initial_hand();
   if (s->options.is_nte()) {
@@ -114,18 +112,18 @@ void PlayerState::init() {
   this->god_whim_can_use_hidden_cards = (s->deck_entries[this->client_id]->god_whim_flag != 3);
 }
 
-shared_ptr<Server> PlayerState::server() {
+std::shared_ptr<Server> PlayerState::server() {
   auto s = this->w_server.lock();
   if (!s) {
-    throw runtime_error("server is deleted");
+    throw std::runtime_error("server is deleted");
   }
   return s;
 }
 
-shared_ptr<const Server> PlayerState::server() const {
+std::shared_ptr<const Server> PlayerState::server() const {
   auto s = this->w_server.lock();
   if (!s) {
-    throw runtime_error("server is deleted");
+    throw std::runtime_error("server is deleted");
   }
   return s;
 }
@@ -151,7 +149,7 @@ bool PlayerState::draw_cards_allowed() const {
   return true;
 }
 
-void PlayerState::apply_assist_card_effect_on_set(shared_ptr<PlayerState> setter_ps) {
+void PlayerState::apply_assist_card_effect_on_set(std::shared_ptr<PlayerState> setter_ps) {
   auto s = this->server();
 
   uint16_t assist_card_id = this->set_assist_card_id;
@@ -244,7 +242,7 @@ void PlayerState::apply_assist_card_effect_on_set(shared_ptr<PlayerState> setter
     case AssistEffect::LEGACY: {
       uint16_t total_cost = 0;
       for (ssize_t z = 7; z >= 0; z--) {
-        shared_ptr<const Card> card = this->set_cards[z];
+        std::shared_ptr<const Card> card = this->set_cards[z];
         if (card) {
           auto ce = card->get_definition();
           uint8_t card_cost = ce->def.self_cost;
@@ -258,7 +256,7 @@ void PlayerState::apply_assist_card_effect_on_set(shared_ptr<PlayerState> setter
       if (!is_nte) {
         this->on_cards_destroyed();
       }
-      this->atk_points = min<uint8_t>(9, this->atk_points + (total_cost >> 1));
+      this->atk_points = std::min<uint8_t>(9, this->atk_points + (total_cost >> 1));
       this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
       if (!is_nte) {
         s->send_6xB4x05();
@@ -353,7 +351,7 @@ void PlayerState::apply_assist_card_effect_on_set(shared_ptr<PlayerState> setter
         if (is_nte
                 ? (other_ps->assist_remaining_turns != 90 && other_ps->assist_remaining_turns != 99)
                 : (other_ps->assist_remaining_turns < 10)) {
-          other_ps->assist_remaining_turns = min<uint8_t>(9, other_ps->assist_remaining_turns << 1);
+          other_ps->assist_remaining_turns = std::min<uint8_t>(9, other_ps->assist_remaining_turns << 1);
         }
 
         for (ssize_t set_index = is_nte ? 0 : -1; set_index < 8; set_index++) {
@@ -369,7 +367,7 @@ void PlayerState::apply_assist_card_effect_on_set(shared_ptr<PlayerState> setter
                   cond.remaining_turns <<= 1;
                 }
               } else if (cond.remaining_turns < 10) {
-                cond.remaining_turns = min<uint8_t>(9, cond.remaining_turns << 1);
+                cond.remaining_turns = std::min<uint8_t>(9, cond.remaining_turns << 1);
               }
             }
           }
@@ -480,7 +478,7 @@ void PlayerState::apply_dice_effects() {
   }
 
   for (size_t die_index = 0; die_index < 2; die_index++) {
-    this->dice_results[die_index] = min<uint8_t>(this->dice_results[die_index], 9);
+    this->dice_results[die_index] = std::min<uint8_t>(this->dice_results[die_index], 9);
   }
 }
 
@@ -818,15 +816,14 @@ int32_t PlayerState::error_code_for_client_setting_card(
   }
 }
 
-vector<uint16_t> PlayerState::get_all_cards_within_range(
+std::vector<uint16_t> PlayerState::get_all_cards_within_range(
     const parray<uint8_t, 9 * 9>& range, const Location& loc, uint8_t target_team_id) const {
   auto s = this->server();
 
   auto log = s->log_stack("get_all_cards_within_range: ");
-  string loc_str = loc.str();
-  log.debug_f("loc={}, target_team_id={:02X}", loc_str, target_team_id);
+  log.debug_f("loc={}, target_team_id={:02X}", loc.str(), target_team_id);
 
-  vector<uint16_t> ret;
+  std::vector<uint16_t> ret;
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto other_ps = s->player_states[client_id];
     if (other_ps && ((target_team_id == 0xFF) || (target_team_id == other_ps->get_team_id()))) {
@@ -845,7 +842,7 @@ void PlayerState::get_short_status_for_card_index_in_hand(size_t hand_index, Car
   stat->card_ref = this->card_refs[hand_index - 1];
 }
 
-shared_ptr<DeckState> PlayerState::get_deck() {
+std::shared_ptr<DeckState> PlayerState::get_deck() {
   return this->deck_state;
 }
 
@@ -871,11 +868,11 @@ uint16_t PlayerState::get_sc_card_id() const {
   return this->sc_card_id;
 }
 
-shared_ptr<Card> PlayerState::get_sc_card() {
+std::shared_ptr<Card> PlayerState::get_sc_card() {
   return this->sc_card;
 }
 
-shared_ptr<const Card> PlayerState::get_sc_card() const {
+std::shared_ptr<const Card> PlayerState::get_sc_card() const {
   return this->sc_card;
 }
 
@@ -887,11 +884,11 @@ CardType PlayerState::get_sc_card_type() const {
   return this->sc_card_type;
 }
 
-shared_ptr<Card> PlayerState::get_set_card(size_t set_index) {
+std::shared_ptr<Card> PlayerState::get_set_card(size_t set_index) {
   return (set_index < 8) ? this->set_cards[set_index] : nullptr;
 }
 
-shared_ptr<const Card> PlayerState::get_set_card(size_t set_index) const {
+std::shared_ptr<const Card> PlayerState::get_set_card(size_t set_index) const {
   return (set_index < 8) ? this->set_cards[set_index] : nullptr;
 }
 
@@ -964,7 +961,7 @@ uint16_t PlayerState::pop_from_discard_log(uint16_t) {
 bool PlayerState::move_card_to_location_by_card_index(size_t card_index, const Location& new_loc) {
   auto s = this->server();
 
-  shared_ptr<Card> card;
+  std::shared_ptr<Card> card;
   if (card_index == 0) {
     card = this->sc_card;
   } else {
@@ -1010,7 +1007,7 @@ void PlayerState::move_null_hand_refs_to_end() {
 void PlayerState::on_cards_destroyed() {
   auto s = this->server();
 
-  unordered_multimap<uint16_t, bool> card_refs_map; // {card_ref: should_return_to_hand}
+  std::unordered_multimap<uint16_t, bool> card_refs_map; // {card_ref: should_return_to_hand}
   for (size_t z = 0; z < 8; z++) {
     auto card = this->set_cards[z];
     if (!card || !(card->card_flags & 2)) {
@@ -1333,7 +1330,7 @@ bool PlayerState::set_card_from_hand(
     }
     this->card_refs[card_index + 1] = card_ref;
     // Note: NTE doesn't call the destructor on the existing card, if there is one. Is that a bug?
-    this->set_cards[card_index - 7] = make_shared<Card>(s->card_id_for_card_ref(card_ref), card_ref, this->client_id, s);
+    this->set_cards[card_index - 7] = std::make_shared<Card>(s->card_id_for_card_ref(card_ref), card_ref, this->client_id, s);
     auto new_card = this->set_cards[card_index - 7];
     new_card->init();
 
@@ -1433,7 +1430,7 @@ void PlayerState::set_initial_location() {
 
   static const uint8_t start_tile_defs_offset_for_team_size[4] = {0, 0, 1, 3};
   if (num_team_players >= 4) {
-    throw logic_error("too many players on team");
+    throw std::logic_error("too many players on team");
   }
   size_t start_tile_def_index = start_tile_defs_offset_for_team_size[num_team_players] + player_index_within_team;
   uint8_t player_start_tile = mr->map.start_tile_definitions[this->team_id][start_tile_def_index];
@@ -1455,11 +1452,11 @@ void PlayerState::set_initial_location() {
     }
   }
   if (!start_tile_found) {
-    throw runtime_error("player start location not set");
+    throw std::runtime_error("player start location not set");
   }
 }
 
-void PlayerState::set_map_occupied_bit_for_card_on_warp_tile(shared_ptr<const Card> card) {
+void PlayerState::set_map_occupied_bit_for_card_on_warp_tile(std::shared_ptr<const Card> card) {
   if (!card) {
     return;
   }
@@ -1524,7 +1521,7 @@ bool PlayerState::subtract_or_check_atk_or_def_points_for_action(const ActionSta
 
 void PlayerState::subtract_atk_points(uint8_t cost) {
   this->atk_points -= cost;
-  this->atk_points2 = min<uint8_t>(this->atk_points, this->atk_points2_max);
+  this->atk_points2 = std::min<uint8_t>(this->atk_points, this->atk_points2_max);
 }
 
 G_UpdateHand_Ep3_6xB4x02 PlayerState::prepare_6xB4x02() const {
@@ -1571,7 +1568,7 @@ void PlayerState::set_random_assist_card_from_hand_for_free() {
   auto s = this->server();
   bool is_nte = s->options.is_nte();
 
-  vector<uint16_t> candidate_card_refs;
+  std::vector<uint16_t> candidate_card_refs;
   for (size_t hand_index = 0; hand_index < 6; hand_index++) {
     uint16_t card_ref = this->card_refs[hand_index];
     auto ce = s->definition_for_card_ref(card_ref);
@@ -1636,11 +1633,11 @@ void PlayerState::send_6xB4x04_if_needed(bool always_send) {
   }
 }
 
-vector<uint16_t> PlayerState::get_card_refs_within_range_from_all_players(
+std::vector<uint16_t> PlayerState::get_card_refs_within_range_from_all_players(
     const parray<uint8_t, 9 * 9>& range, const Location& loc, CardType type) const {
   auto s = this->server();
 
-  vector<uint16_t> ret;
+  std::vector<uint16_t> ret;
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto other_ps = s->player_states[client_id];
     if (other_ps && ((other_ps->get_sc_card_type() == type) || (type == CardType::ITEM))) {
@@ -1697,7 +1694,7 @@ void PlayerState::handle_before_turn_assist_effects() {
           break;
         case AssistEffect::ATK_DICE_2:
           // Note: This behavior doesn't match the card description. Is it supposed to add 2 or multiply by 2?
-          this->atk_points = min<int16_t>(this->atk_points + 2, 9);
+          this->atk_points = std::min<int16_t>(this->atk_points + 2, 9);
           this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
           break;
         case AssistEffect::SKIP_TURN:
@@ -1756,8 +1753,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
       size_t z = 0;
       do {
         if (log.should_log(phosg::LogLevel::L_DEBUG)) {
-          string ref_str = s->debug_str_for_card_ref(pa.action_card_refs[z]);
-          log.debug_f("on action card ref {}", ref_str);
+          log.debug_f("on action card ref {}", s->debug_str_for_card_ref(pa.action_card_refs[z]));
         }
         card->unknown_80237A90(pa, pa.action_card_refs[z]);
         card->unknown_802379BC(pa.action_card_refs[z]);
@@ -1793,8 +1789,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
       auto target_card = s->card_for_set_card_ref(pa.target_card_refs[z]);
       if (target_card) {
         if (log.should_log(phosg::LogLevel::L_DEBUG)) {
-          string ref_str = s->debug_str_for_card_ref(pa.target_card_refs[z]);
-          log.debug_f("on target card ref {}", ref_str);
+          log.debug_f("on target card ref {}", s->debug_str_for_card_ref(pa.target_card_refs[z]));
         }
         target_card->unknown_802379DC(pa);
         if (!is_nte) {
@@ -1823,8 +1818,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
   }
   for (size_t z = 0; (z < pa.action_card_refs.size()) && (pa.action_card_refs[z] != 0xFFFF); z++) {
     if (log.should_log(phosg::LogLevel::L_DEBUG)) {
-      string ref_str = s->debug_str_for_card_ref(pa.action_card_refs[z]);
-      log.debug_f("discarding {} from hand", ref_str);
+      log.debug_f("discarding {} from hand", s->debug_str_for_card_ref(pa.action_card_refs[z]));
     }
     this->discard_ref_from_hand(pa.action_card_refs[z]);
   }
@@ -1866,7 +1860,7 @@ void PlayerState::dice_phase_before() {
   this->send_set_card_updates();
 }
 
-void PlayerState::handle_homesick_assist_effect_from_bomb(shared_ptr<Card> card) {
+void PlayerState::handle_homesick_assist_effect_from_bomb(std::shared_ptr<Card> card) {
   if (!card) {
     return;
   }
@@ -1998,13 +1992,13 @@ void PlayerState::roll_main_dice_or_apply_after_effects() {
   }
   this->atk_points += s->team_dice_bonus[this->team_id];
   this->def_points += s->team_dice_bonus[this->team_id];
-  this->atk_points = clamp<uint8_t>(this->atk_points, 1, 9);
-  this->def_points = clamp<uint8_t>(this->def_points, 1, 9);
+  this->atk_points = std::clamp<uint8_t>(this->atk_points, 1, 9);
+  this->def_points = std::clamp<uint8_t>(this->def_points, 1, 9);
   if (!s->options.is_nte()) {
     this->atk_bonuses = this->atk_points - atk_before_bonuses;
     this->def_bonuses = this->def_points - def_before_bonuses;
   }
-  this->atk_points2 = min<uint8_t>(this->atk_points2_max, this->atk_points);
+  this->atk_points2 = std::min<uint8_t>(this->atk_points2_max, this->atk_points);
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
 }
 
@@ -2036,7 +2030,7 @@ void PlayerState::compute_team_dice_bonus_after_draw_phase() {
   uint8_t current_team_turn = s->get_current_team_turn();
   uint8_t dice_boost = s->get_team_exp(current_team_turn) / (s->team_client_count[current_team_turn] * 12);
   s->card_special->adjust_dice_boost_if_team_has_condition_52(current_team_turn, &dice_boost, 0);
-  s->team_dice_bonus[current_team_turn] = clamp<int16_t>(dice_boost, 0, 8);
+  s->team_dice_bonus[current_team_turn] = std::clamp<int16_t>(dice_boost, 0, 8);
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
 }
 

@@ -421,12 +421,11 @@ std::string encrypt_pr2_data(const std::string& data, size_t decompressed_size, 
   w.put<U32T<BE>>(seed);
   w.write(data);
 
-  std::string ret = std::move(w.str());
   PSOV2Encryption crypt(seed);
   if (BE) {
-    crypt.encrypt_big_endian(ret.data() + 8, ret.size() - 8);
+    crypt.encrypt_big_endian(w.str().data() + 8, w.str().size() - 8);
   } else {
-    crypt.decrypt(ret.data() + 8, ret.size() - 8);
+    crypt.decrypt(w.str().data() + 8, w.str().size() - 8);
   }
-  return ret;
+  return std::move(w.str());
 }

@@ -12,8 +12,6 @@
 
 #include "Loggers.hh"
 
-using namespace std;
-
 int64_t file_mtime_int(const std::string& path) {
   auto mtime = std::filesystem::last_write_time(path);
   auto sctp = std::chrono::time_point_cast<std::chrono::nanoseconds>(
@@ -21,32 +19,27 @@ int64_t file_mtime_int(const std::string& path) {
   return sctp.time_since_epoch().count();
 }
 
-PatchFileIndex::File::File(PatchFileIndex* index)
-    : index(index),
-      crc32(0),
-      size(0) {}
+PatchFileIndex::File::File(PatchFileIndex* index) : index(index), crc32(0), size(0) {}
 
 std::shared_ptr<const std::string> PatchFileIndex::File::load_data() {
   if (!this->loaded_data) {
-    string relative_path = phosg::join(this->path_directories, "/") + "/" + this->name;
-    string full_path = this->index->root_dir + "/" + relative_path;
+    std::string relative_path = phosg::join(this->path_directories, "/") + "/" + this->name;
+    std::string full_path = this->index->root_dir + "/" + relative_path;
     patch_index_log.debug_f("Loading data for {}", relative_path);
-    this->loaded_data = make_shared<string>(phosg::load_file(full_path));
+    this->loaded_data = std::make_shared<std::string>(phosg::load_file(full_path));
     this->size = this->loaded_data->size();
   }
   return this->loaded_data;
 }
 
-PatchFileIndex::PatchFileIndex(const string& root_dir)
-    : root_dir(root_dir) {
-
-  string metadata_cache_filename = root_dir + "/.metadata-cache.json";
+PatchFileIndex::PatchFileIndex(const std::string& root_dir) : root_dir(root_dir) {
+  std::string metadata_cache_filename = root_dir + "/.metadata-cache.json";
   phosg::JSON metadata_cache_json;
   try {
-    string metadata_text = phosg::load_file(metadata_cache_filename);
+    std::string metadata_text = phosg::load_file(metadata_cache_filename);
     metadata_cache_json = phosg::JSON::parse(metadata_text);
     patch_index_log.debug_f("Loaded patch metadata cache from {}", metadata_cache_filename);
-  } catch (const exception& e) {
+  } catch (const std::exception& e) {
     metadata_cache_json = phosg::JSON::dict();
     patch_index_log.warning_f("Cannot load patch metadata cache from {}: {}", metadata_cache_filename, e.what());
   }
@@ -56,45 +49,45 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
   bool should_write_metadata_cache = false;
   phosg::JSON new_metadata_cache_json = phosg::JSON::dict();
 
-  vector<string> path_directories;
-  function<void(const string&)> collect_dir = [&](const string& dir) -> void {
+  std::vector<std::string> path_directories;
+  std::function<void(const std::string&)> collect_dir = [&](const std::string& dir) -> void {
     path_directories.emplace_back(dir);
 
-    string relative_dirs = phosg::join(path_directories, "/");
-    string full_dir_path = root_dir + '/' + relative_dirs;
+    std::string relative_dirs = phosg::join(path_directories, "/");
+    std::string full_dir_path = root_dir + '/' + relative_dirs;
     patch_index_log.debug_f("Listing directory {}", full_dir_path);
 
     for (const auto& dir_item : std::filesystem::directory_iterator(full_dir_path)) {
-      string item = dir_item.path().filename().string();
+      std::string item = dir_item.path().filename().string();
 
       // Skip invisible files (e.g. .DS_Store on macOS)
       if (item.starts_with(".")) {
         continue;
       }
 
-      string relative_item_path = relative_dirs + '/' + item;
-      string full_item_path = root_dir + '/' + relative_item_path;
+      std::string relative_item_path = relative_dirs + '/' + item;
+      std::string full_item_path = root_dir + '/' + relative_item_path;
       if (std::filesystem::is_directory(full_item_path)) {
         collect_dir(item);
       } else if (std::filesystem::is_regular_file(full_item_path)) {
 
-        auto f = make_shared<File>(this);
+        auto f = std::make_shared<File>(this);
         f->path_directories = path_directories;
         f->name = item;
 
         int64_t file_mtime = file_mtime_int(full_item_path);
 
-        string compute_crc32s_message; // If not empty, should compute crc32s
+        std::string compute_crc32s_message; // If not empty, should compute crc32s
         phosg::JSON cache_item_json;
         try {
           cache_item_json = metadata_cache_json.at(relative_item_path);
           uint64_t cached_size = cache_item_json.get_int(0);
           int64_t cached_mtime = cache_item_json.get_int(1);
           if (file_mtime != cached_mtime) {
-            throw runtime_error("file has been modified");
+            throw std::runtime_error("file has been modified");
           }
           if (std::filesystem::file_size(full_item_path) != cached_size) {
-            throw runtime_error("file size has changed");
+            throw std::runtime_error("file size has changed");
           }
           f->size = cached_size;
           f->crc32 = cache_item_json.get_int(2);
@@ -102,7 +95,7 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
             f->chunk_crcs.emplace_back(chunk_crc32_json->as_int());
           }
 
-        } catch (const exception& e) {
+        } catch (const std::exception& e) {
           compute_crc32s_message = e.what();
         }
 
@@ -110,7 +103,7 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
           auto data = f->load_data(); // Sets f->size
           f->crc32 = phosg::crc32(data->data(), f->size);
           for (size_t x = 0; x < data->size(); x += this->CHUNK_SIZE) {
-            size_t chunk_bytes = min<size_t>(f->size - x, this->CHUNK_SIZE);
+            size_t chunk_bytes = std::min<size_t>(f->size - x, this->CHUNK_SIZE);
             f->chunk_crcs.emplace_back(phosg::crc32(data->data() + x, chunk_bytes));
           }
 
@@ -149,7 +142,7 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
     try {
       phosg::save_file(metadata_cache_filename, new_metadata_cache_json.serialize());
       patch_index_log.debug_f("Saved patch metadata cache to {}", metadata_cache_filename);
-    } catch (const exception& e) {
+    } catch (const std::exception& e) {
       patch_index_log.warning_f("Cannot save patch metadata cache to {}: {}", metadata_cache_filename, e.what());
     }
   } else {
@@ -157,10 +150,10 @@ PatchFileIndex::PatchFileIndex(const string& root_dir)
   }
 }
 
-const vector<shared_ptr<PatchFileIndex::File>>& PatchFileIndex::all_files() const {
+const std::vector<std::shared_ptr<PatchFileIndex::File>>& PatchFileIndex::all_files() const {
   return this->files_by_patch_order;
 }
 
-shared_ptr<PatchFileIndex::File> PatchFileIndex::get(const string& filename) const {
+std::shared_ptr<PatchFileIndex::File> PatchFileIndex::get(const std::string& filename) const {
   return this->files_by_name.at(filename);
 }

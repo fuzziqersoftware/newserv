@@ -14,9 +14,7 @@
 #include "NetworkAddresses.hh"
 #include "ServerState.hh"
 
-using namespace std;
-
-DNSServer::DNSServer(shared_ptr<ServerState> state)
+DNSServer::DNSServer(std::shared_ptr<ServerState> state)
     : state(state) {}
 
 void DNSServer::listen(const std::string& addr, int port) {
@@ -25,15 +23,15 @@ void DNSServer::listen(const std::string& addr, int port) {
   }
   asio::ip::address asio_addr = addr.empty() ? asio::ip::address_v4::any() : asio::ip::make_address(addr);
   asio::ip::udp::endpoint endpoint(asio_addr, port);
-  auto sock = make_shared<asio::ip::udp::socket>(*this->state->io_context, endpoint);
+  auto sock = std::make_shared<asio::ip::udp::socket>(*this->state->io_context, endpoint);
   this->sockets.emplace(sock);
 
   asio::co_spawn(*this->state->io_context, this->dns_server_task(sock), asio::detached);
 }
 
-string DNSServer::response_for_query(const void* vdata, size_t size, uint32_t resolved_address) {
+std::string DNSServer::response_for_query(const void* vdata, size_t size, uint32_t resolved_address) {
   if (size < 0x0C) {
-    throw invalid_argument("query too small");
+    throw std::invalid_argument("query too small");
   }
 
   const char* data = reinterpret_cast<const char*>(vdata);
@@ -41,7 +39,7 @@ string DNSServer::response_for_query(const void* vdata, size_t size, uint32_t re
 
   phosg::be_uint32_t be_resolved_address = resolved_address;
 
-  string response;
+  std::string response;
   response.append(data, 2);
   response.append("\x81\x80\x00\x01\x00\x01\x00\x00\x00\x00", 10);
   response.append(&data[12], name_len);
@@ -50,13 +48,13 @@ string DNSServer::response_for_query(const void* vdata, size_t size, uint32_t re
   return response;
 }
 
-string DNSServer::response_for_query(const string& query, uint32_t resolved_address) {
+std::string DNSServer::response_for_query(const std::string& query, uint32_t resolved_address) {
   return DNSServer::response_for_query(query.data(), query.size(), resolved_address);
 }
 
 asio::awaitable<void> DNSServer::dns_server_task(std::shared_ptr<asio::ip::udp::socket> sock) {
   for (;;) {
-    string input(2048, 0);
+    std::string input(2048, 0);
     asio::ip::udp::endpoint sender_ep;
     size_t bytes = co_await sock->async_receive_from(asio::buffer(input), sender_ep, asio::use_awaitable);
     uint32_t sender_addr = ipv4_addr_for_asio_addr(sender_ep.address());
@@ -69,7 +67,7 @@ asio::awaitable<void> DNSServer::dns_server_task(std::shared_ptr<asio::ip::udp::
       uint32_t connect_address = is_local_address(sender_addr)
           ? this->state->local_address
           : this->state->external_address;
-      string response = this->response_for_query(input, connect_address);
+      std::string response = this->response_for_query(input, connect_address);
       co_await sock->async_send_to(asio::buffer(response.data(), response.size()), sender_ep, asio::use_awaitable);
     }
   }

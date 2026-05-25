@@ -10,7 +10,6 @@
 #include "CommandFormats.hh"
 #include "Episode3/BattleRecord.hh"
 #include "Episode3/Tournament.hh"
-#include "FileContentsCache.hh"
 #include "PSOEncryption.hh"
 #include "PSOProtocol.hh"
 #include "PatchFileIndex.hh"
@@ -27,7 +26,7 @@ struct Lobby;
 class Parsed6x70Data;
 
 struct GetPlayerInfoResult {
-  // Exactly one of the following two shared_ptrs is not null
+  // Exactly one of the following two std::shared_ptrs is not null
   std::shared_ptr<PSOBBCharacterFile> character;
   std::shared_ptr<PSOGCEp3CharacterFile::Character> ep3_character;
   bool is_full_info; // True if the client sent 30; false if it was 61 or 98

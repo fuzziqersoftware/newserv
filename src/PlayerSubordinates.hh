@@ -12,7 +12,6 @@
 
 #include "ChoiceSearch.hh"
 #include "CommonFileFormats.hh"
-#include "FileContentsCache.hh"
 #include "ItemData.hh"
 #include "LevelTable.hh"
 #include "PSOEncryption.hh"

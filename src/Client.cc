@@ -16,11 +16,9 @@
 #include "Server.hh"
 #include "Version.hh"
 
-using namespace std;
-
 const uint64_t CLIENT_CONFIG_MAGIC = 0x8399AC32;
 
-static atomic<uint64_t> next_id(1);
+static std::atomic<uint64_t> next_client_id(1);
 
 void Client::set_flags_for_version(Version version, int64_t sub_version) {
   this->set_flag(Flag::PROXY_CHAT_COMMANDS_ENABLED);
@@ -82,7 +80,7 @@ void Client::set_flags_for_version(Version version, int64_t sub_version) {
           this->set_flag(Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
           break;
         default:
-          throw logic_error("invalid game version");
+          throw std::logic_error("invalid game version");
       }
       break;
 
@@ -151,7 +149,7 @@ void Client::set_flags_for_version(Version version, int64_t sub_version) {
       this->set_flag(Flag::CAN_RECEIVE_ENABLE_B2_QUEST);
       break;
     default:
-      throw runtime_error(std::format("unknown sub_version {:X}", sub_version));
+      throw std::runtime_error(std::format("unknown sub_version {:X}", sub_version));
   }
 }
 
@@ -176,11 +174,11 @@ void Client::set_drop_notification_mode(ItemDropNotificationMode new_mode) {
 }
 
 Client::Client(
-    shared_ptr<GameServer> server,
-    shared_ptr<Channel> channel,
+    std::shared_ptr<GameServer> server,
+    std::shared_ptr<Channel> channel,
     ServerBehavior server_behavior)
     : server(server),
-      id(next_id++),
+      id(next_client_id++),
       log(std::format("[C-{:X}] ", this->id), client_log.min_level),
       channel(channel),
       server_behavior(server_behavior),
@@ -239,13 +237,12 @@ Client::~Client() {
 }
 
 void Client::update_channel_name() {
-  string default_name = this->channel->default_name();
+  std::string default_name = this->channel->default_name();
 
   auto player = this->character_file(false, false);
   if (player) {
-    string name_str = player->disp.name.decode(this->language());
-    size_t level = player->disp.stats.level + 1;
-    this->channel->name = std::format("C-{:X} ({} Lv.{}) @ {}", this->id, name_str, level, default_name);
+    this->channel->name = std::format("C-{:X} ({} Lv.{}) @ {}",
+        this->id, player->disp.name.decode(this->language()), player->disp.stats.level + 1, default_name);
   } else {
     this->channel->name = std::format("C-{:X} @ {}", this->id, default_name);
   }
@@ -278,7 +275,7 @@ void Client::reschedule_ping_and_timeout_timers() {
           // The game doesn't use this timestamp; we only use it for debugging purposes
           be_uint64_t timestamp = phosg::now();
           this->channel->send(0x1D, 0x00, &timestamp, sizeof(be_uint64_t));
-        } catch (const exception& e) {
+        } catch (const std::exception& e) {
           this->log.warning_f("Failed to send ping: {}", e.what());
         }
       }
@@ -306,25 +303,25 @@ void Client::convert_account_to_temporary_if_nte() {
   }
 }
 
-shared_ptr<ServerState> Client::require_server_state() const {
+std::shared_ptr<ServerState> Client::require_server_state() const {
   auto server = this->server.lock();
   if (!server) {
-    throw logic_error("server is deleted");
+    throw std::logic_error("server is deleted");
   }
   return server->get_state();
 }
 
-shared_ptr<Lobby> Client::require_lobby() const {
+std::shared_ptr<Lobby> Client::require_lobby() const {
   auto l = this->lobby.lock();
   if (!l) {
-    throw runtime_error("client not in any lobby");
+    throw std::runtime_error("client not in any lobby");
   }
   return l;
 }
 
-shared_ptr<const TeamIndex::Team> Client::team() const {
+std::shared_ptr<const TeamIndex::Team> Client::team() const {
   if (!this->login) {
-    throw logic_error("Client::team called on client with no account");
+    throw std::logic_error("Client::team called on client with no account");
   }
 
   if (this->login->account->bb_team_id == 0) {
@@ -352,7 +349,7 @@ shared_ptr<const TeamIndex::Team> Client::team() const {
   // The team membership is valid, but the player name may be different; update the team membership if needed
   if (p) {
     auto& m = member_it->second;
-    string name = p->disp.name.decode(this->language());
+    std::string name = p->disp.name.decode(this->language());
     if (m.name != name) {
       this->log.info_f("Updating player name in team config");
       s->team_index->update_member_name(this->login->account->account_id, name);
@@ -363,8 +360,8 @@ shared_ptr<const TeamIndex::Team> Client::team() const {
 }
 
 bool Client::evaluate_quest_availability_expression(
-    shared_ptr<const IntegralExpression> expr,
-    shared_ptr<const Lobby> game,
+    std::shared_ptr<const IntegralExpression> expr,
+    std::shared_ptr<const Lobby> game,
     uint8_t event,
     Difficulty difficulty,
     size_t num_players,
@@ -376,7 +373,7 @@ bool Client::evaluate_quest_availability_expression(
     return true;
   }
   if (game && !game->quest_flag_values) {
-    throw logic_error("quest flags are missing from game");
+    throw std::logic_error("quest flags are missing from game");
   }
   auto p = this->character_file();
   IntegralExpression::Env env = {
@@ -389,15 +386,14 @@ bool Client::evaluate_quest_availability_expression(
   };
   int64_t ret = expr->evaluate(env);
   if (this->log.should_log(phosg::LogLevel::L_INFO)) {
-    string expr_str = expr->str();
-    this->log.info_f("Evaluated integral expression {} => {}", expr_str, ret ? "TRUE" : "FALSE");
+    this->log.info_f("Evaluated integral expression {} => {}", expr->str(), ret ? "TRUE" : "FALSE");
   }
   return ret;
 }
 
 bool Client::can_see_quest(
-    shared_ptr<const Quest> q,
-    shared_ptr<const Lobby> game,
+    std::shared_ptr<const Quest> q,
+    std::shared_ptr<const Lobby> game,
     uint8_t event,
     Difficulty difficulty,
     size_t num_players,
@@ -410,8 +406,8 @@ bool Client::can_see_quest(
 }
 
 bool Client::can_play_quest(
-    shared_ptr<const Quest> q,
-    shared_ptr<const Lobby> game,
+    std::shared_ptr<const Quest> q,
+    std::shared_ptr<const Lobby> game,
     uint8_t event,
     Difficulty difficulty,
     size_t num_players,
@@ -436,7 +432,7 @@ bool Client::can_use_chat_commands() const {
   return this->require_server_state()->enable_chat_commands;
 }
 
-void Client::set_login(shared_ptr<Login> login) {
+void Client::set_login(std::shared_ptr<Login> login) {
   this->login = login;
 
   auto s = this->require_server_state();
@@ -458,116 +454,116 @@ void Client::set_login(shared_ptr<Login> login) {
 
 // System file
 
-string Client::system_filename(const string& bb_username) {
+std::string Client::system_filename(const std::string& bb_username) {
   return std::format("system/players/system_{}.psosys", bb_username);
 }
 
-string Client::system_filename() const {
+std::string Client::system_filename() const {
   if (this->version() != Version::BB_V4) {
-    throw logic_error("non-BB players do not have system data");
+    throw std::logic_error("non-BB players do not have system data");
   }
   if (!this->login || !this->login->bb_license) {
-    throw logic_error("client is not logged in");
+    throw std::logic_error("client is not logged in");
   }
   return this->system_filename(this->login->bb_license->username);
 }
 
-shared_ptr<PSOBBBaseSystemFile> Client::system_file(bool allow_load) {
+std::shared_ptr<PSOBBBaseSystemFile> Client::system_file(bool allow_load) {
   if (!this->system_data && allow_load) {
     this->load_all_files();
   }
   return this->system_data;
 }
 
-shared_ptr<const PSOBBBaseSystemFile> Client::system_file(bool throw_if_missing) const {
+std::shared_ptr<const PSOBBBaseSystemFile> Client::system_file(bool throw_if_missing) const {
   if (!this->system_data.get() && throw_if_missing) {
-    throw runtime_error("system file is not loaded");
+    throw std::runtime_error("system file is not loaded");
   }
   return this->system_data;
 }
 
 void Client::save_system_file() const {
   if (!this->system_data) {
-    throw logic_error("no system file loaded");
+    throw std::logic_error("no system file loaded");
   }
-  string filename = this->system_filename();
+  std::string filename = this->system_filename();
   phosg::save_object_file(filename, *this->system_data);
   this->log.info_f("Saved system file {}", filename);
 }
 
 // Guild Card file
 
-string Client::guild_card_filename(const string& bb_username) {
+std::string Client::guild_card_filename(const std::string& bb_username) {
   return std::format("system/players/guild_cards_{}.psocard", bb_username);
 }
 
-string Client::guild_card_filename() const {
+std::string Client::guild_card_filename() const {
   if (this->version() != Version::BB_V4) {
-    throw logic_error("non-BB players do not have saved Guild Card files");
+    throw std::logic_error("non-BB players do not have saved Guild Card files");
   }
   if (!this->login || !this->login->bb_license) {
-    throw logic_error("client is not logged in");
+    throw std::logic_error("client is not logged in");
   }
   return this->guild_card_filename(this->login->bb_license->username);
 }
 
-shared_ptr<PSOBBGuildCardFile> Client::guild_card_file(bool allow_load) {
+std::shared_ptr<PSOBBGuildCardFile> Client::guild_card_file(bool allow_load) {
   if (!this->guild_card_data && allow_load) {
     this->load_all_files();
   }
   return this->guild_card_data;
 }
 
-shared_ptr<const PSOBBGuildCardFile> Client::guild_card_file(bool allow_load) const {
+std::shared_ptr<const PSOBBGuildCardFile> Client::guild_card_file(bool allow_load) const {
   if (!this->guild_card_data && allow_load) {
-    throw runtime_error("account data is not loaded");
+    throw std::runtime_error("account data is not loaded");
   }
   return this->guild_card_data;
 }
 
 void Client::save_guild_card_file() const {
   if (!this->guild_card_data.get()) {
-    throw logic_error("no Guild Card file loaded");
+    throw std::logic_error("no Guild Card file loaded");
   }
-  string filename = this->guild_card_filename();
+  std::string filename = this->guild_card_filename();
   phosg::save_object_file(filename, *this->guild_card_data);
   this->log.info_f("Saved Guild Card file {}", filename);
 }
 
 // Character file
 
-string Client::character_filename(const std::string& bb_username, ssize_t index) {
+std::string Client::character_filename(const std::string& bb_username, ssize_t index) {
   if (bb_username.empty()) {
-    throw logic_error("non-BB players do not have saved character filenames");
+    throw std::logic_error("non-BB players do not have saved character filenames");
   }
   if (index < 0) {
-    throw logic_error("character index is not set");
+    throw std::logic_error("character index is not set");
   }
   return std::format("system/players/player_{}_{}.psochar", bb_username, index);
 }
 
-string Client::backup_character_filename(uint32_t account_id, size_t index, bool is_ep3) {
+std::string Client::backup_character_filename(uint32_t account_id, size_t index, bool is_ep3) {
   return std::format("system/players/backup_player_{}_{}.{}",
       account_id, index, is_ep3 ? "pso3char" : "psochar");
 }
 
-string Client::character_filename() const {
+std::string Client::character_filename() const {
   if (this->version() != Version::BB_V4) {
-    throw logic_error("non-BB players do not have saved character filenames");
+    throw std::logic_error("non-BB players do not have saved character filenames");
   }
   if (!this->login || !this->login->bb_license) {
-    throw logic_error("client is not logged in");
+    throw std::logic_error("client is not logged in");
   }
   return this->character_filename(this->login->bb_license->username, this->bb_character_index);
 }
 
-shared_ptr<PSOBBCharacterFile> Client::character_file(bool allow_load, bool allow_overlay) {
+std::shared_ptr<PSOBBCharacterFile> Client::character_file(bool allow_load, bool allow_overlay) {
   if (this->overlay_character_data && allow_overlay) {
     return this->overlay_character_data;
   }
   if (!this->character_data && allow_load) {
     if ((this->version() == Version::BB_V4) && (this->bb_character_index < 0)) {
-      throw runtime_error("character index not specified");
+      throw std::runtime_error("character index not specified");
     }
     this->load_all_files();
     if (!this->character_data) {
@@ -577,35 +573,35 @@ shared_ptr<PSOBBCharacterFile> Client::character_file(bool allow_load, bool allo
   return this->character_data;
 }
 
-shared_ptr<const PSOBBCharacterFile> Client::character_file(bool throw_if_missing, bool allow_overlay) const {
+std::shared_ptr<const PSOBBCharacterFile> Client::character_file(bool throw_if_missing, bool allow_overlay) const {
   if (allow_overlay && this->overlay_character_data) {
     return this->overlay_character_data;
   }
   if (!this->character_data && throw_if_missing) {
-    throw runtime_error("character data is not loaded");
+    throw std::runtime_error("character data is not loaded");
   }
   return this->character_data;
 }
 
 void Client::save_character_file(
-    const string& filename,
-    shared_ptr<const PSOBBBaseSystemFile> system,
-    shared_ptr<const PSOBBCharacterFile> character) {
+    const std::string& filename,
+    std::shared_ptr<const PSOBBBaseSystemFile> system,
+    std::shared_ptr<const PSOBBCharacterFile> character) {
   PSOCHARFile::save(filename, system, character);
 }
 
 void Client::save_ep3_character_file(
-    const string& filename,
+    const std::string& filename,
     const PSOGCEp3CharacterFile::Character& character) {
   phosg::save_file(filename, &character, sizeof(character));
 }
 
 void Client::save_character_file() {
   if (!this->system_data.get()) {
-    throw logic_error("no system file loaded");
+    throw std::logic_error("no system file loaded");
   }
   if (!this->character_data.get()) {
-    throw logic_error("no character file loaded");
+    throw std::logic_error("no character file loaded");
   }
   if (this->should_update_play_time) {
     // This is slightly inaccurate, since fractions of a second are truncated off each time we save. I'm lazy, so
@@ -630,7 +626,7 @@ void Client::create_character_file(
     uint32_t guild_card_number,
     Language language,
     const PlayerDispDataBBPreview& preview,
-    shared_ptr<const LevelTable> level_table) {
+    std::shared_ptr<const LevelTable> level_table) {
   this->log.info_f("Creating new character file");
   this->character_data = PSOBBCharacterFile::create_from_preview(guild_card_number, language, preview, level_table);
   this->save_character_file();
@@ -639,8 +635,8 @@ void Client::create_character_file(
   std::filesystem::remove(this->bank_filename());
 }
 
-void Client::create_battle_overlay(shared_ptr<const BattleRules> rules, shared_ptr<const LevelTable> level_table) {
-  this->overlay_character_data = make_shared<PSOBBCharacterFile>(*this->character_file(true, false));
+void Client::create_battle_overlay(std::shared_ptr<const BattleRules> rules, std::shared_ptr<const LevelTable> level_table) {
+  this->overlay_character_data = std::make_shared<PSOBBCharacterFile>(*this->character_file(true, false));
 
   if (rules->weapon_and_armor_mode != BattleRules::WeaponAndArmorMode::ALLOW) {
     this->overlay_character_data->inventory.remove_all_items_of_type(0);
@@ -657,7 +653,7 @@ void Client::create_battle_overlay(shared_ptr<const BattleRules> rules, shared_p
     this->overlay_character_data->inventory.hp_from_materials = 0;
     this->overlay_character_data->inventory.tp_from_materials = 0;
 
-    uint32_t target_level = clamp<uint32_t>(rules->char_level, 0, 199);
+    uint32_t target_level = std::clamp<uint32_t>(rules->char_level, 0, 199);
     uint8_t char_class = this->overlay_character_data->disp.visual.char_class;
     auto& stats = this->overlay_character_data->disp.stats;
 
@@ -689,11 +685,11 @@ void Client::create_battle_overlay(shared_ptr<const BattleRules> rules, shared_p
 }
 
 void Client::create_challenge_overlay(
-    Version version, size_t template_index, shared_ptr<const LevelTable> level_table) {
+    Version version, size_t template_index, std::shared_ptr<const LevelTable> level_table) {
   auto p = this->character_file(true, false);
   const auto& tpl = get_challenge_template_definition(version, p->disp.visual.class_flags, template_index);
 
-  this->overlay_character_data = make_shared<PSOBBCharacterFile>(*p);
+  this->overlay_character_data = std::make_shared<PSOBBCharacterFile>(*p);
   auto overlay = this->overlay_character_data;
 
   for (size_t z = 0; z < overlay->inventory.items.size(); z++) {
@@ -738,9 +734,9 @@ void Client::create_challenge_overlay(
 
 // Bank file
 
-string Client::bank_filename(const std::string& bb_username, ssize_t index) {
+std::string Client::bank_filename(const std::string& bb_username, ssize_t index) {
   if (bb_username.empty()) {
-    throw logic_error("non-BB players do not have saved bank files");
+    throw std::logic_error("non-BB players do not have saved bank files");
   }
   if (index < 0) {
     return std::format("system/players/shared_bank_{}.psobank", bb_username);
@@ -749,19 +745,19 @@ string Client::bank_filename(const std::string& bb_username, ssize_t index) {
   }
 }
 
-string Client::bank_filename() const {
+std::string Client::bank_filename() const {
   if (this->version() != Version::BB_V4) {
-    throw logic_error("non-BB players do not have saved bank filenames");
+    throw std::logic_error("non-BB players do not have saved bank filenames");
   }
   if (!this->login || !this->login->bb_license) {
-    throw logic_error("client is not logged in");
+    throw std::logic_error("client is not logged in");
   }
   return this->bank_filename(this->login->bb_license->username, this->bb_bank_character_index);
 }
 
 std::shared_ptr<PlayerBank> Client::bank_file(bool allow_load) {
   if (this->version() != Version::BB_V4) {
-    throw logic_error("non-BB players do not have saved bank files");
+    throw std::logic_error("non-BB players do not have saved bank files");
   }
   if (this->has_overlay()) {
     throw std::runtime_error("bank is inaccessible when overlay is present");
@@ -771,7 +767,7 @@ std::shared_ptr<PlayerBank> Client::bank_file(bool allow_load) {
       // If there's a psobank file, load it and ignore the character file bank
       auto filename = this->bank_filename();
       auto f = phosg::fopen_unique(filename, "rb");
-      this->bank_data = make_shared<PlayerBank>();
+      this->bank_data = std::make_shared<PlayerBank>();
       this->bank_data->load(f.get());
       this->log.info_f("Loaded bank data from {}", filename);
     } catch (const phosg::cannot_open_file&) {
@@ -783,15 +779,16 @@ std::shared_ptr<PlayerBank> Client::bank_file(bool allow_load) {
         this->log.info_f("Using bank data from loaded character");
       } else if (this->bb_bank_character_index >= 0) {
         if (!this->login || !this->login->bb_license) {
-          throw logic_error("client is not logged in");
+          throw std::logic_error("client is not logged in");
         }
-        string filename = this->character_filename(this->login->bb_license->username, this->bb_bank_character_index);
+        std::string filename = this->character_filename(
+            this->login->bb_license->username, this->bb_bank_character_index);
         auto character = PSOCHARFile::load_shared(filename, false).character_file;
         this->bank_data = std::make_shared<PlayerBank>(character->bank);
         this->log.info_f("Using bank data from {}", filename);
       } else {
         // The shared bank doesn't exist; make a new one
-        this->bank_data = make_shared<PlayerBank>();
+        this->bank_data = std::make_shared<PlayerBank>();
         this->log.info_f("Created new shared bank");
       }
     }
@@ -811,14 +808,14 @@ std::shared_ptr<const PlayerBank> Client::bank_file(bool throw_if_missing) const
   return this->bank_data;
 }
 
-void Client::save_bank_file(const string& filename, const PlayerBank& bank) {
+void Client::save_bank_file(const std::string& filename, const PlayerBank& bank) {
   auto f = phosg::fopen_unique(filename, "wb");
   bank.save(f.get());
 }
 
 void Client::save_bank_file() const {
   if (!this->bank_data) {
-    throw logic_error("no bank file loaded");
+    throw std::logic_error("no bank file loaded");
   }
   auto filename = this->bank_filename();
   this->save_bank_file(filename, *this->bank_data);
@@ -840,30 +837,28 @@ void Client::change_bank(ssize_t index) {
 
 // Legacy files
 
-string Client::legacy_account_filename() const {
+std::string Client::legacy_account_filename() const {
   if (this->version() != Version::BB_V4) {
-    throw logic_error("non-BB players do not have saved account data");
+    throw std::logic_error("non-BB players do not have saved account data");
   }
   if (!this->login || !this->login->bb_license) {
-    throw logic_error("client is not logged in");
+    throw std::logic_error("client is not logged in");
   }
   return std::format("system/players/account_{}.nsa", this->login->bb_license->username);
 }
 
-string Client::legacy_player_filename() const {
+std::string Client::legacy_player_filename() const {
   if (this->version() != Version::BB_V4) {
-    throw logic_error("non-BB players do not have saved player files");
+    throw std::logic_error("non-BB players do not have saved player files");
   }
   if (!this->login || !this->login->bb_license) {
-    throw logic_error("client is not logged in");
+    throw std::logic_error("client is not logged in");
   }
   if (this->bb_character_index < 0) {
-    throw logic_error("character index is not set");
+    throw std::logic_error("character index is not set");
   }
-  return std::format(
-      "system/players/player_{}_{}.nsc",
-      this->login->bb_license->username,
-      static_cast<ssize_t>(this->bb_character_index + 1));
+  return std::format("system/players/player_{}_{}.nsc",
+      this->login->bb_license->username, static_cast<ssize_t>(this->bb_character_index + 1));
 }
 
 void Client::import_blocked_senders(const parray<le_uint32_t, 30>& blocked_senders) {
@@ -877,20 +872,20 @@ void Client::import_blocked_senders(const parray<le_uint32_t, 30>& blocked_sende
 
 void Client::load_all_files() {
   if (this->version() != Version::BB_V4) {
-    this->system_data = make_shared<PSOBBBaseSystemFile>();
-    this->character_data = make_shared<PSOBBCharacterFile>();
-    this->guild_card_data = make_shared<PSOBBGuildCardFile>();
-    this->bank_data = make_shared<PlayerBank>();
+    this->system_data = std::make_shared<PSOBBBaseSystemFile>();
+    this->character_data = std::make_shared<PSOBBCharacterFile>();
+    this->guild_card_data = std::make_shared<PSOBBGuildCardFile>();
+    this->bank_data = std::make_shared<PlayerBank>();
     return;
   }
   if (!this->login || !this->login->bb_license) {
-    throw logic_error("cannot load BB player data until client is logged in");
+    throw std::logic_error("cannot load BB player data until client is logged in");
   }
 
   if (!this->system_data) {
-    string sys_filename = this->system_filename();
+    std::string sys_filename = this->system_filename();
     if (std::filesystem::is_regular_file(sys_filename)) {
-      this->system_data = make_shared<PSOBBBaseSystemFile>(phosg::load_object_file<PSOBBBaseSystemFile>(sys_filename, true));
+      this->system_data = std::make_shared<PSOBBBaseSystemFile>(phosg::load_object_file<PSOBBBaseSystemFile>(sys_filename, true));
       this->log.info_f("Loaded system data from {}", sys_filename);
     } else {
       this->log.info_f("System file is missing: {}", sys_filename);
@@ -898,7 +893,7 @@ void Client::load_all_files() {
   }
 
   if (!this->character_data && (this->bb_character_index >= 0)) {
-    string char_filename = this->character_filename();
+    std::string char_filename = this->character_filename();
     if (std::filesystem::is_regular_file(char_filename)) {
       auto psochar = PSOCHARFile::load_shared(char_filename, !this->system_data);
       this->character_data = psochar.character_file;
@@ -907,7 +902,7 @@ void Client::load_all_files() {
       // If there was no .psosys file, use the system file from the .psochar file instead
       if (!this->system_data) {
         if (!psochar.system_file) {
-          throw logic_error("account system data not present, and also not loaded from psochar file");
+          throw std::logic_error("account system data not present, and also not loaded from psochar file");
         }
         this->system_data = psochar.system_file;
         this->log.info_f("Loaded system data from {}", char_filename);
@@ -922,9 +917,9 @@ void Client::load_all_files() {
   }
 
   if (!this->guild_card_data) {
-    string card_filename = this->guild_card_filename();
+    std::string card_filename = this->guild_card_filename();
     if (std::filesystem::is_regular_file(card_filename)) {
-      this->guild_card_data = make_shared<PSOBBGuildCardFile>(phosg::load_object_file<PSOBBGuildCardFile>(card_filename));
+      this->guild_card_data = std::make_shared<PSOBBGuildCardFile>(phosg::load_object_file<PSOBBGuildCardFile>(card_filename));
       this->guild_card_data->delete_duplicates();
       this->log.info_f("Loaded Guild Card data from {}", card_filename);
     } else {
@@ -934,25 +929,25 @@ void Client::load_all_files() {
 
   // If any of the above files are still missing, try to load from .nsa/.nsc files instead
   if (!this->system_data || (!this->character_data && (this->bb_character_index >= 0)) || !this->guild_card_data) {
-    string nsa_filename = this->legacy_account_filename();
-    shared_ptr<LegacySavedAccountDataBB> nsa_data;
+    std::string nsa_filename = this->legacy_account_filename();
+    std::shared_ptr<LegacySavedAccountDataBB> nsa_data;
     if (std::filesystem::is_regular_file(nsa_filename)) {
-      nsa_data = make_shared<LegacySavedAccountDataBB>(phosg::load_object_file<LegacySavedAccountDataBB>(nsa_filename));
+      nsa_data = std::make_shared<LegacySavedAccountDataBB>(phosg::load_object_file<LegacySavedAccountDataBB>(nsa_filename));
       if (!nsa_data->signature.eq(LegacySavedAccountDataBB::SIGNATURE)) {
-        throw runtime_error("account data header is incorrect");
+        throw std::runtime_error("account data header is incorrect");
       }
       if (!this->system_data) {
-        this->system_data = make_shared<PSOBBBaseSystemFile>(nsa_data->system_file);
+        this->system_data = std::make_shared<PSOBBBaseSystemFile>(nsa_data->system_file);
         this->log.info_f("Loaded legacy system data from {}", nsa_filename);
       }
       if (!this->guild_card_data) {
-        this->guild_card_data = make_shared<PSOBBGuildCardFile>(nsa_data->guild_card_file);
+        this->guild_card_data = std::make_shared<PSOBBGuildCardFile>(nsa_data->guild_card_file);
         this->log.info_f("Loaded legacy Guild Card data from {}", nsa_filename);
       }
     }
 
     if (!this->character_data && (this->bb_character_index >= 0)) {
-      string nsc_filename = this->legacy_player_filename();
+      std::string nsc_filename = this->legacy_player_filename();
       if (std::filesystem::is_regular_file(nsc_filename)) {
         auto nsc_data = phosg::load_object_file<LegacySavedPlayerDataBB>(nsc_filename);
         if (nsc_data.signature == LegacySavedPlayerDataBB::SIGNATURE_V0) {
@@ -962,10 +957,10 @@ void Client::load_all_files() {
           nsc_data.battle_records.disconnect_count = 0;
           nsc_data.battle_records.unknown_a1.clear(0);
         } else if (nsc_data.signature != LegacySavedPlayerDataBB::SIGNATURE_V1) {
-          throw runtime_error("legacy player data has incorrect signature");
+          throw std::runtime_error("legacy player data has incorrect signature");
         }
 
-        this->character_data = make_shared<PSOBBCharacterFile>();
+        this->character_data = std::make_shared<PSOBBCharacterFile>();
         this->character_data->inventory = nsc_data.inventory;
         this->character_data->disp = nsc_data.disp;
         this->character_data->play_time_seconds = 0;
@@ -1001,7 +996,7 @@ void Client::load_all_files() {
   // The system and Guild Card files can be auto-created if they can't be loaded. After this, system_data and
   // guild_card_data are always non-null, but character_data may still be null
   if (!this->system_data) {
-    this->system_data = make_shared<PSOBBBaseSystemFile>();
+    this->system_data = std::make_shared<PSOBBBaseSystemFile>();
     auto s = this->require_server_state();
     if (s->bb_default_keyboard_config) {
       this->system_data->key_config = *s->bb_default_keyboard_config;
@@ -1012,7 +1007,7 @@ void Client::load_all_files() {
     this->log.info_f("Created new system data");
   }
   if (!this->guild_card_data) {
-    this->guild_card_data = make_shared<PSOBBGuildCardFile>();
+    this->guild_card_data = std::make_shared<PSOBBGuildCardFile>();
     this->log.info_f("Created new Guild Card data");
   }
 
@@ -1041,7 +1036,7 @@ void Client::load_all_files() {
   }
 }
 
-void Client::update_character_data_after_load(shared_ptr<PSOBBCharacterFile> charfile) {
+void Client::update_character_data_after_load(std::shared_ptr<PSOBBCharacterFile> charfile) {
   charfile->import_tethealla_material_usage(this->require_server_state()->level_table(this->version()));
 
   Language lang = this->language();
@@ -1050,7 +1045,7 @@ void Client::update_character_data_after_load(shared_ptr<PSOBBCharacterFile> cha
   charfile->guild_card.language = lang;
 }
 
-void Client::update_bank_data_after_load(shared_ptr<PlayerBank> bank) {
+void Client::update_bank_data_after_load(std::shared_ptr<PlayerBank> bank) {
   auto s = this->require_server_state();
   auto limits = s->item_stack_limits(this->version());
   for (auto& item : bank->items) {
@@ -1083,17 +1078,17 @@ void Client::save_all() {
 }
 
 void Client::load_backup_character(uint32_t account_id, size_t index) {
-  string filename = this->backup_character_filename(account_id, index, false);
+  std::string filename = this->backup_character_filename(account_id, index, false);
   this->character_data = PSOCHARFile::load_shared(filename, false).character_file;
   this->update_character_data_after_load(this->character_data);
   this->v1_v2_last_reported_disp.reset();
 }
 
-shared_ptr<PSOGCEp3CharacterFile::Character> Client::load_ep3_backup_character(uint32_t account_id, size_t index) {
-  string filename = this->backup_character_filename(account_id, index, true);
-  auto ch = make_shared<PSOGCEp3CharacterFile::Character>(phosg::load_object_file<PSOGCEp3CharacterFile::Character>(filename));
+std::shared_ptr<PSOGCEp3CharacterFile::Character> Client::load_ep3_backup_character(uint32_t account_id, size_t index) {
+  std::string filename = this->backup_character_filename(account_id, index, true);
+  auto ch = std::make_shared<PSOGCEp3CharacterFile::Character>(phosg::load_object_file<PSOGCEp3CharacterFile::Character>(filename));
   this->character_data = PSOBBCharacterFile::create_from_file(*ch);
-  this->ep3_config = make_shared<Episode3::PlayerConfig>(ch->ep3_config);
+  this->ep3_config = std::make_shared<Episode3::PlayerConfig>(ch->ep3_config);
   this->update_character_data_after_load(this->character_data);
   this->v1_v2_last_reported_disp.reset();
   return ch;

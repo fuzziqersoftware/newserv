@@ -24,7 +24,7 @@ extern const std::unordered_set<std::string> bb_crypt_initial_client_commands;
 
 constexpr size_t V3_V4_QUEST_LOAD_MAX_CHUNKS_IN_FLIGHT = 4;
 
-// TODO: Many of these functions should take a shared_ptr<Channel> instead of a shared_ptr<Client>. Refactor functions
+// TODO: Many of these functions should take a std::shared_ptr<Channel> instead of a std::shared_ptr<Client>. Refactor functions
 // appropriately.
 
 // Note: There are so many versions of this function for a few reasons:

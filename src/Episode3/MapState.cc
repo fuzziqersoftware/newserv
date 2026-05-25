@@ -1,7 +1,5 @@
 #include "MapState.hh"
 
-using namespace std;
-
 namespace Episode3 {
 
 MapState::MapState() {

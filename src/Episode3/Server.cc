@@ -7,11 +7,9 @@
 #include "../Revision.hh"
 #include "../SendCommands.hh"
 
-using namespace std;
-
 namespace Episode3 {
 
-// This is (obviously) not the original string. The original string is:
+// This is (obviously) not the original std::string. The original std::string is:
 //   NTE: "03/05/29 18:00 by K.Toya"
 //   Final: "[V1][FINAL2.0] 03/09/13 15:30 by K.Toya"
 static const char* VERSION_SIGNATURE = "newserv Ep3 based on [V1][FINAL2.0] 03/09/13 15:30 by K.Toya";
@@ -27,7 +25,7 @@ void Server::PresenceEntry::clear() {
   this->is_cpu_player = 0;
 }
 
-Server::Server(shared_ptr<Lobby> lobby, Options&& options)
+Server::Server(std::shared_ptr<Lobby> lobby, Options&& options)
     : lobby(lobby),
       battle_record(lobby ? lobby->battle_record : nullptr),
       has_lobby(lobby != nullptr),
@@ -81,7 +79,7 @@ Server::Server(shared_ptr<Lobby> lobby, Options&& options)
 
 Server::~Server() noexcept(false) {
   if (this->logger_stack.size() != 1) {
-    throw logic_error(std::format("incorrect logger stack size: expected 1, received {}", this->logger_stack.size()));
+    throw std::logic_error(std::format("incorrect logger stack size: expected 1, received {}", this->logger_stack.size()));
   }
   delete this->logger_stack.back();
 }
@@ -89,31 +87,31 @@ Server::~Server() noexcept(false) {
 void Server::init() {
   this->log().info_f("Creating server with random seed {:08X}", this->options.rand_crypt->seed());
 
-  this->map_and_rules = make_shared<MapAndRulesState>();
+  this->map_and_rules = std::make_shared<MapAndRulesState>();
   this->num_clients_present = 0;
   this->overlay_state.clear();
   for (size_t z = 0; z < 4; z++) {
     this->presence_entries[z].clear();
-    this->deck_entries[z] = make_shared<DeckEntry>();
+    this->deck_entries[z] = std::make_shared<DeckEntry>();
     this->name_entries[z].clear();
     this->name_entries_valid[z] = false;
   }
 
-  this->card_special = make_shared<CardSpecial>(this->shared_from_this());
+  this->card_special = std::make_shared<CardSpecial>(this->shared_from_this());
 
   // Note: The original implementation calls the default PSOV2Encryption constructor for random_crypt, which just uses
   // 0 as the seed. It then re-seeds the generator later. We instead expect the caller to provide a seeded generator,
   // and we don't re-seed it at all.
-  // this->random_crypt = make_shared<PSOV2Encryption>(0);
+  // this->random_crypt = std::make_shared<PSOV2Encryption>(0);
 
-  this->state_flags = make_shared<StateFlags>();
+  this->state_flags = std::make_shared<StateFlags>();
 
   this->clear_player_flags_after_dice_phase();
 
   this->update_battle_state_flags_and_send_6xB4x03_if_needed();
 
-  this->assist_server = make_shared<AssistServer>(this->shared_from_this());
-  this->ruler_server = make_shared<RulerServer>(this->shared_from_this());
+  this->assist_server = std::make_shared<AssistServer>(this->shared_from_this());
+  this->ruler_server = std::make_shared<RulerServer>(this->shared_from_this());
   this->ruler_server->link_objects(this->map_and_rules, this->state_flags, this->assist_server);
 
   this->send_6xB4x46();
@@ -135,7 +133,7 @@ Server::StackLogger::StackLogger(StackLogger&& other)
     : PrefixedLogger(std::move(other)),
       server(other.server) {
   if (this->server->logger_stack.back() != &other) {
-    throw logic_error("cannot move StackLogger unless it is the last one");
+    throw std::logic_error("cannot move StackLogger unless it is the last one");
   }
   this->server->logger_stack.back() = this;
 }
@@ -144,7 +142,7 @@ Server::StackLogger& Server::StackLogger::operator=(StackLogger&& other) {
   this->PrefixedLogger::operator=(std::move(other));
   this->server = other.server;
   if (this->server->logger_stack.back() != &other) {
-    throw logic_error("cannot move StackLogger unless it is the last one");
+    throw std::logic_error("cannot move StackLogger unless it is the last one");
   }
   this->server->logger_stack.back() = this;
   return *this;
@@ -152,7 +150,7 @@ Server::StackLogger& Server::StackLogger::operator=(StackLogger&& other) {
 
 Server::StackLogger::~StackLogger() noexcept(false) {
   if (this->server->logger_stack.back() != this) {
-    throw logic_error("incorrect logger stack unwind order");
+    throw std::logic_error("incorrect logger stack unwind order");
   }
   this->server->logger_stack.pop_back();
 }
@@ -171,8 +169,7 @@ std::string Server::debug_str_for_card_ref(uint16_t card_ref) const {
   }
   auto ce = this->definition_for_card_ref(card_ref);
   if (ce) {
-    string name = ce->def.en_name.decode();
-    return std::format("@{:04X} (#{:04X} {})", card_ref, ce->def.card_id, name);
+    return std::format("@{:04X} (#{:04X} {})", card_ref, ce->def.card_id, ce->def.en_name.decode());
   } else {
     return std::format("@{:04X} (missing)", card_ref);
   }
@@ -184,8 +181,7 @@ std::string Server::debug_str_for_card_id(uint16_t card_id) const {
   }
   auto ce = this->definition_for_card_id(card_id);
   if (ce) {
-    string name = ce->def.en_name.decode();
-    return std::format("#{:04X} ({})", card_id, name);
+    return std::format("#{:04X} ({})", card_id, ce->def.en_name.decode());
   } else {
     return std::format("#{:04X} (missing)", card_id);
   }
@@ -209,17 +205,17 @@ int8_t Server::get_winner_team_id() const {
   }
 
   if (!team_player_counts[0] || !team_player_counts[1]) {
-    throw logic_error("at least one team has no players");
+    throw std::logic_error("at least one team has no players");
   }
   if (team_win_flag_counts[0] && team_win_flag_counts[1]) {
-    throw logic_error("both teams have winning players");
+    throw std::logic_error("both teams have winning players");
   }
   for (int8_t z = 0; z < 2; z++) {
     if (!team_win_flag_counts[z]) {
       continue;
     }
     if (team_win_flag_counts[z] != team_player_counts[z]) {
-      throw logic_error("only some players on team have won");
+      throw std::logic_error("only some players on team have won");
     }
     return z;
   }
@@ -236,10 +232,10 @@ void Server::send(const void* data, size_t size, uint8_t command, bool enable_ma
   if (this->has_lobby) {
     auto l = this->lobby.lock();
     if (!l) {
-      throw runtime_error("lobby is deleted");
+      throw std::runtime_error("lobby is deleted");
     }
 
-    string masked_data;
+    std::string masked_data;
     if (enable_masking &&
         !this->options.is_nte() &&
         !(this->options.behavior_flags & BehaviorFlag::DISABLE_MASKING) &&
@@ -267,7 +263,7 @@ void Server::send(const void* data, size_t size, uint8_t command, bool enable_ma
 
 void Server::send_6xB4x46() const {
   // Note: This function is not part of the original implementation; it was factored out from its callsites in this
-  // file and the strings were changed.
+  // file and the std::strings were changed.
 
   // NTE doesn't have the date_str2 field, but we send it anyway to make debugging easier.
   G_ServerVersionStrings_Ep3_6xB4x46 cmd;
@@ -275,12 +271,13 @@ void Server::send_6xB4x46() const {
   cmd.date_str1.encode(
       std::format("Card definitions: {:016X}", this->options.card_index->definitions_hash()),
       Language::ENGLISH);
-  string build_date = phosg::format_time(BUILD_TIMESTAMP);
+  std::string build_date = phosg::format_time(BUILD_TIMESTAMP);
   cmd.date_str2.encode(std::format("newserv {} compiled at {}", GIT_REVISION_HASH, build_date), Language::ENGLISH);
   this->send(cmd);
 }
 
-string Server::prepare_6xB6x41_map_definition(shared_ptr<const MapIndex::Map> map, Language language, bool is_nte) {
+std::string Server::prepare_6xB6x41_map_definition(
+    std::shared_ptr<const MapIndex::Map> map, Language language, bool is_nte) {
   auto vm = map->version(language);
 
   const auto& compressed = vm->compressed(is_nte);
@@ -295,7 +292,8 @@ string Server::prepare_6xB6x41_map_definition(shared_ptr<const MapIndex::Map> ma
 
 void Server::send_commands_for_joining_spectator(std::shared_ptr<Channel> ch) const {
   if (this->last_chosen_map) {
-    string data = this->prepare_6xB6x41_map_definition(this->last_chosen_map, ch->language, this->options.is_nte());
+    std::string data = this->prepare_6xB6x41_map_definition(
+        this->last_chosen_map, ch->language, this->options.is_nte());
     this->log().info_f(
         "Sending {} version of map {:08X}", name_for_language(ch->language), this->last_chosen_map->map_number);
     ch->send(0x6C, 0x00, data);
@@ -366,11 +364,12 @@ void Server::add_team_exp(uint8_t team_id, int32_t exp) {
     }
   }
 
-  this->team_exp[team_id] = clamp<int16_t>(this->team_exp[team_id] + exp, 0, this->team_client_count[team_id] * 96);
+  this->team_exp[team_id] = std::clamp<int16_t>(
+      this->team_exp[team_id] + exp, 0, this->team_client_count[team_id] * 96);
 
   uint8_t dice_boost = this->team_exp[team_id] / (this->team_client_count[team_id] * 12);
   this->card_special->adjust_dice_boost_if_team_has_condition_52(team_id, &dice_boost, 0);
-  this->team_dice_bonus[team_id] = min<uint8_t>(dice_boost, 8);
+  this->team_dice_bonus[team_id] = std::min<uint8_t>(dice_boost, 8);
 }
 
 bool Server::advance_battle_phase() {
@@ -396,7 +395,7 @@ bool Server::advance_battle_phase() {
       this->dice_phase_before();
       break;
     default:
-      throw logic_error("invalid battle phase");
+      throw std::logic_error("invalid battle phase");
   }
   return this->check_for_battle_end();
 }
@@ -414,15 +413,15 @@ void Server::draw_phase_before() {
   }
 }
 
-shared_ptr<const CardIndex::CardEntry> Server::definition_for_card_ref(uint16_t card_ref) const {
+std::shared_ptr<const CardIndex::CardEntry> Server::definition_for_card_ref(uint16_t card_ref) const {
   try {
     return this->options.card_index->definition_for_id(this->card_id_for_card_ref(card_ref));
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     return nullptr;
   }
 }
 
-shared_ptr<Card> Server::card_for_set_card_ref(uint16_t card_ref) {
+std::shared_ptr<Card> Server::card_for_set_card_ref(uint16_t card_ref) {
   if (card_ref == 0xFFFF) {
     return nullptr;
   }
@@ -447,7 +446,7 @@ shared_ptr<Card> Server::card_for_set_card_ref(uint16_t card_ref) {
   return nullptr;
 }
 
-shared_ptr<const Card> Server::card_for_set_card_ref(uint16_t card_ref) const {
+std::shared_ptr<const Card> Server::card_for_set_card_ref(uint16_t card_ref) const {
   return const_cast<Server*>(this)->card_for_set_card_ref(card_ref);
 }
 
@@ -584,7 +583,7 @@ bool Server::check_for_battle_end() {
 void Server::force_replace_assist_card(uint8_t client_id, uint16_t card_id) {
   auto ps = this->player_states.at(client_id);
   if (!ps) {
-    throw runtime_error("player does not exist");
+    throw std::runtime_error("player does not exist");
   }
   if (card_id == 0xFFFF) {
     ps->discard_set_assist_card();
@@ -599,12 +598,12 @@ void Server::force_replace_assist_card(uint8_t client_id, uint16_t card_id) {
 void Server::force_destroy_field_character(uint8_t client_id, size_t visible_index) {
   auto ps = this->player_states.at(client_id);
   if (!ps) {
-    throw runtime_error("player does not exist");
+    throw std::runtime_error("player does not exist");
   }
 
   // TODO: Is it possible for there to be gaps in the set cards array? If not, we could just do a direct array lookup
   // here instead of this loop
-  shared_ptr<Card> set_card = nullptr;
+  std::shared_ptr<Card> set_card = nullptr;
   for (size_t set_index = 0; set_index < 8; set_index++) {
     if (!ps->set_cards[set_index]) {
       continue;
@@ -681,7 +680,7 @@ void Server::compute_all_map_occupied_bits() {
 }
 
 void Server::compute_team_dice_bonus(uint8_t team_id) {
-  this->team_dice_bonus[team_id] = clamp<int16_t>(
+  this->team_dice_bonus[team_id] = std::clamp<int16_t>(
       this->team_exp[team_id] / (this->team_client_count[team_id] * 12), 0, 8);
 }
 
@@ -700,10 +699,10 @@ void Server::copy_player_states_to_prev_states() {
   }
 }
 
-shared_ptr<const CardIndex::CardEntry> Server::definition_for_card_id(uint16_t card_id) const {
+std::shared_ptr<const CardIndex::CardEntry> Server::definition_for_card_id(uint16_t card_id) const {
   try {
     return this->options.card_index->definition_for_id(card_id);
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     return nullptr;
   }
 }
@@ -731,7 +730,7 @@ void Server::determine_first_team_turn() {
   this->team_client_count[0] = this->map_and_rules->num_team0_players;
   this->team_client_count[1] = this->map_and_rules->num_players - this->team_client_count[0];
   if (this->team_client_count[0] == 0 || this->team_client_count[1] == 0) {
-    throw runtime_error("one or both teams have no players");
+    throw std::runtime_error("one or both teams have no players");
   }
   this->first_team_turn = 0xFF;
   while (this->first_team_turn == 0xFF) {
@@ -927,7 +926,7 @@ void Server::end_action_phase() {
 bool Server::enqueue_attack_or_defense(uint8_t client_id, ActionState* pa) {
   auto log = this->log_stack("enqueue_attack_or_defense: ");
   if (log.should_log(phosg::LogLevel::L_DEBUG)) {
-    string s = pa->str(this->shared_from_this());
+    std::string s = pa->str(this->shared_from_this());
     log.debug_f("input: {}", s);
   }
 
@@ -977,8 +976,8 @@ bool Server::enqueue_attack_or_defense(uint8_t client_id, ActionState* pa) {
   size_t attack_index = this->num_pending_attacks++;
   this->pending_attacks[attack_index] = *pa;
   if (log.should_log(phosg::LogLevel::L_DEBUG)) {
-    string pa_str = this->pending_attacks[attack_index].str(this->shared_from_this());
-    log.debug_f("set pending attack {}: {}", attack_index, pa_str);
+    log.debug_f("set pending attack {}: {}",
+        attack_index, this->pending_attacks[attack_index].str(this->shared_from_this()));
   }
   ps->set_action_cards_for_action_state(*pa);
   log.debug_f("set action cards");
@@ -1013,14 +1012,14 @@ uint8_t Server::get_current_team_turn() const {
   return this->current_team_turn1;
 }
 
-shared_ptr<PlayerState> Server::get_player_state(uint8_t client_id) {
+std::shared_ptr<PlayerState> Server::get_player_state(uint8_t client_id) {
   if (client_id >= 4) {
     return nullptr;
   }
   return this->player_states[client_id];
 }
 
-shared_ptr<const PlayerState> Server::get_player_state(uint8_t client_id) const {
+std::shared_ptr<const PlayerState> Server::get_player_state(uint8_t client_id) const {
   if (client_id >= 4) {
     return nullptr;
   }
@@ -1094,19 +1093,19 @@ void Server::move_phase_after() {
         continue;
       }
 
-      static const array<vector<uint16_t>, 5> DEFAULT_TRAP_CARD_IDS = {
+      static const std::array<std::vector<uint16_t>, 5> DEFAULT_TRAP_CARD_IDS = {
           // Red: Dice Fever, Heavy Fog, Muscular, Immortality, Snail Pace
-          vector<uint16_t>{0x00F7, 0x010F, 0x012E, 0x013B, 0x013C},
+          std::vector<uint16_t>{0x00F7, 0x010F, 0x012E, 0x013B, 0x013C},
           // Blue: Gold Rush, Charity, Requiem
-          vector<uint16_t>{0x0131, 0x012B, 0x0133},
+          std::vector<uint16_t>{0x0131, 0x012B, 0x0133},
           // Purple: Powerless Rain, Trash 1, Empty Hand, Skip Draw
-          vector<uint16_t>{0x00FA, 0x0125, 0x0126, 0x0137},
+          std::vector<uint16_t>{0x00FA, 0x0125, 0x0126, 0x0137},
           // Green: Brave Wind, Homesick, Fly
-          vector<uint16_t>{0x00FB, 0x014E, 0x0107},
+          std::vector<uint16_t>{0x00FB, 0x014E, 0x0107},
           // Yellow: Dice+1, Battle Royale, Reverse Card, Giant Garden, Fix
-          vector<uint16_t>{0x00F6, 0x0242, 0x014B, 0x0145, 0x012D}};
+          std::vector<uint16_t>{0x00F6, 0x0242, 0x014B, 0x0145, 0x012D}};
 
-      const vector<uint16_t>* trap_card_ids = &this->options.trap_card_ids.at(trap_type);
+      const std::vector<uint16_t>* trap_card_ids = &this->options.trap_card_ids.at(trap_type);
       if (trap_card_ids->empty()) {
         trap_card_ids = &DEFAULT_TRAP_CARD_IDS.at(trap_type);
       }
@@ -1201,7 +1200,7 @@ int8_t Server::send_6xB4x33_remove_ally_atk_if_needed(const ActionState& pa) {
   bool has_ally_cost = false;
   uint8_t ally_cost = 0;
   uint8_t setter_client_id = 0xFF;
-  shared_ptr<PlayerState> setter_ps = nullptr;
+  std::shared_ptr<PlayerState> setter_ps = nullptr;
   cmd.card_ref = 0xFFFF;
   for (size_t z = 0; (z < 8) && (pa.action_card_refs[z] != 0xFFFF); z++) {
     auto ce = this->definition_for_card_ref(pa.action_card_refs[z]);
@@ -1509,7 +1508,7 @@ void Server::setup_and_start_battle() {
         this->name_entries[z].clear();
       }
     } else {
-      this->player_states[z] = make_shared<PlayerState>(z, this->shared_from_this());
+      this->player_states[z] = std::make_shared<PlayerState>(z, this->shared_from_this());
       this->player_states[z]->init();
     }
   }
@@ -1523,7 +1522,7 @@ void Server::setup_and_start_battle() {
       }
       auto card = ps->get_sc_card();
       if (card) {
-        team_hp[ps->get_team_id()] = min<int16_t>(team_hp[ps->get_team_id()], card->get_current_hp());
+        team_hp[ps->get_team_id()] = std::min<int16_t>(team_hp[ps->get_team_id()], card->get_current_hp());
       }
     }
 
@@ -1739,7 +1738,7 @@ bool Server::update_registration_phase() {
   return true;
 }
 
-const unordered_map<uint8_t, Server::handler_t> Server::subcommand_handlers({
+const std::unordered_map<uint8_t, Server::handler_t> Server::subcommand_handlers({
     {0x0B, &Server::handle_CAx0B_redraw_initial_hand},
     {0x0C, &Server::handle_CAx0C_end_redraw_initial_hand_phase},
     {0x0D, &Server::handle_CAx0D_end_non_action_phase},
@@ -1765,23 +1764,23 @@ const unordered_map<uint8_t, Server::handler_t> Server::subcommand_handlers({
     {0x49, &Server::handle_CAx49_card_counts},
 });
 
-void Server::on_server_data_input(shared_ptr<Client> sender_c, const string& data) {
+void Server::on_server_data_input(std::shared_ptr<Client> sender_c, const std::string& data) {
   auto header = check_size_t<G_CardBattleCommandHeader>(data, 0xFFFF);
   size_t expected_size = header.size * 4;
   if (expected_size < data.size()) {
     phosg::print_data(stderr, data);
-    throw runtime_error(std::format(
+    throw std::runtime_error(std::format(
         "command is incomplete: expected {:X} bytes, received {:X} bytes", expected_size, data.size()));
   }
   if (header.subcommand != 0xB3) {
-    throw runtime_error("server data command is not 6xB3");
+    throw std::runtime_error("server data command is not 6xB3");
   }
 
   handler_t handler = nullptr;
   try {
     handler = this->subcommand_handlers.at(header.subsubcommand);
-  } catch (const out_of_range&) {
-    throw runtime_error("unknown CAx subsubcommand");
+  } catch (const std::out_of_range&) {
+    throw std::runtime_error("unknown CAx subsubcommand");
   }
 
   if (this->battle_record && this->battle_record->writable()) {
@@ -1791,17 +1790,17 @@ void Server::on_server_data_input(shared_ptr<Client> sender_c, const string& dat
   if ((sender_c && (sender_c->version() == Version::GC_EP3_NTE)) || !header.mask_key) {
     (this->*handler)(sender_c, data);
   } else {
-    string unmasked_data = data;
+    std::string unmasked_data = data;
     set_mask_for_ep3_game_command(unmasked_data.data(), unmasked_data.size(), 0);
     (this->*handler)(sender_c, unmasked_data);
   }
 }
 
-void Server::handle_CAx0B_redraw_initial_hand(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx0B_redraw_initial_hand(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_RedrawInitialHand_Ep3_CAx0B>(data);
   this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "REDRAW");
   if (in_cmd.client_id >= 4) {
-    throw runtime_error("invalid client ID");
+    throw std::runtime_error("invalid client ID");
   }
 
   int32_t error_code = 0;
@@ -1829,11 +1828,11 @@ void Server::handle_CAx0B_redraw_initial_hand(shared_ptr<Client>, const string& 
   this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
 }
 
-void Server::handle_CAx0C_end_redraw_initial_hand_phase(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx0C_end_redraw_initial_hand_phase(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_EndInitialRedrawPhase_Ep3_CAx0C>(data);
   this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "HAND READY");
   if (in_cmd.client_id >= 4) {
-    throw runtime_error("invalid client ID");
+    throw std::runtime_error("invalid client ID");
   }
 
   int32_t error_code = 0;
@@ -1887,11 +1886,11 @@ void Server::handle_CAx0C_end_redraw_initial_hand_phase(shared_ptr<Client>, cons
   this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
 }
 
-void Server::handle_CAx0D_end_non_action_phase(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx0D_end_non_action_phase(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_EndNonAttackPhase_Ep3_CAx0D>(data);
   this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "END PHASE");
   if (in_cmd.client_id >= 4) {
-    throw runtime_error("invalid client ID");
+    throw std::runtime_error("invalid client ID");
   }
 
   if (!this->options.is_nte()) {
@@ -1909,11 +1908,11 @@ void Server::handle_CAx0D_end_non_action_phase(shared_ptr<Client>, const string&
   this->send(out_cmd_fin);
 }
 
-void Server::handle_CAx0E_discard_card_from_hand(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx0E_discard_card_from_hand(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_DiscardCardFromHand_Ep3_CAx0E>(data);
   this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "DISCARD");
   if (in_cmd.client_id >= 4) {
-    throw runtime_error("invalid client ID");
+    throw std::runtime_error("invalid client ID");
   }
 
   int32_t error_code = 0;
@@ -1948,11 +1947,11 @@ void Server::handle_CAx0E_discard_card_from_hand(shared_ptr<Client>, const strin
   this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, error_code);
 }
 
-void Server::handle_CAx0F_set_card_from_hand(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx0F_set_card_from_hand(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_SetCardFromHand_Ep3_CAx0F>(data);
   this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "SET FC");
   if (in_cmd.client_id >= 4) {
-    throw runtime_error("invalid client ID");
+    throw std::runtime_error("invalid client ID");
   }
 
   int32_t error_code = 0;
@@ -1994,11 +1993,11 @@ void Server::handle_CAx0F_set_card_from_hand(shared_ptr<Client>, const string& d
   this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, this->ruler_server->error_code1);
 }
 
-void Server::handle_CAx10_move_fc_to_location(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx10_move_fc_to_location(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_MoveFieldCharacter_Ep3_CAx10>(data);
   this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "MOVE");
   if (in_cmd.client_id >= 4) {
-    throw runtime_error("invalid client ID");
+    throw std::runtime_error("invalid client ID");
   }
 
   int32_t error_code = 0;
@@ -2034,11 +2033,11 @@ void Server::handle_CAx10_move_fc_to_location(shared_ptr<Client>, const string& 
   this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, this->ruler_server->error_code2);
 }
 
-void Server::handle_CAx11_enqueue_attack_or_defense(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx11_enqueue_attack_or_defense(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_EnqueueAttackOrDefense_Ep3_CAx11>(data);
   this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "ENQUEUE ACT");
   if (in_cmd.client_id >= 4) {
-    throw runtime_error("invalid client ID");
+    throw std::runtime_error("invalid client ID");
   }
 
   int32_t error_code = 0;
@@ -2072,11 +2071,11 @@ void Server::handle_CAx11_enqueue_attack_or_defense(shared_ptr<Client>, const st
   this->send_debug_message_if_error_code_nonzero(in_cmd.client_id, this->ruler_server->error_code3);
 }
 
-void Server::handle_CAx12_end_attack_list(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx12_end_attack_list(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_EndAttackList_Ep3_CAx12>(data);
   this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "END ATK LIST");
   if (in_cmd.client_id >= 4) {
-    throw runtime_error("invalid client ID");
+    throw std::runtime_error("invalid client ID");
   }
 
   int32_t error_code = 0;
@@ -2097,7 +2096,7 @@ void Server::handle_CAx12_end_attack_list(shared_ptr<Client>, const string& data
 }
 
 template <typename CmdT>
-void Server::handle_CAx13_update_map_during_setup_t(shared_ptr<Client> c, const string& data) {
+void Server::handle_CAx13_update_map_during_setup_t(std::shared_ptr<Client> c, const std::string& data) {
   const auto& in_cmd = check_size_t<CmdT>(data);
   this->send_debug_command_received_message(in_cmd.header.subsubcommand, "UPDATE MAP");
 
@@ -2157,7 +2156,7 @@ void Server::handle_CAx13_update_map_during_setup_t(shared_ptr<Client> c, const 
   }
 }
 
-void Server::handle_CAx13_update_map_during_setup(shared_ptr<Client> c, const string& data) {
+void Server::handle_CAx13_update_map_during_setup(std::shared_ptr<Client> c, const std::string& data) {
   if (this->options.is_nte()) {
     this->handle_CAx13_update_map_during_setup_t<G_SetMapState_Ep3NTE_CAx13>(c, data);
   } else {
@@ -2165,7 +2164,7 @@ void Server::handle_CAx13_update_map_during_setup(shared_ptr<Client> c, const st
   }
 }
 
-void Server::handle_CAx14_update_deck_during_setup(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx14_update_deck_during_setup(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_SetPlayerDeck_Ep3_CAx14>(data);
   this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "UPDATE DECK");
 
@@ -2188,7 +2187,7 @@ void Server::handle_CAx14_update_deck_during_setup(shared_ptr<Client>, const str
         }
       }
       if (verify_error) {
-        throw runtime_error(std::format("invalid deck: -0x{:X}", verify_error));
+        throw std::runtime_error(std::format("invalid deck: -0x{:X}", verify_error));
       }
       if (!this->options.is_nte() && !(this->options.behavior_flags & BehaviorFlag::SKIP_D1_D2_REPLACE)) {
         this->ruler_server->replace_D1_D2_rank_cards_with_Attack(entry.card_ids);
@@ -2211,7 +2210,7 @@ void Server::handle_CAx14_update_deck_during_setup(shared_ptr<Client>, const str
   }
 }
 
-void Server::handle_CAx15_unused_hard_reset_server_state(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx15_unused_hard_reset_server_state(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_HardResetServerState_Ep3_CAx15>(data);
   this->send_debug_command_received_message(in_cmd.header.subsubcommand, "HARD RESET");
 
@@ -2224,10 +2223,10 @@ void Server::handle_CAx15_unused_hard_reset_server_state(shared_ptr<Client>, con
   //   this->send_all_state_updates();
   //   this->update_registration_phase();
   //   this->setup_and_start_battle();
-  throw runtime_error("hard reset command received");
+  throw std::runtime_error("hard reset command received");
 }
 
-void Server::handle_CAx1B_update_player_name(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx1B_update_player_name(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_SetPlayerName_Ep3_CAx1B>(data);
   this->send_debug_command_received_message(in_cmd.entry.client_id, in_cmd.header.subsubcommand, "UPDATE NAME");
 
@@ -2258,7 +2257,7 @@ void Server::handle_CAx1B_update_player_name(shared_ptr<Client>, const string& d
   this->send(out_cmd);
 }
 
-void Server::handle_CAx1D_start_battle(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx1D_start_battle(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_StartBattle_Ep3_CAx1D>(data);
   this->send_debug_command_received_message(in_cmd.header.subsubcommand, "START BATTLE");
 
@@ -2304,7 +2303,7 @@ void Server::handle_CAx1D_start_battle(shared_ptr<Client>, const string& data) {
   }
 }
 
-void Server::handle_CAx21_end_battle(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx21_end_battle(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_EndBattle_Ep3_CAx21>(data);
   this->send_debug_command_received_message(in_cmd.header.subsubcommand, "END BATTLE");
   if (this->setup_phase == SetupPhase::BATTLE_ENDED) {
@@ -2318,11 +2317,11 @@ void Server::handle_CAx21_end_battle(shared_ptr<Client>, const string& data) {
   }
 }
 
-void Server::handle_CAx28_end_defense_list(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx28_end_defense_list(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_EndDefenseList_Ep3_CAx28>(data);
   this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "END DEF LIST");
   if (in_cmd.client_id >= 4) {
-    throw runtime_error("invalid client ID");
+    throw std::runtime_error("invalid client ID");
   }
 
   G_ActionResult_Ep3_6xB4x1E out_cmd_ack;
@@ -2369,13 +2368,13 @@ void Server::handle_CAx28_end_defense_list(shared_ptr<Client>, const string& dat
   this->send(out_cmd_fin);
 }
 
-void Server::handle_CAx2B_legacy_set_card(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx2B_legacy_set_card(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_ExecLegacyCard_Ep3_CAx2B>(data);
   this->send_debug_command_received_message(in_cmd.header.subsubcommand, "EXEC LEGACY");
   // Sega's original implementation does nothing here, so we do nothing as well.
 }
 
-void Server::handle_CAx34_subtract_ally_atk_points(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx34_subtract_ally_atk_points(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_PhotonBlastRequest_Ep3_CAx34>(data);
 
   uint8_t card_ref_client_id = client_id_for_card_ref(in_cmd.card_ref);
@@ -2450,11 +2449,11 @@ void Server::handle_CAx34_subtract_ally_atk_points(shared_ptr<Client>, const str
   }
 }
 
-void Server::handle_CAx37_client_ready_to_advance_from_starter_roll_phase(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx37_client_ready_to_advance_from_starter_roll_phase(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_AdvanceFromStartingRollsPhase_Ep3_CAx37>(data);
   this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "CHOOSE ORDER");
   if (in_cmd.client_id >= 4) {
-    throw runtime_error("invalid client ID");
+    throw std::runtime_error("invalid client ID");
   }
 
   auto ps = this->player_states[in_cmd.client_id];
@@ -2479,19 +2478,19 @@ void Server::handle_CAx37_client_ready_to_advance_from_starter_roll_phase(shared
   }
 }
 
-void Server::handle_CAx3A_time_limit_expired(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx3A_time_limit_expired(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_OverallTimeLimitExpired_Ep3_CAx3A>(data);
   this->send_debug_command_received_message(in_cmd.header.subsubcommand, "TIME EXPIRED");
   // We don't need to do anything here because the overall time limit is tracked server-side instead.
 }
 
-void Server::handle_CAx40_map_list_request(shared_ptr<Client> sender_c, const string& data) {
+void Server::handle_CAx40_map_list_request(std::shared_ptr<Client> sender_c, const std::string& data) {
   const auto& in_cmd = check_size_t<G_MapListRequest_Ep3_CAx40>(data);
   this->send_debug_command_received_message(in_cmd.header.subsubcommand, "MAP LIST");
 
   auto l = this->lobby.lock();
   if (!l) {
-    throw runtime_error("lobby is deleted");
+    throw std::runtime_error("lobby is deleted");
   }
 
   size_t num_players = l ? l->count_clients() : 1;
@@ -2512,13 +2511,13 @@ void Server::handle_CAx40_map_list_request(shared_ptr<Client> sender_c, const st
 
 void Server::send_6xB6x41_to_all_clients() const {
   if (!this->last_chosen_map) {
-    throw logic_error("cannot send 6xB4x41 without a map chosen");
+    throw std::logic_error("cannot send 6xB4x41 without a map chosen");
   }
 
   auto l = this->lobby.lock();
   if (l) {
-    vector<string> map_commands_by_language;
-    auto send_to_client = [&](shared_ptr<Client> c) -> void {
+    std::vector<std::string> map_commands_by_language;
+    auto send_to_client = [&](std::shared_ptr<Client> c) -> void {
       if (!c) {
         return;
       }
@@ -2545,7 +2544,7 @@ void Server::send_6xB6x41_to_all_clients() const {
     if (this->battle_record && this->battle_record->writable()) {
       // TODO: It's not great that we just pick the first one; ideally we'd put all of them in the recording and send
       // the appropriate one to the client in the playback lobby
-      for (string& data : map_commands_by_language) {
+      for (std::string& data : map_commands_by_language) {
         if (!data.empty()) {
           this->battle_record->add_command(BattleRecord::Event::Type::BATTLE_COMMAND, std::move(data));
           break;
@@ -2559,7 +2558,7 @@ void Server::send_6xB6x41_to_all_clients() const {
   }
 }
 
-void Server::handle_CAx41_map_request(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx41_map_request(std::shared_ptr<Client>, const std::string& data) {
   const auto& cmd = check_size_t<G_MapDataRequest_Ep3_CAx41>(data);
   this->send_debug_command_received_message(cmd.header.subsubcommand, "MAP DATA");
   if (!this->options.tournament || (this->options.tournament->get_map()->map_number == cmd.map_number)) {
@@ -2568,11 +2567,11 @@ void Server::handle_CAx41_map_request(shared_ptr<Client>, const string& data) {
   }
 }
 
-void Server::handle_CAx48_end_turn(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx48_end_turn(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_EndTurn_Ep3_CAx48>(data);
   this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "END TURN");
   if (in_cmd.client_id >= 4) {
-    throw runtime_error("invalid client ID");
+    throw std::runtime_error("invalid client ID");
   }
 
   auto ps = this->get_player_state(in_cmd.client_id);
@@ -2585,7 +2584,7 @@ void Server::handle_CAx48_end_turn(shared_ptr<Client>, const string& data) {
   this->send(out_cmd);
 }
 
-void Server::handle_CAx49_card_counts(shared_ptr<Client>, const string& data) {
+void Server::handle_CAx49_card_counts(std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_CardCounts_Ep3_CAx49>(data);
   this->send_debug_command_received_message(in_cmd.header.sender_client_id, in_cmd.header.subsubcommand, "CARD COUNTS");
 
@@ -2612,7 +2611,7 @@ void Server::compute_losing_team_id_and_add_winner_flags(uint32_t flags) {
   uint32_t winner_flags = flags | AssistFlag::HAS_WON_BATTLE | AssistFlag::WINNER_DECIDED_BY_DEFEAT;
 
   int8_t losing_team_id = -1;
-  array<uint32_t, 2> team_counts = {0, 0};
+  std::array<uint32_t, 2> team_counts{0, 0};
 
   if (!is_nte) {
     // First, check which team has more dead SCs
@@ -2747,8 +2746,7 @@ void Server::unknown_8023EEF4() {
       ActionState as = this->pending_attacks_with_cards[this->unknown_a14];
       if (log.should_log(phosg::LogLevel::L_DEBUG)) {
         log.debug_f("card @{:04X} #{:04X} can attack", card->get_card_ref(), card->get_card_id());
-        string as_str = as.str(this->shared_from_this());
-        log.debug_f("as: {}", as_str);
+        log.debug_f("as: {}", as.str(this->shared_from_this()));
       }
       if (is_nte) {
         this->replace_targets_due_to_destruction_nte(&as);
@@ -2756,8 +2754,7 @@ void Server::unknown_8023EEF4() {
         this->replace_targets_due_to_destruction_or_conditions(&as);
       }
       if (log.should_log(phosg::LogLevel::L_DEBUG)) {
-        string as_str = as.str(this->shared_from_this());
-        log.debug_f("as after target replacement: {}", as_str);
+        log.debug_f("as after target replacement: {}", as.str(this->shared_from_this()));
       }
       if (this->any_target_exists_for_attack(as)) {
         log.debug_f("as is valid");
@@ -2837,8 +2834,8 @@ void Server::execute_bomb_assist_effect() {
       for (size_t set_index = 0; set_index < 8; set_index++) {
         auto card = ps->get_set_card(set_index);
         if (card && !(card->card_flags & 2)) {
-          max_hp = max<int16_t>(max_hp, card->get_current_hp());
-          min_hp = min<int16_t>(min_hp, card->get_current_hp());
+          max_hp = std::max<int16_t>(max_hp, card->get_current_hp());
+          min_hp = std::min<int16_t>(min_hp, card->get_current_hp());
         }
       }
     }
@@ -2875,7 +2872,7 @@ void Server::replace_targets_due_to_destruction_nte(ActionState* as) {
       continue;
     }
     auto ps = target_card->player_state();
-    shared_ptr<Card> found_guard_item;
+    std::shared_ptr<Card> found_guard_item;
     for (size_t z = 0; z < 8; z++) {
       auto set_card = ps->get_set_card(z);
       if (set_card && (set_card != target_card) && !(set_card->card_flags & 2) && set_card->is_guard_item()) {
@@ -2915,7 +2912,7 @@ void Server::replace_targets_due_to_destruction_or_conditions(ActionState* as) {
     return;
   }
 
-  vector<uint16_t> phase1_replaced_card_refs;
+  std::vector<uint16_t> phase1_replaced_card_refs;
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto ps = this->get_player_state(client_id);
     if (!attacker_card->action_chain.check_flag(0x200 << client_id)) {
@@ -3005,7 +3002,7 @@ void Server::replace_targets_due_to_destruction_or_conditions(ActionState* as) {
   }
   // as->target_card_refs[phase1_replaced_card_refs.size()] = 0xFFFF;
 
-  vector<uint16_t> phase2_replaced_card_refs;
+  std::vector<uint16_t> phase2_replaced_card_refs;
   for (size_t z = 0; (z < 4 * 9) && (as->target_card_refs[z] != 0xFFFF); z++) {
     uint16_t target_card_ref = this->send_6xB4x06_if_card_ref_invalid(as->target_card_refs[z], 7);
     auto target_card = this->card_for_set_card_ref(target_card_ref);
@@ -3105,13 +3102,14 @@ void Server::unknown_802402F4() {
   }
 }
 
-vector<shared_ptr<Card>> Server::const_cast_set_cards_v(const vector<shared_ptr<const Card>>& cards) {
+std::vector<std::shared_ptr<Card>> Server::const_cast_set_cards_v(
+    const std::vector<std::shared_ptr<const Card>>& cards) {
   // TODO: This is dumb. Figure out a not-dumb way to do this.
-  vector<shared_ptr<Card>> ret;
+  std::vector<std::shared_ptr<Card>> ret;
   for (auto const_card : cards) {
     auto mutable_card = this->card_for_set_card_ref(const_card->get_card_ref());
     if (mutable_card.get() != const_card.get()) {
-      throw logic_error("inconsistent set cards index");
+      throw std::logic_error("inconsistent set cards index");
     }
     ret.emplace_back(mutable_card);
   }

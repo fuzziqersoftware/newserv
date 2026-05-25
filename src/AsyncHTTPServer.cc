@@ -14,9 +14,7 @@
 #include "Revision.hh"
 #include "Server.hh"
 
-using namespace std;
-
-static const unordered_map<int, const char*> explanation_for_response_code{
+static const std::unordered_map<int, const char*> explanation_for_response_code{
     {100, "Continue"},
     {101, "Switching Protocols"},
     {102, "Processing"},
@@ -92,7 +90,7 @@ const std::string* HTTPRequest::get_header(const std::string& name) const {
   if (its.first == its.second) {
     return nullptr;
   }
-  const string* ret = &its.first->second;
+  const std::string* ret = &its.first->second;
   its.first++;
   if (its.first != its.second) {
     throw std::out_of_range("Header appears multiple times: " + name);
@@ -105,7 +103,7 @@ const std::string* HTTPRequest::get_query_param(const std::string& name) const {
   if (its.first == its.second) {
     return nullptr;
   }
-  const string* ret = &its.first->second;
+  const std::string* ret = &its.first->second;
   its.first++;
   if (its.first != its.second) {
     throw std::out_of_range("Query parameter appears multiple times: " + name);
@@ -113,7 +111,7 @@ const std::string* HTTPRequest::get_query_param(const std::string& name) const {
   return ret;
 }
 
-static void url_decode_inplace(string& s) {
+static void url_decode_inplace(std::string& s) {
   size_t write_offset = 0, read_offset = 0;
   for (; read_offset < s.size(); write_offset++) {
     if ((s[read_offset] == '%') && (read_offset < s.size() - 2)) {
@@ -139,7 +137,7 @@ asio::awaitable<HTTPRequest> HTTPClient::recv_http_request(size_t max_line_size,
   std::string request_line = co_await this->r.read_line("\r\n", max_line_size);
   auto line_tokens = phosg::split(request_line, ' ');
   if (line_tokens.size() != 3) {
-    throw runtime_error("invalid HTTP request line");
+    throw std::runtime_error("invalid HTTP request line");
   }
   const auto& method_token = line_tokens[0];
   if (method_token == "GET") {
@@ -169,14 +167,14 @@ asio::awaitable<HTTPRequest> HTTPClient::recv_http_request(size_t max_line_size,
   req.http_version = std::move(line_tokens[2]);
 
   size_t fragment_start_offset = line_tokens[1].find('#');
-  if (fragment_start_offset != string::npos) {
+  if (fragment_start_offset != std::string::npos) {
     req.fragment = line_tokens[1].substr(fragment_start_offset + 1);
     line_tokens[1].resize(fragment_start_offset);
   }
 
   size_t query_start_offset = line_tokens[1].find('?');
-  string query;
-  if (query_start_offset != string::npos) {
+  std::string query;
+  if (query_start_offset != std::string::npos) {
     query = line_tokens[1].substr(query_start_offset + 1);
     line_tokens[1].resize(query_start_offset);
   }
@@ -189,12 +187,12 @@ asio::awaitable<HTTPRequest> HTTPClient::recv_http_request(size_t max_line_size,
   auto query_tokens = phosg::split(query, '&');
   for (auto& token : query_tokens) {
     size_t equals_pos = token.find('=');
-    if (equals_pos == string::npos) {
+    if (equals_pos == std::string::npos) {
       url_decode_inplace(token);
       req.query_params.emplace(std::move(token), "");
     } else {
-      string key = token.substr(0, equals_pos);
-      string value = token.substr(equals_pos + 1);
+      std::string key = token.substr(0, equals_pos);
+      std::string value = token.substr(equals_pos + 1);
       url_decode_inplace(key);
       url_decode_inplace(value);
       req.query_params.emplace(std::move(key), std::move(value));
@@ -217,11 +215,11 @@ asio::awaitable<HTTPRequest> HTTPClient::recv_http_request(size_t max_line_size,
       }
     } else {
       size_t colon_pos = line.find(':');
-      if (colon_pos == string::npos) {
-        throw runtime_error("malformed header line");
+      if (colon_pos == std::string::npos) {
+        throw std::runtime_error("malformed header line");
       }
-      string key = line.substr(0, colon_pos);
-      string value = line.substr(colon_pos + 1);
+      std::string key = line.substr(0, colon_pos);
+      std::string value = line.substr(colon_pos + 1);
       phosg::strip_whitespace(key);
       phosg::strip_whitespace(value);
       prev_header_it = req.headers.emplace(phosg::tolower(key), std::move(value));
@@ -230,7 +228,7 @@ asio::awaitable<HTTPRequest> HTTPClient::recv_http_request(size_t max_line_size,
 
   auto transfer_encoding_header = req.get_header("transfer-encoding");
   if (transfer_encoding_header && phosg::tolower(*transfer_encoding_header) == "chunked") {
-    deque<string> chunks;
+    std::deque<std::string> chunks;
     size_t total_data_bytes = 0;
     for (;;) {
       auto line = co_await this->r.read_line("\r\n", 0x20);
@@ -306,7 +304,7 @@ asio::awaitable<WebSocketMessage> HTTPClient::recv_websocket_message(size_t max_
     }
 
     if (payload_size > max_data_size) {
-      throw runtime_error("Incoming WebSocket message exceeds size limit");
+      throw std::runtime_error("Incoming WebSocket message exceeds size limit");
     }
 
     // Read the masking key if present
@@ -380,7 +378,7 @@ asio::awaitable<WebSocketMessage> HTTPClient::recv_websocket_message(size_t max_
     }
   }
 
-  throw logic_error("failed to receive websocket message");
+  throw std::logic_error("failed to receive websocket message");
 }
 
 asio::awaitable<void> HTTPClient::send_websocket_message(const void* data, size_t size, uint8_t opcode) {
@@ -396,7 +394,7 @@ asio::awaitable<void> HTTPClient::send_websocket_message(const void* data, size_
     w.put_u8(size);
   }
 
-  array<asio::const_buffer, 2> bufs = {asio::const_buffer(w.data(), w.size()), asio::const_buffer(data, size)};
+  std::array<asio::const_buffer, 2> bufs = {asio::const_buffer(w.data(), w.size()), asio::const_buffer(data, size)};
   co_await asio::async_write(this->r.get_socket(), bufs, asio::use_awaitable);
 }
 

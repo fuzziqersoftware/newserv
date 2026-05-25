@@ -8,8 +8,6 @@
 #include "PSOEncryption.hh"
 #include "StaticGameData.hh"
 
-using namespace std;
-
 static constexpr uint8_t EP1 = EnemyTypeDefinition::Flag::VALID_EP1;
 static constexpr uint8_t EP2 = EnemyTypeDefinition::Flag::VALID_EP2;
 static constexpr uint8_t EP4 = EnemyTypeDefinition::Flag::VALID_EP4;
@@ -17,7 +15,7 @@ static constexpr uint8_t RARE = EnemyTypeDefinition::Flag::IS_RARE;
 static constexpr uint8_t BOSS = EnemyTypeDefinition::Flag::IS_BOSS;
 
 static constexpr uint8_t NONE = 0xFF;
-static const vector<EnemyTypeDefinition> type_defs{
+static const std::vector<EnemyTypeDefinition> type_defs{
     // clang-format off
     // TYPE                              FLAGS                          RT    OLDRT BP-STATS      BP-ATTACK                       BP-RESIST     BP-MOVEMENT                     ENUM NAME                  IN-GAME NAME   ULTIMATE NAME
     {EnemyType::UNKNOWN,                 0,                             NONE, NONE, {},           {},                             {},           {},                             "UNKNOWN",                 "__UNKNOWN__", nullptr},
@@ -167,19 +165,19 @@ const char* phosg::name_for_enum<EnemyType>(EnemyType type) {
 
 template <>
 EnemyType phosg::enum_for_name<EnemyType>(const char* name) {
-  static unordered_map<string, EnemyType> index;
+  static std::unordered_map<std::string, EnemyType> index;
   if (index.empty()) {
     for (const auto& def : type_defs) {
       if (!index.emplace(def.enum_name, def.type).second) {
-        throw logic_error(std::format("duplicate enemy enum name: {}", def.enum_name));
+        throw std::logic_error(std::format("duplicate enemy enum name: {}", def.enum_name));
       }
     }
   }
   return index.at(name);
 }
 
-const vector<EnemyType>& enemy_types_for_rare_table_index(Episode episode, uint8_t rt_index) {
-  static array<vector<vector<EnemyType>>, 5> data;
+const std::vector<EnemyType>& enemy_types_for_rare_table_index(Episode episode, uint8_t rt_index) {
+  static std::array<std::vector<std::vector<EnemyType>>, 5> data;
   auto& ret = data.at(static_cast<size_t>(episode));
   if (ret.empty()) {
     for (const auto& def : type_defs) {
@@ -196,8 +194,8 @@ const vector<EnemyType>& enemy_types_for_rare_table_index(Episode episode, uint8
   }
   try {
     return ret.at(rt_index);
-  } catch (const out_of_range&) {
-    static const vector<EnemyType> empty_vec;
+  } catch (const std::out_of_range&) {
+    static const std::vector<EnemyType> empty_vec;
     return empty_vec;
   }
 }
@@ -211,7 +209,7 @@ struct BPIndexCacheEntry {
 
 static const BPIndexCacheEntry& get_bp_index_cache_entry(Episode episode, uint8_t bp_index) {
   static bool cache_populated = false;
-  static array<vector<BPIndexCacheEntry>, 5> data;
+  static std::array<std::vector<BPIndexCacheEntry>, 5> data;
   if (!cache_populated) {
     cache_populated = true;
     for (const auto& def : type_defs) {
@@ -256,7 +254,7 @@ static const std::set<EnemyType> empty_vec;
 const std::set<EnemyType>& enemy_types_for_battle_param_stats_index(Episode episode, uint8_t bp_index) {
   try {
     return get_bp_index_cache_entry(episode, bp_index).stats;
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     return empty_vec;
   }
 }
@@ -264,7 +262,7 @@ const std::set<EnemyType>& enemy_types_for_battle_param_stats_index(Episode epis
 const std::set<EnemyType>& enemy_types_for_battle_param_attack_data_index(Episode episode, uint8_t bp_index) {
   try {
     return get_bp_index_cache_entry(episode, bp_index).attack_data;
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     return empty_vec;
   }
 }
@@ -272,7 +270,7 @@ const std::set<EnemyType>& enemy_types_for_battle_param_attack_data_index(Episod
 const std::set<EnemyType>& enemy_types_for_battle_param_resist_data_index(Episode episode, uint8_t bp_index) {
   try {
     return get_bp_index_cache_entry(episode, bp_index).resist_data;
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     return empty_vec;
   }
 }
@@ -280,7 +278,7 @@ const std::set<EnemyType>& enemy_types_for_battle_param_resist_data_index(Episod
 const std::set<EnemyType>& enemy_types_for_battle_param_movement_data_index(Episode episode, uint8_t bp_index) {
   try {
     return get_bp_index_cache_entry(episode, bp_index).movement_data;
-  } catch (const out_of_range&) {
+  } catch (const std::out_of_range&) {
     return empty_vec;
   }
 }

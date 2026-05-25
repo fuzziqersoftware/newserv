@@ -7,11 +7,9 @@
 
 #include "Compression.hh"
 
-using namespace std;
-
 template <typename RetT, typename ReadT>
-static vector<RetT> read_direct_table(const phosg::StringReader& base_r, size_t offset, size_t count) {
-  vector<RetT> ret;
+static std::vector<RetT> read_direct_table(const phosg::StringReader& base_r, size_t offset, size_t count) {
+  std::vector<RetT> ret;
   auto entries_r = base_r.sub(offset, count * sizeof(ReadT));
   while (!entries_r.eof()) {
     ret.emplace_back(entries_r.get<ReadT>());
@@ -20,8 +18,8 @@ static vector<RetT> read_direct_table(const phosg::StringReader& base_r, size_t 
 }
 
 template <typename RetT, typename ReadT, typename OffsetT>
-static vector<vector<RetT>> read_indirect_table(const phosg::StringReader& base_r, size_t offset, size_t count) {
-  vector<vector<RetT>> ret;
+static std::vector<std::vector<RetT>> read_indirect_table(const phosg::StringReader& base_r, size_t offset, size_t count) {
+  std::vector<std::vector<RetT>> ret;
   auto pointers_r = base_r.sub(offset, sizeof(OffsetT) * 2 * count);
   while (!pointers_r.eof()) {
     uint32_t sub_offset = pointers_r.get<OffsetT>();
@@ -73,7 +71,7 @@ void WordSelectSet::parse_non_windows_t(const std::string& data, bool use_sjis) 
   {
     auto string_offset_r = r.sub(root.strings_table, sizeof(U32T<BE>) * StringTableCount);
     while (!string_offset_r.eof()) {
-      string raw_s = r.pget_cstr(string_offset_r.template get<U32T<BE>>());
+      std::string raw_s = r.pget_cstr(string_offset_r.template get<U32T<BE>>());
       this->strings.emplace_back(use_sjis ? tt_sega_sjis_to_utf8(raw_s) : tt_8859_to_utf8(raw_s));
     }
   }
@@ -89,7 +87,7 @@ void WordSelectSet::parse_non_windows_t(const std::string& data, bool use_sjis) 
 template <typename RootT, size_t TokenCount>
 void WordSelectSet::parse_windows_t(const std::string& data, const std::vector<std::string>* unitxt_collection) {
   if (!unitxt_collection) {
-    throw runtime_error("a unitxt collection is required");
+    throw std::runtime_error("a unitxt collection is required");
   }
 
   phosg::StringReader r(data);
@@ -104,13 +102,14 @@ void WordSelectSet::parse_windows_t(const std::string& data, const std::vector<s
   // this->table6 = read_indirect_table<uint16_t, le_uint16_t, le_uint32_t>(r, root.table6, Table6Count);
 }
 
-WordSelectSet::WordSelectSet(const string& data, Version version, const vector<string>* unitxt_collection, bool use_sjis) {
+WordSelectSet::WordSelectSet(
+    const std::string& data, Version version, const std::vector<std::string>* unitxt_collection, bool use_sjis) {
   switch (version) {
     case Version::DC_NTE: {
       if (data.size() < 4) {
-        throw runtime_error("data is too small");
+        throw std::runtime_error("data is too small");
       }
-      string decrypted = data.substr(0, data.size() - 4);
+      std::string decrypted = data.substr(0, data.size() - 4);
       uint32_t seed = *reinterpret_cast<const le_uint32_t*>(data.data() + data.size() - 4);
       PSOV2Encryption crypt(seed);
       crypt.decrypt(decrypted);
@@ -145,11 +144,11 @@ WordSelectSet::WordSelectSet(const string& data, Version version, const vector<s
       this->parse_windows_t<BBRoot, 0x68C>(decrypt_and_decompress_pr2_data<false>(data), unitxt_collection);
       break;
     default:
-      throw runtime_error("unsupported word select data version");
+      throw std::runtime_error("unsupported word select data version");
   }
 }
 
-const string& WordSelectSet::string_for_token(uint16_t token_id) const {
+const std::string& WordSelectSet::string_for_token(uint16_t token_id) const {
   return this->strings.at(this->token_id_to_string_id.at(token_id));
 }
 
@@ -179,9 +178,9 @@ WordSelectTable::WordSelectTable(
     const WordSelectSet& gc_ep3_ws,
     const WordSelectSet& xb_v3_ws,
     const WordSelectSet& bb_v4_ws,
-    const vector<vector<string>>& name_alias_lists) {
+    const std::vector<std::vector<std::string>>& name_alias_lists) {
 
-  unordered_map<string, string> name_to_canonical_name;
+  std::unordered_map<std::string, std::string> name_to_canonical_name;
   for (const auto& alias_list : name_alias_lists) {
     if (alias_list.size() < 2) {
       continue;
@@ -193,20 +192,20 @@ WordSelectTable::WordSelectTable(
     }
   }
 
-  vector<shared_ptr<Token>> dynamic_tokens;
+  std::vector<std::shared_ptr<Token>> dynamic_tokens;
   {
     for (size_t z = 0; z < 12; z++) {
-      auto& token = dynamic_tokens.emplace_back(make_shared<Token>());
+      auto& token = dynamic_tokens.emplace_back(std::make_shared<Token>());
       token->canonical_name = std::format("__PLAYER_{}_NAME__", z);
       this->name_to_token.emplace(token->canonical_name, token);
     }
-    auto& token = dynamic_tokens.emplace_back(make_shared<Token>());
+    auto& token = dynamic_tokens.emplace_back(std::make_shared<Token>());
     token->canonical_name = "__BLANK__";
     this->name_to_token.emplace(token->canonical_name, token);
   }
 
   static_assert(NUM_NON_PATCH_VERSIONS == 12, "Don\'t forget to update the WordSelectTable constructor");
-  array<const WordSelectSet*, NUM_NON_PATCH_VERSIONS> ws_sets = {
+  std::array<const WordSelectSet*, NUM_NON_PATCH_VERSIONS> ws_sets = {
       &dc_nte_ws, &dc_112000_ws, &dc_v1_ws, &dc_v2_ws, &pc_nte_ws, &pc_v2_ws, &gc_nte_ws, &gc_v3_ws, &gc_ep3_nte_ws,
       &gc_ep3_ws, &xb_v3_ws, &bb_v4_ws};
 
@@ -217,18 +216,18 @@ WordSelectTable::WordSelectTable(
 
     index.reserve(ws_set.num_tokens());
     for (size_t token_id = 0; token_id < ws_set.num_tokens(); token_id++) {
-      const string& str = ws_set.string_for_token(token_id);
+      const std::string& str = ws_set.string_for_token(token_id);
 
-      string canonical_name;
+      std::string canonical_name;
       try {
         canonical_name = name_to_canonical_name.at(str);
-      } catch (const out_of_range&) {
+      } catch (const std::out_of_range&) {
         canonical_name = str;
       }
 
       auto token_it = this->name_to_token.find(canonical_name);
       if (token_it == this->name_to_token.end()) {
-        token_it = this->name_to_token.emplace(canonical_name, make_shared<Token>()).first;
+        token_it = this->name_to_token.emplace(canonical_name, std::make_shared<Token>()).first;
         token_it->second->canonical_name = std::move(canonical_name);
       }
       token_it->second->slot_for_version(version) = token_id;
@@ -255,8 +254,8 @@ void WordSelectTable::print(FILE* stream) const {
         phosg::fwrite_fmt(stream, "{:04X} ", token->values_by_version[z]);
       }
     }
-    string serialized = phosg::JSON(token->canonical_name).serialize(phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY);
-    phosg::fwrite_fmt(stream, "{}\n", serialized);
+    phosg::fwrite_fmt(stream, "{}\n",
+        phosg::JSON(token->canonical_name).serialize(phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY));
   }
 }
 
@@ -273,8 +272,8 @@ void WordSelectTable::print_index(FILE* stream, Version v) const {
         phosg::fwrite_fmt(stream, "{:04X} ", token->values_by_version[z]);
       }
     }
-    string serialized = phosg::JSON(token->canonical_name).serialize(phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY);
-    phosg::fwrite_fmt(stream, "{}\n", serialized);
+    phosg::fwrite_fmt(stream, "{}\n",
+        phosg::JSON(token->canonical_name).serialize(phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY));
   }
 }
 
@@ -287,7 +286,7 @@ void WordSelectTable::validate(const WordSelectMessage& msg, Version version) co
     }
     const auto& token = index.at(msg.tokens[z]);
     if (!token) {
-      throw runtime_error(std::format("token {:04X} does not exist in the index", msg.tokens[z]));
+      throw std::runtime_error(std::format("token {:04X} does not exist in the index", msg.tokens[z]));
     }
   }
 }
@@ -303,11 +302,11 @@ WordSelectMessage WordSelectTable::translate(
     } else {
       const auto& token = index.at(msg.tokens[z]);
       if (!token) {
-        throw runtime_error(std::format("token {:04X} does not exist in the index", msg.tokens[z]));
+        throw std::runtime_error(std::format("token {:04X} does not exist in the index", msg.tokens[z]));
       }
       ret.tokens[z] = token->slot_for_version(to_version);
       if (ret.tokens[z] == 0xFFFF) {
-        throw runtime_error(std::format("token {:04X} has no translation", msg.tokens[z]));
+        throw std::runtime_error(std::format("token {:04X} has no translation", msg.tokens[z]));
       }
     }
   }

@@ -14,8 +14,6 @@
 #include "StaticGameData.hh"
 #include "Text.hh"
 
-using namespace std;
-
 TextSet::TextSet(const phosg::JSON& json) {
   for (const auto& coll_json : json.as_list()) {
     auto& collection = this->collections.emplace_back();
@@ -57,7 +55,7 @@ const std::string& TextSet::get(size_t collection_index, size_t string_index) co
   return this->get(collection_index).at(string_index);
 }
 
-const vector<string>& TextSet::get(size_t collection_index) const {
+const std::vector<std::string>& TextSet::get(size_t collection_index) const {
   return this->collections.at(collection_index);
 }
 
@@ -106,12 +104,12 @@ void TextSet::ensure_collection_exists(size_t collection_index) {
   }
 }
 
-UnicodeTextSet::UnicodeTextSet(const string& prs_data) {
-  string data = prs_decompress(prs_data);
+UnicodeTextSet::UnicodeTextSet(const std::string& prs_data) {
+  std::string data = prs_decompress(prs_data);
   phosg::StringReader r(data);
 
   uint32_t num_collections = r.get_u32l();
-  deque<uint32_t> collection_sizes;
+  std::deque<uint32_t> collection_sizes;
   while (collection_sizes.size() < num_collections) {
     collection_sizes.emplace_back(r.get_u32l());
   }
@@ -134,7 +132,7 @@ UnicodeTextSet::UnicodeTextSet(const string& prs_data) {
   }
 }
 
-string UnicodeTextSet::serialize() const {
+std::string UnicodeTextSet::serialize() const {
   phosg::StringWriter header_w;
   phosg::StringWriter data_w;
 
@@ -145,7 +143,7 @@ string UnicodeTextSet::serialize() const {
     total_num_strings += collection.size();
   }
 
-  unordered_map<string, uint32_t> encoded;
+  std::unordered_map<std::string, uint32_t> encoded;
 
   size_t data_base_offset = (total_num_strings * 4) + header_w.size();
   for (const auto& collection : this->collections) {
@@ -154,8 +152,7 @@ string UnicodeTextSet::serialize() const {
       if (encoded_it == encoded.end()) {
         uint32_t offset = data_base_offset + data_w.size();
         encoded_it = encoded.emplace(s, offset).first;
-        string s_utf16 = tt_utf8_to_utf16(s);
-        data_w.write(s_utf16.data(), s_utf16.size());
+        data_w.write(tt_utf8_to_utf16(s));
         data_w.put_u16(0);
         while (data_w.size() & 3) {
           data_w.put_u8(0);
@@ -177,7 +174,7 @@ BinaryTextSet::BinaryTextSet(const std::string& pr2_data, size_t collection_coun
   // Annoyingly, there doesn't appear to be any bounds-checking on the language functions, so there are no counts of
   // strings in each collection. We have to figure out where each collection ends by collecting all the relevant
   // offsets in the file instead.
-  ::set<uint32_t> used_offsets;
+  std::set<uint32_t> used_offsets;
   size_t root_offset = has_rel_footer
       ? r.pget<RELFileFooter>(r.size() - 0x20).root_offset.load()
       : (r.size() - collection_count * sizeof(le_uint32_t));
@@ -202,12 +199,12 @@ BinaryTextSet::BinaryTextSet(const std::string& pr2_data, size_t collection_coun
           string_offset_offset += 4) {
         collection.emplace_back(tt(r.pget_cstr(r.pget_u32l(string_offset_offset))));
       }
-    } catch (const out_of_range&) {
+    } catch (const std::out_of_range&) {
     }
   }
 }
 
-BinaryTextAndKeyboardsSet::BinaryTextAndKeyboardsSet(const string& pr2_data, bool big_endian, bool is_sjis) {
+BinaryTextAndKeyboardsSet::BinaryTextAndKeyboardsSet(const std::string& pr2_data, bool big_endian, bool is_sjis) {
   if (big_endian) {
     this->parse_t<true>(pr2_data, is_sjis);
   } else {
@@ -224,7 +221,7 @@ BinaryTextAndKeyboardsSet::BinaryTextAndKeyboardsSet(const phosg::JSON& json) {
   }
 
   for (const auto& keyboard_json : json.at("keyboards").as_list()) {
-    auto& keyboard = this->keyboards.emplace_back(make_unique<Keyboard>());
+    auto& keyboard = this->keyboards.emplace_back(std::make_unique<Keyboard>());
     for (size_t y = 0; y < keyboard->size(); y++) {
       auto& row = keyboard->at(y);
       const auto& row_json = keyboard_json->at(y);
@@ -267,14 +264,14 @@ void BinaryTextAndKeyboardsSet::set_keyboard(size_t kb_index, const Keyboard& kb
   if (kb_index >= this->keyboards.size()) {
     this->keyboards.resize(kb_index + 1);
   }
-  this->keyboards[kb_index] = make_unique<Keyboard>(kb);
+  this->keyboards[kb_index] = std::make_unique<Keyboard>(kb);
 }
 
 void BinaryTextAndKeyboardsSet::resize_keyboards(size_t num_keyboards) {
   this->keyboards.resize(num_keyboards);
 }
 
-pair<string, string> BinaryTextAndKeyboardsSet::serialize(bool big_endian, bool is_sjis) const {
+std::pair<std::string, std::string> BinaryTextAndKeyboardsSet::serialize(bool big_endian, bool is_sjis) const {
   if (big_endian) {
     return this->serialize_t<true>(is_sjis);
   } else {
@@ -283,7 +280,7 @@ pair<string, string> BinaryTextAndKeyboardsSet::serialize(bool big_endian, bool 
 }
 
 template <bool BE>
-void BinaryTextAndKeyboardsSet::parse_t(const string& pr2_data, bool is_sjis) {
+void BinaryTextAndKeyboardsSet::parse_t(const std::string& pr2_data, bool is_sjis) {
   auto& tt = is_sjis ? tt_sega_sjis_to_utf8 : tt_8859_to_utf8;
 
   // The structure is as follows:
@@ -308,7 +305,7 @@ void BinaryTextAndKeyboardsSet::parse_t(const string& pr2_data, bool is_sjis) {
   // Annoyingly, there doesn't appear to be any bounds-checking on the language functions, so there are no counts of
   // strings in each collection. We have to figure out where each collection ends by collecting all the relevant
   // offsets in the file instead.
-  ::set<uint32_t> used_offsets;
+  std::set<uint32_t> used_offsets;
   used_offsets.emplace(r.size() - 8);
 
   uint32_t keyboard_index_offset = r.pget<U32T<BE>>(r.size() - 8);
@@ -320,7 +317,7 @@ void BinaryTextAndKeyboardsSet::parse_t(const string& pr2_data, bool is_sjis) {
   while (this->keyboards.size() < num_keyboards) {
     uint32_t keyboard_offset = r.pget<U32T<BE>>(keyboards_offset + 4 * this->keyboards.size());
     used_offsets.emplace(keyboard_offset);
-    auto& kb = this->keyboards.emplace_back(make_unique<Keyboard>());
+    auto& kb = this->keyboards.emplace_back(std::make_unique<Keyboard>());
     auto key_r = r.sub(keyboard_offset, sizeof(Keyboard));
     for (size_t y = 0; y < kb->size(); y++) {
       auto& row = kb->at(y);
@@ -348,11 +345,11 @@ void BinaryTextAndKeyboardsSet::parse_t(const string& pr2_data, bool is_sjis) {
 }
 
 template <bool BE>
-pair<string, string> BinaryTextAndKeyboardsSet::serialize_t(bool is_sjis) const {
+std::pair<std::string, std::string> BinaryTextAndKeyboardsSet::serialize_t(bool is_sjis) const {
   auto& tt = is_sjis ? tt_utf8_to_sega_sjis : tt_utf8_to_8859;
 
   phosg::StringWriter w;
-  ::set<size_t> relocation_offsets;
+  std::set<size_t> relocation_offsets;
   auto put_offset_u32 = [&](uint32_t v) {
     relocation_offsets.emplace(w.size());
     w.put<U32T<BE>>(v);
@@ -360,7 +357,7 @@ pair<string, string> BinaryTextAndKeyboardsSet::serialize_t(bool is_sjis) const 
 
   uint32_t collections_offset;
   {
-    unordered_map<string, uint32_t> string_to_offset;
+    std::unordered_map<std::string, uint32_t> string_to_offset;
     for (const auto& collection : this->collections) {
       for (const auto& s : collection) {
         if (string_to_offset.emplace(s, w.size()).second) {
@@ -373,7 +370,7 @@ pair<string, string> BinaryTextAndKeyboardsSet::serialize_t(bool is_sjis) const 
       }
     }
 
-    vector<uint32_t> collection_offsets;
+    std::vector<uint32_t> collection_offsets;
     for (const auto& collection : this->collections) {
       collection_offsets.emplace_back(w.size());
       for (const auto& s : collection) {
@@ -389,7 +386,7 @@ pair<string, string> BinaryTextAndKeyboardsSet::serialize_t(bool is_sjis) const 
 
   uint32_t keyboard_index_offset;
   {
-    vector<uint32_t> keyboard_offsets;
+    std::vector<uint32_t> keyboard_offsets;
     for (const auto& keyboard : this->keyboards) {
       keyboard_offsets.emplace_back(w.size());
       for (size_t y = 0; y < keyboard->size(); y++) {
@@ -426,39 +423,40 @@ pair<string, string> BinaryTextAndKeyboardsSet::serialize_t(bool is_sjis) const 
     size_t offset = 0;
     for (size_t reloc_offset : relocation_offsets) {
       if (reloc_offset & 3) {
-        throw logic_error("misaligned relocation");
+        throw std::logic_error("misaligned relocation");
       }
       size_t num_words = (reloc_offset - offset) >> 2;
       if (num_words > 0xFFFF) {
-        throw runtime_error("relocation offset too far away");
+        throw std::runtime_error("relocation offset too far away");
       }
       reloc_w.put<U16T<BE>>(num_words);
       offset = reloc_offset;
     }
   }
 
-  const string& pr2_data = w.str();
-  const string& pr3_data = reloc_w.str();
-  string pr2_compressed = prs_compress_optimal(pr2_data.data(), pr2_data.size());
-  string pr3_compressed = prs_compress_optimal(pr3_data.data(), pr3_data.size());
-  string pr2_ret = encrypt_pr2_data<BE>(pr2_compressed, pr2_data.size(), phosg::random_object<uint32_t>());
-  string pr3_ret = encrypt_pr2_data<BE>(pr3_compressed, pr3_data.size(), phosg::random_object<uint32_t>());
-  return make_pair(std::move(pr2_ret), std::move(pr3_ret));
+  const std::string& pr2_data = w.str();
+  const std::string& pr3_data = reloc_w.str();
+  std::string pr2_compressed = prs_compress_optimal(pr2_data.data(), pr2_data.size());
+  std::string pr3_compressed = prs_compress_optimal(pr3_data.data(), pr3_data.size());
+  std::string pr2_ret = encrypt_pr2_data<BE>(pr2_compressed, pr2_data.size(), phosg::random_object<uint32_t>());
+  std::string pr3_ret = encrypt_pr2_data<BE>(pr3_compressed, pr3_data.size(), phosg::random_object<uint32_t>());
+  return std::make_pair(std::move(pr2_ret), std::move(pr3_ret));
 }
 
 TextIndex::TextIndex(
-    const string& directory, function<shared_ptr<const string>(Version, const string&)> get_patch_file)
+    const std::string& directory,
+    std::function<std::shared_ptr<const std::string>(Version, const std::string&)> get_patch_file)
     : log("[TextIndex] ", static_game_data_log.min_level) {
   if (!directory.empty()) {
-    auto add_version = [&](Version version, const string& subdirectory, function<shared_ptr<TextSet>(const string&, bool)> make_set) -> void {
-      static const map<string, Language> bintext_filenames({
+    auto add_version = [&](Version version, const std::string& subdirectory, std::function<std::shared_ptr<TextSet>(const std::string&, bool)> make_set) -> void {
+      static const std::map<std::string, Language> bintext_filenames({
           {"TextJapanese.pr2", Language::JAPANESE},
           {"TextEnglish.pr2", Language::ENGLISH},
           {"TextGerman.pr2", Language::GERMAN},
           {"TextFrench.pr2", Language::FRENCH},
           {"TextSpanish.pr2", Language::SPANISH},
       });
-      static const map<string, Language> unitext_filenames({
+      static const std::map<std::string, Language> unitext_filenames({
           {"unitxt_j.prs", Language::JAPANESE}, // PC/BB Japanese
           {"unitxt_e.prs", Language::ENGLISH}, // PC/BB English
           {"unitxt_g.prs", Language::GERMAN}, // PC/BB German
@@ -473,11 +471,11 @@ TextIndex::TextIndex(
       });
       if (!uses_utf16(version)) {
         for (const auto& [base_filename, language] : bintext_filenames) {
-          string file_path = directory + "/" + subdirectory + "/" + base_filename;
-          string json_path = file_path + ".json";
+          std::string file_path = directory + "/" + subdirectory + "/" + base_filename;
+          std::string json_path = file_path + ".json";
           if (std::filesystem::is_regular_file(json_path)) {
             this->log.debug_f("Loading {} {} JSON text set from {}", phosg::name_for_enum(version), name_for_language(language), json_path);
-            this->add_set(version, language, make_shared<BinaryTextSet>(phosg::JSON::parse(phosg::load_file(json_path))));
+            this->add_set(version, language, std::make_shared<BinaryTextSet>(phosg::JSON::parse(phosg::load_file(json_path))));
           } else if (std::filesystem::is_regular_file(file_path)) {
             this->log.debug_f("Loading {} {} binary text set from {}", phosg::name_for_enum(version), name_for_language(language), file_path);
             this->add_set(version, language, make_set(phosg::load_file(file_path), language == Language::JAPANESE));
@@ -485,11 +483,11 @@ TextIndex::TextIndex(
         }
       } else {
         for (const auto& [base_filename, language] : unitext_filenames) {
-          string file_path = directory + "/" + subdirectory + "/" + base_filename;
-          string json_path = file_path + ".json";
+          std::string file_path = directory + "/" + subdirectory + "/" + base_filename;
+          std::string json_path = file_path + ".json";
           if (std::filesystem::is_regular_file(json_path)) {
             this->log.debug_f("Loading {} {} JSON text set from {}", phosg::name_for_enum(version), name_for_language(language), json_path);
-            this->add_set(version, language, make_shared<UnicodeTextSet>(phosg::JSON::parse(phosg::load_file(json_path))));
+            this->add_set(version, language, std::make_shared<UnicodeTextSet>(phosg::JSON::parse(phosg::load_file(json_path))));
           } else {
             auto patch_file = get_patch_file ? get_patch_file(version, base_filename) : nullptr;
             if (patch_file) {
@@ -506,12 +504,12 @@ TextIndex::TextIndex(
       }
     };
 
-    auto make_binary_dc112000 = +[](const string& data, bool is_sjis) { return make_shared<BinaryTextSet>(data, 21, true, is_sjis); };
-    auto make_binary_dcnte_dcv1 = +[](const string& data, bool is_sjis) { return make_shared<BinaryTextSet>(data, 26, true, is_sjis); };
-    auto make_binary_dcv2 = +[](const string& data, bool is_sjis) { return make_shared<BinaryTextSet>(data, 37, false, is_sjis); };
-    auto make_binary_gc = +[](const string& data, bool is_sjis) { return make_shared<BinaryTextAndKeyboardsSet>(data, true, is_sjis); };
-    auto make_binary_xb = +[](const string& data, bool is_sjis) { return make_shared<BinaryTextAndKeyboardsSet>(data, false, is_sjis); };
-    auto make_unitxt = +[](const string& data, bool) { return make_shared<UnicodeTextSet>(data); };
+    auto make_binary_dc112000 = +[](const std::string& data, bool is_sjis) { return std::make_shared<BinaryTextSet>(data, 21, true, is_sjis); };
+    auto make_binary_dcnte_dcv1 = +[](const std::string& data, bool is_sjis) { return std::make_shared<BinaryTextSet>(data, 26, true, is_sjis); };
+    auto make_binary_dcv2 = +[](const std::string& data, bool is_sjis) { return std::make_shared<BinaryTextSet>(data, 37, false, is_sjis); };
+    auto make_binary_gc = +[](const std::string& data, bool is_sjis) { return std::make_shared<BinaryTextAndKeyboardsSet>(data, true, is_sjis); };
+    auto make_binary_xb = +[](const std::string& data, bool is_sjis) { return std::make_shared<BinaryTextAndKeyboardsSet>(data, false, is_sjis); };
+    auto make_unitxt = +[](const std::string& data, bool) { return std::make_shared<UnicodeTextSet>(data); };
 
     add_version(Version::DC_NTE, "dc-nte", make_binary_dcnte_dcv1);
     add_version(Version::DC_11_2000, "dc-11-2000", make_binary_dc112000);

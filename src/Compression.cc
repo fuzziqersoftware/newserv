@@ -11,8 +11,6 @@
 
 #include "Text.hh"
 
-using namespace std;
-
 template <>
 const char* phosg::name_for_enum<CompressPhase>(CompressPhase v) {
   switch (v) {
@@ -34,13 +32,13 @@ struct WindowIndex {
   const uint8_t* data;
   size_t size;
   size_t offset;
-  set<size_t, function<bool(size_t, size_t)>> index;
+  std::set<size_t, std::function<bool(size_t, size_t)>> index;
 
   WindowIndex(const void* data, size_t size)
       : data(reinterpret_cast<const uint8_t*>(data)),
         size(size),
         offset(0),
-        index(bind(&WindowIndex::set_comparator, this, placeholders::_1, placeholders::_2)) {}
+        index(std::bind(&WindowIndex::set_comparator, this, std::placeholders::_1, std::placeholders::_2)) {}
 
   void advance() {
     if (this->offset >= WindowLength) {
@@ -69,7 +67,7 @@ struct WindowIndex {
   // strings far too much. We can solve this by instead storing the offset of each string as keys in a set and using a
   // custom comparator to treat them as references to binary strings within the data.
   bool set_comparator(size_t a, size_t b) const {
-    size_t max_length = min<size_t>(MaxMatchLength, this->size - max<size_t>(a, b));
+    size_t max_length = std::min<size_t>(MaxMatchLength, this->size - std::max<size_t>(a, b));
     size_t end_a = a + max_length;
     for (; a < end_a; a++, b++) {
       uint8_t data_a = static_cast<uint8_t>(this->data[a]);
@@ -83,7 +81,7 @@ struct WindowIndex {
     return a < b; // Maximum-length match; order them by offset
   };
 
-  pair<size_t, size_t> get_best_match() const {
+  std::pair<size_t, size_t> get_best_match() const {
     // Find the best match from the index. It's unlikely that we'll get an exact match, so check the entry before the
     // upper_bound result too. Note: We use upper_bound rather than lower_bound because in PRS, a backreference can be
     // encoded with fewer bits if it's close to the decompression offset, and this makes us pick the latest match by
@@ -108,7 +106,7 @@ struct WindowIndex {
         match_size = new_match_size;
       }
     }
-    return make_pair(match_offset, match_size);
+    return std::make_pair(match_offset, match_size);
   }
 };
 
@@ -140,7 +138,7 @@ struct LZSSInterleavedWriter {
 
   void write_control(bool v) {
     if (this->next_control_bit == 0) {
-      throw logic_error("write_control called with no space to write");
+      throw std::logic_error("write_control called with no space to write");
     }
     if (v) {
       this->buf[0] |= this->next_control_bit;
@@ -208,15 +206,15 @@ struct PRSPathNode {
   size_t to_offset = 0;
 };
 
-string prs_compress_optimal(const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
+std::string prs_compress_optimal(const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
-  vector<PRSPathNode> nodes;
+  std::vector<PRSPathNode> nodes;
   nodes.resize(in_size + 1);
   nodes[0].bits_used = 18; // Stop command: 2 control bits and 2 data bytes
 
   size_t copy_progress_max = 3 * in_size;
-  atomic<size_t> copy_progress = 0;
+  std::atomic<size_t> copy_progress = 0;
 
   // Populate all possible short copies
   std::thread short_window_thread([&]() -> void {
@@ -361,14 +359,14 @@ string prs_compress_optimal(const void* in_data_v, size_t in_size, ProgressCallb
     switch (next_node.from_command_type) {
       case PRSPathNode::CommandType::LITERAL:
         if (copy_size != 1) {
-          throw logic_error("incorrect size for LITERAL copy type");
+          throw std::logic_error("incorrect size for LITERAL copy type");
         }
         w.write_control(true);
         w.write_data(in_data[offset]);
         break;
       case PRSPathNode::CommandType::SHORT_COPY: {
         if (copy_size < 2 || copy_size > 5) {
-          throw logic_error("incorrect size for SHORT_COPY copy type");
+          throw std::logic_error("incorrect size for SHORT_COPY copy type");
         }
         uint8_t encoded_size = copy_size - 2;
         w.write_control(false);
@@ -383,7 +381,7 @@ string prs_compress_optimal(const void* in_data_v, size_t in_size, ProgressCallb
       }
       case PRSPathNode::CommandType::LONG_COPY: {
         if (copy_size < 2 || copy_size > 9) {
-          throw logic_error("incorrect size for LONG_COPY copy type");
+          throw std::logic_error("incorrect size for LONG_COPY copy type");
         }
         w.write_control(false);
         w.flush_if_ready();
@@ -395,7 +393,7 @@ string prs_compress_optimal(const void* in_data_v, size_t in_size, ProgressCallb
       }
       case PRSPathNode::CommandType::EXTENDED_COPY: {
         if (copy_size < 1 || copy_size > 0x100) {
-          throw logic_error("incorrect size for EXTENDED_COPY copy type");
+          throw std::logic_error("incorrect size for EXTENDED_COPY copy type");
         }
         w.write_control(false);
         w.flush_if_ready();
@@ -407,7 +405,7 @@ string prs_compress_optimal(const void* in_data_v, size_t in_size, ProgressCallb
         break;
       }
       default:
-        throw logic_error("invalid copy type in shortest path");
+        throw std::logic_error("invalid copy type in shortest path");
     }
     w.flush_if_ready();
 
@@ -424,11 +422,11 @@ string prs_compress_optimal(const void* in_data_v, size_t in_size, ProgressCallb
   return std::move(w.close());
 }
 
-string prs_compress_optimal(const string& data, ProgressCallback progress_fn) {
+std::string prs_compress_optimal(const std::string& data, ProgressCallback progress_fn) {
   return prs_compress_optimal(data.data(), data.size(), progress_fn);
 }
 
-string prs_compress_pessimal(const void* vdata, size_t size) {
+std::string prs_compress_pessimal(const void* vdata, size_t size) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(vdata);
 
   // The worst possible encoding we can do is a literal byte when no byte with the same value is within the window, or
@@ -479,7 +477,7 @@ PRSCompressor::PRSCompressor(
 
 void PRSCompressor::add(const void* data, size_t size) {
   if (this->closed) {
-    throw logic_error("compressor is closed");
+    throw std::logic_error("compressor is closed");
   }
 
   phosg::StringReader r(data, size);
@@ -488,7 +486,7 @@ void PRSCompressor::add(const void* data, size_t size) {
   }
 }
 
-void PRSCompressor::add(const string& data) {
+void PRSCompressor::add(const std::string& data) {
   this->add(data.data(), data.size());
 }
 
@@ -573,7 +571,7 @@ void PRSCompressor::advance() {
     this->advance_extended_copy(backreference_offset, best_match_size);
 
   } else {
-    throw logic_error("invalid best match");
+    throw std::logic_error("invalid best match");
   }
 }
 
@@ -621,7 +619,7 @@ void PRSCompressor::advance_extended_copy(ssize_t offset, size_t size) {
   this->move_forward_data_to_reverse_log(size);
 }
 
-string& PRSCompressor::close() {
+std::string& PRSCompressor::close() {
   if (!this->closed) {
     // Advance until all input is consumed
     while (this->reverse_log.end_offset() < this->input_bytes) {
@@ -658,23 +656,23 @@ void PRSCompressor::flush_control() {
     this->output.pput_u8(this->control_byte_offset, this->pending_control_bits & 0xFF);
   } else {
     if (this->control_byte_offset != this->output.size() - 1) {
-      throw logic_error("data written without control bits");
+      throw std::logic_error("data written without control bits");
     }
     this->output.str().resize(this->output.str().size() - 1);
   }
 }
 
-string prs_compress(const void* vdata, size_t size, ssize_t compression_level, ProgressCallback progress_fn) {
+std::string prs_compress(const void* vdata, size_t size, ssize_t compression_level, ProgressCallback progress_fn) {
   PRSCompressor prs(compression_level, progress_fn);
   prs.add(vdata, size);
   return std::move(prs.close());
 }
 
-string prs_compress(const string& data, ssize_t compression_level, ProgressCallback progress_fn) {
+std::string prs_compress(const std::string& data, ssize_t compression_level, ProgressCallback progress_fn) {
   return prs_compress(data.data(), data.size(), compression_level, progress_fn);
 }
 
-string prs_compress_indexed(const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
+std::string prs_compress_indexed(const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
   LZSSInterleavedWriter w;
@@ -779,12 +777,12 @@ string prs_compress_indexed(const void* in_data_v, size_t in_size, ProgressCallb
       }
       case PRSPathNode::CommandType::NONE:
       default:
-        throw logic_error("invalid command type");
+        throw std::logic_error("invalid command type");
     }
     w.flush_if_ready();
 
     if (bytes_consumed == 0) {
-      throw logic_error("no input data was consumed");
+      throw std::logic_error("no input data was consumed");
     }
 
     for (size_t z = 0; z < bytes_consumed; z++) {
@@ -804,7 +802,7 @@ string prs_compress_indexed(const void* in_data_v, size_t in_size, ProgressCallb
   return std::move(w.close());
 }
 
-string prs_compress_indexed(const string& data, ProgressCallback progress_fn) {
+std::string prs_compress_indexed(const std::string& data, ProgressCallback progress_fn) {
   return prs_compress_indexed(data.data(), data.size(), progress_fn);
 }
 
@@ -846,7 +844,7 @@ PRSDecompressResult prs_decompress_with_meta(
         if (allow_unterminated) {
           return {std::move(w.str()), r.where()};
         } else {
-          throw runtime_error("maximum output size exceeded");
+          throw std::runtime_error("maximum output size exceeded");
         }
       }
       w.put_u8(r.get_u8());
@@ -882,14 +880,14 @@ PRSDecompressResult prs_decompress_with_meta(
       // support ranges that cover the current end of the output.
       size_t read_offset = w.size() + offset;
       if (read_offset >= w.size()) {
-        throw runtime_error("backreference offset beyond beginning of output");
+        throw std::runtime_error("backreference offset beyond beginning of output");
       }
       for (size_t z = 0; z < count; z++) {
         if (max_output_size && w.size() == max_output_size) {
           if (allow_unterminated) {
             return {std::move(w.str()), r.where()};
           } else {
-            throw out_of_range("maximum output size exceeded");
+            throw std::out_of_range("maximum output size exceeded");
           }
         }
         w.put_u8(w.str()[read_offset + z]);
@@ -900,16 +898,16 @@ PRSDecompressResult prs_decompress_with_meta(
   return {std::move(w.str()), r.where()};
 }
 
-PRSDecompressResult prs_decompress_with_meta(const string& data, size_t max_output_size, bool allow_unterminated) {
+PRSDecompressResult prs_decompress_with_meta(const std::string& data, size_t max_output_size, bool allow_unterminated) {
   return prs_decompress_with_meta(data.data(), data.size(), max_output_size, allow_unterminated);
 }
 
-string prs_decompress(const void* data, size_t size, size_t max_output_size, bool allow_unterminated) {
+std::string prs_decompress(const void* data, size_t size, size_t max_output_size, bool allow_unterminated) {
   auto ret = prs_decompress_with_meta(data, size, max_output_size, allow_unterminated);
   return std::move(ret.data);
 }
 
-string prs_decompress(const string& data, size_t max_output_size, bool allow_unterminated) {
+std::string prs_decompress(const std::string& data, size_t max_output_size, bool allow_unterminated) {
   auto ret = prs_decompress_with_meta(data.data(), data.size(), max_output_size, allow_unterminated);
   return std::move(ret.data);
 }
@@ -945,7 +943,7 @@ size_t prs_decompress_size(const void* data, size_t size, size_t max_output_size
 
       size_t read_offset = ret + offset;
       if (read_offset >= ret) {
-        throw runtime_error("backreference offset beyond beginning of output");
+        throw std::runtime_error("backreference offset beyond beginning of output");
       }
       ret += count;
     }
@@ -954,7 +952,7 @@ size_t prs_decompress_size(const void* data, size_t size, size_t max_output_size
       if (allow_unterminated) {
         return max_output_size;
       } else {
-        throw out_of_range("maximum output size exceeded");
+        throw std::out_of_range("maximum output size exceeded");
       }
     }
   }
@@ -962,7 +960,7 @@ size_t prs_decompress_size(const void* data, size_t size, size_t max_output_size
   return ret;
 }
 
-size_t prs_decompress_size(const string& data, size_t max_output_size, bool allow_unterminated) {
+size_t prs_decompress_size(const std::string& data, size_t max_output_size, bool allow_unterminated) {
   return prs_decompress_size(data.data(), data.size(), max_output_size, allow_unterminated);
 }
 
@@ -1015,7 +1013,7 @@ void prs_disassemble(FILE* stream, const void* data, size_t size) {
       }
 
       if (read_offset >= output_bytes) {
-        throw runtime_error("backreference offset beyond beginning of output");
+        throw std::runtime_error("backreference offset beyond beginning of output");
       }
       output_bytes += count;
     }
@@ -1043,11 +1041,10 @@ struct BC0PathNode {
   size_t to_offset = 0;
 };
 
-string bc0_compress_optimal(
-    const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
+std::string bc0_compress_optimal(const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
-  vector<BC0PathNode> nodes;
+  std::vector<BC0PathNode> nodes;
   nodes.resize(in_size + 1);
   nodes[0].bits_used = 0;
 
@@ -1140,11 +1137,11 @@ string bc0_compress_optimal(
   return std::move(w.close());
 }
 
-string bc0_compress(const string& data, ProgressCallback progress_fn) {
+std::string bc0_compress(const std::string& data, ProgressCallback progress_fn) {
   return bc0_compress(data.data(), data.size(), progress_fn);
 }
 
-string bc0_compress(const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
+std::string bc0_compress(const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
   LZSSInterleavedWriter w;
@@ -1180,7 +1177,7 @@ string bc0_compress(const void* in_data_v, size_t in_size, ProgressCallback prog
   return std::move(w.close());
 }
 
-string bc0_encode(const void* in_data_v, size_t in_size) {
+std::string bc0_encode(const void* in_data_v, size_t in_size) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
   LZSSInterleavedWriter w;
@@ -1197,11 +1194,11 @@ string bc0_encode(const void* in_data_v, size_t in_size) {
 // the output buffer. It is unlikely that this can be usefully exploited (e.g. for RCE) because the output pointer is
 // loaded from memory before every byte is written, so we cannot change the output pointer to any arbitrary address.
 
-string bc0_decompress(const string& data) {
+std::string bc0_decompress(const std::string& data) {
   return bc0_decompress(data.data(), data.size());
 }
 
-string bc0_decompress(const void* data, size_t size) {
+std::string bc0_decompress(const void* data, size_t size) {
   phosg::StringReader r(data, size);
   phosg::StringWriter w;
 
@@ -1265,7 +1262,7 @@ string bc0_decompress(const void* data, size_t size) {
   return std::move(w.str());
 }
 
-void bc0_disassemble(FILE* stream, const string& data) {
+void bc0_disassemble(FILE* stream, const std::string& data) {
   bc0_disassemble(stream, data.data(), data.size());
 }
 

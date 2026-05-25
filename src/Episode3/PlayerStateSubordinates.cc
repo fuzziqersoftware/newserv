@@ -2,8 +2,6 @@
 
 #include "Server.hh"
 
-using namespace std;
-
 namespace Episode3 {
 
 Condition::Condition() {
@@ -61,7 +59,7 @@ void Condition::clear_FF() {
   this->unknown_a8 = 0xFF;
 }
 
-std::string Condition::str(shared_ptr<const Server> s) const {
+std::string Condition::str(std::shared_ptr<const Server> s) const {
   return std::format(
       "Condition[type={}, turns={}, a_arg={}, dice={}, flags={:02X}, "
       "def_eff_index={}, ref={}, value={}, giver_ref={} "
@@ -98,7 +96,7 @@ void EffectResult::clear() {
   this->dice_roll_value = 0;
 }
 
-std::string EffectResult::str(shared_ptr<const Server> s) const {
+std::string EffectResult::str(std::shared_ptr<const Server> s) const {
   return std::format(
       "EffectResult[att_ref={}, target_ref={}, value={}, cur_hp={}, ap={}, tp={}, flags={:02X}, op={}, cond_index={}, dice={}]",
       s->debug_str_for_card_ref(this->attacker_card_ref),
@@ -130,7 +128,7 @@ bool CardShortStatus::operator!=(const CardShortStatus& other) const {
   return !this->operator==(other);
 }
 
-std::string CardShortStatus::str(shared_ptr<const Server> s) const {
+std::string CardShortStatus::str(std::shared_ptr<const Server> s) const {
   return std::format(
       "CardShortStatus[ref={}, cur_hp={}, flags={:08X}, loc={}, u1={:04X}, max_hp={}, u2={}]",
       s->debug_str_for_card_ref(this->card_ref),
@@ -178,7 +176,7 @@ void ActionState::clear() {
   this->unused2 = 0xFFFF;
 }
 
-std::string ActionState::str(shared_ptr<const Server> s) const {
+std::string ActionState::str(std::shared_ptr<const Server> s) const {
   return std::format(
       "ActionState[client={:X}, u={}, facing={}, attacker_ref={}, def_ref={}, target_refs={}, action_refs={}, orig_attacker_ref={}]",
       this->client_id,
@@ -222,7 +220,7 @@ bool ActionChain::operator!=(const ActionChain& other) const {
   return !this->operator==(other);
 }
 
-std::string ActionChain::str(shared_ptr<const Server> s) const {
+std::string ActionChain::str(std::shared_ptr<const Server> s) const {
   return std::format(
       "ActionChain[eff_ap={}, eff_tp={}, ap_bonus={}, damage={}, acting_ref={}, unknown_ref_a3={}, attack_action_refs={}, "
       "attack_action_ref_count={}, medium={}, target_ref_count={}, subphase={}, strikes={}, damage_mult={}, attack_num={}, "
@@ -309,8 +307,8 @@ bool ActionChainWithConds::operator!=(const ActionChainWithConds& other) const {
   return !this->operator==(other);
 }
 
-std::string ActionChainWithConds::str(shared_ptr<const Server> s) const {
-  string ret = "ActionChainWithConds[chain=";
+std::string ActionChainWithConds::str(std::shared_ptr<const Server> s) const {
+  std::string ret = "ActionChainWithConds[chain=";
   ret += this->chain.str(s);
   ret += ", conds=[";
   for (size_t z = 0; z < this->conditions.size(); z++) {
@@ -383,7 +381,7 @@ void ActionChainWithConds::set_flags(uint32_t flags) {
   this->chain.flags |= flags;
 }
 
-void ActionChainWithConds::add_attack_action_card_ref(uint16_t card_ref, shared_ptr<Server> server) {
+void ActionChainWithConds::add_attack_action_card_ref(uint16_t card_ref, std::shared_ptr<Server> server) {
   if (card_ref != 0xFFFF) {
     this->chain.attack_action_card_refs[this->chain.attack_action_card_ref_count++] = card_ref;
   }
@@ -397,7 +395,7 @@ void ActionChainWithConds::add_target_card_ref(uint16_t card_ref) {
   }
 }
 
-void ActionChainWithConds::compute_attack_medium(shared_ptr<Server> server) {
+void ActionChainWithConds::compute_attack_medium(std::shared_ptr<Server> server) {
   this->chain.attack_medium = AttackMedium::PHYSICAL;
   for (size_t z = 0; z < this->chain.attack_action_card_ref_count; z++) {
     uint16_t card_ref = this->chain.attack_action_card_refs[z];
@@ -437,7 +435,7 @@ bool ActionChainWithConds::get_condition_value(
   return any_found;
 }
 
-void ActionChainWithConds::set_action_subphase_from_card(shared_ptr<const Card> card) {
+void ActionChainWithConds::set_action_subphase_from_card(std::shared_ptr<const Card> card) {
   this->chain.action_subphase = card->server()->get_current_action_subphase();
 }
 
@@ -545,7 +543,7 @@ bool ActionMetadata::operator!=(const ActionMetadata& other) const {
   return !this->operator==(other);
 }
 
-std::string ActionMetadata::str(shared_ptr<const Server> s) const {
+std::string ActionMetadata::str(std::shared_ptr<const Server> s) const {
   return std::format(
       "ActionMetadata[ref={}, target_ref_count={}, def_ref_count={}, subphase={}, def_power={}, def_bonus={}, "
       "att_bonus={}, flags={:08X}, target_refs={}, defense_refs={}, original_attacker_refs={}]",
@@ -621,7 +619,7 @@ void ActionMetadata::add_target_card_ref(uint16_t card_ref) {
 }
 
 void ActionMetadata::add_defense_card_ref(
-    uint16_t defense_card_ref, shared_ptr<Card> card, uint16_t original_attacker_card_ref) {
+    uint16_t defense_card_ref, std::shared_ptr<Card> card, uint16_t original_attacker_card_ref) {
   if ((defense_card_ref != 0xFFFF) && (this->defense_card_ref_count < 8)) {
     this->defense_card_refs[this->defense_card_ref_count] = defense_card_ref;
     this->original_attacker_card_refs[this->defense_card_ref_count] = original_attacker_card_ref;
@@ -634,7 +632,7 @@ HandAndEquipState::HandAndEquipState() {
   this->clear();
 }
 
-std::string HandAndEquipState::str(shared_ptr<const Server> s) const {
+std::string HandAndEquipState::str(std::shared_ptr<const Server> s) const {
   return std::format(
       "HandAndEquipState[dice=[{}, {}], atk={}, def={}, atk2={}, a1={}, total_set_cost={}, is_cpu={}, assist_flags={:08X}, "
       "hand_refs={}, assist_ref={}, set_refs={}, sc_ref={}, hand_refs2={}, set_refs2={}, assist_ref2={}, assist_set_num={}, assist_card_id={}, "
@@ -777,7 +775,7 @@ uint8_t PlayerBattleStats::rank_for_score(float score) {
 
 const char* PlayerBattleStats::name_for_rank(uint8_t rank) {
   if (rank >= RANK_THRESHOLD_COUNT + 1) {
-    throw invalid_argument("invalid rank");
+    throw std::invalid_argument("invalid rank");
   }
   return RANK_NAMES[rank];
 }
@@ -842,12 +840,12 @@ static bool is_card_within_range(
   return ret;
 }
 
-vector<uint16_t> get_card_refs_within_range(
+std::vector<uint16_t> get_card_refs_within_range(
     const parray<uint8_t, 9 * 9>& range,
     const Location& loc,
     const parray<CardShortStatus, 0x10>& short_statuses,
     phosg::PrefixedLogger* log) {
-  vector<uint16_t> ret;
+  std::vector<uint16_t> ret;
   if (is_card_within_range(range, loc, short_statuses[0], log)) {
     if (log) {
       log->debug_f("get_card_refs_within_range: sc card @{:04X} within range", short_statuses[0].card_ref);

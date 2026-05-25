@@ -20,8 +20,6 @@
 #include "Text.hh"
 #include "Version.hh"
 
-using namespace std;
-
 void PlayerDispDataBB::apply_dressing_room(const PlayerDispDataBBPreview& pre) {
   this->visual.name_color = pre.visual.name_color;
   this->visual.extra_model = pre.visual.extra_model;
@@ -414,7 +412,7 @@ const char* phosg::name_for_enum<BattleRules::TechDiskMode>(BattleRules::TechDis
     case BattleRules::TechDiskMode::LIMIT_LEVEL:
       return "LIMIT_LEVEL";
     default:
-      throw invalid_argument("invalid BattleRules::TechDiskMode value");
+      throw std::invalid_argument("invalid BattleRules::TechDiskMode value");
   }
 }
 template <>
@@ -426,7 +424,7 @@ BattleRules::TechDiskMode phosg::enum_for_name<BattleRules::TechDiskMode>(const 
   } else if (!strcmp(name, "LIMIT_LEVEL")) {
     return BattleRules::TechDiskMode::LIMIT_LEVEL;
   } else {
-    throw invalid_argument("invalid BattleRules::TechDiskMode name");
+    throw std::invalid_argument("invalid BattleRules::TechDiskMode name");
   }
 }
 
@@ -442,7 +440,7 @@ const char* phosg::name_for_enum<BattleRules::WeaponAndArmorMode>(BattleRules::W
     case BattleRules::WeaponAndArmorMode::FORBID_RARES:
       return "FORBID_RARES";
     default:
-      throw invalid_argument("invalid BattleRules::WeaponAndArmorMode value");
+      throw std::invalid_argument("invalid BattleRules::WeaponAndArmorMode value");
   }
 }
 template <>
@@ -456,7 +454,7 @@ BattleRules::WeaponAndArmorMode phosg::enum_for_name<BattleRules::WeaponAndArmor
   } else if (!strcmp(name, "FORBID_RARES")) {
     return BattleRules::WeaponAndArmorMode::FORBID_RARES;
   } else {
-    throw invalid_argument("invalid BattleRules::WeaponAndArmorMode name");
+    throw std::invalid_argument("invalid BattleRules::WeaponAndArmorMode name");
   }
 }
 
@@ -468,7 +466,7 @@ const char* phosg::name_for_enum<BattleRules::MagMode>(BattleRules::MagMode v) {
     case BattleRules::MagMode::FORBID_ALL:
       return "FORBID_ALL";
     default:
-      throw invalid_argument("invalid BattleRules::MagMode value");
+      throw std::invalid_argument("invalid BattleRules::MagMode value");
   }
 }
 template <>
@@ -478,7 +476,7 @@ BattleRules::MagMode phosg::enum_for_name<BattleRules::MagMode>(const char* name
   } else if (!strcmp(name, "FORBID_ALL")) {
     return BattleRules::MagMode::FORBID_ALL;
   } else {
-    throw invalid_argument("invalid BattleRules::MagMode name");
+    throw std::invalid_argument("invalid BattleRules::MagMode name");
   }
 }
 
@@ -492,7 +490,7 @@ const char* phosg::name_for_enum<BattleRules::ToolMode>(BattleRules::ToolMode v)
     case BattleRules::ToolMode::FORBID_ALL:
       return "FORBID_ALL";
     default:
-      throw invalid_argument("invalid BattleRules::ToolMode value");
+      throw std::invalid_argument("invalid BattleRules::ToolMode value");
   }
 }
 template <>
@@ -504,7 +502,7 @@ BattleRules::ToolMode phosg::enum_for_name<BattleRules::ToolMode>(const char* na
   } else if (!strcmp(name, "FORBID_ALL")) {
     return BattleRules::ToolMode::FORBID_ALL;
   } else {
-    throw invalid_argument("invalid BattleRules::ToolMode name");
+    throw std::invalid_argument("invalid BattleRules::ToolMode name");
   }
 }
 
@@ -516,7 +514,7 @@ const char* phosg::name_for_enum<BattleRules::TrapMode>(BattleRules::TrapMode v)
     case BattleRules::TrapMode::ALL_PLAYERS:
       return "ALL_PLAYERS";
     default:
-      throw invalid_argument("invalid BattleRules::TrapMode value");
+      throw std::invalid_argument("invalid BattleRules::TrapMode value");
   }
 }
 template <>
@@ -526,7 +524,7 @@ BattleRules::TrapMode phosg::enum_for_name<BattleRules::TrapMode>(const char* na
   } else if (!strcmp(name, "ALL_PLAYERS")) {
     return BattleRules::TrapMode::ALL_PLAYERS;
   } else {
-    throw invalid_argument("invalid BattleRules::TrapMode name");
+    throw std::invalid_argument("invalid BattleRules::TrapMode name");
   }
 }
 
@@ -540,7 +538,7 @@ const char* phosg::name_for_enum<BattleRules::MesetaMode>(BattleRules::MesetaMod
     case BattleRules::MesetaMode::CLEAR_AND_ALLOW:
       return "CLEAR_AND_ALLOW";
     default:
-      throw invalid_argument("invalid BattleRules::MesetaDropMode value");
+      throw std::invalid_argument("invalid BattleRules::MesetaDropMode value");
   }
 }
 template <>
@@ -552,7 +550,7 @@ BattleRules::MesetaMode phosg::enum_for_name<BattleRules::MesetaMode>(const char
   } else if (!strcmp(name, "CLEAR_AND_ALLOW")) {
     return BattleRules::MesetaMode::CLEAR_AND_ALLOW;
   } else {
-    throw invalid_argument("invalid BattleRules::MesetaDropMode name");
+    throw std::invalid_argument("invalid BattleRules::MesetaDropMode name");
   }
 }
 
@@ -566,7 +564,7 @@ const char* phosg::name_for_enum<BattleRules::RespawnMode>(BattleRules::RespawnM
     case BattleRules::RespawnMode::LIMIT_LIVES:
       return "LIMIT_LIVES";
     default:
-      throw invalid_argument("invalid BattleRules::MesetaDropMode value");
+      throw std::invalid_argument("invalid BattleRules::MesetaDropMode value");
   }
 }
 template <>
@@ -578,7 +576,7 @@ BattleRules::RespawnMode phosg::enum_for_name<BattleRules::RespawnMode>(const ch
   } else if (!strcmp(name, "LIMIT_LIVES")) {
     return BattleRules::RespawnMode::LIMIT_LIVES;
   } else {
-    throw invalid_argument("invalid BattleRules::MesetaDropMode name");
+    throw std::invalid_argument("invalid BattleRules::MesetaDropMode name");
   }
 }
 
@@ -598,7 +596,7 @@ static PlayerInventoryItem v3_item(bool equipped, uint64_t first_data, uint64_t 
 
 const ChallengeTemplateDefinition& get_challenge_template_definition(Version version, uint32_t class_flags, size_t index) {
   // clang-format off
-  static const vector<ChallengeTemplateDefinition> v2_hunter_templates({
+  static const std::vector<ChallengeTemplateDefinition> v2_hunter_templates({
       {0,  {v2_item(true, 0x0001000000000000, 0x0000000000000000), v2_item(true,  0x0101000000000000, 0x0000000000000000), v2_item(true,  0x02000500F4010100, 0x0100010000002800), v2_item(false, 0x0300000000030000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
       {4,  {v2_item(true, 0x0001000500000000, 0x0000000000000000), v2_item(true,  0x0101010000000000, 0x0000000000000000), v2_item(true,  0x0102000000000000, 0x0000000000000000), v2_item(true,  0x02010D002003F501, 0x0100010000002800), v2_item(false, 0x0300000000060000, 0x0000000000000000), v2_item(false, 0x0306010000030000, 0x0000000000000000), v2_item(false, 0x0306000000030000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
       {6,  {v2_item(true, 0x0002000000000000, 0x0000000000000000), v2_item(true,  0x0101020000000000, 0x0000000000000000), v2_item(true,  0x0102010000000000, 0x0000000000000000), v2_item(true,  0x0201100020032103, 0x0100010000002800), v2_item(false, 0x0300000000060000, 0x0000000000000000), v2_item(false, 0x0306010000030000, 0x0000000000000000), v2_item(false, 0x0306000000030000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
@@ -616,7 +614,7 @@ const ChallengeTemplateDefinition& get_challenge_template_definition(Version ver
       {50, {v2_item(true, 0x02058200A00F8913, 0xD107D10700002800), v2_item(false, 0x0309000000000000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
       {99, {v2_item(true, 0x0205BE007017591B, 0xB90BB90B00002800), v2_item(false, 0x0309000000000000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
   });
-  static const vector<ChallengeTemplateDefinition> v2_ranger_templates({
+  static const std::vector<ChallengeTemplateDefinition> v2_ranger_templates({
       {0,  {v2_item(true, 0x0006000000000000, 0x0000000000000000), v2_item(true,  0x0101000000000000, 0x0000000000000000), v2_item(true,  0x02000500F4010100, 0x0100010000002800), v2_item(false, 0x0300000000030000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
       {4,  {v2_item(true, 0x0006000500000000, 0x0000000000000000), v2_item(true,  0x0101010000000000, 0x0000000000000000), v2_item(true,  0x0102000000000000, 0x0000000000000000), v2_item(true,  0x020D0C00F401C900, 0xF501010000002800), v2_item(false, 0x0300000000050000, 0x0000000000000000), v2_item(false, 0x0306010000030000, 0x0000000000000000), v2_item(false, 0x0306000000030000, 0x0000000000000000), v2_item(false, 0x0308000000050000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
       {5,  {v2_item(true, 0x0006000500000000, 0x0000000000000000), v2_item(true,  0x0101010000000000, 0x0000000000000000), v2_item(true,  0x0102010000000000, 0x0000000000000000), v2_item(true,  0x020D0E00F401C900, 0xBD02010000002800), v2_item(false, 0x0300000000050000, 0x0000000000000000), v2_item(false, 0x0306010000030000, 0x0000000000000000), v2_item(false, 0x0306000000030000, 0x0000000000000000), v2_item(false, 0x0308000000050000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
@@ -634,7 +632,7 @@ const ChallengeTemplateDefinition& get_challenge_template_definition(Version ver
       {50, {v2_item(true, 0x020C8C00B80BC509, 0x7117C50900002800), v2_item(false, 0x0309000000000000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
       {99, {v2_item(true, 0x0206B400B80BB90B, 0x2923B90B00002800), v2_item(false, 0x0309000000000000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
   });
-  static const vector<ChallengeTemplateDefinition> v2_force_templates({
+  static const std::vector<ChallengeTemplateDefinition> v2_force_templates({
       {0,  {v2_item(true, 0x000A000000000000, 0x0000000000000000), v2_item(true,  0x0101000000000000, 0x0000000000000000), v2_item(true,  0x02000500F4010100, 0x0100010000002800), v2_item(false, 0x0300000000040000, 0x0000000000000000), v2_item(false, 0x0301000000040000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000)}, {{0x00, 0}}},
       {4,  {v2_item(true, 0x000A000500000000, 0x0000000000000000), v2_item(true,  0x0101000000000000, 0x0000000000000000), v2_item(true,  0x0102000000000000, 0x0000000000000000), v2_item(true,  0x02190D0020036500, 0x0100910100002800), v2_item(false, 0x0300000000060000, 0x0000000000000000), v2_item(false, 0x0301000000060000, 0x0000000000000000), v2_item(false, 0x0306010000030000, 0x0000000000000000), v2_item(false, 0x0306000000030000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000)}, {{0x00, 2}, {0x03, 2}, {0x0D, 2}, {0x0A, 2}}},
       {6,  {v2_item(true, 0x000B000000000000, 0x0000000000000000), v2_item(true,  0x0101000000000000, 0x0000000000000000), v2_item(true,  0x0102000000000000, 0x0000000000000000), v2_item(true,  0x02190F002003C900, 0x0100F50100002800), v2_item(false, 0x0300000000060000, 0x0000000000000000), v2_item(false, 0x0301000000060000, 0x0000000000000000), v2_item(false, 0x0306010000030000, 0x0000000000000000), v2_item(false, 0x0306000000030000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000)}, {{0x00, 2}, {0x03, 2}, {0x0D, 2}, {0x0A, 2}}},
@@ -653,7 +651,7 @@ const ChallengeTemplateDefinition& get_challenge_template_definition(Version ver
       {99, {v2_item(true, 0x021CB400AC0DD107, 0xC509112700002800), v2_item(false, 0x0309000000000000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000), v2_item(false, 0x0309000000000000, 0x0000000000000000)}, {{0x00, 0}} },
   });
 
-  static const vector<ChallengeTemplateDefinition> v3_hunter_templates({
+  static const std::vector<ChallengeTemplateDefinition> v3_hunter_templates({
       {0,  {v3_item(true, 0x0001000000000000, 0x0000000000000000), v3_item(true,  0x0101000000000000, 0x0000000000000000), v3_item(true,  0x02000500F4010000, 0x0000000028000012), v3_item(false, 0x0300000000030000, 0x0000000000000000), v3_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
       {4,  {v3_item(true, 0x0001000500000000, 0x0000000000000000), v3_item(true,  0x0101010000000000, 0x0000000000000000), v3_item(true,  0x0102000000000000, 0x0000000000000000), v3_item(true,  0x02010D002003F401, 0x0000000028000012), v3_item(false, 0x0300000000060000, 0x0000000000000000), v3_item(false, 0x0306010000030000, 0x0000000000000000), v3_item(false, 0x0306000000030000, 0x0000000000000000), v3_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
       {6,  {v3_item(true, 0x0002000000000000, 0x0000000000000000), v3_item(true,  0x0101020000000000, 0x0000000000000000), v3_item(true,  0x0102010000000000, 0x0000000000000000), v3_item(true,  0x0201100020032003, 0x0000000028000012), v3_item(false, 0x0300000000060000, 0x0000000000000000), v3_item(false, 0x0306010000030000, 0x0000000000000000), v3_item(false, 0x0306000000030000, 0x0000000000000000), v3_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
@@ -671,7 +669,7 @@ const ChallengeTemplateDefinition& get_challenge_template_definition(Version ver
       {50, {v3_item(true, 0x02058200A00F8813, 0xD007D00728000012), v3_item(false, 0x0309000000000000, 0x0000000000000000), v3_item(false, 0x0309000000000000, 0x0000000000000000), v3_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
       {99, {v3_item(true, 0x0205BE007017581B, 0xB80BB80B28000012), v3_item(false, 0x0309000000000000, 0x0000000000000000), v3_item(false, 0x0309000000000000, 0x0000000000000000), v3_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
   });
-  static const vector<ChallengeTemplateDefinition> v3_ranger_templates({
+  static const std::vector<ChallengeTemplateDefinition> v3_ranger_templates({
       {0,  {v3_item(true, 0x0006000000000000, 0x0000000000000000), v3_item(true,  0x0101000000000000, 0x0000000000000000), v3_item(true,  0x02000500F4010000, 0x0000000028000012), v3_item(false, 0x0300000000030000, 0x0000000000000000), v3_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
       {4,  {v3_item(true, 0x0006000500000000, 0x0000000000000000), v3_item(true,  0x0101010000000000, 0x0000000000000000), v3_item(true,  0x0102000000000000, 0x0000000000000000), v3_item(true,  0x020D0C00F401C800, 0xF401000028000012), v3_item(false, 0x0300000000050000, 0x0000000000000000), v3_item(false, 0x0306010000030000, 0x0000000000000000), v3_item(false, 0x0306000000030000, 0x0000000000000000), v3_item(false, 0x0308000000050000, 0x0000000000000000), v3_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
       {5,  {v3_item(true, 0x0006000500000000, 0x0000000000000000), v3_item(true,  0x0101010000000000, 0x0000000000000000), v3_item(true,  0x0102010000000000, 0x0000000000000000), v3_item(true,  0x020D0E00F401C800, 0xBC02000028000012), v3_item(false, 0x0300000000050000, 0x0000000000000000), v3_item(false, 0x0306010000030000, 0x0000000000000000), v3_item(false, 0x0306000000030000, 0x0000000000000000), v3_item(false, 0x0308000000050000, 0x0000000000000000), v3_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
@@ -689,7 +687,7 @@ const ChallengeTemplateDefinition& get_challenge_template_definition(Version ver
       {50, {v3_item(true, 0x020C8C00B80BC409, 0x7017C40928000012), v3_item(false, 0x0309000000000000, 0x0000000000000000), v3_item(false, 0x0309000000000000, 0x0000000000000000), v3_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
       {99, {v3_item(true, 0x0206B400B80BB80B, 0x2823B80B28000012), v3_item(false, 0x0309000000000000, 0x0000000000000000), v3_item(false, 0x0309000000000000, 0x0000000000000000), v3_item(false, 0x0309000000000000, 0x0000000000000000)}, {}},
   });
-  static const vector<ChallengeTemplateDefinition> v3_force_templates({
+  static const std::vector<ChallengeTemplateDefinition> v3_force_templates({
       {0,  {v3_item(true, 0x000A000000000000, 0x0000000000000000), v3_item(true,  0x0101000000000000, 0x0000000000000000), v3_item(true,  0x02000500F4010000, 0x0000000028000012), v3_item(false, 0x0300000000040000, 0x0000000000000000), v3_item(false, 0x0301000000040000, 0x0000000000000000), v3_item(false, 0x0309000000000000, 0x0000000000000000)}, {{0x00, 0}}},
       {4,  {v3_item(true, 0x000A000500000000, 0x0000000000000000), v3_item(true,  0x0101000000000000, 0x0000000000000000), v3_item(true,  0x0102000000000000, 0x0000000000000000), v3_item(true,  0x02190D0020036400, 0x0000900128000012), v3_item(false, 0x0300000000060000, 0x0000000000000000), v3_item(false, 0x0301000000060000, 0x0000000000000000), v3_item(false, 0x0306010000030000, 0x0000000000000000), v3_item(false, 0x0306000000030000, 0x0000000000000000), v3_item(false, 0x0309000000000000, 0x0000000000000000)}, {{0x00, 2}, {0x03, 2}, {0x0D, 2}, {0x0A, 2}}},
       {6,  {v3_item(true, 0x000B000000000000, 0x0000000000000000), v3_item(true,  0x0101000000000000, 0x0000000000000000), v3_item(true,  0x0102000000000000, 0x0000000000000000), v3_item(true,  0x02190F002003C800, 0x0000F40128000012), v3_item(false, 0x0300000000060000, 0x0000000000000000), v3_item(false, 0x0301000000060000, 0x0000000000000000), v3_item(false, 0x0306010000030000, 0x0000000000000000), v3_item(false, 0x0306000000030000, 0x0000000000000000), v3_item(false, 0x0309000000000000, 0x0000000000000000)}, {{0x00, 2}, {0x03, 2}, {0x0D, 2}, {0x0A, 2}}},
@@ -716,7 +714,7 @@ const ChallengeTemplateDefinition& get_challenge_template_definition(Version ver
   } else if ((class_flags & 0xE0) == 0x80) {
     return is_v1_or_v2(version) ? v2_force_templates.at(index) : v3_force_templates.at(index);
   } else {
-    throw runtime_error("invalid class flags on original player");
+    throw std::runtime_error("invalid class flags on original player");
   }
 }
 

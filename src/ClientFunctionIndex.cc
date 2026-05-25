@@ -18,8 +18,6 @@
 #include "Compression.hh"
 #include "Loggers.hh"
 
-using namespace std;
-
 using Arch = ClientFunctionIndex::Function::Architecture;
 
 const char* name_for_architecture(Arch arch) {
@@ -31,7 +29,7 @@ const char* name_for_architecture(Arch arch) {
     case Arch::X86:
       return "x86";
     default:
-      throw logic_error("invalid architecture");
+      throw std::logic_error("invalid architecture");
   }
 }
 
@@ -44,7 +42,7 @@ uint32_t specific_version_for_architecture(Arch arch) {
     case Arch::X86:
       return SPECIFIC_VERSION_X86_INDETERMINATE;
     default:
-      throw logic_error("invalid architecture");
+      throw std::logic_error("invalid architecture");
   }
 }
 
@@ -87,8 +85,8 @@ const T& get_with_sv_fallback(
 }
 
 template <bool BE>
-string ClientFunctionIndex::Function::generate_client_command_t(
-    const unordered_map<string, uint32_t>& label_writes,
+std::string ClientFunctionIndex::Function::generate_client_command_t(
+    const std::unordered_map<std::string, uint32_t>& label_writes,
     const void* suffix_data,
     size_t suffix_size,
     uint32_t override_relocations_offset) const {
@@ -102,11 +100,11 @@ string ClientFunctionIndex::Function::generate_client_command_t(
 
   phosg::StringWriter w;
   if (!label_writes.empty()) {
-    string modified_code = this->code;
+    std::string modified_code = this->code;
     for (const auto& it : label_writes) {
       size_t offset = this->label_offsets.at(it.first);
       if (offset > modified_code.size() - 4) {
-        throw runtime_error("label out of range");
+        throw std::runtime_error("label out of range");
       }
       *reinterpret_cast<U32T<FooterT::IsBE>*>(modified_code.data() + offset) = it.second;
     }
@@ -143,8 +141,8 @@ string ClientFunctionIndex::Function::generate_client_command_t(
   return std::move(w.str());
 }
 
-string ClientFunctionIndex::Function::generate_client_command(
-    const unordered_map<string, uint32_t>& label_writes,
+std::string ClientFunctionIndex::Function::generate_client_command(
+    const std::unordered_map<std::string, uint32_t>& label_writes,
     const void* suffix_data,
     size_t suffix_size,
     uint32_t override_relocations_offset) const {
@@ -153,11 +151,11 @@ string ClientFunctionIndex::Function::generate_client_command(
   } else if ((this->arch == Architecture::X86) || (this->arch == Architecture::SH4)) {
     return this->generate_client_command_t<false>(label_writes, suffix_data, suffix_size, override_relocations_offset);
   } else {
-    throw logic_error("invalid architecture");
+    throw std::logic_error("invalid architecture");
   }
 }
 
-static unordered_map<uint32_t, std::string> preprocess_function_code(const std::string& text) {
+static std::unordered_map<uint32_t, std::string> preprocess_function_code(const std::string& text) {
   std::unordered_set<uint32_t> all_specific_versions;
   struct Line {
     std::string text;
@@ -170,7 +168,7 @@ static unordered_map<uint32_t, std::string> preprocess_function_code(const std::
     auto& line = lines.emplace_back();
     line.text = std::move(line_text);
 
-    string stripped_line = line.text;
+    std::string stripped_line = line.text;
     phosg::strip_whitespace(stripped_line);
 
     if (stripped_line == ".all_versions") {
@@ -190,7 +188,7 @@ static unordered_map<uint32_t, std::string> preprocess_function_code(const std::
 
   static const std::string empty_str = "";
 
-  unordered_map<uint32_t, std::string> ret;
+  std::unordered_map<uint32_t, std::string> ret;
   for (uint32_t specific_version : all_specific_versions) {
     std::deque<std::string> version_lines;
     bool include_current_line = true;
@@ -220,15 +218,15 @@ static unordered_map<uint32_t, std::string> preprocess_function_code(const std::
       } else {
         std::string line_text = line.text;
         size_t vers_offset = line_text.find("<VERS ");
-        while (vers_offset != string::npos) {
+        while (vers_offset != std::string::npos) {
           size_t end_offset = line_text.find('>', vers_offset + 6);
-          if (end_offset == string::npos) {
-            throw runtime_error(std::format("(version {}) (line {}) unterminated <VERS> replacement",
+          if (end_offset == std::string::npos) {
+            throw std::runtime_error(std::format("(version {}) (line {}) unterminated <VERS> replacement",
                 str_for_specific_version(specific_version), line_znum + 1));
           }
           auto tokens = phosg::split(line_text.substr(vers_offset + 6, end_offset - vers_offset - 6), ' ');
           if (current_vers_index >= tokens.size()) {
-            throw runtime_error(std::format("(version {}) (line {}) invalid <VERS> replacement",
+            throw std::runtime_error(std::format("(version {}) (line {}) invalid <VERS> replacement",
                 str_for_specific_version(specific_version), line_znum + 1));
           }
           line_text = line_text.substr(0, vers_offset) + tokens[current_vers_index] + line_text.substr(end_offset + 1);
@@ -243,12 +241,12 @@ static unordered_map<uint32_t, std::string> preprocess_function_code(const std::
   return ret;
 }
 
-ClientFunctionIndex::ClientFunctionIndex(const string& root_dir, bool raise_on_any_failure) {
-  map<string, string> source_files;
+ClientFunctionIndex::ClientFunctionIndex(const std::string& root_dir, bool raise_on_any_failure) {
+  std::map<std::string, std::string> source_files;
   std::function<void(const std::string&)> add_directory = [&](const std::string& dir) -> void {
     for (const auto& item : std::filesystem::directory_iterator(dir)) {
-      string item_name = item.path().filename().string();
-      string item_path = dir.ends_with("/") ? (dir + item_name) : (dir + "/" + item_name);
+      std::string item_name = item.path().filename().string();
+      std::string item_path = dir.ends_with("/") ? (dir + item_name) : (dir + "/" + item_name);
       if (std::filesystem::is_directory(item_path)) {
         add_directory(item_path);
       } else if (item_path.ends_with(".s") && std::filesystem::is_regular_file(item_path)) {
@@ -268,7 +266,7 @@ ClientFunctionIndex::ClientFunctionIndex(const string& root_dir, bool raise_on_a
   };
   add_directory(root_dir);
 
-  unordered_map<string, string> include_cache;
+  std::unordered_map<std::string, std::string> include_cache;
   uint32_t last_menu_item_id = 0;
   for (const auto& [source_filename, source] : source_files) {
     if (!source_filename.ends_with(".s")) {
@@ -288,15 +286,15 @@ ClientFunctionIndex::ClientFunctionIndex(const string& root_dir, bool raise_on_a
     }
 
     for (const auto& [specific_version, source] : preprocessed) {
-      shared_ptr<Function> fn = make_shared<Function>();
+      std::shared_ptr<Function> fn = std::make_shared<Function>();
       fn->short_name = source_filename.substr(0, source_filename.size() - 2);
       fn->specific_version = specific_version;
       fn->menu_item_id = ++last_menu_item_id;
       fn->arch = architecture_for_specific_version(fn->specific_version);
 
       try {
-        unordered_set<string> get_include_stack;
-        function<string(const string&, uint32_t)> get_include_for_sv = [&include_cache, &source_files, &get_include_stack, &get_include_for_sv](const string& name, uint32_t specific_version) -> string {
+        std::unordered_set<std::string> get_include_stack;
+        std::function<std::string(const std::string&, uint32_t)> get_include_for_sv = [&include_cache, &source_files, &get_include_stack, &get_include_for_sv](const std::string& name, uint32_t specific_version) -> std::string {
           try {
             return get_with_sv_fallback(include_cache, name, specific_version);
           } catch (const std::out_of_range&) {
@@ -309,7 +307,7 @@ ClientFunctionIndex::ClientFunctionIndex(const string& root_dir, bool raise_on_a
           auto it = source_files.find(name + ".inc.s");
           if (it != source_files.end()) {
             if (!get_include_stack.emplace(name).second) {
-              throw runtime_error("Mutual recursion between includes: " + name);
+              throw std::runtime_error("Mutual recursion between includes: " + name);
             }
             for (const auto& [include_specific_version, include_source] : preprocess_function_code(it->second)) {
               ResourceDASM::EmulatorBase::AssembleResult ret;
@@ -325,7 +323,7 @@ ClientFunctionIndex::ClientFunctionIndex(const string& root_dir, bool raise_on_a
                   ret = ResourceDASM::SH4Emulator::assemble(include_source, get_include);
                   break;
                 default:
-                  throw runtime_error("unknown architecture");
+                  throw std::runtime_error("unknown architecture");
               }
               if (client_functions_log.should_log(phosg::LogLevel::L_DEBUG)) {
                 client_functions_log.debug_f("({}) Compiled include {}-{}",
@@ -347,7 +345,7 @@ ClientFunctionIndex::ClientFunctionIndex(const string& root_dir, bool raise_on_a
             return get_with_sv_fallback(include_cache, name, specific_version);
           } catch (const std::out_of_range&) {
           }
-          throw runtime_error(std::format(
+          throw std::runtime_error(std::format(
               "Data not found for include {} ({})", name, str_for_specific_version(specific_version)));
         };
 
@@ -365,7 +363,7 @@ ClientFunctionIndex::ClientFunctionIndex(const string& root_dir, bool raise_on_a
               assembled = ResourceDASM::SH4Emulator::assemble(source, get_include);
               break;
             default:
-              throw runtime_error("invalid architecture");
+              throw std::runtime_error("invalid architecture");
           }
 
           fn->code = std::move(assembled.code);
@@ -396,17 +394,17 @@ ClientFunctionIndex::ClientFunctionIndex(const string& root_dir, bool raise_on_a
             } else if (key == "show_return_value") {
               fn->show_return_value = true;
             } else {
-              throw runtime_error("unknown metadata key: " + key);
+              throw std::runtime_error("unknown metadata key: " + key);
             }
           }
 
           try {
             fn->entrypoint_offset_offset = fn->label_offsets.at("entry_ptr");
-          } catch (const out_of_range&) {
-            throw runtime_error("code does not contain entry_ptr label");
+          } catch (const std::out_of_range&) {
+            throw std::runtime_error("code does not contain entry_ptr label");
           }
 
-          set<uint32_t> reloc_indexes;
+          std::set<uint32_t> reloc_indexes;
           for (const auto& it : fn->label_offsets) {
             if (it.first.starts_with("reloc")) {
               reloc_indexes.emplace(it.second / 4);
@@ -416,13 +414,13 @@ ClientFunctionIndex::ClientFunctionIndex(const string& root_dir, bool raise_on_a
           for (const auto& it : reloc_indexes) {
             uint32_t delta = it - prev_index;
             if (delta > 0xFFFF) {
-              throw runtime_error("relocation delta too far away");
+              throw std::runtime_error("relocation delta too far away");
             }
             fn->relocation_deltas.emplace_back(delta);
             prev_index = it;
           }
 
-        } catch (const exception& e) {
+        } catch (const std::exception& e) {
           if (raise_on_any_failure) {
             throw;
           }
@@ -448,18 +446,18 @@ ClientFunctionIndex::ClientFunctionIndex(const string& root_dir, bool raise_on_a
   }
 }
 
-shared_ptr<const Menu> ClientFunctionIndex::patch_switches_menu(
+std::shared_ptr<const Menu> ClientFunctionIndex::patch_switches_menu(
     uint32_t specific_version,
     const std::unordered_set<std::string>& server_auto_patches_enabled,
     const std::unordered_set<std::string>& client_auto_patches_enabled) const {
-  auto ret = make_shared<Menu>(MenuID::PATCH_SWITCHES, "Patches");
+  auto ret = std::make_shared<Menu>(MenuID::PATCH_SWITCHES, "Patches");
   ret->items.emplace_back(PatchesMenuItemID::GO_BACK, "Go back", "Return to the\nmain menu", 0);
 
   auto map_it = this->functions_by_specific_version.find(specific_version);
   if (map_it != this->functions_by_specific_version.end()) {
     for (auto [name, fn] : map_it->second) {
       if (fn->appears_in_patches_menu() && !server_auto_patches_enabled.count(fn->short_name)) {
-        string item_text;
+        std::string item_text;
         item_text.push_back(client_auto_patches_enabled.count(fn->short_name) ? '*' : '-');
         item_text += fn->long_name.empty() ? fn->short_name : fn->long_name;
         ret->items.emplace_back(
@@ -496,7 +494,7 @@ std::shared_ptr<const ClientFunctionIndex::Function> ClientFunctionIndex::get_by
 }
 
 uint32_t specific_version_for_gc_header_checksum(uint32_t header_checksum) {
-  static unordered_map<uint32_t, uint32_t> checksum_to_specific_version;
+  static std::unordered_map<uint32_t, uint32_t> checksum_to_specific_version;
   if (checksum_to_specific_version.empty()) {
     struct {
       char system_code = 'G';
@@ -517,7 +515,7 @@ uint32_t specific_version_for_gc_header_checksum(uint32_t header_checksum) {
           uint32_t checksum = phosg::crc32(&data, sizeof(data));
           uint32_t specific_version = 0x33000030 | (*game_code2 << 16) | (*region_code << 8) | version_code;
           if (!checksum_to_specific_version.emplace(checksum, specific_version).second) {
-            throw logic_error("multiple specific_versions have same header checksum");
+            throw std::logic_error("multiple specific_versions have same header checksum");
           }
         }
       }
@@ -529,7 +527,7 @@ uint32_t specific_version_for_gc_header_checksum(uint32_t header_checksum) {
         uint32_t checksum = phosg::crc32(&data, sizeof(data));
         uint32_t specific_version = 0x33004A54 | (*game_code2 << 16);
         if (!checksum_to_specific_version.emplace(checksum, specific_version).second) {
-          throw logic_error("multiple specific_versions have same header checksum");
+          throw std::logic_error("multiple specific_versions have same header checksum");
         }
         data.system_code = 'G';
       }

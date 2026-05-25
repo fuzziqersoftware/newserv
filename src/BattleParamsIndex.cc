@@ -7,8 +7,6 @@
 #include "PSOEncryption.hh"
 #include "StaticGameData.hh"
 
-using namespace std;
-
 BattleParamsIndex::AttackData BattleParamsIndex::AttackData::from_json(const phosg::JSON& json) {
   return AttackData{
       json.get_int("MinATP"),
@@ -202,7 +200,7 @@ void BattleParamsIndex::Table::print(FILE* stream, Episode episode) const {
     for (size_t z = 0; z < 0x60; z++) {
       const auto& e = this->stats[static_cast<size_t>(difficulty)][z];
       phosg::fwrite_fmt(stream, "  {:02X} ", z);
-      string names_str;
+      std::string names_str;
       for (auto type : enemy_types_for_battle_param_stats_index(episode, z)) {
         if (!names_str.empty()) {
           names_str += ", ";
@@ -290,17 +288,17 @@ const BattleParamsIndex::Table& JSONBattleParamsIndex::get_table(bool solo, Epis
     case Episode::EP4:
       return this->tables[!!solo][2];
     default:
-      throw invalid_argument("invalid episode");
+      throw std::invalid_argument("invalid episode");
   }
 }
 
 BinaryBattleParamsIndex::BinaryBattleParamsIndex(
-    shared_ptr<const string> data_on_ep1,
-    shared_ptr<const string> data_on_ep2,
-    shared_ptr<const string> data_on_ep4,
-    shared_ptr<const string> data_off_ep1,
-    shared_ptr<const string> data_off_ep2,
-    shared_ptr<const string> data_off_ep4) {
+    std::shared_ptr<const std::string> data_on_ep1,
+    std::shared_ptr<const std::string> data_on_ep2,
+    std::shared_ptr<const std::string> data_on_ep4,
+    std::shared_ptr<const std::string> data_off_ep1,
+    std::shared_ptr<const std::string> data_off_ep2,
+    std::shared_ptr<const std::string> data_off_ep4) {
   this->files[0][0].data = data_on_ep1;
   this->files[0][1].data = data_on_ep2;
   this->files[0][2].data = data_on_ep4;
@@ -312,7 +310,7 @@ BinaryBattleParamsIndex::BinaryBattleParamsIndex(
     for (uint8_t episode = 0; episode < 3; episode++) {
       auto& file = this->files[is_solo][episode];
       if (file.data->size() < sizeof(Table)) {
-        throw runtime_error(std::format(
+        throw std::runtime_error(std::format(
             "battle params table size is incorrect (expected {:X} bytes, have {:X} bytes; is_solo={}, episode={})",
             sizeof(Table), file.data->size(), is_solo, episode));
       }
@@ -330,6 +328,6 @@ const BattleParamsIndex::Table& BinaryBattleParamsIndex::get_table(bool solo, Ep
     case Episode::EP4:
       return *this->files[!!solo][2].table;
     default:
-      throw invalid_argument("invalid episode");
+      throw std::invalid_argument("invalid episode");
   }
 }

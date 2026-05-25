@@ -37,7 +37,7 @@ namespace Episode3 {
 //   RulerServer.hh/cc
 //   Server.hh/cc
 
-// Class ownership levels (classes may contain weak_ptrs but not shared_ptrs to classes at the same or higher level):
+// Class ownership levels (classes may contain weak_ptrs but not std::shared_ptrs to classes at the same or higher level):
 // - Server
 // - - RulerServer
 // - - - AssistServer

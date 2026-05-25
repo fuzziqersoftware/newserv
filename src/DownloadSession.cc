@@ -22,12 +22,10 @@
 #include "ReceiveSubcommands.hh"
 #include "SendCommands.hh"
 
-using namespace std;
-
-static string random_name() {
-  string ret;
+static std::string random_name() {
+  std::string ret;
   size_t length = (phosg::random_object<size_t>() % 12) + 4;
-  static const string alphabet = "QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm1234567890-+<>:\"\',.";
+  static const std::string alphabet = "QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm1234567890-+<>:\"\',.";
   while (ret.size() < length) {
     ret.push_back(alphabet[phosg::random_object<size_t>() % alphabet.size()]);
   }
@@ -87,40 +85,40 @@ DownloadSession::DownloadSession(
     case Version::DC_V1:
     case Version::DC_V2:
       if (this->serial_number2 == 0 || this->serial_number == 0 || this->access_key.empty()) {
-        throw runtime_error("missing credentials");
+        throw std::runtime_error("missing credentials");
       }
       break;
     case Version::PC_V2:
       if (this->serial_number == 0 || this->access_key.empty()) {
-        throw runtime_error("missing credentials");
+        throw std::runtime_error("missing credentials");
       }
       break;
     case Version::GC_V3:
       if (this->serial_number == 0 || this->access_key.empty() || this->password.empty()) {
-        throw runtime_error("missing credentials");
+        throw std::runtime_error("missing credentials");
       }
       break;
     case Version::XB_V3:
       if (this->xb_gamertag.empty() || this->xb_user_id == 0 || this->xb_account_id == 0) {
-        throw runtime_error("missing credentials");
+        throw std::runtime_error("missing credentials");
       }
       break;
     case Version::BB_V4:
       if (this->username.empty() || this->password.empty()) {
-        throw runtime_error("missing credentials");
+        throw std::runtime_error("missing credentials");
       }
       break;
     default:
-      throw runtime_error("unsupported version");
+      throw std::runtime_error("unsupported version");
   }
 
   this->character->inventory.language = language;
 }
 
 asio::awaitable<void> DownloadSession::run() {
-  string netloc_str = std::format("{}:{}", this->remote_host, this->remote_port);
+  std::string netloc_str = std::format("{}:{}", this->remote_host, this->remote_port);
   this->log.info_f("Connecting to {}", netloc_str);
-  auto sock = make_unique<asio::ip::tcp::socket>(co_await async_connect_tcp(this->remote_host, this->remote_port));
+  auto sock = std::make_unique<asio::ip::tcp::socket>(co_await async_connect_tcp(this->remote_host, this->remote_port));
   this->channel = SocketChannel::create(
       this->io_context,
       std::move(sock),
@@ -214,7 +212,7 @@ void DownloadSession::send_93_9D_9E(bool extended) {
     this->channel->send(0x9E, 0x01, &ret, extended ? sizeof(ret) : sizeof(C_Login_DC_PC_GC_9D));
 
   } else {
-    throw runtime_error("unsupported version");
+    throw std::runtime_error("unsupported version");
   }
 }
 
@@ -266,7 +264,7 @@ void DownloadSession::send_61_98(bool is_98) {
     this->channel->send(command, 0x04, ret);
 
   } else {
-    throw runtime_error("unsupported version");
+    throw std::runtime_error("unsupported version");
   }
 }
 
@@ -278,16 +276,16 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
   switch (msg.command) {
     case 0x03: {
       if (this->version != Version::BB_V4) {
-        throw runtime_error("BB server sent non-BB encryption command");
+        throw std::runtime_error("BB server sent non-BB encryption command");
       }
       if (!this->bb_key_file) {
-        throw runtime_error("BB encryption requires a key file");
+        throw std::runtime_error("BB encryption requires a key file");
       }
       const auto& cmd = msg.check_size_t<S_ServerInitDefault_BB_03_9B>(0xFFFF);
-      this->channel->crypt_in = make_shared<PSOBBEncryption>(*this->bb_key_file, &cmd.server_key[0], sizeof(cmd.server_key));
-      this->channel->crypt_out = make_shared<PSOBBEncryption>(*this->bb_key_file, &cmd.client_key[0], sizeof(cmd.client_key));
+      this->channel->crypt_in = std::make_shared<PSOBBEncryption>(*this->bb_key_file, &cmd.server_key[0], sizeof(cmd.server_key));
+      this->channel->crypt_out = std::make_shared<PSOBBEncryption>(*this->bb_key_file, &cmd.client_key[0], sizeof(cmd.client_key));
       this->log.info_f("Enabled BB encryption");
-      throw runtime_error("not yet implemented"); // Send 93
+      throw std::runtime_error("not yet implemented"); // Send 93
       break;
     }
 
@@ -297,17 +295,17 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
     case 0x9B: {
       const auto& cmd = msg.check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(0xFFFF);
       if (uses_v3_encryption(this->version)) {
-        this->channel->crypt_in = make_shared<PSOV3Encryption>(cmd.server_key);
-        this->channel->crypt_out = make_shared<PSOV3Encryption>(cmd.client_key);
+        this->channel->crypt_in = std::make_shared<PSOV3Encryption>(cmd.server_key);
+        this->channel->crypt_out = std::make_shared<PSOV3Encryption>(cmd.client_key);
         this->log.info_f("Enabled V3 encryption (server key {:08X}, client key {:08X})",
             cmd.server_key, cmd.client_key);
       } else if (!uses_v4_encryption(this->version)) {
-        this->channel->crypt_in = make_shared<PSOV2Encryption>(cmd.server_key);
-        this->channel->crypt_out = make_shared<PSOV2Encryption>(cmd.client_key);
+        this->channel->crypt_in = std::make_shared<PSOV2Encryption>(cmd.server_key);
+        this->channel->crypt_out = std::make_shared<PSOV2Encryption>(cmd.client_key);
         this->log.info_f("Enabled V2 encryption (server key {:08X}, client key {:08X})",
             cmd.server_key, cmd.client_key);
       } else {
-        throw runtime_error("BB server sent non-BB encryption command");
+        throw std::runtime_error("BB server sent non-BB encryption command");
       }
 
       if (msg.command == 0x02) {
@@ -346,7 +344,7 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
           this->send_93_9D_9E(true);
 
         } else {
-          throw runtime_error("unsupported version");
+          throw std::runtime_error("unsupported version");
         }
       }
 
@@ -381,14 +379,14 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
           this->channel->send(0x9C, 0x00, ret);
 
         } else {
-          throw runtime_error("unsupported version");
+          throw std::runtime_error("unsupported version");
         }
 
       } else if (msg.flag == 0 || msg.flag == 2) {
         this->send_93_9D_9E(true);
 
       } else {
-        throw runtime_error("login failed");
+        throw std::runtime_error("login failed");
       }
       break;
     }
@@ -396,14 +394,14 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
     case 0x92:
     case 0x9C:
       if (msg.flag == 0) {
-        throw runtime_error("server rejected login credentials");
+        throw std::runtime_error("server rejected login credentials");
       }
       this->send_93_9D_9E(true);
       break;
 
     case 0x9F: {
       if (is_v1_or_v2(this->version)) {
-        throw runtime_error("invalid command");
+        throw std::runtime_error("invalid command");
       }
       this->channel->send(0x9F, 0x00, this->client_config);
       break;
@@ -477,11 +475,11 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
           if (this->interactive) {
             while (item_index == 0 || item_index > msg.flag) {
               this->log.info_f("Choose response index:");
-              string input = phosg::fgets(stdin);
-              item_index = stoul(input, nullptr, 0);
+              std::string input = phosg::fgets(stdin);
+              item_index = std::stoul(input, nullptr, 0);
             }
           } else {
-            throw runtime_error("unhandled menu selection");
+            throw std::runtime_error("unhandled menu selection");
           }
         }
         ret.menu_id = items[item_index].menu_id;
@@ -521,9 +519,9 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
       const auto& cmd = msg.check_size_t<S_Reconnect_19>(sizeof(S_Reconnect_19), 0xFFFF);
 
       auto new_ep = make_endpoint_ipv4(cmd.address, cmd.port);
-      string netloc_str = str_for_endpoint(new_ep);
+      std::string netloc_str = str_for_endpoint(new_ep);
       this->log.info_f("Connecting to {}", netloc_str);
-      auto sock = make_unique<asio::ip::tcp::socket>(co_await async_connect_tcp(new_ep));
+      auto sock = std::make_unique<asio::ip::tcp::socket>(co_await async_connect_tcp(new_ep));
       this->channel = SocketChannel::create(
           this->io_context,
           std::move(sock),
@@ -649,12 +647,12 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
     case 0xA6: {
       auto handle_command = [&]<typename CmdT>() {
         const auto& cmd = msg.check_size_t<CmdT>(0xFFFF);
-        string internal_name = cmd.filename.decode();
-        string filtered_name;
+        std::string internal_name = cmd.filename.decode();
+        std::string filtered_name;
         for (char ch : internal_name) {
           filtered_name.push_back((isalnum(ch) || (ch == '-') || (ch == '.') || (ch == '_')) ? ch : '_');
         }
-        string local_filename = std::format(
+        std::string local_filename = std::format(
             "{}/{:016X}_{}_{}_{:c}_{}",
             this->output_dir,
             this->current_request,
@@ -677,7 +675,7 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
     case 0x13:
     case 0xA7: {
       const auto& cmd = msg.check_size_t<S_WriteFile_13_A7>();
-      string internal_filename = cmd.filename.decode();
+      std::string internal_filename = cmd.filename.decode();
 
       if (!is_v1_or_v2(this->version)) {
         C_WriteFileConfirmation_V3_BB_13_A7 ret;
@@ -692,8 +690,8 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
       }
       auto& f = this->open_files.at(cmd.filename.decode());
       size_t block_offset = msg.flag * 0x400;
-      size_t allowed_block_size = (block_offset < f.total_size) ? min<size_t>(f.total_size - block_offset, 0x400) : 0;
-      size_t data_size = min<size_t>(cmd.data_size, allowed_block_size);
+      size_t allowed_block_size = (block_offset < f.total_size) ? std::min<size_t>(f.total_size - block_offset, 0x400) : 0;
+      size_t data_size = std::min<size_t>(cmd.data_size, allowed_block_size);
       size_t block_end_offset = block_offset + data_size;
       if (block_end_offset > f.data.size()) {
         f.data.resize(block_end_offset);
@@ -720,7 +718,7 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
     }
     case 0xAC: {
       if (is_v1_or_v2(this->version)) {
-        throw runtime_error("unsupported version");
+        throw std::runtime_error("unsupported version");
       }
       this->on_request_complete();
       break;
@@ -745,7 +743,7 @@ void DownloadSession::send_next_request() {
         this->log.info_f("{:016X}: {}", it.first, it.second);
       }
       this->log.info_f("Choose item to expand by ID (q to quit; s to skip to next config):");
-      string input = phosg::fgets(stdin);
+      std::string input = phosg::fgets(stdin);
       if (input.empty() || (input == "q\n")) {
         this->channel->disconnect();
         return;
@@ -753,7 +751,7 @@ void DownloadSession::send_next_request() {
         this->pending_requests.clear();
         this->on_request_complete();
       } else {
-        this->current_request = stoull(input, nullptr, 16);
+        this->current_request = std::stoull(input, nullptr, 16);
         this->done_requests.emplace(this->current_request);
         this->pending_requests.erase(this->current_request);
       }

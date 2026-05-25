@@ -22,8 +22,6 @@
 #include "ReceiveSubcommands.hh"
 #include "SendCommands.hh"
 
-using namespace std;
-
 PatchDownloadSession::PatchDownloadSession(
     std::shared_ptr<asio::io_context> io_context,
     const std::string& remote_host,
@@ -54,9 +52,9 @@ PatchDownloadSession::PatchDownloadSession(
 }
 
 asio::awaitable<void> PatchDownloadSession::run() {
-  string netloc_str = std::format("{}:{}", this->remote_host, this->remote_port);
+  std::string netloc_str = std::format("{}:{}", this->remote_host, this->remote_port);
   this->log.info_f("Connecting to {}", netloc_str);
-  auto sock = make_unique<asio::ip::tcp::socket>(co_await async_connect_tcp(this->remote_host, this->remote_port));
+  auto sock = std::make_unique<asio::ip::tcp::socket>(co_await async_connect_tcp(this->remote_host, this->remote_port));
   this->channel = SocketChannel::create(
       this->io_context,
       std::move(sock),
@@ -79,14 +77,14 @@ void PatchDownloadSession::check_path_token(const std::string& token) {
   if (token == "..") {
     throw std::runtime_error("parent directory token is not allowed");
   }
-  if ((token.find('/') != string::npos) || (token.find('\\') != string::npos)) {
+  if ((token.find('/') != std::string::npos) || (token.find('\\') != std::string::npos)) {
     throw std::runtime_error("directory token contains path separator");
   }
 }
 
 std::string PatchDownloadSession::resolve_filename(const std::string& filename) const {
   check_path_token(filename);
-  string path = this->output_dir;
+  std::string path = this->output_dir;
   for (const auto& dir_name : this->dir_path) {
     path.push_back('/');
     path += dir_name;
@@ -105,8 +103,8 @@ asio::awaitable<void> PatchDownloadSession::on_message(Channel::Message& msg) {
       if (cmd.copyright.decode() != "Patch Server. Copyright SonicTeam, LTD. 2001") {
         throw std::runtime_error("incorrect copyright message");
       }
-      this->channel->crypt_in = make_shared<PSOV2Encryption>(cmd.server_key);
-      this->channel->crypt_out = make_shared<PSOV2Encryption>(cmd.client_key);
+      this->channel->crypt_in = std::make_shared<PSOV2Encryption>(cmd.server_key);
+      this->channel->crypt_out = std::make_shared<PSOV2Encryption>(cmd.client_key);
       this->channel->send(0x02);
       this->log.info_f("Enabled encryption");
       break;
@@ -181,7 +179,7 @@ asio::awaitable<void> PatchDownloadSession::on_message(Channel::Message& msg) {
       }
 
       const auto& cmd = msg.check_size_t<S_EnterDirectory_Patch_09>();
-      string dirname = cmd.name.decode();
+      std::string dirname = cmd.name.decode();
       check_path_token(dirname);
       this->dir_path.emplace_back(std::move(dirname));
       std::filesystem::create_directories(this->resolve_filename(""));
@@ -257,9 +255,9 @@ asio::awaitable<void> PatchDownloadSession::on_message(Channel::Message& msg) {
       const auto& cmd = msg.check_size_t<S_Reconnect_Patch_14>();
 
       auto new_ep = make_endpoint_ipv4(cmd.address, cmd.port);
-      string netloc_str = str_for_endpoint(new_ep);
+      std::string netloc_str = str_for_endpoint(new_ep);
       this->log.info_f("Connecting to {}", netloc_str);
-      auto sock = make_unique<asio::ip::tcp::socket>(co_await async_connect_tcp(new_ep));
+      auto sock = std::make_unique<asio::ip::tcp::socket>(co_await async_connect_tcp(new_ep));
 
       auto old_channel = this->channel;
       auto new_channel = SocketChannel::create(
