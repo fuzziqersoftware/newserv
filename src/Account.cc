@@ -1017,8 +1017,7 @@ shared_ptr<Account> AccountIndex::create_temporary_account_for_shared_account(
   return ret;
 }
 
-AccountIndex::AccountIndex(bool force_all_temporary)
-    : force_all_temporary(force_all_temporary) {
+AccountIndex::AccountIndex(bool force_all_temporary) : force_all_temporary(force_all_temporary) {
   if (!this->force_all_temporary) {
     if (!std::filesystem::is_directory("system/licenses")) {
       std::filesystem::create_directories("system/licenses");

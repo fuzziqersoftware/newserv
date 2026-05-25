@@ -72,7 +72,6 @@
     "3SP0": 88533, // EU Ep3
   },
   "EnableV3V4ProtectedSubcommands": true,
-  "AllowSavingAccounts": false,
 
   "Episode3InfiniteMeseta": false,
   "Episode3DefeatPlayerMeseta": [400, 500, 600, 700, 800],

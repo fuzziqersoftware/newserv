@@ -1581,9 +1581,7 @@ static asio::awaitable<void> on_BA_Ep3(shared_ptr<Client> c, Channel::Message& m
       co_return;
     }
     c->login->account->ep3_current_meseta -= in_cmd.value;
-    if (s->allow_saving_accounts) {
-      c->login->account->save();
-    }
+    c->login->account->save();
     current_meseta = c->login->account->ep3_current_meseta;
     total_meseta_earned = c->login->account->ep3_total_meseta_earned;
   }
@@ -2061,9 +2059,7 @@ static asio::awaitable<void> on_CA_Ep3(shared_ptr<Client> c, Channel::Message& m
         if (winner_c) {
           winner_c->login->account->ep3_current_meseta += meseta_reward;
           winner_c->login->account->ep3_total_meseta_earned += meseta_reward;
-          if (s->allow_saving_accounts) {
-            winner_c->login->account->save();
-          }
+          winner_c->login->account->save();
           send_ep3_rank_update(winner_c);
         }
       }

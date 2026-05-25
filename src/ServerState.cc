@@ -876,7 +876,6 @@ void ServerState::load_config_early() {
   this->allow_unregistered_users = this->config_json->get_bool("AllowUnregisteredUsers", false);
   this->allow_pc_nte = this->config_json->get_bool("AllowPCNTE", false);
   this->allow_same_account_concurrent_logins = this->config_json->get_bool("AllowSameAccountConcurrentLogins", false);
-  this->allow_saving_accounts = this->config_json->get_bool("AllowSavingAccounts", true);
   this->use_temp_accounts_for_prototypes = this->config_json->get_bool("UseTemporaryAccountsForPrototypes", true);
   this->notify_server_for_max_level_achieved = this->config_json->get_bool("NotifyServerForMaxLevelAchieved", false);
   this->allowed_drop_modes_v1_v2_normal = this->config_json->get_int("AllowedDropModesV1V2Normal", 0x1F);
@@ -2357,10 +2356,7 @@ void ServerState::load_all(bool enable_thread_pool) {
 }
 
 void ServerState::reset_between_replays() {
-  if (this->allow_saving_accounts) {
-    throw std::logic_error("Account saving is enabled during replay");
-  }
-  this->account_index = make_shared<AccountIndex>(true);
+  this->account_index = std::make_shared<AccountIndex>(true);
 
   this->next_lobby_id = 0;
   std::vector<std::shared_ptr<Lobby>> lobbies_to_delete;
