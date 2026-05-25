@@ -2237,11 +2237,11 @@ static asio::awaitable<void> on_09(shared_ptr<Client> c, Channel::Message& msg) 
             } else if (seconds_ago < 60) {
               info = std::format("Time: {}s\n", seconds_ago);
             } else if (minutes_ago < 60) {
-              info = std::format("Time: {}m{}s\n", minutes_ago, seconds_ago);
+              info = std::format("Time: {}m{}s\n", minutes_ago, seconds_ago % 60);
             } else if (hours_ago < 24) {
-              info = std::format("Time: {}h{}m{}s\n", hours_ago, minutes_ago, seconds_ago);
+              info = std::format("Time: {}h{}m{}s\n", hours_ago, minutes_ago % 60, seconds_ago % 60);
             } else {
-              info = std::format("Time: {}d{}h{}m{}s\n", days_ago, hours_ago, minutes_ago, seconds_ago);
+              info = std::format("Time: {}d{}h{}m{}s\n", days_ago, hours_ago % 24, minutes_ago % 60, seconds_ago % 60);
             }
           }
 
