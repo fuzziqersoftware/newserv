@@ -4812,13 +4812,17 @@ static asio::awaitable<void> on_request_challenge_grave_recovery_item_bb(std::sh
 }
 
 static asio::awaitable<void> on_challenge_mode_retry_or_quit(std::shared_ptr<Client> c, SubcommandMessage& msg) {
-  const auto& cmd = msg.check_size_t<G_SelectChallengeModeFailureOption_6x97>();
+  auto& cmd = msg.check_size_t<G_SelectChallengeModeFailureOption_6x97>();
 
   auto l = c->require_lobby();
   auto leader_c = l->clients.at(l->leader_id);
   if (leader_c != c) {
     throw std::runtime_error("6x97 sent by non-leader");
   }
+
+  // Clear uninitialized memory sent by client
+  cmd.unused1 = 0;
+  cmd.unused2 = 0;
 
   if (l->is_game() && (cmd.is_retry == 1) && l->quest && (l->quest->meta.challenge_template_index >= 0)) {
     auto s = l->require_server_state();

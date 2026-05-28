@@ -1788,9 +1788,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   regA = client ID
     {0xF89F, {"player_recovery", "unknownF89F"}, {R_REG}, F_V2_V4},
 
-    // These opcodes set, clear, and check (respectively) a flag that appears to do nothing at all.
+    // Disables or enables a flag that controls whether the Yes/No menu appears when entering a boss warp.
     {0xF8A0, {"disable_bosswarp_option", "unknownF8A0"}, {}, F_V2_V4},
     {0xF8A1, {"enable_bosswarp_option", "unknownF8A1"}, {}, F_V2_V4},
+
+    // Gets the value (in regA) of the flag set by the above two opcodes (0 = Yes/No menu enabled, 1 = disabled).
     {0xF8A2, {"is_bosswarp_opt_disabled", "get_bosswarp_option"}, {W_REG}, F_V2_V4},
 
     // Loads the player's serial number into the "flag buffer", which is a 4-byte buffer that can be written to event

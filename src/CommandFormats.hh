@@ -5220,10 +5220,10 @@ struct G_SetChallengeTime_6x95 {
 
 struct G_SelectChallengeModeFailureOption_6x97 {
   G_UnusedHeader header;
-  le_uint32_t unused1 = 0;
+  le_uint32_t client_id = 0;
   le_uint32_t is_retry = 0;
+  le_uint32_t unused1 = 0;
   le_uint32_t unused2 = 0;
-  le_uint32_t unused3 = 0;
 } __packed_ws__(G_SelectChallengeModeFailureOption_6x97, 0x14);
 
 // 6x98: Unknown
