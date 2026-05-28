@@ -1127,3 +1127,6 @@ Rappy size modifier
 3OE1 => 040C1E24 48000020 // Disable flag check in render
         045D0718 40800000 // X/Z scale as float (here, 4.0)
         045D071C 40800000 // Y scale as float (here, 4.0)
+
+Disable HP reduction warning sound in Challenge mode
+3OE1 => 04076A28 4E800020
