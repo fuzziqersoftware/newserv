@@ -766,10 +766,12 @@ public:
     std::shared_ptr<const SuperMap::Enemy> super_ene;
     enum Flag {
       LAST_HIT_MASK = 0x0003,
-      EXP_GIVEN = 0x0004,
-      ITEM_DROPPED = 0x0008,
-      ALL_HITS_MASK_FIRST = 0x0010,
-      ALL_HITS_MASK = 0x00F0,
+      ITEM_DROPPED = 0x0004,
+      SHARED_EXP_GIVEN = 0x0008,
+      FULL_EXP_GIVEN_MASK_FIRST = 0x0010,
+      FULL_EXP_GIVEN_MASK = 0x00F0,
+      ALL_HITS_MASK_FIRST = 0x0100,
+      ALL_HITS_MASK = 0x0F00,
     };
     size_t e_id = 0;
     size_t set_id = 0;
@@ -815,6 +817,23 @@ public:
         return type_definition_for_enemy(this->super_ene->type).rare_type(area, event);
       } else {
         return this->super_ene->type;
+      }
+    }
+    inline bool should_give_shared_exp() {
+      if (this->server_flags & Flag::SHARED_EXP_GIVEN) {
+        return false;
+      } else {
+        this->server_flags |= Flag::SHARED_EXP_GIVEN;
+        return true;
+      }
+    }
+    inline bool should_give_full_exp_for_client_id(uint8_t client_id) {
+      uint16_t flag = (Flag::FULL_EXP_GIVEN_MASK_FIRST << client_id);
+      if (this->server_flags & flag) {
+        return false;
+      } else {
+        this->server_flags |= flag;
+        return true;
       }
     }
     inline bool ever_hit_by_client_id(uint8_t client_id) const {

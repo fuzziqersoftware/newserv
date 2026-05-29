@@ -4132,25 +4132,62 @@ static asio::awaitable<void> on_enemy_exp_request_bb(std::shared_ptr<Client> c, 
     ene_st = ene_st->alias_target_ene_st;
   }
 
-  // If the requesting player never hit this enemy, they are probably cheating; ignore the command. Also, each player
-  // sends a 6xC8 if they ever hit the enemy; we only react to the first 6xC8 for each enemy (and give all relevant
-  // players EXP then, if they deserve it).
-  if (!ene_st->ever_hit_by_client_id(c->lobby_client_id)) {
-    l->log.warning_f("The requesting player did not hit this enemy; ignoring request");
-    co_return;
+  bool should_give_shared_exp = ene_st->should_give_shared_exp();
+  if (!ene_st->should_give_full_exp_for_client_id(c->lobby_client_id)) {
+    if (should_give_shared_exp) {
+      // This should be impossible because shared EXP should be given immediately upon the first 6xC8 command
+      throw std::logic_error("Full EXP was already given but shared EXP was not");
+    } else {
+      c->log.info_f("All relevant EXP has already been given for this player/enemy pair");
+      co_return;
+    }
   }
-  if (ene_st->server_flags & MapState::EnemyState::Flag::EXP_GIVEN) {
-    l->log.info_f("EXP already given for this enemy; ignoring request");
-    co_return;
+
+  // Update kill counts on unsealable items, but only for the player who actually killed the enemy
+  if (ene_st->last_hit_by_client_id(c->lobby_client_id)) {
+    auto& inventory = c->character_file()->inventory;
+    for (size_t z = 0; z < inventory.num_items; z++) {
+      auto& item = inventory.items[z];
+      if ((item.flags & 0x08) && s->item_parameter_table(c->version())->is_unsealable_item(item.data)) {
+        size_t new_kill_count = item.data.get_kill_count() + 1;
+        item.data.set_kill_count(new_kill_count);
+        c->log.info_f("Item {:08X} kill count updated to {}", item.data.id, new_kill_count);
+      }
+    }
   }
-  ene_st->server_flags |= MapState::EnemyState::Flag::EXP_GIVEN;
 
   uint8_t area = l->area_for_floor(c->version(), ene_st->super_ene->floor);
   Episode episode = episode_for_area(area);
   auto type = ene_st->type(c->version(), area, l->difficulty, l->event);
   double base_exp = base_exp_for_enemy_type(
       s->battle_params, l->quest, type, episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
-  l->log.info_f("Base EXP for this enemy ({}) is {:g}", phosg::name_for_enum(type), base_exp);
+
+  // If this player killed the enemy, they get full EXP; if they tagged the enemy, they get 80% EXP; if auto EXP share
+  // is enabled and they are close enough to the monster, they get a smaller share; if none of these situations apply,
+  // they get no EXP. In Battle and Challenge modes, if a quest is loaded, EXP share is disabled.
+  bool is_battle = (l->mode == GameMode::BATTLE);
+  bool is_challenge = (l->mode == GameMode::CHALLENGE);
+  double share_mult = ((is_battle || is_challenge) && l->quest) ? 0.0f : l->exp_share_multiplier;
+
+  // In PSOBB, Sega decided to add a 30% EXP boost for Episode 2. They could have done something reasonable, like
+  // edit the BattleParamEntry files so the monsters would all give more EXP, but they did something far lazier
+  // instead: they just stuck an if statement in the client's EXP request function. We, unfortunately, have to do
+  // the same thing here.
+  double lobby_mult = is_challenge ? l->challenge_exp_multiplier : l->base_exp_multiplier;
+  double episode_mult = (episode == Episode::EP2) ? 1.3 : 1.0;
+  int32_t full_exp = std::max<int32_t>(0, base_exp * std::max<double>(1.0, share_mult) * lobby_mult * episode_mult);
+  int32_t tag_exp = std::max<int32_t>(0, base_exp * std::max<double>(0.8, share_mult) * lobby_mult * episode_mult);
+  int32_t shared_exp = std::max<int32_t>(0, base_exp * std::max<double>(0.0, share_mult) * lobby_mult * episode_mult);
+  l->log.info_f("Base EXP for this enemy ({}) is {:g} (share_mult={:g}, lobby_mult={:g}, episode_mult={:g}); full EXP is {}, tag EXP is {}, shared EXP is {}",
+      phosg::name_for_enum(type), base_exp, share_mult, lobby_mult, episode_mult, full_exp, tag_exp, shared_exp);
+
+  if (!should_give_shared_exp) {
+    full_exp = std::max<int32_t>(0, full_exp - shared_exp);
+    tag_exp = std::max<int32_t>(0, tag_exp - shared_exp);
+    shared_exp = 0;
+    l->log.info_f("Shared EXP has already been given; effective full EXP is {}, tag EXP is {}, shared EXP is {}",
+        full_exp, tag_exp, shared_exp);
+  }
 
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto lc = l->clients[client_id];
@@ -4164,61 +4201,37 @@ static asio::awaitable<void> on_enemy_exp_request_bb(std::shared_ptr<Client> c, 
       continue;
     }
 
-    if (base_exp != 0.0) {
-      // If this player killed the enemy, they get full EXP; if they tagged the enemy, they get 80% EXP; if auto EXP
-      // share is enabled and they are close enough to the monster, they get a smaller share; if none of these
-      // situations apply, they get no EXP. In Battle and Challenge modes, if a quest is loaded, EXP share is disabled.
-      float exp_share_multiplier = (((l->mode == GameMode::BATTLE) || (l->mode == GameMode::CHALLENGE)) && l->quest)
-          ? 0.0f
-          : l->exp_share_multiplier;
-      double rate_factor;
-      if (lc->character_file()->disp.stats.level >= 199) {
-        rate_factor = 0.0;
-        l->log.info_f("Client in slot {} is level 200 and cannot receive EXP", client_id);
-      } else if (ene_st->last_hit_by_client_id(client_id)) {
-        rate_factor = std::max<double>(1.0, exp_share_multiplier);
-        l->log.info_f("Client in slot {} killed this enemy; EXP rate is {:g}", client_id, rate_factor);
-      } else if (ene_st->ever_hit_by_client_id(client_id)) {
-        rate_factor = std::max<double>(0.8, exp_share_multiplier);
-        l->log.info_f("Client in slot {} tagged this enemy; EXP rate is {:g}", client_id, rate_factor);
-      } else if (lc->floor == ene_st->super_ene->floor) {
-        rate_factor = std::max<double>(0.0, exp_share_multiplier);
-        l->log.info_f("Client in slot {} shared this enemy; EXP rate is {:g}", client_id, rate_factor);
-      } else {
-        rate_factor = 0.0;
-        l->log.info_f("Client in slot {} is not near this enemy; EXP rate is {:g}", client_id, rate_factor);
-      }
-
-      if (rate_factor > 0.0) {
-        // In PSOBB, Sega decided to add a 30% EXP boost for Episode 2. They could have done something reasonable, like
-        // edit the BattleParamEntry files so the monsters would all give more EXP, but they did something far lazier
-        // instead: they just stuck an if statement in the client's EXP request function. We, unfortunately, have to do
-        // the same thing here.
-        float episode_multiplier = ((episode == Episode::EP2) ? 1.3 : 1.0);
-        uint32_t player_exp = base_exp *
-            rate_factor *
-            l->base_exp_multiplier *
-            l->challenge_exp_multiplier *
-            episode_multiplier;
-        l->log.info_f(
-            "Client in slot {} receives {} EXP (base={:g}, factor={:g} base_mult={:g}, challenge={:g}, episode={:g})",
-            client_id, player_exp, base_exp, rate_factor, l->base_exp_multiplier, l->challenge_exp_multiplier, episode_multiplier);
-        if (lc->check_flag(Client::Flag::DEBUG_ENABLED)) {
-          send_text_message_fmt(lc, "$C5+{} E-{:03X} {}", player_exp, ene_st->e_id, phosg::name_for_enum(type));
-        }
-        add_player_exp(lc, player_exp, cmd.enemy_index | 0x1000);
-      }
+    int32_t exp_to_give = 0;
+    bool last_hit = ene_st->last_hit_by_client_id(client_id);
+    bool ever_hit = ene_st->ever_hit_by_client_id(client_id);
+    if (lc->character_file()->disp.stats.level >= 199) {
+      l->log.info_f("Client in slot {} is level 200 and cannot receive EXP", client_id);
+    } else if ((lc == c) && (last_hit && cmd.is_killer)) {
+      exp_to_give = full_exp;
+      l->log.info_f("Client in slot {} killed this enemy; effective EXP is {}", client_id, exp_to_give);
+    } else if ((lc == c) && (last_hit && !cmd.is_killer)) {
+      // In certain cases we may think that a client deserves full EXP but they claim not to. This can happen if a
+      // player tags an enemy, but that enemy is then killed by another enemy (e.g. a Nano Dragon). So, we trust the
+      // client's is_killer flag, but only if it's false.
+      exp_to_give = tag_exp;
+      l->log.info_f("Client in slot {} last hit this enemy but did not kill it; effective EXP is {}",
+          client_id, exp_to_give);
+    } else if ((lc == c) && ever_hit) {
+      exp_to_give = tag_exp;
+      l->log.info_f("Client in slot {} tagged this enemy; effective EXP is {}", client_id, exp_to_give);
+    } else if (lc->floor == ene_st->super_ene->floor) {
+      exp_to_give = shared_exp;
+      l->log.info_f("Client in slot {} shared this enemy or did not request this EXP; effective EXP is {}",
+          client_id, exp_to_give);
+    } else {
+      l->log.info_f("Client in slot {} is not near this enemy; effective EXP is {}", client_id, exp_to_give);
     }
 
-    // Update kill counts on unsealable items, but only for the player who actually killed the enemy
-    if (ene_st->last_hit_by_client_id(client_id)) {
-      auto& inventory = lc->character_file()->inventory;
-      for (size_t z = 0; z < inventory.num_items; z++) {
-        auto& item = inventory.items[z];
-        if ((item.flags & 0x08) && s->item_parameter_table(lc->version())->is_unsealable_item(item.data)) {
-          item.data.set_kill_count(item.data.get_kill_count() + 1);
-        }
+    if (exp_to_give > 0) {
+      if (lc->check_flag(Client::Flag::DEBUG_ENABLED)) {
+        send_text_message_fmt(lc, "$C5+{} E-{:03X} {}", exp_to_give, ene_st->e_id, phosg::name_for_enum(type));
       }
+      add_player_exp(lc, exp_to_give, cmd.enemy_index | 0x1000);
     }
   }
 }
