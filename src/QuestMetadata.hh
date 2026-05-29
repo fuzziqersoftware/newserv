@@ -39,7 +39,7 @@ struct QuestMetadata {
     std::string str() const;
   };
   uint32_t category_id = 0xFFFFFFFF;
-  uint32_t quest_number = 0xFFFFFFFF;
+  uint32_t quest_number = 0;
   Episode episode = Episode::NONE;
   std::array<FloorAssignment, 0x12> floor_assignments;
   bool joinable = false;

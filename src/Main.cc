@@ -1564,10 +1564,13 @@ Action a_decode_qst(
 Action a_encode_qst(
     "encode-qst", "\
   encode-qst INPUT-FILENAME [OUTPUT-FILENAME] [OPTIONS...]\n\
-    Encode the input quest file (in .bin/.dat format) into a .qst file. If\n\
-    --download is given, generates a download .qst instead of an online .qst.\n\
-    Specify the quest\'s game version with one of the --dc-nte, --dc-v1,\n\
-    --dc-v2, --pc, --gc-nte, --gc, --gc-ep3, --xb, or --bb options.\n",
+    Encode the input quest files (in .bin format) into a .qst file. There must\n\
+    be a .dat file with the same name as the .bin file, which will be included\n\
+    in the resulting .qst file. If there is a .pvr file with the same name as\n\
+    the .bin file, it will be included as well. If --download is given,\n\
+    generates a download .qst instead of an online .qst. Specify the quest\'s\n\
+    game version with one of the --dc-nte, --dc-v1, --dc-v2, --pc, --gc-nte,\n\
+    --gc, --gc-ep3, --xb, or --bb options.\n",
     +[](phosg::Arguments& args) {
       std::string input_filename = args.get<std::string>(1, false);
       if (input_filename.empty() || (input_filename == "-")) {

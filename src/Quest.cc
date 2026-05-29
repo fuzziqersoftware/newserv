@@ -1064,9 +1064,19 @@ template <typename HeaderT, typename OpenFileT>
 static std::unordered_map<std::string, std::string> decode_qst_data_t(const std::string& data) {
   phosg::StringReader r(data);
 
-  std::unordered_map<std::string, std::string> files;
-  std::unordered_map<std::string, size_t> file_remaining_bytes;
+  struct File {
+    struct Block {
+      uint32_t index = 0;
+      const void* data = nullptr;
+      size_t size = 0;
+    };
+    std::deque<Block> blocks;
+    size_t total_size = 0;
+  };
+  std::unordered_map<std::string, File> files;
+
   QuestFileFormat subformat = QuestFileFormat::QST; // Stand-in for unknown
+  bool assemble_in_order = true;
   while (!r.eof()) {
     // Handle BB's implicit 8-byte command alignment
     static constexpr size_t alignment = sizeof(HeaderT);
@@ -1098,11 +1108,7 @@ static std::unordered_map<std::string, std::string> decode_qst_data_t(const std:
       }
       const auto& cmd = r.get<OpenFileT>();
       std::string internal_filename = cmd.filename.decode();
-
-      if (!files.emplace(internal_filename, "").second) {
-        throw std::runtime_error("qst opens the same file multiple times: " + internal_filename);
-      }
-      if (!file_remaining_bytes.emplace(internal_filename, cmd.file_size).second) {
+      if (!files.emplace(internal_filename, File{{}, cmd.file_size}).second) {
         throw std::runtime_error("qst opens the same file multiple times: " + internal_filename);
       }
 
@@ -1113,41 +1119,59 @@ static std::unordered_map<std::string, std::string> decode_qst_data_t(const std:
         throw std::runtime_error("qst write file command has incorrect size");
       }
       const auto& cmd = r.get<S_WriteFile_13_A7>();
-      if (cmd.data_size > 0x400) {
-        throw std::runtime_error("qst contains invalid write command");
-      }
       std::string filename = cmd.filename.decode();
-
-      std::string& file_data = files.at(filename);
-      size_t& remaining_bytes = file_remaining_bytes.at(filename);
-
-      if (file_data.size() & 0x3FF) {
-        throw std::runtime_error("qst contains uneven chunks out of order");
+      if (cmd.data_size > 0x400) {
+        throw std::runtime_error(std::format(
+            "qst chunk {}:{:02X} has invalid size {:08X}", filename, header.flag, cmd.data_size));
       }
-      if (header.flag != file_data.size() / 0x400) {
-        throw std::runtime_error("qst contains chunks out of order");
+
+      auto& file = files.at(filename);
+      size_t offset = header.flag * 0x400;
+      if (offset + cmd.data_size > file.total_size) {
+        throw std::runtime_error(std::format("qst chunk {}:{:02X} extends beyond end of file", filename, header.flag));
       }
-      file_data.append(reinterpret_cast<const char*>(cmd.data.data()), cmd.data_size);
-      remaining_bytes -= cmd.data_size;
+      auto& block = file.blocks.emplace_back();
+      block.index = header.flag;
+      block.data = cmd.data.data();
+      block.size = cmd.data_size;
+
+      if (header.flag) {
+        assemble_in_order = false;
+      }
 
     } else {
       throw std::runtime_error("invalid command in qst file");
     }
   }
 
-  for (const auto& it : file_remaining_bytes) {
-    if (it.second) {
-      throw std::runtime_error(std::format("expected {} (0x{:X}) more bytes for file {}", it.second, it.second, it.first));
+  // QST is an unfortunately underspecified format, and there are technically many versions of it out there (though I'm
+  // sure no one has ever thought much about this). Here we handle one of the format's quirks, in which some QST files
+  // have all zeroes for chunk indexes, so we just assume in that case that the chunks are in the correct order in the
+  // source file.
+  std::unordered_map<std::string, std::string> ret;
+  for (const auto& [name, file] : files) {
+    std::string& assembled_file = ret.emplace(name, "").first->second;
+    if (assemble_in_order) {
+      static_game_data_log.warning_f(
+          "QST file entry {} is missing block indexes; assuming blocks are assembled in order", name);
+      for (const auto& block : file.blocks) {
+        assembled_file.append(reinterpret_cast<const char*>(block.data), block.size);
+      }
+    } else {
+      assembled_file.resize(file.total_size, 0x00);
+      for (const auto& block : file.blocks) {
+        memcpy(assembled_file.data() + block.index * 0x400, block.data, block.size);
+      }
     }
   }
 
   if (subformat == QuestFileFormat::BIN_DAT_DLQ) {
-    for (auto& it : files) {
-      it.second = decode_dlq_data(it.second);
+    for (auto& [_, data] : ret) {
+      data = decode_dlq_data(data);
     }
   }
 
-  return files;
+  return ret;
 }
 
 std::unordered_map<std::string, std::string> decode_qst_data(const std::string& data) {
