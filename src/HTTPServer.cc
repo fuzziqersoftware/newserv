@@ -160,22 +160,22 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
           client_json.emplace("TechniqueLevels", std::move(tech_levels_json));
         }
         client_json.emplace("Level", p->disp.stats.level.load() + 1);
-        client_json.emplace("NameColor", p->disp.visual.name_color.load());
-        client_json.emplace("ExtraModel", (p->disp.visual.validation_flags & 2) ? p->disp.visual.extra_model : phosg::JSON(nullptr));
-        client_json.emplace("SectionID", name_for_section_id(p->disp.visual.section_id));
-        client_json.emplace("CharClass", name_for_char_class(p->disp.visual.char_class));
-        client_json.emplace("Costume", p->disp.visual.costume.load());
-        client_json.emplace("Skin", p->disp.visual.skin.load());
-        client_json.emplace("Face", p->disp.visual.face.load());
-        client_json.emplace("Head", p->disp.visual.head.load());
-        client_json.emplace("Hair", p->disp.visual.hair.load());
-        client_json.emplace("HairR", p->disp.visual.hair_r.load());
-        client_json.emplace("HairG", p->disp.visual.hair_g.load());
-        client_json.emplace("HairB", p->disp.visual.hair_b.load());
-        client_json.emplace("ProportionX", p->disp.visual.proportion_x.load());
-        client_json.emplace("ProportionY", p->disp.visual.proportion_y.load());
+        client_json.emplace("NameColor", p->disp.visual.sh.name_color.load());
+        client_json.emplace("ExtraModel", (p->disp.visual.sh.validation_flags & 2) ? p->disp.visual.sh.extra_model : phosg::JSON(nullptr));
+        client_json.emplace("SectionID", name_for_section_id(p->disp.visual.sh.section_id));
+        client_json.emplace("CharClass", name_for_char_class(p->disp.visual.sh.char_class));
+        client_json.emplace("Costume", p->disp.visual.sh.costume.load());
+        client_json.emplace("Skin", p->disp.visual.sh.skin.load());
+        client_json.emplace("Face", p->disp.visual.sh.face.load());
+        client_json.emplace("Head", p->disp.visual.sh.head.load());
+        client_json.emplace("Hair", p->disp.visual.sh.hair.load());
+        client_json.emplace("HairR", p->disp.visual.sh.hair_r.load());
+        client_json.emplace("HairG", p->disp.visual.sh.hair_g.load());
+        client_json.emplace("HairB", p->disp.visual.sh.hair_b.load());
+        client_json.emplace("ProportionX", p->disp.visual.sh.proportion_x.load());
+        client_json.emplace("ProportionY", p->disp.visual.sh.proportion_y.load());
 
-        client_json.emplace("Name", p->disp.name.decode(c->language()));
+        client_json.emplace("Name", p->disp.visual.name.decode(c->language()));
         client_json.emplace("PlayTimeSeconds", p->play_time_seconds.load());
 
         client_json.emplace("AutoReply", p->auto_reply.decode(c->language()));
@@ -589,12 +589,12 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
       clients_json.emplace_back(phosg::JSON::dict({
           {"ID", c->id},
           {"AccountID", c->login ? c->login->account->account_id : phosg::JSON(nullptr)},
-          {"Name", p ? p->disp.name.decode(c->language()) : phosg::JSON(nullptr)},
+          {"Name", p ? p->disp.visual.name.decode(c->language()) : phosg::JSON(nullptr)},
           {"Version", phosg::name_for_enum(c->version())},
           {"Language", name_for_language(c->language())},
           {"Level", p ? (p->disp.stats.level + 1) : phosg::JSON(nullptr)},
-          {"Class", p ? name_for_char_class(p->disp.visual.char_class) : phosg::JSON(nullptr)},
-          {"SectionID", p ? name_for_section_id(p->disp.visual.section_id) : phosg::JSON(nullptr)},
+          {"Class", p ? name_for_char_class(p->disp.visual.sh.char_class) : phosg::JSON(nullptr)},
+          {"SectionID", p ? name_for_section_id(p->disp.visual.sh.section_id) : phosg::JSON(nullptr)},
           {"LobbyID", l ? l->lobby_id : phosg::JSON(nullptr)},
           {"IsOnProxy", c->proxy_session ? true : false},
       }));

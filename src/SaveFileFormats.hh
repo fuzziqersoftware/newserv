@@ -349,7 +349,7 @@ struct PSODCNTECharacterFile {
   struct Character {
     // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
     /* 0000:---- */ PlayerInventory inventory;
-    /* 034C:---- */ PlayerDispDataDCPCV3 disp;
+    /* 034C:---- */ PlayerDispDataV123 disp;
     // masked_creation_timestamp is expected to contain the value (creation_timestamp ^ hardware_id_mid), where
     // hardware_id_mid contains the middle 32 bits of the 64-bit hardware ID returned by the SYSINFO_ID syscall (the
     // top and bottom 16 bits are ignored for this purpose).
@@ -385,7 +385,7 @@ struct PSODC112000CharacterFile {
   struct Character {
     // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
     /* 0000:---- */ PlayerInventory inventory;
-    /* 034C:---- */ PlayerDispDataDCPCV3 disp;
+    /* 034C:---- */ PlayerDispDataV123 disp;
     /* 041C:0000 */ le_uint32_t masked_creation_timestamp = 0;
     /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
     /* 0424:0008 */ le_uint32_t signature = 0xBB40711D;
@@ -417,7 +417,7 @@ struct PSODCV1CharacterFile {
   struct Character {
     // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
     /* 0000:---- */ PlayerInventory inventory;
-    /* 034C:---- */ PlayerDispDataDCPCV3 disp;
+    /* 034C:---- */ PlayerDispDataV123 disp;
     /* 041C:0000 */ le_uint32_t validation_flags = 0;
     /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
     /* 0424:0008 */ le_uint32_t signature = 0xA205B064;
@@ -445,7 +445,7 @@ struct PSODCV2CharacterFile {
   struct Character {
     // See PSOGCCharacterFile::Character for descriptions of fields' meanings.
     /* 0000:---- */ PlayerInventory inventory;
-    /* 034C:---- */ PlayerDispDataDCPCV3 disp;
+    /* 034C:---- */ PlayerDispDataV123 disp;
     /* 041C:0000 */ le_uint32_t validation_flags = 0;
     /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
     /* 0424:0008 */ le_uint32_t signature = 0xA205B064;
@@ -491,7 +491,7 @@ struct PSOPCCharacterFile { // PSO______SYS and PSO______SYD
       /* 0000 */ le_uint32_t checksum = 0;
       struct Character {
         /* 0000 */ PlayerInventory inventory;
-        /* 034C */ PlayerDispDataDCPCV3 disp;
+        /* 034C */ PlayerDispDataV123 disp;
         /* 041C */ be_uint32_t validation_flags = 0;
         /* 0420 */ be_uint32_t creation_timestamp = 0;
         /* 0424 */ be_uint32_t signature = 0x6C5D889E;
@@ -528,7 +528,7 @@ struct PSOPCCharacterFile { // PSO______SYS and PSO______SYD
 
 struct PSOGCNTECharacterFileCharacter {
   /* 0000:---- */ PlayerInventoryBE inventory;
-  /* 034C:---- */ PlayerDispDataDCPCV3BE disp;
+  /* 034C:---- */ PlayerDispDataV123BE disp;
   /* 041C:0000 */ be_uint32_t validation_flags = 0;
   /* 0420:0004 */ be_uint32_t creation_timestamp = 0;
   /* 0424:0008 */ be_uint32_t signature = 0xA205B064;
@@ -558,7 +558,7 @@ struct PSOGCCharacterFile {
     // This structure is internally split into two by the game. The offsets here are relative to the start of this
     // structure (first column), and relative to the start of the second internal structure (second column).
     /* 0000:---- */ PlayerInventoryBE inventory;
-    /* 034C:---- */ PlayerDispDataDCPCV3BE disp;
+    /* 034C:---- */ PlayerDispDataV123BE disp;
     // Known bits in the validation_flags field:
     //   00000001: Character was not saved after disconnecting (and the message about items being deleted is shown in
     //     the select menu)
@@ -638,7 +638,7 @@ struct PSOGCEp3NTECharacter {
   // This structure is internally split into two by the game. The offsets here are relative to the start of this
   // structure (first column), and relative to the start of the second internal structure (second column).
   /* 0000:---- */ PlayerInventoryBE inventory;
-  /* 034C:---- */ PlayerDispDataDCPCV3BE disp;
+  /* 034C:---- */ PlayerDispDataV123BE disp;
   /* 041C:0000 */ be_uint32_t validation_flags = 0;
   /* 0420:0004 */ be_uint32_t creation_timestamp = 0;
   /* 0424:0008 */ be_uint32_t signature = 0xA205B064;
@@ -673,7 +673,7 @@ struct PSOGCEp3CharacterFile {
     // This structure is internally split into two by the game. The offsets here are relative to the start of this
     // structure (first column), and relative to the start of the second internal structure (second column).
     /* 0000:---- */ PlayerInventoryBE inventory;
-    /* 034C:---- */ PlayerDispDataDCPCV3BE disp;
+    /* 034C:---- */ PlayerDispDataV123BE disp;
     /* 041C:0000 */ be_uint32_t validation_flags = 0;
     /* 0420:0004 */ be_uint32_t creation_timestamp = 0;
     /* 0424:0008 */ be_uint32_t signature = 0xA205B064;
@@ -735,7 +735,7 @@ struct PSOXBCharacterFile {
     // structure (first column), and relative to the start of the second internal structure (second column). Most
     // fields have the same meanings as in PSOGCCharacterFile::Character.
     /* 0000:---- */ PlayerInventory inventory;
-    /* 034C:---- */ PlayerDispDataDCPCV3 disp;
+    /* 034C:---- */ PlayerDispDataV123 disp;
     /* 041C:0000 */ le_uint32_t validation_flags = 0;
     /* 0420:0004 */ le_uint32_t creation_timestamp = 0;
     /* 0424:0008 */ le_uint32_t signature = 0xC87ED5B1;
@@ -794,7 +794,7 @@ struct PSOBBCharacterFile {
   // .psochar file. See PSOCHARFile below for the full file format.
 
   /* 0000 */ PlayerInventory inventory;
-  /* 034C */ PlayerDispDataBB disp;
+  /* 034C */ PlayerDispDataV4 disp;
   /* 04DC */ le_uint32_t validation_flags = 0;
   /* 04E0 */ le_uint32_t creation_timestamp = 0;
   /* 04E4 */ le_uint32_t signature = 0xC87ED5B1;
@@ -823,19 +823,24 @@ struct PSOBBCharacterFile {
 
   PSOBBCharacterFile() = default;
 
-  PlayerDispDataBBPreview to_preview() const;
+  PlayerDispDataV4Preview to_preview() const;
 
   static std::shared_ptr<PSOBBCharacterFile> create_from_config(
       uint32_t guild_card_number,
       Language language,
-      const PlayerVisualConfig& visual,
-      const std::string& name,
-      std::shared_ptr<const LevelTable> level_table);
-  static std::shared_ptr<PSOBBCharacterFile> create_from_preview(
+      const PlayerVisualConfigV4& visual,
+      std::shared_ptr<const LevelTable> level_table = nullptr);
+
+  template <bool BE>
+  static std::shared_ptr<PSOBBCharacterFile> create_from_config(
       uint32_t guild_card_number,
       Language language,
-      const PlayerDispDataBBPreview& preview,
-      std::shared_ptr<const LevelTable> level_table);
+      const PlayerVisualConfigV123T<BE>& visual,
+      std::shared_ptr<const LevelTable> level_table = nullptr) {
+    return PSOBBCharacterFile::create_from_config(
+        guild_card_number, language, visual.to_v4(language, language), level_table);
+  }
+
   static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSODCNTECharacterFile::Character& src);
   static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSODC112000CharacterFile::Character& src);
   static std::shared_ptr<PSOBBCharacterFile> create_from_file(const PSODCV1CharacterFile::Character& src);
@@ -1034,11 +1039,11 @@ struct LegacySavedPlayerDataBB { // .nsc file format
   /* 0000 */ be_uint64_t signature = SIGNATURE_V1;
   /* 0008 */ parray<uint8_t, 0x20> unused;
   /* 0028 */ PlayerRecordsBattle battle_records;
-  /* 0040 */ PlayerDispDataBBPreview preview;
+  /* 0040 */ PlayerDispDataV4Preview preview;
   /* 00BC */ pstring<TextEncoding::UTF16, 0x00AC> auto_reply;
   /* 0214 */ PlayerBank200 bank;
   /* 14DC */ PlayerRecordsChallengeBB challenge_records;
-  /* 161C */ PlayerDispDataBB disp;
+  /* 161C */ PlayerDispDataV4 disp;
   /* 17AC */ pstring<TextEncoding::UTF16, 0x0058> guild_card_description;
   /* 185C */ pstring<TextEncoding::UTF16, 0x00AC> info_board;
   /* 19B4 */ PlayerInventory inventory;

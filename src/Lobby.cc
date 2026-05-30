@@ -242,7 +242,7 @@ uint8_t Lobby::effective_section_id() const {
   }
   auto leader = this->clients.at(this->leader_id);
   if (leader) {
-    return leader->character_file()->disp.visual.section_id;
+    return leader->character_file()->disp.visual.sh.section_id;
   }
   return 0xFF;
 }
@@ -459,11 +459,11 @@ void Lobby::add_client(std::shared_ptr<Client> c, ssize_t required_client_id) {
     PlayerLobbyDataDCGC lobby_data;
     lobby_data.player_tag = 0x00010000;
     lobby_data.guild_card_number = c->login->account->account_id;
-    lobby_data.name.encode(p->disp.name.decode(c->language()), c->language());
+    lobby_data.name.encode(p->disp.visual.name.decode(c->language()), c->language());
     this->battle_record->add_player(
         lobby_data,
         p->inventory,
-        p->disp.to_dcpcv3<false>(c->language(), c->language()),
+        p->disp.to_v123<false>(c->language(), c->language()),
         c->ep3_config ? (c->ep3_config->online_clv_exp / 100) : 0);
   }
 
@@ -591,7 +591,7 @@ std::shared_ptr<Client> Lobby::find_client(const std::string* identifier, uint64
     if (account_id && lc->login && (lc->login->account->account_id == account_id)) {
       return lc;
     }
-    if (identifier && (lc->character_file()->disp.name.eq(*identifier, lc->language()))) {
+    if (identifier && (lc->character_file()->disp.visual.name.eq(*identifier, lc->language()))) {
       return lc;
     }
   }

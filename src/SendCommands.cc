@@ -665,7 +665,7 @@ void send_system_file_bb(std::shared_ptr<Client> c) {
   send_command_t(c, 0x00E2, 0x00000000, cmd);
 }
 
-void send_player_preview_bb(std::shared_ptr<Client> c, int8_t character_index, const PlayerDispDataBBPreview* preview) {
+void send_player_preview_bb(std::shared_ptr<Client> c, int8_t character_index, const PlayerDispDataV4Preview* preview) {
   if (!preview) { // No player exists
     S_PlayerPreview_NoPlayer_BB_00E4 cmd = {character_index, 0x00000002};
     send_command_t(c, 0x00E4, 0x00000000, cmd);
@@ -754,7 +754,7 @@ void send_complete_player_bb(std::shared_ptr<Client> c) {
   }
   send_command_t(c, 0x00E7, 0x00000000, cmd);
 
-  c->login->account->last_player_name = p->disp.name.decode(p->inventory.language);
+  c->login->account->last_player_name = p->disp.visual.name.decode(p->inventory.language);
 }
 
 enum class ColorMode {
@@ -1109,7 +1109,7 @@ void send_info_board_t(std::shared_ptr<Client> c) {
       if (lc) {
         auto lp = lc->character_file(true, false);
         auto& e = entries.emplace_back();
-        e.name.encode(lp->disp.name.decode(lp->inventory.language), c->language());
+        e.name.encode(lp->disp.visual.name.decode(lp->inventory.language), c->language());
         e.message.encode(add_color(lp->info_board.decode(lp->inventory.language)), c->language());
       }
     }
@@ -1199,7 +1199,7 @@ void send_card_search_result_t(std::shared_ptr<Client> c, std::shared_ptr<Client
   cmd.extension.lobby_refs[0].menu_id = MenuID::LOBBY;
   cmd.extension.lobby_refs[0].item_id = result_lobby->lobby_id;
   auto rp = result->character_file(true, false);
-  cmd.extension.player_name.encode(rp->disp.name.decode(rp->inventory.language), c->language());
+  cmd.extension.player_name.encode(rp->disp.visual.name.decode(rp->inventory.language), c->language());
 
   send_command_t(c, 0x41, 0x00, cmd);
 }
@@ -1363,12 +1363,12 @@ void send_guild_card(std::shared_ptr<Client> c, std::shared_ptr<Client> source) 
       c->channel,
       source->login->account->account_id,
       xb_user_id,
-      source_p->disp.name.decode(source->language()),
+      source_p->disp.visual.name.decode(source->language()),
       source_team ? source_team->name : "",
       source_p->guild_card.description.decode(source->language()),
       source->language(),
-      source_p->disp.visual.section_id,
-      source_p->disp.visual.char_class);
+      source_p->disp.visual.sh.section_id,
+      source_p->disp.visual.sh.char_class);
 }
 
 template <typename EntryT>
@@ -1803,8 +1803,7 @@ void populate_lobby_data_for_client(LobbyDataT& ret, std::shared_ptr<const Clien
   ret.player_tag = 0x00010000;
   ret.guild_card_number = c->login->account->account_id;
   ret.client_id = c->lobby_client_id;
-  std::string name = c->character_file()->disp.name.decode(c->language());
-  ret.name.encode(name, viewer_c->language());
+  ret.name.encode(c->character_file()->disp.visual.name.decode(c->language()), viewer_c->language());
 }
 
 template <>
@@ -1818,8 +1817,7 @@ void populate_lobby_data_for_client(
     ret.netloc.account_id = 0xAE00000000000000 | c->login->account->account_id;
   }
   ret.client_id = c->lobby_client_id;
-  std::string name = c->character_file()->disp.name.decode(c->language());
-  ret.name.encode(name, viewer_c->language());
+  ret.name.encode(c->character_file()->disp.visual.name.decode(c->language()), viewer_c->language());
 }
 
 template <>
@@ -1836,8 +1834,7 @@ void populate_lobby_data_for_client<PlayerLobbyDataBB>(
     ret.team_master_guild_card_number = 0;
     ret.team_id = 0;
   }
-  std::string name = c->character_file()->disp.name.decode(c->language());
-  ret.name.encode(name, viewer_c->language());
+  ret.name.encode(c->character_file()->disp.visual.name.decode(c->language()), viewer_c->language());
 }
 
 static void send_join_spectator_team(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l) {
@@ -1877,22 +1874,22 @@ static void send_join_spectator_team(std::shared_ptr<Client> c, std::shared_ptr<
       populate_lobby_data_for_client(p.lobby_data, wc, c);
       p.inventory = wc_p->inventory;
       p.inventory.encode_for_client(c->version(), s->item_parameter_table_for_encode(c->version()));
-      p.disp = wc_p->disp.to_dcpcv3<false>(c->language(), p.inventory.language);
+      p.disp = wc_p->disp.to_v123<false>(c->language(), p.inventory.language);
       p.disp.enforce_lobby_join_limits_for_version(c->version());
 
       auto& e = cmd.entries[z];
       e.player_tag = 0x00010000;
       e.guild_card_number = wc->login->account->account_id;
-      e.name.encode(wc_p->disp.name.decode(wc_p->inventory.language), c->language());
+      e.name.encode(wc_p->disp.visual.name.decode(wc_p->inventory.language), c->language());
       e.present = 1;
       e.level = wc->ep3_config
           ? (wc->ep3_config->online_clv_exp / 100)
           : wc_p->disp.stats.level.load();
-      e.name_color = wc_p->disp.visual.name_color;
+      e.name_color = wc_p->disp.visual.sh.name_color;
 
       uint32_t name_color = s->name_color_for_client(wc);
       if (name_color) {
-        p.disp.visual.name_color = name_color;
+        p.disp.visual.sh.name_color = name_color;
         e.name_color = name_color;
       }
 
@@ -1930,7 +1927,7 @@ static void send_join_spectator_team(std::shared_ptr<Client> c, std::shared_ptr<
       e.name = entry.disp.visual.name;
       e.present = 1;
       e.level = entry.level;
-      e.name_color = entry.disp.visual.name_color;
+      e.name_color = entry.disp.visual.sh.name_color;
 
       player_count++;
     }
@@ -1947,7 +1944,7 @@ static void send_join_spectator_team(std::shared_ptr<Client> c, std::shared_ptr<
       auto& cmd_e = cmd.entries[z];
       populate_lobby_data_for_client(cmd_p.lobby_data, other_c, c);
       cmd_p.inventory = other_p->inventory;
-      cmd_p.disp = other_p->disp.to_dcpcv3<false>(c->language(), cmd_p.inventory.language);
+      cmd_p.disp = other_p->disp.to_v123<false>(c->language(), cmd_p.inventory.language);
       cmd_p.disp.enforce_lobby_join_limits_for_version(c->version());
 
       cmd_e.player_tag = 0x00010000;
@@ -1957,11 +1954,11 @@ static void send_join_spectator_team(std::shared_ptr<Client> c, std::shared_ptr<
       cmd_e.level = other_c->ep3_config
           ? (other_c->ep3_config->online_clv_exp / 100)
           : other_p->disp.stats.level.load();
-      cmd_e.name_color = other_p->disp.visual.name_color;
+      cmd_e.name_color = other_p->disp.visual.sh.name_color;
 
       uint32_t name_color = s->name_color_for_client(other_c);
       if (name_color) {
-        cmd_p.disp.visual.name_color = name_color;
+        cmd_p.disp.visual.sh.name_color = name_color;
         cmd_e.name_color = name_color;
       }
 
@@ -2070,12 +2067,12 @@ void send_join_game(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l) {
           auto& cmd_p = cmd.players_ep3[x];
           cmd_p.inventory = other_p->inventory;
           cmd_p.inventory.encode_for_client(c->version(), s->item_parameter_table_for_encode(c->version()));
-          cmd_p.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(
+          cmd_p.disp = convert_player_disp_data<PlayerDispDataV123>(
               other_p->disp, c->language(), other_p->inventory.language);
           cmd_p.disp.enforce_lobby_join_limits_for_version(c->version());
           uint32_t name_color = s->name_color_for_client(lc);
           if (name_color) {
-            cmd_p.disp.visual.name_color = name_color;
+            cmd_p.disp.visual.sh.name_color = name_color;
           }
         }
       }
@@ -2191,9 +2188,9 @@ void send_join_lobby_t(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l, std:
       e.disp.enforce_lobby_join_limits_for_version(c->version());
       uint32_t name_color = s->name_color_for_client(lc);
       if (name_color) {
-        e.disp.visual.name_color = name_color;
+        e.disp.visual.sh.name_color = name_color;
         if (is_v1_or_v2(c->version())) {
-          e.disp.visual.compute_name_color_checksum();
+          e.disp.visual.sh.compute_name_color_checksum();
         }
       }
     }
@@ -2257,11 +2254,11 @@ void send_join_lobby_xb(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l, std
     populate_lobby_data_for_client(e.lobby_data, lc, c);
     e.inventory = lp->inventory;
     e.inventory.encode_for_client(c->version(), s->item_parameter_table_for_encode(c->version()));
-    e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp, c->language(), lp->inventory.language);
+    e.disp = convert_player_disp_data<PlayerDispDataV123>(lp->disp, c->language(), lp->inventory.language);
     e.disp.enforce_lobby_join_limits_for_version(c->version());
     uint32_t name_color = s->name_color_for_client(lc);
     if (name_color) {
-      e.disp.visual.name_color = name_color;
+      e.disp.visual.sh.name_color = name_color;
     }
   }
 
@@ -2306,14 +2303,14 @@ void send_join_lobby_dc_nte(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l,
     e.inventory = lp->inventory;
     e.inventory.encode_for_client(c->version(), s->item_parameter_table_for_encode(c->version()));
     if ((lc == c) && is_v1_or_v2(c->version()) && lc->v1_v2_last_reported_disp) {
-      e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(*lc->v1_v2_last_reported_disp, c->language(), lp->inventory.language);
+      e.disp = convert_player_disp_data<PlayerDispDataV123>(*lc->v1_v2_last_reported_disp, c->language(), lp->inventory.language);
     } else {
-      e.disp = convert_player_disp_data<PlayerDispDataDCPCV3>(lp->disp, c->language(), lp->inventory.language);
+      e.disp = convert_player_disp_data<PlayerDispDataV123>(lp->disp, c->language(), lp->inventory.language);
       e.disp.enforce_lobby_join_limits_for_version(c->version());
       uint32_t name_color = s->name_color_for_client(lc);
       if (name_color) {
-        e.disp.visual.name_color = name_color;
-        e.disp.visual.compute_name_color_checksum();
+        e.disp.visual.sh.name_color = name_color;
+        e.disp.visual.sh.compute_name_color_checksum();
       }
     }
   }
@@ -2332,23 +2329,23 @@ void send_join_lobby(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l) {
         break;
       case Version::DC_V1:
       case Version::DC_V2:
-        send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC>(c, l);
+        send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataV123, PlayerRecordsEntry_DC>(c, l);
         break;
       case Version::PC_NTE:
       case Version::PC_V2:
-        send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3, PlayerRecordsEntry_PC>(c, l);
+        send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataV123, PlayerRecordsEntry_PC>(c, l);
         break;
       case Version::GC_NTE:
       case Version::GC_V3:
       case Version::GC_EP3_NTE:
       case Version::GC_EP3:
-        send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3>(c, l);
+        send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataV123, PlayerRecordsEntry_V3>(c, l);
         break;
       case Version::XB_V3:
         send_join_lobby_xb(c, l);
         break;
       case Version::BB_V4:
-        send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB, PlayerRecordsEntry_BB>(c, l);
+        send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataV4, PlayerRecordsEntry_BB>(c, l);
         break;
       default:
         throw std::logic_error("unimplemented versioned command");
@@ -2371,23 +2368,23 @@ void send_player_join_notification(std::shared_ptr<Client> c,
       break;
     case Version::DC_V1:
     case Version::DC_V2:
-      send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_DC>(c, l, joining_client);
+      send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataV123, PlayerRecordsEntry_DC>(c, l, joining_client);
       break;
     case Version::PC_NTE:
     case Version::PC_V2:
-      send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataDCPCV3, PlayerRecordsEntry_PC>(c, l, joining_client);
+      send_join_lobby_t<PlayerLobbyDataPC, PlayerDispDataV123, PlayerRecordsEntry_PC>(c, l, joining_client);
       break;
     case Version::GC_NTE:
     case Version::GC_V3:
     case Version::GC_EP3_NTE:
     case Version::GC_EP3:
-      send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataDCPCV3, PlayerRecordsEntry_V3>(c, l, joining_client);
+      send_join_lobby_t<PlayerLobbyDataDCGC, PlayerDispDataV123, PlayerRecordsEntry_V3>(c, l, joining_client);
       break;
     case Version::XB_V3:
       send_join_lobby_xb(c, l, joining_client);
       break;
     case Version::BB_V4:
-      send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataBB, PlayerRecordsEntry_BB>(c, l, joining_client);
+      send_join_lobby_t<PlayerLobbyDataBB, PlayerDispDataV4, PlayerRecordsEntry_BB>(c, l, joining_client);
       break;
     default:
       throw std::logic_error("unimplemented versioned command");
@@ -3030,11 +3027,8 @@ void send_game_player_state(std::shared_ptr<Client> to_c, std::shared_ptr<Client
     // created/destroyed, but currently we don't.
     to_send.area = from_c->floor;
     to_send.technique_levels_v1 = from_p->disp.technique_levels_v1;
-    to_send.visual = from_p->disp.visual;
-    to_send.name = from_p->disp.name.decode(from_c->language());
-    if (to_c->version() != Version::BB_V4) {
-      to_send.visual.name.encode(to_send.name, to_c->language());
-    }
+    to_send.visual_sh = from_p->disp.visual.sh;
+    to_send.name = from_p->disp.visual.name.decode(from_c->language());
     to_send.stats = from_p->disp.stats;
     to_send.num_items = from_p->inventory.num_items;
     to_send.items = from_p->inventory.items;
@@ -3513,7 +3507,7 @@ std::string ep3_description_for_client(std::shared_ptr<Client> c) {
   auto p = c->character_file();
   return std::format(
       "{} CLv{} {}",
-      name_for_char_class(p->disp.visual.char_class),
+      name_for_char_class(p->disp.visual.sh.char_class),
       p->disp.stats.level + 1,
       char_for_language(p->inventory.language));
 }
@@ -3560,7 +3554,7 @@ void send_ep3_game_details_t(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l
           if (player.is_human()) {
             try {
               auto other_c = account_id_to_client.at(player.account_id);
-              entry.name.encode(other_c->character_file()->disp.name.decode(other_c->language()), c->language());
+              entry.name.encode(other_c->character_file()->disp.visual.name.decode(other_c->language()), c->language());
               entry.description.encode(ep3_description_for_client(other_c), c->language());
             } catch (const std::out_of_range&) {
               entry.name.encode(player.player_name, c->language());
@@ -3581,7 +3575,7 @@ void send_ep3_game_details_t(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l
       for (auto spec_c : l->clients) {
         if (spec_c) {
           auto& entry = cmd.spectator_entries[cmd.num_spectators++];
-          entry.name.encode(spec_c->character_file()->disp.name.decode(spec_c->language()), c->language());
+          entry.name.encode(spec_c->character_file()->disp.visual.name.decode(spec_c->language()), c->language());
           entry.description.encode(ep3_description_for_client(spec_c), c->language());
         }
       }
@@ -3598,7 +3592,8 @@ void send_ep3_game_details_t(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l
       size_t num_players = 0;
       for (const auto& opp_c : primary_lobby->clients) {
         if (opp_c) {
-          cmd.player_entries[num_players].name.encode(opp_c->character_file()->disp.name.decode(opp_c->language()), c->language());
+          cmd.player_entries[num_players].name.encode(
+              opp_c->character_file()->disp.visual.name.decode(opp_c->language()), c->language());
           cmd.player_entries[num_players].description.encode(ep3_description_for_client(opp_c), c->language());
           num_players++;
         }
@@ -3611,7 +3606,7 @@ void send_ep3_game_details_t(std::shared_ptr<Client> c, std::shared_ptr<Lobby> l
       for (auto spec_c : l->clients) {
         if (spec_c) {
           auto& entry = cmd.spectator_entries[num_spectators++];
-          entry.name.encode(spec_c->character_file()->disp.name.decode(spec_c->language()), c->language());
+          entry.name.encode(spec_c->character_file()->disp.visual.name.decode(spec_c->language()), c->language());
           entry.description.encode(ep3_description_for_client(spec_c), c->language());
         }
       }
@@ -3730,7 +3725,8 @@ void send_ep3_tournament_match_result(std::shared_ptr<Lobby> l, uint32_t meseta_
         if (player.is_human()) {
           try {
             auto pc = account_id_to_client.at(player.account_id);
-            entry.player_names[z].encode(pc->character_file()->disp.name.decode(pc->language()), lc->language());
+            entry.player_names[z].encode(
+                pc->character_file()->disp.visual.name.decode(pc->language()), lc->language());
           } catch (const std::out_of_range&) {
             entry.player_names[z].encode(player.player_name, lc->language());
           }
@@ -4203,7 +4199,7 @@ static S_TeamInfoForPlayer_BB_13EA_15EA_Entry team_metadata_for_client(std::shar
   S_TeamInfoForPlayer_BB_13EA_15EA_Entry cmd;
   cmd.lobby_client_id = c->lobby_client_id;
   cmd.guild_card_number = c->login->account->account_id;
-  cmd.player_name = c->character_file()->disp.name;
+  cmd.player_name = c->character_file()->disp.visual.name;
   if (team) {
     cmd.membership = team->base_membership_for_member(c->login->account->account_id);
     if (team->flag_data) {

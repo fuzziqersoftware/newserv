@@ -65,7 +65,7 @@ public:
   uint32_t player_flags = 0;
   bool player_flags_is_v3 = false;
   parray<uint8_t, 0x14> technique_levels_v1 = 0xFF;
-  PlayerVisualConfig visual;
+  PlayerVisualConfigSharedT<false> visual_sh;
   std::string name;
   PlayerStats stats;
   uint32_t num_items = 0;

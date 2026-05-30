@@ -57,7 +57,9 @@ struct SubcommandMessage {
   }
 };
 
-using SubcommandHandler = asio::awaitable<void> (*)(std::shared_ptr<Client> c, SubcommandMessage& msg);
+using SubcommandHandlerFn = void (*)(std::shared_ptr<Client> c, SubcommandMessage& msg);
+using SubcommandHandlerCoro = asio::awaitable<void> (*)(std::shared_ptr<Client> c, SubcommandMessage& msg);
+using SubcommandHandler = std::variant<SubcommandHandlerFn, SubcommandHandlerCoro>;
 
 struct SubcommandDefinition {
   enum Flag {
@@ -270,17 +272,12 @@ static void forward_subcommand(std::shared_ptr<Client> c, SubcommandMessage& msg
   }
 }
 
-static asio::awaitable<void> forward_subcommand_m(std::shared_ptr<Client> c, SubcommandMessage& msg) {
-  forward_subcommand(c, msg);
-  co_return;
-}
-
 template <typename CmdT>
 static void forward_subcommand_t(std::shared_ptr<Client> c, uint8_t command, uint8_t flag, const CmdT& cmd) {
   forward_subcommand(c, command, flag, &cmd, sizeof(cmd));
 }
 
-static asio::awaitable<void> on_invalid(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_invalid(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_UnusedHeader>(0xFFFF);
   if ((c->version() == Version::DC_NTE) || c->version() == Version::DC_11_2000) {
     c->log.error_f("Unrecognized DC NTE/prototype subcommand: {:02X}", cmd.subcommand);
@@ -290,12 +287,9 @@ static asio::awaitable<void> on_invalid(std::shared_ptr<Client> c, SubcommandMes
   } else {
     c->log.error_f("Invalid subcommand: {:02X} (public)", cmd.subcommand);
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_debug_info(std::shared_ptr<Client>, SubcommandMessage&) {
-  co_return;
-}
+static void on_debug_info(std::shared_ptr<Client>, SubcommandMessage&) {}
 
 void check_expected_loading_command(std::shared_ptr<Client> c, const SubcommandMessage& msg) {
   const auto& base_header = msg.check_size_t<G_UnusedHeader>(0xFFFF);
@@ -305,22 +299,20 @@ void check_expected_loading_command(std::shared_ptr<Client> c, const SubcommandM
   }
 }
 
-static asio::awaitable<void> on_forward_check_game_loading_expected(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_forward_check_game_loading_expected(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (l->is_game()) {
     check_expected_loading_command(c, msg);
     msg.check_size_t<G_UnusedHeader>().unused = 0;
     forward_subcommand(c, msg);
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_forward_check_game_quest(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_forward_check_game_quest(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (l->is_game() && l->quest) {
     forward_subcommand(c, msg);
   }
-  co_return;
 }
 
 template <typename CmdT>
@@ -353,7 +345,7 @@ void forward_subcommand_with_item_transcode_t(std::shared_ptr<Client> c, uint8_t
 }
 
 template <typename CmdT, bool ForwardIfMissing = false, size_t EntityIDOffset = offsetof(G_EntityIDHeader, entity_id)>
-asio::awaitable<void> forward_subcommand_with_entity_id_transcode_t(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+void forward_subcommand_with_entity_id_transcode_t(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   // I'm lazy and this should never happen for item commands (since all players need to stay in sync)
   if (command_is_private(msg.command)) {
     throw std::runtime_error("entity subcommand sent via private command");
@@ -401,11 +393,10 @@ asio::awaitable<void> forward_subcommand_with_entity_id_transcode_t(std::shared_
       send_command_t(lc, msg.command, msg.flag, cmd);
     }
   }
-  co_return;
 }
 
 template <typename HeaderT>
-asio::awaitable<void> forward_subcommand_with_entity_targets_transcode_and_track_hits_t(
+void forward_subcommand_with_entity_targets_transcode_and_track_hits_t(
     std::shared_ptr<Client> c, SubcommandMessage& msg) {
   // I'm lazy and this should never happen for private commands
   if (command_is_private(msg.command)) {
@@ -484,7 +475,6 @@ asio::awaitable<void> forward_subcommand_with_entity_targets_transcode_and_track
       send_command(lc, msg.command, msg.flag, msg.data, msg.size);
     }
   }
-  co_return;
 }
 
 static std::shared_ptr<Client> get_sync_target(
@@ -499,12 +489,12 @@ static std::shared_ptr<Client> get_sync_target(
   return nullptr;
 }
 
-static asio::awaitable<void> on_sync_joining_player_compressed_state(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_sync_joining_player_compressed_state(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   check_expected_loading_command(c, msg);
 
   auto target = get_sync_target(c, msg.command, msg.flag, false); // Checks l->is_game
   if (!target) {
-    co_return;
+    return;
   }
 
   uint8_t orig_subcommand_number;
@@ -730,12 +720,12 @@ static asio::awaitable<void> on_sync_joining_player_compressed_state(std::shared
 }
 
 template <typename CmdT>
-static asio::awaitable<void> on_sync_joining_player_quest_flags_t(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_sync_joining_player_quest_flags_t(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   check_expected_loading_command(c, msg);
 
   const auto& cmd = msg.check_size_t<CmdT>();
   if (!command_is_private(msg.command)) {
-    co_return;
+    return;
   }
 
   auto l = c->require_lobby();
@@ -749,13 +739,13 @@ static asio::awaitable<void> on_sync_joining_player_quest_flags_t(std::shared_pt
   }
 }
 
-static asio::awaitable<void> on_sync_joining_player_quest_flags(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_sync_joining_player_quest_flags(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   if (is_v1(c->version())) {
-    co_await on_sync_joining_player_quest_flags_t<G_SetQuestFlags_DCv1_6x6F>(c, msg);
+    on_sync_joining_player_quest_flags_t<G_SetQuestFlags_DCv1_6x6F>(c, msg);
   } else if (!is_v4(c->version())) {
-    co_await on_sync_joining_player_quest_flags_t<G_SetQuestFlags_V2_V3_6x6F>(c, msg);
+    on_sync_joining_player_quest_flags_t<G_SetQuestFlags_V2_V3_6x6F>(c, msg);
   } else {
-    co_await on_sync_joining_player_quest_flags_t<G_SetQuestFlags_BB_6x6F>(c, msg);
+    on_sync_joining_player_quest_flags_t<G_SetQuestFlags_BB_6x6F>(c, msg);
   }
 }
 
@@ -821,14 +811,14 @@ Parsed6x70Data::Parsed6x70Data(
       area(cmd.area),
       player_flags(cmd.player_flags),
       player_flags_is_v3(false),
-      visual(cmd.visual),
+      visual_sh(cmd.visual.sh),
       stats(cmd.stats),
       num_items(cmd.num_items),
       items(cmd.items),
       floor(cmd.area),
       xb_user_id(this->default_xb_user_id()),
       xb_unknown_a16(0) {
-  this->name = this->visual.name.decode(this->language);
+  this->name = cmd.visual.name.decode(this->language);
 }
 
 Parsed6x70Data::Parsed6x70Data(
@@ -857,14 +847,14 @@ Parsed6x70Data::Parsed6x70Data(
       area(cmd.area),
       player_flags(cmd.player_flags),
       player_flags_is_v3(false),
-      visual(cmd.visual),
+      visual_sh(cmd.visual.sh),
       stats(cmd.stats),
       num_items(cmd.num_items),
       items(cmd.items),
       floor(cmd.area),
       xb_user_id(this->default_xb_user_id()),
       xb_unknown_a16(0) {
-  this->name = this->visual.name.decode(this->language);
+  this->name = cmd.visual.name.decode(this->language);
 }
 
 Parsed6x70Data::Parsed6x70Data(
@@ -879,7 +869,8 @@ Parsed6x70Data::Parsed6x70Data(
   this->floor = cmd.base.area;
   this->xb_user_id = this->default_xb_user_id();
   this->xb_unknown_a16 = 0;
-  this->name = this->visual.name.decode(this->language);
+  this->visual_sh = cmd.visual.sh;
+  this->name = cmd.visual.name.decode(this->language);
 }
 
 Parsed6x70Data::Parsed6x70Data(
@@ -895,7 +886,8 @@ Parsed6x70Data::Parsed6x70Data(
   this->floor = cmd.floor;
   this->xb_user_id = this->default_xb_user_id();
   this->xb_unknown_a16 = 0;
-  this->name = this->visual.name.decode(this->language);
+  this->visual_sh = cmd.visual.sh;
+  this->name = cmd.visual.name.decode(this->language);
 }
 
 Parsed6x70Data::Parsed6x70Data(
@@ -911,7 +903,8 @@ Parsed6x70Data::Parsed6x70Data(
   this->floor = cmd.floor;
   this->xb_user_id = (static_cast<uint64_t>(cmd.xb_user_id_high) << 32) | cmd.xb_user_id_low;
   this->xb_unknown_a16 = cmd.unknown_a16;
-  this->name = this->visual.name.decode(this->language);
+  this->visual_sh = cmd.visual.sh;
+  this->name = cmd.visual.name.decode(this->language);
 }
 
 Parsed6x70Data::Parsed6x70Data(
@@ -927,8 +920,8 @@ Parsed6x70Data::Parsed6x70Data(
   this->floor = cmd.floor;
   this->xb_user_id = this->default_xb_user_id();
   this->xb_unknown_a16 = cmd.unknown_a16;
-  this->name = cmd.name.decode(this->language);
-  this->visual.name.encode(this->name, this->language);
+  this->visual_sh = cmd.visual.sh;
+  this->name = cmd.visual.name.decode(this->language);
 }
 
 G_SyncPlayerDispAndInventory_DCNTE_6x70 Parsed6x70Data::as_dc_nte(std::shared_ptr<ServerState> s) const {
@@ -941,24 +934,23 @@ G_SyncPlayerDispAndInventory_DCNTE_6x70 Parsed6x70Data::as_dc_nte(std::shared_pt
   ret.hold_state = this->hold_state;
   ret.area = this->area;
   ret.player_flags = this->get_player_flags(false);
-  ret.visual = this->visual;
+  ret.visual.name.encode(this->name, this->language);
+  ret.visual.sh = this->visual_sh;
+  ret.visual.enforce_lobby_join_limits_for_version(Version::DC_NTE);
+  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
+  if (name_color) {
+    ret.visual.sh.name_color = name_color;
+    ret.visual.sh.compute_name_color_checksum();
+  }
   ret.stats = this->stats;
   ret.num_items = this->num_items;
   ret.items = this->items;
-
   transcode_inventory_items(
       ret.items,
       ret.num_items,
       this->item_version,
       Version::DC_NTE,
       s->item_parameter_table_for_encode(Version::DC_NTE));
-  ret.visual.enforce_lobby_join_limits_for_version(Version::DC_NTE);
-
-  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
-  if (name_color) {
-    ret.visual.name_color = name_color;
-    ret.visual.compute_name_color_checksum();
-  }
   return ret;
 }
 
@@ -973,11 +965,16 @@ G_SyncPlayerDispAndInventory_DC112000_6x70 Parsed6x70Data::as_dc_112000(std::sha
   ret.hold_state = this->hold_state;
   ret.area = this->area;
   ret.player_flags = this->get_player_flags(false);
-  ret.visual = this->visual;
+  ret.visual.name.encode(this->name, this->language);
+  ret.visual.sh = this->visual_sh;
+  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
+  if (name_color) {
+    ret.visual.sh.name_color = name_color;
+    ret.visual.sh.compute_name_color_checksum();
+  }
   ret.stats = this->stats;
   ret.num_items = this->num_items;
   ret.items = this->items;
-
   transcode_inventory_items(
       ret.items,
       ret.num_items,
@@ -985,108 +982,96 @@ G_SyncPlayerDispAndInventory_DC112000_6x70 Parsed6x70Data::as_dc_112000(std::sha
       Version::DC_11_2000,
       s->item_parameter_table_for_encode(Version::DC_11_2000));
   ret.visual.enforce_lobby_join_limits_for_version(Version::DC_11_2000);
-
-  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
-  if (name_color) {
-    ret.visual.name_color = name_color;
-    ret.visual.compute_name_color_checksum();
-  }
-
   return ret;
 }
 
 G_SyncPlayerDispAndInventory_DC_PC_6x70 Parsed6x70Data::as_dc_pc(std::shared_ptr<ServerState> s, Version to_version) const {
   G_SyncPlayerDispAndInventory_DC_PC_6x70 ret;
   ret.base = this->base_v1(false);
+  ret.visual.name.encode(this->name, this->language);
+  ret.visual.sh = this->visual_sh;
+  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
+  if (name_color) {
+    ret.visual.sh.name_color = name_color;
+    ret.visual.sh.compute_name_color_checksum();
+  }
   ret.stats = this->stats;
   ret.num_items = this->num_items;
   ret.items = this->items;
-
   transcode_inventory_items(
       ret.items, ret.num_items, this->item_version, to_version, s->item_parameter_table_for_encode(to_version));
-  ret.base.visual.enforce_lobby_join_limits_for_version(to_version);
-
-  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
-  if (name_color) {
-    ret.base.visual.name_color = name_color;
-    ret.base.visual.compute_name_color_checksum();
-  }
-
+  ret.visual.sh.enforce_lobby_join_limits_for_version(to_version);
   return ret;
 }
 
 G_SyncPlayerDispAndInventory_GC_6x70 Parsed6x70Data::as_gc_gcnte(std::shared_ptr<ServerState> s, Version to_version) const {
   G_SyncPlayerDispAndInventory_GC_6x70 ret;
   ret.base = this->base_v1(!is_v1_or_v2(to_version));
+  ret.visual.name.encode(this->name, this->language);
+  ret.visual.sh = this->visual_sh;
+  ret.visual.enforce_lobby_join_limits_for_version(to_version);
+  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
+  if (name_color) {
+    ret.visual.sh.name_color = name_color;
+    if (is_v1_or_v2(to_version)) {
+      ret.visual.sh.compute_name_color_checksum();
+    } else {
+      ret.visual.sh.name_color_checksum = 0;
+    }
+  }
   ret.stats = this->stats;
   ret.num_items = this->num_items;
   ret.items = this->items;
-  ret.floor = this->floor;
-
   transcode_inventory_items(
       ret.items, ret.num_items, this->item_version, to_version, s->item_parameter_table_for_encode(to_version));
-  ret.base.visual.enforce_lobby_join_limits_for_version(to_version);
-
-  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
-  if (name_color) {
-    ret.base.visual.name_color = name_color;
-    if (is_v1_or_v2(to_version)) {
-      ret.base.visual.compute_name_color_checksum();
-    } else {
-      ret.base.visual.name_color_checksum = 0;
-    }
-  }
-
+  ret.floor = this->floor;
   return ret;
 }
 
 G_SyncPlayerDispAndInventory_XB_6x70 Parsed6x70Data::as_xb(std::shared_ptr<ServerState> s) const {
   G_SyncPlayerDispAndInventory_XB_6x70 ret;
   ret.base = this->base_v1(true);
+  ret.visual.name.encode(this->name, this->language);
+  ret.visual.sh = this->visual_sh;
+  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
+  if (name_color) {
+    ret.visual.sh.name_color = name_color;
+    ret.visual.sh.name_color_checksum = 0;
+  }
   ret.stats = this->stats;
   ret.num_items = this->num_items;
   ret.items = this->items;
+  transcode_inventory_items(
+      ret.items, ret.num_items, this->item_version, Version::XB_V3, s->item_parameter_table_for_encode(Version::XB_V3));
+  ret.visual.sh.enforce_lobby_join_limits_for_version(Version::XB_V3);
   ret.floor = this->floor;
   ret.xb_user_id_high = this->xb_user_id >> 32;
   ret.xb_user_id_low = this->xb_user_id;
   ret.unknown_a16 = this->xb_unknown_a16;
-
-  transcode_inventory_items(
-      ret.items, ret.num_items, this->item_version, Version::XB_V3, s->item_parameter_table_for_encode(Version::XB_V3));
-  ret.base.visual.enforce_lobby_join_limits_for_version(Version::XB_V3);
-
-  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
-  if (name_color) {
-    ret.base.visual.name_color = name_color;
-    ret.base.visual.name_color_checksum = 0;
-  }
-
   return ret;
 }
 
 G_SyncPlayerDispAndInventory_BB_6x70 Parsed6x70Data::as_bb(std::shared_ptr<ServerState> s, Language language) const {
   G_SyncPlayerDispAndInventory_BB_6x70 ret;
   ret.base = this->base_v1(true);
-  ret.name.encode(this->name, language);
-  ret.base.visual.name.encode(std::format("{:10}", this->guild_card_number), language);
+  ret.visual.guild_card_number.encode(std::format("{:10}", this->guild_card_number), language);
+  ret.visual.sh = this->visual_sh;
+  ret.visual.name.encode(this->name, this->language);
+  ret.visual.enforce_lobby_join_limits_for_version(Version::BB_V4);
+  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
+  if (name_color) {
+    ret.visual.sh.name_color = name_color;
+    ret.visual.sh.name_color_checksum = 0;
+  }
   ret.stats = this->stats;
   ret.num_items = this->num_items;
   ret.items = this->items;
+  transcode_inventory_items(
+      ret.items, ret.num_items, this->item_version, Version::BB_V4, s->item_parameter_table_for_encode(Version::BB_V4));
   ret.floor = this->floor;
   ret.xb_user_id_high = this->xb_user_id >> 32;
   ret.xb_user_id_low = this->xb_user_id;
   ret.unknown_a16 = this->xb_unknown_a16;
-
-  transcode_inventory_items(
-      ret.items, ret.num_items, this->item_version, Version::BB_V4, s->item_parameter_table_for_encode(Version::BB_V4));
-  ret.base.visual.enforce_lobby_join_limits_for_version(Version::BB_V4);
-
-  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
-  if (name_color) {
-    ret.base.visual.name_color = name_color;
-    ret.base.visual.name_color_checksum = 0;
-  }
-
   return ret;
 }
 
@@ -1140,8 +1125,7 @@ Parsed6x70Data::Parsed6x70Data(
       area(base.area),
       player_flags(base.player_flags),
       player_flags_is_v3(!is_v1_or_v2(from_version)),
-      technique_levels_v1(base.technique_levels_v1),
-      visual(base.visual) {}
+      technique_levels_v1(base.technique_levels_v1) {}
 
 G_6x70_Base_V1 Parsed6x70Data::base_v1(bool is_v3) const {
   G_6x70_Base_V1 ret;
@@ -1164,7 +1148,6 @@ G_6x70_Base_V1 Parsed6x70Data::base_v1(bool is_v3) const {
   ret.area = this->area;
   ret.player_flags = this->get_player_flags(is_v3);
   ret.technique_levels_v1 = this->technique_levels_v1;
-  ret.visual = this->visual;
   return ret;
 }
 
@@ -1231,7 +1214,7 @@ uint32_t Parsed6x70Data::get_player_flags(bool is_v3) const {
       : Parsed6x70Data::convert_player_flags(this->player_flags, is_v3);
 }
 
-static asio::awaitable<void> on_sync_joining_player_disp_and_inventory(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_sync_joining_player_disp_and_inventory(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto s = c->require_server_state();
   check_expected_loading_command(c, msg);
 
@@ -1239,7 +1222,7 @@ static asio::awaitable<void> on_sync_joining_player_disp_and_inventory(std::shar
   // l->any_client_loading() here.
   auto target = get_sync_target(c, msg.command, msg.flag, true);
   if (!target) {
-    co_return;
+    return;
   }
 
   bool is_client_customisation = c->check_flag(Client::Flag::IS_CLIENT_CUSTOMIZATION);
@@ -1302,76 +1285,69 @@ static asio::awaitable<void> on_sync_joining_player_disp_and_inventory(std::shar
   }
 }
 
-static asio::awaitable<void> on_forward_check_client(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_forward_check_client(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_ClientIDHeader>(0xFFFF);
   if (cmd.client_id == c->lobby_client_id) {
     forward_subcommand(c, msg);
   }
-  co_return;
 }
 
 template <typename CmdT>
-static asio::awaitable<void> on_forward_check_client_t(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_forward_check_client_t(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<CmdT>();
   if (cmd.client_id == c->lobby_client_id) {
     forward_subcommand(c, msg);
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_forward_check_game(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_forward_check_game(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (l->is_game()) {
     forward_subcommand(c, msg);
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_forward_check_lobby(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_forward_check_lobby(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
     forward_subcommand(c, msg);
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_forward_check_lobby_client(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_forward_check_lobby_client(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_ClientIDHeader>(0xFFFF);
   auto l = c->require_lobby();
   if (!l->is_game() && (cmd.client_id == c->lobby_client_id)) {
     forward_subcommand(c, msg);
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_forward_check_game_client(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_forward_check_game_client(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_ClientIDHeader>(0xFFFF);
   auto l = c->require_lobby();
   if (l->is_game() && (cmd.client_id == c->lobby_client_id)) {
     forward_subcommand(c, msg);
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_forward_check_ep3_lobby(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_forward_check_ep3_lobby(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   msg.check_size_t<G_UnusedHeader>(0xFFFF);
   auto l = c->require_lobby();
   if (!l->is_game() && l->is_ep3()) {
     forward_subcommand(c, msg);
   }
-  co_return;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Ep3 subcommands
 
-static asio::awaitable<void> on_ep3_battle_subs(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_ep3_battle_subs(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& header = msg.check_size_t<G_CardBattleCommandHeader>(0xFFFF);
 
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   if (!l->is_game() || !l->is_ep3()) {
-    co_return;
+    return;
   }
 
   if (c->version() != Version::GC_EP3_NTE) {
@@ -1382,26 +1358,26 @@ static asio::awaitable<void> on_ep3_battle_subs(std::shared_ptr<Client> c, Subco
   }
 
   if (header.subsubcommand == 0x1A) {
-    co_return;
+    return;
   } else if (header.subsubcommand == 0x20) {
     const auto& cmd = msg.check_size_t<G_Unknown_Ep3_6xB5x20>();
     if (cmd.client_id >= 12) {
-      co_return;
+      return;
     }
   } else if (header.subsubcommand == 0x31) {
     const auto& cmd = msg.check_size_t<G_ConfirmDeckSelection_Ep3_6xB5x31>();
     if (cmd.menu_type >= 0x15) {
-      co_return;
+      return;
     }
   } else if (header.subsubcommand == 0x32) {
     const auto& cmd = msg.check_size_t<G_MoveSharedMenuCursor_Ep3_6xB5x32>();
     if (cmd.menu_type >= 0x15) {
-      co_return;
+      return;
     }
   } else if (header.subsubcommand == 0x36) {
     const auto& cmd = msg.check_size_t<G_RecreatePlayer_Ep3_6xB5x36>();
     if (l->is_game() && (cmd.client_id >= 4)) {
-      co_return;
+      return;
     }
   } else if (header.subsubcommand == 0x38) {
     c->set_flag(Client::Flag::EP3_ALLOW_6xBC);
@@ -1420,7 +1396,7 @@ static asio::awaitable<void> on_ep3_battle_subs(std::shared_ptr<Client> c, Subco
   }
 }
 
-static asio::awaitable<void> on_ep3_trade_card_counts(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_ep3_trade_card_counts(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   if (c->version() == Version::GC_EP3_NTE) {
     msg.check_size_t<G_CardCounts_Ep3NTE_6xBC>(0xFFFF);
   } else {
@@ -1428,15 +1404,15 @@ static asio::awaitable<void> on_ep3_trade_card_counts(std::shared_ptr<Client> c,
   }
 
   if (!command_is_private(msg.command)) {
-    co_return;
+    return;
   }
   auto l = c->require_lobby();
   if (!l->is_game() || !l->is_ep3()) {
-    co_return;
+    return;
   }
   auto target = l->clients.at(msg.flag);
   if (!target || !target->check_flag(Client::Flag::EP3_ALLOW_6xBC)) {
-    co_return;
+    return;
   }
 
   forward_subcommand(c, msg);
@@ -1445,10 +1421,10 @@ static asio::awaitable<void> on_ep3_trade_card_counts(std::shared_ptr<Client> c,
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Chat commands and the like
 
-static asio::awaitable<void> on_send_guild_card(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_send_guild_card(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (!command_is_private(msg.command) || (msg.flag >= l->max_clients) || (!l->clients[msg.flag])) {
-    co_return;
+    return;
   }
 
   switch (c->version()) {
@@ -1493,20 +1469,19 @@ static asio::awaitable<void> on_send_guild_card(std::shared_ptr<Client> c, Subco
   send_guild_card(l->clients[msg.flag], c);
 }
 
-static asio::awaitable<void> on_symbol_chat(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_symbol_chat(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_SymbolChat_6x07>();
   if (c->can_chat && (cmd.client_id == c->lobby_client_id)) {
     forward_subcommand(c, msg);
   }
-  co_return;
 }
 
 template <bool SenderBE>
-static asio::awaitable<void> on_word_select_t(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_word_select_t(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_WordSelectT_6x74<SenderBE>>();
   if (c->can_chat && (cmd.client_id == c->lobby_client_id)) {
     if (command_is_private(msg.command)) {
-      co_return;
+      return;
     }
 
     auto s = c->require_server_state();
@@ -1566,7 +1541,7 @@ static asio::awaitable<void> on_word_select_t(std::shared_ptr<Client> c, Subcomm
         }
 
       } catch (const std::exception& e) {
-        std::string name = escape_player_name(c->character_file()->disp.name.decode(c->language()));
+        std::string name = escape_player_name(c->character_file()->disp.visual.name.decode(c->language()));
         lc->log.warning_f("Untranslatable Word Select message: {}", e.what());
         send_text_message_fmt(lc, "$C4Untranslatable Word\nSelect message from\n{}", name);
       }
@@ -1574,7 +1549,7 @@ static asio::awaitable<void> on_word_select_t(std::shared_ptr<Client> c, Subcomm
   }
 }
 
-static asio::awaitable<void> on_word_select(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_word_select(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   if (is_pre_v1(c->version())) {
     // The Word Select command is a different size in final vs. NTE and proto, so handle that here by appending
     // FFFFFFFF0000000000000000
@@ -1586,21 +1561,20 @@ static asio::awaitable<void> on_word_select(std::shared_ptr<Client> c, Subcomman
     effective_data[0x16] = 0xFF;
     effective_data[0x17] = 0xFF;
     SubcommandMessage translated_msg{msg.command, msg.flag, effective_data.data(), effective_data.size()};
-    co_await on_word_select_t<false>(c, translated_msg);
+    on_word_select_t<false>(c, translated_msg);
   } else if (is_big_endian(c->version())) {
-    co_await on_word_select_t<true>(c, msg);
+    on_word_select_t<true>(c, msg);
   } else {
-    co_await on_word_select_t<false>(c, msg);
+    on_word_select_t<false>(c, msg);
   }
 }
 
-static asio::awaitable<void> on_warp(std::shared_ptr<Client>, SubcommandMessage& msg) {
+static void on_warp(std::shared_ptr<Client>, SubcommandMessage& msg) {
   // Unconditionally block these. Players should use $warp instead.
   msg.check_size_t<G_InterLevelWarp_6x94>();
-  co_return;
 }
 
-static asio::awaitable<void> on_set_player_visible(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_set_player_visible(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_SetPlayerVisibility_6x22_6x23>();
 
   if (cmd.header.client_id == c->lobby_client_id) {
@@ -1626,12 +1600,11 @@ static asio::awaitable<void> on_set_player_visible(std::shared_ptr<Client> c, Su
       }
     }
   }
-  co_return;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static asio::awaitable<void> on_change_floor_6x1F(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_change_floor_6x1F(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   if (is_pre_v1(c->version())) {
     msg.check_size_t<G_SetPlayerFloor_DCNTE_6x1F>();
     // DC NTE and 11/2000 don't send 6F when they're done loading, so we clear the loading flag here instead.
@@ -1648,24 +1621,22 @@ static asio::awaitable<void> on_change_floor_6x1F(std::shared_ptr<Client> c, Sub
     }
   }
   forward_subcommand(c, msg);
-  co_return;
 }
 
-static asio::awaitable<void> on_change_floor_6x21(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_change_floor_6x21(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_InterLevelWarp_6x21>();
   if (cmd.floor >= 0 && c->floor != static_cast<uint32_t>(cmd.floor)) {
     c->floor = cmd.floor;
   }
   forward_subcommand(c, msg);
-  co_return;
 }
 
-static asio::awaitable<void> on_player_died(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_player_died(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_PlayerDied_6x4D>(0xFFFF);
 
   auto l = c->require_lobby();
   if (!l->is_game() || (cmd.header.client_id != c->lobby_client_id)) {
-    co_return;
+    return;
   }
 
   // Decrease MAG's synchro
@@ -1718,7 +1689,6 @@ static asio::awaitable<void> on_player_revived(std::shared_ptr<Client> c, Subcom
       co_await send_change_player_hp(l, c->lobby_client_id, PlayerHPChange::MAXIMIZE_HP, 0);
     }
   }
-  co_return;
 }
 
 static asio::awaitable<void> on_received_condition(std::shared_ptr<Client> c, SubcommandMessage& msg) {
@@ -1753,7 +1723,7 @@ static asio::awaitable<void> on_change_hp(std::shared_ptr<Client> c, SubcommandM
   }
 }
 
-static asio::awaitable<void> on_cast_technique_finished(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_cast_technique_finished(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_CastTechniqueComplete_6x48>();
 
   auto l = c->require_lobby();
@@ -1765,10 +1735,9 @@ static asio::awaitable<void> on_cast_technique_finished(std::shared_ptr<Client> 
       send_player_stats_change(c, PlayerStatsChange::ADD_TP, 255);
     }
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_npc_control(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_npc_control(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_NPCControl_6x69>();
   // Don't allow NPC control commands if there is a player in the relevant slot
   const auto& l = c->require_lobby();
@@ -1781,15 +1750,14 @@ static asio::awaitable<void> on_npc_control(std::shared_ptr<Client> c, Subcomman
   }
 
   forward_subcommand(c, msg);
-  co_return;
 }
 
-static asio::awaitable<void> on_switch_state_changed(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_switch_state_changed(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto& cmd = msg.check_size_t<G_WriteSwitchFlag_6x05>();
 
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
 
   if (!l->quest &&
@@ -1857,27 +1825,25 @@ static asio::awaitable<void> on_switch_state_changed(std::shared_ptr<Client> c, 
     }
   }
 
-  co_await forward_subcommand_with_entity_id_transcode_t<G_WriteSwitchFlag_6x05, true>(c, msg);
-  co_return;
+  forward_subcommand_with_entity_id_transcode_t<G_WriteSwitchFlag_6x05, true>(c, msg);
 }
 
-static asio::awaitable<void> on_play_sound_from_player(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_play_sound_from_player(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_PlaySoundFromPlayer_6xB2>();
   // This command can be used to play arbitrary sounds, but the client only ever sends it for the camera shutter sound,
   // so we only allow that one.
   if (cmd.sound_id == 0x00051720) {
     forward_subcommand(c, msg);
   }
-  co_return;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename CmdT>
-static asio::awaitable<void> on_movement_xz(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_movement_xz(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<CmdT>();
   if (cmd.header.client_id != c->lobby_client_id) {
-    co_return;
+    return;
   }
   c->pos.x = cmd.pos.x;
   c->pos.z = cmd.pos.z;
@@ -1885,20 +1851,20 @@ static asio::awaitable<void> on_movement_xz(std::shared_ptr<Client> c, Subcomman
 }
 
 template <typename CmdT>
-static asio::awaitable<void> on_movement_xyz(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_movement_xyz(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<CmdT>();
   if (cmd.header.client_id != c->lobby_client_id) {
-    co_return;
+    return;
   }
   c->pos = cmd.pos;
   forward_subcommand(c, msg);
 }
 
 template <typename CmdT>
-static asio::awaitable<void> on_movement_xz_with_floor(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_movement_xz_with_floor(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<CmdT>();
   if (cmd.header.client_id != c->lobby_client_id) {
-    co_return;
+    return;
   }
   c->pos.x = cmd.pos.x;
   c->pos.z = cmd.pos.z;
@@ -1909,10 +1875,10 @@ static asio::awaitable<void> on_movement_xz_with_floor(std::shared_ptr<Client> c
 }
 
 template <typename CmdT>
-static asio::awaitable<void> on_movement_xyz_with_floor(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_movement_xyz_with_floor(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<CmdT>();
   if (cmd.header.client_id != c->lobby_client_id) {
-    co_return;
+    return;
   }
   c->pos = cmd.pos;
   if (cmd.floor >= 0 && c->floor != static_cast<uint32_t>(cmd.floor)) {
@@ -1921,18 +1887,18 @@ static asio::awaitable<void> on_movement_xyz_with_floor(std::shared_ptr<Client> 
   forward_subcommand(c, msg);
 }
 
-static asio::awaitable<void> on_set_animation_state(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_set_animation_state(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto& cmd = msg.check_size_t<G_SetAnimationState_6x52>();
   if (cmd.header.client_id != c->lobby_client_id) {
-    co_return;
+    return;
   }
   if (command_is_private(msg.command)) {
-    co_return;
+    return;
   }
   auto l = c->require_lobby();
   if (l->is_game()) {
     forward_subcommand(c, msg);
-    co_return;
+    return;
   }
 
   // The animation numbers were changed on V3. This is the most common one to see in the lobby (it occurs when a player
@@ -1940,7 +1906,7 @@ static asio::awaitable<void> on_set_animation_state(std::shared_ptr<Client> c, S
   bool c_is_v1_or_v2 = is_v1_or_v2(c->version());
   if (!((c_is_v1_or_v2 && (cmd.animation == 0x000A)) || (!c_is_v1_or_v2 && (cmd.animation == 0x0000)))) {
     forward_subcommand(c, msg);
-    co_return;
+    return;
   }
 
   G_SetAnimationState_6x52 other_cmd = cmd;
@@ -1957,11 +1923,11 @@ static asio::awaitable<void> on_set_animation_state(std::shared_ptr<Client> c, S
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Item commands
 
-static asio::awaitable<void> on_player_drop_item(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_player_drop_item(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_DropItem_6x2A>();
 
   if ((cmd.header.client_id != c->lobby_client_id)) {
-    co_return;
+    return;
   }
 
   auto s = c->require_server_state();
@@ -1982,12 +1948,12 @@ static asio::awaitable<void> on_player_drop_item(std::shared_ptr<Client> c, Subc
 }
 
 template <typename CmdT>
-static asio::awaitable<void> on_create_inventory_item_t(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_create_inventory_item_t(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<CmdT>();
 
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
 
   ItemData item = cmd.item_data;
@@ -2003,7 +1969,7 @@ static asio::awaitable<void> on_create_inventory_item_t(std::shared_ptr<Client> 
   if (cmd.header.client_id != c->lobby_client_id) {
     // Don't allow creating items in other players' inventories, only in NPCs'
     if (l->clients.at(cmd.header.client_id)) {
-      co_return;
+      return;
     }
 
     if (l->log.should_log(phosg::LogLevel::L_INFO)) {
@@ -2024,15 +1990,14 @@ static asio::awaitable<void> on_create_inventory_item_t(std::shared_ptr<Client> 
   forward_subcommand_with_item_transcode_t(c, msg.command, msg.flag, cmd);
 }
 
-static asio::awaitable<void> on_create_inventory_item(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_create_inventory_item(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   if (msg.size == sizeof(G_CreateInventoryItem_PC_V3_BB_6x2B)) {
-    co_await on_create_inventory_item_t<G_CreateInventoryItem_PC_V3_BB_6x2B>(c, msg);
+    on_create_inventory_item_t<G_CreateInventoryItem_PC_V3_BB_6x2B>(c, msg);
   } else if (msg.size == sizeof(G_CreateInventoryItem_DC_6x2B)) {
-    co_await on_create_inventory_item_t<G_CreateInventoryItem_DC_6x2B>(c, msg);
+    on_create_inventory_item_t<G_CreateInventoryItem_DC_6x2B>(c, msg);
   } else {
     throw std::runtime_error("invalid size for 6x2B command");
   }
-  co_return;
 }
 
 template <typename CmdT>
@@ -2066,7 +2031,7 @@ static void on_drop_partial_stack_t(std::shared_ptr<Client> c, SubcommandMessage
   forward_subcommand_with_item_transcode_t(c, msg.command, msg.flag, cmd);
 }
 
-static asio::awaitable<void> on_drop_partial_stack(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_drop_partial_stack(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   if (msg.size == sizeof(G_DropStackedItem_PC_V3_BB_6x5D)) {
     on_drop_partial_stack_t<G_DropStackedItem_PC_V3_BB_6x5D>(c, msg);
   } else if (msg.size == sizeof(G_DropStackedItem_DC_6x5D)) {
@@ -2074,10 +2039,9 @@ static asio::awaitable<void> on_drop_partial_stack(std::shared_ptr<Client> c, Su
   } else {
     throw std::runtime_error("invalid size for 6x5D command");
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_drop_partial_stack_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_drop_partial_stack_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_SplitStackedItem_BB_6xC3>();
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
@@ -2115,10 +2079,9 @@ static asio::awaitable<void> on_drop_partial_stack_bb(std::shared_ptr<Client> c,
         cmd.header.client_id, cmd.item_id, name, cmd.floor, cmd.pos.x, cmd.pos.z);
     c->print_inventory();
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_buy_shop_item(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_buy_shop_item(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_BuyShopItem_6x5E>();
   auto l = c->require_lobby();
   if (c->version() == Version::BB_V4) {
@@ -2150,7 +2113,6 @@ static asio::awaitable<void> on_buy_shop_item(std::shared_ptr<Client> c, Subcomm
   }
 
   forward_subcommand_with_item_transcode_t(c, msg.command, msg.flag, cmd);
-  co_return;
 }
 
 void send_item_notification_if_needed(std::shared_ptr<Client> c, const ItemData& item, bool is_from_rare_table) {
@@ -2244,7 +2206,7 @@ static void on_box_or_enemy_item_drop_t(std::shared_ptr<Client> c, SubcommandMes
   }
 }
 
-static asio::awaitable<void> on_box_or_enemy_item_drop(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_box_or_enemy_item_drop(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   if (msg.size == sizeof(G_DropItem_DC_6x5F)) {
     on_box_or_enemy_item_drop_t<G_DropItem_DC_6x5F>(c, msg);
   } else if (msg.size == sizeof(G_DropItem_PC_V3_BB_6x5F)) {
@@ -2252,7 +2214,6 @@ static asio::awaitable<void> on_box_or_enemy_item_drop(std::shared_ptr<Client> c
   } else {
     throw std::runtime_error("invalid size for 6x5F command");
   }
-  co_return;
 }
 
 static asio::awaitable<void> on_pick_up_item_generic(
@@ -2335,7 +2296,7 @@ static asio::awaitable<void> on_pick_up_item_generic(
       }
 
       if (should_send_game_notif || should_send_global_notif) {
-        std::string p_name = p->disp.name.decode();
+        std::string p_name = p->disp.visual.name.decode();
         std::string desc_ingame = s->describe_item(c->version(), fi->data, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
         std::string desc_http = s->describe_item(c->version(), fi->data);
 
@@ -2383,11 +2344,11 @@ static asio::awaitable<void> on_pick_up_item_request(std::shared_ptr<Client> c, 
   co_await on_pick_up_item_generic(c, cmd.header.client_id, cmd.floor, cmd.item_id, true);
 }
 
-static asio::awaitable<void> on_equip_item(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_equip_item(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_EquipItem_6x25>();
 
   if (cmd.header.client_id != c->lobby_client_id) {
-    co_return;
+    return;
   }
 
   auto l = c->require_lobby();
@@ -2399,11 +2360,11 @@ static asio::awaitable<void> on_equip_item(std::shared_ptr<Client> c, Subcommand
   forward_subcommand(c, msg);
 }
 
-static asio::awaitable<void> on_unequip_item(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_unequip_item(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_UnequipItem_6x26>();
 
   if (cmd.header.client_id != c->lobby_client_id) {
-    co_return;
+    return;
   }
 
   auto l = c->require_lobby();
@@ -2414,11 +2375,11 @@ static asio::awaitable<void> on_unequip_item(std::shared_ptr<Client> c, Subcomma
   forward_subcommand(c, msg);
 }
 
-static asio::awaitable<void> on_use_item(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_use_item(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_UseItem_6x27>();
 
   if (cmd.header.client_id != c->lobby_client_id) {
-    co_return;
+    return;
   }
 
   auto l = c->require_lobby();
@@ -2442,11 +2403,11 @@ static asio::awaitable<void> on_use_item(std::shared_ptr<Client> c, SubcommandMe
   forward_subcommand(c, msg);
 }
 
-static asio::awaitable<void> on_feed_mag(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_feed_mag(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_FeedMag_6x28>();
 
   if (cmd.header.client_id != c->lobby_client_id) {
-    co_return;
+    return;
   }
 
   auto s = c->require_server_state();
@@ -2482,16 +2443,16 @@ static asio::awaitable<void> on_feed_mag(std::shared_ptr<Client> c, SubcommandMe
   forward_subcommand(c, msg);
 }
 
-static asio::awaitable<void> on_xbox_voice_chat_control(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_xbox_voice_chat_control(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   // If sent by an XB client, should be forwarded to XB clients and no one else
   if (c->version() != Version::XB_V3) {
-    co_return;
+    return;
   }
 
   auto l = c->require_lobby();
   if (command_is_private(msg.command)) {
     if (msg.flag >= l->max_clients) {
-      co_return;
+      return;
     }
     auto target = l->clients[msg.flag];
     if (target && (target->version() == Version::XB_V3)) {
@@ -2506,12 +2467,12 @@ static asio::awaitable<void> on_xbox_voice_chat_control(std::shared_ptr<Client> 
   }
 }
 
-static asio::awaitable<void> on_gc_nte_exclusive(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_gc_nte_exclusive(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto can_participate = [&](Version vers) {
     return (!is_v1_or_v2(vers) || (vers == Version::GC_NTE));
   };
   if (!can_participate(c->version())) {
-    co_return;
+    return;
   }
 
   // Command should not be forwarded across the GC NTE boundary, but may be forwarded to other clients within that
@@ -2521,7 +2482,7 @@ static asio::awaitable<void> on_gc_nte_exclusive(std::shared_ptr<Client> c, Subc
   auto l = c->require_lobby();
   if (command_is_private(msg.command)) {
     if (msg.flag >= l->max_clients) {
-      co_return;
+      return;
     }
     auto lc = l->clients[msg.flag];
     if (lc && can_participate(lc->version()) && ((lc->version() == Version::GC_NTE) == c_is_nte)) {
@@ -2536,14 +2497,14 @@ static asio::awaitable<void> on_gc_nte_exclusive(std::shared_ptr<Client> c, Subc
   }
 }
 
-static asio::awaitable<void> on_open_shop_bb_or_ep3_battle_subs(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_open_shop_bb_or_ep3_battle_subs(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
     throw std::runtime_error("6xB5 command sent in non-game lobby");
   }
 
   if (is_ep3(c->version())) {
-    co_await on_ep3_battle_subs(c, msg);
+    on_ep3_battle_subs(c, msg);
   } else if (l->episode == Episode::EP3) { // There's no item_creator in an Ep3 game
     throw std::runtime_error("received BB shop subcommand in Ep3 game");
   } else if (c->version() != Version::BB_V4) {
@@ -2609,8 +2570,7 @@ bool validate_6xBB(G_SyncCardTradeServerState_Ep3_6xBB& cmd) {
   return true;
 }
 
-static asio::awaitable<void> on_open_bank_bb_or_card_trade_counter_ep3(
-    std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_open_bank_bb_or_card_trade_counter_ep3(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
     throw std::runtime_error("6xBB command sent in non-game lobby");
@@ -2622,11 +2582,9 @@ static asio::awaitable<void> on_open_bank_bb_or_card_trade_counter_ep3(
   } else if (l->is_ep3() && validate_6xBB(msg.check_size_t<G_SyncCardTradeServerState_Ep3_6xBB>())) {
     forward_subcommand(c, msg);
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_ep3_private_word_select_bb_bank_action(
-    std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_ep3_private_word_select_bb_bank_action(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
     throw std::runtime_error("6xBD command sent in non-game lobby");
@@ -2637,7 +2595,7 @@ static asio::awaitable<void> on_ep3_private_word_select_bb_bank_action(
     const auto& cmd = msg.check_size_t<G_PrivateWordSelect_Ep3_6xBD>();
     s->word_select_table->validate(cmd.message, c->version());
 
-    std::string from_name = c->character_file()->disp.name.decode(c->language());
+    std::string from_name = c->character_file()->disp.visual.name.decode(c->language());
     static const std::string whisper_text = "(whisper)";
     auto send_to_client = [&](std::shared_ptr<Client> lc) -> void {
       if (cmd.private_flags & (1 << lc->lobby_client_id)) {
@@ -2653,7 +2611,7 @@ static asio::awaitable<void> on_ep3_private_word_select_bb_bank_action(
 
     if (command_is_private(msg.command)) {
       if (msg.flag >= l->max_clients) {
-        co_return;
+        return;
       }
       auto target = l->clients[msg.flag];
       if (target) {
@@ -2686,7 +2644,7 @@ static asio::awaitable<void> on_ep3_private_word_select_bb_bank_action(
     const auto& cmd = msg.check_size_t<G_BankAction_BB_6xBD>();
 
     if (!l->is_game()) {
-      co_return;
+      return;
     }
 
     auto p = c->character_file();
@@ -2762,7 +2720,7 @@ static asio::awaitable<void> on_ep3_private_word_select_bb_bank_action(
   }
 }
 
-static void on_sort_inventory_bb_inner(std::shared_ptr<Client> c, const SubcommandMessage& msg) {
+static void on_sort_inventory_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xC4 command sent by non-BB client");
   }
@@ -2810,14 +2768,6 @@ static void on_sort_inventory_bb_inner(std::shared_ptr<Client> c, const Subcomma
     sorted[x].extension_data2 = p->inventory.items[x].extension_data2;
   }
   p->inventory.items = sorted;
-}
-
-static asio::awaitable<void> on_sort_inventory_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
-  // There is a GCC bug that causes this function to not compile properly unless the sorting implementation is in a
-  // separate function. I think it's something to do with how it allocates the coroutine's locals, but it's enough to
-  // avoid for now.
-  on_sort_inventory_bb_inner(c, msg);
-  co_return;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2960,11 +2910,11 @@ DropReconcileResult reconcile_drop_request_with_map(
   return res;
 }
 
-static asio::awaitable<void> on_entity_drop_item_request(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_entity_drop_item_request(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   if (!l->is_game() || l->episode == Episode::EP3) {
-    co_return;
+    return;
   }
 
   // Note: We always call reconcile_drop_request_with_map, even in client drop mode, so that we can correctly mark
@@ -2975,7 +2925,7 @@ static asio::awaitable<void> on_entity_drop_item_request(std::shared_ptr<Client>
   ServerDropMode drop_mode = l->drop_mode;
   switch (drop_mode) {
     case ServerDropMode::DISABLED:
-      co_return;
+      return;
     case ServerDropMode::CLIENT: {
       // If the leader is BB, use SERVER_SHARED instead
       // TODO: We should also use server drops if any clients have incompatible object lists, since they might generate
@@ -2986,7 +2936,7 @@ static asio::awaitable<void> on_entity_drop_item_request(std::shared_ptr<Client>
         break;
       } else {
         forward_subcommand(c, msg);
-        co_return;
+        return;
       }
     }
     case ServerDropMode::SERVER_SHARED:
@@ -3099,10 +3049,10 @@ static asio::awaitable<void> on_entity_drop_item_request(std::shared_ptr<Client>
   }
 }
 
-static asio::awaitable<void> on_set_quest_flag(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_set_quest_flag(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
 
   uint16_t flag_num, action;
@@ -3121,7 +3071,7 @@ static asio::awaitable<void> on_set_quest_flag(std::shared_ptr<Client> c, Subcom
 
   // The client explicitly checks action for both 0 and 1 - any other value means no operation is performed.
   if ((flag_num >= 0x400) || (static_cast<size_t>(difficulty) > 3) || (action > 1)) {
-    co_return;
+    return;
   }
   bool should_set = (action == 0);
 
@@ -3212,16 +3162,16 @@ static asio::awaitable<void> on_set_quest_flag(std::shared_ptr<Client> c, Subcom
             },
             area, {}};
         SubcommandMessage drop_msg{0x62, l->leader_id, &drop_req, sizeof(drop_req)};
-        co_await on_entity_drop_item_request(c, drop_msg);
+        on_entity_drop_item_request(c, drop_msg);
       }
     }
   }
 }
 
-static asio::awaitable<void> on_sync_quest_register(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_sync_quest_register(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
 
   const auto& cmd = msg.check_size_t<G_SyncQuestRegister_6x77>();
@@ -3270,10 +3220,10 @@ static asio::awaitable<void> on_sync_quest_register(std::shared_ptr<Client> c, S
   }
 }
 
-static asio::awaitable<void> on_set_entity_set_flag(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_set_entity_set_flag(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
 
   const auto& cmd = msg.check_size_t<G_SetEntitySetFlags_6x76>();
@@ -3407,13 +3357,13 @@ static asio::awaitable<void> on_set_entity_set_flag(std::shared_ptr<Client> c, S
     }
   }
 
-  co_await forward_subcommand_with_entity_id_transcode_t<G_SetEntitySetFlags_6x76>(c, msg);
+  forward_subcommand_with_entity_id_transcode_t<G_SetEntitySetFlags_6x76>(c, msg);
 }
 
-static asio::awaitable<void> on_trigger_set_event(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_trigger_set_event(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
 
   const auto& cmd = msg.check_size_t<G_TriggerSetEvent_6x67>();
@@ -3434,16 +3384,16 @@ static inline uint32_t bswap32_high16(uint32_t v) {
   return ((v >> 8) & 0x00FF0000) | ((v << 8) & 0xFF000000) | (v & 0x0000FFFF);
 }
 
-static asio::awaitable<void> on_update_telepipe_state(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_update_telepipe_state(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   if (c->lobby_client_id > 3) {
     throw std::logic_error("client ID is above 3");
   }
   if (command_is_private(msg.command)) {
-    co_return;
+    return;
   }
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
 
   auto& cmd = msg.check_size_t<G_SetTelepipeState_6x68>();
@@ -3467,15 +3417,15 @@ static asio::awaitable<void> on_update_telepipe_state(std::shared_ptr<Client> c,
   }
 }
 
-static asio::awaitable<void> on_update_enemy_state(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_update_enemy_state(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto& cmd = msg.check_size_t<G_UpdateEnemyState_DC_PC_XB_BB_6x0A>();
 
   if (command_is_private(msg.command)) {
-    co_return;
+    return;
   }
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
   if (c->lobby_client_id > 3) {
     throw std::logic_error("client ID is above 3");
@@ -3533,15 +3483,15 @@ static asio::awaitable<void> on_update_enemy_state(std::shared_ptr<Client> c, Su
   }
 }
 
-static asio::awaitable<void> on_incr_enemy_damage(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_incr_enemy_damage(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto& cmd = msg.check_size_t<G_IncrementEnemyDamage_Extension_6xE4>();
 
   if (command_is_private(msg.command)) {
-    co_return;
+    return;
   }
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
   if (cmd.header.entity_id < 0x1000 || cmd.header.entity_id >= 0x4000) {
     throw std::runtime_error("6xE4 received for non-enemy entity");
@@ -3572,10 +3522,10 @@ static asio::awaitable<void> on_incr_enemy_damage(std::shared_ptr<Client> c, Sub
         ene_st->alias_target_ene_st->total_damage + cmd.hit_amount, cmd.max_hp);
   }
 
-  co_await forward_subcommand_with_entity_id_transcode_t<G_IncrementEnemyDamage_Extension_6xE4>(c, msg);
+  forward_subcommand_with_entity_id_transcode_t<G_IncrementEnemyDamage_Extension_6xE4>(c, msg);
 }
 
-static asio::awaitable<void> on_set_enemy_status_effect_flags_ultimate(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_set_enemy_status_effect_flags_ultimate(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto& cmd = msg.check_size_t<G_SetEnemyLowGameFlagsUltimate_6x9C>();
 
   if (command_is_private(msg.command) ||
@@ -3583,11 +3533,11 @@ static asio::awaitable<void> on_set_enemy_status_effect_flags_ultimate(std::shar
       (cmd.header.entity_id >= 0x4000) ||
       (cmd.status_effect_flags & 0xFFFFFFC0) ||
       (c->lobby_client_id > 3)) {
-    co_return;
+    return;
   }
   auto l = c->require_lobby();
   if (!l->is_game() || (l->difficulty != Difficulty::ULTIMATE)) {
-    co_return;
+    return;
   }
 
   auto ene_st = l->map_state->enemy_state_for_index(c->version(), cmd.header.entity_id - 0x1000);
@@ -3601,19 +3551,19 @@ static asio::awaitable<void> on_set_enemy_status_effect_flags_ultimate(std::shar
         ene_st->alias_target_ene_st->e_id, ene_st->alias_target_ene_st->game_flags);
   }
 
-  co_await forward_subcommand_with_entity_id_transcode_t<G_SetEnemyLowGameFlagsUltimate_6x9C>(c, msg);
+  forward_subcommand_with_entity_id_transcode_t<G_SetEnemyLowGameFlagsUltimate_6x9C>(c, msg);
 }
 
 template <typename CmdT>
-static asio::awaitable<void> on_update_object_state_t(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_update_object_state_t(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto& cmd = msg.check_size_t<CmdT>();
 
   if (command_is_private(msg.command)) {
-    co_return;
+    return;
   }
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
 
   auto obj_st = l->map_state->object_state_for_index(c->version(), cmd.object_index);
@@ -3635,7 +3585,7 @@ static asio::awaitable<void> on_update_object_state_t(std::shared_ptr<Client> c,
   }
 }
 
-static asio::awaitable<void> on_update_attackable_col_state(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_update_attackable_col_state(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_UpdateAttackableColState_6x91>();
   if ((cmd.object_index & 0xF000) || ((cmd.object_index | 0x4000) != cmd.header.entity_id)) {
     throw std::runtime_error("incorrect object IDs in 6x91 command");
@@ -3643,7 +3593,7 @@ static asio::awaitable<void> on_update_attackable_col_state(std::shared_ptr<Clie
 
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
 
   if (l->switch_flags &&
@@ -3655,14 +3605,14 @@ static asio::awaitable<void> on_update_attackable_col_state(std::shared_ptr<Clie
     l->switch_flags->set(cmd.floor, cmd.switch_flag_num);
   }
 
-  co_await on_update_object_state_t<G_UpdateAttackableColState_6x91>(c, msg);
+  on_update_object_state_t<G_UpdateAttackableColState_6x91>(c, msg);
 }
 
-static asio::awaitable<void> on_activate_timed_switch(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_activate_timed_switch(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_SetSwitchFlagFromTimer_6x93>();
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
   if (l->switch_flags) {
     if (cmd.should_set == 1) {
@@ -3674,15 +3624,15 @@ static asio::awaitable<void> on_activate_timed_switch(std::shared_ptr<Client> c,
   forward_subcommand(c, msg);
 }
 
-static asio::awaitable<void> on_battle_scores(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_battle_scores(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_BattleScores_6x7F>();
 
   if (command_is_private(msg.command)) {
-    co_return;
+    return;
   }
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
 
   G_BattleScoresBE_6x7F sw_cmd;
@@ -3708,15 +3658,15 @@ static asio::awaitable<void> on_battle_scores(std::shared_ptr<Client> c, Subcomm
   }
 }
 
-static asio::awaitable<void> on_dragon_actions_6x12(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_dragon_actions_6x12(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto& cmd = msg.check_size_t<G_DragonBossActions_DC_PC_XB_BB_6x12>();
 
   if (command_is_private(msg.command)) {
-    co_return;
+    return;
   }
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
 
   auto ene_st = l->map_state->enemy_state_for_index(c->version(), cmd.header.entity_id - 0x1000);
@@ -3747,15 +3697,15 @@ static asio::awaitable<void> on_dragon_actions_6x12(std::shared_ptr<Client> c, S
   }
 }
 
-static asio::awaitable<void> on_gol_dragon_actions(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_gol_dragon_actions(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto& cmd = msg.check_size_t<G_GolDragonBossActions_XB_BB_6xA8>();
 
   if (command_is_private(msg.command)) {
-    co_return;
+    return;
   }
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
 
   auto ene_st = l->map_state->enemy_state_for_index(c->version(), cmd.header.entity_id - 0x1000);
@@ -3793,15 +3743,15 @@ static asio::awaitable<void> on_gol_dragon_actions(std::shared_ptr<Client> c, Su
 }
 
 template <typename CmdT>
-static asio::awaitable<void> on_vol_opt_actions_t(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_vol_opt_actions_t(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto& cmd = msg.check_size_t<CmdT>();
 
   if (command_is_private(msg.command)) {
-    co_return;
+    return;
   }
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
 
   if (cmd.entity_index_count > 6) {
@@ -3813,18 +3763,18 @@ static asio::awaitable<void> on_vol_opt_actions_t(std::shared_ptr<Client> c, Sub
     }
   }
 
-  co_await forward_subcommand_with_entity_id_transcode_t<CmdT>(c, msg);
+  forward_subcommand_with_entity_id_transcode_t<CmdT>(c, msg);
 }
 
-static asio::awaitable<void> on_set_entity_pos_and_angle_6x17(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_set_entity_pos_and_angle_6x17(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto& cmd = msg.check_size_t<G_SetEntityPositionAndAngle_6x17>();
 
   if (command_is_private(msg.command)) {
-    co_return;
+    return;
   }
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
 
   // 6x17 is used to transport players to the other part of the Vol Opt boss arena, so phase 2 can begin. We only allow
@@ -3838,23 +3788,23 @@ static asio::awaitable<void> on_set_entity_pos_and_angle_6x17(std::shared_ptr<Cl
   if (cmd.header.entity_id < 0x1000) {
     auto target = l->clients.at(cmd.header.entity_id);
     if (!target || target->floor != c->floor) {
-      co_return;
+      return;
     }
     target->pos = cmd.pos;
   }
 
-  co_await forward_subcommand_with_entity_id_transcode_t<G_SetEntityPositionAndAngle_6x17>(c, msg);
+  forward_subcommand_with_entity_id_transcode_t<G_SetEntityPositionAndAngle_6x17>(c, msg);
 }
 
-static asio::awaitable<void> on_set_boss_warp_flags_6x6A(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_set_boss_warp_flags_6x6A(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto& cmd = msg.check_size_t<G_SetBossWarpFlags_6x6A>();
 
   if (command_is_private(msg.command)) {
-    co_return;
+    return;
   }
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
   if (cmd.header.entity_id < 0x4000) {
     throw std::runtime_error("6x6A sent for non-object entity");
@@ -3872,10 +3822,10 @@ static asio::awaitable<void> on_set_boss_warp_flags_6x6A(std::shared_ptr<Client>
     throw std::runtime_error("incorrect object type for 6x6A command");
   }
 
-  co_await forward_subcommand_with_entity_id_transcode_t<G_SetBossWarpFlags_6x6A>(c, msg);
+  forward_subcommand_with_entity_id_transcode_t<G_SetBossWarpFlags_6x6A>(c, msg);
 }
 
-static asio::awaitable<void> on_charge_attack_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_charge_attack_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xC7 command sent by non-BB client");
@@ -3891,7 +3841,7 @@ static asio::awaitable<void> on_charge_attack_bb(std::shared_ptr<Client> c, Subc
   } else {
     disp.stats.meseta -= cmd.meseta_amount;
   }
-  co_return;
+  return;
 }
 
 static void send_max_level_notification_if_needed(std::shared_ptr<Client> c) {
@@ -3911,7 +3861,7 @@ static void send_max_level_notification_if_needed(std::shared_ptr<Client> c) {
 
   auto p = c->character_file();
   if (p->disp.stats.level == max_level) {
-    std::string name = p->disp.name.decode(c->language());
+    std::string name = p->disp.visual.name.decode(c->language());
     size_t level_for_str = max_level + 1;
     std::string message = std::format("$C6{}$C7\nGC: {}\nhas reached Level $C6{}",
         name, c->login->account->account_id, level_for_str);
@@ -3925,10 +3875,10 @@ static void send_max_level_notification_if_needed(std::shared_ptr<Client> c) {
   }
 }
 
-static asio::awaitable<void> on_level_up(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_level_up(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
 
   // On the DC prototypes, this command doesn't include any stats - it just increments the player's level by 1.
@@ -3937,14 +3887,14 @@ static asio::awaitable<void> on_level_up(std::shared_ptr<Client> c, SubcommandMe
     msg.check_size_t<G_ChangePlayerLevel_DCNTE_6x30>();
     auto s = c->require_server_state();
     auto level_table = s->level_table(c->version());
-    const auto& level_incrs = level_table->stats_delta_for_level(p->disp.visual.char_class, p->disp.stats.level + 1);
-    p->disp.stats.char_stats.atp += level_incrs.atp;
-    p->disp.stats.char_stats.mst += level_incrs.mst;
-    p->disp.stats.char_stats.evp += level_incrs.evp;
-    p->disp.stats.char_stats.hp += level_incrs.hp;
-    p->disp.stats.char_stats.dfp += level_incrs.dfp;
-    p->disp.stats.char_stats.ata += level_incrs.ata;
-    p->disp.stats.char_stats.lck += level_incrs.lck;
+    const auto& incrs = level_table->stats_delta_for_level(p->disp.visual.sh.char_class, p->disp.stats.level + 1);
+    p->disp.stats.char_stats.atp += incrs.atp;
+    p->disp.stats.char_stats.mst += incrs.mst;
+    p->disp.stats.char_stats.evp += incrs.evp;
+    p->disp.stats.char_stats.hp += incrs.hp;
+    p->disp.stats.char_stats.dfp += incrs.dfp;
+    p->disp.stats.char_stats.ata += incrs.ata;
+    p->disp.stats.char_stats.lck += incrs.lck;
     p->disp.stats.level++;
   } else {
     const auto& cmd = msg.check_size_t<G_ChangePlayerLevel_6x30>();
@@ -3972,7 +3922,7 @@ static void add_player_exp(std::shared_ptr<Client> c, uint32_t exp, uint16_t fro
 
   bool leveled_up = false;
   do {
-    const auto& level = s->level_table(c->version())->stats_delta_for_level(p->disp.visual.char_class, p->disp.stats.level + 1);
+    const auto& level = s->level_table(c->version())->stats_delta_for_level(p->disp.visual.sh.char_class, p->disp.stats.level + 1);
     if (p->disp.stats.exp >= level.exp) {
       leveled_up = true;
       level.apply(p->disp.stats.char_stats);
@@ -4049,7 +3999,7 @@ static uint32_t base_exp_for_enemy_type(
       is_solo ? "true" : "false"));
 }
 
-static asio::awaitable<void> on_steal_exp_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_steal_exp_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xC6 command sent by non-BB client");
@@ -4063,7 +4013,7 @@ static asio::awaitable<void> on_steal_exp_bb(std::shared_ptr<Client> c, Subcomma
 
   auto p = c->character_file();
   if (c->character_file()->disp.stats.level >= 199) {
-    co_return;
+    return;
   }
 
   auto ene_st = l->map_state->enemy_state_for_index(c->version(), cmd.enemy_index);
@@ -4089,7 +4039,7 @@ static asio::awaitable<void> on_steal_exp_bb(std::shared_ptr<Client> c, Subcomma
 
   const auto& special = item_parameter_table->get_special(special_id);
   if (special.type != 3) { // Master's/Lord's/King's
-    co_return;
+    return;
   }
 
   uint8_t area = l->area_for_floor(c->version(), ene_st->super_ene->floor);
@@ -4100,7 +4050,7 @@ static asio::awaitable<void> on_steal_exp_bb(std::shared_ptr<Client> c, Subcomma
 
   // Note: The original code checks if special.type is 9, 10, or 11, and skips applying the android bonus if so. We
   // don't do anything for those special types, so we don't check for that here.
-  float percent = special.amount + ((l->difficulty == Difficulty::ULTIMATE) && char_class_is_android(p->disp.visual.char_class) ? 30 : 0);
+  float percent = special.amount + ((l->difficulty == Difficulty::ULTIMATE) && char_class_is_android(p->disp.visual.sh.char_class) ? 30 : 0);
   float ep2_factor = (episode == Episode::EP2) ? 1.3 : 1.0;
   uint32_t stolen_exp = std::max<uint32_t>(std::min<uint32_t>((enemy_exp * percent * ep2_factor) / 100.0f, (static_cast<size_t>(l->difficulty) + 1) * 20), 1);
   if (c->check_flag(Client::Flag::DEBUG_ENABLED)) {
@@ -4111,7 +4061,7 @@ static asio::awaitable<void> on_steal_exp_bb(std::shared_ptr<Client> c, Subcomma
   add_player_exp(c, stolen_exp, cmd.enemy_index | 0x1000);
 }
 
-static asio::awaitable<void> on_enemy_exp_request_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_enemy_exp_request_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
 
@@ -4139,7 +4089,7 @@ static asio::awaitable<void> on_enemy_exp_request_bb(std::shared_ptr<Client> c, 
       throw std::logic_error("Full EXP was already given but shared EXP was not");
     } else {
       c->log.info_f("All relevant EXP has already been given for this player/enemy pair");
-      co_return;
+      return;
     }
   }
 
@@ -4236,7 +4186,7 @@ static asio::awaitable<void> on_enemy_exp_request_bb(std::shared_ptr<Client> c, 
   }
 }
 
-static asio::awaitable<void> on_adjust_player_meseta_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_adjust_player_meseta_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_AdjustPlayerMeseta_BB_6xC9>();
 
   auto p = c->character_file();
@@ -4257,7 +4207,6 @@ static asio::awaitable<void> on_adjust_player_meseta_bb(std::shared_ptr<Client> 
     p->add_item(item, *s->item_stack_limits(c->version()));
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
   }
-  co_return;
 }
 
 static void assert_quest_item_create_allowed(std::shared_ptr<const Lobby> l, const ItemData& item) {
@@ -4287,7 +4236,7 @@ static void assert_quest_item_create_allowed(std::shared_ptr<const Lobby> l, con
   throw std::runtime_error("invalid item creation from quest");
 }
 
-static asio::awaitable<void> on_quest_create_item_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_quest_create_item_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_QuestCreateItem_BB_6xCA>();
   auto s = c->require_server_state();
   auto l = c->require_lobby();
@@ -4325,10 +4274,9 @@ static asio::awaitable<void> on_quest_create_item_bb(std::shared_ptr<Client> c, 
           c->lobby_client_id, item.id, name);
     }
   }
-  co_return;
 }
 
-asio::awaitable<void> on_transfer_item_via_mail_message_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_transfer_item_via_mail_message_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_TransferItemViaMailMessage_BB_6xCB>();
 
   auto l = c->require_lobby();
@@ -4383,10 +4331,9 @@ asio::awaitable<void> on_transfer_item_via_mail_message_bb(std::shared_ptr<Clien
     p->add_item(item, limits);
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_exchange_item_for_team_points_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_exchange_item_for_team_points_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_ExchangeItemForTeamPoints_BB_6xCC>();
 
   auto team = c->team();
@@ -4427,18 +4374,17 @@ static asio::awaitable<void> on_exchange_item_for_team_points_bb(std::shared_ptr
   G_DeleteInventoryItem_6x29 cmd29 = {{0x29, 0x03, cmd.header.client_id}, cmd.item_id, cmd.amount};
   SubcommandMessage delete_item_msg{msg.command, msg.flag, &cmd29, sizeof(cmd29)};
   forward_subcommand(c, delete_item_msg);
-  co_return;
 }
 
-static asio::awaitable<void> on_destroy_inventory_item(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_destroy_inventory_item(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_DeleteInventoryItem_6x29>();
 
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
   if (cmd.header.client_id != c->lobby_client_id) {
-    co_return;
+    return;
   }
 
   auto s = c->require_server_state();
@@ -4454,7 +4400,7 @@ static asio::awaitable<void> on_destroy_inventory_item(std::shared_ptr<Client> c
   forward_subcommand(c, msg);
 }
 
-static asio::awaitable<void> on_destroy_floor_item(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_destroy_floor_item(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_DestroyFloorItem_6x5C_6x63>();
 
   bool is_6x5C;
@@ -4471,7 +4417,7 @@ static asio::awaitable<void> on_destroy_floor_item(std::shared_ptr<Client> c, Su
 
   auto l = c->require_lobby();
   if (!l->is_game()) {
-    co_return;
+    return;
   }
 
   auto s = c->require_server_state();
@@ -4523,7 +4469,7 @@ static asio::awaitable<void> on_destroy_floor_item(std::shared_ptr<Client> c, Su
   }
 }
 
-static asio::awaitable<void> on_identify_item_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_identify_item_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
     throw std::runtime_error("6xB8 command sent in non-game lobby");
@@ -4532,7 +4478,7 @@ static asio::awaitable<void> on_identify_item_bb(std::shared_ptr<Client> c, Subc
   if (c->version() == Version::BB_V4) {
     const auto& cmd = msg.check_size_t<G_IdentifyItemRequest_6xB8>();
     if (!l->is_game() || l->episode == Episode::EP3) {
-      co_return;
+      return;
     }
 
     auto p = c->character_file();
@@ -4560,7 +4506,7 @@ static asio::awaitable<void> on_identify_item_bb(std::shared_ptr<Client> c, Subc
   }
 }
 
-static asio::awaitable<void> on_accept_identify_item_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_accept_identify_item_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
     throw std::runtime_error("6xB5 command sent in non-game lobby");
@@ -4583,10 +4529,9 @@ static asio::awaitable<void> on_accept_identify_item_bb(std::shared_ptr<Client> 
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, c->bb_identify_result);
     c->bb_identify_result.clear();
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_sell_item_at_shop_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_sell_item_at_shop_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xC0 command sent by non-BB client");
@@ -4611,10 +4556,9 @@ static asio::awaitable<void> on_sell_item_at_shop_bb(std::shared_ptr<Client> c, 
   }
 
   forward_subcommand(c, msg);
-  co_return;
 }
 
-static asio::awaitable<void> on_buy_shop_item_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_buy_shop_item_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xB7 command sent by non-BB client");
@@ -4651,10 +4595,9 @@ static asio::awaitable<void> on_buy_shop_item_bb(std::shared_ptr<Client> c, Subc
     l->log.info_f("Player {} purchased item {:08X} ({}) for {} meseta", c->lobby_client_id, item.id, name, price);
     c->print_inventory();
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_medical_center_bb(std::shared_ptr<Client> c, SubcommandMessage&) {
+static void on_medical_center_bb(std::shared_ptr<Client> c, SubcommandMessage&) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xC5 command sent by non-BB client");
@@ -4664,10 +4607,9 @@ static asio::awaitable<void> on_medical_center_bb(std::shared_ptr<Client> c, Sub
   }
 
   c->character_file()->remove_meseta(10, false);
-  co_return;
 }
 
-static asio::awaitable<void> on_battle_restart_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_battle_restart_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xCF command sent by non-BB client");
@@ -4707,10 +4649,9 @@ static asio::awaitable<void> on_battle_restart_bb(std::shared_ptr<Client> c, Sub
     }
   }
   l->map_state->reset();
-  co_return;
 }
 
-static asio::awaitable<void> on_battle_level_up_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_battle_level_up_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xD0 command sent by non-BB client");
@@ -4742,16 +4683,15 @@ static asio::awaitable<void> on_battle_level_up_bb(std::shared_ptr<Client> c, Su
     auto lp = lc->character_file();
     uint32_t target_level = std::min<uint32_t>(lp->disp.stats.level + cmd.num_levels, 199);
     uint32_t before_exp = lp->disp.stats.exp;
-    s->level_table(lc->version())->advance_to_level(lp->disp.stats, target_level, lp->disp.visual.char_class);
+    s->level_table(lc->version())->advance_to_level(lp->disp.stats, target_level, lp->disp.visual.sh.char_class);
     if ((lp->disp.stats.exp > before_exp) && (lc->version() == Version::BB_V4)) {
       send_give_experience(lc, lp->disp.stats.exp - before_exp, 0xFFFF);
       send_level_up(lc);
     }
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_battle_tech_level_up(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_battle_tech_level_up(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
     throw std::runtime_error("6x9B command sent in non-game lobby");
@@ -4783,17 +4723,16 @@ static asio::awaitable<void> on_battle_tech_level_up(std::shared_ptr<Client> c, 
       size_t level = lp->get_technique_level(tech_num);
       if (level != 0xFF) {
         size_t new_level = std::min<size_t>(
-            level + cmd.num_levels, pmt->get_max_tech_level(lp->disp.visual.char_class, tech_num));
+            level + cmd.num_levels, pmt->get_max_tech_level(lp->disp.visual.sh.char_class, tech_num));
         lp->set_technique_level(tech_num, new_level);
       }
     }
 
     forward_subcommand(c, msg);
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_request_challenge_grave_recovery_item_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_request_challenge_grave_recovery_item_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xD1 command sent by non-BB client");
@@ -4821,10 +4760,9 @@ static asio::awaitable<void> on_request_challenge_grave_recovery_item_bb(std::sh
   item.id = l->generate_item_id(cmd.header.client_id);
   l->add_item(cmd.floor, item, cmd.pos, nullptr, nullptr, 0x100F);
   send_drop_stacked_item_to_lobby(l, item, cmd.floor, cmd.pos);
-  co_return;
 }
 
-static asio::awaitable<void> on_challenge_mode_retry_or_quit(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_challenge_mode_retry_or_quit(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto& cmd = msg.check_size_t<G_SelectChallengeModeFailureOption_6x97>();
 
   auto l = c->require_lobby();
@@ -4862,19 +4800,18 @@ static asio::awaitable<void> on_challenge_mode_retry_or_quit(std::shared_ptr<Cli
   }
 
   forward_subcommand(c, msg);
-  co_return;
 }
 
-static asio::awaitable<void> on_challenge_update_records(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_challenge_update_records(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->lobby.lock();
   if (!l) {
     c->log.warning_f("Not in any lobby; dropping command");
-    co_return;
+    return;
   }
 
   const auto& cmd = msg.check_size_t<G_SetChallengeRecordsBase_6x7C>(0xFFFF);
   if (cmd.client_id != c->lobby_client_id) {
-    co_return;
+    return;
   }
 
   auto p = c->character_file(true, false);
@@ -4972,11 +4909,11 @@ static asio::awaitable<void> on_challenge_update_records(std::shared_ptr<Client>
 
   if (command_is_private(msg.command)) {
     if (msg.flag >= l->max_clients) {
-      co_return;
+      return;
     }
     auto target = l->clients[msg.flag];
     if (!target) {
-      co_return;
+      return;
     }
     send_to_client(target);
 
@@ -4989,11 +4926,11 @@ static asio::awaitable<void> on_challenge_update_records(std::shared_ptr<Client>
   }
 }
 
-static asio::awaitable<void> on_update_battle_data_6x7D(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_update_battle_data_6x7D(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->lobby.lock();
   if (!l) {
     c->log.warning_f("Not in any lobby; dropping command");
-    co_return;
+    return;
   }
 
   const auto& cmd = msg.check_size_t<G_SetBattleModeData_6x7D>(0xFFFF);
@@ -5001,10 +4938,10 @@ static asio::awaitable<void> on_update_battle_data_6x7D(std::shared_ptr<Client> 
     throw std::runtime_error("invalid client ID in 6x7D command");
   }
 
-  co_await on_forward_check_game(c, msg);
+  on_forward_check_game(c, msg);
 }
 
-static asio::awaitable<void> on_quest_exchange_item_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_quest_exchange_item_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xD5 command sent by non-BB client");
@@ -5041,10 +4978,9 @@ static asio::awaitable<void> on_quest_exchange_item_bb(std::shared_ptr<Client> c
     c->log.warning_f("Quest item exchange failed: {}", e.what());
     send_quest_function_call(c, cmd.failure_label);
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_wrap_item_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_wrap_item_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xD6 command sent by non-BB client");
@@ -5062,10 +4998,9 @@ static asio::awaitable<void> on_wrap_item_bb(std::shared_ptr<Client> c, Subcomma
   item.wrap(*s->item_stack_limits(c->version()), cmd.present_color);
   p->add_item(item, *s->item_stack_limits(c->version()));
   send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
-  co_return;
 }
 
-static asio::awaitable<void> on_photon_drop_exchange_for_item_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_photon_drop_exchange_for_item_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xD7 command sent by non-BB client");
@@ -5099,10 +5034,9 @@ static asio::awaitable<void> on_photon_drop_exchange_for_item_bb(std::shared_ptr
     c->log.warning_f("Quest Photon Drop exchange for item failed: {}", e.what());
     send_quest_function_call(c, cmd.failure_label);
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_photon_drop_exchange_for_s_rank_special_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_photon_drop_exchange_for_s_rank_special_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xD8 command sent by non-BB client");
@@ -5144,10 +5078,9 @@ static asio::awaitable<void> on_photon_drop_exchange_for_s_rank_special_bb(std::
     c->log.warning_f("Quest Photon Drop exchange for S-rank special failed: {}", e.what());
     send_quest_function_call(c, cmd.failure_label);
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_secret_lottery_ticket_exchange_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_secret_lottery_ticket_exchange_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xDE command sent by non-BB client");
@@ -5224,10 +5157,9 @@ static asio::awaitable<void> on_secret_lottery_ticket_exchange_bb(std::shared_pt
   }
 
   send_command_t(c, 0x24, (currency_index >= 0) ? 0 : 1, out_cmd);
-  co_return;
 }
 
-static asio::awaitable<void> on_photon_crystal_exchange_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_photon_crystal_exchange_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xDF command sent by non-BB client");
@@ -5247,10 +5179,9 @@ static asio::awaitable<void> on_photon_crystal_exchange_bb(std::shared_ptr<Clien
   send_destroy_item_to_lobby(c, item.id, 1);
   l->drop_mode = ServerDropMode::DISABLED;
   l->allowed_drop_modes = (1 << static_cast<uint8_t>(l->drop_mode)); // DISABLED only
-  co_return;
 }
 
-static asio::awaitable<void> on_quest_F95E_result_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_quest_F95E_result_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xE0 command sent by non-BB client");
@@ -5287,10 +5218,9 @@ static asio::awaitable<void> on_quest_F95E_result_bb(std::shared_ptr<Client> c, 
 
     send_drop_stacked_item_to_lobby(l, item, cmd.floor, cmd.pos);
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_quest_F95F_result_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_quest_F95F_result_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xE1 command sent by non-BB client");
@@ -5323,7 +5253,7 @@ static asio::awaitable<void> on_quest_F95F_result_bb(std::shared_ptr<Client> c, 
   }
   if (failed) {
     send_gallon_plan_result(c, cmd.failure_label, cmd.result_code_reg, 1, cmd.result_index_reg, cmd.result_index);
-    co_return;
+    return;
   }
 
   ItemData new_item = result.second;
@@ -5337,17 +5267,16 @@ static asio::awaitable<void> on_quest_F95F_result_bb(std::shared_ptr<Client> c, 
   if (failed) {
     p->add_item(ticket_item, limits);
     send_gallon_plan_result(c, cmd.failure_label, cmd.result_code_reg, 2, cmd.result_index_reg, cmd.result_index);
-    co_return;
+    return;
   }
 
   // Note: It seems Sega used 6xDB here; we use 6x29 instead.
   send_destroy_item_to_lobby(c, ticket_item.id, result.first);
   send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
   send_gallon_plan_result(c, cmd.success_label, cmd.result_code_reg, 0, cmd.result_index_reg, cmd.result_index);
-  co_return;
 }
 
-static asio::awaitable<void> on_quest_F960_result_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_quest_F960_result_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xE2 command sent by non-BB client");
@@ -5431,10 +5360,9 @@ static asio::awaitable<void> on_quest_F960_result_bb(std::shared_ptr<Client> c, 
   } else {
     send_drop_item_to_channel(s, c->channel, item, 0, cmd.floor, cmd.pos, 0xFFFF);
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_momoka_item_exchange_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_momoka_item_exchange_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xD9 command sent by non-BB client");
@@ -5467,7 +5395,7 @@ static asio::awaitable<void> on_momoka_item_exchange_bb(std::shared_ptr<Client> 
   }
   if (failed) {
     send_command(c, 0x23, 0x01);
-    co_return;
+    return;
   }
 
   try {
@@ -5479,17 +5407,16 @@ static asio::awaitable<void> on_momoka_item_exchange_bb(std::shared_ptr<Client> 
   if (failed) {
     p->add_item(found_item, limits); // Add found_item back since we're cancelling the exchange
     send_command(c, 0x23, 0x02);
-    co_return;
+    return;
   }
 
   // Note: It seems Sega used 6xDB here; we use 6x29 instead.
   send_destroy_item_to_lobby(c, found_item.id, 1);
   send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
   send_command(c, 0x23, 0x00);
-  co_return;
 }
 
-static asio::awaitable<void> on_upgrade_weapon_attribute_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_upgrade_weapon_attribute_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (c->version() != Version::BB_V4) {
     throw std::runtime_error("6xDA command sent by non-BB client");
@@ -5558,13 +5485,11 @@ static asio::awaitable<void> on_upgrade_weapon_attribute_bb(std::shared_ptr<Clie
     c->log.warning_f("Weapon attribute upgrade failed: {}", e.what());
     send_quest_function_call(c, cmd.failure_label);
   }
-  co_return;
 }
 
-static asio::awaitable<void> on_write_quest_counter_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+static void on_write_quest_counter_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& cmd = msg.check_size_t<G_SetQuestCounter_BB_6xD2>();
   c->character_file()->quest_counters[cmd.index] = cmd.value;
-  co_return;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -5576,9 +5501,9 @@ const std::vector<SubcommandDefinition> subcommand_definitions{
     // {DC NTE, 11/2000, all other versions, handler}
     /* 6x00 */ {0x00, 0x00, 0x00, on_invalid},
     /* 6x01 */ {0x01, 0x01, 0x01, on_invalid},
-    /* 6x02 */ {0x02, 0x02, 0x02, forward_subcommand_m},
-    /* 6x03 */ {0x03, 0x03, 0x03, forward_subcommand_m},
-    /* 6x04 */ {0x04, 0x04, 0x04, forward_subcommand_m},
+    /* 6x02 */ {0x02, 0x02, 0x02, forward_subcommand},
+    /* 6x03 */ {0x03, 0x03, 0x03, forward_subcommand},
+    /* 6x04 */ {0x04, 0x04, 0x04, forward_subcommand},
     /* 6x05 */ {0x05, 0x05, 0x05, on_switch_state_changed},
     /* 6x06 */ {0x06, 0x06, 0x06, on_send_guild_card},
     /* 6x07 */ {0x07, 0x07, 0x07, on_symbol_chat, SDF::ALWAYS_FORWARD_TO_WATCHERS},
@@ -5634,8 +5559,8 @@ const std::vector<SubcommandDefinition> subcommand_definitions{
     /* NONE */ {0x33, 0x35, NONE, on_forward_check_game},
     /* 6x39 */ {NONE, 0x36, 0x39, on_forward_check_game},
     /* 6x3A */ {NONE, 0x37, 0x3A, on_forward_check_game},
-    /* 6x3B */ {NONE, 0x38, 0x3B, forward_subcommand_m},
-    /* 6x3C */ {0x34, 0x39, 0x3C, forward_subcommand_m},
+    /* 6x3B */ {NONE, 0x38, 0x3B, forward_subcommand},
+    /* 6x3C */ {0x34, 0x39, 0x3C, forward_subcommand},
     /* 6x3D */ {0x35, 0x3A, 0x3D, on_invalid},
     /* 6x3E */ {NONE, NONE, 0x3E, on_movement_xyz_with_floor<G_StopAtPosition_6x3E>},
     /* 6x3F */ {0x36, 0x3B, 0x3F, on_movement_xyz_with_floor<G_SetPosition_6x3F>},
@@ -5659,14 +5584,14 @@ const std::vector<SubcommandDefinition> subcommand_definitions{
     /* 6x51 */ {0x45, 0x4B, 0x51, on_invalid},
     /* 6x52 */ {0x46, 0x4C, 0x52, on_set_animation_state},
     /* 6x53 */ {0x47, 0x4D, 0x53, on_forward_check_game},
-    /* 6x54 */ {0x48, 0x4E, 0x54, forward_subcommand_m},
+    /* 6x54 */ {0x48, 0x4E, 0x54, forward_subcommand},
     /* 6x55 */ {0x49, 0x4F, 0x55, on_movement_xyz<G_IntraMapWarp_6x55>},
     /* 6x56 */ {0x4A, 0x50, 0x56, on_movement_xyz<G_SetPlayerPositionAndAngle_6x56>},
     /* 6x57 */ {NONE, 0x51, 0x57, on_forward_check_client},
     /* 6x58 */ {NONE, NONE, 0x58, on_forward_check_client},
     /* 6x59 */ {0x4B, 0x52, 0x59, on_pick_up_item},
     /* 6x5A */ {0x4C, 0x53, 0x5A, on_pick_up_item_request},
-    /* 6x5B */ {0x4D, 0x54, 0x5B, forward_subcommand_m},
+    /* 6x5B */ {0x4D, 0x54, 0x5B, forward_subcommand},
     /* 6x5C */ {0x4E, 0x55, 0x5C, on_destroy_floor_item},
     /* 6x5D */ {0x4F, 0x56, 0x5D, on_drop_partial_stack},
     /* 6x5E */ {0x50, 0x57, 0x5E, on_buy_shop_item},
@@ -5695,13 +5620,13 @@ const std::vector<SubcommandDefinition> subcommand_definitions{
     /* 6x75 */ {NONE, NONE, 0x75, on_set_quest_flag},
     /* 6x76 */ {NONE, NONE, 0x76, on_set_entity_set_flag},
     /* 6x77 */ {NONE, NONE, 0x77, on_sync_quest_register},
-    /* 6x78 */ {NONE, NONE, 0x78, forward_subcommand_m},
+    /* 6x78 */ {NONE, NONE, 0x78, forward_subcommand},
     /* 6x79 */ {NONE, NONE, 0x79, on_forward_check_lobby},
     /* 6x7A */ {NONE, NONE, 0x7A, on_forward_check_game_client},
-    /* 6x7B */ {NONE, NONE, 0x7B, forward_subcommand_m},
+    /* 6x7B */ {NONE, NONE, 0x7B, forward_subcommand},
     /* 6x7C */ {NONE, NONE, 0x7C, on_challenge_update_records},
     /* 6x7D */ {NONE, NONE, 0x7D, on_update_battle_data_6x7D},
-    /* 6x7E */ {NONE, NONE, 0x7E, forward_subcommand_m},
+    /* 6x7E */ {NONE, NONE, 0x7E, forward_subcommand},
     /* 6x7F */ {NONE, NONE, 0x7F, on_battle_scores},
     /* 6x80 */ {NONE, NONE, 0x80, on_forward_check_game},
     /* 6x81 */ {NONE, NONE, 0x81, on_forward_check_game},
@@ -5733,7 +5658,7 @@ const std::vector<SubcommandDefinition> subcommand_definitions{
     /* 6x9B */ {NONE, NONE, 0x9B, on_battle_tech_level_up},
     /* 6x9C */ {NONE, NONE, 0x9C, on_set_enemy_status_effect_flags_ultimate},
     /* 6x9D */ {NONE, NONE, 0x9D, on_forward_check_game},
-    /* 6x9E */ {NONE, NONE, 0x9E, forward_subcommand_m},
+    /* 6x9E */ {NONE, NONE, 0x9E, forward_subcommand},
     /* 6x9F */ {NONE, NONE, 0x9F, forward_subcommand_with_entity_id_transcode_t<G_GalGryphonBossActions_6x9F>},
     /* 6xA0 */ {NONE, NONE, 0xA0, forward_subcommand_with_entity_id_transcode_t<G_GalGryphonBossActions_6xA0>},
     /* 6xA1 */ {NONE, NONE, 0xA1, on_forward_check_game},
@@ -5742,7 +5667,7 @@ const std::vector<SubcommandDefinition> subcommand_definitions{
     /* 6xA4 */ {NONE, NONE, 0xA4, forward_subcommand_with_entity_id_transcode_t<G_OlgaFlowBossActions_6xA4_6xA5>},
     /* 6xA5 */ {NONE, NONE, 0xA5, forward_subcommand_with_entity_id_transcode_t<G_OlgaFlowBossActions_6xA4_6xA5>},
     /* 6xA6 */ {NONE, NONE, 0xA6, on_forward_check_game},
-    /* 6xA7 */ {NONE, NONE, 0xA7, forward_subcommand_m},
+    /* 6xA7 */ {NONE, NONE, 0xA7, forward_subcommand},
     /* 6xA8 */ {NONE, NONE, 0xA8, on_gol_dragon_actions},
     /* 6xA9 */ {NONE, NONE, 0xA9, forward_subcommand_with_entity_id_transcode_t<G_BarbaRayBossActions_6xA9>},
     /* 6xAA */ {NONE, NONE, 0xAA, forward_subcommand_with_entity_id_transcode_t<G_BarbaRayBossActions_6xAA>},
@@ -5752,7 +5677,7 @@ const std::vector<SubcommandDefinition> subcommand_definitions{
     /* 6xAE */ {NONE, NONE, 0xAE, on_forward_check_client},
     /* 6xAF */ {NONE, NONE, 0xAF, on_forward_check_lobby_client},
     /* 6xB0 */ {NONE, NONE, 0xB0, on_forward_check_lobby_client},
-    /* 6xB1 */ {NONE, NONE, 0xB1, forward_subcommand_m},
+    /* 6xB1 */ {NONE, NONE, 0xB1, forward_subcommand},
     /* 6xB2 */ {NONE, NONE, 0xB2, on_play_sound_from_player},
     /* 6xB3 */ {NONE, NONE, 0xB3, on_xbox_voice_chat_control}, // Ep3 6xBx commands are handled via on_CA_Ep3 instead
     /* 6xB4 */ {NONE, NONE, 0xB4, on_xbox_voice_chat_control},
@@ -5765,11 +5690,11 @@ const std::vector<SubcommandDefinition> subcommand_definitions{
     /* 6xBB */ {NONE, NONE, 0xBB, on_open_bank_bb_or_card_trade_counter_ep3},
     /* 6xBC */ {NONE, NONE, 0xBC, on_ep3_trade_card_counts},
     /* 6xBD */ {NONE, NONE, 0xBD, on_ep3_private_word_select_bb_bank_action, SDF::ALWAYS_FORWARD_TO_WATCHERS},
-    /* 6xBE */ {NONE, NONE, 0xBE, forward_subcommand_m, SDF::ALWAYS_FORWARD_TO_WATCHERS | SDF::ALLOW_FORWARD_TO_WATCHED_LOBBY},
+    /* 6xBE */ {NONE, NONE, 0xBE, forward_subcommand, SDF::ALWAYS_FORWARD_TO_WATCHERS | SDF::ALLOW_FORWARD_TO_WATCHED_LOBBY},
     /* 6xBF */ {NONE, NONE, 0xBF, on_forward_check_ep3_lobby},
     /* 6xC0 */ {NONE, NONE, 0xC0, on_sell_item_at_shop_bb},
-    /* 6xC1 */ {NONE, NONE, 0xC1, forward_subcommand_m},
-    /* 6xC2 */ {NONE, NONE, 0xC2, forward_subcommand_m},
+    /* 6xC1 */ {NONE, NONE, 0xC1, forward_subcommand},
+    /* 6xC2 */ {NONE, NONE, 0xC2, forward_subcommand},
     /* 6xC3 */ {NONE, NONE, 0xC3, on_drop_partial_stack_bb},
     /* 6xC4 */ {NONE, NONE, 0xC4, on_sort_inventory_bb},
     /* 6xC5 */ {NONE, NONE, 0xC5, on_medical_center_bb},
@@ -5780,8 +5705,8 @@ const std::vector<SubcommandDefinition> subcommand_definitions{
     /* 6xCA */ {NONE, NONE, 0xCA, on_quest_create_item_bb},
     /* 6xCB */ {NONE, NONE, 0xCB, on_transfer_item_via_mail_message_bb},
     /* 6xCC */ {NONE, NONE, 0xCC, on_exchange_item_for_team_points_bb},
-    /* 6xCD */ {NONE, NONE, 0xCD, forward_subcommand_m},
-    /* 6xCE */ {NONE, NONE, 0xCE, forward_subcommand_m},
+    /* 6xCD */ {NONE, NONE, 0xCD, forward_subcommand},
+    /* 6xCE */ {NONE, NONE, 0xCE, forward_subcommand},
     /* 6xCF */ {NONE, NONE, 0xCF, on_battle_restart_bb},
     /* 6xD0 */ {NONE, NONE, 0xD0, on_battle_level_up_bb},
     /* 6xD1 */ {NONE, NONE, 0xD1, on_request_challenge_grave_recovery_item_bb},
@@ -5867,7 +5792,11 @@ asio::awaitable<void> on_subcommand_multi(std::shared_ptr<Client> c, Channel::Me
 
     const auto* def = def_for_subcommand(c->version(), header->subcommand);
     SubcommandMessage sub_msg{.command = msg.command, .flag = msg.flag, .data = cmd_data, .size = cmd_size};
-    co_await def->handler(c, sub_msg);
+    if (std::holds_alternative<SubcommandHandlerFn>(def->handler)) {
+      std::get<SubcommandHandlerFn>(def->handler)(c, sub_msg);
+    } else {
+      co_await std::get<SubcommandHandlerCoro>(def->handler)(c, sub_msg);
+    }
     offset += cmd_size;
   }
 }

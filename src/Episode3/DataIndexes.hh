@@ -905,7 +905,7 @@ struct PlayerConfig {
   /* 2270:211C */ be_uint32_t unknown_t3;
   // This visual config is copied to the player's main visual config when the player's name or proportions have
   // changed, or when certain buttons on the controller (L, R, X, Y) are held at game start time.
-  /* 2274:2120 */ PlayerVisualConfig backup_visual;
+  /* 2274:2120 */ PlayerVisualConfigV123 backup_visual;
   /* 22C4:2170 */ parray<uint8_t, 0x8C> unknown_a14;
   /* 2350:21FC */
 

@@ -242,7 +242,7 @@ void Client::update_channel_name() {
   auto player = this->character_file(false, false);
   if (player) {
     this->channel->name = std::format("C-{:X} ({} Lv.{}) @ {}",
-        this->id, player->disp.name.decode(this->language()), player->disp.stats.level + 1, default_name);
+        this->id, player->disp.visual.name.decode(this->language()), player->disp.stats.level + 1, default_name);
   } else {
     this->channel->name = std::format("C-{:X} @ {}", this->id, default_name);
   }
@@ -349,7 +349,7 @@ std::shared_ptr<const TeamIndex::Team> Client::team() const {
   // The team membership is valid, but the player name may be different; update the team membership if needed
   if (p) {
     auto& m = member_it->second;
-    std::string name = p->disp.name.decode(this->language());
+    std::string name = p->disp.visual.name.decode(this->language());
     if (m.name != name) {
       this->log.info_f("Updating player name in team config");
       s->team_index->update_member_name(this->login->account->account_id, name);
@@ -625,10 +625,10 @@ void Client::save_character_file() {
 void Client::create_character_file(
     uint32_t guild_card_number,
     Language language,
-    const PlayerDispDataBBPreview& preview,
+    const PlayerVisualConfigV4& visual,
     std::shared_ptr<const LevelTable> level_table) {
   this->log.info_f("Creating new character file");
-  this->character_data = PSOBBCharacterFile::create_from_preview(guild_card_number, language, preview, level_table);
+  this->character_data = PSOBBCharacterFile::create_from_config(guild_card_number, language, visual, level_table);
   this->save_character_file();
   this->log.info_f("Deleting bank file");
   this->bank_data.reset();
@@ -654,7 +654,7 @@ void Client::create_battle_overlay(std::shared_ptr<const BattleRules> rules, std
     this->overlay_character_data->inventory.tp_from_materials = 0;
 
     uint32_t target_level = std::clamp<uint32_t>(rules->char_level, 0, 199);
-    uint8_t char_class = this->overlay_character_data->disp.visual.char_class;
+    uint8_t char_class = this->overlay_character_data->disp.visual.sh.char_class;
     auto& stats = this->overlay_character_data->disp.stats;
 
     level_table->reset_to_base(stats, char_class);
@@ -687,7 +687,7 @@ void Client::create_battle_overlay(std::shared_ptr<const BattleRules> rules, std
 void Client::create_challenge_overlay(
     Version version, size_t template_index, std::shared_ptr<const LevelTable> level_table) {
   auto p = this->character_file(true, false);
-  const auto& tpl = get_challenge_template_definition(version, p->disp.visual.class_flags, template_index);
+  const auto& tpl = get_challenge_template_definition(version, p->disp.visual.sh.class_flags, template_index);
 
   this->overlay_character_data = std::make_shared<PSOBBCharacterFile>(*p);
   auto overlay = this->overlay_character_data;
@@ -704,11 +704,11 @@ void Client::create_challenge_overlay(
 
   overlay->inventory.items[13].extension_data2 = 1;
 
-  level_table->reset_to_base(overlay->disp.stats, overlay->disp.visual.char_class);
-  level_table->advance_to_level(overlay->disp.stats, tpl.level, overlay->disp.visual.char_class);
+  level_table->reset_to_base(overlay->disp.stats, overlay->disp.visual.sh.char_class);
+  level_table->advance_to_level(overlay->disp.stats, tpl.level, overlay->disp.visual.sh.char_class);
 
   const auto& stats_delta = level_table->stats_delta_for_level(
-      overlay->disp.visual.char_class, overlay->disp.stats.level);
+      overlay->disp.visual.sh.char_class, overlay->disp.stats.level);
   overlay->disp.stats.esp = 40;
   overlay->disp.stats.attack_range = 10.0;
   overlay->disp.stats.exp = stats_delta.exp;
@@ -968,12 +968,12 @@ void Client::load_all_files() {
         this->character_data->death_count = nsc_data.death_count;
         this->character_data->bank = nsc_data.bank;
         this->character_data->guild_card.guild_card_number = this->login->account->account_id;
-        this->character_data->guild_card.name = nsc_data.disp.name;
+        this->character_data->guild_card.name = nsc_data.disp.visual.name;
         this->character_data->guild_card.description = nsc_data.guild_card_description;
         this->character_data->guild_card.present = 1;
         this->character_data->guild_card.language = nsc_data.inventory.language;
-        this->character_data->guild_card.section_id = nsc_data.disp.visual.section_id;
-        this->character_data->guild_card.char_class = nsc_data.disp.visual.char_class;
+        this->character_data->guild_card.section_id = nsc_data.disp.visual.sh.section_id;
+        this->character_data->guild_card.char_class = nsc_data.disp.visual.sh.char_class;
         this->character_data->auto_reply = nsc_data.auto_reply;
         this->character_data->info_board = nsc_data.info_board;
         this->character_data->battle_records = nsc_data.battle_records;
@@ -1023,7 +1023,7 @@ void Client::load_all_files() {
 
   if (this->character_data) {
     // Clear legacy play_time field
-    this->character_data->disp.name.clear_after_bytes(0x18);
+    this->character_data->disp.visual.name.clear_after_bytes(0x18);
     this->character_data->inventory.enforce_stack_limits(stack_limits);
     this->login->account->auto_reply_message = this->character_data->auto_reply.decode();
     this->login->account->save();

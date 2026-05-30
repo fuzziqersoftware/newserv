@@ -154,7 +154,7 @@ void ReplaySession::apply_default_mask(std::shared_ptr<Event> ev) {
             mask.variations = Variations();
             mask.random_seed = 0;
             for (size_t offset = sizeof(S_JoinGame_GC_64) +
-                    offsetof(S_JoinGame_Ep3_64::Ep3PlayerEntry, disp.visual.name_color_checksum);
+                    offsetof(S_JoinGame_Ep3_64::Ep3PlayerEntry, disp.visual.sh.name_color_checksum);
                 offset + 4 <= mask_size;
                 offset += sizeof(S_JoinGame_Ep3_64::Ep3PlayerEntry)) {
               *reinterpret_cast<uint32_t*>(reinterpret_cast<char*>(mask_data) + offset) = 0;
@@ -170,7 +170,7 @@ void ReplaySession::apply_default_mask(std::shared_ptr<Event> ev) {
         case 0x67:
         case 0x68: {
           auto update_mask = [&]<typename CmdT>() -> void {
-            for (size_t offset = offsetof(CmdT, entries) + offsetof(typename CmdT::Entry, disp.visual.name_color_checksum);
+            for (size_t offset = offsetof(CmdT, entries) + offsetof(typename CmdT::Entry, disp.visual.sh.name_color_checksum);
                 offset + 4 <= mask_size;
                 offset += sizeof(typename CmdT::Entry)) {
               *reinterpret_cast<uint32_t*>(reinterpret_cast<char*>(mask_data) + offset) = 0;
@@ -192,10 +192,10 @@ void ReplaySession::apply_default_mask(std::shared_ptr<Event> ev) {
             auto& mask = check_size_t<S_JoinSpectatorTeam_Ep3_E8>(mask_data, mask_size);
             mask.random_seed = 0;
             for (size_t z = 0; z < 4; z++) {
-              mask.players[z].disp.visual.name_color_checksum = 0;
+              mask.players[z].disp.visual.sh.name_color_checksum = 0;
             }
             for (size_t z = 0; z < 8; z++) {
-              mask.spectator_players[z].disp.visual.name_color_checksum = 0;
+              mask.spectator_players[z].disp.visual.sh.name_color_checksum = 0;
             }
           }
           break;
@@ -265,19 +265,19 @@ void ReplaySession::apply_default_mask(std::shared_ptr<Event> ev) {
             const auto& header = check_size_t<G_UnusedHeader>(cmd_data, cmd_size, 0xFFFF);
             if (header.subcommand == 0x60) {
               auto& mask = check_size_t<G_SyncPlayerDispAndInventory_DCNTE_6x70>(mask_data, mask_size, 0xFFFF);
-              mask.visual.name_color_checksum = 0;
+              mask.visual.sh.name_color_checksum = 0;
             }
           } else if (version == Version::DC_11_2000) {
             const auto& header = check_size_t<G_UnusedHeader>(cmd_data, cmd_size, 0xFFFF);
             if (header.subcommand == 0x67) {
               auto& mask = check_size_t<G_SyncPlayerDispAndInventory_DC112000_6x70>(mask_data, mask_size, 0xFFFF);
-              mask.visual.name_color_checksum = 0;
+              mask.visual.sh.name_color_checksum = 0;
             }
           } else if (!is_pre_v1(version)) {
             const auto& header = check_size_t<G_UnusedHeader>(cmd_data, cmd_size, 0xFFFF);
             if (header.subcommand == 0x70) {
               auto& mask = check_size_t<G_SyncPlayerDispAndInventory_DC_PC_6x70>(mask_data, mask_size, 0xFFFF);
-              mask.base.visual.name_color_checksum = 0;
+              mask.visual.sh.name_color_checksum = 0;
             }
           }
           break;
@@ -578,7 +578,7 @@ asio::awaitable<void> ReplaySession::run() {
                 replay_log.error_f("Expected command:");
                 phosg::print_data(stderr, ev->data, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
                 replay_log.error_f("Received command:");
-                phosg::print_data(stderr, full_command, 0, ev->data, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
+                phosg::print_data(stderr, full_command, 0, ev->data, phosg::FormatDataFlags::USE_COLOR | phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
                 throw std::runtime_error(std::format("(ev-line {}) received command data does not match expected data", ev->line_num));
               }
             }

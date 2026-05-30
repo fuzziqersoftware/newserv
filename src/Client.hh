@@ -187,7 +187,7 @@ public:
   };
   bool should_update_play_time;
   std::unordered_set<uint32_t> blocked_senders;
-  std::unique_ptr<PlayerDispDataDCPCV3> v1_v2_last_reported_disp;
+  std::unique_ptr<PlayerDispDataV123> v1_v2_last_reported_disp;
   std::shared_ptr<Parsed6x70Data> last_reported_6x70;
   std::unordered_set<uint16_t> expected_game_state_sync_commands; // (command_num << 8) | target_client_id
   // These are null unless the client is within the trade sequence (D0-D4 or EE commands)
@@ -312,7 +312,7 @@ public:
   void create_character_file(
       uint32_t guild_card_number,
       Language language,
-      const PlayerDispDataBBPreview& preview,
+      const PlayerVisualConfigV4& visual,
       std::shared_ptr<const LevelTable> level_table);
   void create_battle_overlay(std::shared_ptr<const BattleRules> rules, std::shared_ptr<const LevelTable> level_table);
   void create_challenge_overlay(Version version, size_t template_index, std::shared_ptr<const LevelTable> level_table);

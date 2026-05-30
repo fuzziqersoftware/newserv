@@ -365,12 +365,11 @@ PSOBBBaseSystemFile::PSOBBBaseSystemFile() {
   }
 }
 
-PlayerDispDataBBPreview PSOBBCharacterFile::to_preview() const {
-  PlayerDispDataBBPreview pre;
+PlayerDispDataV4Preview PSOBBCharacterFile::to_preview() const {
+  PlayerDispDataV4Preview pre;
   pre.level = this->disp.stats.level;
   pre.exp = this->disp.stats.exp;
   pre.visual = this->disp.visual;
-  pre.name = this->disp.name;
   pre.play_time_seconds = this->play_time_seconds;
   return pre;
 }
@@ -378,8 +377,7 @@ PlayerDispDataBBPreview PSOBBCharacterFile::to_preview() const {
 std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_config(
     uint32_t guild_card_number,
     Language language,
-    const PlayerVisualConfig& visual,
-    const std::string& name,
+    const PlayerVisualConfigV4& visual,
     std::shared_ptr<const LevelTable> level_table) {
   static const std::array<std::array<PlayerInventoryItem, 5>, 12> initial_inventory{{
       {
@@ -503,9 +501,8 @@ std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_config(
 
   auto ret = std::make_shared<PSOBBCharacterFile>();
   ret->disp.visual = visual;
-  ret->disp.name.encode(name, language);
 
-  const auto& initial_items = initial_inventory.at(visual.char_class);
+  const auto& initial_items = initial_inventory.at(visual.sh.char_class);
   ret->inventory.num_items = initial_items.size();
   for (size_t z = 0; z < initial_items.size(); z++) {
     ret->inventory.items[z] = initial_items[z];
@@ -526,36 +523,36 @@ std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_config(
       {0x00, 0x01, 0x0B, 0x0C, 0x04, 0x05, 0x06, 0x08, 0x0A, 0x0D, 0x07, 0x02, 0x11, 0x0A, 0x05, 0x06, 0x01, 0x0B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
       {0x00, 0x07, 0x02, 0x11, 0x04, 0x05, 0x06, 0x09, 0x0C, 0x00, 0x01, 0x02, 0x11, 0x0D, 0x05, 0x10, 0x01, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
   }};
-  uint8_t char_class = (visual.char_class > 0x0B) ? 0 : visual.char_class;
+  uint8_t char_class = (visual.sh.char_class > 0x0B) ? 0 : visual.sh.char_class;
   uint8_t mag_color_index;
   if (char_class == 2 || char_class == 4 || char_class == 5 || char_class == 9) {
-    mag_color_index = (visual.skin >= 25) ? 0 : visual.skin.load();
+    mag_color_index = (visual.sh.skin >= 25) ? 0 : visual.sh.skin.load();
   } else {
-    mag_color_index = (visual.costume >= 18) ? 0 : visual.costume.load();
+    mag_color_index = (visual.sh.costume >= 18) ? 0 : visual.sh.costume.load();
   }
   ret->inventory.items[2].data.data2[3] = mag_colors.at(char_class).at(mag_color_index);
 
   ret->inventory.items[13].extension_data2 = 1;
 
-  const auto& config = (ret->disp.visual.class_flags & 0x80) ? config_force : config_hunter_ranger;
+  const auto& config = (ret->disp.visual.sh.class_flags & 0x80) ? config_force : config_hunter_ranger;
   for (size_t z = 0; z < config.size(); z++) {
     ret->disp.config[z] = config[z];
   }
 
   if (level_table) {
-    level_table->reset_to_base(ret->disp.stats, ret->disp.visual.char_class);
+    level_table->reset_to_base(ret->disp.stats, ret->disp.visual.sh.char_class);
   }
   ret->disp.technique_levels_v1.clear(0xFF);
-  if (ret->disp.visual.class_flags & 0x80) {
+  if (ret->disp.visual.sh.class_flags & 0x80) {
     ret->disp.technique_levels_v1[0] = 0x00; // Forces start with Foie Lv.1
   }
   ret->inventory.language = language;
   ret->guild_card.guild_card_number = guild_card_number;
-  ret->guild_card.name = ret->disp.name;
+  ret->guild_card.name = ret->disp.visual.name;
   ret->guild_card.present = 1;
   ret->guild_card.language = ret->inventory.language;
-  ret->guild_card.section_id = ret->disp.visual.section_id;
-  ret->guild_card.char_class = ret->disp.visual.char_class;
+  ret->guild_card.section_id = ret->disp.visual.sh.section_id;
+  ret->guild_card.char_class = ret->disp.visual.sh.char_class;
   for (size_t z = 0; z < DEFAULT_SYMBOL_CHATS.size(); z++) {
     ret->symbol_chats[z] = DEFAULT_SYMBOL_CHATS[z].to_entry(language);
   }
@@ -565,26 +562,12 @@ std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_config(
   return ret;
 }
 
-std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_preview(
-    uint32_t guild_card_number,
-    Language language,
-    const PlayerDispDataBBPreview& preview,
-    std::shared_ptr<const LevelTable> level_table) {
-  return PSOBBCharacterFile::create_from_config(
-      guild_card_number, language, preview.visual, preview.name.decode(language), level_table);
-}
-
 std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSODCNTECharacterFile::Character& src) {
   auto ret = PSOBBCharacterFile::create_from_config(
-      src.guild_card.guild_card_number,
-      Language::JAPANESE,
-      src.disp.visual,
-      src.disp.visual.name.decode(Language::JAPANESE),
-      nullptr);
+      src.guild_card.guild_card_number, Language::JAPANESE, src.disp.visual);
   ret->inventory = src.inventory;
   ret->inventory.decode_from_client(Version::DC_V1);
-  Language language = ret->inventory.language;
-  ret->disp = src.disp.to_bb(language, language);
+  ret->disp = src.disp.to_v4(Language::JAPANESE, Language::JAPANESE);
   ret->validation_flags = 0;
   ret->creation_timestamp = src.creation_timestamp;
   ret->play_time_seconds = src.play_time_seconds;
@@ -608,16 +591,11 @@ std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const P
 }
 
 std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSODC112000CharacterFile::Character& src) {
-  auto ret = PSOBBCharacterFile::create_from_config(
-      src.guild_card.guild_card_number,
-      src.inventory.language,
-      src.disp.visual,
-      src.disp.visual.name.decode(Language::JAPANESE),
-      nullptr);
+  Language language = src.inventory.language;
+  auto ret = PSOBBCharacterFile::create_from_config(src.guild_card.guild_card_number, language, src.disp.visual);
   ret->inventory = src.inventory;
   ret->inventory.decode_from_client(Version::DC_V1);
-  Language language = ret->inventory.language;
-  ret->disp = src.disp.to_bb(language, language);
+  ret->disp = src.disp.to_v4(language, language);
   ret->validation_flags = 0;
   ret->creation_timestamp = src.creation_timestamp;
   ret->play_time_seconds = src.play_time_seconds;
@@ -651,16 +629,11 @@ std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const P
 }
 
 std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSODCV1CharacterFile::Character& src) {
-  auto ret = PSOBBCharacterFile::create_from_config(
-      src.guild_card.guild_card_number,
-      src.inventory.language,
-      src.disp.visual,
-      src.disp.visual.name.decode(Language::JAPANESE),
-      nullptr);
+  Language language = src.inventory.language;
+  auto ret = PSOBBCharacterFile::create_from_config(src.guild_card.guild_card_number, language, src.disp.visual);
   ret->inventory = src.inventory;
   ret->inventory.decode_from_client(Version::DC_V1);
-  Language language = ret->inventory.language;
-  ret->disp = src.disp.to_bb(language, language);
+  ret->disp = src.disp.to_v4(language, language);
   ret->validation_flags = src.validation_flags;
   ret->creation_timestamp = src.creation_timestamp;
   ret->play_time_seconds = src.play_time_seconds;
@@ -684,16 +657,11 @@ std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const P
 }
 
 std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSODCV2CharacterFile::Character& src) {
-  auto ret = PSOBBCharacterFile::create_from_config(
-      src.guild_card.guild_card_number,
-      src.inventory.language,
-      src.disp.visual,
-      src.disp.visual.name.decode(Language::JAPANESE),
-      nullptr);
+  Language language = src.inventory.language;
+  auto ret = PSOBBCharacterFile::create_from_config(src.guild_card.guild_card_number, language, src.disp.visual);
   ret->inventory = src.inventory;
   ret->inventory.decode_from_client(Version::DC_V2);
-  Language language = ret->inventory.language;
-  ret->disp = src.disp.to_bb(language, language);
+  ret->disp = src.disp.to_v4(language, language);
   ret->validation_flags = src.validation_flags;
   ret->creation_timestamp = src.creation_timestamp;
   ret->play_time_seconds = src.play_time_seconds;
@@ -724,18 +692,13 @@ std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const P
 }
 
 std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOGCNTECharacterFileCharacter& src) {
-  auto ret = PSOBBCharacterFile::create_from_config(
-      src.guild_card.guild_card_number,
-      src.inventory.language,
-      src.disp.visual,
-      src.disp.visual.name.decode(Language::JAPANESE),
-      nullptr);
+  Language language = src.inventory.language;
+  auto ret = PSOBBCharacterFile::create_from_config(src.guild_card.guild_card_number, language, src.disp.visual);
   ret->inventory = src.inventory;
   // Note: We intentionally do not call ret->inventory.decode_from_client here. This is because the GC client byteswaps
   // data2 in each item before sending it to the server in the 61 and 98 commands, but GetExtendedPlayerInfo does not
   // do this, so the data2 fields are already in the correct order here.
-  Language language = ret->inventory.language;
-  ret->disp = src.disp.to_bb(language, language);
+  ret->disp = src.disp.to_v4(language, language);
   ret->validation_flags = src.validation_flags;
   ret->creation_timestamp = src.creation_timestamp;
   ret->play_time_seconds = src.play_time_seconds;
@@ -764,18 +727,13 @@ std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const P
 }
 
 std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOGCCharacterFile::Character& src) {
-  auto ret = PSOBBCharacterFile::create_from_config(
-      src.guild_card.guild_card_number,
-      src.inventory.language,
-      src.disp.visual,
-      src.disp.visual.name.decode(Language::JAPANESE),
-      nullptr);
+  Language language = src.inventory.language;
+  auto ret = PSOBBCharacterFile::create_from_config(src.guild_card.guild_card_number, language, src.disp.visual);
   ret->inventory = src.inventory;
   // Note: We intentionally do not call ret->inventory.decode_from_client here. This is because the GC client byteswaps
   // data2 in each item before sending it to the server in the 61 and 98 commands, but GetExtendedPlayerInfo does not
   // do this, so the data2 fields are already in the correct order here.
-  Language language = ret->inventory.language;
-  ret->disp = src.disp.to_bb(language, language);
+  ret->disp = src.disp.to_v4(language, language);
   ret->validation_flags = src.validation_flags;
   ret->creation_timestamp = src.creation_timestamp;
   ret->play_time_seconds = src.play_time_seconds;
@@ -814,15 +772,10 @@ std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const P
 }
 
 std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOGCEp3CharacterFile::Character& src) {
-  auto ret = PSOBBCharacterFile::create_from_config(
-      src.guild_card.guild_card_number,
-      src.inventory.language,
-      src.disp.visual,
-      src.disp.visual.name.decode(Language::JAPANESE),
-      nullptr);
+  Language language = src.inventory.language;
+  auto ret = PSOBBCharacterFile::create_from_config(src.guild_card.guild_card_number, language, src.disp.visual);
   ret->inventory = src.inventory;
-  Language language = ret->inventory.language;
-  ret->disp = src.disp.to_bb(language, language);
+  ret->disp = src.disp.to_v4(language, language);
   ret->validation_flags = src.validation_flags;
   ret->creation_timestamp = src.creation_timestamp;
   ret->play_time_seconds = src.play_time_seconds;
@@ -862,16 +815,11 @@ std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const P
 }
 
 std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const PSOXBCharacterFile::Character& src) {
-  auto ret = PSOBBCharacterFile::create_from_config(
-      src.guild_card.guild_card_number,
-      src.inventory.language,
-      src.disp.visual,
-      src.disp.visual.name.decode(Language::JAPANESE),
-      nullptr);
+  Language language = src.inventory.language;
+  auto ret = PSOBBCharacterFile::create_from_config(src.guild_card.guild_card_number, language, src.disp.visual);
   ret->inventory = src.inventory;
   ret->inventory.decode_from_client(Version::XB_V3);
-  Language language = ret->inventory.language;
-  ret->disp = src.disp.to_bb(language, language);
+  ret->disp = src.disp.to_v4(language, language);
   ret->validation_flags = src.validation_flags;
   ret->creation_timestamp = src.creation_timestamp;
   ret->play_time_seconds = src.play_time_seconds;
@@ -918,7 +866,7 @@ PSODCNTECharacterFile::Character PSOBBCharacterFile::as_dc_nte(uint64_t hardware
   // We don't need to do the v1-compatible encoding (hence it is OK to pass nullptr here) but we do need to encode mag
   // stats in the v2 format
   ret.inventory.encode_for_client(Version::DC_NTE, nullptr);
-  ret.disp = this->disp.to_dcpcv3<false>(language, language);
+  ret.disp = this->disp.to_v123<false>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::DC_V2);
   ret.masked_creation_timestamp = this->creation_timestamp ^ static_cast<uint32_t>(hardware_id >> 16);
   ret.creation_timestamp = this->creation_timestamp;
@@ -944,7 +892,7 @@ PSODC112000CharacterFile::Character PSOBBCharacterFile::as_11_2000(uint64_t hard
   // We don't need to do the v1-compatible encoding (hence it is OK to pass nullptr here) but we do need to encode mag
   // stats in the v2 format
   ret.inventory.encode_for_client(Version::DC_11_2000, nullptr);
-  ret.disp = this->disp.to_dcpcv3<false>(language, language);
+  ret.disp = this->disp.to_v123<false>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::DC_V2);
   ret.masked_creation_timestamp = this->creation_timestamp ^ static_cast<uint32_t>(hardware_id >> 16);
   ret.creation_timestamp = this->creation_timestamp;
@@ -981,7 +929,7 @@ PSOBBCharacterFile::operator PSODCV1CharacterFile::Character() const {
   // We don't need to do the v1-compatible encoding (hence it is OK to pass nullptr here) but we do need to encode mag
   // stats in the v2 format
   ret.inventory.encode_for_client(Version::DC_V1, nullptr);
-  ret.disp = this->disp.to_dcpcv3<false>(language, language);
+  ret.disp = this->disp.to_v123<false>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::DC_V2);
   ret.validation_flags = this->validation_flags;
   ret.creation_timestamp = this->creation_timestamp;
@@ -1013,7 +961,7 @@ PSOBBCharacterFile::operator PSODCV2CharacterFile::Character() const {
   // We don't need to do the v1-compatible encoding (hence it is OK to pass nullptr here) but we do need to encode mag
   // stats in the v2 format
   ret.inventory.encode_for_client(Version::DC_V2, nullptr);
-  ret.disp = this->disp.to_dcpcv3<false>(language, language);
+  ret.disp = this->disp.to_v123<false>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::DC_V2);
   ret.validation_flags = this->validation_flags;
   ret.creation_timestamp = this->creation_timestamp;
@@ -1054,7 +1002,7 @@ PSOBBCharacterFile::operator PSOGCNTECharacterFileCharacter() const {
   // Note: We intentionally do not call ret.inventory.encode_for_client here. This is because the GC client byteswaps
   // data2 in each item before sending it to the server in the 61 and 98 commands, but GetExtendedPlayerInfo does not
   // do this, so the data2 fields are already in the correct order here.
-  ret.disp = this->disp.to_dcpcv3<true>(language, language);
+  ret.disp = this->disp.to_v123<true>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::GC_V3);
   ret.validation_flags = this->validation_flags;
   ret.creation_timestamp = this->creation_timestamp;
@@ -1091,7 +1039,7 @@ PSOBBCharacterFile::operator PSOGCCharacterFile::Character() const {
   // Note: We intentionally do not call ret.inventory.encode_for_client here. This is because the GC client byteswaps
   // data2 in each item before sending it to the server in the 61 and 98 commands, but GetExtendedPlayerInfo does not
   // do this, so the data2 fields are already in the correct order here.
-  ret.disp = this->disp.to_dcpcv3<true>(language, language);
+  ret.disp = this->disp.to_v123<true>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::GC_V3);
   ret.validation_flags = this->validation_flags;
   ret.creation_timestamp = this->creation_timestamp;
@@ -1136,7 +1084,7 @@ PSOBBCharacterFile::operator PSOXBCharacterFile::Character() const {
   PSOXBCharacterFile::Character ret;
   ret.inventory = this->inventory;
   ret.inventory.encode_for_client(Version::XB_V3, nullptr);
-  ret.disp = this->disp.to_dcpcv3<false>(language, language);
+  ret.disp = this->disp.to_v123<false>(language, language);
   ret.disp.visual.enforce_lobby_join_limits_for_version(Version::XB_V3);
   ret.validation_flags = this->validation_flags;
   ret.creation_timestamp = this->creation_timestamp;
@@ -1406,8 +1354,8 @@ void PSOBBCharacterFile::import_tethealla_material_usage(std::shared_ptr<const L
   }
 
   PlayerStats level_base_stats = this->disp.stats;
-  level_table->reset_to_base(level_base_stats, this->disp.visual.char_class);
-  level_table->advance_to_level(level_base_stats, this->disp.stats.level, this->disp.visual.char_class);
+  level_table->reset_to_base(level_base_stats, this->disp.visual.sh.char_class);
+  level_table->advance_to_level(level_base_stats, this->disp.stats.level, this->disp.visual.sh.char_class);
 
   uint64_t pow = (this->disp.stats.char_stats.atp - level_base_stats.char_stats.atp) / 2;
   uint64_t mind = (this->disp.stats.char_stats.mst - level_base_stats.char_stats.mst) / 2;
@@ -1428,8 +1376,8 @@ void PSOBBCharacterFile::import_tethealla_material_usage(std::shared_ptr<const L
 void PSOBBCharacterFile::recompute_stats(std::shared_ptr<const LevelTable> level_table, bool reset_exp) {
   uint32_t level = this->disp.stats.level;
   uint32_t exp = this->disp.stats.exp;
-  level_table->reset_to_base(this->disp.stats, this->disp.visual.char_class);
-  level_table->advance_to_level(this->disp.stats, level, this->disp.visual.char_class);
+  level_table->reset_to_base(this->disp.stats, this->disp.visual.sh.char_class);
+  level_table->advance_to_level(this->disp.stats, level, this->disp.visual.sh.char_class);
   if (!reset_exp) {
     this->disp.stats.exp = exp;
   }

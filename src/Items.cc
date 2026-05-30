@@ -22,7 +22,7 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
 
   } else if ((primary_identifier & 0xFFFF0000) == 0x03020000) { // Technique disk
     auto item_parameter_table = s->item_parameter_table(c->version());
-    uint8_t max_level = item_parameter_table->get_max_tech_level(player->disp.visual.char_class, item.data.data1[4]);
+    uint8_t max_level = item_parameter_table->get_max_tech_level(player->disp.visual.sh.char_class, item.data.data1[4]);
     if (item.data.data1[2] > max_level) {
       throw std::runtime_error("technique level too high");
     }
@@ -135,10 +135,10 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
     if (evolution_number < 4) {
       switch (item.data.data1[2]) {
         case 0x00: // Cell of MAG 502
-          mag.data.data1[1] = (player->disp.visual.section_id & 1) ? 0x1D : 0x21;
+          mag.data.data1[1] = (player->disp.visual.sh.section_id & 1) ? 0x1D : 0x21;
           break;
         case 0x01: // Cell of MAG 213
-          mag.data.data1[1] = (player->disp.visual.section_id & 1) ? 0x27 : 0x22;
+          mag.data.data1[1] = (player->disp.visual.sh.section_id & 1) ? 0x27 : 0x22;
           break;
         case 0x02: // Parts of RoboChao
           mag.data.data1[1] = 0x28;
@@ -215,7 +215,7 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
       try {
         auto item_parameter_table = s->item_parameter_table(c->version());
         const auto& combo = item_parameter_table->get_item_combination(item.data, inv_item.data);
-        if (combo.char_class != 0xFF && combo.char_class != player->disp.visual.char_class) {
+        if (combo.char_class != 0xFF && combo.char_class != player->disp.visual.sh.char_class) {
           throw std::runtime_error("item combination requires specific char_class");
         }
         if (combo.mag_level != 0xFF) {
@@ -490,7 +490,7 @@ void player_feed_mag(std::shared_ptr<Client> c, size_t mag_item_index, size_t fe
       player->inventory.items[fed_item_index].data,
       s->item_parameter_table(c->version()),
       s->mag_evolution_table(c->version()),
-      player->disp.visual.char_class,
-      player->disp.visual.section_id,
+      player->disp.visual.sh.char_class,
+      player->disp.visual.sh.section_id,
       !is_v1_or_v2(c->version()));
 }

@@ -78,13 +78,13 @@ const std::vector<ChoiceSearchCategory> CHOICE_SEARCH_CATEGORIES({
             case 0x0000:
               return true;
             case 0x0010:
-              return target_c->character_file()->disp.visual.class_flags & 0x20;
+              return target_c->character_file()->disp.visual.sh.class_flags & 0x20;
             case 0x0011:
-              return target_c->character_file()->disp.visual.class_flags & 0x40;
+              return target_c->character_file()->disp.visual.sh.class_flags & 0x40;
             case 0x0012:
-              return target_c->character_file()->disp.visual.class_flags & 0x80;
+              return target_c->character_file()->disp.visual.sh.class_flags & 0x80;
             default:
-              return ((choice_id - 1) == target_c->character_file()->disp.visual.char_class);
+              return ((choice_id - 1) == target_c->character_file()->disp.visual.sh.char_class);
           }
         },
     },

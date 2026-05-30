@@ -1398,7 +1398,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF83E, {"set_current_area_number", "delete_area_title?"}, {I32}, F_V2_V4 | F_ARGS},
 
     // Loads a custom visual config for creating NPCs. Generally the sequence should go like this:
-    //   prepare_npc_visual   label_containing_PlayerVisualConfig
+    //   prepare_npc_visual   label_containing_PlayerVisualConfig (either V123 or V4)
     //   enable_npc_visual
     //   <opcode that creates an NPC>
     // After any NPC is created, the effects of these opcodes are undone; if the script wants to create another NPC
@@ -2958,34 +2958,41 @@ std::string disassemble_quest_script(
 
   // Phase 4: Disassemble all referenced label regions, starting with label 0
 
+  auto add = [](std::shared_ptr<Label> l, std::string&& s) -> void {
+    l->lines.emplace_back(std::move(s));
+  };
+  auto addf = []<typename... ArgTs>(std::shared_ptr<Label> l, std::format_string<ArgTs...> fmt, ArgTs&&... args) -> void {
+    l->lines.emplace_back(std::format(fmt, std::forward<ArgTs>(args)...));
+  };
+
   auto disassemble_label_as_struct = [&]<typename StructT>(std::shared_ptr<Label> l, auto print_fn) {
     if (reassembly_mode) {
-      l->lines.emplace_back("  .data " + phosg::format_data_string(text_r.pgetv(l->offset, l->size), l->size));
+      addf(l, "  .data {}", phosg::format_data_string(text_r.pgetv(l->offset, l->size), l->size));
     } else if (l->size >= sizeof(StructT)) {
       print_fn(text_r.pget<StructT>(l->offset));
       if (l->size > sizeof(StructT)) {
         size_t struct_end_offset = l->offset + sizeof(StructT);
         size_t remaining_size = l->size - sizeof(StructT);
-        l->lines.emplace_back("  // Extra data after structure");
-        l->lines.emplace_back(format_and_indent_data(text_r.pgetv(struct_end_offset, remaining_size), remaining_size, struct_end_offset));
+        addf(l, "  // Extra data after structure");
+        add(l, format_and_indent_data(text_r.pgetv(struct_end_offset, remaining_size), remaining_size, struct_end_offset));
       }
     } else {
-      l->lines.emplace_back(std::format("  // As raw data (0x{:X} bytes; too small for referenced type)", l->size));
-      l->lines.emplace_back(format_and_indent_data(text_r.pgetv(l->offset, l->size), l->size, l->offset));
+      addf(l, "  // As raw data (0x{:X} bytes; too small for referenced type)", l->size);
+      add(l, format_and_indent_data(text_r.pgetv(l->offset, l->size), l->size, l->offset));
     }
   };
 
   auto disassemble_label_as_data = [&](std::shared_ptr<Label> l) -> void {
-    l->lines.emplace_back(std::format("  // As raw data (0x{:X} bytes)", l->size));
+    addf(l, "  // As raw data (0x{:X} bytes)", l->size);
     if (reassembly_mode) {
-      l->lines.emplace_back("  .data " + phosg::format_data_string(text_r.pgetv(l->offset, l->size), l->size));
+      addf(l, "  .data {}", phosg::format_data_string(text_r.pgetv(l->offset, l->size), l->size));
     } else {
-      l->lines.emplace_back(format_and_indent_data(text_r.pgetv(l->offset, l->size), l->size, l->offset));
+      add(l, format_and_indent_data(text_r.pgetv(l->offset, l->size), l->size, l->offset));
     }
   };
 
   auto disassemble_label_as_cstring = [&](std::shared_ptr<Label> l) -> void {
-    l->lines.emplace_back("  // As C string");
+    addf(l, "  // As C string");
 
     std::string str_data = text_r.pread(l->offset, l->size);
     phosg::strip_trailing_zeroes(str_data);
@@ -3009,121 +3016,134 @@ std::string disassemble_quest_script(
       formatted = escape_string(str_data, encoding_for_language(language));
     }
     if (reassembly_mode) {
-      l->lines.emplace_back(std::format("  .cstr {}", formatted));
+      addf(l, "  .cstr {}", formatted);
       if (extra_zero_bytes) {
-        l->lines.emplace_back(std::format("  .data {}", std::string(extra_zero_bytes * 2, '0')));
+        addf(l, "  .data {}", std::string(extra_zero_bytes * 2, '0'));
       }
     } else {
-      l->lines.emplace_back(std::format("  {:04X}  .cstr {}", l->offset, formatted));
+      addf(l, "  {:04X}  .cstr {}", l->offset, formatted);
       if (extra_zero_bytes) {
-        l->lines.emplace_back(std::format("  {:04X}  .data {}", l->offset + l->size - extra_zero_bytes, std::string(extra_zero_bytes * 2, '0')));
+        addf(l, "  {:04X}  .data {}", l->offset + l->size - extra_zero_bytes, std::string(extra_zero_bytes * 2, '0'));
       }
     }
   };
 
   auto disassemble_label_as_player_visual_config = [&](std::shared_ptr<Label> l) -> void {
-    disassemble_label_as_struct.template operator()<PlayerVisualConfig>(l, [&](const PlayerVisualConfig& visual) -> void {
-      l->lines.emplace_back("  // As PlayerVisualConfig");
-      l->lines.emplace_back(std::format("  {:04X}  name              {}", l->offset + offsetof(PlayerVisualConfig, name), escape_string(visual.name.decode(language))));
-      l->lines.emplace_back(std::format("  {:04X}  name_color        {:08X}", l->offset + offsetof(PlayerVisualConfig, name_color), visual.name_color));
-      l->lines.emplace_back(std::format("  {:04X}  a2                {}", l->offset + offsetof(PlayerVisualConfig, unknown_a2), phosg::format_data_string(visual.unknown_a2.data(), sizeof(visual.unknown_a2))));
-      l->lines.emplace_back(std::format("  {:04X}  extra_model       {:02X}", l->offset + offsetof(PlayerVisualConfig, extra_model), visual.extra_model));
-      l->lines.emplace_back(std::format("  {:04X}  unused            {}", l->offset + offsetof(PlayerVisualConfig, unused), phosg::format_data_string(visual.unused.data(), visual.unused.bytes())));
-      l->lines.emplace_back(std::format("  {:04X}  name_color_cs     {:08X}", l->offset + offsetof(PlayerVisualConfig, name_color_checksum), visual.name_color_checksum));
-      l->lines.emplace_back(std::format("  {:04X}  section_id        {:02X} ({})", l->offset + offsetof(PlayerVisualConfig, section_id), visual.section_id, name_for_section_id(visual.section_id)));
-      l->lines.emplace_back(std::format("  {:04X}  char_class        {:02X} ({})", l->offset + offsetof(PlayerVisualConfig, char_class), visual.char_class, name_for_char_class(visual.char_class)));
-      l->lines.emplace_back(std::format("  {:04X}  validation_flags  {:02X}", l->offset + offsetof(PlayerVisualConfig, validation_flags), visual.validation_flags));
-      l->lines.emplace_back(std::format("  {:04X}  version           {:02X}", l->offset + offsetof(PlayerVisualConfig, version), visual.version));
-      l->lines.emplace_back(std::format("  {:04X}  class_flags       {:08X}", l->offset + offsetof(PlayerVisualConfig, class_flags), visual.class_flags));
-      l->lines.emplace_back(std::format("  {:04X}  costume           {:04X}", l->offset + offsetof(PlayerVisualConfig, costume), visual.costume));
-      l->lines.emplace_back(std::format("  {:04X}  skin              {:04X}", l->offset + offsetof(PlayerVisualConfig, skin), visual.skin));
-      l->lines.emplace_back(std::format("  {:04X}  face              {:04X}", l->offset + offsetof(PlayerVisualConfig, face), visual.face));
-      l->lines.emplace_back(std::format("  {:04X}  head              {:04X}", l->offset + offsetof(PlayerVisualConfig, head), visual.head));
-      l->lines.emplace_back(std::format("  {:04X}  hair              {:04X}", l->offset + offsetof(PlayerVisualConfig, hair), visual.hair));
-      l->lines.emplace_back(std::format("  {:04X}  hair_color        {:04X}, {:04X}, {:04X}", l->offset + offsetof(PlayerVisualConfig, hair_r), visual.hair_r, visual.hair_g, visual.hair_b));
-      l->lines.emplace_back(std::format("  {:04X}  proportion        {:g}, {:g}", l->offset + offsetof(PlayerVisualConfig, proportion_x), visual.proportion_x, visual.proportion_y));
-    });
+    auto add_shared_fields = [&](const PlayerVisualConfigSharedT<false>& sh, size_t offset) -> void {
+      using SH = PlayerVisualConfigSharedT<false>;
+      addf(l, "  {:04X}  name_color        {:08X}", offset + offsetof(SH, name_color), sh.name_color);
+      addf(l, "  {:04X}  a2                {}", offset + offsetof(SH, unknown_a2), phosg::format_data_string(sh.unknown_a2.data(), sizeof(sh.unknown_a2)));
+      addf(l, "  {:04X}  extra_model       {:02X}", offset + offsetof(SH, extra_model), sh.extra_model);
+      addf(l, "  {:04X}  unused            {}", offset + offsetof(SH, unused), phosg::format_data_string(sh.unused.data(), sh.unused.bytes()));
+      addf(l, "  {:04X}  name_color_cs     {:08X}", offset + offsetof(SH, name_color_checksum), sh.name_color_checksum);
+      addf(l, "  {:04X}  section_id        {:02X} ({})", offset + offsetof(SH, section_id), sh.section_id, name_for_section_id(sh.section_id));
+      addf(l, "  {:04X}  char_class        {:02X} ({})", offset + offsetof(SH, char_class), sh.char_class, name_for_char_class(sh.char_class));
+      addf(l, "  {:04X}  validation_flags  {:02X}", offset + offsetof(SH, validation_flags), sh.validation_flags);
+      addf(l, "  {:04X}  version           {:02X}", offset + offsetof(SH, version), sh.version);
+      addf(l, "  {:04X}  class_flags       {:08X}", offset + offsetof(SH, class_flags), sh.class_flags);
+      addf(l, "  {:04X}  costume           {:04X}", offset + offsetof(SH, costume), sh.costume);
+      addf(l, "  {:04X}  skin              {:04X}", offset + offsetof(SH, skin), sh.skin);
+      addf(l, "  {:04X}  face              {:04X}", offset + offsetof(SH, face), sh.face);
+      addf(l, "  {:04X}  head              {:04X}", offset + offsetof(SH, head), sh.head);
+      addf(l, "  {:04X}  hair              {:04X}", offset + offsetof(SH, hair), sh.hair);
+      addf(l, "  {:04X}  hair_color        {:04X}, {:04X}, {:04X}", offset + offsetof(SH, hair_r), sh.hair_r, sh.hair_g, sh.hair_b);
+      addf(l, "  {:04X}  proportion        {:g}, {:g}", offset + offsetof(SH, proportion_x), sh.proportion_x, sh.proportion_y);
+    };
+    if (version != Version::BB_V4) {
+      disassemble_label_as_struct.template operator()<PlayerVisualConfigV123>(l, [&](const PlayerVisualConfigV123& visual) -> void {
+        l->lines.emplace_back("  // As PlayerVisualConfigV123");
+        addf(l, "  {:04X}  name              {}", l->offset + offsetof(PlayerVisualConfigV123, name), escape_string(visual.name.decode(language)));
+        add_shared_fields(visual.sh, offsetof(PlayerVisualConfigV123, sh));
+      });
+    } else {
+      disassemble_label_as_struct.template operator()<PlayerVisualConfigV4>(l, [&](const PlayerVisualConfigV4& visual) -> void {
+        l->lines.emplace_back("  // As PlayerVisualConfigV4");
+        addf(l, "  {:04X}  __unused_name__   {}", l->offset + offsetof(PlayerVisualConfigV4, guild_card_number), escape_string(visual.guild_card_number.decode(language)));
+        add_shared_fields(visual.sh, offsetof(PlayerVisualConfigV4, sh));
+        addf(l, "  {:04X}  name              {}", l->offset + offsetof(PlayerVisualConfigV4, name), escape_string(visual.name.decode(language)));
+      });
+    }
   };
   auto disassemble_label_as_player_stats = [&](std::shared_ptr<Label> l) -> void {
     disassemble_label_as_struct.template operator()<PlayerStats>(l, [&](const PlayerStats& stats) -> void {
       l->lines.emplace_back("  // As PlayerStats");
-      l->lines.emplace_back(std::format("  {:04X}  atp               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.atp), stats.char_stats.atp, stats.char_stats.atp));
-      l->lines.emplace_back(std::format("  {:04X}  mst               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.mst), stats.char_stats.mst, stats.char_stats.mst));
-      l->lines.emplace_back(std::format("  {:04X}  evp               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.evp), stats.char_stats.evp, stats.char_stats.evp));
-      l->lines.emplace_back(std::format("  {:04X}  hp                {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.hp), stats.char_stats.hp, stats.char_stats.hp));
-      l->lines.emplace_back(std::format("  {:04X}  dfp               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.dfp), stats.char_stats.dfp, stats.char_stats.dfp));
-      l->lines.emplace_back(std::format("  {:04X}  ata               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.ata), stats.char_stats.ata, stats.char_stats.ata));
-      l->lines.emplace_back(std::format("  {:04X}  lck               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.lck), stats.char_stats.lck, stats.char_stats.lck));
-      l->lines.emplace_back(std::format("  {:04X}  esp               {:04X} /* {} */", l->offset + offsetof(PlayerStats, esp), stats.esp, stats.esp));
-      l->lines.emplace_back(std::format("  {:04X}  attack_range      {:08X} /* {:g} */", l->offset + offsetof(PlayerStats, attack_range), stats.attack_range.load_raw(), stats.attack_range));
-      l->lines.emplace_back(std::format("  {:04X}  knockback_range   {:08X} /* {:g} */", l->offset + offsetof(PlayerStats, knockback_range), stats.knockback_range.load_raw(), stats.knockback_range));
-      l->lines.emplace_back(std::format("  {:04X}  level             {:08X} /* level {} */", l->offset + offsetof(PlayerStats, level), stats.level, stats.level + 1));
-      l->lines.emplace_back(std::format("  {:04X}  exp               {:08X} /* {} */", l->offset + offsetof(PlayerStats, exp), stats.exp, stats.exp));
-      l->lines.emplace_back(std::format("  {:04X}  meseta            {:08X} /* {} */", l->offset + offsetof(PlayerStats, meseta), stats.meseta, stats.meseta));
+      addf(l, "  {:04X}  atp               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.atp), stats.char_stats.atp, stats.char_stats.atp);
+      addf(l, "  {:04X}  mst               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.mst), stats.char_stats.mst, stats.char_stats.mst);
+      addf(l, "  {:04X}  evp               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.evp), stats.char_stats.evp, stats.char_stats.evp);
+      addf(l, "  {:04X}  hp                {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.hp), stats.char_stats.hp, stats.char_stats.hp);
+      addf(l, "  {:04X}  dfp               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.dfp), stats.char_stats.dfp, stats.char_stats.dfp);
+      addf(l, "  {:04X}  ata               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.ata), stats.char_stats.ata, stats.char_stats.ata);
+      addf(l, "  {:04X}  lck               {:04X} /* {} */", l->offset + offsetof(PlayerStats, char_stats.lck), stats.char_stats.lck, stats.char_stats.lck);
+      addf(l, "  {:04X}  esp               {:04X} /* {} */", l->offset + offsetof(PlayerStats, esp), stats.esp, stats.esp);
+      addf(l, "  {:04X}  attack_range      {:08X} /* {:g} */", l->offset + offsetof(PlayerStats, attack_range), stats.attack_range.load_raw(), stats.attack_range);
+      addf(l, "  {:04X}  knockback_range   {:08X} /* {:g} */", l->offset + offsetof(PlayerStats, knockback_range), stats.knockback_range.load_raw(), stats.knockback_range);
+      addf(l, "  {:04X}  level             {:08X} /* level {} */", l->offset + offsetof(PlayerStats, level), stats.level, stats.level + 1);
+      addf(l, "  {:04X}  exp               {:08X} /* {} */", l->offset + offsetof(PlayerStats, exp), stats.exp, stats.exp);
+      addf(l, "  {:04X}  meseta            {:08X} /* {} */", l->offset + offsetof(PlayerStats, meseta), stats.meseta, stats.meseta);
     });
   };
   auto disassemble_label_as_resist_data = [&](std::shared_ptr<Label> l) -> void {
     disassemble_label_as_struct.template operator()<ResistData>(l, [&](const ResistData& resist) -> void {
       l->lines.emplace_back("  // As ResistData");
-      l->lines.emplace_back(std::format("  {:04X}  evp_bonus         {:04X} /* {} */", l->offset + offsetof(ResistData, evp_bonus), resist.evp_bonus, resist.evp_bonus));
-      l->lines.emplace_back(std::format("  {:04X}  efr               {:04X} /* {} */", l->offset + offsetof(ResistData, efr), resist.efr, resist.efr));
-      l->lines.emplace_back(std::format("  {:04X}  eic               {:04X} /* {} */", l->offset + offsetof(ResistData, eic), resist.eic, resist.eic));
-      l->lines.emplace_back(std::format("  {:04X}  eth               {:04X} /* {} */", l->offset + offsetof(ResistData, eth), resist.eth, resist.eth));
-      l->lines.emplace_back(std::format("  {:04X}  elt               {:04X} /* {} */", l->offset + offsetof(ResistData, elt), resist.elt, resist.elt));
-      l->lines.emplace_back(std::format("  {:04X}  edk               {:04X} /* {} */", l->offset + offsetof(ResistData, edk), resist.edk, resist.edk));
-      l->lines.emplace_back(std::format("  {:04X}  a6                {:08X} /* {} */", l->offset + offsetof(ResistData, unknown_a6), resist.unknown_a6, resist.unknown_a6));
-      l->lines.emplace_back(std::format("  {:04X}  a7                {:08X} /* {} */", l->offset + offsetof(ResistData, unknown_a7), resist.unknown_a7, resist.unknown_a7));
-      l->lines.emplace_back(std::format("  {:04X}  a8                {:08X} /* {} */", l->offset + offsetof(ResistData, unknown_a8), resist.unknown_a8, resist.unknown_a8));
-      l->lines.emplace_back(std::format("  {:04X}  a9                {:08X} /* {} */", l->offset + offsetof(ResistData, unknown_a9), resist.unknown_a9, resist.unknown_a9));
-      l->lines.emplace_back(std::format("  {:04X}  dfp_bonus         {:08X} /* {} */", l->offset + offsetof(ResistData, dfp_bonus), resist.dfp_bonus, resist.dfp_bonus));
+      addf(l, "  {:04X}  evp_bonus         {:04X} /* {} */", l->offset + offsetof(ResistData, evp_bonus), resist.evp_bonus, resist.evp_bonus);
+      addf(l, "  {:04X}  efr               {:04X} /* {} */", l->offset + offsetof(ResistData, efr), resist.efr, resist.efr);
+      addf(l, "  {:04X}  eic               {:04X} /* {} */", l->offset + offsetof(ResistData, eic), resist.eic, resist.eic);
+      addf(l, "  {:04X}  eth               {:04X} /* {} */", l->offset + offsetof(ResistData, eth), resist.eth, resist.eth);
+      addf(l, "  {:04X}  elt               {:04X} /* {} */", l->offset + offsetof(ResistData, elt), resist.elt, resist.elt);
+      addf(l, "  {:04X}  edk               {:04X} /* {} */", l->offset + offsetof(ResistData, edk), resist.edk, resist.edk);
+      addf(l, "  {:04X}  a6                {:08X} /* {} */", l->offset + offsetof(ResistData, unknown_a6), resist.unknown_a6, resist.unknown_a6);
+      addf(l, "  {:04X}  a7                {:08X} /* {} */", l->offset + offsetof(ResistData, unknown_a7), resist.unknown_a7, resist.unknown_a7);
+      addf(l, "  {:04X}  a8                {:08X} /* {} */", l->offset + offsetof(ResistData, unknown_a8), resist.unknown_a8, resist.unknown_a8);
+      addf(l, "  {:04X}  a9                {:08X} /* {} */", l->offset + offsetof(ResistData, unknown_a9), resist.unknown_a9, resist.unknown_a9);
+      addf(l, "  {:04X}  dfp_bonus         {:08X} /* {} */", l->offset + offsetof(ResistData, dfp_bonus), resist.dfp_bonus, resist.dfp_bonus);
     });
   };
   auto disassemble_label_as_attack_data = [&](std::shared_ptr<Label> l) -> void {
     disassemble_label_as_struct.template operator()<AttackData>(l, [&](const AttackData& attack) -> void {
       l->lines.emplace_back("  // As AttackData");
-      l->lines.emplace_back(std::format("  {:04X}  atp_min           {:04X} /* {} */", l->offset + offsetof(AttackData, min_atp), attack.min_atp, attack.min_atp));
-      l->lines.emplace_back(std::format("  {:04X}  atp_max           {:04X} /* {} */", l->offset + offsetof(AttackData, max_atp), attack.max_atp, attack.max_atp));
-      l->lines.emplace_back(std::format("  {:04X}  ata_min           {:04X} /* {} */", l->offset + offsetof(AttackData, min_ata), attack.min_ata, attack.min_ata));
-      l->lines.emplace_back(std::format("  {:04X}  ata_max           {:04X} /* {} */", l->offset + offsetof(AttackData, max_ata), attack.max_ata, attack.max_ata));
-      l->lines.emplace_back(std::format("  {:04X}  distance_x        {:08X} /* {:g} */", l->offset + offsetof(AttackData, distance_x), attack.distance_x.load_raw(), attack.distance_x));
-      l->lines.emplace_back(std::format("  {:04X}  angle             {:08X} /* {}/65536 */", l->offset + offsetof(AttackData, angle), attack.angle.load_raw(), attack.angle));
-      l->lines.emplace_back(std::format("  {:04X}  distance_y        {:08X} /* {:g} */", l->offset + offsetof(AttackData, distance_y), attack.distance_y.load_raw(), attack.distance_y));
-      l->lines.emplace_back(std::format("  {:04X}  a8                {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a8), attack.unknown_a8, attack.unknown_a8));
-      l->lines.emplace_back(std::format("  {:04X}  a9                {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a9), attack.unknown_a9, attack.unknown_a9));
-      l->lines.emplace_back(std::format("  {:04X}  a10               {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a10), attack.unknown_a10, attack.unknown_a10));
-      l->lines.emplace_back(std::format("  {:04X}  a11               {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a11), attack.unknown_a11, attack.unknown_a11));
-      l->lines.emplace_back(std::format("  {:04X}  a12               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a12), attack.unknown_a12, attack.unknown_a12));
-      l->lines.emplace_back(std::format("  {:04X}  a13               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a13), attack.unknown_a13, attack.unknown_a13));
-      l->lines.emplace_back(std::format("  {:04X}  a14               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a14), attack.unknown_a14, attack.unknown_a14));
-      l->lines.emplace_back(std::format("  {:04X}  a15               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a15), attack.unknown_a15, attack.unknown_a15));
-      l->lines.emplace_back(std::format("  {:04X}  a16               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a16), attack.unknown_a16, attack.unknown_a16));
+      addf(l, "  {:04X}  atp_min           {:04X} /* {} */", l->offset + offsetof(AttackData, min_atp), attack.min_atp, attack.min_atp);
+      addf(l, "  {:04X}  atp_max           {:04X} /* {} */", l->offset + offsetof(AttackData, max_atp), attack.max_atp, attack.max_atp);
+      addf(l, "  {:04X}  ata_min           {:04X} /* {} */", l->offset + offsetof(AttackData, min_ata), attack.min_ata, attack.min_ata);
+      addf(l, "  {:04X}  ata_max           {:04X} /* {} */", l->offset + offsetof(AttackData, max_ata), attack.max_ata, attack.max_ata);
+      addf(l, "  {:04X}  distance_x        {:08X} /* {:g} */", l->offset + offsetof(AttackData, distance_x), attack.distance_x.load_raw(), attack.distance_x);
+      addf(l, "  {:04X}  angle             {:08X} /* {}/65536 */", l->offset + offsetof(AttackData, angle), attack.angle.load_raw(), attack.angle);
+      addf(l, "  {:04X}  distance_y        {:08X} /* {:g} */", l->offset + offsetof(AttackData, distance_y), attack.distance_y.load_raw(), attack.distance_y);
+      addf(l, "  {:04X}  a8                {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a8), attack.unknown_a8, attack.unknown_a8);
+      addf(l, "  {:04X}  a9                {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a9), attack.unknown_a9, attack.unknown_a9);
+      addf(l, "  {:04X}  a10               {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a10), attack.unknown_a10, attack.unknown_a10);
+      addf(l, "  {:04X}  a11               {:04X} /* {} */", l->offset + offsetof(AttackData, unknown_a11), attack.unknown_a11, attack.unknown_a11);
+      addf(l, "  {:04X}  a12               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a12), attack.unknown_a12, attack.unknown_a12);
+      addf(l, "  {:04X}  a13               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a13), attack.unknown_a13, attack.unknown_a13);
+      addf(l, "  {:04X}  a14               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a14), attack.unknown_a14, attack.unknown_a14);
+      addf(l, "  {:04X}  a15               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a15), attack.unknown_a15, attack.unknown_a15);
+      addf(l, "  {:04X}  a16               {:08X} /* {} */", l->offset + offsetof(AttackData, unknown_a16), attack.unknown_a16, attack.unknown_a16);
     });
   };
   auto disassemble_label_as_movement_data = [&](std::shared_ptr<Label> l) -> void {
     disassemble_label_as_struct.template operator()<MovementData>(l, [&](const MovementData& movement) -> void {
       l->lines.emplace_back("  // As MovementData");
-      l->lines.emplace_back(std::format("  {:04X}  fparam1           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam1), movement.fparam1.load_raw(), movement.fparam1));
-      l->lines.emplace_back(std::format("  {:04X}  fparam2           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam2), movement.fparam2.load_raw(), movement.fparam2));
-      l->lines.emplace_back(std::format("  {:04X}  fparam3           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam3), movement.fparam3.load_raw(), movement.fparam3));
-      l->lines.emplace_back(std::format("  {:04X}  fparam4           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam4), movement.fparam4.load_raw(), movement.fparam4));
-      l->lines.emplace_back(std::format("  {:04X}  fparam5           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam5), movement.fparam5.load_raw(), movement.fparam5));
-      l->lines.emplace_back(std::format("  {:04X}  fparam6           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam6), movement.fparam6.load_raw(), movement.fparam6));
-      l->lines.emplace_back(std::format("  {:04X}  iparam1           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam1), movement.iparam1, movement.iparam1));
-      l->lines.emplace_back(std::format("  {:04X}  iparam2           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam2), movement.iparam2, movement.iparam2));
-      l->lines.emplace_back(std::format("  {:04X}  iparam3           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam3), movement.iparam3, movement.iparam3));
-      l->lines.emplace_back(std::format("  {:04X}  iparam4           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam4), movement.iparam4, movement.iparam4));
-      l->lines.emplace_back(std::format("  {:04X}  iparam5           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam5), movement.iparam5, movement.iparam5));
-      l->lines.emplace_back(std::format("  {:04X}  iparam6           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam6), movement.iparam6, movement.iparam6));
+      addf(l, "  {:04X}  fparam1           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam1), movement.fparam1.load_raw(), movement.fparam1);
+      addf(l, "  {:04X}  fparam2           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam2), movement.fparam2.load_raw(), movement.fparam2);
+      addf(l, "  {:04X}  fparam3           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam3), movement.fparam3.load_raw(), movement.fparam3);
+      addf(l, "  {:04X}  fparam4           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam4), movement.fparam4.load_raw(), movement.fparam4);
+      addf(l, "  {:04X}  fparam5           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam5), movement.fparam5.load_raw(), movement.fparam5);
+      addf(l, "  {:04X}  fparam6           {:08X} /* {:g} */", l->offset + offsetof(MovementData, fparam6), movement.fparam6.load_raw(), movement.fparam6);
+      addf(l, "  {:04X}  iparam1           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam1), movement.iparam1, movement.iparam1);
+      addf(l, "  {:04X}  iparam2           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam2), movement.iparam2, movement.iparam2);
+      addf(l, "  {:04X}  iparam3           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam3), movement.iparam3, movement.iparam3);
+      addf(l, "  {:04X}  iparam4           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam4), movement.iparam4, movement.iparam4);
+      addf(l, "  {:04X}  iparam5           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam5), movement.iparam5, movement.iparam5);
+      addf(l, "  {:04X}  iparam6           {:08X} /* {} */", l->offset + offsetof(MovementData, iparam6), movement.iparam6, movement.iparam6);
     });
   };
   auto disassemble_label_as_image_data = [&](std::shared_ptr<Label> l) -> void {
     if (reassembly_mode) {
-      l->lines.emplace_back(std::format("  // As compressed image data (0x{:X} bytes)", l->size));
+      addf(l, "  // As compressed image data (0x{:X} bytes)", l->size);
       l->lines.emplace_back("  .data " + phosg::format_data_string(text_r.pgetv(l->offset, l->size), l->size));
     } else {
       const void* data = text_r.pgetv(l->offset, l->size);
       auto decompressed = prs_decompress_with_meta(data, l->size);
-      l->lines.emplace_back(std::format("  // As decompressed image data (0x{:X} bytes)", decompressed.data.size()));
+      addf(l, "  // As decompressed image data (0x{:X} bytes)", decompressed.data.size());
       l->lines.emplace_back(format_and_indent_data(decompressed.data.data(), decompressed.data.size(), 0));
       if (decompressed.input_bytes_used < l->size) {
         size_t compressed_end_offset = l->offset + decompressed.input_bytes_used;
@@ -3135,7 +3155,7 @@ std::string disassemble_quest_script(
   };
   auto disassemble_label_as_vector4f_list = [&](std::shared_ptr<Label> l) -> void {
     if (reassembly_mode) {
-      l->lines.emplace_back(std::format("  // As VectorXYZTF list (0x{:X} bytes)", l->size));
+      addf(l, "  // As VectorXYZTF list (0x{:X} bytes)", l->size);
       l->lines.emplace_back("  .data " + phosg::format_data_string(text_r.pgetv(l->offset, l->size), l->size));
     } else {
       phosg::StringReader r = text_r.sub(l->offset, l->size);
@@ -3143,13 +3163,13 @@ std::string disassemble_quest_script(
       while (r.remaining() >= sizeof(VectorXYZTF)) {
         size_t offset = l->offset + r.where();
         const auto& e = r.get<VectorXYZTF>();
-        l->lines.emplace_back(std::format("  {:04X}  vector       x={:g}, y={:g}, z={:g}, t={:g}", offset, e.x, e.y, e.z, e.t));
+        addf(l, "  {:04X}  vector       x={:g}, y={:g}, z={:g}, t={:g}", offset, e.x, e.y, e.z, e.t);
       }
       if (r.remaining() > 0) {
         size_t struct_end_offset = l->offset + r.where();
         size_t remaining_size = r.remaining();
-        l->lines.emplace_back("  // Extra data after structures");
-        l->lines.emplace_back(format_and_indent_data(r.getv(remaining_size), remaining_size, struct_end_offset));
+        addf(l, "  // Extra data after structures");
+        add(l, format_and_indent_data(r.getv(remaining_size), remaining_size, struct_end_offset));
       }
     }
   };
@@ -4783,7 +4803,7 @@ void populate_quest_metadata_from_script(
       meta.episode = Episode::EP1;
       meta.max_players = 4;
       meta.name = header.name.decode(language);
-      if (meta.quest_number == 0xFFFFFFFF) {
+      if (meta.quest_number == 0) {
         meta.quest_number = phosg::fnv1a32(meta.name);
       }
       meta.text_offset = header.text_offset;
@@ -4802,7 +4822,7 @@ void populate_quest_metadata_from_script(
       meta.name = header.name.decode(meta.language);
       meta.short_description = header.short_description.decode(meta.language);
       meta.long_description = header.long_description.decode(meta.language);
-      if (meta.quest_number == 0xFFFFFFFF) {
+      if (meta.quest_number == 0) {
         meta.quest_number = phosg::fnv1a32(meta.name);
       }
       meta.text_offset = header.text_offset;
@@ -4823,7 +4843,7 @@ void populate_quest_metadata_from_script(
       meta.name = header.name.decode(meta.language);
       meta.short_description = header.short_description.decode(meta.language);
       meta.long_description = header.long_description.decode(meta.language);
-      if (meta.quest_number == 0xFFFFFFFF) {
+      if (meta.quest_number == 0) {
         meta.quest_number = header.quest_number;
       }
       meta.text_offset = header.text_offset;
@@ -4840,7 +4860,7 @@ void populate_quest_metadata_from_script(
       meta.header_unknown_a3 = header.unknown_a3;
       meta.episode = Episode::EP1;
       meta.max_players = 4;
-      if (meta.quest_number == 0xFFFFFFFF) {
+      if (meta.quest_number == 0) {
         meta.quest_number = header.quest_number;
       }
       meta.language = (language != Language::UNKNOWN) ? language : ((static_cast<size_t>(header.language) < 8) ? header.language : Language::ENGLISH);
@@ -4867,7 +4887,7 @@ void populate_quest_metadata_from_script(
       meta.header_unknown_a3 = header.unknown_a3;
       meta.episode = Episode::EP1;
       meta.max_players = 4;
-      if (meta.quest_number == 0xFFFFFFFF) {
+      if (meta.quest_number == 0) {
         meta.quest_number = header.quest_number;
       }
       meta.language = (language != Language::UNKNOWN) ? language : ((static_cast<size_t>(header.language) < 5) ? header.language : Language::ENGLISH);
@@ -4889,7 +4909,7 @@ void populate_quest_metadata_from_script(
       meta.episode = episode_for_quest_episode_number(header.episode);
       meta.joinable |= header.joinable;
       meta.max_players = header.max_players;
-      if (meta.quest_number == 0xFFFFFFFF) {
+      if (meta.quest_number == 0) {
         meta.quest_number = header.quest_number;
       }
       meta.language = (language != Language::UNKNOWN) ? language : Language::ENGLISH;

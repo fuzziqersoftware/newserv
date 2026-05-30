@@ -224,7 +224,7 @@ static asio::awaitable<void> server_command_announce_inner(const Args& a, bool m
       send_text_or_scrolling_message(s, a.text, a.text);
     }
   } else {
-    auto from_name = a.c->character_file()->disp.name.decode(a.c->language());
+    auto from_name = a.c->character_file()->disp.visual.name.decode(a.c->language());
     if (mail) {
       send_simple_mail(s, 0, from_name, a.text);
     } else {
@@ -333,7 +333,7 @@ ChatCommandDefinition cc_auction(
 static std::string name_for_client(std::shared_ptr<Client> c) {
   auto player = c->character_file(false);
   if (player.get()) {
-    return escape_player_name(player->disp.name.decode(player->inventory.language));
+    return escape_player_name(player->disp.visual.name.decode(player->inventory.language));
   }
 
   if (c->login) {
@@ -514,13 +514,9 @@ static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool 
     // Client sent 61; generate a BB-format player from the information we have and save that instead
     if (ch.character) {
       auto bb_player = PSOBBCharacterFile::create_from_config(
-          a.c->login->account->account_id,
-          a.c->language(),
-          ch.character->disp.visual,
-          ch.character->disp.name.decode(a.c->language()),
-          s->level_table(a.c->version()));
-      bb_player->disp.visual.version = 4;
-      bb_player->disp.visual.name_color_checksum = 0x00000000;
+          a.c->login->account->account_id, a.c->language(), ch.character->disp.visual, s->level_table(a.c->version()));
+      bb_player->disp.visual.sh.version = 4;
+      bb_player->disp.visual.sh.name_color_checksum = 0x00000000;
       bb_player->inventory = ch.character->inventory;
       // Before V3, player stats can't be correctly computed from other fields because material usage isn't stored
       // anywhere. For these versions, we have to trust the stats field from the player's data.
@@ -530,7 +526,7 @@ static asio::awaitable<void> server_command_bbchar_savechar(const Args& a, bool 
         bb_player->import_tethealla_material_usage(level_table);
       } else {
         level_table->advance_to_level(
-            bb_player->disp.stats, ch.character->disp.stats.level, bb_player->disp.visual.char_class);
+            bb_player->disp.stats, ch.character->disp.stats.level, bb_player->disp.visual.sh.char_class);
         bb_player->disp.stats.char_stats.atp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::POWER) * 2;
         bb_player->disp.stats.char_stats.mst += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::MIND) * 2;
         bb_player->disp.stats.char_stats.evp += bb_player->get_material_usage(PSOBBCharacterFile::MaterialType::EVADE) * 2;
@@ -629,15 +625,15 @@ ChatCommandDefinition cc_checkchar(
             auto ch = phosg::load_object_file<PSOGCEp3CharacterFile::Character>(filename);
             send_text_message_fmt(a.c, "Slot {}: $C6{}$C7\n{} {}\nCLv: on {}.{}, off {}.{}",
                 index + 1, ch.disp.visual.name.decode(),
-                name_for_section_id(ch.disp.visual.section_id), name_for_char_class(ch.disp.visual.char_class),
+                name_for_section_id(ch.disp.visual.sh.section_id), name_for_char_class(ch.disp.visual.sh.char_class),
                 (ch.ep3_config.online_clv_exp / 100) + 1, ch.ep3_config.online_clv_exp % 100,
                 (ch.ep3_config.offline_clv_exp / 100) + 1, ch.ep3_config.offline_clv_exp % 100);
           } else {
             std::string filename = a.c->backup_character_filename(a.c->login->account->account_id, index, false);
             auto ch = PSOCHARFile::load_shared(filename, false).character_file;
             send_text_message_fmt(a.c, "Slot {}: $C6{}$C7\n{} {}\nLevel {}",
-                index + 1, ch->disp.name.decode(),
-                name_for_section_id(ch->disp.visual.section_id), name_for_char_class(ch->disp.visual.char_class),
+                index + 1, ch->disp.visual.name.decode(),
+                name_for_section_id(ch->disp.visual.sh.section_id), name_for_char_class(ch->disp.visual.sh.char_class),
                 ch->disp.stats.level + 1);
           }
         } catch (const phosg::cannot_open_file&) {
@@ -955,7 +951,7 @@ ChatCommandDefinition cc_edit(
           }
           p->recompute_stats(s->level_table(a.c->version()), false);
         } else if (tokens.at(0) == "namecolor") {
-          p->disp.visual.name_color = std::stoul(tokens.at(1), nullptr, 16);
+          p->disp.visual.sh.name_color = std::stoul(tokens.at(1), nullptr, 16);
         } else if (tokens.at(0) == "language" || tokens.at(0) == "lang") {
           if (tokens.at(1).size() != 1) {
             throw std::runtime_error("invalid language");
@@ -976,24 +972,24 @@ ChatCommandDefinition cc_edit(
           if (secid == 0xFF) {
             throw precondition_failed("$C6No such section ID");
           } else {
-            p->disp.visual.section_id = secid;
+            p->disp.visual.sh.section_id = secid;
           }
         } else if (tokens.at(0) == "name") {
           std::vector<std::string> orig_tokens = phosg::split(a.text, ' ', 1);
-          p->disp.name.encode(orig_tokens.at(1), p->inventory.language);
+          p->disp.visual.name.encode(orig_tokens.at(1), p->inventory.language);
         } else if (tokens.at(0) == "npc") {
           if (tokens.at(1) == "none") {
-            p->disp.visual.extra_model = 0;
-            p->disp.visual.validation_flags &= 0xFD;
-            p->disp.visual.restore_npc_saved_fields();
+            p->disp.visual.sh.extra_model = 0;
+            p->disp.visual.sh.validation_flags &= 0xFD;
+            p->disp.visual.sh.restore_npc_saved_fields();
           } else {
             uint8_t npc = npc_for_name(tokens.at(1), a.c->version());
             if (npc == 0xFF) {
               throw precondition_failed("$C6No such NPC");
             }
-            p->disp.visual.backup_npc_saved_fields();
-            p->disp.visual.extra_model = npc;
-            p->disp.visual.validation_flags |= 0x02;
+            p->disp.visual.sh.backup_npc_saved_fields();
+            p->disp.visual.sh.extra_model = npc;
+            p->disp.visual.sh.validation_flags |= 0x02;
           }
         } else if (tokens.at(0) == "tech" && (cheats_allowed || !s->cheat_flags.edit_stats)) {
           uint8_t level = std::stoul(tokens.at(2)) - 1;
@@ -2701,7 +2697,7 @@ ChatCommandDefinition cc_surrender(
       if (!ps || !ps->is_alive()) {
         throw precondition_failed("$C6Defeated players\ncannot surrender");
       }
-      std::string name = remove_color(a.c->character_file()->disp.name.decode(a.c->language()));
+      std::string name = remove_color(a.c->character_file()->disp.visual.name.decode(a.c->language()));
       send_text_message_fmt(l, "$C6{} has\nsurrendered", name);
       for (const auto& watcher_l : l->watcher_lobbies) {
         send_text_message_fmt(watcher_l, "$C6{} has\nsurrendered", name);
@@ -3114,7 +3110,7 @@ ChatCommandDefinition cc_where(
       if (!a.c->proxy_session && l && l->is_game()) {
         for (auto lc : l->clients) {
           if (lc && (lc != a.c)) {
-            std::string name = lc->character_file()->disp.name.decode(lc->language());
+            std::string name = lc->character_file()->disp.visual.name.decode(lc->language());
             send_text_message_fmt(a.c, "$C6{}$C7 {:X}:{}",
                 name, lc->floor, FloorDefinition::get(l->episode, lc->floor).short_name);
           }

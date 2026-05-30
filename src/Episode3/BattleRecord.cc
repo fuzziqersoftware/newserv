@@ -170,7 +170,7 @@ std::string BattleRecord::serialize() const {
 void BattleRecord::add_player(
     const PlayerLobbyDataDCGC& lobby_data,
     const PlayerInventory& inventory,
-    const PlayerDispDataDCPCV3& disp,
+    const PlayerDispDataV123& disp,
     uint32_t level) {
   if (!this->is_writable) {
     throw std::logic_error("cannot write to battle record");

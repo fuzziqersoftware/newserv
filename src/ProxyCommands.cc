@@ -1637,8 +1637,8 @@ static asio::awaitable<HandlerResult> S_65_67_68_EB(std::shared_ptr<Client> c, C
       p.guild_card_number = entry.lobby_data.guild_card_number;
       p.name = name;
       p.language = entry.inventory.language;
-      p.section_id = entry.disp.visual.section_id;
-      p.char_class = entry.disp.visual.char_class;
+      p.section_id = entry.disp.visual.sh.section_id;
+      p.char_class = entry.disp.visual.sh.char_class;
       c->log.info_f("Added lobby player: ({}) {} {}", index, p.guild_card_number, p.name);
     }
   }
@@ -1763,7 +1763,7 @@ static asio::awaitable<HandlerResult> S_64(std::shared_ptr<Client> c, Channel::M
   } else {
     c->proxy_session->lobby_event = 0;
     c->proxy_session->lobby_difficulty = Difficulty::NORMAL;
-    c->proxy_session->lobby_section_id = c->character_file()->disp.visual.section_id;
+    c->proxy_session->lobby_section_id = c->character_file()->disp.visual.sh.section_id;
     c->proxy_session->lobby_mode = GameMode::NORMAL;
     c->proxy_session->lobby_random_seed = phosg::random_object<uint32_t>();
   }
@@ -1814,8 +1814,8 @@ static asio::awaitable<HandlerResult> S_64(std::shared_ptr<Client> c, Channel::M
       const auto& p_ep3 = cmd_ep3->players_ep3[x];
       p.language = p_ep3.inventory.language;
       p.name = p_ep3.disp.visual.name.decode(p.language);
-      p.section_id = p_ep3.disp.visual.section_id;
-      p.char_class = p_ep3.disp.visual.char_class;
+      p.section_id = p_ep3.disp.visual.sh.section_id;
+      p.char_class = p_ep3.disp.visual.sh.char_class;
     } else {
       p.name.clear();
     }
@@ -1873,8 +1873,8 @@ static asio::awaitable<HandlerResult> S_E8(std::shared_ptr<Client> c, Channel::M
     p.guild_card_number = player_entry.lobby_data.guild_card_number;
     p.language = player_entry.inventory.language;
     p.name = player_entry.disp.visual.name.decode(p.language);
-    p.section_id = player_entry.disp.visual.section_id;
-    p.char_class = player_entry.disp.visual.char_class;
+    p.section_id = player_entry.disp.visual.sh.section_id;
+    p.char_class = player_entry.disp.visual.sh.char_class;
     c->log.info_f("Added lobby player: ({}) {} {}", x, p.guild_card_number, p.name);
   }
 

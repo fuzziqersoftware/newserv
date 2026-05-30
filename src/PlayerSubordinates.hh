@@ -23,64 +23,64 @@
 class Client;
 class ItemParameterTable;
 
-struct PlayerDispDataBB;
+struct PlayerDispDataV4;
+struct PlayerVisualConfigV4;
 
 template <bool BE>
-struct PlayerVisualConfigT {
-  /* 00 */ pstring<TextEncoding::ASCII, 0x10> name;
-  /* 10 */ parray<uint8_t, 8> unknown_a2;
-  /* 18 */ U32T<BE> name_color = 0xFFFFFFFF; // ARGB
-  /* 1C */ uint8_t extra_model = 0;
+struct PlayerVisualConfigSharedT {
+  /* 00 */ parray<uint8_t, 8> unknown_a2;
+  /* 08 */ U32T<BE> name_color = 0xFFFFFFFF; // ARGB
+  /* 0C */ uint8_t extra_model = 0;
   // Some NPCs can crash the client if the character's class is incorrect. To handle this, we save the affected fields
   // in the unused bytes after extra_model. This is a newserv-specific extension; it appears the following 15 bytes
   // were simply never used by Sega.
-  /* 1D */ uint8_t npc_saved_data_type = 0;
-  /* 1E */ uint8_t npc_saved_costume = 0;
-  /* 1F */ uint8_t npc_saved_skin = 0;
-  /* 20 */ uint8_t npc_saved_face = 0;
-  /* 21 */ uint8_t npc_saved_head = 0;
-  /* 22 */ uint8_t npc_saved_hair = 0;
-  /* 23 */ uint8_t npc_saved_hair_r = 0;
-  /* 24 */ uint8_t npc_saved_hair_g = 0;
-  /* 25 */ uint8_t npc_saved_hair_b = 0;
-  /* 26 */ parray<uint8_t, 2> unused;
-  /* 28 */ F32T<BE> npc_saved_proportion_y = 0.0;
+  /* 0D */ uint8_t npc_saved_data_type = 0;
+  /* 0E */ uint8_t npc_saved_costume = 0;
+  /* 0F */ uint8_t npc_saved_skin = 0;
+  /* 10 */ uint8_t npc_saved_face = 0;
+  /* 11 */ uint8_t npc_saved_head = 0;
+  /* 12 */ uint8_t npc_saved_hair = 0;
+  /* 13 */ uint8_t npc_saved_hair_r = 0;
+  /* 14 */ uint8_t npc_saved_hair_g = 0;
+  /* 15 */ uint8_t npc_saved_hair_b = 0;
+  /* 16 */ parray<uint8_t, 2> unused;
+  /* 18 */ F32T<BE> npc_saved_proportion_y = 0.0;
   // See compute_name_color_checksum for details on how this is computed. If the value is incorrect, V1 and V2 will
   // ignore the name_color field and use the default color instead. This field is ignored on GC; on BB (and presumably
   // Xbox), if this has a nonzero value, the "Change Name" option appears in the character selection menu.
-  /* 2C */ U32T<BE> name_color_checksum = 0;
-  /* 30 */ uint8_t section_id = 0;
-  /* 31 */ uint8_t char_class = 0;
+  /* 1C */ U32T<BE> name_color_checksum = 0;
+  /* 20 */ uint8_t section_id = 0;
+  /* 21 */ uint8_t char_class = 0;
   // validation_flags specifies that some parts of this structure are not valid and should be ignored. The bits are:
   //   -----FCS
   //   F = class_flags is incorrect for the character's char_class value
   //   C = char_class is out of range
   //   S = section_id is out of range
-  /* 32 */ uint8_t validation_flags = 0;
-  /* 33 */ uint8_t version = 0;
+  /* 22 */ uint8_t validation_flags = 0;
+  /* 23 */ uint8_t version = 0;
   // class_flags specifies features of the character's class. The bits are:
   //   -------- -------- -------- FRHANMfm
   //   F = force, R = ranger, H = hunter
   //   A = android, N = newman, M = human
   //   f = female, m = male
-  // Enemies also have a class_flags field, though it isn't part of PlayerVisualConfig. The bits for enemies are:
+  // Enemies also have a class_flags field, though it isn't part of PlayerVisualConfigV123T. The bits for enemies are:
   //   -------- -------- -------- ----DMAN
   //   D = Dark attribute
   //   M = Machine attribute
   //   A = Altered Beast attribute
   //   N = Native attribute
-  /* 34 */ U32T<BE> class_flags = 0;
-  /* 38 */ U16T<BE> costume = 0;
-  /* 3A */ U16T<BE> skin = 0;
-  /* 3C */ U16T<BE> face = 0;
-  /* 3E */ U16T<BE> head = 0;
-  /* 40 */ U16T<BE> hair = 0;
-  /* 42 */ U16T<BE> hair_r = 0;
-  /* 44 */ U16T<BE> hair_g = 0;
-  /* 46 */ U16T<BE> hair_b = 0;
-  /* 48 */ F32T<BE> proportion_x = 0.0;
-  /* 4C */ F32T<BE> proportion_y = 0.0;
-  /* 50 */
+  /* 24 */ U32T<BE> class_flags = 0;
+  /* 28 */ U16T<BE> costume = 0;
+  /* 2A */ U16T<BE> skin = 0;
+  /* 2C */ U16T<BE> face = 0;
+  /* 2E */ U16T<BE> head = 0;
+  /* 30 */ U16T<BE> hair = 0;
+  /* 32 */ U16T<BE> hair_r = 0;
+  /* 34 */ U16T<BE> hair_g = 0;
+  /* 36 */ U16T<BE> hair_b = 0;
+  /* 38 */ F32T<BE> proportion_x = 0.0;
+  /* 3C */ F32T<BE> proportion_y = 0.0;
+  /* 40 */
 
   static uint32_t compute_name_color_checksum(uint32_t name_color) {
     uint8_t x = (phosg::random_object<uint32_t>() % 0xFF) + 1;
@@ -283,12 +283,10 @@ struct PlayerVisualConfigT {
       this->name_color_checksum = 0;
     }
     this->class_flags = class_flags_for_class(this->char_class);
-    this->name.clear_after_bytes(0x0C);
   }
 
-  operator PlayerVisualConfigT<!BE>() const {
-    PlayerVisualConfigT<!BE> ret;
-    ret.name = this->name;
+  operator PlayerVisualConfigSharedT<!BE>() const {
+    PlayerVisualConfigSharedT<!BE> ret;
     ret.unknown_a2 = this->unknown_a2;
     ret.name_color = this->name_color;
     ret.extra_model = this->extra_model;
@@ -311,14 +309,65 @@ struct PlayerVisualConfigT {
     ret.proportion_y = this->proportion_y;
     return ret;
   }
-} __packed_ws_be__(PlayerVisualConfigT, 0x50);
-using PlayerVisualConfig = PlayerVisualConfigT<false>;
-using PlayerVisualConfigBE = PlayerVisualConfigT<true>;
+} __packed_ws_be__(PlayerVisualConfigSharedT, 0x40);
 
 template <bool BE>
-struct PlayerDispDataDCPCV3T {
+struct PlayerVisualConfigV123T {
+  /* 00 */ pstring<TextEncoding::ASCII, 0x10> name;
+  /* 10 */ PlayerVisualConfigSharedT<BE> sh;
+  /* 50 */
+
+  operator PlayerVisualConfigV123T<!BE>() const {
+    PlayerVisualConfigV123T<!BE> ret;
+    ret.name = this->name;
+    ret.sh = this->sh;
+    return ret;
+  }
+
+  void enforce_lobby_join_limits_for_version(Version v) {
+    this->sh.enforce_lobby_join_limits_for_version(v);
+    this->name.clear_after_bytes(0x0C);
+  }
+
+  PlayerVisualConfigV4 to_v4(Language to_language, Language from_language) const;
+} __packed_ws_be__(PlayerVisualConfigV123T, 0x50);
+using PlayerVisualConfigV123 = PlayerVisualConfigV123T<false>;
+using PlayerVisualConfigV123BE = PlayerVisualConfigV123T<true>;
+
+struct PlayerVisualConfigV4 {
+  /* 00 */ pstring<TextEncoding::ASCII, 0x10> guild_card_number;
+  /* 10 */ PlayerVisualConfigSharedT<false> sh;
+  /* 50 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> name;
+  /* 70 */
+
+  void enforce_lobby_join_limits_for_version(Version v) {
+    this->sh.enforce_lobby_join_limits_for_version(v);
+    this->guild_card_number.clear_after_bytes(0x0C);
+  }
+  void apply_dressing_room(const PlayerVisualConfigV4& new_visual);
+
+  template <bool BE>
+  PlayerVisualConfigV123T<BE> to_v123(Language to_language, Language from_language) const {
+    PlayerVisualConfigV123T<BE> ret;
+    ret.name.encode(this->name.decode(from_language), to_language);
+    ret.sh = this->sh;
+    return ret;
+  }
+} __packed_ws__(PlayerVisualConfigV4, 0x70);
+
+template <bool BE>
+PlayerVisualConfigV4 PlayerVisualConfigV123T<BE>::to_v4(Language to_language, Language from_language) const {
+  PlayerVisualConfigV4 ret;
+  ret.guild_card_number.encode("         0", Language::ENGLISH);
+  ret.sh = this->sh;
+  ret.name.encode(this->name.decode(from_language), to_language);
+  return ret;
+}
+
+template <bool BE>
+struct PlayerDispDataV123T {
   /* 00 */ PlayerStatsT<BE> stats;
-  /* 24 */ PlayerVisualConfigT<BE> visual;
+  /* 24 */ PlayerVisualConfigV123T<BE> visual;
   /* 74 */ parray<uint8_t, 0x48> config;
   /* BC */ parray<uint8_t, 0x14> technique_levels_v1;
   /* D0 */
@@ -327,60 +376,50 @@ struct PlayerDispDataDCPCV3T {
     this->visual.enforce_lobby_join_limits_for_version(v);
   }
 
-  PlayerDispDataBB to_bb(Language to_language, Language from_language) const;
-} __packed_ws_be__(PlayerDispDataDCPCV3T, 0xD0);
-using PlayerDispDataDCPCV3 = PlayerDispDataDCPCV3T<false>;
-using PlayerDispDataDCPCV3BE = PlayerDispDataDCPCV3T<true>;
+  PlayerDispDataV4 to_v4(Language to_language, Language from_language) const;
+} __packed_ws_be__(PlayerDispDataV123T, 0xD0);
+using PlayerDispDataV123 = PlayerDispDataV123T<false>;
+using PlayerDispDataV123BE = PlayerDispDataV123T<true>;
 
-struct PlayerDispDataBBPreview {
+struct PlayerDispDataV4Preview {
   /* 00 */ le_uint32_t exp = 0;
   /* 04 */ le_uint32_t level = 0;
   // The name field in this structure is used for the player's Guild Card number, apparently (possibly because it's a
   // char array and this is BB)
-  /* 08 */ PlayerVisualConfig visual;
-  /* 58 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> name;
+  /* 08 */ PlayerVisualConfigV4 visual;
   /* 78 */ uint32_t play_time_seconds = 0;
   /* 7C */
-} __packed_ws__(PlayerDispDataBBPreview, 0x7C);
+} __packed_ws__(PlayerDispDataV4Preview, 0x7C);
 
 // BB player appearance and stats data
-struct PlayerDispDataBB {
+struct PlayerDispDataV4 {
   /* 0000 */ PlayerStats stats;
-  /* 0024 */ PlayerVisualConfig visual;
-  /* 0074 */ pstring<TextEncoding::UTF16_ALWAYS_MARKED, 0x10> name;
+  /* 0024 */ PlayerVisualConfigV4 visual;
   /* 0094 */ parray<uint8_t, 0xE8> config;
   /* 017C */ parray<uint8_t, 0x14> technique_levels_v1;
   /* 0190 */
 
   void enforce_lobby_join_limits_for_version(Version v) {
-    this->visual.enforce_lobby_join_limits_for_version(v);
-    this->name.clear_after_bytes(0x18); // 12 characters
+    this->visual.sh.enforce_lobby_join_limits_for_version(v);
+    this->visual.name.clear_after_bytes(0x18); // 12 characters
   }
 
   template <bool BE>
-  PlayerDispDataDCPCV3T<BE> to_dcpcv3(Language to_language, Language from_language) const {
-    PlayerDispDataDCPCV3T<BE> ret;
+  PlayerDispDataV123T<BE> to_v123(Language to_language, Language from_language) const {
+    PlayerDispDataV123T<BE> ret;
     ret.stats = this->stats;
-    ret.visual = this->visual;
-    std::string decoded_name = this->name.decode(from_language);
-    ret.visual.name.encode(decoded_name, to_language);
+    ret.visual = this->visual.to_v123<BE>(to_language, from_language);
     ret.config = this->config;
     ret.technique_levels_v1 = this->technique_levels_v1;
     return ret;
   }
-
-  void apply_preview(const PlayerDispDataBBPreview&);
-  void apply_dressing_room(const PlayerDispDataBBPreview&);
-} __packed_ws__(PlayerDispDataBB, 0x190);
+} __packed_ws__(PlayerDispDataV4, 0x190);
 
 template <bool BE>
-PlayerDispDataBB PlayerDispDataDCPCV3T<BE>::to_bb(Language to_language, Language from_language) const {
-  PlayerDispDataBB bb;
+PlayerDispDataV4 PlayerDispDataV123T<BE>::to_v4(Language to_language, Language from_language) const {
+  PlayerDispDataV4 bb;
   bb.stats = this->stats;
-  bb.visual = this->visual;
-  bb.visual.name.encode("         0");
-  std::string decoded_name = this->visual.name.decode(from_language);
-  bb.name.encode(decoded_name, to_language);
+  bb.visual = this->visual.to_v4(to_language, from_language);
   bb.config = this->config;
   bb.technique_levels_v1 = this->technique_levels_v1;
   return bb;
@@ -834,25 +873,25 @@ DestT convert_player_disp_data(const SrcT&, Language, Language) {
 }
 
 template <>
-inline PlayerDispDataDCPCV3 convert_player_disp_data<PlayerDispDataDCPCV3>(
-    const PlayerDispDataDCPCV3& src, Language, Language) {
+inline PlayerDispDataV123 convert_player_disp_data<PlayerDispDataV123>(
+    const PlayerDispDataV123& src, Language, Language) {
   return src;
 }
 
 template <>
-inline PlayerDispDataDCPCV3 convert_player_disp_data<PlayerDispDataDCPCV3, PlayerDispDataBB>(
-    const PlayerDispDataBB& src, Language to_language, Language from_language) {
-  return src.to_dcpcv3<false>(to_language, from_language);
+inline PlayerDispDataV123 convert_player_disp_data<PlayerDispDataV123, PlayerDispDataV4>(
+    const PlayerDispDataV4& src, Language to_language, Language from_language) {
+  return src.to_v123<false>(to_language, from_language);
 }
 
 template <>
-inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB, PlayerDispDataDCPCV3>(
-    const PlayerDispDataDCPCV3& src, Language to_language, Language from_language) {
-  return src.to_bb(to_language, from_language);
+inline PlayerDispDataV4 convert_player_disp_data<PlayerDispDataV4, PlayerDispDataV123>(
+    const PlayerDispDataV123& src, Language to_language, Language from_language) {
+  return src.to_v4(to_language, from_language);
 }
 
 template <>
-inline PlayerDispDataBB convert_player_disp_data<PlayerDispDataBB>(const PlayerDispDataBB& src, Language, Language) {
+inline PlayerDispDataV4 convert_player_disp_data<PlayerDispDataV4>(const PlayerDispDataV4& src, Language, Language) {
   return src;
 }
 

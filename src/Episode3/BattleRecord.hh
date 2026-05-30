@@ -22,7 +22,7 @@ public:
   struct PlayerEntry {
     PlayerLobbyDataDCGC lobby_data;
     PlayerInventory inventory;
-    PlayerDispDataDCPCV3 disp;
+    PlayerDispDataV123 disp;
     le_uint32_t level;
 
     void print(FILE* stream) const;
@@ -85,7 +85,7 @@ public:
   void add_player(
       const PlayerLobbyDataDCGC& lobby_data,
       const PlayerInventory& inventory,
-      const PlayerDispDataDCPCV3& disp,
+      const PlayerDispDataV123& disp,
       uint32_t level);
   void delete_player(uint8_t client_id);
   void add_command(Event::Type type, const void* data, size_t size);

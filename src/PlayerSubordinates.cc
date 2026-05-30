@@ -20,26 +20,26 @@
 #include "Text.hh"
 #include "Version.hh"
 
-void PlayerDispDataBB::apply_dressing_room(const PlayerDispDataBBPreview& pre) {
-  this->visual.name_color = pre.visual.name_color;
-  this->visual.extra_model = pre.visual.extra_model;
-  this->visual.name_color_checksum = pre.visual.name_color_checksum;
-  this->visual.section_id = pre.visual.section_id;
-  this->visual.char_class = pre.visual.char_class;
-  this->visual.validation_flags = pre.visual.validation_flags;
-  this->visual.version = pre.visual.version;
-  this->visual.class_flags = pre.visual.class_flags;
-  this->visual.costume = pre.visual.costume;
-  this->visual.skin = pre.visual.skin;
-  this->visual.face = pre.visual.face;
-  this->visual.head = pre.visual.head;
-  this->visual.hair = pre.visual.hair;
-  this->visual.hair_r = pre.visual.hair_r;
-  this->visual.hair_g = pre.visual.hair_g;
-  this->visual.hair_b = pre.visual.hair_b;
-  this->visual.proportion_x = pre.visual.proportion_x;
-  this->visual.proportion_y = pre.visual.proportion_y;
-  this->name = pre.name;
+void PlayerVisualConfigV4::apply_dressing_room(const PlayerVisualConfigV4& new_visual) {
+  this->sh.name_color = new_visual.sh.name_color;
+  this->sh.extra_model = new_visual.sh.extra_model;
+  this->sh.name_color_checksum = new_visual.sh.name_color_checksum;
+  this->sh.section_id = new_visual.sh.section_id;
+  this->sh.char_class = new_visual.sh.char_class;
+  this->sh.validation_flags = new_visual.sh.validation_flags;
+  this->sh.version = new_visual.sh.version;
+  this->sh.class_flags = new_visual.sh.class_flags;
+  this->sh.costume = new_visual.sh.costume;
+  this->sh.skin = new_visual.sh.skin;
+  this->sh.face = new_visual.sh.face;
+  this->sh.head = new_visual.sh.head;
+  this->sh.hair = new_visual.sh.hair;
+  this->sh.hair_r = new_visual.sh.hair_r;
+  this->sh.hair_g = new_visual.sh.hair_g;
+  this->sh.hair_b = new_visual.sh.hair_b;
+  this->sh.proportion_x = new_visual.sh.proportion_x;
+  this->sh.proportion_y = new_visual.sh.proportion_y;
+  this->name = new_visual.name;
 }
 
 void GuildCardBB::clear() {

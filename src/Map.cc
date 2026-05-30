@@ -2890,7 +2890,7 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
 
     // Delsaber. Params:
     //   param1 = jump distance delta (value used is param1 + 100)
-    //   param2 = prejudice flag (these correspond to the bits in PlayerVisualConfig::class_flags):
+    //   param2 = prejudice flag (these correspond to the bits in PlayerVisualConfigV123T::class_flags):
     //     0 = males
     //     1 = females
     //     2 = humans

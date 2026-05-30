@@ -1962,13 +1962,13 @@ static asio::awaitable<void> on_CA_Ep3(std::shared_ptr<Client> c, Channel::Messa
         if (existing_c) {
           auto existing_p = existing_c->character_file();
           PlayerLobbyDataDCGC lobby_data;
-          lobby_data.name.encode(existing_p->disp.name.decode(existing_c->language()), c->language());
+          lobby_data.name.encode(existing_p->disp.visual.name.decode(existing_c->language()), c->language());
           lobby_data.player_tag = 0x00010000;
           lobby_data.guild_card_number = existing_c->login->account->account_id;
           l->battle_record->add_player(
               lobby_data,
               existing_p->inventory,
-              existing_p->disp.to_dcpcv3<false>(c->language(), c->language()),
+              existing_p->disp.to_v123<false>(c->language(), c->language()),
               c->ep3_config ? (c->ep3_config->online_clv_exp / 100) : 0);
         }
       }
@@ -2198,11 +2198,11 @@ static asio::awaitable<void> on_09(std::shared_ptr<Client> c, Channel::Message& 
                   ? version_tokens.at(static_cast<size_t>(game_c->version()))
                   : "";
               auto player = game_c->character_file();
-              std::string name = escape_player_name(player->disp.name.decode(game_c->language()));
+              std::string name = escape_player_name(player->disp.visual.name.decode(game_c->language()));
               info += std::format("{}{}\n  {} Lv{} {}\n",
                   name,
                   version_token,
-                  name_for_char_class(player->disp.visual.char_class),
+                  name_for_char_class(player->disp.visual.sh.char_class),
                   player->disp.stats.level + 1,
                   char_for_language(game_c->language()));
             }
@@ -2945,7 +2945,7 @@ static void on_10_tournament_entries(
     return;
   }
   if (team_name.empty()) {
-    team_name = c->character_file()->disp.name.decode(c->language());
+    team_name = c->character_file()->disp.visual.name.decode(c->language());
     team_name += std::format("/{:X}", c->login->account->account_id);
   }
   uint16_t tourn_num = item_id >> 16;
@@ -3369,29 +3369,29 @@ static asio::awaitable<void> on_61_98(std::shared_ptr<Client> c, Channel::Messag
     case Version::DC_11_2000:
     case Version::DC_V1: {
       const auto& cmd = check_size_t<C_CharacterData_DCv1_61_98>(msg.data);
-      c->v1_v2_last_reported_disp = std::make_unique<PlayerDispDataDCPCV3>(cmd.disp);
+      c->v1_v2_last_reported_disp = std::make_unique<PlayerDispDataV123>(cmd.disp);
       player->inventory = cmd.inventory;
-      player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
-      c->login->account->last_player_name = player->disp.name.decode(player->inventory.language);
+      player->disp = cmd.disp.to_v4(player->inventory.language, player->inventory.language);
+      c->login->account->last_player_name = player->disp.visual.name.decode(player->inventory.language);
       break;
     }
     case Version::DC_V2: {
       const auto& cmd = check_size_t<C_CharacterData_DCv2_61_98>(msg.data, 0xFFFF);
-      c->v1_v2_last_reported_disp = std::make_unique<PlayerDispDataDCPCV3>(cmd.disp);
+      c->v1_v2_last_reported_disp = std::make_unique<PlayerDispDataV123>(cmd.disp);
       player->inventory = cmd.inventory;
-      player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
+      player->disp = cmd.disp.to_v4(player->inventory.language, player->inventory.language);
       player->battle_records = cmd.records.battle;
       player->challenge_records = cmd.records.challenge;
       player->choice_search_config = cmd.choice_search_config;
-      c->login->account->last_player_name = player->disp.name.decode(player->inventory.language);
+      c->login->account->last_player_name = player->disp.visual.name.decode(player->inventory.language);
       break;
     }
     case Version::PC_NTE:
     case Version::PC_V2: {
       const auto& cmd = check_size_t<C_CharacterData_PC_61_98>(msg.data, 0xFFFF);
-      c->v1_v2_last_reported_disp = std::make_unique<PlayerDispDataDCPCV3>(cmd.disp);
+      c->v1_v2_last_reported_disp = std::make_unique<PlayerDispDataV123>(cmd.disp);
       player->inventory = cmd.inventory;
-      player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
+      player->disp = cmd.disp.to_v4(player->inventory.language, player->inventory.language);
       player->battle_records = cmd.records.battle;
       player->challenge_records = cmd.records.challenge;
       player->choice_search_config = cmd.choice_search_config;
@@ -3412,16 +3412,16 @@ static asio::awaitable<void> on_61_98(std::shared_ptr<Client> c, Channel::Messag
         player->auto_reply.clear();
         c->login->account->auto_reply_message.clear();
       }
-      c->login->account->last_player_name = player->disp.name.decode(player->inventory.language);
+      c->login->account->last_player_name = player->disp.visual.name.decode(player->inventory.language);
       break;
     }
     case Version::GC_NTE: {
       const auto& cmd = check_size_t<C_CharacterData_GCNTE_61_98>(msg.data, 0xFFFF);
-      c->v1_v2_last_reported_disp = std::make_unique<PlayerDispDataDCPCV3>(cmd.disp);
+      c->v1_v2_last_reported_disp = std::make_unique<PlayerDispDataV123>(cmd.disp);
 
       auto s = c->require_server_state();
       player->inventory = cmd.inventory;
-      player->disp = cmd.disp.to_bb(player->inventory.language, player->inventory.language);
+      player->disp = cmd.disp.to_v4(player->inventory.language, player->inventory.language);
       player->battle_records = cmd.records.battle;
       player->challenge_records = cmd.records.challenge;
       player->choice_search_config = cmd.choice_search_config;
@@ -3440,7 +3440,7 @@ static asio::awaitable<void> on_61_98(std::shared_ptr<Client> c, Channel::Messag
         player->auto_reply.clear();
         c->login->account->auto_reply_message.clear();
       }
-      c->login->account->last_player_name = player->disp.name.decode(player->inventory.language);
+      c->login->account->last_player_name = player->disp.visual.name.decode(player->inventory.language);
       break;
     }
 
@@ -3479,7 +3479,7 @@ static asio::awaitable<void> on_61_98(std::shared_ptr<Client> c, Channel::Messag
       }
 
       player->inventory = cmd->inventory;
-      player->disp = cmd->disp.to_bb(player->inventory.language, player->inventory.language);
+      player->disp = cmd->disp.to_v4(player->inventory.language, player->inventory.language);
       player->battle_records = cmd->records.battle;
       player->challenge_records = cmd->records.challenge;
       player->choice_search_config = cmd->choice_search_config;
@@ -3499,7 +3499,7 @@ static asio::awaitable<void> on_61_98(std::shared_ptr<Client> c, Channel::Messag
         player->auto_reply.clear();
         c->login->account->auto_reply_message.clear();
       }
-      c->login->account->last_player_name = player->disp.name.decode(player->inventory.language);
+      c->login->account->last_player_name = player->disp.visual.name.decode(player->inventory.language);
       break;
     }
     case Version::BB_V4: {
@@ -3527,7 +3527,7 @@ static asio::awaitable<void> on_61_98(std::shared_ptr<Client> c, Channel::Messag
         player->auto_reply.clear();
         c->login->account->auto_reply_message.clear();
       }
-      c->login->account->last_player_name = player->disp.name.decode(player->inventory.language);
+      c->login->account->last_player_name = player->disp.visual.name.decode(player->inventory.language);
       break;
     }
     default:
@@ -3601,8 +3601,8 @@ static asio::awaitable<void> on_30(std::shared_ptr<Client> c, Channel::Message& 
       default:
         throw std::logic_error("extended player data command not implemented for version");
     }
-    ch->disp.visual.version = 4;
-    ch->disp.visual.name_color_checksum = 0x00000000;
+    ch->disp.visual.sh.version = 4;
+    ch->disp.visual.sh.name_color_checksum = 0x00000000;
   }
 
   c->character_data_ready_promise->set_value(GetPlayerInfoResult{
@@ -3669,7 +3669,7 @@ static asio::awaitable<void> on_06(std::shared_ptr<Client> c, Channel::Message& 
   }
 
   auto p = c->character_file();
-  std::string from_name = p->disp.name.decode(c->language());
+  std::string from_name = p->disp.visual.name.decode(c->language());
   static const std::string whisper_text = "(whisper)";
   for (size_t x = 0; x < l->max_clients; x++) {
     if (l->clients[x]) {
@@ -3700,7 +3700,7 @@ static asio::awaitable<void> on_06(std::shared_ptr<Client> c, Channel::Message& 
           c->version(),
           c->language(),
           c->lobby_client_id,
-          p->disp.name.decode(c->language()),
+          p->disp.visual.name.decode(c->language()),
           text,
           private_flags);
       l->battle_record->add_chat_message(c->login->account->account_id, std::move(prepared_message));
@@ -3961,7 +3961,7 @@ static asio::awaitable<void> on_E5_BB(std::shared_ptr<Client> c, Channel::Messag
   bool should_send_approve = true;
   if (c->bb_connection_phase == 0x03) { // Dressing room
     try {
-      c->character_file()->disp.apply_dressing_room(cmd.preview);
+      c->character_file()->disp.visual.apply_dressing_room(cmd.preview.visual);
     } catch (const std::exception& e) {
       send_message_box(c, std::format("$C6Character could not be modified:\n{}", e.what()));
       should_send_approve = false;
@@ -3969,7 +3969,8 @@ static asio::awaitable<void> on_E5_BB(std::shared_ptr<Client> c, Channel::Messag
   } else {
     try {
       auto s = c->require_server_state();
-      c->create_character_file(c->login->account->account_id, c->language(), cmd.preview, s->level_table(c->version()));
+      c->create_character_file(
+          c->login->account->account_id, c->language(), cmd.preview.visual, s->level_table(c->version()));
     } catch (const std::exception& e) {
       send_message_box(c, std::format("$C6New character could not be created:\n{}", e.what()));
       should_send_approve = false;
@@ -4271,11 +4272,11 @@ static void on_choice_search_t(std::shared_ptr<Client> c, const ChoiceSearchConf
         auto lp = lc->character_file();
         auto& result = results.emplace_back();
         result.guild_card_number = lc->login->account->account_id;
-        result.name.encode(lp->disp.name.decode(lc->language()), c->language());
+        result.name.encode(lp->disp.visual.name.decode(lc->language()), c->language());
         std::string info_string = std::format("{} Lv{}\n{}\n",
-            name_for_char_class(lp->disp.visual.char_class),
+            name_for_char_class(lp->disp.visual.sh.char_class),
             static_cast<size_t>(lp->disp.stats.level + 1),
-            name_for_section_id(lp->disp.visual.section_id));
+            name_for_section_id(lp->disp.visual.sh.section_id));
         result.info_string.encode(info_string, c->language());
         std::string location_string;
         if (l->is_game()) {
@@ -4293,7 +4294,7 @@ static void on_choice_search_t(std::shared_ptr<Client> c, const ChoiceSearchConf
         result.reconnect_command.port = s->game_server_port_for_version(c->version());
         result.meet_user.lobby_refs[0].menu_id = MenuID::LOBBY;
         result.meet_user.lobby_refs[0].item_id = l->lobby_id;
-        result.meet_user.player_name.encode(lp->disp.name.decode(lc->language()), c->language());
+        result.meet_user.player_name.encode(lp->disp.visual.name.decode(lc->language()), c->language());
         // The client can only handle 32 results
         if (results.size() >= 0x20) {
           break;
@@ -4411,14 +4412,14 @@ static asio::awaitable<void> on_81(std::shared_ptr<Client> c, Channel::Message& 
         send_simple_mail(
             c,
             target->login->account->account_id,
-            target_p->disp.name.decode(target_p->inventory.language),
+            target_p->disp.visual.name.decode(target_p->inventory.language),
             target_p->auto_reply.decode(target_p->inventory.language));
       }
     }
 
     // Forward the message
     send_simple_mail(
-        target, c->login->account->account_id, c->character_file()->disp.name.decode(c->language()), message);
+        target, c->login->account->account_id, c->character_file()->disp.visual.name.decode(c->language()), message);
   }
 }
 
@@ -4592,7 +4593,7 @@ std::shared_ptr<Lobby> create_game_generic(
   }
   game->password = password;
 
-  game->creator_section_id = p->disp.visual.section_id;
+  game->creator_section_id = p->disp.visual.sh.section_id;
   game->override_section_id = creator_c->override_section_id;
   if (game->mode == GameMode::CHALLENGE) {
     game->challenge_params = std::make_shared<Lobby::ChallengeParameters>();
@@ -5373,7 +5374,7 @@ static asio::awaitable<void> on_EA_BB(std::shared_ptr<Client> c, Channel::Messag
         // TODO: What's the right error code to use here?
         send_command(c, 0x02EA, 0x00000001);
       } else {
-        std::string player_name = c->character_file()->disp.name.decode(c->language());
+        std::string player_name = c->character_file()->disp.visual.name.decode(c->language());
         auto team = s->team_index->create(team_name, c->login->account->account_id, player_name);
         c->login->account->bb_team_id = team->team_id;
         c->login->account->save();
@@ -5412,7 +5413,7 @@ static asio::awaitable<void> on_EA_BB(std::shared_ptr<Client> c, Channel::Messag
             s->team_index->add_member(
                 team->team_id,
                 added_c->login->account->account_id,
-                added_c->character_file()->disp.name.decode(added_c->language()));
+                added_c->character_file()->disp.visual.name.decode(added_c->language()));
             send_command(c, 0x04EA, 0x00000000);
             send_command(added_c, 0x04EA, 0x00000000);
             send_team_metadata_change_notifications(

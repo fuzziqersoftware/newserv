@@ -149,7 +149,7 @@ void DownloadSession::send_93_9D_9E(bool extended) {
     ret.serial_number.encode(std::format("{:08X}", this->serial_number));
     ret.access_key.encode(this->access_key);
     ret.serial_number2.encode(std::format("{:08X}", this->serial_number2));
-    ret.login_character_name.encode(this->character->disp.name.decode());
+    ret.login_character_name.encode(this->character->disp.visual.name.decode());
     this->channel->send(0x93, 0x01, &ret, extended ? sizeof(ret) : sizeof(C_LoginV1_DC_93));
 
   } else if (is_v2(this->version)) {
@@ -164,7 +164,7 @@ void DownloadSession::send_93_9D_9E(bool extended) {
     ret.access_key.encode(this->access_key);
     ret.serial_number2 = ret.serial_number;
     ret.access_key2 = ret.access_key;
-    ret.login_character_name.encode(this->character->disp.name.decode());
+    ret.login_character_name.encode(this->character->disp.visual.name.decode());
     size_t data_size = extended
         ? ((this->version == Version::PC_V2) ? sizeof(ret) : sizeof(C_LoginExtended_DC_GC_9D))
         : sizeof(C_Login_DC_PC_GC_9D);
@@ -182,7 +182,7 @@ void DownloadSession::send_93_9D_9E(bool extended) {
     ret.access_key.encode(this->access_key);
     ret.serial_number2 = ret.serial_number;
     ret.access_key2 = ret.access_key;
-    ret.login_character_name.encode(this->character->disp.name.decode());
+    ret.login_character_name.encode(this->character->disp.visual.name.decode());
     ret.client_config = this->client_config;
     this->channel->send(0x9E, 0x01, &ret, extended ? sizeof(ret) : sizeof(C_Login_PC_GC_9E));
 
@@ -198,7 +198,7 @@ void DownloadSession::send_93_9D_9E(bool extended) {
     ret.access_key.encode(std::format("{:016X}", this->xb_user_id));
     ret.serial_number2 = ret.serial_number;
     ret.access_key2 = ret.access_key;
-    ret.login_character_name.encode(this->character->disp.name.decode());
+    ret.login_character_name.encode(this->character->disp.visual.name.decode());
     ret.xb_netloc.internal_ipv4_address = phosg::random_object<uint32_t>();
     ret.xb_netloc.external_ipv4_address = phosg::random_object<uint32_t>();
     ret.xb_netloc.port = 9500;
@@ -222,13 +222,13 @@ void DownloadSession::send_61_98(bool is_98) {
   if (is_v1(this->version)) {
     C_CharacterData_DCv1_61_98 ret;
     ret.inventory = this->character->inventory;
-    ret.disp = convert_player_disp_data<PlayerDispDataDCPCV3, PlayerDispDataBB>(this->character->disp, Language::ENGLISH, Language::ENGLISH);
+    ret.disp = convert_player_disp_data<PlayerDispDataV123, PlayerDispDataV4>(this->character->disp, Language::ENGLISH, Language::ENGLISH);
     this->channel->send(command, 0x01, ret);
 
   } else if (this->version == Version::DC_V2) {
     C_CharacterData_DCv2_61_98 ret;
     ret.inventory = this->character->inventory;
-    ret.disp = convert_player_disp_data<PlayerDispDataDCPCV3, PlayerDispDataBB>(this->character->disp, Language::ENGLISH, Language::ENGLISH);
+    ret.disp = convert_player_disp_data<PlayerDispDataV123, PlayerDispDataV4>(this->character->disp, Language::ENGLISH, Language::ENGLISH);
     ret.records.challenge = this->character->challenge_records;
     ret.records.battle = this->character->battle_records;
     ret.choice_search_config = this->character->choice_search_config;
@@ -237,7 +237,7 @@ void DownloadSession::send_61_98(bool is_98) {
   } else if (this->version == Version::PC_V2) {
     C_CharacterData_PC_61_98 ret;
     ret.inventory = this->character->inventory;
-    ret.disp = convert_player_disp_data<PlayerDispDataDCPCV3, PlayerDispDataBB>(this->character->disp, Language::ENGLISH, Language::ENGLISH);
+    ret.disp = convert_player_disp_data<PlayerDispDataV123, PlayerDispDataV4>(this->character->disp, Language::ENGLISH, Language::ENGLISH);
     ret.records.challenge = this->character->challenge_records;
     ret.records.battle = this->character->battle_records;
     ret.choice_search_config = this->character->choice_search_config;
@@ -246,7 +246,7 @@ void DownloadSession::send_61_98(bool is_98) {
   } else if (is_v3(this->version)) {
     C_CharacterData_V3_61_98 ret;
     ret.inventory = this->character->inventory;
-    ret.disp = convert_player_disp_data<PlayerDispDataDCPCV3, PlayerDispDataBB>(this->character->disp, Language::ENGLISH, Language::ENGLISH);
+    ret.disp = convert_player_disp_data<PlayerDispDataV123, PlayerDispDataV4>(this->character->disp, Language::ENGLISH, Language::ENGLISH);
     ret.records.challenge = this->character->challenge_records;
     ret.records.battle = this->character->battle_records;
     ret.choice_search_config = this->character->choice_search_config;
