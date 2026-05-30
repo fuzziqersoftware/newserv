@@ -40,9 +40,9 @@
 //   stack_pop opcodes to work with arbitrary data. There is protection from stack underflows (the caller receives the
 //   value 0, or the thread terminates in case of the ret opcode), but there is no protection from overflows.
 // - The quest flags are a per-character array of 1024 single-bit flags saved with the character data. (On Episode 3,
-//   there are 8192 instead.)
+//   there are 8192 instead.) Each character has independent sets of quest flags for each difficulty level.
 // - The quest counters are a per-character array of 16 32-bit values saved with the character data. (On Episode 3,
-//   there are 48 instead.)
+//   there are 48 instead.) Unlike quest flags, there is only one set of quest counters, used for all difficulties.
 // - The event flags are an array of 0x100 bytes stored in the system file (not the character file).
 
 using AttackData = BattleParamsIndex::AttackData;

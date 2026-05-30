@@ -334,8 +334,8 @@ struct PSOBBMinimalSystemFile {
 } __packed_ws__(PSOBBMinimalSystemFile, 0x114);
 
 struct PSOBBBaseSystemFile : PSOBBMinimalSystemFile {
-  /* 0114 */ parray<uint8_t, 0x016C> key_config;
-  /* 0280 */ parray<uint8_t, 0x0038> joystick_config;
+  /* 0114 */ parray<uint8_t, 0x16C> key_config;
+  /* 0280 */ parray<uint8_t, 0x38> joystick_config;
   /* 02B8 */
 
   PSOBBBaseSystemFile();
@@ -808,15 +808,15 @@ struct PSOBBCharacterFile {
   /* 1AC8 */ le_uint32_t unknown_a3 = 0;
   /* 1ACC */ parray<SaveFileSymbolChatEntryBB, 0x0C> symbol_chats;
   /* 1FAC */ parray<SaveFileShortcutEntryBB, 0x10> shortcuts;
-  /* 29EC */ pstring<TextEncoding::UTF16, 0x00AC> auto_reply;
-  /* 2B44 */ pstring<TextEncoding::UTF16, 0x00AC> info_board;
+  /* 29EC */ pstring<TextEncoding::UTF16, 0xAC> auto_reply;
+  /* 2B44 */ pstring<TextEncoding::UTF16, 0xAC> info_board;
   /* 2C9C */ PlayerRecordsBattle battle_records;
   /* 2CB4 */ parray<uint8_t, 4> unknown_a4;
   /* 2CB8 */ PlayerRecordsChallengeBB challenge_records;
-  /* 2DF8 */ parray<le_uint16_t, 0x0014> tech_menu_shortcut_entries;
+  /* 2DF8 */ parray<le_uint16_t, 0x14> tech_menu_shortcut_entries;
   /* 2E20 */ ChoiceSearchConfig choice_search_config;
-  /* 2E38 */ parray<uint8_t, 0x0010> unknown_a6;
-  /* 2E48 */ parray<le_uint32_t, 0x0010> quest_counters;
+  /* 2E38 */ parray<uint8_t, 0x10> unknown_a6;
+  /* 2E48 */ parray<le_uint32_t, 0x10> quest_counters;
   /* 2E88 */ PlayerRecordsBattle offline_battle_records;
   /* 2EA0 */ parray<uint8_t, 4> unknown_a7;
   /* 2EA4 */
@@ -1040,18 +1040,18 @@ struct LegacySavedPlayerDataBB { // .nsc file format
   /* 0008 */ parray<uint8_t, 0x20> unused;
   /* 0028 */ PlayerRecordsBattle battle_records;
   /* 0040 */ PlayerDispDataV4Preview preview;
-  /* 00BC */ pstring<TextEncoding::UTF16, 0x00AC> auto_reply;
+  /* 00BC */ pstring<TextEncoding::UTF16, 0xAC> auto_reply;
   /* 0214 */ PlayerBank200 bank;
   /* 14DC */ PlayerRecordsChallengeBB challenge_records;
   /* 161C */ PlayerDispDataV4 disp;
-  /* 17AC */ pstring<TextEncoding::UTF16, 0x0058> guild_card_description;
-  /* 185C */ pstring<TextEncoding::UTF16, 0x00AC> info_board;
+  /* 17AC */ pstring<TextEncoding::UTF16, 0x58> guild_card_description;
+  /* 185C */ pstring<TextEncoding::UTF16, 0xAC> info_board;
   /* 19B4 */ PlayerInventory inventory;
   /* 1D00 */ parray<uint8_t, 4> unknown_a2;
   /* 1D04 */ QuestFlags quest_flags;
   /* 1F04 */ le_uint32_t death_count = 0;
-  /* 1F08 */ parray<le_uint32_t, 0x0016> quest_counters;
-  /* 1F60 */ parray<le_uint16_t, 0x0014> tech_menu_shortcut_entries;
+  /* 1F08 */ parray<le_uint32_t, 0x16> quest_counters;
+  /* 1F60 */ parray<le_uint16_t, 0x14> tech_menu_shortcut_entries;
   /* 1F88 */
 } __packed_ws__(LegacySavedPlayerDataBB, 0x1F88);
 
@@ -1059,7 +1059,7 @@ struct LegacySavedAccountDataBB { // .nsa file format
   static const char* SIGNATURE;
 
   /* 0000 */ pstring<TextEncoding::ASCII, 0x40> signature;
-  /* 0040 */ parray<le_uint32_t, 0x001E> blocked_senders;
+  /* 0040 */ parray<le_uint32_t, 0x1E> blocked_senders;
   /* 00B8 */ PSOBBGuildCardFile guild_card_file;
   /* D648 */ PSOBBBaseSystemFile system_file;
   /* D880 */ PSOBBFullTeamMembership team_membership;
