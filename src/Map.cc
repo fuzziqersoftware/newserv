@@ -1221,27 +1221,27 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     // game's mode and quest flags. A different set of flags is checked on BB than on other versions, presumably since
     // government quests are used to unlock areas instead of offline story progression. On later versions of BB, all
     // floors are available by default; this table reflects the behavior before that change.
-    // Required flag for mode:   Online/multi   Offline       BB (all modes)
+    // Required flag for mode:    Online/multi   Offline       BB (all modes)
     //   Episode 1:
-    //     Forest 1:             Always open    Always open   Always open
-    //     Cave 1:               0x17           0x18          0x1F9
-    //     Mine 1:               0x20           0x21          0x201
-    //     Ruins 1:              0x30           0x2A          0x207
+    //     Forest 1               Always open    Always open   Always open
+    //     Cave 1                 0x17           0x18          0x1F9
+    //     Mine 1                 0x20           0x21          0x201
+    //     Ruins 1                0x30           0x2A          0x207
     //   Episode 2:
-    //     VR Temple Alpha:      Always open    Always open   Always open
-    //     VR Spaceship Alpha:   0x4C           0x4D          0x21B
-    //     CCA:                  0x4F           0x50          0x225
-    //     Seabed Upper:         0x52           0x53          0x22F
+    //     VR Temple Alpha        Always open    Always open   Always open
+    //     VR Spaceship Alpha     0x4C           0x4D          0x21B
+    //     CCA                    0x4F           0x50          0x225
+    //     Seabed Upper           0x52           0x53          0x22F
     //   Episode 4:
-    //     Crater East                                        Always open
-    //     Crater West                                        0x2BD
-    //     Crater South                                       0x2BE
-    //     Crater North                                       0x2BF
-    //     Crater Interior                                    0x2C0
-    //     Subterranean Desert 1                              0x2C1
+    //     Crater East                                         Always open
+    //     Crater West                                         0x2BD
+    //     Crater South                                        0x2BE
+    //     Crater North                                        0x2BF
+    //     Crater Interior                                     0x2C0
+    //     Subterranean Desert 1                               0x2C1
     // Params:
     //   param5 = main warp type:
-    //     00 = Episode 1 / Episode 4
+    //     00 = All levels
     //     01 = Ep2 VR Temple / VR Spaceship (CCA and Seabed not available)
     //     02 = Ep2 CCA (VR Temple and Spaceship not available)
     {0x0043, F_V0_V4, 0x0000600000040001, "TObjCityMainWarp"},
