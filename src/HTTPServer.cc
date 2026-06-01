@@ -1076,6 +1076,89 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     });
     co_return res;
   });
+
+  // -----------------------------------------------------------------------
+  // /y/character/:account_id/:slot_index/completions
+  //
+  // The inverse of /y/data/quest/:quest_num/completions — for one
+  // character, returns the list of quests they've completed (on any
+  // difficulty). Per-entry shape:
+  //
+  //   {
+  //     "QuestNumber":   42,
+  //     "Difficulties":  ["Normal", "Hard"]    // any subset of N/H/VH/U
+  //   }
+  //
+  // Loads the single .psochar directly by path rather than walking the
+  // whole players/ dir — N=1 lookup, not O(everyone). Honours the same
+  // auto_player_* > backup_player_* precedence walk_backup_characters
+  // uses, so the modal always shows the freshest snapshot.
+  //
+  // Only emits quests that exist in the loaded quest index; the
+  // quest_flags table is 0x400 bits wide but PSO's actual quest set is
+  // much smaller, and stale bits from removed quests would otherwise
+  // surface as ghost entries with no name to resolve to.
+  // -----------------------------------------------------------------------
+  this->router.add(HTTPRequest::Method::GET, "/y/character/:account_id/:slot_index/completions",
+      [this](ArgsT&& args) -> RetT {
+        const uint32_t account_id = args.get_param<uint32_t>("account_id");
+        const uint32_t slot_index = args.get_param<uint32_t>("slot_index");
+
+        // Pick the freshest snapshot: auto_player_* (60s + on-disconnect
+        // timer) beats backup_player_* ($savechar) when both exist.
+        const std::filesystem::path auto_path =
+            std::filesystem::path("system/players") /
+            ("auto_player_" + std::to_string(account_id) + "_" + std::to_string(slot_index) + ".psochar");
+        const std::filesystem::path backup_path =
+            std::filesystem::path("system/players") /
+            ("backup_player_" + std::to_string(account_id) + "_" + std::to_string(slot_index) + ".psochar");
+
+        std::error_code ec;
+        std::filesystem::path chosen;
+        if (std::filesystem::exists(auto_path, ec)) {
+          chosen = auto_path;
+        } else if (std::filesystem::exists(backup_path, ec)) {
+          chosen = backup_path;
+        } else {
+          throw HTTPError(404, "Character not found");
+        }
+
+        std::shared_ptr<PSOBBCharacterFile> ch;
+        try {
+          ch = PSOCHARFile::load_shared(chosen.string(), false).character_file;
+        } catch (const std::exception&) {
+          throw HTTPError(500, "Character file failed to load");
+        }
+        if (!ch) {
+          throw HTTPError(500, "Character file is null");
+        }
+
+        static const std::array<const char*, 4> DIFFICULTY_NAMES =
+            {"Normal", "Hard", "VHard", "Ultimate"};
+
+        auto res = std::make_shared<phosg::JSON>(phosg::JSON::list());
+        for (uint32_t quest_num = 0; quest_num < 0x400; quest_num++) {
+          // Skip flag indices that don't correspond to a real quest in
+          // the current quest index. Prevents stale bits from removed
+          // or never-installed quests from showing up as ghost entries.
+          if (!this->state->quest_index->get(quest_num)) {
+            continue;
+          }
+          auto difficulties = phosg::JSON::list();
+          for (size_t diff = 0; diff < 4; diff++) {
+            if (ch->quest_flags.get(static_cast<Difficulty>(diff), quest_num)) {
+              difficulties.emplace_back(DIFFICULTY_NAMES[diff]);
+            }
+          }
+          if (!difficulties.empty()) {
+            res->emplace_back(phosg::JSON::dict({
+                {"QuestNumber", quest_num},
+                {"Difficulties", std::move(difficulties)},
+            }));
+          }
+        }
+        co_return res;
+      });
 }
 
 asio::awaitable<void> HTTPServer::send_rare_drop_notification(std::shared_ptr<const phosg::JSON> message) {
