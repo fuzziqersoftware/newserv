@@ -877,6 +877,47 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
   });
 
   // -----------------------------------------------------------------------
+  // /y/data/level-tables — class-by-class EXP thresholds and stat deltas.
+  //
+  // Returns the contents of system/tables/level-table-{v1-v2,v3,v4}.json in
+  // a single response so dashboards can compute "EXP to next level" without
+  // shipping a 700 KB copy of the tables themselves. Each top-level key is
+  // a version family; each value preserves the on-disk schema:
+  //
+  //   {
+  //     "v1v2": { "BaseStats": [...12 entries], "LevelDeltas": [[...200]×12] },
+  //     "v3":   { ...same shape... },
+  //     "v4":   { ...same shape... }
+  //   }
+  //
+  // The shape matches what ServerState::load_level_tables() loads at boot;
+  // we re-read from disk here so the endpoint reflects on-disk truth even
+  // if the in-memory tables get reshaped by a future refactor. The data is
+  // static — dashboards should cache aggressively (the JSON parse is the
+  // expensive part, not the I/O).
+  // -----------------------------------------------------------------------
+  this->router.add(HTTPRequest::Method::GET, "/y/data/level-tables", [this](ArgsT&&) -> RetT {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
+      auto res = std::make_shared<phosg::JSON>(phosg::JSON::dict());
+      static const std::array<std::pair<const char*, const char*>, 3> tables = {{
+          {"v1v2", "system/tables/level-table-v1-v2.json"},
+          {"v3", "system/tables/level-table-v3.json"},
+          {"v4", "system/tables/level-table-v4.json"},
+      }};
+      for (const auto& [name, path] : tables) {
+        try {
+          res->emplace(name, phosg::JSON::parse(phosg::load_file(path)));
+        } catch (const std::exception&) {
+          // Missing or unparseable tables are silently skipped — the
+          // dashboard already handles partial coverage (e.g. when only
+          // some versions' players have logged in).
+        }
+      }
+      return res;
+    });
+  });
+
+  // -----------------------------------------------------------------------
   // /y/characters — sanitized list of every saved character on the server.
   //
   // Walks system/players/backup_player_*.psochar files (created when any
