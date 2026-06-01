@@ -1,0 +1,23 @@
+HTTP/1.0 200 OK
+Content-Type: text/html
+
+<HTML>
+<HEAD>
+<TITLE>Hunters License Registration</TITLE>
+<META HTTP-EQUIV="Refresh" CONTENT="2;URL=x-iwanaga://webassistant/mem/savenetinfo?mCard.IsaoLoginId=newserv_user&mCard.IsaoLoginPass=newserv_pass&mCard.AfterJumpURL=file:/sonic/index.html&mCard.SwitchInfo=1">
+</HEAD>
+<BODY BGCOLOR="#000000" TEXT="#FFFFFF">
+<CENTER>
+<H1>Registration Complete</H1>
+<P>Your Hunter's License has been activated.</P>
+<P>Returning to game in 2 seconds...</P>
+<FORM ACTION="x-iwanaga://webassistant/mem/savenetinfo" METHOD="POST" NAME="f">
+<INPUT TYPE="HIDDEN" NAME="mCard.IsaoLoginId" VALUE="newserv_user">
+<INPUT TYPE="HIDDEN" NAME="mCard.IsaoLoginPass" VALUE="newserv_pass">
+<INPUT TYPE="HIDDEN" NAME="mCard.AfterJumpURL" VALUE="file:/sonic/index.html">
+<INPUT TYPE="HIDDEN" NAME="mCard.SwitchInfo" VALUE="1">
+<INPUT TYPE="SUBMIT" VALUE="Continue">
+</FORM>
+</CENTER>
+</BODY>
+</HTML>

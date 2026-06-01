@@ -547,6 +547,49 @@ std::string Client::backup_character_filename(uint32_t account_id, size_t index,
       account_id, index, is_ep3 ? "pso3char" : "psochar");
 }
 
+std::string Client::auto_snapshot_filename(uint32_t account_id, size_t index) {
+  // Auto-snapshots use a distinct prefix so they never collide with the
+  // operator-initiated $savechar backups. The dashboard's
+  // walk_backup_characters() iterates both prefixes.
+  return std::format("system/players/auto_player_{}_{}.psochar", account_id, index);
+}
+
+void Client::auto_snapshot_character() {
+  // Save the currently-loaded character + system data to a stable
+  // per-account-per-slot path so the dashboard's /y/characters endpoint
+  // can surface this player without the operator having to remember
+  // $savechar. Called from on_disconnect() for every client.
+  //
+  // Skipped when:
+  //   - no character is loaded (client never got past login),
+  //   - the client is not logged in to an account,
+  //   - the client is on Ep3 (the .pso3char format differs and would
+  //     need its own snapshot helper — left to a follow-up).
+  if (!this->character_data || !this->system_data) {
+    return;
+  }
+  if (!this->login || !this->login->account) {
+    return;
+  }
+  if (is_ep3(this->version())) {
+    return;
+  }
+  uint32_t account_id = this->login->account->account_id;
+  // BB clients explicitly choose which of 4 character slots they're
+  // playing; non-BB clients hold a single active character at a time so
+  // slot 0 is the right place to drop them.
+  size_t slot = (this->version() == Version::BB_V4 && this->bb_character_index >= 0)
+      ? static_cast<size_t>(this->bb_character_index)
+      : 0;
+  std::string filename = Client::auto_snapshot_filename(account_id, slot);
+  try {
+    Client::save_character_file(filename, this->system_data, this->character_data);
+    this->log.info_f("Auto-snapshot character to {}", filename);
+  } catch (const std::exception& e) {
+    this->log.warning_f("Auto-snapshot to {} failed: {}", filename, e.what());
+  }
+}
+
 std::string Client::character_filename() const {
   if (this->version() != Version::BB_V4) {
     throw std::logic_error("non-BB players do not have saved character filenames");

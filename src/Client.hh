@@ -300,6 +300,12 @@ public:
 
   static std::string character_filename(const std::string& bb_username, ssize_t index);
   static std::string backup_character_filename(uint32_t account_id, size_t index, bool is_ep3);
+  // Filename for the auto-snapshot dropped on every disconnect. Kept
+  // distinct from backup_character_filename (which is the manual
+  // $savechar destination) so the operator's explicit snapshots are
+  // never clobbered by automatic ones.
+  static std::string auto_snapshot_filename(uint32_t account_id, size_t index);
+  void auto_snapshot_character();
   std::string character_filename() const;
   std::shared_ptr<PSOBBCharacterFile> character_file(bool allow_load = true, bool allow_overlay = true);
   std::shared_ptr<const PSOBBCharacterFile> character_file(bool throw_if_missing = true, bool allow_overlay = true) const;

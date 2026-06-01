@@ -4,8 +4,10 @@
 #include <stdlib.h>
 
 #include <filesystem>
+#include <map>
 #include <phosg/Network.hh>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "Client.hh"
@@ -19,15 +21,19 @@
 #include "StaticGameData.hh"
 
 // Walks system/players/ and invokes the visitor on each successfully-loaded
-// backup character file (created by $savechar from any client). The visitor
-// receives the parsed character, the account_id parsed from the filename,
-// and the slot index. Files that don't parse are silently skipped — a
-// corrupted save shouldn't kill the iteration. Only .psochar files are
-// handled here; .pso3char (Ep3) files have a different on-disk layout and
-// would need a separate walker.
+// character file. The visitor receives the parsed character, the account_id
+// parsed from the filename, and the slot index. Files that don't parse are
+// silently skipped — a corrupted save shouldn't kill the iteration. Only
+// .psochar files are handled here; .pso3char (Ep3) files have a different
+// on-disk layout and would need a separate walker.
 //
-// File naming convention (see Client::backup_character_filename):
-//     system/players/backup_player_{account_id}_{slot_index}.psochar
+// Two filename prefixes are accepted:
+//   backup_player_{account_id}_{slot_index}.psochar  — operator $savechar
+//   auto_player_{account_id}_{slot_index}.psochar    — automatic snapshot
+//                                                      on disconnect
+//
+// When the same {account, slot} appears under both prefixes the auto
+// snapshot wins (it's almost always fresher than the manual backup).
 //
 // .psochar embeds a PSOBBCharacterFile preceded by a small header — load
 // via PSOCHARFile::load_shared which handles the prefix.
@@ -36,7 +42,8 @@ static void walk_backup_characters(
         std::shared_ptr<PSOBBCharacterFile> ch,
         uint32_t account_id,
         size_t slot_index)>& visit) {
-  static constexpr std::string_view kPrefix = "backup_player_";
+  static constexpr std::string_view kBackupPrefix = "backup_player_";
+  static constexpr std::string_view kAutoPrefix = "auto_player_";
   static constexpr std::string_view kSuffix = ".psochar";
   const std::filesystem::path players_dir = "system/players";
 
@@ -45,21 +52,34 @@ static void walk_backup_characters(
     return;
   }
 
+  // First pass: collect candidate entries from both filename conventions,
+  // keyed by (account_id, slot_index) so we can dedupe and let
+  // auto_player_* win over backup_player_* when both exist.
+  std::map<std::pair<uint32_t, size_t>, std::filesystem::path> picks;
   for (const auto& entry : std::filesystem::directory_iterator(players_dir, ec)) {
     if (ec) break;
     if (!entry.is_regular_file()) {
       continue;
     }
     const std::string filename = entry.path().filename().string();
-    if (filename.size() < kPrefix.size() + kSuffix.size() ||
-        filename.compare(0, kPrefix.size(), kPrefix) != 0 ||
+    if (filename.size() < kSuffix.size() ||
         filename.compare(filename.size() - kSuffix.size(), kSuffix.size(), kSuffix) != 0) {
+      continue;
+    }
+    std::string_view prefix;
+    if (filename.size() >= kAutoPrefix.size() &&
+        filename.compare(0, kAutoPrefix.size(), kAutoPrefix) == 0) {
+      prefix = kAutoPrefix;
+    } else if (filename.size() >= kBackupPrefix.size() &&
+               filename.compare(0, kBackupPrefix.size(), kBackupPrefix) == 0) {
+      prefix = kBackupPrefix;
+    } else {
       continue;
     }
 
     // Parse "{account_id}_{slot_index}" from the middle of the filename.
     const std::string body = filename.substr(
-        kPrefix.size(), filename.size() - kPrefix.size() - kSuffix.size());
+        prefix.size(), filename.size() - prefix.size() - kSuffix.size());
     const auto sep = body.find('_');
     if (sep == std::string::npos) {
       continue;
@@ -73,16 +93,30 @@ static void walk_backup_characters(
       continue;
     }
 
+    auto key = std::make_pair(account_id, slot_index);
+    auto it = picks.find(key);
+    if (it == picks.end()) {
+      picks.emplace(key, entry.path());
+    } else if (prefix == kAutoPrefix) {
+      // Auto-snapshots take precedence over manual $savechar backups
+      // because they're populated on every disconnect — almost always
+      // fresher than what the operator dumped at some point in the past.
+      it->second = entry.path();
+    }
+  }
+
+  // Second pass: load + emit each picked file.
+  for (const auto& [key, path] : picks) {
     std::shared_ptr<PSOBBCharacterFile> ch;
     try {
-      ch = PSOCHARFile::load_shared(entry.path().string(), false).character_file;
+      ch = PSOCHARFile::load_shared(path.string(), false).character_file;
     } catch (const std::exception&) {
       continue;
     }
     if (!ch) {
       continue;
     }
-    visit(std::move(ch), account_id, slot_index);
+    visit(std::move(ch), key.first, key.second);
   }
 }
 

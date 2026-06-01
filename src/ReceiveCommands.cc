@@ -76,6 +76,12 @@ asio::awaitable<void> on_disconnect(std::shared_ptr<Client> c) {
     }
   }
 
+  // Auto-snapshot the character so the dashboard's /y/characters
+  // endpoint surfaces this player without anyone having to remember
+  // $savechar. No-op when the client never loaded a character (e.g.
+  // disconnected at login).
+  c->auto_snapshot_character();
+
   // Note: The client's GameData destructor should save their player data shortly after this point
   co_return;
 }
