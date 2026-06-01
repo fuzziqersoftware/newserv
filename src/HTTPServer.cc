@@ -3,16 +3,88 @@
 #include <inttypes.h>
 #include <stdlib.h>
 
+#include <filesystem>
 #include <phosg/Network.hh>
 #include <string>
 #include <vector>
 
+#include "Client.hh"
 #include "GameServer.hh"
 #include "IPStackSimulator.hh"
 #include "Loggers.hh"
 #include "Revision.hh"
+#include "SaveFileFormats.hh"
 #include "Server.hh"
 #include "ShellCommands.hh"
+#include "StaticGameData.hh"
+
+// Walks system/players/ and invokes the visitor on each successfully-loaded
+// backup character file (created by $savechar from any client). The visitor
+// receives the parsed character, the account_id parsed from the filename,
+// and the slot index. Files that don't parse are silently skipped — a
+// corrupted save shouldn't kill the iteration. Only .psochar files are
+// handled here; .pso3char (Ep3) files have a different on-disk layout and
+// would need a separate walker.
+//
+// File naming convention (see Client::backup_character_filename):
+//     system/players/backup_player_{account_id}_{slot_index}.psochar
+//
+// .psochar embeds a PSOBBCharacterFile preceded by a small header — load
+// via PSOCHARFile::load_shared which handles the prefix.
+static void walk_backup_characters(
+    const std::function<void(
+        std::shared_ptr<PSOBBCharacterFile> ch,
+        uint32_t account_id,
+        size_t slot_index)>& visit) {
+  static constexpr std::string_view kPrefix = "backup_player_";
+  static constexpr std::string_view kSuffix = ".psochar";
+  const std::filesystem::path players_dir = "system/players";
+
+  std::error_code ec;
+  if (!std::filesystem::is_directory(players_dir, ec)) {
+    return;
+  }
+
+  for (const auto& entry : std::filesystem::directory_iterator(players_dir, ec)) {
+    if (ec) break;
+    if (!entry.is_regular_file()) {
+      continue;
+    }
+    const std::string filename = entry.path().filename().string();
+    if (filename.size() < kPrefix.size() + kSuffix.size() ||
+        filename.compare(0, kPrefix.size(), kPrefix) != 0 ||
+        filename.compare(filename.size() - kSuffix.size(), kSuffix.size(), kSuffix) != 0) {
+      continue;
+    }
+
+    // Parse "{account_id}_{slot_index}" from the middle of the filename.
+    const std::string body = filename.substr(
+        kPrefix.size(), filename.size() - kPrefix.size() - kSuffix.size());
+    const auto sep = body.find('_');
+    if (sep == std::string::npos) {
+      continue;
+    }
+    uint32_t account_id = 0;
+    size_t slot_index = 0;
+    try {
+      account_id = static_cast<uint32_t>(std::stoul(body.substr(0, sep)));
+      slot_index = std::stoul(body.substr(sep + 1));
+    } catch (const std::exception&) {
+      continue;
+    }
+
+    std::shared_ptr<PSOBBCharacterFile> ch;
+    try {
+      ch = PSOCHARFile::load_shared(entry.path().string(), false).character_file;
+    } catch (const std::exception&) {
+      continue;
+    }
+    if (!ch) {
+      continue;
+    }
+    visit(std::move(ch), account_id, slot_index);
+  }
+}
 
 HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     : AsyncHTTPServer(state->io_context, "[HTTPServer] "), state(state) {
@@ -768,6 +840,94 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
       throw HTTPError(404, "Quest does not exist");
     }
     co_return std::make_shared<phosg::JSON>(q->json());
+  });
+
+  // -----------------------------------------------------------------------
+  // /y/characters — sanitized list of every saved character on the server.
+  //
+  // Walks system/players/backup_player_*.psochar files (created when any
+  // client uses the $savechar chat command) and emits a JSON list. Per-
+  // entry shape:
+  //
+  //   {
+  //     "AccountID":       42,
+  //     "SlotIndex":       0,
+  //     "Name":            "Sonic",
+  //     "Class":           "HUmar",                  // 12 PSO classes
+  //     "SectionID":       "Pinkal",                 // 10 PSO section IDs
+  //     "Level":           42,                       // display value (1-based)
+  //     "EXP":             123456,
+  //     "Meseta":          99999,
+  //     "PlayTimeSeconds": 720000,                   // total play time
+  //     "Stats":           {"ATP":..., "DFP":..., "MST":..., "ATA":...,
+  //                         "EVP":..., "LCK":..., "HP":...},  // base stats
+  //   }
+  //
+  // Excluded for privacy: serial numbers, access keys, passwords, IP
+  // addresses, session tokens, raw inventory data, bank contents, guild
+  // card data, auto-reply text, info-board text, choice-search config.
+  // Public-safe fields are surfaced via the named helpers; binary structs
+  // are not. Item parameter table lookup for equipped weapon/armor names
+  // is intentionally NOT done here — it would require the item parameter
+  // table for each version, and equipped items aren't security-sensitive
+  // but are computationally expensive to resolve on a hot path.
+  this->router.add(HTTPRequest::Method::GET, "/y/characters", [](ArgsT&&) -> RetT {
+    auto res = std::make_shared<phosg::JSON>(phosg::JSON::list());
+    walk_backup_characters([&res](
+                               std::shared_ptr<PSOBBCharacterFile> ch,
+                               uint32_t account_id,
+                               size_t slot_index) {
+      res->emplace_back(phosg::JSON::dict({
+          {"AccountID", account_id},
+          {"SlotIndex", slot_index},
+          {"Name", ch->disp.visual.name.decode()},
+          {"Class", name_for_char_class(ch->disp.visual.sh.char_class)},
+          {"SectionID", name_for_section_id(ch->disp.visual.sh.section_id)},
+          {"Level", static_cast<uint32_t>(ch->disp.stats.level.load() + 1)},
+          {"EXP", ch->disp.stats.exp.load()},
+          {"Meseta", ch->disp.stats.meseta.load()},
+          {"PlayTimeSeconds", ch->play_time_seconds.load()},
+          {"Stats", ch->disp.stats.char_stats.json()},
+      }));
+    });
+    co_return res;
+  });
+
+  // -----------------------------------------------------------------------
+  // /y/data/quest/:quest_num/completions
+  //
+  // For a given quest number, returns the list of characters that have
+  // completed it on at least one difficulty. Each entry shape:
+  //
+  //   { "AccountID": 42, "SlotIndex": 0, "Name": "Sonic" }
+  //
+  // Completion is determined by checking PSOBBCharacterFile::quest_flags
+  // (a FlagsTable<0x400, 4, Difficulty>) for the quest's bit across all
+  // four difficulties — any set bit counts as completed. Sticky to the
+  // character file as saved, so it reflects the state at last $savechar.
+  this->router.add(HTTPRequest::Method::GET, "/y/data/quest/:quest_num/completions", [](ArgsT&& args) -> RetT {
+    const uint32_t quest_num = args.get_param<uint32_t>("quest_num");
+    auto res = std::make_shared<phosg::JSON>(phosg::JSON::list());
+    walk_backup_characters([&res, quest_num](
+                               std::shared_ptr<PSOBBCharacterFile> ch,
+                               uint32_t account_id,
+                               size_t slot_index) {
+      bool completed_any = false;
+      for (size_t diff = 0; diff < 4; diff++) {
+        if (ch->quest_flags.get(static_cast<Difficulty>(diff), quest_num)) {
+          completed_any = true;
+          break;
+        }
+      }
+      if (completed_any) {
+        res->emplace_back(phosg::JSON::dict({
+            {"AccountID", account_id},
+            {"SlotIndex", slot_index},
+            {"Name", ch->disp.visual.name.decode()},
+        }));
+      }
+    });
+    co_return res;
   });
 }
 
