@@ -250,14 +250,19 @@ void Client::update_channel_name() {
 }
 
 void Client::reschedule_save_game_data_timer() {
-  if (this->version() != Version::BB_V4) {
-    return;
-  }
+  // Reschedule for every connected client (was BB-only). The BB branch
+  // still calls save_all() — that's the authoritative per-character
+  // persistence path for BB clients. For every version (BB included)
+  // we also drop an auto_snapshot so the dashboard's /y/characters
+  // endpoint reflects mid-session state, not just disconnect state.
   this->save_game_data_timer.expires_after(std::chrono::seconds(60));
   this->save_game_data_timer.async_wait([this](std::error_code ec) {
     if (!ec) {
       if (this->login && this->character_file(false)) {
-        this->save_all();
+        if (this->version() == Version::BB_V4) {
+          this->save_all();
+        }
+        this->auto_snapshot_character();
       }
       this->reschedule_save_game_data_timer();
     }

@@ -483,6 +483,13 @@ void Lobby::add_client(std::shared_ptr<Client> c, ssize_t required_client_id) {
   if (this->idle_timeout_timer.cancel()) {
     this->log.info_f("Idle timeout cancelled");
   }
+
+  // Snapshot the character to disk now that they're in a lobby — this is
+  // the earliest stable point at which character_data is loaded for every
+  // version (BB picks the slot at character select, non-BB uploads the
+  // character with their lobby-join command). Periodic resnapshots
+  // during gameplay happen via Client::save_game_data_timer.
+  c->auto_snapshot_character();
 }
 
 void Lobby::remove_client(std::shared_ptr<Client> c) {
