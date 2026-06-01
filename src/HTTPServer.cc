@@ -920,9 +920,11 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
   // -----------------------------------------------------------------------
   // /y/characters — sanitized list of every saved character on the server.
   //
-  // Walks system/players/backup_player_*.psochar files (created when any
-  // client uses the $savechar chat command) and emits a JSON list. Per-
-  // entry shape:
+  // Walks system/players/, dedupes by (account_id, slot_index) across:
+  //   - backup_player_*.psochar  (manual `$savechar` snapshots, legacy)
+  //   - auto_player_*.psochar    (auto-snapshot: login + every 60s + on
+  //                               disconnect; preferred when both exist)
+  // and emits a JSON list. Per-entry shape:
   //
   //   {
   //     "AccountID":       42,
@@ -937,21 +939,90 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
   //     "Stats":           {"ATP":..., "DFP":..., "MST":..., "ATA":...,
   //                         "EVP":..., "LCK":..., "HP":...},  // base stats
   //   }
+  //   {
+  //     ...as above...,
+  //     "Inventory": [
+  //       {
+  //         "Name":     "+30 Hit Vjaya +99",          // human-readable
+  //         "Kind":     "weapon",                     // weapon/armor/shield/unit/mag/tool/meseta/unknown
+  //         "Equipped": true                          // bit 0x08 of slot.flags
+  //       },
+  //       ...up to 30 entries (PSO inventory cap)...
+  //     ]
+  //   }
   //
   // Excluded for privacy: serial numbers, access keys, passwords, IP
   // addresses, session tokens, raw inventory data, bank contents, guild
   // card data, auto-reply text, info-board text, choice-search config.
-  // Public-safe fields are surfaced via the named helpers; binary structs
-  // are not. Item parameter table lookup for equipped weapon/armor names
-  // is intentionally NOT done here — it would require the item parameter
-  // table for each version, and equipped items aren't security-sensitive
-  // but are computationally expensive to resolve on a hot path.
-  this->router.add(HTTPRequest::Method::GET, "/y/characters", [](ArgsT&&) -> RetT {
+  // Item names are resolved via the BB item parameter table because the
+  // .psochar file is BB-format internally regardless of which client
+  // populated it; items unique to V3 or earlier may not resolve and fall
+  // back to "Unknown" (rare in practice — most items are version-shared).
+  this->router.add(HTTPRequest::Method::GET, "/y/characters", [this](ArgsT&&) -> RetT {
     auto res = std::make_shared<phosg::JSON>(phosg::JSON::list());
-    walk_backup_characters([&res](
+    // The .psochar files are BB-format, so we resolve item names against
+    // the BB item parameter table. If that table isn't loaded for some
+    // reason, all items fall through to "Unknown" rather than crashing.
+    auto bb_name_index = this->state->item_name_index_opt(Version::BB_V4);
+    walk_backup_characters([&res, &bb_name_index](
                                std::shared_ptr<PSOBBCharacterFile> ch,
                                uint32_t account_id,
                                size_t slot_index) {
+      // -- Inventory resolution ------------------------------------------
+      // PSO inventory caps at 30 slots. num_items is the count of slots
+      // actually populated; trailing entries are zero-filled and not
+      // displayed.
+      auto inventory_json = phosg::JSON::list();
+      const auto& inv = ch->inventory;
+      const size_t n = std::min<size_t>(inv.num_items, 30);
+      for (size_t i = 0; i < n; i++) {
+        const auto& slot = inv.items[i];
+
+        // Item kind comes from data1[0] (top-level type) and data1[1]
+        // (subtype for guard items). The same byte pattern appears in
+        // every PSO version, so no version dispatch needed.
+        const char* kind = "unknown";
+        switch (slot.data.data1[0]) {
+          case 0x00:
+            kind = "weapon";
+            break;
+          case 0x01:
+            switch (slot.data.data1[1]) {
+              case 0x01: kind = "armor"; break;
+              case 0x02: kind = "shield"; break;
+              case 0x03: kind = "unit"; break;
+              default:   kind = "guard"; break;
+            }
+            break;
+          case 0x02: kind = "mag"; break;
+          case 0x03: kind = "tool"; break;
+          case 0x04: kind = "meseta"; break;
+        }
+
+        // describe_item produces a rich human-readable string with
+        // grinders, attribute %, photon blasts, mag stats, etc. Use the
+        // BB item name index — see comment above.
+        std::string name;
+        if (bb_name_index) {
+          try {
+            name = bb_name_index->describe_item(slot.data);
+          } catch (const std::exception&) {
+            name = "Unknown";
+          }
+        } else {
+          name = "Unknown";
+        }
+
+        inventory_json.emplace_back(phosg::JSON::dict({
+            {"Name", std::move(name)},
+            {"Kind", kind},
+            // Bit 0x08 of the PlayerInventoryItem flags marks "currently
+            // equipped." See the comment in PlayerInventoryItemT for the
+            // full bit layout.
+            {"Equipped", static_cast<bool>(slot.flags & 0x00000008)},
+        }));
+      }
+
       res->emplace_back(phosg::JSON::dict({
           {"AccountID", account_id},
           {"SlotIndex", slot_index},
@@ -963,6 +1034,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
           {"Meseta", ch->disp.stats.meseta.load()},
           {"PlayTimeSeconds", ch->play_time_seconds.load()},
           {"Stats", ch->disp.stats.char_stats.json()},
+          {"Inventory", std::move(inventory_json)},
       }));
     });
     co_return res;
