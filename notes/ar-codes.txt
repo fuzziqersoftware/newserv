@@ -1130,3 +1130,7 @@ Rappy size modifier
 
 Disable HP reduction warning sound in Challenge mode
 3OE1 => 04076A28 4E800020
+
+Mag invincibility effect sparkliness modifier
+(Default 003C; smaller values are more sparkly)
+3OE1 => 801131C4 3860XXXX

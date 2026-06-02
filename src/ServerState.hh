@@ -24,7 +24,7 @@
 #include "ItemTranslationTable.hh"
 #include "LevelTable.hh"
 #include "Lobby.hh"
-#include "MagEvolutionTable.hh"
+#include "MagMetadataTable.hh"
 #include "Menu.hh"
 #include "Quest.hh"
 #include "TeamIndex.hh"
@@ -221,10 +221,12 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::array<std::shared_ptr<const ItemData::StackLimits>, NUM_VERSIONS> item_stack_limits_tables;
   size_t bb_max_bank_items = 200;
   size_t bb_max_bank_meseta = 999999;
-  std::shared_ptr<const MagEvolutionTable> mag_evolution_table_v1;
-  std::shared_ptr<const MagEvolutionTable> mag_evolution_table_v2;
-  std::shared_ptr<const MagEvolutionTable> mag_evolution_table_v3;
-  std::shared_ptr<const MagEvolutionTable> mag_evolution_table_v4;
+  std::shared_ptr<const MagMetadataTable> mag_metadata_table_dc_nte;
+  std::shared_ptr<const MagMetadataTable> mag_metadata_table_dc_11_2000;
+  std::shared_ptr<const MagMetadataTable> mag_metadata_table_v1;
+  std::shared_ptr<const MagMetadataTable> mag_metadata_table_v2;
+  std::shared_ptr<const MagMetadataTable> mag_metadata_table_v3;
+  std::shared_ptr<const MagMetadataTable> mag_metadata_table_v4;
   std::shared_ptr<const TextIndex> text_index;
   std::array<std::shared_ptr<const ItemNameIndex>, NUM_VERSIONS> item_name_indexes;
   std::shared_ptr<const WordSelectTable> word_select_table;
@@ -371,7 +373,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const LevelTable> level_table(Version version) const;
   std::shared_ptr<const ItemParameterTable> item_parameter_table(Version version) const;
   std::shared_ptr<const ItemParameterTable> item_parameter_table_for_encode(Version version) const;
-  std::shared_ptr<const MagEvolutionTable> mag_evolution_table(Version version) const;
+  std::shared_ptr<const MagMetadataTable> mag_metadata_table(Version version) const;
   std::shared_ptr<const ItemData::StackLimits> item_stack_limits(Version version) const;
   std::shared_ptr<const ItemNameIndex> item_name_index_opt(Version version) const; // Returns null if missing
   std::shared_ptr<const ItemNameIndex> item_name_index(Version version) const; // Throws if missing

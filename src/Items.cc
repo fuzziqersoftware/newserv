@@ -131,7 +131,7 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
 
   } else if ((primary_identifier & 0xFFFF0000) == 0x030C0000) { // Non-combo mag cells
     auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
-    uint8_t evolution_number = s->mag_evolution_table(c->version())->get_evolution_number(mag.data.data1[1]);
+    uint8_t evolution_number = s->mag_metadata_table(c->version())->get_evolution_number(mag.data.data1[1]);
     if (evolution_number < 4) {
       switch (item.data.data1[2]) {
         case 0x00: // Cell of MAG 502
@@ -268,7 +268,7 @@ void apply_mag_feed_result(
     ItemData& mag_item,
     const ItemData& fed_item,
     std::shared_ptr<const ItemParameterTable> item_parameter_table,
-    std::shared_ptr<const MagEvolutionTable> mag_evolution_table,
+    std::shared_ptr<const MagMetadataTable> mag_metadata_table,
     uint8_t char_class,
     uint8_t section_id,
     bool version_has_rare_mags) {
@@ -314,7 +314,7 @@ void apply_mag_feed_result(
 
   uint8_t mag_level = mag_item.compute_mag_level();
   mag_item.data1[2] = mag_level;
-  uint8_t evolution_number = mag_evolution_table->get_evolution_number(mag_item.data1[1]);
+  uint8_t evolution_number = mag_metadata_table->get_evolution_number(mag_item.data1[1]);
   uint8_t mag_number = mag_item.data1[1];
 
   // Note: Sega really did just hardcode all these rules into the client. There is no data file describing these
@@ -489,7 +489,7 @@ void player_feed_mag(std::shared_ptr<Client> c, size_t mag_item_index, size_t fe
       player->inventory.items[mag_item_index].data,
       player->inventory.items[fed_item_index].data,
       s->item_parameter_table(c->version()),
-      s->mag_evolution_table(c->version()),
+      s->mag_metadata_table(c->version()),
       player->disp.visual.sh.char_class,
       player->disp.visual.sh.section_id,
       !is_v1_or_v2(c->version()));

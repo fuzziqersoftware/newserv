@@ -98,7 +98,7 @@ set(SOURCES
     src/LevelTable.cc
     src/Lobby.cc
     src/Loggers.cc
-    src/MagEvolutionTable.cc
+    src/MagMetadataTable.cc
     src/Main.cc
     src/Map.cc
     src/Menu.cc

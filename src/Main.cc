@@ -2396,6 +2396,41 @@ Action a_encode_item_parameter_table(
       write_output_data(args, data, nullptr);
     });
 
+Action a_decode_mag_metadata_table(
+    "decode-mag-metadata-table", "\
+  decode-mag-metadata-table [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS...]\n\
+    Converts an ItemMagEdit file into a JSON mag metadata file. A version\n\
+    option is required. Expects compressed input (a .prs file) by default; use\n\
+    --decompressed if the input is not compressed.\n",
+    +[](phosg::Arguments& args) {
+      auto input_data = read_input_data(args);
+      if (!args.get<bool>("decompressed")) {
+        input_data = prs_decompress(input_data);
+      }
+      auto data = std::make_shared<std::string>(std::move(input_data));
+      auto table = MagMetadataTable::from_binary(data, get_cli_version(args, Version::BB_V4));
+      auto json = table->json();
+      auto serialized = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
+      write_output_data(args, serialized, nullptr);
+    });
+
+Action a_encode_mag_metadata_table(
+    "encode-mag-metadata-table", "\
+  encode-mag-metadata-table [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS...]\n\
+    Converts a JSON mag metadata file into an ItemMagEdit file compatible with\n\
+    the game client. A version option is required. By default the output will\n\
+    be compressed, as the client expects; use --decompressed to get\n\
+    uncompressed output.\n",
+    +[](phosg::Arguments& args) {
+      auto json = phosg::JSON::parse(read_input_data(args));
+      auto table = MagMetadataTable::from_json(json);
+      std::string data = table->serialize_binary(get_cli_version(args, Version::BB_V4));
+      if (!args.get<bool>("decompressed")) {
+        data = prs_compress_optimal(data);
+      }
+      write_output_data(args, data, nullptr);
+    });
+
 Action a_decode_level_table(
     "decode-level-table", nullptr,
     +[](phosg::Arguments& args) {

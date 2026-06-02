@@ -87,7 +87,7 @@ Some of the more likely useful files are:
 * **src/ItemCreator.hh/cc**: Reverse-engineered item generator from Episodes 1&2 (used for all versions)
 * **src/ItemParameterTable.cc**: Format of many structures in ItemPMT.prs (see BinaryItemParameterTableT)
 * **src/Map.hh/cc**: Map file (.dat/.evt) structure, listing of object/enemy types and parameters, and reverse-engineered Challenge Mode random enemy generation algorithm
-* **src/MagEvolutionTable.cc**: Format of ItemMagEdit.prs
+* **src/MagMetadataTable.cc**: Format of ItemMagEdit.prs
 * **src/QuestScript.cc**: Complete listing of all quest opcodes on all versions, along with their arguments and behavior
 * **src/RareItemSet.hh/cc**: Format of ItemRT files (rare item drop tables)
 * **src/SaveFileFormats.hh**: Definitions of save file structures for all versions

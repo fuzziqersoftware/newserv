@@ -142,6 +142,26 @@ public:
     uint16_t feed_table = 0;
     uint8_t photon_blast = 0;
     uint8_t activation = 0;
+    // Internally, when a mag effect is about to activate, the game computes a byte with the following flags:
+    //   01 = HP low (causes effect in mag's on_low_hp if eligible, priority 2)
+    //   02 = died (causes effect in mag's on_death if eligible, priority 3)
+    //   04 = synchro < 30 (causes effect 5, priority 7)
+    //   08 = synchro > 100 (causes effect 4, priority 8)
+    //   10 = TODO (3OE1:80112B24) (causes effect 3, priority 6)
+    //   20 = player leveled up (causes effect 2, priority 5)
+    //   40 = PB meter filled (causes effect in mag's on_pb_full if eligible, priority 1)
+    //   80 = entered boss arena (causes effect in mag's on_boss if eligible, priority 4)
+    // Values for on_* trigger fields:
+    //   0 = no effect
+    //   1 = TODO (used internally; not synced via 6x61; possibly just cancel previous effect?)
+    //   2 = TODO (used internally; seems to be effect 1, but delayed by 45 frames?)
+    //   3 = TODO (used internally; seems to be effect 1, but delayed by 90 frames?)
+    //   4 = Shifta + Deband (level = (IQ / 40) + 1; delayed by 90 frames)
+    //   5 = TODO (used internally; seems to be effect 1, but delayed by 90 frames?)
+    //   6 = Resta (not synced via 6x61; level = (IQ / 40) + 1; delayed by 90 frames)
+    //   7 = Reverser (not synced via 6x61; delayed by 90 frames)
+    //   8 = invincibility (duration = (((IQ + synchro) / 3) + 40) * 30 frames, but this is capped at 30 seconds, so in
+    //       practice it's always just 30 seconds regardless of IQ and synchro)
     uint8_t on_pb_full = 0;
     uint8_t on_low_hp = 0;
     uint8_t on_death = 0;

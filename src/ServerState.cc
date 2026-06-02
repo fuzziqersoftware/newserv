@@ -489,15 +489,19 @@ std::shared_ptr<const ItemParameterTable> ServerState::item_parameter_table_for_
   return this->item_parameter_table(is_v1(version) ? Version::PC_V2 : version);
 }
 
-std::shared_ptr<const MagEvolutionTable> ServerState::mag_evolution_table(Version version) const {
-  if (is_v1(version)) {
-    return this->mag_evolution_table_v1;
+std::shared_ptr<const MagMetadataTable> ServerState::mag_metadata_table(Version version) const {
+  if (version == Version::DC_NTE) {
+    return this->mag_metadata_table_dc_nte;
+  } else if (version == Version::DC_11_2000) {
+    return this->mag_metadata_table_dc_11_2000;
+  } else if (is_v1(version)) {
+    return this->mag_metadata_table_v1;
   } else if (is_v2(version)) {
-    return this->mag_evolution_table_v2;
+    return this->mag_metadata_table_v2;
   } else if (!is_v4(version)) {
-    return this->mag_evolution_table_v3;
+    return this->mag_metadata_table_v3;
   } else {
-    return this->mag_evolution_table_v4;
+    return this->mag_metadata_table_v4;
   }
 }
 
@@ -2156,25 +2160,32 @@ void ServerState::load_item_definitions() {
   auto json = phosg::JSON::parse(phosg::load_file("system/tables/translation-table.json"));
   auto new_item_translation_table = std::make_shared<ItemTranslationTable>(json, new_item_parameter_tables);
 
-  config_log.info_f("Loading v1 mag evolution table");
-  auto mag_data_v1 = std::make_shared<std::string>(prs_decompress(phosg::load_file("system/tables/ItemMagEdit-dc-v1.prs")));
-  auto new_table_v1 = MagEvolutionTable::create(mag_data_v1, Version::DC_V1);
-  config_log.info_f("Loading v2 mag evolution table");
-  auto mag_data_v2 = std::make_shared<std::string>(prs_decompress(phosg::load_file("system/tables/ItemMagEdit-dc-v2.prs")));
-  auto new_table_v2 = MagEvolutionTable::create(mag_data_v2, Version::DC_V2);
-  config_log.info_f("Loading v3 mag evolution table");
-  auto mag_data_v3 = std::make_shared<std::string>(prs_decompress(phosg::load_file("system/tables/ItemMagEdit-xb-v3.prs")));
-  auto new_table_v3 = MagEvolutionTable::create(mag_data_v3, Version::XB_V3);
-  config_log.info_f("Loading v4 mag evolution table");
-  auto mag_data_v4 = std::make_shared<std::string>(prs_decompress(phosg::load_file("system/tables/ItemMagEdit-bb-v4.prs")));
-  auto new_table_v4 = MagEvolutionTable::create(mag_data_v4, Version::BB_V4);
+  config_log.info_f("Creating DC NTE mag metadata table");
+  auto new_table_dc_nte = MagMetadataTable::from_binary(nullptr, Version::DC_NTE);
+  config_log.info_f("Loading DC 11/2000 mag metadata table");
+  auto new_table_11_2000 = MagMetadataTable::from_json(phosg::JSON::parse(phosg::load_file(
+      "system/tables/mag-metadata-table-dc-11-2000.json")));
+  config_log.info_f("Loading v1 mag metadata table");
+  auto new_table_v1 = MagMetadataTable::from_json(phosg::JSON::parse(phosg::load_file(
+      "system/tables/mag-metadata-table-v1.json")));
+  config_log.info_f("Loading v2 mag metadata table");
+  auto new_table_v2 = MagMetadataTable::from_json(phosg::JSON::parse(phosg::load_file(
+      "system/tables/mag-metadata-table-v2.json")));
+  config_log.info_f("Loading v3 mag metadata table");
+  auto new_table_v3 = MagMetadataTable::from_json(phosg::JSON::parse(phosg::load_file(
+      "system/tables/mag-metadata-table-v3.json")));
+  config_log.info_f("Loading v4 mag metadata table");
+  auto new_table_v4 = MagMetadataTable::from_json(phosg::JSON::parse(phosg::load_file(
+      "system/tables/mag-metadata-table-v4.json")));
 
   this->item_parameter_tables = std::move(new_item_parameter_tables);
   this->item_translation_table = std::move(new_item_translation_table);
-  this->mag_evolution_table_v1 = std::move(new_table_v1);
-  this->mag_evolution_table_v2 = std::move(new_table_v2);
-  this->mag_evolution_table_v3 = std::move(new_table_v3);
-  this->mag_evolution_table_v4 = std::move(new_table_v4);
+  this->mag_metadata_table_dc_nte = std::move(new_table_dc_nte);
+  this->mag_metadata_table_dc_11_2000 = std::move(new_table_11_2000);
+  this->mag_metadata_table_v1 = std::move(new_table_v1);
+  this->mag_metadata_table_v2 = std::move(new_table_v2);
+  this->mag_metadata_table_v3 = std::move(new_table_v3);
+  this->mag_metadata_table_v4 = std::move(new_table_v4);
 }
 
 void ServerState::load_ep3_cards() {
@@ -2230,20 +2241,13 @@ void ServerState::generate_bb_stream_file() {
   config_log.info_f("Generating BB stream file");
   auto sf = std::make_shared<BBStreamFile>();
 
-  auto add_file = [&](const std::string& filename, const void* data = nullptr, size_t size = 0) -> void {
+  auto add_file = [&](const std::string& filename, const void* data, size_t size) -> void {
     auto& e = sf->entries.emplace_back();
     e.offset = sf->data.size();
     e.filename = filename;
-    if (!data) {
-      std::string file_data = phosg::load_file("system/blueburst/" + filename);
-      e.size = file_data.size();
-      e.checksum = phosg::crc32(file_data.data(), file_data.size());
-      sf->data += file_data;
-    } else {
-      e.size = size;
-      e.checksum = phosg::crc32(data, size);
-      sf->data.append(reinterpret_cast<const char*>(data), size);
-    }
+    e.size = size;
+    e.checksum = phosg::crc32(data, size);
+    sf->data.append(reinterpret_cast<const char*>(data), size);
     config_log.debug_f(
         "[BBStreamFile] Added file {} at offset {:08X} ({:08X} bytes) with checksum {:08X}; total size is now {:08X}",
         filename, e.offset, e.size, e.checksum, sf->data.size());
@@ -2251,6 +2255,7 @@ void ServerState::generate_bb_stream_file() {
 
   auto level_table_data = prs_compress_optimal(this->level_table_v4->serialize_binary_v4());
   auto pmt_data = prs_compress_optimal(this->item_parameter_table(Version::BB_V4)->serialize_binary(Version::BB_V4));
+  auto mag_data = prs_compress_optimal(this->mag_metadata_table(Version::BB_V4)->serialize_binary(Version::BB_V4));
 
   const auto& bps = *this->battle_params;
   add_file("BattleParamEntry.dat", &bps.get_table(true, Episode::EP1), sizeof(BattleParamsIndex::Table));
@@ -2260,7 +2265,7 @@ void ServerState::generate_bb_stream_file() {
   add_file("BattleParamEntry_lab_on.dat", &bps.get_table(false, Episode::EP2), sizeof(BattleParamsIndex::Table));
   add_file("BattleParamEntry_ep4_on.dat", &bps.get_table(false, Episode::EP4), sizeof(BattleParamsIndex::Table));
   add_file("PlyLevelTbl.prs", level_table_data.data(), level_table_data.size());
-  add_file("ItemMagEdit.prs");
+  add_file("ItemMagEdit.prs", mag_data.data(), mag_data.size());
   add_file("ItemPMT.prs", pmt_data.data(), pmt_data.size());
 
   this->bb_stream_file = sf;

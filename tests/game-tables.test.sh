@@ -9,6 +9,7 @@ fi
 
 DIR=tests/game-tables
 PMT_PREFIX=$DIR/item-parameter-table
+MMT_PREFIX=$DIR/mag-metadata-table
 
 echo "... (battle-params)"
 $EXECUTABLE decode-battle-params tests/game-tables/battle-params-ep1-on.dat tests/game-tables/battle-params-ep2-on.dat tests/game-tables/battle-params-ep4-on.dat tests/game-tables/battle-params-ep1-off.dat tests/game-tables/battle-params-ep2-off.dat tests/game-tables/battle-params-ep4-off.dat tests/game-tables/battle-params.json
@@ -84,6 +85,61 @@ echo "... (item-parameter-table) BB"
 $EXECUTABLE decode-item-parameter-table --bb-v4 $PMT_PREFIX-bb-v4.expected.bin --decompressed $PMT_PREFIX-bb-v4.json --hex
 $EXECUTABLE encode-item-parameter-table --bb-v4 $PMT_PREFIX-bb-v4.json $PMT_PREFIX-bb-v4.encoded.bin --decompressed
 bindiff $PMT_PREFIX-bb-v4.expected.bin $PMT_PREFIX-bb-v4.encoded.bin
+
+echo "... (mag-metadata-table) DC 11/2000"
+$EXECUTABLE decode-mag-metadata-table --dc-11-2000 $MMT_PREFIX-dc-11-2000.expected.bin --decompressed $MMT_PREFIX-dc-11-2000.json --hex
+$EXECUTABLE encode-mag-metadata-table --dc-11-2000 $MMT_PREFIX-dc-11-2000.json $MMT_PREFIX-dc-11-2000.encoded.bin --decompressed
+bindiff $MMT_PREFIX-dc-11-2000.expected.bin $MMT_PREFIX-dc-11-2000.encoded.bin
+
+echo "... (mag-metadata-table) DC V1"
+$EXECUTABLE decode-mag-metadata-table --dc-v1 $MMT_PREFIX-dc-v1.expected.bin --decompressed $MMT_PREFIX-dc-v1.json --hex
+$EXECUTABLE encode-mag-metadata-table --dc-v1 $MMT_PREFIX-dc-v1.json $MMT_PREFIX-dc-v1.encoded.bin --decompressed
+bindiff $MMT_PREFIX-dc-v1.expected.bin $MMT_PREFIX-dc-v1.encoded.bin
+
+echo "... (mag-metadata-table) DC V2"
+$EXECUTABLE decode-mag-metadata-table --dc-v2 $MMT_PREFIX-dc-v2.expected.bin --decompressed $MMT_PREFIX-dc-v2.json --hex
+$EXECUTABLE encode-mag-metadata-table --dc-v2 $MMT_PREFIX-dc-v2.json $MMT_PREFIX-dc-v2.encoded.bin --decompressed
+bindiff $MMT_PREFIX-dc-v2.expected.bin $MMT_PREFIX-dc-v2.encoded.bin
+
+echo "... (mag-metadata-table) PC NTE"
+$EXECUTABLE decode-mag-metadata-table --pc-nte $MMT_PREFIX-pc-nte.expected.bin --decompressed $MMT_PREFIX-pc-nte.json --hex
+$EXECUTABLE encode-mag-metadata-table --pc-nte $MMT_PREFIX-pc-nte.json $MMT_PREFIX-pc-nte.encoded.bin --decompressed
+bindiff $MMT_PREFIX-pc-nte.expected.bin $MMT_PREFIX-pc-nte.encoded.bin
+
+echo "... (mag-metadata-table) PC V2"
+$EXECUTABLE decode-mag-metadata-table --pc-v2 $MMT_PREFIX-pc-v2.expected.bin --decompressed $MMT_PREFIX-pc-v2.json --hex
+$EXECUTABLE encode-mag-metadata-table --pc-v2 $MMT_PREFIX-pc-v2.json $MMT_PREFIX-pc-v2.encoded.bin --decompressed
+bindiff $MMT_PREFIX-pc-v2.expected.bin $MMT_PREFIX-pc-v2.encoded.bin
+
+echo "... (mag-metadata-table) GC NTE"
+$EXECUTABLE decode-mag-metadata-table --gc-nte $MMT_PREFIX-gc-nte.expected.bin --decompressed $MMT_PREFIX-gc-nte.json --hex
+$EXECUTABLE encode-mag-metadata-table --gc-nte $MMT_PREFIX-gc-nte.json $MMT_PREFIX-gc-nte.encoded.bin --decompressed
+bindiff $MMT_PREFIX-gc-nte.expected.bin $MMT_PREFIX-gc-nte.encoded.bin
+
+echo "... (mag-metadata-table) GC V3"
+$EXECUTABLE decode-mag-metadata-table --gc-v3 $MMT_PREFIX-gc-v3.expected.bin --decompressed $MMT_PREFIX-gc-v3.json --hex
+$EXECUTABLE encode-mag-metadata-table --gc-v3 $MMT_PREFIX-gc-v3.json $MMT_PREFIX-gc-v3.encoded.bin --decompressed
+bindiff $MMT_PREFIX-gc-v3.expected.bin $MMT_PREFIX-gc-v3.encoded.bin
+
+echo "... (mag-metadata-table) GC Ep3 NTE"
+$EXECUTABLE decode-mag-metadata-table --gc-ep3-nte $MMT_PREFIX-gc-ep3-nte.expected.bin --decompressed $MMT_PREFIX-gc-ep3-nte.json --hex
+$EXECUTABLE encode-mag-metadata-table --gc-ep3-nte $MMT_PREFIX-gc-ep3-nte.json $MMT_PREFIX-gc-ep3-nte.encoded.bin --decompressed
+bindiff $MMT_PREFIX-gc-ep3-nte.expected.bin $MMT_PREFIX-gc-ep3-nte.encoded.bin
+
+echo "... (mag-metadata-table) GC Ep3"
+$EXECUTABLE decode-mag-metadata-table --gc-ep3 $MMT_PREFIX-gc-ep3.expected.bin --decompressed $MMT_PREFIX-gc-ep3.json --hex
+$EXECUTABLE encode-mag-metadata-table --gc-ep3 $MMT_PREFIX-gc-ep3.json $MMT_PREFIX-gc-ep3.encoded.bin --decompressed
+bindiff $MMT_PREFIX-gc-ep3.expected.bin $MMT_PREFIX-gc-ep3.encoded.bin
+
+echo "... (mag-metadata-table) XB"
+$EXECUTABLE decode-mag-metadata-table --xb-v3 $MMT_PREFIX-xb-v3.expected.bin --decompressed $MMT_PREFIX-xb-v3.json --hex
+$EXECUTABLE encode-mag-metadata-table --xb-v3 $MMT_PREFIX-xb-v3.json $MMT_PREFIX-xb-v3.encoded.bin --decompressed
+bindiff $MMT_PREFIX-xb-v3.expected.bin $MMT_PREFIX-xb-v3.encoded.bin
+
+echo "... (mag-metadata-table) BB"
+$EXECUTABLE decode-mag-metadata-table --bb-v4 $MMT_PREFIX-bb-v4.expected.bin --decompressed $MMT_PREFIX-bb-v4.json --hex
+$EXECUTABLE encode-mag-metadata-table --bb-v4 $MMT_PREFIX-bb-v4.json $MMT_PREFIX-bb-v4.encoded.bin --decompressed
+bindiff $MMT_PREFIX-bb-v4.expected.bin $MMT_PREFIX-bb-v4.encoded.bin
 
 echo "... clean up"
 rm -f $DIR/*.encoded.bin $DIR/*.json $DIR/battle-params.json.enc* $DIR/battle-params-encoded*
