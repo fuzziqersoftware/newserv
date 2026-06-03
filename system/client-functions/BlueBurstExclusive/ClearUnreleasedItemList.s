@@ -15,7 +15,7 @@ reloc0:
 start:
   xor       eax, eax
   mov       edx, esp
-  mov       esp, <VERS 0x009EC359 0x009F61B0 0x009F81B0>
+  mov       esp, <VERS 0x009EC35B 0x009F61B0 0x009F81B0>
   mov       ecx, 0x3C
 again:
   push      0
