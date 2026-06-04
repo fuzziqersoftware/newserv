@@ -2128,8 +2128,8 @@ void ServerState::load_drop_tables() {
     new_weapon_random_sets[z] = std::make_shared<WeaponRandomSet>(weapon_data);
   }
 
-  config_log.info_f("Loading tekker adjustment table");
-  auto tekker_data = std::make_shared<std::string>(phosg::load_file("system/tables/JudgeItem-gc-v3.rel"));
+  config_log.info_f("Loading tekker adjustment set");
+  auto tekker_data = phosg::JSON::parse(phosg::load_file("system/tables/tekker-adjustment-set.json"));
   auto new_tekker_adjustment_set = std::make_shared<TekkerAdjustmentSet>(tekker_data);
 
   this->rare_item_sets = std::move(new_rare_item_sets);

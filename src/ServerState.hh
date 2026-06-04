@@ -28,6 +28,7 @@
 #include "Menu.hh"
 #include "Quest.hh"
 #include "TeamIndex.hh"
+#include "TekkerAdjustmentSet.hh"
 #include "WordSelectTable.hh"
 
 // Forward declarations due to reference cycles

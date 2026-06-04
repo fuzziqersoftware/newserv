@@ -128,6 +128,7 @@ set(SOURCES
     src/SignalWatcher.cc
     src/StaticGameData.cc
     src/TeamIndex.cc
+    src/TekkerAdjustmentSet.cc
     src/Text.cc
     src/TextIndex.cc
     src/Version.cc

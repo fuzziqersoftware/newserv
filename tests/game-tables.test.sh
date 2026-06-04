@@ -21,6 +21,11 @@ bindiff tests/game-tables/battle-params-ep1-off.dat tests/game-tables/battle-par
 bindiff tests/game-tables/battle-params-ep2-off.dat tests/game-tables/battle-params-encoded_lab.dat
 bindiff tests/game-tables/battle-params-ep4-off.dat tests/game-tables/battle-params-encoded_ep4.dat
 
+echo "... (tekker-adjustment-set)"
+$EXECUTABLE decode-tekker-adjustment-set --big-endian $DIR/tekker-adjustment-set.expected.bin $DIR/tekker-adjustment-set.json
+$EXECUTABLE encode-tekker-adjustment-set --big-endian $DIR/tekker-adjustment-set.json $DIR/tekker-adjustment-set.encoded.bin
+bindiff $DIR/tekker-adjustment-set.expected.bin $DIR/tekker-adjustment-set.encoded.bin
+
 echo "... (level-table) BB"
 $EXECUTABLE decode-level-table --bb-v4 $DIR/level-table-bb-v4.expected.bin --decompressed $DIR/level-table-bb-v4.json --hex
 $EXECUTABLE encode-level-table-v4 $DIR/level-table-bb-v4.json $DIR/level-table-bb-v4.encoded.bin --decompressed

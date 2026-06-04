@@ -2431,6 +2431,29 @@ Action a_encode_mag_metadata_table(
       write_output_data(args, data, nullptr);
     });
 
+Action a_decode_tekker_adjustment_set(
+    "decode-tekker-adjustment-set", "\
+  decode-tekker-adjustment-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS...]\n\
+    Converts a JudgeItem.rel file into a JSON tekker adjustment set. Use\n\
+    --big-endian if the .rel file is from PSO GC.\n",
+    +[](phosg::Arguments& args) {
+      auto input_data = read_input_data(args);
+      TekkerAdjustmentSet table(input_data, args.get<bool>("big-endian"));
+      auto json = table.json();
+      auto serialized = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
+      write_output_data(args, serialized, nullptr);
+    });
+
+Action a_encode_tekker_adjustment_set(
+    "encode-tekker-adjustment-set", "\
+  encode-tekker-adjustment-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS...]\n\
+    Converts a JSON tekker adjustment set into a JudgeItem.rel file compatible\n\
+    with the game client. Use --big-endian if the .rel file is for PSO GC.\n",
+    +[](phosg::Arguments& args) {
+      TekkerAdjustmentSet table(phosg::JSON::parse(read_input_data(args)));
+      write_output_data(args, table.serialize_binary(args.get<bool>("big-endian")), nullptr);
+    });
+
 Action a_decode_level_table(
     "decode-level-table", nullptr,
     +[](phosg::Arguments& args) {

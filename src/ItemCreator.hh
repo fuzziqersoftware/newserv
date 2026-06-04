@@ -8,6 +8,7 @@
 #include "PlayerSubordinates.hh"
 #include "RareItemSet.hh"
 #include "StaticGameData.hh"
+#include "TekkerAdjustmentSet.hh"
 
 // This file and ItemCreator.cc are essentially a direct reverse-engineering of the item creation algorithm in PSO GC.
 // Only minor changes have been made to support BB (as described in the comments in the implementation) and to support

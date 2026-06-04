@@ -6,19 +6,48 @@
 #include "EnemyType.hh"
 #include "Loggers.hh"
 
-// The favored weapon type table is hardcoded in the game client. The table is:
-//   Viridia     shots
-//   Greennill   rifles
-//   Skyly       swords
-//   Bluefull    partisans
-//   Purplenum   mechguns
-//   Pinkal      canes
-//   Redria      (none)
-//   Oran        daggers
-//   Yellowboze  (none)
-//   Whitill     slicers
-static const std::array<uint8_t, 10> favored_weapon_by_section_id = {
-    0x09, 0x07, 0x02, 0x04, 0x08, 0x0A, 0xFF, 0x03, 0xFF, 0x05};
+// Note: There are clearly better ways of doing this, but this implementation closely follows what the original code in
+// the client does.
+template <typename ItemT, size_t MaxCount>
+struct ProbabilityTable {
+  ItemT items[MaxCount];
+  size_t count;
+
+  ProbabilityTable() : count(0) {}
+
+  void push(ItemT item) {
+    if (this->count == MaxCount) {
+      throw std::runtime_error("push to full probability table");
+    }
+    this->items[this->count++] = item;
+  }
+
+  ItemT pop() {
+    if (this->count == 0) {
+      throw std::runtime_error("pop from empty probability table");
+    }
+    return this->items[--this->count];
+  }
+
+  void shuffle(std::shared_ptr<RandomGenerator> rand_crypt) {
+    for (size_t z = 1; z < this->count; z++) {
+      size_t other_z = rand_crypt->next() % (z + 1);
+      ItemT t = this->items[z];
+      this->items[z] = this->items[other_z];
+      this->items[other_z] = t;
+    }
+  }
+
+  ItemT sample(std::shared_ptr<RandomGenerator> rand_crypt) const {
+    if (this->count == 0) {
+      throw std::runtime_error("sample from empty probability table");
+    } else if (this->count == 1) {
+      return this->items[0];
+    } else {
+      return this->items[rand_crypt->next() % this->count];
+    }
+  }
+};
 
 ItemCreator::ItemCreator(
     std::shared_ptr<const CommonItemSet> common_item_set,
@@ -1511,7 +1540,7 @@ void ItemCreator::generate_weapon_shop_item_grind(ItemData& item, size_t player_
     table_index = 5;
   }
 
-  uint8_t favored_weapon = favored_weapon_by_section_id.at(this->section_id);
+  uint8_t favored_weapon = TekkerAdjustmentSet::favored_weapon_type_for_section_id(this->section_id);
   bool is_favored = (favored_weapon != 0xFF) && (item.data1[1] == favored_weapon);
   const auto* range = is_favored
       ? this->weapon_random_set->get_favored_grind_range(table_index)
@@ -1716,56 +1745,61 @@ ssize_t ItemCreator::apply_tekker_deltas(ItemData& item, uint8_t section_id) {
     throw std::runtime_error("tekker deltas can only be applied to weapons");
   }
 
-  static const std::array<int8_t, 11> delta_table = {-10, -5, -3, -2, -1, 0, 1, 2, 3, 5, 10};
-
-  bool favored = item.data1[1] == favored_weapon_by_section_id[section_id];
+  bool favored = (item.data1[1] == TekkerAdjustmentSet::favored_weapon_type_for_section_id(section_id));
   ssize_t luck = 0;
 
   this->log.info_f("Applying tekker deltas for {} weapon", favored ? "favored" : "non-favored");
 
+  auto sample_prob_table = [this](const TekkerAdjustmentSet::Table& table) -> int8_t {
+    size_t sample = this->rand_crypt->next() % table.total;
+    for (const auto& [k, v] : table.probs) {
+      if (sample < v) {
+        return k;
+      }
+      sample -= v;
+    }
+    throw std::logic_error("Table total is incorrect");
+  };
+
   // Adjust the weapon's special
   {
-    const auto& prob_table = this->tekker_adjustment_set->get_special_upgrade_prob_table(section_id, favored);
-    uint8_t delta_index = prob_table.sample(this->rand_crypt);
-    int8_t delta = delta_table.at(delta_index);
-    this->log.info_f("(Special) Delta index {}, delta {}", delta_index, delta);
-    // Note: The original code checks specifically for -1 and +1 here, but the data files only include delta_indexes 4,
-    // 5, and 6 (which correspond to -1, 0, and 1) anyway, so we just check for positive and negative numbers instead.
-    // When using the original JudgeItem.rel file, the behavior should be the same, but this feels more correct.
-    try {
-      uint8_t new_special;
-      if (delta < 0) {
-        new_special = item.data1[4] - 1;
-      } else if (delta > 0) {
-        new_special = item.data1[4] + 1;
-      } else {
-        new_special = item.data1[4];
-      }
-      if (new_special != item.data1[4]) {
+    int8_t delta = sample_prob_table(favored
+            ? this->tekker_adjustment_set->favored_special_delta_table[section_id]
+            : this->tekker_adjustment_set->default_special_delta_table[section_id]);
+    this->log.info_f("(Special) Delta {} chosen", delta);
+    for (; delta != 0; delta += (delta < 0) - (0 < delta)) {
+      try {
+        // Note: The original code checks specifically for -1 and +1 here and only increments or decrements the special
+        // by 1, and the data files only include delta_indexes 4, 5, and 6 (which correspond to -1, 0, and 1). But we
+        // want to support other levels of delta indexes, so we simply add delta instead. When using the original
+        // JudgeItem.rel file, the behavior should be the same, but this logic feels more correct.
+        uint8_t new_special = item.data1[4] + delta;
         if (this->item_parameter_table->get_special(item.data1[4]).type ==
             this->item_parameter_table->get_special(new_special).type) {
           item.data1[4] = new_special;
+          this->log.info_f("(Special) Delta {} applied", delta);
+          break;
         } else {
-          this->log.info_f("(Special) Delta canceled because it would change special category");
+          this->log.info_f("(Special) Delta {} canceled because it would change special category", delta);
         }
+      } catch (const std::out_of_range&) {
+        // Invalid special number passed to get_special; treat it as if delta == 0
       }
-    } catch (const std::out_of_range&) {
-      // Invalid special number passed to get_special; just ignore it
     }
-    luck += this->tekker_adjustment_set->get_luck_for_special_upgrade(delta_index);
+    luck += this->tekker_adjustment_set->special_luck_table.at(delta);
     this->log.info_f("(Special) Luck is now {}", luck);
   }
 
   // Adjust the weapon's grind if it's not rare
   if (!this->item_parameter_table->is_item_rare(item)) {
     const auto& weapon_def = this->item_parameter_table->get_weapon(item.data1[1], item.data1[2]);
-    const auto& prob_table = this->tekker_adjustment_set->get_grind_delta_prob_table(section_id, favored);
-    uint8_t delta_index = prob_table.sample(this->rand_crypt);
-    int8_t delta = delta_table.at(delta_index);
-    this->log.info_f("(Grind) Delta index {}, delta {}", delta_index, delta);
+    int8_t delta = sample_prob_table(favored
+            ? this->tekker_adjustment_set->favored_grind_delta_table[section_id]
+            : this->tekker_adjustment_set->default_grind_delta_table[section_id]);
+    this->log.info_f("(Grind) Delta {} chosen", delta);
     int16_t new_grind = static_cast<int16_t>(item.data1[3]) + static_cast<int16_t>(delta);
     item.data1[3] = std::clamp<int16_t>(new_grind, 0, weapon_def.max_grind);
-    luck += this->tekker_adjustment_set->get_luck_for_grind_delta(delta_index);
+    luck += this->tekker_adjustment_set->grind_luck_table.at(delta);
     this->log.info_f("(Grind) Luck is now {}", luck);
   } else {
     this->log.info_f("(Grind) Item is rare; skipping grind adjustment");
@@ -1773,11 +1807,10 @@ ssize_t ItemCreator::apply_tekker_deltas(ItemData& item, uint8_t section_id) {
 
   // Adjust the weapon's bonuses
   {
-    const auto& prob_table = this->tekker_adjustment_set->get_bonus_delta_prob_table(section_id, favored);
-    // Note: The original code really does use the same delta for all three bonuses.
-    uint8_t delta_index = prob_table.sample(this->rand_crypt);
-    int8_t delta = delta_table.at(delta_index);
-    this->log.info_f("(Bonuses) Delta index {}, delta {}", delta_index, delta);
+    int8_t delta = sample_prob_table(favored
+            ? this->tekker_adjustment_set->favored_bonus_delta_table[section_id]
+            : this->tekker_adjustment_set->default_bonus_delta_table[section_id]);
+    this->log.info_f("(Bonuses) Delta {} chosen", delta);
     // Note: The original code doesn't check if there's actually a bonus in each slot before incrementing the values.
     // Presumably there's a check later that will clear any invalid bonuses, but we don't have such a check, so we need
     // to check here if each bonus is actually present.
@@ -1786,7 +1819,7 @@ ssize_t ItemCreator::apply_tekker_deltas(ItemData& item, uint8_t section_id) {
         item.data1[z + 1] = std::min<int8_t>(item.data1[z + 1] + delta, 100);
       }
     }
-    luck += this->tekker_adjustment_set->get_luck_for_bonus_delta(delta_index);
+    luck += this->tekker_adjustment_set->bonus_luck_table.at(delta);
     this->log.info_f("(Bonuses) Luck is now {}", luck);
   }
 
