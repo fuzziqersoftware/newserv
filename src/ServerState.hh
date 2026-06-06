@@ -27,6 +27,7 @@
 #include "MagMetadataTable.hh"
 #include "Menu.hh"
 #include "Quest.hh"
+#include "ShopRandomSets.hh"
 #include "TeamIndex.hh"
 #include "TekkerAdjustmentSet.hh"
 #include "WordSelectTable.hh"
@@ -213,9 +214,9 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
   std::shared_ptr<const GSLArchive> bb_data_gsl;
   std::unordered_map<std::string, std::shared_ptr<const CommonItemSet>> common_item_sets;
   std::unordered_map<std::string, std::shared_ptr<const RareItemSet>> rare_item_sets;
-  std::shared_ptr<const ArmorRandomSet> armor_random_set;
-  std::shared_ptr<const ToolRandomSet> tool_random_set;
-  std::array<std::shared_ptr<const WeaponRandomSet>, 4> weapon_random_sets; // Keyed oin difficulty
+  std::shared_ptr<const ArmorShopRandomSet> armor_random_set;
+  std::shared_ptr<const ToolShopRandomSet> tool_random_set;
+  std::array<std::shared_ptr<const WeaponShopRandomSet>, 4> weapon_random_sets; // Keyed on difficulty
   std::shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set;
   std::array<std::shared_ptr<const ItemParameterTable>, NUM_VERSIONS> item_parameter_tables;
   std::shared_ptr<const ItemTranslationTable> item_translation_table;
@@ -364,7 +365,7 @@ struct ServerState : public std::enable_shared_from_this<ServerState> {
 
   std::shared_ptr<const SetDataTableBase> set_data_table(Version version, Episode episode, GameMode mode, Difficulty difficulty) const;
 
-  inline std::shared_ptr<const WeaponRandomSet> weapon_random_set(Difficulty difficulty) const {
+  inline std::shared_ptr<const WeaponShopRandomSet> weapon_random_set(Difficulty difficulty) const {
     return this->weapon_random_sets.at(static_cast<size_t>(difficulty));
   }
   inline std::shared_ptr<const MapState::RareEnemyRates> rare_enemy_rates(Difficulty difficulty) const {

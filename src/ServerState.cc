@@ -2108,24 +2108,24 @@ void ServerState::load_drop_tables() {
   }
 
   config_log.info_f("Loading armor table");
-  auto armor_data = std::make_shared<std::string>(phosg::load_file("system/tables/ArmorRandom-gc-v3.rel"));
-  auto new_armor_random_set = std::make_shared<ArmorRandomSet>(armor_data);
+  auto armor_json = phosg::JSON::parse(phosg::load_file("system/tables/armor-shop-random-set.json"));
+  auto new_armor_random_set = std::make_shared<ArmorShopRandomSet>(armor_json);
 
   config_log.info_f("Loading tool table");
-  auto tool_data = std::make_shared<std::string>(phosg::load_file("system/tables/ToolRandom-gc-v3.rel"));
-  auto new_tool_random_set = std::make_shared<ToolRandomSet>(tool_data);
+  auto tool_json = phosg::JSON::parse(phosg::load_file("system/tables/tool-shop-random-set.json"));
+  auto new_tool_random_set = std::make_shared<ToolShopRandomSet>(tool_json);
 
   config_log.info_f("Loading weapon tables");
-  std::array<std::shared_ptr<const WeaponRandomSet>, 4> new_weapon_random_sets;
+  std::array<std::shared_ptr<const WeaponShopRandomSet>, 4> new_weapon_random_sets;
   const char* filenames[4] = {
-      "system/tables/WeaponRandomNormal-gc-v3.rel",
-      "system/tables/WeaponRandomHard-gc-v3.rel",
-      "system/tables/WeaponRandomVeryHard-gc-v3.rel",
-      "system/tables/WeaponRandomUltimate-gc-v3.rel",
+      "system/tables/weapon-shop-random-set-normal.json",
+      "system/tables/weapon-shop-random-set-hard.json",
+      "system/tables/weapon-shop-random-set-very-hard.json",
+      "system/tables/weapon-shop-random-set-ultimate.json",
   };
   for (size_t z = 0; z < 4; z++) {
-    auto weapon_data = std::make_shared<std::string>(phosg::load_file(filenames[z]));
-    new_weapon_random_sets[z] = std::make_shared<WeaponRandomSet>(weapon_data);
+    new_weapon_random_sets[z] = std::make_shared<WeaponShopRandomSet>(
+        phosg::JSON::parse(phosg::load_file(filenames[z])));
   }
 
   config_log.info_f("Loading tekker adjustment set");

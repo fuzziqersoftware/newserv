@@ -26,11 +26,13 @@ struct TekkerAdjustmentSet {
   std::string serialize_binary(bool big_endian) const;
   phosg::JSON json() const;
 
+  void print(FILE* stream) const;
+
   static uint8_t favored_weapon_type_for_section_id(uint8_t section_id);
 
   struct Table {
     std::unordered_map<int8_t, size_t> probs;
-    size_t total;
+    size_t total = 0;
   };
 
   std::array<Table, 10> favored_special_delta_table;

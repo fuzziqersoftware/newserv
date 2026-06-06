@@ -125,6 +125,7 @@ set(SOURCES
     src/ServerShell.cc
     src/ServerState.cc
     src/ShellCommands.cc
+    src/ShopRandomSets.cc
     src/SignalWatcher.cc
     src/StaticGameData.cc
     src/TeamIndex.cc

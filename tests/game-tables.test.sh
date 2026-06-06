@@ -11,6 +11,41 @@ DIR=tests/game-tables
 PMT_PREFIX=$DIR/item-parameter-table
 MMT_PREFIX=$DIR/mag-metadata-table
 
+echo "... (armor-random-shop-set)"
+$EXECUTABLE decode-armor-shop-random-set --big-endian $DIR/armor-shop-random-set.expected.bin $DIR/armor-shop-random-set.json
+$EXECUTABLE encode-armor-shop-random-set --big-endian $DIR/armor-shop-random-set.json $DIR/armor-shop-random-set.encoded.bin
+bindiff $DIR/armor-shop-random-set.expected.bin $DIR/armor-shop-random-set.encoded.bin
+
+echo "... (tool-random-shop-set)"
+$EXECUTABLE decode-tool-shop-random-set --big-endian $DIR/tool-shop-random-set.expected.bin $DIR/tool-shop-random-set.json
+$EXECUTABLE encode-tool-shop-random-set --big-endian $DIR/tool-shop-random-set.json $DIR/tool-shop-random-set.encoded.bin
+bindiff $DIR/tool-shop-random-set.expected.bin $DIR/tool-shop-random-set.encoded.bin
+
+echo "... (weapon-random-shop-set-normal)"
+$EXECUTABLE decode-weapon-shop-random-set --big-endian $DIR/weapon-shop-random-set-normal.expected.bin $DIR/weapon-shop-random-set-normal.json
+$EXECUTABLE encode-weapon-shop-random-set --big-endian $DIR/weapon-shop-random-set-normal.json $DIR/weapon-shop-random-set-normal.encoded.bin
+bindiff $DIR/weapon-shop-random-set-normal.expected.bin $DIR/weapon-shop-random-set-normal.encoded.bin
+
+echo "... (weapon-random-shop-set-hard)"
+$EXECUTABLE decode-weapon-shop-random-set --big-endian $DIR/weapon-shop-random-set-hard.expected.bin $DIR/weapon-shop-random-set-hard.json
+$EXECUTABLE encode-weapon-shop-random-set --big-endian $DIR/weapon-shop-random-set-hard.json $DIR/weapon-shop-random-set-hard.encoded.bin
+bindiff $DIR/weapon-shop-random-set-hard.expected.bin $DIR/weapon-shop-random-set-hard.encoded.bin
+
+echo "... (weapon-random-shop-set-very-hard)"
+$EXECUTABLE decode-weapon-shop-random-set --big-endian $DIR/weapon-shop-random-set-very-hard.expected.bin $DIR/weapon-shop-random-set-very-hard.json
+$EXECUTABLE encode-weapon-shop-random-set --big-endian $DIR/weapon-shop-random-set-very-hard.json $DIR/weapon-shop-random-set-very-hard.encoded.bin
+bindiff $DIR/weapon-shop-random-set-very-hard.expected.bin $DIR/weapon-shop-random-set-very-hard.encoded.bin
+
+echo "... (weapon-random-shop-set-ultimate)"
+$EXECUTABLE decode-weapon-shop-random-set --big-endian $DIR/weapon-shop-random-set-ultimate.expected.bin $DIR/weapon-shop-random-set-ultimate.json
+$EXECUTABLE encode-weapon-shop-random-set --big-endian $DIR/weapon-shop-random-set-ultimate.json $DIR/weapon-shop-random-set-ultimate.encoded.bin
+bindiff $DIR/weapon-shop-random-set-ultimate.expected.bin $DIR/weapon-shop-random-set-ultimate.encoded.bin
+
+echo "... (tekker-adjustment-set)"
+$EXECUTABLE decode-tekker-adjustment-set --big-endian $DIR/tekker-adjustment-set.expected.bin $DIR/tekker-adjustment-set.json
+$EXECUTABLE encode-tekker-adjustment-set --big-endian $DIR/tekker-adjustment-set.json $DIR/tekker-adjustment-set.encoded.bin
+bindiff $DIR/tekker-adjustment-set.expected.bin $DIR/tekker-adjustment-set.encoded.bin
+
 echo "... (battle-params)"
 $EXECUTABLE decode-battle-params tests/game-tables/battle-params-ep1-on.dat tests/game-tables/battle-params-ep2-on.dat tests/game-tables/battle-params-ep4-on.dat tests/game-tables/battle-params-ep1-off.dat tests/game-tables/battle-params-ep2-off.dat tests/game-tables/battle-params-ep4-off.dat tests/game-tables/battle-params.json
 $EXECUTABLE encode-battle-params tests/game-tables/battle-params.json tests/game-tables/battle-params-encoded
@@ -20,11 +55,6 @@ bindiff tests/game-tables/battle-params-ep4-on.dat tests/game-tables/battle-para
 bindiff tests/game-tables/battle-params-ep1-off.dat tests/game-tables/battle-params-encoded.dat
 bindiff tests/game-tables/battle-params-ep2-off.dat tests/game-tables/battle-params-encoded_lab.dat
 bindiff tests/game-tables/battle-params-ep4-off.dat tests/game-tables/battle-params-encoded_ep4.dat
-
-echo "... (tekker-adjustment-set)"
-$EXECUTABLE decode-tekker-adjustment-set --big-endian $DIR/tekker-adjustment-set.expected.bin $DIR/tekker-adjustment-set.json
-$EXECUTABLE encode-tekker-adjustment-set --big-endian $DIR/tekker-adjustment-set.json $DIR/tekker-adjustment-set.encoded.bin
-bindiff $DIR/tekker-adjustment-set.expected.bin $DIR/tekker-adjustment-set.encoded.bin
 
 echo "... (level-table) BB"
 $EXECUTABLE decode-level-table --bb-v4 $DIR/level-table-bb-v4.expected.bin --decompressed $DIR/level-table-bb-v4.json --hex

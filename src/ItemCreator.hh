@@ -7,6 +7,7 @@
 #include "PSOEncryption.hh"
 #include "PlayerSubordinates.hh"
 #include "RareItemSet.hh"
+#include "ShopRandomSets.hh"
 #include "StaticGameData.hh"
 #include "TekkerAdjustmentSet.hh"
 
@@ -20,9 +21,9 @@ public:
   ItemCreator(
       std::shared_ptr<const CommonItemSet> common_item_set,
       std::shared_ptr<const RareItemSet> rare_item_set,
-      std::shared_ptr<const ArmorRandomSet> armor_random_set,
-      std::shared_ptr<const ToolRandomSet> tool_random_set,
-      std::shared_ptr<const WeaponRandomSet> weapon_random_set,
+      std::shared_ptr<const ArmorShopRandomSet> armor_random_set,
+      std::shared_ptr<const ToolShopRandomSet> tool_random_set,
+      std::shared_ptr<const WeaponShopRandomSet> weapon_random_set,
       std::shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set,
       std::shared_ptr<const ItemParameterTable> item_parameter_table,
       std::shared_ptr<const ItemData::StackLimits> stack_limits,
@@ -81,9 +82,9 @@ private:
   Difficulty difficulty;
   uint8_t section_id;
   std::shared_ptr<const RareItemSet> rare_item_set;
-  std::shared_ptr<const ArmorRandomSet> armor_random_set;
-  std::shared_ptr<const ToolRandomSet> tool_random_set;
-  std::shared_ptr<const WeaponRandomSet> weapon_random_set;
+  std::shared_ptr<const ArmorShopRandomSet> armor_random_set;
+  std::shared_ptr<const ToolShopRandomSet> tool_random_set;
+  std::shared_ptr<const WeaponShopRandomSet> weapon_random_set;
   std::shared_ptr<const TekkerAdjustmentSet> tekker_adjustment_set;
   std::shared_ptr<const ItemParameterTable> item_parameter_table;
   std::shared_ptr<const CommonItemSet> common_item_set;

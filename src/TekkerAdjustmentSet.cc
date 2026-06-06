@@ -355,3 +355,36 @@ phosg::JSON TekkerAdjustmentSet::json() const {
 
   return ret;
 }
+
+void TekkerAdjustmentSet::print(FILE* stream) const {
+  phosg::fwrite_fmt(stream, "TekkerAdjustmentSet\n");
+
+  auto print_table = [stream](const std::array<Table, 10>& table, const std::unordered_map<int8_t, int8_t>& luck_table) -> void {
+    for (size_t section_id = 0; section_id < 10; section_id++) {
+      phosg::fwrite_fmt(stream, "    {:<10}:", name_for_section_id(section_id));
+      std::vector<std::pair<int8_t, size_t>> sorted_probs;
+      for (const auto& [delta, prob] : table[section_id].probs) {
+        sorted_probs.emplace_back(delta, prob);
+      }
+      std::sort(sorted_probs.begin(), sorted_probs.end());
+      for (const auto& [delta, prob] : sorted_probs) {
+        int8_t luck = luck_table.at(delta);
+        phosg::fwrite_fmt(stream, "  {:>2} @ {:>2} ({:>2})", delta, prob, luck);
+      }
+      phosg::fwrite_fmt(stream, "\n");
+    }
+  };
+
+  phosg::fwrite_fmt(stream, "  Favored special deltas:\n");
+  print_table(this->favored_special_delta_table, this->special_luck_table);
+  phosg::fwrite_fmt(stream, "  Default special deltas:\n");
+  print_table(this->default_special_delta_table, this->special_luck_table);
+  phosg::fwrite_fmt(stream, "  Favored grind deltas:\n");
+  print_table(this->favored_grind_delta_table, this->grind_luck_table);
+  phosg::fwrite_fmt(stream, "  Default grind deltas:\n");
+  print_table(this->default_grind_delta_table, this->grind_luck_table);
+  phosg::fwrite_fmt(stream, "  Favored bonus deltas:\n");
+  print_table(this->favored_bonus_delta_table, this->bonus_luck_table);
+  phosg::fwrite_fmt(stream, "  Default bonus deltas:\n");
+  print_table(this->default_bonus_delta_table, this->bonus_luck_table);
+}

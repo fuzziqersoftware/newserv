@@ -2433,7 +2433,7 @@ Action a_encode_mag_metadata_table(
 
 Action a_decode_tekker_adjustment_set(
     "decode-tekker-adjustment-set", "\
-  decode-tekker-adjustment-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS...]\n\
+  decode-tekker-adjustment-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS]\n\
     Converts a JudgeItem.rel file into a JSON tekker adjustment set. Use\n\
     --big-endian if the .rel file is from PSO GC.\n",
     +[](phosg::Arguments& args) {
@@ -2446,11 +2446,83 @@ Action a_decode_tekker_adjustment_set(
 
 Action a_encode_tekker_adjustment_set(
     "encode-tekker-adjustment-set", "\
-  encode-tekker-adjustment-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS...]\n\
+  encode-tekker-adjustment-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS]\n\
     Converts a JSON tekker adjustment set into a JudgeItem.rel file compatible\n\
     with the game client. Use --big-endian if the .rel file is for PSO GC.\n",
     +[](phosg::Arguments& args) {
       TekkerAdjustmentSet table(phosg::JSON::parse(read_input_data(args)));
+      write_output_data(args, table.serialize_binary(args.get<bool>("big-endian")), nullptr);
+    });
+
+Action a_decode_armor_shop_random_set(
+    "decode-armor-shop-random-set", "\
+  decode-armor-shop-random-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS]\n\
+    Converts a ArmorRandom.rel file into a JSON armor shop random set. Use\n\
+    --big-endian if the .rel file is from PSO GC.\n",
+    +[](phosg::Arguments& args) {
+      auto input_data = read_input_data(args);
+      ArmorShopRandomSet table(input_data, args.get<bool>("big-endian"));
+      auto json = table.json();
+      auto serialized = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
+      write_output_data(args, serialized, nullptr);
+    });
+
+Action a_encode_armor_shop_random_set(
+    "encode-armor-shop-random-set", "\
+  encode-armor-shop-random-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS]\n\
+    Converts a JSON armo shop random set into an ArmorRandom.rel file\n\
+    compatible with the game client. Use --big-endian if the .rel file is for\n\
+    PSO GC.\n",
+    +[](phosg::Arguments& args) {
+      ArmorShopRandomSet table(phosg::JSON::parse(read_input_data(args)));
+      write_output_data(args, table.serialize_binary(args.get<bool>("big-endian")), nullptr);
+    });
+
+Action a_decode_tool_shop_random_set(
+    "decode-tool-shop-random-set", "\
+  decode-tool-shop-random-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS]\n\
+    Converts a ToolRandom.rel file into a JSON tool shop random set. Use\n\
+    --big-endian if the .rel file is from PSO GC.\n",
+    +[](phosg::Arguments& args) {
+      auto input_data = read_input_data(args);
+      ToolShopRandomSet table(input_data, args.get<bool>("big-endian"));
+      auto json = table.json();
+      auto serialized = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
+      write_output_data(args, serialized, nullptr);
+    });
+
+Action a_encode_tool_shop_random_set(
+    "encode-tool-shop-random-set", "\
+  encode-tool-shop-random-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS]\n\
+    Converts a JSON armo shop random set into an ToolRandom.rel file\n\
+    compatible with the game client. Use --big-endian if the .rel file is for\n\
+    PSO GC.\n",
+    +[](phosg::Arguments& args) {
+      ToolShopRandomSet table(phosg::JSON::parse(read_input_data(args)));
+      write_output_data(args, table.serialize_binary(args.get<bool>("big-endian")), nullptr);
+    });
+
+Action a_decode_weapon_shop_random_set(
+    "decode-weapon-shop-random-set", "\
+  decode-weapon-shop-random-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS]\n\
+    Converts a WeaponRandom.rel file into a JSON weapon shop random set. Use\n\
+    --big-endian if the .rel file is from PSO GC.\n",
+    +[](phosg::Arguments& args) {
+      auto input_data = read_input_data(args);
+      WeaponShopRandomSet table(input_data, args.get<bool>("big-endian"));
+      auto json = table.json();
+      auto serialized = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
+      write_output_data(args, serialized, nullptr);
+    });
+
+Action a_encode_weapon_shop_random_set(
+    "encode-weapon-shop-random-set", "\
+  encode-weapon-shop-random-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS]\n\
+    Converts a JSON armo shop random set into an WeaponRandom.rel file\n\
+    compatible with the game client. Use --big-endian if the .rel file is for\n\
+    PSO GC.\n",
+    +[](phosg::Arguments& args) {
+      WeaponShopRandomSet table(phosg::JSON::parse(read_input_data(args)));
       write_output_data(args, table.serialize_binary(args.get<bool>("big-endian")), nullptr);
     });
 
@@ -2704,7 +2776,7 @@ Action a_name_all_items(
 Action a_print_level_stats(
     "show-level-tables", "\
   show-level-tables\n\
-    Print the level tables for each version in a semi-human-reatable format.\n",
+    Print the level tables for each version in a semi-human-readable format.\n",
     +[](phosg::Arguments& args) {
       auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->load_config_early();
@@ -2790,7 +2862,7 @@ Action a_print_level_stats(
 Action a_show_item_parameter_tables(
     "show-item-parameter-tables", "\
   show-item-parameter-tables\n\
-    Print the item parameter tables for each version in a semi-human-reatable\n\
+    Print the item parameter tables for each version in a semi-human-readable\n\
     format.\n",
     +[](phosg::Arguments& args) {
       auto s = std::make_shared<ServerState>(get_config_filename(args));
@@ -2802,6 +2874,27 @@ Action a_show_item_parameter_tables(
           index->print_table(stdout);
         }
       }
+    });
+
+Action a_show_shop_random_sets(
+    "show-shop-random-sets", "\
+  show-shop-random-sets\n\
+    Print the tekker and shop generation tables in a semi-human-readable\n\
+    format.\n",
+    +[](phosg::Arguments& args) {
+      auto s = std::make_shared<ServerState>(get_config_filename(args));
+      s->load_all(false);
+      s->tekker_adjustment_set->print(stdout);
+      s->armor_random_set->print(stdout);
+      s->tool_random_set->print(stdout);
+      phosg::fwrite_fmt(stdout, "(Normal) ");
+      s->weapon_random_set(Difficulty::NORMAL)->print(stdout);
+      phosg::fwrite_fmt(stdout, "(Hard) ");
+      s->weapon_random_set(Difficulty::HARD)->print(stdout);
+      phosg::fwrite_fmt(stdout, "(Very Hard) ");
+      s->weapon_random_set(Difficulty::VERY_HARD)->print(stdout);
+      phosg::fwrite_fmt(stdout, "(Ultimate) ");
+      s->weapon_random_set(Difficulty::ULTIMATE)->print(stdout);
     });
 
 Action a_show_ep3_cards(
