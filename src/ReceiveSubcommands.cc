@@ -5475,7 +5475,7 @@ static void on_upgrade_weapon_attribute_bb(std::shared_ptr<Client> c, Subcommand
     send_destroy_item_to_lobby(c, payment_item.id, cmd.payment_count);
 
     item.data1[attribute_index] = cmd.attribute;
-    item.data1[attribute_index + 1] += new_attr_value;
+    item.data1[attribute_index + 1] = new_attr_value;
 
     send_destroy_item_to_lobby(c, item.id, 1);
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
