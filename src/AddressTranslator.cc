@@ -994,7 +994,7 @@ void diff_dol_files_semantic(
 
     if (!a_sec.is_text || !b_sec.is_text) {
       phosg::fwrite_fmt(stderr, "SECTION {} DATA\n", section_index);
-      // NOCOMMIT: Do something here maybe
+      // TODO: Diff the contents as binary data
 
     } else {
       phosg::fwrite_fmt(stderr, "SECTION {} TEXT\n", section_index);
@@ -1161,30 +1161,6 @@ void diff_dol_files_semantic(
           } while (b_fn_it != b_ana.functions.end() && b_ignore_functions.count(b_fn_it->label->address));
         }
       }
-
-      // NOCOMMIT: delete this shit
-      // auto a_label_it = a_ana.labels.cbegin();
-      // auto b_label_it = b_dasm.labels.cbegin();
-      // auto advance_to_next_function = [](const std::multimap<uint32_t, ResourceDASM::PPC32Emulator::DisassembleResult::Label>& labels, std::multimap<uint32_t, ResourceDASM::PPC32Emulator::DisassembleResult::Label>::const_iterator it) -> std::multimap<uint32_t, ResourceDASM::PPC32Emulator::DisassembleResult::Label>::const_iterator {
-      //   if (it != labels.end()) {
-      //     do {
-      //       it++;
-      //     } while ((it != labels.end()) && (it->second.refs.call_addrs.empty()));
-      //   }
-      //   return it;
-      // };
-      // while ((a_label_it != a_dasm.labels.end()) || (b_label_it != b_dasm.labels.end())) {
-      //   if ((a_label_it != a_dasm.labels.end()) && (b_label_it != b_dasm.labels.end())) {
-      //     phosg::fwrite_fmt(stream, "  {:08X}  {:08X}  {}  {}\n",
-      //         a_label_it->first, b_label_it->first, a_label_it->second.name, b_label_it->second.name);
-      //   } else if (a_label_it != a_dasm.labels.end()) {
-      //     phosg::fwrite_fmt(stream, "  {:08X}            {}\n", a_label_it->first, a_label_it->second.name);
-      //   } else {
-      //     phosg::fwrite_fmt(stream, "            {:08X}                 {}\n", b_label_it->first, b_label_it->second.name);
-      //   }
-      //   a_label_it = advance_to_next_function(a_dasm.labels, a_label_it);
-      //   b_label_it = advance_to_next_function(b_dasm.labels, b_label_it);
-      // }
     }
   }
 }
