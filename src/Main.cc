@@ -3926,21 +3926,34 @@ Action a_diff_executables(
       bool b_is_dol = b_filename.ends_with(".dol");
       bool a_is_xbe = a_filename.ends_with(".xbe");
       bool b_is_xbe = b_filename.ends_with(".xbe");
-      std::vector<DiffEntry> result;
-      if (a_is_dol && b_is_dol) {
-        result = diff_dol_files(a_filename, b_filename);
-      } else if (a_is_xbe && b_is_xbe) {
-        result = diff_xbe_files(a_filename, b_filename);
+
+      if (a_is_dol && b_is_dol && args.get<bool>("semantic")) {
+        std::unordered_set<uint32_t> a_ignore_functions, b_ignore_functions;
+        for (const auto& addr : args.get_multi<uint32_t>("a-ignore-function", phosg::Arguments::IntFormat::HEX)) {
+          a_ignore_functions.emplace(addr);
+        }
+        for (const auto& addr : args.get_multi<uint32_t>("b-ignore-function", phosg::Arguments::IntFormat::HEX)) {
+          b_ignore_functions.emplace(addr);
+        }
+        diff_dol_files_semantic(stdout, a_filename, b_filename, a_ignore_functions, b_ignore_functions);
+
       } else {
-        throw std::runtime_error("the two files are not the same type of executable, or are neither dol nor xbe");
-      }
-      for (const auto& it : result) {
-        std::string b_str = phosg::format_data_string(it.b_data, nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
-        if (show_pre) {
-          std::string a_str = phosg::format_data_string(it.a_data, nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
-          phosg::fwrite_fmt(stdout, "{:08X}: {} => {}\n", it.address, a_str, b_str);
+        std::vector<DiffEntry> result;
+        if (a_is_dol && b_is_dol) {
+          result = diff_dol_files(a_filename, b_filename);
+        } else if (a_is_xbe && b_is_xbe) {
+          result = diff_xbe_files(a_filename, b_filename);
         } else {
-          phosg::fwrite_fmt(stdout, "{:08X} {}\n", it.address, b_str);
+          throw std::runtime_error("the two files are not the same type of executable, or are neither dol nor xbe");
+        }
+        for (const auto& it : result) {
+          std::string b_str = phosg::format_data_string(it.b_data, nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
+          if (show_pre) {
+            std::string a_str = phosg::format_data_string(it.a_data, nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
+            phosg::fwrite_fmt(stdout, "{:08X}: {} => {}\n", it.address, a_str, b_str);
+          } else {
+            phosg::fwrite_fmt(stdout, "{:08X} {}\n", it.address, b_str);
+          }
         }
       }
     });

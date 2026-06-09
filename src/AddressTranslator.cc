@@ -5,6 +5,7 @@
 #include <future>
 #include <phosg/Filesystem.hh>
 #include <phosg/Strings.hh>
+#include <resource_file/Emulators/PPC32Emulator.hh>
 #include <resource_file/Emulators/X86Emulator.hh>
 #include <resource_file/ExecutableFormats/DOLFile.hh>
 #include <resource_file/ExecutableFormats/PEFile.hh>
@@ -971,6 +972,221 @@ std::vector<DiffEntry> diff_dol_files(const std::string& a_filename, const std::
     }
   }
   return ret;
+}
+
+void diff_dol_files_semantic(
+    FILE* stream,
+    const std::string& a_filename,
+    const std::string& b_filename,
+    const std::unordered_set<uint32_t>& a_ignore_functions,
+    const std::unordered_set<uint32_t>& b_ignore_functions) {
+  ResourceDASM::DOLFile a(a_filename.c_str());
+  ResourceDASM::DOLFile b(b_filename.c_str());
+
+  // There must be the same number of sections
+  if (a.sections.size() != b.sections.size()) {
+    throw std::runtime_error("DOL files do not have the same section count");
+  }
+
+  for (size_t section_index = 0; section_index < a.sections.size(); section_index++) {
+    const auto& a_sec = a.sections[section_index];
+    const auto& b_sec = b.sections[section_index];
+
+    if (!a_sec.is_text || !b_sec.is_text) {
+      phosg::fwrite_fmt(stderr, "SECTION {} DATA\n", section_index);
+      // NOCOMMIT: Do something here maybe
+
+    } else {
+      phosg::fwrite_fmt(stderr, "SECTION {} TEXT\n", section_index);
+
+      struct FileAnalysis {
+        struct Function {
+          const ResourceDASM::PPC32Emulator::DisassembleResult::Label* label;
+          size_t size;
+          std::vector<std::pair<uint32_t, uint32_t>> code; // [(opcode, mask)]
+        };
+        std::vector<Function> functions;
+        ResourceDASM::PPC32Emulator::DisassembleResult dasm;
+      };
+
+      auto disassemble_section = [&](const ResourceDASM::DOLFile& file, const ResourceDASM::DOLFile::Section& sec) -> FileAnalysis {
+        std::multimap<uint32_t, std::string> labels;
+        if ((file.entrypoint >= sec.address) && (file.entrypoint < (sec.address + sec.data.size()))) {
+          labels.emplace(file.entrypoint, "entry");
+        }
+        FileAnalysis ret;
+        ret.dasm = ResourceDASM::PPC32Emulator::disassemble_structured(
+            sec.data.data(), sec.data.size(), sec.address, &labels);
+
+        FileAnalysis::Function* prev_fn = nullptr;
+        for (const auto& [addr, label] : ret.dasm.labels) {
+          if (label.refs.call_addrs.empty() ||
+              (label.address < sec.address) ||
+              (label.address >= (sec.address + sec.data.size()))) {
+            continue;
+          }
+          if (prev_fn) {
+            prev_fn->size = addr - prev_fn->label->address;
+          }
+          auto& fn = ret.functions.emplace_back();
+          fn.label = &label;
+          prev_fn = &fn;
+        }
+        if (prev_fn) {
+          prev_fn->size = sec.data.size() - (prev_fn->label->address - sec.address);
+        }
+
+        for (auto& fn : ret.functions) {
+          const be_uint32_t* code = reinterpret_cast<const be_uint32_t*>(
+              sec.data.data() + (fn.label->address - sec.address));
+          for (size_t z = 0; z < fn.size >> 2; z++) {
+            uint32_t opcode = code[z];
+            if ((opcode & 0xFC000000) == 0x34000000) {
+              fn.code.emplace_back(opcode, 0xFFFF0000); // subic.
+            } else if ((opcode & 0xFC000000) == 0x38000000) {
+              fn.code.emplace_back(opcode, 0xFFFF0000); // addi
+            } else if ((opcode & 0xFC1F0000) == 0x3C000000) {
+              fn.code.emplace_back(opcode, 0xFFFF0000); // lis
+            } else if ((opcode & 0xFC000000) == 0x48000000) {
+              fn.code.emplace_back(opcode, 0xFC000000); // b[la]
+            } else if ((opcode & 0xF8000000) == 0x60000000) {
+              fn.code.emplace_back(opcode, 0xFFFF0000); // ori
+            } else if ((opcode & 0xF8000000) == 0x80000000) {
+              fn.code.emplace_back(opcode, 0xFFFF0000); // lwz, lwzu
+            } else if ((opcode & 0xFC000000) == 0x88000000) {
+              fn.code.emplace_back(opcode, 0xFFFF0000); // lbz
+            } else if ((opcode & 0xF8000000) == 0x90000000) {
+              fn.code.emplace_back(opcode, 0xFFFF0000); // stw, stwu
+            } else if ((opcode & 0xF8000000) == 0x98000000) {
+              fn.code.emplace_back(opcode, 0xFFFF0000); // stb, stbu
+            } else if ((opcode & 0xF8000000) == 0xA0000000) {
+              fn.code.emplace_back(opcode, 0xFFFF0000); // lhz, lhzu
+            } else if ((opcode & 0xFC000000) == 0xAC000000) {
+              fn.code.emplace_back(opcode, 0xFFFF0000); // lhau
+            } else if ((opcode & 0xF8000000) == 0xB0000000) {
+              fn.code.emplace_back(opcode, 0xFFFF0000); // sth, sthu
+            } else if ((opcode & 0xF8000000) == 0xC0000000) {
+              fn.code.emplace_back(opcode, 0xFFFF0000); // lfs, lfsu
+            } else if ((opcode & 0xFC000000) == 0xC8000000) {
+              fn.code.emplace_back(opcode, 0xFFFF0000); // lfd
+            } else if ((opcode & 0xF8000000) == 0xD0000000) {
+              fn.code.emplace_back(opcode, 0xFFFF0000); // stfs, stfsu
+            } else {
+              fn.code.emplace_back(opcode, 0xFFFFFFFF);
+            }
+          }
+        }
+
+        return ret;
+      };
+      auto a_ana = disassemble_section(a, a_sec);
+      auto b_ana = disassemble_section(b, b_sec);
+
+      bool use_color = isatty(fileno(stream));
+      auto a_fn_it = a_ana.functions.cbegin();
+      auto b_fn_it = b_ana.functions.cbegin();
+      while ((a_fn_it != a_ana.functions.end()) || (b_fn_it != b_ana.functions.end())) {
+        if ((a_fn_it != a_ana.functions.end()) && (b_fn_it != b_ana.functions.end())) {
+          phosg::fwrite_fmt(stream, "FUNCTION: A:{:08X} B:{:08X}\n", a_fn_it->label->address, b_fn_it->label->address);
+
+          bool functions_identical = true;
+          for (size_t z = 0; z < std::max<size_t>(a_fn_it->code.size(), b_fn_it->code.size()); z++) {
+            uint32_t a_op = (z < a_fn_it->code.size()) ? a_fn_it->code[z].first : 0xFFFFFFFF;
+            uint32_t b_op = (z < b_fn_it->code.size()) ? b_fn_it->code[z].first : 0xFFFFFFFF;
+            uint32_t a_mask = (z < a_fn_it->code.size()) ? a_fn_it->code[z].second : 0xFFFFFFFF;
+            uint32_t b_mask = (z < b_fn_it->code.size()) ? b_fn_it->code[z].second : 0xFFFFFFFF;
+            uint32_t mask = a_mask | b_mask;
+            if ((a_op & mask) != (b_op & mask)) {
+              functions_identical = false;
+            }
+          }
+
+          if (!functions_identical) {
+            for (size_t z = 0; z < std::max<size_t>(a_fn_it->code.size(), b_fn_it->code.size()); z++) {
+              uint32_t a_op = (z < a_fn_it->code.size()) ? a_fn_it->code[z].first : 0xFFFFFFFF;
+              uint32_t b_op = (z < b_fn_it->code.size()) ? b_fn_it->code[z].first : 0xFFFFFFFF;
+              uint32_t a_mask = (z < a_fn_it->code.size()) ? a_fn_it->code[z].second : 0xFFFFFFFF;
+              uint32_t b_mask = (z < b_fn_it->code.size()) ? b_fn_it->code[z].second : 0xFFFFFFFF;
+              uint32_t mask = a_mask | b_mask;
+              if ((a_op & mask) == (b_op & mask)) {
+                phosg::fwrite_fmt(stream, "  {:08X}->{:08X}  {:08X}  {}\n",
+                    a_fn_it->label->address + z * 4, b_fn_it->label->address + z * 4,
+                    a_op, ResourceDASM::PPC32Emulator::disassemble_one(a_fn_it->label->address + z * 4, a_op));
+              } else {
+                if (use_color) {
+                  phosg::print_color_escape(stream, phosg::TerminalFormat::BOLD, phosg::TerminalFormat::FG_RED, phosg::TerminalFormat::END);
+                }
+                phosg::fwrite_fmt(stream, "- {:08X}->{:08X}  {:08X}  {}\n",
+                    a_fn_it->label->address + z * 4, b_fn_it->label->address + z * 4,
+                    a_op, ResourceDASM::PPC32Emulator::disassemble_one(a_fn_it->label->address + z * 4, a_op));
+                if (use_color) {
+                  phosg::print_color_escape(stream, phosg::TerminalFormat::BOLD, phosg::TerminalFormat::FG_GREEN, phosg::TerminalFormat::END);
+                }
+                phosg::fwrite_fmt(stream, "+ {:08X}->{:08X}  {:08X}  {}\n",
+                    a_fn_it->label->address + z * 4, b_fn_it->label->address + z * 4,
+                    b_op, ResourceDASM::PPC32Emulator::disassemble_one(b_fn_it->label->address + z * 4, b_op));
+                if (use_color) {
+                  phosg::print_color_escape(stream, phosg::TerminalFormat::NORMAL, phosg::TerminalFormat::END);
+                }
+              }
+            }
+          }
+          do {
+            a_fn_it++;
+          } while (a_fn_it != a_ana.functions.end() && a_ignore_functions.count(a_fn_it->label->address));
+          do {
+            b_fn_it++;
+          } while (b_fn_it != b_ana.functions.end() && b_ignore_functions.count(b_fn_it->label->address));
+
+        } else if (a_fn_it != a_ana.functions.end()) {
+          phosg::fwrite_fmt(stream, "FUNCTION: A:{:08X} B:(missing)\n", a_fn_it->label->address);
+          for (size_t z = 0; z < a_fn_it->code.size(); z++) {
+            phosg::fwrite_fmt(stream, "  {:08X}            {:08X}  {}\n",
+                a_fn_it->label->address + z * 4, a_fn_it->code[z].first,
+                ResourceDASM::PPC32Emulator::disassemble_one(a_fn_it->label->address + z * 4, a_fn_it->code[z].first));
+          }
+          do {
+            a_fn_it++;
+          } while (a_fn_it != a_ana.functions.end() && a_ignore_functions.count(a_fn_it->label->address));
+
+        } else {
+          phosg::fwrite_fmt(stream, "FUNCTION: A:(missing) B:{:08X}\n", b_fn_it->label->address);
+          for (size_t z = 0; z < b_fn_it->code.size(); z++) {
+            phosg::fwrite_fmt(stream, "            {:08X}  {:08X}  {}\n",
+                b_fn_it->label->address + z * 4, b_fn_it->code[z].first,
+                ResourceDASM::PPC32Emulator::disassemble_one(b_fn_it->label->address + z * 4, b_fn_it->code[z].first));
+          }
+          do {
+            b_fn_it++;
+          } while (b_fn_it != b_ana.functions.end() && b_ignore_functions.count(b_fn_it->label->address));
+        }
+      }
+
+      // NOCOMMIT: delete this shit
+      // auto a_label_it = a_ana.labels.cbegin();
+      // auto b_label_it = b_dasm.labels.cbegin();
+      // auto advance_to_next_function = [](const std::multimap<uint32_t, ResourceDASM::PPC32Emulator::DisassembleResult::Label>& labels, std::multimap<uint32_t, ResourceDASM::PPC32Emulator::DisassembleResult::Label>::const_iterator it) -> std::multimap<uint32_t, ResourceDASM::PPC32Emulator::DisassembleResult::Label>::const_iterator {
+      //   if (it != labels.end()) {
+      //     do {
+      //       it++;
+      //     } while ((it != labels.end()) && (it->second.refs.call_addrs.empty()));
+      //   }
+      //   return it;
+      // };
+      // while ((a_label_it != a_dasm.labels.end()) || (b_label_it != b_dasm.labels.end())) {
+      //   if ((a_label_it != a_dasm.labels.end()) && (b_label_it != b_dasm.labels.end())) {
+      //     phosg::fwrite_fmt(stream, "  {:08X}  {:08X}  {}  {}\n",
+      //         a_label_it->first, b_label_it->first, a_label_it->second.name, b_label_it->second.name);
+      //   } else if (a_label_it != a_dasm.labels.end()) {
+      //     phosg::fwrite_fmt(stream, "  {:08X}            {}\n", a_label_it->first, a_label_it->second.name);
+      //   } else {
+      //     phosg::fwrite_fmt(stream, "            {:08X}                 {}\n", b_label_it->first, b_label_it->second.name);
+      //   }
+      //   a_label_it = advance_to_next_function(a_dasm.labels, a_label_it);
+      //   b_label_it = advance_to_next_function(b_dasm.labels, b_label_it);
+      // }
+    }
+  }
 }
 
 std::vector<DiffEntry> diff_xbe_files(const std::string& a_filename, const std::string& b_filename) {
