@@ -1240,7 +1240,7 @@ ChatCommandDefinition cc_item(
       } else {
         auto l = a.c->require_lobby();
         item = s->parse_item_description(a.c->version(), a.text);
-        item.id = l->generate_item_id(a.c->lobby_client_id);
+        item.id = l->generate_item_id(0xFF);
 
         if ((l->drop_mode == ServerDropMode::SERVER_PRIVATE) || (l->drop_mode == ServerDropMode::SERVER_DUPLICATE)) {
           l->add_item(a.c->floor, item, a.c->pos, nullptr, nullptr, (1 << a.c->lobby_client_id));
