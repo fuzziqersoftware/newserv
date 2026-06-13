@@ -3682,10 +3682,12 @@ Action a_check_quests(
 
       bool reassemble_scripts = args.get<bool>("reassemble-scripts");
       bool reassemble_maps = args.get<bool>("reassemble-maps");
+      uint64_t script_time = 0, map_time = 0;
       if (reassemble_scripts || reassemble_maps) {
         for (const auto& [_, q] : s->quest_index->quests_by_number) {
           for (const auto& [_, vq] : q->versions) {
             if (reassemble_maps) {
+              uint64_t start_time = phosg::now();
               auto dat = prs_decompress(*vq->dat_contents);
               auto serialized = vq->map_file->serialize();
               if (dat != serialized) {
@@ -3701,9 +3703,17 @@ Action a_check_quests(
                     vq->meta.name);
                 throw std::runtime_error("re-serialized map file differs from original");
               }
-              phosg::log_info_f("... {} {} {} ({}) MAP OK", phosg::name_for_enum(vq->meta.version), name_for_language(vq->meta.language), vq->dat_filename(), vq->meta.name);
+              uint64_t end_time = phosg::now();
+              map_time += (end_time - start_time);
+              phosg::log_info_f("... {} {} {} ({}) MAP OK ({})",
+                  phosg::name_for_enum(vq->meta.version),
+                  name_for_language(vq->meta.language),
+                  vq->dat_filename(),
+                  vq->meta.name,
+                  phosg::format_duration(end_time - start_time));
             }
             if (reassemble_scripts) {
+              uint64_t start_time = phosg::now();
               auto bin = prs_decompress(*vq->bin_contents);
               auto disassembled = disassemble_quest_script(
                   bin.data(), bin.size(), vq->meta.version, vq->meta.language, vq->map_file, false, false);
@@ -3768,10 +3778,23 @@ Action a_check_quests(
                 phosg::log_info_f("... {} {} {} ({}) SCRIPT FAILED", phosg::name_for_enum(vq->meta.version), name_for_language(vq->meta.language), vq->bin_filename(), vq->meta.name);
                 throw;
               }
-              phosg::log_info_f("... {} {} {} ({}) SCRIPT OK", phosg::name_for_enum(vq->meta.version), name_for_language(vq->meta.language), vq->bin_filename(), vq->meta.name);
+              uint64_t end_time = phosg::now();
+              script_time += (end_time - start_time);
+              phosg::log_info_f("... {} {} {} ({}) SCRIPT OK ({})",
+                  phosg::name_for_enum(vq->meta.version),
+                  name_for_language(vq->meta.language),
+                  vq->bin_filename(),
+                  vq->meta.name,
+                  phosg::format_duration(end_time - start_time));
             }
           }
         }
+      }
+      if (script_time > 0) {
+        phosg::log_info_f("... SCRIPT CHECKS: {}", phosg::format_duration(script_time));
+      }
+      if (map_time > 0) {
+        phosg::log_info_f("... MAP CHECKS: {}", phosg::format_duration(map_time));
       }
     });
 
