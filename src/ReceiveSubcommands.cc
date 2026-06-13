@@ -5479,8 +5479,9 @@ static void on_upgrade_weapon_attribute_bb(std::shared_ptr<Client> c, Subcommand
       throw std::runtime_error("bonus value exceeds 100");
     }
 
-    p->remove_item(payment_item.id, cmd.payment_count, *s->item_stack_limits(c->version()));
-    send_destroy_item_to_lobby(c, payment_item.id, cmd.payment_count);
+    auto removed_payment_item = p->remove_item(
+        payment_item.id, cmd.payment_count, *s->item_stack_limits(c->version()));
+    send_destroy_item_to_lobby(c, removed_payment_item.id, cmd.payment_count);
 
     item.data1[attribute_index] = cmd.attribute;
     item.data1[attribute_index + 1] = new_attr_value;
