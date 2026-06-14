@@ -3670,7 +3670,12 @@ Action a_print_free_supermap(
 Action a_check_quests(
     "check-quests", nullptr,
     +[](phosg::Arguments& args) {
+      size_t num_threads = args.get<size_t>("threads", 0);
+      bool reassemble_scripts = args.get<bool>("reassemble-scripts");
+      bool reassemble_maps = args.get<bool>("reassemble-maps");
+
       check_quest_opcode_definitions();
+      phosg::log_info_f("Opcode definitions OK");
 
       auto s = std::make_shared<ServerState>(get_config_filename(args));
       s->is_debug = true;
@@ -3680,114 +3685,139 @@ Action a_check_quests(
       s->load_maps();
       s->load_quest_index(true);
 
-      bool reassemble_scripts = args.get<bool>("reassemble-scripts");
-      bool reassemble_maps = args.get<bool>("reassemble-maps");
       uint64_t script_time = 0, map_time = 0;
       if (reassemble_scripts || reassemble_maps) {
-        for (const auto& [_, q] : s->quest_index->quests_by_number) {
-          for (const auto& [_, vq] : q->versions) {
-            if (reassemble_maps) {
-              uint64_t start_time = phosg::now();
-              auto dat = prs_decompress(*vq->dat_contents);
-              auto serialized = vq->map_file->serialize();
-              if (dat != serialized) {
-                phosg::log_info_f("... DISASSEMBLY:");
-                phosg::fwritex(stdout, vq->map_file->disassemble(false, vq->meta.version));
-                phosg::log_info_f("... BINDIFF:");
-                phosg::print_binary_diff(
-                    stdout, dat.data(), dat.size(), serialized.data(), serialized.size(), isatty(fileno(stdout)));
-                phosg::log_info_f("... {} {} {} ({}) MAP FAILED",
-                    phosg::name_for_enum(vq->meta.version),
-                    name_for_language(vq->meta.language),
-                    vq->dat_filename(),
-                    vq->meta.name);
-                throw std::runtime_error("re-serialized map file differs from original");
-              }
-              uint64_t end_time = phosg::now();
-              map_time += (end_time - start_time);
-              phosg::log_info_f("... {} {} {} ({}) MAP OK ({})",
+        std::mutex output_lock;
+        auto check_vq = [&](const std::shared_ptr<const VersionedQuest>& vq, size_t) -> void {
+          if (reassemble_maps) {
+            uint64_t start_time = phosg::now();
+            auto dat = prs_decompress(*vq->dat_contents);
+            auto serialized = vq->map_file->serialize();
+            if (dat != serialized) {
+              std::lock_guard g(output_lock);
+              phosg::log_info_f("... DISASSEMBLY:");
+              phosg::fwritex(stdout, vq->map_file->disassemble(false, vq->meta.version));
+              phosg::log_info_f("... BINDIFF:");
+              phosg::print_binary_diff(
+                  stdout, dat.data(), dat.size(), serialized.data(), serialized.size(), isatty(fileno(stdout)));
+              phosg::log_info_f("... {} {} {} ({}) MAP FAILED",
                   phosg::name_for_enum(vq->meta.version),
                   name_for_language(vq->meta.language),
                   vq->dat_filename(),
-                  vq->meta.name,
-                  phosg::format_duration(end_time - start_time));
+                  vq->meta.name);
+              throw std::runtime_error("re-serialized map file differs from original");
             }
-            if (reassemble_scripts) {
-              uint64_t start_time = phosg::now();
-              auto bin = prs_decompress(*vq->bin_contents);
-              auto disassembled = disassemble_quest_script(
-                  bin.data(), bin.size(), vq->meta.version, vq->meta.language, vq->map_file, false, false);
-              auto reassembly = disassemble_quest_script(
-                  bin.data(), bin.size(), vq->meta.version, vq->meta.language, vq->map_file, true, false);
-              std::string include_dir = phosg::dirname(vq->bin_filename());
-              AssembledQuestScript assembled;
-              try {
-                assembled = assemble_quest_script(
-                    reassembly,
-                    {"system/quests/includes"},
-                    {"system/quests/includes", "system/client-functions/System"},
-                    false);
-                if (vq->json_contents) {
-                  assembled.meta.apply_json_overrides(*vq->json_contents);
-                }
-                if (assembled.data != bin) {
-                  throw std::runtime_error("Reassembled quest script does not match original");
-                }
-                // Don't check quest number, since we override it based on the filename
-                if (assembled.meta.version != vq->meta.version) {
-                  throw std::runtime_error(std::format("Reassembled quest version ({}) does not match original ({})",
-                      phosg::name_for_enum(assembled.meta.version), phosg::name_for_enum(vq->meta.version)));
-                }
-                if (assembled.meta.language != vq->meta.language) {
-                  throw std::runtime_error(std::format("Reassembled quest language ({}) does not match original ({})",
-                      name_for_language(assembled.meta.language), name_for_language(vq->meta.language)));
-                }
-                if (assembled.meta.episode != vq->meta.episode) {
-                  throw std::runtime_error(std::format("Reassembled quest episode ({}) does not match original ({})",
-                      name_for_episode(assembled.meta.episode), name_for_episode(vq->meta.episode)));
-                }
-                if (assembled.meta.joinable != vq->meta.joinable) {
-                  throw std::runtime_error(std::format("Reassembled quest joinable ({}) does not match original ({})",
-                      assembled.meta.joinable, vq->meta.joinable));
-                }
-                if (assembled.meta.max_players != vq->meta.max_players) {
-                  throw std::runtime_error(std::format("Reassembled quest max_players ({}) does not match original ({})",
-                      assembled.meta.max_players, vq->meta.max_players));
-                }
-                if (assembled.meta.name != vq->meta.name) {
-                  throw std::runtime_error(std::format("Reassembled quest name ({}) does not match original ({})",
-                      assembled.meta.name, vq->meta.name));
-                }
-                if (assembled.meta.short_description != vq->meta.short_description) {
-                  throw std::runtime_error(std::format("Reassembled quest short description ({}) does not match original ({})",
-                      assembled.meta.short_description, vq->meta.short_description));
-                }
-                if (assembled.meta.long_description != vq->meta.long_description) {
-                  throw std::runtime_error(std::format("Reassembled quest long description ({}) does not match original ({})",
-                      assembled.meta.long_description, vq->meta.long_description));
-                }
-              } catch (const std::exception& e) {
-                phosg::log_error_f("================ DISASSEMBLY:");
-                phosg::fwritex(stderr, disassembled);
-                phosg::log_error_f("================ REASSEMBLY:");
-                phosg::fwritex(stderr, reassembly);
-                if (!assembled.data.empty()) {
-                  phosg::log_error_f("================ BINDIFF:");
-                  phosg::print_binary_diff(stderr, bin.data(), bin.size(), assembled.data.data(), assembled.data.size(), isatty(fileno(stderr)), 3, 0);
-                }
-                phosg::log_info_f("... {} {} {} ({}) SCRIPT FAILED", phosg::name_for_enum(vq->meta.version), name_for_language(vq->meta.language), vq->bin_filename(), vq->meta.name);
-                throw;
+            uint64_t end_time = phosg::now();
+            map_time += (end_time - start_time);
+            std::lock_guard g(output_lock);
+            phosg::log_info_f("... {} {} {} ({}) MAP OK ({})",
+                phosg::name_for_enum(vq->meta.version),
+                name_for_language(vq->meta.language),
+                vq->dat_filename(),
+                vq->meta.name,
+                phosg::format_duration(end_time - start_time));
+          }
+          if (reassemble_scripts) {
+            uint64_t start_time = phosg::now();
+            auto bin = prs_decompress(*vq->bin_contents);
+            auto disassembled = disassemble_quest_script(
+                bin.data(), bin.size(), vq->meta.version, vq->meta.language, vq->map_file, false, false);
+            auto reassembly = disassemble_quest_script(
+                bin.data(), bin.size(), vq->meta.version, vq->meta.language, vq->map_file, true, false);
+            std::string include_dir = phosg::dirname(vq->bin_filename());
+            AssembledQuestScript assembled;
+            try {
+              assembled = assemble_quest_script(
+                  reassembly,
+                  {"system/quests/includes"},
+                  {"system/quests/includes", "system/client-functions/System"},
+                  false);
+              if (vq->json_contents) {
+                assembled.meta.apply_json_overrides(*vq->json_contents);
               }
-              uint64_t end_time = phosg::now();
-              script_time += (end_time - start_time);
-              phosg::log_info_f("... {} {} {} ({}) SCRIPT OK ({})",
-                  phosg::name_for_enum(vq->meta.version),
-                  name_for_language(vq->meta.language),
-                  vq->bin_filename(),
-                  vq->meta.name,
-                  phosg::format_duration(end_time - start_time));
+              if (assembled.data != bin) {
+                throw std::runtime_error("Reassembled quest script does not match original");
+              }
+              // Don't check quest number, since we override it based on the filename
+              if (assembled.meta.version != vq->meta.version) {
+                throw std::runtime_error(std::format("Reassembled quest version ({}) does not match original ({})",
+                    phosg::name_for_enum(assembled.meta.version), phosg::name_for_enum(vq->meta.version)));
+              }
+              if (assembled.meta.language != vq->meta.language) {
+                throw std::runtime_error(std::format("Reassembled quest language ({}) does not match original ({})",
+                    name_for_language(assembled.meta.language), name_for_language(vq->meta.language)));
+              }
+              if (assembled.meta.episode != vq->meta.episode) {
+                throw std::runtime_error(std::format("Reassembled quest episode ({}) does not match original ({})",
+                    name_for_episode(assembled.meta.episode), name_for_episode(vq->meta.episode)));
+              }
+              if (assembled.meta.joinable != vq->meta.joinable) {
+                throw std::runtime_error(std::format("Reassembled quest joinable ({}) does not match original ({})",
+                    assembled.meta.joinable, vq->meta.joinable));
+              }
+              if (assembled.meta.max_players != vq->meta.max_players) {
+                throw std::runtime_error(std::format("Reassembled quest max_players ({}) does not match original ({})",
+                    assembled.meta.max_players, vq->meta.max_players));
+              }
+              if (assembled.meta.name != vq->meta.name) {
+                throw std::runtime_error(std::format("Reassembled quest name ({}) does not match original ({})",
+                    assembled.meta.name, vq->meta.name));
+              }
+              if (assembled.meta.short_description != vq->meta.short_description) {
+                throw std::runtime_error(std::format("Reassembled quest short description ({}) does not match original ({})",
+                    assembled.meta.short_description, vq->meta.short_description));
+              }
+              if (assembled.meta.long_description != vq->meta.long_description) {
+                throw std::runtime_error(std::format("Reassembled quest long description ({}) does not match original ({})",
+                    assembled.meta.long_description, vq->meta.long_description));
+              }
+            } catch (const std::exception& e) {
+              std::lock_guard g(output_lock);
+              phosg::log_error_f("================ DISASSEMBLY:");
+              phosg::fwritex(stderr, disassembled);
+              phosg::log_error_f("================ REASSEMBLY:");
+              phosg::fwritex(stderr, reassembly);
+              if (!assembled.data.empty()) {
+                phosg::log_error_f("================ BINDIFF:");
+                phosg::print_binary_diff(stderr, bin.data(), bin.size(), assembled.data.data(), assembled.data.size(), isatty(fileno(stderr)), 3, 0);
+              }
+              phosg::log_info_f("... {} {} {} ({}) SCRIPT FAILED", phosg::name_for_enum(vq->meta.version), name_for_language(vq->meta.language), vq->bin_filename(), vq->meta.name);
+              throw;
+            }
+            uint64_t end_time = phosg::now();
+            script_time += (end_time - start_time);
+            std::lock_guard g(output_lock);
+            phosg::log_info_f("... {} {} {} ({}) SCRIPT OK ({})",
+                phosg::name_for_enum(vq->meta.version),
+                name_for_language(vq->meta.language),
+                vq->bin_filename(),
+                vq->meta.name,
+                phosg::format_duration(end_time - start_time));
+          }
+        };
+
+        if (num_threads == 1) {
+          for (const auto& [_, q] : s->quest_index->quests_by_number) {
+            for (const auto& [_, vq] : q->versions) {
+              check_vq(vq, 0);
             }
           }
+
+        } else {
+          std::vector<std::shared_ptr<const VersionedQuest>> all_vqs;
+          for (const auto& [_, q] : s->quest_index->quests_by_number) {
+            for (const auto& [_, vq] : q->versions) {
+              all_vqs.emplace_back(vq);
+            }
+          }
+
+          // Sort them in decreasing order of bin file size, so the slowest ones are run first (this packs the work
+          // into the threads' timelines more efficiently)
+          std::sort(all_vqs.begin(), all_vqs.end(), [](const std::shared_ptr<const VersionedQuest>& a, const std::shared_ptr<const VersionedQuest>& b) -> bool {
+            return a->bin_contents->size() > b->bin_contents->size();
+          });
+
+          phosg::parallel_range(all_vqs, check_vq, num_threads);
         }
       }
       if (script_time > 0) {
