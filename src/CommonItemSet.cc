@@ -703,7 +703,7 @@ CommonItemSet::Table::Table(const phosg::StringReader& r, bool is_big_endian, bo
 
 template <bool BE>
 void CommonItemSet::Table::parse_itempt_t(const phosg::StringReader& r, bool is_v3) {
-  const auto& offsets = r.pget<OffsetsT<BE>>(r.pget<U32T<BE>>(r.size() - 0x10));
+  const auto& offsets = r.pget<RootT<BE>>(r.pget<U32T<BE>>(r.size() - 0x10));
 
   this->base_weapon_type_prob_table = r.pget<parray<uint8_t, 0x0C>>(offsets.base_weapon_type_prob_table_offset);
   this->subtype_base_table = r.pget<parray<int8_t, 0x0C>>(offsets.subtype_base_table_offset);

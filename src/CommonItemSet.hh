@@ -69,7 +69,7 @@ public:
     void parse_itempt_t(const phosg::StringReader& r, bool is_v3);
 
     template <bool BE>
-    struct OffsetsT {
+    struct RootT {
       // This data structure uses index probability tables in multiple places. An index probability table is a table
       // where each entry holds the probability that that entry's index is used. For example, if the armor slot count
       // probability table contains [77, 17, 5, 1, 0], this means there is a 77% chance of no slots, 17% chance of 1
@@ -244,9 +244,9 @@ public:
       /* 50 */ U32T<BE> box_item_class_prob_table_offset;
 
       // There are several unused fields here.
-    } __packed_ws_be__(OffsetsT, 0x54);
-    using Offsets = OffsetsT<false>;
-    using OffsetsBE = OffsetsT<true>;
+    } __packed_ws_be__(RootT, 0x54);
+    using Root = RootT<false>;
+    using RootBE = RootT<true>;
   };
 
   bool operator==(const CommonItemSet& other) const = default;
