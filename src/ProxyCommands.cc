@@ -980,7 +980,7 @@ static asio::awaitable<HandlerResult> SC_6x60_6xA2(std::shared_ptr<Client> c, Ch
     c->log.info_f("No item was created");
   } else {
     auto s = c->require_server_state();
-    std::string name = s->describe_item(c->version(), res.item);
+    std::string name = s->data->describe_item(c->version(), res.item);
     c->log.info_f("Entity {:04X} (area {:02X}) created item {}", cmd.entity_index, cmd.effective_area, name);
     res.item.id = c->proxy_session->next_item_id++;
     c->log.info_f("Creating item {:08X} at {:02X}:{:g},{:g} for all clients",
@@ -1782,7 +1782,7 @@ static asio::awaitable<HandlerResult> S_64(std::shared_ptr<Client> c, Channel::M
   auto s = c->require_server_state();
   c->proxy_session->set_drop_mode(s, c->version(), c->override_random_seed, c->proxy_session->drop_mode);
   if (!is_ep3(c->version()) && (c->proxy_session->lobby_mode != GameMode::CHALLENGE)) {
-    auto supermaps = s->supermaps_for_variations(
+    auto supermaps = s->data->supermaps_for_variations(
         c->proxy_session->lobby_episode,
         c->proxy_session->lobby_mode,
         c->proxy_session->lobby_difficulty,
@@ -1976,8 +1976,8 @@ static asio::awaitable<HandlerResult> C_06(std::shared_ptr<Client> c, Channel::M
     }
 
     auto s = c->require_server_state();
-    char command_sentinel = s->chat_command_sentinel
-        ? s->chat_command_sentinel
+    char command_sentinel = s->data->chat_command_sentinel
+        ? s->data->chat_command_sentinel
         : ((c->version() == Version::DC_11_2000) ? '@' : '$');
     bool is_command = (text[0] == command_sentinel) ||
         (text[0] == '\t' && text[1] != 'C' && text[2] == command_sentinel);

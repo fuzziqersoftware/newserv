@@ -13,7 +13,7 @@
 
 struct Lobby;
 class Client;
-struct ServerState;
+class ServerState;
 
 namespace Episode3 {
 

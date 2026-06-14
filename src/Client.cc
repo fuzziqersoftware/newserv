@@ -191,7 +191,7 @@ Client::Client(
   // Don't print data sent to patch clients to the logs. The patch server protocol is fully understood and data logs
   // for patch clients are generally more annoying than helpful at this point.
   auto s = server->get_state();
-  if (is_patch(this->version()) && s->hide_download_commands) {
+  if (is_patch(this->version()) && s->data->hide_download_commands) {
     this->channel->terminal_recv_color = phosg::TerminalFormat::END;
     this->channel->terminal_send_color = phosg::TerminalFormat::END;
   } else {
@@ -200,7 +200,7 @@ Client::Client(
   }
 
   this->set_flags_for_version(this->version(), -1);
-  if (is_v1_or_v2(this->version()) ? s->default_rare_notifs_enabled_v1_v2 : s->default_rare_notifs_enabled_v3_v4) {
+  if (is_v1_or_v2(this->version()) ? s->data->default_rare_notifs_enabled_v1_v2 : s->data->default_rare_notifs_enabled_v3_v4) {
     this->set_drop_notification_mode(ItemDropNotificationMode::RARES_ONLY);
   }
   this->specific_version = default_specific_version_for_version(this->version(), -1);
@@ -210,7 +210,7 @@ Client::Client(
 
   // Don't print data sent to patch clients to the logs. The patch server protocol is fully understood and data logs
   // for patch clients are generally more annoying than helpful at this point.
-  if ((s->hide_download_commands) &&
+  if ((s->data->hide_download_commands) &&
       ((this->version() == Version::PC_PATCH) || (this->version() == Version::BB_PATCH))) {
     this->channel->terminal_recv_color = phosg::TerminalFormat::END;
     this->channel->terminal_send_color = phosg::TerminalFormat::END;
@@ -267,7 +267,7 @@ void Client::reschedule_save_game_data_timer() {
 void Client::reschedule_ping_and_timeout_timers() {
   auto s = this->require_server_state();
   if (!is_patch(this->version())) {
-    this->send_ping_timer.expires_after(std::chrono::microseconds(s->client_ping_interval_usecs));
+    this->send_ping_timer.expires_after(std::chrono::microseconds(s->data->client_ping_interval_usecs));
     this->send_ping_timer.async_wait([this](std::error_code ec) {
       if (!ec) {
         this->log.info_f("Sending ping command");
@@ -282,7 +282,7 @@ void Client::reschedule_ping_and_timeout_timers() {
     });
   }
 
-  this->idle_timeout_timer.expires_after(std::chrono::microseconds(s->client_idle_timeout_usecs));
+  this->idle_timeout_timer.expires_after(std::chrono::microseconds(s->data->client_idle_timeout_usecs));
   this->idle_timeout_timer.async_wait([this](std::error_code ec) {
     if (!ec) {
       this->log.info_f("Idle timeout expired");
@@ -295,7 +295,7 @@ void Client::convert_account_to_temporary_if_nte() {
   // If the session is a prototype version and the account was created and we should use a temporary account instead,
   // delete the permanent account and replace it with a temporary account.
   auto s = this->require_server_state();
-  if (s->use_temp_accounts_for_prototypes && this->login->account_was_created && is_any_nte(this->version())) {
+  if (s->data->use_temp_accounts_for_prototypes && this->login->account_was_created && is_any_nte(this->version())) {
     this->log.info_f("Client is a prototype version and the account was created during this session; converting permanent account to temporary account");
     this->login->account->is_temporary = true;
     this->login->account->delete_file();
@@ -431,14 +431,14 @@ bool Client::can_use_chat_commands() const {
   if (this->login->account->check_flag(Account::Flag::ALWAYS_ENABLE_CHAT_COMMANDS)) {
     return true;
   }
-  return this->require_server_state()->enable_chat_commands;
+  return this->require_server_state()->data->enable_chat_commands;
 }
 
 void Client::set_login(std::shared_ptr<Login> login) {
   this->login = login;
 
   auto s = this->require_server_state();
-  if (!s->allow_same_account_concurrent_logins) {
+  if (!s->data->allow_same_account_concurrent_logins) {
     auto it = s->client_for_account.find(login->account->account_id);
     if ((it != s->client_for_account.end()) && (it->second.get() != this)) {
       if (it->second->channel) {
@@ -796,8 +796,8 @@ std::shared_ptr<PlayerBank> Client::bank_file(bool allow_load) {
     }
 
     auto s = this->require_server_state();
-    this->bank_data->max_items = s->bb_max_bank_items;
-    this->bank_data->max_meseta = s->bb_max_bank_meseta;
+    this->bank_data->max_items = s->data->bb_max_bank_items;
+    this->bank_data->max_meseta = s->data->bb_max_bank_meseta;
     this->update_bank_data_after_load(this->bank_data);
   }
   return this->bank_data;
@@ -1000,11 +1000,11 @@ void Client::load_all_files() {
   if (!this->system_data) {
     this->system_data = std::make_shared<PSOBBBaseSystemFile>();
     auto s = this->require_server_state();
-    if (s->bb_default_keyboard_config) {
-      this->system_data->key_config = *s->bb_default_keyboard_config;
+    if (s->data->bb_default_keyboard_config) {
+      this->system_data->key_config = *s->data->bb_default_keyboard_config;
     }
-    if (s->bb_default_joystick_config) {
-      this->system_data->joystick_config = *s->bb_default_joystick_config;
+    if (s->data->bb_default_joystick_config) {
+      this->system_data->joystick_config = *s->data->bb_default_joystick_config;
     }
     this->log.info_f("Created new system data");
   }
@@ -1014,7 +1014,7 @@ void Client::load_all_files() {
   }
 
   auto s = this->require_server_state();
-  auto stack_limits = s->item_stack_limits(this->version());
+  auto stack_limits = s->data->item_stack_limits(this->version());
 
   this->blocked_senders.clear();
   for (size_t z = 0; z < this->guild_card_data->blocked_senders.size(); z++) {
@@ -1039,7 +1039,7 @@ void Client::load_all_files() {
 }
 
 void Client::update_character_data_after_load(std::shared_ptr<PSOBBCharacterFile> charfile) {
-  charfile->import_tethealla_material_usage(this->require_server_state()->level_table(this->version()));
+  charfile->import_tethealla_material_usage(this->require_server_state()->data->level_table(this->version()));
 
   Language lang = this->language();
   this->log.info_f("Overriding language fields in save files with {}", name_for_language(lang));
@@ -1049,7 +1049,7 @@ void Client::update_character_data_after_load(std::shared_ptr<PSOBBCharacterFile
 
 void Client::update_bank_data_after_load(std::shared_ptr<PlayerBank> bank) {
   auto s = this->require_server_state();
-  auto limits = s->item_stack_limits(this->version());
+  auto limits = s->data->item_stack_limits(this->version());
   for (auto& item : bank->items) {
     if (item.data.is_stackable(*limits)) {
       if (item.data.data1[5] != item.amount) {
@@ -1121,7 +1121,7 @@ void Client::print_inventory() const {
   for (size_t x = 0; x < p->inventory.num_items; x++) {
     const auto& item = p->inventory.items[x];
     auto hex = item.data.hex();
-    auto name = s->describe_item(this->version(), item.data);
+    auto name = s->data->describe_item(this->version(), item.data);
     this->log.info_f("[PlayerInventory]   {:2}: [+{:08X}] {} ({})", x, item.flags, hex, name);
   }
 }
@@ -1135,7 +1135,7 @@ void Client::print_bank() const {
       const auto& item = this->bank_data->items[x];
       const char* present_token = item.present ? "" : " (missing present flag)";
       auto hex = item.data.hex();
-      auto name = s->describe_item(this->version(), item.data);
+      auto name = s->data->describe_item(this->version(), item.data);
       this->log.info_f("[PlayerBank]   {:3}: {} ({}) (x{}){}", x, hex, name, item.amount, present_token);
     }
   } else {

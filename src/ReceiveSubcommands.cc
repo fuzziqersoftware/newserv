@@ -333,7 +333,7 @@ void forward_subcommand_with_item_transcode_t(std::shared_ptr<Client> c, uint8_t
       out_cmd.header.subcommand = translate_subcommand_number(lc->version(), c->version(), out_cmd.header.subcommand);
       if (out_cmd.header.subcommand) {
         out_cmd.item_data.decode_for_version(c->version());
-        out_cmd.item_data.encode_for_version(lc->version(), s->item_parameter_table_for_encode(lc->version()));
+        out_cmd.item_data.encode_for_version(lc->version(), s->data->item_parameter_table_for_encode(lc->version()));
         send_command_t(lc, command, flag, out_cmd);
       } else {
         lc->log.info_f("Subcommand cannot be translated to client\'s version");
@@ -937,7 +937,7 @@ G_SyncPlayerDispAndInventory_DCNTE_6x70 Parsed6x70Data::as_dc_nte(std::shared_pt
   ret.visual.name.encode(this->name, this->language);
   ret.visual.sh = this->visual_sh;
   ret.visual.enforce_lobby_join_limits_for_version(Version::DC_NTE);
-  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
+  uint32_t name_color = s->data->name_color_for_client(this->from_version, this->from_client_customization);
   if (name_color) {
     ret.visual.sh.name_color = name_color;
     ret.visual.sh.compute_name_color_checksum();
@@ -950,7 +950,7 @@ G_SyncPlayerDispAndInventory_DCNTE_6x70 Parsed6x70Data::as_dc_nte(std::shared_pt
       ret.num_items,
       this->item_version,
       Version::DC_NTE,
-      s->item_parameter_table_for_encode(Version::DC_NTE));
+      s->data->item_parameter_table_for_encode(Version::DC_NTE));
   return ret;
 }
 
@@ -967,7 +967,7 @@ G_SyncPlayerDispAndInventory_DC112000_6x70 Parsed6x70Data::as_dc_112000(std::sha
   ret.player_flags = this->get_player_flags(false);
   ret.visual.name.encode(this->name, this->language);
   ret.visual.sh = this->visual_sh;
-  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
+  uint32_t name_color = s->data->name_color_for_client(this->from_version, this->from_client_customization);
   if (name_color) {
     ret.visual.sh.name_color = name_color;
     ret.visual.sh.compute_name_color_checksum();
@@ -980,7 +980,7 @@ G_SyncPlayerDispAndInventory_DC112000_6x70 Parsed6x70Data::as_dc_112000(std::sha
       ret.num_items,
       this->item_version,
       Version::DC_11_2000,
-      s->item_parameter_table_for_encode(Version::DC_11_2000));
+      s->data->item_parameter_table_for_encode(Version::DC_11_2000));
   ret.visual.enforce_lobby_join_limits_for_version(Version::DC_11_2000);
   return ret;
 }
@@ -990,7 +990,7 @@ G_SyncPlayerDispAndInventory_DC_PC_6x70 Parsed6x70Data::as_dc_pc(std::shared_ptr
   ret.base = this->base_v1(false);
   ret.visual.name.encode(this->name, this->language);
   ret.visual.sh = this->visual_sh;
-  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
+  uint32_t name_color = s->data->name_color_for_client(this->from_version, this->from_client_customization);
   if (name_color) {
     ret.visual.sh.name_color = name_color;
     ret.visual.sh.compute_name_color_checksum();
@@ -999,7 +999,7 @@ G_SyncPlayerDispAndInventory_DC_PC_6x70 Parsed6x70Data::as_dc_pc(std::shared_ptr
   ret.num_items = this->num_items;
   ret.items = this->items;
   transcode_inventory_items(
-      ret.items, ret.num_items, this->item_version, to_version, s->item_parameter_table_for_encode(to_version));
+      ret.items, ret.num_items, this->item_version, to_version, s->data->item_parameter_table_for_encode(to_version));
   ret.visual.sh.enforce_lobby_join_limits_for_version(to_version);
   return ret;
 }
@@ -1010,7 +1010,7 @@ G_SyncPlayerDispAndInventory_GC_6x70 Parsed6x70Data::as_gc_gcnte(std::shared_ptr
   ret.visual.name.encode(this->name, this->language);
   ret.visual.sh = this->visual_sh;
   ret.visual.enforce_lobby_join_limits_for_version(to_version);
-  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
+  uint32_t name_color = s->data->name_color_for_client(this->from_version, this->from_client_customization);
   if (name_color) {
     ret.visual.sh.name_color = name_color;
     if (is_v1_or_v2(to_version)) {
@@ -1023,7 +1023,7 @@ G_SyncPlayerDispAndInventory_GC_6x70 Parsed6x70Data::as_gc_gcnte(std::shared_ptr
   ret.num_items = this->num_items;
   ret.items = this->items;
   transcode_inventory_items(
-      ret.items, ret.num_items, this->item_version, to_version, s->item_parameter_table_for_encode(to_version));
+      ret.items, ret.num_items, this->item_version, to_version, s->data->item_parameter_table_for_encode(to_version));
   ret.floor = this->floor;
   return ret;
 }
@@ -1033,7 +1033,7 @@ G_SyncPlayerDispAndInventory_XB_6x70 Parsed6x70Data::as_xb(std::shared_ptr<Serve
   ret.base = this->base_v1(true);
   ret.visual.name.encode(this->name, this->language);
   ret.visual.sh = this->visual_sh;
-  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
+  uint32_t name_color = s->data->name_color_for_client(this->from_version, this->from_client_customization);
   if (name_color) {
     ret.visual.sh.name_color = name_color;
     ret.visual.sh.name_color_checksum = 0;
@@ -1042,7 +1042,7 @@ G_SyncPlayerDispAndInventory_XB_6x70 Parsed6x70Data::as_xb(std::shared_ptr<Serve
   ret.num_items = this->num_items;
   ret.items = this->items;
   transcode_inventory_items(
-      ret.items, ret.num_items, this->item_version, Version::XB_V3, s->item_parameter_table_for_encode(Version::XB_V3));
+      ret.items, ret.num_items, this->item_version, Version::XB_V3, s->data->item_parameter_table_for_encode(Version::XB_V3));
   ret.visual.sh.enforce_lobby_join_limits_for_version(Version::XB_V3);
   ret.floor = this->floor;
   ret.xb_user_id_high = this->xb_user_id >> 32;
@@ -1058,7 +1058,7 @@ G_SyncPlayerDispAndInventory_BB_6x70 Parsed6x70Data::as_bb(std::shared_ptr<Serve
   ret.visual.sh = this->visual_sh;
   ret.visual.name.encode(this->name, this->language);
   ret.visual.enforce_lobby_join_limits_for_version(Version::BB_V4);
-  uint32_t name_color = s->name_color_for_client(this->from_version, this->from_client_customization);
+  uint32_t name_color = s->data->name_color_for_client(this->from_version, this->from_client_customization);
   if (name_color) {
     ret.visual.sh.name_color = name_color;
     ret.visual.sh.name_color_checksum = 0;
@@ -1067,7 +1067,7 @@ G_SyncPlayerDispAndInventory_BB_6x70 Parsed6x70Data::as_bb(std::shared_ptr<Serve
   ret.num_items = this->num_items;
   ret.items = this->items;
   transcode_inventory_items(
-      ret.items, ret.num_items, this->item_version, Version::BB_V4, s->item_parameter_table_for_encode(Version::BB_V4));
+      ret.items, ret.num_items, this->item_version, Version::BB_V4, s->data->item_parameter_table_for_encode(Version::BB_V4));
   ret.floor = this->floor;
   ret.xb_user_id_high = this->xb_user_id >> 32;
   ret.xb_user_id_low = this->xb_user_id;
@@ -1389,7 +1389,8 @@ static void on_ep3_battle_subs(std::shared_ptr<Client> c, SubcommandMessage& msg
     if (!lc || (lc == c)) {
       continue;
     }
-    if (!(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING) && (lc->version() != Version::GC_EP3_NTE)) {
+    if (!(s->data->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING) &&
+        (lc->version() != Version::GC_EP3_NTE)) {
       set_mask_for_ep3_game_command(msg.data, msg.size, (phosg::random_object<uint32_t>() % 0xFF) + 1);
     }
     send_command(lc, 0xC9, 0x00, msg.data, msg.size);
@@ -1531,12 +1532,12 @@ static void on_word_select_t(std::shared_ptr<Client> c, SubcommandMessage& msg) 
         if (is_big_endian(lc->version())) {
           G_WordSelectBE_6x74 out_cmd = {
               subcommand, cmd.size, cmd.client_id.load(),
-              s->word_select_table->translate(cmd.message, from_version, lc_version)};
+              s->data->word_select_table->translate(cmd.message, from_version, lc_version)};
           send_command_t(lc, 0x60, 0x00, out_cmd);
         } else {
           G_WordSelect_6x74 out_cmd = {
               subcommand, cmd.size, cmd.client_id.load(),
-              s->word_select_table->translate(cmd.message, from_version, lc_version)};
+              s->data->word_select_table->translate(cmd.message, from_version, lc_version)};
           send_command_t(lc, 0x60, 0x00, out_cmd);
         }
 
@@ -1933,12 +1934,12 @@ static void on_player_drop_item(std::shared_ptr<Client> c, SubcommandMessage& ms
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   auto p = c->character_file();
-  auto item = p->remove_item(cmd.item_id, 0, *s->item_stack_limits(c->version()));
+  auto item = p->remove_item(cmd.item_id, 0, *s->data->item_stack_limits(c->version()));
   l->add_item(cmd.floor, item, cmd.pos, nullptr, nullptr, 0x00F);
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
     auto s = c->require_server_state();
-    auto name = s->describe_item(c->version(), item);
+    auto name = s->data->describe_item(c->version(), item);
     l->log.info_f("Player {} dropped item {:08X} ({}) at {}:({:g}, {:g})",
         cmd.header.client_id, cmd.item_id, name, cmd.floor, cmd.pos.x, cmd.pos.z);
     c->print_inventory();
@@ -1973,15 +1974,15 @@ static void on_create_inventory_item_t(std::shared_ptr<Client> c, SubcommandMess
     }
 
     if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-      auto name = s->describe_item(c->version(), item);
+      auto name = s->data->describe_item(c->version(), item);
       l->log.info_f("Player {} created inventory item {:08X} ({}) in inventory of NPC {:02X}; ignoring", c->lobby_client_id, item.id, name, cmd.header.client_id);
     }
 
   } else {
-    c->character_file()->add_item(item, *s->item_stack_limits(c->version()));
+    c->character_file()->add_item(item, *s->data->item_stack_limits(c->version()));
 
     if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-      auto name = s->describe_item(c->version(), item);
+      auto name = s->data->describe_item(c->version(), item);
       l->log.info_f("Player {} created inventory item {:08X} ({})", c->lobby_client_id, item.id, name);
       c->print_inventory();
     }
@@ -2022,7 +2023,7 @@ static void on_drop_partial_stack_t(std::shared_ptr<Client> c, SubcommandMessage
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
     auto s = c->require_server_state();
-    auto name = s->describe_item(c->version(), item);
+    auto name = s->data->describe_item(c->version(), item);
     l->log.info_f("Player {} split stack to create floor item {:08X} ({}) at {}:({:g},{:g})",
         cmd.header.client_id, item.id, name, cmd.floor, cmd.pos.x, cmd.pos.z);
     c->print_inventory();
@@ -2056,7 +2057,7 @@ static void on_drop_partial_stack_bb(std::shared_ptr<Client> c, SubcommandMessag
 
   auto s = c->require_server_state();
   auto p = c->character_file();
-  const auto& limits = *s->item_stack_limits(c->version());
+  const auto& limits = *s->data->item_stack_limits(c->version());
   auto item = p->remove_item(cmd.item_id, cmd.amount, limits);
 
   // If a stack was split, the original item still exists, so the dropped item needs a new ID. remove_item signals this
@@ -2074,7 +2075,7 @@ static void on_drop_partial_stack_bb(std::shared_ptr<Client> c, SubcommandMessag
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
     auto s = c->require_server_state();
-    auto name = s->describe_item(c->version(), item);
+    auto name = s->data->describe_item(c->version(), item);
     l->log.info_f("Player {} split stack {:08X} (removed: {}) at {}:({:g}, {:g})",
         cmd.header.client_id, cmd.item_id, name, cmd.floor, cmd.pos.x, cmd.pos.z);
     c->print_inventory();
@@ -2100,13 +2101,13 @@ static void on_buy_shop_item(std::shared_ptr<Client> c, SubcommandMessage& msg) 
   item.data2d = 0; // Clear the price field
   item.decode_for_version(c->version());
   l->on_item_id_generated_externally(item.id);
-  p->add_item(item, *s->item_stack_limits(c->version()));
+  p->add_item(item, *s->data->item_stack_limits(c->version()));
 
-  size_t price = s->item_parameter_table(c->version())->price_for_item(item);
+  size_t price = s->data->item_parameter_table(c->version())->price_for_item(item);
   p->remove_meseta(price, c->version() != Version::BB_V4);
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-    auto name = s->describe_item(c->version(), item);
+    auto name = s->data->describe_item(c->version(), item);
     l->log.info_f("Player {} bought item {:08X} ({}) from shop ({} Meseta)",
         cmd.header.client_id, item.id, name, price);
     c->print_inventory();
@@ -2125,7 +2126,7 @@ void send_item_notification_if_needed(std::shared_ptr<Client> c, const ItemData&
       break;
     case Client::ItemDropNotificationMode::RARES_ONLY:
       should_notify = (is_from_rare_table || (item.data1[0] == 0x03)) &&
-          s->item_parameter_table(c->version())->is_item_rare(item);
+          s->data->item_parameter_table(c->version())->is_item_rare(item);
       should_include_rare_header = true;
       break;
     case Client::ItemDropNotificationMode::ALL_ITEMS:
@@ -2137,7 +2138,7 @@ void send_item_notification_if_needed(std::shared_ptr<Client> c, const ItemData&
   }
 
   if (should_notify) {
-    std::string name = s->describe_item(c->version(), item, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
+    std::string name = s->data->describe_item(c->version(), item, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
     const char* rare_header = (should_include_rare_header ? "$C6Rare item dropped:\n" : "");
     send_text_message_fmt(c, "{}{}", rare_header, name);
   }
@@ -2161,7 +2162,7 @@ static void on_box_or_enemy_item_drop_t(std::shared_ptr<Client> c, SubcommandMes
     throw std::runtime_error("BB client sent 6x5F command");
   }
 
-  bool should_notify = s->rare_notifs_enabled_for_client_drops && (l->drop_mode == ServerDropMode::CLIENT);
+  bool should_notify = s->data->rare_notifs_enabled_for_client_drops && (l->drop_mode == ServerDropMode::CLIENT);
 
   std::shared_ptr<const MapState::EnemyState> ene_st;
   std::shared_ptr<const MapState::ObjectState> obj_st;
@@ -2179,15 +2180,9 @@ static void on_box_or_enemy_item_drop_t(std::shared_ptr<Client> c, SubcommandMes
   l->on_item_id_generated_externally(item.id);
   l->add_item(cmd.item.floor, item, cmd.item.pos, obj_st, ene_st, should_notify ? 0x100F : 0x000F);
 
-  auto name = s->describe_item(c->version(), item);
+  auto name = s->data->describe_item(c->version(), item);
   l->log.info_f("Player {} (leader) created floor item {:08X} ({}){} at {}:({:g}, {:g})",
-      l->leader_id,
-      item.id,
-      name,
-      from_entity_str,
-      cmd.item.floor,
-      cmd.item.pos.x,
-      cmd.item.pos.z);
+      l->leader_id, item.id, name, from_entity_str, cmd.item.floor, cmd.item.pos.x, cmd.item.pos.z);
 
   for (auto& lc : l->clients) {
     if (!lc) {
@@ -2253,7 +2248,7 @@ static asio::awaitable<void> on_pick_up_item_generic(
     }
 
     try {
-      p->add_item(fi->data, *s->item_stack_limits(c->version()));
+      p->add_item(fi->data, *s->data->item_stack_limits(c->version()));
     } catch (const std::out_of_range&) {
       // Inventory is full; put the item back where it was
       l->log.warning_f("Player {} requests to pick up {:08X}, but their inventory is full; dropping command",
@@ -2264,7 +2259,7 @@ static asio::awaitable<void> on_pick_up_item_generic(
 
     if (l->log.should_log(phosg::LogLevel::L_INFO)) {
       auto s = c->require_server_state();
-      auto name = s->describe_item(c->version(), fi->data);
+      auto name = s->data->describe_item(c->version(), fi->data);
       l->log.info_f("Player {} picked up {:08X} ({})", client_id, item_id, name);
       c->print_inventory();
     }
@@ -2285,20 +2280,20 @@ static asio::awaitable<void> on_pick_up_item_generic(
       uint32_t pi = fi->data.primary_identifier();
       bool should_send_game_notif, should_send_global_notif;
       if (is_v1_or_v2(c->version()) && (c->version() != Version::GC_NTE)) {
-        should_send_game_notif = s->notify_game_for_item_primary_identifiers_v1_v2.count(pi);
-        should_send_global_notif = s->notify_server_for_item_primary_identifiers_v1_v2.count(pi);
+        should_send_game_notif = s->data->notify_game_for_item_primary_identifiers_v1_v2.count(pi);
+        should_send_global_notif = s->data->notify_server_for_item_primary_identifiers_v1_v2.count(pi);
       } else if (!is_v4(c->version())) {
-        should_send_game_notif = s->notify_game_for_item_primary_identifiers_v3.count(pi);
-        should_send_global_notif = s->notify_server_for_item_primary_identifiers_v3.count(pi);
+        should_send_game_notif = s->data->notify_game_for_item_primary_identifiers_v3.count(pi);
+        should_send_global_notif = s->data->notify_server_for_item_primary_identifiers_v3.count(pi);
       } else {
-        should_send_game_notif = s->notify_game_for_item_primary_identifiers_v4.count(pi);
-        should_send_global_notif = s->notify_server_for_item_primary_identifiers_v4.count(pi);
+        should_send_game_notif = s->data->notify_game_for_item_primary_identifiers_v4.count(pi);
+        should_send_global_notif = s->data->notify_server_for_item_primary_identifiers_v4.count(pi);
       }
 
       if (should_send_game_notif || should_send_global_notif) {
         std::string p_name = p->disp.visual.name.decode();
-        std::string desc_ingame = s->describe_item(c->version(), fi->data, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
-        std::string desc_http = s->describe_item(c->version(), fi->data);
+        std::string desc_ingame = s->data->describe_item(c->version(), fi->data, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
+        std::string desc_http = s->data->describe_item(c->version(), fi->data);
 
         if (s->http_server) {
           auto message = std::make_shared<phosg::JSON>(phosg::JSON::dict({
@@ -2391,7 +2386,7 @@ static void on_use_item(std::shared_ptr<Client> c, SubcommandMessage& msg) {
     // Note: We manually downscope item here because player_use_item will likely move or delete the item, which will
     // break the reference, so we don't want to accidentally use it again after that.
     const auto& item = p->inventory.items[index].data;
-    name = s->describe_item(c->version(), item);
+    name = s->data->describe_item(c->version(), item);
   }
   player_use_item(c, index, l->rand_crypt);
 
@@ -2420,9 +2415,9 @@ static void on_feed_mag(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   {
     // Note: We downscope these because player_feed_mag will likely delete the items, which will break these references
     const auto& fed_item = p->inventory.items[fed_index].data;
-    fed_name = s->describe_item(c->version(), fed_item);
+    fed_name = s->data->describe_item(c->version(), fed_item);
     const auto& mag_item = p->inventory.items[mag_index].data;
-    mag_name = s->describe_item(c->version(), mag_item);
+    mag_name = s->data->describe_item(c->version(), mag_item);
   }
   player_feed_mag(c, mag_index, fed_index);
 
@@ -2430,7 +2425,7 @@ static void on_feed_mag(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   // fed item. So on BB, we should remove the fed item here, but on other versions, we allow the following 6x29 command
   // to do that.
   if (c->version() == Version::BB_V4) {
-    p->remove_item(cmd.fed_item_id, 1, *s->item_stack_limits(c->version()));
+    p->remove_item(cmd.fed_item_id, 1, *s->data->item_stack_limits(c->version()));
   }
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
@@ -2530,7 +2525,7 @@ static void on_open_shop_bb_or_ep3_battle_subs(std::shared_ptr<Client> c, Subcom
     }
     for (auto& item : c->bb_shop_contents[cmd.shop_type]) {
       item.id = 0xFFFFFFFF;
-      item.data2d = s->item_parameter_table(c->version())->price_for_item(item);
+      item.data2d = s->data->item_parameter_table(c->version())->price_for_item(item);
     }
 
     send_shop(c, cmd.shop_type);
@@ -2593,7 +2588,7 @@ static void on_ep3_private_word_select_bb_bank_action(std::shared_ptr<Client> c,
   auto s = c->require_server_state();
   if (is_ep3(c->version())) {
     const auto& cmd = msg.check_size_t<G_PrivateWordSelect_Ep3_6xBD>();
-    s->word_select_table->validate(cmd.message, c->version());
+    s->data->word_select_table->validate(cmd.message, c->version());
 
     std::string from_name = c->character_file()->disp.visual.name.decode(c->language());
     static const std::string whisper_text = "(whisper)";
@@ -2665,7 +2660,7 @@ static void on_ep3_private_word_select_bb_bank_action(std::shared_ptr<Client> c,
         }
 
       } else { // Deposit item
-        const auto& limits = *s->item_stack_limits(c->version());
+        const auto& limits = *s->data->item_stack_limits(c->version());
         auto item = p->remove_item(cmd.item_id, cmd.item_amount, limits);
         // If a stack was split, the bank item retains the same item ID as the inventory item. This is annoying but
         // doesn't cause any problems because we always generate a new item ID when withdrawing from the bank, so
@@ -2677,7 +2672,7 @@ static void on_ep3_private_word_select_bb_bank_action(std::shared_ptr<Client> c,
         send_destroy_item_to_lobby(c, cmd.item_id, cmd.item_amount, true);
 
         if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-          std::string name = s->describe_item(Version::BB_V4, item);
+          std::string name = s->data->describe_item(Version::BB_V4, item);
           l->log.info_f("Player {} deposited item {:08X} (x{}) ({}) in the bank",
               c->lobby_client_id, cmd.item_id, cmd.item_amount, name);
           c->print_inventory();
@@ -2700,14 +2695,14 @@ static void on_ep3_private_word_select_bb_bank_action(std::shared_ptr<Client> c,
         }
 
       } else { // Take item
-        const auto& limits = *s->item_stack_limits(c->version());
+        const auto& limits = *s->data->item_stack_limits(c->version());
         auto item = bank->remove_item(cmd.item_id, cmd.item_amount, limits);
         item.id = l->generate_item_id(c->lobby_client_id);
         p->add_item(item, limits);
         send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
 
         if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-          std::string name = s->describe_item(Version::BB_V4, item);
+          std::string name = s->data->describe_item(Version::BB_V4, item);
           l->log.info_f("Player {} withdrew item {:08X} (x{}) ({}) from the bank",
               c->lobby_client_id, item.id, cmd.item_amount, name);
           c->print_inventory();
@@ -2991,7 +2986,7 @@ static void on_entity_drop_item_request(std::shared_ptr<Client> c, SubcommandMes
         if (res.item.empty()) {
           l->log.info_f("No item was created");
         } else {
-          std::string name = s->describe_item(c->version(), res.item);
+          std::string name = s->data->describe_item(c->version(), res.item);
           l->log.info_f("Entity {:04X} (area {:02X}) created item {}", cmd.entity_index, cmd.effective_area, name);
           if (drop_mode == ServerDropMode::SERVER_DUPLICATE) {
             for (const auto& lc : l->clients) {
@@ -3029,7 +3024,7 @@ static void on_entity_drop_item_request(std::shared_ptr<Client> c, SubcommandMes
             if (res.item.empty()) {
               l->log.info_f("No item was created for {}", lc->channel->name);
             } else {
-              std::string name = s->describe_item(lc->version(), res.item);
+              std::string name = s->data->describe_item(lc->version(), res.item);
               l->log.info_f("Entity {:04X} (area {:02X}) created item {}", cmd.entity_index, cmd.effective_area, name);
               res.item.id = l->generate_item_id(0xFF);
               l->log.info_f("Creating item {:08X} at {:02X}:{:g},{:g} for {}",
@@ -3846,7 +3841,7 @@ static void on_charge_attack_bb(std::shared_ptr<Client> c, SubcommandMessage& ms
 
 static void send_max_level_notification_if_needed(std::shared_ptr<Client> c) {
   auto s = c->require_server_state();
-  if (!s->notify_server_for_max_level_achieved) {
+  if (!s->data->notify_server_for_max_level_achieved) {
     return;
   }
 
@@ -3886,7 +3881,7 @@ static void on_level_up(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   if (is_pre_v1(c->version())) {
     msg.check_size_t<G_ChangePlayerLevel_DCNTE_6x30>();
     auto s = c->require_server_state();
-    auto level_table = s->level_table(c->version());
+    auto level_table = s->data->level_table(c->version());
     const auto& incrs = level_table->stats_delta_for_level(p->disp.visual.sh.char_class, p->disp.stats.level + 1);
     p->disp.stats.char_stats.atp += incrs.atp;
     p->disp.stats.char_stats.mst += incrs.mst;
@@ -3922,7 +3917,7 @@ static void add_player_exp(std::shared_ptr<Client> c, uint32_t exp, uint16_t fro
 
   bool leveled_up = false;
   do {
-    const auto& level = s->level_table(c->version())->stats_delta_for_level(p->disp.visual.sh.char_class, p->disp.stats.level + 1);
+    const auto& level = s->data->level_table(c->version())->stats_delta_for_level(p->disp.visual.sh.char_class, p->disp.stats.level + 1);
     if (p->disp.stats.exp >= level.exp) {
       leveled_up = true;
       level.apply(p->disp.stats.char_stats);
@@ -4027,7 +4022,7 @@ static void on_steal_exp_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   const auto& inventory = p->inventory;
   const auto& weapon = inventory.items[inventory.find_equipped_item(EquipSlot::WEAPON)];
 
-  auto item_parameter_table = s->item_parameter_table(c->version());
+  auto item_parameter_table = s->data->item_parameter_table(c->version());
 
   uint8_t special_id = 0;
   if (((weapon.data.data1[1] < 0x0A) && (weapon.data.data1[2] < 0x05)) ||
@@ -4046,7 +4041,7 @@ static void on_steal_exp_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   Episode episode = episode_for_area(area);
   auto type = ene_st->type(c->version(), area, l->difficulty, l->event);
   uint32_t enemy_exp = base_exp_for_enemy_type(
-      s->battle_params, l->quest, type, episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
+      s->data->battle_params, l->quest, type, episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
 
   // Note: The original code checks if special.type is 9, 10, or 11, and skips applying the android bonus if so. We
   // don't do anything for those special types, so we don't check for that here.
@@ -4098,7 +4093,7 @@ static void on_enemy_exp_request_bb(std::shared_ptr<Client> c, SubcommandMessage
     auto& inventory = c->character_file()->inventory;
     for (size_t z = 0; z < inventory.num_items; z++) {
       auto& item = inventory.items[z];
-      if ((item.flags & 0x08) && s->item_parameter_table(c->version())->is_unsealable_item(item.data)) {
+      if ((item.flags & 0x08) && s->data->item_parameter_table(c->version())->is_unsealable_item(item.data)) {
         size_t new_kill_count = item.data.get_kill_count() + 1;
         item.data.set_kill_count(new_kill_count);
         c->log.info_f("Item {:08X} kill count updated to {}", item.data.id, new_kill_count);
@@ -4110,7 +4105,7 @@ static void on_enemy_exp_request_bb(std::shared_ptr<Client> c, SubcommandMessage
   Episode episode = episode_for_area(area);
   auto type = ene_st->type(c->version(), area, l->difficulty, l->event);
   double base_exp = base_exp_for_enemy_type(
-      s->battle_params, l->quest, type, episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
+      s->data->battle_params, l->quest, type, episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
 
   // If this player killed the enemy, they get full EXP; if they tagged the enemy, they get 80% EXP; if auto EXP share
   // is enabled and they are close enough to the monster, they get a smaller share; if none of these situations apply,
@@ -4204,7 +4199,7 @@ static void on_adjust_player_meseta_bb(std::shared_ptr<Client> c, SubcommandMess
     item.data1[0] = 0x04;
     item.data2d = cmd.amount;
     item.id = l->generate_item_id(c->lobby_client_id);
-    p->add_item(item, *s->item_stack_limits(c->version()));
+    p->add_item(item, *s->data->item_stack_limits(c->version()));
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
   }
 }
@@ -4240,7 +4235,7 @@ static void on_quest_create_item_bb(std::shared_ptr<Client> c, SubcommandMessage
   const auto& cmd = msg.check_size_t<G_QuestCreateItem_BB_6xCA>();
   auto s = c->require_server_state();
   auto l = c->require_lobby();
-  const auto& limits = *s->item_stack_limits(c->version());
+  const auto& limits = *s->data->item_stack_limits(c->version());
 
   ItemData item;
   item = cmd.item_data;
@@ -4261,7 +4256,7 @@ static void on_quest_create_item_bb(std::shared_ptr<Client> c, SubcommandMessage
     c->character_file()->add_item(item, limits);
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
     if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-      auto name = s->describe_item(c->version(), item);
+      auto name = s->data->describe_item(c->version(), item);
       l->log.info_f("Player {} created inventory item {:08X} ({}) via quest command",
           c->lobby_client_id, item.id, name);
       c->print_inventory();
@@ -4269,7 +4264,7 @@ static void on_quest_create_item_bb(std::shared_ptr<Client> c, SubcommandMessage
 
   } catch (const std::out_of_range&) {
     if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-      auto name = s->describe_item(c->version(), item);
+      auto name = s->data->describe_item(c->version(), item);
       l->log.info_f("Player {} attempted to create inventory item {:08X} ({}) via quest command, but it cannot be placed in their inventory",
           c->lobby_client_id, item.id, name);
     }
@@ -4292,11 +4287,11 @@ static void on_transfer_item_via_mail_message_bb(std::shared_ptr<Client> c, Subc
 
   auto s = c->require_server_state();
   auto p = c->character_file();
-  const auto& limits = *s->item_stack_limits(c->version());
+  const auto& limits = *s->data->item_stack_limits(c->version());
   auto item = p->remove_item(cmd.item_id, cmd.amount, limits);
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-    auto name = s->describe_item(c->version(), item);
+    auto name = s->data->describe_item(c->version(), item);
     l->log.info_f("Player {} sent inventory item {}:{:08X} ({}) x{} to player {:08X}",
         c->lobby_client_id, cmd.header.client_id, cmd.item_id, name, cmd.amount, cmd.target_guild_card_number);
     c->print_inventory();
@@ -4353,15 +4348,15 @@ static void on_exchange_item_for_team_points_bb(std::shared_ptr<Client> c, Subco
 
   auto s = c->require_server_state();
   auto p = c->character_file();
-  const auto& limits = *s->item_stack_limits(c->version());
+  const auto& limits = *s->data->item_stack_limits(c->version());
   auto item = p->remove_item(cmd.item_id, cmd.amount, limits);
   size_t amount = item.stack_size(limits);
 
-  size_t points = s->item_parameter_table(Version::BB_V4)->get_item_team_points(item);
+  size_t points = s->data->item_parameter_table(Version::BB_V4)->get_item_team_points(item);
   s->team_index->add_member_points(c->login->account->account_id, points * amount);
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-    auto name = s->describe_item(c->version(), item);
+    auto name = s->data->describe_item(c->version(), item);
     l->log.info_f("Player {} exchanged inventory item {}:{:08X} ({}) x{} for {} * {} = {} team points",
         c->lobby_client_id, cmd.header.client_id, cmd.item_id, name, amount, points, amount, points * amount);
     c->print_inventory();
@@ -4389,10 +4384,10 @@ static void on_destroy_inventory_item(std::shared_ptr<Client> c, SubcommandMessa
 
   auto s = c->require_server_state();
   auto p = c->character_file();
-  auto item = p->remove_item(cmd.item_id, cmd.amount, *s->item_stack_limits(c->version()));
+  auto item = p->remove_item(cmd.item_id, cmd.amount, *s->data->item_stack_limits(c->version()));
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-    auto name = s->describe_item(c->version(), item);
+    auto name = s->data->describe_item(c->version(), item);
     l->log.info_f("Player {} destroyed inventory item {}:{:08X} ({})",
         c->lobby_client_id, cmd.header.client_id, cmd.item_id, name);
     c->print_inventory();
@@ -4441,7 +4436,7 @@ static void on_destroy_floor_item(std::shared_ptr<Client> c, SubcommandMessage& 
         c->lobby_client_id, cmd.item_id);
 
   } else {
-    auto name = s->describe_item(c->version(), fi->data);
+    auto name = s->data->describe_item(c->version(), fi->data);
     l->log.info_f("Player {} destroyed floor item {:08X} ({})", c->lobby_client_id, cmd.item_id, name);
 
     // Only forward to players for whom the item was visible
@@ -4525,7 +4520,7 @@ static void on_accept_identify_item_bb(std::shared_ptr<Client> c, SubcommandMess
       throw std::runtime_error("accepted item ID does not match previous identify request");
     }
     auto s = c->require_server_state();
-    c->character_file()->add_item(c->bb_identify_result, *s->item_stack_limits(c->version()));
+    c->character_file()->add_item(c->bb_identify_result, *s->data->item_stack_limits(c->version()));
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, c->bb_identify_result);
     c->bb_identify_result.clear();
   }
@@ -4544,12 +4539,12 @@ static void on_sell_item_at_shop_bb(std::shared_ptr<Client> c, SubcommandMessage
 
   auto s = c->require_server_state();
   auto p = c->character_file();
-  auto item = p->remove_item(cmd.item_id, cmd.amount, *s->item_stack_limits(c->version()));
-  size_t price = (s->item_parameter_table(c->version())->price_for_item(item) >> 3) * cmd.amount;
+  auto item = p->remove_item(cmd.item_id, cmd.amount, *s->data->item_stack_limits(c->version()));
+  size_t price = (s->data->item_parameter_table(c->version())->price_for_item(item) >> 3) * cmd.amount;
   p->add_meseta(price);
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
-    auto name = s->describe_item(c->version(), item);
+    auto name = s->data->describe_item(c->version(), item);
     l->log.info_f("Player {} sold inventory item {:08X} ({}) for {} Meseta",
         c->lobby_client_id, cmd.item_id, name, price);
     c->print_inventory();
@@ -4569,7 +4564,7 @@ static void on_buy_shop_item_bb(std::shared_ptr<Client> c, SubcommandMessage& ms
 
   const auto& cmd = msg.check_size_t<G_BuyShopItem_BB_6xB7>();
   auto s = c->require_server_state();
-  const auto& limits = *s->item_stack_limits(c->version());
+  const auto& limits = *s->data->item_stack_limits(c->version());
 
   ItemData item;
   item = c->bb_shop_contents.at(cmd.shop_type).at(cmd.item_index);
@@ -4591,7 +4586,7 @@ static void on_buy_shop_item_bb(std::shared_ptr<Client> c, SubcommandMessage& ms
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
     auto s = c->require_server_state();
-    auto name = s->describe_item(c->version(), item);
+    auto name = s->data->describe_item(c->version(), item);
     l->log.info_f("Player {} purchased item {:08X} ({}) for {} meseta", c->lobby_client_id, item.id, name, price);
     c->print_inventory();
   }
@@ -4645,7 +4640,7 @@ static void on_battle_restart_bb(std::shared_ptr<Client> c, SubcommandMessage& m
       if (is_v4(lc->version())) {
         lc->change_bank(lc->bb_character_index);
       }
-      lc->create_battle_overlay(new_rules, s->level_table(c->version()));
+      lc->create_battle_overlay(new_rules, s->data->level_table(c->version()));
     }
   }
   l->map_state->reset();
@@ -4683,7 +4678,7 @@ static void on_battle_level_up_bb(std::shared_ptr<Client> c, SubcommandMessage& 
     auto lp = lc->character_file();
     uint32_t target_level = std::min<uint32_t>(lp->disp.stats.level + cmd.num_levels, 199);
     uint32_t before_exp = lp->disp.stats.exp;
-    s->level_table(lc->version())->advance_to_level(lp->disp.stats, target_level, lp->disp.visual.sh.char_class);
+    s->data->level_table(lc->version())->advance_to_level(lp->disp.stats, target_level, lp->disp.visual.sh.char_class);
     if ((lp->disp.stats.exp > before_exp) && (lc->version() == Version::BB_V4)) {
       send_give_experience(lc, lp->disp.stats.exp - before_exp, 0xFFFF);
       send_level_up(lc);
@@ -4718,7 +4713,7 @@ static void on_battle_tech_level_up(std::shared_ptr<Client> c, SubcommandMessage
   if (lc) {
     auto s = c->require_server_state();
     auto lp = lc->character_file();
-    auto pmt = s->item_parameter_table(lc->version());
+    auto pmt = s->data->item_parameter_table(lc->version());
     for (uint8_t tech_num = 0; tech_num < 0x13; tech_num++) {
       size_t level = lp->get_technique_level(tech_num);
       if (level != 0xFF) {
@@ -4789,7 +4784,7 @@ static void on_challenge_mode_retry_or_quit(std::shared_ptr<Client> c, Subcomman
           if (is_v4(lc->version())) {
             lc->change_bank(lc->bb_character_index);
           }
-          lc->create_challenge_overlay(lc->version(), l->quest->meta.challenge_template_index, s->level_table(c->version()));
+          lc->create_challenge_overlay(lc->version(), l->quest->meta.challenge_template_index, s->data->level_table(c->version()));
           lc->log.info_f("Created challenge overlay");
           l->assign_inventory_and_bank_item_ids(lc, true);
         }
@@ -4958,7 +4953,7 @@ static void on_quest_exchange_item_bb(std::shared_ptr<Client> c, SubcommandMessa
 
   try {
     auto p = c->character_file();
-    const auto& limits = *s->item_stack_limits(c->version());
+    const auto& limits = *s->data->item_stack_limits(c->version());
 
     ItemData new_item = cmd.replace_item;
     assert_quest_item_create_allowed(l, new_item);
@@ -4993,10 +4988,10 @@ static void on_wrap_item_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto s = c->require_server_state();
 
   auto p = c->character_file();
-  auto item = p->remove_item(cmd.item.id, 1, *s->item_stack_limits(c->version()));
+  auto item = p->remove_item(cmd.item.id, 1, *s->data->item_stack_limits(c->version()));
   send_destroy_item_to_lobby(c, item.id, 1);
-  item.wrap(*s->item_stack_limits(c->version()), cmd.present_color);
-  p->add_item(item, *s->item_stack_limits(c->version()));
+  item.wrap(*s->data->item_stack_limits(c->version()), cmd.present_color);
+  p->add_item(item, *s->data->item_stack_limits(c->version()));
   send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
 }
 
@@ -5014,7 +5009,7 @@ static void on_photon_drop_exchange_for_item_bb(std::shared_ptr<Client> c, Subco
 
   try {
     auto p = c->character_file();
-    const auto& limits = *s->item_stack_limits(c->version());
+    const auto& limits = *s->data->item_stack_limits(c->version());
 
     ItemData new_item = cmd.new_item;
     assert_quest_item_create_allowed(l, new_item);
@@ -5047,7 +5042,7 @@ static void on_photon_drop_exchange_for_s_rank_special_bb(std::shared_ptr<Client
 
   const auto& cmd = msg.check_size_t<G_AddSRankWeaponSpecial_BB_6xD8>();
   auto s = c->require_server_state();
-  const auto& limits = *s->item_stack_limits(c->version());
+  const auto& limits = *s->data->item_stack_limits(c->version());
 
   try {
     auto p = c->character_file();
@@ -5142,7 +5137,7 @@ static void on_secret_lottery_ticket_exchange_bb(std::shared_ptr<Client> c, Subc
       item.data1[z] = r.min;
     }
     auto s = c->require_server_state();
-    const auto& limits = *s->item_stack_limits(c->version());
+    const auto& limits = *s->data->item_stack_limits(c->version());
     item.enforce_stack_size_limits(limits);
 
     uint32_t slt_item_id = p->inventory.items[currency_index].data.id;
@@ -5175,7 +5170,7 @@ static void on_photon_crystal_exchange_bb(std::shared_ptr<Client> c, SubcommandM
   auto s = c->require_server_state();
   auto p = c->character_file();
   size_t index = p->inventory.find_item_by_primary_identifier(0x03100200);
-  auto item = p->remove_item(p->inventory.items[index].data.id, 1, *s->item_stack_limits(c->version()));
+  auto item = p->remove_item(p->inventory.items[index].data.id, 1, *s->data->item_stack_limits(c->version()));
   send_destroy_item_to_lobby(c, item.id, 1);
   l->drop_mode = ServerDropMode::DISABLED;
   l->allowed_drop_modes = (1 << static_cast<uint8_t>(l->drop_mode)); // DISABLED only
@@ -5199,7 +5194,7 @@ static void on_quest_F95E_result_bb(std::shared_ptr<Client> c, SubcommandMessage
   size_t count = (cmd.type > 0x03) ? 1 : (static_cast<size_t>(l->difficulty) + 1);
   c->log.info_f("Creating {} F95E result items", count);
   for (size_t z = 0; z < count; z++) {
-    const auto& results = s->quest_F95E_results.at(cmd.type).at(static_cast<size_t>(l->difficulty));
+    const auto& results = s->data->quest_F95E_results.at(cmd.type).at(static_cast<size_t>(l->difficulty));
     if (results.empty()) {
       throw std::runtime_error("invalid result type");
     }
@@ -5214,7 +5209,7 @@ static void on_quest_F95E_result_bb(std::shared_ptr<Client> c, SubcommandMessage
     } else if (item.data1[0] == 0x00) {
       item.data1[4] |= 0x80; // Unidentified
     } else {
-      item.enforce_stack_size_limits(*s->item_stack_limits(c->version()));
+      item.enforce_stack_size_limits(*s->data->item_stack_limits(c->version()));
     }
 
     item.id = l->generate_item_id(0xFF);
@@ -5244,12 +5239,12 @@ static void on_quest_F95F_result_bb(std::shared_ptr<Client> c, SubcommandMessage
   auto s = c->require_server_state();
   auto p = c->character_file();
 
-  const auto& result = s->quest_F95F_results.at(cmd.result_index);
+  const auto& result = s->data->quest_F95F_results.at(cmd.result_index);
   if (result.second.empty()) {
     throw std::runtime_error("invalid result index");
   }
 
-  const auto& limits = *s->item_stack_limits(c->version());
+  const auto& limits = *s->data->item_stack_limits(c->version());
 
   bool failed = false;
   ItemData ticket_item;
@@ -5309,7 +5304,7 @@ static void on_quest_F960_result_bb(std::shared_ptr<Client> c, SubcommandMessage
   ItemData item;
   for (size_t num_failures = 0; num_failures <= cmd.result_tier; num_failures++) {
     size_t tier = cmd.result_tier - num_failures;
-    const auto& results = s->quest_F960_success_results.at(tier);
+    const auto& results = s->data->quest_F960_success_results.at(tier);
     uint64_t probability = results.base_probability + num_failures * results.probability_upgrade;
     if (l->rand_crypt->next() <= probability) {
       c->log.info_f("Tier {} yielded a prize", tier);
@@ -5322,7 +5317,7 @@ static void on_quest_F960_result_bb(std::shared_ptr<Client> c, SubcommandMessage
   }
   if (item.empty()) {
     c->log.info_f("Choosing result from failure tier");
-    const auto& result_items = s->quest_F960_failure_results.results.at(weekday);
+    const auto& result_items = s->data->quest_F960_failure_results.results.at(weekday);
     item = result_items[l->rand_crypt->next() % result_items.size()];
   }
   if (item.empty()) {
@@ -5333,7 +5328,7 @@ static void on_quest_F960_result_bb(std::shared_ptr<Client> c, SubcommandMessage
 
   item.id = l->generate_item_id(c->lobby_client_id);
   // If it's a weapon, make it unidentified
-  auto item_parameter_table = s->item_parameter_table(c->version());
+  auto item_parameter_table = s->data->item_parameter_table(c->version());
   if ((item.data1[0] == 0x00) && (item_parameter_table->is_item_rare(item) || (item.data1[4] != 0))) {
     item.data1[4] |= 0x80;
   }
@@ -5347,7 +5342,7 @@ static void on_quest_F960_result_bb(std::shared_ptr<Client> c, SubcommandMessage
   // Add the item to the player's inventory if possible; if not, drop it on the floor where the player is standing
   bool added_to_inventory;
   try {
-    p->add_item(item, *s->item_stack_limits(c->version()));
+    p->add_item(item, *s->data->item_stack_limits(c->version()));
     added_to_inventory = true;
   } catch (const std::out_of_range&) {
     // If the game's drop mode is private or duplicate, make the item visible only to this player; in other modes, make
@@ -5360,7 +5355,7 @@ static void on_quest_F960_result_bb(std::shared_ptr<Client> c, SubcommandMessage
   }
 
   if (c->log.should_log(phosg::LogLevel::L_INFO)) {
-    std::string name = s->describe_item(c->version(), item);
+    std::string name = s->data->describe_item(c->version(), item);
     c->log.info_f("Awarded item {} {}", name, added_to_inventory ? "in inventory" : "on ground (inventory is full)");
   }
   if (added_to_inventory) {
@@ -5387,7 +5382,7 @@ static void on_momoka_item_exchange_bb(std::shared_ptr<Client> c, SubcommandMess
   auto s = c->require_server_state();
   auto p = c->character_file();
 
-  const auto& limits = *s->item_stack_limits(c->version());
+  const auto& limits = *s->data->item_stack_limits(c->version());
 
   ItemData new_item = cmd.replace_item;
   assert_quest_item_create_allowed(l, new_item);
@@ -5449,7 +5444,7 @@ static void on_upgrade_weapon_attribute_bb(std::shared_ptr<Client> c, Subcommand
     uint32_t payment_primary_identifier = cmd.payment_type ? 0x03100100 : 0x03100000;
     size_t payment_index = p->inventory.find_item_by_primary_identifier(payment_primary_identifier);
     auto& payment_item = p->inventory.items[payment_index].data;
-    if (payment_item.stack_size(*s->item_stack_limits(c->version())) < cmd.payment_count) {
+    if (payment_item.stack_size(*s->data->item_stack_limits(c->version())) < cmd.payment_count) {
       throw std::runtime_error("not enough payment items present");
     }
 
@@ -5480,7 +5475,7 @@ static void on_upgrade_weapon_attribute_bb(std::shared_ptr<Client> c, Subcommand
     }
 
     auto removed_payment_item = p->remove_item(
-        payment_item.id, cmd.payment_count, *s->item_stack_limits(c->version()));
+        payment_item.id, cmd.payment_count, *s->data->item_stack_limits(c->version()));
     send_destroy_item_to_lobby(c, removed_payment_item.id, cmd.payment_count);
 
     item.data1[attribute_index] = cmd.attribute;

@@ -21,7 +21,7 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
     // Nothing to do (it should be deleted)
 
   } else if ((primary_identifier & 0xFFFF0000) == 0x03020000) { // Technique disk
-    auto item_parameter_table = s->item_parameter_table(c->version());
+    auto item_parameter_table = s->data->item_parameter_table(c->version());
     uint8_t max_level = item_parameter_table->get_max_tech_level(player->disp.visual.sh.char_class, item.data.data1[4]);
     if (item.data.data1[2] > max_level) {
       throw std::runtime_error("technique level too high");
@@ -35,7 +35,7 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
 
     auto& weapon = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::WEAPON)];
     // Only enforce grind limits on BB, since the server doesn't have direct control over inventories on other versions
-    auto item_parameter_table = s->item_parameter_table(c->version());
+    auto item_parameter_table = s->data->item_parameter_table(c->version());
     auto weapon_def = item_parameter_table->get_weapon(weapon.data.data1[1], weapon.data.data1[2]);
     if (is_v4 && (weapon.data.data1[3] >= weapon_def.max_grind)) {
       throw std::runtime_error("weapon already at maximum grind");
@@ -100,9 +100,9 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
     }
     armor.data.data1[5]++;
 
-  } else if (item.data.is_wrapped(*s->item_stack_limits(c->version()))) {
+  } else if (item.data.is_wrapped(*s->data->item_stack_limits(c->version()))) {
     // Unwrap present
-    item.data.unwrap(*s->item_stack_limits(c->version()));
+    item.data.unwrap(*s->data->item_stack_limits(c->version()));
     should_delete_item = false;
 
   } else if (primary_identifier == 0x00330000) {
@@ -131,7 +131,7 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
 
   } else if ((primary_identifier & 0xFFFF0000) == 0x030C0000) { // Non-combo mag cells
     auto& mag = player->inventory.items[player->inventory.find_equipped_item(EquipSlot::MAG)];
-    uint8_t evolution_number = s->mag_metadata_table(c->version())->get_evolution_number(mag.data.data1[1]);
+    uint8_t evolution_number = s->data->mag_metadata_table(c->version())->get_evolution_number(mag.data.data1[1]);
     if (evolution_number < 4) {
       switch (item.data.data1[2]) {
         case 0x00: // Cell of MAG 502
@@ -159,7 +159,7 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
 
   } else if ((primary_identifier & 0xFFFF0000) == 0x03150000) {
     // Christmas Present, etc. - use unwrap_table + probabilities therein
-    auto item_parameter_table = s->item_parameter_table(c->version());
+    auto item_parameter_table = s->data->item_parameter_table(c->version());
     auto table = item_parameter_table->get_event_items(item.data.data1[2]);
     size_t sum = 0;
     for (size_t z = 0; z < table.second; z++) {
@@ -198,7 +198,7 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
     // The unopened Hunters Report's rank is stored in the kill count field; using the unopened report copies the rank
     // to data1[2] and replaces the inventory item with a new item with the same ID. The game also moves the item to
     // the end of the inventory, so we do the same.
-    const auto& stack_limits = *s->item_stack_limits(c->version());
+    const auto& stack_limits = *s->data->item_stack_limits(c->version());
     auto report_item = player->remove_item(item.data.id, 1, stack_limits);
     report_item.data1[2] = report_item.get_kill_count();
     player->add_item(report_item, stack_limits);
@@ -213,7 +213,7 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
         continue;
       }
       try {
-        auto item_parameter_table = s->item_parameter_table(c->version());
+        auto item_parameter_table = s->data->item_parameter_table(c->version());
         const auto& combo = item_parameter_table->get_item_combination(item.data, inv_item.data);
         if (combo.char_class != 0xFF && combo.char_class != player->disp.visual.sh.char_class) {
           throw std::runtime_error("item combination requires specific char_class");
@@ -260,7 +260,7 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
   if (should_delete_item) {
     // Allow overdrafting meseta if the client is not BB, since the server isn't informed when meseta is added or
     // removed from the bank.
-    player->remove_item(item.data.id, 1, *s->item_stack_limits(c->version()));
+    player->remove_item(item.data.id, 1, *s->data->item_stack_limits(c->version()));
   }
 }
 
@@ -488,8 +488,8 @@ void player_feed_mag(std::shared_ptr<Client> c, size_t mag_item_index, size_t fe
   apply_mag_feed_result(
       player->inventory.items[mag_item_index].data,
       player->inventory.items[fed_item_index].data,
-      s->item_parameter_table(c->version()),
-      s->mag_metadata_table(c->version()),
+      s->data->item_parameter_table(c->version()),
+      s->data->mag_metadata_table(c->version()),
       player->disp.visual.sh.char_class,
       player->disp.visual.sh.section_id,
       !is_v1_or_v2(c->version()));

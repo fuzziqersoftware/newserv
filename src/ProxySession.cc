@@ -25,14 +25,14 @@ void ProxySession::set_drop_mode(
   if (this->drop_mode == ProxyDropMode::INTERCEPT) {
     auto rand_crypt = std::make_shared<MT19937Generator>((override_random_seed >= 0) ? override_random_seed : this->lobby_random_seed);
     this->item_creator = std::make_shared<ItemCreator>(
-        s->common_item_set(version, nullptr),
-        s->rare_item_set(version, nullptr),
-        s->armor_random_set,
-        s->tool_random_set,
-        s->weapon_random_set(this->lobby_difficulty),
-        s->tekker_adjustment_set,
-        s->item_parameter_table(version),
-        s->item_stack_limits(version),
+        s->data->common_item_set(version, nullptr),
+        s->data->rare_item_set(version, nullptr),
+        s->data->armor_random_set,
+        s->data->tool_random_set,
+        s->data->weapon_random_set(this->lobby_difficulty),
+        s->data->tekker_adjustment_set,
+        s->data->item_parameter_table(version),
+        s->data->item_stack_limits(version),
         (this->lobby_mode == GameMode::SOLO) ? GameMode::NORMAL : this->lobby_mode,
         this->lobby_difficulty,
         this->lobby_section_id,

@@ -319,19 +319,17 @@ void ReplaySession::apply_default_mask(std::shared_ptr<Event> ev) {
       break;
     }
     default:
-      throw std::logic_error("invalid game version");
+      throw std::logic_error("Invalid game version");
   }
 }
 
 ReplaySession::ReplaySession(std::shared_ptr<ServerState> state, FILE* input_log)
     : state(state),
-      prev_psov2_crypt_enabled(this->state->use_psov2_rand_crypt),
       commands_sent(0),
       bytes_sent(0),
       commands_received(0),
       bytes_received(0),
-      idle_timeout_timer(*this->state->io_context),
-      run_failed(false) {
+      idle_timeout_timer(*this->state->io_context) {
   std::shared_ptr<Event> parsing_command = nullptr;
 
   size_t line_num = 0;
@@ -364,16 +362,16 @@ ReplaySession::ReplaySession(std::shared_ptr<ServerState> state, FILE* input_log
     }
 
     if (line == "### use psov2 crypt") {
-      this->state->use_psov2_rand_crypt = true;
+      this->use_psov2_rand_crypt = true;
     }
     if (line == "### use legacy item random behavior") {
-      this->state->use_legacy_item_random_behavior = true;
+      this->use_legacy_item_random_behavior = true;
     }
     if (line.starts_with("### cc ")) {
       // ### cc $<chat command>
       if (this->clients.size() != 1) {
         throw std::runtime_error(std::format(
-            "(ev-line {}) cc shortcut cannot be used with multiple clients connected; use on C-X cc instead",
+            "(ev-line {}) Bare `cc` shortcut cannot be used with multiple clients connected; use `on C-X cc` instead",
             line_num));
       }
       std::shared_ptr<Event> event;
@@ -383,7 +381,7 @@ ReplaySession::ReplaySession(std::shared_ptr<ServerState> state, FILE* input_log
         event->data = encode_chat_message(c->version, line.substr(7));
         num_events++;
       } catch (const std::exception& e) {
-        throw std::runtime_error(std::format("(ev-line {}) failed to generate chat message ({})", line_num, e.what()));
+        throw std::runtime_error(std::format("(ev-line {}) Failed to generate chat message ({})", line_num, e.what()));
       }
       continue;
 
@@ -400,7 +398,7 @@ ReplaySession::ReplaySession(std::shared_ptr<ServerState> state, FILE* input_log
         event->data = encode_chat_message(c->version, line.substr(end_offset + 13));
         num_events++;
       } catch (const std::exception& e) {
-        throw std::runtime_error(std::format("(ev-line {}) failed to generate chat message ({})", line_num, e.what()));
+        throw std::runtime_error(std::format("(ev-line {}) Failed to generate chat message ({})", line_num, e.what()));
       }
       continue;
 
@@ -412,21 +410,21 @@ ReplaySession::ReplaySession(std::shared_ptr<ServerState> state, FILE* input_log
         auto tokens = phosg::split(line, ' ');
 
         if (!tokens[8].starts_with("C-")) {
-          throw std::runtime_error(std::format("(ev-line {}) client connection message missing client ID token", line_num));
+          throw std::runtime_error(std::format("(ev-line {}) Client connection message missing client ID token", line_num));
         }
         uint64_t client_id = stoull(tokens[8].substr(2), nullptr, 16);
 
         auto listen_tokens = phosg::split(tokens[10], '-');
         if (listen_tokens.size() < 4) {
           throw std::runtime_error(std::format(
-              "(ev-line {}) client connection message listening socket token format is incorrect", line_num));
+              "(ev-line {}) Client connection message listening socket token format is incorrect", line_num));
         }
         uint16_t port = stoul(listen_tokens[1], nullptr, 10);
         Version version = phosg::enum_for_name<Version>(listen_tokens[2]);
 
         auto c = std::make_shared<Client>(state->io_context, client_id, port, version);
         if (!this->clients.emplace(c->id, c).second) {
-          throw std::runtime_error(std::format("(ev-line {}) duplicate client ID in input log", line_num));
+          throw std::runtime_error(std::format("(ev-line {}) Duplicate client ID in input log", line_num));
         }
         this->create_event(Event::Type::CONNECT, c, line_num);
         num_events++;
@@ -438,21 +436,21 @@ ReplaySession::ReplaySession(std::shared_ptr<ServerState> state, FILE* input_log
       if (offset != std::string::npos) {
         auto tokens = phosg::split(line, ' ');
         if (tokens.size() < 11) {
-          throw std::runtime_error(std::format("(ev-line {}) client disconnection message has incorrect token count", line_num));
+          throw std::runtime_error(std::format("(ev-line {}) Client disconnection message has incorrect token count", line_num));
         }
         if (!tokens[10].starts_with("C-")) {
-          throw std::runtime_error(std::format("(ev-line {}) client disconnection message missing client ID token", line_num));
+          throw std::runtime_error(std::format("(ev-line {}) Client disconnection message missing client ID token", line_num));
         }
         uint64_t client_id = stoul(tokens[10].substr(2), nullptr, 16);
         try {
           auto& c = this->clients.at(client_id);
           if (c->disconnect_event.get()) {
-            throw std::runtime_error(std::format("(ev-line {}) client has multiple disconnect events", line_num));
+            throw std::runtime_error(std::format("(ev-line {}) Client has multiple disconnect events", line_num));
           }
           c->disconnect_event = this->create_event(Event::Type::DISCONNECT, c, line_num);
           num_events++;
         } catch (const std::out_of_range&) {
-          throw std::runtime_error(std::format("(ev-line {}) unknown disconnecting client ID in input log", line_num));
+          throw std::runtime_error(std::format("(ev-line {}) Unknown disconnecting client ID in input log", line_num));
         }
         continue;
       }
@@ -466,7 +464,7 @@ ReplaySession::ReplaySession(std::shared_ptr<ServerState> state, FILE* input_log
       if (offset != std::string::npos) {
         auto tokens = phosg::split(line, ' ');
         if (tokens.size() < 10) {
-          throw std::runtime_error(std::format("(ev-line {}) command header line too short", line_num));
+          throw std::runtime_error(std::format("(ev-line {}) Command header line too short", line_num));
         }
         bool from_client = (tokens[6] == "Received");
         uint64_t client_id = stoull(tokens[8].substr(2), nullptr, 16);
@@ -475,7 +473,7 @@ ReplaySession::ReplaySession(std::shared_ptr<ServerState> state, FILE* input_log
               from_client ? Event::Type::SEND : Event::Type::RECEIVE, this->clients.at(client_id), line_num);
           num_events++;
         } catch (const std::out_of_range&) {
-          throw std::runtime_error(std::format("(ev-line {}) input log contains command for missing client", line_num));
+          throw std::runtime_error(std::format("(ev-line {}) Input log contains command for missing client", line_num));
         }
         continue;
       }
@@ -494,8 +492,12 @@ ReplaySession::ReplaySession(std::shared_ptr<ServerState> state, FILE* input_log
 }
 
 asio::awaitable<void> ReplaySession::run() {
+  bool prev_use_psov2_rand_crypt = this->state->use_psov2_rand_crypt;
+  bool prev_use_legacy_item_random_behavior = this->state->use_legacy_item_random_behavior;
+  this->state->use_psov2_rand_crypt = this->use_psov2_rand_crypt;
+  this->state->use_legacy_item_random_behavior = this->use_legacy_item_random_behavior;
+
   try {
-    replay_log.info_f("Starting replay");
     while (this->first_event) {
       if (!this->first_event->complete) {
         auto& c = this->clients.at(this->first_event->client_id);
@@ -505,15 +507,15 @@ asio::awaitable<void> ReplaySession::run() {
           case Event::Type::CONNECT: {
             if (c->channel->connected()) {
               throw std::runtime_error(std::format(
-                  "(ev-line {}) connect event on already-connected client", this->first_event->line_num));
+                  "(ev-line {}) Connect event on already-connected client", this->first_event->line_num));
             }
 
-            std::shared_ptr<const PortConfiguration> port_config;
+            const DataIndex::PortConfiguration* port_config;
             try {
-              port_config = this->state->number_to_port_config.at(c->port);
+              port_config = &this->state->data->number_to_port_config.at(c->port);
             } catch (const std::out_of_range&) {
               throw std::runtime_error(std::format(
-                  "(ev-line {}) client connected to port missing from configuration", this->first_event->line_num));
+                  "(ev-line {}) Client connected to port missing from configuration", this->first_event->line_num));
             }
 
             auto server_channel = std::make_shared<PeerChannel>(this->state->io_context, port_config->version, c->channel->language, "", phosg::TerminalFormat::END, phosg::TerminalFormat::END, false, false);
@@ -523,7 +525,7 @@ asio::awaitable<void> ReplaySession::run() {
               this->state->game_server->connect_channel(server_channel, c->port, port_config->behavior);
             } else {
               throw std::runtime_error(std::format(
-                  "(ev-line {}) no server available for connection", this->first_event->line_num));
+                  "(ev-line {}) No server available for connection", this->first_event->line_num));
             }
             break;
           }
@@ -535,7 +537,7 @@ asio::awaitable<void> ReplaySession::run() {
           case Event::Type::SEND:
             if (!c->channel->connected()) {
               throw std::runtime_error(std::format(
-                  "(ev-line {}) send event attempted on unconnected client", this->first_event->line_num));
+                  "(ev-line {}) Send event attempted on unconnected client", this->first_event->line_num));
             }
             c->channel->send(this->first_event->data);
             this->commands_sent++;
@@ -544,8 +546,8 @@ asio::awaitable<void> ReplaySession::run() {
 
           case Event::Type::RECEIVE: {
             if (!c->channel->connected()) {
-              throw std::runtime_error(std::format("(ev-line {}) receive event on non-connected client",
-                  this->first_event->line_num));
+              throw std::runtime_error(std::format(
+                  "(ev-line {}) Receive event on non-connected client", this->first_event->line_num));
             }
             if (c->receive_events.front() != this->first_event) {
               throw std::logic_error("Client receive events are out of order");
@@ -561,25 +563,29 @@ asio::awaitable<void> ReplaySession::run() {
             this->bytes_received += full_command.size();
 
             if (c->receive_events.empty()) {
-              phosg::print_data(stderr, full_command, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
-              throw std::runtime_error("received unexpected command for client");
+              std::string data_str = phosg::format_data(full_command, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
+              throw std::runtime_error(std::format("Received unexpected command for client:\n{}", data_str));
             }
 
             auto& ev = c->receive_events.front();
             if ((full_command.size() != ev->data.size()) && !ev->allow_size_disparity) {
-              replay_log.error_f("Expected command:");
-              phosg::print_data(stderr, ev->data, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
-              replay_log.error_f("Received command:");
-              phosg::print_data(stderr, full_command, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
-              throw std::runtime_error(std::format("(ev-line {}) received command sizes do not match", ev->line_num));
+              std::string expected_data = phosg::format_data(
+                  ev->data, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
+              std::string received_data = phosg::format_data(
+                  full_command, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
+              throw std::runtime_error(std::format(
+                  "(ev-line {}) Received command sizes do not match:\nExpected command:\n{}\nReceived command:\n{}",
+                  ev->line_num, expected_data, received_data));
             }
             for (size_t x = 0; x < std::min<size_t>(full_command.size(), ev->data.size()); x++) {
               if ((full_command[x] & ev->mask[x]) != (ev->data[x] & ev->mask[x])) {
-                replay_log.error_f("Expected command:");
-                phosg::print_data(stderr, ev->data, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
-                replay_log.error_f("Received command:");
-                phosg::print_data(stderr, full_command, 0, ev->data, phosg::FormatDataFlags::USE_COLOR | phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
-                throw std::runtime_error(std::format("(ev-line {}) received command data does not match expected data", ev->line_num));
+                std::string expected_data = phosg::format_data(
+                    ev->data, 0, phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
+                std::string received_data = phosg::format_data(
+                    full_command, 0, ev->data, phosg::FormatDataFlags::USE_COLOR | phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS);
+                throw std::runtime_error(std::format(
+                    "(ev-line {}) Received command does not match expected\nExpected command:\n{}\nReceived command:\n{}",
+                    ev->line_num, expected_data, received_data));
               }
             }
 
@@ -624,18 +630,18 @@ asio::awaitable<void> ReplaySession::run() {
                   // TODO: At some point it may matter which BB private key file we use. Don't just blindly use the
                   // first one here.
                   c->channel->crypt_in = std::make_shared<PSOBBEncryption>(
-                      *this->state->bb_private_keys[0], cmd.server_key.data(), cmd.server_key.size());
+                      *this->state->data->bb_private_keys[0], cmd.server_key.data(), cmd.server_key.size());
                   c->channel->crypt_out = std::make_shared<PSOBBEncryption>(
-                      *this->state->bb_private_keys[0], cmd.client_key.data(), cmd.client_key.size());
+                      *this->state->data->bb_private_keys[0], cmd.client_key.data(), cmd.client_key.size());
                 }
                 break;
               default:
-                throw std::logic_error("unsupported encryption version");
+                throw std::logic_error("Unsupported encryption version");
             }
             break;
           }
           default:
-            throw std::logic_error("unhandled event type");
+            throw std::logic_error("Unhandled event type");
         }
         this->first_event->complete = true;
       }
@@ -646,13 +652,12 @@ asio::awaitable<void> ReplaySession::run() {
       }
     }
   } catch (const std::exception& e) {
-    replay_log.error_f("Replay failed: {}", e.what());
+    this->failure = std::format("Replay failed: {}", e.what());
     if (this->first_event) {
-      replay_log.error_f("Next pending event: {}", this->first_event->str());
+      this->failure += std::format("\nNext pending event: {}", this->first_event->str());
     } else {
-      replay_log.error_f("No events are pending at failure time");
+      this->failure += std::format("\nNo events are pending at failure time");
     }
-    this->run_failed = true;
   }
 
   for (auto& [_, c] : this->clients) {
@@ -660,14 +665,18 @@ asio::awaitable<void> ReplaySession::run() {
       c->channel->disconnect();
     }
   }
-  this->state->use_psov2_rand_crypt = this->prev_psov2_crypt_enabled;
 
-  if (!this->run_failed) {
+  this->state->use_psov2_rand_crypt = prev_use_psov2_rand_crypt;
+  this->state->use_legacy_item_random_behavior = prev_use_legacy_item_random_behavior;
+
+  if (this->failure.empty()) {
     // Wait a bit longer to ensure that any command sent at the end of the replay session don't crash the server
     co_await async_sleep(std::chrono::seconds(2));
     replay_log.info_f("Replay complete: {} commands sent ({} bytes), {} commands received ({} bytes)",
         this->commands_sent, this->bytes_sent, this->commands_received, this->bytes_received);
   }
+
+  this->idle_timeout_timer.cancel();
 }
 
 void ReplaySession::reschedule_idle_timeout() {

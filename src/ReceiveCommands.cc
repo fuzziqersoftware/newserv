@@ -31,15 +31,15 @@ const char* ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME = "add_next_game_client";
 
 asio::awaitable<void> on_connect(std::shared_ptr<Client> c) {
   auto s = c->require_server_state();
-  if (s->default_switch_assist_enabled) {
+  if (s->data->default_switch_assist_enabled) {
     c->set_flag(Client::Flag::SWITCH_ASSIST_ENABLED);
   }
 
   switch (c->server_behavior) {
     case ServerBehavior::PC_CONSOLE_DETECT: {
-      uint16_t pc_port = s->name_to_port_config.at("pc")->port;
-      uint16_t console_port = s->name_to_port_config.at("gc-us3")->port;
-      send_pc_console_split_reconnect(c, s->connect_address_for_client(c), pc_port, console_port);
+      uint16_t pc_port = s->data->name_to_port_config.at("pc").port;
+      uint16_t console_port = s->data->name_to_port_config.at("gc-us3").port;
+      send_pc_console_split_reconnect(c, s->data->connect_address_for_client(c), pc_port, console_port);
       // TODO: There appears to be a bug that occurs rarely when a client connects to this port; sometimes it
       // disconnects before receiving the data it needs. My hypothesis is that there's either a bug in Channel where
       // the data isn't being sent before the RST, or there's a bug in AVE-TCP where it doesn't forward the last data
@@ -83,7 +83,7 @@ asio::awaitable<void> on_disconnect(std::shared_ptr<Client> c) {
 static void send_main_menu(std::shared_ptr<Client> c) {
   auto s = c->require_server_state();
 
-  auto main_menu = std::make_shared<Menu>(MenuID::MAIN, s->name);
+  auto main_menu = std::make_shared<Menu>(MenuID::MAIN, s->data->name);
   main_menu->items.emplace_back(
       MainMenuItemID::GO_TO_LOBBY, "Go to lobby",
       [wc = std::weak_ptr<Client>(c)]() -> std::string {
@@ -119,21 +119,21 @@ static void send_main_menu(std::shared_ptr<Client> c) {
       "View server\ninformation", MenuItem::Flag::INVISIBLE_ON_DC_PROTOS | MenuItem::Flag::REQUIRES_MESSAGE_BOXES);
 
   uint32_t proxy_destinations_menu_item_flags =
-      (s->proxy_destinations_dc.empty() ? MenuItem::Flag::INVISIBLE_ON_DC : 0) |
-      (s->proxy_destinations_pc.empty() ? MenuItem::Flag::INVISIBLE_ON_PC : 0) |
-      (s->proxy_destinations_gc.empty() ? MenuItem::Flag::INVISIBLE_ON_GC : 0) |
-      (s->proxy_destinations_xb.empty() ? MenuItem::Flag::INVISIBLE_ON_XB : 0) |
+      (s->data->proxy_destinations_dc.empty() ? MenuItem::Flag::INVISIBLE_ON_DC : 0) |
+      (s->data->proxy_destinations_pc.empty() ? MenuItem::Flag::INVISIBLE_ON_PC : 0) |
+      (s->data->proxy_destinations_gc.empty() ? MenuItem::Flag::INVISIBLE_ON_GC : 0) |
+      (s->data->proxy_destinations_xb.empty() ? MenuItem::Flag::INVISIBLE_ON_XB : 0) |
       MenuItem::Flag::INVISIBLE_ON_BB;
   main_menu->items.emplace_back(MainMenuItemID::PROXY_DESTINATIONS, "Proxy server",
       "Connect to another\nserver through the\nproxy", proxy_destinations_menu_item_flags);
 
   main_menu->items.emplace_back(MainMenuItemID::DOWNLOAD_QUESTS, "Download quests",
       "Download quests", MenuItem::Flag::INVISIBLE_ON_DC_PROTOS | MenuItem::Flag::INVISIBLE_ON_PC_NTE | MenuItem::Flag::INVISIBLE_ON_BB);
-  if (!s->client_functions->patch_menu_empty(c->specific_version)) {
+  if (!s->data->client_functions->patch_menu_empty(c->specific_version)) {
     main_menu->items.emplace_back(MainMenuItemID::PATCH_SWITCHES, "Patches",
         "Change game\nbehaviors", MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL_RUNS_CODE);
   }
-  if (!s->dol_file_index->empty()) {
+  if (!s->data->dol_file_index->empty()) {
     main_menu->items.emplace_back(MainMenuItemID::PROGRAMS, "Programs",
         "Run GameCube\nprograms", MenuItem::Flag::GC_ONLY | MenuItem::Flag::REQUIRES_SEND_FUNCTION_CALL_RUNS_CODE | MenuItem::Flag::REQUIRES_SAVE_DISABLED);
   }
@@ -147,7 +147,7 @@ static void send_main_menu(std::shared_ptr<Client> c) {
 
 static void send_proxy_destinations_menu(std::shared_ptr<Client> c) {
   auto s = c->require_server_state();
-  send_menu(c, s->proxy_destinations_menu(c->version()));
+  send_menu(c, s->data->proxy_destinations_menu(c->version()));
 }
 
 static std::shared_ptr<const Menu> proxy_options_menu_for_client(std::shared_ptr<const Client> c) {
@@ -199,7 +199,7 @@ static std::shared_ptr<const Menu> proxy_options_menu_for_client(std::shared_ptr
     add_flag_option(ProxyOptionsMenuItemID::SWITCH_ASSIST, Client::Flag::SWITCH_ASSIST_ENABLED,
         "Switch assist", "Automatically unlock\nmulti-player doors\nwhen you step on\nany of the door\'s\nswitches");
   }
-  if ((s->cheat_mode_behavior != ServerState::BehaviorSwitch::OFF) ||
+  if ((s->data->cheat_mode_behavior != DataIndex::BehaviorSwitch::OFF) ||
       c->login->account->check_flag(Account::Flag::CHEAT_ANYWHERE)) {
     if (!is_ep3(c->version())) {
       add_flag_option(ProxyOptionsMenuItemID::INFINITE_HP, Client::Flag::INFINITE_HP_ENABLED,
@@ -217,7 +217,7 @@ static std::shared_ptr<const Menu> proxy_options_menu_for_client(std::shared_ptr
           "Show whispers", "Show contents of\nwhisper messages\neven if they are not\nfor you");
     }
   }
-  if (s->proxy_allow_save_files) {
+  if (s->data->proxy_allow_save_files) {
     add_flag_option(ProxyOptionsMenuItemID::SAVE_FILES, Client::Flag::PROXY_SAVE_FILES,
         "Save files", "Save local copies of\nfiles from the\nremote server\n(quests, etc.)");
   }
@@ -228,8 +228,8 @@ static asio::awaitable<void> send_auto_patches_if_needed(std::shared_ptr<Client>
   auto s = c->require_server_state();
 
   if (c->login->account->auto_patches_enabled.empty() &&
-      ((c->version() != Version::BB_V4) || s->bb_required_patches.empty()) &&
-      s->auto_patches.empty()) {
+      ((c->version() != Version::BB_V4) || s->data->bb_required_patches.empty()) &&
+      s->data->auto_patches.empty()) {
     c->set_flag(Client::Flag::HAS_AUTO_PATCHES);
   }
 
@@ -239,9 +239,9 @@ static asio::awaitable<void> send_auto_patches_if_needed(std::shared_ptr<Client>
 
     std::unordered_set<std::shared_ptr<const ClientFunctionIndex::Function>> functions_to_send;
     if (c->version() == Version::BB_V4) {
-      for (const auto& patch_name : s->bb_required_patches) {
+      for (const auto& patch_name : s->data->bb_required_patches) {
         try {
-          functions_to_send.emplace(s->client_functions->get(patch_name, c->specific_version));
+          functions_to_send.emplace(s->data->client_functions->get(patch_name, c->specific_version));
         } catch (const std::out_of_range&) {
           std::string message = std::format(
               "Your client is not compatible with a\nrequired patch on this server.\n\nClient version: {}\nPatch name: {}", str_for_specific_version(c->specific_version), patch_name);
@@ -251,9 +251,9 @@ static asio::awaitable<void> send_auto_patches_if_needed(std::shared_ptr<Client>
         }
       }
     }
-    for (const auto& patch_name : s->auto_patches) {
+    for (const auto& patch_name : s->data->auto_patches) {
       try {
-        functions_to_send.emplace(s->client_functions->get(patch_name, c->specific_version));
+        functions_to_send.emplace(s->data->client_functions->get(patch_name, c->specific_version));
       } catch (const std::out_of_range&) {
         c->log.warning_f("Server has auto patch {} enabled, but it is not available for specific_version {}",
             patch_name, str_for_specific_version(c->specific_version));
@@ -261,7 +261,7 @@ static asio::awaitable<void> send_auto_patches_if_needed(std::shared_ptr<Client>
     }
     for (const auto& patch_name : c->login->account->auto_patches_enabled) {
       try {
-        functions_to_send.emplace(s->client_functions->get(patch_name, c->specific_version));
+        functions_to_send.emplace(s->data->client_functions->get(patch_name, c->specific_version));
       } catch (const std::out_of_range&) {
         c->log.warning_f("Client has auto patch {} enabled, but it is not available for specific_version {}",
             patch_name, str_for_specific_version(c->specific_version));
@@ -280,8 +280,8 @@ asio::awaitable<void> start_login_server_procedure(std::shared_ptr<Client> c) {
     s->remove_client_from_lobby(c);
   }
 
-  if (s->pre_lobby_event && (!is_ep3(c->version()) || s->ep3_menu_song < 0)) {
-    send_change_event(c, s->pre_lobby_event);
+  if (s->data->pre_lobby_event && (!is_ep3(c->version()) || s->data->ep3_menu_song < 0)) {
+    send_change_event(c, s->data->pre_lobby_event);
   }
 
   send_server_time(c);
@@ -303,7 +303,7 @@ asio::awaitable<void> start_login_server_procedure(std::shared_ptr<Client> c) {
       c->set_flag(Client::Flag::HAS_EP3_CARD_DEFS);
     }
     if ((c->version() != Version::GC_EP3_NTE) && !c->check_flag(Client::Flag::HAS_EP3_MEDIA_UPDATES)) {
-      for (const auto& banner : s->ep3_lobby_banners) {
+      for (const auto& banner : s->data->ep3_lobby_banners) {
         send_ep3_media_update(c, banner.type, banner.which, banner.data);
         c->set_flag(Client::Flag::HAS_EP3_MEDIA_UPDATES);
       }
@@ -317,13 +317,13 @@ asio::awaitable<void> start_login_server_procedure(std::shared_ptr<Client> c) {
       c->set_flag(Client::Flag::LOADING);
       c->log.info_f("LOADING flag set");
     }
-  } else if (s->welcome_message.empty() ||
+  } else if (s->data->welcome_message.empty() ||
       c->check_flag(Client::Flag::NO_D6) ||
       !c->check_flag(Client::Flag::AT_WELCOME_MESSAGE)) {
     c->clear_flag(Client::Flag::AT_WELCOME_MESSAGE);
     send_main_menu(c);
   } else {
-    send_message_box(c, s->welcome_message);
+    send_message_box(c, s->data->welcome_message);
   }
   co_return;
 }
@@ -342,7 +342,7 @@ static asio::awaitable<void> on_login_complete(std::shared_ptr<Client> c) {
           !c->check_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE))) {
     std::shared_ptr<const Quest> q;
     try {
-      q = s->quest_index->get(s->enable_send_function_call_quest_numbers.at(c->specific_version));
+      q = s->data->quest_index->get(s->data->enable_send_function_call_quest_numbers.at(c->specific_version));
     } catch (const std::out_of_range&) {
     }
     if (!q) {
@@ -430,7 +430,7 @@ asio::awaitable<void> start_proxy_session(std::shared_ptr<Client> c, const std::
   if (!c->can_use_chat_commands()) {
     c->clear_flag(Client::Flag::PROXY_CHAT_COMMANDS_ENABLED);
   }
-  if (!s->proxy_allow_save_files) {
+  if (!s->data->proxy_allow_save_files) {
     c->clear_flag(Client::Flag::PROXY_SAVE_FILES);
   }
 
@@ -479,7 +479,7 @@ asio::awaitable<void> start_proxy_session(std::shared_ptr<Client> c, const std::
         phosg::TerminalFormat::FG_YELLOW,
         phosg::TerminalFormat::FG_RED,
         false,
-        s->censor_credentials);
+        s->data->censor_credentials);
     c->proxy_session = std::make_shared<ProxySession>(channel, pc);
 
     if (c->version() == Version::GC_EP3) {
@@ -538,11 +538,11 @@ asio::awaitable<void> end_proxy_session(std::shared_ptr<Client> c, const std::st
   }
 
   if (is_in_game) {
-    std::string msg = std::format("You cannot return\nto $C6{}$C7\nwhile in a game.\n\n{}", s->name, error_message);
+    std::string msg = std::format("You cannot return\nto $C6{}$C7\nwhile in a game.\n\n{}", s->data->name, error_message);
     send_ship_info(c, msg);
     c->channel->disconnect();
   } else {
-    std::string msg = std::format("You\'ve returned to\n$C6{}$C7\n\n{}", s->name, error_message);
+    std::string msg = std::format("You\'ve returned to\n$C6{}$C7\n\n{}", s->data->name, error_message);
     send_ship_info(c, msg);
     co_await start_login_server_procedure(c);
   }
@@ -575,11 +575,11 @@ static asio::awaitable<void> on_04_U(std::shared_ptr<Client> c, Channel::Message
     } catch (const AccountIndex::incorrect_password& e) {
       result_code = 0x03;
     } catch (const AccountIndex::missing_account& e) {
-      if (!s->allow_unregistered_users) {
+      if (!s->data->allow_unregistered_users) {
         result_code = 0x08;
       }
     }
-  } else if (!c->username.empty() && !s->allow_unregistered_users) {
+  } else if (!c->username.empty() && !s->data->allow_unregistered_users) {
     try {
       s->account_index->from_bb_credentials(c->username, nullptr, false);
     } catch (const AccountIndex::missing_account& e) {
@@ -593,19 +593,19 @@ static asio::awaitable<void> on_04_U(std::shared_ptr<Client> c, Channel::Message
   }
 
   // Switch to proxy session if there's a destination configured
-  if (is_patch(c->version()) && s->proxy_destination_patch.has_value()) {
-    const auto& [host, port] = *s->proxy_destination_patch;
+  if (is_patch(c->version()) && s->data->proxy_destination_patch.has_value()) {
+    const auto& [host, port] = *s->data->proxy_destination_patch;
     co_await start_proxy_session(c, host, port, false);
 
   } else {
     // No proxy destination; continue with normal patch logic
     bool is_bb = (c->version() == Version::BB_PATCH);
-    const std::string& message = is_bb ? s->bb_patch_server_message : s->pc_patch_server_message;
+    const std::string& message = is_bb ? s->data->bb_patch_server_message : s->data->pc_patch_server_message;
     if (!message.empty()) {
       send_message_box(c, message);
     }
 
-    auto index = is_bb ? s->bb_patch_file_index : s->pc_patch_file_index;
+    auto index = is_bb ? s->data->bb_patch_file_index : s->data->pc_patch_file_index;
     if (index.get()) {
       c->channel->send(0x0B, 0x00); // Start patch session; go to root directory
 
@@ -812,7 +812,7 @@ static asio::awaitable<void> on_DB_GC(std::shared_ptr<Client> c, Channel::Messag
   try {
     auto s = c->require_server_state();
     c->set_login(s->account_index->from_gc_credentials(
-        serial_number, c->access_key, &c->password, "", s->allow_unregistered_users));
+        serial_number, c->access_key, &c->password, "", s->data->allow_unregistered_users));
     send_command(c, 0x9A, 0x02);
 
   } catch (const AccountIndex::no_username& e) {
@@ -860,7 +860,7 @@ static asio::awaitable<void> on_88_DCNTE(std::shared_ptr<Client> c, Channel::Mes
 
   try {
     auto s = c->require_server_state();
-    c->set_login(s->account_index->from_dc_nte_credentials(c->serial_number, c->access_key, s->allow_unregistered_users));
+    c->set_login(s->account_index->from_dc_nte_credentials(c->serial_number, c->access_key, s->data->allow_unregistered_users));
     send_command(c, 0x88, 0x00);
 
   } catch (const AccountIndex::no_username& e) {
@@ -900,7 +900,7 @@ static asio::awaitable<void> on_8B_DCNTE(std::shared_ptr<Client> c, Channel::Mes
 
   try {
     auto s = c->require_server_state();
-    c->set_login(s->account_index->from_dc_nte_credentials(c->serial_number, c->access_key, s->allow_unregistered_users));
+    c->set_login(s->account_index->from_dc_nte_credentials(c->serial_number, c->access_key, s->data->allow_unregistered_users));
   } catch (const AccountIndex::no_username& e) {
     c->log.info_f("Login failed (no username)");
     send_message_box(c, "Incorrect serial number");
@@ -944,10 +944,10 @@ static asio::awaitable<void> on_90_DC(std::shared_ptr<Client> c, Channel::Messag
   try {
     auto s = c->require_server_state();
     if (c->serial_number.size() > 8 || c->access_key.size() > 8) {
-      c->set_login(s->account_index->from_dc_nte_credentials(c->serial_number, c->access_key, s->allow_unregistered_users));
+      c->set_login(s->account_index->from_dc_nte_credentials(c->serial_number, c->access_key, s->data->allow_unregistered_users));
     } else {
       serial_number = stoull(c->serial_number, nullptr, 16);
-      c->set_login(s->account_index->from_dc_credentials(serial_number, c->access_key, "", s->allow_unregistered_users));
+      c->set_login(s->account_index->from_dc_credentials(serial_number, c->access_key, "", s->data->allow_unregistered_users));
     }
     if (c->log.should_log(phosg::LogLevel::L_INFO)) {
       c->log.info_f("Received login: {}", c->login->str());
@@ -1011,11 +1011,11 @@ static asio::awaitable<void> on_93_DC(std::shared_ptr<Client> c, Channel::Messag
   uint32_t serial_number = 0;
   try {
     if (c->serial_number.size() > 8 || c->access_key.size() > 8) {
-      c->set_login(s->account_index->from_dc_nte_credentials(c->serial_number, c->access_key, s->allow_unregistered_users));
+      c->set_login(s->account_index->from_dc_nte_credentials(c->serial_number, c->access_key, s->data->allow_unregistered_users));
     } else {
       serial_number = stoull(c->serial_number, nullptr, 16);
       c->set_login(s->account_index->from_dc_credentials(
-          serial_number, c->access_key, c->login_character_name, s->allow_unregistered_users));
+          serial_number, c->access_key, c->login_character_name, s->data->allow_unregistered_users));
     }
     if (c->log.should_log(phosg::LogLevel::L_INFO)) {
       c->log.info_f("Login: {}", c->login->str());
@@ -1079,7 +1079,7 @@ static asio::awaitable<void> on_9A(std::shared_ptr<Client> c, Channel::Message& 
     switch (c->version()) {
       case Version::DC_V2: {
         uint32_t serial_number = stoul(c->serial_number, nullptr, 16);
-        c->set_login(s->account_index->from_dc_credentials(serial_number, c->access_key, "", s->allow_unregistered_users));
+        c->set_login(s->account_index->from_dc_credentials(serial_number, c->access_key, "", s->data->allow_unregistered_users));
         if (c->log.should_log(phosg::LogLevel::L_INFO)) {
           c->log.info_f("Login: {}", c->login->str());
         }
@@ -1098,10 +1098,10 @@ static asio::awaitable<void> on_9A(std::shared_ptr<Client> c, Channel::Message& 
           c->channel->version = Version::PC_NTE;
           c->log.info_f("Changed client version to PC_NTE");
           c->set_login(s->account_index->from_pc_nte_credentials(
-              cmd.guild_card_number, s->allow_unregistered_users && s->allow_pc_nte));
+              cmd.guild_card_number, s->data->allow_unregistered_users && s->data->allow_pc_nte));
         } else {
           uint32_t serial_number = stoul(cmd.serial_number.decode(), nullptr, 16);
-          c->set_login(s->account_index->from_pc_credentials(serial_number, c->access_key, "", s->allow_unregistered_users));
+          c->set_login(s->account_index->from_pc_credentials(serial_number, c->access_key, "", s->data->allow_unregistered_users));
         }
         break;
       }
@@ -1253,7 +1253,7 @@ static asio::awaitable<void> on_9D_9E(std::shared_ptr<Client> c, Channel::Messag
       case Version::DC_V2: {
         uint32_t serial_number = stoul(c->serial_number, nullptr, 16);
         c->set_login(s->account_index->from_dc_credentials(
-            serial_number, c->access_key, c->login_character_name, s->allow_unregistered_users));
+            serial_number, c->access_key, c->login_character_name, s->data->allow_unregistered_users));
         break;
       }
       case Version::PC_NTE:
@@ -1268,11 +1268,11 @@ static asio::awaitable<void> on_9D_9E(std::shared_ptr<Client> c, Channel::Messag
           c->channel->version = Version::PC_NTE;
           c->log.info_f("Changed client version to PC_NTE");
           c->set_login(s->account_index->from_pc_nte_credentials(
-              base_cmd->guild_card_number, s->allow_unregistered_users && s->allow_pc_nte));
+              base_cmd->guild_card_number, s->data->allow_unregistered_users && s->data->allow_pc_nte));
         } else {
           uint32_t serial_number = stoul(base_cmd->serial_number.decode(), nullptr, 16);
           c->set_login(s->account_index->from_pc_credentials(
-              serial_number, c->access_key, c->login_character_name, s->allow_unregistered_users));
+              serial_number, c->access_key, c->login_character_name, s->data->allow_unregistered_users));
         }
         break;
       case Version::GC_NTE:
@@ -1314,7 +1314,7 @@ static asio::awaitable<void> on_9D_9E(std::shared_ptr<Client> c, Channel::Messag
     // not; we'll call on_login_complete once we receive the B3 response
     if (c->version() == Version::PC_V2) {
       try {
-        auto code = s->client_functions->get("ReturnToken", SPECIFIC_VERSION_X86_INDETERMINATE);
+        auto code = s->data->client_functions->get("ReturnToken", SPECIFIC_VERSION_X86_INDETERMINATE);
         std::unordered_map<std::string, uint32_t> label_writes{{"token", c->login->account->account_id}};
         auto resp = co_await send_function_call(c, code, label_writes, nullptr, 0, 0x00400000, 0x0000E000, 0, true);
 
@@ -1374,7 +1374,7 @@ static asio::awaitable<void> on_9E_XB(std::shared_ptr<Client> c, Channel::Messag
   uint64_t xb_user_id = stoull(c->access_key, nullptr, 16);
   uint64_t xb_account_id = cmd.xb_netloc.account_id;
   try {
-    c->set_login(s->account_index->from_xb_credentials(xb_gamertag, xb_user_id, xb_account_id, s->allow_unregistered_users));
+    c->set_login(s->account_index->from_xb_credentials(xb_gamertag, xb_user_id, xb_account_id, s->data->allow_unregistered_users));
   } catch (const AccountIndex::no_username& e) {
     c->log.info_f("Login failed (no username)");
     send_command(c, 0x04, 0x03);
@@ -1420,7 +1420,7 @@ static asio::awaitable<void> on_93_BB(std::shared_ptr<Client> c, Channel::Messag
 
   auto s = c->require_server_state();
   try {
-    c->set_login(s->account_index->from_bb_credentials(c->username, &c->password, s->allow_unregistered_users));
+    c->set_login(s->account_index->from_bb_credentials(c->username, &c->password, s->data->allow_unregistered_users));
   } catch (const AccountIndex::no_username& e) {
     c->log.info_f("Login failed (no username)");
     send_client_init_bb(c, 0x08);
@@ -1499,14 +1499,14 @@ static asio::awaitable<void> on_93_BB(std::shared_ptr<Client> c, Channel::Messag
     // server phase, or else it won't know where to connect to during character selection. It's not clear why they
     // didn't just make it use the initial connection address by default...
     send_client_init_bb(c, 0);
-    send_reconnect(c, s->connect_address_for_client(c), s->name_to_port_config.at("bb-data1")->port);
+    send_reconnect(c, s->data->connect_address_for_client(c), s->data->name_to_port_config.at("bb-data1").port);
     co_return;
 
-  } else if (s->proxy_destination_bb.has_value()) {
+  } else if (s->data->proxy_destination_bb.has_value()) {
     // Start a proxy session immediately if there's a destination set. We don't send 00E6 (send_client_init_bb) in this
     // case. This is because the login command is resent to the remote server, and we forward its response back to the
     // client directly.
-    const auto& [host, port] = *s->proxy_destination_bb;
+    const auto& [host, port] = *s->data->proxy_destination_bb;
     co_await start_proxy_session(c, host, port, c->bb_connection_phase != 0);
     c->proxy_session->remote_client_config_data = c->bb_client_config;
     co_return;
@@ -1520,7 +1520,7 @@ static asio::awaitable<void> on_93_BB(std::shared_ptr<Client> c, Channel::Messag
     // ship select menu or a lobby join command.
     co_await on_login_complete(c);
 
-  } else if (s->hide_download_commands) {
+  } else if (s->data->hide_download_commands) {
     // The BB data server protocol is fairly well-understood and has some large commands, so we omit data logging for
     // clients on the data server.
     c->log.info_f("Client is in the BB data server phase; disabling command data logging for the rest of this client\'s session");
@@ -1547,8 +1547,8 @@ static asio::awaitable<void> on_B7_Ep3(std::shared_ptr<Client> c, Channel::Messa
   // If the client is not in any lobby, assume they're at the main menu and send the menu song (if any).
   auto s = c->require_server_state();
   auto l = c->lobby.lock();
-  if (!l && (s->ep3_menu_song >= 0)) {
-    send_ep3_change_music(c->channel, s->ep3_menu_song);
+  if (!l && (s->data->ep3_menu_song >= 0)) {
+    send_ep3_change_music(c->channel, s->data->ep3_menu_song);
   }
   co_return;
 }
@@ -1560,10 +1560,10 @@ static asio::awaitable<void> on_BA_Ep3(std::shared_ptr<Client> c, Channel::Messa
   bool is_lobby = l && !l->is_game();
 
   uint32_t current_meseta, total_meseta_earned;
-  if (s->ep3_infinite_meseta) {
+  if (s->data->ep3_infinite_meseta) {
     current_meseta = 1000000;
     total_meseta_earned = 1000000;
-  } else if (is_lobby && s->ep3_jukebox_is_free) {
+  } else if (is_lobby && s->data->ep3_jukebox_is_free) {
     current_meseta = c->login->account->ep3_current_meseta;
     total_meseta_earned = c->login->account->ep3_total_meseta_earned;
   } else {
@@ -1622,7 +1622,7 @@ static bool add_next_game_client(std::shared_ptr<Lobby> l) {
     state_cmd.state.first_team_turn = 0xFF;
     state_cmd.state.tournament_flag = 0x01;
     state_cmd.state.client_sc_card_types.clear(Episode3::CardType::INVALID_FF);
-    if ((c->version() != Version::GC_EP3_NTE) && !(s->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+    if ((c->version() != Version::GC_EP3_NTE) && !(s->data->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
       uint8_t mask_key = (phosg::random_object<uint32_t>() % 0xFF) + 1;
       set_mask_for_ep3_game_command(&state_cmd, sizeof(state_cmd), mask_key);
     }
@@ -1783,8 +1783,8 @@ static bool start_ep3_battle_table_game_if_ready(std::shared_ptr<Lobby> l, int16
   }
   game->tournament_match = tourn_match;
   game->ep3_ex_result_values = (tourn_match && tourn && tourn->get_final_match() == tourn_match)
-      ? s->ep3_tournament_final_round_ex_values
-      : s->ep3_tournament_ex_values;
+      ? s->data->ep3_tournament_final_round_ex_values
+      : s->data->ep3_tournament_ex_values;
   game->clients_to_add.clear();
   for (const auto& it : game_clients) {
     game->clients_to_add.emplace(it.first, it.second);
@@ -1956,8 +1956,8 @@ static asio::awaitable<void> on_CA_Ep3(std::shared_ptr<Client> c, Channel::Messa
   if (!l->ep3_server || l->ep3_server->battle_finished) {
     auto s = c->require_server_state();
 
-    if (s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_RECORDING) {
-      l->battle_record = std::make_shared<Episode3::BattleRecord>(s->ep3_behavior_flags);
+    if (s->data->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_RECORDING) {
+      l->battle_record = std::make_shared<Episode3::BattleRecord>(s->data->ep3_behavior_flags);
       for (auto existing_c : l->clients) {
         if (existing_c) {
           auto existing_p = existing_c->character_file();
@@ -2003,7 +2003,7 @@ static asio::awaitable<void> on_CA_Ep3(std::shared_ptr<Client> c, Channel::Messa
       for (const auto& rc : rl->clients) {
         if (rc) {
           rc->ep3_prev_battle_record = l->battle_record;
-          if ((s->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
+          if ((s->data->ep3_behavior_flags & Episode3::BehaviorFlag::ENABLE_STATUS_MESSAGES)) {
             send_text_message(rc, "$C7Recording complete");
           }
         }
@@ -2037,13 +2037,13 @@ static asio::awaitable<void> on_CA_Ep3(std::shared_ptr<Client> c, Channel::Messa
 
     uint32_t meseta_reward = 0;
     auto& round_rewards = loser_team->has_any_human_players()
-        ? s->ep3_defeat_player_meseta_rewards
-        : s->ep3_defeat_com_meseta_rewards;
+        ? s->data->ep3_defeat_player_meseta_rewards
+        : s->data->ep3_defeat_com_meseta_rewards;
     meseta_reward = (l->tournament_match->round_num - 1 < round_rewards.size())
         ? round_rewards[l->tournament_match->round_num - 1]
         : round_rewards.back();
     if (tourn && (l->tournament_match == tourn->get_final_match())) {
-      meseta_reward += s->ep3_final_round_meseta_bonus;
+      meseta_reward += s->data->ep3_final_round_meseta_bonus;
     }
     for (const auto& player : winner_team->players) {
       if (player.is_human()) {
@@ -2116,7 +2116,7 @@ static asio::awaitable<void> on_D6_V3(std::shared_ptr<Client> c, Channel::Messag
   check_size_v(msg.data.size(), 0);
   if (c->check_flag(Client::Flag::IN_INFORMATION_MENU)) {
     auto s = c->require_server_state();
-    send_menu(c, s->information_menu(c->version()));
+    send_menu(c, s->data->information_menu(c->version()));
   } else if (c->check_flag(Client::Flag::AT_WELCOME_MESSAGE)) {
     c->clear_flag(Client::Flag::AT_WELCOME_MESSAGE);
     send_main_menu(c);
@@ -2137,10 +2137,10 @@ static asio::awaitable<void> on_09(std::shared_ptr<Client> c, Channel::Message& 
     case MenuID::QUEST_EP1:
     case MenuID::QUEST_EP2: {
       bool is_download_quest = !c->lobby.lock();
-      if (!s->quest_index) {
+      if (!s->data->quest_index) {
         send_quest_info(c, "$C7Quests are not available.", 0x00, is_download_quest);
       } else {
-        auto q = s->quest_index->get(cmd.item_id);
+        auto q = s->data->quest_index->get(cmd.item_id);
         if (!q) {
           send_quest_info(c, "$C4Quest does not\nexist.", 0x00, is_download_quest);
         } else {
@@ -2159,7 +2159,7 @@ static asio::awaitable<void> on_09(std::shared_ptr<Client> c, Channel::Message& 
           ? Episode3::MapIndex::VisibilityFlag::ONLINE_TRIAL
           : Episode3::MapIndex::VisibilityFlag::ONLINE_FINAL;
 
-      auto map = s->ep3_map_index->map_for_id(cmd.item_id);
+      auto map = s->data->ep3_map_index->map_for_id(cmd.item_id);
       if (!map || !map->check_visibility_flag(vis_flag)) {
         send_quest_info(c, "$C4Map does not exist.", 0x00, true);
       } else {
@@ -2408,7 +2408,8 @@ static void on_quest_loaded(std::shared_ptr<Lobby> l) {
       if (is_v4(lc->version())) {
         lc->change_bank(lc->bb_character_index);
       }
-      lc->create_challenge_overlay(lc->version(), l->quest->meta.challenge_template_index, s->level_table(lc->version()));
+      lc->create_challenge_overlay(
+          lc->version(), l->quest->meta.challenge_template_index, s->data->level_table(lc->version()));
       lc->log.info_f("Created challenge overlay");
       l->assign_inventory_and_bank_item_ids(lc, true);
 
@@ -2416,7 +2417,7 @@ static void on_quest_loaded(std::shared_ptr<Lobby> l) {
       if (is_v4(lc->version())) {
         lc->change_bank(lc->bb_character_index);
       }
-      lc->create_battle_overlay(l->quest->meta.battle_rules, s->level_table(lc->version()));
+      lc->create_battle_overlay(l->quest->meta.battle_rules, s->data->level_table(lc->version()));
       lc->log.info_f("Created battle overlay");
     }
   }
@@ -2529,7 +2530,7 @@ static asio::awaitable<void> on_10_main_menu(std::shared_ptr<Client> c, uint32_t
     }
 
     case MainMenuItemID::INFORMATION: {
-      send_menu(c, s->information_menu(c->version()));
+      send_menu(c, s->data->information_menu(c->version()));
       c->set_flag(Client::Flag::IN_INFORMATION_MENU);
       break;
     }
@@ -2550,7 +2551,7 @@ static asio::awaitable<void> on_10_main_menu(std::shared_ptr<Client> c, uint32_t
       // We have to prepare the client for patches here, even though we don't send them from this mennu, because we
       // need to know the client's specific_version before sending the menu.
       co_await prepare_client_for_patches(c);
-      send_menu(c, c->require_server_state()->client_functions->patch_switches_menu(c->specific_version, s->auto_patches, c->login->account->auto_patches_enabled));
+      send_menu(c, c->require_server_state()->data->client_functions->patch_switches_menu(c->specific_version, s->data->auto_patches, c->login->account->auto_patches_enabled));
       break;
     }
 
@@ -2559,7 +2560,7 @@ static asio::awaitable<void> on_10_main_menu(std::shared_ptr<Client> c, uint32_t
         throw std::runtime_error("client does not support send_function_call");
       }
       co_await prepare_client_for_patches(c);
-      send_menu(c, c->require_server_state()->dol_file_index->menu);
+      send_menu(c, c->require_server_state()->data->dol_file_index->menu);
       break;
     }
 
@@ -2572,7 +2573,7 @@ static asio::awaitable<void> on_10_main_menu(std::shared_ptr<Client> c, uint32_t
       break;
 
     case MainMenuItemID::CLEAR_LICENSE: {
-      auto conf_menu = std::make_shared<Menu>(MenuID::CLEAR_LICENSE_CONFIRMATION, s->name);
+      auto conf_menu = std::make_shared<Menu>(MenuID::CLEAR_LICENSE_CONFIRMATION, s->data->name);
       conf_menu->items.emplace_back(ClearLicenseConfirmationMenuItemID::CANCEL, "Go back",
           "Go back to the\nmain menu", 0);
       conf_menu->items.emplace_back(ClearLicenseConfirmationMenuItemID::CLEAR_LICENSE, "Clear license",
@@ -2607,7 +2608,7 @@ static void on_10_information(std::shared_ptr<Client> c, uint32_t item_id) {
     send_main_menu(c);
   } else {
     try {
-      auto contents = c->require_server_state()->information_contents_for_client(c);
+      auto contents = c->require_server_state()->data->information_contents_for_client(c);
       send_message_box(c, contents->at(item_id));
     } catch (const std::out_of_range&) {
       send_message_box(c, "$C6No such information exists.");
@@ -2694,7 +2695,7 @@ static asio::awaitable<void> on_10_proxy_destinations(std::shared_ptr<Client> c,
     auto s = c->require_server_state();
     const std::pair<std::string, uint16_t>* dest = nullptr;
     try {
-      dest = &s->proxy_destinations(c->version()).at(item_id);
+      dest = &s->data->proxy_destinations(c->version()).at(item_id);
     } catch (const std::out_of_range&) {
     }
 
@@ -2784,7 +2785,7 @@ static void on_10_game_menu(std::shared_ptr<Client> c, uint32_t item_id, const s
 static void on_10_quest_categories(std::shared_ptr<Client> c, uint32_t item_id) {
   if (is_ep3(c->version())) {
     auto s = c->require_server_state();
-    if (!s->ep3_map_index) {
+    if (!s->data->ep3_map_index) {
       send_lobby_message_box(c, "$C7Quests are not available.");
       return;
     }
@@ -2792,7 +2793,7 @@ static void on_10_quest_categories(std::shared_ptr<Client> c, uint32_t item_id) 
 
   } else {
     auto s = c->require_server_state();
-    if (!s->quest_index) {
+    if (!s->data->quest_index) {
       send_lobby_message_box(c, "$C7Quests are not available.");
       return;
     }
@@ -2805,7 +2806,7 @@ static void on_10_quest_categories(std::shared_ptr<Client> c, uint32_t item_id) 
       include_condition = l->quest_include_condition();
     }
 
-    const auto& quests = s->quest_index->filter(episode, version_flags, item_id, include_condition);
+    const auto& quests = s->data->quest_index->filter(episode, version_flags, item_id, include_condition);
     send_quest_menu(c, quests, !l);
   }
 }
@@ -2816,11 +2817,11 @@ static void on_10_quest_menu(std::shared_ptr<Client> c, uint32_t item_id) {
   }
 
   auto s = c->require_server_state();
-  if (!s->quest_index) {
+  if (!s->data->quest_index) {
     send_lobby_message_box(c, "$C7Quests are not\navailable.");
     return;
   }
-  auto q = s->quest_index->get(item_id);
+  auto q = s->data->quest_index->get(item_id);
   if (!q) {
     send_lobby_message_box(c, "$C7Quest does not exist.");
     return;
@@ -2874,7 +2875,7 @@ static void on_10_ep3_download_quest_menu(std::shared_ptr<Client> c, uint32_t it
     throw std::runtime_error("Episode 3 quests can only be downloaded when client is not in a lobby");
   }
 
-  auto map = s->ep3_map_index->map_for_id(item_id);
+  auto map = s->data->ep3_map_index->map_for_id(item_id);
 
   auto vis_flag = (c->version() == Version::GC_EP3_NTE)
       ? Episode3::MapIndex::VisibilityFlag::ONLINE_TRIAL
@@ -2900,12 +2901,12 @@ static void on_10_patch_switches(std::shared_ptr<Client> c, uint32_t item_id) {
     }
 
     auto s = c->require_server_state();
-    auto fn = s->client_functions->get_by_menu_item_id(item_id);
+    auto fn = s->data->client_functions->get_by_menu_item_id(item_id);
     if (!c->login->account->auto_patches_enabled.emplace(fn->short_name).second) {
       c->login->account->auto_patches_enabled.erase(fn->short_name);
     }
     c->login->account->save();
-    send_menu(c, s->client_functions->patch_switches_menu(c->specific_version, s->auto_patches, c->login->account->auto_patches_enabled));
+    send_menu(c, s->data->client_functions->patch_switches_menu(c->specific_version, s->data->auto_patches, c->login->account->auto_patches_enabled));
   }
 }
 
@@ -2919,7 +2920,7 @@ static asio::awaitable<void> on_10_programs(std::shared_ptr<Client> c, uint32_t 
     }
 
     auto s = c->require_server_state();
-    auto dol = s->dol_file_index->item_id_to_file.at(item_id);
+    auto dol = s->data->dol_file_index->item_id_to_file.at(item_id);
     co_await send_dol_file(c, dol); // Disconnects the client
   }
 }
@@ -3119,7 +3120,7 @@ static asio::awaitable<void> on_08_E6(std::shared_ptr<Client> c, Channel::Messag
 static asio::awaitable<void> on_1F(std::shared_ptr<Client> c, Channel::Message& msg) {
   check_size_v(msg.data.size(), 0);
   auto s = c->require_server_state();
-  send_menu(c, s->information_menu(c->version()), true);
+  send_menu(c, s->data->information_menu(c->version()), true);
   co_return;
 }
 
@@ -3652,8 +3653,8 @@ static asio::awaitable<void> on_06(std::shared_ptr<Client> c, Channel::Message& 
   }
 
   auto s = c->require_server_state();
-  char command_sentinel = s->chat_command_sentinel
-      ? s->chat_command_sentinel
+  char command_sentinel = s->data->chat_command_sentinel
+      ? s->data->chat_command_sentinel
       : ((c->version() == Version::DC_11_2000) ? '@' : '$');
   if ((text[0] == command_sentinel) && c->can_use_chat_commands()) {
     if (text[1] == command_sentinel) {
@@ -3970,7 +3971,7 @@ static asio::awaitable<void> on_E5_BB(std::shared_ptr<Client> c, Channel::Messag
     try {
       auto s = c->require_server_state();
       c->create_character_file(
-          c->login->account->account_id, c->language(), cmd.preview.visual, s->level_table(c->version()));
+          c->login->account->account_id, c->language(), cmd.preview.visual, s->data->level_table(c->version()));
     } catch (const std::exception& e) {
       send_message_box(c, std::format("$C6New character could not be created:\n{}", e.what()));
       should_send_approve = false;
@@ -4103,7 +4104,7 @@ static asio::awaitable<void> on_DF_BB(std::shared_ptr<Client> c, Channel::Messag
           if (is_v4(lc->version())) {
             lc->change_bank(lc->bb_character_index);
           }
-          lc->create_challenge_overlay(lc->version(), l->quest->meta.challenge_template_index, s->level_table(lc->version()));
+          lc->create_challenge_overlay(lc->version(), l->quest->meta.challenge_template_index, s->data->level_table(lc->version()));
           lc->log.info_f("Created challenge overlay");
           l->assign_inventory_and_bank_item_ids(lc, true);
         }
@@ -4169,10 +4170,10 @@ static asio::awaitable<void> on_DF_BB(std::shared_ptr<Client> c, Channel::Messag
           ? p->challenge_records.ep2_online_award_state
           : p->challenge_records.ep1_online_award_state;
       award_state.rank_award_flags |= cmd.rank_bitmask;
-      p->add_item(cmd.item, *s->item_stack_limits(c->version()));
+      p->add_item(cmd.item, *s->data->item_stack_limits(c->version()));
       l->on_item_id_generated_externally(cmd.item.id);
       l->log.info_f("(Challenge mode) Item awarded to player {}: {}",
-          c->lobby_client_id, s->describe_item(Version::BB_V4, cmd.item));
+          c->lobby_client_id, s->data->describe_item(Version::BB_V4, cmd.item));
       break;
     }
   }
@@ -4280,18 +4281,18 @@ static void on_choice_search_t(std::shared_ptr<Client> c, const ChoiceSearchConf
         result.info_string.encode(info_string, c->language());
         std::string location_string;
         if (l->is_game()) {
-          location_string = std::format("{},,BLOCK01,{}", l->name, s->name);
+          location_string = std::format("{},,BLOCK01,{}", l->name, s->data->name);
         } else if (l->is_ep3()) {
-          location_string = std::format("BLOCK01-C{:02},,BLOCK01,{}", l->lobby_id - 15, s->name);
+          location_string = std::format("BLOCK01-C{:02},,BLOCK01,{}", l->lobby_id - 15, s->data->name);
         } else {
-          location_string = std::format("BLOCK01-{:02},,BLOCK01,{}", l->lobby_id, s->name);
+          location_string = std::format("BLOCK01-{:02},,BLOCK01,{}", l->lobby_id, s->data->name);
         }
         result.location_string.encode(location_string, c->language());
         result.reconnect_command_header.command = 0x19;
         result.reconnect_command_header.flag = 0x00;
         result.reconnect_command_header.size = sizeof(result.reconnect_command) + sizeof(result.reconnect_command_header);
-        result.reconnect_command.address = s->connect_address_for_client(c);
-        result.reconnect_command.port = s->game_server_port_for_version(c->version());
+        result.reconnect_command.address = s->data->connect_address_for_client(c);
+        result.reconnect_command.port = s->data->game_server_port_for_version(c->version());
         result.meet_user.lobby_refs[0].menu_id = MenuID::LOBBY;
         result.meet_user.lobby_refs[0].item_id = l->lobby_id;
         result.meet_user.player_name.encode(lp->disp.visual.name.decode(lc->language()), c->language());
@@ -4508,7 +4509,7 @@ std::shared_ptr<Lobby> create_game_generic(
 
   auto current_lobby = creator_c->require_lobby();
 
-  size_t min_level = s->default_min_level_for_game(creator_c->version(), episode, difficulty);
+  size_t min_level = s->data->default_min_level_for_game(creator_c->version(), episode, difficulty);
 
   auto p = creator_c->character_file();
   if (!creator_c->login->account->check_flag(Account::Flag::FREE_JOIN_GAMES) && (min_level > p->disp.stats.level)) {
@@ -4524,7 +4525,7 @@ std::shared_ptr<Lobby> create_game_generic(
   game->episode = episode;
   game->mode = mode;
   game->difficulty = difficulty;
-  game->allowed_versions = s->compatibility_groups.at(static_cast<size_t>(creator_c->version()));
+  game->allowed_versions = s->data->compatibility_groups.at(static_cast<size_t>(creator_c->version()));
   static_assert(NUM_VERSIONS == 14, "Don't forget to update the group compatibility restrictions");
   if (!allow_v1 || (difficulty == Difficulty::ULTIMATE) || (mode == GameMode::CHALLENGE) || (mode == GameMode::SOLO)) {
     game->forbid_version(Version::DC_NTE);
@@ -4579,13 +4580,13 @@ std::shared_ptr<Lobby> create_game_generic(
     game->floor_item_managers.emplace_back(game->lobby_id, game->floor_item_managers.size());
   }
 
-  if (s->behavior_enabled(s->cheat_mode_behavior)) {
+  if (s->data->behavior_enabled(s->data->cheat_mode_behavior)) {
     game->set_flag(Lobby::Flag::CHEATS_ENABLED);
   }
-  if (!s->behavior_can_be_overridden(s->cheat_mode_behavior)) {
+  if (!s->data->behavior_can_be_overridden(s->data->cheat_mode_behavior)) {
     game->set_flag(Lobby::Flag::CANNOT_CHANGE_CHEAT_MODE);
   }
-  if (s->use_game_creator_section_id) {
+  if (s->data->use_game_creator_section_id) {
     game->set_flag(Lobby::Flag::USE_CREATOR_SECTION_ID);
   }
   if (watched_lobby || battle_player) {
@@ -4616,8 +4617,8 @@ std::shared_ptr<Lobby> create_game_generic(
     game->battle_player = battle_player;
     battle_player->set_lobby(game);
   }
-  game->base_exp_multiplier = s->bb_global_exp_multiplier;
-  game->exp_share_multiplier = s->exp_share_multiplier;
+  game->base_exp_multiplier = s->data->bb_global_exp_multiplier;
+  game->exp_share_multiplier = s->data->exp_share_multiplier;
 
   const std::unordered_map<uint16_t, IntegralExpression>* quest_flag_rewrites;
   switch (creator_c->version()) {
@@ -4627,31 +4628,31 @@ std::shared_ptr<Lobby> create_game_generic(
     case Version::DC_V2:
     case Version::PC_NTE:
     case Version::PC_V2:
-      quest_flag_rewrites = &s->quest_flag_rewrites_v1_v2;
+      quest_flag_rewrites = &s->data->quest_flag_rewrites_v1_v2;
       if (game->mode == GameMode::BATTLE) {
-        game->drop_mode = s->default_drop_mode_v1_v2_battle;
-        game->allowed_drop_modes = s->allowed_drop_modes_v1_v2_battle;
+        game->drop_mode = s->data->default_drop_mode_v1_v2_battle;
+        game->allowed_drop_modes = s->data->allowed_drop_modes_v1_v2_battle;
       } else if (game->mode == GameMode::CHALLENGE) {
-        game->drop_mode = s->default_drop_mode_v1_v2_challenge;
-        game->allowed_drop_modes = s->allowed_drop_modes_v1_v2_challenge;
+        game->drop_mode = s->data->default_drop_mode_v1_v2_challenge;
+        game->allowed_drop_modes = s->data->allowed_drop_modes_v1_v2_challenge;
       } else {
-        game->drop_mode = s->default_drop_mode_v1_v2_normal;
-        game->allowed_drop_modes = s->allowed_drop_modes_v1_v2_normal;
+        game->drop_mode = s->data->default_drop_mode_v1_v2_normal;
+        game->allowed_drop_modes = s->data->allowed_drop_modes_v1_v2_normal;
       }
       break;
     case Version::GC_NTE:
     case Version::GC_V3:
     case Version::XB_V3:
-      quest_flag_rewrites = &s->quest_flag_rewrites_v3;
+      quest_flag_rewrites = &s->data->quest_flag_rewrites_v3;
       if (game->mode == GameMode::BATTLE) {
-        game->drop_mode = s->default_drop_mode_v3_battle;
-        game->allowed_drop_modes = s->allowed_drop_modes_v3_battle;
+        game->drop_mode = s->data->default_drop_mode_v3_battle;
+        game->allowed_drop_modes = s->data->allowed_drop_modes_v3_battle;
       } else if (game->mode == GameMode::CHALLENGE) {
-        game->drop_mode = s->default_drop_mode_v3_challenge;
-        game->allowed_drop_modes = s->allowed_drop_modes_v3_challenge;
+        game->drop_mode = s->data->default_drop_mode_v3_challenge;
+        game->allowed_drop_modes = s->data->allowed_drop_modes_v3_challenge;
       } else {
-        game->drop_mode = s->default_drop_mode_v3_normal;
-        game->allowed_drop_modes = s->allowed_drop_modes_v3_normal;
+        game->drop_mode = s->data->default_drop_mode_v3_normal;
+        game->allowed_drop_modes = s->data->allowed_drop_modes_v3_normal;
       }
       break;
     case Version::GC_EP3_NTE:
@@ -4661,16 +4662,16 @@ std::shared_ptr<Lobby> create_game_generic(
       game->allowed_drop_modes = (1 << static_cast<size_t>(game->drop_mode));
       break;
     case Version::BB_V4:
-      quest_flag_rewrites = &s->quest_flag_rewrites_v4;
+      quest_flag_rewrites = &s->data->quest_flag_rewrites_v4;
       if (game->mode == GameMode::BATTLE) {
-        game->drop_mode = s->default_drop_mode_v4_battle;
-        game->allowed_drop_modes = s->allowed_drop_modes_v4_battle;
+        game->drop_mode = s->data->default_drop_mode_v4_battle;
+        game->allowed_drop_modes = s->data->allowed_drop_modes_v4_battle;
       } else if (game->mode == GameMode::CHALLENGE) {
-        game->drop_mode = s->default_drop_mode_v4_challenge;
-        game->allowed_drop_modes = s->allowed_drop_modes_v4_challenge;
+        game->drop_mode = s->data->default_drop_mode_v4_challenge;
+        game->allowed_drop_modes = s->data->allowed_drop_modes_v4_challenge;
       } else {
-        game->drop_mode = s->default_drop_mode_v4_normal;
-        game->allowed_drop_modes = s->allowed_drop_modes_v4_normal;
+        game->drop_mode = s->data->default_drop_mode_v4_normal;
+        game->allowed_drop_modes = s->data->allowed_drop_modes_v4_normal;
       }
       // Disallow CLIENT mode on BB
       if (game->drop_mode == ServerDropMode::CLIENT) {
@@ -4698,9 +4699,9 @@ std::shared_ptr<Lobby> create_game_generic(
   bool is_solo = (game->mode == GameMode::SOLO);
 
   if (game->mode == GameMode::CHALLENGE) {
-    game->rare_enemy_rates = s->rare_enemy_rates_challenge;
+    game->rare_enemy_rates = s->data->rare_enemy_rates_challenge;
   } else {
-    game->rare_enemy_rates = s->rare_enemy_rates(game->difficulty);
+    game->rare_enemy_rates = s->data->rare_enemy_rates(game->difficulty);
   }
 
   if (game->episode != Episode::EP3) {
@@ -4714,7 +4715,7 @@ std::shared_ptr<Lobby> create_game_generic(
       auto vars_str = game->variations.str();
       game->log.info_f("Using variations from client override: {}", vars_str);
     } else {
-      auto sdt = s->set_data_table(creator_c->version(), game->episode, game->mode, game->difficulty);
+      auto sdt = s->data->set_data_table(creator_c->version(), game->episode, game->mode, game->difficulty);
       game->variations = sdt->generate_variations(game->episode, is_solo, game->rand_crypt);
       auto vars_str = game->variations.str();
       game->log.info_f("Using random variations: {}", vars_str);
@@ -4850,7 +4851,7 @@ static asio::awaitable<void> on_0C_C1_E7_EC(std::shared_ptr<Client> c, Channel::
 
     game = create_game_generic(s, c, cmd.name.decode(c->language()), cmd.password.decode(c->language()), episode, mode, cmd.difficulty, allow_v1, watched_lobby);
     if (game && (game->episode == Episode::EP3)) {
-      game->ep3_ex_result_values = s->ep3_default_ex_values;
+      game->ep3_ex_result_values = s->data->ep3_default_ex_values;
       if (spectators_forbidden) {
         game->set_flag(Lobby::Flag::SPECTATORS_FORBIDDEN);
       }
@@ -4954,8 +4955,8 @@ static asio::awaitable<void> on_6F(std::shared_ptr<Client> c, Channel::Message& 
     auto s = c->require_server_state();
     std::shared_ptr<const Quest> q;
     try {
-      int64_t quest_num = s->enable_send_function_call_quest_numbers.at(c->specific_version);
-      q = s->quest_index->get(quest_num);
+      int64_t quest_num = s->data->enable_send_function_call_quest_numbers.at(c->specific_version);
+      q = s->data->quest_index->get(quest_num);
     } catch (const std::out_of_range&) {
       throw std::logic_error("cannot find patch enable quest after it was previously found during login");
     }
@@ -5186,8 +5187,8 @@ static asio::awaitable<void> on_D2_V3_BB(std::shared_ptr<Client> c, Channel::Mes
 
       // Delete items that are being given away
       for (const auto& item : c->pending_item_trade->items) {
-        size_t amount = item.stack_size(*s->item_stack_limits(c->version()));
-        p->remove_item(item.id, amount, *s->item_stack_limits(c->version()));
+        size_t amount = item.stack_size(*s->data->item_stack_limits(c->version()));
+        p->remove_item(item.id, amount, *s->data->item_stack_limits(c->version()));
 
         // This is a special case: when the trade is executed, the client deletes the traded items from its own
         // inventory automatically, so we should NOT send the 6x29 to that client; we should only send it to the other
@@ -5203,7 +5204,7 @@ static asio::awaitable<void> on_D2_V3_BB(std::shared_ptr<Client> c, Channel::Mes
       for (const auto& trade_item : other_c->pending_item_trade->items) {
         ItemData added_item = trade_item;
         added_item.id = l->generate_item_id(c->lobby_client_id);
-        p->add_item(added_item, *s->item_stack_limits(c->version()));
+        p->add_item(added_item, *s->data->item_stack_limits(c->version()));
         send_create_inventory_item_to_lobby(c, c->lobby_client_id, added_item);
       }
       send_command(c, 0xD3, 0x00);
@@ -5576,7 +5577,7 @@ static asio::awaitable<void> on_EA_BB(std::shared_ptr<Client> c, Channel::Messag
           send_team_metadata_change_notifications(s, team, 0, TeamMetadataChange::REWARD_FLAGS);
         }
         if (!reward.reward_item.empty()) {
-          c->bank_file()->add_item(reward.reward_item, *s->item_stack_limits(c->version()));
+          c->bank_file()->add_item(reward.reward_item, *s->data->item_stack_limits(c->version()));
           c->print_bank();
         }
       }

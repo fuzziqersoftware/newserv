@@ -21,8 +21,9 @@ public:
   ~ReplaySession() = default;
 
   asio::awaitable<void> run();
-  inline bool failed() const {
-    return this->run_failed;
+
+  inline std::string failure_str() const {
+    return this->failure;
   }
 
 private:
@@ -62,7 +63,8 @@ private:
   };
 
   std::shared_ptr<ServerState> state;
-  bool prev_psov2_crypt_enabled;
+  bool use_psov2_rand_crypt = false;
+  bool use_legacy_item_random_behavior = false;
 
   std::unordered_map<uint64_t, std::shared_ptr<Client>> clients;
 
@@ -75,7 +77,7 @@ private:
   size_t bytes_received;
 
   asio::steady_timer idle_timeout_timer;
-  bool run_failed;
+  std::string failure;
 
   std::shared_ptr<ReplaySession::Event> create_event(Event::Type type, std::shared_ptr<Client> c, size_t line_num);
 

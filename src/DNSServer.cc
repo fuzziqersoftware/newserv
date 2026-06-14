@@ -14,8 +14,7 @@
 #include "NetworkAddresses.hh"
 #include "ServerState.hh"
 
-DNSServer::DNSServer(std::shared_ptr<ServerState> state)
-    : state(state) {}
+DNSServer::DNSServer(std::shared_ptr<ServerState> state) : state(state) {}
 
 void DNSServer::listen(const std::string& addr, int port) {
   if (port == 0) {
@@ -62,11 +61,11 @@ asio::awaitable<void> DNSServer::dns_server_task(std::shared_ptr<asio::ip::udp::
     if (bytes < 0x0C) {
       dns_server_log.warning_f("input query too small");
       phosg::print_data(stderr, input.data(), bytes);
-    } else if (!this->state->banned_ipv4_ranges->check(sender_addr)) {
+    } else if (!this->state->data->banned_ipv4_ranges->check(sender_addr)) {
       input.resize(bytes);
       uint32_t connect_address = is_local_address(sender_addr)
-          ? this->state->local_address
-          : this->state->external_address;
+          ? this->state->data->local_address
+          : this->state->data->external_address;
       std::string response = this->response_for_query(input, connect_address);
       co_await sock->async_send_to(asio::buffer(response.data(), response.size()), sender_ep, asio::use_awaitable);
     }

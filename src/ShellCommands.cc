@@ -185,51 +185,55 @@ ShellCommand c_reload(
       auto types = phosg::split(args.args, ' ');
       for (const auto& type : types) {
         if (type == "all") {
-          args.s->load_all(true);
+          args.s->data->load_all();
+          args.s->disconnect_all_banned_clients();
+          args.s->update_default_lobby_events_from_config();
         } else if (type == "bb-keys") {
-          args.s->load_bb_private_keys();
+          args.s->data->load_bb_private_keys();
         } else if (type == "accounts") {
           args.s->load_accounts();
         } else if (type == "maps") {
-          args.s->load_maps();
+          args.s->data->load_maps();
         } else if (type == "patch-files") {
-          args.s->load_patch_indexes();
+          args.s->data->load_patch_indexes();
         } else if (type == "ep3-cards") {
-          args.s->load_ep3_cards();
+          args.s->data->load_ep3_cards();
         } else if (type == "ep3-maps") {
-          args.s->load_ep3_maps();
+          args.s->data->load_ep3_maps();
         } else if (type == "ep3-tournaments") {
           args.s->load_ep3_tournament_state();
         } else if (type == "functions") {
-          args.s->compile_functions();
+          args.s->data->compile_functions();
         } else if (type == "dol-files") {
-          args.s->load_dol_files();
+          args.s->data->load_dol_files();
         } else if (type == "set-tables") {
-          args.s->load_set_data_tables();
+          args.s->data->load_set_data_tables();
         } else if (type == "battle-params") {
-          args.s->load_battle_params();
-          args.s->generate_bb_stream_file();
+          args.s->data->load_battle_params();
+          args.s->data->generate_bb_stream_file();
         } else if (type == "level-tables") {
-          args.s->load_level_tables();
-          args.s->generate_bb_stream_file();
+          args.s->data->load_level_tables();
+          args.s->data->generate_bb_stream_file();
         } else if (type == "text-index") {
-          args.s->load_text_index();
+          args.s->data->load_text_index();
         } else if (type == "word-select") {
-          args.s->load_word_select_table();
+          args.s->data->load_word_select_table();
         } else if (type == "item-definitions") {
-          args.s->load_item_definitions();
-          args.s->generate_bb_stream_file();
+          args.s->data->load_item_definitions();
+          args.s->data->generate_bb_stream_file();
         } else if (type == "item-name-index") {
-          args.s->load_item_name_indexes();
+          args.s->data->load_item_name_indexes();
         } else if (type == "drop-tables") {
-          args.s->load_drop_tables();
+          args.s->data->load_drop_tables();
         } else if (type == "config") {
-          args.s->load_config_early();
-          args.s->load_config_late();
+          args.s->data->load_config_early();
+          args.s->data->load_config_late();
+          args.s->disconnect_all_banned_clients();
+          args.s->update_default_lobby_events_from_config();
         } else if (type == "teams") {
           args.s->load_teams();
         } else if (type == "quests") {
-          args.s->load_quest_index();
+          args.s->data->load_quest_index();
         } else {
           throw std::runtime_error("invalid data type: " + type);
         }
@@ -663,7 +667,7 @@ ShellCommand c_announce_mail(
     "announce-mail", "announce-mail MESSAGE\n\
     Send an announcement message via Simple Mail to all players.",
     +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
-      send_simple_mail(args.s, 0, args.s->name, args.args);
+      send_simple_mail(args.s, 0, args.s->data->name, args.args);
       co_return std::deque<std::string>{};
     });
 
@@ -698,7 +702,7 @@ ShellCommand c_create_tournament(
     +[](ShellCommand::Args& args) -> asio::awaitable<std::deque<std::string>> {
       std::string name = get_quoted_string(args.args);
       std::string map_name = get_quoted_string(args.args);
-      auto map = args.s->ep3_map_index->map_for_name(map_name);
+      auto map = args.s->data->ep3_map_index->map_for_name(map_name);
       uint32_t num_teams = std::stoul(get_quoted_string(args.args), nullptr, 0);
       Episode3::Rules rules;
       rules.set_defaults();
@@ -1089,13 +1093,14 @@ ShellCommand c_create_item(
         throw std::runtime_error("proxy session is not game leader");
       }
 
-      ItemData item = args.s->parse_item_description(c->version(), args.args);
+      ItemData item = args.s->data->parse_item_description(c->version(), args.args);
       item.id = phosg::random_object<uint32_t>() | 0x80000000;
 
       send_drop_stacked_item_to_channel(args.s, c->channel, item, c->floor, c->pos);
       send_drop_stacked_item_to_channel(args.s, c->proxy_session->server_channel, item, c->floor, c->pos);
 
-      std::string name = args.s->describe_item(c->version(), item, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
+      std::string name = args.s->data->describe_item(
+          c->version(), item, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
       send_text_message(c->channel, "$C7Item created:\n" + name);
       co_return std::deque<std::string>{};
     });
