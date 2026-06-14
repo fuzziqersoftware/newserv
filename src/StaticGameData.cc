@@ -121,13 +121,13 @@ static const std::array<const char*, 10> section_id_to_name = {
 static const std::array<const char*, 10> section_id_to_abbreviation = {
     "Vir", "Grn", "Sky", "Blu", "Prp", "Pnk", "Red", "Orn", "Ylw", "Wht"};
 
-const std::unordered_map<std::string, uint8_t> name_to_section_id({{"viridia", 0},
+const std::unordered_map<std::string, uint8_t> name_to_section_id{
     // Greennill is spelled Greenill in some places, so we accept both spellings
-    {"greennill", 1}, {"greenill", 1}, {"skyly", 2}, {"bluefull", 3}, {"purplenum", 4}, {"pinkal", 5}, {"redria", 6},
-    {"oran", 7}, {"yellowboze", 8}, {"whitill", 9},
+    {"viridia", 0}, {"greennill", 1}, {"greenill", 1}, {"skyly", 2}, {"bluefull", 3}, {"purplenum", 4}, {"pinkal", 5},
+    {"redria", 6}, {"oran", 7}, {"yellowboze", 8}, {"whitill", 9},
 
     // Shortcuts for chat commands
-    {"b", 3}, {"g", 1}, {"o", 7}, {"pi", 5}, {"pu", 4}, {"r", 6}, {"s", 2}, {"v", 0}, {"w", 9}, {"y", 8}});
+    {"b", 3}, {"g", 1}, {"o", 7}, {"pi", 5}, {"pu", 4}, {"r", 6}, {"s", 2}, {"v", 0}, {"w", 9}, {"y", 8}};
 
 const std::vector<std::string> lobby_event_to_name = {
     "none", "xmas", "none", "val", "easter", "hallo", "sonic", "newyear",
@@ -673,10 +673,10 @@ char char_for_challenge_rank(uint8_t rank) {
   return "BAS"[rank];
 }
 
-const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V123({0, 19, 39, 79});
-const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP1({0, 19, 39, 79});
-const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP2({0, 29, 49, 89});
-const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP4({0, 39, 79, 109});
+const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V123{{0, 19, 39, 79}};
+const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP1{{0, 19, 39, 79}};
+const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP2{{0, 29, 49, 89}};
+const std::array<size_t, 4> DEFAULT_MIN_LEVELS_V4_EP4{{0, 39, 79, 109}};
 
 const std::array<GameMode, 2> ALL_GAME_MODES_V1 = {GameMode::NORMAL, GameMode::BATTLE};
 const std::array<GameMode, 3> ALL_GAME_MODES_V23 = {GameMode::NORMAL, GameMode::BATTLE, GameMode::CHALLENGE};

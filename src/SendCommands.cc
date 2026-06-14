@@ -33,7 +33,7 @@ inline uint8_t get_pre_v1_subcommand(Version v, uint8_t nte_subcommand, uint8_t 
   }
 }
 
-const std::unordered_set<uint32_t> v2_crypt_initial_client_commands({
+const std::unordered_set<uint32_t> v2_crypt_initial_client_commands{
     0x00260088, // (17) DCNTE license check
     0x00B0008B, // (02) DCNTE login
     0x00B0018B, // (02) DCNTE login (UDP off)
@@ -52,20 +52,20 @@ const std::unordered_set<uint32_t> v2_crypt_initial_client_commands({
     0x0130019D, // (02) DCv2/GCNTE extended login (UDP off)
     // Note: PSO PC initial commands are not listed here because we don't use a detector encryption for PSO PC
     // (instead, we use the split reconnect command to send PC to a different port).
-});
-const std::unordered_set<uint32_t> v3_crypt_initial_client_commands({
+};
+const std::unordered_set<uint32_t> v3_crypt_initial_client_commands{
     0x00E000DB, // (17) GC/XB license check
     0x00EC009E, // (02) GC login
     0x00EC019E, // (02) GC login (UDP off)
     0x0150009E, // (02) GC extended login
     0x0150019E, // (02) GC extended login (UDP off)
-});
+};
 
-const std::unordered_set<std::string> bb_crypt_initial_client_commands({
+const std::unordered_set<std::string> bb_crypt_initial_client_commands{
     std::string("\xB4\x00\x93\x00\x00\x00\x00\x00", 8),
     std::string("\xAC\x00\x93\x00\x00\x00\x00\x00", 8),
     std::string("\xDC\x00\xDB\x00\x00\x00\x00\x00", 8),
-});
+};
 
 void send_command(
     std::shared_ptr<Client> c,

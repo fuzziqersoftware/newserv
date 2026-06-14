@@ -515,7 +515,7 @@ struct WeaponRootT {
   U32T<BE> favored_grind_range_table; // {u32 min, u32 max}[6]
 } __packed_ws_be__(WeaponRootT, 0x20);
 
-const std::array<std::pair<uint8_t, uint8_t>, 0x48> WeaponShopRandomSet::type_defs({
+const std::array<std::pair<uint8_t, uint8_t>, 0x48> WeaponShopRandomSet::type_defs{{
     /* 00 */ {0x01, 0x00}, // Saber
     /* 01 */ {0x01, 0x01}, // Brand
     /* 02 */ {0x01, 0x02}, // Buster
@@ -588,9 +588,9 @@ const std::array<std::pair<uint8_t, uint8_t>, 0x48> WeaponShopRandomSet::type_de
     /* 45 */ {0x0A, 0x05}, // MACE OF ADAMAN
     /* 46 */ {0x0C, 0x05}, // ICE STAFF:DAGON
     /* 47 */ {0x0B, 0x05}, // BRAVE HAMMER
-});
+}};
 
-const std::array<std::pair<uint8_t, uint8_t>, 10> WeaponShopRandomSet::type_defs_39({
+const std::array<std::pair<uint8_t, uint8_t>, 10> WeaponShopRandomSet::type_defs_39{{
     // Indexed by section_id
     {0x28, 0x00}, // HARISEN BATTLE FAN
     {0x2A, 0x00}, // AKIKO'S WOK
@@ -602,9 +602,9 @@ const std::array<std::pair<uint8_t, uint8_t>, 10> WeaponShopRandomSet::type_defs
     {0x59, 0x00}, // BROOM
     {0x8A, 0x00}, // SANGE
     {0x99, 0x00}, // ANGEL HARP
-});
+}};
 
-const std::array<std::pair<uint8_t, uint8_t>, 10> WeaponShopRandomSet::type_defs_3A({
+const std::array<std::pair<uint8_t, uint8_t>, 10> WeaponShopRandomSet::type_defs_3A{{
     // Indexed by section_id
     {0x99, 0x00}, // ANGEL HARP
     {0x64, 0x00}, // CHAMELEON SCYTHE
@@ -616,7 +616,7 @@ const std::array<std::pair<uint8_t, uint8_t>, 10> WeaponShopRandomSet::type_defs
     {0x2A, 0x00}, // AKIKO'S WOK
     {0x48, 0x00}, // SAMBA MARACAS
     {0x35, 0x00}, // CRAZY TUNE
-});
+}};
 
 const std::array<int8_t, 20> WeaponShopRandomSet::bonus_values{
     -50, -45, -40, -35, -30, -25, -20, -15, -10, -5, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50};

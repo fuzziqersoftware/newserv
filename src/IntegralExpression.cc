@@ -158,26 +158,42 @@ std::string IntegralExpression::UnaryOperatorNode::str() const {
   }
 }
 
-IntegralExpression::FlagLookupNode::FlagLookupNode(uint16_t flag_index) : flag_index(flag_index) {}
+bool IntegralExpression::SectionIDLookupNode::operator==(const Node& other) const {
+  return (dynamic_cast<const SectionIDLookupNode*>(&other) != nullptr);
+}
 
-bool IntegralExpression::FlagLookupNode::operator==(const Node& other) const {
+int64_t IntegralExpression::SectionIDLookupNode::evaluate(const Env& env) const {
+  return env.section_id;
+}
+
+std::string IntegralExpression::SectionIDLookupNode::str() const {
+  return "P_SID";
+}
+
+IntegralExpression::QuestFlagLookupNode::QuestFlagLookupNode(Difficulty difficulty, uint16_t flag_index)
+    : difficulty(difficulty), flag_index(flag_index) {}
+
+bool IntegralExpression::QuestFlagLookupNode::operator==(const Node& other) const {
   try {
-    const FlagLookupNode& other_flag = dynamic_cast<const FlagLookupNode&>(other);
-    return other_flag.flag_index == this->flag_index;
+    const QuestFlagLookupNode& other_flag = dynamic_cast<const QuestFlagLookupNode&>(other);
+    return ((other_flag.difficulty == this->difficulty) && (other_flag.flag_index == this->flag_index));
   } catch (const std::bad_cast&) {
     return false;
   }
 }
 
-int64_t IntegralExpression::FlagLookupNode::evaluate(const Env& env) const {
+int64_t IntegralExpression::QuestFlagLookupNode::evaluate(const Env& env) const {
   if (!env.flags) {
     throw std::runtime_error("quest flags not available");
   }
-  return env.flags->get(this->flag_index) ? 1 : 0;
+  Difficulty effective_difficulty = (this->difficulty == Difficulty::UNKNOWN) ? env.difficulty : this->difficulty;
+  return env.flags->get(effective_difficulty, this->flag_index) ? 1 : 0;
 }
 
-std::string IntegralExpression::FlagLookupNode::str() const {
-  return std::format("F_{:04X}", this->flag_index);
+std::string IntegralExpression::QuestFlagLookupNode::str() const {
+  return (this->difficulty == Difficulty::UNKNOWN)
+      ? std::format("F_{:04X}", this->flag_index)
+      : std::format("F_{:c}_{:04X}", abbreviation_for_difficulty(this->difficulty), this->flag_index);
 }
 
 IntegralExpression::ChallengeCompletionLookupNode::ChallengeCompletionLookupNode(Episode episode, uint8_t stage_index)
@@ -380,16 +396,29 @@ std::unique_ptr<const IntegralExpression::Node> IntegralExpression::parse_expr(s
   }
 
   // Check for env lookups
+  if (text == "P_SID") {
+    return std::make_unique<SectionIDLookupNode>();
+  }
   if (text.starts_with("F_")) {
+    Difficulty difficulty = Difficulty::UNKNOWN;
+    if (text.starts_with("F_N_")) {
+      difficulty = Difficulty::NORMAL;
+    } else if (text.starts_with("F_H_")) {
+      difficulty = Difficulty::HARD;
+    } else if (text.starts_with("F_V_")) {
+      difficulty = Difficulty::VERY_HARD;
+    } else if (text.starts_with("F_U_")) {
+      difficulty = Difficulty::ULTIMATE;
+    }
     char* endptr = nullptr;
-    uint64_t flag = strtoul(text.data() + 2, &endptr, 16);
+    uint64_t flag = strtoul(text.data() + ((difficulty == Difficulty::UNKNOWN) ? 2 : 4), &endptr, 16);
     if (endptr != text.data() + text.size()) {
       throw std::runtime_error("invalid flag lookup token");
     }
     if (flag >= 0x400) {
       throw std::runtime_error("invalid flag index");
     }
-    return std::make_unique<FlagLookupNode>(flag);
+    return std::make_unique<QuestFlagLookupNode>(difficulty, flag);
   }
   if (text.starts_with("CC_")) {
     Episode episode;

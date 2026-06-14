@@ -377,7 +377,9 @@ bool Client::evaluate_quest_availability_expression(
   }
   auto p = this->character_file();
   IntegralExpression::Env env = {
-      .flags = &p->quest_flags.data.at(static_cast<size_t>(difficulty)),
+      .section_id = p->disp.visual.sh.section_id,
+      .difficulty = difficulty,
+      .flags = &p->quest_flags,
       .challenge_records = &p->challenge_records,
       .team = this->team(),
       .num_players = num_players,

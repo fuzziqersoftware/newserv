@@ -4735,7 +4735,9 @@ std::shared_ptr<Lobby> create_game_generic(
 
   if (quest_flag_rewrites && !quest_flag_rewrites->empty()) {
     IntegralExpression::Env env = {
-        .flags = &p->quest_flags.array(difficulty),
+        .section_id = game->effective_section_id(),
+        .difficulty = game->difficulty,
+        .flags = &p->quest_flags,
         .challenge_records = &p->challenge_records,
         .team = creator_c->team(),
         .num_players = 1,
