@@ -162,7 +162,7 @@ list(TRANSFORM LOG_TEST_CASES PREPEND "--replay-log=" OUTPUT_VARIABLE LOG_REPLAY
 add_test(
     NAME "log-replays"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    COMMAND ${CMAKE_BINARY_DIR}/newserv --parallel --config=${CMAKE_SOURCE_DIR}/tests/config.json ${LOG_REPLAY_ARGS})
+    COMMAND ${CMAKE_BINARY_DIR}/newserv --debug --parallel --config=${CMAKE_SOURCE_DIR}/tests/config.json ${LOG_REPLAY_ARGS})
 
 file(GLOB SCRIPT_TEST_CASES ${CMAKE_SOURCE_DIR}/tests/*.test.sh)
 foreach(SCRIPT_TEST_CASE IN ITEMS ${SCRIPT_TEST_CASES})
