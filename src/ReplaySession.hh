@@ -35,27 +35,27 @@ private:
       RECEIVE,
     };
     Type type;
-    uint64_t client_id;
+    size_t event_number = 0;
+    size_t next_event_number = 0;
+    uint64_t client_id = 0;
     std::string data; // Only used for SEND and RECEIVE
     std::string mask; // Only used for RECEIVE
-    bool allow_size_disparity;
-    bool complete;
-    size_t line_num;
+    bool allow_size_disparity = false;
+    bool complete = false;
+    size_t line_num = 0;
 
-    std::shared_ptr<Event> next_event;
-
-    Event(Type type, uint64_t client_id, size_t line_num);
+    Event(Type type, size_t event_number, uint64_t client_id, size_t line_num);
 
     std::string str() const;
   };
 
   struct Client {
-    uint64_t id;
-    uint16_t port;
-    Version version;
+    uint64_t id = 0;
+    uint16_t port = 0;
+    Version version = Version::UNKNOWN;
     std::shared_ptr<PeerChannel> channel;
-    std::deque<std::shared_ptr<Event>> receive_events;
-    std::shared_ptr<Event> disconnect_event;
+    std::deque<size_t> pending_receive_event_numbers;
+    size_t disconnect_event_number = 0;
 
     Client(std::shared_ptr<asio::io_context> io_context, uint64_t id, uint16_t port, Version version);
 
@@ -68,20 +68,19 @@ private:
 
   std::unordered_map<uint64_t, std::shared_ptr<Client>> clients;
 
-  std::shared_ptr<Event> first_event;
-  std::shared_ptr<Event> last_event;
+  std::map<size_t, Event> events;
 
-  size_t commands_sent;
-  size_t bytes_sent;
-  size_t commands_received;
-  size_t bytes_received;
+  size_t commands_sent = 0;
+  size_t bytes_sent = 0;
+  size_t commands_received = 0;
+  size_t bytes_received = 0;
 
   asio::steady_timer idle_timeout_timer;
   std::string failure;
 
-  std::shared_ptr<ReplaySession::Event> create_event(Event::Type type, std::shared_ptr<Client> c, size_t line_num);
+  ReplaySession::Event& create_event(Event::Type type, std::shared_ptr<Client> c, size_t line_num);
 
-  void apply_default_mask(std::shared_ptr<Event> ev);
+  void apply_default_mask(Event& ev) const;
 
   void reschedule_idle_timeout();
 };

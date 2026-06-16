@@ -1,7 +1,6 @@
 #include "SendCommands.hh"
 
 #include <inttypes.h>
-#include <stdarg.h>
 #include <string.h>
 
 #include <functional>

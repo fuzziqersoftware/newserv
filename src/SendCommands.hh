@@ -1,7 +1,6 @@
 #pragma once
 
 #include <inttypes.h>
-#include <stdarg.h>
 #include <stddef.h>
 
 #include <memory>

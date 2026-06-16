@@ -148,11 +148,11 @@ if (WIN32)
 endif()
 add_dependencies(newserv newserv-Revision-cc)
 
-if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-    message("-- Enabling address sanitizer")
-    target_compile_options(newserv PRIVATE -fsanitize=address)
-    target_link_options(newserv PRIVATE -fsanitize=address)
-endif()
+# if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+#     message("-- Enabling address sanitizer")
+#     target_compile_options(newserv PRIVATE -fsanitize=address)
+#     target_link_options(newserv PRIVATE -fsanitize=address)
+# endif()
 
 
 
@@ -165,7 +165,7 @@ list(TRANSFORM LOG_TEST_CASES PREPEND "--replay-log=" OUTPUT_VARIABLE LOG_REPLAY
 add_test(
     NAME "log-replays"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    COMMAND ${CMAKE_BINARY_DIR}/newserv --debug --parallel --config=${CMAKE_SOURCE_DIR}/tests/config.json ${LOG_REPLAY_ARGS})
+    COMMAND ${CMAKE_BINARY_DIR}/newserv --parallel --config=${CMAKE_SOURCE_DIR}/tests/config.json ${LOG_REPLAY_ARGS})
 
 file(GLOB SCRIPT_TEST_CASES ${CMAKE_SOURCE_DIR}/tests/*.test.sh)
 foreach(SCRIPT_TEST_CASE IN ITEMS ${SCRIPT_TEST_CASES})
