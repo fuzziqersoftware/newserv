@@ -148,8 +148,11 @@ if (WIN32)
 endif()
 add_dependencies(newserv newserv-Revision-cc)
 
-# target_compile_options(newserv PRIVATE -fsanitize=address)
-# target_link_options(newserv PRIVATE -fsanitize=address)
+if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+    message("-- Enabling address sanitizer")
+    target_compile_options(newserv PRIVATE -fsanitize=address)
+    target_link_options(newserv PRIVATE -fsanitize=address)
+endif()
 
 
 
