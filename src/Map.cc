@@ -3491,7 +3491,7 @@ const std::array<uint32_t, 41> MapFile::RAND_ENEMY_BASE_TYPES = {
 };
 
 MapFile::MapFile(std::shared_ptr<const std::string> data) {
-  for (uint8_t z = 0; z < this->sections_for_floor.size(); z++) {
+  for (size_t z = 0; z < this->sections_for_floor.size(); z++) {
     this->sections_for_floor[z].floor = z;
   }
 
@@ -3542,7 +3542,7 @@ MapFile::MapFile(
     std::shared_ptr<const std::string> objects_data,
     std::shared_ptr<const std::string> enemies_data,
     std::shared_ptr<const std::string> events_data) {
-  for (uint8_t z = 0; z < this->sections_for_floor.size(); z++) {
+  for (size_t z = 0; z < this->sections_for_floor.size(); z++) {
     this->sections_for_floor[z].floor = z;
   }
   if (objects_data) {
@@ -3560,9 +3560,8 @@ MapFile::MapFile(
   this->compute_floor_start_indexes();
 }
 
-MapFile::MapFile(uint32_t generated_with_random_seed)
-    : generated_with_random_seed(generated_with_random_seed) {
-  for (uint8_t z = 0; z < this->sections_for_floor.size(); z++) {
+MapFile::MapFile(uint32_t generated_with_random_seed) : generated_with_random_seed(generated_with_random_seed) {
+  for (size_t z = 0; z < this->sections_for_floor.size(); z++) {
     this->sections_for_floor[z].floor = z;
   }
 }
@@ -4010,7 +4009,7 @@ std::string MapFile::disassemble_action_stream(const void* data, size_t size) {
 
 std::string MapFile::disassemble(bool reassembly, Version version) const {
   std::deque<std::string> ret;
-  for (uint8_t floor = 0; floor < this->sections_for_floor.size(); floor++) {
+  for (size_t floor = 0; floor < this->sections_for_floor.size(); floor++) {
     const auto& sf = this->sections_for_floor[floor];
     phosg::StringReader as_r(sf.event_action_stream, sf.event_action_stream_bytes);
 
@@ -4191,24 +4190,27 @@ std::string MapFile::serialize() const {
     }
   };
   std::set<SectionOrderEntry> sections_to_serialize;
-  for (uint8_t floor = 0; floor < this->sections_for_floor.size(); floor++) {
+  for (size_t floor = 0; floor < this->sections_for_floor.size(); floor++) {
     const auto& sf = this->sections_for_floor[floor];
     if (sf.object_sets) {
-      sections_to_serialize.emplace(SectionOrderEntry{T::OBJECT_SETS, floor, sf.object_sets_file_offset});
+      sections_to_serialize.emplace(SectionOrderEntry{
+          T::OBJECT_SETS, static_cast<uint8_t>(floor), sf.object_sets_file_offset});
     }
     if (sf.enemy_sets) {
-      sections_to_serialize.emplace(SectionOrderEntry{T::ENEMY_SETS, floor, sf.enemy_sets_file_offset});
+      sections_to_serialize.emplace(SectionOrderEntry{
+          T::ENEMY_SETS, static_cast<uint8_t>(floor), sf.enemy_sets_file_offset});
     }
     if (sf.events1 || sf.events2) {
-      sections_to_serialize.emplace(SectionOrderEntry{T::EVENTS, floor, sf.events_file_offset});
+      sections_to_serialize.emplace(SectionOrderEntry{
+          T::EVENTS, static_cast<uint8_t>(floor), sf.events_file_offset});
     }
     if (sf.random_enemy_room_count && sf.random_enemy_locations) {
       sections_to_serialize.emplace(SectionOrderEntry{
-          T::RANDOM_ENEMY_LOCATIONS, floor, sf.random_enemy_locations_file_offset});
+          T::RANDOM_ENEMY_LOCATIONS, static_cast<uint8_t>(floor), sf.random_enemy_locations_file_offset});
     }
     if (sf.random_enemy_definitions && sf.random_enemy_weights) {
       sections_to_serialize.emplace(SectionOrderEntry{
-          T::RANDOM_ENEMY_DEFINITIONS, floor, sf.random_enemy_definitions_file_offset});
+          T::RANDOM_ENEMY_DEFINITIONS, static_cast<uint8_t>(floor), sf.random_enemy_definitions_file_offset});
     }
   }
 
