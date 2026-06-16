@@ -4252,67 +4252,66 @@ Action a_run_server_replay_log(
       std::shared_ptr<ServerShell> shell;
       std::shared_ptr<SignalWatcher> signal_watcher;
       std::map<std::string, std::shared_ptr<ReplaySession>> replay_sessions;
+      size_t completed_replay_count = 0;
+
+      auto run_replay = [&](const std::string& log_filename) -> asio::awaitable<void> {
+        auto replay_state = state->clone_shared();
+        replay_state->game_server = std::make_shared<GameServer>(replay_state);
+
+        phosg::log_info_f("[Replay] Loading {}", log_filename);
+        auto log_f = phosg::fopen_unique(log_filename, "rt");
+        auto replay_session = std::make_shared<ReplaySession>(replay_state, log_f.get());
+        replay_sessions.emplace(log_filename, replay_session);
+
+        phosg::log_info_f("[Replay] {} ...", log_filename);
+        co_await replay_session->run();
+        if (!replay_session->failure_str().empty()) {
+          phosg::log_error_f("[Replay] {} failed:\n{}", log_filename, replay_session->failure_str());
+        } else {
+          phosg::log_info_f("[Replay] {} OK", log_filename);
+        }
+
+        completed_replay_count++;
+        if (completed_replay_count == replay_log_filenames.size()) {
+          phosg::log_info_f("[Replay] All replays complete; exiting");
+          state->io_context->stop();
+        }
+      };
+      auto run_replays_sequentially = [&]() -> asio::awaitable<void> {
+        try {
+          for (const auto& [log_filename, replay_session] : replay_sessions) {
+            phosg::log_info_f("[Replay] {} ...", log_filename);
+            co_await replay_session->run();
+            if (!replay_session->failure_str().empty()) {
+              phosg::log_error_f("[Replay] {} failed:\n{}", log_filename, replay_session->failure_str());
+              break;
+            }
+            phosg::log_info_f("[Replay] {} OK", log_filename);
+            state->reset_between_replays();
+          }
+          phosg::log_info_f("[Replay] All replays complete");
+        } catch (const std::exception& e) {
+          phosg::log_info_f("[Replay] Replays failed: {}", e.what());
+        }
+        state->io_context->stop();
+      };
+
       if (!replay_log_filenames.empty()) {
         // TODO: Do this properly via a config option, you lazy bum
         state->data->dol_file_index = std::make_shared<DOLFileIndex>();
         state->game_server = std::make_shared<GameServer>(state);
 
         if (args.get<bool>("parallel")) {
-          size_t completed_count = 0;
-          auto run_replay = [&](const std::string& log_filename) -> asio::awaitable<void> {
-            auto replay_state = state->clone_shared();
-            replay_state->game_server = std::make_shared<GameServer>(replay_state);
-
-            phosg::log_info_f("[Replay] Loading {}", log_filename);
-            auto log_f = phosg::fopen_unique(log_filename, "rt");
-            auto replay_session = std::make_shared<ReplaySession>(replay_state, log_f.get());
-            replay_sessions.emplace(log_filename, replay_session);
-
-            phosg::log_info_f("[Replay] {} ...", log_filename);
-            co_await replay_session->run();
-            if (!replay_session->failure_str().empty()) {
-              phosg::log_error_f("[Replay] {} failed:\n{}", log_filename, replay_session->failure_str());
-            } else {
-              phosg::log_info_f("[Replay] {} OK", log_filename);
-            }
-
-            completed_count++;
-            if (completed_count == replay_log_filenames.size()) {
-              phosg::log_info_f("[Replay] All replays complete; exiting");
-              state->io_context->stop();
-            }
-          };
-
           for (const auto& log_filename : replay_log_filenames) {
             asio::co_spawn(*state->io_context, run_replay(log_filename), asio::detached);
           }
-
         } else {
           for (const auto& log_filename : replay_log_filenames) {
             phosg::log_info_f("[Replay] Loading {}", log_filename);
             auto log_f = phosg::fopen_unique(log_filename, "rt");
             replay_sessions.emplace(log_filename, std::make_shared<ReplaySession>(state, log_f.get()));
           }
-
-          auto run_replays = [&]() -> asio::awaitable<void> {
-            try {
-              for (const auto& [log_filename, replay_session] : replay_sessions) {
-                phosg::log_info_f("[Replay] {} ...", log_filename);
-                co_await replay_session->run();
-                if (!replay_session->failure_str().empty()) {
-                  phosg::log_error_f("[Replay] {} failed:\n{}", log_filename, replay_session->failure_str());
-                  break;
-                }
-                phosg::log_info_f("[Replay] {} OK", log_filename);
-                state->reset_between_replays();
-              }
-              phosg::log_info_f("[Replay] All replays complete");
-            } catch (const std::exception& e) {
-              phosg::log_info_f("[Replay] Replays failed: {}", e.what());
-            }
-            state->io_context->stop();
-          };
-          asio::co_spawn(*state->io_context, run_replays, asio::detached);
+          asio::co_spawn(*state->io_context, run_replays_sequentially(), asio::detached);
         }
 
       } else {
