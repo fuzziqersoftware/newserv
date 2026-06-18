@@ -967,7 +967,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     // The .psochar files are BB-format, so we resolve item names against
     // the BB item parameter table. If that table isn't loaded for some
     // reason, all items fall through to "Unknown" rather than crashing.
-    auto bb_name_index = this->state->item_name_index_opt(Version::BB_V4);
+    auto bb_name_index = this->state->data->item_name_index_opt(Version::BB_V4);
     walk_backup_characters([&res, &bb_name_index](
                                std::shared_ptr<PSOBBCharacterFile> ch,
                                uint32_t account_id,
@@ -1145,7 +1145,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
           // Skip flag indices that don't correspond to a real quest in
           // the current quest index. Prevents stale bits from removed
           // or never-installed quests from showing up as ghost entries.
-          if (!this->state->quest_index->get(quest_num)) {
+          if (!this->state->data->quest_index->get(quest_num)) {
             continue;
           }
           auto difficulties = phosg::JSON::list();
