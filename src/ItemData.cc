@@ -6,10 +6,10 @@
 #include "ItemParameterTable.hh"
 #include "StaticGameData.hh"
 
-const std::vector<uint8_t> ItemData::StackLimits::DEFAULT_TOOL_LIMITS_DC_NTE({10});
-const std::vector<uint8_t> ItemData::StackLimits::DEFAULT_TOOL_LIMITS_V1_V2({10, 10, 1, 10, 10, 10, 10, 10, 10, 1});
-const std::vector<uint8_t> ItemData::StackLimits::DEFAULT_TOOL_LIMITS_V3_V4(
-    {10, 10, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 1, 99, 1});
+const std::vector<uint8_t> ItemData::StackLimits::DEFAULT_TOOL_LIMITS_DC_NTE{10};
+const std::vector<uint8_t> ItemData::StackLimits::DEFAULT_TOOL_LIMITS_V1_V2{10, 10, 1, 10, 10, 10, 10, 10, 10, 1};
+const std::vector<uint8_t> ItemData::StackLimits::DEFAULT_TOOL_LIMITS_V3_V4{
+    10, 10, 1, 10, 10, 10, 10, 10, 10, 1, 1, 1, 1, 1, 1, 1, 99, 1};
 
 const ItemData::StackLimits ItemData::StackLimits::DEFAULT_STACK_LIMITS_DC_NTE(
     Version::DC_NTE, ItemData::StackLimits::DEFAULT_TOOL_LIMITS_DC_NTE, 999999);

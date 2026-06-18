@@ -1,6 +1,5 @@
 #include "Text.hh"
 
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -257,16 +256,17 @@ std::string TextTranscoderUTF8ToCustomSJIS::on_untranslatable(const void** src, 
   }
 }
 
-TextTranscoder tt_8859_to_utf8("UTF-8", "ISO-8859-1");
-TextTranscoder tt_utf8_to_8859("ISO-8859-1", "UTF-8");
-TextTranscoder tt_standard_sjis_to_utf8("UTF-8", "SHIFT_JIS");
-TextTranscoder tt_utf8_to_standard_sjis("SHIFT_JIS", "UTF-8");
-TextTranscoderCustomSJISToUTF8 tt_sega_sjis_to_utf8;
-TextTranscoderUTF8ToCustomSJIS tt_utf8_to_sega_sjis;
-TextTranscoder tt_utf16_to_utf8("UTF-8", "UTF-16LE");
-TextTranscoder tt_utf8_to_utf16("UTF-16LE", "UTF-8");
-TextTranscoder tt_ascii_to_utf8("UTF-8", "ASCII");
-TextTranscoder tt_utf8_to_ascii("ASCII", "UTF-8");
+// iconv_t is not thread-safe, so we need a separate one of these for each thread
+thread_local TextTranscoder tt_8859_to_utf8("UTF-8", "ISO-8859-1");
+thread_local TextTranscoder tt_utf8_to_8859("ISO-8859-1", "UTF-8");
+thread_local TextTranscoder tt_standard_sjis_to_utf8("UTF-8", "SHIFT_JIS");
+thread_local TextTranscoder tt_utf8_to_standard_sjis("SHIFT_JIS", "UTF-8");
+thread_local TextTranscoderCustomSJISToUTF8 tt_sega_sjis_to_utf8;
+thread_local TextTranscoderUTF8ToCustomSJIS tt_utf8_to_sega_sjis;
+thread_local TextTranscoder tt_utf16_to_utf8("UTF-8", "UTF-16LE");
+thread_local TextTranscoder tt_utf8_to_utf16("UTF-16LE", "UTF-8");
+thread_local TextTranscoder tt_ascii_to_utf8("UTF-8", "ASCII");
+thread_local TextTranscoder tt_utf8_to_ascii("ASCII", "UTF-8");
 
 std::string tt_encode_marked_optional(const std::string& utf8, Language default_language, bool is_utf16) {
   if (is_utf16) {

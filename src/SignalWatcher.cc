@@ -27,8 +27,10 @@ asio::awaitable<void> SignalWatcher::signal_handler_task() {
       case SIGUSR1:
         this->log.info_f("Received SIGUSR1; reloading config.json");
         try {
-          this->state->load_config_early();
-          this->state->load_config_late();
+          this->state->data->load_config_early();
+          this->state->data->load_config_late();
+          this->state->disconnect_all_banned_clients();
+          this->state->update_default_lobby_events_from_config();
           phosg::fwrite_fmt(stderr, "Configuration update complete\n");
         } catch (const std::exception& e) {
           phosg::fwrite_fmt(stderr, "FAILED: {}\n", e.what());
@@ -38,7 +40,9 @@ asio::awaitable<void> SignalWatcher::signal_handler_task() {
       case SIGUSR2:
         this->log.info_f("Received SIGUSR2; reloading config.json and all dependencies");
         try {
-          this->state->load_all(true);
+          this->state->data->load_all();
+          this->state->disconnect_all_banned_clients();
+          this->state->update_default_lobby_events_from_config();
           phosg::fwrite_fmt(stderr, "Configuration update complete\n");
         } catch (const std::exception& e) {
           phosg::fwrite_fmt(stderr, "FAILED: {}\n", e.what());

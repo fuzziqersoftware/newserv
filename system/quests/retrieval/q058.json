@@ -5,7 +5,10 @@
   // Quests that are considered unavailable don't appear in the quest menu at all. To set a condition for a quest to be
   // available, you can set AvailableIf in the quest's JSON file. The value for AvailableIf should be an expression
   // that tests any of the following:
-  //   F_XXXX: Quest flag specified in hex (e.g. F_014D)
+  //   P_SID: Current effective section ID for the game; see name_to_section_id in StaticGameData.cc for values
+  //   F_XXXX: Quest flag specified in hex (e.g. F_014D) for the difficulty the player is currently playing in
+  //   F_N_XXXX, F_H_XXXX, F_V_XXXX, F_U_XXXX: Same as F_XXXX, but read from a specific difficulty regardless of which
+  //       difficulty the player is currently playing in
   //   CC_EpX_Y: Whether or not Challenge stage X in Episode Y is complete (e.g. CC_Ep1_7)
   //   T_ZZZ: Whether or not the player's BB team has reward with key ZZZ (as defined in TeamRewards in config.json)
   //   V_NumPlayers: The number of players in the current game

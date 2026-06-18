@@ -811,7 +811,7 @@ void DownloadSession::on_request_complete() {
   }
 }
 
-const std::vector<DownloadSession::GameConfig> DownloadSession::game_configs({
+const std::vector<DownloadSession::GameConfig> DownloadSession::game_configs{
     {.mode = GameMode::NORMAL, .episode = Episode::EP1, .v1 = true, .v2 = true, .v3 = true},
     {.mode = GameMode::NORMAL, .episode = Episode::EP2, .v1 = false, .v2 = false, .v3 = true},
     {.mode = GameMode::NORMAL, .episode = Episode::EP4, .v1 = false, .v2 = false, .v3 = false},
@@ -821,4 +821,4 @@ const std::vector<DownloadSession::GameConfig> DownloadSession::game_configs({
     {.mode = GameMode::SOLO, .episode = Episode::EP1, .v1 = false, .v2 = false, .v3 = false},
     {.mode = GameMode::SOLO, .episode = Episode::EP2, .v1 = false, .v2 = false, .v3 = false},
     {.mode = GameMode::SOLO, .episode = Episode::EP4, .v1 = false, .v2 = false, .v3 = false},
-});
+};

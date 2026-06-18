@@ -8,7 +8,7 @@
 
 #include "IPV4RangeSet.hh"
 
-struct ServerState;
+class ServerState;
 
 class DNSServer {
 public:

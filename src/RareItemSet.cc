@@ -89,7 +89,7 @@ RareItemSet::ExpandedDrop RareItemSet::ParsedRELData::PackedDrop::expand() const
 template <bool BE>
 void RareItemSet::ParsedRELData::parse_t(phosg::StringReader r, bool is_v1) {
   const auto& footer = r.pget<RELFileFooterT<BE>>(r.size() - sizeof(RELFileFooterT<BE>));
-  const auto& root = r.pget<OffsetsT<BE>>(footer.root_offset);
+  const auto& root = r.pget<RootT<BE>>(footer.root_offset);
 
   phosg::StringReader monsters_r = r.sub(root.monster_rares_offset);
   for (size_t z = 0; z < (is_v1 ? 0x33 : 0x65); z++) {
@@ -114,7 +114,7 @@ template <bool BE>
 std::string RareItemSet::ParsedRELData::serialize_t(bool is_v1) const {
   static const PackedDrop empty_drop;
 
-  OffsetsT<BE> root;
+  RootT<BE> root;
   root.box_count = this->box_rares.size();
 
   phosg::StringWriter w;
@@ -196,7 +196,7 @@ RareItemSet::ParsedRELData::ParsedRELData(const SpecCollection& collection) {
   if (collection.box_specs.size() > 0xFF) {
     throw std::runtime_error("area_norm value too high");
   }
-  for (uint8_t area_norm = 0; area_norm < collection.box_specs.size(); area_norm++) {
+  for (size_t area_norm = 0; area_norm < collection.box_specs.size(); area_norm++) {
     for (const auto& spec : collection.box_specs[area_norm]) {
       uint8_t area_norm_plus_1 = area_norm + 1;
       this->box_rares.emplace_back(BoxRare{.area_norm_plus_1 = area_norm_plus_1, .drop = spec});

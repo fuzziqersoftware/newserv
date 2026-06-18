@@ -6,9 +6,6 @@ on:
   pull_request:
     branches: [master]
 
-env:
-  BUILD_TYPE: Release
-
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -16,13 +13,14 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
+        build_type: [Debug, Release]
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Install libraries (Linux)
         if: ${{ matrix.os == 'ubuntu-latest' }}
-        run: sudo apt-get install -y cmake libasio-dev
+        run: sudo apt-get install -y cmake libasio-dev libasan8
 
       - name: Install libraries (macOS)
         if: ${{ matrix.os == 'macos-latest' }}
@@ -41,7 +39,7 @@ jobs:
         run: |
           git clone https://github.com/fuzziqersoftware/phosg.git
           cd phosg
-          cmake .
+          cmake -DCMAKE_BUILD_TYPE=${{matrix.build_type}} .
           make -j $(nproc)
           sudo make install
 
@@ -49,16 +47,16 @@ jobs:
         run: |
           git clone https://github.com/fuzziqersoftware/resource_dasm.git
           cd resource_dasm
-          cmake .
+          cmake -DCMAKE_BUILD_TYPE=${{matrix.build_type}} .
           make -j $(nproc)
           sudo make install
 
       - name: Configure CMake
-        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{matrix.build_type}}
 
       - name: Build
-        run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} -j $(nproc)
+        run: cmake --build ${{github.workspace}}/build --config ${{matrix.build_type}} -j $(nproc)
 
       - name: Test
         working-directory: ${{github.workspace}}/build
-        run: ctest -C ${{env.BUILD_TYPE}} --output-on-failure
+        run: ctest -C ${{matrix.build_type}} --output-on-failure

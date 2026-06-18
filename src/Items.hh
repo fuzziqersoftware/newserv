@@ -19,7 +19,7 @@ void apply_mag_feed_result(
     ItemData& mag_item,
     const ItemData& fed_item,
     std::shared_ptr<const ItemParameterTable> item_parameter_table,
-    std::shared_ptr<const MagEvolutionTable> mag_evolution_table,
+    std::shared_ptr<const MagMetadataTable> mag_metadata_table,
     uint8_t char_class,
     uint8_t section_id,
     bool version_has_rare_mags);

@@ -15,7 +15,9 @@
 class IntegralExpression {
 public:
   struct Env {
-    const QuestFlagsForDifficulty* flags;
+    uint8_t section_id;
+    Difficulty difficulty;
+    const QuestFlags* flags;
     const PlayerRecordsChallengeBB* challenge_records;
     std::shared_ptr<const TeamIndex::Team> team;
     size_t num_players;
@@ -105,15 +107,25 @@ protected:
     std::unique_ptr<const Node> sub;
   };
 
-  class FlagLookupNode : public Node {
+  class SectionIDLookupNode : public Node {
   public:
-    FlagLookupNode(uint16_t flag_index);
-    virtual ~FlagLookupNode() = default;
+    SectionIDLookupNode() = default;
+    virtual ~SectionIDLookupNode() = default;
+    virtual bool operator==(const Node& other) const;
+    virtual int64_t evaluate(const Env& env) const;
+    virtual std::string str() const;
+  };
+
+  class QuestFlagLookupNode : public Node {
+  public:
+    QuestFlagLookupNode(Difficulty difficulty, uint16_t flag_index);
+    virtual ~QuestFlagLookupNode() = default;
     virtual bool operator==(const Node& other) const;
     virtual int64_t evaluate(const Env& env) const;
     virtual std::string str() const;
 
   protected:
+    Difficulty difficulty;
     uint16_t flag_index;
   };
 

@@ -2075,10 +2075,10 @@ Action a_print_word_select_table(
     given, prints the table sorted by token ID for that version. If no version\n\
     option is given, prints the token table sorted by canonical name.\n",
     +[](phosg::Arguments& args) {
-      auto s = std::make_shared<ServerState>(get_config_filename(args));
-      s->load_patch_indexes();
-      s->load_text_index();
-      s->load_word_select_table();
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->load_patch_indexes();
+      di->load_text_index();
+      di->load_word_select_table();
       Version v;
       try {
         v = get_cli_version(args);
@@ -2086,9 +2086,9 @@ Action a_print_word_select_table(
         v = Version::UNKNOWN;
       }
       if (v != Version::UNKNOWN) {
-        s->word_select_table->print_index(stdout, v);
+        di->word_select_table->print_index(stdout, v);
       } else {
-        s->word_select_table->print(stdout);
+        di->word_select_table->print(stdout);
       }
     });
 
@@ -2209,20 +2209,20 @@ Action a_convert_rare_item_set(
     drop-anything rate; the true drop rates are shown in tooltips.\n",
     +[](phosg::Arguments& args) {
       double rate_factor = args.get<double>("multiply", 1.0);
-      auto s = std::make_shared<ServerState>(get_config_filename(args));
-      s->load_config_early();
-      s->load_patch_indexes();
-      s->load_text_index();
-      s->load_item_definitions();
-      s->load_item_name_indexes();
-      s->load_drop_tables();
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->load_config_early();
+      di->load_patch_indexes();
+      di->load_text_index();
+      di->load_item_definitions();
+      di->load_item_name_indexes();
+      di->load_drop_tables();
 
       std::string input_filename = args.get<std::string>(1, false);
       if (input_filename.empty() || (input_filename == "-")) {
         throw std::runtime_error("input filename must be given");
       }
       auto rs = load_rare_item_set(
-          input_filename, is_v1(get_cli_version(args, Version::BB_V4)), s->item_name_index(Version::BB_V4));
+          input_filename, is_v1(get_cli_version(args, Version::BB_V4)), di->item_name_index(Version::BB_V4));
       if (rate_factor != 1.0) {
         rs->multiply_all_rates(rate_factor);
       }
@@ -2230,9 +2230,9 @@ Action a_convert_rare_item_set(
       std::string output_filename = args.get<std::string>(2, false);
       std::string output_filename_lower = phosg::tolower(output_filename);
       if (output_filename.empty() || (output_filename == "-")) {
-        rs->print_all_collections(stdout, s->item_name_index_opt(get_cli_version(args, Version::BB_V4)));
+        rs->print_all_collections(stdout, di->item_name_index_opt(get_cli_version(args, Version::BB_V4)));
       } else if (output_filename_lower.ends_with(".json")) {
-        auto json = rs->json(s->item_name_index_opt(get_cli_version(args, Version::BB_V4)));
+        auto json = rs->json(di->item_name_index_opt(get_cli_version(args, Version::BB_V4)));
         std::string data = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::HEX_INTEGERS | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
         write_output_data(args, data, nullptr);
       } else if (output_filename_lower.ends_with(".gsl")) {
@@ -2251,8 +2251,8 @@ Action a_convert_rare_item_set(
               if ((is_v1 && (difficulty == Difficulty::ULTIMATE)) || (!rs->has_entries_for_game_config(mode, episode, difficulty))) {
                 continue;
               }
-              auto item_name_index = s->item_name_index(cli_version);
-              std::string data = rs->serialize_html(mode, episode, difficulty, item_name_index, s->common_item_set(cli_version, nullptr));
+              auto item_name_index = di->item_name_index(cli_version);
+              std::string data = rs->serialize_html(mode, episode, difficulty, item_name_index, di->common_item_set(cli_version, nullptr));
               std::string out_filename = output_filename.substr(0, output_filename.size() - 5) + "." + name_for_mode(mode) + "." + abbreviation_for_episode(episode) + "." + abbreviation_for_difficulty(difficulty) + output_filename.substr(output_filename.size() - 5);
               phosg::save_file(out_filename, data);
               phosg::log_info_f("... {}", out_filename);
@@ -2275,17 +2275,17 @@ Action a_compare_rare_item_set(
         throw std::runtime_error("two input filenames must be given");
       }
 
-      auto s = std::make_shared<ServerState>(get_config_filename(args));
-      s->load_config_early();
-      s->load_patch_indexes();
-      s->load_text_index();
-      s->load_item_definitions();
-      s->load_item_name_indexes();
-      s->load_drop_tables();
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->load_config_early();
+      di->load_patch_indexes();
+      di->load_text_index();
+      di->load_item_definitions();
+      di->load_item_name_indexes();
+      di->load_drop_tables();
 
       bool is_v1 = ::is_v1(get_cli_version(args, Version::BB_V4));
-      auto rs1 = load_rare_item_set(input_filename1, is_v1, s->item_name_index(Version::BB_V4));
-      auto rs2 = load_rare_item_set(input_filename2, is_v1, s->item_name_index(Version::BB_V4));
+      auto rs1 = load_rare_item_set(input_filename1, is_v1, di->item_name_index(Version::BB_V4));
+      auto rs2 = load_rare_item_set(input_filename2, is_v1, di->item_name_index(Version::BB_V4));
 
       rs1->print_diff(stdout, *rs2);
     });
@@ -2396,6 +2396,136 @@ Action a_encode_item_parameter_table(
       write_output_data(args, data, nullptr);
     });
 
+Action a_decode_mag_metadata_table(
+    "decode-mag-metadata-table", "\
+  decode-mag-metadata-table [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS...]\n\
+    Converts an ItemMagEdit file into a JSON mag metadata file. A version\n\
+    option is required. Expects compressed input (a .prs file) by default; use\n\
+    --decompressed if the input is not compressed.\n",
+    +[](phosg::Arguments& args) {
+      auto input_data = read_input_data(args);
+      if (!args.get<bool>("decompressed")) {
+        input_data = prs_decompress(input_data);
+      }
+      auto data = std::make_shared<std::string>(std::move(input_data));
+      auto table = MagMetadataTable::from_binary(data, get_cli_version(args, Version::BB_V4));
+      auto json = table->json();
+      auto serialized = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
+      write_output_data(args, serialized, nullptr);
+    });
+
+Action a_encode_mag_metadata_table(
+    "encode-mag-metadata-table", "\
+  encode-mag-metadata-table [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS...]\n\
+    Converts a JSON mag metadata file into an ItemMagEdit file compatible with\n\
+    the game client. A version option is required. By default the output will\n\
+    be compressed, as the client expects; use --decompressed to get\n\
+    uncompressed output.\n",
+    +[](phosg::Arguments& args) {
+      auto json = phosg::JSON::parse(read_input_data(args));
+      auto table = MagMetadataTable::from_json(json);
+      std::string data = table->serialize_binary(get_cli_version(args, Version::BB_V4));
+      if (!args.get<bool>("decompressed")) {
+        data = prs_compress_optimal(data);
+      }
+      write_output_data(args, data, nullptr);
+    });
+
+Action a_decode_tekker_adjustment_set(
+    "decode-tekker-adjustment-set", "\
+  decode-tekker-adjustment-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS]\n\
+    Converts a JudgeItem.rel file into a JSON tekker adjustment set. Use\n\
+    --big-endian if the .rel file is from PSO GC.\n",
+    +[](phosg::Arguments& args) {
+      auto input_data = read_input_data(args);
+      TekkerAdjustmentSet table(input_data, args.get<bool>("big-endian"));
+      auto json = table.json();
+      auto serialized = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
+      write_output_data(args, serialized, nullptr);
+    });
+
+Action a_encode_tekker_adjustment_set(
+    "encode-tekker-adjustment-set", "\
+  encode-tekker-adjustment-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS]\n\
+    Converts a JSON tekker adjustment set into a JudgeItem.rel file compatible\n\
+    with the game client. Use --big-endian if the .rel file is for PSO GC.\n",
+    +[](phosg::Arguments& args) {
+      TekkerAdjustmentSet table(phosg::JSON::parse(read_input_data(args)));
+      write_output_data(args, table.serialize_binary(args.get<bool>("big-endian")), nullptr);
+    });
+
+Action a_decode_armor_shop_random_set(
+    "decode-armor-shop-random-set", "\
+  decode-armor-shop-random-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS]\n\
+    Converts a ArmorRandom.rel file into a JSON armor shop random set. Use\n\
+    --big-endian if the .rel file is from PSO GC.\n",
+    +[](phosg::Arguments& args) {
+      auto input_data = read_input_data(args);
+      ArmorShopRandomSet table(input_data, args.get<bool>("big-endian"));
+      auto json = table.json();
+      auto serialized = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
+      write_output_data(args, serialized, nullptr);
+    });
+
+Action a_encode_armor_shop_random_set(
+    "encode-armor-shop-random-set", "\
+  encode-armor-shop-random-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS]\n\
+    Converts a JSON armo shop random set into an ArmorRandom.rel file\n\
+    compatible with the game client. Use --big-endian if the .rel file is for\n\
+    PSO GC.\n",
+    +[](phosg::Arguments& args) {
+      ArmorShopRandomSet table(phosg::JSON::parse(read_input_data(args)));
+      write_output_data(args, table.serialize_binary(args.get<bool>("big-endian")), nullptr);
+    });
+
+Action a_decode_tool_shop_random_set(
+    "decode-tool-shop-random-set", "\
+  decode-tool-shop-random-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS]\n\
+    Converts a ToolRandom.rel file into a JSON tool shop random set. Use\n\
+    --big-endian if the .rel file is from PSO GC.\n",
+    +[](phosg::Arguments& args) {
+      auto input_data = read_input_data(args);
+      ToolShopRandomSet table(input_data, args.get<bool>("big-endian"));
+      auto json = table.json();
+      auto serialized = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
+      write_output_data(args, serialized, nullptr);
+    });
+
+Action a_encode_tool_shop_random_set(
+    "encode-tool-shop-random-set", "\
+  encode-tool-shop-random-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS]\n\
+    Converts a JSON armo shop random set into an ToolRandom.rel file\n\
+    compatible with the game client. Use --big-endian if the .rel file is for\n\
+    PSO GC.\n",
+    +[](phosg::Arguments& args) {
+      ToolShopRandomSet table(phosg::JSON::parse(read_input_data(args)));
+      write_output_data(args, table.serialize_binary(args.get<bool>("big-endian")), nullptr);
+    });
+
+Action a_decode_weapon_shop_random_set(
+    "decode-weapon-shop-random-set", "\
+  decode-weapon-shop-random-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS]\n\
+    Converts a WeaponRandom.rel file into a JSON weapon shop random set. Use\n\
+    --big-endian if the .rel file is from PSO GC.\n",
+    +[](phosg::Arguments& args) {
+      auto input_data = read_input_data(args);
+      WeaponShopRandomSet table(input_data, args.get<bool>("big-endian"));
+      auto json = table.json();
+      auto serialized = json.serialize(phosg::JSON::SerializeOption::FORMAT | phosg::JSON::SerializeOption::SORT_DICT_KEYS);
+      write_output_data(args, serialized, nullptr);
+    });
+
+Action a_encode_weapon_shop_random_set(
+    "encode-weapon-shop-random-set", "\
+  encode-weapon-shop-random-set [INPUT-FILENAME [OUTPUT-FILENAME]] [OPTIONS]\n\
+    Converts a JSON armo shop random set into an WeaponRandom.rel file\n\
+    compatible with the game client. Use --big-endian if the .rel file is for\n\
+    PSO GC.\n",
+    +[](phosg::Arguments& args) {
+      WeaponShopRandomSet table(phosg::JSON::parse(read_input_data(args)));
+      write_output_data(args, table.serialize_binary(args.get<bool>("big-endian")), nullptr);
+    });
+
 Action a_decode_level_table(
     "decode-level-table", nullptr,
     +[](phosg::Arguments& args) {
@@ -2492,13 +2622,13 @@ Action a_describe_item(
       std::string description = args.get<std::string>(1);
       auto version = get_cli_version(args);
 
-      auto s = std::make_shared<ServerState>(get_config_filename(args));
-      s->load_config_early();
-      s->load_patch_indexes();
-      s->load_text_index();
-      s->load_item_definitions();
-      s->load_item_name_indexes();
-      auto name_index = s->item_name_index(version);
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->load_config_early();
+      di->load_patch_indexes();
+      di->load_text_index();
+      di->load_item_definitions();
+      di->load_item_name_indexes();
+      auto name_index = di->item_name_index(version);
 
       ItemData item = name_index->parse_item_description(description);
 
@@ -2516,7 +2646,7 @@ Action a_describe_item(
           item.data2[0], item.data2[1], item.data2[2], item.data2[3]);
 
       ItemData item_v2 = item;
-      item_v2.encode_for_version(Version::PC_V2, s->item_parameter_table_for_encode(Version::PC_V2));
+      item_v2.encode_for_version(Version::PC_V2, di->item_parameter_table_for_encode(Version::PC_V2));
       ItemData item_v2_decoded = item_v2;
       item_v2_decoded.decode_for_version(Version::PC_V2);
 
@@ -2535,7 +2665,7 @@ Action a_describe_item(
       }
 
       ItemData item_gc = item;
-      item_gc.encode_for_version(Version::GC_V3, s->item_parameter_table_for_encode(Version::GC_V3));
+      item_gc.encode_for_version(Version::GC_V3, di->item_parameter_table_for_encode(Version::GC_V3));
       ItemData item_gc_decoded = item_gc;
       item_gc_decoded.decode_for_version(Version::GC_V3);
 
@@ -2556,24 +2686,24 @@ Action a_describe_item(
       phosg::log_info_f("Description: {}", desc);
       phosg::log_info_f("Description (in-game): {}", desc_colored);
 
-      size_t purchase_price = s->item_parameter_table(Version::BB_V4)->price_for_item(item);
+      size_t purchase_price = di->item_parameter_table(Version::BB_V4)->price_for_item(item);
       size_t sale_price = purchase_price >> 3;
       phosg::log_info_f("Purchase price: {}; sale price: {}", purchase_price, sale_price);
     });
 
 Action a_name_all_items(
     "name-all-items", nullptr, +[](phosg::Arguments& args) {
-      auto s = std::make_shared<ServerState>(get_config_filename(args));
-      s->load_config_early();
-      s->load_patch_indexes();
-      s->load_text_index();
-      s->load_item_definitions();
-      s->load_item_name_indexes();
-      s->load_ep3_cards();
-      s->load_config_late();
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->load_config_early();
+      di->load_patch_indexes();
+      di->load_text_index();
+      di->load_item_definitions();
+      di->load_item_name_indexes();
+      di->load_ep3_cards();
+      di->load_config_late();
 
       std::set<uint32_t> all_primary_identifiers;
-      for (const auto& index : s->item_name_indexes) {
+      for (const auto& index : di->item_name_indexes) {
         if (index) {
           for (const auto& it : index->all_by_primary_identifier()) {
             all_primary_identifiers.emplace(it.first);
@@ -2585,10 +2715,10 @@ Action a_name_all_items(
         for (uint32_t primary_identifier : all_primary_identifiers) {
           phosg::fwrite_fmt(stdout, "{:08X}\n", primary_identifier);
           for (Version v : ALL_VERSIONS) {
-            const auto& index = s->item_name_index_opt(v);
+            const auto& index = di->item_name_index_opt(v);
             if (index) {
-              auto pmt = s->item_parameter_table(v);
-              ItemData item = ItemData::from_primary_identifier(*s->item_stack_limits(v), primary_identifier);
+              auto pmt = di->item_parameter_table(v);
+              ItemData item = ItemData::from_primary_identifier(*di->item_stack_limits(v), primary_identifier);
               std::string name = index->describe_item(item);
               try {
                 bool is_rare = pmt->is_item_rare(item);
@@ -2606,7 +2736,7 @@ Action a_name_all_items(
         auto print_header = [&]() -> void {
           phosg::fwrite_fmt(stdout, "IDENT   :");
           for (Version v : ALL_VERSIONS) {
-            const auto& index = s->item_name_index_opt(v);
+            const auto& index = di->item_name_index_opt(v);
             if (index) {
               phosg::fwrite_fmt(stdout, " {:30}    ", phosg::name_for_enum(v));
             }
@@ -2625,10 +2755,10 @@ Action a_name_all_items(
 
           phosg::fwrite_fmt(stdout, "{:08X}:", primary_identifier);
           for (Version v : ALL_VERSIONS) {
-            const auto& index = s->item_name_index_opt(v);
+            const auto& index = di->item_name_index_opt(v);
             if (index) {
-              auto pmt = s->item_parameter_table(v);
-              ItemData item = ItemData::from_primary_identifier(*s->item_stack_limits(v), primary_identifier);
+              auto pmt = di->item_parameter_table(v);
+              ItemData item = ItemData::from_primary_identifier(*di->item_stack_limits(v), primary_identifier);
               if (index->exists(item)) {
                 std::string name = index->describe_item(item);
                 bool is_rare = pmt->is_item_rare(item);
@@ -2646,12 +2776,12 @@ Action a_name_all_items(
 Action a_print_level_stats(
     "show-level-tables", "\
   show-level-tables\n\
-    Print the level tables for each version in a semi-human-reatable format.\n",
+    Print the level tables for each version in a semi-human-readable format.\n",
     +[](phosg::Arguments& args) {
-      auto s = std::make_shared<ServerState>(get_config_filename(args));
-      s->load_config_early();
-      s->load_patch_indexes();
-      s->load_level_tables();
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->load_config_early();
+      di->load_patch_indexes();
+      di->load_level_tables();
 
       std::vector<PlayerStats> level_1_v1_v2;
       std::vector<PlayerStats> level_100_v1_v2;
@@ -2665,19 +2795,19 @@ Action a_print_level_stats(
       std::vector<PlayerStats> level_200_limit_v4;
       for (size_t z = 0; z < 12; z++) {
         if (z < 9) {
-          level_1_v1_v2.emplace_back().char_stats = s->level_table_v1_v2->base_stats_for_class(z);
-          level_200_limit_v1_v2.emplace_back(s->level_table_v1_v2->max_stats_for_class(z));
-          s->level_table_v1_v2->advance_to_level(level_100_v1_v2.emplace_back(level_1_v1_v2.back()), 99, z);
-          s->level_table_v1_v2->advance_to_level(level_200_v1_v2.emplace_back(level_1_v1_v2.back()), 199, z);
+          level_1_v1_v2.emplace_back().char_stats = di->level_table_v1_v2->base_stats_for_class(z);
+          level_200_limit_v1_v2.emplace_back(di->level_table_v1_v2->max_stats_for_class(z));
+          di->level_table_v1_v2->advance_to_level(level_100_v1_v2.emplace_back(level_1_v1_v2.back()), 99, z);
+          di->level_table_v1_v2->advance_to_level(level_200_v1_v2.emplace_back(level_1_v1_v2.back()), 199, z);
         }
 
-        level_1_v3.emplace_back().char_stats = s->level_table_v3->base_stats_for_class(z);
-        s->level_table_v3->advance_to_level(level_200_v3.emplace_back(level_1_v3.back()), 199, z);
-        level_200_limit_v3.emplace_back(s->level_table_v3->max_stats_for_class(z));
+        level_1_v3.emplace_back().char_stats = di->level_table_v3->base_stats_for_class(z);
+        di->level_table_v3->advance_to_level(level_200_v3.emplace_back(level_1_v3.back()), 199, z);
+        level_200_limit_v3.emplace_back(di->level_table_v3->max_stats_for_class(z));
 
-        level_1_v4.emplace_back().char_stats = s->level_table_v4->base_stats_for_class(z);
-        s->level_table_v4->advance_to_level(level_200_v4.emplace_back(level_1_v3.back()), 199, z);
-        level_200_limit_v4.emplace_back(s->level_table_v4->max_stats_for_class(z));
+        level_1_v4.emplace_back().char_stats = di->level_table_v4->base_stats_for_class(z);
+        di->level_table_v4->advance_to_level(level_200_v4.emplace_back(level_1_v3.back()), 199, z);
+        level_200_limit_v4.emplace_back(di->level_table_v4->max_stats_for_class(z));
       }
 
       auto print_stats_set = [](const std::vector<PlayerStats>& stats_vec, const char* name) -> void {
@@ -2732,18 +2862,39 @@ Action a_print_level_stats(
 Action a_show_item_parameter_tables(
     "show-item-parameter-tables", "\
   show-item-parameter-tables\n\
-    Print the item parameter tables for each version in a semi-human-reatable\n\
+    Print the item parameter tables for each version in a semi-human-readable\n\
     format.\n",
     +[](phosg::Arguments& args) {
-      auto s = std::make_shared<ServerState>(get_config_filename(args));
-      s->load_all(false);
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->load_all();
       for (Version v : ALL_VERSIONS) {
-        const auto& index = s->item_name_index_opt(v);
+        const auto& index = di->item_name_index_opt(v);
         if (index) {
           phosg::fwrite_fmt(stdout, "======== {}\n", phosg::name_for_enum(v));
           index->print_table(stdout);
         }
       }
+    });
+
+Action a_show_shop_random_sets(
+    "show-shop-random-sets", "\
+  show-shop-random-sets\n\
+    Print the tekker and shop generation tables in a semi-human-readable\n\
+    format.\n",
+    +[](phosg::Arguments& args) {
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->load_all();
+      di->tekker_adjustment_set->print(stdout);
+      di->armor_random_set->print(stdout);
+      di->tool_random_set->print(stdout);
+      phosg::fwrite_fmt(stdout, "(Normal) ");
+      di->weapon_random_set(Difficulty::NORMAL)->print(stdout);
+      phosg::fwrite_fmt(stdout, "(Hard) ");
+      di->weapon_random_set(Difficulty::HARD)->print(stdout);
+      phosg::fwrite_fmt(stdout, "(Very Hard) ");
+      di->weapon_random_set(Difficulty::VERY_HARD)->print(stdout);
+      phosg::fwrite_fmt(stdout, "(Ultimate) ");
+      di->weapon_random_set(Difficulty::ULTIMATE)->print(stdout);
     });
 
 Action a_show_ep3_cards(
@@ -2754,8 +2905,8 @@ Action a_show_ep3_cards(
     +[](phosg::Arguments& args) {
       bool one_line = args.get<bool>("one-line");
 
-      auto s = std::make_shared<ServerState>(get_config_filename(args));
-      s->load_ep3_cards();
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->load_ep3_cards();
 
       std::unique_ptr<BinaryTextSet> text_english;
       try {
@@ -2764,10 +2915,10 @@ Action a_show_ep3_cards(
       } catch (const std::exception& e) {
       }
 
-      auto card_ids = s->ep3_card_index->all_ids();
+      auto card_ids = di->ep3_card_index->all_ids();
       phosg::log_info_f("{} card definitions", card_ids.size());
       for (uint32_t card_id : card_ids) {
-        auto entry = s->ep3_card_index->definition_for_id(card_id);
+        auto entry = di->ep3_card_index->definition_for_id(card_id);
         phosg::fwrite_fmt(stdout, "{}\n", entry->def.str(one_line, text_english.get()));
         if (!one_line) {
           if (!entry->debug_tags.empty()) {
@@ -2806,14 +2957,14 @@ Action a_generate_ep3_cards_html(
       bool no_large_images = args.get<bool>("no-large-images");
       bool no_disassembly = args.get<bool>("no-disassembly");
 
-      auto s = std::make_shared<ServerState>(get_config_filename(args));
-      s->load_patch_indexes();
-      s->load_text_index();
-      s->load_ep3_cards();
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->load_patch_indexes();
+      di->load_text_index();
+      di->load_ep3_cards();
 
       std::shared_ptr<const TextSet> text_english;
       try {
-        text_english = s->text_index->get(Version::GC_EP3, Language::ENGLISH);
+        text_english = di->text_index->get(Version::GC_EP3, Language::ENGLISH);
       } catch (const std::out_of_range&) {
       }
 
@@ -2912,10 +3063,10 @@ Action a_generate_ep3_cards_html(
 
       std::vector<VersionInfo> version_infos;
       if (include_nte) {
-        version_infos.emplace_back("NTE", s->ep3_card_index_trial, no_images ? nullptr : "system/ep3/cardtex-trial", no_large_images, num_threads, no_disassembly);
+        version_infos.emplace_back("NTE", di->ep3_card_index_trial, no_images ? nullptr : "system/ep3/cardtex-trial", no_large_images, num_threads, no_disassembly);
       }
       if (include_final) {
-        version_infos.emplace_back("Final", s->ep3_card_index, no_images ? nullptr : "system/ep3/cardtex", no_large_images, num_threads, no_disassembly);
+        version_infos.emplace_back("Final", di->ep3_card_index, no_images ? nullptr : "system/ep3/cardtex", no_large_images, num_threads, no_disassembly);
       }
 
       std::deque<std::string> blocks;
@@ -3048,11 +3199,11 @@ Action a_show_ep3_maps(
     +[](phosg::Arguments& args) {
       config_log.info_f("Collecting Episode 3 data");
 
-      auto s = std::make_shared<ServerState>(get_config_filename(args));
-      s->load_ep3_cards();
-      s->load_ep3_maps();
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->load_ep3_cards();
+      di->load_ep3_maps();
 
-      const auto& all_maps = s->ep3_map_index->all_maps();
+      const auto& all_maps = di->ep3_map_index->all_maps();
       phosg::log_info_f("{} maps", all_maps.size());
       for (const auto& [map_number, map] : all_maps) {
         const auto& vms = map->all_versions();
@@ -3061,7 +3212,7 @@ Action a_show_ep3_maps(
             continue;
           }
           Language language = static_cast<Language>(lang_index);
-          std::string map_s = vms[lang_index]->map->str(s->ep3_card_index.get(), language);
+          std::string map_s = vms[lang_index]->map->str(di->ep3_card_index.get(), language);
           phosg::fwrite_fmt(stdout, "({}) {}\n", char_for_language(language), map_s);
         }
       }
@@ -3073,22 +3224,22 @@ Action a_show_battle_params(
     Print the Blue Burst battle parameters from the system/blueburst directory\n\
     in a human-readable format.\n",
     +[](phosg::Arguments& args) {
-      auto s = std::make_shared<ServerState>(get_config_filename(args));
-      s->load_patch_indexes();
-      s->load_battle_params();
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->load_patch_indexes();
+      di->load_battle_params();
 
       phosg::fwrite_fmt(stdout, "Episode 1 multi\n");
-      s->battle_params->get_table(false, Episode::EP1).print(stdout, Episode::EP1);
+      di->battle_params->get_table(false, Episode::EP1).print(stdout, Episode::EP1);
       phosg::fwrite_fmt(stdout, "Episode 1 solo\n");
-      s->battle_params->get_table(true, Episode::EP1).print(stdout, Episode::EP1);
+      di->battle_params->get_table(true, Episode::EP1).print(stdout, Episode::EP1);
       phosg::fwrite_fmt(stdout, "Episode 2 multi\n");
-      s->battle_params->get_table(false, Episode::EP2).print(stdout, Episode::EP2);
+      di->battle_params->get_table(false, Episode::EP2).print(stdout, Episode::EP2);
       phosg::fwrite_fmt(stdout, "Episode 2 solo\n");
-      s->battle_params->get_table(true, Episode::EP2).print(stdout, Episode::EP2);
+      di->battle_params->get_table(true, Episode::EP2).print(stdout, Episode::EP2);
       phosg::fwrite_fmt(stdout, "Episode 4 multi\n");
-      s->battle_params->get_table(false, Episode::EP4).print(stdout, Episode::EP4);
+      di->battle_params->get_table(false, Episode::EP4).print(stdout, Episode::EP4);
       phosg::fwrite_fmt(stdout, "Episode 4 solo\n");
-      s->battle_params->get_table(true, Episode::EP4).print(stdout, Episode::EP4);
+      di->battle_params->get_table(true, Episode::EP4).print(stdout, Episode::EP4);
     });
 
 Action a_check_supermaps(
@@ -3102,11 +3253,11 @@ Action a_check_supermaps(
       bool save_disassembly = args.get<bool>("disassemble");
       bool generate_enemy_stats = args.get<bool>("generate-enemy-stats");
 
-      auto s = std::make_shared<ServerState>(get_config_filename(args));
-      s->load_config_early();
-      s->load_patch_indexes();
-      s->load_set_data_tables();
-      s->load_maps();
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->load_config_early();
+      di->load_patch_indexes();
+      di->load_set_data_tables();
+      di->load_maps();
 
       auto rand_crypt = std::make_shared<MT19937Generator>(phosg::random_object<uint32_t>());
 
@@ -3122,9 +3273,9 @@ Action a_check_supermaps(
             abbreviation_for_mode(mode),
             abbreviation_for_difficulty(difficulty));
 
-        auto sdt = s->set_data_table(Version::BB_V4, episode, mode, difficulty);
+        auto sdt = di->set_data_table(Version::BB_V4, episode, mode, difficulty);
         auto variations = sdt->generate_variations(episode, (mode == GameMode::SOLO), rand_crypt);
-        auto supermaps = s->supermaps_for_variations(episode, mode, difficulty, variations);
+        auto supermaps = di->supermaps_for_variations(episode, mode, difficulty, variations);
         auto map_state = std::make_shared<MapState>(
             0, difficulty, event, random_seed, MapState::DEFAULT_RARE_ENEMIES, rand_crypt, supermaps);
         map_state->verify();
@@ -3137,7 +3288,7 @@ Action a_check_supermaps(
       }
 
       SuperMap::EfficiencyStats all_free_maps_eff;
-      for (const auto& [key, supermap] : s->supermap_for_free_play_key) {
+      for (const auto& [key, supermap] : di->supermap_for_free_play_key) {
         auto episode = static_cast<Episode>((key >> 28) & 7);
         auto mode = static_cast<GameMode>((key >> 26) & 3);
         Difficulty difficulty = static_cast<Difficulty>((key >> 24) & 3);
@@ -3181,11 +3332,11 @@ Action a_check_supermaps(
 
       phosg::fwrite_fmt(stderr, "ALL FREE MAPS: {}\n", all_free_maps_eff.str());
 
-      s->load_quest_index();
+      di->load_quest_index();
 
       SuperMap::EfficiencyStats all_quests_eff;
       uint32_t random_seed = args.get<uint32_t>("random-seed", 0, phosg::Arguments::IntFormat::HEX);
-      for (const auto& it : s->quest_index->quests_by_number) {
+      for (const auto& it : di->quest_index->quests_by_number) {
         auto supermap = it.second->get_supermap(random_seed);
         if (!supermap) {
           throw std::logic_error("quest does not have a supermap, even with a specified random seed");
@@ -3497,11 +3648,11 @@ Action a_print_free_supermap(
         }
       }
 
-      auto s = std::make_shared<ServerState>(get_config_filename(args));
-      s->load_config_early();
-      s->load_patch_indexes();
-      s->load_set_data_tables();
-      s->load_maps();
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->load_config_early();
+      di->load_patch_indexes();
+      di->load_set_data_tables();
+      di->load_maps();
 
       std::shared_ptr<RandomGenerator> rand_crypt;
       if (args.get<bool>("--psov2")) {
@@ -3509,8 +3660,8 @@ Action a_print_free_supermap(
       } else {
         rand_crypt = std::make_shared<PSOV2Encryption>(random_seed);
       }
-      auto sdt = s->set_data_table(get_cli_version(args, Version::BB_V4), episode, mode, difficulty);
-      auto supermaps = s->supermaps_for_variations(episode, mode, difficulty, variations);
+      auto sdt = di->set_data_table(get_cli_version(args, Version::BB_V4), episode, mode, difficulty);
+      auto supermaps = di->supermaps_for_variations(episode, mode, difficulty, variations);
       MapState map_state(0, difficulty, event, random_seed, MapState::DEFAULT_RARE_ENEMIES, rand_crypt, supermaps);
       map_state.verify();
       map_state.print(stdout);
@@ -3519,108 +3670,161 @@ Action a_print_free_supermap(
 Action a_check_quests(
     "check-quests", nullptr,
     +[](phosg::Arguments& args) {
-      check_quest_opcode_definitions();
-
-      auto s = std::make_shared<ServerState>(get_config_filename(args));
-      s->is_debug = true;
-      s->load_config_early();
-      s->load_patch_indexes();
-      s->load_set_data_tables();
-      s->load_maps();
-      s->load_quest_index(true);
-
+      size_t num_threads = args.get<size_t>("threads", 0);
       bool reassemble_scripts = args.get<bool>("reassemble-scripts");
       bool reassemble_maps = args.get<bool>("reassemble-maps");
+
+      check_quest_opcode_definitions();
+      phosg::log_info_f("Opcode definitions OK");
+
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->is_debug = true;
+      di->load_config_early();
+      di->load_patch_indexes();
+      di->load_set_data_tables();
+      di->load_maps();
+      di->load_quest_index(true);
+
+      uint64_t script_time = 0, map_time = 0;
       if (reassemble_scripts || reassemble_maps) {
-        for (const auto& [_, q] : s->quest_index->quests_by_number) {
-          for (const auto& [_, vq] : q->versions) {
-            if (reassemble_maps) {
-              auto dat = prs_decompress(*vq->dat_contents);
-              auto serialized = vq->map_file->serialize();
-              if (dat != serialized) {
-                phosg::log_info_f("... DISASSEMBLY:");
-                phosg::fwritex(stdout, vq->map_file->disassemble(false, vq->meta.version));
-                phosg::log_info_f("... BINDIFF:");
-                phosg::print_binary_diff(
-                    stdout, dat.data(), dat.size(), serialized.data(), serialized.size(), isatty(fileno(stdout)));
-                phosg::log_info_f("... {} {} {} ({}) MAP FAILED",
-                    phosg::name_for_enum(vq->meta.version),
-                    name_for_language(vq->meta.language),
-                    vq->dat_filename(),
-                    vq->meta.name);
-                throw std::runtime_error("re-serialized map file differs from original");
-              }
-              phosg::log_info_f("... {} {} {} ({}) MAP OK", phosg::name_for_enum(vq->meta.version), name_for_language(vq->meta.language), vq->dat_filename(), vq->meta.name);
+        std::mutex output_lock;
+        auto check_vq = [&](const std::shared_ptr<const VersionedQuest>& vq, size_t) -> void {
+          if (reassemble_maps) {
+            uint64_t start_time = phosg::now();
+            auto dat = prs_decompress(*vq->dat_contents);
+            auto serialized = vq->map_file->serialize();
+            if (dat != serialized) {
+              std::lock_guard g(output_lock);
+              phosg::log_info_f("... DISASSEMBLY:");
+              phosg::fwritex(stdout, vq->map_file->disassemble(false, vq->meta.version));
+              phosg::log_info_f("... BINDIFF:");
+              phosg::print_binary_diff(
+                  stdout, dat.data(), dat.size(), serialized.data(), serialized.size(), isatty(fileno(stdout)));
+              phosg::log_info_f("... {} {} {} ({}) MAP FAILED",
+                  phosg::name_for_enum(vq->meta.version),
+                  name_for_language(vq->meta.language),
+                  vq->dat_filename(),
+                  vq->meta.name);
+              throw std::runtime_error("re-serialized map file differs from original");
             }
-            if (reassemble_scripts) {
-              auto bin = prs_decompress(*vq->bin_contents);
-              auto disassembled = disassemble_quest_script(
-                  bin.data(), bin.size(), vq->meta.version, vq->meta.language, vq->map_file, false, false);
-              auto reassembly = disassemble_quest_script(
-                  bin.data(), bin.size(), vq->meta.version, vq->meta.language, vq->map_file, true, false);
-              std::string include_dir = phosg::dirname(vq->bin_filename());
-              AssembledQuestScript assembled;
-              try {
-                assembled = assemble_quest_script(
-                    reassembly,
-                    {"system/quests/includes"},
-                    {"system/quests/includes", "system/client-functions/System"},
-                    false);
-                if (vq->json_contents) {
-                  assembled.meta.apply_json_overrides(*vq->json_contents);
-                }
-                if (assembled.data != bin) {
-                  throw std::runtime_error("Reassembled quest script does not match original");
-                }
-                // Don't check quest number, since we override it based on the filename
-                if (assembled.meta.version != vq->meta.version) {
-                  throw std::runtime_error(std::format("Reassembled quest version ({}) does not match original ({})",
-                      phosg::name_for_enum(assembled.meta.version), phosg::name_for_enum(vq->meta.version)));
-                }
-                if (assembled.meta.language != vq->meta.language) {
-                  throw std::runtime_error(std::format("Reassembled quest language ({}) does not match original ({})",
-                      name_for_language(assembled.meta.language), name_for_language(vq->meta.language)));
-                }
-                if (assembled.meta.episode != vq->meta.episode) {
-                  throw std::runtime_error(std::format("Reassembled quest episode ({}) does not match original ({})",
-                      name_for_episode(assembled.meta.episode), name_for_episode(vq->meta.episode)));
-                }
-                if (assembled.meta.joinable != vq->meta.joinable) {
-                  throw std::runtime_error(std::format("Reassembled quest joinable ({}) does not match original ({})",
-                      assembled.meta.joinable, vq->meta.joinable));
-                }
-                if (assembled.meta.max_players != vq->meta.max_players) {
-                  throw std::runtime_error(std::format("Reassembled quest max_players ({}) does not match original ({})",
-                      assembled.meta.max_players, vq->meta.max_players));
-                }
-                if (assembled.meta.name != vq->meta.name) {
-                  throw std::runtime_error(std::format("Reassembled quest name ({}) does not match original ({})",
-                      assembled.meta.name, vq->meta.name));
-                }
-                if (assembled.meta.short_description != vq->meta.short_description) {
-                  throw std::runtime_error(std::format("Reassembled quest short description ({}) does not match original ({})",
-                      assembled.meta.short_description, vq->meta.short_description));
-                }
-                if (assembled.meta.long_description != vq->meta.long_description) {
-                  throw std::runtime_error(std::format("Reassembled quest long description ({}) does not match original ({})",
-                      assembled.meta.long_description, vq->meta.long_description));
-                }
-              } catch (const std::exception& e) {
-                phosg::log_error_f("================ DISASSEMBLY:");
-                phosg::fwritex(stderr, disassembled);
-                phosg::log_error_f("================ REASSEMBLY:");
-                phosg::fwritex(stderr, reassembly);
-                if (!assembled.data.empty()) {
-                  phosg::log_error_f("================ BINDIFF:");
-                  phosg::print_binary_diff(stderr, bin.data(), bin.size(), assembled.data.data(), assembled.data.size(), isatty(fileno(stderr)), 3, 0);
-                }
-                phosg::log_info_f("... {} {} {} ({}) SCRIPT FAILED", phosg::name_for_enum(vq->meta.version), name_for_language(vq->meta.language), vq->bin_filename(), vq->meta.name);
-                throw;
+            uint64_t end_time = phosg::now();
+            map_time += (end_time - start_time);
+            std::lock_guard g(output_lock);
+            phosg::log_info_f("... {} {} {} ({}) MAP OK ({})",
+                phosg::name_for_enum(vq->meta.version),
+                name_for_language(vq->meta.language),
+                vq->dat_filename(),
+                vq->meta.name,
+                phosg::format_duration(end_time - start_time));
+          }
+          if (reassemble_scripts) {
+            uint64_t start_time = phosg::now();
+            auto bin = prs_decompress(*vq->bin_contents);
+            auto disassembled = disassemble_quest_script(
+                bin.data(), bin.size(), vq->meta.version, vq->meta.language, vq->map_file, false, false);
+            auto reassembly = disassemble_quest_script(
+                bin.data(), bin.size(), vq->meta.version, vq->meta.language, vq->map_file, true, false);
+            std::string include_dir = phosg::dirname(vq->bin_filename());
+            AssembledQuestScript assembled;
+            try {
+              assembled = assemble_quest_script(
+                  reassembly,
+                  {"system/quests/includes"},
+                  {"system/quests/includes", "system/client-functions/System"},
+                  false);
+              if (vq->json_contents) {
+                assembled.meta.apply_json_overrides(*vq->json_contents);
               }
-              phosg::log_info_f("... {} {} {} ({}) SCRIPT OK", phosg::name_for_enum(vq->meta.version), name_for_language(vq->meta.language), vq->bin_filename(), vq->meta.name);
+              if (assembled.data != bin) {
+                throw std::runtime_error("Reassembled quest script does not match original");
+              }
+              // Don't check quest number, since we override it based on the filename
+              if (assembled.meta.version != vq->meta.version) {
+                throw std::runtime_error(std::format("Reassembled quest version ({}) does not match original ({})",
+                    phosg::name_for_enum(assembled.meta.version), phosg::name_for_enum(vq->meta.version)));
+              }
+              if (assembled.meta.language != vq->meta.language) {
+                throw std::runtime_error(std::format("Reassembled quest language ({}) does not match original ({})",
+                    name_for_language(assembled.meta.language), name_for_language(vq->meta.language)));
+              }
+              if (assembled.meta.episode != vq->meta.episode) {
+                throw std::runtime_error(std::format("Reassembled quest episode ({}) does not match original ({})",
+                    name_for_episode(assembled.meta.episode), name_for_episode(vq->meta.episode)));
+              }
+              if (assembled.meta.joinable != vq->meta.joinable) {
+                throw std::runtime_error(std::format("Reassembled quest joinable ({}) does not match original ({})",
+                    assembled.meta.joinable, vq->meta.joinable));
+              }
+              if (assembled.meta.max_players != vq->meta.max_players) {
+                throw std::runtime_error(std::format("Reassembled quest max_players ({}) does not match original ({})",
+                    assembled.meta.max_players, vq->meta.max_players));
+              }
+              if (assembled.meta.name != vq->meta.name) {
+                throw std::runtime_error(std::format("Reassembled quest name ({}) does not match original ({})",
+                    assembled.meta.name, vq->meta.name));
+              }
+              if (assembled.meta.short_description != vq->meta.short_description) {
+                throw std::runtime_error(std::format("Reassembled quest short description ({}) does not match original ({})",
+                    assembled.meta.short_description, vq->meta.short_description));
+              }
+              if (assembled.meta.long_description != vq->meta.long_description) {
+                throw std::runtime_error(std::format("Reassembled quest long description ({}) does not match original ({})",
+                    assembled.meta.long_description, vq->meta.long_description));
+              }
+            } catch (const std::exception& e) {
+              std::lock_guard g(output_lock);
+              phosg::log_error_f("================ DISASSEMBLY:");
+              phosg::fwritex(stderr, disassembled);
+              phosg::log_error_f("================ REASSEMBLY:");
+              phosg::fwritex(stderr, reassembly);
+              if (!assembled.data.empty()) {
+                phosg::log_error_f("================ BINDIFF:");
+                phosg::print_binary_diff(stderr, bin.data(), bin.size(), assembled.data.data(), assembled.data.size(), isatty(fileno(stderr)), 3, 0);
+              }
+              phosg::log_info_f("... {} {} {} ({}) SCRIPT FAILED", phosg::name_for_enum(vq->meta.version), name_for_language(vq->meta.language), vq->bin_filename(), vq->meta.name);
+              throw;
+            }
+            uint64_t end_time = phosg::now();
+            script_time += (end_time - start_time);
+            std::lock_guard g(output_lock);
+            phosg::log_info_f("... {} {} {} ({}) SCRIPT OK ({})",
+                phosg::name_for_enum(vq->meta.version),
+                name_for_language(vq->meta.language),
+                vq->bin_filename(),
+                vq->meta.name,
+                phosg::format_duration(end_time - start_time));
+          }
+        };
+
+        if (num_threads == 1) {
+          for (const auto& [_, q] : di->quest_index->quests_by_number) {
+            for (const auto& [_, vq] : q->versions) {
+              check_vq(vq, 0);
             }
           }
+
+        } else {
+          std::vector<std::shared_ptr<const VersionedQuest>> all_vqs;
+          for (const auto& [_, q] : di->quest_index->quests_by_number) {
+            for (const auto& [_, vq] : q->versions) {
+              all_vqs.emplace_back(vq);
+            }
+          }
+
+          // Sort them in decreasing order of bin file size, so the slowest ones are run first (this packs the work
+          // into the threads' timelines more efficiently)
+          std::sort(all_vqs.begin(), all_vqs.end(), [](const std::shared_ptr<const VersionedQuest>& a, const std::shared_ptr<const VersionedQuest>& b) -> bool {
+            return a->bin_contents->size() > b->bin_contents->size();
+          });
+
+          phosg::parallel_range(all_vqs, check_vq, num_threads);
         }
+      }
+      if (script_time > 0) {
+        phosg::log_info_f("... SCRIPT CHECKS: {}", phosg::format_duration(script_time));
+      }
+      if (map_time > 0) {
+        phosg::log_info_f("... MAP CHECKS: {}", phosg::format_duration(map_time));
       }
     });
 
@@ -3628,9 +3832,9 @@ Action a_check_ep3_maps(
     "check-ep3-maps", nullptr,
     +[](phosg::Arguments& args) {
       config_log.info_f("Collecting Episode 3 data");
-      auto s = std::make_shared<ServerState>(get_config_filename(args));
-      s->is_debug = true;
-      s->load_ep3_maps(true);
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->is_debug = true;
+      di->load_ep3_maps(true);
     });
 
 Action a_check_client_functions(
@@ -3775,21 +3979,34 @@ Action a_diff_executables(
       bool b_is_dol = b_filename.ends_with(".dol");
       bool a_is_xbe = a_filename.ends_with(".xbe");
       bool b_is_xbe = b_filename.ends_with(".xbe");
-      std::vector<DiffEntry> result;
-      if (a_is_dol && b_is_dol) {
-        result = diff_dol_files(a_filename, b_filename);
-      } else if (a_is_xbe && b_is_xbe) {
-        result = diff_xbe_files(a_filename, b_filename);
+
+      if (a_is_dol && b_is_dol && args.get<bool>("semantic")) {
+        std::unordered_set<uint32_t> a_ignore_functions, b_ignore_functions;
+        for (const auto& addr : args.get_multi<uint32_t>("a-ignore-function", phosg::Arguments::IntFormat::HEX)) {
+          a_ignore_functions.emplace(addr);
+        }
+        for (const auto& addr : args.get_multi<uint32_t>("b-ignore-function", phosg::Arguments::IntFormat::HEX)) {
+          b_ignore_functions.emplace(addr);
+        }
+        diff_dol_files_semantic(stdout, a_filename, b_filename, a_ignore_functions, b_ignore_functions);
+
       } else {
-        throw std::runtime_error("the two files are not the same type of executable, or are neither dol nor xbe");
-      }
-      for (const auto& it : result) {
-        std::string b_str = phosg::format_data_string(it.b_data, nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
-        if (show_pre) {
-          std::string a_str = phosg::format_data_string(it.a_data, nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
-          phosg::fwrite_fmt(stdout, "{:08X}: {} => {}\n", it.address, a_str, b_str);
+        std::vector<DiffEntry> result;
+        if (a_is_dol && b_is_dol) {
+          result = diff_dol_files(a_filename, b_filename);
+        } else if (a_is_xbe && b_is_xbe) {
+          result = diff_xbe_files(a_filename, b_filename);
         } else {
-          phosg::fwrite_fmt(stdout, "{:08X} {}\n", it.address, b_str);
+          throw std::runtime_error("the two files are not the same type of executable, or are neither dol nor xbe");
+        }
+        for (const auto& it : result) {
+          std::string b_str = phosg::format_data_string(it.b_data, nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
+          if (show_pre) {
+            std::string a_str = phosg::format_data_string(it.a_data, nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
+            phosg::fwrite_fmt(stdout, "{:08X}: {} => {}\n", it.address, a_str, b_str);
+          } else {
+            phosg::fwrite_fmt(stdout, "{:08X} {}\n", it.address, b_str);
+          }
         }
       }
     });
@@ -3812,9 +4029,9 @@ Action a_format_ep3_battle_record(
 
 Action a_replay_ep3_battle_commands(
     "replay-ep3-battle-commands", nullptr, +[](phosg::Arguments& args) {
-      auto s = std::make_shared<ServerState>(get_config_filename(args));
-      s->load_ep3_cards();
-      s->load_ep3_maps();
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->load_ep3_cards();
+      di->load_ep3_maps();
 
       int64_t base_seed = args.get<int64_t>("seed", -1);
       bool is_trial = (get_cli_version(args, Version::GC_EP3) == Version::GC_EP3_NTE);
@@ -3830,8 +4047,8 @@ Action a_replay_ep3_battle_commands(
 
       auto run_replay = [&](int64_t seed, size_t) {
         Episode3::Server::Options options = {
-            .card_index = s->ep3_card_index,
-            .map_index = s->ep3_map_index,
+            .card_index = di->ep3_card_index,
+            .map_index = di->ep3_map_index,
             .behavior_flags = 0x0092,
             .opt_rand_stream = nullptr,
             .rand_crypt = std::make_shared<MT19937Generator>(seed),
@@ -3871,15 +4088,15 @@ Action a_replay_ep3_battle_record(
 
       bool use_color = isatty(fileno(stdout));
 
-      auto s = std::make_shared<ServerState>(get_config_filename(args));
-      s->load_ep3_cards();
-      s->load_ep3_maps();
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->load_ep3_cards();
+      di->load_ep3_maps();
 
       bool is_nte = rec->get_behavior_flags() & Episode3::BehaviorFlag::IS_TRIAL_EDITION;
       auto output_queue = std::make_shared<std::deque<std::string>>();
       Episode3::Server::Options options = {
-          .card_index = s->ep3_card_index,
-          .map_index = s->ep3_map_index,
+          .card_index = di->ep3_card_index,
+          .map_index = di->ep3_map_index,
           .behavior_flags = rec->get_behavior_flags() & ~(Episode3::BehaviorFlag::LOG_COMMANDS_IF_LOBBY_MISSING),
           .opt_rand_stream = std::make_shared<phosg::StringReader>(rec->get_random_stream()),
           .rand_crypt = std::make_shared<DisabledRandomGenerator>(),
@@ -4003,7 +4220,20 @@ Action a_run_server_replay_log(
         std::filesystem::create_directories("system/players");
       }
 
-      const auto& replay_log_filenames = args.get_multi<std::string>("replay-log");
+      const auto& args_replay_log_filenames = args.get_multi<std::string>("replay-log");
+      std::vector<std::string> replay_log_filenames;
+      for (auto& log_filename : args_replay_log_filenames) {
+        if (std::filesystem::is_directory(log_filename)) {
+          for (const auto& item : std::filesystem::directory_iterator(log_filename)) {
+            std::string test_filename = item.path().filename().string();
+            if (test_filename.ends_with(".test.txt")) {
+              replay_log_filenames.emplace_back(std::format("{}/{}", log_filename, test_filename));
+            }
+          }
+        } else {
+          replay_log_filenames.emplace_back(std::move(log_filename));
+        }
+      }
 
 #ifndef PHOSG_WINDOWS
       signal(SIGPIPE, SIG_IGN);
@@ -4012,123 +4242,156 @@ Action a_run_server_replay_log(
         use_terminal_colors = true;
       }
 
-      auto state = std::make_shared<ServerState>(get_config_filename(args), !replay_log_filenames.empty());
+      auto data_index = std::make_shared<DataIndex>(get_config_filename(args));
       if (args.get<bool>("debug")) {
-        state->is_debug = true;
+        data_index->is_debug = true;
       }
-      state->load_all(true);
-
-      if (state->dns_server_port) {
-        if (!state->dns_server_addr.empty()) {
-          config_log.info_f("Starting DNS server on {}:{}", state->dns_server_addr, state->dns_server_port);
-        } else {
-          config_log.info_f("Starting DNS server on port {}", state->dns_server_port);
-        }
-        state->dns_server = std::make_shared<DNSServer>(state);
-        state->dns_server->listen(state->dns_server_addr, state->dns_server_port);
-      } else {
-        config_log.info_f("DNS server is disabled");
-      }
+      data_index->load_all();
+      auto state = ServerState::create_shared(data_index, !replay_log_filenames.empty());
 
       std::shared_ptr<ServerShell> shell;
       std::shared_ptr<SignalWatcher> signal_watcher;
-      std::shared_ptr<ReplaySession> last_running_replay;
+      std::map<std::string, std::shared_ptr<ReplaySession>> replay_sessions;
+      size_t completed_replay_count = 0;
+
+      auto run_replay = [&](const std::string& log_filename) -> asio::awaitable<void> {
+        auto replay_state = state->clone_shared();
+        replay_state->game_server = std::make_shared<GameServer>(replay_state);
+
+        phosg::log_info_f("[Replay] Loading {}", log_filename);
+        auto log_f = phosg::fopen_unique(log_filename, "rt");
+        auto replay_session = std::make_shared<ReplaySession>(replay_state, log_f.get());
+        replay_sessions.emplace(log_filename, replay_session);
+
+        phosg::log_info_f("[Replay] {} ...", log_filename);
+        co_await replay_session->run();
+        if (!replay_session->failure_str().empty()) {
+          phosg::log_error_f("[Replay] {} failed:\n{}", log_filename, replay_session->failure_str());
+        } else {
+          phosg::log_info_f("[Replay] {} OK", log_filename);
+        }
+
+        completed_replay_count++;
+        if (completed_replay_count == replay_log_filenames.size()) {
+          phosg::log_info_f("[Replay] All replays complete; exiting");
+          state->io_context->stop();
+        }
+      };
+      auto run_replays_sequentially = [&]() -> asio::awaitable<void> {
+        try {
+          for (const auto& [log_filename, replay_session] : replay_sessions) {
+            phosg::log_info_f("[Replay] {} ...", log_filename);
+            co_await replay_session->run();
+            if (!replay_session->failure_str().empty()) {
+              phosg::log_error_f("[Replay] {} failed:\n{}", log_filename, replay_session->failure_str());
+              break;
+            }
+            phosg::log_info_f("[Replay] {} OK", log_filename);
+            state->reset_between_replays();
+          }
+          phosg::log_info_f("[Replay] All replays complete");
+        } catch (const std::exception& e) {
+          phosg::log_info_f("[Replay] Replays failed: {}", e.what());
+        }
+        state->io_context->stop();
+      };
+
       if (!replay_log_filenames.empty()) {
-        config_log.info_f("Starting game server");
+        // TODO: Do this properly via a config option, you lazy bum
+        state->data->dol_file_index = std::make_shared<DOLFileIndex>();
         state->game_server = std::make_shared<GameServer>(state);
 
-        // TODO: Do this properly via a config option, you lazy bum
-        state->dol_file_index = std::make_shared<DOLFileIndex>();
-
-        auto run_replays = [&]() -> asio::awaitable<void> {
-          try {
-            for (const auto& log_filename : replay_log_filenames) {
-              phosg::log_info_f("[Replay] {} ...", log_filename);
-              auto log_f = phosg::fopen_shared(log_filename, "rt");
-              last_running_replay = std::make_shared<ReplaySession>(state, log_f.get());
-              co_await last_running_replay->run();
-              if (last_running_replay->failed()) {
-                phosg::log_error_f("[Replay] {} failed", log_filename);
-                break;
-              }
-              phosg::log_info_f("[Replay] {} OK", log_filename);
-              state->reset_between_replays();
-            }
-            phosg::log_info_f("[Replay] All replays complete");
-          } catch (const std::exception& e) {
-            phosg::log_info_f("[Replay] Replays failed: {}", e.what());
+        if (args.get<bool>("parallel")) {
+          for (const auto& log_filename : replay_log_filenames) {
+            asio::co_spawn(*state->io_context, run_replay(log_filename), asio::detached);
           }
-          if (!last_running_replay->failed()) {
-            last_running_replay.reset();
+        } else {
+          for (const auto& log_filename : replay_log_filenames) {
+            phosg::log_info_f("[Replay] Loading {}", log_filename);
+            auto log_f = phosg::fopen_unique(log_filename, "rt");
+            replay_sessions.emplace(log_filename, std::make_shared<ReplaySession>(state, log_f.get()));
           }
-          state->io_context->stop();
-        };
-        asio::co_spawn(*state->io_context, run_replays, asio::detached);
+          asio::co_spawn(*state->io_context, run_replays_sequentially(), asio::detached);
+        }
 
       } else {
+        if (state->data->dns_server_port) {
+          if (!state->data->dns_server_addr.empty()) {
+            config_log.info_f("Starting DNS server on {}:{}", state->data->dns_server_addr, state->data->dns_server_port);
+          } else {
+            config_log.info_f("Starting DNS server on port {}", state->data->dns_server_port);
+          }
+          state->dns_server = std::make_shared<DNSServer>(state);
+          state->dns_server->listen(state->data->dns_server_addr, state->data->dns_server_port);
+        } else {
+          config_log.info_f("DNS server is disabled");
+        }
+
         config_log.info_f("Opening sockets");
-        for (const auto& [_, pc] : state->name_to_port_config) {
+        for (const auto& [_, pc] : state->data->name_to_port_config) {
           if (!state->game_server.get()) {
             config_log.info_f("Starting game server");
             state->game_server = std::make_shared<GameServer>(state);
           }
           std::string spec = std::format("TG-{}-{}-{}-{}",
-              pc->port, phosg::name_for_enum(pc->version), pc->name, phosg::name_for_enum(pc->behavior));
-          state->game_server->listen(spec, pc->addr, pc->port, pc->version, pc->behavior);
+              pc.port, phosg::name_for_enum(pc.version), pc.name, phosg::name_for_enum(pc.behavior));
+          state->game_server->listen(spec, pc.addr, pc.port, pc.version, pc.behavior);
         }
 
-        if (!state->ip_stack_addresses.empty() || !state->ppp_stack_addresses.empty() || !state->ppp_raw_addresses.empty()) {
+        if (!state->data->ip_stack_addresses.empty() ||
+            !state->data->ppp_stack_addresses.empty() ||
+            !state->data->ppp_raw_addresses.empty()) {
           config_log.info_f("Starting IP/PPP stack simulator");
           state->ip_stack_simulator = std::make_shared<IPStackSimulator>(state);
-          for (const auto& it : state->ip_stack_addresses) {
+          for (const auto& it : state->data->ip_stack_addresses) {
             auto netloc = phosg::parse_netloc(it);
             std::string spec = (netloc.second == 0) ? ("T-IPS-" + netloc.first) : std::format("T-IPS-{}", netloc.second);
             state->ip_stack_simulator->listen(
                 spec, netloc.first, netloc.second, VirtualNetworkProtocol::ETHERNET_TAPSERVER);
           }
-          for (const auto& it : state->ppp_stack_addresses) {
+          for (const auto& it : state->data->ppp_stack_addresses) {
             auto netloc = phosg::parse_netloc(it);
             std::string spec = (netloc.second == 0) ? ("T-PPPST-" + netloc.first) : std::format("T-PPPST-{}", netloc.second);
             state->ip_stack_simulator->listen(
                 spec, netloc.first, netloc.second, VirtualNetworkProtocol::HDLC_TAPSERVER);
           }
-          for (const auto& it : state->ppp_raw_addresses) {
+          for (const auto& it : state->data->ppp_raw_addresses) {
             auto netloc = phosg::parse_netloc(it);
             std::string spec = (netloc.second == 0) ? ("T-PPPSR-" + netloc.first) : std::format("T-PPPSR-{}", netloc.second);
             state->ip_stack_simulator->listen(
                 spec, netloc.first, netloc.second, VirtualNetworkProtocol::HDLC_RAW);
             if (netloc.second) {
-              if (state->local_address == 0 && state->external_address == 0) {
+              if (state->data->local_address == 0 && state->data->external_address == 0) {
                 config_log.info_f(
                     "Cannot generate Devolution phone numbers for {} because LocalAddress and ExternalAddress are not specified in the configuration",
                     spec);
-              } else if (state->local_address == 0) {
+              } else if (state->data->local_address == 0) {
                 config_log.info_f(
                     "Note: The Devolution phone number for {} is {} (external)",
-                    spec, devolution_phone_number_for_netloc(state->external_address, netloc.second));
-              } else if (state->external_address == 0) {
+                    spec, devolution_phone_number_for_netloc(state->data->external_address, netloc.second));
+              } else if (state->data->external_address == 0) {
                 config_log.info_f(
                     "Note: The Devolution phone number for {} is {} (local)",
-                    spec, devolution_phone_number_for_netloc(state->local_address, netloc.second));
-              } else if (state->local_address == state->external_address) {
+                    spec, devolution_phone_number_for_netloc(state->data->local_address, netloc.second));
+              } else if (state->data->local_address == state->data->external_address) {
                 config_log.info_f(
                     "Note: The Devolution phone number for {} is {} (local+external)",
-                    spec, devolution_phone_number_for_netloc(state->local_address, netloc.second));
+                    spec, devolution_phone_number_for_netloc(state->data->local_address, netloc.second));
               } else {
                 config_log.info_f(
                     "Note: The Devolution phone numbers for {} are {} (local) and {} (external)",
                     spec,
-                    devolution_phone_number_for_netloc(state->local_address, netloc.second),
-                    devolution_phone_number_for_netloc(state->external_address, netloc.second));
+                    devolution_phone_number_for_netloc(state->data->local_address, netloc.second),
+                    devolution_phone_number_for_netloc(state->data->external_address, netloc.second));
               }
             }
           }
         }
 
-        if (!state->http_addresses.empty() || !state->http_addresses.empty()) {
+        if (!state->data->http_addresses.empty()) {
           config_log.info_f("Starting HTTP server");
           state->http_server = std::make_shared<HTTPServer>(state);
-          for (const auto& it : state->http_addresses) {
+          for (const auto& it : state->data->http_addresses) {
             auto netloc = phosg::parse_netloc(it);
             state->http_server->listen(netloc.first, netloc.second);
           }
@@ -4141,16 +4404,16 @@ Action a_run_server_replay_log(
       }
 
 #ifndef PHOSG_WINDOWS
-      if (!state->username.empty()) {
-        config_log.info_f("Switching to user {}", state->username);
-        drop_privileges(state->username);
+      if (!state->data->username.empty()) {
+        config_log.info_f("Switching to user {}", state->data->username);
+        drop_privileges(state->data->username);
       }
 #endif
 
       bool should_run_shell;
-      if (state->run_shell_behavior == ServerState::RunShellBehavior::DEFAULT) {
+      if (state->data->run_shell_behavior == DataIndex::RunShellBehavior::DEFAULT) {
         should_run_shell = isatty(fileno(stdin));
-      } else if (state->run_shell_behavior == ServerState::RunShellBehavior::ALWAYS) {
+      } else if (state->data->run_shell_behavior == DataIndex::RunShellBehavior::ALWAYS) {
         should_run_shell = true;
       } else {
         should_run_shell = false;
@@ -4167,8 +4430,19 @@ Action a_run_server_replay_log(
       state->io_context->run();
       config_log.info_f("Normal shutdown");
 
-      if (last_running_replay) {
-        throw std::runtime_error("Replay failed");
+      if (!replay_sessions.empty()) {
+        size_t num_failed_replays = 0;
+        for (const auto& [log_filename, replay_session] : replay_sessions) {
+          if (!replay_session->failure_str().empty()) {
+            config_log.warning_f("Replay failed: {}", log_filename);
+            num_failed_replays++;
+          }
+        }
+        if (num_failed_replays) {
+          throw std::runtime_error(std::format("{}/{} replays failed", num_failed_replays, replay_sessions.size()));
+        } else {
+          config_log.info_f("All {} replays succeeded", replay_sessions.size());
+        }
       }
     });
 

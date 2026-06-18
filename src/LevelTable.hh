@@ -154,7 +154,7 @@ using LevelStatsDeltaBE = LevelStatsDeltaT<true>;
 class LevelTable {
   // This is the base class for all the LevelTable implementations. The public interface here only defines functions
   // that the server needs to handle requests, but some subclasses implement more functionality. See the comments and
-  // Offsets structures inside the subclasses' constructor implementations for more details on the file formats.
+  // Root structures inside the subclasses' constructor implementations for more details on the file formats.
 public:
   virtual ~LevelTable() = default;
 

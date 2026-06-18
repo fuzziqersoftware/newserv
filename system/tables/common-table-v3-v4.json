@@ -1,6 +1,6 @@
 {
   // This file specifies how non-rare items should be generated. For details on how each field works, see the comments
-  // in CommonItemSet::Table::OffsetsT (in CommonItemSet.hh).
+  // in CommonItemSet::Table::RootT (in CommonItemSet.hh).
   // Each scenario has defaults which are automatically propagated from the previous scenario unless overridden. The
   // order of precedence is:
   // - If the section ID is not Viridia, the defaults are from the same episode, game mode, and difficulty, but

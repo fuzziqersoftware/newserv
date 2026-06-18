@@ -411,6 +411,7 @@ I 72448 2025-05-20 20:08:45 - [Commands] Received from C-1 (Kira Lv.1) @ ip:172.
 0010 | A6 31 06 C2 00 00 00 00 A0 4C 89 3E             |  1       L >
 I 72448 2025-05-20 20:08:46 - [Commands] Received from C-1 (Kira Lv.1) @ ip:172.16.0.30:64731 (version=DC_11_2000 command=60 flag=00)
 0000 | 60 00 10 00 4C 03 00 00 0A 00 00 00 00 40 00 00 | `   L        @
+### cc @variations 00020311101000212120000000000090
 I 72448 2025-05-20 20:09:02 - [Commands] Received from C-1 (Kira Lv.1) @ ip:172.16.0.30:64731 (version=DC_11_2000 command=0C flag=03)
 0000 | 0C 03 2C 00 00 00 00 00 00 00 00 00 41 41 41 41 |   ,         AAAA
 0010 | 41 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 | A

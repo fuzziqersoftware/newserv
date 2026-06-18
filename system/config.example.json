@@ -621,25 +621,289 @@
   // bytes); textual descriptions are not supported here.
   "QuestF95EResultItems": [
     [
-      [0x00900000, 0x00900100, 0x00900200, 0x00900300, 0x00900400, 0x00900500, 0x00900600, 0x00900700, 0x00900800, 0x00B40000, 0x01014E00, 0x01030700, 0x01034100, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000],
-      [0x00B90000, 0x00340000, 0x00090100, 0x00900200, 0x00900700, 0x002C0000, 0x002D0000, 0x01023500, 0x00010600, 0x00010500, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000],
-      [0x00B60000, 0x008A0100, 0x00100100, 0x00100200, 0x00100300, 0x00100400, 0x00100500, 0x00100600, 0x00270000, 0x00010700, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000],
-      [0x00B70000, 0x00100100, 0x00100200, 0x00100300, 0x00100400, 0x00100500, 0x00100600, 0x00290000, 0x008A0000, 0x008A0200, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000],
+      // Black Paper's Deal Dorphon route
+      [
+        // Normal
+        0x00900000, // DB'S SABER 3062
+        0x00900200, // DB'S SABER 3069 Chris
+        0x00900800, // DB'S SABER 3077
+        0x01014E00, // OFFICER UNIFORM
+        0x01030700, // God/Mind
+        0x01034100, // God/Battle
+        0x03030000, // Sol Atomizer
+        0x030F0000, // AddSlot
+        0x03180700, // Rappy's Beak
+        0x04000000, // Meseta
+      ], [
+        // Hard
+        0x00010500, // DB'S SABER (Ephinea)
+        0x00010600, // KALADBOLG (Ephinea)
+        0x002C0000, // ELYSION
+        0x00340000, // RED SWORD
+        0x00900000, // DB'S SABER 3062
+        0x00900100, // DB'S SABER 3067
+        0x00900200, // DB'S SABER 3069 Chris (Ephinea)
+        0x00900300, // DB'S SABER 3064
+        0x00900400, // DB'S SABER 3069 Torato
+        0x00900500, // DB'S SABER 3073
+        0x00900600, // DB'S SABER 3070
+        0x00900700, // DB'S SABER 3075
+        0x00900800, // DB'S SABER 3077 (Ephinea)
+        0x00B90000, // FLAMBERGE
+        0x01023500, // SECURE FEET
+        0x03030000, // Sol Atomizer
+        0x03040000, // Moon Atomizer
+        0x030F0000, // AddSlot
+        0x04000000, // Meseta
+      ], [
+        // Very Hard
+        0x00010700, // DURANDAL
+        0x00100100, // AGITO 1975 (real)
+        0x00100200, // AGITO 1983
+        0x00100300, // AGITO 2001
+        0x00100400, // AGITO 1991
+        0x00100500, // AGITO 1977
+        0x00100600, // AGITO 1980
+        0x00270000, // ANCIENT SABER
+        0x008A0100, // YASHA
+        0x00B60000, // GUREN
+        0x03030000, // Sol Atomizer
+        0x03040000, // Moon Atomizer
+        0x03050000, // Star Atomizer
+        0x030F0000, // AddSlot
+        0x04000000, // Meseta
+      ], [
+        // Ultimate
+        0x00100100, // AGITO 1975 (real)
+        0x00100200, // AGITO 1983
+        0x00100300, // AGITO 2001
+        0x00100400, // AGITO 1991
+        0x00100500, // AGITO 1977
+        0x00100600, // AGITO 1980
+        0x00290000, // YAMIGARASU
+        0x008A0000, // SANGE
+        0x008A0200, // KAMUI
+        0x00B70000, // SHOUREN
+        0x03040000, // Moon Atomizer
+        0x03050000, // Star Atomizer
+        0x030F0000, // AddSlot
+        0x04000000, // Meseta
+      ],
     ], [
-      [0x01028B00, 0x01022800, 0x01013400, 0x01030300, 0x01030B00, 0x03180700, 0x00550000, 0x01032900, 0x01032F00, 0x01032C00, 0x01032300, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000],
-      [0x01028C00, 0x01021500, 0x01028A00, 0x01014000, 0x01034400, 0x01034600, 0x01034500, 0x01034700, 0x03180700, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000],
-      [0x00CB0000, 0x003A0000, 0x008C0200, 0x01022B00, 0x00500000, 0x000B0600, 0x000A0600, 0x000A0400, 0x00550000, 0x00230000, 0x003B0000, 0x03180700, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000],
-      [0x00510000, 0x01035200, 0x01032000, 0x01033E00, 0x01022900, 0x03180700, 0x000B0400, 0x000A0600, 0x00560000, 0x003B0000, 0x00230000, 0x000A0500, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000],
+      // Black Paper's Deal Rappy route
+      [
+        // Normal
+        0x01013400, // SMOKING PLATE
+        0x01022800, // TRIPOLIC SHIELD
+        0x01028B00, // BUNNY EARS
+        0x01030300, // God/Power
+        0x01030B00, // God/Arm
+        0x01032300, // Resist/Burning
+        0x01032600, // Resist/Blizzard
+        0x01032900, // Resist/Storm (Ephinea)
+        0x01032C00, // Resist/Holy
+        0x01032F00, // Resist/Devil (Ephinea)
+        0x03180700, // Rappy's Beak
+        0x04000000, // Meseta
+
+      ], [
+        // Hard
+        0x01014000, // RED COAT
+        0x01021500, // INVISIBLE GUARD
+        0x01028A00, // YATA MIRROR
+        0x01028C00, // CAT EARS
+        0x01034200, // Cure/Poison
+        0x01034300, // Cure/Paralysis
+        0x01034400, // Cure/Slow
+        0x01034500, // Cure/Confuse
+        0x01034600, // Cure/Freeze
+        0x01034700, // Cure/Shock
+        0x03040000, // Moon Atomizer
+        0x03050000, // Star Atomizer
+        0x03180700, // Rappy's Beak
+        0x04000000, // Meseta
+      ], [
+        // Very Hard
+        0x000A0400, // CLUB OF LACONIUM (Ephinea)
+        0x000A0600, // CLUB OF ZUMIURAN
+        0x000B0600, // ALIVE AQHU
+        0x00230000, // STING TIP
+        0x003A0000, // MADAM'S PARASOL
+        0x003B0000, // MADAM'S UMBRELLA
+        0x00500000, // WINDMILL
+        0x00550000, // RABBIT WAND
+        0x00CB0000, // TYRELL'S PARASOL
+        0x01022B00, // KASAMI BRACER
+        0x03030000, // Sol Atomizer
+        0x03040000, // Moon Atomizer
+        0x03050000, // Star Atomizer
+        0x030E0A00, // Book of HITOGATA (Ephinea)
+        0x03180700, // Rappy's Beak
+        0x04000000, // Meseta
+      ], [
+        // Ultimate
+        0x000A0500, // MACE OF ADAMAN
+        0x000A0600, // CLUB OF ZUMIURAN
+        0x000B0400, // BATTLE VERGE
+        0x00230000, // STING TIP (Ephinea)
+        0x00250000, // TECHNICAL CROZIER
+        0x003B0000, // MADAM'S UMBRELLA
+        0x00500000, // WINDMILL
+        0x00510000, // EVIL CURST
+        0x00560000, // PLANTAIN LEAF
+        0x01022900, // STANDSTILL SHIELD
+        0x01032000, // God/Ability
+        0x01033E00, // God/Technique
+        0x01035200, // DIVINE PROTECTION
+        0x03030000, // Sol Atomizer
+        0x03040000, // Moon Atomizer
+        0x03050000, // Star Atomizer
+        0x03180700, // Rappy's Beak
+        0x04000000, // Meseta
+      ],
     ], [
-      [0x01013200, 0x002F0100, 0x00B30000, 0x005E0000, 0x000E0200, 0x002E0000, 0x00950000, 0x009A0000, 0x002F0000, 0x01031B00, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000],
-      [0x00C00000, 0x00D20000, 0x008D0000, 0x01012E00, 0x008B0000, 0x00090700, 0x004E0000, 0x006D0000, 0x00150000, 0x008B0200, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000],
-      [0x00AA0000, 0x01014100, 0x01015100, 0x01022300, 0x003F0000, 0x00410000, 0x00050700, 0x00050600, 0x00050500, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000],
-      [0x00AF0000, 0x00430000, 0x01035100, 0x00CD0000, 0x00990000, 0x006C0000, 0x00450000, 0x006B0000, 0x00120000, 0x00650000, 0x01022900, 0x00130000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000, 0x04000000],
+      // Black Paper's Deal Zu route
+      [
+        // Normal
+        0x000E0100, // STAG CUTLERY
+        0x000E0200, // TWIN BRAND
+        0x002E0000, // METEOR CUDGEL
+        0x002F0000, // MONKEY KING BAR
+        0x005E0000, // TWIN BLAZE
+        0x00950000, // PARTISAN of LIGHTNING
+        0x009A0000, // DEMOLITION COMET
+        0x00B30000, // VIVIENNE
+        0x01013200, // ELECTRO FRAME
+        0x01031B00, // God/Body
+        0x03030000, // Sol Atomizer
+        0x03040000, // Moon Atomizer
+        0x03050000, // Star Atomizer
+        0x030F0000, // AddSlot (Ephinea)
+        0x04000000, // Meseta
+      ], [
+        // Hard
+        0x00090700, // FINAL IMPACT
+        0x00150000, // FLAME VISIT
+        0x004E0000, // PANZER FAUST
+        0x006D0000, // MASER BEAM
+        0x008B0000, // PHOTON LAUNCHER
+        0x008B0200, // RED SCORPIR
+        0x008D0000, // NUG2000-BAZOOKA
+        0x00C00000, // CANNON ROUGE
+        0x00D20000, // ANO BAZOOKA
+        0x01012E00, // FLAME GARMENT
+        0x03030000, // Sol Atomizer
+        0x03040000, // Moon Atomizer
+        0x03050000, // Star Atomizer
+        0x030F0000, // AddSlot
+        0x04000000, // Meseta
+      ], [
+        // Very Hard
+        0x00050500, // SLICER OF ASSASSIN
+        0x00050600, // DISKA OF LIBERATOR
+        0x00050700, // DISKA OF BRAVEMAN
+        0x003F0000, // FLIGHT CUTTER
+        0x00400000, // FLIGHT FAN
+        0x00410000, // RED SLICER
+        0x00AA0000, // SLICER OF FANATIC
+        0x01014100, // THIRTEEN
+        0x01015100, // INFANTRY GEAR
+        0x01022300, // REGENE GEAR ADV.
+        0x03030000, // Sol Atomizer
+        0x03040000, // Moon Atomizer
+        0x03050000, // Star Atomizer
+        0x030F0000, // AddSlot (Ephinea)
+        0x04000000, // Meseta
+      ], [
+        // Ultimate
+        0x00120000, // SPREAD NEEDLE
+        0x00130000, // HOLY RAY
+        0x00430000, // HANDGUN:MILLA
+        0x00450000, // FROZEN SHOOTER
+        0x00650000, // YASMINKOV 3000R
+        0x006B0000, // YASMINKOV 7000V
+        0x006C0000, // YASMINKOV 9000M
+        0x00990000, // ANGEL HARP
+        0x00AF0000, // OPHELIE SEIZE
+        0x00CD0000, // TANEGASHIMA
+        0x01035100, // SMARTLINK
+        0x03030000, // Sol Atomizer
+        0x03040000, // Moon Atomizer
+        0x03050000, // Star Atomizer
+        0x030F0000, // AddSlot
+        0x04000000, // Meseta
+      ],
     ], [], [
-      [0x00BA0000, 0x000D0300, 0x00430100, 0x00070800, 0x00420100, 0x00C90000, 0x03100000, 0x01029500, 0x01028F00, 0x01029100],
-      [0x00BB0000, 0x000D0300, 0x00B70000, 0x00420100, 0x00070800, 0x00C90000, 0x01013600, 0x01028A00, 0x01029900, 0x01035100, 0x01035B00, 0x01035200, 0x03100000, 0x03180A00],
-      [0x00BA0000, 0x00B40000, 0x000D0300, 0x00B60000, 0x00B30000, 0x00070800, 0x00430100, 0x00C90000, 0x01013600, 0x01028A00, 0x01029900, 0x01028500, 0x01034800, 0x01035100, 0x01035B00, 0x01035200, 0x03100000],
-      [0x00BA0000, 0x00B40000, 0x000D0300, 0x00B60000, 0x00B30000, 0x00070800, 0x00430100, 0x00C90000, 0x01013600, 0x01028A00, 0x01029900, 0x01028500, 0x01034800, 0x01035100, 0x01035B00, 0x01035200],
+      // Black Paper's Dangerous Deal 2
+      [
+        // Normal
+        0x00070800, // RIANOV 303SNR
+        0x000D0300, // PHOENIX CLAW
+        0x00420100, // MASTER RAVEN (Ephinea)
+        0x00430100, // LAST SWAN
+        0x00BA0000, // YUNCHANG
+        0x00C90000, // DECALOG
+        0x01034800, // YASAKANI MAGATAMA
+        0x01035100, // SMARTLINK
+        0x03100000, // Photon Drop
+      ], [
+        // Hard
+        0x00070800, // RIANOV 303SNR
+        0x000D0300, // PHOENIX CLAW
+        0x00420100, // MASTER RAVEN
+        0x00B40000, // KUSANAGI
+        0x00B70000, // SHOUREN
+        0x00BA0000, // YUNCHANG
+        0x00BB0000, // SNAKE SPIRE
+        0x00BC0000, // FLAPJACK FLAPPER
+        0x00C90000, // DECALOG
+        0x01013600, // BLACK HOUND CUIRASS
+        0x01028A00, // YATA MIRROR
+        0x01029900, // STINK SHIELD
+        0x01035100, // SMARTLINK
+        0x01035200, // DIVINE PROTECTION
+        0x01035B00, // Centurion/Ability
+        0x03100000, // Photon Drop
+      ], [
+        // Very Hard
+        0x00070800, // RIANOV 303SNR
+        0x000D0300, // PHOENIX CLAW
+        0x00430100, // LAST SWAN
+        0x00B30000, // VIVIENNE
+        0x00B40000, // KUSANAGI
+        0x00B40000, // KUSANAGI
+        0x00B60000, // GUREN
+        0x00BA0000, // YUNCHANG (Ephinea)
+        0x00C90000, // DECALOG
+        0x01013600, // BLACK HOUND CUIRASS
+        0x01028500, // GRATIA
+        0x01028A00, // YATA MIRROR
+        0x01029900, // STINK SHIELD
+        0x01034800, // YASAKANI MAGATAMA
+        0x01035100, // SMARTLINK
+        0x01035200, // DIVINE PROTECTION
+        0x01035B00, // Centurion/Ability
+        0x03100000, // Photon Drop
+      ], [
+        // Ultimate
+        0x00070800, // RIANOV 303SNR
+        0x000D0300, // PHOENIX CLAW
+        0x00430100, // LAST SWAN
+        0x00B30000, // VIVIENNE
+        0x00B40000, // KUSANAGI
+        0x00B60000, // GUREN
+        0x00B70000, // SHOUREN
+        0x00C90000, // DECALOG
+        0x01013600, // BLACK HOUND CUIRASS
+        0x01028500, // GRATIA
+        0x01028A00, // YATA MIRROR
+        0x01029900, // STINK SHIELD
+        0x01034800, // YASAKANI MAGATAMA
+        0x01035100, // SMARTLINK
+        0x01035200, // DIVINE PROTECTION
+        0x01035B00, // Centurion/Ability
+        0x03100000, // Photon Drop
+      ],
     ],
   ],
   // Results for quest opcode F95F (used in Gallon's Plan). This list is indexed by type (which is the third argument
@@ -1074,35 +1338,35 @@
   // doesn't have direct access to the client's quest flags from their save file.
   // If you use an expression, the format is the same as the AvailableIf and EnabledIf fields in quest JSONs (see
   // system/quests/retrieval/q058.json for details). Note that the expression is only evaluated at the time the game is
-  // created, and the player-specific tokens like C_EpX_YY refer to the player who created the game.
+  // created, and the player-specific tokens like CC_EpX_YY refer to the player who created the game.
   // The UnlockAllAreas option is now gone; if you want the same behavior as if it were enabled, uncomment all the
-  // "area unlocks" lines below. Note that some late PSOBB client versions (for example, the Tethealla client) open all
+  // "area unlock" lines below. Note that some late PSOBB client versions (for example, the Tethealla client) open all
   // areas by default, so the area unlock flags have no effect for them.
   "QuestFlagRewritesV1V2": {
-    // "F_0017": true, // Ep1 area unlocks
-    // "F_0020": true, // Ep1 area unlocks
-    // "F_002A": true, // Ep1 area unlocks
+    // "F_0017": true, // Ep1 area unlock (Caves)
+    // "F_0020": true, // Ep1 area unlock (Mines)
+    // "F_002A": true, // Ep1 area unlock (Ruins)
   },
   "QuestFlagRewritesV3": {
-    // "F_0017": true, // Ep1 area unlocks
-    // "F_0020": true, // Ep1 area unlocks
-    // "F_002A": true, // Ep1 area unlocks
-    // "F_004C": true, // Ep2 area unlocks
-    // "F_004F": true, // Ep2 area unlocks
-    // "F_0052": true, // Ep2 area unlocks
+    // "F_0017": true, // Ep1 area unlock (Caves)
+    // "F_0020": true, // Ep1 area unlock (Mines)
+    // "F_002A": true, // Ep1 area unlock (Ruins)
+    // "F_004C": true, // Ep2 area unlock (VR Spaceship)
+    // "F_004F": true, // Ep2 area unlock (CCA)
+    // "F_0052": true, // Ep2 area unlock (Seabed)
   },
   "QuestFlagRewritesV4": {
-    // "F_01F9": true, // Ep1 area unlocks
-    // "F_0201": true, // Ep1 area unlocks
-    // "F_0207": true, // Ep1 area unlocks
-    // "F_021B": true, // Ep2 area unlocks
-    // "F_0225": true, // Ep2 area unlocks
-    // "F_022F": true, // Ep2 area unlocks
-    // "F_02BD": true, // Ep4 area unlocks
-    // "F_02BE": true, // Ep4 area unlocks
-    // "F_02BF": true, // Ep4 area unlocks
-    // "F_02C0": true, // Ep4 area unlocks
-    // "F_02C1": true, // Ep4 area unlocks
+    // "F_01F9": true, // Ep1 area unlock (Caves)
+    // "F_0201": true, // Ep1 area unlock (Mines)
+    // "F_0207": true, // Ep1 area unlock (Ruins)
+    // "F_021B": true, // Ep2 area unlock (VR Spaceship)
+    // "F_0225": true, // Ep2 area unlock (CCA)
+    // "F_022F": true, // Ep2 area unlock (Seabed)
+    // "F_02BD": true, // Ep4 area unlock (Crater West)
+    // "F_02BE": true, // Ep4 area unlock (Crater South)
+    // "F_02BF": true, // Ep4 area unlock (Crater North)
+    // "F_02C0": true, // Ep4 area unlock (Crater Interior)
+    // "F_02C1": true, // Ep4 area unlock (Desert)
     "F_0046": false, // Ep2 CCA door lock fix
     "F_0047": false, // Ep2 CCA door lock fix
     "F_0048": false, // Ep2 CCA door lock fix

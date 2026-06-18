@@ -13,7 +13,7 @@
 #include "Map.hh"
 #include "SaveFileFormats.hh"
 
-struct ServerState;
+class ServerState;
 
 struct ProxySession {
   static size_t num_proxy_sessions;

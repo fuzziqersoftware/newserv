@@ -145,7 +145,7 @@ void IPSSClient::reschedule_idle_timeout() {
     throw std::runtime_error("cannot reschedule idle timeout when simulator is missing");
   }
   this->idle_timeout_timer.cancel();
-  this->idle_timeout_timer.expires_after(std::chrono::microseconds(sim->get_state()->client_idle_timeout_usecs));
+  this->idle_timeout_timer.expires_after(std::chrono::microseconds(sim->get_state()->data->client_idle_timeout_usecs));
   this->idle_timeout_timer.async_wait([this, sim](std::error_code ec) {
     if (!ec) {
       sim->log.info_f("Idle timeout expired on N-{:X}", this->network_id);
@@ -1358,8 +1358,8 @@ asio::awaitable<void> IPStackSimulator::open_server_connection(
   std::string conn_str = this->str_for_tcp_connection(c, conn);
 
   // Figure out which logical port the connection should go to
-  auto port_config_it = this->state->number_to_port_config.find(conn->server_port);
-  if (port_config_it == this->state->number_to_port_config.end()) {
+  auto port_config_it = this->state->data->number_to_port_config.find(conn->server_port);
+  if (port_config_it == this->state->data->number_to_port_config.end()) {
     this->log.error_f("TCP connection {} is to undefined port {}", conn_str, conn->server_port);
     co_await this->close_tcp_connection(c, conn);
     co_return;
@@ -1370,20 +1370,20 @@ asio::awaitable<void> IPStackSimulator::open_server_connection(
       this->shared_from_this(),
       c,
       conn,
-      port_config->version,
+      port_config.version,
       Language::ENGLISH,
       "",
       phosg::TerminalFormat::END,
       phosg::TerminalFormat::END,
       false,
-      this->state->censor_credentials);
+      this->state->data->censor_credentials);
 
   if (!this->state->game_server.get()) {
     this->log.error_f("No server available for TCP connection {}", conn_str);
     co_await this->close_tcp_connection(c, conn);
     co_return;
   } else {
-    this->state->game_server->connect_channel(conn->server_channel, conn->server_port, port_config->behavior);
+    this->state->game_server->connect_channel(conn->server_channel, conn->server_port, port_config.behavior);
     this->log.info_f("Connected TCP connection {} to game server", conn_str);
   }
 }
@@ -1403,7 +1403,7 @@ asio::awaitable<void> IPStackSimulator::close_tcp_connection(
 std::shared_ptr<IPSSClient> IPStackSimulator::create_client(
     std::shared_ptr<IPSSSocket> listen_sock, asio::ip::tcp::socket&& client_sock) {
   uint32_t addr = ipv4_addr_for_asio_addr(client_sock.remote_endpoint().address());
-  if (this->state->banned_ipv4_ranges->check(addr)) {
+  if (this->state->data->banned_ipv4_ranges->check(addr)) {
     if (client_sock.is_open()) {
       client_sock.close();
     }

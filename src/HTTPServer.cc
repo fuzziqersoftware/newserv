@@ -161,7 +161,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
   this->router.add(HTTPRequest::Method::GET, "/y/clients", [this](ArgsT&&) -> RetT {
     auto res = std::make_shared<phosg::JSON>(phosg::JSON::list());
     for (const auto& c : this->state->game_server->all_clients()) {
-      auto item_name_index = this->state->item_name_index_opt(c->version());
+      auto item_name_index = this->state->data->item_name_index_opt(c->version());
 
       const char* drop_notifications_mode = "unknown";
       switch (c->get_drop_notification_mode()) {
@@ -405,7 +405,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     for (const auto& [_, l] : this->state->id_to_lobby) {
       auto leader = l->clients[l->leader_id];
       Version v = leader ? leader->version() : Version::BB_V4;
-      auto item_name_index = this->state->item_name_index_opt(v);
+      auto item_name_index = this->state->data->item_name_index_opt(v);
 
       auto client_ids_json = phosg::JSON::list();
       for (size_t z = 0; z < l->max_clients; z++) {
@@ -665,17 +665,17 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
         lobby_count++;
       }
     }
-    uint64_t uptime_usecs = phosg::now() - this->state->creation_time;
+    uint64_t uptime_usecs = phosg::now() - this->state->data->creation_time;
     return phosg::JSON::dict({
-        {"StartTimeUsecs", this->state->creation_time},
-        {"StartTime", phosg::format_time(this->state->creation_time)},
+        {"StartTimeUsecs", this->state->data->creation_time},
+        {"StartTime", phosg::format_time(this->state->data->creation_time)},
         {"UptimeUsecs", uptime_usecs},
         {"Uptime", phosg::format_duration(uptime_usecs)},
         {"LobbyCount", lobby_count},
         {"GameCount", game_count},
         {"ClientCount", this->state->game_server->all_clients().size() - ProxySession::num_proxy_sessions},
         {"ProxySessionCount", ProxySession::num_proxy_sessions},
-        {"ServerName", this->state->name},
+        {"ServerName", this->state->data->name},
     });
   };
 
@@ -684,7 +684,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
   });
 
   this->router.add(HTTPRequest::Method::GET, "/y/config", [this](ArgsT&&) -> RetT {
-    co_return this->state->config_json;
+    co_return this->state->data->config_json;
   });
 
   this->router.add(HTTPRequest::Method::GET, "/y/summary", [this, generate_server_info_json](ArgsT&&) -> RetT {
@@ -750,14 +750,18 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
   });
 
   this->router.add(HTTPRequest::Method::GET, "/y/data/ep3/cards", [this](ArgsT&& args) -> RetT {
-    auto& index = args.req.query_params.count("trial") ? this->state->ep3_card_index_trial : this->state->ep3_card_index;
+    auto& index = args.req.query_params.count("trial")
+        ? this->state->data->ep3_card_index_trial
+        : this->state->data->ep3_card_index;
     co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(index->definitions_json());
     });
   });
 
   this->router.add(HTTPRequest::Method::GET, "/y/data/ep3/card/:card_id", [this](ArgsT&& args) -> RetT {
-    auto& index = args.req.query_params.count("trial") ? this->state->ep3_card_index_trial : this->state->ep3_card_index;
+    auto& index = args.req.query_params.count("trial")
+        ? this->state->data->ep3_card_index_trial
+        : this->state->data->ep3_card_index;
     uint32_t card_id = args.get_param<uint32_t>("card_id");
     try {
       co_return std::make_shared<phosg::JSON>(index->definition_for_id(card_id)->def.json());
@@ -769,7 +773,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
   this->router.add(HTTPRequest::Method::GET, "/y/data/ep3/maps", [this](ArgsT&&) -> RetT {
     co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       auto ret = std::make_shared<phosg::JSON>(phosg::JSON::dict());
-      for (const auto& [map_number, map] : this->state->ep3_map_index->all_maps()) {
+      for (const auto& [map_number, map] : this->state->data->ep3_map_index->all_maps()) {
         auto languages_json = phosg::JSON::list();
         for (const auto& vm : map->all_versions()) {
           if (vm) {
@@ -790,7 +794,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
   this->router.add(HTTPRequest::Method::GET, "/y/data/ep3/map/:map_number/:language", [this](ArgsT&& args) -> RetT {
     co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       try {
-        auto map = this->state->ep3_map_index->map_for_id(args.get_param<uint32_t>("map_number", true));
+        auto map = this->state->data->ep3_map_index->map_for_id(args.get_param<uint32_t>("map_number", true));
         auto vm = map->version(language_for_name(args.params.at("language")));
         return std::make_shared<phosg::JSON>(vm->map->json(vm->language));
       } catch (const std::out_of_range&) {
@@ -802,7 +806,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
   this->router.add(HTTPRequest::Method::GET, "/y/data/ep3/map/:map_number/:language/raw", [this](ArgsT&& args) -> RetT {
     co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> RawResponse {
       try {
-        auto map = this->state->ep3_map_index->map_for_id(args.get_param<uint32_t>("map_number"));
+        auto map = this->state->data->ep3_map_index->map_for_id(args.get_param<uint32_t>("map_number"));
         auto vm = map->version(language_for_name(args.params.at("language")));
         std::string data(reinterpret_cast<const char*>(vm->map.get()), sizeof(Episode3::MapDefinition));
         return RawResponse{.content_type = "application/octet-stream", .data = std::move(data)};
@@ -814,7 +818,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
 
   this->router.add(HTTPRequest::Method::GET, "/y/data/common-tables", [this](ArgsT&&) -> RetT {
     auto ret = std::make_shared<phosg::JSON>(phosg::JSON::list());
-    for (const auto& it : this->state->common_item_sets) {
+    for (const auto& it : this->state->data->common_item_sets) {
       ret->emplace_back(it.first);
     }
     co_return ret;
@@ -822,7 +826,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
 
   this->router.add(HTTPRequest::Method::GET, "/y/data/common-table/:table_name", [this](ArgsT&& args) -> RetT {
     try {
-      const auto& table = this->state->common_item_sets.at(args.params.at("table_name"));
+      const auto& table = this->state->data->common_item_sets.at(args.params.at("table_name"));
       co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
         return std::make_shared<phosg::JSON>(table->json());
       });
@@ -833,7 +837,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
 
   this->router.add(HTTPRequest::Method::GET, "/y/data/rare-tables", [this](ArgsT&&) -> RetT {
     auto ret = std::make_shared<phosg::JSON>(phosg::JSON::list());
-    for (const auto& it : this->state->rare_item_sets) {
+    for (const auto& it : this->state->data->rare_item_sets) {
       ret->emplace_back(it.first);
     }
     co_return ret;
@@ -842,16 +846,16 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
   this->router.add(HTTPRequest::Method::GET, "/y/data/rare-table/:table_name", [this](ArgsT&& args) -> RetT {
     try {
       const auto& table_name = args.params.at("table_name");
-      const auto& table = this->state->rare_item_sets.at(table_name);
+      const auto& table = this->state->data->rare_item_sets.at(table_name);
       std::shared_ptr<const ItemNameIndex> name_index;
       if (table_name.ends_with("-v1")) {
-        name_index = this->state->item_name_index_opt(Version::DC_V1);
+        name_index = this->state->data->item_name_index_opt(Version::DC_V1);
       } else if (table_name.ends_with("-v2")) {
-        name_index = this->state->item_name_index_opt(Version::PC_V2);
+        name_index = this->state->data->item_name_index_opt(Version::PC_V2);
       } else if (table_name.ends_with("-v3")) {
-        name_index = this->state->item_name_index_opt(Version::GC_V3);
+        name_index = this->state->data->item_name_index_opt(Version::GC_V3);
       } else if (table_name.ends_with("-v4")) {
-        name_index = this->state->item_name_index_opt(Version::BB_V4);
+        name_index = this->state->data->item_name_index_opt(Version::BB_V4);
       }
       co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
         return std::make_shared<phosg::JSON>(table->json(name_index));
@@ -863,13 +867,13 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
 
   this->router.add(HTTPRequest::Method::GET, "/y/data/quests", [this](ArgsT&&) -> RetT {
     co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
-      return std::make_shared<phosg::JSON>(this->state->quest_index->json());
+      return std::make_shared<phosg::JSON>(this->state->data->quest_index->json());
     });
   });
 
   this->router.add(HTTPRequest::Method::GET, "/y/data/quest/:quest_num", [this](ArgsT&& args) -> RetT {
     uint32_t quest_num = args.get_param<uint32_t>("quest_num");
-    auto q = this->state->quest_index->get(quest_num);
+    auto q = this->state->data->quest_index->get(quest_num);
     if (!q) {
       throw HTTPError(404, "Quest does not exist");
     }

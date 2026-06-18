@@ -1738,7 +1738,7 @@ bool Server::update_registration_phase() {
   return true;
 }
 
-const std::unordered_map<uint8_t, Server::handler_t> Server::subcommand_handlers({
+const std::unordered_map<uint8_t, Server::handler_t> Server::subcommand_handlers{
     {0x0B, &Server::handle_CAx0B_redraw_initial_hand},
     {0x0C, &Server::handle_CAx0C_end_redraw_initial_hand_phase},
     {0x0D, &Server::handle_CAx0D_end_non_action_phase},
@@ -1762,7 +1762,7 @@ const std::unordered_map<uint8_t, Server::handler_t> Server::subcommand_handlers
     {0x41, &Server::handle_CAx41_map_request},
     {0x48, &Server::handle_CAx48_end_turn},
     {0x49, &Server::handle_CAx49_card_counts},
-});
+};
 
 void Server::on_server_data_input(std::shared_ptr<Client> sender_c, const std::string& data) {
   auto header = check_size_t<G_CardBattleCommandHeader>(data, 0xFFFF);

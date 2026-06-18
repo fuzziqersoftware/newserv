@@ -682,8 +682,20 @@ Allow loading corrupted save files
         041156D4 4E800020
 
 60 frames per second
-This does not adjust any logic or animations; everything just runs faster
-3OE1 => 045CDEF8 00000001
+This doesn't adjust any logic or animations; everything just runs faster
+3OJT => 043F5AC0 38800001
+3OJ2 => 043D8550 38800001
+3OJ3 => 043DAF58 38800001
+3OJ4 => 043DCDF8 38800001
+3OJ5 => 043DCBA8 38800001
+3OE0 => 043D9820 38800001
+3OE1 => 043D9878 38800001
+3OE2 => 043DCF78 38800001
+3OP0 => 043DBA68 38800001
+3SJT => 043567AC 38800001
+3SE0 => 0438A804 38800001
+3SJ0 => 043897B4 38800001
+3SP0 => 0438B6D4 38800001
 
 Show extended item info when targeting a dropped item
 (Compiled from the ExtendedItemInfo patch, also written by me)
@@ -1130,3 +1142,7 @@ Rappy size modifier
 
 Disable HP reduction warning sound in Challenge mode
 3OE1 => 04076A28 4E800020
+
+Mag invincibility effect sparkliness modifier
+(Default 003C; smaller values are more sparkly)
+3OE1 => 801131C4 3860XXXX

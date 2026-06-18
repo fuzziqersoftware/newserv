@@ -172,7 +172,7 @@ uint8_t Lobby::area_for_floor(Version version, uint8_t floor) const {
   if (this->quest) {
     return this->quest->meta.floor_assignments.at(floor).area;
   }
-  auto sdt = this->require_server_state()->set_data_table(version, this->episode, this->mode, this->difficulty);
+  auto sdt = this->require_server_state()->data->set_data_table(version, this->episode, this->mode, this->difficulty);
   return sdt->default_floor_to_area(this->episode).at(floor);
 }
 
@@ -215,14 +215,14 @@ void Lobby::create_item_creator(Version logic_version) {
     effective_section_id = 0x00;
   }
   this->item_creator = std::make_shared<ItemCreator>(
-      s->common_item_set(logic_version, this->quest),
-      s->rare_item_set(logic_version, this->quest),
-      s->armor_random_set,
-      s->tool_random_set,
-      s->weapon_random_set(this->difficulty),
-      s->tekker_adjustment_set,
-      s->item_parameter_table(logic_version),
-      s->item_stack_limits(logic_version),
+      s->data->common_item_set(logic_version, this->quest),
+      s->data->rare_item_set(logic_version, this->quest),
+      s->data->armor_random_set,
+      s->data->tool_random_set,
+      s->data->weapon_random_set(this->difficulty),
+      s->data->tekker_adjustment_set,
+      s->data->item_parameter_table(logic_version),
+      s->data->item_stack_limits(logic_version),
       (this->mode == GameMode::SOLO) ? GameMode::NORMAL : this->mode,
       this->difficulty,
       effective_section_id,
@@ -277,7 +277,7 @@ void Lobby::load_maps() {
   } else {
     this->log.info_f("Loading free play supermaps");
     auto s = this->require_server_state();
-    auto supermaps = s->supermaps_for_variations(this->episode, this->mode, this->difficulty, this->variations);
+    auto supermaps = s->data->supermaps_for_variations(this->episode, this->mode, this->difficulty, this->variations);
     this->map_state = std::make_shared<MapState>(
         this->lobby_id, this->difficulty, this->event, this->random_seed, this->rare_enemy_rates, this->rand_crypt, supermaps);
   }
@@ -307,13 +307,13 @@ void Lobby::create_ep3_server() {
 
   bool is_nte = this->is_ep3_nte();
   Episode3::Server::Options options = {
-      .card_index = is_nte ? s->ep3_card_index_trial : s->ep3_card_index,
-      .map_index = s->ep3_map_index,
-      .behavior_flags = s->ep3_behavior_flags,
+      .card_index = is_nte ? s->data->ep3_card_index_trial : s->data->ep3_card_index,
+      .map_index = s->data->ep3_map_index,
+      .behavior_flags = s->data->ep3_behavior_flags,
       .opt_rand_stream = nullptr,
       .rand_crypt = this->rand_crypt,
       .tournament = tourn,
-      .trap_card_ids = s->ep3_trap_card_ids,
+      .trap_card_ids = s->data->ep3_trap_card_ids,
       .output_queue = nullptr,
   };
   if (is_nte) {

@@ -20,7 +20,7 @@
 #include "StaticGameData.hh"
 #include "Text.hh"
 
-struct ServerState;
+class ServerState;
 
 struct Lobby : public std::enable_shared_from_this<Lobby> {
   struct FloorItem {

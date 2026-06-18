@@ -5,7 +5,7 @@
 
 #include "Client.hh"
 
-const std::vector<ChoiceSearchCategory> CHOICE_SEARCH_CATEGORIES({
+const std::vector<ChoiceSearchCategory> CHOICE_SEARCH_CATEGORIES{
     ChoiceSearchCategory{
         .id = 0x0001,
         .name = "Level",
@@ -145,4 +145,4 @@ const std::vector<ChoiceSearchCategory> CHOICE_SEARCH_CATEGORIES({
           return (choice_id == 0) || (target_choice_id == 0) || (choice_id == target_choice_id);
         },
     },
-});
+};

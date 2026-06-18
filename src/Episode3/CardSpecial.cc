@@ -3798,7 +3798,7 @@ void CardSpecial::apply_effects_after_card_move(std::shared_ptr<Card> card) {
 }
 
 void CardSpecial::check_for_defense_interference(
-    std::shared_ptr<const Card> attacker_card, std::shared_ptr<Card> target_card, int16_t* inout_unknown_p4) {
+    std::shared_ptr<const Card> attacker_card, std::shared_ptr<Card> target_card, int16_t* preliminary_damage) {
   auto s = this->server();
 
   // Note: This check is not part of the original implementation.
@@ -3806,10 +3806,10 @@ void CardSpecial::check_for_defense_interference(
     return;
   }
 
-  if (!inout_unknown_p4) {
+  if (!preliminary_damage) {
     return;
   }
-  if (target_card->get_current_hp() > *inout_unknown_p4) {
+  if (target_card->get_current_hp() > *preliminary_damage) {
     return;
   }
 
@@ -3870,10 +3870,9 @@ void CardSpecial::check_for_defense_interference(
   cmd.effect.value = 0;
   cmd.effect.operation = 0x7D;
   s->send(cmd);
-  if (inout_unknown_p4) {
-    *inout_unknown_p4 = 0;
-    target_card->action_metadata.set_flags(0x10);
-  }
+
+  *preliminary_damage = 0;
+  target_card->action_metadata.set_flags(0x10);
 }
 
 void CardSpecial::evaluate_and_apply_effects(

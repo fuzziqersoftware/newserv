@@ -1,0 +1,1126 @@
+{
+  "Colors": [
+    [1.0, 0.19999998807907104, 0.099999994039535522, 1.0],
+    [0.19999998807907104, 0.19999998807907104, 1.0, 1.0],
+    [1.0, 0.89999997615814209, 0.099999994039535522, 1.0],
+    [0.099999994039535522, 1.0, 0.099999994039535522, 1.0],
+    [0.79999995231628418, 0.099999994039535522, 1.0, 1.0],
+    [0.099999994039535522, 0.099999994039535522, 0.19999998807907104, 1.0],
+    [0.89999997615814209, 1.0, 1.0, 1.0],
+    [0.099999994039535522, 0.89999997615814209, 1.0, 1.0],
+    [0.5, 0.29999998211860657, 0.19999998807907104, 1.0],
+    [1.0, 0.39999997615814209, 0.0, 1.0],
+    [0.50196075439453125, 0.54509800672531128, 0.97647053003311157, 1.0],
+    [0.50196075439453125, 0.50196075439453125, 0.0, 1.0],
+    [0.0, 0.94117641448974609, 0.71372544765472412, 1.0],
+    [0.79999995231628418, 0.098039209842681885, 0.39215683937072754, 1.0],
+    [0.49803918600082397, 0.49803918600082397, 0.49803918600082397, 1.0],
+    [0.99607837200164795, 0.99607837200164795, 0.83529406785964966, 1.0],
+    [0.99607837200164795, 0.49803918600082397, 0.78431367874145508, 1.0],
+    [0.0, 0.49803918600082397, 0.32156860828399658, 1.0]
+  ],
+  "Mags": [
+    {
+      "EvolutionNumber": 0,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "RenderFlags": 0,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 1,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 13, "Eff48": 13, "Eff5": 4, "Eff67": 13}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 13, "Eff48": 13, "Eff5": 4, "Eff67": 13}
+      },
+      "RenderFlags": 2,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 2,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 2, "Eff2": 2, "Eff3": 2, "Eff48": 72, "Eff5": 2, "Eff67": 72}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 2, "Eff2": 2, "Eff3": 2, "Eff48": 72, "Eff5": 2, "Eff67": 72}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 2,
+      "MotionRefs1": {
+        "Left": {"Eff1": 67, "Eff2": 67, "Eff3": 67, "Eff48": 71, "Eff5": 67, "Eff67": 71},
+        "Right": {"Eff1": 14, "Eff2": 14, "Eff3": 14, "Eff48": 70, "Eff5": 14, "Eff67": 70}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 67, "Eff2": 67, "Eff3": 67, "Eff48": 71, "Eff5": 67, "Eff67": 71},
+        "Right": {"Eff1": 14, "Eff2": 14, "Eff3": 14, "Eff48": 70, "Eff5": 14, "Eff67": 70}
+      },
+      "RenderFlags": 2,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 7, "Eff2": 7, "Eff3": 7, "Eff48": 42, "Eff5": 7, "Eff67": 42},
+        "Right": {"Eff1": 6, "Eff2": 6, "Eff3": 6, "Eff48": 41, "Eff5": 6, "Eff67": 41}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 7, "Eff2": 7, "Eff3": 7, "Eff48": 42, "Eff5": 7, "Eff67": 42},
+        "Right": {"Eff1": 6, "Eff2": 6, "Eff3": 6, "Eff48": 41, "Eff5": 6, "Eff67": 41}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 0, "Eff2": 0, "Eff3": 0, "Eff48": 43, "Eff5": 0, "Eff67": 43},
+        "Right": {"Eff1": 1, "Eff2": 1, "Eff3": 1, "Eff48": 44, "Eff5": 1, "Eff67": 44}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 0, "Eff2": 0, "Eff3": 0, "Eff48": 43, "Eff5": 0, "Eff67": 43},
+        "Right": {"Eff1": 1, "Eff2": 1, "Eff3": 1, "Eff48": 44, "Eff5": 1, "Eff67": 44}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 30, "Eff2": 30, "Eff3": 30, "Eff48": 49, "Eff5": 30, "Eff67": 49},
+        "Right": {"Eff1": 29, "Eff2": 29, "Eff3": 29, "Eff48": 48, "Eff5": 29, "Eff67": 48}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 30, "Eff2": 30, "Eff3": 30, "Eff48": 49, "Eff5": 30, "Eff67": 49},
+        "Right": {"Eff1": 29, "Eff2": 29, "Eff3": 29, "Eff48": 48, "Eff5": 29, "Eff67": 48}
+      },
+      "RenderFlags": 2,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 32, "Eff2": 32, "Eff3": 32, "Eff48": 61, "Eff5": 32, "Eff67": 61},
+        "Right": {"Eff1": 31, "Eff2": 31, "Eff3": 31, "Eff48": 60, "Eff5": 31, "Eff67": 60}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 32, "Eff2": 32, "Eff3": 32, "Eff48": 61, "Eff5": 32, "Eff67": 61},
+        "Right": {"Eff1": 31, "Eff2": 31, "Eff3": 31, "Eff48": 60, "Eff5": 31, "Eff67": 60}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 3, "Eff2": 3, "Eff3": 3, "Eff48": 62, "Eff5": 3, "Eff67": 62}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 3, "Eff2": 3, "Eff3": 3, "Eff48": 62, "Eff5": 3, "Eff67": 62}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 26, "Eff2": 26, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 26, "Eff2": 26, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [6, 7]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 28, "Eff2": 28, "Eff3": 28, "Eff48": 51, "Eff5": 28, "Eff67": 51},
+        "Right": {"Eff1": 27, "Eff2": 27, "Eff3": 27, "Eff48": 50, "Eff5": 27, "Eff67": 50}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 28, "Eff2": 28, "Eff3": 28, "Eff48": 51, "Eff5": 28, "Eff67": 51},
+        "Right": {"Eff1": 27, "Eff2": 27, "Eff3": 27, "Eff48": 50, "Eff5": 27, "Eff67": 50}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 16, "Eff2": 16, "Eff3": 16, "Eff48": 64, "Eff5": 16, "Eff67": 64},
+        "Right": {"Eff1": 15, "Eff2": 15, "Eff3": 15, "Eff48": 63, "Eff5": 15, "Eff67": 63}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 16, "Eff2": 16, "Eff3": 16, "Eff48": 64, "Eff5": 16, "Eff67": 64},
+        "Right": {"Eff1": 15, "Eff2": 15, "Eff3": 15, "Eff48": 63, "Eff5": 15, "Eff67": 63}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 18, "Eff2": 18, "Eff3": 18, "Eff48": 66, "Eff5": 18, "Eff67": 66},
+        "Right": {"Eff1": 17, "Eff2": 17, "Eff3": 17, "Eff48": 65, "Eff5": 17, "Eff67": 65}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 18, "Eff2": 18, "Eff3": 18, "Eff48": 66, "Eff5": 18, "Eff67": 66},
+        "Right": {"Eff1": 17, "Eff2": 17, "Eff3": 17, "Eff48": 65, "Eff5": 17, "Eff67": 65}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 1,
+      "MotionRefs1": {
+        "Left": {"Eff1": 35, "Eff2": 35, "Eff3": 35, "Eff48": 74, "Eff5": 35, "Eff67": 74},
+        "Right": {"Eff1": 36, "Eff2": 36, "Eff3": 36, "Eff48": 73, "Eff5": 36, "Eff67": 73}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 35, "Eff2": 35, "Eff3": 35, "Eff48": 74, "Eff5": 35, "Eff67": 74},
+        "Right": {"Eff1": 36, "Eff2": 36, "Eff3": 36, "Eff48": 73, "Eff5": 36, "Eff67": 73}
+      },
+      "RenderFlags": 0,
+      "UnknownA2": [0, 255]
+    },
+    {
+      "EvolutionNumber": 2,
+      "MotionRefs1": {
+        "Left": {"Eff1": 34, "Eff2": 34, "Eff3": 34, "Eff48": 69, "Eff5": 34, "Eff67": 69},
+        "Right": {"Eff1": 33, "Eff2": 33, "Eff3": 33, "Eff48": 68, "Eff5": 33, "Eff67": 68}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 34, "Eff2": 34, "Eff3": 34, "Eff48": 69, "Eff5": 34, "Eff67": 69},
+        "Right": {"Eff1": 33, "Eff2": 33, "Eff3": 33, "Eff48": 68, "Eff5": 33, "Eff67": 68}
+      },
+      "RenderFlags": 0,
+      "UnknownA2": [0, 255]
+    },
+    {
+      "EvolutionNumber": 2,
+      "MotionRefs1": {
+        "Left": {"Eff1": 34, "Eff2": 34, "Eff3": 34, "Eff48": 69, "Eff5": 34, "Eff67": 69},
+        "Right": {"Eff1": 33, "Eff2": 33, "Eff3": 33, "Eff48": 68, "Eff5": 33, "Eff67": 68}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 34, "Eff2": 34, "Eff3": 34, "Eff48": 69, "Eff5": 34, "Eff67": 69},
+        "Right": {"Eff1": 33, "Eff2": 33, "Eff3": 33, "Eff48": 68, "Eff5": 33, "Eff67": 68}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [0, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 7, "Eff2": 7, "Eff3": 7, "Eff48": 42, "Eff5": 7, "Eff67": 42},
+        "Right": {"Eff1": 6, "Eff2": 6, "Eff3": 6, "Eff48": 41, "Eff5": 6, "Eff67": 41}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 7, "Eff2": 7, "Eff3": 7, "Eff48": 42, "Eff5": 7, "Eff67": 42},
+        "Right": {"Eff1": 6, "Eff2": 6, "Eff3": 6, "Eff48": 41, "Eff5": 6, "Eff67": 41}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 9, "Eff2": 9, "Eff3": 9, "Eff48": 76, "Eff5": 9, "Eff67": 76},
+        "Right": {"Eff1": 8, "Eff2": 8, "Eff3": 8, "Eff48": 75, "Eff5": 8, "Eff67": 75}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 9, "Eff2": 9, "Eff3": 9, "Eff48": 76, "Eff5": 9, "Eff67": 76},
+        "Right": {"Eff1": 8, "Eff2": 8, "Eff3": 8, "Eff48": 75, "Eff5": 8, "Eff67": 75}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 40, "Eff2": 40, "Eff3": 40, "Eff48": 46, "Eff5": 40, "Eff67": 46},
+        "Right": {"Eff1": 39, "Eff2": 39, "Eff3": 39, "Eff48": 45, "Eff5": 39, "Eff67": 45}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 40, "Eff2": 40, "Eff3": 40, "Eff48": 46, "Eff5": 40, "Eff67": 46},
+        "Right": {"Eff1": 39, "Eff2": 39, "Eff3": 39, "Eff48": 45, "Eff5": 39, "Eff67": 45}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 20, "Eff2": 20, "Eff3": 20, "Eff48": 53, "Eff5": 20, "Eff67": 53},
+        "Right": {"Eff1": 19, "Eff2": 19, "Eff3": 19, "Eff48": 52, "Eff5": 19, "Eff67": 52}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 20, "Eff2": 20, "Eff3": 20, "Eff48": 53, "Eff5": 20, "Eff67": 53},
+        "Right": {"Eff1": 19, "Eff2": 19, "Eff3": 19, "Eff48": 52, "Eff5": 19, "Eff67": 52}
+      },
+      "RenderFlags": 0,
+      "UnknownA2": [1, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 23, "Eff2": 23, "Eff3": 23, "Eff48": 53, "Eff5": 23, "Eff67": 53},
+        "Right": {"Eff1": 22, "Eff2": 22, "Eff3": 22, "Eff48": 52, "Eff5": 22, "Eff67": 52}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 23, "Eff2": 23, "Eff3": 23, "Eff48": 53, "Eff5": 23, "Eff67": 53},
+        "Right": {"Eff1": 22, "Eff2": 22, "Eff3": 22, "Eff48": 52, "Eff5": 22, "Eff67": 52}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 23, "Eff2": 23, "Eff3": 23, "Eff48": 53, "Eff5": 23, "Eff67": 53},
+        "Right": {"Eff1": 22, "Eff2": 22, "Eff3": 22, "Eff48": 52, "Eff5": 22, "Eff67": 52}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 23, "Eff2": 23, "Eff3": 23, "Eff48": 53, "Eff5": 23, "Eff67": 53},
+        "Right": {"Eff1": 22, "Eff2": 22, "Eff3": 22, "Eff48": 52, "Eff5": 22, "Eff67": 52}
+      },
+      "RenderFlags": 2,
+      "UnknownA2": [2, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 25, "Eff2": 25, "Eff3": 25, "Eff48": 56, "Eff5": 25, "Eff67": 56},
+        "Right": {"Eff1": 24, "Eff2": 24, "Eff3": 24, "Eff48": 55, "Eff5": 24, "Eff67": 55}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 25, "Eff2": 25, "Eff3": 25, "Eff48": 56, "Eff5": 25, "Eff67": 56},
+        "Right": {"Eff1": 24, "Eff2": 24, "Eff3": 24, "Eff48": 55, "Eff5": 24, "Eff67": 55}
+      },
+      "RenderFlags": 2,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 20, "Eff2": 20, "Eff3": 20, "Eff48": 58, "Eff5": 20, "Eff67": 58},
+        "Right": {"Eff1": 19, "Eff2": 19, "Eff3": 19, "Eff48": 57, "Eff5": 19, "Eff67": 57}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 20, "Eff2": 20, "Eff3": 20, "Eff48": 58, "Eff5": 20, "Eff67": 58},
+        "Right": {"Eff1": 19, "Eff2": 19, "Eff3": 19, "Eff48": 57, "Eff5": 19, "Eff67": 57}
+      },
+      "RenderFlags": 2,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 78, "Eff2": 78, "Eff3": 78, "Eff48": 54, "Eff5": 78, "Eff67": 54}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 78, "Eff2": 78, "Eff3": 78, "Eff48": 54, "Eff5": 78, "Eff67": 54}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 1,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 13, "Eff48": 13, "Eff5": 12, "Eff67": 13}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 13, "Eff48": 13, "Eff5": 12, "Eff67": 13}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 2,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 2,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 5, "Eff2": 5, "Eff3": 77, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 5, "Eff2": 5, "Eff3": 77, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 2,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 37, "Eff2": 37, "Eff3": 37, "Eff48": 47, "Eff5": 37, "Eff67": 47}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 37, "Eff2": 37, "Eff3": 37, "Eff48": 47, "Eff5": 37, "Eff67": 47}
+      },
+      "RenderFlags": 6,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 2,
+      "UnknownA2": [8, 9]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 77, "Eff3": 77, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 77, "Eff3": 77, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 2,
+      "UnknownA2": [10, 11]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 38, "Eff2": 38, "Eff3": 59, "Eff48": 59, "Eff5": 38, "Eff67": 59}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 38, "Eff2": 38, "Eff3": 59, "Eff48": 59, "Eff5": 38, "Eff67": 59}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 37, "Eff2": 37, "Eff3": 37, "Eff48": 47, "Eff5": 37, "Eff67": 47}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 37, "Eff2": 37, "Eff3": 37, "Eff48": 47, "Eff5": 37, "Eff67": 47}
+      },
+      "RenderFlags": 3,
+      "UnknownA2": [3, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [12, 13]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 37, "Eff2": 37, "Eff3": 37, "Eff48": 47, "Eff5": 37, "Eff67": 47}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 37, "Eff2": 37, "Eff3": 37, "Eff48": 47, "Eff5": 37, "Eff67": 47}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 5, "Eff2": 5, "Eff3": 77, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 5, "Eff2": 5, "Eff3": 77, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 2,
+      "UnknownA2": [14, 255]
+    },
+    {
+      "EvolutionNumber": 3,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [12, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 2,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [15, 16]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [2, 4]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [2, 4]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [5, 8]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 81, "Eff2": 81, "Eff3": 81, "Eff48": 81, "Eff5": 81, "Eff67": 81},
+        "Right": {"Eff1": 80, "Eff2": 80, "Eff3": 80, "Eff48": 80, "Eff5": 80, "Eff67": 80}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 81, "Eff2": 81, "Eff3": 81, "Eff48": 81, "Eff5": 81, "Eff67": 81},
+        "Right": {"Eff1": 80, "Eff2": 80, "Eff3": 80, "Eff48": 80, "Eff5": 80, "Eff67": 80}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [17, 18]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 81, "Eff2": 81, "Eff3": 81, "Eff48": 81, "Eff5": 81, "Eff67": 81},
+        "Right": {"Eff1": 80, "Eff2": 80, "Eff3": 80, "Eff48": 80, "Eff5": 80, "Eff67": 80}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 81, "Eff2": 81, "Eff3": 81, "Eff48": 81, "Eff5": 81, "Eff67": 81},
+        "Right": {"Eff1": 80, "Eff2": 80, "Eff3": 80, "Eff48": 80, "Eff5": 80, "Eff67": 80}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [19, 20]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 0, "Eff2": 0, "Eff3": 0, "Eff48": 43, "Eff5": 0, "Eff67": 43},
+        "Right": {"Eff1": 1, "Eff2": 1, "Eff3": 1, "Eff48": 44, "Eff5": 1, "Eff67": 44}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 0, "Eff2": 0, "Eff3": 0, "Eff48": 43, "Eff5": 0, "Eff67": 43},
+        "Right": {"Eff1": 1, "Eff2": 1, "Eff3": 1, "Eff48": 44, "Eff5": 1, "Eff67": 44}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 3, "Eff2": 3, "Eff3": 3, "Eff48": 62, "Eff5": 3, "Eff67": 62}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 3, "Eff2": 3, "Eff3": 3, "Eff48": 62, "Eff5": 3, "Eff67": 62}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 3, "Eff2": 3, "Eff3": 3, "Eff48": 62, "Eff5": 3, "Eff67": 62}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 3, "Eff2": 3, "Eff3": 3, "Eff48": 62, "Eff5": 3, "Eff67": 62}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 3, "Eff2": 3, "Eff3": 3, "Eff48": 62, "Eff5": 3, "Eff67": 62}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 3, "Eff2": 3, "Eff3": 3, "Eff48": 62, "Eff5": 3, "Eff67": 62}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 3, "Eff2": 3, "Eff3": 3, "Eff48": 62, "Eff5": 3, "Eff67": 62}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 3, "Eff2": 3, "Eff3": 3, "Eff48": 62, "Eff5": 3, "Eff67": 62}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 3, "Eff2": 3, "Eff3": 3, "Eff48": 62, "Eff5": 3, "Eff67": 62}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 3, "Eff2": 3, "Eff3": 3, "Eff48": 62, "Eff5": 3, "Eff67": 62}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 26, "Eff2": 26, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 26, "Eff2": 26, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [6, 7]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 82, "Eff2": 82, "Eff3": 82, "Eff48": 82, "Eff5": 82, "Eff67": 82}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 82, "Eff2": 82, "Eff3": 82, "Eff48": 82, "Eff5": 82, "Eff67": 82}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 82, "Eff2": 82, "Eff3": 82, "Eff48": 82, "Eff5": 82, "Eff67": 82}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 82, "Eff2": 82, "Eff3": 82, "Eff48": 82, "Eff5": 82, "Eff67": 82}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 37, "Eff2": 37, "Eff3": 37, "Eff48": 47, "Eff5": 37, "Eff67": 47}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 37, "Eff2": 37, "Eff3": 37, "Eff48": 47, "Eff5": 37, "Eff67": 47}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 16, "Eff2": 16, "Eff3": 16, "Eff48": 64, "Eff5": 16, "Eff67": 64},
+        "Right": {"Eff1": 15, "Eff2": 15, "Eff3": 15, "Eff48": 63, "Eff5": 15, "Eff67": 63}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 16, "Eff2": 16, "Eff3": 16, "Eff48": 64, "Eff5": 16, "Eff67": 64},
+        "Right": {"Eff1": 15, "Eff2": 15, "Eff3": 15, "Eff48": 63, "Eff5": 15, "Eff67": 63}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [12, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [12, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 4, "Eff3": 11, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [12, 13]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 3, "Eff2": 3, "Eff3": 3, "Eff48": 62, "Eff5": 3, "Eff67": 62}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 3, "Eff2": 3, "Eff3": 3, "Eff48": 62, "Eff5": 3, "Eff67": 62}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 37, "Eff2": 37, "Eff3": 37, "Eff48": 47, "Eff5": 37, "Eff67": 47}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 37, "Eff2": 37, "Eff3": 37, "Eff48": 47, "Eff5": 37, "Eff67": 47}
+      },
+      "RenderFlags": 10,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 77, "Eff3": 77, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 4, "Eff2": 77, "Eff3": 77, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 3,
+      "UnknownA2": [10, 11]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 5, "Eff2": 5, "Eff3": 77, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 5, "Eff2": 5, "Eff3": 77, "Eff48": 13, "Eff5": 12, "Eff67": 11}
+      },
+      "RenderFlags": 2,
+      "UnknownA2": [14, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 16, "Eff2": 16, "Eff3": 16, "Eff48": 64, "Eff5": 16, "Eff67": 64},
+        "Right": {"Eff1": 15, "Eff2": 15, "Eff3": 15, "Eff48": 63, "Eff5": 15, "Eff67": 63}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 16, "Eff2": 16, "Eff3": 16, "Eff48": 64, "Eff5": 16, "Eff67": 64},
+        "Right": {"Eff1": 15, "Eff2": 15, "Eff3": 15, "Eff48": 63, "Eff5": 15, "Eff67": 63}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 3, "Eff2": 3, "Eff3": 3, "Eff48": 62, "Eff5": 3, "Eff67": 62}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 3, "Eff2": 3, "Eff3": 3, "Eff48": 62, "Eff5": 3, "Eff67": 62}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "RenderFlags": 0,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "RenderFlags": 0,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 78, "Eff2": 78, "Eff3": 78, "Eff48": 54, "Eff5": 78, "Eff67": 54}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 78, "Eff2": 78, "Eff3": 78, "Eff48": 54, "Eff5": 78, "Eff67": 54}
+      },
+      "RenderFlags": 1,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 84, "Eff2": 84, "Eff3": 84, "Eff48": 86, "Eff5": 84, "Eff67": 86},
+        "Right": {"Eff1": 83, "Eff2": 83, "Eff3": 83, "Eff48": 85, "Eff5": 83, "Eff67": 85}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 84, "Eff2": 84, "Eff3": 84, "Eff48": 86, "Eff5": 84, "Eff67": 86},
+        "Right": {"Eff1": 83, "Eff2": 83, "Eff3": 83, "Eff48": 85, "Eff5": 83, "Eff67": 85}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 21, "Eff2": 21, "Eff3": 21, "Eff48": 21, "Eff5": 21, "Eff67": 21}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 21, "Eff2": 21, "Eff3": 21, "Eff48": 21, "Eff5": 21, "Eff67": 21}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "RenderFlags": 255,
+      "UnknownA2": [255, 255]
+    },
+    {
+      "EvolutionNumber": 4,
+      "MotionRefs1": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "MotionRefs2": {
+        "Left": {"Eff1": 255, "Eff2": 255, "Eff3": 255, "Eff48": 255, "Eff5": 255, "Eff67": 255},
+        "Right": {"Eff1": 10, "Eff2": 13, "Eff3": 10, "Eff48": 13, "Eff5": 10, "Eff67": 13}
+      },
+      "RenderFlags": 0,
+      "UnknownA2": [255, 255]
+    }
+  ],
+  "UnknownA3": [
+    {"Flags": 33, "UnknownA2": 1, "UnknownA3": 0, "UnknownA4": 0, "UnknownA5": 20},
+    {"Flags": 130, "UnknownA2": 1, "UnknownA3": 0, "UnknownA4": 0, "UnknownA5": 20},
+    {"Flags": 129, "UnknownA2": 2, "UnknownA3": 0, "UnknownA4": 0, "UnknownA5": 24},
+    {"Flags": 34, "UnknownA2": 1, "UnknownA3": 0, "UnknownA4": 0, "UnknownA5": 20},
+    {"Flags": 130, "UnknownA2": 2, "UnknownA3": 0, "UnknownA4": -24, "UnknownA5": 0},
+    {"Flags": 66, "UnknownA2": 15, "UnknownA3": 0, "UnknownA4": 0, "UnknownA5": 60},
+    {"Flags": 34, "UnknownA2": 1, "UnknownA3": 0, "UnknownA4": -20, "UnknownA5": 0},
+    {"Flags": 35, "UnknownA2": 1, "UnknownA3": 0, "UnknownA4": -20, "UnknownA5": 0},
+    {"Flags": 65, "UnknownA2": 15, "UnknownA3": 0, "UnknownA4": -60, "UnknownA5": 0},
+    {"Flags": 68, "UnknownA2": 15, "UnknownA3": 0, "UnknownA4": 0, "UnknownA5": 60},
+    {"Flags": 65, "UnknownA2": 2, "UnknownA3": 0, "UnknownA4": -40, "UnknownA5": 0},
+    {"Flags": 68, "UnknownA2": 2, "UnknownA3": 0, "UnknownA4": 0, "UnknownA5": 40},
+    {"Flags": 34, "UnknownA2": 2, "UnknownA3": 0, "UnknownA4": 0, "UnknownA5": 16},
+    {"Flags": 35, "UnknownA2": 1, "UnknownA3": 0, "UnknownA4": 0, "UnknownA5": 30},
+    {"Flags": 33, "UnknownA2": 2, "UnknownA3": 0, "UnknownA4": 0, "UnknownA5": 16},
+    {"Flags": 129, "UnknownA2": 246, "UnknownA3": 0, "UnknownA4": 0, "UnknownA5": 40},
+    {"Flags": 66, "UnknownA2": 216, "UnknownA3": 0, "UnknownA4": 0, "UnknownA5": 40},
+    {"Flags": 64, "UnknownA2": 6, "UnknownA3": 0, "UnknownA4": 10, "UnknownA5": 50},
+    {"Flags": 64, "UnknownA2": 6, "UnknownA3": 0, "UnknownA4": -50, "UnknownA5": -10},
+    {"Flags": 64, "UnknownA2": 15, "UnknownA3": 0, "UnknownA4": 0, "UnknownA5": 80},
+    {"Flags": 64, "UnknownA2": 15, "UnknownA3": 0, "UnknownA4": -80, "UnknownA5": 0}
+  ]
+}

@@ -67,6 +67,7 @@ set(SOURCES
     src/DCSerialNumbers.cc
     src/DNSServer.cc
     src/DOLFileIndex.cc
+    src/DataIndex.cc
     src/DownloadSession.cc
     src/EnemyType.cc
     src/Episode3/AssistServer.cc
@@ -98,7 +99,7 @@ set(SOURCES
     src/LevelTable.cc
     src/Lobby.cc
     src/Loggers.cc
-    src/MagEvolutionTable.cc
+    src/MagMetadataTable.cc
     src/Main.cc
     src/Map.cc
     src/Menu.cc
@@ -125,9 +126,11 @@ set(SOURCES
     src/ServerShell.cc
     src/ServerState.cc
     src/ShellCommands.cc
+    src/ShopRandomSets.cc
     src/SignalWatcher.cc
     src/StaticGameData.cc
     src/TeamIndex.cc
+    src/TekkerAdjustmentSet.cc
     src/Text.cc
     src/TextIndex.cc
     src/Version.cc
@@ -145,8 +148,11 @@ if (WIN32)
 endif()
 add_dependencies(newserv newserv-Revision-cc)
 
-# target_compile_options(newserv PRIVATE -fsanitize=address)
-# target_link_options(newserv PRIVATE -fsanitize=address)
+# if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+#     message("-- Enabling address sanitizer")
+#     target_compile_options(newserv PRIVATE -fsanitize=address)
+#     target_link_options(newserv PRIVATE -fsanitize=address)
+# endif()
 
 
 
@@ -155,17 +161,11 @@ add_dependencies(newserv newserv-Revision-cc)
 enable_testing()
 
 file(GLOB LOG_TEST_CASES ${CMAKE_SOURCE_DIR}/tests/*.test.txt)
-foreach(LOG_TEST_CASE IN ITEMS ${LOG_TEST_CASES})
-    add_test(
-        NAME ${LOG_TEST_CASE}
-        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMAND ${CMAKE_BINARY_DIR}/newserv --replay-log=${LOG_TEST_CASE} --config=${CMAKE_SOURCE_DIR}/tests/config.json)
-endforeach()
-# list(TRANSFORM LOG_TEST_CASES PREPEND "--replay-log=" OUTPUT_VARIABLE LOG_REPLAY_ARGS)
-# add_test(
-#     NAME "log-replays"
-#     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-#     COMMAND ${CMAKE_BINARY_DIR}/newserv --config=${CMAKE_SOURCE_DIR}/tests/config.json ${LOG_REPLAY_ARGS})
+list(TRANSFORM LOG_TEST_CASES PREPEND "--replay-log=" OUTPUT_VARIABLE LOG_REPLAY_ARGS)
+add_test(
+    NAME "log-replays"
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND ${CMAKE_BINARY_DIR}/newserv --parallel --config=${CMAKE_SOURCE_DIR}/tests/config.json ${LOG_REPLAY_ARGS})
 
 file(GLOB SCRIPT_TEST_CASES ${CMAKE_SOURCE_DIR}/tests/*.test.sh)
 foreach(SCRIPT_TEST_CASE IN ITEMS ${SCRIPT_TEST_CASES})

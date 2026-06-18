@@ -87,15 +87,15 @@ protected:
     } __packed_ws__(PackedDrop, 4);
 
     template <bool BE>
-    struct OffsetsT {
+    struct RootT {
       /* 00 */ U32T<BE> monster_rares_offset; // -> parray<PackedDrop, 0x65> (or 0x33 on v1)
       /* 04 */ U32T<BE> box_count; // Usually 30 (0x1E)
       /* 08 */ U32T<BE> box_areas_offset; // -> parray<uint8_t, 0x1E>
       /* 0C */ U32T<BE> box_rares_offset; // -> parray<PackedDrop, 0x1E>
       /* 10 */
-    } __packed_ws_be__(OffsetsT, 0x10);
-    using Offsets = OffsetsT<false>;
-    using OffsetsBE = OffsetsT<true>;
+    } __packed_ws_be__(RootT, 0x10);
+    using Root = RootT<false>;
+    using RootBE = RootT<true>;
 
     struct BoxRare {
       uint8_t area_norm_plus_1;

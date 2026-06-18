@@ -77,16 +77,16 @@ protected:
   virtual std::string on_untranslatable(const void** src, size_t* size) const;
 };
 
-extern TextTranscoder tt_8859_to_utf8;
-extern TextTranscoder tt_utf8_to_8859;
-extern TextTranscoder tt_standard_sjis_to_utf8;
-extern TextTranscoder tt_utf8_to_standard_sjis;
-extern TextTranscoderCustomSJISToUTF8 tt_sega_sjis_to_utf8;
-extern TextTranscoderUTF8ToCustomSJIS tt_utf8_to_sega_sjis;
-extern TextTranscoder tt_utf16_to_utf8;
-extern TextTranscoder tt_utf8_to_utf16;
-extern TextTranscoder tt_ascii_to_utf8;
-extern TextTranscoder tt_utf8_to_ascii;
+extern thread_local TextTranscoder tt_8859_to_utf8;
+extern thread_local TextTranscoder tt_utf8_to_8859;
+extern thread_local TextTranscoder tt_standard_sjis_to_utf8;
+extern thread_local TextTranscoder tt_utf8_to_standard_sjis;
+extern thread_local TextTranscoderCustomSJISToUTF8 tt_sega_sjis_to_utf8;
+extern thread_local TextTranscoderUTF8ToCustomSJIS tt_utf8_to_sega_sjis;
+extern thread_local TextTranscoder tt_utf16_to_utf8;
+extern thread_local TextTranscoder tt_utf8_to_utf16;
+extern thread_local TextTranscoder tt_ascii_to_utf8;
+extern thread_local TextTranscoder tt_utf8_to_ascii;
 
 std::string tt_encode_marked_optional(const std::string& utf8, Language default_language, bool is_utf16);
 std::string tt_encode_marked(const std::string& utf8, Language default_language, bool is_utf16);
