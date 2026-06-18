@@ -4,8 +4,10 @@
 #include <stdlib.h>
 
 #include <filesystem>
+#include <fstream>
 #include <map>
 #include <phosg/Network.hh>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -117,6 +119,53 @@ static void walk_backup_characters(
       continue;
     }
     visit(std::move(ch), key.first, key.second);
+  }
+}
+
+// Reads the play-version sidecar written next to each auto snapshot
+// (auto_player_{account_id}_{slot}.version, e.g. "BB_V4"). Returns "" when
+// absent (older snapshots, or a manual $savechar backup with no sidecar). The
+// dashboard uses this to decide whether a character's EXP / play-time is
+// server-authoritative (BB) and therefore trustworthy to display.
+static std::string read_snapshot_version(uint32_t account_id, size_t slot_index) {
+  const std::filesystem::path path = std::filesystem::path("system/players") /
+      ("auto_player_" + std::to_string(account_id) + "_" + std::to_string(slot_index) + ".version");
+  std::error_code ec;
+  if (!std::filesystem::is_regular_file(path, ec)) {
+    return "";
+  }
+  std::string v;
+  try {
+    v = phosg::load_file(path.string());
+  } catch (const std::exception&) {
+    return "";
+  }
+  while (!v.empty() && (v.back() == '\n' || v.back() == '\r' || v.back() == ' ' || v.back() == '\t')) {
+    v.pop_back();
+  }
+  return v;
+}
+
+// Streams quest-play records from system/players/quest_plays.jsonl — one JSON
+// object per line, appended on every quest load (see log_quest_play in
+// ReceiveCommands.cc). The file may not exist yet (no quests loaded since the
+// feature shipped), which is not an error. Malformed lines are skipped.
+static void walk_quest_plays(const std::function<void(const phosg::JSON&)>& visit) {
+  const std::filesystem::path path = std::filesystem::path("system/players") / "quest_plays.jsonl";
+  std::ifstream f(path);
+  if (!f.is_open()) {
+    return;
+  }
+  std::string line;
+  while (std::getline(f, line)) {
+    if (line.empty()) {
+      continue;
+    }
+    try {
+      visit(phosg::JSON::parse(line));
+    } catch (const std::exception&) {
+      // Skip malformed lines rather than failing the whole request.
+    }
   }
 }
 
@@ -1027,6 +1076,11 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
         }));
       }
 
+      // SnapshotVersion lets the dashboard trust server-authoritative BB
+      // EXP / play-time without inferring the version from account licenses
+      // (an account can hold both BB and non-BB licenses). Null when no
+      // sidecar exists (legacy snapshot or a manual $savechar backup).
+      std::string snapshot_version = read_snapshot_version(account_id, slot_index);
       res->emplace_back(phosg::JSON::dict({
           {"AccountID", account_id},
           {"SlotIndex", slot_index},
@@ -1039,127 +1093,131 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
           {"PlayTimeSeconds", ch->play_time_seconds.load()},
           {"Stats", ch->disp.stats.char_stats.json()},
           {"Inventory", std::move(inventory_json)},
+          {"SnapshotVersion", snapshot_version.empty() ? phosg::JSON(nullptr) : phosg::JSON(snapshot_version)},
       }));
     });
     co_return res;
   });
 
   // -----------------------------------------------------------------------
-  // /y/data/quest/:quest_num/completions
+  // /y/data/quest/:quest_num/plays
   //
-  // For a given quest number, returns the list of characters that have
-  // completed it on at least one difficulty. Each entry shape:
+  // For a given quest number, the characters who have PLAYED it, with a
+  // per-character play count and last-played time. Each entry shape:
   //
-  //   { "AccountID": 42, "SlotIndex": 0, "Name": "Sonic" }
+  //   { "AccountID": 42, "SlotIndex": 0, "Name": "Sonic",
+  //     "PlayCount": 3, "LastPlayedUsecs": 1781799523133000 }
   //
-  // Completion is determined by checking PSOBBCharacterFile::quest_flags
-  // (a FlagsTable<0x400, 4, Difficulty>) for the quest's bit across all
-  // four difficulties — any set bit counts as completed. Sticky to the
-  // character file as saved, so it reflects the state at last $savechar.
-  this->router.add(HTTPRequest::Method::GET, "/y/data/quest/:quest_num/completions", [](ArgsT&& args) -> RetT {
+  // Sourced from system/players/quest_plays.jsonl, which records every quest
+  // load — the only quest event the server authoritatively observes (online
+  // quests run client-side, so there is no server-visible "completed" signal).
+  // This replaces the old flag-based "completions" endpoint, which mis-read
+  // gameplay quest_flags (set during ordinary play) as quest completions.
+  this->router.add(HTTPRequest::Method::GET, "/y/data/quest/:quest_num/plays", [](ArgsT&& args) -> RetT {
     const uint32_t quest_num = args.get_param<uint32_t>("quest_num");
-    auto res = std::make_shared<phosg::JSON>(phosg::JSON::list());
-    walk_backup_characters([&res, quest_num](
-                               std::shared_ptr<PSOBBCharacterFile> ch,
-                               uint32_t account_id,
-                               size_t slot_index) {
-      bool completed_any = false;
-      for (size_t diff = 0; diff < 4; diff++) {
-        if (ch->quest_flags.get(static_cast<Difficulty>(diff), quest_num)) {
-          completed_any = true;
-          break;
-        }
+    struct PlayAgg {
+      uint32_t account_id = 0;
+      uint32_t slot_index = 0;
+      std::string name;
+      uint32_t play_count = 0;
+      uint64_t last_played_usecs = 0;
+    };
+    std::map<std::pair<uint32_t, uint32_t>, PlayAgg> by_char;
+    walk_quest_plays([&](const phosg::JSON& rec) {
+      if (rec.get_int("QuestNumber", -1) != static_cast<int64_t>(quest_num)) {
+        return;
       }
-      if (completed_any) {
-        res->emplace_back(phosg::JSON::dict({
-            {"AccountID", account_id},
-            {"SlotIndex", slot_index},
-            {"Name", ch->disp.visual.name.decode()},
-        }));
+      uint32_t account_id = rec.get_int("AccountID", 0);
+      uint32_t slot_index = rec.get_int("SlotIndex", 0);
+      auto& agg = by_char[std::make_pair(account_id, slot_index)];
+      agg.account_id = account_id;
+      agg.slot_index = slot_index;
+      agg.play_count++;
+      uint64_t t = rec.get_int("TimeUsecs", 0);
+      if (t > agg.last_played_usecs) {
+        agg.last_played_usecs = t;
       }
+      agg.name = rec.get_string("CharacterName", agg.name);
     });
+    auto res = std::make_shared<phosg::JSON>(phosg::JSON::list());
+    for (const auto& [key, agg] : by_char) {
+      res->emplace_back(phosg::JSON::dict({
+          {"AccountID", agg.account_id},
+          {"SlotIndex", agg.slot_index},
+          {"Name", agg.name},
+          {"PlayCount", agg.play_count},
+          {"LastPlayedUsecs", agg.last_played_usecs},
+      }));
+    }
     co_return res;
   });
 
   // -----------------------------------------------------------------------
-  // /y/character/:account_id/:slot_index/completions
+  // /y/character/:account_id/:slot_index/quest-plays
   //
-  // The inverse of /y/data/quest/:quest_num/completions — for one
-  // character, returns the list of quests they've completed (on any
-  // difficulty). Per-entry shape:
+  // The inverse of /y/data/quest/:quest_num/plays — for one character, the
+  // quests they've PLAYED, aggregated per quest number with a play count,
+  // last-played time, and the set of difficulties seen. Per-entry shape:
   //
   //   {
-  //     "QuestNumber":   42,
-  //     "Difficulties":  ["Normal", "Hard"]    // any subset of N/H/VH/U
+  //     "QuestNumber":      42,
+  //     "PlayCount":        3,
+  //     "LastPlayedUsecs":  1781799523133000,
+  //     "Difficulties":     ["Normal", "Hard"]    // any subset of N/H/VH/U
   //   }
   //
-  // Loads the single .psochar directly by path rather than walking the
-  // whole players/ dir — N=1 lookup, not O(everyone). Honours the same
-  // auto_player_* > backup_player_* precedence walk_backup_characters
-  // uses, so the modal always shows the freshest snapshot.
-  //
-  // Only emits quests that exist in the loaded quest index; the
-  // quest_flags table is 0x400 bits wide but PSO's actual quest set is
-  // much smaller, and stale bits from removed quests would otherwise
-  // surface as ghost entries with no name to resolve to.
+  // Sourced from system/players/quest_plays.jsonl (see log_quest_play in
+  // ReceiveCommands.cc). Replaces the old flag-based "completions" endpoint,
+  // which reported false positives: PSO quest_flags are general gameplay
+  // state set during ordinary play, not a per-quest completion record, and
+  // their bit indices are unrelated to quest catalog numbers.
   // -----------------------------------------------------------------------
-  this->router.add(HTTPRequest::Method::GET, "/y/character/:account_id/:slot_index/completions",
-      [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/character/:account_id/:slot_index/quest-plays",
+      [](ArgsT&& args) -> RetT {
         const uint32_t account_id = args.get_param<uint32_t>("account_id");
         const uint32_t slot_index = args.get_param<uint32_t>("slot_index");
-
-        // Pick the freshest snapshot: auto_player_* (60s + on-disconnect
-        // timer) beats backup_player_* ($savechar) when both exist.
-        const std::filesystem::path auto_path =
-            std::filesystem::path("system/players") /
-            ("auto_player_" + std::to_string(account_id) + "_" + std::to_string(slot_index) + ".psochar");
-        const std::filesystem::path backup_path =
-            std::filesystem::path("system/players") /
-            ("backup_player_" + std::to_string(account_id) + "_" + std::to_string(slot_index) + ".psochar");
-
-        std::error_code ec;
-        std::filesystem::path chosen;
-        if (std::filesystem::exists(auto_path, ec)) {
-          chosen = auto_path;
-        } else if (std::filesystem::exists(backup_path, ec)) {
-          chosen = backup_path;
-        } else {
-          throw HTTPError(404, "Character not found");
-        }
-
-        std::shared_ptr<PSOBBCharacterFile> ch;
-        try {
-          ch = PSOCHARFile::load_shared(chosen.string(), false).character_file;
-        } catch (const std::exception&) {
-          throw HTTPError(500, "Character file failed to load");
-        }
-        if (!ch) {
-          throw HTTPError(500, "Character file is null");
-        }
 
         static const std::array<const char*, 4> DIFFICULTY_NAMES =
             {"Normal", "Hard", "VHard", "Ultimate"};
 
+        struct QuestAgg {
+          uint32_t play_count = 0;
+          uint64_t last_played_usecs = 0;
+          std::set<int> difficulties;
+        };
+        std::map<uint32_t, QuestAgg> by_quest;
+        walk_quest_plays([&](const phosg::JSON& rec) {
+          if (rec.get_int("AccountID", -1) != static_cast<int64_t>(account_id)) {
+            return;
+          }
+          if (rec.get_int("SlotIndex", -1) != static_cast<int64_t>(slot_index)) {
+            return;
+          }
+          uint32_t quest_number = rec.get_int("QuestNumber", 0);
+          auto& agg = by_quest[quest_number];
+          agg.play_count++;
+          uint64_t t = rec.get_int("TimeUsecs", 0);
+          if (t > agg.last_played_usecs) {
+            agg.last_played_usecs = t;
+          }
+          int diff = rec.get_int("Difficulty", -1);
+          if (diff >= 0 && diff < 4) {
+            agg.difficulties.insert(diff);
+          }
+        });
+
         auto res = std::make_shared<phosg::JSON>(phosg::JSON::list());
-        for (uint32_t quest_num = 0; quest_num < 0x400; quest_num++) {
-          // Skip flag indices that don't correspond to a real quest in
-          // the current quest index. Prevents stale bits from removed
-          // or never-installed quests from showing up as ghost entries.
-          if (!this->state->data->quest_index->get(quest_num)) {
-            continue;
-          }
+        for (const auto& [quest_number, agg] : by_quest) {
           auto difficulties = phosg::JSON::list();
-          for (size_t diff = 0; diff < 4; diff++) {
-            if (ch->quest_flags.get(static_cast<Difficulty>(diff), quest_num)) {
-              difficulties.emplace_back(DIFFICULTY_NAMES[diff]);
-            }
+          for (int diff : agg.difficulties) {
+            difficulties.emplace_back(DIFFICULTY_NAMES[diff]);
           }
-          if (!difficulties.empty()) {
-            res->emplace_back(phosg::JSON::dict({
-                {"QuestNumber", quest_num},
-                {"Difficulties", std::move(difficulties)},
-            }));
-          }
+          res->emplace_back(phosg::JSON::dict({
+              {"QuestNumber", quest_number},
+              {"PlayCount", agg.play_count},
+              {"LastPlayedUsecs", agg.last_played_usecs},
+              {"Difficulties", std::move(difficulties)},
+          }));
         }
         co_return res;
       });

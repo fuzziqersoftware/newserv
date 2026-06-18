@@ -3,9 +3,12 @@
 #include <inttypes.h>
 #include <string.h>
 
+#include <fstream>
 #include <memory>
+#include <mutex>
 #include <phosg/Filesystem.hh>
 #include <phosg/Hash.hh>
+#include <phosg/JSON.hh>
 #include <phosg/Network.hh>
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
@@ -2429,6 +2432,65 @@ static void on_quest_loaded(std::shared_ptr<Lobby> l) {
   }
 }
 
+// Appends a quest-play record for every player currently in the game to
+// system/players/quest_plays.jsonl (one JSON object per line). This is the
+// reliable basis for the dashboard's "quests played" view: PSO online quests
+// run client-side, so the server never sees a "quest completed" signal, but it
+// does authoritatively know which quest it just loaded and who was present.
+// Mutex-guarded and best-effort; failures never propagate to the caller.
+static void log_quest_play(std::shared_ptr<Lobby> l, std::shared_ptr<const Quest> q) {
+  if (!l || !q) {
+    return;
+  }
+  const uint32_t quest_number = q->meta.quest_number;
+  const int difficulty = static_cast<int>(l->difficulty);
+  const uint64_t now_usecs = phosg::now();
+
+  std::string lines;
+  for (size_t client_id = 0; client_id < l->max_clients; client_id++) {
+    auto lc = l->clients[client_id];
+    if (!lc || !lc->login || !lc->login->account) {
+      continue;
+    }
+    auto ch = lc->character_file(false, false);
+    if (!ch) {
+      continue;
+    }
+    size_t slot = (lc->version() == Version::BB_V4 && lc->bb_character_index >= 0)
+        ? static_cast<size_t>(lc->bb_character_index)
+        : 0;
+    auto rec = phosg::JSON::dict({
+        {"TimeUsecs", now_usecs},
+        {"AccountID", lc->login->account->account_id},
+        {"SlotIndex", static_cast<uint64_t>(slot)},
+        {"CharacterName", ch->disp.visual.name.decode()},
+        {"QuestNumber", quest_number},
+        {"Difficulty", difficulty},
+        {"Version", std::string(phosg::name_for_enum<Version>(lc->version()))},
+    });
+    std::string rec_str = rec.serialize();
+    // Guarantee one record per physical line (JSONL): neutralize any embedded
+    // newlines so the reader can parse the file line-by-line.
+    for (char& c : rec_str) {
+      if (c == '\n' || c == '\r') {
+        c = ' ';
+      }
+    }
+    lines += rec_str;
+    lines += '\n';
+  }
+  if (lines.empty()) {
+    return;
+  }
+
+  static std::mutex quest_play_log_mutex;
+  std::lock_guard<std::mutex> g(quest_play_log_mutex);
+  std::ofstream f("system/players/quest_plays.jsonl", std::ios::app | std::ios::binary);
+  if (f.is_open()) {
+    f << lines;
+  }
+}
+
 void set_lobby_quest(std::shared_ptr<Lobby> l, std::shared_ptr<const Quest> q, bool substitute_v3_for_ep3) {
   if (!l->is_game()) {
     throw std::logic_error("non-game lobby cannot accept a quest");
@@ -2467,6 +2529,16 @@ void set_lobby_quest(std::shared_ptr<Lobby> l, std::shared_ptr<const Quest> q, b
     l->difficulty = l->quest->meta.challenge_difficulty;
   }
   l->create_item_creator();
+
+  // Record a quest-play for everyone currently in the game so the dashboard
+  // can show a reliable "quests played" history. (The server can't observe
+  // quest COMPLETION — online quests run client-side — but it authoritatively
+  // knows the quest it just loaded.) Best-effort; never blocks the quest start.
+  try {
+    log_quest_play(l, q);
+  } catch (const std::exception& e) {
+    l->log.warning_f("Quest-play logging failed: {}", e.what());
+  }
 
   size_t num_clients_with_loading_flag = 0;
   for (size_t client_id = 0; client_id < l->max_clients; client_id++) {
