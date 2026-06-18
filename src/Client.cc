@@ -592,17 +592,6 @@ void Client::auto_snapshot_character() {
   try {
     Client::save_character_file(filename, this->system_data, this->character_data);
     this->log.info_f("Auto-snapshot character to {}", filename);
-    // Record which client version this snapshot came from, in a small sidecar
-    // next to the .psochar (e.g. auto_player_123_0.version -> "BB_V4"). The
-    // dashboard uses this to trust server-authoritative BB EXP / play-time
-    // rather than inferring the version from an account's licenses (an account
-    // can hold both BB and non-BB licenses). Best-effort; non-fatal on failure.
-    try {
-      std::string version_path = filename.substr(0, filename.size() - 8) + ".version";
-      phosg::save_file(version_path, std::string(phosg::name_for_enum<Version>(this->version())));
-    } catch (const std::exception& e) {
-      this->log.warning_f("Auto-snapshot version sidecar failed: {}", e.what());
-    }
   } catch (const std::exception& e) {
     this->log.warning_f("Auto-snapshot to {} failed: {}", filename, e.what());
   }
