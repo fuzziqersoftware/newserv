@@ -3,9 +3,13 @@
 #include <math.h>
 #include <string.h>
 
+#include <fstream>
 #include <memory>
+#include <mutex>
+#include <phosg/JSON.hh>
 #include <phosg/Random.hh>
 #include <phosg/Strings.hh>
+#include <phosg/Time.hh>
 #include <phosg/Vector.hh>
 
 #include "Client.hh"
@@ -3044,6 +3048,49 @@ static void on_entity_drop_item_request(std::shared_ptr<Client> c, SubcommandMes
   }
 }
 
+// Appends a quest-completion record to system/players/quest_completions.jsonl,
+// mirroring log_quest_play (ReceiveCommands.cc) but for completions. Called from
+// on_set_quest_flag when the loaded quest's configured CompletionFlag is set, so
+// completions are keyed to the quest the server actually loaded — no flag-index
+// guessing. Credits the sending client, whose character file is the one that
+// just recorded the flag (so in a party, each member is credited as their own
+// 6x75 arrives). Mutex-guarded and best-effort; never throws into the caller.
+static void log_quest_completion(std::shared_ptr<Client> c, uint32_t quest_number, Difficulty difficulty) {
+  if (!c || !c->login || !c->login->account) {
+    return;
+  }
+  auto ch = c->character_file(false, false);
+  if (!ch) {
+    return;
+  }
+  size_t slot = (c->version() == Version::BB_V4 && c->bb_character_index >= 0)
+      ? static_cast<size_t>(c->bb_character_index)
+      : 0;
+  auto rec = phosg::JSON::dict({
+      {"TimeUsecs", phosg::now()},
+      {"AccountID", c->login->account->account_id},
+      {"SlotIndex", static_cast<uint64_t>(slot)},
+      {"CharacterName", ch->disp.visual.name.decode()},
+      {"QuestNumber", quest_number},
+      {"Difficulty", static_cast<int>(difficulty)},
+      {"Version", std::string(phosg::name_for_enum<Version>(c->version()))},
+  });
+  std::string line = rec.serialize();
+  for (char& rc : line) {
+    if (rc == '\n' || rc == '\r') {
+      rc = ' ';
+    }
+  }
+  line += '\n';
+
+  static std::mutex quest_completion_log_mutex;
+  std::lock_guard<std::mutex> g(quest_completion_log_mutex);
+  std::ofstream f("system/players/quest_completions.jsonl", std::ios::app | std::ios::binary);
+  if (f.is_open()) {
+    f << line;
+  }
+}
+
 static void on_set_quest_flag(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->require_lobby();
   if (!l->is_game()) {
@@ -3086,6 +3133,14 @@ static void on_set_quest_flag(std::shared_ptr<Client> c, SubcommandMessage& msg)
     if (should_set) {
       c->log.info_f("Setting quest flag {}:{:04X}", name_for_difficulty(difficulty), flag_num);
       p->quest_flags.set(difficulty, flag_num);
+      // Design B completion tracking: if the loaded quest declares this flag as
+      // its clear flag (CompletionFlag in the quest's JSON), record a completion.
+      // Keyed to the loaded quest + the flag's difficulty, so it cannot
+      // false-positive on unrelated gameplay flags the way the old endpoint did.
+      if (l->quest && (l->quest->meta.completion_flag >= 0) &&
+          (static_cast<uint16_t>(l->quest->meta.completion_flag) == flag_num)) {
+        log_quest_completion(c, l->quest->meta.quest_number, difficulty);
+      }
     } else {
       c->log.info_f("Clearing quest flag {}:{:04X}", name_for_difficulty(difficulty), flag_num);
       p->quest_flags.clear(difficulty, flag_num);

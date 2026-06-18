@@ -146,12 +146,14 @@ static std::string read_snapshot_version(uint32_t account_id, size_t slot_index)
   return v;
 }
 
-// Streams quest-play records from system/players/quest_plays.jsonl — one JSON
-// object per line, appended on every quest load (see log_quest_play in
-// ReceiveCommands.cc). The file may not exist yet (no quests loaded since the
+// Streams JSON-Lines records (one JSON object per line) from a file under
+// system/players/ — used for quest_plays.jsonl (log_quest_play, in
+// ReceiveCommands.cc) and quest_completions.jsonl (log_quest_completion, in
+// ReceiveSubcommands.cc). The file may not exist yet (nothing recorded since the
 // feature shipped), which is not an error. Malformed lines are skipped.
-static void walk_quest_plays(const std::function<void(const phosg::JSON&)>& visit) {
-  const std::filesystem::path path = std::filesystem::path("system/players") / "quest_plays.jsonl";
+static void walk_jsonl_records(
+    const char* filename, const std::function<void(const phosg::JSON&)>& visit) {
+  const std::filesystem::path path = std::filesystem::path("system/players") / filename;
   std::ifstream f(path);
   if (!f.is_open()) {
     return;
@@ -1123,7 +1125,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
       uint64_t last_played_usecs = 0;
     };
     std::map<std::pair<uint32_t, uint32_t>, PlayAgg> by_char;
-    walk_quest_plays([&](const phosg::JSON& rec) {
+    walk_jsonl_records("quest_plays.jsonl", [&](const phosg::JSON& rec) {
       if (rec.get_int("QuestNumber", -1) != static_cast<int64_t>(quest_num)) {
         return;
       }
@@ -1186,7 +1188,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
           std::set<int> difficulties;
         };
         std::map<uint32_t, QuestAgg> by_quest;
-        walk_quest_plays([&](const phosg::JSON& rec) {
+        walk_jsonl_records("quest_plays.jsonl", [&](const phosg::JSON& rec) {
           if (rec.get_int("AccountID", -1) != static_cast<int64_t>(account_id)) {
             return;
           }
@@ -1216,6 +1218,114 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
               {"QuestNumber", quest_number},
               {"PlayCount", agg.play_count},
               {"LastPlayedUsecs", agg.last_played_usecs},
+              {"Difficulties", std::move(difficulties)},
+          }));
+        }
+        co_return res;
+      });
+
+  // -----------------------------------------------------------------------
+  // /y/data/quest/:quest_num/completions
+  //
+  // For a given quest number, the characters who have CLEARED it, with a
+  // per-character completion count and last-completed time. Sourced from
+  // system/players/quest_completions.jsonl, which is appended only when the
+  // quest's configured CompletionFlag is set during that quest (see
+  // log_quest_completion in ReceiveSubcommands.cc). Quests without a mapped
+  // CompletionFlag never produce completions — by design — so this endpoint
+  // can never report a false clear (unlike the old flag-guessing endpoint).
+  this->router.add(HTTPRequest::Method::GET, "/y/data/quest/:quest_num/completions", [](ArgsT&& args) -> RetT {
+    const uint32_t quest_num = args.get_param<uint32_t>("quest_num");
+    struct CompAgg {
+      uint32_t account_id = 0;
+      uint32_t slot_index = 0;
+      std::string name;
+      uint32_t completion_count = 0;
+      uint64_t last_completed_usecs = 0;
+    };
+    std::map<std::pair<uint32_t, uint32_t>, CompAgg> by_char;
+    walk_jsonl_records("quest_completions.jsonl", [&](const phosg::JSON& rec) {
+      if (rec.get_int("QuestNumber", -1) != static_cast<int64_t>(quest_num)) {
+        return;
+      }
+      uint32_t account_id = rec.get_int("AccountID", 0);
+      uint32_t slot_index = rec.get_int("SlotIndex", 0);
+      auto& agg = by_char[std::make_pair(account_id, slot_index)];
+      agg.account_id = account_id;
+      agg.slot_index = slot_index;
+      agg.completion_count++;
+      uint64_t t = rec.get_int("TimeUsecs", 0);
+      if (t > agg.last_completed_usecs) {
+        agg.last_completed_usecs = t;
+      }
+      agg.name = rec.get_string("CharacterName", agg.name);
+    });
+    auto res = std::make_shared<phosg::JSON>(phosg::JSON::list());
+    for (const auto& [key, agg] : by_char) {
+      res->emplace_back(phosg::JSON::dict({
+          {"AccountID", agg.account_id},
+          {"SlotIndex", agg.slot_index},
+          {"Name", agg.name},
+          {"CompletionCount", agg.completion_count},
+          {"LastCompletedUsecs", agg.last_completed_usecs},
+      }));
+    }
+    co_return res;
+  });
+
+  // -----------------------------------------------------------------------
+  // /y/character/:account_id/:slot_index/quest-completions
+  //
+  // The inverse of /y/data/quest/:quest_num/completions — for one character,
+  // the quests they've CLEARED, aggregated per quest number with a completion
+  // count, last-completed time, and the difficulties cleared. Sourced from
+  // system/players/quest_completions.jsonl; only quests with a mapped
+  // CompletionFlag ever appear here.
+  // -----------------------------------------------------------------------
+  this->router.add(HTTPRequest::Method::GET, "/y/character/:account_id/:slot_index/quest-completions",
+      [](ArgsT&& args) -> RetT {
+        const uint32_t account_id = args.get_param<uint32_t>("account_id");
+        const uint32_t slot_index = args.get_param<uint32_t>("slot_index");
+
+        static const std::array<const char*, 4> DIFFICULTY_NAMES =
+            {"Normal", "Hard", "VHard", "Ultimate"};
+
+        struct QuestAgg {
+          uint32_t completion_count = 0;
+          uint64_t last_completed_usecs = 0;
+          std::set<int> difficulties;
+        };
+        std::map<uint32_t, QuestAgg> by_quest;
+        walk_jsonl_records("quest_completions.jsonl", [&](const phosg::JSON& rec) {
+          if (rec.get_int("AccountID", -1) != static_cast<int64_t>(account_id)) {
+            return;
+          }
+          if (rec.get_int("SlotIndex", -1) != static_cast<int64_t>(slot_index)) {
+            return;
+          }
+          uint32_t quest_number = rec.get_int("QuestNumber", 0);
+          auto& agg = by_quest[quest_number];
+          agg.completion_count++;
+          uint64_t t = rec.get_int("TimeUsecs", 0);
+          if (t > agg.last_completed_usecs) {
+            agg.last_completed_usecs = t;
+          }
+          int diff = rec.get_int("Difficulty", -1);
+          if (diff >= 0 && diff < 4) {
+            agg.difficulties.insert(diff);
+          }
+        });
+
+        auto res = std::make_shared<phosg::JSON>(phosg::JSON::list());
+        for (const auto& [quest_number, agg] : by_quest) {
+          auto difficulties = phosg::JSON::list();
+          for (int diff : agg.difficulties) {
+            difficulties.emplace_back(DIFFICULTY_NAMES[diff]);
+          }
+          res->emplace_back(phosg::JSON::dict({
+              {"QuestNumber", quest_number},
+              {"CompletionCount", agg.completion_count},
+              {"LastCompletedUsecs", agg.last_completed_usecs},
               {"Difficulties", std::move(difficulties)},
           }));
         }

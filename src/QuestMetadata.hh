@@ -57,6 +57,12 @@ struct QuestMetadata {
   ServerDropMode default_drop_mode = ServerDropMode::CLIENT; // Ignored if allowed_drop_modes == 0
   bool allow_start_from_chat_command = false;
   int16_t lock_status_register = -1;
+  // The quest_flag index this quest sets when it is cleared. When the BB client
+  // sets this flag while this quest is the loaded quest, the server records a
+  // completion (see on_set_quest_flag). -1 = unmapped: the quest still records
+  // plays, but no completions (this avoids the false positives that come from
+  // guessing a quest's clear flag).
+  int16_t completion_flag = -1;
   std::unordered_map<uint32_t, uint32_t> enemy_exp_overrides;
   bool enable_schtserv_commands = false;
 

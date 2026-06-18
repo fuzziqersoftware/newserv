@@ -42,6 +42,10 @@ void QuestMetadata::apply_json_overrides(const phosg::JSON& json) {
   } catch (const std::out_of_range&) {
   }
   try {
+    this->completion_flag = json.get_int("CompletionFlag");
+  } catch (const std::out_of_range&) {
+  }
+  try {
     this->enemy_exp_overrides = QuestMetadata::parse_enemy_exp_overrides(json.at("EnemyEXPOverrides"));
   } catch (const std::out_of_range&) {
   }
@@ -115,6 +119,11 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
     throw std::runtime_error(std::format(
         "quest version has a different lock status register (existing: {:04X}, new: {:04X})",
         this->lock_status_register, other.lock_status_register));
+  }
+  if (this->completion_flag != other.completion_flag) {
+    throw std::runtime_error(std::format(
+        "quest version has a different completion flag (existing: {:04X}, new: {:04X})",
+        this->completion_flag, other.completion_flag));
   }
   if (this->enemy_exp_overrides != other.enemy_exp_overrides) {
     throw std::runtime_error("quest version has different enemy EXP overrides");
@@ -273,6 +282,7 @@ phosg::JSON QuestMetadata::json() const {
       {"DefaultDropMode", phosg::name_for_enum(this->default_drop_mode)},
       {"AllowStartFromChatCommand", this->allow_start_from_chat_command},
       {"LockStatusRegister", (this->lock_status_register >= 0) ? this->lock_status_register : phosg::JSON(nullptr)},
+      {"CompletionFlag", (this->completion_flag >= 0) ? this->completion_flag : phosg::JSON(nullptr)},
       {"EnemyEXPOverrides", std::move(enemy_exp_overrides_json)},
       {"CreateItemMasks", std::move(create_item_mask_entries_json)},
       {"SoloUnlockFlags", std::move(solo_unlock_flags_json)},
