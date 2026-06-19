@@ -1019,7 +1019,9 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     // the BB item parameter table. If that table isn't loaded for some
     // reason, all items fall through to "Unknown" rather than crashing.
     auto bb_name_index = this->state->data->item_name_index_opt(Version::BB_V4);
-    walk_backup_characters([&res, &bb_name_index](
+    // BB item-parameter table, for the per-item Rare flag below.
+    auto bb_pmt = this->state->data->item_parameter_table(Version::BB_V4);
+    walk_backup_characters([&res, &bb_name_index, &bb_pmt](
                                std::shared_ptr<PSOBBCharacterFile> ch,
                                uint32_t account_id,
                                size_t slot_index) {
@@ -1068,6 +1070,14 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
           name = "Unknown";
         }
 
+        // Rare per the BB item-parameter table — drives the dashboard's gold
+        // highlight, matching how the game colours rare items.
+        bool item_rare = false;
+        if (bb_pmt) {
+          try {
+            item_rare = bb_pmt->is_item_rare(slot.data);
+          } catch (const std::exception&) {}
+        }
         inventory_json.emplace_back(phosg::JSON::dict({
             {"Name", std::move(name)},
             {"Kind", kind},
@@ -1075,6 +1085,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
             // equipped." See the comment in PlayerInventoryItemT for the
             // full bit layout.
             {"Equipped", static_cast<bool>(slot.flags & 0x00000008)},
+            {"Rare", item_rare},
         }));
       }
 
@@ -1082,6 +1093,22 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
       // EXP / play-time without inferring the version from account licenses
       // (an account can hold both BB and non-BB licenses). Null when no
       // sidecar exists (legacy snapshot or a manual $savechar backup).
+      // Saved quest-completion flags, per difficulty. The game persists these
+      // permanently, so the dashboard can tell which quests this character has
+      // EVER cleared (retroactive — not just clears since logging began) by
+      // intersecting the set indices with each quest's CompletionFlag.
+      auto quest_flags_json = phosg::JSON::dict();
+      for (uint8_t d = 0; d < 4; d++) {
+        Difficulty diff = static_cast<Difficulty>(d);
+        auto set_flags = phosg::JSON::list();
+        for (uint16_t fi = 0; fi < 0x400; fi++) {
+          if (ch->quest_flags.get(diff, fi)) {
+            set_flags.emplace_back(static_cast<int64_t>(fi));
+          }
+        }
+        quest_flags_json.emplace(name_for_difficulty(diff), std::move(set_flags));
+      }
+
       std::string snapshot_version = read_snapshot_version(account_id, slot_index);
       res->emplace_back(phosg::JSON::dict({
           {"AccountID", account_id},
@@ -1095,6 +1122,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
           {"PlayTimeSeconds", ch->play_time_seconds.load()},
           {"Stats", ch->disp.stats.char_stats.json()},
           {"Inventory", std::move(inventory_json)},
+          {"QuestFlags", std::move(quest_flags_json)},
           {"SnapshotVersion", snapshot_version.empty() ? phosg::JSON(nullptr) : phosg::JSON(snapshot_version)},
       }));
     });
