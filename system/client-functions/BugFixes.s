@@ -533,7 +533,7 @@ g4_hook_end:
 g5_hook1_start:
   mr        r3, r29
   li        r4, 0x0000
-  bl        [<VERS 801B97B4 801B9C20 801BCC98 801B9CEC 801B9BA0 801B9BA0 801B9D50 801BA20C>]
+  bl        <VERS 0x801B97B4 0x801B9C20 0x801BCC98 0x801B9CEC 0x801B9BA0 0x801B9BA0 0x801B9D50 0x801BA20C>
   mr        r3, r29
   b         g5_hook1_ret
 g5_hook2_start:
@@ -805,7 +805,7 @@ g9_hook_start:
   li        r5, 0x0000
   li        r6, 0x001E
   li        r7, 0x0040
-  bl        [<VERS 800864A0 8008678C 80086904 800868B4 8008672C 8008672C 800868C4 8008688C>]
+  bl        <VERS 0x800864A0 0x8008678C 0x80086904 0x800868B4 0x8008672C 0x8008672C 0x800868C4 0x8008688C>
   mtlr      r30
   blr
 g9_hook_end:
@@ -932,7 +932,7 @@ g9_hook_end:
   .address  g10_hook_loc
 g10_hook_start:
   lwz       r3, [r3 + 0x98]
-  bl        [<VERS 803DFCC0 803E269C 803E453C 803E42EC 803E0F64 803E0FBC 803E46BC 803E31AC>]
+  bl        <VERS 0x803DFCC0 0x803E269C 0x803E453C 0x803E42EC 0x803E0F64 0x803E0FBC 0x803E46BC 0x803E31AC>
   lwz       r3, [r31 + 0x042C]
   lwz       r4, [r31 + 0x0430]
   b         g10_hook_ret
@@ -1073,7 +1073,7 @@ g11_hook_end:
 g12_hook1_start:
   li        r0, 1
   stw       [r13 - <VERS 0x2E48 0x2E30 0x2E30>], r0  # Anchor: 80039388 @ 3OE1
-  b         [<VERS 803D3140 803D4410 803D4468>]
+  b         <VERS 0x803D3140 0x803D4410 0x803D4468>
 g12_hook2_start:
   li        r4, 0
   stw       [r13 - <VERS 0x2E48 0x2E30 0x2E30>], r4
