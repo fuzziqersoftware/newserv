@@ -3164,9 +3164,9 @@ static std::string name_for_entity_type(
 
   auto its = index.equal_range(type);
   uint16_t version_mask = (1 << static_cast<size_t>(version));
-  uint64_t area_mask = static_cast<uint64_t>(1ULL << area);
 
   if ((version != Version::UNKNOWN) && (area != 0xFF)) {
+    uint64_t area_mask = static_cast<uint64_t>(1ULL << area);
     for (auto [it, end_it] = its; it != end_it; it++) {
       const auto* def = it->second;
       if ((def->area_flags & area_mask) && (def->version_flags & version_mask)) {

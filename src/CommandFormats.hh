@@ -2309,7 +2309,7 @@ struct S_TournamentSpectatorTeamList_Ep3_BB {
 // C0 (S->C): Choice search options (DCv2 and later versions)
 // Internal name: RcvChoiceList
 
-// Command is a list of these; header.flag is the entry count (incl. top-level).
+// Command is a list of these; header.flag is the entry count (incl. top-level). The maximum number of entries is 56.
 template <TextEncoding Encoding>
 struct S_ChoiceSearchEntryT {
   // Category IDs are nonzero; if the high byte of the ID is nonzero then the category can be set by the user at any
@@ -5416,7 +5416,7 @@ struct G_Unknown_GCNTE_6xAB {
 
 struct G_CreateLobbyChair_6xAB {
   G_ClientIDHeader header;
-  le_uint16_t unused = 0;
+  le_uint16_t animation_number = 0;
   // Only two bits in this field have meanings:
   //   01 = unknown
   //   02 = which pose/animation (on GC, 0 = X+A, 1 = X+B)

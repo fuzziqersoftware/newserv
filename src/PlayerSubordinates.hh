@@ -52,10 +52,13 @@ struct PlayerVisualConfigSharedT {
   /* 20 */ uint8_t section_id = 0;
   /* 21 */ uint8_t char_class = 0;
   // validation_flags specifies that some parts of this structure are not valid and should be ignored. The bits are:
-  //   -----FCS
+  //   ----NFCS
+  //   N = name is not valid and should be changed (character creation / dressing room shows only name option)
   //   F = class_flags is incorrect for the character's char_class value
-  //   C = char_class is out of range
+  //   C = char_class is out of range (enables extra_model; also causes N flag's dressing room behavior)
   //   S = section_id is out of range
+  // Note that the dressing room's name change behavior exists on GC but is inaccessible because TCharaMaking clears
+  // the N and C bits immediately before checking for this.
   /* 22 */ uint8_t validation_flags = 0;
   /* 23 */ uint8_t version = 0;
   // class_flags specifies features of the character's class. The bits are:
