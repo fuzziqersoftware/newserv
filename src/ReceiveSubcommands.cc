@@ -5191,9 +5191,14 @@ static void on_quest_F95E_result_bb(std::shared_ptr<Client> c, SubcommandMessage
   const auto& cmd = msg.check_size_t<G_RequestItemDropFromQuest_BB_6xE0>();
   auto s = c->require_server_state();
 
-  size_t count = (cmd.type > 0x03) ? 1 : (static_cast<size_t>(l->difficulty) + 1);
-  c->log.info_f("Creating {} F95E result items", count);
-  for (size_t z = 0; z < count; z++) {
+  static const std::array<std::vector<VectorXZF>, 4> difficulty_deltas{{{{0, 0}},
+      {{-3, 0}, {3, 0}},
+      {{-6, 0}, {0, 0}, {6, 0}},
+      {{-3, -3}, {3, -3}, {-3, 3}, {3, 3}}}};
+  const std::vector<VectorXZF>& deltas = difficulty_deltas.at(static_cast<size_t>(l->difficulty));
+
+  c->log.info_f("Creating {} F95E result items", deltas.size());
+  for (size_t z = 0; z < deltas.size(); z++) {
     const auto& results = s->data->quest_F95E_results.at(cmd.type).at(static_cast<size_t>(l->difficulty));
     if (results.empty()) {
       throw std::runtime_error("invalid result type");
@@ -5213,13 +5218,14 @@ static void on_quest_F95E_result_bb(std::shared_ptr<Client> c, SubcommandMessage
     }
 
     item.id = l->generate_item_id(0xFF);
-    l->add_item(cmd.floor, item, cmd.pos, nullptr, nullptr, 0x100F);
+    VectorXZF item_pos = cmd.pos + deltas[z];
+    l->add_item(cmd.floor, item, item_pos, nullptr, nullptr, 0x100F);
 
     if (c->log.should_log(phosg::LogLevel::L_INFO)) {
       c->log.info_f("Item created as {}", item.hex());
     }
 
-    send_drop_stacked_item_to_lobby(l, item, cmd.floor, cmd.pos);
+    send_drop_stacked_item_to_lobby(l, item, cmd.floor, item_pos);
   }
 }
 
