@@ -2,7 +2,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data   start
 
 
 
@@ -26,7 +26,7 @@ start:
   mflr   r12
   bl     read
 address:
-  .zero
+  .data  0
 read:
   mflr   r3
   lwz    r3, [r3]

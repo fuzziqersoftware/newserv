@@ -11,7 +11,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data   start
 start:
   .include  WriteCodeBlocks
   .data     <VERS 0x0064527E 0x0064A642 0x0064A5DE>  # Episode 1

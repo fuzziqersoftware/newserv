@@ -10,7 +10,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data   start
 start:
   .include  WriteCodeBlocks
 
@@ -20,7 +20,7 @@ start:
 
   .label    hook_loc, 0x8000B938
   .data     hook_loc
-  .deltaof  hook_start, hook_end
+  .data     hook_end - hook_start
   .address  hook_loc
 hook_start:
   addi      r3, r28, 0x0550

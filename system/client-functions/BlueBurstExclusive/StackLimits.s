@@ -11,13 +11,13 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data     start
 start:
   .include  WriteCodeBlocks
 
   # Patch 1: rewrite item_is_stackable
   .data     <VERS 0x005C3DD8 0x005C5020 0x005C502C>
-  .deltaof  item_is_stackable_start, item_is_stackable_end
+  .data     item_is_stackable_end - item_is_stackable_start
 
 item_is_stackable_start:
   mov       eax, [esp + 4]
@@ -48,7 +48,7 @@ item_is_stackable_end:
 
   # Patch 2: rewrite max_stack_size_for_tool
   .data     <VERS 0x005D474C 0x005D6410 0x005D6430>
-  .deltaof  max_stack_size_for_tool_start, max_stack_size_for_tool_end
+  .data     max_stack_size_for_tool_end - max_stack_size_for_tool_start
 
 max_stack_size_for_tool_start:
   xor       eax, eax

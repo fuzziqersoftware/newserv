@@ -11,7 +11,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data   start
 start:
   xor       eax, eax
   mov       edx, esp

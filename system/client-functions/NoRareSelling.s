@@ -8,7 +8,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data     start
 
 
 
@@ -33,7 +33,7 @@ start:
 
   .label    tool_check_hook_loc, 0x800041A0
   .data     tool_check_hook_loc
-  .deltaof  tool_check_hook_start, tool_check_hook_end
+  .data     tool_check_hook_end - tool_check_hook_start
   .address  tool_check_hook_loc
 tool_check_hook_start:
   lwz       r29, [r3 + 0x10]  # Flags
@@ -75,7 +75,7 @@ start:
   .binary   E98E0C0000
 
   .data     <VERS 0x0017ECE1 0x0017ED11 0x0017EB71 0x0017ECF1 0x0017EDA1 0x0017ED01 0x0017ECD1>
-  .deltaof  tool_check_start, tool_check_end
+  .data     tool_check_end - tool_check_start
 tool_check_start:
   xor       edi, edi
   test      byte [eax + 0x10], 0x80
@@ -104,11 +104,7 @@ start:
   pop       ecx
   push      5
   push      <VERS 0x005D1250 0x005D2508 0x005D2528>
-  call      get_code_size
-  .deltaof  patch_code, patch_code_end
-get_code_size:
-  pop       eax
-  push      dword [eax]
+  push      patch_code_end - patch_code
   call      patch_code_end
 patch_code:
   # TODO: It'd be nice to have something like WriteJumpToAndFromCode, since this hook is supposed to return to a

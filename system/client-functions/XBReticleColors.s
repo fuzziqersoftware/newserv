@@ -10,7 +10,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data   start
 start:
   .include  WriteCodeBlocks
 
@@ -20,9 +20,9 @@ start:
 
   .data     <VERS 0x804A1F38 0x804A5658 0x804A7AF8 0x804A78B8 0x804A26E8 0x804A2BC8 0x804A7188 0x804A7608>
   .data     0x0000000C
-  .float    0
-  .float    0
-  .float    1
+  .data     encode_float(0)
+  .data     encode_float(0)
+  .data     encode_float(1)
 
   .data     0x00000000
   .data     0x00000000

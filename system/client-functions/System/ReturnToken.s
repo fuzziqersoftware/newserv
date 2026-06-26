@@ -2,7 +2,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data   start
 
 start:
   call     resume

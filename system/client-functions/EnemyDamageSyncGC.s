@@ -8,7 +8,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data     start
 start:
   .include  WriteCodeBlocks
 
@@ -137,7 +137,7 @@ start:
 
 
   .data     0x800041C0
-  .deltaof  code_start, code_end
+  .data     code_end - code_start
   .address  0x800041C0
 code_start:
 handle_6xE4:  # [std] (G_IncrementEnemyDamage_Extension_6xE4* cmd @ r3) -> void

@@ -10,7 +10,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data     start
 
 write_call_func:
   .include  WriteCallToCode
@@ -36,11 +36,7 @@ patch_func_1:
   pop       ecx
   push      8
   push      <VERS 0x0074196B 0x00748990 0x00748944>
-  call      get_code_size1
-  .deltaof  patch_code1, patch_code_end1
-get_code_size1:
-  pop       eax
-  push      dword [eax]
+  push      patch_code_end1 - patch_code1
   call      patch_code_end1
 patch_code1:
   mov       edx, [ebp - 0x14]
@@ -60,11 +56,7 @@ patch_func_2:
   pop       ecx
   push      5
   push      <VERS 0x007419B9 0x007489DE 0x00748992>
-  call      get_code_size2
-  .deltaof  patch_code2, patch_code_end2
-get_code_size2:
-  pop       eax
-  push      dword [eax]
+  push      patch_code_end2 - patch_code2
   call      patch_code_end2
 patch_code2:
   cmp       byte [<VERS 0x00741B59 0x00748B1B 0x00748ACF>], 0
@@ -82,11 +74,7 @@ patch_func_3:
   pop       ecx
   push      5
   push      <VERS 0x007419C8 0x007489ED 0x007489A1>
-  call      get_code_size3
-  .deltaof  patch_code3, patch_code_end3
-get_code_size3:
-  pop       eax
-  push      dword [eax]
+  push      patch_code_end3 - patch_code3
   call      patch_code_end3
 patch_code3:
   cmp       byte [<VERS 0x00741B59 0x00748B1B 0x00748ACF>], 0
@@ -104,11 +92,7 @@ patch_func_4:
   pop       ecx
   push      5
   push      <VERS 0x00741A63 0x00748A88 0x00748A3C>
-  call      get_code_size4
-  .deltaof  patch_code4, patch_code_end4
-get_code_size4:
-  pop       eax
-  push      dword [eax]
+  push      patch_code_end4 - patch_code4
   call      patch_code_end4
 patch_code4:
   cmp       byte [<VERS 0x00741B59 0x00748B1B 0x00748ACF>], 0
@@ -126,11 +110,7 @@ patch_func_5:
   pop       ecx
   push      5
   push      <VERS 0x00741A72 0x00748A97 0x00748A4B>
-  call      get_code_size5
-  .deltaof  patch_code5, patch_code_end5
-get_code_size5:
-  pop       eax
-  push      dword [eax]
+  push      patch_code_end5 - patch_code5
   call      patch_code_end5
 patch_code5:
   cmp       byte [<VERS 0x00741B59 0x00748B1B 0x00748ACF>], 0
@@ -148,11 +128,7 @@ patch_func_6:
   pop       ecx
   push      5
   push      <VERS 0x0070A11F 0x007103D3 0x007103B7>
-  call      get_code_size6
-  .deltaof  patch_code6, patch_code_end6
-get_code_size6:
-  pop       eax
-  push      dword [eax]
+  push      patch_code_end6 - patch_code6
   call      patch_code_end6
 patch_code6:
   cmp       byte [<VERS 0x00741B59 0x00748B1B 0x00748ACF>], 0
@@ -170,11 +146,7 @@ patch_func_7:
   pop       ecx
   push      5
   push      <VERS 0x0070A128 0x007103DC 0x007103C0>
-  call      get_code_size7
-  .deltaof  patch_code7, patch_code_end7
-get_code_size7:
-  pop       eax
-  push      dword [eax]
+  push      patch_code_end7 - patch_code7
   call      patch_code_end7
 patch_code7:
   cmp       byte [<VERS 0x00741B59 0x00748B1B 0x00748ACF>], 0
@@ -190,10 +162,9 @@ patch_code_end7:
 write_code_blocks:
   .include  WriteCodeBlocks
 
-  .data     <VERS 0x007419E0 0x00748A05 0x007489B9>
-  .deltaof  code_block1_start, code_block1_end
-
 # UnsetHotkey1
+  .data     <VERS 0x007419E0 0x00748A05 0x007489B9>
+  .data     code_block1_end - code_block1_start
 code_block1_start:
   push      dword [<VERS 0x00741B59 0x00748B1B 0x00748ACF>]
   push      eax
@@ -201,10 +172,10 @@ code_block1_start:
   call      eax
   .binary   909090909090909090
 code_block1_end:
-  .data     <VERS 0x00741A86 0x00748AAB 0x00748A5F>
-  .deltaof  code_block2_start, code_block2_end
 
 # UnsetHotkey2
+  .data     <VERS 0x00741A86 0x00748AAB 0x00748A5F>
+  .data     code_block2_end - code_block2_start
 code_block2_start:
   push      dword [<VERS 0x00741B59 0x00748B1B 0x00748ACF>]
   push      eax
@@ -212,10 +183,10 @@ code_block2_start:
   call      eax
   .binary   909090909090909090
 code_block2_end:
-  .data     <VERS 0x00741B48 0x00748B0A 0x00748ABE>
-  .deltaof  code_block3_start, code_block3_end
 
 # SetHotkey
+  .data     <VERS 0x00741B48 0x00748B0A 0x00748ABE>
+  .data     code_block3_end - code_block3_start
 code_block3_start:
   mov       eax, [ebp - 0x24]
   mov       ecx, [ebp - 0x28]

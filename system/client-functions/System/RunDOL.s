@@ -4,7 +4,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data   start
 
 start:
 disable_interrupts:
@@ -14,7 +14,7 @@ disable_interrupts:
 
   bl      get_current_addr
 dol_base_ptr:
-  .zero
+  .data   0
 get_current_addr:
   mflr    r31
   # TODO: It'd be nice to be able to use an expression for the immediate value here - something like (dol_base_ptr -

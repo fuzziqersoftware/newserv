@@ -9,13 +9,9 @@ start:
   ori       r3, r3, 0x0421
   lwz       r4, [r7 - 4]
   cmp       r3, r4
-  beq       apply_patch
-  blr
-apply_patch:
+  bnelr
 
   bl        patch_end
-  .offsetof patch
-  .offsetof patch_end
 patch:
   mfctr     r6
   mr        r3, r6
@@ -24,15 +20,10 @@ patch:
   mtctr     r6
   bctr
 patch_end:
-  mflr      r4
-
-  addi      r4, r4, 8
-  lwz       r3, [r4 - 8]
-  lwz       r5, [r4 - 4]
-  sub       r5, r5, r3
-
   lis       r3, 0x8000
   ori       r3, r3, 0x01BC
+  mflr      r4
+  li        r5, (patch_end - patch)
   mr        r6, r3
   # At this point:
   # r3 = destination location (overwritten by CopyCode)

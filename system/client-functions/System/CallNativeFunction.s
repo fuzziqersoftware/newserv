@@ -2,7 +2,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data   start
 
 
 
@@ -43,27 +43,27 @@ start:
   stwu   [r1 - 0x20], r1
   bl     resume
 call_addr:
-  .zero
+  .data  0
 arg0:
-  .zero
+  .data  0
 arg1:
-  .zero
+  .data  0
 arg2:
-  .zero
+  .data  0
 arg3:
-  .zero
+  .data  0
 arg4:
-  .zero
+  .data  0
 arg5:
-  .zero
+  .data  0
 arg6:
-  .zero
+  .data  0
 arg7:
-  .zero
+  .data  0
 arg8:
-  .zero
+  .data  0
 arg9:
-  .zero
+  .data  0
 resume:
   mflr   r12
   lwz    r0, [r12]          # call_addr

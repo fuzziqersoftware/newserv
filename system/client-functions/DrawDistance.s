@@ -14,7 +14,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data     start
 
 
 
@@ -24,7 +24,7 @@ start:
   .include  WriteCodeBlocks
 
   .data     0x8000DFA0
-  .deltaof  hook_start, hook_end
+  .data     hook_end - hook_start
   .address  0x8000DFA0
 hook_start:
 hook1:
@@ -81,23 +81,23 @@ hook_end:
 
   .data     <VERS 0x805C83A8 0x805D29A8 0x805D9E48 0x805D9BE8 0x805C8CB0 0x805CFCD0 0x805D94F0 0x805D5730>
   .data     0x00000004
-  .float    90000
+  .data     encode_float(90000)
 
   .data     <VERS 0x805C9254 0x805D3854 0x805DACF4 0x805DAA94 0x805C9B5C 0x805D0B7C 0x805DA39C 0x805D65DC>
   .data     0x00000004
-  .float    62500
+  .data     encode_float(62500)
 
   .data     <VERS 0x805C987C 0x805D3E7C 0x805DB31C 0x805DB0BC 0x805CA184 0x805D11A4 0x805DA9C4 0x805D6C04>
   .data     0x00000004
-  .float    640000
+  .data     encode_float(640000)
 
   .data     <VERS 0x805CA708 0x805D4D08 0x805DC1A8 0x805DBF48 0x805CB010 0x805D2030 0x805DB850 0x805D7A90>
   .data     0x00000004
-  .float    90000
+  .data     encode_float(90000)
 
   .data     <VERS 0x805CAC98 0x805D5298 0x805DC738 0x805DC4D8 0x805CB5A0 0x805D25C0 0x805DBDE0 0x805D8020>
   .data     0x00000004
-  .float    1400
+  .data     encode_float(1400)
 
   .data     0x00000000
   .data     0x00000000
@@ -110,14 +110,14 @@ start:
   .include  WriteCodeBlocks
 
   .data     <VERS 0x001737C2 0x001737D2 0x00173692 0x00173782 0x00173862 0x001737E2 0x00173792>  # From 3OE1:80100B8C
-  .deltaof  p1_1s, p1_1e
+  .data     p1_1e - p1_1s
   .address  <VERS 0x001737C2 0x001737D2 0x00173692 0x00173782 0x00173862 0x001737E2 0x00173792>  # From 3OE1:80100B8C
 p1_1s:
   call      p1_2s
   nop
 p1_1e:
   .data     <VERS 0x00173A42 0x00173A52 0x00173912 0x00173A02 0x00173AE2 0x00173A62 0x00173A12>
-  .deltaof  p1_2s, p1_2e
+  .data     p1_2e - p1_2s
   .address  <VERS 0x00173A42 0x00173A52 0x00173912 0x00173A02 0x00173AE2 0x00173A62 0x00173A12>
 p1_2s:
   fld       st0, dword [esp + 0x1C]
@@ -127,13 +127,13 @@ p1_2s:
 p1_2e:
 
   .data     <VERS 0x001A3DEF 0x001A3EEF 0x001A3BBF 0x001A3DBF 0x001A3FDF 0x001A3E0F 0x001A3ECF>  # From 3OE1:80156AD8
-  .deltaof  p2_1s, p2_1e
+  .data     p2_1e - p2_1s
   .address  <VERS 0x001A3DEF 0x001A3EEF 0x001A3BBF 0x001A3DBF 0x001A3FDF 0x001A3E0F 0x001A3ECF>  # From 3OE1:80156AD8
 p2_1s:
   call      p2_2s
 p2_1e:
   .data     <VERS 0x001A3E38 0x001A3F38 0x001A3C08 0x001A3E08 0x001A4028 0x001A3E58 0x001A3F18>
-  .deltaof  p2_2s, p2_2e
+  .data     p2_2e - p2_2s
   .address  <VERS 0x001A3E38 0x001A3F38 0x001A3C08 0x001A3E08 0x001A4028 0x001A3E58 0x001A3F18>
 p2_2s:
   fld       st0, dword [ecx + 0x1C]
@@ -143,14 +143,14 @@ p2_2s:
 p2_2e:
 
   .data     <VERS 0x002D2DC8 0x002D3148 0x002D0E68 0x002D1A28 0x002D32F8 0x002D2DF8 0x002D31C8>  # From 3OE1:801A2040
-  .deltaof  p3_1s, p3_1e
+  .data     p3_1e - p3_1s
   .address  <VERS 0x002D2DC8 0x002D3148 0x002D0E68 0x002D1A28 0x002D32F8 0x002D2DF8 0x002D31C8>  # From 3OE1:801A2040
 p3_1s:
   call      p3_2s
   nop
 p3_1e:
   .data     <VERS 0x002D2EA7 0x002D3227 0x002D0F47 0x002D1B07 0x002D33D7 0x002D2ED7 0x002D32A7>
-  .deltaof  p3_2s, p3_2e
+  .data     p3_2e - p3_2s
   .address  <VERS 0x002D2EA7 0x002D3227 0x002D0F47 0x002D1B07 0x002D33D7 0x002D2ED7 0x002D32A7>
 p3_2s:
   fld       st0, dword [esp + 0x24]
@@ -160,14 +160,14 @@ p3_2s:
 p3_2e:
 
   .data     <VERS 0x00156AC8 0x002D32A8 0x001569E8 0x00156A78 0x00156AB8 0x00156AE8 0x002D3328>  # From 3OE1:801A2240
-  .deltaof  p4_1s, p4_1e
+  .data     p4_1e - p4_1s
   .address  <VERS 0x00156AC8 0x002D32A8 0x001569E8 0x00156A78 0x00156AB8 0x00156AE8 0x002D3328>  # From 3OE1:801A2240
 p4_1s:
   call      p4_2s
   nop
 p4_1e:
   .data     <VERS 0x00156C44 0x002D33B4 0x00156B64 0x00156BF4 0x00156C34 0x00156C64 0x002D3434>
-  .deltaof  p4_2s, p4_2e
+  .data     p4_2e - p4_2s
   .address  <VERS 0x00156C44 0x002D33B4 0x00156B64 0x00156BF4 0x00156C34 0x00156C64 0x002D3434>
 p4_2s:
   fld       st0, dword [esp + 0x28]
@@ -177,19 +177,19 @@ p4_2s:
 p4_2e:
 
   .data     <VERS 0x002E2B93 0x002E2E8C 0x002E0C33 0x002E17B3 0x002E2E6C 0x002E2BC3 0x002E2EBC>  # From 3OE1:80205840
-  .deltaof  p5_1s, p5_1e
+  .data     p5_1e - p5_1s
   .address  <VERS 0x002E2B93 0x002E2E8C 0x002E0C33 0x002E17B3 0x002E2E6C 0x002E2BC3 0x002E2EBC>  # From 3OE1:80205840
 p5_1s:
   call      p5_3s
 p5_1e:
   .data     <VERS 0x002E1FD1 0x002E2404 0x002E0071 0x002E0BF1 0x002E23E4 0x002E2001 0x002E2434>  # From 3OE1:80205FE4
-  .deltaof  p5_2s, p5_2e
+  .data     p5_2e - p5_2s
   .address  <VERS 0x002E1FD1 0x002E2404 0x002E0071 0x002E0BF1 0x002E23E4 0x002E2001 0x002E2434>  # From 3OE1:80205FE4
 p5_2s:
   call      p5_3s
 p5_2e:
   .data     <VERS 0x002E2C82 0x002E2FD1 0x002E0D22 0x002E18A2 0x002E2FB1 0x002E2CB2 0x002E3001>
-  .deltaof  p5_3s, p5_3e
+  .data     p5_3e - p5_3s
   .address  <VERS 0x002E2C82 0x002E2FD1 0x002E0D22 0x002E18A2 0x002E2FB1 0x002E2CB2 0x002E3001>
 p5_3s:
   fld       st0, dword [eax + 0x0C]
@@ -257,11 +257,7 @@ patch_func_1:
   pop       ecx
   push      8
   push      <VERS 0x005C4013 0x005C525B 0x005C5267>
-  call      get_code_size1
-  .deltaof  patch_code1, patch_code_end1
-get_code_size1:
-  pop       eax
-  push      dword [eax]
+  push      patch_code_end1 - patch_code1
   call      patch_code_end1
 patch_code1:
   mov       edx, [esp + 0x18]
@@ -278,11 +274,7 @@ patch_func_2:
   pop       ecx
   push      9
   push      <VERS 0x07B3396 0x007BB21E 0x007BA472>
-  call      get_code_size2
-  .deltaof  patch_code2, patch_code_end2
-get_code_size2:
-  pop       eax
-  push      dword [eax]
+  push      patch_code_end2 - patch_code2
   call      patch_code_end2
 patch_code2:
   test      eax, 0x400
@@ -308,11 +300,7 @@ patch_func_4:
   pop       ecx
   push      7
   push      <VERS 0x00611E30 0x00616FF4 0x00616FFC>
-  call      get_code_size4
-  .deltaof  patch_code4, patch_code_end4
-get_code_size4:
-  pop       eax
-  push      dword [eax]
+  push      patch_code_end4 - patch_code4
   call      patch_code_end4
 patch_code4:
   lea       edx, [edi + 0x38]
@@ -329,11 +317,7 @@ patch_func_5:
   pop       ecx
   push      6
   push      <VERS 0x0063E6E4 0x006439A8 0x0064394C>
-  call      get_code_size5
-  .deltaof  patch_code5, patch_code_end5
-get_code_size5:
-  pop       eax
-  push      dword [eax]
+  push      patch_code_end5 - patch_code5
   call      patch_code_end5
 patch_code5:
   fld       st0, dword [<VERS 0x00684779 0x00689BD1 0x00689B65>]
@@ -350,11 +334,7 @@ patch_func_6:
   pop       ecx
   push      6
   push      <VERS 0x00656501 0x0065B959 0x0065B985>
-  call      get_code_size6
-  .deltaof  patch_code6, patch_code_end6
-get_code_size6:
-  pop       eax
-  push      dword [eax]
+  push      patch_code_end6 - patch_code6
   call      patch_code_end6
 patch_code6:
   mov       ebp, ecx

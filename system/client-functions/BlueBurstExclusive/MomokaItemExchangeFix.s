@@ -6,7 +6,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data     start
 start:
   .include  WriteCodeBlocks
 
@@ -22,7 +22,7 @@ start:
   # Fix send_6xD9 not setting size field
 
   .data     <VERS 0x006C43CC 0x006CA584 0x006CA540>
-  .deltaof  send_6xD9_start, send_6xD9_end
+  .data     send_6xD9_end - send_6xD9_start
   .address  <VERS 0x006C43CC 0x006CA584 0x006CA540>
 send_6xD9_start:  # [std](void* this @ ecx) -> void
   push      ebx
@@ -70,7 +70,7 @@ send_6xD9_end:
   # Same fix as above, but for quest_F95B_send_6xD9
 
   .data     <VERS 0x006B2F24 0x006B9058 0x006B9018>
-  .deltaof  quest_F95B_send_6xD9_start, quest_F95B_send_6xD9_end
+  .data     quest_F95B_send_6xD9_end - quest_F95B_send_6xD9_start
   .address  <VERS 0x006B2F24 0x006B9058 0x006B9018>
 quest_F95B_send_6xD9_start:  # [std]() -> void
   mov       edx, <VERS 0x00A8908C 0x00A9304C 0x00A954CC>  # quest_args_list

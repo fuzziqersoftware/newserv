@@ -101,11 +101,11 @@ resume1:
 
   # TODO: We can probably use this space for something useful. There must be exactly 20 opcodes (0x50 bytes) between
   # resume1 and opaque2.
-  .zero
-  .zero
-  .zero
-  .zero
-  .zero
+  .data   0
+  .data   0
+  .data   0
+  .data   0
+  .data   0
 
 opaque2:
   # This block must be exactly here (the number of opcodes above is exactly how many will fit in the original buffer),

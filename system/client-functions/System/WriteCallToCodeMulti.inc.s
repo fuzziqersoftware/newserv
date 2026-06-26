@@ -1,11 +1,11 @@
 # This file defines the following function:
-#   void [/std] write_call_to_code(
+#   void [std+all] write_call_to_code(
 #     const void* patch_code @ [esp + 0x04],
 #     size_t patch_code_size @ [esp + 0x08],
 #     size_t call_count @ [esp + 0x0C],
 #     void* call_opcode_address @ [esp + 0x10],
 #     ssize_t call_opcode_bytes @ [esp + 0x14],
-#     ...);
+#     ...) -> void* allocated_code_addr @ eax;
 # This function allocates memory for patch_code, copies patch_code to that memory, then writes a call or jmp opcode to
 # call_opcode_address that calls the code in the allocated memory region. The allocated memory is never freed.
 # call_opcode_bytes specifies how many bytes at the callsite should be overwritten. This value must be at least 5; the
@@ -17,41 +17,48 @@
 .versions 50YJ 59NJ 59NL
 
 write_call_to_code:
-  # [esp + 0x04] = code ptr
-  # [esp + 0x08] = code size
-  # [esp + 0x0C] = callsite count
-  # [esp + 0x10] = callsite address
-  # [esp + 0x14] = callsite size
+  push      ebx
+  push      esi
+  push      0
+  # [esp] = allocated code address (zero now, but will be written soon)
+  # [esp + 0x04] = saved esi
+  # [esp + 0x08] = saved ebx
+  # [esp + 0x0C] = return address
+  # [esp + 0x10] = source code ptr
+  # [esp + 0x14] = code size
+  # [esp + 0x18] = callsite count
+  # [esp + 0x1C] = callsite address
+  # [esp + 0x20] = callsite size
   # ... (further callsite address/size pairs)
 
   # Allocate memory for the copied code
   mov       ecx, [<VERS 0x00A9EF44 0x00AA8F84 0x00AAB404>]
-  push      dword [esp + 0x08]
+  push      dword [esp + 0x14]  # code size
   mov       eax, <VERS 0x007A2254 0x007A984C 0x007A8A38>
-  call      eax  # malloc7
+  call      eax  # void* malloc7[std+4](AllocatorInstance* this @ ecx, uint32_t size @ [esp + 4]) -> void* mem @ eax
+  mov       [esp], eax
   test      eax, eax
   je        done
 
   # Copy the code to the newly-allocated memory
   # eax = dest pointer (from malloc7 call above)
-  mov       edx, [esp + 0x04]  # edx = source pointer
-  mov       ecx, [esp + 0x08]  # ecx = source size
-  push      ebx
+  mov       edx, [esp + 0x10]  # edx = source pointer
+  mov       ecx, [esp + 0x14]  # ecx = code size
 memcpy_again:
   dec       ecx
   mov       bl, [edx + ecx]  # Copy one byte from source to dest
   mov       [eax + ecx], bl
   test      ecx, ecx
   jne       memcpy_again
-  pop       ebx
 
   # Write the call opcodes
-  xchg      ebx, [esp + 0x0C]  # Save ebx; get callsite count
-  mov       [esp - 0x08], esi
-  mov       [esp - 0x0C], eax
-  mov       esi, 0x10  # Stack offset of first callsite pair
+  mov       ebx, [esp + 0x18]  # ebx = callsite count
+  mov       esi, 0x1C  # Stack offset of first callsite pair (must be set even if there are no callsites)
+  test      ebx, ebx
+  jz        done
 
 next_callsite:
+  mov       eax, [esp]
   mov       edx, [esp + esi]  # edx = jump callsite
   lea       ecx, [eax - 5]
   sub       ecx, edx  # ecx = (dest code addr) - (jump callsite) - 5
@@ -69,19 +76,18 @@ write_nop_again:
   jmp       write_nop_again
 
 this_callsite_done:
-  mov       eax, [esp - 0x0C]
   add       esi, 8
   dec       ebx
   jnz       next_callsite
 
-  mov       ecx, esi
-  mov       ebx, [esp + 0x0C]
-  mov       esi, [esp - 0x08]
-
 done:
-  mov       eax, [esp]
-  add       esp, ecx
-  jmp       eax
+  pop       eax  # Allocated code address (return value)
+  pop       ecx  # Saved esi (will be moved later)
+  pop       ebx  # Saved ebx
+  pop       edx  # Return address
+  lea       esp, [esp + esi - 0x10]
+  mov       esi, ecx
+  jmp       edx  # Return
 
 
 
@@ -134,6 +140,8 @@ memcpy_again:
   # Write the call opcodes
   mov       ebx, [esp + 0x1C]  # ebx = callsite count
   mov       ebp, 0x20  # Stack offset of first callsite pair
+  test      ebx, ebx
+  jz        no_callsites
 
 next_callsite:
   # Make the memory writable
@@ -190,14 +198,16 @@ this_callsite_done:
   add       ebp, 8
   dec       ebx
   jnz       next_callsite
+no_callsites:
 
   mov       ecx, ebp
 
 done:
-  mov       edi, [esp]
-  mov       esi, [esp + 0x04]
-  mov       ebp, [esp + 0x08]
-  mov       ebx, [esp + 0x0C]
-  mov       eax, [esp + 0x10]
+  mov       eax, esi  # Return allocated code address
+  mov       edi, [esp]  # Saved edi
+  mov       esi, [esp + 0x04]  # Saved esi
+  mov       ebp, [esp + 0x08]  # Saved ebp
+  mov       ebx, [esp + 0x0C]  # Saved ebx
+  mov       edx, [esp + 0x10]  # Return address
   add       esp, ecx
-  jmp       eax
+  jmp       edx

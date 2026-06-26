@@ -5,7 +5,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data     start
 start:
   .include  WriteCodeBlocks
 
@@ -30,7 +30,7 @@ start:
   b         hook_loc
 
   .data     hook_loc
-  .deltaof  hook_start, hook_end
+  .data     hook_end - hook_start
   .address  hook_loc
 hook_start:
   mflr      r0

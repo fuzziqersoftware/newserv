@@ -14,7 +14,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data   start
 
 start:
   .include WriteCodeBlocks
