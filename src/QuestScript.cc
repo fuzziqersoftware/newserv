@@ -1769,7 +1769,10 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF89A, {"get_random"}, {{R_REG_SET_FIXED, 2}, W_REG}, F_V2_V4},
 
     // Clears all game state, including all floor items, set states (enemy and object), enemy and object states, wave
-    // event flags, and switch flags. Also destroys all running quest threads.
+    // event flags, and switch flags. Also destroys all running quest threads. This opcode does not inform the server
+    // when it runs, even on BB, so the server's map and item state is not reset, which causes incorrect behavior. In
+    // general, this opcode should only be used in Challenge mode when the retry option is chosen; there is another
+    // codepath that resets the map at approximately the same time.
     {0xF89B, {"reset_map"}, {}, F_V2_V4},
 
     // Returns the leader's choice when a challenge is failed in regA. Values:
