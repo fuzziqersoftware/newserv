@@ -783,9 +783,8 @@ public:
     uint16_t server_flags = 0;
 
     inline void reset() {
-      this->total_damage = 0;
-      this->rare_flags = 0;
       this->game_flags = 0;
+      this->total_damage = 0;
       this->set_flags = 0;
       this->server_flags = 0;
     }
