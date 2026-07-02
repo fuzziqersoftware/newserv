@@ -261,7 +261,7 @@ static constexpr auto R_REG_SET_FIXED = Arg::Type::R_REG_SET_FIXED;
 // W_REG_SET_FIXED is like R_REG_SET_FIXED, but is used for registers that are written (and maybe read beforehand) by
 // the opcode.
 static constexpr auto W_REG_SET_FIXED = Arg::Type::W_REG_SET_FIXED;
-// [R/W]_REG32 is a 32-bit register number. The high 24 bits are unused.
+// [RW]_REG32 is a 32-bit register number. The high 24 bits are unused.
 static constexpr auto R_REG32 = Arg::Type::R_REG32;
 static constexpr auto W_REG32 = Arg::Type::W_REG32;
 // [RW]_REG32_SET_FIXED is like [RW]_REG_SET_FIXED, but uses a 32-bit register number. The high 24 bits are unused.
@@ -565,10 +565,10 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   <color X> => changes text color like $CX would (supported on 11/2000 and later); X must be numeric and in the
     //     range 0-7, so <color 8>, <color 9>, and <color G> do not work (though \tC8, \tC9, and \tCG can be used
     //     directly in the text, and do work)
-    //   <cr> => newline
-    //   <hero name> or <name hero> => character's name
-    //   <hero job> or <name job> => character's class
-    //   <time> => always "01:12" (seems like an oversight that was never fixed)
+    //   <cr> => newline (\n also works normally)
+    //   <hero name> or <name hero> => local character's name
+    //   <hero job> or <name job> => local character's class
+    //   <time> => always "01:12" (seems like an oversight that was never fixed, even on BB)
     //   <award item> => name of the chosen challenge mode reward (v2 and later)
     //   <challenge title> => character's challenge rank text (v2 and later)
     //   <pl_name> => name of character selected with get_pl_name (v2 and later)
@@ -576,7 +576,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   <last_word> => challenge mode grave message (v2 and later)
     //   <team_name> => name of the game (set by 8A command) (v2 and later)
     //   <last_chat> => last chat message (v2 and later)
-    //   <meseta_slot_prize> => the description of the last item sent by the server in a 6xE3 command (BB only)
+    //   <meseta_slot_prize> => description of the last item sent by the server in a 6xE3 command (BB only)
     {0x5A, {"window_msg"}, {CSTRING}, F_V0_V4 | F_ARGS},
 
     // Adds a message to an existing message (or window_msg). Tokens are interpolated as for window_msg.
@@ -631,7 +631,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x6A, {"p_dead", "p_dead_V1"}, {W_REG, CLIENT_ID}, F_V0_V2 | F_ARGS},
     {0x6A, {"p_dead", "p_dead_V3"}, {W_REG, CLIENT_ID}, F_V3_V4 | F_ARGS},
 
-    // Disables/enables telepipes/Ryuker
+    // Disables/enables telepipes and Ryuker
     {0x6B, {"p_disablewarp"}, {}, F_V0_V4},
     {0x6C, {"p_enablewarp"}, {}, F_V0_V4},
 
