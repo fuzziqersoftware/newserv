@@ -192,7 +192,6 @@ static constexpr uint32_t F_PUSH_ARG = 0x00010000;
 static constexpr uint32_t F_CLEAR_ARGS = 0x00020000;
 // F_ARGS means this opcode uses the argument list on v3 and later; it has no effect on v2 and earlier
 static constexpr uint32_t F_ARGS = 0x00040000;
-static constexpr uint32_t F_TERMINATOR = 0x00080000;
 // The following flags are used to specify which versions support each opcode
 static constexpr uint32_t F_DC_NTE = 0x00000004; // Version::DC_NTE
 static constexpr uint32_t F_DC_112000 = 0x00000008; // Version::DC_11_2000
@@ -302,13 +301,13 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x00, {"nop"}, {}, F_V0_V4},
 
     // Pops new PC off stack
-    {0x01, {"ret"}, {}, F_V0_V4 | F_TERMINATOR},
+    {0x01, {"ret"}, {}, F_V0_V4},
 
     // Stops execution for the current frame. Execution resumes immediately after this opcode on the next frame.
     {0x02, {"sync"}, {}, F_V0_V4},
 
     // Exits entirely
-    {0x03, {"exit"}, {I32}, F_V0_V4 | F_TERMINATOR},
+    {0x03, {"exit"}, {I32}, F_V0_V4},
 
     // Starts a new thread at labelA
     {0x04, {"thread"}, {SCRIPT16}, F_V0_V4},
@@ -420,7 +419,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x27, {"modi"}, {W_REG, I32}, F_V3_V4},
 
     // Jumps to labelA
-    {0x28, {"jmp"}, {SCRIPT16}, F_V0_V4 | F_TERMINATOR},
+    {0x28, {"jmp"}, {SCRIPT16}, F_V0_V4},
 
     // Pushes the script offset immediately after this opcode and jumps to labelA
     // Note: This opcode doesn't directly clear the args list, but we assume during disassembly that the code being
