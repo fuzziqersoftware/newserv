@@ -211,15 +211,18 @@ void ItemData::wrap(const StackLimits& limits, uint8_t present_color) {
 void ItemData::unwrap(const StackLimits& limits) {
   switch (this->data1[0]) {
     case 0:
+      this->data1[4] &= 0xBF; // Clear present flag
+      this->data1[5] &= 0xF0; // Clear present color
+      break;
     case 1:
-      this->data1[4] &= 0xB0;
+      this->data1[4] &= 0xB0; // Clear present flag and present color
       break;
     case 2:
-      this->data2[2] &= 0xB0;
+      this->data2[2] &= 0xBF; // Clear present flag (there is no present color field for mags)
       break;
     case 3:
       if (!this->is_stackable(limits)) {
-        this->data1[3] &= 0xB0;
+        this->data1[3] &= 0xB0; // Clear present flag and present color
       }
       break;
     case 4:

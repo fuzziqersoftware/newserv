@@ -2523,7 +2523,16 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   labelH = label to call on failure
     {0xF953, {"bb_swap_item", "BB_swap_item"}, {I32, I32, I32, I32, I32, I32, SCRIPT16, SCRIPT16}, F_V4 | F_ARGS},
 
-    // Checks if an item can be wrapped.
+    // Checks if an item can be wrapped. The following rules are applied:
+    // - All weapons can be wrapped except Sealed J-Sword (003300) and Lame d'Argent (00AB00)
+    // - All armors, shields, and units can be wrapped, except Ragol Ring (010252)
+    // - All non-stackable tools can be wrapped except Scape Dolls (030900) and holiday Rappy items (0315xx)
+    // - Mags and Meseta cannot be wrapped.
+    // These rules describe a strict subset of the items that actually can be wrapped; internally, only Meseta and
+    // stackable tools cannot be wrapped. Mags can be wrapped by wrap_item or wrap_item_with_color, but they cannot
+    // have a present color (unlike all other wrappable items). For the exception items mentioned above, Sega
+    // presumably didn't want to encourage wrapping them since it could cause client misbehavior or violate player
+    // expectations.
     //   valueA = item ID
     //   regB = returned status (0 = can't be wrapped, 1 = can be wrapped, 2 = item not found)
     {0xF954, {"bb_check_wrap", "BB_check_wrap"}, {I32, W_REG}, F_V4 | F_ARGS},
