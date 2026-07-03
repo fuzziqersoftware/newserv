@@ -24,7 +24,7 @@ start:
   .data     0x8000BF30
   .data     code_end - code_start
   .address  0x8000BF30
-code_start:  # [std] (TItemMag* this @ r3) -> void
+code_start:  # [std](TItemMag* this @ r3) -> void
   lwz       r4, [r3 + 0xF0]
   lhz       r4, [r4 + 0x1C]  # r4 = this->owner_player->entity_id
   lwz       r5, [r13 - <VERS 0x5298 0x5290 0x5270 0x5270 0x5280 0x5280 0x5260 0x5220>]  # local_client_id
@@ -130,7 +130,7 @@ start:
   push      <VERS 0x005D72EA 0x005D91BE 0x005D91E2>
   push      patch_code_end - patch_code
   call      patch_code_end
-patch_code:  # [eax] (TItemMag* this @ ecx) -> void
+patch_code:  # [/eax](TItemMag* this @ ecx) -> void
   mov       dword [ecx + <VERS 0x01B4 0x01B8 0x01B8>], eax
   mov       eax, [ecx + 0x00F8]
   movzx     eax, word [eax + 0x001C]  # eax = this->owner_player->entity_id

@@ -5,18 +5,70 @@
 
 .meta visibility="all"
 .meta name="Item pickup"
-.meta description="Prevents picking\nup items unless you\nhold the Z button"
+
 
 
 entry_ptr:
 reloc0:
   .data   start
 start:
-  .include  WriteCodeBlocks
+
+
+
+  .versions 50YJ 59NJ 59NL
+
+  .meta description="Prevents picking\nup items unless you\nhold the shift key"
+
+  .label    imp_GetModuleHandleA, <VERS 0x008EC1B4 0x008F61B0 0x008F81F0>
+  .label    imp_GetProcAddress, <VERS 0x008EC134 0x008F6130 0x008F812C>
+
+  pop       ecx
+  push      6
+  push      <VERS 0x00683DC5 0x006893A9 0x0068933D>
+  push      patch_code_end - patch_code
+  call      patch_code_end
+
+patch_code:  # [eax/](TObjPlayer* this @ ebp) -> flags @ edx
+  push      eax
+
+  call      patch_code_get_dll_name
+  .binary   "user32"00
+patch_code_get_dll_name:
+  call      dword [imp_GetModuleHandleA]
+  test      eax, eax
+  jz        patch_code_flag_check
+
+  call      patch_code_get_function_name
+  .binary   "GetAsyncKeyState"00
+patch_code_get_function_name:
+  push      eax
+  call      dword [imp_GetProcAddress]
+  test      eax, eax
+  jz        patch_code_flag_check
+
+  push      0x10  # VK_SHIFT (see https://learn.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes)
+  call      eax
+  not       eax
+
+patch_code_flag_check:
+  # bit 0x8000 clear = key is down (or user32 missing, or GetAsyncKeyState missing)
+  mov       dl, 0x20
+  test      ax, 0x8000
+  cmovz     edx, dword [ebp + 0x0328]
+  pop       eax
+  ret
+
+patch_code_end:
+  push      ecx
+  .include  WriteCallToCode
 
 
 
   .versions 3OJ2 3OJ3 3OJ4 3OJ5 3OE0 3OE1 3OE2 3OP0
+
+  .meta description="Prevents picking\nup items unless you\nhold the Z button"
+
+  .include  WriteCodeBlocks
 
   .label    hook_loc, 0x8000B938
   .data     hook_loc
@@ -40,13 +92,18 @@ hook_end:
   .address  hook_call
   b         hook_start
 
+  # Prevent Z from opening the main menu
   .data     <VERS 0x8024C384 0x8024CDD0 0x8024DD28 0x8024DAC4 0x8024CC0C 0x8024CC0C 0x8024DD88 0x8024D5D0>
   .data     0x00000004
-  li        r4, 8
+  li        r4, 0x0008
 
 
 
   .versions 4OED 4OEU 4OJB 4OJD 4OJU 4OPD 4OPU
+
+  .meta description="Prevents picking\nup items unless you\nhold the black or\nwhite button"
+
+  .include  WriteCodeBlocks
 
   .data     <VERS 0x001FDC99 0x001FDC99 0x001FDA89 0x001FDBE9 0x001FDE69 0x001FDCB9 0x001FDD29>
   .data     0x07

@@ -37,7 +37,7 @@ write_6xE4_handler:
   push      handle_6xE4_end - handle_6xE4
   call      call_write_call_to_code
 
-handle_6xE4:  # [std] (G_6xE4* cmd @ [esp + 4]) -> void
+handle_6xE4:  # [std](G_6xE4* cmd @ [esp + 4]) -> void
   push      ebx
   push      esi
   push      edi
