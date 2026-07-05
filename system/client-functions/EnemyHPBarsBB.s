@@ -21,9 +21,9 @@ start:
 hooks_start:
   .label    TBoss2DeRolLe_movement_data, <VERS 0x00A378C8 0x00A41848 0x00A43CC8>
 
-get_enemy_hp_values:  # [std](TObjectV8047c128* enemy @ edi) -> current_hp @ eax, max_hp @ ecx, is_masked @ dl
+get_enemy_hp_values:  # [/edi](TObjectV8047c128* enemy @ edi) -> current_hp @ eax, max_hp @ ecx, is_masked @ dl
   # Check if target is De Rol Le joint (segment)
-  mov       eax, [edi + 4]  # r4 = type name pointer
+  mov       eax, [edi + 4]  # eax = type name pointer
 
   xor       dl, dl
 
@@ -36,7 +36,7 @@ get_enemy_hp_values:  # [std](TObjectV8047c128* enemy @ edi) -> current_hp @ eax
   cmp       eax, <VERS 0x00A3B6D8 0x00A45678 0x00A47AF8>
   je        get_enemy_hp_values_target_is_barba_ray
 
-  # If the target is neither De Rol Le nor Barba Ray, then it uses the normal HP system; show those values
+  # If the target is not De Rol Le, Barba Ray, nor pieces thereof, then it uses the normal HP system; show those values
   movsx     ecx, word [edi + 0x02BC]  # max_hp
   movsx     eax, word [edi + 0x0334]  # current_hp
   jmp       get_enemy_hp_values_end
@@ -45,9 +45,9 @@ get_enemy_hp_values_target_is_de_rol_le_joint:
   # Check if shell (armor) is broken - if not, show the armor's remaining HP
   test      byte [edi + 0x0394], 0x01  # flags & 1 => shell is broken
   jnz       get_enemy_hp_values_de_rol_le_joint_shell_broken
-  mov       eax, [edi + 0x039C]
+  mov       eax, [edi + 0x039C]  # shell remaining HP
   mov       ecx, [TBoss2DeRolLe_movement_data]
-  mov       ecx, [ecx + 0x1C]
+  mov       ecx, [ecx + 0x1C]  # shell max HP (movement_data[0x0F]->iparam2)
   mov       dl, 1
   jmp       get_enemy_hp_values_end
 get_enemy_hp_values_de_rol_le_joint_shell_broken:
@@ -59,9 +59,9 @@ get_enemy_hp_values_target_is_de_rol_le:
   # Check if mask (facial armor) is broken
   test      byte [edi + 0x03C8], 0x08  # flags & 8 => mask is broken
   jnz       get_enemy_hp_values_de_rol_le_mask_broken
-  mov       eax, [edi + 0x06B8]
+  mov       eax, [edi + 0x06B8]  # mask remaining HP
   mov       ecx, [TBoss2DeRolLe_movement_data]
-  mov       ecx, [ecx + 0x20]
+  mov       ecx, [ecx + 0x20]  # mask max HP (movement_data[0x0F]->iparam3)
   mov       dl, 1
   jmp       get_enemy_hp_values_end
 get_enemy_hp_values_de_rol_le_mask_broken:
@@ -74,10 +74,10 @@ get_enemy_hp_values_target_is_barba_ray_joint:
   # Check if shell (armor) is broken - if not, show the armor's remaining HP
   test      byte [edi + 0x03C4], 0x01  # flags & 1 => shell is broken
   jnz       get_enemy_hp_values_barba_ray_joint_shell_broken
-  mov       eax, [edi + 0x03CC]
+  mov       eax, [edi + 0x03CC]  # shell remaining HP
   mov       ecx, [edi + 0x14]
   mov       ecx, [ecx + 0x0628]
-  mov       ecx, [ecx + 0x1C]  # max_hp = enemy->parent->movement_data_0F->iparam2
+  mov       ecx, [ecx + 0x1C]  # shell max HP (enemy->parent->movement_data->iparam2)
   mov       dl, 1
   jmp       get_enemy_hp_values_end
 get_enemy_hp_values_barba_ray_joint_shell_broken:
@@ -89,9 +89,9 @@ get_enemy_hp_values_target_is_barba_ray:
   # Check if mask (facial armor) is broken
   test      byte [edi + 0x0630], 0x08  # flags & 8 => mask is broken
   jnz       get_enemy_hp_values_barba_ray_mask_broken
-  mov       eax, [edi + 0x0708]
+  mov       eax, [edi + 0x0708]  # mask remaining HP
   mov       ecx, [edi + 0x0628]
-  mov       ecx, [ecx + 0x20]  # max_hp = enemy->parent->movement_data_0F->iparam3
+  mov       ecx, [ecx + 0x20]  # mask max HP (enemy->parent->movement_data->iparam3)
   mov       dl, 1
   jmp       get_enemy_hp_values_end
 get_enemy_hp_values_barba_ray_mask_broken:
@@ -100,6 +100,7 @@ get_enemy_hp_values_barba_ray_mask_broken:
   mov       ecx, [edi + 0x0700]  # body_max_hp
 
 get_enemy_hp_values_end:
+  # When killed, De Rol Le's and Barba Ray's HP can go negative; this looks bad, so we max current_hp with 0 here
   xor       edi, edi
   cmp       eax, 0
   cmovl     eax, edi

@@ -36,3 +36,10 @@ Used regions in PSO XB (40EU):
 
 Potentially available regions in PSO XB:
 002BFDB0-002BFE40 (90) handle_03_phase2 (replace handler in table with do_nothing, or just prepend with ret)
+
+Calling convention notation:
+  [REGS_PRESERVED/REGS_DESTROYED+RET_OFFSET](TYPE ARG_NAME @ LOCATION, ...) -> TYPE RET_NAME @ LOCATION, ...
+  REGS_PRESERVED and REGS_DESTROYED are self-explanatory; if one is not specified, the standard convention is assumed
+  Registers holding return values are assumed to be overwritten and are not specified in REGS_DESTROYED/REGS_PRESERVED
+  RET_OFFSET is the stack adjustment done by the callee (e.g. `ret 8`); only relevant for x86; 0 assumed if omitted
+  The reg spec may be [std] in which case standard register behaviors are assumed, and RET_OFFSET is 0
