@@ -10,7 +10,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data   start
 start:
   .include  WriteCodeBlocks
 
@@ -32,7 +32,7 @@ start:
   # Chat Log Window: Scroll Lock (Hold L+R)
   .label    scroll_lock_hook_loc, 0x8000D6A0
   .data     scroll_lock_hook_loc
-  .deltaof  scroll_lock_hook_start, scroll_lock_hook_end
+  .data     scroll_lock_hook_end - scroll_lock_hook_start
   .address  scroll_lock_hook_loc
 scroll_lock_hook_start:
   lis       r3, <VERS 0x8051 0x8051 0x8051 0x8051 0x8051 0x8051 0x8051 0x8051 0x8048 0x804A 0x804A 0x804A>

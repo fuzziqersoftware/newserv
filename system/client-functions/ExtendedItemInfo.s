@@ -6,7 +6,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data   start
 start:
   .include  WriteCodeBlocks
 
@@ -54,7 +54,7 @@ start:
   .label    TWindowLockOn::update_for_other_player, <VERS 0x80261850 0x80262428 0x80263470 0x80263224 0x80262128 0x80262128 0x802634E8 0x80262D30>
 
   .data     0x80004000
-  .deltaof  code_start, code_end
+  .data     code_end - code_start
   .address  0x80004000
 
 code_start:

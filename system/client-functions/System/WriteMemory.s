@@ -56,15 +56,15 @@
 # $patch chat command. This directive causes the server to tell you the return value in-game after running it.
 # .meta show_return_value
 
-# The entry_ptr label is required for all functions. It should generally point to a .offsetof directive that itself
-# points to the actual entrypoint.
+# The entry_ptr label is required for all functions. It should generally point to a .data directive that itself points
+# to the actual entrypoint.
 entry_ptr:
 # All labels starting with reloc signify that the following PPC word (big-endian 32-bit value) is to be relocated at
 # runtime. That is, when the code runs on the client, the PPC word will contain the actual memory address relative to
 # the running code instead of the offset that it holds at assembly time. The entry_ptr label should almost always have
 # a reloc label next to it.
 reloc0:
-  .offsetof start
+  .data   start
 
 
 

@@ -10,7 +10,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data     start
 start:
   .include  WriteCodeBlocks
 
@@ -65,7 +65,7 @@ start:
   .versions 4OJB 4OJD 4OJU 4OED 4OEU 4OPD 4OPU
 
   .data     <VERS 0x00184160 0x00184350 0x00184400 0x00184340 0x00184310 0x00184360 0x001842D0>
-  .deltaof  code_start, code_end
+  .data     code_end - code_start
   .address  <VERS 0x00184160 0x00184350 0x00184400 0x00184340 0x00184310 0x00184360 0x001842D0>
 code_start:
 

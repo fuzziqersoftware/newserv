@@ -8,7 +8,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data     start
 
 write_call_to_code_multi:
   .include  WriteCallToCodeMulti
@@ -34,13 +34,10 @@ write_6xE4_handler:
   push      0  # Absolute address, not call opcode
   push      <VERS 0x00537184 0x00537804 0x0053EB24 0x0053BFA4 0x0053B844 0x0053BFA4 0x0053C344>
   push      1
-  call      +4
-  .deltaof  handle_6xE4, handle_6xE4_end
-  pop       eax
-  push      dword [eax]
+  push      handle_6xE4_end - handle_6xE4
   call      call_write_call_to_code
 
-handle_6xE4:  # [std] (G_6xE4* cmd @ [esp + 4]) -> void
+handle_6xE4:  # [std](G_6xE4* cmd @ [esp + 4]) -> void
   push      ebx
   push      esi
   push      edi
@@ -157,10 +154,7 @@ write_6x0A_patch:
   push      5
   push      <VERS 0x002B3B55 0x002B4625 0x002B5BB5 0x002B56C5 0x002B58A5 0x002B56E5 0x002B59B5>
   push      1
-  call      +4
-  .deltaof  on_6x0A_patch_start, on_6x0A_patch_end
-  pop       eax
-  push      dword [eax]
+  push      on_6x0A_patch_end - on_6x0A_patch_start
   call      call_write_call_to_code
 
 on_6x0A_patch_start:  # (TObjectV004434c8* this @ eax, int16_t amount @ cx) -> bool @ eax
@@ -205,10 +199,7 @@ write_incr_hp_with_sync:
   push      5
   push      <VERS 0x002A7CDB 0x002A87BF 0x002A9C8F 0x002A971F 0x002A98FF 0x002A973F 0x002A99BF>  # TObjectV004434c8::v19_handle_hit_special_effects case 0x0D
   push      15
-  call      +4
-  .deltaof  on_add_or_subtract_hp_start, on_add_or_subtract_hp_end
-  pop       eax
-  push      dword [eax]
+  push      on_add_or_subtract_hp_end - on_add_or_subtract_hp_start
   call      call_write_call_to_code
 
 on_add_or_subtract_hp_start:  # (TObjectV004434c8* this @ eax, int16_t amount @ cx) -> bool @ eax
@@ -309,7 +300,7 @@ flag_check_end:
 
   # Rewrite TObjectV004434c8::subtract_hp_if_not_in_state_2
   .data     <VERS 0x002A8080 0x002A8B60 0x002AA030 0x002A9AC0 0x002A9CA0 0x002A9AE0 0x002A9D60>
-  .deltaof  on_subtract_hp_if_not_in_state_2_start, on_subtract_hp_if_not_in_state_2_end
+  .data     on_subtract_hp_if_not_in_state_2_end - on_subtract_hp_if_not_in_state_2_start
   .address  <VERS 0x002A8080 0x002A8B60 0x002AA030 0x002A9AC0 0x002A9CA0 0x002A9AE0 0x002A9D60>
 on_subtract_hp_if_not_in_state_2_start:  # (TObjectV004434c8* this @ eax, int16_t amount @ cx) -> bool @ eax
   cmp       word [eax + 0x328], 2
@@ -325,7 +316,7 @@ on_subtract_hp_if_not_in_state_2_end:
 
   # Inlined callsite of subtract_hp in TObjectV004434c8::v17
   .data     <VERS 0x002A60CA 0x002A6BAA 0x002A807A 0x002A7B0A 0x002A7CEA 0x002A7B2A 0x002A7DAA>
-  .deltaof  v17_subtract_hp_inlined_callsite_start, v17_subtract_hp_inlined_callsite_end
+  .data     v17_subtract_hp_inlined_callsite_end - v17_subtract_hp_inlined_callsite_start
   .address  <VERS 0x002A60CA 0x002A6BAA 0x002A807A 0x002A7B0A 0x002A7CEA 0x002A7B2A 0x002A7DAA>
 v17_subtract_hp_inlined_callsite_start:
   # This must assemble to exactly 0x1A bytes. There is a vfn call shortly after this, and fortunately it appears eax,

@@ -1146,3 +1146,16 @@ Disable HP reduction warning sound in Challenge mode
 Mag invincibility effect sparkliness modifier
 (Default 003C; smaller values are more sparkly)
 3OE1 => 801131C4 3860XXXX
+
+Menu backgrounds animate really fast
+3OE1 => 0429A62C 60000000
+        0429A674 2C040004
+
+Remove menu background text effect
+3OE1 => 0429A5C4 4E800020
+
+Remove menu background grid effect
+3OE1 => 042992B8 4E800020
+
+Full dressing room
+3OE1 => 04297750 60000000

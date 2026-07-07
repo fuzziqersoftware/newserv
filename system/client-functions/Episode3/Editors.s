@@ -13,7 +13,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data   start
 
 start:
   stwu   [r1 - 0x20], r1

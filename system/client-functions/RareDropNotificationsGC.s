@@ -11,7 +11,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data     start
 start:
   .include  WriteCodeBlocks
 
@@ -25,7 +25,7 @@ start:
   .label    minimap_render_dot, <VERS 0x801F9490 0x801F9B2C 0x801F9D84 0x801F9B38 0x801F99FC 0x801F99FC 0x801F9B8C 0x801FA108>
 
   .data     hook_code
-  .deltaof  hooks_start, hooks_end
+  .data     hooks_end - hooks_start
   .address  hook_code
 hooks_start:
 minimap_hook:

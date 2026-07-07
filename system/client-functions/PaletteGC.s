@@ -28,7 +28,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data     start
 start:
   .include  WriteCodeBlocks
 
@@ -37,7 +37,7 @@ start:
   .label    get_main_phase, <VERS 0x8000F948 0x8000F94C 0x8000F94C 0x8000F8FC 0x8000F948 0x8000F948 0x8000F8FC 0x8000F970>
 
   .data     0x8000B958  # Save Extra Palettes To Memory Card (Temp Slot 3)
-  .deltaof  save_to_memcard_hook1, save_to_memcard_end
+  .data     save_to_memcard_end - save_to_memcard_hook1
   .address  0x8000B958
 save_to_memcard_hook1:
   stw       [r13 - <VERS 0x46C4 0x46BC 0x469C 0x469C 0x46AC 0x46AC 0x468C 0x464C>], r3
@@ -73,11 +73,11 @@ save_to_memcard_hook3:
   li        r5, 0x003C
   bl        memset
   bl        get_main_phase
-  b         [<VERS 801FE838 801FF0AC 80200044 801FF648 801FF034 801FF034 801FF97C 801FF918>]
+  b         <VERS 0x801FE838 0x801FF0AC 0x80200044 0x801FF648 0x801FF034 0x801FF034 0x801FF97C 0x801FF918>
 save_to_memcard_end:
 
   .data     0x8000CA40  # Full Action List (Incl. Photon Blasts & Traps)
-  .deltaof  full_action_list_hook1, full_action_list_end
+  .data     full_action_list_end - full_action_list_hook1
   .address  0x8000CA40
 full_action_list_hook1:
   cmplwi    r3, 0
@@ -103,7 +103,7 @@ full_action_list_hook2_ret:
 full_action_list_end:
 
   .data     0x8000CD00  # Have Four Action Button Palettes
-  .deltaof  four_palettes_hook1, four_palettes_end
+  .data     four_palettes_end - four_palettes_hook1
   .address  0x8000CD00
 four_palettes_hook1:
   lis       r4, 0x8000

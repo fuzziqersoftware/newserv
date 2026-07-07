@@ -10,12 +10,12 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data   start
 start:
   .include  WriteCodeBlocks
 
   .data     0x8000BAB4
-  .deltaof  hook1, hooks_end
+  .data     hooks_end - hook1
   .address  0x8000BAB4
 
 hook1:

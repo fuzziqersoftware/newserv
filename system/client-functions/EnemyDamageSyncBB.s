@@ -8,7 +8,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data     start
 
 write_call_to_code_multi:
   .include  WriteCallToCodeMulti
@@ -20,10 +20,7 @@ start:
   # Replace 6x09 with 6xE4 in subcommand handler table
   mov       dword [<VERS 0x00A03C90 0x00A0DC30 0x00A0FC30>], 0x000600E4  # subcommand=0xE4, flags=6
   push      <VERS 0x00A03C94 0x00A0DC34 0x00A0FC34>
-  call      +4
-  .deltaof  handle_6xE4_start, handle_6xE4_end
-  pop       eax
-  push      dword [eax]
+  push      handle_6xE4_end - handle_6xE4_start
   call      handle_6xE4_end
 
 handle_6xE4_start:  # (G_6xE4* cmd @ [esp + 4]) -> void
@@ -166,10 +163,7 @@ handle_6xE4_end:
   push      5
   push      <VERS 0x0076D675 0x00774713 0x00773937>  # TObjectV00b441c0::v17
   push      18
-  call      +4
-  .deltaof  on_add_or_subtract_hp_start, on_add_or_subtract_hp_end
-  pop       eax
-  push      dword [eax]
+  push      on_add_or_subtract_hp_end - on_add_or_subtract_hp_start
   call      on_add_or_subtract_hp_end
 
 on_add_or_subtract_hp_start:  # (TObjectV00b441c0* this @ ecx, int16_t amount @ [esp + 4]) -> bool @ eax
@@ -242,10 +236,7 @@ on_add_or_subtract_hp_end:
   push      5
   push      <VERS 0x0078136F 0x0078864B 0x0078781F>
   push      1
-  call      +4
-  .deltaof  on_6x0A_patch_start, on_6x0A_patch_end
-  pop       eax
-  push      dword [eax]
+  push      on_6x0A_patch_end - on_6x0A_patch_start
   call      on_6x0A_patch_end
 
 on_6x0A_patch_start:  # (TObjectV00b441c0* this @ ecx, int16_t amount @ [esp + 4]) -> bool @ eax

@@ -9,7 +9,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data     start
 start:
   call      install_hook
   call      apply_static_patches
@@ -21,11 +21,7 @@ install_hook:
   pop       ecx
   push      0  # Write address instead of a call/jmp opcode
   push      <VERS 0x00A03CB4 0x00A0DC54 0x00A0FC54>
-  call      get_code_size
-  .deltaof  handle_6xBF_start, handle_6xBF_end
-get_code_size:
-  pop       eax
-  push      dword [eax]
+  push      handle_6xBF_end - handle_6xBF_start
   call      handle_6xBF_end
 handle_6xBF_start:  # [std](G_6xBF* cmd @ [esp + 4]) -> void
   mov       edx, [esp + 4]
@@ -82,7 +78,7 @@ apply_static_patches:
   .include  WriteCodeBlocks
 
   .data     <VERS 0x00780FA1 0x0078827D 0x0078749D>
-  .deltaof  disable_kill_enemy_callsite_start, disable_kill_enemy_callsite_end
+  .data     disable_kill_enemy_callsite_end - disable_kill_enemy_callsite_start
 disable_kill_enemy_callsite_start:
   nop
   nop
@@ -92,7 +88,7 @@ disable_kill_enemy_callsite_start:
 disable_kill_enemy_callsite_end:
 
   .data     <VERS 0x007702DD 0x00777381 0x007765A5>
-  .deltaof  disable_exp_steal_callsite_start, disable_exp_steal_callsite_end
+  .data     disable_exp_steal_callsite_end - disable_exp_steal_callsite_start
 disable_exp_steal_callsite_start:
   add       esp, 0x0C  # Original function has `ret 0x0C`
   nop

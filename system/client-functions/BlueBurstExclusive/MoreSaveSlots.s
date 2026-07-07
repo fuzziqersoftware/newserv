@@ -22,7 +22,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data    start
 
   # Include a few functions first
 write_call_to_code:
@@ -53,11 +53,7 @@ apply_enable_scroll_patch:
   # This patch enables scrolling behavior within the character list
   push      -5          # Jump size (negative = jmp instead of call)
   push      <VERS 0x0041370B 0x00413B77 0x00413B7F>  # Jump address
-  call      get_code_size_for_enable_scroll
-  .deltaof  enable_scroll_start, enable_scroll_end
-get_code_size_for_enable_scroll:
-  pop       eax
-  push      dword [eax]
+  push      enable_scroll_end - enable_scroll_start
   call      enable_scroll_end
 enable_scroll_start:
   mov       eax, dword ptr [edi + 0x28]  # cursor = char_select_menu->cursor_obj (TAdSelectCurGC*)
@@ -94,11 +90,7 @@ apply_fix_scroll_patch1:
   # This patch fixes character selection cursor object so it will take the scroll offset into account
   push      6           # Call size
   push      <VERS 0x004137C4 0x00413C30 0x00413C38>  # Call address
-  call      get_code_size_for_fix_scroll_patch1
-  .deltaof  fix_scroll_patch1_start, fix_scroll_patch1_end
-get_code_size_for_fix_scroll_patch1:
-  pop       eax
-  push      dword [eax]
+  push      fix_scroll_patch1_end - fix_scroll_patch1_start
   call      fix_scroll_patch1_end
 fix_scroll_patch1_start:
   mov       edx, [edi + 0x28]  # cursor = this->ad_select_cur_obj (TAdSelectCurGC*)
@@ -117,11 +109,7 @@ apply_fix_scroll_patch2:
   # index (including scroll_offset), not the index only within the displayed four characters
   push      6           # Call size
   push      <VERS 0x00413864 0x00413CD0 0x00413CD8>  # Call address
-  call      get_code_size_for_fix_scroll_patch2
-  .deltaof  fix_scroll_patch2_start, fix_scroll_patch2_end
-get_code_size_for_fix_scroll_patch2:
-  pop       eax
-  push      dword [eax]
+  push      fix_scroll_patch2_end - fix_scroll_patch2_start
   call      fix_scroll_patch2_end
 fix_scroll_patch2_start:
   mov       eax, [<VERS 0x00A2EC50 0x00A38BD0 0x00A3B050>]  # scroll_bar = TAdScrollBarXb_objs[0]
@@ -139,11 +127,7 @@ apply_fix_file_index:
   # This patch fixes the character file indexing so it will account for the scroll position
   push      5           # Call size
   push      <VERS 0x0041387C 0x00413CE8 0x00413CF0>  # Call address
-  call      get_code_size_for_selection_index_fix2
-  .deltaof  selection_index_fix2_start, selection_index_fix2_end
-get_code_size_for_selection_index_fix2:
-  pop       eax
-  push      dword [eax]
+  push      selection_index_fix2_end - selection_index_fix2_start
   call      selection_index_fix2_end
 selection_index_fix2_start:
   mov       eax, [<VERS 0x00A2EC50 0x00A38BD0 0x00A3B050>]
@@ -162,11 +146,7 @@ apply_preview_window_fix:
   # This patch fixes the preview display so it will show the correct section ID, level, etc.
   push      5           # Call size
   push      0x0040216C
-  call      get_code_size_for_preview_window_fix
-  .deltaof  preview_window_fix_start, preview_window_fix_end
-get_code_size_for_preview_window_fix:
-  pop       eax
-  push      dword [eax]
+  push      preview_window_fix_end - preview_window_fix_start
   call      preview_window_fix_end
 preview_window_fix_start:
   mov       eax, [<VERS 0x00A2EC50 0x00A38BD0 0x00A3B050>]  # scroll_bar = TAdScrollBarXb_objs[0]
@@ -447,8 +427,8 @@ apply_static_patches:
   .data    0x00022FB4  # bgm_test_songs_unlocked offset
 
   # Signature check on all save files (rewritten as loop)
-  .data    <VERS 0x006BBB04 0x006C1C69 0x006C1C2D> 
-  .deltaof sig_check_begin, sig_check_end
+  .data    <VERS 0x006BBB04 0x006C1C69 0x006C1C2D>
+  .data    sig_check_end - sig_check_begin
 
 sig_check_begin:
   mov      edx, 0xC87ED5B1   # Expected signature value
@@ -474,7 +454,7 @@ sig_check_end:  # <VERS 006BBB25 006C1CB2 006C1C76>
 
   # Send slot count in E3 command
   .data    <VERS 0x0046E798 0x0046EC10 0x0046EB20>  # TDataProtocol::send_E3_for_index
-  .deltaof send_slot_count_in_E3_begin, send_slot_count_in_E3_end
+  .data    send_slot_count_in_E3_end - send_slot_count_in_E3_begin
 send_slot_count_in_E3_begin:
   # ecx = this (TDataProtocol*)
   # [esp + 4] = slot_index
@@ -496,7 +476,7 @@ send_slot_count_in_E3_end:
 
   # Show slot number in each menu item
   .data    0x00401D57
-  .deltaof show_slot_number_begin, show_slot_number_end
+  .data    show_slot_number_end - show_slot_number_begin
 show_slot_number_begin:
   # Original call (sprintf(line_buf, "LV%d", preview_info->visual.disp.level + 1))
   lea      edx, [esp + 0x02C4]

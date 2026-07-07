@@ -211,15 +211,18 @@ void ItemData::wrap(const StackLimits& limits, uint8_t present_color) {
 void ItemData::unwrap(const StackLimits& limits) {
   switch (this->data1[0]) {
     case 0:
+      this->data1[4] &= 0xBF; // Clear present flag
+      this->data1[5] &= 0xF0; // Clear present color
+      break;
     case 1:
-      this->data1[4] &= 0xB0;
+      this->data1[4] &= 0xB0; // Clear present flag and present color
       break;
     case 2:
-      this->data2[2] &= 0xB0;
+      this->data2[2] &= 0xBF; // Clear present flag (there is no present color field for mags)
       break;
     case 3:
       if (!this->is_stackable(limits)) {
-        this->data1[3] &= 0xB0;
+        this->data1[3] &= 0xB0; // Clear present flag and present color
       }
       break;
     case 4:
@@ -318,6 +321,19 @@ uint8_t ItemData::mag_photon_blast_for_slot(uint8_t slot) const {
   uint8_t flags = this->data2[2];
   uint8_t pb_nums = this->data1[3];
 
+  // There are six Photon Blasts:
+  //   0 = Farlla
+  //   1 = Estlla
+  //   2 = Golla
+  //   3 = Pilla
+  //   4 = Leilla
+  //   5 = Mylla & Youlla
+  // The pb_nums byte is arranged like LLRRRCCC, where L, C, and R specify the left, center, and right PB numbers. C
+  // and R directly specify one of the PB numbers above, but since L has fewer bits, it is handled differently. The
+  // left PB is the last one populated, so the C and R values are assumed to be valid and are removed from the list
+  // above when retrieving L, which allows it to specify any of the 4 remaining PBs. For example, if C is 1 and R is 3,
+  // then the values for L would be: 0 = Farlla, 1 = Golla, 2 = Leilla, 3 = Mylla & Youlla.
+
   if (slot == 0) { // Center
     return (flags & 1) ? (pb_nums & 0x07) : 0xFF;
 
@@ -329,12 +345,12 @@ uint8_t ItemData::mag_photon_blast_for_slot(uint8_t slot) const {
       return 0xFF;
     }
 
-    uint8_t used_pbs[6] = {0, 0, 0, 0, 0, 0};
-    used_pbs[pb_nums & 0x07] = '\x01';
-    used_pbs[(pb_nums & 0x38) >> 3] = '\x01';
-    uint8_t left_pb_num = (pb_nums & 0xC0) >> 6;
+    uint8_t used_pbs = 0;
+    used_pbs |= 1 << (pb_nums & 0x07);
+    used_pbs |= 1 << ((pb_nums >> 3) & 0x07);
+    uint8_t left_pb_num = (pb_nums >> 6) & 0x03;
     for (size_t z = 0; z < 6; z++) {
-      if (!used_pbs[z]) {
+      if (!(used_pbs & (1 << z))) {
         if (!left_pb_num) {
           return z;
         }

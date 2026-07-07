@@ -4,7 +4,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data     start
 start:
   .include  WriteCodeBlocks
 
@@ -14,7 +14,7 @@ start:
 
   .label    TItemWeapon_SealedJSword_count_kill_loc, <VERS 0x8012D2D4 0x8012D518 0x8012D550 0x8012D4B0 0x8012D578 0x8012D578 0x8012D4C0 0x8012D698>
   .data     TItemWeapon_SealedJSword_count_kill_loc
-  .deltaof  TItemWeapon_SealedJSword_count_kill, TItemWeapon_SealedJSword_count_kill_end
+  .data     TItemWeapon_SealedJSword_count_kill_end - TItemWeapon_SealedJSword_count_kill
   .address  TItemWeapon_SealedJSword_count_kill_loc
 TItemWeapon_SealedJSword_count_kill:  # [std](TItemWeapon_SealedJSword* this @ r3) -> void
   lwz       r4, [r3 + 0xF0]  # r4 = this->owner_player
@@ -46,7 +46,7 @@ TItemWeapon_SealedJSword_count_kill_end:
   .versions 4OJB 4OJD 4OJU 4OED 4OEU 4OPD 4OPU
 
   .data     <VERS 0x00197610 0x001977A0 0x00197920 0x00197880 0x00197810 0x001978A0 0x00197840>
-  .deltaof  TItemWeapon_SealedJSword_count_kill, TItemWeapon_SealedJSword_count_kill_end
+  .data     (TItemWeapon_SealedJSword_count_kill_end - TItemWeapon_SealedJSword_count_kill)
   .address  <VERS 0x00197610 0x001977A0 0x00197920 0x00197880 0x00197810 0x001978A0 0x00197840>
 TItemWeapon_SealedJSword_count_kill:
   mov       eax, [ecx + 0xF0]
@@ -72,7 +72,7 @@ TItemWeapon_SealedJSword_count_kill_end:
   .versions 50YJ 59NJ 59NL
 
   .data     <VERS 0x005E0324 0x005E32A4 0x005E32C8>
-  .deltaof  TItemUnitUnsealable_count_kill, TItemUnitUnsealable_count_kill_end
+  .data     TItemUnitUnsealable_count_kill_end - TItemUnitUnsealable_count_kill
   .address  <VERS 0x005E0324 0x005E32A4 0x005E32C8>
 TItemUnitUnsealable_count_kill:  # [std] (TItemUnitUnsealable* this @ ecx) -> void
   mov       eax, [ecx + 0xF8]
@@ -95,7 +95,7 @@ TItemUnitUnsealable_count_kill_skip_update:
 TItemUnitUnsealable_count_kill_end:
 
   .data     <VERS 0x005EFF28 0x005F3E94 0x005F3EFC>
-  .deltaof  TItemWeapon_LameDArgent_count_kill, TItemWeapon_LameDArgent_count_kill_end
+  .data     TItemWeapon_LameDArgent_count_kill_end - TItemWeapon_LameDArgent_count_kill
   .address  <VERS 0x005EFF28 0x005F3E94 0x005F3EFC>
 TItemWeapon_LameDArgent_count_kill:
   mov       eax, [ecx + 0xF8]
@@ -118,7 +118,7 @@ TItemWeapon_LameDArgent_count_kill_skip_update:
 TItemWeapon_LameDArgent_count_kill_end:
 
   .data     <VERS 0x005F872C 0x005FC95C 0x005FCA74>
-  .deltaof  TItemWeapon_SealedJSword_count_kill, TItemWeapon_SealedJSword_count_kill_end
+  .data     TItemWeapon_SealedJSword_count_kill_end - TItemWeapon_SealedJSword_count_kill
   .address  <VERS 0x005F872C 0x005FC95C 0x005FCA74>
 TItemWeapon_SealedJSword_count_kill:
   mov       eax, [ecx + 0xF8]

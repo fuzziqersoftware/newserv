@@ -9,7 +9,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data   start
 start:
   .include  WriteCodeBlocks
 
@@ -18,7 +18,7 @@ start:
   .versions 3OJ2 3OJ3 3OJ4 3OJ5 3OE0 3OE1 3OE2 3OP0
 
   .data     0x8000B86C
-  .data     0x00000054
+  .data     code_end - code_start
   .address  0x8000B86C
 code_start:
   mr        r3, r0
@@ -60,7 +60,7 @@ code_end:
   .binary   <VERS E807190600 E827220600 E8E7360600 E897340600 E877380600 E8A7340600 E827380600>
 
   .data     <VERS 0x002D9136 0x002D9D06 0x002DB5D6 0x002DB0A6 0x002DB5A6 0x002DB0D6 0x002DB626>
-  .deltaof  code_start, code_end
+  .data     code_end - code_start
 code_start:
   push      eax
   mov       ecx, [esp + 0x20]

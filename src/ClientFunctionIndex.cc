@@ -266,6 +266,7 @@ ClientFunctionIndex::ClientFunctionIndex(const std::string& root_dir, bool raise
   };
   add_directory(root_dir);
 
+  client_functions_log.debug_f("Compiling {} source files", source_files.size());
   std::unordered_map<std::string, std::string> include_cache;
   uint32_t last_menu_item_id = 0;
   for (const auto& [source_filename, source] : source_files) {
@@ -282,7 +283,11 @@ ClientFunctionIndex::ClientFunctionIndex(const std::string& root_dir, bool raise
     try {
       preprocessed = preprocess_function_code(source);
     } catch (const std::exception& e) {
-      throw std::runtime_error(std::format("({} preprocessing) {}", source_filename, e.what()));
+      if (raise_on_any_failure) {
+        throw std::runtime_error(std::format("({} preprocessing) {}", source_filename, e.what()));
+      }
+      client_functions_log.warning_f("Failed to preprocess file {}: {}", source_filename, e.what());
+      continue;
     }
 
     for (const auto& [specific_version, source] : preprocessed) {

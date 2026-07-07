@@ -14,7 +14,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data   start
 start:
   mflr      r12
   b         get_data_ptr
@@ -63,10 +63,10 @@ get_data_ptr:
 e:  # Movement data index
   .data     0xFFFFFFFF
 f:  # Float param index
-  .zero
+  .data     0
 i:  # Int parameter index
-  .zero
+  .data     0
 v:  # Value
-  .zero
+  .data     0
 r:  # Read-only
-  .zero
+  .data     0

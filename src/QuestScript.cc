@@ -192,7 +192,6 @@ static constexpr uint32_t F_PUSH_ARG = 0x00010000;
 static constexpr uint32_t F_CLEAR_ARGS = 0x00020000;
 // F_ARGS means this opcode uses the argument list on v3 and later; it has no effect on v2 and earlier
 static constexpr uint32_t F_ARGS = 0x00040000;
-static constexpr uint32_t F_TERMINATOR = 0x00080000;
 // The following flags are used to specify which versions support each opcode
 static constexpr uint32_t F_DC_NTE = 0x00000004; // Version::DC_NTE
 static constexpr uint32_t F_DC_112000 = 0x00000008; // Version::DC_11_2000
@@ -261,7 +260,7 @@ static constexpr auto R_REG_SET_FIXED = Arg::Type::R_REG_SET_FIXED;
 // W_REG_SET_FIXED is like R_REG_SET_FIXED, but is used for registers that are written (and maybe read beforehand) by
 // the opcode.
 static constexpr auto W_REG_SET_FIXED = Arg::Type::W_REG_SET_FIXED;
-// [R/W]_REG32 is a 32-bit register number. The high 24 bits are unused.
+// [RW]_REG32 is a 32-bit register number. The high 24 bits are unused.
 static constexpr auto R_REG32 = Arg::Type::R_REG32;
 static constexpr auto W_REG32 = Arg::Type::W_REG32;
 // [RW]_REG32_SET_FIXED is like [RW]_REG_SET_FIXED, but uses a 32-bit register number. The high 24 bits are unused.
@@ -302,13 +301,13 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x00, {"nop"}, {}, F_V0_V4},
 
     // Pops new PC off stack
-    {0x01, {"ret"}, {}, F_V0_V4 | F_TERMINATOR},
+    {0x01, {"ret"}, {}, F_V0_V4},
 
     // Stops execution for the current frame. Execution resumes immediately after this opcode on the next frame.
     {0x02, {"sync"}, {}, F_V0_V4},
 
     // Exits entirely
-    {0x03, {"exit"}, {I32}, F_V0_V4 | F_TERMINATOR},
+    {0x03, {"exit"}, {I32}, F_V0_V4},
 
     // Starts a new thread at labelA
     {0x04, {"thread"}, {SCRIPT16}, F_V0_V4},
@@ -420,7 +419,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x27, {"modi"}, {W_REG, I32}, F_V3_V4},
 
     // Jumps to labelA
-    {0x28, {"jmp"}, {SCRIPT16}, F_V0_V4 | F_TERMINATOR},
+    {0x28, {"jmp"}, {SCRIPT16}, F_V0_V4},
 
     // Pushes the script offset immediately after this opcode and jumps to labelA
     // Note: This opcode doesn't directly clear the args list, but we assume during disassembly that the code being
@@ -565,10 +564,10 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   <color X> => changes text color like $CX would (supported on 11/2000 and later); X must be numeric and in the
     //     range 0-7, so <color 8>, <color 9>, and <color G> do not work (though \tC8, \tC9, and \tCG can be used
     //     directly in the text, and do work)
-    //   <cr> => newline
-    //   <hero name> or <name hero> => character's name
-    //   <hero job> or <name job> => character's class
-    //   <time> => always "01:12" (seems like an oversight that was never fixed)
+    //   <cr> => newline (\n also works normally)
+    //   <hero name> or <name hero> => local character's name
+    //   <hero job> or <name job> => local character's class
+    //   <time> => always "01:12" (seems like an oversight that was never fixed, even on BB)
     //   <award item> => name of the chosen challenge mode reward (v2 and later)
     //   <challenge title> => character's challenge rank text (v2 and later)
     //   <pl_name> => name of character selected with get_pl_name (v2 and later)
@@ -576,7 +575,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   <last_word> => challenge mode grave message (v2 and later)
     //   <team_name> => name of the game (set by 8A command) (v2 and later)
     //   <last_chat> => last chat message (v2 and later)
-    //   <meseta_slot_prize> => the description of the last item sent by the server in a 6xE3 command (BB only)
+    //   <meseta_slot_prize> => description of the last item sent by the server in a 6xE3 command (BB only)
     {0x5A, {"window_msg"}, {CSTRING}, F_V0_V4 | F_ARGS},
 
     // Adds a message to an existing message (or window_msg). Tokens are interpolated as for window_msg.
@@ -631,7 +630,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x6A, {"p_dead", "p_dead_V1"}, {W_REG, CLIENT_ID}, F_V0_V2 | F_ARGS},
     {0x6A, {"p_dead", "p_dead_V3"}, {W_REG, CLIENT_ID}, F_V3_V4 | F_ARGS},
 
-    // Disables/enables telepipes/Ryuker
+    // Disables/enables telepipes and Ryuker
     {0x6B, {"p_disablewarp"}, {}, F_V0_V4},
     {0x6C, {"p_enablewarp"}, {}, F_V0_V4},
 
@@ -1769,7 +1768,10 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF89A, {"get_random"}, {{R_REG_SET_FIXED, 2}, W_REG}, F_V2_V4},
 
     // Clears all game state, including all floor items, set states (enemy and object), enemy and object states, wave
-    // event flags, and switch flags. Also destroys all running quest threads.
+    // event flags, and switch flags. Also destroys all running quest threads. This opcode does not inform the server
+    // when it runs, even on BB, so the server's map and item state is not reset, which causes incorrect behavior. In
+    // general, this opcode should only be used in Challenge mode when the retry option is chosen; there is another
+    // codepath that resets the map on the server at approximately the same time.
     {0xF89B, {"reset_map"}, {}, F_V2_V4},
 
     // Returns the leader's choice when a challenge is failed in regA. Values:
@@ -2521,7 +2523,16 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   labelH = label to call on failure
     {0xF953, {"bb_swap_item", "BB_swap_item"}, {I32, I32, I32, I32, I32, I32, SCRIPT16, SCRIPT16}, F_V4 | F_ARGS},
 
-    // Checks if an item can be wrapped.
+    // Checks if an item can be wrapped. The following rules are applied:
+    // - All weapons can be wrapped except Sealed J-Sword (003300) and Lame d'Argent (00AB00)
+    // - All armors, shields, and units can be wrapped, except Ragol Ring (010252)
+    // - All non-stackable tools can be wrapped except Scape Dolls (030900) and holiday Rappy items (0315xx)
+    // - Mags and Meseta cannot be wrapped.
+    // These rules describe a strict subset of the items that actually can be wrapped; internally, only Meseta and
+    // stackable tools cannot be wrapped. Mags can be wrapped by wrap_item or wrap_item_with_color, but they cannot
+    // have a present color (unlike all other wrappable items). For the exception items mentioned above, Sega
+    // presumably didn't want to encourage wrapping them since it could cause client misbehavior or violate player
+    // expectations.
     //   valueA = item ID
     //   regB = returned status (0 = can't be wrapped, 1 = can be wrapped, 2 = item not found)
     {0xF954, {"bb_check_wrap", "BB_check_wrap"}, {I32, W_REG}, F_V4 | F_ARGS},

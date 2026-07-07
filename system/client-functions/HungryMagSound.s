@@ -10,7 +10,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data     start
 
 
 
@@ -22,9 +22,9 @@ start:
   .include  WriteCodeBlocks
 
   .data     0x8000BF30
-  .deltaof  code_start, code_end
+  .data     code_end - code_start
   .address  0x8000BF30
-code_start:  # [std] (TItemMag* this @ r3) -> void
+code_start:  # [std](TItemMag* this @ r3) -> void
   lwz       r4, [r3 + 0xF0]
   lhz       r4, [r4 + 0x1C]  # r4 = this->owner_player->entity_id
   lwz       r5, [r13 - <VERS 0x5298 0x5290 0x5270 0x5270 0x5280 0x5280 0x5260 0x5220>]  # local_client_id
@@ -63,7 +63,7 @@ hook_ret_sound:
 hook_ret_no_sound:
 
   .data     <VERS 0x00181024 0x001811A4 0x00181254 0x00181194 0x001811C4 0x001811B4 0x00181184>
-  .deltaof  hook1, hook1_end
+  .data     hook1_end - hook1
   .address  <VERS 0x00181024 0x001811A4 0x00181254 0x00181194 0x001811C4 0x001811B4 0x00181184>
 hook1:
   xor       eax, eax
@@ -72,7 +72,7 @@ hook1:
 hook1_end:
 
   .data     <VERS 0x00181092 0x00181212 0x001812C2 0x00181202 0x00181232 0x00181222 0x001811F2>
-  .deltaof  hook2, hook2_end
+  .data     hook2_end - hook2
   .address  <VERS 0x00181092 0x00181212 0x001812C2 0x00181202 0x00181232 0x00181222 0x001811F2>
 hook2:
   mov       edx, dword [esi + 0x000000F0]
@@ -81,7 +81,7 @@ hook2:
 hook2_end:
 
   .data     <VERS 0x001810F1 0x00181271 0x00181321 0x00181261 0x00181291 0x00181281 0x00181251>
-  .deltaof  hook3, hook3_end
+  .data     hook3_end - hook3
   .address  <VERS 0x001810F1 0x00181271 0x00181321 0x00181261 0x00181291 0x00181281 0x00181251>
 hook3:
   cmp       [<VERS 0x0071EFC0 0x0071F620 0x00727164 0x00724660 0x00723EE4 0x00724660 0x007249E4>], edx  # local_client_id
@@ -89,7 +89,7 @@ hook3:
 hook3_end:
 
   .data     <VERS 0x001811D7 0x00181357 0x00181407 0x00181347 0x00181377 0x00181367 0x00181337>
-  .deltaof  hook4, hook4_end
+  .data     hook4_end - hook4
   .address  <VERS 0x001811D7 0x00181357 0x00181407 0x00181347 0x00181377 0x00181367 0x00181337>
 hook4:
   jne       hook_ret_no_sound
@@ -97,7 +97,7 @@ hook4:
 hook4_end:
 
   .data     <VERS 0x001811F3 0x00181373 0x00181423 0x00181363 0x00181393 0x00181383 0x00181353>
-  .deltaof  hook5, hook5_end
+  .data     hook5_end - hook5
   .address  <VERS 0x001811F3 0x00181373 0x00181423 0x00181363 0x00181393 0x00181383 0x00181353>
 hook5:
   push      eax
@@ -110,7 +110,7 @@ hook5:
 hook5_end:
 
   .data     <VERS 0x00181211 0x00181391 0x00181441 0x00181381 0x001813B1 0x001813A1 0x00181371>
-  .deltaof  hook6, hook6_end
+  .data     hook6_end - hook6
   .address  <VERS 0x00181211 0x00181391 0x00181441 0x00181381 0x001813B1 0x001813A1 0x00181371>
 hook6:
   call      edx
@@ -128,13 +128,9 @@ start:
   pop       ecx
   push      6
   push      <VERS 0x005D72EA 0x005D91BE 0x005D91E2>
-  call      get_code_size
-  .deltaof  patch_code, patch_code_end
-get_code_size:
-  pop       eax
-  push      dword [eax]
+  push      patch_code_end - patch_code
   call      patch_code_end
-patch_code:  # [eax] (TItemMag* this @ ecx) -> void
+patch_code:  # [/eax](TItemMag* this @ ecx) -> void
   mov       dword [ecx + <VERS 0x01B4 0x01B8 0x01B8>], eax
   mov       eax, [ecx + 0x00F8]
   movzx     eax, word [eax + 0x001C]  # eax = this->owner_player->entity_id

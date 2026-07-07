@@ -6,7 +6,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data   start
 
 start:
   # Call seq_var_set(7000) - this gives the local player a VIP card

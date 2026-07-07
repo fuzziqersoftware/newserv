@@ -11,7 +11,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data     start
 start:
   .include  WriteCodeBlocks
 
@@ -25,7 +25,7 @@ start:
   .label    g1_hook_call, <VERS 0x802BB4B0 0x802BC3E0 0x802BD528 0x802BD2C0 0x802BBEF4 0x802BBF38 0x802BD474 0x802BCC08>
   .label    g1_hook_loc, 0x8000D980
   .data     g1_hook_loc
-  .deltaof  g1_hook_start, g1_hook_end
+  .data     g1_hook_end - g1_hook_start
   .address  g1_hook_loc
 g1_hook_start:
   lwz       r3, [r28]
@@ -52,7 +52,7 @@ g1_hook_end:
   jmp       g1_hook_loc
 g1_hook_call_end:
   .data     g1_hook_loc
-  .deltaof  g1_hook_start, g1_hook_end
+  .data     g1_hook_end - g1_hook_start
   .address  g1_hook_loc
 g1_hook_start:
   jne       g1_hook_skip_replace_value
@@ -71,7 +71,7 @@ g1_hook_end:
   .label    g2_hook_call, <VERS 0x80335060 0x803360CC 0x803375E8 0x8033739C 0x80335A50 0x80335A94 0x80337570 0x803369B4>
   .label    g2_hook_loc, 0x8000D9A0
   .data     g2_hook_loc
-  .deltaof  g2_hook_start, g2_hook_end
+  .data     g2_hook_end - g2_hook_start
   .address  g2_hook_loc
 g2_hook_start:
   lfs       f2, [r2 - <VERS 0x0388 0x0380 0x0380 0x0380 0x0378 0x0378 0x0378 0x0378>]
@@ -98,7 +98,7 @@ g2_hook_end:
   call      g2_hook_loc1
   nop
   .data     g2_hook_loc1
-  .deltaof  g2_hook_start1, g2_hook_end1
+  .data     g2_hook_end1 - g2_hook_start1
   .address  g2_hook_loc1
 g2_hook_start1:
   fld1      st0  // st = [1.0, speed]
@@ -109,7 +109,7 @@ g2_hook_start1:
 g2_hook_end1:
 
   .data     g2_hook_loc2
-  .deltaof  g2_hook_start2, g2_hook_end2
+  .data     g2_hook_end2 - g2_hook_start2
   .address  g2_hook_loc2
 g2_hook_start2:
   test      byte [esi + 0x30], 0x20  // If not set, use 1.5; if set, use 0.5
@@ -156,7 +156,7 @@ g2_hook_end2:
 
   .label    g3_patch_loc, <VERS 0x80301600 0x803025CC 0x80303A1C 0x803037D0 0x80301F58 0x80301F9C 0x8030398C 0x80302D64>
   .data     g3_patch_loc
-  .deltaof  g3_code_start, g3_code_end
+  .data     g3_code_end - g3_code_start
   .address  g3_patch_loc
 g3_code_start:
   b         +0x20
@@ -183,7 +183,7 @@ g3_code_end:
   .label    g4_hook_call2, <VERS 0x80015D04 0x80015D34 0x80016174 0x80015CE4 0x80015D1C 0x80015D1C 0x80015CE4 0x80015D5C>
   .label    g4_hook_loc, 0x8000C8C0
   .data     g4_hook_loc
-  .deltaof  g4_hook_start, g4_hook_end
+  .data     g4_hook_end - g4_hook_start
   .address  g4_hook_loc
 g4_hook_start:
   andi.     r0, r0, 0x000F
@@ -226,11 +226,11 @@ g4_hook_end:
 
   .data     <VERS 0x805CB608 0x805D5C08 0x805DD0A8 0x805DCE48 0x805CBF10 0x805D2F30 0x805DC750 0x805D8990>
   .data     4
-  .float    22500
+  .data     encode_float(22500)
 
   .data     <VERS 0x805CB8A8 0x805D5EA8 0x805DD348 0x805DD0E8 0x805CC1B0 0x805D31D0 0x805DC9F0 0x805D8C30>
   .data     4
-  .float    200
+  .data     encode_float(200)
 
 
 
@@ -482,7 +482,7 @@ g4_hook_end:
 
   .data     <VERS 0x805C996C 0x805D3F6C 0x805DB40C 0x805DB1AC 0x805CA274 0x805D1294 0x805DAAB4 0x805D6CF4>
   .data     4
-  .float    220
+  .data     encode_float(220)
 
   .versions 4OJB 4OJD 4OJU 4OED 4OEU 4OPD 4OPU
 
@@ -528,12 +528,12 @@ g4_hook_end:
   .label    g5_hook3_apply_bonuses, <VERS 0x8010B90C 0x8010BB0C 0x8010BBA0 0x8010BA8C 0x8010BBB0 0x8010BBB0 0x8010BA9C 0x8010BC8C>
   .label    g5_hooks_loc, 0x8000B088
   .data     g5_hooks_loc
-  .deltaof  g5_hook1_start, g5_hooks_end
+  .data     g5_hooks_end - g5_hook1_start
   .address  g5_hooks_loc
 g5_hook1_start:
   mr        r3, r29
   li        r4, 0x0000
-  bl        [<VERS 801B97B4 801B9C20 801BCC98 801B9CEC 801B9BA0 801B9BA0 801B9D50 801BA20C>]
+  bl        <VERS 0x801B97B4 0x801B9C20 0x801BCC98 0x801B9CEC 0x801B9BA0 0x801B9BA0 0x801B9D50 0x801BA20C>
   mr        r3, r29
   b         g5_hook1_ret
 g5_hook2_start:
@@ -578,7 +578,7 @@ g5_hooks_end:
   .label    TItemEquipBase_v16, <VERS 0x8010B094 0x8010B294 0x8010B390 0x8010B214 0x8010B338 0x8010B338 0x8010B224 0x8010B414>
   .label    TItemEquipBase_v17, <VERS 0x8010AF18 0x8010B118 0x8010B204 0x8010B098 0x8010B1BC 0x8010B1BC 0x8010B0A8 0x8010B298>
   .data     g5_hook4_loc
-  .deltaof  g5_hook4_start, g5_hook4_end
+  .data     g5_hook4_end - g5_hook4_start
   .address  g5_hook4_loc
 g5_hook4_start:
   cmplwi    r4, 0
@@ -631,7 +631,7 @@ g5_hook4_end:
   .label    g6_hook_loc, 0x8000C640
   .label    g6_hook_call, <VERS 0x80118CE0 0x80118EFC 0x80118FD8 0x80118E94 0x80118F84 0x80118F84 0x80118EA4 0x8011907C>
   .data     g6_hook_loc
-  .deltaof  g6_hook_start, g6_hook_end
+  .data     g6_hook_end - g6_hook_start
   .address  g6_hook_loc
 g6_hook_start:
   rlwinm.   r0, r4, 0, 25, 25
@@ -657,7 +657,7 @@ g6_hook_end:
   .label    g7_hook1_call, <VERS 0x8021D098 0x8021D9FC 0x8021E8E8 0x8021E69C 0x8021D91C 0x8021D91C 0x8021E9D0 0x8021E268>
   .label    g7_hook2_call, <VERS 0x80220528 0x80220EBC 0x80221DA8 0x80221B5C 0x80220DDC 0x80220DDC 0x80221E90 0x80221728>
   .data     g7_hook1_loc
-  .deltaof  g7_hook1_start, g7_hooks_end
+  .data     g7_hooks_end - g7_hook1_start
   .address  g7_hook1_loc
 g7_hook1_start:
   li        r0, 1
@@ -743,7 +743,7 @@ g7_hooks_end:
   .label    g8_hook_loc, 0x8000C8A0
   .label    g8_hook_call, <VERS 0x80112664 0x80112864 0x80112A3C 0x801127F0 0x80112908 0x80112908 0x80112800 0x801129E4>
   .data     g8_hook_loc
-  .deltaof  g8_hook_start, g8_hook_end
+  .data     g8_hook_end - g8_hook_start
   .address  g8_hook_loc
 g8_hook_start:
   mulli     r0, r0, 10
@@ -798,14 +798,14 @@ g8_hook_end:
   .label    g9_hook_call1, <VERS 0x80355984 0x80356D88 0x803582E4 0x80358098 0x80356838 0x8035687C 0x80358464 0x80357858>
   .label    g9_hook_call2, <VERS 0x80355A04 0x80356E08 0x80358364 0x80358118 0x803568B8 0x803568FC 0x803584E4 0x803578D8>
   .data     g9_hook_loc
-  .deltaof  g9_hook_start, g9_hook_end
+  .data     g9_hook_end - g9_hook_start
   .address  g9_hook_loc
 g9_hook_start:
   mflr      r30
   li        r5, 0x0000
   li        r6, 0x001E
   li        r7, 0x0040
-  bl        [<VERS 800864A0 8008678C 80086904 800868B4 8008672C 8008672C 800868C4 8008688C>]
+  bl        <VERS 0x800864A0 0x8008678C 0x80086904 0x800868B4 0x8008672C 0x8008672C 0x800868C4 0x8008688C>
   mtlr      r30
   blr
 g9_hook_end:
@@ -928,11 +928,11 @@ g9_hook_end:
   .label    g10_hook_call, <VERS 0x80183E94 0x8018425C 0x801843C0 0x80184320 0x80184250 0x80184250 0x80184384 0x80184848>
   .label    g10_hook_ret, <VERS 0x80183E98 0x80184260 0x801843C4 0x80184324 0x80184254 0x80184254 0x80184388 0x8018484C>
   .data     g10_hook_loc
-  .deltaof  g10_hook_start, g10_hook_end
+  .data     g10_hook_end - g10_hook_start
   .address  g10_hook_loc
 g10_hook_start:
   lwz       r3, [r3 + 0x98]
-  bl        [<VERS 803DFCC0 803E269C 803E453C 803E42EC 803E0F64 803E0FBC 803E46BC 803E31AC>]
+  bl        <VERS 0x803DFCC0 0x803E269C 0x803E453C 0x803E42EC 0x803E0F64 0x803E0FBC 0x803E46BC 0x803E31AC>
   lwz       r3, [r31 + 0x042C]
   lwz       r4, [r31 + 0x0430]
   b         g10_hook_ret
@@ -1036,7 +1036,7 @@ g10_hook_end:
   .label    g11_hook_loc, 0x8000BBD0
   .label    g11_hook_call, <VERS 0x80170C54 0x80171008 0x80171260 0x801710CC 0x80171010 0x80171010 0x80171130 0x801715F4>
   .data     g11_hook_loc
-  .deltaof  g11_hook_start, g11_hook_end
+  .data     g11_hook_end - g11_hook_start
   .address  g11_hook_loc
 g11_hook_start:
   lwz       r4, [r31 + 0x0370]
@@ -1068,12 +1068,12 @@ g11_hook_end:
   .label    g12_hook2_call, <VERS 0x80095734 0x800959C0 0x800959C0>
   .label    g12_hook_loc, 0x8000B06C
   .data     g12_hook_loc
-  .deltaof  g12_hook1_start, g12_hook_end
+  .data     g12_hook_end - g12_hook1_start
   .address  g12_hook_loc
 g12_hook1_start:
   li        r0, 1
   stw       [r13 - <VERS 0x2E48 0x2E30 0x2E30>], r0  # Anchor: 80039388 @ 3OE1
-  b         [<VERS 803D3140 803D4410 803D4468>]
+  b         <VERS 0x803D3140 0x803D4410 0x803D4468>
 g12_hook2_start:
   li        r4, 0
   stw       [r13 - <VERS 0x2E48 0x2E30 0x2E30>], r4
@@ -1100,7 +1100,7 @@ g12_hook_end:
   .label    tjs_switch_fix_hook_call, <VERS 0x8034CFA8 0x8034E3AC 0x8034F908 0x8034F6BC 0x8034DE5C 0x8034DEA0 0x8034FA88 0x8034EE7C>
   .label    tjs_switch_fix_hook_loc, 0x8000B050
   .data     tjs_switch_fix_hook_loc
-  .deltaof  tjs_switch_fix_hook_start, tjs_switch_fix_hook_end
+  .data     tjs_switch_fix_hook_end - tjs_switch_fix_hook_start
   .address  tjs_switch_fix_hook_loc
 tjs_switch_fix_hook_start:
   lwz       r0, [r3 + 0x0188]
@@ -1129,7 +1129,7 @@ tjs_switch_fix_hook_end:
   .label    bp_reload_hook_loc, 0x8000E1BC
   .label    bp_reload_hook_call, <VERS 0x801A3A70 0x801A3E4C 0x801A3E4C>
   .data     bp_reload_hook_loc
-  .deltaof  bp_reload_hook_start, bp_reload_hook_end
+  .data     bp_reload_hook_end - bp_reload_hook_start
   .address  bp_reload_hook_loc
 bp_reload_hook_start:
   mflr      r0

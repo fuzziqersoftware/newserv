@@ -5,7 +5,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data   start
 start:
   mflr    r0
   b       get_data
@@ -27,11 +27,11 @@ floor_low:
   .data   0x00000000  # entity_id, group
   .data   0x00000000  # room, unknown_a3
 pos_x:
-  .float  0.0  # pos.x
+  .data   encode_float(0)  # pos.x
 pos_y:
-  .float  0.0  # pos.y
+  .data   encode_float(0)  # pos.y
 pos_z:
-  .float  0.0  # pos.z
+  .data   encode_float(0)  # pos.z
 angle_x:
   .data   0x00000000  # angle.x
 angle_y:
@@ -39,11 +39,11 @@ angle_y:
 angle_z:
   .data   0x00000000  # angle.z
 param1:
-  .float  0.0  # param1
+  .data   encode_float(0)  # param1
 param2:
-  .float  0.0  # param2
+  .data   encode_float(0)  # param2
 param3:
-  .float  0.0  # param3
+  .data   encode_float(0)  # param3
 param4:
   .data   0  # param4
 param5:

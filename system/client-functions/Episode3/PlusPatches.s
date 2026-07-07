@@ -9,7 +9,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data   start
 
 start:
   .include  WriteCodeBlocks
@@ -42,7 +42,7 @@ start:
   .data     0x00000004
   .data     0x00000264
   .data     <VERS 0x80427578 0x80428718 0x8042A228>
-  .deltaof  deckbuilder_cards_start, deckbuilder_cards_end
+  .data     deckbuilder_cards_end - deckbuilder_cards_start
 deckbuilder_cards_start:
   .binary   0009000F02460247015501530243024401690122015700280164024C024D0158
   .binary   024A024802490168024B016E017A002C0252025101650250015A0159024E0167
@@ -119,7 +119,7 @@ deckbuilder_cards_end:
   .data     0x00000004
   cmpwi     r31, 41
   .data     <VERS 0x8042A4C8 0x8042B690 0x8042D1A8>
-  .deltaof  sound_chat_sound_ids_start, sound_chat_sound_ids_end
+  .data     sound_chat_sound_ids_end - sound_chat_sound_ids_start
 sound_chat_sound_ids_start:
   .binary   802580268227852D803080318A3F85328A4085338A418A288A388A298A39852E
   .binary   802F853D85348535853B85368537852B853A853C853E80448045804680478048
@@ -128,7 +128,7 @@ sound_chat_sound_ids_end:
 
   # Change default starting cards
   .data     <VERS 0x804225B0 0x80423750 0x80425260>
-  .deltaof  starting_cards_start, starting_cards_end
+  .data     starting_cards_end - starting_cards_start
 starting_cards_start:
   .binary   00090009000A000A000B000C000C00290029002C003500400040004100420042
   .binary   01A301A300170017002800280034003400160151018F02460056005600590059

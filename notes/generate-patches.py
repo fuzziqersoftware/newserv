@@ -59,7 +59,7 @@ def write_patches_for_code(
                 f.write("\n")
                 f.write("entry_ptr:\n")
                 f.write("reloc0:\n")
-                f.write("  .offsetof start\n")
+                f.write("  .data   start\n")
                 f.write("start:\n")
                 f.write("  .include  WriteCodeBlocks\n")
                 for region in write_regions:

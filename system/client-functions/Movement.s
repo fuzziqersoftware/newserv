@@ -9,7 +9,7 @@
 
 entry_ptr:
 reloc0:
-  .offsetof start
+  .data     start
 start:
   .include  WriteCodeBlocks
 
@@ -30,7 +30,7 @@ start:
   .versions 4OED 4OEU 4OJB 4OJD 4OJU 4OPD 4OPU
 
   .data     <VERS 0x00308E88 0x00308F08 0x003067D8 0x003073D8 0x00308F08 0x00308EB8 0x00309078>
-  .deltaof  code_start, code_end
+  .data     code_end - code_start
 code_start:
   call      process_stick_value
   push      esi
