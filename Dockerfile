@@ -22,16 +22,20 @@ ARG PHOSG_TARGET=master
 ARG RESOURCE_DASM_TARGET=master
 ARG BUILD_RESOURCE_DASM=true
 
-RUN git clone --depth 1 -b ${PHOSG_TARGET} https://github.com/fuzziqersoftware/phosg.git && \
+# Clone + checkout (not `clone -b`) so *_TARGET can be a commit SHA, not just a
+# branch/tag — lets the caller pin the toolchain to an exact, tested revision.
+RUN git clone https://github.com/fuzziqersoftware/phosg.git && \
     cd phosg && \
+    git checkout ${PHOSG_TARGET} && \
     cmake . && \
     make -j$(nproc) && \
     sudo make install
 
 RUN \
     if [ "$BUILD_RESOURCE_DASM" = "true" ] ; then \
-    git clone --depth 1 -b ${RESOURCE_DASM_TARGET} https://github.com/fuzziqersoftware/resource_dasm.git && \
+    git clone https://github.com/fuzziqersoftware/resource_dasm.git && \
     cd resource_dasm && \
+    git checkout ${RESOURCE_DASM_TARGET} && \
     cmake . && \
     make -j$(nproc) && \
     sudo make install \
