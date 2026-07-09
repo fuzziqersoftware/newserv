@@ -4066,7 +4066,7 @@ struct G_CreateInventoryItem_DC_6x2B {
 } __packed_ws__(G_CreateInventoryItem_DC_6x2B, 0x18);
 
 struct G_CreateInventoryItem_PC_V3_BB_6x2B : G_CreateInventoryItem_DC_6x2B {
-  uint8_t unused1 = 0;
+  uint8_t unused1 = 2; // Client sets this to 2 when sending 6x2B, but doesn't use this field upon receipt
   uint8_t equip_item = 0;
   parray<uint8_t, 2> unused2 = 0;
 } __packed_ws__(G_CreateInventoryItem_PC_V3_BB_6x2B, 0x1C);
@@ -4885,7 +4885,7 @@ struct G_ExitQuest_6x73 {
 
 // 6x74: Word select
 // There is a bug in PSO GC with regard to this command: the client does not byteswap the header, which means the
-// client_id field is big-endian.
+// client_id field is big-endian (hence we don't use G_ClientIDHeader here).
 
 template <bool BE>
 struct G_WordSelectT_6x74 {

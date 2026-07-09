@@ -191,8 +191,7 @@ struct SaveFileChatShortcutEntryT {
         ret.definition.text.encode(this->definition.text.decode(language), language);
         break;
       case 2:
-        // TODO: We should translate the message across PSO versions if
-        // possible, but this is a lossy process :|
+        // TODO: We should translate the message across PSO versions if possible, but this is a lossy process :|
         ret.definition.word_select = this->definition.word_select;
         break;
       case 3:
