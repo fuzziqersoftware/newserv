@@ -70,7 +70,8 @@ DataIndex::DataIndex::QuestF960Result::QuestF960Result(
   }
 }
 
-DataIndex::DataIndex(const std::string& config_filename) : config_filename(config_filename) {}
+DataIndex::DataIndex(const std::string& config_filename)
+    : creation_time(phosg::now()), config_filename(config_filename) {}
 
 uint32_t DataIndex::connect_address_for_client(std::shared_ptr<Client> c) const {
   {
