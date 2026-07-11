@@ -109,23 +109,6 @@ asio::awaitable<void> AsyncSocketReader::read_data_into(void* data, size_t size)
   }
 }
 
-void AsyncWriteCollector::add(std::string&& data) {
-  const auto& item = this->owned_data.emplace_back(std::move(data));
-  bufs.emplace_back(asio::buffer(item.data(), item.size()));
-}
-
-void AsyncWriteCollector::add_reference(const void* data, size_t size) {
-  bufs.emplace_back(asio::buffer(data, size));
-}
-
-asio::awaitable<void> AsyncWriteCollector::write(asio::ip::tcp::socket& sock) {
-  std::deque<std::string> local_owned_data;
-  local_owned_data.swap(this->owned_data);
-  std::vector<asio::const_buffer> local_bufs;
-  local_bufs.swap(this->bufs);
-  co_await asio::async_write(sock, local_bufs, asio::use_awaitable);
-}
-
 asio::awaitable<void> async_sleep(std::chrono::steady_clock::duration duration) {
   asio::steady_timer timer(co_await asio::this_coro::executor, duration);
   co_await timer.async_wait(asio::use_awaitable);

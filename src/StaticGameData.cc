@@ -40,17 +40,14 @@ const char* token_name_for_episode(Episode ep) {
   }
 }
 
-Episode episode_for_token_name(const std::string& name) {
-  if (name == "Episode1") {
+Episode episode_for_name(const std::string& name) {
+  if ((name == "Episode1") || (name == "Episode 1") || (name == "Ep1") || (name == "ep1")) {
     return Episode::EP1;
-  }
-  if (name == "Episode2") {
+  } else if ((name == "Episode2") || (name == "Episode 2") || (name == "Ep2") || (name == "ep2")) {
     return Episode::EP2;
-  }
-  if (name == "Episode3") {
+  } else if ((name == "Episode3") || (name == "Episode 3") || (name == "Ep3") || (name == "ep3")) {
     return Episode::EP3;
-  }
-  if (name == "Episode4") {
+  } else if ((name == "Episode4") || (name == "Episode 4") || (name == "Ep4") || (name == "ep4")) {
     return Episode::EP4;
   }
   throw std::runtime_error("unknown episode");
@@ -397,6 +394,21 @@ char abbreviation_for_difficulty(Difficulty difficulty) {
     return names.at(static_cast<size_t>(difficulty));
   } catch (const std::out_of_range&) {
     return '?';
+  }
+}
+
+Difficulty difficulty_for_name(const std::string& name) {
+  std::string lower_name = phosg::tolower(name);
+  if ((lower_name == "n") || (lower_name == "nml") || (lower_name == "normal")) {
+    return Difficulty::NORMAL;
+  } else if ((lower_name == "h") || (lower_name == "hard")) {
+    return Difficulty::HARD;
+  } else if ((lower_name == "vh") || (lower_name == "vhard") || (lower_name == "veryhard") || (lower_name == "very hard") || (lower_name == "very-hard")) {
+    return Difficulty::VERY_HARD;
+  } else if ((lower_name == "u") || (lower_name == "ult") || (lower_name == "ultimate")) {
+    return Difficulty::ULTIMATE;
+  } else {
+    throw std::runtime_error("Invalid difficulty name");
   }
 }
 

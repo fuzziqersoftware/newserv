@@ -1132,7 +1132,7 @@ void DataIndex::load_config_early() {
         for (size_t z = 0; z < 4; z++) {
           levels[z] = ep_it.second->get_int(z) - 1;
         }
-        switch (episode_for_token_name(ep_it.first)) {
+        switch (episode_for_name(ep_it.first)) {
           case Episode::EP1:
             dest[0] = levels;
             break;

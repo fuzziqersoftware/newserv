@@ -82,6 +82,58 @@ static const std::unordered_map<int, const char*> explanation_for_response_code{
     {599, "Network Connect Timeout Error"},
 };
 
+HTTPRequest::Method HTTPRequest::http_method_for_name(const std::string& name) {
+  if (name == "GET") {
+    return Method::GET;
+  } else if (name == "POST") {
+    return Method::POST;
+  } else if (name == "DELETE") {
+    return Method::DELETE;
+  } else if (name == "HEAD") {
+    return Method::HEAD;
+  } else if (name == "PATCH") {
+    return Method::PATCH;
+  } else if (name == "PUT") {
+    return Method::PUT;
+  } else if (name == "UPDATE") {
+    return Method::UPDATE;
+  } else if (name == "OPTIONS") {
+    return Method::OPTIONS;
+  } else if (name == "CONNECT") {
+    return Method::CONNECT;
+  } else if (name == "TRACE") {
+    return Method::TRACE;
+  } else {
+    throw HTTPError(400, "Unknown request method");
+  }
+}
+
+const char* HTTPRequest::name_for_http_method(Method method) {
+  switch (method) {
+    case HTTPRequest::Method::GET:
+      return "GET";
+    case HTTPRequest::Method::POST:
+      return "POST";
+    case HTTPRequest::Method::DELETE:
+      return "DELETE";
+    case HTTPRequest::Method::HEAD:
+      return "HEAD";
+    case HTTPRequest::Method::PATCH:
+      return "PATCH";
+    case HTTPRequest::Method::PUT:
+      return "PUT";
+    case HTTPRequest::Method::UPDATE:
+      return "UPDATE";
+    case HTTPRequest::Method::OPTIONS:
+      return "OPTIONS";
+    case HTTPRequest::Method::CONNECT:
+      return "CONNECT";
+    case HTTPRequest::Method::TRACE:
+      return "TRACE";
+  }
+  throw HTTPError(400, "Unknown request method");
+}
+
 HTTPError::HTTPError(int code, const std::string& what)
     : std::runtime_error(what), code(code) {}
 
@@ -134,7 +186,10 @@ HTTPClient::HTTPClient(asio::ip::tcp::socket&& sock) : r(std::move(sock)) {}
 
 asio::awaitable<HTTPRequest> HTTPClient::recv_http_request(size_t max_line_size, size_t max_body_size) {
   HTTPRequest req;
-  std::string request_line = co_await this->r.read_line("\r\n", max_line_size);
+  std::string request_line = co_await this->r.read_line("\n", max_line_size);
+  if (request_line.ends_with('\r')) {
+    request_line.pop_back();
+  }
   auto line_tokens = phosg::split(request_line, ' ');
   if (line_tokens.size() != 3) {
     throw std::runtime_error("invalid HTTP request line");
@@ -201,7 +256,10 @@ asio::awaitable<HTTPRequest> HTTPClient::recv_http_request(size_t max_line_size,
 
   auto prev_header_it = req.headers.end();
   for (;;) {
-    std::string line = co_await this->r.read_line("\r\n", max_line_size);
+    std::string line = co_await this->r.read_line("\n", max_line_size);
+    if (line.ends_with('\r')) {
+      line.pop_back();
+    }
     if (line.empty()) {
       break;
     }
@@ -231,7 +289,10 @@ asio::awaitable<HTTPRequest> HTTPClient::recv_http_request(size_t max_line_size,
     std::deque<std::string> chunks;
     size_t total_data_bytes = 0;
     for (;;) {
-      auto line = co_await this->r.read_line("\r\n", 0x20);
+      auto line = co_await this->r.read_line("\n", 0x20);
+      if (line.ends_with('\r')) {
+        line.pop_back();
+      }
       size_t parse_offset = 0;
       size_t chunk_size = stoull(line, &parse_offset, 16);
       if (parse_offset != line.size()) {
@@ -264,20 +325,38 @@ asio::awaitable<HTTPRequest> HTTPClient::recv_http_request(size_t max_line_size,
 }
 
 asio::awaitable<void> HTTPClient::send_http_response(const HTTPResponse& resp) {
-  AsyncWriteCollector w;
-  w.add(std::format("{} {} {}\r\n",
-      resp.http_version, resp.response_code, explanation_for_response_code.at(resp.response_code)));
+  std::vector<asio::const_buffer> bufs;
+
+  auto response_line = std::format("{} {} {}\r\n",
+      resp.http_version, resp.response_code, explanation_for_response_code.at(resp.response_code));
+  bufs.emplace_back(asio::const_buffer(response_line.data(), response_line.size()));
+
+  std::vector<std::string> header_lines;
+  header_lines.reserve(resp.headers.size());
   for (const auto& it : resp.headers) {
-    w.add(it.first + ": " + it.second + "\r\n");
+    header_lines.emplace_back(std::format("{}: {}\r\n", it.first, it.second));
+    bufs.emplace_back(asio::const_buffer(header_lines.back().data(), header_lines.back().size()));
   }
-  if (!resp.data.empty()) {
-    w.add(std::format("Content-Length: {}\r\n", resp.data.size()));
+
+  std::string content_length_header;
+  if (resp.shared_data) {
+    content_length_header = std::format("Content-Length: {}\r\n", resp.shared_data->size());
+  } else if (!resp.data.empty()) {
+    content_length_header = std::format("Content-Length: {}\r\n", resp.data.size());
   }
-  w.add("\r\n");
-  if (!resp.data.empty()) {
-    w.add_reference(resp.data.data(), resp.data.size());
+  if (!content_length_header.empty()) {
+    bufs.emplace_back(asio::const_buffer(content_length_header.data(), content_length_header.size()));
   }
-  co_await w.write(this->r.get_socket());
+
+  bufs.emplace_back(asio::const_buffer("\r\n", 2));
+
+  if (resp.shared_data) {
+    bufs.emplace_back(asio::const_buffer(resp.shared_data->data(), resp.shared_data->size()));
+  } else if (!resp.data.empty()) {
+    bufs.emplace_back(asio::const_buffer(resp.data.data(), resp.data.size()));
+  }
+
+  co_await asio::async_write(this->r.get_socket(), bufs, asio::use_awaitable);
 }
 
 asio::awaitable<WebSocketMessage> HTTPClient::recv_websocket_message(size_t max_data_size) {

@@ -66,6 +66,8 @@ struct ItemData {
     StackLimits& operator=(const StackLimits& other) = default;
     StackLimits& operator=(StackLimits&& other) = default;
 
+    phosg::JSON json() const;
+
     uint8_t get(uint8_t data1_0, uint8_t data1_1) const;
 
     static const std::vector<uint8_t> DEFAULT_TOOL_LIMITS_DC_NTE; // Also for 11/2000
@@ -78,7 +80,7 @@ struct ItemData {
   };
 
   // QUICK ITEM FORMAT REFERENCE
-  //              data1/0  data1/4  data1/8  data2
+  //            data1/0  data1/4  data1/8  data2
   // Weapon:    00ZZZZGG SSNNAABB AABBAABB 00000000
   // Armor:     0101ZZ00 FFTTDDDD EEEEXXXX 00000000
   // Shield:    0102ZZ00 FFTTDDDD EEEEXXXX 00000000

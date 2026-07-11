@@ -87,6 +87,8 @@ struct VersionedQuest {
 
   std::shared_ptr<VersionedQuest> create_download_quest(Language override_language = Language::UNKNOWN) const;
   std::string encode_qst() const;
+
+  phosg::JSON json() const;
 };
 
 struct Quest {

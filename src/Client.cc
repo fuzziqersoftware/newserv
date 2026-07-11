@@ -10,6 +10,7 @@
 #include <phosg/Time.hh>
 
 #include "GameServer.hh"
+#include "HTTPServer.hh"
 #include "IPStackSimulator.hh"
 #include "Loggers.hh"
 #include "SendCommands.hh"
@@ -452,6 +453,11 @@ void Client::set_login(std::shared_ptr<Login> login) {
   if (this->log.should_log(phosg::LogLevel::L_INFO)) {
     this->log.info_f("Login: {}", this->login->str());
   }
+
+  send_http_event_notif(s, HTTPEventType::PLAYER_LOGIN, [&]() {
+    return std::make_shared<phosg::JSON>(phosg::JSON::dict(
+        {{"AccountID", this->login->account->account_id}, {"ClientID", this->id}}));
+  });
 }
 
 // System file

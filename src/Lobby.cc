@@ -5,6 +5,7 @@
 #include <phosg/Random.hh>
 
 #include "Compression.hh"
+#include "HTTPServer.hh"
 #include "Loggers.hh"
 #include "SendCommands.hh"
 #include "ServerState.hh"
@@ -483,6 +484,11 @@ void Lobby::add_client(std::shared_ptr<Client> c, ssize_t required_client_id) {
   if (this->idle_timeout_timer.cancel()) {
     this->log.info_f("Idle timeout cancelled");
   }
+
+  send_http_event_notif(this->require_server_state(), HTTPEventType::PLAYER_JOIN_LOBBY, [&]() {
+    return std::make_shared<phosg::JSON>(phosg::JSON::dict(
+        {{"LobbyID", this->lobby_id}, {"ClientID", c->id}, {"LobbyClientID", c->lobby_client_id}}));
+  });
 }
 
 void Lobby::remove_client(std::shared_ptr<Client> c) {
@@ -559,6 +565,11 @@ void Lobby::remove_client(std::shared_ptr<Client> c) {
     });
     this->log.info_f("Idle timeout scheduled");
   }
+
+  send_http_event_notif(this->require_server_state(), HTTPEventType::PLAYER_LEAVE_LOBBY, [&]() {
+    return std::make_shared<phosg::JSON>(phosg::JSON::dict(
+        {{"LobbyID", this->lobby_id}, {"ClientID", c->id}}));
+  });
 }
 
 void Lobby::move_client_to_lobby(std::shared_ptr<Lobby> dest_lobby, std::shared_ptr<Client> c, ssize_t required_client_id) {

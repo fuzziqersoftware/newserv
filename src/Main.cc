@@ -133,20 +133,6 @@ Version get_cli_version(phosg::Arguments& args, Version default_value = Version:
   }
 }
 
-Episode get_cli_episode(phosg::Arguments& args) {
-  if (args.get<bool>("ep1")) {
-    return Episode::EP1;
-  } else if (args.get<bool>("ep2")) {
-    return Episode::EP2;
-  } else if (args.get<bool>("ep3")) {
-    return Episode::EP3;
-  } else if (args.get<bool>("ep4")) {
-    return Episode::EP4;
-  } else {
-    throw std::runtime_error("an episode option is required");
-  }
-}
-
 GameMode get_cli_game_mode(phosg::Arguments& args) {
   if (args.get<bool>("battle")) {
     return GameMode::BATTLE;

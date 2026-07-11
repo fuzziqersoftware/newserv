@@ -641,8 +641,8 @@ WeaponShopRandomSet::WeaponShopRandomSet(const phosg::JSON& json) {
   this->bonus_range_table1 = fixed_table_for_json_t<IntPairT<uint32_t>, 9>(json.at("BonusRangeTable1"));
   this->bonus_range_table2 = fixed_table_for_json_t<IntPairT<uint32_t>, 9>(json.at("BonusRangeTable2"));
   this->special_mode_table = fixed_table_for_json_t<IntPairT<uint32_t>, 8, 3>(json.at("SpecialModeTable"));
-  this->default_grind_range_table = fixed_table_for_json_t<IntPairT<uint32_t>, 6>(json.at("DefaultDringRangeTable"));
-  this->favored_grind_range_table = fixed_table_for_json_t<IntPairT<uint32_t>, 6>(json.at("FavoredDringRangeTable"));
+  this->default_grind_range_table = fixed_table_for_json_t<IntPairT<uint32_t>, 6>(json.at("DefaultGrindRangeTable"));
+  this->favored_grind_range_table = fixed_table_for_json_t<IntPairT<uint32_t>, 6>(json.at("FavoredGrindRangeTable"));
 }
 
 template <bool BE>
@@ -775,8 +775,8 @@ phosg::JSON WeaponShopRandomSet::json() const {
       {"BonusRangeTable1", json_for_fixed_table_t(this->bonus_range_table1)},
       {"BonusRangeTable2", json_for_fixed_table_t(this->bonus_range_table2)},
       {"SpecialModeTable", json_for_fixed_table_t(this->special_mode_table)},
-      {"DefaultDringRangeTable", json_for_fixed_table_t(this->default_grind_range_table)},
-      {"FavoredDringRangeTable", json_for_fixed_table_t(this->favored_grind_range_table)},
+      {"DefaultGrindRangeTable", json_for_fixed_table_t(this->default_grind_range_table)},
+      {"FavoredGrindRangeTable", json_for_fixed_table_t(this->favored_grind_range_table)},
   });
 }
 

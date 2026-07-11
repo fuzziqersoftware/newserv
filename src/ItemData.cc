@@ -32,6 +32,15 @@ ItemData::StackLimits::StackLimits(Version version, const phosg::JSON& json) : v
   this->max_meseta_stack_size = json.at("MesetaLimit").as_int();
 }
 
+phosg::JSON ItemData::StackLimits::json() const {
+  auto tool_limits_json = phosg::JSON::list();
+  for (const auto& limit : this->max_tool_stack_sizes_by_data1_1) {
+    tool_limits_json.emplace_back(limit);
+  }
+  return phosg::JSON::dict(
+      {{"ToolLimits", std::move(tool_limits_json)}, {"MesetaLimit", this->max_meseta_stack_size}});
+}
+
 uint8_t ItemData::StackLimits::get(uint8_t data1_0, uint8_t data1_1) const {
   if (data1_0 == 4) {
     return this->max_meseta_stack_size;

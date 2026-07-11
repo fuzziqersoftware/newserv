@@ -1243,10 +1243,10 @@ ChatCommandDefinition cc_item(
         item.id = l->generate_item_id(0xFF);
 
         if ((l->drop_mode == ServerDropMode::SERVER_PRIVATE) || (l->drop_mode == ServerDropMode::SERVER_DUPLICATE)) {
-          l->add_item(a.c->floor, item, a.c->pos, nullptr, nullptr, (1 << a.c->lobby_client_id));
+          l->add_item(a.c->floor, item, a.c->pos, nullptr, nullptr, 0x1000 | (1 << a.c->lobby_client_id));
           send_drop_stacked_item_to_channel(s, a.c->channel, item, a.c->floor, a.c->pos);
         } else {
-          l->add_item(a.c->floor, item, a.c->pos, nullptr, nullptr, 0x00F);
+          l->add_item(a.c->floor, item, a.c->pos, nullptr, nullptr, 0x1000 | 0x00F);
           send_drop_stacked_item_to_lobby(l, item, a.c->floor, a.c->pos);
         }
       }

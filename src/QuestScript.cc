@@ -4080,7 +4080,7 @@ AssembledQuestScript assemble_quest_script(
           }
           ret.meta.language = language_for_char(code[0]);
         } else if (line.text.starts_with(".episode ")) {
-          ret.meta.episode = episode_for_token_name(line.text.substr(9));
+          ret.meta.episode = episode_for_name(line.text.substr(9));
         } else if (line.text.starts_with(".max_players ")) {
           ret.meta.max_players = stoul(line.text.substr(12), nullptr, 0);
         } else if (line.text.starts_with(".joinable")) {

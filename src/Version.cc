@@ -44,33 +44,33 @@ const char* phosg::name_for_enum<Version>(Version v) {
 
 template <>
 Version phosg::enum_for_name<Version>(const char* name) {
-  if (!strcmp(name, "PC_PATCH") || !strcasecmp(name, "patch")) {
+  if (!strcmp(name, "PC_PATCH") || !strcmp(name, "pc-patch") || !strcasecmp(name, "patch")) {
     return Version::PC_PATCH;
-  } else if (!strcmp(name, "BB_PATCH")) {
+  } else if (!strcmp(name, "BB_PATCH") || !strcmp(name, "bb-patch")) {
     return Version::BB_PATCH;
-  } else if (!strcmp(name, "DC_NTE")) {
+  } else if (!strcmp(name, "DC_NTE") || !strcmp(name, "dc-nte")) {
     return Version::DC_NTE;
-  } else if (!strcmp(name, "DC_11_2000")) {
+  } else if (!strcmp(name, "DC_11_2000") || !strcmp(name, "dc-11-2000")) {
     return Version::DC_11_2000;
-  } else if (!strcmp(name, "DC_V1")) {
+  } else if (!strcmp(name, "DC_V1") || !strcmp(name, "dc-v1") || !strcmp(name, "v1")) {
     return Version::DC_V1;
-  } else if (!strcmp(name, "DC_V2") || !strcasecmp(name, "dc")) {
+  } else if (!strcmp(name, "DC_V2") || !strcmp(name, "dc-v2") || !strcasecmp(name, "dc") || !strcasecmp(name, "v2")) {
     return Version::DC_V2;
-  } else if (!strcmp(name, "PC_NTE")) {
+  } else if (!strcmp(name, "PC_NTE") || !strcmp(name, "pc-nte")) {
     return Version::PC_NTE;
-  } else if (!strcmp(name, "PC_V2") || !strcasecmp(name, "pc")) {
+  } else if (!strcmp(name, "PC_V2") || !strcmp(name, "pc-v2") || !strcasecmp(name, "pc")) {
     return Version::PC_V2;
-  } else if (!strcmp(name, "GC_NTE")) {
+  } else if (!strcmp(name, "GC_NTE") || !strcmp(name, "gc-nte")) {
     return Version::GC_NTE;
-  } else if (!strcmp(name, "GC_V3") || !strcasecmp(name, "gc")) {
+  } else if (!strcmp(name, "GC_V3") || !strcmp(name, "gc-v3") || !strcasecmp(name, "gc") || !strcasecmp(name, "v3")) {
     return Version::GC_V3;
-  } else if (!strcmp(name, "GC_EP3_NTE")) {
+  } else if (!strcmp(name, "GC_EP3_NTE") || !strcmp(name, "gc-ep3-nte") || !strcmp(name, "ep3-nte")) {
     return Version::GC_EP3_NTE;
-  } else if (!strcmp(name, "GC_EP3")) {
+  } else if (!strcmp(name, "GC_EP3") || !strcmp(name, "gc-ep3") || !strcmp(name, "ep3")) {
     return Version::GC_EP3;
-  } else if (!strcmp(name, "XB_V3") || !strcasecmp(name, "xb")) {
+  } else if (!strcmp(name, "XB_V3") || !strcmp(name, "xb-v3") || !strcasecmp(name, "xb")) {
     return Version::XB_V3;
-  } else if (!strcmp(name, "BB_V4") || !strcasecmp(name, "bb")) {
+  } else if (!strcmp(name, "BB_V4") || !strcmp(name, "bb-v4") || !strcasecmp(name, "bb") || !strcasecmp(name, "v4")) {
     return Version::BB_V4;
   } else {
     throw std::invalid_argument("incorrect version name");

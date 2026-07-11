@@ -15,6 +15,7 @@
 #include "Compression.hh"
 #include "Episode3/Tournament.hh"
 #include "GameServer.hh"
+#include "HTTPServer.hh"
 #include "IPStackSimulator.hh"
 #include "ItemCreator.hh"
 #include "Loggers.hh"
@@ -74,6 +75,14 @@ asio::awaitable<void> on_disconnect(std::shared_ptr<Client> c) {
     if (server) {
       server->get_state()->remove_client_from_lobby(c);
     }
+  }
+
+  if (c->login) {
+    auto s = c->require_server_state();
+    send_http_event_notif(s, HTTPEventType::PLAYER_LOGOUT, [&]() {
+      return std::make_shared<phosg::JSON>(phosg::JSON::dict(
+          {{"AccountID", c->login->account->account_id}, {"ClientID", c->id}}));
+    });
   }
 
   // Note: The client's GameData destructor should save their player data shortly after this point
@@ -2510,6 +2519,11 @@ void set_lobby_quest(std::shared_ptr<Lobby> l, std::shared_ptr<const Quest> q, b
     l->log.info_f("No clients require the LOADING_QUEST flag; starting quest now");
     on_quest_loaded(l);
   }
+
+  send_http_event_notif(s, HTTPEventType::SET_LOBBY_QUEST, [&]() {
+    return std::make_shared<phosg::JSON>(phosg::JSON::dict(
+        {{"LobbyID", l->lobby_id}, {"QuestNumber", l->quest->meta.quest_number}}));
+  });
 }
 
 static asio::awaitable<void> on_10_main_menu(std::shared_ptr<Client> c, uint32_t item_id) {
@@ -4761,6 +4775,10 @@ std::shared_ptr<Lobby> create_game_generic(
   }
 
   game->switch_flags = std::make_unique<SwitchFlags>();
+
+  send_http_event_notif(s, HTTPEventType::CREATE_LOBBY, [&]() {
+    return std::make_shared<phosg::JSON>(phosg::JSON::dict({{"LobbyID", game->lobby_id}, {"IsGame", false}}));
+  });
 
   return game;
 }

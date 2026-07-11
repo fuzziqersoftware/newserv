@@ -203,28 +203,6 @@ private:
   asio::ip::tcp::socket sock;
 };
 
-class AsyncWriteCollector {
-public:
-  AsyncWriteCollector() = default;
-  AsyncWriteCollector(const AsyncWriteCollector&) = delete;
-  AsyncWriteCollector(AsyncWriteCollector&&) = delete;
-  AsyncWriteCollector& operator=(const AsyncWriteCollector&) = delete;
-  AsyncWriteCollector& operator=(AsyncWriteCollector&&) = delete;
-  ~AsyncWriteCollector() = default;
-
-  void add(std::string&& data);
-
-  // When using add_reference, it is the caller's responsibility to ensure that the buffer is valid until *this is
-  // destroyed or write() returns.
-  void add_reference(const void* data, size_t size);
-
-  asio::awaitable<void> write(asio::ip::tcp::socket& sock);
-
-private:
-  std::deque<std::string> owned_data;
-  std::vector<asio::const_buffer> bufs;
-};
-
 asio::awaitable<void> async_sleep(std::chrono::steady_clock::duration duration);
 
 inline asio::ip::tcp::endpoint make_endpoint_ipv4(uint32_t addr, uint16_t port) {

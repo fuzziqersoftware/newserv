@@ -2514,6 +2514,19 @@ bool Rules::check_and_reset_invalid_fields() {
   return ret;
 }
 
+phosg::JSON COMDeckDefinition::json() const {
+  auto card_ids_list = phosg::JSON::list();
+  for (size_t z = 0; z < this->card_ids.size(); z++) {
+    card_ids_list.emplace_back(this->card_ids[z].load());
+  }
+  return phosg::JSON::dict({
+      {"Index", this->index},
+      {"PlayerName", this->player_name},
+      {"DeckName", this->deck_name},
+      {"CardIDs", std::move(card_ids_list)},
+  });
+}
+
 CardIndex::CardIndex(
     const std::string& filename,
     const std::string& decompressed_filename,
@@ -3175,6 +3188,14 @@ std::shared_ptr<const COMDeckDefinition> COMDeckIndex::deck_for_name(const std::
 
 std::shared_ptr<const COMDeckDefinition> COMDeckIndex::random_deck() const {
   return this->decks[phosg::random_object<size_t>() % this->decks.size()];
+}
+
+phosg::JSON COMDeckIndex::json() const {
+  auto ret = phosg::JSON::list();
+  for (const auto& deck : this->decks) {
+    ret.emplace_back(deck->json());
+  }
+  return ret;
 }
 
 } // namespace Episode3

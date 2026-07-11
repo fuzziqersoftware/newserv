@@ -11,6 +11,7 @@
 
 #include "Compression.hh"
 #include "GameServer.hh"
+#include "HTTPServer.hh"
 #include "IPStackSimulator.hh"
 #include "ImageEncoder.hh"
 #include "Loggers.hh"
@@ -206,6 +207,10 @@ std::shared_ptr<Lobby> ServerState::create_lobby(bool is_game) {
   auto l = std::make_shared<Lobby>(this->shared_from_this(), this->next_lobby_id++, is_game);
   this->id_to_lobby.emplace(l->lobby_id, l);
   l->idle_timeout_usecs = this->data->persistent_game_idle_timeout_usecs;
+
+  send_http_event_notif(this, HTTPEventType::CREATE_LOBBY, [&]() {
+    return std::make_shared<phosg::JSON>(phosg::JSON::dict({{"ID", l->lobby_id}, {"IsGame", is_game}}));
+  });
   return l;
 }
 
@@ -231,6 +236,10 @@ void ServerState::remove_lobby(std::shared_ptr<Lobby> l) {
     send_ep3_disband_watcher_lobbies(l);
   }
 
+  send_http_event_notif(this, HTTPEventType::DESTROY_LOBBY, [&]() {
+    return std::make_shared<phosg::JSON>(phosg::JSON::dict({{"ID", l->lobby_id}}));
+  });
+
   l->log.info_f("Unlinking lobby from index");
   this->id_to_lobby.erase(lobby_it);
 }
@@ -243,7 +252,8 @@ void ServerState::on_player_left_lobby(std::shared_ptr<Lobby> l, uint8_t leaving
   }
 }
 
-std::shared_ptr<Client> ServerState::find_client(const std::string* identifier, uint64_t account_id, std::shared_ptr<Lobby> l) {
+std::shared_ptr<Client> ServerState::find_client(
+    const std::string* identifier, uint64_t account_id, std::shared_ptr<Lobby> l) {
   // WARNING: There are multiple callsites where we assume this function never returns a client that isn't in any
   // lobby. If this behavior changes, we will need to audit all callsites to ensure correctness.
 

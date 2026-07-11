@@ -282,6 +282,19 @@ std::string VersionedQuest::encode_qst() const {
   return encode_qst_file(files, this->meta.name, this->meta.quest_number, xb_filename, this->meta.version, this->is_dlq_encoded);
 }
 
+phosg::JSON VersionedQuest::json() const {
+  return phosg::JSON::dict({
+      {"Version", phosg::name_for_enum(this->meta.version)},
+      {"Language", ::name_for_language(this->meta.language)},
+      {"Name", this->meta.name},
+      {"ShortDescription", this->meta.short_description},
+      {"LongDescription", this->meta.long_description},
+      {"BINFileSize", this->bin_contents ? this->bin_contents->size() : phosg::JSON(nullptr)},
+      {"DATFileSize", this->dat_contents ? this->dat_contents->size() : phosg::JSON(nullptr)},
+      {"PVRFileSize", this->pvr_contents ? this->pvr_contents->size() : phosg::JSON(nullptr)},
+  });
+}
+
 Quest::Quest(std::shared_ptr<const VersionedQuest> initial_version) : meta(initial_version->meta), supermap(nullptr) {
   this->add_version(initial_version);
 }
@@ -289,16 +302,7 @@ Quest::Quest(std::shared_ptr<const VersionedQuest> initial_version) : meta(initi
 phosg::JSON Quest::json() const {
   auto versions_json = phosg::JSON::list();
   for (const auto& [_, vq] : this->versions) {
-    versions_json.emplace_back(phosg::JSON::dict({
-        {"Version", phosg::name_for_enum(vq->meta.version)},
-        {"Language", ::name_for_language(vq->meta.language)},
-        {"Name", vq->meta.name},
-        {"ShortDescription", vq->meta.short_description},
-        {"LongDescription", vq->meta.long_description},
-        {"BINFileSize", vq->bin_contents ? vq->bin_contents->size() : phosg::JSON(nullptr)},
-        {"DATFileSize", vq->dat_contents ? vq->dat_contents->size() : phosg::JSON(nullptr)},
-        {"PVRFileSize", vq->pvr_contents ? vq->pvr_contents->size() : phosg::JSON(nullptr)},
-    }));
+    versions_json.emplace_back(vq->json());
   }
 
   return phosg::JSON::dict({{"Metadata", this->meta.json()}, {"Versions", std::move(versions_json)}});

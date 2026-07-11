@@ -2295,8 +2295,8 @@ static asio::awaitable<void> on_pick_up_item_generic(
         std::string desc_ingame = s->data->describe_item(c->version(), fi->data, ItemNameIndex::Flag::INCLUDE_PSO_COLOR_ESCAPES);
         std::string desc_http = s->data->describe_item(c->version(), fi->data);
 
-        if (s->http_server) {
-          auto message = std::make_shared<phosg::JSON>(phosg::JSON::dict({
+        send_http_event_notif(s, HTTPEventType::RARE_DROP, [&]() {
+          return std::make_shared<phosg::JSON>(phosg::JSON::dict({
               {"PlayerAccountID", c->login->account->account_id},
               {"PlayerName", p_name},
               {"PlayerVersion", phosg::name_for_enum(c->version())},
@@ -2307,8 +2307,7 @@ static asio::awaitable<void> on_pick_up_item_generic(
               {"NotifyGame", should_send_game_notif},
               {"NotifyServer", should_send_global_notif},
           }));
-          co_await s->http_server->send_rare_drop_notification(message);
-        }
+        });
 
         std::string message = std::format("$C6{}$C7 found\n{}", p_name, desc_ingame);
         std::string bb_message = std::format("$C6{}$C7 has found {}", p_name, desc_ingame);

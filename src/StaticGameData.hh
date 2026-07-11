@@ -40,7 +40,7 @@ bool episode_has_arpg_semantics(Episode ep);
 const char* name_for_episode(Episode ep);
 const char* token_name_for_episode(Episode ep);
 const char* abbreviation_for_episode(Episode ep);
-Episode episode_for_token_name(const std::string& name);
+Episode episode_for_name(const std::string& name);
 Episode episode_for_area(uint8_t area);
 
 enum class GameMode {
@@ -86,6 +86,7 @@ bool char_class_is_force(uint8_t cls);
 const char* name_for_difficulty(Difficulty difficulty);
 const char* token_name_for_difficulty(Difficulty difficulty);
 char abbreviation_for_difficulty(Difficulty difficulty);
+Difficulty difficulty_for_name(const std::string& name);
 
 const char* name_for_language(Language language);
 char char_for_language(Language language);

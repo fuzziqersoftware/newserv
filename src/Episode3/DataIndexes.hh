@@ -1471,6 +1471,8 @@ struct COMDeckDefinition {
   std::string player_name;
   std::string deck_name;
   parray<le_uint16_t, 0x1F> card_ids;
+
+  phosg::JSON json() const;
 };
 
 class CardIndex {
@@ -1637,6 +1639,8 @@ public:
   std::shared_ptr<const COMDeckDefinition> deck_for_index(size_t which) const;
   std::shared_ptr<const COMDeckDefinition> deck_for_name(const std::string& name) const;
   std::shared_ptr<const COMDeckDefinition> random_deck() const;
+
+  phosg::JSON json() const;
 
 private:
   std::vector<std::shared_ptr<COMDeckDefinition>> decks;

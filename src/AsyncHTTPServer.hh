@@ -38,6 +38,9 @@ struct HTTPRequest {
   std::unordered_multimap<std::string, std::string> query_params;
   std::string data;
 
+  static Method http_method_for_name(const std::string& name);
+  static const char* name_for_http_method(Method method);
+
   // Header name should be entirely lowercase for this function. Returns nullptr if the header doesn't exist; throws
   // http_error(400) if multiple instances of it exist.
   const std::string* get_header(const std::string& name) const;
@@ -51,6 +54,7 @@ struct HTTPResponse {
   // Content-Length should NOT be specified in headers; it is automatically added in async_write() if data isn't blank.
   std::unordered_multimap<std::string, std::string> headers;
   std::string data;
+  std::shared_ptr<const std::string> shared_data;
 };
 
 struct WebSocketMessage {
@@ -66,12 +70,14 @@ public:
   int code;
 };
 
-struct HTTPClient {
+class HTTPClient {
+public:
   AsyncSocketReader r;
   uint64_t last_communication_time = 0;
   bool is_websocket = false;
 
   HTTPClient(asio::ip::tcp::socket&& sock);
+  virtual ~HTTPClient() = default;
 
   asio::awaitable<HTTPRequest> recv_http_request(size_t max_line_size, size_t max_body_size);
   asio::awaitable<void> send_http_response(const HTTPResponse& resp);
@@ -81,11 +87,11 @@ struct HTTPClient {
   asio::awaitable<void> send_websocket_message(const std::string& data, uint8_t opcode = 0x01);
 };
 
-template <typename RetT>
+template <typename RetT, typename ClientT>
 class HTTPRouter {
 public:
   struct Args {
-    std::shared_ptr<HTTPClient> client;
+    std::shared_ptr<ClientT> client;
     const HTTPRequest& req;
     std::unordered_map<std::string, std::string> params;
     phosg::JSON post_data;
@@ -117,6 +123,12 @@ public:
 
   using Handler = std::function<asio::awaitable<RetT>(Args&&)>;
 
+  struct Route {
+    HTTPRequest::Method method;
+    std::vector<std::string> path_tokens;
+    Handler handler;
+  };
+
   static std::vector<std::string> split_and_normalize_path(const std::string& path) {
     auto path_tokens = phosg::split(path, '/');
     while (!path_tokens.empty() && path_tokens.back().empty()) {
@@ -130,7 +142,7 @@ public:
         .method = method, .path_tokens = this->split_and_normalize_path(path_pattern), .handler = handler});
   }
 
-  asio::awaitable<RetT> call_handler(std::shared_ptr<HTTPClient> c, const HTTPRequest& req) {
+  asio::awaitable<RetT> call_handler(std::shared_ptr<ClientT> c, const HTTPRequest& req) {
     Args args = {.client = c, .req = req, .params = {}, .post_data = phosg::JSON()};
 
     auto tokens = this->split_and_normalize_path(req.path);
@@ -172,12 +184,11 @@ public:
     throw HTTPError(404, "Request path did not match any route");
   }
 
+  inline const std::vector<Route>& all_routes() const {
+    return this->routes;
+  }
+
 private:
-  struct Route {
-    HTTPRequest::Method method;
-    std::vector<std::string> path_tokens;
-    Handler handler;
-  };
   std::vector<Route> routes;
 };
 
@@ -279,7 +290,7 @@ protected:
 
   [[nodiscard]] virtual std::shared_ptr<ClientT> create_client(
       std::shared_ptr<ServerSocket>, asio::ip::tcp::socket&& client_sock) {
-    return std::make_shared<HTTPClient>(std::move(client_sock));
+    return std::make_shared<ClientT>(std::move(client_sock));
   }
 
   // handle_request must do one of the following three things:

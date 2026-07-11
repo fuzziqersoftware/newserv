@@ -58,6 +58,7 @@ public:
   std::map<int64_t, std::shared_ptr<Lobby>> id_to_lobby;
   std::atomic<int32_t> next_lobby_id = 1;
 
+  std::unordered_map<uint64_t, std::shared_ptr<Client>> client_for_id;
   std::unordered_map<uint32_t, std::shared_ptr<Client>> client_for_account;
 
   std::shared_ptr<IPStackSimulator> ip_stack_simulator;

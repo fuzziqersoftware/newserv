@@ -169,7 +169,7 @@
       [5, 20]
     ]
   ],
-  "DefaultDringRangeTable": [
+  "DefaultGrindRangeTable": [
     [0, 2],
     [0, 3],
     [0, 4],
@@ -177,7 +177,7 @@
     [0, 8],
     [0, 10]
   ],
-  "FavoredDringRangeTable": [
+  "FavoredGrindRangeTable": [
     [0, 1],
     [0, 3],
     [1, 5],
