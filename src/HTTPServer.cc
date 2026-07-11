@@ -767,7 +767,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     }
   });
 
-  this->router.add(HTTPRequest::Method::GET, "/y/data/ep3/com-decks", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/ep3/com-decks", [this](ArgsT&&) -> RetT {
     auto table = this->state->data->ep3_com_deck_index;
     co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(table->json());
@@ -889,13 +889,13 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     });
   });
 
-  this->router.add(HTTPRequest::Method::GET, "/y/data/shop-table/armor", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/shop-table/armor", [this](ArgsT&&) -> RetT {
     auto random_set = this->state->data->armor_random_set;
     co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(random_set->json());
     });
   });
-  this->router.add(HTTPRequest::Method::GET, "/y/data/shop-table/tool", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/shop-table/tool", [this](ArgsT&&) -> RetT {
     auto random_set = this->state->data->tool_random_set;
     co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(random_set->json());
@@ -907,7 +907,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
       return std::make_shared<phosg::JSON>(random_set->json());
     });
   });
-  this->router.add(HTTPRequest::Method::GET, "/y/data/tekker-table", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/tekker-table", [this](ArgsT&&) -> RetT {
     auto tekker_table = this->state->data->tekker_adjustment_set;
     co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(tekker_table->json());
@@ -937,7 +937,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
       return std::make_shared<phosg::JSON>(table->json());
     });
   });
-  this->router.add(HTTPRequest::Method::GET, "/y/data/item-translation-table", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/item-translation-table", [this](ArgsT&&) -> RetT {
     auto table = this->state->data->item_translation_table;
     co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(table->json());
