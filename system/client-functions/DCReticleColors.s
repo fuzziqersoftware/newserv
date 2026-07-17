@@ -77,30 +77,30 @@ start:
 
   .data     <VERS 0x005427A0 0x00542040 0x0053D788 0x0053DE00 0x00545320 0x005427A0 0x00542B40>
   .data     0x00000060
-  .data     0x3F800000
-  .data     0x3F800000
-  .data     0x00000000
-  .data     0x00000000
-  .data     0x3F800000
-  .data     0x3F800000
-  .data     0x00000000
-  .data     0x00000000
-  .data     0x3F800000
-  .data     0x3F800000
-  .data     0x3F800000
-  .data     0x00000000
-  .data     0x3F800000
-  .data     0x00000000
-  .data     0x00000000
-  .data     0x3F800000
-  .data     0x3F800000
-  .data     0x3ECCCCCD
-  .data     0x3DCCCCCD
-  .data     0x3DCCCCCD
-  .data     0x3F800000
-  .data     0x00000000
-  .data     0x00000000
-  .data     0x00000000
+  .data     encode_float(1)
+  .data     encode_float(1)
+  .data     encode_float(0)
+  .data     encode_float(0)
+  .data     encode_float(1)
+  .data     encode_float(1)
+  .data     encode_float(0)
+  .data     encode_float(0)
+  .data     encode_float(1)
+  .data     encode_float(1)
+  .data     encode_float(1)
+  .data     encode_float(0)
+  .data     encode_float(1)
+  .data     encode_float(0)
+  .data     encode_float(0)
+  .data     encode_float(1)
+  .data     encode_float(1)
+  .data     encode_float(0.4)
+  .data     encode_float(0.1)
+  .data     encode_float(0.1)
+  .data     encode_float(1)
+  .data     encode_float(0)
+  .data     encode_float(0)
+  .data     encode_float(0)
 
 
 
