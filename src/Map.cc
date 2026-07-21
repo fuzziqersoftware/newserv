@@ -928,24 +928,23 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
 
     // Boss teleporter. The destination cannot be changed; it always teleports the player to the boss arena for the
     // current area. In Challenge mode, the game uses the current area number to determine the destination floor, but
-    // in other modes, it uses the current episode number and floor number (not area number). Assuming areas haven't
-    // been reassigned from the defaults in non-Challenge mode, the mapping is:
-    //   Challenge (indexed by area number, not floor number):
-    //     Episode 1:
-    //       Pioneer 2, boss arenas, lobby, battle areas => Pioneer 2
-    //       Forest 1 and 2 => Dragon
-    //       Cave 1, 2, and 3 => De Rol Le
-    //       Mine 1 and 2 => Vol Opt
-    //       Ruins 1, 2, and 3 => Dark Falz
-    //     Episode 2:
-    //       Lab, boss arenas, Seaside Night, Tower => Lab
-    //       VR Temple A and B => Barba Ray
-    //       VR Spaceship A and B => Gol Dragon
-    //       Central Control Area (but not Seaside Night) => Gal Gryphon
-    //       Seabed => Olga Flow
-    //     Episode 4:
-    //       Pioneer 2, boss arena => Pioneer 2
-    //       Crater, Desert, test map => Saint-Milion arena
+    // in other modes, it uses the current episode number and floor number (not area number). This means that the lists
+    // below may be incorrect if floor areas have been reassigned in non-Challenge mode. The mapping is:
+    //   Episode 1:
+    //     Pioneer 2, boss arenas, lobby, battle areas => Pioneer 2
+    //     Forest 1 and 2 => Dragon
+    //     Cave 1, 2, and 3 => De Rol Le
+    //     Mine 1 and 2 => Vol Opt
+    //     Ruins 1, 2, and 3 => Dark Falz
+    //   Episode 2:
+    //     Lab, boss arenas, Seaside Night, Tower => Lab
+    //     VR Temple A and B => Barba Ray
+    //     VR Spaceship A and B => Gol Dragon
+    //     Central Control Area (but not Seaside Night) => Gal Gryphon
+    //     Seabed => Olga Flow
+    //   Episode 4:
+    //     Pioneer 2, boss arena => Pioneer 2
+    //     Crater, Desert, test map => Saint-Milion arena
     // Params:
     //   param5 = switch flag number required to activate (>= 0x100 = no switch flag required; ignored if on Pioneer 2)
     // In offline mode, this object constructs TObjWarpBossMulti instead.
