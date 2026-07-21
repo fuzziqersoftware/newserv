@@ -812,9 +812,12 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param5 = damage type (clamped to [0, 5])
     //     00 = direct damage (damage = power / 5)
     //     01 = fire (damage = power * (100 - EFR) / 500)
-    //     02 = cold (damage = power * (100 - EIC) / 500; chance of freezing = ((((power - 250) / 40) + 5) / 40)
-    //       clamped to [0, 0.4], or to [0.2, 0.4] on Ultimate)
-    //     03 = electric (damage = power * (100 - EIC) / 500; chance of shock = 1/15, or 1/40 on Ultimate)
+    //     02 = cold (damage = power * (100 - EIC) / 500)
+    //       chance to freeze enemy = ((((power - 250) / 40) + 5) / 40) clamped to [0, 0.4], or [0.2, 0.4] on Ultimate)
+    //       chance to freeze player = max(0, 0.75 - (EIC / 100))
+    //     03 = electric (damage = power * (100 - ETH) / 500)
+    //       chance to shock enemy = 1/15, or 1/40 on Ultimate
+    //       chance to shock player = max(0, 0.75 - (ETH / 100))
     //     04 = light (damage = power * (100 - ELT) / 500)
     //     05 = dark (instantly kills with chance (power - EDK) / 100; if used in a boss arena and in non-Ultimate
     //       mode, cannot kill)
