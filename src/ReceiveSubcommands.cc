@@ -1975,7 +1975,8 @@ static void on_create_inventory_item_t(std::shared_ptr<Client> c, SubcommandMess
 
     if (l->log.should_log(phosg::LogLevel::L_INFO)) {
       auto name = s->data->describe_item(c->version(), item);
-      l->log.info_f("Player {} created inventory item {:08X} ({}) in inventory of NPC {:02X}; ignoring", c->lobby_client_id, item.id, name, cmd.header.client_id);
+      l->log.info_f("Player {} created inventory item {:08X} ({}) in inventory of NPC {:02X}; ignoring",
+          c->lobby_client_id, item.id, name, cmd.header.client_id);
     }
 
   } else {
