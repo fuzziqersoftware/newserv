@@ -599,6 +599,86 @@ static constexpr uint16_t F_V4 = 0x2000;
 static constexpr uint16_t F_GC = 0x0F00;
 static constexpr uint16_t F_EP3 = 0x0C00;
 
+static constexpr uint64_t A_E1_P2 = (1ULL << 0x00); // 0x0000000000000001
+static constexpr uint64_t A_E1_FOREST_1 = (1ULL << 0x01); //   0x0000000000000002
+static constexpr uint64_t A_E1_FOREST_2 = (1ULL << 0x02); //   0x0000000000000004
+static constexpr uint64_t A_E1_CAVE_1 = (1ULL << 0x03); //   0x0000000000000008
+static constexpr uint64_t A_E1_CAVE_2 = (1ULL << 0x04); //   0x0000000000000010
+static constexpr uint64_t A_E1_CAVE_3 = (1ULL << 0x05); //   0x0000000000000020
+static constexpr uint64_t A_E1_MINE_1 = (1ULL << 0x06); //   0x0000000000000040
+static constexpr uint64_t A_E1_MINE_2 = (1ULL << 0x07); //   0x0000000000000080
+static constexpr uint64_t A_E1_RUINS_1 = (1ULL << 0x08); //   0x0000000000000100
+static constexpr uint64_t A_E1_RUINS_2 = (1ULL << 0x09); //   0x0000000000000200
+static constexpr uint64_t A_E1_RUINS_3 = (1ULL << 0x0A); //   0x0000000000000400
+static constexpr uint64_t A_E1_DRAGON = (1ULL << 0x0B); //  0x0000000000000800
+static constexpr uint64_t A_E1_DE_ROL_LE = (1ULL << 0x0C); //  0x0000000000001000
+static constexpr uint64_t A_E1_VOL_OPT = (1ULL << 0x0D); //   0x0000000000002000
+static constexpr uint64_t A_E1_DARK_FALZ = (1ULL << 0x0E); //   0x0000000000004000
+static constexpr uint64_t A_LOBBY = (1ULL << 0x0F); //   0x0000000000008000
+static constexpr uint64_t A_E1_SPACESHIP = (1ULL << 0x10); //   0x0000000000010000
+static constexpr uint64_t A_E1_PALACE = (1ULL << 0x11); //   0x0000000000020000
+static constexpr uint64_t A_E2_LAB = (1ULL << 0x12); //  0x0000000000040000
+static constexpr uint64_t A_E2_TEMPLE_A = (1ULL << 0x13); // 0x0000000000080000
+static constexpr uint64_t A_E2_TEMPLE_B = (1ULL << 0x14); // 0x0000000000100000
+static constexpr uint64_t A_E2_SPACESHIP_A = (1ULL << 0x15); // 0x0000000000200000
+static constexpr uint64_t A_E2_SPACESHIP_B = (1ULL << 0x16); // 0x0000000000400000
+static constexpr uint64_t A_E2_CCA = (1ULL << 0x17); //  0x0000000000800000
+static constexpr uint64_t A_E2_JUNGLE_N = (1ULL << 0x18); //   0x0000000001000000
+static constexpr uint64_t A_E2_JUNGLE_E = (1ULL << 0x19); //   0x0000000002000000
+static constexpr uint64_t A_E2_MOUNTAIN = (1ULL << 0x1A); //  0x0000000004000000
+static constexpr uint64_t A_E2_SEASIDE = (1ULL << 0x1B); //   0x0000000008000000
+static constexpr uint64_t A_E2_SEABED_U = (1ULL << 0x1C); //   0x0000000010000000
+static constexpr uint64_t A_E2_SEABED_L = (1ULL << 0x1D); //   0x0000000020000000
+static constexpr uint64_t A_E2_GAL_GRYPHON = (1ULL << 0x1E); //   0x0000000040000000
+static constexpr uint64_t A_E2_OLGA_FLOW = (1ULL << 0x1F); //   0x0000000080000000
+static constexpr uint64_t A_E2_BARBA_RAY = (1ULL << 0x20); //   0x0000000100000000
+static constexpr uint64_t A_E2_GOL_DRAGON = (1ULL << 0x21); //   0x0000000200000000
+static constexpr uint64_t A_E2_SEASIDE_NIGHT = (1ULL << 0x22); //  0x0000000400000000
+static constexpr uint64_t A_E2_TOWER = (1ULL << 0x23); //  0x0000000800000000
+static constexpr uint64_t A_E4_CRATER_E = (1ULL << 0x24); //   0x0000001000000000
+static constexpr uint64_t A_E4_CRATER_W = (1ULL << 0x25); //   0x0000002000000000
+static constexpr uint64_t A_E4_CRATER_S = (1ULL << 0x26); //   0x0000004000000000
+static constexpr uint64_t A_E4_CRATER_N = (1ULL << 0x27); //   0x0000008000000000
+static constexpr uint64_t A_E4_CRATER_I = (1ULL << 0x28); //   0x0000010000000000
+static constexpr uint64_t A_E4_DESERT_1 = (1ULL << 0x29); //   0x0000020000000000
+static constexpr uint64_t A_E4_DESERT_2 = (1ULL << 0x2A); //   0x0000040000000000
+static constexpr uint64_t A_E4_DESERT_3 = (1ULL << 0x2B); //   0x0000080000000000
+static constexpr uint64_t A_E4_BOSS = (1ULL << 0x2C); // 0x0000100000000000
+static constexpr uint64_t A_E4_P2 = (1ULL << 0x2D); //   0x0000200000000000
+static constexpr uint64_t A_E4_TEST = (1ULL << 0x2E); // 0x0000400000000000
+
+static constexpr uint64_t A_E3_MORGUE = (1ULL << 0x00);
+static constexpr uint64_t A_E3_BATTLE = (1ULL << 0x01);
+static constexpr uint64_t A_E3_ALL = A_E3_MORGUE | A_E3_BATTLE | A_LOBBY;
+
+static constexpr uint64_t A_ALL = 0x00007FFFFFFFFFFF;
+static constexpr uint64_t A_CITY = A_E1_P2 | A_E2_LAB | A_E4_P2;
+static constexpr uint64_t A_FINAL_BOSS = A_E1_DARK_FALZ | A_E2_OLGA_FLOW | A_E4_BOSS;
+static constexpr uint64_t A_E1_FOREST = A_E1_FOREST_1 | A_E1_FOREST_2;
+static constexpr uint64_t A_E1_CAVE = A_E1_CAVE_1 | A_E1_CAVE_2 | A_E1_CAVE_3;
+static constexpr uint64_t A_E1_MINE = A_E1_MINE_1 | A_E1_MINE_2;
+static constexpr uint64_t A_E1_RUINS = A_E1_RUINS_1 | A_E1_RUINS_2 | A_E1_RUINS_3;
+static constexpr uint64_t A_E1_FREE_PLAY = A_E1_FOREST | A_E1_CAVE | A_E1_MINE | A_E1_RUINS;
+static constexpr uint64_t A_E1_QUEST_ONLY = A_E1_SPACESHIP | A_E1_PALACE;
+static constexpr uint64_t A_E1_NON_BOSS = A_E1_FREE_PLAY | A_E1_QUEST_ONLY;
+static constexpr uint64_t A_E1_BOSS = A_E1_DRAGON | A_E1_DE_ROL_LE | A_E1_VOL_OPT | A_E1_DARK_FALZ;
+static constexpr uint64_t A_E1_NON_CITY = A_E1_NON_BOSS | A_E1_BOSS;
+static constexpr uint64_t A_E2_TEMPLE = A_E2_TEMPLE_A | A_E2_TEMPLE_B;
+static constexpr uint64_t A_E2_SPACESHIP = A_E2_SPACESHIP_A | A_E2_SPACESHIP_B;
+static constexpr uint64_t A_E2_VR = A_E2_TEMPLE | A_E2_SPACESHIP;
+static constexpr uint64_t A_E2_CCA_ALL = A_E2_CCA | A_E2_JUNGLE_N | A_E2_JUNGLE_E | A_E2_MOUNTAIN | A_E2_SEASIDE;
+static constexpr uint64_t A_E2_SEABED = A_E2_SEABED_U | A_E2_SEABED_L;
+static constexpr uint64_t A_E2_FREE_PLAY = A_E2_VR | A_E2_CCA_ALL | A_E2_SEABED;
+static constexpr uint64_t A_E2_QUEST_ONLY = A_E2_SEASIDE_NIGHT | A_E2_TOWER;
+static constexpr uint64_t A_E2_NON_BOSS = A_E2_FREE_PLAY | A_E2_QUEST_ONLY;
+static constexpr uint64_t A_E2_BOSS = A_E2_GAL_GRYPHON | A_E2_OLGA_FLOW | A_E2_BARBA_RAY | A_E2_GOL_DRAGON;
+static constexpr uint64_t A_E2_NON_CITY = A_E2_NON_BOSS | A_E2_BOSS;
+static constexpr uint64_t A_E4_CRATER = A_E4_CRATER_E | A_E4_CRATER_W | A_E4_CRATER_S | A_E4_CRATER_N | A_E4_CRATER_I;
+static constexpr uint64_t A_E4_DESERT = A_E4_DESERT_1 | A_E4_DESERT_2 | A_E4_DESERT_3;
+static constexpr uint64_t A_E4_NON_BOSS = A_E4_CRATER | A_E4_DESERT;
+static constexpr uint64_t A_E4_NON_CITY = A_E4_NON_BOSS | A_E4_BOSS;
+static constexpr uint64_t A_NON_BOSS = A_E1_NON_BOSS | A_E2_NON_BOSS | A_E4_NON_BOSS;
+
 static const std::vector<DATEntityDefinition> dat_object_definitions({
     // This is newserv's canonical list of map object types.
 
@@ -613,8 +693,8 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     0 = use this set when advancing from a lower floor
     //     1 = use this set when returning from a higher floor
     //     any other positive number = set is unused by default, but may be used by TObjAreaWarpQuest
-    {0x0000, F_V0_V4, 0x00007FFFFFFFFFFF, "TObjPlayerSet"},
-    {0x0000, F_EP3, 0x0000000000008001, "TObjPlayerSet"},
+    {0x0000, F_V0_V4, A_ALL, "TObjPlayerSet"},
+    {0x0000, F_EP3, A_E3_MORGUE | A_LOBBY, "TObjPlayerSet"},
 
     // Displays a particle effect. This object is not constructed in split-screen mode. Params:
     //   param1 = particle type (truncated to int, clamped to nonnegative)
@@ -622,20 +702,20 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param4 = if equal to 1, increase draw distance from 200 to 1500; if any other value, no effect
     //   param5 = TODO
     //   param6 = TODO
-    {0x0001, F_V0_V4, 0x00006FFFFFFFFFFF, "TObjParticle"},
-    {0x0001, F_EP3, 0x0000000000008003, "TObjParticle"},
+    {0x0001, F_V0_V4, A_ALL & (~A_E4_BOSS), "TObjParticle"},
+    {0x0001, F_EP3, A_E3_ALL, "TObjParticle"},
 
     // Standard (triangular) cross-floor warp object. Params:
     //   param4 = destination floor
     //   param6 = color (0 = blue, 1 = red); if this is 0 in Challenge mode, the warp is destroyed immediately
-    {0x0002, F_V0_V4, 0x00007FF3C07C78FF, "TObjAreaWarpForest"},
+    {0x0002, F_V0_V4, A_E1_FOREST | A_E1_CAVE | A_E1_MINE | A_E1_BOSS | A_E2_VR | A_E2_BOSS | A_E4_NON_CITY | A_CITY | A_E4_TEST, "TObjAreaWarpForest"},
 
     // Standard (triangular) intra-floor warp object. Params:
     //   param1-3 = destination coordinates (x, y, z); players are supposed to be offset from this location in
     //     different directions depending on their client ID, but there is a bug that causes all players to use the
     //     same offsets: x + 10 and z + 10
     //   param4 = destination angle (about y axis)
-    {0x0003, F_V0_V4, 0x00007FFC3FFF78FF, "TObjMapWarpForest"},
+    {0x0003, F_V0_V4, A_ALL & (~A_E1_RUINS) & (~A_LOBBY) & (~A_E2_BOSS), "TObjMapWarpForest"},
 
     // Light collision. Params:
     //   param1 = TODO (in range 0-10000; if above 10000, (param1 - 10000) is used and a flag is set)
@@ -644,12 +724,12 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param4 = TODO
     //   param5 = TODO
     //   param6 = TODO
-    {0x0004, F_V0_V4, 0x00006FFC3FFF87FF, "TObjLight"},
-    {0x0004, F_EP3, 0x0000000000008003, "TObjLight"},
+    {0x0004, F_V0_V4, A_LOBBY | A_NON_BOSS | A_CITY | A_E4_TEST, "TObjLight"},
+    {0x0004, F_EP3, A_E3_ALL, "TObjLight"},
 
     // Arbitrary item. The parameters specify the item data; see ItemCreator::base_item_for_specialized_box for how the
     // encoding works.
-    {0x0005, F_V0_V2, 0x000000000000073F, "TItem"},
+    {0x0005, F_V0_V2, A_E1_P2 | A_E1_FOREST | A_E1_CAVE | A_E1_RUINS, "TItem"},
 
     // Environmental sound. This object is not constructed in offline multi mode. Params:
     //   param3 = audibility radius (if <= 0 uses default of 200)
@@ -765,9 +845,9 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //       0F = TODO (BB: 000006BD)
     //       10 = TODO (BB: 000006BE)
     //   param5 = volume (in range -0x7F to 0x7F)
-    {0x0006, F_V0_V2, 0x0000000000037FFF, "TObjEnvSound"},
-    {0x0006, F_V3_V4, 0x00006FF0BFFF27FF, "TObjEnvSound"},
-    {0x0006, F_EP3, 0x0000000000000001, "TObjEnvSound"},
+    {0x0006, F_V0_V2, A_E1_P2 | A_E1_NON_CITY, "TObjEnvSound"},
+    {0x0006, F_V3_V4, A_E1_VOL_OPT | A_E1_NON_BOSS | A_E2_FREE_PLAY | A_E2_OLGA_FLOW | A_E4_NON_BOSS | A_CITY | A_E4_TEST, "TObjEnvSound"},
+    {0x0006, F_EP3, A_E3_MORGUE, "TObjEnvSound"},
 
     // Fog collision object. Params:
     //   param1 = radius
@@ -775,8 +855,8 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     game subtracts 0x1000 from it, but only after comparing it to the current fog number; this can be used to
     //     override a later fog with an earlier fog)
     //   param5 = transition type (0 = fade in, 1 = instantly switch)
-    {0x0007, F_V0_V4, 0x00006FFFFFFF7FFF, "TObjFogCollision"},
-    {0x0007, F_EP3, 0x0000000000000001, "TObjFogCollision"},
+    {0x0007, F_V0_V4, A_ALL & (~A_LOBBY) & (~A_E4_BOSS), "TObjFogCollision"},
+    {0x0007, F_EP3, A_E3_MORGUE, "TObjFogCollision"},
 
     // Event collision object. This object triggers a wave event (W-XXX) when any local player (in split-screen play,
     // there may be multiple) steps within its radius. The object is inactive for 3 frames after it is constructed, and
@@ -786,15 +866,15 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     // player. Params:
     //   param1 = radius
     //   param4 = event ID
-    {0x0008, F_V0_V4, 0x00007FFFFFFF7FFF, "TObjEvtCollision"},
-    {0x0008, F_EP3, 0x0000000000000001, "TObjEvtCollision"},
+    {0x0008, F_V0_V4, A_ALL & (~A_LOBBY), "TObjEvtCollision"},
+    {0x0008, F_EP3, A_E3_MORGUE, "TObjEvtCollision"},
 
     // TODO: Describe this object. Params:
     //   param1 = TODO
     //   param2 = TODO
     //   param3 = TODO (it only matters whether this is negative or not)
-    {0x0009, F_V0_V4, 0x000060000004073F, "TObjCollision"},
-    {0x0009, F_EP3, 0x0000000000000001, "TObjCollision"},
+    {0x0009, F_V0_V4, A_E1_FOREST | A_E1_CAVE | A_E1_RUINS | A_CITY | A_E4_TEST, "TObjCollision"},
+    {0x0009, F_EP3, A_E3_MORGUE, "TObjCollision"},
 
     // Elemental trap. Params:
     //   param1 = trigger radius delta (actual radius is param1 / 2 + 30)
@@ -822,7 +902,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     05 = dark (instantly kills with chance (power - EDK) / 100; if used in a boss arena and in non-Ultimate
     //       mode, cannot kill)
     //   param6 = number of frames between trigger and explosion
-    {0x000A, F_V0_V4, 0x00005FFC3FFB07FE, "TOMineIcon01"},
+    {0x000A, F_V0_V4, A_NON_BOSS | A_E4_BOSS | A_E4_TEST, "TOMineIcon01"},
 
     // Status trap. Params:
     //   param1 = trigger radius delta (actual radius is param1 / 2 + 30)
@@ -835,7 +915,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     11 = slow
     //     12 = confuse
     //   param6 = number of frames between trigger and explosion
-    {0x000B, F_V0_V4, 0x00005FFC3FFB07FE, "TOMineIcon02"},
+    {0x000B, F_V0_V4, A_NON_BOSS | A_E4_BOSS | A_E4_TEST, "TOMineIcon02"},
 
     // Heal trap. Params:
     //   param1 = trigger radius delta (actual radius is param1 / 2 + 30)
@@ -848,7 +928,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     08 = does nothing? (TODO: calls player->vtable[0x40], but that function does nothing on v3. Did this do
     //       something in v1 or v2?)
     //   param6 = number of frames between trigger and explosion
-    {0x000C, F_V0_V4, 0x00005FFC3FFB07FE, "TOMineIcon03"},
+    {0x000C, F_V0_V4, A_NON_BOSS | A_E4_BOSS | A_E4_TEST, "TOMineIcon03"},
 
     // Large elemental trap. Params:
     //   param1 = trigger radius delta (actual radius is param1 / 2 + 60)
@@ -857,7 +937,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param4 = trap power (same as in TOMineIcon01)
     //   param5 = trap type (same as in TOMineIcon01)
     //   param6 = number of frames between trigger and explosion
-    {0x000D, F_V0_V4, 0x00005FFC3FFB07FE, "TOMineIcon04"},
+    {0x000D, F_V0_V4, A_NON_BOSS | A_E4_BOSS | A_E4_TEST, "TOMineIcon04"},
 
     // Room ID. This object sets each player's room ID to one of two different values when they're within the effective
     // radius. Params:
@@ -871,28 +951,28 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     player's room_id field is set, and player flag 0x02000000 is set on the player; if not equal to 0x00010000,
     //     then both room_id and room_id_in_custom_area (if in a non-rearrangeable area, like Pioneer 2 or Forest) are
     //     set and no game flag is set (TODO: What are the visible behavior differences due to this parameter?)
-    {0x000E, F_V0_V4, 0x00005FFFFFF83FFE, "TObjRoomId"},
+    {0x000E, F_V0_V4, A_ALL & (~A_E1_DARK_FALZ) & (~A_LOBBY) & (~A_E1_QUEST_ONLY) & (~A_CITY), "TObjRoomId"},
 
     // Sensor of some kind (TODO). Params:
     //   param1 = activation radius delta (actual radius = param1 + 50)
     //   param4 = switch flag number
     //   param5 = update mode switch (TODO; param5 < 0 sets update_mode = PERMANENTLY_ON, otherwise TEMPORARY; see
     //     TOSensor_vF)
-    {0x000F, F_V0_V4, 0x00004000000000F6, "TOSensorGeneral01"},
+    {0x000F, F_V0_V4, A_E1_FOREST | A_E1_CAVE_2 | A_E1_CAVE_3 | A_E1_MINE | A_E4_TEST, "TOSensorGeneral01"},
 
     // Lens flare effect. This object is not constructed in offline multi mode. Params:
     //   param1 = visibility radius (if negative, visible everywhere)
-    {0x0011, F_V0_V4, 0x000040000000411E, "TEF_LensFlare"},
+    {0x0011, F_V0_V4, A_E1_FOREST | A_E1_CAVE_1 | A_E1_CAVE_2 | A_E1_RUINS_1 | A_E1_DARK_FALZ | A_E4_TEST, "TEF_LensFlare"},
 
     // Quest script trigger. Starts a quest thread at a specific label when the local player is nearby. Params:
     //   param1 = radius
     //   param4 = label number to call when local player is within radius
-    {0x0012, F_V0_V4, 0x00006FFFFFFC7FFF, "TObjQuestCol"},
-    {0x0012, F_EP3, 0x0000000000000001, "TObjQuestCol"},
+    {0x0012, F_V0_V4, A_ALL & (~A_LOBBY) & (~A_E1_QUEST_ONLY) & (~A_E4_BOSS), "TObjQuestCol"},
+    {0x0012, F_EP3, A_E3_MORGUE, "TObjQuestCol"},
 
     // Healing ring. Removes all negative status conditions and adds 9 HP and 9 TP per frame until max HP/TP are both
     // reached or the player leaves the radius. The radius is a fixed size.
-    {0x0013, F_V0_V4, 0x00004FFC3FF807FE, "TOHealGeneral"},
+    {0x0013, F_V0_V4, A_E1_FREE_PLAY | A_E2_NON_BOSS | A_E4_NON_BOSS | A_E4_TEST, "TOHealGeneral"},
 
     // Invisible map collision. Params:
     //   param1-3 = box dimensions (x, y, z; rotated by angle fields)
@@ -905,29 +985,29 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     05 = undefined behavior due to missing bounds check
     //     anything else = same as 01
     //   param5 = flags (bit field; used if param4 = 0) (TODO: describe bits)
-    {0x0014, F_V0_V4, 0x0000600C3F87073F, "TObjMapCsn"},
-    {0x0014, F_EP3, 0x0000000000000001, "TObjMapCsn"},
+    {0x0014, F_V0_V4, A_ALL & (~A_E1_MINE) & (~A_E1_BOSS) & (~A_LOBBY) & (~A_E2_VR) & (~A_E2_BOSS) & (~A_E4_NON_CITY), "TObjMapCsn"},
+    {0x0014, F_EP3, A_E3_MORGUE, "TObjMapCsn"},
 
     // Like TObjQuestCol, but requires the player to press a controller button to trigger the call. Parameters are the
     // same as for TObjQuestCol.
-    {0x0015, F_V0_V4, 0x00006FFFFFFC7FFF, "TObjQuestColA"},
-    {0x0015, F_EP3, 0x0000000000000001, "TObjQuestColA"},
+    {0x0015, F_V0_V4, A_ALL & (~A_LOBBY) & (~A_E1_QUEST_ONLY) & (~A_E4_BOSS), "TObjQuestColA"},
+    {0x0015, F_EP3, A_E3_MORGUE, "TObjQuestColA"},
 
     // TODO: Describe this object. Params:
     //   param1 = radius (if negative, 30 is used)
-    {0x0016, F_V0_V4, 0x00006FFFFFFCFFFF, "TObjItemLight"},
-    {0x0016, F_EP3, 0x0000000000008001, "TObjItemLight"},
+    {0x0016, F_V0_V4, A_ALL & (~A_E1_QUEST_ONLY) & (~A_E4_BOSS), "TObjItemLight"},
+    {0x0016, F_EP3, A_E3_MORGUE | A_LOBBY, "TObjItemLight"},
 
     // Radar collision. Params:
     //   param1 = radius
     //   param4 = minimap segment ID
-    {0x0017, F_V0_V4, 0x00004FFFFFF8FFFE, "TObjRaderCol"},
-    {0x0017, F_EP3, 0x0000000000008000, "TObjRaderCol"},
+    {0x0017, F_V0_V4, A_ALL & (~A_E1_QUEST_ONLY) & (~A_E4_BOSS) & (~A_CITY), "TObjRaderCol"},
+    {0x0017, F_EP3, A_LOBBY, "TObjRaderCol"},
 
     // Fog collision. Same params as 0x0007 (TObjFogCollision), but also:
     //   param3 = if >= 1, fog is on when switch flag is on; otherwise, fog is on when switch flag is off
     //   param6 = switch flag number
-    {0x0018, F_V0_V4, 0x00004FFFFFF87FFE, "TObjFogCollisionSwitch"},
+    {0x0018, F_V0_V4, A_ALL & (~A_LOBBY) & (~A_E1_QUEST_ONLY) & (~A_E4_BOSS) & (~A_CITY), "TObjFogCollisionSwitch"},
 
     // Boss teleporter. The destination cannot be changed; it always teleports the player to the boss arena for the
     // current area. In Challenge mode, the game uses the current area number to determine the destination floor, but
@@ -951,15 +1031,15 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     // Params:
     //   param5 = switch flag number required to activate (>= 0x100 = no switch flag required; ignored if on Pioneer 2)
     // In offline mode, this object constructs TObjWarpBossMulti instead.
-    {0x0019, F_V0_V4, 0x00006FFC3FFC04A5, "TObjWarpBoss"},
+    {0x0019, F_V0_V4, A_E1_FOREST_2 | A_E1_CAVE_3 | A_E1_MINE_2 | A_E1_RUINS_3 | A_E2_NON_BOSS | A_E4_NON_BOSS | A_CITY | A_E4_TEST, "TObjWarpBoss"},
 
     // Sign board. This shows the loaded image from a quest (via load_pvr). On the final version of PCv2, this object
     // doesn't render at all; my guess is that Sega hardcoded the PVR filenames for the various events in the
     // executable, then after those events ended, they just deleted the load_pvr code entirely, leaving this object
     // nonfunctional. Params:
     //   param1-3 = scale factors (x, y, z)
-    {0x001A, F_V1_V4, 0x0000600000040001, "TObjSinBoard"},
-    {0x001A, F_EP3, 0x0000000000000001, "TObjSinBoard"},
+    {0x001A, F_V1_V4, A_CITY, "TObjSinBoard"},
+    {0x001A, F_EP3, A_E3_MORGUE, "TObjSinBoard"},
 
     // Quest floor warp. This appears similar to TObjAreaWarpForest except that the object is not destroyed immediately
     // if it's blue and the game is Challenge mode. Params:
@@ -968,11 +1048,11 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     see TObjPlayerSet for details)
     //   param4 = destination floor
     //   param6 = color (0 = blue, 1 = red)
-    {0x001B, F_V1_V4, 0x00005000000078FE, "TObjAreaWarpQuest"},
+    {0x001B, F_V1_V4, A_E1_FOREST | A_E1_CAVE | A_E1_MINE | A_E1_BOSS | A_E4_BOSS | A_E4_TEST, "TObjAreaWarpQuest"},
 
     // Ending movie warp (used in final boss arenas after the boss is defeated). Params:
     //   param6 = color (0 = blue, 1 = red)
-    {0x001C, F_V1_V4, 0x0000500080004000, "TObjAreaWarpEnding"},
+    {0x001C, F_V1_V4, A_FINAL_BOSS | A_E4_TEST, "TObjAreaWarpEnding"},
 
     // Star light effect. This object renders from -100 to 740 over x and -100 to 580 over y. Params:
     //   param1 = TODO
@@ -981,14 +1061,14 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param4 = TODO (1 byte only)
     //   param5 = TODO (1 byte only)
     //   param6 = TODO (1 byte only)
-    {0x001D, F_V2_V4, 0x0000400000000002, "TEffStarLight2D_Base"},
+    {0x001D, F_V2_V4, A_E1_FOREST_1 | A_E4_TEST, "TEffStarLight2D_Base"},
 
     // VR Temple Beta / Barba Ray lens flare effect. This object renders from -10 to 650 over x and -10 to 490 over y.
-    {0x001E, F_V2_V4, 0x000041F1001A0006, "__LENS_FLARE__"},
+    {0x001E, F_V2_V4, A_E1_FOREST | A_E1_PALACE | A_E2_TEMPLE | A_E2_BARBA_RAY | A_E4_CRATER | A_E4_TEST, "__LENS_FLARE__"},
 
     // Hides the area map when the player is near this object. Params:
     //   param1 = radius
-    {0x001F, F_V2_V4, 0x00004FFC3FFB07FE, "TObjRaderHideCol"},
+    {0x001F, F_V2_V4, A_NON_BOSS | A_E4_TEST, "TObjRaderHideCol"},
 
     // Item-detecting floor switch. Params:
     //   param1 = radius
@@ -1004,17 +1084,18 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     7 = meseta
     //   param6 = item amount required minus 1 (0 = 1 item, 1 = 2 items, etc.); for tools and meseta, each dropped item
     //     counts for its stack size
-    {0x0020, F_V2_V4, 0x00006FFC3FFF07FF, "TOSwitchItem"},
+    {0x0020, F_V2_V4, A_NON_BOSS | A_CITY | A_E4_TEST, "TOSwitchItem"},
 
     // Symbol chat collision object. This object triggers symbol chats when the players are nearby and certain switch
-    // flags are NOT set. If a player is within the radius, the object checks the switch flags in reverse order, and
-    // triggers the symbol chat for the latest one that is NOT set. So, the logic is:
-    // - If all 3 switch flags are not set, the symbol chat in spec1 is used
-    // - If the switch flag in spec1 is set and those in spec2 and spec3 are not set, the symbol chat in spec2 is used
-    // - If the switch flag in spec2 is set and the flag in spec3 is not set, the symbol chat in spec3 is used
-    //   regardless of whether the switch flags in spec1 is set
-    // - If the switch flags in spec3 is set, no symbol chat appears at all regardless of the values of the other two
+    // flags are set. If a player is within the radius, the object checks the switch flags in reverse order, and
+    // triggers the symbol chat for the latest one (in that order) which is set. So, the logic is:
+    // - If the switch flag in spec3 is set, no symbol chat appears at all regardless of the values of the other two
     //   switch flags
+    // - If the switch flag in spec3 is not set and the flag in spec2 is set, the symbol chat in spec3 is used
+    //   regardless of whether the switch flag in spec1 is set
+    // - If the switch flags in spec2 and spec3 are not set and the switch flag in spec1 is set, the symbol chat in
+    //   spec2 is used
+    // - If all 3 switch flags are not set, the symbol chat in spec1 is used
     // Each spec is a 32-bit integer consisting of two 16-bit fields. The high 16 bits are a switch flag number
     // (0-255), and the low 16 bits are an entry index from symbolchatcolli.prs. The entry index is ignored if the
     // corresponding data label from the F8A6 quest opcode is not null (and the data from the label is used instead).
@@ -1051,14 +1132,20 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param6 = spec3
     // This object can also be created by the quest opcode F8A6; see the description of that opcode in QuestScript.cc
     // for more information.
-    {0x0021, F_V2_V4, 0x00006FFC3FFF07FF, "TOSymbolchatColli"},
+    // Note that although this object is available in all episodes, the presets file (symbolchatcolli.prs) is only
+    // loaded in the following areas:
+    // - All Episode 1 areas except boss arenas and the lobby
+    // - Lab in Episode 2
+    // - The Saint-Milion arena and the test area in Episode 4
+    // Using this object in other areas in Episode 2 or Episode 4 will crash.
+    {0x0021, F_V2_V4, A_NON_BOSS | A_CITY | A_E4_TEST, "TOSymbolchatColli"},
 
     // Invisible collision switch. Params:
     //   param1 = radius delta (actual radius is param1 + 10)
     //   param4 = switch flag number
     //   param5 = sticky flag (if negative, switch flag is unset when player leaves; if zero or positive, switch flag
     //     remains on)
-    {0x0022, F_V2_V4, 0x00004FFC3FFB07FE, "TOKeyCol"},
+    {0x0022, F_V2_V4, A_NON_BOSS | A_E4_TEST, "TOKeyCol"},
 
     // Attackable collision. Params:
     //   param1 = enable switch flag (the object is only attackable if this switch flag is enabled); any value > 0xFF
@@ -1069,7 +1156,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param5 = object number (if outside the range [100, 999], uses the free play script when looking up param6
     //     instead of the quest)
     //   param6 = quest label to call when all required hits are taken (if zero, switch flag in param3 is set instead)
-    {0x0023, F_V2_V4, 0x00004FFC3FFB07FE, "TOAttackableCol"},
+    {0x0023, F_V2_V4, A_NON_BOSS | A_E4_TEST, "TOAttackableCol"},
 
     // Damage effect. Params:
     //   angle.x = effect type (in range [0x00, 0x14]; the following were tested in Forest 1 and may have different
@@ -1106,7 +1193,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param5 = disable switch flag number (effect is off if this flag is set, even if the enable switch flag is also
     //     set), or >= 0x100 if this functionality isn't needed
     //   param6 = persistence flag (if nonzero, effect stays on once enabled)
-    {0x0024, F_V2_V4, 0x0000600FFF9F07FF, "TOSwitchAttack"},
+    {0x0024, F_V2_V4, A_ALL & (~A_E1_BOSS) & (~A_LOBBY) & (~A_E2_SPACESHIP) & (~A_E4_NON_CITY), "TOSwitchAttack"},
 
     // Switch flag timer. This object watches for a switch flag to be activated, then once it is, waits for a specified
     // time, then disables that switch flag or activates up to three other switch flags. Note that this object just
@@ -1121,7 +1208,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     angle.x != 0) in high 16 bits (>= 0x100 if not needed)
     //   param5 = switch flag 2 to activate when timer expires (if angle.x != 0) in high 16 bits (>= 0x100 if none)
     //   param6 = switch flag 3 to activate when timer expires (if angle.x != 0) in high 16 bits (>= 0x100 if none)
-    {0x0025, F_V2_V4, 0x00006FFC3FFF07FF, "TOSwitchTimer"},
+    {0x0025, F_V2_V4, A_NON_BOSS | A_CITY | A_E4_TEST, "TOSwitchTimer"},
 
     // Chat sensor. This object watches for chat messages said by players within its radius, optionally filtering for
     // specific words. When a message matches, it either activates a switch flag or calls a quest function. When
@@ -1139,7 +1226,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     1 = "YES"
     //     2 = "COOL"
     //     3 = "NO"
-    {0x0026, F_V2_V4, 0x00006FFC3FFF07FF, "TOChatSensor"},
+    {0x0026, F_V2_V4, A_NON_BOSS | A_CITY | A_E4_TEST, "TOChatSensor"},
 
     // Radar map icon. Shows an icon on the map that is optionally locked or unlocked, depending on the values of one
     // or more sequential switch flags. The icon is considered unlocked if all of the specified switch flags are set.
@@ -1152,7 +1239,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     zero or negative = ignore param5; always render in the color specified by param6
     //   param5 = switch flag spec; high 16 bits are number of switch flags, low 16 bits are first switch flag number
     //   param6 = color as ARGB8888
-    {0x0027, F_V3_V4, 0x00004FFFFFFC0000, "TObjRaderIcon"},
+    {0x0027, F_V3_V4, A_E2_LAB | A_E2_NON_CITY | A_E4_NON_BOSS | A_E4_TEST, "TObjRaderIcon"},
 
     // Environmental sound. This object is not constructed in offline multi mode. This is essentially identical to
     // TObjEnvSound, except the sound fades in and out instead of abruptly starting or stopping when entering or
@@ -1161,15 +1248,15 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param3 = audibility radius (same as for TObjEnvSound)
     //   param4 = sound ID (same as for TObjEnvSound)
     //   param5 = volume (same as for TObjEnvSound)
-    {0x0028, F_V3_V4, 0x00006FFCBFFF27F7, "TObjEnvSoundEx"},
-    {0x0028, F_EP3, 0x0000000000000001, "TObjEnvSoundEx"},
+    {0x0028, F_V3_V4, A_ALL & (~A_E1_CAVE_1) & (~A_E1_DRAGON) & (~A_E1_DE_ROL_LE) & (~A_E1_DARK_FALZ) & (~A_LOBBY) & (~A_E2_GAL_GRYPHON) & (~A_E2_BARBA_RAY) & (~A_E2_GOL_DRAGON) & (~A_E4_BOSS), "TObjEnvSoundEx"},
+    {0x0028, F_EP3, A_E3_MORGUE, "TObjEnvSoundEx"},
 
     // Environmental sound. This object is not constructed in offline multi mode. This is essentially identical to
     // TObjEnvSound, except there is no radius: the sound is audible everywhere. Params:
     //   param4 = sound ID (same as for TObjEnvSound)
     //   param5 = volume (same as for TObjEnvSound)
-    {0x0029, F_V3_V4, 0x00006FFCBFFF27F7, "TObjEnvSoundGlobal"},
-    {0x0029, F_EP3, 0x0000000000000001, "TObjEnvSoundGlobal"},
+    {0x0029, F_V3_V4, A_ALL & (~A_E1_CAVE_1) & (~A_E1_DRAGON) & (~A_E1_DE_ROL_LE) & (~A_E1_DARK_FALZ) & (~A_LOBBY) & (~A_E2_GAL_GRYPHON) & (~A_E2_BARBA_RAY) & (~A_E2_GOL_DRAGON) & (~A_E4_BOSS), "TObjEnvSoundGlobal"},
+    {0x0029, F_EP3, A_E3_MORGUE, "TObjEnvSoundGlobal"},
 
     // Counter sequence activator. Used for Hunter's Guild, shops, bank, etc. Params:
     //   param4 = shop sequence number:
@@ -1198,13 +1285,13 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //       0B = auction counter
     //       0C = hidden entry counter
     //       0D = Pinz's Shop
-    {0x0040, F_V0_V4, 0x0000600000040001, "TShopGenerator"},
-    {0x0040, F_EP3, 0x0000000000000001, "TShopGenerator"},
+    {0x0040, F_V0_V4, A_CITY, "TShopGenerator"},
+    {0x0040, F_EP3, A_E3_MORGUE, "TShopGenerator"},
 
     // Telepipe city location. Params:
     //   param4 = owner client ID (0-3)
-    {0x0041, F_V0_V4, 0x0000600000040001, "TObjLuker"},
-    {0x0041, F_EP3, 0x0000000000000001, "TObjLuker"},
+    {0x0041, F_V0_V4, A_CITY, "TObjLuker"},
+    {0x0041, F_EP3, A_E3_MORGUE, "TObjLuker"},
 
     // BGM collision. Changes the background music when the player enters the object's radius. Params:
     //   param1 = radius
@@ -1216,8 +1303,8 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     04 = city.adx
     //     05 = labo.adx
     //     anything else = value is taken modulo 6 and used as above
-    {0x0042, F_V0_V4, 0x0000600000040001, "TObjBgmCol"},
-    {0x0042, F_EP3, 0x0000000000000001, "TObjBgmCol"},
+    {0x0042, F_V0_V4, A_CITY, "TObjBgmCol"},
+    {0x0042, F_EP3, A_E3_MORGUE, "TObjBgmCol"},
 
     // Main warp to other floors from Pioneer 2. Certain floors are available by default, determined by checking the
     // game's mode and quest flags. A different set of flags is checked on BB than on other versions, presumably since
@@ -1246,12 +1333,12 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     00 = All levels
     //     01 = Ep2 VR Temple / VR Spaceship (CCA and Seabed not available)
     //     02 = Ep2 CCA (VR Temple and Spaceship not available)
-    {0x0043, F_V0_V4, 0x0000600000040001, "TObjCityMainWarp"},
+    {0x0043, F_V0_V4, A_CITY, "TObjCityMainWarp"},
 
     // Lobby teleporter. When used, this object immediately ends the current game and sends the player back to the
     // lobby. If constructed offline, this object will do nothing and not render. This object takes no parameters.
-    {0x0044, F_V0_V4, 0x0000600000040001, "TObjCityAreaWarp"},
-    {0x0044, F_EP3, 0x0000000000000001, "TObjCityAreaWarp"},
+    {0x0044, F_V0_V4, A_CITY, "TObjCityAreaWarp"},
+    {0x0044, F_EP3, A_E3_MORGUE, "TObjCityAreaWarp"},
 
     // Warp to another location on the same map. Used for the Principal's office warp. This warp is visible in all game
     // modes, but cannot be used in Battle or Challenge mode. Params:
@@ -1262,27 +1349,27 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     00 = "The Principal"
     //     01 = "Pioneer 2"
     //     02 = "Lab"
-    {0x0045, F_V0_V4, 0x0000600000040001, "TObjCityMapWarp"},
+    {0x0045, F_V0_V4, A_CITY, "TObjCityMapWarp"},
 
     // City doors. None of these take any parameters.
-    {0x0046, F_V0_V4, 0x0000600000000001, "TObjCityDoor_Shop"}, // Door to shop area
-    {0x0047, F_V0_V4, 0x0000600000000001, "TObjCityDoor_Guild"}, // Door to Hunter's Guild
-    {0x0048, F_V0_V4, 0x0000600000000001, "TObjCityDoor_Warp"}, // Door to Ragol warp
-    {0x0049, F_V0_V4, 0x0000600000000001, "TObjCityDoor_Med"}, // Door to Medical Center
+    {0x0046, F_V0_V4, A_E1_P2 | A_E4_P2 | A_E4_TEST, "TObjCityDoor_Shop"}, // Door to shop area
+    {0x0047, F_V0_V4, A_E1_P2 | A_E4_P2 | A_E4_TEST, "TObjCityDoor_Guild"}, // Door to Hunter's Guild
+    {0x0048, F_V0_V4, A_E1_P2 | A_E4_P2 | A_E4_TEST, "TObjCityDoor_Warp"}, // Door to Ragol warp
+    {0x0049, F_V0_V4, A_E1_P2 | A_E4_P2 | A_E4_TEST, "TObjCityDoor_Med"}, // Door to Medical Center
 
     // Elevator visible in Pioneer 2. There appear to be no parameters.
-    {0x004A, F_V0_V4, 0x0000600000000001, "__ELEVATOR__"},
+    {0x004A, F_V0_V4, A_E1_P2 | A_E4_P2 | A_E4_TEST, "__ELEVATOR__"},
 
     // Holiday event decorations. There appear to be no parameters, except TObjCity_Season_SonicAdv2, which takes
     // param4 = model index (clamped to [0, 3]).
-    {0x004B, F_V0_V4, 0x0000600000040001, "TObjCity_Season_EasterEgg"},
-    {0x004C, F_V0_V4, 0x0000600000040001, "TObjCity_Season_ValentineHeart"},
-    {0x004D, F_V0_V4, 0x0000600000040001, "TObjCity_Season_XmasTree"},
-    {0x004E, F_V0_V4, 0x0000600000040001, "TObjCity_Season_XmasWreath"},
-    {0x004F, F_V0_V4, 0x0000600000040001, "TObjCity_Season_HalloweenPumpkin"},
-    {0x0050, F_V0_V4, 0x0000600000040001, "TObjCity_Season_21_21"},
-    {0x0051, F_V0_V4, 0x0000600000040001, "TObjCity_Season_SonicAdv2"},
-    {0x0052, F_V0_V4, 0x0000600000040001, "TObjCity_Season_Board"},
+    {0x004B, F_V0_V4, A_CITY, "TObjCity_Season_EasterEgg"},
+    {0x004C, F_V0_V4, A_CITY, "TObjCity_Season_ValentineHeart"},
+    {0x004D, F_V0_V4, A_CITY, "TObjCity_Season_XmasTree"},
+    {0x004E, F_V0_V4, A_CITY, "TObjCity_Season_XmasWreath"},
+    {0x004F, F_V0_V4, A_CITY, "TObjCity_Season_HalloweenPumpkin"},
+    {0x0050, F_V0_V4, A_CITY, "TObjCity_Season_21_21"},
+    {0x0051, F_V0_V4, A_CITY, "TObjCity_Season_SonicAdv2"},
+    {0x0052, F_V0_V4, A_CITY, "TObjCity_Season_Board"},
 
     // Fireworks effect. Params:
     //   param1 = area width
@@ -1290,10 +1377,10 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param3 = area depth
     //   param4 = launch frequency (when a firework is launched, the game generates a random number r in range [0,
     //     0x7FFF] and waits ((param4 + 60) * (r / 0x8000) * 3.0)) frames before launching the next firework)
-    {0x0053, F_V0_V4, 0x0000600400040001, "TObjCity_Season_FireWorkCtrl"},
+    {0x0053, F_V0_V4, A_E2_SEASIDE_NIGHT | A_CITY | A_E4_TEST, "TObjCity_Season_FireWorkCtrl"},
 
     // Door that blocks the lobby teleporter in offline mode. There appear to be no parameters.
-    {0x0054, F_V0_V4, 0x0000600000000001, "TObjCityDoor_Lobby"},
+    {0x0054, F_V0_V4, A_E1_P2 | A_E4_P2 | A_E4_TEST, "TObjCityDoor_Lobby"},
 
     // Version of the main warp for Challenge mode. This object looks like the main Ragol warp on Pioneer 2, but
     // behaves similarly to boss teleporters: it shows the player a Yes/No confirmation menu and sends 6x6A to
@@ -1302,7 +1389,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     // its dest_floor with the floor specified in the last set_mainwarp quest opcode. Params:
     //   param4 = destination floor
     //   param5 = switch flag number
-    {0x0055, F_V2_V4, 0x0000600000040001, "TObjCityMainWarpChallenge"},
+    {0x0055, F_V2_V4, A_CITY, "TObjCityMainWarpChallenge"},
 
     // Episode 2 Lab door. Params:
     //   param4 = switch flag number and activation mode:
@@ -1315,31 +1402,31 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     may be activated sequentially instead (in offline solo mode, this is ignored and the sequential behavior is
     //     always used); this is somewhat obviated for this door type since it can have only one switch flag, but other
     //     door types may have multiple, for which this is relevant
-    {0x0056, F_V3_V4, 0x0000400000040000, "TODoorLabo"},
+    {0x0056, F_V3_V4, A_E2_LAB | A_E4_TEST, "TODoorLabo"},
 
     // Enables the Trade Window when the player is near this object. Both players must be near a TObjTradeCollision
     // object (not necessarily the same one) to be able to use the Trade Window with each other. Params:
     //   param1 = radius
-    {0x0057, F_V3_V4, 0x0000600000040001, "TObjTradeCollision"},
-    {0x0057, F_EP3, 0x0000000000000001, "TObjTradeCollision"},
+    {0x0057, F_V3_V4, A_CITY, "TObjTradeCollision"},
+    {0x0057, F_EP3, A_E3_MORGUE, "TObjTradeCollision"},
 
     // This object appears to be unused in both Ep3 NTE and the final release. It may have been an early version of
     // Deck Edit or Entry Counter sequence, perhaps responsible for setting the players' statuses when they're near
     // either of those counters. Params:
     //   param1 = radius
-    {0x0058, F_EP3, 0x0000000000000001, "TObjDeckCollision"},
+    {0x0058, F_EP3, A_E3_MORGUE, "TObjDeckCollision"},
 
     // Forest door. Params:
     //   param1-3 = x, y, z coordinates for unlock "cutscene" (see param6)
     //   param4 = switch flag number (low byte) and number to appear on door (second-lowest byte, modulo 10)
     //   param6 = if set to 1, enables unlock "cutscene" - when the door is unlocked, the camera will snap to the
     //     coordinates in param1-3, pointing toward the door, for 2 seconds
-    {0x0080, F_V0_V4, 0x0000400000000006, "TObjDoor"},
+    {0x0080, F_V0_V4, A_E1_FOREST | A_E4_TEST, "TObjDoor"},
 
     // Forest switch. Params:
     //   param4 = switch flag number
     //   param6 = color (clamped to range [0, 9])
-    {0x0081, F_V0_V4, 0x00004FF00078003E, "TObjDoorKey"},
+    {0x0081, F_V0_V4, A_E1_FOREST | A_E1_CAVE | A_E2_VR | A_E4_NON_BOSS | A_E4_TEST, "TObjDoorKey"},
 
     // Laser fence and square laser fence. Params:
     //   param1 = color:
@@ -1349,27 +1436,27 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     >=3 = magenta
     //   param4 = switch flag number
     //   param6 = model (even value = short, odd value = long)
-    {0x0082, F_V0_V4, 0x00004FF0000300FE, "TObjLazerFenceNorm"},
-    {0x0083, F_V0_V4, 0x00004FF03FFB00FE, "TObjLazerFence4"},
+    {0x0082, F_V0_V4, A_E1_FOREST | A_E1_CAVE | A_E1_MINE | A_E1_QUEST_ONLY | A_E4_NON_BOSS | A_E4_TEST, "TObjLazerFenceNorm"},
+    {0x0083, F_V0_V4, A_E1_FOREST | A_E1_CAVE | A_E1_MINE | A_E1_QUEST_ONLY | A_E2_FREE_PLAY | A_E4_NON_BOSS | A_E4_TEST, "TObjLazerFence4"},
 
     // Forest laser fence switch. Params:
     //   param4 = switch flag number
     //   param6 = color
-    {0x0084, F_V0_V4, 0x00004FFC3FFB00FE, "TLazerFenceSw"},
+    {0x0084, F_V0_V4, A_ALL & (~A_E1_RUINS) & (~A_E1_BOSS) & (~A_LOBBY) & (~A_E2_BOSS) & (~A_E4_BOSS) & (~A_CITY), "TLazerFenceSw"},
 
     // Light rays. Params:
     //   param1 = TODO
     //   param2 = vertical scale (y)
     //   param3 = horizontal scale (x, z)
-    {0x0085, F_V0_V4, 0x00004E000F800006, "TKomorebi"},
+    {0x0085, F_V0_V4, A_E1_FOREST | A_E2_CCA_ALL | A_E4_DESERT | A_E4_TEST, "TKomorebi"},
 
     // Butterfly. Params:
     //   param1-3 = TODO
-    {0x0086, F_V0_V4, 0x00004E0000000006, "TButterfly"},
+    {0x0086, F_V0_V4, A_E1_FOREST | A_E4_DESERT | A_E4_TEST, "TButterfly"},
 
     // Small vehicle. Params:
     //   param1 = model number (even value = crashed, odd value = intact)
-    {0x0087, F_V0_V4, 0x0000400000000006, "TMotorcycle"},
+    {0x0087, F_V0_V4, A_E1_FOREST | A_E4_TEST, "TMotorcycle"},
 
     // Item box. Params:
     //   param1 = if positive, box is specialized to drop a specific item or type of item; if zero or negative, box
@@ -1408,23 +1495,23 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     // In the non-specialized case (param1 <= 0), param3-6 are still sent via the 6xA2 command when the box is opened
     // on v3 and later, and the server may choose to use those parameters for some purpose. The client implementation
     // ignores them when param1 <= 0, and newserv does too.
-    {0x0088, F_V0_V4, 0x00004FF0B00000FE, "TObjContainerBase2"},
-    {0x0088, F_EP3, 0x0000000000000002, "TObjContainerBase2"},
+    {0x0088, F_V0_V4, A_E1_FOREST | A_E1_CAVE | A_E1_MINE | A_E2_SEABED | A_E2_OLGA_FLOW | A_E4_NON_BOSS | A_E4_TEST, "TObjContainerBase2"},
+    {0x0088, F_EP3, A_E3_BATTLE, "TObjContainerBase2"},
 
     // Elevated cylindrical tank. There appear to be no parameters; param1-3 are copied into the object instance as a
     // Vector3F, but it appears that that vector is never used.
-    {0x0089, F_V0_V4, 0x0000400000000006, "TObjTank"},
+    {0x0089, F_V0_V4, A_E1_FOREST | A_E4_TEST, "TObjTank"},
 
     // TODO: Describe this object. Params:
     //   param1-3 = TODO
-    {0x008A, F_V0_V2, 0x0000000000000006, "TObjBattery"},
+    {0x008A, F_V0_V2, A_E1_FOREST, "TObjBattery"},
 
     // Forest console. Params:
     //   param4 = quest label to call when activated (inherited from TObjMesBase)
     //   param5 = model (clamped to [0, 1])
     //   param6 = type (clamped to [0, 1]; 0 = "QUEST", 1 = "RICO") (inherited from TObjMesBase)
-    {0x008B, F_V0_V1, 0x0000000000000406, "TObjComputer"},
-    {0x008B, F_V2_V4, 0x00004FFC3FFB07FE, "TObjComputer"},
+    {0x008B, F_V0_V1, A_E1_FOREST | A_E1_RUINS_3, "TObjComputer"},
+    {0x008B, F_V2_V4, A_NON_BOSS | A_E4_TEST, "TObjComputer"},
 
     // Black sliding door. Params:
     //   param1 = total distance (divided evenly by the number of switch flags, from param4)
@@ -1432,8 +1519,8 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param4 = base switch flag (the actual switch flags used are param4, param4 + 1, param4 + 2, etc.)
     //   param5 = number of switch flags (clamped to [1, 4])
     //   param6 = movement effect (0 = sparks + thud, 1 = grinding sound)
-    {0x008C, F_V0_V1, 0x0000000000000006, "TObjContainerIdo"},
-    {0x008C, F_V2_V4, 0x000040000000000E, "TObjContainerIdo"},
+    {0x008C, F_V0_V1, A_E1_FOREST, "TObjContainerIdo"},
+    {0x008C, F_V2_V4, A_E1_FOREST | A_E1_CAVE_1 | A_E4_TEST, "TObjContainerIdo"},
 
     // Rico message pod. This object immediately destroys itself in Challenge mode or split-screen mode. Params:
     //   param4 = enable condition:
@@ -1443,18 +1530,18 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param5 = message number ("character ID" in qedit; if this is outside the range [100, 999], the quest label in
     //     param6 is called in the free play script instead of the quest script)
     //   param6 = quest label to call when activated
-    {0x008D, F_V0_V4, 0x00004000000027FE, "TOCapsuleAncient01"},
+    {0x008D, F_V0_V4, A_E1_FREE_PLAY | A_E1_VOL_OPT | A_E4_TEST, "TOCapsuleAncient01"},
 
     // Energy barrier. Params:
     //   param4 = switch flag number and activation mode (same as for TODoorLabo)
-    {0x008E, F_V0_V4, 0x00004FF0000000F6, "TOBarrierEnergy01"},
+    {0x008E, F_V0_V4, A_E1_FOREST | A_E1_CAVE_2 | A_E1_CAVE_3 | A_E1_MINE | A_E4_NON_BOSS | A_E4_TEST, "TOBarrierEnergy01"},
 
     // Forest rising bridge. Once enabled (risen), this object cannot be disabled; that is, there is no way to make the
     // bridge retract. When disabled, the bridge is 30 units below its initial position; when enabled, it rises to its
     // initial position. Params:
     //   param2 = rise speed in units per frame
     //   param4 = switch flag number
-    {0x008F, F_V0_V4, 0x0000400000000006, "TObjHashi"},
+    {0x008F, F_V0_V4, A_E1_FOREST | A_E4_TEST, "TObjHashi"},
 
     // Generic switch. Visually, this is the type usually used for objects other than doors, such as lights, poison
     // rooms, and the Forest 2 bridge. Params:
@@ -1462,20 +1549,20 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     negative = temporary (TODO: test this)
     //     zero or positive = permanent (normal)
     //   param4 = switch flag number
-    {0x0090, F_V0_V4, 0x00004FFC3FFB00C6, "TOKeyGenericSw"},
+    {0x0090, F_V0_V4, A_E1_FOREST | A_E1_MINE | A_E1_QUEST_ONLY | A_E2_NON_BOSS | A_E4_NON_BOSS | A_E4_TEST, "TOKeyGenericSw"},
 
     // Box that triggers a wave event when opened. Params:
     //   param4 = event number
-    {0x0091, F_V0_V4, 0x00004FF0300000FE, "TObjContainerEnemy"},
+    {0x0091, F_V0_V4, A_E1_FOREST | A_E1_CAVE | A_E1_MINE | A_E2_SEABED | A_E4_NON_BOSS | A_E4_TEST, "TObjContainerEnemy"},
 
     // Large box (usually used for specialized drops). Same parameters as 0x0088 (TObjContainerBase2)
-    {0x0092, F_V0_V4, 0x00005E00B00078FE, "TObjContainerBase"},
+    {0x0092, F_V0_V4, A_E1_FOREST | A_E1_CAVE | A_E1_MINE | A_E1_BOSS | A_E2_SEABED | A_E2_OLGA_FLOW | A_E4_DESERT | A_E4_BOSS | A_E4_TEST, "TObjContainerBase"},
 
     // Large enemy box. Same parameters as 0x0091 (TObjContainerEnemy).
-    {0x0093, F_V0_V4, 0x00004FF0300000FE, "TObjContainerAbeEnemy"},
+    {0x0093, F_V0_V4, A_E1_FOREST | A_E1_CAVE | A_E1_MINE | A_E2_SEABED | A_E4_NON_BOSS | A_E4_TEST, "TObjContainerAbeEnemy"},
 
     // Always-empty box. There are no parameters.
-    {0x0095, F_V0_V4, 0x00004FF0000000FE, "TObjContainerNoItem"},
+    {0x0095, F_V0_V4, A_E1_FOREST | A_E1_CAVE | A_E1_MINE | A_E4_NON_BOSS | A_E4_TEST, "TObjContainerNoItem"},
 
     // Laser fence. This object is only available in v2 and later. Params:
     //   param1 = color (clamped to [0, 3])
@@ -1486,14 +1573,14 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     0 = short fence
     //     1 = long fence
     //     anything else = invisible
-    {0x0096, F_V0_V4, 0x00004FFC3FFB07FE, "TObjLazerFenceExtra"},
+    {0x0096, F_V0_V4, A_NON_BOSS | A_E4_TEST, "TObjLazerFenceExtra"},
 
     // Caves floor button. The activation radius is always 10 units. Params:
     //   param4 = switch flag number
     //   param5 = activation mode:
     //     negative = temporary (disables flag when player leaves)
     //     zero or positive = permanent
-    {0x00C0, F_V0_V4, 0x00004FFC3FFB0038, "TOKeyCave01"},
+    {0x00C0, F_V0_V4, A_E1_CAVE | A_E1_QUEST_ONLY | A_E2_NON_BOSS | A_E4_NON_BOSS | A_E4_TEST, "TOKeyCave01"},
 
     // Caves multiplayer door. Params:
     //   param4 = base switch flag number (the actual switch flags used are param4, param4 + 1, param4 + 2, etc.; if
@@ -1504,11 +1591,11 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //       flags are disabled later
     //     zero or positive = door only stays unlocked while all of the switch flags are active and locks again when
     //       any are disabled (no effect in single-player offline mode; the negative behavior is used instead)
-    {0x00C1, F_V0_V4, 0x0000400000000038, "TODoorCave01"},
+    {0x00C1, F_V0_V4, A_E1_CAVE | A_E4_TEST, "TODoorCave01"},
 
     // Caves standard door. Params:
     //   param4 = switch flag number (negative = always unlocked; >0x100 = always locked)
-    {0x00C2, F_V0_V4, 0x0000400000000038, "TODoorCave02"},
+    {0x00C2, F_V0_V4, A_E1_CAVE | A_E4_TEST, "TODoorCave02"},
 
     // Caves ceiling piston trap. There are three types of this object, which can be chosen via param6. If param6 is
     // not 0, 1, or 2, no object is created.
@@ -1525,35 +1612,35 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     the switch flag)
     // Params for TOHangceilingCave01KeyQuick (param6 = 2):
     //   param1-4 = same as for TOHangceilingCave01Key, but unlike that object, does not disable the switch flag
-    {0x00C3, F_V0_V4, 0x0000400800780038, "TOHangceilingCave01*"},
+    {0x00C3, F_V0_V4, A_E1_CAVE | A_E2_VR | A_E2_TOWER | A_E4_TEST, "TOHangceilingCave01*"},
 
     // Caves signs. There appear to be no parameters.
-    {0x00C4, F_V0_V4, 0x0000400000000030, "TOSignCave01"},
-    {0x00C5, F_V0_V4, 0x0000400000000030, "TOSignCave02"},
-    {0x00C6, F_V0_V4, 0x0000400000000030, "TOSignCave03"},
+    {0x00C4, F_V0_V4, A_E1_CAVE_2 | A_E1_CAVE_3 | A_E4_TEST, "TOSignCave01"},
+    {0x00C5, F_V0_V4, A_E1_CAVE_2 | A_E1_CAVE_3 | A_E4_TEST, "TOSignCave02"},
+    {0x00C6, F_V0_V4, A_E1_CAVE_2 | A_E1_CAVE_3 | A_E4_TEST, "TOSignCave03"},
 
     // Hexagonal tank. There appear to be no parameters.
-    {0x00C7, F_V0_V4, 0x0000400000000030, "TOAirconCave01"},
+    {0x00C7, F_V0_V4, A_E1_CAVE_2 | A_E1_CAVE_3 | A_E4_TEST, "TOAirconCave01"},
 
     // Brown platform. There appear to be no parameters.
-    {0x00C8, F_V0_V4, 0x0000400000000030, "TOAirconCave02"},
+    {0x00C8, F_V0_V4, A_E1_CAVE_2 | A_E1_CAVE_3 | A_E4_TEST, "TOAirconCave02"},
 
     // Revolving warning light. Params:
     //   param1 = rotation speed in degrees per frame
-    {0x00C9, F_V0_V4, 0x000041F000000030, "TORevlightCave01"},
+    {0x00C9, F_V0_V4, A_E1_CAVE_2 | A_E1_CAVE_3 | A_E4_CRATER | A_E4_TEST, "TORevlightCave01"},
 
     // Caves rainbow. Params:
     //   param1-3 = scale factors (x, y, z)
     //   param4 = TODO (value is 1 / (param4 + 30))
     //   param6 = visibility radius? (TODO; value is param6 + 40000)
-    {0x00CB, F_V0_V4, 0x0000400000000010, "TORainbowCave01"},
+    {0x00CB, F_V0_V4, A_E1_CAVE_2 | A_E4_TEST, "TORainbowCave01"},
 
     // Floating jellyfish. Params:
     //   param1 = visibility radius; visible when any player is within this distance of the object
     //   param2 = move radius (according to debug strings)
     //   param3 = rebirth radius (according to debug strings); like param1, checks against all players, not only the
     //     local player
-    {0x00CC, F_V0_V4, 0x0000400030000010, "TOKurage"},
+    {0x00CC, F_V0_V4, A_E1_CAVE_2 | A_E2_SEABED | A_E4_TEST, "TOKurage"},
 
     // Floating dragonfly. Params:
     //   param1 = TODO
@@ -1561,34 +1648,34 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param3 = max distance from home?
     //   param4 = TODO
     //   param5 = TODO
-    {0x00CD, F_V0_V4, 0x00004E0000610010, "TODragonflyCave01"},
+    {0x00CD, F_V0_V4, A_E1_CAVE_2 | A_E1_SPACESHIP | A_E2_SPACESHIP | A_E4_DESERT | A_E4_TEST, "TODragonflyCave01"},
 
     // Caves door. Params:
     //   param4 = switch flag number
-    {0x00CE, F_V0_V4, 0x0000400000000038, "TODoorCave03"},
+    {0x00CE, F_V0_V4, A_E1_CAVE | A_E4_TEST, "TODoorCave03"},
 
     // Robot recharge station. Params:
     //   param4 = quest register number; activates when this register contains a nonzero value; does not deactivate if
     //     it becomes zero again
-    {0x00CF, F_V0_V4, 0x00004008000000F8, "TOBind"},
+    {0x00CF, F_V0_V4, A_E1_CAVE | A_E1_MINE | A_E2_TOWER | A_E4_TEST, "TOBind"},
 
     // Caves cake shop. There appear to be no parameters.
-    {0x00D0, F_V0_V4, 0x0000400000000020, "TOCakeshopCave01"},
+    {0x00D0, F_V0_V4, A_E1_CAVE_3 | A_E4_TEST, "TOCakeshopCave01"},
 
     // Various solid rock objects used in the Cave areas. There are small, medium, and large variations of each, and
     // for the 02 variations, there are also "Simple" variations (00D7-00D9). None of these objects take any params.
-    {0x00D1, F_V0_V4, 0x0000400000000008, "TORockCaveS01"},
-    {0x00D2, F_V0_V4, 0x0000400000000008, "TORockCaveM01"},
-    {0x00D3, F_V0_V4, 0x00004FF000000008, "TORockCaveL01"},
-    {0x00D4, F_V0_V4, 0x0000000000000010, "TORockCaveS02"},
-    {0x00D5, F_V0_V4, 0x0000000000000010, "TORockCaveM02"},
-    {0x00D6, F_V0_V4, 0x0000000000000010, "TORockCaveL02"},
-    {0x00D7, F_V0_V4, 0x0000000000000010, "TORockCaveSS02"},
-    {0x00D8, F_V0_V4, 0x0000000000000010, "TORockCaveSM02"},
-    {0x00D9, F_V0_V4, 0x0000000000000010, "TORockCaveSL02"},
-    {0x00DA, F_V0_V4, 0x0000000000000020, "TORockCaveS03"},
-    {0x00DB, F_V0_V4, 0x0000000000000020, "TORockCaveM03"},
-    {0x00DC, F_V0_V4, 0x0000000000000020, "TORockCaveL03"},
+    {0x00D1, F_V0_V4, A_E1_CAVE_1 | A_E4_TEST, "TORockCaveS01"},
+    {0x00D2, F_V0_V4, A_E1_CAVE_1 | A_E4_TEST, "TORockCaveM01"},
+    {0x00D3, F_V0_V4, A_E1_CAVE_1 | A_E4_NON_BOSS | A_E4_TEST, "TORockCaveL01"},
+    {0x00D4, F_V0_V4, A_E1_CAVE_2, "TORockCaveS02"},
+    {0x00D5, F_V0_V4, A_E1_CAVE_2, "TORockCaveM02"},
+    {0x00D6, F_V0_V4, A_E1_CAVE_2, "TORockCaveL02"},
+    {0x00D7, F_V0_V4, A_E1_CAVE_2, "TORockCaveSS02"},
+    {0x00D8, F_V0_V4, A_E1_CAVE_2, "TORockCaveSM02"},
+    {0x00D9, F_V0_V4, A_E1_CAVE_2, "TORockCaveSL02"},
+    {0x00DA, F_V0_V4, A_E1_CAVE_3, "TORockCaveS03"},
+    {0x00DB, F_V0_V4, A_E1_CAVE_3, "TORockCaveM03"},
+    {0x00DC, F_V0_V4, A_E1_CAVE_3, "TORockCaveL03"},
 
     // Caves floor button 2. Params:
     //   param1-3 = scale factors (visual only)
@@ -1606,59 +1693,59 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     5 => 4001C112 (GC)
     //     6 => 4002A60B (GC)
     //     TODO: Are there more sounds available here on BB?
-    {0x00DE, F_V2_V4, 0x00004FFC3FFB07FE, "TODummyKeyCave01"},
+    {0x00DE, F_V2_V4, A_NON_BOSS | A_E4_TEST, "TODummyKeyCave01"},
 
     // Breakable rocks, in small, medium, and large variations. All of these take the following parameter:
     //   param4 = switch flag number
-    {0x00DF, F_V2_V4, 0x0000400000000008, "TORockCaveBL01"},
-    {0x00E0, F_V2_V4, 0x0000400000000010, "TORockCaveBL02"},
-    {0x00E1, F_V2_V4, 0x0000400000000020, "TORockCaveBL03"},
+    {0x00DF, F_V2_V4, A_E1_CAVE_1 | A_E4_TEST, "TORockCaveBL01"},
+    {0x00E0, F_V2_V4, A_E1_CAVE_2 | A_E4_TEST, "TORockCaveBL02"},
+    {0x00E1, F_V2_V4, A_E1_CAVE_3 | A_E4_TEST, "TORockCaveBL03"},
 
     // Mines multi-switch door. Params:
     //   param4 = base switch flag number (the actual switch flags used are param4, param4 + 1, param4 + 2, etc.; if
     //     this is negative, the door is always unlocked)
     //   param5 = 4 - number of switch flags (so if e.g. door should require only 3 switch flags, set param5 to 1)
-    {0x0100, F_V0_V4, 0x00004000000000C0, "TODoorMachine01"},
+    {0x0100, F_V0_V4, A_E1_MINE | A_E4_TEST, "TODoorMachine01"},
 
     // Mines floor button. The activation radius is always 10 units. Params:
     //   param4 = switch flag number
     //   param5 = activation mode:
     //     negative = temporary (disables flag when player leaves)
     //     zero or positive = permanent
-    {0x0101, F_V0_V1, 0x00000000000000C0, "TOKeyMachine01"},
-    {0x0101, F_V2_V4, 0x00004FF0007B00C6, "TOKeyMachine01"},
+    {0x0101, F_V0_V1, A_E1_MINE, "TOKeyMachine01"},
+    {0x0101, F_V2_V4, A_E1_FOREST | A_E1_MINE | A_E1_QUEST_ONLY | A_E2_VR | A_E4_NON_BOSS | A_E4_TEST, "TOKeyMachine01"},
 
     // Mines single-switch door, or Subterranean Desert door if in Episode 4. Params (for both object types):
     //   param4 = switch flag number
-    {0x0102, F_V0_V4, 0x00000000000000C0, "TODoorMachine02"},
-    {0x0102, F_V4, 0x00004E0000000000, "__EP4_DOOR__"},
+    {0x0102, F_V0_V4, A_E1_MINE, "TODoorMachine02"},
+    {0x0102, F_V4, A_E4_DESERT | A_E4_TEST, "__EP4_DOOR__"},
 
     // Large cryotube. There appear to be no parameters.
-    {0x0103, F_V0_V4, 0x00004008000000C0, "TOCapsuleMachine01"},
+    {0x0103, F_V0_V4, A_E1_MINE | A_E2_TOWER | A_E4_TEST, "TOCapsuleMachine01"},
 
     // Computer. Same parameters as 0x008D (TOCapsuleAncient01).
-    {0x0104, F_V0_V4, 0x00004008000000C0, "TOComputerMachine01"},
+    {0x0104, F_V0_V4, A_E1_MINE | A_E2_TOWER | A_E4_TEST, "TOComputerMachine01"},
 
     // Green monitor. Params:
     //   param4 = initial state? (clamped to [0, 3]; appears to cycle through those 4 values on its own)
-    {0x0105, F_V0_V4, 0x00004008000000C0, "TOMonitorMachine01"},
+    {0x0105, F_V0_V4, A_E1_MINE | A_E2_TOWER | A_E4_TEST, "TOMonitorMachine01"},
 
     // Floating robot. Same params as 0x00CD (TODragonflyCave01), though it appears that some may have different scale
     // factors or offsets (TODO).
-    {0x0106, F_V0_V4, 0x00004000000000C0, "TODragonflyMachine01"},
+    {0x0106, F_V0_V4, A_E1_MINE | A_E4_TEST, "TODragonflyMachine01"},
 
     // Floating rotating blue light (often appears next to doors). The light rotates about its vertical axis and floats
     // up and down sinusoidally. Params:
     //   param4 = float cycles per second (value is param4 * 0.1 + 1.0)
     //   param5 = max float distance (value is param5 * 0.1 + 0.5)
     //   param6 = rotation speed in angle units per frame (0x10000 = 1 complete rotation)
-    {0x0107, F_V0_V4, 0x00004000000000C0, "TOLightMachine01"},
+    {0x0107, F_V0_V4, A_E1_MINE | A_E4_TEST, "TOLightMachine01"},
 
     // Self-destructing objects. Params:
     //   param1 = radius delta (actual radius is param1 + 30)
-    {0x0108, F_V0_V4, 0x00004000000000C0, "TOExplosiveMachine01"},
-    {0x0109, F_V0_V4, 0x00004000000000C0, "TOExplosiveMachine02"},
-    {0x010A, F_V0_V4, 0x00004000000000C0, "TOExplosiveMachine03"},
+    {0x0108, F_V0_V4, A_E1_MINE | A_E4_TEST, "TOExplosiveMachine01"},
+    {0x0109, F_V0_V4, A_E1_MINE | A_E4_TEST, "TOExplosiveMachine02"},
+    {0x010A, F_V0_V4, A_E1_MINE | A_E4_TEST, "TOExplosiveMachine03"},
 
     // Spark machine. This looks like it's intended to appear in the bridge room in Mine 1, to create an effect of the
     // columnar machines sparking. This is implemented as four columns that randomly change their visibility, intended
@@ -1669,56 +1756,56 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     // would mean they never change state, 1.98 would mean they change every frame. Params:
     //   param1 = state change accumulation per frame (value is param1 - 0.98)
     //   param2 = if <= 0, only one column flickers and the others are always visible; if > 0, all columns flicker
-    {0x010B, F_V0_V4, 0x00004000000000C0, "TOSparkMachine01"},
+    {0x010B, F_V0_V4, A_E1_MINE | A_E4_TEST, "TOSparkMachine01"},
 
     // Open stall with a spinning red light on either side. Params:
     //   param2 = if > 0, a gray box is present in the left half of the stall
-    {0x010C, F_V0_V4, 0x00004000000000C0, "TOHangerMachine01"},
+    {0x010C, F_V0_V4, A_E1_MINE | A_E4_TEST, "TOHangerMachine01"},
 
     // Ruins entrance door (after Vol Opt). This object reads quest flags 0x2C, 0x2D, and 0x2E to determine the state
     // of each seal on the door (for Forest, Caves, and Mines respectively). It then checks quest flag 0x2F; if this
     // flag is set, then all seals are unlocked regardless of the preceding three flags' values. All of these flags are
     // checked every frame, not only at construction time. This object takes no parameters.
-    {0x0130, F_V0_V4, 0x0000400000002000, "TODoorVoShip"},
+    {0x0130, F_V0_V4, A_E1_VOL_OPT | A_E4_TEST, "TODoorVoShip"},
 
     // Ruins floor warp. Params:
     //   param4 = destination floor
     //   param6 = color (negative = red, zero or positive = blue); if this is >= 0 in Challenge mode, the warp is
     //     destroyed immediately
-    {0x0140, F_V0_V4, 0x0000400000000700, "TObjGoalWarpAncient"},
+    {0x0140, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TObjGoalWarpAncient"},
 
     // Ruins intra-area warp. Params:
     //   param1-3 = destination (same as for TObjMapWarpForest)
     //   param4 = destination angle (same as for TObjMapWarpForest)
     //   param5 = if negative, no warp lines render (only the floor pad appears) and the player cannot use the warp; if
     //     zero or positive, the warp functions normally
-    {0x0141, F_V0_V4, 0x0000400000000700, "TObjMapWarpAncient"},
+    {0x0141, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TObjMapWarpAncient"},
 
     // Ruins switch. Same parameters as 0x00C0 (TOKeyCave01).
-    {0x0142, F_V0_V4, 0x0000400000000700, "TOKeyAncient02"},
+    {0x0142, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TOKeyAncient02"},
 
     // Ruins floor button. Same parameters as 0x00C0 (TOKeyCave01).
-    {0x0143, F_V0_V4, 0x0000400000000700, "TOKeyAncient03"},
+    {0x0143, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TOKeyAncient03"},
 
     // Ruins doors. These all take the same params as 0x00C2 (TODoorCave02).
-    {0x0144, F_V0_V4, 0x0000400000000100, "TODoorAncient01"}, // Usually used in Ruins 1
-    {0x0145, F_V0_V4, 0x0000400000000400, "TODoorAncient03"}, // Usually used in Ruins 3
-    {0x0146, F_V0_V4, 0x0000400000000200, "TODoorAncient04"}, // Usually used in Ruins 2
-    {0x0147, F_V0_V4, 0x0000400000000100, "TODoorAncient05"}, // Usually used in Ruins 1
-    {0x0148, F_V0_V4, 0x0000400000000200, "TODoorAncient06"}, // Usually used in Ruins 2
-    {0x0149, F_V0_V4, 0x0000400000000400, "TODoorAncient07"}, // Usually used in Ruins 3
+    {0x0144, F_V0_V4, A_E1_RUINS_1 | A_E4_TEST, "TODoorAncient01"}, // Usually used in Ruins 1
+    {0x0145, F_V0_V4, A_E1_RUINS_3 | A_E4_TEST, "TODoorAncient03"}, // Usually used in Ruins 3
+    {0x0146, F_V0_V4, A_E1_RUINS_2 | A_E4_TEST, "TODoorAncient04"}, // Usually used in Ruins 2
+    {0x0147, F_V0_V4, A_E1_RUINS_1 | A_E4_TEST, "TODoorAncient05"}, // Usually used in Ruins 1
+    {0x0148, F_V0_V4, A_E1_RUINS_2 | A_E4_TEST, "TODoorAncient06"}, // Usually used in Ruins 2
+    {0x0149, F_V0_V4, A_E1_RUINS_3 | A_E4_TEST, "TODoorAncient07"}, // Usually used in Ruins 3
 
     // Ruins 4-player door. Params:
     //   param4 = base switch flag number (the actual switch flags used are param4, param4 + 1, param4 + 2, and param4
     //     + 3); param4 is clamped to [0, 0xFC]
     //   param6 = activation mode; same as for 0x00C1 (TODoorCave01)
-    {0x014A, F_V0_V4, 0x0000400000000700, "TODoorAncient08"},
+    {0x014A, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TODoorAncient08"},
 
     // Ruins 2-player door. Params:
     //   param4 = base switch flag number (the actual switch flags used are param4 and param4 + 1); param4 is clamped
     //     to [0, 0xFE]
     //   param6 = activation mode; same as for 0x00C1 (TODoorCave01)
-    {0x014B, F_V0_V4, 0x0000400000000700, "TODoorAncient09"},
+    {0x014B, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TODoorAncient09"},
 
     // Ruins sensor. Params:
     //   param1 = activation radius delta (actual radius is param1 + 50)
@@ -1726,21 +1813,21 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param5 = if negative, sensor is always on
     //   param6 = texture index; uses fs_obj_o_sensor01r if <= 0, uses fs_obj_o_sensor02r if > 0; the two texture files
     //     are identical (at least on GC) so this has no user-visible effects
-    {0x014C, F_V0_V4, 0x0000400000000700, "TOSensorAncient01"},
+    {0x014C, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TOSensorAncient01"},
 
     // Ruins laser fence switch. Params:
     //   param1 = if negative, switch's effect is temporary; if zero or positive, it's permanent
     //   param4 = switch flag number
     //   param5 = color (clamped to [0, 3])
-    {0x014D, F_V0_V4, 0x0000400000000700, "TOKeyAncient01"},
+    {0x014D, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TOKeyAncient01"},
 
     // Ruins fence objects. Params:
     //   param4 = switch flag number (negative = always unlocked)
     //   param5 = color (clamped to [0, 3])
-    {0x014E, F_V0_V4, 0x00004FF000000700, "TOFenceAncient01"}, // 4x2
-    {0x014F, F_V0_V4, 0x00004FF000000700, "TOFenceAncient02"}, // 6x2
-    {0x0150, F_V0_V4, 0x0000400000000700, "TOFenceAncient03"}, // 4x4
-    {0x0151, F_V0_V4, 0x0000400000000700, "TOFenceAncient04"}, // 6x4
+    {0x014E, F_V0_V4, A_E1_RUINS | A_E4_NON_BOSS | A_E4_TEST, "TOFenceAncient01"}, // 4x2
+    {0x014F, F_V0_V4, A_E1_RUINS | A_E4_NON_BOSS | A_E4_TEST, "TOFenceAncient02"}, // 6x2
+    {0x0150, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TOFenceAncient03"}, // 4x4
+    {0x0151, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TOFenceAncient04"}, // 6x4
 
     // Ruins poison-spewing blob. This object is technically an item box, and drops an item when destroyed. Unlike most
     // other item boxes, it cannot be specialized (ignore_def is always true). It cycles through the following 3 phases
@@ -1754,7 +1841,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param2 = duration of phase 2 in frames (value is param2 + 209)
     //   param3 = poison radius squared (value is param3 + 399, so if param3 = 1 for example, the poison radius is 20)
     //   param6 = how often to create more particles during spewing phase (in frames; value is param6 + 4)
-    {0x0152, F_V0_V4, 0x00004E000F800700, "TContainerAncient01"},
+    {0x0152, F_V0_V4, A_E1_RUINS | A_E2_CCA_ALL | A_E4_DESERT | A_E4_TEST, "TContainerAncient01"},
 
     // Ruins falling trap. Trap power seems to be scaled by difficulty (Normal = x1, Hard = x2, Very Hard = x3,
     // Ultimate = x6). Params:
@@ -1765,16 +1852,16 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     TOTrapAncient01 clamps it below to 0)
     //   param5 = TODO (clamped to [0, 5]; calls player->vtable[0x19] on explode unless this is 5)
     //   param6 = TODO (value is param6 + 30, multipled by 0.33 if offline)
-    {0x0153, F_V0_V4, 0x0000400000780700, "TOTrapAncient01"},
+    {0x0153, F_V0_V4, A_E1_RUINS | A_E2_VR | A_E4_TEST, "TOTrapAncient01"},
 
     // Ruins pop-up trap. Params:
     //   param1 = trigger radius delta (value is (param1 / 2) + 30)
     //   param4 = delay (value is param4 + 30; clamped below to 0)
     //   angle.z = hide body (positive = only the blue highlights appear; zero or negative = normal visibility)
-    {0x0154, F_V0_V4, 0x0000400000000700, "TOTrapAncient02"},
+    {0x0154, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TOTrapAncient02"},
 
     // Ruins crystal monument. Same parameters as TOCapsuleAncient01.
-    {0x0155, F_V0_V4, 0x0000400000000700, "TOMonumentAncient01"},
+    {0x0155, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TOMonumentAncient01"},
 
     // Non-Ruins monument. Sets a quest flag when activated. The quest flag depends on which area the object is in:
     //   Mine 2 = 0x2E
@@ -1782,44 +1869,44 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   Any other area = 0x2C
     // When all three of the above quest flags are active, this object also sets quest flag 0x2F.
     // There appear to be no parameters.
-    {0x0156, F_V0_V4, 0x0000400000000094, "TOMonumentAncient02"},
+    {0x0156, F_V0_V4, A_E1_FOREST_2 | A_E1_CAVE_2 | A_E1_MINE_2 | A_E4_TEST, "TOMonumentAncient02"},
 
     // Ruins rocks. None of these take any parameters.
-    {0x0159, F_V0_V4, 0x0000400000000700, "TOWreckAncient01"},
-    {0x015A, F_V0_V4, 0x0000400000000700, "TOWreckAncient02"},
-    {0x015B, F_V0_V4, 0x0000400000000700, "TOWreckAncient03"},
-    {0x015C, F_V0_V4, 0x0000400000000700, "TOWreckAncient04"},
-    {0x015D, F_V0_V4, 0x0000400000000700, "TOWreckAncient05"},
-    {0x015E, F_V0_V4, 0x0000400000000700, "TOWreckAncient06"},
-    {0x015F, F_V0_V4, 0x0000400000000700, "TOWreckAncient07"},
+    {0x0159, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TOWreckAncient01"},
+    {0x015A, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TOWreckAncient02"},
+    {0x015B, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TOWreckAncient03"},
+    {0x015C, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TOWreckAncient04"},
+    {0x015D, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TOWreckAncient05"},
+    {0x015E, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TOWreckAncient06"},
+    {0x015F, F_V0_V4, A_E1_RUINS | A_E4_TEST, "TOWreckAncient07"},
 
     // Invisible cross-floor warp. This is used for the warp behind the door to Ruins after defeating Vol Opt, and is
     // only available on that floor (on any other floor, 0x0160 constructs TObjFogCollisionPoison instead.) Params:
     //   param4 = destination floor
-    {0x0160, F_V0_V4, 0x0000400000002000, "TObjWarpBoss03"},
+    {0x0160, F_V0_V4, A_E1_VOL_OPT | A_E4_TEST, "TObjWarpBoss03"},
 
     // Switchable, foggy area that's visible and hurts the player if the switch flag isn't on. Params are the same as
     // for 0x0018 (TObjFogCollisionSwitch), but there is also:
     //   param2 = poison power (scaled by difficulty: Normal = x1, Hard = x2, Very Hard = x3, Ultimate = x6)
-    {0x0160, F_V0_V4, 0x00004FF030600700, "TObjFogCollisionPoison"},
+    {0x0160, F_V0_V4, A_E1_RUINS | A_E2_SPACESHIP | A_E2_SEABED | A_E4_NON_BOSS | A_E4_TEST, "TObjFogCollisionPoison"},
 
     // Ruins specialized box. Same parameters as 0x0088 (TObjContainerBase2).
-    {0x0161, F_V0_V4, 0x00004003007B0700, "TOContainerAncientItemCommon"},
+    {0x0161, F_V0_V4, A_E1_RUINS | A_E1_QUEST_ONLY | A_E2_VR | A_E2_BARBA_RAY | A_E2_GOL_DRAGON | A_E4_TEST, "TOContainerAncientItemCommon"},
 
     // Ruins random box. Same parameters as 0x0088 (TObjContainerBase2).
-    {0x0162, F_V0_V4, 0x00004003007B0700, "TOContainerAncientItemRare"},
+    {0x0162, F_V0_V4, A_E1_RUINS | A_E1_QUEST_ONLY | A_E2_VR | A_E2_BARBA_RAY | A_E2_GOL_DRAGON | A_E4_TEST, "TOContainerAncientItemRare"},
 
     // Ruins enemy boxes, disguised as either of the above two objects. Params:
     //   param4 = event number
-    {0x0163, F_V0_V4, 0x00004000007B0700, "TOContainerAncientEnemyCommon"},
-    {0x0164, F_V0_V4, 0x00004000007B0700, "TOContainerAncientEnemyRare"},
+    {0x0163, F_V0_V4, A_E1_RUINS | A_E1_QUEST_ONLY | A_E2_VR | A_E4_TEST, "TOContainerAncientEnemyCommon"},
+    {0x0164, F_V0_V4, A_E1_RUINS | A_E1_QUEST_ONLY | A_E2_VR | A_E4_TEST, "TOContainerAncientEnemyRare"},
 
     // Ruins always-empty box. There are no parameters.
-    {0x0165, F_V2_V4, 0x00004000007B0700, "TOContainerAncientItemNone"},
+    {0x0165, F_V2_V4, A_E1_RUINS | A_E1_QUEST_ONLY | A_E2_VR | A_E4_TEST, "TOContainerAncientItemNone"},
 
     // Ruins breakable rock. Params:
     //   param4 = switch flag number (when enabled, destroys this object)
-    {0x0166, F_V2_V4, 0x0000400000000700, "TOWreckAncientBrakable05"},
+    {0x0166, F_V2_V4, A_E1_RUINS | A_E4_TEST, "TOWreckAncientBrakable05"},
 
     // Ruins pop-up trap with techs. Params:
     //   param1 = trigger radius delta (value is (param1 / 2) + 30)
@@ -1838,7 +1925,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     3 = Megid
     //     anything else = Gifoie
     //   angle.z = hide body (same as for TOTrapAncient02)
-    {0x0167, F_V2_V4, 0x0000400C3FF807C0, "TOTrapAncient02R"},
+    {0x0167, F_V2_V4, A_E1_MINE | A_E1_RUINS | A_E2_NON_BOSS | A_E4_TEST, "TOTrapAncient02R"},
 
     // Flying white bird. Params:
     //   param1 = TODO (value is param1 + 1)
@@ -1847,16 +1934,16 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param4 = number of birds? (value is param4 + 3, clamped to [1, 6])
     //   param5 = TODO (value is (param5 / 10) + 1)
     //   param6 = TODO (value is (param6 / 10) + 1)
-    {0x0170, F_V0_V4, 0x0000400000614000, "TOBoss4Bird"},
+    {0x0170, F_V0_V4, A_E1_DARK_FALZ | A_E1_SPACESHIP | A_E2_SPACESHIP | A_E4_TEST, "TOBoss4Bird"},
 
     // Dark Falz obelisk. There appear to be no parameters.
-    {0x0171, F_V0_V4, 0x0000400000004000, "TOBoss4Tower"},
+    {0x0171, F_V0_V4, A_E1_DARK_FALZ | A_E4_TEST, "TOBoss4Tower"},
 
     // Floating rocks. Params:
     //   param1 = x/z range delta? (value is param1 + 50)
     //   param2 = TODO (value is abs(param2))
     //   param4 = number of rocks? (clamped to [1, 8])
-    {0x0172, F_V0_V4, 0x0000400000004000, "TOBoss4Rock"},
+    {0x0172, F_V0_V4, A_E1_DARK_FALZ | A_E4_TEST, "TOBoss4Rock"},
 
     // Floating soul. Params:
     //   param1 = TODO
@@ -1865,21 +1952,21 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param4 = TODO (seems it only matters if this is negative or not)
     //   param5 = TODO
     //   param6 = TODO
-    {0x0173, F_V0_V2, 0x0000000000004000, "TOSoulDF"},
+    {0x0173, F_V0_V2, A_E1_DARK_FALZ, "TOSoulDF"},
 
     // Butterfly. This is a subclass of TODragonfly and takes the same params as 0x00CD (TODragonflyCave01), but also:
     //   param6 = model number? (clamped to [0, 2])
-    {0x0174, F_V0_V2, 0x0000000000004000, "TOButterflyDF"},
+    {0x0174, F_V0_V2, A_E1_DARK_FALZ, "TOButterflyDF"},
 
     // Lobby information counter (game menu) collision. Params:
     //   param1 = radius
-    {0x0180, F_V0_V4, 0x0000400000008000, "TObjInfoCol"},
-    {0x0180, F_EP3, 0x0000000000008000, "TObjInfoCol"},
+    {0x0180, F_V0_V4, A_LOBBY | A_E4_TEST, "TObjInfoCol"},
+    {0x0180, F_EP3, A_LOBBY, "TObjInfoCol"},
 
     // Warp between lobbies (not warp out of game to lobby). Params:
     //   param5 = hide beams (beams shown if <= 0, hidden if > 0)
-    {0x0181, F_V0_V4, 0x0000400000008000, "TObjWarpLobby"},
-    {0x0181, F_EP3, 0x0000000000008000, "TObjWarpLobby"},
+    {0x0181, F_V0_V4, A_LOBBY | A_E4_TEST, "TObjWarpLobby"},
+    {0x0181, F_EP3, A_LOBBY, "TObjWarpLobby"},
 
     // Lobby 1 event object (tree). Params:
     //   param4 = default decorations when there is no event:
@@ -1893,8 +1980,8 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     0x08 = spectral columns (Lobby 8)
     //     0x09 = planetary models (Lobby 7)
     //     Anything else = grass (Lobby 6)
-    {0x0182, F_V3_V4, 0x0000400000008000, "TObjLobbyMain"},
-    {0x0182, F_EP3, 0x0000000000008000, "TObjLobbyMain"},
+    {0x0182, F_V3_V4, A_LOBBY | A_E4_TEST, "TObjLobbyMain"},
+    {0x0182, F_EP3, A_LOBBY, "TObjLobbyMain"},
 
     // Lobby pigeon. Params:
     //   param4 = model number? (clamped to [0, 2])
@@ -1905,47 +1992,47 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   If param5 == 1 and param6 <= 0, visible during Wedding event
     //   If param5 == 2 and param6 <= 0, visible during Valentine's Day and White Day events
     //   If none of the above, visible during Halloween event
-    {0x0183, F_V3_V4, 0x0000400000008000, "__LOBBY_PIGEON__"},
-    {0x0183, F_EP3, 0x0000000000008002, "__LOBBY_PIGEON__"},
+    {0x0183, F_V3_V4, A_LOBBY | A_E4_TEST, "__LOBBY_PIGEON__"},
+    {0x0183, F_EP3, A_LOBBY | A_E1_FOREST_1, "__LOBBY_PIGEON__"},
 
     // Lobby butterfly. Params:
     //   param4 = model number (only two models; <= 0 or > 0)
     // TODO: Is this object's visibility affected by season events? It may only be affected by the event when the
     // object loads, and not when the season is changed via the DA command.
-    {0x0184, F_V3_V4, 0x0000400000008000, "TObjButterflyLobby"},
-    {0x0184, F_EP3, 0x0000000000008002, "TObjButterflyLobby"},
+    {0x0184, F_V3_V4, A_LOBBY | A_E4_TEST, "TObjButterflyLobby"},
+    {0x0184, F_EP3, A_LOBBY | A_E1_FOREST_1, "TObjButterflyLobby"},
 
     // Lobby rainbow. Visible only when there is no season event. There are no parameters.
-    {0x0185, F_V3_V4, 0x0000400000008000, "TObjRainbowLobby"},
-    {0x0185, F_EP3, 0x0000000000008002, "TObjRainbowLobby"},
+    {0x0185, F_V3_V4, A_LOBBY | A_E4_TEST, "TObjRainbowLobby"},
+    {0x0185, F_EP3, A_LOBBY | A_E1_FOREST_1, "TObjRainbowLobby"},
 
     // Lobby pumpkin. Visible only during Halloween season event. There are no parameters.
-    {0x0186, F_V3_V4, 0x0000400000008000, "TObjKabochaLobby"},
-    {0x0186, F_EP3, 0x0000000000008000, "TObjKabochaLobby"},
+    {0x0186, F_V3_V4, A_LOBBY | A_E4_TEST, "TObjKabochaLobby"},
+    {0x0186, F_EP3, A_LOBBY, "TObjKabochaLobby"},
 
     // Lobby stained-glass windows. Params:
     //   param4 = event flag:
     //     zero or negative = visible only when no season event is active
     //     positive = visible only during Christmas season event
-    {0x0187, F_V3_V4, 0x0000400000008000, "TObjStendGlassLobby"},
-    {0x0187, F_EP3, 0x0000000000008000, "TObjStendGlassLobby"},
+    {0x0187, F_V3_V4, A_LOBBY | A_E4_TEST, "TObjStendGlassLobby"},
+    {0x0187, F_EP3, A_LOBBY, "TObjStendGlassLobby"},
 
     // Lobby red and white striped curtain. Visible only during the spring and summer season events (12 and 13). There
     // are no parameters.
-    {0x0188, F_V3_V4, 0x0000400000008000, "TObjCurtainLobby"},
-    {0x0188, F_EP3, 0x0000000000008000, "TObjCurtainLobby"},
+    {0x0188, F_V3_V4, A_LOBBY | A_E4_TEST, "TObjCurtainLobby"},
+    {0x0188, F_EP3, A_LOBBY, "TObjCurtainLobby"},
 
     // Lobby wedding arch. Visible only during the wedding season event. There are no parameters.
-    {0x0189, F_V3_V4, 0x0000400000008000, "TObjWeddingLobby"},
-    {0x0189, F_EP3, 0x0000000000008000, "TObjWeddingLobby"},
+    {0x0189, F_V3_V4, A_LOBBY | A_E4_TEST, "TObjWeddingLobby"},
+    {0x0189, F_EP3, A_LOBBY, "TObjWeddingLobby"},
 
     // Lobby snowy evergreen tree (Lobby 10). There are no parameters.
-    {0x018A, F_V3_V4, 0x0000400000008000, "TObjTreeLobby"},
-    {0x018A, F_EP3, 0x0000000000008000, "TObjTreeLobby"},
+    {0x018A, F_V3_V4, A_LOBBY | A_E4_TEST, "TObjTreeLobby"},
+    {0x018A, F_EP3, A_LOBBY, "TObjTreeLobby"},
 
     // Lobby aquarium (Lobby 5). Visible only when there is no season event. There are no parameters.
-    {0x018B, F_V3_V4, 0x0000400000008000, "TObjSuisouLobby"},
-    {0x018B, F_EP3, 0x0000000000008000, "TObjSuisouLobby"},
+    {0x018B, F_V3_V4, A_LOBBY | A_E4_TEST, "TObjSuisouLobby"},
+    {0x018B, F_EP3, A_LOBBY, "TObjSuisouLobby"},
 
     // Lobby particles. Params:
     //   param1 = TODO (clamped to [0, 575])
@@ -1953,8 +2040,8 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param4 = particle type (0-9; any other value treated as 0)
     //   param5 = same as param4 (not param5!) from 0001 (TObjParticle)
     //   param6 = same as param5 (not param6!) from 0001 (TObjParticle)
-    {0x018C, F_V3_V4, 0x0000400000008000, "TObjParticleLobby"},
-    {0x018C, F_EP3, 0x0000000000008000, "TObjParticleLobby"},
+    {0x018C, F_V3_V4, A_LOBBY | A_E4_TEST, "TObjParticleLobby"},
+    {0x018C, F_EP3, A_LOBBY, "TObjParticleLobby"},
 
     // Episode 3 lobby battle table. This object is responsible for the red panels on the floor next to the battle
     // table that turn green when you step on them; it also shows the confirmation window and sends the necessary
@@ -1967,54 +2054,54 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     4 = 4 players
     //     anything else = object doesn't load
     //   param5 = table number (used in E4 and E5 commands)
-    {0x018D, F_EP3, 0x0000000000008000, "TObjLobbyTable"},
+    {0x018D, F_EP3, A_LOBBY, "TObjLobbyTable"},
 
     // Episode 3 lobby jukebox. There are no parameters.
-    {0x018E, F_EP3, 0x0000000000008000, "TObjJukeBox"},
+    {0x018E, F_EP3, A_LOBBY, "TObjJukeBox"},
 
     // Spaceship overhead camera with red light and annoying gear noises. There appear to be no parameters.
-    {0x0190, F_V2_V4, 0x0000400000610000, "TObjCamera"},
+    {0x0190, F_V2_V4, A_E1_SPACESHIP | A_E2_SPACESHIP | A_E4_TEST, "TObjCamera"},
 
     // Short Spaceship wall. There appear to be no parameters.
-    {0x0191, F_V2_V4, 0x0000400800610000, "TObjTuitate"},
+    {0x0191, F_V2_V4, A_E1_SPACESHIP | A_E2_SPACESHIP | A_E2_TOWER | A_E4_TEST, "TObjTuitate"},
 
     // Spaceship door. Params:
     //   param4 = switch flag number (if this is negative, the door is always unlocked)
-    {0x0192, F_V2_V4, 0x0000400000610000, "TObjDoaEx01"},
+    {0x0192, F_V2_V4, A_E1_SPACESHIP | A_E2_SPACESHIP | A_E4_TEST, "TObjDoaEx01"},
 
     // Tall Spaceship wall. There appear to be no parameters.
-    {0x0193, F_V2_V4, 0x0000400800610000, "TObjBigTuitate"},
+    {0x0193, F_V2_V4, A_E1_SPACESHIP | A_E2_SPACESHIP | A_E2_TOWER | A_E4_TEST, "TObjBigTuitate"},
 
     // Temple door. Params:
     //   param4 = switch flag number (if this is negative, the door is always unlocked)
-    {0x01A0, F_V2_V4, 0x00004000001A0000, "TODoorVS2Door01"},
+    {0x01A0, F_V2_V4, A_E1_PALACE | A_E2_TEMPLE | A_E4_TEST, "TODoorVS2Door01"},
 
     // Temple rubble. None of these take any parameters.
-    {0x01A1, F_V2_V4, 0x00004000001A0000, "TOVS2Wreck01"}, // Partly-broken wall (like breakable wall)
-    {0x01A2, F_V2_V4, 0x00004000001A0000, "TOVS2Wreck02"}, // Broken column
-    {0x01A3, F_V2_V4, 0x00004000001A0000, "TOVS2Wreck03"}, // Broken wall pieces lying flat
-    {0x01A4, F_V2_V4, 0x00004000001A0000, "TOVS2Wreck04"}, // Column
-    {0x01A5, F_V2_V4, 0x00004000001A0000, "TOVS2Wreck05"}, // Broken toppled column
-    {0x01A6, F_V2_V4, 0x00004000001A0000, "TOVS2Wreck06"}, // Truncated conic monument
+    {0x01A1, F_V2_V4, A_E1_PALACE | A_E2_TEMPLE | A_E4_TEST, "TOVS2Wreck01"}, // Partly-broken wall (like breakable wall)
+    {0x01A2, F_V2_V4, A_E1_PALACE | A_E2_TEMPLE | A_E4_TEST, "TOVS2Wreck02"}, // Broken column
+    {0x01A3, F_V2_V4, A_E1_PALACE | A_E2_TEMPLE | A_E4_TEST, "TOVS2Wreck03"}, // Broken wall pieces lying flat
+    {0x01A4, F_V2_V4, A_E1_PALACE | A_E2_TEMPLE | A_E4_TEST, "TOVS2Wreck04"}, // Column
+    {0x01A5, F_V2_V4, A_E1_PALACE | A_E2_TEMPLE | A_E4_TEST, "TOVS2Wreck05"}, // Broken toppled column
+    {0x01A6, F_V2_V4, A_E1_PALACE | A_E2_TEMPLE | A_E4_TEST, "TOVS2Wreck06"}, // Truncated conic monument
 
     // Temple breakable wall, which looks like 0x01A1 (TOVS2Wreck01). Params:
     //   param4 = number of hits, minus 256 for some reason (for example, for a 6-hit wall, this should be -250, or
     //     0xFFFFFF06)
-    {0x01A7, F_V2_V4, 0x00004000001A0000, "TOVS2Wall01"},
+    {0x01A7, F_V2_V4, A_E1_PALACE | A_E2_TEMPLE | A_E4_TEST, "TOVS2Wall01"},
 
     // Lens flare enable/disable switch. This object triggers when the local player is within 20 units, and sets a
     // global which determines whether objects of type 0x001E (__LENS_FLARE__) should render anything. Params:
     //   param1 = if > 0, enable lens flare rendering; if <= 0, disable it
     // This object isn't constructed in split-screen mode.
-    {0x01A8, F_V2_V4, 0x000041F1001A0000, "__LENS_FLARE_SWITCH_COLLISION__"},
+    {0x01A8, F_V2_V4, A_E1_PALACE | A_E2_TEMPLE | A_E2_BARBA_RAY | A_E4_CRATER | A_E4_TEST, "__LENS_FLARE_SWITCH_COLLISION__"},
 
     // Rising bridges. Similar to 0x008F (TObjHashi). Params:
     //   param1 = extra depth when lowered (this is added to TObjHashiBase's 30 unit displacement if the bridge is
     //     lowered when constructed)
     //   param2 = rise speed in units per frame
     //   param4 = switch flag number
-    {0x01A9, F_V2_V4, 0x00004000001A0000, "TObjHashiVersus1"}, // Small brown rising bridge
-    {0x01AA, F_V2_V4, 0x00004000001A0000, "TObjHashiVersus2"}, // Long rising bridge
+    {0x01A9, F_V2_V4, A_E1_PALACE | A_E2_TEMPLE | A_E4_TEST, "TObjHashiVersus1"}, // Small brown rising bridge
+    {0x01AA, F_V2_V4, A_E1_PALACE | A_E2_TEMPLE | A_E4_TEST, "TObjHashiVersus2"}, // Long rising bridge
 
     // Multiplayer Temple/Spaceship doors. Params:
     //   param4 = base switch flag number (the actual switch flags used are param4, param4 + 1, param4 + 2, etc.; if
@@ -2025,52 +2112,52 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //       flags are disabled later
     //     zero or positive = door only stays unlocked while all of the switch flags are active and locks again when
     //       any are disabled (no effect in single-player offline mode; the negative behavior is used instead)
-    {0x01AB, F_V3_V4, 0x0000400000180000, "TODoorFourLightRuins"}, // Temple
-    {0x01C0, F_V3_V4, 0x0000000000600000, "TODoorFourLightSpace"}, // Spaceship
+    {0x01AB, F_V3_V4, A_E2_TEMPLE | A_E4_TEST, "TODoorFourLightRuins"}, // Temple
+    {0x01C0, F_V3_V4, A_E2_SPACESHIP, "TODoorFourLightSpace"}, // Spaceship
 
     // CCA item box. It seems this box type cannot be specialized. There are no parameters.
-    {0x0200, F_V3_V4, 0x000041FC4F800000, "TObjContainerJung"},
+    {0x0200, F_V3_V4, A_E2_CCA_ALL | A_E2_GAL_GRYPHON | A_E2_QUEST_ONLY | A_E4_CRATER | A_E4_TEST, "TObjContainerJung"},
 
     // CCA cross-floor warp. Params:
     //   param4 = destination floor
     //   param6 = color (0 = blue, 1 = red); if this is 0 in Challenge mode, the warp is destroyed immediately
-    {0x0201, F_V3_V4, 0x0000400CFF800000, "TObjWarpJung"},
+    {0x0201, F_V3_V4, A_E2_CCA_ALL | A_E2_SEABED | A_E2_GAL_GRYPHON | A_E2_OLGA_FLOW | A_E2_QUEST_ONLY | A_E4_TEST, "TObjWarpJung"},
 
     // CCA door. Params:
     //   param4 = base switch flag number (the actual switch flags used are param4, param4 + 1, param4 + 2, etc.; if
     //     this is negative, the door is always unlocked)
     //   param5 = number of switch flags
-    {0x0202, F_V3_V4, 0x0000400C0F800000, "TObjDoorJung"},
+    {0x0202, F_V3_V4, A_E2_CCA_ALL | A_E2_QUEST_ONLY | A_E4_TEST, "TObjDoorJung"},
 
     // CCA item box. Same parameters as 0x0088 (TObjContainerBase2). In the Episode 4 Crater areas, this object
     // constructs 0x0092 (TObjContainerBase) instead.
-    {0x0203, F_V3_V4, 0x0000400C4F800000, "TObjContainerJungEx"},
-    {0x0203, F_V4, 0x000001F000000000, "TObjContainerBase(0203)"},
+    {0x0203, F_V3_V4, A_E2_CCA_ALL | A_E2_GAL_GRYPHON | A_E2_QUEST_ONLY | A_E4_TEST, "TObjContainerJungEx"},
+    {0x0203, F_V4, A_E4_CRATER, "TObjContainerBase(0203)"},
 
     // CCA main door. This door checks quest flags 0x0046, 0x0047, and 0x0048 and opens when all are enabled. There are
     // no parameters.
-    {0x0204, F_V3_V4, 0x0000400000800000, "TODoorJungleMain"},
+    {0x0204, F_V3_V4, A_E2_CCA | A_E4_TEST, "TODoorJungleMain"},
 
     // CCA main door switch. This switch sets one of the quest flags checked by 0x0204 (TODoorJungleMain). Params:
     //   param4 = quest flag index (0 = 0x0046, 1 = 0x0047, 2 = 0x0048)
-    {0x0205, F_V3_V4, 0x0000400C0F800000, "TOKeyJungleMain"},
+    {0x0205, F_V3_V4, A_E2_CCA_ALL | A_E2_QUEST_ONLY | A_E4_TEST, "TOKeyJungleMain"},
 
     // Jungle breakable rocks. Params:
     //   param4 = switch flag number (object is passable when enabled)
-    {0x0206, F_V3_V4, 0x000040040F800000, "TORockJungleS01"}, // Small rock
-    {0x0207, F_V3_V4, 0x000040040F800000, "TORockJungleM01"}, // Small 3-rock wall
+    {0x0206, F_V3_V4, A_E2_CCA_ALL | A_E2_SEASIDE_NIGHT | A_E4_TEST, "TORockJungleS01"}, // Small rock
+    {0x0207, F_V3_V4, A_E2_CCA_ALL | A_E2_SEASIDE_NIGHT | A_E4_TEST, "TORockJungleM01"}, // Small 3-rock wall
 
     // Jungle large 3-rock wall. Unlike the above, this takes no parameters and cannot be opened.
-    {0x0208, F_V3_V4, 0x000040040F800000, "TORockJungleL01"},
+    {0x0208, F_V3_V4, A_E2_CCA_ALL | A_E2_SEASIDE_NIGHT | A_E4_TEST, "TORockJungleL01"},
 
     // Jungle plant. Params:
     //   param4 = model number? (clamped to [0, 1])
-    {0x0209, F_V3_V4, 0x000040040F800000, "TOGrassJungle"},
+    {0x0209, F_V3_V4, A_E2_CCA_ALL | A_E2_SEASIDE_NIGHT | A_E4_TEST, "TOGrassJungle"},
 
     // CCA warp outside main gate. Unlike other warps on Ragol, this one presents the player with a choice of areas:
     // Jungle North (6), Mountain (8), or Seaside (9). Params:
     //   param6 = color (0 = blue, 1 = red); if this is 0 in Challenge mode, the warp is destroyed immediately
-    {0x020A, F_V3_V4, 0x0000400C0F800000, "TObjWarpJungMain"},
+    {0x020A, F_V3_V4, A_E2_CCA_ALL | A_E2_QUEST_ONLY | A_E4_TEST, "TObjWarpJungMain"},
 
     // Background lightning generator. Each strike lasts for 11 frames and strikes at a random angle around the player.
     // Params:
@@ -2080,17 +2167,17 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param4 = minimum frames between strikes
     //   param5 = interval randomness (after each strike, a random number is chosen between param4 and (param4 +
     //     param5) to determine how many frames to wait until the next strike)
-    {0x020B, F_V3_V4, 0x0000400040800000, "TBGLightningCtrl"},
+    {0x020B, F_V3_V4, A_E2_CCA | A_E2_GAL_GRYPHON | A_E4_TEST, "TBGLightningCtrl"},
 
     // Bird objects. Params:
     //   param4 = model number? (clamped to [0, 2])
-    {0x020C, F_V3_V4, 0x00004E0C0B000000, "__WHITE_BIRD__"},
-    {0x020D, F_V3_V4, 0x000040080B000000, "__ORANGE_BIRD__"},
+    {0x020C, F_V3_V4, A_E2_JUNGLE_N | A_E2_JUNGLE_E | A_E2_SEASIDE | A_E2_QUEST_ONLY | A_E4_DESERT | A_E4_TEST, "__WHITE_BIRD__"},
+    {0x020D, F_V3_V4, A_E2_JUNGLE_N | A_E2_JUNGLE_E | A_E2_SEASIDE | A_E2_TOWER | A_E4_TEST, "__ORANGE_BIRD__"},
 
     // Jungle box that triggers a wave event when opened. Params:
     //   param4 = event number
     //   param5 = model number (clamped to [0, 1])
-    {0x020E, F_V3_V4, 0x0000400C0F800000, "TObjContainerJungEnemy"},
+    {0x020E, F_V3_V4, A_E2_CCA_ALL | A_E2_QUEST_ONLY | A_E4_TEST, "TObjContainerJungEnemy"},
 
     // Chain saw damage trap. Params:
     //   param2 = base damage (multiplied by difficulty: Normal = x1/5, Hard = x2/5, Very Hard = x3/5, Ultimate = x6/5)
@@ -2100,38 +2187,38 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param5 low word = rotation speed (angle units per frame)
     //   param6 high word = if nonzero, ignore rotation range and rotate in a full circle instead
     //   param6 low word = delay between cycles (seconds)
-    {0x020F, F_V3_V4, 0x0000400C3F800000, "TOTrapChainSawDamage"},
+    {0x020F, F_V3_V4, A_E2_CCA_ALL | A_E2_SEABED | A_E2_QUEST_ONLY | A_E4_TEST, "TOTrapChainSawDamage"},
 
     // Laser detector trap. Params:
     //   param3 = model number (<= 0 for small laser, > 0 for large laser)
     //   param4 = switch flag number (enables this flag when triggered)
     //   param5-6 = same as 0x020F (TOTrapChainSawDamage)
-    {0x0210, F_V3_V4, 0x0000400C3F800000, "TOTrapChainSawKey"},
+    {0x0210, F_V3_V4, A_E2_CCA_ALL | A_E2_SEABED | A_E2_QUEST_ONLY | A_E4_TEST, "TOTrapChainSawKey"},
 
     // TODO: Describe this object. It's a subclass of TODragonfly and has the same params as 0x00CD
     // (TODragonflyCave01), though it appears that some may have different scale factors or offsets.
-    {0x0211, F_V3_V4, 0x00004E0003800000, "TOBiwaMushi"},
-    {0x0211, F_EP3, 0x0000000000000002, "TOBiwaMushi"},
+    {0x0211, F_V3_V4, A_E2_CCA | A_E2_JUNGLE_N | A_E2_JUNGLE_E | A_E4_DESERT | A_E4_TEST, "TOBiwaMushi"},
+    {0x0211, F_EP3, A_E3_BATTLE, "TOBiwaMushi"},
 
     // Seagull. Params:
     //   param4 = model number? (clamped to [0, 2])
-    {0x0212, F_V3_V4, 0x000040080F800000, "__SEAGULL__"},
-    {0x0212, F_EP3, 0x0000000000000002, "__SEAGULL__"},
+    {0x0212, F_V3_V4, A_E2_CCA_ALL | A_E2_TOWER | A_E4_TEST, "__SEAGULL__"},
+    {0x0212, F_EP3, A_E3_BATTLE, "__SEAGULL__"},
 
     // Jungle wooden objects. Params:
     //   param4 = model number:
     //     0 or negative: long branch
     //     1: shorter curved branch
     //     2 or greater: small log
-    {0x0213, F_V3_V4, 0x00004E040F000000, "TOJungleDesign"},
+    {0x0213, F_V3_V4, A_E2_JUNGLE_N | A_E2_JUNGLE_E | A_E2_MOUNTAIN | A_E2_SEASIDE | A_E2_SEASIDE_NIGHT | A_E4_DESERT | A_E4_TEST, "TOJungleDesign"},
 
     // Fish. This object is not constructed in split-screen mode. Params:
     //   param1-3 = TODO (Vector3F)
     //   param4 = TODO
     //   param5 = TODO
     //   param6 = TODO
-    {0x0220, F_V3_V4, 0x0000400439008000, "TObjFish"},
-    {0x0220, F_EP3, 0x0000000000008002, "TObjFish"},
+    {0x0220, F_V3_V4, A_LOBBY | A_E2_JUNGLE_N | A_E2_SEASIDE | A_E2_SEABED | A_E2_SEASIDE_NIGHT | A_E4_TEST, "TObjFish"},
+    {0x0220, F_EP3, A_LOBBY | A_E1_FOREST_1, "TObjFish"},
 
     // Seabed multiplayer doors. Params:
     //   param4 = base switch flag number (the actual switch flags used are param4, param4 + 1, param4 + 2, etc.; if
@@ -2142,28 +2229,28 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //       flags are disabled later
     //     zero or positive = door only stays unlocked while all of the switch flags are active and locks again when
     //       any are disabled (no effect in single-player offline mode; the negative behavior is used instead)
-    {0x0221, F_V3_V4, 0x0000400030000000, "TODoorFourLightSeabed"}, // Blue edges
-    {0x0222, F_V3_V4, 0x0000400030000000, "TODoorFourLightSeabedU"},
+    {0x0221, F_V3_V4, A_E2_SEABED | A_E4_TEST, "TODoorFourLightSeabed"}, // Blue edges
+    {0x0222, F_V3_V4, A_E2_SEABED | A_E4_TEST, "TODoorFourLightSeabedU"},
 
     // Small cryotube. Params:
     //   param4 = model number (clamped to [0, 3])
     //   param5 high word = number of consecutive switch flags (only used if param4 = 3)
     //   param5 low word = first switch flag number (clamped to [0, 0x100 - num flags]; only used if param4 = 3)
-    {0x0223, F_V3_V4, 0x0000400830000000, "TObjSeabedSuiso_CH"},
+    {0x0223, F_V3_V4, A_E2_SEABED | A_E2_TOWER | A_E4_TEST, "TObjSeabedSuiso_CH"},
 
     // Breakable glass wall. Params:
     //   param4 = switch flag number
     //   param5 = model number (clamped to [0, 2])
-    {0x0224, F_V3_V4, 0x0000400030000000, "TObjSeabedSuisoBrakable"},
+    {0x0224, F_V3_V4, A_E2_SEABED | A_E4_TEST, "TObjSeabedSuisoBrakable"},
 
     // Small floating robots. These are subclasses of TODragonfly and have the same params as 0x00CD
     // (TODragonflyCave01), though it appears that some may have different scale factors or offsets (TODO).
-    {0x0225, F_V3_V4, 0x0000400030000000, "TOMekaFish00"}, // Blue
-    {0x0226, F_V3_V4, 0x0000400030000000, "TOMekaFish01"}, // Red
+    {0x0225, F_V3_V4, A_E2_SEABED | A_E4_TEST, "TOMekaFish00"}, // Blue
+    {0x0226, F_V3_V4, A_E2_SEABED | A_E4_TEST, "TOMekaFish01"}, // Red
 
     // Dolphin. Params:
     //   param4 = model number (clamped to [0, 4])
-    {0x0227, F_V3_V4, 0x0000400030000000, "__DOLPHIN__"},
+    {0x0227, F_V3_V4, A_E2_SEABED | A_E4_TEST, "__DOLPHIN__"},
 
     // Seabed capturing trap, similar to 0x0153 (TOTrapAncient01) in function. Triggers when a player is within 15
     // units. Params:
@@ -2173,72 +2260,72 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     zero or negative = always visible
     //     positive = invisible in split-screen mode
     //   param6 = same as param5 from 0x0153 (TOTrapAncient01)
-    {0x0228, F_V3_V4, 0x0000400C3F800000, "TOTrapSeabed01"},
+    {0x0228, F_V3_V4, A_E2_CCA_ALL | A_E2_SEABED | A_E2_QUEST_ONLY | A_E4_TEST, "TOTrapSeabed01"},
 
     // VR link object. This object is destroyed immediately in Challenge mode and split-screen mode. Same parameters as
     // 0x008D (TOCapsuleAncient01).
-    {0x0229, F_V3_V4, 0x0000400FFFF80000, "TOCapsuleLabo"},
+    {0x0229, F_V3_V4, A_E2_NON_CITY | A_E4_TEST, "TOCapsuleLabo"},
 
     // Alias for 0x0001 (TObjParticle). The constructor function is exactly the same as for 0x0001, so this object has
     // all the same paarameters and behavior as that object.
-    {0x0240, F_V3_V4, 0x0000400040000000, "TObjParticle"},
+    {0x0240, F_V3_V4, A_E2_GAL_GRYPHON | A_E4_TEST, "TObjParticle"},
 
     // Teleporter after Barba Ray. This object behaves exactly the same as 0x0002 (TObjAreaWarpForest), except it's
     // invisible until the platform has docked after the boss is defeated.
-    {0x0280, F_V3_V4, 0x0000400100000000, "__BARBA_RAY_TELEPORTER__"},
+    {0x0280, F_V3_V4, A_E2_BARBA_RAY | A_E4_TEST, "__BARBA_RAY_TELEPORTER__"},
 
     // TODO: Describe this object. There appear to be no parameters.
-    {0x02A0, F_V3_V4, 0x0000400200000000, "TObjLiveCamera"},
+    {0x02A0, F_V3_V4, A_E2_GOL_DRAGON | A_E4_TEST, "TObjLiveCamera"},
 
     // Gee nest. This object is technically an item box, and drops an item when destroyed. Unlike most other item
     // boxes, it cannot be specialized (ignore_def is always true). Params are the same as for 0x0152
     // (TContainerAncient01), but there is also:
     //   angle.z = number of hits required to destroy
-    {0x02B0, F_V3_V4, 0x00004E0C0F800700, "TContainerAncient01R"},
+    {0x02B0, F_V3_V4, A_E1_RUINS | A_E2_CCA_ALL | A_E2_QUEST_ONLY | A_E4_DESERT | A_E4_TEST, "TContainerAncient01R"},
 
     // Lab objects. None of these take any parameters.
-    {0x02B1, F_V3_V4, 0x0000400000040000, "TObjLaboDesignBase(0)"}, // Computer console
-    {0x02B1, F_EP3, 0x0000000000000001, "TObjLaboDesignBase(0)"}, // Computer console
-    {0x02B2, F_V3_V4, 0x0000400000040000, "TObjLaboDesignBase(1)"}, // Computer console (alternate colors)
-    {0x02B2, F_EP3, 0x0000000000000001, "TObjLaboDesignBase(1)"}, // Computer console (alternate colors)
-    {0x02B3, F_V3_V4, 0x0000400000040000, "TObjLaboDesignBase(2)"}, // Chair
-    {0x02B3, F_EP3, 0x0000000000000001, "TObjLaboDesignBase(2)"}, // Chair
-    {0x02B4, F_V3_V4, 0x0000400000040000, "TObjLaboDesignBase(3)"}, // Orange wall
-    {0x02B4, F_EP3, 0x0000000000000001, "TObjLaboDesignBase(3)"}, // Orange wall
-    {0x02B5, F_V3_V4, 0x0000400000040000, "TObjLaboDesignBase(4)"}, // Gray/blue wall
-    {0x02B5, F_EP3, 0x0000000000000001, "TObjLaboDesignBase(4)"}, // Gray/blue wall
-    {0x02B6, F_V3_V4, 0x0000400000040000, "TObjLaboDesignBase(5)"}, // Long table
-    {0x02B6, F_EP3, 0x0000000000000001, "TObjLaboDesignBase(5)"}, // Long table
+    {0x02B1, F_V3_V4, A_E2_LAB | A_E4_TEST, "TObjLaboDesignBase(0)"}, // Computer console
+    {0x02B1, F_EP3, A_E3_MORGUE, "TObjLaboDesignBase(0)"}, // Computer console
+    {0x02B2, F_V3_V4, A_E2_LAB | A_E4_TEST, "TObjLaboDesignBase(1)"}, // Computer console (alternate colors)
+    {0x02B2, F_EP3, A_E3_MORGUE, "TObjLaboDesignBase(1)"}, // Computer console (alternate colors)
+    {0x02B3, F_V3_V4, A_E2_LAB | A_E4_TEST, "TObjLaboDesignBase(2)"}, // Chair
+    {0x02B3, F_EP3, A_E3_MORGUE, "TObjLaboDesignBase(2)"}, // Chair
+    {0x02B4, F_V3_V4, A_E2_LAB | A_E4_TEST, "TObjLaboDesignBase(3)"}, // Orange wall
+    {0x02B4, F_EP3, A_E3_MORGUE, "TObjLaboDesignBase(3)"}, // Orange wall
+    {0x02B5, F_V3_V4, A_E2_LAB | A_E4_TEST, "TObjLaboDesignBase(4)"}, // Gray/blue wall
+    {0x02B5, F_EP3, A_E3_MORGUE, "TObjLaboDesignBase(4)"}, // Gray/blue wall
+    {0x02B6, F_V3_V4, A_E2_LAB | A_E4_TEST, "TObjLaboDesignBase(5)"}, // Long table
+    {0x02B6, F_EP3, A_E3_MORGUE, "TObjLaboDesignBase(5)"}, // Long table
 
     // Game Boy Advance. Params:
     //   param4 = quest label to call when activated (inherited from TObjMesBase)
     //   param6 = type (clamped to [0, 1]; 0 = "QUEST", 1 = "RICO") (inherited from TObjMesBase)
-    {0x02B7, F_GC, 0x0000000000040001, "TObjGbAdvance"},
+    {0x02B7, F_GC, A_E1_P2 | A_E2_LAB, "TObjGbAdvance"},
 
     // Like TObjQuestColA (TODO: In what ways is it different?). Parameters are the same as for TObjQuestCol, but also:
     //   param2 = TODO
     //   param5 = quest script manager to use (zero or negative = quest, positive = free play)
-    {0x02B8, F_V3_V4, 0x00006FFFFFFC7FFF, "TObjQuestColALock2"},
-    {0x02B8, F_EP3, 0x0000000000000001, "TObjQuestColALock2"},
+    {0x02B8, F_V3_V4, A_ALL & (~A_LOBBY) & (~A_E1_QUEST_ONLY) & (~A_E4_BOSS), "TObjQuestColALock2"},
+    {0x02B8, F_EP3, A_E3_MORGUE, "TObjQuestColALock2"},
 
     // Like 0x0003 (TObjMapWarpForest), but is invisible and automatically warps players when they enter its radius.
     // This is used to simulate floor warps in the Control Tower. Has the same params as TObjMapWarpForest, but also:
     //   param5 = destination "floor" number (this is an intra-map warp and doesn't actually change floors; the "floor"
     //     number is only visual)
     //   param6 = if <= 0, shows "floor" number (param5 formatted as "%xF") after warp; if > 0, param5 is ignored
-    {0x02B9, F_V3_V4, 0x00007FFC3FFF78FF, "TObjMapForceWarp"},
-    {0x02B9, F_EP3, 0x0000000000000001, "TObjMapForceWarp"},
+    {0x02B9, F_V3_V4, A_ALL & (~A_E1_RUINS) & (~A_LOBBY) & (~A_E2_BOSS), "TObjMapForceWarp"},
+    {0x02B9, F_EP3, A_E3_MORGUE, "TObjMapForceWarp"},
 
     // Behaves like 0x0012 (TObjQuestCol), but also has the param5 behavior from 0x02B8 (TObjQuestColALock2).
-    {0x02BA, F_V3_V4, 0x00006FFFFFFC7FFF, "TObjQuestCol2"},
-    {0x02BA, F_EP3, 0x0000000000000001, "TObjQuestCol2"},
+    {0x02BA, F_V3_V4, A_ALL & (~A_LOBBY) & (~A_E1_QUEST_ONLY) & (~A_E4_BOSS), "TObjQuestCol2"},
+    {0x02BA, F_EP3, A_E3_MORGUE, "TObjQuestCol2"},
 
     // Episode 2 Lab door with glass window. Same parameters as TODoorLaboNormal, except param5 is unused.
-    {0x02BB, F_V3_V4, 0x0000400000040000, "TODoorLaboNormal"},
+    {0x02BB, F_V3_V4, A_E2_LAB | A_E4_TEST, "TODoorLaboNormal"},
 
     // Episode 2 ending movie warp (used in final boss arenas after the boss is defeated). Same params as 0x001C
     // (TObjAreaWarpEnding).
-    {0x02BC, F_V3_V4, 0x0000400080000000, "TObjAreaWarpEndingJung"},
+    {0x02BC, F_V3_V4, A_E2_OLGA_FLOW | A_E4_TEST, "TObjAreaWarpEndingJung"},
 
     // Warp to another location on the same map. Used for the Lab/city warp. This warp is visible in all game modes,
     // but cannot be used in Episode 1, Battle mode, or Challenge mode. Params:
@@ -2248,7 +2335,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     00 = "The Principal"
     //     01 = "Pioneer 2"
     //     02 = "Lab"
-    {0x02BD, F_V3_V4, 0x0000400000040000, "TObjLaboMapWarp"},
+    {0x02BD, F_V3_V4, A_E2_LAB | A_E4_TEST, "TObjLaboMapWarp"},
 
     // This object is used internally by Episode 3 during battles as the visual implementation for some overlay tiles.
     // Params:
@@ -2272,32 +2359,32 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     0F = Fence (overlay = 0x20; shareobj_new_guard.bml)
     //   param6 second-low byte = TODO
     //   param6 low byte = TODO
-    {0x02D0, F_EP3, 0x0000000000000002, "TObjKazariCard"},
+    {0x02D0, F_EP3, A_E3_BATTLE, "TObjKazariCard"},
 
     // Effects visible in the central column in the Morgue when cards transform. There appear to be no parameters.
-    {0x02D1, F_EP3, 0x0000000000000001, "TObj_FloatingCardMaterial_Dark"},
-    {0x02D2, F_EP3, 0x0000000000000001, "TObj_FloatingCardMaterial_Hero"},
+    {0x02D1, F_EP3, A_E3_MORGUE, "TObj_FloatingCardMaterial_Dark"},
+    {0x02D2, F_EP3, A_E3_MORGUE, "TObj_FloatingCardMaterial_Hero"},
 
     // Morgue warps. These don't actually do anything; they just look like a warp. The actual warping is done by
     // another object (TObjCityAreaWarp for the lobby teleporter, or TShopGenerator for the battle counter). These take
     // no parameters.
-    {0x02D3, F_EP3, 0x0000000000000001, "TObjCardCityMapWarp(0)"}, // Battle counter warp (blue lines)
-    {0x02D9, F_EP3, 0x0000000000000001, "TObjCardCityMapWarp(1)"}, // Battle counter warp (green lines; unused)
-    {0x02E3, F_EP3, 0x0000000000000001, "TObjCardCityMapWarp(2)"}, // Lobby warp (yellow lines)
+    {0x02D3, F_EP3, A_E3_MORGUE, "TObjCardCityMapWarp(0)"}, // Battle counter warp (blue lines)
+    {0x02D9, F_EP3, A_E3_MORGUE, "TObjCardCityMapWarp(1)"}, // Battle counter warp (green lines; unused)
+    {0x02E3, F_EP3, A_E3_MORGUE, "TObjCardCityMapWarp(2)"}, // Lobby warp (yellow lines)
 
     // Morgue doors. Unsurprisingly, the closed variants don't open. The closed variants also have a red light in the
     // center instead of a blue light. Curiously, the (3) variant is opaque when closed, unlike the other closed doors.
     // None of these take any parameters.
-    {0x02D4, F_EP3, 0x0000000000000001, "TObjCardCityDoor(0)"}, // Yellow V-pattern (to deck edit room)
-    {0x02D5, F_EP3, 0x0000000000000001, "TObjCardCityDoor(1)"}, // Blue V-pattern (to battle entry counter)
-    {0x02D8, F_EP3, 0x0000000000000001, "TObjCardCityDoor(2)"}, // Green V-pattern (unused)
-    {0x02DF, F_EP3, 0x0000000000000001, "TObjCardCityDoor(3)"}, // Blue X-pattern (to lobby teleporter)
-    {0x02E0, F_EP3, 0x0000000000000001, "TObjCardCityDoor(4)"}, // Gray (to chief)
-    {0x02DC, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(0)"}, // Yellow V-pattern (to deck edit room)
-    {0x02DD, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(1)"}, // Blue V-pattern (to battle entry counter)
-    {0x02DE, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(2)"}, // Green V-pattern (unused)
-    {0x02E1, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(3)"}, // Opaque gray X-pattern
-    {0x02E2, F_EP3, 0x0000000000000001, "TObjCardCityDoor_Closed(4)"}, // Gray (to chief)
+    {0x02D4, F_EP3, A_E3_MORGUE, "TObjCardCityDoor(0)"}, // Yellow V-pattern (to deck edit room)
+    {0x02D5, F_EP3, A_E3_MORGUE, "TObjCardCityDoor(1)"}, // Blue V-pattern (to battle entry counter)
+    {0x02D8, F_EP3, A_E3_MORGUE, "TObjCardCityDoor(2)"}, // Green V-pattern (unused)
+    {0x02DF, F_EP3, A_E3_MORGUE, "TObjCardCityDoor(3)"}, // Blue X-pattern (to lobby teleporter)
+    {0x02E0, F_EP3, A_E3_MORGUE, "TObjCardCityDoor(4)"}, // Gray (to chief)
+    {0x02DC, F_EP3, A_E3_MORGUE, "TObjCardCityDoor_Closed(0)"}, // Yellow V-pattern (to deck edit room)
+    {0x02DD, F_EP3, A_E3_MORGUE, "TObjCardCityDoor_Closed(1)"}, // Blue V-pattern (to battle entry counter)
+    {0x02DE, F_EP3, A_E3_MORGUE, "TObjCardCityDoor_Closed(2)"}, // Green V-pattern (unused)
+    {0x02E1, F_EP3, A_E3_MORGUE, "TObjCardCityDoor_Closed(3)"}, // Opaque gray X-pattern
+    {0x02E2, F_EP3, A_E3_MORGUE, "TObjCardCityDoor_Closed(4)"}, // Gray (to chief)
 
     // Mortis Fons geyser. Params:
     //   param1-3 = TODO
@@ -2314,19 +2401,19 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     09 = MIZUMODE_FOG2
     //     0A = MIZUMODE_LIGHT
     //   param5 = TODO (value is param5 % 7)
-    {0x02D6, F_EP3, 0x0000000000000002, "TObjKazariGeyserMizu"},
+    {0x02D6, F_EP3, A_E3_BATTLE, "TObjKazariGeyserMizu"},
 
     // TODO: Describe this object. It appears to be created by many creatures and probably SCs as well, but it's not
     // obvious what it's used for, since the logic of tiles being blocked or free is implemented in TCardServer, which
     // doesn't interact with this object. Further research is needed here. Params:
     //   param1-3 = TODO
     //   param4 = TODO (expected to be 0 or 1)
-    {0x02D7, F_EP3, 0x0000000000000002, "TObjSetCardColi"},
+    {0x02D7, F_EP3, A_E3_BATTLE, "TObjSetCardColi"},
 
     // Floating robots, presumably. These are both subclasses of 0x0106 (TODragonflyMachine01) and take all the same
     // params as that object.
-    {0x02DA, F_EP3, 0x0000000000000001, "TOFlyMekaHero"},
-    {0x02DB, F_EP3, 0x0000000000000001, "TOFlyMekaDark"},
+    {0x02DA, F_EP3, A_E3_MORGUE, "TOFlyMekaHero"},
+    {0x02DB, F_EP3, A_E3_MORGUE, "TOFlyMekaDark"},
 
     // Lobby banner or model display object. This implements display of media sent with the B9 command. Params:
     //   param1-3 = scale factors (x, y, z)
@@ -2335,79 +2422,79 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param5 = per-axis mirror flags (the low 3 nybbles of this value specify whether to invert each axis of the
     //     model; if any nybble is 1 then the model is inverted along the corresponding axis; the lowest nybble
     //     corresponds to the x axis)
-    {0x02E4, F_EP3, 0x0000000000008001, "TObjSinBoardCard"},
+    {0x02E4, F_EP3, A_E3_MORGUE | A_LOBBY, "TObjSinBoardCard"},
 
     // Morgue info screen. Params:
     //   param4 = model number:
     //     0 = tall, yellow, vertical-scrolling
     //     1 = short, blue, horizontal-scrolling
-    {0x02E5, F_EP3, 0x0000000000000001, "TObjCityMoji"},
+    {0x02E5, F_EP3, A_E3_MORGUE, "TObjCityMoji"},
 
     // Like TObjCardCityMapWarp(2) (the warp to the lobby from the Morgue) but doesn't render the circles. Used in
     // offline mode where that warp is disabled. There are no parameters.
-    {0x02E6, F_EP3, 0x0000000000000001, "TObjCityWarpOff"},
+    {0x02E6, F_EP3, A_E3_MORGUE, "TObjCityWarpOff"},
 
     // Small flying robot. There appear to be no parameters.
-    {0x02E7, F_EP3, 0x0000000000000001, "TObjFlyCom"},
+    {0x02E7, F_EP3, A_E3_MORGUE, "TObjFlyCom"},
 
     // TODO: Describe this object. Params:
     //   param4 = TODO (used in vtable[0x0E])
-    {0x02E8, F_EP3, 0x0000000000000001, "__UNKNOWN_02E8__"},
+    {0x02E8, F_EP3, A_E3_MORGUE, "__UNKNOWN_02E8__"},
 
     // Episode 4 light source. TODO: Find and document this object's parameters.
-    {0x0300, F_V4, 0x00005FF000000000, "__EP4_LIGHT__"},
+    {0x0300, F_V4, A_E4_CRATER | A_E4_DESERT | A_E4_BOSS | A_E4_TEST, "__EP4_LIGHT__"},
 
     // Wilds/Crater cactus. Params:
     //   param1 = horizontal scale (x, z)
     //   param2 = vertical scale (y)
     //   param4 = model number (0-2, not bounds-checked)
     //   param5 = TODO
-    {0x0301, F_V4, 0x00004FF000000000, "__WILDS_CRATER_CACTUS__"},
+    {0x0301, F_V4, A_E4_CRATER | A_E4_DESERT | A_E4_TEST, "__WILDS_CRATER_CACTUS__"},
 
     // Wilds/Crater brown rock. Params:
     //   param1-3 = scale factors (x, y, z); z factor also scales hitbox size
     //   param4 = model number (0-2, not bounds-checked)
-    {0x0302, F_V4, 0x00004FF000000000, "__WILDS_CRATER_BROWN_ROCK__"},
+    {0x0302, F_V4, A_E4_CRATER | A_E4_DESERT | A_E4_TEST, "__WILDS_CRATER_BROWN_ROCK__"},
 
     // Wilds/Crater destructible brown rock. Params:
     //   param4 = switch flag number
-    {0x0303, F_V4, 0x00004FF000000000, "__WILDS_CRATER_BROWN_ROCK_DESTRUCTIBLE__"},
+    {0x0303, F_V4, A_E4_CRATER | A_E4_DESERT | A_E4_TEST, "__WILDS_CRATER_BROWN_ROCK_DESTRUCTIBLE__"},
 
     // TODO: Construct this object and see what it is. Params:
     //   param4 = object identifier (must be in range [0, 15]; used in 6xD4 command)
-    {0x0340, F_V4, 0x0000400000000000, "__UNKNOWN_0340__"},
+    {0x0340, F_V4, A_E4_TEST, "__UNKNOWN_0340__"},
 
     // TODO: Construct this object and see what it is. It looks like some kind of child object of 0340. Params:
     //   param4 = object identifier (must be in range [0, 15]; used in 6xD4 command; looks like it should match an
     //     existing 0340's identifier)
     //   param5 = child index? (must be in range [0, 3])
-    {0x0341, F_V4, 0x0000400000000000, "__UNKNOWN_0341__"},
+    {0x0341, F_V4, A_E4_TEST, "__UNKNOWN_0341__"},
 
     // Poison plant. Base damage is 10 (Normal), 20 (Hard), 30 (Very Hard), or 60 (Ultimate). There appear to be no
     // parameters.
-    {0x0380, F_V4, 0x00004E0000000000, "__POISON_PLANT__"},
+    {0x0380, F_V4, A_E4_DESERT | A_E4_TEST, "__POISON_PLANT__"},
 
     // TODO: Describe this object. Params:
     //   param4 = model number (clamped to [0, 1])
-    {0x0381, F_V4, 0x00004E0000000000, "__UNKNOWN_0381__"},
+    {0x0381, F_V4, A_E4_DESERT | A_E4_TEST, "__UNKNOWN_0381__"},
 
     // TODO: Describe this object. There appear to be no parameters.
-    {0x0382, F_V4, 0x00004E0000000000, "__UNKNOWN_0382__"},
+    {0x0382, F_V4, A_E4_DESERT | A_E4_TEST, "__UNKNOWN_0382__"},
 
     // Desert ooze plant. Params:
     //   param1 = animation speed?
     //   param2 = scale factor
     //   param4 = model number (clamped to [0, 1])
-    {0x0383, F_V4, 0x00004E0000000000, "__DESERT_OOZE_PLANT__"},
+    {0x0383, F_V4, A_E4_DESERT | A_E4_TEST, "__DESERT_OOZE_PLANT__"},
 
     // TODO: Describe this object. Params:
     //   param1 = animation speed?
     //   param4 = TODO (clamped to [0, 1])
-    {0x0385, F_V4, 0x00004E0000000000, "__UNKNOWN_0385__"},
+    {0x0385, F_V4, A_E4_DESERT | A_E4_TEST, "__UNKNOWN_0385__"},
 
     // Wilds/Crater black rocks. Params:
     //   param4 = model number (0-2, not bounds-checked)
-    {0x0386, F_V4, 0x00004FF000000000, "__WILDS_CRATER_BLACK_ROCKS__"},
+    {0x0386, F_V4, A_E4_CRATER | A_E4_DESERT | A_E4_TEST, "__WILDS_CRATER_BLACK_ROCKS__"},
 
     // TODO: Describe this object. Params (names come from debug strings):
     //   angle.x = dest x
@@ -2417,7 +2504,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param2 = area power (value is param2 * 0.8)
     //   param4 = hole radius (value is param4 / 100)
     //   param5 = hole power (value is param5 / 100)
-    {0x0387, F_V4, 0x00004E0000000000, "__UNKNOWN_0387__"},
+    {0x0387, F_V4, A_E4_DESERT | A_E4_TEST, "__UNKNOWN_0387__"},
 
     // TODO: Describe this object. Params:
     //   param1 = hitbox width (x; only used if param6 == 0)
@@ -2425,7 +2512,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param3 = hitbox depth (z; only used if param6 == 0)
     //   param4 = TODO (value is param4 / 100)
     //   param6 = hitbox type (0 = rectangular, anything else = cylindrical)
-    {0x0388, F_V4, 0x00004E0000000000, "__UNKNOWN_0388__"},
+    {0x0388, F_V4, A_E4_DESERT | A_E4_TEST, "__UNKNOWN_0388__"},
 
     // Game flag set/clear zone. This sets and clears game flags (the flags sent in 6x0A) when the player enters the
     // object's hitbox. Params:
@@ -2433,7 +2520,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param4 = game flags to set (low 8 bits only)
     //   param5 = game flags to clear (low 8 bits only)
     //   param6 = same as for 0x0388
-    {0x0389, F_V4, 0x0000400000000000, "__GAME_FLAG_SET_CLEAR_ZONE__"},
+    {0x0389, F_V4, A_E4_TEST, "__GAME_FLAG_SET_CLEAR_ZONE__"},
 
     // HP drain zone. When a player is within this object's hitbox, it subtracts 0.66% of the player's current HP at a
     // regular interval. The amount of damage per interval is capped below at 1 HP, so it will always do a nonzero
@@ -2441,16 +2528,16 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param1-3 = same as for 0x0388
     //   param5 = interval (in frames) between damage applications
     //   param6 = same as for 0x0388
-    {0x038A, F_V4, 0x0000400000000000, "__HP_DRAIN_ZONE__"},
+    {0x038A, F_V4, A_E4_TEST, "__HP_DRAIN_ZONE__"},
 
     // Falling stalactite. Activates when any player is within 50 units. Base damage is 100 on Normal, 200 on Hard, 300
     // on Very Hard, or 600 on Ultimate. There appear to be no parameters.
-    {0x038B, F_V4, 0x00004E0000000000, "__FALLING_STALACTITE__"},
+    {0x038B, F_V4, A_E4_DESERT | A_E4_TEST, "__FALLING_STALACTITE__"},
 
     // Solid desert plant. Params:
     //   param1 = horizontal scale factor (x, z)
     //   param2 = vertical scale factor (y)
-    {0x038C, F_V4, 0x00004E0000000000, "__DESERT_PLANT_SOLID__"},
+    {0x038C, F_V4, A_E4_DESERT | A_E4_TEST, "__DESERT_PLANT_SOLID__"},
 
     // Desert crystals-style box. Params:
     //   param1 = contents type:
@@ -2462,16 +2549,16 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     // 6xA2 command; however, the standard implementation ignores them.)
     // If param1 is 2, the other parameters have the same meanings as for 0x0088 (TObjContainerBase2).
     // If param1 is 3, the event number is specified in param4.
-    {0x038D, F_V4, 0x00004E0000000000, "__DESERT_CRYSTALS_BOX__"},
+    {0x038D, F_V4, A_E4_DESERT | A_E4_TEST, "__DESERT_CRYSTALS_BOX__"},
 
     // Episode 4 test door. param4 and param6 are the same as for 0x0056 (TODoorLabo).
-    {0x038E, F_V4, 0x0000400000000000, "__EP4_TEST_DOOR__"},
+    {0x038E, F_V4, A_E4_TEST, "__EP4_TEST_DOOR__"},
 
     // Beehive. Params:
     //   param1 = horizontal scale factor (x, z)
     //   param2 = vertical scale factor (y)
     //   param4 = model number (clamped to [0, 1])
-    {0x038F, F_V4, 0x00004E0000000000, "__BEEHIVE__"},
+    {0x038F, F_V4, A_E4_DESERT | A_E4_TEST, "__BEEHIVE__"},
 
     // Episode 4 test particles. Generates particles at a specific location (TODO) at a regular interval. Params:
     //   angle.x = TODO
@@ -2479,17 +2566,17 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param1 = particle distance? (TODO)
     //   param2 = TODO
     //   param4 = frames between effects
-    {0x0390, F_V4, 0x00004E0000000000, "__EP4_TEST_PARTICLE__"},
+    {0x0390, F_V4, A_E4_DESERT | A_E4_TEST, "__EP4_TEST_PARTICLE__"},
 
     // Heat (implemented as a type of poison fog). Has the same parameters as TObjFogCollisionPoison.
-    {0x0391, F_V4, 0x00004E0000000000, "__HEAT__"},
+    {0x0391, F_V4, A_E4_DESERT | A_E4_TEST, "__HEAT__"},
 
     // Episode 4 boss egg. There appear to be no parameters.
-    {0x03C0, F_V4, 0x0000500000000000, "__EP4_BOSS_EGG__"},
+    {0x03C0, F_V4, A_E4_BOSS | A_E4_TEST, "__EP4_BOSS_EGG__"},
 
     // Episode 4 boss rock spawner. Params:
     //   param4 = type (clamped to [0, 2])
-    {0x03C1, F_V4, 0x0000500000000000, "__EP4_BOSS_ROCK_SPAWNER__"},
+    {0x03C1, F_V4, A_E4_BOSS | A_E4_TEST, "__EP4_BOSS_ROCK_SPAWNER__"},
 });
 
 static const std::vector<DATEntityDefinition> dat_enemy_definitions({
@@ -2532,111 +2619,111 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     //     3 = TODO (Ep3 only; appears to be unused)
     // TODO: setting param4 to 0 changes something else about the NPC; figure out what this does (see
     // TObjNpcBase_v57_set_config_from_params)
-    {0x0001, F_V0_V4, 0x0000200000000001, "TObjNpcFemaleBase"}, // Woman with red hair and purple outfit
-    {0x0001, F_EP3, 0x0000000000000001, "TObjNpcFemaleBase"}, // Woman with red hair and purple outfit
-    {0x0002, F_V0_V4, 0x0000200000000001, "TObjNpcFemaleChild"}, // Shorter version of the above
-    {0x0002, F_EP3, 0x0000000000000001, "TObjNpcFemaleChild"}, // Shorter version of the above
-    {0x0003, F_V0_V4, 0x0000200000040001, "TObjNpcFemaleDwarf"}, // Woman wearing green outfit
-    {0x0003, F_EP3, 0x0000000000000001, "TObjNpcFemaleDwarf"}, // Woman wearing green outfit
-    {0x0004, F_V0_V4, 0x0000200000000001, "TObjNpcFemaleFat"}, // Woman outside Hunter's Guild
-    {0x0004, F_EP3, 0x0000000000000001, "TObjNpcFemaleFat"}, // Woman outside Hunter's Guild
-    {0x0005, F_V0_V4, 0x0000200000000001, "TObjNpcFemaleMacho"}, // Tool shop woman
-    {0x0005, F_EP3, 0x0000000000000001, "TObjNpcFemaleMacho"}, // Tool shop woman
-    {0x0006, F_V0_V4, 0x0000200000040001, "TObjNpcFemaleOld"}, // Older woman with yellow/red outfit
-    {0x0006, F_EP3, 0x0000000000000001, "TObjNpcFemaleOld"}, // Older woman with yellow/red outfit
-    {0x0007, F_V0_V4, 0x0000200000000001, "TObjNpcFemaleTall"}, // Woman walking around inside shop area
-    {0x0007, F_EP3, 0x0000000000000001, "TObjNpcFemaleTall"}, // Woman walking around inside shop area
-    {0x0008, F_V0_V4, 0x0000200000008001, "TObjNpcMaleBase"}, // Similar appearance to weapon shop man
-    {0x0008, F_EP3, 0x0000000000008001, "TObjNpcMaleBase"}, // Similar appearance to weapon shop man
-    {0x0009, F_V0_V4, 0x0000200000040001, "TObjNpcMaleChild"}, // Kid wearing purple
-    {0x0009, F_EP3, 0x0000000000000001, "TObjNpcMaleChild"}, // Kid wearing purple
-    {0x000A, F_V0_V4, 0x0000200000000001, "TObjNpcMaleDwarf"}, // Man outside Medical Center
-    {0x000A, F_EP3, 0x0000000000000001, "TObjNpcMaleDwarf"}, // Man outside Medical Center
-    {0x000B, F_V0_V4, 0x0000200000040001, "TObjNpcMaleFat"}, // Armor shop man
-    {0x000B, F_EP3, 0x0000000000000001, "TObjNpcMaleFat"}, // Armor shop man
-    {0x000C, F_V0_V4, 0x0000200000000001, "TObjNpcMaleMacho"}, // Weapon shop man
-    {0x000C, F_EP3, 0x0000000000000001, "TObjNpcMaleMacho"}, // Weapon shop man
-    {0x000D, F_V0_V4, 0x0000200000040001, "TObjNpcMaleOld"}, // Man near telepipe locations
-    {0x000D, F_EP3, 0x0000000000000001, "TObjNpcMaleOld"}, // Man near telepipe locations
-    {0x000E, F_V0_V4, 0x0000200000040001, "TObjNpcMaleTall"}, // Man wearing turquoise
-    {0x000E, F_EP3, 0x0000000000000001, "TObjNpcMaleTall"}, // Man wearing turquoise
-    {0x0019, F_V0_V4, 0x00003FF000040001, "TObjNpcSoldierBase"}, // Man right of the Ragol warp door
-    {0x0019, F_EP3, 0x0000000000000001, "TObjNpcSoldierBase"}, // Man right of the Ragol warp door
-    {0x001A, F_V0_V4, 0x0000200000000001, "TObjNpcSoldierMacho"}, // Man left of the Ragol warp door
-    {0x001A, F_EP3, 0x0000000000000001, "TObjNpcSoldierMacho"}, // Man left of the Ragol warp door
-    {0x001B, F_V0_V4, 0x0000200000040001, "TObjNpcGovernorBase"}, // Principal Tyrell
-    {0x001B, F_EP3, 0x0000000000000001, "TObjNpcGovernorBase"}, // Principal Tyrell
-    {0x001C, F_V0_V4, 0x0000200000040001, "TObjNpcConnoisseur"}, // Tekker
-    {0x001D, F_V0_V4, 0x0000200000040021, "TObjNpcCloakroomBase"}, // Bank woman
-    {0x001E, F_V0_V4, 0x0000200000000001, "TObjNpcExpertBase"}, // Man in front of bank
-    {0x001F, F_V0_V4, 0x0000200000040001, "TObjNpcNurseBase"}, // Nurses in Medical Center
-    {0x0020, F_V0_V4, 0x0000200000040001, "TObjNpcSecretaryBase"}, // Irene
-    {0x0020, F_EP3, 0x0000000000000001, "TObjNpcSecretaryBase"}, // Karen
-    {0x0021, F_V0_V4, 0x0000200000000001, "TObjNpcHHM00"}, // TODO
-    {0x0021, F_EP3, 0x0000000000000001, "TObjNpcHHM00"}, // TODO
-    {0x0022, F_V0_V4, 0x0000200000000001, "TObjNpcNHW00"}, // TODO
-    {0x0022, F_EP3, 0x0000000000000001, "TObjNpcNHW00"}, // TODO
-    {0x0024, F_V0_V4, 0x0000200000000001, "TObjNpcHRM00"}, // TODO
-    {0x0025, F_V0_V4, 0x0000200000040001, "TObjNpcARM00"}, // TODO
-    {0x0026, F_V0_V4, 0x0000200000040001, "TObjNpcARW00"}, // TODO
-    {0x0026, F_EP3, 0x0000000000000001, "TObjNpcARW00"}, // TODO
-    {0x0027, F_V0_V4, 0x0000200000040001, "TObjNpcHFW00"}, // TODO
-    {0x0027, F_EP3, 0x0000000000000001, "TObjNpcHFW00"}, // TODO
-    {0x0028, F_V0_V4, 0x0000200000040001, "TObjNpcNFM00"}, // TODO
-    {0x0028, F_EP3, 0x0000000000000001, "TObjNpcNFM00"}, // TODO
-    {0x0029, F_V0_V4, 0x00003C0000000001, "TObjNpcNFW00"}, // TODO
-    {0x0029, F_EP3, 0x0000000000000001, "TObjNpcNFW00"}, // TODO
-    {0x002B, F_V0_V4, 0x0000200000000001, "TObjNpcNHW01"}, // TODO
-    {0x002C, F_V0_V4, 0x0000200000000001, "TObjNpcAHM01"}, // TODO
-    {0x002D, F_V0_V4, 0x0000200000000001, "TObjNpcHRM01"}, // TODO
-    {0x0030, F_V0_V4, 0x0000200000000001, "TObjNpcHFW01"}, // TODO
-    {0x0031, F_V0_V4, 0x0000200000040001, "TObjNpcNFM01"}, // TODO
-    {0x0031, F_EP3, 0x0000000000000001, "TObjNpcNFM01"}, // TODO
-    {0x0032, F_V0_V4, 0x00002C0000000001, "TObjNpcNFW01"}, // TODO
-    {0x0045, F_V0_V4, 0x00000FF40F800006, "TObjNpcLappy"}, // Rappy NPC
-    {0x0046, F_V0_V4, 0x0000000000000004, "TObjNpcMoja"}, // Small Hildebear NPC
-    {0x0047, F_V2, 0x0000000000000004, "TObjNpcRico"}, // Rico
-    {0x00A9, F_V0_V4, 0x0000000000000600, "TObjNpcBringer"}, // Dark Bringer NPC
-    {0x00D0, F_V3_V4, 0x0000200000040001, "TObjNpcKenkyu"}, // Ep2 armor shop man
-    {0x00D1, F_V3_V4, 0x0000200000040001, "TObjNpcSoutokufu"}, // Natasha Milarose
-    {0x00D2, F_V3_V4, 0x0000000000040000, "TObjNpcHosa"}, // Dan
-    {0x00D3, F_V3_V4, 0x000000F000040000, "TObjNpcKenkyuW"}, // Ep2 tool shop woman
-    {0x00D6, F_EP3, 0x0000000000000001, "TObjNpcHeroGovernor"}, // Morgue Chief
-    {0x00D7, F_EP3, 0x0000000000000001, "TObjNpcHeroGovernor"}, // Morgue Chief (direct alias of 00D6)
-    {0x00F0, F_V3_V4, 0x0000000000040000, "TObjNpcHosa2"}, // Man next to room with warp to Lab
-    {0x00F1, F_V3_V4, 0x0000000000040000, "TObjNpcKenkyu2"}, // Ep2 weapon shop man
-    {0x00F2, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00F2)"}, // TODO
-    {0x00F3, F_V3_V4, 0x00003FF000040000, "TObjNpcNgcBase(0x00F3)"}, // TODO
-    {0x00F4, F_V3_V4, 0x00003FF030040000, "TObjNpcNgcBase(0x00F4)"}, // TODO
-    {0x00F5, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00F5)"}, // TODO
-    {0x00F6, F_V3_V4, 0x000000080F840000, "TObjNpcNgcBase(0x00F6)"}, // TODO
-    {0x00F7, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00F7)"}, // Nol
-    {0x00F8, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00F8)"}, // Elly
-    {0x00F9, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00F9)"}, // Woman with cyan hair
-    {0x00FA, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00FA)"}, // Woman with bright red hair
-    {0x00FB, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00FB)"}, // Man with blue hair near the Ep2 Medical Center
-    {0x00FC, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00FC)"}, // Man in room next to Ep2 Hunter's Guild
-    {0x00FD, F_V3_V4, 0x000000040F840000, "TObjNpcNgcBase(0x00FD)"}, // TODO
-    {0x00FE, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00FE)"}, // Episode 2 Hunter's Guild woman
-    {0x00FF, F_V3_V4, 0x0000000000040000, "TObjNpcNgcBase(0x00FF)"}, // Woman near room with teleporter to VR areas
-    {0x0100, F_V4, 0x0000200000040001, "__MOMOKA__"}, // Momoka
-    {0x0110, F_EP3, 0x0000000000000001, "TObjNpcWalkingMeka_Hero"}, // Small talking robot in Morgue
-    {0x0111, F_EP3, 0x0000000000000001, "TObjNpcWalkingMeka_Dark"}, // Small talking robot in Morgue
+    {0x0001, F_V0_V4, A_E1_P2 | A_E4_P2, "TObjNpcFemaleBase"}, // Woman with red hair and purple outfit
+    {0x0001, F_EP3, A_E3_MORGUE, "TObjNpcFemaleBase"}, // Woman with red hair and purple outfit
+    {0x0002, F_V0_V4, A_E1_P2 | A_E4_P2, "TObjNpcFemaleChild"}, // Shorter version of the above
+    {0x0002, F_EP3, A_E3_MORGUE, "TObjNpcFemaleChild"}, // Shorter version of the above
+    {0x0003, F_V0_V4, A_CITY, "TObjNpcFemaleDwarf"}, // Woman wearing green outfit
+    {0x0003, F_EP3, A_E3_MORGUE, "TObjNpcFemaleDwarf"}, // Woman wearing green outfit
+    {0x0004, F_V0_V4, A_E1_P2 | A_E4_P2, "TObjNpcFemaleFat"}, // Woman outside Hunter's Guild
+    {0x0004, F_EP3, A_E3_MORGUE, "TObjNpcFemaleFat"}, // Woman outside Hunter's Guild
+    {0x0005, F_V0_V4, A_E1_P2 | A_E4_P2, "TObjNpcFemaleMacho"}, // Tool shop woman
+    {0x0005, F_EP3, A_E3_MORGUE, "TObjNpcFemaleMacho"}, // Tool shop woman
+    {0x0006, F_V0_V4, A_CITY, "TObjNpcFemaleOld"}, // Older woman with yellow/red outfit
+    {0x0006, F_EP3, A_E3_MORGUE, "TObjNpcFemaleOld"}, // Older woman with yellow/red outfit
+    {0x0007, F_V0_V4, A_E1_P2 | A_E4_P2, "TObjNpcFemaleTall"}, // Woman walking around inside shop area
+    {0x0007, F_EP3, A_E3_MORGUE, "TObjNpcFemaleTall"}, // Woman walking around inside shop area
+    {0x0008, F_V0_V4, A_E1_P2 | A_LOBBY | A_E4_P2, "TObjNpcMaleBase"}, // Similar appearance to weapon shop man
+    {0x0008, F_EP3, A_E3_MORGUE | A_LOBBY, "TObjNpcMaleBase"}, // Similar appearance to weapon shop man
+    {0x0009, F_V0_V4, A_CITY, "TObjNpcMaleChild"}, // Kid wearing purple
+    {0x0009, F_EP3, A_E3_MORGUE, "TObjNpcMaleChild"}, // Kid wearing purple
+    {0x000A, F_V0_V4, A_E1_P2 | A_E4_P2, "TObjNpcMaleDwarf"}, // Man outside Medical Center
+    {0x000A, F_EP3, A_E3_MORGUE, "TObjNpcMaleDwarf"}, // Man outside Medical Center
+    {0x000B, F_V0_V4, A_CITY, "TObjNpcMaleFat"}, // Armor shop man
+    {0x000B, F_EP3, A_E3_MORGUE, "TObjNpcMaleFat"}, // Armor shop man
+    {0x000C, F_V0_V4, A_E1_P2 | A_E4_P2, "TObjNpcMaleMacho"}, // Weapon shop man
+    {0x000C, F_EP3, A_E3_MORGUE, "TObjNpcMaleMacho"}, // Weapon shop man
+    {0x000D, F_V0_V4, A_CITY, "TObjNpcMaleOld"}, // Man near telepipe locations
+    {0x000D, F_EP3, A_E3_MORGUE, "TObjNpcMaleOld"}, // Man near telepipe locations
+    {0x000E, F_V0_V4, A_CITY, "TObjNpcMaleTall"}, // Man wearing turquoise
+    {0x000E, F_EP3, A_E3_MORGUE, "TObjNpcMaleTall"}, // Man wearing turquoise
+    {0x0019, F_V0_V4, A_E4_NON_CITY | A_CITY, "TObjNpcSoldierBase"}, // Man right of the Ragol warp door
+    {0x0019, F_EP3, A_E3_MORGUE, "TObjNpcSoldierBase"}, // Man right of the Ragol warp door
+    {0x001A, F_V0_V4, A_E1_P2 | A_E4_P2, "TObjNpcSoldierMacho"}, // Man left of the Ragol warp door
+    {0x001A, F_EP3, A_E3_MORGUE, "TObjNpcSoldierMacho"}, // Man left of the Ragol warp door
+    {0x001B, F_V0_V4, A_CITY, "TObjNpcGovernorBase"}, // Principal Tyrell
+    {0x001B, F_EP3, A_E3_MORGUE, "TObjNpcGovernorBase"}, // Principal Tyrell
+    {0x001C, F_V0_V4, A_CITY, "TObjNpcConnoisseur"}, // Tekker
+    {0x001D, F_V0_V4, A_E1_CAVE_3 | A_CITY, "TObjNpcCloakroomBase"}, // Bank woman
+    {0x001E, F_V0_V4, A_E1_P2 | A_E4_P2, "TObjNpcExpertBase"}, // Man in front of bank
+    {0x001F, F_V0_V4, A_CITY, "TObjNpcNurseBase"}, // Nurses in Medical Center
+    {0x0020, F_V0_V4, A_CITY, "TObjNpcSecretaryBase"}, // Irene
+    {0x0020, F_EP3, A_E3_MORGUE, "TObjNpcSecretaryBase"}, // Karen
+    {0x0021, F_V0_V4, A_E1_P2 | A_E4_P2, "TObjNpcHHM00"}, // TODO
+    {0x0021, F_EP3, A_E3_MORGUE, "TObjNpcHHM00"}, // TODO
+    {0x0022, F_V0_V4, A_E1_P2 | A_E4_P2, "TObjNpcNHW00"}, // TODO
+    {0x0022, F_EP3, A_E3_MORGUE, "TObjNpcNHW00"}, // TODO
+    {0x0024, F_V0_V4, A_E1_P2 | A_E4_P2, "TObjNpcHRM00"}, // TODO
+    {0x0025, F_V0_V4, A_CITY, "TObjNpcARM00"}, // TODO
+    {0x0026, F_V0_V4, A_CITY, "TObjNpcARW00"}, // TODO
+    {0x0026, F_EP3, A_E3_MORGUE, "TObjNpcARW00"}, // TODO
+    {0x0027, F_V0_V4, A_CITY, "TObjNpcHFW00"}, // TODO
+    {0x0027, F_EP3, A_E3_MORGUE, "TObjNpcHFW00"}, // TODO
+    {0x0028, F_V0_V4, A_CITY, "TObjNpcNFM00"}, // TODO
+    {0x0028, F_EP3, A_E3_MORGUE, "TObjNpcNFM00"}, // TODO
+    {0x0029, F_V0_V4, A_E1_P2 | A_E4_DESERT_2 | A_E4_DESERT_3 | A_E4_BOSS | A_E4_P2, "TObjNpcNFW00"}, // TODO
+    {0x0029, F_EP3, A_E3_MORGUE, "TObjNpcNFW00"}, // TODO
+    {0x002B, F_V0_V4, A_E1_P2 | A_E4_P2, "TObjNpcNHW01"}, // TODO
+    {0x002C, F_V0_V4, A_E1_P2 | A_E4_P2, "TObjNpcAHM01"}, // TODO
+    {0x002D, F_V0_V4, A_E1_P2 | A_E4_P2, "TObjNpcHRM01"}, // TODO
+    {0x0030, F_V0_V4, A_E1_P2 | A_E4_P2, "TObjNpcHFW01"}, // TODO
+    {0x0031, F_V0_V4, A_CITY, "TObjNpcNFM01"}, // TODO
+    {0x0031, F_EP3, A_E3_MORGUE, "TObjNpcNFM01"}, // TODO
+    {0x0032, F_V0_V4, A_E1_P2 | A_E4_DESERT_2 | A_E4_DESERT_3 | A_E4_P2, "TObjNpcNFW01"}, // TODO
+    {0x0045, F_V0_V4, A_E1_FOREST | A_E2_CCA_ALL | A_E2_SEASIDE_NIGHT | A_E4_NON_BOSS, "TObjNpcLappy"}, // Rappy NPC
+    {0x0046, F_V0_V4, A_E1_FOREST_2, "TObjNpcMoja"}, // Small Hildebear NPC
+    {0x0047, F_V2, A_E1_FOREST_2, "TObjNpcRico"}, // Rico
+    {0x00A9, F_V0_V4, A_E1_RUINS_2 | A_E1_RUINS_3, "TObjNpcBringer"}, // Dark Bringer NPC
+    {0x00D0, F_V3_V4, A_CITY, "TObjNpcKenkyu"}, // Ep2 armor shop man
+    {0x00D1, F_V3_V4, A_CITY, "TObjNpcSoutokufu"}, // Natasha Milarose
+    {0x00D2, F_V3_V4, A_E2_LAB, "TObjNpcHosa"}, // Dan
+    {0x00D3, F_V3_V4, A_E2_LAB | A_E4_CRATER_E | A_E4_CRATER_W | A_E4_CRATER_S | A_E4_CRATER_N, "TObjNpcKenkyuW"}, // Ep2 tool shop woman
+    {0x00D6, F_EP3, A_E3_MORGUE, "TObjNpcHeroGovernor"}, // Morgue Chief
+    {0x00D7, F_EP3, A_E3_MORGUE, "TObjNpcHeroGovernor"}, // Morgue Chief (direct alias of 00D6)
+    {0x00F0, F_V3_V4, A_E2_LAB, "TObjNpcHosa2"}, // Man next to room with warp to Lab
+    {0x00F1, F_V3_V4, A_E2_LAB, "TObjNpcKenkyu2"}, // Ep2 weapon shop man
+    {0x00F2, F_V3_V4, A_E2_LAB, "TObjNpcNgcBase(0x00F2)"}, // TODO
+    {0x00F3, F_V3_V4, A_E2_LAB | A_E4_NON_CITY | A_E4_P2, "TObjNpcNgcBase(0x00F3)"}, // TODO
+    {0x00F4, F_V3_V4, A_E2_LAB | A_E2_SEABED | A_E4_NON_CITY | A_E4_P2, "TObjNpcNgcBase(0x00F4)"}, // TODO
+    {0x00F5, F_V3_V4, A_E2_LAB, "TObjNpcNgcBase(0x00F5)"}, // TODO
+    {0x00F6, F_V3_V4, A_E2_LAB | A_E2_CCA_ALL | A_E2_TOWER, "TObjNpcNgcBase(0x00F6)"}, // TODO
+    {0x00F7, F_V3_V4, A_E2_LAB, "TObjNpcNgcBase(0x00F7)"}, // Nol
+    {0x00F8, F_V3_V4, A_E2_LAB, "TObjNpcNgcBase(0x00F8)"}, // Elly
+    {0x00F9, F_V3_V4, A_E2_LAB, "TObjNpcNgcBase(0x00F9)"}, // Woman with cyan hair
+    {0x00FA, F_V3_V4, A_E2_LAB, "TObjNpcNgcBase(0x00FA)"}, // Woman with bright red hair
+    {0x00FB, F_V3_V4, A_E2_LAB, "TObjNpcNgcBase(0x00FB)"}, // Man with blue hair near the Ep2 Medical Center
+    {0x00FC, F_V3_V4, A_E2_LAB, "TObjNpcNgcBase(0x00FC)"}, // Man in room next to Ep2 Hunter's Guild
+    {0x00FD, F_V3_V4, A_E2_LAB | A_E2_CCA_ALL | A_E2_SEASIDE_NIGHT, "TObjNpcNgcBase(0x00FD)"}, // TODO
+    {0x00FE, F_V3_V4, A_E2_LAB, "TObjNpcNgcBase(0x00FE)"}, // Episode 2 Hunter's Guild woman
+    {0x00FF, F_V3_V4, A_E2_LAB, "TObjNpcNgcBase(0x00FF)"}, // Woman near room with teleporter to VR areas
+    {0x0100, F_V4, A_CITY, "__MOMOKA__"}, // Momoka
+    {0x0110, F_EP3, A_E3_MORGUE, "TObjNpcWalkingMeka_Hero"}, // Small talking robot in Morgue
+    {0x0111, F_EP3, A_E3_MORGUE, "TObjNpcWalkingMeka_Dark"}, // Small talking robot in Morgue
 
     // Episode 3 scientist and aide NPCs. These NPCs take all the same params as the NPCs defined above, but also:
     //   angle.x = model number (clamped to [0, 3] for scientists, [0, 2] for aides)
     // The two type values for scientists (00D4 and 00D5) are direct aliases for each other; there is no difference
     // between their in-game appearance or behavior.
-    {0x00D4, F_EP3, 0x0000000000000001, "TObjNpcHeroScientist"},
-    {0x00D5, F_EP3, 0x0000000000000001, "TObjNpcHeroScientist"},
-    {0x0112, F_EP3, 0x0000000000000001, "TObjNpcHeroAide"},
+    {0x00D4, F_EP3, A_E3_MORGUE, "TObjNpcHeroScientist"},
+    {0x00D5, F_EP3, A_E3_MORGUE, "TObjNpcHeroScientist"},
+    {0x0112, F_EP3, A_E3_MORGUE, "TObjNpcHeroAide"},
 
     // Quest NPC. Params are the same as for the standard NPCs above, except:
     //   param6 low byte = flags (bit field):
     //     01 = same as param6 above (0 = stand still; 1 = walk around)
     //     10 = TODO
     //   param6 high byte = NPC index in npcplayerchar.dat
-    {0x0118, F_V4, 0x00007FF000000000, "__QUEST_NPC__"},
+    {0x0118, F_V4, A_E4_NON_CITY | A_E4_P2 | A_E4_TEST, "__QUEST_NPC__"},
 
     // Enemy that behaves like an NPC. Has all the same params as the standard NPC types, but also:
     //   angle.x = definition index
@@ -2779,8 +2866,8 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     //     2E (Test area):     01 02 09 0A 22 32 38 39 3A 3B 3C 3D 3E 3F 40 42
     // This NPC exists in Episode 3, but is only available in the Morgue and in the lobby. There are no available
     // models in those areas, which makes it essentially useless.
-    {0x0033, F_V3_V4, 0x0000200FFFFFFFFF, "TObjNpcEnemy"},
-    {0x0033, F_EP3, 0x0000000000008001, "TObjNpcEnemy"},
+    {0x0033, F_V3_V4, A_ALL & (~A_E4_NON_CITY) & (~A_E4_TEST), "TObjNpcEnemy"},
+    {0x0033, F_EP3, A_E3_MORGUE | A_LOBBY, "TObjNpcEnemy"},
 
     // Hildebear. Params:
     //   param1 = initial location (zero or negative = ground, positive = jump)
@@ -2788,7 +2875,7 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     //     decision points are)
     //   param3 = chance to jump when more than 150 units away (value is param2 + 0.3, clamped to [0, 1])
     //   param6 = if >= 1, always rare
-    {0x0040, F_V0_V4, 0x00000000001B0004, "TObjEneMoja"},
+    {0x0040, F_V0_V4, A_E1_FOREST_2 | A_E1_QUEST_ONLY | A_E2_TEMPLE, "TObjEneMoja"},
 
     // Rappy. Params:
     //   param1 = initial location (zero or negative = ground, positive = sky; ignored if wave_number is > 0 in which
@@ -2805,7 +2892,7 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     //   Ep2 rare, Halloween = Hallo Rappy
     //   Ep2 rare, any other season event (or none) = Love Rappy
     //   Ep4 rare = Del Rappy (Crater or Desert variation)
-    {0x0041, F_V0_V4, 0x00004FF000180006, "TObjEneLappy"},
+    {0x0041, F_V0_V4, A_E1_FOREST | A_E2_TEMPLE | A_E4_NON_BOSS | A_E4_TEST, "TObjEneLappy"},
 
     // Monest (and Mothmants). Params:
     //   param2 = number of Mothmants to expel at start (clamped to [0, 6])
@@ -2815,13 +2902,13 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     // Note: In map_forest01_02e.dat in the vanilla map files there is a Monest that has param1 = 3 and param2 = 10.
     // This looks like just an off-by-one error on Sega's part where they accidentally shifted the parameters down by
     // one place. As described above, this Monest expels 6 Mothmants immediately, then none after those 6 are killed.
-    {0x0042, F_V0_V4, 0x0000000000180006, "TObjEneBm3FlyNest"},
+    {0x0042, F_V0_V4, A_E1_FOREST | A_E2_TEMPLE, "TObjEneBm3FlyNest"},
 
     // Savage Wolf or Barbarous Wolf. Params:
     //   param1 = group number (when a Barbarous Wolf dies, all wolves with the same group number howl and trigger
     //     their buffs or weaknesses)
     //   param2 = if less than 1, this is a Savage Wolf; otherwise it's a Barbarous Wolf
-    {0x0043, F_V0_V4, 0x0000000000600006, "TObjEneBm5Wolf"},
+    {0x0043, F_V0_V4, A_E1_FOREST | A_E2_SPACESHIP, "TObjEneBm5Wolf"},
 
     // Booma, Gobooma, or Gigobooma. The activation radius is fixed and cannot be changed: 50 for Hunters, 100 for
     // Rangers and Forces; the deactivation radius is 100 for Hunters and 150 for Rangers and Forces. Params:
@@ -2832,7 +2919,7 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     //   param7 = group ID (if nonzero, it looks like this is used to cause groups of enemies in the same room to band
     //     together and all attack the same player, chosen by the highest-ranking enemy (by param6) in the group; TODO:
     //     this explanation is unverified and param7 was never used by Sega; see client code at 3OE1:800F6F3C)
-    {0x0044, F_V0_V4, 0x0000000000000006, "TObjEneBeast"},
+    {0x0044, F_V0_V4, A_E1_FOREST, "TObjEneBeast"},
 
     // Grass Assassin. Params:
     //   param1 = TODO
@@ -2840,55 +2927,55 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     //     some places)
     //   param3 = TODO (see TObjGrass_update_case8)
     //   param4 = TODO (see TObjGrass_update_case8)
-    {0x0060, F_V0_V4, 0x00000000001B0018, "TObjGrass"},
+    {0x0060, F_V0_V4, A_E1_CAVE_1 | A_E1_CAVE_2 | A_E1_QUEST_ONLY | A_E2_TEMPLE, "TObjGrass"},
 
     // Poison Lily or Del Lily. Del Lily is constructed if the current area is 0x23 (Control Tower); otherwise, Poison
     // Lily is constructed. There appear to be no parameters.
-    {0x0061, F_V0_V4, 0x0000000800180038, "TObjEneRe2Flower"},
+    {0x0061, F_V0_V4, A_E1_CAVE | A_E2_TEMPLE | A_E2_TOWER, "TObjEneRe2Flower"},
 
     // Nano Dragon. Params:
     //   param1 = TODO (seems it only matters if this is 1 or not)
     //   param2 = TODO (defaults to 50 if param2 < 1)
     //   param7 = TODO (set in init)
-    {0x0062, F_V0_V4, 0x0000000000000038, "TObjEneNanoDrago"},
+    {0x0062, F_V0_V4, A_E1_CAVE, "TObjEneNanoDrago"},
 
     // Evil Shark, Pal Shark, or Guil Shark. Same params as 0x0044 (TObjEneBeast), except:
     //   param6 = type (0 = Evil Shark, 1 = Pal Shark, 2 = Guil Shark)
-    {0x0063, F_V0_V4, 0x0000000000030038, "TObjEneShark"},
+    {0x0063, F_V0_V4, A_E1_CAVE | A_E1_QUEST_ONLY, "TObjEneShark"},
 
     // Pofuilly Slime. num_children is clamped to [0, 4]. Params:
     //   param7 = rare flag (if the lowest bit is set, this is a Pouilly Slime instead; on BB, this is ignored)
-    {0x0064, F_V0_V4, 0x0000000000000030, "TObjEneSlime"},
+    {0x0064, F_V0_V4, A_E1_CAVE_2 | A_E1_CAVE_3, "TObjEneSlime"},
 
     // Pan Arms (Hidoom + Migium). There appear to be no parameters.
-    {0x0065, F_V0_V4, 0x0000000000600028, "TObjEnePanarms"},
+    {0x0065, F_V0_V4, A_E1_CAVE_1 | A_E1_CAVE_3 | A_E2_SPACESHIP, "TObjEnePanarms"},
 
     // Gillchic or Dubchic. Params:
     //   param1 = rapid fire count (number of lasers fired before moving again; if this is 0, the default of 2 is used)
     //   param6 = type (0 = Dubchic, 1 = Gillchic)
     //   param7 = TODO
-    {0x0080, F_V0_V4, 0x00000000006000C0, "TObjEneDubchik"},
+    {0x0080, F_V0_V4, A_E1_MINE | A_E2_SPACESHIP, "TObjEneDubchik"},
 
     // Garanz. There appear to be no parameters. TODO: There is some behavior difference if wave_number is 0 vs. any
     // other value. Figure out what exactly this does.
-    {0x0081, F_V0_V4, 0x00000000002000C0, "TObjEneGyaranzo"},
+    {0x0081, F_V0_V4, A_E1_MINE | A_E2_SPACESHIP_A, "TObjEneGyaranzo"},
 
     // Sinow Beat. Params:
     //   param1 = disable mirage effect if >= 1.0
     //   param2 = is Sinow Gold if >= 1.0
     // Note: All params are on the base class (TObjEneMe3Shinowa).
-    {0x0082, F_V0_V4, 0x00000000000300C0, "TObjEneMe3ShinowaReal"},
+    {0x0082, F_V0_V4, A_E1_MINE | A_E1_QUEST_ONLY, "TObjEneMe3ShinowaReal"},
 
     // Canadine. Params:
     //   param1 = behavior (0 = in fighter, 1 = out fighter; this controls whether the Canadine will use its direct
     //     attack or stay high off the ground instead)
-    {0x0083, F_V0_V4, 0x00000000000000C0, "TObjEneMe1Canadin"},
+    {0x0083, F_V0_V4, A_E1_MINE, "TObjEneMe1Canadin"},
 
     // Canane. There appear to be no parameters. There are always 8 followers arranged in a ring around the Canane.
-    {0x0084, F_V0_V4, 0x00000000000000C0, "TObjEneMe1CanadinLeader"},
+    {0x0084, F_V0_V4, A_E1_MINE, "TObjEneMe1CanadinLeader"},
 
     // Dubwitch. Destroying a Dubwitch destroys all Dubchics in the same room. There appear to be no parameters.
-    {0x0085, F_V0_V4, 0x00000000006000C0, "TOCtrlDubchik"},
+    {0x0085, F_V0_V4, A_E1_MINE | A_E2_SPACESHIP, "TOCtrlDubchik"},
 
     // Delsaber. Params:
     //   param1 = jump distance delta (value used is param1 + 100)
@@ -2905,61 +2992,61 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     // By default, the Delsaber will target the nearest player that matches its prejudice flag. If no players match the
     // flag or there is any player less than 30 units away from the Delsaber, then the Delsaber will target the nearest
     // player overall and ignore its prejudice flag.
-    {0x00A0, F_V0_V4, 0x0000000000630300, "TObjEneSaver"},
+    {0x00A0, F_V0_V4, A_E1_RUINS_1 | A_E1_RUINS_2 | A_E1_QUEST_ONLY | A_E2_SPACESHIP, "TObjEneSaver"},
 
     // Chaos Sorceror. There appear to be no parameters.
-    {0x00A1, F_V0_V4, 0x0000000000400500, "TObjEneRe4Sorcerer"},
+    {0x00A1, F_V0_V4, A_E1_RUINS_1 | A_E1_RUINS_3 | A_E2_SPACESHIP_B, "TObjEneRe4Sorcerer"},
 
     // Dark Gunner. Params:
     //   param1 = group number (there should be between 1 and 16 Dark Gunners and one control enemy with the same group
     //     number in the same room)
     //   param2 = TODO (number within group? possibly unused?)
     //   param7 = TODO
-    {0x00A2, F_V0_V4, 0x0000000000000600, "TObjEneDarkGunner"},
+    {0x00A2, F_V0_V4, A_E1_RUINS_2 | A_E1_RUINS_3, "TObjEneDarkGunner"},
 
     // Dark Gunner control enemy. This enemy doesn't actually exist in-game; it only has logic for choosing a Dark
     // Gunner from its group to be the leader, and then changing this leader periodically. Params:
     //   param1 = group number (see TObjEneDarkGunner above)
-    {0x00A3, F_V0_V4, 0x0000000000000600, "TObjEneDarkGunCenter"},
+    {0x00A3, F_V0_V4, A_E1_RUINS_2 | A_E1_RUINS_3, "TObjEneDarkGunCenter"},
 
     // Dark Bringer. There appear to be no parameters.
-    {0x00A4, F_V0_V4, 0x0000000000030600, "TObjEneDf2Bringer"},
+    {0x00A4, F_V0_V4, A_E1_RUINS_2 | A_E1_RUINS_3 | A_E1_QUEST_ONLY, "TObjEneDf2Bringer"},
 
     // Dark Belra. There appear to be no parameters.
-    {0x00A5, F_V0_V4, 0x0000000000180500, "TObjEneRe7Berura"},
+    {0x00A5, F_V0_V4, A_E1_RUINS_1 | A_E1_RUINS_3 | A_E2_TEMPLE, "TObjEneRe7Berura"},
 
     // Dimenian / La Dimenian / So Dimenian. Same parameters as 0x0044 (TObjEneBeast), except:
     //   param6 = type (0 = Dimenian, 1 = La Dimenian, 2 = So Dimenian)
-    {0x00A6, F_V0_V4, 0x0000000000180700, "TObjEneDimedian"},
+    {0x00A6, F_V0_V4, A_E1_RUINS | A_E2_TEMPLE, "TObjEneDimedian"},
 
     // Bulclaw. There appear to be no parameters. It appears that param6 may have been used to select a different model
     // or set of movement data in a previous version, but in PSO GC at least, both movement datas are the same (1F).
-    {0x00A7, F_V0_V4, 0x0000000000000700, "TObjEneBalClawBody"},
+    {0x00A7, F_V0_V4, A_E1_RUINS, "TObjEneBalClawBody"},
 
     // Claw. There appear to be no parameters.
-    {0x00A8, F_V0_V4, 0x0000000000000700, "TObjEneBalClawClaw"},
+    {0x00A8, F_V0_V4, A_E1_RUINS, "TObjEneBalClawClaw"},
 
     // Dragon-like bosses. None of these take any parameters.
-    {0x00C0, F_V0_V4, 0x0000000000000800, "TBoss1Dragon"}, // Dragon
-    {0x00C0, F_V3_V4, 0x0000000040000000, "TBoss5Gryphon"}, // Gal Gryphon
-    {0x00CC, F_V3_V4, 0x0000000200000000, "TBoss8Dragon"}, // Gol Dragon
+    {0x00C0, F_V0_V4, A_E1_DRAGON, "TBoss1Dragon"}, // Dragon
+    {0x00C0, F_V3_V4, A_E2_GAL_GRYPHON, "TBoss5Gryphon"}, // Gal Gryphon
+    {0x00CC, F_V3_V4, A_E2_GOL_DRAGON, "TBoss8Dragon"}, // Gol Dragon
 
     // De Rol Le-like bosses. Neither of these take any parameters.
-    {0x00C1, F_V0_V4, 0x0000000000001000, "TBoss2DeRolLe"}, // De Rol Le
-    {0x00CB, F_V3_V4, 0x0000000100000000, "TBoss7DeRolLeC"}, // Barba Ray
+    {0x00C1, F_V0_V4, A_E1_DE_ROL_LE, "TBoss2DeRolLe"}, // De Rol Le
+    {0x00CB, F_V3_V4, A_E2_BARBA_RAY, "TBoss7DeRolLeC"}, // Barba Ray
 
     // Vol Opt and various pieces thereof. Generally only TBoss3Volopt and TBoss3VoloptP02 should be specified in map
     // files; the other enemies are automatically created by TBoss3Volopt. None of these take any parameters.
-    {0x00C2, F_V0_V4, 0x0000000000002000, "TBoss3Volopt"}, // Main control object
-    {0x00C3, F_V0_V4, 0x0000000000002000, "TBoss3VoloptP01"}, // Phase 1 (x6; one for each big monitor)
-    {0x00C4, F_V0_V4, 0x0000000000002000, "TBoss3VoloptCore"}, // Core
-    {0x00C5, F_V0_V4, 0x0000000000002000, "TBoss3VoloptP02"}, // Phase 2
-    {0x00C6, F_V0_V4, 0x0000000000002000, "TBoss3VoloptMonitor"}, // Monitor (x24; 4 for each wall)
-    {0x00C7, F_V0_V4, 0x0000000000002000, "TBoss3VoloptHiraisin"}, // Pillar (lightning rod)
+    {0x00C2, F_V0_V4, A_E1_VOL_OPT, "TBoss3Volopt"}, // Main control object
+    {0x00C3, F_V0_V4, A_E1_VOL_OPT, "TBoss3VoloptP01"}, // Phase 1 (x6; one for each big monitor)
+    {0x00C4, F_V0_V4, A_E1_VOL_OPT, "TBoss3VoloptCore"}, // Core
+    {0x00C5, F_V0_V4, A_E1_VOL_OPT, "TBoss3VoloptP02"}, // Phase 2
+    {0x00C6, F_V0_V4, A_E1_VOL_OPT, "TBoss3VoloptMonitor"}, // Monitor (x24; 4 for each wall)
+    {0x00C7, F_V0_V4, A_E1_VOL_OPT, "TBoss3VoloptHiraisin"}, // Pillar (lightning rod)
 
     // Dark Falz-like bosses. Neither of these take any parameters.
-    {0x00C8, F_V0_V4, 0x0000000000004000, "TBoss4DarkFalz"}, // Dark Falz
-    {0x00CA, F_V3_V4, 0x0000000080000000, "TBoss6PlotFalz"}, // Olga Flow
+    {0x00C8, F_V0_V4, A_E1_DARK_FALZ, "TBoss4DarkFalz"}, // Dark Falz
+    {0x00CA, F_V3_V4, A_E2_OLGA_FLOW, "TBoss6PlotFalz"}, // Olga Flow
 
     // Sinow Berill or Sinow Spigell. Params:
     //   param1 = spawn type:
@@ -2980,7 +3067,7 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     // does, the other params are ignored. If it doesn't, the game then checks param3 in the same manner to determine
     // whether to cast a tech; if that doesn't happen either, the game checks param4 to determine whether to teleport.
     // If none of those happen, the Sinow just walks forward again and attacks.
-    {0x00D4, F_V3_V4, 0x000000000F800000, "TObjEneMe3StelthReal"},
+    {0x00D4, F_V3_V4, A_E2_CCA_ALL, "TObjEneMe3StelthReal"},
 
     // Merillia / Meriltas. Params:
     //   param1 = chance to run away after being hit (value used is param1 - 0.2, clamped below to 0)
@@ -2989,7 +3076,7 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     //   param5 = wakeup radius delta (value used is param5 + 100, clamped below to 15; enemy will wake up when any
     //     player is nearby)
     //   param6 = type (0 = Merillia, 1 = Meriltas)
-    {0x00D5, F_V3_V4, 0x000000040F800000, "TObjEneMerillLia"},
+    {0x00D5, F_V3_V4, A_E2_CCA_ALL | A_E2_SEASIDE_NIGHT, "TObjEneMerillLia"},
 
     // Mericarol / Mericus / Merikle / Mericarand. Params:
     //   param1 = chance of run attack after being hit when HP is less than half of max (value used is param1 + 0.5)
@@ -3005,7 +3092,7 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     // the client chooses randomly (but consistently, based on the entity ID) between Mericarol (80%), Mericus (10%) or
     // Merikle (10%). On v4, if the entity ID isn't marked rare by the server, the Mericarand becomes a Mericarol;
     // otherwise, it becomes a Mericus if its entity ID is even or a Merikle if it's odd.
-    {0x00D6, F_V3_V4, 0x000000080F800000, "TObjEneBm9Mericarol"},
+    {0x00D6, F_V3_V4, A_E2_CCA_ALL | A_E2_TOWER, "TObjEneBm9Mericarol"},
 
     // Ul Gibbon / Zol Gibbon. Params:
     //   param1 = group number
@@ -3015,14 +3102,14 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     //   param5 = chance of casting a tech immediately after jumping forward or back (value used is param5 + 0.3; does
     //     not apply after jumps that are attacks)
     //   param6 = type (zero or negative = Ul Gibbon, positive = Zol Gibbon)
-    {0x00D7, F_V3_V4, 0x000000040F800000, "TObjEneBm5GibonU"},
+    {0x00D7, F_V3_V4, A_E2_CCA_ALL | A_E2_SEASIDE_NIGHT, "TObjEneBm5GibonU"},
 
     // Gibbles. Params:
     //   param1 = jump distance delta (value used is param1 + 100)
     //   param2 = prejudice flag (see 0x00A0 (TObjEneSaver); the behavior here is exactly the same)
     //   param3 = chance to jump at each decision point (0-1)
     //   param4 = chance to jump after being hit (0-1)
-    {0x00D8, F_V3_V4, 0x000000080F800000, "TObjEneGibbles"},
+    {0x00D8, F_V3_V4, A_E2_CCA_ALL | A_E2_TOWER, "TObjEneGibbles"},
 
     // Gee. Params:
     //   param1 = in fighter / out fighter setting (see TObjEneMe1Canadin)
@@ -3031,7 +3118,7 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     //   param4 = needle speed (value is param4 + 6, clamped below to 0.01)
     // Note: The client's debug strings say "APPEAR SPEED(+1.f Min:0.01f)" for param3 and "NEEDLE SPEED(+6.f Min:1.f)"
     // for param4. The "Min:" parts of those strings are incorrect; the comments above are correct.
-    {0x00D9, F_V3_V4, 0x000000040F800000, "TObjEneMe1Gee"},
+    {0x00D9, F_V3_V4, A_E2_CCA_ALL | A_E2_SEASIDE_NIGHT, "TObjEneMe1Gee"},
 
     // Gi Gue. Params:
     //   param1 = TODO (only matters if >= 1 or not)
@@ -3040,11 +3127,11 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     //   param4 = TODO (value is param4 + 0.5)
     //   param5 = TODO (value is param5 + 0.5)
     //   param7 = TODO
-    {0x00DA, F_V3_V4, 0x000000080F800000, "TObjEneMe1GiGue"},
+    {0x00DA, F_V3_V4, A_E2_CCA_ALL | A_E2_TOWER, "TObjEneMe1GiGue"},
 
     // Deldepth. Params:
     //   param1 = TODO (value is param1 + 0.6, clamped below to 0; seems to be unused?)
-    {0x00DB, F_V3_V4, 0x0000000030000000, "TObjEneDelDepth"},
+    {0x00DB, F_V3_V4, A_E2_SEABED, "TObjEneDelDepth"},
 
     // Delbiter. Params:
     //   param1 = chance to howl (value is param1 + 0.3)
@@ -3053,13 +3140,13 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     //   param4 = chance to fire laser (value is param4 + 0.3)
     //   param5 = chance to charge (value is param5 + 0.05)
     //   param6 = type (0 = stand, 1 = run)
-    {0x00DC, F_V3_V4, 0x0000000830000000, "TObjEneDellBiter"},
+    {0x00DC, F_V3_V4, A_E2_SEABED | A_E2_TOWER, "TObjEneDellBiter"},
 
     // Dolmolm / Dolmdarl. Same parameters as TObjEneBeast, but also:
     //   param3 = TODO (value is param3 + 0.3; probability of some sort)
     //   param4 = TODO (value is param4 + 0.3; probability of some sort)
     //   param6 = type (zero or negative = Dolmolm; positive = Dolmdarl)
-    {0x00DD, F_V3_V4, 0x0000000430000000, "TObjEneDolmOlm"},
+    {0x00DD, F_V3_V4, A_E2_SEABED | A_E2_SEASIDE_NIGHT, "TObjEneDolmOlm"},
 
     // Morfos. Params:
     //   param1 = TODO (value is param1 + 0.28)
@@ -3067,7 +3154,7 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     //   param3 = TODO (value is param3 + 0.1; probability; used when current HP is less than half of max)
     //   param4 = TODO (value is param4 + 0.1; probability; used when current HP is less than half of max)
     //   param6 = TODO
-    {0x00DE, F_V3_V4, 0x0000000030000000, "TObjEneMorfos"},
+    {0x00DE, F_V3_V4, A_E2_SEABED, "TObjEneMorfos"},
 
     // Recobox. Params:
     //   param1 = Recon floating height (value used for each Recon is 45 + rand(-2, 2) + param1)
@@ -3080,14 +3167,14 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     //     2 or greater = wall (Recons exit horizontally)
     // Note: The debug strings in TObjEneRecobox_v6A seem to imply that the total Recon count in the box is (param7 +
     // 1); however, this is not true. The total Recon count in the box is actually (num_children - 1).
-    {0x00DF, F_V3_V4, 0x0000000C30000000, "TObjEneRecobox"},
+    {0x00DF, F_V3_V4, A_E2_SEABED | A_E2_QUEST_ONLY, "TObjEneRecobox"},
 
     // Sinow Zoa / Sinow Zele. It appears to take the same params as TObjEneMe3StelthReal (Sinow Berill / Sinow
     // Spigell), except (of course):
     //   param6 = type:
     //     zero or negative = Sinow Zoa
     //     positive = Sinow Zele
-    {0x00E0, F_V3_V4, 0x0000000030000000, "TObjEneMe3SinowZoaReal"},
+    {0x00E0, F_V3_V4, A_E2_SEABED, "TObjEneMe3SinowZoaReal"},
 
     // Epsilon. Params:
     //   param1 = TODO (value is param1 + 0.5, clamped below to 0)
@@ -3095,60 +3182,60 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     //     copy/paste error it isn't)
     //   param3 = TODO (value is (param3 + 20) * 5, clamped below to 150)
     //   param4 = TODO (value is (param4 + 20) * 5, clamped below to 150)
-    {0x00E0, F_V3_V4, 0x0000000800000000, "TObjEneEpsilonBody"},
+    {0x00E0, F_V3_V4, A_E2_TOWER, "TObjEneEpsilonBody"},
 
     // Ill Gill. Params:
     //   param1 = TODO (seems it only matters if this is zero or not; are there other uses?)
     //   param2 = TODO (used in TObjEneIllGill_update phase 3)
-    {0x00E1, F_V3_V4, 0x0000000800000000, "TObjEneIllGill"},
+    {0x00E1, F_V3_V4, A_E2_TOWER, "TObjEneIllGill"},
 
     // Astark. Params:
     //   param1 = TODO (only matters if this is 1 or not)
     //   param2 = TODO (value is param2 + 0.3, clamped to [0, 1])
     //   param3 = TODO (value is param3 + 0.6, clamped to [0, 1])
-    {0x0110, F_V4, 0x000041F000000000, "__ASTARK__"},
+    {0x0110, F_V4, A_E4_CRATER | A_E4_TEST, "__ASTARK__"},
 
     // Satellite Lizard / Yowie. Params:
     //   param1 = TODO (rounded to integer)
     //   param2 = type (<1 = Satellite Lizard, >=1 = Yowie)
-    {0x0111, F_V4, 0x00004FF000000000, "__SATELLITE_LIZARD_YOWIE__"},
+    {0x0111, F_V4, A_E4_CRATER | A_E4_DESERT | A_E4_TEST, "__SATELLITE_LIZARD_YOWIE__"},
 
     // Merissa A. Params:
     //   param6 = flags (bit field):
     //     0001 = always rare (Merissa AA)
-    {0x0112, F_V4, 0x00004E0000000000, "__MERISSA_A__"},
+    {0x0112, F_V4, A_E4_DESERT | A_E4_TEST, "__MERISSA_A__"},
 
     // Girtablulu. There appear to be no parameters.
-    {0x0113, F_V4, 0x00004E0000000000, "__GIRTABLULU__"},
+    {0x0113, F_V4, A_E4_DESERT | A_E4_TEST, "__GIRTABLULU__"},
 
     // Zu. Params:
     //   param6 = flags (bit field):
     //     0001 = always rare (Pazuzu)
     //   param7 = TODO
-    {0x0114, F_V4, 0x00004FF000000000, "__ZU__"},
+    {0x0114, F_V4, A_E4_CRATER | A_E4_DESERT | A_E4_TEST, "__ZU__"},
 
     // Boota / Ze Boota / Ba Boota. Same parameters as TObjEneBeast, but also:
     //   param3 = TODO (see v20)
     //   param6 = type (0 = Boota, 1 = Ze Boota, 2 = Ba Boota)
-    {0x0115, F_V4, 0x000041F000000000, "__BOOTA_FAMILY__"},
+    {0x0115, F_V4, A_E4_CRATER | A_E4_TEST, "__BOOTA_FAMILY__"},
 
     // Dorphon. Params:
     //   param1-5 = same as TObjEneDellBiter
     //   param6 = flags (bit field):
     //     0001 = always rare (Dorphon Eclair)
-    {0x0116, F_V4, 0x000041F000000000, "__DORPHON__"},
+    {0x0116, F_V4, A_E4_CRATER | A_E4_TEST, "__DORPHON__"},
 
     // Goran / Pyro Goran / Goran Detonator. Same parameters as TObjEneBeast, but also:
     //   param3 = TODO (see v58, v67)
     //   param6 = type (0 = Goran, 1 = Pyro Goran, 2 = Goran Detonator)
-    {0x0117, F_V4, 0x00004E0000000000, "__GORAN_FAMILY__"},
+    {0x0117, F_V4, A_E4_DESERT | A_E4_TEST, "__GORAN_FAMILY__"},
 
     // Saint-Milion / Shambertin / Kondrieu. Params:
     //   param1 = TODO (see TObjEneV00b43ca0::set_params; seems it only matters if this is zero or not)
     //   param6 = flags (bit field):
     //     0001 = type (0 = Saint-Milion, 1 = Shambertin; ignored if enemy is set as rare by the server, in which case
     //       it's Kondrieu)
-    {0x0119, F_V4, 0x0000100000000000, "__EPISODE_4_BOSS__"},
+    {0x0119, F_V4, A_E4_BOSS, "__EPISODE_4_BOSS__"},
 });
 
 static std::string name_for_entity_type(
