@@ -13,7 +13,6 @@
 #include "Lobby.hh"
 #include "Menu.hh"
 #include "Quest.hh"
-#include "Server.hh"
 #include "ServerState.hh"
 #include "Text.hh"
 

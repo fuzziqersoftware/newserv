@@ -306,7 +306,7 @@ SocketChannel::SocketChannel(
       send_buffer_nonempty_signal(io_context->get_executor()) {}
 
 std::string SocketChannel::default_name() const {
-  return "ip:" + str_for_endpoint(this->remote_addr);
+  return "ip:" + phosg::async::str_for_endpoint(this->remote_addr);
 }
 
 bool SocketChannel::connected() const {

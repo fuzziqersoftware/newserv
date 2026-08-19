@@ -54,7 +54,8 @@ PatchDownloadSession::PatchDownloadSession(
 asio::awaitable<void> PatchDownloadSession::run() {
   std::string netloc_str = std::format("{}:{}", this->remote_host, this->remote_port);
   this->log.info_f("Connecting to {}", netloc_str);
-  auto sock = std::make_unique<asio::ip::tcp::socket>(co_await async_connect_tcp(this->remote_host, this->remote_port));
+  auto sock = std::make_unique<asio::ip::tcp::socket>(
+      co_await phosg::async::connect_tcp(this->remote_host, this->remote_port));
   this->channel = SocketChannel::create(
       this->io_context,
       std::move(sock),
@@ -254,10 +255,10 @@ asio::awaitable<void> PatchDownloadSession::on_message(Channel::Message& msg) {
     case 0x14: {
       const auto& cmd = msg.check_size_t<S_Reconnect_Patch_14>();
 
-      auto new_ep = make_endpoint_ipv4(cmd.address, cmd.port);
-      std::string netloc_str = str_for_endpoint(new_ep);
+      auto new_ep = phosg::async::make_endpoint_ipv4(cmd.address, cmd.port);
+      std::string netloc_str = phosg::async::str_for_endpoint(new_ep);
       this->log.info_f("Connecting to {}", netloc_str);
-      auto sock = std::make_unique<asio::ip::tcp::socket>(co_await async_connect_tcp(new_ep));
+      auto sock = std::make_unique<asio::ip::tcp::socket>(co_await phosg::async::connect_tcp(new_ep));
 
       auto old_channel = this->channel;
       auto new_channel = SocketChannel::create(

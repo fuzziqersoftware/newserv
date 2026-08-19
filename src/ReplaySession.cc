@@ -6,7 +6,6 @@
 
 #include "GameServer.hh"
 #include "Loggers.hh"
-#include "Server.hh"
 
 static std::string encode_chat_message(Version version, const std::string& message) {
   std::string encoded_message;
@@ -660,7 +659,7 @@ asio::awaitable<void> ReplaySession::run() {
 
   if (this->failure.empty()) {
     // Wait a bit longer to ensure that any command sent at the end of the replay session don't crash the server
-    co_await async_sleep(std::chrono::seconds(2));
+    co_await phosg::async::sleep(std::chrono::seconds(2));
     replay_log.info_f("Replay complete: {} commands sent ({} bytes), {} commands received ({} bytes)",
         this->commands_sent, this->bytes_sent, this->commands_received, this->bytes_received);
   }

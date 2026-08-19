@@ -176,7 +176,7 @@ IPSSChannel::IPSSChannel(
 std::string IPSSChannel::default_name() const {
   auto ipc = this->ipss_client.lock();
   if (ipc) {
-    return std::format("ipss:N-{}:{}", ipc->network_id, str_for_endpoint(ipc->sock.remote_endpoint()));
+    return std::format("ipss:N-{}:{}", ipc->network_id, phosg::async::str_for_endpoint(ipc->sock.remote_endpoint()));
   } else {
     return std::format("ipss:N-{}:__unknown_address__", ipc->network_id);
   }
@@ -1402,7 +1402,7 @@ asio::awaitable<void> IPStackSimulator::close_tcp_connection(
 
 std::shared_ptr<IPSSClient> IPStackSimulator::create_client(
     std::shared_ptr<IPSSSocket> listen_sock, asio::ip::tcp::socket&& client_sock) {
-  uint32_t addr = ipv4_addr_for_asio_addr(client_sock.remote_endpoint().address());
+  uint32_t addr = phosg::async::ipv4_addr_for_asio_addr(client_sock.remote_endpoint().address());
   if (this->state->data->banned_ipv4_ranges->check(addr)) {
     if (client_sock.is_open()) {
       client_sock.close();

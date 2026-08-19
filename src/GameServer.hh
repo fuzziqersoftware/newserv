@@ -2,20 +2,20 @@
 
 #include <asio.hpp>
 #include <memory>
+#include <phosg/Async/Server.hh>
 #include <string>
 #include <unordered_set>
 #include <vector>
 
 #include "Client.hh"
-#include "Server.hh"
 #include "ServerState.hh"
 
-struct GameServerSocket : ServerSocket {
+struct GameServerSocket : phosg::async::ServerSocket {
   Version version;
   ServerBehavior behavior;
 };
 
-class GameServer : public Server<Client, GameServerSocket>, public std::enable_shared_from_this<GameServer> {
+class GameServer : public phosg::async::Server<Client, GameServerSocket>, public std::enable_shared_from_this<GameServer> {
 public:
   GameServer() = delete;
   GameServer(const GameServer&) = delete;

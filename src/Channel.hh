@@ -2,9 +2,9 @@
 
 #include <asio.hpp>
 #include <memory>
+#include <phosg/Async/Utils.hh>
 #include <string>
 
-#include "AsyncUtils.hh"
 #include "PSOEncryption.hh"
 #include "PSOProtocol.hh"
 #include "Version.hh"
@@ -146,7 +146,7 @@ private:
 
   std::deque<std::string> outbound_data;
   bool should_disconnect = false;
-  AsyncEvent send_buffer_nonempty_signal;
+  phosg::async::Event send_buffer_nonempty_signal;
 
   asio::awaitable<void> send_task();
 };
@@ -177,6 +177,6 @@ public:
   virtual asio::awaitable<void> recv_raw(void* data, size_t size);
 
 private:
-  AsyncEvent send_buffer_nonempty_signal;
+  phosg::async::Event send_buffer_nonempty_signal;
   std::deque<std::string> inbound_data;
 };

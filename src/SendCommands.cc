@@ -427,7 +427,7 @@ asio::awaitable<C_ExecuteCodeResult_B3> send_function_call(
   if (!c->channel->connected()) {
     throw std::runtime_error("Client has already disconnected");
   }
-  auto promise = std::make_shared<AsyncPromise<C_ExecuteCodeResult_B3>>();
+  auto promise = std::make_shared<phosg::async::Promise<C_ExecuteCodeResult_B3>>();
   send_function_call(
       c->channel,
       c->enabled_flags,
@@ -453,9 +453,9 @@ asio::awaitable<void> send_function_call_multi(
     throw std::runtime_error("Client has already disconnected");
   }
 
-  std::shared_ptr<AsyncPromise<C_ExecuteCodeResult_B3>> last_promise;
+  std::shared_ptr<phosg::async::Promise<C_ExecuteCodeResult_B3>> last_promise;
   for (const auto& code : codes) {
-    last_promise = std::make_shared<AsyncPromise<C_ExecuteCodeResult_B3>>();
+    last_promise = std::make_shared<phosg::async::Promise<C_ExecuteCodeResult_B3>>();
     c->function_call_response_queue.emplace_back(last_promise);
     send_function_call(c->channel, c->enabled_flags, code);
     c->enabled_flags |= code->client_flag;
@@ -2460,7 +2460,7 @@ asio::awaitable<GetPlayerInfoResult> send_get_player_info(std::shared_ptr<Client
       auto s = c->require_server_state();
       auto fn = s->data->client_functions->get("GetExtendedPlayerInfo", c->specific_version);
       send_function_call(c->channel, c->enabled_flags, fn);
-      c->function_call_response_queue.emplace_back(std::make_shared<AsyncPromise<C_ExecuteCodeResult_B3>>());
+      c->function_call_response_queue.emplace_back(std::make_shared<phosg::async::Promise<C_ExecuteCodeResult_B3>>());
       full_req_sent = true;
     } catch (const std::exception& e) {
       c->log.warning_f("Failed to send extended player info request: {}", e.what());
@@ -2471,7 +2471,7 @@ asio::awaitable<GetPlayerInfoResult> send_get_player_info(std::shared_ptr<Client
     send_command(c, (c->version() == Version::DC_NTE) ? 0x8D : 0x95, 0x00);
   }
 
-  auto promise = std::make_shared<AsyncPromise<GetPlayerInfoResult>>();
+  auto promise = std::make_shared<phosg::async::Promise<GetPlayerInfoResult>>();
   c->character_data_ready_promise = promise;
   co_return co_await promise->get();
 }

@@ -19,7 +19,6 @@
 #include "ReceiveCommands.hh"
 #include "Revision.hh"
 #include "SendCommands.hh"
-#include "Server.hh"
 #include "StaticGameData.hh"
 #include "Text.hh"
 

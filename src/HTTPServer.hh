@@ -3,10 +3,10 @@
 #include <stdlib.h>
 
 #include <memory>
+#include <phosg/Async/HTTPServer.hh>
 #include <string>
 #include <variant>
 
-#include "AsyncHTTPServer.hh"
 #include "ServerState.hh"
 
 enum class HTTPEventType {
@@ -25,15 +25,15 @@ enum class HTTPEventType {
 HTTPEventType http_event_type_for_name(const std::string& name);
 const char* name_for_http_event_type(HTTPEventType type);
 
-class NewservHTTPClient : public HTTPClient {
+class NewservHTTPClient : public phosg::async::HTTPClient {
 public:
-  using HTTPClient::HTTPClient;
+  using phosg::async::HTTPClient::HTTPClient;
   virtual ~NewservHTTPClient() = default;
 
   std::unordered_set<HTTPEventType> subscribed_event_types;
 };
 
-class HTTPServer : public AsyncHTTPServer<NewservHTTPClient> {
+class HTTPServer : public phosg::async::HTTPServer<NewservHTTPClient> {
 public:
   static constexpr size_t NUM_EVENT_TYPES = static_cast<size_t>(HTTPEventType::NUM_EVENT_TYPES);
   static const std::vector<std::string> ALL_EVENT_NAMES;
@@ -64,7 +64,7 @@ protected:
   };
   std::shared_ptr<ServerState> state;
   std::array<std::unordered_set<std::shared_ptr<NewservHTTPClient>>, NUM_EVENT_TYPES> event_subscribers;
-  HTTPRouter<std::variant<RawResponse, SharedRawResponse, std::shared_ptr<const phosg::JSON>>, NewservHTTPClient> router;
+  phosg::async::HTTPRouter<std::variant<RawResponse, SharedRawResponse, std::shared_ptr<const phosg::JSON>>, NewservHTTPClient> router;
 
   inline std::unordered_set<std::shared_ptr<NewservHTTPClient>>& subscribers_for_event_type(HTTPEventType type) {
     return this->event_subscribers.at(static_cast<size_t>(type));
@@ -74,8 +74,8 @@ protected:
     return this->event_subscribers.at(static_cast<size_t>(type));
   }
 
-  virtual asio::awaitable<std::unique_ptr<HTTPResponse>> handle_request(
-      std::shared_ptr<NewservHTTPClient> c, HTTPRequest&& req);
+  virtual asio::awaitable<std::unique_ptr<phosg::async::HTTPResponse>> handle_request(
+      std::shared_ptr<NewservHTTPClient> c, phosg::async::HTTPRequest&& req);
   virtual asio::awaitable<void> destroy_client(std::shared_ptr<NewservHTTPClient> c);
 };
 

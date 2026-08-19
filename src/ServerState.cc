@@ -398,7 +398,7 @@ void ServerState::disconnect_all_banned_clients() {
       } else {
         auto socket_channel = dynamic_pointer_cast<SocketChannel>(c->channel);
         if (socket_channel) {
-          addr = ipv4_addr_for_asio_addr(socket_channel->local_addr.address());
+          addr = phosg::async::ipv4_addr_for_asio_addr(socket_channel->local_addr.address());
         }
       }
       if ((c->login && (c->login->account->ban_end_time > now_usecs)) || this->data->banned_ipv4_ranges->check(addr)) {
