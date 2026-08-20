@@ -11,6 +11,7 @@
 #include "IPStackSimulator.hh"
 #include "Loggers.hh"
 #include "Revision.hh"
+#include "Server.hh"
 #include "ShellCommands.hh"
 
 HTTPEventType http_event_type_for_name(const std::string& name) {
@@ -60,16 +61,16 @@ const char* name_for_http_event_type(HTTPEventType type) {
 }
 
 HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
-    : phosg::async::HTTPServer<NewservHTTPClient>(state->io_context, "[HTTPServer] "), state(state) {
+    : AsyncHTTPServer(state->io_context, "[HTTPServer] "), state(state) {
   using RouterRetT = std::variant<RawResponse, SharedRawResponse, std::shared_ptr<const phosg::JSON>>;
   using RetT = asio::awaitable<RouterRetT>;
-  using ArgsT = phosg::async::HTTPRouter<RouterRetT, NewservHTTPClient>::Args;
+  using ArgsT = HTTPRouter<RouterRetT, NewservHTTPClient>::Args;
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/", [router = &this->router](ArgsT&&) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/", [router = &this->router](ArgsT&&) -> RetT {
     auto routes_json = phosg::JSON::list();
     for (const auto& it : router->all_routes()) {
-      routes_json.emplace_back(std::format(
-          "{} /{}", phosg::async::HTTPRequest::name_for_http_method(it.method), phosg::join(it.path_tokens, "/")));
+      routes_json.emplace_back(
+          std::format("{} /{}", HTTPRequest::name_for_http_method(it.method), phosg::join(it.path_tokens, "/")));
     }
     co_return std::make_shared<phosg::JSON>(phosg::JSON::dict({
         {"ServerType", "newserv"},
@@ -80,13 +81,13 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     }));
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::POST, "/y/shell-exec", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::POST, "/y/shell-exec", [this](ArgsT&& args) -> RetT {
     auto command = args.post_data.get_string("command");
     try {
       auto dispatch_res = co_await ShellCommand::dispatch_str(this->state, command);
       co_return std::make_shared<phosg::JSON>(phosg::JSON::dict({{"result", phosg::join(dispatch_res, "\n")}}));
     } catch (const std::exception& e) {
-      throw phosg::async::HTTPError(400, e.what());
+      throw HTTPError(400, e.what());
     }
   });
 
@@ -103,18 +104,18 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     });
   };
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/rare-drops/stream", [this, generate_ws_server_version_event_json](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/rare-drops/stream", [this, generate_ws_server_version_event_json](ArgsT&& args) -> RetT {
     if (!(co_await this->enable_websockets(args.client, args.req))) {
-      throw phosg::async::HTTPError(400, "this path requires a websocket connection");
+      throw HTTPError(400, "this path requires a websocket connection");
     }
     this->subscribers_for_event_type(HTTPEventType::RARE_DROP).emplace(args.client);
     args.client->subscribed_event_types.emplace(HTTPEventType::RARE_DROP);
     co_await args.client->send_websocket_message(generate_ws_server_version_event_json().serialize());
     co_return nullptr;
   });
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/events/stream", [this, generate_ws_server_version_event_json](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/events/stream", [this, generate_ws_server_version_event_json](ArgsT&& args) -> RetT {
     if (!(co_await this->enable_websockets(args.client, args.req))) {
-      throw phosg::async::HTTPError(400, "this path requires a websocket connection");
+      throw HTTPError(400, "this path requires a websocket connection");
     }
     const std::string* events = args.req.get_query_param("events");
     if (events) {
@@ -371,17 +372,17 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     return client_json;
   };
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/clients", [this, json_for_client](ArgsT&&) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/clients", [this, json_for_client](ArgsT&&) -> RetT {
     auto res = std::make_shared<phosg::JSON>(phosg::JSON::list());
     for (const auto& c : this->state->game_server->all_clients()) {
       res->emplace_back(json_for_client(c));
     }
     co_return res;
   });
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/client/:id", [this, json_for_client](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/client/:id", [this, json_for_client](ArgsT&& args) -> RetT {
     auto it = this->state->client_for_id.find(args.get_param<uint64_t>("id"));
     if (it == this->state->client_for_id.end()) {
-      throw phosg::async::HTTPError(404, "Client does not exist");
+      throw HTTPError(404, "Client does not exist");
     }
     co_return std::make_shared<phosg::JSON>(json_for_client(it->second));
   });
@@ -589,22 +590,22 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     return lobby_json;
   };
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/lobbies", [this, json_for_lobby](ArgsT&&) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/lobbies", [this, json_for_lobby](ArgsT&&) -> RetT {
     auto res = std::make_shared<phosg::JSON>(phosg::JSON::list());
     for (const auto& [_, l] : this->state->id_to_lobby) {
       res->emplace_back(json_for_lobby(l));
     }
     co_return res;
   });
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/lobby/:id", [this, json_for_lobby](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/lobby/:id", [this, json_for_lobby](ArgsT&& args) -> RetT {
     auto it = this->state->id_to_lobby.find(args.get_param<int64_t>("id"));
     if (it == this->state->id_to_lobby.end()) {
-      throw phosg::async::HTTPError(404, "Lobby does not exist");
+      throw HTTPError(404, "Lobby does not exist");
     }
     co_return std::make_shared<phosg::JSON>(json_for_lobby(it->second));
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/accounts", [this](ArgsT&&) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/accounts", [this](ArgsT&&) -> RetT {
     auto res = std::make_shared<phosg::JSON>(phosg::JSON::list());
     for (const auto& it : this->state->account_index->all()) {
       res->emplace_back(it->json());
@@ -612,16 +613,16 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     co_return res;
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/account/:account_id", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/account/:account_id", [this](ArgsT&& args) -> RetT {
     uint32_t account_id = args.get_param<uint32_t>("account_id");
     try {
       co_return std::make_shared<phosg::JSON>(this->state->account_index->from_account_id(account_id)->json());
     } catch (const AccountIndex::missing_account&) {
-      throw phosg::async::HTTPError(404, "Account does not exist");
+      throw HTTPError(404, "Account does not exist");
     }
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/teams", [this](ArgsT&&) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/teams", [this](ArgsT&&) -> RetT {
     auto res = std::make_shared<phosg::JSON>(phosg::JSON::dict());
     for (const auto& it : this->state->team_index->all()) {
       res->emplace(std::format("{}", it->team_id), it->json());
@@ -629,23 +630,23 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     co_return res;
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/team/:team_id", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/team/:team_id", [this](ArgsT&& args) -> RetT {
     uint32_t team_id = args.get_param<uint32_t>("team_id");
     auto team = this->state->team_index->get_by_id(team_id);
     if (!team) {
-      throw phosg::async::HTTPError(404, "Team does not exist");
+      throw HTTPError(404, "Team does not exist");
     }
     co_return std::make_shared<phosg::JSON>(team->json());
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/team/:team_id/flag", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/team/:team_id/flag", [this](ArgsT&& args) -> RetT {
     uint32_t team_id = args.get_param<uint32_t>("team_id");
     auto team = this->state->team_index->get_by_id(team_id);
     if (!team) {
-      throw phosg::async::HTTPError(404, "Team does not exist");
+      throw HTTPError(404, "Team does not exist");
     }
     if (!team->flag_data) {
-      throw phosg::async::HTTPError(404, "Team does not have a flag");
+      throw HTTPError(404, "Team does not have a flag");
     }
     auto img = team->decode_flag_data();
     co_return RawResponse{.content_type = "image/png", .filename = "", .data = img.serialize(phosg::ImageFormat::PNG)};
@@ -675,15 +676,15 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     });
   };
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/server", [generate_server_info_json](ArgsT&&) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/server", [generate_server_info_json](ArgsT&&) -> RetT {
     co_return std::make_shared<phosg::JSON>(generate_server_info_json());
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/config", [this](ArgsT&&) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/config", [this](ArgsT&&) -> RetT {
     co_return this->state->data->config_json;
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/summary", [this, generate_server_info_json](ArgsT&&) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/summary", [this, generate_server_info_json](ArgsT&&) -> RetT {
     auto clients_json = phosg::JSON::list();
     for (const auto& c : this->state->game_server->all_clients()) {
       auto p = c->character_file(false, false);
@@ -745,16 +746,16 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     }));
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/ep3/cards", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/ep3/cards", [this](ArgsT&& args) -> RetT {
     auto& index = args.req.query_params.count("trial")
         ? this->state->data->ep3_card_index_trial
         : this->state->data->ep3_card_index;
-    co_return co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(index->definitions_json());
     });
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/ep3/card/:card_id", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/ep3/card/:card_id", [this](ArgsT&& args) -> RetT {
     auto& index = args.req.query_params.count("trial")
         ? this->state->data->ep3_card_index_trial
         : this->state->data->ep3_card_index;
@@ -762,19 +763,19 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     try {
       co_return std::make_shared<phosg::JSON>(index->definition_for_id(card_id)->def.json());
     } catch (const std::out_of_range&) {
-      throw phosg::async::HTTPError(404, "Card definition does not exist");
+      throw HTTPError(404, "Card definition does not exist");
     }
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/ep3/com-decks", [this](ArgsT&&) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/ep3/com-decks", [this](ArgsT&&) -> RetT {
     auto table = this->state->data->ep3_com_deck_index;
-    co_return co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(table->json());
     });
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/ep3/maps", [this](ArgsT&&) -> RetT {
-    co_return co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/ep3/maps", [this](ArgsT&&) -> RetT {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       auto ret = std::make_shared<phosg::JSON>(phosg::JSON::dict());
       for (const auto& [map_number, map] : this->state->data->ep3_map_index->all_maps()) {
         auto languages_json = phosg::JSON::list();
@@ -794,20 +795,20 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     });
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/ep3/map/:map_number/:language", [this](ArgsT&& args) -> RetT {
-    co_return co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/ep3/map/:map_number/:language", [this](ArgsT&& args) -> RetT {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       try {
         auto map = this->state->data->ep3_map_index->map_for_id(args.get_param<uint32_t>("map_number", true));
         auto vm = map->version(language_for_name(args.params.at("language")));
         return std::make_shared<phosg::JSON>(vm->map->json(vm->language));
       } catch (const std::out_of_range&) {
-        throw phosg::async::HTTPError(404, "Map version does not exist");
+        throw HTTPError(404, "Map version does not exist");
       }
     });
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/ep3/map/:map_number/:language/raw", [this](ArgsT&& args) -> RetT {
-    co_return co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> RawResponse {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/ep3/map/:map_number/:language/raw", [this](ArgsT&& args) -> RetT {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> RawResponse {
       try {
         auto map = this->state->data->ep3_map_index->map_for_id(args.get_param<uint32_t>("map_number"));
         auto vm = map->version(language_for_name(args.params.at("language")));
@@ -817,12 +818,12 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
             .filename = std::format("m{:06}p_{:c}.bind", vm->map->map_number, char_for_language(vm->language)),
             .data = std::move(data)};
       } catch (const std::out_of_range&) {
-        throw phosg::async::HTTPError(404, "Map version does not exist");
+        throw HTTPError(404, "Map version does not exist");
       }
     });
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/common-tables", [this](ArgsT&&) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/common-tables", [this](ArgsT&&) -> RetT {
     auto ret = std::make_shared<phosg::JSON>(phosg::JSON::list());
     for (const auto& it : this->state->data->common_item_sets) {
       ret->emplace_back(it.first);
@@ -830,18 +831,18 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     co_return ret;
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/common-table/:table_name", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/common-table/:table_name", [this](ArgsT&& args) -> RetT {
     try {
       const auto& table = this->state->data->common_item_sets.at(args.params.at("table_name"));
-      co_return co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
+      co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
         return std::make_shared<phosg::JSON>(table->json());
       });
     } catch (const std::out_of_range&) {
-      throw phosg::async::HTTPError(404, "Table does not exist");
+      throw HTTPError(404, "Table does not exist");
     }
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/rare-tables", [this](ArgsT&&) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/rare-tables", [this](ArgsT&&) -> RetT {
     auto ret = std::make_shared<phosg::JSON>(phosg::JSON::list());
     for (const auto& it : this->state->data->rare_item_sets) {
       ret->emplace_back(it.first);
@@ -849,7 +850,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     co_return ret;
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/rare-table/:table_name", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/rare-table/:table_name", [this](ArgsT&& args) -> RetT {
     try {
       const auto& table_name = args.params.at("table_name");
       const auto& table = this->state->data->rare_item_sets.at(table_name);
@@ -863,15 +864,15 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
       } else if (table_name.ends_with("-v4")) {
         name_index = this->state->data->item_name_index_opt(Version::BB_V4);
       }
-      co_return co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
+      co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
         return std::make_shared<phosg::JSON>(table->json(name_index));
       });
     } catch (const std::out_of_range&) {
-      throw phosg::async::HTTPError(404, "Table does not exist");
+      throw HTTPError(404, "Table does not exist");
     }
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/battle-params/:episode/:whence", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/battle-params/:episode/:whence", [this](ArgsT&& args) -> RetT {
     const auto& whence = args.params.at("whence");
     bool offline;
     if (whence == "on") {
@@ -879,72 +880,72 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     } else if (whence == "off") {
       offline = true;
     } else {
-      throw phosg::async::HTTPError(400, "Invalid online/offline specification");
+      throw HTTPError(400, "Invalid online/offline specification");
     }
     Episode episode = episode_for_name(args.params.at("episode"));
     auto battle_params = this->state->data->battle_params;
-    co_return co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(battle_params->get_table(offline, episode).json());
     });
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/shop-table/armor", [this](ArgsT&&) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/shop-table/armor", [this](ArgsT&&) -> RetT {
     auto random_set = this->state->data->armor_random_set;
-    co_return co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(random_set->json());
     });
   });
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/shop-table/tool", [this](ArgsT&&) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/shop-table/tool", [this](ArgsT&&) -> RetT {
     auto random_set = this->state->data->tool_random_set;
-    co_return co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(random_set->json());
     });
   });
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/shop-table/weapon/:difficulty", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/shop-table/weapon/:difficulty", [this](ArgsT&& args) -> RetT {
     auto random_set = this->state->data->weapon_random_set(difficulty_for_name(args.params.at("difficulty")));
-    co_return co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(random_set->json());
     });
   });
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/tekker-table", [this](ArgsT&&) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/tekker-table", [this](ArgsT&&) -> RetT {
     auto tekker_table = this->state->data->tekker_adjustment_set;
-    co_return co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(tekker_table->json());
     });
   });
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/level-table/:version", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/level-table/:version", [this](ArgsT&& args) -> RetT {
     auto table = this->state->data->level_table(phosg::enum_for_name<Version>(args.params.at("version")));
-    co_return co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(table->json());
     });
   });
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/mag-table/:version", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/mag-table/:version", [this](ArgsT&& args) -> RetT {
     auto table = this->state->data->mag_metadata_table(phosg::enum_for_name<Version>(args.params.at("version")));
-    co_return co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(table->json());
     });
   });
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/item-parameter-table/:version", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/item-parameter-table/:version", [this](ArgsT&& args) -> RetT {
     auto table = this->state->data->item_parameter_table(phosg::enum_for_name<Version>(args.params.at("version")));
-    co_return co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(table->json());
     });
   });
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/item-stack-limits/:version", [this](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/item-stack-limits/:version", [this](ArgsT&& args) -> RetT {
     auto table = this->state->data->item_stack_limits(phosg::enum_for_name<Version>(args.params.at("version")));
-    co_return co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(table->json());
     });
   });
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/item-translation-table", [this](ArgsT&&) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/item-translation-table", [this](ArgsT&&) -> RetT {
     auto table = this->state->data->item_translation_table;
-    co_return co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(table->json());
     });
   });
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/quests", [this](ArgsT&&) -> RetT {
-    co_return co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/quests", [this](ArgsT&&) -> RetT {
+    co_return co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::shared_ptr<phosg::JSON> {
       return std::make_shared<phosg::JSON>(this->state->data->quest_index->json());
     });
   });
@@ -952,7 +953,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
   auto get_quest = [this](const ArgsT& args) -> std::shared_ptr<const Quest> {
     auto q = this->state->data->quest_index->get(args.get_param<uint32_t>("quest_num"));
     if (!q) {
-      throw phosg::async::HTTPError(404, "Quest does not exist");
+      throw HTTPError(404, "Quest does not exist");
     }
     return q;
   };
@@ -960,7 +961,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     auto vq = get_quest(args)->version(
         phosg::enum_for_name<Version>(args.params.at("version")), language_for_name(args.params.at("language")));
     if (!vq) {
-      throw phosg::async::HTTPError(404, "Quest version does not exist");
+      throw HTTPError(404, "Quest version does not exist");
     }
     return vq;
   };
@@ -968,20 +969,20 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     if (data) {
       return SharedRawResponse{.content_type = "application/octet-stream", .filename = filename, .data = std::move(data)};
     } else {
-      throw phosg::async::HTTPError(404, "Quest does not contain this file");
+      throw HTTPError(404, "Quest does not contain this file");
     }
   };
 
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/quest/:quest_num", [get_quest](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/quest/:quest_num", [get_quest](ArgsT&& args) -> RetT {
     co_return std::make_shared<phosg::JSON>(get_quest(args)->json());
   });
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/quest/:quest_num/:version/:language", [get_quest_version](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/quest/:quest_num/:version/:language", [get_quest_version](ArgsT&& args) -> RetT {
     co_return std::make_shared<phosg::JSON>(get_quest_version(args)->json());
   });
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/quest/:quest_num/:version/:language/json", [get_quest_version](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/quest/:quest_num/:version/:language/json", [get_quest_version](ArgsT&& args) -> RetT {
     co_return get_quest_version(args)->json_contents;
   });
-  this->router.add(phosg::async::HTTPRequest::Method::GET, "/y/data/quest/:quest_num/:version/:language/:ext", [get_quest_version, encode_quest_file](ArgsT&& args) -> RetT {
+  this->router.add(HTTPRequest::Method::GET, "/y/data/quest/:quest_num/:version/:language/:ext", [get_quest_version, encode_quest_file](ArgsT&& args) -> RetT {
     auto vq = get_quest_version(args);
     auto ext = args.params.at("ext");
     std::shared_ptr<const std::string> contents;
@@ -992,7 +993,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     } else if (ext == "pvr") {
       contents = vq->pvr_contents;
     } else {
-      throw phosg::async::HTTPError(400, "Invalid quest file type");
+      throw HTTPError(400, "Invalid quest file type");
     }
     co_return encode_quest_file(contents, std::format("quest{}.{}", vq->meta.quest_number, ext));
   });
@@ -1014,12 +1015,12 @@ asio::awaitable<void> HTTPServer::send_event_notification(
   std::string data = message->serialize();
 
   size_t expected_results = subscribers.size();
-  phosg::async::Promise<void> complete_promise;
-  auto fn = [this, &data, &expected_results, &complete_promise](std::shared_ptr<phosg::async::HTTPClient> c) -> asio::awaitable<void> {
+  AsyncPromise<void> complete_promise;
+  auto fn = [this, &data, &expected_results, &complete_promise](std::shared_ptr<HTTPClient> c) -> asio::awaitable<void> {
     try {
       co_await c->send_websocket_message(data);
     } catch (const std::exception& e) {
-      auto remote_s = phosg::async::str_for_endpoint(c->r.get_socket().remote_endpoint());
+      auto remote_s = str_for_endpoint(c->r.get_socket().remote_endpoint());
       this->log.info_f("Failed to send WebSocket message to {}: {}", remote_s, e.what());
     }
     if (--expected_results == 0) {
@@ -1033,15 +1034,15 @@ asio::awaitable<void> HTTPServer::send_event_notification(
   co_await complete_promise.get();
 }
 
-asio::awaitable<std::unique_ptr<phosg::async::HTTPResponse>> HTTPServer::handle_request(
-    std::shared_ptr<NewservHTTPClient> c, phosg::async::HTTPRequest&& req) {
+asio::awaitable<std::unique_ptr<HTTPResponse>> HTTPServer::handle_request(
+    std::shared_ptr<NewservHTTPClient> c, HTTPRequest&& req) {
   std::variant<RawResponse, SharedRawResponse, std::shared_ptr<const phosg::JSON>> ret;
   uint32_t serialize_options = phosg::JSON::SerializeOption::ESCAPE_CONTROLS_ONLY;
   uint64_t start_time = phosg::now();
 
   this->log.info_f("{} ...", req.path);
 
-  auto resp = std::make_unique<phosg::async::HTTPResponse>();
+  auto resp = std::make_unique<HTTPResponse>();
   resp->http_version = req.http_version;
   resp->response_code = 200;
   resp->headers.emplace("Server", "newserv");
@@ -1060,7 +1061,7 @@ asio::awaitable<std::unique_ptr<phosg::async::HTTPResponse>> HTTPServer::handle_
 
     ret = co_await this->router.call_handler(c, req);
 
-  } catch (const phosg::async::HTTPError& e) {
+  } catch (const HTTPError& e) {
     ret = std::make_shared<phosg::JSON>(phosg::JSON::dict({{"Error", true}, {"Message", e.what()}}));
     resp->response_code = e.code;
   } catch (const std::exception& e) {
@@ -1076,7 +1077,7 @@ asio::awaitable<std::unique_ptr<phosg::async::HTTPResponse>> HTTPServer::handle_
       co_return nullptr;
     }
     resp->headers.emplace("Content-Type", "application/json");
-    resp->data = co_await phosg::async::call_on_thread_pool(*this->state->thread_pool, [&]() -> std::string {
+    resp->data = co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::string {
       return json->serialize(serialize_options, 0);
     });
     uint64_t serialize_end = phosg::now();

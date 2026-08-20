@@ -46,6 +46,7 @@
 #include "Revision.hh"
 #include "SaveFileFormats.hh"
 #include "SendCommands.hh"
+#include "Server.hh"
 #include "ServerShell.hh"
 #include "ServerState.hh"
 #include "SignalWatcher.hh"

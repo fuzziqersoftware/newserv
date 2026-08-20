@@ -1,10 +1,10 @@
 #pragma once
 
 #include <memory>
-#include <phosg/Async/Utils.hh>
 #include <stdexcept>
 
 #include "Account.hh"
+#include "AsyncUtils.hh"
 #include "Channel.hh"
 #include "ClientFunctionIndex.hh"
 #include "CommandFormats.hh"
@@ -207,9 +207,9 @@ public:
   // NOTE: Entries in this queue can be nullptr; that represents a B2 command sent by the remote server during a proxy
   // session. We can't just omit those from the queue entirely, because if we did, we could end up sending the wrong B3
   // response back.
-  std::deque<std::shared_ptr<phosg::async::Promise<C_ExecuteCodeResult_B3>>> function_call_response_queue;
-  std::shared_ptr<phosg::async::Promise<GetPlayerInfoResult>> character_data_ready_promise;
-  std::shared_ptr<phosg::async::Promise<void>> enable_save_promise;
+  std::deque<std::shared_ptr<AsyncPromise<C_ExecuteCodeResult_B3>>> function_call_response_queue;
+  std::shared_ptr<AsyncPromise<GetPlayerInfoResult>> character_data_ready_promise;
+  std::shared_ptr<AsyncPromise<void>> enable_save_promise;
 
   // File loading state
   std::unordered_map<std::string, std::shared_ptr<const std::string>> sending_files;

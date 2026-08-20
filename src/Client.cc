@@ -14,6 +14,7 @@
 #include "IPStackSimulator.hh"
 #include "Loggers.hh"
 #include "SendCommands.hh"
+#include "Server.hh"
 #include "Version.hh"
 
 const uint64_t CLIENT_CONFIG_MAGIC = 0x8399AC32;

@@ -26,7 +26,7 @@ if(WIN32)
 else()
     find_package(Iconv REQUIRED)
 endif()
-find_package(phosg REQUIRED COMPONENTS async)
+find_package(phosg REQUIRED)
 find_package(resource_file REQUIRED)
 
 
@@ -52,6 +52,8 @@ set(SOURCES
     src/Account.cc
     src/AddressTranslator.cc
     src/AFSArchive.cc
+    src/AsyncHTTPServer.cc
+    src/AsyncUtils.cc
     src/BattleParamsIndex.cc
     src/BMLArchive.cc
     src/Channel.cc
@@ -137,7 +139,7 @@ set(SOURCES
 
 add_executable(newserv ${SOURCES})
 target_include_directories(newserv PUBLIC ${ASIO_INCLUDE_DIR} ${Iconv_INCLUDE_DIRS})
-target_link_libraries(newserv phosg::phosg phosg::phosg-async ${Iconv_LIBRARIES} resource_file::resource_file)
+target_link_libraries(newserv phosg::phosg ${Iconv_LIBRARIES} resource_file::resource_file)
 if (WIN32)
     target_compile_definitions(newserv PUBLIC WINVER=0x0A00 _WIN32_WINNT=0x0A00)
     target_compile_options(newserv PRIVATE -Wa,-mbig-obj -Wno-mismatched-new-delete)

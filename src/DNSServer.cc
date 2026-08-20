@@ -56,7 +56,7 @@ asio::awaitable<void> DNSServer::dns_server_task(std::shared_ptr<asio::ip::udp::
     std::string input(2048, 0);
     asio::ip::udp::endpoint sender_ep;
     size_t bytes = co_await sock->async_receive_from(asio::buffer(input), sender_ep, asio::use_awaitable);
-    uint32_t sender_addr = phosg::async::ipv4_addr_for_asio_addr(sender_ep.address());
+    uint32_t sender_addr = ipv4_addr_for_asio_addr(sender_ep.address());
 
     if (bytes < 0x0C) {
       dns_server_log.warning_f("input query too small");

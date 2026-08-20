@@ -5,14 +5,14 @@
 #include <asio.hpp>
 #include <list>
 #include <memory>
-#include <phosg/Async/Server.hh>
-#include <phosg/Async/Utils.hh>
 #include <phosg/Filesystem.hh>
 #include <phosg/Process.hh>
 #include <string>
 
+#include "AsyncUtils.hh"
 #include "Channel.hh"
 #include "IPFrameInfo.hh"
+#include "Server.hh"
 #include "ServerState.hh"
 #include "Text.hh"
 
@@ -27,7 +27,7 @@ enum class VirtualNetworkProtocol {
   HDLC_RAW,
 };
 
-struct IPSSSocket : phosg::async::ServerSocket {
+struct IPSSSocket : ServerSocket {
   VirtualNetworkProtocol protocol;
 };
 
@@ -127,13 +127,13 @@ public:
   virtual asio::awaitable<void> recv_raw(void* data, size_t size);
 
 private:
-  phosg::async::Event data_available_signal;
+  AsyncEvent data_available_signal;
   std::deque<std::string> inbound_data;
   void* recv_buf = nullptr;
   size_t recv_buf_size = 0;
 };
 
-class IPStackSimulator : public phosg::async::Server<IPSSClient, IPSSSocket>, public std::enable_shared_from_this<IPStackSimulator> {
+class IPStackSimulator : public Server<IPSSClient, IPSSSocket>, public std::enable_shared_from_this<IPStackSimulator> {
 public:
   IPStackSimulator(std::shared_ptr<ServerState> state);
   ~IPStackSimulator() = default;

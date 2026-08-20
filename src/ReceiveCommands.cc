@@ -46,7 +46,7 @@ asio::awaitable<void> on_connect(std::shared_ptr<Client> c) {
       // the data isn't being sent before the RST, or there's a bug in AVE-TCP where it doesn't forward the last data
       // to the app if the RST is received on the same frame as the last PSH. In either case, waiting a short amount of
       // time here should mitigate it.
-      co_await phosg::async::sleep(std::chrono::seconds(2));
+      co_await async_sleep(std::chrono::seconds(2));
       c->channel->disconnect();
       break;
     }
@@ -412,7 +412,7 @@ static asio::awaitable<void> enable_save_if_needed(std::shared_ptr<Client> c) {
     // DC NTE and 11/2000 crash if they receive 97, so we do nothing on those versions
     if (!is_pre_v1(c->version())) {
       send_command(c, 0x97, 0x01);
-      auto promise = std::make_shared<phosg::async::Promise<void>>();
+      auto promise = std::make_shared<AsyncPromise<void>>();
       c->enable_save_promise = promise;
       co_await promise->get();
     }
@@ -447,7 +447,7 @@ asio::awaitable<void> start_proxy_session(std::shared_ptr<Client> c, const std::
   c->log.info_f("Connecting to {}", netloc_str);
   std::unique_ptr<asio::ip::tcp::socket> sock;
   try {
-    sock = std::make_unique<asio::ip::tcp::socket>(co_await phosg::async::connect_tcp(host, port));
+    sock = std::make_unique<asio::ip::tcp::socket>(co_await async_connect_tcp(host, port));
   } catch (const std::exception& e) {
     auto msg = std::format("Failed to connect to\n{}\n\n{}", netloc_str, e.what());
     if (is_patch(c->version()) || is_v4(c->version())) {

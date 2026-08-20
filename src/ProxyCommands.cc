@@ -646,7 +646,7 @@ static asio::awaitable<HandlerResult> S_B2(std::shared_ptr<Client> c, Channel::M
 static asio::awaitable<HandlerResult> C_B3(std::shared_ptr<Client> c, Channel::Message& msg) {
   auto cmd = msg.check_size_t<C_ExecuteCodeResult_B3>();
 
-  std::shared_ptr<phosg::async::Promise<C_ExecuteCodeResult_B3>> promise;
+  std::shared_ptr<AsyncPromise<C_ExecuteCodeResult_B3>> promise;
   if (!c->function_call_response_queue.empty()) {
     promise = std::move(c->function_call_response_queue.front());
     c->function_call_response_queue.pop_front();
@@ -855,21 +855,21 @@ static asio::awaitable<HandlerResult> S_19_U_14(std::shared_ptr<Client> c, Chann
   asio::ip::tcp::endpoint new_ep;
   if (is_patch(c->version())) {
     auto& cmd = msg.check_size_t<S_Reconnect_Patch_14>();
-    new_ep = phosg::async::make_endpoint_ipv4(cmd.address, cmd.port);
+    new_ep = make_endpoint_ipv4(cmd.address, cmd.port);
   } else if (msg.flag == 6 && msg.data.size() >= sizeof(S_ReconnectIPv6_Extension_19)) {
     auto& cmd = msg.check_size_t<S_ReconnectIPv6_Extension_19>(0xFFFF);
-    new_ep = phosg::async::make_endpoint_ipv6(cmd.address.data(), cmd.port);
+    new_ep = make_endpoint_ipv6(cmd.address.data(), cmd.port);
   } else {
     // This weird maximum size is here to properly handle the version-split command that some servers (including
     // newserv) use on port 9100
     auto& cmd = msg.check_size_t<S_Reconnect_19>(0xFFFF);
-    new_ep = phosg::async::make_endpoint_ipv4(cmd.address, cmd.port);
+    new_ep = make_endpoint_ipv4(cmd.address, cmd.port);
   }
 
   // Replace the server channel with a new channel to the new endpoint
-  std::string netloc_str = phosg::async::str_for_endpoint(new_ep);
+  std::string netloc_str = str_for_endpoint(new_ep);
   c->log.info_f("Connecting to {}", netloc_str);
-  auto sock = std::make_unique<asio::ip::tcp::socket>(co_await phosg::async::connect_tcp(new_ep));
+  auto sock = std::make_unique<asio::ip::tcp::socket>(co_await async_connect_tcp(new_ep));
 
   // Close the old channel only after replacing it with the new one
   auto s = c->require_server_state();
