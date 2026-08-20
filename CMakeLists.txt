@@ -169,8 +169,9 @@ add_test(
 
 file(GLOB SCRIPT_TEST_CASES ${CMAKE_SOURCE_DIR}/tests/*.test.sh)
 foreach(SCRIPT_TEST_CASE IN ITEMS ${SCRIPT_TEST_CASES})
+    get_filename_component(SCRIPT_TEST_CASE_NAME ${SCRIPT_TEST_CASE} NAME)
     add_test(
-        NAME ${SCRIPT_TEST_CASE}
+        NAME ${SCRIPT_TEST_CASE_NAME}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         COMMAND ${SCRIPT_TEST_CASE} ${CMAKE_BINARY_DIR}/newserv)
 endforeach()
