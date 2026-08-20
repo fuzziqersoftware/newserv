@@ -1210,12 +1210,14 @@ Action a_decode_bitmap_font(
     Decode a 2-bit bitmap font file (.fon) into a BMP image. The --width\n\
     option is required; if the output looks wrong, try increasing or\n\
     decreasing this number. For S18all04.fon, the width should be 20. If\n\
-    --show-unused is given, highlights the unused ares of ISO8859 characters\n\
-    in red.\n",
+    --show-unused is given, highlights the unused areas of ISO8859 characters\n\
+    in red. If --transparent is given, generates an image with the glyphs in\n\
+    the alpha channel instead of in the RGB channels.\n",
     +[](phosg::Arguments& args) {
       std::string data = read_input_data(args);
       size_t width = args.get<size_t>("width");
-      phosg::Image res = decode_fon(data, width);
+      bool use_transparent = args.get<bool>("transparent");
+      auto res = decode_fon(data, width, use_transparent);
       if (width == 20 && args.get<bool>("show-unused")) {
         static const std::array<uint8_t, 0xBF> iso8859_widths{7, 9, 13, 11, 15, 14, 7, 8, 8, 11, 11, 7, 11, 7, 11, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 7, 7, 9, 11, 9, 10, 15, 13, 12, 13, 12, 11, 11, 13, 12, 8, 11, 12, 11, 15, 12, 13, 11, 13, 12, 11, 13, 12, 13, 15, 12, 13, 11, 8, 11, 8, 8, 9, 8, 12, 11, 12, 11, 12, 10, 12, 11, 6, 9, 11, 6, 14, 11, 12, 11, 11, 9, 11, 10, 11, 12, 15, 11, 11, 11, 9, 8, 9, 9, 9, 12, 7, 10, 13, 10, 10, 7, 10, 8, 17, 9, 12, 11, 9, 17, 9, 7, 11, 8, 8, 8, 11, 11, 8, 7, 6, 9, 12, 13, 13, 13, 10, 13, 13, 13, 13, 13, 13, 17, 13, 11, 11, 11, 11, 8, 8, 8, 8, 12, 12, 13, 13, 13, 13, 13, 11, 13, 12, 12, 12, 12, 15, 11, 10, 12, 12, 12, 12, 12, 12, 17, 12, 12, 12, 12, 12, 6, 6, 6, 6, 11, 11, 12, 12, 12, 12, 12, 11, 12, 11, 11, 11, 11, 11, 11, 11};
         for (size_t z = 0; z < iso8859_widths.size(); z++) {
@@ -1226,7 +1228,13 @@ Action a_decode_bitmap_font(
           }
         }
       }
-      write_output_data(args, res.serialize(phosg::ImageFormat::WINDOWS_BITMAP), "bmp");
+      ssize_t char_index = args.get<ssize_t>("char-index", -1);
+      if ((width == 20) && (char_index >= 0)) {
+        phosg::ImageRGBA8888N res_ch(20, 18);
+        write_output_data(args, res.view(0, char_index * 18, width, 18).serialize(phosg::ImageFormat::WINDOWS_BITMAP), "bmp");
+      } else {
+        write_output_data(args, res.serialize(phosg::ImageFormat::WINDOWS_BITMAP), "bmp");
+      }
     });
 Action a_encode_bitmap_font(
     "encode-bitmap-font", "\
@@ -2933,7 +2941,11 @@ Action a_generate_ep3_cards_html(
       [--no-disassembly]\n\
     Generate an HTML file describing all Episode 3 card definitions from the\n\
     system/ep3 directory. If --ep3-nte is given, use the Trial Edition card\n\
-    definitions instead. If --no-images is given, omit the card images.\n",
+    definitions instead. If there are images present in the system/ep3/cardtex\n\
+    directory (or system/ep3/tardtex-trial, if --ep3-nte is given), they will\n\
+    be included in the generated HTML unless --no-images is given. The\n\
+    filenames should be like C_###.bmp, L_###.bmp, and M_###.bmp, where ###\n\
+    are decimal card IDs.\n",
     +[](phosg::Arguments& args) {
       size_t num_threads = args.get<size_t>("threads", 0);
 
@@ -3049,15 +3061,149 @@ Action a_generate_ep3_cards_html(
 
       std::vector<VersionInfo> version_infos;
       if (include_nte) {
+        phosg::log_info_f("Loading Trial Edition card images");
         version_infos.emplace_back("NTE", di->ep3_card_index_trial, no_images ? nullptr : "system/ep3/cardtex-trial", no_large_images, num_threads, no_disassembly);
       }
       if (include_final) {
+        phosg::log_info_f("Loading card images");
         version_infos.emplace_back("Final", di->ep3_card_index, no_images ? nullptr : "system/ep3/cardtex", no_large_images, num_threads, no_disassembly);
       }
 
+      auto text_image_key = [](char symbol_ch, char color_ch) -> uint16_t {
+        return (static_cast<uint16_t>(symbol_ch) << 8) | static_cast<uint8_t>(color_ch);
+      };
+
+      std::unordered_map<uint16_t, phosg::ImageRGBA8888N> text_images; // Char in high key byte, color code in low byte
+      if (std::filesystem::exists("system/ep3/texttex")) {
+        phosg::log_info_f("Loading text images");
+        for (const auto& item : std::filesystem::directory_iterator("system/ep3/texttex")) {
+          std::string filename = item.path().filename().string();
+          if (!filename.ends_with(".bmp")) {
+            phosg::log_info_f("Ignoring text image {} (not a .bmp file)", filename);
+          } else if (filename.starts_with("st_l_")) {
+            uint16_t key = text_image_key(::tolower(filename.at(5)), '7');
+            text_images.emplace(
+                key, phosg::ImageRGBA8888N::from_file_data(phosg::load_file("system/ep3/texttex/" + filename)));
+            phosg::log_info_f("Added text image {:04X} => {}", key, filename);
+          } else if (filename.starts_with("st_")) {
+            uint16_t key = text_image_key(::toupper(filename.at(3)), '7');
+            text_images.emplace(
+                key, phosg::ImageRGBA8888N::from_file_data(phosg::load_file("system/ep3/texttex/" + filename)));
+            phosg::log_info_f("Added text image {:04X} => {}", key, filename);
+          } else {
+            phosg::log_info_f("Ignoring text image {} (filename does not start with 'st_')", filename);
+          }
+        }
+      }
+
+      size_t num_infos = 0;
+      for (const auto& vi : version_infos) {
+        num_infos = std::max<size_t>(num_infos, vi.card_infos.size());
+      }
+
+      // Collect the necessary custom glyph images for all needed colors
+      for (size_t card_id = 0; card_id < num_infos; card_id++) {
+        for (const auto& vi : version_infos) {
+          const VersionInfo::CardInfo* entry = vi.get_entry(card_id);
+          if (entry && entry->ce) {
+            for (const auto& page : entry->ce->text_pages) {
+              char current_color = '7';
+              for (size_t z = 0; z < page.size(); z++) {
+                if (page[z] == '\n') {
+                  current_color = '7';
+                } else if ((page[z] == '\t') && (z < (page.size() - 1))) {
+                  uint16_t white_key = text_image_key(page[z + 1], '7');
+                  uint16_t color_key = text_image_key(page[z + 1], current_color);
+                  if (page[z + 1] == 'C' && z < (page.size() - 2)) {
+                    current_color = page[z + 2];
+                    z += 2;
+                  } else if (text_images.contains(white_key)) {
+                    if (!text_images.contains(color_key)) {
+                      const auto& white_image = text_images.at(white_key);
+                      uint32_t mask_color = rgb888_text_color_for_char(current_color) << 8;
+                      if (mask_color == 0xFFFFFF) {
+                        phosg::log_warning_f("Text image {:04X} is requested but no color is assigned", color_key);
+                      } else {
+                        phosg::log_info_f("Generating text image {:04X} from {:04X}", color_key, white_key);
+                        phosg::ImageRGBA8888N colored_image(white_image.get_width(), white_image.get_height());
+                        uint8_t mask_r = phosg::get_r(mask_color);
+                        uint8_t mask_g = phosg::get_g(mask_color);
+                        uint8_t mask_b = phosg::get_b(mask_color);
+                        for (size_t y = 0; y < white_image.get_height(); y++) {
+                          for (size_t x = 0; x < white_image.get_width(); x++) {
+                            // Leave A alone; just multiply each channel (respectively) by the mask color
+                            uint32_t white_color = white_image.read(x, y);
+                            uint32_t new_color = phosg::rgba8888(
+                                (mask_r * phosg::get_r(white_color)) / 0xFF,
+                                (mask_g * phosg::get_g(white_color)) / 0xFF,
+                                (mask_b * phosg::get_b(white_color)) / 0xFF,
+                                phosg::get_a(white_color));
+                            colored_image.write(x, y, new_color);
+                          }
+                        }
+                        text_images.emplace(color_key, std::move(colored_image));
+                      }
+                    }
+                    z++;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      auto stylize_text = [&text_images, &text_image_key](const std::string& text) -> std::string {
+        static const std::unordered_map<char, uint32_t> rgb888_colors{
+            {'0', 0x000000}, {'1', 0x0000FF}, {'2', 0x00FF00}, {'3', 0x00FFFF}, {'4', 0xFF0000}, {'5', 0xFF00FF},
+            {'6', 0xFFFF00}, {'7', 0xFFFFFF}, {'8', 0xFF8080}, {'9', 0x8080FF}, {'G', 0xFFE000}, {'a', 0xF5A052}};
+        uint32_t current_color = 0xFFFFFF;
+        char current_color_ch = '7';
+        std::string ret = "<span style=\"color: #FFFFFF\">";
+        for (size_t z = 0; z < text.size(); z++) {
+          if ((text[z] == '\t') && (z < (text.size() - 1))) {
+            if (text[z + 1] == 'C' && z < (text.size() - 2)) {
+              uint32_t new_color = rgb888_colors.at(text[z + 2]);
+              if (new_color != current_color) {
+                current_color = new_color;
+                current_color_ch = text[z + 2];
+                ret += std::format("</span><span style=\"color: #{:06X}\">", current_color);
+              }
+              z += 2;
+            } else {
+              uint16_t key = text_image_key(text[z + 1], current_color_ch);
+              if (text_images.contains(key)) {
+                ret += std::format("<span class=\"st_{:04X}\"></span>", key);
+              } else {
+                ret += std::format("${:c}", text[z + 1]);
+              }
+              z++;
+            }
+          } else if (text[z] == '\n') {
+            if (current_color != 0xFFFFFF) {
+              current_color = 0xFFFFFF;
+              current_color_ch = '7';
+              ret += "</span><span style=\"color: #FFFFFF\">";
+            }
+            ret += "<br />";
+          } else {
+            ret.push_back(text[z]);
+          }
+        }
+        ret += "</span>";
+        return ret;
+      };
+
+      phosg::log_info_f("Assembling result");
       std::deque<std::string> blocks;
-      blocks.emplace_back("<html><head><title>Phantasy Star Online Episode III cards</title></head><body style=\"background-color:#222222; color: #EEEEEE\">");
-      blocks.emplace_back("<table><tr><th style=\"text-align: left\">Legend:</th></tr><tr style=\"background-color: #663333\"><td>Card has no definition and is obviously incomplete</td></tr><tr style=\"background-color: #336633\"><td>Card is unobtainable in random draws but may be a quest or event reward</td></tr><tr style=\"background-color: #333333\"><td>Card is obtainable in random draws</td></tr></table><br /><br />");
+      blocks.emplace_back("<html><head><title>Phantasy Star Online Episode III cards</title><style>\n");
+      for (const auto& [key, image] : text_images) {
+        blocks.emplace_back(std::format(
+            ".st_{:04X} {{\n  background: url(\"{}\");\n  width: 20px;\n  height: 18px;\n  display: inline-block;\n  vertical-align: middle;\n}}\n",
+            key, image.serialize(phosg::ImageFormat::PNG_DATA_URL)));
+      }
+      blocks.emplace_back("</style></head><body style=\"background-color:#222222; color: #EEEEEE\">");
+      blocks.emplace_back("<table><tr><th style=\"text-align: left\">Legend:</th></tr><tr style=\"background-color: #333366\"><td>Card is a Story Character</td></tr><tr style=\"background-color: #333333\"><td>Card is obtainable in random draws</td></tr><tr style=\"background-color: #336633\"><td>Card is unobtainable in random draws but may be a quest or event reward</td></tr><tr style=\"background-color: #663333\"><td>Card has no definition and is obviously incomplete</td></tr></table><br /><br />");
 
       if (version_infos.size() > 1) {
         blocks.emplace_back("<table><tr><th rowspan=\"2\" style=\"text-align: left; padding: 4px\">ID</th>");
@@ -3083,11 +3229,6 @@ Action a_generate_ep3_cards_html(
       }
       blocks.emplace_back("</tr>");
 
-      size_t num_infos = 0;
-      for (const auto& vi : version_infos) {
-        num_infos = std::max<size_t>(num_infos, vi.card_infos.size());
-      }
-
       for (size_t card_id = 0; card_id < num_infos; card_id++) {
         bool any_vi_has_entry = false;
         for (const auto& vi : version_infos) {
@@ -3111,15 +3252,23 @@ Action a_generate_ep3_cards_html(
           }
 
           const char* background_color;
+          const char* page_border_color;
           if (!entry->ce) {
             background_color = "#663333";
+            page_border_color = "#996666";
+          } else if ((entry->ce->def.type == Episode3::CardType::HUNTERS_SC) ||
+              (entry->ce->def.type == Episode3::CardType::ARKZ_SC)) {
+            background_color = "#333366";
+            page_border_color = "#666699";
           } else if (entry->ce->def.cannot_drop ||
               ((entry->ce->def.rank == Episode3::CardRank::D1) || (entry->ce->def.rank == Episode3::CardRank::D2) || (entry->ce->def.rank == Episode3::CardRank::D3)) ||
               ((entry->ce->def.card_class() == Episode3::CardClass::BOSS_ATTACK_ACTION) || (entry->ce->def.card_class() == Episode3::CardClass::BOSS_TECH)) ||
               ((entry->ce->def.drop_rates[0] == 6) && (entry->ce->def.drop_rates[1] == 6))) {
             background_color = "#336633";
+            page_border_color = "#669966";
           } else {
             background_color = "#333333";
+            page_border_color = "#666666";
           }
 
           std::string td_tag = std::format("<td style=\"padding: 4px; vertical-align: top; background-color: {}\">", background_color);
@@ -3152,9 +3301,14 @@ Action a_generate_ep3_cards_html(
           }
           blocks.emplace_back(td_tag);
           if (entry->ce) {
-            blocks.emplace_back("<pre>");
-            blocks.emplace_back(entry->ce->text);
-            blocks.emplace_back("</pre></td>");
+            blocks.emplace_back("<div style=\"display: flex; flex-direction: column; padding: 2px\">");
+            for (const auto& page : entry->ce->text_pages) {
+              blocks.emplace_back(std::format(
+                  "<div style=\"padding: 2px; border: 1px solid {}; margin-bottom: 4px\">", page_border_color));
+              blocks.emplace_back(stylize_text(page));
+              blocks.emplace_back("</div>");
+            }
+            blocks.emplace_back("</div></td>");
             if (!no_disassembly) {
               blocks.emplace_back(td_tag);
               blocks.emplace_back("<pre>");

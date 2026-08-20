@@ -67,19 +67,19 @@
 // - - $CG: Orange pulse (FFE000 + darkenings thereof; v2 and later only)
 // - - $Ca: Orange (F5A052; Episode 3 only)
 // - Special character codes (Ep3 only)
-// - - $B: Dash + small bullet
-// - - $D: Large bullet
-// - - $F: Female symbol
-// - - $I: Infinity
-// - - $M: Male symbol
-// - - $O: Open circle
-// - - $R: Solid circle
-// - - $S: Star-like ability symbol
-// - - $X: Cross
-// - - $d: Down arrow
-// - - $l: Left arrow
-// - - $r: Right arrow
-// - - $u: Up arrow
+// - - $B: (SJIS F065) Dash + small bullet
+// - - $D: (SJIS 8145) Large bullet
+// - - $F: (SJIS 818A) Female symbol
+// - - $I: (SJIS 8187) Infinity
+// - - $M: (SJIS 8189) Male symbol
+// - - $O: (SJIS 819B) Open circle
+// - - $R: (SJIS 819C) Solid circle
+// - - $S: (SJIS F066) Star-like ability symbol
+// - - $X: (SJIS 817E) Cross
+// - - $d: (SJIS 81AB) Down arrow
+// - - $l: (SJIS 81A9) Left arrow
+// - - $r: (SJIS 81A8) Right arrow
+// - - $u: (SJIS 81AA) Up arrow
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

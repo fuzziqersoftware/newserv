@@ -24,7 +24,7 @@ std::string encode_gvm(
     GVRDataFormat data_format,
     const std::string& internal_name,
     uint32_t global_index);
-phosg::ImageRGB888 decode_fon(const std::string& data, size_t width);
+phosg::ImageRGBA8888N decode_fon(const std::string& data, size_t width, bool use_transparent);
 std::string encode_fon(const phosg::ImageRGB888& img);
 
 constexpr uint16_t encode_rgb5a3(uint32_t c) {

@@ -1483,10 +1483,12 @@ public:
       const std::string& text_filename = "",
       const std::string& decompressed_text_filename = "",
       const std::string& dice_text_filename = "",
-      const std::string& decompressed_dice_text_filename = "");
+      const std::string& decompressed_dice_text_filename = "",
+      bool text_is_sjis = false);
 
   struct CardEntry {
     CardDefinition def;
+    std::vector<std::string> text_pages;
     std::string text;
     std::string dice_caption;
     std::string dice_text;

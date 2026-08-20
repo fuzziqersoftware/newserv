@@ -114,13 +114,15 @@ std::string encode_gvm(
   return std::move(w.str());
 }
 
-static const std::array<uint32_t, 4> fon_colors = {0x000000FF, 0x555555FF, 0xAAAAAAFF, 0xFFFFFFFF};
+static const std::array<uint32_t, 4> fon_colors_opaque = {0x000000FF, 0x555555FF, 0xAAAAAAFF, 0xFFFFFFFF};
+static const std::array<uint32_t, 4> fon_colors_transparent = {0x00000000, 0xFFFFFF55, 0xFFFFFFAA, 0xFFFFFFFF};
 
-phosg::ImageRGB888 decode_fon(const std::string& data, size_t width) {
+phosg::ImageRGBA8888N decode_fon(const std::string& data, size_t width, bool use_transparent) {
   size_t num_pixels = data.size() * 4;
   size_t height = num_pixels / width;
-  phosg::ImageRGB888 ret(width, height);
+  phosg::ImageRGBA8888N ret(width, height);
 
+  const auto& fon_colors = use_transparent ? fon_colors_transparent : fon_colors_opaque;
   phosg::BitReader r(data);
   for (size_t y = 0; y < height; y++) {
     for (size_t x = 0; x < width; x++) {
@@ -142,14 +144,16 @@ std::string encode_fon(const phosg::ImageRGB888& img) {
 
       size_t result_delta = 0x400;
       size_t result_index = 0;
-      for (size_t z = 0; z < 4; z++) {
-        size_t delta = uabs((fon_colors[z] >> 24) & 0xFF, (color >> 24) & 0xFF) +
-            uabs((fon_colors[z] >> 16) & 0xFF, (color >> 16) & 0xFF) +
-            uabs((fon_colors[z] >> 8) & 0xFF, (color >> 8) & 0xFF) +
-            uabs(fon_colors[z] & 0xFF, color & 0xFF);
-        if (delta < result_delta) {
-          result_delta = delta;
-          result_index = z;
+      for (const auto& fon_colors : {fon_colors_opaque, fon_colors_transparent}) {
+        for (size_t z = 0; z < 4; z++) {
+          size_t delta = uabs((fon_colors[z] >> 24) & 0xFF, (color >> 24) & 0xFF) +
+              uabs((fon_colors[z] >> 16) & 0xFF, (color >> 16) & 0xFF) +
+              uabs((fon_colors[z] >> 8) & 0xFF, (color >> 8) & 0xFF) +
+              uabs(fon_colors[z] & 0xFF, color & 0xFF);
+          if (delta < result_delta) {
+            result_delta = delta;
+            result_index = z;
+          }
         }
       }
       w.write(result_index & 2);

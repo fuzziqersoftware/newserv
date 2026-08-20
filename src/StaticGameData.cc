@@ -531,6 +531,20 @@ const std::unordered_map<std::string, uint8_t> mag_color_for_name = {
     {"turquoise", 0x0C}, {"fuchsia", 0x0D}, {"grey", 0x0E}, {"cream", 0x0F}, {"pink", 0x10}, {"dark-green", 0x11},
     {"costume-color", 0x12}};
 
+uint32_t rgb888_text_color_for_char(char ch) {
+  constexpr static std::array<uint32_t, 10> num_colors{
+      0x000000, 0x0000FF, 0x00FF00, 0x00FFFF, 0xFF0000, 0xFF00FF, 0xFFFF00, 0xFFFFFF, 0xFF8080, 0x8080FF};
+  if (ch == 'G') {
+    return 0xFFE000;
+  } else if (ch == 'a') {
+    return 0xF5A052;
+  } else if ((ch >= '0') && (ch <= '9')) {
+    return num_colors[ch - '0'];
+  } else {
+    return 0xFFFFFF;
+  }
+}
+
 static constexpr uint8_t F_CITY = FloorDefinition::Flag::CITY;
 static constexpr uint8_t F_LOBBY = FloorDefinition::Flag::LOBBY;
 static constexpr uint8_t F_BOSS = FloorDefinition::Flag::BOSS_ARENA;

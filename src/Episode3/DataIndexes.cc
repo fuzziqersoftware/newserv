@@ -2533,7 +2533,9 @@ CardIndex::CardIndex(
     const std::string& text_filename,
     const std::string& decompressed_text_filename,
     const std::string& dice_text_filename,
-    const std::string& decompressed_dice_text_filename) {
+    const std::string& decompressed_dice_text_filename,
+    bool text_is_sjis) {
+  std::unordered_map<uint32_t, std::vector<std::string>> card_text_pages;
   std::unordered_map<uint32_t, std::vector<std::string>> card_tags;
   std::unordered_map<uint32_t, std::string> card_text;
   try {
@@ -2557,16 +2559,20 @@ CardIndex::CardIndex(
         // Read all pages for this card
         std::string text;
         std::string first_page;
+        std::vector<std::string> pages;
         for (;;) {
           std::string line = r.get_cstr();
           if (line.empty()) {
             break;
           }
+          line = text_is_sjis ? tt_sega_sjis_to_utf8(line) : tt_8859_to_utf8(line);
           if (first_page.empty()) {
             first_page = line;
           }
           text += '\n';
           text += line;
+
+          pages.emplace_back(std::move(line));
         }
 
         // In orig_text, turn all \t into $ (following newserv conventions)
@@ -2617,6 +2623,9 @@ CardIndex::CardIndex(
         }
         phosg::strip_leading_whitespace(orig_text);
 
+        if (!card_text_pages.emplace(card_id, std::move(pages)).second) {
+          throw std::runtime_error("duplicate card text id");
+        }
         if (!card_text.emplace(card_id, std::move(orig_text)).second) {
           throw std::runtime_error("duplicate card text id");
         }
@@ -2691,7 +2700,7 @@ CardIndex::CardIndex(
         continue;
       }
 
-      auto entry = std::make_shared<CardEntry>(CardEntry{def, "", "", "", {}});
+      auto entry = std::make_shared<CardEntry>(CardEntry{def, {}, "", "", "", {}});
       if (!this->card_definitions.emplace(entry->def.card_id, entry).second) {
         throw std::runtime_error(std::format("duplicate card id: {:08X}", entry->def.card_id));
       }
@@ -2709,6 +2718,10 @@ CardIndex::CardIndex(
       entry->def.decode_range();
 
       if (!text_filename.empty() || !decompressed_text_filename.empty()) {
+        try {
+          entry->text_pages = std::move(card_text_pages.at(def.card_id));
+        } catch (const std::out_of_range&) {
+        }
         try {
           entry->text = std::move(card_text.at(def.card_id));
         } catch (const std::out_of_range&) {

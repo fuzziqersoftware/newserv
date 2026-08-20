@@ -96,6 +96,8 @@ Language language_for_name(const std::string& name);
 extern const std::vector<const char*> name_for_mag_color;
 extern const std::unordered_map<std::string, uint8_t> mag_color_for_name;
 
+uint32_t rgb888_text_color_for_char(char ch);
+
 struct FloorDefinition {
   enum Flag {
     CITY = 0x01,
