@@ -2966,6 +2966,13 @@ Action a_generate_ep3_cards_html(
       } catch (const std::out_of_range&) {
       }
 
+      static constexpr size_t small_image_w = 58;
+      static constexpr size_t small_image_h = 43;
+      static constexpr size_t medium_image_w = 184;
+      static constexpr size_t medium_image_h = 144;
+      static constexpr size_t large_image_w = 512;
+      static constexpr size_t large_image_h = 399;
+
       struct VersionInfo {
         struct CardInfo {
           std::shared_ptr<const Episode3::CardIndex::CardEntry> ce;
@@ -2983,9 +2990,7 @@ Action a_generate_ep3_cards_html(
 
         const char* name;
         std::vector<CardInfo> card_infos;
-        bool show_large_column = false;
-        bool show_medium_column = false;
-        bool show_small_column = false;
+        bool show_image_column = false;
         size_t num_output_columns = 2;
 
         VersionInfo(
@@ -3014,13 +3019,13 @@ Action a_generate_ep3_cards_html(
                 auto& info = this->card_infos[card_id];
                 if (filename[0] == 'C' && !no_large_images) {
                   info.large_filename = std::string(cardtex_directory) + "/" + filename;
-                  this->show_large_column = true;
+                  this->show_image_column = true;
                 } else if (filename[0] == 'L') {
                   info.medium_filename = std::string(cardtex_directory) + "/" + filename;
-                  this->show_medium_column = true;
+                  this->show_image_column = true;
                 } else if (filename[0] == 'M') {
                   info.small_filename = std::string(cardtex_directory) + "/" + filename;
-                  this->show_small_column = true;
+                  this->show_image_column = true;
                 }
               }
             }
@@ -3029,17 +3034,17 @@ Action a_generate_ep3_cards_html(
                 this->card_infos, [&](CardInfo& info, size_t) -> bool {
                   if (!info.large_filename.empty()) {
                     auto img = phosg::ImageRGBA8888N::from_file_data(phosg::load_file(info.large_filename));
-                    img.resize(512, 399);
+                    img.resize(large_image_w, large_image_h);
                     info.large_data_url = img.serialize(phosg::ImageFormat::PNG_DATA_URL);
                   }
                   if (!info.medium_filename.empty()) {
                     auto img = phosg::ImageRGBA8888N::from_file_data(phosg::load_file(info.medium_filename));
-                    img.resize(184, 144);
+                    img.resize(medium_image_w, medium_image_h);
                     info.medium_data_url = img.serialize(phosg::ImageFormat::PNG_DATA_URL);
                   }
                   if (!info.small_filename.empty()) {
                     auto img = phosg::ImageRGBA8888N::from_file_data(phosg::load_file(info.small_filename));
-                    img.resize(58, 43);
+                    img.resize(small_image_w, small_image_h);
                     info.small_data_url = img.serialize(phosg::ImageFormat::PNG_DATA_URL);
                   }
                   return false;
@@ -3047,7 +3052,7 @@ Action a_generate_ep3_cards_html(
                 num_threads);
           }
 
-          this->num_output_columns = 1 + (!no_disassembly) + this->show_small_column + this->show_medium_column + this->show_large_column;
+          this->num_output_columns = 1 + (!no_disassembly) + this->show_image_column;
         }
 
         const CardInfo* get_entry(size_t card_id) const {
@@ -3203,7 +3208,6 @@ Action a_generate_ep3_cards_html(
             key, image.serialize(phosg::ImageFormat::PNG_DATA_URL)));
       }
       blocks.emplace_back("</style></head><body style=\"background-color:#222222; color: #EEEEEE\">");
-      blocks.emplace_back("<table><tr><th style=\"text-align: left\">Legend:</th></tr><tr style=\"background-color: #333366\"><td>Card is a Story Character</td></tr><tr style=\"background-color: #333333\"><td>Card is obtainable in random draws</td></tr><tr style=\"background-color: #336633\"><td>Card is unobtainable in random draws but may be a quest or event reward</td></tr><tr style=\"background-color: #663333\"><td>Card has no definition and is obviously incomplete</td></tr></table><br /><br />");
 
       if (version_infos.size() > 1) {
         blocks.emplace_back("<table><tr><th rowspan=\"2\" style=\"text-align: left; padding: 4px\">ID</th>");
@@ -3216,14 +3220,8 @@ Action a_generate_ep3_cards_html(
         blocks.emplace_back("<table><tr><th style=\"text-align: left; padding: 4px\">ID</th>");
       }
       for (const auto& vi : version_infos) {
-        if (vi.show_small_column) {
-          blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Small</th>");
-        }
-        if (vi.show_medium_column) {
-          blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Medium</th>");
-        }
-        if (vi.show_large_column) {
-          blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Large</th>");
+        if (vi.show_image_column) {
+          blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Image</th>");
         }
         blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Text</th><th style=\"text-align: left; padding: 4px\">Disassembly</th>");
       }
@@ -3251,53 +3249,64 @@ Action a_generate_ep3_cards_html(
             continue;
           }
 
-          const char* background_color;
+          // Card back colors (from lower-right of text area in card_only_e.pae.gvm_cardtexdu*.gvr.bmp):
+          //   Hunters SC: 08293F
+          //   Arkz SC: 39082E
+          //   Item: 084121
+          //   Creature: 4A1021
+          //   Action: 3F2008
+          //   Assist: 292905
+          //   Boss SC: 2B292B (TODO)
+          const char* info_background_color;
           const char* page_border_color;
           if (!entry->ce) {
-            background_color = "#663333";
-            page_border_color = "#996666";
-          } else if ((entry->ce->def.type == Episode3::CardType::HUNTERS_SC) ||
-              (entry->ce->def.type == Episode3::CardType::ARKZ_SC)) {
-            background_color = "#333366";
-            page_border_color = "#666699";
-          } else if (entry->ce->def.cannot_drop ||
-              ((entry->ce->def.rank == Episode3::CardRank::D1) || (entry->ce->def.rank == Episode3::CardRank::D2) || (entry->ce->def.rank == Episode3::CardRank::D3)) ||
-              ((entry->ce->def.card_class() == Episode3::CardClass::BOSS_ATTACK_ACTION) || (entry->ce->def.card_class() == Episode3::CardClass::BOSS_TECH)) ||
-              ((entry->ce->def.drop_rates[0] == 6) && (entry->ce->def.drop_rates[1] == 6))) {
-            background_color = "#336633";
-            page_border_color = "#669966";
+            info_background_color = "#FF0000";
+            page_border_color = "#FFFFFF";
+          } else if (entry->ce->def.type == Episode3::CardType::HUNTERS_SC) {
+            info_background_color = "#08293F";
+            page_border_color = "#1978b7";
+          } else if (entry->ce->def.type == Episode3::CardType::ARKZ_SC) {
+            info_background_color = "#39082E";
+            page_border_color = "#b11890";
+          } else if (entry->ce->def.type == Episode3::CardType::ITEM) {
+            info_background_color = "#084121";
+            page_border_color = "#18b85e";
+          } else if (entry->ce->def.type == Episode3::CardType::CREATURE) {
+            info_background_color = "#4A1021";
+            page_border_color = "#c22957";
+          } else if (entry->ce->def.type == Episode3::CardType::ACTION) {
+            info_background_color = "#3F2008";
+            page_border_color = "#b75d18";
+          } else if (entry->ce->def.type == Episode3::CardType::ASSIST) {
+            info_background_color = "#292905";
+            page_border_color = "#9d9d12";
           } else {
-            background_color = "#333333";
-            page_border_color = "#666666";
+            info_background_color = "#FF0000";
+            page_border_color = "#FFFFFF";
           }
 
-          std::string td_tag = std::format("<td style=\"padding: 4px; vertical-align: top; background-color: {}\">", background_color);
-          if (vi.show_small_column) {
+          std::string td_tag = std::format(
+              "<td style=\"padding: 4px; vertical-align: top; background-color: {}; border-top: 1px solid {}\">",
+              info_background_color, page_border_color);
+          if (vi.show_image_column) {
             blocks.emplace_back(td_tag);
+            blocks.emplace_back("<div style=\"display:flex; flex-direction:column; align-items:center; gap:4px\">");
             if (!entry->small_data_url.empty()) {
               blocks.emplace_back("<img src=\"");
               blocks.emplace_back(std::move(entry->small_data_url));
               blocks.emplace_back("\" />");
             }
-            blocks.emplace_back("</td>");
-          }
-          if (vi.show_medium_column) {
-            blocks.emplace_back(td_tag);
             if (!entry->medium_data_url.empty()) {
               blocks.emplace_back("<img src=\"");
               blocks.emplace_back(std::move(entry->medium_data_url));
               blocks.emplace_back("\" />");
             }
-            blocks.emplace_back("</td>");
-          }
-          if (vi.show_large_column) {
-            blocks.emplace_back(td_tag);
             if (!entry->large_data_url.empty()) {
               blocks.emplace_back("<img src=\"");
               blocks.emplace_back(std::move(entry->large_data_url));
               blocks.emplace_back("\" />");
             }
-            blocks.emplace_back("</td>");
+            blocks.emplace_back("</div></td>");
           }
           blocks.emplace_back(td_tag);
           if (entry->ce) {
