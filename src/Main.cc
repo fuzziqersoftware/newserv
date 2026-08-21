@@ -3239,7 +3239,7 @@ Action a_generate_ep3_cards_html(
           continue;
         }
 
-        blocks.emplace_back(std::format("<tr><td style=\"padding: 4px; vertical-align: top\"><pre>{:04X}</pre></td>", card_id));
+        blocks.emplace_back(std::format("<tr><td style=\"padding: 4px; vertical-align: top; background-color: #333333; border-top: 1px solid #888888\"><pre>{:04X}</pre></td>", card_id));
 
         for (const auto& vi : version_infos) {
           const VersionInfo::CardInfo* entry = vi.get_entry(card_id);
