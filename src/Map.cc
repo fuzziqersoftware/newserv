@@ -67,15 +67,15 @@ std::vector<std::string> SetDataTableBase::map_filenames_for_variations(
 
 std::array<uint8_t, 0x12> SetDataTableBase::default_floor_to_area(Version version, Episode episode) {
   // For some inscrutable reason, Pioneer 2's area number in Episode 4 is discontiguous with all the rest. Why, Sega??
-  static const std::array<uint8_t, 0x12> areas_ep1 = {
+  static const std::array<uint8_t, 0x12> areas_ep1{
       0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11};
-  static const std::array<uint8_t, 0x12> areas_ep2_gc_nte = {
+  static const std::array<uint8_t, 0x12> areas_ep2_gc_nte{
       0x00, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x21, 0xFF, 0xFF};
-  static const std::array<uint8_t, 0x12> areas_ep2 = {
+  static const std::array<uint8_t, 0x12> areas_ep2{
       0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x21, 0x22, 0x23};
-  static const std::array<uint8_t, 0x12> areas_ep3 = {
+  static const std::array<uint8_t, 0x12> areas_ep3{
       0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x0F, 0xFF, 0xFF};
-  static const std::array<uint8_t, 0x12> areas_ep4 = {
+  static const std::array<uint8_t, 0x12> areas_ep4{
       0x2D, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2E, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
   switch (episode) {
     case Episode::EP1:
@@ -154,7 +154,7 @@ Variations::Entry SetDataTable::num_free_play_variations_for_floor(Episode episo
   if (area == 0xFF) {
     return Variations::Entry{.layout = 1, .entities = 1};
   }
-  static const std::array<uint32_t, 0x2F * 2> counts_on = {
+  static const std::array<uint32_t, 0x2F * 2> counts_on{
       // Episode 1 (00-11)
       // P2 -F1-, -F2-, -C1-, -C2-, -C3-, -M1-, -M2-, -R1-, -R2-, -R3-, DRGN, DRL-, -VO-, -DF-, LOBBY, VS1-, VS2-,
       1, 1, 1, 5, 1, 5, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 10, 1, 1, 1, 1, 1,
@@ -164,7 +164,7 @@ Variations::Entry SetDataTable::num_free_play_variations_for_floor(Episode episo
       // Episode 4 (24-2E)
       // CE -CW-, -CS-, -CN-, -CI-, DES1, DES2, DES3, SMIL, -P2-, TEST
       1, 3, 1, 3, 1, 3, 1, 3, 1, 3, 3, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 1};
-  static const std::array<uint32_t, 0x2F * 2> counts_off = {
+  static const std::array<uint32_t, 0x2F * 2> counts_off{
       // Episode 1 (00-11)
       // P2 -F1-, -F2-, -C1-, -C2-, -C3-, -M1-, -M2-, -R1-, -R2-, -R3-, DRGN, DRL-, -VO-, -DF-, LOBBY, VS1-, VS2-,
       1, 1, 1, 3, 1, 3, 3, 1, 3, 1, 3, 1, 3, 2, 3, 2, 3, 2, 3, 2, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 10, 1, 1, 1, 1, 1,
@@ -3239,18 +3239,10 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
 });
 
 static std::string name_for_entity_type(
-    std::unordered_multimap<uint16_t, const DATEntityDefinition*>& index,
-    const std::vector<DATEntityDefinition>& defs,
+    const std::unordered_multimap<uint16_t, const DATEntityDefinition*>& index,
     uint16_t type,
     Version version,
     uint8_t area) {
-
-  if (index.size() == 0) {
-    for (const auto& def : defs) {
-      index.emplace(def.base_type, &def);
-    }
-  }
-
   auto its = index.equal_range(type);
   uint16_t version_mask = (1 << static_cast<size_t>(version));
 
@@ -3293,13 +3285,22 @@ static std::string name_for_entity_type(
   return ret.empty() ? std::format("__UNKNOWN_ENTITY_{:04X}__", type) : ret;
 }
 
+static std::unordered_multimap<uint16_t, const DATEntityDefinition*> generate_entity_type_name_index(
+    const std::vector<DATEntityDefinition>& defs) {
+  std::unordered_multimap<uint16_t, const DATEntityDefinition*> ret;
+  for (const auto& def : defs) {
+    ret.emplace(def.base_type, &def);
+  }
+  return ret;
+}
+
 std::string MapFile::name_for_object_type(uint16_t type, Version version, uint8_t area) {
-  static std::unordered_multimap<uint16_t, const DATEntityDefinition*> index;
-  return name_for_entity_type(index, dat_object_definitions, type, version, area);
+  static const auto index = generate_entity_type_name_index(dat_object_definitions);
+  return name_for_entity_type(index, type, version, area);
 }
 std::string MapFile::name_for_enemy_type(uint16_t type, Version version, uint8_t area) {
-  static std::unordered_multimap<uint16_t, const DATEntityDefinition*> index;
-  return name_for_entity_type(index, dat_enemy_definitions, type, version, area);
+  static const auto index = generate_entity_type_name_index(dat_enemy_definitions);
+  return name_for_entity_type(index, type, version, area);
 }
 
 std::string MapFile::ObjectSetEntry::str(Version version, uint8_t area) const {

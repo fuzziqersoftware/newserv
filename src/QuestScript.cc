@@ -2625,67 +2625,54 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF961, {"bb_get_6xE3_status", "unknownF961"}, {W_REG}, F_V4},
 };
 
-static const std::unordered_map<uint16_t, const QuestScriptOpcodeDefinition*>& opcodes_for_version(Version v) {
-  static std::array<
-      std::unordered_map<uint16_t, const QuestScriptOpcodeDefinition*>,
-      static_cast<size_t>(Version::BB_V4) + 1>
-      indexes;
-
-  auto& index = indexes.at(static_cast<size_t>(v));
-  if (index.empty()) {
+static std::array<std::unordered_map<uint16_t, const QuestScriptOpcodeDefinition*>, NUM_VERSIONS>
+generate_opcodes_for_version_index() {
+  std::array<std::unordered_map<uint16_t, const QuestScriptOpcodeDefinition*>, NUM_VERSIONS> ret;
+  for (Version v : ALL_NON_PATCH_VERSIONS) {
+    auto& v_index = ret[static_cast<size_t>(v)];
     uint32_t vf = v_flag(v);
     for (size_t z = 0; z < sizeof(opcode_defs) / sizeof(opcode_defs[0]); z++) {
       const auto& def = opcode_defs[z];
-      if (!(def.flags & vf)) {
-        continue;
-      }
-      if (!index.emplace(def.opcode, &def).second) {
+      if ((def.flags & vf) && !v_index.emplace(def.opcode, &def).second) {
         throw std::logic_error(std::format("duplicate definition for opcode {:04X}", def.opcode));
       }
     }
   }
-  return index;
+  return ret;
+}
+static const std::unordered_map<uint16_t, const QuestScriptOpcodeDefinition*>& opcodes_for_version(Version v) {
+  static const auto indexes = generate_opcodes_for_version_index();
+  return indexes.at(static_cast<size_t>(v));
 }
 
-static const std::unordered_map<std::string, const QuestScriptOpcodeDefinition*>& opcodes_by_name_for_version(Version v) {
-  static std::array<std::unordered_map<std::string, const QuestScriptOpcodeDefinition*>, static_cast<size_t>(Version::BB_V4) + 1> indexes;
-
-  auto& index = indexes.at(static_cast<size_t>(v));
-  if (index.empty()) {
+static std::array<std::unordered_map<std::string, const QuestScriptOpcodeDefinition*>, NUM_VERSIONS>
+generate_opcodes_by_name_for_version_index() {
+  std::array<std::unordered_map<std::string, const QuestScriptOpcodeDefinition*>, NUM_VERSIONS> ret;
+  for (Version v : ALL_NON_PATCH_VERSIONS) {
+    auto& v_index = ret[static_cast<size_t>(v)];
     uint32_t vf = v_flag(v);
     for (size_t z = 0; z < sizeof(opcode_defs) / sizeof(opcode_defs[0]); z++) {
       const auto& def = opcode_defs[z];
-      if (!(def.flags & vf)) {
-        continue;
-      }
-      for (const char* name : def.names) {
-        auto emplace_ret = index.emplace(phosg::tolower(name), &def);
-        if (!emplace_ret.second && (emplace_ret.first->second->opcode != def.opcode)) {
-          throw std::logic_error(std::format("name conflict for opcode {} (existing: {:04X}, new: {:04X})",
-              name, emplace_ret.first->second->opcode, def.opcode));
+      if (def.flags & vf) {
+        for (const char* name : def.names) {
+          auto emplace_ret = v_index.emplace(phosg::tolower(name), &def);
+          if (!emplace_ret.second && (emplace_ret.first->second->opcode != def.opcode)) {
+            throw std::logic_error(std::format("name conflict for opcode {} (existing: {:04X}, new: {:04X})",
+                name, emplace_ret.first->second->opcode, def.opcode));
+          }
         }
       }
     }
   }
-  return index;
+  return ret;
+}
+static const std::unordered_map<std::string, const QuestScriptOpcodeDefinition*>& opcodes_by_name_for_version(Version v) {
+  static const auto indexes = generate_opcodes_by_name_for_version_index();
+  return indexes.at(static_cast<size_t>(v));
 }
 
 void check_quest_opcode_definitions() {
-  static const std::array<Version, 12> versions = {
-      Version::DC_NTE,
-      Version::DC_11_2000,
-      Version::DC_V1,
-      Version::DC_V2,
-      Version::PC_NTE,
-      Version::PC_V2,
-      Version::GC_NTE,
-      Version::GC_V3,
-      Version::GC_EP3_NTE,
-      Version::GC_EP3,
-      Version::XB_V3,
-      Version::BB_V4,
-  };
-  for (Version v : versions) {
+  for (Version v : ALL_NON_PATCH_VERSIONS) {
     const auto& opcodes_by_name = opcodes_by_name_for_version(v);
     const auto& opcodes = opcodes_for_version(v);
     phosg::log_info_f("Version {} has {} opcodes with {} mnemonics",
@@ -3775,7 +3762,7 @@ struct RegisterAssigner {
 
   RegisterAssigner() {
     // Map registers that have hardcoded behaviors so we don't assign named registers to them
-    static const std::map<std::string, uint8_t> special_regs = {
+    static const std::map<std::string, uint8_t> special_regs{
         // Registers used by va_start and va_end
         {"va_arg1", 1}, {"va_arg2", 2}, {"va_arg3", 3}, {"va_arg4", 4}, {"va_arg5", 5}, {"va_arg6", 6}, {"va_arg7", 7},
         // Registers that control item visibility on the Quest Board

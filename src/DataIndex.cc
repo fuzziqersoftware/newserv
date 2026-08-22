@@ -49,7 +49,7 @@ DataIndex::CheatFlags::CheatFlags(const phosg::JSON& json) : CheatFlags() {
 
 DataIndex::DataIndex::QuestF960Result::QuestF960Result(
     const phosg::JSON& json, std::shared_ptr<const ItemNameIndex> name_index, const ItemData::StackLimits& limits) {
-  static const std::array<std::string, 7> day_names = {
+  static const std::array<std::string, 7> day_names{
       "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
   this->meseta_cost = json.get_int("MesetaCost", 0);
   this->base_probability = json.get_int("BaseProbability", 0);

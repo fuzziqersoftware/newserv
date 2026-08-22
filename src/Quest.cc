@@ -606,7 +606,7 @@ QuestIndex::QuestIndex(
         vq->meta.quest_number = strtoull(quest_number_token.c_str() + 1, nullptr, 10);
 
         // Get the version from the second token
-        static const std::unordered_map<std::string, Version> name_to_version({
+        static const std::unordered_map<std::string, Version> name_to_version{
             {"dn", Version::DC_NTE},
             {"dp", Version::DC_11_2000},
             {"d1", Version::DC_V1},
@@ -619,7 +619,7 @@ QuestIndex::QuestIndex(
             {"gc3", Version::GC_EP3},
             {"xb", Version::XB_V3},
             {"bb", Version::BB_V4},
-        });
+        };
         vq->meta.version = name_to_version.at(version_token);
 
         // Get the language from the last token

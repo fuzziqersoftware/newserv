@@ -2200,7 +2200,7 @@ static asio::awaitable<void> on_09(std::shared_ptr<Client> c, Channel::Message& 
             const auto& game_c = game->clients[x];
             if (game_c.get()) {
               static_assert(NUM_VERSIONS == 14, "Don\'t forget to update the game player listing version tokens");
-              static const std::array<const char*, NUM_VERSIONS> version_tokens = {
+              static const std::array<const char*, NUM_VERSIONS> version_tokens{
                   " $C4P2$C7", " $C4P4$C7", " $C5DCN$C7", " $C5DCP$C7", " $C2DC1$C7", " $C2DC2$C7", " $C5PCN$C7",
                   " $C2PC$C7", " $C5GCN$C7", " $C2GC$C7", " $C5Ep3N$C7", " $C2Ep3$C7", " $C2XB$C7", " $C2BB$C7"};
               const char* version_token = (game_c->version() != c->version())

@@ -223,13 +223,17 @@ static const std::vector<ExprTokenDefinition> expr_token_defs{
     {0x25, "ndm", "Unknown: ndm"}, // Unused
     {0x26, "ehp", "Attacker HP"},
 };
-const ExprTokenDefinition& def_for_expr_token(const std::string& token) {
-  static std::unordered_map<std::string, const ExprTokenDefinition*> index;
-  if (index.empty()) {
-    for (const auto& def : expr_token_defs) {
-      index.emplace(def.token, &def);
-    }
+
+static std::unordered_map<std::string, const ExprTokenDefinition*> generate_expr_token_defs_index() {
+  std::unordered_map<std::string, const ExprTokenDefinition*> ret;
+  for (const auto& def : expr_token_defs) {
+    ret.emplace(def.token, &def);
   }
+  return ret;
+}
+
+const ExprTokenDefinition& def_for_expr_token(const std::string& token) {
+  static const auto index = generate_expr_token_defs_index();
   return *index.at(token);
 }
 
@@ -741,7 +745,7 @@ bool CardDefinition::is_fc() const {
 }
 
 bool CardDefinition::is_named_android_sc() const {
-  static const std::unordered_set<uint16_t> TARGET_IDS({0x0005, 0x0007, 0x0110, 0x0113, 0x0114, 0x0117, 0x011B, 0x011F});
+  static const std::unordered_set<uint16_t> TARGET_IDS{0x0005, 0x0007, 0x0110, 0x0113, 0x0114, 0x0117, 0x011B, 0x011F};
   return TARGET_IDS.count(this->card_id);
 }
 
@@ -818,7 +822,8 @@ void CardDefinition::decode_range() {
 }
 
 std::string name_for_rank(CardRank rank) {
-  static const std::vector<const char*> names({"N1", "R1", "S", "E", "N2", "N3", "N4", "R2", "R3", "R4", "SS", "D1", "D2"});
+  static const std::vector<const char*> names{
+      "N1", "R1", "S", "E", "N2", "N3", "N4", "R2", "R3", "R4", "SS", "D1", "D2"};
   try {
     return names.at(static_cast<uint8_t>(rank) - 1);
   } catch (const std::out_of_range&) {
@@ -827,7 +832,7 @@ std::string name_for_rank(CardRank rank) {
 }
 
 const char* name_for_target_mode(TargetMode target_mode) {
-  static const std::vector<const char*> names({
+  static const std::vector<const char*> names{
       "NONE",
       "SINGLE_RANGE",
       "MULTI_RANGE",
@@ -837,8 +842,7 @@ const char* name_for_target_mode(TargetMode target_mode) {
       "MULTI_RANGE_ALLIES",
       "ALL_ALLIES",
       "ALL",
-      "OWN_FCS",
-  });
+      "OWN_FCS"};
   try {
     return names.at(static_cast<uint8_t>(target_mode));
   } catch (const std::out_of_range&) {
@@ -2171,7 +2175,7 @@ phosg::JSON MapDefinition::json(Language language) const {
   });
 
   // Note: All typos/errors here are from AIPrm.dat
-  static const std::array<std::string, 30> default_ai_names = {
+  static const std::array<std::string, 30> default_ai_names{
       "Sample_Hunter", "Glustar", "Guykild", "Inolis", "Kilia", "Kranz", "Orland", "Relmitos", "Saligun", "Silfer",
       "Sample_Hunter", "Teifu", "Viviana", "Sample_Dark", "Break", "Creinu", "Endu", "Heiz", "KC", "Lura",
       "memoru", "Ohgun", "Peko", "Reiz", "Rio", "Rufina", "LKnight", "Boss_Castor", "Boss_Pollux", "Sample_Dark"};

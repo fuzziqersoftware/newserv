@@ -449,14 +449,14 @@ TextIndex::TextIndex(
     : log("[TextIndex] ", static_game_data_log.min_level) {
   if (!directory.empty()) {
     auto add_version = [&](Version version, const std::string& subdirectory, std::function<std::shared_ptr<TextSet>(const std::string&, bool)> make_set) -> void {
-      static const std::map<std::string, Language> bintext_filenames({
+      static const std::map<std::string, Language> bintext_filenames{
           {"TextJapanese.pr2", Language::JAPANESE},
           {"TextEnglish.pr2", Language::ENGLISH},
           {"TextGerman.pr2", Language::GERMAN},
           {"TextFrench.pr2", Language::FRENCH},
           {"TextSpanish.pr2", Language::SPANISH},
-      });
-      static const std::map<std::string, Language> unitext_filenames({
+      };
+      static const std::map<std::string, Language> unitext_filenames{
           {"unitxt_j.prs", Language::JAPANESE}, // PC/BB Japanese
           {"unitxt_e.prs", Language::ENGLISH}, // PC/BB English
           {"unitxt_g.prs", Language::GERMAN}, // PC/BB German
@@ -468,7 +468,7 @@ TextIndex::TextIndex(
           {"unitxt_ct.prs", Language::TRADITIONAL_CHINESE}, // BB Traditional Chinese
           {"unitxt_k.prs", Language::KOREAN}, // PC Korean
           {"unitxt_h.prs", Language::KOREAN}, // BB Korean
-      });
+      };
       if (!uses_utf16(version)) {
         for (const auto& [base_filename, language] : bintext_filenames) {
           std::string file_path = directory + "/" + subdirectory + "/" + base_filename;

@@ -344,7 +344,7 @@ std::unique_ptr<const IntegralExpression::Node> IntegralExpression::parse_expr(s
 
   // Check for binary operators at the root level
   using BinType = BinaryOperatorNode::Type;
-  static const std::vector<std::vector<std::pair<std::string, BinaryOperatorNode::Type>>> binary_operator_levels = {
+  static const std::vector<std::vector<std::pair<std::string, BinaryOperatorNode::Type>>> binary_operator_levels{
       {{std::make_pair("||", BinType::LOGICAL_OR)}},
       {{std::make_pair("&&", BinType::LOGICAL_AND)}},
       {{std::make_pair("|", BinType::BITWISE_OR)}},

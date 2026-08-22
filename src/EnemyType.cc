@@ -163,41 +163,56 @@ const char* phosg::name_for_enum<EnemyType>(EnemyType type) {
   return type_definition_for_enemy(type).enum_name;
 }
 
-template <>
-EnemyType phosg::enum_for_name<EnemyType>(const char* name) {
-  static std::unordered_map<std::string, EnemyType> index;
-  if (index.empty()) {
-    for (const auto& def : type_defs) {
-      if (!index.emplace(def.enum_name, def.type).second) {
-        throw std::logic_error(std::format("duplicate enemy enum name: {}", def.enum_name));
-      }
+static std::unordered_map<std::string, EnemyType> generate_enemy_type_enum_for_name_index() {
+  std::unordered_map<std::string, EnemyType> ret;
+  for (const auto& def : type_defs) {
+    if (!ret.emplace(def.enum_name, def.type).second) {
+      throw std::logic_error(std::format("duplicate enemy enum name: {}", def.enum_name));
     }
   }
+  return ret;
+}
+
+template <>
+EnemyType phosg::enum_for_name<EnemyType>(const char* name) {
+  static const auto index = generate_enemy_type_enum_for_name_index();
   return index.at(name);
 }
 
-const std::vector<EnemyType>& enemy_types_for_rare_table_index(Episode episode, uint8_t rt_index) {
-  static std::array<std::vector<std::vector<EnemyType>>, 5> data;
-  auto& ret = data.at(static_cast<size_t>(episode));
-  if (ret.empty()) {
-    for (const auto& def : type_defs) {
-      if (!def.valid_in_episode(episode)) {
-        continue;
+static std::vector<std::vector<EnemyType>> generate_enemy_types_for_rare_table_index_table(Episode episode) {
+  std::vector<std::vector<EnemyType>> ret;
+  for (const auto& def : type_defs) {
+    if (def.valid_in_episode(episode) && (def.rt_index != 0xFF)) {
+      if (def.rt_index >= ret.size()) {
+        ret.resize(def.rt_index + 1);
       }
-      if (def.rt_index != 0xFF) {
-        if (def.rt_index >= ret.size()) {
-          ret.resize(def.rt_index + 1);
-        }
-        ret[def.rt_index].emplace_back(def.type);
-      }
+      ret[def.rt_index].emplace_back(def.type);
     }
   }
-  try {
-    return ret.at(rt_index);
-  } catch (const std::out_of_range&) {
-    static const std::vector<EnemyType> empty_vec;
-    return empty_vec;
+  return ret;
+}
+
+const std::vector<EnemyType>& enemy_types_for_rare_table_index(Episode episode, uint8_t rt_index) {
+  static const std::vector<EnemyType> empty_vec;
+  static const auto ep1 = generate_enemy_types_for_rare_table_index_table(Episode::EP1);
+  static const auto ep2 = generate_enemy_types_for_rare_table_index_table(Episode::EP2);
+  static const auto ep4 = generate_enemy_types_for_rare_table_index_table(Episode::EP4);
+
+  const std::vector<std::vector<EnemyType>>* data;
+  switch (episode) {
+    case Episode::EP1:
+      data = &ep1;
+      break;
+    case Episode::EP2:
+      data = &ep2;
+      break;
+    case Episode::EP4:
+      data = &ep4;
+      break;
+    default:
+      throw std::logic_error("Episode does not have a rare table");
   }
+  return (rt_index < data->size()) ? (*data)[rt_index] : empty_vec;
 }
 
 struct BPIndexCacheEntry {
@@ -207,44 +222,45 @@ struct BPIndexCacheEntry {
   std::set<EnemyType> movement_data;
 };
 
-static const BPIndexCacheEntry& get_bp_index_cache_entry(Episode episode, uint8_t bp_index) {
-  static bool cache_populated = false;
-  static std::array<std::vector<BPIndexCacheEntry>, 5> data;
-  if (!cache_populated) {
-    cache_populated = true;
-    for (const auto& def : type_defs) {
-      for (const auto& episode : ALL_EPISODES_V4) {
-        if (!def.valid_in_episode(episode)) {
-          continue;
+static std::array<std::vector<BPIndexCacheEntry>, 5> generate_bp_index_cache() {
+  std::array<std::vector<BPIndexCacheEntry>, 5> data;
+  for (const auto& def : type_defs) {
+    for (const auto& episode : ALL_EPISODES_V4) {
+      if (!def.valid_in_episode(episode)) {
+        continue;
+      }
+      auto& ep_index = data[static_cast<size_t>(episode)];
+      for (const auto& bp_index : def.bp_stats_indexes) {
+        if (bp_index >= ep_index.size()) {
+          ep_index.resize(bp_index + 1);
         }
-        auto& ep_index = data[static_cast<size_t>(episode)];
-        for (const auto& bp_index : def.bp_stats_indexes) {
-          if (bp_index >= ep_index.size()) {
-            ep_index.resize(bp_index + 1);
-          }
-          ep_index[bp_index].stats.emplace(def.type);
+        ep_index[bp_index].stats.emplace(def.type);
+      }
+      for (const auto& bp_index : def.bp_attack_data_indexes) {
+        if (bp_index >= ep_index.size()) {
+          ep_index.resize(bp_index + 1);
         }
-        for (const auto& bp_index : def.bp_attack_data_indexes) {
-          if (bp_index >= ep_index.size()) {
-            ep_index.resize(bp_index + 1);
-          }
-          ep_index[bp_index].attack_data.emplace(def.type);
+        ep_index[bp_index].attack_data.emplace(def.type);
+      }
+      for (const auto& bp_index : def.bp_resist_data_indexes) {
+        if (bp_index >= ep_index.size()) {
+          ep_index.resize(bp_index + 1);
         }
-        for (const auto& bp_index : def.bp_resist_data_indexes) {
-          if (bp_index >= ep_index.size()) {
-            ep_index.resize(bp_index + 1);
-          }
-          ep_index[bp_index].resist_data.emplace(def.type);
+        ep_index[bp_index].resist_data.emplace(def.type);
+      }
+      for (const auto& bp_index : def.bp_movement_data_indexes) {
+        if (bp_index >= ep_index.size()) {
+          ep_index.resize(bp_index + 1);
         }
-        for (const auto& bp_index : def.bp_movement_data_indexes) {
-          if (bp_index >= ep_index.size()) {
-            ep_index.resize(bp_index + 1);
-          }
-          ep_index[bp_index].movement_data.emplace(def.type);
-        }
+        ep_index[bp_index].movement_data.emplace(def.type);
       }
     }
   }
+  return data;
+}
+
+static const BPIndexCacheEntry& get_bp_index_cache_entry(Episode episode, uint8_t bp_index) {
+  static const auto data = generate_bp_index_cache();
   auto& ep_index = data.at(static_cast<size_t>(episode));
   return ep_index.at(bp_index);
 }

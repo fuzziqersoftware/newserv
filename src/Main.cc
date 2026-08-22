@@ -51,6 +51,7 @@
 #include "ServerState.hh"
 #include "SignalWatcher.hh"
 #include "StaticGameData.hh"
+#include "StaticTests.hh"
 #include "Text.hh"
 #include "TextIndex.hh"
 
@@ -243,6 +244,12 @@ Action a_version(
     Show newserv\'s revision and build date.\n",
     +[](phosg::Arguments&) -> void {
       print_version_info();
+    });
+
+Action a_run_static_tests(
+    "run-static-tests", nullptr,
+    +[](phosg::Arguments&) {
+      run_static_tests();
     });
 
 static void a_compress_decompress_fn(phosg::Arguments& args) {
@@ -1219,7 +1226,14 @@ Action a_decode_bitmap_font(
       bool use_transparent = args.get<bool>("transparent");
       auto res = decode_fon(data, width, use_transparent);
       if (width == 20 && args.get<bool>("show-unused")) {
-        static const std::array<uint8_t, 0xBF> iso8859_widths{7, 9, 13, 11, 15, 14, 7, 8, 8, 11, 11, 7, 11, 7, 11, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 7, 7, 9, 11, 9, 10, 15, 13, 12, 13, 12, 11, 11, 13, 12, 8, 11, 12, 11, 15, 12, 13, 11, 13, 12, 11, 13, 12, 13, 15, 12, 13, 11, 8, 11, 8, 8, 9, 8, 12, 11, 12, 11, 12, 10, 12, 11, 6, 9, 11, 6, 14, 11, 12, 11, 11, 9, 11, 10, 11, 12, 15, 11, 11, 11, 9, 8, 9, 9, 9, 12, 7, 10, 13, 10, 10, 7, 10, 8, 17, 9, 12, 11, 9, 17, 9, 7, 11, 8, 8, 8, 11, 11, 8, 7, 6, 9, 12, 13, 13, 13, 10, 13, 13, 13, 13, 13, 13, 17, 13, 11, 11, 11, 11, 8, 8, 8, 8, 12, 12, 13, 13, 13, 13, 13, 11, 13, 12, 12, 12, 12, 15, 11, 10, 12, 12, 12, 12, 12, 12, 17, 12, 12, 12, 12, 12, 6, 6, 6, 6, 11, 11, 12, 12, 12, 12, 12, 11, 12, 11, 11, 11, 11, 11, 11, 11};
+        static const std::array<uint8_t, 0xBF> iso8859_widths{
+            7, 9, 13, 11, 15, 14, 7, 8, 8, 11, 11, 7, 11, 7, 11, 12, 12, 12, 12, 12, 12, 12, 12, 12, 12, 7, 7, 9, 11,
+            9, 10, 15, 13, 12, 13, 12, 11, 11, 13, 12, 8, 11, 12, 11, 15, 12, 13, 11, 13, 12, 11, 13, 12, 13, 15, 12,
+            13, 11, 8, 11, 8, 8, 9, 8, 12, 11, 12, 11, 12, 10, 12, 11, 6, 9, 11, 6, 14, 11, 12, 11, 11, 9, 11, 10, 11,
+            12, 15, 11, 11, 11, 9, 8, 9, 9, 9, 12, 7, 10, 13, 10, 10, 7, 10, 8, 17, 9, 12, 11, 9, 17, 9, 7, 11, 8, 8,
+            8, 11, 11, 8, 7, 6, 9, 12, 13, 13, 13, 10, 13, 13, 13, 13, 13, 13, 17, 13, 11, 11, 11, 11, 8, 8, 8, 8, 12,
+            12, 13, 13, 13, 13, 13, 11, 13, 12, 12, 12, 12, 15, 11, 10, 12, 12, 12, 12, 12, 12, 17, 12, 12, 12, 12, 12,
+            6, 6, 6, 6, 11, 11, 12, 12, 12, 12, 12, 11, 12, 11, 11, 11, 11, 11, 11, 11};
         for (size_t z = 0; z < iso8859_widths.size(); z++) {
           for (size_t y = (z + 1) * 0x12; y < (z + 2) * 0x12; y++) {
             for (size_t x = iso8859_widths.at(z); x < width; x++) {
@@ -3249,6 +3263,19 @@ Action a_generate_ep3_cards_html(
             continue;
           }
 
+          // TODO: Add the card link bars using these colors (From card_only_e.pae.gvm_cardtex01.gvr.bmp):
+          //   Blue 00D0F9
+          //   Red DE3410
+          //   Yellow E7CB00
+          //   Brown BD5142
+          //   Orange FC6E00
+          //   Purple BD00F7
+          //   Gray 9A979A
+          //   Dark gray 5A5A5A
+          //   Green 52AA21
+
+          // TODO: Also add the cost dots: E7DB00 (standard) FF7A7E (ally)
+
           // Card back colors (from lower-right of text area in card_only_e.pae.gvm_cardtexdu*.gvr.bmp):
           //   Hunters SC: 08293F
           //   Arkz SC: 39082E
@@ -3834,7 +3861,7 @@ Action a_check_quests(
       di->load_maps();
       di->load_quest_index(true);
 
-      uint64_t script_time = 0, map_time = 0;
+      std::atomic<uint64_t> script_time = 0, map_time = 0;
       if (reassemble_scripts || reassemble_maps) {
         std::mutex output_lock;
         auto check_vq = [&](const std::shared_ptr<const VersionedQuest>& vq, size_t) -> void {

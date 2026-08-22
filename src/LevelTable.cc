@@ -163,7 +163,7 @@ size_t LevelTableV3::num_char_classes() const {
 }
 
 const CharacterStats& LevelTableV3::base_stats_for_class(uint8_t char_class) const {
-  static const std::array<CharacterStats, 12> data = {
+  static const std::array<CharacterStats, 12> data{
       //                ATP     MST     EVP      HP     DFP     ATA     LCK
       CharacterStats{0x0023, 0x001D, 0x002D, 0x0014, 0x0011, 0x001E, 0x000A},
       CharacterStats{0x001E, 0x0028, 0x003C, 0x0013, 0x0016, 0x0019, 0x000A},

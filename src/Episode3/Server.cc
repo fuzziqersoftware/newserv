@@ -1093,7 +1093,7 @@ void Server::move_phase_after() {
         continue;
       }
 
-      static const std::array<std::vector<uint16_t>, 5> DEFAULT_TRAP_CARD_IDS = {
+      static const std::array<std::vector<uint16_t>, 5> DEFAULT_TRAP_CARD_IDS{
           // Red: Dice Fever, Heavy Fog, Muscular, Immortality, Snail Pace
           std::vector<uint16_t>{0x00F7, 0x010F, 0x012E, 0x013B, 0x013C},
           // Blue: Gold Rush, Charity, Requiem

@@ -1023,7 +1023,7 @@ bool RulerServer::check_usability_or_condition_apply(
       }
       break;
     case CriterionCode::HUNTER_NON_ANDROID_SC: {
-      static const std::unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids{
           0x0001, // Orland
           0x0002, // Kranz
           0x0003, // Ino'lis
@@ -1052,7 +1052,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_HU_CLASS_MALE_SC: {
-      static const std::unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids{
           0x0001, // Orland
           0x0113, // Teifu
           0x02AA, // H-HUmar
@@ -1063,7 +1063,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_FEMALE_SC: {
-      static const std::unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids{
           0x0003, // Ino'lis
           0x0004, // Sil'fer
           0x0006, // Kylria
@@ -1087,7 +1087,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_NON_RA_CLASS_HUMAN_SC: {
-      static const std::unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids{
           0x0001, // Orland
           0x0003, // Ino'lis
           0x0004, // Sil'fer
@@ -1110,7 +1110,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_HU_CLASS_ANDROID_SC: {
-      static const std::unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids{
           0x0110, // Saligun
           0x0113, // Teifu
           0x02AC, // H-HUcast
@@ -1121,7 +1121,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_NON_RA_CLASS_NON_NEWMAN_SC: {
-      static const std::unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids{
           0x0001, // Orland
           0x0003, // Ino'lis
           0x0110, // Saligun
@@ -1141,7 +1141,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_NON_NEWMAN_NON_FORCE_MALE_SC: {
-      static const std::unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids{
           0x0001, // Orland
           0x0002, // Kranz
           0x0005, // Guykild
@@ -1159,7 +1159,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_HUNEWEARL_CLASS_SC: {
-      static const std::unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids{
           0x0004, // Sil'fer
           0x02AB, // H-HUnewearl
           0x02CF, // H-HUnewearl
@@ -1167,7 +1167,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_RA_CLASS_MALE_SC: {
-      static const std::unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids{
           0x0002, // Kranz
           0x0005, // Guykild
           0x02AE, // H-RAmar
@@ -1178,7 +1178,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_RA_CLASS_FEMALE_SC: {
-      static const std::unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids{
           0x0006, // Kylria
           0x0114, // Stella
           0x02AF, // H-RAmarl
@@ -1189,7 +1189,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_RA_OR_FO_CLASS_FEMALE_SC: {
-      static const std::unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids{
           0x0003, // Ino'lis
           0x0006, // Kylria
           0x0112, // Viviana
@@ -1206,7 +1206,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_HU_OR_RA_CLASS_HUMAN_SC: {
-      static const std::unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids{
           0x0001, // Orland
           0x0002, // Kranz
           0x0004, // Sil'fer
@@ -1223,7 +1223,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_RA_CLASS_ANDROID_SC: {
-      static const std::unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids{
           0x0005, // Guykild
           0x0114, // Stella
           0x02B0, // H-RAcast
@@ -1234,7 +1234,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_FO_CLASS_FEMALE_SC: {
-      static const std::unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids{
           0x0003, // Ino'lis
           0x0112, // Viviana
           0x02B3, // H-FOmarl
@@ -1245,7 +1245,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_HUMAN_FEMALE_SC: {
-      static const std::unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids{
           0x0003, // Ino'lis
           0x0004, // Sil'fer
           0x0006, // Kylria
@@ -1262,7 +1262,7 @@ bool RulerServer::check_usability_or_condition_apply(
       return ret && card_ids.count(card_id2);
     }
     case CriterionCode::HUNTER_ANDROID_SC: {
-      static const std::unordered_set<uint16_t> card_ids = {
+      static const std::unordered_set<uint16_t> card_ids{
           0x0005, // Guykild
           0x0110, // Saligun
           0x0113, // Teifu

@@ -76,44 +76,48 @@ using SDF = SubcommandDefinition::Flag;
 
 extern const std::vector<SubcommandDefinition> subcommand_definitions;
 
-const SubcommandDefinition* def_for_subcommand(Version version, uint8_t subcommand) {
-  static bool populated = false;
-  static std::array<const SubcommandDefinition*, 0x100> nte_defs;
-  static std::array<const SubcommandDefinition*, 0x100> proto_defs;
-  static std::array<const SubcommandDefinition*, 0x100> final_defs;
-  if (!populated) {
-    nte_defs.fill(nullptr);
-    proto_defs.fill(nullptr);
-    final_defs.fill(nullptr);
-    for (const auto& def : subcommand_definitions) {
-      if (def.nte_subcommand != 0x00) {
-        if (nte_defs[def.nte_subcommand]) {
-          throw std::logic_error("multiple subcommand definitions map to the same NTE subcommand");
-        }
-        nte_defs[def.nte_subcommand] = &def;
-      }
-      if (def.proto_subcommand != 0x00) {
-        if (proto_defs[def.proto_subcommand]) {
-          throw std::logic_error("multiple subcommand definitions map to the same 11/2000 subcommand");
-        }
-        proto_defs[def.proto_subcommand] = &def;
-      }
-      if (def.final_subcommand != 0x00) {
-        if (final_defs[def.final_subcommand]) {
-          throw std::logic_error("multiple subcommand definitions map to the same final subcommand");
-        }
-        final_defs[def.final_subcommand] = &def;
-      }
-    }
-    populated = true;
-  }
+struct ProtoSubcommandIndex {
+  std::array<const SubcommandDefinition*, 0x100> nte_defs;
+  std::array<const SubcommandDefinition*, 0x100> proto_defs;
+  std::array<const SubcommandDefinition*, 0x100> final_defs;
+};
 
+ProtoSubcommandIndex generate_proto_subcommand_index() {
+  ProtoSubcommandIndex ret;
+  ret.nte_defs.fill(nullptr);
+  ret.proto_defs.fill(nullptr);
+  ret.final_defs.fill(nullptr);
+  for (const auto& def : subcommand_definitions) {
+    if (def.nte_subcommand != 0x00) {
+      if (ret.nte_defs[def.nte_subcommand]) {
+        throw std::logic_error("multiple subcommand definitions map to the same NTE subcommand");
+      }
+      ret.nte_defs[def.nte_subcommand] = &def;
+    }
+    if (def.proto_subcommand != 0x00) {
+      if (ret.proto_defs[def.proto_subcommand]) {
+        throw std::logic_error("multiple subcommand definitions map to the same 11/2000 subcommand");
+      }
+      ret.proto_defs[def.proto_subcommand] = &def;
+    }
+    if (def.final_subcommand != 0x00) {
+      if (ret.final_defs[def.final_subcommand]) {
+        throw std::logic_error("multiple subcommand definitions map to the same final subcommand");
+      }
+      ret.final_defs[def.final_subcommand] = &def;
+    }
+  }
+  return ret;
+}
+
+const SubcommandDefinition* def_for_subcommand(Version version, uint8_t subcommand) {
+  static const auto index = generate_proto_subcommand_index();
   if (version == Version::DC_NTE) {
-    return nte_defs[subcommand];
+    return index.nte_defs[subcommand];
   } else if (version == Version::DC_11_2000) {
-    return proto_defs[subcommand];
+    return index.proto_defs[subcommand];
   } else {
-    return final_defs[subcommand];
+    return index.final_defs[subcommand];
   }
 }
 
@@ -4743,7 +4747,7 @@ static void on_request_challenge_grave_recovery_item_bb(std::shared_ptr<Client> 
   }
 
   const auto& cmd = msg.check_size_t<G_ChallengeModeGraveRecoveryItemRequest_BB_6xD1>();
-  static const std::array<ItemData, 6> items = {
+  static const std::array<ItemData, 6> items{
       ItemData(0x0300000000010000), // Monomate x1
       ItemData(0x0300010000010000), // Dimate x1
       ItemData(0x0300020000010000), // Trimate x1
@@ -5047,7 +5051,7 @@ static void on_photon_drop_exchange_for_s_rank_special_bb(std::shared_ptr<Client
   try {
     auto p = c->character_file();
 
-    static const std::array<uint8_t, 0x10> costs({60, 60, 20, 20, 30, 30, 30, 50, 40, 50, 40, 40, 50, 40, 40, 40});
+    static const std::array<uint8_t, 0x10> costs{60, 60, 20, 20, 30, 30, 30, 50, 40, 50, 40, 40, 50, 40, 40, 40};
     uint8_t cost = costs.at(cmd.special_type);
 
     size_t payment_item_index = p->inventory.find_item_by_primary_identifier(0x03100000);

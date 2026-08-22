@@ -321,7 +321,7 @@ std::string ItemNameIndex::describe_item(const ItemData& item, uint8_t flags) co
 
     uint8_t flags = item.data2[2];
     if (flags & 7) {
-      static const std::vector<const char*> pb_shortnames = {"F", "E", "G", "P", "L", "M&Y", "MG", "GR"};
+      static const std::vector<const char*> pb_shortnames{"F", "E", "G", "P", "L", "M&Y", "MG", "GR"};
 
       const char* pb_names[3] = {nullptr, nullptr, nullptr};
       uint8_t left_pb = item.mag_photon_blast_for_slot(2);
@@ -660,13 +660,8 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
 
   } else if (ret.data1[0] == 0x01) {
     if (ret.data1[1] == 0x03) { // Unit
-      static const std::unordered_map<std::string, uint16_t> modifiers({
-          {"--", 0xFFFC},
-          {"-", 0xFFFE},
-          {"", 0x0000},
-          {"+", 0x0002},
-          {"++", 0x0004},
-      });
+      static const std::unordered_map<std::string, uint16_t> modifiers{
+          {"--", 0xFFFC}, {"-", 0xFFFE}, {"", 0x0000}, {"+", 0x0002}, {"++", 0x0004}};
       bool kill_count_set = false;
       for (const auto& token : phosg::split(desc, ' ')) {
         if (token == "--") {
@@ -721,8 +716,8 @@ ItemData ItemNameIndex::parse_item_description_phase(const std::string& descript
         if (pb_tokens.size() > 3) {
           throw std::runtime_error("too many photon blasts specified");
         }
-        static const std::unordered_map<std::string, uint8_t> name_to_pb_num(
-            {{"f", 0}, {"e", 1}, {"g", 2}, {"p", 3}, {"l", 4}, {"m", 5}, {"my", 5}, {"m&y", 5}});
+        static const std::unordered_map<std::string, uint8_t> name_to_pb_num{
+            {"f", 0}, {"e", 1}, {"g", 2}, {"p", 3}, {"l", 4}, {"m", 5}, {"my", 5}, {"m&y", 5}};
         for (const auto& pb_token : pb_tokens) {
           ret.add_mag_photon_blast(name_to_pb_num.at(pb_token));
         }

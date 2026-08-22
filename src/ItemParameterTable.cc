@@ -2827,7 +2827,7 @@ public:
       }
       return *this->sound_remaps;
     } else {
-      static const std::vector<SoundRemaps> empty_vec{};
+      static const std::vector<SoundRemaps> empty_vec;
       return empty_vec;
     }
   }
@@ -2882,7 +2882,7 @@ public:
       }
       return *this->unsealable_table;
     } else {
-      static const std::set<uint32_t> empty_set{};
+      static const std::set<uint32_t> empty_set;
       return empty_set;
     }
   }

@@ -212,7 +212,7 @@ void CommonItemSet::Table::print(FILE* stream) const {
     }
   }
 
-  static const std::array<const char*, 12> base_weapon_type_names = {
+  static const std::array<const char*, 12> base_weapon_type_names{
       "SABER", "SWORD", "DAGGER", "PARTISAN", "SLICER", "HANDGUN", "RIFLE", "MECHGUN", "SHOT", "CANE", "ROD", "WAND"};
   phosg::fwrite_fmt(stream, "Base weapon config:\n");
   phosg::fwrite_fmt(stream, "  TYPE         PROB  [SB  AL]  FLOORS\n");
@@ -293,32 +293,14 @@ void CommonItemSet::Table::print(FILE* stream) const {
     fputc('\n', stream);
   }
 
-  static const std::array<const char*, 19> technique_names = {
-      "FOIE    ",
-      "GIFOIE  ",
-      "RAFOIE  ",
-      "BARTA   ",
-      "GIBARTA ",
-      "RABARTA ",
-      "ZONDE   ",
-      "GIZONDE ",
-      "RAZONDE ",
-      "GRANTS  ",
-      "DEBAND  ",
-      "JELLEN  ",
-      "ZALURE  ",
-      "SHIFTA  ",
-      "RYUKER  ",
-      "RESTA   ",
-      "ANTI    ",
-      "REVERSER",
-      "MEGID   ",
-  };
+  static const std::array<const char*, 19> technique_names{
+      "FOIE", "GIFOIE", "RAFOIE", "BARTA", "GIBARTA", "RABARTA", "ZONDE", "GIZONDE", "RAZONDE",
+      "GRANTS", "DEBAND", "JELLEN", "ZALURE", "SHIFTA", "RYUKER", "RESTA", "ANTI", "REVERSER", "MEGID"};
 
   phosg::fwrite_fmt(stream, "Technique table:\n");
   phosg::fwrite_fmt(stream, "  TECH                   A1            A2            A3            A4            A5            A6            A7            A8            A9           A10\n");
   for (size_t tech_num = 0; tech_num < this->technique_index_prob_table.size(); tech_num++) {
-    phosg::fwrite_fmt(stream, "  {:02X}:{}", tech_num, technique_names[tech_num]);
+    phosg::fwrite_fmt(stream, "  {:02X}:{:<8}", tech_num, technique_names[tech_num]);
     for (size_t area_norm = 0; area_norm < 10; area_norm++) {
       uint16_t prob = this->technique_index_prob_table[tech_num][area_norm];
       if (prob) {

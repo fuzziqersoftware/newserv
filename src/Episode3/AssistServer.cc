@@ -8,14 +8,14 @@ const std::vector<uint16_t>& all_assist_card_ids(bool is_nte) {
   // Note: This order matches the order that the cards are defined in the original
   // code. This is relevant for consistency of results when choosing a random card
   // (for God Whim).
-  static const std::vector<uint16_t> ALL_ASSIST_CARD_IDS_TRIAL = {
+  static const std::vector<uint16_t> ALL_ASSIST_CARD_IDS_TRIAL{
       0x00F5, 0x00F6, 0x00F7, 0x00F8, 0x00F9, 0x00FA, 0x00FB, 0x00FC, 0x00FD, 0x00FE, 0x00FF, 0x0100, 0x0101, 0x0102,
       0x0103, 0x0104, 0x0105, 0x0106, 0x0107, 0x0108, 0x0109, 0x010A, 0x010B, 0x010C, 0x010D, 0x010E, 0x010F, 0x0121,
       0x0125, 0x0126, 0x0127, 0x0128, 0x0129, 0x012A, 0x012B, 0x012C, 0x012D, 0x012E, 0x012F, 0x0130, 0x0131, 0x0132,
       0x0133, 0x0134, 0x0135, 0x0136, 0x0137, 0x0138, 0x0139, 0x013A, 0x013B, 0x013C, 0x013D, 0x013E, 0x013F, 0x0140,
       0x0141, 0x0142, 0x0143, 0x0144, 0x0145, 0x0146, 0x0148, 0x014A, 0x014B, 0x014C, 0x014D, 0x014E, 0x023F, 0x0240,
       0x0241, 0x0242};
-  static const std::vector<uint16_t> ALL_ASSIST_CARD_IDS_FINAL = {
+  static const std::vector<uint16_t> ALL_ASSIST_CARD_IDS_FINAL{
       0x0018, 0x0019, 0x001A, 0x00F5, 0x00F6, 0x00F7, 0x00F8, 0x00F9, 0x00FA, 0x00FB, 0x00FC, 0x00FD, 0x00FE, 0x00FF,
       0x0100, 0x0101, 0x0102, 0x0103, 0x0104, 0x0105, 0x0106, 0x0107, 0x0108, 0x0109, 0x010A, 0x010B, 0x010C, 0x010D,
       0x010E, 0x010F, 0x0121, 0x0125, 0x0126, 0x0127, 0x0128, 0x0129, 0x012A, 0x012B, 0x012C, 0x012D, 0x012E, 0x012F,
@@ -26,12 +26,12 @@ const std::vector<uint16_t>& all_assist_card_ids(bool is_nte) {
 }
 
 AssistEffect assist_effect_number_for_card_id(uint16_t card_id, bool is_nte) {
-  static const std::unordered_map<uint16_t, AssistEffect> card_id_to_effect_final_only({
+  static const std::unordered_map<uint16_t, AssistEffect> card_id_to_effect_final_only{
       {0x0018, /* 0x0049 */ AssistEffect::DICE_FEVER_PLUS},
       {0x0019, /* 0x004A */ AssistEffect::RICH_PLUS},
       {0x001A, /* 0x004B */ AssistEffect::CHARITY_PLUS},
-  });
-  static const std::unordered_map<uint16_t, AssistEffect> card_id_to_effect({
+  };
+  static const std::unordered_map<uint16_t, AssistEffect> card_id_to_effect{
       {0x00F5, /* 0x0001 */ AssistEffect::DICE_HALF},
       {0x00F6, /* 0x0002 */ AssistEffect::DICE_PLUS_1},
       {0x00F7, /* 0x0003 */ AssistEffect::DICE_FEVER},
@@ -104,7 +104,7 @@ AssistEffect assist_effect_number_for_card_id(uint16_t card_id, bool is_nte) {
       {0x0240, /* 0x0046 */ AssistEffect::BOMB},
       {0x0241, /* 0x0047 */ AssistEffect::SKIP_TURN},
       {0x0242, /* 0x0048 */ AssistEffect::BATTLE_ROYALE},
-  });
+  };
   try {
     return card_id_to_effect.at(card_id);
   } catch (const std::out_of_range&) {

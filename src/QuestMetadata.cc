@@ -353,8 +353,11 @@ std::unordered_map<uint32_t, uint32_t> QuestMetadata::parse_enemy_exp_overrides(
       // Key is like "Difficulty:Floor:EnemyType" or "Difficulty:EnemyType"
       auto key_tokens = phosg::split(key, ':');
 
-      static const std::unordered_map<std::string, Difficulty> difficulty_keys(
-          {{"Normal", Difficulty::NORMAL}, {"Hard", Difficulty::HARD}, {"VeryHard", Difficulty::VERY_HARD}, {"Ultimate", Difficulty::ULTIMATE}});
+      static const std::unordered_map<std::string, Difficulty> difficulty_keys{
+          {"Normal", Difficulty::NORMAL},
+          {"Hard", Difficulty::HARD},
+          {"VeryHard", Difficulty::VERY_HARD},
+          {"Ultimate", Difficulty::ULTIMATE}};
 
       Difficulty difficulty = Difficulty::NORMAL;
       EnemyType enemy_type = EnemyType::UNKNOWN;

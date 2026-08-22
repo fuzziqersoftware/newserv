@@ -273,7 +273,7 @@ void apply_mag_feed_result(
     uint8_t section_id,
     bool version_has_rare_mags) {
 
-  static const std::unordered_map<uint32_t, size_t> result_index_for_fed_item({
+  static const std::unordered_map<uint32_t, size_t> result_index_for_fed_item{
       {0x03000000, 0}, // Monomate
       {0x03000100, 1}, // Dimate
       {0x03000200, 2}, // Trimate
@@ -285,7 +285,7 @@ void apply_mag_feed_result(
       {0x03030000, 8}, // Sol Atomizer
       {0x03040000, 9}, // Moon Atomizer
       {0x03050000, 10}, // Star Atomizer
-  });
+  };
 
   size_t result_index = result_index_for_fed_item.at(fed_item.primary_identifier());
   const auto& mag_def = item_parameter_table->get_mag(mag_item.data1[1]);

@@ -1,5 +1,6 @@
 #include "RareItemSet.hh"
 
+#include <bit>
 #include <phosg/Filesystem.hh>
 #include <phosg/Math.hh>
 #include <phosg/Random.hh>
@@ -39,31 +40,13 @@ uint32_t RareItemSet::expand_rate(uint8_t pc) {
 }
 
 uint8_t RareItemSet::compress_rate(uint32_t probability) {
-  // I'm too lazy to figure out the reverse math, so we just compute all the expansions and take the closest one
-  static std::map<uint32_t, uint8_t> inverse_map;
-  if (inverse_map.empty()) {
-    for (size_t z = 0; z < 0x100; z++) {
-      inverse_map.emplace(RareItemSet::expand_rate(z), z);
-    }
-  }
-
-  auto it = inverse_map.lower_bound(probability);
-  if (it == inverse_map.end()) {
-    // The expanded probability is less likely than the least likely value
-    return inverse_map.rbegin()->second;
-  } else if (it->first == probability) {
-    // The expanded probability is exactly equal to this entry
-    return it->second;
-  } else if (it == inverse_map.begin()) {
-    // The expanded probability more likely than the most likely value
-    return it->second;
+  if (probability <= 0x0000000E) {
+    return 0x00;
+  } else if (probability <= 0x0000001C) {
+    return ((probability >> 1) - 7);
   } else {
-    // The expanded probability is between two entries; choose the closer one
-    auto prev_it = it;
-    prev_it--;
-    int32_t prev_diff = static_cast<int32_t>(prev_it->first - probability);
-    int32_t next_diff = static_cast<int32_t>(it->first - probability);
-    return (prev_diff < next_diff) ? prev_it->second : it->second;
+    uint8_t zeroes = std::countl_zero(probability);
+    return ((31 - zeroes) << 3) | std::min<uint8_t>(7, (probability >> (28 - zeroes)) - 7);
   }
 }
 
@@ -300,18 +283,24 @@ RareItemSet::RareItemSet(const std::string& rel_data, bool is_big_endian) {
 
 RareItemSet::RareItemSet(const phosg::JSON& json, std::shared_ptr<const ItemNameIndex> name_index) {
   for (const auto& mode_it : json.as_dict()) {
-    static const std::unordered_map<std::string, GameMode> mode_keys(
-        {{"Normal", GameMode::NORMAL}, {"Battle", GameMode::BATTLE}, {"Challenge", GameMode::CHALLENGE}, {"Solo", GameMode::SOLO}});
+    static const std::unordered_map<std::string, GameMode> mode_keys{
+        {"Normal", GameMode::NORMAL},
+        {"Battle", GameMode::BATTLE},
+        {"Challenge", GameMode::CHALLENGE},
+        {"Solo", GameMode::SOLO}};
     GameMode mode = mode_keys.at(mode_it.first);
 
     for (const auto& episode_it : mode_it.second->as_dict()) {
-      static const std::unordered_map<std::string, Episode> episode_keys(
-          {{"Episode1", Episode::EP1}, {"Episode2", Episode::EP2}, {"Episode4", Episode::EP4}});
+      static const std::unordered_map<std::string, Episode> episode_keys{
+          {"Episode1", Episode::EP1}, {"Episode2", Episode::EP2}, {"Episode4", Episode::EP4}};
       Episode episode = episode_keys.at(episode_it.first);
 
       for (const auto& difficulty_it : episode_it.second->as_dict()) {
-        static const std::unordered_map<std::string, Difficulty> difficulty_keys(
-            {{"Normal", Difficulty::NORMAL}, {"Hard", Difficulty::HARD}, {"VeryHard", Difficulty::VERY_HARD}, {"Ultimate", Difficulty::ULTIMATE}});
+        static const std::unordered_map<std::string, Difficulty> difficulty_keys{
+            {"Normal", Difficulty::NORMAL},
+            {"Hard", Difficulty::HARD},
+            {"VeryHard", Difficulty::VERY_HARD},
+            {"Ultimate", Difficulty::ULTIMATE}};
         Difficulty difficulty = difficulty_keys.at(difficulty_it.first);
 
         for (const auto& section_id_it : difficulty_it.second->as_dict()) {

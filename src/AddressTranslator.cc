@@ -647,7 +647,7 @@ public:
 
       } else {
         std::vector<std::future<uint32_t>> futures;
-        static const std::vector<ExpandMethod> ppc_methods = {
+        static const std::vector<ExpandMethod> ppc_methods{
             ExpandMethod::PPC_TEXT_FORWARD,
             ExpandMethod::PPC_TEXT_FORWARD_WITH_BARRIER,
             ExpandMethod::PPC_TEXT_BACKWARD,
@@ -659,7 +659,7 @@ public:
             ExpandMethod::PPC_DATA_BACKWARD,
             ExpandMethod::PPC_DATA_BOTH,
         };
-        static const std::vector<ExpandMethod> ppc_text_methods = {
+        static const std::vector<ExpandMethod> ppc_text_methods{
             ExpandMethod::PPC_TEXT_FORWARD,
             ExpandMethod::PPC_TEXT_FORWARD_WITH_BARRIER,
             ExpandMethod::PPC_TEXT_BACKWARD,
@@ -668,12 +668,12 @@ public:
             ExpandMethod::PPC_TEXT_BOTH_WITH_BARRIER,
             ExpandMethod::PPC_TEXT_BOTH_IGNORE_ORIGIN,
         };
-        static const std::vector<ExpandMethod> ppc_data_methods = {
+        static const std::vector<ExpandMethod> ppc_data_methods{
             ExpandMethod::PPC_DATA_FORWARD,
             ExpandMethod::PPC_DATA_BACKWARD,
             ExpandMethod::PPC_DATA_BOTH,
         };
-        static const std::vector<ExpandMethod> raw_methods = {
+        static const std::vector<ExpandMethod> raw_methods{
             ExpandMethod::RAW_FORWARD,
             ExpandMethod::RAW_BACKWARD,
             ExpandMethod::RAW_BOTH,

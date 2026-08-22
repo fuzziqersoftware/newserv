@@ -524,7 +524,7 @@ void ItemData::encode_for_version(Version to_version, std::shared_ptr<const Item
       break;
 
     case 0x01: {
-      static const std::array<uint8_t, 4> armor_limits = {0x00, 0x29, 0x27, 0x44};
+      static const std::array<uint8_t, 4> armor_limits{0x00, 0x29, 0x27, 0x44};
       if (should_encode_v2_data && (this->data1[2] >= armor_limits[this->data1[1]])) {
         this->data1[3] = this->data1[2];
         this->data1[2] = 0x00;

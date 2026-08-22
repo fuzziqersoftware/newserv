@@ -129,6 +129,7 @@ set(SOURCES
     src/ShopRandomSets.cc
     src/SignalWatcher.cc
     src/StaticGameData.cc
+    src/StaticTests.cc
     src/TeamIndex.cc
     src/TekkerAdjustmentSet.cc
     src/Text.cc
@@ -152,6 +153,11 @@ add_dependencies(newserv newserv-Revision-cc)
 #     message("-- Enabling address sanitizer")
 #     target_compile_options(newserv PRIVATE -fsanitize=address)
 #     target_link_options(newserv PRIVATE -fsanitize=address)
+# endif()
+# if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
+#     message("-- Enabling thread sanitizer")
+#     target_compile_options(newserv PRIVATE -fsanitize=thread)
+#     target_link_options(newserv PRIVATE -fsanitize=thread)
 # endif()
 
 

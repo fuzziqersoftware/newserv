@@ -65,6 +65,9 @@ public:
   void print_all_collections(FILE* stream, std::shared_ptr<const ItemNameIndex> name_index = nullptr) const;
   void print_diff(FILE* stream, const RareItemSet& other) const;
 
+  static uint32_t expand_rate(uint8_t pc);
+  static uint8_t compress_rate(uint32_t probability);
+
 protected:
   struct SpecCollection {
     std::unordered_map<EnemyType, std::vector<ExpandedDrop>> enemy_specs;
@@ -124,7 +127,4 @@ protected:
 
   static std::string gsl_entry_name_for_table(GameMode mode, Episode episode, Difficulty difficulty, uint8_t section_id);
   static uint16_t key_for_params(GameMode mode, Episode episode, Difficulty difficulty, uint8_t secid);
-
-  static uint32_t expand_rate(uint8_t pc);
-  static uint8_t compress_rate(uint32_t probability);
 };

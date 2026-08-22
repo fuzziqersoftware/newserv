@@ -732,24 +732,19 @@ static const uint32_t primes3[] = {
     0x185CB, 0x185D1, 0x185E1, 0x185E9, 0x185EF, 0x185F5, 0x185F9, 0x185FF, 0x18613, 0x1861F};
 static constexpr size_t num_primes3 = sizeof(primes3) / sizeof(primes3[0]);
 
+static std::vector<bool> compute_primes3_set() {
+  std::vector<bool> ret;
+  ret.resize(primes3[num_primes3 - 1] - primes3[0] + 1, false);
+  for (size_t z = 0; z < num_primes3; z++) {
+    ret[primes3[z] - primes3[0]] = true;
+  }
+  return ret;
+}
+
 static bool check_prime3(uint64_t prime3) {
-  static std::vector<bool> primes3_set;
-  static std::mutex primes3_init_mutex;
-  if (primes3_set.empty()) {
-    std::lock_guard g(primes3_init_mutex);
-    if (primes3_set.empty()) {
-      size_t primes3_set_size = primes3[num_primes3 - 1] - primes3[0] + 1;
-      primes3_set.resize(primes3_set_size, false);
-      for (size_t z = 0; z < num_primes3; z++) {
-        primes3_set[primes3[z] - primes3[0]] = true;
-      }
-    }
-  }
+  static const auto primes3_set = compute_primes3_set();
   uint64_t offset = prime3 - primes3[0];
-  if (offset >= primes3_set.size()) {
-    return false;
-  }
-  return primes3_set[offset];
+  return ((offset < primes3_set.size()) && primes3_set[offset]);
 }
 
 static char replace_nybble_forward(uint8_t v) {

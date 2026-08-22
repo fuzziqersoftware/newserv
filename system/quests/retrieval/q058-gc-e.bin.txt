@@ -76,7 +76,16 @@
 // register. (However, if you don't use r:difficulty_level@83 anywhere, but you do use r83 and r:difficulty_level, the
 // compiler will assign these to two different registers since there is nothing linking the name to the number.)
 
-// There are a few registers that have predefined names, since they have hardcoded behaviors on the client. These are:
+// There are some registers that have predefined names because they have hardcoded behaviors on the client. These names
+// will always refer to these registers, and the compiler will never assign other named registers to these register
+// numbers. The predefined registers are:
+//   r:va_arg1 = r1
+//   r:va_arg2 = r2
+//   r:va_arg3 = r3
+//   r:va_arg4 = r4
+//   r:va_arg5 = r5
+//   r:va_arg6 = r6
+//   r:va_arg7 = r7
 //   r:quest_board_item1 = r74
 //   r:quest_board_item2 = r75
 //   r:quest_board_item3 = r76

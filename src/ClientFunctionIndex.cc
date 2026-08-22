@@ -499,45 +499,21 @@ std::shared_ptr<const ClientFunctionIndex::Function> ClientFunctionIndex::get_by
 }
 
 uint32_t specific_version_for_gc_header_checksum(uint32_t header_checksum) {
-  static std::unordered_map<uint32_t, uint32_t> checksum_to_specific_version;
-  if (checksum_to_specific_version.empty()) {
-    struct {
-      char system_code = 'G';
-      char game_code1 = 'P';
-      char game_code2;
-      char region_code;
-      char developer_code1 = '8';
-      char developer_code2 = 'P';
-      uint8_t disc_number = 0;
-      uint8_t version_code;
-    } __attribute__((packed)) data;
-    for (const char* game_code2 = "OS"; *game_code2; game_code2++) {
-      data.game_code2 = *game_code2;
-      for (const char* region_code = "JEP"; *region_code; region_code++) {
-        data.region_code = *region_code;
-        for (uint8_t version_code = 0; version_code < 8; version_code++) {
-          data.version_code = version_code;
-          uint32_t checksum = phosg::crc32(&data, sizeof(data));
-          uint32_t specific_version = 0x33000030 | (*game_code2 << 16) | (*region_code << 8) | version_code;
-          if (!checksum_to_specific_version.emplace(checksum, specific_version).second) {
-            throw std::logic_error("multiple specific_versions have same header checksum");
-          }
-        }
-      }
-      {
-        // Generate entries for Trial Editions
-        data.region_code = 'J';
-        data.system_code = 'D';
-        data.version_code = 0;
-        uint32_t checksum = phosg::crc32(&data, sizeof(data));
-        uint32_t specific_version = 0x33004A54 | (*game_code2 << 16);
-        if (!checksum_to_specific_version.emplace(checksum, specific_version).second) {
-          throw std::logic_error("multiple specific_versions have same header checksum");
-        }
-        data.system_code = 'G';
-      }
-    }
-  }
+  static const std::unordered_map<uint32_t, uint32_t> checksum_to_specific_version{
+      {0x3ECF9AA9, 0x334F4A32}, // 3OJ2
+      {0x49C8AA3F, 0x334F4A33}, // 3OJ3
+      {0xD7AC3F9C, 0x334F4A34}, // 3OJ4
+      {0xA0AB0F0A, 0x334F4A35}, // 3OJ5
+      {0x52916C54, 0x334F4530}, // 3OE0
+      {0x25965CC2, 0x334F4531}, // 3OE1
+      {0xBC9F0D78, 0x334F4532}, // 3OE2
+      {0xFA9174A6, 0x334F5030}, // 3OP0
+      {0x5E4EFC66, 0x334F4A54}, // 3OJT
+      {0xA4D53965, 0x33534A30}, // 3SJ0
+      {0x2685AEB4, 0x33534530}, // 3SE0
+      {0x8E85B646, 0x33535030}, // 3SP0
+      {0x2A5A3E86, 0x33534A54}, // 3SJT
+  };
   return checksum_to_specific_version.at(header_checksum);
 }
 
