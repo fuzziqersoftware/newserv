@@ -479,7 +479,7 @@ void CardDefinition::Stat::decode_code() {
 std::string CardDefinition::Stat::str() const {
   switch (this->type) {
     case Type::BLANK:
-      return "(blank)";
+      return "-";
     case Type::STAT:
       return std::format("{}", this->stat);
     case Type::PLUS_STAT:
@@ -639,10 +639,9 @@ std::string CardDefinition::Effect::str_for_arg(const std::string& arg) {
 
 std::string CardDefinition::Effect::str(const char* separator, const TextSet* text_archive) const {
   std::vector<std::string> tokens;
-  tokens.emplace_back(std::format("{}:", this->effect_num));
   {
     uint8_t type = static_cast<uint8_t>(this->type);
-    std::string cmd_str = std::format("cmd={:02X}", type);
+    std::string cmd_str = std::format("({}) {:02X}", this->effect_num, type);
     try {
       const char* name = description_for_condition_type.at(type).name;
       if (name) {
@@ -702,7 +701,8 @@ std::string CardDefinition::Effect::str(const char* separator, const TextSet* te
   tokens.emplace_back("arg1=" + this->str_for_arg(this->arg1.decode()));
   tokens.emplace_back("arg2=" + this->str_for_arg(this->arg2.decode()));
   tokens.emplace_back("arg3=" + this->str_for_arg(this->arg3.decode()));
-  {
+
+  if (this->apply_criterion != CriterionCode::NONE) {
     uint8_t type = static_cast<uint8_t>(this->apply_criterion);
     std::string cond_str = std::format("cond={:02X}", type);
     try {
@@ -714,23 +714,25 @@ std::string CardDefinition::Effect::str(const char* separator, const TextSet* te
     tokens.emplace_back(std::move(cond_str));
   }
 
-  const char* name = nullptr;
-  if (this->name_index && text_archive) {
-    try {
-      name = text_archive->get(45, this->name_index).c_str();
-    } catch (const std::exception&) {
-    }
-  }
-  if (name) {
-    std::string formatted_name = name;
-    for (char& ch : formatted_name) {
-      if (ch == '\t') {
-        ch = '$';
+  if (this->name_index > 0) {
+    const char* name = nullptr;
+    if (this->name_index && text_archive) {
+      try {
+        name = text_archive->get(45, this->name_index).c_str();
+      } catch (const std::exception&) {
       }
     }
-    tokens.emplace_back(std::format("name={:02X} \"{}\"", this->name_index, formatted_name));
-  } else {
-    tokens.emplace_back(std::format("name={:02X}", this->name_index));
+    if (name) {
+      std::string formatted_name = name;
+      for (char& ch : formatted_name) {
+        if (ch == '\t') {
+          ch = '$';
+        }
+      }
+      tokens.emplace_back(std::format("name={:02X} \"{}\"", this->name_index, formatted_name));
+    } else {
+      tokens.emplace_back(std::format("name={:02X}", this->name_index));
+    }
   }
 
   return phosg::join(tokens, separator);
@@ -767,9 +769,8 @@ CardClass CardDefinition::card_class() const {
 }
 
 void CardDefinition::decode_range() {
-  // If the cell representing the FC is nonzero, the card has a range from a
-  // list of constants. Otherwise, its range is already defined in the range
-  // array and should be left alone.
+  // If the cell representing the FC is nonzero, the card has a range from a list of constants. Otherwise, its range is
+  // already defined in the range array and should be left alone.
   uint8_t index = (this->range[4] >> 8) & 0xF;
   if (index != 0) {
     this->range.clear(0);
@@ -812,9 +813,8 @@ void CardDefinition::decode_range() {
         break;
       case 9: // No cells
         break;
-      // The table in the DOL file only appears to contain 9 entries; there are
-      // some pointers immediately after. So probably if a card specified A-F,
-      // its range would be filled in with garbage in the original game.
+      // The table in the DOL file only appears to contain 9 entries; there are some pointers immediately after. So
+      // probably if a card specified A-F, its range would be filled in with garbage in the original game.
       default:
         throw std::runtime_error("invalid fixed range index");
     }
@@ -2316,20 +2316,17 @@ MapDefinitionTrial::MapDefinitionTrial(const MapDefinition& map)
     this->dialogue_sets[z] = map.dialogue_sets[z].sub<8>(0);
   }
 
-  // TODO: It'd be nice to rewrite start_tile_definitions, since it seems NTE
-  // always expects team A to be represented by 3 and 4, and team B to be
-  // represented by 7 and 8.
+  // TODO: It'd be nice to rewrite start_tile_definitions, since it seems NTE always expects team A to be represented
+  // by 3 and 4, and team B to be represented by 7 and 8.
 
-  // TODO: NTE also expects team A to always be facing up, and B to always be
-  // facing down, so it would be nice to automatically rotate the map to make
-  // that the case. However, we'd also have to fix up the camera zones and
-  // camera specs, and the spec structure is not (yet) fully understood.
+  // TODO: NTE also expects team A to always be facing up, and B to always be facing down, so it would be nice to
+  // automatically rotate the map to make that the case. However, we'd also have to fix up the camera zones and camera
+  // specs, and the spec structure is not (yet) fully understood.
 }
 
 MapDefinitionTrial::operator MapDefinition() const {
   MapDefinition ret;
-  // Trial Edition maps seem to have different tag values; we just always use
-  // the value that the final version expects.
+  // Trial Edition maps seem to have different tag values; we just always use the value that the final version expects.
   ret.tag = 0x00000100;
   ret.map_number = this->map_number;
   ret.width = this->width;
@@ -2376,8 +2373,8 @@ MapDefinitionTrial::operator MapDefinition() const {
   ret.cyber_block_type = this->cyber_block_type;
   ret.unknown_a11 = this->unknown_a11;
   ret.unavailable_sc_cards.clear(0xFFFF);
-  // The trial edition doesn't seem to have entry_states at all, so we have to
-  // guess and fill in the field appropriately here.
+  // The trial edition doesn't seem to have entry_states at all, so we have to guess and fill in the field
+  // appropriately here.
   size_t num_npc_decks = 0;
   for (size_t z = 0; z < ret.npc_decks.size(); z++) {
     if (!ret.npc_decks[z].deck_name.empty()) {
@@ -2452,8 +2449,7 @@ bool Rules::check_and_reset_invalid_fields() {
     ret = true;
   }
 
-  // These ranges are a newserv-specific extension and are not part of the
-  // original implementation.
+  // These ranges are a newserv-specific extension and are not part of the original implementation.
   auto check_compressed_dice_range = +[](uint8_t* range) -> bool {
     bool ret = false;
     uint8_t min_dice = ((*range) >> 4) & 0x0F;
@@ -2508,9 +2504,8 @@ bool Rules::check_and_reset_invalid_fields() {
     this->disable_dice_boost = 0;
     ret = true;
   }
-  // Due to newserv's custom range overrides, it doesn't make sense to disable
-  // Dice Boost for everyone based on the Rules struct. Instead, we skip setting
-  // the flag at roll time.
+  // Due to newserv's custom range overrides, it doesn't make sense to disable Dice Boost for everyone based on the
+  // Rules struct. Instead, we skip setting the flag at roll time.
   // if ((this->max_dice_value != 0) && (this->max_dice_value < 3)) {
   //   this->disable_dice_boost = 1;
   //   ret = true;
@@ -2684,8 +2679,8 @@ CardIndex::CardIndex(
     }
     this->defs_hash = phosg::fnv1a64(decompressed_data);
 
-    // The card definitions file is a standard REL file; the root offset points
-    // to an ArrayRef which specifies an array of CardDefinition structs
+    // The card definitions file is a standard REL file; the root offset points to an ArrayRef which specifies an array
+    // of CardDefinition structs
     phosg::StringReader r(decompressed_data);
     const auto& footer = r.pget<RELFileFooterBE>(r.size() - sizeof(RELFileFooterBE));
     uint32_t offset = r.pget_u32b(footer.root_offset);
@@ -2697,9 +2692,8 @@ CardIndex::CardIndex(
     for (size_t x = 0; x < count; x++) {
       auto& def = defs[x];
 
-      // The last card entry has the build date and some other metadata (and
-      // isn't a real card, obviously), so skip it. The game detects this by
-      // checking for a negative value in type, which we also do here.
+      // The last card entry has the build date and some other metadata (and isn't a real card, obviously), so skip it.
+      // The game detects this by checking for a negative value in type, which we also do here.
       if (static_cast<int8_t>(def.type) < 0) {
         continue;
       }
@@ -2709,8 +2703,8 @@ CardIndex::CardIndex(
         throw std::runtime_error(std::format("duplicate card id: {:08X}", entry->def.card_id));
       }
 
-      // Some cards intentionally have the same name, so we just leave them
-      // unindexed (they can still be looked up by ID, of course)
+      // Some cards intentionally have the same name, so we just leave them unindexed (they can still be looked up by
+      // ID, of course)
       std::string name = entry->def.en_name.decode(Language::ENGLISH);
       this->card_definitions_by_name.emplace(name, entry);
       this->card_definitions_by_name_normalized.emplace(this->normalize_card_name(name), entry);
@@ -2925,8 +2919,7 @@ std::shared_ptr<const MapIndex::VersionedMap> MapIndex::Map::version(Language la
       return vm;
     }
   }
-  // This should never happen because Map cannot be constructed without an
-  // initial_version
+  // This should never happen because Map cannot be constructed without an initial_version
   throw std::logic_error("no map versions exist");
 }
 

@@ -3004,7 +3004,6 @@ Action a_generate_ep3_cards_html(
 
         const char* name;
         std::vector<CardInfo> card_infos;
-        bool show_image_column = false;
         size_t num_output_columns = 2;
 
         VersionInfo(
@@ -3033,13 +3032,10 @@ Action a_generate_ep3_cards_html(
                 auto& info = this->card_infos[card_id];
                 if (filename[0] == 'C' && !no_large_images) {
                   info.large_filename = std::string(cardtex_directory) + "/" + filename;
-                  this->show_image_column = true;
                 } else if (filename[0] == 'L') {
                   info.medium_filename = std::string(cardtex_directory) + "/" + filename;
-                  this->show_image_column = true;
                 } else if (filename[0] == 'M') {
                   info.small_filename = std::string(cardtex_directory) + "/" + filename;
-                  this->show_image_column = true;
                 }
               }
             }
@@ -3066,7 +3062,7 @@ Action a_generate_ep3_cards_html(
                 num_threads);
           }
 
-          this->num_output_columns = 1 + (!no_disassembly) + this->show_image_column;
+          this->num_output_columns = 2 + (!no_disassembly);
         }
 
         const CardInfo* get_entry(size_t card_id) const {
@@ -3233,10 +3229,8 @@ Action a_generate_ep3_cards_html(
       } else {
         blocks.emplace_back("<table><tr><th style=\"text-align: left; padding: 4px\">ID</th>");
       }
-      for (const auto& vi : version_infos) {
-        if (vi.show_image_column) {
-          blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Image</th>");
-        }
+      for (size_t z = 0; z < version_infos.size(); z++) {
+        blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Card</th>");
         blocks.emplace_back("<th style=\"text-align: left; padding: 4px\">Text</th><th style=\"text-align: left; padding: 4px\">Disassembly</th>");
       }
       blocks.emplace_back("</tr>");
@@ -3263,32 +3257,12 @@ Action a_generate_ep3_cards_html(
             continue;
           }
 
-          // TODO: Add the card link bars using these colors (From card_only_e.pae.gvm_cardtex01.gvr.bmp):
-          //   Blue 00D0F9
-          //   Red DE3410
-          //   Yellow E7CB00
-          //   Brown BD5142
-          //   Orange FC6E00
-          //   Purple BD00F7
-          //   Gray 9A979A
-          //   Dark gray 5A5A5A
-          //   Green 52AA21
-
-          // TODO: Also add the cost dots: E7DB00 (standard) FF7A7E (ally)
-
-          // Card back colors (from lower-right of text area in card_only_e.pae.gvm_cardtexdu*.gvr.bmp):
-          //   Hunters SC: 08293F
-          //   Arkz SC: 39082E
-          //   Item: 084121
-          //   Creature: 4A1021
-          //   Action: 3F2008
-          //   Assist: 292905
-          //   Boss SC: 2B292B (TODO)
+          // Card back colors (from lower-right of text area in card_only_e.pae.gvm_cardtexdu*.gvr.bmp)
           const char* info_background_color;
           const char* page_border_color;
           if (!entry->ce) {
-            info_background_color = "#FF0000";
-            page_border_color = "#FFFFFF";
+            info_background_color = "#333333";
+            page_border_color = "#888888";
           } else if (entry->ce->def.type == Episode3::CardType::HUNTERS_SC) {
             info_background_color = "#08293F";
             page_border_color = "#1978b7";
@@ -3308,33 +3282,117 @@ Action a_generate_ep3_cards_html(
             info_background_color = "#292905";
             page_border_color = "#9d9d12";
           } else {
-            info_background_color = "#FF0000";
-            page_border_color = "#FFFFFF";
+            info_background_color = "#333333";
+            page_border_color = "#888888";
           }
 
           std::string td_tag = std::format(
               "<td style=\"padding: 4px; vertical-align: top; background-color: {}; border-top: 1px solid {}\">",
               info_background_color, page_border_color);
-          if (vi.show_image_column) {
-            blocks.emplace_back(td_tag);
-            blocks.emplace_back("<div style=\"display:flex; flex-direction:column; align-items:center; gap:4px\">");
-            if (!entry->small_data_url.empty()) {
-              blocks.emplace_back("<img src=\"");
-              blocks.emplace_back(std::move(entry->small_data_url));
-              blocks.emplace_back("\" />");
-            }
-            if (!entry->medium_data_url.empty()) {
-              blocks.emplace_back("<img src=\"");
-              blocks.emplace_back(std::move(entry->medium_data_url));
-              blocks.emplace_back("\" />");
-            }
-            if (!entry->large_data_url.empty()) {
-              blocks.emplace_back("<img src=\"");
-              blocks.emplace_back(std::move(entry->large_data_url));
-              blocks.emplace_back("\" />");
-            }
-            blocks.emplace_back("</div></td>");
+          blocks.emplace_back(td_tag);
+          blocks.emplace_back("<div style=\"display:flex; flex-direction:column; align-items:center; gap:4px\">");
+          if (!entry->large_data_url.empty()) {
+            blocks.emplace_back("<img src=\"");
+            blocks.emplace_back(std::move(entry->large_data_url));
+            blocks.emplace_back("\" />");
+          } else if (!entry->medium_data_url.empty()) {
+            blocks.emplace_back("<img src=\"");
+            blocks.emplace_back(std::move(entry->medium_data_url));
+            blocks.emplace_back("\" />");
+          } else if (!entry->small_data_url.empty()) {
+            blocks.emplace_back("<img src=\"");
+            blocks.emplace_back(std::move(entry->small_data_url));
+            blocks.emplace_back("\" />");
           }
+
+          if (entry->ce) {
+
+            auto add_color_bars = [&](const parray<uint8_t, 8>& colors, bool vertical) -> void {
+              // Color values from card_only_e.pae.gvm_cardtex01.gvr.bmp
+              static const std::array<uint32_t, 9> html_colors{
+                  0x00D0F9, 0xDE3410, 0xE7CB00, 0xBD5142, 0xFC6E00, 0xBD00F7, 0x9A979A, 0x5A5A5A, 0x52AA21};
+              if (colors.is_filled_with(0)) {
+                return;
+              }
+              blocks.emplace_back(std::format(
+                  "<div id=\"colors\" style=\"display:flex; flex-direction:{}; align-items:center; gap:2px\">",
+                  vertical ? "column" : "row"));
+              for (size_t z = 0; z < colors.size(); z++) {
+                uint8_t color = colors[z];
+                if (color == 0) {
+                  continue;
+                } else if (color <= html_colors.size()) {
+                  blocks.emplace_back(std::format(
+                      "<div style=\"height: 8px; width: 8px; background-color:#{:06X}\"></div>",
+                      html_colors[color - 1]));
+                } else {
+                  blocks.emplace_back(std::format(
+                      "<div style=\"height: 8px; width: 8px; background-color:#FFFFFF\">{:02X}</div>", color));
+                }
+              }
+              blocks.emplace_back("</div>");
+            };
+
+            add_color_bars(entry->ce->def.top_colors, false);
+
+            blocks.emplace_back("<div style=\"display:flex; flex-direction:row; align-items:center; gap:4px\">");
+
+            add_color_bars(entry->ce->def.left_colors, true);
+
+            if (entry->ce->def.range.is_filled_with(0x000FFFFF)) {
+              blocks.emplace_back("<div style=\"width:22px; height:22px; background-color:#FFFFFF; color:#FF0000; font-weight:bold; text-align:center\">A</div>");
+            } else {
+              blocks.emplace_back("<div style=\"display:flex; flex-direction:column; align-items:center; gap:2px\">");
+              bool should_render_row = false;
+              for (size_t y = 0; y < 6; y++) {
+                uint32_t row_data = entry->ce->def.range[y];
+                should_render_row = should_render_row || (y > 2) || (row_data != 0);
+                if (should_render_row) {
+                  blocks.emplace_back("<div style=\"display:flex; flex-direction:row; align-items:center; gap:2px\">");
+                  blocks.emplace_back(std::format("<div style=\"height: 8px; width: 8px; background-color:{}\"></div>",
+                      (row_data & 0x00001000) ? "#FFFFFF" : "#666666"));
+                  if (y == 4) {
+                    blocks.emplace_back("<div style=\"height: 8px; width: 8px; background-color:#000000\"></div>");
+                  } else {
+                    blocks.emplace_back(std::format("<div style=\"height: 8px; width: 8px; background-color:{}\"></div>",
+                        (row_data & 0x00000100) ? "#FFFFFF" : "#666666"));
+                  }
+                  blocks.emplace_back(std::format("<div style=\"height: 8px; width: 8px; background-color:{}\"></div>",
+                      (row_data & 0x00000010) ? "#FFFFFF" : "#666666"));
+                  blocks.emplace_back("</div>");
+                }
+              }
+              blocks.emplace_back("</div>");
+            }
+
+            blocks.emplace_back(std::format("<div style=\"border:1px solid {}; padding: 4px\">HP {}</div>",
+                page_border_color, entry->ce->def.hp.str()));
+            blocks.emplace_back(std::format("<div style=\"border:1px solid {}; padding: 4px\">AP {}</div>",
+                page_border_color, entry->ce->def.ap.str()));
+            blocks.emplace_back(std::format("<div style=\"border:1px solid {}; padding: 4px\">TP {}</div>",
+                page_border_color, entry->ce->def.tp.str()));
+            blocks.emplace_back(std::format("<div style=\"border:1px solid {}; padding: 4px\">MV {}</div>",
+                page_border_color, entry->ce->def.mv.str()));
+
+            size_t self_dots = std::min<size_t>(7, entry->ce->def.self_cost);
+            size_t ally_dots = std::min<size_t>(7, entry->ce->def.ally_cost);
+            size_t blank_dots = std::max<ssize_t>(0, 7 - self_dots - ally_dots);
+            for (size_t z = 0; z < blank_dots; z++) {
+              blocks.emplace_back("<div style=\"background-color:#666666; width: 14px; height: 14px\"></div>");
+            }
+            for (size_t z = 0; z < ally_dots; z++) {
+              blocks.emplace_back("<div style=\"background-color:#FF7A7E; width: 14px; height: 14px\"></div>");
+            }
+            for (size_t z = 0; z < self_dots; z++) {
+              blocks.emplace_back("<div style=\"background-color:#E7DB00; width: 14px; height: 14px\"></div>");
+            }
+
+            add_color_bars(entry->ce->def.right_colors, true);
+
+            blocks.emplace_back("</div>");
+          }
+
+          blocks.emplace_back("</div></td>");
           blocks.emplace_back(td_tag);
           if (entry->ce) {
             blocks.emplace_back("<div style=\"display: flex; flex-direction: column; padding: 2px\">");
