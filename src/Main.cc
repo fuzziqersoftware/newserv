@@ -3044,18 +3044,18 @@ Action a_generate_ep3_cards_html(
                 this->card_infos, [&](CardInfo& info, size_t) -> bool {
                   if (!info.large_filename.empty()) {
                     auto img = phosg::ImageRGBA8888N::from_file_data(phosg::load_file(info.large_filename));
-                    img.resize(large_image_w, large_image_h);
-                    info.large_data_url = img.serialize(phosg::ImageFormat::PNG_DATA_URL);
+                    auto view = img.view(0, 0, large_image_w, large_image_h);
+                    info.large_data_url = view.serialize(phosg::ImageFormat::PNG_DATA_URL);
                   }
                   if (!info.medium_filename.empty()) {
                     auto img = phosg::ImageRGBA8888N::from_file_data(phosg::load_file(info.medium_filename));
-                    img.resize(medium_image_w, medium_image_h);
-                    info.medium_data_url = img.serialize(phosg::ImageFormat::PNG_DATA_URL);
+                    auto view = img.view(0, 0, medium_image_w, medium_image_h);
+                    info.medium_data_url = view.serialize(phosg::ImageFormat::PNG_DATA_URL);
                   }
                   if (!info.small_filename.empty()) {
                     auto img = phosg::ImageRGBA8888N::from_file_data(phosg::load_file(info.small_filename));
-                    img.resize(small_image_w, small_image_h);
-                    info.small_data_url = img.serialize(phosg::ImageFormat::PNG_DATA_URL);
+                    auto view = img.view(0, 0, small_image_w, small_image_h);
+                    info.small_data_url = view.serialize(phosg::ImageFormat::PNG_DATA_URL);
                   }
                   return false;
                 },
