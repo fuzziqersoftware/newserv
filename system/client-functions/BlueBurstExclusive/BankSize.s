@@ -1,6 +1,6 @@
 # This patch changes the amount of items and Meseta that can be stored in the bank. If the bank item limit is increased
 # beyond 200, this patch requires server support for extended bank data stored outside of the player's data. newserv
-# has support for this, but you must set the BBBankItemLimit and BBBankMesetaLimit values in config.json to match the
+# has support for this, but you must set the BBMaxBankItems and BBMaxBankMeseta values in config.json to match the
 # values used here.
 
 # As written, this changes the meseta limit to 2000000000 and the item limit to 1000. The meseta limit can be any value
