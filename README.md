@@ -102,7 +102,7 @@ The goals of this project are:
 
 This is a personal project; there is no official development team, official website, or official instance of newserv. Issues and pull requests are certainly welcome, but please only add content (e.g. quests, patches, client functions) that you've created, is already public, or you have permission to release publicly.
 
-PRs authored by AI agents are allowed, but will be held to the same code quality standard as the rest of the project.
+No code written by fuzziqersoftware in this project was AI-generated. PRs authored by AI agents are allowed, but will be held to the same code quality standard as the rest of the project.
 
 # Compatibility
 
@@ -578,6 +578,7 @@ Some commands only work for clients not in proxy sessions. The chat commands are
         * You'll see the rare seed value and floor variations when you join a game.
         * You'll be placed into the last available slot in lobbies and games instead of the first, unless you're joining a BB solo-mode game.
         * You'll be able to run any client function with `$patch`, not only those that are marked visible.
+        * You'll be able to start any quest using `$quest`, not only those that explicitly allow it. You'll also be able ot use `$quest` when there are other players in the game.
         * You'll be able to join games with any PSO version, not only those for which cross-version play is normally enabled. See the "Cross-version play" section above for details on this.
     * `$readmem <address>`: Read 4 bytes from the given address and show you the values.
     * `$writemem <address> <data>`: Write data to the given address. Data is not required to be any specific size.
@@ -618,7 +619,7 @@ Some commands only work for clients not in proxy sessions. The chat commands are
     * `$edit <stat> <value>`: Modify your character data. See the [using $edit](#using-edit) section for details.
 
 * Blue Burst player commands (non-proxy only)
-    * `$bank [number]`: Switch your current bank, so you can access your other character's banks (if `number` is 1-4) or your shared account bank (if `number` is 0). If `number` is not given, switch back to your current character's bank.
+    * `$bank [number]`: Switch your current bank, so you can access your other characters' banks (if `number` is 1-4) or your shared account bank (if `number` is 0). If `number` is not given, switch back to your current character's bank.
     * `$save`: Save your character, system, and Guild Card data immediately. (By default, your character is saved every 60 seconds while online, and your account and Guild Card data are saved whenever they change.)
 
 * Game state commands (non-proxy only)
