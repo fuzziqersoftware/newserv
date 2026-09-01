@@ -1015,7 +1015,7 @@ public:
   virtual float get_sale_divisor(uint8_t data1_0, uint8_t data1_1) const {
     switch (data1_0) {
       case 0:
-        return this->weapon_sale_divisors.at(data1_1);
+        return (data1_1 < this->weapon_sale_divisors.size()) ? this->weapon_sale_divisors[data1_1] : 0.0f;
       case 1:
         switch (data1_1) {
           case 1:
@@ -1044,7 +1044,8 @@ public:
     return this->special_stars_base_index;
   }
   virtual uint8_t get_item_stars(uint32_t id) const {
-    return this->star_value_table.at(id - this->star_value_start_index);
+    size_t table_index = id - this->star_value_start_index;
+    return (table_index < this->star_value_table.size()) ? this->star_value_table[table_index] : 0;
   }
   virtual uint8_t get_special_stars(uint8_t special) const {
     return ((special & 0x3F) && !(special & 0x80)) ? this->get_item_stars(special + this->special_stars_base_index) : 0;

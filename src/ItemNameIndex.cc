@@ -1001,12 +1001,8 @@ void ItemNameIndex::print_table(FILE* stream) const {
   }
 
   phosg::fwrite_fmt(stream, "TOOLS\n");
-  phosg::fwrite_fmt(stream, "  CODE   => ---ID--- TYPE SKIN POINTS COUNT TECH -COST- ITEMFLAG ---DIVISOR--- NAME\n");
+  phosg::fwrite_fmt(stream, "  CODE   => ---ID--- TYPE SKIN POINTS COUNT TECH -COST- ITEMFLAG NAME\n");
   for (size_t data1_1 = 0; data1_1 < pmt->num_tool_classes(); data1_1++) {
-    float sale_divisor = pmt->get_sale_divisor(0x03, data1_1);
-    std::string divisor_str = std::format("{:g}", sale_divisor);
-    divisor_str.resize(13, ' ');
-
     size_t data1_2_limit = pmt->num_tools_in_class(data1_1);
     for (size_t data1_2 = 0; data1_2 < data1_2_limit; data1_2++) {
       const auto& t = pmt->get_tool(data1_1, data1_2);
@@ -1018,19 +1014,8 @@ void ItemNameIndex::print_table(FILE* stream) const {
       item.set_tool_item_amount(*this->limits, 1);
       std::string name = this->describe_item(item);
 
-      phosg::fwrite_fmt(stream, "  03{:02X}{:02X} => {:08X} {:04X} {:04X} {:6} {:5} {:04X} {:6} {:08X} {} {}\n",
-          data1_1,
-          data1_2,
-          t.id,
-          t.type,
-          t.skin,
-          t.team_points,
-          t.amount,
-          t.tech,
-          t.cost,
-          t.item_flags,
-          divisor_str,
-          name);
+      phosg::fwrite_fmt(stream, "  03{:02X}{:02X} => {:08X} {:04X} {:04X} {:6} {:5} {:04X} {:6} {:08X} {}\n",
+          data1_1, data1_2, t.id, t.type, t.skin, t.team_points, t.amount, t.tech, t.cost, t.item_flags, name);
     }
   }
 
@@ -1160,7 +1145,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
   write_data_string(pmt->get_unknown_a1());
 
   phosg::fwrite_fmt(stream, "WEAPON EFFECTS\n");
-  phosg::fwrite_fmt(stream, "  ## => -SOUND1- -VALUE1- -SOUND2- -VALUE2- ----------------A5---------------\n");
+  phosg::fwrite_fmt(stream, "  ## => -SOUND1- -VALUE1- -SOUND2- -VALUE2- ---------------A5---------------\n");
   for (size_t z = 0; z < pmt->num_weapon_effects(); z++) {
     const auto& we = pmt->get_weapon_effect(z);
     auto a5_str = phosg::format_data_string(we.unknown_a5.data(), we.unknown_a5.size());
