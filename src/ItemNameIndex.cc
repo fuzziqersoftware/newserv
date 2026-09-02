@@ -1064,29 +1064,29 @@ void ItemNameIndex::print_table(FILE* stream) const {
 
   phosg::fwrite_fmt(stream, "ITEM COMBINATIONS\n");
   phosg::fwrite_fmt(stream, "  ---USE + -EQUIP => RESULT MLV GND LVL CLS\n");
-  for (const auto& combo_list_it : pmt->item_combinations_index()) {
-    for (const auto& combo : combo_list_it.second) {
+  for (const auto& [_, used_item_index] : pmt->item_combinations_index()) {
+    for (const auto& [_, combo] : used_item_index) {
       phosg::fwrite_fmt(stream, "  {:02X}{:02X}{:02X} + {:02X}{:02X}{:02X} => {:02X}{:02X}{:02X}",
-          combo.used_item[0], combo.used_item[1], combo.used_item[2],
-          combo.equipped_item[0], combo.equipped_item[1], combo.equipped_item[2],
-          combo.result_item[0], combo.result_item[1], combo.result_item[2]);
-      if (combo.mag_level != 0xFF) {
-        phosg::fwrite_fmt(stream, " {:3}", combo.mag_level);
+          combo->used_item[0], combo->used_item[1], combo->used_item[2],
+          combo->equipped_item[0], combo->equipped_item[1], combo->equipped_item[2],
+          combo->result_item[0], combo->result_item[1], combo->result_item[2]);
+      if (combo->mag_level != 0xFF) {
+        phosg::fwrite_fmt(stream, " {:3}", combo->mag_level);
       } else {
         phosg::fwrite_fmt(stream, "    ");
       }
-      if (combo.grind != 0xFF) {
-        phosg::fwrite_fmt(stream, " {:3}", combo.grind);
+      if (combo->grind != 0xFF) {
+        phosg::fwrite_fmt(stream, " {:3}", combo->grind);
       } else {
         phosg::fwrite_fmt(stream, "    ");
       }
-      if (combo.level != 0xFF) {
-        phosg::fwrite_fmt(stream, " {:3}", combo.level);
+      if (combo->level != 0xFF) {
+        phosg::fwrite_fmt(stream, " {:3}", combo->level);
       } else {
         phosg::fwrite_fmt(stream, "    ");
       }
-      if (combo.char_class != 0xFF) {
-        phosg::fwrite_fmt(stream, " {:3}\n", combo.char_class);
+      if (combo->char_class != 0xFF) {
+        phosg::fwrite_fmt(stream, " {:3}\n", combo->char_class);
       } else {
         phosg::fwrite_fmt(stream, "    \n");
       }

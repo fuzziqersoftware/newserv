@@ -212,48 +212,51 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
       if (!(inv_item.flags & 0x00000008)) {
         continue;
       }
-      try {
-        auto item_parameter_table = s->data->item_parameter_table(c->version());
-        const auto& combo = item_parameter_table->get_item_combination(item.data, inv_item.data);
-        if (combo.char_class != 0xFF && combo.char_class != player->disp.visual.sh.char_class) {
-          throw std::runtime_error("item combination requires specific char_class");
-        }
-        if (combo.mag_level != 0xFF) {
-          if (inv_item.data.data1[0] != 2) {
-            throw std::runtime_error("item combination applies with mag level requirement, but equipped item is not a mag");
-          }
-          if (inv_item.data.compute_mag_level() < combo.mag_level) {
-            throw std::runtime_error("item combination applies with mag level requirement, but equipped mag level is too low");
-          }
-        }
-        if (combo.grind != 0xFF) {
-          if (inv_item.data.data1[0] != 0) {
-            throw std::runtime_error("item combination applies with grind requirement, but equipped item is not a weapon");
-          }
-          if (inv_item.data.data1[3] < combo.grind) {
-            throw std::runtime_error("item combination applies with grind requirement, but equipped weapon grind is too low");
-          }
-        }
-        if (combo.level != 0xFF && player->disp.stats.level + 1 < combo.level) {
-          throw std::runtime_error("item combination applies with level requirement, but player level is too low");
-        }
-        // If we get here, then the combo applies
-        if (combo_applied) {
-          throw std::runtime_error("multiple combinations apply");
-        }
-        combo_applied = true;
-
-        inv_item.data.data1[0] = combo.result_item[0];
-        inv_item.data.data1[1] = combo.result_item[1];
-        // For mags, don't reset level + PBs + stats
-        if (inv_item.data.data1[0] != 0x02) {
-          inv_item.data.data1[2] = combo.result_item[2];
-          inv_item.data.data1[3] = 0; // Grind
-          inv_item.data.data1[4] = 0; // Flags + special
-        }
-        inv_item.flags &= (~8); // Unequip it
-      } catch (const std::out_of_range&) {
+      auto item_parameter_table = s->data->item_parameter_table(c->version());
+      const auto* combo = item_parameter_table->get_item_combination(item.data, inv_item.data);
+      if (!combo) {
+        continue;
       }
+      if (combo->char_class != 0xFF && combo->char_class != player->disp.visual.sh.char_class) {
+        throw std::runtime_error("item combination requires specific char_class");
+      }
+      if (combo->mag_level != 0xFF) {
+        if (inv_item.data.data1[0] != 2) {
+          throw std::runtime_error("item combination applies with mag level requirement, but equipped item is not a mag");
+        }
+        if (inv_item.data.compute_mag_level() < combo->mag_level) {
+          throw std::runtime_error("item combination applies with mag level requirement, but equipped mag level is too low");
+        }
+      }
+      if (combo->grind != 0xFF) {
+        if (inv_item.data.data1[0] != 0) {
+          throw std::runtime_error("item combination applies with grind requirement, but equipped item is not a weapon");
+        }
+        if (inv_item.data.data1[3] < combo->grind) {
+          throw std::runtime_error("item combination applies with grind requirement, but equipped weapon grind is too low");
+        }
+      }
+      if (combo->level != 0xFF && player->disp.stats.level + 1 < combo->level) {
+        throw std::runtime_error("item combination applies with level requirement, but player level is too low");
+      }
+      // If we get here, then the combo applies
+      if (combo_applied) {
+        throw std::runtime_error("multiple combinations apply");
+      }
+      combo_applied = true;
+
+      inv_item.data.data1[0] = combo->result_item[0];
+      inv_item.data.data1[1] = combo->result_item[1];
+      // For mags, don't reset level + PBs + stats
+      if (inv_item.data.data1[0] != 0x02) {
+        inv_item.data.data1[2] = combo->result_item[2];
+        inv_item.data.data1[3] = 0; // Grind
+        inv_item.data.data1[4] = 0; // Flags + special
+      }
+      inv_item.flags &= (~8); // Unequip it
+    }
+    if (!combo_applied) {
+      throw std::runtime_error("no combinations apply");
     }
   }
 

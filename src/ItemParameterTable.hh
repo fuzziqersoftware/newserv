@@ -485,9 +485,8 @@ public:
   // combination_table accessors
   virtual size_t num_item_combinations() const = 0;
   virtual const ItemCombination& get_item_combination(size_t index) const = 0;
-  const std::map<uint32_t, std::vector<ItemCombination>>& item_combinations_index() const;
-  const std::vector<ItemCombination>& all_combinations_for_used_item(const ItemData& used_item) const;
-  const ItemCombination& get_item_combination(const ItemData& used_item, const ItemData& equipped_item) const;
+  const std::map<uint32_t, std::map<uint32_t, const ItemCombination*>>& item_combinations_index() const;
+  const ItemCombination* get_item_combination(const ItemData& used_item, const ItemData& equipped_item) const;
 
   // sound_remap_table accessors
   virtual const std::vector<SoundRemaps>& get_all_sound_remaps() const = 0;
@@ -522,5 +521,5 @@ public:
 protected:
   ItemParameterTable() = default;
 
-  mutable std::optional<std::map<uint32_t, std::vector<ItemCombination>>> item_combination_index;
+  mutable std::optional<std::map<uint32_t, std::map<uint32_t, const ItemCombination*>>> item_combination_index;
 };

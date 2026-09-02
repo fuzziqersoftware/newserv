@@ -2300,38 +2300,47 @@ bool ItemParameterTable::is_unsealable_item(const ItemData& item) const {
   return this->is_unsealable_item(item.data1[0], item.data1[1], item.data1[2]);
 }
 
-const std::map<uint32_t, std::vector<ItemParameterTable::ItemCombination>>& ItemParameterTable::item_combinations_index() const {
+const std::map<uint32_t, std::map<uint32_t, const ItemParameterTable::ItemCombination*>>&
+ItemParameterTable::item_combinations_index() const {
   if (!this->item_combination_index.has_value()) {
     auto& ret = this->item_combination_index.emplace();
     for (size_t z = 0; z < this->num_item_combinations(); z++) {
       const auto& combo = this->get_item_combination(z);
-      ret[item_code_to_u32(combo.used_item)].emplace_back(combo);
+      ret[item_code_to_u32(combo.used_item)].emplace(item_code_to_u32(combo.equipped_item), &combo);
     }
   }
   return *this->item_combination_index;
 }
 
-const std::vector<ItemParameterTable::ItemCombination>& ItemParameterTable::all_combinations_for_used_item(
-    const ItemData& used_item) const {
-  try {
-    return this->item_combinations_index().at(item_code_to_u32(
-        used_item.data1[0], used_item.data1[1], used_item.data1[2]));
-  } catch (const std::out_of_range&) {
-    static const std::vector<ItemCombination> ret;
-    return ret;
-  }
-}
-
-const ItemParameterTable::ItemCombination& ItemParameterTable::get_item_combination(
+const ItemParameterTable::ItemCombination* ItemParameterTable::get_item_combination(
     const ItemData& used_item, const ItemData& equipped_item) const {
-  for (const auto& def : this->all_combinations_for_used_item(used_item)) {
-    if ((def.equipped_item[0] == 0xFF || def.equipped_item[0] == equipped_item.data1[0]) &&
-        (def.equipped_item[1] == 0xFF || def.equipped_item[1] == equipped_item.data1[1]) &&
-        (def.equipped_item[2] == 0xFF || def.equipped_item[2] == equipped_item.data1[2])) {
-      return def;
+
+  const ItemCombination* ret = nullptr;
+  const auto& index = this->item_combinations_index();
+  for (size_t used_mask = 0; used_mask < 8; used_mask++) {
+    uint32_t used_item_code = item_code_to_u32(
+        (used_mask & 4) ? 0xFF : used_item.data1[0],
+        (used_mask & 2) ? 0xFF : used_item.data1[1],
+        (used_mask & 1) ? 0xFF : used_item.data1[2]);
+    auto used_index_it = index.find(used_item_code);
+    if (used_index_it != index.end()) {
+      for (size_t equipped_mask = 0; equipped_mask < 8; equipped_mask++) {
+        uint32_t equipped_item_code = item_code_to_u32(
+            (equipped_mask & 4) ? 0xFF : equipped_item.data1[0],
+            (equipped_mask & 2) ? 0xFF : equipped_item.data1[1],
+            (equipped_mask & 1) ? 0xFF : equipped_item.data1[2]);
+        auto equipped_index_it = used_index_it->second.find(equipped_item_code);
+        if (equipped_index_it != used_index_it->second.end()) {
+          if (ret) {
+            throw std::runtime_error("multiple item combinations apply");
+          } else {
+            ret = equipped_index_it->second;
+          }
+        }
+      }
     }
   }
-  throw std::out_of_range("no item combination applies");
+  return ret;
 }
 
 size_t ItemParameterTable::price_for_item(const ItemData& item) const {
