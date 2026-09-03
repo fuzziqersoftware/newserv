@@ -117,19 +117,19 @@ There are a few version-specific quirks to be aware of:
 
 ## Server setup
 
-Currently newserv works on macOS, Windows, and Ubuntu Linux. It will likely work on other Linux flavors too.
+Currently newserv works on macOS, Windows, and Ubuntu Linux. It likely works on other Linux flavors too, but is only tested in CI on Ubuntu.
 
 ### Windows/macOS
 
 1. Download the latest release.zip file from the [releases page](https://github.com/fuzziqersoftware/newserv/releases).
 2. Extract the contents of the archive to some location on your computer.
-3. Go into the system/ folder, open config.json in a text editor, and edit it to your liking. There are comments in the file that describe what all the options do. Most of the options can be left alone if you want default behavior, but on Windows, you must change LocalAddress and ExternalAddress.
+3. Go into the system/ folder, open config.json in a text editor, and edit it to your liking. There are comments in the file that describe what all the options do. Most of the options can be left alone if you want default behavior, but on Windows, you must at least change LocalAddress.
 4. (Optional) If you plan to play Blue Burst on newserv, set up the patch directory. See [client patch directories](#client-patch-directories) for details.
 5. Run the newserv executable.
 
 ### Linux
 
-There are currently no precompiled releases for Linux. To run newserv on Linux, you'll have to build it from source - see the section below.
+There are no precompiled releases for Linux. To run newserv on Linux, you'll have to build it from source - see the section below.
 
 ### Building from source (macOS/Linux)
 
@@ -155,7 +155,7 @@ The current version of newserv is cross-compiled using mingw-w64 on a macOS buil
 
 Here is a rough outline of the Windows build process. You should only attempt this yourself if you're familiar with setting up build environments and can deal with issues you may encounter along the way.
 1. Install recent versions of MinGW and CMake.
-2. Build and install zlib, libiconv, asio, phosg, and resource_dasm into your MinGW environment.
+2. Build and install zlib, libiconv, asio, phosg, and resource_dasm into your MinGW environment. (You do not need to install SDL; resource_dasm's dependency on SDL is optional.)
 3. Clone the newserv repository with symlinks enabled: `git clone -c core.symlinks=true https://github.com/fuzziqersoftware/newserv.git`
 4. Build newserv via CMake.
 
