@@ -337,6 +337,8 @@ RareItemSet::RareItemSet(const phosg::JSON& json, std::shared_ptr<const ItemName
                 } else {
                   d.probability = (static_cast<uint64_t>(numerator) << 32) / denominator;
                 }
+              } else {
+                throw std::runtime_error("invalid probability specification");
               }
 
               auto item_desc = spec_json->at(1);

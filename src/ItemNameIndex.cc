@@ -1096,12 +1096,12 @@ void ItemNameIndex::print_table(FILE* stream) const {
   }
 
   phosg::fwrite_fmt(stream, "PHOTON COLORS\n");
-  phosg::fwrite_fmt(stream, "  ## => ---A1--- (A2) (A3)\n");
+  phosg::fwrite_fmt(stream, "  ## => -BLEND?- (LIGHT) (DARK)\n");
   for (size_t z = 0; z < pmt->num_photon_colors(); z++) {
     const auto& pc = pmt->get_photon_color(z);
     phosg::fwrite_fmt(stream, "  {:02X} => {:08X} ({:g}, {:g}, {:g}, {:g}) ({:g}, {:g}, {:g}, {:g})\n",
-        z, pc.unknown_a1, pc.unknown_a2.x, pc.unknown_a2.y, pc.unknown_a2.z, pc.unknown_a2.t,
-        pc.unknown_a3.x, pc.unknown_a3.y, pc.unknown_a3.z, pc.unknown_a3.t);
+        z, pc.blendable, pc.light_color.x, pc.light_color.y, pc.light_color.z, pc.light_color.t,
+        pc.dark_color.x, pc.dark_color.y, pc.dark_color.z, pc.dark_color.t);
   }
 
   phosg::fwrite_fmt(stream, "WEAPON RANGES\n");
@@ -1109,7 +1109,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
   for (size_t z = 0; z < pmt->num_weapon_ranges(); z++) {
     const auto& wr = pmt->get_weapon_range(z);
     phosg::fwrite_fmt(stream, "  {:02X} => {:08X} {:08X} {:08X} ({:g}) ({:g})\n",
-        z, wr.unknown_a3, wr.unknown_a4, wr.unknown_a5, wr.unknown_a1, wr.unknown_a2);
+        z, wr.horizontal_half_angle, wr.vertical_half_angle, wr.max_targets, wr.horizontal, wr.vertical);
   }
 
   phosg::fwrite_fmt(stream, "SALE DIVISORS\n");
@@ -1135,12 +1135,12 @@ void ItemNameIndex::print_table(FILE* stream) const {
   write_data_string(pmt->get_unknown_a1());
 
   phosg::fwrite_fmt(stream, "WEAPON EFFECTS\n");
-  phosg::fwrite_fmt(stream, "  ## => -SOUND1- -VALUE1- -SOUND2- -VALUE2- ---------------A5---------------\n");
+  phosg::fwrite_fmt(stream, "  ## => -SOUND1- -VALUE1- -SOUND2- -VALUE2- -SOUND3- -VALUE3- -SOUND4- -VALUE4-\n");
   for (size_t z = 0; z < pmt->num_weapon_effects(); z++) {
     const auto& we = pmt->get_weapon_effect(z);
-    auto a5_str = phosg::format_data_string(we.unknown_a5.data(), we.unknown_a5.size());
-    phosg::fwrite_fmt(stream, "  {:02X} => {:08X} {:08X} {:08X} {:08X} {}\n",
-        z, we.sound_id1, we.eff_value1, we.sound_id2, we.eff_value2, a5_str);
+    phosg::fwrite_fmt(stream, "  {:02X} => {:08X} {:08X} {:08X} {:08X} \n",
+        z, we.sound_id1, we.eff_value1, we.sound_id2, we.eff_value2,
+        we.sound_id3, we.eff_value3, we.sound_id4, we.eff_value4);
   }
 
   phosg::fwrite_fmt(stream, "WEAPON STAT BOOST INDEX TABLE\n");
@@ -1182,10 +1182,10 @@ void ItemNameIndex::print_table(FILE* stream) const {
   }
 
   phosg::fwrite_fmt(stream, "SHIELD EFFECTS\n");
-  phosg::fwrite_fmt(stream, "  ## => -SOUND1- ---A1---\n");
+  phosg::fwrite_fmt(stream, "  ## => -SOUND1- -PITCH--\n");
   for (size_t z = 0; z < pmt->num_shield_effects(); z++) {
     const auto& se = pmt->get_shield_effect(z);
-    phosg::fwrite_fmt(stream, "  {:02X} => {:08X} {:08X}\n", z, se.sound_id, se.unknown_a1);
+    phosg::fwrite_fmt(stream, "  {:02X} => {:08X} {:08X}\n", z, se.sound_id, se.sound_pitch);
   }
 
   phosg::fwrite_fmt(stream, "SOUND REMAPS\n");

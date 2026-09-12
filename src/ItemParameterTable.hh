@@ -358,16 +358,16 @@ public:
 
   struct ShieldEffect {
     uint32_t sound_id = 0;
-    uint32_t unknown_a1 = 0;
+    uint32_t sound_pitch = 0;
 
     static ShieldEffect from_json(const phosg::JSON& json);
     phosg::JSON json() const;
   };
 
   struct PhotonColorEntry {
-    uint32_t unknown_a1 = 0;
-    VectorXYZTF unknown_a2;
-    VectorXYZTF unknown_a3;
+    uint32_t blendable = 0;
+    VectorXYZTF light_color; // ARGB
+    VectorXYZTF dark_color; // ARGB
 
     static PhotonColorEntry from_json(const phosg::JSON& json);
     phosg::JSON json() const;
@@ -386,18 +386,21 @@ public:
     uint32_t eff_value1 = 0;
     uint32_t sound_id2 = 0;
     uint32_t eff_value2 = 0;
-    parray<uint8_t, 0x10> unknown_a5;
+    uint32_t sound_id3 = 0;
+    uint32_t eff_value3 = 0;
+    uint32_t sound_id4 = 0;
+    uint32_t eff_value4 = 0;
 
     static WeaponEffect from_json(const phosg::JSON& json);
     phosg::JSON json() const;
   };
 
   struct WeaponRange {
-    float unknown_a1 = 0;
-    float unknown_a2 = 0;
-    uint32_t unknown_a3 = 0; // Angle
-    uint32_t unknown_a4 = 0; // Angle
-    uint32_t unknown_a5 = 0;
+    float horizontal = 0;
+    float vertical = 0;
+    uint32_t horizontal_half_angle = 0;
+    uint32_t vertical_half_angle = 0;
+    uint32_t max_targets = 0;
 
     static WeaponRange from_json(const phosg::JSON& json);
     phosg::JSON json() const;
@@ -405,7 +408,7 @@ public:
 
   struct RangedSpecial {
     uint8_t data1_1 = 0;
-    uint8_t data1_2 = 0;
+    uint8_t data1_2 = 0; // May be FF if it applies to all weapons matching data1_1
     uint8_t weapon_range_index = 0;
     uint8_t unknown_a1 = 0;
 

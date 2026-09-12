@@ -1679,7 +1679,7 @@ Action a_disassemble_free_map(
       std::string input_filename_lower = phosg::tolower(input_filename);
       bool is_events = input_filename_lower.ends_with(".evt");
       bool is_enemies = input_filename_lower.ends_with("e.dat") || input_filename_lower.ends_with("e_s.dat") || input_filename_lower.ends_with("e_c1.dat") || input_filename_lower.ends_with("e_d.dat");
-      bool is_objects = input_filename_lower.ends_with("o.dat") || input_filename_lower.ends_with("o_s.dat") || input_filename_lower.ends_with("o_c1.dat") || input_filename_lower.ends_with("o_d.dat");
+      bool is_objects = input_filename_lower.ends_with("o.dat") || input_filename_lower.ends_with("o_s.dat") || input_filename_lower.ends_with("o_c1.dat") || input_filename_lower.ends_with("d.dat");
       if (!is_objects && !is_enemies && !is_events) {
         throw std::runtime_error("cannot determine input file type");
       }

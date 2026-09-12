@@ -449,33 +449,33 @@ phosg::JSON ItemParameterTable::NonWeaponSaleDivisors::json() const {
 ItemParameterTable::ShieldEffect ItemParameterTable::ShieldEffect::from_json(const phosg::JSON& json) {
   ItemParameterTable::ShieldEffect ret;
   ret.sound_id = json.get_int("SoundID");
-  ret.unknown_a1 = json.get_int("UnknownA1");
+  ret.sound_pitch = json.contains("SoundPitch") ? json.get_int("SoundPitch") : json.get_int("UnknownA1");
   return ret;
 }
 phosg::JSON ItemParameterTable::ShieldEffect::json() const {
-  return phosg::JSON::dict({{"SoundID", this->sound_id}, {"UnknownA1", this->unknown_a1}});
+  return phosg::JSON::dict({{"SoundID", this->sound_id}, {"SoundPitch", this->sound_pitch}});
 }
 
 ItemParameterTable::PhotonColorEntry ItemParameterTable::PhotonColorEntry::from_json(const phosg::JSON& json) {
   ItemParameterTable::PhotonColorEntry ret;
-  ret.unknown_a1 = json.get_int("UnknownA1");
-  const auto& unknown_a2 = json.get_list("UnknownA2");
-  const auto& unknown_a3 = json.get_list("UnknownA3");
-  ret.unknown_a2.x = unknown_a2.at(0)->as_float();
-  ret.unknown_a2.y = unknown_a2.at(1)->as_float();
-  ret.unknown_a2.z = unknown_a2.at(2)->as_float();
-  ret.unknown_a2.t = unknown_a2.at(3)->as_float();
-  ret.unknown_a3.x = unknown_a3.at(0)->as_float();
-  ret.unknown_a3.y = unknown_a3.at(1)->as_float();
-  ret.unknown_a3.z = unknown_a3.at(2)->as_float();
-  ret.unknown_a3.t = unknown_a3.at(3)->as_float();
+  ret.blendable = json.contains("Blendable") ? json.get_int("Blendable") : json.get_int("UnknownA1");
+  const auto& light_color = json.contains("LightColor") ? json.get_list("LightColor") : json.get_list("UnknownA2");
+  const auto& dark_color = json.contains("DarkColor") ? json.get_list("DarkColor") : json.get_list("UnknownA3");
+  ret.light_color.x = light_color.at(0)->as_float();
+  ret.light_color.y = light_color.at(1)->as_float();
+  ret.light_color.z = light_color.at(2)->as_float();
+  ret.light_color.t = light_color.at(3)->as_float();
+  ret.dark_color.x = dark_color.at(0)->as_float();
+  ret.dark_color.y = dark_color.at(1)->as_float();
+  ret.dark_color.z = dark_color.at(2)->as_float();
+  ret.dark_color.t = dark_color.at(3)->as_float();
   return ret;
 }
 phosg::JSON ItemParameterTable::PhotonColorEntry::json() const {
   return phosg::JSON::dict({
-      {"UnknownA1", this->unknown_a1},
-      {"UnknownA2", phosg::JSON::list({this->unknown_a2.x.load(), this->unknown_a2.y.load(), this->unknown_a2.z.load(), this->unknown_a2.t.load()})},
-      {"UnknownA3", phosg::JSON::list({this->unknown_a3.x.load(), this->unknown_a3.y.load(), this->unknown_a3.z.load(), this->unknown_a3.t.load()})},
+      {"Blendable", this->blendable},
+      {"LightColor", phosg::JSON::list({this->light_color.x.load(), this->light_color.y.load(), this->light_color.z.load(), this->light_color.t.load()})},
+      {"DarkColor", phosg::JSON::list({this->dark_color.x.load(), this->dark_color.y.load(), this->dark_color.z.load(), this->dark_color.t.load()})},
   });
 }
 
@@ -495,9 +495,18 @@ ItemParameterTable::WeaponEffect ItemParameterTable::WeaponEffect::from_json(con
   ret.eff_value1 = json.get_int("EffectValue1");
   ret.sound_id2 = json.get_int("SoundID2");
   ret.eff_value2 = json.get_int("EffectValue2");
-  std::string unknown_a5 = phosg::parse_data_string(json.get_string("UnknownA5"));
-  for (size_t z = 0; z < std::min<size_t>(ret.unknown_a5.size(), unknown_a5.size()); z++) {
-    ret.unknown_a5[z] = unknown_a5[z];
+  if (json.contains("UnknownA5")) {
+    std::string unknown_a5 = phosg::parse_data_string(json.get_string("UnknownA5"));
+    phosg::StringReader r(unknown_a5);
+    ret.sound_id3 = r.get_u32l();
+    ret.eff_value3 = r.get_u32l();
+    ret.sound_id4 = r.get_u32l();
+    ret.eff_value4 = r.get_u32l();
+  } else {
+    ret.sound_id3 = json.get_int("SoundID3");
+    ret.eff_value3 = json.get_int("EffectValue3");
+    ret.sound_id4 = json.get_int("SoundID4");
+    ret.eff_value4 = json.get_int("EffectValue4");
   }
   return ret;
 }
@@ -507,26 +516,29 @@ phosg::JSON ItemParameterTable::WeaponEffect::json() const {
       {"EffectValue1", this->eff_value1},
       {"SoundID2", this->sound_id2},
       {"EffectValue2", this->eff_value2},
-      {"UnknownA5", phosg::format_data_string(this->unknown_a5.data(), this->unknown_a5.size())},
+      {"SoundID3", this->sound_id3},
+      {"EffectValue3", this->eff_value3},
+      {"SoundID4", this->sound_id4},
+      {"EffectValue4", this->eff_value4},
   });
 }
 
 ItemParameterTable::WeaponRange ItemParameterTable::WeaponRange::from_json(const phosg::JSON& json) {
   ItemParameterTable::WeaponRange ret;
-  ret.unknown_a1 = json.get_float("UnknownA1");
-  ret.unknown_a2 = json.get_float("UnknownA2");
-  ret.unknown_a3 = json.get_int("UnknownA3");
-  ret.unknown_a4 = json.get_int("UnknownA4");
-  ret.unknown_a5 = json.get_int("UnknownA5");
+  ret.horizontal = json.contains("Horizontal") ? json.get_float("Horizontal") : json.get_float("UnknownA1");
+  ret.vertical = json.contains("Vertical") ? json.get_float("Vertical") : json.get_float("UnknownA2");
+  ret.horizontal_half_angle = json.contains("HorizontalHalfAngle") ? json.get_int("HorizontalHalfAngle") : json.get_int("UnknownA3");
+  ret.vertical_half_angle = json.contains("VerticalHalfAngle") ? json.get_int("VerticalHalfAngle") : json.get_int("UnknownA4");
+  ret.max_targets = json.contains("MaxTargets") ? json.get_int("MaxTargets") : json.get_int("UnknownA5");
   return ret;
 }
 phosg::JSON ItemParameterTable::WeaponRange::json() const {
   return phosg::JSON::dict({
-      {"UnknownA1", this->unknown_a1},
-      {"UnknownA2", this->unknown_a2},
-      {"UnknownA3", this->unknown_a3},
-      {"UnknownA4", this->unknown_a4},
-      {"UnknownA5", this->unknown_a5},
+      {"Horizontal", this->horizontal},
+      {"Vertical", this->vertical},
+      {"HorizontalHalfAngle", this->horizontal_half_angle},
+      {"VerticalHalfAngle", this->vertical_half_angle},
+      {"MaxTargets", this->max_targets},
   });
 }
 
@@ -1812,43 +1824,43 @@ struct NonWeaponSaleDivisorsT {
 template <bool BE>
 struct ShieldEffectT {
   U32T<BE> sound_id;
-  U32T<BE> unknown_a1;
+  U32T<BE> sound_pitch;
   ShieldEffectT() = default;
-  ShieldEffectT(const ItemParameterTable::ShieldEffect& se) : sound_id(se.sound_id), unknown_a1(se.unknown_a1) {}
+  ShieldEffectT(const ItemParameterTable::ShieldEffect& se) : sound_id(se.sound_id), sound_pitch(se.sound_pitch) {}
   operator ItemParameterTable::ShieldEffect() const {
-    return {this->sound_id, this->unknown_a1};
+    return {this->sound_id, this->sound_pitch};
   }
 } __packed_ws_be__(ShieldEffectT, 8);
 
 template <bool BE>
 struct PhotonColorEntryT {
-  /* 00 */ U32T<BE> unknown_a1;
-  /* 04 */ parray<F32T<BE>, 4> unknown_a2;
-  /* 14 */ parray<F32T<BE>, 4> unknown_a3;
+  /* 00 */ U32T<BE> blendable;
+  /* 04 */ parray<F32T<BE>, 4> light_color;
+  /* 14 */ parray<F32T<BE>, 4> dark_color;
   /* 24 */
   PhotonColorEntryT() = default;
   PhotonColorEntryT(const ItemParameterTable::PhotonColorEntry pc) {
-    this->unknown_a1 = pc.unknown_a1;
-    this->unknown_a2[0] = pc.unknown_a2.x;
-    this->unknown_a2[1] = pc.unknown_a2.y;
-    this->unknown_a2[2] = pc.unknown_a2.z;
-    this->unknown_a2[3] = pc.unknown_a2.t;
-    this->unknown_a3[0] = pc.unknown_a3.x;
-    this->unknown_a3[1] = pc.unknown_a3.y;
-    this->unknown_a3[2] = pc.unknown_a3.z;
-    this->unknown_a3[3] = pc.unknown_a3.t;
+    this->blendable = pc.blendable;
+    this->light_color[0] = pc.light_color.x;
+    this->light_color[1] = pc.light_color.y;
+    this->light_color[2] = pc.light_color.z;
+    this->light_color[3] = pc.light_color.t;
+    this->dark_color[0] = pc.dark_color.x;
+    this->dark_color[1] = pc.dark_color.y;
+    this->dark_color[2] = pc.dark_color.z;
+    this->dark_color[3] = pc.dark_color.t;
   }
   operator ItemParameterTable::PhotonColorEntry() const {
     ItemParameterTable::PhotonColorEntry ret;
-    ret.unknown_a1 = this->unknown_a1;
-    ret.unknown_a2.x = this->unknown_a2[0];
-    ret.unknown_a2.y = this->unknown_a2[1];
-    ret.unknown_a2.z = this->unknown_a2[2];
-    ret.unknown_a2.t = this->unknown_a2[3];
-    ret.unknown_a3.x = this->unknown_a3[0];
-    ret.unknown_a3.y = this->unknown_a3[1];
-    ret.unknown_a3.z = this->unknown_a3[2];
-    ret.unknown_a3.t = this->unknown_a3[3];
+    ret.blendable = this->blendable;
+    ret.light_color.x = this->light_color[0];
+    ret.light_color.y = this->light_color[1];
+    ret.light_color.z = this->light_color[2];
+    ret.light_color.t = this->light_color[3];
+    ret.dark_color.x = this->dark_color[0];
+    ret.dark_color.y = this->dark_color[1];
+    ret.dark_color.z = this->dark_color[2];
+    ret.dark_color.t = this->dark_color[3];
     return ret;
   }
 } __packed_ws_be__(PhotonColorEntryT, 0x24);
@@ -1866,20 +1878,20 @@ struct UnknownA1T {
 
 template <bool BE>
 struct WeaponRangeT {
-  F32T<BE> unknown_a1;
-  F32T<BE> unknown_a2;
-  U32T<BE> unknown_a3;
-  U32T<BE> unknown_a4;
-  U32T<BE> unknown_a5;
+  F32T<BE> horizontal;
+  F32T<BE> vertical;
+  U32T<BE> horizontal_half_angle;
+  U32T<BE> vertical_half_angle;
+  U32T<BE> max_targets;
   WeaponRangeT() = default;
   WeaponRangeT(const ItemParameterTable::WeaponRange& wr)
-      : unknown_a1(wr.unknown_a1),
-        unknown_a2(wr.unknown_a2),
-        unknown_a3(wr.unknown_a3),
-        unknown_a4(wr.unknown_a4),
-        unknown_a5(wr.unknown_a5) {}
+      : horizontal(wr.horizontal),
+        vertical(wr.vertical),
+        horizontal_half_angle(wr.horizontal_half_angle),
+        vertical_half_angle(wr.vertical_half_angle),
+        max_targets(wr.max_targets) {}
   operator ItemParameterTable::WeaponRange() const {
-    return {this->unknown_a1, this->unknown_a2, this->unknown_a3, this->unknown_a4, this->unknown_a5};
+    return {this->horizontal, this->vertical, this->horizontal_half_angle, this->vertical_half_angle, this->max_targets};
   }
 } __packed_ws_be__(WeaponRangeT, 0x14);
 
@@ -1889,16 +1901,23 @@ struct WeaponEffectT {
   U32T<BE> eff_value1;
   U32T<BE> sound_id2;
   U32T<BE> eff_value2;
-  parray<uint8_t, 0x10> unknown_a5;
+  U32T<BE> sound_id3;
+  U32T<BE> eff_value3;
+  U32T<BE> sound_id4;
+  U32T<BE> eff_value4;
   WeaponEffectT() = default;
   WeaponEffectT(const ItemParameterTable::WeaponEffect& we)
       : sound_id1(we.sound_id1),
         eff_value1(we.eff_value1),
         sound_id2(we.sound_id2),
         eff_value2(we.eff_value2),
-        unknown_a5(we.unknown_a5) {}
+        sound_id3(we.sound_id3),
+        eff_value3(we.eff_value3),
+        sound_id4(we.sound_id4),
+        eff_value4(we.eff_value4) {}
   operator ItemParameterTable::WeaponEffect() const {
-    return {this->sound_id1, this->eff_value1, this->sound_id2, this->eff_value2, this->unknown_a5};
+    return {this->sound_id1, this->eff_value1, this->sound_id2, this->eff_value2,
+        this->sound_id3, this->eff_value3, this->sound_id4, this->eff_value4};
   }
 } __packed_ws_be__(WeaponEffectT, 0x20);
 
