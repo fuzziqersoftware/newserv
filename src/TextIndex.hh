@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 
+#include <functional>
 #include <phosg/JSON.hh>
 #include <string>
 #include <utility>

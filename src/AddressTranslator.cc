@@ -1001,12 +1001,12 @@ void diff_dol_files_semantic(
 
       struct FileAnalysis {
         struct Function {
-          const ResourceDASM::PPC32Emulator::DisassembleResult::Label* label;
+          const ResourceDASM::DisassembleResult::Label* label;
           size_t size;
           std::vector<std::pair<uint32_t, uint32_t>> code; // [(opcode, mask)]
         };
         std::vector<Function> functions;
-        ResourceDASM::PPC32Emulator::DisassembleResult dasm;
+        ResourceDASM::DisassembleResult dasm;
       };
 
       auto disassemble_section = [&](const ResourceDASM::DOLFile& file, const ResourceDASM::DOLFile::Section& sec) -> FileAnalysis {

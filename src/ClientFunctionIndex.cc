@@ -315,7 +315,7 @@ ClientFunctionIndex::ClientFunctionIndex(const std::string& root_dir, bool raise
               throw std::runtime_error("Mutual recursion between includes: " + name);
             }
             for (const auto& [include_specific_version, include_source] : preprocess_function_code(it->second)) {
-              ResourceDASM::EmulatorBase::AssembleResult ret;
+              ResourceDASM::AssembleResult ret;
               auto get_include = std::bind(get_include_for_sv, std::placeholders::_1, include_specific_version);
               switch (architecture_for_specific_version(include_specific_version)) {
                 case Arch::POWERPC:
@@ -355,7 +355,7 @@ ClientFunctionIndex::ClientFunctionIndex(const std::string& root_dir, bool raise
         };
 
         try {
-          ResourceDASM::EmulatorBase::AssembleResult assembled;
+          ResourceDASM::AssembleResult assembled;
           auto get_include = std::bind(get_include_for_sv, std::placeholders::_1, specific_version);
           switch (fn->arch) {
             case Arch::POWERPC:
