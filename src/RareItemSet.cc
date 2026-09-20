@@ -53,7 +53,7 @@ uint8_t RareItemSet::compress_rate(uint32_t probability) {
 RareItemSet::ParsedRELData::PackedDrop::PackedDrop(const ExpandedDrop& exp)
     : probability(RareItemSet::compress_rate(exp.probability)) {
   if (!exp.data.can_be_encoded_in_rel_rare_table()) {
-    throw std::runtime_error("item " + exp.data.short_hex() + " has extended attributes and cannot be encoded in a REL file");
+    throw std::runtime_error("item " + exp.data.hex() + " has extended attributes and cannot be encoded in a REL file");
   }
   this->item_code[0] = exp.data.data1[0];
   this->item_code[1] = exp.data.data1[1];

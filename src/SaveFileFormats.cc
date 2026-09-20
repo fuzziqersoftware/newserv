@@ -585,7 +585,6 @@ std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const P
     dest_item.data.decode_for_version(Version::DC_NTE);
     dest_item.amount = dest_item.data.get_tool_item_amount(ItemData::StackLimits::DEFAULT_STACK_LIMITS_DC_NTE);
   }
-  ret->bank.decode_from_client(Version::DC_V1);
   ret->guild_card = src.guild_card;
   return ret;
 }
@@ -613,7 +612,6 @@ std::shared_ptr<PSOBBCharacterFile> PSOBBCharacterFile::create_from_file(const P
     dest_item.data.decode_for_version(Version::DC_NTE);
     dest_item.amount = dest_item.data.get_tool_item_amount(ItemData::StackLimits::DEFAULT_STACK_LIMITS_DC_NTE);
   }
-  ret->bank.decode_from_client(Version::DC_V1);
   ret->guild_card = src.guild_card;
   for (size_t z = 0; z < std::min<size_t>(ret->symbol_chats.size(), src.symbol_chats.size()); z++) {
     auto& ret_sc = ret->symbol_chats[z];

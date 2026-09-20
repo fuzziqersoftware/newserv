@@ -1,5 +1,6 @@
 #include "ItemData.hh"
 
+#include <algorithm>
 #include <array>
 #include <map>
 
