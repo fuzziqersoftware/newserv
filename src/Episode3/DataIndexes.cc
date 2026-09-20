@@ -2548,23 +2548,23 @@ CardIndex::CardIndex(
       phosg::StringReader r(text_bin_data);
 
       while (!r.eof()) {
-        std::string card_id_str = r.get_cstr();
+        std::string card_id_str{r.get_cstr()};
         if (card_id_str.empty() || (static_cast<uint8_t>(card_id_str[0]) == 0xFF)) {
           break;
         }
         phosg::strip_leading_whitespace(card_id_str);
-        uint32_t card_id = stoul(card_id_str);
+        uint32_t card_id = std::stoul(card_id_str);
 
         // Read all pages for this card
         std::string text;
         std::string first_page;
         std::vector<std::string> pages;
         for (;;) {
-          std::string line = r.get_cstr();
-          if (line.empty()) {
+          std::string_view orig_line = r.get_cstr();
+          if (orig_line.empty()) {
             break;
           }
-          line = text_is_sjis ? tt_sega_sjis_to_utf8(line) : tt_8859_to_utf8(line);
+          std::string line = text_is_sjis ? tt_sega_sjis_to_utf8(orig_line) : tt_8859_to_utf8(orig_line);
           if (first_page.empty()) {
             first_page = line;
           }
@@ -2652,8 +2652,8 @@ CardIndex::CardIndex(
 
       while (!r.eof()) {
         uint32_t card_id = r.get_u32l();
-        std::string dice_caption = r.read(0xFE);
-        std::string dice_text = r.read(0xFE);
+        std::string dice_caption{r.read(0xFE)};
+        std::string dice_text{r.read(0xFE)};
         phosg::strip_trailing_zeroes(dice_caption);
         phosg::strip_trailing_zeroes(dice_text);
         card_dice_text.emplace(card_id, make_pair(std::move(dice_caption), std::move(dice_text)));
@@ -2934,8 +2934,8 @@ MapIndex::MapIndex(const std::string& directory, bool raise_on_any_failure) {
 
   auto try_add_map_file = [&](std::shared_ptr<Category> category, const std::string& file_path) -> void {
     try {
-      std::string filename = phosg::basename(file_path);
-      std::string base_filename;
+      std::string_view filename = phosg::basename(file_path);
+      std::string_view base_filename;
       std::string compressed_data;
       std::shared_ptr<MapDefinition> decompressed_data;
       if (filename.ends_with(".mnmd") || filename.ends_with(".bind")) {

@@ -45,7 +45,7 @@ public:
   // Adds more input data to be compressed, which logically comes after all previous data provided via add() calls.
   // Cannot be called after close() is called.
   void add(const void* data, size_t size);
-  void add(const std::string& data);
+  void add(std::string_view data);
 
   // Ends compression and returns the complete compressed result. It's OK to std::move() from the returned reference.
   std::string& close();
@@ -147,16 +147,16 @@ private:
 std::string prs_compress(
     const void* vdata, size_t size, ssize_t compression_level = 0, ProgressCallback progress_fn = nullptr);
 std::string prs_compress(
-    const std::string& data, ssize_t compression_level = 0, ProgressCallback progress_fn = nullptr);
+    std::string_view data, ssize_t compression_level = 0, ProgressCallback progress_fn = nullptr);
 
 // A faster form of prs_compress that doesn't have a tunable compression level.
 std::string prs_compress_indexed(const void* vdata, size_t size, ProgressCallback progress_fn = nullptr);
-std::string prs_compress_indexed(const std::string& data, ProgressCallback progress_fn = nullptr);
+std::string prs_compress_indexed(std::string_view data, ProgressCallback progress_fn = nullptr);
 
 // Compresses data using PRS to the smallest possible output size. This function is slow, but produces results
 // significantly smaller than even Sega's original compressor.
 std::string prs_compress_optimal(const void* vdata, size_t size, ProgressCallback progress_fn = nullptr);
-std::string prs_compress_optimal(const std::string& data, ProgressCallback progress_fn = nullptr);
+std::string prs_compress_optimal(std::string_view data, ProgressCallback progress_fn = nullptr);
 
 // Compresses data using PRS to the LARGEST possible output size. There is no practical use for this function except
 // for amusement.
@@ -170,24 +170,24 @@ struct PRSDecompressResult {
 PRSDecompressResult prs_decompress_with_meta(
     const void* data, size_t size, size_t max_output_size = 0, bool allow_unterminated = false);
 PRSDecompressResult prs_decompress_with_meta(
-    const std::string& data, size_t max_output_size = 0, bool allow_unterminated = false);
+    std::string_view data, size_t max_output_size = 0, bool allow_unterminated = false);
 std::string prs_decompress(const void* data, size_t size, size_t max_output_size = 0, bool allow_unterminated = false);
-std::string prs_decompress(const std::string& data, size_t max_output_size = 0, bool allow_unterminated = false);
+std::string prs_decompress(std::string_view data, size_t max_output_size = 0, bool allow_unterminated = false);
 
 // Returns the decompressed size of PRS-compressed data, without actually decompressing it.
 size_t prs_decompress_size(const void* data, size_t size, size_t max_output_size = 0, bool allow_unterminated = false);
-size_t prs_decompress_size(const std::string& data, size_t max_output_size = 0, bool allow_unterminated = false);
+size_t prs_decompress_size(std::string_view data, size_t max_output_size = 0, bool allow_unterminated = false);
 
 // Prints the command stream from a PRS-compressed buffer.
 void prs_disassemble(FILE* stream, const void* data, size_t size);
-void prs_disassemble(FILE* stream, const std::string& data);
+void prs_disassemble(FILE* stream, std::string_view data);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // BC0 compression
 
 // Compresses data using the BC0 algorithm. Like with PRS, the optimal variant is slow, but produces the smallest
 // possible output.
-std::string bc0_compress(const std::string& data, ProgressCallback progress_fn = nullptr);
+std::string bc0_compress(std::string_view data, ProgressCallback progress_fn = nullptr);
 std::string bc0_compress(const void* in_data_v, size_t in_size, ProgressCallback progress_fn = nullptr);
 std::string bc0_compress_optimal(const void* in_data_v, size_t in_size, ProgressCallback progress_fn = nullptr);
 
@@ -195,9 +195,9 @@ std::string bc0_compress_optimal(const void* in_data_v, size_t in_size, Progress
 std::string bc0_encode(const void* in_data_v, size_t in_size);
 
 // Decompresses BC0-compressed data.
-std::string bc0_decompress(const std::string& data);
+std::string bc0_decompress(std::string_view data);
 std::string bc0_decompress(const void* data, size_t size);
 
 // Prints the command stream from a BC0-compressed buffer.
-void bc0_disassemble(FILE* stream, const std::string& data);
+void bc0_disassemble(FILE* stream, std::string_view data);
 void bc0_disassemble(FILE* stream, const void* data, size_t size);

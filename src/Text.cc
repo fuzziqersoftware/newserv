@@ -122,7 +122,7 @@ std::string TextTranscoder::operator()(const void* src, size_t src_bytes) {
   return phosg::join(blocks, "");
 }
 
-std::string TextTranscoder::operator()(const std::string& data) {
+std::string TextTranscoder::operator()(std::string_view data) {
   return this->operator()(data.data(), data.size());
 }
 
@@ -268,7 +268,7 @@ thread_local TextTranscoder tt_utf8_to_utf16("UTF-16LE", "UTF-8");
 thread_local TextTranscoder tt_ascii_to_utf8("UTF-8", "ASCII");
 thread_local TextTranscoder tt_utf8_to_ascii("ASCII", "UTF-8");
 
-std::string tt_encode_marked_optional(const std::string& utf8, Language default_language, bool is_utf16) {
+std::string tt_encode_marked_optional(std::string_view utf8, Language default_language, bool is_utf16) {
   if (is_utf16) {
     return tt_utf8_to_utf16(utf8);
   } else {
@@ -288,7 +288,7 @@ std::string tt_encode_marked_optional(const std::string& utf8, Language default_
   }
 }
 
-std::string tt_encode_marked(const std::string& utf8, Language default_language, bool is_utf16) {
+std::string tt_encode_marked(std::string_view utf8, Language default_language, bool is_utf16) {
   if (is_utf16) {
     std::string to_encode = "\t";
     to_encode += marker_for_language(default_language);
@@ -311,7 +311,7 @@ std::string tt_encode_marked(const std::string& utf8, Language default_language,
   }
 }
 
-std::string tt_decode_marked(const std::string& data, Language default_language, bool is_utf16) {
+std::string tt_decode_marked(std::string_view data, Language default_language, bool is_utf16) {
   if (is_utf16) {
     std::string ret = tt_utf16_to_utf8(data);
     if (ret.size() >= 2 && ret[0] == '\t' && is_language_marker_utf16(ret[1])) {
@@ -328,25 +328,6 @@ std::string tt_decode_marked(const std::string& data, Language default_language,
     }
     return (default_language == Language::JAPANESE) ? tt_sega_sjis_to_utf8(data) : tt_8859_to_utf8(data);
   }
-}
-
-std::string add_language_marker(const std::string& s, char marker) {
-  if ((s.size() >= 2) && (s[0] == '\t') && (s[1] != 'C')) {
-    return s;
-  }
-
-  std::string ret;
-  ret.push_back('\t');
-  ret.push_back(marker);
-  ret += s;
-  return ret;
-}
-
-std::string remove_language_marker(const std::string& s) {
-  if ((s.size() < 2) || (s[0] != '\t') || (s[1] == 'C')) {
-    return s;
-  }
-  return s.substr(2);
 }
 
 void replace_char_inplace(char* a, char f, char r) {
@@ -423,7 +404,7 @@ void add_color(phosg::StringWriter& w, const char* src, size_t max_input_chars) 
   }
 }
 
-std::string add_color(const std::string& s) {
+std::string add_color(std::string_view s) {
   phosg::StringWriter w;
   add_color(w, s.data(), s.size());
   return std::move(w.str());
@@ -451,13 +432,13 @@ void remove_color(phosg::StringWriter& w, const char* src, size_t max_input_char
   }
 }
 
-std::string remove_color(const std::string& s) {
+std::string remove_color(std::string_view s) {
   phosg::StringWriter w;
   remove_color(w, s.data(), s.size());
   return std::move(w.str());
 }
 
-std::string strip_color(const std::string& s) {
+std::string strip_color(std::string_view s) {
   std::string ret;
   for (size_t r = 0; r < s.size(); r++) {
     if ((s[r] == '$' || s[r] == '\t') &&
@@ -470,7 +451,7 @@ std::string strip_color(const std::string& s) {
   return ret;
 }
 
-std::string escape_player_name(const std::string& name) {
+std::string escape_player_name(std::string_view name) {
   if (name.size() > 2 && name[0] == '\t' && name[1] != 'C') {
     return remove_color(name.substr(2));
   } else {

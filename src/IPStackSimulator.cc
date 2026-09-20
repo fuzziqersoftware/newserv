@@ -528,7 +528,7 @@ asio::awaitable<void> IPStackSimulator::on_client_lcp_frame(std::shared_ptr<IPSS
       auto opts_r = fi.read_payload();
       while (!opts_r.eof()) {
         uint8_t opt = opts_r.get_u8();
-        std::string opt_data = opts_r.read(opts_r.get_u8() - 2);
+        std::string_view opt_data = opts_r.read(opts_r.get_u8() - 2);
         phosg::StringReader opt_data_r(opt_data);
         switch (opt) {
           case 0x01: // Maximum receive unit
@@ -626,8 +626,8 @@ asio::awaitable<void> IPStackSimulator::on_client_pap_frame(std::shared_ptr<IPSS
   }
 
   auto r = fi.read_payload();
-  std::string username = r.read(r.get_u8());
-  std::string password = r.read(r.get_u8());
+  std::string_view username = r.read(r.get_u8());
+  r.skip(r.get_u8()); // Password
   this->log.info_f("Client logged in with username \"{}\" and password", username);
 
   static const std::string login_message = "newserv PPP simulator";
@@ -653,7 +653,7 @@ asio::awaitable<void> IPStackSimulator::on_client_ipcp_frame(std::shared_ptr<IPS
       phosg::StringWriter rejected_opts_w;
       while (!opts_r.eof()) {
         uint8_t opt = opts_r.get_u8();
-        std::string opt_data = opts_r.read(opts_r.get_u8() - 2);
+        std::string_view opt_data = opts_r.read(opts_r.get_u8() - 2);
         phosg::StringReader opt_data_r(opt_data);
         switch (opt) {
           case 0x01: // IP addresses (deprecated as of 1992; we don't support it at all)

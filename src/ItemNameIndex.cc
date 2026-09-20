@@ -1118,7 +1118,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
   phosg::fwrite_fmt(stream, "  UNIT = {:g}\n", pmt->get_sale_divisor(1, 3));
   phosg::fwrite_fmt(stream, "  MAG = {:g}\n", pmt->get_sale_divisor(2, 0));
 
-  auto write_data_string = [&](const std::string& data, size_t addr = 0) -> void {
+  auto write_data_string = [&](std::string_view data, size_t addr = 0) -> void {
     if (data.empty()) {
       phosg::fwrite_fmt(stream, "  (no data)\n");
     } else {

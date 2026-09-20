@@ -486,7 +486,7 @@ public:
   std::string get_star_value_table() const;
 
   // unknown_a1 accessors
-  virtual std::string get_unknown_a1() const = 0;
+  virtual std::string_view get_unknown_a1() const = 0;
 
   // special_table accessors
   virtual size_t num_specials() const = 0;

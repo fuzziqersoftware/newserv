@@ -10,7 +10,7 @@
 #include <vector>
 
 struct PSOGCObjectGraph {
-  PSOGCObjectGraph(const std::string& memory_data, uint32_t root_address);
+  PSOGCObjectGraph(std::string_view memory_data, uint32_t root_address);
 
   void print(FILE* stream) const;
 

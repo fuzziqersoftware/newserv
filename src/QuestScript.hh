@@ -150,7 +150,7 @@ struct AssembledQuestScript {
   QuestMetadata meta;
 };
 AssembledQuestScript assemble_quest_script(
-    const std::string& text,
+    std::string_view text,
     const std::vector<std::string>& script_include_directories,
     const std::vector<std::string>& native_include_directories,
     bool strict = true);

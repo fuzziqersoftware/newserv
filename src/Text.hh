@@ -49,7 +49,7 @@ public:
   Result operator()(void* dest, size_t dest_bytes, const void* src, size_t src_bytes, bool truncate_oversize_result);
 
   std::string operator()(const void* src, size_t src_bytes);
-  std::string operator()(const std::string& data);
+  std::string operator()(std::string_view data);
 
 protected:
   virtual std::string on_untranslatable(const void** src, size_t* size) const;
@@ -88,9 +88,9 @@ extern thread_local TextTranscoder tt_utf8_to_utf16;
 extern thread_local TextTranscoder tt_ascii_to_utf8;
 extern thread_local TextTranscoder tt_utf8_to_ascii;
 
-std::string tt_encode_marked_optional(const std::string& utf8, Language default_language, bool is_utf16);
-std::string tt_encode_marked(const std::string& utf8, Language default_language, bool is_utf16);
-std::string tt_decode_marked(const std::string& data, Language default_language, bool is_utf16);
+std::string tt_encode_marked_optional(std::string_view utf8, Language default_language, bool is_utf16);
+std::string tt_encode_marked(std::string_view utf8, Language default_language, bool is_utf16);
+std::string tt_decode_marked(std::string_view data, Language default_language, bool is_utf16);
 
 char marker_for_language(Language language);
 bool is_language_marker_sjis_8859(char marker);
@@ -498,7 +498,7 @@ struct pstring {
   pstring(const pstring<Encoding, Chars, BytesPerChar>& other) {
     memcpy(this->data, other.data, Bytes);
   }
-  pstring(const std::string& s, Language language) {
+  pstring(std::string_view s, Language language) {
     this->encode(s, language);
   }
   pstring(pstring<Encoding, Chars, BytesPerChar>&& other) = delete;
@@ -516,7 +516,7 @@ struct pstring {
   }
   pstring<Encoding, Chars, BytesPerChar>& operator=(pstring<Encoding, Chars, BytesPerChar>&& s) = delete;
 
-  void encode(const std::string& s, Language client_language = Language::ENGLISH) {
+  void encode(std::string_view s, Language client_language = Language::ENGLISH) {
     try {
       switch (Encoding) {
         case TextEncoding::CHALLENGE8:
@@ -681,7 +681,7 @@ struct pstring {
     return (memcmp(this->data, other.data, Bytes) != 0);
   }
 
-  bool eq(const std::string& other, Language language = Language::ENGLISH) const {
+  bool eq(std::string_view other, Language language = Language::ENGLISH) const {
     return this->decode(language) == other;
   }
 
@@ -737,7 +737,7 @@ struct pstring {
     memcpy(this->data, data, std::min<size_t>(size, Bytes));
     this->clear_after_bytes(size);
   }
-  void assign_raw(const std::string& data) {
+  void assign_raw(std::string_view data) {
     this->assign_raw(data.data(), data.size());
   }
 
@@ -756,7 +756,7 @@ struct pstring {
 void replace_char_inplace(char* a, char f, char r);
 
 void add_color(phosg::StringWriter& w, const char* src, size_t max_input_chars);
-std::string add_color(const std::string& s);
+std::string add_color(std::string_view s);
 
 size_t add_color_inplace(char* a, size_t max_chars);
 void add_color_inplace(std::string& s);
@@ -764,8 +764,8 @@ void add_color_inplace(std::string& s);
 // remove_color does the opposite of add_color (it changes \t into $, for example). strip_color is irreversible; it
 // deletes color escape sequences.
 void remove_color(phosg::StringWriter& w, const char* src, size_t max_input_chars);
-std::string remove_color(const std::string& s);
+std::string remove_color(std::string_view s);
 
-std::string strip_color(const std::string& s);
+std::string strip_color(std::string_view s);
 
-std::string escape_player_name(const std::string& name);
+std::string escape_player_name(std::string_view name);

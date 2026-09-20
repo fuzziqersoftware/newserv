@@ -251,7 +251,7 @@ public:
   inline std::shared_ptr<const PSOBBEncryption::KeyFile> get_active_key() const {
     return this->active_key;
   }
-  inline const std::string& get_seed() const {
+  inline std::string_view get_seed() const {
     return this->seed;
   }
 
@@ -349,7 +349,7 @@ using ChallengeTimeBE = ChallengeTimeT<true>;
 
 std::string decrypt_v2_registry_value(const void* data, size_t size);
 
-inline std::string decrypt_v2_registry_value(const std::string& s) {
+inline std::string decrypt_v2_registry_value(std::string_view s) {
   return decrypt_v2_registry_value(s.data(), s.size());
 }
 
@@ -359,7 +359,7 @@ std::string decrypt_pr1_data(const void* data, size_t size) {
     throw std::runtime_error("not enough data for PR1 footer");
   }
   phosg::StringReader r(data, size);
-  std::string ret = r.read(size - 4);
+  std::string ret{r.read(size - 4)};
   PSOV2Encryption crypt(r.get<U32T<BE>>());
   if constexpr (BE) {
     crypt.encrypt_big_endian(ret.data(), ret.size());
@@ -389,12 +389,12 @@ struct DecryptedPR2 {
 };
 
 template <bool BE>
-DecryptedPR2 decrypt_pr2_data(const std::string& data) {
+DecryptedPR2 decrypt_pr2_data(std::string_view data) {
   if (data.size() < 8) {
     throw std::runtime_error("not enough data for PR2 header");
   }
   phosg::StringReader r(data);
-  DecryptedPR2 ret = {.compressed_data = data.substr(8), .decompressed_size = r.get<U32T<BE>>()};
+  DecryptedPR2 ret = {.compressed_data = std::string(data.substr(8)), .decompressed_size = r.get<U32T<BE>>()};
   PSOV2Encryption crypt(r.get<U32T<BE>>());
   if (BE) {
     crypt.encrypt_big_endian(ret.compressed_data.data(), ret.compressed_data.size());
@@ -405,7 +405,7 @@ DecryptedPR2 decrypt_pr2_data(const std::string& data) {
 }
 
 template <bool BE>
-std::string decrypt_and_decompress_pr2_data(const std::string& data) {
+std::string decrypt_and_decompress_pr2_data(std::string_view data) {
   auto decrypted = decrypt_pr2_data<BE>(data);
   std::string decompressed = prs_decompress(decrypted.compressed_data);
   if (decompressed.size() != decrypted.decompressed_size) {
@@ -415,7 +415,7 @@ std::string decrypt_and_decompress_pr2_data(const std::string& data) {
 }
 
 template <bool BE>
-std::string encrypt_pr2_data(const std::string& data, size_t decompressed_size, uint32_t seed) {
+std::string encrypt_pr2_data(std::string_view data, size_t decompressed_size, uint32_t seed) {
   phosg::StringWriter w;
   w.put<U32T<BE>>(decompressed_size);
   w.put<U32T<BE>>(seed);

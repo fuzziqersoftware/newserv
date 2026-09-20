@@ -22,7 +22,7 @@ struct TObject {
   phosg::be_uint32_t vtable_addr;
 } __packed_ws__(TObject, 0x1C);
 
-PSOGCObjectGraph::PSOGCObjectGraph(const std::string& memory_data, uint32_t root_address) {
+PSOGCObjectGraph::PSOGCObjectGraph(std::string_view memory_data, uint32_t root_address) {
   phosg::StringReader r(memory_data);
   this->root = this->parse_object_memo(r, root_address);
 }
@@ -50,7 +50,7 @@ std::shared_ptr<PSOGCObjectGraph::Object> PSOGCObjectGraph::parse_object_memo(ph
   }
 
   const auto& obj = r.pget<TObject>(addr & 0x01FFFFFF);
-  std::string type_name = r.pget_cstr(obj.type_name_addr & 0x01FFFFFF);
+  std::string_view type_name = r.pget_cstr(obj.type_name_addr & 0x01FFFFFF);
 
   auto ret = this->all_objects.emplace(addr, std::make_shared<Object>()).first->second;
   ret->address = addr;

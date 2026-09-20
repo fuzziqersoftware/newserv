@@ -1725,7 +1725,7 @@ Action a_assemble_quest_script(
 
       const std::string& input_filename = args.get<std::string>(1, false);
       std::string include_dir = (!input_filename.empty() && (input_filename != "-"))
-          ? phosg::dirname(input_filename)
+          ? std::string(phosg::dirname(input_filename))
           : ".";
 
       auto result = assemble_quest_script(
@@ -3958,7 +3958,7 @@ Action a_check_quests(
                 bin.data(), bin.size(), vq->meta.version, vq->meta.language, vq->map_file, false, false);
             auto reassembly = disassemble_quest_script(
                 bin.data(), bin.size(), vq->meta.version, vq->meta.language, vq->map_file, true, false);
-            std::string include_dir = phosg::dirname(vq->bin_filename());
+            std::string include_dir{phosg::dirname(vq->bin_filename())};
             AssembledQuestScript assembled;
             try {
               assembled = assemble_quest_script(
@@ -4234,9 +4234,9 @@ Action a_diff_executables(
           throw std::runtime_error("the two files are not the same type of executable, or are neither dol nor xbe");
         }
         for (const auto& it : result) {
-          std::string b_str = phosg::format_data_string(it.b_data, nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
+          std::string b_str = phosg::format_data_string(it.b_data, phosg::FormatDataStringFlags::HEX_ONLY);
           if (show_pre) {
-            std::string a_str = phosg::format_data_string(it.a_data, nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
+            std::string a_str = phosg::format_data_string(it.a_data, phosg::FormatDataStringFlags::HEX_ONLY);
             phosg::fwrite_fmt(stdout, "{:08X}: {} => {}\n", it.address, a_str, b_str);
           } else {
             phosg::fwrite_fmt(stdout, "{:08X} {}\n", it.address, b_str);

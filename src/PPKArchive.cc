@@ -20,7 +20,7 @@ struct Entry {
   // Trailer: le_uint32_t entry_size;
 };
 
-static void decrypt_ppk_data(std::string& data, const std::string& filename, const std::string& password) {
+static void decrypt_ppk_data(std::string& data, std::string_view filename, std::string_view password) {
   if (password.size() > 0xFF) {
     throw std::runtime_error("password is too long");
   }
@@ -40,7 +40,7 @@ static void decrypt_ppk_data(std::string& data, const std::string& filename, con
   }
 }
 
-std::unordered_map<std::string, std::string> decode_ppk_file(const std::string& data, const std::string& password) {
+std::unordered_map<std::string, std::string> decode_ppk_file(std::string_view data, std::string_view password) {
   phosg::StringReader r(data);
 
   uint32_t signature = r.get_u32b();
@@ -53,7 +53,7 @@ std::unordered_map<std::string, std::string> decode_ppk_file(const std::string& 
     uint32_t size = r.pget_u32l(offset) ^ 0x12345678;
     uint32_t entry_offset = offset - size;
     const auto& entry = r.pget<Entry>(entry_offset);
-    std::string data = r.pread(entry_offset + sizeof(Entry), entry.compressed_size);
+    std::string data{r.pread(entry_offset + sizeof(Entry), entry.compressed_size)};
     std::string filename = entry.filename.decode();
     decrypt_ppk_data(data, phosg::tolower(filename), password);
     uint32_t checksum = phosg::crc32(data.data(), data.size());

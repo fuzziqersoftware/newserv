@@ -53,7 +53,7 @@ static TextEncoding encoding_for_language(Language language) {
   return ((language == Language::JAPANESE) ? TextEncoding::SJIS : TextEncoding::ISO8859);
 }
 
-static std::string escape_string(const std::string& data, TextEncoding encoding = TextEncoding::UTF8) {
+static std::string escape_string(std::string_view data, TextEncoding encoding = TextEncoding::UTF8) {
   std::string decoded;
   try {
     switch (encoding) {
@@ -2992,7 +2992,7 @@ std::string disassemble_quest_script(
   auto disassemble_label_as_cstring = [&](std::shared_ptr<Label> l) -> void {
     addf(l, "  // As C string");
 
-    std::string str_data = text_r.pread(l->offset, l->size);
+    std::string str_data{text_r.pread(l->offset, l->size)};
     phosg::strip_trailing_zeroes(str_data);
 
     std::string formatted;
@@ -3188,7 +3188,7 @@ std::string disassemble_quest_script(
         this->type = type;
         this->as_int = value;
       }
-      ArgStackValue(const std::string& value) {
+      ArgStackValue(std::string_view value) {
         this->type = Type::CSTRING;
         this->as_string = value;
       }
@@ -3371,9 +3371,11 @@ std::string disassemble_quest_script(
                     }
                     dasm_arg = escape_string(w.str(), TextEncoding::UTF16);
                   } else {
-                    std::string s = label_r.get_cstr();
+                    std::string_view s = label_r.get_cstr();
                     if (def->flags & F_PUSH_ARG) {
-                      arg_stack_values.emplace_back((language == Language::JAPANESE) ? tt_sega_sjis_to_utf8(s) : tt_8859_to_utf8(s));
+                      arg_stack_values.emplace_back((language == Language::JAPANESE)
+                              ? tt_sega_sjis_to_utf8(s)
+                              : tt_8859_to_utf8(s));
                     }
                     dasm_arg = escape_string(s, encoding_for_language(language));
                   }
@@ -3545,7 +3547,8 @@ std::string disassemble_quest_script(
         line_text = std::format("  {}", dasm_line);
       } else {
         size_t opcode_size = label_r.where() - opcode_start_offset;
-        std::string hex_data = phosg::format_data_string(label_r.preadx(opcode_start_offset, opcode_size), nullptr, phosg::FormatDataStringFlags::HEX_ONLY);
+        std::string hex_data = phosg::format_data_string(
+            label_r.preadx(opcode_start_offset, opcode_size), phosg::FormatDataStringFlags::HEX_ONLY);
         if (hex_data.size() > 14) {
           hex_data.resize(12);
           hex_data += "...";
@@ -3934,7 +3937,7 @@ struct RegisterAssigner {
 };
 
 AssembledQuestScript assemble_quest_script(
-    const std::string& text,
+    std::string_view text,
     const std::vector<std::string>& script_include_directories,
     const std::vector<std::string>& native_include_directories,
     bool strict) {
@@ -3959,9 +3962,9 @@ AssembledQuestScript assemble_quest_script(
   };
 
   std::vector<Line> lines;
-  auto include_file = [&](const std::string& filename, const std::string& orig_text, ssize_t parent_index) {
+  auto include_file = [&](std::string_view filename, std::string_view orig_text, ssize_t parent_index) {
     // Inserts the new lines after the parent line and preprocesses them. The parent line is not modified or deleted.
-    std::string text = orig_text;
+    std::string text{orig_text};
     phosg::strip_comments_inplace(text);
 
     std::vector<Line> new_lines;
@@ -4194,7 +4197,7 @@ AssembledQuestScript assemble_quest_script(
     }
     return reg_assigner.get_or_create(name, number);
   };
-  auto parse_reg_set_fixed = [&reg_assigner, &parse_reg](const std::string& name, size_t expected_count) -> std::vector<std::shared_ptr<RegisterAssigner::Register>> {
+  auto parse_reg_set_fixed = [&reg_assigner, &parse_reg](std::string_view name, size_t expected_count) -> std::vector<std::shared_ptr<RegisterAssigner::Register>> {
     if (expected_count == 0) {
       throw std::logic_error("REG_SET_FIXED argument expects no registers");
     }
@@ -4246,14 +4249,14 @@ AssembledQuestScript assemble_quest_script(
 
   // Assemble code segment
 
-  auto get_native_include = [&](const std::string& filename) -> std::string {
+  auto get_native_include = [&](std::string_view filename) -> std::string {
     for (const auto& include_dir : native_include_directories) {
-      std::string path = include_dir + "/" + filename;
+      std::string path = std::format("{}/{}", include_dir, filename);
       if (std::filesystem::is_regular_file(path)) {
         return phosg::load_file(path);
       }
     }
-    throw std::runtime_error("data not found for native include: " + filename);
+    throw std::runtime_error(std::format("data not found for native include: ", filename));
   };
 
   bool version_has_args = F_HAS_ARGS & v_flag(ret.meta.version);
@@ -4388,7 +4391,7 @@ AssembledQuestScript assemble_quest_script(
           phosg::strip_leading_whitespace(arg);
 
           try {
-            auto add_cstr = [&](const std::string& text, bool bin) -> void {
+            auto add_cstr = [&](std::string_view text, bool bin) -> void {
               switch (ret.meta.version) {
                 case Version::DC_NTE:
                   code_w.write(bin ? text : tt_utf8_to_sega_sjis(text));
@@ -4528,7 +4531,7 @@ AssembledQuestScript assemble_quest_script(
                 }
               };
 
-              auto split_set = [&](const std::string& text) -> std::vector<std::string> {
+              auto split_set = [&](std::string_view text) -> std::vector<std::string> {
                 if (!text.starts_with("[") || !text.ends_with("]")) {
                   throw std::runtime_error("incorrect syntax for set-valued argument");
                 }

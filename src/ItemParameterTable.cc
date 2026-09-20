@@ -659,7 +659,8 @@ phosg::JSON ItemParameterTable::json() const {
     star_values_json.emplace_back(this->get_item_stars(z));
   }
 
-  phosg::JSON unknown_a1_json = this->get_unknown_a1();
+  std::string unknown_a1{this->get_unknown_a1()};
+  phosg::JSON unknown_a1_json{std::move(unknown_a1)};
 
   auto specials_json = phosg::JSON::list();
   for (size_t z = 0; z < this->num_specials(); z++) {
@@ -1063,7 +1064,7 @@ public:
     return ((special & 0x3F) && !(special & 0x80)) ? this->get_item_stars(special + this->special_stars_base_index) : 0;
   }
 
-  virtual std::string get_unknown_a1() const {
+  virtual std::string_view get_unknown_a1() const {
     return this->unknown_a1;
   }
 
@@ -2692,7 +2693,7 @@ public:
     return ((special & 0x3F) && !(special & 0x80)) ? this->get_item_stars(special + SpecialStarsBeginIndex) : 0;
   }
 
-  virtual std::string get_unknown_a1() const {
+  virtual std::string_view get_unknown_a1() const {
     if constexpr (requires { this->root->unknown_a1; }) {
       return this->r.pread(
           this->root->unknown_a1, get_rel_array_count<uint8_t>(this->all_start_offsets(), this->root->unknown_a1));

@@ -498,7 +498,7 @@ std::string prs_compress_optimal(const void* in_data_v, size_t in_size, Progress
   return std::move(w.close());
 }
 
-std::string prs_compress_optimal(const std::string& data, ProgressCallback progress_fn) {
+std::string prs_compress_optimal(std::string_view data, ProgressCallback progress_fn) {
   return prs_compress_optimal(data.data(), data.size(), progress_fn);
 }
 
@@ -562,7 +562,7 @@ void PRSCompressor::add(const void* data, size_t size) {
   }
 }
 
-void PRSCompressor::add(const std::string& data) {
+void PRSCompressor::add(std::string_view data) {
   this->add(data.data(), data.size());
 }
 
@@ -744,7 +744,7 @@ std::string prs_compress(const void* vdata, size_t size, ssize_t compression_lev
   return std::move(prs.close());
 }
 
-std::string prs_compress(const std::string& data, ssize_t compression_level, ProgressCallback progress_fn) {
+std::string prs_compress(std::string_view data, ssize_t compression_level, ProgressCallback progress_fn) {
   return prs_compress(data.data(), data.size(), compression_level, progress_fn);
 }
 
@@ -878,7 +878,7 @@ std::string prs_compress_indexed(const void* in_data_v, size_t in_size, Progress
   return std::move(w.close());
 }
 
-std::string prs_compress_indexed(const std::string& data, ProgressCallback progress_fn) {
+std::string prs_compress_indexed(std::string_view data, ProgressCallback progress_fn) {
   return prs_compress_indexed(data.data(), data.size(), progress_fn);
 }
 
@@ -974,7 +974,7 @@ PRSDecompressResult prs_decompress_with_meta(
   return {std::move(w.str()), r.where()};
 }
 
-PRSDecompressResult prs_decompress_with_meta(const std::string& data, size_t max_output_size, bool allow_unterminated) {
+PRSDecompressResult prs_decompress_with_meta(std::string_view data, size_t max_output_size, bool allow_unterminated) {
   return prs_decompress_with_meta(data.data(), data.size(), max_output_size, allow_unterminated);
 }
 
@@ -983,7 +983,7 @@ std::string prs_decompress(const void* data, size_t size, size_t max_output_size
   return std::move(ret.data);
 }
 
-std::string prs_decompress(const std::string& data, size_t max_output_size, bool allow_unterminated) {
+std::string prs_decompress(std::string_view data, size_t max_output_size, bool allow_unterminated) {
   auto ret = prs_decompress_with_meta(data.data(), data.size(), max_output_size, allow_unterminated);
   return std::move(ret.data);
 }
@@ -1036,7 +1036,7 @@ size_t prs_decompress_size(const void* data, size_t size, size_t max_output_size
   return ret;
 }
 
-size_t prs_decompress_size(const std::string& data, size_t max_output_size, bool allow_unterminated) {
+size_t prs_decompress_size(std::string_view data, size_t max_output_size, bool allow_unterminated) {
   return prs_decompress_size(data.data(), data.size(), max_output_size, allow_unterminated);
 }
 
@@ -1096,7 +1096,7 @@ void prs_disassemble(FILE* stream, const void* data, size_t size) {
   }
 }
 
-void prs_disassemble(FILE* stream, const std::string& data) {
+void prs_disassemble(FILE* stream, std::string_view data) {
   return prs_disassemble(stream, data.data(), data.size());
 }
 
@@ -1213,7 +1213,7 @@ std::string bc0_compress_optimal(const void* in_data_v, size_t in_size, Progress
   return std::move(w.close());
 }
 
-std::string bc0_compress(const std::string& data, ProgressCallback progress_fn) {
+std::string bc0_compress(std::string_view data, ProgressCallback progress_fn) {
   return bc0_compress(data.data(), data.size(), progress_fn);
 }
 
@@ -1270,7 +1270,7 @@ std::string bc0_encode(const void* in_data_v, size_t in_size) {
 // the output buffer. It is unlikely that this can be usefully exploited (e.g. for RCE) because the output pointer is
 // loaded from memory before every byte is written, so we cannot change the output pointer to any arbitrary address.
 
-std::string bc0_decompress(const std::string& data) {
+std::string bc0_decompress(std::string_view data) {
   return bc0_decompress(data.data(), data.size());
 }
 
@@ -1338,7 +1338,7 @@ std::string bc0_decompress(const void* data, size_t size) {
   return std::move(w.str());
 }
 
-void bc0_disassemble(FILE* stream, const std::string& data) {
+void bc0_disassemble(FILE* stream, std::string_view data) {
   bc0_disassemble(stream, data.data(), data.size());
 }
 

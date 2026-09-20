@@ -71,7 +71,7 @@ void WordSelectSet::parse_non_windows_t(const std::string& data, bool use_sjis) 
   {
     auto string_offset_r = r.sub(root.strings_table, sizeof(U32T<BE>) * StringTableCount);
     while (!string_offset_r.eof()) {
-      std::string raw_s = r.pget_cstr(string_offset_r.template get<U32T<BE>>());
+      std::string_view raw_s = r.pget_cstr(string_offset_r.template get<U32T<BE>>());
       this->strings.emplace_back(use_sjis ? tt_sega_sjis_to_utf8(raw_s) : tt_8859_to_utf8(raw_s));
     }
   }

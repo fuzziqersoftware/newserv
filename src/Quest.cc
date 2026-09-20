@@ -128,7 +128,7 @@ std::string decrypt_vms_v1_data_section(const void* data_section, size_t size) {
   uint32_t expected_decompressed_size = r.get_u32l();
   uint32_t seed = r.get_u32l();
 
-  std::string data = r.read(r.remaining());
+  std::string data{r.read(r.remaining())};
 
   size_t orig_size = data.size();
   data.resize((orig_size + 3) & (~3));
@@ -508,7 +508,7 @@ QuestIndex::QuestIndex(
           file_data = decode_dlq_data(phosg::load_file(file_path));
           filename.resize(filename.size() - 4);
         } else if (filename.ends_with(".bin.txt")) {
-          std::string include_dir = phosg::dirname(file_path);
+          std::string include_dir{phosg::dirname(file_path)};
           assembled = std::make_shared<AssembledQuestScript>(assemble_quest_script(
               phosg::load_file(file_path),
               {include_dir, "system/quests/includes"},
@@ -948,7 +948,7 @@ std::string decode_gci_data(
 
     } else { // Unencrypted GCI format
       r.skip(sizeof(PSOGCIDLQFileEncryptedHeader));
-      std::string compressed_data = r.readx(header.data_size - sizeof(PSOGCIDLQFileEncryptedHeader));
+      std::string compressed_data{r.readx(header.data_size - sizeof(PSOGCIDLQFileEncryptedHeader))};
       size_t decompressed_bytes = prs_decompress_size(compressed_data);
 
       size_t expected_decompressed_bytes = dlq_header.decompressed_size - 8;
@@ -990,7 +990,7 @@ std::string decode_gci_data(
       }
       r.skip(9);
 
-      std::string decrypted = r.readx(header.data_size - 40);
+      std::string decrypted{r.readx(header.data_size - 40)};
 
       // For some reason, Sega decided not to encrypt Episode 3 quest files in the same way as Episodes 1&2 quest files
       // (see above). Instead, they just wrote a fairly trivial XOR loop over the first 0x100 bytes, leaving the
@@ -1050,7 +1050,7 @@ std::string decode_dlq_data(const std::string& data) {
   // The compressed data size does not need to be a multiple of 4, but the V2 encryption (which is used for all
   // download quests, even in V3) requires the data size to be a multiple of 4. We'll just temporarily stick a few
   // bytes on the end, then throw them away later if needed.
-  std::string decrypted = r.read(r.remaining());
+  std::string decrypted{r.read(r.remaining())};
   PSOV2Encryption encr(key);
   size_t original_size = data.size();
   decrypted.resize((decrypted.size() + 3) & (~3));
