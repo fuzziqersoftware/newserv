@@ -578,7 +578,7 @@ Some commands only work for clients not in proxy sessions. The chat commands are
         * You'll see the rare seed value and floor variations when you join a game.
         * You'll be placed into the last available slot in lobbies and games instead of the first, unless you're joining a BB solo-mode game.
         * You'll be able to run any client function with `$patch`, not only those that are marked visible.
-        * You'll be able to start any quest using `$quest`, not only those that explicitly allow it. You'll also be able ot use `$quest` when there are other players in the game.
+        * You'll be able to start any quest using `$quest`, not only those that explicitly allow it. You'll also be able to use `$quest` when there are other players in the game.
         * You'll be able to join games with any PSO version, not only those for which cross-version play is normally enabled. See the "Cross-version play" section above for details on this.
     * `$readmem <address>`: Read 4 bytes from the given address and show you the values.
     * `$writemem <address> <data>`: Write data to the given address. Data is not required to be any specific size.

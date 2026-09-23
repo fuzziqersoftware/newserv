@@ -833,7 +833,7 @@ struct DeckDefinition {
   /* 80 */ uint8_t hour;
   /* 81 */ uint8_t minute;
   /* 82 */ uint8_t second;
-  /* 83 */ uint8_t unknown_a2;
+  /* 83 */ uint8_t unused;
   /* 84 */
 } __packed_ws__(DeckDefinition, 0x84);
 
