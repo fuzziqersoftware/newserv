@@ -2,7 +2,7 @@
 
 newserv is a game server, proxy, and reverse-engineering tool for Phantasy Star Online (PSO). **To quickly get started using newserv, just read the [server setup](#server-setup) and [how to connect](#how-to-connect) sections.**
 
-This project includes code that was reverse-engineered by the community in ages long past, and has been included in many projects since then. It also includes some game data from Phantasy Star Online itself, which was originally created by Sega.
+All reverse-engineering in this project is based on inspecting network sessions from the game during its official support period, as well as disassembling publicly-available game clients. The author has no access to Sega's source code or any other private data.
 
 Feel free to submit GitHub issues if you find bugs or have feature requests. I'd like to make the server as stable and complete as possible, but I can't promise that I'll respond to issues in a timely manner, because this is a personal project undertaken primarily for the fun of reverse-engineering. If you want to contribute to newserv yourself, pull requests are welcome as well.
 
@@ -55,7 +55,7 @@ At the time of its inception, Aeon was also called newserv, and you may find som
 
 Independently of this project, there are many other PSO servers out there. Those that I know of that are (or were) public are listed here in approximate chronological order:
 
-* (Early 2000s) **[Schtserv](https://schtserv.com/)**: The first public-access PSO server, written in Delphi by Schthack. Schtserv is the only other unofficial server to support Episode 3, their implementation of which is based on newserv's (which is based on Sega's).
+* (Early 2000s) **[Schtserv](https://schtserv.com/)**: The first public-access PSO server, written in Delphi by Schthack. Schtserv is the only other unofficial server to support Episode 3, their implementation of which is based on newserv's (which itself is based on Sega's embedded server code in the GC client).
 * (2005) **Khyller**: An early attempt of mine to support PSO PC, GC, and BB. See above for more details.
 * (2006) **Aeon**: My second attempt. Better than Khyller, but still unreliable.
 * (2008) **Tethealla**: A fairly extensive implementation of PSOBB, written in C by Sodaboy. The public version of Tethealla has been [officially disowned](https://www.pioneer2.net/community/threads/tethealla-server-forums-removal.26365/) as it is now more than 15 years old, but closed-source development continues. [Ephinea](https://ephinea.pioneer2.net/) is the continuation of this project. Several other modern PSOBB servers are forks of the initial public version of Tethealla as well.
@@ -532,7 +532,7 @@ There are many options available when starting a proxy session. All options are 
     * Online quests and download quests (saved as .bin/.dat files)
     * GBA games (saved as .gba files)
     * Client functions / patches (saved as .bin files and disassembled as .txt files)
-    * Player, system, and Guild Card data from BB sessions (saved as .psochar, .psosys, .psosysteam, and .psocard files)
+    * Player, system, and Guild Card data from BB sessions (saved as .psochar, .psosys, .psosystem, and .psocard files)
     * Stream file data from BB sessions (saved as ItemPMT, BattleParamEntry, ItemMagEdit, and PlyLevelTbl files)
     * Episode 3 online quests and maps (saved as .mnmd files)
     * Episode 3 download quests (saved as .mnm files)
