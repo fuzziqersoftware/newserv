@@ -8,7 +8,7 @@
 # For the normal Card Capsule Machines, there is a (price) / 6000 chance of getting a Rare Coin instead of a card, in
 # which case the generated list of cards is ultimately ignored. (That is, Machine 1 gives a 50 / 6000 = 0.83% chance of
 # a Rare Coin, Machine 2 gives a 100 / 6000 = 1.67% chance, and Machine 3 gives a 150 / 6000 = 2.5% chance, though for
-# Machine 1 the chance is actually a bit higher, as described below). You can't get a Rare Coin from the Super Card
+# Machine 1 the chance is actually slightly higher, as described below). You can't get a Rare Coin from the Super Card
 # Capsule Machine.
 
 # If you play the game and don't get a Rare Coin, the game first chooses a result rank according to the following
@@ -21,8 +21,10 @@
 # These probabilities are all relative within each row; for example, Machine 1 chooses result rank R4 with probability
 # 15 / (25 + 25 + 25 + 25 + 15) = 15 / 115 = 13.04%. After choosing a result rank, the game filters the card list so it
 # contains only cards with that rank, then chooses one of those uniformly at random. If there are no cards of that
-# rank, it chooses an N4 card from the list uniformly at random. If this happens and there are no N4 cards in the list
-# (which is possible for Machine 1), it gives you a Rare Coin.
+# rank, it chooses an N4 card from the list uniformly at random. If this happens and there are no N4 cards in the list,
+# it gives you a Rare Coin. (This is possible for Machine 1; the chance that no N4 cards are chosen is 0.72%, but
+# getting a Rare Coin this way also requires the game to choose N4 when the machine is played, or requires the game to
+# choose no cards for another rank as well, and choose that rank when the machine is played.)
 
 # So, if you see a specific card in the list before playing the game, the probability of getting that card is:
 #   (rank probability from above table / sum of all rank probabilities in the same row) *
@@ -45,10 +47,10 @@ start:
   # Meseta prices
   .data     <VERS 0x80487140 0x80487E80 0x8048A260>
   .data     0x00000010
-  .data     50
-  .data     100
-  .data     150
-  .data     0xFFFFFFFF
+  .data     50  # Card Capsule Machine 1
+  .data     100  # Card Capsule Machine 2
+  .data     150  # Card Capsule Machine 3
+  .data     0xFFFFFFFF  # Super Card Capsule Machine (unused; no Meseta transaction occurs if you have a Rare Coin)
 
   # Probabilities of getting each rank for each machine
   .data     <VERS 0x80487150 0x80487E90 0x8048A270>
@@ -103,7 +105,8 @@ start:
   #   int16_t min_clv; // -1 = limit doesn't apply
   #   int16_t max_clv; // -1 = limit doesn't apply
   #   uint16_t chance_to_appear_in_input; // In 0.01% increments, so 10000 = 100%
-  # The values in the data below are the defaults.
+  # The values in the data below are the defaults. You can specify fewer entries by moving the end sentinel up, but you
+  # can't add more entries - doing so would overwrite unrelated data.
 
   # Card Capsule Machine 1
   .data     <VERS 0x80487200 0x80487F40 0x8048A320>
@@ -176,7 +179,7 @@ start:
   .binary   0148 FFFF FFFF 2710  # (100%; R1) Support
   .binary   0198 FFFF FFFF 2710  # (100%; N2) Gal Wind (impossible to get, since probability of N2 is 0 for this machine)
   .binary   023D FFFF FFFF 2710  # (100%; R2) Duel Guard
-  .binary   00CA FFFF FFFF 2710  # (100%; N4) Protection (there are no R3 cards in the list, so this is also what you get if the game chooses R3)
+  .binary   00CA FFFF FFFF 2710  # (100%; N4) Protection (there are no R3 cards in the list, so this is what you get if the game chooses R3)
   .binary   00CF FFFF FFFF 2710  # (100%; N1) Companion
   .binary   FFFF FFFF FFFF FFFF  # End of list (required)
 
