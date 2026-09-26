@@ -5,13 +5,13 @@
 # to the cards' ranks. This list of cards is shown to you with the message "This time, cards like these have been put
 # inside."
 
-# For the normal Card Capsule Machines, there is a (price) / 6000 chance of getting a Lucky Coin instead of a card, in
+# For the normal Card Capsule Machines, there is a (price) / 6000 chance of getting a Rare Coin instead of a card, in
 # which case the generated list of cards is ultimately ignored. (That is, Machine 1 gives a 50 / 6000 = 0.83% chance of
-# a Lucky Coin, Machine 2 gives a 100 / 6000 = 1.67% chance, and Machine 3 gives a 150 / 6000 = 2.5% chance, though for
-# Machine 1 the chance is actually a bit higher, as described below). You can't get a Lucky Coin from the Super Card
+# a Rare Coin, Machine 2 gives a 100 / 6000 = 1.67% chance, and Machine 3 gives a 150 / 6000 = 2.5% chance, though for
+# Machine 1 the chance is actually a bit higher, as described below). You can't get a Rare Coin from the Super Card
 # Capsule Machine.
 
-# If you play the game and don't get a Lucky Coin, the game first chooses a result rank according to the following
+# If you play the game and don't get a Rare Coin, the game first chooses a result rank according to the following
 # probabilities:
 #                               N4  N3  N2  N1  R4  R3  R2  R1   S  SS  TOTAL
 #   Card Capsule Machine 1      25  25  25  25  15                        115
@@ -22,7 +22,7 @@
 # 15 / (25 + 25 + 25 + 25 + 15) = 15 / 115 = 13.04%. After choosing a result rank, the game filters the card list so it
 # contains only cards with that rank, then chooses one of those uniformly at random. If there are no cards of that
 # rank, it chooses an N4 card from the list uniformly at random. If this happens and there are no N4 cards in the list
-# (which is possible for Machine 1), it gives you a Lucky Coin.
+# (which is possible for Machine 1), it gives you a Rare Coin.
 
 # So, if you see a specific card in the list before playing the game, the probability of getting that card is:
 #   (rank probability from above table / sum of all rank probabilities in the same row) *
