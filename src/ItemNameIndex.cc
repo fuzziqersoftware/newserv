@@ -166,7 +166,7 @@ std::string ItemNameIndex::describe_item(const ItemData& item, uint8_t flags) co
       technique_name = std::format("!TD:{:02X}", item.data1[4]);
     }
     // Hide the level for Reverser and Ryuker, unless the level isn't 1
-    if ((item.data1[2] == 0) && ((item.data1[4] == 0x0E) || (item.data1[4] == 0x11))) {
+    if (name_only || ((item.data1[2] == 0) && ((item.data1[4] == 0x0E) || (item.data1[4] == 0x11)))) {
       ret_tokens.emplace_back(std::format("Disk:{}", technique_name));
     } else {
       ret_tokens.emplace_back(std::format("Disk:{} Lv.{}", technique_name, item.data1[2] + 1));
@@ -358,7 +358,7 @@ std::string ItemNameIndex::describe_item(const ItemData& item, uint8_t flags) co
 
   } else if (item.data1[0] == 0x03) {
     // For tools, add the amount (if applicable)
-    if (item.max_stack_size(*this->limits) > 1) {
+    if (!name_only && (item.max_stack_size(*this->limits) > 1)) {
       ret_tokens.emplace_back(std::format("x{}", item.data1[5]));
     }
   }
@@ -803,14 +803,14 @@ void ItemNameIndex::print_table(FILE* stream) const {
 
       const auto& stat_boost = pmt->get_stat_boost(w.stat_boost_entry_index);
 
-      std::string tech_boost_str;
+      std::string tech_boosts_str;
       if (w.tech_boost_entry_index < pmt->num_tech_boosts()) {
         const auto& tech_boost = pmt->get_tech_boost(w.tech_boost_entry_index);
-        tech_boost_str = std::format("({:02X}:{:02X}:{:g},{:02X}:{:02X}:{:g},{:02X}:{:02X}:{:g})",
+        tech_boosts_str = std::format("({:02X}:{:02X}:{:g},{:02X}:{:02X}:{:g},{:02X}:{:02X}:{:g})",
             tech_boost.tech_num1, tech_boost.flags1, tech_boost.amount1, tech_boost.tech_num2, tech_boost.flags2,
             tech_boost.amount2, tech_boost.tech_num3, tech_boost.flags3, tech_boost.amount3);
       }
-      tech_boost_str.resize(40, ' ');
+      tech_boosts_str.resize(40, ' ');
 
       phosg::fwrite_fmt(stream,
           // CODE           =>     ID   TYPE   SKIN  PTS   FLAG ATP- ATP+ ATPR MSTR ATAR  MST  GND     PH     SP  ATA
@@ -853,7 +853,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
           w.unknown_a4,
           w.unknown_a5,
           w.tech_boost_entry_index,
-          tech_boost_str,
+          tech_boosts_str,
           w.behavior_flags,
           weapon_class,
           stars,
@@ -883,14 +883,14 @@ void ItemNameIndex::print_table(FILE* stream) const {
 
       auto& stat_boost = pmt->get_stat_boost(a.stat_boost_entry_index);
 
-      std::string tech_boost_str;
+      std::string tech_boosts_str;
       if (a.tech_boost_entry_index < pmt->num_tech_boosts()) {
         const auto& tech_boost = pmt->get_tech_boost(a.tech_boost_entry_index);
-        tech_boost_str = std::format("({:02X}:{:02X}:{:g},{:02X}:{:02X}:{:g},{:02X}:{:02X}:{:g})",
+        tech_boosts_str = std::format("({:02X}:{:02X}:{:g},{:02X}:{:02X}:{:g},{:02X}:{:02X}:{:g})",
             tech_boost.tech_num1, tech_boost.flags1, tech_boost.amount1, tech_boost.tech_num2, tech_boost.flags2,
             tech_boost.amount2, tech_boost.tech_num3, tech_boost.flags3, tech_boost.amount3);
       }
-      tech_boost_str.resize(40, ' ');
+      tech_boosts_str.resize(40, ' ');
 
       phosg::fwrite_fmt(stream, "  01{:02X}{:02X} => {:08X} {:04X} {:04X} {:6} {:5} {:5} {:02X} {:02X} {:04X} {:3} {:3} {:3} {:3} {:3} {:3} {:3} {:3} {:02X}({:02X}:{:04X},{:02X}:{:04X}) {:02X}{} {:02X} {:02X} {:2}* {} {}\n",
           data1_1,
@@ -918,7 +918,7 @@ void ItemNameIndex::print_table(FILE* stream) const {
           stat_boost.stat2,
           stat_boost.amount2,
           a.tech_boost_entry_index,
-          tech_boost_str,
+          tech_boosts_str,
           a.flags_type,
           a.unknown_a4,
           stars,
@@ -1247,4 +1247,624 @@ void ItemNameIndex::print_table(FILE* stream) const {
     phosg::fwrite_fmt(stream, "  {:02X} => {:02X} {:02X} {:02X} {:02X}\n",
         z, rs.data1_1, rs.data1_2, rs.weapon_range_index, rs.unknown_a1);
   }
+}
+
+std::string ItemNameIndex::generate_item_parameter_table_html() const {
+  std::deque<std::string> blocks;
+  auto pmt = this->item_parameter_table;
+
+  blocks.emplace_back("\
+<html><head><title>PSO item parameter table</title><style>\n\
+body {\n\
+  background-color: #222222;\n\
+  color: #EEEEEE;\n\
+  font-family: monospace;\n\
+}\n\
+td {\n\
+  background-color: #333333;\n\
+  color: #EEEEEE;\n\
+  padding: 4px;\n\
+}\n\
+th {\n\
+  background-color: #444444;\n\
+  color: #EEEEEE;\n\
+  font-weight: bold;\n\
+  padding: 4px;\n\
+}\n\
+.right {\n\
+  text-align: right;\n\
+}\n\
+</style></head><body>");
+
+  auto format_usability_flags = [](uint8_t flags) -> std::string {
+    switch (flags) {
+      case 0x00:
+        return "None";
+      case 0x49:
+        return "HUmar only";
+      case 0xA1:
+        return "HUnewearl only";
+      case 0x51:
+        return "HUcast only";
+      case 0x91:
+        return "HUcaseal only";
+      case 0x4A:
+        return "RAmar only";
+      case 0x8A:
+        return "RAmarl only";
+      case 0x52:
+        return "RAcast only";
+      case 0x92:
+        return "RAcaseal only";
+      case 0x4C:
+        return "FOmar only";
+      case 0x8C:
+        return "FOmarl only";
+      case 0x64:
+        return "FOnewm only";
+      case 0xA4:
+        return "FOnewearl only";
+      case 0xFF:
+        return "All";
+      default:
+        std::vector<std::string> tokens;
+        switch (flags & 0xC0) {
+          case 0x00:
+            tokens.emplace_back("(No gender)");
+            break;
+          case 0x40:
+            tokens.emplace_back("Male");
+            break;
+          case 0x80:
+            tokens.emplace_back("Female");
+            break;
+        }
+        switch (flags & 0x38) {
+          case 0x00:
+            tokens.emplace_back("(No race)");
+            break;
+          case 0x08:
+            tokens.emplace_back("Human");
+            break;
+          case 0x10:
+            tokens.emplace_back("Android");
+            break;
+          case 0x20:
+            tokens.emplace_back("Newman");
+            break;
+          case 0x18:
+            tokens.emplace_back("non-Newman");
+            break;
+          case 0x28:
+            tokens.emplace_back("non-Android");
+            break;
+          case 0x30:
+            tokens.emplace_back("non-Human");
+            break;
+        }
+        switch (flags & 0x07) {
+          case 0x00:
+            tokens.emplace_back("(No class)");
+            break;
+          case 0x01:
+            tokens.emplace_back("Hunter");
+            break;
+          case 0x02:
+            tokens.emplace_back("Ranger");
+            break;
+          case 0x04:
+            tokens.emplace_back("Force");
+            break;
+          case 0x03:
+            tokens.emplace_back("non-Force");
+            break;
+          case 0x05:
+            tokens.emplace_back("non-Ranger");
+            break;
+          case 0x06:
+            tokens.emplace_back("non-Hunter");
+            break;
+        }
+        return phosg::join(tokens, ", ");
+    }
+  };
+
+  auto format_stat_boost = [&pmt](size_t entry_index) -> std::string {
+    std::vector<std::string> tokens;
+    if (entry_index < pmt->num_stat_boosts()) {
+      const auto& stat_boost = pmt->get_stat_boost(entry_index);
+      std::array<const char*, 0x11> stat_names{
+          "(Nothing)", "ATP+", "ATA+", "EVP+", "DFP+", "MST+", "HP+", "LCK+", "ALL+",
+          "ATP-", "ATA-", "EVP-", "DFP-", "MST-", "HP-", "LCK-", "ALL-"};
+      if (stat_boost.stat1 && stat_boost.stat1 < 0x11) {
+        tokens.emplace_back(std::format("{}{}", stat_names[stat_boost.stat1], stat_boost.amount1));
+      }
+      if (stat_boost.stat2 && stat_boost.stat2 < 0x11) {
+        tokens.emplace_back(std::format("{}{}", stat_names[stat_boost.stat2], stat_boost.amount2));
+      }
+    }
+    return phosg::join(tokens, ", ");
+  };
+
+  auto format_tech_boost = [&pmt](size_t entry_index) -> std::string {
+    std::vector<std::string> tokens;
+    if (entry_index < pmt->num_tech_boosts()) {
+      const auto& tech_boost = pmt->get_tech_boost(entry_index);
+      auto render_boost = [&tokens](uint8_t tech_num, uint8_t flags, float amount) -> void {
+        if (flags & 1) {
+          tokens.emplace_back(std::format("{} pierce", name_for_technique(tech_num)));
+        } else if (flags) {
+          tokens.emplace_back(std::format("{} FLAGS:{:02X}", name_for_technique(tech_num), flags));
+        }
+        if (amount > 0) {
+          tokens.emplace_back(std::format("{} +{:g}%", name_for_technique(tech_num), amount * 100));
+        } else if (amount < 0) {
+          tokens.emplace_back(std::format("{} -{:g}%", name_for_technique(tech_num), -amount * 100));
+        }
+      };
+      if (tech_boost.tech_num1 != 0xFF) {
+        render_boost(tech_boost.tech_num1, tech_boost.flags1, tech_boost.amount1);
+      }
+      if (tech_boost.tech_num2 != 0xFF) {
+        render_boost(tech_boost.tech_num2, tech_boost.flags2, tech_boost.amount2);
+      }
+      if (tech_boost.tech_num3 != 0xFF) {
+        render_boost(tech_boost.tech_num3, tech_boost.flags3, tech_boost.amount3);
+      }
+    }
+    return phosg::join(tokens, ", ");
+  };
+
+  auto format_stars = [](uint8_t stars) -> std::string {
+    std::string ret = "<span style=\"color: #3253e6\">";
+    for (size_t z = 0; z < std::min<uint8_t>(stars, 9); z++) {
+      ret += "&starf;";
+    }
+    ret += "</span>";
+    if (stars > 9) {
+      ret += "<span style=\"color: #b4ad29\">";
+      for (size_t z = 9; z < stars; z++) {
+        ret += "&starf;";
+      }
+      ret += "</span>";
+    }
+    return ret;
+  };
+
+  auto format_name_cell = [this, &pmt](const ItemData& item) -> std::string {
+    std::string name = this->describe_item(item, (item.data1[0] == 0) ? 0 : Flag::NAME_ONLY);
+    if (item.is_s_rank_weapon()) {
+      return std::format("<td style=\"color: #fe3c28\">{}</td>", name);
+    } else if (pmt->is_item_rare(item)) {
+      return std::format("<td style=\"color: #ffea00\">{}</td>", name);
+    } else {
+      return std::format("<td>{}</td>", name);
+    }
+  };
+
+  blocks.emplace_back("<table><tr><th colspan=\"14\">WEAPONS</th></tr>");
+  blocks.emplace_back("<tr><th>Hex</th><th>Team pts</th><th>Usability</th><th>Requirements</th><th>ATP</th><th>ATA</th><th>MST</th><th>Max grind</th><th>Special</th><th>Stat boosts</th><th>Tech boosts</th><th>Weapon class</th><th>Stars</th><th>Name</th></tr>");
+  for (size_t data1_1 = 0; data1_1 < pmt->num_weapon_classes(); data1_1++) {
+    uint8_t weapon_class = pmt->get_weapon_kind(data1_1);
+    size_t data1_2_limit = pmt->num_weapons_in_class(data1_1);
+    for (size_t data1_2 = 0; data1_2 < data1_2_limit; data1_2++) {
+      const auto& w = pmt->get_weapon(data1_1, data1_2);
+      uint8_t stars = pmt->get_item_stars(w.id);
+
+      ItemData item;
+      item.data1[0] = 0x00;
+      item.data1[1] = data1_1;
+      item.data1[2] = data1_2;
+
+      std::vector<std::string> requirements_tokens;
+      if (w.atp_required) {
+        requirements_tokens.emplace_back(std::format("{} ATP", w.atp_required));
+      }
+      if (w.ata_required) {
+        requirements_tokens.emplace_back(std::format("{} ATA", w.ata_required));
+      }
+      if (w.mst_required) {
+        requirements_tokens.emplace_back(std::format("{} MST", w.mst_required));
+      }
+
+      static constexpr std::array<const char*, 19> weapon_class_names{
+          "fist", "saber", "sword", "dagger", "partisan", "slicer", "handgun", "rifle", "mechgun", "shot", "cane",
+          "rod", "wand", "claw", "double saber", "twin swords", "katana", "launcher", "cards"};
+      std::string weapon_class_str = (weapon_class < weapon_class_names.size())
+          ? weapon_class_names[weapon_class]
+          : std::format("{:02X}", weapon_class);
+
+      blocks.emplace_back("<tr>");
+      blocks.emplace_back(std::format("<td>00{:02X}{:02X}</td>", data1_1, data1_2));
+      blocks.emplace_back(std::format("<td class=\"right\">{}</td>", w.team_points));
+      blocks.emplace_back(std::format("<td>{}</td>", format_usability_flags(w.usability_flags)));
+      blocks.emplace_back(std::format("<td>{}</td>", phosg::join(requirements_tokens, ", ")));
+      if (w.atp_min == 0 && w.atp_max == 0) {
+        blocks.emplace_back("<td></td>");
+      } else if (w.atp_min == w.atp_max) {
+        blocks.emplace_back(std::format("<td class=\"right\">{}</td>", w.atp_min));
+      } else {
+        blocks.emplace_back(std::format("<td class=\"right\">{}-{}</td>", w.atp_min, w.atp_max));
+      }
+      if (w.ata == 0) {
+        blocks.emplace_back("<td></td>");
+      } else {
+        blocks.emplace_back(std::format("<td class=\"right\">{}</td>", w.ata));
+      }
+      if (w.mst == 0) {
+        blocks.emplace_back("<td></td>");
+      } else {
+        blocks.emplace_back(std::format("<td class=\"right\">{}</td>", w.mst));
+      }
+      blocks.emplace_back(std::format("<td class=\"right\">{}</td>", w.max_grind));
+      if (w.special) {
+        blocks.emplace_back(std::format("<td>{}</td>", name_for_weapon_special.at(w.special)));
+      } else {
+        blocks.emplace_back("<td></td>");
+      }
+      blocks.emplace_back(std::format("<td>{}</td>", format_stat_boost(w.stat_boost_entry_index)));
+      blocks.emplace_back(std::format("<td>{}</td>", format_tech_boost(w.tech_boost_entry_index)));
+      blocks.emplace_back(std::format("<td>{}</td>", weapon_class_str));
+      blocks.emplace_back(std::format("<td>{}</td>", format_stars(stars)));
+      blocks.emplace_back(format_name_cell(item));
+      blocks.emplace_back("</tr>");
+    }
+  }
+  blocks.emplace_back("</table>");
+
+  blocks.emplace_back("<table><tr><th colspan=\"15\">ARMORS</th></tr>");
+  blocks.emplace_back("<tr><th>Hex</th><th>Team pts</th><th>Usability</th><th>Req. level</th><th>DFP</th><th>EVP</th><th>EFR</th><th>ETH</th><th>EIC</th><th>EDK</th><th>ELT</th><th>Stat boosts</th><th>Tech boosts</th><th>Stars</th><th>Name</th></tr>");
+  for (size_t data1_1 = 1; data1_1 < 3; data1_1++) {
+    size_t data1_2_limit = pmt->num_armors_or_shields_in_class(data1_1);
+    for (size_t data1_2 = 0; data1_2 < data1_2_limit; data1_2++) {
+      const auto& a = pmt->get_armor_or_shield(data1_1, data1_2);
+      uint8_t stars = pmt->get_item_stars(a.id);
+
+      ItemData item;
+      item.data1[0] = 0x01;
+      item.data1[1] = data1_1;
+      item.data1[2] = data1_2;
+
+      blocks.emplace_back("<tr>");
+      blocks.emplace_back(std::format("<td>01{:02X}{:02X}</td>", data1_1, data1_2));
+      blocks.emplace_back(std::format("<td class=\"right\">{}</td>", a.team_points));
+      blocks.emplace_back(std::format("<td>{}</td>", format_usability_flags(a.usability_flags)));
+      blocks.emplace_back(std::format("<td class=\"right\">{}</td>", a.required_level + 1));
+      if (a.dfp_range == 0 && a.dfp == 0) {
+        blocks.emplace_back("<td></td>");
+      } else if (a.dfp_range == 0) {
+        blocks.emplace_back(std::format("<td class=\"right\">{}</td>", a.dfp));
+      } else {
+        blocks.emplace_back(std::format("<td class=\"right\">{}-{}</td>", a.dfp, a.dfp + a.dfp_range));
+      }
+      if (a.evp_range == 0 && a.evp == 0) {
+        blocks.emplace_back("<td></td>");
+      } else if (a.evp_range == 0) {
+        blocks.emplace_back(std::format("<td class=\"right\">{}</td>", a.evp));
+      } else {
+        blocks.emplace_back(std::format("<td class=\"right\">{}-{}</td>", a.evp, a.evp + a.evp_range));
+      }
+      blocks.emplace_back(a.efr ? std::format("<td class=\"right\">{}</td>", a.efr) : "<td></td>");
+      blocks.emplace_back(a.eth ? std::format("<td class=\"right\">{}</td>", a.eth) : "<td></td>");
+      blocks.emplace_back(a.eic ? std::format("<td class=\"right\">{}</td>", a.eic) : "<td></td>");
+      blocks.emplace_back(a.edk ? std::format("<td class=\"right\">{}</td>", a.edk) : "<td></td>");
+      blocks.emplace_back(a.elt ? std::format("<td class=\"right\">{}</td>", a.elt) : "<td></td>");
+      blocks.emplace_back(std::format("<td>{}</td>", format_stat_boost(a.stat_boost_entry_index)));
+      blocks.emplace_back(std::format("<td>{}</td>", format_tech_boost(a.tech_boost_entry_index)));
+      blocks.emplace_back(std::format("<td>{}</td>", format_stars(stars)));
+      blocks.emplace_back(format_name_cell(item));
+      blocks.emplace_back("</tr>");
+    }
+  }
+  blocks.emplace_back("</table>");
+
+  blocks.emplace_back("<table><tr><th colspan=\"5\">UNITS</th></tr>");
+  blocks.emplace_back("<tr><th>Hex</th><th>Team pts</th><th>Stats</th><th>Stars</th><th>Name</th></tr>");
+  for (size_t data1_2 = 0; data1_2 < pmt->num_units(); data1_2++) {
+    const auto& u = pmt->get_unit(data1_2);
+    uint8_t stars = pmt->get_item_stars(u.id);
+
+    ItemData item;
+    item.data1[0] = 0x01;
+    item.data1[1] = 0x03;
+    item.data1[2] = data1_2;
+
+    std::string stat_str;
+    switch (u.stat) {
+      case 0x00:
+        stat_str = std::format("ATP +{}", u.amount);
+        break;
+      case 0x01:
+        stat_str = std::format("MST +{}", u.amount);
+        break;
+      case 0x02:
+        stat_str = std::format("ATA +{:g}", static_cast<float>(u.amount) / 10);
+        break;
+      case 0x03:
+        stat_str = std::format("EVP +{}", u.amount);
+        break;
+      case 0x04:
+        stat_str = std::format("HP +{}", u.amount);
+        break;
+      case 0x05:
+        stat_str = std::format("TP +{}", u.amount);
+        break;
+      case 0x06:
+        stat_str = std::format("DFP +{}", u.amount);
+        break;
+      case 0x07:
+        stat_str = std::format("LCK +{}", u.amount);
+        break;
+      case 0x08:
+        stat_str = std::format("ATP/MST/EVP/DFP/LCK +{}, ATA +{:g}", u.amount, static_cast<float>(u.amount) / 10);
+        break;
+      case 0x09:
+        stat_str = std::format("EFR +{}", u.amount);
+        break;
+      case 0x0A:
+        stat_str = std::format("EIC +{}", u.amount);
+        break;
+      case 0x0B:
+        stat_str = std::format("ETH +{}", u.amount);
+        break;
+      case 0x0C:
+        stat_str = std::format("ELT +{}", u.amount);
+        break;
+      case 0x0D:
+        stat_str = std::format("EDK +{}", u.amount);
+        break;
+      case 0x0E:
+        stat_str = std::format("All resists +{}", u.amount);
+        break;
+      case 0x0F:
+        stat_str = std::format("HP generation +1 / {}sec", u.amount);
+        break;
+      case 0x10:
+        stat_str = std::format("TP generation +1 / {}sec", u.amount);
+        break;
+      case 0x11:
+        stat_str = std::format("PB generation +1 / {}sec", u.amount);
+        break;
+      case 0x12:
+        stat_str = std::format("Tech levels +{}", u.amount);
+        break;
+      case 0x13:
+        stat_str = std::format("Attack speed +{}%", u.amount);
+        break;
+      case 0x14:
+        stat_str = "Immunity to negative status effects";
+        break;
+      case 0x15:
+        stat_str = "Permanent trap vision";
+        break;
+      case 0x16:
+        stat_str = "Immunity to poison";
+        break;
+      case 0x17:
+        stat_str = "Immunity to paralysis";
+        break;
+      case 0x18:
+        stat_str = "Immunity to shock";
+        break;
+      case 0x19:
+        stat_str = "Immunity to slow";
+        break;
+      case 0x1A:
+        stat_str = "Immunity to confusion";
+        break;
+      case 0x1B:
+        stat_str = "Immunity to freezing";
+        break;
+      default:
+        stat_str = std::format("{:02X} +{}", u.stat, u.amount);
+    }
+
+    blocks.emplace_back("<tr>");
+    blocks.emplace_back(std::format("<td>0103{:02X}</td>", data1_2));
+    blocks.emplace_back(std::format("<td class=\"right\">{}</td>", u.team_points));
+    blocks.emplace_back(std::format("<td>{}</td>", stat_str));
+    blocks.emplace_back(std::format("<td>{}</td>", format_stars(stars)));
+    blocks.emplace_back(format_name_cell(item));
+    blocks.emplace_back("</tr>");
+  }
+  blocks.emplace_back("</table>");
+
+  blocks.emplace_back("<table><tr><th colspan=\"9\">MAGS</th></tr>");
+  blocks.emplace_back("<tr><th>Hex</th><th>Usability</th><th>Feed table</th><th>PB</th><th>On PB full</th><th>On low HP</th><th>On death</th><th>On boss arena</th><th>Name</th></tr>");
+  for (size_t data1_1 = 0; data1_1 < pmt->num_mags(); data1_1++) {
+    const auto& m = pmt->get_mag(data1_1);
+
+    ItemData item;
+    item.data1[0] = 0x02;
+    item.data1[1] = data1_1;
+    item.data1[2] = 0x00;
+
+    static constexpr std::array<const char*, 6> pb_names{
+        "Farlla", "Estlla", "Golla", "Pilla", "Leilla", "Mylla & Youlla"};
+
+    auto format_mag_effect = [](uint8_t effect, uint8_t flag, uint8_t activation) -> std::string {
+      std::string activation_str;
+      switch (flag) {
+        case 0:
+          activation_str = std::format("{}%", activation);
+          break;
+        case 1:
+          activation_str = std::format("({}+SS)%", activation);
+          break;
+        case 2:
+          activation_str = "SS%";
+          break;
+        case 3:
+          activation_str = std::format("{}%", activation - 10);
+          break;
+        case 4:
+          activation_str = "(SS-10)%";
+          break;
+        default:
+          activation_str = std::format("!{:02X} {}%", flag, activation - 10);
+      }
+      switch (effect) {
+        case 0x00:
+          return "";
+        case 0x04:
+          return std::format("Shifta+Deband {}", activation_str);
+        case 0x06:
+          return std::format("Resta Lv.((IQ/40)+1) {}", activation_str);
+        case 0x07:
+          return std::format("Reverser {}", activation_str);
+        case 0x08:
+          return std::format("Invincibility 30sec {}", activation_str);
+        default:
+          return std::format("!{:02X} {}", effect, activation_str);
+      }
+    };
+
+    blocks.emplace_back("<tr>");
+    blocks.emplace_back(std::format("<td>02{:02X}</td>", data1_1));
+    blocks.emplace_back(std::format("<td>{}</td>", format_usability_flags(m.usability_flags)));
+    blocks.emplace_back(std::format("<td>Table {}</td>", m.feed_table, m.feed_table));
+    blocks.emplace_back(std::format("<td>{}</td>", (m.photon_blast == 0xFF) ? "" : pb_names.at(m.photon_blast)));
+    blocks.emplace_back(std::format("<td>{}</td>", format_mag_effect(m.on_pb_full, m.on_pb_full_flag, m.activation)));
+    blocks.emplace_back(std::format("<td>{}</td>", format_mag_effect(m.on_low_hp, m.on_low_hp_flag, m.activation)));
+    blocks.emplace_back(std::format("<td>{}</td>", format_mag_effect(m.on_death, m.on_death_flag, m.activation)));
+    blocks.emplace_back(std::format("<td>{}</td>", format_mag_effect(m.on_boss, m.on_boss_flag, m.activation)));
+    blocks.emplace_back(format_name_cell(item));
+    blocks.emplace_back("</tr>");
+  }
+  blocks.emplace_back("</table>");
+
+  blocks.emplace_back("<table><tr><th colspan=\"7\">TOOLS</th></tr>");
+  blocks.emplace_back("<tr><th>Hex</th><th>Team pts</th><th>Amount</th><th>Tech</th><th>Cost</th><th>Flags</th><th>Name</th></tr>");
+  for (size_t data1_1 = 0; data1_1 < pmt->num_tool_classes(); data1_1++) {
+    size_t data1_2_limit = pmt->num_tools_in_class(data1_1);
+    for (size_t data1_2 = 0; data1_2 < data1_2_limit; data1_2++) {
+      const auto& t = pmt->get_tool(data1_1, data1_2);
+
+      ItemData item;
+      item.data1[0] = 0x03;
+      item.data1[1] = data1_1;
+      item.data1[(data1_1 == 0x02) ? 4 : 2] = data1_2;
+      item.set_tool_item_amount(*this->limits, 1);
+
+      std::vector<std::string> flags_tokens;
+      if (!(t.item_flags & 0x01)) {
+        flags_tokens.emplace_back("unusable");
+      }
+      if (!(t.item_flags & 0x08)) {
+        flags_tokens.emplace_back("unusable by Androids");
+      }
+      if (!(t.item_flags & 0x10)) {
+        flags_tokens.emplace_back("unusable in city");
+      }
+      if (!(t.item_flags & 0x20)) {
+        flags_tokens.emplace_back("unusable in boss arenas");
+      }
+      if (!(t.item_flags & 0x40)) {
+        flags_tokens.emplace_back("unusable in Challenge");
+      }
+      if (t.item_flags & 0x80) {
+        flags_tokens.emplace_back("rare");
+      }
+
+      blocks.emplace_back("<tr>");
+      blocks.emplace_back(std::format("<td>03{:02X}{:02X}</td>", data1_1, data1_2));
+      blocks.emplace_back(std::format("<td class=\"right\">{}</td>", t.team_points));
+      blocks.emplace_back(std::format("<td class=\"right\">{}</td>", t.amount));
+      if (data1_1 == 2) {
+        blocks.emplace_back(std::format("<td>{}</td>", name_for_technique(t.tech)));
+      } else {
+        blocks.emplace_back("<td></td>");
+      }
+      blocks.emplace_back(std::format("<td class=\"right\">{}</td>", t.cost));
+      blocks.emplace_back(std::format("<td>{}</td>", phosg::join(flags_tokens, ", ")));
+      blocks.emplace_back(format_name_cell(item));
+      blocks.emplace_back("</tr>");
+    }
+  }
+  blocks.emplace_back("</table>");
+
+  blocks.emplace_back("<table><tr><th colspan=\"49\">MAG FEED TABLES</th></tr>");
+  blocks.emplace_back("<tr><th>Item</th><th colspan=\"6\">Table 0</th><th colspan=\"6\">Table 1</th><th colspan=\"6\">Table 2</th><th colspan=\"6\">Table 3</th><th colspan=\"6\">Table 4</th><th colspan=\"6\">Table 5</th><th colspan=\"6\">Table 6</th><th colspan=\"6\">Table 7</th></tr>");
+  blocks.emplace_back("<tr><th></th><th>DEF</th><th>POW</th><th>DEX</th><th>MIND</th><th>Sync</th><th>IQ</th><th>DEF</th><th>POW</th><th>DEX</th><th>MIND</th><th>Sync</th><th>IQ</th><th>DEF</th><th>POW</th><th>DEX</th><th>MIND</th><th>Sync</th><th>IQ</th><th>DEF</th><th>POW</th><th>DEX</th><th>MIND</th><th>Sync</th><th>IQ</th><th>DEF</th><th>POW</th><th>DEX</th><th>MIND</th><th>Sync</th><th>IQ</th><th>DEF</th><th>POW</th><th>DEX</th><th>MIND</th><th>Sync</th><th>IQ</th><th>DEF</th><th>POW</th><th>DEX</th><th>MIND</th><th>Sync</th><th>IQ</th><th>DEF</th><th>POW</th><th>DEX</th><th>MIND</th><th>Sync</th><th>IQ</th></tr>");
+  for (size_t which = 0; which < 11; which++) {
+    static constexpr const char* names[11] = {
+        "Monomate", "Dimate", "Trimate", "Monofluid", "Difluid", "Trifluid", "Antidote", "Antiparalysis",
+        "Sol Atomizer", "Moon Atomizer", "Star Atomizer"};
+    blocks.emplace_back("<tr>");
+    blocks.emplace_back(std::format("<th>{}</th>", names[which]));
+    for (size_t table_index = 0; table_index < 8; table_index++) {
+      const auto& res = pmt->get_mag_feed_result(table_index, which);
+      blocks.emplace_back(std::format("<td class=\"right\">{}</td>", res.def));
+      blocks.emplace_back(std::format("<td class=\"right\">{}</td>", res.pow));
+      blocks.emplace_back(std::format("<td class=\"right\">{}</td>", res.dex));
+      blocks.emplace_back(std::format("<td class=\"right\">{}</td>", res.mind));
+      blocks.emplace_back(std::format("<td class=\"right\">{}%</td>", res.synchro));
+      blocks.emplace_back(std::format("<td class=\"right\">{}</td>", res.iq));
+    }
+    blocks.emplace_back("</tr>");
+  }
+  blocks.emplace_back("</table>");
+
+  if (!pmt->item_combinations_index().empty()) {
+    blocks.emplace_back("<table><tr><th colspan=\"10\">ITEM COMBINATIONS</th></tr>");
+    blocks.emplace_back("<tr><th colspan=\"2\">Used item</th><th colspan=\"2\">Equipped item</th><th>Req. mag level</th><th>Req. grind</th><th>Req. player level</th><th>Req. class</th><th colspan=\"2\">Result item</th></tr>");
+    for (const auto& [_, used_item_index] : pmt->item_combinations_index()) {
+      for (const auto& [_, combo] : used_item_index) {
+        ItemData used_item, equipped_item, result_item;
+        for (size_t z = 0; z < 3; z++) {
+          used_item.data1[z] = combo->used_item[z];
+          equipped_item.data1[z] = combo->equipped_item[z];
+          result_item.data1[z] = combo->result_item[z];
+        }
+        blocks.emplace_back("<tr>");
+        blocks.emplace_back(std::format("<td>{:02X}{:02X}{:02X}</td>", used_item.data1[0], used_item.data1[1], used_item.data1[2]));
+        blocks.emplace_back(format_name_cell(used_item));
+        blocks.emplace_back(std::format("<td>{:02X}{:02X}{:02X}</td>", equipped_item.data1[0], equipped_item.data1[1], equipped_item.data1[2]));
+        blocks.emplace_back(format_name_cell(equipped_item));
+        blocks.emplace_back((combo->mag_level != 0xFF)
+                ? std::format("<td class=\"right\">{}</td>", combo->mag_level)
+                : "<td></td>");
+        blocks.emplace_back((combo->grind != 0xFF)
+                ? std::format("<td class=\"right\">{}</td>", combo->grind)
+                : "<td></td>");
+        blocks.emplace_back((combo->level != 0xFF)
+                ? std::format("<td class=\"right\">{}</td>", combo->level)
+                : "<td></td>");
+        blocks.emplace_back((combo->char_class != 0xFF)
+                ? std::format("<td class=\"right\">{}</td>", name_for_char_class(combo->char_class))
+                : "<td></td>");
+        blocks.emplace_back(std::format("<td>{:02X}{:02X}{:02X}</td>", result_item.data1[0], result_item.data1[1], result_item.data1[2]));
+        blocks.emplace_back(format_name_cell(result_item));
+        blocks.emplace_back("</tr>");
+      }
+    }
+    blocks.emplace_back("</table>");
+  }
+
+  if (pmt->num_events() > 0) {
+    blocks.emplace_back("<table><tr><th colspan=\"3\">EVENT ITEMS</th></tr>");
+    for (size_t event_number = 0; event_number < pmt->num_events(); event_number++) {
+      blocks.emplace_back(std::format("<tr><th colspan=\"3\">Event {}</th></tr>", event_number));
+      blocks.emplace_back("<tr><th colspan=\"2\">Item</th><th>Chance</th></tr>");
+      auto events_list = pmt->get_event_items(event_number);
+      for (size_t z = 0; z < events_list.second; z++) {
+        const auto& event_item = events_list.first[z];
+
+        ItemData item;
+        item.data1[0] = event_item.item[0];
+        item.data1[1] = event_item.item[1];
+        item.data1[2] = event_item.item[2];
+
+        blocks.emplace_back("<tr>");
+        blocks.emplace_back(std::format("<td>{:02X}{:02X}{:02X}</td>", item.data1[0], item.data1[1], item.data1[2]));
+        blocks.emplace_back(format_name_cell(item));
+        blocks.emplace_back(std::format("<td class=\"right\">{}</td>", event_item.probability));
+        blocks.emplace_back("</tr>");
+      }
+    }
+    blocks.emplace_back("</table>");
+  }
+
+  blocks.emplace_back("</body></html>");
+  return phosg::join(blocks, "");
 }

@@ -47,6 +47,7 @@ public:
   ItemData parse_item_description(const std::string& description) const;
 
   void print_table(FILE* stream) const;
+  std::string generate_item_parameter_table_html() const;
 
 private:
   ItemData parse_item_description_phase(const std::string& description, bool skip_special) const;

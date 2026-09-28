@@ -2883,6 +2883,26 @@ Action a_show_item_parameter_tables(
         }
       }
     });
+Action a_generate_item_parameter_tables_html(
+    "generate-item-parameter-tables-html", "\
+  generate-item-parameter-tables-html\n\
+    Generate an HTML file for each item parameter table.\n",
+    +[](phosg::Arguments& args) {
+      auto di = std::make_shared<DataIndex>(get_config_filename(args));
+      di->load_config_early();
+      di->load_patch_indexes();
+      di->load_text_index();
+      di->load_item_definitions();
+      di->load_item_name_indexes();
+      for (Version v : ALL_VERSIONS) {
+        const auto& index = di->item_name_index_opt(v);
+        if (index) {
+          std::string filename = std::format("item-parameter-table-{}.html", phosg::name_for_enum(v));
+          phosg::save_file(filename, index->generate_item_parameter_table_html());
+          phosg::log_info_f("... {}", filename);
+        }
+      }
+    });
 
 Action a_show_shop_random_sets(
     "show-shop-random-sets", "\
