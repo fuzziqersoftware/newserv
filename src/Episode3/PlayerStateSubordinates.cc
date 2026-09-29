@@ -199,7 +199,7 @@ bool ActionChain::operator==(const ActionChain& other) const {
       (this->ap_effect_bonus == other.ap_effect_bonus) &&
       (this->damage == other.damage) &&
       (this->acting_card_ref == other.acting_card_ref) &&
-      (this->unknown_card_ref_a3 == other.unknown_card_ref_a3) &&
+      (this->last_added_action_card_ref == other.last_added_action_card_ref) &&
       (this->attack_action_card_refs == other.attack_action_card_refs) &&
       (this->attack_action_card_ref_count == other.attack_action_card_ref_count) &&
       (this->attack_medium == other.attack_medium) &&
@@ -230,7 +230,7 @@ std::string ActionChain::str(std::shared_ptr<const Server> s) const {
       this->ap_effect_bonus,
       this->damage,
       s->debug_str_for_card_ref(this->acting_card_ref),
-      s->debug_str_for_card_ref(this->unknown_card_ref_a3),
+      s->debug_str_for_card_ref(this->last_added_action_card_ref),
       s->debug_str_for_card_refs(this->attack_action_card_refs),
       this->attack_action_card_ref_count,
       phosg::name_for_enum(this->attack_medium),
@@ -254,7 +254,7 @@ void ActionChain::clear() {
   this->ap_effect_bonus = 0;
   this->damage = 0;
   this->acting_card_ref = 0xFFFF;
-  this->unknown_card_ref_a3 = 0xFFFF;
+  this->last_added_action_card_ref = 0xFFFF;
   this->attack_action_card_ref_count = 0;
   this->attack_medium = AttackMedium::UNKNOWN;
   this->target_card_ref_count = 0;
@@ -278,7 +278,7 @@ void ActionChain::clear_FF() {
   this->ap_effect_bonus = -1;
   this->damage = -1;
   this->acting_card_ref = 0xFFFF;
-  this->unknown_card_ref_a3 = 0xFFFF;
+  this->last_added_action_card_ref = 0xFFFF;
   this->attack_action_card_refs.clear(0xFFFF);
   this->attack_action_card_ref_count = 0xFF;
   this->attack_medium = AttackMedium::INVALID_FF;
@@ -340,7 +340,7 @@ void ActionChainWithConds::clear_FF() {
 }
 
 void ActionChainWithConds::clear_inner() {
-  this->chain.unknown_card_ref_a3 = 0xFFFF;
+  this->chain.last_added_action_card_ref = 0xFFFF;
   this->chain.acting_card_ref = 0xFFFF;
   this->chain.attack_medium = AttackMedium::INVALID_FF;
   this->chain.flags = 0;
@@ -477,7 +477,7 @@ ActionChainWithCondsTrial::ActionChainWithCondsTrial(const ActionChainWithConds&
       ap_effect_bonus(src.chain.ap_effect_bonus),
       damage(src.chain.damage),
       acting_card_ref(src.chain.acting_card_ref),
-      unknown_card_ref_a3(src.chain.unknown_card_ref_a3),
+      last_added_action_card_ref(src.chain.last_added_action_card_ref),
       attack_action_card_refs(src.chain.attack_action_card_refs),
       attack_action_card_ref_count(src.chain.attack_action_card_ref_count),
       attack_medium(src.chain.attack_medium),
@@ -502,7 +502,7 @@ ActionChainWithCondsTrial::operator ActionChainWithConds() const {
   ret.chain.ap_effect_bonus = this->ap_effect_bonus;
   ret.chain.damage = this->damage;
   ret.chain.acting_card_ref = this->acting_card_ref;
-  ret.chain.unknown_card_ref_a3 = this->unknown_card_ref_a3;
+  ret.chain.last_added_action_card_ref = this->last_added_action_card_ref;
   ret.chain.attack_action_card_refs = this->attack_action_card_refs;
   ret.chain.attack_action_card_ref_count = this->attack_action_card_ref_count;
   ret.chain.attack_medium = this->attack_medium;

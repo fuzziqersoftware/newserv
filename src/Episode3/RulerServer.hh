@@ -76,7 +76,7 @@ public:
   bool card_ref_is_aerial(uint16_t card_ref) const;
   bool card_ref_is_aerial_or_has_free_maneuver(uint16_t card_ref) const;
   bool card_ref_is_boss_sc(uint32_t card_ref) const;
-  bool card_ref_or_any_set_card_has_condition_46(uint16_t card_ref) const;
+  bool card_ref_or_any_set_card_is_immortal(uint16_t card_ref) const;
   bool card_ref_or_sc_has_fixed_range(uint16_t card_ref) const;
   bool check_move_path_and_get_cost(
       uint8_t client_id,

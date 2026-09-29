@@ -72,19 +72,19 @@ public:
   void update_stats_on_destruction();
   void clear_action_chain_and_metadata_and_most_flags();
   void compute_action_chain_results(bool apply_action_conditions, bool ignore_this_card_ap_tp);
-  void unknown_802380C0();
-  void unknown_80237F98(bool require_condition_20_or_21);
+  void reset_attack_resolution_state();
+  void update_conditions_and_clear_expired(bool require_condition_20_or_21);
   void unknown_80237F88();
   void draw_phase_before();
   void action_phase_before();
   void move_phase_before();
-  void unknown_80236374(std::shared_ptr<Card> other_card, const ActionState* as);
-  void unknown_802379BC(uint16_t card_ref);
-  void unknown_802379DC(const ActionState& pa);
-  void unknown_80237A90(const ActionState& pa, uint16_t action_card_ref);
+  void refresh_all_cards_for_attack(std::shared_ptr<Card> other_card, const ActionState* as);
+  void set_last_added_action_card_ref(uint16_t card_ref);
+  void register_defense_action(const ActionState& pa);
+  void register_attack_action_card(const ActionState& pa, uint16_t action_card_ref);
   void dice_phase_before();
   bool is_guard_item() const;
-  bool unknown_80236554(std::shared_ptr<Card> other_card, const ActionState* as);
+  bool refresh_incoming_attack_state(std::shared_ptr<Card> other_card, const ActionState* as);
   void execute_attack_on_all_valid_targets(std::shared_ptr<Card> attacker_card);
   void apply_attack_result();
 
@@ -112,7 +112,7 @@ public:
   int16_t tp;
   uint32_t num_ally_fcs_destroyed_at_set_time;
   uint32_t num_cards_destroyed_by_team_at_set_time;
-  uint32_t unknown_a9;
+  uint32_t turns_since_set;
   int16_t last_attack_preliminary_damage;
   int16_t last_attack_final_damage;
   uint32_t num_destroyed_ally_fcs;

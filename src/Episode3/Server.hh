@@ -244,15 +244,15 @@ public:
   void compute_losing_team_id_and_add_winner_flags(uint32_t flags);
   uint32_t get_team_exp(uint8_t team_id) const;
   uint32_t send_6xB4x06_if_card_ref_invalid(uint16_t card_ref, int16_t negative_value);
-  void unknown_8023EEF4();
+  void prepare_next_valid_attack();
   void execute_bomb_assist_effect();
   void replace_targets_due_to_destruction_nte(ActionState* as);
   void replace_targets_due_to_destruction_or_conditions(ActionState* as);
   bool any_target_exists_for_attack(const ActionState& as);
   uint8_t get_current_team_turn2() const;
-  void unknown_8023EE48();
-  void unknown_8023EE80();
-  void unknown_802402F4();
+  void prepare_attack_resolution_and_send_updates();
+  void resolve_current_attack_and_advance();
+  void recompute_attacking_team_action_chains();
   void send_6xB4x39() const;
   void send_6xB4x05(); // Recomputes the map occupied bits, so can't be const
   void send_6xB4x02_for_all_players_if_needed(bool always_send = false);
@@ -318,7 +318,7 @@ public:
   uint32_t num_pending_attacks;
   parray<uint8_t, 4> client_done_enqueuing_attacks;
   parray<uint8_t, 4> player_ready_to_end_phase;
-  uint32_t unknown_a10;
+  bool attack_resolution_pending;
   uint32_t overall_time_expired;
   // Note: In the original implementation, this is a uint32_t and is measured in seconds. In our environment, the
   // simplest implementation uses now(), which returns microseconds, so we use a uint64_t instead.
@@ -331,7 +331,7 @@ public:
   uint32_t num_pending_attacks_with_cards;
   bcarray<std::shared_ptr<Card>, 0x20> attack_cards;
   bcarray<ActionState, 0x20> pending_attacks_with_cards;
-  uint32_t unknown_a14;
+  uint32_t current_attack_index;
   uint32_t unknown_a15;
   parray<uint32_t, 4> defense_list_ended_for_client;
   std::shared_ptr<AssistServer> assist_server;

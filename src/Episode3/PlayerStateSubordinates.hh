@@ -108,7 +108,7 @@ struct ActionChain {
   /* 02 */ int8_t ap_effect_bonus;
   /* 03 */ int8_t damage;
   /* 04 */ le_uint16_t acting_card_ref;
-  /* 06 */ le_uint16_t unknown_card_ref_a3;
+  /* 06 */ le_uint16_t last_added_action_card_ref;
   /* 08 */ parray<le_uint16_t, 8> attack_action_card_refs;
   /* 18 */ uint8_t attack_action_card_ref_count;
   /* 19 */ AttackMedium attack_medium;
@@ -180,7 +180,7 @@ struct ActionChainWithCondsTrial {
   /* 0002 */ int8_t ap_effect_bonus;
   /* 0003 */ int8_t damage;
   /* 0004 */ le_uint16_t acting_card_ref;
-  /* 0006 */ le_uint16_t unknown_card_ref_a3;
+  /* 0006 */ le_uint16_t last_added_action_card_ref;
   /* 0008 */ parray<le_uint16_t, 8> attack_action_card_refs;
   /* 0018 */ uint8_t attack_action_card_ref_count;
   /* 0019 */ AttackMedium attack_medium;

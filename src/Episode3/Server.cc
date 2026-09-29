@@ -49,14 +49,14 @@ Server::Server(std::shared_ptr<Lobby> lobby, Options&& options)
       num_pending_attacks(0),
       client_done_enqueuing_attacks(false),
       player_ready_to_end_phase(false),
-      unknown_a10(0),
+      attack_resolution_pending(false),
       overall_time_expired(false),
       battle_start_usecs(0),
       should_copy_prev_states_to_current_states(0),
       card_special(nullptr),
       clients_done_in_redraw_initial_hand_phase(false),
       num_pending_attacks_with_cards(0),
-      unknown_a14(0),
+      current_attack_index(0),
       unknown_a15(0),
       defense_list_ended_for_client(false),
       next_assist_card_set_number(1),
@@ -368,7 +368,7 @@ void Server::add_team_exp(uint8_t team_id, int32_t exp) {
       this->team_exp[team_id] + exp, 0, this->team_client_count[team_id] * 96);
 
   uint8_t dice_boost = this->team_exp[team_id] / (this->team_client_count[team_id] * 12);
-  this->card_special->adjust_dice_boost_if_team_has_condition_52(team_id, &dice_boost, 0);
+  this->card_special->adjust_dice_boost_for_condition_multiplier(team_id, &dice_boost, nullptr);
   this->team_dice_bonus[team_id] = std::min<uint8_t>(dice_boost, 8);
 }
 
@@ -856,7 +856,7 @@ void Server::dice_phase_before() {
   this->current_team_turn2 = this->current_team_turn1;
   this->num_pending_attacks = 0;
   this->num_pending_attacks_with_cards = 0;
-  this->unknown_a14 = 0;
+  this->current_attack_index = 0;
   this->update_battle_state_flags_and_send_6xB4x03_if_needed();
 }
 
@@ -913,12 +913,12 @@ void Server::end_action_phase() {
   // we may have to delete the enum if that turns out to be false.
   this->action_subphase = static_cast<ActionSubphase>(static_cast<uint8_t>(this->action_subphase) + 2);
   if (this->options.is_nte()) {
-    this->unknown_8023EEF4();
+    this->prepare_next_valid_attack();
     this->update_battle_state_flags_and_send_6xB4x03_if_needed(0);
     this->send_6xB4x02_for_all_players_if_needed();
   } else {
     this->copy_player_states_to_prev_states();
-    this->unknown_8023EEF4();
+    this->prepare_next_valid_attack();
     this->send_set_card_updates_and_6xB4x04_if_needed();
   }
 }
@@ -1173,7 +1173,7 @@ void Server::move_phase_after() {
 }
 
 void Server::action_phase_before() {
-  this->unknown_a10 = 0;
+  this->attack_resolution_pending = false;
   this->current_team_turn2 = this->current_team_turn1;
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto ps = this->player_states[client_id];
@@ -2342,7 +2342,7 @@ void Server::handle_CAx28_end_defense_list(std::shared_ptr<Client>, const std::s
     }
   }
 
-  if (all_defense_lists_ended && (this->unknown_a10 == 0)) {
+  if (all_defense_lists_ended && !this->attack_resolution_pending) {
     for (size_t z = 0; z < 4; z++) {
       auto ps = this->player_states[z];
       if (ps) {
@@ -2350,16 +2350,16 @@ void Server::handle_CAx28_end_defense_list(std::shared_ptr<Client>, const std::s
         ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
       }
     }
-    this->unknown_8023EE48();
-    this->unknown_a10 = 1;
+    this->prepare_attack_resolution_and_send_updates();
+    this->attack_resolution_pending = true;
   } else {
     auto ps = this->player_states[in_cmd.client_id];
     ps->assist_flags |= AssistFlag::READY_TO_END_ACTION_PHASE;
     ps->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
   }
-  if (this->unknown_a10 != 0) {
-    this->unknown_8023EE80();
-    this->unknown_a10 = 0;
+  if (this->attack_resolution_pending) {
+    this->resolve_current_attack_and_advance();
+    this->attack_resolution_pending = false;
   }
 
   G_ActionResult_Ep3_6xB4x1E out_cmd_fin;
@@ -2731,19 +2731,19 @@ uint32_t Server::send_6xB4x06_if_card_ref_invalid(uint16_t card_ref, int16_t neg
   return card_ref;
 }
 
-void Server::unknown_8023EEF4() {
-  auto log = this->log_stack("unknown_8023EEF4: ");
+void Server::prepare_next_valid_attack() {
+  auto log = this->log_stack("prepare_next_valid_attack: ");
 
-  if (this->unknown_a14 >= 0x20) {
-    log.debug_f("unknown_a14 too large (0x{:X})", this->unknown_a14);
+  if (this->current_attack_index >= 0x20) {
+    log.debug_f("current attack index too large (0x{:X})", this->current_attack_index);
     return;
   }
 
   bool is_nte = this->options.is_nte();
-  while (this->unknown_a14 < this->num_pending_attacks_with_cards) {
-    auto card = this->attack_cards[this->unknown_a14];
+  while (this->current_attack_index < this->num_pending_attacks_with_cards) {
+    auto card = this->attack_cards[this->current_attack_index];
     if (this->get_current_team_turn() == card->get_team_id()) {
-      ActionState as = this->pending_attacks_with_cards[this->unknown_a14];
+      ActionState as = this->pending_attacks_with_cards[this->current_attack_index];
       if (log.should_log(phosg::LogLevel::L_DEBUG)) {
         log.debug_f("card @{:04X} #{:04X} can attack", card->get_card_ref(), card->get_card_id());
         log.debug_f("as: {}", as.str(this->shared_from_this()));
@@ -2765,16 +2765,16 @@ void Server::unknown_8023EEF4() {
     } else {
       log.debug_f("card @{:04X} #{:04X} cannot attack (wrong turn)", card->get_card_ref(), card->get_card_id());
     }
-    this->unknown_a14++;
+    this->current_attack_index++;
   }
 
-  if (this->unknown_a14 < this->num_pending_attacks_with_cards) {
-    log.debug_f("a14 ({}) < num_pending_attacks_with_cards ({})", this->unknown_a14, this->num_pending_attacks_with_cards);
+  if (this->current_attack_index < this->num_pending_attacks_with_cards) {
+    log.debug_f("a14 ({}) < num_pending_attacks_with_cards ({})", this->current_attack_index, this->num_pending_attacks_with_cards);
     this->defense_list_ended_for_client.clear(false);
 
     G_UpdateAttackTargets_Ep3_6xB4x29 cmd;
-    cmd.attack_number = this->unknown_a14;
-    cmd.state = this->pending_attacks_with_cards[this->unknown_a14];
+    cmd.attack_number = this->current_attack_index;
+    cmd.state = this->pending_attacks_with_cards[this->current_attack_index];
     if (is_nte) {
       this->replace_targets_due_to_destruction_nte(&cmd.state);
     } else {
@@ -2786,19 +2786,20 @@ void Server::unknown_8023EEF4() {
     this->card_special->apply_effects_after_attack_target_resolution(as);
 
     if (!is_nte) {
-      this->attack_cards[this->unknown_a14]->compute_action_chain_results(1, 0);
-      this->attack_cards[this->unknown_a14]->unknown_80236374(this->attack_cards[this->unknown_a14], &as);
-      if (!this->attack_cards[this->unknown_a14]->action_chain.check_flag(0x40)) {
-        this->card_special->unknown_8024945C(this->attack_cards[this->unknown_a14], &as);
+      auto& attack_card = this->attack_cards[this->current_attack_index];
+      attack_card->compute_action_chain_results(1, 0);
+      attack_card->refresh_all_cards_for_attack(attack_card, &as);
+      if (!attack_card->action_chain.check_flag(0x40)) {
+        this->card_special->unknown_8024945C(attack_card, &as);
       }
-      this->attack_cards[this->unknown_a14]->compute_action_chain_results(1, 0);
-      this->attack_cards[this->unknown_a14]->unknown_80236374(this->attack_cards[this->unknown_a14], &as);
-      if (!this->attack_cards[this->unknown_a14]->action_chain.check_flag(0x40)) {
-        this->card_special->unknown_8024966C(this->attack_cards[this->unknown_a14], &as);
+      attack_card->compute_action_chain_results(1, 0);
+      attack_card->refresh_all_cards_for_attack(attack_card, &as);
+      if (!attack_card->action_chain.check_flag(0x40)) {
+        this->card_special->apply_attack_stat_and_damage_adjustment_effects(attack_card, &as);
       }
-      this->attack_cards[this->unknown_a14]->compute_action_chain_results(1, 0);
-      this->attack_cards[this->unknown_a14]->unknown_80236374(this->attack_cards[this->unknown_a14], &as);
-      this->attack_cards[this->unknown_a14]->send_6xB4x4E_4C_4D_if_needed();
+      attack_card->compute_action_chain_results(1, 0);
+      attack_card->refresh_all_cards_for_attack(attack_card, &as);
+      attack_card->send_6xB4x4E_4C_4D_if_needed();
       for (size_t z = 0; z < 4; z++) {
         auto ps = this->player_states[z];
         if (ps) {
@@ -3008,8 +3009,8 @@ void Server::replace_targets_due_to_destruction_or_conditions(ActionState* as) {
     auto target_card = this->card_for_set_card_ref(target_card_ref);
     if (target_card) {
       auto replaced_target = this->card_special->compute_replaced_target_based_on_conditions(
-          target_card->get_card_ref(), 1, 0, as->attacker_card_ref, 0xFFFF, 1,
-          0, 0xFF, 0, 0xFFFF);
+          target_card->get_card_ref(), true, false, as->attacker_card_ref,
+          0xFFFF, true, nullptr, 0xFF, nullptr, 0xFFFF);
       if (!replaced_target) {
         replaced_target = target_card;
       }
@@ -3047,42 +3048,42 @@ uint8_t Server::get_current_team_turn2() const {
   return this->current_team_turn2;
 }
 
-void Server::unknown_8023EE48() {
-  this->unknown_802402F4();
+void Server::prepare_attack_resolution_and_send_updates() {
+  this->recompute_attacking_team_action_chains();
   this->send_6xB4x02_for_all_players_if_needed();
 }
 
-void Server::unknown_8023EE80() {
+void Server::resolve_current_attack_and_advance() {
   bool is_nte = this->options.is_nte();
 
-  if (this->unknown_a14 < this->num_pending_attacks_with_cards) {
-    this->attack_cards[this->unknown_a14]->apply_attack_result();
+  if (this->current_attack_index < this->num_pending_attacks_with_cards) {
+    this->attack_cards[this->current_attack_index]->apply_attack_result();
     if (is_nte) {
       for (size_t z = 0; z < 4; z++) {
         auto ps = this->player_states[z];
         if (ps) {
-          ps->unknown_8023C110();
+          ps->reset_all_cards_attack_resolution_state();
         }
       }
     }
-    this->unknown_a14++;
+    this->current_attack_index++;
   }
 
   this->check_for_battle_end();
 
   if (is_nte) {
-    this->unknown_8023EEF4();
+    this->prepare_next_valid_attack();
     this->update_battle_state_flags_and_send_6xB4x03_if_needed();
     this->send_6xB4x02_for_all_players_if_needed();
   } else {
     this->copy_player_states_to_prev_states();
-    this->unknown_8023EEF4();
+    this->prepare_next_valid_attack();
     this->send_set_card_updates_and_6xB4x04_if_needed();
   }
 }
 
-void Server::unknown_802402F4() {
-  auto log = this->log_stack("unknown_802402F4: ");
+void Server::recompute_attacking_team_action_chains() {
+  auto log = this->log_stack("recompute_attacking_team_action_chains: ");
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto ps = this->player_states[client_id];
     if (ps && (this->current_team_turn2 == ps->get_team_id())) {

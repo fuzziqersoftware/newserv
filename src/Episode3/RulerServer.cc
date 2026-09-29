@@ -249,8 +249,8 @@ bool RulerServer::card_has_pierce_or_rampage(
 
   switch (cond_type) {
     case ConditionType::RAMPAGE:
-    case ConditionType::UNKNOWN_20:
-    case ConditionType::UNKNOWN_21:
+    case ConditionType::LOW_COST_RAMPAGE:
+    case ConditionType::HIGH_COST_RAMPAGE:
     case ConditionType::MAJOR_RAMPAGE:
     case ConditionType::HEAVY_RAMPAGE:
       *out_has_rampage = true;
@@ -675,7 +675,7 @@ bool RulerServer::card_ref_is_boss_sc(uint32_t card_ref) const {
   return this->card_id_is_boss_sc(this->card_id_for_card_ref(card_ref));
 }
 
-bool RulerServer::card_ref_or_any_set_card_has_condition_46(uint16_t card_ref) const {
+bool RulerServer::card_ref_or_any_set_card_is_immortal(uint16_t card_ref) const {
   uint16_t card_id = this->card_id_for_card_ref(card_ref);
   if (card_id == 0xFFFF) {
     return false;
@@ -698,7 +698,7 @@ bool RulerServer::card_ref_or_any_set_card_has_condition_46(uint16_t card_ref) c
       const auto& sc_stat = stat->at(0);
       Condition cond;
       if (this->card_exists_by_status(sc_stat) &&
-          this->find_condition_on_card_ref(sc_stat.card_ref, ConditionType::UNKNOWN_46, &cond) &&
+          this->find_condition_on_card_ref(sc_stat.card_ref, ConditionType::IMMORTALITY, &cond) &&
           (cond.value == card_id)) {
         return true;
       }
@@ -706,7 +706,7 @@ bool RulerServer::card_ref_or_any_set_card_has_condition_46(uint16_t card_ref) c
       for (size_t w = 7; w < 15; w++) {
         const auto& item_stat = stat->at(w);
         if (this->card_exists_by_status(item_stat) &&
-            this->find_condition_on_card_ref(item_stat.card_ref, ConditionType::UNKNOWN_46, &cond) &&
+            this->find_condition_on_card_ref(item_stat.card_ref, ConditionType::IMMORTALITY, &cond) &&
             (cond.value == card_id)) {
           return true;
         }
@@ -838,12 +838,12 @@ bool RulerServer::check_pierce_and_rampage(
       return false;
     case ConditionType::RAMPAGE:
       return apply_check_result;
-    case ConditionType::UNKNOWN_20:
+    case ConditionType::LOW_COST_RAMPAGE:
       if (card_short_status && ce && (ce->def.self_cost < 3)) {
         return apply_check_result;
       }
       return false;
-    case ConditionType::UNKNOWN_21:
+    case ConditionType::HIGH_COST_RAMPAGE:
       if (card_short_status && ce && (ce->def.self_cost > 2)) {
         return apply_check_result;
       }
@@ -2224,7 +2224,7 @@ bool RulerServer::is_attack_valid(const ActionState& pa) {
     return false;
   }
 
-  uint16_t card_ref = attacker_chain->chain.unknown_card_ref_a3;
+  uint16_t card_ref = attacker_chain->chain.last_added_action_card_ref;
   if (card_ref == 0xFFFF) {
     card_ref = attacker_card_ref;
   }
@@ -2615,7 +2615,7 @@ int32_t RulerServer::set_cost_for_card(uint8_t client_id, uint16_t card_ref) con
   if (!is_nte &&
       short_statuses &&
       this->card_exists_by_status(short_statuses->at(0)) &&
-      this->find_condition_on_card_ref(short_statuses->at(0).card_ref, ConditionType::UNKNOWN_69)) {
+      this->find_condition_on_card_ref(short_statuses->at(0).card_ref, ConditionType::FREE_SET)) {
     ret = 0;
   }
 

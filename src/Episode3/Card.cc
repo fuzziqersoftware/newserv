@@ -18,7 +18,7 @@ Card::Card(uint16_t card_id, uint16_t card_ref, uint16_t client_id, std::shared_
       action_metadata(),
       num_ally_fcs_destroyed_at_set_time(0),
       num_cards_destroyed_by_team_at_set_time(0),
-      unknown_a9(1),
+      turns_since_set(1),
       last_attack_preliminary_damage(0),
       last_attack_final_damage(0),
       num_destroyed_ally_fcs(0),
@@ -394,7 +394,7 @@ void Card::destroy_set_card(std::shared_ptr<Card> attacker_card) {
 
   this->current_hp = 0;
   if (!(this->card_flags & 2)) {
-    if (!s->ruler_server->card_ref_or_any_set_card_has_condition_46(this->card_ref)) {
+    if (!s->ruler_server->card_ref_or_any_set_card_is_immortal(this->card_ref)) {
       s->card_special->on_card_destroyed(attacker_card, this->shared_from_this());
 
       this->card_flags = this->card_flags | 2;
@@ -547,7 +547,7 @@ void Card::execute_attack(std::shared_ptr<Card> attacker_card) {
 
     uint32_t unknown_a9 = 0;
     auto target = s->card_special->compute_replaced_target_based_on_conditions(
-        this->get_card_ref(), 1, 0, attacker_card->get_card_ref(), 0xFFFF, 0, &unknown_a9, 0xFF, nullptr, 0xFFFF);
+        this->get_card_ref(), true, false, attacker_card->get_card_ref(), 0xFFFF, false, &unknown_a9, 0xFF, nullptr, 0xFFFF);
 
     if (!target) {
       target = this->shared_from_this();
@@ -1141,15 +1141,15 @@ void Card::compute_action_chain_results(bool apply_action_conditions, bool ignor
   }
 }
 
-void Card::unknown_802380C0() {
+void Card::reset_attack_resolution_state() {
   bool is_nte = this->server()->options.is_nte();
   this->card_flags &= 0xFFFFF7FB;
   this->action_metadata.clear_flags(is_nte ? 0x10 : 0x30);
   this->action_chain.clear_flags(is_nte ? 0x40 : 0x140);
-  this->unknown_80237F98(0);
+  this->update_conditions_and_clear_expired(0);
 }
 
-void Card::unknown_80237F98(bool require_condition_20_or_21) {
+void Card::update_conditions_and_clear_expired(bool require_condition_20_or_21) {
   auto s = this->server();
 
   bool should_send_updates = false;
@@ -1174,7 +1174,7 @@ void Card::unknown_80237F98(bool require_condition_20_or_21) {
 
   this->compute_action_chain_results(1, false);
   if (!s->options.is_nte()) {
-    this->unknown_80236554(nullptr, nullptr);
+    this->refresh_incoming_attack_state(nullptr, nullptr);
   }
   if (should_send_updates) {
     this->send_6xB4x4E_4C_4D_if_needed();
@@ -1203,9 +1203,9 @@ void Card::move_phase_before() {
   this->server()->card_special->move_phase_before_for_card(this->shared_from_this());
 }
 
-void Card::unknown_80236374(std::shared_ptr<Card> other_card, const ActionState* as) {
+void Card::refresh_all_cards_for_attack(std::shared_ptr<Card> other_card, const ActionState* as) {
   auto s = this->server();
-  auto log = s->log_stack(std::format("unknown_80236374(@{:04X} #{:04X}, @{:04X} #{:04X}): ", this->get_card_ref(), this->get_card_id(), other_card->get_card_ref(), other_card->get_card_id()));
+  auto log = s->log_stack(std::format("refresh_all_cards_for_attack(@{:04X} #{:04X}, @{:04X} #{:04X}): ", this->get_card_ref(), this->get_card_id(), other_card->get_card_ref(), other_card->get_card_id()));
 
   if (log.should_log(phosg::LogLevel::L_DEBUG)) {
     if (as) {
@@ -1217,7 +1217,7 @@ void Card::unknown_80236374(std::shared_ptr<Card> other_card, const ActionState*
 
   auto check_card = [&](std::shared_ptr<Card> card) -> void {
     if (card) {
-      if (!card->unknown_80236554(other_card, as)) {
+      if (!card->refresh_incoming_attack_state(other_card, as)) {
         log.debug_f("check_card @{:04X} #{:04X} => false", card->get_card_ref(), card->get_card_id());
         card->action_metadata.clear_flags(0x20);
       } else {
@@ -1248,14 +1248,14 @@ void Card::unknown_80236374(std::shared_ptr<Card> other_card, const ActionState*
   }
 }
 
-void Card::unknown_802379BC(uint16_t card_ref) {
-  this->action_chain.chain.unknown_card_ref_a3 = (card_ref == 0xFFFF) ? this->card_ref : card_ref;
+void Card::set_last_added_action_card_ref(uint16_t card_ref) {
+  this->action_chain.chain.last_added_action_card_ref = (card_ref == 0xFFFF) ? this->card_ref : card_ref;
 }
 
-void Card::unknown_802379DC(const ActionState& pa) {
+void Card::register_defense_action(const ActionState& pa) {
   this->action_metadata.add_defense_card_ref(
       pa.defense_card_ref, this->shared_from_this(), pa.original_attacker_card_ref);
-  this->server()->card_special->unknown_8024A9D8(pa, 0xFFFF);
+  this->server()->card_special->apply_action_card_registration_effects(pa, 0xFFFF);
   for (size_t z = 0; z < this->action_metadata.target_card_ref_count; z++) {
     std::shared_ptr<Card> card = this->server()->card_for_set_card_ref(this->action_metadata.target_card_refs[z]);
     if (card) {
@@ -1266,7 +1266,7 @@ void Card::unknown_802379DC(const ActionState& pa) {
   this->send_6xB4x4E_4C_4D_if_needed();
 }
 
-void Card::unknown_80237A90(const ActionState& pa, uint16_t action_card_ref) {
+void Card::register_attack_action_card(const ActionState& pa, uint16_t action_card_ref) {
   auto s = this->server();
 
   this->facing_direction = pa.facing_direction;
@@ -1311,13 +1311,13 @@ void Card::unknown_80237A90(const ActionState& pa, uint16_t action_card_ref) {
     s->pending_attacks_with_cards[s->num_pending_attacks_with_cards] = pa;
     s->num_pending_attacks_with_cards++;
   }
-  s->card_special->unknown_8024A9D8(pa, action_card_ref);
+  s->card_special->apply_action_card_registration_effects(pa, action_card_ref);
   this->send_6xB4x4E_4C_4D_if_needed();
 }
 
 void Card::dice_phase_before() {
   auto s = this->server();
-  this->unknown_a9++;
+  this->turns_since_set++;
   for (ssize_t z = 8; z >= 0; z--) {
     auto& cond = this->action_chain.conditions[z];
     if (cond.type != ConditionType::NONE) {
@@ -1351,11 +1351,11 @@ bool Card::is_guard_item() const {
   return (this->def_entry->def.card_class() == CardClass::GUARD_ITEM);
 }
 
-bool Card::unknown_80236554(std::shared_ptr<Card> other_card, const ActionState* as) {
+bool Card::refresh_incoming_attack_state(std::shared_ptr<Card> other_card, const ActionState* as) {
   auto s = this->server();
   auto log = s->log_stack(other_card
-          ? std::format("unknown_80236554(@{:04X} #{:04X}, @{:04X} #{:04X}): ", this->get_card_ref(), this->get_card_id(), other_card->get_card_ref(), other_card->get_card_id())
-          : std::format("unknown_80236554(@{:04X} #{:04X}, null): ", this->get_card_ref(), this->get_card_id()));
+          ? std::format("refresh_incoming_attack_state(@{:04X} #{:04X}, @{:04X} #{:04X}): ", this->get_card_ref(), this->get_card_id(), other_card->get_card_ref(), other_card->get_card_id())
+          : std::format("refresh_incoming_attack_state(@{:04X} #{:04X}, null): ", this->get_card_ref(), this->get_card_id()));
   if (log.should_log(phosg::LogLevel::L_DEBUG)) {
     if (as) {
       log.debug_f("as = {}", as->str(s));
@@ -1512,7 +1512,7 @@ void Card::apply_attack_result() {
     for (size_t z = 0; z < this->action_chain.chain.target_card_ref_count; z++) {
       auto target_card = s->card_for_set_card_ref(this->action_chain.chain.target_card_refs[z]);
       if (target_card && !this->action_chain.check_flag(0x40)) {
-        s->card_special->unknown_8024A6DC(this->shared_from_this(), target_card);
+        s->card_special->apply_defense_action_card_effects(this->shared_from_this(), target_card);
       }
     }
 
@@ -1557,8 +1557,8 @@ void Card::apply_attack_result() {
       if (card) {
         card->current_defense_power = card->action_metadata.attack_bonus;
         if (!this->action_chain.check_flag(0x40)) {
-          log.debug_f("unknown_8024A6DC(@{:04X} #{:04X}) ...", card->get_card_ref(), card->get_card_id());
-          s->card_special->unknown_8024A6DC(this->shared_from_this(), card);
+          log.debug_f("apply_defense_action_card_effects(@{:04X} #{:04X}) ...", card->get_card_ref(), card->get_card_id());
+          s->card_special->apply_defense_action_card_effects(this->shared_from_this(), card);
         }
       }
     }
@@ -1579,8 +1579,8 @@ void Card::apply_attack_result() {
     log.debug_f("compute_action_chain_results 3 ...");
     this->compute_action_chain_results(true, false);
 
-    log.debug_f("unknown_80236374 ...");
-    this->unknown_80236374(this->shared_from_this(), nullptr);
+    log.debug_f("refresh_all_cards_for_attack ...");
+    this->refresh_all_cards_for_attack(this->shared_from_this(), nullptr);
     log.debug_f("execute_attack_on_all_valid_targets ...");
     this->execute_attack_on_all_valid_targets(this->shared_from_this());
   }
@@ -1599,8 +1599,8 @@ void Card::apply_attack_result() {
     for (size_t client_id = 0; client_id < 4; client_id++) {
       auto ps = s->player_states[client_id];
       if (ps) {
-        log.debug_f("unknown_8023C110({}) ...", client_id);
-        ps->unknown_8023C110();
+        log.debug_f("reset_all_cards_attack_resolution_state({}) ...", client_id);
+        ps->reset_all_cards_attack_resolution_state();
       }
     }
   }

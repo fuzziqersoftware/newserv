@@ -133,7 +133,7 @@ public:
   void handle_homesick_assist_effect_from_bomb(std::shared_ptr<Card> card);
   void apply_main_die_assist_effects(uint8_t* die_value) const;
   void roll_main_dice_or_apply_after_effects();
-  void unknown_8023C110();
+  void reset_all_cards_attack_resolution_state();
   void compute_team_dice_bonus_after_draw_phase();
   void send_6xB4x0A_for_set_card(size_t set_index);
 
@@ -198,8 +198,8 @@ public:
   parray<ActionMetadata, 9> prev_set_card_action_metadatas;
 
   uint32_t num_destroyed_fcs;
-  uint8_t unknown_a16;
-  uint8_t unknown_a17;
+  uint8_t attack_interference_count;
+  uint8_t defense_interference_count;
   PlayerBattleStats stats;
 };
 

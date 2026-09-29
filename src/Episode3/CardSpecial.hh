@@ -83,13 +83,23 @@ public:
     uint32_t at(size_t index) const;
   } __packed_ws__(AttackEnvStats, 0x9C);
 
+  enum ExecuteEffectFlag {
+    APPLY_ATTACK_STAT_MODIFIERS = 0x01,
+    APPLY_ATTACK_DAMAGE_OVERRIDE = 0x02,
+    APPLY_TIMED_EFFECT = 0x04,
+    APPLY_DEFENSE_BONUSES = 0x08,
+    APPLY_ATTRIBUTE_GUARDS = 0x10,
+    APPLY_INCOMING_DAMAGE_MODIFIERS = 0x20,
+    APPLY_INCOMING_DAMAGE_OVERRIDE = 0x40,
+  };
+
   CardSpecial(std::shared_ptr<Server> server);
   std::shared_ptr<Server> server();
   std::shared_ptr<const Server> server() const;
 
   void adjust_attack_damage_due_to_conditions(
       std::shared_ptr<const Card> target_card, int16_t* inout_damage, uint16_t attacker_card_ref);
-  void adjust_dice_boost_if_team_has_condition_52(
+  void adjust_dice_boost_for_condition_multiplier(
       uint8_t team_id, uint8_t* inout_dice_boost, std::shared_ptr<const Card> card);
   void apply_action_conditions(
       EffectWhen when,
@@ -98,7 +108,7 @@ public:
       uint32_t flags,
       const ActionState* as);
   bool apply_attribute_guard_if_possible(
-      uint32_t flags,
+      uint8_t flags, // ExecuteEffectFlags
       CardClass card_class,
       std::shared_ptr<Card> card,
       uint16_t condition_giver_card_ref,
@@ -128,14 +138,14 @@ public:
       uint16_t condition_giver_card_ref);
   std::shared_ptr<Card> compute_replaced_target_based_on_conditions(
       uint16_t target_card_ref,
-      int unknown_p3,
-      int unknown_p4,
+      bool allow_damage_redirection,
+      bool allow_effect_redirection,
       uint16_t attacker_card_ref,
       uint16_t set_card_ref,
-      int unknown_p7,
-      uint32_t* unknown_p9,
+      bool resolve_guard_creature_targets,
+      uint32_t* out_damage_reflected,
       uint8_t def_effect_index,
-      uint32_t* unknown_p11,
+      bool* out_effect_redirect_blocked,
       uint16_t sc_card_ref);
   StatSwapType compute_stat_swap_type(std::shared_ptr<const Card> card) const;
   void compute_team_dice_bonus(uint8_t team_id);
@@ -164,9 +174,9 @@ public:
       Condition& cond,
       std::shared_ptr<Card> card,
       int16_t expr_value,
-      int16_t unknown_p5,
+      int16_t stored_condition_value,
       ConditionType cond_type,
-      uint32_t unknown_p7,
+      uint8_t flags,
       uint16_t attacker_card_ref);
   const Condition* find_condition_with_parameters(
       std::shared_ptr<const Card> card,
@@ -263,9 +273,10 @@ public:
   void draw_phase_before_for_card(std::shared_ptr<Card> unknown_p2);
   void action_phase_before_for_card(std::shared_ptr<Card> unknown_p2);
   void unknown_8024945C(std::shared_ptr<Card> unknown_p2, const ActionState* existing_as);
-  void unknown_8024966C(std::shared_ptr<Card> unknown_p2, const ActionState* existing_as);
+  void apply_attack_stat_and_damage_adjustment_effects(
+      std::shared_ptr<Card> unknown_p2, const ActionState* existing_as);
   static std::shared_ptr<Card> sc_card_for_card(std::shared_ptr<Card> unknown_p2);
-  void unknown_8024A9D8(const ActionState& pa, uint16_t action_card_ref);
+  void apply_action_card_registration_effects(const ActionState& pa, uint16_t action_card_ref);
   void check_for_attack_interference(std::shared_ptr<Card> unknown_p2);
   template <
       EffectWhen WhenAllCards,
@@ -276,7 +287,7 @@ public:
   void apply_effects_before_attack(std::shared_ptr<Card> card);
   void apply_effects_after_attack(std::shared_ptr<Card> card);
   bool client_has_atk_dice_boost_condition(uint8_t client_id);
-  void unknown_8024A6DC(std::shared_ptr<Card> unknown_p2, std::shared_ptr<Card> unknown_p3);
+  void apply_defense_action_card_effects(std::shared_ptr<Card> unknown_p2, std::shared_ptr<Card> unknown_p3);
   std::vector<std::shared_ptr<const Card>> find_all_sc_cards_of_class(CardClass card_class) const;
 
 private:

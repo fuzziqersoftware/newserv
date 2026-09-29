@@ -34,8 +34,8 @@ PlayerState::PlayerState(uint8_t client_id, std::shared_ptr<Server> server)
       assist_delay_turns(0),
       start_facing_direction(Direction::RIGHT),
       num_destroyed_fcs(0),
-      unknown_a16(0),
-      unknown_a17(0) {}
+      attack_interference_count(0),
+      defense_interference_count(0) {}
 
 void PlayerState::init() {
   auto s = this->server();
@@ -1755,8 +1755,8 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
         if (log.should_log(phosg::LogLevel::L_DEBUG)) {
           log.debug_f("on action card ref {}", s->debug_str_for_card_ref(pa.action_card_refs[z]));
         }
-        card->unknown_80237A90(pa, pa.action_card_refs[z]);
-        card->unknown_802379BC(pa.action_card_refs[z]);
+        card->register_attack_action_card(pa, pa.action_card_refs[z]);
+        card->set_last_added_action_card_ref(pa.action_card_refs[z]);
         if (!is_nte) {
           if (pa.action_card_refs[z] != 0xFFFF) {
             cmd.card_refs[z] = pa.action_card_refs[z];
@@ -1791,7 +1791,7 @@ bool PlayerState::set_action_cards_for_action_state(const ActionState& pa) {
         if (log.should_log(phosg::LogLevel::L_DEBUG)) {
           log.debug_f("on target card ref {}", s->debug_str_for_card_ref(pa.target_card_refs[z]));
         }
-        target_card->unknown_802379DC(pa);
+        target_card->register_defense_action(pa);
         if (!is_nte) {
           if (this->client_id == target_card->get_client_id()) {
             this->stats.defense_actions_set_on_self++;
@@ -2002,14 +2002,14 @@ void PlayerState::roll_main_dice_or_apply_after_effects() {
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
 }
 
-void PlayerState::unknown_8023C110() {
+void PlayerState::reset_all_cards_attack_resolution_state() {
   if (this->sc_card) {
-    this->sc_card->unknown_802380C0();
+    this->sc_card->reset_attack_resolution_state();
   }
   for (size_t set_index = 0; set_index < 8; set_index++) {
     auto card = this->set_cards[set_index];
     if (card) {
-      card->unknown_802380C0();
+      card->reset_attack_resolution_state();
     }
   }
 }
@@ -2029,7 +2029,7 @@ void PlayerState::compute_team_dice_bonus_after_draw_phase() {
 
   uint8_t current_team_turn = s->get_current_team_turn();
   uint8_t dice_boost = s->get_team_exp(current_team_turn) / (s->team_client_count[current_team_turn] * 12);
-  s->card_special->adjust_dice_boost_if_team_has_condition_52(current_team_turn, &dice_boost, 0);
+  s->card_special->adjust_dice_boost_for_condition_multiplier(current_team_turn, &dice_boost, nullptr);
   s->team_dice_bonus[current_team_turn] = std::clamp<int16_t>(dice_boost, 0, 8);
   this->update_hand_and_equip_state_and_send_6xB4x02_if_needed();
 }
