@@ -1080,7 +1080,7 @@ static asio::awaitable<HandlerResult> S_6x(std::shared_ptr<Client> c, Channel::M
       co_return co_await SC_6x60_6xA2(c, msg);
 
     case 0x6A: {
-      auto& cmd = msg.check_size_t<G_SetBossWarpFlags_6x6A>();
+      auto& cmd = msg.check_size_t<G_SetBossWarpState_6x6A>();
       if (c->proxy_session->map_state) {
         std::shared_ptr<MapState::ObjectState> obj_st;
         try {

@@ -465,7 +465,7 @@ void forward_subcommand_with_entity_targets_transcode_and_track_hits_t(
             entity_id = res.entity_id;
           }
           if (entity_id != 0xFFFF) {
-            out_targets.emplace_back(TargetEntry{entity_id, targets[z].unknown_a2});
+            out_targets.emplace_back(TargetEntry{entity_id, targets[z].hitbox_index});
           }
         }
         size_t out_size = sizeof(HeaderT) + sizeof(TargetEntry) * out_targets.size();
@@ -3795,8 +3795,8 @@ static void on_set_entity_pos_and_angle_6x17(std::shared_ptr<Client> c, Subcomma
   forward_subcommand_with_entity_id_transcode_t<G_SetEntityPositionAndAngle_6x17>(c, msg);
 }
 
-static void on_set_boss_warp_flags_6x6A(std::shared_ptr<Client> c, SubcommandMessage& msg) {
-  auto& cmd = msg.check_size_t<G_SetBossWarpFlags_6x6A>();
+static void on_set_boss_warp_state_6x6A(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+  auto& cmd = msg.check_size_t<G_SetBossWarpState_6x6A>();
 
   if (command_is_private(msg.command)) {
     return;
@@ -3821,7 +3821,7 @@ static void on_set_boss_warp_flags_6x6A(std::shared_ptr<Client> c, SubcommandMes
     throw std::runtime_error("incorrect object type for 6x6A command");
   }
 
-  forward_subcommand_with_entity_id_transcode_t<G_SetBossWarpFlags_6x6A>(c, msg);
+  forward_subcommand_with_entity_id_transcode_t<G_SetBossWarpState_6x6A>(c, msg);
 }
 
 static void on_charge_attack_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
@@ -5620,7 +5620,7 @@ const std::vector<SubcommandDefinition> subcommand_definitions{
     /* 6x67 */ {0x58, 0x5F, 0x67, on_trigger_set_event},
     /* 6x68 */ {0x59, 0x60, 0x68, on_update_telepipe_state},
     /* 6x69 */ {0x5A, 0x61, 0x69, on_npc_control},
-    /* 6x6A */ {0x5B, 0x62, 0x6A, on_set_boss_warp_flags_6x6A},
+    /* 6x6A */ {0x5B, 0x62, 0x6A, on_set_boss_warp_state_6x6A},
     /* 6x6B */ {0x5C, 0x63, 0x6B, on_sync_joining_player_compressed_state},
     /* 6x6C */ {0x5D, 0x64, 0x6C, on_sync_joining_player_compressed_state},
     /* 6x6D */ {0x5E, 0x65, 0x6D, on_sync_joining_player_compressed_state},

@@ -670,12 +670,13 @@ check_struct_size(C_MenuSelectionWithNameAndPassword_PC_BB_10, 0x48);
 // This command exists on DC NTE, but it does nothing. DC NTE does not have the 44 command, which would also be
 // required for loading quests, so online quests cannot be loaded on DC NTE.
 // All chunks except the last must have 0x400 data bytes. When downloading an online quest, the .bin and .dat chunks
-// may be interleaved. There is a client bug in BB (and probably all other versions) where if the quest file's size is
-// a multiple of 0x400, the last chunk will have size 0x400, and the client will never consider the download complete
-// since it only considers a file donwload complete when it receives a chunk with size < 0x400 (instead of checking if
-// all expected bytes have been received). To work around this, newserv appends an extra zero byte if the quest file's
-// size is a multiple of 0x400; this byte will be ignored since the PRS decompression algorithm contains a stop
-// command, so the client will never read this extra byte when decompressing the quest.
+// may be interleaved. There is a client bug in all known versions where, if the quest file's size is a multiple of
+// 0x400, the last chunk will have size 0x400 and the client will never consider the download complete, since it only
+// considers a file download complete when it receives a chunk with size < 0x400 (instead of checking if all expected
+// bytes have been received). This bug also affects tha A7 command, which is implemented very similarly. To work around
+// this, newserv appends an extra zero byte if the quest file's size is a multiple of 0x400; this byte will be ignored
+// since the PRS decompression algorithm contains a stop command, so the client will never read this extra byte when
+// decompressing the quest.
 
 // header.flag = file chunk index (start offset / 0x400)
 struct S_WriteFile_13_A7 {
@@ -2087,8 +2088,8 @@ struct S_CallQuestLabel_V3_BB_AB {
 // Internal name: RcvServerTime
 // This command is supported on DCv1 and all later versions, but not on prototype versions or DC NTE.
 // Contents is a string like "%Y:%m:%d: %H:%M:%S.000" (the space is not a typo); for example: 2022:03:30: 15:36:42.000
-// It seems the client ignores the date part and the milliseconds part; only the hour, minute, and second fields are
-// actually used.
+// The client ignores the date and milliseconds; it parses only the hour, minute, and second fields to compute
+// server_time_delta_frames, which is modulated to a 24-hour window.
 // This command can be sent even if it's not requested by the client (with B1). For example, some servers send this
 // command every time a client joins a game.
 // The time_flags fields are used on V3 and later. Time flags are a 24-bit little-endian integer, only 2 bits of which
@@ -2410,6 +2411,7 @@ check_struct_size(S_ChoiceSearchResultEntry_BB_C4, 0x158);
 
 // C6 (C->S): Set blocked senders list (V3/BB)
 // The command always contains the same number of entries, even if the entries at the end are blank (zero).
+// header.flag contains the number of populated entries.
 
 template <size_t Count>
 struct C_SetBlockedSendersT_C6 {
@@ -2481,6 +2483,7 @@ struct S_ConfirmTournamentEntry_Ep3_CC {
 // - The responder sends D0 with its own item list
 // - The server sends D1 to both clients
 // - Both clients delete the sent items from their inventories and send the appropriate subcommands (6x29)
+// - Both clients save their current character state to the VMU / memory card / hard disk
 // - Both clients send D2; similarly to how AC works, the server doesn't proceed until both D2 commands are received
 // - The server sends D3 to both clients with each other's data from their D0 commands, followed immediately by D4 01
 //   to both clients, which completes the trade
@@ -3590,6 +3593,10 @@ struct S_SetShutdownCommand_BB_01EF {
 // subcommands to affect other players; they can only send these commands to inform other clients about changes or
 // actions from their own player. The protected subcommands are marked (protected) in the listings below.
 
+// On v2 and later, each subcommand also has a mask that restricts the areas it can be sent in (lobby, city, or Ragol).
+// If a subcommand is received and it's not allowed in the current area, it is ignored. The game generally uses this to
+// forbid e.g. item-related commands in the lobby, or combat-related commands in the lobby and city.
+
 // These common structures are used by many subcommands.
 struct G_ClientIDHeader {
   uint8_t subcommand = 0;
@@ -4078,8 +4085,8 @@ struct G_CreateInventoryItem_PC_V3_BB_6x2B : G_CreateInventoryItem_DC_6x2B {
 
 struct G_ImposeHold_6x2C {
   G_ClientIDHeader header;
-  le_uint16_t unknown_a1 = 0;
-  le_uint16_t unknown_a2 = 0;
+  le_uint16_t duration_frames = 0;
+  le_uint16_t particle_type = 0; // 1 = 0x12F, 2 = 0x20F, 3 = 0x223
   le_float x = 0.0f;
   le_float z = 0.0f;
   le_float trigger_radius2 = 0.0f; // "2" here means "squared"
@@ -4228,7 +4235,7 @@ struct G_ClearTemporaryPhotonBlastStateFlags_6x3B {
 
 struct TargetEntry {
   le_uint16_t entity_id = 0;
-  le_uint16_t unknown_a2 = 0;
+  le_uint16_t hitbox_index = 0;
 } __packed_ws__(TargetEntry, 4);
 
 struct G_TargetBase_6x3D {
@@ -4286,7 +4293,7 @@ struct G_MoveToPosition_6x41_6x42 {
 struct G_Attack_6x43_6x44_6x45 {
   G_ClientIDHeader header;
   le_uint16_t angle_y = 0;
-  le_uint16_t unknown_a2 = 0;
+  le_uint16_t attack_type = 0;
 } __packed_ws__(G_Attack_6x43_6x44_6x45, 8);
 
 // 6x46: Set attack strike targets (sent after each of 43, 44, and 45) (protected on GC NTE/V3/V4)
@@ -4331,7 +4338,7 @@ struct G_CastTechniqueComplete_6x48 {
 
 struct G_ExecutePhotonBlast_Header_6x49 {
   G_ClientIDHeader header;
-  int8_t unknown_a1 = 0;
+  int8_t pb_number = 0;
   uint8_t unused1 = 0;
   le_uint16_t target_count = 0;
   le_uint16_t pb_meter_value = 0;
@@ -4404,11 +4411,11 @@ struct G_SetAnimationState_6x52 {
   le_uint32_t angle = 0;
 } __packed_ws__(G_SetAnimationState_6x52, 0x0C);
 
-// 6x53: Unknown (supported; game only) (protected on GC NTE/V3/V4)
+// 6x53: Hold while frozen or during Photon Blast (protected on GC NTE/V3/V4)
 
-struct G_Unknown_6x53 {
+struct G_HoldWhileFrozenOrPB_6x53 {
   G_ClientIDHeader header;
-} __packed_ws__(G_Unknown_6x53, 4);
+} __packed_ws__(G_HoldWhileFrozenOrPB_6x53, 4);
 
 // 6x54: Unknown
 // This subcommand is completely ignored by DCv2 and later. On DC NTE, 11/2000, and DCv1, the handler has some logic in
@@ -4429,6 +4436,7 @@ struct G_IntraMapWarp_6x55 {
 } __packed_ws__(G_IntraMapWarp_6x55, 0x20);
 
 // 6x56: Set player position and angle (protected on GC NTE/V3/V4)
+// On GC V3, this also enters the warp-arrival phase (0x15).
 
 struct G_SetPlayerPositionAndAngle_6x56 {
   G_ClientIDHeader header;
@@ -4436,11 +4444,11 @@ struct G_SetPlayerPositionAndAngle_6x56 {
   VectorXYZF pos;
 } __packed_ws__(G_SetPlayerPositionAndAngle_6x56, 0x14);
 
-// 6x57: Unknown (supported; lobby & game) (protected on V3/V4)
+// 6x57: Leave current floor (supported; lobby & game) (protected on V3/V4)
 
-struct G_Unknown_6x57 {
+struct G_LeaveCurrentFloor_6x57 {
   G_ClientIDHeader header;
-} __packed_ws__(G_Unknown_6x57, 4);
+} __packed_ws__(G_LeaveCurrentFloor_6x57, 4);
 
 // 6x58: Lobby animation (protected on GC NTE/V3/V4)
 // If UDP mode is enabled, this command is sent via UDP.
@@ -4615,13 +4623,20 @@ struct G_NPCControl_6x69 {
   le_uint16_t param3; // Commands 0/3: npc_template_index; commands 1/2: unused
 } __packed_ws__(G_NPCControl_6x69, 0x0C);
 
-// 6x6A: Set boss warp flags (not valid on Episode 3)
+// 6x6A: Set boss warp state (not valid on Episode 3)
+// This is used by TObjWarpBoss and TObjCityMainWarpChallenge (see Map.cc for descriptions of these objects).
 
-struct G_SetBossWarpFlags_6x6A {
+struct G_SetBossWarpState_6x6A {
   G_EntityIDHeader header; // entity_id = boss warp object ID
+  // Values for state:
+  //   0 = idle/confirmation
+  //   1 = gather players
+  //   2 = warp
+  //   3 = wait for players to leave the destination
+  //   4 = locked until a switch flag is set
   le_uint16_t flags;
   le_uint16_t unused;
-} __packed_ws__(G_SetBossWarpFlags_6x6A, 8);
+} __packed_ws__(G_SetBossWarpState_6x6A, 8);
 
 // 6x6B: Sync enemy state (used while loading into game)
 
@@ -4950,7 +4965,7 @@ struct G_Unknown_6x78 {
 
 struct G_GogoBall_6x79 {
   G_UnusedHeader header;
-  le_uint32_t unknown_a1 = 0; // Appears to be time-related; it's based on server_time_delta_frames
+  le_uint32_t timestamp = 0; // Used for update ordering between clients
   le_uint32_t angle = 0;
   VectorXZF ball_pos;
   uint8_t use_missile_sound = 0;
@@ -5148,6 +5163,7 @@ struct G_SetTechniqueLevelOverride_6x8D {
 // This command has a handler, but it does nothing.
 
 // 6x8F: Add battle damage scores (not valid on Episode 3)
+// On GC V3, the target entity must exist and amount is checked as a signed 16-bit value; values >= 0x8000 are ignored.
 
 struct G_AddBattleDamageScores_6x8F {
   G_ClientIDHeader header; // client_id is the attacking player
@@ -5173,15 +5189,15 @@ struct G_UpdateAttackableColState_6x91 : G_UpdateObjectState_6x0B {
   uint8_t floor = 0;
 } __packed_ws__(G_UpdateAttackableColState_6x91, 0x14);
 
-// 6x92: Unknown (not valid on Episode 3)
-// TODO: It looks like this sets the heights of players in the online victory screen? Figure out if this is actually
-// what it does.
+// 6x92: Set ending screen parameters (not valid on Episode 3)
+// There are 4 parameters, one per client_id, but they each have different meanings and valud ranges. The command is
+// ignored if there is no player with client ID (param) present. TODO: Document the params' meanings and value ranges.
 
-struct G_Unknown_6x92 {
+struct G_SetEndingScreenParams_6x92 {
   G_UnusedHeader header;
-  le_uint32_t client_id = 0;
-  le_float unknown_a2 = 0.0f;
-} __packed_ws__(G_Unknown_6x92, 0x0C);
+  le_uint32_t param = 0;
+  le_float value = 0.0f;
+} __packed_ws__(G_SetEndingScreenParams_6x92, 0x0C);
 
 // 6x93: Set switch flag from timer (not valid on Episode 3)
 
@@ -5189,7 +5205,10 @@ struct G_SetSwitchFlagFromTimer_6x93 {
   G_UnusedHeader header;
   le_uint16_t switch_flag_floor = 0;
   le_uint16_t switch_flag_num = 0;
-  uint8_t should_set = 0; // The switch flag is only set if this is equal to 1; otherwise it's cleared
+  // The switch flag is only set if this is equal to 1; otherwise it's cleared if the current floor does not match
+  // switch_flag_floor. Presumably this is because the object itself would have been constructed if the switch flag is
+  // on the current floor, so it would be responsible for deactivating its switch flags instead of this command.
+  uint8_t should_set = 0;
   parray<uint8_t, 3> unused;
 } __packed_ws__(G_SetSwitchFlagFromTimer_6x93, 0x0C);
 
@@ -5353,20 +5372,19 @@ struct G_ModifyTradeProposal_6xA6 {
   G_ClientIDHeader header;
   // Values for what:
   //   0 = Propose (result = 0), accept (result = 2), or reject (result = 3)
-  //       TODO: amount is used when what=0; what is it used for?
   //   1 = Add item
   //   2 = Remove item
   //   3 = First confirm (result = 0) or cancel first confirm (result = 4)
   //   4 = Second confirm (result = 0) or cancel second confirm (result = 4)
   //   5 = Cancel trade proposal (result = 4)
   //   6 = Reject proposal (currently trading with another player)
-  //   7 = ??? (TODO)
+  //   7 = Finish/clear trade (result = 0)
   //   Anything else = command is ignored
   uint8_t what = 0;
   uint8_t result = 0;
-  be_uint16_t unknown_a1; // Only used if what = 7
+  be_uint16_t completion_client_id; // Only used if what = 7
   le_uint32_t item_id = 0; // Only used if what = 1 or 2
-  le_uint32_t amount = 0; // Only used if what = 1 or 2
+  le_uint32_t amount = 0; // Current Meseta if what = 0; item/Meseta amount if what = 1 or 2
 } __packed_ws__(G_ModifyTradeProposal_6xA6, 0x10);
 
 // 6xA7: Unknown (not valid on pre-V3)
