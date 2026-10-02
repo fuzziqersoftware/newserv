@@ -698,9 +698,10 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
 
     // Displays a particle effect. This object is not constructed in split-screen mode. Params:
     //   param1 = particle type (truncated to int, clamped to nonnegative)
-    //   param3 = TODO
+    //   param3 = flags: negative = 2, 2 => 8, 3 => 4, anyting else => 0 (TODO: describe what these do)
     //   param4 = if equal to 1, increase draw distance from 200 to 1500; if any other value, no effect
-    //   param5 = TODO
+    //   param5 = if equal to 1, create the particle under ROOT_TL_PARTICLEMODEL instead of ROOT_TL_07 (TODO: this
+    //     probably affects its update or render behavior; describe exactly how these are affected)
     //   param6 = TODO
     {0x0001, F_V0_V4, A_ALL & (~A_E4_BOSS), "TObjParticle"},
     {0x0001, F_EP3, A_E3_ALL, "TObjParticle"},
@@ -717,13 +718,16 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param4 = destination angle (about y axis)
     {0x0003, F_V0_V4, A_ALL & (~A_E1_RUINS) & (~A_LOBBY) & (~A_E2_BOSS), "TObjMapWarpForest"},
 
-    // Light collision. Params:
-    //   param1 = TODO (in range 0-10000; if above 10000, (param1 - 10000) is used and a flag is set)
-    //   param2 = TODO (in range 0-10000; if above 10000, (param2 - 10000) is used and a flag is set)
-    //   param3 = TODO
-    //   param4 = TODO
-    //   param5 = TODO
-    //   param6 = TODO
+    // Directional light override for nearby entities. Params:
+    //   param1 = red component of light color; if >= 10000, light rotates around z axis (and red is param1 - 10000)
+    //   param2 = green component of light color; if >= 10000, light z angle oscillates by +/- 70 degrees using a sine
+    //     wave (and green is param1 - 10000)
+    //   param3 = blue component of light color
+    //   param4 high word = influence radius factor (actual radius is high word * 5)
+    //   param4 low word = angular step per frame (if param1 or param2 >= 10000)
+    //   param5 high word = radial blend strength delta (value is high word / 10 + 1)
+    //   param5 low word = initial light angle about y
+    //   param6 = initial light angle about z axis
     {0x0004, F_V0_V4, A_LOBBY | A_NON_BOSS | A_CITY | A_E4_TEST, "TObjLight"},
     {0x0004, F_EP3, A_E3_ALL, "TObjLight"},
 
@@ -869,10 +873,11 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     {0x0008, F_V0_V4, A_ALL & (~A_LOBBY), "TObjEvtCollision"},
     {0x0008, F_EP3, A_E3_MORGUE, "TObjEvtCollision"},
 
-    // TODO: Describe this object. Params:
-    //   param1 = TODO
-    //   param2 = TODO
-    //   param3 = TODO (it only matters whether this is negative or not)
+    // Invisible collision. Params:
+    //   param1 = radius
+    //   param2 = half-width
+    //   param3 = shape/flags (TODO: negative/nonnegative chooses which shape; abs(value) >= 1000 sets flag 0x100.
+    //     Describe what these do)
     {0x0009, F_V0_V4, A_E1_FOREST | A_E1_CAVE | A_E1_RUINS | A_CITY | A_E4_TEST, "TObjCollision"},
     {0x0009, F_EP3, A_E3_MORGUE, "TObjCollision"},
 
@@ -900,7 +905,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //       chance to shock player = max(0, 0.75 - (ETH / 100))
     //     04 = light (damage = power * (100 - ELT) / 500)
     //     05 = dark (instantly kills with chance (power - EDK) / 100; if used in a boss arena and in non-Ultimate
-    //       mode, cannot kill)
+    //       mode, cannot kill; this damage type does not cause knockback)
     //   param6 = number of frames between trigger and explosion
     {0x000A, F_V0_V4, A_NON_BOSS | A_E4_BOSS | A_E4_TEST, "TOMineIcon01"},
 
@@ -1445,13 +1450,12 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     {0x0084, F_V0_V4, A_ALL & (~A_E1_RUINS) & (~A_E1_BOSS) & (~A_LOBBY) & (~A_E2_BOSS) & (~A_E4_BOSS) & (~A_CITY), "TLazerFenceSw"},
 
     // Light rays. Params:
-    //   param1 = TODO
+    //   param1 = texture vertical scroll speed
     //   param2 = vertical scale (y)
     //   param3 = horizontal scale (x, z)
     {0x0085, F_V0_V4, A_E1_FOREST | A_E2_CCA_ALL | A_E4_DESERT | A_E4_TEST, "TKomorebi"},
 
-    // Butterfly. Params:
-    //   param1-3 = TODO
+    // Butterfly. There appear to be no parameters. param1-3 are copied into the object, but seem to never be used.
     {0x0086, F_V0_V4, A_E1_FOREST | A_E4_DESERT | A_E4_TEST, "TButterfly"},
 
     // Small vehicle. Params:
@@ -1631,8 +1635,9 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
 
     // Caves rainbow. Params:
     //   param1-3 = scale factors (x, y, z)
-    //   param4 = TODO (value is 1 / (param4 + 30))
-    //   param6 = visibility radius? (TODO; value is param6 + 40000)
+    //   param4 = fade duration delta (the full fade takes (param4 / 1024 + 30) frames)
+    //   param6 = radius delta squared (actual radius squared = param6 + 40000); entering this radius fades the rainbow
+    //     out, leaving it fades the rainbow in
     {0x00CB, F_V0_V4, A_E1_CAVE_2 | A_E4_TEST, "TORainbowCave01"},
 
     // Floating jellyfish. Params:
@@ -1643,11 +1648,11 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     {0x00CC, F_V0_V4, A_E1_CAVE_2 | A_E2_SEABED | A_E4_TEST, "TOKurage"},
 
     // Floating dragonfly. Params:
-    //   param1 = TODO
-    //   param2 = TODO
-    //   param3 = max distance from home?
-    //   param4 = TODO
-    //   param5 = TODO
+    //   param1 = random waypoint horizontal radius delta (value is param1 + 50)
+    //   param2 = waypoint height offset: random flights use param2 * random(-1, 1); player avoidance uses param2 + 30
+    //   param3 = movement step and waypoint arrival tolerance
+    //   param4 = vertical bob frequency delta (cycles per 30 frames = param4 / 10 + 1)
+    //   param5 = vertical bob amplitude delta (value is param5 / 10 + 1)
     {0x00CD, F_V0_V4, A_E1_CAVE_2 | A_E1_SPACESHIP | A_E2_SPACESHIP | A_E4_DESERT | A_E4_TEST, "TODragonflyCave01"},
 
     // Caves door. Params:
@@ -1843,15 +1848,15 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param6 = how often to create more particles during spewing phase (in frames; value is param6 + 4)
     {0x0152, F_V0_V4, A_E1_RUINS | A_E2_CCA_ALL | A_E4_DESERT | A_E4_TEST, "TContainerAncient01"},
 
-    // Ruins falling trap. Trap power seems to be scaled by difficulty (Normal = x1, Hard = x2, Very Hard = x3,
-    // Ultimate = x6). Params:
+    // Ruins falling trap. Params:
     //   param1 = trigger radius delta (value is (param1 / 2) + 30)
-    //   param2 = TODO (clamped below to 0)
-    //   param3 = TODO (clamped below to 1)
-    //   param4 = TODO (seems it only matters if this is negative or not in the base class (TOTrap), but
-    //     TOTrapAncient01 clamps it below to 0)
-    //   param5 = TODO (clamped to [0, 5]; calls player->vtable[0x19] on explode unless this is 5)
-    //   param6 = TODO (value is param6 + 30, multipled by 0.33 if offline)
+    //   param2 = initial height above target position (clamped below to 0)
+    //   param3 = falling duration in frames (clamped below to 1)
+    //   param4 = base damage power (clamped below to 0, then scaled by difficulty: Normal = x1, Hard = x2, Very Hard =
+    //     x3, Ultimate = x6)
+    //   param5 = damage type (clamped to [0, 5]; see TOMineIcon01 param5 for damage type values)
+    //   param6 = explosion delay in frames (value is param6 + 30, clamped below to 0; this is multiplied by 0.33 in
+    //     offline games)
     {0x0153, F_V0_V4, A_E1_RUINS | A_E2_VR | A_E4_TEST, "TOTrapAncient01"},
 
     // Ruins pop-up trap. Params:
@@ -1913,9 +1918,9 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param2 = number of hits to destroy trap (clamped to [1, 256])
     //   param3 = tech level modifier (note: level is offset by 1, so a value of 0 means tech level 1):
     //     Normal: level = param3 + 1 (clamped to [0, 14])
-    //     Hard: level = (param3 * 2) + 1 (clamped to [0, 14])
-    //     Very Hard: level = (param3 * 4) + 1 (clamped to [0, 14])
-    //     Ultimate: level = (param3 * 6) + 1 (clamped to [0, 29])
+    //     Hard: level = param3 + 3 (clamped to [0, 14])
+    //     Very Hard: level = param3 + 5 (clamped to [0, 14])
+    //     Ultimate: level = param3 + 7 (clamped to [0, 29])
     //   param4 = delay (value is param4 + 30; clamped below to 0)
     //   param5 = switch flag number (negative = always active)
     //   param6 = tech number:
@@ -1927,22 +1932,22 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   angle.z = hide body (same as for TOTrapAncient02)
     {0x0167, F_V2_V4, A_E1_MINE | A_E1_RUINS | A_E2_NON_BOSS | A_E4_TEST, "TOTrapAncient02R"},
 
-    // Flying white bird. Params:
-    //   param1 = TODO (value is param1 + 1)
-    //   param2 = TODO (value is param2 + 50)
-    //   param3 = TODO (value is param3 + 100)
-    //   param4 = number of birds? (value is param4 + 3, clamped to [1, 6])
-    //   param5 = TODO (value is (param5 / 10) + 1)
-    //   param6 = TODO (value is (param6 / 10) + 1)
+    // Flying white birds. Params:
+    //   param1 = movement speed delta (units per frame = param1 + 1)
+    //   param2 = random waypoint vertical range delta (value is param2 + 50)
+    //   param3 = random waypoint horizontal radius delta (value is param3 + 100)
+    //   param4 = bird count delta (count is param4 + 3; clamped to [1, 6], but 0 is also allowed if param4 == -3)
+    //   param5 = vertical bob frequency delta (cycles per 30 frames = param5 / 10 + 1)
+    //   param6 = vertical bob amplitude delta (value is param6 / 10 + 1)
     {0x0170, F_V0_V4, A_E1_DARK_FALZ | A_E1_SPACESHIP | A_E2_SPACESHIP | A_E4_TEST, "TOBoss4Bird"},
 
     // Dark Falz obelisk. There appear to be no parameters.
     {0x0171, F_V0_V4, A_E1_DARK_FALZ | A_E4_TEST, "TOBoss4Tower"},
 
     // Floating rocks. Params:
-    //   param1 = x/z range delta? (value is param1 + 50)
-    //   param2 = TODO (value is abs(param2))
-    //   param4 = number of rocks? (clamped to [1, 8])
+    //   param1 = x/z spawn range delta (value is param1 + 50)
+    //   param2 = upward speed scale (each rock chooses a speed in [abs(param2) / 2, abs(param2)] at (re)spawn time)
+    //   param4 = number of rocks (clamped to [1, 8])
     {0x0172, F_V0_V4, A_E1_DARK_FALZ | A_E4_TEST, "TOBoss4Rock"},
 
     // Floating soul. Params:
@@ -1985,13 +1990,8 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
 
     // Lobby pigeon. Params:
     //   param4 = model number? (clamped to [0, 2])
-    //   param5 = TODO (3 different behaviors: <= 0, == 1, or >= 2)
-    //   param6 = TODO (it only matters if this is > 0 or not)
-    // Visibility depends on the current season event in a complicated way:
-    //   If param5 <= 0, visible only when there's no season event
-    //   If param5 == 1 and param6 <= 0, visible during Wedding event
-    //   If param5 == 2 and param6 <= 0, visible during Valentine's Day and White Day events
-    //   If none of the above, visible during Halloween event
+    //   param5 = season 1: <= 0 = no season event, 1 = Wedding, >= 2 = Valentine's Day or White Day (but see param6)
+    //   param6 = season 2: if positive and param5 >= 1, show only during Halloween instead
     {0x0183, F_V3_V4, A_LOBBY | A_E4_TEST, "__LOBBY_PIGEON__"},
     {0x0183, F_EP3, A_LOBBY | A_E1_FOREST_1, "__LOBBY_PIGEON__"},
 
@@ -2035,9 +2035,19 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     {0x018B, F_EP3, A_LOBBY, "TObjSuisouLobby"},
 
     // Lobby particles. Params:
-    //   param1 = TODO (clamped to [0, 575])
+    //   param1 = particle effect ID (clamped to [0, 575] on v3)
     //   param3 = same as param3 from 0001 (TObjParticle)
-    //   param4 = particle type (0-9; any other value treated as 0)
+    //   param4 = season visibility; annoyingly, the values here aren't the same as the standard event values:
+    //     1 = Christmas (1)
+    //     2 = Halloween (5)
+    //     3 = New Year (7)
+    //     4 = Valentine's Day (3)
+    //     5 = White Day (9)
+    //     6 = Summer (8)
+    //     7 = Easter (4)
+    //     8 = Wedding (10)
+    //     9 = Fall (11)
+    //     anything else (including 0) = no event (0)
     //   param5 = same as param4 (not param5!) from 0001 (TObjParticle)
     //   param6 = same as param5 (not param6!) from 0001 (TObjParticle)
     {0x018C, F_V3_V4, A_LOBBY | A_E4_TEST, "TObjParticleLobby"},
@@ -2163,7 +2173,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     // Params:
     //   param1 = lightning distance from player
     //   param2 = lightning height
-    //   param3 = TODO (value is ((param3 / 32768) * 0.3) + 1)
+    //   param3 = lightning size scale (each strike uses param3 * (1 + 0.3 * rand(0, 1)) * 64)
     //   param4 = minimum frames between strikes
     //   param5 = interval randomness (after each strike, a random number is chosen between param4 and (param4 +
     //     param5) to determine how many frames to wait until the next strike)
@@ -2212,11 +2222,12 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //     2 or greater: small log
     {0x0213, F_V3_V4, A_E2_JUNGLE_N | A_E2_JUNGLE_E | A_E2_MOUNTAIN | A_E2_SEASIDE | A_E2_SEASIDE_NIGHT | A_E4_DESERT | A_E4_TEST, "TOJungleDesign"},
 
-    // Fish. This object is not constructed in split-screen mode. Params:
-    //   param1-3 = TODO (Vector3F)
-    //   param4 = TODO
-    //   param5 = TODO
-    //   param6 = TODO
+    // School of fish. This object is not constructed in split-screen mode. Params:
+    //   param1-3 = school size in each coordinate (x, y, z; each fish chooses its coordinates as (school_pos +
+    //     rand(-paramN, +paramN)))
+    //   param4 = number of fish using model 0
+    //   param5 = number of fish using model 1
+    //   param6 = number of fish using model 2
     {0x0220, F_V3_V4, A_LOBBY | A_E2_JUNGLE_N | A_E2_SEASIDE | A_E2_SEABED | A_E2_SEASIDE_NIGHT | A_E4_TEST, "TObjFish"},
     {0x0220, F_EP3, A_LOBBY | A_E1_FOREST_1, "TObjFish"},
 
@@ -2254,7 +2265,9 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
 
     // Seabed capturing trap, similar to 0x0153 (TOTrapAncient01) in function. Triggers when a player is within 15
     // units. Params:
-    //   param1 = TODO (clamped to [0.1, 10])
+    //   param1 = animation playback rate (clamped to [0.1, 10])
+    //   param2 = base damage power (clamped below to 0, then scaled by difficulty: Normal = 1x, Hard = 2x, Very Hard =
+    //     3x, Ultimate = 6x)
     //   param4 = hold time after trigger (in seconds; clamped to [1, 60])
     //   param5 = hide in split-screen:
     //     zero or negative = always visible
@@ -2302,8 +2315,8 @@ static const std::vector<DATEntityDefinition> dat_object_definitions({
     //   param6 = type (clamped to [0, 1]; 0 = "QUEST", 1 = "RICO") (inherited from TObjMesBase)
     {0x02B7, F_GC, A_E1_P2 | A_E2_LAB, "TObjGbAdvance"},
 
-    // Like TObjQuestColA (TODO: In what ways is it different?). Parameters are the same as for TObjQuestCol, but also:
-    //   param2 = TODO
+    // Like TObjQuestColA, but is targetable (shows a reticle). Params are the same as for TObjQuestColA, but also:
+    //   param2 = hitbox (reticle) vertical offset
     //   param5 = quest script manager to use (zero or negative = quest, positive = free play)
     {0x02B8, F_V3_V4, A_ALL & (~A_LOBBY) & (~A_E1_QUEST_ONLY) & (~A_E4_BOSS), "TObjQuestColALock2"},
     {0x02B8, F_EP3, A_E3_MORGUE, "TObjQuestColALock2"},
@@ -2871,9 +2884,8 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
 
     // Hildebear. Params:
     //   param1 = initial location (zero or negative = ground, positive = jump)
-    //   param2 = chance to use tech (value is param3 + 0.6, clamped to [0, 1]; TODO: it's not clear when exactly the
-    //     decision points are)
-    //   param3 = chance to jump when more than 150 units away (value is param2 + 0.3, clamped to [0, 1])
+    //   param2 = chance to use tech (value is param2 + 0.3 clamped to [0, 1])
+    //   param3 = chance to jump when more than 150 units away (value is param3 + 0.6 clamped to [0, 1])
     //   param6 = if >= 1, always rare
     {0x0040, F_V0_V4, A_E1_FOREST_2 | A_E1_QUEST_ONLY | A_E2_TEMPLE, "TObjEneMoja"},
 
@@ -2925,8 +2937,8 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     //   param1 = TODO
     //   param2 = TODO (some state is set based on whether this is <= 0 or not, but the value is also used directly in
     //     some places)
-    //   param3 = TODO (see TObjGrass_update_case8)
-    //   param4 = TODO (see TObjGrass_update_case8)
+    //   param3 = TODO
+    //   param4 = death baby count delta ((param4 + 12) TObjCGrass objects are created during death)
     {0x0060, F_V0_V4, A_E1_CAVE_1 | A_E1_CAVE_2 | A_E1_QUEST_ONLY | A_E2_TEMPLE, "TObjGrass"},
 
     // Poison Lily or Del Lily. Del Lily is constructed if the current area is 0x23 (Control Tower); otherwise, Poison
@@ -3123,7 +3135,7 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     // Gi Gue. Params:
     //   param1 = TODO (only matters if >= 1 or not)
     //   param2 = TODO (only used if param1 >= 1; defaults to 50 if param2 < 1; maybe same as Nano Dragon's param2?)
-    //   param3 = TODO (value is param3 + 150)
+    //   param3 = flight height delta (value is param3 + 150, clamped below to 0)
     //   param4 = TODO (value is param4 + 0.5)
     //   param5 = TODO (value is param5 + 0.5)
     //   param7 = TODO
@@ -3149,11 +3161,11 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     {0x00DD, F_V3_V4, A_E2_SEABED | A_E2_SEASIDE_NIGHT, "TObjEneDolmOlm"},
 
     // Morfos. Params:
-    //   param1 = TODO (value is param1 + 0.28)
-    //   param2 = TODO (value is param2 + 20)
+    //   param1 = movement speed delta (value is param1 + 0.28, clamped below to 0.1)
+    //   param2 = movement leg distance delta (value is param2 + 20, clamped below to 5)
     //   param3 = TODO (value is param3 + 0.1; probability; used when current HP is less than half of max)
     //   param4 = TODO (value is param4 + 0.1; probability; used when current HP is less than half of max)
-    //   param6 = TODO
+    //   param6 = translation flag: >=1 disables x/z translation movement in non-Ultimate; <1 allows translation
     {0x00DE, F_V3_V4, A_E2_SEABED, "TObjEneMorfos"},
 
     // Recobox. Params:
@@ -3180,8 +3192,8 @@ static const std::vector<DATEntityDefinition> dat_enemy_definitions({
     //   param1 = TODO (value is param1 + 0.5, clamped below to 0)
     //   param2 = TODO (value is param2 + 512; it appears this was supposed to be clamped below to 0, but due to a
     //     copy/paste error it isn't)
-    //   param3 = TODO (value is (param3 + 20) * 5, clamped below to 150)
-    //   param4 = TODO (value is (param4 + 20) * 5, clamped below to 150)
+    //   param3 = first attack timer period (value is max(param3 + 20, 5) * 30 frames)
+    //   param4 = second attack timer period (value is max(param4 + 20, 5) * 30 frames)
     {0x00E0, F_V3_V4, A_E2_TOWER, "TObjEneEpsilonBody"},
 
     // Ill Gill. Params:
