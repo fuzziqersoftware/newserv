@@ -1725,14 +1725,20 @@ void MapDefinition::assert_semantically_equivalent(const MapDefinition& other) c
   if (this->default_rules != other.default_rules) {
     throw std::runtime_error("default rules not equal");
   }
+  if (this->npc_unknown_a1 != other.npc_unknown_a1) {
+    throw std::runtime_error("npc_unknown_a1 not equal");
+  }
+  if (this->unknown_n1 != other.unknown_n1) {
+    throw std::runtime_error("unknown_n1 not equal");
+  }
   for (size_t z = 0; z < this->npc_decks.size(); z++) {
     if (this->npc_decks[z].card_ids != other.npc_decks[z].card_ids) {
       throw std::runtime_error("npc deck card IDs not equal");
     }
     const auto& this_ai_params = this->npc_ai_params[z];
     const auto& other_ai_params = other.npc_ai_params[z];
-    if (this_ai_params.unknown_a1 != other_ai_params.unknown_a1) {
-      throw std::runtime_error("npc AI params unknown_a1 not equal");
+    if (this_ai_params.params != other_ai_params.params) {
+      throw std::runtime_error("npc AI params not equal");
     }
     if (this_ai_params.is_arkz != other_ai_params.is_arkz) {
       throw std::runtime_error("npc AI params is_arkz not equal");
@@ -1740,12 +1746,6 @@ void MapDefinition::assert_semantically_equivalent(const MapDefinition& other) c
     if (this_ai_params.unknown_a2 != other_ai_params.unknown_a2) {
       throw std::runtime_error("npc AI params unknown_a2 not equal");
     }
-    if (this_ai_params.params != other_ai_params.params) {
-      throw std::runtime_error("npc AI params not equal");
-    }
-  }
-  if (this->unknown_a7 != other.unknown_a7) {
-    throw std::runtime_error("unknown_a7 not equal");
   }
   if (this->npc_ai_params_entry_index != other.npc_ai_params_entry_index) {
     throw std::runtime_error("npc AI params entry indexes not equal");
@@ -1997,28 +1997,21 @@ std::string MapDefinition::str(const CardIndex* card_index, Language language) c
   lines.emplace_back("  quest_name: " + this->quest_name.decode(language));
   lines.emplace_back("  description: " + this->description.decode(language));
   lines.emplace_back(std::format("  map_xy: {} {}", this->map_x, this->map_y));
+  lines.emplace_back("  npc_a1: " + phosg::format_data_string(this->npc_unknown_a1.data(), this->npc_unknown_a1.bytes()));
+  lines.emplace_back("  n1: " + phosg::format_data_string(this->unknown_n1.data(), this->unknown_n1.bytes()));
   for (size_t z = 0; z < 3; z++) {
     lines.emplace_back(std::format("  npc_chars[{}]:", z));
     lines.emplace_back("    name: " + this->npc_ai_params[z].ai_name.decode(language));
-    lines.emplace_back(std::format(
-        "    ai_params: (a1: {:04X} {:04X}, is_arkz: {:02X}, a2: {:02X} {:02X} {:02X})",
-        this->npc_ai_params[z].unknown_a1[0], this->npc_ai_params[z].unknown_a1[1],
-        this->npc_ai_params[z].is_arkz, this->npc_ai_params[z].unknown_a2[0],
-        this->npc_ai_params[z].unknown_a2[1], this->npc_ai_params[z].unknown_a2[2]));
-    for (size_t w = 0; w < 0x78; w += 0x08) {
+    lines.emplace_back(std::format("    ai_params.is_arkz: {}", this->npc_ai_params[z].is_arkz ? "true" : "false"));
+    for (size_t w = 0; w < 0x80; w += 0x08) {
       lines.emplace_back(std::format(
-          "    ai_params.a3[0x{:02X}:0x{:02X}]: {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X}",
+          "    ai_params.params[0x{:02X}:0x{:02X}]: {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X} {:04X}",
           w, w + 0x08,
           this->npc_ai_params[z].params[w + 0x00], this->npc_ai_params[z].params[w + 0x01],
           this->npc_ai_params[z].params[w + 0x02], this->npc_ai_params[z].params[w + 0x03],
           this->npc_ai_params[z].params[w + 0x04], this->npc_ai_params[z].params[w + 0x05],
           this->npc_ai_params[z].params[w + 0x06], this->npc_ai_params[z].params[w + 0x07]));
     }
-    lines.emplace_back(std::format(
-        "    ai_params.a3[0x78:0x7E]: {:04X} {:04X} {:04X} {:04X} {:04X} {:04X}",
-        this->npc_ai_params[z].params[0x78], this->npc_ai_params[z].params[0x79],
-        this->npc_ai_params[z].params[0x7A], this->npc_ai_params[z].params[0x7B],
-        this->npc_ai_params[z].params[0x7C], this->npc_ai_params[z].params[0x7D]));
     lines.emplace_back(std::format("  npc_decks[{}]:", z));
     lines.emplace_back("    name: " + this->npc_decks[z].deck_name.decode(language));
     for (size_t w = 0; w < 0x20; w++) {
@@ -2051,7 +2044,6 @@ std::string MapDefinition::str(const CardIndex* card_index, Language language) c
       }
     }
   }
-  lines.emplace_back("  a7: " + phosg::format_data_string(this->unknown_a7.data(), this->unknown_a7.bytes()));
   lines.emplace_back(std::format("  npc_ai_params_entry_index: [{:08X}, {:08X}, {:08X}]",
       this->npc_ai_params_entry_index[0], this->npc_ai_params_entry_index[1], this->npc_ai_params_entry_index[2]));
   if (!this->before_message.empty()) {
@@ -2296,8 +2288,9 @@ MapDefinitionTrial::MapDefinitionTrial(const MapDefinition& map)
       map_x(map.map_x),
       map_y(map.map_y),
       npc_decks(map.npc_decks),
+      npc_unknown_a1(map.npc_unknown_a1),
+      unknown_n1(map.unknown_n1),
       npc_ai_params(map.npc_ai_params),
-      unknown_a7(map.unknown_a7),
       npc_ai_params_entry_index(map.npc_ai_params_entry_index),
       before_message(map.before_message),
       after_message(map.after_message),
@@ -2347,8 +2340,9 @@ MapDefinitionTrial::operator MapDefinition() const {
   ret.map_x = this->map_x;
   ret.map_y = this->map_y;
   ret.npc_decks = this->npc_decks;
+  ret.npc_unknown_a1 = this->npc_unknown_a1;
+  ret.unknown_n1 = this->unknown_n1;
   ret.npc_ai_params = this->npc_ai_params;
-  ret.unknown_a7 = this->unknown_a7;
   ret.npc_ai_params_entry_index = this->npc_ai_params_entry_index;
   ret.before_message = this->before_message;
   ret.after_message = this->after_message;

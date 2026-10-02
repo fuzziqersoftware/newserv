@@ -1195,8 +1195,8 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   //   03, 04 = team A start (2v2) (can be redefined by start_tile_definitions)
   //   06, 07 = team B start (2v2) (can be redefined by start_tile_definitions)
   //   08 = team B start (1v1) (can be redefined by start_tile_definitions)
-  // Note that the game displays the map reversed vertically in the preview window. For example, player 1 is on team A,
-  // which usually starts at the top of the map as defined in this struct, or at the bottom as shown in the preview.
+  // Note that the game displays the map reversed vertically in the preview window. For example, team A, which usually
+  // starts at the top of the map as defined in this struct, would appear at the bottom as shown in the preview.
   /* 000C */ parray<parray<uint8_t, 0x10>, 0x10> map_tiles;
 
   // The start_tile_definitions field is a list of 6 bytes for each team. The low 6 bits of each byte match the
@@ -1263,19 +1263,18 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
 
   // These are not quite the same format as the entries in aiprm.dat. These entries are only used if the corresponding
   // NPC exists (if .name[0] is not 0) and if the corresponding entry in the npc_ai_params_entry_index is -1.
+  /* 20F0 */ parray<be_uint16_t, 3> npc_unknown_a1;
+  /* 20F6 */ parray<uint8_t, 2> unknown_n1;
   struct AIParams {
-    /* 0000 */ parray<be_uint16_t, 2> unknown_a1;
-    /* 0004 */ uint8_t is_arkz;
-    /* 0005 */ parray<uint8_t, 3> unknown_a2;
-    /* 0008 */ pstring<TextEncoding::MARKED, 0x10> ai_name;
+    /* 0000 */ pstring<TextEncoding::MARKED, 0x10> ai_name;
     // TODO: Figure out exactly how these are used and document here.
-    /* 0018 */ parray<be_uint16_t, 0x7E> params;
+    /* 0010 */ parray<be_int16_t, 0x80> params;
+    /* 0110 */ uint8_t is_arkz;
+    /* 0111 */ parray<uint8_t, 3> unknown_a2;
     /* 0114 */
     phosg::JSON json(Language language) const;
   } __packed_ws__(AIParams, 0x114);
-  /* 20F0 */ parray<AIParams, 3> npc_ai_params; // Unused if ai_name[0] == 0
-
-  /* 242C */ parray<uint8_t, 8> unknown_a7;
+  /* 20F8 */ parray<AIParams, 3> npc_ai_params; // Unused if ai_name[0] == 0
 
   // This array specifies which set of predefined AI parameters (in aiprm.dat) to use for each NPC. If a value in this
   // array is -1 (FFFFFFFF), then the corresponding NPC's AI parameters are defined in the AIParams structure above.
@@ -1442,8 +1441,9 @@ struct MapDefinitionTrial {
   /* 1FDC */ be_uint16_t map_x;
   /* 1FDE */ be_uint16_t map_y;
   /* 1FE0 */ parray<MapDefinition::NPCDeck, 3> npc_decks;
-  /* 20E8 */ parray<MapDefinition::AIParams, 3> npc_ai_params;
-  /* 2424 */ parray<uint8_t, 8> unknown_a7;
+  /* 20E8 */ parray<be_uint16_t, 3> npc_unknown_a1;
+  /* 20EE */ parray<uint8_t, 2> unknown_n1;
+  /* 20F0 */ parray<MapDefinition::AIParams, 3> npc_ai_params;
   /* 242C */ parray<be_int32_t, 3> npc_ai_params_entry_index;
   /* 2438 */ pstring<TextEncoding::MARKED, 0x190> before_message;
   /* 25C8 */ pstring<TextEncoding::MARKED, 0x190> after_message;
