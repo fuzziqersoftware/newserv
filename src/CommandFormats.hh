@@ -5010,15 +5010,22 @@ struct G_SetChallengeRecords_BB_6x7C : G_SetChallengeRecordsBase_6x7C {
 struct G_SetBattleModeData_6x7D {
   G_UnusedHeader header;
   // Values for what (0-6; values 7 and above are not valid):
-  //   0 = Unknown (params[0] and [1] are used)
-  //   2 = Unknown (no params are used)
-  //   3 = Set player score (params[0] = client ID, [1] = score)
-  //   4 = Unknown (params[0] = client ID)
-  //   5 = Unknown (no params are used)
-  //   6 = Unknown (all params are used)
-  //   Anything else = command is ignored
+  //   0 = set battle phase (from phase field):
+  //       0 = setup
+  //       1 = start sequence
+  //       2 = battle in progress
+  //       3 = results/retry
+  //       4 = exit
+  //       5 = abort/disconnect message (param[0] enables disconnect penalty if nonzero)
+  //       6 = rematch
+  //   2 = set battle start ready flag
+  //   3 = set player score / alive status (params[0] = client ID, params[1] = score)
+  //   4 = acknowledge start sequence (params[0] = client ID)
+  //   5 = request score / alive update from each client (each responds with what = 3; no params are used)
+  //   6 = start rematch (params[0-3] = start location numbers for corresponding clients)
+  //   anything else = command is ignored
   uint8_t what = 0;
-  uint8_t unknown_a1 = 0; // Only used when what == 0
+  uint8_t phase = 0;
   uint8_t unused = 0;
   uint8_t is_alive = 0; // Only used when what == 3
   parray<le_uint32_t, 4> params;
@@ -5034,7 +5041,7 @@ struct G_BattleScoresT_6x7F {
   struct Entry {
     U16T<BE> client_id = 0;
     U16T<BE> place = 0;
-    U32T<BE> score = 0;
+    S32T<BE> score = 0;
   } __packed_ws__(Entry, 8);
   G_UnusedHeader header;
   parray<Entry, 4> entries;
