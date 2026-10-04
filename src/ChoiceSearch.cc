@@ -28,8 +28,10 @@ const std::vector<ChoiceSearchCategory> CHOICE_SEARCH_CATEGORIES{
           }
           uint32_t target_level = target_c->character_file()->disp.stats.level + 1;
           switch (choice_id) {
-            case 0x0001:
-              return (labs(static_cast<int32_t>(target_level - searcher_c->character_file()->disp.stats.level)) <= 5);
+            case 0x0001: {
+              size_t searcher_level = searcher_c->character_file()->disp.stats.level + 1;
+              return (labs(static_cast<int32_t>(target_level - searcher_level)) <= 5);
+            }
             case 0x0002:
               return (target_level <= 10);
             case 0x0003:

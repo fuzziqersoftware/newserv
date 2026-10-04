@@ -319,7 +319,7 @@ std::shared_ptr<const TeamIndex::Team> TeamIndex::create(
   m.set_flag(Team::Member::Flag::IS_MASTER);
   team->members.emplace(master_account_id, std::move(m));
   team->name = name;
-
+  team->master_account_id = master_account_id;
   team->save_config();
   this->add_to_indexes(team);
   return team;
@@ -357,10 +357,13 @@ void TeamIndex::add_member(uint32_t team_id, uint32_t account_id, const std::str
   team->save_config();
 }
 
-void TeamIndex::remove_member(uint32_t account_id) {
+void TeamIndex::remove_member(uint32_t team_id, uint32_t account_id) {
   auto team_it = this->account_id_to_team.find(account_id);
   if (team_it == this->account_id_to_team.end()) {
     throw std::runtime_error("client is not in any team");
+  }
+  if (team_it->second->team_id != team_id) {
+    throw std::runtime_error("client is not in the specified team");
   }
   auto team = std::move(team_it->second);
   this->account_id_to_team.erase(team_it);

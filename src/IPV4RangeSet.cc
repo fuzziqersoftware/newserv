@@ -22,15 +22,17 @@ IPV4RangeSet::IPV4RangeSet(const phosg::JSON& json) {
       throw std::runtime_error("invalid IPv4 address");
     }
     uint32_t addr = 0;
-    for (size_t z = 0; z < 4; z++) {
-      size_t end_pos = 0;
-      size_t new_byte = stoul(addr_tokens[z], &end_pos, 10);
-      if (end_pos != addr_tokens[z].size() || new_byte > 0xFF) {
-        throw std::runtime_error("invalid IPv4 address");
+    if (mask_bits != 0) {
+      for (size_t z = 0; z < 4; z++) {
+        size_t end_pos = 0;
+        size_t new_byte = stoul(addr_tokens[z], &end_pos, 10);
+        if (end_pos != addr_tokens[z].size() || new_byte > 0xFF) {
+          throw std::runtime_error("invalid IPv4 address");
+        }
+        addr = (addr << 8) | new_byte;
       }
-      addr = (addr << 8) | new_byte;
+      addr &= (0xFFFFFFFF << (32 - mask_bits));
     }
-    addr &= (0xFFFFFFFF << (32 - mask_bits));
 
     this->ranges.emplace(addr, mask_bits);
   }

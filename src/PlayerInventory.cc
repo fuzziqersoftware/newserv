@@ -112,5 +112,6 @@ void PlayerBank::assign_ids(uint32_t base_id) {
 void PlayerBank::enforce_stack_limits(std::shared_ptr<const ItemData::StackLimits> stack_limits) {
   for (auto& item : this->items) {
     item.data.enforce_stack_size_limits(*stack_limits);
+    item.amount = item.data.stack_size(*stack_limits);
   }
 }

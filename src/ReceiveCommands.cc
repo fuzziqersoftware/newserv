@@ -5446,7 +5446,7 @@ static asio::awaitable<void> on_EA_BB(std::shared_ptr<Client> c, Channel::Messag
         bool is_removing_self = (cmd.guild_card_number == c->login->account->account_id);
         if (is_removing_self ||
             (team->members.at(c->login->account->account_id).privilege_level() >= 0x30)) {
-          s->team_index->remove_member(cmd.guild_card_number);
+          s->team_index->remove_member(team->team_id, cmd.guild_card_number);
           auto removed_account = s->account_index->from_account_id(cmd.guild_card_number);
           removed_account->bb_team_id = 0;
           removed_account->save();

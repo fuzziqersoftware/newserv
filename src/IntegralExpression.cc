@@ -358,11 +358,13 @@ std::unique_ptr<const IntegralExpression::Node> IntegralExpression::parse_expr(s
   };
   for (const auto& operators : binary_operator_levels) {
     size_t paren_level = 0;
-    for (size_t z = 0; z < text.size() - 1; z++) {
-      if (text[z] == '(') {
+    // We scan in reverse so we'll preserve operator order in expressions like "A - B - C" - that should parse as
+    // (A - B) - C, not A - (B - C)
+    for (ssize_t z = text.size() - 1; z >= 0; z--) {
+      if (text[z] == ')') {
         paren_level++;
         continue;
-      } else if (text[z] == ')') {
+      } else if (text[z] == '(') {
         paren_level--;
         continue;
       }

@@ -179,7 +179,7 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
     size_t det = rand_crypt->next() % sum;
     for (size_t z = 0; z < table.second; z++) {
       const auto& entry = table.first[z];
-      if (det > entry.probability) {
+      if (det >= entry.probability) {
         det -= entry.probability;
       } else {
         item.data.data2d = 0;
@@ -192,7 +192,7 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
         auto l = c->require_lobby();
         for (const auto& lc : l->clients) {
           if (lc && (lc->version() == Version::BB_V4)) {
-            send_create_inventory_item_to_client(c, c->lobby_client_id, item.data);
+            send_create_inventory_item_to_client(lc, c->lobby_client_id, item.data);
           }
         }
         break;

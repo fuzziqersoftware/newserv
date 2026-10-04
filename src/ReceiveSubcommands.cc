@@ -2672,7 +2672,12 @@ static void on_ep3_private_word_select_bb_bank_action(std::shared_ptr<Client> c,
         if (item.id == 0xFFFFFFFF) {
           item.id = cmd.item_id;
         }
-        bank->add_item(item, limits);
+        try {
+          bank->add_item(item, limits);
+        } catch (const std::exception& e) {
+          p->add_item(item, limits);
+          throw;
+        }
         send_destroy_item_to_lobby(c, cmd.item_id, cmd.item_amount, true);
 
         if (l->log.should_log(phosg::LogLevel::L_INFO)) {
@@ -2702,7 +2707,12 @@ static void on_ep3_private_word_select_bb_bank_action(std::shared_ptr<Client> c,
         const auto& limits = *s->data->item_stack_limits(c->version());
         auto item = bank->remove_item(cmd.item_id, cmd.item_amount, limits);
         item.id = l->generate_item_id(c->lobby_client_id);
-        p->add_item(item, limits);
+        try {
+          p->add_item(item, limits);
+        } catch (const std::exception& e) {
+          bank->add_item(item, limits);
+          throw;
+        }
         send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
 
         if (l->log.should_log(phosg::LogLevel::L_INFO)) {
@@ -4543,7 +4553,11 @@ static void on_sell_item_at_shop_bb(std::shared_ptr<Client> c, SubcommandMessage
 
   auto s = c->require_server_state();
   auto p = c->character_file();
-  auto item = p->remove_item(cmd.item_id, cmd.amount, *s->data->item_stack_limits(c->version()));
+  auto& stack_limits = *s->data->item_stack_limits(c->version());
+  auto item = p->remove_item(cmd.item_id, cmd.amount, stack_limits);
+  if (item.stack_size(stack_limits) != cmd.amount) {
+    throw std::runtime_error("Invalid stack size at sale time");
+  }
   size_t price = (s->data->item_parameter_table(c->version())->price_for_item(item) >> 3) * cmd.amount;
   p->add_meseta(price);
 
@@ -5445,9 +5459,8 @@ static void on_upgrade_weapon_attribute_bb(std::shared_ptr<Client> c, Subcommand
   auto s = c->require_server_state();
   auto p = c->character_file();
   try {
-    size_t item_index = p->inventory.find_item(cmd.item_id);
-    auto& item = p->inventory.items[item_index].data;
-    if (item.is_s_rank_weapon()) {
+    auto* item = &p->inventory.items[p->inventory.find_item(cmd.item_id)].data;
+    if (item->is_s_rank_weapon()) {
       throw std::runtime_error("6xDA command sent for ES weapon");
     }
 
@@ -5458,7 +5471,7 @@ static void on_upgrade_weapon_attribute_bb(std::shared_ptr<Client> c, Subcommand
       throw std::runtime_error("not enough payment items present");
     }
 
-    int8_t attribute_amount = 0;
+    int16_t attribute_amount = 0;
     if (cmd.payment_type == 1 && cmd.payment_count == 1) {
       attribute_amount = 30;
     } else if (cmd.payment_type == 0 && cmd.payment_count == 4) {
@@ -5470,8 +5483,8 @@ static void on_upgrade_weapon_attribute_bb(std::shared_ptr<Client> c, Subcommand
     }
 
     size_t attribute_index = 0;
-    for (size_t z = 6; z <= (item.has_kill_count() ? 8 : 10); z += 2) {
-      if ((item.data1[z] == 0) || (!(item.data1[z] & 0x80) && (item.data1[z] == cmd.attribute))) {
+    for (size_t z = 6; z <= (item->has_kill_count() ? 8 : 10); z += 2) {
+      if ((item->data1[z] == 0) || (!(item->data1[z] & 0x80) && (item->data1[z] == cmd.attribute))) {
         attribute_index = z;
         break;
       }
@@ -5479,7 +5492,7 @@ static void on_upgrade_weapon_attribute_bb(std::shared_ptr<Client> c, Subcommand
     if (attribute_index == 0) {
       throw std::runtime_error("no available attribute slots");
     }
-    int8_t new_attr_value = static_cast<int8_t>(item.data1[attribute_index + 1]) + attribute_amount;
+    int16_t new_attr_value = static_cast<int16_t>(item->data1[attribute_index + 1]) + attribute_amount;
     if (new_attr_value > 100) {
       throw std::runtime_error("bonus value exceeds 100");
     }
@@ -5488,11 +5501,13 @@ static void on_upgrade_weapon_attribute_bb(std::shared_ptr<Client> c, Subcommand
         payment_item.id, cmd.payment_count, *s->data->item_stack_limits(c->version()));
     send_destroy_item_to_lobby(c, removed_payment_item.id, cmd.payment_count);
 
-    item.data1[attribute_index] = cmd.attribute;
-    item.data1[attribute_index + 1] = new_attr_value;
+    // Look up the item again, because removing the payment item could move the target item in the inventory
+    item = &p->inventory.items[p->inventory.find_item(cmd.item_id)].data;
+    item->data1[attribute_index] = cmd.attribute;
+    item->data1[attribute_index + 1] = new_attr_value;
 
-    send_destroy_item_to_lobby(c, item.id, 1);
-    send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
+    send_destroy_item_to_lobby(c, item->id, 1);
+    send_create_inventory_item_to_lobby(c, c->lobby_client_id, *item);
     send_quest_function_call(c, cmd.success_label);
 
   } catch (const std::exception& e) {

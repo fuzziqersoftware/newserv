@@ -135,7 +135,7 @@ public:
   void rename(uint32_t team_id, const std::string& new_name);
 
   void add_member(uint32_t team_id, uint32_t account_id, const std::string& name);
-  void remove_member(uint32_t account_id);
+  void remove_member(uint32_t team_id, uint32_t account_id);
   void update_member_name(uint32_t account_id, const std::string& name);
   void add_member_points(uint32_t account_id, uint32_t points);
   void set_flag_data(uint32_t team_id, const parray<le_uint16_t, 0x20 * 0x20>& flag_data);

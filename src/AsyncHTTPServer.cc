@@ -171,7 +171,7 @@ static void url_decode_inplace(std::string& s) {
           static_cast<char>(phosg::value_for_hex_char(s[read_offset + 1]) << 4) |
           static_cast<char>(phosg::value_for_hex_char(s[read_offset + 2]));
       read_offset += 3;
-    } else if (s[write_offset] == '+') {
+    } else if (s[read_offset] == '+') {
       s[write_offset] = ' ';
       read_offset++;
     } else {
@@ -298,9 +298,6 @@ asio::awaitable<HTTPRequest> HTTPClient::recv_http_request(size_t max_line_size,
       if (parse_offset != line.size()) {
         throw HTTPError(400, "Invalid chunk header during chunked encoding");
       }
-      if (chunk_size == 0) {
-        break;
-      }
       total_data_bytes += chunk_size;
       if (total_data_bytes > max_body_size) {
         throw HTTPError(400, "Request data size too large");
@@ -310,7 +307,11 @@ asio::awaitable<HTTPRequest> HTTPClient::recv_http_request(size_t max_line_size,
       if (!after_chunk_data.empty()) {
         throw HTTPError(400, "Incorrect trailing sequence after chunk data");
       }
+      if (chunk_size == 0) {
+        break;
+      }
     }
+    req.data = phosg::join(chunks, "");
   } else {
     auto content_length_header = req.get_header("content-length");
     size_t content_length = content_length_header ? stoull(*content_length_header) : 0;
@@ -403,17 +404,17 @@ asio::awaitable<WebSocketMessage> HTTPClient::recv_websocket_message(size_t max_
 
     // If the current message is a control message, respond appropriately (these can be sent in the middle of
     // fragmented messages)
-    uint8_t opcode = msg.header[0] & 0x0F;
-    if (opcode & 0x08) {
-      if (opcode == 0x0A) {
+    msg.opcode = msg.header[0] & 0x0F;
+    if (msg.opcode & 0x08) {
+      if (msg.opcode == 0x0A) {
         // Ping response; ignore it
 
-      } else if (opcode == 0x08) {
+      } else if (msg.opcode == 0x08) {
         // Close message
         co_await this->send_websocket_message(msg.data, msg.opcode);
         this->r.close();
 
-      } else if (opcode == 0x09) {
+      } else if (msg.opcode == 0x09) {
         // Ping message
         co_await this->send_websocket_message(msg.data, 0x0A);
 
@@ -426,7 +427,7 @@ asio::awaitable<WebSocketMessage> HTTPClient::recv_websocket_message(size_t max_
 
     // If there's an existing fragment, the current message's opcode should be zero; if there's no pending message, it
     // must not be zero
-    if (prev_msg_present == (opcode != 0)) {
+    if (prev_msg_present == (msg.opcode != 0)) {
       this->r.close();
       continue;
     }
@@ -437,7 +438,7 @@ asio::awaitable<WebSocketMessage> HTTPClient::recv_websocket_message(size_t max_
     } else {
       prev_msg.header[0] = msg.header[0];
       prev_msg.header[1] = msg.header[1];
-      if (opcode) {
+      if (msg.opcode) {
         prev_msg.opcode = msg.opcode;
       }
       if (has_mask) {
@@ -454,6 +455,8 @@ asio::awaitable<WebSocketMessage> HTTPClient::recv_websocket_message(size_t max_
     // message.
     if (prev_msg.header[0] & 0x80) {
       co_return prev_msg;
+    } else {
+      prev_msg_present = true;
     }
   }
 
