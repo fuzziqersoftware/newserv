@@ -680,21 +680,26 @@ struct PlayerRecordsChallengeV3T {
   /* 0004:0020 */ parray<ChallengeTimeT<BE>, 9> times_ep1_online;
   /* 0028:0044 */ parray<ChallengeTimeT<BE>, 5> times_ep2_online;
   /* 003C:0058 */ parray<ChallengeTimeT<BE>, 9> times_ep1_offline;
-  /* 0060:007C */ uint8_t grave_is_ep2 = 0;
-  /* 0061:007D */ uint8_t grave_stage_num = 0;
-  /* 0062:007E */ uint8_t grave_floor = 0;
+  /* 0060:007C */ uint8_t online_grave_challenge_type = 0; // 0 = Ep1, 1 = Ep2, 2 = offline Ep1 (used below, not here)
+  /* 0061:007D */ uint8_t online_grave_stage_num = 0;
+  /* 0062:007E */ uint8_t online_grave_floor = 0;
   /* 0063:007F */ uint8_t unknown_g0 = 0;
-  /* 0064:0080 */ U16T<BE> grave_deaths = 0;
+  /* 0064:0080 */ U16T<BE> online_grave_deaths = 0;
   /* 0066:0082 */ parray<uint8_t, 2> unknown_u4;
-  /* 0068:0084 */ U32T<BE> grave_time = 0; // Encoded as in PlayerRecordsChallengeDCPC
-  /* 006C:0088 */ U32T<BE> grave_defeated_by_enemy_rt_index = 0;
-  /* 0070:008C */ F32T<BE> grave_x = 0.0f;
-  /* 0074:0090 */ F32T<BE> grave_y = 0.0f;
-  /* 0078:0094 */ F32T<BE> grave_z = 0.0f;
-  /* 007C:0098 */ pstring<TextEncoding::ASCII, 0x14> grave_team;
-  /* 0090:00AC */ pstring<TextEncoding::ASCII, 0x20> grave_message;
-  /* 00B0:00CC */ parray<uint8_t, 4> unknown_m5;
-  /* 00B4:00D0 */ parray<U32T<BE>, 3> unknown_t6;
+  /* 0068:0084 */ U32T<BE> online_grave_time = 0; // Encoded as in PlayerRecordsChallengeDCPC
+  /* 006C:0088 */ U32T<BE> online_grave_defeated_by_enemy_rt_index = 0;
+  /* 0070:008C */ F32T<BE> online_grave_x = 0.0f;
+  /* 0074:0090 */ F32T<BE> online_grave_y = 0.0f;
+  /* 0078:0094 */ F32T<BE> online_grave_z = 0.0f;
+  /* 007C:0098 */ pstring<TextEncoding::ASCII, 0x14> online_grave_team;
+  /* 0090:00AC */ pstring<TextEncoding::ASCII, 0x20> online_grave_message;
+  /* 00B0:00CC */ uint8_t offline_grave_challenge_type = 0; // 2 = offline Ep1 (as above)
+  /* 00B1:00CD */ uint8_t offline_grave_stage_num = 0;
+  /* 00B2:00CE */ uint8_t offline_grave_floor = 0;
+  /* 00B3:00CF */ uint8_t unknown_g1 = 0;
+  /* 00B4:00D0 */ F32T<BE> offline_grave_x = 0.0f;
+  /* 00B8:00D4 */ F32T<BE> offline_grave_y = 0.0f;
+  /* 00BC:00D8 */ F32T<BE> offline_grave_z = 0.0f;
   /* 00C0:00DC */ ChallengeAwardStateT<BE> ep1_online_award_state;
   /* 00C8:00E4 */ ChallengeAwardStateT<BE> ep2_online_award_state;
   /* 00D0:00EC */ ChallengeAwardStateT<BE> ep1_offline_award_state;
@@ -718,21 +723,26 @@ struct PlayerRecordsChallengeEp3 {
   /* 04:20 */ parray<ChallengeTimeT<true>, 9> times_ep1_online;
   /* 28:44 */ parray<ChallengeTimeT<true>, 5> times_ep2_online;
   /* 3C:58 */ parray<ChallengeTimeT<true>, 9> times_ep1_offline;
-  /* 60:7C */ uint8_t grave_is_ep2 = 0;
-  /* 61:7D */ uint8_t grave_stage_num = 0;
-  /* 62:7E */ uint8_t grave_floor = 0;
+  /* 60:7C */ uint8_t online_grave_challenge_type = 0; // 0 = Ep1, 1 = Ep2, 2 = offline Ep1 (used below, not here)
+  /* 61:7D */ uint8_t online_grave_stage_num = 0;
+  /* 62:7E */ uint8_t online_grave_floor = 0;
   /* 63:7F */ uint8_t unknown_g0 = 0;
-  /* 64:80 */ be_uint16_t grave_deaths = 0;
+  /* 64:80 */ be_uint16_t online_grave_deaths = 0;
   /* 66:82 */ parray<uint8_t, 2> unknown_u4;
-  /* 68:84 */ be_uint32_t grave_time = 0; // Encoded as in PlayerRecordsChallengeDCPC
-  /* 6C:88 */ be_uint32_t grave_defeated_by_enemy_rt_index = 0;
-  /* 70:8C */ be_float grave_x = 0.0f;
-  /* 74:90 */ be_float grave_y = 0.0f;
-  /* 78:94 */ be_float grave_z = 0.0f;
-  /* 7C:98 */ pstring<TextEncoding::ASCII, 0x14> grave_team;
-  /* 90:AC */ pstring<TextEncoding::ASCII, 0x20> grave_message;
-  /* B0:CC */ parray<uint8_t, 4> unknown_m5;
-  /* B4:D0 */ parray<be_uint32_t, 3> unknown_t6;
+  /* 68:84 */ be_uint32_t online_grave_time = 0; // Encoded as in PlayerRecordsChallengeDCPC
+  /* 6C:88 */ be_uint32_t online_grave_defeated_by_enemy_rt_index = 0;
+  /* 70:8C */ be_float online_grave_x = 0.0f;
+  /* 74:90 */ be_float online_grave_y = 0.0f;
+  /* 78:94 */ be_float online_grave_z = 0.0f;
+  /* 7C:98 */ pstring<TextEncoding::ASCII, 0x14> online_grave_team;
+  /* 90:AC */ pstring<TextEncoding::ASCII, 0x20> online_grave_message;
+  /* B0:CC */ uint8_t offline_grave_challenge_type = 0; // 2 = offline Ep1 (as above)
+  /* B1:CD */ uint8_t offline_grave_stage_num = 0;
+  /* B2:CE */ uint8_t offline_grave_floor = 0;
+  /* B3:CF */ uint8_t unknown_g1 = 0;
+  /* B4:D0 */ be_float offline_grave_x = 0.0f;
+  /* B8:D4 */ be_float offline_grave_y = 0.0f;
+  /* BC:D8 */ be_float offline_grave_z = 0.0f;
   /* C0:DC */ ChallengeAwardStateT<true> ep1_online_award_state;
   /* C8:E4 */ ChallengeAwardStateT<true> ep2_online_award_state;
   /* D0:EC */ ChallengeAwardStateT<true> ep1_offline_award_state;
@@ -745,21 +755,26 @@ struct PlayerRecordsChallengeBB {
   /* 0004 */ parray<ChallengeTimeT<false>, 9> times_ep1_online;
   /* 0028 */ parray<ChallengeTimeT<false>, 5> times_ep2_online;
   /* 003C */ parray<ChallengeTimeT<false>, 9> times_ep1_offline;
-  /* 0060 */ uint8_t grave_is_ep2 = 0;
-  /* 0061 */ uint8_t grave_stage_num = 0;
-  /* 0062 */ uint8_t grave_floor = 0;
+  /* 0060 */ uint8_t online_grave_challenge_type = 0; // 0 = Ep1, 1 = Ep2, 2 = offline Ep1 (used below, not here)
+  /* 0061 */ uint8_t online_grave_stage_num = 0;
+  /* 0062 */ uint8_t online_grave_floor = 0;
   /* 0063 */ uint8_t unknown_g0 = 0;
-  /* 0064 */ le_uint16_t grave_deaths = 0;
+  /* 0064 */ le_uint16_t online_grave_deaths = 0;
   /* 0066 */ parray<uint8_t, 2> unknown_u4;
-  /* 0068 */ le_uint32_t grave_time = 0; // Encoded as in PlayerRecordsChallengeDCPC
-  /* 006C */ le_uint32_t grave_defeated_by_enemy_rt_index = 0;
-  /* 0070 */ le_float grave_x = 0.0f;
-  /* 0074 */ le_float grave_y = 0.0f;
-  /* 0078 */ le_float grave_z = 0.0f;
-  /* 007C */ pstring<TextEncoding::UTF16, 0x14> grave_team;
-  /* 00A4 */ pstring<TextEncoding::UTF16, 0x20> grave_message;
-  /* 00E4 */ parray<uint8_t, 4> unknown_m5;
-  /* 00E8 */ parray<le_uint32_t, 3> unknown_t6;
+  /* 0068 */ le_uint32_t online_grave_time = 0; // Encoded as in PlayerRecordsChallengeDCPC
+  /* 006C */ le_uint32_t online_grave_defeated_by_enemy_rt_index = 0;
+  /* 0070 */ le_float online_grave_x = 0.0f;
+  /* 0074 */ le_float online_grave_y = 0.0f;
+  /* 0078 */ le_float online_grave_z = 0.0f;
+  /* 007C */ pstring<TextEncoding::UTF16, 0x14> online_grave_team;
+  /* 00A4 */ pstring<TextEncoding::UTF16, 0x20> online_grave_message;
+  /* 00E4 */ uint8_t offline_grave_challenge_type = 0; // 2 = offline Ep1 (as above)
+  /* 00E5 */ uint8_t offline_grave_stage_num = 0;
+  /* 00E6 */ uint8_t offline_grave_floor = 0;
+  /* 00E7 */ uint8_t unknown_g1 = 0;
+  /* 00E8 */ le_float offline_grave_x = 0.0f;
+  /* 00EC */ le_float offline_grave_y = 0.0f;
+  /* 00F0 */ le_float offline_grave_z = 0.0f;
   /* 00F4 */ ChallengeAwardStateT<false> ep1_online_award_state;
   /* 00FC */ ChallengeAwardStateT<false> ep2_online_award_state;
   /* 0104 */ ChallengeAwardStateT<false> ep1_offline_award_state;
@@ -771,8 +786,35 @@ struct PlayerRecordsChallengeBB {
   PlayerRecordsChallengeBB(const PlayerRecordsChallengeBB& other) = default;
   PlayerRecordsChallengeBB& operator=(const PlayerRecordsChallengeBB& other) = default;
 
-  PlayerRecordsChallengeBB(const PlayerRecordsChallengeDC& rec);
-  PlayerRecordsChallengeBB(const PlayerRecordsChallengePC& rec);
+  template <TextEncoding UnencryptedEncoding, TextEncoding EncryptedEncoding>
+  PlayerRecordsChallengeBB(const PlayerRecordsChallengeDCPCT<UnencryptedEncoding, EncryptedEncoding>& rec)
+      : title_color(rec.title_color),
+        unknown_u0(rec.unknown_u0),
+        times_ep1_online(rec.times_ep1_online),
+        times_ep2_online(0),
+        times_ep1_offline(0),
+        online_grave_challenge_type(0), // Ep1 online
+        online_grave_stage_num(rec.grave_stage_num),
+        online_grave_floor(rec.grave_floor),
+        unknown_g0(0),
+        online_grave_deaths(rec.grave_deaths),
+        unknown_u4(0),
+        online_grave_time(rec.grave_time),
+        online_grave_defeated_by_enemy_rt_index(rec.grave_defeated_by_enemy_rt_index),
+        online_grave_x(rec.grave_x),
+        online_grave_y(rec.grave_y),
+        online_grave_z(rec.grave_z),
+        online_grave_team(rec.grave_team.decode(), Language::ENGLISH),
+        online_grave_message(rec.grave_message.decode(), Language::ENGLISH),
+        offline_grave_challenge_type(0),
+        offline_grave_stage_num(0),
+        offline_grave_floor(0),
+        unknown_g1(0),
+        offline_grave_x(0),
+        offline_grave_y(0),
+        offline_grave_z(0),
+        rank_title(rec.rank_title.decode(), Language::ENGLISH),
+        unknown_l7(0) {}
 
   template <bool BE>
   PlayerRecordsChallengeBB(const PlayerRecordsChallengeV3T<BE>& rec)
@@ -781,32 +823,66 @@ struct PlayerRecordsChallengeBB {
         times_ep1_online(rec.times_ep1_online),
         times_ep2_online(rec.times_ep2_online),
         times_ep1_offline(rec.times_ep1_offline),
-        grave_is_ep2(rec.grave_is_ep2),
-        grave_stage_num(rec.grave_stage_num),
-        grave_floor(rec.grave_floor),
+        online_grave_challenge_type(rec.online_grave_challenge_type),
+        online_grave_stage_num(rec.online_grave_stage_num),
+        online_grave_floor(rec.online_grave_floor),
         unknown_g0(rec.unknown_g0),
-        grave_deaths(rec.grave_deaths),
+        online_grave_deaths(rec.online_grave_deaths),
         unknown_u4(rec.unknown_u4),
-        grave_time(rec.grave_time),
-        grave_defeated_by_enemy_rt_index(rec.grave_defeated_by_enemy_rt_index),
-        grave_x(rec.grave_x),
-        grave_y(rec.grave_y),
-        grave_z(rec.grave_z),
-        grave_team(rec.grave_team.decode(), Language::ENGLISH),
-        grave_message(rec.grave_message.decode(), Language::ENGLISH),
-        unknown_m5(rec.unknown_m5),
+        online_grave_time(rec.online_grave_time),
+        online_grave_defeated_by_enemy_rt_index(rec.online_grave_defeated_by_enemy_rt_index),
+        online_grave_x(rec.online_grave_x),
+        online_grave_y(rec.online_grave_y),
+        online_grave_z(rec.online_grave_z),
+        online_grave_team(rec.online_grave_team.decode(), Language::ENGLISH),
+        online_grave_message(rec.online_grave_message.decode(), Language::ENGLISH),
+        offline_grave_challenge_type(rec.offline_grave_challenge_type),
+        offline_grave_stage_num(rec.offline_grave_stage_num),
+        offline_grave_floor(rec.offline_grave_floor),
+        unknown_g1(rec.unknown_g1),
+        offline_grave_x(rec.offline_grave_x),
+        offline_grave_y(rec.offline_grave_y),
+        offline_grave_z(rec.offline_grave_z),
         ep1_online_award_state(rec.ep1_online_award_state),
         ep2_online_award_state(rec.ep2_online_award_state),
         ep1_offline_award_state(rec.ep1_offline_award_state),
         rank_title(rec.rank_title.decode(), Language::ENGLISH),
-        unknown_l7(rec.unknown_l7) {
-    for (size_t z = 0; z < std::min<size_t>(this->unknown_t6.size(), rec.unknown_t6.size()); z++) {
-      this->unknown_t6[z] = rec.unknown_t6[z];
-    }
-  }
+        unknown_l7(rec.unknown_l7) {}
 
-  operator PlayerRecordsChallengeDC() const;
-  operator PlayerRecordsChallengePC() const;
+  template <TextEncoding UnencryptedEncoding, TextEncoding EncryptedEncoding>
+  operator PlayerRecordsChallengeDCPCT<UnencryptedEncoding, EncryptedEncoding>() const {
+    PlayerRecordsChallengeDCPCT<UnencryptedEncoding, EncryptedEncoding> ret;
+    ret.title_color = this->title_color;
+    ret.unknown_u0 = this->unknown_u0;
+    ret.rank_title.encode(this->rank_title.decode());
+    ret.times_ep1_online = this->times_ep1_online;
+    if (this->online_grave_challenge_type == 0) {
+      ret.grave_stage_num = this->online_grave_stage_num;
+      ret.grave_floor = this->online_grave_floor;
+      ret.grave_defeated_by_enemy_rt_index = this->online_grave_defeated_by_enemy_rt_index;
+      ret.grave_x = this->online_grave_x;
+      ret.grave_y = this->online_grave_y;
+      ret.grave_z = this->online_grave_z;
+      ret.grave_time = this->online_grave_time;
+      ret.grave_deaths = this->online_grave_deaths;
+      ret.grave_team.encode(this->online_grave_team.decode());
+      ret.grave_message.encode(this->online_grave_message.decode());
+    } else {
+      ret.grave_stage_num = 0;
+      ret.grave_floor = 0;
+      ret.grave_defeated_by_enemy_rt_index = 0;
+      ret.grave_x = 0;
+      ret.grave_y = 0;
+      ret.grave_z = 0;
+      ret.grave_time = 0;
+      ret.grave_deaths = 0;
+      ret.grave_team.clear();
+      ret.grave_message.clear();
+    }
+    ret.times_ep1_offline = this->times_ep1_offline;
+    ret.unknown_l4.clear(0);
+    return ret;
+  }
   template <bool BE>
   operator PlayerRecordsChallengeV3T<BE>() const {
     PlayerRecordsChallengeV3T<BE> ret;
@@ -815,23 +891,26 @@ struct PlayerRecordsChallengeBB {
     ret.times_ep1_online = this->times_ep1_online;
     ret.times_ep2_online = this->times_ep2_online;
     ret.times_ep1_offline = this->times_ep1_offline;
-    ret.grave_is_ep2 = this->grave_is_ep2;
-    ret.grave_stage_num = this->grave_stage_num;
-    ret.grave_floor = this->grave_floor;
+    ret.online_grave_challenge_type = this->online_grave_challenge_type;
+    ret.online_grave_stage_num = this->online_grave_stage_num;
+    ret.online_grave_floor = this->online_grave_floor;
     ret.unknown_g0 = this->unknown_g0;
-    ret.grave_deaths = this->grave_deaths;
+    ret.online_grave_deaths = this->online_grave_deaths;
     ret.unknown_u4 = this->unknown_u4;
-    ret.grave_time = this->grave_time;
-    ret.grave_defeated_by_enemy_rt_index = this->grave_defeated_by_enemy_rt_index;
-    ret.grave_x = this->grave_x;
-    ret.grave_y = this->grave_y;
-    ret.grave_z = this->grave_z;
-    ret.grave_team.encode(this->grave_team.decode(), Language::ENGLISH);
-    ret.grave_message.encode(this->grave_message.decode(), Language::ENGLISH);
-    ret.unknown_m5 = this->unknown_m5;
-    for (size_t z = 0; z < std::min<size_t>(ret.unknown_t6.size(), this->unknown_t6.size()); z++) {
-      ret.unknown_t6[z] = this->unknown_t6[z];
-    }
+    ret.online_grave_time = this->online_grave_time;
+    ret.online_grave_defeated_by_enemy_rt_index = this->online_grave_defeated_by_enemy_rt_index;
+    ret.online_grave_x = this->online_grave_x;
+    ret.online_grave_y = this->online_grave_y;
+    ret.online_grave_z = this->online_grave_z;
+    ret.online_grave_team.encode(this->online_grave_team.decode(), Language::ENGLISH);
+    ret.online_grave_message.encode(this->online_grave_message.decode(), Language::ENGLISH);
+    ret.offline_grave_challenge_type = this->offline_grave_challenge_type;
+    ret.offline_grave_stage_num = this->offline_grave_stage_num;
+    ret.offline_grave_floor = this->offline_grave_floor;
+    ret.unknown_g1 = this->unknown_g1;
+    ret.offline_grave_x = this->offline_grave_x;
+    ret.offline_grave_y = this->offline_grave_y;
+    ret.offline_grave_z = this->offline_grave_z;
     ret.ep1_online_award_state = this->ep1_online_award_state;
     ret.ep2_online_award_state = this->ep2_online_award_state;
     ret.ep1_offline_award_state = this->ep1_offline_award_state;

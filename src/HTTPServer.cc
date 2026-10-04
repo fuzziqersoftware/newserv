@@ -282,35 +282,41 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
         client_json.emplace("ChallengeTimesEp1Online", json_for_challenge_times(p->challenge_records.times_ep1_online));
         client_json.emplace("ChallengeTimesEp2Online", json_for_challenge_times(p->challenge_records.times_ep2_online));
         client_json.emplace("ChallengeTimesEp1Offline", json_for_challenge_times(p->challenge_records.times_ep1_offline));
-        client_json.emplace("ChallengeGraveIsEp2", p->challenge_records.grave_is_ep2 ? true : false);
-        client_json.emplace("ChallengeGraveStageNum", p->challenge_records.grave_stage_num);
-        client_json.emplace("ChallengeGraveFloor", p->challenge_records.grave_floor);
-        client_json.emplace("ChallengeGraveDeaths", p->challenge_records.grave_deaths.load());
+        client_json.emplace("ChallengeGraveOnlineType", p->challenge_records.online_grave_challenge_type);
+        client_json.emplace("ChallengeGraveOnlineStageNum", p->challenge_records.online_grave_stage_num);
+        client_json.emplace("ChallengeGraveOnlineFloor", p->challenge_records.online_grave_floor);
+        client_json.emplace("ChallengeGraveOnlineDeaths", p->challenge_records.online_grave_deaths.load());
         {
-          uint16_t year = 2000 + ((p->challenge_records.grave_time >> 28) & 0x0F);
-          uint8_t month = (p->challenge_records.grave_time >> 24) & 0x0F;
-          uint8_t day = (p->challenge_records.grave_time >> 16) & 0xFF;
-          uint8_t hour = (p->challenge_records.grave_time >> 8) & 0xFF;
-          uint8_t minute = p->challenge_records.grave_time & 0xFF;
-          client_json.emplace("ChallengeGraveTime", std::format("{:04}-{:02}-{:02} {:02}:{:02}:00", year, month, day, hour, minute));
+          uint16_t year = 2000 + ((p->challenge_records.online_grave_time >> 28) & 0x0F);
+          uint8_t month = (p->challenge_records.online_grave_time >> 24) & 0x0F;
+          uint8_t day = (p->challenge_records.online_grave_time >> 16) & 0xFF;
+          uint8_t hour = (p->challenge_records.online_grave_time >> 8) & 0xFF;
+          uint8_t minute = p->challenge_records.online_grave_time & 0xFF;
+          client_json.emplace("ChallengeGraveOnlineTime", std::format("{:04}-{:02}-{:02} {:02}:{:02}:00", year, month, day, hour, minute));
         }
         std::string grave_enemy_types;
-        if (p->challenge_records.grave_defeated_by_enemy_rt_index) {
+        if (p->challenge_records.online_grave_defeated_by_enemy_rt_index) {
           for (EnemyType type : enemy_types_for_rare_table_index(
-                   p->challenge_records.grave_is_ep2 ? Episode::EP2 : Episode::EP1,
-                   p->challenge_records.grave_defeated_by_enemy_rt_index)) {
+                   (p->challenge_records.online_grave_challenge_type == 1) ? Episode::EP2 : Episode::EP1,
+                   p->challenge_records.online_grave_defeated_by_enemy_rt_index)) {
             if (!grave_enemy_types.empty()) {
               grave_enemy_types += "/";
             }
             grave_enemy_types += phosg::name_for_enum(type);
           }
         }
-        client_json.emplace("ChallengeGraveDefeatedByEnemy", std::move(grave_enemy_types));
-        client_json.emplace("ChallengeGraveX", p->challenge_records.grave_x.load());
-        client_json.emplace("ChallengeGraveY", p->challenge_records.grave_y.load());
-        client_json.emplace("ChallengeGraveZ", p->challenge_records.grave_z.load());
-        client_json.emplace("ChallengeGraveTeam", p->challenge_records.grave_team.decode());
-        client_json.emplace("ChallengeGraveMessage", p->challenge_records.grave_message.decode());
+        client_json.emplace("ChallengeGraveOnlineDefeatedByEnemy", std::move(grave_enemy_types));
+        client_json.emplace("ChallengeGraveOnlineX", p->challenge_records.online_grave_x.load());
+        client_json.emplace("ChallengeGraveOnlineY", p->challenge_records.online_grave_y.load());
+        client_json.emplace("ChallengeGraveOnlineZ", p->challenge_records.online_grave_z.load());
+        client_json.emplace("ChallengeGraveOnlineTeam", p->challenge_records.online_grave_team.decode());
+        client_json.emplace("ChallengeGraveOnlineMessage", p->challenge_records.online_grave_message.decode());
+        client_json.emplace("ChallengeGraveOfflineType", p->challenge_records.offline_grave_challenge_type);
+        client_json.emplace("ChallengeGraveOfflineStageNum", p->challenge_records.offline_grave_stage_num);
+        client_json.emplace("ChallengeGraveOfflineFloor", p->challenge_records.offline_grave_floor);
+        client_json.emplace("ChallengeGraveOfflineX", p->challenge_records.offline_grave_x.load());
+        client_json.emplace("ChallengeGraveOfflineY", p->challenge_records.offline_grave_y.load());
+        client_json.emplace("ChallengeGraveOfflineZ", p->challenge_records.offline_grave_z.load());
         client_json.emplace("ChallengeAwardStateEp1OnlineFlags", p->challenge_records.ep1_online_award_state.rank_award_flags.load());
         client_json.emplace("ChallengeAwardStateEp1OnlineMaxRank", p->challenge_records.ep1_online_award_state.maximum_rank.decode());
         client_json.emplace("ChallengeAwardStateEp2OnlineFlags", p->challenge_records.ep2_online_award_state.rank_award_flags.load());
