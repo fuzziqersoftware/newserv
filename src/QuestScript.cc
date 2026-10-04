@@ -526,7 +526,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Appends the memory address of regA to the args list
     {0x4C, {"arg_pusha"}, {R_REG}, F_V3_V4 | F_PUSH_ARG},
 
-    // Appends the script offset of labelA to the args list
+    // Appends the address of labelA's entry in the function table to the args list; as with leto, this points to the
+    // stored script offset, not to the code at that offset
     {0x4D, {"arg_pusho"}, {LABEL16}, F_V3_V4 | F_PUSH_ARG},
 
     // Appends strA to the args list
@@ -647,7 +648,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // TODO: TObjPlayer::state is involved in determining which player to look at; figure out exactly what this does
     {0x6E, {"p_look"}, {CLIENT_ID}, F_V0_V4 | F_ARGS},
 
-    // Disables/enables attacks for all players
+    // Disables/enables attacks for the local player
     {0x70, {"p_action_disable"}, {}, F_V0_V4},
     {0x71, {"p_action_enable"}, {}, F_V0_V4},
 
@@ -666,7 +667,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   regsB[3] = angle
     {0x76, {"set_player_start_position", "p_setpos"}, {CLIENT_ID, {R_REG_SET_FIXED, 4}}, F_V0_V4 | F_ARGS},
 
-    // Returns players to the Hunter's Guild counter.
+    // Returns the local player and any NPCs following them to the Hunter's Guild counter.
     {0x77, {"p_return_guild"}, {}, F_V0_V4},
 
     // Opens the Hunter's Guild counter menu. valueA should be the player's client ID.
@@ -694,11 +695,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0x7C, {"npc_crppk", "npc_crppk_V1"}, {{R_REG32_SET_FIXED, 7}, I32}, F_V0_V2},
     {0x7C, {"npc_crppk", "npc_crppk_V3"}, {{R_REG_SET_FIXED, 7}}, F_V3_V4},
 
-    // Creates an NPC with client ID 1. It is not recommended to use this opcode if a player can be in that slot; use
-    // npc_crptalk_id instead.
+    // Creates an NPC in slot 3. It is not recommended to use this opcode if a player can be in that slot; use
+    // npc_crptalk_id instead in that case.
     //   regsA[0-2] = position (x, y, z as integers)
     //   regsA[3] = angle
-    //   regsA[4] = initial state (0 = alive, 1 = dead, 2 = invisible text box, according to qedit.info)
+    //   regsA[4] = initial state (1 = dead, anything else = living)
     //   regsA[5] = template index (see 6x69 in CommandFormats.hh)
     {0x7D, {"npc_crptalk", "npc_crptalk_v1"}, {{R_REG32_SET_FIXED, 6}, I32}, F_V0_V2},
     {0x7D, {"npc_crptalk", "npc_crptalk_V3"}, {{R_REG_SET_FIXED, 6}}, F_V3_V4},
@@ -878,7 +879,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Starts a new thread at labelA in the quest script.
     {0xB1, {"thread_stg"}, {SCRIPT16}, F_V0_V4},
 
-    // Deletes an interactable object previously created by set_obj_param. valueA is the object's token, as returned by
+    // Deletes an interactable object previously created by set_obj_param. regA is the object's token, as returned by
     // regB from set_obj_param, or regsA[0] from e.g. at_coords_call.
     {0xB2, {"del_obj_param"}, {R_REG}, F_V0_V4},
 
@@ -976,7 +977,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Warps an NPC to a predetermined location. See npc_check_straggle for more details.
     {0xC2, {"npc_chkwarp"}, {}, F_V05_V4},
 
-    // Disables PK mode (battle mode) for a specific player. Sends 6x1C.
+    // Disables PK mode (battle mode) for all players. Sends 6x1C for each one.
     {0xC3, {"pl_pkoff"}, {}, F_V05_V4},
 
     // Specifies how objects and enemies should be populated for a floor. On v2, the ability to reassign areas was
@@ -987,11 +988,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   regsA[3] = ignored
     {0xC4, {"map_designate"}, {{R_REG_SET_FIXED, 4}}, F_V05_V4},
 
-    // Locks (masterkey_on) or unlocks (masterkey_off) all doors
+    // Locks all doors (masterkey_on) or removes that override (masterkey_off).
     {0xC5, {"masterkey_on"}, {}, F_V05_V4},
     {0xC6, {"masterkey_off"}, {}, F_V05_V4},
 
-    // Enables/disables the timer window
+    // Enables/disables the timer window.
     {0xC7, {"show_timer", "window_time"}, {}, F_V05_V4},
     {0xC8, {"hide_timer", "winend_time"}, {}, F_V05_V4},
 
@@ -1037,7 +1038,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Deletes all strings registered with npc_text.
     {0xCF, {"npc_text_clear_all", "npc_lang_clean"}, {}, F_V05_V4},
 
-    // Enables PK mode (battle mode) for a specific player. Sends 6x1B.
+    // Enables PK mode (battle mode) for all players. Sends 6x1B for each one.
     {0xD0, {"pl_pkon"}, {}, F_V1_V4},
 
     // Like find_inventory_item, but regsA specifies data1[0-2] as well as data1[4]. The matching conditions are the
@@ -1073,7 +1074,9 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xDA, {"set_returnhunter"}, {}, F_V1_V4},
     {0xDB, {"set_returncity"}, {}, F_V1_V4},
 
-    // TODO: Document this
+    // Loads quest texture data from the memory card file named PSO______099. Does nothing if the player is not in the
+    // city (Pioneer 2 or Lab).
+    // TODO: On BB, this reads fron the local filesystem. Figure out the path pattern and document it here.
     {0xDC, {"load_pvr"}, {}, F_V1_V4},
     // TODO: Document this
     // Does nothing on all non-DC versions.
@@ -1254,7 +1257,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // quest's metadata JSON file if needed. (See q058.json for documentation on how to do this.)
     {0xF810, {"ba_initial_floor"}, {I32}, F_V2_V4 | F_ARGS},
 
-    // Clears all battle rules.
+    // Clears the battle rule settings. Notably, this does not include the score weights (F848-F850) or the score
+    // announcements (F860-F861).
     {0xF811, {"clear_ba_rules", "set_ba_rules"}, {}, F_V2_V4},
 
     // Sets the tech disk mode in battle. valueA (does NOT match enum):
@@ -1303,11 +1307,12 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Enables (1) or disables (0) weapon dropping upon death in battle
     {0xF81A, {"ba_dropwep"}, {I32}, F_V2_V4 | F_ARGS},
 
-    // Enables (1) or disables (0) teams in battle
+    // Enables (1) or disables (0) teams in battle. If teams are enabled, there must be 4 players; clients 0 and 2 are
+    // assigned to one team, and clients 1 and 3 to the other team.
     {0xF81B, {"ba_teams"}, {I32}, F_V2_V4 | F_ARGS},
 
-    // Shows the rules window and starts the battle. This should be used after setting up all the rules with the
-    // various ba_* opcodes.
+    // Shows the rules window and starts the battle. This should be used after setting up all the rules and
+    // score weights with the various ba_* opcodes. strA is the battle start message.
     {0xF81C, {"ba_start", "ba_disp_msg"}, {CSTRING}, F_V2_V4 | F_ARGS},
 
     // Sets the number of levels to gain upon respawn in battle
@@ -1328,7 +1333,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // This opcode does nothing. It has two branches (one for online, one for offline), but both branches do nothing.
     {0xF822, {"nop_F822"}, {R_REG}, F_V2_V4},
 
-    // Sets the challenge template index. See Client::create_challenge_overlay for details on how the template is used.
+    // Sets the challenge template index and creates the player data overlay, essentially replacing the player. See
+    // Client::create_challenge_overlay for details on what the overlay consists of.
     {0xF823, {"set_cmode_char_template"}, {I32}, F_V2_V4 | F_ARGS},
 
     // Sets the game difficulty (0-3) in challenge mode. Does nothing in modes other than challenge.
@@ -1370,7 +1376,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   regsA[2] = result (0 or 1)
     {0xF82E, {"read_switch_flag_on_floor", "if_switch_pressed"}, {{W_REG_SET_FIXED, 3}}, F_V2_V4},
 
-    // Enables a player to control the Dragon. valueA specifies the client ID.
+    // Enables a player to control the Dragon. regA specifies the client ID.
     {0xF830, {"control_dragon"}, {R_REG}, F_V2_V4},
 
     // Disables player control of the Dragon.
@@ -1383,12 +1389,12 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // These set some camera parameters for the specified player. These parameters appear to be unused, so these
     // opcodes essentially do nothing.
     //   regsA[0] = client ID
-    //   regsA[1-3] = a Vector3F (x, y, z as integers)
+    //   regsA[1-3] = shrink camera offset (x, y, z as integers)
     {0xF83A, {"set_shrink_cam1"}, {{R_REG_SET_FIXED, 4}}, F_V2_V4},
     {0xF83B, {"set_shrink_cam2"}, {{R_REG_SET_FIXED, 4}}, F_V2_V4},
 
-    // Shows the timer window in challenge mode. regA is the time value to display, in seconds.
-    {0xF83C, {"disp_time_cmode"}, {R_REG}, F_V2_V4},
+    // Sets the Challenge clock baseline to regA seconds.
+    {0xF83C, {"set_cmode_base_time"}, {R_REG}, F_V2_V4},
 
     // Sets the total number of areas across all challenge quests for the current episode.
     {0xF83D, {"set_area_total", "unknownF83D"}, {I32}, F_V2_V4 | F_ARGS},
@@ -1492,10 +1498,11 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Sets the number of sonar uses per character in battle
     {0xF85F, {"ba_sonar_count", "ba_use_sonar"}, {I32}, F_V2_V4 | F_ARGS},
 
-    // Specifies when score announcements should occur during battle. The values are measured in minutes remaining.
-    // There can be up to 8 score announcements; any further set_score_announce calls are ignored. clear_score_announce
-    // deletes all announcement times.
+    // Deletes all announcement times set by set_score_announce.
     {0xF860, {"clear_score_announce", "unknownF860"}, {}, F_V2_V4},
+
+    // Specifies when score announcements should occur during battle. The values are measured in minutes elapsed since
+    // battle start time. There can be up to 8 score announcements; any further set_score_announce calls are ignored.
     {0xF861, {"set_score_announce", "unknownF861"}, {I32}, F_V2_V4 | F_ARGS},
 
     // Creates an S-rank weapon in the player's inventory. This opcode is not used in challenge mode, presumably since
@@ -1527,39 +1534,39 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Shows the item choice window and suspends the calling thread
     {0xF866, {"award_item_select", "award_item_select?"}, {}, F_V2_V4},
 
-    // Creates an item in the player's inventory, chosen via the previous award_item_name and award_item_select
-    // opcodes, and updates the player's challenge rank text and color according to the rank they achieved. Sends 07DF
-    // on BB; on other versions, sends nothing.
+    // Creates an item in the player's inventory (or bank in offline Challenge), chosen via the previous
+    // award_item_name and award_item_select opcodes, and updates the player's challenge rank text and color according
+    // to the rank they achieved. Sends 07DF on BB; on other versions, sends nothing.
     //   regA = return value (1 if item successfully created; 0 otherwise)
     {0xF867, {"award_item_give", "award_item_give_to?"}, {W_REG}, F_V2_V4},
 
-    // Specifies where the time threshold is for a challenge rank.
+    // Specifies the time threshold and award flags for a challenge rank.
     //   regsA[0] = rank (0 = B, 1 = A, 2 = S)
     //   regsA[1] = time in seconds (times faster than this are considered to be this rank or better)
     //   regsA[2] = award flags mask (generally should be (1 << regsA[0]))
     //   regB = result (0 = failed, 1 = success)
     {0xF868, {"set_cmode_rank_threshold", "set_cmode_rank"}, {{R_REG_SET_FIXED, 3}, W_REG}, F_V2_V4},
 
-    // Registers a timing result of (regA) seconds for the current challenge mode stage. Returns a result code in regB:
-    //   0 = player achieved rank B and has not completed this stage before
-    //   1 = player achieved rank A on this stage for the first time
-    //   2 = player achieved rank S on this stage for the first time
-    //   3 = can't create results object (internal error)
-    //   4 = player did not achieve a new rank this time
-    //   5 = player's inventory is full and can't receive the prize
-    //   6 = internal errors (e.g. save file is missing, stage number not set)
+    // Registers a timing result of regA seconds for the current challenge mode stage. Returns a result code in regB:
+    //   0 = B rank award available
+    //   1 = A rank award available
+    //   2 = S rank award available
+    //   3 = stage records are incomplete, so there is no aggregate completion time
+    //   4 = no unclaimed rank award available (also used for invalid rank thresholds)
+    //   5 = prize storage (online: local inventory; offline: client 0's bank) is full
+    //   6 = invalid situations (e.g. not in Challenge mode, save file missing, stage number not set)
     {0xF869, {"check_rank_time"}, {R_REG, W_REG}, F_V2_V4},
 
-    // Creates an item in the local player's bank, and saves the player's challenge rank and title color. Sends 07DF on
-    // BB. This is used for the A and B rank prizes.
+    // Creates an item in the local player's bank (or client 0's bank if offline), marks the award as received, and
+    // saves the player's challenge rank and title color. Sends 07DF on BB. This is used for the A and B rank prizes.
     //   regsA = item.data1[0-5]
     //   regB = returned success code (1 = success, 0 = failed)
     {0xF86A, {"item_create_cmode"}, {{R_REG_SET_FIXED, 6}, W_REG}, F_V2_V4},
 
-    // Sets the effective area for item drops in battle. valueA should be in the range [1, 10].
+    // Sets the effective area for item drops in battle. regA should be in the range [1, 10].
     {0xF86B, {"ba_set_box_drop_area", "ba_box_drops"}, {R_REG}, F_V2_V4},
 
-    // Shows a confirmation window asking if the player is satsified with their choice of S rank prize and weapon name.
+    // Shows a confirmation window asking if the player is satisfied with their choice of S rank prize and weapon name.
     //   regA = result code (0 = OK, 1 = reconsider)
     {0xF86C, {"award_item_ok", "award_item_ok?"}, {W_REG}, F_V2_V4},
 
@@ -1582,9 +1589,10 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Sets regA to 1 if Dark Falz has been defeated, or 0 otherwise.
     {0xF873, {"dark_falz_is_dead", "falz_is_dead"}, {W_REG}, F_V2_V4},
 
-    // Sets an override for the challenge rank text. At the time the rank is checked via check_rank_time, these
-    // overrides are applied in the order they were created. For each one, if the existing rank matches the check
-    // string, it is replaced with the override string and the color is replaced with the override color.
+    // Sets an override for the challenge rank text. Does nothing in offline Challenge mode. At the time the rank is
+    // checked via check_rank_time, these overrides are applied in the order they were created. For each one, if the
+    // existing rank matches the check string, it is replaced with the override string and the color is replaced with
+    // the override color.
     //   valueA = override color (XRGB8888)
     //   strB = check string and override string (separated by \t or \n)
     {0xF874, {"set_cmode_rank_override", "unknownF874"}, {I32, CSTRING}, F_V2_V4 | F_ARGS},
@@ -1639,12 +1647,12 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF880, {"set_trap_damage", "ba_set_dmgtrap"}, {{R_REG_SET_FIXED, 3}}, F_V2_V4},
 
     // Loads the name of the player whose client ID is regA into a static buffer, which can later be referred to with
-    // "<pl_name>" in message strings.
-    {0xF881, {"get_pl_name", "get_pl_name?"}, {R_REG}, F_V2_V4},
+    // "<pl_name>" in message strings. Returns 1 in regA if the player exists, or 0 if not.
+    {0xF881, {"get_pl_name", "get_pl_name?"}, {W_REG}, F_V2_V4},
 
     // Loads the job (Hunter, Ranger, or Force) of the player whose client ID is regA into a static buffer, which can
-    // later be referred to with "<pl_job>" in message strings.
-    {0xF882, {"get_pl_job"}, {R_REG}, F_V2_V4},
+    // later be referred to with "<pl_job>" in message strings. Returns 1 in regA if the player exists, or 0 if not.
+    {0xF882, {"get_pl_job"}, {W_REG}, F_V2_V4},
 
     // Counts the number of players near the specified player.
     //   regsA[0] = client ID
@@ -1670,7 +1678,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Returns (in regB) the battle score of the player specified by regA.
     {0xF887, {"ba_get_score"}, {R_REG, W_REG}, F_V2_V4},
 
-    // TODO: Document these
+    // Enables/disables the battle winner's particle effects.
     {0xF888, {"enable_win_pfx", "ba_close_msg"}, {}, F_V2_V4},
     {0xF889, {"disable_win_pfx"}, {}, F_V2_V4},
 
@@ -1706,9 +1714,10 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF88D, {"chl_set_timerecord", "chl_set_timerecord?"}, {R_REG}, F_V2 | F_V3},
     {0xF88D, {"chl_set_timerecord", "chl_set_timerecord?"}, {R_REG, R_REG}, F_V4},
 
-    // Gets the current player's completion time for the current challenge stage in seconds. If the player's time is
-    // invalid or faster than the time set by chl_set_min_time_online (or 5 minutes, if offline), returns -2. If used
-    // in non-challenge mode, returns -1.
+    // Gets the slowest completion time for the current challenge stage in seconds, across all players in the game. If
+    // the resulting time is invalid or faster than the time set by chl_set_min_time_online (or 5 minutes, if offline),
+    // returns -2. If used in non-challenge mode or if some player has no completion time for the current stage,
+    // returns -1.
     {0xF88E, {"chl_get_timerecord", "chl_get_timerecord?"}, {W_REG}, F_V2_V4},
 
     // Sets the probabilities of getting recovery items from challenge mode graves. There are 10 floating-point values,
@@ -1743,7 +1752,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF894, {"set_enemy_resist_data", "get_resist_data"}, {{LABEL16, Arg::DataType::RESIST_DATA, "resist_data"}}, F_V2_V4},
     {0xF895, {"set_enemy_movement_data", "get_movement_data"}, {{LABEL16, Arg::DataType::MOVEMENT_DATA, "movement_data"}}, F_V2_V4},
 
-    // Reads 2 bytes or 4 bytes from the event flags in the system file.
+    // Reads 2 or 4 bytes from the event flags in the system file. For get_eventflag16, the value is sign-extended.
     //   regA = event flag index
     //   regB = returned value
     {0xF896, {"get_eventflag16", "read_guildflag_16b"}, {R_REG, W_REG}, F_V2_V4},
@@ -1861,7 +1870,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // current game).
     {0xF8AF, {"someone_has_spoken"}, {W_REG}, F_V2_V4},
 
-    // Reads a 1-byte, 2-byte, or 4-byte value from the address (regB/valueB) and places it in regA.
+    // Reads a 1-byte, 2-byte, or 4-byte value from the address (regB/valueB) and places it in regA. The reads use the
+    // machine's native byte order. 1-byte and 2-byte reads are sign-extended.
     {0xF8B0, {"read1"}, {W_REG, R_REG}, F_V2},
     {0xF8B0, {"read1"}, {W_REG, I32}, F_V3_V4 | F_ARGS},
     {0xF8B1, {"read2"}, {W_REG, R_REG}, F_V2},
@@ -1871,7 +1881,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
 
     // Writes a 1-byte, 2-byte, or 4-byte value from regB/valueB to the address (regA/valueA). On v2 and GC NTE, these
     // opcodes have a bug which makes them essentially useless: they ignore regB and instead write the value in regA to
-    // the address in regA.
+    // the address in regA. The writes use the machine's native byte order.
     {0xF8B3, {"write1"}, {R_REG, R_REG}, F_V2},
     {0xF8B3, {"write1"}, {I32, I32}, F_V3_V4 | F_ARGS},
     {0xF8B4, {"write2"}, {R_REG, R_REG}, F_V2},
@@ -1880,8 +1890,10 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8B5, {"write4"}, {I32, I32}, F_V3_V4 | F_ARGS},
 
     // Returns a bitmask of 5 different types of detectable hacking. This opcode only works on DCv2 - it crashes on all
-    // other versions, since it tries to access memory at 8C007220, which is only a valid address on DC. The bits are:
-    //   0x01 = any byte in [8C007220, 8C0072E0) is nonzero (crashes on non-DC)
+    // other versions, since it tries to access memory in the  8Cxxxxxx range, which is only valid on DC. The bits are:
+    //   0x01 = any bit in [8C004000, 8C008000) is nonzero on DCv2 (crashes on non-DC); curiously, on all later
+    //     versions (including PCv2), the address range was changed to [8C007220, 8C007520), but that range is not
+    //     valid on any later version
     //   0x02 = has cheat device save files on VMU (always zero on non-DC); looks for names: CDX_CODES_00,
     //     CDX_SETTINGS, XT-CHEATS, FCDCHEATS
     //   0x04 = any of the first 3 VMU-like devices (with function_code & 0x0E not equal to zero) on any of the 4 Maple
@@ -1890,8 +1902,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   0x10 = any bits in validation_flags in the character file are set (see PSOGCCharacterFile::Character)
     {0xF8B6, {"check_for_hacking", "is_mag_hacked"}, {W_REG}, F_V2_V4},
 
-    // Challenge mode cannot be completed unless this many seconds have passed since the stage began. If not set or if
-    // offline, 5 minutes is used as the threshold instead.
+    // Challenge mode cannot be completed unless this regA seconds have passed since the stage began. If not set or if
+    // offline, 5 minutes is used as the threshold instead. The value must be in the range [60, 3600].
     {0xF8B7, {"chl_set_min_time_online", "unknownF8B7"}, {R_REG}, F_V2_V4},
 
     // Disables the challenge mode retry menu
@@ -1966,9 +1978,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8C4, {"congrats_msg_multi_cm", "unknownF8C4"}, {R_REG}, F_V3},
     {0xF8C4, {"nop_F8C4"}, {R_REG}, F_V4},
 
-    // Checks if the stage is done in offline challenge mode. Returns 1 if the stage is still in progress, or 0 if it's
-    // completed or failed.
-    {0xF8C5, {"stage_in_progress_multi_cm", "stage_end_multi_cm"}, {W_REG}, F_V3},
+    // Returns 1 while any offline Challenge results window is still active, or 0 when all are closed.
+    {0xF8C5, {"results_window_visible_multi_cm", "stage_end_multi_cm"}, {W_REG}, F_V3},
     {0xF8C5, {"nop_F8C5"}, {R_REG}, F_V4},
 
     // Causes a fade to black, then exits the game. This is the same result as receiving a 6x73 command.
@@ -1988,12 +1999,12 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   regsA[3] = client ID
     {0xF8C9, {"run_to_coord"}, {{R_REG_SET_FIXED, 4}, R_REG}, F_V3_V4},
 
-    // Makes a player invincible, or removes their invincibility.
+    // Makes a player invincible for a certain amount of time.
     //   regA = client ID
-    //   regB = enable invicibility (1 = enable, 0 = disable)
+    //   regB = number of invincibility frames
     {0xF8CA, {"set_slot_invincible"}, {R_REG, R_REG}, F_V3_V4},
 
-    // Removes a player's invicibility. clear_slot_invincible rXX is equivalent to set_slot_invincible rXX, 0.
+    // Removes a player's invincibility. clear_slot_invincible rXX is equivalent to set_slot_invincible rXX, 0.
     //   regA = client ID
     {0xF8CB, {"clear_slot_invincible", "set_slot_targetable?"}, {R_REG}, F_V3_V4},
 
@@ -2036,14 +2047,14 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   valueC = current position along path
     //   valueD = loop flag (0 = no, 1 = yes)
     //   regsE[0-2] = result point (x, y, z as floats)
-    //   regsE[3] = result code (0 = failed, 1 = success)
+    //   regsE[3] = 1 when the path has ended (if not looping), 0 otherwise
     //   labelF = control point entries (array of valueA VectorXYZTF structures)
     {0xF8DB, {"get_vector_from_path", "unknownF8DB"}, {I32, FLOAT32, FLOAT32, I32, {W_REG_SET_FIXED, 4}, {LABEL16, Arg::DataType::VECTOR4F_LIST}}, F_V3_V4 | F_ARGS},
 
     // Same as npc_text, but only applies to a specific player slot.
-    //   valueA = client ID
-    //   valueB = situation number (same as for npc_text)
-    //   strC = string for NPC to say (up to 52 characters)
+    //   regA = client ID
+    //   regB = situation number (same as for npc_text)
+    //   labelC = string for NPC to say (up to 52 characters)
     {0xF8DC, {"npc_text_id", "NPC_action_string"}, {R_REG, R_REG, CSTRING_LABEL16}, F_V3_V4},
 
     // Returns a bitmask of the buttons which are currently pressed or held on this frame.
@@ -2093,16 +2104,18 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF8EB, {"set_obj_param_ex", "unknownF8EB"}, {{R_REG_SET_FIXED, 6}, W_REG}, F_V3_V4},
     {0xF8EC, {"check_npc_straggle_ex", "npc_check_straggle_ex", "col_plinaw_ex"}, {{R_REG_SET_FIXED, 9}, W_REG}, F_V3_V4},
 
-    // Returns 1 if the player is doing certain animations. (TODO: Which ones?)
+    // On GC, reads the player's animation completion flag (TObjMotion flag 0x10). This is set when a non-looping
+    // animation reaches its final frame and is held there, and cleared when the animation changes. If the player does
+    // not exist, regB is unchanged.
     //   regA = client ID
-    //   regB = returned value
+    //   regB = returned flag (0 or 1)
     {0xF8ED, {"animation_check"}, {R_REG, W_REG}, F_V3_V4},
 
     // Specifies which image to use for the image board in Pioneer 2 (if placed). Only one image may be loaded at a
     // time. Images must be square and dimensions must be a power of two, similar to the B9 command on Ep3. On DC or
     // PCv2, the image data is expected to be a PVR file; on GC, it should be a GVR file; on Xbox and BB it should be
     // an XVR file.
-    //   regA = decompressed size
+    //   valueA = decompressed size
     //   labelB = label containing PRS-compressed image file data
     {0xF8EE, {"call_image_data"}, {I32, {LABEL16, Arg::DataType::IMAGE_DATA}}, F_V3_V4 | F_ARGS},
 
@@ -2122,7 +2135,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     //   valueC = current position along path
     //   valueD = loop flag (0 = no, 1 = yes)
     //   regsE[0-2] = result point (x, y, z as floats)
-    //   regsE[3] = result code (0 = failed, 1 = success)
+    //   regsE[3] = 1 when the path has ended (if not looping), 0 otherwise
     //   labelF = control point entries (array of valueA VectorXYZTF structures)
     {0xF8F2, {"compute_bezier_curve_point", "load_unk_data"}, {I32, FLOAT32, FLOAT32, I32, {W_REG_SET_FIXED, 4}, {LABEL16, Arg::DataType::VECTOR4F_LIST}}, F_V3_V4 | F_ARGS},
 
@@ -2160,11 +2173,12 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF90F, {"fdivi"}, {W_REG, FLOAT32}, F_V3_V4},
 
     // Returns the number of times a player has ever died - not just in the current quest/game/session!
-    //   regA = client ID
+    //   valueA = client ID
     //   regB = returned death count
     {0xF910, {"get_total_deaths", "get_unknown_count?"}, {CLIENT_ID, W_REG}, F_V3_V4 | F_ARGS},
 
-    // Returns the stack size of the specified item in the player's inventory.
+    // Returns the stack size of the specified item in the player's inventory. If the specified item isn't stackable,
+    // returns the number of matching items in the player's inventory.
     //   regsA[0] = client ID
     //   regsA[1-3] = item.data1[0-2]
     //   regB = returned amount of item present in player's inventory, or 0 if not found
@@ -2179,15 +2193,15 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF913, {"thaw_and_show_equip"}, {}, F_V3_V4},
 
     // These opcodes are generally used in the following sequence:
-    //   set_palettex_callback   r:client_id, callback_label
-    //   activate_palettex       r:client_id
-    //   enable_palettex         r:client_id
+    //   set_palettex_callback   client_id, callback_label
+    //   activate_palettex       client_id
+    //   enable_palettex         client_id
     //   ... (X button now runs a quest function when pressed)
-    //   disable_palettex        r:client_id
-    //   restore_palettex        r:client_id
+    //   disable_palettex        client_id
+    //   restore_palettex        client_id
     //   ... (X button now behaves normally)
     // Arguments:
-    //   regA = client ID
+    //   valueA = client ID
     //   labelB (for set_palettex_callback only) = function to call when X button is pressed
     {0xF914, {"set_palettex_callback", "set_paletteX_callback"}, {CLIENT_ID, SCRIPT16}, F_V3_V4 | F_ARGS},
     {0xF915, {"activate_palettex", "activate_paletteX"}, {CLIENT_ID}, F_V3_V4 | F_ARGS},
@@ -2196,21 +2210,21 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF918, {"disable_palettex", "disable_paletteX"}, {CLIENT_ID}, F_V3_V4 | F_ARGS},
 
     // Checks if activate_palettex has been run for a player.
-    //   regA = client ID
+    //   valueA = client ID
     //   regB = returned flag (0 = not overridden, 1 = overridden)
     {0xF919, {"get_palettex_activated", "get_paletteX_activated"}, {CLIENT_ID, W_REG}, F_V3_V4 | F_ARGS},
 
-    // Checks if activate_palettex has been run for a player.
-    //   regA = client ID
+    // Checks whether palette overrides are enabled for a player (enable_palettex).
+    //   valueA = client ID
     //   valueB = ignored
-    //   regC = returned flag (0 = not overridden, 1 = overridden)
+    //   regC = returned flag (0 = disabled, 1 = enabled)
     // The ignored argument here seems to be a bug. At least one official quest uses this opcode preceded by only two
     // arg_push opcodes, implying that it was intended to take two arguments, but the client really does only use
     // quest_arg_list[0] and quest_arg_list[2].
     {0xF91A, {"get_palettex_enabled", "get_unknown_paletteX_status?"}, {CLIENT_ID, I32, W_REG}, F_V3_V4 | F_ARGS},
 
     // Disables/enables movement for a player. Unlike disable_movement1, this does not send 6x2C.
-    //   regA = client ID
+    //   valueA = client ID
     {0xF91B, {"disable_movement2"}, {CLIENT_ID}, F_V3_V4 | F_ARGS},
     {0xF91C, {"enable_movement2"}, {CLIENT_ID}, F_V3_V4 | F_ARGS},
 
@@ -2270,7 +2284,7 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Checks if an item exists in the local player's bank. The matching logic is the same as in find_inventory_item.
     //   regsA[0-2] = item.data1[0-2]
     //   regsA[3] = item.data1[4]
-    //   regB = 1 if item was found, 0 if not
+    //   regB = 1 if item was found, 0 if not, -1 on internal errors (e.g. character file missing)
     {0xF927, {"find_bank_item", "item_check_bank"}, {{R_REG_SET_FIXED, 4}, W_REG}, F_V3_V4},
 
     // Returns whether each player is present.
@@ -2316,14 +2330,14 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Shows a message in a chat window. Can be closed with the winend opcode.
     //   valueA = X position on screen
     //   valueB = Y position on screen
-    //   valueC = window width
-    //   valueD = window height
+    //   valueC = window width (ex. on console versions, in character columns: pixel width = 18 * valueC + 8)
+    //   valueD = window height (ex. on console versions, in text rows: pixel height = 20 * valueD + 18)
     //   valueE = window style (0 = white window, 1 = chat box, anything else = no window, just text)
     //   strF = initial message
     {0xF930, {"chat_box"}, {I32, I32, I32, I32, I32, CSTRING}, F_V3_V4 | F_ARGS},
 
-    // Shows a chat bubble linked to the given entity ID.
-    //   valueA = entity (client ID, 0x1000 + enemy ID, or 0x4000 + object ID)
+    // Shows a chat bubble linked to object/NPC (valueA).
+    //   valueA = entity (client ID, or object/NPC token)
     //   strB = message
     {0xF931, {"chat_bubble"}, {I32, CSTRING}, F_V3_V4 | F_ARGS},
 
@@ -2341,8 +2355,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     // Shows a scrolling text window.
     //   valueA = X position on screen
     //   valueB = Y position on screen
-    //   valueC = window width
-    //   valueD = window height
+    //   valueC = window width (ex. on console versions, in character columns: pixel width = 18 * valueC + 8)
+    //   valueD = window height (ex. on console versions, in text rows: pixel height = 20 * valueD + 18)
     //   valueE = window style (same as for chat_box)
     //   valueF = scrolling speed
     //   regG = set to 1 when message has entirely scrolled past
@@ -2359,8 +2373,8 @@ static const QuestScriptOpcodeDefinition opcode_defs[] = {
     {0xF937, {"nop_F937"}, {}, F_XB_V3 | F_V4},
 
     // Damages a player.
-    //   regA = client ID
-    //   regB = amount
+    //   valueA = client ID
+    //   valueB = amount
     {0xF938, {"add_damage_to", "add_damage_to?"}, {I32, I32}, F_V3_V4 | F_ARGS},
 
     // Deletes an item from the local player's inventory. Like item_delete, but doesn't return anything.
