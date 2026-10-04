@@ -68,9 +68,9 @@ enum class CriterionCode : uint8_t {
   HU_CLASS_SC = 0x01,
   RA_CLASS_SC = 0x02,
   FO_CLASS_SC = 0x03,
-  SAME_TEAM = 0x04,
-  SAME_PLAYER = 0x05,
-  SAME_TEAM_NOT_SAME_PLAYER = 0x06, // Allies only
+  SELF_OR_ALLY = 0x04,
+  NOT_SELF = 0x05,
+  ALLY_ONLY = 0x06,
   FC = 0x07,
   NOT_SC = 0x08,
   SC = 0x09,
@@ -257,7 +257,7 @@ enum class ConditionType : uint8_t {
   AP_GROWTH = 0x4E, // Permanently increase AP by N
   TP_GROWTH = 0x4F, // Permanently increase TP by N
   REBORN = 0x50, // If any card of type N is on the field, this card goes back to the hand when destroyed
-  COPY = 0x51, // Temporarily set AP/TP to N percent (or 100% if N is 0) of opponent's values
+  COPY = 0x51, // Temporarily set AP/TP to 100% percent (or 50% if N <= 50) of opponent's values
   DICE_BOOST_MULTIPLIER = 0x52,
   MISC_GUARDS = 0x53, // Add N to card's defense value
   AP_OVERRIDE = 0x54, // Set AP to N temporarily
@@ -266,7 +266,7 @@ enum class ConditionType : uint8_t {
   A_T_SWAP_PERM = 0x57, // Permanently swap AP and TP
   A_H_SWAP_PERM = 0x58, // Permanently swap AP and HP
   SLAYERS_ASSASSINS = 0x59, // Temporarily increase AP during attack
-  ANTI_ABNORMALITY_2 = 0x5A, // Remove all conditions
+  ANTI_ABNORMALITY_2 = 0x5A, // Block all abnormal conditions
   FIXED_RANGE = 0x5B, // Use SC's range instead of weapon or attack card ranges
   ELUDE = 0x5C, // SC does not lose HP when equipped items are destroyed
   PARRY = 0x5D, // Forward attack to random FC within one tile of original target, except attacker and original target
@@ -615,7 +615,8 @@ struct CardDefinition {
   //   [4] = 0x00000000 => ----- (the card itself is in the center of this row)
   //   [5] = 0x00000000 => -----
   // The two special cases are as follows:
-  // 1. If all six values in the range array are 0x000FFFFF, then the card's range is the entire field.
+  // 1. If all six values in the range array are 0x000FFFFF, then the card's range is the entire field. (The client
+  //    only checks the first one.)
   // 2. If the cell corresponding to the card itself ((range[4] >> 8) & 0x0F) is not zero, then the rest of the range
   //    array is ignored and the card's range comes from a fixed set of ranges instead. See decode_range() for details.
   /* 0070 */ parray<be_uint32_t, 6> range;

@@ -256,11 +256,11 @@ void BattleRecord::set_battle_start_timestamp() {
   }
   this->battle_start_timestamp = phosg::now();
 
-  // First, find the correct map definition subcommand to keep, and execute
-  // player join/leave events to get the present players
+  // First, find the correct map definition subcommand to keep, and execute player join/leave events to get the present
+  // players
   size_t num_map_events = 0;
   PlayerEntry players[4];
-  bool players_present[4];
+  bool players_present[4] = {false, false, false, false};
   for (auto& ev : this->events) {
     if (ev.type == Event::Type::PLAYER_JOIN) {
       if (ev.players.size() != 1) {
@@ -300,9 +300,8 @@ void BattleRecord::set_battle_start_timestamp() {
   }
   new_events.emplace_back(std::move(initial_ev));
 
-  // Skip all events before the last map definition event, and only retain
-  // battle commands between then and now (since these battle commands will all
-  // be replayed at once)
+  // Skip all events before the last map definition event, and only retain battle commands between then and now (since
+  // these battle commands will all be replayed at once)
   auto it = this->events.begin();
   for (; it != this->events.end(); it++) {
     if (this->is_map_definition_event(*it)) {
@@ -341,7 +340,8 @@ void BattleRecord::print(FILE* stream) const {
   }
 }
 
-BattleRecordPlayer::BattleRecordPlayer(std::shared_ptr<asio::io_context> io_context, std::shared_ptr<const BattleRecord> rec)
+BattleRecordPlayer::BattleRecordPlayer(
+    std::shared_ptr<asio::io_context> io_context, std::shared_ptr<const BattleRecord> rec)
     : io_context(io_context),
       record(rec),
       event_it(this->record->events.begin()),
@@ -359,42 +359,39 @@ void BattleRecordPlayer::set_lobby(std::shared_ptr<Lobby> l) {
 void BattleRecordPlayer::start() {
   if (this->play_start_timestamp == 0) {
     this->play_start_timestamp = phosg::now();
-    asio::co_spawn(*this->io_context, this->play_task(), asio::detached);
+    asio::co_spawn(*this->io_context, this->play_task(this->shared_from_this()), asio::detached);
   }
 }
 
-asio::awaitable<void> BattleRecordPlayer::play_task() {
-  auto l = this->lobby.lock();
+asio::awaitable<void> BattleRecordPlayer::play_task(std::shared_ptr<BattleRecordPlayer> player) {
+  auto l = player->lobby.lock();
 
   for (;;) {
-    uint64_t relative_ts = phosg::now() - this->play_start_timestamp + this->record->battle_start_timestamp;
+    uint64_t relative_ts = phosg::now() - player->play_start_timestamp + player->record->battle_start_timestamp;
 
     // If the lobby is destroyed, we can't replay anything
     if (!l) {
       co_return;
     }
 
-    if (this->event_it == this->record->events.end()) {
-      if (relative_ts >= this->record->battle_end_timestamp) {
-        // If the record is complete and the end timestamp has been reached,
-        // send exit commands to all players in the lobby, and don't reschedule
-        // the event (it will be deleted along with the Player when the lobby
-        // is destroyed, when the last client leaves)
+    uint64_t wait_usecs = 0;
+    if (player->event_it == player->record->events.end()) {
+      if (relative_ts >= player->record->battle_end_timestamp) {
+        // If the record is complete and the end timestamp has been reached, send exit commands to all players in the
+        // lobby, and don't reschedule the event (it will be deleted along with the Player when the lobby is destroyed,
+        // when the last client leaves)
         send_command(l, 0xED, 0x00);
         break;
 
       } else {
-        // There are no more events to play, but the battle has not actually
-        // ended yet; wait until the end time
-        this->next_command_timer.expires_after(std::chrono::microseconds(this->record->battle_end_timestamp - relative_ts));
-        co_await this->next_command_timer.async_wait(asio::use_awaitable);
-        l = this->lobby.lock();
+        // There are no more events to play, but the battle has not actually ended yet; wait until the end time
+        wait_usecs = player->record->battle_end_timestamp - relative_ts;
       }
 
     } else {
-      if (this->event_it->timestamp <= relative_ts) {
+      if (player->event_it->timestamp <= relative_ts) {
         // Play the next event
-        auto& ev = *this->event_it;
+        auto& ev = *player->event_it;
         switch (ev.type) {
           case BattleRecord::Event::Type::PLAYER_JOIN:
             // Technically we can support this, but it should never happen
@@ -418,18 +415,22 @@ asio::awaitable<void> BattleRecordPlayer::play_task() {
             send_prepared_chat_message(l, ev.guild_card_number, ev.data);
             break;
           case BattleRecord::Event::Type::SERVER_DATA_COMMAND:
-            // These are not replayed, since the battle record also contains
-            // the results of these commands.
+            // These are not replayed, since the battle record also contains the results of these commands.
             break;
         }
-        this->event_it++;
+        player->event_it++;
 
       } else {
         // The next event should not occur yet, so wait until its time
-        this->next_command_timer.expires_after(std::chrono::microseconds(this->event_it->timestamp - relative_ts));
-        co_await this->next_command_timer.async_wait(asio::use_awaitable);
-        l = this->lobby.lock();
+        wait_usecs = player->event_it->timestamp - relative_ts;
       }
+    }
+
+    if (wait_usecs > 0) {
+      l.reset(); // Release strong reference to the lobby, in case it is destroyed during this wait
+      player->next_command_timer.expires_after(std::chrono::microseconds(wait_usecs));
+      co_await player->next_command_timer.async_wait(asio::use_awaitable);
+      l = player->lobby.lock();
     }
   }
 }

@@ -25,6 +25,9 @@ public:
   uint16_t card_id_for_card_ref(uint16_t card_ref) const;
   std::shared_ptr<const CardIndex::CardEntry> definition_for_card_id(uint16_t card_id) const;
 
+  // TODO: We should replace these functions (and get_active_assist_by_index) with functions that return a std::vector
+  // to avoid any reentrancy issues (practically, Homesick/Bomb may run into this), but this matches what the original
+  // client does.
   uint32_t compute_num_assist_effects_for_client(uint16_t client_id);
   uint32_t compute_num_assist_effects_for_team(uint32_t team_id);
 

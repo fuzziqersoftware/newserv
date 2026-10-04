@@ -404,7 +404,7 @@ static const std::vector<ConditionDescription> description_for_condition_type{
     /* 0x4E */ {true, "AP_GROWTH", "Permanently increase AP"},
     /* 0x4F */ {true, "TP_GROWTH", "Permanently increase TP"},
     /* 0x50 */ {true, "REBORN", "If any card of type N is on the field, this card goes to the hand when destroyed instead of being discarded"},
-    /* 0x51 */ {true, "COPY", "Temporarily set AP/TP to N percent (or 100% if N is 0) of opponent\'s values"},
+    /* 0x51 */ {true, "COPY", "Temporarily set AP/TP to 100% percent (or 50% if N <= 50) of opponent\'s values"},
     /* 0x52 */ {false, "UNUSED_DICE_BOOST_MULTIPLIER", "Multiplies dice boost by (expr), but not implemented in engine"},
     /* 0x53 */ {true, "MISC_GUARDS", "Add N to card\'s defense value"},
     /* 0x54 */ {true, "AP_OVERRIDE", "Set AP to N temporarily"},
@@ -413,7 +413,7 @@ static const std::vector<ConditionDescription> description_for_condition_type{
     /* 0x57 */ {false, "A_T_SWAP_PERM", "Permanently swap AP and TP"},
     /* 0x58 */ {false, "A_H_SWAP_PERM", "Permanently swap AP and HP"},
     /* 0x59 */ {true, "SLAYERS_ASSASSINS", "Temporarily increase AP during attack"},
-    /* 0x5A */ {false, "ANTI_ABNORMALITY_2", "Remove all conditions"},
+    /* 0x5A */ {false, "ANTI_ABNORMALITY_2", "Block all abnormal conditions"},
     /* 0x5B */ {false, "FIXED_RANGE", "Use SC\'s range instead of weapon or attack card ranges"},
     /* 0x5C */ {false, "ELUDE", "SC does not lose HP when equipped items are destroyed"},
     /* 0x5D */ {false, "PARRY", "Forward attack to a random FC within one tile of original target, excluding attacker and original target"},
@@ -538,10 +538,7 @@ std::vector<CardDefinition::Effect::ExprToken> CardDefinition::Effect::ExprToken
           try {
             const auto& def = def_for_expr_token(token_buf);
             ret.emplace_back(ExprToken{
-                .type = T::REFERENCE,
-                .value = def.value,
-                .text = expr - token_buf.size(),
-                .text_size = token_buf.size()});
+                .type = T::REFERENCE, .value = def.value, .text = expr, .text_size = token_buf.size()});
           } catch (const std::out_of_range&) {
             throw std::runtime_error("unknown token in card effect expression: " + token_buf);
           }
@@ -2205,6 +2202,7 @@ phosg::JSON MapDefinition::json(Language language) const {
       }
     }
     npc.emplace("DialogueSet", std::move(dialogue_set_json));
+    npcs_json.emplace_back(std::move(npc));
   }
 
   auto unavailable_sc_cards_json = phosg::JSON::list();
@@ -2697,8 +2695,8 @@ CardIndex::CardIndex(
         throw std::runtime_error(std::format("duplicate card id: {:08X}", entry->def.card_id));
       }
 
-      // Some cards intentionally have the same name, so we just leave them unindexed (they can still be looked up by
-      // ID, of course)
+      // Some cards intentionally have the same name, so we just leave the extras unindexed (they can still be looked
+      // up by ID, of course)
       std::string name = entry->def.en_name.decode(Language::ENGLISH);
       this->card_definitions_by_name.emplace(name, entry);
       this->card_definitions_by_name_normalized.emplace(this->normalize_card_name(name), entry);
@@ -2821,16 +2819,16 @@ std::string CardIndex::normalize_card_name(const std::string& name) {
 }
 
 MapIndex::VersionedMap::VersionedMap(std::shared_ptr<const MapDefinition> map, Language language)
-    : map(map),
-      language(language) {}
+    : map(map), language(language) {}
 
-MapIndex::VersionedMap::VersionedMap(std::string&& compressed_data, Language language)
-    : language(language), compressed_data(std::make_shared<std::string>(std::move(compressed_data))) {
-  std::string decompressed = prs_decompress(*this->compressed_data);
+MapIndex::VersionedMap::VersionedMap(std::string&& compressed_data, Language language) : language(language) {
+  std::string decompressed = prs_decompress(compressed_data);
   if (decompressed.size() == sizeof(MapDefinitionTrial)) {
     this->map = std::make_shared<MapDefinition>(*reinterpret_cast<const MapDefinitionTrial*>(decompressed.data()));
+    // Don't set compressed_data here, since it contains NTE-format data - it will be lazily computed when needed
   } else if (decompressed.size() == sizeof(MapDefinition)) {
     this->map = std::make_shared<MapDefinition>(*reinterpret_cast<const MapDefinition*>(decompressed.data()));
+    this->compressed_data = std::make_shared<std::string>(std::move(compressed_data));
   } else {
     throw std::runtime_error(std::format(
         "decompressed data size is incorrect (expected {} bytes, read {} bytes)",
@@ -3394,12 +3392,12 @@ const char* phosg::name_for_enum<Episode3::CriterionCode>(Episode3::CriterionCod
       return "RA_CLASS_SC";
     case Episode3::CriterionCode::FO_CLASS_SC:
       return "FO_CLASS_SC";
-    case Episode3::CriterionCode::SAME_TEAM:
-      return "SAME_TEAM";
-    case Episode3::CriterionCode::SAME_PLAYER:
-      return "SAME_PLAYER";
-    case Episode3::CriterionCode::SAME_TEAM_NOT_SAME_PLAYER:
-      return "SAME_TEAM_NOT_SAME_PLAYER";
+    case Episode3::CriterionCode::SELF_OR_ALLY:
+      return "SELF_OR_ALLY";
+    case Episode3::CriterionCode::NOT_SELF:
+      return "NOT_SELF";
+    case Episode3::CriterionCode::ALLY_ONLY:
+      return "ALLY_ONLY";
     case Episode3::CriterionCode::FC:
       return "FC";
     case Episode3::CriterionCode::NOT_SC:
@@ -3616,13 +3614,13 @@ template <>
 const char* phosg::name_for_enum<Episode3::Direction>(Episode3::Direction d) {
   switch (d) {
     case Episode3::Direction::RIGHT:
-      return "LEFT";
-    case Episode3::Direction::UP:
-      return "DOWN";
-    case Episode3::Direction::LEFT:
       return "RIGHT";
-    case Episode3::Direction::DOWN:
+    case Episode3::Direction::UP:
       return "UP";
+    case Episode3::Direction::LEFT:
+      return "LEFT";
+    case Episode3::Direction::DOWN:
+      return "DOWN";
     case Episode3::Direction::INVALID_FF:
       return "INVALID_FF";
     default:

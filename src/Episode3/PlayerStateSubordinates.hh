@@ -265,8 +265,8 @@ struct HandAndEquipState {
   /* 54 */
 
   HandAndEquipState();
-  bool operator==(const HandAndEquipState& other) const;
-  bool operator!=(const HandAndEquipState& other) const;
+  bool operator==(const HandAndEquipState& other) const = default;
+  bool operator!=(const HandAndEquipState& other) const = default;
 
   void clear();
   void clear_FF();

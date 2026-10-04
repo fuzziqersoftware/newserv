@@ -120,7 +120,7 @@ private:
   friend class BattleRecordPlayer;
 };
 
-class BattleRecordPlayer {
+class BattleRecordPlayer : public std::enable_shared_from_this<BattleRecordPlayer> {
 public:
   BattleRecordPlayer(std::shared_ptr<asio::io_context> io_context, std::shared_ptr<const BattleRecord> rec);
   ~BattleRecordPlayer() = default;
@@ -138,7 +138,7 @@ private:
   std::weak_ptr<Lobby> lobby;
   asio::steady_timer next_command_timer;
 
-  asio::awaitable<void> play_task();
+  static asio::awaitable<void> play_task(std::shared_ptr<BattleRecordPlayer> player);
 };
 
 } // namespace Episode3

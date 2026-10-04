@@ -534,9 +534,8 @@ bool CardSpecial::apply_stat_deltas_to_card_from_condition_and_clear_cond(Condit
       break;
     case ConditionType::AP_OVERRIDE:
       if (cond_flags & 2) {
-        // Note: In NTE, this case behaves intuitively, but in non-NTE, it seems
-        // that find_condition was changed to always return null. Perhaps this
-        // was an accident, or perhaps not, but we implement both behaviors.
+        // Note: In NTE, this case behaves intuitively, but in non-NTE, it seems that find_condition was changed to
+        // always return null. Perhaps this was an accident, or perhaps not, but we implement both behaviors.
         Condition* other_cond = is_nte ? card->find_condition(ConditionType::AP_OVERRIDE) : nullptr;
         if (!other_cond) {
           if (!is_nte) {
@@ -791,7 +790,10 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
     if (card_ref == 0xFFFF) {
       continue;
     }
-    auto ce = s->definition_for_card_id(card_ref);
+    // Note: Sega's code has a bug here: it calls definition_for_card_id instead of definition_for_card_ref, which ends
+    // up looking up a probably-unrelated card's definition. This means that num_item_or_creature_cards_in_hand is very
+    // often wrong in the original implementation.
+    auto ce = s->definition_for_card_ref(card_ref);
     if (ce && ((ce->def.type == CardType::ITEM) || (ce->def.type == CardType::CREATURE))) {
       num_item_or_creature_cards_in_hand++;
     }
@@ -804,9 +806,8 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
     ast.num_destroyed_ally_fcs = card->num_destroyed_ally_fcs;
   }
 
-  // Note: The original implementation has dice_roll as optional, but since it's
-  // provided at all callsites, we require it (and hence don't check for nullptr
-  // here)
+  // Note: The original implementation has dice_roll as optional, but since it's provided at all callsites, we require
+  // it (and hence don't check for nullptr here)
   ast.dice_roll_value1 = dice_roll.value;
   ast.dice_roll_value2 = dice_roll.value;
   ast.effective_ap = card->action_chain.chain.effective_ap;
@@ -855,8 +856,7 @@ CardSpecial::AttackEnvStats CardSpecial::compute_attack_env_stats(
   size_t z = 0;
 
   uint16_t z_ref = pa.attacker_card_ref;
-  // Note: The (z < 8) conditions in these two loops are not present in the
-  // original code.
+  // Note: The (z < 8) conditions in these two loops are not present in the original code.
   for (z = 0; ((target_card_ref != z_ref) && (z < 8) && ((z_ref = pa.action_card_refs[z]) != 0xFFFF)); z++) {
   }
 
@@ -964,17 +964,15 @@ std::shared_ptr<Card> CardSpecial::compute_replaced_target_based_on_conditions(
         continue;
       }
 
-      // Parry forwards the attack to a random FC within one tile of the
-      // original target. Note that Sega's implementation (used here) hardcodes
-      // the Gifoie card's ID (00D9) for compute_effective_range.
+      // Parry forwards the attack to a random FC within one tile of the original target. Note that Sega's
+      // implementation (used here) hardcodes the Gifoie card's ID (00D9) for compute_effective_range.
       // TODO: We should fix this so it doesn't rely on a fixed card definition.
       parray<uint8_t, 9 * 9> range;
       compute_effective_range(range, s->options.card_index, 0x00D9, target_card_loc, s->map_and_rules);
       auto card_refs_in_parry_range = target_ps->get_all_cards_within_range(
           range, target_card_loc, 0xFF);
 
-      // Filter out the attacker card ref, the set card ref, the original
-      // target, and any SCs within the range
+      // Filter out the attacker card ref, the set card ref, the original target, and any SCs within the range
       std::vector<uint16_t> candidate_card_refs;
       for (uint16_t card_ref : card_refs_in_parry_range) {
         if (attacker_card_ref == card_ref) {
@@ -1002,14 +1000,11 @@ std::shared_ptr<Card> CardSpecial::compute_replaced_target_based_on_conditions(
     }
   }
 
-  // Note: Some vestigial functionality was removed here. The original code has
-  // a parallel array of booleans that seem to specify a priority: if any of the
-  // candidate cards has true in the priority array, then the first candidate
-  // card with a true value is returned instead of a random entry from the
-  // entire array. The original code only puts false values into the priority
-  // array, effectively rendering it unused, so we've omitted it entirely.
-  // Curiously, this code does not exist in NTE, so it seems it was added after
-  // NTE but never used.
+  // Note: Some vestigial functionality was removed here. The original code has a parallel array of booleans that seem
+  // to specify a priority: if any of the candidate cards has true in the priority array, then the first candidate card
+  // with a true value is returned instead of a random entry from the entire array. The original code only puts false
+  // values into the priority array, effectively rendering it unused, so we've omitted it entirely. Curiously, this
+  // code does not exist in NTE, so it seems it was added after NTE but never used.
   std::vector<std::shared_ptr<Card>> candidate_cards;
   for (size_t client_id = 0; client_id < 4; client_id++) {
     auto other_ps = s->get_player_state(client_id);
@@ -1184,8 +1179,7 @@ std::shared_ptr<Card> CardSpecial::compute_replaced_target_based_on_conditions(
     return nullptr;
   }
 
-  // If the set card is a candidate (or the attacker is, if there's no set
-  // card), don't redirect the attack at all
+  // If the set card is a candidate (or the attacker is, if there's no set card), don't redirect the attack at all
   for (size_t z = 0; z < candidate_cards.size(); z++) {
     auto candidate_card = candidate_cards[z];
     uint16_t candidate_card_ref = candidate_card->get_card_ref();
@@ -1422,9 +1416,8 @@ bool CardSpecial::evaluate_effect_arg2_condition(
     uint16_t sc_card_ref,
     uint8_t random_percent,
     EffectWhen when) const {
-  // Note: In the original code, as and dice_roll were optional pointers, but
-  // they are non-null at all callsites, so we've replaced them with references
-  // (and eliminated the null checks within this function).
+  // Note: In the original code, as and dice_roll were optional pointers, but they are non-null at all callsites, so
+  // we've replaced them with references (and eliminated the null checks within this function).
 
   auto s = this->server();
 
@@ -1696,7 +1689,7 @@ int32_t CardSpecial::evaluate_effect_expr(const AttackEnvStats& ast, const char*
   }
 
   // Note: This implementation is not based on the original code because the original code was hard to follow - it used
-  // look-behind approach with lots of local variables instead of the look-ahead approach that this implementation
+  // a look-behind approach with lots of local variables instead of the look-ahead approach that this implementation
   // uses. Hopefully this implementation is easier to follow.
   auto tokens = ExprToken::parse(expr);
   for (auto& token : tokens) {
@@ -1752,7 +1745,8 @@ int32_t CardSpecial::evaluate_effect_expr(const AttackEnvStats& ast, const char*
           log.debug_f("value={} (token_type=MULTIPLY, right_token_value={})", value, right_token.value);
           break;
         case ExprToken::Type::FLOOR_DIVIDE:
-          value = floor(value / right_token.value);
+          // This matches the client's implementation, even though just `value / right_token.value` is probably easier
+          value = floor(static_cast<double>(value) / right_token.value);
           log.debug_f("value={} (token_type=FLOOR_DIVIDE, right_token_value={})", value, right_token.value);
           break;
         default:
@@ -1847,7 +1841,7 @@ bool CardSpecial::execute_effect(
         if (is_nte) {
           card->action_chain.chain.ap_effect_bonus += positive_expr_value;
         } else {
-          card->action_chain.chain.ap_effect_bonus = std::clamp<int8_t>(
+          card->action_chain.chain.ap_effect_bonus = std::clamp<int16_t>(
               card->action_chain.chain.ap_effect_bonus + positive_expr_value, -99, 99);
         }
       }
@@ -1870,7 +1864,7 @@ bool CardSpecial::execute_effect(
         if (is_nte) {
           card->action_chain.chain.tp_effect_bonus += positive_expr_value;
         } else {
-          card->action_chain.chain.tp_effect_bonus = std::clamp<int8_t>(
+          card->action_chain.chain.tp_effect_bonus = std::clamp<int16_t>(
               card->action_chain.chain.tp_effect_bonus + positive_expr_value, -99, 99);
         }
       }
@@ -2019,6 +2013,8 @@ bool CardSpecial::execute_effect(
     case ConditionType::ABILITY_TRAP:
       if (is_nte && (flags & ExecuteEffectFlag::APPLY_TIMED_EFFECT)) {
         bool needs_update = false;
+        // Note: Very often, this loop will end without doing anything, because it's very unlikely that the card has 9
+        // valid conditions, and this loop starts at the end of the list. This bug originates from the NTE client.
         for (ssize_t z = 8; z >= 0; z--) {
           auto& cond = card->action_chain.conditions[z];
           if (cond.type == ConditionType::NONE) {
@@ -2637,15 +2633,15 @@ const Condition* CardSpecial::find_condition_with_parameters(
     std::shared_ptr<const Card> card, ConditionType cond_type, uint16_t set_card_ref, uint8_t def_effect_index) const {
 
   if (this->server()->options.is_nte()) {
-    // The NTE version of this function returns a boolean instead of a pointer;
-    // we always return a pointer for simplicity reasons, even for NTE.
+    // The NTE version of this function returns a boolean instead of a pointer; we always return a pointer for
+    // simplicity reasons, even for NTE.
     for (size_t z = 0; z < 9; z++) {
       auto& cond = card->action_chain.conditions[z];
       auto orig_eff = this->original_definition_for_condition(cond);
 
       if (((cond_type == ConditionType::ANY) || (cond.type == cond_type)) &&
           ((set_card_ref == 0xFFFF) || (cond.card_ref == set_card_ref)) &&
-          ((def_effect_index != 0xFF) || (orig_eff || (orig_eff->effect_num == def_effect_index)))) {
+          ((def_effect_index != 0xFF) || (orig_eff && (orig_eff->effect_num == def_effect_index)))) {
         return &cond;
       }
     }
@@ -2811,16 +2807,6 @@ std::vector<std::shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_con
           add_card_refs(ps->get_card_refs_within_range_from_all_players(range, card1_loc, CardType::ITEM));
         }
       }
-      if (card1) {
-        auto ce = s->definition_for_card_ref(card_ref);
-        auto ps = card1->player_state();
-        if (ce && ps) {
-          uint16_t range_card_id = this->get_card_id_with_effective_range(card1, ce->def.card_id, card2);
-          parray<uint8_t, 9 * 9> range;
-          compute_effective_range(range, s->options.card_index, range_card_id, card1_loc, s->map_and_rules);
-          add_card_refs(ps->get_all_cards_within_range(range, card1_loc, card1->get_team_id()));
-        }
-      }
       break;
     case 0x04: // p04
       size_t z;
@@ -2936,8 +2922,7 @@ std::vector<std::shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_con
         auto def = s->definition_for_card_ref(card_ref);
         auto ps = card1->player_state();
         if (def && ps) {
-          // TODO: Again, Sega hardcodes the Gifoie card's ID here... we
-          // should fix this eventually.
+          // TODO: Again, Sega hardcodes the Gifoie card's ID here... we should fix this eventually.
           uint16_t range_card_id = this->get_card_id_with_effective_range(card1, 0x00D9, card2);
           parray<uint8_t, 9 * 9> range;
           compute_effective_range(range, s->options.card_index, range_card_id, card1_loc, s->map_and_rules);
@@ -2992,9 +2977,8 @@ std::vector<std::shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_con
       break;
     case 0x19: // p25
       if (s->options.is_nte()) {
-        // This appears to be a copy/paste error in NTE that was fixed in the
-        // final version. Presumably include_cond should be ConditionType::FLY
-        // here, not PARALYZE.
+        // This appears to be a copy/paste error in NTE that was fixed in the final version. Presumably include_cond
+        // should be AERIAL here, not PARALYZE.
         ret = this->find_cards_by_condition_inc_exc(
             ConditionType::PARALYZE, ConditionType::NONE, AssistEffect::FLY, AssistEffect::NONE);
       } else {
@@ -3080,7 +3064,6 @@ std::vector<std::shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_con
       bool is_nte = s->options.is_nte();
       if (as.original_attacker_card_ref == 0xFFFF) {
         log36.debug_f("original_attacker_card_ref missing");
-        // debug_str_for_card_ref
         for (size_t z = 0; (z < 4 * 9) && (as.target_card_refs[z] != 0xFFFF); z++) {
           std::string debug_ref_str = s->debug_str_for_card_ref(as.target_card_refs[z]);
           log36.debug_f("examining {}", debug_ref_str);
@@ -3264,8 +3247,7 @@ std::vector<std::shared_ptr<const Card>> CardSpecial::get_targeted_cards_for_con
         auto def = s->definition_for_card_ref(card_ref);
         auto ps = card1->player_state();
         if (def && ps) {
-          // TODO: Yet another hardcoded card ID... but this time it's Cross
-          // Slay instead of Gifoie
+          // TODO: Yet another hardcoded card ID... but this time it's Cross Slay instead of Gifoie
           uint16_t range_card_id = this->get_card_id_with_effective_range(card1, 0x009C, card2);
           parray<uint8_t, 9 * 9> range;
           compute_effective_range(range, s->options.card_index, range_card_id, card1_loc, s->map_and_rules);
@@ -3501,9 +3483,8 @@ void CardSpecial::send_6xB4x06_for_exp_change(
   if (unknown_p5 == 0) {
     cmd.effect.current_hp |= 0x80;
   }
-  // NOTE: The original code appears to have a copy/paste error here: if
-  // card->tp > 99, then it sets cmd.effect.ap = 99 instead of cmd.effect.tp.
-  // We implement the presumably intended behavior here instead.
+  // NOTE: The original code appears to have a copy/paste error here: if card->tp > 99, then it sets cmd.effect.ap = 99
+  // instead of cmd.effect.tp. We implement the presumably intended behavior here instead.
   cmd.effect.tp = std::clamp<int16_t>(card->tp, 0, 99);
   this->server()->send(cmd);
 }
@@ -4057,15 +4038,12 @@ void CardSpecial::evaluate_and_apply_effects(
           cmd.effect.operation = static_cast<int8_t>(card_effect.type);
           s->send(cmd);
 
-          // Note: The original code has this check outside of the if
-          // (applied_cond_index >= 0) block, but this is a bug since
-          // applied_cond_index can be negative. In Sega's implementation, this
-          // bug probably does nothing in any reasonable scenario, since the
-          // target card refs array immediately precedes the conditions array,
-          // and the target card refs array is excessively long, so OR'ing a
-          // value that is almost certainly already 0xFFFF with 1 would do
-          // nothing. In our implementation, however, we bounds-check
-          // everything, so we've moved this check inside the relevant if block.
+          // Note: The original code has this check outside of the if (applied_cond_index >= 0) block, but this is a
+          // bug since applied_cond_index can be negative. In Sega's implementation, this bug probably does nothing in
+          // any reasonable scenario, since the target card refs array immediately precedes the conditions array, and
+          // the target card refs array is excessively long, so OR'ing a value that is almost certainly already 0xFFFF
+          // with 1 would do nothing. In our implementation, however, we bounds-check everything, so we've moved this
+          // check inside the relevant if block.
           if (dice_roll.value_used_in_expr) {
             target_card->action_chain.conditions[applied_cond_index].flags |= 1;
           }
@@ -4139,6 +4117,8 @@ std::vector<std::shared_ptr<const Card>> CardSpecial::find_cards_by_condition_in
       size_t num_assists = this->server()->assist_server->compute_num_assist_effects_for_client(client_id);
       for (size_t z = 0; z < num_assists; z++) {
         auto eff = this->server()->assist_server->get_active_assist_by_index(z);
+        // This appears to be a copy/paste error by Sega. We should check if include_eff != AssistEffect::NONE here,
+        // not exclude_eff, but this is what their server implementation (at least, the one in the client) does.
         if ((exclude_eff != AssistEffect::NONE) &&
             ((include_eff == AssistEffect::ANY) || (include_eff == eff))) {
           should_include = true;
@@ -4696,7 +4676,7 @@ void CardSpecial::apply_effects_after_attack_target_resolution(const ActionState
     card_ref2 = this->send_6xB4x06_if_card_ref_invalid(as.attacker_card_ref, 0x26);
     this->evaluate_and_apply_effects(EffectWhen::UNKNOWN_34, card_ref2, as, card_ref1);
     for (size_t z = 0; (z < 4 * 9) && (as.target_card_refs[z] != 0xFFFF); z++) {
-      uint16_t card_ref = this->send_6xB4x06_if_card_ref_invalid(as.action_card_refs[z], 0x27);
+      uint16_t card_ref = this->send_6xB4x06_if_card_ref_invalid(as.target_card_refs[z], 0x27);
       if (card_ref == 0xFFFF) {
         break;
       }

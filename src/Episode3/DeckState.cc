@@ -262,15 +262,17 @@ void DeckState::shuffle() {
     }
 
     size_t max = this->num_drawable_cards();
-    for (size_t z = 0; z < this->card_refs.size(); z++) {
-      // Note: This is the way Sega originally implemented shuffling - they just do N swaps on the entire array. A more
-      // uniform way to do it would be to instead swap each item with another random item (possibly itself) that
-      // doesn't appear earlier than it in the array, but this is not what Sega did.
-      uint8_t index1 = this->draw_index + s->get_random(max);
-      uint8_t index2 = this->draw_index + s->get_random(max);
-      uint16_t temp_ref = this->card_refs[index1];
-      this->card_refs[index1] = this->card_refs[index2];
-      this->card_refs[index2] = temp_ref;
+    if (max != 0) {
+      for (size_t z = 0; z < this->card_refs.size(); z++) {
+        // Note: This is the way Sega originally implemented shuffling - they just do N swaps on the entire array. A
+        // more uniform way to do it would be to instead swap each item with another random item (possibly itself) that
+        // doesn't appear earlier than it in the array, but that is not what Sega did.
+        uint8_t index1 = this->draw_index + s->get_random(max);
+        uint8_t index2 = this->draw_index + s->get_random(max);
+        uint16_t temp_ref = this->card_refs[index1];
+        this->card_refs[index1] = this->card_refs[index2];
+        this->card_refs[index2] = temp_ref;
+      }
     }
   }
 }
@@ -302,7 +304,8 @@ void DeckState::print(FILE* stream, std::shared_ptr<const CardIndex> card_index)
       this->shuffle_enabled ? "true" : "false",
       this->loop_enabled ? "true" : "false");
   for (size_t z = 0; z < 31; z++) {
-    const auto& e = this->entries[z];
+    uint16_t card_ref = this->card_refs[z];
+    const auto& e = this->entries[index_for_card_ref(card_ref)];
     std::shared_ptr<const CardIndex::CardEntry> ce;
     if (card_index) {
       try {
@@ -311,12 +314,11 @@ void DeckState::print(FILE* stream, std::shared_ptr<const CardIndex> card_index)
       }
     }
     if (ce) {
-      phosg::fwrite_fmt(stream, "  ({:02}) index={:02X} ref=@{:04X} card_id=#{:04X} \"{}\" {}\n",
-          z, e.deck_index, this->card_refs[z], e.card_id, ce->def.en_name.decode(Language::ENGLISH),
-          name_for_card_state(e.state));
+      phosg::fwrite_fmt(stream, "  ({:02}) ref=@{:04X} index={:02X} card_id=#{:04X} \"{}\" {}\n",
+          z, card_ref, e.deck_index, e.card_id, ce->def.en_name.decode(Language::ENGLISH), name_for_card_state(e.state));
     } else {
-      phosg::fwrite_fmt(stream, "  ({:02}) index={:02X} ref=@{:04X} card_id=#{:04X} {}\n",
-          z, e.deck_index, this->card_refs[z], e.card_id, name_for_card_state(e.state));
+      phosg::fwrite_fmt(stream, "  ({:02}) ref=@{:04X} index={:02X} card_id=#{:04X} {}\n",
+          z, card_ref, e.deck_index, e.card_id, name_for_card_state(e.state));
     }
   }
 }

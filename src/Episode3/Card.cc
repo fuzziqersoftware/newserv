@@ -318,8 +318,10 @@ void Card::commit_attack(
   }
 
   auto attacker_ps = attacker_card->player_state();
-  attacker_ps->stats.damage_given += effective_damage;
-  this->player_state()->stats.damage_taken += effective_damage;
+  if (effective_damage > 0) { // Note: This check doesn't exist in the original code
+    attacker_ps->stats.damage_given += effective_damage;
+    this->player_state()->stats.damage_taken += effective_damage;
+  }
   log.debug_f("updated stats");
 
   this->current_hp = std::clamp<int16_t>(this->current_hp - effective_damage, 0, this->max_hp);

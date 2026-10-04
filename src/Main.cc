@@ -4387,7 +4387,7 @@ Action a_replay_ep3_battle_record(
               ev.print(stdout);
             } else {
               if (use_color) {
-                phosg::print_color_escape(stdout, phosg::TerminalFormat::FG_RED, phosg::TerminalFormat::BOLD, phosg::TerminalFormat::END);
+                phosg::print_color_escape(stdout, phosg::TerminalFormat::FG_YELLOW, phosg::TerminalFormat::BOLD, phosg::TerminalFormat::END);
               }
               ev.print(stdout);
               if (use_color) {

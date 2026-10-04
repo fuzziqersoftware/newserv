@@ -1767,7 +1767,7 @@ const std::unordered_map<uint8_t, Server::handler_t> Server::subcommand_handlers
 void Server::on_server_data_input(std::shared_ptr<Client> sender_c, const std::string& data) {
   auto header = check_size_t<G_CardBattleCommandHeader>(data, 0xFFFF);
   size_t expected_size = header.size * 4;
-  if (expected_size < data.size()) {
+  if (data.size() < expected_size) {
     phosg::print_data(stderr, data);
     throw std::runtime_error(std::format(
         "command is incomplete: expected {:X} bytes, received {:X} bytes", expected_size, data.size()));
@@ -2192,7 +2192,7 @@ void Server::handle_CAx14_update_deck_during_setup(std::shared_ptr<Client>, cons
       if (!this->options.is_nte() && !(this->options.behavior_flags & BehaviorFlag::SKIP_D1_D2_REPLACE)) {
         this->ruler_server->replace_D1_D2_rank_cards_with_Attack(entry.card_ids);
       }
-      *this->deck_entries[in_cmd.client_id] = in_cmd.entry;
+      *this->deck_entries[in_cmd.client_id] = entry;
       this->presence_entries[in_cmd.client_id].player_present = true;
       this->presence_entries[in_cmd.client_id].is_cpu_player = in_cmd.is_cpu_player;
       this->set_player_deck_valid(in_cmd.client_id);
@@ -2245,7 +2245,7 @@ void Server::handle_CAx1B_update_player_name(std::shared_ptr<Client>, const std:
       auto ps = this->player_states[in_cmd.entry.client_id];
       if (ps && ps->hand_and_equip && !ps->hand_and_equip->is_cpu_player) {
         ps->hand_and_equip->is_cpu_player = 1;
-        this->send_6xB4x02_for_all_players_if_needed();
+        this->send_6xB4x02_for_all_players_if_needed(true);
       }
     }
   }
@@ -2416,8 +2416,7 @@ void Server::handle_CAx34_subtract_ally_atk_points(std::shared_ptr<Client>, cons
         if (ce->def.ally_cost <= ally_ps->get_atk_points()) {
           auto& pa = this->pb_action_states[card_ref_client_id];
           if (this->num_pending_attacks < 0x20) {
-            this->num_pending_attacks++;
-            this->pending_attacks[this->num_pending_attacks] = pa;
+            this->pending_attacks[this->num_pending_attacks++] = pa;
             this_ps->set_action_cards_for_action_state(pa);
             ally_ps->subtract_atk_points(ce->def.ally_cost);
             if (ce->def.ally_cost > 0) {
@@ -2553,7 +2552,8 @@ void Server::send_6xB6x41_to_all_clients() const {
     }
 
   } else {
-    auto out_data = this->prepare_6xB6x41_map_definition(this->last_chosen_map, Language::ENGLISH, false);
+    auto out_data = this->prepare_6xB6x41_map_definition(
+        this->last_chosen_map, Language::ENGLISH, this->options.is_nte());
     this->send(out_data.data(), out_data.size(), 0x6C, false);
   }
 }

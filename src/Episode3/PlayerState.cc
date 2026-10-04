@@ -166,6 +166,10 @@ void PlayerState::apply_assist_card_effect_on_set(std::shared_ptr<PlayerState> s
     return;
   }
 
+  // Note: Sega's implementation does not clear assist_delay_turns here, so a replaced assist would retain the delay
+  // from the old assist card if it hadn't started yet. We've fixed this here.
+  this->assist_delay_turns = 0;
+
   switch (assist_effect) {
     case AssistEffect::CARD_RETURN: {
       size_t hand_index;
@@ -178,7 +182,7 @@ void PlayerState::apply_assist_card_effect_on_set(std::shared_ptr<PlayerState> s
       if (hand_index < 6) {
         if (s->options.is_nte()) {
           if (this->deck_state->draw_card_by_ref(this->discard_log_card_refs[0])) {
-            this->pop_from_discard_log(0);
+            this->card_refs[hand_index] = this->pop_from_discard_log(0);
           }
         } else {
           for (size_t z = 0; z < 0x10; z++) {
@@ -750,7 +754,8 @@ void PlayerState::draw_hand(ssize_t override_count) {
         break;
       }
     }
-    if (!s->options.is_nte() && (s->get_setup_phase() == SetupPhase::MAIN_BATTLE)) {
+    // Note: Sega's client code does not include the (card_def != 0xFFFF) condition here
+    if (!s->options.is_nte() && (card_ref != 0xFFFF) && (s->get_setup_phase() == SetupPhase::MAIN_BATTLE)) {
       this->stats.num_cards_drawn++;
     }
   }
@@ -939,14 +944,15 @@ void PlayerState::log_discard(uint16_t card_ref, uint16_t reason) {
 }
 
 uint16_t PlayerState::pop_from_discard_log(uint16_t) {
-  // NTE appears to have a bug here (or some obviated code): it searches for an entry with the given reason, then
-  // ignores the result of that search and always returns the first entry instead. That code is:
-  // size_t z;
-  // for (size_t z = 0; z < this->discard_log_card_refs.size(); z++) {
-  //   if ((this->discard_log_card_refs[z] != 0xFFFF) && (this->discard_log_reasons[z] == reason)) {
-  //     break;
+  // NTE appears to have a bug here (or some obviated code): it searches for an entry with the given reason (the
+  // unnamed uint16_t parameter), then ignores the result of that search and always returns the first entry instead.
+  // That code is:
+  //   size_t z;
+  //   for (size_t z = 0; z < this->discard_log_card_refs.size(); z++) {
+  //     if ((this->discard_log_card_refs[z] != 0xFFFF) && (this->discard_log_reasons[z] == reason)) {
+  //       break;
+  //     }
   //   }
-  // }
 
   uint16_t ret = this->discard_log_card_refs[0];
   for (size_t z = 0; z < this->discard_log_card_refs.size() - 1; z++) {
@@ -1090,6 +1096,7 @@ void PlayerState::replace_all_set_assists_with_random_assists() {
         if (!is_nte && !this->god_whim_can_use_hidden_cards) {
           auto ce = s->definition_for_card_id(card_id);
           if (!ce || ce->def.cannot_drop) {
+            card_id = 0x130; // Try again
             continue;
           }
         }
@@ -1557,7 +1564,7 @@ G_UpdateHand_Ep3_6xB4x02 PlayerState::prepare_6xB4x02() const {
 
 void PlayerState::update_hand_and_equip_state_and_send_6xB4x02_if_needed(bool always_send) {
   auto cmd = this->prepare_6xB4x02();
-  if (always_send || memcmp(&this->hand_and_equip, &cmd.state, sizeof(this->hand_and_equip))) {
+  if (always_send || (*this->hand_and_equip != cmd.state)) {
     *this->hand_and_equip = cmd.state;
     this->server()->send(cmd);
   }

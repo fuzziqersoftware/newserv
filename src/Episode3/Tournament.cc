@@ -66,7 +66,6 @@ void Tournament::Team::register_player(
   if (this->players.size() >= this->max_players) {
     throw std::runtime_error("team is full");
   }
-
   if (!this->name.empty() && (password != this->password)) {
     throw std::runtime_error("incorrect password");
   }
@@ -74,6 +73,9 @@ void Tournament::Team::register_player(
   auto tournament = this->tournament.lock();
   if (!tournament) {
     throw std::runtime_error("tournament has been deleted");
+  }
+  if (tournament->get_state() != Tournament::State::REGISTRATION) {
+    throw std::runtime_error("tournament registration has already ended");
   }
   if (!tournament->all_player_account_ids.emplace(c->login->account->account_id).second) {
     throw std::runtime_error("player already registered in same tournament");
@@ -122,20 +124,18 @@ bool Tournament::Team::unregister_player(uint32_t account_id) {
         if (!match->preceding_a || !match->preceding_b) {
           throw std::logic_error("zero-round match is pending after tournament registration phase");
         }
-        if (match->preceding_a->winner_team.get() == this) {
+        if ((match->preceding_a->winner_team.get() == this) && match->preceding_b->winner_team) {
           match->set_winner_team(match->preceding_b->winner_team);
           break;
-        } else if (match->preceding_b->winner_team.get() == this) {
+        } else if ((match->preceding_b->winner_team.get() == this) && match->preceding_a->winner_team) {
           match->set_winner_team(match->preceding_a->winner_team);
           break;
         }
       }
+    }
 
-    } else {
-      // If the tournament has not started yet, just remove the player from the team
-      if (!tournament->all_player_account_ids.erase(account_id)) {
-        throw std::logic_error("player removed from team but not from tournament");
-      }
+    if (!tournament->all_player_account_ids.erase(account_id)) {
+      throw std::logic_error("player removed from team but not from tournament");
     }
 
     return true;
@@ -564,7 +564,7 @@ void Tournament::start() {
 
   bool has_com_teams = (this->flags & Flag::HAS_COM_TEAMS);
 
-  // If there aren't enough entrants (1 if has_com_teams is false, else 2), don't allow the tournament to start
+  // If there aren't enough entrants (2 if has_com_teams is false, else 1), don't allow the tournament to start
   // (because it would enter the COMPLETE state immediately)
   size_t num_human_teams = 0;
   for (size_t z = 0; z < this->teams.size(); z++) {
@@ -619,7 +619,6 @@ void Tournament::start() {
     }
   }
 
-  this->current_state = State::IN_PROGRESS;
   this->create_bracket_matches();
 
   // Assign names to COM teams, and assign COM decks to all empty slots unless has_com_teams is false
@@ -650,6 +649,8 @@ void Tournament::start() {
   for (auto m : this->zero_round_matches) {
     m->on_winner_team_set();
   }
+
+  this->current_state = State::IN_PROGRESS;
 }
 
 void Tournament::send_all_state_updates() const {

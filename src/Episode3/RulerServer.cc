@@ -950,9 +950,9 @@ bool RulerServer::check_usability_or_condition_apply(
 
   // For item usability checks, prevent criteria that depend on player positioning/team setup
   if (is_item_usability_check &&
-      ((criterion_code == CriterionCode::SAME_TEAM) ||
-          (criterion_code == CriterionCode::SAME_PLAYER) ||
-          (criterion_code == CriterionCode::SAME_TEAM_NOT_SAME_PLAYER) ||
+      ((criterion_code == CriterionCode::SELF_OR_ALLY) ||
+          (criterion_code == CriterionCode::NOT_SELF) ||
+          (criterion_code == CriterionCode::ALLY_ONLY) ||
           (criterion_code == CriterionCode::FC) ||
           (criterion_code == CriterionCode::NOT_SC) ||
           (criterion_code == CriterionCode::SC))) {
@@ -984,19 +984,19 @@ bool RulerServer::check_usability_or_condition_apply(
         return ret;
       }
       break;
-    case CriterionCode::SAME_TEAM:
+    case CriterionCode::SELF_OR_ALLY:
       if ((client_id1 == client_id2) ||
           ((client_id1 != 0xFF) && (client_id2 != 0xFF) &&
               (this->team_id_for_client_id[client_id1] == this->team_id_for_client_id[client_id2]))) {
         return true;
       }
       break;
-    case CriterionCode::SAME_PLAYER:
+    case CriterionCode::NOT_SELF:
       if (client_id1 != client_id2) {
         return true;
       }
       break;
-    case CriterionCode::SAME_TEAM_NOT_SAME_PLAYER:
+    case CriterionCode::ALLY_ONLY:
       if ((client_id2 != client_id1) && (client_id1 != 0xFF) && (client_id2 != 0xFF) &&
           (this->team_id_for_client_id[client_id1] == this->team_id_for_client_id[client_id2])) {
         return true;
@@ -1830,7 +1830,9 @@ int32_t RulerServer::error_code_for_client_setting_card(
       int32_t x_offset = 0, y_offset = 0;
       this->offsets_for_direction(summon_area_loc, &x_offset, &y_offset);
       if (x_offset == 0) {
-        if ((loc->x < 1) && (loc->x >= this->map_and_rules->map.width - 1)) {
+        // There appears to be a Sega bug here - their code uses && rather than ||. This condition is likely impossible
+        // with &&.
+        if ((loc->x < 1) || (loc->x >= this->map_and_rules->map.width - 1)) {
           return -0x7E;
         }
       } else {
@@ -1849,7 +1851,9 @@ int32_t RulerServer::error_code_for_client_setting_card(
         }
       }
       if (y_offset == 0) {
-        if ((loc->y < 1) && (loc->y >= this->map_and_rules->map.height - 1)) {
+        // There appears to be a Sega bug here - their code uses && rather than ||. This condition is likely impossible
+        // with &&.
+        if ((loc->y < 1) || (loc->y >= this->map_and_rules->map.height - 1)) {
           return -0x7E;
         }
       } else {
@@ -2185,15 +2189,20 @@ ActionType RulerServer::get_pending_action_type(const ActionState& pa) const {
 }
 
 bool RulerServer::is_attack_valid(const ActionState& pa) {
-  uint8_t client_id = pa.client_id;
   uint16_t attacker_card_ref = pa.attacker_card_ref;
-  if (client_id == 0xFF) {
+  if (pa.client_id > 3) {
     this->error_code3 = -0x72;
     return false;
   }
 
-  if (this->hand_and_equip_states[client_id] &&
-      (this->hand_and_equip_states[client_id]->assist_flags & AssistFlag::IS_SKIPPING_TURN)) {
+  // This check is not part of the original code.
+  auto hes = this->hand_and_equip_states[pa.client_id].get();
+  if (!hes) {
+    this->error_code3 = -0x30;
+    return false;
+  }
+
+  if (hes->assist_flags & AssistFlag::IS_SKIPPING_TURN) {
     this->error_code3 = -0x70;
     return false;
   }
@@ -2230,7 +2239,7 @@ bool RulerServer::is_attack_valid(const ActionState& pa) {
   }
 
   bool has_permission_effect = false;
-  size_t num_assists = this->assist_server->compute_num_assist_effects_for_client(client_id);
+  size_t num_assists = this->assist_server->compute_num_assist_effects_for_client(pa.client_id);
   for (size_t z = 0; z < num_assists; z++) {
     auto eff = this->assist_server->get_active_assist_by_index(z);
     if (eff == AssistEffect::PERMISSION) {
@@ -2249,8 +2258,21 @@ bool RulerServer::is_attack_valid(const ActionState& pa) {
       break;
     }
 
-    if (client_id_for_card_ref(right_card_ref) != client_id) {
+    if (client_id_for_card_ref(right_card_ref) != pa.client_id) {
       this->error_code3 = -0x6D;
+      return false;
+    }
+
+    // This check is not part of the original code.
+    bool card_in_hand = false;
+    for (uint16_t x = 0; x < hes->hand_card_refs.size(); x++) {
+      if (hes->hand_card_refs[x] == right_card_ref) {
+        card_in_hand = true;
+        break;
+      }
+    }
+    if (!card_in_hand) {
+      this->error_code3 = -0x31;
       return false;
     }
 
@@ -2259,11 +2281,8 @@ bool RulerServer::is_attack_valid(const ActionState& pa) {
         : this->definition_for_card_ref(pa.action_card_refs[z - 1]);
     auto right_card_ce = this->definition_for_card_ref(right_card_ref);
 
-    if (right_card_ce->def.type != CardType::ACTION) {
-      this->error_code3 = -0x6C;
-      return false;
-    }
-    if (!left_card_ce || !right_card_ce) {
+    // Sega has the order of these checks reversed, which would crash if right_card_ce is null.
+    if (!left_card_ce || !right_card_ce || (right_card_ce->def.type != CardType::ACTION)) {
       this->error_code3 = -0x6C;
       return false;
     }
@@ -2295,7 +2314,7 @@ bool RulerServer::is_attack_valid(const ActionState& pa) {
   }
 
   if ((attacker_ce->def.type == CardType::HUNTERS_SC) && ((z == 0) || (z != conditional_card_count))) {
-    auto short_statuses = this->short_statuses[client_id];
+    auto short_statuses = this->short_statuses[pa.client_id];
     for (z = 7; z < 15; z++) {
       if (this->card_ref_can_attack(short_statuses->at(z).card_ref)) {
         this->error_code3 = -0x68;
@@ -2308,7 +2327,7 @@ bool RulerServer::is_attack_valid(const ActionState& pa) {
 }
 
 bool RulerServer::is_attack_or_defense_valid(const ActionState& pa) {
-  // This error code is present in the original code, but is no longer possible since we require pa instead.
+  // This check is present in the original code, but is no longer possible since we require pa instead.
   // if (!pa) {
   //   this->error_code3 = -0x78;
   //   return false;
@@ -2376,9 +2395,9 @@ bool RulerServer::is_card_ref_in_hand(uint16_t card_ref) const {
 }
 
 bool RulerServer::is_defense_valid(const ActionState& pa) {
-  if ((pa.original_attacker_card_ref == 0xFFFF) ||
-      (pa.target_card_refs[0] == 0xFFFF) ||
-      (pa.action_card_refs[0] == 0xFFFF)) {
+  uint16_t defense_card_ref = pa.action_card_refs[0];
+  uint16_t target_card_ref = pa.target_card_refs[0];
+  if ((pa.original_attacker_card_ref == 0xFFFF) || (target_card_ref == 0xFFFF) || (defense_card_ref == 0xFFFF)) {
     this->error_code3 = -0x65;
     return false;
   }
@@ -2388,8 +2407,14 @@ bool RulerServer::is_defense_valid(const ActionState& pa) {
     return false;
   }
 
-  if (this->hand_and_equip_states[pa.client_id] &&
-      (this->hand_and_equip_states[pa.client_id]->assist_flags & AssistFlag::IS_SKIPPING_TURN)) {
+  // This check is not part of the original code.
+  auto hes = this->hand_and_equip_states[pa.client_id].get();
+  if (!hes) {
+    this->error_code3 = -0xF0;
+    return false;
+  }
+
+  if (hes->assist_flags & AssistFlag::IS_SKIPPING_TURN) {
     this->error_code3 = -0x64;
     return false;
   }
@@ -2397,7 +2422,20 @@ bool RulerServer::is_defense_valid(const ActionState& pa) {
   // Note: The original code has a case here that results in error code -0x5E, triggered by a function returning false.
   // However, that function always returns true and has no side effects, so we've omitted the case here.
 
-  const auto* stat = this->short_status_for_card_ref(pa.target_card_refs[0]);
+  // This check is not part of the original code.
+  bool card_in_hand = false;
+  for (uint16_t x = 0; x < hes->hand_card_refs.size(); x++) {
+    if (hes->hand_card_refs[x] == defense_card_ref) {
+      card_in_hand = true;
+      break;
+    }
+  }
+  if (!card_in_hand) {
+    this->error_code3 = -0x31;
+    return false;
+  }
+
+  const auto* stat = this->short_status_for_card_ref(target_card_ref);
   if ((!stat || !this->card_exists_by_status(*stat)) || (stat->card_flags & 0x800)) {
     this->error_code3 = -0x63;
     return false;
@@ -2408,8 +2446,7 @@ bool RulerServer::is_defense_valid(const ActionState& pa) {
     return false;
   }
 
-  if (!this->defense_card_can_apply_to_attack(
-          pa.action_card_refs[0], pa.target_card_refs[0], pa.original_attacker_card_ref)) {
+  if (!this->defense_card_can_apply_to_attack(defense_card_ref, target_card_ref, pa.original_attacker_card_ref)) {
     this->error_code3 = -0x61;
     return false;
   }
@@ -2423,8 +2460,8 @@ bool RulerServer::is_defense_valid(const ActionState& pa) {
   }
 
   if (!this->server()->options.is_nte() &&
-      (this->find_condition_on_card_ref(pa.target_card_refs[0], ConditionType::HOLD) ||
-          this->find_condition_on_card_ref(pa.target_card_refs[0], ConditionType::CANNOT_DEFEND))) {
+      (this->find_condition_on_card_ref(target_card_ref, ConditionType::HOLD) ||
+          this->find_condition_on_card_ref(target_card_ref, ConditionType::CANNOT_DEFEND))) {
     this->error_code3 = -0x63;
     return false;
   }
@@ -2660,7 +2697,7 @@ int32_t RulerServer::set_cost_for_card(uint8_t client_id, uint16_t card_ref) con
 
 const CardShortStatus* RulerServer::short_status_for_card_ref(uint16_t card_ref) const {
   uint8_t client_id = client_id_for_card_ref(card_ref);
-  if (client_id != 0xFF) {
+  if (client_id != 0xFF && this->short_statuses[client_id]) {
     for (size_t z = 0; z < 16; z++) {
       const auto* stat = &this->short_statuses[client_id]->at(z);
       if (stat->card_ref == card_ref) {
