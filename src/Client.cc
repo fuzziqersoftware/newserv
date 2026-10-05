@@ -9,6 +9,7 @@
 #include <phosg/Network.hh>
 #include <phosg/Time.hh>
 
+#include "ExpressionEnvironment.hh"
 #include "GameServer.hh"
 #include "HTTPServer.hh"
 #include "IPStackSimulator.hh"
@@ -361,7 +362,7 @@ std::shared_ptr<const TeamIndex::Team> Client::team() const {
 }
 
 bool Client::evaluate_quest_availability_expression(
-    std::shared_ptr<const IntegralExpression> expr,
+    std::shared_ptr<const ResourceDASM::Expression::Node> expr,
     std::shared_ptr<const Lobby> game,
     uint8_t event,
     Difficulty difficulty,
@@ -377,17 +378,17 @@ bool Client::evaluate_quest_availability_expression(
     throw std::logic_error("quest flags are missing from game");
   }
   auto p = this->character_file();
-  IntegralExpression::Env env = {
-      .section_id = p->disp.visual.sh.section_id,
-      .difficulty = difficulty,
-      .flags = &p->quest_flags,
-      .challenge_records = &p->challenge_records,
-      .team = this->team(),
+  ExpressionEnvironment env{
       .num_players = num_players,
+      .section_id = p->disp.visual.sh.section_id,
       .event = event,
       .v1_present = v1_present,
+      .difficulty = difficulty,
+      .quest_flags = &p->quest_flags,
+      .challenge_records = &p->challenge_records,
+      .team = this->team().get(),
   };
-  int64_t ret = expr->evaluate(env);
+  int64_t ret = env.evaluate(*expr);
   if (this->log.should_log(phosg::LogLevel::L_INFO)) {
     this->log.info_f("Evaluated integral expression {} => {}", expr->str(), ret ? "TRUE" : "FALSE");
   }

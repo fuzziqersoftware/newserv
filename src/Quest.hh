@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "CommonItemSet.hh"
-#include "IntegralExpression.hh"
 #include "ItemParameterTable.hh"
 #include "Map.hh"
 #include "PlayerSubordinates.hh"

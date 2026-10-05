@@ -14,6 +14,7 @@
 #include "ChatCommands.hh"
 #include "Compression.hh"
 #include "Episode3/Tournament.hh"
+#include "ExpressionEnvironment.hh"
 #include "GameServer.hh"
 #include "HTTPServer.hh"
 #include "IPStackSimulator.hh"
@@ -4629,7 +4630,7 @@ std::shared_ptr<Lobby> create_game_generic(
   game->base_exp_multiplier = s->data->bb_global_exp_multiplier;
   game->exp_share_multiplier = s->data->exp_share_multiplier;
 
-  const std::unordered_map<uint16_t, IntegralExpression>* quest_flag_rewrites;
+  const std::unordered_map<uint16_t, std::unique_ptr<ResourceDASM::Expression::Node>>* quest_flag_rewrites;
   switch (creator_c->version()) {
     case Version::DC_NTE:
     case Version::DC_11_2000:
@@ -4744,18 +4745,18 @@ std::shared_ptr<Lobby> create_game_generic(
   }
 
   if (quest_flag_rewrites && !quest_flag_rewrites->empty()) {
-    IntegralExpression::Env env = {
-        .section_id = game->effective_section_id(),
-        .difficulty = game->difficulty,
-        .flags = &p->quest_flags,
-        .challenge_records = &p->challenge_records,
-        .team = creator_c->team(),
+    ExpressionEnvironment env{
         .num_players = 1,
+        .section_id = game->effective_section_id(),
         .event = game->event,
         .v1_present = is_v1(creator_c->version()),
+        .difficulty = game->difficulty,
+        .quest_flags = &p->quest_flags,
+        .challenge_records = &p->challenge_records,
+        .team = creator_c->team().get(),
     };
     for (const auto& it : *quest_flag_rewrites) {
-      bool should_set = it.second.evaluate(env);
+      bool should_set = env.evaluate(*it.second);
       game->log.info_f("Overriding quest flag {:04X} = {}", it.first, should_set ? "true" : "false");
       if (should_set) {
         game->quest_flag_values->set(game->difficulty, it.first);

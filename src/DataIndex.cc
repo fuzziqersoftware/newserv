@@ -672,8 +672,8 @@ void DataIndex::load_config_early() {
     throw std::runtime_error("CLIENT drop mode cannot be allowed in V4");
   }
 
-  auto parse_quest_flag_rewrites = [&json = this->config_json](const char* key) -> std::unordered_map<uint16_t, IntegralExpression> {
-    std::unordered_map<uint16_t, IntegralExpression> ret;
+  auto parse_quest_flag_rewrites = [&json = this->config_json](const char* key) -> std::unordered_map<uint16_t, std::unique_ptr<ResourceDASM::Expression::Node>> {
+    std::unordered_map<uint16_t, std::unique_ptr<ResourceDASM::Expression::Node>> ret;
     try {
       for (const auto& it : json->get_dict(key)) {
         if (!it.first.starts_with("F_")) {
@@ -681,9 +681,9 @@ void DataIndex::load_config_early() {
         }
         uint16_t flag = stoul(it.first.substr(2), nullptr, 16);
         if (it.second->is_bool()) {
-          ret.emplace(flag, it.second->as_bool() ? "true" : "false");
+          ret.emplace(flag, std::make_unique<ResourceDASM::Expression::ConstantNode>(static_cast<int64_t>(it.second->as_bool())));
         } else {
-          ret.emplace(flag, it.second->as_string());
+          ret.emplace(flag, ResourceDASM::Expression::Node::parse(it.second->as_string()));
         }
       }
     } catch (const std::out_of_range&) {

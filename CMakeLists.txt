@@ -86,7 +86,6 @@ set(SOURCES
     src/GSLArchive.cc
     src/HTTPServer.cc
     src/ImageEncoder.cc
-    src/IntegralExpression.cc
     src/IPFrameInfo.cc
     src/IPStackSimulator.cc
     src/IPV4RangeSet.cc

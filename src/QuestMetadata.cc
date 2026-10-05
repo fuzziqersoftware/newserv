@@ -22,11 +22,11 @@ void QuestMetadata::apply_json_overrides(const phosg::JSON& json) {
   } catch (const std::out_of_range&) {
   }
   try {
-    this->available_expression = std::make_shared<IntegralExpression>(json.get_string("AvailableIf"));
+    this->available_expression = ResourceDASM::Expression::Node::parse(json.get_string("AvailableIf"));
   } catch (const std::out_of_range&) {
   }
   try {
-    this->enabled_expression = std::make_shared<IntegralExpression>(json.get_string("EnabledIf"));
+    this->enabled_expression = ResourceDASM::Expression::Node::parse(json.get_string("EnabledIf"));
   } catch (const std::out_of_range&) {
   }
   try {

@@ -4,6 +4,7 @@
 #include <map>
 #include <memory>
 #include <phosg/JSON.hh>
+#include <resource_file/Emulators/Expression.hh>
 #include <set>
 #include <string>
 #include <unordered_map>
@@ -149,9 +150,9 @@ struct DataIndex {
   ServerDropMode default_drop_mode_v4_normal = ServerDropMode::SERVER_SHARED;
   ServerDropMode default_drop_mode_v4_battle = ServerDropMode::SERVER_SHARED;
   ServerDropMode default_drop_mode_v4_challenge = ServerDropMode::SERVER_SHARED;
-  std::unordered_map<uint16_t, IntegralExpression> quest_flag_rewrites_v1_v2;
-  std::unordered_map<uint16_t, IntegralExpression> quest_flag_rewrites_v3;
-  std::unordered_map<uint16_t, IntegralExpression> quest_flag_rewrites_v4;
+  std::unordered_map<uint16_t, std::unique_ptr<ResourceDASM::Expression::Node>> quest_flag_rewrites_v1_v2;
+  std::unordered_map<uint16_t, std::unique_ptr<ResourceDASM::Expression::Node>> quest_flag_rewrites_v3;
+  std::unordered_map<uint16_t, std::unique_ptr<ResourceDASM::Expression::Node>> quest_flag_rewrites_v4;
   std::unordered_map<std::string, std::pair<uint8_t, uint32_t>> quest_counter_fields; // For $qfread command
   uint64_t persistent_game_idle_timeout_usecs = 0;
   std::unordered_map<uint32_t, int64_t> enable_send_function_call_quest_numbers;

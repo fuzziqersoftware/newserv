@@ -4,13 +4,13 @@
 
 #include <map>
 #include <memory>
+#include <resource_file/Emulators/Expression.hh>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
 #include "CommonItemSet.hh"
 #include "EnemyType.hh"
-#include "IntegralExpression.hh"
 #include "Map.hh"
 #include "PlayerSubordinates.hh"
 #include "RareItemSet.hh"
@@ -49,8 +49,8 @@ struct QuestMetadata {
   float challenge_exp_multiplier = -1.0f;
   Difficulty challenge_difficulty = Difficulty::UNKNOWN;
   uint8_t description_flag = 0x00;
-  std::shared_ptr<const IntegralExpression> available_expression;
-  std::shared_ptr<const IntegralExpression> enabled_expression;
+  std::shared_ptr<const ResourceDASM::Expression::Node> available_expression;
+  std::shared_ptr<const ResourceDASM::Expression::Node> enabled_expression;
   std::string common_item_set_name; // blank = use default
   std::string rare_item_set_name; // blank = use default
   uint8_t allowed_drop_modes = 0x00; // 0 = use server default
