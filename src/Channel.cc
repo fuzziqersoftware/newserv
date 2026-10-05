@@ -285,7 +285,7 @@ std::shared_ptr<SocketChannel> SocketChannel::create(
       terminal_recv_color,
       censor_received_credentials,
       censor_sent_credentials));
-  asio::co_spawn(*io_context, ret->send_task(), asio::detached);
+  asio::co_spawn(*io_context, SocketChannel::send_task(ret), asio::detached);
   return ret;
 }
 
@@ -332,13 +332,10 @@ asio::awaitable<void> SocketChannel::recv_raw(void* data, size_t size) {
   co_await asio::async_read(*this->sock, asio::buffer(data, size), asio::use_awaitable);
 }
 
-asio::awaitable<void> SocketChannel::send_task() {
-  // Ensure *this doesn't get deleted while the socket is open
-  auto this_sh = this->shared_from_this();
-
-  while (this->sock->is_open()) {
+asio::awaitable<void> SocketChannel::send_task(std::shared_ptr<SocketChannel> channel) {
+  while (channel->sock->is_open()) {
     std::deque<std::string> to_send;
-    to_send.swap(this->outbound_data);
+    to_send.swap(channel->outbound_data);
 
     if (!to_send.empty()) {
       std::vector<asio::const_buffer> bufs;
@@ -346,15 +343,16 @@ asio::awaitable<void> SocketChannel::send_task() {
       for (const auto& it : to_send) {
         bufs.emplace_back(asio::buffer(it.data(), it.size()));
       }
-      co_await asio::async_write(*this->sock, bufs, asio::use_awaitable);
+      co_await asio::async_write(*channel->sock, bufs, asio::use_awaitable);
+      to_send.clear();
     }
 
-    if (this->outbound_data.empty()) {
-      if (this->should_disconnect) {
-        this->sock->close();
+    if (channel->outbound_data.empty()) {
+      if (channel->should_disconnect) {
+        channel->sock->close();
       } else {
-        this->send_buffer_nonempty_signal.clear();
-        co_await this->send_buffer_nonempty_signal.wait();
+        channel->send_buffer_nonempty_signal.clear();
+        co_await channel->send_buffer_nonempty_signal.wait();
       }
     }
   }

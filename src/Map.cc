@@ -6597,8 +6597,8 @@ std::shared_ptr<MapState::EnemyState> MapState::enemy_state_for_set_index(Versio
   if (!fc.super_map) {
     throw std::out_of_range("there are no enemies on the specified floor");
   }
-  const auto& ene = fc.super_map->version(version).enemies.at(enemy_set_index - base_enemy_set_index);
-  return this->enemy_states.at(fc.base_super_ids.base_enemy_set_index + ene->super_set_id);
+  const auto& ene = fc.super_map->version(version).enemy_sets.at(enemy_set_index - base_enemy_set_index);
+  return this->enemy_set_states.at(fc.base_super_ids.base_enemy_set_index + ene->super_set_id);
 }
 
 std::shared_ptr<MapState::EnemyState> MapState::enemy_state_for_floor_type(Version version, uint8_t floor, EnemyType type) {

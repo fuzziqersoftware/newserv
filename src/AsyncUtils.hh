@@ -177,8 +177,7 @@ public:
 
   // Reads one line from the socket, buffering any extra data read. The delimiter is not included in the returned line.
   // max_length = 0 means no maximum length is enforced.
-  asio::awaitable<std::string> read_line(
-      const char* delimiter = "\n", size_t max_length = 0);
+  asio::awaitable<std::string> read_line(const char* delimiter = "\n", size_t max_length = 0);
   asio::awaitable<std::string> read_data(size_t size);
   asio::awaitable<void> read_data_into(void* data, size_t size);
 

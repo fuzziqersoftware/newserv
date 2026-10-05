@@ -5195,14 +5195,16 @@ static asio::awaitable<void> on_D2_V3_BB(std::shared_ptr<Client> c, Channel::Mes
   auto s = c->require_server_state();
   auto complete_trade_for_side = [s, l](std::shared_ptr<Client> c, std::shared_ptr<Client> other_c) -> void {
     if (c->version() == Version::BB_V4) {
+      const auto& stack_limits = *s->data->item_stack_limits(c->version());
+
       // On BB, the server generates the delete/create item commands
       auto p = c->character_file();
       auto other_p = other_c->character_file();
 
       // Delete items that are being given away
       for (const auto& item : c->pending_item_trade->items) {
-        size_t amount = item.stack_size(*s->data->item_stack_limits(c->version()));
-        p->remove_item(item.id, amount, *s->data->item_stack_limits(c->version()));
+        size_t amount = item.stack_size(stack_limits);
+        p->remove_item(item.id, amount, stack_limits);
 
         // This is a special case: when the trade is executed, the client deletes the traded items from its own
         // inventory automatically, so we should NOT send the 6x29 to that client; we should only send it to the other
@@ -5218,7 +5220,7 @@ static asio::awaitable<void> on_D2_V3_BB(std::shared_ptr<Client> c, Channel::Mes
       for (const auto& trade_item : other_c->pending_item_trade->items) {
         ItemData added_item = trade_item;
         added_item.id = l->generate_item_id(c->lobby_client_id);
-        p->add_item(added_item, *s->data->item_stack_limits(c->version()));
+        p->add_item(added_item, stack_limits);
         send_create_inventory_item_to_lobby(c, c->lobby_client_id, added_item);
       }
       send_command(c, 0xD3, 0x00);

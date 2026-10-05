@@ -697,6 +697,8 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
         f.data.resize(block_end_offset);
       }
       memcpy(f.data.data() + block_offset, cmd.data.data(), data_size);
+      // Note: If the file size is a multiple of 0x400, this process will never complete. This is intentional - the
+      // client also has this bug, and we want to emulate the client's behavior.
       if (cmd.data_size != 0x400) {
         phosg::save_file(f.filename, f.data);
         this->log.info_f("Wrote file {} ({} bytes)", f.filename, f.data.size());

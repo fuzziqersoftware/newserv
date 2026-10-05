@@ -148,7 +148,7 @@ private:
   bool should_disconnect = false;
   AsyncEvent send_buffer_nonempty_signal;
 
-  asio::awaitable<void> send_task();
+  static asio::awaitable<void> send_task(std::shared_ptr<SocketChannel> channel);
 };
 
 // In-process peer channel, used for replay testing.

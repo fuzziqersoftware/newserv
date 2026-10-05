@@ -9,12 +9,19 @@ void run_static_tests() {
 
   phosg::log_info_f("-- RareItemSet rate calculations");
   for (size_t z = 0; z < 0x100; z++) {
-    uint8_t reencoded = RareItemSet::compress_rate(RareItemSet::expand_rate(z));
-    if ((reencoded < 0x28) && (z < 0x28)) {
-      expect_eq(z & 0x07, reencoded & 0x07);
+    uint32_t expanded = RareItemSet::expand_rate(z);
+    uint8_t reencoded = RareItemSet::compress_rate(expanded);
+    if (z == 0) {
+      expect_eq(reencoded, 0);
+    } else if ((reencoded < 0x28) && (z < 0x28)) {
+      if ((z & 7) == 0) {
+        expect_eq(1, reencoded & 7);
+      } else {
+        expect_eq(z & 7, reencoded & 7);
+      }
     } else if (z == 0x28) {
-      expect_eq(0x07, reencoded);
-    } else if ((z & 0x07) == 0) {
+      expect_eq(7, reencoded);
+    } else if ((z & 7) == 0) {
       expect_eq(z - 1, reencoded);
     } else {
       expect_eq(z, reencoded);

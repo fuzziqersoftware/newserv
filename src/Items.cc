@@ -16,13 +16,21 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
   auto player = c->character_file();
   auto& item = player->inventory.items[item_index];
   uint32_t primary_identifier = item.data.primary_identifier();
+  const auto& stack_limits = *s->data->item_stack_limits(c->version());
 
-  if (item.data.is_common_consumable()) { // Monomate, etc.
+  if (item.data.is_wrapped(stack_limits)) { // Wrapped present
+    item.data.unwrap(stack_limits);
+    should_delete_item = false;
+
+  } else if (item.data.is_common_consumable()) { // Monomate, etc.
     // Nothing to do (it should be deleted)
 
   } else if ((primary_identifier & 0xFFFF0000) == 0x03020000) { // Technique disk
     auto item_parameter_table = s->data->item_parameter_table(c->version());
     uint8_t max_level = item_parameter_table->get_max_tech_level(player->disp.visual.sh.char_class, item.data.data1[4]);
+    if (max_level == 0xFF) {
+      throw std::runtime_error("technique not valid for character class");
+    }
     if (item.data.data1[2] > max_level) {
       throw std::runtime_error("technique level too high");
     }
@@ -100,31 +108,38 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
     }
     armor.data.data1[5]++;
 
-  } else if (item.data.is_wrapped(*s->data->item_stack_limits(c->version()))) {
-    // Unwrap present
-    item.data.unwrap(*s->data->item_stack_limits(c->version()));
-    should_delete_item = false;
-
   } else if (primary_identifier == 0x00330000) {
     // Unseal Sealed J-Sword => Tsumikiri J-Sword
+    if (item.data.get_kill_count() < 23000) {
+      throw std::runtime_error("Insufficient kills to unseal weapon");
+    }
     item.data.data1[1] = 0x32;
     item.flags &= (~8); // Unequip it
     should_delete_item = false;
 
   } else if (primary_identifier == 0x00AB0000) {
     // Unseal Lame d'Argent => Excalibur
+    if (item.data.get_kill_count() < 10000) {
+      throw std::runtime_error("Insufficient kills to unseal weapon");
+    }
     item.data.data1[1] = 0xAC;
     item.flags &= (~8); // Unequip it
     should_delete_item = false;
 
   } else if (primary_identifier == 0x01034D00) {
     // Unseal Limiter => Adept
+    if (item.data.get_kill_count() < 20000) {
+      throw std::runtime_error("Insufficient kills to unseal unit");
+    }
     item.data.data1[2] = 0x4E;
     item.flags &= (~8); // Unequip it
     should_delete_item = false;
 
   } else if (primary_identifier == 0x01034F00) {
     // Unseal Swordsman Lore => Proof of Sword-Saint
+    if (item.data.get_kill_count() < 20000) {
+      throw std::runtime_error("Insufficient kills to unseal unit");
+    }
     item.data.data1[2] = 0x50;
     item.flags &= (~8); // Unequip it
     should_delete_item = false;
@@ -206,8 +221,10 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
     // The unopened Hunters Report's rank is stored in the kill count field; using the unopened report copies the rank
     // to data1[2] and replaces the inventory item with a new item with the same ID. The game also moves the item to
     // the end of the inventory, so we do the same.
-    const auto& stack_limits = *s->data->item_stack_limits(c->version());
-    auto report_item = player->remove_item(item.data.id, 1, stack_limits);
+    auto [report_item, stack_was_split] = player->remove_item(item.data.id, 1, stack_limits);
+    if (stack_was_split) {
+      throw std::runtime_error("Stackable Hunter\'s Report was used");
+    }
     report_item.data1[2] = report_item.get_kill_count();
     player->add_item(report_item, stack_limits);
     should_delete_item = false;
@@ -271,7 +288,7 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
   if (should_delete_item) {
     // Allow overdrafting meseta if the client is not BB, since the server isn't informed when meseta is added or
     // removed from the bank.
-    player->remove_item(item.data.id, 1, *s->data->item_stack_limits(c->version()));
+    player->remove_item(item.data.id, 1, stack_limits);
   }
 }
 

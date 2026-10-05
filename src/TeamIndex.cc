@@ -52,15 +52,18 @@ void TeamIndex::Team::load_config() {
   auto json = phosg::JSON::parse(phosg::load_file(this->json_filename()));
   this->name = json.get_string("Name");
   this->spent_points = json.get_int("SpentPoints");
-  this->points = 0;
-  for (const auto& member_it : json.get_list("Members")) {
-    Member m(*member_it);
-    this->points += m.points;
-    uint32_t account_id = m.account_id;
-    if (m.check_flag(Member::Flag::IS_MASTER)) {
-      this->master_account_id = account_id;
+  if (json.contains("Points")) {
+    this->points = json.get_int("Points");
+  } else {
+    for (const auto& member_it : json.get_list("Members")) {
+      Member m(*member_it);
+      this->points += m.points;
+      uint32_t account_id = m.account_id;
+      if (m.check_flag(Member::Flag::IS_MASTER)) {
+        this->master_account_id = account_id;
+      }
+      this->members.emplace(account_id, std::move(m));
     }
-    this->members.emplace(account_id, std::move(m));
   }
   try {
     for (const auto& it : json.get_list("RewardKeys")) {
@@ -82,6 +85,7 @@ phosg::JSON TeamIndex::Team::json() const {
   }
   return phosg::JSON::dict({
       {"Name", this->name},
+      {"Points", this->points},
       {"SpentPoints", this->spent_points},
       {"Members", std::move(members_json)},
       {"RewardKeys", std::move(reward_keys_json)},

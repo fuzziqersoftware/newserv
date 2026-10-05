@@ -57,7 +57,7 @@ asio::awaitable<std::string> AsyncSocketReader::read_line(const char* delimiter,
   size_t delimiter_pos = this->pending_data.find(delimiter);
   while ((delimiter_pos == std::string::npos) && (!max_length || (this->pending_data.size() < max_length))) {
     size_t pre_size = this->pending_data.size();
-    this->pending_data.resize(std::min(max_length, this->pending_data.size() + 0x400));
+    this->pending_data.resize(max_length ? std::min(max_length, pre_size + 0x400) : (pre_size + 0x400));
 
     auto buf = asio::buffer(this->pending_data.data() + pre_size, this->pending_data.size() - pre_size);
     size_t bytes_read = co_await this->sock.async_read_some(buf, asio::use_awaitable);

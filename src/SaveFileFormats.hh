@@ -859,7 +859,8 @@ struct PSOBBCharacterFile {
   operator PSOXBCharacterFile::Character() const;
 
   void add_item(const ItemData& item, const ItemData::StackLimits& limits);
-  ItemData remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits);
+  // Returns (removed_item, stack_was_split)
+  std::pair<ItemData, bool> remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits);
   void add_meseta(uint32_t amount);
   void remove_meseta(uint32_t amount, bool allow_overdraft);
 

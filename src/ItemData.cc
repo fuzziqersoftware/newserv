@@ -138,7 +138,7 @@ uint32_t ItemData::primary_identifier() const {
 }
 
 void ItemData::change_primary_identifier(uint32_t primary_identifier) {
-  if (((primary_identifier >> 18) & 0xFF) != this->data1[0]) {
+  if (((primary_identifier >> 24) & 0xFF) != this->data1[0]) {
     throw std::runtime_error("cannot change item class via change_primary_identifier");
   }
   switch (this->data1[0]) {

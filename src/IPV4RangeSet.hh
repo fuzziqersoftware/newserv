@@ -1,8 +1,7 @@
 #pragma once
 
-#include <asio.hpp>
+#include <map>
 #include <phosg/JSON.hh>
-#include <set>
 
 class IPV4RangeSet {
 public:
@@ -14,5 +13,5 @@ public:
   bool check(uint32_t addr) const;
 
 protected:
-  std::map<uint32_t, uint8_t> ranges; // {addr: mask_bits}
+  std::map<uint32_t, uint32_t> ranges; // {start_addr: end_addr (inclusive)}
 };

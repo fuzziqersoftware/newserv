@@ -1938,7 +1938,10 @@ static void on_player_drop_item(std::shared_ptr<Client> c, SubcommandMessage& ms
   auto s = c->require_server_state();
   auto l = c->require_lobby();
   auto p = c->character_file();
-  auto item = p->remove_item(cmd.item_id, 0, *s->data->item_stack_limits(c->version()));
+  auto [item, stack_was_split] = p->remove_item(cmd.item_id, 0, *s->data->item_stack_limits(c->version()));
+  if (stack_was_split) {
+    throw std::logic_error("Stack should not be split when entire stack was dropped");
+  }
   l->add_item(cmd.floor, item, cmd.pos, nullptr, nullptr, 0x00F);
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
@@ -2063,11 +2066,10 @@ static void on_drop_partial_stack_bb(std::shared_ptr<Client> c, SubcommandMessag
   auto s = c->require_server_state();
   auto p = c->character_file();
   const auto& limits = *s->data->item_stack_limits(c->version());
-  auto item = p->remove_item(cmd.item_id, cmd.amount, limits);
+  auto [item, stack_was_split] = p->remove_item(cmd.item_id, cmd.amount, limits);
 
-  // If a stack was split, the original item still exists, so the dropped item needs a new ID. remove_item signals this
-  // by returning an item with an ID of 0xFFFFFFFF.
-  if (item.id == 0xFFFFFFFF) {
+  // If a stack was split, the original item still exists, so the dropped item needs a new ID
+  if (stack_was_split) {
     item.id = l->generate_item_id(c->lobby_client_id);
   }
 
@@ -2665,11 +2667,11 @@ static void on_ep3_private_word_select_bb_bank_action(std::shared_ptr<Client> c,
 
       } else { // Deposit item
         const auto& limits = *s->data->item_stack_limits(c->version());
-        auto item = p->remove_item(cmd.item_id, cmd.item_amount, limits);
+        auto [item, stack_was_split] = p->remove_item(cmd.item_id, cmd.item_amount, limits);
         // If a stack was split, the bank item retains the same item ID as the inventory item. This is annoying but
         // doesn't cause any problems because we always generate a new item ID when withdrawing from the bank, so
         // there's no chance of conflict later.
-        if (item.id == 0xFFFFFFFF) {
+        if (stack_was_split) {
           item.id = cmd.item_id;
         }
         try {
@@ -2705,7 +2707,7 @@ static void on_ep3_private_word_select_bb_bank_action(std::shared_ptr<Client> c,
 
       } else { // Take item
         const auto& limits = *s->data->item_stack_limits(c->version());
-        auto item = bank->remove_item(cmd.item_id, cmd.item_amount, limits);
+        auto [item, _] = bank->remove_item(cmd.item_id, cmd.item_amount, limits);
         item.id = l->generate_item_id(c->lobby_client_id);
         try {
           p->add_item(item, limits);
@@ -4302,7 +4304,7 @@ static void on_transfer_item_via_mail_message_bb(std::shared_ptr<Client> c, Subc
   auto s = c->require_server_state();
   auto p = c->character_file();
   const auto& limits = *s->data->item_stack_limits(c->version());
-  auto item = p->remove_item(cmd.item_id, cmd.amount, limits);
+  auto [item, _] = p->remove_item(cmd.item_id, cmd.amount, limits);
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
     auto name = s->data->describe_item(c->version(), item);
@@ -4363,7 +4365,7 @@ static void on_exchange_item_for_team_points_bb(std::shared_ptr<Client> c, Subco
   auto s = c->require_server_state();
   auto p = c->character_file();
   const auto& limits = *s->data->item_stack_limits(c->version());
-  auto item = p->remove_item(cmd.item_id, cmd.amount, limits);
+  auto [item, _] = p->remove_item(cmd.item_id, cmd.amount, limits);
   size_t amount = item.stack_size(limits);
 
   size_t points = s->data->item_parameter_table(Version::BB_V4)->get_item_team_points(item);
@@ -4398,7 +4400,7 @@ static void on_destroy_inventory_item(std::shared_ptr<Client> c, SubcommandMessa
 
   auto s = c->require_server_state();
   auto p = c->character_file();
-  auto item = p->remove_item(cmd.item_id, cmd.amount, *s->data->item_stack_limits(c->version()));
+  auto [item, _] = p->remove_item(cmd.item_id, cmd.amount, *s->data->item_stack_limits(c->version()));
 
   if (l->log.should_log(phosg::LogLevel::L_INFO)) {
     auto name = s->data->describe_item(c->version(), item);
@@ -4554,7 +4556,7 @@ static void on_sell_item_at_shop_bb(std::shared_ptr<Client> c, SubcommandMessage
   auto s = c->require_server_state();
   auto p = c->character_file();
   auto& stack_limits = *s->data->item_stack_limits(c->version());
-  auto item = p->remove_item(cmd.item_id, cmd.amount, stack_limits);
+  auto [item, _] = p->remove_item(cmd.item_id, cmd.amount, stack_limits);
   if (item.stack_size(stack_limits) != cmd.amount) {
     throw std::runtime_error("Invalid stack size at sale time");
   }
@@ -4969,27 +4971,35 @@ static void on_quest_exchange_item_bb(std::shared_ptr<Client> c, SubcommandMessa
   const auto& cmd = msg.check_size_t<G_QuestExchangeItem_BB_6xD5>();
   auto s = c->require_server_state();
 
+  auto p = c->character_file();
+  const auto& limits = *s->data->item_stack_limits(c->version());
+
+  ItemData new_item = cmd.replace_item;
+  assert_quest_item_create_allowed(l, new_item);
+  new_item.enforce_stack_size_limits(limits);
+
+  ItemData removed_payment_item;
+  bool exchange_failed = false;
   try {
-    auto p = c->character_file();
-    const auto& limits = *s->data->item_stack_limits(c->version());
-
-    ItemData new_item = cmd.replace_item;
-    assert_quest_item_create_allowed(l, new_item);
-    new_item.enforce_stack_size_limits(limits);
-
     size_t found_index = p->inventory.find_item_by_primary_identifier(cmd.find_item.primary_identifier());
-    auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 1, limits);
-    send_destroy_item_to_lobby(c, found_item.id, 1);
-
+    removed_payment_item = p->remove_item(p->inventory.items[found_index].data.id, 1, limits).first;
     new_item.id = l->generate_item_id(c->lobby_client_id);
     p->add_item(new_item, limits);
-    send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
-
-    send_quest_function_call(c, cmd.success_label);
 
   } catch (const std::exception& e) {
     c->log.warning_f("Quest item exchange failed: {}", e.what());
+    if (!removed_payment_item.empty()) {
+      p->add_item(removed_payment_item, limits);
+    }
+    exchange_failed = true;
+  }
+
+  if (exchange_failed) {
     send_quest_function_call(c, cmd.failure_label);
+  } else {
+    send_destroy_item_to_lobby(c, removed_payment_item.id, 1);
+    send_create_inventory_item_to_lobby(c, c->lobby_client_id, new_item);
+    send_quest_function_call(c, cmd.success_label);
   }
 }
 
@@ -5006,7 +5016,7 @@ static void on_wrap_item_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto s = c->require_server_state();
 
   auto p = c->character_file();
-  auto item = p->remove_item(cmd.item.id, 1, *s->data->item_stack_limits(c->version()));
+  auto [item, _] = p->remove_item(cmd.item.id, 1, *s->data->item_stack_limits(c->version()));
   send_destroy_item_to_lobby(c, item.id, 1);
   item.wrap(*s->data->item_stack_limits(c->version()), cmd.present_color);
   p->add_item(item, *s->data->item_stack_limits(c->version()));
@@ -5034,7 +5044,7 @@ static void on_photon_drop_exchange_for_item_bb(std::shared_ptr<Client> c, Subco
     new_item.enforce_stack_size_limits(limits);
 
     size_t found_index = p->inventory.find_item_by_primary_identifier(0x03100000);
-    auto found_item = p->remove_item(p->inventory.items[found_index].data.id, 0, limits);
+    auto [found_item, _] = p->remove_item(p->inventory.items[found_index].data.id, 0, limits);
     send_destroy_item_to_lobby(c, found_item.id, found_item.stack_size(limits));
 
     new_item.id = l->generate_item_id(c->lobby_client_id);
@@ -5076,10 +5086,14 @@ static void on_photon_drop_exchange_for_s_rank_special_bb(std::shared_ptr<Client
       }
     }
 
-    auto payment_item = p->remove_item(p->inventory.items[payment_item_index].data.id, cost, limits);
+    auto [payment_item, _1] = p->remove_item(p->inventory.items[payment_item_index].data.id, cost, limits);
     send_destroy_item_to_lobby(c, payment_item.id, cost);
 
-    auto item = p->remove_item(cmd.item_id, 1, limits);
+    auto [item, item_stack_was_split] = p->remove_item(cmd.item_id, 1, limits);
+    if (item_stack_was_split) {
+      // This should never happen unless the player is cheating; punish them by losing both the PD(s) and the weapon
+      throw std::runtime_error("Stackable weapon used in PD exchange");
+    }
     send_destroy_item_to_lobby(c, item.id, cost);
     item.data1[2] = cmd.special_type;
     p->add_item(item, limits);
@@ -5160,12 +5174,17 @@ static void on_secret_lottery_ticket_exchange_bb(std::shared_ptr<Client> c, Subc
 
     uint32_t slt_item_id = p->inventory.items[currency_index].data.id;
 
-    // Note: It seems Sega used 6xDB here; we use 6x29 instead.
-    p->remove_item(slt_item_id, 1, limits);
-    send_destroy_item_to_lobby(c, slt_item_id, 1);
+    auto [removed_payment_item, _] = p->remove_item(slt_item_id, 1, limits);
+    try {
+      item.id = l->generate_item_id(c->lobby_client_id);
+      p->add_item(item, limits);
+    } catch (const std::runtime_error&) {
+      p->add_item(removed_payment_item, limits);
+      throw;
+    }
 
-    item.id = l->generate_item_id(c->lobby_client_id);
-    p->add_item(item, limits);
+    // Note: It seems Sega used 6xDB here; we use 6x29 instead.
+    send_destroy_item_to_lobby(c, slt_item_id, 1);
     send_create_inventory_item_to_lobby(c, c->lobby_client_id, item);
   }
 
@@ -5188,7 +5207,7 @@ static void on_photon_crystal_exchange_bb(std::shared_ptr<Client> c, SubcommandM
   auto s = c->require_server_state();
   auto p = c->character_file();
   size_t index = p->inventory.find_item_by_primary_identifier(0x03100200);
-  auto item = p->remove_item(p->inventory.items[index].data.id, 1, *s->data->item_stack_limits(c->version()));
+  auto [item, _] = p->remove_item(p->inventory.items[index].data.id, 1, *s->data->item_stack_limits(c->version()));
   send_destroy_item_to_lobby(c, item.id, 1);
   l->drop_mode = ServerDropMode::DISABLED;
   l->allowed_drop_modes = (1 << static_cast<uint8_t>(l->drop_mode)); // DISABLED only
@@ -5270,18 +5289,12 @@ static void on_quest_F95F_result_bb(std::shared_ptr<Client> c, SubcommandMessage
 
   const auto& limits = *s->data->item_stack_limits(c->version());
 
-  bool failed = false;
-  ItemData ticket_item;
-  try {
-    size_t index = p->inventory.find_item_by_primary_identifier(0x03100400); // Photon Ticket
-    ticket_item = p->remove_item(p->inventory.items[index].data.id, result.first, limits);
-  } catch (const std::out_of_range&) {
-    failed = true;
-  }
-  if (failed) {
+  size_t index = p->inventory.find_item_by_primary_identifier(0x03100400); // Photon Ticket
+  if (p->inventory.items[index].data.stack_size(limits) < result.first) {
     send_gallon_plan_result(c, cmd.failure_label, cmd.result_code_reg, 1, cmd.result_index_reg, cmd.result_index);
     return;
   }
+  auto ticket_item = p->remove_item(p->inventory.items[index].data.id, result.first, limits).first;
 
   ItemData new_item = result.second;
   try {
@@ -5289,9 +5302,6 @@ static void on_quest_F95F_result_bb(std::shared_ptr<Client> c, SubcommandMessage
     new_item.id = l->generate_item_id(c->lobby_client_id);
     p->add_item(new_item, limits);
   } catch (const std::out_of_range&) {
-    failed = true;
-  }
-  if (failed) {
     p->add_item(ticket_item, limits);
     send_gallon_plan_result(c, cmd.failure_label, cmd.result_code_reg, 2, cmd.result_index_reg, cmd.result_index);
     return;
@@ -5416,7 +5426,7 @@ static void on_momoka_item_exchange_bb(std::shared_ptr<Client> c, SubcommandMess
   ItemData found_item;
   try {
     size_t found_index = p->inventory.find_item_by_primary_identifier(cmd.find_item.primary_identifier());
-    found_item = p->remove_item(p->inventory.items[found_index].data.id, 1, limits);
+    found_item = p->remove_item(p->inventory.items[found_index].data.id, 1, limits).first;
   } catch (const std::out_of_range& e) {
     failed = true;
   }
@@ -5492,12 +5502,12 @@ static void on_upgrade_weapon_attribute_bb(std::shared_ptr<Client> c, Subcommand
     if (attribute_index == 0) {
       throw std::runtime_error("no available attribute slots");
     }
-    int16_t new_attr_value = static_cast<int16_t>(item->data1[attribute_index + 1]) + attribute_amount;
+    int16_t new_attr_value = phosg::sign_extend<int16_t, uint8_t>(item->data1[attribute_index + 1]) + attribute_amount;
     if (new_attr_value > 100) {
       throw std::runtime_error("bonus value exceeds 100");
     }
 
-    auto removed_payment_item = p->remove_item(
+    auto [removed_payment_item, _] = p->remove_item(
         payment_item.id, cmd.payment_count, *s->data->item_stack_limits(c->version()));
     send_destroy_item_to_lobby(c, removed_payment_item.id, cmd.payment_count);
 

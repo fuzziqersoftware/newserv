@@ -376,7 +376,8 @@ struct PlayerBank {
   uint32_t bb_checksum() const;
 
   void add_item(const ItemData& item, const ItemData::StackLimits& limits);
-  ItemData remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits);
+  // Returns (removed_item, stack_was_split)
+  std::pair<ItemData, bool> remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits);
   size_t find_item(uint32_t item_id);
   void sort();
 

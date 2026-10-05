@@ -1861,19 +1861,29 @@ void a_extract_archive_fn(phosg::Arguments& args) {
     BMLArchive arch(data_shared, args.get<bool>("big-endian"));
     for (const auto& entry_it : arch.all_entries()) {
       {
-        auto e = arch.get(entry_it.first);
-        std::string data = prs_decompress(e.first, e.second);
+        auto entry = arch.get(entry_it.first);
         std::string out_file = output_prefix + entry_it.first;
-        phosg::save_file(out_file, data);
-        phosg::fwrite_fmt(stderr, "... {}\n", out_file);
+        try {
+          std::string data = prs_decompress(entry.first, entry.second);
+          phosg::save_file(out_file, data);
+          phosg::fwrite_fmt(stderr, "... {}\n", out_file);
+        } catch (const std::exception& e) {
+          phosg::save_file(out_file + ".prs", entry.first, entry.second);
+          phosg::fwrite_fmt(stderr, "... {}.prs (failed to decompress: {})\n", out_file, e.what());
+        }
       }
 
-      auto gvm_e = arch.get_gvm(entry_it.first);
-      if (gvm_e.second) {
-        std::string data = prs_decompress(gvm_e.first, gvm_e.second);
+      auto gvm_entry = arch.get_gvm(entry_it.first);
+      if (gvm_entry.second) {
         std::string out_file = output_prefix + entry_it.first + ".gvm";
-        phosg::save_file(out_file, data);
-        phosg::fwrite_fmt(stderr, "... {}\n", out_file);
+        try {
+          std::string data = prs_decompress(gvm_entry.first, gvm_entry.second);
+          phosg::save_file(out_file, data);
+          phosg::fwrite_fmt(stderr, "... {}\n", out_file);
+        } catch (const std::exception& e) {
+          phosg::save_file(out_file + ".prs", gvm_entry.first, gvm_entry.second);
+          phosg::fwrite_fmt(stderr, "... {}.prs (failed to decompress: {})\n", out_file, e.what());
+        }
       }
     }
   } else if (args.get<std::string>(0) == "extract-ppk") {

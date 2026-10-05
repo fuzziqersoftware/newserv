@@ -75,7 +75,7 @@ void PlayerBank::add_item(const ItemData& item, const ItemData::StackLimits& lim
   new_item.present = 1;
 }
 
-ItemData PlayerBank::remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits) {
+std::pair<ItemData, bool> PlayerBank::remove_item(uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits) {
   size_t index = this->find_item(item_id);
   auto& bank_item = this->items[index];
 
@@ -84,10 +84,11 @@ ItemData PlayerBank::remove_item(uint32_t item_id, uint32_t amount, const ItemDa
     ret.data1[5] = amount;
     bank_item.data.data1[5] -= amount;
     bank_item.amount -= amount;
+    return {ret, true};
   } else {
     this->items.erase(this->items.begin() + index);
+    return {ret, false};
   }
-  return ret;
 }
 
 size_t PlayerBank::find_item(uint32_t item_id) {

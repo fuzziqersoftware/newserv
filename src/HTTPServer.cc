@@ -110,28 +110,32 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
     }
     this->subscribers_for_event_type(HTTPEventType::RARE_DROP).emplace(args.client);
     args.client->subscribed_event_types.emplace(HTTPEventType::RARE_DROP);
-    co_await args.client->send_websocket_message(generate_ws_server_version_event_json().serialize());
+    args.client->send_websocket_message(generate_ws_server_version_event_json().serialize());
     co_return nullptr;
   });
   this->router.add(HTTPRequest::Method::GET, "/y/events/stream", [this, generate_ws_server_version_event_json](ArgsT&& args) -> RetT {
-    if (!(co_await this->enable_websockets(args.client, args.req))) {
-      throw HTTPError(400, "this path requires a websocket connection");
-    }
+    std::unordered_map<HTTPEventType, std::unordered_set<std::shared_ptr<NewservHTTPClient>>*> to_subscribe;
     const std::string* events = args.req.get_query_param("events");
     if (events) {
       for (const auto& event_name : phosg::split(*events, ',')) {
         auto event_type = http_event_type_for_name(event_name);
-        this->subscribers_for_event_type(event_type).emplace(args.client);
-        args.client->subscribed_event_types.emplace(event_type);
+        to_subscribe.emplace(event_type, &this->subscribers_for_event_type(event_type));
       }
     } else {
       for (size_t event_type_s = 0; event_type_s < this->NUM_EVENT_TYPES; event_type_s++) {
         auto event_type = static_cast<HTTPEventType>(event_type_s);
-        this->subscribers_for_event_type(event_type).emplace(args.client);
-        args.client->subscribed_event_types.emplace(event_type);
+        to_subscribe.emplace(event_type, &this->subscribers_for_event_type(event_type));
       }
     }
-    co_await args.client->send_websocket_message(generate_ws_server_version_event_json().serialize());
+
+    if (!(co_await this->enable_websockets(args.client, args.req))) {
+      throw HTTPError(400, "this path requires a websocket connection");
+    }
+    for (const auto& [event_type, subscribers_set] : to_subscribe) {
+      subscribers_set->emplace(args.client);
+      args.client->subscribed_event_types.emplace(event_type);
+    }
+    args.client->send_websocket_message(generate_ws_server_version_event_json().serialize());
     co_return nullptr;
   });
 
@@ -1005,39 +1009,11 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
   });
 }
 
-asio::awaitable<void> HTTPServer::send_event_notification(
-    HTTPEventType type, std::shared_ptr<const phosg::JSON> message) {
-  // Make a copy of the rare drop subscribers set, so we can guarantee that the client objects are all valid until
-  // this coroutine returns
-  std::unordered_set<std::shared_ptr<NewservHTTPClient>> subscribers;
-  {
-    auto& shared_subscribers = this->subscribers_for_event_type(type);
-    if (shared_subscribers.empty()) {
-      co_return;
-    }
-    subscribers = shared_subscribers;
+void HTTPServer::send_event_notification(HTTPEventType type, std::shared_ptr<const phosg::JSON> message) {
+  auto data = std::make_shared<const std::string>(message->serialize());
+  for (const auto& c : this->subscribers_for_event_type(type)) {
+    c->send_websocket_message(data);
   }
-
-  std::string data = message->serialize();
-
-  size_t expected_results = subscribers.size();
-  AsyncPromise<void> complete_promise;
-  auto fn = [this, &data, &expected_results, &complete_promise](std::shared_ptr<HTTPClient> c) -> asio::awaitable<void> {
-    try {
-      co_await c->send_websocket_message(data);
-    } catch (const std::exception& e) {
-      auto remote_s = str_for_endpoint(c->r.get_socket().remote_endpoint());
-      this->log.info_f("Failed to send WebSocket message to {}: {}", remote_s, e.what());
-    }
-    if (--expected_results == 0) {
-      complete_promise.set_value();
-    }
-    co_return;
-  };
-  for (const auto& c : subscribers) {
-    asio::co_spawn(co_await asio::this_coro::executor, fn(c), asio::detached);
-  }
-  co_await complete_promise.get();
 }
 
 asio::awaitable<std::unique_ptr<HTTPResponse>> HTTPServer::handle_request(
@@ -1082,6 +1058,12 @@ asio::awaitable<std::unique_ptr<HTTPResponse>> HTTPServer::handle_request(
     if (!json) {
       co_return nullptr;
     }
+    if (c->is_websocket) {
+      this->log.warning_f(
+          "Client handler generated exception after enabling WebSockets; cannot signal error to client: {}",
+          json->serialize());
+      co_return nullptr;
+    }
     resp->headers.emplace("Content-Type", "application/json");
     resp->data = co_await call_on_thread_pool(*this->state->thread_pool, [&]() -> std::string {
       return json->serialize(serialize_options, 0);
@@ -1094,6 +1076,9 @@ asio::awaitable<std::unique_ptr<HTTPResponse>> HTTPServer::handle_request(
         phosg::format_size(resp->data.size()));
 
   } else if (holds_alternative<RawResponse>(ret)) {
+    if (c->is_websocket) {
+      throw std::logic_error("Client handler returned a raw response after enabling WebSockets");
+    }
     auto& raw_resp = get<RawResponse>(ret);
     resp->headers.emplace("Content-Type", std::move(raw_resp.content_type));
     if (!raw_resp.filename.empty()) {
@@ -1106,6 +1091,9 @@ asio::awaitable<std::unique_ptr<HTTPResponse>> HTTPServer::handle_request(
         phosg::format_size(resp->data.size()));
 
   } else if (holds_alternative<SharedRawResponse>(ret)) {
+    if (c->is_websocket) {
+      throw std::logic_error("Client handler returned a raw response after enabling WebSockets");
+    }
     auto& raw_resp = get<SharedRawResponse>(ret);
     resp->headers.emplace("Content-Type", std::move(raw_resp.content_type));
     if (!raw_resp.filename.empty()) {
