@@ -1434,6 +1434,7 @@ static asio::awaitable<HandlerResult> S_13_A7(std::shared_ptr<Client> c, Channel
         try {
           QuestMetadata meta;
           populate_quest_metadata_from_script(
+              *c->require_server_state()->data->quest_opcodes,
               meta,
               c->proxy_session->last_bin_contents->data(),
               c->proxy_session->last_bin_contents->size(),

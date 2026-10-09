@@ -1,0 +1,73 @@
+[
+  // This file may be used to define extra quest opcodes, in case you're using a client modification that supports
+  // custom quest opcodes. If you define an opcode here that already exists in the default opcode definitions (see
+  // QuestScript.cc), this definition will take precedence.
+
+  // A custom quest opcode definition looks like this:
+  // {
+  //   "Opcode": 0xF962,
+  //   // Flags is a bit field specifying availability and behaviors:
+  //   //   00000004 (F_DC_NTE) = opcode is available on DC NTE
+  //   //   00000008 (F_DC_112000) = opcode is available on DC 11/2000
+  //   //   00000010 (F_DC_V1) = opcode is available on DC v1
+  //   //   00000020 (F_DC_V2) = opcode is available on DC v2
+  //   //   00000040 (F_PC_NTE) = opcode is available on PC NTE
+  //   //   00000080 (F_PC_V2) = opcode is available on PC v2
+  //   //   00000100 (F_GC_NTE) = opcode is available on GC NTE
+  //   //   00000200 (F_GC_V3) = opcode is available on GC v3
+  //   //   00000400 (F_GC_EP3TE) = opcode is available on Ep3 Trial Edition
+  //   //   00000800 (F_GC_EP3) = opcode is available on Ep3
+  //   //   00001000 (F_XB_V3) = opcode is available on Xbox
+  //   //   00002000 (F_BB_V4) = opcode is available on BB
+  //   //   00010000 (F_PUSH_ARG) = opcode appends a value to the args list
+  //   //   00020000 (F_CLEAR_ARGS) = opcode does not use the args list, but clears it anyway
+  //   //   00040000 (F_ARGS) = opcode uses and clears the args list on V3 and later
+  //   "Flags": 0x00042200, // Uses args list, BB only
+  //   // The first entry here is the canonical name, which is used when disassembling. Additional names are only used
+  //   // when assembling, so changing an opcode's name doesn't require updating all scripts that use the old name.
+  //   "Names": ["my_opcode", "my_opcode_deprecated_name"],
+  //   "Arguments": [
+  //     {
+  //       // The argument type specifies where the data comes from or goes to. Multi-byte values are little-endian,
+  //       // even on GC. The types are:
+  //       //   LABEL16: a 2-byte label number (reference into label table)
+  //       //   LABEL16_SET: a 1-byte count, followed by that many 2-byte label numbers
+  //       //   LABEL32: a 4-byte label number
+  //       //   R_REG: a 1-byte register number (the opcode does not change the register's value)
+  //       //   W_REG: a 1-byte register number (the opcode may change the register's value)
+  //       //   R_REG_SET: a 1-byte count, followed by that many register numbers (the opcode does not change the
+  //       //              registers' values)
+  //       //   R_REG_SET_FIXED: a 1-byte register number (the opcode uses (Count) consecutive registers starting at
+  //       //                    that register number; the opcode does not change the registers' values)
+  //       //   W_REG_SET_FIXED: a 1-byte register number (the opcode uses (Count) consecutive registers starting at
+  //       //                    that register number; the opcode may change the registers' values)
+  //       //   R_REG32: same as R_REG, but register number is a 4-byte value
+  //       //   W_REG32: same as W_REG, but register number is a 4-byte value
+  //       //   R_REG32_SET_FIXED: same as R_REG_SET_FIXED, but register number is a 4-byte value
+  //       //   W_REG32_SET_FIXED: same as W_REG_SET_FIXED, but register number is a 4-byte value
+  //       //   I8: immediate 1-byte value
+  //       //   I16: immediate 2-byte value
+  //       //   I32: immediate 4-byte value
+  //       //   FLOAT32: immediate 4-byte value
+  //       //   CSTRING: immediate C-string value (ends with zero character)
+  //       "Type": "R_REG_SET_FIXED",
+  //       // The type of data that this argument refers to. This is only used for the LABEL types, and informs how
+  //       // disassembly should format that data in the referenced labels; the assembler ignores it. Data types:
+  //       //   NONE: unspecified (default if DataType is omitted)
+  //       //   SCRIPT: executable quest script code
+  //       //   DATA: arbitrary data, but not executable script code
+  //       //   CSTRING: text terminated by zero character
+  //       //   PLAYER_STATS: PlayerStats strucure
+  //       //   PLAYER_VISUAL_CONFIG: PlayerVisualConfig structure
+  //       //   RESIST_DATA: ResistData structure
+  //       //   ATTACK_DATA: AttackData structure
+  //       //   MOVEMENT_DATA: MovementData structure
+  //       //   IMAGE_DATA: Image data
+  //       //   VECTOR4F_LIST: List of Vector4F structures
+  //       "DataType": "NONE",
+  //       "Count": 3, // Number of registers (only used for the REG_SET_FIXED types; may be omitted for other types)
+  //       "Name": "", // Optional; most opcodes don't have named arguments
+  //     },
+  //   ],
+  // },
+]

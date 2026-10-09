@@ -200,6 +200,7 @@ struct DataIndex {
   std::shared_ptr<const G_SetEXResultValues_Ep3_6xB4x4B> ep3_tournament_ex_values;
   std::shared_ptr<const G_SetEXResultValues_Ep3_6xB4x4B> ep3_tournament_final_round_ex_values;
   std::shared_ptr<const QuestCategoryIndex> quest_category_index;
+  std::shared_ptr<const QuestOpcodeIndex> quest_opcodes;
   std::shared_ptr<const QuestIndex> quest_index;
   std::shared_ptr<const LevelTable> level_table_v1_v2;
   std::shared_ptr<const LevelTable> level_table_v3;
@@ -404,6 +405,7 @@ struct DataIndex {
   void load_word_select_table();
   void load_ep3_cards();
   void load_ep3_maps(bool raise_on_any_failure = false);
+  void load_quest_opcode_defs();
   void load_quest_index(bool raise_on_any_failure = false);
   void compile_functions(bool raise_on_any_failure = false);
   void load_dol_files();

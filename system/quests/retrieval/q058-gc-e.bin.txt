@@ -60,11 +60,16 @@
 // .allow_create_item 0007[00-04][00-05]0000[00-05][00-1E][00-05][00-1E]0000
 
 // The quest script begins after the header directives. A quest script is a sequence of opcodes, and labels denoting
-// positions within that sequence that can be jumped to or called like a function. All labels have names, and some have
-// numbers. (In the compiled format, labels have only numbers and no names; during compilation, each label that doesn't
-// have a number is assigned a number that isn't in use by another label.) To explicitly specify a label number (for
-// example, if an object or NPC refers to a label by number), use an @ sign followed by the desired number. Note that
-// numbers can be specified in decimal or hexadecimal; see on_talk_to_npc1 and on_talk_to_npc2 for examples.
+// positions within that sequence that can be jumped to or called like a function. newserv supports all default quest
+// opcodes implemented in the variousclient versions, but if you're using a modified client, you can also define your
+// own custom opcodes by editing system/tables/custom-quest-opcodes.json to allow newserv's assembler and disassembler
+// to support them.
+
+// All labels have names, and some have numbers. (In the compiled format, labels have only numbers and no names; during
+// compilation, each label that doesn't have a number is assigned a number that isn't in use by another label.) To
+// explicitly specify a label number (for example, if an object or NPC refers to a label by number), use an @ sign
+// followed by the desired number. Note that numbers can be specified in decimal or hexadecimal; see on_talk_to_npc1
+// and on_talk_to_npc2 for examples.
 
 // Registers may be named as well as labels. (In the compiled script, registers do not have names, so disassembling a
 // quest script always produces only numbered registers.) When compiling, all of the following are valid:

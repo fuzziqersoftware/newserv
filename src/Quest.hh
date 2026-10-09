@@ -125,6 +125,7 @@ struct QuestIndex {
   };
   using IncludeCondition = std::function<IncludeState(std::shared_ptr<const Quest>)>;
 
+  std::shared_ptr<const QuestOpcodeIndex> opcode_index;
   std::string directory;
   std::shared_ptr<const QuestCategoryIndex> category_index;
 
@@ -132,7 +133,11 @@ struct QuestIndex {
   std::map<std::string, std::shared_ptr<Quest>> quests_by_name;
   std::map<uint32_t, std::map<uint32_t, std::shared_ptr<Quest>>> quests_by_category_id_and_number;
 
-  QuestIndex(const std::string& directory, std::shared_ptr<const QuestCategoryIndex> category_index, bool raise_on_any_failure);
+  QuestIndex(
+      std::shared_ptr<const QuestOpcodeIndex> opcode_index,
+      const std::string& directory,
+      std::shared_ptr<const QuestCategoryIndex> category_index,
+      bool raise_on_any_failure);
   phosg::JSON json() const;
 
   std::shared_ptr<const Quest> get(uint32_t quest_number) const;

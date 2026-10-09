@@ -233,6 +233,7 @@ ShellCommand c_reload(
         } else if (type == "teams") {
           args.s->load_teams();
         } else if (type == "quests") {
+          args.s->data->load_quest_opcode_defs();
           args.s->data->load_quest_index();
         } else {
           throw std::runtime_error("invalid data type: " + type);

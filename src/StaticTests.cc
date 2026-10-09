@@ -5,7 +5,7 @@
 
 void run_static_tests() {
   phosg::log_info_f("-- Quest opcode definitions");
-  check_quest_opcode_definitions();
+  check_default_quest_opcode_definitions();
 
   phosg::log_info_f("-- RareItemSet rate calculations");
   for (size_t z = 0; z < 0x100; z++) {

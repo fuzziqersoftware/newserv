@@ -1964,9 +1964,22 @@ void DataIndex::load_ep3_maps(bool raise_on_any_failure) {
   this->ep3_map_index = std::make_shared<Episode3::MapIndex>("system/ep3/maps", raise_on_any_failure);
 }
 
+void DataIndex::load_quest_opcode_defs() {
+  config_log.info_f("Loading quest opcode definitions");
+  phosg::JSON json = phosg::JSON::list();
+  if (std::filesystem::exists("system/tables/custom-quest-opcodes.json")) {
+    json = phosg::JSON::parse(phosg::load_file("system/tables/custom-quest-opcodes.json"));
+  }
+  this->quest_opcodes = std::make_shared<QuestOpcodeIndex>(json);
+}
+
 void DataIndex::load_quest_index(bool raise_on_any_failure) {
+  if (!this->quest_opcodes) {
+    throw std::logic_error("Quest opcodes must be loaded before quests can be collected");
+  }
   config_log.info_f("Collecting quests");
-  this->quest_index = std::make_shared<QuestIndex>("system/quests", this->quest_category_index, raise_on_any_failure);
+  this->quest_index = std::make_shared<QuestIndex>(
+      this->quest_opcodes, "system/quests", this->quest_category_index, raise_on_any_failure);
 }
 
 void DataIndex::compile_functions(bool raise_on_any_failure) {
@@ -2033,6 +2046,7 @@ void DataIndex::load_all() {
   this->load_item_name_indexes();
   this->load_drop_tables();
   this->load_config_late();
+  this->load_quest_opcode_defs();
   this->load_quest_index();
   this->generate_bb_stream_file();
 }

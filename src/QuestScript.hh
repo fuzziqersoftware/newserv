@@ -10,6 +10,84 @@
 #include "Text.hh"
 #include "Version.hh"
 
+struct QuestOpcodeIndex {
+  struct OpcodeDefinition {
+    struct Argument {
+      enum class Type {
+        LABEL16 = 0,
+        LABEL16_SET,
+        LABEL32,
+        R_REG,
+        W_REG,
+        R_REG_SET,
+        R_REG_SET_FIXED, // Sequence of N consecutive regs
+        W_REG_SET_FIXED, // Sequence of N consecutive regs
+        R_REG32,
+        W_REG32,
+        R_REG32_SET_FIXED, // Sequence of N consecutive regs
+        W_REG32_SET_FIXED, // Sequence of N consecutive regs
+        I8,
+        I16,
+        I32,
+        FLOAT32,
+        CSTRING,
+      };
+
+      enum class DataType {
+        NONE = 0,
+        SCRIPT,
+        DATA,
+        CSTRING,
+        PLAYER_STATS,
+        PLAYER_VISUAL_CONFIG,
+        RESIST_DATA,
+        ATTACK_DATA,
+        MOVEMENT_DATA,
+        IMAGE_DATA,
+        VECTOR4F_LIST,
+      };
+
+      Type type;
+      size_t count;
+      DataType data_type;
+      std::string name;
+
+      Argument(Type type, size_t count = 0, const char* name = "");
+      Argument(Type type, DataType data_type, const char* name = "");
+      explicit Argument(const phosg::JSON& json);
+      phosg::JSON json() const;
+    };
+
+    uint16_t opcode;
+    // By convention, the first of these names is the canonical name (used when disassembling) and the last is the
+    // Qedit name. When assembling, all names in this list are considered valid.
+    std::vector<std::string> names;
+    std::vector<Argument> args;
+    uint32_t flags;
+
+    OpcodeDefinition(
+        uint16_t opcode,
+        std::initializer_list<std::string> names,
+        std::initializer_list<Argument> args,
+        uint32_t flags);
+    explicit OpcodeDefinition(const phosg::JSON& json);
+    phosg::JSON json() const;
+    std::string str() const;
+  };
+
+  static const std::array<OpcodeDefinition, 602> DEFAULT_OPCODE_DEFS;
+
+  std::vector<OpcodeDefinition> custom_opcodes;
+  std::array<std::unordered_map<uint16_t, const OpcodeDefinition*>, NUM_VERSIONS> by_opcode;
+  std::array<std::unordered_map<std::string, const OpcodeDefinition*>, NUM_VERSIONS> by_name;
+
+  explicit QuestOpcodeIndex(std::vector<OpcodeDefinition>&& custom_opcodes = {});
+  explicit QuestOpcodeIndex(const phosg::JSON& custom_opcodes_json);
+  void add_opcodes(const OpcodeDefinition* opcodes, size_t count, bool overwrite);
+  const std::unordered_map<uint16_t, const OpcodeDefinition*>& by_opcode_for_version(Version v) const;
+  const std::unordered_map<std::string, const OpcodeDefinition*>& by_name_for_version(Version v) const;
+};
+
 struct PSOQuestHeaderDCNTE {
   /* 0000 */ le_uint32_t text_offset = 0;
   /* 0004 */ le_uint32_t label_table_offset = 0;
@@ -132,11 +210,12 @@ struct PSOQuestHeaderBB : PSOQuestHeaderBBBase {
   /* 122C */
 } __packed_ws__(PSOQuestHeaderBB, 0x122C);
 
-void check_quest_opcode_definitions();
+void check_default_quest_opcode_definitions();
 
 Episode episode_for_quest_episode_number(uint8_t episode_number);
 
 std::string disassemble_quest_script(
+    const QuestOpcodeIndex& opcode_index,
     const void* bin_data, // Must not be null
     size_t bin_size,
     Version version,
@@ -150,9 +229,16 @@ struct AssembledQuestScript {
   QuestMetadata meta;
 };
 AssembledQuestScript assemble_quest_script(
+    const QuestOpcodeIndex& opcode_index,
     std::string_view text,
     const std::vector<std::string>& script_include_directories,
     const std::vector<std::string>& native_include_directories,
     bool strict = true);
 
-void populate_quest_metadata_from_script(QuestMetadata& meta, const void* data, size_t size, Version version, Language language);
+void populate_quest_metadata_from_script(
+    const QuestOpcodeIndex& opcode_index,
+    QuestMetadata& meta,
+    const void* data,
+    size_t size,
+    Version version,
+    Language language);

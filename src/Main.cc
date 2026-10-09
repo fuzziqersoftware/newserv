@@ -1631,6 +1631,9 @@ Action a_disassemble_quest_script(
           S, B, T, or K, for Japanese, English, German, French, Spanish,\n\
           Simplified Chinese, Traditional Chinese, or Korean respectively.\n",
     +[](phosg::Arguments& args) {
+      DataIndex di;
+      di.load_quest_opcode_defs();
+
       std::string data = read_input_data(args);
       auto version = get_cli_version(args);
       if (!args.get<bool>("decompressed")) {
@@ -1647,7 +1650,7 @@ Action a_disassemble_quest_script(
       bool reassembly_mode = args.get<bool>("reassembly");
       bool use_qedit_names = args.get<bool>("qedit");
       std::string result = disassemble_quest_script(
-          data.data(), data.size(), version, language, map_file, reassembly_mode, use_qedit_names);
+          *di.quest_opcodes, data.data(), data.size(), version, language, map_file, reassembly_mode, use_qedit_names);
       write_output_data(args, result, "txt");
     });
 Action a_disassemble_quest_map(
@@ -1721,6 +1724,9 @@ Action a_assemble_quest_script(
     uncompressed .bind file instead. If --disable-strict is given, allows some\n\
     invalid behaviors (e.g. calling an undefined label by number).\n",
     +[](phosg::Arguments& args) {
+      DataIndex di;
+      di.load_quest_opcode_defs();
+
       std::string text = read_input_data(args);
 
       const std::string& input_filename = args.get<std::string>(1, false);
@@ -1729,6 +1735,7 @@ Action a_assemble_quest_script(
           : ".";
 
       auto result = assemble_quest_script(
+          *di.quest_opcodes,
           text,
           {include_dir, "system/quests/includes"},
           {include_dir, "system/quests/includes", "system/client-functions/System"},
@@ -3596,6 +3603,7 @@ Action a_check_supermaps(
 
       phosg::fwrite_fmt(stderr, "ALL FREE MAPS: {}\n", all_free_maps_eff.str());
 
+      di->load_quest_opcode_defs();
       di->load_quest_index();
 
       SuperMap::EfficiencyStats all_quests_eff;
@@ -3938,7 +3946,7 @@ Action a_check_quests(
       bool reassemble_scripts = args.get<bool>("reassemble-scripts");
       bool reassemble_maps = args.get<bool>("reassemble-maps");
 
-      check_quest_opcode_definitions();
+      check_default_quest_opcode_definitions();
       phosg::log_info_f("Opcode definitions OK");
 
       auto di = std::make_shared<DataIndex>(get_config_filename(args));
@@ -3947,6 +3955,7 @@ Action a_check_quests(
       di->load_patch_indexes();
       di->load_set_data_tables();
       di->load_maps();
+      di->load_quest_opcode_defs();
       di->load_quest_index(true);
 
       std::atomic<uint64_t> script_time = 0, map_time = 0;
@@ -3985,13 +3994,14 @@ Action a_check_quests(
             uint64_t start_time = phosg::now();
             auto bin = prs_decompress(*vq->bin_contents);
             auto disassembled = disassemble_quest_script(
-                bin.data(), bin.size(), vq->meta.version, vq->meta.language, vq->map_file, false, false);
+                *di->quest_opcodes, bin.data(), bin.size(), vq->meta.version, vq->meta.language, vq->map_file, false, false);
             auto reassembly = disassemble_quest_script(
-                bin.data(), bin.size(), vq->meta.version, vq->meta.language, vq->map_file, true, false);
+                *di->quest_opcodes, bin.data(), bin.size(), vq->meta.version, vq->meta.language, vq->map_file, true, false);
             std::string include_dir{phosg::dirname(vq->bin_filename())};
             AssembledQuestScript assembled;
             try {
               assembled = assemble_quest_script(
+                  *di->quest_opcodes,
                   reassembly,
                   {"system/quests/includes"},
                   {"system/quests/includes", "system/client-functions/System"},

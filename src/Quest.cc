@@ -413,8 +413,11 @@ std::shared_ptr<const VersionedQuest> Quest::version(Version v, Language languag
 }
 
 QuestIndex::QuestIndex(
-    const std::string& directory, std::shared_ptr<const QuestCategoryIndex> category_index, bool raise_on_any_failure)
-    : directory(directory), category_index(category_index) {
+    std::shared_ptr<const QuestOpcodeIndex> opcode_index,
+    const std::string& directory,
+    std::shared_ptr<const QuestCategoryIndex> category_index,
+    bool raise_on_any_failure)
+    : opcode_index(opcode_index), directory(directory), category_index(category_index) {
 
   struct FileData {
     std::string filename;
@@ -510,6 +513,7 @@ QuestIndex::QuestIndex(
         } else if (filename.ends_with(".bin.txt")) {
           std::string include_dir{phosg::dirname(file_path)};
           assembled = std::make_shared<AssembledQuestScript>(assemble_quest_script(
+              *this->opcode_index,
               phosg::load_file(file_path),
               {include_dir, "system/quests/includes"},
               {include_dir, "system/quests/includes", "system/client-functions/System"}));
@@ -630,7 +634,13 @@ QuestIndex::QuestIndex(
       }
 
       auto bin_decompressed = prs_decompress(*entry.data);
-      populate_quest_metadata_from_script(vq->meta, bin_decompressed.data(), bin_decompressed.size(), vq->meta.version, vq->meta.language);
+      populate_quest_metadata_from_script(
+          *this->opcode_index,
+          vq->meta,
+          bin_decompressed.data(),
+          bin_decompressed.size(),
+          vq->meta.version,
+          vq->meta.language);
 
       // Find the corresponding dat and pvr files with the same basename as the bin file; if not found, look for them
       // without the language suffix
