@@ -22,6 +22,7 @@ Version codes (from README.md):
   2OJW: PSO PC (v2) 04/2002
   2OJZ: PSO PC (v2) 02/2003
   3OJT: PSO GC Trial Edition
+  3OJD: PSO GC GameJam demo
   3OJ2: PSO GC v1.2 JP
   3OJ3: PSO GC v1.3 JP
   3OJ4: PSO GC v1.4 (Plus) JP

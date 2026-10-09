@@ -470,6 +470,7 @@ The specific versions are:
 | PSO PC (v2) 04/2002          | 2OJW | Client functions not supported |
 | PSO PC (v2) 02/2003          | 2OJZ | Client functions not supported |
 | PSO GC Trial Edition         | 3OJT | PowerPC                        |
+| PSO GC GameJam demo          | 3OJD | PowerPC (2)                    |
 | PSO GC v1.2 JP               | 3OJ2 | PowerPC                        |
 | PSO GC v1.3 JP               | 3OJ3 | PowerPC                        |
 | PSO GC v1.4 (Plus) JP        | 3OJ4 | PowerPC                        |
@@ -477,10 +478,12 @@ The specific versions are:
 | PSO GC v1.0 US               | 3OE0 | PowerPC                        |
 | PSO GC v1.1 US               | 3OE1 | PowerPC                        |
 | PSO GC v1.2 (Plus) US        | 3OE2 | PowerPC (1)                    |
+| PSO GC Return to Ragol       | 3OE2 | PowerPC (1)                    |
 | PSO GC v1.0 EU               | 3OP0 | PowerPC                        |
 | PSO GC Ep3 Trial Edition     | 3SJT | PowerPC                        |
 | PSO GC Ep3 JP                | 3SJ0 | PowerPC                        |
 | PSO GC Ep3 US                | 3SE0 | PowerPC (1)                    |
+| PSO GC Ep3 Plus              | 3SE0 | PowerPC (1)                    |
 | PSO GC Ep3 EU                | 3SP0 | PowerPC (1)                    |
 | PSO Xbox Beta                | 4OJB | x86                            |
 | PSO Xbox JP Disc             | 4OJD | x86                            |
@@ -496,6 +499,7 @@ The specific versions are:
 
 *Notes:*
 1. *Client functions are only supported on these versions if EnableSendFunctionCallQuestNumbers is set in config.json. See the comments there for more information.*
+2. *This version does not have online capability; it's included in the list only for completeness.*
 
 newserv comes with a set of patches for many of the above versions, in system/client-functions/.
 
