@@ -3089,24 +3089,21 @@ ChatCommandDefinition cc_where(
     {"$where"},
     +[](const Args& a) -> asio::awaitable<void> {
       uint32_t floor;
-      Episode episode;
+      uint32_t area;
       auto l = a.c->lobby.lock();
       if (a.c->proxy_session) {
         floor = a.c->floor;
-        episode = a.c->proxy_session->lobby_episode;
+        area = FloorDefinition::get(a.c->proxy_session->lobby_episode, floor).area;
       } else if (l && l->is_game()) {
         floor = a.c->floor;
-        episode = l->episode;
+        area = l->area_for_floor(a.c->version(), floor);
       } else {
         floor = 0x0F;
-        episode = Episode::EP1;
+        area = 0x0F;
       }
 
-      send_text_message_fmt(a.c, "$C7{:X}:{} X:{} Z:{}",
-          floor,
-          FloorDefinition::get(episode, floor).short_name,
-          static_cast<int32_t>(a.c->pos.x),
-          static_cast<int32_t>(a.c->pos.z));
+      send_text_message_fmt(a.c, "$C7{:X}:{:X} X:{} Z:{}",
+          floor, area, static_cast<int32_t>(a.c->pos.x), static_cast<int32_t>(a.c->pos.z));
 
       if (!a.c->proxy_session && l && l->is_game()) {
         for (auto lc : l->clients) {

@@ -2812,7 +2812,7 @@ G_SpecializableItemDropRequest_6xA2 normalize_drop_request(const void* data, siz
 
 DropReconcileResult reconcile_drop_request_with_map(
     std::shared_ptr<Client> c,
-    G_SpecializableItemDropRequest_6xA2& cmd,
+    const G_SpecializableItemDropRequest_6xA2& cmd,
     Difficulty difficulty,
     uint8_t event,
     std::shared_ptr<MapState> map,
@@ -2821,9 +2821,6 @@ DropReconcileResult reconcile_drop_request_with_map(
   bool is_box = (cmd.rt_index == 0x30);
 
   DropReconcileResult res;
-  res.effective_enemy_type = EnemyType::UNKNOWN;
-  res.should_drop = true;
-  res.ignore_def = (cmd.ignore_def != 0);
   if (!map) {
     return res;
   }
@@ -2837,27 +2834,50 @@ DropReconcileResult reconcile_drop_request_with_map(
     if (!set_entry) {
       throw std::runtime_error("object set entry is missing");
     }
+    res.effective_area = map->floor_to_area.at(res.obj_st->super_obj->floor);
     std::string type_name = MapFile::name_for_object_type(set_entry->base_type, version);
-    c->log.info_f("Drop check for K-{:03X} {} {}",
-        res.obj_st->k_id,
-        res.ignore_def ? 'G' : 'S',
-        type_name);
+    if (c->log.should_log(phosg::LogLevel::L_INFO)) {
+      c->log.info_f("Drop check for K-{:03X} {} (area {:02X})", res.obj_st->k_id, set_entry->str(), res.effective_area);
+    }
+
     if (cmd.floor != res.obj_st->super_obj->floor) {
       c->log.warning_f("Floor {:02X} from command does not match object\'s expected floor {:02X}",
           cmd.floor, res.obj_st->super_obj->floor);
     }
-    if (is_v1_or_v2(version) && (version != Version::GC_NTE)) {
-      // V1/V2 don't have 6xA2, so we can't get ignore_def or the object parameters from the client on those versions
-      cmd.param3 = set_entry->param3;
-      cmd.param4 = set_entry->param4;
-      cmd.param5 = set_entry->param5;
-      cmd.param6 = set_entry->param6;
+
+    // Check ignore_def against client's value
+    if ((set_entry->base_type == 0x0092) || (set_entry->base_type == 0x0161) || (set_entry->base_type == 0x0203)) {
+      // TObjContainerBase, TOContainerAncientItemCommon, and TObjContainerJungEx specialize if param1 <= 0
+      res.ignore_def = (set_entry->param1 > 0.0);
+      c->log.info_f("Object is TObjContainerBase/TOContainerAncientItemCommon; ignore_def={}", res.ignore_def);
+    } else if (set_entry->base_type == 0x038D) { // __DESERT_CRYSTALS_BOX__ specializes if (int)param1 == 2
+      res.ignore_def = (floor(set_entry->param1) != 2.0);
+      c->log.info_f("Object is __DESERT_CRYSTALS_BOX__; ignore_def={}", res.ignore_def);
+    } else { // All other objects are not specializable
+      res.ignore_def = true;
+      c->log.info_f("Object is not specializable; ignore_def=true");
     }
-    bool object_ignore_def = (set_entry->param1 > 0.0);
-    if (res.ignore_def != object_ignore_def) {
-      c->log.info_f("ignore_def value {} from command does not match object\'s expected ignore_def {} (from p1={:g})",
-          res.ignore_def ? "true" : "false", object_ignore_def ? "true" : "false", set_entry->param1);
+    if ((cmd.ignore_def != 0) != res.ignore_def) {
+      c->log.info_f("ignore_def value {} from client does not match expected ignore_def", res.ignore_def);
     }
+
+    // We don't trust the client's param values; we read them from the map instead. But we warn if the client tries any
+    // shenanigans by sending incorrect params
+    if (!is_v1_or_v2(version) || (version == Version::GC_NTE)) {
+      if (cmd.param3 != set_entry->param3) {
+        c->log.warning_f("Client param3 {:g} does not match map param3 {:g}", cmd.param3, set_entry->param3);
+      }
+      if (cmd.param4 != set_entry->param4) {
+        c->log.warning_f("Client param4 {:08X} does not match map param4 {:08X}", cmd.param4, set_entry->param4);
+      }
+      if (cmd.param5 != set_entry->param5) {
+        c->log.warning_f("Client param5 {:08X} does not match map param5 {:08X}", cmd.param5, set_entry->param5);
+      }
+      if (cmd.param6 != set_entry->param6) {
+        c->log.warning_f("Client param6 {:08X} does not match map param6 {:08X}", cmd.param6, set_entry->param6);
+      }
+    }
+
     if (c->check_flag(Client::Flag::DEBUG_ENABLED)) {
       std::string type_name = MapFile::name_for_object_type(set_entry->base_type, version);
       send_text_message_fmt(c, "$C5K-{:03X} {} {}", res.obj_st->k_id, res.ignore_def ? 'G' : 'S', type_name);
@@ -2866,10 +2886,10 @@ DropReconcileResult reconcile_drop_request_with_map(
   } else {
     res.ref_ene_st = map->enemy_state_for_index(version, cmd.floor, cmd.entity_index);
     res.target_ene_st = res.ref_ene_st->alias_target_ene_st ? res.ref_ene_st->alias_target_ene_st : res.ref_ene_st;
-    uint8_t area = map->floor_to_area.at(res.target_ene_st->super_ene->floor);
-    res.effective_enemy_type = res.target_ene_st->type(version, area, difficulty, event);
-    c->log.info_f("Drop check for E-{:03X} (target E-{:03X}, type {})",
-        res.ref_ene_st->e_id, res.target_ene_st->e_id, phosg::name_for_enum(res.effective_enemy_type));
+    res.effective_area = map->floor_to_area.at(res.target_ene_st->super_ene->floor);
+    res.effective_enemy_type = res.target_ene_st->type(version, res.effective_area, difficulty, event);
+    c->log.info_f("Drop check for E-{:03X} (target E-{:03X}, type {}, area {:02X})",
+        res.ref_ene_st->e_id, res.target_ene_st->e_id, phosg::name_for_enum(res.effective_enemy_type), res.effective_area);
     uint8_t expected_rt_index = type_definition_for_enemy(res.effective_enemy_type).rt_index;
     bool mismatched_rt_index = false;
     if (cmd.rt_index != expected_rt_index) {
@@ -2962,21 +2982,29 @@ static void on_entity_drop_item_request(std::shared_ptr<Client> c, SubcommandMes
     auto generate_item_for_client = [&](std::shared_ptr<Client> c) -> ItemCreator::DropResult {
       bool force_rare = c->check_flag(Client::Flag::ALL_RARES_ENABLED);
       if (rec.obj_st) {
-        if (rec.ignore_def) {
+        if (!rec.obj_st->super_obj) {
+          throw std::runtime_error(std::format("Object {:04X} has no super object", cmd.entity_index));
+        } else if (rec.ignore_def) {
           l->log.info_f("Creating item from box {:04X} => K-{:03X} (area {:02X})",
-              cmd.entity_index, rec.obj_st->k_id, cmd.effective_area);
-          return l->item_creator->on_box_item_drop(cmd.effective_area, force_rare);
+              cmd.entity_index, rec.obj_st->k_id, rec.effective_area);
+          return l->item_creator->on_box_item_drop(rec.effective_area, force_rare);
         } else {
-          l->log.info_f(
-              "Creating item from box {:04X} => K-{:03X} (area {:02X}; specialized with {:g} {:08X} {:08X} {:08X})",
-              cmd.entity_index, rec.obj_st->k_id, cmd.effective_area, cmd.param3, cmd.param4, cmd.param5, cmd.param6);
-          return l->item_creator->on_specialized_box_item_drop(
-              cmd.effective_area, cmd.param3, cmd.param4, cmd.param5, cmd.param6);
+          const auto* def = rec.obj_st->super_obj->version(c->version()).set_entry;
+          if (!def) {
+            throw std::runtime_error(std::format("No set entry is available for this object"));
+          } else {
+            l->log.info_f(
+                "Creating item from box {:04X} => K-{:03X} (area {:02X}; specialized with {:g} {:08X} {:08X} {:08X})",
+                cmd.entity_index, rec.obj_st->k_id, rec.effective_area, def->param3, def->param4, def->param5,
+                def->param6);
+            return l->item_creator->on_specialized_box_item_drop(
+                rec.effective_area, def->param3, def->param4, def->param5, def->param6);
+          }
         }
       } else if (rec.target_ene_st) {
         l->log.info_f("Creating item from enemy {:04X} => E-{:03X} (area {:02X})",
-            cmd.entity_index, rec.target_ene_st->e_id, cmd.effective_area);
-        return l->item_creator->on_monster_item_drop(rec.effective_enemy_type, cmd.effective_area, force_rare);
+            cmd.entity_index, rec.target_ene_st->e_id, rec.effective_area);
+        return l->item_creator->on_monster_item_drop(rec.effective_enemy_type, rec.effective_area, force_rare);
       } else {
         throw std::runtime_error("neither object nor enemy were present");
       }
@@ -3003,7 +3031,7 @@ static void on_entity_drop_item_request(std::shared_ptr<Client> c, SubcommandMes
           l->log.info_f("No item was created");
         } else {
           std::string name = s->data->describe_item(c->version(), res.item);
-          l->log.info_f("Entity {:04X} (area {:02X}) created item {}", cmd.entity_index, cmd.effective_area, name);
+          l->log.info_f("Entity {:04X} (area {:02X}) created item {}", cmd.entity_index, rec.effective_area, name);
           if (drop_mode == ServerDropMode::SERVER_DUPLICATE) {
             for (const auto& lc : l->clients) {
               if (lc && (rec.obj_st || (lc->floor == cmd.floor))) {
@@ -3041,7 +3069,7 @@ static void on_entity_drop_item_request(std::shared_ptr<Client> c, SubcommandMes
               l->log.info_f("No item was created for {}", lc->channel->name);
             } else {
               std::string name = s->data->describe_item(lc->version(), res.item);
-              l->log.info_f("Entity {:04X} (area {:02X}) created item {}", cmd.entity_index, cmd.effective_area, name);
+              l->log.info_f("Entity {:04X} (area {:02X}) created item {}", cmd.entity_index, rec.effective_area, name);
               res.item.id = l->generate_item_id(0xFF);
               l->log.info_f("Creating item {:08X} at {:02X}:{:g},{:g} for {}",
                   res.item.id, cmd.floor, cmd.pos.x, cmd.pos.z, lc->channel->name);

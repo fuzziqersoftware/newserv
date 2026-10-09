@@ -4493,8 +4493,7 @@ std::string SuperMap::Event::str() const {
 SuperMap::SuperMap(
     const std::array<std::shared_ptr<const MapFile>, NUM_VERSIONS>& map_files,
     const std::array<uint8_t, 0x12>& floor_to_area)
-    : log("[SuperMap] "),
-      floor_to_area(floor_to_area) {
+    : log("[SuperMap] "), floor_to_area(floor_to_area) {
   for (const auto& map_file : map_files) {
     if (!map_file) {
       continue;

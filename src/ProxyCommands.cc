@@ -959,21 +959,27 @@ static asio::awaitable<HandlerResult> SC_6x60_6xA2(std::shared_ptr<Client> c, Ch
 
   ItemCreator::DropResult res;
   if (rec.obj_st) {
-    if (rec.ignore_def) {
-      c->log.info_f("Creating item from box {:04X} (area {:02X})", cmd.entity_index, cmd.effective_area);
+    if (!rec.obj_st->super_obj) {
+      c->log.warning_f("Object state has no super object");
+    } else if (rec.ignore_def) {
+      c->log.info_f("Creating item from box {:04X} (area {:02X})", cmd.entity_index, rec.effective_area);
       res = c->proxy_session->item_creator->on_box_item_drop(
-          cmd.effective_area, c->check_flag(Client::Flag::ALL_RARES_ENABLED));
+          rec.effective_area, c->check_flag(Client::Flag::ALL_RARES_ENABLED));
     } else {
-      c->log.info_f("Creating item from box {:04X} (area {:02X}; specialized with {:g} {:08X} {:08X} {:08X})",
-          cmd.entity_index, cmd.effective_area,
-          cmd.param3, cmd.param4, cmd.param5, cmd.param6);
-      res = c->proxy_session->item_creator->on_specialized_box_item_drop(
-          cmd.effective_area, cmd.param3, cmd.param4, cmd.param5, cmd.param6);
+      const auto* def = rec.obj_st->super_obj->version(c->version()).set_entry;
+      if (!def) {
+        c->log.warning_f("No set entry is available for this object");
+      } else {
+        c->log.info_f("Creating item from box {:04X} (area {:02X}; specialized with {:g} {:08X} {:08X} {:08X})",
+            cmd.entity_index, rec.effective_area, def->param3, def->param4, def->param5, def->param6);
+        res = c->proxy_session->item_creator->on_specialized_box_item_drop(
+            rec.effective_area, def->param3, def->param4, def->param5, def->param6);
+      }
     }
   } else {
-    c->log.info_f("Creating item from enemy {:04X} (area {:02X})", cmd.entity_index, cmd.effective_area);
+    c->log.info_f("Creating item from enemy {:04X} (area {:02X})", cmd.entity_index, rec.effective_area);
     res = c->proxy_session->item_creator->on_monster_item_drop(
-        rec.effective_enemy_type, cmd.effective_area, c->check_flag(Client::Flag::ALL_RARES_ENABLED));
+        rec.effective_enemy_type, rec.effective_area, c->check_flag(Client::Flag::ALL_RARES_ENABLED));
   }
 
   if (res.item.empty()) {
@@ -981,7 +987,7 @@ static asio::awaitable<HandlerResult> SC_6x60_6xA2(std::shared_ptr<Client> c, Ch
   } else {
     auto s = c->require_server_state();
     std::string name = s->data->describe_item(c->version(), res.item);
-    c->log.info_f("Entity {:04X} (area {:02X}) created item {}", cmd.entity_index, cmd.effective_area, name);
+    c->log.info_f("Entity {:04X} (area {:02X}) created item {}", cmd.entity_index, rec.effective_area, name);
     res.item.id = c->proxy_session->next_item_id++;
     c->log.info_f("Creating item {:08X} at {:02X}:{:g},{:g} for all clients",
         res.item.id, cmd.floor, cmd.pos.x, cmd.pos.z);
