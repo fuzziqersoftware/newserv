@@ -171,8 +171,8 @@ public:
       bool r13_low_found = false;
       uint32_t r2 = 0;
       uint32_t r13 = 0;
-      for (const auto& block : it.second->allocated_blocks()) {
-        phosg::StringReader r = it.second->reader(block.first, block.second);
+      for (const auto& [_, block] : it.second->get_allocator(0).all_blocks()) {
+        phosg::StringReader r = it.second->reader(block.addr, block.requested_size);
         while (!r.eof() && r.where()) {
           uint32_t opcode = r.get_u32b();
           if ((opcode & 0xFFFF0000) == 0x3DA00000) {
@@ -480,9 +480,9 @@ public:
     }
 
     std::pair<uint32_t, uint32_t> src_section = std::make_pair(0, 0);
-    for (const auto& sec : this->src_mem->allocated_blocks()) {
-      if (src_addr >= sec.first && src_addr + src_size <= sec.first + sec.second) {
-        src_section = sec;
+    for (const auto& [_, sec] : this->src_mem->get_allocator(0).all_blocks()) {
+      if (src_addr >= sec.addr && src_addr + src_size <= sec.addr + sec.requested_size) {
+        src_section = std::make_pair(sec.addr, sec.requested_size);
         break;
       }
     }
@@ -505,12 +505,12 @@ public:
       size_t last_match_address = 0;
       size_t match_length = match_bytes_before + match_bytes_after + 4;
       phosg::StringReader src_r = this->src_mem->reader(src_section.first + src_offset - match_bytes_before, match_length);
-      for (const auto& dest_section : dest_mem->allocated_blocks()) {
+      for (const auto& [_, dest_section] : dest_mem->get_allocator(0).all_blocks()) {
         for (size_t dest_match_offset = 0;
-            dest_match_offset + match_length < dest_section.second;
+            dest_match_offset + match_length < dest_section.requested_size;
             dest_match_offset += (is_ppc ? 4 : 1)) {
           src_r.go(0);
-          phosg::StringReader dest_r = dest_mem->reader(dest_section.first + dest_match_offset, match_length);
+          phosg::StringReader dest_r = dest_mem->reader(dest_section.addr + dest_match_offset, match_length);
           size_t z;
           if (is_ppc) {
             for (z = 0; z < match_length; z += 4) {
@@ -561,7 +561,7 @@ public:
           }
           if (z == match_length) {
             num_matches++;
-            last_match_address = dest_section.first + dest_match_offset + match_bytes_before;
+            last_match_address = dest_section.addr + dest_match_offset + match_bytes_before;
           }
         }
       }
@@ -731,9 +731,9 @@ public:
     }
 
     std::pair<uint32_t, uint32_t> src_section = std::make_pair(0, 0);
-    for (const auto& sec : this->src_mem->allocated_blocks()) {
-      if (src_addr >= sec.first && src_addr + src_size <= sec.first + sec.second) {
-        src_section = sec;
+    for (const auto& [_, sec] : this->src_mem->get_allocator(0).all_blocks()) {
+      if (src_addr >= sec.addr && src_addr + src_size <= sec.addr + sec.requested_size) {
+        src_section = std::make_pair(sec.addr, sec.requested_size);
         break;
       }
     }
@@ -753,12 +753,12 @@ public:
       size_t match_length = match_bytes_before + match_bytes_after + 4;
       uint32_t src_addr = src_section.first + src_offset - match_bytes_before;
       phosg::StringReader src_r = this->src_mem->reader(src_addr, match_length);
-      for (const auto& dest_section : dest_mem->allocated_blocks()) {
+      for (const auto& [_, dest_section] : dest_mem->get_allocator(0).all_blocks()) {
         for (size_t dest_match_offset = 0;
-            dest_match_offset + match_length < dest_section.second;
+            dest_match_offset + match_length < dest_section.requested_size;
             dest_match_offset += 4) {
           src_r.go(0);
-          phosg::StringReader dest_r = dest_mem->reader(dest_section.first + dest_match_offset, match_length);
+          phosg::StringReader dest_r = dest_mem->reader(dest_section.addr + dest_match_offset, match_length);
           size_t z;
           for (z = 0; z < match_length; z += 4) {
             uint32_t src_v = src_r.get_u32b();
@@ -773,7 +773,7 @@ public:
           }
           if (z == match_length) {
             num_matches++;
-            last_match_address = dest_section.first + dest_match_offset + match_bytes_before;
+            last_match_address = dest_section.addr + dest_match_offset + match_bytes_before;
           }
         }
       }
@@ -832,9 +832,9 @@ public:
 
   void find_data(const std::string& data) const {
     for (const auto& [name, mem] : this->mems) {
-      for (const auto& [sec_addr, sec_size] : mem->allocated_blocks()) {
-        uint32_t last_addr = sec_addr + sec_size - data.size();
-        for (uint32_t addr = sec_addr; addr < last_addr; addr++) {
+      for (const auto& [_, sec] : mem->get_allocator(0).all_blocks()) {
+        uint32_t last_addr = sec.addr + sec.requested_size - data.size();
+        for (uint32_t addr = sec.addr; addr < last_addr; addr++) {
           if (!mem->memcmp(addr, data.data(), data.size())) {
             phosg::fwrite_fmt(stderr, "{} => {:08X}\n", name, addr);
           }
