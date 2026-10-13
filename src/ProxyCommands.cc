@@ -1179,14 +1179,32 @@ static asio::awaitable<HandlerResult> S_6x(std::shared_ptr<Client> c, Channel::M
             c->log.warning_f("Blocking 6xB5x20 from server with invalid client ID");
             co_return HandlerResult::SUPPRESS;
           }
+        } else if (msg.data[4] == 0x2F) {
+          if (c->version() == Version::GC_EP3_NTE) {
+            auto& cmd = msg.check_size_t<G_SetDeckInBattleSetupMenu_Ep3NTE_6xB5x2F>();
+            if (cmd.menu_type >= 0x15) {
+              c->log.warning_f("Blocking 6xB5x2F from server with invalid menu type");
+              co_return HandlerResult::SUPPRESS;
+            }
+          } else {
+            auto& cmd = msg.check_size_t<G_SetDeckInBattleSetupMenu_Ep3_6xB5x2F>();
+            if (cmd.menu_type >= 0x15) {
+              c->log.warning_f("Blocking 6xB5x2F from server with invalid menu type");
+              co_return HandlerResult::SUPPRESS;
+            }
+          }
         } else if (msg.data[4] == 0x31) {
           auto& cmd = msg.check_size_t<G_ConfirmDeckSelection_Ep3_6xB5x31>();
           if (cmd.menu_type >= 0x15) {
             c->log.warning_f("Blocking 6xB5x31 from server with invalid menu type");
             co_return HandlerResult::SUPPRESS;
           }
+          if ((cmd.action < 2) && (cmd.target_client_id >= 4)) {
+            c->log.warning_f("Blocking 6xB5x31 from server with invalid target client ID");
+            co_return HandlerResult::SUPPRESS;
+          }
         } else if (msg.data[4] == 0x32) {
-          auto& cmd = msg.check_size_t<G_MoveSharedMenuCursor_Ep3_6xB5x32>();
+          auto& cmd = msg.check_size_t<G_SyncSharedMenuState_Ep3_6xB5x32>();
           if (cmd.menu_type >= 0x15) {
             c->log.warning_f("Blocking 6xB5x32 from server with invalid menu type");
             co_return HandlerResult::SUPPRESS;

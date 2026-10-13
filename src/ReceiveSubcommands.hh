@@ -57,7 +57,7 @@ public:
   Language language = Language::JAPANESE;
   uint32_t player_tag = 0;
   uint32_t guild_card_number = 0;
-  uint32_t unknown_a6 = 0;
+  uint32_t battle_enabled = 0;
   uint32_t battle_team_number = 0;
   G_6x70_Sub_Telepipe telepipe;
   uint32_t death_flags = 0;

@@ -2515,6 +2515,8 @@ phosg::JSON COMDeckDefinition::json() const {
       {"PlayerName", this->player_name},
       {"DeckName", this->deck_name},
       {"CardIDs", std::move(card_ids_list)},
+      {"AIParamsIndex", this->ai_params_index},
+      {"PlayerLevel", this->player_level},
   });
 }
 
@@ -3163,7 +3165,9 @@ COMDeckIndex::COMDeckIndex(const std::string& filename) {
       def->index = this->decks.size() - 1;
       def->player_name = def_json->at(0).as_string();
       def->deck_name = def_json->at(1).as_string();
-      auto card_ids_json = def_json->at(2);
+      def->ai_params_index = def_json->at(2).as_int();
+      def->player_level = def_json->at(3).as_int();
+      auto card_ids_json = def_json->at(4);
       for (size_t z = 0; z < 0x1F; z++) {
         def->card_ids[z] = card_ids_json.at(z).as_int();
       }

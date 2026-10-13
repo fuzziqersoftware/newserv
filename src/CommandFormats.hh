@@ -558,7 +558,7 @@ struct SC_MeetUserExtensionT {
     le_uint32_t item_id = 0;
   } __packed_ws__(LobbyReference, 8);
   /* 00 */ parray<LobbyReference, 8> lobby_refs;
-  /* 40 */ le_uint32_t unknown_a2 = 0;
+  /* 40 */ le_uint32_t unknown_a2 = 0; // Possibly a server-side token; client appears to treat it as opaque
   /* 44 */ pstring<Encoding, 0x20> player_name;
   /* 64 (or 84 on UTF16 versions) */
 } __attribute__((packed));
@@ -2702,27 +2702,24 @@ struct S_TournamentList_Ep3NTE_E0 {
   struct Entry {
     le_uint32_t menu_id = 0;
     le_uint32_t item_id = 0;
-    uint8_t unknown_a1 = 0;
+    uint8_t unused1 = 0;
     uint8_t locked = 0;
     uint8_t state = 0;
-    uint8_t unknown_a2 = 0;
+    uint8_t unused2 = 0;
     le_uint32_t start_time = 0; // In seconds since Unix epoch
     pstring<TextEncoding::MARKED, 0x20> name;
     le_uint16_t num_teams = 0;
     le_uint16_t max_teams = 0;
   } __packed_ws__(Entry, 0x34);
   parray<Entry, 0x20> entries;
-  uint8_t unknown_a1 = 0;
-  uint8_t unknown_a2 = 0;
-  uint8_t unknown_a3 = 0;
-  uint8_t unknown_a4 = 0;
+  parray<uint8_t, 4> unused;
 } __packed_ws__(S_TournamentList_Ep3NTE_E0, 0x684);
 
 struct S_TournamentList_Ep3_E0 {
   struct Entry {
     le_uint32_t menu_id = 0;
     le_uint32_t item_id = 0;
-    uint8_t unknown_a1 = 0;
+    uint8_t unused1 = 0;
     uint8_t locked = 0; // If nonzero, the lock icon appears in the menu
     // Values for the state field:
     //   00 = Preparing
@@ -2740,21 +2737,16 @@ struct S_TournamentList_Ep3_E0 {
     // appear in the tournament list, like "View the board" and "Board: Write". (In fact, some of the strings listed
     // above may be unintended for this menu as well.)
     uint8_t state = 0;
-    uint8_t unknown_a2 = 0;
+    uint8_t unused2 = 0;
     le_uint32_t start_time = 0; // In seconds since Unix epoch
     pstring<TextEncoding::MARKED, 0x20> name;
     le_uint16_t num_teams = 0;
     le_uint16_t max_teams = 0;
-    le_uint16_t unknown_a3 = 0xFFFF;
-    le_uint16_t unknown_a4 = 0xFFFF;
+    le_uint16_t spectator_count = 0xFFFF; // 0xFFFF hides the "*P/*R" text
+    le_uint16_t spectator_team_count = 0xFFFF;
   } __packed_ws__(Entry, 0x38);
   parray<Entry, 0x20> entries;
-  // These fields exist in the command (the copy constructor copies them over) but it seems they aren't used by the
-  // client at all.
-  uint8_t unknown_a1 = 0;
-  uint8_t unknown_a2 = 0;
-  uint8_t unknown_a3 = 0;
-  uint8_t unknown_a4 = 0;
+  parray<uint8_t, 4> unused;
 } __packed_ws__(S_TournamentList_Ep3_E0, 0x704);
 
 // E0 (C->S): Request system file (BB)
@@ -2816,7 +2808,7 @@ struct S_TournamentEntryList_Ep3_E2 {
   struct Entry {
     le_uint32_t menu_id = 0;
     le_uint32_t item_id = 0;
-    uint8_t unknown_a1 = 0;
+    uint8_t unused1 = 0;
     // If locked is nonzero, a lock icon appears next to this team and the player is prompted for a password if they
     // select this team.
     uint8_t locked = 0;
@@ -2827,7 +2819,7 @@ struct S_TournamentEntryList_Ep3_E2 {
     // If state is any other value, the entry renders as if its state were 02, but cannot be selected at all (the menu
     // cursor simply skips over it).
     uint8_t state = 0;
-    uint8_t unknown_a2 = 0;
+    uint8_t rounds_cleared = 0;
     pstring<TextEncoding::MARKED, 0x20> name;
   } __packed_ws__(Entry, 0x2C);
   parray<Entry, 0x20> entries;
@@ -2877,7 +2869,7 @@ struct S_TournamentGameDetailsBaseT_Ep3_E3 {
 
   /* 05B4 */ le_uint16_t num_bracket_entries = 0;
   /* 05B6 */ le_uint16_t players_per_team = 0;
-  /* 05B8 */ le_uint16_t unknown_a4 = 0;
+  /* 05B8 */ le_uint16_t unused = 0;
   /* 05BA */ le_uint16_t num_spectators = 0;
   /* 05BC */ parray<PlayerEntry, 8> spectator_entries;
   /* 073C */
@@ -3734,8 +3726,8 @@ struct G_SymbolChat_6x07 {
 // equal to 0x1000, so any valid enemy ID would be far outside the array's range. newserv unconditionally blocks this
 // command because it appears never to be used, and the array write is not bounds-checked, so it could be used to cause
 // undefined behavior on other clients. It seems that this logic predates even DC NTE; it's likely that this was part
-// of the implementation of enemy states before enemy IDs in the tange [0x1000, 0x3FFF] and the standard 0xB50-entry
-// array of states were introduced.
+// of the implementation of enemy states before enemy IDs in the range [0x1000, 0x3FFF] and the standard 0xB50-entry
+// array of states was introduced.
 
 struct G_LegacyKillEnemy_6x09 {
   G_EntityIDHeader header;
@@ -3757,36 +3749,30 @@ struct G_UpdateEnemyStateT_6x0A {
   //   00000010 = is confused
   //   00000020 = is frozen
   //   00000040 = cures and prevents all negative status effects
-  //   00000080 = appears to be unused (TODO: look for any usage of this flag)
+  //   00000080 = appears to be unused, at least on v3 (TODO: look for any usage of this flag in other versions)
   //   00000100 = missed by attack (often set immediately before showing red "MISS" text)
   //   00000200 = hit by attack (causes flinch for most enemies)
   //   00000400 = last hit did damage greater than 25% of enemy's max HP (some enemies don't clear this)
   //   00000800 = is dead (when set for most enemies, plays the death animation and then destroys the enemy)
-  //   00001000 = unknown (TODO: see TObjEnemyV8048ee80_v1C, TObjEnemyV8048ee80_v3B, TObjEneDolmOlm_v3B)
-  //   00002000 = unknown (TODO: see TObjGrass_v1E, 8011EA08, TObjEneIllGill_v1E, TObjEneIllGill_init)
-  //   00004000 = unknown (TODO: has status effect in slot 5; De Rol Le uses this; Vol Opt uses it too at
-  //              TBoss3Volopt_update, TBoss3VoloptCore_update, TBoss3VoloptP01_update, TBoss3VolOptP02_update,
-  //              TObjectV8047c128_v39, TObjectV8047c128_v38; related to paralysis somehow? see
-  //              TObjectV8047c128_v24_update_paralysis_effect)
-  //   00008000 = immune to freeze (TODO: see TBoss3VolOptP02_init_inner; maybe other things use it too)
-  //   00010000 = unknown (TODO: see 801BA1F8)
+  //   00001000 = is retreating (affected enemies move away from their target instead of pursuing it)
+  //   00002000 = is charging (Grass Assassin and Ill Gill when HP is low; see their descriptions in Map.cc)
+  //   00004000 = Photon Blast suspension (effect 14 in status effect slot 4); pauses enemy movement/behavior
+  //   00008000 = immune to freeze
+  //   00010000 = used to force players to do certain actions/phases? (TODO: see 801BA1F8)
   //   00020000 = can't attack, cast techs, or use items (e.g. Vol Opt cage and Ruins falling traps set this)
   //   00040000 = untargetable (e.g. TObjEneBeast sets this at construction time; it's cleared when it roars)
-  //   00080000 = appears to be unused (TODO: look for any usage of this flag)
+  //   00080000 = appears to be unused, at least on v3 (TODO: look for any usage of this flag in other versions)
   //   00100000 = for players, is near enemy; for some enemies, is activated (not set if in idle animations, e.g. for
   //              TObjEneBeast and related classes) (unverified on v2)
-  //   00200000 = is attacking? (TODO: also set when TObjEneMoja is jumping though; also see TObjEnemyV8048ee80_v3C,
-  //              TObjEneMerillLia_v3C, TObjEneSaver_v3A)
-  //   00400000 = unknown (TODO: see TOSensor_vF, 801CC358, 801CD224)
-  //   00800000 = affected by gravity? can be aerial? (wolves don't have this, perhaps their jumps are hardcoded; see
-  //              TObjEnemyV8048ee80_v5B) (unverified on v2)
+  //   00200000 = is attacking (enemies only)
+  //   00400000 = is casting a technique or performing a Photon Blast (players only)
+  //   00800000 = is on ground (vertical speed is 0; Y coordinate aligned with floor height)
   //   01000000 = immune to shock and freeze and paralysis (for Canadine/Mothmant/etc, only set when they're higher
   //              than player level; TODO: maybe other things too; also used by TObjPlayer, see 801B84B4; also has a
   //              meaning for weapons, see TItemWeapon_v10) (unverified on v2)
   //   02000000 = invisible (also suppresses particles, some sounds, and hit/miss text)
   //   04000000 = temporarily invincible (e.g. Dragon while it roars to advance to phase 2) (unverified on v2)
-  //   08000000 = unknown (TODO; see 80113384, TItemMag_v1B, TItemMag_v1A, 801182B0, TObjPlayer_render; probably
-  //              graphical effects only)
+  //   08000000 = skip rendering? (TODO; see 80113384, TItemMag_v1B, TItemMag_v1A, 801182B0, TObjPlayer_render)
   //   10000000 = entity is player
   //   20000000 = entity is enemy
   //   40000000 = entity is object (some entities have both this and 20000000 set; this appears to make TWindowLockOn
@@ -3806,15 +3792,13 @@ struct G_UpdateObjectState_6x0B {
 } __packed_ws__(G_UpdateObjectState_6x0B, 0x0C);
 
 // 6x0C: Add status effect (poison/slow/etc.) (protected on V3/V4)
-// 6x0D: Remove status effect (protected on V3/V4)
 
-struct G_AddOrRemoveStatusEffect_6x0C_6x0D {
+struct G_AddStatusEffect_6x0C {
   G_ClientIDHeader header;
-  // Each status effect has an assigned slot; there are 5 slots and each slot may only hold one effect at a time. (The
-  // last slot, slot 4, may be used by certain boss effects; this is unconfirmed.) If a new status effect is added to a
-  // slot that already contains one, the existing status effect is replaced. Non-technique status effects have fixed or
-  // indefinite durations; technique-based effects have durations based on the technique's level.
-  // Values for effect_type:
+  // Each status effect has an assigned slot; there are 5 slots and each slot may only hold one effect at a time. If a
+  // new status effect is added to a slot that already contains one, the existing status effect is replaced.
+  // Non-technique status effects have fixed or indefinite durations; technique-based effects have durations based on
+  // the technique's level. Values for effect_type:
   //   02 = Freeze (slot 1; 5 seconds)
   //   03 = Shock (slot 1; 10 seconds)
   //   07 = Clears negative status effects (healing ring?)
@@ -3827,9 +3811,19 @@ struct G_AddOrRemoveStatusEffect_6x0C_6x0D {
   //   11 = Slow (slot 1; 7 seconds)
   //   12 = Confuse (slot 1; 10 seconds)
   //   Anything else = command is ignored
+  // None of the above conditions use slot 4. Slot 4 is used internally for pausing enemy movements during Photon
+  // Blasts and cannot be updated by a 6x0C command.
   le_uint32_t effect_type = 0;
   le_float amount = 0; // Only used in 6x0C for Shifta/Deband/Jellen/Zalure; unused in 6x0D
-} __packed_ws__(G_AddOrRemoveStatusEffect_6x0C_6x0D, 0x0C);
+} __packed_ws__(G_AddStatusEffect_6x0C, 0x0C);
+
+// 6x0D: Remove status effect (protected on V3/V4)
+
+struct G_RemoveStatusEffect_6x0D {
+  G_ClientIDHeader header;
+  le_uint32_t slot_index = 0; // See 6x0C comments for slot numbers
+  le_float unused = 0;
+} __packed_ws__(G_RemoveStatusEffect_6x0D, 0x0C);
 
 // 6x0E: Clear all negative status effects (protected on V3/V4)
 // It seems that the client never sends this command.
@@ -3846,9 +3840,9 @@ struct G_ClearNegativeStatusEffects_6x0E {
 
 struct G_DragonBossActions_6x10_6x11 {
   G_EntityIDHeader header;
-  le_uint16_t unknown_a2 = 0;
-  le_uint16_t unknown_a3 = 0;
-  le_uint32_t unknown_a4 = 0;
+  le_uint16_t phase = 0;
+  le_uint16_t attack_seq_index = 0;
+  le_uint32_t target_client_id = 0xFFFF; // 0xFFFF (not 0xFFFFFFFF) means no target
 } __packed_ws__(G_DragonBossActions_6x10_6x11, 0x0C);
 
 // 6x12: Dragon boss actions (not valid on Episode 3)
@@ -3857,7 +3851,7 @@ template <bool BE>
 struct G_DragonBossActionsT_6x12 {
   G_EntityIDHeader header;
   le_uint16_t phase = 0;
-  le_uint16_t unknown_a3 = 0;
+  le_uint16_t attack_seq_index = 0;
   le_uint32_t target_client_id = 0xFFFF; // 0xFFFF (not 0xFFFFFFFF) means no target
   F32T<BE> x = 0.0f;
   F32T<BE> z = 0.0f;
@@ -3870,7 +3864,7 @@ using G_DragonBossActions_GC_6x12 = G_DragonBossActionsT_6x12<true>;
 struct G_DeRolLeBossActions_6x13 {
   G_EntityIDHeader header;
   le_uint16_t phase = 0;
-  le_uint16_t unknown_a3 = 0;
+  le_uint16_t attack_seq_index = 0;
 } __packed_ws__(G_DeRolLeBossActions_6x13, 8);
 
 // 6x14: De Rol Le boss actions (not valid on Episode 3)
@@ -3878,7 +3872,7 @@ struct G_DeRolLeBossActions_6x13 {
 struct G_DeRolLeBossActionsWithTarget_6x14 {
   G_EntityIDHeader header;
   le_uint16_t phase = 0;
-  le_uint16_t unknown_a3 = 0;
+  le_uint16_t attack_seq_index = 0;
   le_uint32_t target_client_id = 0xFFFF; // See 6x12
 } __packed_ws__(G_DeRolLeBossActionsWithTarget_6x14, 0x0C);
 
@@ -3886,10 +3880,19 @@ struct G_DeRolLeBossActionsWithTarget_6x14 {
 
 struct G_VolOptBossActions_6x15 {
   G_EntityIDHeader header;
+  // Values for action:
+  //   0 = (phase 1) traverse monitors
+  //   1 = (phase 1) retract pillars; return to monitors
+  //   2 = (phase 1) extend pillars; fire lightning
+  //   3 = (phase 2) fire missiles
+  //   4 = (phase 2) laser + targeted pillar attack
+  //   5 = (phase 2) heal
+  //   6 = (phase 2) capture + laser attack
+  //   7 = (phase 2) unknown (TODO)
   le_uint16_t action = 0;
-  le_uint16_t unknown_a3 = 0;
-  le_uint16_t unknown_a4 = 0;
-  le_uint16_t unknown_a5 = 0;
+  le_uint16_t target_entity_id = 0; // Used by actions 3, 4, and 6
+  le_int16_t action_param = 0; // (action == 0) starting monitor number; (action == 7) radius?
+  le_uint16_t monitor_count = 0; // (action == 0) number of monitors to traverse
 } __packed_ws__(G_VolOptBossActions_6x15, 0x0C);
 
 // 6x16: Set Vol Opt entity index table (not valid on Episode 3)
@@ -3897,7 +3900,7 @@ struct G_VolOptBossActions_6x15 {
 
 struct G_VolOptBossActions_6x16 {
   G_EntityIDHeader header;
-  parray<uint8_t, 6> entity_index_table;
+  parray<uint8_t, 6> entity_index_table; // The first entry is the active (red) pillar
   le_uint16_t entity_index_count = 0;
 } __packed_ws__(G_VolOptBossActions_6x16, 0x0C);
 
@@ -3910,21 +3913,24 @@ struct G_SetEntityPositionAndAngle_6x17 {
   le_uint32_t angle = 0;
 } __packed_ws__(G_SetEntityPositionAndAngle_6x17, 0x14);
 
-// 6x18: Vol Opt phase 2 boss actions (not valid on Episode 3)
+// 6x18: Sync Vol Opt phase 2 parts HP (not valid on Episode 3)
 
-struct G_VolOpt2BossActions_6x18 {
+struct G_SyncVolOpt2PartsHP_6x18 {
   G_EntityIDHeader header;
-  parray<le_uint16_t, 4> unknown_a2;
-} __packed_ws__(G_VolOpt2BossActions_6x18, 0x0C);
+  le_int16_t capture_part_hp = 0;
+  le_int16_t pillar_part_hp = 0;
+  le_int16_t healing_part_hp = 0;
+  le_int16_t missile_part_hp = 0;
+} __packed_ws__(G_SyncVolOpt2PartsHP_6x18, 0x0C);
 
 // 6x19: Dark Falz boss actions (not valid on Episode 3)
 
 struct G_DarkFalzActions_6x19 {
   G_EntityIDHeader header;
-  le_uint16_t unknown_a2 = 0;
-  le_uint16_t unknown_a3 = 0;
-  le_uint32_t unknown_a4 = 0;
-  le_uint32_t unused = 0;
+  le_uint16_t phase = 0; // 0xFFFF = no change
+  le_uint16_t unused1 = 0;
+  le_uint32_t packed_action = 0; // 0xFFFFFFFF = no change
+  le_uint32_t unused2 = 0;
 } __packed_ws__(G_DarkFalzActions_6x19, 0x10);
 
 // 6x1A: Invalid subcommand
@@ -4270,8 +4276,10 @@ struct G_SetPosition_6x3F {
 struct G_WalkToPosition_6x40 {
   G_ClientIDHeader header;
   VectorXZF pos;
-  // In the flags field, bit 00000008 is set if game_flag 00100000 is set (same as is_near_enemy in 6x3E and 6x3F). The
-  // meanings of the other bits are unknown.
+  // Only two bits have meanings in the flags field:
+  //   00000004 = target position is nearby / movement will end within 2 frames (set internally; not sent in 6x40)
+  //   00000008 = game_flag 00100000 is set (same as is_near_enemy in 6x3E and 6x3F; this makes the player walk slower
+  //              and use the near-enemy walking animation)
   le_uint32_t flags = 0;
 } __packed_ws__(G_WalkToPosition_6x40, 0x10);
 
@@ -4407,7 +4415,7 @@ struct G_SetPlayerAngle_6x51 {
 struct G_SetAnimationState_6x52 {
   G_ClientIDHeader header;
   le_uint16_t animation = 0;
-  le_uint16_t unknown_a2 = 0;
+  le_uint16_t unknown_a2 = 0; // Unused in v3; TODO: is it used in v1/v2?
   le_uint32_t angle = 0;
 } __packed_ws__(G_SetAnimationState_6x52, 0x0C);
 
@@ -4813,7 +4821,7 @@ struct G_6x70_Base_V1 {
   /* 0064 */ le_uint32_t language32 = 0;
   /* 0068 */ le_uint32_t player_tag = 0;
   /* 006C */ le_uint32_t guild_card_number = 0;
-  /* 0070 */ le_uint32_t unknown_a6 = 0; // Probably battle-related (assigned together with battle_team_number)
+  /* 0070 */ le_uint32_t battle_enabled = 0; // If nonzero, PK mode is on for this player
   /* 0074 */ le_uint32_t battle_team_number = 0;
   /* 0078 */ G_6x70_Sub_Telepipe telepipe;
   // Only a few bits appear to be used in death_flags. Known values:
@@ -5085,21 +5093,21 @@ struct G_PlaceTrap_6x83 {
   le_uint16_t trap_index = 0;
 } __packed_ws__(G_PlaceTrap_6x83, 8);
 
-// 6x84: Vol Opt boss actions (not valid on Episode 3)
-// Same format and usage as 6x16, except unknown_a2 is ignored in 6x84.
+// 6x84: Vol Opt Ultimate boss actions (not valid on Episode 3)
 
-struct G_VolOptBossActions_6x84 : G_VolOptBossActions_6x16 {
-  le_uint16_t unknown_a3 = 0;
+struct G_VolOptUltimateBossActions_6x84 : G_VolOptBossActions_6x16 {
+  le_uint16_t technique = 0; // 0 = Gizonde, 1 = Foie, 2 = Gibarta
   le_uint16_t unused = 0;
-} __packed_ws__(G_VolOptBossActions_6x84, 0x10);
+} __packed_ws__(G_VolOptUltimateBossActions_6x84, 0x10);
 
-// 6x85: Vol Opt phase 2 boss actions (not valid on Episode 3)
+// 6x85: Vol Opt phase 2 Ultimate boss actions (not valid on Episode 3)
 
-struct G_VolOptPhase2BossActions_6x85 {
+struct G_VolOptPhase2UltimateBossActions_6x85 {
   G_UnusedHeader header;
-  le_uint16_t unknown_a1 = 0; // Command is ignored unless this is 0
-  parray<le_uint16_t, 7> unknown_a2; // Only the first 3 appear to be used
-} __packed_ws__(G_VolOptPhase2BossActions_6x85, 0x14);
+  le_uint16_t action = 0;
+  parray<le_int16_t, 3> pillar_delay_frames;
+  parray<uint8_t, 8> unused;
+} __packed_ws__(G_VolOptPhase2UltimateBossActions_6x85, 0x14);
 
 // 6x86: Hit destructible object (not valid on Episode 3)
 // This command only has an effect for TOVS2Wall01 objects.
@@ -5318,9 +5326,9 @@ struct G_PlayerCameraShutterSound_6x9E {
 
 struct G_GalGryphonBossActions_6x9F {
   G_EntityIDHeader header;
-  le_uint32_t unknown_a1 = 0;
-  le_float unknown_a2 = 0.0f;
-  le_float unknown_a3 = 0.0f;
+  le_uint32_t target_entity_id = 0;
+  le_float target_x = 0.0f;
+  le_float target_z = 0.0f;
 } __packed_ws__(G_GalGryphonBossActions_6x9F, 0x10);
 
 // 6xA0: Gal Gryphon boss actions (not valid on pre-V3 or Episode 3)
@@ -5330,8 +5338,8 @@ struct G_GalGryphonBossActions_6xA0 {
   VectorXYZF pos;
   le_uint32_t angle_y = 0;
   le_uint16_t phase = 0;
-  le_uint16_t unknown_a3 = 0;
-  parray<le_uint32_t, 4> unknown_a4;
+  le_int16_t action_param1 = 0;
+  parray<le_uint32_t, 4> action_params2;
 } __packed_ws__(G_GalGryphonBossActions_6xA0, 0x28);
 
 // 6xA1: Revive player (not valid on pre-V3) (protected on V3/V4)
@@ -5355,23 +5363,45 @@ struct G_SpecializableItemDropRequest_6xA2 : G_StandardDropItemRequest_PC_V3_BB_
 
 struct G_OlgaFlowBossActions_6xA3 {
   G_EntityIDHeader header;
-  uint8_t unknown_a1 = 0;
-  uint8_t unknown_a2 = 0;
-  parray<uint8_t, 0x0E> unknown_a3;
+  int8_t phase = 0; // Must be in range [0, 8]
+  int8_t random_value = 0;
+  parray<uint8_t, 0x0E> unused;
 } __packed_ws__(G_OlgaFlowBossActions_6xA3, 0x14);
 
 // 6xA4: Olga Flow phase 1 boss actions (not valid on pre-V3 or Episode 3)
+
+struct G_OlgaFlowPhase1BossActions_6xA4 {
+  G_EntityIDHeader header;
+  int8_t phase = 0; // Must be in range [0, 0x28]
+  // Position (x, y, z) = ((10 * radius * sin(angle_y * 0x100), 10 * height, 10 * radius * cos(angle_y * 0x100)))
+  int8_t angle_y = 0;
+  int8_t radius = 0; // In units / 10
+  int8_t height = 0; // In units / 10
+  int8_t is_upside_down = 0;
+  int8_t behavior_mode = 0;
+  uint8_t random_value = 0;
+  parray<uint8_t, 9> unused;
+} __packed_ws__(G_OlgaFlowPhase1BossActions_6xA4, 0x14);
+
 // 6xA5: Olga Flow phase 2 boss actions (not valid on pre-V3 or Episode 3)
 
-struct G_OlgaFlowBossActions_6xA4_6xA5 {
+struct G_OlgaFlowPhase2BossActions_6xA5 {
   G_EntityIDHeader header;
-  uint8_t what = 0;
-  parray<uint8_t, 3> pos_bytes;
-  parray<uint8_t, 3> state_bytes;
-  uint8_t unused1 = 0;
-  parray<uint8_t, 4> ext_state_bytes;
-  parray<uint8_t, 4> unused2;
-} __packed_ws__(G_OlgaFlowBossActions_6xA4_6xA5, 0x14);
+  int8_t phase = 0; // Must be in range [0, 0x23]
+  // Position (x, y, z) = ((cmd.x * (1000.0 / 127) - 10500), 0, (cmd.z * (1000.0 / 127) - 500))
+  int8_t x = 0;
+  int8_t z = 0;
+  int8_t angle_y = 0; // High byte of an angle (so e.g. 5 here means angle = 0x0500)
+  uint8_t random_value = 0;
+  int8_t sword_phase = 0;
+  int8_t vulnerability_class_index = 0;
+  int8_t vulnerability_element = 0; // 1 = fire, 2 = ice, 3 = electric, 4 = light, 5 = dark
+  uint8_t soul_steal_target_client_id = 0xFF;
+  uint8_t target_client_id = 0xFF;
+  uint8_t mag1_target_client_id = 0xFF;
+  uint8_t mag2_target_client_id = 0xFF;
+  parray<uint8_t, 4> unused;
+} __packed_ws__(G_OlgaFlowPhase2BossActions_6xA5, 0x14);
 
 // 6xA6: Modify trade proposal (not valid on pre-V3)
 
@@ -5397,47 +5427,58 @@ struct G_ModifyTradeProposal_6xA6 {
 // 6xA7: Unknown (not valid on pre-V3)
 // This subcommand is completely ignored.
 
-// 6xA8: Gol Dragon boss actions (not valid on pre-V3 or Episode 3)
+// 6xA8 / 6xA9 / 6xAA: Gol Dragon boss actions (GC NTE)
+// GC NTE has three Gol Dragon command formats, whereas all later versions have only one (6xA8).
+
+struct G_GolDragonBossActions_GCNTE_6xA8_6xA9 {
+  G_EntityIDHeader header;
+  le_uint16_t phase = 0;
+  le_uint16_t attack_seq_index = 0;
+  le_uint32_t target_client_id = 0xFFFF; // Only the low 16 bits are used
+} __packed_ws__(G_GolDragonBossActions_GCNTE_6xA8_6xA9, 0x0C);
+
+struct G_GolDragonBossActionsWithPosition_GCNTE_6xAA : G_GolDragonBossActions_GCNTE_6xA8_6xA9 {
+  be_float x = 0.0f;
+  be_float z = 0.0f;
+} __packed_ws__(G_GolDragonBossActionsWithPosition_GCNTE_6xAA, 0x14);
+
+// 6xA8: Gol Dragon boss actions (not valid on pre-V3 or Episode 3; used by post-GCNTE versions)
 
 template <bool BE>
 struct G_GolDragonBossActionsT_6xA8 {
   G_EntityIDHeader header;
   le_uint16_t phase = 0;
-  le_uint16_t unknown_a3 = 0;
+  le_uint16_t attack_seq_index = 0;
   le_uint32_t target_client_id = 0;
   F32T<BE> x = 0.0f;
   F32T<BE> z = 0.0f;
-  uint8_t unknown_a5 = 0;
+  uint8_t attack_variant = 0; // Specifies attack type and particle set; must be in range [0, 2]
   parray<uint8_t, 3> unused;
 } __packed_ws_be__(G_GolDragonBossActionsT_6xA8, 0x18);
 using G_GolDragonBossActions_XB_BB_6xA8 = G_GolDragonBossActionsT_6xA8<false>;
 using G_GolDragonBossActions_GC_6xA8 = G_GolDragonBossActionsT_6xA8<true>;
 
-// 6xA9: Barba Ray boss actions (not valid on pre-V3 or Episode 3)
+// 6xA9: Barba Ray boss actions (not valid on pre-V3, GC NTE, or Episode 3)
+// GC NTE uses 6xAB for this instead due to its extra Gol Dragon commands.
 
-struct G_BarbaRayBossActions_6xA9 {
+struct G_BarbaRayBossActions_6xA9_GCNTE_6xAB {
   G_EntityIDHeader header;
-  le_uint16_t what = 0;
-  le_uint16_t unknown_a2 = 0;
-} __packed_ws__(G_BarbaRayBossActions_6xA9, 0x08);
+  le_uint16_t phase = 0;
+  le_uint16_t attack_seq_index = 0;
+} __packed_ws__(G_BarbaRayBossActions_6xA9_GCNTE_6xAB, 0x08);
 
-// 6xAA: Barba Ray boss actions (not valid on pre-V3 or Episode 3)
+// 6xAA: Barba Ray boss actions (not valid on pre-V3, GC NTE, or Episode 3)
+// GC NTE uses 6xAC for this instead due to its extra Gol Dragon commands.
 
-struct G_BarbaRayBossActions_6xAA {
+struct G_BarbaRayBossActions_6xAA_GCNTE_6xAC {
   G_EntityIDHeader header;
-  le_uint16_t what = 0;
-  le_uint16_t unknown_a2 = 0;
+  le_uint16_t phase = 0;
+  le_uint16_t attack_seq_index = 0;
   le_uint32_t target_client_id = 0;
-} __packed_ws__(G_BarbaRayBossActions_6xAA, 0x0C);
+} __packed_ws__(G_BarbaRayBossActions_6xAA_GCNTE_6xAC, 0x0C);
 
 // 6xAB: Create lobby chair (not valid on pre-V3) (protected on V3/V4)
-// This command appears to be different on GC NTE than on any other version. It's not known what it does on GC NTE.
-
-struct G_Unknown_GCNTE_6xAB {
-  G_EntityIDHeader header;
-  le_uint16_t unknown_a1 = 0;
-  le_uint16_t unknown_a2 = 0;
-} __packed_ws__(G_Unknown_GCNTE_6xAB, 8);
+// On GC NTE, this command has a different meaning (see above).
 
 struct G_CreateLobbyChair_6xAB {
   G_ClientIDHeader header;
@@ -5448,23 +5489,13 @@ struct G_CreateLobbyChair_6xAB {
   le_uint16_t flags = 0;
 } __packed_ws__(G_CreateLobbyChair_6xAB, 8);
 
-// 6xAC: De Rol Le / Barba Ray boss actions (GC NTE)
-
-struct G_Unknown_GCNTE_6xAC {
-  G_EntityIDHeader header;
-  le_uint16_t unknown_a1 = 0;
-  le_uint16_t unknown_a2 = 0;
-  le_uint32_t unknown_a3 = 0;
-} __packed_ws__(G_Unknown_GCNTE_6xAC, 0x0C);
-
 // 6xAC: Delete multiple inventory items (protected on V3/V4)
-// This command appears to delete multiple items from a player's inventory. It's not clear when or why this would be
-// used; the client never sends it. The disassembly also is somewhat confusing, and it's not clear that it even works
-// properly.
+// This command deletes multiple items from a player's inventory. It's not clear when or why this would be used; the
+// client never sends it.
 
 struct G_DeleteMultipleInventoryItems_6xAC {
   G_ClientIDHeader header;
-  le_uint32_t num_items = 0;
+  le_uint32_t num_items = 0; // Must be in range [0, 30]
   parray<le_uint32_t, 0x1E> item_ids;
 } __packed_ws__(G_DeleteMultipleInventoryItems_6xAC, 0x80);
 
@@ -5472,8 +5503,10 @@ struct G_DeleteMultipleInventoryItems_6xAC {
 
 struct G_OlgaFlowSubordinateBossActions_6xAD {
   G_UnusedHeader header;
-  // The first byte in this array seems to have a special meaning
-  parray<uint8_t, 0x40> unknown_a1;
+  int8_t mag_index = -1; // If negative, mag state is not updated; otherwise, this should be 0 or 1
+  parray<int8_t, 6> mag_target_coordinates; // Up to 3 (x, z) pairs encoded as in 6xA5; list ends with any value < 0
+  parray<uint8_t, 0x20> rock_commands;
+  parray<uint8_t, 0x19> unused;
 } __packed_ws__(G_OlgaFlowSubordinateBossActions_6xAD, 0x44);
 
 // 6xAE: Set animation state (sent by existing clients at join time)
@@ -6518,16 +6551,18 @@ struct G_Unknown_Ep3_6xB4x23 {
   parray<uint8_t, 2> unused;
 } __packed_ws__(G_Unknown_Ep3_6xB4x23, 0x0C);
 
-// 6xB5x27: Unknown
-// TODO: Document this from Episode 3 client/server disassembly
+// 6xB5x27: Move card selection cursor
+// This command moves the player's card-hover cursor during battle (which spectators can see). Curiously, the cursor is
+// implemented as a set of flags for each card position, not a single cursor object - that is, each card independently
+// has a flag for whether or not each player's cursor is on that card.
 
-struct G_Unknown_Ep3_6xB5x27 {
-  G_CardBattleCommandHeader header = {0xB5, sizeof(G_Unknown_Ep3_6xB5x27) / 4, 0, 0x27, 0, 0, 0};
-  le_uint32_t unknown_a1 = 0; // Probably client ID (must be < 4)
-  le_uint32_t unknown_a2 = 0; // Must be < 0x10
-  le_uint32_t unknown_a3 = 0;
-  le_uint32_t unused = 0; // Client sends uninitialized memory here
-} __packed_ws__(G_Unknown_Ep3_6xB5x27, 0x18);
+struct G_MoveCardSelectionCursor_Ep3_6xB5x27 {
+  /* 00 */ G_CardBattleCommandHeader header = {0xB5, sizeof(G_MoveCardSelectionCursor_Ep3_6xB5x27) / 4, 0, 0x27, 0, 0, 0};
+  /* 08 */ le_uint32_t owner_client_id = 0; // Card owner; must be < 4
+  /* 0C */ le_uint32_t set_index = 0; // Must be < 0x10
+  /* 10 */ le_uint32_t selection_flags = 0; // Bits 0x20/0x40/0x80/0x100 = selected by player 0/1/2/3 respectively
+  /* 14 */ le_uint32_t unused = 0; // Client sends uninitialized memory here
+} __packed_ws__(G_MoveCardSelectionCursor_Ep3_6xB5x27, 0x18);
 
 // 6xB3x28 / CAx28: End defense list
 // This command informs the server that the client is done playing defense cards. (In the attack phase, CAx12 is used
@@ -6572,20 +6607,25 @@ struct G_ExecLegacyCard_Ep3_CAx2B {
   parray<uint8_t, 2> unused3;
 } __packed_ws__(G_ExecLegacyCard_Ep3_CAx2B, 0x14);
 
-// 6xB4x2C: Enqueue animation
-// This is used for playing the trap and teleport animations (with change_type = 1). It's also used for playing the
-// discard entire hand animation (with change_type = 3).
+// 6xB4x2C: Set animation metadata
+// This command affects how some animations are played on the client, but doesn't seem to have actual gameplay effects.
 
-struct G_EnqueueAnimation_Ep3_6xB4x2C {
-  /* 00 */ G_CardBattleCommandHeader header = {0xB4, sizeof(G_EnqueueAnimation_Ep3_6xB4x2C) / 4, 0, 0x2C, 0, 0, 0};
-  /* 08 */ uint8_t change_type = 0;
+struct G_SetAnimationMetadata_Ep3_6xB4x2C {
+  /* 00 */ G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetAnimationMetadata_Ep3_6xB4x2C) / 4, 0, 0x2C, 0, 0, 0};
+  // Values for change_type:
+  //   0 = warp (card_refs[0] is the card being moved, loc specifies the warp's entrance tile; the SC/FC walks/flies to
+  //       this tile, then the warp animation plays to move them to their actual location according to the card state)
+  //   1 = trap activated (trap_card_id is applied as an assist card on player identified by client_id; trap effect is
+  //       played at loc, but loc.direction specifies the trap color)
+  //   3 = discard/redraw hand (only client_id is used)
+  /* 08 */ uint8_t change_type = 0; // See type-specific meanings above
   /* 09 */ uint8_t client_id = 0;
   /* 0A */ parray<le_uint16_t, 3> card_refs;
   /* 10 */ Episode3::Location loc;
   /* 14 */ le_uint32_t trap_card_id = 0xFFFFFFFF;
-  /* 18 */ le_uint32_t unknown_a3 = 0xFFFFFFFF;
+  /* 18 */ le_uint32_t unused = 0xFFFFFFFF;
   /* 1C */
-} __packed_ws__(G_EnqueueAnimation_Ep3_6xB4x2C, 0x1C);
+} __packed_ws__(G_SetAnimationMetadata_Ep3_6xB4x2C, 0x1C);
 
 // 6xB5x2D: Recreate multiple players
 
@@ -6611,35 +6651,48 @@ struct G_BattleEndNotification_Ep3_6xB5x2E {
 } __packed_ws__(G_BattleEndNotification_Ep3_6xB5x2E, 0x0C);
 
 // 6xB5x2F: Set deck in battle setup menu
+// Updates a player's deck at the entry counter. This only updates the menu; the decks are not registered with the
+// Episode3::Server until CAx14 is sent later. The leader is the source of truth for the deck select menu; non-leader
+// clients send this command with is_response = 0 to request a change; the leader serializes them and replies with
+// is_response = 1 to commit each change.
 
-struct Ep3CounterPlayerEntry {
-  /* 00 */ uint8_t is_valid; // Must be 0, 1, or 2
-  /* 01 */ uint8_t entry_type; // Must be 0, 1, or 2
-  /* 02 */ uint8_t client_id; // Must be 0, 1, 2, 3, or 4
-  /* 03 */ uint8_t client_id2; // Must be 0, 1, 2, 3, or 4
+struct Ep3CounterPlayerEntryTrial {
+  /* 00 */ uint8_t entry_state; // 0 = empty, 1 = client is choosing a deck, 2 = deck selected
+  /* 01 */ uint8_t entry_type; // 0 = none, 1 = human, 2 = COM
+  /* 02 */ uint8_t client_id; // Human player's client ID; ignored for COMs
+  /* 03 */ uint8_t owner_client_id; // Client controlling this slot/selection (4 = no human owner)
   /* 04 */ pstring<TextEncoding::MARKED, 20> player_name; // Must be 16 chars or shorter
   /* 18 */ pstring<TextEncoding::MARKED, 25> deck_name;
-  /* 31 */ uint8_t deck_type; // Must be 0, 1, or FF
-  /* 32 */ uint8_t unknown_a1a; // Must be 0, 1, 2, or 4
-  /* 33 */ uint8_t unknown_a1b; // Must be < 0x1A
-  /* 34 */ be_uint16_t unknown_a3;
-  /* 36 */ le_int16_t unknown_a2; // Must be >= 0
-  /* 38 */ parray<le_uint16_t, 0x1F> card_ids; // Must all be nonzero if and only if is_valid is 2
+  /* 31 */ uint8_t deck_type; // 0 = Hunters, 1 = Arkz, FF = unspecified
+  /* 32 */ uint8_t controller_port;
+  /* 33 */ uint8_t deck_id; // From DeckDefinition::unknown_a1
+  /* 34 */ be_int16_t ai_params_index; // Only used for COMs
+  /* 36 */ le_int16_t player_level; // Player's CARD level (must be >= 0)
+  /* 38 */ parray<le_uint16_t, 0x1F> card_ids; // Must be all zeroes if entry_state != 2; otherwise must be all nonzero
   /* 76 */ parray<uint8_t, 2> unused;
-  /* 78 */ le_int32_t unknown_a5; // Must be >= 0
-  /* 7C */ be_uint16_t unknown_a6;
-  /* 7E */ be_uint16_t unknown_a7;
+  /* 78 */
+} __packed_ws__(Ep3CounterPlayerEntryTrial, 0x78);
+
+struct Ep3CounterPlayerEntry : Ep3CounterPlayerEntryTrial {
+  /* 78 */ le_int32_t play_time_seconds; // Only used for human players
+  /* 7C */ le_uint16_t win_count; // Only used for human players
+  /* 7E */ le_uint16_t loss_count; // Only used for human players
   /* 80 */
 } __packed_ws__(Ep3CounterPlayerEntry, 0x80);
 
-struct G_SetDeckInBattleSetupMenu_Ep3_6xB5x2F {
-  G_CardBattleCommandHeader header = {0xB5, sizeof(G_SetDeckInBattleSetupMenu_Ep3_6xB5x2F) / 4, 0, 0x2F, 0, 0, 0};
-  uint8_t unknown_c1; // Must be 0 or 1
-  uint8_t menu_item_index; // Must be 1, 2, 4, or 5
-  uint8_t unknown_c3;
-  uint8_t unknown_c4;
-  Ep3CounterPlayerEntry entry;
-} __packed_ws__(G_SetDeckInBattleSetupMenu_Ep3_6xB5x2F, 0x8C);
+template <typename EntryT>
+struct G_SetDeckInBattleSetupMenuT_Ep3_6xB5x2F {
+  /* 00 */ G_CardBattleCommandHeader header = {0xB5, sizeof(G_SetDeckInBattleSetupMenuT_Ep3_6xB5x2F<EntryT>) / 4, 0, 0x2F, 0, 0, 0};
+  /* 08 */ uint8_t is_response;
+  /* 09 */ uint8_t menu_item_index; // Must be 1, 2, 4, or 5 (refers to line number in the deck choice menu)
+  /* 0A */ uint8_t menu_type; // Should be < 0x15, but is not bounds-checked
+  /* 0B */ uint8_t unused;
+  /* 0C */ EntryT entry;
+} __attribute__((packed));
+using G_SetDeckInBattleSetupMenu_Ep3NTE_6xB5x2F = G_SetDeckInBattleSetupMenuT_Ep3_6xB5x2F<Ep3CounterPlayerEntryTrial>;
+using G_SetDeckInBattleSetupMenu_Ep3_6xB5x2F = G_SetDeckInBattleSetupMenuT_Ep3_6xB5x2F<Ep3CounterPlayerEntry>;
+check_struct_size(G_SetDeckInBattleSetupMenu_Ep3NTE_6xB5x2F, 0x84);
+check_struct_size(G_SetDeckInBattleSetupMenu_Ep3_6xB5x2F, 0x8C);
 
 // 6xB5x30: Unused
 // The client never sends this command, and when the client receives this command, it does nothing. It's likely that
@@ -6652,31 +6705,40 @@ struct G_Unused_Ep3_6xB5x30 {
 } __packed_ws__(G_Unused_Ep3_6xB5x30, 8);
 
 // 6xB5x31: Confirm deck selection
+// This command uses the same is_response semantics as 6xB5x2F.
 
 struct G_ConfirmDeckSelection_Ep3_6xB5x31 {
-  G_CardBattleCommandHeader header = {0xB5, sizeof(G_ConfirmDeckSelection_Ep3_6xB5x31) / 4, 0, 0x31, 0, 0, 0};
-  uint8_t unknown_a1 = 0; // Must be 0 or 1
-  uint8_t unknown_a2 = 0; // Must be < 4
-  uint8_t unknown_a3 = 0; // Must be 0xFF or < 4
-  uint8_t unknown_a4 = 0; // Must be less than 0x14
-  uint8_t menu_type = 0; // Not bounds-checked; should be < 0x15
-  parray<uint8_t, 3> unused;
+  /* 00 */ G_CardBattleCommandHeader header = {0xB5, sizeof(G_ConfirmDeckSelection_Ep3_6xB5x31) / 4, 0, 0x31, 0, 0, 0};
+  /* 08 */ uint8_t is_response = 0;
+  // Values for action:
+  //   0 = set target_client_id ready
+  //   1 = set target_client_id not ready
+  //   2 = set all clients not ready
+  //   3 = change menu state without changing readiness
+  /* 09 */ uint8_t action = 0;
+  /* 0A */ uint8_t target_client_id = 0;
+  /* 0B */ uint8_t menu_state = 0; // Must be < 0x14
+  /* 0C */ uint8_t menu_type = 0; // Must be < 0x15; not bounds-checked
+  /* 0D */ parray<uint8_t, 3> unused;
+  /* 10 */
 } __packed_ws__(G_ConfirmDeckSelection_Ep3_6xB5x31, 0x10);
 
-// 6xB5x32: Move shared menu cursor
+// 6xB5x32: Sync shared menu state
+// Synchronizes cursor movement, confirmation, and cancellation in battle setup menus. The leader controls the menus;
+// other clients replay the leader's actions locally via this command.
 
-struct G_MoveSharedMenuCursor_Ep3_6xB5x32 {
-  /* 00 */ G_CardBattleCommandHeader header = {0xB5, sizeof(G_MoveSharedMenuCursor_Ep3_6xB5x32) / 4, 0, 0x32, 0, 0, 0};
-  /* 08 */ le_int16_t selected_item_index = -1; // Must not be < -1
-  /* 0A */ le_int16_t chosen_item_index = -1; // Must not be < -1
-  /* 0C */ uint8_t unknown_a1 = 0; // Must be 0, 1, or 2
-  /* 0D */ uint8_t unknown_a2 = 0; // Must be less than 0x14
-  /* 0E */ uint8_t unknown_a3 = 0; // Must be less than 0x14
-  /* 0F */ uint8_t unknown_a4 = 0; // Must be 0 or 1
-  /* 10 */ uint8_t menu_type = 0; // Not bounds-checked; should be < 0x15
+struct G_SyncSharedMenuState_Ep3_6xB5x32 {
+  /* 00 */ G_CardBattleCommandHeader header = {0xB5, sizeof(G_SyncSharedMenuState_Ep3_6xB5x32) / 4, 0, 0x32, 0, 0, 0};
+  /* 08 */ le_int16_t selected_item_index = -1; // Used by action 0; must be >= -1.
+  /* 0A */ le_int16_t chosen_item_index = -1; // Used by action 1; must be >= -1.
+  /* 0C */ uint8_t action = 0; // 0 = move cursor, 1 = confirm, 2 = cancel
+  /* 0D */ uint8_t target_menu_type = 0; // Must be < 0x15
+  /* 0E */ uint8_t menu_state = 0; // Must be < 0x14
+  /* 0F */ uint8_t is_cancel = 0; // Unused, but set to 1 if action == 2
+  /* 10 */ uint8_t menu_type = 0; // Must be < 0x15, but is not bounds-checked
   /* 11 */ parray<uint8_t, 3> unused;
   /* 14 */
-} __packed_ws__(G_MoveSharedMenuCursor_Ep3_6xB5x32, 0x14);
+} __packed_ws__(G_SyncSharedMenuState_Ep3_6xB5x32, 0x14);
 
 // 6xB4x33: Subtract ally ATK points (e.g. for photon blast)
 
@@ -6708,10 +6770,11 @@ struct G_PhotonBlastStatus_Ep3_6xB4x35 {
 } __packed_ws__(G_PhotonBlastStatus_Ep3_6xB4x35, 0x0C);
 
 // 6xB5x36: Recreate player
-// Setting client_id to a value 4 or greater while in a game causes the player to be temporarily replaced with a
-// default HUmar and placed inside the central column in the Morgue, rendering them unable to move. The only ways out
-// of this predicament appear to be either to disconnect (e.g. select Quit Game from the pause menu) or receive an ED
-// (force leave game) command.
+// This command informs the other players in a game that the specified player has completed the post-battle sequence
+// (results and card draws) and has returned to the Morgue, so their TObjPlayer should be recreated. Setting client_id
+// to a value 4 or greater while in a game causes the player to be temporarily replaced with a default HUmar and placed
+// inside the central column in the Morgue, rendering them unable to move. The only ways out of this predicament appear
+// to be either to disconnect (e.g. select Quit Game from the pause menu) or receive an ED (force leave game) command.
 
 struct G_RecreatePlayer_Ep3_6xB5x36 {
   G_CardBattleCommandHeader header = {0xB5, sizeof(G_RecreatePlayer_Ep3_6xB5x36) / 4, 0, 0x36, 0, 0, 0};
@@ -6795,21 +6858,18 @@ struct G_SetTournamentPlayerDecksT_Ep3_6xB4x3D {
   struct Entry {
     /* 00 */ uint8_t type = 0; // 0 = no player, 1 = human, 2 = COM
     /* 01 */ pstring<TextEncoding::MARKED, 0x10> player_name;
-    /* 11 */ pstring<TextEncoding::MARKED, 0x10> deck_name; // Only used for COM players
-    /* 21 */ parray<uint8_t, 5> unknown_a1;
-    /* 26 */ parray<le_uint16_t, 0x1F> card_ids; // Can be blank for human players
+    /* 11 */ pstring<TextEncoding::MARKED, 0x15> deck_name; // Only used for COM players
+    /* 26 */ parray<le_uint16_t, 0x1F> card_ids; // Used for COMs; can be blank for human players
     /* 64 */ uint8_t client_id = 0; // Unused for COMs
-    /* 65 */ uint8_t unknown_a4 = 0;
-    /* 66 */ le_uint16_t unknown_a2 = 0;
-    /* 68 */ le_uint16_t unknown_a3 = 0;
+    /* 65 */ uint8_t unused = 0;
+    /* 66 */ le_int16_t player_level = 0;
+    /* 68 */ le_int16_t ai_params_index = 0; // If human, this is used if the player disconnects mid-battle
     /* 6A */
   } __packed_ws__(Entry, 0x6A);
-  /* 0014:001C */ parray<Entry, 4> entries;
+  /* 0014:001C */ parray<Entry, 4> entries; // [0] and [1] are team A, [2] and [3] are team B
   /* 01BC:01C4 */ le_uint32_t map_number = 0;
   /* 01C0:01C8 */ uint8_t player_slot = 0; // Which deck slot is editable by the client
-  /* 01C1:01C9 */ uint8_t unknown_a3 = 0;
-  /* 01C2:01CA */ uint8_t unknown_a4 = 0;
-  /* 01C3:01CB */ uint8_t unknown_a5 = 0;
+  /* 01C1:01C9 */ parray<uint8_t, 3> unused;
   /* 01C4:01CC */
 } __attribute__((packed));
 

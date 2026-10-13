@@ -1472,6 +1472,8 @@ struct COMDeckDefinition {
   std::string player_name;
   std::string deck_name;
   parray<le_uint16_t, 0x1F> card_ids;
+  int8_t ai_params_index;
+  uint16_t player_level;
 
   phosg::JSON json() const;
 };

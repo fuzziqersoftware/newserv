@@ -340,9 +340,20 @@ void send_ep3_change_music(std::shared_ptr<Channel> ch, uint32_t song);
 void send_revive_player(std::shared_ptr<Client> c);
 
 void send_game_join_sync_command(
-    std::shared_ptr<Client> c, const void* data, size_t size, uint8_t dc_nte_sc, uint8_t dc_11_2000_sc, uint8_t sc);
+    std::shared_ptr<Client> c,
+    const void* data,
+    size_t size,
+    uint8_t dc_nte_sc,
+    uint8_t dc_11_2000_sc,
+    uint8_t gc_nte_sc,
+    uint8_t sc);
 void send_game_join_sync_command(
-    std::shared_ptr<Client> c, const std::string& data, uint8_t dc_nte_sc, uint8_t dc_11_2000_sc, uint8_t sc);
+    std::shared_ptr<Client> c,
+    const std::string& data,
+    uint8_t dc_nte_sc,
+    uint8_t dc_11_2000_sc,
+    uint8_t gc_nte_sc,
+    uint8_t sc);
 void send_game_join_sync_command_compressed(
     std::shared_ptr<Client> c,
     const void* data,
@@ -350,6 +361,7 @@ void send_game_join_sync_command_compressed(
     size_t decompressed_size,
     uint8_t dc_nte_sc,
     uint8_t dc_11_2000_sc,
+    uint8_t gc_nte_sc,
     uint8_t sc);
 void send_game_item_state(std::shared_ptr<Client> c);
 void send_game_enemy_state(std::shared_ptr<Client> c);

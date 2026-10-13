@@ -2632,16 +2632,16 @@ asio::awaitable<void> send_change_player_hp(
 }
 
 asio::awaitable<void> send_remove_negative_conditions(std::shared_ptr<Client> c) {
-  G_AddOrRemoveStatusEffect_6x0C_6x0D cmd;
-  cmd.header = {0x0C, sizeof(G_AddOrRemoveStatusEffect_6x0C_6x0D) >> 2, c->lobby_client_id};
+  G_AddStatusEffect_6x0C cmd;
+  cmd.header = {0x0C, sizeof(G_AddStatusEffect_6x0C) >> 2, c->lobby_client_id};
   cmd.effect_type = 7; // Healing ring
   cmd.amount = 0;
   co_await send_protected_command(c, &cmd, sizeof(cmd), true);
 }
 
 void send_remove_negative_conditions(std::shared_ptr<Channel> ch, uint16_t client_id) {
-  G_AddOrRemoveStatusEffect_6x0C_6x0D cmd;
-  cmd.header = {0x0C, sizeof(G_AddOrRemoveStatusEffect_6x0C_6x0D) >> 2, client_id};
+  G_AddStatusEffect_6x0C cmd;
+  cmd.header = {0x0C, sizeof(G_AddStatusEffect_6x0C) >> 2, client_id};
   cmd.effect_type = 7; // Healing ring
   cmd.amount = 0;
   ch->send(0x60, 0x00, &cmd, sizeof(cmd));
@@ -2670,19 +2670,30 @@ void send_ep3_change_music(std::shared_ptr<Channel> ch, uint32_t song) {
 }
 
 void send_game_join_sync_command(
-    std::shared_ptr<Client> c, const void* data, size_t size, uint8_t dc_nte_sc, uint8_t dc_11_2000_sc, uint8_t sc) {
+    std::shared_ptr<Client> c,
+    const void* data,
+    size_t size,
+    uint8_t dc_nte_sc,
+    uint8_t dc_11_2000_sc,
+    uint8_t gc_nte_sc,
+    uint8_t sc) {
   std::string compressed_data = bc0_compress(data, size);
   if (c->check_flag(Client::Flag::DEBUG_ENABLED)) {
     c->log.info_f("Compressed sync data from ({:X} -> {:X} bytes):", size, compressed_data.size());
     phosg::print_data(stderr, data, size);
   }
   send_game_join_sync_command_compressed(
-      c, compressed_data.data(), compressed_data.size(), size, dc_nte_sc, dc_11_2000_sc, sc);
+      c, compressed_data.data(), compressed_data.size(), size, dc_nte_sc, dc_11_2000_sc, gc_nte_sc, sc);
 }
 
 void send_game_join_sync_command(
-    std::shared_ptr<Client> c, const std::string& data, uint8_t dc_nte_sc, uint8_t dc_11_2000_sc, uint8_t sc) {
-  send_game_join_sync_command(c, data.data(), data.size(), dc_nte_sc, dc_11_2000_sc, sc);
+    std::shared_ptr<Client> c,
+    const std::string& data,
+    uint8_t dc_nte_sc,
+    uint8_t dc_11_2000_sc,
+    uint8_t gc_nte_sc,
+    uint8_t sc) {
+  send_game_join_sync_command(c, data.data(), data.size(), dc_nte_sc, dc_11_2000_sc, gc_nte_sc, sc);
 }
 
 void send_game_join_sync_command_compressed(
@@ -2692,6 +2703,7 @@ void send_game_join_sync_command_compressed(
     size_t decompressed_size,
     uint8_t dc_nte_sc,
     uint8_t dc_11_2000_sc,
+    uint8_t gc_nte_sc,
     uint8_t sc) {
   phosg::StringWriter w;
   if (is_pre_v1(c->version())) {
@@ -2704,7 +2716,7 @@ void send_game_join_sync_command_compressed(
     w.put(compressed_header);
   } else {
     G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E compressed_header;
-    compressed_header.header.basic_header.subcommand = sc;
+    compressed_header.header.basic_header.subcommand = (c->version() == Version::GC_NTE) ? gc_nte_sc : sc;
     compressed_header.header.basic_header.size = 0x00;
     compressed_header.header.basic_header.unused = 0x0000;
     compressed_header.header.size = (size + sizeof(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E) + 3) & (~3);
@@ -2777,7 +2789,7 @@ void send_game_item_state(std::shared_ptr<Client> c) {
   decompressed_w.put(decompressed_header);
   decompressed_w.write(floor_items_w.str());
   const auto& data = decompressed_w.str();
-  send_game_join_sync_command(c, data.data(), data.size(), 0x5E, 0x65, 0x6D);
+  send_game_join_sync_command(c, data.data(), data.size(), 0x5E, 0x65, 0x6D, 0x6D);
 
   // Items on floors 0x0F and above can't be sent in the 6x6D command, so we manually send 6x5D commands to create them
   // if needed
@@ -2816,7 +2828,7 @@ void send_game_object_state(std::shared_ptr<Client> c) {
         : (0x100 + l->map_state->index_for_object_state(c->version(), obj_st));
   }
 
-  send_game_join_sync_command(c, entries.data(), entries.size() * sizeof(entries[0]), 0x5D, 0x64, 0x6C);
+  send_game_join_sync_command(c, entries.data(), entries.size() * sizeof(entries[0]), 0x5D, 0x64, 0x6C, 0x6C);
 }
 
 void send_game_enemy_state(std::shared_ptr<Client> c) {
@@ -2836,7 +2848,7 @@ void send_game_enemy_state(std::shared_ptr<Client> c) {
     entry.total_damage = ene_st->total_damage;
   }
 
-  send_game_join_sync_command(c, entries.data(), entries.size() * sizeof(entries[0]), 0x5C, 0x63, 0x6B);
+  send_game_join_sync_command(c, entries.data(), entries.size() * sizeof(entries[0]), 0x5C, 0x63, 0x6B, 0x6B);
 }
 
 void send_game_set_state(std::shared_ptr<Client> c) {
@@ -2913,7 +2925,7 @@ void send_game_set_state(std::shared_ptr<Client> c) {
     w.extend_by(header.switch_flags_size, 0x00);
   }
 
-  send_game_join_sync_command(c, w.str(), 0x5F, 0x66, 0x6E);
+  send_game_join_sync_command(c, w.str(), 0x5F, 0x66, 0x6E, 0x6E);
 }
 
 template <typename CmdT>
@@ -3411,9 +3423,7 @@ void send_ep3_tournament_list_t(std::shared_ptr<Client> c, bool is_for_spectator
       throw std::logic_error("more than 32 tournaments exist");
     }
     auto& entry = cmd.entries[z];
-    entry.menu_id = is_for_spectator_team_create
-        ? MenuID::TOURNAMENTS_FOR_SPEC
-        : MenuID::TOURNAMENTS;
+    entry.menu_id = is_for_spectator_team_create ? MenuID::TOURNAMENTS_FOR_SPEC : MenuID::TOURNAMENTS;
     entry.item_id = tourn->get_menu_item_id();
     // TODO: What does it mean for a tournament to be locked? Should we support that?
     // TODO: Write appropriate round text (1st, 2nd, 3rd) here. This is nontrivial because unlike Sega's
@@ -3454,7 +3464,7 @@ void send_ep3_tournament_entry_list(
     auto& entry = cmd.entries[z];
     entry.menu_id = MenuID::TOURNAMENT_ENTRIES;
     entry.item_id = (tourn->get_menu_item_id() << 16) | z;
-    entry.unknown_a2 = team->num_rounds_cleared;
+    entry.rounds_cleared = team->num_rounds_cleared;
     entry.locked = team->password.empty() ? 0 : 1;
     if (tourn->get_state() != Episode3::Tournament::State::REGISTRATION) {
       entry.state = 2;
@@ -3661,7 +3671,8 @@ void send_ep3_set_tournament_player_decks_t(std::shared_ptr<Client> c) {
     auto& entry = cmd.entries[z];
     entry.player_name.clear();
     entry.deck_name.clear();
-    entry.unknown_a1.clear(0);
+    entry.unused = 0;
+    entry.player_level = 0;
     entry.card_ids.clear(0);
     entry.client_id = z;
   }
@@ -3670,19 +3681,22 @@ void send_ep3_set_tournament_player_decks_t(std::shared_ptr<Client> c) {
     for (size_t z = 0; z < team->players.size(); z++) {
       auto& entry = cmd.entries[base_index + z];
       const auto& player = team->players[z];
+      auto c = player.client.lock();
       if (player.is_human()) {
         entry.type = 1; // Human
         entry.player_name.encode(player.player_name, c->language());
         if (player.account_id == c->login->account->account_id) {
           cmd.player_slot = base_index + z;
         }
+        entry.player_level = c ? c->character_file()->disp.stats.level.load() : 0;
       } else {
         entry.type = 2; // COM
         entry.player_name.encode(player.com_deck->player_name, c->language());
         entry.deck_name.encode(player.com_deck->deck_name, c->language());
         entry.card_ids = player.com_deck->card_ids;
+        entry.ai_params_index = player.com_deck->ai_params_index;
+        entry.player_level = player.com_deck->player_level;
       }
-      entry.unknown_a2 = 6;
     }
   };
   add_entries_for_team(match->preceding_a->winner_team, 0);

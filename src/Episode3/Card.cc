@@ -693,7 +693,7 @@ int32_t Card::move_to_location(const Location& loc) {
         uint8_t trap_type = s->overlay_state.tiles[loc.y][loc.x] & 0x0F;
         uint16_t trap_card_id = s->overlay_state.trap_card_ids_nte[trap_type];
         if (other_ps->replace_assist_card_by_id(trap_card_id)) {
-          G_EnqueueAnimation_Ep3_6xB4x2C cmd;
+          G_SetAnimationMetadata_Ep3_6xB4x2C cmd;
           cmd.change_type = 1;
           cmd.client_id = other_ps->client_id;
           cmd.trap_card_id = trap_card_id;
@@ -707,7 +707,7 @@ int32_t Card::move_to_location(const Location& loc) {
     for (size_t warp_end = 0; warp_end < 2; warp_end++) {
       if ((s->warp_positions[warp_type][warp_end][0] == this->loc.x) &&
           (s->warp_positions[warp_type][warp_end][1] == this->loc.y)) {
-        G_EnqueueAnimation_Ep3_6xB4x2C cmd;
+        G_SetAnimationMetadata_Ep3_6xB4x2C cmd;
         cmd.loc.x = this->loc.x;
         cmd.loc.y = this->loc.y;
         this->loc.x = s->warp_positions[warp_type][warp_end ^ 1][0];
@@ -716,7 +716,7 @@ int32_t Card::move_to_location(const Location& loc) {
         cmd.card_refs.clear(0xFFFF);
         cmd.card_refs[0] = this->card_ref;
         cmd.trap_card_id = 0xFFFFFFFF;
-        cmd.unknown_a3 = 0xFFFFFFFF;
+        cmd.unused = 0xFFFFFFFF;
         s->send(cmd);
         return 0;
       }

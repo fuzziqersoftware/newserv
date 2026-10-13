@@ -1129,7 +1129,7 @@ void Server::move_phase_after() {
             auto sc_card = ps->get_sc_card();
             if (sc_card && (abs(sc_card->loc.x - trap_x) < 2) && (abs(sc_card->loc.y - trap_y) < 2) &&
                 ps->replace_assist_card_by_id(trap_card_id)) {
-              G_EnqueueAnimation_Ep3_6xB4x2C cmd;
+              G_SetAnimationMetadata_Ep3_6xB4x2C cmd;
               cmd.change_type = 0x01;
               cmd.client_id = client_id;
               cmd.card_refs.clear(0xFFFF);
@@ -1137,7 +1137,7 @@ void Server::move_phase_after() {
               cmd.loc.y = trap_y;
               cmd.loc.direction = static_cast<Direction>(trap_type);
               cmd.trap_card_id = trap_card_id;
-              cmd.unknown_a3 = 0xFFFFFFFF;
+              cmd.unused = 0xFFFFFFFF;
               this->send(cmd);
             }
           }
