@@ -3301,31 +3301,24 @@ static std::string name_for_entity_type(
 
   // When matching only by type or by (type, version), we can expect multiple matches
   if (version != Version::UNKNOWN) {
-    std::string ret;
+    std::set<std::string> matches;
     for (auto [it, end_it] = its; it != end_it; it++) {
       const auto* def = it->second;
       if (def->version_flags & version_mask) {
-        if (!ret.empty()) {
-          ret.push_back('/');
-        }
-        ret += def->name;
+        matches.emplace(def->name);
       }
     }
-    if (!ret.empty()) {
-      return ret;
+    if (!matches.empty()) {
+      return phosg::join(matches, "/");
     }
   }
 
-  std::string ret;
+  std::set<std::string> matches;
   for (auto [it, end_it] = its; it != end_it; it++) {
-    const auto* def = it->second;
-    if (!ret.empty()) {
-      ret.push_back('/');
-    }
-    ret += def->name;
+    matches.emplace(it->second->name);
   }
 
-  return ret.empty() ? std::format("__UNKNOWN_ENTITY_{:04X}__", type) : ret;
+  return matches.empty() ? std::format("__UNKNOWN_ENTITY_{:04X}__", type) : phosg::join(matches, "/");
 }
 
 static std::unordered_multimap<uint16_t, const DATEntityDefinition*> generate_entity_type_name_index(
