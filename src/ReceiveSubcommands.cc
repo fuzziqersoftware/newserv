@@ -3561,7 +3561,7 @@ static void on_incr_enemy_damage(std::shared_ptr<Client> c, SubcommandMessage& m
     c->log.info_f("Claiming last hit on E-{:03X}", ene_st->e_id);
     ene_st->set_last_hit_by_client_id(c->lobby_client_id);
   }
-  ene_st->total_damage = std::min<uint32_t>(ene_st->total_damage + cmd.hit_amount, cmd.max_hp);
+  ene_st->total_damage = std::clamp<int32_t>(ene_st->total_damage + cmd.hit_amount, 0, cmd.max_hp);
   if (ene_st->alias_target_ene_st) {
     if (cmd.hit_amount > 0) {
       c->log.info_f("Claiming last hit on E-{:03X} (alias of E-{:03X})",

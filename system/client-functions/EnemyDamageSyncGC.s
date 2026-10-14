@@ -160,7 +160,7 @@ handle_6xE4:  # [std] (G_IncrementEnemyDamage_Extension_6xE4* cmd @ r3) -> void
   bge       handle_6xE4_return
 
   bl        get_enemy_entity
-  stw       [r1 + 0x18], r3  # TObjEnemy* ene @ var18 = get_enemy_entity(cmd->header.entity_id);
+  stw       [r1 + 0x1C], r3  # TObjEnemy* ene @ var18 = get_enemy_entity(cmd->header.entity_id);
 
   li        r3, 2
   lhbrx     r3, [r31 + r3]
@@ -181,16 +181,16 @@ handle_6xE4:  # [std] (G_IncrementEnemyDamage_Extension_6xE4* cmd @ r3) -> void
 
   lis       r4, 0x4B00
   or        r5, r4, r8
-  stw       [r1 + 0x10], r5
-  lfs       f1, [r1 + 0x10]
-  stw       [r1 + 0x10], r4
-  lfs       f2, [r1 + 0x10]
+  stw       [r1 + 0x14], r5
+  lfs       f1, [r1 + 0x14]
+  stw       [r1 + 0x14], r4
+  lfs       f2, [r1 + 0x14]
   fsubs     f1, f1, f2  # f1 = static_cast<float>(current_hp)
   lfs       f2, [r31 + 0x0C]
   fmuls     f1, f1, f2
   fctiwz    f1, f1
-  stfd      [r1 + 0x10], f1
-  lwz       r8, [r1 + 0x14]
+  stfd      [r1 + 0x14], f1
+  lwz       r8, [r1 + 0x18]
   li        r4, 1
   cmp       r8, r4
   bge       handle_6xE4_proportional_positive
@@ -204,6 +204,7 @@ handle_6xE4_not_proportional:
   lhz       r4, [r3 + 6]  # st->total_damage
   li        r5, 0x04
   lhbrx     r5, [r31 + r5]  # cmd->hit_amount
+  extsh     r5, r5
   add       r4, r4, r5  # st->total_damage + cmd->hit_amount
   li        r5, 0x0A
   lhbrx     r5, [r31 + r5]  # cmd->max_hp
@@ -218,17 +219,17 @@ handle_6xE4_not_proportional:
   stw       [r3], r4  # st->game_flags |= 0x800;
 
   # Send 6x0A with dead flag, but only if the entity is constructed
-  lwz       r6, [r1 + 0x18]
+  lwz       r6, [r1 + 0x1C]
   cmplwi    r6, 0
   beq       handle_6xE4_return
-  stw       [r1 + 0x14], r4
-  li        r6, 0x12
+  stw       [r1 + 0x18], r4
+  li        r6, 0x16
   sthbrx    [r1 + r6], r5
   lhz       r6, [r31 + 2]
   oris      r6, r6, 0x0A03
-  stw       [r1 + 0x0C], r6
+  stw       [r1 + 0x10], r6
   andi.     r6, r6, 0xFF0F
-  sth       [r1 + 0x10], r6
+  sth       [r1 + 0x14], r6
   addi      r3, r1, 0x0C
   bl        send_and_handle_60
   b         handle_6xE4_return
@@ -241,7 +242,7 @@ handle_6xE4_damage_nonnegative:
   sth       [r3 + 6], r4  # st->total_damage = std::max<int16_t>(st->total_damage + cmd->hit_amount, 0);
   mr        r30, r3
 
-  lwz       r3, [r1 + 0x18]  # if (ene) ene->v50_on_state_updated(&st);
+  lwz       r3, [r1 + 0x1C]  # if (ene) ene->v50_on_state_updated(&st);
   cmplwi    r3, 0
   beq       handle_6xE4_return
   mr        r4, r30
