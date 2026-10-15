@@ -1,5 +1,7 @@
 #pragma once
 
+#include <math.h>
+
 #include <phosg/Encoding.hh>
 #include <phosg/Strings.hh>
 #include <phosg/Vector.hh>
