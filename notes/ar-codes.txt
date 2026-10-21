@@ -1160,3 +1160,14 @@ Remove menu background grid effect
 
 Full dressing room
 3OE1 => 04297750 60000000
+
+Use specified section ID for client-side drops
+(Replace X with a number 0-9; section IDs are numbered as specified in name_to_section_id in StaticGameData.cc)
+3OJ2 => 040FD500 3860000X
+3OJ3 => 040FD6E8 3860000X
+3OJ4 => 040FD708 3860000X
+3OJ5 => 040FD668 3860000X
+3OE0 => 040FD7A4 3860000X
+3OE1 => 040FD7A4 3860000X
+3OE2 => 040FD678 3860000X
+3OP0 => 040FD868 3860000X
