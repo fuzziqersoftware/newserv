@@ -2335,7 +2335,7 @@ static std::shared_ptr<CommonItemSet> load_common_item_set(
 Action a_convert_common_item_set(
     "convert-common-item-set", "\
   convert-common-item-set INPUT-FILENAME [OUTPUT-FILENAME]\n\
-    Convert the input rare item set to a JSON representation and write it to\n\
+    Convert the input common item set to a JSON representation and write it to\n\
     OUTPUT-FILENAME or stdout. The input filename must end in one of the\n\
     following extensions:\n\
       .json (newserv JSON common item table)\n\

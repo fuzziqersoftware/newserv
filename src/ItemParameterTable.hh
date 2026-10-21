@@ -230,10 +230,10 @@ public:
     uint16_t amount = 0;
     uint16_t tech = 0; // Only used for technique disks
     int32_t cost = 0; // If stackable, cost for 1x of the item
-    // Bits in item_flags:
+    // item_flags is only used on v2 and later; it's ignored on v1. Bits:
     //   00000001 - ever usable by player ("Use" appears in inventory menu)
     //   00000002 - unknown
-    //   00000004 - unknown
+    //   00000004 - can be fed to mags
     //   00000008 - usable by android characters
     //   00000010 - usable in Pioneer 2 / Lab
     //   00000020 - usable in boss arenas

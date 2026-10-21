@@ -8,8 +8,7 @@ ItemNameIndex::ItemNameIndex(
     std::shared_ptr<const ItemParameterTable> item_parameter_table,
     std::shared_ptr<const ItemData::StackLimits> limits,
     const std::vector<std::string>& name_coll)
-    : item_parameter_table(item_parameter_table),
-      limits(limits) {
+    : item_parameter_table(item_parameter_table), limits(limits) {
 
   for (uint32_t primary_identifier : item_parameter_table->compute_all_valid_primary_identifiers()) {
     // 00000000 is a valid primary identifier but not a valid weapon; skip it
@@ -1442,8 +1441,12 @@ th {\n\
     }
   };
 
-  blocks.emplace_back("<table><tr><th colspan=\"14\">WEAPONS</th></tr>");
-  blocks.emplace_back("<tr><th>Hex</th><th>Team pts</th><th>Usability</th><th>Requirements</th><th>ATP</th><th>ATA</th><th>MST</th><th>Max grind</th><th>Special</th><th>Stat boosts</th><th>Tech boosts</th><th>Weapon class</th><th>Stars</th><th>Name</th></tr>");
+  blocks.emplace_back(std::format("<table><tr><th colspan=\"{}\">WEAPONS</th></tr>", 13 + is_v4(this->limits->version)));
+  blocks.emplace_back("<tr><th>Hex</th>");
+  if (is_v4(this->limits->version)) {
+    blocks.emplace_back("<th>Team pts</th>");
+  }
+  blocks.emplace_back("<th>Usability</th><th>Requirements</th><th>ATP</th><th>ATA</th><th>MST</th><th>Max grind</th><th>Special</th><th>Stat boosts</th><th>Tech boosts</th><th>Weapon class</th><th>Stars</th><th>Name</th></tr>");
   for (size_t data1_1 = 0; data1_1 < pmt->num_weapon_classes(); data1_1++) {
     uint8_t weapon_class = pmt->get_weapon_kind(data1_1);
     size_t data1_2_limit = pmt->num_weapons_in_class(data1_1);
@@ -1476,7 +1479,9 @@ th {\n\
 
       blocks.emplace_back("<tr>");
       blocks.emplace_back(std::format("<td>00{:02X}{:02X}</td>", data1_1, data1_2));
-      blocks.emplace_back(std::format("<td class=\"right\">{}</td>", w.team_points));
+      if (is_v4(this->limits->version)) {
+        blocks.emplace_back(std::format("<td class=\"right\">{}</td>", w.team_points));
+      }
       blocks.emplace_back(std::format("<td>{}</td>", format_usability_flags(w.usability_flags)));
       blocks.emplace_back(std::format("<td>{}</td>", phosg::join(requirements_tokens, ", ")));
       if (w.atp_min == 0 && w.atp_max == 0) {
@@ -1512,8 +1517,12 @@ th {\n\
   }
   blocks.emplace_back("</table>");
 
-  blocks.emplace_back("<table><tr><th colspan=\"15\">ARMORS</th></tr>");
-  blocks.emplace_back("<tr><th>Hex</th><th>Team pts</th><th>Usability</th><th>Req. level</th><th>DFP</th><th>EVP</th><th>EFR</th><th>ETH</th><th>EIC</th><th>EDK</th><th>ELT</th><th>Stat boosts</th><th>Tech boosts</th><th>Stars</th><th>Name</th></tr>");
+  blocks.emplace_back(std::format("<table><tr><th colspan=\"{}\">ARMORS</th></tr>", 14 + is_v4(this->limits->version)));
+  blocks.emplace_back("<tr><th>Hex</th>");
+  if (is_v4(this->limits->version)) {
+    blocks.emplace_back("<th>Team pts</th>");
+  }
+  blocks.emplace_back("<th>Usability</th><th>Req. level</th><th>DFP</th><th>EVP</th><th>EFR</th><th>ETH</th><th>EIC</th><th>EDK</th><th>ELT</th><th>Stat boosts</th><th>Tech boosts</th><th>Stars</th><th>Name</th></tr>");
   for (size_t data1_1 = 1; data1_1 < 3; data1_1++) {
     size_t data1_2_limit = pmt->num_armors_or_shields_in_class(data1_1);
     for (size_t data1_2 = 0; data1_2 < data1_2_limit; data1_2++) {
@@ -1527,7 +1536,9 @@ th {\n\
 
       blocks.emplace_back("<tr>");
       blocks.emplace_back(std::format("<td>01{:02X}{:02X}</td>", data1_1, data1_2));
-      blocks.emplace_back(std::format("<td class=\"right\">{}</td>", a.team_points));
+      if (is_v4(this->limits->version)) {
+        blocks.emplace_back(std::format("<td class=\"right\">{}</td>", a.team_points));
+      }
       blocks.emplace_back(std::format("<td>{}</td>", format_usability_flags(a.usability_flags)));
       blocks.emplace_back(std::format("<td class=\"right\">{}</td>", a.required_level + 1));
       if (a.dfp_range == 0 && a.dfp == 0) {
@@ -1558,8 +1569,12 @@ th {\n\
   }
   blocks.emplace_back("</table>");
 
-  blocks.emplace_back("<table><tr><th colspan=\"5\">UNITS</th></tr>");
-  blocks.emplace_back("<tr><th>Hex</th><th>Team pts</th><th>Stats</th><th>Stars</th><th>Name</th></tr>");
+  blocks.emplace_back(std::format("<table><tr><th colspan=\"{}\">UNITS</th></tr>", 4 + is_v4(this->limits->version)));
+  blocks.emplace_back("<tr><th>Hex</th>");
+  if (is_v4(this->limits->version)) {
+    blocks.emplace_back("<th>Team pts</th>");
+  }
+  blocks.emplace_back("<th>Stats</th><th>Stars</th><th>Name</th></tr>");
   for (size_t data1_2 = 0; data1_2 < pmt->num_units(); data1_2++) {
     const auto& u = pmt->get_unit(data1_2);
     uint8_t stars = pmt->get_item_stars(u.id);
@@ -1661,7 +1676,9 @@ th {\n\
 
     blocks.emplace_back("<tr>");
     blocks.emplace_back(std::format("<td>0103{:02X}</td>", data1_2));
-    blocks.emplace_back(std::format("<td class=\"right\">{}</td>", u.team_points));
+    if (is_v4(this->limits->version)) {
+      blocks.emplace_back(std::format("<td class=\"right\">{}</td>", u.team_points));
+    }
     blocks.emplace_back(std::format("<td>{}</td>", stat_str));
     blocks.emplace_back(std::format("<td>{}</td>", format_stars(stars)));
     blocks.emplace_back(format_name_cell(item));
@@ -1733,8 +1750,16 @@ th {\n\
   }
   blocks.emplace_back("</table>");
 
-  blocks.emplace_back("<table><tr><th colspan=\"7\">TOOLS</th></tr>");
-  blocks.emplace_back("<tr><th>Hex</th><th>Team pts</th><th>Amount</th><th>Tech</th><th>Cost</th><th>Flags</th><th>Name</th></tr>");
+  blocks.emplace_back(std::format("<table><tr><th colspan=\"{}\">TOOLS</th></tr>", 5 + (!is_v1(this->limits->version)) + is_v4(this->limits->version)));
+  blocks.emplace_back("<tr><th>Hex</th>");
+  if (is_v4(this->limits->version)) {
+    blocks.emplace_back("<th>Team pts</th>");
+  }
+  blocks.emplace_back("<th>Amount</th><th>Tech</th><th>Cost</th>");
+  if (!is_v1(this->limits->version)) {
+    blocks.emplace_back("<th>Flags</th>");
+  }
+  blocks.emplace_back("<th>Name</th></tr>");
   for (size_t data1_1 = 0; data1_1 < pmt->num_tool_classes(); data1_1++) {
     size_t data1_2_limit = pmt->num_tools_in_class(data1_1);
     for (size_t data1_2 = 0; data1_2 < data1_2_limit; data1_2++) {
@@ -1747,28 +1772,35 @@ th {\n\
       item.set_tool_item_amount(*this->limits, 1);
 
       std::vector<std::string> flags_tokens;
-      if (!(t.item_flags & 0x01)) {
-        flags_tokens.emplace_back("unusable");
-      }
-      if (!(t.item_flags & 0x08)) {
-        flags_tokens.emplace_back("unusable by Androids");
-      }
-      if (!(t.item_flags & 0x10)) {
-        flags_tokens.emplace_back("unusable in city");
-      }
-      if (!(t.item_flags & 0x20)) {
-        flags_tokens.emplace_back("unusable in boss arenas");
-      }
-      if (!(t.item_flags & 0x40)) {
-        flags_tokens.emplace_back("unusable in Challenge");
-      }
-      if (t.item_flags & 0x80) {
-        flags_tokens.emplace_back("rare");
+      if (!is_v1(this->limits->version)) {
+        if (!(t.item_flags & 0x01)) {
+          flags_tokens.emplace_back("unusable");
+        }
+        if (t.item_flags & 0x04) {
+          flags_tokens.emplace_back("feedable");
+        }
+        if (!(t.item_flags & 0x08)) {
+          flags_tokens.emplace_back("unusable by Androids");
+        }
+        if (!(t.item_flags & 0x10)) {
+          flags_tokens.emplace_back("unusable in city");
+        }
+        if (!(t.item_flags & 0x20)) {
+          flags_tokens.emplace_back("unusable in boss arenas");
+        }
+        if (!(t.item_flags & 0x40)) {
+          flags_tokens.emplace_back("unusable in Challenge");
+        }
+        if (t.item_flags & 0x80) {
+          flags_tokens.emplace_back("rare");
+        }
       }
 
       blocks.emplace_back("<tr>");
       blocks.emplace_back(std::format("<td>03{:02X}{:02X}</td>", data1_1, data1_2));
-      blocks.emplace_back(std::format("<td class=\"right\">{}</td>", t.team_points));
+      if (is_v4(this->limits->version)) {
+        blocks.emplace_back(std::format("<td class=\"right\">{}</td>", t.team_points));
+      }
       blocks.emplace_back(std::format("<td class=\"right\">{}</td>", t.amount));
       if (data1_1 == 2) {
         blocks.emplace_back(std::format("<td>{}</td>", name_for_technique(t.tech)));
@@ -1776,7 +1808,13 @@ th {\n\
         blocks.emplace_back("<td></td>");
       }
       blocks.emplace_back(std::format("<td class=\"right\">{}</td>", t.cost));
-      blocks.emplace_back(std::format("<td>{}</td>", phosg::join(flags_tokens, ", ")));
+      if (!is_v1(this->limits->version)) {
+        if (flags_tokens.empty()) {
+          blocks.emplace_back(std::format("<td>{:02X}</td>", t.item_flags));
+        } else {
+          blocks.emplace_back(std::format("<td>{:02X}: {}</td>", t.item_flags, phosg::join(flags_tokens, ", ")));
+        }
+      }
       blocks.emplace_back(format_name_cell(item));
       blocks.emplace_back("</tr>");
     }

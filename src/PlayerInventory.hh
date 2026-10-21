@@ -55,9 +55,9 @@ struct PlayerInventoryItemT {
   //   0004 = is equippable item type ("Equip" appears in menu)
   //   0008 = is equipped
   //   0010 = is consumable item type (item is automatically deleted when used; also applies to Present)
-  //   0020 = TODO (3OE1:8010B2DC, 3OE1:80120744)
-  //   0040 = hidden (model does not render, no related effects are created, no related sounds are played)
-  //   0080 = TODO (3OE1:TItem_check_flag80; pssibly temp flag only used in Tekker sequence)
+  //   0020 = don't animate when equipping
+  //   0040 = hide item model and effects/sounds when equipped (used in Pioneer 2 / Lab)
+  //   0080 = cannot be sold, deposited, or dropped
   //   0100 = has kill count
   //   0200 = kill count limit has been reached (item can be unsealed)
   //   0400 = wrapped
