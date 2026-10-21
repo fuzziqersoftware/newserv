@@ -3786,67 +3786,93 @@ void send_ep3_set_tournament_player_decks(std::shared_ptr<Client> c) {
   }
 }
 
-void send_ep3_update_game_metadata(std::shared_ptr<Lobby> l) {
-  size_t total_spectators = 0;
-  for (auto watcher_l : l->watcher_lobbies) {
-    for (auto c : watcher_l->clients) {
-      total_spectators += (c.get() != nullptr);
-    }
-  }
+struct Ep3GameMetadata {
+  bool is_valid = false;
+  uint16_t local_spectators = 0;
+  uint16_t total_spectators = 0;
+  std::string text;
 
-  auto s = l->require_server_state();
+  static Ep3GameMetadata from_lobby(std::shared_ptr<Lobby> l) {
+    Ep3GameMetadata ret;
 
-  {
-    G_SetGameMetadata_Ep3_6xB4x52 cmd;
-    cmd.total_spectators = total_spectators;
-    for (auto c : l->clients) {
-      if (c) {
-        if ((c->version() == Version::GC_EP3) && !(s->data->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
-          G_SetGameMetadata_Ep3_6xB4x52 masked_cmd = cmd;
-          uint8_t mask_key = (phosg::random_object<uint32_t>() % 0xFF) + 1;
-          set_mask_for_ep3_game_command(&masked_cmd, sizeof(masked_cmd), mask_key);
-          send_command_t(c, 0xC9, 0x00, masked_cmd);
-        } else {
-          send_command_t(c, 0xC9, 0x00, cmd);
-        }
-      }
+    bool is_spectator = l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM);
+    auto primary_l = is_spectator ? l->watched_lobby.lock() : l;
+    if (!primary_l || !primary_l->ep3_server || primary_l->ep3_server->battle_finished) {
+      return ret;
     }
-  }
-  if (!l->watcher_lobbies.empty()) {
-    std::string text;
-    auto tourn = l->tournament_match ? l->tournament_match->tournament.lock() : 0;
-    if (l->tournament_match && tourn) {
-      if (tourn->get_final_match() == l->tournament_match) {
-        text = std::format("Viewing final match of tournament {}", tourn->get_name());
+
+    for (auto watcher_l : primary_l->watcher_lobbies) {
+      ret.total_spectators += watcher_l->count_clients();
+    }
+
+    if (is_spectator) {
+      ret.local_spectators = l->count_clients();
+      auto tourn = primary_l->tournament_match ? primary_l->tournament_match->tournament.lock() : nullptr;
+      if (!tourn) {
+        ret.text = "Viewing battle in game " + primary_l->name;
+      } else if (tourn->get_final_match() != primary_l->tournament_match) {
+        ret.text = std::format(
+            "Viewing battle in round {} of tournament {}", primary_l->tournament_match->round_num, tourn->get_name());
       } else {
-        text = std::format("Viewing match in round {} of tournament {}", l->tournament_match->round_num, tourn->get_name());
+        ret.text = std::format("Viewing final battle of tournament {}", tourn->get_name());
       }
+      add_color_inplace(ret.text);
+    }
+
+    ret.is_valid = true;
+    return ret;
+  }
+
+  void send_to_client(std::shared_ptr<Client> c) const {
+    if (!this->is_valid) {
+      return; // Couldn't compute metadata for some reason; don't send anything
+    }
+    if (c->version() != Version::GC_EP3) {
+      return; // Not valid on Ep3 NTE
+    }
+
+    G_SetGameMetadata_Ep3_6xB4x52 cmd;
+    cmd.local_spectators = this->local_spectators;
+    cmd.total_spectators = this->total_spectators;
+    if (this->text == c->ep3_game_metadata_text) {
+      cmd.text_size = 0xFFFF; // Don't update text (so scrolling won't be interrupted)
     } else {
-      text = "Viewing battle in game " + l->name;
+      cmd.text.encode(this->text, c->language());
+      cmd.text_size = cmd.text.used_chars_8();
     }
-    add_color_inplace(text);
-    for (auto watcher_l : l->watcher_lobbies) {
-      G_SetGameMetadata_Ep3_6xB4x52 cmd;
-      cmd.local_spectators = 0;
-      for (auto c : watcher_l->clients) {
-        cmd.local_spectators += (c.get() != nullptr);
-      }
-      cmd.total_spectators = total_spectators;
-      cmd.text_size = text.size();
-      cmd.text.encode(text, Language::ENGLISH);
-      for (auto c : watcher_l->clients) {
-        if (c) {
-          if ((c->version() == Version::GC_EP3) && !(s->data->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
-            G_SetGameMetadata_Ep3_6xB4x52 masked_cmd = cmd;
-            uint8_t mask_key = (phosg::random_object<uint32_t>() % 0xFF) + 1;
-            set_mask_for_ep3_game_command(&masked_cmd, sizeof(masked_cmd), mask_key);
-            send_command_t(c, 0xC9, 0x00, masked_cmd);
-          } else {
-            send_command_t(c, 0xC9, 0x00, cmd);
-          }
-        }
+
+    auto s = c->require_server_state();
+    if (!(s->data->ep3_behavior_flags & Episode3::BehaviorFlag::DISABLE_MASKING)) {
+      set_mask_for_ep3_game_command(&cmd, sizeof(cmd), (phosg::random_object<uint32_t>() % 0xFF) + 1);
+    }
+    send_command_t(c, 0xC9, 0x00, cmd);
+    c->ep3_game_metadata_text = text;
+  }
+};
+
+void send_ep3_update_game_metadata(std::shared_ptr<Lobby> l) {
+  auto meta = Ep3GameMetadata::from_lobby(l);
+  for (auto lc : l->clients) {
+    if (lc) {
+      meta.send_to_client(lc);
+    }
+  }
+  for (auto watcher_l : l->watcher_lobbies) {
+    for (auto lc : watcher_l->clients) {
+      if (lc) {
+        meta.send_to_client(lc);
       }
     }
+  }
+}
+
+void send_ep3_update_game_metadata(std::shared_ptr<Client> c) {
+  if (c->version() != Version::GC_EP3) {
+    return; // Not valid on Ep3 NTE
+  }
+  auto l = c->lobby.lock();
+  if (l && l->is_game() && l->is_ep3()) {
+    Ep3GameMetadata::from_lobby(l).send_to_client(c);
   }
 }
 

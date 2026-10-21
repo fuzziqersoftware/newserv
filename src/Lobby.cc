@@ -419,6 +419,7 @@ void Lobby::add_client(std::shared_ptr<Client> c, ssize_t required_client_id) {
 
   c->lobby_client_id = index;
   c->lobby = this->weak_from_this();
+  c->ep3_game_metadata_text.clear();
   c->lobby_arrow_color = 0;
 
   // If there's no one else in the lobby, set the leader id as well
@@ -469,14 +470,10 @@ void Lobby::add_client(std::shared_ptr<Client> c, ssize_t required_client_id) {
   }
 
   // Send spectator count notifications if needed
-  if (this->is_game() && this->is_ep3()) {
-    if (this->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM)) {
-      auto watched_l = this->watched_lobby.lock();
-      if (watched_l) {
-        send_ep3_update_game_metadata(watched_l);
-      }
-    } else {
-      send_ep3_update_game_metadata(this->shared_from_this());
+  if (this->is_game() && this->is_ep3() && this->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM)) {
+    auto watched_l = this->watched_lobby.lock();
+    if (watched_l) {
+      send_ep3_update_game_metadata(watched_l);
     }
   }
 
@@ -507,6 +504,7 @@ void Lobby::remove_client(std::shared_ptr<Client> c) {
     auto c_lobby = c->lobby.lock();
     if (c_lobby.get() == this) {
       c->lobby.reset();
+      c->ep3_game_metadata_text.clear();
     }
   }
 
@@ -518,14 +516,10 @@ void Lobby::remove_client(std::shared_ptr<Client> c) {
   }
 
   // If the lobby is Episode 3, update the appropriate spectator counts
-  if (this->is_game() && this->is_ep3()) {
-    if (this->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM)) {
-      auto watched_l = this->watched_lobby.lock();
-      if (watched_l) {
-        send_ep3_update_game_metadata(watched_l);
-      }
-    } else {
-      send_ep3_update_game_metadata(this->shared_from_this());
+  if (this->is_game() && this->is_ep3() && this->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM)) {
+    auto watched_l = this->watched_lobby.lock();
+    if (watched_l) {
+      send_ep3_update_game_metadata(watched_l);
     }
   }
 

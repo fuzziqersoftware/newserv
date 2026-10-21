@@ -1658,10 +1658,23 @@ void Server::setup_and_start_battle() {
 
   this->send_6xB4x46();
 
-  // Re-send game metadata to spectator teams, since loading the battle scene seems to delete it
+  // Send B1 (server time) to all relevant clients. The preceding 6xB4x05 causes the loading sequence to start; the B1
+  // command will cause the client to send 99, after which we can send 6xB4x52 (update game metadata) which will run
+  // after the necessary HUD objects are constructed.
   auto l = this->lobby.lock();
   if (l) {
-    send_ep3_update_game_metadata(l);
+    for (auto c : l->clients) {
+      if (c) {
+        send_server_time(c);
+      }
+    }
+    for (auto watcher_l : l->watcher_lobbies) {
+      for (auto c : watcher_l->clients) {
+        if (c) {
+          send_server_time(c);
+        }
+      }
+    }
   }
 }
 
@@ -2448,7 +2461,8 @@ void Server::handle_CAx34_subtract_ally_atk_points(std::shared_ptr<Client>, cons
   }
 }
 
-void Server::handle_CAx37_client_ready_to_advance_from_starter_roll_phase(std::shared_ptr<Client>, const std::string& data) {
+void Server::handle_CAx37_client_ready_to_advance_from_starter_roll_phase(
+    std::shared_ptr<Client>, const std::string& data) {
   const auto& in_cmd = check_size_t<G_AdvanceFromStartingRollsPhase_Ep3_CAx37>(data);
   this->send_debug_command_received_message(in_cmd.client_id, in_cmd.header.subsubcommand, "CHOOSE ORDER");
   if (in_cmd.client_id >= 4) {

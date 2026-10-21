@@ -7160,8 +7160,11 @@ struct G_TournamentMatchResult_Ep3_6xB4x51 {
 
 // 6xB4x52: Set game metadata
 // This command is not valid on Episode 3 Trial Edition.
-// This is sent to all players in a game and all attached spectator teams when any player joins or leaves any spectator
-// team watching the same game.
+// This command updates spectator counts when a player joins or leaves a spectator team watching the same game, and
+// optionally updates the text that appears in the top bar in the spectator room HUD. Annoyingly, this information is
+// stored in the HUD object on the client; there are a few different codepaths that re-create this object, which
+// effectively clears the state, so we have to re-send this command at various unintuitive times. See the callsites of
+// send_ep3_update_game_metadata for details.
 
 struct G_SetGameMetadata_Ep3_6xB4x52 {
   G_CardBattleCommandHeader header = {0xB4, sizeof(G_SetGameMetadata_Ep3_6xB4x52) / 4, 0, 0x52, 0, 0, 0};
@@ -7181,8 +7184,9 @@ struct G_SetGameMetadata_Ep3_6xB4x52 {
   le_uint16_t total_spectators = 0; // Clamped to [0, 999] by the client
   le_uint16_t unused = 0;
   // If text_size is not zero, the text is shown in the top bar instead of the usual message ("Viewing Battle", "Time
-  // left: XX:XX", and the like).
-  le_uint16_t text_size = 0;
+  // left: XX:XX", and the like). If text_size is negative, the counts are updated (as described above) and the text is
+  // not affected.
+  le_int16_t text_size = 0;
   pstring<TextEncoding::MARKED, 0x100> text;
 } __packed_ws__(G_SetGameMetadata_Ep3_6xB4x52, 0x110);
 

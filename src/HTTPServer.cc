@@ -560,7 +560,7 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
               {"Rules", ep3s->map_and_rules ? ep3s->map_and_rules->rules.json() : nullptr},
               {"Players", std::move(players_json)},
               {"IsBattleFinished", ep3s->battle_finished},
-              {"IsBattleInprogress", ep3s->battle_in_progress},
+              {"IsBattleInProgress", ep3s->battle_in_progress},
               {"RoundNumber", ep3s->round_num},
               {"FirstTeamTurn", ep3s->first_team_turn},
               {"CurrentTeamTurn", ep3s->current_team_turn1},

@@ -5022,7 +5022,11 @@ static asio::awaitable<void> on_6F(std::shared_ptr<Client> c, Channel::Message& 
     l->ep3_server.reset();
   }
 
-  send_server_time(c);
+  if (c->version() == Version::GC_EP3) {
+    // Client has loaded into the Morgue or spectator waiting room; the HUD object with the metadata does not exist
+    c->ep3_game_metadata_text.clear();
+  }
+
   if (c->check_flag(Client::Flag::DEBUG_ENABLED)) {
     std::string variations_str;
     for (size_t z = 0; z < l->variations.entries.size(); z++) {
@@ -5078,8 +5082,9 @@ static asio::awaitable<void> on_6F(std::shared_ptr<Client> c, Channel::Message& 
     if (!watched_lobby->ep3_server->battle_finished) {
       watched_lobby->ep3_server->send_commands_for_joining_spectator(c->channel);
     }
-    send_ep3_update_game_metadata(watched_lobby);
   }
+
+  send_server_time(c);
 
   // If there are more players to bring in, try to do so
   c->disconnect_hooks.erase(ADD_NEXT_CLIENT_DISCONNECT_HOOK_NAME);
@@ -5089,16 +5094,16 @@ static asio::awaitable<void> on_6F(std::shared_ptr<Client> c, Channel::Message& 
 static asio::awaitable<void> on_99(std::shared_ptr<Client> c, Channel::Message& msg) {
   check_size_v(msg.data.size(), 0);
 
-  // This is an odd place to send 6xB4x52, but there's a reason for it. If the client receives 6xB4x52 while it's
-  // loading the battlefield, it won't set the spectator count or top-bar text. But the client doesn't send anything
-  // when it's done loading the battlefield, so we have to have some other way of knowing when it's ready. We do this
-  // by sending a B1 (server time) command immediately after the E8 (join spectator team) command, which allows us to
-  // delay sending the 6xB4x52 until the server responds with a 99 command after loading is done.
+  // This is an odd place to send 6xB4x52, but there's a reason for it. If the client receives 6xB4x52 before the
+  // battlefield HUD loads, it won't set the spectator count or top-bar text. But the client doesn't send anything when
+  // it's done loading the battlefield, so we have to have some other way of knowing when it's ready. We do this by
+  // sending a B1 (server time) command immediately after the 6xB4x05 or 6xB4x3B commands, which allows us to delay
+  // sending the 6xB4x52 until the server responds with a 99 command after loading is done.
   auto l = c->lobby.lock();
-  if (l && l->is_game() && (l->episode == Episode::EP3) && l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM)) {
-    auto watched_l = l->watched_lobby.lock();
-    if (watched_l) {
-      send_ep3_update_game_metadata(watched_l);
+  if (l && l->is_game() && l->is_ep3()) {
+    auto effective_l = l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM) ? l->watched_lobby.lock() : l;
+    if (effective_l && effective_l->ep3_server && !effective_l->ep3_server->battle_finished) {
+      send_ep3_update_game_metadata(c);
     }
   }
 
