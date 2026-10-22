@@ -28,57 +28,70 @@ const char* phosg::name_for_enum<CompressPhase>(CompressPhase v) {
 }
 
 template <size_t WindowLength, size_t MaxMatchLength>
-struct MapWindowIndex {
-  const uint8_t* data;
-  size_t size;
-  size_t current_offset;
-  std::set<size_t, std::function<bool(size_t, size_t)>> index;
-
-  MapWindowIndex(const void* data, size_t size)
-      : data(reinterpret_cast<const uint8_t*>(data)),
-        size(size),
-        current_offset(0),
-        index(std::bind(&MapWindowIndex::set_comparator, this, std::placeholders::_1, std::placeholders::_2)) {}
-
-  void advance() {
-    if (this->current_offset >= WindowLength) {
-      this->index.erase(this->current_offset - WindowLength);
-    }
-    this->index.emplace(this->current_offset);
-    this->current_offset++;
-  }
-
-  size_t get_match_length(size_t match_offset) const {
-    size_t match_iter = match_offset;
-    size_t offset_iter = this->current_offset;
-    while ((match_iter < match_offset + MaxMatchLength) &&
-        (match_iter < this->size) &&
-        (offset_iter < this->size) &&
-        (this->data[match_iter] == this->data[offset_iter])) {
-      match_iter++;
-      offset_iter++;
-    }
-    return match_iter - match_offset;
-  };
+struct WindowIndex {
+  phosg::DataSegmentReader r;
+  phosg::DataSegmentReader::Pointer pos;
+  size_t current_offset = 0;
 
   // The data structure we want is a binary-searchable set of all strings starting at all possible offsets within the
   // sliding window, and we need to be able to search lexicographically but insert and delete by offset. A
   // std::map<std::string, size_t> would accomplish this, but would be horrendously inefficient: we'd have to copy
-  // strings far too much. We can solve this by instead storing the offset of each string as keys in a set and using a
-  // custom comparator to treat them as references to binary strings within the data.
-  bool set_comparator(size_t a, size_t b) const {
-    size_t max_length = std::min<size_t>(MaxMatchLength, this->size - std::max<size_t>(a, b));
-    size_t end_a = a + max_length;
-    for (; a < end_a; a++, b++) {
-      uint8_t data_a = static_cast<uint8_t>(this->data[a]);
-      uint8_t data_b = static_cast<uint8_t>(this->data[b]);
+  // strings far too much. We can solve this by instead storing the pointers to each string as keys in a set and using
+  // a custom comparator to treat them as references to binary strings within the data.
+  struct MatchCandidate {
+    phosg::DataSegmentReader::Pointer pos;
+    size_t offset;
+  };
+  using SetT = std::set<MatchCandidate, std::function<bool(const MatchCandidate&, const MatchCandidate&)>>;
+  SetT index;
+  std::deque<typename SetT::iterator> index_by_age;
+
+  WindowIndex() : index(std::bind(&WindowIndex::set_comparator, this, std::placeholders::_1, std::placeholders::_2)) {}
+
+  void add_segment(const void* data, size_t size) {
+    this->r.add_segment(data, size);
+    if (this->pos.eof()) {
+      this->pos = this->r.begin();
+    }
+  }
+
+  void advance() {
+    if (this->index_by_age.size() >= WindowLength) {
+      this->index.erase(this->index_by_age.front());
+      this->index_by_age.pop_front();
+    }
+    this->index_by_age.emplace_back(this->index.emplace(MatchCandidate{this->pos, this->current_offset}).first);
+    this->current_offset++;
+    ++this->pos;
+  }
+
+  size_t get_match_length(const phosg::DataSegmentReader::Pointer& ptr) const {
+    phosg::DataSegmentReader::Pointer match_iter = ptr;
+    phosg::DataSegmentReader::Pointer offset_iter = this->pos;
+    size_t match_length = 0;
+    while ((match_length < MaxMatchLength) &&
+        !match_iter.eof() &&
+        !offset_iter.eof() &&
+        (match_iter.get_u8() == offset_iter.get_u8())) {
+      match_length++;
+    }
+    return match_length;
+  };
+
+  bool set_comparator(const MatchCandidate& a, const MatchCandidate& b) const {
+    size_t max_length = std::min<size_t>(MaxMatchLength, this->r.size() - std::max<size_t>(a.offset, b.offset));
+    phosg::DataSegmentReader::Pointer a_ptr = a.pos;
+    phosg::DataSegmentReader::Pointer b_ptr = b.pos;
+    for (size_t z = 0; z < max_length; z++) {
+      uint8_t data_a = a_ptr.get_u8();
+      uint8_t data_b = b_ptr.get_u8();
       if (data_a < data_b) {
         return true; // a comes before b lexicographically
       } else if (data_a > data_b) {
         return false; // a comes after b lexicographically
       }
     }
-    return a < b; // Maximum-length match; order them by offset
+    return a.offset < b.offset; // Maximum-length match; order them by offset
   };
 
   std::pair<size_t, size_t> match() const {
@@ -88,10 +101,10 @@ struct MapWindowIndex {
     // default.
     size_t match_offset = 0;
     size_t match_size = 0;
-    auto it = this->index.upper_bound(this->current_offset);
+    auto it = this->index.upper_bound(MatchCandidate{this->pos, this->current_offset});
     if (it != this->index.end()) {
-      size_t new_match_offset = *it;
-      size_t new_match_size = this->get_match_length(new_match_offset);
+      const auto& [new_match_ptr, new_match_offset] = *it;
+      size_t new_match_size = this->get_match_length(new_match_ptr);
       if ((new_match_size > match_size) || (new_match_size == match_size && new_match_offset > match_offset)) {
         match_offset = new_match_offset;
         match_size = new_match_size;
@@ -99,8 +112,8 @@ struct MapWindowIndex {
     }
     if (it != this->index.begin()) {
       it--;
-      size_t new_match_offset = *it;
-      size_t new_match_size = this->get_match_length(new_match_offset);
+      const auto& [new_match_ptr, new_match_offset] = *it;
+      size_t new_match_size = this->get_match_length(new_match_ptr);
       if ((new_match_size > match_size) || (new_match_size == match_size && new_match_offset > match_offset)) {
         match_offset = new_match_offset;
         match_size = new_match_size;
@@ -109,82 +122,6 @@ struct MapWindowIndex {
     return std::make_pair(match_offset, match_size);
   }
 };
-
-template <size_t WindowLength, size_t MaxMatchLength>
-struct TreeWindowIndex {
-  // This class is the result of an experiment to see if a prefix tree is faster for optimal compression. It turns out
-  // it's not, even if the std::map in Node is replaced with a std::unordered_map or std::array. This structure is
-  // easier to understand than MapWindowIndex, but is about 6-7x slower on average.
-  const uint8_t* data;
-  size_t size;
-  size_t current_offset;
-
-  struct Node {
-    size_t start_offset = 0;
-    std::map<uint8_t, Node> children;
-  };
-  Node root;
-
-  TreeWindowIndex(const void* data, size_t size)
-      : data(reinterpret_cast<const uint8_t*>(data)), size(size), current_offset(0) {}
-
-  void advance() {
-    // Delete the oldest string, if the current offset has passed the initial window
-    if (this->current_offset >= WindowLength) {
-      size_t start_offset = this->current_offset - WindowLength;
-      size_t end_offset = std::min<size_t>(this->size, start_offset + MaxMatchLength);
-      Node* current = &this->root;
-      for (size_t offset = start_offset; offset < end_offset; offset++) {
-        auto child_it = current->children.find(this->data[offset]);
-        // The child should always be in the set - we should have added all of its nodes in a previous advance() call
-        if (child_it == current->children.end()) {
-          throw std::logic_error(std::format("Attempted to delete string at offset {:X} which was not in the set",
-              start_offset));
-        }
-        if (child_it->second.start_offset == start_offset) {
-          // If the child's start offset matches start_offset, then the rest of the nodes below it must also match
-          // start_offset (they were never again visited by the second part of this function after the first time they
-          // were added) so the entire subtree can be deleted. This means there are no other strings in the window that
-          // share the first (start_offset + 1) bytes with this string.
-          current->children.erase(child_it);
-          break;
-        } else {
-          // If the start offset does not match start_offset, then this node belongs to a later string; we need to
-          // check its subtree to see if anything should be deleted
-          current = &child_it->second;
-        }
-      }
-    }
-
-    // Create all nodes for the current string, or update their start_offsets if they already exist
-    size_t end_offset = std::min<size_t>(size, this->current_offset + MaxMatchLength);
-    Node* current = &this->root;
-    for (size_t offset = this->current_offset; offset < end_offset; offset++) {
-      current = &current->children[this->data[offset]];
-      current->start_offset = this->current_offset;
-    }
-
-    this->current_offset++;
-  }
-
-  std::pair<size_t, size_t> match() const {
-    size_t end_offset = std::min<size_t>(size, this->current_offset + MaxMatchLength);
-    const Node* current = &this->root;
-    size_t offset;
-    for (offset = this->current_offset; offset < end_offset; offset++) {
-      auto it = current->children.find(this->data[offset]);
-      if (it == current->children.end()) {
-        break;
-      } else {
-        current = &it->second;
-      }
-    }
-    return std::make_pair(current->start_offset, offset - this->current_offset);
-  }
-};
-
-template <size_t WindowSize, size_t MaxMatchLength>
-using WindowIndex = MapWindowIndex<WindowSize, MaxMatchLength>;
 
 struct LZSSInterleavedWriter {
   phosg::StringWriter w;
@@ -294,7 +231,8 @@ std::string prs_compress_optimal(const void* in_data_v, size_t in_size, Progress
 
   // Populate all possible short copies
   std::thread short_window_thread([&]() -> void {
-    WindowIndex<0x100, 5> window(in_data_v, in_size);
+    WindowIndex<0x100, 5> window;
+    window.add_segment(in_data_v, in_size);
     while (window.current_offset < in_size) {
       if (window.current_offset && (window.current_offset & 0xFFF) == 0 && progress_fn) {
         size_t progress = copy_progress.fetch_add(0x1000) + 0x1000;
@@ -312,7 +250,8 @@ std::string prs_compress_optimal(const void* in_data_v, size_t in_size, Progress
 
   // Populate all possible long copies
   std::thread long_window_thread([&]() -> void {
-    WindowIndex<0x1FFF, 9> window(in_data_v, in_size);
+    WindowIndex<0x1FFF, 9> window;
+    window.add_segment(in_data_v, in_size);
     while (window.current_offset < in_size) {
       if (window.current_offset && (window.current_offset & 0xFFF) == 0 && progress_fn) {
         size_t progress = copy_progress.fetch_add(0x1000) + 0x1000;
@@ -330,7 +269,8 @@ std::string prs_compress_optimal(const void* in_data_v, size_t in_size, Progress
 
   // Populate all possible extended copies
   std::thread extended_window_thread([&]() -> void {
-    WindowIndex<0x1FFF, 0x100> window(in_data_v, in_size);
+    WindowIndex<0x1FFF, 0x100> window;
+    window.add_segment(in_data_v, in_size);
     while (window.current_offset < in_size) {
       if (window.current_offset && (window.current_offset & 0xFFF) == 0 && progress_fn) {
         size_t progress = copy_progress.fetch_add(0x1000) + 0x1000;
@@ -507,7 +447,8 @@ std::string prs_compress_pessimal(const void* vdata, size_t size) {
 
   // The worst possible encoding we can do is a literal byte when no byte with the same value is within the window, or
   // an extended copy if there is a byte with the same value in the window.
-  WindowIndex<0x1FFF, 1> window(in_data, size);
+  WindowIndex<0x1FFF, 1> window;
+  window.add_segment(in_data, size);
   LZSSInterleavedWriter w;
   for (size_t z = 0; z < size; z++) {
     auto match = window.match();
@@ -752,9 +693,12 @@ std::string prs_compress_indexed(const void* in_data_v, size_t in_size, Progress
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
   LZSSInterleavedWriter w;
-  WindowIndex<0x100, 5> w_short(in_data_v, in_size);
-  WindowIndex<0x1FFF, 9> w_long(in_data_v, in_size);
-  WindowIndex<0x1FFF, 0x100> w_extended(in_data_v, in_size);
+  WindowIndex<0x100, 5> w_short;
+  WindowIndex<0x1FFF, 9> w_long;
+  WindowIndex<0x1FFF, 0x100> w_extended;
+  w_short.add_segment(in_data_v, in_size);
+  w_long.add_segment(in_data_v, in_size);
+  w_extended.add_segment(in_data_v, in_size);
 
   size_t last_progress_fn_call_offset = 0;
   while (w_short.current_offset < in_size) {
@@ -1117,6 +1061,8 @@ struct BC0PathNode {
   size_t to_offset = 0;
 };
 
+static constexpr std::array<uint8_t, 0xFEE> BC0_INITIAL_MEMO{};
+
 std::string bc0_compress_optimal(const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
 
@@ -1124,17 +1070,24 @@ std::string bc0_compress_optimal(const void* in_data_v, size_t in_size, Progress
   nodes.resize(in_size + 1);
   nodes[0].bits_used = 0;
 
-  // Populate all possible backreferences
+  // Populate all possible backreferences. In BC0 the initial part of the data can reference the memo (most of which is
+  // initially zero), so we add zeros before the data in the window index
   {
-    WindowIndex<0x1000, 0x12> window(in_data_v, in_size);
-    while (window.current_offset < in_size) {
+    WindowIndex<0x1000, 0x12> window;
+    window.add_segment(BC0_INITIAL_MEMO.data(), BC0_INITIAL_MEMO.size());
+    window.add_segment(in_data_v, in_size);
+    // TODO: This is kinda dumb; we should optimize this
+    while (window.current_offset < BC0_INITIAL_MEMO.size()) {
+      window.advance();
+    }
+    while (window.current_offset < BC0_INITIAL_MEMO.size() + in_size) {
       if ((window.current_offset & 0xFFF) == 0 && progress_fn) {
         progress_fn(CompressPhase::INDEX, window.current_offset, in_size, 0);
       }
-      auto& node = nodes[window.current_offset];
+      auto& node = nodes[window.current_offset - BC0_INITIAL_MEMO.size()];
       auto match = window.match();
       if (match.second >= 3) {
-        node.memo_offset = (match.first - 0x12) & 0xFFF;
+        node.memo_offset = match.first & 0xFFF;
         node.max_copy_size = match.second;
       }
       window.advance();
@@ -1218,13 +1171,18 @@ std::string bc0_compress(std::string_view data, ProgressCallback progress_fn) {
 }
 
 std::string bc0_compress(const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
-  const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
-
   LZSSInterleavedWriter w;
-  WindowIndex<0x1000, 0x12> window(in_data_v, in_size);
+  WindowIndex<0x1000, 0x12> window;
+  window.add_segment(BC0_INITIAL_MEMO.data(), BC0_INITIAL_MEMO.size());
+  window.add_segment(in_data_v, in_size);
+
+  // TODO: This is kinda dumb; we should optimize this
+  while (window.current_offset < BC0_INITIAL_MEMO.size()) {
+    window.advance();
+  }
 
   size_t last_progress_fn_call_offset = 0;
-  while (window.current_offset < in_size) {
+  while (window.current_offset < BC0_INITIAL_MEMO.size() + in_size) {
     if (progress_fn && ((last_progress_fn_call_offset & ~0xFFF) != (window.current_offset & ~0xFFF))) {
       last_progress_fn_call_offset = window.current_offset;
       progress_fn(CompressPhase::GENERATE_RESULT, window.current_offset, in_size, w.size());
@@ -1235,12 +1193,11 @@ std::string bc0_compress(const void* in_data_v, size_t in_size, ProgressCallback
     // Write a backreference if a match was found; otherwise, write a literal
     if (match.second >= 3) {
       w.write_control(false);
-      size_t memo_offset = match.first - 0x12;
-      w.write_data(memo_offset & 0xFF);
-      w.write_data(((memo_offset >> 4) & 0xF0) | (match.second - 3));
+      w.write_data(match.first & 0xFF);
+      w.write_data(((match.first >> 4) & 0xF0) | (match.second - 3));
     } else {
       w.write_control(true);
-      w.write_data(in_data[window.current_offset]);
+      w.write_data(*window.pos);
       match.second = 1;
     }
     w.flush_if_ready();
