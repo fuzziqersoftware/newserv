@@ -66,32 +66,53 @@ struct WindowIndex {
   }
 
   size_t get_match_length(const phosg::DataSegmentReader::Pointer& ptr) const {
-    phosg::DataSegmentReader::Pointer match_iter = ptr;
-    phosg::DataSegmentReader::Pointer offset_iter = this->pos;
-    size_t match_length = 0;
-    while ((match_length < MaxMatchLength) &&
-        !match_iter.eof() &&
-        !offset_iter.eof() &&
-        (match_iter.get_u8() == offset_iter.get_u8())) {
-      match_length++;
+    const uint8_t* ptr_data = reinterpret_cast<const uint8_t*>(ptr.read_fast(MaxMatchLength));
+    const uint8_t* pos_data = reinterpret_cast<const uint8_t*>(this->pos.read_fast(MaxMatchLength));
+    if (ptr_data && pos_data) {
+      const uint8_t* initial_ptr_data = ptr_data;
+      const uint8_t* end_ptr_data = initial_ptr_data + MaxMatchLength;
+      while ((ptr_data != end_ptr_data) && (*ptr_data == *pos_data)) {
+        ptr_data++;
+        pos_data++;
+      }
+      return ptr_data - initial_ptr_data;
+    } else {
+      size_t match_length = 0;
+      phosg::DataSegmentReader::Pointer match_iter = ptr;
+      phosg::DataSegmentReader::Pointer offset_iter = this->pos;
+      while ((match_length < MaxMatchLength) &&
+          !match_iter.eof() &&
+          !offset_iter.eof() &&
+          (match_iter.get_u8() == offset_iter.get_u8())) {
+        match_length++;
+      }
+      return match_length;
     }
-    return match_length;
   };
 
   bool set_comparator(const MatchCandidate& a, const MatchCandidate& b) const {
     size_t max_length = std::min<size_t>(MaxMatchLength, this->r.size() - std::max<size_t>(a.offset, b.offset));
-    phosg::DataSegmentReader::Pointer a_ptr = a.pos;
-    phosg::DataSegmentReader::Pointer b_ptr = b.pos;
-    for (size_t z = 0; z < max_length; z++) {
-      uint8_t data_a = a_ptr.get_u8();
-      uint8_t data_b = b_ptr.get_u8();
-      if (data_a < data_b) {
-        return true; // a comes before b lexicographically
-      } else if (data_a > data_b) {
-        return false; // a comes after b lexicographically
+    const void* a_data = a.pos.read_fast(max_length);
+    const void* b_data = b.pos.read_fast(max_length);
+    if (a_data && b_data) {
+      // Neither string crosses a segment boundary; can use fast comparisons
+      int ret = memcmp(a_data, b_data, max_length);
+      return (ret == 0) ? (a.offset < b.offset) : (ret < 0);
+    } else {
+      // At least one string crosses a segment boundary; have to use DataSegmentReader::Pointer instead
+      phosg::DataSegmentReader::Pointer a_ptr = a.pos;
+      phosg::DataSegmentReader::Pointer b_ptr = b.pos;
+      for (size_t z = 0; z < max_length; z++) {
+        uint8_t data_a = a_ptr.get_u8();
+        uint8_t data_b = b_ptr.get_u8();
+        if (data_a < data_b) {
+          return true; // a comes before b lexicographically
+        } else if (data_a > data_b) {
+          return false; // a comes after b lexicographically
+        }
       }
+      return a.offset < b.offset; // Maximum-length match; order them by offset
     }
-    return a.offset < b.offset; // Maximum-length match; order them by offset
   };
 
   std::pair<size_t, size_t> match() const {
@@ -1061,7 +1082,8 @@ struct BC0PathNode {
   size_t to_offset = 0;
 };
 
-static constexpr std::array<uint8_t, 0xFEE> BC0_INITIAL_MEMO{};
+static constexpr std::array<uint8_t, 0x12> BC0_INITIAL_MEMO{};
+static constexpr size_t BC0_MEMO_OFFSET = 0x24;
 
 std::string bc0_compress_optimal(const void* in_data_v, size_t in_size, ProgressCallback progress_fn) {
   const uint8_t* in_data = reinterpret_cast<const uint8_t*>(in_data_v);
@@ -1076,7 +1098,6 @@ std::string bc0_compress_optimal(const void* in_data_v, size_t in_size, Progress
     WindowIndex<0x1000, 0x12> window;
     window.add_segment(BC0_INITIAL_MEMO.data(), BC0_INITIAL_MEMO.size());
     window.add_segment(in_data_v, in_size);
-    // TODO: This is kinda dumb; we should optimize this
     while (window.current_offset < BC0_INITIAL_MEMO.size()) {
       window.advance();
     }
@@ -1087,7 +1108,7 @@ std::string bc0_compress_optimal(const void* in_data_v, size_t in_size, Progress
       auto& node = nodes[window.current_offset - BC0_INITIAL_MEMO.size()];
       auto match = window.match();
       if (match.second >= 3) {
-        node.memo_offset = match.first & 0xFFF;
+        node.memo_offset = (match.first - BC0_MEMO_OFFSET) & 0xFFF;
         node.max_copy_size = match.second;
       }
       window.advance();
@@ -1193,8 +1214,9 @@ std::string bc0_compress(const void* in_data_v, size_t in_size, ProgressCallback
     // Write a backreference if a match was found; otherwise, write a literal
     if (match.second >= 3) {
       w.write_control(false);
-      w.write_data(match.first & 0xFF);
-      w.write_data(((match.first >> 4) & 0xF0) | (match.second - 3));
+      size_t memo_offset = match.first - BC0_MEMO_OFFSET;
+      w.write_data(memo_offset & 0xFF);
+      w.write_data(((memo_offset >> 4) & 0xF0) | (match.second - 3));
     } else {
       w.write_control(true);
       w.write_data(*window.pos);
