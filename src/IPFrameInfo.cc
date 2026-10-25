@@ -87,6 +87,9 @@ FrameInfo::FrameInfo(LinkType link_type, const void* header_start, size_t size)
       if (this->payload_size < this->ipv4->size) {
         throw std::invalid_argument("ipv4 header specifies size larger than frame");
       }
+      if (this->ipv4->size < sizeof(IPv4Header)) {
+        throw std::invalid_argument("ipv4 header specifies size smaller than header");
+      }
       this->payload_size = this->ipv4->size - sizeof(IPv4Header);
 
       if (this->ipv4->protocol == 0x06) {

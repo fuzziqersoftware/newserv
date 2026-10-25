@@ -1339,6 +1339,14 @@ static asio::awaitable<HandlerResult> C_B_D9(std::shared_ptr<Client> c, Channel:
 template <typename T>
 static asio::awaitable<HandlerResult> S_44_A6(std::shared_ptr<Client> c, Channel::Message& msg) {
   const auto& cmd = msg.check_size_t<T>();
+  // On all versions before BB, the maximum file size is 0x3FFFF (chunks are identified by header.flag which is one
+  // byte, and each chunk is 0x400 bytes except the last, which must be smaller than 0x400 bytes). On BB the maximum
+  // file size could technically be up to 4GB since header.size is a 32-bit value, but we impose a restriction on it to
+  // 4MB. In practice, this is extremely generous; I've never seen a quest file larger than 100KB, and the GBA has only
+  // 288KB of RAM (all GBA files I've seen used by PSO are in the 190KB-250KB size range).
+  if (cmd.file_size > (is_v4(c->version()) ? (4 * 1024 * 1024) : 0x3FFFF)) {
+    throw std::runtime_error("Download file is too large");
+  }
 
   std::string filename = cmd.filename.decode();
   std::string output_filename;
@@ -1402,7 +1410,7 @@ static asio::awaitable<HandlerResult> S_13_A7(std::shared_ptr<Client> c, Channel
     c->log.warning_f("Received data for non-open file {}", filename);
   }
   if (!sf) {
-    co_return HandlerResult::FORWARD;
+    co_return HandlerResult::SUPPRESS;
   }
 
   bool is_last_block = (cmd.data_size != 0x400);
@@ -1410,6 +1418,11 @@ static asio::awaitable<HandlerResult> S_13_A7(std::shared_ptr<Client> c, Channel
   size_t allowed_block_size = (block_offset < sf->total_size)
       ? std::min<size_t>(sf->total_size - block_offset, 0x400)
       : 0;
+
+  if (allowed_block_size == 0) {
+    c->log.warning_f("Server sent block outside of file range; dropping command");
+    co_return HandlerResult::SUPPRESS;
+  }
 
   if (cmd.data_size > allowed_block_size) {
     c->log.warning_f("Block size extends beyond allowed size; truncating block");

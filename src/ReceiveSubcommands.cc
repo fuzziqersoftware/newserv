@@ -5888,9 +5888,15 @@ asio::awaitable<void> on_subcommand_multi(std::shared_ptr<Client> c, Channel::Me
     if (cmd_size == 0) {
       throw std::runtime_error("invalid subcommand size");
     }
+    if (cmd_size > msg.data.size() - offset) {
+      throw std::runtime_error("subcommand extends beyond end of command");
+    }
     void* cmd_data = msg.data.data() + offset;
 
     const auto* def = def_for_subcommand(c->version(), header->subcommand);
+    if (!def) {
+      throw std::runtime_error("invalid subcommand");
+    }
     SubcommandMessage sub_msg{.command = msg.command, .flag = msg.flag, .data = cmd_data, .size = cmd_size};
     if (std::holds_alternative<SubcommandHandlerFn>(def->handler)) {
       std::get<SubcommandHandlerFn>(def->handler)(c, sub_msg);

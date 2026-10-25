@@ -1,9 +1,13 @@
 #pragma once
 
+#include <algorithm>
 #include <asio.hpp>
+#include <chrono>
+#include <exception>
 #include <memory>
 #include <phosg/Network.hh>
 #include <string>
+#include <system_error>
 #include <unordered_set>
 #include <vector>
 
@@ -33,7 +37,22 @@ public:
   // valid endpoint and call add_socket to actually listen on that endpoint
   void add_socket(std::shared_ptr<SocketT> sock) {
     sock->acceptor = std::make_unique<asio::ip::tcp::acceptor>(*this->io_context, sock->endpoint);
-    asio::co_spawn(*this->io_context, this->accept_connections(sock), asio::detached);
+    asio::co_spawn(*this->io_context, this->accept_connections(sock), [this, sock](std::exception_ptr exc) {
+      if (!exc) {
+        return;
+      }
+      try {
+        std::rethrow_exception(exc);
+      } catch (const std::system_error& e) {
+        if (e.code() != asio::error::operation_aborted) {
+          this->log.error_f("Accept task for {} failed: {}", sock->name, e.what());
+        }
+      } catch (const std::exception& e) {
+        this->log.error_f("Accept task for {} failed: {}", sock->name, e.what());
+      } catch (...) {
+        this->log.error_f("Accept task for {} failed with an unknown exception", sock->name);
+      }
+    });
 
     asio::ip::tcp::endpoint sock_addr = sock->acceptor->local_endpoint();
     std::string addr_str = sock_addr.address().to_string();
@@ -111,9 +130,49 @@ protected:
   }
 
   asio::awaitable<void> accept_connections(std::shared_ptr<SocketT> sock) {
-    for (;;) {
-      auto client_sock = co_await sock->acceptor->async_accept(asio::use_awaitable);
-      asio::co_spawn(*this->io_context, this->handle_socket_client(sock, std::move(client_sock)), asio::detached);
+    uint64_t next_warning_time_usecs = 0;
+    while (sock->acceptor->is_open()) {
+      std::error_code ec;
+      auto client_sock = co_await sock->acceptor->async_accept(asio::redirect_error(asio::use_awaitable, ec));
+      if (!ec) {
+        next_warning_time_usecs = 0;
+        asio::co_spawn(*this->io_context, this->handle_socket_client(sock, std::move(client_sock)), asio::detached);
+        continue;
+      }
+      if ((ec == asio::error::operation_aborted) || !sock->acceptor->is_open()) {
+        co_return; // Normal shutdown (socket was closed)
+      } else if (
+          (ec == asio::error::connection_aborted) ||
+          (ec == asio::error::connection_reset) ||
+          (ec == asio::error::interrupted) ||
+          (ec == asio::error::would_block) ||
+          (ec == asio::error::try_again)) {
+        continue; // Temporary errors; should be handled by asio internally
+      } else if (
+          (ec == asio::error::bad_descriptor) ||
+          (ec == asio::error::not_socket) ||
+          (ec == asio::error::invalid_argument) ||
+          (ec == asio::error::fault)) {
+        throw std::logic_error(std::format(
+            "Failed to accept connection on {} due to system error {} ({}:{})",
+            sock->name, ec.message(), ec.category().name(), ec.value()));
+      } else {
+        // Warn (maybe) and wait a short time before trying again
+        uint64_t now = phosg::now();
+        if (now >= next_warning_time_usecs) {
+          this->log.warning_f("Failed to accept connection on {} due to system error {} ({}:{})",
+              sock->name, ec.message(), ec.category().name(), ec.value());
+          next_warning_time_usecs = now + 60 * 1000 * 1000; // Warn every minute if it's not resolved
+        }
+        asio::steady_timer retry_timer(*this->io_context);
+        retry_timer.expires_after(std::chrono::seconds(10));
+        co_await retry_timer.async_wait(asio::redirect_error(asio::use_awaitable, ec));
+        if (ec == asio::error::operation_aborted) {
+          co_return;
+        } else if (ec) {
+          throw std::system_error(ec);
+        }
+      }
     }
   }
 };

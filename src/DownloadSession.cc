@@ -647,6 +647,12 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
     case 0xA6: {
       auto handle_command = [&]<typename CmdT>() {
         const auto& cmd = msg.check_size_t<CmdT>(0xFFFF);
+
+        // See comment in S_44_A6 in ProxyCommands.cc about this check
+        if (cmd.file_size > (is_v4(this->version) ? (4 * 1024 * 1024) : 0x3FFFF)) {
+          throw std::runtime_error("Download file is too large");
+        }
+
         std::string internal_name = cmd.filename.decode();
         std::string filtered_name;
         for (char ch : internal_name) {
@@ -691,6 +697,9 @@ asio::awaitable<void> DownloadSession::on_message(Channel::Message& msg) {
       auto& f = this->open_files.at(cmd.filename.decode());
       size_t block_offset = msg.flag * 0x400;
       size_t allowed_block_size = (block_offset < f.total_size) ? std::min<size_t>(f.total_size - block_offset, 0x400) : 0;
+      if (allowed_block_size == 0) {
+        throw std::runtime_error("Server sent chunk outside of file range");
+      }
       size_t data_size = std::min<size_t>(cmd.data_size, allowed_block_size);
       size_t block_end_offset = block_offset + data_size;
       if (block_end_offset > f.data.size()) {

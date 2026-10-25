@@ -105,7 +105,7 @@ struct WindowIndex {
       }
       return match_length;
     }
-  };
+  }
 
   bool set_comparator(const MatchCandidate& a, const MatchCandidate& b) const {
     size_t max_length = std::min<size_t>(MaxMatchLength, this->r.size() - std::max<size_t>(a.offset, b.offset));
@@ -130,7 +130,7 @@ struct WindowIndex {
       }
       return a.offset < b.offset; // Maximum-length match; order them by offset
     }
-  };
+  }
 
   MatchResult match(bool advance) {
     // Find the best match from the index. It's unlikely that we'll get an exact match, so check the entry before the

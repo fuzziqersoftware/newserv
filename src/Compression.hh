@@ -77,10 +77,7 @@ private:
     size_t size;
     std::array<std::deque<size_t>, 0x100> index;
 
-    IndexedLog()
-        : WrappedLog<Size>(),
-          offset(0),
-          size(0) {}
+    IndexedLog() : WrappedLog<Size>(), offset(0), size(0) {}
     ~IndexedLog() = default;
 
     inline size_t end_offset() const {
@@ -146,8 +143,7 @@ private:
 // PRSCompressor, calling .add() on it once, then calling .close().
 std::string prs_compress(
     const void* vdata, size_t size, ssize_t compression_level = 0, ProgressCallback progress_fn = nullptr);
-std::string prs_compress(
-    std::string_view data, ssize_t compression_level = 0, ProgressCallback progress_fn = nullptr);
+std::string prs_compress(std::string_view data, ssize_t compression_level = 0, ProgressCallback progress_fn = nullptr);
 
 // A faster form of prs_compress that doesn't have a tunable compression level.
 std::string prs_compress_indexed(const void* vdata, size_t size, ProgressCallback progress_fn = nullptr);

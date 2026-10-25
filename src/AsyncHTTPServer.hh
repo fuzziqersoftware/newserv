@@ -137,6 +137,7 @@ public:
   struct Route {
     HTTPRequest::Method method;
     std::vector<std::string> path_tokens;
+    ssize_t json_max_depth; // Only used for POST
     Handler handler;
   };
 
@@ -148,9 +149,18 @@ public:
     return path_tokens;
   }
 
-  void add(HTTPRequest::Method method, const std::string& path_pattern, Handler handler) {
+  void add_GET(const std::string& path_pattern, Handler handler) {
     this->routes.emplace_back(Route{
-        .method = method, .path_tokens = this->split_and_normalize_path(path_pattern), .handler = handler});
+        .method = HTTPRequest::Method::GET,
+        .path_tokens = this->split_and_normalize_path(path_pattern),
+        .handler = handler});
+  }
+  void add_POST(const std::string& path_pattern, ssize_t json_max_depth, Handler handler) {
+    this->routes.emplace_back(Route{
+        .method = HTTPRequest::Method::POST,
+        .path_tokens = this->split_and_normalize_path(path_pattern),
+        .json_max_depth = json_max_depth,
+        .handler = handler});
   }
 
   asio::awaitable<RetT> call_handler(std::shared_ptr<ClientT> c, const HTTPRequest& req) {
@@ -183,7 +193,7 @@ public:
             throw HTTPError(400, "POST requests must use the application/json content type");
           }
           try {
-            args.post_data = phosg::JSON::parse(req.data);
+            args.post_data = phosg::JSON::parse(req.data, false, route.json_max_depth);
           } catch (const std::exception& e) {
             throw HTTPError(400, std::format("Invalid JSON: {}", e.what()));
           }
@@ -328,6 +338,18 @@ protected:
   virtual asio::awaitable<void> handle_client(std::shared_ptr<ClientT> c) {
     asio::steady_timer idle_timer(*this->io_context);
     while (c->r.get_socket().is_open()) {
+      size_t idle_usecs_limit = c->is_websocket
+          ? this->limits.max_websocket_idle_usecs
+          : this->limits.max_http_keepalive_idle_usecs;
+      if (idle_usecs_limit && c->r.get_socket().is_open()) {
+        idle_timer.expires_after(std::chrono::microseconds(idle_usecs_limit));
+        idle_timer.async_wait([c](std::error_code ec) {
+          if (!ec) {
+            c->r.close();
+          }
+        });
+      }
+
       if (c->is_websocket) {
         WebSocketMessage msg = co_await c->recv_websocket_message(this->limits.max_websocket_message_size);
         idle_timer.cancel();
@@ -361,18 +383,6 @@ protected:
             c->r.close();
           }
         }
-      }
-
-      size_t idle_usecs_limit = c->is_websocket
-          ? this->limits.max_websocket_idle_usecs
-          : this->limits.max_http_keepalive_idle_usecs;
-      if (idle_usecs_limit && c->r.get_socket().is_open()) {
-        idle_timer.expires_after(std::chrono::microseconds(idle_usecs_limit));
-        idle_timer.async_wait([c](std::error_code ec) {
-          if (!ec) {
-            c->r.close();
-          }
-        });
       }
     }
     idle_timer.cancel();

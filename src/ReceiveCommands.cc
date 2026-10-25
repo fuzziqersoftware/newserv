@@ -607,7 +607,12 @@ static asio::awaitable<void> on_04_U(std::shared_ptr<Client> c, Channel::Message
     const auto& [host, port] = *s->data->proxy_destination_patch;
     co_await start_proxy_session(c, host, port, false);
 
+  } else if (c->patch_checksum_requests_sent) {
+    throw std::runtime_error("checksum requests have already been sent");
+
   } else {
+    c->patch_checksum_requests_sent = true;
+
     // No proxy destination; continue with normal patch logic
     bool is_bb = (c->version() == Version::BB_PATCH);
     const std::string& message = is_bb ? s->data->bb_patch_server_message : s->data->pc_patch_server_message;
@@ -655,6 +660,11 @@ asio::awaitable<void> on_0F_U(std::shared_ptr<Client> c, Channel::Message& msg) 
 }
 
 asio::awaitable<void> on_10_U(std::shared_ptr<Client> c, Channel::Message&) {
+  if (c->patch_checksum_responses_received) {
+    throw std::runtime_error("checksum responses have already been received");
+  }
+  c->patch_checksum_responses_received = true;
+
   S_StartFileDownloads_Patch_11 start_cmd = {0, 0};
   for (const auto& req : c->patch_file_checksum_requests) {
     if (!req.response_received) {

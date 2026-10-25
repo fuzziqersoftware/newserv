@@ -135,6 +135,8 @@ public:
 
   // Patch server state (only used for PC_PATCH and BB_PATCH versions)
   std::vector<PatchFileChecksumRequest> patch_file_checksum_requests;
+  bool patch_checksum_responses_received = false;
+  bool patch_checksum_requests_sent = false;
 
   // Network
   std::shared_ptr<Channel> channel;

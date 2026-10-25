@@ -532,8 +532,7 @@ asio::awaitable<void> IPStackSimulator::on_client_lcp_frame(std::shared_ptr<IPSS
         phosg::StringReader opt_data_r(opt_data);
         switch (opt) {
           case 0x01: // Maximum receive unit
-            // TODO: Currently we ignore this, but we probably should use it.
-            opt_data_r.get_u16b();
+            c->hdlc_max_receive_unit = std::min<uint32_t>(c->hdlc_max_receive_unit, opt_data_r.get_u16b());
             break;
           case 0x02: // Escaped control character flags
             c->hdlc_escape_control_character_flags = opt_data_r.get_u32b();
@@ -557,7 +556,7 @@ asio::awaitable<void> IPStackSimulator::on_client_lcp_frame(std::shared_ptr<IPSS
       phosg::StringWriter opts_w;
       opts_w.put_u8(0x01); // Maximum receive unit
       opts_w.put_u8(0x04);
-      opts_w.put_u16b(1500);
+      opts_w.put_u16b(c->hdlc_max_receive_unit);
       opts_w.put_u8(0x02); // Escaped control character flags (we don't require any)
       opts_w.put_u8(0x06);
       opts_w.put_u32(0);
@@ -1441,6 +1440,7 @@ asio::awaitable<void> IPStackSimulator::handle_tapserver_client(std::shared_ptr<
 asio::awaitable<void> IPStackSimulator::handle_hdlc_raw_client(std::shared_ptr<IPSSClient> c) {
   std::string buffer(0x1000, 0);
   size_t buffer_bytes = 0;
+  size_t frame_start_offset = 0;
   for (;;) {
     size_t req_buffer_size = buffer_bytes + 0x400;
     if (buffer.size() < req_buffer_size) {
@@ -1450,14 +1450,16 @@ asio::awaitable<void> IPStackSimulator::handle_hdlc_raw_client(std::shared_ptr<I
     auto buf = asio::buffer(buffer.data() + buffer_bytes, buffer.size() - buffer_bytes);
     buffer_bytes += co_await c->sock.async_read_some(buf, asio::use_awaitable);
 
-    // Process as many packets as possible
-    size_t frame_start_offset = 0;
-    while (buffer.size() > frame_start_offset) {
+    // Process as many frames as possible
+    bool received_frame = false;
+    while (buffer_bytes > frame_start_offset) {
       if (buffer[frame_start_offset] != 0x7E) {
         throw std::runtime_error("HDLC frame does not begin with 7E");
       }
-      size_t frame_end_offset = buffer.find(0x7E, frame_start_offset + 1);
-      if (frame_end_offset == std::string::npos) {
+      size_t frame_end_offset = frame_start_offset + 1;
+      for (; (frame_end_offset < buffer_bytes) && (buffer[frame_end_offset] != 0x7E); frame_end_offset++) {
+      }
+      if (frame_end_offset == buffer_bytes) {
         break;
       }
       frame_end_offset++;
@@ -1466,6 +1468,7 @@ asio::awaitable<void> IPStackSimulator::handle_hdlc_raw_client(std::shared_ptr<I
       void* frame_data = buffer.data() + frame_start_offset;
       size_t unescaped_size = unescape_hdlc_frame_inplace(frame_data, frame_end_offset - frame_start_offset);
 
+      received_frame = true;
       try {
         co_await this->on_client_frame(c, frame_data, unescaped_size);
       } catch (const std::exception& e) {
@@ -1477,18 +1480,27 @@ asio::awaitable<void> IPStackSimulator::handle_hdlc_raw_client(std::shared_ptr<I
       frame_start_offset = frame_end_offset;
     }
 
+    // If there are too many unprocessed bytes, the client must have violated the maximum receive unit. We allow a
+    // generous buffer above this due to escapement (TODO: does the MRU apply to escaped frames or unescaped frames?)
+    if ((buffer_bytes - frame_start_offset) > ((c->hdlc_max_receive_unit * 2) + 10)) {
+      throw std::runtime_error("HDLC frame is too large");
+    }
+
     // Delete the processed packets from the beginning of the buffer
     if (frame_start_offset > buffer_bytes) {
       throw std::logic_error("frame start offset is beyond buffer bounds");
     } else if (frame_start_offset == buffer_bytes) {
       buffer_bytes = 0;
     } else if (frame_start_offset > 0) {
-      memcpy(buffer.data(), buffer.data() + frame_start_offset, buffer_bytes - frame_start_offset);
+      memmove(buffer.data(), buffer.data() + frame_start_offset, buffer_bytes - frame_start_offset);
       buffer_bytes -= frame_start_offset;
     }
+    frame_start_offset = 0;
 
-    // Reset the idle timer, since the client has sent something valid
-    c->reschedule_idle_timeout();
+    // If the client has sent a frame, reset the idle timeout
+    if (received_frame) {
+      c->reschedule_idle_timeout();
+    }
   }
 }
 
