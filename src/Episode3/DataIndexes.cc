@@ -2307,10 +2307,7 @@ MapDefinitionTrial::MapDefinitionTrial(const MapDefinition& map)
     this->dialogue_sets[z] = map.dialogue_sets[z].sub<8>(0);
   }
 
-  // TODO: It'd be nice to rewrite start_tile_definitions, since it seems NTE always expects team A to be represented
-  // by 3 and 4, and team B to be represented by 7 and 8.
-
-  // TODO: NTE also expects team A to always be facing up, and B to always be facing down, so it would be nice to
+  // TODO: NTE expects team A to always be facing up, and B to always be facing down, so it would be nice to
   // automatically rotate the map to make that the case. However, we'd also have to fix up the camera zones and camera
   // specs, and the spec structure is not (yet) fully understood.
 }
@@ -2405,6 +2402,73 @@ MapDefinitionTrial::operator MapDefinition() const {
       throw std::logic_error("too many NPC decks in trial map definition");
   }
   return ret;
+}
+
+void MapDefinition::rewrite_map_tiles_for_preview(
+    parray<parray<uint8_t, 0x10>, 0x10>& dest_map_tiles,
+    const parray<parray<uint8_t, 0x10>, 0x10>& src_map_tiles,
+    const parray<parray<uint8_t, 6>, 2>& start_tile_definitions,
+    bool is_nte) {
+  std::array<uint8_t, 0x40> rewrites;
+  for (uint8_t z = 0; z < 0x40; z++) {
+    rewrites[z] = z;
+  }
+
+  auto add_swap = [&](uint8_t a, uint8_t b) -> void {
+    if ((rewrites[a] != a) || (rewrites[b] != b)) {
+      throw std::runtime_error("Start tile indexes would overwrite each other");
+    }
+    rewrites[a] = b;
+    rewrites[b] = a;
+  };
+  auto add_cycle = [&](uint8_t a, uint8_t b, uint8_t c) -> void {
+    if ((rewrites[a] != a) || (rewrites[b] != b) || (rewrites[c] != c)) {
+      throw std::runtime_error("Start tile indexes would overwrite each other");
+    }
+    rewrites[a] = b;
+    rewrites[b] = c;
+    rewrites[c] = a;
+  };
+
+  auto check_side = [&add_swap, &add_cycle](const parray<uint8_t, 6>& starts, uint8_t p1, uint8_t p2) -> void {
+    if ((starts[1] == 0xFF) || (starts[2] == 0xFF)) { // This team only has 1 start location
+      uint8_t start0 = starts[0] & 0x3F;
+      if ((start0 != p1) && (start0 != p2)) {
+        add_swap(start0 & 0x3F, p1);
+      }
+    } else {
+      uint8_t start1 = starts[1] & 0x3F;
+      uint8_t start2 = starts[2] & 0x3F;
+      if ((start1 != p1) && (start1 != p2)) {
+        if (start2 == p1) {
+          add_cycle(start1, p1, p2);
+        } else if ((start2 == p2) || (start2 == start1)) {
+          add_swap(start1, p1);
+        } else {
+          add_swap(start1, p1);
+          add_swap(start2, p2);
+        }
+      } else if ((start2 != p1) && (start2 != p2)) {
+        if (start1 == p1) {
+          add_swap(start2, p2);
+        } else {
+          add_swap(start2, p1);
+        }
+      }
+    }
+  };
+
+  check_side(start_tile_definitions[0], 0x03, 0x04);
+  check_side(start_tile_definitions[1], 0x06 + is_nte, 0x07 + is_nte);
+
+  // The rewrites have all been collected; now just rewrite start_tile_definitions and map_tiles
+  for (uint8_t y = 0; y < src_map_tiles.size(); y++) {
+    auto& src_row = src_map_tiles[y];
+    auto& dest_row = dest_map_tiles[y];
+    for (uint8_t x = 0; x < src_row.size(); x++) {
+      dest_row[x] = rewrites[src_row[x]];
+    }
+  }
 }
 
 bool Rules::check_invalid_fields() const {
@@ -3109,7 +3173,8 @@ const std::string& MapIndex::get_compressed_list(size_t num_players, Language la
       e.map_number = vm->map->map_number;
       e.width = vm->map->width;
       e.height = vm->map->height;
-      e.map_tiles = vm->map->map_tiles;
+      MapDefinition::rewrite_map_tiles_for_preview(
+          e.map_tiles, vm->map->map_tiles, vm->map->start_tile_definitions, is_trial);
       e.modification_tiles = vm->map->overlay_state.tiles;
 
       e.name_offset = strings_w.size();

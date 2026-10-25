@@ -1205,6 +1205,10 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   // - If the team has 1 player, only byte [0] is used.
   // - If the team has 2 players, bytes [1] and [2] are used.
   // - If the team has 3 players, bytes [3] through [5] are used.
+  // Note that the game's preview window ignores this, so if the standard values (described above, on map_tiles) are
+  // not used, then the preview window when selecting a map will not match where players are actually placed when the
+  // battle starts. On Trial Edition, the preview window places players on tiles matching 03 and 04 for team A, and 07
+  // and 08 for team B; on all other Episode 3 builds, team B is assumed to be 06 and 07 instead.
   /* 010C */ parray<parray<uint8_t, 6>, 2> start_tile_definitions;
 
   struct CameraSpec {
@@ -1409,6 +1413,12 @@ struct MapDefinition { // .mnmd format; also the format of (decompressed) quests
   inline bool is_quest() const {
     return (this->map_category <= 2);
   }
+
+  static void rewrite_map_tiles_for_preview(
+      parray<parray<uint8_t, 0x10>, 0x10>& dest_map_tiles,
+      const parray<parray<uint8_t, 0x10>, 0x10>& src_map_tiles,
+      const parray<parray<uint8_t, 6>, 2>& start_tile_definitions,
+      bool is_nte);
 
   // This function throws runtime_error if the passed-in map is not semantically equivalent to *this. Semantic
   // equivalence means all fields that affect gameplay and visuals are equivalent, but dialogue, names, and description
