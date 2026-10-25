@@ -153,6 +153,7 @@ public:
     this->routes.emplace_back(Route{
         .method = HTTPRequest::Method::GET,
         .path_tokens = this->split_and_normalize_path(path_pattern),
+        .json_max_depth = -1,
         .handler = handler});
   }
   void add_POST(const std::string& path_pattern, ssize_t json_max_depth, Handler handler) {
