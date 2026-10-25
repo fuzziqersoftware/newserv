@@ -36,6 +36,8 @@ Server::Server(std::shared_ptr<Lobby> lobby, Options&& options)
       def_dice_value_range_override(0xFF),
       atk_dice_value_range_2v1_override(0xFF),
       def_dice_value_range_2v1_override(0xFF),
+      lone_player(0xFF),
+      counter_slot_to_client_id(0xFF),
       battle_finished(false),
       battle_in_progress(false),
       round_num(1),
@@ -2119,35 +2121,46 @@ void Server::handle_CAx13_update_map_during_setup_t(std::shared_ptr<Client> c, c
       (this->registration_phase != RegistrationPhase::REGISTERED) &&
       (this->registration_phase != RegistrationPhase::BATTLE_STARTED)) {
     *this->map_and_rules = in_cmd.map_and_rules_state;
-    // The client will likely send incorrect values for the extended rules (or in the case of NTE, no values at all,
-    // since the Rules structure is smaller). So, use the values from the last chosen map if applicable, or the values
-    // from the $dicerange command if available.
-    Language language = c ? c->language() : Language::ENGLISH;
-    const Rules* map_rules = this->last_chosen_map ? &this->last_chosen_map->version(language)->map->default_rules : nullptr;
-    auto& server_rules = this->map_and_rules->rules;
-    // NTE can specify the DEF dice value range in its Rules struct, so we use that unless the map or $dicerange
-    // overrides it.
-    server_rules.def_dice_value_range = (map_rules && (map_rules->def_dice_value_range != 0xFF))
-        ? map_rules->def_dice_value_range
-        : (this->def_dice_value_range_override != 0xFF)
-        ? this->def_dice_value_range_override
-        : this->options.is_nte()
-        ? server_rules.def_dice_value_range
-        : 0;
-    server_rules.atk_dice_value_range_2v1 = (map_rules && (map_rules->atk_dice_value_range_2v1 != 0xFF))
-        ? map_rules->atk_dice_value_range_2v1
-        : (this->atk_dice_value_range_2v1_override != 0xFF)
-        ? this->atk_dice_value_range_2v1_override
-        : 0;
-    server_rules.def_dice_value_range_2v1 = (map_rules && (map_rules->def_dice_value_range_2v1 != 0xFF))
-        ? map_rules->def_dice_value_range_2v1
-        : (this->def_dice_value_range_2v1_override != 0xFF)
-        ? this->def_dice_value_range_2v1_override
-        : 0;
 
     // If this match is part of a tournament, ignore the rules sent by the client and use the tournament rules instead.
+    auto& server_rules = this->map_and_rules->rules;
     if (this->options.tournament) {
-      this->map_and_rules->rules = this->options.tournament->get_rules();
+      server_rules = this->options.tournament->get_rules();
+
+    } else {
+      // The client will likely send incorrect values for the extended rules (or in the case of NTE, no values at all,
+      // since the Rules structure is smaller). So, use the values from the last chosen map if applicable, or the values
+      // from the $dicerange command if available. Furthermore, NTE can specify the DEF dice value range in its Rules
+      // struct, so we use that unless the map or $dicerange overrides it.
+      Language language = c ? c->language() : Language::ENGLISH;
+      const Rules* map_rules = this->last_chosen_map
+          ? &this->last_chosen_map->version(language)->map->default_rules
+          : nullptr;
+      server_rules.def_dice_value_range = (map_rules && (map_rules->def_dice_value_range != 0xFF))
+          ? map_rules->def_dice_value_range
+          : (this->def_dice_value_range_override != 0xFF)
+          ? this->def_dice_value_range_override
+          : this->options.is_nte()
+          ? server_rules.def_dice_value_range
+          : 0;
+      server_rules.atk_dice_value_range_2v1 = (map_rules && (map_rules->atk_dice_value_range_2v1 != 0xFF))
+          ? map_rules->atk_dice_value_range_2v1
+          : (this->atk_dice_value_range_2v1_override != 0xFF)
+          ? this->atk_dice_value_range_2v1_override
+          : 0;
+      server_rules.def_dice_value_range_2v1 = (map_rules && (map_rules->def_dice_value_range_2v1 != 0xFF))
+          ? map_rules->def_dice_value_range_2v1
+          : (this->def_dice_value_range_2v1_override != 0xFF)
+          ? this->def_dice_value_range_2v1_override
+          : 0;
+      server_rules.lone_player = (map_rules && (map_rules->lone_player != 0xFF))
+          ? map_rules->lone_player
+          : (this->lone_player != 0xFF)
+          ? this->lone_player
+          : 0;
+      if (server_rules.lone_player > 0) {
+        this->map_and_rules->num_team0_players = this->map_and_rules->num_players - 1;
+      }
     }
 
     if (this->override_environment_number != 0xFF) {
@@ -2195,8 +2208,7 @@ void Server::handle_CAx14_update_deck_during_setup(std::shared_ptr<Client>, cons
         if (this->options.behavior_flags & BehaviorFlag::IGNORE_CARD_COUNTS) {
           verify_error = this->ruler_server->verify_deck(entry.card_ids);
         } else {
-          verify_error = this->ruler_server->verify_deck(entry.card_ids,
-              &this->client_card_counts[in_cmd.client_id]);
+          verify_error = this->ruler_server->verify_deck(entry.card_ids, &this->client_card_counts[in_cmd.client_id]);
         }
       }
       if (verify_error) {
@@ -2205,7 +2217,18 @@ void Server::handle_CAx14_update_deck_during_setup(std::shared_ptr<Client>, cons
       if (!this->options.is_nte() && !(this->options.behavior_flags & BehaviorFlag::SKIP_D1_D2_REPLACE)) {
         this->ruler_server->replace_D1_D2_rank_cards_with_Attack(entry.card_ids);
       }
-      *this->deck_entries[in_cmd.client_id] = entry;
+      auto& this_deck_entry = this->deck_entries[in_cmd.client_id];
+      *this_deck_entry = entry;
+
+      // The client has a bug that causes it to crash when the player opens the pause menu if team 1 has more than two
+      // players, so we always assign the lone player to team 1. If team 0 has more than two players, there are
+      // graphical issues in the pause menu, but it doesn't crash.
+      if (this->map_and_rules->rules.lone_player >= 5) {
+        this_deck_entry->team_id = (in_cmd.client_id == (this->map_and_rules->rules.lone_player - 5));
+      } else if (this->map_and_rules->rules.lone_player >= 1) {
+        this_deck_entry->team_id =
+            (this->counter_slot_for_client_id(in_cmd.client_id) == this->map_and_rules->rules.lone_player);
+      }
       this->presence_entries[in_cmd.client_id].player_present = true;
       this->presence_entries[in_cmd.client_id].is_cpu_player = in_cmd.is_cpu_player;
       this->set_player_deck_valid(in_cmd.client_id);
@@ -3188,6 +3211,44 @@ G_SetTrapTileLocations_Ep3_6xB4x50 Server::prepare_6xB4x50_trap_tile_locations()
 
 void Server::send_6xB4x50_trap_tile_locations() const {
   this->send(this->prepare_6xB4x50_trap_tile_locations());
+}
+
+void Server::clear_counter_slot(uint8_t counter_slot) {
+  this->counter_slot_to_client_id[counter_slot - 1] = 0xFF;
+}
+
+void Server::set_counter_slot_com(uint8_t counter_slot) {
+  this->counter_slot_to_client_id[counter_slot - 1] = 4;
+}
+
+void Server::set_counter_slot_human(uint8_t counter_slot, uint8_t client_id) {
+  this->counter_slot_to_client_id[counter_slot - 1] = client_id;
+}
+
+uint8_t Server::counter_slot_for_client_id(uint8_t client_id) {
+  std::array<uint8_t, 4> client_id_to_slot = {0xFF, 0xFF, 0xFF, 0xFF}; // Indexed as [client_id]; value is counter_slot
+
+  auto lowest_unused_id = [&]() -> uint8_t {
+    for (size_t z = 0; z < 4; z++) {
+      if (client_id_to_slot[z] == 0xFF) {
+        return z;
+      }
+    }
+    throw std::logic_error("All client IDs are used but there remain unassigned COM slots");
+  };
+
+  // Assign all human players, then assign COMs in increasing order of counter slot
+  for (size_t z = 0; z < 4; z++) {
+    if (this->counter_slot_to_client_id[z] < 4) {
+      client_id_to_slot[this->counter_slot_to_client_id[z]] = z;
+    }
+  }
+  for (size_t z = 0; z < 4; z++) {
+    if (this->counter_slot_to_client_id[z] == 4) {
+      client_id_to_slot[lowest_unused_id()] = z;
+    }
+  }
+  return client_id_to_slot.at(client_id) + 1;
 }
 
 } // namespace Episode3

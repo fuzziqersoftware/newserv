@@ -1376,7 +1376,7 @@ static void on_ep3_battle_subs(std::shared_ptr<Client> c, SubcommandMessage& msg
 
   auto s = c->require_server_state();
   auto l = c->require_lobby();
-  if (!l->is_game() || !l->is_ep3()) {
+  if (!l->is_game() || !l->is_ep3() || !l->ep3_server) {
     return;
   }
 
@@ -1395,16 +1395,30 @@ static void on_ep3_battle_subs(std::shared_ptr<Client> c, SubcommandMessage& msg
       return;
     }
   } else if (header.subsubcommand == 0x2F) {
+    const Ep3CounterPlayerEntryTrial* entry;
+    uint8_t menu_item_index;
     if (c->version() == Version::GC_EP3_NTE) {
       const auto& cmd = msg.check_size_t<G_SetDeckInBattleSetupMenu_Ep3NTE_6xB5x2F>();
       if (cmd.menu_type >= 0x15) {
         return;
       }
+      entry = &cmd.entry;
+      menu_item_index = cmd.menu_item_index;
     } else {
       const auto& cmd = msg.check_size_t<G_SetDeckInBattleSetupMenu_Ep3_6xB5x2F>();
       if (cmd.menu_type >= 0x15) {
         return;
       }
+      entry = &cmd.entry;
+      menu_item_index = cmd.menu_item_index;
+    }
+    uint8_t slot_index = menu_item_index - (menu_item_index > 2);
+    if (entry->entry_state == 0) {
+      l->ep3_server->clear_counter_slot(slot_index);
+    } else if (entry->entry_type == 2) {
+      l->ep3_server->set_counter_slot_com(slot_index);
+    } else {
+      l->ep3_server->set_counter_slot_human(slot_index, entry->owner_client_id);
     }
   } else if (header.subsubcommand == 0x31) {
     const auto& cmd = msg.check_size_t<G_ConfirmDeckSelection_Ep3_6xB5x31>();

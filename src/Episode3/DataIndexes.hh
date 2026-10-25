@@ -994,7 +994,13 @@ struct Rules {
   // These fields specify override dice ranges for the 1-player team in 2v1.
   /* 0E */ uint8_t atk_dice_value_range_2v1 = 0; // High 4 bits = min, low 4 = max
   /* 0F */ uint8_t def_dice_value_range_2v1 = 0; // High 4 bits = min, low 4 = max
-  /* 10 */ parray<uint8_t, 4> unused;
+  // lone_player overrides team assignment, putting the specified player on a team by themself against all other
+  // players. The values are:
+  //   0 = no override (default)
+  //   1-4 = player in counter slot 0-3 (respectively) is on a team by themself
+  //   5-8 = player with client ID 0-3 (respectively) is on a team by themself
+  /* 10 */ uint8_t lone_player = 0;
+  /* 11 */ parray<uint8_t, 3> unused;
   /* 14 */
 
   Rules() = default;

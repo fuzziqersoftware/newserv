@@ -1612,6 +1612,47 @@ ChatCommandDefinition cc_loadchar(
       co_return;
     });
 
+ChatCommandDefinition cc_lone(
+    {"$lone"},
+    +[](const Args& a) -> asio::awaitable<void> {
+      a.check_is_proxy(false);
+      a.check_is_game(true);
+      a.check_is_ep3(true);
+      a.check_is_leader();
+
+      auto l = a.c->require_lobby();
+      if (l->episode != Episode::EP3) {
+        throw std::logic_error("non-Ep3 client in Ep3 game");
+      }
+      if (!l->ep3_server) {
+        throw precondition_failed("$C6Episode 3 server\nis not initialized");
+      }
+      if (l->ep3_server->setup_phase != Episode3::SetupPhase::REGISTRATION) {
+        throw precondition_failed("$C6Battle is already\nin progress");
+      }
+      if (l->tournament_match) {
+        throw precondition_failed("$C6Cannot override\nteams in a\ntournament");
+      }
+
+      if (a.text.empty()) {
+        l->ep3_server->lone_player = 0;
+        send_text_message_fmt(l, "$C7Team override\ndisabled");
+      } else if (a.text == "me") {
+        l->ep3_server->lone_player = 5 + a.c->lobby_client_id;
+        auto p = a.c->character_file();
+        send_text_message_fmt(l, "$C6{}\n$C7will be on a team\nalone", p->disp.visual.name.decode(a.c->language()));
+      } else {
+        uint32_t v = std::stoul(a.text);
+        if ((v < 1) || (v > 4)) {
+          send_text_message_fmt(a.c, "$C7Invalid team\noverride");
+        } else {
+          l->ep3_server->lone_player = v;
+          send_text_message_fmt(l, "$C7Counter slot {}\nwill be on a team\nalone", l->ep3_server->lone_player);
+        }
+      }
+      co_return;
+    });
+
 ChatCommandDefinition cc_makeobj(
     {"$makeobj"},
     +[](const Args& a) -> asio::awaitable<void> {

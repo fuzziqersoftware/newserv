@@ -144,6 +144,10 @@ public:
   void force_battle_result(uint8_t surrendered_client_id, bool set_winner);
   void force_replace_assist_card(uint8_t client_id, uint16_t card_id);
   void force_destroy_field_character(uint8_t client_id, size_t set_index);
+  void clear_counter_slot(uint8_t counter_slot);
+  void set_counter_slot_com(uint8_t counter_slot);
+  void set_counter_slot_human(uint8_t counter_slot, uint8_t client_id);
+  uint8_t counter_slot_for_client_id(uint8_t client_id);
 
   template <typename... ArgTs>
   void send_debug_message(std::format_string<ArgTs...> fmt, ArgTs&&... args) const {
@@ -283,6 +287,8 @@ public:
   uint8_t def_dice_value_range_override;
   uint8_t atk_dice_value_range_2v1_override;
   uint8_t def_dice_value_range_2v1_override;
+  uint8_t lone_player;
+  parray<uint8_t, 4> counter_slot_to_client_id; // Indexed by [counter_slot-1]; 0-3 = humans (by client ID), 4 = com, 0xFF = empty
   mutable std::deque<StackLogger*> logger_stack;
 
   // These fields were originally contained in the TCardServerBase object
