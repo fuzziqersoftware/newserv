@@ -15,7 +15,7 @@ reloc0:
 start:
   .include  WriteCodeBlocks
 
-  .label    hook_addr, 0x8000BF5C
+  .label    hook_addr, 0x8000AD50
   .label    sprintf, <VERS 0x80395EFC 0x80398904 0x8039A7A4 0x8039A554 0x803971CC 0x80397224 0x8039A924 0x80399414>
   .label    enemy_name_for_rt_index, <VERS 0x801326FC 0x80132960 0x80132AA0 0x80132A00 0x801329A0 0x801329A0 0x80132A10 0x80132BE8>  # [std](uint32_t rt_index @ [esp + 4]) -> wchar_t* name @ eax
   .label    TBoss7Joint_get_shell_max_hp, <VERS 0x802EB164 0x802EC13C 0x802ED628 0x802ED340 0x802EBAC8 0x802EBB0C 0x802ED4FC 0x802EC8D4>
