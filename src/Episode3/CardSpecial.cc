@@ -1729,7 +1729,7 @@ int32_t CardSpecial::evaluate_effect_expr(const AttackEnvStats& ast, const char*
       }
       switch (token.type) {
         case ExprToken::Type::ROUND_DIVIDE:
-          value = lround(static_cast<double>(value) / right_token.value);
+          value = lround(static_cast<float>(value) / right_token.value);
           log.debug_f("value={} (token_type=ROUND_DIVIDE, right_token_value={})", value, right_token.value);
           break;
         case ExprToken::Type::SUBTRACT:
@@ -1746,7 +1746,7 @@ int32_t CardSpecial::evaluate_effect_expr(const AttackEnvStats& ast, const char*
           break;
         case ExprToken::Type::FLOOR_DIVIDE:
           // This matches the client's implementation, even though just `value / right_token.value` is probably easier
-          value = floor(static_cast<double>(value) / right_token.value);
+          value = floor(static_cast<float>(value) / right_token.value);
           log.debug_f("value={} (token_type=FLOOR_DIVIDE, right_token_value={})", value, right_token.value);
           break;
         default:
