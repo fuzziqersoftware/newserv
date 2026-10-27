@@ -3256,10 +3256,10 @@ I 56583 2025-05-23 21:20:32 - [Commands] Received from C-5 (Tali Lv.1) @ ip:127.
 I 56583 2025-05-23 21:20:32 - [C-5] Sending 8 queued command(s)
 I 56583 2025-05-23 21:20:32 - [Commands] Sending to C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=6D flag=01)
 0000 | 6D 01 4C 00 6D 00 00 00 48 00 00 00 8C 00 00 00 | m L m   H
-0010 | 36 00 00 00 5C ED FF FF FB 05 00 01 0B 00 21 11 | 6   \         !
+0010 | 36 00 00 00 5C DD FF FF FB 05 00 01 0B 00 21 11 | 6   \         !
 0020 | 00 55 41 15 00 61 19 00 81 1D 00 A1 21 00 55 C1 |  UA  a      ! U
 0030 | 25 00 E1 0B 00 01 10 00 21 31 00 05 41 35 00 61 | %       !1  A5 a
-0040 | 10 01 40 0F 52 0F 64 0F 29 00 00 00             |   @ R d )
+0040 | 10 01 DE FF DF FF FC FF 76 00 00 00             |         v
 I 56583 2025-05-23 21:20:32 - [Commands] Sending to C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=6D flag=01)
 0000 | 6D 01 E4 1B 6B 00 00 00 E0 1B 00 00 9C 66 00 00 | m   k        f
 0010 | CF 1B 00 00 56 ED F1 A0 0C E8 F7 A1 F3 F8 A2 F3 |     V
@@ -5090,10 +5090,10 @@ I 56583 2025-05-23 21:21:00 - [Game:15] Next item ID for player 11 (01610000) ma
 I 56583 2025-05-23 21:21:00 - [Game:15] Sending next item IDs to client: 00010005 00210007 00410000 00610000
 I 56583 2025-05-23 21:21:00 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=6D flag=00)
 0000 | 6D 00 50 00 6D 00 00 00 4C 00 00 00 8C 00 00 00 | m P m   L
-0010 | 39 00 00 00 FC ED FF FF FB 05 00 01 00 07 00 55 | 9              U
+0010 | 39 00 00 00 FC DD FF FF FB 05 00 01 00 07 00 55 | 9              U
 0020 | 21 0B 00 41 15 00 61 19 00 81 1D 00 D5 A1 21 00 | !  A  a       !
 0030 | C1 25 00 E1 0B 00 01 01 57 00 00 21 31 00 41 35 |  %      W  !1 A5
-0040 | 00 61 31 00 00 3F 0F 51 0F 63 0F 0A 01 00 00 00 |  a1  ? Q c
+0040 | 00 61 31 00 00 DE FF E0 FF FC FF 75 01 00 00 00 |  a1        u
 I 56583 2025-05-23 21:21:02 - [Commands] Received from C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=6D flag=00)
 0000 | 6D 00 E4 1B 6B 00 00 00 E0 1B 00 00 9C 66 00 00 | m   k        f
 0010 | CF 1B 00 00 56 ED F1 A0 0C E8 F7 A1 F3 F8 A2 F3 |     V
@@ -7893,10 +7893,10 @@ I 56583 2025-05-23 21:21:33 - [Game:15] Next item ID for player 11 (01610000) ma
 I 56583 2025-05-23 21:21:33 - [Game:15] Sending next item IDs to client: 0001000A 00210007 00410000 00610000
 I 56583 2025-05-23 21:21:33 - [Commands] Sending to C-2 (NN Lv.1) @ ipss:N-2:127.0.0.1:49220 (version=GC_V3 command=6D flag=02)
 0000 | 6D 02 50 00 6D 00 00 00 4C 00 00 00 8C 00 00 00 | m P m   L
-0010 | 39 00 00 00 FC ED FF FF FB 0A 00 01 00 07 00 55 | 9              U
+0010 | 39 00 00 00 FC DD FF FF FB 0A 00 01 00 07 00 55 | 9              U
 0020 | 21 0B 00 41 15 00 61 19 00 81 1D 00 D5 A1 21 00 | !  A  a       !
 0030 | C1 25 00 E1 0B 00 01 01 57 00 00 21 31 00 41 35 |  %      W  !1 A5
-0040 | 00 61 31 00 00 3F 0F 51 0F 63 0F 0A 01 00 00 00 |  a1  ? Q c
+0040 | 00 61 31 00 00 DE FF E0 FF FC FF 75 01 00 00 00 |  a1        u
 I 56583 2025-05-23 21:21:35 - [Commands] Received from C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=6D flag=02)
 0000 | 6D 02 E4 1B 6B 00 00 00 E0 1B 00 00 9C 66 00 00 | m   k        f
 0010 | CF 1B 00 00 56 ED F1 A0 0C E8 F7 A1 F3 F8 A2 F3 |     V
@@ -14550,10 +14550,10 @@ I 56583 2025-05-23 21:24:47 - [Game:15] Next item ID for player 11 (01610000) ma
 I 56583 2025-05-23 21:24:47 - [Game:15] Sending next item IDs to client: 0001000A 00210007 00410003 00610000
 I 56583 2025-05-23 21:24:47 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=6D flag=00)
 0000 | 6D 00 50 00 6D 00 00 00 4C 00 00 00 8C 00 00 00 | m P m   L
-0010 | 3A 00 00 00 FC ED FF FF FB 0A 00 01 00 07 00 5F | :              _
+0010 | 3A 00 00 00 FC DD FF FF FB 0A 00 01 00 07 00 5F | :              _
 0020 | 21 00 03 00 41 0B 00 61 19 00 55 81 1D 00 A1 21 | !   A  a  U    !
 0030 | 00 C1 25 00 E1 0B 00 5F 01 01 00 00 21 31 00 41 |   %    _    !1 A
-0040 | 35 00 01 61 31 00 3F 0F 51 0F 63 0F 0A 01 00 00 | 5  a1 ? Q c
+0040 | 35 00 01 61 31 00 DE FF DF FF FC FF 75 01 00 00 | 5  a1       u
 I 56583 2025-05-23 21:24:49 - [Commands] Received from C-5 (Tali Lv.1) @ ip:127.0.0.1:49311 (version=XB_V3 command=6D flag=00)
 0000 | 6D 00 EC 1B 6B 00 00 00 E8 1B 00 00 9C 66 00 00 | m   k        f
 0010 | D7 1B 00 00 56 ED F1 A0 0C E8 F7 A1 F3 F8 A2 F3 |     V
@@ -19623,9 +19623,9 @@ I 56583 2025-05-23 21:27:19 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:
 0010 | 4D 00 00 00 5C ED FF FF FB 04 00 01 0B 00 21 11 | M   \         !
 0020 | 00 55 41 15 00 61 19 00 81 1D 00 A1 21 00 55 C1 |  UA  a      ! U
 0030 | 25 00 E1 0B 00 01 10 00 21 31 00 05 41 35 00 61 | %       !1  A5 a
-0040 | 30 01 40 0F 52 0F 64 0F 09 02 FF FF FF 04 48 84 | 0 @ R d       H
-0050 | 43 D8 5C BB 84 43 7A 01 01 03 2A 70 09 CC 00 78 | C \  Cz   *p   x
-0060 | 01 00 00 00                                     |
+0040 | 30 01 DF FF DF FF DF FF 09 02 FF FF FF 04 48 84 | 0             H
+0050 | 43 D8 5C BB 84 43 7A 01 01 03 2A 70 09 CC 00 DC | C \  Cz   *p
+0060 | F1 00 00 00                                     |
 I 56583 2025-05-23 21:27:19 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=6D flag=00)
 0000 | 6D 00 A4 18 6C 00 00 00 A0 18 00 00 44 1E 00 00 | m   l       D
 0010 | 8D 18 00 00 52 ED F0 01 EF F0 F1 F0 02 F5 F0 03 |     R
@@ -20053,7 +20053,7 @@ I 56583 2025-05-23 21:27:19 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:
 01B0 | C3 58 1E AA CF 58 1F DB 58 20 E7 58 21 F3 58 22 |  X   X  X  X! X"
 01C0 | AA FF 58 23 0B 68 24 17 68 25 23 68 26 AA 2F 68 |   X# h$ h%#h& /h
 01D0 | 27 3B 68 28 47 68 29 53 68 2A FA 5F 68 2B 6B 65 | ';h(Gh)Sh* _h+ke
-01E0 | 0E 90 20 FF FF 51 5C 79 6F 7F 69 73 60 2F 6B 68 |      Q\yo is`/kh
+01E0 | 0E 90 20 FF FF 51 5C 79 6F 7F 69 EF F0 2F 6B 68 |      Q\yo i  /kh
 01F0 | 30 A7 68 55 31 B3 68 32 BF 68 33 CB 68 34 D7 68 | 0 hU1 h2 h3 h4 h
 0200 | 55 35 E3 68 36 EF 68 37 FB 68 38 07 78 55 39 13 | U5 h6 h7 h8 xU9
 0210 | 78 3A 1F 78 3B 2B 78 3C 37 78 55 3D 43 78 3E 4F | x: x;+x<7xU=Cx>O
@@ -20469,7 +20469,7 @@ I 56583 2025-05-23 21:27:19 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:
 1BB0 | B7 58 55 1D C3 58 1E CF 58 1F DB 58 20 E7 58 55 |  XU  X  X  X  XU
 1BC0 | 21 F3 58 22 FF 58 23 0B 68 24 17 68 55 25 23 68 | ! X" X# h$ hU%#h
 1BD0 | 26 2F 68 27 3B 68 28 47 68 55 29 53 68 2A 5F 68 | &/h';h(GhU)Sh*_h
-1BE0 | 2B 6B 68 2C 77 64 00 00                         | +kh,wd
+1BE0 | 2B 6B 68 2C 73 44 00 00                         | +kh,sD
 I 56583 2025-05-23 21:27:19 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=6D flag=00)
 0000 | 6D 00 B8 03 6E 00 00 00 B4 03 00 00 C8 1D 00 00 | m   n
 0010 | A1 03 00 00 FF C0 1D 00 19 80 02 40 02 FD 10 EB |            @
@@ -20502,7 +20502,7 @@ I 56583 2025-05-23 21:27:19 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:
 01C0 | DF 45 DF 57 DF 69 DF 7B DF 8D DF 00 9F DF B1 DF |  E W i {
 01D0 | C3 DF D5 DF E7 DF F9 DF 0B EF 1D EF 00 2F EF 41 |              / A
 01E0 | EF 53 EF 65 EF 77 EF 89 EF 9B EF AD EF 00 BF EF |  S e w
-01F0 | D1 EF E3 EF F5 EF 07 FF 19 FF 2B FF 3D FF 00 4F |           + =  O
+01F0 | C9 EF E3 EF F5 EF 07 FF 19 FF 2B FF 3D FF 00 4F |           + =  O
 0200 | FF 61 FF 73 FF 85 FF 97 FF A9 FF EE 0F CD FF 00 |  a s
 0210 | DF FF F1 FF 03 0F 15 0F 27 0F 39 0F 4B 0F 5D 0F |         ' 9 K ]
 0220 | 00 6F 0F 81 0F 93 0F A5 0F B7 0F C9 0F DB 0F ED |  o
@@ -20529,8 +20529,8 @@ I 56583 2025-05-23 21:27:19 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:
 0370 | BF 7E BF 00 90 BF A2 BF B4 BF C6 BF D8 BF EA BF |  ~
 0380 | FC BF 0E CF 00 20 CF 32 CF 44 CF 56 CF 68 CF 7A |        2 D V h z
 0390 | CF 8C CF 9E CF 00 B0 CF C2 CF D4 CF E6 CF F8 CF |
-03A0 | 0A DF 1C DF 2E DF 00 40 DF 52 DF 64 DF 76 DF 88 |     .  @ R d v
-03B0 | DF 9A DF BF F6 00 00 00                         |
+03A0 | 0A DF 1C DF 2E DF 00 40 DF 47 DF 48 DF 49 DF 49 |     .  @ G H I I
+03B0 | DF D3 EF AC D6 00 00 00                         |
 I 56583 2025-05-23 21:27:19 - [Commands] Sending to C-4 (Jess Lv.51) @ ipss:N-1:127.0.0.1:49211 (version=GC_V3 command=62 flag=00)
 0000 | 62 00 08 02 6F 81 00 00 00 12 CB C2 80 28 00 00 | b   o        (
 0010 | 00 29 20 10 0A 20 00 00 00 00 00 00 00 00 00 00 |  )
