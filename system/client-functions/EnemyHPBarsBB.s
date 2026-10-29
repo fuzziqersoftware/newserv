@@ -186,21 +186,21 @@ hooks_end:
 
   mov       eax, <VERS 0x0072B11B 0x00731957 0x007318B7>  # hook4_get_max_hp_call
   mov       byte [eax], 0xE8
-  lea       ecx, [edi + (hook4_get_max_hp - hooks_start + 5)]
+  lea       ecx, [edi + (hook4_get_max_hp - hooks_start - 5)]
   sub       ecx, eax
   mov       [eax + 1], ecx
   mov       word [eax + 5], 0x9090
 
   mov       eax, <VERS 0x0072B12B 0x00731967 0x007318C7>  # hook5_get_current_hp_call
   mov       byte [eax], 0xE8
-  lea       ecx, [edi + (hook5_get_current_hp - hooks_start + 5)]
+  lea       ecx, [edi + (hook5_get_current_hp - hooks_start - 5)]
   sub       ecx, eax
   mov       [eax + 1], ecx
   mov       word [eax + 5], 0x9090
 
   mov       eax, <VERS 0x0072B76C 0x00731FA8 0x00731F08>  # hook6_update_window_text_call
   mov       byte [eax], 0xE8
-  lea       ecx, [edi + (hook6_update_window_text - hooks_start + 5)]
+  lea       ecx, [edi + (hook6_update_window_text - hooks_start - 5)]
   sub       ecx, eax
   mov       [eax + 1], ecx
 
