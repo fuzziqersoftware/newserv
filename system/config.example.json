@@ -24,9 +24,9 @@
   // username in the $SUDO_USER environment variable instead. This option has no effect on Windows.
   // "User": "$SUDO_USER",
 
-  // Number of threads to use for CPU-intensive work. This value must be at least 1, and should generally not be more
-  // than the number of CPUs in the system.
-  "WorkerThreads": 1,
+  // Number of threads to use for CPU-intensive work. If set to 0, the server will use one fewer thread than there are
+  // CPUs in the system (since the event thread is not included in this count).
+  "WorkerThreads": 0,
 
   // Address to connect local clients to (IP address or interface name). This is the address that newserv will expect
   // clients on the same network as the server to connect to.

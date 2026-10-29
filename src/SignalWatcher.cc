@@ -27,6 +27,7 @@ asio::awaitable<void> SignalWatcher::signal_handler_task() {
       case SIGUSR1:
         this->log.info_f("Received SIGUSR1; reloading config.json");
         try {
+          this->state->data->load_config_before();
           this->state->data->load_config_early();
           this->state->data->load_config_late();
           this->state->disconnect_all_banned_clients();
@@ -40,7 +41,8 @@ asio::awaitable<void> SignalWatcher::signal_handler_task() {
       case SIGUSR2:
         this->log.info_f("Received SIGUSR2; reloading config.json and all dependencies");
         try {
-          this->state->data->load_all();
+          // TODO: It'd be nice to use the existing thread pool here instead of using new temporary threads
+          this->state->data->load_all(this->state->data->num_worker_threads);
           this->state->disconnect_all_banned_clients();
           this->state->update_default_lobby_events_from_config();
           phosg::fwrite_fmt(stderr, "Configuration update complete\n");

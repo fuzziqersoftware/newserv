@@ -472,14 +472,31 @@ void DataIndex::collect_network_addresses() {
   }
 }
 
-void DataIndex::load_config_early() {
+void DataIndex::load_config_before() {
   if (this->config_filename.empty()) {
     throw std::logic_error("configuration filename is missing");
   }
-
   config_log.info_f("Loading configuration");
   this->config_json = std::make_shared<phosg::JSON>(phosg::JSON::parse(phosg::load_file(this->config_filename)));
 
+  if (this->is_debug) {
+    set_all_log_levels(phosg::LogLevel::L_DEBUG);
+  } else {
+    set_log_levels_from_json(this->config_json->get("LogLevels", phosg::JSON::dict()));
+  }
+
+  this->num_worker_threads = this->config_json->at("WorkerThreads").as_int();
+  if (this->num_worker_threads == 0) {
+    this->num_worker_threads = std::max<size_t>(2, std::thread::hardware_concurrency()) - 1;
+  }
+}
+
+void DataIndex::load_config_early() {
+  if (!this->config_json) {
+    throw std::logic_error("configuration is missing");
+  }
+
+  config_log.info_f("Parsing configuration");
   auto parse_behavior_switch = [&](const std::string& json_key, BehaviorSwitch default_value) -> DataIndex::BehaviorSwitch {
     try {
       std::string behavior = this->config_json->get_string(json_key);
@@ -500,7 +517,6 @@ void DataIndex::load_config_early() {
   };
 
   this->name = this->config_json->at("ServerName").as_string();
-  this->num_worker_threads = this->config_json->at("WorkerThreads").as_int();
 
   if (!this->one_time_config_loaded) {
     try {
@@ -882,12 +898,6 @@ void DataIndex::load_config_early() {
   this->bb_global_exp_multiplier = this->config_json->get_float("BBGlobalEXPMultiplier", 1.0f);
   this->exp_share_multiplier = this->config_json->get_float("BBEXPShareMultiplier", 0.5f);
   this->server_global_drop_rate_multiplier = this->config_json->get_float("ServerGlobalDropRateMultiplier", 1.0f);
-
-  if (this->is_debug) {
-    set_all_log_levels(phosg::LogLevel::L_DEBUG);
-  } else {
-    set_log_levels_from_json(this->config_json->get("LogLevels", phosg::JSON::dict()));
-  }
 
   try {
     this->run_shell_behavior = this->config_json->at("RunInteractiveShell").as_bool()
@@ -1762,7 +1772,7 @@ void DataIndex::load_item_name_indexes() {
 }
 
 void DataIndex::load_drop_tables() {
-  config_log.info_f("Loading item sets");
+  config_log.info_f("Loading drop tables");
 
   std::unordered_map<std::string, std::shared_ptr<const RareItemSet>> new_rare_item_sets;
   std::unordered_map<std::string, std::shared_ptr<const CommonItemSet>> new_common_item_sets;
@@ -2026,27 +2036,197 @@ void DataIndex::generate_bb_stream_file() {
   this->bb_stream_file = sf;
 }
 
-void DataIndex::load_all() {
-  this->collect_network_addresses();
-  this->load_config_early();
-  this->load_bb_private_keys();
-  this->load_bb_system_defaults();
-  this->load_patch_indexes();
-  this->load_ep3_cards();
-  this->load_ep3_maps();
-  this->compile_functions();
-  this->load_dol_files();
-  this->load_set_data_tables();
-  this->load_maps();
-  this->load_battle_params();
-  this->load_level_tables();
-  this->load_text_index();
-  this->load_word_select_table();
-  this->load_item_definitions();
-  this->load_item_name_indexes();
-  this->load_drop_tables();
-  this->load_config_late();
-  this->load_quest_opcode_defs();
-  this->load_quest_index();
-  this->generate_bb_stream_file();
+struct StepGraph {
+  struct Step {
+    size_t index;
+    std::function<void()> fn;
+    std::unordered_set<size_t> incomplete_prev_step_indexes = {};
+    std::unordered_set<size_t> next_step_indexes = {};
+
+    inline bool is_ready() const {
+      return this->incomplete_prev_step_indexes.empty();
+    }
+
+    void add_next(std::shared_ptr<Step> next) {
+      this->next_step_indexes.emplace(next->index);
+      next->incomplete_prev_step_indexes.emplace(this->index);
+    }
+  };
+
+  std::vector<std::shared_ptr<Step>> all_steps;
+
+  StepGraph() {
+    this->add_step(nullptr); // Create root step
+  }
+
+  inline std::shared_ptr<Step> root() const {
+    return this->all_steps[0];
+  }
+
+  std::shared_ptr<Step> add_step(std::function<void()> fn) {
+    return this->all_steps.emplace_back(std::make_shared<Step>(Step{this->all_steps.size(), fn}));
+  }
+
+  void run(size_t max_threads) {
+    if (max_threads == 0) {
+      max_threads = std::max<size_t>(1, std::thread::hardware_concurrency());
+    }
+
+    // Enqueue all initially-ready steps
+    std::deque<std::shared_ptr<Step>> ready_steps;
+    for (const auto& step : this->all_steps) {
+      if (step->is_ready()) {
+        ready_steps.emplace_back(step);
+      }
+    }
+
+    if (max_threads == 1) {
+      while (!ready_steps.empty()) {
+        auto step = std::move(ready_steps.back());
+        ready_steps.pop_back();
+        if (step->fn) {
+          step->fn();
+        }
+        for (size_t next_step_index : step->next_step_indexes) {
+          auto& next_step = this->all_steps.at(next_step_index);
+          next_step->incomplete_prev_step_indexes.erase(step->index);
+          if (next_step->incomplete_prev_step_indexes.empty()) {
+            ready_steps.emplace_back(next_step);
+          }
+        }
+      }
+
+    } else {
+      std::mutex steps_lock; // Protects everything declared outside the thread lambda below
+      std::condition_variable steps_cv;
+      size_t num_completed_steps = 0;
+      std::exception_ptr first_exception;
+
+      auto thread_fn = [&]() -> void {
+        for (;;) {
+          std::shared_ptr<Step> step;
+          {
+            std::unique_lock g(steps_lock);
+            while (ready_steps.empty() && !first_exception) {
+              if (num_completed_steps < this->all_steps.size()) {
+                steps_cv.wait(g);
+              } else {
+                return;
+              }
+            }
+            if (first_exception) {
+              return;
+            }
+            step = ready_steps.back();
+            ready_steps.pop_back();
+          }
+          std::exception_ptr exc;
+          if (step->fn) {
+            try {
+              step->fn();
+            } catch (...) {
+              exc = std::current_exception();
+            }
+          }
+          {
+            std::unique_lock g(steps_lock);
+            if (exc) {
+              if (!first_exception) {
+                first_exception = exc;
+              }
+              steps_cv.notify_all();
+            } else {
+              size_t num_wakeups = 0;
+              for (size_t next_step_index : step->next_step_indexes) {
+                auto& next_step = this->all_steps.at(next_step_index);
+                next_step->incomplete_prev_step_indexes.erase(step->index);
+                if (next_step->incomplete_prev_step_indexes.empty()) {
+                  num_wakeups++;
+                  ready_steps.emplace_back(next_step);
+                }
+              }
+              if ((++num_completed_steps == this->all_steps.size()) || (num_wakeups > 1)) {
+                steps_cv.notify_all();
+              } else {
+                steps_cv.notify_one();
+              }
+            }
+          }
+        }
+      };
+
+      std::vector<std::thread> threads;
+      while (threads.size() < max_threads) {
+        threads.emplace_back(thread_fn);
+      }
+      for (auto& thread : threads) {
+        thread.join();
+      }
+      if (first_exception) {
+        std::rethrow_exception(first_exception);
+      }
+    }
+  }
+};
+
+void DataIndex::load_all(size_t max_threads) {
+  this->load_config_before();
+  max_threads = std::min<size_t>(max_threads, this->num_worker_threads);
+
+  StepGraph g;
+  auto s_root = g.root();
+  auto s_collect_network_addresses = g.add_step([this]() -> void { this->collect_network_addresses(); });
+  auto s_load_config_early = g.add_step([this]() -> void { this->load_config_early(); });
+  auto s_load_bb_private_keys = g.add_step([this]() -> void { this->load_bb_private_keys(); });
+  auto s_load_bb_system_defaults = g.add_step([this]() -> void { this->load_bb_system_defaults(); });
+  auto s_load_patch_indexes = g.add_step([this]() -> void { this->load_patch_indexes(); });
+  auto s_load_ep3_cards = g.add_step([this]() -> void { this->load_ep3_cards(); });
+  auto s_load_ep3_maps = g.add_step([this]() -> void { this->load_ep3_maps(); });
+  auto s_compile_functions = g.add_step([this]() -> void { this->compile_functions(); });
+  auto s_load_dol_files = g.add_step([this]() -> void { this->load_dol_files(); });
+  auto s_load_set_data_tables = g.add_step([this]() -> void { this->load_set_data_tables(); });
+  auto s_load_maps = g.add_step([this]() -> void { this->load_maps(); });
+  auto s_load_battle_params = g.add_step([this]() -> void { this->load_battle_params(); });
+  auto s_load_level_tables = g.add_step([this]() -> void { this->load_level_tables(); });
+  auto s_load_text_index = g.add_step([this]() -> void { this->load_text_index(); });
+  auto s_load_word_select_table = g.add_step([this]() -> void { this->load_word_select_table(); });
+  auto s_load_item_definitions = g.add_step([this]() -> void { this->load_item_definitions(); });
+  auto s_load_item_name_indexes = g.add_step([this]() -> void { this->load_item_name_indexes(); });
+  auto s_load_drop_tables = g.add_step([this]() -> void { this->load_drop_tables(); });
+  auto s_load_config_late = g.add_step([this]() -> void { this->load_config_late(); });
+  auto s_load_quest_opcode_defs = g.add_step([this]() -> void { this->load_quest_opcode_defs(); });
+  auto s_load_quest_index = g.add_step([this]() -> void { this->load_quest_index(); });
+  auto s_generate_bb_stream_file = g.add_step([this]() -> void { this->generate_bb_stream_file(); });
+
+  s_root->add_next(s_collect_network_addresses);
+  s_root->add_next(s_load_bb_private_keys);
+  s_root->add_next(s_load_bb_system_defaults);
+  s_root->add_next(s_load_patch_indexes);
+  s_root->add_next(s_load_ep3_cards);
+  s_root->add_next(s_load_ep3_maps);
+  s_root->add_next(s_compile_functions);
+  s_root->add_next(s_load_dol_files);
+  s_root->add_next(s_load_battle_params);
+  s_root->add_next(s_load_level_tables);
+  s_root->add_next(s_load_item_definitions);
+  s_root->add_next(s_load_quest_opcode_defs);
+  s_collect_network_addresses->add_next(s_load_config_early);
+  s_load_quest_opcode_defs->add_next(s_load_quest_index);
+  s_load_config_early->add_next(s_load_quest_index);
+  s_load_patch_indexes->add_next(s_load_set_data_tables);
+  s_load_set_data_tables->add_next(s_load_maps);
+  s_load_patch_indexes->add_next(s_load_text_index);
+  s_load_text_index->add_next(s_load_word_select_table);
+  s_load_config_early->add_next(s_load_item_name_indexes);
+  s_load_item_definitions->add_next(s_load_item_name_indexes);
+  s_load_text_index->add_next(s_load_item_name_indexes);
+  s_load_item_name_indexes->add_next(s_load_drop_tables);
+  s_load_level_tables->add_next(s_generate_bb_stream_file);
+  s_load_item_definitions->add_next(s_generate_bb_stream_file);
+  s_load_battle_params->add_next(s_generate_bb_stream_file);
+  s_load_item_name_indexes->add_next(s_load_config_late);
+  s_load_ep3_cards->add_next(s_load_config_late);
+
+  // Run load tasks
+  g.run(max_threads);
 }

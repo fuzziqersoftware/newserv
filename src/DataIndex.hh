@@ -385,6 +385,7 @@ struct DataIndex {
       Episode episode, GameMode mode, Difficulty difficulty, const Variations& variations);
 
   void collect_network_addresses();
+  void load_config_before();
   void load_config_early();
   void load_config_late();
   void load_bb_private_keys();
@@ -411,5 +412,5 @@ struct DataIndex {
   void load_dol_files();
   void generate_bb_stream_file();
 
-  void load_all();
+  void load_all(size_t max_threads);
 };

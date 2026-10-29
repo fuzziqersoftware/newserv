@@ -2459,7 +2459,15 @@ public:
       : ItemParameterTable(),
         data(data),
         r(*this->data),
-        root(&this->r.pget<RootT>(BE ? r.pget_u32b(r.size() - 0x10) : r.pget_u32l(r.size() - 0x10))) {}
+        root(&this->r.pget<RootT>(BE ? r.pget_u32b(r.size() - 0x10) : r.pget_u32l(r.size() - 0x10))) {
+    if constexpr (requires { this->root->unsealable_table; }) {
+      const auto& co = this->r.pget<ArrayRefT<BE>>(this->root->unsealable_table);
+      const auto* defs = &this->r.pget<UnsealableItem>(co.offset, co.count * sizeof(UnsealableItem));
+      for (size_t z = 0; z < co.count; z++) {
+        this->unsealable_table.emplace(item_code_to_u32(defs[z].item));
+      }
+    }
+  }
   ~BinaryItemParameterTableT() = default;
 
   inline size_t indirect_lookup_2d_count(size_t base_offset, size_t co_index) const {
@@ -2902,15 +2910,7 @@ public:
 
   virtual const std::set<uint32_t>& all_unsealable_items() const {
     if constexpr (requires { this->root->unsealable_table; }) {
-      if (!this->unsealable_table.has_value()) {
-        auto& ret = this->unsealable_table.emplace();
-        const auto& co = this->r.pget<ArrayRefT<BE>>(this->root->unsealable_table);
-        const auto* defs = &this->r.pget<UnsealableItem>(co.offset, co.count * sizeof(UnsealableItem));
-        for (size_t z = 0; z < co.count; z++) {
-          ret.emplace(item_code_to_u32(defs[z].item));
-        }
-      }
-      return *this->unsealable_table;
+      return this->unsealable_table;
     } else {
       static const std::set<uint32_t> empty_set;
       return empty_set;
@@ -3243,7 +3243,7 @@ protected:
   // the matching order matters.
   mutable std::optional<std::map<uint32_t, std::vector<ItemCombination>>> item_combination_index;
 
-  mutable std::optional<std::set<uint32_t>> unsealable_table;
+  mutable std::set<uint32_t> unsealable_table;
 };
 
 using ItemParameterTableDCNTE = BinaryItemParameterTableT<
