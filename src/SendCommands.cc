@@ -2403,12 +2403,7 @@ void send_update_lobby_data_bb(std::shared_ptr<Client> c) {
 
 void send_player_leave_notification(std::shared_ptr<Lobby> l, uint8_t leaving_client_id) {
   S_LeaveLobby_66_69_Ep3_E9 cmd = {leaving_client_id, l->leader_id, l->client_extension_flags(), 0};
-  uint8_t cmd_num;
-  if (l->is_game()) {
-    cmd_num = l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM) ? 0xE9 : 0x66;
-  } else {
-    cmd_num = 0x69;
-  }
+  uint8_t cmd_num = l->is_game() ? (l->check_flag(Lobby::Flag::IS_SPECTATOR_TEAM) ? 0xE9 : 0x66) : 0x69;
   send_command_t(l, cmd_num, leaving_client_id, cmd);
   for (const auto& watcher_l : l->watcher_lobbies) {
     send_command_t(watcher_l, cmd_num, leaving_client_id, cmd);

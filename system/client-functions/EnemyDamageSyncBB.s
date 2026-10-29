@@ -28,7 +28,7 @@ handle_6xE4_start:  # (G_6xE4* cmd @ [esp + 4]) -> void
   push      esi
   push      edi
 
-  test      byte [<VERS 0x00A9EDBC 0x00AA8DFC 0x00AAB27C>], 0x80 #0x2480
+  test      byte [<VERS 0x00A9EDBC 0x00AA8DFC 0x00AAB27C>], 0x80
   jz        handle_6xE4_return
   mov       ebx, [esp + 0x10]  # cmd
   movzx     eax, word [ebx + 2]
