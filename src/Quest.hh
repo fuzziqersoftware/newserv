@@ -157,7 +157,7 @@ struct QuestIndex {
 };
 
 std::string encode_download_quest_data(
-    const std::string& compressed_data, size_t decompressed_size = 0, uint32_t encryption_seed = 0);
+    const std::string& compressed_data, size_t decompressed_size = 0, int64_t encryption_seed = -1);
 
 std::string decode_gci_data(
     const std::string& data, ssize_t find_seed_num_threads = -1, int64_t known_seed = -1, bool skip_checksum = false);

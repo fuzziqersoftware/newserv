@@ -837,11 +837,11 @@ std::vector<std::pair<QuestIndex::IncludeState, std::shared_ptr<const Quest>>> Q
 }
 
 std::string encode_download_quest_data(
-    const std::string& compressed_data, size_t decompressed_size, uint32_t encryption_seed) {
+    const std::string& compressed_data, size_t decompressed_size, int64_t encryption_seed) {
   // Download quest files are like normal (PRS-compressed) quest files, but they are encrypted with PSO V2 encryption
   // (even on V3 / PSO GC), and a small header (PSODownloadQuestHeader) is prepended to the encrypted data.
 
-  if (encryption_seed == 0) {
+  if (encryption_seed < 0) {
     encryption_seed = phosg::random_object<uint32_t>();
   }
   if (decompressed_size == 0) {

@@ -2880,7 +2880,12 @@ static void on_10_quest_menu(std::shared_ptr<Client> c, uint32_t item_id) {
       send_lobby_message_box(c, "$C7Quest does not exist\nfor this game version.");
       return;
     }
-    vq = vq->create_download_quest(c->language());
+    // On BB, Sega apparently removed the pr2 encoding for download quests, but the rest of the flow seems like a relic
+    // from the Xbox implementation - if you send a download quest to a BB client, you get a message saying the Xbox
+    // doesn't have enough free blocks to save the quest data. We implement the format BB apparently expects anyway.
+    if (c->version() != Version::BB_V4) {
+      vq = vq->create_download_quest(c->language());
+    }
     std::string xb_filename = vq->xb_filename();
     QuestFileType type = vq->pvr_contents ? QuestFileType::DOWNLOAD_WITH_PVR : QuestFileType::DOWNLOAD_WITHOUT_PVR;
     send_open_quest_file(c, q->meta.name, vq->bin_filename(), xb_filename, vq->meta.quest_number, type, vq->bin_contents);
@@ -5827,7 +5832,7 @@ static on_command_t handlers[0x100][NUM_VERSIONS] = {
 /* A3 */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* A4 */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* A5 */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
-/* A6 */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_ignored,     nullptr},
+/* A6 */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_ignored,     on_ignored},
 /* A7 */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     on_13_A7_V3_V4, on_13_A7_V3_V4, on_13_A7_V3_V4, on_13_A7_V3_V4, on_13_A7_V3_V4, on_13_A7_V3_V4},
 /* A8 */ {nullptr, nullptr, nullptr,        nullptr,        nullptr,        nullptr,        nullptr,     nullptr,     nullptr,        nullptr,        nullptr,        nullptr,        nullptr,        nullptr},
 /* A9 */ {nullptr, nullptr, on_A9,          on_A9,          on_A9,          on_A9,          on_A9,       on_A9,       on_A9,          on_A9,          on_A9,          on_A9,          on_A9,          on_A9},
