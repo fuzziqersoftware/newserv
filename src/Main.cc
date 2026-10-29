@@ -3705,6 +3705,8 @@ Action a_materialize_map(
       auto materialized = map_file->materialize_random_sections(seed);
       if (args.get<bool>("disassemble")) {
         write_output_data(args, materialized->disassemble(false, get_cli_version(args)), "txt");
+      } else if (args.get<bool>("decompressed")) {
+        write_output_data(args, materialized->serialize(), "datd");
       } else {
         write_output_data(args, prs_compress_optimal(materialized->serialize()), "dat");
       }

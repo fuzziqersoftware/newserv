@@ -8,8 +8,8 @@ if [ -z "$EXECUTABLE" ]; then
 fi
 
 echo "... assemble system/quests/retrieval/q058-gc-e.bin.txt"
-$EXECUTABLE assemble-quest-script --optimal system/quests/retrieval/q058-gc-e.bin.txt tests/q058-gc-e-test.bin
-diff tests/q058-gc-e-test.bin tests/q058-gc-e.bin
+$EXECUTABLE assemble-quest-script --decompressed system/quests/retrieval/q058-gc-e.bin.txt tests/q058-gc-e-test.bind
+diff tests/q058-gc-e-test.bind tests/q058-gc-e.bind
 
 echo "... clean up"
-rm tests/q058-gc-e-test.bin
+rm tests/q058-gc-e-test.bind
