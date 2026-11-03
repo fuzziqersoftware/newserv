@@ -1115,8 +1115,10 @@ static const std::vector<DATEntityDefinition> dat_object_definitions{
     // Each spec is a 32-bit integer consisting of two 16-bit fields. The high 16 bits are a switch flag number
     // (0-255), and the low 16 bits are an entry index from symbolchatcolli.prs. The entry index is ignored if the
     // corresponding data label from the F8A6 quest opcode is not null (and the data from the label is used instead).
-    // Quest scripts don't have a good way to pass null for regsA[7-9], so the logic that looks up entries in
-    // symbolchatcolli.prs can be ignored in quests. Default symbol chat numbers (from qedit.info):
+    // In that case, see SymbolChatT in PlayerSubordinates.hh for the format; on GC, the structure is not byteswapped,
+    // so GameCube quests should use the big-endian version of SymbolChatT. Quest scripts don't have a good way to pass
+    // null for the data labels, so the logic that looks up entries in symbolchatcolli.prs can be ignored in quests.
+    // The default symbol chat numbers are (from qedit.info):
     //   00 = Drop Meseta
     //   01 = Meseta has been dropped
     //   02 = Drop 1 weapon
@@ -1146,8 +1148,7 @@ static const std::vector<DATEntityDefinition> dat_object_definitions{
     //   param4 = spec1
     //   param5 = spec2
     //   param6 = spec3
-    // This object can also be created by the quest opcode F8A6; see the description of that opcode in QuestScript.cc
-    // for more information.
+    // This object can also be created by the quest opcode F8A6; see the description of that opcode in QuestScript.cc.
     // Note that although this object is available in all episodes, the presets file (symbolchatcolli.prs) is only
     // loaded in the following areas:
     // - All Episode 1 areas except boss arenas and the lobby
@@ -7093,20 +7094,20 @@ void MapState::print(FILE* stream) const {
   }
 }
 
-static constexpr uint64_t room_layout_key(uint8_t area, uint8_t major_var, uint32_t room_id) {
+static constexpr uint64_t room_layout_key(uint8_t area, uint8_t layout_var, uint32_t room_id) {
   return ((static_cast<uint64_t>(area) << 40) |
-      (static_cast<uint64_t>(major_var) << 32) |
+      (static_cast<uint64_t>(layout_var) << 32) |
       static_cast<uint64_t>(room_id));
 }
 
 RoomLayoutIndex::RoomLayoutIndex(const phosg::JSON& json) {
-  for (const auto& [area_and_major_var, rooms_json] : json.as_dict()) {
-    auto tokens = phosg::split(area_and_major_var, '-');
+  for (const auto& [area_and_layout_var, rooms_json] : json.as_dict()) {
+    auto tokens = phosg::split(area_and_layout_var, '-');
     uint8_t area = stoul(tokens.at(0), nullptr, 16);
-    uint8_t major_var = stoul(tokens.at(1), nullptr, 16);
+    uint8_t layout_var = stoul(tokens.at(1), nullptr, 16);
     for (const auto& [room_id_str, room_json] : rooms_json->as_dict()) {
       uint32_t room_id = stoul(room_id_str, nullptr, 16);
-      auto emplace_ret = this->rooms.emplace(room_layout_key(area, major_var, room_id), Room());
+      auto emplace_ret = this->rooms.emplace(room_layout_key(area, layout_var, room_id), Room());
       auto& room = emplace_ret.first->second;
       const auto& l = room_json->as_list();
       room.position.x = l.at(0)->as_float();
@@ -7119,6 +7120,6 @@ RoomLayoutIndex::RoomLayoutIndex(const phosg::JSON& json) {
   }
 }
 
-const RoomLayoutIndex::Room& RoomLayoutIndex::get_room(uint8_t area, uint8_t major_var, uint32_t room_id) const {
-  return this->rooms.at(room_layout_key(area, major_var, room_id));
+const RoomLayoutIndex::Room& RoomLayoutIndex::get_room(uint8_t area, uint8_t layout_var, uint32_t room_id) const {
+  return this->rooms.at(room_layout_key(area, layout_var, room_id));
 }

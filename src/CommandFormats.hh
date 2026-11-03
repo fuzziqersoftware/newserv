@@ -5242,7 +5242,7 @@ struct G_SetChallengeTime_6x95 {
   G_UnusedHeader header;
   le_uint32_t client_id = 0;
   ChallengeTime challenge_time;
-  // On BB, the token_v4 field is set to (local_client_id + 1) ^ regB (from the chl_set_timerecord opcode). This
+  // On BB, the token_v4 field is set to (local_client_id + 1) ^ token_input (from the chl_set_timerecord opcode). This
   // appears to be a basic anti-cheating measure. The field is unused on other versions, and even on BB, the client
   // doesn't check token_v4 upon receipt, so it's likely just for server-side verification.
   le_uint32_t token_v4 = 0;
@@ -6061,8 +6061,8 @@ struct G_MomokaItemExchange_BB_6xD9 {
   // by the F95B quest opcode.
   /* 04 */ ItemData find_item;
   /* 18 */ ItemData replace_item;
-  /* 2C */ le_uint32_t token1 = 0; // valueC (from F95B opcode) ^ sender client ID
-  /* 30 */ le_uint32_t token2 = 0; // valueD (from F95B opcode) ^ sender client ID
+  /* 2C */ le_uint32_t token1 = 0; // token1 (from F95B opcode) ^ sender client ID
+  /* 30 */ le_uint32_t token2 = 0; // token2 (from F95B opcode) ^ sender client ID
   /* 34 */ le_uint16_t success_label = 0;
   /* 36 */ le_uint16_t failure_label = 0;
   /* 38 */
@@ -6073,10 +6073,10 @@ struct G_MomokaItemExchange_BB_6xD9 {
 
 struct G_UpgradeWeaponAttribute_BB_6xDA {
   G_ClientIDHeader header;
-  ItemData item; // Only data1[0-2] are used (valueB-valueD)
-  le_uint32_t item_id = 0; // valueA
-  le_uint32_t attribute = 0; // valueE
-  le_uint32_t payment_count = 0; // Number of PD or PS (valueF)
+  ItemData item; // Only data1[0-2] are used
+  le_uint32_t item_id = 0;
+  le_uint32_t attribute = 0;
+  le_uint32_t payment_count = 0; // Number of PD or PS
   le_uint32_t payment_type = 0; // 0 = Photon Drops, 1 = Photon Spheres
   le_uint16_t success_label = 0; // labelG
   le_uint16_t failure_label = 0; // labelH
@@ -6141,10 +6141,10 @@ struct G_ExchangePhotonCrystals_BB_6xDF {
 struct G_RequestItemDropFromQuest_BB_6xE0 {
   G_ClientIDHeader header;
   uint8_t floor = 0;
-  uint8_t type = 0; // valueA
+  uint8_t type = 0;
   uint8_t room_id = 0;
   uint8_t unused = 0;
-  VectorXZF pos; // x = valueB, z = valueC
+  VectorXZF pos; // From x and z quest opcode args
 } __packed_ws__(G_RequestItemDropFromQuest_BB_6xE0, 0x10);
 
 // 6xE1: Exchange Photon Tickets (BB; handled by server)
@@ -6153,12 +6153,12 @@ struct G_RequestItemDropFromQuest_BB_6xE0 {
 
 struct G_ExchangePhotonTickets_BB_6xE1 {
   G_ClientIDHeader header;
-  uint8_t result_code_reg = 0; // valueA
-  uint8_t result_index_reg = 0; // valueB
-  uint8_t result_index = 0; // valueC
+  uint8_t result_code_reg = 0;
+  uint8_t result_index_reg = 0;
+  uint8_t result_index = 0;
   uint8_t unused = 0;
-  le_uint16_t success_label = 0; // valueD
-  le_uint16_t failure_label = 0; // valueE
+  le_uint16_t success_label = 0;
+  le_uint16_t failure_label = 0;
 } __packed_ws__(G_ExchangePhotonTickets_BB_6xE1, 0x0C);
 
 // 6xE2: Get Meseta slot prize (BB)

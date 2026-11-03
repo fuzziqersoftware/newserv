@@ -34,15 +34,21 @@
   //       //   LABEL16_SET: a 1-byte count, followed by that many 2-byte label numbers
   //       //   LABEL32: a 4-byte label number
   //       //   R_REG: a 1-byte register number (the opcode does not change the register's value)
-  //       //   W_REG: a 1-byte register number (the opcode may change the register's value)
-  //       //   R_REG_SET: a 1-byte count, followed by that many register numbers (the opcode does not change the
-  //       //              registers' values)
-  //       //   R_REG_SET_FIXED: a 1-byte register number (the opcode uses (Count) consecutive registers starting at
-  //       //                    that register number; the opcode does not change the registers' values)
-  //       //   W_REG_SET_FIXED: a 1-byte register number (the opcode uses (Count) consecutive registers starting at
-  //       //                    that register number; the opcode may change the registers' values)
+  //       //   W_REG: a 1-byte register number (the opcode changes the register's value)
+  //       //   RW_REG: a 1-byte register number (the opcode uses and then changes the register's value)
   //       //   R_REG32: same as R_REG, but register number is a 4-byte value
   //       //   W_REG32: same as W_REG, but register number is a 4-byte value
+  //       //   RW_REG32: same as RW_REG, but register number is a 4-byte value
+  //       //   R_REG_SET: a 1-byte count, followed by that many register numbers (the opcode does not change the
+  //       //     registers' values)
+  //       //   REG_SET_FIXED: a 1-byte register number (the opcode uses consecutive registers starting at that
+  //       //     register number; the meanings of each value are described in SubArgs)
+  //       //   REG32_SET_FIXED: same as REG_SET_FIXED, but register number is a 4-byte value
+  //       //   R_REG_TUPLE_FIXED: a 1-byte register number (the opcode uses consecutive registers starting at that
+  //       //     register number and does not modify them; the number of registers is specified in RegCount)
+  //       //   R_REG32_TUPLE_FIXED: same as R_REG_TUPLE_FIXED, but register number is a 4-byte value
+  //       //   W_REG_TUPLE_FIXED: same as R_REG_TUPLE_FIXED, but the opcode modifies the registers' values
+  //       //   W_REG32_TUPLE_FIXED: same as W_REG_TUPLE_FIXED, but register number is a 4-byte value
   //       //   R_REG32_SET_FIXED: same as R_REG_SET_FIXED, but register number is a 4-byte value
   //       //   W_REG32_SET_FIXED: same as W_REG_SET_FIXED, but register number is a 4-byte value
   //       //   I8: immediate 1-byte value
@@ -50,10 +56,11 @@
   //       //   I32: immediate 4-byte value
   //       //   FLOAT32: immediate 4-byte value
   //       //   CSTRING: immediate C-string value (ends with zero character)
-  //       "Type": "R_REG_SET_FIXED",
-  //       // The type of data that this argument refers to. This is only used for the LABEL types, and informs how
-  //       // disassembly should format that data in the referenced labels; the assembler ignores it. Data types:
+  //       "Type": "REG_SET_FIXED",
+  //       // The type of data that this argument refers to. This is generally used for the LABEL types, and informs
+  //       // how disassembly should format that data in the referenced labels; the assembler ignores it. Data types:
   //       //   NONE: unspecified (default if DataType is omitted)
+  //       //   FLOAT: a floating-point value (used only for REG types)
   //       //   SCRIPT: executable quest script code
   //       //   DATA: arbitrary data, but not executable script code
   //       //   CSTRING: text terminated by zero character
@@ -65,8 +72,14 @@
   //       //   IMAGE_DATA: Image data
   //       //   VECTOR4F_LIST: List of Vector4F structures
   //       "DataType": "NONE",
-  //       "Count": 3, // Number of registers (only used for the REG_SET_FIXED types; may be omitted for other types)
-  //       "Name": "", // Optional; most opcodes don't have named arguments
+  //       // For REG_SET_FIXED and REG32_SET_FIXED, SubArgs is a list of argument dicts (just like this one) which
+  //       // describe each register in the set. Those dicts should all have types set to R_REG, W_REG, or RW_REG.
+  //       "SubArgs: [],
+  //       "RegCount": 3, // Number of registers (only used for the REG_TUPLE_FIXED types; omitted for other types)
+  //       "Name": "", // Optional
+  //       // WriteName is optional; it's only used for RW_REG and RW_REG32, if the returned value has a different
+  //       // meaning from the input value
+  //       "WriteName": "",
   //     },
   //   ],
   // },

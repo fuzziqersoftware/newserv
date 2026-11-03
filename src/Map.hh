@@ -1058,5 +1058,5 @@ struct RoomLayoutIndex {
   std::unordered_map<uint64_t, Room> rooms;
 
   explicit RoomLayoutIndex(const phosg::JSON& json);
-  const Room& get_room(uint8_t area, uint8_t major_var, uint32_t room_id) const;
+  const Room& get_room(uint8_t area, uint8_t layout_var, uint32_t room_id) const;
 };
