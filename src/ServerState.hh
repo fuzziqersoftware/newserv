@@ -19,6 +19,7 @@
 #include "Episode3/DataIndexes.hh"
 #include "Episode3/Tournament.hh"
 #include "GSLArchive.hh"
+#include "HTTPServer.hh"
 #include "IPV4RangeSet.hh"
 #include "ItemNameIndex.hh"
 #include "ItemParameterTable.hh"

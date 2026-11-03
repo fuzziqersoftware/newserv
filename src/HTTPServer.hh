@@ -7,7 +7,8 @@
 #include <variant>
 
 #include "AsyncHTTPServer.hh"
-#include "ServerState.hh"
+
+class ServerState;
 
 enum class HTTPEventType {
   PLAYER_LOGIN = 0,

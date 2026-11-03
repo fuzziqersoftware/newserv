@@ -4681,7 +4681,7 @@ Action a_run_server_replay_log(
         }
 
         if (!state->data->http_addresses.empty()) {
-          config_log.info_f("Starting HTTP server");
+          config_log.info_f("Starting API HTTP server");
           state->http_server = std::make_shared<HTTPServer>(state);
           for (const auto& it : state->data->http_addresses) {
             auto netloc = phosg::parse_netloc(it);

@@ -98,7 +98,7 @@
   // can use to connect.
   "PPPRawListen": [5057],
 
-  // Where to listen for HTTP connections. The HTTP server is intended as a private interface to interact with newserv
+  // Where to listen for HTTP API connections. The HTTP API is intended as a private interface to interact with newserv
   // from e.g. an in-house Web portal or Discord bot. It would be unwise to expose any of these ports to the public
   // Internet (hence why the default here is blank). The format of entries in this list is the same as for
   // IPStackListen and PPPStackListen.

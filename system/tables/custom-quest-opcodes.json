@@ -22,7 +22,7 @@
   //   //   00010000 (F_PUSH_ARG) = opcode appends a value to the args list
   //   //   00020000 (F_CLEAR_ARGS) = opcode does not use the args list, but clears it anyway
   //   //   00040000 (F_ARGS) = opcode uses and clears the args list on V3 and later
-  //   "Flags": 0x00042200, // Uses args list, BB only
+  //   "Flags": 0x00042000, // Uses args list, BB only
   //   // The first entry here is the canonical name, which is used when disassembling. Additional names are only used
   //   // when assembling, so changing an opcode's name doesn't require updating all scripts that use the old name.
   //   "Names": ["my_opcode", "my_opcode_deprecated_name"],

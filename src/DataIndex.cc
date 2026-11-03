@@ -538,54 +538,28 @@ void DataIndex::load_config_early() {
       this->dns_server_port = spec.second;
     } catch (const std::out_of_range&) {
     }
-    try {
-      for (const auto& item : this->config_json->at("IPStackListen").as_list()) {
-        if (item->is_int()) {
-          this->ip_stack_addresses.emplace_back(std::format("0.0.0.0:{}", item->as_int()));
-        } else if (!IS_WINDOWS) {
-          this->ip_stack_addresses.emplace_back(item->as_string());
-        } else {
-          config_log.warning_f("Unix sockets are not supported on Windows; skipping address {}", item->as_string());
+
+    auto parse_listen_list = [&](const std::string& json_key) -> std::vector<std::string> {
+      std::vector<std::string> ret;
+      try {
+        for (const auto& item : this->config_json->at(json_key).as_list()) {
+          if (item->is_int()) {
+            ret.emplace_back(std::format("0.0.0.0:{}", item->as_int()));
+          } else if (!IS_WINDOWS) {
+            ret.emplace_back(item->as_string());
+          } else {
+            config_log.warning_f("Unix sockets are not supported on Windows; skipping address {}", item->as_string());
+          }
         }
+      } catch (const std::out_of_range&) {
       }
-    } catch (const std::out_of_range&) {
-    }
-    try {
-      for (const auto& item : this->config_json->at("PPPStackListen").as_list()) {
-        if (item->is_int()) {
-          this->ppp_stack_addresses.emplace_back(std::format("0.0.0.0:{}", item->as_int()));
-        } else if (!IS_WINDOWS) {
-          this->ppp_stack_addresses.emplace_back(item->as_string());
-        } else {
-          config_log.warning_f("Unix sockets are not supported on Windows; skipping address {}", item->as_string());
-        }
-      }
-    } catch (const std::out_of_range&) {
-    }
-    try {
-      for (const auto& item : this->config_json->at("PPPRawListen").as_list()) {
-        if (item->is_int()) {
-          this->ppp_raw_addresses.emplace_back(std::format("0.0.0.0:{}", item->as_int()));
-        } else if (!IS_WINDOWS) {
-          this->ppp_raw_addresses.emplace_back(item->as_string());
-        } else {
-          config_log.warning_f("Unix sockets are not supported on Windows; skipping address {}", item->as_string());
-        }
-      }
-    } catch (const std::out_of_range&) {
-    }
-    try {
-      for (const auto& item : this->config_json->at("HTTPListen").as_list()) {
-        if (item->is_int()) {
-          this->http_addresses.emplace_back(std::format("0.0.0.0:{}", item->as_int()));
-        } else if (!IS_WINDOWS) {
-          this->http_addresses.emplace_back(item->as_string());
-        } else {
-          config_log.warning_f("Unix sockets are not supported on Windows; skipping address {}", item->as_string());
-        }
-      }
-    } catch (const std::out_of_range&) {
-    }
+      return ret;
+    };
+
+    this->ip_stack_addresses = parse_listen_list("IPStackListen");
+    this->ppp_stack_addresses = parse_listen_list("PPPStackListen");
+    this->ppp_raw_addresses = parse_listen_list("PPPRawListen");
+    this->http_addresses = parse_listen_list("HTTPListen");
 
     this->one_time_config_loaded = true;
   }
