@@ -52,17 +52,20 @@ void TeamIndex::Team::load_config() {
   auto json = phosg::JSON::parse(phosg::load_file(this->json_filename()));
   this->name = json.get_string("Name");
   this->spent_points = json.get_int("SpentPoints");
+  for (const auto& member_it : json.get_list("Members")) {
+    Member m(*member_it);
+    uint32_t account_id = m.account_id;
+    if (m.check_flag(Member::Flag::IS_MASTER)) {
+      this->master_account_id = account_id;
+    }
+    this->members.emplace(account_id, std::move(m));
+  }
   if (json.contains("Points")) {
     this->points = json.get_int("Points");
   } else {
-    for (const auto& member_it : json.get_list("Members")) {
-      Member m(*member_it);
+    this->points = 0;
+    for (const auto& [_, m] : this->members) {
       this->points += m.points;
-      uint32_t account_id = m.account_id;
-      if (m.check_flag(Member::Flag::IS_MASTER)) {
-        this->master_account_id = account_id;
-      }
-      this->members.emplace(account_id, std::move(m));
     }
   }
   try {
