@@ -13,6 +13,8 @@
 #include "IPFrameInfo.hh"
 #include "Loggers.hh"
 
+using TCPFlag = TCPHeader::Flag;
+
 static size_t unescape_hdlc_frame_inplace(void* vdata, size_t size) {
   uint8_t* data = reinterpret_cast<uint8_t*>(vdata);
   if (size < 2) {
@@ -990,14 +992,14 @@ asio::awaitable<void> IPStackSimulator::on_client_tcp_frame(std::shared_ptr<IPSS
   this->log.debug_f("Virtual network sent TCP frame (seq={:08X}, ack={:08X})",
       fi.tcp->seq_num, fi.tcp->ack_num);
 
-  if (fi.tcp->flags & (TCPHeader::Flag::NS | TCPHeader::Flag::CWR | TCPHeader::Flag::ECE | TCPHeader::Flag::URG)) {
+  if (fi.tcp->flags & (TCPFlag::NS | TCPFlag::CWR | TCPFlag::ECE | TCPFlag::URG)) {
     throw std::runtime_error("unsupported flag in TCP packet");
   }
 
-  if (fi.tcp->flags & TCPHeader::Flag::SYN) {
+  if (fi.tcp->flags & TCPFlag::SYN) {
     // We never make connections back to the client, so we should never receive a SYN+ACK. Essentially, no other flags
     // should be set in any received SYN.
-    if ((fi.tcp->flags & 0x0FFF) != TCPHeader::Flag::SYN) {
+    if ((fi.tcp->flags & 0x0FFF) != TCPFlag::SYN) {
       throw std::runtime_error("TCP SYN contains extra flags");
     }
 
@@ -1055,6 +1057,7 @@ asio::awaitable<void> IPStackSimulator::on_client_tcp_frame(std::shared_ptr<IPSS
       conn->client_port = fi.tcp->src_port;
       conn->next_client_seq = fi.tcp->seq_num + 1;
       conn->acked_server_seq = phosg::random_object<uint32_t>();
+      conn->next_server_seq = conn->acked_server_seq;
       conn->resend_push_usecs = DEFAULT_RESEND_PUSH_USECS;
       conn->next_push_max_frame_size = max_frame_size;
       conn->max_frame_size = max_frame_size;
@@ -1077,7 +1080,7 @@ asio::awaitable<void> IPStackSimulator::on_client_tcp_frame(std::shared_ptr<IPSS
     }
 
     // Send a SYN+ACK (send_tcp_frame always adds the ACK flag)
-    co_await this->send_tcp_frame(c, conn, TCPHeader::Flag::SYN);
+    co_await this->send_tcp_frame(c, conn, TCPFlag::SYN);
     this->log.debug_f("Sent SYN+ACK on {} (acked_server_seq={:08X}, next_client_seq={:08X})",
         conn_str, conn->acked_server_seq, conn->next_client_seq);
 
@@ -1095,24 +1098,23 @@ asio::awaitable<void> IPStackSimulator::on_client_tcp_frame(std::shared_ptr<IPSS
     bool conn_valid = true;
     bool acked_seq_changed = false;
 
-    if (fi.tcp->flags & TCPHeader::Flag::ACK) {
+    if (fi.tcp->flags & TCPFlag::ACK) {
       this->log.debug_f("Client sent ACK {:08X}", fi.tcp->ack_num);
       if (conn->awaiting_first_ack) {
-        if (fi.tcp->ack_num != conn->acked_server_seq + 1) {
-          throw std::runtime_error("first ack_num was not acked_server_seq + 1");
+        if (fi.tcp->ack_num != conn->next_server_seq) {
+          throw std::runtime_error("first ACK did not acknowledge the SYN");
         }
-        conn->acked_server_seq++;
+        conn->acked_server_seq = conn->next_server_seq;
         conn->awaiting_first_ack = false;
 
       } else {
+        if (seq_num_greater(fi.tcp->ack_num, conn->next_server_seq)) {
+          throw std::runtime_error("client acknowledged beyond end of sent data");
+        }
         conn->awaiting_ack = false;
         if (seq_num_greater(fi.tcp->ack_num, conn->acked_server_seq)) {
           this->log.debug_f("Advancing acked_server_seq from {:08X}", conn->acked_server_seq);
           uint32_t ack_delta = fi.tcp->ack_num - conn->acked_server_seq;
-          if (conn->outbound_data_bytes < ack_delta) {
-            throw std::runtime_error("client acknowledged beyond end of sent data");
-          }
-
           conn->drain_outbound_data(ack_delta);
           conn->acked_server_seq += ack_delta;
           conn->resend_push_usecs = DEFAULT_RESEND_PUSH_USECS;
@@ -1133,9 +1135,9 @@ asio::awaitable<void> IPStackSimulator::on_client_tcp_frame(std::shared_ptr<IPSS
       }
     }
 
-    if (fi.tcp->flags & (TCPHeader::Flag::RST | TCPHeader::Flag::FIN)) {
-      bool is_rst = (fi.tcp->flags & TCPHeader::Flag::RST);
-      if (is_rst && (fi.tcp->flags & TCPHeader::Flag::FIN)) {
+    if (fi.tcp->flags & (TCPFlag::RST | TCPFlag::FIN)) {
+      bool is_rst = (fi.tcp->flags & TCPFlag::RST);
+      if (is_rst && (fi.tcp->flags & TCPFlag::FIN)) {
         throw std::runtime_error("client sent TCP FIN+RST");
       }
 
@@ -1147,7 +1149,7 @@ asio::awaitable<void> IPStackSimulator::on_client_tcp_frame(std::shared_ptr<IPSS
       }
 
       // TODO: Are we supposed to send a response to an RST? Here we do, and the client probably just ignores it anyway
-      co_await this->send_tcp_frame(c, conn, fi.tcp->flags & (TCPHeader::Flag::RST | TCPHeader::Flag::FIN));
+      co_await this->send_tcp_frame(c, conn, fi.tcp->flags & (TCPFlag::RST | TCPFlag::FIN));
 
       // Delete the connection object. The unique_ptr destructor flushes the bufferevent, and thereby sends an EOF to
       // the server's end.
@@ -1227,8 +1229,8 @@ asio::awaitable<void> IPStackSimulator::on_client_tcp_frame(std::shared_ptr<IPSS
 
       // Send an ACK
       co_await this->send_tcp_frame(c, conn);
-      this->log.debug_f("Sent PSH ACK on {} (acked_server_seq={:08X}, next_client_seq={:08X}, bytes_received=0x{:X})",
-          conn_str, conn->acked_server_seq, conn->next_client_seq, conn->bytes_received);
+      this->log.debug_f("Sent ACK on {} (next_server_seq={:08X}, next_client_seq={:08X}, bytes_received=0x{:X})",
+          conn_str, conn->next_server_seq, conn->next_client_seq, conn->bytes_received);
     }
 
     if (conn_valid && acked_seq_changed) {
@@ -1285,7 +1287,7 @@ asio::awaitable<void> IPStackSimulator::send_pending_push_frame(
     // which itself should be equal to the number of bytes that can be linearized
     throw std::logic_error("failed to linearize enough bytes before sending TCP PSH");
   }
-  co_await this->send_tcp_frame(c, conn, TCPHeader::Flag::PSH, conn->outbound_data.front().data(), bytes_to_send);
+  co_await this->send_tcp_frame(c, conn, TCPFlag::PSH, conn->outbound_data.front().data(), bytes_to_send);
   conn->awaiting_ack = true;
 
   // Schedule the timer for sending another PSH, in case the client doesn't respond quickly enough
@@ -1308,7 +1310,7 @@ asio::awaitable<void> IPStackSimulator::send_tcp_frame(
     uint16_t flags,
     const void* payload_data,
     size_t payload_size) {
-  if (!payload_data != !(flags & TCPHeader::Flag::PSH)) {
+  if (!payload_data != !(flags & TCPFlag::PSH)) {
     throw std::logic_error("data should be given if and only if PSH is given");
   }
 
@@ -1327,9 +1329,9 @@ asio::awaitable<void> IPStackSimulator::send_tcp_frame(
   TCPHeader tcp;
   tcp.src_port = conn->server_port;
   tcp.dest_port = conn->client_port;
-  tcp.seq_num = conn->acked_server_seq;
+  tcp.seq_num = (flags & (TCPFlag::SYN | TCPFlag::PSH)) ? conn->acked_server_seq : conn->next_server_seq;
   tcp.ack_num = conn->next_client_seq;
-  tcp.flags = (5 << 12) | TCPHeader::Flag::ACK | flags;
+  tcp.flags = (5 << 12) | TCPFlag::ACK | flags;
   tcp.window = 0x1000;
   tcp.urgent_ptr = 0;
   // tcp.checksum filled in later
@@ -1343,6 +1345,12 @@ asio::awaitable<void> IPStackSimulator::send_tcp_frame(
   w.put(tcp);
   if (payload_data) {
     w.write(payload_data, payload_size);
+  }
+
+  // A retry may have fewer bytes than the original send; keep the highest seq value
+  uint32_t end_seq = tcp.seq_num + payload_size + !!(flags & (TCPFlag::SYN | TCPFlag::FIN));
+  if (seq_num_greater(end_seq, conn->next_server_seq)) {
+    conn->next_server_seq = end_seq;
   }
 
   co_await this->send_layer3_frame(c, FrameInfo::Protocol::IPV4, w.str());
@@ -1391,7 +1399,7 @@ asio::awaitable<void> IPStackSimulator::close_tcp_connection(
     std::shared_ptr<IPSSClient> c, std::shared_ptr<IPSSClient::TCPConnection> conn) {
   // Send an RST to the client. This is kind of rude (we really should use FIN) but the PSO network stack always sends
   // an RST to us when disconnecting, so whatever
-  co_await this->send_tcp_frame(c, conn, TCPHeader::Flag::RST);
+  co_await this->send_tcp_frame(c, conn, TCPFlag::RST);
 
   // Delete the connection object
   std::string conn_str = this->str_for_tcp_connection(c, conn);
