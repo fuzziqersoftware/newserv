@@ -34,7 +34,7 @@ patch_code:  # [eax/](TObjPlayer* this @ ebp) -> flags @ edx
   call      patch_code_get_dll_name
   .binary   "user32"00
 patch_code_get_dll_name:
-  call      dword [imp_GetModuleHandleA]
+  call      [imp_GetModuleHandleA]
   test      eax, eax
   jz        patch_code_flag_check
 
@@ -42,7 +42,7 @@ patch_code_get_dll_name:
   .binary   "GetAsyncKeyState"00
 patch_code_get_function_name:
   push      eax
-  call      dword [imp_GetProcAddress]
+  call      [imp_GetProcAddress]
   test      eax, eax
   jz        patch_code_flag_check
 
