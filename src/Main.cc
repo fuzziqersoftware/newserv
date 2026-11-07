@@ -2898,6 +2898,8 @@ Action a_show_item_parameter_tables(
       auto di = std::make_shared<DataIndex>(get_config_filename(args));
       di->load_config_before();
       di->load_config_early();
+      di->load_patch_indexes();
+      di->load_text_index();
       di->load_item_definitions();
       di->load_item_name_indexes();
       for (Version v : ALL_VERSIONS) {
