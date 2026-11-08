@@ -529,7 +529,7 @@ static void on_sync_joining_player_compressed_state(std::shared_ptr<Client> c, S
   size_t compressed_size;
   const void* compressed_data;
   if (is_pre_v1(c->version())) {
-    const auto& cmd = msg.check_size_t<G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E>(0xFFFF);
+    const auto& cmd = msg.check_size_t<G_SyncGameStateHeader_DCProtos_6x6B_6x6C_6x6D_6x6E>(0xFFFF);
     orig_subcommand_number = cmd.header.basic_header.subcommand;
     decompressed_size = cmd.decompressed_size;
     compressed_size = msg.size - sizeof(cmd);

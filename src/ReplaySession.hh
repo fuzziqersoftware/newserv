@@ -39,8 +39,6 @@ private:
     size_t next_event_number = 0;
     uint64_t client_id = 0;
     std::string data; // Only used for SEND and RECEIVE
-    std::string mask; // Only used for RECEIVE
-    bool allow_size_disparity = false;
     bool complete = false;
     size_t line_num = 0;
 
@@ -80,7 +78,10 @@ private:
 
   ReplaySession::Event& create_event(Event::Type type, std::shared_ptr<Client> c, size_t line_num);
 
-  void apply_default_mask(Event& ev) const;
+  template <typename FnT>
+  void default_check_receive_event(
+      std::shared_ptr<Client> c, Event& ev, const std::string& received_data, FnT&& generate_mask) const;
+  void check_receive_event(std::shared_ptr<Client> c, Event& ev, const std::string& received_data) const;
 
   void reschedule_idle_timeout();
 };

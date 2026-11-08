@@ -2702,11 +2702,11 @@ void send_game_join_sync_command_compressed(
     uint8_t sc) {
   phosg::StringWriter w;
   if (is_pre_v1(c->version())) {
-    G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E compressed_header;
+    G_SyncGameStateHeader_DCProtos_6x6B_6x6C_6x6D_6x6E compressed_header;
     compressed_header.header.basic_header.subcommand = (c->version() == Version::DC_NTE) ? dc_nte_sc : dc_11_2000_sc;
     compressed_header.header.basic_header.size = 0x00;
     compressed_header.header.basic_header.unused = 0x0000;
-    compressed_header.header.size = (size + sizeof(G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E) + 3) & (~3);
+    compressed_header.header.size = (size + sizeof(G_SyncGameStateHeader_DCProtos_6x6B_6x6C_6x6D_6x6E) + 3) & (~3);
     compressed_header.decompressed_size = decompressed_size;
     w.put(compressed_header);
   } else {

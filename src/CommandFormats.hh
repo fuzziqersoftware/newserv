@@ -1177,20 +1177,20 @@ struct S_JoinGameT_DC_PC {
   // Note: It seems Sega servers sent uninitialized memory in the variations field when sending this command to start
   // an Episode 3 tournament game. This can be misleading when reading old logs from those days, but the Episode 3
   // client ignores it.
-  /* 0004 */ Variations variations;
+  /* 0000 */ Variations variations;
   // Unlike lobby join commands, these are filled in in their slot positions. That is, if there's only one player in a
   // game with ID 2, then the first two of these are blank and the player's data is in the third entry here.
-  /* 0084 */ parray<LobbyDataT, 4> lobby_data;
-  /* 0104 */ uint8_t client_id = 0;
-  /* 0105 */ uint8_t leader_id = 0;
-  /* 0106 */ uint8_t disable_udp = 1;
-  /* 0107 */ Difficulty difficulty = Difficulty::NORMAL;
-  /* 0108 */ uint8_t battle_mode = 0;
-  /* 0109 */ uint8_t event = 0;
-  /* 010A */ uint8_t section_id = 0;
-  /* 010B */ uint8_t challenge_mode = 0;
-  /* 010C */ le_uint32_t random_seed = 0;
-  /* 0110 */
+  /* 0080 */ parray<LobbyDataT, 4> lobby_data;
+  /* 0100 */ uint8_t client_id = 0;
+  /* 0101 */ uint8_t leader_id = 0;
+  /* 0102 */ uint8_t disable_udp = 1;
+  /* 0103 */ Difficulty difficulty = Difficulty::NORMAL;
+  /* 0104 */ uint8_t battle_mode = 0;
+  /* 0105 */ uint8_t event = 0;
+  /* 0106 */ uint8_t section_id = 0;
+  /* 0107 */ uint8_t challenge_mode = 0;
+  /* 0108 */ le_uint32_t random_seed = 0;
+  /* 010C */
 } __attribute__((packed));
 
 struct S_JoinGame_DCNTE_64 {
@@ -1207,18 +1207,19 @@ check_struct_size(S_JoinGame_DC_64, 0x10C);
 check_struct_size(S_JoinGame_PC_64, 0x14C);
 
 struct S_JoinGame_GC_64 : S_JoinGameT_DC_PC<PlayerLobbyDataDCGC> {
-  uint8_t episode = 0;
-  parray<uint8_t, 3> unused;
+  /* 010C */ uint8_t episode = 0;
+  /* 010D */ parray<uint8_t, 3> unused;
+  /* 0110 */
 } __packed_ws__(S_JoinGame_GC_64, 0x110);
 
 struct S_JoinGame_Ep3_64 : S_JoinGame_GC_64 {
   // This field is only present if the game (and client) is Episode 3. Similarly to lobby_data in the base struct, all
   // four of these are always present and they are filled in in slot positions.
-  struct Ep3PlayerEntry {
+  struct PlayerEntry {
     PlayerInventory inventory;
     PlayerDispDataV123 disp;
-  } __packed_ws__(Ep3PlayerEntry, 0x41C);
-  parray<Ep3PlayerEntry, 4> players_ep3;
+  } __packed_ws__(PlayerEntry, 0x41C);
+  /* 0110 */ parray<PlayerEntry, 4> players_ep3;
 } __packed_ws__(S_JoinGame_Ep3_64, 0x1180);
 
 struct S_UnknownXBVoiceChatConfig {
@@ -4648,15 +4649,15 @@ struct G_SetBossWarpState_6x6A {
 
 // 6x6B: Sync enemy state (used while loading into game)
 
-// Note that DC NTE doesn't send the decompressed size in the header here. This is a bug that can cause the client to
-// write more entries than it should when it receives one of these commands. All later versions, including 11/2000, use
-// the second header structure here, which prevents this issue.
+// Note that DC NTE and 11/2000 don't send the decompressed size in the header here. This is a bug that can cause the
+// client to write more entries than it should when it receives one of these commands. All versions after 11/2000 use
+// the second format here, which prevents this issue.
 
-struct G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E {
+struct G_SyncGameStateHeader_DCProtos_6x6B_6x6C_6x6D_6x6E {
   G_ExtendedHeaderT<G_UnusedHeader> header;
   le_uint32_t decompressed_size = 0;
   // BC0-compressed data follows here (see bc0_decompress)
-} __packed_ws__(G_SyncGameStateHeader_DCNTE_6x6B_6x6C_6x6D_6x6E, 0x0C);
+} __packed_ws__(G_SyncGameStateHeader_DCProtos_6x6B_6x6C_6x6D_6x6E, 0x0C);
 
 struct G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E {
   G_ExtendedHeaderT<G_UnusedHeader> header;
@@ -5632,7 +5633,7 @@ struct G_MapList_Ep3_6xB6x40 {
   le_uint16_t compressed_data_size = 0;
   le_uint16_t unused = 0;
   // PRS-compressed map list data follows here. newserv generates this from the map index when requested; see the
-  // MapList struct in Episode3/DataIndexes.hh and Episode3::MapIndex::get_compressed_map_list for format details.
+  // MapList struct in Episode3/DataIndexes.hh and Episode3::MapIndex::get_compressed_list for format details.
 } __packed_ws__(G_MapList_Ep3_6xB6x40, 0x10);
 
 struct G_MapData_Ep3_6xB6x41 {

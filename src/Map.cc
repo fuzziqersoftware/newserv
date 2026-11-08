@@ -6702,7 +6702,10 @@ void MapState::import_object_states_from_sync(
       }
     }
   }
-  if (object_index < entry_count) {
+  // Pre-v1 versions have a bug where the client can overflow the decompression output buffer; the server handles the
+  // invalid compressed data correctly but the resulting data size is larger than expected. We just ignore the extra
+  // data on those versions.
+  if (!is_pre_v1(from_version) && (object_index < entry_count)) {
     throw std::runtime_error(std::format("the client has more objects (0x{:X}) than the map has (0x{:X})",
         entry_count, object_index));
   }
@@ -6743,7 +6746,8 @@ void MapState::import_enemy_states_from_sync(Version from_version, const SyncEne
       }
     }
   }
-  if (enemy_index < entry_count) {
+  // See note in MapState::import_object_states_from_sync
+  if (!is_pre_v1(from_version) && (enemy_index < entry_count)) {
     throw std::runtime_error(std::format("the client has more enemies (0x{:X}) than the map has (0x{:X})",
         entry_count, enemy_index));
   }

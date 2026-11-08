@@ -6,6 +6,7 @@
 
 #include "GameServer.hh"
 #include "Loggers.hh"
+#include "ReceiveSubcommands.hh"
 #include "Server.hh"
 
 static std::string encode_chat_message(Version version, const std::string& message) {
@@ -17,12 +18,7 @@ static std::string encode_chat_message(Version version, const std::string& messa
 }
 
 ReplaySession::Event::Event(Type type, size_t event_number, uint64_t client_id, size_t line_num)
-    : type(type),
-      event_number(event_number),
-      client_id(client_id),
-      allow_size_disparity(false),
-      complete(false),
-      line_num(line_num) {}
+    : type(type), event_number(event_number), client_id(client_id), complete(false), line_num(line_num) {}
 
 std::string ReplaySession::Event::str() const {
   std::string ret;
@@ -34,9 +30,6 @@ std::string ReplaySession::Event::str() const {
     ret = std::format("Event[{}, SEND {:04X}", this->client_id, this->data.size());
   } else if (this->type == Type::RECEIVE) {
     ret = std::format("Event[{}, RECEIVE {:04X}", this->client_id, this->data.size());
-  }
-  if (this->allow_size_disparity) {
-    ret += ", size disparity allowed";
   }
   if (this->complete) {
     ret += ", done";
@@ -72,22 +65,186 @@ ReplaySession::Event& ReplaySession::create_event(Event::Type type, std::shared_
   return event;
 }
 
-void ReplaySession::apply_default_mask(Event& ev) const {
-  auto version = this->clients.at(ev.client_id)->version;
+template <typename CmdT>
+std::string_view string_view_for_cmd(const CmdT& cmd) {
+  return std::string_view{reinterpret_cast<const char*>(&cmd), sizeof(cmd)};
+}
 
-  void* cmd_data = ev.data.data() + ((version == Version::BB_V4) ? 8 : 4);
-  size_t cmd_size = ev.data.size() - ((version == Version::BB_V4) ? 8 : 4);
-  void* mask_data = ev.mask.data() + ((version == Version::BB_V4) ? 8 : 4);
-  size_t mask_size = ev.mask.size() - ((version == Version::BB_V4) ? 8 : 4);
+template <typename CmdT>
+CmdT make_command_mask() {
+  CmdT ret;
+  memset(reinterpret_cast<void*>(&ret), 0xFF, sizeof(ret));
+  return ret;
+}
 
-  switch (version) {
+std::string_view generate_default_mask_02_patch() {
+  static S_ServerInit_Patch_02 ret = make_command_mask<S_ServerInit_Patch_02>();
+  ret.server_key = 0;
+  ret.client_key = 0;
+  return string_view_for_cmd(ret);
+}
+
+std::string_view default_mask_02_17_91_9B() {
+  static S_ServerInitDefault_DC_PC_V3_02_17_91_9B ret = make_command_mask<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>();
+  ret.server_key = 0;
+  ret.client_key = 0;
+  return string_view_for_cmd(ret);
+}
+
+std::string_view default_mask_03_bb() {
+  static S_ServerInitDefault_BB_03_9B ret = make_command_mask<S_ServerInitDefault_BB_03_9B>();
+  ret.server_key.clear(0);
+  ret.client_key.clear(0);
+  return string_view_for_cmd(ret);
+}
+
+std::string_view default_mask_E6_bb() {
+  static S_ClientInit_BB_00E6 ret = make_command_mask<S_ClientInit_BB_00E6>();
+  ret.security_token = 0;
+  return string_view_for_cmd(ret);
+}
+
+std::string_view default_mask_19() {
+  static S_ReconnectSplit_19 ret = make_command_mask<S_ReconnectSplit_19>();
+  ret.pc_address = 0;
+  ret.gc_address = 0;
+  return string_view_for_cmd(ret);
+}
+
+template <typename CmdT>
+std::string_view default_mask_41() {
+  static CmdT ret = make_command_mask<CmdT>();
+  ret.reconnect_command.address = 0;
+  return string_view_for_cmd(ret);
+}
+
+template <typename CmdT>
+std::string_view default_mask_64() {
+  static CmdT ret = make_command_mask<CmdT>();
+  ret.variations = Variations();
+  if constexpr (requires { ret.random_seed; }) {
+    ret.random_seed = 0;
+  }
+  if constexpr (requires { ret.players_ep3; }) {
+    for (size_t z = 0; z < ret.players_ep3.size(); z++) {
+      ret.players_ep3[z].disp.visual.sh.name_color_checksum = 0;
+    }
+  }
+  return string_view_for_cmd(ret);
+}
+
+template <typename CmdT>
+std::string_view default_mask_65_67_68() {
+  static CmdT ret = make_command_mask<CmdT>();
+  for (size_t z = 0; z < ret.entries.size(); z++) {
+    ret.entries[z].disp.visual.sh.name_color_checksum = 0;
+  }
+  return string_view_for_cmd(ret);
+}
+
+std::string_view default_mask_E8_ep3() {
+  static S_JoinSpectatorTeam_Ep3_E8 ret = make_command_mask<S_JoinSpectatorTeam_Ep3_E8>();
+  ret.random_seed = 0;
+  for (size_t z = 0; z < ret.players.size(); z++) {
+    ret.players[z].disp.visual.sh.name_color_checksum = 0;
+  }
+  for (size_t z = 0; z < ret.spectator_players.size(); z++) {
+    ret.spectator_players[z].disp.visual.sh.name_color_checksum = 0;
+  }
+  return string_view_for_cmd(ret);
+}
+
+template <typename CmdT>
+std::string_view default_mask_C5() {
+  static CmdT ret = make_command_mask<CmdT>();
+  for (size_t z = 0; z < ret.size(); z++) {
+    auto& entry = ret[z];
+    for (size_t z = 0; z < entry.challenge.times_ep1_online.size(); z++) {
+      entry.challenge.times_ep1_online[z].store_raw(0);
+    }
+    for (size_t z = 0; z < entry.challenge.times_ep1_offline.size(); z++) {
+      entry.challenge.times_ep1_online[z].store_raw(0);
+    }
+    if constexpr (requires { entry.challenge.times_ep2_online; }) {
+      for (size_t z = 0; z < entry.challenge.times_ep2_online.size(); z++) {
+        entry.challenge.times_ep2_online[z].store_raw(0);
+      }
+    }
+  }
+  return string_view_for_cmd(ret);
+}
+
+std::string_view default_mask_B1() {
+  static S_ServerTime_B1 ret;
+  ret.time_str.clear(0);
+  ret.time_flags_low = 0xFF;
+  ret.time_flags_mid = 0xFF;
+  ret.time_flags_high = 0xFF;
+  return string_view_for_cmd(ret);
+}
+
+std::string_view default_mask_6xB4x46() {
+  static G_ServerVersionStrings_Ep3_6xB4x46 ret = make_command_mask<G_ServerVersionStrings_Ep3_6xB4x46>();
+  ret.version_signature.clear(0);
+  ret.date_str1.clear(0);
+  ret.date_str2.clear(0);
+  return string_view_for_cmd(ret);
+}
+
+template <typename CmdT>
+std::string_view default_mask_6x70() {
+  static CmdT ret = make_command_mask<CmdT>();
+  ret.visual.sh.name_color_checksum = 0;
+  return string_view_for_cmd(ret);
+}
+
+void ReplaySession::check_receive_event(std::shared_ptr<Client> c, Event& ev, const std::string& received_data) const {
+  constexpr uint64_t flags = phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS;
+
+  if (c->pending_receive_event_numbers.empty()) {
+    std::string data_str = phosg::format_data(received_data, 0, flags);
+    throw std::runtime_error(std::format("Received unexpected command for client:\n{}", data_str));
+  }
+  if (c->pending_receive_event_numbers.front() != ev.event_number) {
+    throw std::logic_error("Client receive events are out of order");
+  }
+  c->pending_receive_event_numbers.pop_front();
+
+  size_t header_size = ((c->version == Version::BB_V4) ? 8 : 4);
+  const std::string_view ev_data = std::string_view{ev.data}.substr(header_size);
+  const std::string_view cmd_data = std::string_view{received_data}.substr(header_size);
+
+  auto raise_failure = [&](const std::string& what, bool use_prev = true) -> void {
+    std::string expected_data_str = phosg::format_data(ev.data, 0, flags);
+    std::string received_data_str = use_prev
+        ? phosg::format_data(received_data, 0, ev.data, phosg::FormatDataFlags::USE_COLOR | flags)
+        : phosg::format_data(received_data, 0, flags);
+    throw std::runtime_error(std::format("(ev-line {}) {}\nExpected command:\n{}\nReceived command:\n{}",
+        ev.line_num, what, expected_data_str, received_data_str));
+  };
+
+  auto default_check = [&](std::string_view mask = {}) -> void {
+    if (received_data.size() != ev.data.size()) {
+      raise_failure("Received command sizes do not match", false);
+    }
+    for (size_t x = 0; x < std::min<size_t>(received_data.size(), ev.data.size()); x++) {
+      // The mask applies only after the header
+      uint8_t mask_value = ((x >= header_size) && (x < mask.size() + header_size)) ? mask[x - header_size] : 0xFF;
+      if ((received_data[x] & mask_value) != (ev.data[x] & mask_value)) {
+        raise_failure("Received command does not match expected");
+      }
+    }
+  };
+
+  switch (c->version) {
     case Version::PC_PATCH:
     case Version::BB_PATCH: {
       const auto& header = check_size_t<PSOCommandHeaderPC>(ev.data, 0xFFFF);
       if (header.command == 0x02) {
-        auto& cmd_mask = check_size_t<S_ServerInit_Patch_02>(mask_data, mask_size);
-        cmd_mask.server_key = 0;
-        cmd_mask.client_key = 0;
+        static const auto mask_cmd = default_mask_02_17_91_9B();
+        return default_check(mask_cmd);
+      } else {
+        return default_check();
       }
       break;
     }
@@ -103,7 +260,7 @@ void ReplaySession::apply_default_mask(Event& ev) const {
     case Version::GC_EP3:
     case Version::XB_V3: {
       uint8_t command;
-      if ((version == Version::PC_NTE) || (version == Version::PC_V2)) {
+      if ((c->version == Version::PC_NTE) || (c->version == Version::PC_V2)) {
         command = check_size_t<PSOCommandHeaderPC>(ev.data, 0xFFFF).command;
       } else { // V3
         command = check_size_t<PSOCommandHeaderDCV3>(ev.data, 0xFFFF).command;
@@ -113,174 +270,162 @@ void ReplaySession::apply_default_mask(Event& ev) const {
         case 0x17:
         case 0x91:
         case 0x9B: {
-          auto& mask = check_size_t<S_ServerInitDefault_DC_PC_V3_02_17_91_9B>(mask_data, mask_size, 0xFFFF);
-          mask.server_key = 0;
-          mask.client_key = 0;
-          break;
+          static const auto mask_cmd = default_mask_02_17_91_9B();
+          return default_check(mask_cmd);
         }
-        case 0x19:
-          if (mask_size == sizeof(S_ReconnectSplit_19)) {
-            auto& mask = check_size_t<S_ReconnectSplit_19>(mask_data, mask_size);
-            mask.pc_address = 0;
-            mask.gc_address = 0;
-          } else {
-            auto& mask = check_size_t<S_Reconnect_19>(mask_data, mask_size);
-            mask.address = 0;
-          }
-          break;
+        case 0x19: {
+          static const auto mask_cmd = default_mask_19();
+          return default_check(mask_cmd);
+        }
         case 0x41:
-          if ((version == Version::PC_NTE) || (version == Version::PC_V2)) {
-            auto& mask = check_size_t<S_GuildCardSearchResult_PC_41>(mask_data, mask_size);
-            mask.reconnect_command.address = 0;
-          } else { // V3
-            auto& mask = check_size_t<S_GuildCardSearchResult_DC_V3_41>(mask_data, mask_size);
-            mask.reconnect_command.address = 0;
-          }
-          break;
-        case 0x64:
-          if ((version == Version::PC_NTE) || (version == Version::PC_V2)) {
-            auto& mask = check_size_t<S_JoinGame_PC_64>(mask_data, mask_size);
-            mask.variations = Variations();
-            mask.random_seed = 0;
-          } else if (version == Version::XB_V3) {
-            auto& mask = check_size_t<S_JoinGame_XB_64>(mask_data, mask_size);
-            mask.variations = Variations();
-            mask.random_seed = 0;
-          } else if (version == Version::DC_NTE || version == Version::DC_11_2000) {
-            auto& mask = check_size_t<S_JoinGame_DCNTE_64>(mask_data, mask_size);
-            mask.variations = Variations();
+          if ((c->version == Version::PC_NTE) || (c->version == Version::PC_V2)) {
+            static const auto mask_cmd = default_mask_41<S_GuildCardSearchResult_PC_41>();
+            return default_check(mask_cmd);
           } else {
-            auto& mask = check_size_t<S_JoinGame_DC_64>(mask_data, mask_size, sizeof(S_JoinGame_Ep3_64));
-            mask.variations = Variations();
-            mask.random_seed = 0;
-            for (size_t offset = sizeof(S_JoinGame_GC_64) +
-                    offsetof(S_JoinGame_Ep3_64::Ep3PlayerEntry, disp.visual.sh.name_color_checksum);
-                offset + 4 <= mask_size;
-                offset += sizeof(S_JoinGame_Ep3_64::Ep3PlayerEntry)) {
-              *reinterpret_cast<uint32_t*>(reinterpret_cast<char*>(mask_data) + offset) = 0;
-            }
+            static const auto mask_cmd = default_mask_41<S_GuildCardSearchResult_DC_V3_41>();
+            return default_check(mask_cmd);
           }
-          break;
+        case 0x64:
+          if ((c->version == Version::PC_NTE) || (c->version == Version::PC_V2)) {
+            static const auto mask_cmd = default_mask_64<S_JoinGame_PC_64>();
+            return default_check(mask_cmd);
+          } else if (c->version == Version::XB_V3) {
+            static const auto mask_cmd = default_mask_64<S_JoinGame_XB_64>();
+            return default_check(mask_cmd);
+          } else if (c->version == Version::DC_NTE || c->version == Version::DC_11_2000) {
+            static const auto mask_cmd = default_mask_64<S_JoinGame_DCNTE_64>();
+            return default_check(mask_cmd);
+          } else {
+            static const auto mask_cmd = default_mask_64<S_JoinGame_Ep3_64>();
+            return default_check(mask_cmd);
+          }
         case 0xEB:
-          if (!is_gc(version)) {
-            break;
+          if (!is_gc(c->version)) {
+            return default_check();
           }
           [[fallthrough]];
         case 0x65:
         case 0x67:
         case 0x68: {
-          auto update_mask = [&]<typename CmdT>() -> void {
-            for (size_t offset = offsetof(CmdT, entries) + offsetof(typename CmdT::Entry, disp.visual.sh.name_color_checksum);
-                offset + 4 <= mask_size;
-                offset += sizeof(typename CmdT::Entry)) {
-              *reinterpret_cast<uint32_t*>(reinterpret_cast<char*>(mask_data) + offset) = 0;
-            }
-          };
-          if ((version == Version::PC_NTE) || (version == Version::PC_V2)) {
-            update_mask.template operator()<S_JoinLobby_PC_65_67_68>();
-          } else if (version == Version::XB_V3) {
-            update_mask.template operator()<S_JoinLobby_XB_65_67_68>();
-          } else if (version == Version::DC_NTE) {
-            update_mask.template operator()<S_JoinLobby_DCNTE_65_67_68>();
+          if ((c->version == Version::PC_NTE) || (c->version == Version::PC_V2)) {
+            static const auto mask_cmd = default_mask_65_67_68<S_JoinLobby_PC_65_67_68>();
+            return default_check(mask_cmd);
+          } else if (c->version == Version::XB_V3) {
+            static const auto mask_cmd = default_mask_65_67_68<S_JoinLobby_XB_65_67_68>();
+            return default_check(mask_cmd);
+          } else if ((c->version == Version::DC_NTE) || (c->version == Version::DC_11_2000)) {
+            static const auto mask_cmd = default_mask_65_67_68<S_JoinLobby_DCNTE_65_67_68>();
+            return default_check(mask_cmd);
           } else {
-            update_mask.template operator()<S_JoinLobby_DC_GC_65_67_68_Ep3_EB>();
+            static const auto mask_cmd = default_mask_65_67_68<S_JoinLobby_DC_GC_65_67_68_Ep3_EB>();
+            return default_check(mask_cmd);
           }
-          break;
         }
         case 0xE8:
-          if (is_gc(version)) {
-            auto& mask = check_size_t<S_JoinSpectatorTeam_Ep3_E8>(mask_data, mask_size);
-            mask.random_seed = 0;
-            for (size_t z = 0; z < 4; z++) {
-              mask.players[z].disp.visual.sh.name_color_checksum = 0;
-            }
-            for (size_t z = 0; z < 8; z++) {
-              mask.spectator_players[z].disp.visual.sh.name_color_checksum = 0;
-            }
+          if (is_gc(c->version)) {
+            static const auto mask_cmd = default_mask_E8_ep3();
+            return default_check(mask_cmd);
+          } else {
+            return default_check();
+          }
+        case 0xC5:
+          if (c->version == Version::DC_V2) {
+            static const auto mask_cmd = default_mask_C5<parray<PlayerRecordsEntry_DC, 12>>();
+            return default_check(mask_cmd);
+          } else if (is_v2(c->version)) {
+            static const auto mask_cmd = default_mask_C5<parray<PlayerRecordsEntry_PC, 12>>();
+            return default_check(mask_cmd);
+          } else if (is_v3(c->version)) {
+            static const auto mask_cmd = default_mask_C5<parray<PlayerRecordsEntry_V3, 12>>();
+            return default_check(mask_cmd);
+          } else if (is_v4(c->version)) {
+            static const auto mask_cmd = default_mask_C5<parray<PlayerRecordsEntry_BB, 12>>();
+            return default_check(mask_cmd);
           }
           break;
-        case 0xC5: {
-          auto update_mask = [&]<typename CmdT, bool HasEp2>() -> void {
-            for (size_t offset = 0; offset + sizeof(CmdT) <= mask_size; offset += sizeof(CmdT)) {
-              auto* entry = reinterpret_cast<CmdT*>(reinterpret_cast<uint8_t*>(mask_data) + offset);
-              for (size_t z = 0; z < entry->challenge.times_ep1_online.size(); z++) {
-                entry->challenge.times_ep1_online[z].store_raw(0);
-              }
-              for (size_t z = 0; z < entry->challenge.times_ep1_offline.size(); z++) {
-                entry->challenge.times_ep1_online[z].store_raw(0);
-              }
-              if constexpr (HasEp2) {
-                for (size_t z = 0; z < entry->challenge.times_ep2_online.size(); z++) {
-                  entry->challenge.times_ep2_online[z].store_raw(0);
-                }
-              }
-            }
-          };
-          if (version == Version::DC_V2) {
-            update_mask.template operator()<PlayerRecordsEntry_DC, false>();
-          } else if (is_v2(version)) {
-            update_mask.template operator()<PlayerRecordsEntry_PC, false>();
-          } else if (is_v3(version)) {
-            update_mask.template operator()<PlayerRecordsEntry_V3, true>();
-          } else if (is_v4(version)) {
-            update_mask.template operator()<PlayerRecordsEntry_BB, true>();
-          }
-          break;
+        case 0xB1: {
+          static const auto mask_cmd = default_mask_B1();
+          return default_check(mask_cmd);
         }
-        case 0xB1:
-          for (size_t x = 4; x < ev.mask.size(); x++) {
-            ev.mask[x] = 0;
-          }
-          break;
-        case 0xC9:
-          if (mask_size == sizeof(G_ServerVersionStrings_Ep3NTE_6xB4x46)) {
-            auto& mask = check_size_t<G_ServerVersionStrings_Ep3NTE_6xB4x46>(mask_data, mask_size);
-            mask.version_signature.clear(0);
-            mask.date_str1.clear(0);
-          } else if (mask_size == sizeof(G_ServerVersionStrings_Ep3_6xB4x46)) {
-            auto& mask = check_size_t<G_ServerVersionStrings_Ep3_6xB4x46>(mask_data, mask_size);
-            mask.version_signature.clear(0);
-            mask.date_str1.clear(0);
-            mask.date_str2.clear(0);
-          }
-          break;
+        case 0xC9: {
+          static const auto mask_cmd = default_mask_6xB4x46();
+          return default_check(mask_cmd);
+        }
         case 0x6C:
-          if (is_gc(version) && mask_size >= 0x14) {
-            const auto& cmd = check_size_t<G_MapList_Ep3_6xB6x40>(cmd_data, cmd_size, 0xFFFF);
-            if ((cmd.header.header.basic_header.subcommand == 0xB6) &&
-                (cmd.header.subsubcommand == 0x40)) {
-              check_size_t<PSOCommandHeaderDCV3>(ev.mask, 0xFFFF).size = 0;
-              auto& mask = check_size_t<G_MapList_Ep3_6xB6x40>(mask_data, mask_size, 0xFFFF);
-              mask.header.header.size = 0;
-              mask.compressed_data_size = 0;
-              ev.allow_size_disparity = true;
-              for (size_t z = sizeof(PSOCommandHeaderDCV3) + sizeof(G_MapList_Ep3_6xB6x40); z < ev.mask.size(); z++) {
-                ev.mask[z] = 0;
+          if (is_gc(c->version) && (ev_data.size() >= 0x14)) {
+            const auto& cmd = check_size_t<G_MapList_Ep3_6xB6x40>(cmd_data, 0xFFFF);
+            if ((cmd.header.header.basic_header.subcommand == 0xB6) && (cmd.header.subsubcommand == 0x40)) {
+              // TODO: We can probably do something better here; for now we just check that the data is valid PRS
+              phosg::StringReader r(cmd_data);
+              r.skip(sizeof(cmd));
+              uint32_t decompressed_size = r.get_u32b();
+              if (prs_decompress_size(cmd_data.substr(r.where())) != decompressed_size) {
+                raise_failure("Decompressed size for compressed map list is incorrect");
               }
+              return;
+            } else {
+              return default_check();
             }
+          } else {
+            return default_check();
           }
-          break;
-        case 0x6D:
-          if (version == Version::DC_NTE) {
-            const auto& header = check_size_t<G_UnusedHeader>(cmd_data, cmd_size, 0xFFFF);
-            if (header.subcommand == 0x60) {
-              auto& mask = check_size_t<G_SyncPlayerDispAndInventory_DCNTE_6x70>(mask_data, mask_size, 0xFFFF);
-              mask.visual.sh.name_color_checksum = 0;
+        case 0x6D: {
+          const auto& header = check_size_t<G_UnusedHeader>(ev_data, 0xFFFF);
+          switch (translate_subcommand_number(Version::BB_V4, c->version, header.subcommand)) {
+            case 0x6B:
+            case 0x6C:
+            case 0x6D:
+            case 0x6E: {
+              G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E ev_cmd;
+              G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E received_cmd;
+              std::string_view ev_bc0_data;
+              std::string_view received_bc0_data;
+              if (is_pre_v1(c->version)) {
+                const auto& ev_header_nte = check_size_t<G_SyncGameStateHeader_DCProtos_6x6B_6x6C_6x6D_6x6E>(
+                    ev_data, 0xFFFF);
+                const auto& received_header_nte = check_size_t<G_SyncGameStateHeader_DCProtos_6x6B_6x6C_6x6D_6x6E>(
+                    cmd_data, 0xFFFF);
+                ev_cmd.header = ev_header_nte.header;
+                ev_cmd.decompressed_size = ev_header_nte.decompressed_size;
+                ev_cmd.compressed_size = ev_data.size() - sizeof(ev_header_nte);
+                ev_bc0_data = ev_data.substr(sizeof(ev_header_nte));
+                received_cmd.header = received_header_nte.header;
+                received_cmd.decompressed_size = received_header_nte.decompressed_size;
+                received_cmd.compressed_size = cmd_data.size() - sizeof(received_header_nte);
+                received_bc0_data = cmd_data.substr(sizeof(received_header_nte));
+              } else {
+                ev_cmd = check_size_t<G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E>(ev_data, 0xFFFF);
+                received_cmd = check_size_t<G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E>(cmd_data, 0xFFFF);
+                ev_bc0_data = ev_data.substr(sizeof(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E));
+                received_bc0_data = cmd_data.substr(sizeof(G_SyncGameStateHeader_6x6B_6x6C_6x6D_6x6E));
+              }
+              if (memcmp(&ev_cmd, &received_cmd, sizeof(ev_cmd))) {
+                raise_failure("BC0-compressed headers do not match");
+              }
+              auto ev_decompressed_data = bc0_decompress(ev_bc0_data);
+              auto received_decompressed_data = bc0_decompress(received_bc0_data);
+              if (ev_decompressed_data != received_decompressed_data) {
+                raise_failure("BC0-compressed sections do not decompress to the same data");
+              }
+              return;
             }
-          } else if (version == Version::DC_11_2000) {
-            const auto& header = check_size_t<G_UnusedHeader>(cmd_data, cmd_size, 0xFFFF);
-            if (header.subcommand == 0x67) {
-              auto& mask = check_size_t<G_SyncPlayerDispAndInventory_DC112000_6x70>(mask_data, mask_size, 0xFFFF);
-              mask.visual.sh.name_color_checksum = 0;
-            }
-          } else if (!is_pre_v1(version)) {
-            const auto& header = check_size_t<G_UnusedHeader>(cmd_data, cmd_size, 0xFFFF);
-            if (header.subcommand == 0x70) {
-              auto& mask = check_size_t<G_SyncPlayerDispAndInventory_DC_PC_6x70>(mask_data, mask_size, 0xFFFF);
-              mask.visual.sh.name_color_checksum = 0;
-            }
+            case 0x70:
+              if (c->version == Version::DC_NTE) {
+                static const auto mask_cmd = default_mask_6x70<G_SyncPlayerDispAndInventory_DCNTE_6x70>();
+                return default_check(mask_cmd);
+              } else if (c->version == Version::DC_11_2000) {
+                static const auto mask_cmd = default_mask_6x70<G_SyncPlayerDispAndInventory_DC112000_6x70>();
+                return default_check(mask_cmd);
+              } else {
+                static const auto mask_cmd = default_mask_6x70<G_SyncPlayerDispAndInventory_DC_PC_6x70>();
+                return default_check(mask_cmd);
+              }
+            default:
+              return default_check();
           }
-          break;
+        }
+        default:
+          return default_check();
       }
       break;
     }
@@ -288,39 +433,37 @@ void ReplaySession::apply_default_mask(Event& ev) const {
       uint16_t command = check_size_t<PSOCommandHeaderBB>(ev.data, 0xFFFF).command;
       switch (command) {
         case 0x0003: {
-          auto& mask = check_size_t<S_ServerInitDefault_BB_03_9B>(mask_data, mask_size, 0xFFFF);
-          mask.server_key.clear(0);
-          mask.client_key.clear(0);
-          break;
+          static const auto mask_cmd = default_mask_03_bb();
+          return default_check(mask_cmd);
         }
         case 0x0019: {
-          auto& mask = check_size_t<S_Reconnect_19>(mask_data, mask_size);
-          mask.address = 0;
-          break;
+          static const auto mask_cmd = default_mask_19();
+          return default_check(mask_cmd);
         }
         case 0x0064: {
-          auto& mask = check_size_t<S_JoinGame_BB_64>(mask_data, mask_size);
-          mask.variations = Variations();
-          mask.random_seed = 0;
-          break;
+          static const auto mask_cmd = default_mask_64<S_JoinGame_BB_64>();
+          return default_check(mask_cmd);
         }
         case 0x00B1: {
-          for (size_t x = 8; x < ev.mask.size(); x++) {
-            ev.mask[x] = 0;
-          }
-          break;
+          static const auto mask_cmd = default_mask_B1();
+          return default_check(mask_cmd);
         }
         case 0x00E6: {
-          auto& mask = check_size_t<S_ClientInit_BB_00E6>(mask_data, mask_size);
-          mask.security_token = 0;
-          break;
+          static const auto mask_cmd = default_mask_E6_bb();
+          return default_check(mask_cmd);
         }
+        default:
+          return default_check();
       }
       break;
     }
     default:
-      throw std::logic_error("Invalid game version");
+      throw std::logic_error(std::format("(ev-line {}, {}) Invalid game version",
+          ev.line_num, phosg::name_for_enum(c->version)));
   }
+
+  throw std::logic_error(std::format("(ev-line {}, {}) Command was not checked",
+      ev.line_num, phosg::name_for_enum(c->version)));
 }
 
 ReplaySession::ReplaySession(std::shared_ptr<ServerState> state, FILE* input_log)
@@ -347,15 +490,9 @@ ReplaySession::ReplaySession(std::shared_ptr<ServerState> state, FILE* input_log
       std::string expected_start = std::format("{:04X} |", parsing_command->data.size());
       if (line.starts_with(expected_start)) {
         // Parse out the hex part of the hex/ASCII dump
-        std::string mask_bytes;
-        std::string data_bytes = phosg::parse_data_string(line.substr(expected_start.size(), 16 * 3 + 1), &mask_bytes);
-        parsing_command->data += data_bytes;
-        parsing_command->mask += mask_bytes;
+        parsing_command->data += phosg::parse_data_string(line.substr(expected_start.size(), 16 * 3 + 1));
         continue;
       } else {
-        if (parsing_command->type == Event::Type::RECEIVE) {
-          this->apply_default_mask(*parsing_command);
-        }
         parsing_command = nullptr;
       }
     }
@@ -557,34 +694,7 @@ asio::awaitable<void> ReplaySession::run() {
           this->commands_received++;
           this->bytes_received += full_command.size();
 
-          constexpr uint64_t flags = phosg::FormatDataFlags::PRINT_ASCII | phosg::FormatDataFlags::OFFSET_16_BITS;
-
-          if (c->pending_receive_event_numbers.empty()) {
-            std::string data_str = phosg::format_data(full_command, 0, flags);
-            throw std::runtime_error(std::format("Received unexpected command for client:\n{}", data_str));
-          }
-          if (c->pending_receive_event_numbers.front() != ev.event_number) {
-            throw std::logic_error("Client receive events are out of order");
-          }
-          c->pending_receive_event_numbers.pop_front();
-
-          if ((full_command.size() != ev.data.size()) && !ev.allow_size_disparity) {
-            std::string expected_data = phosg::format_data(ev.data, 0, flags);
-            std::string received_data = phosg::format_data(full_command, 0, flags);
-            throw std::runtime_error(std::format(
-                "(ev-line {}) Received command sizes do not match:\nExpected command:\n{}\nReceived command:\n{}",
-                ev.line_num, expected_data, received_data));
-          }
-          for (size_t x = 0; x < std::min<size_t>(full_command.size(), ev.data.size()); x++) {
-            if ((full_command[x] & ev.mask[x]) != (ev.data[x] & ev.mask[x])) {
-              std::string expected_data = phosg::format_data(ev.data, 0, flags);
-              std::string received_data = phosg::format_data(
-                  full_command, 0, ev.data, phosg::FormatDataFlags::USE_COLOR | flags);
-              throw std::runtime_error(std::format(
-                  "(ev-line {}) Received command does not match expected\nExpected command:\n{}\nReceived command:\n{}",
-                  ev.line_num, expected_data, received_data));
-            }
-          }
+          this->check_receive_event(c, ev, full_command);
 
           // If the command is an encryption init, set up encryption on the channel
           switch (c->version) {

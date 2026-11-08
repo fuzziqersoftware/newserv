@@ -358,7 +358,7 @@ I 35932 2025-05-22 21:56:50 - [Commands] Received from C-1 (Tali Lv.185) @ ip:10
 0000 | 10 00 60 00 42 03 00 00 28 FA 90 C2 7C DA 85 42 |   ` B   (   |  B
 I 35932 2025-05-22 21:56:50 - [C-2] Channel name updated: C-2 @ ip:172.16.0.30:49631
 I 35932 2025-05-22 21:56:50 - [C-2] Created
-I 35932 2025-05-22 21:56:50 - [GameServer] Client connected: C-2 via TG-9200-DC_V1-gc-eu10-game_server
+I 35932 2025-05-22 21:56:50 - [GameServer] Client connected: C-2 via TG-9200-DC_V2-gc-eu10-game_server
 I 35932 2025-05-22 21:56:50 - [Commands] Sending to C-2 @ ip:172.16.0.30:49631 (version=GC_V3 command=17 flag=00)
 0000 | 17 00 00 01 44 72 65 61 6D 43 61 73 74 20 50 6F |     DreamCast Po
 0010 | 72 74 20 4D 61 70 2E 20 43 6F 70 79 72 69 67 68 | rt Map. Copyrigh

@@ -61,15 +61,15 @@ RetT& check_size_generic(PtrT data, size_t size, size_t min_size, size_t max_siz
 }
 
 template <typename T>
-const T& check_size_t(const std::string& data, size_t min_size, size_t max_size) {
+const T& check_size_t(std::string_view data, size_t min_size, size_t max_size) {
   return check_size_generic<const T, const void*>(data.data(), data.size(), min_size, max_size);
 }
 template <typename T>
-const T& check_size_t(const std::string& data, size_t max_size) {
+const T& check_size_t(std::string_view data, size_t max_size) {
   return check_size_generic<const T, const void*>(data.data(), data.size(), sizeof(T), max_size);
 }
 template <typename T>
-const T& check_size_t(const std::string& data) {
+const T& check_size_t(std::string_view data) {
   return check_size_generic<const T, const void*>(data.data(), data.size(), sizeof(T), sizeof(T));
 }
 
