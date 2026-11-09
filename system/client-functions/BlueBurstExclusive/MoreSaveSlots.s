@@ -40,9 +40,8 @@ start:
   call      apply_fix_file_index
   call      apply_preview_window_fix
   call      apply_static_patches
-  # Rewrite the existing char file regions to have the appropriate size; this
-  # must be done after the patches are applied because we call the checksum
-  # function, which is patched by one of the above calls
+  # Rewrite the existing char file regions to have the appropriate size; this must be done after the patches are
+  # applied because we call the checksum function, which is patched by one of the above calls
   call      update_existing_char_file_list
   jmp       update_existing_char_file_list_memcard
 
@@ -50,11 +49,11 @@ start:
 
 apply_enable_scroll_patch:
   # This patch enables scrolling behavior within the character list
-  push      -5          # Jump size (negative = jmp instead of call)
+  push      -5  # Jump size (negative = jmp instead of call)
   push      <VERS 0x0041370B 0x00413B77 0x00413B7F>  # Jump address
-  push      enable_scroll_end - enable_scroll_start
-  call      enable_scroll_end
-enable_scroll_start:
+  push      enable_scroll_end - enable_scroll_start  # Code size
+  call      enable_scroll_end  # Pushes code address (since code immediately follows here)
+enable_scroll_start:  # [std](TAdSelectCurGC* char_select_menu @ edi) -> void
   mov       eax, dword ptr [edi + 0x28]  # cursor = char_select_menu->cursor_obj (TAdSelectCurGC*)
   or        dword [eax + 0x01F8], 3  # cursor->flags |= 3  # Enable scrolling
   mov       eax, [<VERS 0x00A2EC50 0x00A38BD0 0x00A3B050>]  # scroll_bar = TAdScrollBarXb_objs[0]
@@ -77,6 +76,7 @@ enable_scroll_start:
   mov       dword [eax + ecx + 0xB0], 0  # scroll_bar->selection_state[client_id].selected_index = 0
   mov       dword [eax + ecx + 0xB4], 4  # scroll_bar->selection_state[client_id].num_items_in_view = 4
   mov       dword [eax + ecx + 0xB8], (slot_count - 1)  # scroll_bar->selection_state[client_id].last_item_index = (slot count - 1)
+  # This patch replaced the end of the function; this is the original cleanup sequence
   pop       edi
   ret
 enable_scroll_end:
@@ -89,12 +89,12 @@ apply_fix_scroll_patch1:
   # This patch fixes character selection cursor object so it will take the scroll offset into account
   push      6  # Call size
   push      <VERS 0x004137C4 0x00413C30 0x00413C38>  # Call address
-  push      fix_scroll_patch1_end - fix_scroll_patch1_start
-  call      fix_scroll_patch1_end
-fix_scroll_patch1_start:
-  mov       edx, [edi + 0x28]  # cursor = this->ad_select_cur_obj (TAdSelectCurGC*)
-  mov       ebp, [edx + 0x44]  # ebp = cursor->selected_index_within_view
-  mov       eax, [<VERS 0x00A2EC50 0x00A38BD0 0x00A3B050>]  # scroll_bar = TAdScrollBarXb_objs[0]
+  push      fix_scroll_patch1_end - fix_scroll_patch1_start  # Code size
+  call      fix_scroll_patch1_end  # Code address
+fix_scroll_patch1_start:  # [/](TAdSinglePlyChrSelectGC* this @ edi)
+  mov       edx, [edi + 0x28]  # (original) TAdSelectCurGC* cursor = this->ad_select_cur_obj
+  mov       ebp, [edx + 0x44]  # (original) ebp = cursor->selected_index_within_view
+  mov       eax, [<VERS 0x00A2EC50 0x00A38BD0 0x00A3B050>]  # TAdScrollBarXb* scroll_bar = TAdScrollBarXb_objs[0]
   add       ebp, [eax + 0xAC]  # ebp += scroll_bar->selection_state[0].scroll_offset
   ret
 fix_scroll_patch1_end:
@@ -108,12 +108,12 @@ apply_fix_scroll_patch2:
   # index (including scroll_offset), not the index only within the displayed four characters
   push      6  # Call size
   push      <VERS 0x00413864 0x00413CD0 0x00413CD8>  # Call address
-  push      fix_scroll_patch2_end - fix_scroll_patch2_start
-  call      fix_scroll_patch2_end
+  push      fix_scroll_patch2_end - fix_scroll_patch2_start  # Code size
+  call      fix_scroll_patch2_end  # Code address
 fix_scroll_patch2_start:
-  mov       eax, [<VERS 0x00A2EC50 0x00A38BD0 0x00A3B050>]  # scroll_bar = TAdScrollBarXb_objs[0]
+  mov       eax, [<VERS 0x00A2EC50 0x00A38BD0 0x00A3B050>]  # TAdScrollBarXb* scroll_bar = TAdScrollBarXb_objs[0]
   mov       eax, [eax + 0xAC]  # eax = scroll_bar->selection_state[0].scroll_offset
-  mov       edx, [edi + 0x28]  # cursor = this->ad_select_cur_obj (TAdSelectCurGC*)
+  mov       edx, [edi + 0x28]  # TAdSelectCurGC* cursor = this->ad_select_cur_obj
   add       eax, [edx + 0x44]  # eax += cursor->selected_index_within_view
   ret
 fix_scroll_patch2_end:
@@ -126,12 +126,11 @@ apply_fix_file_index:
   # This patch fixes the character file indexing so it will account for the scroll position
   push      5  # Call size
   push      <VERS 0x0041387C 0x00413CE8 0x00413CF0>  # Call address
-  push      selection_index_fix2_end - selection_index_fix2_start
-  call      selection_index_fix2_end
+  push      selection_index_fix2_end - selection_index_fix2_start  # Code size
+  call      selection_index_fix2_end  # Code address
 selection_index_fix2_start:
   mov       eax, [<VERS 0x00A2EC50 0x00A38BD0 0x00A3B050>]
-  mov       eax, [eax + 0xAC]  # eax = TAdScrollBarXb_objs[0]->selection_state[0].scroll_offset
-  add       ebp, eax  # arg0 += eax
+  add       ebp, [eax + 0xAC]  # arg0 += TAdScrollBarXb_objs[0]->selection_state[0].scroll_offset
   mov       [esp + 4], ebp
   mov       eax, <VERS 0x006BB954 0x006C1ABC 0x006C1A80>
   jmp       eax  # set_current_char_slot
@@ -144,9 +143,11 @@ selection_index_fix2_end:
 apply_preview_window_fix:
   # This patch fixes the preview display so it will show the correct section ID, level, etc.
   push      5  # Call size
-  push      0x0040216C
-  push      preview_window_fix_end - preview_window_fix_start
-  call      preview_window_fix_end
+  # This is the same on all versions we support so far, but we use VERS anyway to document that it may not be the same
+  # for other versions which we may support later
+  push      <VERS 0x0040216C 0x0040216C 0x0040216C>  # Call address
+  push      preview_window_fix_end - preview_window_fix_start  # Code size
+  call      preview_window_fix_end  # Code address
 preview_window_fix_start:
   mov       eax, [<VERS 0x00A2EC50 0x00A38BD0 0x00A3B050>]  # scroll_bar = TAdScrollBarXb_objs[0]
   mov       eax, [eax + 0xAC]  # eax = scroll_bar->selection_state[0].scroll_offset
@@ -154,10 +155,9 @@ preview_window_fix_start:
   mov       eax, <VERS 0x006BE37C 0x006C4514 0x006C44D0>  # get_player_preview_info
   jmp       eax
 preview_window_fix_end:
-  # This patch applies in two places, so push the second set of args now, then
-  # apply it twice
-  push      5                   # Call size
-  push      0x00401842          # Call address
+  # This patch applies in two places, so push the second set of args now, then apply it twice
+  push      5  # Call size
+  push      0x00401842  # Call address
   push      dword [esp + 0x10]  # Code size
   push      dword [esp + 0x10]  # Code address
   call      write_call_to_code
@@ -426,8 +426,8 @@ apply_static_patches:
 
   # Signature check on all save files (rewritten as loop)
   .data    <VERS 0x006BBB04 0x006C1C69 0x006C1C2D>
-  .data    sig_check_end - sig_check_begin
-
+  .data    (sig_check_end - sig_check_begin)
+  .assert  (sig_check_end - sig_check_begin) == 0x49
 sig_check_begin:
   mov      edx, 0xC87ED5B1   # Expected signature value
   add      eax, 0x04E8       # &char_file_list->chars[0].part2.signature
@@ -452,7 +452,8 @@ sig_check_end:  # <VERS 006BBB25 006C1CB2 006C1C76>
 
   # Send slot count in E3 command
   .data    <VERS 0x0046E798 0x0046EC10 0x0046EB20>  # TDataProtocol::send_E3_for_index
-  .data    send_slot_count_in_E3_end - send_slot_count_in_E3_begin
+  .data    (send_slot_count_in_E3_end - send_slot_count_in_E3_begin)
+  .assert  (send_slot_count_in_E3_end - send_slot_count_in_E3_begin) <= 0x40
 send_slot_count_in_E3_begin:
   # ecx = this (TDataProtocol*)
   # [esp + 4] = slot_index
@@ -464,17 +465,20 @@ send_slot_count_in_E3_begin:
   push     0x10
   push     eax
   mov      eax, [ecx]
-  call     [eax + 0x20]  # this->send_command(&cmd, 0x10)  // ret 8
+  call     [eax + 0x20]  # this->send_command[std+8](&cmd, 0x10)
   add      esp, 8
   mov      eax, <VERS 0x006BB954 0x006C1ABC 0x006C1A80>
-  call     eax  # set_current_char_slot(slot_index)  // ret 0
+  call     eax  # set_current_char_slot[std+0](slot_index)
   add      esp, 8
   ret      4
 send_slot_count_in_E3_end:
 
   # Show slot number in each menu item
-  .data    0x00401D57
-  .data    show_slot_number_end - show_slot_number_begin
+  # This is the same on all versions we support so far, but we use VERS anyway to document that it may not be the same
+  # for other versions which we may support later
+  .data    <VERS 0x00401D57 0x00401D57 0x00401D57>
+  .data    (show_slot_number_end - show_slot_number_begin)
+  .assert  (show_slot_number_end - show_slot_number_begin) == 0xF6
 show_slot_number_begin:
   # Original call (sprintf(line_buf, "LV%d", preview_info->visual.disp.level + 1))
   lea      edx, [esp + 0x02C4]
@@ -506,7 +510,7 @@ get_show_slot_number_suffix_fmt:
   call     eax
   add      esp, 0x0C
   jmp      show_slot_number_end
-  .zero    0x96
+  .zero    0x98
 show_slot_number_end:  # 00401E4D
 
   # End static patches
