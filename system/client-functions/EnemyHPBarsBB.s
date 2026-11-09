@@ -208,17 +208,16 @@ hooks_end:
   .include  WriteCodeBlocks
 
   # Clear window item flag that suppresses HP bar
-  .label    flag_clear_patch, <VERS 0x0072B141 0x0073197D 0x007318DD>
-  .data     flag_clear_patch
+  .data     <VERS 0x0072B141 0x0073197D 0x007318DD>
   .data     6
-  .address  flag_clear_patch
   and       edx, 0xFFFFFFFD
+  nop
+  nop
+  nop
 
   # Make TWindowLockOn 0x80 bytes bigger, for string buffer
-  .label    TWindowLockOn_size_load, <VERS 0x0072B4A8 0x00731CE4 0x00731C44>
-  .data     TWindowLockOn_size_load
+  .data     <VERS 0x0072B4A8 0x00731CE4 0x00731C44>  # TWindowLockOn_size_load
   .data     9
-  .address  TWindowLockOn_size_load
   push      0xF4  # Originally `push 0x74`; deleted a preceding opcode, which writes a value which seemingly isn't used
   nop
   nop
@@ -226,42 +225,40 @@ hooks_end:
   nop
 
   # Update window size
-  .label    TWindowLockOn_window_size_init, <VERS 0x0072B78E 0x00731FCA 0x00731F2A>
-  .data     TWindowLockOn_window_size_init
+  .data     <VERS 0x0072B78E 0x00731FCA 0x00731F2A>  # TWindowLockOn_window_size_init
   .data     7
-  .address  TWindowLockOn_window_size_init
   mov       dword [ebp + 0x3C], encode_float(125)
-  .label    TWindowLockOn_window_size_update, <VERS 0x0072B413 0x00731C4F 0x00731BAF>
-  .data     TWindowLockOn_window_size_update
+
+  .data     <VERS 0x0072B413 0x00731C4F 0x00731BAF>  # TWindowLockOn_window_size_update
   .data     7
-  .address  TWindowLockOn_window_size_update
   mov       dword [ebp + 0x3C], encode_float(125)
+
   .data     <VERS 0x009649F8 0x0096F098 0x009710B8>
   .data     4
   .data     encode_float(125)
 
   .data     <VERS 0x009E6D84 0x009F0DA4 0x009F2DA4>
-  .data     0x00000004
+  .data     4
   .data     encode_float(75)
 
   .data     <VERS 0x009E6DB4 0x009F0DD4 0x009F2DD4>
-  .data     0x00000004
+  .data     4
   .data     encode_float(75)
 
   .data     <VERS 0x009E6DE4 0x009F0E04 0x009F2E04>
-  .data     0x00000004
+  .data     4
   .data     encode_float(75)
 
   .data     <VERS 0x009E6E14 0x009F0E34 0x009F2E34>
-  .data     0x00000004
+  .data     4
   .data     encode_float(75)
 
   .data     <VERS 0x009E6E44 0x009F0E64 0x009F2E64>
-  .data     0x00000004
+  .data     4
   .data     encode_float(62)
 
   .data     <VERS 0x009E6E60 0x009F0E80 0x009F2E80>
-  .data     0x00000004
+  .data     4
   .data     0xFF00FF15
 
   .data     0x00000000
