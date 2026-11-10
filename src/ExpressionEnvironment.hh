@@ -48,7 +48,7 @@ struct ExpressionEnvironment {
         flag_difficulty = this->difficulty;
       }
       return static_cast<int64_t>(this->quest_flags->get(flag_difficulty, strtoull(flag_num_str, nullptr, 16)));
-    } else if (name.starts_with("CC_Ep1_")) { // Challenge competion lookup
+    } else if (name.starts_with("CC_")) { // Challenge competion lookup
       if (!this->challenge_records) {
         throw std::runtime_error("Challenge records are not available");
       }
@@ -71,7 +71,7 @@ struct ExpressionEnvironment {
     } else if (name == "V_V1Present") {
       return static_cast<int64_t>(this->v1_present);
     } else {
-      throw std::runtime_error("Invalid environment lookup in expression");
+      throw std::runtime_error(std::format("Invalid environment lookup \"{}\" in expression", name));
     }
   }
 };
