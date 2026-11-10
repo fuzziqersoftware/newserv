@@ -1,23 +1,16 @@
-// This function copies an inline handler for the B2 command (function call)
-// to an unused area of memory, and inserts it into the game's command handler
-// table, thus making the B2 command fully functional as it is on most other
-// versions of the game.
+# This function copies an inline handler for the B2 command (function call) to an unused area of memory, and inserts it
+# into the game's command handler table, thus making the B2 command fully functional as it is on most other versions of
+# the game.
 
-// We could do the code copy and callsite modification directly in the quest
-// script, but that would restrict us to only using addresses that end in 00.
-// Furthermore, doing it this way provides an example of how to embed native
-// code in a quest script and run it from within the script.
+# We could do the code copy and callsite modification directly in the quest script, but that would restrict us to only
+# using addresses that end in 00. Furthermore, doing it this way provides an example of how to embed native code in a
+# quest script and run it from within the script.
 
 start:
   mflr    r11
   bl      get_handle_B2_ptr
 
-handle_B2:
-  # Arguments:
-  # r3 = TProtocol* proto (we use this to call the send function)
-  # r4 = void* data
-  # Returns: void
-
+handle_B2:  # [std](TProtocol* proto @ r3, void* data @ r4) -> void
   mflr    r0
   stwu    [r1 - 0x40], r1
   stw     [r1 + 0x44], r0
@@ -26,7 +19,7 @@ handle_B2:
   # [r1+08] = B3 XX 0C 00
   # [r1+0C] = code section's return value
   # [r1+10] = checksum
-  # [r1+14] = saved ctx argument
+  # [r1+14] = saved proto argument
   # [r1+18] = saved data argument
   stw     [r1 + 0x14], r3
   stw     [r1 + 0x18], r4
@@ -38,39 +31,38 @@ handle_B2:
   ori     r5, r5, 0x0C00
   stw     [r1 + 0x08], r5
 
-  # If there's no code section, skip it. We also write the code section size to
-  # the return value field (which will be overwritten later if the size is not
-  # zero). This is because I'm lazy and this gives the behavior we want: the
-  # code return value is always zero if the code section size is zero.
+  # If there's no code section, skip it. We also write the code section size to the return value field (which will be
+  # overwritten later if the size is not zero). This is because I'm lazy and this gives the behavior we want: the code
+  # return value is always zero if the code section size is zero.
   li      r6, 4
-  lwbrx   r5, [r4 + r6] # r5 = code_size
-  stw     [r1 + 0x0C], r5 # response.code_return_value = code_size
+  lwbrx   r5, [r4 + r6]  # r5 = code_size
+  stw     [r1 + 0x0C], r5  # response.code_return_value = code_size
   cmplwi  r5, 0
   beq     handle_B2_skip_code
 
   # Get the code section base and footer addresses
-  addi    r6, r4, 0x10 # r6 = code base address
+  addi    r6, r4, 0x10  # r6 = code base address
   add     r7, r6, r5
-  subi    r7, r7, 0x20 # r7 = footer address (code base + code size - 0x20)
+  subi    r7, r7, 0x20  # r7 = footer address (code base + code size - 0x20)
 
   # Check if there are relocations to do
-  lwz     r8, [r7 + 4] # r8 = num relocations
+  lwz     r8, [r7 + 4]  # r8 = num relocations
   cmplwi  r8, 0
   beq     handle_B2_skip_relocations
 
   # Execute the relocations
   mtctr   r8
-  lwz     r8, [r7] # r8 = relocations list offset
-  add     r8, r8, r6 # r8 = relocations list address
-  subi    r8, r8, 2 # Back up one space so we can use lhzu in the loop
-  mr      r10, r6 # relocation pointer = code base address
+  lwz     r8, [r7]  # r8 = relocations list offset
+  add     r8, r8, r6  # r8 = relocations list address
+  subi    r8, r8, 2  # Back up one space so we can use lhzu in the loop
+  mr      r10, r6  # relocation pointer = code base address
 handle_B2_relocate_again:
   lhzu    r9, [r8 + 2]
-  rlwinm  r9, r9, 2, 0, 29 # r9 = next_relocation_offset * 4
-  add     r10, r10, r9 # relocation pointer += next_relocation_offset * 4
+  rlwinm  r9, r9, 2, 0, 29  # r9 = next_relocation_offset * 4
+  add     r10, r10, r9  # relocation pointer += next_relocation_offset * 4
   lwz     r9, [r10]
   add     r9, r9, r6
-  stw     [r10], r9 # (*relocation pointer) += code base address
+  stw     [r10], r9  # (*relocation pointer) += code base address
   bdnz    handle_B2_relocate_again
 handle_B2_skip_relocations:
 
@@ -81,9 +73,8 @@ handle_B2_skip_relocations:
   mr      r4, r5
   bl      call_flush_code  # flush_code(code_base_addr, code_section_size)
 
-  # Call the code section and put the return value (byteswapped) on the stack
-  # Note: flush_code only uses r3, r4, and r5, so we don't need to reload r7
-  # after the above call
+  # Call the code section and put the return value (byteswapped) on the stack. Note that flush_code only uses r3, r4,
+  # and r5, so we don't need to reload r7 after the above call
   lwz     r8, [r7 + 0x10]
   lwzx    r8, [r8 + r6]
   mtctr   r8
@@ -98,7 +89,7 @@ handle_B2_skip_code:
   lwbrx   r3, [r4 + r5] # checksum addr
   li      r5, 0x0C
   lwbrx   r4, [r4 + r5] # checksum size
-  bl      crc32   # crc32(checksum_addr, checksum_size)
+  bl      crc32
   li      r8, 0x10
   stwbrx  [r1 + r8], r3
 
@@ -109,7 +100,7 @@ handle_B2_skip_code:
   mtctr   r4
   addi    r4, r1, 0x08
   li      r5, 0x0C
-  bctrl   # TProtocol::send_command(ctx, &reply_data, 0x0C)
+  bctrl   # proto->send_command(&reply_data, 0x0C)
 
   # Clean up stack and return
   lwz     r0, [r1 + 0x44]
@@ -183,8 +174,8 @@ copy_handle_B2_word_again:
   rlwinm  r4, r7, 30, 2, 31
   bl      call_flush_code  # flush_code(copied_B2_handler, copied_B2_handler_bytes)
 
-  # Replace the command handler table entry for command 0E (which is an unused
-  # legacy command and has very broken behavior) with our B2 implementation
+  # Replace the command handler table entry for command 0E (which is an unused legacy command and has very broken
+  # behavior) with our B2 implementation
   li      r0, 0x00B2
   lis     r6, 0x804C
   ori     r5, r6, 0x4E08  # US v1.2
