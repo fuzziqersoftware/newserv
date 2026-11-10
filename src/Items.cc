@@ -286,8 +286,6 @@ void player_use_item(std::shared_ptr<Client> c, size_t item_index, std::shared_p
   }
 
   if (should_delete_item) {
-    // Allow overdrafting meseta if the client is not BB, since the server isn't informed when meseta is added or
-    // removed from the bank.
     player->remove_item(item.data.id, 1, stack_limits);
   }
 }

@@ -2123,7 +2123,7 @@ static void on_drop_partial_stack_bb(std::shared_ptr<Client> c, SubcommandMessag
   const auto& limits = *s->data->item_stack_limits(c->version());
   auto [item, stack_was_split] = p->remove_item(cmd.item_id, cmd.amount, limits);
 
-  // If a stack was split, the original item still exists, so the dropped item needs a new ID
+  // If a stack was split, the original item still exists (or it was Meseta), so the dropped item needs a new ID
   if (stack_was_split) {
     item.id = l->generate_item_id(c->lobby_client_id);
   }

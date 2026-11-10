@@ -1213,13 +1213,13 @@ std::pair<ItemData, bool> PSOBBCharacterFile::remove_item(
     uint32_t item_id, uint32_t amount, const ItemData::StackLimits& limits) {
   ItemData ret;
 
-  // If we're removing meseta (signaled by an invalid item ID), then create a meseta item. This never counts as
-  // splitting a stack.
+  // If we're removing meseta (signaled by an invalid item ID), create a meseta item. This always counts as splitting a
+  // stack.
   if (item_id == 0xFFFFFFFF) {
     this->remove_meseta(amount, !is_v4(limits.version));
     ret.data1[0] = 0x04;
     ret.data2d = amount;
-    return {ret, false};
+    return {ret, true};
   }
 
   size_t index = this->inventory.find_item(item_id);
