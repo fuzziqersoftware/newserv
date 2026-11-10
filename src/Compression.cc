@@ -221,7 +221,10 @@ struct StaticWindowIndex : WindowIndexBase<MaxMatchLength, PrefixBytes, false> {
     while (this->rank_to_offset.size() < this->size + PrefixBytes) {
       this->rank_to_offset.emplace_back(this->rank_to_offset.size() - PrefixBytes);
     }
-    std::sort(this->rank_to_offset.begin(), this->rank_to_offset.end(), [this](OffT a, OffT b) -> bool {
+    // NOTE: This stable_sort is not required for correctness; any sort will do. We use a stable sort here so the
+    // behavior won't differ across platforms (which may use different sorting algorithms), which makes end-to-end
+    // testing easier since we can directly compare compressed binary data.
+    std::stable_sort(this->rank_to_offset.begin(), this->rank_to_offset.end(), [this](OffT a, OffT b) -> bool {
       return this->compare_strings_for_sort(a, b);
     });
 
