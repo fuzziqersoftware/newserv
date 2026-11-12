@@ -48,15 +48,15 @@ struct ExpressionEnvironment {
         flag_difficulty = this->difficulty;
       }
       return static_cast<int64_t>(this->quest_flags->get(flag_difficulty, strtoull(flag_num_str, nullptr, 16)));
-    } else if (name.starts_with("CC_")) { // Challenge competion lookup
+    } else if (name.starts_with("CC_")) { // Challenge completion lookup
       if (!this->challenge_records) {
         throw std::runtime_error("Challenge records are not available");
       }
       if (name.starts_with("CC_Ep1_")) { // CC_Ep1_X = challenge completed, episode 1 stage X
-        size_t stage_index = strtoull(name.c_str() + 4, nullptr, 0);
+        size_t stage_index = strtoull(name.c_str() + 7, nullptr, 0) - 1;
         return static_cast<int64_t>(this->challenge_records->times_ep1_online.at(stage_index).has_value());
       } else if (name.starts_with("CC_Ep2_")) { // CC_Ep2_X = challenge completed, episode 2 stage X
-        size_t stage_index = strtoull(name.c_str() + 4, nullptr, 0);
+        size_t stage_index = strtoull(name.c_str() + 7, nullptr, 0) - 1;
         return static_cast<int64_t>(this->challenge_records->times_ep2_online.at(stage_index).has_value());
       } else {
         throw std::runtime_error("Invalid Challenge record lookup token");
