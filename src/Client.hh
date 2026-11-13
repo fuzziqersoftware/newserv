@@ -159,6 +159,13 @@ public:
   uint8_t lobby_client_id = 0;
   uint8_t lobby_arrow_color = 0;
   int64_t preferred_lobby_id = -1; // <0 = none chosen
+  // Kill counters for this connection, reported in /y/clients (EnemyKillCount, RareEnemyKillCount,
+  // LastRareEnemyKilled) so that external tools, such as a website's bounty tracker, can count kills by comparing
+  // successive readings. They count only enemies this client killed (BB only, where the server grants EXP), start at
+  // zero on each connection, and only ever increase while the client is connected.
+  uint64_t enemy_kill_count = 0;
+  uint64_t rare_enemy_kill_count = 0;
+  std::string last_rare_enemy_killed;
 
   asio::steady_timer save_game_data_timer;
   asio::steady_timer send_ping_timer;

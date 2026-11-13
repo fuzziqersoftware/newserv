@@ -4195,6 +4195,17 @@ static void on_enemy_exp_request_bb(std::shared_ptr<Client> c, SubcommandMessage
   uint8_t area = l->area_for_floor(c->version(), ene_st->super_ene->floor);
   Episode episode = episode_for_area(area);
   auto type = ene_st->type(c->version(), area, l->difficulty, l->event);
+
+  // Count the kill for the player who killed the enemy (reported in /y/clients for external tools). Reaching this
+  // point means this player has not yet been given full EXP for this enemy, so each kill is counted once.
+  if (cmd.is_killer && ene_st->last_hit_by_client_id(c->lobby_client_id)) {
+    c->enemy_kill_count++;
+    if (ene_st->is_rare(c->version())) {
+      c->rare_enemy_kill_count++;
+      c->last_rare_enemy_killed = phosg::name_for_enum(type);
+    }
+  }
+
   double base_exp = base_exp_for_enemy_type(
       s->data->battle_params, l->quest, type, episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
 

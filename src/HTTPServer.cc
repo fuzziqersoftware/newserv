@@ -196,6 +196,10 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
       client_json.emplace("LobbyID", l->lobby_id);
       client_json.emplace("LobbyClientID", c->lobby_client_id);
     }
+    client_json.emplace("EnemyKillCount", c->enemy_kill_count);
+    client_json.emplace("RareEnemyKillCount", c->rare_enemy_kill_count);
+    client_json.emplace("LastRareEnemyKilled",
+        c->last_rare_enemy_killed.empty() ? phosg::JSON(nullptr) : phosg::JSON(c->last_rare_enemy_killed));
     if (c->version() == Version::BB_V4) {
       client_json.emplace("BBCharacterIndex", c->bb_character_index);
     }
