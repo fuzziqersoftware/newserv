@@ -1162,6 +1162,15 @@
   // whether it's enabled by default for all players or not.
   "EnableSwitchAssistByDefault": false,
 
+  // Whether to sell all common recovery items in BB tool shops at all levels. By default, the tool shop's contents
+  // depend on the player's level (for example, Monomates aren't sold to players at level 43 or above), as in the
+  // original game. If this is enabled, the tool shop always sells all of the common items (Monomate, Dimate, Trimate,
+  // Monofluid, Difluid, Trifluid, Antidote, Antiparalysis, Sol Atomizer, Moon Atomizer, Star Atomizer, Telepipe, and
+  // Trap Vision). The client can't handle more than 18 items in the tool shop, so there will be fewer technique disks
+  // for sale (at most 5, instead of up to 7) to make room for the extra recovery items. This is a server-side change
+  // only; no client patch is needed.
+  "BBExtendedToolShop": false,
+
   // Whether to enable rare drop notifications by default. Players can toggle this behavior for themselves with the
   // $itemnotifs command.
   "RareNotificationsEnabledByDefaultV1V2": false,

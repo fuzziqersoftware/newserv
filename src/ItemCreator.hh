@@ -51,7 +51,7 @@ public:
   ItemData base_item_for_specialized_box(uint32_t param4, uint32_t param5, uint32_t param6) const;
 
   std::vector<ItemData> generate_armor_shop_contents(Episode episode, size_t player_level);
-  std::vector<ItemData> generate_tool_shop_contents(size_t player_level);
+  std::vector<ItemData> generate_tool_shop_contents(size_t player_level, bool extended = false);
   std::vector<ItemData> generate_weapon_shop_contents(size_t player_level);
 
   // This function adjusts the item in-place, and returns the luck value.
@@ -168,9 +168,9 @@ private:
   void generate_armor_shop_units(std::vector<ItemData>& shop, size_t player_level);
 
   static size_t get_table_index_for_tool_shop(size_t player_level);
-  void generate_common_tool_shop_recovery_items(std::vector<ItemData>& shop, size_t player_level);
-  void generate_rare_tool_shop_recovery_items(std::vector<ItemData>& shop, size_t player_level);
-  void generate_tool_shop_tech_disks(std::vector<ItemData>& shop, size_t player_level);
+  void generate_common_tool_shop_recovery_items(std::vector<ItemData>& shop, size_t player_level, bool extended);
+  void generate_rare_tool_shop_recovery_items(std::vector<ItemData>& shop, size_t player_level, bool extended);
+  void generate_tool_shop_tech_disks(std::vector<ItemData>& shop, size_t player_level, size_t max_items);
 
   void generate_weapon_shop_item_grind(ItemData& item, size_t player_level);
   void generate_weapon_shop_item_special(ItemData& item, size_t player_level);
