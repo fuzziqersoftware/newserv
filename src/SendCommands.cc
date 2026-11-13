@@ -3201,6 +3201,9 @@ void send_shop(std::shared_ptr<Client> c, uint8_t shop_type) {
   }
 
   const auto& contents = c->bb_shop_contents.at(shop_type);
+  if (contents.size() > decltype(G_ShopContents_BB_6xB6::item_datas)::size()) {
+    throw std::logic_error("too many items in shop");
+  }
 
   G_ShopContents_BB_6xB6 cmd = {
       {0xB6, static_cast<uint8_t>(2 + (sizeof(ItemData) >> 2) * contents.size()), 0x0000},
@@ -3213,7 +3216,7 @@ void send_shop(std::shared_ptr<Client> c, uint8_t shop_type) {
     cmd.item_datas[x] = contents[x];
   }
 
-  send_command(c, 0x60, 0x00, &cmd, sizeof(cmd) - sizeof(cmd.item_datas[0]) * (20 - contents.size()));
+  send_command(c, 0x60, 0x00, &cmd, sizeof(cmd) - sizeof(cmd.item_datas[0]) * (cmd.item_datas.size() - contents.size()));
 }
 
 void send_level_up(std::shared_ptr<Client> c) {
