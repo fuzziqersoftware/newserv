@@ -166,6 +166,14 @@ public:
   uint64_t enemy_kill_count = 0;
   uint64_t rare_enemy_kill_count = 0;
   std::string last_rare_enemy_killed;
+  // Challenge Mode stage clears for this connection, reported in /y/clients (ChallengeClearCount and
+  // LastChallengeClear). Counted when a stage's clear time is set (6x95) for this client; the clear's quest number
+  // identifies the stage (881NN = Episode 1 stage NN, 882NN = Episode 2 stage NN).
+  uint64_t challenge_clear_count = 0;
+  int64_t last_challenge_clear_quest_number = -1;
+  uint8_t last_challenge_clear_stage_number = 0;
+  uint32_t last_challenge_clear_seconds = 0;
+  uint32_t last_challenge_clear_lobby_id = 0;
 
   asio::steady_timer save_game_data_timer;
   asio::steady_timer send_ping_timer;
