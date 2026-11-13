@@ -4147,6 +4147,28 @@ static void on_steal_exp_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   add_player_exp(c, stolen_exp, cmd.enemy_index | 0x1000);
 }
 
+// The enemy types whose defeat is the defeat of a boss (counted once per fight in the kill counts). The other boss types
+// are phases or parts of a fight.
+static bool is_boss_main_form(EnemyType type) {
+  switch (type) {
+    case EnemyType::DRAGON:
+    case EnemyType::DE_ROL_LE:
+    case EnemyType::VOL_OPT_2:
+    case EnemyType::DARK_FALZ_2: // Dark Falz's final form on Normal
+    case EnemyType::DARK_FALZ_3: // ... and on the other difficulties
+    case EnemyType::BARBA_RAY:
+    case EnemyType::GOL_DRAGON:
+    case EnemyType::GAL_GRYPHON:
+    case EnemyType::OLGA_FLOW_2:
+    case EnemyType::SAINT_MILION:
+    case EnemyType::SHAMBERTIN:
+    case EnemyType::KONDRIEU:
+      return true;
+    default:
+      return false;
+  }
+}
+
 static void on_enemy_exp_request_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
@@ -4197,12 +4219,32 @@ static void on_enemy_exp_request_bb(std::shared_ptr<Client> c, SubcommandMessage
   auto type = ene_st->type(c->version(), area, l->difficulty, l->event);
 
   // Count the kill for the player who killed the enemy (reported in /y/clients for external tools). Reaching this
-  // point means this player has not yet been given full EXP for this enemy, so each kill is counted once.
+  // point means this player has not yet been given full EXP for this enemy, so each kill is counted once. A boss counts
+  // once per fight, when its main form falls: its phases, joints, body parts, mines, monitors and spinners are parts
+  // of the fight, and some bosses are several entities of the same type (Saint-Milion, Shambertin and so Kondrieu
+  // have nine body entities; Barba Ray has two).
   if (cmd.is_killer && ene_st->last_hit_by_client_id(c->lobby_client_id)) {
-    c->enemy_kill_count++;
-    if (ene_st->is_rare(c->version())) {
-      c->rare_enemy_kill_count++;
-      c->last_rare_enemy_killed = phosg::name_for_enum(type);
+    bool count_kill = true;
+    if (type_definition_for_enemy(type).is_boss()) {
+      count_kill = is_boss_main_form(type);
+      if (count_kill) {
+        uint64_t fight_key = (static_cast<uint64_t>(ene_st->super_ene->floor) << 32) | ene_st->super_ene->super_set_id;
+        uint8_t& counted = l->map_state->boss_kills_counted[fight_key];
+        uint8_t client_bit = 1 << c->lobby_client_id;
+        count_kill = !(counted & client_bit);
+        counted |= client_bit;
+      }
+    }
+    if (count_kill) {
+      bool is_rare = ene_st->is_rare(c->version());
+      c->enemy_kill_count++;
+      if (is_rare) {
+        c->rare_enemy_kill_count++;
+        c->last_rare_enemy_killed = phosg::name_for_enum(type);
+      }
+      auto& entry = c->kill_counts[std::make_tuple(episode, l->difficulty, l->mode, type)];
+      entry.count++;
+      entry.rare = entry.rare || is_rare;
     }
   }
 

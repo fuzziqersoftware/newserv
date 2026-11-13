@@ -6625,6 +6625,7 @@ void MapState::reset() {
   for (auto& ev_st : this->event_states) {
     ev_st->reset();
   }
+  this->boss_kills_counted.clear();
 }
 
 void MapState::index_super_map(const FloorConfig& fc, std::shared_ptr<RandomGenerator> rand_crypt) {
