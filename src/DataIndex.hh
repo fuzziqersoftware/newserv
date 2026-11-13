@@ -168,6 +168,7 @@ struct DataIndex {
   RunShellBehavior run_shell_behavior = RunShellBehavior::DEFAULT;
   BehaviorSwitch cheat_mode_behavior = BehaviorSwitch::OFF_BY_DEFAULT;
   bool default_switch_assist_enabled = false;
+  bool bb_extended_tool_shop_enabled = false;
   bool use_game_creator_section_id = false;
   bool rare_notifs_enabled_for_client_drops = false;
   bool default_rare_notifs_enabled_v1_v2 = false;

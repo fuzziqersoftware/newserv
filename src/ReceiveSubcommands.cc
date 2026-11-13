@@ -2541,7 +2541,7 @@ static void on_open_shop_bb_or_ep3_battle_subs(std::shared_ptr<Client> c, Subcom
     size_t level = c->character_file()->disp.stats.level + 1;
     switch (cmd.shop_type) {
       case 0:
-        c->bb_shop_contents[0] = l->item_creator->generate_tool_shop_contents(level);
+        c->bb_shop_contents[0] = l->item_creator->generate_tool_shop_contents(level, s->data->bb_extended_tool_shop_enabled);
         break;
       case 1:
         c->bb_shop_contents[1] = l->item_creator->generate_weapon_shop_contents(level);

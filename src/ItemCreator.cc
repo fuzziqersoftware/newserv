@@ -1187,11 +1187,15 @@ void ItemCreator::generate_armor_shop_units(std::vector<ItemData>& shop, size_t 
   }
 }
 
-std::vector<ItemData> ItemCreator::generate_tool_shop_contents(size_t player_level) {
+std::vector<ItemData> ItemCreator::generate_tool_shop_contents(size_t player_level, bool extended) {
+  // The client can't handle more than this many items in the tool shop (see G_ShopContents_BB_6xB6). The original
+  // logic never generates more than 18 items; the extended shop has more recovery items, so it has fewer tech disks.
+  static constexpr size_t max_items = 18;
+
   std::vector<ItemData> shop;
-  this->generate_common_tool_shop_recovery_items(shop, player_level);
-  this->generate_rare_tool_shop_recovery_items(shop, player_level);
-  this->generate_tool_shop_tech_disks(shop, player_level);
+  this->generate_common_tool_shop_recovery_items(shop, player_level, extended);
+  this->generate_rare_tool_shop_recovery_items(shop, player_level, extended);
+  this->generate_tool_shop_tech_disks(shop, player_level, (shop.size() < max_items) ? (max_items - shop.size()) : 0);
   sort(shop.begin(), shop.end(), ItemData::compare_for_sort);
   return shop;
 }
@@ -1210,7 +1214,19 @@ size_t ItemCreator::get_table_index_for_tool_shop(size_t player_level) {
   }
 }
 
-void ItemCreator::generate_common_tool_shop_recovery_items(std::vector<ItemData>& shop, size_t player_level) {
+void ItemCreator::generate_common_tool_shop_recovery_items(
+    std::vector<ItemData>& shop, size_t player_level, bool extended) {
+  if (extended) {
+    // In the extended shop, all of the common recovery items (Monomate through Trap Vision) are sold at all levels
+    for (size_t entry = 0x00; entry <= 0x0C; entry++) {
+      auto& item = shop.emplace_back();
+      item.data1[0] = 3;
+      item.data1[1] = ToolShopRandomSet::item_defs[entry].first;
+      item.data1[2] = ToolShopRandomSet::item_defs[entry].second;
+    }
+    return;
+  }
+
   size_t table_index;
   if (player_level < 11) {
     table_index = 0;
@@ -1238,7 +1254,8 @@ void ItemCreator::generate_common_tool_shop_recovery_items(std::vector<ItemData>
   }
 }
 
-void ItemCreator::generate_rare_tool_shop_recovery_items(std::vector<ItemData>& shop, size_t player_level) {
+void ItemCreator::generate_rare_tool_shop_recovery_items(
+    std::vector<ItemData>& shop, size_t player_level, bool extended) {
   if (player_level < 11) {
     return;
   }
@@ -1264,12 +1281,16 @@ void ItemCreator::generate_rare_tool_shop_recovery_items(std::vector<ItemData>& 
       if (this->shop_does_not_contain_duplicate_item_by_data1_0_1_2(shop, item)) {
         shop.emplace_back(std::move(item));
         items_generated++;
+      } else if (extended) {
+        // Most of the rare recovery items are already in the extended shop; if we kept looking for one that isn't
+        // there, we would almost always end up with a Monogrinder (or run out of items entirely)
+        items_generated++;
       }
     }
   }
 }
 
-void ItemCreator::generate_tool_shop_tech_disks(std::vector<ItemData>& shop, size_t player_level) {
+void ItemCreator::generate_tool_shop_tech_disks(std::vector<ItemData>& shop, size_t player_level, size_t max_items) {
   size_t num_items;
   if (player_level < 11) {
     num_items = 4;
@@ -1278,6 +1299,7 @@ void ItemCreator::generate_tool_shop_tech_disks(std::vector<ItemData>& shop, siz
   } else {
     num_items = 7;
   }
+  num_items = std::min<size_t>(num_items, max_items);
 
   size_t table_index = this->get_table_index_for_tool_shop(player_level);
   ProbabilityTable<uint8_t, 100> pt{this->tool_random_set->tech_disk_table.at(table_index)};
