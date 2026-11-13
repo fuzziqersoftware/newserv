@@ -167,7 +167,7 @@ public:
     /* 08 */ le_uint16_t entity_id = 0; // == index + 0x4000; used by PSO at runtime, unused in DAT file
     /* 0A */ le_uint16_t group = 0;
     /* 0C */ le_uint16_t room = 0;
-    /* 0E */ le_uint16_t unknown_a3 = 0;
+    /* 0E */ parray<uint8_t, 2> unused = 0;
     // The position is relative to the room in which the object is placed; to get the actual world position, the
     // object's position must be rotated around the room's origin by the room's angles, then translated by the room's
     // offset. The room's angle and offset can be found in the area's n.rel file.
@@ -199,9 +199,9 @@ public:
     /* 0C */ le_uint16_t room = 0;
     /* 0E */ le_uint16_t wave_number = 0;
     /* 10 */ le_uint16_t wave_number2 = 0;
-    /* 12 */ le_uint16_t unknown_a1 = 0;
+    /* 12 */ parray<uint8_t, 2> unused = 0;
     /* 14 */ VectorXYZF pos;
-    /* 24 */ VectorXYZI angle;
+    /* 20 */ VectorXYZI angle;
     // See notes in dat_enemy_definitions in Map.cc for how these are used
     /* 2C */ le_float param1 = 0.0f;
     /* 30 */ le_float param2 = 0.0f;

@@ -670,10 +670,10 @@ check_struct_size(C_MenuSelectionWithNameAndPassword_PC_BB_10, 0x48);
 // This command exists on DC NTE, but it does nothing. DC NTE does not have the 44 command, which would also be
 // required for loading quests, so online quests cannot be loaded on DC NTE.
 // All chunks except the last must have 0x400 data bytes. When downloading an online quest, the .bin and .dat chunks
-// may be interleaved. There is a client bug in all known versions where, if the quest file's size is a multiple of
+// may be interleaved. There is a client bug in all known versions such that if the quest file's size is a multiple of
 // 0x400, the last chunk will have size 0x400 and the client will never consider the download complete, since it only
 // considers a file download complete when it receives a chunk with size < 0x400 (instead of checking if all expected
-// bytes have been received). This bug also affects tha A7 command, which is implemented very similarly. To work around
+// bytes have been received). This bug also affects the A7 command, which is implemented very similarly. To work around
 // this, newserv appends an extra zero byte if the quest file's size is a multiple of 0x400; this byte will be ignored
 // since the PRS decompression algorithm contains a stop command, so the client will never read this extra byte when
 // decompressing the quest.
@@ -940,7 +940,7 @@ struct S_OpenFile_DC_44_A6 {
   //   2 = GBA game (GC only; client expects .gba file only)
   //   3 = Episode 3 download quest (Ep3 only; client expects .bin file only)
   // There is a bug in the type logic: an A6 command always overwrites the current download type even if the filename
-  // doesn't end in .bin, .dat, .pvr, or .gba. This may lead to a resource exhaustion bug if exploited carefully, but I
+  // doesn't end in .bin, .dat, .pvr, or .gba. This may lead to resource exhaustion if exploited carefully, but I
   // haven't verified this. Generally the server should send all files for a given piece of content with the same type
   // in each file's A6 command.
   uint8_t type = 0;
@@ -1589,12 +1589,12 @@ struct C_LoginExtended_DCNTE_8B : C_Login_DCNTE_8B {
 // 90 (C->S): V1 login (DC/PC/V3)
 // This command is used during the DCv1 login sequence; a DCv1 client will respond to a 17 command with 90. If a V3
 // client receives a 91 command, however, it will also send a 90 in response, though the contents will be blank.
+// Note: There is a bug in the Japanese and prototype versions of DCv1 that cause the client to send this command
+// despite its size not being a multiple of 4. This is fixed in later versions, so we have to handle both cases.
 
 struct C_LoginV1_DC_PC_V3_90 {
   pstring<TextEncoding::ASCII, 0x11> serial_number;
   pstring<TextEncoding::ASCII, 0x11> access_key;
-  // Note: There is a bug in the Japanese and prototype versions of DCv1 that cause the client to send this command
-  // despite its size not being a multiple of 4. This is fixed in later versions, so we have to handle both cases.
 } __packed_ws__(C_LoginV1_DC_PC_V3_90, 0x22);
 
 // 90 (S->C): Account verification result (DC/PC/V3)
@@ -5993,16 +5993,15 @@ struct G_SetQuestCounter_BB_6xD2 {
 
 // 6xD3: Invalid subcommand
 
-// 6xD4: Unknown (BB)
-// Related to object type 0340.
+// 6xD4: Sync moving platform state (BB)
+// This command controls the state of objects of type 0x0340 (see Map.cc).
 
-struct G_Unknown_BB_6xD4 {
+struct G_SyncMovingPlatformState_BB_6xD4 {
   G_UnusedHeader header;
   le_uint16_t action = 0; // Must be in [0, 5]
-  // object_identifier must be in [0, 15]; it should match param4 of the relevant object.
-  uint8_t object_identifier = 0;
-  uint8_t unused = 0;
-} __packed_ws__(G_Unknown_BB_6xD4, 8);
+  uint8_t object_identifier = 0; // Must be in [0, 15]; matches object's param4
+  uint8_t point_index = 0; // Must be in [0, 3]
+} __packed_ws__(G_SyncMovingPlatformState_BB_6xD4, 8);
 
 // 6xD5: Exchange item in quest (BB; handled by server)
 // The client sends this when it executes an F953 quest opcode. If any item matching find_item.data1[0-2] is present in
