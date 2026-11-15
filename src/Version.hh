@@ -190,6 +190,8 @@ constexpr uint32_t SPECIFIC_VERSION_X86_INDETERMINATE = 0x58383600; // X86_
 
 constexpr uint32_t SPECIFIC_VERSION_DC_NTE = 0x314F4A31; // 1OJ1
 constexpr uint32_t SPECIFIC_VERSION_DC_11_2000_PROTOTYPE = 0x314F4A32; // 1OJ2
+constexpr uint32_t SPECIFIC_VERSION_DC_12_2000_PROTOTYPE = 0x314F4A33; // 1OJ3
+constexpr uint32_t SPECIFIC_VERSION_DC_01_2001_PROTOTYPE = 0x314F4A34; // 1OJ4
 constexpr uint32_t SPECIFIC_VERSION_DC_V1_JP = 0x314F4A46; // 1OJF
 constexpr uint32_t SPECIFIC_VERSION_DC_V1_US = 0x314F4546; // 1OEF
 constexpr uint32_t SPECIFIC_VERSION_DC_V1_EU_INDETERMINATE = 0x314F5000; // 1OP_
@@ -217,7 +219,7 @@ constexpr uint32_t SPECIFIC_VERSION_BB_V4_INDETERMINATE = 0x35000000; // 5___
 constexpr uint32_t SPECIFIC_VERSION_INDETERMINATE = 0x00000000; // ____
 
 uint32_t default_sub_version_for_version(Version version);
-uint32_t default_specific_version_for_version(Version version, int64_t sub_version);
+uint32_t default_specific_version_for_version(Version version, int64_t sub_version, uint64_t client_flags);
 bool specific_version_is_indeterminate(uint32_t specific_version);
 bool specific_version_is_dc(uint32_t specific_version);
 bool specific_version_is_pc_v2(uint32_t specific_version);

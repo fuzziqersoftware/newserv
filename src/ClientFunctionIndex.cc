@@ -155,7 +155,7 @@ std::string ClientFunctionIndex::Function::generate_client_command(
   }
 }
 
-static std::unordered_map<uint32_t, std::string> preprocess_function_code(const std::string& text) {
+std::unordered_map<uint32_t, std::string> ClientFunctionIndex::preprocess_function_code(const std::string& text) {
   std::unordered_set<uint32_t> all_specific_versions;
   struct Line {
     std::string text;
@@ -281,7 +281,7 @@ ClientFunctionIndex::ClientFunctionIndex(const std::string& root_dir, bool raise
 
     std::unordered_map<uint32_t, std::string> preprocessed;
     try {
-      preprocessed = preprocess_function_code(source);
+      preprocessed = this->preprocess_function_code(source);
     } catch (const std::exception& e) {
       if (raise_on_any_failure) {
         throw std::runtime_error(std::format("({} preprocessing) {}", source_filename, e.what()));
@@ -314,7 +314,8 @@ ClientFunctionIndex::ClientFunctionIndex(const std::string& root_dir, bool raise
             if (!get_include_stack.emplace(name).second) {
               throw std::runtime_error("Mutual recursion between includes: " + name);
             }
-            for (const auto& [include_specific_version, include_source] : preprocess_function_code(it->second)) {
+            auto preprocessed = ClientFunctionIndex::preprocess_function_code(it->second);
+            for (const auto& [include_specific_version, include_source] : preprocessed) {
               ResourceDASM::AssembleResult ret;
               auto get_include = std::bind(get_include_for_sv, std::placeholders::_1, include_specific_version);
               switch (architecture_for_specific_version(include_specific_version)) {

@@ -668,7 +668,8 @@ check_struct_size(C_MenuSelectionWithNameAndPassword_PC_BB_10, 0x48);
 // Internal name: RcvDownLoad
 // Used for downloading online quests. For download quests (to be saved to the memory card), use A7 instead.
 // This command exists on DC NTE, but it does nothing. DC NTE does not have the 44 command, which would also be
-// required for loading quests, so online quests cannot be loaded on DC NTE.
+// required for loading quests, so online quests cannot be loaded on DC NTE. 11/2000 does have the 44 and 13 commands,
+// but there is no logic to actually run the quest after downloading it, so quests can't be loaded on 11/2000 either.
 // All chunks except the last must have 0x400 data bytes. When downloading an online quest, the .bin and .dat chunks
 // may be interleaved. There is a client bug in all known versions such that if the quest file's size is a multiple of
 // 0x400, the last chunk will have size 0x400 and the client will never consider the download complete, since it only
@@ -1386,24 +1387,23 @@ struct S_LeaveLobby_66_69_Ep3_E9 {
 // 7E: Invalid command
 // 7F: Invalid command
 
-// 80: Valid but ignored (all versions except BB)
+// 80: Legacy generate item ID (all versions except BB)
 // Internal names: RcvGenerateID and SndGenerateID
-// This command appears to be used to set the next item ID for the given player slot. PSO V3 and later accept this
-// command, but ignore it entirely. Notably, no version of PSO except for DC NTE ever sends this command - it's likely
-// it was used to implement some item ID sync semantics that were later changed to make the leader the source of truth.
+// This command is used as a fallback mechanism for assigning item IDs, but there are no codepaths that end up calling
+// it, even on DC NTE. PSO V3 and later accept this command but ignore it entirely.
 
 struct C_GenerateID_DCNTE_80 {
-  le_uint32_t id = 0;
-  uint8_t unused1 = 0; // Always 0
-  uint8_t unused2 = 0; // Always 0
-  le_uint16_t unused3 = 0; // Always 0
-  parray<uint8_t, 4> unused4; // Client sends uninitialized data here
+  le_uint32_t item_entity_id = 0;
+  uint8_t unused1 = 0; // Always 0 (probably part of a player_tag structure)
+  uint8_t unused2 = 0; // Always 0 (probably part of a player_tag structure)
+  le_uint16_t unused3 = 0; // Always 0 (probably part of a player_tag structure)
+  le_uint32_t item_id; // Client sends uninitialized data here; server response would have the actual assigned item ID
 } __packed_ws__(C_GenerateID_DCNTE_80, 0x0C);
 
 struct S_GenerateID_DC_PC_V3_80 {
-  le_uint32_t client_id = 0;
-  le_uint32_t unused = 0;
-  le_uint32_t next_item_id = 0;
+  le_uint32_t item_entity_id = 0;
+  le_uint32_t unused = 0; // Probably a player_tag structure
+  le_uint32_t item_id = 0;
 } __packed_ws__(S_GenerateID_DC_PC_V3_80, 0x0C);
 
 // 81: Simple mail
@@ -3624,8 +3624,10 @@ struct G_ExtendedHeaderT {
 // 6x02: Unknown
 // 6x03: Unknown
 // These subcommands are completely ignored on V3 and later. On all known DC versions (NTE through V2), the contents of
-// these commands are written to a global array, but nothing reads from this array. This command is likely a relic from
-// pre-NTE development.
+// these commands are written to a global array, but nothing reads from this array. The writes are not bounds-checked
+// and can be used to write to a large area of memory, which can overwrite important globals and cause other
+// misbehavior. It appears that these commands are never sent by any known client version, so for security reasons,
+// newserv unconditionally blocks these commands. These commands are likely relics from pre-NTE development.
 
 struct G_Unknown_6x02_6x03 {
   G_ClientIDHeader header;
@@ -3815,14 +3817,14 @@ struct G_AddStatusEffect_6x0C {
   // None of the above conditions use slot 4. Slot 4 is used internally for pausing enemy movements during Photon
   // Blasts and cannot be updated by a 6x0C command.
   le_uint32_t effect_type = 0;
-  le_float amount = 0; // Only used in 6x0C for Shifta/Deband/Jellen/Zalure; unused in 6x0D
+  le_float amount = 0; // Only used for Shifta/Deband/Jellen/Zalure
 } __packed_ws__(G_AddStatusEffect_6x0C, 0x0C);
 
 // 6x0D: Remove status effect (protected on V3/V4)
 
 struct G_RemoveStatusEffect_6x0D {
   G_ClientIDHeader header;
-  le_uint32_t slot_index = 0; // See 6x0C comments for slot numbers
+  le_uint32_t slot_index = 0; // Note: NOT effect_type, as in 6x0C. See 6x0C comments for slot numbers.
   le_float unused = 0;
 } __packed_ws__(G_RemoveStatusEffect_6x0D, 0x0C);
 
@@ -4429,7 +4431,6 @@ struct G_HoldWhileFrozenOrPB_6x53 {
 // 6x54: Unknown
 // This subcommand is completely ignored by DCv2 and later. On DC NTE, 11/2000, and DCv1, the handler has some logic in
 // it and it calls a virtual function on TObjPlayer, but that codepath ends up doing nothing.
-// TODO: Could it
 
 struct G_Unknown_6x54 {
   G_ClientIDHeader header;
@@ -4643,7 +4644,7 @@ struct G_SetBossWarpState_6x6A {
   //   2 = warp
   //   3 = wait for players to leave the destination
   //   4 = locked until a switch flag is set
-  le_uint16_t flags;
+  le_uint16_t state;
   le_uint16_t unused;
 } __packed_ws__(G_SetBossWarpState_6x6A, 8);
 

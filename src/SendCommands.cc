@@ -339,7 +339,7 @@ asio::awaitable<void> prepare_client_for_patches(std::shared_ptr<Client> c) {
     std::unordered_map<std::string, uint32_t> label_writes;
     auto call1_res = co_await send_function_call(c, fn, label_writes, nullptr, 0, 0x80000000, 8, 0x7F2734EC);
     try {
-      c->specific_version = specific_version_for_gc_header_checksum(call1_res.checksum);
+      c->set_specific_version(specific_version_for_gc_header_checksum(call1_res.checksum));
       c->log.info_f("Version detected as {:08X} from header checksum {:08X}", c->specific_version, call1_res.checksum);
     } catch (const std::out_of_range&) {
       c->log.info_f("Could not detect specific version from header checksum {:08X}", call1_res.checksum);
@@ -360,7 +360,7 @@ asio::awaitable<void> prepare_client_for_patches(std::shared_ptr<Client> c) {
   if ((arch != ClientFunctionIndex::Function::Architecture::UNKNOWN) &&
       specific_version_is_indeterminate(c->specific_version)) {
     auto vers_detect_res = co_await send_function_call(c, s->data->client_functions->get("VersionDetect", arch));
-    c->specific_version = vers_detect_res.return_value;
+    c->set_specific_version(vers_detect_res.return_value);
     c->log.info_f("Version detected as {:08X}", c->specific_version);
   }
 }

@@ -56,7 +56,7 @@ ofb_hook_start:
   jne       ofb_hook_skip_replace_value
   mov       al, 2
 ofb_hook_skip_replace_value:
-  cmp       eax, [ebx + 0x440]  // Original opcode
+  cmp       eax, [ebx + 0x440]  # Original opcode
   jmp       ofb_hook_call_end
 ofb_hook_end:
 
@@ -135,10 +135,10 @@ mfp_hook_end:
   .data     mfp_hook_end1 - mfp_hook_start1
   .address  mfp_hook_loc1
 mfp_hook_start1:
-  fld1      st0  // st = [1.0, speed]
-  fld1      st0  // st = [1.0, 1.0, speed]
-  fadd      st0, st1  // st = [2.0, 1.0, speed]
-  fdivp     st1, st0  // st = [0.5, speed]
+  fld1      st0  # st = [1.0, speed]
+  fld1      st0  # st = [1.0, 1.0, speed]
+  fadd      st0, st1  # st = [2.0, 1.0, speed]
+  fdivp     st1, st0  # st = [0.5, speed]
   jmp       mfp_hook_loc2
 mfp_hook_end1:
 
@@ -146,12 +146,12 @@ mfp_hook_end1:
   .data     mfp_hook_end2 - mfp_hook_start2
   .address  mfp_hook_loc2
 mfp_hook_start2:
-  test      byte [esi + 0x30], 0x20  // If not set, use 1.5; if set, use 0.5
+  test      byte [esi + 0x30], 0x20  # If not set, use 1.5; if set, use 0.5
   jnz       mfp_hook_entity_is_frozen
-  fld1      st0  // st = [1, 0.5, speed]
-  faddp     st1, st0  // st = [1.5, speed]
+  fld1      st0  # st = [1, 0.5, speed]
+  faddp     st1, st0  # st = [1.5, speed]
 mfp_hook_entity_is_frozen:
-  fmulp     st1, st0  // st = [((game_flags & 0x20) ? 0.5 : 1.5) * speed]
+  fmulp     st1, st0  # st = [((game_flags & 0x20) ? 0.5 : 1.5) * speed]
   ret
 mfp_hook_end2:
 

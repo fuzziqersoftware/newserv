@@ -1,0 +1,31 @@
+.version DC_V1
+.quest_num 88515
+.language E
+.episode Episode1
+.name "DCv1 USA patch enabler"
+.short_desc ""
+.long_desc ""
+
+start:
+  // The preamble's code jumps to the native code contained in the quest at label 1; this quest script is responsible
+  // for somehow calling the preamble's code. We do this by executing an invalid jmp_on opcode. The jmp_on and jmp_off
+  // opcodes are intended for use with up to 16 registers, though due to alignment restrictions, using 18 registers
+  // works without any side effects. Using more than 18 registers overwrites the saved return value from the function,
+  // which is in fact exactly what we want; we overwrite it with the address of the snippet described above. (We can't
+  // just jump directly to our native code here, and we have to use that code snippet from the preamble, because doing
+  // so eliminates a source of indirection - the native code in the quest script is at a dynamically-allocated address,
+  // which we can't reliably guess and hardcode here.)
+  jmp_on   do_nothing, [r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17, r18, r140, r171, r59, r140]
+do_nothing:
+  ret
+
+  .align   4
+native_code@1:
+  .include_native q8851x-d1.s, 1OEF
+
+  // The Dreamcast has a 16KB data cache, and the instruction and data caches are split (like on PowerPC), so we need
+  // to ensure that the native code above is actually written to memory before executing it. Including 16KB of zeroes
+  // here should suffice, since PRS decompression will write the entire quest script file sequentially and these zeroes
+  // will evict all the cache lines that hold the code above. (This also takes care of making the preamble code
+  // executable, since that code is written before the quest script is decompressed.)
+  .zero    0x4000

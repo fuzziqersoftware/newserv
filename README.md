@@ -456,19 +456,19 @@ The specific versions are:
 |------------------------------|------|--------------------------------|
 | PSO DC Network Trial Edition | 1OJ1 | Client functions not supported |
 | PSO DC 11/2000 prototype     | 1OJ2 | Client functions not supported |
-| PSO DC 12/2000 prototype     | 1OJ3 | Client functions not supported |
-| PSO DC 01/2001 prototype     | 1OJ4 | Client functions not supported |
-| PSO DC v1 JP                 | 1OJF | Client functions not supported |
-| PSO DC v1 US                 | 1OEF | Client functions not supported |
-| PSO DC v1 EU                 | 1OPF | Client functions not supported |
+| PSO DC 12/2000 prototype     | 1OJ3 | SH-4 (1) (3)                   |
+| PSO DC 01/2001 prototype     | 1OJ4 | SH-4 (1) (3)                   |
+| PSO DC v1 JP                 | 1OJF | SH-4 (1) (3)                   |
+| PSO DC v1 US                 | 1OEF | SH-4 (1)                       |
+| PSO DC v1 EU                 | 1OPF | SH-4 (1) (3)                   |
 | PSO DC 08/06/2001 prototype  | 2OJ4 | SH-4                           |
 | PSO DC 08/22/2001 prototype  | 2OJ5 | SH-4                           |
 | PSO DC v2 JP                 | 2OJF | SH-4                           |
 | PSO DC v2 US                 | 2OEF | SH-4                           |
 | PSO DC v2 EU                 | 2OPF | SH-4                           |
 | PSO PC (v2) Trial Edition    | 2OJT | Client functions not supported |
-| PSO PC (v2) 04/2002          | 2OJW | Client functions not supported |
-| PSO PC (v2) 02/2003          | 2OJZ | Client functions not supported |
+| PSO PC (v2) 04/2002          | 2OJW | x86 (3)                        |
+| PSO PC (v2) 02/2003          | 2OJZ | x86 (3)                        |
 | PSO GC Trial Edition         | 3OJT | PowerPC                        |
 | PSO GC GameJam demo          | 3OJD | PowerPC (2)                    |
 | PSO GC v1.2 JP               | 3OJ2 | PowerPC                        |
@@ -500,6 +500,7 @@ The specific versions are:
 *Notes:*
 1. *Client functions are only supported on these versions if EnableSendFunctionCallQuestNumbers is set in config.json. See the comments there for more information.*
 2. *This version does not have online capability; it's included in the list only for completeness.*
+3. *Support for this version is not well-tested. Please create an issue on this repository if it doesn't work.*
 
 newserv comes with a set of patches for many of the above versions, in system/client-functions/.
 

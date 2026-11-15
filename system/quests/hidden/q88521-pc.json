@@ -1,0 +1,9 @@
+{
+  // This is analogous to what the DCv1 version's preamble does. In x86 assembly, the necessary code is:
+  //   A1D40A7100    mov       eax, [0x00710AD4]  # quest_script_data
+  //   8B0D4C0A7100  mov       ecx, [0x00710A4C]  # quest_function_table
+  //   8B4904        mov       ecx, [ecx + 4]  # ecx = offset for quest label 1
+  //   01C8          add       eax, ecx
+  //   FFE0          jmp       eax
+  "Preamble": "2C 00 60 00 02 05 00 00 A1 D4 0A 71 00 8B 0D 4C 0A 71 00 8B 49 04 01 C8 02 05 01 00 FF E0 00 00 40 D1 6E 00 00 00 00 00 00 00 00 00 02 05 6B 46 EC D0 6E 00 00 00 80 3F 00 00 00 00 00 00 00 00",
+}

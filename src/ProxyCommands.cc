@@ -1296,7 +1296,7 @@ static asio::awaitable<HandlerResult> C_GXB_61(std::shared_ptr<Client> c, Channe
         c->log.info_f("Version changed to GC_EP3_NTE");
         c->channel->version = Version::GC_EP3_NTE;
         c->proxy_session->server_channel->version = Version::GC_EP3_NTE;
-        c->specific_version = SPECIFIC_VERSION_GC_EP3_NTE;
+        c->set_specific_version(SPECIFIC_VERSION_GC_EP3_NTE);
       }
       pd = &msg.check_size_t<C_CharacterData_V3_61_98>(0xFFFF);
     }

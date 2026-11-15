@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "BattleParamsIndex.hh"
+#include "ClientFunctionIndex.hh"
 #include "CommandFormats.hh"
 #include "Compression.hh"
 #include "StaticGameData.hh"
@@ -4331,20 +4332,37 @@ AssembledQuestScript assemble_quest_script(
         } else if (directive == ".include_bin ") {
           code_w.write(get_native_include(args));
         } else if (directive == ".include_native") {
-          std::string native_text = get_native_include(args);
+          auto tokens = phosg::split(args, ',');
+          if (tokens.size() < 1 || tokens.size() > 2) {
+            throw std::runtime_error("Invalid .include_native arguments");
+          }
+          phosg::strip_whitespace(tokens[0]);
+          std::string native_text = get_native_include(tokens[0]);
+          std::unordered_map<uint32_t, std::string> preprocessed_texts;
+          const std::string* effective_text = &native_text;
+          if (tokens.size() > 1) {
+            phosg::strip_whitespace(tokens[1]);
+            preprocessed_texts = ClientFunctionIndex::preprocess_function_code(native_text);
+            if (auto it = preprocessed_texts.find(specific_version_for_str(tokens[1]));
+                it != preprocessed_texts.end()) {
+              effective_text = &it->second;
+            } else {
+              throw std::runtime_error(std::format("Specific version {} not defined in native include", tokens[1]));
+            }
+          }
           std::string code;
           if (is_ppc(ret.meta.version)) {
-            code = std::move(ResourceDASM::PPC32Emulator::assemble(native_text).code);
+            code = std::move(ResourceDASM::PPC32Emulator::assemble(*effective_text).code);
           } else if (is_x86(ret.meta.version)) {
-            code = std::move(ResourceDASM::X86Emulator::assemble(native_text).code);
+            code = std::move(ResourceDASM::X86Emulator::assemble(*effective_text).code);
           } else if (is_sh4(ret.meta.version)) {
-            code = std::move(ResourceDASM::SH4Emulator::assemble(native_text).code);
+            code = std::move(ResourceDASM::SH4Emulator::assemble(*effective_text).code);
           } else {
-            throw std::runtime_error("unknown architecture");
+            throw std::runtime_error("Unknown architecture");
           }
           code_w.write(code);
         } else if (!metadata_directive_names.count(directive)) { // These were handled in an earlier phase
-          throw std::runtime_error("unknown directive: " + directive);
+          throw std::runtime_error("Unknown directive: " + directive);
         }
         return;
       }

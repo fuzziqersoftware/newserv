@@ -86,6 +86,8 @@ public:
   std::shared_ptr<const Function> get(const std::string& name, Function::Architecture arch) const;
   std::shared_ptr<const Function> get(const std::string& name) const;
   std::shared_ptr<const Function> get_by_menu_item_id(uint32_t menu_item_id) const;
+
+  static std::unordered_map<uint32_t, std::string> preprocess_function_code(const std::string& text);
 };
 
 const char* name_for_architecture(ClientFunctionIndex::Function::Architecture arch);

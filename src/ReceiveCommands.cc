@@ -352,40 +352,37 @@ static asio::awaitable<void> on_login_complete(std::shared_ptr<Client> c) {
           !c->check_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE))) {
     std::shared_ptr<const Quest> q;
     try {
-      q = s->data->quest_index->get(s->data->enable_send_function_call_quest_numbers.at(c->specific_version));
+      int64_t quest_num = s->data->enable_send_function_call_quest_numbers.at(c->specific_version);
+      c->log.info_f("Using quest number {} for specific version {:08X}", quest_num, c->specific_version);
+      q = s->data->quest_index->get(quest_num);
     } catch (const std::out_of_range&) {
     }
     if (!q) {
       c->log.info_f("There is no quest to enable server function calls for specific version {:08X}", c->specific_version);
-    } else if (q) {
+    } else {
       auto vq = q->version(c->version(), Language::ENGLISH);
-      if (vq) {
+      if (!vq) {
+        c->log.info_f("Quest {} to enable server function calls for specific version {:08X} does not have an appropriate language version", q->meta.quest_number, c->specific_version);
+      } else {
         c->set_flag(Client::Flag::HAS_SEND_FUNCTION_CALL);
         c->set_flag(Client::Flag::SEND_FUNCTION_CALL_ACTUALLY_RUNS_CODE);
         c->set_flag(Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
         c->set_flag(Client::Flag::AWAITING_ENABLE_B2_QUEST);
 
-        // PCv2 will crash if it receives an online quest file while it's not in a game, so we have to put it into a
-        // fake game first
-        if (c->version() == Version::PC_V2) {
-          S_JoinGame_PC_64 cmd;
-          auto& lobby_data = cmd.lobby_data[0];
-          lobby_data.player_tag = 0x00010000;
-          lobby_data.guild_card_number = c->login->account->account_id;
-          send_command_t(c, 0x64, 0x01, cmd);
-        } else {
-          c->log.info_f("Sending {} version of quest \"{}\"", name_for_language(vq->meta.language), vq->meta.name);
-          std::string bin_filename = vq->bin_filename();
-          std::string dat_filename = vq->dat_filename();
-          std::string xb_filename = vq->xb_filename();
-          send_open_quest_file(
-              c, bin_filename, bin_filename, xb_filename, vq->meta.quest_number, QuestFileType::ONLINE, vq->bin_contents);
-          send_open_quest_file(
-              c, dat_filename, dat_filename, xb_filename, vq->meta.quest_number, QuestFileType::ONLINE, vq->dat_contents);
+        if (!q->meta.preamble.empty()) {
+          c->channel->send(q->meta.preamble);
+        }
 
-          if (!is_v1_or_v2(c->version())) {
-            send_command(c, 0xAC, 0x00);
-          }
+        c->log.info_f("Sending {} version of quest \"{}\"", name_for_language(vq->meta.language), vq->meta.name);
+        std::string bin_filename = vq->bin_filename();
+        std::string dat_filename = vq->dat_filename();
+        std::string xb_filename = vq->xb_filename();
+        send_open_quest_file(
+            c, bin_filename, bin_filename, xb_filename, vq->meta.quest_number, QuestFileType::ONLINE, vq->bin_contents);
+        send_open_quest_file(
+            c, dat_filename, dat_filename, xb_filename, vq->meta.quest_number, QuestFileType::ONLINE, vq->dat_contents);
+        if (!is_v1_or_v2(c->version())) {
+          send_command(c, 0xAC, 0x00);
         }
       }
     }
@@ -783,32 +780,32 @@ static void set_console_client_flags(std::shared_ptr<Client> c, uint32_t sub_ver
       c->log.info_f("Game version changed to DC_V1");
       if (specific_version_is_indeterminate(c->specific_version) ||
           (c->specific_version == SPECIFIC_VERSION_DC_11_2000_PROTOTYPE)) {
-        c->specific_version = SPECIFIC_VERSION_DC_V1_INDETERMINATE;
+        c->set_specific_version(SPECIFIC_VERSION_DC_V1_INDETERMINATE);
       }
     } else if (sub_version <= 0x28) {
       c->channel->version = Version::DC_V2;
       c->log.info_f("Game version changed to DC_V2");
       if (specific_version_is_indeterminate(c->specific_version)) {
-        c->specific_version = SPECIFIC_VERSION_DC_V2_INDETERMINATE;
+        c->set_specific_version(SPECIFIC_VERSION_DC_V2_INDETERMINATE);
       }
     } else if (is_v3(c->version())) {
       c->channel->version = Version::GC_NTE;
       c->log.info_f("Game version changed to GC_NTE");
-      c->specific_version = SPECIFIC_VERSION_GC_NTE;
+      c->set_specific_version(SPECIFIC_VERSION_GC_NTE);
     }
   } else {
     if (sub_version >= 0x40 && !is_ep3(c->version())) {
       c->channel->version = Version::GC_EP3;
       c->log.info_f("Game version changed to GC_EP3");
       if (specific_version_is_indeterminate(c->specific_version)) {
-        c->specific_version = SPECIFIC_VERSION_GC_EP3_INDETERMINATE;
+        c->set_specific_version(SPECIFIC_VERSION_GC_EP3_INDETERMINATE);
       }
     }
   }
   c->set_flags_for_version(c->version(), sub_version);
   c->sub_version = sub_version;
   if (specific_version_is_indeterminate(c->specific_version)) {
-    c->specific_version = default_specific_version_for_version(c->version(), sub_version);
+    c->set_specific_version(default_specific_version_for_version(c->version(), sub_version, c->enabled_flags));
   }
 }
 
@@ -874,7 +871,7 @@ static asio::awaitable<void> on_88_DCNTE(std::shared_ptr<Client> c, Channel::Mes
   c->serial_number = cmd.serial_number.decode();
   c->access_key = cmd.access_key.decode();
   c->channel->version = Version::DC_NTE;
-  c->specific_version = SPECIFIC_VERSION_DC_NTE;
+  c->set_specific_version(SPECIFIC_VERSION_DC_NTE);
   c->set_flags_for_version(c->version(), -1);
   c->log.info_f("Game version changed to DC_NTE");
 
@@ -915,7 +912,7 @@ static asio::awaitable<void> on_8B_DCNTE(std::shared_ptr<Client> c, Channel::Mes
   c->password = cmd.password.decode();
   c->login_character_name = cmd.login_character_name.decode();
   c->set_flags_for_version(c->version(), c->sub_version);
-  c->specific_version = SPECIFIC_VERSION_DC_NTE;
+  c->set_specific_version(SPECIFIC_VERSION_DC_NTE);
   c->log.info_f("Game version changed to DC_NTE");
 
   try {
@@ -953,10 +950,16 @@ static asio::awaitable<void> on_90_DC(std::shared_ptr<Client> c, Channel::Messag
   c->serial_number = cmd.serial_number.decode();
   c->access_key = cmd.access_key.decode();
   c->channel->version = Version::DC_V1;
+  // This command's size isn't a multiple of 4, and we can use this to distinguish 1OJ3 from other DC versions, but
+  // that can only happen later when we receive the sub_version. So for now, just set a flag to keep track of it
+  if (msg.data.size() == sizeof(C_LoginV1_DC_PC_V3_90)) {
+    c->log.info_f("Received short 90 command; this is JP v1 or a prototype");
+    c->set_flag(Client::Flag::RECEIVED_SHORT_LOGIN_DC);
+  }
   c->set_flags_for_version(c->version(), -1);
   if (specific_version_is_indeterminate(c->specific_version) ||
       (c->specific_version == SPECIFIC_VERSION_DC_11_2000_PROTOTYPE)) {
-    c->specific_version = SPECIFIC_VERSION_DC_V1_INDETERMINATE;
+    c->set_specific_version(SPECIFIC_VERSION_DC_V1_INDETERMINATE);
   }
   c->log.info_f("Game version changed to DC_V1");
 
@@ -1006,7 +1009,7 @@ static asio::awaitable<void> on_92_DC(std::shared_ptr<Client> c, Channel::Messag
   c->channel->version = Version::DC_V1;
   if (specific_version_is_indeterminate(c->specific_version) ||
       (c->specific_version == SPECIFIC_VERSION_DC_11_2000_PROTOTYPE)) {
-    c->specific_version = SPECIFIC_VERSION_DC_V1_INDETERMINATE;
+    c->set_specific_version(SPECIFIC_VERSION_DC_V1_INDETERMINATE);
   }
   set_console_client_flags(c, cmd.sub_version);
   c->log.info_f("Game version changed to DC_V1");
@@ -1075,7 +1078,7 @@ static asio::awaitable<void> on_93_DC(std::shared_ptr<Client> c, Channel::Messag
     c->set_flag(Client::Flag::CHECKED_FOR_DC_V1_PROTOTYPE);
     c->channel->version = Version::DC_11_2000;
     if (specific_version_is_indeterminate(c->specific_version)) {
-      c->specific_version = SPECIFIC_VERSION_DC_11_2000_PROTOTYPE;
+      c->set_specific_version(SPECIFIC_VERSION_DC_11_2000_PROTOTYPE);
     }
     c->log.info_f("Game version changed to DC_11_2000 (will be changed to V1 if 92 is received)");
   } else {
@@ -1348,13 +1351,13 @@ static asio::awaitable<void> on_9D_9E(std::shared_ptr<Client> c, Channel::Messag
           c->set_flag(Client::Flag::SEND_FUNCTION_CALL_NO_CACHE_PATCH);
         }
         if (resp.checksum == 0x3677024C) {
-          c->specific_version = SPECIFIC_VERSION_PC_V2_DEFAULT;
+          c->set_specific_version(SPECIFIC_VERSION_PC_V2_DEFAULT);
           c->log.info_f("Version detected as {:08X} from PE header checksum {:08X}", c->specific_version, resp.checksum);
         } else if (resp.checksum == 0x058BF2FF) {
-          c->specific_version = SPECIFIC_VERSION_PC_V2_FINAL;
+          c->set_specific_version(SPECIFIC_VERSION_PC_V2_FINAL);
           c->log.info_f("Version detected as {:08X} from PE header checksum {:08X}", c->specific_version, resp.checksum);
         } else {
-          c->specific_version = SPECIFIC_VERSION_PC_V2_INDETERMINATE;
+          c->set_specific_version(SPECIFIC_VERSION_PC_V2_INDETERMINATE);
           c->log.info_f("Version cannot be determined from PE header checksum {:08X}", resp.checksum);
         }
       } catch (const std::out_of_range& e) {
@@ -1495,10 +1498,10 @@ static asio::awaitable<void> on_93_BB(std::shared_ptr<Client> c, Channel::Messag
     if (!(specific_version & 0x000000FF)) {
       specific_version |= 0x00000030;
     }
-    c->specific_version = 0x35000000 | specific_version;
+    c->set_specific_version(0x35000000 | specific_version);
 
   } else {
-    c->specific_version = 0x35394E4C; // 59NL
+    c->set_specific_version(0x35394E4C); // 59NL
 
     // Note: Tethealla PSOBB is actually Japanese PSOBB, but with most of the files replaced with English
     // text/graphics/etc. For this reason, it still reports its language as Japanese, so we have to account for that
@@ -3494,7 +3497,7 @@ static asio::awaitable<void> on_61_98(std::shared_ptr<Client> c, Channel::Messag
         }
         cmd = reinterpret_cast<const C_CharacterData_V3_61_98*>(cmd3);
         if (specific_version_is_indeterminate(c->specific_version)) {
-          c->specific_version = SPECIFIC_VERSION_GC_EP3_JP; // 3SJ0
+          c->set_specific_version(SPECIFIC_VERSION_GC_EP3_JP); // 3SJ0
         }
       } else {
         if (is_ep3(c->version())) {
@@ -3502,7 +3505,7 @@ static asio::awaitable<void> on_61_98(std::shared_ptr<Client> c, Channel::Messag
           c->log.info_f("Game version changed to GC_EP3_NTE");
           c->clear_flag(Client::Flag::ENCRYPTED_SEND_FUNCTION_CALL);
           if (specific_version_is_indeterminate(c->specific_version)) {
-            c->specific_version = SPECIFIC_VERSION_GC_EP3_NTE;
+            c->set_specific_version(SPECIFIC_VERSION_GC_EP3_NTE); // 3SJT
           }
           c->convert_account_to_temporary_if_nte();
         }

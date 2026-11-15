@@ -91,6 +91,7 @@ void Client::set_flags_for_version(Version version, int64_t sub_version) {
     case 0x22: // DCv1 EU, 12/2000, and 01/2001, at 50Hz
     case 0x23: // DCv1 EU, 12/2000, and 01/2001, at 60Hz
       this->set_flag(Flag::NO_D6);
+      this->set_flag(Flag::CAN_RECEIVE_ENABLE_B2_QUEST);
       break;
     case 0x25: // DCv2 JP
     case 0x26: // DCv2 US and 08/2001
@@ -205,7 +206,7 @@ Client::Client(
   if (is_v1_or_v2(this->version()) ? s->data->default_rare_notifs_enabled_v1_v2 : s->data->default_rare_notifs_enabled_v3_v4) {
     this->set_drop_notification_mode(ItemDropNotificationMode::RARES_ONLY);
   }
-  this->specific_version = default_specific_version_for_version(this->version(), -1);
+  this->specific_version = default_specific_version_for_version(this->version(), -1, this->enabled_flags);
 
   this->reschedule_save_game_data_timer();
   this->reschedule_ping_and_timeout_timers();

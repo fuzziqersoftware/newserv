@@ -65,6 +65,10 @@ void QuestMetadata::apply_json_overrides(const phosg::JSON& json) {
     this->enable_schtserv_commands = json.at("EnableSchtservCommands").as_bool();
   } catch (const std::out_of_range&) {
   }
+  try {
+    this->preamble = phosg::parse_data_string(json.at("Preamble").as_string());
+  } catch (const std::out_of_range&) {
+  }
 }
 
 void QuestMetadata::assign_default_floors() {
@@ -226,6 +230,11 @@ void QuestMetadata::assert_compatible(const QuestMetadata& other) const {
         "quest version has different value for enable_schtserv_commands (existing: {}, new: {})",
         this->enable_schtserv_commands ? "true" : "false", other.enable_schtserv_commands ? "true" : "false"));
   }
+  if (this->preamble != other.preamble) {
+    throw std::runtime_error(std::format(
+        "quest version has different value for preamble (existing: {}, new: {})",
+        phosg::format_data_string(this->preamble), phosg::format_data_string(other.preamble)));
+  }
 }
 
 phosg::JSON QuestMetadata::json() const {
@@ -276,6 +285,7 @@ phosg::JSON QuestMetadata::json() const {
       {"EnemyEXPOverrides", std::move(enemy_exp_overrides_json)},
       {"CreateItemMasks", std::move(create_item_mask_entries_json)},
       {"SoloUnlockFlags", std::move(solo_unlock_flags_json)},
+      {"Preamble", phosg::format_data_string(this->preamble)},
   });
 }
 

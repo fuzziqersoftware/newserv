@@ -5615,8 +5615,8 @@ const std::vector<SubcommandDefinition> subcommand_definitions{
     // {DC NTE, 11/2000, GC NTE, all other versions, handler}
     /* 6x00 */ {0x00, 0x00, 0x00, 0x00, on_invalid},
     /* 6x01 */ {0x01, 0x01, 0x01, 0x01, on_invalid},
-    /* 6x02 */ {0x02, 0x02, 0x02, 0x02, forward_subcommand},
-    /* 6x03 */ {0x03, 0x03, 0x03, 0x03, forward_subcommand},
+    /* 6x02 */ {0x02, 0x02, 0x02, 0x02, on_invalid}, // See notes in CommandFormats.hh
+    /* 6x03 */ {0x03, 0x03, 0x03, 0x03, on_invalid}, // See notes in CommandFormats.hh
     /* 6x04 */ {0x04, 0x04, 0x04, 0x04, forward_subcommand},
     /* 6x05 */ {0x05, 0x05, 0x05, 0x05, on_switch_state_changed},
     /* 6x06 */ {0x06, 0x06, 0x06, 0x06, on_send_guild_card},

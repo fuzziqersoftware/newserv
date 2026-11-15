@@ -43,6 +43,7 @@ public:
     NO_D6_AFTER_LOBBY                          = 0x0000000000000002,
     NO_D6                                      = 0x0000000000000004,
     FORCE_ENGLISH_LANGUAGE_BB                  = 0x0000000000000008,
+    RECEIVED_SHORT_LOGIN_DC                    = 0x0000200000000000,
 
     // Flags describing the behavior for send_function_call
     HAS_SEND_FUNCTION_CALL                     = 0x0000000000000010,
@@ -251,6 +252,11 @@ public:
   }
 
   void set_flags_for_version(Version version, int64_t sub_version);
+  inline void set_specific_version(uint32_t specific_version) {
+    this->specific_version = specific_version;
+    this->log.info_f("Specific version set to {:08X} ({})",
+        this->specific_version, str_for_specific_version(this->specific_version));
+  }
 
   ItemDropNotificationMode get_drop_notification_mode() const;
   void set_drop_notification_mode(ItemDropNotificationMode new_mode);

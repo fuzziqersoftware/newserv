@@ -135,7 +135,7 @@ uint32_t default_sub_version_for_version(Version version) {
   }
 }
 
-uint32_t default_specific_version_for_version(Version version, int64_t sub_version) {
+uint32_t default_specific_version_for_version(Version version, int64_t sub_version, uint64_t client_flags) {
   // For versions that don't support send_function_call by default, we need to set the specific_version based on
   // sub_version. Fortunately, all versions that share sub_version values also support send_function_call, so for those
   // versions we get the specific_version later by sending VersionDetect.
@@ -152,7 +152,11 @@ uint32_t default_specific_version_for_version(Version version, int64_t sub_versi
           return SPECIFIC_VERSION_DC_V1_US; // 1OEF
         case 0x22:
         case 0x23:
-          return SPECIFIC_VERSION_DC_V1_EU_INDETERMINATE; // 1OPF, 10J3 (12/2000), or 1OJ4 (01/2001)
+          if (client_flags & static_cast<uint64_t>(Client::Flag::RECEIVED_SHORT_LOGIN_DC)) {
+            return SPECIFIC_VERSION_DC_12_2000_PROTOTYPE; // 1OJ3
+          } else {
+            return SPECIFIC_VERSION_DC_V1_EU_INDETERMINATE; // 1OPF or 1OJ4 (01/2001)
+          }
         default:
           return SPECIFIC_VERSION_DC_V1_INDETERMINATE;
       }

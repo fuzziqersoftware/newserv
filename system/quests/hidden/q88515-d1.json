@@ -1,0 +1,26 @@
+{
+  // The preamble is responsible for the following:
+  // - Preventing a crash when the quest download starts by setting up a fake ShopMes data structure
+  // - Writing a short snippet that calls into the quest data without depending on dynamically-allocated addresses (see
+  //   the comments in q88510-d1-e.bin.txt for details)
+  // It does this by writing the following (on 1OEF, array_base is 0x8C3BAB80):
+  //   *0x8C499880 = array_base (global ShopMes data pointer; null at the time this code runs)
+  //   *0x8C499884 = 0 (already null at the time this code runs, but we can only write in 16-byte chunks)
+  //   *0x8C499888 = 0 (already null at the time this code runs, but we can only write in 16-byte chunks)
+  //   *0x8C49988C = 0 (already null at the time this code runs, but we can only write in 16-byte chunks)
+  //   *(array_base) = (array_base - 0x178) (fake ShopMes root pointer; client adds 0x17C in the relevant codepath)
+  //   *(array_base + 4) = (array_base + 8) (fake ShopMes first-level pointer)
+  //   *(array_base + 8) = 0 (zero-length C-string pointed to by the above pointer + 0x17C)
+  //   (array_base + 0x0C):
+  //     D003  mov.l  r0, [quest_script_base_ptr]
+  //     6402  mov.l  r4, [r0]  // r4 = quest_script_base
+  //     5501  mov.l  r5, [r0 + 4]  // r5 = quest_label_table
+  //     5551  mov.l  r5, [r5 + 4]  // r5 = offset for quest label 1
+  //     345C  add    r4, r5  // r4 = address of native code
+  //     442B  bs     [r4]
+  //     0009  nop
+  //     0000  .align 4
+  //   quest_script_base_ptr:
+  //     .data  0x8C493C20
+  "Preamble": "60 00 40 00 02 05 D0 DE 80 AB 3B 8C 00 00 00 00 00 00 00 00 00 00 00 00 02 05 00 00 08 AA 3B 8C 88 AB 3B 8C 00 00 00 00 03 D0 02 64 02 05 01 00 01 55 51 55 5C 34 2B 44 09 00 00 00 20 3C 49 8C",
+}

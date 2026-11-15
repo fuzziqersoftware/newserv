@@ -1209,10 +1209,17 @@
   // server connection, then wait for the quest to load, then wait for the client to leave the "game", before getting
   // to the welcome message.
   "EnableSendFunctionCallQuestNumbers": {
-    // "3OE2": 88530, // US Plus (v1.2) + customizations
-    // "3OJ5": 88531, // JP Plus (v1.5)
-    // "3SE0": 88532, // US Ep3
-    // "3SP0": 88533, // EU Ep3
+    // "1OJ3": 88512, // DC v1 12/2000 prototype
+    // "1OJ4": 88513, // DC v1 01/2001 prototype
+    // "1OJF": 88514, // DC v1 JP
+    // "1OEF": 88515, // DC v1 US
+    // "1OPF": 88516, // DC v1 EU
+    // "2OJW": 88521, // PC v2 (common)
+    // "2OJZ": 88522, // PC v2 (final)
+    // "3OE2": 88530, // GC US Plus (v1.2) + customizations
+    // "3OJ5": 88531, // GC JP Plus (v1.5)
+    // "3SE0": 88532, // GC US Ep3
+    // "3SP0": 88533, // GC EU Ep3
   },
 
   // Whether to enable protected subcommands on GC and Xbox. This enables the infinite HP cheat to also automatically
