@@ -10,6 +10,26 @@ reloc0:
 
 
 
+.versions 1OJ3 1OJ4 1OJF 1OEF 1OPF
+start:
+  mov     r2, 0
+  mova    r0, [addrs]
+  mov.l   r1, [r0]
+  mov.l   [r1], r2
+  mov.l   r1, [r0 + 4]
+  mov.l   [r1], r2
+  mov     r2, 1
+  mov.l   r1, [r0 + 8]
+  rets
+  mov.l   [r1], r2
+  .align  4
+addrs:
+  .data   <VERS 0x8C4B9980 0x8C4C7400 0x8C4C9340 0x8C49A400 0x8C49A380>
+  .data   <VERS 0x8C4B99C4 0x8C4C7444 0x8C4C9384 0x8C49A444 0x8C49A3C4>
+  .data   <VERS 0x8C4B0008 0x8C4BDA68 0x8C4BF9C8 0x8C490A68 0x8C4909E8>
+
+
+
 .versions 2OJ5 2OJF 2OEF 2OPF
 start:
   mov     r2, 0
