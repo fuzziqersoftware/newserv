@@ -17,18 +17,22 @@ struct ProbabilityTable {
 
   ProbabilityTable(const std::vector<ShopRandomSetBase::IntPairT<ItemT>>& table) : ProbabilityTable() {
     for (const auto& entry : table) {
-      for (size_t y = 0; y < entry.weight; y++) {
-        this->push(entry.value);
+      if (entry.weight > MaxCount - this->count) {
+        throw std::runtime_error("weight exceeds table capacity");
       }
+      std::fill_n(this->items + this->count, entry.weight, entry.value);
+      this->count += entry.weight;
     }
   }
 
   template <size_t Count>
   ProbabilityTable(const std::array<ShopRandomSetBase::IntPairT<ItemT>, Count>& table) : ProbabilityTable() {
     for (const auto& entry : table) {
-      for (size_t y = 0; y < entry.weight; y++) {
-        this->push(entry.value);
+      if (entry.weight > MaxCount - this->count) {
+        throw std::runtime_error("weight exceeds table capacity");
       }
+      std::fill_n(this->items + this->count, entry.weight, entry.value);
+      this->count += entry.weight;
     }
   }
 
