@@ -4158,6 +4158,28 @@ static void on_steal_exp_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   add_player_exp(c, stolen_exp, cmd.enemy_index | 0x1000);
 }
 
+// The enemy types whose defeat is the defeat of a boss (counted once per fight in the kill counts). The other boss types
+// are phases or parts of a fight.
+static bool is_boss_main_form(EnemyType type) {
+  switch (type) {
+    case EnemyType::DRAGON:
+    case EnemyType::DE_ROL_LE:
+    case EnemyType::VOL_OPT_2:
+    case EnemyType::DARK_FALZ_2: // Dark Falz's final form on Normal
+    case EnemyType::DARK_FALZ_3: // ... and on the other difficulties
+    case EnemyType::BARBA_RAY:
+    case EnemyType::GOL_DRAGON:
+    case EnemyType::GAL_GRYPHON:
+    case EnemyType::OLGA_FLOW_2:
+    case EnemyType::SAINT_MILION:
+    case EnemyType::SHAMBERTIN:
+    case EnemyType::KONDRIEU:
+      return true;
+    default:
+      return false;
+  }
+}
+
 static void on_enemy_exp_request_bb(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto s = c->require_server_state();
   auto l = c->require_lobby();
@@ -4206,6 +4228,37 @@ static void on_enemy_exp_request_bb(std::shared_ptr<Client> c, SubcommandMessage
   uint8_t area = l->area_for_floor(c->version(), ene_st->super_ene->floor);
   Episode episode = episode_for_area(area);
   auto type = ene_st->type(c->version(), area, l->difficulty, l->event);
+
+  // Count the kill for the player who killed the enemy (reported in /y/clients for external tools). Reaching this
+  // point means this player has not yet been given full EXP for this enemy, so each kill is counted once. A boss counts
+  // once per fight, when its main form falls: its phases, joints, body parts, mines, monitors and spinners are parts
+  // of the fight, and some bosses are several entities of the same type (Saint-Milion, Shambertin and so Kondrieu
+  // have nine body entities; Barba Ray has two).
+  if (cmd.is_killer && ene_st->last_hit_by_client_id(c->lobby_client_id)) {
+    bool count_kill = true;
+    if (type_definition_for_enemy(type).is_boss()) {
+      count_kill = is_boss_main_form(type);
+      if (count_kill) {
+        uint64_t fight_key = (static_cast<uint64_t>(ene_st->super_ene->floor) << 32) | ene_st->super_ene->super_set_id;
+        uint8_t& counted = l->map_state->boss_kills_counted[fight_key];
+        uint8_t client_bit = 1 << c->lobby_client_id;
+        count_kill = !(counted & client_bit);
+        counted |= client_bit;
+      }
+    }
+    if (count_kill) {
+      bool is_rare = ene_st->is_rare(c->version());
+      c->enemy_kill_count++;
+      if (is_rare) {
+        c->rare_enemy_kill_count++;
+        c->last_rare_enemy_killed = phosg::name_for_enum(type);
+      }
+      auto& entry = c->kill_counts[std::make_tuple(episode, l->difficulty, l->mode, type)];
+      entry.count++;
+      entry.rare = entry.rare || is_rare;
+    }
+  }
+
   double base_exp = base_exp_for_enemy_type(
       s->data->battle_params, l->quest, type, episode, l->difficulty, ene_st->super_ene->floor, l->mode == GameMode::SOLO);
 
@@ -5027,6 +5080,39 @@ static void on_challenge_update_records(std::shared_ptr<Client> c, SubcommandMes
   }
 }
 
+static void on_set_challenge_time_6x95(std::shared_ptr<Client> c, SubcommandMessage& msg) {
+  auto l = c->require_lobby();
+  if (!l->is_game()) {
+    return;
+  }
+
+  // Count a stage clear for the player whose time this is, for /y/clients (ChallengeClearCount and
+  // LastChallengeClear). Each clear is counted once per player, even if more than one client reports it.
+  if (l->mode == GameMode::CHALLENGE) {
+    const auto& cmd = msg.check_size_t<G_SetChallengeTime_6x95>();
+    uint32_t seconds = cmd.challenge_time.has_value() ? cmd.challenge_time.decode() : 0;
+    auto target = (cmd.client_id < l->max_clients) ? l->clients[cmd.client_id] : nullptr;
+    if (target && (seconds > 0) && (seconds < 0xFFFF)) {
+      int64_t quest_number = l->quest ? static_cast<int64_t>(l->quest->meta.quest_number) : -1;
+      uint8_t stage_number = l->challenge_params ? l->challenge_params->stage_number : 0;
+      bool is_repeat = (target->challenge_clear_count > 0) &&
+          (target->last_challenge_clear_lobby_id == l->lobby_id) &&
+          (target->last_challenge_clear_quest_number == quest_number) &&
+          (target->last_challenge_clear_stage_number == stage_number) &&
+          (target->last_challenge_clear_seconds == seconds);
+      if (!is_repeat) {
+        target->challenge_clear_count++;
+        target->last_challenge_clear_quest_number = quest_number;
+        target->last_challenge_clear_stage_number = stage_number;
+        target->last_challenge_clear_seconds = seconds;
+        target->last_challenge_clear_lobby_id = l->lobby_id;
+      }
+    }
+  }
+
+  forward_subcommand(c, msg);
+}
+
 static void on_update_battle_data_6x7D(std::shared_ptr<Client> c, SubcommandMessage& msg) {
   auto l = c->lobby.lock();
   if (!l) {
@@ -5774,7 +5860,7 @@ const std::vector<SubcommandDefinition> subcommand_definitions{
     /* 6x92 */ {NONE, NONE, 0x92, 0x92, on_forward_check_game},
     /* 6x93 */ {NONE, NONE, 0x93, 0x93, on_activate_timed_switch},
     /* 6x94 */ {NONE, NONE, 0x94, 0x94, on_warp},
-    /* 6x95 */ {NONE, NONE, 0x95, 0x95, on_forward_check_game},
+    /* 6x95 */ {NONE, NONE, 0x95, 0x95, on_set_challenge_time_6x95},
     /* 6x96 */ {NONE, NONE, 0x96, 0x96, on_forward_check_game},
     /* 6x97 */ {NONE, NONE, 0x97, 0x97, on_challenge_mode_retry_or_quit},
     /* 6x98 */ {NONE, NONE, 0x98, 0x98, on_forward_check_game},

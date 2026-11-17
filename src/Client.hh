@@ -1,14 +1,17 @@
 #pragma once
 
+#include <map>
 #include <memory>
 #include <resource_file/Emulators/Expression.hh>
 #include <stdexcept>
+#include <tuple>
 
 #include "Account.hh"
 #include "AsyncUtils.hh"
 #include "Channel.hh"
 #include "ClientFunctionIndex.hh"
 #include "CommandFormats.hh"
+#include "EnemyType.hh"
 #include "Episode3/BattleRecord.hh"
 #include "Episode3/Tournament.hh"
 #include "PSOEncryption.hh"
@@ -17,6 +20,7 @@
 #include "ProxySession.hh"
 #include "Quest.hh"
 #include "QuestScript.hh"
+#include "StaticGameData.hh"
 #include "TeamIndex.hh"
 #include "Text.hh"
 
@@ -160,6 +164,28 @@ public:
   uint8_t lobby_client_id = 0;
   uint8_t lobby_arrow_color = 0;
   int64_t preferred_lobby_id = -1; // <0 = none chosen
+  // Kill counters for this connection, reported in /y/clients (EnemyKillCount, RareEnemyKillCount,
+  // LastRareEnemyKilled) so that external tools, such as a website's bounty tracker, can count kills by comparing
+  // successive readings. They count only enemies this client killed (BB only, where the server grants EXP), start at
+  // zero on each connection, and only ever increase while the client is connected.
+  uint64_t enemy_kill_count = 0;
+  uint64_t rare_enemy_kill_count = 0;
+  std::string last_rare_enemy_killed;
+  // The same kills by episode, difficulty, game mode and enemy type, reported in /y/clients as KillCounts. A boss
+  // counts once per fight, by its main form (see on_enemy_exp_request_bb).
+  struct KillCountEntry {
+    uint64_t count = 0;
+    bool rare = false; // the enemy had spawned as its rare form
+  };
+  std::map<std::tuple<Episode, Difficulty, GameMode, EnemyType>, KillCountEntry> kill_counts;
+  // Challenge Mode stage clears for this connection, reported in /y/clients (ChallengeClearCount and
+  // LastChallengeClear). Counted when a stage's clear time is set (6x95) for this client; the clear's quest number
+  // identifies the stage (881NN = Episode 1 stage NN, 882NN = Episode 2 stage NN).
+  uint64_t challenge_clear_count = 0;
+  int64_t last_challenge_clear_quest_number = -1;
+  uint8_t last_challenge_clear_stage_number = 0;
+  uint32_t last_challenge_clear_seconds = 0;
+  uint32_t last_challenge_clear_lobby_id = 0;
 
   asio::steady_timer save_game_data_timer;
   asio::steady_timer send_ping_timer;

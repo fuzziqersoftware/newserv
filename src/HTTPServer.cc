@@ -196,6 +196,36 @@ HTTPServer::HTTPServer(std::shared_ptr<ServerState> state)
       client_json.emplace("LobbyID", l->lobby_id);
       client_json.emplace("LobbyClientID", c->lobby_client_id);
     }
+    client_json.emplace("EnemyKillCount", c->enemy_kill_count);
+    client_json.emplace("RareEnemyKillCount", c->rare_enemy_kill_count);
+    client_json.emplace("LastRareEnemyKilled",
+        c->last_rare_enemy_killed.empty() ? phosg::JSON(nullptr) : phosg::JSON(c->last_rare_enemy_killed));
+    auto kill_counts_json = phosg::JSON::list();
+    for (const auto& [key, entry] : c->kill_counts) {
+      const auto& [episode, difficulty, mode, type] = key;
+      const auto& def = type_definition_for_enemy(type);
+      kill_counts_json.emplace_back(phosg::JSON::dict({
+          {"Episode", name_for_episode(episode)},
+          {"Difficulty", name_for_difficulty(difficulty)},
+          {"Mode", name_for_mode(mode)},
+          {"Enemy", phosg::name_for_enum(type)},
+          {"Name", ((difficulty == Difficulty::ULTIMATE) && def.ultimate_name) ? def.ultimate_name : def.in_game_name},
+          {"Rare", entry.rare},
+          {"Boss", def.is_boss()},
+          {"Count", entry.count},
+      }));
+    }
+    client_json.emplace("KillCounts", std::move(kill_counts_json));
+    client_json.emplace("ChallengeClearCount", c->challenge_clear_count);
+    if (c->challenge_clear_count > 0) {
+      client_json.emplace("LastChallengeClear", phosg::JSON::dict({
+                                                    {"QuestNumber", c->last_challenge_clear_quest_number},
+                                                    {"StageNumber", c->last_challenge_clear_stage_number},
+                                                    {"Seconds", c->last_challenge_clear_seconds},
+                                                }));
+    } else {
+      client_json.emplace("LastChallengeClear", nullptr);
+    }
     if (c->version() == Version::BB_V4) {
       client_json.emplace("BBCharacterIndex", c->bb_character_index);
     }

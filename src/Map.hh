@@ -959,6 +959,10 @@ public:
   std::vector<std::shared_ptr<EnemyState>> enemy_set_states;
   std::vector<std::shared_ptr<EventState>> event_states;
   std::vector<size_t> bb_rare_enemy_indexes;
+  // Boss fights whose kill has been counted for each player (key: floor << 32 | the boss's enemy set; value: one bit
+  // per lobby client ID), so that a boss made of several entities counts once per player per fight in the kill counts
+  // reported to /y/clients. Cleared by reset(), so a restarted battle or challenge counts again.
+  std::unordered_map<uint64_t, uint8_t> boss_kills_counted;
   size_t dynamic_obj_base_k_id = 0;
   std::array<size_t, NUM_VERSIONS> dynamic_obj_base_index_for_version = {};
 
